@@ -365,7 +365,7 @@ type RawStreamEvent =
  *    - Semantics: "do this now" (ephemeral: animate, apply patch, change state).
  *    - Subscribers filter by channel (e.g. channel === 'graph'); kind + payload are component-specific.
  */
-export type RawUIStreamEvent =
+type RawUIStreamEvent =
 	{ type: 'ui-step'; uiType: UIStepType, stepId: string; title: string; description?: string; } |
 	{ type: 'ui-step-delta'; uiType: UIStepType, stepId: string; titleDelta?: string; descriptionDelta?: string; } |
 	{
@@ -384,7 +384,7 @@ export type RawUIStreamEvent =
 	{ type: 'parallel-stream-progress'; completed: number; total: number; completedIndices?: number[] };
 
 /** Agent loop stream events (plan progress, stats, debug). */
-export type AgentStreamEvent =
+type AgentStreamEvent =
 	{ type: 'agent-step-progress'; stepLabel: string; detail: string; taskIndex?: number; } |
 	{ type: 'agent-stats'; stats: any; };
 
@@ -442,7 +442,7 @@ export enum UISignalChannel {
 	SEARCH_STAGE = 'search-stage',
 }
 
-export enum UISignalKind {
+enum UISignalKind {
 	PATCH = 'patch',
 	STAGE = 'stage',
 	PROGRESS = 'progress',
@@ -533,7 +533,7 @@ export interface LLMOutputControlSettings {
 /**
  * All keys of LLMOutputControlSettings for runtime access
  */
-export const LLM_OUTPUT_CONTROL_SETTING_KEYS = {
+const LLM_OUTPUT_CONTROL_SETTING_KEYS = {
 	temperature: 'temperature',
 	topP: 'topP',
 	topK: 'topK',
@@ -556,7 +556,7 @@ export function getLLMOutputControlSettingKeys(): (keyof LLMOutputControlSetting
 /**
  * Copy from AI SDK's Source: LanguageModelV3Source
  */
-export type LLMResponseSource = {
+type LLMResponseSource = {
 	type: 'source';
 	/**
 	 * The type of source - URL sources reference web content.
