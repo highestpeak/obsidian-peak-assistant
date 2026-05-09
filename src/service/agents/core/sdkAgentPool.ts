@@ -2,28 +2,229 @@
  * Shared SDK Agent Pool — manages renderer compat, node binary detection,
  * and provides a unified `queryWithProfile()` for all agents.
  *
+ * Consolidates the low-level Electron compat patches (timer shim, event
+ * listener shim, node binary detection) with the high-level pool API
+ * (warmup, shutdown, queryWithProfile).
+ *
  * Replaces the per-agent inline warmup + env materialization pattern.
  * Both VaultSearchAgentSDK and GraphAgent delegate to this service.
- *
- * Provider v2 Task 2.
  */
 
 import type { App } from 'obsidian';
+import { existsSync, readdirSync } from 'fs';
+import { join } from 'path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { Profile } from '@/core/profiles/types';
 import { toAgentSdkEnv } from '@/core/profiles/materialize';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import {
-    patchEventsSetMaxListenersForRenderer,
-    installRendererTimerShim,
-    findNodeBinary,
-    getCliPath as getCliPathFromVaultSdk,
-    type NodeBinaryInfo,
-} from '../vault-sdk/sdkAgentPool';
 import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
 import type { UsageFeature } from '@/service/usage/types';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
 import { modelRegistry } from '@/core/providers/model-registry';
+
+// ─── Node binary detection ────────────────────────────────────────────────────
+
+export interface NodeBinaryInfo {
+    path: string;
+    isElectron: boolean;
+}
+
+/**
+ * Probe common node binary locations. Returns the first that exists,
+ * falling back to process.execPath (Electron) + ELECTRON_RUN_AS_NODE=1 flag.
+ *
+ * Priority:
+ *   1. window.PEAK_NODE_PATH override (debug)
+ *   2. ~/.nvm/versions/node/<version>/bin/node (newest version first)
+ *   3. /opt/homebrew/bin/node
+ *   4. /usr/local/bin/node
+ *   5. /usr/bin/node
+ *   6. process.execPath (Electron fallback)
+ *
+ * NOTE: Electron fallback is known to SIGTRAP with some cli.js versions.
+ * Prefer a real node installation when possible.
+ */
+export function findNodeBinary(): NodeBinaryInfo {
+    const home = process.env.HOME ?? '';
+    const candidates: string[] = [];
+
+    const override = (globalThis as unknown as { PEAK_NODE_PATH?: string }).PEAK_NODE_PATH;
+    if (override) candidates.push(override);
+
+    const nvmDir = join(home, '.nvm', 'versions', 'node');
+    try {
+        const versions = readdirSync(nvmDir).sort().reverse();
+        for (const v of versions) candidates.push(join(nvmDir, v, 'bin', 'node'));
+    } catch {
+        /* nvm not installed */
+    }
+
+    candidates.push(
+        '/opt/homebrew/bin/node',
+        '/usr/local/bin/node',
+        '/usr/bin/node',
+    );
+
+    for (const p of candidates) {
+        try {
+            if (existsSync(p)) return { path: p, isElectron: false };
+        } catch {
+            /* ignore */
+        }
+    }
+
+    return { path: process.execPath, isElectron: true };
+}
+
+// ─── events.setMaxListeners shim ──────────────────────────────────────────────
+
+let _setMaxListenersPatched = false;
+
+/**
+ * The SDK calls `events.setMaxListeners(100, abortSignal)` to raise the
+ * listener cap. In Electron renderer, globalThis.AbortController is
+ * Chromium's, and its signal fails Node's EventTarget instanceof check.
+ *
+ * Patch events.setMaxListeners with a lenient wrapper that catches the
+ * specific TypeError and falls back to setting only the global default.
+ * Idempotent — safe to call multiple times.
+ */
+export function patchEventsSetMaxListenersForRenderer(): void {
+    if (_setMaxListenersPatched) return;
+    _setMaxListenersPatched = true;
+
+    type EventsModule = {
+        setMaxListeners: (n: number, ...targets: unknown[]) => void;
+    };
+
+    const nodeRequire = (globalThis as unknown as { require: NodeJS.Require }).require;
+    const eventsModule = nodeRequire('events') as EventsModule;
+    const original = eventsModule.setMaxListeners.bind(eventsModule);
+
+    eventsModule.setMaxListeners = function patchedSetMaxListeners(
+        n: number,
+        ...targets: unknown[]
+    ): void {
+        try {
+            original(n, ...(targets as never[]));
+        } catch (err) {
+            if (
+                err instanceof TypeError &&
+                String(err.message).includes('must be an instance')
+            ) {
+                // Browser AbortSignal in renderer — drop targets, set default only
+                original(n);
+                return;
+            }
+            throw err;
+        }
+    };
+
+    console.debug('[sdkAgentPool] patched events.setMaxListeners for renderer dual-globals');
+}
+
+// ─── Timer shim (setTimeout/setInterval with .unref()) ───────────────────────
+
+let _timerShimInstalled = false;
+
+/**
+ * The SDK's parent-side code calls `setTimeout(...).unref()` to mark timers
+ * non-blocking (Node semantics). In Chromium renderer, setTimeout returns a
+ * number, so `.unref()` is undefined — TypeError during SDK cleanup.
+ *
+ * Wrap globalThis.setTimeout/setInterval to return a Timeout-like object
+ * with the Node methods as no-ops. clearTimeout/clearInterval unwrap to
+ * the original numeric id before calling through.
+ *
+ * Idempotent.
+ */
+export function installRendererTimerShim(): void {
+    if (_timerShimInstalled) return;
+    _timerShimInstalled = true;
+
+    type TimeoutLike = {
+        _peakId: unknown;
+        unref(): TimeoutLike;
+        ref(): TimeoutLike;
+        refresh(): TimeoutLike;
+        hasRef(): boolean;
+        valueOf(): unknown;
+        [Symbol.toPrimitive](): unknown;
+    };
+
+    const wrap = (id: unknown): TimeoutLike | unknown => {
+        if (typeof id === 'object' && id !== null) return id;
+        const wrapper: TimeoutLike = {
+            _peakId: id,
+            unref() { return this; },
+            ref() { return this; },
+            refresh() { return this; },
+            hasRef() { return true; },
+            valueOf() { return id; },
+            [Symbol.toPrimitive]() { return id; },
+        };
+        return wrapper;
+    };
+    const unwrap = (maybeWrapped: unknown): unknown => {
+        if (
+            maybeWrapped != null &&
+            typeof maybeWrapped === 'object' &&
+            '_peakId' in (maybeWrapped as Record<string, unknown>)
+        ) {
+            return (maybeWrapped as { _peakId: unknown })._peakId;
+        }
+        return maybeWrapped;
+    };
+
+    const origSetTimeout = globalThis.setTimeout;
+    const origClearTimeout = globalThis.clearTimeout;
+    const origSetInterval = globalThis.setInterval;
+    const origClearInterval = globalThis.clearInterval;
+
+    (globalThis as unknown as { setTimeout: unknown }).setTimeout = function patchedSetTimeout(
+        handler: unknown,
+        timeout?: unknown,
+        ...args: unknown[]
+    ): unknown {
+        const id = (origSetTimeout as unknown as (...a: unknown[]) => unknown)(
+            handler, timeout, ...args,
+        );
+        return wrap(id);
+    };
+    (globalThis as unknown as { clearTimeout: unknown }).clearTimeout = function patchedClearTimeout(
+        maybeWrapped: unknown,
+    ): void {
+        (origClearTimeout as unknown as (id: unknown) => void)(unwrap(maybeWrapped));
+    };
+    (globalThis as unknown as { setInterval: unknown }).setInterval = function patchedSetInterval(
+        handler: unknown,
+        timeout?: unknown,
+        ...args: unknown[]
+    ): unknown {
+        const id = (origSetInterval as unknown as (...a: unknown[]) => unknown)(
+            handler, timeout, ...args,
+        );
+        return wrap(id);
+    };
+    (globalThis as unknown as { clearInterval: unknown }).clearInterval = function patchedClearInterval(
+        maybeWrapped: unknown,
+    ): void {
+        (origClearInterval as unknown as (id: unknown) => void)(unwrap(maybeWrapped));
+    };
+
+    console.debug('[sdkAgentPool] installed renderer timer shim');
+}
+
+// ─── Path helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Absolute path to the bundled cli.js sidecar file (base implementation).
+ * The SDK uses this via options.pathToClaudeCodeExecutable to spawn its subprocess.
+ */
+function getCliPathBase(app: App, pluginId: string): string {
+    const adapter = app.vault.adapter as unknown as { getBasePath(): string };
+    return join(adapter.getBasePath(), app.vault.configDir, 'plugins', pluginId, 'sdk', 'cli.js');
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -121,7 +322,7 @@ export function getCliPath(app: App, pluginId: string): string {
     if (sdkSettings.cliPathOverride) {
         return sdkSettings.cliPathOverride;
     }
-    return getCliPathFromVaultSdk(app, pluginId);
+    return getCliPathBase(app, pluginId);
 }
 
 /**
