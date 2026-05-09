@@ -25,7 +25,6 @@ import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcesse
 import { HubConstituentRepo } from './repositories/HubConstituentRepo';
 import { StructuralMetricsRepo } from './repositories/StructuralMetricsRepo';
 import { CascadeDebtRepo } from './repositories/CascadeDebtRepo';
-import { VaultLintRepo } from './repositories/VaultLintRepo';
 import { AmbientPushRepo } from './repositories/AmbientPushRepo';
 import { VAULT_DB_FILENAME, CHAT_DB_FILENAME } from '@/core/constant';
 
@@ -99,8 +98,6 @@ export class SqliteStoreManager {
 	private cascadeDebtRepo: CascadeDebtRepo | null = null;
 	/** Cascade debt tracking (chat/meta DB). */
 	private cascadeDebtRepoChat: CascadeDebtRepo | null = null;
-	/** Vault lint / health-check repo (vault DB only). */
-	private vaultLintRepo: VaultLintRepo | null = null;
 	/** Ambient push log repo (vault DB only). */
 	private ambientPushRepo: AmbientPushRepo | null = null;
 
@@ -220,7 +217,6 @@ export class SqliteStoreManager {
 		this.structuralMetricsRepo = new StructuralMetricsRepo(searchKdb);
 		this.hubConstituentRepo = new HubConstituentRepo(searchKdb);
 		this.cascadeDebtRepo = new CascadeDebtRepo(searchKdb);
-		this.vaultLintRepo = new VaultLintRepo(searchKdb);
 		this.ambientPushRepo = new AmbientPushRepo(searchKdb);
 
 		// Initialize meta database repositories (chat/ai tables)
@@ -476,16 +472,6 @@ export class SqliteStoreManager {
 	}
 
 	/**
-	 * Vault lint / health-check repo (vault DB only).
-	 */
-	getVaultLintRepo(): VaultLintRepo {
-		if (this.closing || !this.vaultLintRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.vaultLintRepo;
-	}
-
-	/**
 	 * Ambient push log repo (vault DB only).
 	 */
 	getAmbientPushRepo(): AmbientPushRepo {
@@ -540,7 +526,6 @@ export class SqliteStoreManager {
 		this.userProfileProcessedHashRepo = null;
 		this.cascadeDebtRepo = null;
 		this.cascadeDebtRepoChat = null;
-		this.vaultLintRepo = null;
 		this.ambientPushRepo = null;
 	}
 }

@@ -97,7 +97,6 @@ export interface TemplateMetadata {
  * Config template IDs (runtime-editable JSON configs under templates/config/).
  */
 export const ConfigTemplateId = {
-	VaultLintConfig: 'config-vault-lint',
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -285,7 +284,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[StopwordTemplateId.Chinese]: meta('stopwords', 'zh'),
 
 	// --- Config (runtime-editable JSON) ---
-	[ConfigTemplateId.VaultLintConfig]: meta('config', 'vault-lint-config'),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {
