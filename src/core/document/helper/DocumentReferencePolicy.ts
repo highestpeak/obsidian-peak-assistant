@@ -11,7 +11,6 @@ export const DOC_OUTGOING_TARGET_TYPES: readonly DocumentType[] = [
 	'markdown',
 	'excalidraw',
 	'canvas',
-	'dataloom',
 	'pdf',
 ] as const;
 

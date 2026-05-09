@@ -26,7 +26,7 @@ import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/T
  * - Text files: markdown, csv, json, html, xml, txt
  * - Binary files: pdf, image (jpg, png, etc.), office (docx, xlsx, pptx)
  * - Plugin data: conv, project, prompt
- * - Obsidian data: excalidraw, canvas, dataloom
+ * - Obsidian data: excalidraw, canvas
  * - Special: folder, url
  */
 export const DOCUMENT_TYPES = [
@@ -50,7 +50,6 @@ export const DOCUMENT_TYPES = [
 	// Obsidian data files
 	'excalidraw',
 	'canvas',
-	'dataloom',
 	// Special types
 	'folder',
 	'url',
@@ -103,7 +102,7 @@ export interface DocumentFileInfo {
 	 *   For binary files, extracted content is stored here after processing.
 	 *   The content is typically converted to markdown format and processed
 	 *   by the markdown extractor for unified handling.
-	 * - Canvas/Dataloom: structured representation converted to markdown
+	 * - Canvas: structured representation converted to markdown
 	 * 
 	 * For binary files, the original file has no text content, so this field
 	 * contains the processed/extracted content. For files with cacheFileInfo,

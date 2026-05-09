@@ -191,7 +191,6 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 		prompt: false,
 		excalidraw: true,
 		canvas: false,
-		dataloom: false,
 		folder: false,
 		url: false,
 		unknown: false,

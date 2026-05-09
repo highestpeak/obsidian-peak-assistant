@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { AppContext } from '@/app/context/AppContext';
-import type { FindRelatedResult } from '@/service/copilot/actions/find-related';
+import type { FindRelatedResult } from '@/service/copilot/actions';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { Search, ExternalLink } from 'lucide-react';
 

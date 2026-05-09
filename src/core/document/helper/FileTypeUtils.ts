@@ -54,29 +54,8 @@ export function isImageExtension(extension: string): boolean {
 }
 
 /**
- * Get MIME type for image extension
- */
-export function getImageMimeType(extension: string): string {
-	const ext = extension.toLowerCase();
-	const mimeTypes: Record<string, string> = {
-		'jpg': 'image/jpeg',
-		'jpeg': 'image/jpeg',
-		'png': 'image/png',
-		'gif': 'image/gif',
-		'webp': 'image/webp',
-		'bmp': 'image/bmp',
-		'svg': 'image/svg+xml',
-		'heic': 'image/heic',
-		'heif': 'image/heif',
-		'ico': 'image/x-icon',
-	};
-	return mimeTypes[ext] || 'image/jpeg';
-}
-
-/**
- * Get MIME type for file extension
- * Supports images, PDFs, and common file types
- * todo merge from getImageMimeType
+ * Get MIME type for file extension.
+ * Supports images, PDFs, office documents, archives, audio, and video.
  */
 export function getFileMimeType(extension: string): string {
 	const ext = extension.toLowerCase();
@@ -132,6 +111,15 @@ export function getFileMimeType(extension: string): string {
 	};
 
 	return mimeTypes[ext] || 'application/octet-stream';
+}
+
+/**
+ * Get MIME type for image extension.
+ * Delegates to getFileMimeType, defaults to 'image/jpeg' for unknown extensions.
+ */
+export function getImageMimeType(extension: string): string {
+	const mime = getFileMimeType(extension);
+	return mime === 'application/octet-stream' ? 'image/jpeg' : mime;
 }
 
 /**
