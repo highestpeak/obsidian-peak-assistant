@@ -12,6 +12,12 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { Button } from '@/ui/component/shared-ui/button';
 import { Shield, Globe, Zap, Settings2, Check, Loader2, X, ChevronRight, ChevronLeft, Plus, ExternalLink, Trash2 } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
+import { IndexConfigStep } from './onboarding/IndexConfigStep';
+import { IndexProgressDisplay } from './onboarding/IndexProgressDisplay';
+import { IndexErrorDialog } from './onboarding/IndexErrorDialog';
+import { IndexInitializer } from '@/service/search/index/indexInitializer';
+import type { IndexLevel } from '@/service/search/index/types';
+import type { IndexErrorAction } from '@/service/search/index/indexInitializer';
 
 // ─── Obsidian Modal wrapper ────────────────────────────────────────────
 
@@ -384,12 +390,46 @@ type SystemStatus = 'checking' | 'downloading' | 'ready' | 'failed';
 function SystemCheckStep({
 	onDone,
 	onBack,
+	indexLevel,
 }: {
 	onDone: () => void;
 	onBack: () => void;
+	indexLevel: IndexLevel;
 }) {
 	const [sqliteStatus, setSqliteStatus] = useState<SystemStatus>('checking');
 	const [errorMsg, setErrorMsg] = useState('');
+	const [isIndexing, setIsIndexing] = useState(false);
+	const [indexProgress, setIndexProgress] = useState({ step: 0, total: 0, label: '', processed: 0, totalFiles: 0, complete: false });
+	const [indexError, setIndexError] = useState<{ step: string; failedCount: number; errorMessage: string } | null>(null);
+	const [errorResolver, setErrorResolver] = useState<((action: IndexErrorAction) => void) | null>(null);
+
+	const triggerIndexing = useCallback(async () => {
+		if (!indexLevel) return;
+		setIsIndexing(true);
+		try {
+			const appCtx = AppContext.getInstance();
+			const initializer = new IndexInitializer(
+				appCtx.app,
+				appCtx.settings.search,
+				appCtx.settings.dataStorageFolder,
+			);
+			const errorHandler = async (err: { step: string; failedCount: number; error: Error }) => {
+				return new Promise<IndexErrorAction>((resolve) => {
+					setIndexError({ step: err.step, failedCount: err.failedCount, errorMessage: err.error.message });
+					setErrorResolver(() => (action: IndexErrorAction) => {
+						setIndexError(null);
+						setErrorResolver(null);
+						resolve(action);
+					});
+				});
+			};
+			await initializer.performStagedFullIndexing(false, indexLevel, errorHandler);
+		} catch (error) {
+			console.error('[Onboarding] Indexing failed:', error);
+		}
+		setIsIndexing(false);
+		setIndexProgress(prev => ({ ...prev, complete: true }));
+	}, [indexLevel]);
 
 	const runCheck = useCallback(async () => {
 		setSqliteStatus('checking');
@@ -398,6 +438,7 @@ function SystemCheckStep({
 		// Check if already initialized
 		if (sqliteStoreManager.isInitialized()) {
 			setSqliteStatus('ready');
+			void triggerIndexing();
 			return;
 		}
 
@@ -415,12 +456,13 @@ function SystemCheckStep({
 			const plugin = AppContext.getInstance().plugin!;
 			await (plugin as any).initSqlite();
 			setSqliteStatus('ready');
+			void triggerIndexing();
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
 			setErrorMsg(msg);
 			setSqliteStatus('failed');
 		}
-	}, []);
+	}, [triggerIndexing]);
 
 	// Auto-run on mount
 	React.useEffect(() => { void runCheck(); }, [runCheck]);
@@ -452,11 +494,33 @@ function SystemCheckStep({
 				)}
 			</div>
 
+			{/* Indexing progress */}
+			{isIndexing && !indexError && (
+				<IndexProgressDisplay
+					currentStep={indexProgress.step}
+					totalSteps={indexProgress.total}
+					stepLabel={indexProgress.label}
+					processedFiles={indexProgress.processed}
+					totalFiles={indexProgress.totalFiles}
+					isComplete={indexProgress.complete}
+				/>
+			)}
+
+			{/* Indexing error dialog */}
+			{indexError && errorResolver && (
+				<IndexErrorDialog
+					step={indexError.step}
+					failedCount={indexError.failedCount}
+					errorMessage={indexError.errorMessage}
+					onAction={errorResolver}
+				/>
+			)}
+
 			<div className="pktw-flex pktw-justify-between pktw-pt-2">
-				<Button variant="ghost" size="sm" onClick={onBack} className="pktw-gap-1">
+				<Button variant="ghost" size="sm" onClick={onBack} className="pktw-gap-1" disabled={isIndexing}>
 					<ChevronLeft size={14} /> Back
 				</Button>
-				<Button size="sm" onClick={onDone} className="pktw-gap-1">
+				<Button size="sm" onClick={onDone} className="pktw-gap-1" disabled={isIndexing}>
 					{sqliteStatus === 'ready' ? 'Done' : 'Close'} <Check size={14} />
 				</Button>
 			</div>
@@ -466,17 +530,57 @@ function SystemCheckStep({
 
 // ─── Wizard root ──────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 function OnboardingWizard({ onClose }: { onClose: () => void }) {
 	const [step, setStep] = useState(0);
+	const [indexLevel, setIndexLevel] = useState<IndexLevel>('fast');
+
+	const handleIndexConfigNext = (level: IndexLevel, embConfig?: { endpoint: string; model: string; apiKey: string }) => {
+		setIndexLevel(level);
+		if (embConfig) {
+			// Save embedding config to active profile
+			const registry = ProfileRegistry.getInstance();
+			const profile = registry.getActiveAgentProfile();
+			if (profile) {
+				registry.updateProfile(profile.id, {
+					embeddingEndpoint: embConfig.endpoint,
+					embeddingModel: embConfig.model,
+					embeddingApiKey: embConfig.apiKey || null,
+				});
+			}
+		}
+		// Save index level to settings
+		const appCtx = AppContext.getInstance();
+		if (appCtx.settings) {
+			appCtx.settings.search.indexLevel = level;
+			appCtx.plugin.saveSettings();
+		}
+		setStep(3);
+	};
+
+	const handleIndexSkip = () => {
+		const appCtx = AppContext.getInstance();
+		if (appCtx.settings) {
+			appCtx.settings.search.indexLevel = 'fast';
+			appCtx.plugin.saveSettings();
+		}
+		setStep(3);
+	};
 
 	return (
 		<div className="pktw-flex pktw-flex-col">
 			<StepIndicator current={step} total={TOTAL_STEPS} />
 			{step === 0 && <WelcomeStep onNext={() => setStep(1)} />}
 			{step === 1 && <ProviderStep onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-			{step === 2 && <SystemCheckStep onDone={onClose} onBack={() => setStep(1)} />}
+			{step === 2 && (
+				<IndexConfigStep
+					onNext={handleIndexConfigNext}
+					onBack={() => setStep(1)}
+					onSkip={handleIndexSkip}
+				/>
+			)}
+			{step === 3 && <SystemCheckStep onDone={onClose} onBack={() => setStep(2)} indexLevel={indexLevel} />}
 		</div>
 	);
 }
