@@ -719,35 +719,6 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_group ON mobius_operation(continuous_group_id);
 	`);
 
-	// ── Precompiled knowledge layer: hub constituent tracking + regeneration queue ──
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS hub_constituent (
-			hub_node_id    TEXT NOT NULL,
-			hub_path       TEXT NOT NULL,
-			member_path    TEXT NOT NULL,
-			member_node_id TEXT,
-			source_kind    TEXT NOT NULL,
-			added_at       INTEGER NOT NULL,
-			PRIMARY KEY (hub_node_id, member_path)
-		);
-		CREATE INDEX IF NOT EXISTS idx_hub_constituent_member ON hub_constituent(member_path);
-		CREATE INDEX IF NOT EXISTS idx_hub_constituent_hub ON hub_constituent(hub_node_id);
-	`);
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS hub_regen_queue (
-			hub_node_id    TEXT PRIMARY KEY,
-			hub_path       TEXT NOT NULL,
-			queued_at      INTEGER NOT NULL,
-			trigger_paths  TEXT NOT NULL,
-			priority       INTEGER NOT NULL DEFAULT 0,
-			status         TEXT NOT NULL DEFAULT 'pending',
-			last_attempt   INTEGER,
-			fail_count     INTEGER NOT NULL DEFAULT 0,
-			error_message  TEXT
-		);
-		CREATE INDEX IF NOT EXISTS idx_hub_regen_queue_status ON hub_regen_queue(status, priority DESC);
-	`);
-
 	// ── Ambient push log ──
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS ambient_push_log (

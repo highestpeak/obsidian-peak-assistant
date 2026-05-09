@@ -155,17 +155,9 @@ export interface SearchResultItem {
 /**
  * Returned by search() calls.
  */
-/** Optional anchor from the current retrieval pass (for agents / expansion). */
-export interface RuntimeHubHint {
-	anchorPath: string;
-	anchorScore: number;
-}
-
 export interface SearchResponse {
 	query: SearchQuery;
 	items: SearchResultItem[];
-	/** Best-effort top result anchor after rerank (not persisted). */
-	runtimeHub?: RuntimeHubHint;
 }
 
 

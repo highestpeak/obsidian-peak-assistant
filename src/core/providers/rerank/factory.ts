@@ -2,7 +2,6 @@ import type { RerankProvider, RerankProviderConfig } from './types';
 import { CohereRerankProvider } from './cohere';
 import { JinaRerankProvider } from './jina';
 import { LLMRerankProvider } from './llm';
-import { FlashRankProvider } from './flashrank';
 
 type RerankProviderFactoryFn = (config: RerankProviderConfig) => RerankProvider | null;
 
@@ -51,12 +50,6 @@ export class RerankProviderManager {
 				modelId: config.modelId,
 				provider: config.extra.provider,
 				aiServiceManager: config.extra.aiServiceManager,
-			});
-		});
-
-		this.register('flashrank', (config) => {
-			return new FlashRankProvider({
-				modelId: config.modelId,
 			});
 		});
 	}
@@ -116,7 +109,7 @@ export class RerankProviderManager {
 		aiServiceManager?: any,
 	): RerankProvider | null {
 		// Known dedicated rerank providers
-		const knownRerankProviders = ['cohere', 'jina', 'flashrank'];
+		const knownRerankProviders = ['cohere', 'jina'];
 		const isLLMProvider = !knownRerankProviders.includes(rerankModel.provider);
 
 		if (isLLMProvider) {
@@ -128,15 +121,6 @@ export class RerankProviderManager {
 					provider: rerankModel.provider,
 					aiServiceManager,
 				},
-			});
-		}
-
-		// Dedicated rerank provider: use provider type directly
-		// FlashRank doesn't need config, but cohere/jina do
-		if (rerankModel.provider === 'flashrank') {
-			return this.create({
-				type: rerankModel.provider,
-				modelId: rerankModel.modelId,
 			});
 		}
 

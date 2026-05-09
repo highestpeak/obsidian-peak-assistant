@@ -86,6 +86,12 @@ export type MobiusNodeHubDiscoveryScoredRow = MobiusNodeHubDiscoveryRow & {
 };
 
 /**
+ * Gap path prefix (first two segments). Must stay aligned with `pathPrefixForGap` in hubDiscover.ts.
+ * References `mobius_node.path`; only use in queries against `mobius_node`.
+ */
+const MOBIUS_PATH_GAP_PREFIX_SQL = sql<string>`CASE WHEN instr(mobius_node.path, '/') = 0 THEN mobius_node.path ELSE substr(mobius_node.path, 1, instr(mobius_node.path, '/') - 1) || '/' || substr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), 1, CASE WHEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') > 0 THEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') - 1 ELSE length(substr(mobius_node.path, instr(mobius_node.path, '/') + 1)) END) END`;
+
+/**
  * Folder hub candidate row with scores matching in-app folder hub scoring (materialized columns on `type=folder`).
  */
 export type MobiusNodeFolderHubDiscoveryRow = {
@@ -108,22 +114,6 @@ export type MobiusNodeFolderHubDiscoveryRow = {
 	/** `folder_cohesion_score` × size reliability (see {@link FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT}). */
 	hub_cohesion_effective_score: number;
 };
-
-/**
- * Document row subset for weighted local hub graph nodes (same as discovery minus `word_count`),
- * plus `tags_json` for tag/keyword alignment in hub-local assembly.
- */
-export type MobiusNodeHubLocalGraphMetaRow = Omit<MobiusNodeHubDiscoveryRow, 'word_count'> & {
-	tags_json: string | null;
-	other_incoming_cnt: number | null;
-	other_outgoing_cnt: number | null;
-};
-
-/** Semantic cluster hub seeds (ordered by `semantic_pagerank` in queries). */
-export type MobiusNodeHubClusterSeedRow = Pick<
-	MobiusNodeRow,
-	'node_id' | 'path' | 'label' | 'semantic_pagerank' | 'doc_incoming_cnt' | 'doc_outgoing_cnt' | 'pagerank'
->;
 
 /** Id + vault path for coverage / member listing helpers. */
 export type MobiusNodeIdPathRow = { node_id: string; path: string | null };
@@ -1493,208 +1483,6 @@ export class MobiusNodeRepo {
 		return rows as MobiusNodeHubDiscoveryScoredRow[];
 	}
 
-	/** Indexed note row by path (`document` or `hub_doc`) for manual Hub-Summaries/Manual notes. */
-	async getIndexedHubOrDocumentRowByPath(vaultPath: string): Promise<MobiusNodeHubDiscoveryRow | undefined> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'type',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-				'semantic_pagerank',
-				'word_count',
-			])
-			.where('path', '=', vaultPath)
-			.where('type', 'in', [GraphNodeType.Document, GraphNodeType.HubDoc])
-			.executeTakeFirst();
-		return row as MobiusNodeHubDiscoveryRow | undefined;
-	}
-
-	/** Seeds for semantic cluster hubs: top documents by `semantic_pagerank`. */
-	async listDocumentNodesForHubClusterSeeds(limit: number): Promise<MobiusNodeHubClusterSeedRow[]> {
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'semantic_pagerank',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-			])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null)
-			.orderBy('semantic_pagerank desc')
-			.limit(lim)
-			.execute();
-		return rows as MobiusNodeHubClusterSeedRow[];
-	}
-
-	/**
-	 * Cluster seeds by combined hub graph score (matches {@link listTopDocumentNodesForHubDiscovery} ordering)
-	 * so discovery is not biased only toward `semantic_pagerank` heads.
-	 */
-	async listDocumentNodesForHubClusterSeedsByHubGraphScore(
-		limit: number,
-		hubSummaryFolder: string,
-	): Promise<MobiusNodeHubClusterSeedRow[]> {
-		const lim = Math.max(1, limit);
-		const hub = hubSummaryFolder.trim();
-		const likeUnderHub = hub ? `${hub}/%` : '';
-
-		const wIn = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.incoming;
-		const wOut = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.outgoing;
-		const hubPhysical = sql<number>`min(1.0, (coalesce(pagerank, 0) * 2.5) + min(0.08, (coalesce(word_count, 0) / 50000.0) * 0.08))`;
-		const hubOrg = sql<number>`min(1.0, (coalesce(doc_incoming_cnt, 0) * ${wIn}) + (coalesce(doc_outgoing_cnt, 0) * ${wOut}))`;
-		const hubSem = sql<number>`min(1.0, coalesce(semantic_pagerank, 0) * 1.2)`;
-		const hubGraph = sql<number>`min(1.0, (${hubPhysical} * 0.35) + (${hubOrg} * 0.25) + (${hubSem} * 0.35))`;
-
-		let q = this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'semantic_pagerank',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-				hubGraph.as('hub_graph_score'),
-			])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null);
-
-		if (hub) {
-			q = q.where((eb) =>
-				eb.and([eb('path', '!=', hub), eb('path', 'not like', likeUnderHub)]),
-			);
-		}
-
-		const rows = await q.orderBy('hub_graph_score', 'desc').limit(lim).execute();
-		return rows as MobiusNodeHubClusterSeedRow[];
-	}
-
-	/**
-	 * Cluster seeds by classical PageRank (link authority), excluding Hub-Summaries subtree like other hub queries.
-	 */
-	async listDocumentNodesForHubClusterSeedsByPagerank(
-		limit: number,
-		hubSummaryFolder: string,
-	): Promise<MobiusNodeHubClusterSeedRow[]> {
-		const lim = Math.max(1, limit);
-		const hub = hubSummaryFolder.trim();
-		const likeUnderHub = hub ? `${hub}/%` : '';
-
-		let q = this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'semantic_pagerank',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-			])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null);
-
-		if (hub) {
-			q = q.where((eb) =>
-				eb.and([eb('path', '!=', hub), eb('path', 'not like', likeUnderHub)]),
-			);
-		}
-
-		const rows = await q.orderBy(sql`coalesce(pagerank, 0) desc`).limit(lim).execute();
-		return rows as MobiusNodeHubClusterSeedRow[];
-	}
-
-	/** Resolve document `node_id` from vault path (hub coverage / inspector). */
-	async getDocumentNodeIdByVaultPath(vaultPath: string): Promise<string | undefined> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select('node_id')
-			.where('path', '=', vaultPath)
-			.where('type', '=', GraphNodeType.Document)
-			.executeTakeFirst();
-		return row?.node_id;
-	}
-
-	/** Resolve `document` or `hub_doc` node id from vault path (manual hubs / inspector). */
-	async getHubOrDocumentNodeIdByVaultPath(vaultPath: string): Promise<string | undefined> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select('node_id')
-			.where('path', '=', vaultPath)
-			.where('type', 'in', [GraphNodeType.Document, GraphNodeType.HubDoc])
-			.executeTakeFirst();
-		return row?.node_id;
-	}
-
-	/**
-	 * Batch-resolve `document` or `hub_doc` rows by vault path (`WHERE path IN (...)`), one round-trip.
-	 */
-	async listHubOrDocumentNodeIdsByVaultPaths(
-		vaultPaths: string[],
-	): Promise<Array<{ path: string; node_id: string }>> {
-		const paths = [...new Set(vaultPaths.filter(Boolean))];
-		if (paths.length === 0) return [];
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select(['node_id', 'path'])
-			.where('path', 'in', paths)
-			.where('type', 'in', [GraphNodeType.Document, GraphNodeType.HubDoc])
-			.execute();
-		const out: Array<{ path: string; node_id: string }> = [];
-		for (const r of rows) {
-			const p = r.path ?? '';
-			if (!p) continue;
-			out.push({ path: p, node_id: r.node_id });
-		}
-		return out;
-	}
-
-	/** Sample document vault paths under a folder prefix (HubDoc member list). */
-	async listDocumentPathsByPathPrefix(pathPrefix: string, limit: number): Promise<string[]> {
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select('path')
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'like', `${pathPrefix}%`)
-			.limit(lim)
-			.execute();
-		return rows.map((r) => r.path ?? '').filter(Boolean);
-	}
-
-	/**
-	 * Sample document paths under a folder hub vault path (HubDoc assembly).
-	 * Normalizes to a trailing-slash prefix so LIKE matches children only.
-	 */
-	async listFolderHubDocMemberPathsSample(folderPath: string, limit: number = 40): Promise<string[]> {
-		const prefix = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
-		return this.listDocumentPathsByPathPrefix(prefix, limit);
-	}
-
-	/** Documents under a path prefix (folder hub coverage estimate). */
-	async listDocumentNodeIdPathByPathPrefix(pathPrefix: string, limit: number): Promise<MobiusNodeIdPathRow[]> {
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select(['node_id', 'path'])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'like', `${pathPrefix}%`)
-			.limit(lim)
-			.execute();
-		return rows as MobiusNodeIdPathRow[];
-	}
-
 	/**
 	 * Batch-load doc link degrees for `type=folder` mobius rows by vault path (one round-trip).
 	 * Keys in the returned map use {@link normalizeVaultPath}.
@@ -1741,48 +1529,4 @@ export class MobiusNodeRepo {
 		return s;
 	}
 
-	/** Batch load fields needed for weighted local hub graph nodes. */
-	async listHubLocalGraphNodeMeta(nodeIds: string[]): Promise<MobiusNodeHubLocalGraphMetaRow[]> {
-		if (!nodeIds.length) return [];
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'type',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'other_incoming_cnt',
-				'other_outgoing_cnt',
-				'pagerank',
-				'semantic_pagerank',
-				'tags_json',
-			])
-			.where('node_id', 'in', nodeIds)
-			.execute();
-		return rows as MobiusNodeHubLocalGraphMetaRow[];
-	}
-
-	/** Center node row for local hub graph expansion. */
-	async getHubLocalGraphCenterMeta(nodeId: string): Promise<MobiusNodeHubLocalGraphMetaRow | undefined> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'type',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'other_incoming_cnt',
-				'other_outgoing_cnt',
-				'pagerank',
-				'semantic_pagerank',
-				'tags_json',
-			])
-			.where('node_id', '=', nodeId)
-			.executeTakeFirst();
-		return row as MobiusNodeHubLocalGraphMetaRow | undefined;
-	}
 }

@@ -38,15 +38,6 @@ export enum PromptId {
 	ImageSummary = 'image-summary',
 	/** Topic + functional + context tags and optional vault document-type classification (same JSON). */
 	DocTagGenerateJson = 'doc-tag-generate-json',
-	/** System: Hub navigation note JSON fill (maintenance). Paired with {@link HubDocSummary}. */
-	HubDocSummarySystem = 'hub-doc-summary-system',
-	/** User: Hub metadata + draft markdown + vault excerpts → JSON for hub_doc sections. */
-	HubDocSummary = 'hub-doc-summary',
-	/** System: Hub semantic merge (duplicate / same-topic folds). */
-	HubSemanticMergeSystem = 'hub-semantic-merge-system',
-	/** User: Hub card JSON → merge groups (does not invent stableKeys). */
-	HubSemanticMerge = 'hub-semantic-merge',
-
 	/** Pattern discovery agent: analyze query history → new query templates. */
 	PatternDiscovery = 'pattern-discovery',
 
@@ -186,8 +177,6 @@ export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.ImageDescription,
 	PromptId.ImageSummary,
 	PromptId.DocTagGenerateJson,
-	PromptId.HubDocSummary,
-	PromptId.HubSemanticMerge,
 	PromptId.KnowledgeIntuitionPlan,
 	PromptId.KnowledgeIntuitionSubmit,
 ] as const;
@@ -283,20 +272,6 @@ export interface PromptVariables {
 		content: string;
 		title?: string;
 		path?: string;
-	};
-	[PromptId.HubDocSummarySystem]: Record<string, never>;
-	[PromptId.HubDocSummary]: {
-		/** JSON string of hub candidate metadata (graph signals, routes, members). */
-		hubMetadataJson: string;
-		/** Draft hub body without YAML frontmatter (structure reference). */
-		draftMarkdownBody: string;
-		/** Truncated vault excerpts or placeholder when empty. */
-		vaultExcerpts: string;
-	};
-	[PromptId.HubSemanticMergeSystem]: Record<string, never>;
-	[PromptId.HubSemanticMerge]: {
-		/** JSON array of hub cards for merge (stableKey, path, labels, signals). */
-		hubCardsJson: string;
 	};
 	[PromptId.KnowledgeIntuitionPlanSystem]: Record<string, never>;
 	[PromptId.KnowledgeIntuitionPlan]: {

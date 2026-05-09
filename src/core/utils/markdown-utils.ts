@@ -395,61 +395,6 @@ export async function hydrateCodeStopwordsFromTemplateManager(
 	codeStopwordsSet = parseCodeStopwordsRendered(rendered);
 }
 
-/** Inline default; keep in sync with `templates/indexing/cluster-hub-weak-title-tokens.md` until hydrate runs. */
-const DEFAULT_CLUSTER_HUB_WEAK_TITLE_TOKENS_RAW = `index
-mess
-temp
-draft
-note
-new
-copy
-xxx
-todo
-fixme
-readme
-untitled
-the
-and
-for
-with
-from
-a
-an
-of
-in
-to
-or
-vs
-v`;
-
-let clusterHubWeakTitleTokensSet: Set<string> | null = null;
-
-/**
- * Weak title/filename tokens for cluster hub discovery (`extractMeaningfulTitleTokens` in clusterHubSignals).
- * Uses template {@link IndexingTemplateId.ClusterHubWeakTitleTokens} after {@link hydrateClusterHubWeakTitleTokensFromTemplateManager}.
- */
-export function getClusterHubWeakTitleTokens(): Set<string> {
-	return clusterHubWeakTitleTokensSet ?? parseCodeStopwordsRendered(DEFAULT_CLUSTER_HUB_WEAK_TITLE_TOKENS_RAW);
-}
-
-/**
- * Loads `IndexingTemplateId.ClusterHubWeakTitleTokens` (Handlebars) into memory. Call from plugin onload with TemplateManager.
- */
-export async function hydrateClusterHubWeakTitleTokensFromTemplateManager(tm: TemplateManager): Promise<void> {
-	const raw = await tm.getTemplate(IndexingTemplateId.ClusterHubWeakTitleTokens);
-	const rendered = compileTemplate(raw)({});
-	clusterHubWeakTitleTokensSet = parseCodeStopwordsRendered(rendered);
-}
-
-/** Test hook: same parsing as production. */
-export function setClusterHubWeakTitleTokensForTests(rendered: string): void {
-	clusterHubWeakTitleTokensSet = parseCodeStopwordsRendered(rendered);
-}
-
-export function resetClusterHubWeakTitleTokensForTests(): void {
-	clusterHubWeakTitleTokensSet = null;
-}
-
 /** Test hook: apply already-rendered template output (same parsing as production). */
 export function setCodeStopwordsForTests(rendered: string): void {
 	codeStopwordsSet = parseCodeStopwordsRendered(rendered);

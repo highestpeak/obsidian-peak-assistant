@@ -172,15 +172,7 @@ export class QueryService {
 		sw.print(false);
 
 		const totalDuration = sw.getTotalElapsed();
-		const top = ranked[0];
-		const runtimeHub =
-			top?.path != null
-				? {
-						anchorPath: top.path,
-						anchorScore: top.finalScore ?? top.score ?? 0,
-					}
-				: undefined;
-		return { query, items: ranked, duration: totalDuration, runtimeHub };
+		return { query, items: ranked, duration: totalDuration };
 	}
 
 	/**

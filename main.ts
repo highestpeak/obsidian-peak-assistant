@@ -34,7 +34,6 @@ import { clearTemplateEngineForUnload } from '@/core/template-engine-helper';
 import { clearFormatUtilsCaches } from '@/core/utils/format-utils';
 import { getPluginDirAbsolute } from '@/core/utils/obsidian-utils';
 import {
-	hydrateClusterHubWeakTitleTokensFromTemplateManager,
 	hydrateCodeStopwordsFromTemplateManager,
 } from '@/core/utils/markdown-utils';
 import { hydrateTextStopwordsFromTemplateManager } from '@/core/utils/stopword-utils';
@@ -121,7 +120,6 @@ export default class MyPlugin extends Plugin {
 		if (this.templateManager) {
 			try {
 				await hydrateCodeStopwordsFromTemplateManager(this.templateManager);
-				await hydrateClusterHubWeakTitleTokensFromTemplateManager(this.templateManager);
 				await hydrateTextStopwordsFromTemplateManager(this.templateManager);
 			} catch (e) {
 				console.warn(
