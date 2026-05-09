@@ -178,11 +178,6 @@ export const DEFAULT_SEARCH_MODE = 'vault';
  * RRF (Reciprocal Rank Fusion) configuration constants.
  */
 export const RRF_K = 60;
-// Two-stage RRF weights for hybrid search
-// Stage 1: Content sources (fulltext + vector) merged with combined weight
-export const RRF_CONTENT_WEIGHT = 0.6; // Combined weight for content hits (text + vector)
-// Stage 2: Content vs Meta with equal weights
-export const RRF_CONTENT_VS_META_WEIGHT = 0.5; // Weight for content hits vs meta hits
 
 /**
  * PPR (Personalized PageRank) Search configuration constants.
@@ -203,15 +198,10 @@ export const PPR_MAX_EXPANSION_RESULTS = 20;
 
 /**
  * Search scoring constants for keyword matching.
- * Used to boost search results based on keyword diversity and density.
+ * Used to boost search results based on keyword diversity.
  */
 export const SEARCH_SCORING_DIVERSITY_BOOST_CONTENT = 0.5; // Up to 50% boost for diversity in content matches
-export const SEARCH_SCORING_DENSITY_BOOST_CONTENT = 0.3; // Up to 30% boost for density in content matches
-export const SEARCH_SCORING_MAX_OCCURRENCES_CONTENT = 10; // Max reasonable occurrences per keyword in content
-
 export const SEARCH_SCORING_DIVERSITY_BOOST_META = 0.8; // Up to 80% boost for diversity in meta matches
-export const SEARCH_SCORING_DENSITY_BOOST_META = 0.4; // Up to 40% boost for density in meta matches
-export const SEARCH_SCORING_MAX_OCCURRENCES_META = 5; // Max reasonable occurrences per keyword in meta
 
 /**
  * TODO: Turn these constants into configuration options, or make them optional parameters for tools.

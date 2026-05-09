@@ -19,6 +19,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { MobiusEdgeRepo } from '@/core/storage/sqlite/repositories/MobiusEdgeRepo';
 import { normalizeUsageTokens } from '@/service/search/support/llm-cost-utils';
 import { normalizeTextForFts } from '../support/segmenter';
+import { stemText } from '@/service/search/support/porter-stemmer';
 import { getAIHubSummaryFolder, type SearchSettings } from '@/app/settings/types';
 import type { Document, DocumentReference } from '@/core/document/types';
 import {
@@ -317,6 +318,7 @@ export class IndexService {
 
 			await kdb.transaction().execute(async () => {
 				docChunkRepo.deleteFtsByDocIds(docIds);
+				docChunkRepo.deleteFtsStemByDocIds(docIds);
 				docChunkRepo.deleteMetaFtsByDocIds(docIds);
 				await docChunkRepo.deleteByDocIds(docIds);
 				await embeddingRepo.deleteByDocIds(docIds);
@@ -666,6 +668,7 @@ export class IndexService {
 						doc.sourceFileInfo.path,
 						doc.metadata.title,
 						chunks,
+						doc.metadata.keywordTags,
 						tenant,
 					);
 					if (opts.includeEmbeddings) {
@@ -931,6 +934,7 @@ export class IndexService {
 		path: string,
 		title: string,
 		chunks: Chunk[],
+		keywordTags: string[] = [],
 		tenant: IndexTenant = 'vault',
 	): Promise<void> {
 		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
@@ -938,15 +942,18 @@ export class IndexService {
 
 		// Delete existing FTS and doc_chunk rows for this doc.
 		docChunkRepo.deleteFtsByDocId(docId);
+		docChunkRepo.deleteFtsStemByDocId(docId);
 		docChunkRepo.deleteMetaFtsByDocId(docId);
 		await docChunkRepo.deleteByDocId(docId);
 
-		// Save meta FTS (title/path) - once per document
+		// Save meta FTS (title/path/tags) - once per document
 		const normTitle = normalizeTextForFts(title ?? '');
+		const tags = keywordTags.join(' ');
 		docChunkRepo.insertMetaFts({
 			doc_id: docId,
 			path: path,
 			title: normTitle,
+			tags,
 		});
 
 		// Save doc_chunk and FTS.
@@ -977,6 +984,9 @@ export class IndexService {
 				doc_id: docId,
 				content: normContent,
 			});
+
+			const stemmedContent = stemText(normContent);
+			docChunkRepo.insertFtsStem(chunkId, docId, stemmedContent);
 		}
 	}
 

@@ -40,6 +40,7 @@ export type FtsMetaInsertParams = {
 	doc_id: string;
 	path: string;
 	title: string | null;
+	tags?: string;
 };
 
 /**
