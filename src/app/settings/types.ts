@@ -5,10 +5,6 @@ import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types
 import type { DocumentType } from '@/core/document/types';
 import { PromptId, CONFIGURABLE_PROMPT_IDS, INDEXING_AND_HUB_PROMPT_IDS, SEARCH_AI_ANALYSIS_PROMPT_IDS } from '@/service/prompt/PromptId';
 import type { ProfileSettings } from '@/core/profiles/types';
-import {
-	DEFAULT_HUB_DISCOVER_SETTINGS,
-	type HubDiscoverSettings,
-} from '@/service/search/index/helper/hub/types';
 import type { AmbientPushSettings } from '@/service/ambient/types';
 /**
  * Document chunking configuration.
@@ -148,10 +144,6 @@ export interface SearchSettings {
 	 */
 	inspectorLinks?: InspectorLinksSettings;
 
-	/**
-	 * Hub maintenance: multi-round candidate selection and optional LLM judge.
-	 */
-	hubDiscover?: HubDiscoverSettings;
 }
 
 /** Inspector Links panel settings */
@@ -239,8 +231,6 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	aiAnalysisHistoryLimit: 5,
 
 	inspectorLinks: DEFAULT_INSPECTOR_LINKS_SETTINGS,
-
-	hubDiscover: { ...DEFAULT_HUB_DISCOVER_SETTINGS },
 };
 
 /** Subfolder names under rootFolder (Prompts, Attachments, etc.). Only rootFolder is configurable. */

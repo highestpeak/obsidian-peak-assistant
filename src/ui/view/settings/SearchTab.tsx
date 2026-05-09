@@ -32,7 +32,7 @@ export function SearchTab({ settings, settingsUpdates }: SearchTabProps) {
 	};
 
 	return (
-		<div className="peak-settings-card pktw-flex pktw-flex-col pktw-gap-1.5">
+		<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-mt-4">
 			{/* ── Indexing ── */}
 			<SectionHeader icon={Database} title="Indexing" />
 

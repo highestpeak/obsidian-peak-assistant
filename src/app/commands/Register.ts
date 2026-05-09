@@ -28,8 +28,6 @@ import { SettingsModal } from '@/ui/view/SettingsModal';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { HubDocService, type HubDiscoverRoundSummary } from '@/service/search/index/helper/hub';
-import { formatLlmEnrichmentProgressLine } from '@/service/search/support/llm-progress-format';
 import { KnowledgeIntuitionAgent } from '@/service/agents/KnowledgeIntuitionAgent';
 import { BulkOperationCostEstimator } from '@/service/search/support/cost-estimator';
 import { CostEstimationModal } from '@/ui/view/modals/CostEstimationModal';
@@ -133,7 +131,7 @@ type SearchIndexCommandsDeps = {
 
 /**
  * Search index pipeline: FTS, vectors, LLM pending enrichment, global maintenance, full pipeline,
- * manual Hub stub generation (writes Hub-*.md and indexes), cancel/delete.
+ * cancel/delete.
  */
 function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 	const { viewManager, searchClient, indexInitializer, searchSettings, aiManager } = deps;
@@ -255,57 +253,6 @@ function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 			},
 		},
 		{
-			id: 'peak-hub-generate-stub-summaries',
-			name: 'Search: generate / refresh Hub summaries (top candidates)',
-			callback: async () => {
-				if (!searchSettings) {
-					new Notice('Search settings are not available. Please restart the plugin.', 5000);
-					return;
-				}
-				try {
-					const svc = new HubDocService(() => searchSettings);
-					const roundSummaries: HubDiscoverRoundSummary[] = [];
-					const { written } = await svc.generateAndIndexHubDocsForMaintenance({
-						onProgress: (ev) => {
-							if (ev.phase === 'hub_discovery' && ev.roundSummary) {
-								roundSummaries.push(ev.roundSummary);
-							}
-						},
-					});
-					const discoveryLine =
-						roundSummaries.length === 0
-							? ''
-							: roundSummaries
-									.map(
-										(s) =>
-											`R${s.roundIndex}: ${s.selectedHubCount} hubs · ${(s.coverageRatio * 100).toFixed(1)}% cov`,
-									)
-									.join(' · ');
-					new Notice(
-						`Hub: wrote or updated ${written.length} auto Hub-*.md file(s).${discoveryLine ? ` Discovery: ${discoveryLine}.` : ''} Manual hubs under Hub-Summaries/Manual/ are only re-indexed, not overwritten.`,
-						9000,
-					);
-					if (roundSummaries.length) {
-						console.log('[peak-hub-generate-stub-summaries] roundSummaries', roundSummaries);
-					}
-				} catch (e) {
-					console.error('[peak-hub-generate-stub-summaries]', e);
-					new Notice(`Hub generation failed: ${(e as Error).message}`, 8000);
-				}
-			},
-		},
-		{
-			id: 'peak-refresh-hub-summaries',
-			name: 'Peak: Refresh Hub Summaries',
-			callback: async () => {
-				const { HubRegenService } = await import('@/service/search/index/helper/hub/hubRegenService');
-				const service = HubRegenService.getInstance();
-				new Notice('Hub summary refresh started...');
-				const result = await service.processQueueNow();
-				new Notice(`Hub refresh: ${result.processed} regenerated, ${result.failed} failed`);
-			},
-		},
-		{
 			id: 'peak-search-global-maintenance',
 			name: 'Search: run global maintenance',
 			callback: async () => {
@@ -347,7 +294,7 @@ function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 		},
 		{
 			id: 'peak-search-staged-full-pipeline',
-			name: 'Search: full pipeline (FTS → vector → LLM → maintenance → hub)',
+			name: 'Search: full pipeline (FTS → vector → LLM → maintenance)',
 			callback: async () => {
 				if (!searchClient) {
 					new Notice('Search service is not available. Please restart the plugin.', 5000);

@@ -27,6 +27,7 @@ import type {
 	HubFolderTreePage,
 	HubWorldSnapshot,
 	WorldMetricsDigest,
+	VaultExploreBudgets,
 } from './types';
 import type { IntuitionPrepContext } from './types';
 
@@ -40,7 +41,7 @@ const HUB_DIGEST_NAME_TOKEN_TOP = 6;
 /**
  * Computes scaling budgets for vault exploration (formerly hub discover budgets).
  */
-function computeHubDiscoverBudgets(documentNodeCount: number) {
+function computeHubDiscoverBudgets(documentNodeCount: number): VaultExploreBudgets {
 	const n = Math.max(0, Math.floor(documentNodeCount));
 	const raw = Math.floor(Math.sqrt(n) * HUB_DISCOVER_LIMIT_SQRT_SCALE);
 	const limitTotal = Math.max(HUB_DISCOVER_LIMIT_MIN, Math.min(HUB_DISCOVER_LIMIT_MAX, raw));
@@ -494,7 +495,7 @@ function buildBackboneEdgesJson(backbone: BackboneMapResult): string {
 function buildVaultSummaryMarkdown(
 	world: HubWorldSnapshot,
 	backbone: BackboneMapResult,
-	indexBudgetRaw: ReturnType<typeof computeHubDiscoverBudgets>,
+	indexBudgetRaw: VaultExploreBudgets,
 ): string {
 	const m = world.metrics;
 	const b = backbone.metrics;

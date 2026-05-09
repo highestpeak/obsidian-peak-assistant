@@ -13,7 +13,7 @@ export function SettingCard({ label, description, labelSuffix, children, stacked
 	return (
 		<div
 			className={cn(
-				'pktw-rounded-lg pktw-px-4 pktw-py-3.5 pktw-bg-pk-background pktw-transition-colors hover:pktw-brightness-95 dark:hover:pktw-brightness-110',
+				'pktw-px-4 pktw-py-3.5',
 				stacked ? 'pktw-flex pktw-flex-col pktw-gap-2' : 'pktw-flex pktw-items-center pktw-justify-between pktw-gap-4',
 			)}
 		>

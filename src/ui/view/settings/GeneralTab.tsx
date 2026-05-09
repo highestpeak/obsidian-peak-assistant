@@ -14,7 +14,7 @@ export function GeneralTab({ settings, settingsUpdates }: GeneralTabProps) {
 	const { update, updateAI } = settingsUpdates;
 
 	return (
-		<div className="peak-settings-card pktw-flex pktw-flex-col pktw-gap-1.5">
+		<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-mt-4">
 			<SettingCard
 				label="Data Storage Folder"
 				description="Folder for storing plugin data files (e.g., search database). Leave empty to use plugin directory."

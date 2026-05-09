@@ -22,7 +22,6 @@ import { ChatStarRepo } from './repositories/ChatStarRepo';
 import { AIAnalysisRepo } from './repositories/AIAnalysisRepo';
 import { QueryPatternRepo } from './repositories/QueryPatternRepo';
 import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcessedHashRepo';
-import { HubConstituentRepo } from './repositories/HubConstituentRepo';
 import { CascadeDebtRepo } from './repositories/CascadeDebtRepo';
 import { AmbientPushRepo } from './repositories/AmbientPushRepo';
 import { VAULT_DB_FILENAME, CHAT_DB_FILENAME } from '@/core/constant';
@@ -68,7 +67,6 @@ export class SqliteStoreManager {
 	private indexStateRepo: IndexStateRepo | null = null;
 	private graphRepo: GraphRepo | null = null;
 	private userProfileProcessedHashRepo: UserProfileProcessedHashRepo | null = null;
-	private hubConstituentRepo: HubConstituentRepo | null = null;
 
 	// Meta database index repositories (meta.sqlite) — chat index tenant (ChatFolder)
 	private indexedDocumentRepoChat: IndexedDocumentRepo | null = null;
@@ -211,7 +209,6 @@ export class SqliteStoreManager {
 		this.mobiusEdgeRepo = new MobiusEdgeRepo(searchKdb);
 		this.graphRepo = new GraphRepo(this.mobiusNodeRepo, this.mobiusEdgeRepo);
 		this.userProfileProcessedHashRepo = new UserProfileProcessedHashRepo(searchKdb);
-		this.hubConstituentRepo = new HubConstituentRepo(searchKdb);
 		this.cascadeDebtRepo = new CascadeDebtRepo(searchKdb);
 		this.ambientPushRepo = new AmbientPushRepo(searchKdb);
 
@@ -365,16 +362,6 @@ export class SqliteStoreManager {
 			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.userProfileProcessedHashRepo;
-	}
-
-	/**
-	 * Hub constituent + regen queue repo. Vault DB only.
-	 */
-	getHubConstituentRepo(): HubConstituentRepo {
-		if (this.closing || !this.hubConstituentRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.hubConstituentRepo;
 	}
 
 	/**

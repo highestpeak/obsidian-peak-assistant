@@ -13,8 +13,6 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { INDEX_CHECK_BATCH_SIZE, VAULT_DB_FILENAME } from '@/core/constant';
 import { formatLlmEnrichmentProgressLine } from '@/service/search/support/llm-progress-format';
 import { getFileSize } from '@/core/utils/obsidian-utils';
-import { HubDocService } from '@/service/search/index/helper/hub/hubDocServices';
-import { HubRegenService } from './helper/hub/hubRegenService';
 
 /**
  * Utility functions for index initialization.
@@ -172,7 +170,7 @@ export class IndexInitializer {
 	}
 
 	/**
-	 * Full pipeline in order: FTS (fast core) → vector embeddings → LLM tags/summaries → Mobius maintenance → Hub docs.
+	 * Full pipeline in order: FTS (fast core) → vector embeddings → LLM tags/summaries → Mobius maintenance.
 	 * Use when you want deferred enrichment explicitly instead of one-shot `manual_full` per file.
 	 */
 	async performStagedFullIndexing(showNotification: boolean): Promise<void> {
@@ -188,7 +186,7 @@ export class IndexInitializer {
 		const progressTracker = new IndexProgressTracker(filesToIndex.length);
 		let indexedCount = 0;
 		try {
-			progressTracker.showStart('Peak: Step 1/5 — Full-text (FTS), no embeddings…');
+			progressTracker.showStart('Peak: Step 1/4 — Full-text (FTS), no embeddings…');
 
 			let lastProgressUpdate = Date.now();
 			const PROGRESS_INTERVAL_MS = 2000;
@@ -212,7 +210,7 @@ export class IndexInitializer {
 		} catch (e) {
 			progressTracker.dismiss();
 			console.error('[IndexInitializer] Staged pipeline failed at FTS step:', e);
-			new Notice(`Peak: Step 1/5 failed — ${(e as Error).message}`, 8000);
+			new Notice(`Peak: Step 1/4 failed — ${(e as Error).message}`, 8000);
 			return;
 		}
 
@@ -224,32 +222,32 @@ export class IndexInitializer {
 		progressTracker.dismiss();
 		if (showNotification) {
 			const mb = storageSize > 0 ? (storageSize / 1024 / 1024).toFixed(2) : '0';
-			new Notice(`Peak: Step 1/5 done — FTS indexed ${indexedCount} file(s). DB ~${mb} MB.`, 5000);
+			new Notice(`Peak: Step 1/4 done — FTS indexed ${indexedCount} file(s). DB ~${mb} MB.`, 5000);
 		}
 
-		const pipelineUi = this.openPipelineNotice('Peak: Step 2/5 — Vector embeddings…');
+		const pipelineUi = this.openPipelineNotice('Peak: Step 2/4 — Vector embeddings…');
 		try {
 			await IndexService.runPendingVectorIndexEnrichment(this.settings, {
 				onProgress: ({ processed, total, path }) => {
 					const short = path.length > 48 ? `${path.slice(0, 45)}…` : path;
-					pipelineUi.setMessage(`Peak: Step 2/5 — Vector ${processed}/${total}\n${short}`);
+					pipelineUi.setMessage(`Peak: Step 2/4 — Vector ${processed}/${total}\n${short}`);
 				},
 			});
-			pipelineUi.setMessage('Peak: Step 3/5 — LLM tags & summaries…');
+			pipelineUi.setMessage('Peak: Step 3/4 — LLM tags & summaries…');
 			await IndexService.runPendingLlmIndexEnrichment(this.settings, {
 				onProgress: (ev) => {
 					const short = ev.path.length > 48 ? `${ev.path.slice(0, 45)}…` : ev.path;
 					pipelineUi.setMessage(
-						`Peak: Step 3/5 — LLM ${ev.processed}/${ev.total}\n${formatLlmEnrichmentProgressLine(ev)}\n${short}`,
+						`Peak: Step 3/4 — LLM ${ev.processed}/${ev.total}\n${formatLlmEnrichmentProgressLine(ev)}\n${short}`,
 					);
 				},
 			});
-			pipelineUi.setMessage('Peak: Step 4/5 — Graph maintenance…');
+			pipelineUi.setMessage('Peak: Step 4/4 — Graph maintenance…');
 			await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
 				onProgress: (ev) => {
 					if (ev.phase === 'semantic_related') {
 						pipelineUi.setMessage(
-							`Peak: Step 4/5 — ${ev.tenant} semantic edges · ${ev.progressTextSuffix ?? ''}`,
+							`Peak: Step 4/4 — ${ev.tenant} semantic edges · ${ev.progressTextSuffix ?? ''}`,
 						);
 						return;
 					}
@@ -260,35 +258,14 @@ export class IndexInitializer {
 								? 'semantic PR persist'
 								: ev.phase;
 					pipelineUi.setMessage(
-						`Peak: Step 4/5 — ${ev.tenant} · ${phaseLabel} · ${ev.progressTextSuffix ?? ''}`,
+						`Peak: Step 4/4 — ${ev.tenant} · ${phaseLabel} · ${ev.progressTextSuffix ?? ''}`,
 					);
 				},
 			});
-			pipelineUi.setMessage('Peak: Step 5/5 — Hub summaries (discovery + materialize)…');
-			const hub = new HubDocService(() => this.settings);
-			await hub.generateAndIndexHubDocsForMaintenance({
-				onProgress: (ev) => {
-					pipelineUi.setMessage(`Peak: Step 5/5 — ${ev.phase} · ${ev.progressTextSuffix ?? ''}`);
-				},
-			});
-
-			// Initialize hub regen service for background regeneration
-			HubRegenService.getInstance().init(() => this.settings);
-			try {
-				const constituentRepo = sqliteStoreManager.getHubConstituentRepo();
-				const pendingCount = await constituentRepo.pendingCount();
-				if (pendingCount > 0) {
-					console.log(`[IndexInitializer] ${pendingCount} stale hub(s) pending regeneration, processing...`);
-					void HubRegenService.getInstance().processQueueNow();
-				}
-			} catch (e) {
-				console.warn('[IndexInitializer] Failed to check hub regen queue:', e);
-			}
-
 			pipelineUi.hide();
 			if (showNotification) {
 				new Notice(
-					'Peak: Full pipeline finished (FTS → vector → LLM → maintenance → hub).',
+					'Peak: Full pipeline finished (FTS → vector → LLM → maintenance).',
 					8000,
 				);
 			}
