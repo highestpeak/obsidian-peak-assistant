@@ -254,7 +254,6 @@ class IndexCrudService {
 		fts: number;
 		chunks: number;
 		embeddings: number;
-		stats: number;
 		graphNodes: number;
 	}> {
 		const tenants: IndexTenant[] = ['vault', 'chat'];
@@ -262,7 +261,6 @@ class IndexCrudService {
 		let fts = 0;
 		let chunks = 0;
 		let embeddings = 0;
-		let stats = 0;
 		let graphNodes = 0;
 
 		for (const tenant of tenants) {
@@ -278,7 +276,6 @@ class IndexCrudService {
 				fts += docChunkRepo.cleanupOrphanFts();
 				chunks += await docChunkRepo.cleanupOrphanChunks();
 				embeddings += await embeddingRepo.cleanupOrphanEmbeddings();
-				stats += await mobiusNodeRepo.cleanupOrphanStats();
 
 				const pathMap = await indexedDocumentRepo.getAllIndexedPaths();
 				const paths = Array.from(pathMap.keys());
@@ -299,7 +296,7 @@ class IndexCrudService {
 			});
 		}
 
-		return { metaFts, fts, chunks, embeddings, stats, graphNodes };
+		return { metaFts, fts, chunks, embeddings, graphNodes };
 	}
 
 	/** Index build timestamp and document count (vault tenant). */
@@ -1976,7 +1973,6 @@ export class IndexService {
 		fts: number;
 		chunks: number;
 		embeddings: number;
-		stats: number;
 		graphNodes: number;
 	}> {
 		return this.crud.cleanupOrphanedSearchIndexData();

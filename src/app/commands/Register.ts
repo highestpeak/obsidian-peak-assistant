@@ -500,11 +500,10 @@ function buildSystemCommands(deps: SystemCommandsDeps): Command[] {
 						orphanResult.fts +
 						orphanResult.chunks +
 						orphanResult.embeddings +
-						orphanResult.stats +
 						orphanResult.graphNodes;
 					if (orphanTotal > 0) {
 						new Notice(
-							`Search index: cleaned ${orphanTotal} orphan record(s) (meta FTS, FTS, chunks, embeddings, stats, Mobius document nodes).`,
+							`Search index: cleaned ${orphanTotal} orphan record(s) (meta FTS, FTS, chunks, embeddings, Mobius document nodes).`,
 							4000,
 						);
 					}

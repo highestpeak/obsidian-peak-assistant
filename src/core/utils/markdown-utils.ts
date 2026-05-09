@@ -395,15 +395,6 @@ export async function hydrateCodeStopwordsFromTemplateManager(
 	codeStopwordsSet = parseCodeStopwordsRendered(rendered);
 }
 
-/** Test hook: apply already-rendered template output (same parsing as production). */
-export function setCodeStopwordsForTests(rendered: string): void {
-	codeStopwordsSet = parseCodeStopwordsRendered(rendered);
-}
-
-/** Reset stopwords cache (e.g. tests). */
-export function resetCodeStopwordsForTests(): void {
-	codeStopwordsSet = null;
-}
 
 const IDENT_RE = /[A-Za-z_][A-Za-z0-9_]{1,63}/g;
 

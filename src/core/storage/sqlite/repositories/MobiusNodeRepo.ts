@@ -27,20 +27,6 @@ import {
 export type MobiusNodeRow = DbSchema['mobius_node'];
 
 /** Escapes `%`, `_`, and `\` for SQLite `LIKE ... ESCAPE '\\'`. */
-function escapeSqlLikePatternForVaultPath(s: string): string {
-	return s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-}
-
-/**
- * SQL predicate matching `pathMatchesAnyPrefix` (hub-path-utils) for one normalized prefix against `mobius_node.path`.
- */
-function sqlMobiusPathMatchesHubDiscoverPrefix(pathRef: ReturnType<typeof sql.ref>, prefix: string) {
-	const p = normalizeVaultPath(prefix);
-	if (!p) return sql`1=0`;
-	const likePattern = escapeSqlLikePatternForVaultPath(`${p}/`) + '%';
-	const norm = sql<string>`trim(replace(coalesce(${pathRef}, ''), char(92), '/'), '/')`;
-	return sql`(${norm} = ${p} OR ${norm} LIKE ${likePattern} ESCAPE '\\' OR ${p} LIKE ${norm} || '/%')`;
-}
 
 /** Graph node DTO shape; rows live in `mobius_node`. */
 export type GraphNode = DbSchema['graph_nodes'];
@@ -84,12 +70,6 @@ export type MobiusNodeHubDiscoveryScoredRow = MobiusNodeHubDiscoveryRow & {
 	hub_organizational_score: number;
 	hub_semantic_centrality_score: number;
 };
-
-/**
- * Gap path prefix (first two segments). Must stay aligned with `pathPrefixForGap` in hubDiscover.ts.
- * References `mobius_node.path`; only use in queries against `mobius_node`.
- */
-const MOBIUS_PATH_GAP_PREFIX_SQL = sql<string>`CASE WHEN instr(mobius_node.path, '/') = 0 THEN mobius_node.path ELSE substr(mobius_node.path, 1, instr(mobius_node.path, '/') - 1) || '/' || substr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), 1, CASE WHEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') > 0 THEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') - 1 ELSE length(substr(mobius_node.path, instr(mobius_node.path, '/') + 1)) END) END`;
 
 /**
  * Folder hub candidate row with scores matching in-app folder hub scoring (materialized columns on `type=folder`).
@@ -744,10 +724,6 @@ export class MobiusNodeRepo {
 			.execute();
 	}
 
-	async cleanupOrphanStats(): Promise<number> {
-		return 0;
-	}
-
 	async countAllDocumentStatisticsRows(): Promise<number> {
 		const r = await this.docStatisticsRowQuery()
 			.select(({ fn }) => fn.countAll().as('c'))
@@ -986,91 +962,6 @@ export class MobiusNodeRepo {
 	// --- Hub discovery & local hub graph (read-only helpers) ---
 
 	/**
-	 * Document counts grouped by gap path prefix (same bucketing as hub discovery round-summary gaps).
-	 */
-	async listDocumentGapPrefixCounts(): Promise<Array<{ pathPrefix: string; documentCount: number }>> {
-		const gapInner = this.db
-			.selectFrom('mobius_node')
-			.select(MOBIUS_PATH_GAP_PREFIX_SQL.as('path_prefix'))
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null)
-			.as('gap_inner');
-
-		const rows = await this.db
-			.selectFrom(gapInner)
-			.select((eb) => ['path_prefix', eb.fn.countAll<number>().as('c')])
-			.groupBy('path_prefix')
-			.execute();
-
-		return rows.map((r) => ({
-			pathPrefix: String(r.path_prefix),
-			documentCount: Number(r.c),
-		}));
-	}
-
-	/**
-	 * Sample document paths in one gap bucket excluding already-covered nodes (bounded repeated scans).
-	 */
-	async listSampleUncoveredPathsForGapPrefix(
-		gapPrefix: string,
-		isCovered: (nodeId: string) => boolean,
-		sampleLimit: number,
-	): Promise<string[]> {
-		const lim = Math.max(1, Math.min(50, sampleLimit));
-		const out: string[] = [];
-		let fetchLimit = 100;
-		const maxFetch = 10000;
-
-		while (out.length < lim && fetchLimit <= maxFetch) {
-			const rows = await this.db
-				.selectFrom('mobius_node')
-				.select(['path', 'node_id'])
-				.where('type', '=', GraphNodeType.Document)
-				.where('path', 'is not', null)
-				.where(sql<boolean>`(${MOBIUS_PATH_GAP_PREFIX_SQL}) = ${gapPrefix}`)
-				.orderBy('path')
-				.limit(fetchLimit)
-				.execute();
-
-			for (const r of rows) {
-				const p = r.path ?? '';
-				if (!p) continue;
-				if (isCovered(r.node_id)) continue;
-				out.push(p);
-				if (out.length >= lim) break;
-			}
-
-			if (rows.length < fetchLimit) break;
-			fetchLimit = Math.min(maxFetch, Math.ceil(fetchLimit * 1.5));
-		}
-
-		return out;
-	}
-
-	/**
-	 * One keyset page of documents for hub coverage ordinals (same filter as full index: `document`, non-null `path`, `node_id` asc).
-	 * Pass `afterNodeId = null` for the first page; then `last node_id` from the previous page until this returns `[]`.
-	 */
-	async listDocumentNodeIdPathForCoverageIndexKeyset(
-		afterNodeId: string | null,
-		limit: number,
-	): Promise<Array<{ node_id: string; path: string | null }>> {
-		const lim = Math.max(1, Math.min(50_000, limit));
-		let q = this.db
-			.selectFrom('mobius_node')
-			.select(['node_id', 'path'])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null)
-			.orderBy('node_id')
-			.limit(lim);
-		if (afterNodeId != null && afterNodeId !== '') {
-			q = q.where('node_id', '>', afterNodeId);
-		}
-		const rows = await q.execute();
-		return rows as Array<{ node_id: string; path: string | null }>;
-	}
-
-	/**
 	 * Clears materialized hub stats on folder nodes (`tag_doc_count`, `pagerank`, `semantic_pagerank`, boundary degree columns).
 	 */
 	async clearFolderHubMaterializedStatsColumns(now: number = Date.now()): Promise<void> {
@@ -1187,83 +1078,6 @@ export class MobiusNodeRepo {
 	}
 
 	/**
-	 * Top folder hub candidates from materialized columns on `type=folder` (excludes Hub-Summaries subtree).
-	 * Blends physical / organizational / semantic signals with size-weighted cohesion; see `FOLDER_HUB_GRAPH_WEIGHT_*`.
-	 *
-	 * When `pathPrefixes` is non-empty, only rows whose normalized path matches any prefix (same rules as hub discovery
-	 * `pathMatchesAnyPrefix`) are considered before ordering and `limit`.
-	 *
-	 * Optional `offset` skips the first N rows after the same ordering (pagination for post-filter compression).
-	 */
-	async listTopFolderNodesForHubDiscovery(
-		limit: number,
-		hubSummaryFolder: string,
-		pathPrefixes?: readonly string[],
-		offset?: number,
-	): Promise<MobiusNodeFolderHubDiscoveryRow[]> {
-		const lim = Math.max(1, limit);
-		const off = Math.max(0, Math.floor(offset ?? 0));
-		const hub = hubSummaryFolder.trim();
-		const likeUnderHub = hub ? `${hub}/%` : '';
-
-		const normalizedPrefixes = (pathPrefixes ?? [])
-			.map((x) => normalizeVaultPath(String(x)))
-			.filter((x) => x.length > 0);
-
-		const hubPhysical = sql<number>`min(1.0, coalesce(pagerank, 0.0) * 2.2)`;
-		const totalIn = sql<number>`coalesce(doc_incoming_cnt, 0) + coalesce(other_incoming_cnt, 0)`;
-		const totalOut = sql<number>`coalesce(doc_outgoing_cnt, 0) + coalesce(other_outgoing_cnt, 0)`;
-		const hubOrg = sql<number>`min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) * 0.18 + ln(1.0 + ${totalIn}) * 0.06 + ln(1.0 + ${totalOut}) * 0.06)`;
-		const hubSem = sql<number>`min(1.0, coalesce(semantic_pagerank, 0.0) * 1.0)`;
-		const lnRef = Math.log(1 + FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT);
-		const hubCohEff = sql<number>`coalesce(folder_cohesion_score, 0.0) * min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) / ${lnRef})`;
-		const wPhys = FOLDER_HUB_GRAPH_WEIGHT_PHYSICAL;
-		const wOrg = FOLDER_HUB_GRAPH_WEIGHT_ORGANIZATIONAL;
-		const wSem = FOLDER_HUB_GRAPH_WEIGHT_SEMANTIC;
-		const wCoh = FOLDER_HUB_GRAPH_WEIGHT_COHESION;
-		const hubGraph = sql<number>`min(1.0, (${hubPhysical} * ${wPhys}) + (${hubOrg} * ${wOrg}) + (${hubSem} * ${wSem}) + (${hubCohEff} * ${wCoh}))`;
-
-		let q = this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'tag_doc_count',
-				'pagerank',
-				'semantic_pagerank',
-				'folder_cohesion_score',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'other_incoming_cnt',
-				'other_outgoing_cnt',
-				hubPhysical.as('hub_physical_authority_score'),
-				hubOrg.as('hub_organizational_score'),
-				hubSem.as('hub_semantic_centrality_score'),
-				hubCohEff.as('hub_cohesion_effective_score'),
-				hubGraph.as('hub_graph_score'),
-			])
-			.where('type', '=', GraphNodeType.Folder)
-			.where('path', 'is not', null)
-			.where('tag_doc_count', '>=', FOLDER_HUB_MIN_DOCS);
-
-		if (hub) {
-			q = q.where((eb) => eb.and([eb('path', '!=', hub), eb('path', 'not like', likeUnderHub)]));
-		}
-
-		if (normalizedPrefixes.length > 0) {
-			const pathRef = sql.ref('mobius_node.path');
-			const clauses = normalizedPrefixes.map((pref) => sqlMobiusPathMatchesHubDiscoverPrefix(pathRef, pref));
-			q = q.where(sql<boolean>`(${sql.join(clauses, sql` OR `)})`);
-		}
-
-		let q2 = q.orderBy('hub_graph_score', 'desc').limit(lim);
-		if (off > 0) q2 = q2.offset(off);
-		const rows = await q2.execute();
-		return rows as MobiusNodeFolderHubDiscoveryRow[];
-	}
-
-	/**
 	 * Top folder nodes for conversational search Orient: ordered by PageRank, then doc count under folder.
 	 * Intuition text lives in `attributes_json` (see {@link parseFolderIntuitionFromMobiusFolderRow}).
 	 */
@@ -1343,27 +1157,8 @@ export class MobiusNodeRepo {
 		return out;
 	}
 
-	/** `tag_doc_count` for folder nodes at the given paths (missing paths omitted). */
-	async listFolderTagDocCountByPaths(paths: string[]): Promise<Map<string, number>> {
-		const uniq = [...new Set(paths.map((x) => normalizeVaultPath(String(x))).filter(Boolean))];
-		if (!uniq.length) return new Map();
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select(['path', 'tag_doc_count'])
-			.where('type', '=', GraphNodeType.Folder)
-			.where('path', 'in', uniq)
-			.execute();
-		const m = new Map<string, number>();
-		for (const r of rows) {
-			const path = r.path ? normalizeVaultPath(r.path) : '';
-			if (!path) continue;
-			m.set(path, Math.max(0, Number(r.tag_doc_count ?? 0)));
-		}
-		return m;
-	}
-
 	/**
-	 * Folder hub discovery rows for specific paths (same score columns as {@link listTopFolderNodesForHubDiscovery}).
+	 * Folder hub discovery rows for specific paths.
 	 * Use for promoting direct children; may include rows below {@link FOLDER_HUB_MIN_DOCS} when `relaxMinDocs` is true.
 	 */
 	async listFolderHubDiscoveryRowsByPaths(

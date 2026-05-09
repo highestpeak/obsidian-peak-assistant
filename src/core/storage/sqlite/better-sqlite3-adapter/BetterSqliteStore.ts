@@ -333,53 +333,20 @@ export class BetterSqliteStore implements SqliteDatabase {
 
 	/**
 	 * Dynamically load better-sqlite3 module.
-	 * 
-	 * Priority:
-	 * 1. Use cached module (if available)
-	 * 2. Try normal require (works if node_modules is in require path)
-	 * 3. Try loading from require.cache (if already loaded)
-	 * 4. Try loading from absolute paths (fallback)
+	 * Uses cached module if available, then normal require, then absolute path fallback.
 	 */
 	private static loadBetterSqlite3(app?: App): typeof import('better-sqlite3') {
-		// Strategy 1: Use cached module
 		if (BetterSqliteStore.cachedBetterSqlite3) {
 			return BetterSqliteStore.cachedBetterSqlite3;
 		}
 
-		// Strategy 2: Try normal require
 		try {
 			const module = require('better-sqlite3');
 			BetterSqliteStore.cachedBetterSqlite3 = module;
 			return module;
 		} catch (requireError: any) {
-			// Strategy 3: Check require.cache for already loaded module
-			if (typeof require !== 'undefined' && require.cache) {
-				for (const modulePath in require.cache) {
-					if (modulePath.includes('better-sqlite3') && modulePath.includes('node_modules')) {
-						const cachedModule = require.cache[modulePath];
-						if (cachedModule && cachedModule.exports) {
-							const exports = cachedModule.exports;
-							// Extract Database constructor
-							let Database = null;
-							if (typeof exports === 'function') {
-								Database = exports;
-							} else if (exports && typeof exports === 'object') {
-								Database = exports.default || exports.Database;
-							}
-							if (Database && typeof Database === 'function') {
-								const module = { default: Database, Database: Database } as any;
-								BetterSqliteStore.cachedBetterSqlite3 = module;
-								return module;
-							}
-						}
-					}
-				}
-			}
-
-			// Strategy 4: Try loading from absolute paths (only if MODULE_NOT_FOUND)
 			if (requireError.code === 'MODULE_NOT_FOUND') {
 				const possiblePaths = BetterSqliteStore.getPossiblePaths(app);
-
 				for (const modulePath of possiblePaths) {
 					const betterSqlite3 = BetterSqliteStore.loadFromPath(modulePath);
 					if (betterSqlite3) {
@@ -387,7 +354,6 @@ export class BetterSqliteStore implements SqliteDatabase {
 						return betterSqlite3;
 					}
 				}
-
 				throw new Error(
 					'better-sqlite3 is not installed or not accessible. ' +
 					'Please install it in the plugin directory: .obsidian/plugins/obsidian-peak-assistant/ ' +

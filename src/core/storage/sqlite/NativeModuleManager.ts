@@ -329,80 +329,11 @@ export class NativeModuleManager {
 			}
 		}
 
-		// Download failed — try compiling from source if node_modules/better-sqlite3 exists
-		// No prebuilt available, attempt source compilation
-		if (await this.tryCompileFromSource(runtime)) {
-			return;
-		}
-
 		throw new Error(
 			`No prebuilt binary for better-sqlite3@${version} ` +
 			`(Electron ${process.versions.electron}, ABI=${runtime.abi}, ${runtime.platform}-${runtime.arch}). ` +
-			`Compilation also failed. ` +
 			`Fix: cd "${this.pluginDir}" && npm install @electron/rebuild && npx @electron/rebuild -f -w better-sqlite3`,
 		);
-	}
-
-	/**
-	 * Compile better-sqlite3 from source using node-gyp targeting the current Electron.
-	 * Requires: node_modules/better-sqlite3 with binding.gyp + build tools (Xcode CLT / build-essential).
-	 */
-	private async tryCompileFromSource(runtime: RuntimeInfo): Promise<boolean> {
-		const electronVersion = process.versions.electron;
-		if (!electronVersion) {
-			console.warn('[NativeModuleManager] Not running in Electron, cannot compile');
-			return false;
-		}
-
-		const bs3NodeModules = path.join(this.pluginDir, 'node_modules', 'better-sqlite3');
-		if (!fs.existsSync(path.join(bs3NodeModules, 'binding.gyp'))) {
-			console.warn('[NativeModuleManager] node_modules/better-sqlite3 not found or has no binding.gyp');
-			return false;
-		}
-
-		try {
-			const { execSync } = require('child_process');
-
-			// Find node-gyp
-			const nodeGypPaths = [
-				path.join(this.pluginDir, 'node_modules', '.bin', 'node-gyp'),
-				'node-gyp', // fallback to PATH
-			];
-			let nodeGypBin = 'node-gyp';
-			for (const p of nodeGypPaths) {
-				try {
-					execSync(`"${p}" --version`, { stdio: 'pipe', timeout: 5000 });
-					nodeGypBin = p;
-					break;
-				} catch { /* try next */ }
-			}
-
-			execSync(
-				`"${nodeGypBin}" rebuild --release ` +
-				`--target=${electronVersion} ` +
-				`--arch=${runtime.arch} ` +
-				`--dist-url=https://electronjs.org/headers ` +
-				`--runtime=electron`,
-				{
-					cwd: bs3NodeModules,
-					stdio: 'pipe',
-					timeout: 120000, // 2 min
-					env: { ...process.env, HOME: process.env.HOME || '' },
-				},
-			);
-
-			// Copy compiled binary to managed location
-			const compiledPath = path.join(bs3NodeModules, 'build', 'Release', 'better_sqlite3.node');
-			if (fs.existsSync(compiledPath)) {
-				const targetDir = path.join(this.bs3Dir, 'build', 'Release');
-				this.ensureDir(targetDir);
-				fs.copyFileSync(compiledPath, path.join(targetDir, 'better_sqlite3.node'));
-				return true;
-			}
-		} catch (e) {
-			console.warn('[NativeModuleManager] Source compilation failed:', e instanceof Error ? e.message : e);
-		}
-		return false;
 	}
 
 	// -- Helpers --
