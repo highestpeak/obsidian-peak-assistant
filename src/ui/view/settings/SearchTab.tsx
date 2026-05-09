@@ -9,6 +9,7 @@ import { NumberInputWithConfirm } from '@/ui/component/shared-ui/number-input';
 import { SettingCard } from './components/SettingCard';
 import { SectionHeader } from './components/SectionHeader';
 import { DocTypePills } from './components/DocTypePills';
+import { SearchIndexSection } from './SearchIndexSection';
 
 interface SearchTabProps {
 	settings: MyPluginSettings;
@@ -33,6 +34,11 @@ export function SearchTab({ settings, settingsUpdates }: SearchTabProps) {
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-mt-4">
+			{/* ── Index Level ── */}
+			<SearchIndexSection settings={settings} settingsUpdates={settingsUpdates} />
+
+			<div className="pktw-border-t pktw-border-border pktw-my-1" />
+
 			{/* ── Indexing ── */}
 			<SectionHeader icon={Database} title="Indexing" />
 

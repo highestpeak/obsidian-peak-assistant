@@ -200,6 +200,18 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 		settings.aiAnalysisHistoryLimit = Math.max(1, Math.min(50, (rawSearch as any).aiAnalysisHistoryLimit));
 	}
 
+	// indexLevel: restore persisted value or keep default 'fast'
+	const rawIndexLevel = (rawSearch as any).indexLevel;
+	if (rawIndexLevel === 'fast' || rawIndexLevel === 'semantic' || rawIndexLevel === 'full') {
+		settings.indexLevel = rawIndexLevel;
+	}
+
+	// searchUpgradePromptDismissedAt: restore persisted value
+	const rawDismissed = (rawSearch as any).searchUpgradePromptDismissedAt;
+	if (typeof rawDismissed === 'number' || rawDismissed === null) {
+		settings.searchUpgradePromptDismissedAt = rawDismissed;
+	}
+
 	return settings;
 }
 
