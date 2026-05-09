@@ -667,7 +667,7 @@ ${sourcesList}${topicsList}
 		promptOrText: string,
 		variables?: Record<string, unknown>,
 		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
-	): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; fullText: string }> {
+	): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; fullText: string; usage?: LLMUsage }> {
 		const startMs = Date.now();
 		const { profile, modelId } = this.resolveCopilotProfileAndModel();
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
@@ -694,7 +694,7 @@ ${sourcesList}${topicsList}
 				capturedUsage = event.usage;
 			}
 		}
-		yield { type: 'done', fullText };
+		yield { type: 'done', fullText, usage: capturedUsage };
 
 		this.emitUsage(capturedUsage, startMs, true, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
 	}
@@ -773,7 +773,7 @@ ${sourcesList}${topicsList}
 		promptOrText: string,
 		variables?: Record<string, unknown>,
 		schema?: unknown,
-		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; usageCallback?: (usage: LLMUsage) => void },
 	): Promise<T> {
 		const startMs = Date.now();
 		const { profile, modelId } = this.resolveCopilotProfileAndModel();
@@ -795,9 +795,12 @@ ${sourcesList}${topicsList}
 		];
 		const { text, usage } = await vercelGenerateText(profile, modelId, llmMessages);
 		this.emitUsage(usage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
+		if (usage && opts?.usageCallback) opts.usageCallback(usage);
 		// Extract JSON from potential markdown code fences
 		const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
-		return JSON.parse(jsonMatch[1]!.trim()) as T;
+		const raw = jsonMatch[1]?.trim();
+		if (!raw) throw new Error('LLM returned empty response — no JSON to parse');
+		return JSON.parse(raw) as T;
 	}
 
 }

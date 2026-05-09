@@ -16,7 +16,6 @@ export interface Profile {
   createdAt: number;
   baseUrl: string;
   apiKey: string | null;
-  authToken: string | null;
   primaryModel: string;
   fastModel: string;
   customHeaders: Record<string, string>;

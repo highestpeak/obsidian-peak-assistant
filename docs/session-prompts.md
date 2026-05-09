@@ -1,3 +1,79 @@
+# Session Prompts
+
+## Next: Copilot 端到端验收 + 体验补全
+
+```
+## 背景
+
+Session 22 修复了 Copilot 基础管线的 5 个断裂问题：
+1. Profile authToken 字段删除 → 统一用 apiKey，消除启动 401 错误
+2. CopilotPickerModal 点击无响应 → `copilot-commands.ts` 被删后 `executeCommandById` 调用不存在的命令，改为直接打开 CopilotResultModal
+3. CopilotResultModal 永远转圈 → `onOpen` 里加了 `action.execute()` 调用
+4. Loading 无反馈 → 加了阶段提示文字（Reading → Analyzing → Generating）+ 超时警告（30s/60s）
+5. 无法返回 Picker → 加了 Back 按钮
+
+管线通了，但 15 个 action **没有一个经过端到端验证**。
+
+## 任务
+
+### 1. Smoke Test 15 个 action（必做）
+
+先读 `docs/progress.md` 找到 "Phase W Copilot Smoke Test" 清单。
+
+逐个触发每个 copilot action，真机验证：
+- 能正常出结果（不卡住、不报错）
+- ResultPanel 能正确渲染（数据绑定正确、布局不乱）
+- guard 正确拦截不符合条件的文档并显示错误信息
+- Back 按钮能正常返回 Picker
+
+用 DevTools Console 观察有无错误。如果某个 action 报错或卡住，修复后继续测试。
+记录每个 action 的测试结果。
+
+### 2. Token 消耗显示
+
+当前 `ActionResult`（`src/service/copilot/CopilotActionRegistry.ts`）不包含 usage 信息。需要：
+- `ActionResult` 加 `usage?: { inputTokens: number; outputTokens: number }` 字段
+- 从 `queryStructured` / `queryTextStream` 透传 usage 到 action execute 返回值
+- `CopilotResultModal` 的 result 阶段底部显示 token 消耗（如 "245 in + 89 out tokens"）
+- 参考现有 `emitUsage` 模式（`service-manager.ts`）
+
+### 3. 请求取消
+
+当前 action 执行无法中断，用户只能等或关闭 modal。需要：
+- `CopilotResultModal.onOpen()` 创建 `AbortController`
+- Loading 阶段加 Cancel 按钮（在 Back 按钮旁边）
+- `CopilotAction.execute` 签名加可选 `signal?: AbortSignal`
+- 透传到 `queryStructured` / `queryTextStream`（它们已支持 signal 参数）
+- abort 后显示 "Cancelled" 而非 error
+
+### 4. Suggest Links 本地化（可选，如果时间允许）
+
+当前实现发整篇文档给 LLM → 慢、贵、没必要。优化方案：
+- 遍历 vault 所有文件的标题 + aliases
+- 在当前文档内容中搜索出现但未链接的标题
+- 按出现频率排序
+- 完全本地，秒出，零 API 消耗
+- 关键 API：`app.metadataCache.resolvedLinks`、`app.vault.getMarkdownFiles()`、`file.basename`
+
+## 关键文件
+
+- `src/ui/view/copilot/CopilotResultModal.tsx` — modal 生命周期 + action 执行 + Back 按钮
+- `src/ui/view/copilot/CopilotPickerModal.tsx` — action 选择 → 打开 CopilotResultModal
+- `src/service/copilot/actions/index.ts` — 15 个 action 定义 + panel 注册
+- `src/service/copilot/CopilotActionRegistry.ts` — CopilotAction/ActionResult 类型
+- `src/service/chat/service-manager.ts` — queryStructured / queryTextStream
+- `src/ui/view/copilot/panels/` — 15 个 ResultPanel 组件
+
+## 注意
+
+- 不要重新引入 `copilot-commands.ts` — Picker 直接打开 ResultModal
+- `authToken` 已从 Profile 类型中删除，不要加回来
+- OpenRouter 的 apiKey 在 `materialize.ts` 中映射到 `ANTHROPIC_AUTH_TOKEN` env var（CLI 要求）
+- `queryStructured` 使用 `resolveCopilotProfileAndModel()` 获取 profile + model
+```
+
+---
+
 # 竞品差异化功能 — 并行 Spec 调研 Session Prompts
 
 > 生成日期：2026-05-01

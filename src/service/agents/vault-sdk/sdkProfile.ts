@@ -17,7 +17,6 @@ export interface SdkProfile {
 	kind: SdkProfileKind;
 	baseUrl: string;
 	apiKey: string | null;
-	authToken: string | null;
 	primaryModel: string;
 	fastModel: string;
 	customHeaders?: Record<string, string>;
@@ -27,7 +26,6 @@ export const DEFAULT_SDK_PROFILE: SdkProfile = {
 	kind: 'anthropic',
 	baseUrl: 'https://api.anthropic.com',
 	apiKey: null, // must be filled from settings at runtime
-	authToken: null,
 	primaryModel: 'claude-opus-4-6',
 	fastModel: 'claude-haiku-4-5',
 };
@@ -39,11 +37,8 @@ export const DEFAULT_SDK_PROFILE: SdkProfile = {
  * Throws if credentials are missing (the caller must surface this to the user).
  */
 export function toAgentSdkEnv(profile: SdkProfile): Record<string, string> {
-	const hasAuth = Boolean(profile.apiKey || profile.authToken);
-	if (!hasAuth) {
-		throw new Error(
-			'SdkProfile is missing credentials: at least one of apiKey or authToken must be set'
-		);
+	if (!profile.apiKey) {
+		throw new Error('SdkProfile is missing API key');
 	}
 
 	const registry = ProfileRegistry.getInstance();
@@ -57,12 +52,11 @@ export function toAgentSdkEnv(profile: SdkProfile): Record<string, string> {
 	};
 
 	if (profile.kind === 'openrouter') {
-		// OpenRouter requires ANTHROPIC_API_KEY explicitly empty; auth via Bearer token.
+		// OpenRouter: API key is sent as Bearer token via ANTHROPIC_AUTH_TOKEN.
 		env.ANTHROPIC_API_KEY = '';
-		env.ANTHROPIC_AUTH_TOKEN = profile.authToken ?? '';
+		env.ANTHROPIC_AUTH_TOKEN = profile.apiKey;
 	} else {
-		if (profile.apiKey) env.ANTHROPIC_API_KEY = profile.apiKey;
-		if (profile.authToken) env.ANTHROPIC_AUTH_TOKEN = profile.authToken;
+		env.ANTHROPIC_API_KEY = profile.apiKey;
 	}
 
 	if (profile.customHeaders && Object.keys(profile.customHeaders).length > 0) {
@@ -112,7 +106,7 @@ export function readProfileFromSettings(settings: unknown): SdkProfile {
 	};
 
 	// If user has explicit credentials in vaultSearch profile, use them as-is
-	if (merged.apiKey || merged.authToken) {
+	if (merged.apiKey) {
 		return merged;
 	}
 
@@ -124,9 +118,8 @@ export function readProfileFromSettings(settings: unknown): SdkProfile {
 		if (providerCfg?.apiKey) {
 			if (providerKey === 'openrouter' || providerKey.includes('openrouter')) {
 				merged.kind = 'openrouter';
-				merged.baseUrl = raw.baseUrl ?? providerCfg.baseUrl ?? 'https://openrouter.ai/api';
-				merged.authToken = providerCfg.apiKey;
-				merged.apiKey = null;
+				merged.baseUrl = raw.baseUrl ?? providerCfg.baseUrl ?? 'https://openrouter.ai/api/v1';
+				merged.apiKey = providerCfg.apiKey;
 				if (!raw.primaryModel) merged.primaryModel = 'anthropic/claude-haiku-4-5';
 				if (!raw.fastModel) merged.fastModel = 'anthropic/claude-haiku-4-5';
 				return merged;
@@ -154,9 +147,8 @@ export function readProfileFromSettings(settings: unknown): SdkProfile {
 	// Anthropic Skin. Model names must be OpenRouter slugs (anthropic/claude-*).
 	if (existingOpenRouter?.apiKey) {
 		merged.kind = 'openrouter';
-		merged.baseUrl = raw.baseUrl ?? 'https://openrouter.ai/api';
-		merged.authToken = existingOpenRouter.apiKey;
-		merged.apiKey = null;
+		merged.baseUrl = raw.baseUrl ?? 'https://openrouter.ai/api/v1';
+		merged.apiKey = existingOpenRouter.apiKey;
 		// Only rewrite model slugs if the user hasn't overridden them explicitly.
 		if (!raw.primaryModel) {
 			merged.primaryModel = 'anthropic/claude-haiku-4-5';

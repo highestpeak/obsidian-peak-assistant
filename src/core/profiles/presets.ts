@@ -2,7 +2,7 @@
  * Preset factories for common profile configurations.
  *
  * Each factory returns a complete Profile with sensible defaults for
- * its provider kind. The caller typically overrides apiKey / authToken
+ * its provider kind. The caller typically overrides apiKey
  * after creation.
  */
 
@@ -21,7 +21,6 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     createdAt: Date.now(),
     baseUrl: 'https://api.anthropic.com',
     apiKey: null,
-    authToken: null,
     primaryModel: 'claude-opus-4-6',
     fastModel: 'claude-haiku-4-5',
     customHeaders: {},
@@ -41,7 +40,6 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     createdAt: Date.now(),
     baseUrl: 'https://api.openai.com/v1',
     apiKey: null,
-    authToken: null,
     primaryModel: 'gpt-4o',
     fastModel: 'gpt-4o-mini',
     customHeaders: {},
@@ -61,7 +59,6 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     createdAt: Date.now(),
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     apiKey: null,
-    authToken: null,
     primaryModel: 'gemini-2.5-pro',
     fastModel: 'gemini-2.5-flash',
     customHeaders: {},
@@ -81,7 +78,6 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     createdAt: Date.now(),
     baseUrl: 'https://api.perplexity.ai',
     apiKey: null,
-    authToken: null,
     primaryModel: 'sonar-pro',
     fastModel: 'sonar',
     customHeaders: {},
@@ -101,7 +97,6 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     createdAt: Date.now(),
     baseUrl: 'http://localhost:11434',
     apiKey: null,
-    authToken: null,
     primaryModel: 'llama3.1',
     fastModel: 'llama3.1',
     customHeaders: {},
@@ -119,9 +114,8 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     kind: 'openrouter',
     enabled: true,
     createdAt: Date.now(),
-    baseUrl: 'https://openrouter.ai/api',
+    baseUrl: 'https://openrouter.ai/api/v1',
     apiKey: null,
-    authToken: null,
     primaryModel: 'anthropic/claude-opus-4-6',
     fastModel: 'anthropic/claude-haiku-4-5',
     customHeaders: {},
@@ -141,7 +135,6 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     createdAt: Date.now(),
     baseUrl: 'http://localhost:4000',
     apiKey: null,
-    authToken: null,
     primaryModel: 'claude-opus-4-6',
     fastModel: 'claude-haiku-4-5',
     customHeaders: {},
@@ -161,7 +154,6 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     createdAt: Date.now(),
     baseUrl: '',
     apiKey: null,
-    authToken: null,
     primaryModel: '',
     fastModel: '',
     customHeaders: {},

@@ -21,7 +21,6 @@ import { BuildUserProfileProgressModal } from '@/ui/view/BuildUserProfileProgres
 import { OnboardingModal } from '@/ui/view/modals/OnboardingModal';
 import { AppContext } from '@/app/context/AppContext';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
-import { buildCopilotCommands } from './copilot-commands';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { registerAllCopilotActions } from '@/service/copilot/actions';
 import { SettingsModal } from '@/ui/view/SettingsModal';
@@ -655,7 +654,7 @@ export function buildCoreCommands(
 			  })
 			: []),
 		...buildSystemCommands({ settings, viewManager, aiManager }),
-		...(registerAllCopilotActions(), buildCopilotCommands()),
+		...(registerAllCopilotActions(), []),
 		{
 			id: 'peak-copilot-open',
 			name: 'Open Copilot Panel',

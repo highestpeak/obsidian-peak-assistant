@@ -11,7 +11,8 @@ import {
 	extractConceptsSchema, knowledgeGapsSchema, vaultHealthSchema, addEvidenceSchema,
 } from '../copilot-schemas';
 import { CopilotActionRegistry } from '../CopilotActionRegistry';
-import type { CopilotAction, DocumentContext, ActionResult, ProgressCallback } from '../CopilotActionRegistry';
+import type { CopilotAction, DocumentContext, ActionResult, ActionUsage, ProgressCallback } from '../CopilotActionRegistry';
+import type { LLMUsage } from '@/core/providers/types';
 
 // ── Re-exported types (consumed by UI panels) ──────────────────────────
 
@@ -31,17 +32,25 @@ async function toJsonSchema(zodSchema: unknown) {
 	return zodToJsonSchema(zodSchema as import('zod').ZodTypeAny);
 }
 
+function toActionUsage(u?: LLMUsage): ActionUsage | undefined {
+	if (!u) return undefined;
+	return { inputTokens: u.inputTokens ?? 0, outputTokens: u.outputTokens ?? 0 };
+}
+
 /** Run a queryTextStream prompt and collect the full text, reporting progress. */
-async function streamAction(promptId: PromptId, vars: Record<string, any>, progress: ProgressCallback): Promise<ActionResult> {
+async function streamAction(promptId: PromptId, vars: Record<string, any>, progress: ProgressCallback, signal?: AbortSignal): Promise<ActionResult> {
 	const mgr = AppContext.getInstance().manager;
 	let fullText = '';
-	for await (const chunk of mgr.queryTextStream(promptId, vars)) {
+	let usage: ActionUsage | undefined;
+	for await (const chunk of mgr.queryTextStream(promptId, vars, { signal })) {
 		if (chunk.type === 'delta') {
 			fullText += chunk.text;
 			progress(fullText);
+		} else if (chunk.type === 'done') {
+			usage = toActionUsage(chunk.usage);
 		}
 	}
-	return { type: 'stream', text: fullText };
+	return { type: 'stream', text: fullText, usage };
 }
 
 /** Scoped content: selection if available, otherwise full content. */
@@ -335,25 +344,42 @@ export const addEvidenceAction: CopilotAction = {
 	ResultPanel: null as any,
 };
 
+// ── Panel imports (static so esbuild resolves @/ aliases) ─────────────
+
+import { PolishPanel } from '@/ui/view/copilot/panels/PolishPanel';
+import { ReviewPanel } from '@/ui/view/copilot/panels/ReviewPanel';
+import { LinkSuggestPanel } from '@/ui/view/copilot/panels/LinkSuggestPanel';
+import { SplitPanel } from '@/ui/view/copilot/panels/SplitPanel';
+import { TagSuggestionPanel } from '@/ui/view/copilot/panels/TagSuggestionPanel';
+import { SummarizePanel } from '@/ui/view/copilot/panels/SummarizePanel';
+import { ExtractConceptsPanel } from '@/ui/view/copilot/panels/ExtractConceptsPanel';
+import { TranslatePanel } from '@/ui/view/copilot/panels/TranslatePanel';
+import { FindRelatedPanel } from '@/ui/view/copilot/panels/FindRelatedPanel';
+import { KnowledgeGapsPanel } from '@/ui/view/copilot/panels/KnowledgeGapsPanel';
+import { SynthesizePanel } from '@/ui/view/copilot/panels/SynthesizePanel';
+import { VaultHealthPanel } from '@/ui/view/copilot/panels/VaultHealthPanel';
+import { ContinueWritingPanel } from '@/ui/view/copilot/panels/ContinueWritingPanel';
+import { RewriteSelectionPanel } from '@/ui/view/copilot/panels/RewriteSelectionPanel';
+import { AddEvidencePanel } from '@/ui/view/copilot/panels/AddEvidencePanel';
+
 // ── Registration ───────────────────────────────────────────────────────
 
-/** Panel module path for each action id (lazy-loaded to avoid circular imports). */
-const PANEL_MAP: Record<string, [module: string, exportName: string]> = {
-	'polish':            ['@/ui/view/copilot/panels/PolishPanel', 'PolishPanel'],
-	'review':            ['@/ui/view/copilot/panels/ReviewPanel', 'ReviewPanel'],
-	'suggest-links':     ['@/ui/view/copilot/panels/LinkSuggestPanel', 'LinkSuggestPanel'],
-	'suggest-split':     ['@/ui/view/copilot/panels/SplitPanel', 'SplitPanel'],
-	'suggest-tags':      ['@/ui/view/copilot/panels/TagSuggestionPanel', 'TagSuggestionPanel'],
-	'summarize':         ['@/ui/view/copilot/panels/SummarizePanel', 'SummarizePanel'],
-	'extract-concepts':  ['@/ui/view/copilot/panels/ExtractConceptsPanel', 'ExtractConceptsPanel'],
-	'translate':         ['@/ui/view/copilot/panels/TranslatePanel', 'TranslatePanel'],
-	'find-related':      ['@/ui/view/copilot/panels/FindRelatedPanel', 'FindRelatedPanel'],
-	'knowledge-gaps':    ['@/ui/view/copilot/panels/KnowledgeGapsPanel', 'KnowledgeGapsPanel'],
-	'synthesize-topic':  ['@/ui/view/copilot/panels/SynthesizePanel', 'SynthesizePanel'],
-	'vault-health':      ['@/ui/view/copilot/panels/VaultHealthPanel', 'VaultHealthPanel'],
-	'continue-writing':  ['@/ui/view/copilot/panels/ContinueWritingPanel', 'ContinueWritingPanel'],
-	'rewrite-selection': ['@/ui/view/copilot/panels/RewriteSelectionPanel', 'RewriteSelectionPanel'],
-	'add-evidence':      ['@/ui/view/copilot/panels/AddEvidencePanel', 'AddEvidencePanel'],
+const PANEL_MAP: Record<string, React.FC<any>> = {
+	'polish': PolishPanel,
+	'review': ReviewPanel,
+	'suggest-links': LinkSuggestPanel,
+	'suggest-split': SplitPanel,
+	'suggest-tags': TagSuggestionPanel,
+	'summarize': SummarizePanel,
+	'extract-concepts': ExtractConceptsPanel,
+	'translate': TranslatePanel,
+	'find-related': FindRelatedPanel,
+	'knowledge-gaps': KnowledgeGapsPanel,
+	'synthesize-topic': SynthesizePanel,
+	'vault-health': VaultHealthPanel,
+	'continue-writing': ContinueWritingPanel,
+	'rewrite-selection': RewriteSelectionPanel,
+	'add-evidence': AddEvidencePanel,
 };
 
 /** All actions in display order: document → vault → writing. */
@@ -371,7 +397,7 @@ export function registerAllCopilotActions(): void {
 	const registry = CopilotActionRegistry.getInstance();
 	for (const action of ALL_ACTIONS) {
 		const panel = PANEL_MAP[action.id];
-		if (panel) action.ResultPanel = require(panel[0])[panel[1]];
+		if (panel) action.ResultPanel = panel;
 		registry.register(action);
 	}
 }

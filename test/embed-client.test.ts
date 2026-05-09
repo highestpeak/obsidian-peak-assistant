@@ -24,7 +24,6 @@ const BASE_PROFILE: Profile = {
   createdAt: 0,
   baseUrl: 'https://api.openai.com/v1',
   apiKey: 'sk-test-key',
-  authToken: null,
   primaryModel: 'gpt-4o',
   fastModel: 'gpt-4o-mini',
   embeddingEndpoint: 'https://api.openai.com/v1',

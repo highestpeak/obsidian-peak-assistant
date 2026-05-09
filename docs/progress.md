@@ -33,9 +33,12 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | W. Copilot 扩展 | 5→15 actions，注册表架构，分组 UI + 上下文推荐，Document/Vault/Writing 三类 | 进行中 |
 | X. Model Selection 统一 | Provider 卡片简化 + Agent Fast pill + Ollama 动态模型 + baseUrl 修复 | 完成 |
 | X2. Provider Settings Polish | Pill 搜索面板 + AddProfileGrid 去重 + 凭证显示修复 + authToken fallback | 完成 |
+| X3. Profile authToken 清理 | 删除 authToken 字段 + 统一 apiKey + 迁移 legacy data + OpenRouter baseUrl 修复 | 完成 |
 | Y. Token Usage Dashboard | 全站 AI 调用追踪 + SQLite 持久化 + 统计面板（KPI/趋势/分布/明细） | 完成 |
 | Z. Mockup Gap 补全 | @菜单面包屑/分组/元数据、/菜单模板分组、工具栏响应式、智能建议、Diff高亮、变量高亮 | 完成 (8 commits) |
 | AA. 代码库精简 | 71.2k→66.7k (-4,485行): 死代码删除 + 算法简化 + 架构重构 + 冗余压缩 | 完成 (24 commits) |
+| AB. Search Pipeline Upgrade | QueryParser + 5 Retrievers + adaptive RRF + HighlightEngine + stemming + fuzzy + click-through | 完成 (19 tasks, 19 commits) |
+| AC. Onboarding Index Config | 4步Onboarding + 三档索引(fast/semantic/full) + Settings面板 + 智能升级提示 | 完成 (7 tasks, 7 commits) |
 
 ## Next
 
@@ -289,6 +292,70 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-09 (Session 23) — Bug 修复 + 清理
+- Done: **移除独立 Copilot 命令**
+  - 删除 `copilot-commands.ts`，移除 `Register.ts` 中 `buildCopilotCommands()` 调用
+  - 命令面板只保留 "Open Copilot Panel"（Picker Modal），不再注册 15 个独立 action 命令
+- Done: **OpenRouter 404 修复** — `baseUrl` 缺少 `/v1` 后缀
+  - 根因：`presets.ts` / `materialize.ts` / `sdkProfile.ts` 硬编码 `https://openrouter.ai/api`，覆盖了 `@openrouter/ai-sdk-provider` 库的正确默认值 `https://openrouter.ai/api/v1`
+  - 修复 3 个源文件 + `provider-factory.ts` 加运行时兼容（已保存的旧 profile URL 以 `/api` 结尾自动补 `/v1`）
+  - 测试文件同步更新，全部通过
+- Done: **SuggestedFollowups 级联 LLM 调用修复**
+  - 根因：`SuggestedFollowups` 在所有 assistant 消息上渲染（CSS 隐藏 ≠ 不执行 useEffect），切换对话时 N 个 assistant 消息 = N 个并发 LLM 请求
+  - 修复：`MessageViewItem.tsx` 加 `isLastMessage` 条件，只在最后一条消息渲染 `SuggestedFollowups`
+- Build + tests 通过
+- Next: 重载插件验证 OpenRouter 连接 + chat 无级联报错
+
+### 2026-05-09 (Session 22) — Profile authToken 清理
+- Done: **Phase X3 — Profile authToken 清理**
+  - **根因调查**：PatternDiscovery 启动 401 错误 → Agent config 指向 "Migrated OpenRouter" profile（baseUrl 空 → OpenRouter token 发到 Anthropic API）；Copilot TagSuggestion 报 "OpenRouter API key missing" → Copilot config 指向无 key 的空 OpenRouter profile
+  - **数据清理**：合并两个 OpenRouter profile（Migrated authToken → OpenRouter apiKey），删除 Migrated OpenRouter，重新绑定 4 个 slot
+  - **authToken 字段删除**：Profile 接口移除 `authToken`，所有 provider 统一用 `apiKey`
+  - **代码清理**（10 个文件）：
+    - `types.ts` 移除字段、`presets.ts` 8 个工厂方法清理
+    - `materialize.ts` 简化：Anthropic → `ANTHROPIC_API_KEY`，OpenRouter → `apiKey` 映射到 `ANTHROPIC_AUTH_TOKEN`（CLI 要求 Bearer）
+    - `provider-factory.ts` / `testProviderConnection.ts` 直接用 `apiKey`
+    - `ProfileCard.tsx` 移除 "auth token set" 显示
+    - `sdkProfile.ts` 移除 `authToken` + 统一 OpenRouter fallback 用 `apiKey`
+    - `PluginSettingsLoader.ts` 加 legacy 迁移：旧 `authToken` → `apiKey`
+  - **OpenRouter baseUrl 修复**：空 baseUrl fallback 到 `https://openrouter.ai/api/v1`（`materialize.ts` + `provider-factory.ts`）
+  - **测试更新**：3 个测试文件同步更新（profile-registry、sdk-profile、embed-client），全部通过
+  - Build 通过
+- Next: 重载插件验证无启动错误
+
+### 2026-05-09 (Session 21) — Search Pipeline Upgrade + Onboarding Index Config
+- Done: **Phase AC — Onboarding Index Configuration** (7 tasks, 7 commits on `feat/onboarding-index-config`, merged to master)
+  - **Onboarding 4步流程**：Welcome → Provider → **Index Config** → System Check+Indexing
+  - **三档索引选择**：Quick Index (FTS only, ~30s) / +Semantic Search (+embedding, ~5min) / +Smart Enrichment (+LLM, ~30min)
+  - **Smart Provider Defaults**：OpenAI→自动选semantic+预填embedding、Ollama→fast+hint、Anthropic→fast+警告(无embedding API)
+  - **Inline Embedding Config**：endpoint/model/apiKey 直接在 onboarding 里配置 + Test Connection
+  - **IndexProgressDisplay**：进度条 + 步骤标签 + 文件计数
+  - **IndexErrorDialog**：embedding/LLM 失败时 Continue/Retry/Cancel 三选一
+  - **IndexInitializer 升级**：`performStagedFullIndexing(level)` 按档位跳过 embedding/LLM 步骤 + error callback
+  - **Settings SearchIndexSection**：索引级别下拉 + 文件统计 + Rebuild Index 按钮
+  - **SearchUpgradePrompt**：搜索 ≥10 次且无 semantic search 时，结果底部淡色提示 → Settings（7天冷却）
+  - **Settings 迁移**：已有 embedding 配置的老用户自动升级为 `semantic`
+- Spec: `docs/superpowers/specs/2026-05-09-onboarding-index-config-design.md`
+- Plan: `docs/superpowers/plans/2026-05-09-onboarding-index-config.md`
+
+### 2026-05-09 (Session 21) — Search Pipeline Upgrade
+- Done: **Phase AB — Vault Search Pipeline Upgrade** (19 tasks, 19 commits on `feat/search-pipeline-upgrade`, merged to master)
+  - **架构重构**：硬编码三路搜索 → 可组合 Query Pipeline（QueryParser → 5 Retrievers → adaptive RRF Merger → Ranker → HighlightEngine）
+  - **关键 Bug 修复**：BM25 分数被 `Math.max(0, negative)` 清零 → batch 归一化恢复 TF-IDF 信号
+  - **QueryParser**：`"短语"` 精确匹配、`-排除` 否定搜索、`tag:` / `ext:` 过滤、auto prefix 匹配
+  - **5 路 Retriever 注册表**：FTS (BM25 fix + chunk decay)、FTS-Stem (Porter Stemmer 词干匹配)、Vector (KNN)、Meta (title/path/tags)、Fuzzy (Levenshtein ≤2 错字修正)
+  - **自适应 RRF 融合**：query-dependent 权重（短语→压低语义、长查询→拉高语义、CJK→跳过 stem）
+  - **Per-document Chunk Decay**：指数衰减（decay=0.5），防长文档碾压短文档
+  - **Click-through 学习**：search_click 表记录用户点击，stemmed query key 泛化，+0.15 ranking boost
+  - **HighlightEngine 统一**：原始文本 snippet（非 FTS 归一化文本）、exact/stem/fuzzy 三色高亮、双因子窗口选择（diversity×2 + density）
+  - **Ranker 微调**：recency 衰减 30d→40d、frequency 0.15→0.10、新增 exclude post-filter
+  - **Debounce 优化**：vault 500ms→200ms、in-file 300ms→150ms、go-to-line 500ms→100ms
+  - **UI**：统一 `renderHighlightSpans` 渲染器、fuzzy correction banner、`?` 帮助增加查询语法文档
+  - **Cleanup**：删除 `highlight-builder.ts`、删除 6 个过时 RRF/scoring 常量、queryService.ts -517 行
+- Spec: `docs/superpowers/specs/2026-05-09-vault-search-pipeline-upgrade-design.md`
+- Plan: `docs/superpowers/plans/2026-05-09-vault-search-pipeline-upgrade.md`
+- Next: 真机验证搜索效果 + Onboarding 流程验证 + Phase W Copilot smoke test
 
 ### 2026-05-08~09 (Session 17+20) — Codebase Deep Refactor
 - Done: **100,002 → 71,582 code lines (-28,420 = -28.4%)**, 40 commits on `refactor/codebase-50k-target`

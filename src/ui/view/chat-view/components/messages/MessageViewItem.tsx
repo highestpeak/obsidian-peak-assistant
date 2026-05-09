@@ -397,8 +397,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 								</div>
 							)}
 
-							{/* Suggested follow-ups — shown on ALL assistant messages */}
-							{!streamingState.isStreaming && !message.isErrorMessage && (
+							{/* Suggested follow-ups — only on the last assistant message */}
+							{isLastMessage && !streamingState.isStreaming && !message.isErrorMessage && (
 								<SuggestedFollowups
 									messageId={message.id}
 									userContent={(() => {

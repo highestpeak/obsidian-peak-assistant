@@ -97,6 +97,9 @@ export default class MyPlugin extends Plugin {
 		const ps = this.settings.profileSettings ?? {
 			profiles: [],
 			activeAgentConfig: null,
+			activeAgentFastConfig: null,
+			activeChatConfig: null,
+			activeCopilotConfig: null,
 			activeEmbeddingConfig: null,
 			activeWebSearchConfig: null,
 			sdkSettings: { ...DEFAULT_SDK_SETTINGS },

@@ -274,10 +274,19 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	const rawProfileSettings = raw?.profileSettings;
 	if (rawProfileSettings && typeof rawProfileSettings === 'object') {
 		settings.profileSettings = rawProfileSettings as any;
+		// Migrate legacy authToken → apiKey (authToken field was removed)
+		for (const p of settings.profileSettings.profiles) {
+			if ((p as any).authToken && !p.apiKey) {
+				p.apiKey = (p as any).authToken;
+			}
+			delete (p as any).authToken;
+		}
 	} else {
 		settings.profileSettings = {
 			profiles: [],
 			activeAgentConfig: null,
+			activeAgentFastConfig: null,
+			activeChatConfig: null,
 			activeCopilotConfig: null,
 			activeEmbeddingConfig: null,
 			activeWebSearchConfig: null,

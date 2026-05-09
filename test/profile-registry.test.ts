@@ -4,7 +4,6 @@ import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
 import { createPresetProfile } from '@/core/profiles/presets';
 import { toAgentSdkEnv, toEmbeddingConfig } from '@/core/profiles/materialize';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { migrateFromV1 } from '@/core/profiles/migrate-v1';
 
 async function run(): Promise<void> {
   const tests: Array<{ name: string; fn: () => void | Promise<void> }> = [
@@ -27,7 +26,7 @@ async function run(): Promise<void> {
       fn: () => {
         const p = createPresetProfile('openrouter');
         assert.strictEqual(p.kind, 'openrouter');
-        assert.strictEqual(p.baseUrl, 'https://openrouter.ai/api');
+        assert.strictEqual(p.baseUrl, 'https://openrouter.ai/api/v1');
         assert.strictEqual(p.primaryModel, 'anthropic/claude-opus-4-6');
       },
     },
@@ -78,20 +77,20 @@ async function run(): Promise<void> {
       },
     },
     {
-      name: 'toAgentSdkEnv: openrouter with bearer token',
+      name: 'toAgentSdkEnv: openrouter sends apiKey as ANTHROPIC_AUTH_TOKEN',
       fn: () => {
-        const p = createPresetProfile('openrouter', { authToken: 'sk-or-test' });
+        const p = createPresetProfile('openrouter', { apiKey: 'sk-or-test' });
         const env = toAgentSdkEnv(p, 'anthropic/claude-opus-4-6', 'anthropic/claude-haiku-4-5');
         assert.strictEqual(env.ANTHROPIC_API_KEY, '');
         assert.strictEqual(env.ANTHROPIC_AUTH_TOKEN, 'sk-or-test');
-        assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://openrouter.ai/api');
+        assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://openrouter.ai/api/v1');
       },
     },
     {
       name: 'toAgentSdkEnv: throws on missing credentials',
       fn: () => {
         const p = createPresetProfile('anthropic');
-        assert.throws(() => toAgentSdkEnv(p, 'model', 'fast'), /credentials/i);
+        assert.throws(() => toAgentSdkEnv(p, 'model', 'fast'), /missing/i);
       },
     },
     {
@@ -111,6 +110,14 @@ async function run(): Promise<void> {
         const p = createPresetProfile('anthropic', { apiKey: 'sk-test' });
         const env = toAgentSdkEnv(p, 'claude-opus-4-6', 'claude-haiku-4-5');
         assert.strictEqual(env.ANTHROPIC_CUSTOM_HEADERS, undefined);
+      },
+    },
+    {
+      name: 'toAgentSdkEnv: openrouter with empty baseUrl falls back to default',
+      fn: () => {
+        const p = createPresetProfile('openrouter', { apiKey: 'sk-or-test', baseUrl: '' });
+        const env = toAgentSdkEnv(p, 'anthropic/claude-opus-4-6', 'anthropic/claude-haiku-4-5');
+        assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://openrouter.ai/api/v1');
       },
     },
 
@@ -162,117 +169,6 @@ async function run(): Promise<void> {
         });
         const cfg = toEmbeddingConfig(p);
         assert.strictEqual(cfg, null);
-      },
-    },
-
-    // ───────── migrateFromV1 ─────────
-    {
-      name: 'migrateFromV1: returns null for empty settings',
-      fn: () => {
-        assert.strictEqual(migrateFromV1({}), null);
-        assert.strictEqual(migrateFromV1(null), null);
-        assert.strictEqual(migrateFromV1(undefined), null);
-      },
-    },
-    {
-      name: 'migrateFromV1: migrates from sdkProfile',
-      fn: () => {
-        const settings = {
-          vaultSearch: {
-            sdkProfile: {
-              kind: 'anthropic',
-              baseUrl: 'https://api.anthropic.com',
-              apiKey: 'sk-ant-v1',
-              primaryModel: 'claude-opus-4-6',
-              fastModel: 'claude-haiku-4-5',
-            },
-          },
-        };
-        const profiles = migrateFromV1(settings)!;
-        assert.ok(profiles);
-        assert.strictEqual(profiles.length, 1);
-        assert.strictEqual(profiles[0].kind, 'anthropic');
-        assert.strictEqual(profiles[0].apiKey, 'sk-ant-v1');
-        assert.ok(profiles[0].description?.includes('sdkProfile'));
-      },
-    },
-    {
-      name: 'migrateFromV1: migrates from llmProviderConfigs.claude',
-      fn: () => {
-        const settings = {
-          ai: {
-            llmProviderConfigs: {
-              claude: { apiKey: 'sk-claude-v1', baseUrl: 'https://custom.api.com' },
-            },
-          },
-        };
-        const profiles = migrateFromV1(settings)!;
-        assert.ok(profiles);
-        assert.strictEqual(profiles.length, 1);
-        assert.strictEqual(profiles[0].kind, 'anthropic');
-        assert.strictEqual(profiles[0].apiKey, 'sk-claude-v1');
-        assert.strictEqual(profiles[0].baseUrl, 'https://custom.api.com');
-      },
-    },
-    {
-      name: 'migrateFromV1: migrates from llmProviderConfigs.openrouter',
-      fn: () => {
-        const settings = {
-          ai: {
-            llmProviderConfigs: {
-              openrouter: { apiKey: 'sk-or-v1' },
-            },
-          },
-        };
-        const profiles = migrateFromV1(settings)!;
-        assert.ok(profiles);
-        assert.strictEqual(profiles.length, 1);
-        assert.strictEqual(profiles[0].kind, 'openrouter');
-        // OpenRouter apiKey becomes authToken
-        assert.strictEqual(profiles[0].authToken, 'sk-or-v1');
-        assert.strictEqual(profiles[0].apiKey, null);
-      },
-    },
-    {
-      name: 'migrateFromV1: deduplicates credentials across sources',
-      fn: () => {
-        const settings = {
-          vaultSearch: {
-            sdkProfile: {
-              kind: 'anthropic',
-              apiKey: 'sk-same-key',
-            },
-          },
-          ai: {
-            llmProviderConfigs: {
-              claude: { apiKey: 'sk-same-key' },
-              openrouter: { apiKey: 'sk-or-different' },
-            },
-          },
-        };
-        const profiles = migrateFromV1(settings)!;
-        assert.ok(profiles);
-        // Should have 2: sdkProfile + openrouter (claude deduped)
-        assert.strictEqual(profiles.length, 2);
-        const keys = profiles.map((p) => p.apiKey ?? p.authToken);
-        assert.ok(keys.includes('sk-same-key'));
-        assert.ok(keys.includes('sk-or-different'));
-      },
-    },
-    {
-      name: 'migrateFromV1: sdkProfile without credentials is skipped',
-      fn: () => {
-        const settings = {
-          vaultSearch: {
-            sdkProfile: {
-              kind: 'anthropic',
-              baseUrl: 'https://api.anthropic.com',
-              // no apiKey, no authToken
-            },
-          },
-        };
-        const profiles = migrateFromV1(settings);
-        assert.strictEqual(profiles, null);
       },
     },
 
@@ -386,7 +282,7 @@ async function run(): Promise<void> {
         );
 
         const p1 = createPresetProfile('anthropic', { apiKey: 'sk-1' });
-        const p2 = createPresetProfile('openrouter', { authToken: 'sk-2' });
+        const p2 = createPresetProfile('openrouter', { apiKey: 'sk-2' });
         registry.addProfile(p1);
         registry.addProfile(p2);
 
@@ -397,7 +293,8 @@ async function run(): Promise<void> {
         assert.strictEqual(registry.getActiveAgentProfile()?.id, p2.id);
 
         registry.setActiveAgentProfile(null);
-        assert.strictEqual(registry.getActiveAgentProfile(), null);
+        // Falls back to first profile when no active config is set
+        assert.strictEqual(registry.getActiveAgentProfile()?.id, p1.id);
       },
     },
     {

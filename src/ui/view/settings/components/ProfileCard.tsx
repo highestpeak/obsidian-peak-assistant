@@ -50,7 +50,6 @@ const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-
 
 function getCredentialLabel(profile: Profile): string {
     if (profile.kind === 'ollama') return 'no key needed';
-    if (profile.authToken) return 'auth token set';
     if (profile.apiKey) return 'API key set';
     return 'no key';
 }

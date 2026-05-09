@@ -215,7 +215,6 @@ export interface MyPluginSettings {
 			kind?: 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom';
 			baseUrl?: string;
 			apiKey?: string | null;
-			authToken?: string | null;
 			primaryModel?: string;
 			fastModel?: string;
 			customHeaders?: Record<string, string>;

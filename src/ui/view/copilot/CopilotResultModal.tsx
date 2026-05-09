@@ -5,7 +5,8 @@ import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { AuthenticationError } from '@/core/errors/llm-errors';
-import { Loader2, AlertTriangle, Settings2 } from 'lucide-react';
+import { Loader2, AlertTriangle, Settings2, ArrowLeft } from 'lucide-react';
+import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { CopilotAction, DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 
@@ -15,21 +16,38 @@ interface CopilotResultModalProps {
 }
 
 type ModalPhase =
-	| { phase: 'loading'; progressText?: string; startTime: number }
+	| { phase: 'loading'; statusText?: string; progressText?: string; startTime: number }
 	| { phase: 'result'; data: any }
 	| { phase: 'error'; error: Error };
 
-const LoadingView: React.FC<{ label: string; startTime: number; progressText?: string }> = ({ label, startTime, progressText }) => {
+const LOADING_STEPS = [
+	{ after: 0, text: 'Reading document...' },
+	{ after: 2, text: 'Analyzing content...' },
+	{ after: 6, text: 'Generating response...' },
+	{ after: 15, text: 'Still working — large documents take longer...' },
+	{ after: 30, text: 'This is taking longer than expected...' },
+	{ after: 60, text: 'The request is unusually slow. You can close and retry, or check your API connection.' },
+];
+
+const LoadingView: React.FC<{ label: string; startTime: number; statusText?: string; progressText?: string }> = ({ label, startTime, statusText, progressText }) => {
 	const [elapsed, setElapsed] = useState(0);
 	useEffect(() => {
 		const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
 		return () => clearInterval(timer);
 	}, [startTime]);
+
+	const autoStatus = !statusText && !progressText
+		? LOADING_STEPS.filter(s => elapsed >= s.after).pop()?.text
+		: undefined;
+
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-items-center pktw-gap-4 pktw-py-12">
 			<Loader2 className="pktw-w-8 pktw-h-8 pktw-animate-spin pktw-text-accent" />
 			<span className="pktw-text-sm pktw-font-medium">{label}...</span>
-			<span className="pktw-text-xs pktw-text-muted-foreground">{elapsed}s</span>
+			{(statusText || autoStatus) && (
+				<span className="pktw-text-xs pktw-text-muted-foreground">{statusText || autoStatus}</span>
+			)}
+			<span className="pktw-text-[10px] pktw-text-muted-foreground/50">{elapsed}s</span>
 			{progressText && (
 				<div className="pktw-w-full pktw-max-h-[200px] pktw-overflow-y-auto pktw-mt-4 pktw-px-4 pktw-text-xs pktw-text-muted-foreground pktw-whitespace-pre-wrap">
 					{progressText}
@@ -69,7 +87,8 @@ const CopilotResultContent: React.FC<{
 	ctx: DocumentContext;
 	initialPhase: ModalPhase;
 	onClose: () => void;
-}> = ({ action, ctx, initialPhase, onClose }) => {
+	onBack: () => void;
+}> = ({ action, ctx, initialPhase, onClose, onBack }) => {
 	const [phase, setPhase] = useState<ModalPhase>(initialPhase);
 
 	useEffect(() => {
@@ -77,24 +96,47 @@ const CopilotResultContent: React.FC<{
 		return () => { _currentSetPhase = null; };
 	}, []);
 
+	const backButton = (
+		<button
+			onClick={onBack}
+			className="pktw-absolute pktw-top-3 pktw-left-3 pktw-flex pktw-items-center pktw-gap-1 pktw-text-xs pktw-text-muted-foreground hover:pktw-text-foreground pktw-transition-colors pktw-cursor-pointer pktw-bg-transparent pktw-border-none pktw-p-1"
+		>
+			<ArrowLeft className="pktw-w-3.5 pktw-h-3.5" />
+			<span>Back</span>
+		</button>
+	);
+
 	if (phase.phase === 'loading') {
-		return <LoadingView label={action.label} startTime={phase.startTime} progressText={phase.progressText} />;
+		return (
+			<div className="pktw-relative">
+				{backButton}
+				<LoadingView label={action.label} startTime={phase.startTime} statusText={phase.statusText} progressText={phase.progressText} />
+			</div>
+		);
 	}
 	if (phase.phase === 'error') {
-		return <ErrorView error={phase.error} onClose={onClose} />;
+		return (
+			<div className="pktw-relative">
+				{backButton}
+				<ErrorView error={phase.error} onClose={onClose} />
+			</div>
+		);
 	}
 
 	const Panel = action.ResultPanel;
 	return (
-		<Panel
-			result={phase.data}
-			ctx={ctx}
-			file={ctx.file}
-			scope={ctx.scope}
-			originalContent={ctx.content}
-			selectedText={ctx.selection}
-			onClose={onClose}
-		/>
+		<div className="pktw-relative">
+			{backButton}
+			<Panel
+				result={phase.data}
+				ctx={ctx}
+				file={ctx.file}
+				scope={ctx.scope}
+				originalContent={ctx.content}
+				selectedText={ctx.selection}
+				onClose={onClose}
+			/>
+		</div>
 	);
 };
 
@@ -124,10 +166,25 @@ export class CopilotResultModal extends Modal {
 					ctx: this.props.ctx,
 					initialPhase,
 					onClose: () => this.close(),
+					onBack: () => {
+						this.close();
+						new CopilotPickerModal(appContext).open();
+					},
 				},
 				appContext,
 			),
 		);
+
+		// Execute the action and wire results into the modal
+		const { action, ctx } = this.props;
+		const guard = action.guard?.(ctx);
+		if (guard) {
+			this.setError(new Error(guard));
+			return;
+		}
+		action.execute(ctx, (progressText: string) => this.updateProgress(progressText))
+			.then(result => this.setResult(result.data ?? result.text ?? result))
+			.catch(err => this.setError(err instanceof Error ? err : new Error(String(err))));
 	}
 
 	setResult(data: any): void {
