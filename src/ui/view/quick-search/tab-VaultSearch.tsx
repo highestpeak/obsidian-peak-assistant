@@ -10,6 +10,8 @@ import { useVaultSearch, useSearchQuery } from './hooks/useVaultSearch';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { useHasSearchQuery } from './hooks/useVaultSearch';
 import { ModeHelpList, MODE_COUNT } from './components/ModeHelpList';
+import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickRepo';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 const NoResultsState: React.FC<{ mode?: string }> = ({ mode }) => (
 	<EmptyState
@@ -140,6 +142,15 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 					// Open selected result
 					const selectedResult = displayedResults[selectedIndex];
 					if (selectedResult) {
+						try {
+							const db = sqliteStoreManager.getDatabase('vault');
+							const query = useVaultSearchStore.getState().parsedQuery?.text ?? '';
+							if (db && query) {
+								const clickRepo = new SearchClickRepo(db);
+								const queryStems = SearchClickRepo.buildQueryStems(query.split(/\s+/).filter(Boolean));
+								if (queryStems) clickRepo.record(queryStems, selectedResult.path, selectedIndex);
+							}
+						} catch { /* non-critical */ }
 						await createOpenSourceCallback(onClose, currentMode !== 'goToLine' && currentMode !== 'inFile')(selectedResult);
 					}
 					break;

@@ -5,6 +5,19 @@ import { getFileIcon } from '@/ui/view/shared/file-utils';
 import { humanReadableTime } from '@/core/utils/date-utils';
 import type { SearchResultItem } from '@/service/search/types';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
+import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickRepo';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+
+function recordSearchClick(currentQuery: string, path: string, rank: number): void {
+	try {
+		const db = sqliteStoreManager.getDatabase('vault');
+		if (db && currentQuery) {
+			const clickRepo = new SearchClickRepo(db);
+			const queryStems = SearchClickRepo.buildQueryStems(currentQuery.split(/\s+/).filter(Boolean));
+			if (queryStems) clickRepo.record(queryStems, path, rank);
+		}
+	} catch { /* non-critical */ }
+}
 
 /**
  * Highlight text using multiple keywords with more visible styling.
@@ -128,6 +141,7 @@ export const SearchResultRow: React.FC<{
 }> = ({ currentQuery, result, index, isSelected, onSelect, itemRef, onClose, newTab }) => {
 	const handleClick = (e: React.MouseEvent) => {
 		onSelect(index);
+		recordSearchClick(currentQuery, result.path, index);
 		const openInNewTab = newTab ?? (e.metaKey || e.ctrlKey);
 		createOpenSourceCallback(onClose, openInNewTab)(result);
 	};
@@ -190,6 +204,7 @@ export const SearchResultRow: React.FC<{
 					className="pktw-flex-shrink-0 pktw-h-6 pktw-w-6 pktw-rounded pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity"
 					onClick={(e) => {
 						e.stopPropagation();
+						recordSearchClick(currentQuery, result.path, index);
 						createOpenSourceCallback(onClose, true)(result);
 					}}
 				>
