@@ -14,13 +14,8 @@ import type { AnalysisMode } from '@/service/agents/shared-types';
 import type { PlanSnapshot } from '@/service/agents/vault/types';
 import type { UserFeedback } from '@/service/agents/core/types';
 import type { V2ToolStep, V2TimelineItem, V2Source } from '../types/search-steps';
-import { exportGraphJson } from './aiGraphStore';
-import { useGraphAgentStore } from './graphAgentStore';
 import {
 	V2_INITIAL_STATE,
-	buildV2AnalysisSnapshot as buildV2AnalysisSnapshotImpl,
-	getAllSectionsFrom,
-	getAllSourcesFrom,
 } from './v2SessionTypes';
 import type { V2Section, Annotation, Round, V2SessionState } from './v2SessionTypes';
 import type { V2SessionSnapshot } from './sessionSnapshot';
@@ -238,9 +233,7 @@ interface SearchSessionActions {
 	resetAll: () => void;
 
 	// Computed
-	getIsAnalyzing: () => boolean;
 	getIsCompleted: () => boolean;
-	getHasContent: () => boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -782,35 +775,8 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	// Computed
 	// -----------------------------------------------------------------------
 
-	getIsAnalyzing: () => {
-		const { status } = get();
-		return status === 'starting' || status === 'streaming';
-	},
-
 	getIsCompleted: () => get().status === 'completed',
-
-	getHasContent: () => get().v2Active && get().v2PlanSections.length > 0,
 }));
-
-// ---------------------------------------------------------------------------
-// V2 snapshot builder (for auto-save pipeline)
-// ---------------------------------------------------------------------------
-
-export function buildV2AnalysisSnapshot() {
-	return buildV2AnalysisSnapshotImpl(
-		() => useSearchSessionStore.getState(),
-		() => exportGraphJson() ?? null,
-		() => {
-			const gStore = useGraphAgentStore.getState();
-			if (!gStore.graphData) return null;
-			return JSON.stringify({
-				lenses: { topology: gStore.graphData },
-				source: 'graphAgent',
-				generatedAt: new Date().toISOString(),
-			});
-		},
-	);
-}
 
 // ---------------------------------------------------------------------------
 // Round utility functions (derived state helpers)

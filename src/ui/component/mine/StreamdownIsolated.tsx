@@ -174,8 +174,6 @@ function FallbackStreamdown({
  * Renders Streamdown inside a Shadow DOM for full style isolation from Obsidian.
  * Injects :host + Tailwind (streamdown) + KaTeX CSS. Falls back to Light DOM if CSS is incomplete or Shadow fails.
  */
-const DEBUG = false;
-
 const HOVER_DEBOUNCE_MS = 180;
 const HOVER_CLOSE_DELAY_MS = 100;
 
@@ -221,13 +219,6 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 			const css =
 				typeof STREAMDOWN_ISOLATED_CSS === 'string' ? STREAMDOWN_ISOLATED_CSS : '';
 			if (css.length < MIN_ISOLATED_CSS_LENGTH) {
-				if (DEBUG) {
-					console.warn(
-						'[StreamdownIsolated] STREAMDOWN_ISOLATED_CSS too short (' +
-						css.length +
-						'). Run: npm run build:css'
-					);
-				}
 				setUseFallback(true);
 				return;
 			}
@@ -241,9 +232,6 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 				container.className = 'streamdown-wrapper';
 				shadow.appendChild(container);
 			} catch (e) {
-				if (DEBUG) {
-					console.warn('[StreamdownIsolated] Shadow DOM failed, using Light DOM:', e);
-				}
 				setUseFallback(true);
 				return;
 			}
@@ -338,16 +326,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 				shadow.removeEventListener('mouseover', mouseoverHandler, true);
 				shadow.removeEventListener('mouseout', mouseoutHandler, true);
 			};
-			if (DEBUG) {
-				console.log(
-					'[StreamdownIsolated] Shadow DOM ready. mode=shadow cssLen=' +
-					(typeof STREAMDOWN_ISOLATED_CSS === 'string' ? STREAMDOWN_ISOLATED_CSS.length : 0)
-				);
-			}
 		} catch (e) {
-			if (DEBUG) {
-				console.warn('[StreamdownIsolated] createRoot failed:', e);
-			}
 			setUseFallback(true);
 			return;
 		}
@@ -364,11 +343,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 				// Defer to next macrotask so unmount never runs during commit (AnimatePresence branch switch).
 				const r = root;
 				setTimeout(() => {
-					try {
-						r.unmount();
-					} catch (e) {
-						if (DEBUG) console.warn('[StreamdownIsolated] unmount error:', e);
-					}
+					try { r.unmount(); } catch (_) { /* ignore */ }
 				}, 0);
 			}
 		};
@@ -411,11 +386,6 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 					{children}
 				</Streamdown>
 			);
-			if (DEBUG) {
-				console.log(
-					'[StreamdownIsolated] Rendered into shadow. childrenLen=' + (children?.length ?? 0)
-				);
-			}
 		}
 	}, [children, isAnimating, useFallback]);
 
@@ -446,9 +416,6 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 	}, []);
 
 	if (useFallback) {
-		if (DEBUG) {
-			console.log('[StreamdownIsolated] Using fallback (Light DOM).');
-		}
 		return <FallbackStreamdown {...props} />;
 	}
 
