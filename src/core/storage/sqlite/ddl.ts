@@ -161,6 +161,19 @@ export interface Database {
 		title: string | null;
 		content: string | null;
 	};
+	/** FTS5 virtual table for stemmed content (Porter Stemmer morphological matching). */
+	doc_fts_stem: {
+		chunk_id: string;
+		doc_id: string;
+		content: string;
+	};
+	/** Search click-through log for learning-to-rank signals. */
+	search_click: {
+		query_stems: string;
+		path: string;
+		rank: number;
+		ts: number;
+	};
 	chat_project: {
 		project_id: string;
 		name: string;
@@ -417,10 +430,11 @@ export interface Database {
 
 
 /**
- * Database interface for schema creation (exec).
+ * Database interface for schema creation (exec + optional prepare for migrations).
  */
 export interface SqliteDatabaseLike {
 	exec(sql: string): void;
+	prepare?(sql: string): { all(): unknown[] };
 }
 
 /**
@@ -484,14 +498,42 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		);
 	`);
 
-	// FTS5 virtual table for document metadata (title/path).
+	// FTS5 virtual table for stemmed document content (Porter Stemmer morphological matching).
+	db.exec(`
+		CREATE VIRTUAL TABLE IF NOT EXISTS doc_fts_stem USING fts5(
+			chunk_id UNINDEXED,
+			doc_id UNINDEXED,
+			content
+		);
+	`);
+
+	// FTS5 virtual table for document metadata (title/path/tags).
 	// Separate from content FTS to avoid redundant storage and enable weighted search.
+	// Schema migration: if doc_meta_fts exists without tags column, drop and recreate.
+	try {
+		const cols = db.prepare?.(`PRAGMA table_info(doc_meta_fts)`)?.all() as Array<{ name: string }> | undefined;
+		if (cols && cols.length > 0 && !cols.some(c => c.name === 'tags')) {
+			db.exec(`DROP TABLE IF EXISTS doc_meta_fts;`);
+		}
+	} catch { /* table doesn't exist yet */ }
 	db.exec(`
 		CREATE VIRTUAL TABLE IF NOT EXISTS doc_meta_fts USING fts5(
 			doc_id UNINDEXED,
 			path,
-			title
+			title,
+			tags
 		);
+	`);
+
+	// Search click-through log for learning-to-rank signals.
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS search_click (
+			query_stems TEXT NOT NULL,
+			path TEXT NOT NULL,
+			rank INTEGER NOT NULL,
+			ts INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_search_click_query ON search_click(query_stems);
 	`);
 
 	// sqlite-vec virtual table for vector similarity search.
