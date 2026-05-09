@@ -6,7 +6,7 @@
  * ai-sdk-adapter.ts deleted in commit 9f293a4.
  */
 
-import { streamText, type LanguageModel, type ModelMessage } from 'ai';
+import { streamText, type LanguageModel, type ModelMessage, type ToolSet } from 'ai';
 import type {
     LLMRequestMessage,
     LLMStreamEvent,
@@ -101,6 +101,8 @@ export async function* streamChat(
     messages: LLMRequestMessage[],
     options?: {
         outputControl?: LLMOutputControlSettings;
+        tools?: ToolSet;
+        maxSteps?: number;
         abortSignal?: AbortSignal;
     },
 ): AsyncGenerator<LLMStreamEvent> {
@@ -111,6 +113,8 @@ export async function* streamChat(
             model,
             system: extractSystemMessage(messages),
             prompt: toAiSdkMessages(messages),
+            tools: options?.tools,
+            maxSteps: options?.maxSteps ?? 1,
             maxOutputTokens: options?.outputControl?.maxOutputTokens,
             temperature: options?.outputControl?.temperature,
             topP: options?.outputControl?.topP,

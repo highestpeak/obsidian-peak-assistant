@@ -1,11 +1,14 @@
 import type { Profile } from '@/core/profiles/types';
 import type { LLMRequestMessage, LLMStreamEvent, LLMOutputControlSettings, LLMUsage } from '@/core/providers/types';
+import type { ToolSet } from 'ai';
 import { createLanguageModel } from './provider-factory';
 import { streamChat as adapterStreamChat } from './vercel-adapter';
 
 export interface VercelChatRequest {
     messages: LLMRequestMessage[];
     outputControl?: LLMOutputControlSettings;
+    tools?: ToolSet;
+    maxSteps?: number;
     abortSignal?: AbortSignal;
 }
 
@@ -21,6 +24,8 @@ export async function* vercelStreamChat(
     const model = createLanguageModel(profile, modelId);
     yield* adapterStreamChat(model, request.messages, {
         outputControl: request.outputControl,
+        tools: request.tools,
+        maxSteps: request.maxSteps,
         abortSignal: request.abortSignal,
     });
 }
