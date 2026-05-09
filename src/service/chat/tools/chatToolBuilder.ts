@@ -6,15 +6,15 @@ import type { ModelCapabilities } from '@/core/providers/types';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { collectText } from '@/service/agents/core/sdkMessageAdapter';
-import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 
 const WEB_SEARCH_SYSTEM_PROMPT =
     'Search the web and provide a comprehensive answer with sources. Cite URLs where possible. ' +
     'Focus on factual, up-to-date information. If the query is about a specific topic, provide relevant context and details.';
 
-interface ChatToolDeps {
+export interface ChatToolDeps {
     app: App;
     pluginId: string;
+    enableWebSearch: boolean;
 }
 
 export interface ChatToolSet {
@@ -30,11 +30,10 @@ export function buildChatTools(
     deps: ChatToolDeps,
     capabilities: ModelCapabilities,
 ): ChatToolSet {
-    const { enableWebSearch } = useChatViewStore.getState();
     const tools: ToolSet = {};
 
     // Web search: skip if model has native web search capability
-    if (enableWebSearch && !capabilities.webSearch) {
+    if (deps.enableWebSearch && !capabilities.webSearch) {
         const webProfile = ProfileRegistry.getInstance().getActiveWebSearchProfile();
         if (webProfile) {
             tools.web_search = tool({
@@ -45,13 +44,17 @@ export function buildChatTools(
                     query: z.string().describe('The search query to look up on the web'),
                 }),
                 execute: async ({ query }) => {
-                    const messages = queryWithProfile(deps.app, deps.pluginId, webProfile, {
-                        prompt: query,
-                        systemPrompt: WEB_SEARCH_SYSTEM_PROMPT,
-                        maxTurns: 1,
-                    });
-                    const text = await collectText(messages);
-                    return text || 'No results found.';
+                    try {
+                        const messages = queryWithProfile(deps.app, deps.pluginId, webProfile, {
+                            prompt: query,
+                            systemPrompt: WEB_SEARCH_SYSTEM_PROMPT,
+                            maxTurns: 1,
+                        });
+                        return (await collectText(messages)) || 'No results found.';
+                    } catch (err) {
+                        const msg = err instanceof Error ? err.message : 'Web search failed';
+                        return `Web search error: ${msg}`;
+                    }
                 },
             });
         }
@@ -59,7 +62,7 @@ export function buildChatTools(
 
     const hasTools = Object.keys(tools).length > 0;
     return {
-        tools: hasTools ? tools : {},
+        tools,
         maxSteps: hasTools ? 3 : 1,
     };
 }
