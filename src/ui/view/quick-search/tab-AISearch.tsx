@@ -15,7 +15,6 @@ import { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
 import { SearchResultView } from './components/SearchResultView';
 import { SectionExtraChatModal } from './components/ai-analysis-modal/SectionExtraChatModal';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
-import { buildDebugInfoText } from './callbacks/copyDebugInfo';
 import { V2Footer } from './components/V2Footer';
 import { useAIGraphStore } from './store/aiGraphStore';
 import { buildAiGraphMarkdown } from '@/core/storage/vault/search-docs/AiGraphDoc';
@@ -105,16 +104,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		useSearchSessionStore.getState().recordError('Retry analysis');
 		useSearchSessionStore.getState().resetAll();
 		setRetryTrigger(prev => prev + 1);
-	};
-
-	// Debug info copy handler
-	const [debugCopied, setDebugCopied] = useState(false);
-	const handleCopyDebugInfo = () => {
-		const text = buildDebugInfoText();
-		navigator.clipboard.writeText(text).then(() => {
-			setDebugCopied(true);
-			window.setTimeout(() => setDebugCopied(false), 1500);
-		});
 	};
 
 	// Listen for continue-analysis events from ContinueAnalysisInput

@@ -23,7 +23,6 @@ import { AIAnalysisRepo } from './repositories/AIAnalysisRepo';
 import { QueryPatternRepo } from './repositories/QueryPatternRepo';
 import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcessedHashRepo';
 import { HubConstituentRepo } from './repositories/HubConstituentRepo';
-import { StructuralMetricsRepo } from './repositories/StructuralMetricsRepo';
 import { CascadeDebtRepo } from './repositories/CascadeDebtRepo';
 import { AmbientPushRepo } from './repositories/AmbientPushRepo';
 import { VAULT_DB_FILENAME, CHAT_DB_FILENAME } from '@/core/constant';
@@ -92,8 +91,6 @@ export class SqliteStoreManager {
 	private chatStarRepo: ChatStarRepo | null = null;
 	private aiAnalysisRepo: AIAnalysisRepo | null = null;
 	private queryPatternRepo: QueryPatternRepo | null = null;
-	/** Structural analysis (betweenness, communities, gaps); vault DB only. */
-	private structuralMetricsRepo: StructuralMetricsRepo | null = null;
 	/** Cascade debt tracking (vault DB). */
 	private cascadeDebtRepo: CascadeDebtRepo | null = null;
 	/** Cascade debt tracking (chat/meta DB). */
@@ -214,7 +211,6 @@ export class SqliteStoreManager {
 		this.mobiusEdgeRepo = new MobiusEdgeRepo(searchKdb);
 		this.graphRepo = new GraphRepo(this.mobiusNodeRepo, this.mobiusEdgeRepo);
 		this.userProfileProcessedHashRepo = new UserProfileProcessedHashRepo(searchKdb);
-		this.structuralMetricsRepo = new StructuralMetricsRepo(searchKdb);
 		this.hubConstituentRepo = new HubConstituentRepo(searchKdb);
 		this.cascadeDebtRepo = new CascadeDebtRepo(searchKdb);
 		this.ambientPushRepo = new AmbientPushRepo(searchKdb);
@@ -369,16 +365,6 @@ export class SqliteStoreManager {
 			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.userProfileProcessedHashRepo;
-	}
-
-	/**
-	 * Structural analysis repo (betweenness, communities, gaps). Vault DB only.
-	 */
-	getStructuralMetricsRepo(): StructuralMetricsRepo {
-		if (this.closing || !this.structuralMetricsRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.structuralMetricsRepo;
 	}
 
 	/**

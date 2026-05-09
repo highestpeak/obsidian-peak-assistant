@@ -403,13 +403,8 @@ export interface MyPluginSettings {
 
 	/** Graph visualization settings (default cluster force strength, node size, MST, etc.). */
 	graphViz?: {
-		clusterForceStrength?: number;
-		nodeBaseRadiusPhysical?: number;
-		nodeBaseRadiusSemantic?: number;
-		nodeDegreeBoost?: number;
 		mstPruneDepth?: number;
 		skeletonBackboneOnly?: boolean;
-		skeletonMinBranchNodes?: number;
 		mstLeafOpacity?: number;
 		mstLeafWidthScale?: number;
 	};
@@ -463,13 +458,8 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	ambientPush: undefined,
 
 	graphViz: {
-		clusterForceStrength: 0.02,
-		nodeBaseRadiusPhysical: 6,
-		nodeBaseRadiusSemantic: 7,
-		nodeDegreeBoost: 16,
 		mstPruneDepth: 2,
 		skeletonBackboneOnly: false,
-		skeletonMinBranchNodes: 3,
 		mstLeafOpacity: 0.25,
 		mstLeafWidthScale: 0.6,
 	},

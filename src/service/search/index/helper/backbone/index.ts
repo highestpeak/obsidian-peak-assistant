@@ -13,17 +13,3 @@ export type {
 	BackboneVirtualNode,
 	BuildBackboneMapOptions,
 } from './types';
-export type {
-	BrandesOptions,
-	CommunityData,
-	GapPair,
-	LouvainOptions,
-	StructuralMetric,
-} from './structuralTypes';
-export {
-	computeBrandesBetweenness,
-	computeBurtConstraint,
-	detectCommunities,
-	computeModularity,
-	detectStructuralHoles,
-} from './structuralAnalysis';

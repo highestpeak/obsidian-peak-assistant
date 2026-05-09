@@ -29,7 +29,7 @@ function effectiveReconMaxIterations(budgetDerived: number, debug?: ReconLoopDeb
 }
 import { mergeIntuitionSubmitIntoMemory, buildInitialIntuitionMemory } from './intuition.memory';
 import type { IntuitionMemory, IntuitionPrepContext } from './types';
-import { exploreFolderToolMarkdownOnly, findPathTool, graphTraversalToolMarkdownOnly, grepFileTreeTool, hubLocalGraphTool, inspectNoteContextToolMarkdownOnly, localSearchWholeVaultTool } from '@/service/tools/search-graph-inspector';
+import { exploreFolderToolMarkdownOnly, findPathTool, graphTraversalToolMarkdownOnly, grepFileTreeTool, inspectNoteContextToolMarkdownOnly, localSearchWholeVaultTool } from '@/service/tools/search-graph-inspector';
 import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
@@ -81,7 +81,6 @@ export async function* runKnowledgeIntuitionLoop(options: {
 		local_search_whole_vault: localSearchWholeVaultTool(ctx.tm),
 		inspect_note_context: inspectNoteContextToolMarkdownOnly(ctx.tm),
 		graph_traversal: graphTraversalToolMarkdownOnly(ctx.tm),
-		hub_local_graph: hubLocalGraphTool(ctx.tm),
 		find_path: findPathTool(ctx.tm),
 	}
 	const budgetDerived = Math.min(6, Math.max(3, Math.floor(ctx.indexBudgetRaw.limitTotal / 160)));

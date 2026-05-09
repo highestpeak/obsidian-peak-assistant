@@ -11,8 +11,11 @@ import { IndexingTemplateId } from '@/core/template/TemplateRegistry';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { basenameFromPath } from '@/core/utils/file-utils';
 import { normalizeVaultPath } from '@/core/utils/vault-path-utils';
-import { computeHubDiscoverBudgets } from '@/service/search/index/helper/hub/hubDiscover';
-import { buildFolderHubEnrichmentMap } from '@/service/search/index/helper/hub/hubDiscover';
+import {
+	HUB_DISCOVER_LIMIT_MIN,
+	HUB_DISCOVER_LIMIT_MAX,
+	HUB_DISCOVER_LIMIT_SQRT_SCALE,
+} from '@/core/constant';
 import type { MobiusNodeFolderHubDiscoveryRow } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 import { IgnoreService } from '@/service/search/IgnoreService';
 import { buildBackboneMap } from '@/service/search/index/helper/backbone';
@@ -33,6 +36,21 @@ const PLAN_FOLDER_DIGEST_MAX = 80;
 const PLAN_DEEP_FOLDER_DIGEST_MAX = 48;
 const PLAN_DOC_SHORTLIST_MAX = 80;
 const HUB_DIGEST_NAME_TOKEN_TOP = 6;
+
+/**
+ * Computes scaling budgets for vault exploration (formerly hub discover budgets).
+ */
+function computeHubDiscoverBudgets(documentNodeCount: number) {
+	const n = Math.max(0, Math.floor(documentNodeCount));
+	const raw = Math.floor(Math.sqrt(n) * HUB_DISCOVER_LIMIT_SQRT_SCALE);
+	const limitTotal = Math.max(HUB_DISCOVER_LIMIT_MIN, Math.min(HUB_DISCOVER_LIMIT_MAX, raw));
+	const documentFetchLimit = Math.max(1, Math.ceil(limitTotal * 1.8));
+	const folderFetchLimit = Math.max(1, Math.ceil(limitTotal * 0.6));
+	const clusterLimit = Math.max(1, Math.ceil(limitTotal * 0.35));
+	const topDocExcludeLimit = Math.max(1, Math.ceil(limitTotal * 0.4));
+	const clusterSeedFetchLimit = Math.min(120, Math.max(20, topDocExcludeLimit + clusterLimit * 3));
+	return { limitTotal, documentFetchLimit, folderFetchLimit, clusterLimit, topDocExcludeLimit, clusterSeedFetchLimit };
+}
 
 // ─── Folder snapshot helpers ──────────────────────────────────────────────────
 
@@ -345,19 +363,9 @@ export async function buildHubWorldSnapshot(
 	} catch {
 		folderRows = [];
 	}
-	const enrichMap = folderRows.length > 0 ? await buildFolderHubEnrichmentMap(mobiusRepo, folderRows) : new Map();
 	const folderRowByPath = new Map(folderRows.map((r) => [normalizeVaultPath(String(r.path ?? '')), r] as const));
 	for (const n of nodes) {
 		const np = normalizeVaultPath(n.path);
-		const e = enrichMap.get(np);
-		if (e) {
-			n.topicPurity = e.topicPurity;
-			n.containerPenalty = e.containerPenalty;
-			n.strongChildDocShare = e.strongChildDocShare;
-			n.residualRatio = e.residualRatio;
-			n.folderRank = e.folderRank;
-			n.strongChildCount = e.strongChildCount;
-		}
 		const fr = folderRowByPath.get(np);
 		if (fr && typeof fr.hub_graph_score === 'number') n.hubGraphScore = fr.hub_graph_score;
 	}

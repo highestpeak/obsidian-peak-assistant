@@ -1,7 +1,6 @@
 import {
     inspectNoteContextTool,
     graphTraversalTool,
-    hubLocalGraphTool,
     findPathTool,
     findKeyNodesTool,
     findOrphansTool,
@@ -37,7 +36,6 @@ export class GraphInspectorTestTools {
         this.tools = {
             inspect_note_context: inspectNoteContextTool(),
             graph_traversal: graphTraversalTool(),
-            hub_local_graph: hubLocalGraphTool(),
             find_path: findPathTool(),
             find_key_nodes: findKeyNodesTool(),
             find_orphans: findOrphansTool(),

@@ -36,22 +36,12 @@ import {
 	SEMANTIC_PAGERANK_ALGORITHM_VERSION,
 	FOLDER_HUB_STATS_DOC_PAGE_SIZE,
 	FOLDER_HUB_BOUNDARY_EDGE_BATCH_SIZE,
-	FOLDER_COHESION_MAX_DOCS,
-	FOLDER_COHESION_INTRA_EDGE_LIMIT,
 } from '@/core/constant';
 import {
 	accumulateSemanticOutgoingWeightSums,
 	computeSemanticPageRankStreaming,
 	computeVaultPageRankStreaming,
 } from '@/service/search/index/helper/documentPageRank';
-import {
-	computeBrandesBetweenness,
-	computeBurtConstraint,
-	detectCommunities,
-	computeModularity,
-	detectStructuralHoles,
-} from '@/service/search/index/helper/backbone/structuralAnalysis';
-import type { StructuralMetric, CommunityData } from '@/service/search/index/helper/backbone/structuralTypes';
 import { enforceChunkLengthWithOverlap } from '@/service/search/index/helper/safeChunking';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import {
@@ -98,17 +88,12 @@ import {
 	countsAsDocOutgoingTarget,
 	graphNodeTypeForPlaceholderReferenceTarget,
 } from '@/core/document/helper/DocumentReferencePolicy';
-import {
-	computeFolderCohesionScore,
-	type FolderCohesionDocRef,
-} from '@/service/search/index/helper/hub/hubDiscover';
 import { emptyMap } from '@/core/utils/collection-utils';
 import { detectChanges } from './cascade/CascadeChangeDetector';
 import type { PreIndexSnapshot, CascadeChangeInfo } from './cascade/types';
 import {
 	CASCADE_DEBT_SEMANTIC_EDGE_PRIORITY,
 	CASCADE_DEBT_DEGREE_REFRESH_PRIORITY,
-	CASCADE_DEBT_HUB_INVALIDATE_PRIORITY,
 	CASCADE_DEBT_MERMAID_OVERLAY_PRIORITY,
 } from '@/core/constant';
 export type StorageType = 'sqlite' | 'graph';
@@ -154,11 +139,7 @@ export type MobiusGlobalMaintenanceBatchPhase =
 	| 'semantic_pagerank_persist'
 	| 'semantic_related'
 	| 'folder_hub_stats'
-	| 'structural_betweenness'
-	| 'structural_constraint'
-	| 'structural_communities'
-	| 'structural_gaps'
-	| 'structural_persist';
+;
 
 /** All maintenance progress phases (batch-style or `semantic_related`). */
 export type MobiusGlobalMaintenancePhase = MobiusGlobalMaintenanceBatchPhase | 'semantic_related';
@@ -1387,16 +1368,6 @@ class IndexSingleService {
 				});
 			}
 		}
-
-		await cascadeRepo.insertOrUpdatePriority({
-			tenant,
-			sourcePath: change.docPath,
-			targetId: change.docNodeId,
-			debtType: 'hub_invalidate',
-			priority: CASCADE_DEBT_HUB_INVALIDATE_PRIORITY,
-			changeMagnitude: change.changeMagnitude,
-			createdAt: now,
-		});
 	}
 }
 
@@ -1509,10 +1480,7 @@ class GlobalMaintenanceService {
 			await this.rebuildFolderHubStatsForVaultInternal(onProgress);
 			sw.stop();
 
-			sw.start('structural_analysis');
-			await this.computeAndPersistStructuralMetricsInternal(onProgress);
-			sw.stop();
-		}
+}
 
 		sw.print();
 		await this.resetMaintenanceDebtAfterFullMaintenance(tenants);
@@ -1771,8 +1739,6 @@ class GlobalMaintenanceService {
 			otherOut: number;
 		};
 		const byFolder = new Map<string, Agg>();
-		/** Capped doc samples per folder for cohesion (same walk as subtree counts). */
-		const folderDocSamples = new Map<string, FolderCohesionDocRef[]>();
 
 		const getAgg = (folderPath: string): Agg => {
 			let agg = byFolder.get(folderPath);
@@ -1781,15 +1747,6 @@ class GlobalMaintenanceService {
 				byFolder.set(folderPath, agg);
 			}
 			return agg;
-		};
-
-		const pushFolderDocSample = (folderPath: string, doc: FolderCohesionDocRef) => {
-			let list = folderDocSamples.get(folderPath);
-			if (!list) {
-				list = [];
-				folderDocSamples.set(folderPath, list);
-			}
-			if (list.length < FOLDER_COHESION_MAX_DOCS) list.push(doc);
 		};
 
 		let afterNodeId: string | null = null;
@@ -1812,14 +1769,6 @@ class GlobalMaintenanceService {
 						? r.semantic_pagerank
 						: 0;
 
-				const docRef: FolderCohesionDocRef = {
-					node_id: r.node_id,
-					path,
-					label: r.label,
-					tags_json: r.tags_json,
-					semantic_pagerank: r.semantic_pagerank,
-				};
-
 				let cur = path;
 				for (; ;) {
 					const slash = cur.lastIndexOf('/');
@@ -1831,7 +1780,6 @@ class GlobalMaintenanceService {
 					agg.count += 1;
 					agg.sumPr += pr;
 					agg.sumSpr += spr;
-					pushFolderDocSample(folder, docRef);
 					cur = folder;
 				}
 			}
@@ -1888,23 +1836,13 @@ class GlobalMaintenanceService {
 			const avgPr = agg.sumPr / Math.max(1, n);
 			const avgSpr = agg.sumSpr / Math.max(1, n);
 
-			let folderCohesionScore: number | null = null;
-			const samples = folderDocSamples.get(folderPath);
-			if (samples && samples.length >= 2) {
-				const intraEdges = await mobiusEdgeRepo.listSemanticRelatedEdgesWithinNodeSet(
-					samples.map((d) => d.node_id),
-					FOLDER_COHESION_INTRA_EDGE_LIMIT,
-				);
-				folderCohesionScore = computeFolderCohesionScore(samples, intraEdges);
-			}
-
 			await mobiusNodeRepo.updateFolderNodeHubMaterializedStats(
 				nodeId,
 				{
 					tagDocCount: n,
 					avgPagerank: avgPr,
 					avgSemanticPagerank: avgSpr,
-					folderCohesionScore,
+					folderCohesionScore: null,
 					docIncoming: agg.docIn,
 					docOutgoing: agg.docOut,
 					otherIncoming: agg.otherIn,
@@ -1919,96 +1857,6 @@ class GlobalMaintenanceService {
 		}
 	}
 
-	/**
-	 * Compute betweenness centrality, Burt constraint, Louvain communities, and structural holes.
-	 * Runs on vault tenant only (structural analysis is vault-level).
-	 */
-	private async computeAndPersistStructuralMetricsInternal(
-		onProgress: ((ev: MobiusGlobalMaintenanceProgress) => void) | undefined,
-	): Promise<void> {
-		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo('vault');
-		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo('vault');
-		const structuralRepo = sqliteStoreManager.getStructuralMetricsRepo();
-
-		// Get all document-like node IDs
-		const vertices = await mobiusNodeRepo.listDocLikePageRankVertices();
-		const nodeIds = vertices.map(v => v.node_id);
-		if (nodeIds.length < 3) return; // need at least 3 nodes for meaningful analysis
-
-		onProgress?.({ tenant: 'vault', phase: 'structural_betweenness', progressTextSuffix: `${nodeIds.length} nodes` });
-
-		// Edge scanner: streams reference + semantic edges (union graph)
-		const scanEdges = async (visit: (from: string, to: string, weight: number) => void) => {
-			for await (const batch of mobiusEdgeRepo.iterateReferenceEdgeBatches(PAGERANK_EDGE_BATCH_SIZE)) {
-				for (const e of batch) visit(e.from_node_id, e.to_node_id, 1.0);
-			}
-			for await (const batch of mobiusEdgeRepo.iterateSemanticRelatedEdgeBatches(PAGERANK_EDGE_BATCH_SIZE)) {
-				for (const e of batch) visit(e.from_node_id, e.to_node_id, e.weight ?? 0.5);
-			}
-		};
-
-		// 1. Betweenness centrality (approximate for large vaults)
-		const betweenness = await computeBrandesBetweenness(
-			nodeIds, scanEdges,
-			{ approximate: nodeIds.length > 20000, kSources: Math.ceil(Math.sqrt(nodeIds.length)) },
-		);
-
-		onProgress?.({ tenant: 'vault', phase: 'structural_constraint', progressTextSuffix: 'computing' });
-
-		// 2. Burt constraint
-		const constraint = await computeBurtConstraint(nodeIds, scanEdges);
-
-		onProgress?.({ tenant: 'vault', phase: 'structural_communities', progressTextSuffix: 'detecting' });
-
-		// 3. Louvain community detection
-		const communityMap = await detectCommunities(nodeIds, scanEdges);
-
-		// 4. Build combined metrics
-		const metrics: StructuralMetric[] = nodeIds.map(id => ({
-			nodeId: id,
-			betweenness: betweenness.get(id) ?? 0,
-			burtConstraint: constraint.get(id) ?? 1,
-			communityId: communityMap.get(id) ?? 0,
-		}));
-
-		// 5. Build community metadata
-		const communityMembers = new Map<number, string[]>();
-		for (const [nodeId, comId] of communityMap) {
-			let members = communityMembers.get(comId);
-			if (!members) { members = []; communityMembers.set(comId, members); }
-			members.push(nodeId);
-		}
-
-		const communities: CommunityData[] = [];
-		for (const [comId, members] of communityMembers) {
-			let avgBetw = 0;
-			for (const id of members) avgBetw += betweenness.get(id) ?? 0;
-			avgBetw /= members.length;
-
-			communities.push({
-				communityId: comId,
-				label: null, // label generation can be added later (LLM or top-tags)
-				memberCount: members.length,
-				avgBetweenness: avgBetw,
-				centroidEmbedding: null, // skip embedding centroid for now to avoid heavy reads
-			});
-		}
-
-		onProgress?.({ tenant: 'vault', phase: 'structural_gaps', progressTextSuffix: 'detecting' });
-
-		// 6. Gap detection — collect edges for gap analysis
-		const edges: Array<{ from: string; to: string; weight: number }> = [];
-		await scanEdges((from, to, weight) => edges.push({ from, to, weight }));
-		const gaps = detectStructuralHoles(communityMap, edges, () => null); // skip embedding-based similarity for now
-
-		onProgress?.({ tenant: 'vault', phase: 'structural_persist', progressTextSuffix: `${metrics.length} metrics, ${communities.length} communities, ${gaps.length} gaps` });
-
-		// 7. Persist
-		await structuralRepo.clearAll();
-		await structuralRepo.upsertMetricsBatch(metrics);
-		await structuralRepo.upsertCommunities(communities);
-		await structuralRepo.upsertStructuralHoles(gaps);
-	}
 }
 
 /** Batched deferred enrichment: LLM tags/summary after fast index (`llm_pending`). */

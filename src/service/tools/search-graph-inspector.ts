@@ -7,7 +7,6 @@ import {
 	findPathInputSchema,
 	graphTraversalInputSchema,
 	grepFileTreeInputSchema,
-	hubLocalGraphInputSchema,
 	inspectNoteContextInputSchema,
 	localSearchWholeVaultInputSchema,
 	recentChangesWholeVaultInputSchema,
@@ -23,8 +22,6 @@ import { exploreFolder } from "./search-graph-inspector/explore-folder";
 import { grepFileTree } from "./search-graph-inspector/grep-file-tree";
 import { getRecentChanges } from "./search-graph-inspector/recent-change-whole-vault";
 import { localSearch } from "./search-graph-inspector/local-search";
-import { hubLocalGraph } from "./search-graph-inspector/hub-local-graph";
-
 /**
  * Tool 1: inspect_note_context
  */
@@ -78,19 +75,6 @@ export function graphTraversalToolMarkdownOnly(templateManager?: TemplateManager
                 { ...params, response_format: 'markdown', mode: 'graph_traversal' },
                 templateManager
             );
-        }
-    });
-}
-
-/**
- * Tool: hub_local_graph
- */
-export function hubLocalGraphTool(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `[Hub Local Graph] Build a weighted local graph around one note to inspect how a hub should expand, where it should stop, and which nodes/edges matter most.`,
-        inputSchema: hubLocalGraphInputSchema,
-        execute: async (params) => {
-            return await hubLocalGraph(params, templateManager);
         }
     });
 }
