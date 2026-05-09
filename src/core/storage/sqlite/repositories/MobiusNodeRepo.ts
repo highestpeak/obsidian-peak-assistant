@@ -253,39 +253,6 @@ export class MobiusNodeRepo {
 	}
 
 	/**
-	 * Merges keys into `attributes_json` for a folder node (`type = folder`) without dropping other fields.
-	 */
-	async mergeJsonAttributesForFolderNode(
-		nodeId: string,
-		merge: Record<string, unknown>,
-		now: number = Date.now(),
-	): Promise<void> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select('attributes_json')
-			.where('node_id', '=', nodeId)
-			.where('type', '=', GraphNodeType.Folder)
-			.executeTakeFirst();
-		if (!row) return;
-		let prev: Record<string, unknown> = {};
-		try {
-			prev = JSON.parse(row.attributes_json || '{}') as Record<string, unknown>;
-		} catch {
-			prev = {};
-		}
-		const next = { ...prev, ...merge };
-		await this.db
-			.updateTable('mobius_node')
-			.set({
-				attributes_json: JSON.stringify(next),
-				updated_at: now,
-			})
-			.where('node_id', '=', nodeId)
-			.where('type', '=', GraphNodeType.Folder)
-			.execute();
-	}
-
-	/**
 	 * Clears cached semantic Mermaid overlay (and bumps rule version) on all document-like nodes
 	 * before a full vector-based `semantic_related` rebuild.
 	 */
@@ -648,31 +615,6 @@ export class MobiusNodeRepo {
 
 	private docStatisticsRowQuery() {
 		return this.db.selectFrom('mobius_node').where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES]);
-	}
-
-	async updateDocumentStatisticsByDocId(
-		docId: string,
-		updates: Partial<
-			Pick<
-				DbSchema['doc_statistics'],
-				'word_count' | 'char_count' | 'language' | 'richness_score' | 'last_open_ts' | 'updated_at'
-			>
-		>,
-	): Promise<void> {
-		const patch: Record<string, unknown> = {};
-		if (updates.word_count !== undefined) patch.word_count = updates.word_count;
-		if (updates.char_count !== undefined) patch.char_count = updates.char_count;
-		if (updates.language !== undefined) patch.language = updates.language;
-		if (updates.richness_score !== undefined) patch.richness_score = updates.richness_score;
-		if (updates.last_open_ts !== undefined) patch.last_open_ts = updates.last_open_ts;
-		if (updates.updated_at !== undefined) patch.updated_at = updates.updated_at;
-		if (!Object.keys(patch).length) return;
-		await this.db
-			.updateTable('mobius_node')
-			.set(patch as any)
-			.where('node_id', '=', docId)
-			.where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES])
-			.execute();
 	}
 
 	async getRecent(topK: number): Promise<Array<{ docId: string; lastOpenTs: number; openCount: number }>> {
@@ -1142,27 +1084,6 @@ export class MobiusNodeRepo {
 		}
 		const rows = await q.execute();
 		return rows as Array<{ node_id: string; path: string | null }>;
-	}
-
-	/** Columns used when ranking documents for automatic hub candidates. */
-	async listDocumentNodesForHubDiscovery(): Promise<MobiusNodeHubDiscoveryRow[]> {
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'type',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-				'semantic_pagerank',
-				'word_count',
-			])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null)
-			.execute();
-		return rows as MobiusNodeHubDiscoveryRow[];
 	}
 
 	/**

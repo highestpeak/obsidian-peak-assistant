@@ -1,13 +1,11 @@
 import { create } from 'zustand';
 import { AISearchGraph, AISearchSource, AISearchTopic, type AnalysisMode, DashboardBlock, type EvidenceIndex } from '@/service/agents/shared-types';
 export type { AnalysisMode };
-import type { PlanSnapshot } from '@/service/agents/vault/types';
-import type { UserFeedback } from '@/service/agents/core/types';
 import { useSearchSessionStore } from './searchSessionStore';
 import { useAIGraphStore } from './aiGraphStore';
 import { useGraphAgentStore } from './graphAgentStore';
 
-import { LLMUsage, mergeTokenUsage } from '@/core/providers/types';
+import type { LLMUsage } from '@/core/providers/types';
 import type { SearchResultItem } from '@/service/search/types';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import { SnapshotChatMessage } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
@@ -30,60 +28,6 @@ export type ContextChatModalState = {
 	blockId?: string;
 } | null;
 
-/**
- * Merge two AISearchGraph objects.
- *
- * This is used to preserve incremental graph nodes/edges discovered during
- * "thinking/inspecting" (graph tools) so they are not lost when the final
- * result overwrites the graph.
- */
-function mergeAISearchGraphs(base: AISearchGraph | null, incoming: AISearchGraph | null): AISearchGraph | null {
-	if (!base && !incoming) return null;
-	if (!base) return incoming ? { nodes: [...incoming.nodes], edges: [...incoming.edges] } : null;
-	if (!incoming) return { nodes: [...base.nodes], edges: [...base.edges] };
-
-	const nodeById = new Map<string, any>();
-	for (const n of base.nodes ?? []) nodeById.set(String(n.id), n);
-	for (const n of incoming.nodes ?? []) {
-		const id = String(n.id);
-		const prev = nodeById.get(id);
-		if (!prev) {
-			nodeById.set(id, n);
-			continue;
-		}
-		// Prefer incoming title/path/attributes when present.
-		nodeById.set(id, {
-			...prev,
-			...n,
-			title: n.title || prev.title,
-			path: n.path || prev.path,
-			attributes: { ...(prev.attributes ?? {}), ...(n.attributes ?? {}) },
-		});
-	}
-
-	// Edge identity: (source, target, type). Keep the first id we see.
-	const edgeKey = (e: any) => `${String(e.source)}|${String(e.type)}|${String(e.target)}`;
-	const edgeByKey = new Map<string, any>();
-	for (const e of base.edges ?? []) edgeByKey.set(edgeKey(e), e);
-	for (const e of incoming.edges ?? []) {
-		const k = edgeKey(e);
-		const prev = edgeByKey.get(k);
-		if (!prev) {
-			edgeByKey.set(k, e);
-			continue;
-		}
-		edgeByKey.set(k, {
-			...prev,
-			...e,
-			attributes: { ...(prev.attributes ?? {}), ...(e.attributes ?? {}) },
-		});
-	}
-
-	return {
-		nodes: Array.from(nodeById.values()),
-		edges: Array.from(edgeByKey.values()),
-	};
-}
 
 /** Completed UI step from ui-step events; persisted in store and not cleared until new run. */
 export interface UIStepRecord {
@@ -340,95 +284,11 @@ export function resetAIAnalysisAll(): void {
 	useAIAnalysisInteractionsStore.getState().resetInteractions();
 }
 
-/** Orchestration: build CompletedAnalysisSnapshot from all stores. */
-export function buildCompletedAnalysisSnapshot(): CompletedAnalysisSnapshot {
-	const rt = useAIAnalysisRuntimeStore.getState();
-	const sum = useAIAnalysisSummaryStore.getState();
-	const res = useAIAnalysisResultStore.getState();
-	const top = useAIAnalysisTopicsStore.getState();
-	const int = useAIAnalysisInteractionsStore.getState();
-	const steps = useAIAnalysisStepsStore.getState().steps;
-	const summaries = sum.summaries?.length ? sum.summaries : [sum.getSummary()];
-	return {
-		version: 1,
-		runAnalysisMode: rt.runAnalysisMode ?? undefined,
-		analysisStartedAtMs: rt.analysisStartedAtMs,
-		duration: rt.duration,
-		usage: rt.usage,
-		title: rt.title ?? undefined,
-		summaries,
-		summaryVersion: sum.summaryVersion ?? 1,
-		topics: res.topics ?? [],
-		topicInspectResults: top.topicInspectResults ?? {},
-		topicAnalyzeResults: top.topicAnalyzeResults ?? {},
-		topicGraphResults: top.topicGraphResults ?? {},
-		graph: res.graph ?? null,
-		sources: res.sources ?? [],
-		evidenceIndex: (res.evidenceIndex && Object.keys(res.evidenceIndex).length > 0) ? res.evidenceIndex : undefined,
-		dashboardBlocks: res.dashboardBlocks ?? [],
-		blockChatRecords: Object.keys(int.blockChatRecords ?? {}).length > 0 ? int.blockChatRecords : undefined,
-		overviewMermaidVersions: (res.overviewMermaidVersions ?? []).length > 0 ? res.overviewMermaidVersions : undefined,
-		overviewMermaidActiveIndex: (res.overviewMermaidVersions ?? []).length > 0 ? (res.overviewMermaidActiveIndex ?? 0) : undefined,
-		mindflowMermaid: (res.mindflowMermaid ?? '').trim() ? res.mindflowMermaid : undefined,
-		fullAnalysisFollowUp: int.fullAnalysisFollowUp ?? [],
-		graphFollowups: int.graphFollowupHistory ?? [],
-		blocksFollowupsByBlockId: int.blocksFollowupHistoryByBlockId ?? undefined,
-		sourcesFollowups: int.sourcesFollowupHistory ?? [],
-		steps: steps?.length ? steps : undefined,
-	};
-}
+// buildCompletedAnalysisSnapshot — DELETED (Wave 2.1). Use snapshotFromState() in sessionSnapshot.ts.
 
-/** Orchestration: load snapshot into all stores. */
+/** Orchestration: load snapshot into remaining stores + searchSessionStore. */
 export function loadCompletedAnalysisSnapshot(snapshot: CompletedAnalysisSnapshot, sourceVaultPath?: string): void {
-	const runId = snapshot.analysisStartedAtMs ? `run:${snapshot.analysisStartedAtMs}` : `replay:${Date.now()}`;
-	const summaries = snapshot.summaries ?? [];
-	const summaryVersion = snapshot.summaryVersion ?? 1;
-	const currentSummary = getSnapshotSummary(snapshot);
-
-	useAIAnalysisRuntimeStore.setState({
-		phase: 'completed',
-		isAnalyzing: false,
-		analyzingBeforeFirstToken: false,
-		hasStartedStreaming: false,
-		hasAnalyzed: true,
-		analysisCompleted: true,
-		error: null,
-		analysisStartedAtMs: snapshot.analysisStartedAtMs ?? null,
-		analysisRunId: runId,
-		restoredFromHistory: true,
-		restoredFromVaultPath: sourceVaultPath ?? null,
-		title: snapshot.title ?? null,
-		usage: snapshot.usage ?? null,
-		duration: snapshot.duration ?? null,
-		runAnalysisMode: snapshot.runAnalysisMode ?? 'vaultFull',
-		analysisMode: snapshot.runAnalysisMode ?? 'vaultFull',
-	});
-
-	useAIAnalysisStepsStore.setState({ steps: snapshot.steps ?? [] });
-
-	useAIAnalysisSummaryStore.setState({
-		isSummaryStreaming: false,
-		summaryText: currentSummary,
-		summaries,
-		summaryVersion,
-	});
-
-	const ovRaw = snapshot.overviewMermaidActiveIndex as number | string | undefined;
-	const ovVers = snapshot.overviewMermaidVersions ?? [];
-	const ovIdx = typeof ovRaw === 'number' ? ovRaw : 0;
-	const ovVersFinal = ovVers.length > 0 ? ovVers : (typeof ovRaw === 'string' && String(ovRaw).trim() ? [String(ovRaw)] : []);
-
-	useAIAnalysisResultStore.setState({
-		graph: snapshot.graph ?? null,
-		dashboardBlocks: snapshot.dashboardBlocks ?? [],
-		sources: snapshot.sources ?? [],
-		topics: snapshot.topics ?? [],
-		evidenceIndex: snapshot.evidenceIndex ?? {},
-		overviewMermaidVersions: ovVersFinal,
-		overviewMermaidActiveIndex: ovIdx,
-		mindflowMermaid: (snapshot.mindflowMermaid ?? '').trim() ? snapshot.mindflowMermaid! : '',
-	});
-
+	// Populate kept legacy stores (Topics + Interactions)
 	useAIAnalysisTopicsStore.setState({
 		topicInspectResults: snapshot.topicInspectResults ?? {},
 		topicAnalyzeResults: snapshot.topicAnalyzeResults ?? {},
@@ -447,7 +307,7 @@ export function loadCompletedAnalysisSnapshot(snapshot: CompletedAnalysisSnapsho
 		contextChatModal: null,
 	});
 
-	// Bridge to new unified searchSessionStore — rebuild SearchStep[] from snapshot data
+	// Populate unified searchSessionStore
 	bridgeSnapshotToSearchSessionStore(snapshot, sourceVaultPath);
 }
 
@@ -631,35 +491,7 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 	});
 }
 
-/** Helpers that read from multiple stores (for components). */
-export function getHasGraphData(): boolean {
-	const res = useAIAnalysisResultStore.getState();
-	const g = res.graph;
-	return g != null && (g.nodes?.length ?? 0) > 0;
-}
-export function getHasSummarySection(): boolean {
-	const rt = useAIAnalysisRuntimeStore.getState();
-	const sum = useAIAnalysisSummaryStore.getState();
-	return rt.analysisCompleted && ((sum.summaries?.length ?? 0) > 0 || (sum.summaryText ?? '').trim().length > 0);
-}
-export function getHasTopicsSection(): boolean {
-	const rt = useAIAnalysisRuntimeStore.getState();
-	const res = useAIAnalysisResultStore.getState();
-	return rt.analysisCompleted && (res.topics?.length ?? 0) > 0;
-}
-export function getHasDashboardBlocksSection(): boolean {
-	const rt = useAIAnalysisRuntimeStore.getState();
-	const res = useAIAnalysisResultStore.getState();
-	return rt.analysisCompleted && (res.dashboardBlocks?.length ?? 0) > 0;
-}
-export function getHasSourcesSection(): boolean {
-	const res = useAIAnalysisResultStore.getState();
-	return (res.sources?.length ?? 0) > 0;
-}
-export function getHasCompletedContent(): boolean {
-	const rt = useAIAnalysisRuntimeStore.getState();
-	return rt.analysisCompleted && (getHasSummarySection() || getHasTopicsSection() || getHasDashboardBlocksSection() || getHasSourcesSection());
-}
+// getHas* helpers — DELETED (Wave 2.1). Use searchSessionStore computed methods.
 
 // Get clean query without @web@ for actual search
 export const getCleanQuery = (query: string): string => {

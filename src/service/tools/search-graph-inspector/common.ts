@@ -10,7 +10,7 @@ import { SearchScopeMode, SearchScopeValue } from "@/service/search/types";
 import { getFileTypeByPath } from "@/core/utils/obsidian-utils";
 import { getCachedBooleanExpression, getCachedRegex } from "@/core/utils/format-utils";
 import { parseSemanticDateRange } from "@/core/utils/date-utils";
-import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
+import type { FunctionalTagEntry } from '@/core/document/helper/TagService';
 import type { FunctionalTagId } from '@/core/schemas/agents/search-agent-schemas';
 
 export type SemanticNeighborNode = GraphNode & { similarity: string }
@@ -155,13 +155,7 @@ function calculateDocumentRRF(
     });
 }
 
-/**
- * Get semantic search results with document IDs for RRF fusion.
- * Uses QueryService's vector search for semantic matching.
- *
- * @param semanticFilter The semantic filter configuration
- * @returns Array of semantic search results with document IDs and scores
- */
+/** Get semantic search results with document IDs for RRF fusion. */
 export async function getSemanticSearchResults(
     semanticFilter?: { query: string; topK: number },
     scopeMode: SearchScopeMode = 'vault',
@@ -251,96 +245,50 @@ export async function getDefaultItemFiledGetter<T extends { id: string }>(nodeId
     });
 }
 
-// Helper function for applying filters and sorters consistently across all modes
 export function applyFiltersAndSorters<T>(
-    items: T[],
-    filters?: any, // Simplified for now - in real implementation you'd type this properly
-    sorter?: string,
-    limit?: number,
-    itemFiledGetter?: ItemFiledGetter<T>,
+    items: T[], filters?: any, sorter?: string, limit?: number, itemFiledGetter?: ItemFiledGetter<T>,
 ): T[] {
-    let filteredItems = [...items];
-
-    // Apply filters if provided
-    if (filters) {
-        filteredItems = filteredItems.filter(item => shouldIncludeItem(item, filters, itemFiledGetter));
-    }
-
-    // Apply sorting if provided
-    if (sorter) {
-        const compareFn = getCompareFn<T>(sorter, itemFiledGetter);
-        filteredItems.sort(compareFn);
-    }
-
-    // Apply limit if provided
-    if (limit && limit > 0) {
-        filteredItems = filteredItems.slice(0, limit);
-    }
-
-    return filteredItems;
+    let result = filters ? items.filter(item => shouldIncludeItem(item, filters, itemFiledGetter)) : [...items];
+    if (sorter) result.sort(getCompareFn<T>(sorter, itemFiledGetter));
+    if (limit && limit > 0) result = result.slice(0, limit);
+    return result;
 }
 
 function shouldIncludeItem<T>(item: T, filters?: any, itemFiledGetter?: ItemFiledGetter<T>): boolean {
     const path = itemFiledGetter?.(item).getPath?.();
 
-    // Type filter
     if (filters.type && filters.type !== 'all' && path !== undefined) {
-        const itemType = getFileTypeByPath(path);
-
-        if (filters.type === 'note' && itemType !== 'note') return false;
-        if (filters.type === 'file' && itemType !== 'file') return false;
-        if (filters.type === 'folder' && itemType !== 'folder') return false;
+        if (getFileTypeByPath(path) !== filters.type) return false;
     }
 
-    // Path filter (regex or prefix)
     if (filters.path && path !== undefined) {
         try {
             if (filters.path.startsWith('/')) {
                 if (!path.startsWith(filters.path)) return false;
             } else {
-                const pathPattern = getCachedRegex(filters.path.slice(1));
-                if (!pathPattern.test(path)) return false;
+                if (!getCachedRegex(filters.path.slice(1)).test(path)) return false;
             }
-        } catch (e: any) {
-            console.warn('[shouldIncludeItem] Invalid regex:', e);
-            // Invalid regex, treat as literal string
+        } catch {
             if (!path.startsWith(filters.path)) return false;
         }
     }
 
-    const itemModified = itemFiledGetter?.(item).getModified?.();
-    const itemCreated = itemFiledGetter?.(item).getCreated?.();
-
-    // Time-based filters
-    // timeToFilter: date. timeFilterTargetTime: str
-    const { timeToFilter, timeFilterTarget } = filters.modified_within
-        ? { timeToFilter: itemModified, timeFilterTarget: filters.modified_within }
-        : filters.created_within
-            ? { timeToFilter: itemCreated, timeFilterTarget: filters.created_within }
-            : { timeToFilter: undefined, timeFilterTarget: undefined };
+    const g = itemFiledGetter?.(item);
+    const timeToFilter = filters.modified_within ? g?.getModified?.() : filters.created_within ? g?.getCreated?.() : undefined;
+    const timeFilterTarget = filters.modified_within || filters.created_within;
     if (timeToFilter && timeFilterTarget) {
-        const timeToFilterTime = timeToFilter as Date;
-        const timeFilterTargetTime = parseSemanticDateRange(timeFilterTarget);
-        if (timeToFilterTime.getTime() < timeFilterTargetTime.getTime()) return false;
+        if ((timeToFilter as Date).getTime() < parseSemanticDateRange(timeFilterTarget).getTime()) return false;
     }
 
-    const g = itemFiledGetter?.(item);
-    const tagCategoryBooleanExpression = getCachedBooleanExpression(filters?.tag_category_boolean_expression);
-    if (tagCategoryBooleanExpression) {
-        const hasSplit =
-            typeof g?.getTopicTags === 'function' ||
-            typeof g?.getKeywordTags === 'function' ||
-            typeof g?.getFunctionalTags === 'function';
+    const tagExpr = getCachedBooleanExpression(filters?.tag_category_boolean_expression);
+    if (tagExpr) {
+        const hasSplit = typeof g?.getTopicTags === 'function' || typeof g?.getKeywordTags === 'function' || typeof g?.getFunctionalTags === 'function';
         const topicTags = hasSplit ? (g?.getTopicTags?.() ?? []) : (g?.getTags?.() ?? []);
         const keywordTags = hasSplit ? (g?.getKeywordTags?.() ?? []) : [];
         const functionalTagEntries: FunctionalTagEntry[] =
-            g?.getFunctionalTagEntries?.() ??
-            (g?.getFunctionalTags?.() ?? []).map((id) => ({ id: id as FunctionalTagId }));
-        return tagCategoryBooleanExpression.rootEvaluate({
-            topicTags,
-            functionalTagEntries,
-            keywordTags,
-            tags: topicTags,
+            g?.getFunctionalTagEntries?.() ?? (g?.getFunctionalTags?.() ?? []).map((id) => ({ id: id as FunctionalTagId }));
+        return tagExpr.rootEvaluate({
+            topicTags, functionalTagEntries, keywordTags, tags: topicTags,
             category: functionalTagEntries[0]?.id ?? g?.getCategory?.(),
         });
     }

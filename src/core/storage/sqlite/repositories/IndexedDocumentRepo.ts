@@ -123,47 +123,6 @@ export class IndexedDocumentRepo {
 		return JSON.stringify(next);
 	}
 
-	/**
-	 * Merges index-time extras (tiered summaries) into the document row without dropping other attrs.
-	 */
-	async mergeIndexedSummaryFields(
-		docId: string,
-		patch: {
-			summary?: string | null;
-			full_summary?: string | null;
-			hub_tier?: string | null;
-			summary_generated_at?: number | null;
-			heading_skeleton?: string | null;
-		},
-	): Promise<void> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.selectAll()
-			.where('node_id', '=', docId)
-			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
-			.executeTakeFirst();
-		if (!row) return;
-
-		const attrs = this.buildDocumentAttributesJson({
-			existingJson: row.attributes_json,
-			full_summary: patch.full_summary,
-			hub_tier: patch.hub_tier,
-			summary_generated_at: patch.summary_generated_at,
-			heading_skeleton: patch.heading_skeleton,
-		});
-
-		await this.db
-			.updateTable('mobius_node')
-			.set({
-				summary: patch.summary !== undefined ? patch.summary : row.summary,
-				attributes_json: attrs,
-				updated_at: Date.now(),
-			})
-			.where('node_id', '=', docId)
-			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
-			.execute();
-	}
-
 	/** Build {@link IndexedDocumentRecord} from a document `mobius_node` row. */
 	private rowToIndexedDocument(row: DbSchema['mobius_node']): IndexedDocumentRecord | null {
 		if (!isIndexedNoteNodeType(row.type) || !row.path) return null;
@@ -322,15 +281,6 @@ export class IndexedDocumentRepo {
 			.where('node_id', '=', id)
 			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
 			.execute();
-	}
-
-	async updateByPath(
-		path: string,
-		updates: Partial<Omit<IndexedDocumentRecord, 'id' | 'path' | 'created_at'>>,
-	): Promise<void> {
-		const row = await this.docNodeQuery().select('node_id').where('path', '=', path).executeTakeFirst();
-		if (!row) return;
-		await this.updateById(row.node_id, updates);
 	}
 
 	async upsert(doc: Partial<IndexedDocumentRecord> & { path: string; mobiusGraphNodeType?: GraphNodeType }): Promise<void> {
@@ -506,17 +456,6 @@ export class IndexedDocumentRepo {
 		return Number(row?.cnt ?? 0);
 	}
 
-	async countByFolderPath(folderPath: string): Promise<number> {
-		if (folderPath === '') return 0;
-		const row = await this.docNodeQuery()
-			.select(({ fn }) => fn.count<number>('node_id').as('cnt'))
-			.where((eb) =>
-				eb.or([eb('path', 'like', `${folderPath}/%`), eb('path', '=', folderPath)]),
-			)
-			.executeTakeFirst();
-		return Number(row?.cnt ?? 0);
-	}
-
 	async getIdsByPathPrefixes(prefixes: string[]): Promise<{ id: string; path: string }[]> {
 		if (!prefixes.length) return [];
 		const rows = await this.docNodeQuery()
@@ -544,11 +483,6 @@ export class IndexedDocumentRepo {
 			.where('node_id', 'in', ids)
 			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
 			.execute();
-		return rows.map((r) => this.rowToIndexedDocument(r)).filter((m): m is IndexedDocumentRecord => m != null);
-	}
-
-	async getByContentHash(contentHash: string): Promise<IndexedDocumentRecord[]> {
-		const rows = await this.docNodeQuery().selectAll().where('content_hash', '=', contentHash).execute();
 		return rows.map((r) => this.rowToIndexedDocument(r)).filter((m): m is IndexedDocumentRecord => m != null);
 	}
 
