@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { cn } from '@/ui/react/lib/utils';
 import { modelRegistry } from '@/core/providers/model-registry';
 import type { ProfileKind } from '@/core/profiles/types';
-import type { ModelMetaData } from '@/core/providers/types';
+import type { ModelCapabilities } from '@/core/providers/types';
 import { CapTags, highlightMatch } from './model-display-utils';
 import { ChevronDown } from 'lucide-react';
 
