@@ -624,14 +624,6 @@ ${sourcesList}${topicsList}
 
 
 	/**
-	 * Search for external prompts by query string.
-	 * Stub: always returns an empty array. AI-powered prompt search is not yet implemented.
-	 */
-	async searchPrompts(query: string): Promise<Array<{ id: string; label: string; description: string; value: string; icon: string; showArrow: boolean }>> {
-		return [];
-	}
-
-	/**
 	 * Get all available models from all configured providers.
 	 * Uses the static model catalog (no runtime API calls).
 	 * Only returns models from enabled providers and enabled models.

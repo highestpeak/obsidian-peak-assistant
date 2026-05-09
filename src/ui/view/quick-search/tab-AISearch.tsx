@@ -3,7 +3,6 @@ import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
 import { V2ContinueAnalysisInput } from './components/V2ContinueAnalysisInput';
 import { useSharedStore, useGraphQueuePump } from './store';
 import {
-	useAIAnalysisTopicsStore,
 	useAIAnalysisInteractionsStore,
 } from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
@@ -44,14 +43,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const analysisCompleted = sessionStatus === 'completed';
 
 	// --- Topic/interaction stores (for modals) ---
-	const topicAnalyzeResults = useAIAnalysisTopicsStore((s) => s.topicAnalyzeResults);
-	const topicInspectResults = useAIAnalysisTopicsStore((s) => s.topicInspectResults);
-	const topicGraphResults = useAIAnalysisTopicsStore((s) => s.topicGraphResults);
-	const topicModalOpen = useAIAnalysisTopicsStore((s) => s.topicModalOpen);
-	const setTopicModalOpen = useAIAnalysisTopicsStore((s) => s.setTopicModalOpen);
-	const topicAnalyzeStreaming = useAIAnalysisTopicsStore((s) => s.topicAnalyzeStreaming);
-	const topicGraphLoading = useAIAnalysisTopicsStore((s) => s.topicGraphLoading);
-	const topicInspectLoading = useAIAnalysisTopicsStore((s) => s.topicInspectLoading);
 
 	const contextChatModal = useAIAnalysisInteractionsStore((s) => s.contextChatModal);
 	const setContextChatModal = useAIAnalysisInteractionsStore((s) => s.setContextChatModal);
@@ -62,7 +53,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	});
 
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
-	const [copied, setCopied] = useState(false);
 	const [showV2ContinueInput, setShowV2ContinueInput] = useState(false);
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 
@@ -129,7 +119,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 	// process analysis result ========================================================
 
-	const { handleOpenInChat, handleCopyAll, handleAutoSave } = useAIAnalysisResult();
+	const { handleOpenInChat, handleAutoSave } = useAIAnalysisResult();
 
 	// NOTE: Full-save at completion is handled by useSearchSession.ts (milestone-based persistence).
 	// No React effect needed — persistence fires directly after markCompleted().
@@ -227,7 +217,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 			{/* Footer */}
 			{(isAnalyzing || analysisCompleted) ? (
-				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onSaveGraph={handleSaveGraph} onOpenInChat={() => handleOpenInChat(onClose)} />
+				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onSave={() => setShowSaveDialog(true)} onSaveGraph={handleSaveGraph} onOpenInChat={() => handleOpenInChat(onClose)} />
 			) : null}
 
 			{/* V2 floating continue analysis input */}
@@ -255,23 +245,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 					isGraphLoading={false}
 					graph={null}
 					onClose={() => setContextChatModal(null)}
-				/>
-			)}
-			{/* Topic expansion modal */}
-			{topicModalOpen != null && (
-				<SectionExtraChatModal
-					title={`Topic: ${topicModalOpen}`}
-					streaming={
-						topicAnalyzeStreaming?.topic === topicModalOpen
-							? { question: topicAnalyzeStreaming.question, answerSoFar: topicAnalyzeStreaming.text }
-							: null
-					}
-					analyzeResults={topicAnalyzeResults?.[topicModalOpen] ?? []}
-					isInspectLoading={topicInspectLoading === topicModalOpen}
-					inspectItems={topicInspectResults?.[topicModalOpen] ?? []}
-					isGraphLoading={topicGraphLoading === topicModalOpen}
-					graph={topicGraphResults?.[topicModalOpen] ?? null}
-					onClose={() => setTopicModalOpen(null)}
 				/>
 			)}
 		</div>

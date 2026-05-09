@@ -31,7 +31,6 @@ export interface NavigableMenuProps {
 	emptyMessage?: string;
 	loadingMessage?: string;
 	isLoading?: boolean; // Whether the menu is in loading state
-	containerRef?: React.RefObject<HTMLElement>; // Reference to container element for position calculation
 }
 
 /**
@@ -46,7 +45,6 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 	emptyMessage = 'No items found',
 	loadingMessage = 'Loading...',
 	isLoading = false,
-	containerRef,
 }) => {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const menuRef = useRef<HTMLDivElement>(null);
@@ -125,9 +123,6 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 		const POPOVER_HEIGHT = 200; // Approximate max height
 		const MARGIN = 8;
 
-		// Get container bounds for relative positioning (if provided)
-		const containerRect = containerRef?.current?.getBoundingClientRect();
-
 		// Get menu container bounds for relative positioning
 		const menuRect = menuRef.current?.getBoundingClientRect();
 		if (!menuRect) return null;
@@ -175,11 +170,6 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 			top = selectedItemRect.bottom;
 			positioning = 'viewport';
 		}
-
-		// Adjust left position relative to container if containerRef is provided
-		// if (containerRect) {
-		// 	left -= containerRect.left;
-		// }
 
 		// Clamp top so popover stays within viewport
 		const viewportHeight = window.innerHeight;

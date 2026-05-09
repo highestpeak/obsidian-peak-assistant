@@ -43,12 +43,10 @@ export const V2Footer: React.FC<{
 	onContinue: () => void;
 	onSynthesize: () => void;
 	showContinueAnalysis: boolean;
-	onCopy: () => void;
-	copied: boolean;
 	onSave: () => void;
 	onSaveGraph?: () => void;
 	onOpenInChat: () => void;
-}> = ({ onContinue, onSynthesize, showContinueAnalysis, onCopy: _legacyOnCopy, copied: _legacyCopied, onSave, onSaveGraph, onOpenInChat }) => {
+}> = ({ onContinue, onSynthesize, showContinueAnalysis, onSave, onSaveGraph, onOpenInChat }) => {
 	const v2View = useSearchSessionStore((s) => s.v2View);
 	const usage = useSearchSessionStore((s) => s.usage);
 	const duration = useSearchSessionStore((s) => s.duration);
