@@ -2,9 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
 import { V2ContinueAnalysisInput } from './components/V2ContinueAnalysisInput';
 import { useSharedStore, useGraphQueuePump } from './store';
-import {
-	useAIAnalysisInteractionsStore,
-} from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
 import { useSearchSession } from './hooks/useSearchSession';
 import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
@@ -12,7 +9,6 @@ import { useAIAnalysisResult } from './hooks/useAIAnalysisResult';
 import { AppContext } from '@/app/context/AppContext';
 import { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
 import { SearchResultView } from './components/SearchResultView';
-import { SectionExtraChatModal } from './components/ai-analysis-modal/SectionExtraChatModal';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { V2Footer } from './components/V2Footer';
 import { useAIGraphStore } from './store/aiGraphStore';
@@ -41,11 +37,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const triggerAnalysis = useSearchSessionStore((s) => s.triggerAnalysis);
 	const isAnalyzing = sessionStatus === 'starting' || sessionStatus === 'streaming';
 	const analysisCompleted = sessionStatus === 'completed';
-
-	// --- Topic/interaction stores (for modals) ---
-
-	const contextChatModal = useAIAnalysisInteractionsStore((s) => s.contextChatModal);
-	const setContextChatModal = useAIAnalysisInteractionsStore((s) => s.setContextChatModal);
 
 	const titleDisplay = useTypewriterEffect({
 		text: titleFromStore ?? '',
@@ -228,24 +219,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 			{/* Save dialog */}
 			{showSaveDialog && (
 				<SaveDialog onClose={() => setShowSaveDialog(false)} />
-			)}
-			{/* Context follow-up modal (Graph/Blocks/Sources) – same TopicModal with converted messages */}
-			{contextChatModal != null && (
-				<SectionExtraChatModal
-					title={contextChatModal.title}
-					streaming={
-						contextChatModal.streamingQuestion && contextChatModal.streamingText
-							? { question: contextChatModal.streamingQuestion, answerSoFar: contextChatModal.streamingText }
-							: null
-					}
-					activeQuestion={contextChatModal.activeQuestion}
-					analyzeResults={contextChatModal.messages}
-					isInspectLoading={false}
-					inspectItems={[]}
-					isGraphLoading={false}
-					graph={null}
-					onClose={() => setContextChatModal(null)}
-				/>
 			)}
 		</div>
 	);

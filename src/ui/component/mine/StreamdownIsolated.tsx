@@ -59,6 +59,26 @@ function getWikilinkHref(el: HTMLElement): string | null {
 	return href && parseWikilinkHrefToPath(href) !== null ? href : null;
 }
 
+/** Find the link element from a composed event path. */
+function findLinkInPath(composedPath: EventTarget[]): HTMLElement | undefined {
+	return composedPath.find((n): n is HTMLElement => {
+		if (!(n instanceof HTMLElement)) return false;
+		return n.tagName === 'A' || n.getAttribute?.('data-streamdown') === 'link';
+	});
+}
+
+/** Handle wikilink click: extract path from link element, navigate if wikilink. Returns true if handled. */
+function handleWikilinkClick(linkEl: HTMLElement, e: { preventDefault: () => void; stopPropagation: () => void }): boolean {
+	const href = getWikilinkHref(linkEl);
+	if (!href) return false;
+	const wikilinkPath = extractWikilinkPath(href);
+	if (!wikilinkPath) return false;
+	e.preventDefault();
+	e.stopPropagation();
+	openWikilinkPath(wikilinkPath);
+	return true;
+}
+
 /** Observe shadow DOM and inject part on mermaid blocks when they appear (initial + streaming). */
 function setupMermaidPartInjection(shadowRoot: ShadowRoot): () => void {
 	injectMermaidPart(shadowRoot);
@@ -109,27 +129,9 @@ function FallbackStreamdown({
 }: StreamdownIsolatedProps) {
 	const handleClickCapture = React.useCallback(
 		(evt: React.MouseEvent<HTMLDivElement>) => {
-			// Built-in wikilink handling for fallback Light DOM mode.
 			const composedPath = evt.nativeEvent.composedPath?.() ?? [];
-			const linkEl = composedPath.find((n): n is HTMLElement => {
-				if (!(n instanceof HTMLElement)) return false;
-				return n.tagName === 'A' || n.getAttribute?.('data-streamdown') === 'link';
-			});
-			if (linkEl) {
-				let href = linkEl.getAttribute?.('href') ?? linkEl.getAttribute?.('data-href') ?? '';
-				if (!href && linkEl.getAttribute?.('data-streamdown') === 'link') {
-					const text = (linkEl.textContent ?? '').trim();
-					const match = text.match(/^\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
-					if (match) href = `#peak-wikilink=${encodeURIComponent(match[1].trim())}`;
-				}
-				const wikilinkPath = extractWikilinkPath(href);
-				if (wikilinkPath) {
-					evt.preventDefault();
-					evt.stopPropagation();
-					openWikilinkPath(wikilinkPath);
-					return;
-				}
-			}
+			const linkEl = findLinkInPath(composedPath);
+			if (linkEl && handleWikilinkClick(linkEl, evt)) return;
 			onClick?.(evt);
 		},
 		[onClick]
@@ -250,27 +252,9 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 			};
 			// Capture-phase listener on shadow root so we see clicks before Streamdown's button handler.
 			const clickHandler = (e: MouseEvent) => {
-				// Built-in wikilink handling: find the clicked <a> or data-streamdown="link" element.
 				const composedPath = e.composedPath?.() ?? [];
-				const linkEl = composedPath.find((n): n is HTMLElement => {
-					if (!(n instanceof HTMLElement)) return false;
-					return n.tagName === 'A' || n.getAttribute?.('data-streamdown') === 'link';
-				});
-				if (linkEl) {
-					let href = linkEl.getAttribute?.('href') ?? linkEl.getAttribute?.('data-href') ?? '';
-					if (!href && linkEl.getAttribute?.('data-streamdown') === 'link') {
-						const text = (linkEl.textContent ?? '').trim();
-						const match = text.match(/^\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
-						if (match) href = `#peak-wikilink=${encodeURIComponent(match[1].trim())}`;
-					}
-					const wikilinkPath = extractWikilinkPath(href);
-					if (wikilinkPath) {
-						e.preventDefault();
-						e.stopPropagation();
-						openWikilinkPath(wikilinkPath);
-						return;
-					}
-				}
+				const linkEl = findLinkInPath(composedPath);
+				if (linkEl && handleWikilinkClick(linkEl, e)) return;
 				// Delegate to optional onClick prop passed by caller.
 				const cb = onClickRef.current;
 				if (!cb || !host) return;
@@ -287,12 +271,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 
 			const app = AppContext.getInstance().app;
 			const mouseoverHandler = (e: MouseEvent) => {
-				const path = e.composedPath?.() ?? [];
-				const link = path.find(
-					(n): n is HTMLElement =>
-						n instanceof HTMLElement &&
-						(n.tagName === 'A' || n.getAttribute?.('data-streamdown') === 'link')
-				);
+				const link = findLinkInPath(e.composedPath?.() ?? []);
 				if (!link) return;
 				const href = getWikilinkHref(link);
 				if (!href) return;
@@ -300,19 +279,15 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 				if (!raw || raw.startsWith('#')) return;
 				const resolved = resolveWikilinkTargetToPath(raw, app);
 				if (!resolved) return;
-				const rect = link.getBoundingClientRect();
 				if (hoverDebounceRef.current) clearTimeout(hoverDebounceRef.current);
 				if (closeDelayRef.current) clearTimeout(closeDelayRef.current);
 				closeDelayRef.current = null;
 				hoverDebounceRef.current = setTimeout(() => {
-					setHoverStateRef.current?.({ path: resolved, rect, preview: null, loading: true });
+					setHoverStateRef.current?.({ path: resolved, rect: link.getBoundingClientRect(), preview: null, loading: true });
 				}, HOVER_DEBOUNCE_MS);
 			};
 			const mouseoutHandler = () => {
-				if (hoverDebounceRef.current) {
-					clearTimeout(hoverDebounceRef.current);
-					hoverDebounceRef.current = null;
-				}
+				if (hoverDebounceRef.current) { clearTimeout(hoverDebounceRef.current); hoverDebounceRef.current = null; }
 				if (closeDelayRef.current) clearTimeout(closeDelayRef.current);
 				closeDelayRef.current = setTimeout(() => setHoverStateRef.current?.(null), HOVER_CLOSE_DELAY_MS);
 			};

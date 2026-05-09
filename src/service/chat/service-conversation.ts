@@ -79,17 +79,10 @@ export class ConversationService {
 		this.contextPipeline = pipeline;
 	}
 
-	/**
-	 * List conversations, optionally filtered by project.
-	 * Supports pagination with limit and offset.
-	 */
 	async listConversations(projectId: string | null, limit?: number, offset?: number): Promise<ChatConversation[]> {
 		return this.storage.listConversations(projectId, limit, offset);
 	}
 
-	/**
-	 * Count conversations, optionally filtered by project.
-	 */
 	async countConversations(projectId: string | null): Promise<number> {
 		return this.storage.countConversations(projectId);
 	}
@@ -98,9 +91,6 @@ export class ConversationService {
 		return this.storage.deleteConversation(conversationId);
 	}
 
-	/**
-	 * Create a new conversation with optional seed messages.
-	 */
 	async createConversation(params: {
 		title: string;
 		project?: ChatProjectMeta | null;
@@ -140,13 +130,6 @@ export class ConversationService {
 		return conversation;
 	}
 
-	/**
-	 * Upload files and create resource references.
-	 * Uploads files to vault and creates resourceRef for each file.
-	 * 
-	 * @param files Files to upload
-	 * @returns Array of resource references
-	 */
 	async uploadFilesAndCreateResources(files: File[]): Promise<ChatResourceRef[]> {
 		if (!files || files.length === 0) {
 			return [];
@@ -174,9 +157,6 @@ export class ConversationService {
 		return resources;
 	}
 
-	/**
-	 * Send a message and stream incremental model output.
-	 */
 	streamChat(params: {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
@@ -245,9 +225,6 @@ export class ConversationService {
 		})();
 	}
 
-	/**
-	 * Prepare chat request: create user message, process attachments, build LLM messages
-	 */
 	private async *prepareChatRequest(params: {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
@@ -335,10 +312,6 @@ export class ConversationService {
 		};
 	}
 
-	/**
-	 * Update conversation context only (summary), keeping messages unchanged.
-	 * Uses optimistic locking by checking updatedAtTimestamp.
-	 */
 	async updateConversationContext(params: {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
@@ -360,79 +333,42 @@ export class ConversationService {
 		);
 	}
 
-	/**
-	 * Update conversation's active model.
-	 */
 	async updateConversationModel(params: {
 		conversationId: string;
 		modelId: string;
 		provider: string;
 	}): Promise<void> {
-		const { conversationId, modelId, provider } = params;
-
-		// Save updated meta
-		await this.storage.upsertConversationMeta(
-			conversationId,
-			{
-				activeModel: modelId,
-				activeProvider: provider,
-				updatedAtTimestamp: Date.now(),
-			}
-		);
+		await this.storage.upsertConversationMeta(params.conversationId, {
+			activeModel: params.modelId,
+			activeProvider: params.provider,
+			updatedAtTimestamp: Date.now(),
+		});
 	}
 
-	/**
-	 * Update conversation's output control override settings.
-	 */
 	async updateConversationOutputControl(params: {
 		conversationId: string;
 		outputControlOverride?: LLMOutputControlSettings;
 	}): Promise<void> {
-		const { conversationId, outputControlOverride } = params;
-
-		// Save updated meta
-		await this.storage.upsertConversationMeta(
-			conversationId,
-			{
-				outputControlOverride: outputControlOverride && Object.keys(outputControlOverride).length > 0 ? outputControlOverride : undefined,
-				updatedAtTimestamp: Date.now(),
-			}
-		);
+		await this.storage.upsertConversationMeta(params.conversationId, {
+			outputControlOverride: params.outputControlOverride && Object.keys(params.outputControlOverride).length > 0 ? params.outputControlOverride : undefined,
+			updatedAtTimestamp: Date.now(),
+		});
 	}
 
-	/**
-	 * Update conversation's attachment handling mode override.
-	 */
 	async updateConversationAttachmentHandling(params: {
 		conversationId: string;
 		attachmentHandlingOverride?: 'direct' | 'degrade_to_text';
 	}): Promise<void> {
-		const { conversationId, attachmentHandlingOverride } = params;
-
-		// Save updated meta
-		await this.storage.upsertConversationMeta(
-			conversationId,
-			{
-				attachmentHandlingOverride: attachmentHandlingOverride,
-				updatedAtTimestamp: Date.now(),
-			}
-		);
-
-		// Trigger conversation updated event
-		const updatedConversation = await this.storage.readConversation(conversationId, false);
+		await this.storage.upsertConversationMeta(params.conversationId, {
+			attachmentHandlingOverride: params.attachmentHandlingOverride,
+			updatedAtTimestamp: Date.now(),
+		});
+		const updatedConversation = await this.storage.readConversation(params.conversationId, false);
 		if (updatedConversation) {
-			const eventBus = EventBus.getInstance(this.app);
-			eventBus.dispatch(new ConversationUpdatedEvent({
-				conversation: updatedConversation,
-			}));
+			EventBus.getInstance(this.app).dispatch(new ConversationUpdatedEvent({ conversation: updatedConversation }));
 		}
 	}
 
-	/**
-	 * Update conversation title by renaming the file.
-	 * @param params.titleManuallyEdited - If true, marks the title as manually edited (default: true)
-	 * @param params.titleAutoUpdated - If true, marks the title as auto-updated (default: false)
-	 */
 	async updateConversationTitle(params: {
 		conversationId: string;
 		title: string;
@@ -440,33 +376,16 @@ export class ConversationService {
 		titleAutoUpdated?: boolean;
 	}): Promise<void> {
 		const { conversationId, title, titleManuallyEdited = true, titleAutoUpdated = false } = params;
-
-		// Rename file and get new relative path
 		const newFileRelPath = await this.storage.renameConversationFile(conversationId, title);
-
-		// Save updated meta (file path is updated in sqlite)
 		await this.storage.upsertConversationMeta(conversationId, {
-			id: conversationId,
-			title,
-			titleManuallyEdited,
-			titleAutoUpdated,
-			fileRelPath: newFileRelPath,
+			id: conversationId, title, titleManuallyEdited, titleAutoUpdated, fileRelPath: newFileRelPath,
 		});
-
-		// Trigger conversation updated event
 		const updatedConversation = await this.storage.readConversation(conversationId, false);
 		if (updatedConversation) {
-			const eventBus = EventBus.getInstance(this.app);
-			eventBus.dispatch(new ConversationUpdatedEvent({
-				conversation: updatedConversation,
-			}));
+			EventBus.getInstance(this.app).dispatch(new ConversationUpdatedEvent({ conversation: updatedConversation }));
 		}
 	}
 
-	/**
-	 * Toggle star status on a message.
-	 * When starring, generates and saves content preview and attachment summary.
-	 */
 	async toggleStar(params: {
 		messageId: string;
 		conversationId: string;
@@ -494,16 +413,10 @@ export class ConversationService {
 		await this.storage.updateMessageStarred(messageId, starred, contentPreview, attachmentSummary);
 	}
 
-	/**
-	 * Load starred message records.
-	 */
 	async loadStarred(): Promise<StarredMessageRecord[]> {
 		return this.storage.listStarred();
 	}
 
-	/**
-	 * List starred messages for a project.
-	 */
 	async listStarredMessagesByProject(projectId: string): Promise<{
 		messages: ChatMessage[];
 		messageToConversationId: Map<string, string>;
@@ -511,9 +424,6 @@ export class ConversationService {
 		return this.storage.listStarredMessagesByProject(projectId);
 	}
 
-	/**
-	 * Add a message to conversation and save it.
-	 */
 	async addMessage(params: {
 		conversationId: string;
 		message: ChatMessage;
@@ -523,11 +433,7 @@ export class ConversationService {
 	}): Promise<void> {
 		const { conversationId, message, model, provider, usage } = params;
 
-		// Save message to storage (low-level operation: updates DB and file)
 		await this.storage.saveNewMessage(conversationId, message);
-
-		// Update conversation meta only (model, provider, token usage, updated timestamp)
-		// This is a lightweight operation that doesn't rebuild context
 		const updatedMeta = await this.storage.upsertConversationMeta(conversationId, {
 			activeModel: model,
 			activeProvider: provider,

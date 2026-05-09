@@ -13,7 +13,7 @@ import {
 	extractCalloutBlock,
 	parseCalloutListItems,
 } from '@/core/storage/vault/framework/MarkdownDocEngine';
-import type { AISearchGraph, AISearchTopic, AISearchSource, DashboardBlock, EvidenceIndex } from '@/service/agents/shared-types';
+import type { AISearchTopic, AISearchSource, DashboardBlock, EvidenceIndex } from '@/service/agents/shared-types';
 import { getMermaidInner } from '@/core/utils/mermaid-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { SearchResultItem } from '@/service/search/types';

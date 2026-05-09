@@ -313,7 +313,7 @@ export const MessageHistoryViewComponent: React.FC = () => {
 		if (!activeConversation || !manager) return;
 		
 		try {
-			await manager.toggleStar({
+			await manager.conv.toggleStar({
 				messageId,
 				conversationId: activeConversation.meta.id,
 				starred,

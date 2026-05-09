@@ -145,56 +145,29 @@ function buildTagGlobalStats(
 	const tagRootSets = new Map<string, Set<string>>();
 	const allRoots = new Set<string>();
 
+	const getOrCreate = <V>(m: Map<string, Set<V>>, k: string) => { let s = m.get(k); if (!s) { s = new Set(); m.set(k, s); } return s; };
+
 	for (const f of folders) {
-		const root = firstVaultPathSegment(f.folderPath);
-		allRoots.add(root || '_');
-
-		const seenInFolder = new Set<string>();
-		const bump = (tag: string) => {
-			if (!tag || seenInFolder.has(tag)) return;
-			seenInFolder.add(tag);
-			let fs = tagFolderSets.get(tag);
-			if (!fs) {
-				fs = new Set();
-				tagFolderSets.set(tag, fs);
+		const root = firstVaultPathSegment(f.folderPath) || '_';
+		allRoots.add(root);
+		const seen = new Set<string>();
+		for (const counts of [f.topicTagCounts, f.keywordTagCounts, f.functionalTagCounts]) {
+			for (const [tag, c] of counts) {
+				if (c > 0 && tag && !seen.has(tag)) {
+					seen.add(tag);
+					getOrCreate(tagFolderSets, tag).add(f.folderPath);
+					getOrCreate(tagRootSets, tag).add(root);
+				}
 			}
-			fs.add(f.folderPath);
-			let rs = tagRootSets.get(tag);
-			if (!rs) {
-				rs = new Set();
-				tagRootSets.set(tag, rs);
-			}
-			rs.add(root || '_');
-		};
-
-		for (const t of f.topicTagCounts.keys()) {
-			if ((f.topicTagCounts.get(t) ?? 0) > 0) bump(t);
-		}
-		for (const t of f.keywordTagCounts.keys()) {
-			if ((f.keywordTagCounts.get(t) ?? 0) > 0) bump(t);
-		}
-		for (const t of f.functionalTagCounts.keys()) {
-			if ((f.functionalTagCounts.get(t) ?? 0) > 0) bump(t);
 		}
 	}
 
-	const N = folders.length;
-	const R = Math.max(1, allRoots.size);
 	const tagFolderDf = new Map<string, number>();
 	const tagRootDf = new Map<string, number>();
-	for (const [tag, set] of tagFolderSets) {
-		tagFolderDf.set(tag, set.size);
-	}
-	for (const [tag, set] of tagRootSets) {
-		tagRootDf.set(tag, set.size);
-	}
+	for (const [tag, set] of tagFolderSets) tagFolderDf.set(tag, set.size);
+	for (const [tag, set] of tagRootSets) tagRootDf.set(tag, set.size);
 
-	return {
-		folderCount: N,
-		rootBucketCount: R,
-		tagFolderDf,
-		tagRootDf,
-	};
+	return { folderCount: folders.length, rootBucketCount: Math.max(1, allRoots.size), tagFolderDf, tagRootDf };
 }
 
 function scoreTag(tf: number, tag: string, category: TagRankCategory, stats: TagGlobalStats): number {
@@ -525,63 +498,40 @@ async function loadBackboneFolderNodes(
 	const out: BackboneFolderNode[] = [];
 
 	for (let i = 0; i < rawRows.length; i++) {
-		const raw = rawRows[i]!;
-		const row = raw.row;
-		const np = raw.np;
-		const maps = raw.maps;
-		const docCount = maps.length;
-		const topicPurity = topicPurityFromCounts(raw.topicTagCounts);
-		const topTopics = rankMapByScore(raw.topicTagCounts, 'topic', tagGlobalStats, TOP_TOPIC);
-		const mergedKw = mergeKwFunctionalCounts(raw.keywordTagCounts, raw.functionalTagCounts);
+		const { row, np, maps, topicTagCounts, keywordTagCounts, functionalTagCounts, deg } = rawRows[i]!;
+		const topTopics = rankMapByScore(topicTagCounts, 'topic', tagGlobalStats, TOP_TOPIC);
+		const mergedKw = mergeKwFunctionalCounts(keywordTagCounts, functionalTagCounts);
 		const topKeywords = rankMapByScore(mergedKw, 'keyword', tagGlobalStats, TOP_KEYWORD);
-		const weighted = formatTopWeightedTopics(pickCounts(raw.topicTagCounts, topTopics), pickCounts(mergedKw, topKeywords), 3);
-		const topTopicsWeighted = weighted || '';
-
 		const directFileMaps = maps.filter((m) => isDirectDocInFolder(m.path, row.path));
-		const directDocCount = directFileMaps.length;
 		const fileBasenames = directFileMaps.map((m) => basenameFromPath(m.path));
-		const fileNameTokenSample =
-			fileBasenames.length > 0 ? topTokensFromBasenames(fileBasenames, NAME_TOKEN_TOP) : [];
-
 		let subfolderNameTokenSample: string[] = [];
 		if (row.childFolderCount > 0) {
 			const af = vault.getAbstractFileByPath(row.path);
 			if (af instanceof TFolder) {
-				const childNames = visibleChildFolders(af, excludedPathPrefixes).map((f) => basenameFromPath(f.path));
-				subfolderNameTokenSample = topTokensFromBasenames(childNames, NAME_TOKEN_TOP);
+				subfolderNameTokenSample = topTokensFromBasenames(
+					visibleChildFolders(af, excludedPathPrefixes).map((f) => basenameFromPath(f.path)), NAME_TOKEN_TOP);
 			}
 		}
-
 		const st = subtreeStatsMap.get(np);
-		const subtreeMaxDepth = st?.subtreeMaxDepth ?? row.depth;
-		const subtreeAvgDepth = st?.subtreeAvgDepth ?? row.depth;
-
-		const id = `F-${String(i + 1).padStart(3, '0')}`;
-		const displayName = basenameFromPath(row.path) || row.path;
-
 		out.push({
-			id,
+			id: `F-${String(i + 1).padStart(3, '0')}`,
 			path: row.path,
-			displayName,
+			displayName: basenameFromPath(row.path) || row.path,
 			depth: row.depth,
 			childFolderCount: row.childFolderCount,
-			subtreeMaxDepth,
-			subtreeAvgDepth,
-			docCount,
-			directDocCount,
+			subtreeMaxDepth: st?.subtreeMaxDepth ?? row.depth,
+			subtreeAvgDepth: st?.subtreeAvgDepth ?? row.depth,
+			docCount: maps.length,
+			directDocCount: directFileMaps.length,
 			topKeywords,
 			topTopics,
-			topTopicsWeighted,
-			topicPurity,
-			docOutgoing: raw.deg.outgoing,
-			docIncoming: raw.deg.incoming,
-			fileNameTokenSample,
+			topTopicsWeighted: formatTopWeightedTopics(pickCounts(topicTagCounts, topTopics), pickCounts(mergedKw, topKeywords), 3),
+			topicPurity: topicPurityFromCounts(topicTagCounts),
+			docOutgoing: deg.outgoing,
+			docIncoming: deg.incoming,
+			fileNameTokenSample: fileBasenames.length > 0 ? topTokensFromBasenames(fileBasenames, NAME_TOKEN_TOP) : [],
 			subfolderNameTokenSample,
-			pageRankMass: 0,
-			semanticPageRankMass: 0,
-			cityScore: 0,
-			isCity: false,
-			description: '',
+			pageRankMass: 0, semanticPageRankMass: 0, cityScore: 0, isCity: false, description: '',
 		});
 	}
 
@@ -608,68 +558,35 @@ function isDirectDocInFolder(docPath: string, folderPath: string): boolean {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function parentFolderPath(folderPath: string): string {
-	const n = normalizeVaultPath(folderPath);
-	if (!n) return '';
-	const segs = n.split('/').filter(Boolean);
-	if (segs.length <= 1) return '';
-	return segs.slice(0, -1).join('/');
+	const segs = normalizeVaultPath(folderPath).split('/').filter(Boolean);
+	return segs.length <= 1 ? '' : segs.slice(0, -1).join('/');
 }
 
-/**
- * Finds the nearest ancestor folder that exists in the scanned folder map.
- */
-function resolveFolderNodeIdForDocPath(
-	docPath: string,
-	pathToFolderNode: Map<string, BackboneFolderNode>,
-): string | undefined {
-	let p = parentFolderOfDocPath(docPath);
-	while (true) {
-		const n = pathToFolderNode.get(p);
-		if (n) return n.id;
-		if (!p) return undefined;
-		p = parentFolderPath(p);
-	}
-}
+type SupernodeResolver = { resolve: (docPath: string) => string | undefined; label: (id: string) => string };
 
-type SupernodeResolver = {
-	resolve: (docPath: string) => string | undefined;
-	label: (supernodeId: string) => string;
-};
-
-/**
- * Builds a resolver: virtual members override folder assignment.
- */
-function buildSupernodeResolver(
-	folderNodes: BackboneFolderNode[],
-	virtualNodes: BackboneVirtualNode[],
-): SupernodeResolver {
+/** Builds a resolver: virtual members override folder assignment. */
+function buildSupernodeResolver(folderNodes: BackboneFolderNode[], virtualNodes: BackboneVirtualNode[]): SupernodeResolver {
 	const pathToFolder = new Map<string, BackboneFolderNode>();
-	for (const f of folderNodes) {
-		pathToFolder.set(normalizeVaultPath(f.path), f);
-	}
+	for (const f of folderNodes) pathToFolder.set(normalizeVaultPath(f.path), f);
 
 	const docPathToVirtualId = new Map<string, string>();
-	for (const v of virtualNodes) {
-		for (const p of v.memberDocPaths) {
-			const np = normalizeVaultPath(p);
-			if (!docPathToVirtualId.has(np)) docPathToVirtualId.set(np, v.id);
-		}
+	for (const v of virtualNodes) for (const p of v.memberDocPaths) {
+		const np = normalizeVaultPath(p);
+		if (!docPathToVirtualId.has(np)) docPathToVirtualId.set(np, v.id);
 	}
 
 	const idToLabel = new Map<string, string>();
-	for (const f of folderNodes) {
-		idToLabel.set(f.id, `${f.displayName}/`);
-	}
-	for (const v of virtualNodes) {
-		idToLabel.set(v.id, v.displayName);
-	}
+	for (const f of folderNodes) idToLabel.set(f.id, `${f.displayName}/`);
+	for (const v of virtualNodes) idToLabel.set(v.id, v.displayName);
 
 	return {
 		resolve: (docPath: string) => {
 			const np = normalizeVaultPath(docPath);
 			const vid = docPathToVirtualId.get(np);
 			if (vid) return vid;
-			return resolveFolderNodeIdForDocPath(docPath, pathToFolder);
+			let p = parentFolderOfDocPath(docPath);
+			while (p) { const n = pathToFolder.get(p); if (n) return n.id; p = parentFolderPath(p); }
+			return pathToFolder.get('')?.id;
 		},
 		label: (supernodeId: string) => idToLabel.get(supernodeId) ?? supernodeId,
 	};
@@ -794,32 +711,16 @@ function shortEdgeLabel(ref: number, sem: number): string {
 // § pagerankMass — Batch-loads PageRank scalars from `mobius_node`
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Returns pagerank / semantic_pagerank per node id (0 when missing).
- */
+/** Returns pagerank / semantic_pagerank per node id (0 when missing). */
 async function loadDocPageranks(docIds: string[]): Promise<Map<string, { pr: number; spr: number }>> {
 	const out = new Map<string, { pr: number; spr: number }>();
 	if (!docIds.length || !sqliteStoreManager.isInitialized()) return out;
-
 	const kdb = sqliteStoreManager.getIndexContext('vault');
-	const chunk = 900;
-	for (let i = 0; i < docIds.length; i += chunk) {
-		const slice = docIds.slice(i, i + chunk);
-		const rows = await kdb
-			.selectFrom('mobius_node')
-			.select(['node_id', 'pagerank', 'semantic_pagerank'])
-			.where('node_id', 'in', slice)
-			.execute();
-		for (const r of rows) {
-			const id = String(r.node_id);
-			out.set(id, {
-				pr: typeof r.pagerank === 'number' && Number.isFinite(r.pagerank) ? r.pagerank : 0,
-				spr:
-					typeof r.semantic_pagerank === 'number' && Number.isFinite(r.semantic_pagerank)
-						? r.semantic_pagerank
-						: 0,
-			});
-		}
+	const safeNum = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+	for (let i = 0; i < docIds.length; i += 900) {
+		const rows = await kdb.selectFrom('mobius_node').select(['node_id', 'pagerank', 'semantic_pagerank'])
+			.where('node_id', 'in', docIds.slice(i, i + 900)).execute();
+		for (const r of rows) out.set(String(r.node_id), { pr: safeNum(r.pagerank), spr: safeNum(r.semantic_pagerank) });
 	}
 	return out;
 }
@@ -1024,98 +925,46 @@ function buildHighwayBodyLines(edgesOrdered: BackboneEdge[]): string[] {
 	return out;
 }
 
-function purityTier(p: number): string {
-	if (p >= 0.5) return 'High';
-	if (p >= 0.28) return 'Med';
-	return 'Low';
+const sc = (s: string) => s.replace(/\|/g, ' ');
+const purTier = (p: number) => (p >= 0.5 ? 'High' : p >= 0.28 ? 'Med' : 'Low');
+
+function formatStatsGrid(direct: number, total: number, purity: number, subfolders: number, docOut: number, kwCol: string, topicCol: string): string {
+	return `<| ${direct}/${total} | ${purity.toFixed(2)} (${purTier(purity)}) | ${subfolders} | ${docOut} | ${kwCol} | ${topicCol} |>`;
 }
 
-const safeCell = (s: string) => s.replace(/\|/g, ' ');
-
-/**
- * Keywords column: child-folder name tokens (`sub:`) + direct-file keyword tags (`kw:`).
- * Topics column: direct-file topic tags only (see digestLoader).
- */
-function keywordsStatsColumn(f: BackboneFolderNode): string {
-	const kw = f.topKeywords.slice(0, 8).map(safeCell).filter(Boolean).join(', ');
-	if (f.childFolderCount > 0 && f.subfolderNameTokenSample.length > 0) {
-		const sub = f.subfolderNameTokenSample.slice(0, 8).map(safeCell).join(', ');
-		if (kw) return `sub:${sub} | kw:${kw}`;
-		return `sub:${sub}`;
+function fmtKwCol(keywords: string[], subTokens: string[], hasChildren: boolean): string {
+	const kw = keywords.slice(0, 8).map(sc).filter(Boolean).join(', ');
+	if (hasChildren && subTokens.length > 0) {
+		const sub = subTokens.slice(0, 8).map(sc).join(', ');
+		return kw ? `sub:${sub} | kw:${kw}` : `sub:${sub}`;
 	}
 	return kw || '—';
 }
 
-function topicsStatsColumn(f: BackboneFolderNode): string {
-	const t = f.topTopicsWeighted.trim() || f.topTopics.slice(0, 4).join(', ');
-	return t ? safeCell(t) : '—';
+function fmtTopicCol(weighted: string, topics: string[]): string {
+	const t = weighted.trim() || topics.slice(0, 4).join(', ');
+	return t ? sc(t) : '—';
 }
 
-function statsCell(f: BackboneFolderNode): string {
-	const dt = `${f.directDocCount}/${f.docCount}`;
-	const pur = `${f.topicPurity.toFixed(2)} (${purityTier(f.topicPurity)})`;
-	return `<| ${dt} | ${pur} | ${f.childFolderCount} | ${f.docOutgoing} | ${keywordsStatsColumn(f)} | ${topicsStatsColumn(f)} |>`;
+function nodeTreeLine(id: string, displayName: string, depth: number, bold: boolean, stats: string, endpointIds: Set<string>): string {
+	const indent = '  '.repeat(Math.max(0, depth - 1));
+	const name = displayName.endsWith('/') ? displayName.slice(0, -1) : displayName;
+	const label = bold ? `**${name}/**` : `${name}/`;
+	const hi = endpointIds.has(id) ? ' `[==>]`' : '';
+	return `${indent}${id} ${label} ${stats}${hi}`;
 }
 
-/** Same grid as {@link statsCell}: cluster vs parent's direct layer, topic purity, no subfolders, sum of members' doc-outgoing. */
-function virtualStatsCell(v: BackboneVirtualNode): string {
-	const dt = `${v.memberCount}/${v.parentDirectDocCount}`;
-	const pur = `${v.topicPurity.toFixed(2)} (${purityTier(v.topicPurity)})`;
-	const kw = v.topKeywords.slice(0, 8).map(safeCell).filter(Boolean).join(', ') || '—';
-	const topics = v.topTopicsWeighted.trim() || v.topTopics.slice(0, 4).map(safeCell).join(', ');
-	const tcol = topics ? safeCell(topics) : '—';
-	return `<| ${dt} | ${pur} | 0 | ${v.docOutgoing} | ${kw} | ${tcol} |>`;
-}
-
-function folderLine(
-	f: BackboneFolderNode,
-	endpointIds: Set<string>,
-): string {
-	const indent = '  '.repeat(Math.max(0, f.depth - 1));
-	const name = f.displayName.endsWith('/') ? f.displayName.slice(0, -1) : f.displayName;
-	const bold = f.isCity ? `**${name}/**` : `${name}/`;
-	const hi = endpointIds.has(f.id) ? ' `[==>]`' : '';
-	return `${indent}${f.id} ${bold} ${statsCell(f)}${hi}`;
-}
-
-function virtualLine(v: BackboneVirtualNode, depth: number, endpointIds: Set<string>): string {
-	const indent = '  '.repeat(Math.max(0, depth));
-	const name = v.displayName.endsWith('/') ? v.displayName.slice(0, -1) : v.displayName;
-	const bold = `**${name}/**`;
-	const hi = endpointIds.has(v.id) ? ' `[==>]`' : '';
-	return `${indent}${v.id} ${bold} ${virtualStatsCell(v)}${hi}`;
-}
-
-/**
- * Sorts edges for reading: group by source id (all outgoing from F-062 together), then by weight desc, then target id.
- * Each edge still appears exactly once.
- */
-function sortBackboneEdgesForDisplay(edges: BackboneEdge[]): BackboneEdge[] {
-	return [...edges].sort((a, b) => {
-		const from = a.fromId.localeCompare(b.fromId);
-		if (from !== 0) return from;
-		if (b.weight !== a.weight) return b.weight - a.weight;
-		return a.toId.localeCompare(b.toId);
-	});
-}
-
-/** Explains the `<| … |>` stats grid and optional `[==>]` marker (English; matches digestLoader). */
-function folderTreeColumnLegendLines(): string[] {
-	return [
-		'## Column legend (stats grid)',
-		'',
-		'`<| direct/total | topic purity (tier) | subfolders | doc-out | keywords | topics |>`',
-		'',
-		'- **direct/total** — Notes directly in this folder / all indexed notes in this folder subtree (recursive).',
-		'- **topic purity (tier)** — Herfindahl concentration on **topic** tags of direct files only; tier High / Med / Low.',
-		'- **subfolders** — Immediate child folder count (always **0** on `V-###` virtual rows).',
-		'- **doc-out** — Outgoing wiki-style doc links: materialized on the folder node, or summed over member notes for virtual rows.',
-		'- **keywords** — `sub:` tokens from immediate child folder names; `kw:` keyword tags from direct files (after global de-noising).',
-		'- **topics** — Topic tags from direct files; may show weighted `name(%)` when available.',
-		'- **`[==>]`** — This `F-###` or `V-###` is an endpoint of at least one High-Speed Link in the section below.',
-		'',
-	];
-}
+const COLUMN_LEGEND = [
+	'## Column legend (stats grid)', '',
+	'`<| direct/total | topic purity (tier) | subfolders | doc-out | keywords | topics |>`', '',
+	'- **direct/total** — Notes directly in this folder / all indexed notes in this folder subtree (recursive).',
+	'- **topic purity (tier)** — Herfindahl concentration on **topic** tags of direct files only; tier High / Med / Low.',
+	'- **subfolders** — Immediate child folder count (always **0** on `V-###` virtual rows).',
+	'- **doc-out** — Outgoing wiki-style doc links: materialized on the folder node, or summed over member notes for virtual rows.',
+	'- **keywords** — `sub:` tokens from immediate child folder names; `kw:` keyword tags from direct files (after global de-noising).',
+	'- **topics** — Topic tags from direct files; may show weighted `name(%)` when available.',
+	'- **`[==>]`** — This `F-###` or `V-###` is an endpoint of at least one High-Speed Link in the section below.', '',
+];
 
 /**
  * Renders full markdown and paginated folder-tree sections.
@@ -1130,13 +979,10 @@ function renderBackboneMarkdown(options: {
 }): { markdown: string; pages: BackbonePage[] } {
 	const { folderNodes, virtualNodes, backboneEdges, maxNodesPerPage, noiseTagLegendLines = [] } = options;
 
-	const edgesOrdered = sortBackboneEdgesForDisplay(backboneEdges);
+	const edgesOrdered = [...backboneEdges].sort((a, b) => a.fromId.localeCompare(b.fromId) || b.weight - a.weight || a.toId.localeCompare(b.toId));
 
 	const endpointIds = new Set<string>();
-	for (const e of edgesOrdered) {
-		endpointIds.add(e.fromId);
-		endpointIds.add(e.toId);
-	}
+	for (const e of edgesOrdered) { endpointIds.add(e.fromId); endpointIds.add(e.toId); }
 
 	const virtualByParent = new Map<string, BackboneVirtualNode[]>();
 	for (const v of virtualNodes) {
@@ -1145,28 +991,24 @@ function renderBackboneMarkdown(options: {
 		arr.push(v);
 		virtualByParent.set(p, arr);
 	}
-	for (const arr of virtualByParent.values()) {
-		arr.sort((a, b) => a.id.localeCompare(b.id));
-	}
+	for (const arr of virtualByParent.values()) arr.sort((a, b) => a.id.localeCompare(b.id));
 
-	const treeLines: string[] = [];
-	treeLines.push('# Folder Tree');
-	treeLines.push('');
+	const treeLines: string[] = ['# Folder Tree', ''];
 	if (noiseTagLegendLines.length > 0) {
-		treeLines.push('## Global status & high-frequency tags (not shown in folder rows)');
-		treeLines.push('');
-		treeLines.push(noiseTagLegendLines.join(', '));
-		treeLines.push('');
+		treeLines.push('## Global status & high-frequency tags (not shown in folder rows)', '', noiseTagLegendLines.join(', '), '');
 	}
-
-	treeLines.push(...folderTreeColumnLegendLines());
+	treeLines.push(...COLUMN_LEGEND);
 
 	for (const f of folderNodes) {
-		treeLines.push(folderLine(f, endpointIds));
+		const stats = formatStatsGrid(f.directDocCount, f.docCount, f.topicPurity, f.childFolderCount, f.docOutgoing,
+			fmtKwCol(f.topKeywords, f.subfolderNameTokenSample, f.childFolderCount > 0), fmtTopicCol(f.topTopicsWeighted, f.topTopics));
+		treeLines.push(nodeTreeLine(f.id, f.displayName, f.depth, f.isCity, stats, endpointIds));
 		const kids = virtualByParent.get(normalizeVaultPath(f.path));
 		if (kids?.length) {
 			for (const v of kids) {
-				treeLines.push(virtualLine(v, f.depth, endpointIds));
+				const vs = formatStatsGrid(v.memberCount, v.parentDirectDocCount, v.topicPurity, 0, v.docOutgoing,
+					v.topKeywords.slice(0, 8).map(sc).filter(Boolean).join(', ') || '—', fmtTopicCol(v.topTopicsWeighted, v.topTopics));
+				treeLines.push(nodeTreeLine(v.id, v.displayName, f.depth + 1, true, vs, endpointIds));
 			}
 		}
 	}
