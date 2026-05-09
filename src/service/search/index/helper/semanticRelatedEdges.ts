@@ -1,7 +1,4 @@
-/**
- * Doc→doc `semantic_related` edges: overlay Mermaid, inspector reads, and tenant-wide vector KNN rebuild.
- * Local Mermaid overlay on document nodes is derived from stored edges (not SSOT).
- */
+/** Doc→doc `semantic_related` edges: overlay Mermaid, inspector reads, and tenant-wide vector KNN rebuild. */
 
 import { GraphEdgeType, GraphNodeType, isIndexedNoteNodeType } from '@/core/po/graph.po';
 import type { EmbeddingRepo } from '@/core/storage/sqlite/repositories/EmbeddingRepo';
@@ -16,31 +13,13 @@ import type { Document } from '@/core/document/types';
 import { SLICE_CAPS } from '@/core/constant';
 import { SEMANTIC_EDGE_CHUNK_TYPE_WEIGHT, type ChunkType } from '@/service/search/index/chunkTypes';
 
-// ---------------------------------------------------------------------------
-// Shared types & constants
-// ---------------------------------------------------------------------------
-
-/** Bumped when edge materialization or stored mermaid shape changes. */
 export const SEMANTIC_EDGE_RULE_VERSION = 4;
 
-export type SemanticEdgeWrite = {
-	toNodeId: string;
-	weight: number;
-	attributes: Record<string, unknown>;
-};
+export type SemanticEdgeWrite = { toNodeId: string; weight: number; attributes: Record<string, unknown> };
+export type GraphSemanticLinkItem = { path: string; label: string; similarity: string };
 
-export type GraphSemanticLinkItem = {
-	path: string;
-	label: string;
-	/** Display string; from edge attributes when available. */
-	similarity: string;
-};
-
-/** Max outgoing semantic neighbors per source document. */
 export const SEMANTIC_VECTOR_TOP_K_PER_DOC = 12;
-/** KNN pool size per doc query (distinct docs may be fewer after aggregation). */
 export const SEMANTIC_VECTOR_KNN_LIMIT = 150;
-/** Minimum raw similarity (1/(1+distance)) to keep a candidate before weighting. */
 export const SEMANTIC_VECTOR_MIN_SIMILARITY = 0.50;
 
 export type RebuildSemanticEdgesBatchResult = {
@@ -52,29 +31,102 @@ export type RebuildSemanticEdgesBatchResult = {
 };
 
 type MermaidEdgeKind = 'ref' | 'topic' | 'vec';
-
-type NeighborAgg = {
-	bestWeighted: number;
-	bestDistance: number;
-	bestSimilarity: number;
-	targetChunkType: ChunkType;
-};
+type NeighborAgg = { bestWeighted: number; bestDistance: number; bestSimilarity: number; targetChunkType: ChunkType };
 
 // ---------------------------------------------------------------------------
-// Overlay service (cached Mermaid on indexed note nodes)
+// Shared KNN → ranked writes pipeline (used by both full rebuild and incremental)
 // ---------------------------------------------------------------------------
 
-/**
- * Builds and resolves labels for semantic neighborhood Mermaid overlays stored on note nodes.
- */
+/** Run KNN for a single doc, aggregate by neighbor, return ranked SemanticEdgeWrites. */
+async function computeSemanticWritesForDoc(
+	fromId: string,
+	embeddingRepo: EmbeddingRepo,
+	mobiusNodeRepo: MobiusNodeRepo,
+): Promise<SemanticEdgeWrite[]> {
+	const queryVector = await embeddingRepo.getEmbeddingForSemanticSearch(fromId);
+	if (!queryVector) return [];
+
+	let results: Awaited<ReturnType<EmbeddingRepo['searchSimilarAndGetId']>>;
+	try {
+		results = await embeddingRepo.searchSimilarAndGetId(
+			queryVector, SEMANTIC_VECTOR_KNN_LIMIT,
+			'excludeDocIdsSet', { excludeDocIdsSet: new Set([fromId]) },
+		);
+	} catch (e) {
+		console.warn('[semanticRelatedEdges] KNN failed:', fromId, e);
+		return [];
+	}
+
+	const byNeighbor = new Map<string, NeighborAgg>();
+	for (const r of results) {
+		if (r.doc_id === fromId || r.similarity < SEMANTIC_VECTOR_MIN_SIMILARITY) continue;
+		const targetChunkType = ((r.chunk_type as ChunkType | null) ?? 'body_raw') as ChunkType;
+		const w = SEMANTIC_EDGE_CHUNK_TYPE_WEIGHT[targetChunkType];
+		const weighted = r.similarity * w;
+		const prev = byNeighbor.get(r.doc_id);
+		if (!prev || weighted > prev.bestWeighted) {
+			byNeighbor.set(r.doc_id, { bestWeighted: weighted, bestDistance: r.distance, bestSimilarity: r.similarity, targetChunkType });
+		}
+	}
+
+	const ranked = [...byNeighbor.entries()]
+		.filter(([, v]) => v.bestSimilarity >= SEMANTIC_VECTOR_MIN_SIMILARITY)
+		.sort((a, b) => b[1].bestWeighted - a[1].bestWeighted)
+		.slice(0, SEMANTIC_VECTOR_TOP_K_PER_DOC);
+
+	const targetNodes = await mobiusNodeRepo.getByIds(ranked.map(([id]) => id));
+
+	const writes: SemanticEdgeWrite[] = [];
+	for (const [toId, agg] of ranked) {
+		const target = targetNodes.get(toId);
+		if (!target || !isIndexedNoteNodeType(target.type)) continue;
+		writes.push({
+			toNodeId: toId,
+			weight: Math.min(1, agg.bestWeighted),
+			attributes: {
+				source: 'vector', rule: 'semantic_doc_center_knn', ruleVersion: SEMANTIC_EDGE_RULE_VERSION,
+				bestDistance: agg.bestDistance, bestSimilarity: agg.bestSimilarity,
+				targetChunkType: agg.targetChunkType, bestWeightedSimilarity: agg.bestWeighted,
+			},
+		});
+	}
+	return writes;
+}
+
+/** Upsert semantic edges + rebuild mermaid overlay for one source doc. */
+async function persistWritesAndOverlay(
+	fromId: string,
+	writes: SemanticEdgeWrite[],
+	mobiusEdgeRepo: MobiusEdgeRepo,
+	mobiusNodeRepo: MobiusNodeRepo,
+	now: number,
+): Promise<number> {
+	for (const w of writes) {
+		await mobiusEdgeRepo.upsert({
+			id: MobiusEdgeRepo.generateEdgeId(fromId, w.toNodeId, GraphEdgeType.SemanticRelated),
+			from_node_id: fromId, to_node_id: w.toNodeId,
+			type: GraphEdgeType.SemanticRelated, weight: w.weight,
+			attributes: JSON.stringify({ ...w.attributes, updatedAt: now }),
+		});
+	}
+	if (writes.length > 0) {
+		const centerNode = await mobiusNodeRepo.getByNodeId(fromId);
+		const centerLabel = centerNode?.label ?? fromId.slice(0, SLICE_CAPS.semanticEdges.nodeIdFallbackLabel);
+		const mermaid = await SemanticRelatedEdgesOverlayService.buildMermaidForWrites(centerLabel, writes, mobiusNodeRepo);
+		await mobiusNodeRepo.mergeJsonAttributesForIndexedNoteNode(fromId, {
+			semantic_overlay_mermaid: mermaid ?? null,
+			semantic_edge_rule_version: SEMANTIC_EDGE_RULE_VERSION,
+		}, now);
+	}
+	return writes.length;
+}
+
+/** Mermaid overlays for semantic neighborhood stored on note nodes. */
 export class SemanticRelatedEdgesOverlayService {
 	private static escapeMermaidLabel(s: string): string {
 		return s.replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ').slice(0, SLICE_CAPS.semanticEdges.mermaidSafeLabel);
 	}
 
-	/**
-	 * Compact Mermaid flowchart for local neighborhood (stored on document node; not the graph SSOT).
-	 */
 	static buildMermaid(centerLabel: string, items: ReadonlyArray<{ label: string; edge: MermaidEdgeKind }>): string {
 		const lines: string[] = ['flowchart LR', `  center["${this.escapeMermaidLabel(centerLabel)}"]`];
 		items.slice(0, SLICE_CAPS.semanticEdges.items).forEach((it, idx) => {
@@ -86,7 +138,6 @@ export class SemanticRelatedEdgesOverlayService {
 		return lines.join('\n');
 	}
 
-	/** Build mermaid text from collected writes + resolved neighbor labels. */
 	static async buildMermaidForWrites(
 		centerLabel: string,
 		writes: readonly SemanticEdgeWrite[],
@@ -114,7 +165,6 @@ export class SemanticRelatedEdgesOverlayService {
 		return this.buildMermaid(centerLabel, items);
 	}
 
-	/** Build mermaid from a loaded {@link Document} (title from doc metadata / path). */
 	static async buildMermaidForDocument(
 		doc: Document,
 		writes: readonly SemanticEdgeWrite[],
@@ -125,28 +175,15 @@ export class SemanticRelatedEdgesOverlayService {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Read service (inspector / UI over stored edges)
-// ---------------------------------------------------------------------------
-
-/**
- * Reads stored `semantic_related` edges for inspector and similar consumers.
- */
+/** Reads stored `semantic_related` edges for inspector and UI. */
 export class SemanticRelatedEdgesReadService {
 	private static formatSimilarityFromAttributes(attrsJson: string): string | null {
 		try {
-			const o = JSON.parse(attrsJson || '{}') as Record<string, unknown>;
-			const s = o.bestSimilarity;
-			if (typeof s === 'number' && Number.isFinite(s)) {
-				return `${(s * 100).toFixed(1)}%`;
-			}
-		} catch {
-			/* ignore */
-		}
-		return null;
+			const s = (JSON.parse(attrsJson || '{}') as Record<string, unknown>).bestSimilarity;
+			return typeof s === 'number' && Number.isFinite(s) ? `${(s * 100).toFixed(1)}%` : null;
+		} catch { return null; }
 	}
 
-	/** Neighbors reachable via stored `semantic_related` out-edges. */
 	static async loadGraphSemanticLinkItems(
 		docId: string,
 		tenant: IndexTenant,

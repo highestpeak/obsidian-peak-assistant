@@ -29,10 +29,6 @@ import type { IndexTenant } from '@/core/storage/sqlite/types';
 import { computePPR } from './personalizedPageRank';
 import { createPPREdgeFetcher } from './pprEdgeFetcher';
 
-/**
- * Query service for search operations.
- * Handles fulltext, vector, hybrid search, and graph queries.
- */
 export class QueryService {
 	private readonly reranker: Reranker;
 
@@ -43,21 +39,6 @@ export class QueryService {
 		this.reranker = new Reranker(aiServiceManager, searchSettings);
 	}
 
-	/**
-	 * Execute tri-hybrid search combining three complementary approaches:
-	 * 1. Content search: Fulltext + Vector (semantic content matching)
-	 * 2. Meta search: Title/Path (explicit user intent matching)
-	 * 3. Two-stage RRF merge: Content sources merged first, then with meta
-	 *
-	 * Design rationale:
-	 * - Content sources are merged first because they represent the same type of relevance (content)
-	 * - Meta sources get equal weight to content because title/path matches indicate clear user intent
-	 * - This balances semantic understanding with explicit knowledge
-	 *
-	 * @param query - Search query parameters
-	 * @param enableLLMRerank - Whether to enable expensive LLM reranking (default: false)
-	 * @returns Search response with results and timing information
-	 */
 	async textSearch(query: SearchQuery, enableLLMRerank: boolean = false): Promise<SearchResponse & { duration: number }> {
 		const sw = new Stopwatch('SearchQuery');
 
@@ -175,16 +156,6 @@ export class QueryService {
 		return { query, items: ranked, duration: totalDuration };
 	}
 
-	/**
-	 * Perform pure vector similarity search for semantic matching.
-	 * Returns document IDs with their similarity scores for RRF fusion.
-	 *
-	 * @param queryText - The text to search for semantically
-	 * @param topK - Maximum number of results to return
-	 * @param scopeMode - Search scope mode (default: 'vault')
-	 * @param scopeValue - Optional search scope configuration
-	 * @returns Array of documents with their similarity scores
-	 */
 	async vectorSearch(
 		query: SearchQuery,
 	): Promise<SearchResponse & { duration: number }> {
@@ -245,10 +216,6 @@ export class QueryService {
 		}
 	}
 
-	/**
-	 * Extract keywords from query text for multi-keyword matching.
-	 * Splits by whitespace and normalizes each keyword.
-	 */
 	private extractKeywords(queryText: string): string[] {
 		if (!queryText.trim()) return [];
 		// Split by whitespace and normalize each keyword
@@ -258,10 +225,6 @@ export class QueryService {
 			.map(k => normalizeTextForFts(k));
 	}
 
-	/**
-	 * Build FTS query for multi-keyword matching.
-	 * Uses OR syntax to match any keyword, allowing weighted scoring by hit count.
-	 */
 	private buildFtsQuery(keywords: string[]): string {
 		if (keywords.length === 0) return '';
 		if (keywords.length === 1) return keywords[0];
@@ -280,9 +243,6 @@ export class QueryService {
 		return escapedKeywords.join(' OR ');
 	}
 
-	/**
-	 * Count how many different keywords are matched in content (diversity)
-	 */
 	private countKeywordMatches(content: string, keywords: string[]): number {
 		if (!content || keywords.length === 0) return 0;
 
@@ -299,9 +259,6 @@ export class QueryService {
 		return matchCount;
 	}
 
-	/**
-	 * Count total occurrences of all keywords in content (density)
-	 */
 	private countTotalKeywordOccurrences(content: string, keywords: string[]): number {
 		if (!content || keywords.length === 0) return 0;
 
@@ -322,10 +279,6 @@ export class QueryService {
 		return totalOccurrences;
 	}
 
-	/**
-	 * Execute fulltext search using FTS5 with multi-keyword support.
-	 * Results are weighted by the number of matched keywords.
-	 */
 	private async executeFulltextSearch(params: {
 		query: SearchQuery;
 		scopeMode: SearchScopeMode;
@@ -431,9 +384,6 @@ export class QueryService {
 		return items.sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, topK);
 	}
 
-	/**
-	 * Execute vector search using sqlite-vec KNN search.
-	 */
 	private async executeVectorSearch(params: {
 		query: SearchQuery;
 		mode: SearchScopeMode;
@@ -539,9 +489,6 @@ export class QueryService {
 		return items;
 	}
 
-	/**
-	 * Execute meta search using FTS5 for titles and paths.
-	 */
 	private async executeMetaSearch(params: {
 		query: SearchQuery;
 		scopeMode: SearchScopeMode;

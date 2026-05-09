@@ -30,7 +30,6 @@ import { ResourceLoaderManager } from '@/core/document/resource/helper/ResourceL
 import type { AIServiceManager } from './service-manager';
 import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { generateContentPreview, generateAttachmentSummary } from '@/core/utils/message-preview-utils';
-import { getFileTypeFromPath } from '@/core/document/helper/FileTypeUtils';
 import { resolveModelCapabilities } from '@/core/providers/types';
 import { detectTimezone } from '@/core/utils/date-utils';
 import { uploadFilesToVault } from '@/core/utils/vault-utils';
@@ -112,19 +111,11 @@ export class ConversationService {
 			conversationType: params.conversationType,
 		};
 
-		const messages = params.initialMessages ?? [];
 		const conversation = await this.storage.saveConversation(
-			params.project ?? null,
-			meta,
-			undefined, // context
-			messages // messages
+			params.project ?? null, meta, undefined, params.initialMessages ?? [],
 		);
-
-		// Trigger conversation created event
-		const eventBus = EventBus.getInstance(this.app);
-		eventBus.dispatch(new ConversationCreatedEvent({
-			conversationId: conversation.meta.id,
-			projectId: conversation.meta.projectId ?? null,
+		EventBus.getInstance(this.app).dispatch(new ConversationCreatedEvent({
+			conversationId: conversation.meta.id, projectId: conversation.meta.projectId ?? null,
 		}));
 
 		return conversation;
@@ -141,18 +132,11 @@ export class ConversationService {
 		const uploadedPaths = await uploadFilesToVault(files, uploadFolder);
 
 		// Create resource references for uploaded files
-		const resources: ChatResourceRef[] = [];
-		for (const filePath of uploadedPaths) {
+		const resources: ChatResourceRef[] = uploadedPaths.map((filePath) => {
 			const resourceRef = this.resourceSummaryService!.createResourceRef(filePath);
-			const summaryPath = this.resourceSummaryService!.getResourceSummaryPath(resourceRef.id);
-			resourceRef.summaryNotePath = summaryPath;
-
-			// only generate when streaming
-			// // Ensure resource summary exists, generate if missing
-			// await this.ensureResourceSummary(filePath, resourceRef);
-
-			resources.push(resourceRef);
-		}
+			resourceRef.summaryNotePath = this.resourceSummaryService!.getResourceSummaryPath(resourceRef.id);
+			return resourceRef;
+		});
 
 		return resources;
 	}
@@ -296,9 +280,6 @@ export class ConversationService {
 		}
 		const prompt = result.value;
 
-		// todo check result length and check whether overflow the model's context window. if so, we need to truncate the result.
-
-		// Get output control settings: priority: conversation override > global default
 		const outputControl = conversation.meta.outputControlOverride
 			?? this.settings?.defaultOutputControl
 			?? DEFAULT_AI_SERVICE_SETTINGS.defaultOutputControl;
@@ -443,50 +424,23 @@ export class ConversationService {
 			throw new Error(`Failed to update conversation meta: ${conversationId}`);
 		}
 
-		// Trigger message sent event
-		const eventBus = EventBus.getInstance(this.app);
-		eventBus.dispatch(new MessageSentEvent({
-			conversationId: conversationId,
-			projectId: null,
-		}));
+		EventBus.getInstance(this.app).dispatch(new MessageSentEvent({ conversationId, projectId: null }));
 	}
 
-	/**
-	 * Generate a title for conversation based on messages and context.
-	 * Uses the ApplicationGenerateTitle prompt to generate a concise title.
-	 */
 	async generateConversationTitle(messages: ChatMessage[], context: ChatContextWindow): Promise<string | null> {
 		if (messages.length === 0) {
 			return null;
 		}
 
 		try {
-			// Use first few messages to generate title (to keep it focused on the initial topic)
-			const messagesForTitle = messages.slice(0, Math.min(5, messages.length));
-			const messagesForPrompt = messagesForTitle.map((m) => ({
-				role: m.role,
-				content: m.content,
-			}));
-
-			// Use context summary if available to provide better context for title generation
+			const messagesForPrompt = messages.slice(0, 5).map((m) => ({ role: m.role, content: m.content }));
 			const contextInfo = context.shortSummary && context.shortSummary !== DEFAULT_SUMMARY
-				? `Context: ${context.shortSummary}`
-				: undefined;
+				? `Context: ${context.shortSummary}` : undefined;
 
 			const title = await this.promptService.chatWithPrompt(
-				PromptId.ApplicationGenerateTitle,
-				{
-					messages: messagesForPrompt,
-					contextInfo,
-				}
+				PromptId.ApplicationGenerateTitle, { messages: messagesForPrompt, contextInfo }
 			);
-
-			// Clean up title: remove quotes, trim, and limit length
-			const cleanedTitle = title
-				.replace(/^["']|["']$/g, '') // Remove surrounding quotes
-				.trim()
-				.substring(0, 50); // Limit to 50 characters
-
+			const cleanedTitle = title.replace(/^["']|["']$/g, '').trim().substring(0, 50);
 			return cleanedTitle || null;
 		} catch (error) {
 			console.warn('[ConversationService] Failed to generate title:', error);
@@ -494,10 +448,6 @@ export class ConversationService {
 		}
 	}
 
-
-	/**
-	 * Build a compact context window for summarization.
-	 */
 	async buildContextWindow(
 		messages: ChatMessage[],
 		project?: ChatProject | null,
@@ -511,53 +461,24 @@ export class ConversationService {
 		}
 
 		const recent = messages.slice(-10);
-		const recentMessagesWindow = [
-			{
-				fromMessageId: recent[0].id,
-				toMessageId: recent[recent.length - 1].id,
-			},
-		];
+		const recentMessagesWindow = [{ fromMessageId: recent[0].id, toMessageId: recent[recent.length - 1].id }];
 
-		// Generate real summary using LLM
 		try {
-			const messagesForSummary = recent.map((m) => ({
-				role: m.role,
-				content: m.content,
-			}));
-
-			// Build project context if available
+			const messagesForSummary = recent.map((m) => ({ role: m.role, content: m.content }));
 			const projectContext = project
 				? `Project: ${project.meta.name}${project.context?.shortSummary ? `\n${project.context.shortSummary}` : ''}`
 				: undefined;
 
-			// Generate short summary
 			const shortSummary = await this.promptService.chatWithPrompt(
-				PromptId.ConversationSummaryShort,
-				{
-					messages: messagesForSummary,
-					projectContext,
-				},
+				PromptId.ConversationSummaryShort, { messages: messagesForSummary, projectContext },
 			) || DEFAULT_SUMMARY;
 
-			// Generate full summary if conversation is substantial
-			let fullSummary: string | undefined;
-			if (messages.length > 5) {
-				fullSummary = await this.promptService.chatWithPrompt(
-					PromptId.ConversationSummaryFull,
-					{
-						messages: messagesForSummary,
-						projectContext,
-						shortSummary,
-					},
-				);
-			}
+			const fullSummary = messages.length > 5
+				? await this.promptService.chatWithPrompt(
+					PromptId.ConversationSummaryFull, { messages: messagesForSummary, projectContext, shortSummary },
+				) : undefined;
 
-			return {
-				lastUpdatedTimestamp: Date.now(),
-				recentMessagesWindow,
-				shortSummary,
-				fullSummary,
-			};
+			return { lastUpdatedTimestamp: Date.now(), recentMessagesWindow, shortSummary, fullSummary };
 		} catch (error) {
 			console.warn('[ConversationService] Failed to generate summary:', error);
 			return {
@@ -568,49 +489,20 @@ export class ConversationService {
 		}
 	}
 
-	/**
-	 * Ensure resource summary exists, generate if missing.
-	 * For images: uses ImageDescription prompt for generating descriptions.
-	 */
 	private async ensureResourceSummary(sourcePath: string, resourceRef: ChatResourceRef): Promise<void> {
-		if (!this.resourceSummaryService) {
-			return;
-		}
-
-		// Check if summary already exists
+		if (!this.resourceSummaryService) return;
 		const existing = await this.resourceSummaryService.readResourceSummary(resourceRef.id);
-		if (existing?.meta.shortSummary || existing?.meta.fullSummary) {
-			// Summary already exists
-			return;
-		}
+		if (existing?.meta.shortSummary || existing?.meta.fullSummary) return;
 
-		// Generate summary for the resource
+		const base = { resourceId: resourceRef.id, source: resourceRef.source, kind: resourceRef.kind };
 		try {
-			const summary = await this.resourceLoaderManager.getSummary(
-				sourcePath,
-				resourceRef.kind,
-			) || { shortSummary: `Resource: ${sourcePath}` };
-
-			// Save summary
-			await this.resourceSummaryService.saveResourceSummary({
-				resourceId: resourceRef.id,
-				source: resourceRef.source,
-				kind: resourceRef.kind,
-				shortSummary: summary.shortSummary,
-				fullSummary: summary.fullSummary,
-			});
+			const summary = await this.resourceLoaderManager.getSummary(sourcePath, resourceRef.kind)
+				|| { shortSummary: `Resource: ${sourcePath}` };
+			await this.resourceSummaryService.saveResourceSummary({ ...base, shortSummary: summary.shortSummary, fullSummary: summary.fullSummary });
 		} catch (error) {
 			console.warn(`[ConversationService] Failed to generate resource summary for ${sourcePath}:`, error);
-			// Create summary with error information
-			const errorReason = error instanceof Error ? error.message : String(error);
-			const errorDate = new Date().toISOString();
-			const errorSummary = `GenSummaryFailed.[${errorReason}][${errorDate}]`;
-			await this.resourceSummaryService.saveResourceSummary({
-				resourceId: resourceRef.id,
-				source: resourceRef.source,
-				kind: resourceRef.kind,
-				shortSummary: errorSummary,
-			});
+			const errorSummary = `GenSummaryFailed.[${error instanceof Error ? error.message : String(error)}][${new Date().toISOString()}]`;
+			await this.resourceSummaryService.saveResourceSummary({ ...base, shortSummary: errorSummary });
 		}
 	}
 

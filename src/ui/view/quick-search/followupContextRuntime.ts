@@ -1,9 +1,5 @@
 import { SLICE_CAPS } from '@/core/constant';
 import { refreshableMemoizeSupplier } from '@/core/utils/functions';
-import {
-	useAIAnalysisTopicsStore,
-	useAIAnalysisInteractionsStore,
-} from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
 
 const DEFAULT_MAX_CHARS = 4000;
@@ -13,7 +9,7 @@ type HistorySearchFn = (query: string, options?: { maxChars?: number }) => strin
 
 let lastHistorySearch: { fn: HistorySearchFn; runId: string | null } | null = null;
 
-/** Bump to invalidate both core and followups caches (e.g. when starting a new analysis). */
+/** Bump to invalidate core cache (e.g. when starting a new analysis). */
 let resultIndexInvalidateSeed = 0;
 
 /** State for core index (Title, Summary, Sources, Sections, Steps). */
@@ -41,33 +37,6 @@ function coreStateChanged(
         last.sourcesLen !== cur.sourcesLen ||
         last.sectionsLen !== cur.sectionsLen ||
         last.stepsLen !== cur.stepsLen
-    );
-}
-
-/** State for followups index only (changes often with Q&A). */
-function getResultIndexStateFollowups() {
-    const interactions = useAIAnalysisInteractionsStore.getState();
-    const topics = useAIAnalysisTopicsStore.getState();
-    return {
-        seed: resultIndexInvalidateSeed,
-        followUpLen: interactions.fullAnalysisFollowUp?.length ?? 0,
-        topicResultsKeys: Object.keys(topics.topicAnalyzeResults ?? {}).length,
-        graphFollowupLen: interactions.graphFollowupHistory?.length ?? 0,
-        sourcesFollowupLen: interactions.sourcesFollowupHistory?.length ?? 0,
-    };
-}
-
-function followupsStateChanged(
-    last: ReturnType<typeof getResultIndexStateFollowups> | undefined,
-    cur: ReturnType<typeof getResultIndexStateFollowups>
-): boolean {
-    if (!last) return true;
-    return (
-        last.seed !== cur.seed ||
-        last.followUpLen !== cur.followUpLen ||
-        last.topicResultsKeys !== cur.topicResultsKeys ||
-        last.graphFollowupLen !== cur.graphFollowupLen ||
-        last.sourcesFollowupLen !== cur.sourcesFollowupLen
     );
 }
 
@@ -139,46 +108,10 @@ function buildResultIndexCore(): string {
     return lines.join('\n');
 }
 
-/** Build followups-only index (changes often with Q&A). */
-function buildResultIndexFollowups(): string {
-    const interactions = useAIAnalysisInteractionsStore.getState();
-    const topics = useAIAnalysisTopicsStore.getState();
-    const lines: string[] = [];
-
-    lines.push('[Followups]');
-    for (const f of interactions.fullAnalysisFollowUp ?? []) {
-        lines.push(`Q: ${f.title ?? ''}`);
-        lines.push(`A: ${(f.content ?? '').slice(0, SLICE_CAPS.ui.followupAnswer)}`);
-    }
-    const topicResults = topics.topicAnalyzeResults ?? {};
-    for (const [topic, arr] of Object.entries(topicResults)) {
-        for (const item of arr ?? []) {
-            lines.push(`Topic[${topic}] Q: ${item.question}`);
-            lines.push(`A: ${(item.answer ?? '').slice(0, SLICE_CAPS.ui.followupAnswer)}`);
-        }
-    }
-    for (const item of interactions.graphFollowupHistory ?? []) {
-        lines.push(`Graph Q: ${item.question}`);
-        lines.push(`A: ${(item.answer ?? '').slice(0, SLICE_CAPS.ui.followupAnswer)}`);
-    }
-    for (const item of interactions.sourcesFollowupHistory ?? []) {
-        lines.push(`Sources Q: ${item.question}`);
-        lines.push(`A: ${(item.answer ?? '').slice(0, SLICE_CAPS.ui.followupAnswer)}`);
-    }
-
-    return lines.join('\n');
-}
-
 const resultIndexCoreSupplier = refreshableMemoizeSupplier(
     buildResultIndexCore,
     getResultIndexStateCore,
     coreStateChanged
-);
-
-const resultIndexFollowupsSupplier = refreshableMemoizeSupplier(
-    buildResultIndexFollowups,
-    getResultIndexStateFollowups,
-    followupsStateChanged
 );
 
 /**
@@ -190,9 +123,7 @@ export function searchCurrentResult(
     options?: { maxChars?: number }
 ): string {
     const maxChars = options?.maxChars ?? DEFAULT_MAX_CHARS;
-    const core = resultIndexCoreSupplier();
-    const followups = resultIndexFollowupsSupplier();
-    const fullText = followups ? `${core}\n\n${followups}` : core;
+    const fullText = resultIndexCoreSupplier();
     const q = (query ?? '').trim().toLowerCase();
     if (!q) return fullText.slice(0, maxChars);
     const lines = fullText.split(/\r?\n/);

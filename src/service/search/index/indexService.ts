@@ -164,10 +164,125 @@ async function yieldForLargePass(): Promise<void> {
 	await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }
 
+/** Folder path prefixes for a directory string, e.g. `a/b` → `['a','a/b']`. */
+function folderAncestorPathsFromFolderPath(folderPath: string): string[] {
+	if (!folderPath) return [];
+	const parts = folderPath.split('/').filter((p) => p.length > 0);
+	const out: string[] = [];
+	let acc = '';
+	for (let i = 0; i < parts.length; i++) {
+		acc = i === 0 ? parts[i]! : `${acc}/${parts[i]}`;
+		out.push(acc);
+	}
+	return out;
+}
+
 /**
- * Index lifecycle: delete, clear, rename, status, and maintenance debt bookkeeping.
+ * Vault folder prefixes that contain this graph node (documents/resources: parent dir chain; folders: full chain).
  */
-class IndexCrudService {
+function membershipFolderPathsForGraphNode(type: string, path: string | null): Set<string> {
+	if (!path) return new Set();
+	if (type === GraphNodeType.Folder) {
+		return new Set(folderAncestorPathsFromFolderPath(path));
+	}
+	if (
+		type === GraphNodeType.Document ||
+		type === GraphNodeType.HubDoc ||
+		type === GraphNodeType.Resource
+	) {
+		const slash = path.lastIndexOf('/');
+		if (slash <= 0) return new Set();
+		return new Set(folderAncestorPathsFromFolderPath(path.slice(0, slash)));
+	}
+	return new Set();
+}
+
+/** Skip hub-summary subtree when materializing folder hub columns (aligned with document scan). */
+function folderHubStatsPathAllowed(folderPath: string, hubSummaryFolder: string): boolean {
+	const hub = hubSummaryFolder.trim();
+	if (!hub) return true;
+	if (folderPath === hub) return false;
+	if (isVaultPathUnderPrefix(folderPath, hub)) return false;
+	return true;
+}
+
+/** Batched deferred enrichment: LLM tags/summary after fast index (`llm_pending`). */
+export type LlmIndexEnrichmentResult = {
+	processed: number;
+	skippedWrongTenant: number;
+	errors: Array<{ path: string; message: string }>;
+};
+
+/** Batched deferred enrichment: vector embeddings after fast index (`vector_pending`). */
+export type VectorIndexEnrichmentResult = {
+	processed: number;
+	skippedWrongTenant: number;
+	errors: Array<{ path: string; message: string }>;
+};
+
+/** Progress for pending vector enrichment loops. */
+export type PendingEnrichmentProgress = {
+	processed: number;
+	total: number;
+	path: string;
+};
+
+export type { PendingLlmEnrichmentProgress } from '@/service/search/support/llm-enrichment-progress-tracker';
+
+/**
+ * Singleton entry for document indexing, CRUD lifecycle, and global Mobius maintenance.
+ */
+
+export class IndexService {
+	private static instance: IndexService | null = null;
+	private static isIndexingCancelled = false;
+	private aiServiceManager: AIServiceManager | undefined;
+
+	private constructor() {
+		// Private constructor to prevent direct instantiation.
+	}
+
+	static getInstance(): IndexService {
+		if (!IndexService.instance) {
+			IndexService.instance = new IndexService();
+		}
+		return IndexService.instance;
+	}
+
+	/**
+	 * Clear the global singleton instance.
+	 * Call from plugin onunload to release memory.
+	 */
+	static clearInstance(): void {
+		IndexService.instance = null;
+	}
+
+	/**
+	 * Initialize IndexService with AIServiceManager for embedding generation.
+	 * This should be called once during plugin initialization in main.ts.
+	 * Can also be called when settings are updated to refresh the service instance.
+	 */
+	init(aiServiceManager: AIServiceManager): void {
+		this.aiServiceManager = aiServiceManager;
+	}
+
+	/** Cancel ongoing indexing operations. */
+	static cancelIndexing(): void {
+		IndexService.isIndexingCancelled = true;
+	}
+
+	/** Reset the cancellation flag. */
+	static resetCancellation(): void {
+		IndexService.isIndexingCancelled = false;
+	}
+
+	/** Check if indexing has been cancelled. */
+	static isCancelled(): boolean {
+		return IndexService.isIndexingCancelled;
+	}
+
+	// --- Index lifecycle (formerly IndexCrudService) ---
+
 	/**
 	 * Delete documents by paths. Removes chunks, embeddings, indexed document rows on Mobius, and document graph nodes/edges for those ids.
 	 *
@@ -379,16 +494,9 @@ class IndexCrudService {
 			await indexStateRepo.set(MOBIUS_MAINTENANCE_STATE_KEYS.needed, '1');
 		}
 	}
-}
 
-/**
- * Single-document indexing: load, chunk, embeddings, Mobius + FTS persist.
- */
-class IndexSingleService {
-	constructor(
-		private readonly aiServiceManager: AIServiceManager,
-		private readonly crud: IndexCrudService,
-	) { }
+	// --- Single-document indexing (formerly IndexSingleService) ---
+
 
 	/**
 	 * Index a document by path with chunking strategy applied.
@@ -400,6 +508,9 @@ class IndexSingleService {
 		indexOptions?: IndexDocumentOptions,
 		preloadedDocument?: Document,
 	): Promise<void> {
+		if (!this.aiServiceManager) {
+			throw new Error('[IndexService] init(AIServiceManager) must be called before indexing');
+		}
 		const opts = indexOptions ?? defaultIndexDocumentOptions('manual_full');
 		const sw = new Stopwatch(`[IndexService] Indexing: ${docPath}`);
 
@@ -572,7 +683,7 @@ class IndexSingleService {
 					await this.updateIndexState(tenant);
 				}
 			});
-			await this.crud.addMaintenanceDebt(tenant, MOBIUS_MAINTENANCE_DEBT_INDEX_DOC);
+			await this.addMaintenanceDebt(tenant, MOBIUS_MAINTENANCE_DEBT_INDEX_DOC);
 
 			// Compare pre/post state and write cascade debt if changes detected
 			if (tenant === 'vault' && preSnapshot !== null) {
@@ -1366,54 +1477,9 @@ class IndexSingleService {
 			}
 		}
 	}
-}
 
-/** Folder path prefixes for a directory string, e.g. `a/b` → `['a','a/b']`. */
-function folderAncestorPathsFromFolderPath(folderPath: string): string[] {
-	if (!folderPath) return [];
-	const parts = folderPath.split('/').filter((p) => p.length > 0);
-	const out: string[] = [];
-	let acc = '';
-	for (let i = 0; i < parts.length; i++) {
-		acc = i === 0 ? parts[i]! : `${acc}/${parts[i]}`;
-		out.push(acc);
-	}
-	return out;
-}
+	// --- Global maintenance (formerly GlobalMaintenanceService) ---
 
-/**
- * Vault folder prefixes that contain this graph node (documents/resources: parent dir chain; folders: full chain).
- */
-function membershipFolderPathsForGraphNode(type: string, path: string | null): Set<string> {
-	if (!path) return new Set();
-	if (type === GraphNodeType.Folder) {
-		return new Set(folderAncestorPathsFromFolderPath(path));
-	}
-	if (
-		type === GraphNodeType.Document ||
-		type === GraphNodeType.HubDoc ||
-		type === GraphNodeType.Resource
-	) {
-		const slash = path.lastIndexOf('/');
-		if (slash <= 0) return new Set();
-		return new Set(folderAncestorPathsFromFolderPath(path.slice(0, slash)));
-	}
-	return new Set();
-}
-
-/** Skip hub-summary subtree when materializing folder hub columns (aligned with document scan). */
-function folderHubStatsPathAllowed(folderPath: string, hubSummaryFolder: string): boolean {
-	const hub = hubSummaryFolder.trim();
-	if (!hub) return true;
-	if (folderPath === hub) return false;
-	if (isVaultPathUnderPrefix(folderPath, hub)) return false;
-	return true;
-}
-
-/**
- * Full Mobius maintenance: aggregates, reference PageRank, semantic edges, semantic PageRank, optional folder hub stats.
- */
-class GlobalMaintenanceService {
 	/** Clears debt after a successful full maintenance pass for the given tenants. */
 	private async resetMaintenanceDebtAfterFullMaintenance(tenants: IndexTenant[]): Promise<void> {
 		const now = Date.now();
@@ -1841,149 +1907,8 @@ class GlobalMaintenanceService {
 		}
 	}
 
-}
 
-/** Batched deferred enrichment: LLM tags/summary after fast index (`llm_pending`). */
-export type LlmIndexEnrichmentResult = {
-	processed: number;
-	skippedWrongTenant: number;
-	errors: Array<{ path: string; message: string }>;
-};
-
-/** Batched deferred enrichment: vector embeddings after fast index (`vector_pending`). */
-export type VectorIndexEnrichmentResult = {
-	processed: number;
-	skippedWrongTenant: number;
-	errors: Array<{ path: string; message: string }>;
-};
-
-/** Progress for pending vector enrichment loops. */
-export type PendingEnrichmentProgress = {
-	processed: number;
-	total: number;
-	path: string;
-};
-
-export type { PendingLlmEnrichmentProgress } from '@/service/search/support/llm-enrichment-progress-tracker';
-
-/**
- * Public facade: single entry for indexing, CRUD, and global Mobius maintenance.
- * Delegates to {@link IndexSingleService}, {@link IndexCrudService}, {@link GlobalMaintenanceService}.
- */
-export class IndexService {
-	private static instance: IndexService | null = null;
-	private static isIndexingCancelled = false;
-	private aiServiceManager: AIServiceManager | undefined;
-	private readonly crud = new IndexCrudService();
-	private single: IndexSingleService | null = null;
-	private readonly globalMaintenance = new GlobalMaintenanceService();
-
-	private constructor() {
-		// Private constructor to prevent direct instantiation.
-	}
-
-	private ensureSingle(): IndexSingleService {
-		if (!this.aiServiceManager) {
-			throw new Error('[IndexService] init(AIServiceManager) must be called before indexing');
-		}
-		if (!this.single) {
-			this.single = new IndexSingleService(this.aiServiceManager, this.crud);
-		}
-		return this.single;
-	}
-
-	static getInstance(): IndexService {
-		if (!IndexService.instance) {
-			IndexService.instance = new IndexService();
-		}
-		return IndexService.instance;
-	}
-
-	/**
-	 * Clear the global singleton instance.
-	 * Call from plugin onunload to release memory.
-	 */
-	static clearInstance(): void {
-		IndexService.instance = null;
-	}
-
-	/**
-	 * Initialize IndexService with AIServiceManager for embedding generation.
-	 * This should be called once during plugin initialization in main.ts.
-	 * Can also be called when settings are updated to refresh the service instance.
-	 */
-	init(aiServiceManager: AIServiceManager): void {
-		this.aiServiceManager = aiServiceManager;
-		this.single = new IndexSingleService(aiServiceManager, this.crud);
-	}
-
-	/** Cancel ongoing indexing operations. */
-	static cancelIndexing(): void {
-		IndexService.isIndexingCancelled = true;
-	}
-
-	/** Reset the cancellation flag. */
-	static resetCancellation(): void {
-		IndexService.isIndexingCancelled = false;
-	}
-
-	/** Check if indexing has been cancelled. */
-	static isCancelled(): boolean {
-		return IndexService.isIndexingCancelled;
-	}
-
-	async indexDocument(
-		docPath: string,
-		settings: SearchSettings,
-		indexOptions?: IndexDocumentOptions,
-		/**
-		 * When set, skip loader read; must be the same vault path as the indexed `docPath` (normalized).
-		 * Avoids repeated read + duplicate LLM work when the caller already loaded the document.
-		 */
-		preloadedDocument?: Document,
-	): Promise<void> {
-		return this.ensureSingle().indexDocument(docPath, settings, indexOptions, preloadedDocument);
-	}
-
-	async deleteDocuments(
-		paths: string[],
-		onAfterMutation?: (types: StorageType[]) => void,
-	): Promise<void> {
-		return this.crud.deleteDocuments(paths, onAfterMutation);
-	}
-
-	async clearAllIndexData(onAfterMutation?: (types: StorageType[]) => void): Promise<void> {
-		return this.crud.clearAllIndexData(onAfterMutation);
-	}
-
-	async cleanupOrphanedSearchIndexData(): Promise<{
-		metaFts: number;
-		fts: number;
-		chunks: number;
-		embeddings: number;
-		graphNodes: number;
-	}> {
-		return this.crud.cleanupOrphanedSearchIndexData();
-	}
-
-	async getIndexStatus(): Promise<GetIndexStatusResponse> {
-		return this.crud.getIndexStatus();
-	}
-
-	async renameDocumentPath(oldPath: string, newPath: string): Promise<boolean> {
-		return this.crud.renameDocumentPath(oldPath, newPath);
-	}
-
-	async isMobiusMaintenanceRecommended(): Promise<boolean> {
-		return this.crud.isMobiusMaintenanceRecommended();
-	}
-
-	async runMobiusGlobalMaintenance(
-		tenants: IndexTenant[] = ['vault', 'chat'],
-		options?: MobiusGlobalMaintenanceOptions,
-	): Promise<void> {
-		return this.globalMaintenance.runMobiusGlobalMaintenance(tenants, options);
-	}
+	// --- Batch enrichment (static) ---
 
 	/**
 	 * LLM tags + summary for documents marked `llm_pending` (fast index deferred enrichment).
