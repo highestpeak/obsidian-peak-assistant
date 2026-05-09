@@ -114,7 +114,7 @@ export async function* streamChat(
             system: extractSystemMessage(messages),
             prompt: toAiSdkMessages(messages),
             tools: options?.tools,
-            maxSteps: options?.maxSteps ?? 1,
+            maxSteps: options?.maxSteps ?? (options?.tools ? 5 : 1),
             maxOutputTokens: options?.outputControl?.maxOutputTokens,
             temperature: options?.outputControl?.temperature,
             topP: options?.outputControl?.topP,
@@ -163,8 +163,6 @@ export async function* streamChat(
             }
         }
 
-        const finalUsage = await result.usage;
-        yield { type: 'complete', usage: finalUsage, finishReason: 'stop', durationMs: Date.now() - startTime };
     } catch (error) {
         console.error('[vercel-adapter] Stream exception:', error);
         yield { type: 'error', error: error as Error, durationMs: Date.now() - startTime };
