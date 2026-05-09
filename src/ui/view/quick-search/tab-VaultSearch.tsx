@@ -12,6 +12,7 @@ import { useHasSearchQuery } from './hooks/useVaultSearch';
 import { ModeHelpList, MODE_COUNT } from './components/ModeHelpList';
 import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickRepo';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { SearchUpgradePrompt } from './components/SearchUpgradePrompt';
 
 const NoResultsState: React.FC<{ mode?: string }> = ({ mode }) => (
 	<EmptyState
@@ -236,6 +237,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 										newTab={quickSearchMode !== 'goToLine' && quickSearchMode !== 'inFile'}
 									/>
 								))}
+								<SearchUpgradePrompt />
 							</>
 						)}
 					</>
