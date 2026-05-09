@@ -3380,14 +3380,6 @@ async function runFolderHubDiscoveryPipeline(options: {
  * Loads and ranks hub candidates from graph signals and user-authored notes under `Hub-Summaries/Manual/`.
  */
 export class HubCandidateDiscoveryService {
-	private inferRole(incoming: number, outgoing: number): HubRole {
-		if (incoming >= 5 && outgoing >= 5) return 'bridge';
-		if (outgoing > incoming * 1.2 && outgoing >= 4) return 'index';
-		if (incoming > outgoing * 1.2 && incoming >= 4) return 'authority';
-		if (incoming + outgoing >= 6) return 'folder_anchor';
-		return 'authority';
-	}
-
 	/**
 	 * Role for document hub candidates only. Never `folder_anchor` (reserved for folder hubs).
 	 */
@@ -3821,24 +3813,6 @@ export class HubCandidateDiscoveryService {
 	}): Promise<HubCandidate[]> {
 		const { candidates } = await runFolderHubDiscoveryPipeline(options);
 		return candidates;
-	}
-
-	/**
-	 * Same as {@link discoverFolderHubCandidates} with per-row diagnostics for tuning (DevTools / JSON export).
-	 */
-	async discoverFolderHubCandidatesWithDiagnostics(options: {
-		tenant?: IndexTenant;
-		limit?: number;
-		targetPathPrefixes?: string[];
-	}): Promise<{
-		candidates: HubCandidate[];
-		diagnostics: FolderHubDiscoveryDiagnosticsRow[];
-	}> {
-		const { candidates, enrichFinal, finalRows } = await runFolderHubDiscoveryPipeline(options);
-		return {
-			candidates,
-			diagnostics: buildFolderHubDiscoveryDiagnostics(finalRows, enrichFinal, candidates),
-		};
 	}
 
 	/**
