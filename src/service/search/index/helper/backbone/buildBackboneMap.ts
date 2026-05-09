@@ -64,11 +64,11 @@ function normalizeTagKey(tag: string): string {
 	return tag.trim().toLowerCase();
 }
 
-function folderDfForTag(tag: string, stats: TagGlobalStats): number {
-	const d = stats.tagFolderDf.get(tag);
+function getDfForTag(tag: string, dfMap: Map<string, number>): number {
+	const d = dfMap.get(tag);
 	if (d !== undefined) return d;
 	const k = normalizeTagKey(tag);
-	for (const [t, df] of stats.tagFolderDf) {
+	for (const [t, df] of dfMap) {
 		if (normalizeTagKey(t) === k) return df;
 	}
 	return 0;
@@ -82,7 +82,7 @@ function shouldHideTagFromFolderRows(tag: string, stats: TagGlobalStats): boolea
 	if (STATIC_ROW_NOISE.has(normalizeTagKey(tag))) return true;
 	const N = stats.folderCount;
 	if (N <= 0) return false;
-	const df = folderDfForTag(tag, stats);
+	const df = getDfForTag(tag, stats.tagFolderDf);
 	if (df <= 0) return false;
 	return df / N >= MAX_FOLDER_COVERAGE_FOR_ROW;
 }
@@ -197,73 +197,11 @@ function buildTagGlobalStats(
 	};
 }
 
-function rootDfForTag(tag: string, stats: TagGlobalStats): number {
-	const d = stats.tagRootDf.get(tag);
-	if (d !== undefined) return d;
-	const k = normalizeTagKey(tag);
-	for (const [t, df] of stats.tagRootDf) {
-		if (normalizeTagKey(t) === k) return df;
-	}
-	return 0;
-}
-
 function scoreTag(tf: number, tag: string, category: TagRankCategory, stats: TagGlobalStats): number {
 	if (tf <= 0) return 0;
-	const df = folderDfForTag(tag, stats);
-	const r = rootDfForTag(tag, stats);
-	const idfFolder = smoothIdf(df, stats.folderCount);
-	const idfRoot = smoothIdf(r, stats.rootBucketCount);
-	const prior = TYPE_PRIOR[category];
-	return tf * idfFolder * idfRoot * prior;
-}
-
-/**
- * Ranks topic tags by display score; returns top `limit` labels.
- */
-function rankTopicTagsForDisplay(
-	topicTagCounts: Map<string, number>,
-	stats: TagGlobalStats,
-	limit: number,
-): string[] {
-	return rankMapByScore(topicTagCounts, 'topic', stats, limit, shouldHideTagFromFolderRows);
-}
-
-/**
- * Merges keyword + functional counts, ranks by score, returns top `limit` labels.
- */
-function rankKeywordTagsForDisplay(
-	keywordTagCounts: Map<string, number>,
-	functionalTagCounts: Map<string, number>,
-	stats: TagGlobalStats,
-	limit: number,
-): string[] {
-	const entries: Array<{ tag: string; tf: number; category: TagRankCategory }> = [];
-	const seen = new Set<string>();
-	for (const [tag, c] of keywordTagCounts) {
-		if (c <= 0) continue;
-		const fc = functionalTagCounts.get(tag) ?? 0;
-		const tf = c + fc;
-		const category: TagRankCategory = 'keyword';
-		entries.push({ tag, tf, category });
-		seen.add(tag);
-	}
-	for (const [tag, c] of functionalTagCounts) {
-		if (c <= 0 || seen.has(tag)) continue;
-		entries.push({ tag, tf: c, category: 'functional' });
-	}
-	entries.sort((a, b) => {
-		const sa = scoreTag(a.tf, a.tag, a.category, stats);
-		const sb = scoreTag(b.tf, b.tag, b.category, stats);
-		if (sb !== sa) return sb - sa;
-		return a.tag.localeCompare(b.tag);
-	});
-	const out: string[] = [];
-	for (const e of entries) {
-		if (shouldHideTagFromFolderRows(e.tag, stats)) continue;
-		out.push(e.tag);
-		if (out.length >= Math.max(0, limit)) break;
-	}
-	return out;
+	const idfFolder = smoothIdf(getDfForTag(tag, stats.tagFolderDf), stats.folderCount);
+	const idfRoot = smoothIdf(getDfForTag(tag, stats.tagRootDf), stats.rootBucketCount);
+	return tf * idfFolder * idfRoot * TYPE_PRIOR[category];
 }
 
 function rankMapByScore(
@@ -271,66 +209,35 @@ function rankMapByScore(
 	category: TagRankCategory,
 	stats: TagGlobalStats,
 	limit: number,
-	exclude: (tag: string, stats: TagGlobalStats) => boolean,
 ): string[] {
 	const scored = [...counts.entries()]
 		.filter(([, c]) => c > 0)
-		.map(([tag, tf]) => ({
-			tag,
-			s: scoreTag(tf, tag, category, stats),
-		}))
-		.sort((a, b) => {
-			if (b.s !== a.s) return b.s - a.s;
-			return a.tag.localeCompare(b.tag);
-		});
+		.map(([tag, tf]) => ({ tag, s: scoreTag(tf, tag, category, stats) }))
+		.sort((a, b) => b.s - a.s || a.tag.localeCompare(b.tag));
 	const out: string[] = [];
 	for (const x of scored) {
-		if (exclude(x.tag, stats)) continue;
+		if (shouldHideTagFromFolderRows(x.tag, stats)) continue;
 		out.push(x.tag);
-		if (out.length >= Math.max(0, limit)) break;
+		if (out.length >= limit) break;
 	}
 	return out;
 }
 
-/**
- * Builds topic/keyword maps restricted to picked names (original TF preserved) for weighted % line.
- */
-function pickCountsForWeightedLine(
-	full: Map<string, number>,
-	pickedNames: readonly string[],
-): Map<string, number> {
+/** Merge keyword + functional counts into a single map. */
+function mergeKwFunctionalCounts(kw: Map<string, number>, fn: Map<string, number>): Map<string, number> {
 	const m = new Map<string, number>();
-	for (const name of pickedNames) {
-		const c = full.get(name);
-		if (c !== undefined && c > 0) m.set(name, c);
-	}
+	for (const [t, c] of kw) if (c > 0) m.set(t, c + (fn.get(t) ?? 0));
+	for (const [t, c] of fn) if (c > 0 && !m.has(t)) m.set(t, c);
 	return m;
 }
 
-/** Merges keyword + functional counts for picked labels (weighted line uses combined mass). */
-function mergeKeywordFunctionalForPicked(
-	keywordFull: Map<string, number>,
-	functionalFull: Map<string, number>,
-	pickedNames: readonly string[],
-): Map<string, number> {
+/** Pick counts for given names from a full map, used for weighted % formatting. */
+function pickCounts(full: Map<string, number>, names: readonly string[]): Map<string, number> {
 	const m = new Map<string, number>();
-	for (const name of pickedNames) {
-		const k = keywordFull.get(name) ?? 0;
-		const f = functionalFull.get(name) ?? 0;
-		if (k + f > 0) m.set(name, k + f);
-	}
+	for (const n of names) { const c = full.get(n); if (c && c > 0) m.set(n, c); }
 	return m;
 }
 
-/** Empty stats for no-folder fallback. */
-function emptyTagGlobalStats(): TagGlobalStats {
-	return {
-		folderCount: 0,
-		rootBucketCount: 1,
-		tagFolderDf: new Map(),
-		tagRootDf: new Map(),
-	};
-}
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -396,86 +303,52 @@ function visibleChildFolders(folder: TFolder, excludedPathPrefixes: string[]): T
 	);
 }
 
-type SubtreeDepthAgg = { sumDepths: number; count: number; maxDepth: number };
+type FolderScanResult = {
+	rows: FolderScanRow[];
+	subtreeStats: Map<string, { subtreeMaxDepth: number; subtreeAvgDepth: number }>;
+};
 
 /**
- * DFS over the vault to compute per-folder subtree depth stats (matches hub digest depth rules).
+ * Single DFS pass: collects folder rows (respecting maxDepth/maxFolders) AND computes subtree depth stats.
+ * Subtree stats are computed for all reachable folders (no depth/count cap).
  */
-function buildFolderSubtreeStatsMap(
+function scanFolderTree(
 	root: TFolder,
+	maxDepth: number,
+	maxFolders: number,
 	excludedPathPrefixes: string[],
-): Map<string, { subtreeMaxDepth: number; subtreeAvgDepth: number }> {
-	const map = new Map<string, { subtreeMaxDepth: number; subtreeAvgDepth: number }>();
+): FolderScanResult {
+	const rows: FolderScanRow[] = [];
+	const subtreeStats = new Map<string, { subtreeMaxDepth: number; subtreeAvgDepth: number }>();
 
-	function dfs(folder: TFolder, depth: number): SubtreeDepthAgg {
+	function dfs(folder: TFolder, depth: number, collectRows: boolean): { sumDepths: number; count: number; maxDepth: number } {
 		const visibleSubs = visibleChildFolders(folder, excludedPathPrefixes);
-		let sumDepths = depth;
-		let count = 1;
-		let maxDepth = depth;
+		if (collectRows && rows.length < maxFolders) {
+			rows.push({ path: folder.path, depth, childFolderCount: visibleSubs.length });
+		}
+		const childCollect = collectRows && depth < maxDepth && rows.length < maxFolders;
+		let sumDepths = depth, count = 1, max = depth;
 		for (const sub of visibleSubs) {
-			const a = dfs(sub, depth + 1);
+			const a = dfs(sub, depth + 1, childCollect);
 			sumDepths += a.sumDepths;
 			count += a.count;
-			maxDepth = Math.max(maxDepth, a.maxDepth);
+			max = Math.max(max, a.maxDepth);
 		}
-		map.set(normalizeVaultPath(folder.path), {
-			subtreeMaxDepth: maxDepth,
+		subtreeStats.set(normalizeVaultPath(folder.path), {
+			subtreeMaxDepth: max,
 			subtreeAvgDepth: count > 0 ? sumDepths / count : depth,
 		});
-		return { sumDepths, count, maxDepth };
+		return { sumDepths, count, maxDepth: max };
 	}
 
 	const top = root.children
 		.filter((c): c is TFolder => c instanceof TFolder)
 		.sort((a, b) => a.path.localeCompare(b.path));
 	for (const ch of top) {
-		dfs(ch, 1);
+		if (isPathExcludedByPrefixes(ch.path, excludedPathPrefixes) || shouldIgnoreFolderForBackbone(ch.path)) continue;
+		dfs(ch, 1, true);
 	}
-	return map;
-}
-
-function collectFoldersDfsPreorder(
-	folder: TFolder,
-	depth: number,
-	maxDepth: number,
-	maxFolders: number,
-	excludedPathPrefixes: string[],
-	out: FolderScanRow[],
-): void {
-	if (out.length >= maxFolders) return;
-	if (isPathExcludedByPrefixes(folder.path, excludedPathPrefixes)) return;
-	if (shouldIgnoreFolderForBackbone(folder.path)) return;
-
-	const visibleSubs = visibleChildFolders(folder, excludedPathPrefixes);
-	const childFolderCount = visibleSubs.length;
-	out.push({ path: folder.path, depth, childFolderCount });
-	if (out.length >= maxFolders) return;
-	if (depth >= maxDepth) return;
-
-	for (const sub of visibleSubs) {
-		collectFoldersDfsPreorder(sub, depth + 1, maxDepth, maxFolders, excludedPathPrefixes, out);
-		if (out.length >= maxFolders) return;
-	}
-}
-
-/**
- * Depth-first pre-order folder list (paths + depth + child folder count).
- */
-function collectFolderTreeRows(
-	root: TFolder,
-	maxDepth: number,
-	maxFolders: number,
-	excludedPathPrefixes: string[],
-): FolderScanRow[] {
-	const out: FolderScanRow[] = [];
-	const top = root.children
-		.filter((c): c is TFolder => c instanceof TFolder)
-		.sort((a, b) => a.path.localeCompare(b.path));
-	for (const ch of top) {
-		collectFoldersDfsPreorder(ch, 1, maxDepth, maxFolders, excludedPathPrefixes, out);
-		if (out.length >= maxFolders) break;
-	}
-	return out;
+	return { rows, subtreeStats };
 }
 
 
@@ -560,23 +433,11 @@ function topicPurityFromCounts(topicTagCounts: Map<string, number>): number {
 	return h;
 }
 
-function buildFolderDescription(f: {
-	topicPurity: number;
-	docCount: number;
-	docOutgoing: number;
-	childFolderCount: number;
-	topTopics: string[];
-}): string {
+function buildFolderDescription(f: { topicPurity: number; docCount: number; docOutgoing: number; childFolderCount: number; topTopics: string[] }): string {
 	const theme = f.topTopics.slice(0, 2).join(', ') || 'mixed topics';
-	if (f.topicPurity >= 0.5) {
-		return `Cohesive thematic branch around ${theme}.`;
-	}
-	if (f.docOutgoing > 40) {
-		return `Strong outbound links (${f.docOutgoing}); likely cross-folder corridor.`;
-	}
-	if (f.childFolderCount > 6) {
-		return `Wide container (${f.childFolderCount} subfolders); landing layer.`;
-	}
+	if (f.topicPurity >= 0.5) return `Cohesive thematic branch around ${theme}.`;
+	if (f.docOutgoing > 40) return `Strong outbound links (${f.docOutgoing}); likely cross-folder corridor.`;
+	if (f.childFolderCount > 6) return `Wide container (${f.childFolderCount} subfolders); landing layer.`;
 	return `Mixed coverage (${theme}); ${f.docCount} indexed notes in subtree.`;
 }
 
@@ -597,7 +458,7 @@ async function loadBackboneFolderNodes(
 	subtreeStatsMap: Map<string, { subtreeMaxDepth: number; subtreeAvgDepth: number }>,
 ): Promise<LoadedFolderDigests> {
 	if (!sqliteStoreManager.isInitialized() || rows.length === 0) {
-		return { folderNodes: [], recursiveMapsByFolder: new Map(), tagGlobalStats: emptyTagGlobalStats() };
+		return { folderNodes: [], recursiveMapsByFolder: new Map(), tagGlobalStats: { folderCount: 0, rootBucketCount: 1, tagFolderDf: new Map(), tagRootDf: new Map() } };
 	}
 
 	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
@@ -670,26 +531,14 @@ async function loadBackboneFolderNodes(
 		const maps = raw.maps;
 		const docCount = maps.length;
 		const topicPurity = topicPurityFromCounts(raw.topicTagCounts);
-		const topTopics = rankTopicTagsForDisplay(raw.topicTagCounts, tagGlobalStats, TOP_TOPIC);
-		const topKeywords = rankKeywordTagsForDisplay(
-			raw.keywordTagCounts,
-			raw.functionalTagCounts,
-			tagGlobalStats,
-			TOP_KEYWORD,
-		);
-		const topicPick = pickCountsForWeightedLine(raw.topicTagCounts, topTopics);
-		const kwPick = mergeKeywordFunctionalForPicked(raw.keywordTagCounts, raw.functionalTagCounts, topKeywords);
-		const weighted = formatTopWeightedTopics(topicPick, kwPick, 3);
+		const topTopics = rankMapByScore(raw.topicTagCounts, 'topic', tagGlobalStats, TOP_TOPIC);
+		const mergedKw = mergeKwFunctionalCounts(raw.keywordTagCounts, raw.functionalTagCounts);
+		const topKeywords = rankMapByScore(mergedKw, 'keyword', tagGlobalStats, TOP_KEYWORD);
+		const weighted = formatTopWeightedTopics(pickCounts(raw.topicTagCounts, topTopics), pickCounts(mergedKw, topKeywords), 3);
 		const topTopicsWeighted = weighted || '';
 
-		let directDocCount = 0;
-		try {
-			directDocCount = await indexedDocumentRepo.countDirectDocumentsInFolder(row.path);
-		} catch {
-			directDocCount = 0;
-		}
-
 		const directFileMaps = maps.filter((m) => isDirectDocInFolder(m.path, row.path));
+		const directDocCount = directFileMaps.length;
 		const fileBasenames = directFileMaps.map((m) => basenameFromPath(m.path));
 		const fileNameTokenSample =
 			fileBasenames.length > 0 ? topTokensFromBasenames(fileBasenames, NAME_TOKEN_TOP) : [];
@@ -1049,11 +898,10 @@ async function buildVirtualNodesForMessyFolders(
 				if (ids.length) {
 					const { topicTagCounts, keywordTagCounts, functionalTagCounts } = await graphRepo.getTagsByDocIds(ids);
 					topicPurity = topicPurityFromCounts(topicTagCounts);
-					topTopics = rankTopicTagsForDisplay(topicTagCounts, tagGlobalStats, 4);
-					topKeywords = rankKeywordTagsForDisplay(keywordTagCounts, functionalTagCounts, tagGlobalStats, 5);
-					const tp = pickCountsForWeightedLine(topicTagCounts, topTopics);
-					const kp = mergeKeywordFunctionalForPicked(keywordTagCounts, functionalTagCounts, topKeywords);
-					const weighted = formatTopWeightedTopics(tp, kp, 3);
+					topTopics = rankMapByScore(topicTagCounts, 'topic', tagGlobalStats, 4);
+					const mkw = mergeKwFunctionalCounts(keywordTagCounts, functionalTagCounts);
+					topKeywords = rankMapByScore(mkw, 'keyword', tagGlobalStats, 5);
+					const weighted = formatTopWeightedTopics(pickCounts(topicTagCounts, topTopics), pickCounts(mkw, topKeywords), 3);
 					if (weighted) topTopicsWeighted = weighted;
 				}
 			} catch {
@@ -1403,8 +1251,7 @@ export async function buildBackboneMap(options?: BuildBackboneMapOptions): Promi
 	const vault = AppContext.getInstance().app.vault;
 	const root = vault.getRoot();
 	const excluded = [...getBackboneExcludedPrefixes(), ...extraExclude.filter(Boolean)];
-	const rows = collectFolderTreeRows(root, maxDepth, maxFolders, excluded);
-	const subtreeStats = buildFolderSubtreeStatsMap(root, excluded);
+	const { rows, subtreeStats } = scanFolderTree(root, maxDepth, maxFolders, excluded);
 
 	const { folderNodes, recursiveMapsByFolder, tagGlobalStats } = await loadBackboneFolderNodes(
 		rows,
