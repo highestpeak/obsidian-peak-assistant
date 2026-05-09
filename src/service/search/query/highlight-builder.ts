@@ -1,18 +1,13 @@
 import { SLICE_CAPS } from '@/core/constant';
 import type { SearchSnippet } from '../types';
 
-/**
- * Normalized content with position mapping
- */
 interface NormalizedContent {
 	text: string;
-	positionMap: number[]; // Maps normalized index -> original index
+	/** Maps normalized index -> original index */
+	positionMap: number[];
 }
 
-/**
- * Normalize content by removing spaces and creating position mapping.
- * Handles tokenized content where words are separated by spaces.
- */
+/** Remove spaces from content, building a position map back to original indices. */
 function normalizeContent(content: string): NormalizedContent {
 	const normalizedContent: string[] = [];
 	const positionMap: number[] = [];
@@ -31,25 +26,14 @@ function normalizeContent(content: string): NormalizedContent {
 	};
 }
 
-/**
- * Normalize query by removing all spaces
- */
 function normalizeQuery(query: string): string {
 	return query.replace(/\s+/g, '');
 }
 
-/**
- * Find match position in normalized text (case insensitive)
- */
 function findFullQueryMatch(normalizedText: string, normalizedQuery: string): number {
-	const lowerNormalized = normalizedText.toLowerCase();
-	const lowerQuery = normalizedQuery.toLowerCase();
-	return lowerNormalized.indexOf(lowerQuery);
+	return normalizedText.toLowerCase().indexOf(normalizedQuery.toLowerCase());
 }
 
-/**
- * Find all keyword matches in normalized text
- */
 function findAllKeywordMatches(normalizedText: string, keywords: string[]): Array<{ start: number; end: number; keyword: string }> {
 	const lowerNormalized = normalizedText.toLowerCase();
 	const matches: Array<{ start: number; end: number; keyword: string }> = [];
@@ -74,13 +58,9 @@ function findAllKeywordMatches(normalizedText: string, keywords: string[]): Arra
 		}
 	}
 
-	// Sort matches by position
 	return matches.sort((a, b) => a.start - b.start);
 }
 
-/**
- * Map normalized position range back to original content positions
- */
 function mapNormalizedToOriginal(
 	normalizedStart: number,
 	normalizedEnd: number,
@@ -94,52 +74,7 @@ function mapNormalizedToOriginal(
 	return { start: originalStart, end: originalEnd };
 }
 
-/**
- * Find the best snippet window that contains the most keyword matches.
- * Prioritizes windows with more unique keywords matched.
- * 
- * Window Calculation Strategy:
- * ============================
- * 
- * 1. Window Size:
- *    - Each window extends `windowBefore` (default 80) characters before the match start
- *    - And `windowAfter` (default 140) characters after the match end
- *    - Total window size: approximately 220 characters (80 + match_length + 140)
- * 
- * 2. Window Creation:
- *    For each match position in the content:
- *    - windowStart = max(0, match.start - windowBefore)
- *    - windowEnd = min(content.length, match.end + windowAfter)
- *    - This creates a fixed-size window centered around each match
- * 
- * 3. Scoring:
- *    For each window, count how many unique keywords are matched:
- *    - Iterate through all matches
- *    - Check if each match is completely within the window boundaries
- *    - Use a Set to count unique keywords (each keyword counted only once)
- *    - Full query matches count as matching all keywords
- * 
- * 4. Selection Priority:
- *    a) Primary: Select window with the most unique keywords matched
- *    b) Secondary: If multiple windows have the same keyword count, prefer the shorter window (more focused)
- * 
- * Example:
- * =======
- * Content: "...topic...command...rebase...topic command rebase..."
- * Keywords: ["topic", "command", "rebase"]
- * 
- * Window 1 (centered at position 100 "topic"):
- *   Range: [20, 240]
- *   Contains: "topic" at 100, "topic command rebase" at 150
- *   Unique keywords: 3 (topic, command, rebase)
- * 
- * Window 2 (centered at position 200 "command"):
- *   Range: [120, 340]
- *   Contains: "topic command rebase" at 150, "command" at 200, "rebase" at 300
- *   Unique keywords: 3 (topic, command, rebase)
- * 
- * Result: Both windows match 3 keywords. If Window 1 is shorter, it will be selected.
- */
+/** Pick window anchored at each match, score by unique keywords covered; tie-break by shorter window. */
 function findBestSnippetWindow(
 	content: string,
 	originalMatches: Array<{ start: number; end: number; keyword?: string }>,
@@ -147,66 +82,27 @@ function findBestSnippetWindow(
 	windowBefore: number = 80,
 	windowAfter: number = 140
 ): { start: number; end: number; matchCount: number } {
-	if (originalMatches.length === 0) {
-		return { start: 0, end: Math.min(200, content.length), matchCount: 0 };
-	}
+	if (originalMatches.length === 0) return { start: 0, end: Math.min(200, content.length), matchCount: 0 };
 
-	let bestWindow: { start: number; end: number; matchCount: number } | null = null;
+	let best: { start: number; end: number; matchCount: number } | null = null;
 
-	// Try each match position as the anchor point for a window
 	for (const match of originalMatches) {
-		// Calculate window boundaries:
-		// - Start: match.start - windowBefore (but not before content start)
-		// - End: match.end + windowAfter (but not after content end)
-		const windowStart = Math.max(0, match.start - windowBefore);
-		const windowEnd = Math.min(content.length, match.end + windowAfter);
-
-		// Count how many unique keywords are matched within this window
-		const matchedKeywords = new Set<string>();
+		const wStart = Math.max(0, match.start - windowBefore);
+		const wEnd = Math.min(content.length, match.end + windowAfter);
+		const matched = new Set<string>();
 		for (const m of originalMatches) {
-			// Check if this match is completely within the window
-			if (m.start >= windowStart && m.end <= windowEnd) {
-				if (m.keyword) {
-					matchedKeywords.add(m.keyword.toLowerCase());
-				} else {
-					// If no keyword info (e.g., full query match), count as a match
-					matchedKeywords.add('unknown');
-				}
-			}
+			if (m.start >= wStart && m.end <= wEnd) matched.add((m.keyword ?? 'unknown').toLowerCase());
 		}
-
-		const matchCount = matchedKeywords.size;
-
-		// Select window with most unique keywords matched
-		if (!bestWindow || matchCount > bestWindow.matchCount) {
-			bestWindow = { start: windowStart, end: windowEnd, matchCount };
-		} else if (matchCount === bestWindow.matchCount) {
-			// If same keyword count, prefer shorter window (more focused)
-			const currentLength = windowEnd - windowStart;
-			const bestLength = bestWindow.end - bestWindow.start;
-			if (currentLength < bestLength) {
-				bestWindow = { start: windowStart, end: windowEnd, matchCount };
-			}
+		const count = matched.size;
+		if (!best || count > best.matchCount || (count === best.matchCount && (wEnd - wStart) < (best.end - best.start))) {
+			best = { start: wStart, end: wEnd, matchCount: count };
 		}
 	}
 
-	return bestWindow || { start: 0, end: Math.min(200, content.length), matchCount: 0 };
+	return best || { start: 0, end: Math.min(200, content.length), matchCount: 0 };
 }
 
-/**
- * Create snippet window around matches and adjust highlight positions.
- * 
- * Process:
- * 1. Find the best window using findBestSnippetWindow (most keywords matched)
- * 2. Extract the text snippet within the window boundaries
- * 3. Filter matches that are completely within the window
- * 4. Adjust highlight positions relative to the snippet start (not absolute content positions)
- * 
- * Highlight Position Adjustment:
- * - Original positions are absolute indices in the full content
- * - After extracting snippet, positions need to be relative to snippet start
- * - Example: If snippet starts at position 100, and match is at 150, highlight position becomes 50
- */
+/** Extract snippet window around best-scoring matches, adjusting highlight positions to be relative. */
 function createSnippetWindow(
 	content: string,
 	originalMatches: Array<{ start: number; end: number; keyword?: string }>,

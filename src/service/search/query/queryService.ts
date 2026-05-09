@@ -123,13 +123,11 @@ export class QueryService {
 			sw.stop();
 		}
 
-		// Apply ranking boosts and optional LLM rerank
 		sw.start('reranking');
 		const pprActive = enablePPR && pprEnriched !== resultItems;
 		const ranked = await this.reranker.rerank(pprEnriched, termRaw, scopeValue, enableLLMRerank, tenant, pprActive);
 		sw.stop();
 
-		// Log timing information
 		sw.print(false);
 
 		const totalDuration = sw.getTotalElapsed();
@@ -165,30 +163,13 @@ export class QueryService {
 			return { query, items: [], duration: sw.getTotalElapsed() };
 		}
 
-		if (!embedding) {
-			console.warn('[QueryService.vectorSearch] No embedding generated');
-			return { query, items: [], duration: sw.getTotalElapsed() };
-		}
-
-		// Perform vector search
-		const searchQuery: SearchQuery = {
-			text: queryText,
-			scopeMode,
-			scopeValue,
-			topK,
-			searchMode: 'vector',
-			indexTenant: query.indexTenant,
-		};
+		if (!embedding) return { query, items: [], duration: sw.getTotalElapsed() };
 
 		try {
 			const vectorResults = await this.executeVectorSearch({
-				query: searchQuery,
-				mode: scopeMode,
-				scope: scopeValue,
-				embedding
+				query: { text: queryText, scopeMode, scopeValue, topK, searchMode: 'vector', indexTenant: query.indexTenant },
+				mode: scopeMode, scope: scopeValue, embedding,
 			});
-
-			// Return results in the standard SearchResponse format
 			return { query, items: vectorResults, duration: sw.getTotalElapsed() };
 		} catch (error) {
 			console.error(`[QueryService.vectorSearch] Vector search failed:`, error);
@@ -198,45 +179,21 @@ export class QueryService {
 
 	private extractKeywords(queryText: string): string[] {
 		if (!queryText.trim()) return [];
-		// Split by whitespace and normalize each keyword
-		return queryText
-			.split(/\s+/)
-			.filter(k => k.length > 0)
-			.map(k => normalizeTextForFts(k));
+		return queryText.split(/\s+/).filter(k => k.length > 0).map(k => normalizeTextForFts(k));
 	}
 
 	private buildFtsQuery(keywords: string[]): string {
 		if (keywords.length === 0) return '';
 		if (keywords.length === 1) return keywords[0];
-
-		// Use OR to match any keyword, allowing us to count matches per result
-		// Escape special FTS characters if needed (quotes, etc.)
-		const escapedKeywords = keywords.map(k => {
-			// FTS5 special chars: " AND OR NOT
-			// Wrap in quotes if contains spaces or special chars
-			if (k.includes(' ') || /["ANDORNOT]/i.test(k)) {
-				return `"${k.replace(/"/g, '""')}"`;
-			}
-			return k;
-		});
-
-		return escapedKeywords.join(' OR ');
+		return keywords.map(k =>
+			k.includes(' ') || /["ANDORNOT]/i.test(k) ? `"${k.replace(/"/g, '""')}"` : k
+		).join(' OR ');
 	}
 
 	private countKeywordMatches(content: string, keywords: string[]): number {
 		if (!content || keywords.length === 0) return 0;
-
-		const normalizedContent = normalizeTextForFts(content).toLowerCase();
-		let matchCount = 0;
-
-		for (const keyword of keywords) {
-			const normalizedKeyword = keyword.toLowerCase();
-			if (normalizedContent.includes(normalizedKeyword)) {
-				matchCount++;
-			}
-		}
-
-		return matchCount;
+		const normalized = normalizeTextForFts(content).toLowerCase();
+		return keywords.filter(k => normalized.includes(k.toLowerCase())).length;
 	}
 
 	private countTotalKeywordOccurrences(content: string, keywords: string[]): number {
@@ -268,39 +225,20 @@ export class QueryService {
 		const termRaw = query?.text ?? '';
 		const topK = Number(query?.topK ?? DEFAULT_SEARCH_TOP_K);
 
-		if (!termRaw.trim()) {
-			return [];
-		}
-
-		// Extract keywords from query
+		if (!termRaw.trim()) return [];
 		const keywords = this.extractKeywords(termRaw);
-		if (keywords.length === 0) {
-			return [];
-		}
-
-		// Build FTS query: use OR to match any keyword
+		if (keywords.length === 0) return [];
 		const ftsQuery = this.buildFtsQuery(keywords);
-		
-		// Safety check: ensure FTS query is not empty
-		if (!ftsQuery || !ftsQuery.trim()) {
-			return [];
-		}
+		if (!ftsQuery?.trim()) return [];
 
-		// Increase limit to allow for re-ranking by keyword match count
-		// We'll take topK after scoring
-		const searchLimit = Math.min(topK * 3, 100); // Search more, then filter
-
+		const searchLimit = Math.min(topK * 3, 100);
 		const tenant = query?.indexTenant ?? 'vault';
 		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
 		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 
-		// Execute search with OR query to match any keyword (exclude folders applied in SQL)
 		const fulltextRows = docChunkRepo.searchFts(ftsQuery, searchLimit, mode, scope, query.excludeFolderPrefixes);
-		if (!fulltextRows.length) {
-			return [];
-		}
+		if (!fulltextRows.length) return [];
 
-		// Fetch indexed document rows separately (avoid JOIN)
 		const docIds = Array.from(new Set(fulltextRows.map((r) => r.docId)));
 		const metaRows = await indexedDocumentRepo.getByIds(docIds);
 		const metaById = new Map(metaRows.map((m) => [m.id, m]));
@@ -309,7 +247,6 @@ export class QueryService {
 		const chunkRows = chunkIds.length ? await docChunkRepo.getByChunkIds(chunkIds) : [];
 		const chunkTypeById = new Map(chunkRows.map((c) => [c.chunk_id, c.chunk_type as ChunkType]));
 
-		// Score results by keyword match count and BM25
 		const items: SearchResultItem[] = fulltextRows.map((r) => {
 			const meta = metaById.get(r.docId);
 			const content = r.content ?? '';
@@ -431,38 +368,20 @@ export class QueryService {
 		const termRaw = query?.text ?? '';
 		const topK = Number(query?.topK ?? DEFAULT_SEARCH_TOP_K);
 
-		if (!termRaw.trim()) {
-			return [];
-		}
-
-		// Extract keywords from query
+		if (!termRaw.trim()) return [];
 		const keywords = this.extractKeywords(termRaw);
-		if (keywords.length === 0) {
-			return [];
-		}
-
-		// Build FTS query: use OR to match any keyword
+		if (keywords.length === 0) return [];
 		const ftsQuery = this.buildFtsQuery(keywords);
-		
-		// Safety check: ensure FTS query is not empty
-		if (!ftsQuery || !ftsQuery.trim()) {
-			return [];
-		}
+		if (!ftsQuery?.trim()) return [];
 
-		// Increase limit to allow for re-ranking by keyword match count
 		const searchLimit = Math.min(topK * 3, 100);
-
 		const tenant = query?.indexTenant ?? 'vault';
 		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
 		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 
-		// Execute meta search with OR query to match any keyword (exclude folders applied in SQL)
 		const metaRows = docChunkRepo.searchMetaFts(ftsQuery, searchLimit, mode, scope, query.excludeFolderPrefixes);
-		if (!metaRows.length) {
-			return [];
-		}
+		if (!metaRows.length) return [];
 
-		// Fetch indexed document rows separately (avoid JOIN)
 		const docIds = Array.from(new Set(metaRows.map((r) => r.docId)));
 		const metaRows_ = await indexedDocumentRepo.getByIds(docIds);
 		const metaById = new Map(metaRows_.map((m) => [m.id, m]));

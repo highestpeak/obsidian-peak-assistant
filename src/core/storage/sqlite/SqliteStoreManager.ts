@@ -212,228 +212,40 @@ export class SqliteStoreManager {
 		this.cascadeDebtRepoChat = new CascadeDebtRepo(metaKdb);
 	}
 
-	/**
-	 * Get Kysely for the given index tenant (vault = search.sqlite, chat = meta.sqlite).
-	 */
 	getIndexContext(tenant: IndexTenant = 'vault'): Kysely<DbSchema> {
-		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
 		const store = tenant === 'chat' ? this.metaStore : this.searchStore;
-		if (!store) throw new Error('SqliteStoreManager not initialized or is closing.');
+		if (this.closing || !store) throw new Error('SqliteStoreManager not initialized or is closing.');
 		return store.kysely();
 	}
 
-	/**
-	 * Get the search database backend type.
-	 */
-	getSearchStore(): SqliteDatabase | null {
-		return this.searchStore;
-	}
+	getSearchStore(): SqliteDatabase | null { return this.searchStore; }
+	getMetaStore(): SqliteDatabase | null { return this.metaStore; }
+	isInitialized(): boolean { return !this.closing && this.searchStore !== null && this.metaStore !== null; }
+	isVectorSearchEnabled(): boolean { return this.isVectorSearchAvailable; }
 
-	/**
-	 * Get the meta database backend type.
-	 */
-	getMetaStore(): SqliteDatabase | null {
-		return this.metaStore;
-	}
+	// Tenant-aware repos (vault = search.sqlite, chat = meta.sqlite)
+	getIndexedDocumentRepo(tenant: IndexTenant = 'vault'): IndexedDocumentRepo { return this.tenantRepo(tenant, this.indexedDocumentRepo, this.indexedDocumentRepoChat); }
+	getDocChunkRepo(tenant: IndexTenant = 'vault'): DocChunkRepo { return this.tenantRepo(tenant, this.docChunkRepo, this.docChunkRepoChat); }
+	getEmbeddingRepo(tenant: IndexTenant = 'vault'): EmbeddingRepo { return this.tenantRepo(tenant, this.embeddingRepo, this.embeddingRepoChat); }
+	getIndexStateRepo(tenant: IndexTenant = 'vault'): IndexStateRepo { return this.tenantRepo(tenant, this.indexStateRepo, this.indexStateRepoChat); }
+	getGraphRepo(tenant: IndexTenant = 'vault'): GraphRepo { return this.tenantRepo(tenant, this.graphRepo, this.graphRepoChat); }
+	getMobiusNodeRepo(tenant: IndexTenant = 'vault'): MobiusNodeRepo { return this.tenantRepo(tenant, this.mobiusNodeRepo, this.mobiusNodeRepoChat); }
+	getMobiusEdgeRepo(tenant: IndexTenant = 'vault'): MobiusEdgeRepo { return this.tenantRepo(tenant, this.mobiusEdgeRepo, this.mobiusEdgeRepoChat); }
+	getCascadeDebtRepo(tenant: IndexTenant = 'vault'): CascadeDebtRepo { return this.tenantRepo(tenant, this.cascadeDebtRepo, this.cascadeDebtRepoChat); }
 
-	/**
-	 * Check if the stores are initialized.
-	 */
-	isInitialized(): boolean {
-		return !this.closing && this.searchStore !== null && this.metaStore !== null;
-	}
+	// Single-tenant repos
+	getMobiusOperationRepo(): MobiusOperationRepo { return this.requireRepo(this.mobiusOperationRepo); }
+	getUserProfileProcessedHashRepo(): UserProfileProcessedHashRepo { return this.requireRepo(this.userProfileProcessedHashRepo); }
+	getChatProjectRepo(): ChatProjectRepo { return this.requireRepo(this.chatProjectRepo); }
+	getChatConversationRepo(): ChatConversationRepo { return this.requireRepo(this.chatConversationRepo); }
+	getChatMessageRepo(): ChatMessageRepo { return this.requireRepo(this.chatMessageRepo); }
+	getChatMessageResourceRepo(): ChatMessageResourceRepo { return this.requireRepo(this.chatMessageResourceRepo); }
+	getChatStarRepo(): ChatStarRepo { return this.requireRepo(this.chatStarRepo); }
+	getAIAnalysisRepo(): AIAnalysisRepo { return this.requireRepo(this.aiAnalysisRepo); }
+	getQueryPatternRepo(): QueryPatternRepo { return this.requireRepo(this.queryPatternRepo); }
+	getAmbientPushRepo(): AmbientPushRepo { return this.requireRepo(this.ambientPushRepo); }
 
-	/**
-	 * Get IndexedDocumentRepo for the given index tenant (default: vault).
-	 */
-	getIndexedDocumentRepo(tenant: IndexTenant = 'vault'): IndexedDocumentRepo {
-		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.indexedDocumentRepoChat : this.indexedDocumentRepo;
-		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
-		return repo;
-	}
-
-	/**
-	 * Get DocChunkRepo for the given index tenant (default: vault).
-	 */
-	getDocChunkRepo(tenant: IndexTenant = 'vault'): DocChunkRepo {
-		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.docChunkRepoChat : this.docChunkRepo;
-		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
-		return repo;
-	}
-
-	/**
-	 * Get EmbeddingRepo for the given index tenant (default: vault).
-	 */
-	getEmbeddingRepo(tenant: IndexTenant = 'vault'): EmbeddingRepo {
-		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.embeddingRepoChat : this.embeddingRepo;
-		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
-		return repo;
-	}
-
-	/**
-	 * Check if vector similarity search is available.
-	 * This requires sqlite-vec extension to be loaded successfully.
-	 */
-	isVectorSearchEnabled(): boolean {
-		return this.isVectorSearchAvailable;
-	}
-
-	/**
-	 * Get IndexStateRepo for the given index tenant (default: vault).
-	 */
-	getIndexStateRepo(tenant: IndexTenant = 'vault'): IndexStateRepo {
-		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.indexStateRepoChat : this.indexStateRepo;
-		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
-		return repo;
-	}
-
-	/**
-	 * Graph semantics (preview, tags, N-hop) for the given index tenant (default: vault).
-	 */
-	getGraphRepo(tenant: IndexTenant = 'vault'): GraphRepo {
-		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.graphRepoChat : this.graphRepo;
-		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
-		return repo;
-	}
-
-	/**
-	 * Mobius node repo for the given index tenant (vault = search.sqlite, chat = meta.sqlite index).
-	 */
-	getMobiusNodeRepo(tenant: IndexTenant = 'vault'): MobiusNodeRepo {
-		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.mobiusNodeRepoChat : this.mobiusNodeRepo;
-		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
-		return repo;
-	}
-
-	/**
-	 * Mobius edge repo for the given index tenant.
-	 */
-	getMobiusEdgeRepo(tenant: IndexTenant = 'vault'): MobiusEdgeRepo {
-		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.mobiusEdgeRepoChat : this.mobiusEdgeRepo;
-		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
-		return repo;
-	}
-
-	/**
-	 * Append-only operation log (meta.sqlite).
-	 */
-	getMobiusOperationRepo(): MobiusOperationRepo {
-		if (this.closing || !this.mobiusOperationRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.mobiusOperationRepo;
-	}
-
-	/**
-	 * Get UserProfileProcessedHashRepo instance (search DB).
-	 */
-	getUserProfileProcessedHashRepo(): UserProfileProcessedHashRepo {
-		if (this.closing || !this.userProfileProcessedHashRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.userProfileProcessedHashRepo;
-	}
-
-	/**
-	 * Cascade debt tracking repo for the given index tenant (vault = search.sqlite, chat = meta.sqlite).
-	 */
-	getCascadeDebtRepo(tenant: IndexTenant = 'vault'): CascadeDebtRepo {
-		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.cascadeDebtRepoChat : this.cascadeDebtRepo;
-		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
-		return repo;
-	}
-
-	/**
-	 * Get ChatProjectRepo instance.
-	 */
-	getChatProjectRepo(): ChatProjectRepo {
-		if (this.closing || !this.chatProjectRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.chatProjectRepo;
-	}
-
-	/**
-	 * Get ChatConversationRepo instance.
-	 */
-	getChatConversationRepo(): ChatConversationRepo {
-		if (this.closing || !this.chatConversationRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.chatConversationRepo;
-	}
-
-	/**
-	 * Get ChatMessageRepo instance.
-	 */
-	getChatMessageRepo(): ChatMessageRepo {
-		if (this.closing || !this.chatMessageRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.chatMessageRepo;
-	}
-
-	/**
-	 * Get ChatMessageResourceRepo instance.
-	 */
-	getChatMessageResourceRepo(): ChatMessageResourceRepo {
-		if (this.closing || !this.chatMessageResourceRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.chatMessageResourceRepo;
-	}
-
-	/**
-	 * Get ChatStarRepo instance.
-	 */
-	getChatStarRepo(): ChatStarRepo {
-		if (this.closing || !this.chatStarRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.chatStarRepo;
-	}
-
-	/**
-	 * Get AIAnalysisRepo instance (meta.sqlite).
-	 */
-	getAIAnalysisRepo(): AIAnalysisRepo {
-		if (this.closing || !this.aiAnalysisRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.aiAnalysisRepo;
-	}
-
-	/**
-	 * Get QueryPatternRepo instance (meta.sqlite).
-	 */
-	getQueryPatternRepo(): QueryPatternRepo {
-		if (this.closing || !this.queryPatternRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.queryPatternRepo;
-	}
-
-	/**
-	 * Ambient push log repo (vault DB only).
-	 */
-	getAmbientPushRepo(): AmbientPushRepo {
-		if (this.closing || !this.ambientPushRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.ambientPushRepo;
-	}
-
-	/**
-	 * No-op for compatibility. better-sqlite3 persists to file automatically.
-	 */
+	/** No-op for compatibility. better-sqlite3 persists to file automatically. */
 	save(): void {}
 
 	close(): void {
