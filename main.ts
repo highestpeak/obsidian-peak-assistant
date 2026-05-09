@@ -106,6 +106,15 @@ export default class MyPlugin extends Plugin {
 			void this.saveSettings();
 		});
 
+		// Auto-detect indexLevel for existing users who already have an embedding profile configured.
+		// Only upgrades 'fast' → 'semantic'; never downgrades an explicit user choice.
+		if (!this.settings.search.indexLevel || this.settings.search.indexLevel === 'fast') {
+			const embProfile = ProfileRegistry.getInstance().getActiveEmbeddingProfile();
+			if (embProfile?.embeddingEndpoint && embProfile?.embeddingModel) {
+				this.settings.search.indexLevel = 'semantic';
+			}
+		}
+
 		// Template manager loads prompts/templates from plugin dir on demand (absolute path for Node fs)
 		try {
 			const pluginDirAbsolute = getPluginDirAbsolute(this.manifest.id, this.app);

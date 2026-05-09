@@ -6,6 +6,7 @@ import type { DocumentType } from '@/core/document/types';
 import { PromptId, CONFIGURABLE_PROMPT_IDS, INDEXING_AND_HUB_PROMPT_IDS, SEARCH_AI_ANALYSIS_PROMPT_IDS } from '@/service/prompt/PromptId';
 import type { ProfileSettings } from '@/core/profiles/types';
 import type { AmbientPushSettings } from '@/service/ambient/types';
+import type { IndexLevel } from '@/service/search/index/types';
 
 export interface ChunkingSettings {
 	maxChunkSize: number;
@@ -52,6 +53,10 @@ export interface SearchSettings {
 	aiAnalysisExcludeAutoSaveFolderFromSearch: boolean;
 	aiAnalysisHistoryLimit: number;
 	inspectorLinks?: InspectorLinksSettings;
+	/** Controls which enrichment steps run during incremental indexing. */
+	indexLevel: IndexLevel;
+	/** Timestamp when the user dismissed the index-level upgrade prompt. null = never dismissed. */
+	searchUpgradePromptDismissedAt: number | null;
 }
 
 export interface InspectorLinksSettings {
@@ -99,6 +104,8 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	aiAnalysisExcludeAutoSaveFolderFromSearch: true,
 	aiAnalysisHistoryLimit: 5,
 	inspectorLinks: DEFAULT_INSPECTOR_LINKS_SETTINGS,
+	indexLevel: 'fast' as IndexLevel,
+	searchUpgradePromptDismissedAt: null,
 };
 
 /** Subfolder names under rootFolder. Only rootFolder is configurable. */

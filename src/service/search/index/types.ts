@@ -24,6 +24,14 @@ export type IndexDocumentReason =
 	| 'llm_enrich_only';
 
 /**
+ * User-facing index level, controlling which enrichment steps run.
+ * - fast: FTS + graph only (pure local, no API calls)
+ * - semantic: fast + embedding vectors (needs embedding endpoint)
+ * - full: semantic + LLM tags + summaries (needs LLM model)
+ */
+export type IndexLevel = 'fast' | 'semantic' | 'full';
+
+/**
  * Per-index-run options: split core search indexing from LLM tags/summary.
  * Use {@link defaultIndexDocumentOptions} for presets.
  */
@@ -102,6 +110,24 @@ export function defaultIndexDocumentOptions(reason: IndexDocumentReason): IndexD
 				incrementIndexState: false,
 				reason,
 			};
+	}
+}
+
+/**
+ * Map IndexLevel to IndexDocumentOptions for incremental indexing.
+ */
+export function defaultIndexDocumentOptionsForLevel(level: IndexLevel): IndexDocumentOptions {
+	switch (level) {
+		case 'fast':
+			return defaultIndexDocumentOptions('listener_fast');
+		case 'semantic':
+			return {
+				...defaultIndexDocumentOptions('listener_fast'),
+				includeEmbeddings: true,
+				markVectorPendingWhenSkipped: false,
+			};
+		case 'full':
+			return defaultIndexDocumentOptions('manual_full');
 	}
 }
 
