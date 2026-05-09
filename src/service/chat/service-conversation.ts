@@ -162,12 +162,15 @@ export class ConversationService {
 			// Get the final return value
 			prepared = result.value;
 
-			// Find profile for the conversation's provider
+			// Prefer active chat config if it matches the conversation's provider;
+			// fall back to scanning all profiles (handles per-conversation model overrides)
 			const registry = ProfileRegistry.getInstance();
 			const convProvider = prepared.provider;
 			const convModelId = prepared.modelId;
-			const allProfiles = registry.getAllProfiles();
-			const profile = allProfiles.find(p => p.kind === convProvider && p.enabled !== false && p.apiKey);
+			const chatConfig = registry.getActiveChatConfig();
+			const profile = chatConfig?.profile.kind === convProvider
+				? chatConfig.profile
+				: registry.getAllProfiles().find(p => p.kind === convProvider && p.enabled !== false && p.apiKey);
 
 			if (!profile) {
 				throw new Error(`No active profile found for provider "${convProvider}". Please configure it in Settings → Profiles.`);
