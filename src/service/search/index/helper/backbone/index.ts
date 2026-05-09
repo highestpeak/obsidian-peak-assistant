@@ -2,7 +2,12 @@
  * Backbone map: folder tree + virtual clusters + cross-folder highway edges.
  */
 
-export { buildBackboneMap } from './buildBackboneMap';
+export {
+	buildBackboneMap, topTokensFromBasenames,
+	normalizeVaultFolderPath, isPathExcludedByPrefixes, visibleChildFolders,
+	scanFolderTree, getBackboneExcludedPrefixes, shouldIgnoreFolderForBackbone,
+} from './buildBackboneMap';
+export type { FolderScanRow, TagGlobalStats, TagRankCategory } from './buildBackboneMap';
 export type {
 	BackboneEdge,
 	BackboneFolderNode,
@@ -12,4 +17,3 @@ export type {
 	BackboneVirtualNode,
 	BuildBackboneMapOptions,
 } from './types';
-export type { TagGlobalStats } from './tagDisplayRank';

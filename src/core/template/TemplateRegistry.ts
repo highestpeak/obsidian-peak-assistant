@@ -18,7 +18,6 @@ export const ToolTemplateId = {
 	OrphanNotes: 'orphan-notes',
 	FindKeyNodes: 'find-key-nodes',
 	GraphTraversal: 'graph-traversal',
-	StructuralHoles: 'structural-holes',
 } as const;
 
 export type ToolTemplateId = (typeof ToolTemplateId)[keyof typeof ToolTemplateId];
@@ -42,8 +41,6 @@ export type AgentTemplateId = (typeof AgentTemplateId)[keyof typeof AgentTemplat
  */
 export const IndexingTemplateId = {
 	CodeStopwords: 'indexing-code-stopwords',
-	/** Hub-discover deterministic next-direction hint; render with `{ gapPrefixes: string[] }`. */
-	HubDiscoverNextDirections: 'indexing-hub-discover-next-directions',
 	/** Weak title/filename tokens filtered in cluster hub title token extraction. */
 	ClusterHubWeakTitleTokens: 'indexing-cluster-hub-weak-title-tokens',
 	/** Hub discovery agent: one page of folder tree for LLM (`folderRows` + Handlebars; no path mapping block). */
@@ -100,7 +97,6 @@ export interface TemplateMetadata {
  * Config template IDs (runtime-editable JSON configs under templates/config/).
  */
 export const ConfigTemplateId = {
-	VaultLintConfig: 'config-vault-lint',
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -265,7 +261,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ToolTemplateId.OrphanNotes]: meta('tools', 'orphan-notes'),
 	[ToolTemplateId.FindKeyNodes]: meta('tools', 'find-key-nodes'),
 	[ToolTemplateId.GraphTraversal]: meta('tools', 'graph-traversal'),
-	[ToolTemplateId.StructuralHoles]: meta('tools', 'structural-holes'),
 
 	// --- Agents ---
 	[AgentTemplateId.ResultSnapshot]: meta('agents', 'result-snapshot'),
@@ -276,7 +271,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 
 	// --- Indexing (Handlebars; loaded at plugin boot for markdown chunking helpers) ---
 	[IndexingTemplateId.CodeStopwords]: meta('indexing', 'code-stopwords'),
-	[IndexingTemplateId.HubDiscoverNextDirections]: meta('indexing', 'hub-discover-next-directions'),
 	[IndexingTemplateId.ClusterHubWeakTitleTokens]: meta('indexing', 'cluster-hub-weak-title-tokens'),
 	[IndexingTemplateId.HubDiscoveryFolderTreePage]: meta('indexing', 'hub-discovery-folder-tree-page'),
 	[IndexingTemplateId.HubDiscoveryFolderTreeEmpty]: meta('indexing', 'hub-discovery-folder-tree-empty'),
@@ -290,7 +284,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[StopwordTemplateId.Chinese]: meta('stopwords', 'zh'),
 
 	// --- Config (runtime-editable JSON) ---
-	[ConfigTemplateId.VaultLintConfig]: meta('config', 'vault-lint-config'),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {

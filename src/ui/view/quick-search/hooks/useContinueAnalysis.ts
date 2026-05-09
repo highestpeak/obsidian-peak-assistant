@@ -6,10 +6,6 @@
 
 import { useCallback } from 'react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
-import {
-	useAIAnalysisRuntimeStore,
-	markAIAnalysisCompleted,
-} from '../store/aiAnalysisStore';
 import { useStepDisplayReplayStore } from '../store/stepDisplayReplayStore';
 
 import { AppContext } from '@/app/context/AppContext';
@@ -104,7 +100,6 @@ export function useContinueAnalysis(deps: ContinueAnalysisDeps) {
 			for await (const event of gen) {
 				if (!store.getState().hasStartedStreaming) {
 					store.getState().startStreaming();
-					useAIAnalysisRuntimeStore.getState().startStreaming();
 					useStepDisplayReplayStore.getState().setStreamStarted(true);
 				}
 				if (signal?.aborted) break;
@@ -125,14 +120,10 @@ export function useContinueAnalysis(deps: ContinueAnalysisDeps) {
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : 'Continue analysis failed.';
 			store.getState().recordError(errorMessage);
-			useAIAnalysisRuntimeStore.getState().recordError(errorMessage);
 		} finally {
 			flushSummaryBuffer();
 			if (!store.getState().getIsCompleted() && !store.getState().hitlState) {
 				store.getState().markCompleted();
-				markAIAnalysisCompleted();
-				// NOTE: No persist here — report not yet generated.
-				// Save happens after handleApprovePlan() → generateReport() completes.
 			}
 			useSearchSessionStore.setState({ continueMode: false });
 			if (controller) {

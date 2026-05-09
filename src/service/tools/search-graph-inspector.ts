@@ -1,17 +1,10 @@
 import { AgentTool, safeAgentTool } from "./types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import {
-	exploreFolderInputSchema,
-	findKeyNodesInputSchema,
-	findOrphansInputSchema,
-	findPathInputSchema,
-	graphTraversalInputSchema,
-	grepFileTreeInputSchema,
-	hubLocalGraphInputSchema,
-	inspectNoteContextInputSchema,
-	localSearchWholeVaultInputSchema,
-	recentChangesWholeVaultInputSchema,
-	searchByDimensionsInputSchema,
+	exploreFolderInputSchema, findKeyNodesInputSchema, findOrphansInputSchema,
+	findPathInputSchema, graphTraversalInputSchema, grepFileTreeInputSchema,
+	inspectNoteContextInputSchema, localSearchWholeVaultInputSchema,
+	recentChangesWholeVaultInputSchema, searchByDimensionsInputSchema,
 } from "@/core/schemas/tools/searchGraphInspector";
 import { inspectNoteContext } from "./search-graph-inspector/inspect-note-context";
 import { graphTraversal } from "./search-graph-inspector/graph-traversal";
@@ -23,222 +16,82 @@ import { exploreFolder } from "./search-graph-inspector/explore-folder";
 import { grepFileTree } from "./search-graph-inspector/grep-file-tree";
 import { getRecentChanges } from "./search-graph-inspector/recent-change-whole-vault";
 import { localSearch } from "./search-graph-inspector/local-search";
-import { hubLocalGraph } from "./search-graph-inspector/hub-local-graph";
+import type { ZodType } from "@/core/schemas";
 
-/**
- * Tool 1: inspect_note_context
- */
-export function inspectNoteContextTool(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `[Deep Dive] [detailed analysis] Use this tool to understand a single note's identity (tags, connections, location). Includes 'get_note_connections', 'get_note_tags', 'get_note_categories'.`,
-        inputSchema: inspectNoteContextInputSchema,
-        execute: async (params) => {
-            return await inspectNoteContext({ ...params, mode: 'inspect_note_context' }, templateManager);
-        }
-    });
+/** Factory: create a tool that delegates to an executor with `{ ...params, mode }`. */
+function makeTool(desc: string, schema: ZodType, mode: string, exec: (p: any, tm?: TemplateManager) => Promise<any>, tm?: TemplateManager): AgentTool {
+    return safeAgentTool({ description: desc, inputSchema: schema, execute: (p) => exec({ ...p, mode }, tm) });
 }
 
-/** inspect_note_context variant that always returns Markdown. Used in recon to avoid structured output inflating context. */
-export function inspectNoteContextToolMarkdownOnly(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `[Deep Dive] Use this tool to understand a single note's identity (tags, connections, location). Returns Markdown only.`,
-        inputSchema: inspectNoteContextInputSchema,
-        execute: async (params) => {
-            return await inspectNoteContext(
-                { ...params, response_format: 'markdown', mode: 'inspect_note_context' },
-                templateManager
-            );
-        }
-    });
+/** Factory: MarkdownOnly variant — forces response_format:'markdown'. */
+function makeMarkdownOnlyTool(desc: string, schema: ZodType, mode: string, exec: (p: any, tm?: TemplateManager) => Promise<any>, tm?: TemplateManager): AgentTool {
+    return safeAgentTool({ description: desc, inputSchema: schema, execute: (p) => exec({ ...p, response_format: 'markdown', mode }, tm) });
 }
 
-/**
- * Tool 2: graph_traversal
- * hops=3 limit=30 structured output for a normal doc may lead to 100KB output witch may count to 50k tokens.
- * hops=3 limit=100 structured output for a normal doc may lead to 217KB output witch may count to 100k tokens.
- * hops=3 limit=100 structured output for a doc with a lot outlinks(50) may lead to 255KB output witch may count to 100k tokens.
- */
-export function graphTraversalTool(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `[Relational Discovery] Explore related notes within N degrees of separation (hops). Find knowledge clusters and neighborhood.`,
-        inputSchema: graphTraversalInputSchema,
-        execute: async (params) => {
-            return await graphTraversal({ ...params, mode: 'graph_traversal' }, templateManager);
-        }
-    });
+export function inspectNoteContextTool(tm?: TemplateManager): AgentTool {
+    return makeTool(`[Deep Dive] Understand a single note's identity (tags, connections, location).`, inspectNoteContextInputSchema, 'inspect_note_context', inspectNoteContext, tm);
+}
+export function inspectNoteContextToolMarkdownOnly(tm?: TemplateManager): AgentTool {
+    return makeMarkdownOnlyTool(`[Deep Dive] Understand a single note's identity. Returns Markdown only.`, inspectNoteContextInputSchema, 'inspect_note_context', inspectNoteContext, tm);
 }
 
-/** graph_traversal variant that always returns Markdown. Used in recon to avoid structured output inflating context. */
-export function graphTraversalToolMarkdownOnly(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `[Relational Discovery] Explore related notes within N degrees of separation (hops). Returns Markdown only.`,
-        inputSchema: graphTraversalInputSchema,
-        execute: async (params) => {
-            return await graphTraversal(
-                { ...params, response_format: 'markdown', mode: 'graph_traversal' },
-                templateManager
-            );
-        }
-    });
+export function graphTraversalTool(tm?: TemplateManager): AgentTool {
+    return makeTool(`[Relational Discovery] Explore related notes within N degrees of separation (hops).`, graphTraversalInputSchema, 'graph_traversal', graphTraversal, tm);
+}
+export function graphTraversalToolMarkdownOnly(tm?: TemplateManager): AgentTool {
+    return makeMarkdownOnlyTool(`[Relational Discovery] Explore related notes within N hops. Returns Markdown only.`, graphTraversalInputSchema, 'graph_traversal', graphTraversal, tm);
 }
 
-/**
- * Tool: hub_local_graph
- */
-export function hubLocalGraphTool(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `[Hub Local Graph] Build a weighted local graph around one note to inspect how a hub should expand, where it should stop, and which nodes/edges matter most.`,
-        inputSchema: hubLocalGraphInputSchema,
-        execute: async (params) => {
-            return await hubLocalGraph(params, templateManager);
-        }
-    });
+export function findPathTool(tm?: TemplateManager): AgentTool {
+    return makeTool(`Discover connection paths between two specific notes.`, findPathInputSchema, 'find_path', findPath, tm);
+}
+export function findKeyNodesTool(tm?: TemplateManager): AgentTool {
+    return makeTool(`Identify influential notes (high connectivity nodes, hubs) in the vault.`, findKeyNodesInputSchema, 'find_key_nodes', findKeyNodes, tm);
+}
+export function findOrphansTool(tm?: TemplateManager): AgentTool {
+    return makeTool(`Find disconnected/unlinked notes (orphans) in the vault.`, findOrphansInputSchema, 'find_orphans', findOrphanNotes, tm);
+}
+export function searchByDimensionsTool(tm?: TemplateManager): AgentTool {
+    return makeTool(
+        `Complex multi-criteria searches with boolean logic. Use tag:value, functional:value, AND, OR, NOT, parentheses. Example: tag:javascript AND functional:programming`,
+        searchByDimensionsInputSchema, 'search_by_dimensions', searchByDimensions, tm,
+    );
 }
 
-/**
- * Tool 3: find_path
- * no support for sorting multiple paths by relevance/modification. meaningless for most cases. and also meaningless for sorting nodes in the path.
- */
-export function findPathTool(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `Discover connection paths between two specific notes. Useful for finding how two concepts are related.`,
-        inputSchema: findPathInputSchema,
-        execute: async (params) => {
-            return await findPath({ ...params, mode: 'find_path' }, templateManager);
-        }
-    });
+export function exploreFolderTool(tm?: TemplateManager): AgentTool {
+    return makeTool(
+        `Inspect vault structure with spatial navigation. Walk through folders, check contents, discover organization.`,
+        exploreFolderInputSchema, 'explore_folder', exploreFolder, tm,
+    );
+}
+export function exploreFolderToolMarkdownOnly(tm?: TemplateManager): AgentTool {
+    return makeMarkdownOnlyTool(`Inspect vault structure (Markdown-only output).`, exploreFolderInputSchema, 'explore_folder', exploreFolder, tm);
 }
 
-/**
- * Tool 4: find_key_nodes
- */
-export function findKeyNodesTool(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `Identify influential notes (high connectivity nodes, hubs) in the vault.`,
-        inputSchema: findKeyNodesInputSchema,
-        execute: async (params) => {
-            return await findKeyNodes({ ...params, mode: 'find_key_nodes' }, templateManager);
-        }
-    });
-}
-
-/**
- * Tool 5: find_orphans
- */
-export function findOrphansTool(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `Find disconnected/unlinked notes (orphans) in the vault.`,
-        inputSchema: findOrphansInputSchema,
-        execute: async (params) => {
-            return await findOrphanNotes({ ...params, mode: 'find_orphans' }, templateManager);
-        }
-    });
-}
-
-/**
- * Tool 6: search_by_dimensions
- * example: user asks: "find the low-risk financial suggestions suitable for a layperson in my personal finance notes."
- *     AI => search_by_dimensions: tag:FinancialPlanning OR functional:Finance
- *     AI => semantic_filter: "layperson、low-risk、stable income、anti-greed"
- */
-export function searchByDimensionsTool(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `Complex multi-criteria searches. Advanced filtering by tags, folders, time ranges with boolean logic. ` +
-            `Use only tag:value, functional:value, AND, OR, NOT, and parentheses. Each value must be a single word (no spaces, no special characters). ` +
-            `Example: tag:javascript AND functional:programming or (tag:react OR tag:vue) AND functional:frontend`,
-        inputSchema: searchByDimensionsInputSchema,
-        execute: async (params) => {
-            return await searchByDimensions({ ...params, mode: 'search_by_dimensions' }, templateManager);
-        }
-    });
-}
-
-/**
- * Tool 7: explore_folder
- */
-export function exploreFolderTool(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `Inspect vault structure with spatial navigation. `
-                    + `Use this to 'walk' through folders. Best paired with 'response_format: markdown' to visualize the directory tree clearly.`
-                    + `Use this when you need to:`
-                    + `\n- Browse folders and understand vault organization`
-                    + `\n- Check folder contents before moving or organizing notes`
-                    + `\n- Discover vault structure for better context understanding`,
-        inputSchema: exploreFolderInputSchema,
-        execute: async (params) => {
-            return await exploreFolder({ ...params, mode: 'explore_folder' }, templateManager);
-        }
-    });
-}
-
-/**
- * explore_folder variant that always returns Markdown.
- * Useful for recon/breadth agents to prevent structured output from inflating context.
- */
-export function exploreFolderToolMarkdownOnly(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description:
-            `Inspect vault structure with spatial navigation (Markdown-only output). `
-            + `This tool will always return Markdown regardless of response_format.`,
-        inputSchema: exploreFolderInputSchema,
-        execute: async (params) => {
-            return await exploreFolder(
-                { ...params, response_format: 'markdown', mode: 'explore_folder' },
-                templateManager
-            );
-        }
-    });
-}
-
-/**
- * Tool: grep_file_tree — fast anchor finding over full vault path list.
- */
 export function grepFileTreeTool(): AgentTool {
     return safeAgentTool({
-        description:
-            `[Anchor phase] Grep the full vault file tree by pattern (substring or regex). `
-            + `Returns matching paths so you can choose which folders to explore_folder or which nodes to graph_traversal. `
-            + `Use in recon to quickly find anchor paths or directory names.`,
+        description: `[Anchor phase] Grep the full vault file tree by pattern (substring or regex). Returns matching paths.`,
         inputSchema: grepFileTreeInputSchema,
-        execute: async (params) => grepFileTree(params),
+        execute: (params) => grepFileTree(params),
     });
 }
 
-/**
- * Tool 8: recent_changes_whole_vault
- */
-export function recentChangesWholeVaultTool(templateManager?: TemplateManager): AgentTool {
-    return safeAgentTool({
-        description: `View recently modified notes in the whole vault. Great for understanding users' current focus.`,
-        inputSchema: recentChangesWholeVaultInputSchema,
-        execute: async (params) => {
-            return await getRecentChanges({ ...params, mode: 'recent_changes_whole_vault' }, templateManager);
-        }
-    });
+export function recentChangesWholeVaultTool(tm?: TemplateManager): AgentTool {
+    return makeTool(`View recently modified notes in the whole vault.`, recentChangesWholeVaultInputSchema, 'recent_changes_whole_vault', getRecentChanges, tm);
 }
 
-/**
- * Tool 9: local_search_whole_vault
- * great for inspector support. As web searching isn’t semantically driven to inspect a vault, we switched the web search tool with another tool.
- */
-export function localSearchWholeVaultTool(templateManager?: TemplateManager): AgentTool {
+export function localSearchWholeVaultTool(tm?: TemplateManager): AgentTool {
     return safeAgentTool({
-        description: `Full-text and semantic search across the vault. Use keywords or semantic description to find relevant notes.`,
+        description: `Full-text and semantic search across the vault.`,
         inputSchema: localSearchWholeVaultInputSchema,
         execute: async (params) => {
             const rawFolder = params.folder_path;
             const folderPath = rawFolder != null && String(rawFolder).trim() !== ''
-                ? String(rawFolder).trim().replace(/\/+$/, '')
-                : undefined;
-            const scopeValue = {
-                currentFilePath: params.current_file_path,
-                folderPath,
-                limitIdsSet: params.limit_ids_set
-            };
-            return await localSearch(
-                { ...params, scopeValue, mode: 'local_search_whole_vault' },
-                templateManager
-            );
+                ? String(rawFolder).trim().replace(/\/+$/, '') : undefined;
+            return localSearch({
+                ...params, mode: 'local_search_whole_vault',
+                scopeValue: { currentFilePath: params.current_file_path, folderPath, limitIdsSet: params.limit_ids_set },
+            }, tm);
         }
     });
 }

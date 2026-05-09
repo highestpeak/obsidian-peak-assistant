@@ -304,62 +304,29 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 		}
 	}, [textInput, attachments, onSubmit, clearInput, clearFiles]);
 
-	// Handle drag and drop
+	// Shared drag-over/drop handlers for form-level and optional global drop
+	const handleDragOver = useCallback((e: DragEvent) => {
+		if (e.dataTransfer?.types?.includes('Files')) e.preventDefault();
+	}, []);
+	const handleDrop = useCallback((e: DragEvent) => {
+		if (e.dataTransfer?.types?.includes('Files')) e.preventDefault();
+		if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
+	}, [addFiles]);
+
 	useEffect(() => {
-		if (!formRef.current) return;
-
-		const handleDragOver = (e: DragEvent) => {
-			if (e.dataTransfer?.types?.includes('Files')) {
-				e.preventDefault();
-			}
-		};
-
-		const handleDrop = (e: DragEvent) => {
-			if (e.dataTransfer?.types?.includes('Files')) {
-				e.preventDefault();
-			}
-			if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-				addFiles(e.dataTransfer.files);
-			}
-		};
-
 		const form = formRef.current;
+		if (!form) return;
 		form.addEventListener('dragover', handleDragOver);
 		form.addEventListener('drop', handleDrop);
+		return () => { form.removeEventListener('dragover', handleDragOver); form.removeEventListener('drop', handleDrop); };
+	}, [handleDragOver, handleDrop]);
 
-		return () => {
-			form.removeEventListener('dragover', handleDragOver);
-			form.removeEventListener('drop', handleDrop);
-		};
-	}, [addFiles, globalDrop]);
-
-	// Global drop handler
 	useEffect(() => {
 		if (!globalDrop) return;
-
-		const handleDragOver = (e: DragEvent) => {
-			if (e.dataTransfer?.types?.includes('Files')) {
-				e.preventDefault();
-			}
-		};
-
-		const handleDrop = (e: DragEvent) => {
-			if (e.dataTransfer?.types?.includes('Files')) {
-				e.preventDefault();
-			}
-			if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-				addFiles(e.dataTransfer.files);
-			}
-		};
-
 		document.addEventListener('dragover', handleDragOver);
 		document.addEventListener('drop', handleDrop);
-
-		return () => {
-			document.removeEventListener('dragover', handleDragOver);
-			document.removeEventListener('drop', handleDrop);
-		};
-	}, [addFiles, globalDrop]);
+		return () => { document.removeEventListener('dragover', handleDragOver); document.removeEventListener('drop', handleDrop); };
+	}, [globalDrop, handleDragOver, handleDrop]);
 
 	return (
 		<PromptInputContext.Provider value={contextValue}>

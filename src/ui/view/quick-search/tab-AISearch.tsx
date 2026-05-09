@@ -2,10 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
 import { V2ContinueAnalysisInput } from './components/V2ContinueAnalysisInput';
 import { useSharedStore, useGraphQueuePump } from './store';
-import {
-	useAIAnalysisTopicsStore,
-	useAIAnalysisInteractionsStore,
-} from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
 import { useSearchSession } from './hooks/useSearchSession';
 import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
@@ -13,9 +9,7 @@ import { useAIAnalysisResult } from './hooks/useAIAnalysisResult';
 import { AppContext } from '@/app/context/AppContext';
 import { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
 import { SearchResultView } from './components/SearchResultView';
-import { SectionExtraChatModal } from './components/ai-analysis-modal/SectionExtraChatModal';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
-import { buildDebugInfoText } from './callbacks/copyDebugInfo';
 import { V2Footer } from './components/V2Footer';
 import { useAIGraphStore } from './store/aiGraphStore';
 import { buildAiGraphMarkdown } from '@/core/storage/vault/search-docs/AiGraphDoc';
@@ -44,26 +38,12 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const isAnalyzing = sessionStatus === 'starting' || sessionStatus === 'streaming';
 	const analysisCompleted = sessionStatus === 'completed';
 
-	// --- Topic/interaction stores (for modals) ---
-	const topicAnalyzeResults = useAIAnalysisTopicsStore((s) => s.topicAnalyzeResults);
-	const topicInspectResults = useAIAnalysisTopicsStore((s) => s.topicInspectResults);
-	const topicGraphResults = useAIAnalysisTopicsStore((s) => s.topicGraphResults);
-	const topicModalOpen = useAIAnalysisTopicsStore((s) => s.topicModalOpen);
-	const setTopicModalOpen = useAIAnalysisTopicsStore((s) => s.setTopicModalOpen);
-	const topicAnalyzeStreaming = useAIAnalysisTopicsStore((s) => s.topicAnalyzeStreaming);
-	const topicGraphLoading = useAIAnalysisTopicsStore((s) => s.topicGraphLoading);
-	const topicInspectLoading = useAIAnalysisTopicsStore((s) => s.topicInspectLoading);
-
-	const contextChatModal = useAIAnalysisInteractionsStore((s) => s.contextChatModal);
-	const setContextChatModal = useAIAnalysisInteractionsStore((s) => s.setContextChatModal);
-
 	const titleDisplay = useTypewriterEffect({
 		text: titleFromStore ?? '',
 		enabled: !!(titleFromStore?.trim()) && !restoredFromHistory,
 	});
 
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
-	const [copied, setCopied] = useState(false);
 	const [showV2ContinueInput, setShowV2ContinueInput] = useState(false);
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 
@@ -107,16 +87,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		setRetryTrigger(prev => prev + 1);
 	};
 
-	// Debug info copy handler
-	const [debugCopied, setDebugCopied] = useState(false);
-	const handleCopyDebugInfo = () => {
-		const text = buildDebugInfoText();
-		navigator.clipboard.writeText(text).then(() => {
-			setDebugCopied(true);
-			window.setTimeout(() => setDebugCopied(false), 1500);
-		});
-	};
-
 	// Listen for continue-analysis events from ContinueAnalysisInput
 	const lastUIEvent = useUIEventStore((s) => s.lastEvent);
 	const incrementTriggerAnalysis = useSearchSessionStore((s) => s.incrementTriggerAnalysis);
@@ -140,7 +110,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 	// process analysis result ========================================================
 
-	const { handleOpenInChat, handleCopyAll, handleAutoSave } = useAIAnalysisResult();
+	const { handleOpenInChat, handleAutoSave } = useAIAnalysisResult();
 
 	// NOTE: Full-save at completion is handled by useSearchSession.ts (milestone-based persistence).
 	// No React effect needed — persistence fires directly after markCompleted().
@@ -238,7 +208,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 			{/* Footer */}
 			{(isAnalyzing || analysisCompleted) ? (
-				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onSaveGraph={handleSaveGraph} onOpenInChat={() => handleOpenInChat(onClose)} />
+				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onSave={() => setShowSaveDialog(true)} onSaveGraph={handleSaveGraph} onOpenInChat={() => handleOpenInChat(onClose)} />
 			) : null}
 
 			{/* V2 floating continue analysis input */}
@@ -249,41 +219,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 			{/* Save dialog */}
 			{showSaveDialog && (
 				<SaveDialog onClose={() => setShowSaveDialog(false)} />
-			)}
-			{/* Context follow-up modal (Graph/Blocks/Sources) – same TopicModal with converted messages */}
-			{contextChatModal != null && (
-				<SectionExtraChatModal
-					title={contextChatModal.title}
-					streaming={
-						contextChatModal.streamingQuestion && contextChatModal.streamingText
-							? { question: contextChatModal.streamingQuestion, answerSoFar: contextChatModal.streamingText }
-							: null
-					}
-					activeQuestion={contextChatModal.activeQuestion}
-					analyzeResults={contextChatModal.messages}
-					isInspectLoading={false}
-					inspectItems={[]}
-					isGraphLoading={false}
-					graph={null}
-					onClose={() => setContextChatModal(null)}
-				/>
-			)}
-			{/* Topic expansion modal */}
-			{topicModalOpen != null && (
-				<SectionExtraChatModal
-					title={`Topic: ${topicModalOpen}`}
-					streaming={
-						topicAnalyzeStreaming?.topic === topicModalOpen
-							? { question: topicAnalyzeStreaming.question, answerSoFar: topicAnalyzeStreaming.text }
-							: null
-					}
-					analyzeResults={topicAnalyzeResults?.[topicModalOpen] ?? []}
-					isInspectLoading={topicInspectLoading === topicModalOpen}
-					inspectItems={topicInspectResults?.[topicModalOpen] ?? []}
-					isGraphLoading={topicGraphLoading === topicModalOpen}
-					graph={topicGraphResults?.[topicModalOpen] ?? null}
-					onClose={() => setTopicModalOpen(null)}
-				/>
 			)}
 		</div>
 	);

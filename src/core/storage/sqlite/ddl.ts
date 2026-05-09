@@ -27,96 +27,40 @@ export interface IndexedDocumentRecord {
 }
 
 /**
- * Logical graph node DTO shape; rows live in `mobius_node`.
- * Not a physical table — provided as a type alias for repos that project graph-node fields.
- */
-export interface GraphNodeRow {
-	/**
-	 * Node ID - normalized path (for document nodes) or prefixed identifier (for tags, categories, etc.).
-	 */
-	id: string;
-	type: string;
-	label: string;
-	attributes: string;
-	created_at: number;
-	updated_at: number;
-}
-
-/**
- * Logical graph edge DTO shape; rows live in `mobius_edge`.
- * Not a physical table — provided as a type alias for repos that project graph-edge fields.
- */
-export interface GraphEdgeRow {
-	id: string;
-	from_node_id: string;
-	to_node_id: string;
-	type: string;
-	weight: number;
-	attributes: string;
-	created_at: number;
-	updated_at: number;
-}
-
-/**
- * Logical document statistics shape; columns stored on `mobius_node` for document rows.
- * Not a physical table — provided as a type alias for repos that project doc statistics fields.
- */
-export interface DocStatisticsRow {
-	doc_id: string;
-	word_count: number | null;
-	char_count: number | null;
-	language: string | null;
-	richness_score: number | null;
-	last_open_ts: number | null;
-	open_count: number | null;
-	updated_at: number;
-}
-
-export interface UsageLogRow {
-    id: number;
-    session_id: string;
-    feature: string;
-    action: string;
-    provider: string;
-    model: string;
-    input_tokens: number;
-    output_tokens: number;
-    cached_tokens: number;
-    reasoning_tokens: number;
-    cost_usd: number;
-    duration_ms: number;
-    is_streaming: number;
-    created_at: number;
-    metadata_json: string | null;
-}
-
-export interface UsageDailyRow {
-    id: number;
-    date: string;
-    feature: string;
-    action: string;
-    provider: string;
-    model: string;
-    call_count: number;
-    total_input_tokens: number;
-    total_output_tokens: number;
-    total_cached_tokens: number;
-    total_reasoning_tokens: number;
-    total_cost_usd: number;
-    avg_duration_ms: number;
-    max_duration_ms: number;
-}
-
-/**
  * Database schema definition for type safety.
  */
 export interface Database {
-	/** @deprecated Use {@link GraphNodeRow} instead. Legacy alias kept for backward-compat with repo code. */
-	graph_nodes: GraphNodeRow;
-	/** @deprecated Use {@link GraphEdgeRow} instead. Legacy alias kept for backward-compat with repo code. */
-	graph_edges: GraphEdgeRow;
-	/** @deprecated Use {@link DocStatisticsRow} instead. Legacy alias kept for backward-compat with repo code. */
-	doc_statistics: DocStatisticsRow;
+	/** Logical graph node DTO (rows live in `mobius_node`). */
+	graph_nodes: {
+		id: string;
+		type: string;
+		label: string;
+		attributes: string;
+		created_at: number;
+		updated_at: number;
+	};
+	/** Logical graph edge DTO (rows live in `mobius_edge`). */
+	graph_edges: {
+		id: string;
+		from_node_id: string;
+		to_node_id: string;
+		type: string;
+		weight: number;
+		attributes: string;
+		created_at: number;
+		updated_at: number;
+	};
+	/** Logical doc statistics DTO (columns on `mobius_node` for document rows). */
+	doc_statistics: {
+		doc_id: string;
+		word_count: number | null;
+		char_count: number | null;
+		language: string | null;
+		richness_score: number | null;
+		last_open_ts: number | null;
+		open_count: number | null;
+		updated_at: number;
+	};
 	index_state: {
 		key: string;
 		value: string | null;
@@ -345,35 +289,6 @@ export interface Database {
 		continuous_group_id: string | null;
 		meta_json: string | null;
 	};
-	/** Betweenness centrality + Burt constraint per graph node (vault DB). */
-	structural_metrics: {
-		node_id: string;
-		betweenness: number;
-		burt_constraint: number;
-		community_id: number;
-		computed_at: number;
-	};
-	/** Community metadata from Louvain/Leiden detection (vault DB). */
-	communities: {
-		community_id: number;
-		label: string | null;
-		member_count: number;
-		avg_betweenness: number;
-		centroid_embedding: Buffer | null;
-		computed_at: number;
-	};
-	/** Detected structural holes between communities (vault DB). */
-	structural_holes: {
-		id: number | undefined; // AUTOINCREMENT — omit on insert
-		community_a: number;
-		community_b: number;
-		gap_score: number;
-		semantic_sim: number;
-		inter_density: number;
-		bridge_candidates: string | null;
-		status: string;
-		computed_at: number;
-	};
 	/** Ambient push log: records proactive note suggestions and user responses. */
 	ambient_push_log: {
 		id: number | undefined; // AUTOINCREMENT — omit on insert
@@ -440,15 +355,46 @@ export interface Database {
 		reason: string | null;
 		snooze_until: number | null;
 	};
-	usage_log: UsageLogRow;
-	usage_daily: UsageDailyRow;
+	usage_log: {
+		id: number;
+		session_id: string;
+		feature: string;
+		action: string;
+		provider: string;
+		model: string;
+		input_tokens: number;
+		output_tokens: number;
+		cached_tokens: number;
+		reasoning_tokens: number;
+		cost_usd: number;
+		duration_ms: number;
+		is_streaming: number;
+		created_at: number;
+		metadata_json: string | null;
+	};
+	usage_daily: {
+		id: number;
+		date: string;
+		feature: string;
+		action: string;
+		provider: string;
+		model: string;
+		call_count: number;
+		total_input_tokens: number;
+		total_output_tokens: number;
+		total_cached_tokens: number;
+		total_reasoning_tokens: number;
+		total_cost_usd: number;
+		avg_duration_ms: number;
+		max_duration_ms: number;
+	};
 }
 
 
 /**
  * Database interface for schema creation (exec).
  */
-export interface SqliteDatabaseLike {
+interface SqliteDatabaseLike {
 	exec(sql: string): void;
 }
 
@@ -746,73 +692,6 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_created_at ON mobius_operation(created_at);
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_type_created_at ON mobius_operation(operation_type, created_at);
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_group ON mobius_operation(continuous_group_id);
-	`);
-
-	// ── Structural analysis tables (S4: betweenness centrality + community detection + gap analysis) ──
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS structural_metrics (
-			node_id      TEXT PRIMARY KEY,
-			betweenness  REAL NOT NULL DEFAULT 0,
-			burt_constraint REAL NOT NULL DEFAULT 1,
-			community_id INTEGER NOT NULL DEFAULT 0,
-			computed_at  INTEGER NOT NULL DEFAULT 0
-		);
-		CREATE INDEX IF NOT EXISTS idx_structural_metrics_community ON structural_metrics(community_id);
-		CREATE INDEX IF NOT EXISTS idx_structural_metrics_betweenness ON structural_metrics(betweenness DESC);
-	`);
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS communities (
-			community_id      INTEGER PRIMARY KEY,
-			label             TEXT,
-			member_count      INTEGER NOT NULL DEFAULT 0,
-			avg_betweenness   REAL NOT NULL DEFAULT 0,
-			centroid_embedding BLOB,
-			computed_at       INTEGER NOT NULL DEFAULT 0
-		);
-	`);
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS structural_holes (
-			id               INTEGER PRIMARY KEY AUTOINCREMENT,
-			community_a      INTEGER NOT NULL,
-			community_b      INTEGER NOT NULL,
-			gap_score        REAL NOT NULL,
-			semantic_sim     REAL NOT NULL,
-			inter_density    REAL NOT NULL,
-			bridge_candidates TEXT,
-			status           TEXT DEFAULT 'open',
-			computed_at      INTEGER NOT NULL DEFAULT 0,
-			UNIQUE(community_a, community_b)
-		);
-		CREATE INDEX IF NOT EXISTS idx_structural_holes_score ON structural_holes(gap_score DESC);
-	`);
-
-	// ── Precompiled knowledge layer: hub constituent tracking + regeneration queue ──
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS hub_constituent (
-			hub_node_id    TEXT NOT NULL,
-			hub_path       TEXT NOT NULL,
-			member_path    TEXT NOT NULL,
-			member_node_id TEXT,
-			source_kind    TEXT NOT NULL,
-			added_at       INTEGER NOT NULL,
-			PRIMARY KEY (hub_node_id, member_path)
-		);
-		CREATE INDEX IF NOT EXISTS idx_hub_constituent_member ON hub_constituent(member_path);
-		CREATE INDEX IF NOT EXISTS idx_hub_constituent_hub ON hub_constituent(hub_node_id);
-	`);
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS hub_regen_queue (
-			hub_node_id    TEXT PRIMARY KEY,
-			hub_path       TEXT NOT NULL,
-			queued_at      INTEGER NOT NULL,
-			trigger_paths  TEXT NOT NULL,
-			priority       INTEGER NOT NULL DEFAULT 0,
-			status         TEXT NOT NULL DEFAULT 'pending',
-			last_attempt   INTEGER,
-			fail_count     INTEGER NOT NULL DEFAULT 0,
-			error_message  TEXT
-		);
-		CREATE INDEX IF NOT EXISTS idx_hub_regen_queue_status ON hub_regen_queue(status, priority DESC);
 	`);
 
 	// ── Ambient push log ──

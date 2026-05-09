@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ModelInfoForSwitch, ModelCapabilities } from '@/core/providers/types';
-import { ChevronDown, Check, Search } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { ProviderBrandIcon } from '@/ui/component/mine/provider-brand-icons';
 import { cn } from '@/ui/react/lib/utils';
 import { modelRegistry } from '@/core/providers/model-registry';
@@ -180,20 +180,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 		return name;
 	}, [currentModelInfo, currentModel, placeholder, isCurrentModelAvailable, truncate]);
 
-	// Get current model icon (only from model info, not provider)
-	const currentModelIcon = useMemo(() => {
-		return currentModelInfo?.icon;
-	}, [currentModelInfo]);
-
 	// Get current provider
 	const currentProvider = useMemo(() => {
 		return currentModel?.provider;
 	}, [currentModel]);
-
-	// Get provider icon for current provider
-	const providerIcon = useMemo(() => {
-		return currentProvider ? providerMetadataMap.get(currentProvider)?.icon : undefined;
-	}, [currentProvider, providerMetadataMap]);
 
 	// Handle model select
 	const handleModelSelect = useCallback(
@@ -296,7 +286,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 				)}
 			</div>
 		);
-	}, [isLoading, filteredModels.length, modelsByProvider, providerMetadataMap, currentModel, isCurrentModelAvailable, providerIcon, handleModelSelect]);
+	}, [isLoading, filteredModels.length, modelsByProvider, providerMetadataMap, currentModel, isCurrentModelAvailable, handleModelSelect]);
 
 	return (
 		<div className={cn('pktw-relative pktw-inline-block', className)}>

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
 import { AppContext } from '@/app/context/AppContext';
-import type { SynthesizeResult } from '@/service/copilot/actions/synthesize-topic';
+import type { SynthesizeResult } from '@/service/copilot/actions';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { Layers, ChevronDown, ChevronRight, ExternalLink, FilePlus } from 'lucide-react';
 

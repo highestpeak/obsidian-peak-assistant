@@ -96,7 +96,7 @@ export const HomeViewComponent: React.FC = () => {
 			submitButtonText: 'Create project',
 			onSubmit: async (name: string | null) => {
 				if (!name || !name.trim()) return;
-				await manager.createProject({ name: name.trim() });
+				await manager.proj.createProject({ name: name.trim() });
 				await hydrateProjects(manager);
 			},
 		});

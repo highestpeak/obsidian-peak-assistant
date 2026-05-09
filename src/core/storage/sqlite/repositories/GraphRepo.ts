@@ -1,4 +1,3 @@
-import type { Database as DbSchema } from '../ddl';
 import type { MobiusNodeRepo } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 import { MobiusEdgeRepo } from '@/core/storage/sqlite/repositories/MobiusEdgeRepo';
 import {
@@ -7,7 +6,6 @@ import {
 	GraphEdgeType,
 	GraphNodeType,
 } from '@/core/po/graph.po';
-import type { GraphPreview } from '@/core/storage/graph/types';
 import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
 import type { FunctionalTagId } from '@/core/schemas/agents/search-agent-schemas';
 
@@ -21,12 +19,6 @@ function parseFunctionalQualifierFromEdgeAttributes(attributesJson: string): str
 	return undefined;
 }
 
-/** Logical graph node row (`mobius_node` mapped to `graph_nodes` DTO). */
-export type GraphNodeRow = DbSchema['graph_nodes'];
-
-/** Logical graph edge row (`mobius_edge` mapped to `graph_edges` DTO). */
-export type GraphEdgeRow = DbSchema['graph_edges'];
-
 /**
  * Graph semantics on top of {@link MobiusNodeRepo} / {@link MobiusEdgeRepo}: PO-style helpers, previews, tag stats.
  */
@@ -36,91 +28,16 @@ export class GraphRepo {
 		private readonly edgeRepo: MobiusEdgeRepo,
 	) {}
 
-	// ===== Node Operations =====
-
-	/**
-	 * Upsert a node.
-	 */
-	async upsertNode(node: {
-		id: string;
-		type: GraphNodeType;
-		label: string;
-		attributes: Record<string, unknown>;
-	}): Promise<void> {
-		const now = Date.now();
-		await this.nodeRepo.upsert({
-			id: node.id,
-			type: node.type,
-			label: node.label,
-			attributes: JSON.stringify(node.attributes),
-			created_at: now,
-			updated_at: now,
-		});
+	async getRelatedFilePaths(params: { currentFilePath: string; maxHops?: number }): Promise<Set<string>> {
+		const relatedNodeIds = await this.getRelatedNodeIds(params.currentFilePath, params.maxHops ?? 2);
+		const documentIds = await this.nodeRepo.getIdsByIdsAndTypes(
+			Array.from(relatedNodeIds),
+			[...GRAPH_DOCUMENT_LIKE_NODE_TYPES],
+		);
+		return new Set(documentIds);
 	}
 
-	async getNode(id: string): Promise<GraphNodeRow | null> {
-		return this.nodeRepo.getById(id);
-	}
-
-	async deleteNode(id: string): Promise<void> {
-		await this.edgeRepo.deleteByFromNode(id);
-		await this.edgeRepo.deleteByToNode(id);
-		await this.nodeRepo.deleteById(id);
-	}
-
-	async getNodesByType(type: GraphNodeType): Promise<GraphNodeRow[]> {
-		return this.nodeRepo.getByType(type);
-	}
-
-	// ===== Edge Operations =====
-
-	async upsertEdge(edge: {
-		fromNodeId: string;
-		toNodeId: string;
-		type: GraphEdgeType;
-		weight?: number;
-		attributes?: Record<string, unknown>;
-	}): Promise<void> {
-		const now = Date.now();
-		const edgeId = MobiusEdgeRepo.generateEdgeId(edge.fromNodeId, edge.toNodeId, edge.type);
-		const existingEdge = await this.edgeRepo.getById(edgeId);
-
-		let weight = edge.weight ?? 1.0;
-		if (existingEdge) {
-			weight = existingEdge.weight + (edge.weight ?? 1.0);
-		}
-
-		await this.edgeRepo.upsert({
-			id: edgeId,
-			from_node_id: edge.fromNodeId,
-			to_node_id: edge.toNodeId,
-			type: edge.type,
-			weight,
-			attributes: JSON.stringify(edge.attributes ?? {}),
-			created_at: existingEdge?.created_at ?? now,
-			updated_at: now,
-		});
-	}
-
-	async getOutgoingEdges(nodeId: string): Promise<GraphEdgeRow[]> {
-		return this.edgeRepo.getByFromNode(nodeId);
-	}
-
-	async getIncomingEdges(nodeId: string): Promise<GraphEdgeRow[]> {
-		return this.edgeRepo.getByToNode(nodeId);
-	}
-
-	async deleteEdge(fromNodeId: string, toNodeId: string, type: GraphEdgeType): Promise<void> {
-		const edgeId = MobiusEdgeRepo.generateEdgeId(fromNodeId, toNodeId, type);
-		await this.edgeRepo.deleteById(edgeId);
-	}
-
-	async getNeighborIds(nodeId: string): Promise<string[]> {
-		const edges = await this.getOutgoingEdges(nodeId);
-		return edges.map((e) => e.to_node_id);
-	}
-
-	async getRelatedNodeIds(startNodeId: string, maxHops: number = 2): Promise<Set<string>> {
+	private async getRelatedNodeIds(startNodeId: string, maxHops: number = 2): Promise<Set<string>> {
 		const visited = new Set<string>([startNodeId]);
 		let frontier = new Set<string>([startNodeId]);
 
@@ -141,90 +58,6 @@ export class GraphRepo {
 
 		visited.delete(startNodeId);
 		return visited;
-	}
-
-	async upsertDocument(params: { id: string; path: string; docType?: string }): Promise<void> {
-		await this.upsertNode({
-			id: params.id,
-			type: GraphNodeType.Document,
-			label: params.path,
-			attributes: {
-				path: params.path,
-				docType: params.docType,
-			},
-		});
-	}
-
-	async removeDocument(id: string): Promise<void> {
-		await this.deleteNode(id);
-	}
-
-	async getRelatedFilePaths(params: { currentFilePath: string; maxHops?: number }): Promise<Set<string>> {
-		const relatedNodeIds = await this.getRelatedNodeIds(params.currentFilePath, params.maxHops ?? 2);
-		const documentIds = await this.nodeRepo.getIdsByIdsAndTypes(
-			Array.from(relatedNodeIds),
-			[...GRAPH_DOCUMENT_LIKE_NODE_TYPES],
-		);
-		return new Set(documentIds);
-	}
-
-	async getPreview(params: { currentFilePath: string; maxNodes?: number; maxHops?: number }): Promise<GraphPreview> {
-		const maxNodes = params.maxNodes ?? 30;
-		const maxHops = Math.max(0, Number(params.maxHops ?? 2));
-		const startNode = await this.getNode(params.currentFilePath);
-		if (!startNode) {
-			return { nodes: [], edges: [] };
-		}
-
-		const keep = new Set<string>([params.currentFilePath]);
-		let frontier = new Set<string>([params.currentFilePath]);
-		for (let hop = 0; hop < maxHops; hop++) {
-			const next = new Set<string>();
-			const neighborMap = await this.edgeRepo.getNeighborIdsMap(Array.from(frontier));
-			for (const [, neighbors] of neighborMap) {
-				for (const nid of neighbors) {
-					if (!keep.has(nid)) {
-						keep.add(nid);
-						next.add(nid);
-					}
-				}
-			}
-			frontier = next;
-			if (!frontier.size) break;
-		}
-
-		const nodes: GraphPreview['nodes'] = [];
-		const nodeMap = await this.nodeRepo.getByIds(Array.from(keep));
-		for (const [id, nodeRow] of nodeMap) {
-			if (nodes.length >= maxNodes) break;
-			const node = {
-				id: nodeRow.id,
-				type: nodeRow.type as GraphNodeType,
-				label: nodeRow.label,
-			};
-
-			let label = node.label;
-			if (node.type === GraphNodeType.TopicTag) {
-				label = `#${node.label}`;
-			}
-
-			nodes.push({ id, label, type: node.type });
-		}
-
-		const nodeSet = new Set(nodes.map((n) => n.id));
-		const edges: GraphPreview['edges'] = [];
-		const outgoingEdges = await this.edgeRepo.getByFromNodes(Array.from(nodeSet));
-		for (const e of outgoingEdges) {
-			if (nodeSet.has(e.to_node_id)) {
-				edges.push({
-					from_node_id: e.from_node_id,
-					to_node_id: e.to_node_id,
-					weight: e.weight,
-				});
-			}
-		}
-
-		return { nodes, edges };
 	}
 
 	/**

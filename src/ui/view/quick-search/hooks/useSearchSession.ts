@@ -12,11 +12,7 @@ import { Notice } from 'obsidian';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import {
 	getCleanQuery,
-	useAIAnalysisRuntimeStore,
-	useAIAnalysisSummaryStore,
-	useAIAnalysisResultStore,
 	resetAIAnalysisAll,
-	markAIAnalysisCompleted,
 } from '../store/aiAnalysisStore';
 import { useSharedStore } from '../store';
 import { setLastAnalysisHistorySearch, invalidateFollowupContextCache } from '../followupContextRuntime';
@@ -28,7 +24,6 @@ import type { UserFeedback } from '@/service/agents/core/types';
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
 
-import { reorganizeTimelineByAgent } from './search-session-types';
 import { consumeStream } from './streamConsumer';
 import type { StreamConsumerContext } from './streamConsumer';
 import { useEventRouter, eventTargetRedirect } from './useEventRouter';
@@ -149,12 +144,10 @@ export function useSearchSession() {
 			const cleanQuery = getCleanQuery(searchQuery);
 			if (!cleanQuery) {
 				store.getState().recordError('Please enter a search query.');
-				useAIAnalysisRuntimeStore.getState().recordError('Please enter a search query.');
 				return;
 			}
 			if (!aiSearchAgent) {
 				store.getState().recordError('AI search agent is not ready yet. Please try again.');
-				useAIAnalysisRuntimeStore.getState().recordError('AI search agent is not ready yet. Please try again.');
 				return;
 			}
 
@@ -174,9 +167,6 @@ export function useSearchSession() {
 			// Start session
 			store.getState().startSession(searchQuery);
 			mySessionId = store.getState().id;
-			// Bridge: sync analysisMode to runtime store before startAnalyzing
-			useAIAnalysisRuntimeStore.getState().setAnalysisMode(analysisMode);
-			useAIAnalysisRuntimeStore.getState().startAnalyzing();
 
 			didCancelRef.current = false;
 			noticeSentRef.current = false;
@@ -190,7 +180,6 @@ export function useSearchSession() {
 				hasStartedStreaming: () => store.getState().hasStartedStreaming,
 				onStreamStart: () => {
 					store.getState().startStreaming();
-					useAIAnalysisRuntimeStore.getState().startStreaming();
 					useStepDisplayReplayStore.getState().setStreamStarted(true);
 				},
 				signal,
@@ -210,16 +199,12 @@ export function useSearchSession() {
 					const agent = vaultAgentRef.current;
 					if (!agent) return;
 					store.getState().clearHitlPause();
-					useAIAnalysisRuntimeStore.getState().clearHitlPause();
 					await consumeStream(agent.continueWithFeedback(feedback), streamCtx);
 					if (!store.getState().hitlState) {
 						store.getState().markCompleted();
-						markAIAnalysisCompleted();
 					}
 				};
 				store.getState().setHitlFeedbackCallback(hitlCallback);
-				// Bridge
-				useAIAnalysisRuntimeStore.getState().setHitlFeedbackCallback(hitlCallback);
 
 				await consumeStream(vaultAgentRef.current.startSession(searchQuery, { webEnabled, signal }), streamCtx);
 
@@ -227,9 +212,6 @@ export function useSearchSession() {
 				const postStreamStatus = store.getState().status;
 				if (!store.getState().hitlState && postStreamStatus !== 'plan_ready') {
 					store.getState().markCompleted();
-					markAIAnalysisCompleted();
-					// NOTE: No persist here — report hasn't been generated yet.
-					// Save happens after handleApprovePlan() → generateReport() completes.
 				}
 				return;
 			}
@@ -252,7 +234,6 @@ export function useSearchSession() {
 
 				useAIGraphStore.getState().setLoading(false);
 				store.getState().markCompleted();
-				markAIAnalysisCompleted();
 				return;
 			}
 
@@ -263,8 +244,6 @@ export function useSearchSession() {
 				? err.message
 				: 'Failed to connect to AI service. Please check your network connection and try again.';
 			store.getState().recordError(errorMessage);
-			// Bridge
-			useAIAnalysisRuntimeStore.getState().recordError(errorMessage);
 
 			// Notice (error): only when modal is closed and not canceled
 			if (!didCancelRef.current && !noticeSentRef.current && !store.getState().aiModalOpen) {
@@ -283,30 +262,6 @@ export function useSearchSession() {
 				// Flush pending summary deltas
 				flushSummaryBuffer();
 
-				// Debug dump
-				const ss = store.getState();
-				const sum = useAIAnalysisSummaryStore.getState();
-				const res = useAIAnalysisResultStore.getState();
-				const debugDump = {
-					meta: {
-						query: searchQuery,
-						webEnabled,
-						totalDurationMs: Date.now() - analysisStartTimeRef.current,
-						usage: ss.usage,
-						hasError: !!ss.error,
-						error: ss.error,
-						sourcesCount: (res.sources ?? []).length,
-						topicsCount: (res.topics ?? []).length,
-						dashboardBlocksCount: (res.dashboardBlocks ?? []).length,
-						graphNodesCount: (res.graph?.nodes ?? []).length,
-						graphEdgesCount: (res.graph?.edges ?? []).length,
-					},
-					timeline: reorganizeTimelineByAgent(timelineRef.current),
-					summary: sum.summaryText ?? '',
-					summaryLen: (sum.summaryText ?? '').length,
-				};
-				console.debug('[useSearchSession] debugDumpJson', JSON.stringify(debugDump));
-
 				setLastAnalysisHistorySearch(null);
 				timelineRef.current = [];
 				analysisStartTimeRef.current = 0;
@@ -314,7 +269,6 @@ export function useSearchSession() {
 				// Guard: only mark completed if not already done AND not waiting for HITL
 				if (!store.getState().getIsCompleted() && !store.getState().hitlState) {
 					store.getState().markCompleted();
-					markAIAnalysisCompleted();
 				}
 
 				// Clear abort controller
@@ -445,13 +399,11 @@ export function useSearchSession() {
 				const agent = vaultAgentRef.current;
 				if (!agent) return;
 				store.getState().clearHitlPause();
-				useAIAnalysisRuntimeStore.getState().clearHitlPause();
 
 				const streamCtx: StreamConsumerContext = {
 					hasStartedStreaming: () => store.getState().hasStartedStreaming,
 					onStreamStart: () => {
 						store.getState().startStreaming();
-						useAIAnalysisRuntimeStore.getState().startStreaming();
 					},
 					signal: abortControllerRef.current?.signal,
 					routeEvent,
@@ -460,11 +412,9 @@ export function useSearchSession() {
 				await consumeStream(agent.continueWithFeedback(feedback), streamCtx);
 				if (!store.getState().hitlState) {
 					store.getState().markCompleted();
-					markAIAnalysisCompleted();
 				}
 			};
 			store.getState().setHitlFeedbackCallback(hitlCallback);
-			useAIAnalysisRuntimeStore.getState().setHitlFeedbackCallback(hitlCallback);
 		}
 	}, [routeEvent]);
 

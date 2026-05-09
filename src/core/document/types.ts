@@ -1,312 +1,102 @@
-/**
- * Unified Document model for the entire plugin.
- * 
- * This is the core document abstraction that supports:
- * - Multiple document types (markdown, pdf, image, text files, office, etc.)
- * - Rich metadata (hash, summary, references, tags)
- * - Caching strategies for expensive operations
- * - Content extraction and processing
- * 
- * All document operations (indexing, search, chat) should use this model.
- * 
- * Design principles:
- * - Single source of truth: one Document model for all use cases
- * - Separation of concerns: Document (core) vs Chunk (search-specific)
- * - Extensibility: easy to add new document types and metadata
- * - Performance: caching for expensive operations (PDF, Image, Canvas)
- */
-
 import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
 
-/**
- * All document type values as a constant array.
- * This is the source of truth for all document types.
- * 
- * Supports various file types:
- * - Text files: markdown, csv, json, html, xml, txt
- * - Binary files: pdf, image (jpg, png, etc.), office (docx, xlsx, pptx)
- * - Plugin data: conv, project, prompt
- * - Obsidian data: excalidraw, canvas, dataloom
- * - Special: folder, url
- */
+/** All document type values (source of truth). */
 export const DOCUMENT_TYPES = [
-	// Text files
-	'markdown',
-	'txt',
-	'csv',
-	'json',
-	'html',
-	'xml',
-	// Binary files
-	'pdf',
-	'image',
-	'docx',
-	'xlsx',
-	'pptx',
-	// Plugin data files
-	// 'conv',
-	// 'project',
-	// 'prompt',
-	// Obsidian data files
-	'excalidraw',
-	'canvas',
-	'dataloom',
-	// Special types
-	'folder',
-	'url',
-	// Unknown/unsupported (only index filename and metadata)
+	'markdown', 'txt', 'csv', 'json', 'html', 'xml',
+	'pdf', 'image', 'docx', 'xlsx', 'pptx',
+	'excalidraw', 'canvas',
+	'folder', 'url',
 	'unknown',
 ] as const;
 
-/**
- * Document type for indexing and document loaders.
- * Derived from DOCUMENT_TYPES constant array.
- */
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
-/**
- * Document source information.
- * 
- * will be readed after documentpo is created. and these data will be readed from Document sourceFile or cacheFile when needed.
- */
+/** Source file information, read lazily after DocumentPO creation. */
 export interface DocumentFileInfo {
-	/**
-	 * Original file path in vault.
-	 */
 	path: string;
-	/**
-	 * File name.
-	 */
 	name: string;
-	/**
-	 * File extension.
-	 */
 	extension: string;
-	/**
-	 * File size in bytes.
-	 */
+	/** File size in bytes. */
 	size: number;
-	/**
-	 * Last modification time (timestamp).
-	 */
+	/** Last modification time (timestamp). */
 	mtime: number;
-	/**
-	 * Creation time (timestamp).
-	 */
 	ctime?: number;
 	/**
-	 * File content (extracted text, typically in markdown format).
-	 * 
-	 * Content storage varies by document type:
-	 * - Text files (markdown, txt, etc.): raw content directly from file
-	 * - Binary files (PDF, Image, etc.): extracted content converted to markdown
-	 *   For binary files, extracted content is stored here after processing.
-	 *   The content is typically converted to markdown format and processed
-	 *   by the markdown extractor for unified handling.
-	 * - Canvas/Dataloom: structured representation converted to markdown
-	 * 
-	 * For binary files, the original file has no text content, so this field
-	 * contains the processed/extracted content. For files with cacheFileInfo,
-	 * the extracted content is stored in cacheFileInfo.content.
+	 * Extracted text content (markdown format).
+	 * For binary files (PDF, Image, etc.), contains processed/extracted content.
+	 * For text files, contains raw content.
 	 */
 	content: string;
 }
 
-/**
- * Document metadata extracted from content.
- * 
- * will be readed after documentpo is created. and these data will be readed from Document sourceFile or cacheFile when needed.
- */
+/** Document metadata extracted from content. Read lazily after DocumentPO creation. */
 export interface DocumentMetadata {
-	/**
-	 * Document title (extracted from frontmatter, heading, or filename).
-	 */
 	title: string;
-	/**
-	 * Topic tags — LLM-assigned when indexing with AI (what the note is about for search/graph).
-	 * Ids only; same order as {@link topicTagEntries} when present.
-	 */
+	/** Topic tags — LLM-assigned (what the note is about). Ids only. */
 	topicTags: string[];
-	/**
-	 * Topic tags with optional per-note labels (LLM); omitted when only plain ids exist.
-	 */
+	/** Topic tags with optional per-note labels (LLM). */
 	topicTagEntries?: TopicTagEntry[];
-	/**
-	 * Functional tags (closed id + optional per-note label); LLM-assigned when indexing with AI.
-	 */
+	/** Functional tags (closed id + optional per-note label); LLM-assigned. */
 	functionalTagEntries: FunctionalTagEntry[];
-	/**
-	 * Keyword tags from inline #hashtags and frontmatter `tags` (user-side; not LLM).
-	 */
+	/** Keyword tags from inline #hashtags and frontmatter `tags` (user-side; not LLM). */
 	keywordTags: string[];
-	/**
-	 * User-only keywords (frontmatter + inline #tags). Drives Mobius `KeywordTag` edges; excludes TextRank-only terms.
-	 */
+	/** User-only keywords (frontmatter + inline #tags). Drives Mobius KeywordTag edges. */
 	userKeywordTags?: string[];
-	/**
-	 * TextRank extractive terms only; kept for prompts / affinity, not written as graph keyword nodes.
-	 */
+	/** TextRank extractive terms only; for prompts/affinity, not written as graph keyword nodes. */
 	textrankKeywordTerms?: string[];
-	/**
-	 * LLM time context tags (prefix `Time…`, e.g. TimeYear2025). Empty when AI path skipped.
-	 */
+	/** LLM time context tags (prefix `Time...`). */
 	timeTags?: string[];
-	/**
-	 * LLM geography context tags (prefix `Geo…`, e.g. GeoCountryChina).
-	 */
+	/** LLM geography context tags (prefix `Geo...`). */
 	geoTags?: string[];
-	/**
-	 * LLM person/entity tags (prefix `Person…`).
-	 */
+	/** LLM person/entity tags (prefix `Person...`). */
 	personTags?: string[];
-	/**
-	 * Special document types (daily note, profile, principle, etc.).
-	 */
+	/** Special document types (daily note, profile, principle, etc.). */
 	specialTypes?: string[];
-	/**
-	 * Frontmatter data (YAML/JSON).
-	 */
 	frontmatter?: Record<string, unknown>;
-	/**
-	 * LLM-inferred document creation time (epoch ms); set by markdown loader via TagService when AI tagging runs.
-	 */
+	/** LLM-inferred document creation time (epoch ms). */
 	inferCreatedAt?: number | null;
-	/**
-	 * Custom metadata fields.
-	 */
 	custom?: Record<string, unknown>;
 }
 
-/**
- * Reference to another document.
- */
 export interface DocumentReference {
-	/**
-	 * Document ID (if available).
-	 * May be empty/undefined when the referenced document hasn't been indexed yet.
-	 */
 	docId?: string;
-	/**
-	 * Full path relative to vault root.
-	 * Required and cannot be empty.
-	 */
+	/** Full path relative to vault root. */
 	fullPath: string;
 }
 
-/**
- * Document references (bidirectional).
- * 
- * will be readed after graph instance is created.
- */
+/** Document references (bidirectional). Read after graph instance is created. */
 export interface DocumentReferences {
-	/**
-	 * Outgoing references (links from this document).
-	 */
 	outgoing: DocumentReference[];
-	/**
-	 * Incoming references (links to this document).
-	 */
 	incoming: DocumentReference[];
 }
 
-/**
- * Core Document model for the entire plugin.
- * 
- * This unified model supports all document types and operations:
- * - Indexing (search index)
- * - Chat (RAG, context)
- * - Analysis (tags, references, summary)
- * 
- * All document loaders should produce this model.
- * 
- * fields in Document model, like tags, title will be readed from Document sourceFile or cacheFile when needed after documentpo is created.
- */
+/** Core Document model — unified across indexing, chat, and analysis. */
 export interface Document {
-	/**
-	 * Unique document identifier.
-	 * A string identifier, typically UUID or similar unique format.
-	 * Not necessarily the file path.
-	 */
 	id: string;
-	/**
-	 * Document type.
-	 */
 	type: DocumentType;
-	/**
-	 * Source file information.
-	 */
 	sourceFileInfo: DocumentFileInfo;
-	/**
-	 * Cache file information. eg pdf's image's cache file info
-	 */
+	/** Cache file info (e.g. PDF/image cache). */
 	cacheFileInfo: DocumentFileInfo;
-	/**
-	 * Document metadata.
-	 */
 	metadata: DocumentMetadata;
-	/**
-	 * Document references (bidirectional links).
-	 */
 	references: DocumentReferences;
-
-	/**
-	 * Short summary.
-	 * Document summary (redundant field for quick access).
-	 * 
-	 * This is a cached summary extracted from content:
-	 * - For text files (no cacheFile): summary extracted from sourceFileInfo.content
-	 * - For binary files (PDF, Image, etc.): summary extracted from cacheFileInfo.content
-	 * 
-	 * The summary is generated after processing sourceFileInfo.content and/or
-	 * cacheFileInfo.content, and stored here for quick access without re-processing.
-	 * 
-	 * Only generated if content is substantial.
-	 * Null for short documents (not worth summarizing) or if not yet processed.
-	 */
+	/** Short summary for quick access. Null for short/unprocessed documents. */
 	summary?: string | null;
-
-	/**
-	 * Long-form summary (separate from {@link cacheFileInfo}; not for cache file body).
-	 */
+	/** Long-form summary (separate from cacheFileInfo). */
 	fullSummary?: string | null;
-
-	/**
-	 * MD5 hash of content (for deduplication).
-	 * Prevents duplicate embedding and processing.
-	 */
+	/** MD5 hash of content (for deduplication). */
 	contentHash: string;
-
-	/**
-	 * Processing timestamp (when document was last processed).
-	 */
 	lastProcessedAt: number;
 }
 
-/**
- * Special resource types that are not regular documents
- */
 export type SpecialResourceType = 'tag' | 'folder';
-
-/**
- * All possible resource kinds (document types + special resource types)
- */
 export type ResourceKind = DocumentType | SpecialResourceType;
 
-/**
- * Resource summary result
- */
 export interface ResourceSummary {
 	shortSummary: string;
 	fullSummary?: string;
 }
 
-/**
- * Interface for resources that can generate summaries
- */
 export interface Summarizable {
-	/**
-	 * Get summary for a resource or document
-	 */
 	getSummary(
 		source: Document | string,
 		provider?: string,
@@ -314,13 +104,6 @@ export interface Summarizable {
 	): Promise<ResourceSummary>;
 }
 
-/**
- * Resource loader interface for special resource types
- */
 export interface ResourceLoader extends Summarizable {
-	/**
-	 * Get the resource type this loader handles
-	 */
 	getResourceType(): ResourceKind;
 }
-

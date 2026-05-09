@@ -168,7 +168,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 				try {
 					// updateConversationTitle will trigger ConversationUpdatedEvent
 					// The event listener will handle updating the store and enabling typewriter effect
-					await manager.updateConversationTitle({
+					await manager.conv.updateConversationTitle({
 						conversationId: conversation.meta.id,
 						title: newTitle.trim(),
 					});
@@ -198,7 +198,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 			title: 'Delete',
 			icon: 'trash',
 			onClick: async () => {
-				await manager.deleteConversation(conversation.meta.id);
+				await manager.conv.deleteConversation(conversation.meta.id);
 				const { conversations: current, setConversations: updateConversations, activeConversation: active, setActiveConversation: setActive } = useChatDataStore.getState();
 				const updated = Array.from(current.values()).filter(c => c.meta.id !== conversation.meta.id);
 				updateConversations(updated);

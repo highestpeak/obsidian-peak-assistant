@@ -28,7 +28,7 @@ export const AllProjectsViewComponent: React.FC<AllProjectsViewProps> = ({
 	useEffect(() => {
 		const loadProjects = async () => {
 			setLoading(true);
-			const allProjects = await manager.listProjects();
+			const allProjects = await manager.proj.listProjects();
 			setProjects(allProjects);
 			setProjectsPage(0);
 			setLoading(false);

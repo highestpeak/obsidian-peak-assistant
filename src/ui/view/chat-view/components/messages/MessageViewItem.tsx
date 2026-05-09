@@ -72,7 +72,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	const handleToggleStar = useCallback(async (messageId: string, starred: boolean) => {
 		console.debug('[MessageItem] Toggling star for message:', { messageId, starred });
 		if (!activeConversation) return;
-		await manager.toggleStar({
+		await manager.conv.toggleStar({
 			messageId,
 			conversationId: activeConversation.meta.id,
 			starred,
@@ -136,7 +136,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
 			// Append the new message at the end of the conversation
 			if (streamResult.finalMessage) {
-				await manager.addMessage({
+				await manager.conv.addMessage({
 					conversationId: activeConversation.meta.id,
 					message: streamResult.finalMessage,
 					model: streamResult.finalMessage.model,

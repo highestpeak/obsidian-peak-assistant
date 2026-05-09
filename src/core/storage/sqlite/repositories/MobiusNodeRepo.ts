@@ -27,20 +27,6 @@ import {
 export type MobiusNodeRow = DbSchema['mobius_node'];
 
 /** Escapes `%`, `_`, and `\` for SQLite `LIKE ... ESCAPE '\\'`. */
-function escapeSqlLikePatternForVaultPath(s: string): string {
-	return s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-}
-
-/**
- * SQL predicate matching `pathMatchesAnyPrefix` (hub-path-utils) for one normalized prefix against `mobius_node.path`.
- */
-function sqlMobiusPathMatchesHubDiscoverPrefix(pathRef: ReturnType<typeof sql.ref>, prefix: string) {
-	const p = normalizeVaultPath(prefix);
-	if (!p) return sql`1=0`;
-	const likePattern = escapeSqlLikePatternForVaultPath(`${p}/`) + '%';
-	const norm = sql<string>`trim(replace(coalesce(${pathRef}, ''), char(92), '/'), '/')`;
-	return sql`(${norm} = ${p} OR ${norm} LIKE ${likePattern} ESCAPE '\\' OR ${p} LIKE ${norm} || '/%')`;
-}
 
 /** Graph node DTO shape; rows live in `mobius_node`. */
 export type GraphNode = DbSchema['graph_nodes'];
@@ -86,12 +72,6 @@ export type MobiusNodeHubDiscoveryScoredRow = MobiusNodeHubDiscoveryRow & {
 };
 
 /**
- * Gap path prefix (first two segments). Must stay aligned with `pathPrefixForGap` in hubDiscover.ts.
- * References `mobius_node.path`; only use in queries against `mobius_node`.
- */
-const MOBIUS_PATH_GAP_PREFIX_SQL = sql<string>`CASE WHEN instr(mobius_node.path, '/') = 0 THEN mobius_node.path ELSE substr(mobius_node.path, 1, instr(mobius_node.path, '/') - 1) || '/' || substr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), 1, CASE WHEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') > 0 THEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') - 1 ELSE length(substr(mobius_node.path, instr(mobius_node.path, '/') + 1)) END) END`;
-
-/**
  * Folder hub candidate row with scores matching in-app folder hub scoring (materialized columns on `type=folder`).
  */
 export type MobiusNodeFolderHubDiscoveryRow = {
@@ -114,22 +94,6 @@ export type MobiusNodeFolderHubDiscoveryRow = {
 	/** `folder_cohesion_score` × size reliability (see {@link FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT}). */
 	hub_cohesion_effective_score: number;
 };
-
-/**
- * Document row subset for weighted local hub graph nodes (same as discovery minus `word_count`),
- * plus `tags_json` for tag/keyword alignment in hub-local assembly.
- */
-export type MobiusNodeHubLocalGraphMetaRow = Omit<MobiusNodeHubDiscoveryRow, 'word_count'> & {
-	tags_json: string | null;
-	other_incoming_cnt: number | null;
-	other_outgoing_cnt: number | null;
-};
-
-/** Semantic cluster hub seeds (ordered by `semantic_pagerank` in queries). */
-export type MobiusNodeHubClusterSeedRow = Pick<
-	MobiusNodeRow,
-	'node_id' | 'path' | 'label' | 'semantic_pagerank' | 'doc_incoming_cnt' | 'doc_outgoing_cnt' | 'pagerank'
->;
 
 /** Id + vault path for coverage / member listing helpers. */
 export type MobiusNodeIdPathRow = { node_id: string; path: string | null };
@@ -249,39 +213,6 @@ export class MobiusNodeRepo {
 			})
 			.where('node_id', '=', nodeId)
 			.where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES])
-			.execute();
-	}
-
-	/**
-	 * Merges keys into `attributes_json` for a folder node (`type = folder`) without dropping other fields.
-	 */
-	async mergeJsonAttributesForFolderNode(
-		nodeId: string,
-		merge: Record<string, unknown>,
-		now: number = Date.now(),
-	): Promise<void> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select('attributes_json')
-			.where('node_id', '=', nodeId)
-			.where('type', '=', GraphNodeType.Folder)
-			.executeTakeFirst();
-		if (!row) return;
-		let prev: Record<string, unknown> = {};
-		try {
-			prev = JSON.parse(row.attributes_json || '{}') as Record<string, unknown>;
-		} catch {
-			prev = {};
-		}
-		const next = { ...prev, ...merge };
-		await this.db
-			.updateTable('mobius_node')
-			.set({
-				attributes_json: JSON.stringify(next),
-				updated_at: now,
-			})
-			.where('node_id', '=', nodeId)
-			.where('type', '=', GraphNodeType.Folder)
 			.execute();
 	}
 
@@ -619,83 +550,6 @@ export class MobiusNodeRepo {
 		await this.deleteByNodeIds(ids);
 	}
 
-	async deleteByType(type: string): Promise<void> {
-		await this.db.deleteFrom('mobius_node').where('type', '=', type).execute();
-	}
-
-	/**
-	 * Upsert a mobius node (insert or full replace of scalar fields).
-	 */
-	async upsertMobiusRow(row: MobiusNodeRow): Promise<void> {
-		const exists = await this.existsByNodeId(row.node_id);
-		if (exists) {
-			await this.db
-				.updateTable('mobius_node')
-				.set({
-					type: row.type,
-					label: row.label,
-					infer_created_at: row.infer_created_at,
-					updated_at: row.updated_at,
-					last_open_ts: row.last_open_ts,
-					open_count: row.open_count,
-					path: row.path,
-					title: row.title,
-					size: row.size,
-					mtime: row.mtime,
-					ctime: row.ctime,
-					content_hash: row.content_hash,
-					summary: row.summary,
-					tags_json: row.tags_json,
-					word_count: row.word_count,
-					char_count: row.char_count,
-					language: row.language,
-					richness_score: row.richness_score,
-					doc_incoming_cnt: row.doc_incoming_cnt,
-					doc_outgoing_cnt: row.doc_outgoing_cnt,
-					other_incoming_cnt: row.other_incoming_cnt,
-					other_outgoing_cnt: row.other_outgoing_cnt,
-					tag_doc_count: row.tag_doc_count,
-					pagerank: row.pagerank,
-					pagerank_updated_at: row.pagerank_updated_at,
-					pagerank_version: row.pagerank_version,
-					semantic_pagerank: row.semantic_pagerank,
-					semantic_pagerank_updated_at: row.semantic_pagerank_updated_at,
-					semantic_pagerank_version: row.semantic_pagerank_version,
-					folder_cohesion_score: row.folder_cohesion_score,
-					attributes_json: row.attributes_json,
-				})
-				.where('node_id', '=', row.node_id)
-				.execute();
-		} else {
-			await this.db.insertInto('mobius_node').values(row).execute();
-		}
-	}
-
-	async updatePathAndDocumentFields(
-		nodeId: string,
-		updates: {
-			path: string;
-			label: string;
-			title: string | null;
-			mtime: number | null;
-			attributes_json: string;
-			updated_at: number;
-		},
-	): Promise<void> {
-		await this.db
-			.updateTable('mobius_node')
-			.set({
-				path: updates.path,
-				label: updates.label,
-				title: updates.title,
-				mtime: updates.mtime,
-				attributes_json: updates.attributes_json,
-				updated_at: updates.updated_at,
-			})
-			.where('node_id', '=', nodeId)
-			.execute();
-	}
-
 	/**
 	 * Increment open_count and set last_open_ts for indexed note rows (`document` / `hub_doc`).
 	 */
@@ -725,77 +579,6 @@ export class MobiusNodeRepo {
 
 	private docStatisticsRowQuery() {
 		return this.db.selectFrom('mobius_node').where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES]);
-	}
-
-	async existsByDocId(docId: string): Promise<boolean> {
-		const row = await this.docStatisticsRowQuery().select('node_id').where('node_id', '=', docId).executeTakeFirst();
-		return row !== undefined;
-	}
-
-	async insertDocumentStatistics(stats: {
-		doc_id: string;
-		word_count: number | null;
-		char_count: number | null;
-		language: string | null;
-		richness_score: number | null;
-		last_open_ts: number | null;
-		updated_at: number;
-	}): Promise<void> {
-		await this.updateDocumentStatisticsByDocId(stats.doc_id, {
-			word_count: stats.word_count,
-			char_count: stats.char_count,
-			language: stats.language,
-			richness_score: stats.richness_score,
-			last_open_ts: stats.last_open_ts,
-			updated_at: stats.updated_at,
-		});
-	}
-
-	async updateDocumentStatisticsByDocId(
-		docId: string,
-		updates: Partial<
-			Pick<
-				DbSchema['doc_statistics'],
-				'word_count' | 'char_count' | 'language' | 'richness_score' | 'last_open_ts' | 'updated_at'
-			>
-		>,
-	): Promise<void> {
-		const patch: Record<string, unknown> = {};
-		if (updates.word_count !== undefined) patch.word_count = updates.word_count;
-		if (updates.char_count !== undefined) patch.char_count = updates.char_count;
-		if (updates.language !== undefined) patch.language = updates.language;
-		if (updates.richness_score !== undefined) patch.richness_score = updates.richness_score;
-		if (updates.last_open_ts !== undefined) patch.last_open_ts = updates.last_open_ts;
-		if (updates.updated_at !== undefined) patch.updated_at = updates.updated_at;
-		if (!Object.keys(patch).length) return;
-		await this.db
-			.updateTable('mobius_node')
-			.set(patch as any)
-			.where('node_id', '=', docId)
-			.where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES])
-			.execute();
-	}
-
-	async upsertDocumentStatistics(stats: {
-		doc_id: string;
-		word_count?: number | null;
-		char_count?: number | null;
-		language?: string | null;
-		richness_score?: number | null;
-		last_open_ts?: number | null;
-		updated_at: number;
-	}): Promise<void> {
-		const exists = await this.existsByDocId(stats.doc_id);
-		if (exists) {
-			await this.updateDocumentStatisticsByDocId(stats.doc_id, {
-				word_count: stats.word_count ?? null,
-				char_count: stats.char_count ?? null,
-				language: stats.language ?? null,
-				richness_score: stats.richness_score ?? null,
-				last_open_ts: stats.last_open_ts ?? null,
-				updated_at: stats.updated_at,
-			});
-		}
 	}
 
 	async getRecent(topK: number): Promise<Array<{ docId: string; lastOpenTs: number; openCount: number }>> {
@@ -840,47 +623,15 @@ export class MobiusNodeRepo {
 		return out;
 	}
 
-	/**
-	 * Persists vault PageRank scalars on document-like rows (`pagerank*` columns, not `attributes_json`).
-	 */
+	/** Persists PageRank or semantic PageRank scalars on document-like rows. */
 	async setPageRankForDocLikeNode(
 		nodeId: string,
-		fields: { pagerank: number; pagerank_updated_at: number; pagerank_version: number },
+		fields: Partial<Pick<MobiusNodeRow, 'pagerank' | 'pagerank_updated_at' | 'pagerank_version' | 'semantic_pagerank' | 'semantic_pagerank_updated_at' | 'semantic_pagerank_version'>>,
 		now: number = Date.now(),
 	): Promise<void> {
 		await this.db
 			.updateTable('mobius_node')
-			.set({
-				pagerank: fields.pagerank,
-				pagerank_updated_at: fields.pagerank_updated_at,
-				pagerank_version: fields.pagerank_version,
-				updated_at: now,
-			})
-			.where('node_id', '=', nodeId)
-			.where('type', 'in', [...GRAPH_DOCUMENT_LIKE_NODE_TYPES])
-			.execute();
-	}
-
-	/**
-	 * Persists weighted semantic PageRank on `semantic_related` (`semantic_pagerank*` columns).
-	 */
-	async setSemanticPageRankForDocLikeNode(
-		nodeId: string,
-		fields: {
-			semantic_pagerank: number;
-			semantic_pagerank_updated_at: number;
-			semantic_pagerank_version: number;
-		},
-		now: number = Date.now(),
-	): Promise<void> {
-		await this.db
-			.updateTable('mobius_node')
-			.set({
-				semantic_pagerank: fields.semantic_pagerank,
-				semantic_pagerank_updated_at: fields.semantic_pagerank_updated_at,
-				semantic_pagerank_version: fields.semantic_pagerank_version,
-				updated_at: now,
-			})
+			.set({ ...fields, updated_at: now })
 			.where('node_id', '=', nodeId)
 			.where('type', 'in', [...GRAPH_DOCUMENT_LIKE_NODE_TYPES])
 			.execute();
@@ -929,29 +680,12 @@ export class MobiusNodeRepo {
 		await this.db
 			.updateTable('mobius_node')
 			.set({
-				word_count: null,
-				char_count: null,
-				language: null,
-				richness_score: null,
-				last_open_ts: null,
-				open_count: null,
+				word_count: null, char_count: null, language: null,
+				richness_score: null, last_open_ts: null, open_count: null,
 				updated_at: Date.now(),
 			})
 			.where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES])
 			.execute();
-	}
-
-	async cleanupOrphanStats(): Promise<number> {
-		return 0;
-	}
-
-	async getTopByRichness(limit: number): Promise<DocStatistics[]> {
-		const rows = await this.docStatisticsRowQuery()
-			.selectAll()
-			.orderBy('richness_score', 'desc')
-			.limit(limit)
-			.execute();
-		return rows.map((r) => this.docStatisticsFromMobius(r)).filter((s): s is DocStatistics => s != null);
 	}
 
 	async countAllDocumentStatisticsRows(): Promise<number> {
@@ -961,64 +695,33 @@ export class MobiusNodeRepo {
 		return Number(r?.c ?? 0);
 	}
 
-	async getTopRecentEditedByDocIds(
+	private async getTopDocStat<K extends string>(
+		col: K & keyof MobiusNodeRow,
 		docIds: string[] | undefined,
 		limit: number,
-	): Promise<Array<{ doc_id: string; updated_at: number }>> {
+	): Promise<Array<{ doc_id: string } & Record<K, number>>> {
 		if (docIds !== undefined && docIds.length === 0) return [];
 		let q = this.docStatisticsRowQuery()
-			.select(['node_id', 'updated_at'])
-			.where('updated_at', 'is not', null)
-			.orderBy('updated_at', 'desc')
+			.select(['node_id', col])
+			.where(col, 'is not', null)
+			.orderBy(col, 'desc')
 			.limit(limit);
 		if (docIds !== undefined) q = q.where('node_id', 'in', docIds);
 		const rows = await q.execute();
-		return rows.map((r) => ({ doc_id: r.node_id, updated_at: r.updated_at }));
+		return rows.map((r) => ({ doc_id: r.node_id, [col]: Number((r as any)[col]) } as any));
 	}
 
-	async getTopWordCountByDocIds(
-		docIds: string[] | undefined,
-		limit: number,
-	): Promise<Array<{ doc_id: string; word_count: number }>> {
-		if (docIds !== undefined && docIds.length === 0) return [];
-		let q = this.docStatisticsRowQuery()
-			.select(['node_id', 'word_count'])
-			.where('word_count', 'is not', null)
-			.orderBy('word_count', 'desc')
-			.limit(limit);
-		if (docIds !== undefined) q = q.where('node_id', 'in', docIds);
-		const rows = await q.execute();
-		return rows.map((r) => ({ doc_id: r.node_id, word_count: Number(r.word_count) }));
+	async getTopRecentEditedByDocIds(docIds: string[] | undefined, limit: number) {
+		return this.getTopDocStat('updated_at', docIds, limit);
 	}
-
-	async getTopCharCountByDocIds(
-		docIds: string[] | undefined,
-		limit: number,
-	): Promise<Array<{ doc_id: string; char_count: number }>> {
-		if (docIds !== undefined && docIds.length === 0) return [];
-		let q = this.docStatisticsRowQuery()
-			.select(['node_id', 'char_count'])
-			.where('char_count', 'is not', null)
-			.orderBy('char_count', 'desc')
-			.limit(limit);
-		if (docIds !== undefined) q = q.where('node_id', 'in', docIds);
-		const rows = await q.execute();
-		return rows.map((r) => ({ doc_id: r.node_id, char_count: Number(r.char_count) }));
+	async getTopWordCountByDocIds(docIds: string[] | undefined, limit: number) {
+		return this.getTopDocStat('word_count', docIds, limit);
 	}
-
-	async getTopRichnessByDocIds(
-		docIds: string[] | undefined,
-		limit: number,
-	): Promise<Array<{ doc_id: string; richness_score: number }>> {
-		if (docIds !== undefined && docIds.length === 0) return [];
-		let q = this.docStatisticsRowQuery()
-			.select(['node_id', 'richness_score'])
-			.where('richness_score', 'is not', null)
-			.orderBy('richness_score', 'desc')
-			.limit(limit);
-		if (docIds !== undefined) q = q.where('node_id', 'in', docIds);
-		const rows = await q.execute();
-		return rows.map((r) => ({ doc_id: r.node_id, richness_score: Number(r.richness_score) }));
+	async getTopCharCountByDocIds(docIds: string[] | undefined, limit: number) {
+		return this.getTopDocStat('char_count', docIds, limit);
+	}
+	async getTopRichnessByDocIds(docIds: string[] | undefined, limit: number) {
+		return this.getTopDocStat('richness_score', docIds, limit);
 	}
 
 	async getLanguageStatsByDocIds(
@@ -1192,112 +895,6 @@ export class MobiusNodeRepo {
 	// --- Hub discovery & local hub graph (read-only helpers) ---
 
 	/**
-	 * Document counts grouped by gap path prefix (same bucketing as hub discovery round-summary gaps).
-	 */
-	async listDocumentGapPrefixCounts(): Promise<Array<{ pathPrefix: string; documentCount: number }>> {
-		const gapInner = this.db
-			.selectFrom('mobius_node')
-			.select(MOBIUS_PATH_GAP_PREFIX_SQL.as('path_prefix'))
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null)
-			.as('gap_inner');
-
-		const rows = await this.db
-			.selectFrom(gapInner)
-			.select((eb) => ['path_prefix', eb.fn.countAll<number>().as('c')])
-			.groupBy('path_prefix')
-			.execute();
-
-		return rows.map((r) => ({
-			pathPrefix: String(r.path_prefix),
-			documentCount: Number(r.c),
-		}));
-	}
-
-	/**
-	 * Sample document paths in one gap bucket excluding already-covered nodes (bounded repeated scans).
-	 */
-	async listSampleUncoveredPathsForGapPrefix(
-		gapPrefix: string,
-		isCovered: (nodeId: string) => boolean,
-		sampleLimit: number,
-	): Promise<string[]> {
-		const lim = Math.max(1, Math.min(50, sampleLimit));
-		const out: string[] = [];
-		let fetchLimit = 100;
-		const maxFetch = 10000;
-
-		while (out.length < lim && fetchLimit <= maxFetch) {
-			const rows = await this.db
-				.selectFrom('mobius_node')
-				.select(['path', 'node_id'])
-				.where('type', '=', GraphNodeType.Document)
-				.where('path', 'is not', null)
-				.where(sql<boolean>`(${MOBIUS_PATH_GAP_PREFIX_SQL}) = ${gapPrefix}`)
-				.orderBy('path')
-				.limit(fetchLimit)
-				.execute();
-
-			for (const r of rows) {
-				const p = r.path ?? '';
-				if (!p) continue;
-				if (isCovered(r.node_id)) continue;
-				out.push(p);
-				if (out.length >= lim) break;
-			}
-
-			if (rows.length < fetchLimit) break;
-			fetchLimit = Math.min(maxFetch, Math.ceil(fetchLimit * 1.5));
-		}
-
-		return out;
-	}
-
-	/**
-	 * One keyset page of documents for hub coverage ordinals (same filter as full index: `document`, non-null `path`, `node_id` asc).
-	 * Pass `afterNodeId = null` for the first page; then `last node_id` from the previous page until this returns `[]`.
-	 */
-	async listDocumentNodeIdPathForCoverageIndexKeyset(
-		afterNodeId: string | null,
-		limit: number,
-	): Promise<Array<{ node_id: string; path: string | null }>> {
-		const lim = Math.max(1, Math.min(50_000, limit));
-		let q = this.db
-			.selectFrom('mobius_node')
-			.select(['node_id', 'path'])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null)
-			.orderBy('node_id')
-			.limit(lim);
-		if (afterNodeId != null && afterNodeId !== '') {
-			q = q.where('node_id', '>', afterNodeId);
-		}
-		const rows = await q.execute();
-		return rows as Array<{ node_id: string; path: string | null }>;
-	}
-
-	/** Columns used when ranking documents for automatic hub candidates. */
-	async listDocumentNodesForHubDiscovery(): Promise<MobiusNodeHubDiscoveryRow[]> {
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'type',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-				'semantic_pagerank',
-				'word_count',
-			])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null)
-			.execute();
-		return rows as MobiusNodeHubDiscoveryRow[];
-	}
-
-	/**
 	 * Clears materialized hub stats on folder nodes (`tag_doc_count`, `pagerank`, `semantic_pagerank`, boundary degree columns).
 	 */
 	async clearFolderHubMaterializedStatsColumns(now: number = Date.now()): Promise<void> {
@@ -1414,83 +1011,6 @@ export class MobiusNodeRepo {
 	}
 
 	/**
-	 * Top folder hub candidates from materialized columns on `type=folder` (excludes Hub-Summaries subtree).
-	 * Blends physical / organizational / semantic signals with size-weighted cohesion; see `FOLDER_HUB_GRAPH_WEIGHT_*`.
-	 *
-	 * When `pathPrefixes` is non-empty, only rows whose normalized path matches any prefix (same rules as hub discovery
-	 * `pathMatchesAnyPrefix`) are considered before ordering and `limit`.
-	 *
-	 * Optional `offset` skips the first N rows after the same ordering (pagination for post-filter compression).
-	 */
-	async listTopFolderNodesForHubDiscovery(
-		limit: number,
-		hubSummaryFolder: string,
-		pathPrefixes?: readonly string[],
-		offset?: number,
-	): Promise<MobiusNodeFolderHubDiscoveryRow[]> {
-		const lim = Math.max(1, limit);
-		const off = Math.max(0, Math.floor(offset ?? 0));
-		const hub = hubSummaryFolder.trim();
-		const likeUnderHub = hub ? `${hub}/%` : '';
-
-		const normalizedPrefixes = (pathPrefixes ?? [])
-			.map((x) => normalizeVaultPath(String(x)))
-			.filter((x) => x.length > 0);
-
-		const hubPhysical = sql<number>`min(1.0, coalesce(pagerank, 0.0) * 2.2)`;
-		const totalIn = sql<number>`coalesce(doc_incoming_cnt, 0) + coalesce(other_incoming_cnt, 0)`;
-		const totalOut = sql<number>`coalesce(doc_outgoing_cnt, 0) + coalesce(other_outgoing_cnt, 0)`;
-		const hubOrg = sql<number>`min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) * 0.18 + ln(1.0 + ${totalIn}) * 0.06 + ln(1.0 + ${totalOut}) * 0.06)`;
-		const hubSem = sql<number>`min(1.0, coalesce(semantic_pagerank, 0.0) * 1.0)`;
-		const lnRef = Math.log(1 + FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT);
-		const hubCohEff = sql<number>`coalesce(folder_cohesion_score, 0.0) * min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) / ${lnRef})`;
-		const wPhys = FOLDER_HUB_GRAPH_WEIGHT_PHYSICAL;
-		const wOrg = FOLDER_HUB_GRAPH_WEIGHT_ORGANIZATIONAL;
-		const wSem = FOLDER_HUB_GRAPH_WEIGHT_SEMANTIC;
-		const wCoh = FOLDER_HUB_GRAPH_WEIGHT_COHESION;
-		const hubGraph = sql<number>`min(1.0, (${hubPhysical} * ${wPhys}) + (${hubOrg} * ${wOrg}) + (${hubSem} * ${wSem}) + (${hubCohEff} * ${wCoh}))`;
-
-		let q = this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'tag_doc_count',
-				'pagerank',
-				'semantic_pagerank',
-				'folder_cohesion_score',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'other_incoming_cnt',
-				'other_outgoing_cnt',
-				hubPhysical.as('hub_physical_authority_score'),
-				hubOrg.as('hub_organizational_score'),
-				hubSem.as('hub_semantic_centrality_score'),
-				hubCohEff.as('hub_cohesion_effective_score'),
-				hubGraph.as('hub_graph_score'),
-			])
-			.where('type', '=', GraphNodeType.Folder)
-			.where('path', 'is not', null)
-			.where('tag_doc_count', '>=', FOLDER_HUB_MIN_DOCS);
-
-		if (hub) {
-			q = q.where((eb) => eb.and([eb('path', '!=', hub), eb('path', 'not like', likeUnderHub)]));
-		}
-
-		if (normalizedPrefixes.length > 0) {
-			const pathRef = sql.ref('mobius_node.path');
-			const clauses = normalizedPrefixes.map((pref) => sqlMobiusPathMatchesHubDiscoverPrefix(pathRef, pref));
-			q = q.where(sql<boolean>`(${sql.join(clauses, sql` OR `)})`);
-		}
-
-		let q2 = q.orderBy('hub_graph_score', 'desc').limit(lim);
-		if (off > 0) q2 = q2.offset(off);
-		const rows = await q2.execute();
-		return rows as MobiusNodeFolderHubDiscoveryRow[];
-	}
-
-	/**
 	 * Top folder nodes for conversational search Orient: ordered by PageRank, then doc count under folder.
 	 * Intuition text lives in `attributes_json` (see {@link parseFolderIntuitionFromMobiusFolderRow}).
 	 */
@@ -1570,27 +1090,8 @@ export class MobiusNodeRepo {
 		return out;
 	}
 
-	/** `tag_doc_count` for folder nodes at the given paths (missing paths omitted). */
-	async listFolderTagDocCountByPaths(paths: string[]): Promise<Map<string, number>> {
-		const uniq = [...new Set(paths.map((x) => normalizeVaultPath(String(x))).filter(Boolean))];
-		if (!uniq.length) return new Map();
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select(['path', 'tag_doc_count'])
-			.where('type', '=', GraphNodeType.Folder)
-			.where('path', 'in', uniq)
-			.execute();
-		const m = new Map<string, number>();
-		for (const r of rows) {
-			const path = r.path ? normalizeVaultPath(r.path) : '';
-			if (!path) continue;
-			m.set(path, Math.max(0, Number(r.tag_doc_count ?? 0)));
-		}
-		return m;
-	}
-
 	/**
-	 * Folder hub discovery rows for specific paths (same score columns as {@link listTopFolderNodesForHubDiscovery}).
+	 * Folder hub discovery rows for specific paths.
 	 * Use for promoting direct children; may include rows below {@link FOLDER_HUB_MIN_DOCS} when `relaxMinDocs` is true.
 	 */
 	async listFolderHubDiscoveryRowsByPaths(
@@ -1710,241 +1211,6 @@ export class MobiusNodeRepo {
 		return rows as MobiusNodeHubDiscoveryScoredRow[];
 	}
 
-	/** Single `document` row by vault path (hub discovery helpers). */
-	async getDocumentNodeForHubByPath(vaultPath: string): Promise<MobiusNodeHubDiscoveryRow | undefined> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'type',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-				'semantic_pagerank',
-				'word_count',
-			])
-			.where('path', '=', vaultPath)
-			.where('type', '=', GraphNodeType.Document)
-			.executeTakeFirst();
-		return row as MobiusNodeHubDiscoveryRow | undefined;
-	}
-
-	/** Indexed note row by path (`document` or `hub_doc`) for manual Hub-Summaries/Manual notes. */
-	async getIndexedHubOrDocumentRowByPath(vaultPath: string): Promise<MobiusNodeHubDiscoveryRow | undefined> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'type',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-				'semantic_pagerank',
-				'word_count',
-			])
-			.where('path', '=', vaultPath)
-			.where('type', 'in', [GraphNodeType.Document, GraphNodeType.HubDoc])
-			.executeTakeFirst();
-		return row as MobiusNodeHubDiscoveryRow | undefined;
-	}
-
-	/** Seeds for semantic cluster hubs: top documents by `semantic_pagerank`. */
-	async listDocumentNodesForHubClusterSeeds(limit: number): Promise<MobiusNodeHubClusterSeedRow[]> {
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'semantic_pagerank',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-			])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null)
-			.orderBy('semantic_pagerank desc')
-			.limit(lim)
-			.execute();
-		return rows as MobiusNodeHubClusterSeedRow[];
-	}
-
-	/**
-	 * Cluster seeds by combined hub graph score (matches {@link listTopDocumentNodesForHubDiscovery} ordering)
-	 * so discovery is not biased only toward `semantic_pagerank` heads.
-	 */
-	async listDocumentNodesForHubClusterSeedsByHubGraphScore(
-		limit: number,
-		hubSummaryFolder: string,
-	): Promise<MobiusNodeHubClusterSeedRow[]> {
-		const lim = Math.max(1, limit);
-		const hub = hubSummaryFolder.trim();
-		const likeUnderHub = hub ? `${hub}/%` : '';
-
-		const wIn = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.incoming;
-		const wOut = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.outgoing;
-		const hubPhysical = sql<number>`min(1.0, (coalesce(pagerank, 0) * 2.5) + min(0.08, (coalesce(word_count, 0) / 50000.0) * 0.08))`;
-		const hubOrg = sql<number>`min(1.0, (coalesce(doc_incoming_cnt, 0) * ${wIn}) + (coalesce(doc_outgoing_cnt, 0) * ${wOut}))`;
-		const hubSem = sql<number>`min(1.0, coalesce(semantic_pagerank, 0) * 1.2)`;
-		const hubGraph = sql<number>`min(1.0, (${hubPhysical} * 0.35) + (${hubOrg} * 0.25) + (${hubSem} * 0.35))`;
-
-		let q = this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'semantic_pagerank',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-				hubGraph.as('hub_graph_score'),
-			])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null);
-
-		if (hub) {
-			q = q.where((eb) =>
-				eb.and([eb('path', '!=', hub), eb('path', 'not like', likeUnderHub)]),
-			);
-		}
-
-		const rows = await q.orderBy('hub_graph_score', 'desc').limit(lim).execute();
-		return rows as MobiusNodeHubClusterSeedRow[];
-	}
-
-	/**
-	 * Cluster seeds by classical PageRank (link authority), excluding Hub-Summaries subtree like other hub queries.
-	 */
-	async listDocumentNodesForHubClusterSeedsByPagerank(
-		limit: number,
-		hubSummaryFolder: string,
-	): Promise<MobiusNodeHubClusterSeedRow[]> {
-		const lim = Math.max(1, limit);
-		const hub = hubSummaryFolder.trim();
-		const likeUnderHub = hub ? `${hub}/%` : '';
-
-		let q = this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'semantic_pagerank',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-			])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'is not', null);
-
-		if (hub) {
-			q = q.where((eb) =>
-				eb.and([eb('path', '!=', hub), eb('path', 'not like', likeUnderHub)]),
-			);
-		}
-
-		const rows = await q.orderBy(sql`coalesce(pagerank, 0) desc`).limit(lim).execute();
-		return rows as MobiusNodeHubClusterSeedRow[];
-	}
-
-	/** Resolve paths for a set of document node ids (cluster member listing). */
-	async listDocumentNodeIdPathByIds(nodeIds: string[]): Promise<MobiusNodeIdPathRow[]> {
-		if (!nodeIds.length) return [];
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select(['node_id', 'path'])
-			.where('node_id', 'in', nodeIds)
-			.where('type', '=', GraphNodeType.Document)
-			.execute();
-		return rows as MobiusNodeIdPathRow[];
-	}
-
-	/** Resolve document `node_id` from vault path (hub coverage / inspector). */
-	async getDocumentNodeIdByVaultPath(vaultPath: string): Promise<string | undefined> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select('node_id')
-			.where('path', '=', vaultPath)
-			.where('type', '=', GraphNodeType.Document)
-			.executeTakeFirst();
-		return row?.node_id;
-	}
-
-	/** Resolve `document` or `hub_doc` node id from vault path (manual hubs / inspector). */
-	async getHubOrDocumentNodeIdByVaultPath(vaultPath: string): Promise<string | undefined> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select('node_id')
-			.where('path', '=', vaultPath)
-			.where('type', 'in', [GraphNodeType.Document, GraphNodeType.HubDoc])
-			.executeTakeFirst();
-		return row?.node_id;
-	}
-
-	/**
-	 * Batch-resolve `document` or `hub_doc` rows by vault path (`WHERE path IN (...)`), one round-trip.
-	 */
-	async listHubOrDocumentNodeIdsByVaultPaths(
-		vaultPaths: string[],
-	): Promise<Array<{ path: string; node_id: string }>> {
-		const paths = [...new Set(vaultPaths.filter(Boolean))];
-		if (paths.length === 0) return [];
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select(['node_id', 'path'])
-			.where('path', 'in', paths)
-			.where('type', 'in', [GraphNodeType.Document, GraphNodeType.HubDoc])
-			.execute();
-		const out: Array<{ path: string; node_id: string }> = [];
-		for (const r of rows) {
-			const p = r.path ?? '';
-			if (!p) continue;
-			out.push({ path: p, node_id: r.node_id });
-		}
-		return out;
-	}
-
-	/** Documents under a path prefix (folder hub coverage estimate). */
-	async listDocumentNodeIdPathByPathPrefix(pathPrefix: string, limit: number): Promise<MobiusNodeIdPathRow[]> {
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select(['node_id', 'path'])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'like', `${pathPrefix}%`)
-			.limit(lim)
-			.execute();
-		return rows as MobiusNodeIdPathRow[];
-	}
-
-	/** Sample document vault paths under a folder prefix (HubDoc member list). */
-	async listDocumentPathsByPathPrefix(pathPrefix: string, limit: number): Promise<string[]> {
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select('path')
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'like', `${pathPrefix}%`)
-			.limit(lim)
-			.execute();
-		return rows.map((r) => r.path ?? '').filter(Boolean);
-	}
-
-	/**
-	 * Sample document paths under a folder hub vault path (HubDoc assembly).
-	 * Normalizes to a trailing-slash prefix so LIKE matches children only.
-	 */
-	async listFolderHubDocMemberPathsSample(folderPath: string, limit: number = 40): Promise<string[]> {
-		const prefix = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
-		return this.listDocumentPathsByPathPrefix(prefix, limit);
-	}
-
 	/**
 	 * Batch-load doc link degrees for `type=folder` mobius rows by vault path (one round-trip).
 	 * Keys in the returned map use {@link normalizeVaultPath}.
@@ -1991,58 +1257,4 @@ export class MobiusNodeRepo {
 		return s;
 	}
 
-	/** Batch load fields needed for weighted local hub graph nodes. */
-	async listHubLocalGraphNodeMeta(nodeIds: string[]): Promise<MobiusNodeHubLocalGraphMetaRow[]> {
-		if (!nodeIds.length) return [];
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'type',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'other_incoming_cnt',
-				'other_outgoing_cnt',
-				'pagerank',
-				'semantic_pagerank',
-				'tags_json',
-			])
-			.where('node_id', 'in', nodeIds)
-			.execute();
-		return rows as MobiusNodeHubLocalGraphMetaRow[];
-	}
-
-	/** Count `mobius_node` rows with `type = document` (vault-backed notes). */
-	async countDocumentNodes(): Promise<number> {
-		const r = await this.db
-			.selectFrom('mobius_node')
-			.select(({ fn }) => fn.countAll<number>().as('c'))
-			.where('type', '=', GraphNodeType.Document)
-			.executeTakeFirst();
-		return Number(r?.c ?? 0);
-	}
-
-	/** Center node row for local hub graph expansion. */
-	async getHubLocalGraphCenterMeta(nodeId: string): Promise<MobiusNodeHubLocalGraphMetaRow | undefined> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'type',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'other_incoming_cnt',
-				'other_outgoing_cnt',
-				'pagerank',
-				'semantic_pagerank',
-				'tags_json',
-			])
-			.where('node_id', '=', nodeId)
-			.executeTakeFirst();
-		return row as MobiusNodeHubLocalGraphMetaRow | undefined;
-	}
 }

@@ -137,7 +137,11 @@ export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
 
             {/* Add profile */}
             {showAddGrid ? (
-                <AddProfileGrid onSelect={handleAdd} onCancel={() => setShowAddGrid(false)} />
+                <AddProfileGrid
+                    onSelect={handleAdd}
+                    onCancel={() => setShowAddGrid(false)}
+                    existingKinds={new Set(profiles.map(p => p.kind))}
+                />
             ) : (
                 <Button
                     variant="outline"

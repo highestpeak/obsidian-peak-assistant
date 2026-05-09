@@ -1,6 +1,4 @@
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
-import { aiGraphDocSchema, type AiGraphDocData } from '@/core/schemas/ai-graph-schemas';
-import { extractJsonBlock } from '@/core/storage/vault/framework/MarkdownDocEngine';
 import { MarkdownDocBuilder } from '@/core/storage/vault/framework/MarkdownDocBuilder';
 
 interface AiGraphDocModel {
@@ -57,14 +55,4 @@ export function buildAiGraphMarkdown(model: AiGraphDocModel): string {
 		.list(model.graphData.nodes.map((n) => `[[${n.path}]] — ${n.summary ?? n.label}`))
 		.blankLine()
 		.build();
-}
-
-export function parseAiGraphMarkdown(content: string): AiGraphDocData | null {
-	const parsed = extractJsonBlock(content);
-	if (!parsed) return null;
-	try {
-		return aiGraphDocSchema.parse(parsed);
-	} catch {
-		return null;
-	}
 }

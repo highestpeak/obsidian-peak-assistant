@@ -48,6 +48,13 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 
 const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent/60 pktw-transition-colors';
 
+function getCredentialLabel(profile: Profile): string {
+    if (profile.kind === 'ollama') return 'no key needed';
+    if (profile.authToken) return 'auth token set';
+    if (profile.apiKey) return 'API key set';
+    return 'no key';
+}
+
 // ---------------------------------------------------------------------------
 // Dropdown menu (⋯ button)
 // ---------------------------------------------------------------------------
@@ -114,7 +121,7 @@ export function ProfileCard({
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<'success' | 'fail' | null>(null);
     const allowFreeText = profile.kind === 'custom' || profile.kind === 'litellm' || profile.kind === 'ollama';
-    const subtitle = `${PROVIDER_LABELS[profile.kind].label} · ${profile.apiKey ? 'API key set' : 'no key'}`;
+    const subtitle = `${PROVIDER_LABELS[profile.kind].label} · ${getCredentialLabel(profile)}`;
 
     const handleTest = async (e: React.MouseEvent) => {
         e.stopPropagation();

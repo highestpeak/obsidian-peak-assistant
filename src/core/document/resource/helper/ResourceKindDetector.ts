@@ -56,8 +56,6 @@ export class ResourceKindDetector {
 		if (ext === 'pptx') return 'pptx';
 		if (ext === 'excalidraw') return 'excalidraw';
 		if (ext === 'canvas') return 'canvas';
-		if (ext === 'loom') return 'dataloom';
-		
 		// Default to unknown if we can't determine
 		return 'unknown';
 	}

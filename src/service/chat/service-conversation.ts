@@ -13,7 +13,6 @@ import {
 	ChatMessage,
 	ChatProject,
 	ChatProjectMeta,
-	StarredMessageRecord,
 	ChatResourceRef,
 } from './types';
 import type { ConversationType } from './conversation-types';
@@ -30,7 +29,6 @@ import { ResourceLoaderManager } from '@/core/document/resource/helper/ResourceL
 import type { AIServiceManager } from './service-manager';
 import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { generateContentPreview, generateAttachmentSummary } from '@/core/utils/message-preview-utils';
-import { getFileTypeFromPath } from '@/core/document/helper/FileTypeUtils';
 import { resolveModelCapabilities } from '@/core/providers/types';
 import { detectTimezone } from '@/core/utils/date-utils';
 import { uploadFilesToVault } from '@/core/utils/vault-utils';
@@ -79,17 +77,10 @@ export class ConversationService {
 		this.contextPipeline = pipeline;
 	}
 
-	/**
-	 * List conversations, optionally filtered by project.
-	 * Supports pagination with limit and offset.
-	 */
 	async listConversations(projectId: string | null, limit?: number, offset?: number): Promise<ChatConversation[]> {
 		return this.storage.listConversations(projectId, limit, offset);
 	}
 
-	/**
-	 * Count conversations, optionally filtered by project.
-	 */
 	async countConversations(projectId: string | null): Promise<number> {
 		return this.storage.countConversations(projectId);
 	}
@@ -98,9 +89,6 @@ export class ConversationService {
 		return this.storage.deleteConversation(conversationId);
 	}
 
-	/**
-	 * Create a new conversation with optional seed messages.
-	 */
 	async createConversation(params: {
 		title: string;
 		project?: ChatProjectMeta | null;
@@ -122,31 +110,16 @@ export class ConversationService {
 			conversationType: params.conversationType,
 		};
 
-		const messages = params.initialMessages ?? [];
 		const conversation = await this.storage.saveConversation(
-			params.project ?? null,
-			meta,
-			undefined, // context
-			messages // messages
+			params.project ?? null, meta, undefined, params.initialMessages ?? [],
 		);
-
-		// Trigger conversation created event
-		const eventBus = EventBus.getInstance(this.app);
-		eventBus.dispatch(new ConversationCreatedEvent({
-			conversationId: conversation.meta.id,
-			projectId: conversation.meta.projectId ?? null,
+		EventBus.getInstance(this.app).dispatch(new ConversationCreatedEvent({
+			conversationId: conversation.meta.id, projectId: conversation.meta.projectId ?? null,
 		}));
 
 		return conversation;
 	}
 
-	/**
-	 * Upload files and create resource references.
-	 * Uploads files to vault and creates resourceRef for each file.
-	 * 
-	 * @param files Files to upload
-	 * @returns Array of resource references
-	 */
 	async uploadFilesAndCreateResources(files: File[]): Promise<ChatResourceRef[]> {
 		if (!files || files.length === 0) {
 			return [];
@@ -158,25 +131,15 @@ export class ConversationService {
 		const uploadedPaths = await uploadFilesToVault(files, uploadFolder);
 
 		// Create resource references for uploaded files
-		const resources: ChatResourceRef[] = [];
-		for (const filePath of uploadedPaths) {
+		const resources: ChatResourceRef[] = uploadedPaths.map((filePath) => {
 			const resourceRef = this.resourceSummaryService!.createResourceRef(filePath);
-			const summaryPath = this.resourceSummaryService!.getResourceSummaryPath(resourceRef.id);
-			resourceRef.summaryNotePath = summaryPath;
-
-			// only generate when streaming
-			// // Ensure resource summary exists, generate if missing
-			// await this.ensureResourceSummary(filePath, resourceRef);
-
-			resources.push(resourceRef);
-		}
+			resourceRef.summaryNotePath = this.resourceSummaryService!.getResourceSummaryPath(resourceRef.id);
+			return resourceRef;
+		});
 
 		return resources;
 	}
 
-	/**
-	 * Send a message and stream incremental model output.
-	 */
 	streamChat(params: {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
@@ -245,9 +208,6 @@ export class ConversationService {
 		})();
 	}
 
-	/**
-	 * Prepare chat request: create user message, process attachments, build LLM messages
-	 */
 	private async *prepareChatRequest(params: {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
@@ -319,9 +279,6 @@ export class ConversationService {
 		}
 		const prompt = result.value;
 
-		// todo check result length and check whether overflow the model's context window. if so, we need to truncate the result.
-
-		// Get output control settings: priority: conversation override > global default
 		const outputControl = conversation.meta.outputControlOverride
 			?? this.settings?.defaultOutputControl
 			?? DEFAULT_AI_SERVICE_SETTINGS.defaultOutputControl;
@@ -335,10 +292,6 @@ export class ConversationService {
 		};
 	}
 
-	/**
-	 * Update conversation context only (summary), keeping messages unchanged.
-	 * Uses optimistic locking by checking updatedAtTimestamp.
-	 */
 	async updateConversationContext(params: {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
@@ -360,79 +313,42 @@ export class ConversationService {
 		);
 	}
 
-	/**
-	 * Update conversation's active model.
-	 */
 	async updateConversationModel(params: {
 		conversationId: string;
 		modelId: string;
 		provider: string;
 	}): Promise<void> {
-		const { conversationId, modelId, provider } = params;
-
-		// Save updated meta
-		await this.storage.upsertConversationMeta(
-			conversationId,
-			{
-				activeModel: modelId,
-				activeProvider: provider,
-				updatedAtTimestamp: Date.now(),
-			}
-		);
+		await this.storage.upsertConversationMeta(params.conversationId, {
+			activeModel: params.modelId,
+			activeProvider: params.provider,
+			updatedAtTimestamp: Date.now(),
+		});
 	}
 
-	/**
-	 * Update conversation's output control override settings.
-	 */
 	async updateConversationOutputControl(params: {
 		conversationId: string;
 		outputControlOverride?: LLMOutputControlSettings;
 	}): Promise<void> {
-		const { conversationId, outputControlOverride } = params;
-
-		// Save updated meta
-		await this.storage.upsertConversationMeta(
-			conversationId,
-			{
-				outputControlOverride: outputControlOverride && Object.keys(outputControlOverride).length > 0 ? outputControlOverride : undefined,
-				updatedAtTimestamp: Date.now(),
-			}
-		);
+		await this.storage.upsertConversationMeta(params.conversationId, {
+			outputControlOverride: params.outputControlOverride && Object.keys(params.outputControlOverride).length > 0 ? params.outputControlOverride : undefined,
+			updatedAtTimestamp: Date.now(),
+		});
 	}
 
-	/**
-	 * Update conversation's attachment handling mode override.
-	 */
 	async updateConversationAttachmentHandling(params: {
 		conversationId: string;
 		attachmentHandlingOverride?: 'direct' | 'degrade_to_text';
 	}): Promise<void> {
-		const { conversationId, attachmentHandlingOverride } = params;
-
-		// Save updated meta
-		await this.storage.upsertConversationMeta(
-			conversationId,
-			{
-				attachmentHandlingOverride: attachmentHandlingOverride,
-				updatedAtTimestamp: Date.now(),
-			}
-		);
-
-		// Trigger conversation updated event
-		const updatedConversation = await this.storage.readConversation(conversationId, false);
+		await this.storage.upsertConversationMeta(params.conversationId, {
+			attachmentHandlingOverride: params.attachmentHandlingOverride,
+			updatedAtTimestamp: Date.now(),
+		});
+		const updatedConversation = await this.storage.readConversation(params.conversationId, false);
 		if (updatedConversation) {
-			const eventBus = EventBus.getInstance(this.app);
-			eventBus.dispatch(new ConversationUpdatedEvent({
-				conversation: updatedConversation,
-			}));
+			EventBus.getInstance(this.app).dispatch(new ConversationUpdatedEvent({ conversation: updatedConversation }));
 		}
 	}
 
-	/**
-	 * Update conversation title by renaming the file.
-	 * @param params.titleManuallyEdited - If true, marks the title as manually edited (default: true)
-	 * @param params.titleAutoUpdated - If true, marks the title as auto-updated (default: false)
-	 */
 	async updateConversationTitle(params: {
 		conversationId: string;
 		title: string;
@@ -440,33 +356,16 @@ export class ConversationService {
 		titleAutoUpdated?: boolean;
 	}): Promise<void> {
 		const { conversationId, title, titleManuallyEdited = true, titleAutoUpdated = false } = params;
-
-		// Rename file and get new relative path
 		const newFileRelPath = await this.storage.renameConversationFile(conversationId, title);
-
-		// Save updated meta (file path is updated in sqlite)
 		await this.storage.upsertConversationMeta(conversationId, {
-			id: conversationId,
-			title,
-			titleManuallyEdited,
-			titleAutoUpdated,
-			fileRelPath: newFileRelPath,
+			id: conversationId, title, titleManuallyEdited, titleAutoUpdated, fileRelPath: newFileRelPath,
 		});
-
-		// Trigger conversation updated event
 		const updatedConversation = await this.storage.readConversation(conversationId, false);
 		if (updatedConversation) {
-			const eventBus = EventBus.getInstance(this.app);
-			eventBus.dispatch(new ConversationUpdatedEvent({
-				conversation: updatedConversation,
-			}));
+			EventBus.getInstance(this.app).dispatch(new ConversationUpdatedEvent({ conversation: updatedConversation }));
 		}
 	}
 
-	/**
-	 * Toggle star status on a message.
-	 * When starring, generates and saves content preview and attachment summary.
-	 */
 	async toggleStar(params: {
 		messageId: string;
 		conversationId: string;
@@ -494,16 +393,13 @@ export class ConversationService {
 		await this.storage.updateMessageStarred(messageId, starred, contentPreview, attachmentSummary);
 	}
 
-	/**
-	 * Load starred message records.
-	 */
-	async loadStarred(): Promise<StarredMessageRecord[]> {
-		return this.storage.listStarred();
+	async listStarredMessagesByProject(projectId: string): Promise<{
+		messages: ChatMessage[];
+		messageToConversationId: Map<string, string>;
+	}> {
+		return this.storage.listStarredMessagesByProject(projectId);
 	}
 
-	/**
-	 * Add a message to conversation and save it.
-	 */
 	async addMessage(params: {
 		conversationId: string;
 		message: ChatMessage;
@@ -513,11 +409,7 @@ export class ConversationService {
 	}): Promise<void> {
 		const { conversationId, message, model, provider, usage } = params;
 
-		// Save message to storage (low-level operation: updates DB and file)
 		await this.storage.saveNewMessage(conversationId, message);
-
-		// Update conversation meta only (model, provider, token usage, updated timestamp)
-		// This is a lightweight operation that doesn't rebuild context
 		const updatedMeta = await this.storage.upsertConversationMeta(conversationId, {
 			activeModel: model,
 			activeProvider: provider,
@@ -527,50 +419,23 @@ export class ConversationService {
 			throw new Error(`Failed to update conversation meta: ${conversationId}`);
 		}
 
-		// Trigger message sent event
-		const eventBus = EventBus.getInstance(this.app);
-		eventBus.dispatch(new MessageSentEvent({
-			conversationId: conversationId,
-			projectId: null,
-		}));
+		EventBus.getInstance(this.app).dispatch(new MessageSentEvent({ conversationId, projectId: null }));
 	}
 
-	/**
-	 * Generate a title for conversation based on messages and context.
-	 * Uses the ApplicationGenerateTitle prompt to generate a concise title.
-	 */
 	async generateConversationTitle(messages: ChatMessage[], context: ChatContextWindow): Promise<string | null> {
 		if (messages.length === 0) {
 			return null;
 		}
 
 		try {
-			// Use first few messages to generate title (to keep it focused on the initial topic)
-			const messagesForTitle = messages.slice(0, Math.min(5, messages.length));
-			const messagesForPrompt = messagesForTitle.map((m) => ({
-				role: m.role,
-				content: m.content,
-			}));
-
-			// Use context summary if available to provide better context for title generation
+			const messagesForPrompt = messages.slice(0, 5).map((m) => ({ role: m.role, content: m.content }));
 			const contextInfo = context.shortSummary && context.shortSummary !== DEFAULT_SUMMARY
-				? `Context: ${context.shortSummary}`
-				: undefined;
+				? `Context: ${context.shortSummary}` : undefined;
 
 			const title = await this.promptService.chatWithPrompt(
-				PromptId.ApplicationGenerateTitle,
-				{
-					messages: messagesForPrompt,
-					contextInfo,
-				}
+				PromptId.ApplicationGenerateTitle, { messages: messagesForPrompt, contextInfo }
 			);
-
-			// Clean up title: remove quotes, trim, and limit length
-			const cleanedTitle = title
-				.replace(/^["']|["']$/g, '') // Remove surrounding quotes
-				.trim()
-				.substring(0, 50); // Limit to 50 characters
-
+			const cleanedTitle = title.replace(/^["']|["']$/g, '').trim().substring(0, 50);
 			return cleanedTitle || null;
 		} catch (error) {
 			console.warn('[ConversationService] Failed to generate title:', error);
@@ -578,10 +443,6 @@ export class ConversationService {
 		}
 	}
 
-
-	/**
-	 * Build a compact context window for summarization.
-	 */
 	async buildContextWindow(
 		messages: ChatMessage[],
 		project?: ChatProject | null,
@@ -595,53 +456,24 @@ export class ConversationService {
 		}
 
 		const recent = messages.slice(-10);
-		const recentMessagesWindow = [
-			{
-				fromMessageId: recent[0].id,
-				toMessageId: recent[recent.length - 1].id,
-			},
-		];
+		const recentMessagesWindow = [{ fromMessageId: recent[0].id, toMessageId: recent[recent.length - 1].id }];
 
-		// Generate real summary using LLM
 		try {
-			const messagesForSummary = recent.map((m) => ({
-				role: m.role,
-				content: m.content,
-			}));
-
-			// Build project context if available
+			const messagesForSummary = recent.map((m) => ({ role: m.role, content: m.content }));
 			const projectContext = project
 				? `Project: ${project.meta.name}${project.context?.shortSummary ? `\n${project.context.shortSummary}` : ''}`
 				: undefined;
 
-			// Generate short summary
 			const shortSummary = await this.promptService.chatWithPrompt(
-				PromptId.ConversationSummaryShort,
-				{
-					messages: messagesForSummary,
-					projectContext,
-				},
+				PromptId.ConversationSummaryShort, { messages: messagesForSummary, projectContext },
 			) || DEFAULT_SUMMARY;
 
-			// Generate full summary if conversation is substantial
-			let fullSummary: string | undefined;
-			if (messages.length > 5) {
-				fullSummary = await this.promptService.chatWithPrompt(
-					PromptId.ConversationSummaryFull,
-					{
-						messages: messagesForSummary,
-						projectContext,
-						shortSummary,
-					},
-				);
-			}
+			const fullSummary = messages.length > 5
+				? await this.promptService.chatWithPrompt(
+					PromptId.ConversationSummaryFull, { messages: messagesForSummary, projectContext, shortSummary },
+				) : undefined;
 
-			return {
-				lastUpdatedTimestamp: Date.now(),
-				recentMessagesWindow,
-				shortSummary,
-				fullSummary,
-			};
+			return { lastUpdatedTimestamp: Date.now(), recentMessagesWindow, shortSummary, fullSummary };
 		} catch (error) {
 			console.warn('[ConversationService] Failed to generate summary:', error);
 			return {
@@ -652,49 +484,20 @@ export class ConversationService {
 		}
 	}
 
-	/**
-	 * Ensure resource summary exists, generate if missing.
-	 * For images: uses ImageDescription prompt for generating descriptions.
-	 */
 	private async ensureResourceSummary(sourcePath: string, resourceRef: ChatResourceRef): Promise<void> {
-		if (!this.resourceSummaryService) {
-			return;
-		}
-
-		// Check if summary already exists
+		if (!this.resourceSummaryService) return;
 		const existing = await this.resourceSummaryService.readResourceSummary(resourceRef.id);
-		if (existing?.meta.shortSummary || existing?.meta.fullSummary) {
-			// Summary already exists
-			return;
-		}
+		if (existing?.meta.shortSummary || existing?.meta.fullSummary) return;
 
-		// Generate summary for the resource
+		const base = { resourceId: resourceRef.id, source: resourceRef.source, kind: resourceRef.kind };
 		try {
-			const summary = await this.resourceLoaderManager.getSummary(
-				sourcePath,
-				resourceRef.kind,
-			) || { shortSummary: `Resource: ${sourcePath}` };
-
-			// Save summary
-			await this.resourceSummaryService.saveResourceSummary({
-				resourceId: resourceRef.id,
-				source: resourceRef.source,
-				kind: resourceRef.kind,
-				shortSummary: summary.shortSummary,
-				fullSummary: summary.fullSummary,
-			});
+			const summary = await this.resourceLoaderManager.getSummary(sourcePath, resourceRef.kind)
+				|| { shortSummary: `Resource: ${sourcePath}` };
+			await this.resourceSummaryService.saveResourceSummary({ ...base, shortSummary: summary.shortSummary, fullSummary: summary.fullSummary });
 		} catch (error) {
 			console.warn(`[ConversationService] Failed to generate resource summary for ${sourcePath}:`, error);
-			// Create summary with error information
-			const errorReason = error instanceof Error ? error.message : String(error);
-			const errorDate = new Date().toISOString();
-			const errorSummary = `GenSummaryFailed.[${errorReason}][${errorDate}]`;
-			await this.resourceSummaryService.saveResourceSummary({
-				resourceId: resourceRef.id,
-				source: resourceRef.source,
-				kind: resourceRef.kind,
-				shortSummary: errorSummary,
-			});
+			const errorSummary = `GenSummaryFailed.[${error instanceof Error ? error.message : String(error)}][${new Date().toISOString()}]`;
+			await this.resourceSummaryService.saveResourceSummary({ ...base, shortSummary: errorSummary });
 		}
 	}
 

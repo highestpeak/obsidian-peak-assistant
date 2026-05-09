@@ -1,38 +1,13 @@
 import { GRAPH_INSPECT_STEP_TIME_LIMIT } from "@/core/constant";
 import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
-import { GraphEdge } from "@/core/storage/sqlite/repositories/MobiusEdgeRepo";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, distillClusterNodesData, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
-type GraphTraversalResult = GraphNode
-    & {
-        depth: number;
-        foundBy: 'physical_neighbors' | 'semantic_neighbors';
-        similarity?: string,
-    };
 
-/**
- * Simplified node for UI visualization
- */
-export interface GraphVisualizationNode {
-    id: string;
-    label: string;
-    type: string;
-    depth: number;
-    foundBy: 'physical_neighbors' | 'semantic_neighbors';
-}
-
-/**
- * Simplified edge for UI visualization
- */
-export interface GraphVisualizationEdge {
-    from_node_id: string;
-    to_node_id: string;
-    type: string;
-    weight: number;
-}
+type GraphTraversalResult = GraphNode & { depth: number; foundBy: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string };
+type VisEdge = { from_node_id: string; to_node_id: string; type: string; weight: number };
 export async function graphTraversal(params: any, templateManager?: TemplateManager) {
     const { start_note_path, hops, include_semantic_paths, limit, response_format, filters, sorter } = params;
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
@@ -58,7 +33,7 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
         { ...startNode, depth: 0, foundBy: 'physical_neighbors' },
     ];
     const result: Array<GraphTraversalResult> = [];
-    const collectedEdges: GraphVisualizationEdge[] = [];
+    const collectedEdges: VisEdge[] = [];
     
     while (queue.length > 0) {
         // avoid time out.
@@ -76,86 +51,34 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
             continue;
         }
 
-        // physical neighbors: two directions; And we limit by type to avoid too many edges.
-        const physicalInAndOutEdges = await mobiusEdgeRepo.getAllEdgesForNode(current.id, limit);
-        
-        // Collect edges for visualization (only edges between visited or to-be-visited nodes)
-        for (const edge of physicalInAndOutEdges) {
-            collectedEdges.push({
-                from_node_id: edge.from_node_id,
-                to_node_id: edge.to_node_id,
-                type: edge.type,
-                weight: edge.weight
-            });
-        }
-        
-        // Extract nodeTo and nodeFrom from inAndOutEdges
-        // inComingNode --> currentNode --> outGoingNode
-        const inComingNode = physicalInAndOutEdges.filter(e => e.to_node_id === current.id).map(e => e.from_node_id);
-        const outGoingNode = physicalInAndOutEdges.filter(e => e.from_node_id === current.id).map(e => e.to_node_id);
+        const edges = await mobiusEdgeRepo.getAllEdgesForNode(current.id, limit);
+        for (const e of edges) collectedEdges.push({ from_node_id: e.from_node_id, to_node_id: e.to_node_id, type: e.type, weight: e.weight });
 
-        // semantic neighbors: indifferent to direction, default is out-going; only for document nodes.
-        // If hops > 0 (deeper traversal), automatically reduce the semantic neighbor limit to minimize semantic drift and expensive queries.
-        let semanticLimit = limit;
-        if (include_semantic_paths && current.depth > 0) {
-            // Reduce semantic neighbor limit for farther hops (deeper nodes are less likely to be relevant).
-            const decayMap = [limit, 3, 1];
-            semanticLimit = decayMap[current.depth] ?? 0;
-        }
-        const semanticFilterSet = new Set([...inComingNode, ...outGoingNode]);
+        const incoming = edges.filter(e => e.to_node_id === current.id).map(e => e.from_node_id);
+        const outgoing = edges.filter(e => e.from_node_id === current.id).map(e => e.to_node_id);
+
+        // Decay semantic limit at deeper hops to reduce drift
+        const semLimit = include_semantic_paths && current.depth > 0 ? ([limit, 3, 1][current.depth] ?? 0) : limit;
         const semanticNodes = include_semantic_paths && current.type === "document"
-            ? await getSemanticNeighbors(current.id, semanticLimit, semanticFilterSet)
-            : [];
+            ? await getSemanticNeighbors(current.id, semLimit, new Set([...incoming, ...outgoing])) : [];
 
-        const connectedNodesMap = await sqliteStoreManager.getMobiusNodeRepo()
-            .getByIds([...inComingNode, ...outGoingNode]);
-
+        const connectedNodesMap = await sqliteStoreManager.getMobiusNodeRepo().getByIds([...incoming, ...outgoing]);
         for (const [nodeId, node] of connectedNodesMap) {
-            if (!visited.has(nodeId)) {
-                visited.add(nodeId);
-                queue.push({
-                    ...node,
-                    depth: current.depth + 1,
-                    foundBy: 'physical_neighbors'
-                });
-            }
+            if (!visited.has(nodeId)) { visited.add(nodeId); queue.push({ ...node, depth: current.depth + 1, foundBy: 'physical_neighbors' }); }
         }
-
         for (const node of semanticNodes) {
             if (!visited.has(node.id)) {
                 visited.add(node.id);
-                queue.push({
-                    ...node,
-                    depth: current.depth + 1,
-                    similarity: node.similarity,
-                    foundBy: 'semantic_neighbors'
-                });
-                // Add semantic edge (synthetic) for visualization
-                collectedEdges.push({
-                    from_node_id: current.id,
-                    to_node_id: node.id,
-                    type: 'semantic',
-                    weight: parseFloat(node.similarity || '0') || 0.5
-                });
+                queue.push({ ...node, depth: current.depth + 1, similarity: node.similarity, foundBy: 'semantic_neighbors' });
+                collectedEdges.push({ from_node_id: current.id, to_node_id: node.id, type: 'semantic', weight: parseFloat(node.similarity || '0') || 0.5 });
             }
         }
     }
 
-    // Group by depth (hops) into a Map, then for each entry, sort by type.
-    const groupedByDepth = result.reduce((acc, node) => {
-        if (!acc.has(node.depth)) {
-            acc.set(node.depth, []);
-        }
-        acc.get(node.depth)!.push(node);
-        return acc;
-    }, new Map<number, GraphTraversalResult[]>());
-    // Handlebars strugle to handle the map structure, so we convert it to an array of objects.
+    const groupedByDepth = new Map<number, GraphTraversalResult[]>();
+    for (const node of result) (groupedByDepth.get(node.depth) ?? (groupedByDepth.set(node.depth, []), groupedByDepth.get(node.depth)!)).push(node);
     const levels = await Promise.all(
-        Array.from(groupedByDepth.entries()).map(async ([depth, levelData]) => ({
-            depth,
-            // ignore document nodes filter as we have already filtered them before. also we want more semantic neighbors for each level.
-            ...(await distillClusterNodesData(levelData, limit, true))
-        }))
+        [...groupedByDepth.entries()].map(async ([depth, data]) => ({ depth, ...(await distillClusterNodesData(data, limit, true)) }))
     );
 
     if (filters) {
@@ -171,40 +94,21 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
         }
     }
 
-    // Build graph visualization data from collected nodes and edges
     const visitedNodeIds = new Set(result.map(n => n.id));
-    const graphVisualizationNodes: (GraphVisualizationNode & { path?: string; attributes?: Record<string, unknown> })[] = result.map(node => {
-        let path: string | undefined;
-        try {
-            const attrs = typeof node.attributes === 'string' ? JSON.parse(node.attributes || '{}') : node.attributes;
-            if (attrs && typeof attrs === 'object' && typeof attrs.path === 'string' && attrs.path.trim()) {
-                path = attrs.path.trim();
-            }
-        } catch { /* ignore */ }
-        return {
-            id: node.id,
-            label: node.label || node.id,
-            type: node.type,
-            depth: node.depth,
-            foundBy: node.foundBy,
-            ...(path ? { path } : {}),
-            ...(node.attributes ? { attributes: typeof node.attributes === 'string' ? (() => { try { return JSON.parse(node.attributes); } catch { return {}; } })() : node.attributes } : {}),
-        };
+    const parseAttrs = (a: any) => { try { return typeof a === 'string' ? JSON.parse(a || '{}') : a ?? {}; } catch { return {}; } };
+    const graphNodes = result.map(node => {
+        const attrs = parseAttrs(node.attributes);
+        const path = typeof attrs?.path === 'string' && attrs.path.trim() ? attrs.path.trim() : undefined;
+        return { id: node.id, label: node.label || node.id, type: node.type, depth: node.depth, foundBy: node.foundBy, ...(path ? { path } : {}), ...(node.attributes ? { attributes: attrs } : {}) };
     });
-    // Filter edges to only include those between visited nodes
-    const graphVisualizationEdges = collectedEdges.filter(
-        edge => visitedNodeIds.has(edge.from_node_id) && visitedNodeIds.has(edge.to_node_id)
-    );
+    const graphEdges = collectedEdges.filter(e => visitedNodeIds.has(e.from_node_id) && visitedNodeIds.has(e.to_node_id));
 
     const data = {
         isTimeOut,
         start_note_path,
         hops,
         levels,
-        graph: {
-            nodes: graphVisualizationNodes,
-            edges: graphVisualizationEdges
-        }
+        graph: { nodes: graphNodes, edges: graphEdges }
     };
     return buildResponse(response_format, ToolTemplateId.GraphTraversal, data, { templateManager });
 }

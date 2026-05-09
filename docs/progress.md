@@ -32,7 +32,10 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | U. Chat UI v9 + 智能功能 | Message UI 重构 + 换模型重新输出 + Topic 聚合 + Suggested Follow-ups + Outline 修复 + bug fixes | 完成 |
 | W. Copilot 扩展 | 5→15 actions，注册表架构，分组 UI + 上下文推荐，Document/Vault/Writing 三类 | 进行中 |
 | X. Model Selection 统一 | Provider 卡片简化 + Agent Fast pill + Ollama 动态模型 + baseUrl 修复 | 完成 |
+| X2. Provider Settings Polish | Pill 搜索面板 + AddProfileGrid 去重 + 凭证显示修复 + authToken fallback | 完成 |
 | Y. Token Usage Dashboard | 全站 AI 调用追踪 + SQLite 持久化 + 统计面板（KPI/趋势/分布/明细） | 完成 |
+| Z. Mockup Gap 补全 | @菜单面包屑/分组/元数据、/菜单模板分组、工具栏响应式、智能建议、Diff高亮、变量高亮 | 完成 (8 commits) |
+| AA. 代码库精简 | 71.2k→66.7k (-4,485行): 死代码删除 + 算法简化 + 架构重构 + 冗余压缩 | 完成 (24 commits) |
 
 ## Next
 
@@ -286,6 +289,74 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-08~09 (Session 17+20) — Codebase Deep Refactor
+- Done: **100,002 → 71,582 code lines (-28,420 = -28.4%)**, 40 commits on `refactor/codebase-50k-target`
+- Hub 系统完整删除 (-6,750), D3 graph-viz → ReactFlow (-6,373), Wave 0 dead code (-5,448)
+- Wave 2 store migration (-630), 结构分析管线删除 (-920), 遥测系统删除 (-1,009)
+- Service 简化 (-2,800), Loader 基类提取 (-911), Feature 删除 (-2,600)
+- 死 UI 组件 (-830), console strip (-234), dead exports/files/stubs (-315)
+- Next: UI 组件精简, MobiusNodeRepo 瘦身, service/chat 合并 (target 50k)
+
+### 2026-05-09 (Session 21) — Codebase Deep Refactor Phase 2
+- Done: **71,227 → 66,742 code lines (-4,485 = -6.3%)**, 25 commits on `refactor/codebase-50k-target`
+- 死代码删除 (-800): hub SQL/NativeModule tryCompile/BetterSqlite require.cache/dead files/dead props/PromptId/MobiusEdgeRepo 9 methods
+- 算法简化 (-1,200): find-path.ts A*→min-heap+BFS合并(1514→986), buildBackboneMap tag-ranking折叠+DFS合并(1519→1208)
+- 架构重构 (-1,000): 14 copilot actions→factory(787→377), service-manager 18 wrappers→getter, IndexService 3 classes→1
+- 冗余压缩 (-750): tools 8文件简化(-710), search infra 去重(indexInitializer/semanticEdges/SqliteStoreManager/highlight-builder/progress-tracker, -1099)
+- 注释/类型精简 (-700): document/types.ts(325→109), settings/types.ts(468→242), analysis-markdown parser+builder
+- V1退役: SectionExtraChatModal(-450), V1 topic/interaction stores, followupContextRuntime V1 paths
+- 代码量评估: 66.7k 对功能体量(Chat+RAG搜索+Agent工具链+向量索引+Graph分析+多Provider+Copilot)合理，各模块量级均衡
+- 可继续方向: quick-search store/hooks层(偏复杂), sqlite repo层(偏冗余), 但不急
+
+### 2026-05-09 (Session 19) — Provider Settings Polish
+- Done: **Phase X2 — Provider Settings Polish** (7 commits)
+  - **Pill 搜索面板**：`RoleModelPicker` 组件，Command Palette 风格浮动面板，实时搜索 + 键盘导航 + CapTags（reason/vision/search/上下文窗口）+ 按 profile 分组
+  - **共享 utils 提取**：`model-display-utils.tsx` 提取 `CapTags`/`highlightMatch`/`formatCtx`，`ModelCombobox` 和 `RoleModelPicker` 共用
+  - **StatusBar 重写**：`RoleSelectorChip` 从平铺下拉改为 `RoleModelPicker` 弹出面板，删除冗余的 `PROVIDER_CATALOG`/`getModelsForProfile`
+  - **AddProfileGrid 去重**：已配置的 provider 默认隐藏，底部 "Add another instance of existing provider" 链接可展示全部
+  - **凭证状态修复**：`ProfileCard` subtitle 区分显示 — Ollama "no key needed"、有 authToken "auth token set"、有 apiKey "API key set"
+  - **连接测试修复**：`testProviderConnection.ts` Bearer token 优先使用 `authToken`，修复 OpenRouter 认证
+- Spec: `docs/superpowers/specs/2026-05-09-provider-settings-polish-design.md`
+- Plan: `docs/superpowers/plans/2026-05-09-provider-settings-polish.md`
+- Next: 真机验证 pill 搜索 + AddProfileGrid 去重效果
+
+### 2026-05-09 (Session 18) — Settings UI Redesign
+- Done: **Settings General & Search Tab UI Redesign**
+  - **设计决策**：现代卡片式 + General 不分组 + Search 轻量 section header + pill chips
+  - **新建 3 个共享组件**：`SettingCard`（统一卡片）、`SectionHeader`（轻量标题）、`DocTypePills`（flex-wrap 药丸标签替代 4 列 grid）
+  - **GeneralTab 重写**：去掉 3 个 CollapsibleSettingsSection，4 项设置平铺为卡片，DevTools 加 "Developer" badge，删除 Graph Visualization Tuning（5 个死滑块）
+  - **SearchTab 重写**：统一卡片样式，SectionHeading→SectionHeader（11px uppercase + icon），DocTypeGrid→DocTypePills
+  - **清理**：types.ts 删除 5 个死 graphViz 设置项（clusterForceStrength/nodeBaseRadiusPhysical/nodeBaseRadiusSemantic/nodeDegreeBoost/skeletonMinBranchNodes），删除 DocTypeGrid.tsx + CollapsibleSettingsSection.tsx
+  - Build 通过
+- Spec: `docs/superpowers/specs/2026-05-09-settings-general-search-ui-redesign.md`
+- Plan: `docs/superpowers/plans/2026-05-09-settings-general-search-ui-redesign.md`
+- Mockups: `.superpowers/brainstorm/21332-1778293900/content/`
+- Next: 真机验证两个 tab 的视觉效果 + 功能回归
+
+### 2026-05-08~09 (Session 17) — Codebase Deep Refactor
+- Done: **100,002 → 81,632 code lines (cloc TypeScript, -18,370 = -18.4%)**, 21 commits on `refactor/codebase-50k-target`
+- Wave 0 (dead code purge, -5,448): tmp_code_ref_for_cursor, src/desktop, index-debug-tools, dead hooks/utils/exports, 44 dead repo methods, dead templates
+- Wave 1 (D3→ReactFlow, -6,373): Delete entire graph-viz/ (46 files, 6,456 lines) + shim + preset, replace with 100-line ReactFlow SearchGraph
+- Wave 3 (hub/backbone consolidation): Inline 4 hub helpers into hubDiscover.ts, merge backbone 15→4 files
+- Wave 4 partial: merge duplicate agent SDK files, simplify find-path.ts/explore-folder.ts/inspectorService.ts, delete 5 dead inspector functions
+- Wave 5.3: Extract BaseDocumentLoader, simplify 10 loaders (-911 lines)
+- Feature deletions: usage-dashboard (init never called), vault-xray (isolated), 7 dead files
+- Cleanup: strip 234 console.log/debug, delete dead exports from constant/markdown-utils/PromptId/types
+- Plan: `docs/superpowers/plans/2026-05-08-codebase-deep-refactor.md`
+- Next: Wave 2 store migration (-5k), Wave 4/5/6 service+core+UI simplification (target 50k)
+
+### 2026-05-08 (Session 16)
+- Done: **Phase Z — Mockup Gap 补全** (8 commits)
+  - **审计**：对比 7 个 HTML mockup 与实际代码，识别出 9 个未实现设计项
+  - **NavigableMenuItem 类型扩展**：新增 `group` + `meta` 可选字段
+  - **@ 菜单改进**：文件夹面包屑导航（ChevronLeft + Backspace 快捷键）、"Recent" 分组标签、文件元数据 badge（PDF/DOCX/word count）
+  - **/ 菜单模板分组**：`item.group` 动态分组（替代硬编码 Quick Actions）、"Template" 紫色 badge、CopilotActionRegistry 15 个 action 自动接线到 / 菜单
+  - **输入工具栏响应式**：ResizeObserver 监测宽度，<400px 隐藏 TokenUsage + 截断模型名，<300px 隐藏 ModeSelector
+  - **智能建议 actions**：LLM 生成上下文感知建议（chat-suggest-actions prompt），失败时 fallback 到默认建议（Summarize/Search vault/Explain further）
+  - **Diff 高亮**：wordDiff.ts LCS 算法 + DiffView 组件（红色删除线/绿色高亮），PolishPanel 集成
+  - **变量高亮**：SuggestionGrid 卡片中引号包裹的动态变量黄色高亮（warning-muted CSS var）
+- Next: 真机验证各 mockup 功能视觉效果
 
 ### 2026-05-08 (Session 15)
 - Done: **Bug fix — Auto 模型选择不感知 chatMode**
@@ -715,6 +786,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | agent-trace-observability | 04-22 | COMPLETED |
 | graph-layout-fix | 05-01 | COMPLETED |
 | ui-stability-batch-fix | 05-03 | COMPLETED |
+| provider-settings-polish | 05-09 | COMPLETED |
 | milestone-based-persistence | 04-20 | MOSTLY DONE (核心函数存在，4 触发点待验证) |
 | per-section-report-v2 | 04-13 | SUPERSEDED |
 | v2-report-quality-and-ui-fixes | 04-13 | SUPERSEDED |

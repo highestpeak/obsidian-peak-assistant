@@ -39,7 +39,7 @@ export function useChatSubmit() {
 		usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
 	) => {
 		// Add to backend manager
-		await manager.addMessage({
+		await manager.conv.addMessage({
 			conversationId,
 			message,
 			model,
@@ -81,7 +81,7 @@ export function useChatSubmit() {
 		let conversation = latestActiveConversation || null;
 		if (!conversation && latestPendingConversation) {
 			console.log('[useChatSubmit] creating conversation', latestPendingConversation, modelForNewConversation);
-			conversation = await manager.createConversation({
+			conversation = await manager.conv.createConversation({
 				title: latestPendingConversation.title,
 				project: latestPendingConversation.project?.meta ?? null,
 				modelId: modelForNewConversation?.modelId,
@@ -136,16 +136,12 @@ export function useChatSubmit() {
 			console.error('[useChatSubmit] Failed to ensure conversation');
 			return;
 		}
-		console.debug('[useChatSubmit] conversation:', conversation);
-
 		// Create user message
 		const userMessage = createUserMessage(conversation, text);
-		console.debug('[useChatSubmit] userMessage:', userMessage);
 		// Upload files and create resource references if any. no summary will be generated until start streaming.
 		const resources = files.length > 0
-			? await manager.uploadFilesAndCreateResources(files)
+			? await manager.conv.uploadFilesAndCreateResources(files)
 			: [];
-		console.debug('[useChatSubmit] resources:', resources);
 		// Add resources to user message if any
 		if (resources.length > 0) {
 			userMessage.resources = resources;
@@ -158,8 +154,6 @@ export function useChatSubmit() {
 			userMessage.provider,
 			{ inputTokens: -1, outputTokens: -1, totalTokens: -1 }
 		);
-		console.debug('[useChatSubmit] added user message:', userMessage);
-
 		// Show user message immediately in UI using tempConversation
 		// We already have the userMessage object and know it's been saved, so we can construct
 		// the conversation directly without reloading from storage (faster for better UX)
@@ -179,7 +173,6 @@ export function useChatSubmit() {
 				updatedAtTimestamp: Date.now(),
 			},
 		};
-		console.debug('[useChatSubmit] Updating conversation with user message:', conversationWithUserMessage.messages.length, 'messages');
 		updateConv(conversationWithUserMessage);
 
 		// Create new AbortController for this stream
@@ -188,7 +181,6 @@ export function useChatSubmit() {
 		// Stream chat (use conversationWithUserMessage which includes the user message)
 		// Note: The userMessage already saved above includes resources, so we don't need to pass attachments
 		// to streamChat since the resources are already in the conversation messages
-		console.debug('[useChatSubmit] streaming chat started');
 		const streamResult = await streamChat({
 			conversation: conversationWithUserMessage, // Use conversation with user message
 			project: project,
@@ -196,8 +188,6 @@ export function useChatSubmit() {
 			attachments: resources.map(resource => resource.source),
 			abortSignal: abortControllerRef.current.signal,
 		});
-		console.debug('[useChatSubmit] streaming chat completed', streamResult);
-
 		// Clear abort controller
 		abortControllerRef.current = null;
 
@@ -205,7 +195,6 @@ export function useChatSubmit() {
 		// If streaming was interrupted, finalMessage might be null, but we should still
 		// save any partial content from the streaming state
 		if (streamResult.finalMessage) {
-			console.debug('[useChatSubmit] Saving assistant message:', streamResult.finalMessage);
 			await addMessageToBoth(
 				conversation.meta.id,
 				streamResult.finalMessage,

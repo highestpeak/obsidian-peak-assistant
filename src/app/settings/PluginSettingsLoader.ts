@@ -1,5 +1,4 @@
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings, SearchSettings } from '@/app/settings/types';
-import { DEFAULT_HUB_DISCOVER_SETTINGS, type HubDiscoverSettings } from '@/service/search/index/helper/hub/types';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS, type AmbientPushSettings } from '@/service/ambient/types';
 import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
@@ -199,39 +198,6 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 	}
 	if (typeof (rawSearch as any).aiAnalysisHistoryLimit === 'number') {
 		settings.aiAnalysisHistoryLimit = Math.max(1, Math.min(50, (rawSearch as any).aiAnalysisHistoryLimit));
-	}
-
-	const rawHub = rawSearch.hubDiscover as Partial<HubDiscoverSettings> | undefined;
-	if (rawHub && typeof rawHub === 'object') {
-		settings.hubDiscover = {
-			...DEFAULT_HUB_DISCOVER_SETTINGS,
-			enableLlmSemanticMerge:
-				typeof rawHub.enableLlmSemanticMerge === 'boolean'
-					? rawHub.enableLlmSemanticMerge
-					: DEFAULT_HUB_DISCOVER_SETTINGS.enableLlmSemanticMerge,
-			maxJudgeCalls:
-				typeof rawHub.maxJudgeCalls === 'number'
-					? Math.max(0, Math.min(100, rawHub.maxJudgeCalls))
-					: DEFAULT_HUB_DISCOVER_SETTINGS.maxJudgeCalls,
-			minCoverageGain:
-				typeof rawHub.minCoverageGain === 'number'
-					? Math.max(0, Math.min(1, rawHub.minCoverageGain))
-					: DEFAULT_HUB_DISCOVER_SETTINGS.minCoverageGain,
-			maxRounds:
-				typeof rawHub.maxRounds === 'number'
-					? Math.max(1, Math.min(10, rawHub.maxRounds))
-					: DEFAULT_HUB_DISCOVER_SETTINGS.maxRounds,
-			judgeGrayZoneMin:
-				typeof rawHub.judgeGrayZoneMin === 'number'
-					? Math.max(0, Math.min(1, rawHub.judgeGrayZoneMin))
-					: DEFAULT_HUB_DISCOVER_SETTINGS.judgeGrayZoneMin,
-			judgeGrayZoneMax:
-				typeof rawHub.judgeGrayZoneMax === 'number'
-					? Math.max(0, Math.min(1, rawHub.judgeGrayZoneMax))
-					: DEFAULT_HUB_DISCOVER_SETTINGS.judgeGrayZoneMax,
-		};
-	} else {
-		settings.hubDiscover = { ...DEFAULT_HUB_DISCOVER_SETTINGS };
 	}
 
 	return settings;

@@ -1,24 +1,22 @@
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
-import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
-import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
+import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
+import { BaseDocumentLoader } from './BaseDocumentLoader';
 
 /**
  * Table document loader for CSV and XLSX files.
  * Each row becomes a chunk. If a row is too long, it's truncated with overlap.
  */
-export class TableDocumentLoader implements DocumentLoader {
-	constructor(
-		private readonly app: App,
-		private readonly aiServiceManager?: AIServiceManager
-	) {}
+export class TableDocumentLoader extends BaseDocumentLoader {
+	constructor(app: App, aiServiceManager?: AIServiceManager) {
+		super(app, aiServiceManager);
+	}
 
 	getDocumentType(): DocumentType {
 		return 'csv';
@@ -28,18 +26,10 @@ export class TableDocumentLoader implements DocumentLoader {
 		return ['csv', 'xlsx'];
 	}
 
-	async readByPath(
-		path: string,
-		_genCache?: boolean,
-		_readOptions?: DocumentLoaderReadOptions,
-	): Promise<Document | null> {
-		const file = this.app.vault.getAbstractFileByPath(path);
-		if (!file || !(file instanceof TFile)) return null;
-		if (!this.getSupportedExtensions().includes(file.extension.toLowerCase())) return null;
-		return await this.readTableFile(file);
-	}
-
-	async chunkContent(
+	/**
+	 * Custom chunking: each row becomes a chunk; long rows are split with overlap.
+	 */
+	override async chunkContent(
 		doc: Document,
 		settings: ChunkingSettings,
 	): Promise<Chunk[]> {
@@ -82,56 +72,14 @@ export class TableDocumentLoader implements DocumentLoader {
 		return assembleIndexedChunks(doc, chunks, settings);
 	}
 
-	async *scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
-		const limit = params?.limit ?? Infinity;
-		const batchSize = params?.batchSize ?? 100;
-
-		const supportedExts = this.getSupportedExtensions();
-		const files = this.app.vault.getFiles()
-			.filter(f => supportedExts.includes(f.extension.toLowerCase()))
-			.slice(0, limit);
-		let batch: Array<{ path: string; mtime: number; type: DocumentType }> = [];
-
-		for (const file of files) {
-			batch.push({
-				path: file.path,
-				mtime: file.stat.mtime,
-				type: 'csv',
-			});
-			if (batch.length >= batchSize) {
-				yield batch;
-				batch = [];
-			}
-		}
-		if (batch.length) yield batch;
-	}
-
-	/**
-	 * Get summary for a table document (CSV/XLSX)
-	 */
-	async getSummary(
-		source: Document | string,
-		provider?: string,
-		modelId?: string
-	): Promise<ResourceSummary> {
-		if (!this.aiServiceManager) {
-			throw new Error('TableDocumentLoader requires AIServiceManager to generate summaries');
-		}
-		if (typeof source === 'string') {
-			throw new Error('TableDocumentLoader.getSummary requires a Document, not a string');
-		}
-		return getDefaultDocumentSummary(source, this.aiServiceManager, provider, modelId);
-	}
-
-	private async readTableFile(file: TFile): Promise<Document | null> {
+	protected async readFile(file: TFile): Promise<Document | null> {
 		try {
 			let content = '';
 			const ext = file.extension.toLowerCase();
-			const supportedExts = this.getSupportedExtensions();
 
 			if (ext === 'csv') {
 				content = await this.app.vault.cachedRead(file);
-			} else if (supportedExts.includes('xlsx') && ext === 'xlsx') {
+			} else if (ext === 'xlsx') {
 				console.warn('XLSX parsing not supported: no xlsx library available');
 				return null;
 			}
@@ -177,4 +125,3 @@ export class TableDocumentLoader implements DocumentLoader {
 		}
 	}
 }
-

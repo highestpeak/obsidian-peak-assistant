@@ -1,10 +1,3 @@
-/**
- * analysis-markdown-parser.ts
- * ============================
- * Parse AI search analysis markdown documents back into AiSearchAnalysisDocModel.
- * Extracted from AiSearchAnalysisDoc.ts — pure refactoring, no behavior changes.
- */
-
 import {
 	extractSection,
 	normalizeLine,
@@ -13,7 +6,7 @@ import {
 	extractCalloutBlock,
 	parseCalloutListItems,
 } from '@/core/storage/vault/framework/MarkdownDocEngine';
-import type { AISearchGraph, AISearchTopic, AISearchSource, DashboardBlock, EvidenceIndex } from '@/service/agents/shared-types';
+import type { AISearchTopic, AISearchSource, DashboardBlock, EvidenceIndex } from '@/service/agents/shared-types';
 import { getMermaidInner } from '@/core/utils/mermaid-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { SearchResultItem } from '@/service/search/types';
@@ -41,16 +34,6 @@ const EMPTY_DOC_MODEL: AiSearchAnalysisDocModel = {
 	overviewMermaidVersions: [],
 };
 
-/** Node types allowed when reconstructing a preview from mermaid (no type in syntax). */
-const MERMAID_PREVIEW_NODE_TYPES: readonly GraphNodeType[] = [
-	GraphNodeType.TopicTag,
-	GraphNodeType.FunctionalTag,
-	GraphNodeType.Document,
-	GraphNodeType.Resource,
-	GraphNodeType.Folder,
-	GraphNodeType.HubDoc,
-];
-
 function parseMermaidToPreview(body: string): GraphPreview | null {
 	const nodeLabelById = new Map<string, string>();
 	const edges: Array<{ from: string; to: string }> = [];
@@ -76,10 +59,6 @@ function parseMermaidToPreview(body: string): GraphPreview | null {
 	};
 }
 
-// ---------------------------------------------------------------------------
-// Mermaid extraction helpers (delegated to Engine's extractCodeBlocks)
-// ---------------------------------------------------------------------------
-
 function extractMermaidBlock(text: string): string {
 	const blocks = extractCodeBlocks(text, 'mermaid');
 	return blocks.length > 0 ? blocks[0].content.trim() : '';
@@ -89,9 +68,6 @@ function extractAllMermaidBlocks(text: string): string[] {
 	return extractCodeBlocks(text, 'mermaid').map((b) => b.content.trim());
 }
 
-/** Parse V2 numbered report sections (`## 1. Title`, `## 2. Title`, ...) from the body.
- *  Sections are between the Analysis Plan callout and the Sources heading.
- */
 function parseV2ReportSections(body: string): Array<{ title: string; content: string }> {
 	const sections: Array<{ title: string; content: string }> = [];
 	const regex = /^## (\d+)\.\s+(.+)$/gm;
@@ -104,7 +80,6 @@ function parseV2ReportSections(body: string): Array<{ title: string; content: st
 		const start = hits[i].idx + body.slice(hits[i].idx).indexOf('\n') + 1;
 		const end = i + 1 < hits.length ? hits[i + 1].idx : body.length;
 		let content = body.slice(start, end).trim();
-		// Trim trailing callout blocks, H1 headings, or non-numbered H2 sections that may follow
 		const nextSection = content.search(/\n(?:# [^#]|## [^0-9]|> \[!)/);
 		if (nextSection >= 0) content = content.slice(0, nextSection).trim();
 		sections.push({ title: hits[i].title, content });
@@ -112,9 +87,16 @@ function parseV2ReportSections(body: string): Array<{ title: string; content: st
 	return sections;
 }
 
-/**
- * Parse markdown content into AiSearchAnalysisDocModel.
- */
+/** Try JSON.parse; return undefined on failure or empty input. */
+function tryParseJson<T>(text: string): T | undefined {
+	const trimmed = text.trim();
+	if (!trimmed) return undefined;
+	try {
+		const parsed = JSON.parse(trimmed) as T;
+		return parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0 ? parsed : undefined;
+	} catch { return undefined; }
+}
+
 export function parse(raw: string): AiSearchAnalysisDocModel {
 	const normalized = normalizeLine(raw);
 	const fmResult = parseFrontmatter<Record<string, unknown>>(normalized);
@@ -130,7 +112,6 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 
 	const fmCreated = coerceStr(fmData.created);
 	const fmTitle = coerceStr(fmData.title);
-	// gray-matter strips outer quotes from YAML values, so no need to manually remove them
 	const fmQuery = coerceStr(fmData.query);
 	const fmWebEnabled = fmData.webEnabled === true || String(fmData.webEnabled ?? '').toLowerCase() === 'true';
 	const fmDuration = coerceNum(fmData.duration);
@@ -142,7 +123,6 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 
 	const summary = extractSection(body, 'Summary');
 	const querySectionRaw = extractSection(body, 'Query');
-	// Strip V2 callout blocks and sub-headings from query section (they follow the query text)
 	const querySection = querySectionRaw.replace(/\n(?:> \[!|## )[\s\S]*$/, '').trim();
 	const query = querySection || fmQuery;
 	const overviewSection = extractSection(body, 'Overview');
@@ -154,7 +134,6 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		const blocks = extractAllMermaidBlocks(overviewHistorySection);
 		const activeLine = overviewHistorySection.match(/^ActiveIndex:\s*(\d+)/m);
 		overviewMermaidActiveIndex = activeLine ? Math.max(0, parseInt(activeLine[1], 10)) : 0;
-		// Store raw inner content only; dedupe by content so one overview does not become multiple history entries
 		const seen = new Set<string>();
 		overviewMermaidVersions =
 			blocks.length > 0
@@ -179,12 +158,7 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		}
 	}
 	const mindflowMermaidRaw = extractMermaidBlock(mindflowSection);
-	const mindflowMermaid = mindflowMermaidRaw?.trim()
-		? (() => {
-				const inner = getMermaidInner(mindflowMermaidRaw).trim();
-				return inner ? inner : undefined;
-		  })()
-		: undefined;
+	const mindflowMermaid = mindflowMermaidRaw?.trim() ? (getMermaidInner(mindflowMermaidRaw).trim() || undefined) : undefined;
 	const topicsText = extractSection(body, 'Key Topics');
 	const sourcesText = extractSection(body, 'Sources');
 	const evidenceText = extractSection(body, 'Evidence');
@@ -319,7 +293,6 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		const title = firstLineEnd === -1 ? blk.trim() : blk.slice(0, firstLineEnd).trim();
 		if (!title) continue;
 		let content = firstLineEnd === -1 ? '' : blk.slice(firstLineEnd + 1).trim();
-		// Restore renderEngine from first line so replay shows TILE/ACTION_GROUP correctly
 		let renderEngine: DashboardBlock['renderEngine'] | null = null;
 		const contentLines = content.split('\n');
 		if (contentLines.length > 0) {
@@ -346,23 +319,8 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		});
 	}
 
-	let blockChatRecords: Record<string, SnapshotChatMessage[]> | undefined;
-	try {
-		const raw = blockChatRecordsText.trim();
-		if (raw) {
-			const parsed = JSON.parse(raw) as Record<string, SnapshotChatMessage[]>;
-			if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-				blockChatRecords = parsed;
-			}
-		}
-	} catch {
-		// ignore invalid JSON
-	}
+	const blockChatRecords = tryParseJson<Record<string, SnapshotChatMessage[]>>(blockChatRecordsText);
 
-	// Knowledge Graph section no longer loaded from document (persistence removed).
-	const graph: AISearchGraph | null = null;
-
-	// Continue Analysis: sections are ## Question (H2); content follows and may contain ### (H3) and below
 	const fullAnalysisFollowUp: Array<{ title: string; content: string }> = [];
 	const continueBlocks = continueAnalysisText.split(/\n##\s+/).filter(Boolean);
 	for (const blk of continueBlocks) {
@@ -385,32 +343,10 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		return list;
 	};
 	const graphFollowups = parseFollowupHistory(graphFollowupsText);
-	let blocksFollowupsByBlockId: Record<string, SectionAnalyzeResult[]> | undefined;
-	try {
-		const raw = blocksFollowupsByBlockIdText.trim();
-		if (raw) {
-			const parsed = JSON.parse(raw) as Record<string, SectionAnalyzeResult[]>;
-			if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-				blocksFollowupsByBlockId = parsed;
-			}
-		}
-	} catch {
-		// ignore invalid JSON
-	}
+	const blocksFollowupsByBlockId = tryParseJson<Record<string, SectionAnalyzeResult[]>>(blocksFollowupsByBlockIdText);
 	const sourcesFollowups = parseFollowupHistory(sourcesFollowupsText);
 
-	let evidenceIndex: EvidenceIndex | undefined;
-	try {
-		const raw = evidenceText.trim();
-		if (raw) {
-			const parsed = JSON.parse(raw) as EvidenceIndex;
-			if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-				evidenceIndex = parsed;
-			}
-		}
-	} catch {
-		// ignore invalid JSON
-	}
+	const evidenceIndex = tryParseJson<EvidenceIndex>(evidenceText);
 
 	const steps: UIStepRecord[] = [];
 	const stepBlocks = stepsText.split(/\n###\s+Step\s+\d+:\s+/).filter(Boolean);
@@ -444,7 +380,6 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 			? { inputTokens: 0, outputTokens: fmEstimatedTokens, totalTokens: fmEstimatedTokens }
 			: null;
 
-	// V2 callout parsing
 	const v2ProcessLogContent = extractCalloutBlock(body, 'abstract', 'Process Log');
 	const v2ProcessLog = v2ProcessLogContent ? parseCalloutListItems(v2ProcessLogContent) : undefined;
 
@@ -452,12 +387,8 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 	const v2PlanOutline = v2PlanOutlineRaw || undefined;
 
 	const v2GraphDataContent = extractCalloutBlock(body, 'tip', 'Graph Data');
-	let v2GraphJson: string | undefined;
-	if (v2GraphDataContent) {
-		// Extract JSON from fenced code block inside callout
-		const jsonMatch = v2GraphDataContent.match(/```json\n([\s\S]*?)```/);
-		v2GraphJson = jsonMatch ? jsonMatch[1].trim() : undefined;
-	}
+	const v2GraphJsonMatch = v2GraphDataContent?.match(/```json\n([\s\S]*?)```/);
+	const v2GraphJson = v2GraphJsonMatch ? v2GraphJsonMatch[1].trim() : undefined;
 
 	const v2FollowUpContent = extractCalloutBlock(body, 'question', 'Follow-up Questions');
 	const v2FollowUpQuestions = v2FollowUpContent ? parseCalloutListItems(v2FollowUpContent) : undefined;
@@ -477,7 +408,7 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		summary: summary || '',
 		topics,
 		sources,
-		graph,
+		graph: null,
 		topicInspectResults,
 		topicAnalyzeResults,
 		topicGraphResults,

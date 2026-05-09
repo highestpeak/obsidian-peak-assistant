@@ -17,7 +17,6 @@ export interface V2RoundBlockProps {
 	timeline: V2TimelineItem[];
 	sections: V2Section[];
 	sources: { length: number };
-	proposedOutline: string | null;
 	isCurrent: boolean;
 	defaultExpanded: boolean;
 	usage?: { inputTokens: number; outputTokens: number } | null;
@@ -50,7 +49,6 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 	timeline,
 	sections,
 	sources,
-	proposedOutline: _proposedOutline,
 	isCurrent,
 	defaultExpanded,
 	usage,

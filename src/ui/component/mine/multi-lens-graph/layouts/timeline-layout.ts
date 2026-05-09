@@ -54,75 +54,36 @@ export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayou
 	}
 
 	const placed = new Set<string>();
-	for (const col of chainColumns) {
-		for (const n of col) placed.add(n.path);
-	}
+	for (const col of chainColumns) for (const n of col) placed.add(n.path);
 
 	const soloNodes = nodes.filter(n => !placed.has(n.path));
 	const hasSoloColumn = soloNodes.length > 0;
 	const totalColumns = chainColumns.length + (hasSoloColumn ? 1 : 0);
 
-	// Build a global sorted list of all nodes by time, then assign row indices
-	// Nodes are placed in rows; each row = one "time slot"
-	// All nodes in the same row share the same Y → horizontal alignment across columns
 	const allNodesSorted = [...nodes]
 		.filter(n => n.createdAt != null)
 		.sort((a, b) => a.createdAt! - b.createdAt!);
-	const untimedNodes = nodes.filter(n => n.createdAt == null);
 
-	// Assign row per column: process each column top-to-bottom, incrementing a shared row counter
-	// Strategy: merge-sort across columns by timestamp to assign shared rows
+	// Build a flat list of { node, colIdx } sorted by timestamp, then assign rows
 	type QueueItem = { node: LensNodeData; colIdx: number };
-	const queues: QueueItem[][] = [];
-
+	const items: QueueItem[] = [];
 	for (let c = 0; c < chainColumns.length; c++) {
-		const sorted = [...chainColumns[c]].sort((a, b) => (a.createdAt ?? Infinity) - (b.createdAt ?? Infinity));
-		queues.push(sorted.map(node => ({ node, colIdx: c })));
+		for (const node of chainColumns[c]) items.push({ node, colIdx: c });
 	}
-	if (hasSoloColumn) {
-		const sorted = [...soloNodes].sort((a, b) => (a.createdAt ?? Infinity) - (b.createdAt ?? Infinity));
-		queues.push(sorted.map(node => ({ node, colIdx: chainColumns.length })));
-	}
-
-	// Merge all into a single time-ordered sequence, tracking which column each belongs to
-	const merged: QueueItem[] = [];
-	const pointers = queues.map(() => 0);
-
-	while (true) {
-		let bestQueue = -1;
-		let bestTime = Infinity;
-		for (let q = 0; q < queues.length; q++) {
-			if (pointers[q] < queues[q].length) {
-				const t = queues[q][pointers[q]].node.createdAt ?? Infinity;
-				if (t < bestTime) {
-					bestTime = t;
-					bestQueue = q;
-				}
-			}
-		}
-		if (bestQueue < 0) break;
-		merged.push(queues[bestQueue][pointers[bestQueue]]);
-		pointers[bestQueue]++;
-	}
-
-	// Append untimed nodes at the end
-	for (const n of untimedNodes) {
-		if (!placed.has(n.path)) {
-			merged.push({ node: n, colIdx: chainColumns.length });
-		}
-	}
+	for (const node of soloNodes) items.push({ node, colIdx: chainColumns.length });
+	// Sort all items by timestamp (untimed nodes go last)
+	items.sort((a, b) => (a.node.createdAt ?? Infinity) - (b.node.createdAt ?? Infinity));
 
 	// Assign rows: each node gets the next available row in its column
-	// To keep time-ordering, we use a global row counter that only advances
 	const colNextRow = new Array(totalColumns).fill(0);
 	let globalRow = 0;
-
-	for (const item of merged) {
+	for (const item of items) {
 		const col = item.colIdx;
 		const row = Math.max(globalRow, colNextRow[col]);
-		const x = FIRST_COLUMN_LEFT + col * (COLUMN_WIDTH + COLUMN_GAP);
-		const y = CANVAS_PADDING + row * ROW_HEIGHT;
-		positions.set(item.node.path, { x, y });
+		positions.set(item.node.path, {
+			x: FIRST_COLUMN_LEFT + col * (COLUMN_WIDTH + COLUMN_GAP),
+			y: CANVAS_PADDING + row * ROW_HEIGHT,
+		});
 		colNextRow[col] = row + 1;
 		globalRow = row + 1;
 	}

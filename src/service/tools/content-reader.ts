@@ -18,12 +18,6 @@ function buildAutoRegex(query: string, caseSensitive: boolean): { regex: RegExp;
     }
 }
 
-/**
- * todo read from db to get tags. links. categories. etc. first check db hash with current hash. if different, read from file.
- *  if not then read from db directly. and fill with doc_statistics
- * 
- * Simple tool to read the content of a specific file (note) by its path.
- */
 export function contentReaderTool(): AgentTool {
     const settings = AppContext.getInstance().settings.search;
     const inputSchema = makeContentReaderInputSchema({
@@ -105,11 +99,6 @@ export function contentReaderTool(): AgentTool {
             }
 
             if (mode === "grep") {
-                /**
-                 * Grep mode (single file):
-                 * - Prefer treating query as a RegExp; fallback to literal match if invalid.
-                 * - Return structured vimgrep-like matches for tool chaining.
-                 */
                 const contentLines = (fullContent || "").split(/\r?\n/);
                 const cap = Math.min(50, max_matches ?? 50);
                 const { regex, isLiteralFallback } = buildAutoRegex(query!, case_sensitive ?? true);

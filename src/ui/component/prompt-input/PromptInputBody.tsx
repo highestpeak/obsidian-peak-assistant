@@ -96,50 +96,19 @@ function detectTrigger(docText: string, cursorPos: number): TriggerMatch | null 
 }
 
 // ---------------------------------------------------------------------------
-// Context menu state hook
+// Menu state (shared between context menu and prompt menu)
 // ---------------------------------------------------------------------------
 
-interface ContextMenuState {
+interface MenuState {
 	visible: boolean;
 	items: NavigableMenuItem[];
 	selectedIndex: number;
-	position: ContextMenuPosition;
-	/** The detected trigger match while the menu is open */
+	position: { top: number; left: number };
 	triggerMatch: TriggerMatch | null;
 	isLoading: boolean;
 }
 
-const INITIAL_MENU_STATE: ContextMenuState = {
-	visible: false,
-	items: [],
-	selectedIndex: 0,
-	position: { top: 0, left: 0 },
-	triggerMatch: null,
-	isLoading: false,
-};
-
-// ---------------------------------------------------------------------------
-// Prompt menu state
-// ---------------------------------------------------------------------------
-
-interface PromptMenuState {
-	visible: boolean;
-	items: NavigableMenuItem[];
-	selectedIndex: number;
-	position: PromptMenuPosition;
-	/** The detected trigger match while the menu is open */
-	triggerMatch: TriggerMatch | null;
-	isLoading: boolean;
-}
-
-const INITIAL_PROMPT_MENU_STATE: PromptMenuState = {
-	visible: false,
-	items: [],
-	selectedIndex: 0,
-	position: { top: 0, left: 0 },
-	triggerMatch: null,
-	isLoading: false,
-};
+const INITIAL_MENU: MenuState = { visible: false, items: [], selectedIndex: 0, position: { top: 0, left: 0 }, triggerMatch: null, isLoading: false };
 
 // ---------------------------------------------------------------------------
 // Props / Component
@@ -175,12 +144,12 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 	const codeMirrorRef = useRef<any>(null);
 
 	// ----- Context menu state (@ / [[) -----
-	const [menu, setMenu] = useState<ContextMenuState>(INITIAL_MENU_STATE);
+	const [menu, setMenu] = useState<MenuState>(INITIAL_MENU);
 	const menuRef = useRef(menu);
 	menuRef.current = menu;
 
 	// ----- Prompt menu state (/) -----
-	const [promptMenu, setPromptMenu] = useState<PromptMenuState>(INITIAL_PROMPT_MENU_STATE);
+	const [promptMenu, setPromptMenu] = useState<MenuState>(INITIAL_MENU);
 	const promptMenuRef = useRef(promptMenu);
 	promptMenuRef.current = promptMenu;
 
@@ -225,115 +194,67 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 		return pos;
 	}, []);
 
+	/** Shared menu open + async-load logic for both context and prompt menus. */
+	const openMenuWithLoad = useCallback((
+		setFn: React.Dispatch<React.SetStateAction<MenuState>>,
+		loadIdRef: React.MutableRefObject<number>,
+		loaderRef: React.MutableRefObject<((q: string) => Promise<NavigableMenuItem[]>) | undefined>,
+		fallbackRef: React.MutableRefObject<NavigableMenuItem[]>,
+		match: TriggerMatch,
+		pos: { top: number; left: number },
+	) => {
+		const currentLoadId = ++loadIdRef.current;
+		setFn(prev => ({
+			...prev, visible: true, position: pos, triggerMatch: match, isLoading: true,
+			selectedIndex: prev.triggerMatch?.query !== match.query ? 0 : prev.selectedIndex,
+		}));
+		(async () => {
+			let items: NavigableMenuItem[];
+			try {
+				if (loaderRef.current) {
+					items = await loaderRef.current(match.query);
+				} else {
+					const q = match.query.toLowerCase();
+					items = fallbackRef.current.filter((it: any) =>
+						it.label.toLowerCase().includes(q) || it.description?.toLowerCase().includes(q));
+				}
+			} catch {
+				items = fallbackRef.current;
+			}
+			if (loadIdRef.current !== currentLoadId) return;
+			setFn(prev => ({ ...prev, items: items.slice(0, SLICE_CAPS.ui.promptOptions), isLoading: false }));
+		})();
+	}, []);
+
 	// ----- Trigger detection callback (called by CM update listener) -----
 	const handleTriggerUpdate = useCallback((view: EditorView) => {
-		const state = view.state;
-		const cursorPos = state.selection.main.head;
-		const docText = state.doc.toString();
-		const match = detectTrigger(docText, cursorPos);
+		const cursorPos = view.state.selection.main.head;
+		const match = detectTrigger(view.state.doc.toString(), cursorPos);
 
 		if (!match) {
-			if (menuRef.current.visible) setMenu(INITIAL_MENU_STATE);
-			if (promptMenuRef.current.visible) setPromptMenu(INITIAL_PROMPT_MENU_STATE);
+			if (menuRef.current.visible) setMenu(INITIAL_MENU);
+			if (promptMenuRef.current.visible) setPromptMenu(INITIAL_MENU);
 			return;
 		}
 
-		// Route to correct menu based on trigger type
-		if (match.trigger === '/' ) {
-			// Close context menu if it was open
-			if (menuRef.current.visible) setMenu(INITIAL_MENU_STATE);
+		const isPrompt = match.trigger === '/';
+		// Close the other menu
+		if (isPrompt && menuRef.current.visible) setMenu(INITIAL_MENU);
+		if (!isPrompt && promptMenuRef.current.visible) setPromptMenu(INITIAL_MENU);
 
-			const pos = computeMenuPosition(view, match.from);
-			if (!pos) {
-				if (promptMenuRef.current.visible) setPromptMenu(INITIAL_PROMPT_MENU_STATE);
-				return;
-			}
-
-			const currentLoadId = ++promptLoadIdRef.current;
-			setPromptMenu(prev => ({
-				...prev,
-				visible: true,
-				position: pos,
-				triggerMatch: match,
-				isLoading: true,
-				selectedIndex: prev.triggerMatch?.query !== match.query ? 0 : prev.selectedIndex,
-			}));
-
-			const load = async () => {
-				let items: NavigableMenuItem[] = [];
-				try {
-					if (onLoadPromptItemsRef.current) {
-						items = await onLoadPromptItemsRef.current(match.query);
-					} else {
-						const fallback = promptItemsRef.current;
-						const q = match.query.toLowerCase();
-						items = fallback.filter(
-							(it: any) =>
-								it.label.toLowerCase().includes(q) ||
-								it.description?.toLowerCase().includes(q),
-						);
-					}
-				} catch (err) {
-					console.error('Error loading prompt items:', err);
-					items = promptItemsRef.current;
-				}
-				if (promptLoadIdRef.current !== currentLoadId) return;
-				setPromptMenu(prev => ({
-					...prev,
-					items: items.slice(0, SLICE_CAPS.ui.promptOptions),
-					isLoading: false,
-				}));
-			};
-			load();
-		} else {
-			// @ or [[ trigger → context menu
-			// Close prompt menu if it was open
-			if (promptMenuRef.current.visible) setPromptMenu(INITIAL_PROMPT_MENU_STATE);
-
-			const pos = computeMenuPosition(view, match.from);
-			if (!pos) {
-				if (menuRef.current.visible) setMenu(INITIAL_MENU_STATE);
-				return;
-			}
-
-			const currentLoadId = ++loadIdRef.current;
-			setMenu(prev => ({
-				...prev,
-				visible: true,
-				position: pos,
-				triggerMatch: match,
-				isLoading: true,
-				selectedIndex: prev.triggerMatch?.query !== match.query ? 0 : prev.selectedIndex,
-			}));
-
-			const load = async () => {
-				let items: NavigableMenuItem[] = [];
-				try {
-					if (onLoadContextItemsRef.current) {
-						items = await onLoadContextItemsRef.current(match.query);
-					} else {
-						const fallback = contextItemsRef.current;
-						const q = match.query.toLowerCase();
-						items = fallback.filter(
-							(it: any) =>
-								it.label.toLowerCase().includes(q) ||
-								it.description?.toLowerCase().includes(q),
-						);
-					}
-				} catch (err) {
-					console.error('Error loading context items:', err);
-					items = contextItemsRef.current;
-				}
-				if (loadIdRef.current !== currentLoadId) return;
-				setMenu(prev => ({
-					...prev,
-					items: items.slice(0, SLICE_CAPS.ui.promptOptions),
-					isLoading: false,
-				}));
-			};
-			load();
+		const pos = computeMenuPosition(view, match.from);
+		if (!pos) {
+			if (isPrompt && promptMenuRef.current.visible) setPromptMenu(INITIAL_MENU);
+			if (!isPrompt && menuRef.current.visible) setMenu(INITIAL_MENU);
+			return;
 		}
-	}, [computeMenuPosition]); // Stable — reads refs internally
+
+		if (isPrompt) {
+			openMenuWithLoad(setPromptMenu, promptLoadIdRef, onLoadPromptItemsRef, promptItemsRef, match, pos);
+		} else {
+			openMenuWithLoad(setMenu, loadIdRef, onLoadContextItemsRef, contextItemsRef, match, pos);
+		}
+	}, [computeMenuPosition, openMenuWithLoad]);
 
 	// ----- Context menu callbacks -----
 	const handleMenuSelect = useCallback((item: NavigableMenuItem) => {
@@ -364,13 +285,13 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 			onMenuItemSelectRef.current(match.trigger, item);
 		}
 
-		setMenu(INITIAL_MENU_STATE);
+		setMenu(INITIAL_MENU);
 		// Refocus the editor
 		view.focus();
 	}, []);
 
 	const handleMenuClose = useCallback(() => {
-		setMenu(INITIAL_MENU_STATE);
+		setMenu(INITIAL_MENU);
 		codeMirrorRef.current?.view?.focus();
 	}, []);
 
@@ -396,12 +317,12 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 			onMenuItemSelectRef.current('/', item);
 		}
 
-		setPromptMenu(INITIAL_PROMPT_MENU_STATE);
+		setPromptMenu(INITIAL_MENU);
 		view.focus();
 	}, []);
 
 	const handlePromptMenuClose = useCallback(() => {
-		setPromptMenu(INITIAL_PROMPT_MENU_STATE);
+		setPromptMenu(INITIAL_MENU);
 		codeMirrorRef.current?.view?.focus();
 	}, []);
 

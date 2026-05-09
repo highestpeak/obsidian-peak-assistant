@@ -23,37 +23,8 @@ async function getIndexedDocumentsByIds(ids: string[]): Promise<Map<string, Inde
     return map;
 }
 
-// ============================================================================
-// Architecture Design Philosophy (Refactored)
-// ============================================================================
-/**
- * Multi-Strategy Path Finding System
- * 
- * Design Philosophy:
- * 1. Strategy Pattern: Each path type has independent search strategy
- * 2. Physical Priority: Reliable paths are searched first, ensuring direct connections
- * 3. Semantic Guidance: A* with semantic gravity field for intelligent exploration
- * 4. Quality Evaluation: Multi-dimensional scoring for path ranking
- * 
- * Strategy Types:
- * - Reliable: Pure physical shortest path (bidirectional BFS, physical edges only)
- * - FastTrack: A* with semantic gravity field (dynamic vector interpolation)
- * - Brainstorm: Cross-domain bridge discovery (forced domain jumps)
- * - Temporal: Time-ordered knowledge evolution path
- * 
- * Path Quality Dimensions:
- * - Uniqueness: Low overlap with other paths
- * - Freshness: Contains recently unvisited nodes
- * - Domain Jump: Cross-folder/tag transitions
- * - Physical Ratio: Proportion of reliable physical connections
- */
-
-// ============================================================================
-// Type Definitions
-// ============================================================================
-
-/** Connection types between nodes */
-type ConnectionType = 'physical' | 'semantic';
+// Multi-Strategy Path Finding: reliable (BFS), fastTrack (A*), brainstorm (cross-domain), temporal.
+// Paths scored on: physicalRatio, freshness, domainJumps, uniqueness.
 
 /** Path segment with full connection metadata */
 export interface PathSegment {
@@ -128,43 +99,16 @@ interface HubAnalysis {
     betweennessCentrality: number;
 }
 
-/** Common ancestor analysis result */
-interface CommonAncestorAnalysis {
-    ancestorPath: string;
-    startPath: string;
-    endPath: string;
-    depth: number;
-}
-
 /** Enhanced context intersection analysis result */
 interface ContextIntersectionAnalysis {
-    // Physical path analysis (legacy, kept for compatibility)
-    physicalAncestor: {
-        ancestorPath: string;
-        startPath: string;
-        endPath: string;
-        depth: number;
-    };
-
-    // Tag-based semantic intersection
+    physicalAncestor: { ancestorPath: string; startPath: string; endPath: string; depth: number };
     commonTags: string[];
-
-    // Graph-based structural intersection (common parents)
-    commonParents: Array<{
-        nodeId: string;
-        label: string;
-        type: string;
-        connectionCount: number; // how many paths connect through this node
-    }>;
-
-    // Overall assessment
-    isDistant: boolean; // true if physically distant but semantically connected
-    primaryContext?: string; // main shared context (tag or parent node)
+    commonParents: Array<{ nodeId: string; label: string; type: string; connectionCount: number }>;
+    isDistant: boolean;
+    primaryContext?: string;
 }
 
-// ============================================================================
-// Constants
-// ============================================================================
+// --- Constants ---
 
 /** Edge weight configuration */
 const EDGE_WEIGHTS = {
@@ -175,9 +119,6 @@ const EDGE_WEIGHTS = {
 
 /** Semantic similarity threshold */
 const SIMILARITY_THRESHOLD = 0.5;
-
-/** Maximum consecutive semantic edges allowed */
-const MAX_CONSECUTIVE_SEMANTIC = 3; // Increased from 2 to 3 for more flexibility
 
 /** Score weights for path quality */
 const SCORE_WEIGHTS = {
@@ -190,14 +131,23 @@ const SCORE_WEIGHTS = {
 
 export const PATH_STRING_SEPARATOR = ' -> ';
 
-// ============================================================================
-// Main Entry Point
-// ============================================================================
+const STRATEGY_NAMES: Record<StrategyType, string> = {
+    reliable: '🔗 Reliable', fastTrack: '🚀 Fast Track',
+    brainstorm: '💡 Brainstorm', temporal: '⏳ Temporal',
+};
 
-/**
- * Find diverse paths between two notes using multiple strategies.
- * Returns paths from all strategy types for comprehensive discovery.
- */
+/** Resolve a graph node to a display label. */
+function getNodeLabel(node: { type: string; label: string; attributes: string } | undefined, fallback: string): string {
+    if (!node) return fallback;
+    if (isIndexedNoteNodeType(node.type)) {
+        try { return JSON.parse(node.attributes).path || fallback; } catch { return fallback; }
+    }
+    return node.type + node.label;
+}
+
+// --- Main Entry Point ---
+
+/** Find diverse paths between two notes using multiple strategies. */
 export async function findPath(params: any, templateManager?: TemplateManager) {
     const { start_note_path, end_note_path, limit, include_semantic_paths, response_format, filters } = params;
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
@@ -269,16 +219,7 @@ export async function findPath(params: any, templateManager?: TemplateManager) {
         const hubNodesMap = await mobiusNodeRepo.getByIds(hubNodeIds);
 
         for (const hub of hubAnalysis) {
-            const node = hubNodesMap.get(hub.nodeId);
-            if (node && isIndexedNoteNodeType(node.type)) {
-                try {
-                    hub.label = JSON.parse(node.attributes).path || hub.nodeId;
-                } catch {
-                    hub.label = hub.nodeId;
-                }
-            } else {
-                hub.label = node ? (node.type + node.label) : hub.nodeId;
-            }
+            hub.label = getNodeLabel(hubNodesMap.get(hub.nodeId), hub.nodeId);
         }
     }
 
@@ -312,13 +253,9 @@ export async function findPath(params: any, templateManager?: TemplateManager) {
     return buildResponse(response_format, ToolTemplateId.GraphPathFinding, data, { templateManager });
 }
 
-// ============================================================================
-// Multi-Strategy Search Orchestrator
-// ============================================================================
+// --- Multi-Strategy Search Orchestrator ---
 
-/**
- * Execute all search strategies in parallel and merge results.
- */
+/** Execute all search strategies and merge results. */
 async function executeMultiStrategySearch(
     context: SearchContext,
     maxResults: number
@@ -330,40 +267,28 @@ async function executeMultiStrategySearch(
     const allPaths: ScoredPath[] = [];
 
     // Phase 1: Reliable Strategy - Pure physical paths (guaranteed first)
-    console.debug('[findPath] Phase 1: Reliable Strategy');
     const reliablePaths = await reliableStrategy(context);
-    console.debug('[findPath] reliablePaths found:', reliablePaths.length);
     allPaths.push(...reliablePaths);
 
     // Phase 2: FastTrack Strategy - A* with semantic guidance (if semantic enabled)
     if (context.includeSemantic && context.startVector && context.endVector) {
-        console.debug('[findPath] Phase 2: FastTrack Strategy');
         const fastTrackPaths = await fastTrackStrategy(context);
-        console.debug('[findPath] fastTrackPaths found:', fastTrackPaths.length);
         allPaths.push(...fastTrackPaths);
     }
 
     // Phase 3: Brainstorm Strategy - Cross-domain discovery (if semantic enabled)
     if (context.includeSemantic) {
-        console.debug('[findPath] Phase 3: Brainstorm Strategy');
         const brainstormPaths = await brainstormStrategy(context);
-        console.debug('[findPath] brainstormPaths found:', brainstormPaths.length);
         allPaths.push(...brainstormPaths);
     }
 
     // Phase 4: Temporal Strategy - Time-ordered paths
-    console.debug('[findPath] Phase 4: Temporal Strategy');
-    const temporalStartTime = Date.now();
     const temporalPaths = await temporalStrategy(context);
-    const temporalDuration = Date.now() - temporalStartTime;
-    console.debug('[findPath] temporalPaths found:', temporalPaths.length, 'in', temporalDuration, 'ms');
     allPaths.push(...temporalPaths);
 
     // Fallback Strategy: If no paths found, try a more permissive search
     if (allPaths.length === 0) {
-        console.debug('[findPath] No paths found, attempting fallback strategy');
         const fallbackPaths = await fallbackStrategy(context);
-        console.debug('[findPath] fallbackPaths found:', fallbackPaths.length);
         allPaths.push(...fallbackPaths);
     }
 
@@ -389,258 +314,129 @@ async function executeMultiStrategySearch(
     return { scoredPaths: diversePaths, hubAnalysis, contextIntersection };
 }
 
-// ============================================================================
-// Strategy 1: Reliable - Pure Physical BFS
-// ============================================================================
+// --- Strategy 1: Reliable - Pure Physical BFS ---
 
-/**
- * Find shortest physical-only path using bidirectional BFS.
- * Guarantees the most direct and reliable connection.
- */
+/** Find shortest physical-only paths using bidirectional BFS. */
 async function reliableStrategy(context: SearchContext): Promise<ScoredPath[]> {
-    const paths: ScoredPath[] = [];
-    const forbiddenEdges = new Set<string>();
-
-    // Find multiple diverse physical paths
+    const paths: ScoredPath[] = [], forbiddenEdges = new Set<string>();
     for (let i = 0; i < 3; i++) {
-        const path = await bidirectionalBFS(
-            context.startId,
-            context.endId,
-            forbiddenEdges,
-            false,  // Physical only
-            context.maxHops,
-            context.filters,
-            context.excludedDocIds
-        );
-
+        const path = await bidirectionalBFS(context.startId, context.endId, forbiddenEdges, false, context.maxHops, context.filters, context.excludedDocIds);
         if (!path) break;
-
-        paths.push({
-            segments: path,
-            strategy: 'reliable',
-            score: createEmptyScore(),
-            insightLabel: 'This is the most direct logical chain in your knowledge base.',
-            reasoning: 'Pure physical connections provide the most reliable and trustworthy path.',
-        });
-
-        // Block key edge for diversity
+        paths.push({ segments: path, strategy: 'reliable', score: createEmptyScore(), insightLabel: 'This is the most direct logical chain in your knowledge base.', reasoning: 'Pure physical connections provide the most reliable and trustworthy path.' });
         const edgeToBlock = identifyKeyEdge(path);
-        if (edgeToBlock) {
-            forbiddenEdges.add(edgeToBlock);
-        } else {
-            break;
-        }
+        if (edgeToBlock) forbiddenEdges.add(edgeToBlock); else break;
     }
-
     return paths;
 }
 
-// ============================================================================
-// Strategy 2: FastTrack - A* with Semantic Gravity Field
-// ============================================================================
+// --- Strategy 2: FastTrack - A* with Semantic Gravity Field ---
 
-/**
- * A* search with dynamic semantic gravity field.
- * Uses interpolated target vector for guided exploration.
- */
+/** A* search with semantic gravity field. */
 async function fastTrackStrategy(context: SearchContext): Promise<ScoredPath[]> {
-    if (!context.startVector || !context.endVector) {
-        return [];
-    }
-
-    const paths: ScoredPath[] = [];
-
-    // Find path using A* with semantic heuristic
+    if (!context.startVector || !context.endVector) return [];
     const path = await aStarSearch(context);
-
-    if (path) {
-        paths.push({
-            segments: path,
-            strategy: 'fastTrack',
-            score: createEmptyScore(),
-            insightLabel: 'Through semantic bridging, these two ideas share a common conceptual core.',
-            reasoning: 'A* algorithm found optimal balance between path length and semantic relevance.',
-        });
-    }
-
-    return paths;
+    return path ? [{ segments: path, strategy: 'fastTrack', score: createEmptyScore(), insightLabel: 'Through semantic bridging, these two ideas share a common conceptual core.', reasoning: 'A* algorithm found optimal balance between path length and semantic relevance.' }] : [];
 }
 
-/**
- * A* search implementation with semantic gravity field.
- */
+/** Min-heap for A* open set. */
+class MinHeap<T> {
+    private h: T[] = [];
+    constructor(private key: (t: T) => number) {}
+    get length() { return this.h.length; }
+    push(v: T) { this.h.push(v); this.bubbleUp(this.h.length - 1); }
+    pop(): T | undefined {
+        if (!this.h.length) return undefined;
+        const top = this.h[0]; const last = this.h.pop()!;
+        if (this.h.length) { this.h[0] = last; this.sinkDown(0); }
+        return top;
+    }
+    private bubbleUp(i: number) {
+        while (i > 0) { const p = (i - 1) >> 1; if (this.key(this.h[p]) <= this.key(this.h[i])) break; [this.h[p], this.h[i]] = [this.h[i], this.h[p]]; i = p; }
+    }
+    private sinkDown(i: number) {
+        const n = this.h.length;
+        while (true) { let s = i; const l = 2 * i + 1, r = 2 * i + 2; if (l < n && this.key(this.h[l]) < this.key(this.h[s])) s = l; if (r < n && this.key(this.h[r]) < this.key(this.h[s])) s = r; if (s === i) break; [this.h[s], this.h[i]] = [this.h[i], this.h[s]]; i = s; }
+    }
+}
+
+/** A* search implementation. */
 async function aStarSearch(context: SearchContext): Promise<PathSegment[] | null> {
     const { startId, endId, startVector, endVector, maxHops, filters } = context;
-
     if (!startVector || !endVector) return null;
 
-    // Priority queue (min-heap based on fCost)
-    const openSet: AStarNode[] = [];
+    const openSet = new MinHeap<AStarNode>(n => n.fCost);
     const closedSet = new Set<string>();
     const nodeMap = new Map<string, AStarNode>();
 
-    // Initialize start node
-    const startNode: AStarNode = {
-        nodeId: startId,
-        gCost: 0,
-        hCost: await calculateHeuristic(startId, endVector, 0, maxHops),
-        fCost: 0,
-        parent: null,
-        connectionType: 'physical_neighbors',
-    };
-    startNode.fCost = startNode.gCost + startNode.hCost;
-
+    const hCost = await calculateHeuristic(startId, endVector);
+    const startNode: AStarNode = { nodeId: startId, gCost: 0, hCost, fCost: hCost, parent: null, connectionType: 'physical_neighbors' };
     openSet.push(startNode);
     nodeMap.set(startId, startNode);
 
-    let step = 0;
-    let consecutiveSemanticCount = 0;
+    let step = 0, consecutiveSemanticCount = 0;
 
     while (openSet.length > 0 && step < maxHops * 50) {
         step++;
+        const current = openSet.pop()!;
 
-        // Get node with lowest fCost
-        openSet.sort((a, b) => a.fCost - b.fCost);
-        const current = openSet.shift()!;
-
-        // Goal reached
-        if (current.nodeId === endId) {
-            return reconstructAStarPath(current);
-        }
-
+        if (current.nodeId === endId) return reconstructAStarPath(current);
         closedSet.add(current.nodeId);
 
-        // Track consecutive semantic edges
-        if (current.connectionType === 'semantic_neighbors') {
-            consecutiveSemanticCount++;
-        } else {
-            consecutiveSemanticCount = 0;
-        }
+        consecutiveSemanticCount = current.connectionType === 'semantic_neighbors' ? consecutiveSemanticCount + 1 : 0;
 
-        // Get neighbors (prioritize physical, limit semantic)
-        // For A* FastTrack strategy, be more permissive with semantic connections
-        const neighbors = await getSmartNeighbors(
-            current.nodeId,
-            true, // Include semantic
-            consecutiveSemanticCount >= 4, // More permissive than default 3
-            context.excludedDocIds
-        );
-
-        // Apply filters if provided
-        let filteredNeighbors = neighbors;
+        let neighbors = await getNeighbors(current.nodeId, 20, consecutiveSemanticCount >= 4 ? 'none' : 'sparse-only', context.excludedDocIds);
         if (filters) {
-            const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(
-                neighbors.map(n => n.id),
-                filters
-            );
-            filteredNeighbors = applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
+            const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(neighbors.map(n => n.id), filters);
+            neighbors = applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
         }
 
-        for (const neighbor of filteredNeighbors) {
+        for (const neighbor of neighbors) {
             if (closedSet.has(neighbor.id)) continue;
 
-            // Calculate edge weight
             const edgeWeight = neighbor.foundBy === 'physical_neighbors'
                 ? EDGE_WEIGHTS.physical
                 : (consecutiveSemanticCount >= 1 ? EDGE_WEIGHTS.consecutiveSemantic : EDGE_WEIGHTS.semantic);
 
-            // Skip low-similarity semantic edges
             if (neighbor.foundBy === 'semantic_neighbors' && neighbor.similarity) {
-                const sim = parseFloat(neighbor.similarity) / 100;
-                if (sim < SIMILARITY_THRESHOLD) continue;
+                if (parseFloat(neighbor.similarity) / 100 < SIMILARITY_THRESHOLD) continue;
             }
 
             const tentativeGCost = current.gCost + edgeWeight;
-
-            let existingNode = nodeMap.get(neighbor.id);
+            const existingNode = nodeMap.get(neighbor.id);
 
             if (!existingNode) {
-                // Calculate heuristic with dynamic gravity field
-                const progress = step / (maxHops * 2);
-                const hCost = await calculateHeuristic(neighbor.id, endVector, progress, maxHops);
-
-                // For A* strategy, be more permissive with consecutive semantic edges
-                // Allow up to 4 consecutive semantic edges to find longer semantic bridges
-                const allowSemantic = consecutiveSemanticCount < 4;
-
-                const newNode: AStarNode = {
-                    nodeId: neighbor.id,
-                    gCost: tentativeGCost,
-                    hCost,
-                    fCost: tentativeGCost + hCost,
-                    parent: current,
-                    connectionType: neighbor.foundBy,
-                    similarity: neighbor.similarity,
-                };
-
+                const h = await calculateHeuristic(neighbor.id, endVector);
+                const newNode: AStarNode = { nodeId: neighbor.id, gCost: tentativeGCost, hCost: h, fCost: tentativeGCost + h, parent: current, connectionType: neighbor.foundBy, similarity: neighbor.similarity };
                 openSet.push(newNode);
                 nodeMap.set(neighbor.id, newNode);
             } else if (tentativeGCost < existingNode.gCost) {
-                // Found better path
                 existingNode.gCost = tentativeGCost;
                 existingNode.fCost = tentativeGCost + existingNode.hCost;
                 existingNode.parent = current;
                 existingNode.connectionType = neighbor.foundBy;
                 existingNode.similarity = neighbor.similarity;
+                openSet.push(existingNode); // re-insert; stale copies ignored via closedSet
             }
         }
     }
-
     return null;
 }
 
-/**
- * Calculate A* heuristic using semantic gravity field.
- * Uses dynamic interpolation between start and end vectors.
- * Heuristic should be admissible (never overestimate) and provide good guidance.
- */
-async function calculateHeuristic(
-    nodeId: string,
-    endVector: number[],
-    progress: number,
-    maxHops: number
-): Promise<number> {
-    const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
-    const nodeVector = await embeddingRepo.getEmbeddingForSemanticSearch(nodeId);
-
-    if (!nodeVector) {
-        return 2.0; // Small penalty for nodes without embeddings
-    }
-
-    // Calculate cosine similarity to target
-    const similarity = cosineSimilarity(nodeVector, endVector);
-
-    // Convert to distance (0 = identical, higher = more different)
-    // Use smaller multiplier to reduce punishment - aim for guidance not blocking
-    const distance = Math.max(0, 1 - similarity);
-
-    // Scale down the heuristic influence - use an even smaller constant for A* exploration
-    return distance * 1.0; // Reduced from 2.0 to allow more exploration
+/** A* heuristic: cosine distance to end vector (admissible). */
+async function calculateHeuristic(nodeId: string, endVector: number[]): Promise<number> {
+    const v = await sqliteStoreManager.getEmbeddingRepo().getEmbeddingForSemanticSearch(nodeId);
+    if (!v) return 2.0;
+    return Math.max(0, 1 - cosineSimilarity(v, endVector));
 }
 
-/**
- * Calculate cosine similarity between two vectors.
- */
 function cosineSimilarity(a: number[], b: number[]): number {
     if (a.length !== b.length) return 0;
-
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
-
-    for (let i = 0; i < a.length; i++) {
-        dotProduct += a[i] * b[i];
-        normA += a[i] * a[i];
-        normB += b[i] * b[i];
-    }
-
-    if (normA === 0 || normB === 0) return 0;
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+    return na === 0 || nb === 0 ? 0 : dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-/**
- * Reconstruct path from A* node chain.
- */
+/** Reconstruct path from A* node chain. */
 function reconstructAStarPath(endNode: AStarNode): PathSegment[] {
     const path: PathSegment[] = [];
     let current: AStarNode | null = endNode;
@@ -657,49 +453,17 @@ function reconstructAStarPath(endNode: AStarNode): PathSegment[] {
     return path;
 }
 
-// ============================================================================
-// Strategy Fallback: Permissive Search
-// ============================================================================
+// --- Strategy Fallback: Permissive Search ---
 
-/**
- * Fallback strategy when all other strategies fail.
- * Uses very permissive search to find ANY connection between nodes.
- */
+/** Fallback: permissive search with doubled hops and all edge types. */
 async function fallbackStrategy(context: SearchContext): Promise<ScoredPath[]> {
-    const paths: ScoredPath[] = [];
-
-    // Try with increased hop limit and no edge restrictions
-    const path = await bidirectionalBFS(
-        context.startId,
-        context.endId,
-        new Set(), // No forbidden edges
-        true, // Always include semantic
-        Math.max(context.maxHops * 2, 8), // Double hop limit, minimum 8
-        context.filters,
-        context.excludedDocIds
-    );
-
-    if (path) {
-        paths.push({
-            segments: path,
-            strategy: 'fastTrack', // Label as fastTrack for UI consistency
-            score: createEmptyScore(),
-            insightLabel: 'Found through extended search - this connection exists but may be indirect.',
-            reasoning: 'Fallback search found this path after other strategies failed. Consider it as a distant connection.',
-        });
-    }
-
-    return paths;
+    const path = await bidirectionalBFS(context.startId, context.endId, new Set(), true, Math.max(context.maxHops * 2, 8), context.filters, context.excludedDocIds);
+    return path ? [{ segments: path, strategy: 'fastTrack', score: createEmptyScore(), insightLabel: 'Found through extended search - this connection exists but may be indirect.', reasoning: 'Fallback search found this path after other strategies failed. Consider it as a distant connection.' }] : [];
 }
 
-// ============================================================================
-// Strategy 3: Brainstorm - Cross-Domain Bridge Discovery
-// ============================================================================
+// --- Strategy 3: Brainstorm - Cross-Domain Bridge Discovery ---
 
-/**
- * Find paths that cross different knowledge domains.
- * Forces exploration through domain boundaries for serendipitous discovery.
- */
+/** Find cross-domain bridge paths. */
 async function brainstormStrategy(context: SearchContext): Promise<ScoredPath[]> {
     const paths: ScoredPath[] = [];
     const brainstormForbiddenEdges = new Set<string>();
@@ -720,106 +484,151 @@ async function brainstormStrategy(context: SearchContext): Promise<ScoredPath[]>
         // If same folder, force cross-domain exploration
         const forceCrossDomain = startFolder === endFolder || i === 0; // Always force cross-domain on first attempt
 
-        // Search with preference for domain-crossing edges
-        const path = await bidirectionalBFSWithDomainPreference(
+        const path = await bidirectionalBFS(
             context.startId,
             context.endId,
             brainstormForbiddenEdges,
             context.includeSemantic,
             context.maxHops,
             context.filters,
-            forceCrossDomain ? endFolder : null,
-            context.excludedDocIds
+            context.excludedDocIds,
+            forceCrossDomain ? endFolder : null
         );
 
         if (!path) break;
 
-        // Check if path actually crosses domains or has interesting semantic jumps
-        const nodeIds = path.map(s => s.nodeId);
-        const metasMap = await getIndexedDocumentsByIds(nodeIds);
+        // Check if path crosses domains or has interesting semantic jumps
+        const metasMap = await getIndexedDocumentsByIds(path.map(s => s.nodeId));
         const domains = new Set<string>();
-        let semanticConnections = 0;
-        let totalSimilarity = 0;
+        let semCount = 0, semSimSum = 0;
+        for (const seg of path) {
+            const meta = metasMap.get(seg.nodeId);
+            if (meta) domains.add(getParentFolder(meta.path));
+            if (seg.type === 'semantic_neighbors') { semCount++; if (seg.similarity) semSimSum += parseFloat(seg.similarity) / 100; }
+        }
+        const avgSim = semCount > 0 ? semSimSum / semCount : 0;
 
-        for (const segment of path) {
-            const meta = metasMap.get(segment.nodeId);
-            if (meta) {
-                domains.add(getParentFolder(meta.path));
-            }
-            if (segment.type === 'semantic_neighbors') {
-                semanticConnections++;
-                if (segment.similarity) {
-                    const sim = parseFloat(segment.similarity) / 100;
-                    totalSimilarity += sim;
-                }
-            }
+        if (domains.size > 1 || (semCount > 0 && avgSim > 0.7)) {
+            const insightMessage = domains.size > 1
+                ? `Crossing ${domains.size} different domains, this connection may spark unexpected inspiration.`
+                : `Through creative semantic connections (avg ${Math.round(avgSim * 100)}% similarity), these ideas form an unexpected bridge.`;
+            paths.push({ segments: path, strategy: 'brainstorm', score: createEmptyScore(), insightLabel: insightMessage, reasoning: 'Selected for cross-domain exploration and creative connection discovery.' });
         }
 
-        // Accept path if it crosses domains OR has high-quality semantic connections
-        const avgSimilarity = semanticConnections > 0 ? totalSimilarity / semanticConnections : 0;
-        const shouldAccept = domains.size > 1 || (semanticConnections > 0 && avgSimilarity > 0.7);
-
-        if (shouldAccept) {
-            const domainCount = domains.size;
-            let insightMessage = '';
-
-            if (domainCount > 1) {
-                insightMessage = `Crossing ${domainCount} different domains, this connection may spark unexpected inspiration.`;
-            } else if (semanticConnections > 0) {
-                insightMessage = `Through creative semantic connections (avg ${Math.round(avgSimilarity * 100)}% similarity), these ideas form an unexpected bridge.`;
-            } else {
-                insightMessage = `This path reveals hidden connections through creative exploration.`;
-            }
-
-            paths.push({
-                segments: path,
-                strategy: 'brainstorm',
-                score: createEmptyScore(),
-                insightLabel: insightMessage,
-                reasoning: 'Selected for cross-domain exploration and creative connection discovery.',
-            });
-
-            // Block key cross-domain edges for diversity
-            const edgeToBlock = identifyKeyEdge(path);
-            if (edgeToBlock) {
-                brainstormForbiddenEdges.add(edgeToBlock);
-            } else {
-                break;
-            }
-        } else {
-            // If path doesn't meet criteria, still block an edge to try different approaches
-            const edgeToBlock = identifyKeyEdge(path);
-            if (edgeToBlock) {
-                brainstormForbiddenEdges.add(edgeToBlock);
-            } else {
-                break;
-            }
-        }
+        const edgeToBlock = identifyKeyEdge(path);
+        if (edgeToBlock) brainstormForbiddenEdges.add(edgeToBlock); else break;
     }
 
     return paths;
 }
 
-/**
- * Get parent folder from file path.
- */
+/** Get parent folder from file path. */
 function getParentFolder(path: string): string {
     const lastSlash = path.lastIndexOf('/');
     return lastSlash > 0 ? path.substring(0, lastSlash) : '/';
 }
 
-/**
- * BFS with preference for domain-crossing edges.
- */
-async function bidirectionalBFSWithDomainPreference(
+// --- Strategy 4: Temporal - Time-Ordered Knowledge Evolution ---
+
+/** Find paths following chronological order. */
+async function temporalStrategy(context: SearchContext): Promise<ScoredPath[]> {
+    const [startMeta, endMeta] = await Promise.all([getIndexedDocumentById(context.startId), getIndexedDocumentById(context.endId)]);
+    if (!startMeta || !endMeta) return [];
+
+    const startTime = startMeta.mtime ?? startMeta.ctime ?? Date.now();
+    const endTime = endMeta.mtime ?? endMeta.ctime ?? Date.now();
+    const path = await temporalBFS(context.startId, context.endId, Math.max(context.maxHops * 1.5, context.maxHops + 2), startTime <= endTime, context.filters, context.excludedDocIds);
+
+    if (!path?.length) return [];
+    return [{ segments: path, strategy: 'temporal', score: createEmptyScore(), insightLabel: `This is your thought evolution from ${new Date(startTime).toLocaleDateString()} to ${new Date(endTime).toLocaleDateString()}.`, reasoning: 'Temporal ordering reveals your knowledge development trajectory.' }];
+}
+
+/** Apply filters to neighbors if provided. */
+async function applyNeighborFilters(neighbors: NeighborNode[], filters?: any): Promise<NeighborNode[]> {
+    if (!filters) return neighbors;
+    const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(neighbors.map(n => n.id), filters);
+    return applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
+}
+
+/** BFS with temporal ordering constraint and heuristic pruning. */
+async function temporalBFS(
+    startId: string, endId: string, maxHops: number, isForward: boolean, filters?: any, excludedDocIds?: Set<string>
+): Promise<PathSegment[] | null> {
+    type VisitInfo = { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; timestamp: number };
+    const visited = new Map<string, VisitInfo>();
+
+    const [startMeta, endMeta] = await Promise.all([getIndexedDocumentById(startId), getIndexedDocumentById(endId)]);
+    if (!startMeta || !endMeta) return null;
+
+    const startTimestamp = startMeta.mtime ?? startMeta.ctime ?? Date.now();
+    const endTimestamp = endMeta.mtime ?? endMeta.ctime ?? Date.now();
+    visited.set(startId, { parentId: null, type: 'physical_neighbors', timestamp: startTimestamp });
+
+    let queue: { id: string; timestamp: number; heuristicScore: number }[] = [{ id: startId, timestamp: startTimestamp, heuristicScore: 0 }];
+    const TIME_WINDOW_HOURS = 24 * 7, TIMEOUT_MS = 3000, startTime = Date.now();
+
+    for (let hops = 0; queue.length > 0 && hops < maxHops; hops++) {
+        if (Date.now() - startTime > TIMEOUT_MS) break;
+        queue.sort((a, b) => a.heuristicScore - b.heuristicScore);
+        const currentLevel = queue.slice(0, SLICE_CAPS.inspector.pathFindQueueLevel);
+        queue = queue.slice(5);
+        const nextQueue: typeof queue = [];
+
+        for (const current of currentLevel) {
+            const neighbors = await applyNeighborFilters(await getNeighbors(current.id, 10, 'sparse-only', excludedDocIds), filters);
+            const metasMap = await getIndexedDocumentsByIds(neighbors.map(n => n.id));
+
+            const scored = neighbors
+                .filter(n => {
+                    if (visited.has(n.id)) return false;
+                    const m = metasMap.get(n.id); if (!m) return false;
+                    const diff = ((m.mtime ?? m.ctime ?? Date.now()) - current.timestamp) / 3600000;
+                    return isForward ? diff >= -TIME_WINDOW_HOURS : diff <= TIME_WINDOW_HOURS;
+                })
+                .map(n => {
+                    const t = (metasMap.get(n.id)!.mtime ?? metasMap.get(n.id)!.ctime ?? Date.now());
+                    return { neighbor: n, neighborTime: t, heuristicScore: Math.abs(t - endTimestamp) / 3600000 };
+                })
+                .sort((a, b) => a.heuristicScore - b.heuristicScore)
+                .slice(0, SLICE_CAPS.inspector.pathFindQueueLevel);
+
+            for (const { neighbor, neighborTime, heuristicScore } of scored) {
+                visited.set(neighbor.id, { parentId: current.id, type: neighbor.foundBy, timestamp: neighborTime });
+                if (neighbor.id === endId) return reconstructVisitedPath(endId, visited);
+                nextQueue.push({ id: neighbor.id, timestamp: neighborTime, heuristicScore });
+            }
+        }
+        queue = nextQueue;
+    }
+    return null;
+}
+
+/** Reconstruct path from visited map (used by temporal and bidirectional). */
+function reconstructVisitedPath<T extends { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors' }>(
+    endId: string, visited: Map<string, T>
+): PathSegment[] {
+    const path: PathSegment[] = [];
+    let currentId: string | null = endId;
+    while (currentId) {
+        const info = visited.get(currentId); if (!info) break;
+        path.unshift({ nodeId: currentId, type: info.type, timestamp: (info as any).timestamp, similarity: (info as any).similarity });
+        currentId = info.parentId;
+    }
+    return path;
+}
+
+// --- Core BFS Implementation ---
+
+/** Bidirectional BFS for path finding. Supports optional domain-crossing preference via avoidFolder. */
+async function bidirectionalBFS(
     startId: string,
     endId: string,
     forbiddenEdges: Set<string>,
     includeSemantic: boolean,
     maxHops: number,
     filters?: any,
-    avoidFolder?: string | null,
-    excludedDocIds?: Set<string>
+    excludedDocIds?: Set<string>,
+    avoidFolder?: string | null
 ): Promise<PathSegment[] | null> {
     const startVisited = new Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>();
     const endVisited = new Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>();
@@ -832,15 +641,14 @@ async function bidirectionalBFSWithDomainPreference(
     let hops = 0;
 
     while (startQueue.length > 0 && endQueue.length > 0 && hops < maxHops) {
-        // Expand from start with domain preference
-        const startResult = await expandFrontierWithDomainPreference(
+        const startResult = await expandFrontier(
             startQueue, startVisited, endVisited, forbiddenEdges, includeSemantic, filters, avoidFolder, excludedDocIds
         );
         if (startResult.found && startResult.intersectId) {
             return reconstructPath(startResult.intersectId, startVisited, endVisited);
         }
 
-        const endResult = await expandFrontierWithDomainPreference(
+        const endResult = await expandFrontier(
             endQueue, endVisited, startVisited, forbiddenEdges, includeSemantic, filters, avoidFolder, excludedDocIds
         );
         if (endResult.found && endResult.intersectId) {
@@ -853,1050 +661,270 @@ async function bidirectionalBFSWithDomainPreference(
     return null;
 }
 
-// ============================================================================
-// Strategy 4: Temporal - Time-Ordered Knowledge Evolution
-// ============================================================================
-
-/**
- * Find paths following chronological order.
- * Shows how ideas evolved over time.
- */
-async function temporalStrategy(context: SearchContext): Promise<ScoredPath[]> {
-    const paths: ScoredPath[] = [];
-
-    // Get timestamps for start and end nodes
-    const [startMeta, endMeta] = await Promise.all([
-        getIndexedDocumentById(context.startId),
-        getIndexedDocumentById(context.endId)
-    ]);
-
-    if (!startMeta || !endMeta) return paths;
-
-    const startTime = startMeta.mtime ?? startMeta.ctime ?? Date.now();
-    const endTime = endMeta.mtime ?? endMeta.ctime ?? Date.now();
-
-    // Determine direction based on timestamps
-    // Use creation time as fallback if modification time is unreliable for evolution
-    const isForward = startTime <= endTime;
-
-    // Search with temporal constraint
-    // Give temporal search more hops since temporal evolution is often more circuitous
-    const path = await temporalBFS(
-        context.startId,
-        context.endId,
-        Math.max(context.maxHops * 1.5, context.maxHops + 2), // Increase hop limit for temporal
-        isForward,
-        context.filters,
-        context.excludedDocIds
-    );
-
-    if (path && path.length > 0) {
-        const startDate = new Date(startTime).toLocaleDateString();
-        const endDate = new Date(endTime).toLocaleDateString();
-        paths.push({
-            segments: path,
-            strategy: 'temporal',
-            score: createEmptyScore(),
-            insightLabel: `This is your thought evolution from ${startDate} to ${endDate}.`,
-            reasoning: 'Temporal ordering reveals your knowledge development trajectory.',
-        });
-    }
-
-    return paths;
-}
-
-/**
- * BFS with temporal ordering constraint.
- * Uses physical-first approach with limited semantic fallback for performance.
- * Implements heuristic pruning to prioritize temporally relevant nodes.
- */
-async function temporalBFS(
-    startId: string,
-    endId: string,
-    maxHops: number,
-    isForward: boolean,
-    filters?: any,
-    excludedDocIds?: Set<string>
-): Promise<PathSegment[] | null> {
-    const visited = new Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; timestamp: number }>();
-
-    // Get start and end timestamps for heuristic guidance
-    const [startMeta, endMeta] = await Promise.all([
-        getIndexedDocumentById(startId),
-        getIndexedDocumentById(endId)
-    ]);
-    if (!startMeta || !endMeta) return null;
-
-    const startTimestamp = startMeta.mtime ?? startMeta.ctime ?? Date.now();
-    const endTimestamp = endMeta.mtime ?? endMeta.ctime ?? Date.now();
-
-    visited.set(startId, { parentId: null, type: 'physical_neighbors', timestamp: startTimestamp });
-
-    let queue: { id: string; timestamp: number; heuristicScore: number }[] = [{
-        id: startId,
-        timestamp: startTimestamp,
-        heuristicScore: 0
-    }];
-    let hops = 0;
-
-    // Time window tolerance (optimized for performance)
-    const TIME_WINDOW_HOURS = 24 * 7; // 7 days for better performance
-
-    // Performance timeout check - prevent temporal search from dominating execution time
-    const startTime = Date.now();
-    const TIMEOUT_MS = 3000; // 3 second timeout for temporal search
-
-    while (queue.length > 0 && hops < maxHops) {
-        // Timeout check
-        if (Date.now() - startTime > TIMEOUT_MS) {
-            console.warn('[Temporal] Strategy timeout, returning partial results');
-            break;
-        }
-
-        // Sort queue by heuristic score (closer to end time = better)
-        queue.sort((a, b) => a.heuristicScore - b.heuristicScore);
-        const nextQueue: { id: string; timestamp: number; heuristicScore: number }[] = [];
-
-        // Limit processing per level to prevent explosion (max 5 nodes per level)
-        // This bounds the search space and prevents exponential growth
-        const currentLevelNodes = queue.slice(0, SLICE_CAPS.inspector.pathFindQueueLevel);
-        queue = queue.slice(5);
-
-        for (const current of currentLevelNodes) {
-            // Physical-first approach: prefer physical neighbors, use semantic as fallback
-            let neighbors = await getPhysicalNeighbors(current.id, 10, excludedDocIds);
-
-            if (neighbors.length < 3) {
-                const physicalIds = new Set(neighbors.map(n => n.id));
-                if (excludedDocIds?.size) excludedDocIds.forEach((id) => physicalIds.add(id));
-                const semanticNeighbors = await getSemanticNeighbors(current.id, 3, physicalIds);
-                for (const s of semanticNeighbors) {
-                    if (excludedDocIds?.has(s.id)) continue;
-                    neighbors.push({ id: s.id, foundBy: 'semantic_neighbors' as const, similarity: s.similarity });
-                }
-            }
-
-            let filteredNeighbors = neighbors;
-            if (filters) {
-                const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(
-                    neighbors.map(n => n.id),
-                    filters
-                );
-                filteredNeighbors = applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
-            }
-
-            const neighborIds = filteredNeighbors.map(n => n.id);
-            const neighborMetasMap = await getIndexedDocumentsByIds(neighborIds);
-
-            // Score and filter neighbors by temporal relevance
-            const scoredNeighbors = filteredNeighbors
-                .filter(neighbor => {
-                    if (visited.has(neighbor.id)) return false;
-
-                    const neighborMeta = neighborMetasMap.get(neighbor.id);
-                    if (!neighborMeta) return false;
-
-                    const neighborTime = neighborMeta.mtime ?? neighborMeta.ctime ?? Date.now();
-
-                    // Temporal constraint with sliding window
-                    const timeDiff = neighborTime - current.timestamp;
-                    const timeDiffHours = timeDiff / (1000 * 60 * 60);
-
-                    // Allow flexible temporal ordering within window
-                    const isValidTemporal = isForward
-                        ? timeDiffHours >= -TIME_WINDOW_HOURS // Allow some backward movement within window
-                        : timeDiffHours <= TIME_WINDOW_HOURS;  // Allow some forward movement within window
-
-                    return isValidTemporal;
-                })
-                .map(neighbor => {
-                    const neighborMeta = neighborMetasMap.get(neighbor.id)!;
-                    const neighborTime = neighborMeta.mtime ?? neighborMeta.ctime ?? Date.now();
-
-                    // Heuristic: prefer nodes closer to end time (temporal distance)
-                    const temporalDistance = Math.abs(neighborTime - endTimestamp);
-                    const heuristicScore = temporalDistance / (1000 * 60 * 60); // Hours difference
-
-                    return {
-                        neighbor,
-                        neighborTime,
-                        heuristicScore
-                    };
-                })
-                .sort((a, b) => a.heuristicScore - b.heuristicScore) // Sort by temporal proximity to end time
-                .slice(0, SLICE_CAPS.inspector.pathFindQueueLevel); // Take only top N most temporally relevant neighbors - bounds search
-
-            for (const { neighbor, neighborTime, heuristicScore } of scoredNeighbors) {
-                const connectionType = neighbor.foundBy === 'physical_neighbors'
-                    ? 'physical_neighbors'
-                    : 'semantic_neighbors';
-
-                visited.set(neighbor.id, {
-                    parentId: current.id,
-                    type: connectionType,
-                    timestamp: neighborTime,
-                });
-
-                // Check if goal reached
-                if (neighbor.id === endId) {
-                    return reconstructTemporalPath(endId, visited);
-                }
-
-                nextQueue.push({
-                    id: neighbor.id,
-                    timestamp: neighborTime,
-                    heuristicScore
-                });
-            }
-        }
-
-        queue = nextQueue;
-        hops++;
-    }
-
-    return null;
-}
-
-/**
- * Reconstruct path from temporal search.
- */
-function reconstructTemporalPath(
-    endId: string,
-    visited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; timestamp: number }>
-): PathSegment[] {
-    const path: PathSegment[] = [];
-    let currentId: string | null = endId;
-
-    while (currentId) {
-        const info = visited.get(currentId);
-        if (!info) break;
-
-        path.unshift({
-            nodeId: currentId,
-            type: info.type,
-            timestamp: info.timestamp,
-        });
-
-        currentId = info.parentId;
-    }
-
-    return path;
-}
-
-// ============================================================================
-// Core BFS Implementation
-// ============================================================================
-
-/**
- * Bidirectional BFS for path finding.
- */
-async function bidirectionalBFS(
-    startId: string,
-    endId: string,
-    forbiddenEdges: Set<string>,
-    includeSemantic: boolean,
-    maxHops: number,
-    filters?: any,
-    excludedDocIds?: Set<string>
-): Promise<PathSegment[] | null> {
-    const startVisited = new Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>();
-    const endVisited = new Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>();
-
-    startVisited.set(startId, { parentId: null, type: 'physical_neighbors' });
-    endVisited.set(endId, { parentId: null, type: 'physical_neighbors' });
-
-    let startQueue = [startId];
-    let endQueue = [endId];
-    let hops = 0;
-
-    while (startQueue.length > 0 && endQueue.length > 0 && hops < maxHops) {
-        // Expand from start
-        const startResult = await expandFrontier(
-            startQueue, startVisited, endVisited, forbiddenEdges, includeSemantic, filters, excludedDocIds
-        );
-        if (startResult.found && startResult.intersectId) {
-            return reconstructPath(startResult.intersectId, startVisited, endVisited);
-        }
-
-        const endResult = await expandFrontier(
-            endQueue, endVisited, startVisited, forbiddenEdges, includeSemantic, filters, excludedDocIds
-        );
-        if (endResult.found && endResult.intersectId) {
-            return reconstructPath(endResult.intersectId, startVisited, endVisited);
-        }
-
-        hops++;
-    }
-
-    return null;
-}
-
-/**
- * Expand search frontier for BFS.
- */
+/** Expand search frontier for BFS, with optional domain-crossing preference. */
 async function expandFrontier(
     queue: string[],
     myVisited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>,
     otherVisited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>,
-    forbiddenEdges: Set<string>,
-    includeSemantic: boolean,
-    filters?: any,
-    excludedDocIds?: Set<string>
+    forbiddenEdges: Set<string>, includeSemantic: boolean, filters?: any, avoidFolder?: string | null, excludedDocIds?: Set<string>
 ): Promise<{ found: boolean; intersectId?: string }> {
     const nextQueue: string[] = [];
 
     for (const currentId of queue) {
-        let neighbors = includeSemantic
-            ? await getMixedNeighbors(currentId, true, 20, excludedDocIds)
-            : await getPhysicalNeighbors(currentId, 20, excludedDocIds);
+        let neighbors = await getNeighbors(currentId, 20, includeSemantic ? 'always' : 'none', excludedDocIds);
 
-        if (filters) {
-            const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(
-                neighbors.map(n => n.id),
-                filters
-            );
-            neighbors = applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
-        }
-
-        for (const neighbor of neighbors) {
-            const edgeKey = `${currentId}->${neighbor.id}`;
-            if (forbiddenEdges.has(edgeKey)) continue;
-
-            if (!myVisited.has(neighbor.id)) {
-                myVisited.set(neighbor.id, {
-                    parentId: currentId,
-                    type: neighbor.foundBy,
-                    similarity: neighbor.similarity,
-                });
-                nextQueue.push(neighbor.id);
-
-                if (otherVisited.has(neighbor.id)) {
-                    return { found: true, intersectId: neighbor.id };
-                }
-            }
-        }
-    }
-
-    // Update queue in place
-    queue.length = 0;
-    queue.push(...nextQueue);
-
-    return { found: false };
-}
-
-/**
- * Expand frontier with domain crossing preference.
- */
-async function expandFrontierWithDomainPreference(
-    queue: string[],
-    myVisited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>,
-    otherVisited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>,
-    forbiddenEdges: Set<string>,
-    includeSemantic: boolean,
-    filters?: any,
-    avoidFolder?: string | null,
-    excludedDocIds?: Set<string>
-): Promise<{ found: boolean; intersectId?: string }> {
-    const nextQueue: string[] = [];
-
-    for (const currentId of queue) {
-        let neighbors = includeSemantic
-            ? await getMixedNeighbors(currentId, true, 20, excludedDocIds)
-            : await getPhysicalNeighbors(currentId, 20, excludedDocIds);
-
-        // Sort neighbors to prefer those in different folders
         if (avoidFolder) {
-            const neighborIds = neighbors.map(n => n.id);
-            const metasMap = await getIndexedDocumentsByIds(neighborIds);
-            const neighborsWithMeta = neighbors.map(n => {
-                const meta = metasMap.get(n.id);
-                return { ...n, folder: meta ? getParentFolder(meta.path) : '' };
-            });
-            // Prefer neighbors not in the avoid folder
-            neighborsWithMeta.sort((a, b) => {
-                const aInAvoid = a.folder === avoidFolder ? 1 : 0;
-                const bInAvoid = b.folder === avoidFolder ? 1 : 0;
-                return aInAvoid - bInAvoid;
-            });
-            neighbors = neighborsWithMeta;
+            const metasMap = await getIndexedDocumentsByIds(neighbors.map(n => n.id));
+            neighbors = neighbors
+                .map(n => ({ ...n, folder: metasMap.get(n.id) ? getParentFolder(metasMap.get(n.id)!.path) : '' }))
+                .sort((a, b) => (a.folder === avoidFolder ? 1 : 0) - (b.folder === avoidFolder ? 1 : 0));
         }
 
-        if (filters) {
-            const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(
-                neighbors.map(n => n.id),
-                filters
-            );
-            neighbors = applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
-        }
+        neighbors = await applyNeighborFilters(neighbors, filters);
 
         for (const neighbor of neighbors) {
-            const edgeKey = `${currentId}->${neighbor.id}`;
-            if (forbiddenEdges.has(edgeKey)) continue;
-
+            if (forbiddenEdges.has(`${currentId}->${neighbor.id}`)) continue;
             if (!myVisited.has(neighbor.id)) {
-                myVisited.set(neighbor.id, {
-                    parentId: currentId,
-                    type: neighbor.foundBy,
-                    similarity: neighbor.similarity,
-                });
+                myVisited.set(neighbor.id, { parentId: currentId, type: neighbor.foundBy, similarity: neighbor.similarity });
                 nextQueue.push(neighbor.id);
-
-                if (otherVisited.has(neighbor.id)) {
-                    return { found: true, intersectId: neighbor.id };
-                }
+                if (otherVisited.has(neighbor.id)) return { found: true, intersectId: neighbor.id };
             }
         }
     }
 
     queue.length = 0;
     queue.push(...nextQueue);
-
     return { found: false };
 }
 
-// ============================================================================
-// Neighbor Retrieval
-// ============================================================================
+// --- Neighbor Retrieval ---
 
-/**
- * Get only physical neighbors. Optionally exclude doc IDs (e.g. AI analysis folder).
- */
-async function getPhysicalNeighbors(nodeId: string, limit: number = 20, excludedDocIds?: Set<string>): Promise<NeighborNode[]> {
-    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
-    const neighbors: NeighborNode[] = [];
+/** Get physical neighbors, optionally excluding doc IDs. */
+async function getPhysicalNeighbors(nodeId: string, limit = 20, excludedDocIds?: Set<string>): Promise<NeighborNode[]> {
+    const edges = await sqliteStoreManager.getMobiusEdgeRepo().getAllEdgesForNode(nodeId, limit);
+    const seen = new Set<string>(), result: NeighborNode[] = [];
+    for (const e of edges) {
+        const nid = e.from_node_id === nodeId ? e.to_node_id : e.from_node_id;
+        if (!excludedDocIds?.has(nid) && !seen.has(nid)) { seen.add(nid); result.push({ id: nid, foundBy: 'physical_neighbors' }); }
+    }
+    return result;
+}
 
-    const physicalEdges = await mobiusEdgeRepo.getAllEdgesForNode(nodeId, limit);
-    const seenIds = new Set<string>();
-
-    for (const edge of physicalEdges) {
-        const neighborId = edge.from_node_id === nodeId ? edge.to_node_id : edge.from_node_id;
-        if (excludedDocIds?.has(neighborId)) continue;
-        if (!seenIds.has(neighborId)) {
-            seenIds.add(neighborId);
-            neighbors.push({ id: neighborId, foundBy: 'physical_neighbors' });
+/** Get neighbors with configurable semantic inclusion ('none' | 'always' | 'sparse-only'). */
+async function getNeighbors(nodeId: string, limit = 20, semanticMode: 'none' | 'always' | 'sparse-only' = 'none', excludedDocIds?: Set<string>): Promise<NeighborNode[]> {
+    const physical = await getPhysicalNeighbors(nodeId, limit, excludedDocIds);
+    const neighbors: NeighborNode[] = [...physical];
+    if (semanticMode === 'always' || (semanticMode === 'sparse-only' && physical.length < 3)) {
+        const excludeIds = new Set(physical.map(n => n.id));
+        if (excludedDocIds) excludedDocIds.forEach(id => excludeIds.add(id));
+        const semLimit = semanticMode === 'sparse-only' ? 15 : Math.max(5, limit - neighbors.length);
+        for (const n of await getSemanticNeighbors(nodeId, semLimit, excludeIds)) {
+            if (!excludedDocIds?.has(n.id)) neighbors.push({ id: n.id, foundBy: 'semantic_neighbors', similarity: n.similarity });
         }
     }
-
     return neighbors;
 }
 
-/**
- * Get mixed neighbors (physical + semantic). Optionally exclude doc IDs.
- */
-async function getMixedNeighbors(nodeId: string, includeSemantic: boolean, limit: number = 20, excludedDocIds?: Set<string>): Promise<NeighborNode[]> {
-    const neighbors: NeighborNode[] = [];
+// --- Path Reconstruction ---
 
-    const physicalNeighbors = await getPhysicalNeighbors(nodeId, limit, excludedDocIds);
-    neighbors.push(...physicalNeighbors);
-
-    const physicalIds = new Set(physicalNeighbors.map(n => n.id));
-    if (excludedDocIds) excludedDocIds.forEach((id) => physicalIds.add(id));
-
-    if (includeSemantic) {
-        const semanticNeighbors = await getSemanticNeighbors(
-            nodeId,
-            Math.max(5, limit - neighbors.length),
-            physicalIds
-        );
-        for (const neighbor of semanticNeighbors) {
-            if (excludedDocIds?.has(neighbor.id)) continue;
-            neighbors.push({
-                id: neighbor.id,
-                foundBy: 'semantic_neighbors',
-                similarity: neighbor.similarity,
-            });
-        }
-    }
-
-    return neighbors;
-}
-
-/**
- * Smart neighbor selection with semantic throttling. Optionally exclude doc IDs.
- */
-async function getSmartNeighbors(
-    nodeId: string,
-    includeSemantic: boolean,
-    throttleSemantic: boolean,
-    excludedDocIds?: Set<string>
-): Promise<NeighborNode[]> {
-    const neighbors: NeighborNode[] = [];
-
-    const physicalNeighbors = await getPhysicalNeighbors(nodeId, 20, excludedDocIds);
-    neighbors.push(...physicalNeighbors);
-
-    if (includeSemantic && !throttleSemantic && physicalNeighbors.length < 3) {
-        const physicalIds = new Set(physicalNeighbors.map(n => n.id));
-        if (excludedDocIds) excludedDocIds.forEach((id) => physicalIds.add(id));
-        const semanticNeighbors = await getSemanticNeighbors(nodeId, 15, physicalIds);
-        for (const neighbor of semanticNeighbors) {
-            if (excludedDocIds?.has(neighbor.id)) continue;
-            neighbors.push({
-                id: neighbor.id,
-                foundBy: 'semantic_neighbors',
-                similarity: neighbor.similarity,
-            });
-        }
-    }
-
-    return neighbors;
-}
-
-// ============================================================================
-// Path Reconstruction
-// ============================================================================
-
-/**
- * Reconstruct path from bidirectional search visited maps.
- */
+/** Reconstruct path from bidirectional search visited maps. */
 function reconstructPath(
     intersectId: string,
     startVisited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>,
     endVisited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>
 ): PathSegment[] {
-    const path: PathSegment[] = [];
-
-    // Build path from start to intersection
-    let currentId: string | null = intersectId;
-    const startPath: PathSegment[] = [];
-
-    while (currentId) {
-        const info = startVisited.get(currentId);
-        if (!info) break;
-
-        startPath.unshift({
-            nodeId: currentId,
-            type: info.type,
-            similarity: info.similarity,
-        });
-
-        currentId = info.parentId;
-    }
-
-    // Build path from intersection to end
-    currentId = intersectId;
+    const startPath = reconstructVisitedPath(intersectId, startVisited);
+    // End path: walk from intersection toward end, then append (skip intersection to avoid duplicate)
     const endPath: PathSegment[] = [];
-
+    let currentId: string | null = intersectId;
     while (currentId) {
-        const info = endVisited.get(currentId);
-        if (!info) break;
-
-        endPath.push({
-            nodeId: currentId,
-            type: info.type,
-            similarity: info.similarity,
-        });
-
+        const info = endVisited.get(currentId); if (!info) break;
+        endPath.push({ nodeId: currentId, type: info.type, similarity: info.similarity });
         currentId = info.parentId;
     }
-
-    // Combine paths (avoid duplicating intersection)
-    path.push(...startPath);
-    if (endPath.length > 1) {
-        path.push(...endPath.slice(1));
-    }
-
-    return path;
+    return endPath.length > 1 ? [...startPath, ...endPath.slice(1)] : startPath;
 }
 
-// ============================================================================
-// Path Quality Evaluation
-// ============================================================================
+// --- Path Quality Evaluation ---
 
-/**
- * Create empty score structure.
- */
+/** Create empty score structure. */
 function createEmptyScore(): PathScore {
-    return {
-        totalScore: 0,
-        physicalRatio: 0,
-        avgSimilarity: 0,
-        uniqueness: 1,
-        freshness: 0,
-        domainJumps: 0,
-        length: 0,
-    };
+    return { totalScore: 0, physicalRatio: 0, avgSimilarity: 0, uniqueness: 1, freshness: 0, domainJumps: 0, length: 0 };
 }
 
-/**
- * Score all paths based on quality dimensions.
- */
+/** Score all paths based on quality dimensions. */
 async function scorePaths(paths: ScoredPath[], allPaths: ScoredPath[]): Promise<ScoredPath[]> {
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+    const now = Date.now(), oneMonthMs = 30 * 24 * 60 * 60 * 1000;
 
     for (const path of paths) {
-        const segments = path.segments;
+        const { segments } = path;
         const length = segments.length - 1;
-
-        // Physical ratio
         const physicalCount = segments.filter(s => s.type === 'physical_neighbors').length;
         const physicalRatio = length > 0 ? (physicalCount - 1) / length : 1;
-
-        // Average similarity for semantic connections
-        const semanticSegments = segments.filter(s => s.type === 'semantic_neighbors' && s.similarity);
-        const avgSimilarity = semanticSegments.length > 0
-            ? semanticSegments.reduce((sum, s) => sum + (parseFloat(s.similarity!) / 100), 0) / semanticSegments.length
-            : 0;
-
-        // Uniqueness (compared to other paths)
+        const semSegs = segments.filter(s => s.type === 'semantic_neighbors' && s.similarity);
+        const avgSimilarity = semSegs.length > 0 ? semSegs.reduce((sum, s) => sum + parseFloat(s.similarity!) / 100, 0) / semSegs.length : 0;
         const uniqueness = calculateUniqueness(segments, allPaths);
 
-        // Freshness (based on last access time)
-        let freshnessSum = 0;
         const nodeIds = segments.map(s => s.nodeId);
         const statsMap = await mobiusNodeRepo.getByDocIds(nodeIds);
-        const now = Date.now();
-        const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
-
-        for (const nodeId of nodeIds) {
-            const stats = statsMap.get(nodeId);
-            if (stats?.last_open_ts) {
-                const age = now - stats.last_open_ts;
-                freshnessSum += Math.max(0, 1 - age / oneMonthMs);
-            } else {
-                freshnessSum += 0.5; // Default freshness for untracked nodes
-            }
+        let freshnessSum = 0;
+        for (const id of nodeIds) {
+            const s = statsMap.get(id);
+            freshnessSum += s?.last_open_ts ? Math.max(0, 1 - (now - s.last_open_ts) / oneMonthMs) : 0.5;
         }
         const freshness = nodeIds.length > 0 ? freshnessSum / nodeIds.length : 0;
-
-        // Domain jumps
         const domainJumps = await countDomainJumps(segments);
 
-        // Calculate total score
-        const totalScore =
-            physicalRatio * SCORE_WEIGHTS.physicalRatio * 100 +
-            freshness * SCORE_WEIGHTS.freshness * 100 +
-            Math.min(domainJumps, 3) / 3 * SCORE_WEIGHTS.domainJumps * 100 +
-            uniqueness * SCORE_WEIGHTS.uniqueness * 100 -
-            length * SCORE_WEIGHTS.lengthPenalty * 10;
+        const totalScore = physicalRatio * SCORE_WEIGHTS.physicalRatio * 100 + freshness * SCORE_WEIGHTS.freshness * 100
+            + Math.min(domainJumps, 3) / 3 * SCORE_WEIGHTS.domainJumps * 100 + uniqueness * SCORE_WEIGHTS.uniqueness * 100
+            - length * SCORE_WEIGHTS.lengthPenalty * 10;
 
-        path.score = {
-            totalScore,
-            physicalRatio,
-            avgSimilarity,
-            uniqueness,
-            freshness,
-            domainJumps,
-            length,
-        };
+        path.score = { totalScore, physicalRatio, avgSimilarity, uniqueness, freshness, domainJumps, length };
     }
-
     return paths;
 }
 
-/**
- * Generate human-readable reasoning for why this path was selected.
- */
+/** Generate reasoning for path selection. */
 function generatePathReasoning(path: ScoredPath): string {
-    const score = path.score;
-    const reasons: string[] = [];
-
-    // Physical reliability
-    if (score.physicalRatio > 0.8) {
-        reasons.push('High physical connectivity ensures reliability');
-    } else if (score.physicalRatio > 0.5) {
-        reasons.push('Balanced physical and semantic connections');
-    } else {
-        reasons.push('Creative semantic bridging for discovery');
-    }
-
-    // Freshness
-    if (score.freshness > 0.7) {
-        reasons.push('Includes recently accessed knowledge');
-    }
-
-    // Domain diversity
-    if (score.domainJumps > 0) {
-        reasons.push(`Crosses ${score.domainJumps} knowledge domains`);
-    }
-
-    // Uniqueness
-    if (score.uniqueness > 0.8) {
-        reasons.push('Unique path not overlapping with others');
-    }
-
-    // Length consideration
-    if (score.length <= 3) {
-        reasons.push('Direct and concise connection');
-    }
-
-    return reasons.length > 0 ? reasons.join('. ') + '.' : 'Selected for balanced quality metrics.';
+    const { physicalRatio, freshness, domainJumps, uniqueness, length } = path.score;
+    const r: string[] = [];
+    if (physicalRatio > 0.8) r.push('High physical connectivity ensures reliability');
+    else if (physicalRatio > 0.5) r.push('Balanced physical and semantic connections');
+    else r.push('Creative semantic bridging for discovery');
+    if (freshness > 0.7) r.push('Includes recently accessed knowledge');
+    if (domainJumps > 0) r.push(`Crosses ${domainJumps} knowledge domains`);
+    if (uniqueness > 0.8) r.push('Unique path not overlapping with others');
+    if (length <= 3) r.push('Direct and concise connection');
+    return r.length > 0 ? r.join('. ') + '.' : 'Selected for balanced quality metrics.';
 }
 
-/**
- * Calculate path uniqueness compared to other paths.
- */
+/** Calculate path uniqueness compared to other paths. */
 function calculateUniqueness(segments: PathSegment[], allPaths: ScoredPath[]): number {
     const myNodes = new Set(segments.map(s => s.nodeId));
     let maxOverlap = 0;
-
     for (const other of allPaths) {
         if (other.segments === segments) continue;
-
         const otherNodes = new Set(other.segments.map(s => s.nodeId));
         let overlap = 0;
-
-        for (const node of myNodes) {
-            if (otherNodes.has(node)) overlap++;
-        }
-
-        const overlapRatio = overlap / Math.max(myNodes.size, otherNodes.size);
-        maxOverlap = Math.max(maxOverlap, overlapRatio);
+        for (const node of myNodes) if (otherNodes.has(node)) overlap++;
+        maxOverlap = Math.max(maxOverlap, overlap / Math.max(myNodes.size, otherNodes.size));
     }
-
     return 1 - maxOverlap;
 }
 
-/**
- * Count folder transitions in path.
- */
+/** Count folder transitions in path. */
 async function countDomainJumps(segments: PathSegment[]): Promise<number> {
-    const nodeIds = segments.map(s => s.nodeId);
-    const metasMap = await getIndexedDocumentsByIds(nodeIds);
-
-    let jumps = 0;
-    let prevFolder: string | null = null;
-
-    for (const segment of segments) {
-        const meta = metasMap.get(segment.nodeId);
-        if (!meta) continue;
-
+    const metasMap = await getIndexedDocumentsByIds(segments.map(s => s.nodeId));
+    let jumps = 0, prevFolder: string | null = null;
+    for (const seg of segments) {
+        const meta = metasMap.get(seg.nodeId); if (!meta) continue;
         const folder = getParentFolder(meta.path);
-
-        if (prevFolder !== null && folder !== prevFolder) {
-            jumps++;
-        }
-
+        if (prevFolder !== null && folder !== prevFolder) jumps++;
         prevFolder = folder;
     }
-
     return jumps;
 }
 
-// ============================================================================
-// Utility Functions
-// ============================================================================
+// --- Utility Functions ---
 
-/**
- * Identify key edge for diversity blocking.
- */
+/** Identify key edge for diversity blocking. */
 function identifyKeyEdge(path: PathSegment[]): string {
     if (path.length < 2) return '';
-
-    const parseSimilarity = (similarity?: string): number => {
-        if (!similarity) return 0;
-        const parsed = parseFloat(similarity.replace('%', ''));
-        return isNaN(parsed) ? 0 : parsed;
-    };
-
-    let bestEdge = '';
-    let bestScore = -1;
-
+    const parseSim = (s?: string) => { if (!s) return 0; const v = parseFloat(s.replace('%', '')); return isNaN(v) ? 0 : v; };
+    let bestEdge = '', bestScore = -1;
     for (let i = 0; i < path.length - 1; i++) {
-        const current = path[i];
-        const next = path[i + 1];
-
-        // Calculate edge importance score
-        let score = 0;
-        if (current.type === 'physical_neighbors' && next.type === 'physical_neighbors') {
-            score = 100 + Math.max(parseSimilarity(current.similarity), parseSimilarity(next.similarity));
-        } else if (current.type === 'semantic_neighbors' && next.type === 'semantic_neighbors') {
-            score = Math.max(parseSimilarity(current.similarity), parseSimilarity(next.similarity));
-        } else {
-            score = 50 + Math.max(parseSimilarity(current.similarity), parseSimilarity(next.similarity)) * 0.5;
-        }
-
-        if (score > bestScore) {
-            bestScore = score;
-            bestEdge = `${current.nodeId}->${next.nodeId}`;
-        }
+        const c = path[i], n = path[i + 1];
+        const maxSim = Math.max(parseSim(c.similarity), parseSim(n.similarity));
+        const bothPhysical = c.type === 'physical_neighbors' && n.type === 'physical_neighbors';
+        const bothSemantic = c.type === 'semantic_neighbors' && n.type === 'semantic_neighbors';
+        const score = bothPhysical ? 100 + maxSim : bothSemantic ? maxSim : 50 + maxSim * 0.5;
+        if (score > bestScore) { bestScore = score; bestEdge = `${c.nodeId}->${n.nodeId}`; }
     }
-
     return bestEdge;
 }
 
-/**
- * Deduplicate paths based on node sequence.
- */
+/** Deduplicate paths based on node sequence. */
 function deduplicatePaths(paths: ScoredPath[]): ScoredPath[] {
     const seen = new Set<string>();
-    const unique: ScoredPath[] = [];
-
-    for (const path of paths) {
-        const key = path.segments.map(s => s.nodeId).join('->');
-        if (!seen.has(key)) {
-            seen.add(key);
-            unique.push(path);
-        }
-    }
-
-    return unique;
+    return paths.filter(p => { const k = p.segments.map(s => s.nodeId).join('->'); return seen.has(k) ? false : (seen.add(k), true); });
 }
 
-/**
- * Ensure at least one path from each strategy type is included.
- */
+/** Ensure at least one path from each strategy type is included. */
 function ensureStrategyDiversity(paths: ScoredPath[], maxResults: number): ScoredPath[] {
-    const byStrategy: Record<StrategyType, ScoredPath[]> = {
-        reliable: [],
-        fastTrack: [],
-        brainstorm: [],
-        temporal: [],
-    };
-
-    for (const path of paths) {
-        byStrategy[path.strategy].push(path);
-    }
+    const byStrategy = new Map<StrategyType, ScoredPath[]>();
+    for (const p of paths) (byStrategy.get(p.strategy) ?? (byStrategy.set(p.strategy, []), byStrategy.get(p.strategy)!)).push(p);
 
     const result: ScoredPath[] = [];
-    const strategies: StrategyType[] = ['reliable', 'fastTrack', 'brainstorm', 'temporal'];
-
-    // First pass: one from each strategy
-    for (const strategy of strategies) {
-        if (byStrategy[strategy].length > 0 && result.length < maxResults) {
-            result.push(byStrategy[strategy].shift()!);
-        }
+    for (const s of ['reliable', 'fastTrack', 'brainstorm', 'temporal'] as StrategyType[]) {
+        const arr = byStrategy.get(s);
+        if (arr?.length && result.length < maxResults) result.push(arr.shift()!);
     }
-
-    // Second pass: fill remaining slots by score
-    const remaining = paths.filter(p => !result.includes(p));
-    remaining.sort((a, b) => b.score.totalScore - a.score.totalScore);
-
-    for (const path of remaining) {
-        if (result.length >= maxResults) break;
-        result.push(path);
-    }
-
+    const remaining = paths.filter(p => !result.includes(p)).sort((a, b) => b.score.totalScore - a.score.totalScore);
+    for (const p of remaining) { if (result.length >= maxResults) break; result.push(p); }
     return result;
 }
 
-// ============================================================================
-// Post-Processing Analysis
-// ============================================================================
+// --- Post-Processing Analysis ---
 
-/**
- * Analyze hub nodes that appear in multiple paths.
- */
+/** Analyze hub nodes that appear in multiple paths. */
 function analyzeHubs(paths: ScoredPath[]): HubAnalysis[] {
     const nodeCount = new Map<string, number>();
-
-    for (const path of paths) {
-        // Skip first and last (start/end nodes)
-        for (let i = 1; i < path.segments.length - 1; i++) {
-            const nodeId = path.segments[i].nodeId;
-            nodeCount.set(nodeId, (nodeCount.get(nodeId) || 0) + 1);
-        }
+    for (const p of paths) for (let i = 1; i < p.segments.length - 1; i++) {
+        const id = p.segments[i].nodeId; nodeCount.set(id, (nodeCount.get(id) || 0) + 1);
     }
-
-    // Filter nodes appearing in multiple paths
-    const hubs: HubAnalysis[] = [];
-
-    for (const [nodeId, count] of nodeCount) {
-        if (count >= 2) {
-            hubs.push({
-                nodeId,
-                label: nodeId, // Will be replaced with actual label in formatting
-                occurrenceCount: count,
-                betweennessCentrality: count / paths.length,
-            });
-        }
-    }
-
-    return hubs.sort((a, b) => b.occurrenceCount - a.occurrenceCount);
+    return Array.from(nodeCount.entries())
+        .filter(([, c]) => c >= 2)
+        .map(([nodeId, count]) => ({ nodeId, label: nodeId, occurrenceCount: count, betweennessCentrality: count / paths.length }))
+        .sort((a, b) => b.occurrenceCount - a.occurrenceCount);
 }
 
-/**
- * Analyze comprehensive context intersection between two notes.
- * Includes physical paths, semantic tags, and graph structure relationships.
- */
+/** Analyze context intersection between two notes (paths, tags, graph structure). */
 async function analyzeContextIntersection(startId: string, endId: string): Promise<ContextIntersectionAnalysis | null> {
-    const [startMeta, endMeta] = await Promise.all([
-        getIndexedDocumentById(startId),
-        getIndexedDocumentById(endId)
-    ]);
-
+    const [startMeta, endMeta] = await Promise.all([getIndexedDocumentById(startId), getIndexedDocumentById(endId)]);
     if (!startMeta || !endMeta) return null;
 
-    // 1. Physical path analysis
     const physicalAncestor = analyzePhysicalAncestor(startMeta.path, endMeta.path);
-
-    // 2. Tag-based semantic intersection
     const commonTags = analyzeTagIntersection(startMeta.tags, endMeta.tags);
-
-    // 3. Graph-based structural intersection
     const commonParents = await analyzeCommonParents(startId, endId);
-
-    // 4. Overall assessment
     const isDistant = physicalAncestor.depth <= 1 && (commonTags.length > 0 || commonParents.length > 0);
-    let primaryContext: string | undefined;
+    const primaryContext = commonTags[0] ?? commonParents[0]?.label;
 
-    if (commonTags.length > 0) {
-        primaryContext = commonTags[0]; // Most relevant tag
-    } else if (commonParents.length > 0) {
-        primaryContext = commonParents[0].label; // Most connected parent
-    }
-
-    // Debug logging
-    console.debug('[ContextAnalysis]', {
-        startPath: startMeta.path,
-        endPath: endMeta.path,
-        startTags: startMeta.tags,
-        endTags: endMeta.tags,
-        commonTags: commonTags.length,
-        commonParents: commonParents.length,
-        physicalDepth: physicalAncestor.depth,
-        isDistant,
-        primaryContext
-    });
-
-    return {
-        physicalAncestor,
-        commonTags,
-        commonParents,
-        isDistant,
-        primaryContext,
-    };
+    return { physicalAncestor, commonTags, commonParents, isDistant, primaryContext };
 }
 
-/**
- * Analyze physical path ancestor (refactored from original function).
- */
+/** Analyze physical path ancestor. */
 function analyzePhysicalAncestor(startPath: string, endPath: string) {
-    const startParts = startPath.split('/');
-    const endParts = endPath.split('/');
-
-    let commonParts: string[] = [];
-    for (let i = 0; i < Math.min(startParts.length, endParts.length); i++) {
-        if (startParts[i] === endParts[i]) {
-            commonParts.push(startParts[i]);
-        } else {
-            break;
-        }
-    }
-
-    const ancestorPath = commonParts.length > 0 ? commonParts.join('/') : '/';
-
-    return {
-        ancestorPath,
-        startPath,
-        endPath,
-        depth: commonParts.length,
-    };
+    const sp = startPath.split('/'), ep = endPath.split('/');
+    const commonParts: string[] = [];
+    for (let i = 0; i < Math.min(sp.length, ep.length) && sp[i] === ep[i]; i++) commonParts.push(sp[i]);
+    return { ancestorPath: commonParts.length > 0 ? commonParts.join('/') : '/', startPath, endPath, depth: commonParts.length };
 }
 
-/**
- * Analyze tag intersection between two documents.
- */
+/** Analyze tag intersection between two documents. */
 function analyzeTagIntersection(startTags: string | null, endTags: string | null): string[] {
     if (!startTags || !endTags) return [];
-
-    let startTagArray: string[] = [];
-    let endTagArray: string[] = [];
-
-    // Try to parse as JSON array first (preferred format)
-    try {
-        const parsedStart = JSON.parse(startTags);
-        const parsedEnd = JSON.parse(endTags);
-        startTagArray = Array.isArray(parsedStart) ? parsedStart : [];
-        endTagArray = Array.isArray(parsedEnd) ? parsedEnd : [];
-    } catch {
-        // Fallback to comma-separated string
-        startTagArray = startTags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
-        endTagArray = endTags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
-    }
-
-    // Find intersection
-    const commonTags = startTagArray.filter(tag => endTagArray.includes(tag));
-
-    return commonTags;
+    const parse = (raw: string): string[] => { try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch { return raw.split(',').map(t => t.trim()).filter(t => t.length > 0); } };
+    return parse(startTags).filter(tag => parse(endTags).includes(tag));
 }
 
-/**
- * Analyze common parent nodes in the knowledge graph.
- * Finds nodes that reference both start and end nodes (MOC-like relationships).
- */
-async function analyzeCommonParents(startId: string, endId: string): Promise<Array<{
-    nodeId: string;
-    label: string;
-    type: string;
-    connectionCount: number;
-}>> {
-    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
+/** Find common parent nodes that reference both start and end nodes. */
+async function analyzeCommonParents(startId: string, endId: string) {
+    const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
+    const [startEdges, endEdges] = await Promise.all([edgeRepo.getAllEdgesForNode(startId, 50), edgeRepo.getAllEdgesForNode(endId, 50)]);
+    const startRefs = new Set(startEdges.filter(e => e.to_node_id === startId && e.from_node_id !== endId).map(e => e.from_node_id));
+    const endRefs = new Set(endEdges.filter(e => e.to_node_id === endId && e.from_node_id !== startId).map(e => e.from_node_id));
+    const commonIds = Array.from(startRefs).filter(id => endRefs.has(id));
+    if (!commonIds.length) return [];
 
-    // Get all edges for start and end nodes
-    const [startEdges, endEdges] = await Promise.all([
-        mobiusEdgeRepo.getAllEdgesForNode(startId, 50),
-        mobiusEdgeRepo.getAllEdgesForNode(endId, 50)
-    ]);
-
-    // Find nodes that have edges to BOTH start and end nodes
-    // This represents nodes that "contain" or reference both notes
-    const startReferrerIds = new Set(
-        startEdges
-            .filter(edge => edge.to_node_id === startId && edge.from_node_id !== endId)
-            .map(edge => edge.from_node_id)
-    );
-
-    const endReferrerIds = new Set(
-        endEdges
-            .filter(edge => edge.to_node_id === endId && edge.from_node_id !== startId)
-            .map(edge => edge.from_node_id)
-    );
-
-    // Find intersection - nodes that reference both
-    const commonParentIds = Array.from(startReferrerIds).filter(id => endReferrerIds.has(id));
-
-    if (commonParentIds.length === 0) return [];
-
-    // Get node details for common parents
-    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
-    const parentNodes = await mobiusNodeRepo.getByIds(commonParentIds);
-
-    // Build result with connection strength
-    const result = commonParentIds.map(parentId => {
-        const node = parentNodes.get(parentId);
-        if (!node) return null;
-
-        // Calculate connection strength (number of edges between parent and each target)
-        const startConnections = startEdges.filter(edge =>
-            edge.from_node_id === parentId && edge.to_node_id === startId
-        ).length;
-
-        const endConnections = endEdges.filter(edge =>
-            edge.from_node_id === parentId && edge.to_node_id === endId
-        ).length;
-
-        const connectionCount = startConnections + endConnections;
-
-        let label = node.label;
-        if (isIndexedNoteNodeType(node.type)) {
-            try {
-                const attributes = JSON.parse(node.attributes);
-                label = attributes.path || label;
-            } catch {
-                // Keep original label
-            }
-        }
-
-        return {
-            nodeId: parentId,
-            label,
-            type: node.type,
-            connectionCount,
-        };
-    }).filter(Boolean).sort((a, b) => (b?.connectionCount || 0) - (a?.connectionCount || 0));
-
-    return result as Array<{
-        nodeId: string;
-        label: string;
-        type: string;
-        connectionCount: number;
-    }>;
+    const parentNodes = await sqliteStoreManager.getMobiusNodeRepo().getByIds(commonIds);
+    return commonIds
+        .map(id => { const n = parentNodes.get(id); if (!n) return null; return { nodeId: id, label: getNodeLabel(n, n.label), type: n.type, connectionCount: startEdges.filter(e => e.from_node_id === id && e.to_node_id === startId).length + endEdges.filter(e => e.from_node_id === id && e.to_node_id === endId).length }; })
+        .filter(Boolean)
+        .sort((a, b) => (b?.connectionCount || 0) - (a?.connectionCount || 0)) as Array<{ nodeId: string; label: string; type: string; connectionCount: number }>;
 }
 
-/**
- * Build analysis section for output with enhanced context analysis.
- */
+/** Build analysis section for output. */
 function buildAnalysisSection(hubs: HubAnalysis[], contextIntersection: ContextIntersectionAnalysis | null): string {
     let section = '';
 
@@ -1909,123 +937,50 @@ function buildAnalysisSection(hubs: HubAnalysis[], contextIntersection: ContextI
         }
     }
 
-    // Enhanced Context Analysis section - only show if there's valuable content
     if (contextIntersection) {
-        const hasValuableContent = contextIntersection.commonTags.length > 0 ||
-                                  contextIntersection.commonParents.length > 0 ||
-                                  contextIntersection.physicalAncestor.depth > 1 ||
-                                  contextIntersection.isDistant;
-
-        if (hasValuableContent) {
+        const ci = contextIntersection;
+        const hasContent = ci.commonTags.length > 0 || ci.commonParents.length > 0 ||
+                          ci.physicalAncestor.depth > 1 || ci.isDistant;
+        if (hasContent) {
             section += '\n\n## Shared Context Analysis\n\n';
-
-            const physical = contextIntersection.physicalAncestor;
-
-            // Common tags
-            if (contextIntersection.commonTags.length > 0) {
-                section += `**Common Tags:** ${contextIntersection.commonTags.map(tag => `\`${tag}\``).join(', ')}\n\n`;
-            }
-
-            // Common parents (structural relationships)
-            if (contextIntersection.commonParents.length > 0) {
+            if (ci.commonTags.length > 0)
+                section += `**Common Tags:** ${ci.commonTags.map(tag => `\`${tag}\``).join(', ')}\n\n`;
+            if (ci.commonParents.length > 0) {
                 section += '**Common Reference Points:**\n';
-                for (const parent of contextIntersection.commonParents.slice(0, SLICE_CAPS.inspector.pathFindCommonParents)) {
-                    const nodeLink = isIndexedNoteNodeType(parent.type) ? `[[${parent.label}]]` : `**${parent.label}**`;
-                    section += `- ${nodeLink} (${parent.connectionCount} connections)\n`;
+                for (const p of ci.commonParents.slice(0, SLICE_CAPS.inspector.pathFindCommonParents)) {
+                    const link = isIndexedNoteNodeType(p.type) ? `[[${p.label}]]` : `**${p.label}**`;
+                    section += `- ${link} (${p.connectionCount} connections)\n`;
                 }
                 section += '\n';
             }
-
-            // Physical context information (only show if meaningful)
-            if (physical.depth > 1) {
-                section += `**Shared Location:** Both notes are in \`${physical.ancestorPath}\`\n\n`;
-            }
-
-            // Cross-domain insight
-            if (contextIntersection.isDistant) {
-                section += '**Cross-Domain Insight:** Despite different locations, these notes share ';
-                if (contextIntersection.primaryContext) {
-                    section += `**${contextIntersection.primaryContext}**`;
-                } else {
-                    section += 'semantic connections';
-                }
-                section += '.\n\n';
-            }
+            if (ci.physicalAncestor.depth > 1)
+                section += `**Shared Location:** Both notes are in \`${ci.physicalAncestor.ancestorPath}\`\n\n`;
+            if (ci.isDistant)
+                section += `**Cross-Domain Insight:** Despite different locations, these notes share ${ci.primaryContext ? `**${ci.primaryContext}**` : 'semantic connections'}.\n\n`;
         }
     }
 
     return section;
 }
 
-// ============================================================================
-// Output Formatting
-// ============================================================================
+// --- Output Formatting ---
 
-/**
- * Format paths for user-friendly output.
- */
-async function formatPathsForOutput(
-    paths: ScoredPath[],
-    mobiusNodeRepo: any
-): Promise<Array<{
-    path: string[];
-    connectionDetails: string;
-    strategy: string;
-    insightLabel: string;
-    score: number;
-}>> {
-    // Batch fetch all nodes
+/** Format paths for user-friendly output. */
+async function formatPathsForOutput(paths: ScoredPath[], mobiusNodeRepo: any) {
     const allNodeIds = new Set<string>();
-    for (const scoredPath of paths) {
-        for (const segment of scoredPath.segments) {
-            allNodeIds.add(segment.nodeId);
-        }
-    }
-
+    for (const p of paths) for (const s of p.segments) allNodeIds.add(s.nodeId);
     const nodesMap = await mobiusNodeRepo.getByIds(Array.from(allNodeIds));
 
-    return paths.map(scoredPath => {
-        const nodeLabels: string[] = [];
-
-        for (const segment of scoredPath.segments) {
-            try {
-                const node = nodesMap.get(segment.nodeId);
-                if (!node) {
-                    nodeLabels.push(segment.nodeId);
-                } else if (isIndexedNoteNodeType(node.type)) {
-                    nodeLabels.push(JSON.parse(node.attributes).path || segment.nodeId);
-                } else {
-                    nodeLabels.push(node.type + node.label);
-                }
-            } catch {
-                nodeLabels.push(segment.nodeId);
-            }
-        }
-
-        // Build connection details
-        const connectionDetails = scoredPath.segments.slice(0, -1).map((segment, i) => {
-            const nextSegment = scoredPath.segments[i + 1];
-            const type = segment.type === 'physical_neighbors' && nextSegment.type === 'physical_neighbors'
-                ? 'physical'
-                : 'semantic';
-            const similarity = segment.similarity || nextSegment.similarity;
-            return similarity ? `${type} (${similarity})` : type;
-        }).join(' → ');
-
-        // Strategy display names
-        const strategyNames: Record<StrategyType, string> = {
-            reliable: '🔗 Reliable',
-            fastTrack: '🚀 Fast Track',
-            brainstorm: '💡 Brainstorm',
-            temporal: '⏳ Temporal',
-        };
-
-        return {
-            path: nodeLabels,
-            connectionDetails,
-            strategy: strategyNames[scoredPath.strategy],
-            insightLabel: scoredPath.insightLabel,
-            score: scoredPath.score.totalScore,
-        };
-    });
+    return paths.map(sp => ({
+        path: sp.segments.map(s => getNodeLabel(nodesMap.get(s.nodeId), s.nodeId)),
+        connectionDetails: sp.segments.slice(0, -1).map((seg, i) => {
+            const next = sp.segments[i + 1];
+            const type = seg.type === 'physical_neighbors' && next.type === 'physical_neighbors' ? 'physical' : 'semantic';
+            const sim = seg.similarity || next.similarity;
+            return sim ? `${type} (${sim})` : type;
+        }).join(' → '),
+        strategy: STRATEGY_NAMES[sp.strategy],
+        insightLabel: sp.insightLabel,
+        score: sp.score.totalScore,
+    }));
 }

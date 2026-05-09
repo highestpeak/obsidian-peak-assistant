@@ -32,7 +32,6 @@ export class ContextUpdateService {
 	 */
 	private setupListeners(): void {
 		const unsubscribe1 = this.eventBus.on(ViewEventType.MESSAGE_SENT, (event: MessageSentEvent) => {
-			console.debug('[ContextUpdateService] Message sent event received:', event);
 			this.handleMessageSent(event);
 		});
 		this.unsubscribeHandlers.push(unsubscribe1);
@@ -48,11 +47,9 @@ export class ContextUpdateService {
 		// This ensures we only update after messages stop coming for SUMMARY_UPDATE_DEBOUNCE_MS
 		const existingTimer = this.conversationTimers.get(conversationId);
 		if (!existingTimer) {
-			console.debug('[ContextUpdateService] Setting debounce timer for conversation:', conversationId);
 			// Set debounce timer - will check message count difference when timer fires
 			const timer = setTimeout(async () => {
 				if (this.disposed || !sqliteStoreManager.isInitialized()) return;
-				console.debug('[ContextUpdateService] Timer triggered for conversation:', conversationId);
 				// Timer triggers: count messages and compare with last update from DB
 				const [currentMessageCount, conversationMeta] = await Promise.all([
 					this.storage.countMessages(conversationId),
@@ -64,7 +61,6 @@ export class ContextUpdateService {
 
 				// Only update if message count difference is greater than threshold
 				if (messageCountDiff >= CONVERSATION_SUMMARY_UPDATE_THRESHOLD) {
-					console.debug('[ContextUpdateService] Updating conversation summary:', conversationId, currentMessageCount, lastUpdateMessageIndex, messageCountDiff);
 					await this.updateConversationSummary(conversationId, currentMessageCount);
 				}
 
@@ -79,11 +75,9 @@ export class ContextUpdateService {
 		if (projectId) {
 			const existingProjectTimer = this.projectTimers.get(projectId);
 			if (!existingProjectTimer) {
-				console.debug('[ContextUpdateService] Setting debounce timer for project:', projectId);
 				// Simple debounce for project updates
 				const timer = setTimeout(async () => {
 					if (this.disposed || !sqliteStoreManager.isInitialized()) return;
-					console.debug('[ContextUpdateService] Timer triggered for project:', projectId);
 					await this.updateProjectSummary(projectId);
 					this.projectTimers.delete(projectId);
 				}, SUMMARY_UPDATE_DEBOUNCE_MS);
@@ -111,8 +105,6 @@ export class ContextUpdateService {
 				conversation.messages,
 				project
 			);
-			console.debug('[ContextUpdateService] Built context window:', conversationId, context);
-
 			// Update conversation context only (with optimistic locking)
 			await this.conversationService.updateConversationContext({
 				conversation,
@@ -146,7 +138,6 @@ export class ContextUpdateService {
 		conversation: ChatConversation,
 		context: ChatContextWindow
 	): Promise<void> {
-		console.debug('[ContextUpdateService] Updating conversation title if needed:', conversation, context);
 		try {
 			// Only update title if we have at least MIN_MESSAGES_FOR_TITLE_GENERATION messages (user + assistant)
 			// This ensures the conversation has meaningful content

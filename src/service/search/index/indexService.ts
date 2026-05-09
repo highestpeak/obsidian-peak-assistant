@@ -36,18 +36,12 @@ import {
 	SEMANTIC_PAGERANK_ALGORITHM_VERSION,
 	FOLDER_HUB_STATS_DOC_PAGE_SIZE,
 	FOLDER_HUB_BOUNDARY_EDGE_BATCH_SIZE,
-	FOLDER_COHESION_MAX_DOCS,
-	FOLDER_COHESION_INTRA_EDGE_LIMIT,
 } from '@/core/constant';
 import {
 	accumulateSemanticOutgoingWeightSums,
 	computeSemanticPageRankStreaming,
 	computeVaultPageRankStreaming,
 } from '@/service/search/index/helper/documentPageRank';
-import { computeBrandesBetweenness, computeBurtConstraint } from '@/service/search/index/helper/backbone/structuralMetrics';
-import { detectCommunities, computeModularity } from '@/service/search/index/helper/backbone/communityDetection';
-import { detectStructuralHoles } from '@/service/search/index/helper/backbone/gapDetection';
-import type { StructuralMetric, CommunityData } from '@/service/search/index/helper/backbone/structuralTypes';
 import { enforceChunkLengthWithOverlap } from '@/service/search/index/helper/safeChunking';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import {
@@ -94,17 +88,12 @@ import {
 	countsAsDocOutgoingTarget,
 	graphNodeTypeForPlaceholderReferenceTarget,
 } from '@/core/document/helper/DocumentReferencePolicy';
-import {
-	computeFolderCohesionScore,
-	type FolderCohesionDocRef,
-} from '@/service/search/index/helper/hub/folderCohesion';
 import { emptyMap } from '@/core/utils/collection-utils';
 import { detectChanges } from './cascade/CascadeChangeDetector';
 import type { PreIndexSnapshot, CascadeChangeInfo } from './cascade/types';
 import {
 	CASCADE_DEBT_SEMANTIC_EDGE_PRIORITY,
 	CASCADE_DEBT_DEGREE_REFRESH_PRIORITY,
-	CASCADE_DEBT_HUB_INVALIDATE_PRIORITY,
 	CASCADE_DEBT_MERMAID_OVERLAY_PRIORITY,
 } from '@/core/constant';
 export type StorageType = 'sqlite' | 'graph';
@@ -150,11 +139,7 @@ export type MobiusGlobalMaintenanceBatchPhase =
 	| 'semantic_pagerank_persist'
 	| 'semantic_related'
 	| 'folder_hub_stats'
-	| 'structural_betweenness'
-	| 'structural_constraint'
-	| 'structural_communities'
-	| 'structural_gaps'
-	| 'structural_persist';
+;
 
 /** All maintenance progress phases (batch-style or `semantic_related`). */
 export type MobiusGlobalMaintenancePhase = MobiusGlobalMaintenanceBatchPhase | 'semantic_related';
@@ -179,10 +164,125 @@ async function yieldForLargePass(): Promise<void> {
 	await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }
 
+/** Folder path prefixes for a directory string, e.g. `a/b` → `['a','a/b']`. */
+function folderAncestorPathsFromFolderPath(folderPath: string): string[] {
+	if (!folderPath) return [];
+	const parts = folderPath.split('/').filter((p) => p.length > 0);
+	const out: string[] = [];
+	let acc = '';
+	for (let i = 0; i < parts.length; i++) {
+		acc = i === 0 ? parts[i]! : `${acc}/${parts[i]}`;
+		out.push(acc);
+	}
+	return out;
+}
+
 /**
- * Index lifecycle: delete, clear, rename, status, and maintenance debt bookkeeping.
+ * Vault folder prefixes that contain this graph node (documents/resources: parent dir chain; folders: full chain).
  */
-class IndexCrudService {
+function membershipFolderPathsForGraphNode(type: string, path: string | null): Set<string> {
+	if (!path) return new Set();
+	if (type === GraphNodeType.Folder) {
+		return new Set(folderAncestorPathsFromFolderPath(path));
+	}
+	if (
+		type === GraphNodeType.Document ||
+		type === GraphNodeType.HubDoc ||
+		type === GraphNodeType.Resource
+	) {
+		const slash = path.lastIndexOf('/');
+		if (slash <= 0) return new Set();
+		return new Set(folderAncestorPathsFromFolderPath(path.slice(0, slash)));
+	}
+	return new Set();
+}
+
+/** Skip hub-summary subtree when materializing folder hub columns (aligned with document scan). */
+function folderHubStatsPathAllowed(folderPath: string, hubSummaryFolder: string): boolean {
+	const hub = hubSummaryFolder.trim();
+	if (!hub) return true;
+	if (folderPath === hub) return false;
+	if (isVaultPathUnderPrefix(folderPath, hub)) return false;
+	return true;
+}
+
+/** Batched deferred enrichment: LLM tags/summary after fast index (`llm_pending`). */
+export type LlmIndexEnrichmentResult = {
+	processed: number;
+	skippedWrongTenant: number;
+	errors: Array<{ path: string; message: string }>;
+};
+
+/** Batched deferred enrichment: vector embeddings after fast index (`vector_pending`). */
+export type VectorIndexEnrichmentResult = {
+	processed: number;
+	skippedWrongTenant: number;
+	errors: Array<{ path: string; message: string }>;
+};
+
+/** Progress for pending vector enrichment loops. */
+export type PendingEnrichmentProgress = {
+	processed: number;
+	total: number;
+	path: string;
+};
+
+export type { PendingLlmEnrichmentProgress } from '@/service/search/support/llm-enrichment-progress-tracker';
+
+/**
+ * Singleton entry for document indexing, CRUD lifecycle, and global Mobius maintenance.
+ */
+
+export class IndexService {
+	private static instance: IndexService | null = null;
+	private static isIndexingCancelled = false;
+	private aiServiceManager: AIServiceManager | undefined;
+
+	private constructor() {
+		// Private constructor to prevent direct instantiation.
+	}
+
+	static getInstance(): IndexService {
+		if (!IndexService.instance) {
+			IndexService.instance = new IndexService();
+		}
+		return IndexService.instance;
+	}
+
+	/**
+	 * Clear the global singleton instance.
+	 * Call from plugin onunload to release memory.
+	 */
+	static clearInstance(): void {
+		IndexService.instance = null;
+	}
+
+	/**
+	 * Initialize IndexService with AIServiceManager for embedding generation.
+	 * This should be called once during plugin initialization in main.ts.
+	 * Can also be called when settings are updated to refresh the service instance.
+	 */
+	init(aiServiceManager: AIServiceManager): void {
+		this.aiServiceManager = aiServiceManager;
+	}
+
+	/** Cancel ongoing indexing operations. */
+	static cancelIndexing(): void {
+		IndexService.isIndexingCancelled = true;
+	}
+
+	/** Reset the cancellation flag. */
+	static resetCancellation(): void {
+		IndexService.isIndexingCancelled = false;
+	}
+
+	/** Check if indexing has been cancelled. */
+	static isCancelled(): boolean {
+		return IndexService.isIndexingCancelled;
+	}
+
+	// --- Index lifecycle (formerly IndexCrudService) ---
+
 	/**
 	 * Delete documents by paths. Removes chunks, embeddings, indexed document rows on Mobius, and document graph nodes/edges for those ids.
 	 *
@@ -269,7 +369,6 @@ class IndexCrudService {
 		fts: number;
 		chunks: number;
 		embeddings: number;
-		stats: number;
 		graphNodes: number;
 	}> {
 		const tenants: IndexTenant[] = ['vault', 'chat'];
@@ -277,7 +376,6 @@ class IndexCrudService {
 		let fts = 0;
 		let chunks = 0;
 		let embeddings = 0;
-		let stats = 0;
 		let graphNodes = 0;
 
 		for (const tenant of tenants) {
@@ -293,7 +391,6 @@ class IndexCrudService {
 				fts += docChunkRepo.cleanupOrphanFts();
 				chunks += await docChunkRepo.cleanupOrphanChunks();
 				embeddings += await embeddingRepo.cleanupOrphanEmbeddings();
-				stats += await mobiusNodeRepo.cleanupOrphanStats();
 
 				const pathMap = await indexedDocumentRepo.getAllIndexedPaths();
 				const paths = Array.from(pathMap.keys());
@@ -314,7 +411,7 @@ class IndexCrudService {
 			});
 		}
 
-		return { metaFts, fts, chunks, embeddings, stats, graphNodes };
+		return { metaFts, fts, chunks, embeddings, graphNodes };
 	}
 
 	/** Index build timestamp and document count (vault tenant). */
@@ -397,16 +494,9 @@ class IndexCrudService {
 			await indexStateRepo.set(MOBIUS_MAINTENANCE_STATE_KEYS.needed, '1');
 		}
 	}
-}
 
-/**
- * Single-document indexing: load, chunk, embeddings, Mobius + FTS persist.
- */
-class IndexSingleService {
-	constructor(
-		private readonly aiServiceManager: AIServiceManager,
-		private readonly crud: IndexCrudService,
-	) { }
+	// --- Single-document indexing (formerly IndexSingleService) ---
+
 
 	/**
 	 * Index a document by path with chunking strategy applied.
@@ -418,10 +508,12 @@ class IndexSingleService {
 		indexOptions?: IndexDocumentOptions,
 		preloadedDocument?: Document,
 	): Promise<void> {
+		if (!this.aiServiceManager) {
+			throw new Error('[IndexService] init(AIServiceManager) must be called before indexing');
+		}
 		const opts = indexOptions ?? defaultIndexDocumentOptions('manual_full');
 		const sw = new Stopwatch(`[IndexService] Indexing: ${docPath}`);
 
-		console.debug(`[IndexService] Index document: ${docPath}`, opts.reason);
 		try {
 			const loaderManager = DocumentLoaderManager.getInstance();
 
@@ -469,7 +561,6 @@ class IndexSingleService {
 			rawDoc.id = await this.resolveDocumentNodeId(rawDoc.sourceFileInfo.path, tenant);
 
 			if (IndexService.isCancelled()) {
-				console.log(`[IndexService] Indexing cancelled for ${rawDoc.sourceFileInfo.path}`);
 				return;
 			}
 
@@ -507,13 +598,6 @@ class IndexSingleService {
 				await this.generateAndFillEmbeddings(chunks);
 				sw.stop();
 				vectorCompleted = true;
-			} else if (!opts.includeEmbeddings) {
-				console.debug(`[IndexService] Skipping embeddings by index options for ${doc.sourceFileInfo.path}`);
-			} else {
-				console.debug(
-					`[IndexService] Skipping embedding generation for ${doc.sourceFileInfo.path}. ` +
-					'Vector search may not be available (sqlite-vec extension not loaded). ',
-				);
 			}
 
 			// Capture pre-index snapshot for cascade change detection (vault only)
@@ -540,16 +624,10 @@ class IndexSingleService {
 			}
 
 			sw.start('Persist index (transaction: mobius + FTS + graph + aggregates + index_state)');
-			console.debug(`[IndexService] Persist index for: ${docPath} (tenant: ${tenant})`);
 			const shouldRefreshGraph = opts.includeCoreSearchIndex || opts.includeLlmTags || opts.includeLlmSummary;
 			const sameTenantOutgoing = shouldRefreshGraph
 				? this.filterOutgoingRefsForTenant(doc.references.outgoing, tenant)
 				: [];
-			if (shouldRefreshGraph && sameTenantOutgoing.length < doc.references.outgoing.length) {
-				console.debug(
-					`[IndexService] Same-tenant outgoing refs: ${sameTenantOutgoing.length}/${doc.references.outgoing.length} (skipped cross-tenant) for ${docPath}`,
-				);
-			}
 			const pathToIndexedDocInfo = shouldRefreshGraph
 				? await this.loadPathToIndexedDocInfoMap(tenant, sameTenantOutgoing)
 				: emptyMap<string, PathIndexedDocInfo>();
@@ -605,7 +683,7 @@ class IndexSingleService {
 					await this.updateIndexState(tenant);
 				}
 			});
-			await this.crud.addMaintenanceDebt(tenant, MOBIUS_MAINTENANCE_DEBT_INDEX_DOC);
+			await this.addMaintenanceDebt(tenant, MOBIUS_MAINTENANCE_DEBT_INDEX_DOC);
 
 			// Compare pre/post state and write cascade debt if changes detected
 			if (tenant === 'vault' && preSnapshot !== null) {
@@ -1398,65 +1476,10 @@ class IndexSingleService {
 				});
 			}
 		}
-
-		await cascadeRepo.insertOrUpdatePriority({
-			tenant,
-			sourcePath: change.docPath,
-			targetId: change.docNodeId,
-			debtType: 'hub_invalidate',
-			priority: CASCADE_DEBT_HUB_INVALIDATE_PRIORITY,
-			changeMagnitude: change.changeMagnitude,
-			createdAt: now,
-		});
 	}
-}
 
-/** Folder path prefixes for a directory string, e.g. `a/b` → `['a','a/b']`. */
-function folderAncestorPathsFromFolderPath(folderPath: string): string[] {
-	if (!folderPath) return [];
-	const parts = folderPath.split('/').filter((p) => p.length > 0);
-	const out: string[] = [];
-	let acc = '';
-	for (let i = 0; i < parts.length; i++) {
-		acc = i === 0 ? parts[i]! : `${acc}/${parts[i]}`;
-		out.push(acc);
-	}
-	return out;
-}
+	// --- Global maintenance (formerly GlobalMaintenanceService) ---
 
-/**
- * Vault folder prefixes that contain this graph node (documents/resources: parent dir chain; folders: full chain).
- */
-function membershipFolderPathsForGraphNode(type: string, path: string | null): Set<string> {
-	if (!path) return new Set();
-	if (type === GraphNodeType.Folder) {
-		return new Set(folderAncestorPathsFromFolderPath(path));
-	}
-	if (
-		type === GraphNodeType.Document ||
-		type === GraphNodeType.HubDoc ||
-		type === GraphNodeType.Resource
-	) {
-		const slash = path.lastIndexOf('/');
-		if (slash <= 0) return new Set();
-		return new Set(folderAncestorPathsFromFolderPath(path.slice(0, slash)));
-	}
-	return new Set();
-}
-
-/** Skip hub-summary subtree when materializing folder hub columns (aligned with document scan). */
-function folderHubStatsPathAllowed(folderPath: string, hubSummaryFolder: string): boolean {
-	const hub = hubSummaryFolder.trim();
-	if (!hub) return true;
-	if (folderPath === hub) return false;
-	if (isVaultPathUnderPrefix(folderPath, hub)) return false;
-	return true;
-}
-
-/**
- * Full Mobius maintenance: aggregates, reference PageRank, semantic edges, semantic PageRank, optional folder hub stats.
- */
-class GlobalMaintenanceService {
 	/** Clears debt after a successful full maintenance pass for the given tenants. */
 	private async resetMaintenanceDebtAfterFullMaintenance(tenants: IndexTenant[]): Promise<void> {
 		const now = Date.now();
@@ -1519,10 +1542,6 @@ class GlobalMaintenanceService {
 			sw.start('folder_hub_stats');
 			await this.rebuildFolderHubStatsForVaultInternal(onProgress);
 			sw.stop();
-
-			sw.start('structural_analysis');
-			await this.computeAndPersistStructuralMetricsInternal(onProgress);
-			sw.stop();
 		}
 
 		sw.print();
@@ -1568,18 +1587,6 @@ class GlobalMaintenanceService {
 			},
 			yieldForLargePass,
 		);
-	}
-
-	/**
-	 * Rebuilds tag_doc_count and document degree caches only (no PageRank, semantic edges, or folder hub stats).
-	 */
-	async runMobiusAggregateRefreshOnly(
-		tenants: IndexTenant[] = ['vault', 'chat'],
-		onProgress?: (ev: MobiusGlobalMaintenanceProgress) => void,
-	): Promise<void> {
-		for (const tenant of tenants) {
-			await this.refreshMobiusAggregatesInternal(tenant, onProgress);
-		}
 	}
 
 	/**
@@ -1727,7 +1734,7 @@ class GlobalMaintenanceService {
 		let persistBatchIndex = 0;
 		for (const id of nodeIds) {
 			const score = scores.get(id) ?? 0;
-			await mobiusNodeRepo.setSemanticPageRankForDocLikeNode(
+			await mobiusNodeRepo.setPageRankForDocLikeNode(
 				id,
 				{
 					semantic_pagerank: score,
@@ -1782,8 +1789,6 @@ class GlobalMaintenanceService {
 			otherOut: number;
 		};
 		const byFolder = new Map<string, Agg>();
-		/** Capped doc samples per folder for cohesion (same walk as subtree counts). */
-		const folderDocSamples = new Map<string, FolderCohesionDocRef[]>();
 
 		const getAgg = (folderPath: string): Agg => {
 			let agg = byFolder.get(folderPath);
@@ -1792,15 +1797,6 @@ class GlobalMaintenanceService {
 				byFolder.set(folderPath, agg);
 			}
 			return agg;
-		};
-
-		const pushFolderDocSample = (folderPath: string, doc: FolderCohesionDocRef) => {
-			let list = folderDocSamples.get(folderPath);
-			if (!list) {
-				list = [];
-				folderDocSamples.set(folderPath, list);
-			}
-			if (list.length < FOLDER_COHESION_MAX_DOCS) list.push(doc);
 		};
 
 		let afterNodeId: string | null = null;
@@ -1823,14 +1819,6 @@ class GlobalMaintenanceService {
 						? r.semantic_pagerank
 						: 0;
 
-				const docRef: FolderCohesionDocRef = {
-					node_id: r.node_id,
-					path,
-					label: r.label,
-					tags_json: r.tags_json,
-					semantic_pagerank: r.semantic_pagerank,
-				};
-
 				let cur = path;
 				for (; ;) {
 					const slash = cur.lastIndexOf('/');
@@ -1842,7 +1830,6 @@ class GlobalMaintenanceService {
 					agg.count += 1;
 					agg.sumPr += pr;
 					agg.sumSpr += spr;
-					pushFolderDocSample(folder, docRef);
 					cur = folder;
 				}
 			}
@@ -1899,23 +1886,13 @@ class GlobalMaintenanceService {
 			const avgPr = agg.sumPr / Math.max(1, n);
 			const avgSpr = agg.sumSpr / Math.max(1, n);
 
-			let folderCohesionScore: number | null = null;
-			const samples = folderDocSamples.get(folderPath);
-			if (samples && samples.length >= 2) {
-				const intraEdges = await mobiusEdgeRepo.listSemanticRelatedEdgesWithinNodeSet(
-					samples.map((d) => d.node_id),
-					FOLDER_COHESION_INTRA_EDGE_LIMIT,
-				);
-				folderCohesionScore = computeFolderCohesionScore(samples, intraEdges);
-			}
-
 			await mobiusNodeRepo.updateFolderNodeHubMaterializedStats(
 				nodeId,
 				{
 					tagDocCount: n,
 					avgPagerank: avgPr,
 					avgSemanticPagerank: avgSpr,
-					folderCohesionScore,
+					folderCohesionScore: null,
 					docIncoming: agg.docIn,
 					docOutgoing: agg.docOut,
 					otherIncoming: agg.otherIn,
@@ -1930,250 +1907,8 @@ class GlobalMaintenanceService {
 		}
 	}
 
-	/**
-	 * Compute betweenness centrality, Burt constraint, Louvain communities, and structural holes.
-	 * Runs on vault tenant only (structural analysis is vault-level).
-	 */
-	private async computeAndPersistStructuralMetricsInternal(
-		onProgress: ((ev: MobiusGlobalMaintenanceProgress) => void) | undefined,
-	): Promise<void> {
-		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo('vault');
-		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo('vault');
-		const structuralRepo = sqliteStoreManager.getStructuralMetricsRepo();
 
-		// Get all document-like node IDs
-		const vertices = await mobiusNodeRepo.listDocLikePageRankVertices();
-		const nodeIds = vertices.map(v => v.node_id);
-		if (nodeIds.length < 3) return; // need at least 3 nodes for meaningful analysis
-
-		onProgress?.({ tenant: 'vault', phase: 'structural_betweenness', progressTextSuffix: `${nodeIds.length} nodes` });
-
-		// Edge scanner: streams reference + semantic edges (union graph)
-		const scanEdges = async (visit: (from: string, to: string, weight: number) => void) => {
-			for await (const batch of mobiusEdgeRepo.iterateReferenceEdgeBatches(PAGERANK_EDGE_BATCH_SIZE)) {
-				for (const e of batch) visit(e.from_node_id, e.to_node_id, 1.0);
-			}
-			for await (const batch of mobiusEdgeRepo.iterateSemanticRelatedEdgeBatches(PAGERANK_EDGE_BATCH_SIZE)) {
-				for (const e of batch) visit(e.from_node_id, e.to_node_id, e.weight ?? 0.5);
-			}
-		};
-
-		// 1. Betweenness centrality (approximate for large vaults)
-		const betweenness = await computeBrandesBetweenness(
-			nodeIds, scanEdges,
-			{ approximate: nodeIds.length > 20000, kSources: Math.ceil(Math.sqrt(nodeIds.length)) },
-		);
-
-		onProgress?.({ tenant: 'vault', phase: 'structural_constraint', progressTextSuffix: 'computing' });
-
-		// 2. Burt constraint
-		const constraint = await computeBurtConstraint(nodeIds, scanEdges);
-
-		onProgress?.({ tenant: 'vault', phase: 'structural_communities', progressTextSuffix: 'detecting' });
-
-		// 3. Louvain community detection
-		const communityMap = await detectCommunities(nodeIds, scanEdges);
-
-		// 4. Build combined metrics
-		const metrics: StructuralMetric[] = nodeIds.map(id => ({
-			nodeId: id,
-			betweenness: betweenness.get(id) ?? 0,
-			burtConstraint: constraint.get(id) ?? 1,
-			communityId: communityMap.get(id) ?? 0,
-		}));
-
-		// 5. Build community metadata
-		const communityMembers = new Map<number, string[]>();
-		for (const [nodeId, comId] of communityMap) {
-			let members = communityMembers.get(comId);
-			if (!members) { members = []; communityMembers.set(comId, members); }
-			members.push(nodeId);
-		}
-
-		const communities: CommunityData[] = [];
-		for (const [comId, members] of communityMembers) {
-			let avgBetw = 0;
-			for (const id of members) avgBetw += betweenness.get(id) ?? 0;
-			avgBetw /= members.length;
-
-			communities.push({
-				communityId: comId,
-				label: null, // label generation can be added later (LLM or top-tags)
-				memberCount: members.length,
-				avgBetweenness: avgBetw,
-				centroidEmbedding: null, // skip embedding centroid for now to avoid heavy reads
-			});
-		}
-
-		onProgress?.({ tenant: 'vault', phase: 'structural_gaps', progressTextSuffix: 'detecting' });
-
-		// 6. Gap detection — collect edges for gap analysis
-		const edges: Array<{ from: string; to: string; weight: number }> = [];
-		await scanEdges((from, to, weight) => edges.push({ from, to, weight }));
-		const gaps = detectStructuralHoles(communityMap, edges, () => null); // skip embedding-based similarity for now
-
-		onProgress?.({ tenant: 'vault', phase: 'structural_persist', progressTextSuffix: `${metrics.length} metrics, ${communities.length} communities, ${gaps.length} gaps` });
-
-		// 7. Persist
-		await structuralRepo.clearAll();
-		await structuralRepo.upsertMetricsBatch(metrics);
-		await structuralRepo.upsertCommunities(communities);
-		await structuralRepo.upsertStructuralHoles(gaps);
-	}
-}
-
-/** Batched deferred enrichment: LLM tags/summary after fast index (`llm_pending`). */
-export type LlmIndexEnrichmentResult = {
-	processed: number;
-	skippedWrongTenant: number;
-	errors: Array<{ path: string; message: string }>;
-};
-
-/** Batched deferred enrichment: vector embeddings after fast index (`vector_pending`). */
-export type VectorIndexEnrichmentResult = {
-	processed: number;
-	skippedWrongTenant: number;
-	errors: Array<{ path: string; message: string }>;
-};
-
-/** Progress for pending vector enrichment loops. */
-export type PendingEnrichmentProgress = {
-	processed: number;
-	total: number;
-	path: string;
-};
-
-export type { PendingLlmEnrichmentProgress } from '@/service/search/support/llm-enrichment-progress-tracker';
-
-/**
- * Public facade: single entry for indexing, CRUD, and global Mobius maintenance.
- * Delegates to {@link IndexSingleService}, {@link IndexCrudService}, {@link GlobalMaintenanceService}.
- */
-export class IndexService {
-	private static instance: IndexService | null = null;
-	private static isIndexingCancelled = false;
-	private aiServiceManager: AIServiceManager | undefined;
-	private readonly crud = new IndexCrudService();
-	private single: IndexSingleService | null = null;
-	private readonly globalMaintenance = new GlobalMaintenanceService();
-
-	private constructor() {
-		// Private constructor to prevent direct instantiation.
-	}
-
-	private ensureSingle(): IndexSingleService {
-		if (!this.aiServiceManager) {
-			throw new Error('[IndexService] init(AIServiceManager) must be called before indexing');
-		}
-		if (!this.single) {
-			this.single = new IndexSingleService(this.aiServiceManager, this.crud);
-		}
-		return this.single;
-	}
-
-	static getInstance(): IndexService {
-		if (!IndexService.instance) {
-			IndexService.instance = new IndexService();
-		}
-		return IndexService.instance;
-	}
-
-	/**
-	 * Clear the global singleton instance.
-	 * Call from plugin onunload to release memory.
-	 */
-	static clearInstance(): void {
-		IndexService.instance = null;
-	}
-
-	/**
-	 * Initialize IndexService with AIServiceManager for embedding generation.
-	 * This should be called once during plugin initialization in main.ts.
-	 * Can also be called when settings are updated to refresh the service instance.
-	 */
-	init(aiServiceManager: AIServiceManager): void {
-		this.aiServiceManager = aiServiceManager;
-		this.single = new IndexSingleService(aiServiceManager, this.crud);
-	}
-
-	/** Cancel ongoing indexing operations. */
-	static cancelIndexing(): void {
-		IndexService.isIndexingCancelled = true;
-	}
-
-	/** Reset the cancellation flag. */
-	static resetCancellation(): void {
-		IndexService.isIndexingCancelled = false;
-	}
-
-	/** Check if indexing has been cancelled. */
-	static isCancelled(): boolean {
-		return IndexService.isIndexingCancelled;
-	}
-
-	async indexDocument(
-		docPath: string,
-		settings: SearchSettings,
-		indexOptions?: IndexDocumentOptions,
-		/**
-		 * When set, skip loader read; must be the same vault path as the indexed `docPath` (normalized).
-		 * Avoids repeated read + duplicate LLM work when the caller already loaded the document.
-		 */
-		preloadedDocument?: Document,
-	): Promise<void> {
-		return this.ensureSingle().indexDocument(docPath, settings, indexOptions, preloadedDocument);
-	}
-
-	async deleteDocuments(
-		paths: string[],
-		onAfterMutation?: (types: StorageType[]) => void,
-	): Promise<void> {
-		return this.crud.deleteDocuments(paths, onAfterMutation);
-	}
-
-	async clearAllIndexData(onAfterMutation?: (types: StorageType[]) => void): Promise<void> {
-		return this.crud.clearAllIndexData(onAfterMutation);
-	}
-
-	async cleanupOrphanedSearchIndexData(): Promise<{
-		metaFts: number;
-		fts: number;
-		chunks: number;
-		embeddings: number;
-		stats: number;
-		graphNodes: number;
-	}> {
-		return this.crud.cleanupOrphanedSearchIndexData();
-	}
-
-	async getIndexStatus(): Promise<GetIndexStatusResponse> {
-		return this.crud.getIndexStatus();
-	}
-
-	async renameDocumentPath(oldPath: string, newPath: string): Promise<boolean> {
-		return this.crud.renameDocumentPath(oldPath, newPath);
-	}
-
-	async isMobiusMaintenanceRecommended(): Promise<boolean> {
-		return this.crud.isMobiusMaintenanceRecommended();
-	}
-
-	async runMobiusGlobalMaintenance(
-		tenants: IndexTenant[] = ['vault', 'chat'],
-		options?: MobiusGlobalMaintenanceOptions,
-	): Promise<void> {
-		return this.globalMaintenance.runMobiusGlobalMaintenance(tenants, options);
-	}
-
-	/**
-	 * Rebuilds tag_doc_count and document degree columns only (no PageRank / semantic / folder hub).
-	 */
-	async runMobiusAggregateRefreshOnly(
-		tenants: IndexTenant[] = ['vault', 'chat'],
-		onProgress?: (ev: MobiusGlobalMaintenanceProgress) => void,
-	): Promise<void> {
-		return this.globalMaintenance.runMobiusAggregateRefreshOnly(tenants, onProgress);
-	}
+	// --- Batch enrichment (static) ---
 
 	/**
 	 * LLM tags + summary for documents marked `llm_pending` (fast index deferred enrichment).
@@ -2249,30 +1984,6 @@ export class IndexService {
 			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 			const indexed = await repo.getByPath(params.path);
 			const tok = normalizeUsageTokens(params.usage);
-			console.debug('[IndexService] pending LLM enrichment doc complete', {
-				path: params.path,
-				docType: params.docType,
-				tenant,
-				status: params.status,
-				done: params.done,
-				total: params.total,
-				wallMs: params.wallMs,
-				inputTokens: tok.input,
-				outputTokens: tok.output,
-				totalTokens: tok.total,
-				costUsd: params.costUsd,
-				summary: indexed?.summary ?? null,
-				fullSummary: indexed?.full_summary ?? null,
-				tagsJson: JSON.parse(indexed?.tags ?? '{}') ?? null,
-				inferCreatedAt: indexed?.infer_created_at ?? null,
-				lastProcessedAt: indexed?.last_processed_at ?? null,
-				error:
-					params.error instanceof Error
-						? params.error.message
-						: params.error != null
-							? String(params.error)
-							: undefined,
-			});
 		};
 
 		const adaptivePool = new AdaptiveConcurrencyPool({
@@ -2374,11 +2085,7 @@ export class IndexService {
 					throw e;
 				}
 			},
-			{
-				onConcurrencyChange: (level) => {
-					console.debug('[IndexService] adaptive concurrency:', level);
-				},
-			},
+			{},
 		);
 
 		return { processed, skippedWrongTenant, errors };
