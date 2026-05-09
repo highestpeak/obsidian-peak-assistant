@@ -225,7 +225,13 @@ FtsStemRetriever uses the same logic but with `term.stem` instead of `term.text`
 
 ## 4. Merger — Adaptive RRF Fusion
 
-### 4.1 Single-Stage RRF
+### 4.1 Per-Document Chunk Cap
+
+A single document may produce many chunks. In the current system, all matching chunks from the same document accumulate RRF scores under the same `path` key — giving long documents an unfair advantage.
+
+Fix: each Retriever deduplicates by `path` internally, keeping only the **top 3 chunks** per document (sorted by retriever-local score). This caps the maximum RRF contribution from a single document per retriever, preventing a 50-chunk document from dominating over a short but highly relevant note.
+
+### 4.2 Single-Stage RRF
 
 Replace the current two-stage merge (`mergeContentSources` + `mergeContentAndMetaWithRRF`) with a single-pass fusion over all retriever results:
 
@@ -355,12 +361,14 @@ type HighlightResult = {
 };
 
 class HighlightEngine {
-  // Highlight any text (titles, short strings)
+  // Highlight any text (titles, short strings) — uses raw text directly
   highlight(text: string, plan: QueryPlan): HighlightResult;
 
   // Select best snippet window then highlight (for long content)
+  // Uses normalizedContent for matching, rawContent for display
   highlightSnippet(
-    content: string,
+    rawContent: string,
+    normalizedContent: string,
     plan: QueryPlan,
     windowBefore?: number,  // default 80
     windowAfter?: number,   // default 140
@@ -368,16 +376,39 @@ class HighlightEngine {
 }
 ```
 
-### 6.2 Matching Process
+### 6.2 Raw Text Display (Critical Fix)
 
-1. Normalize both text and query terms via `normalizeForSearch()` for matching
-2. Build position map (normalized index → original index) for back-mapping
+**Current problem**: Snippets display FTS-normalized text (`normalizeTextForFts()` output: lowercased, diacritics stripped, CJK spaces inserted), not the user's original writing. Users see processed text in search results.
+
+**Fix**: The `highlightSnippet()` method takes TWO text inputs:
+
+```ts
+highlightSnippet(
+  rawContent: string,        // From doc_chunk.content_raw — displayed to user
+  normalizedContent: string, // From doc_fts.content — used for matching
+  plan: QueryPlan,
+): HighlightResult;
+```
+
+Process:
+1. Build position map between `normalizedContent` and `rawContent` (character-level alignment)
+2. Find keyword positions in `normalizedContent` (reliable matching)
+3. Map positions back to `rawContent` coordinates
+4. Extract snippet window from `rawContent` (user sees their original text)
+5. Highlight spans reference `rawContent` positions
+
+This requires the Retriever to JOIN `doc_chunk` to fetch `content_raw` alongside the FTS result. The SQL cost is negligible (primary key lookup).
+
+### 6.3 Matching Process
+
+1. Normalize query terms via `normalizeForSearch()` for matching against `normalizedContent`
+2. Build position map (normalized index → raw index) for back-mapping
 3. Match in order of priority:
    - Phrase matches (full phrase as substring)
    - Exact term matches
    - Stem matches (term.stem against stemmed content)
    - Fuzzy matches (if result has `fuzzyCorrection`, highlight the corrected term)
-4. Map matched positions back to original text
+4. Map matched positions back to raw text
 5. Tag each span with its type for differentiated rendering
 
 ### 6.3 Snippet Window Improvement
