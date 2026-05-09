@@ -1524,18 +1524,6 @@ class GlobalMaintenanceService {
 	}
 
 	/**
-	 * Rebuilds tag_doc_count and document degree caches only (no PageRank, semantic edges, or folder hub stats).
-	 */
-	async runMobiusAggregateRefreshOnly(
-		tenants: IndexTenant[] = ['vault', 'chat'],
-		onProgress?: (ev: MobiusGlobalMaintenanceProgress) => void,
-	): Promise<void> {
-		for (const tenant of tenants) {
-			await this.refreshMobiusAggregatesInternal(tenant, onProgress);
-		}
-	}
-
-	/**
 	 * Runs global PageRank on the directed **references** subgraph (wiki links between document-like nodes)
 	 * and writes `pagerank` / `pagerank_updated_at` / `pagerank_version` on `mobius_node` (dedicated columns).
 	 *
@@ -1995,16 +1983,6 @@ export class IndexService {
 		options?: MobiusGlobalMaintenanceOptions,
 	): Promise<void> {
 		return this.globalMaintenance.runMobiusGlobalMaintenance(tenants, options);
-	}
-
-	/**
-	 * Rebuilds tag_doc_count and document degree columns only (no PageRank / semantic / folder hub).
-	 */
-	async runMobiusAggregateRefreshOnly(
-		tenants: IndexTenant[] = ['vault', 'chat'],
-		onProgress?: (ev: MobiusGlobalMaintenanceProgress) => void,
-	): Promise<void> {
-		return this.globalMaintenance.runMobiusAggregateRefreshOnly(tenants, onProgress);
 	}
 
 	/**
