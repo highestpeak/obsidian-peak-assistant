@@ -141,15 +141,15 @@ Performance: ~thousands of title tokens, Levenshtein scan <10ms in JS.
 
 ```sql
 CREATE TABLE IF NOT EXISTS search_click (
-    query TEXT NOT NULL,
+    query_stems TEXT NOT NULL,   -- space-joined stemmed query terms, for generalized matching
     path TEXT NOT NULL,
     rank INTEGER NOT NULL,
     ts INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_search_click_query ON search_click(query);
+CREATE INDEX IF NOT EXISTS idx_search_click_query ON search_click(query_stems);
 ```
 
-Records which result the user opened for a given query. Used by Ranker for personalized boosting. 30-day rolling window.
+Records which result the user opened for a given query. The `query_stems` column stores stemmed+sorted terms (e.g. query "running tests" → stems "run test" → stored as "run test"), so that morphological variants of the same query share click signals. Used by Ranker for personalized boosting. 30-day rolling window.
 
 ### 2.6 Index Migration Strategy
 
@@ -175,13 +175,12 @@ type RetrieverResult = {
   path: string;
   docId?: string;
   score: number;               // Retriever-local normalized score (0-1)
-  content?: string;
+  content?: string;            // Normalized content (for matching)
+  contentRaw?: string;         // Original raw content (for display)
   chunkType?: ChunkType;
   matchType: 'exact' | 'stem' | 'semantic' | 'fuzzy' | 'meta';
   source: string;              // Retriever name for merger identification
   fuzzyCorrection?: string;    // For fuzzy: the corrected term (e.g. "machine" for query "machien")
-  titleHighlight?: HighlightResult;
-  contentHighlight?: HighlightResult;
 };
 ```
 
@@ -215,7 +214,7 @@ FtsRetriever translates QueryPlan to FTS5 syntax:
 |----------------|------------------|
 | `terms: [{text: "obsidian", isPrefix: true}]` | `obsidian*` |
 | `phrases: ["machine learning"]` | `"machine learning"` |
-| `excludes: ["snake"]` | `NOT snake` |
+| `excludes: ["snake"]` | `NOT snake` (FTS-level exclusion) |
 | `filters: [{field: "tag", value: "project"}]` | Handled as post-filter or via MetaRetriever |
 | Multiple terms | Joined with `OR`, post-scored by diversity/density |
 
@@ -225,21 +224,7 @@ FtsStemRetriever uses the same logic but with `term.stem` instead of `term.text`
 
 ## 4. Merger — Adaptive RRF Fusion
 
-### 4.1 Per-Document Chunk Decay
-
-A single document may produce many chunks. In the current system, all matching chunks from the same document accumulate RRF scores linearly under the same `path` key — giving long documents an unfair advantage (10 chunks = 10x score).
-
-Fix: **diminishing returns** via exponential decay. Within each Retriever, chunks from the same document are sorted by retriever-local score (best first), and each subsequent chunk's RRF contribution is multiplied by a decay factor:
-
-```ts
-const CHUNK_DECAY = 0.5;
-// Chunk 1: 1.0x RRF,  Chunk 2: 0.5x RRF,  Chunk 3: 0.25x RRF, ...
-rrfContribution = baseRrf * Math.pow(CHUNK_DECAY, chunkIndex);
-```
-
-Effect: a document with 10 matching chunks scores ~2x a single-chunk document (geometric sum converges to `1 / (1 - 0.5) = 2x`), not 10x. The signal "many parts match" is preserved with diminishing returns.
-
-### 4.2 Single-Stage RRF
+### 4.1 Single-Stage RRF
 
 Replace the current two-stage merge (`mergeContentSources` + `mergeContentAndMetaWithRRF`) with a single-pass fusion over all retriever results:
 
@@ -277,12 +262,30 @@ function merge(
 }
 ```
 
-### 4.2 Constants
+### 4.2 Per-Document Chunk Decay
+
+A single document may produce many chunks. In the current system, all matching chunks accumulate RRF scores linearly — giving long documents an unfair advantage (10 chunks = 10x score).
+
+Fix: **diminishing returns** via exponential decay. Each Retriever internally groups chunks by `path`, sorts by retriever-local score (best first), and applies decay before returning results to the Merger:
+
+```ts
+const CHUNK_DECAY = 0.5;
+// Chunk 1: 1.0x score,  Chunk 2: 0.5x,  Chunk 3: 0.25x, ...
+adjustedScore = rawScore * Math.pow(CHUNK_DECAY, chunkIndex);
+// Sum decayed scores per document, return one entry per path
+docScore = sum(adjustedScores);
+```
+
+Each Retriever returns **one entry per document** (with summed decayed score and the best chunk's content for snippet). The Merger receives deduplicated results and only does cross-retriever fusion.
+
+Effect: a document with 10 matching chunks scores ~2x a single-chunk document (geometric sum converges to `1 / (1 - 0.5) = 2x`), not 10x.
+
+### 4.3 Constants
 
 - `RRF_K = 60` — unchanged. Standard value from the original RRF paper (Cormack et al. 2009).
 - Per-retriever weights: dynamically computed by `computeRetrieverWeights()` (Section 1.3), not fixed constants.
 
-### 4.3 Files
+### 4.4 Files
 
 - `src/service/search/merger/rrf-merger.ts` — the merge function
 - Delete: `queryService.ts` methods `mergeContentSources()` and `mergeContentAndMetaWithRRF()`
@@ -336,15 +339,26 @@ Added as an additional additive boost in `applyRankingBoosts()`.
 
 ### 5.4 PPR Integration
 
-PPR remains unchanged — it runs after RRF merger, before metadata boosts. The pipeline:
+PPR remains unchanged algorithmically, but its timing changes in the two-tier pipeline:
+
+- **Tier 1 (fast path)**: PPR is **skipped**. Keyword results are ranked by RRF + metadata boosts alone. This keeps Tier 1 under 50ms.
+- **Tier 2 (after vector results arrive)**: PPR runs **once** on the full merged result set (all 5 retrievers). This is the definitive ranking.
 
 ```
-Retrievers → Merger (RRF) → PPR rerank + expansion → Ranker (metadata + click boosts)
+Tier 1: Retrievers(fast) → Merger → Ranker (no PPR) → Display
+Tier 2: Retrievers(all)  → Merger → PPR → Ranker → Display (replaces Tier 1)
 ```
 
-### 5.5 Exclude Filter
+If vector search is unavailable (no embedding configured), PPR runs on Tier 1 directly (since there's no Tier 2).
 
-Results whose path matches any `plan.excludes` term or `plan.filters` exclusion are removed after ranking (post-filter). This is simpler and more reliable than trying to push exclusion into each retriever's SQL.
+### 5.5 Exclude Filter (Two-Layer)
+
+Exclusion is applied at two layers:
+
+1. **FTS-level** (Section 3.4): FtsRetriever and FtsStemRetriever translate `-term` to FTS5 `NOT term`, excluding at the SQL level. This is efficient and covers content FTS results.
+2. **Post-ranking filter**: After all retrievers merge and rank, any result whose content or title contains an excluded term is removed. This catches documents that entered via Vector or Fuzzy retrievers (which don't support FTS5 NOT syntax).
+
+Both layers work together — FTS-level handles the fast path, post-filter is the safety net.
 
 ### 5.6 Result Deduplication
 
@@ -419,7 +433,7 @@ This requires the Retriever to JOIN `doc_chunk` to fetch `content_raw` alongside
 4. Map matched positions back to raw text
 5. Tag each span with its type for differentiated rendering
 
-### 6.3 Snippet Window Improvement
+### 6.5 Snippet Window Improvement
 
 Current: select window with most **unique keywords**.
 New: dual-factor scoring:
@@ -431,9 +445,16 @@ windowScore = uniqueKeywordCount * 2 + keywordDensity;
 
 Diversity remains primary (×2 weight), density is tiebreaker. When two windows cover the same keyword set, the denser one is selected.
 
-### 6.4 UI Rendering
+### 6.4 Computation Timing
 
-Highlights are computed at retriever/pipeline level, not in the UI component. `VaultSearchResult.tsx` receives pre-computed `HighlightResult` for both title and content, and renders spans with differentiated styles:
+Highlights are computed **after ranking**, as the final presentation step — not inside each Retriever. This avoids wasting work on results that get excluded or fall below the display limit.
+
+Pipeline integration:
+```
+Merger → PPR → Ranker → topK slice → HighlightEngine.highlight(title) + .highlightSnippet(rawContent, normalizedContent) → Display
+```
+
+`VaultSearchResult.tsx` receives pre-computed `HighlightResult` for both title and content, and renders spans with differentiated styles:
 
 | Span Type | Visual Style |
 |-----------|-------------|
@@ -441,7 +462,7 @@ Highlights are computed at retriever/pipeline level, not in the UI component. `V
 | `stem` | `bg-amber-50 text-amber-800` (lighter amber) |
 | `fuzzy` | `bg-blue-50 text-blue-800 underline decoration-dashed` (blue dashed underline) |
 
-### 6.5 Files
+### 6.7 Files
 
 - New: `src/service/search/query/highlight-engine.ts`
 - Delete content from: `highlight-builder.ts` (logic migrated to HighlightEngine)
@@ -522,19 +543,22 @@ User Input
        │         ↓                                                │
        │  Merger.merge(results, plan)                             │
        │         ↓                                                │
-       │  PPR.rerank(merged)                                      │
+       │  Ranker.applyBoosts(merged, signals, clickHistory)       │
+       │  (NO PPR — keep fast path <50ms)                         │
        │         ↓                                                │
-       │  Ranker.applyBoosts(pprResult, signals, clickHistory)    │
+       │  HighlightEngine on topK                                 │
        │         ↓                                                │
-       │  Display results (fast path, <50ms execution)            │
+       │  Display results (fast path)                             │
        └─────────────────────────────────────────────────────────┘
        │
        ┌──── Tier 2 (500ms debounce, async) ─────────────────────┐
        │  VectorRetriever.retrieve(plan)  // needs API call       │
        │         ↓                                                │
-       │  Re-merge with Tier 1 results                            │
-       │  Re-rank                                                 │
-       │  Update display (semantic enrichment)                    │
+       │  Re-merge with Tier 1 retriever results                  │
+       │  PPR.rerank(fullMerged)   // run once on full set        │
+       │  Ranker.applyBoosts(...)                                 │
+       │  HighlightEngine on topK                                 │
+       │  Update display (definitive ranking with PPR + semantic)  │
        └─────────────────────────────────────────────────────────┘
 ```
 
@@ -573,9 +597,9 @@ The existing test file `test/boolean-expression-parser.test.ts` is unrelated (it
 
 ### 10.1 Database Migration
 
-- New tables (`doc_fts_stem`, `search_click`) and new column (`doc_meta_fts.tags`) use `CREATE IF NOT EXISTS`
-- `doc_meta_fts` schema change requires dropping and recreating the virtual table (FTS5 doesn't support ALTER). Wrap in a migration version check.
-- First launch after upgrade triggers `reindexAll()` — user sees a brief "Rebuilding search index..." notice
+- New tables (`doc_fts_stem`, `search_click`) use `CREATE IF NOT EXISTS`
+- `doc_meta_fts` schema change (adding `tags` column) requires `DROP TABLE IF EXISTS doc_meta_fts` then `CREATE VIRTUAL TABLE doc_meta_fts ...` with the new schema. FTS5 does not support ALTER TABLE. Wrap in a schema version check (e.g. `PRAGMA user_version`) to only drop/recreate on upgrade.
+- First launch after upgrade triggers `reindexAll()` to populate `doc_fts_stem` and the new `doc_meta_fts.tags` column. User sees a "Rebuilding search index..." notice with progress.
 
 ### 10.2 API Compatibility
 
