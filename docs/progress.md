@@ -288,6 +288,18 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ## Log
 
+### 2026-05-08~09 (Session 17) — Codebase Deep Refactor
+- Done: **100,002 → 81,632 code lines (cloc TypeScript, -18,370 = -18.4%)**, 21 commits on `refactor/codebase-50k-target`
+- Wave 0 (dead code purge, -5,448): tmp_code_ref_for_cursor, src/desktop, index-debug-tools, dead hooks/utils/exports, 44 dead repo methods, dead templates
+- Wave 1 (D3→ReactFlow, -6,373): Delete entire graph-viz/ (46 files, 6,456 lines) + shim + preset, replace with 100-line ReactFlow SearchGraph
+- Wave 3 (hub/backbone consolidation): Inline 4 hub helpers into hubDiscover.ts, merge backbone 15→4 files
+- Wave 4 partial: merge duplicate agent SDK files, simplify find-path.ts/explore-folder.ts/inspectorService.ts, delete 5 dead inspector functions
+- Wave 5.3: Extract BaseDocumentLoader, simplify 10 loaders (-911 lines)
+- Feature deletions: usage-dashboard (init never called), vault-xray (isolated), 7 dead files
+- Cleanup: strip 234 console.log/debug, delete dead exports from constant/markdown-utils/PromptId/types
+- Plan: `docs/superpowers/plans/2026-05-08-codebase-deep-refactor.md`
+- Next: Wave 2 store migration (-5k), Wave 4/5/6 service+core+UI simplification (target 50k)
+
 ### 2026-05-08 (Session 16)
 - Done: **Phase Z — Mockup Gap 补全** (8 commits)
   - **审计**：对比 7 个 HTML mockup 与实际代码，识别出 9 个未实现设计项
