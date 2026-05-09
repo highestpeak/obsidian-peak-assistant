@@ -30,7 +30,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | S. UI 稳定性批量修复 | 15 个 RC 全量修复：错误处理/Chat UI/AI 列表/Copilot/Settings/Profile-Model/Quick Actions | 完成 (7 waves, 9 commits) |
 | T. Vercel AI SDK 恢复 | 双轨 dispatch + Chat role + 模型路由修复 + 白闪修复 + typewriter 流式 | 完成 (12 commits) |
 | U. Chat UI v9 + 智能功能 | Message UI 重构 + 换模型重新输出 + Topic 聚合 + Suggested Follow-ups + Outline 修复 + bug fixes | 完成 |
-| W. Copilot 扩展 | 5→15 actions，注册表架构，分组 UI + 上下文推荐，Document/Vault/Writing 三类 | 进行中 |
+| W. Copilot 扩展 | 5→15 actions，注册表架构，分组 UI + 上下文推荐，Document/Vault/Writing 三类 | 完成 |
 | X. Model Selection 统一 | Provider 卡片简化 + Agent Fast pill + Ollama 动态模型 + baseUrl 修复 | 完成 |
 | X2. Provider Settings Polish | Pill 搜索面板 + AddProfileGrid 去重 + 凭证显示修复 + authToken fallback | 完成 |
 | X3. Profile authToken 清理 | 删除 authToken 字段 + 统一 apiKey + 迁移 legacy data + OpenRouter baseUrl 修复 | 完成 |
@@ -39,6 +39,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | AA. 代码库精简 | 71.2k→66.7k (-4,485行): 死代码删除 + 算法简化 + 架构重构 + 冗余压缩 | 完成 (24 commits) |
 | AB. Search Pipeline Upgrade | QueryParser + 5 Retrievers + adaptive RRF + HighlightEngine + stemming + fuzzy + click-through | 完成 (19 tasks, 19 commits) |
 | AC. Onboarding Index Config | 4步Onboarding + 三档索引(fast/semantic/full) + Settings面板 + 智能升级提示 | 完成 (7 tasks, 7 commits) |
+| AD. P0-P1 批量执行 | authToken 清理 + Plan 模式移除 + Usage Dashboard 恢复 + 动态能力感知 | 完成 (4 commits) |
 
 ## Next
 
@@ -124,6 +125,26 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [ ] guard 拦截：未选中文本 → Rewrite Selection 应弹 Notice
 - [ ] guard 拦截：<500 词文档 → Suggest Split 应弹 Notice
 - [ ] 错误处理：无有效 API key → 错误面板 + Open Settings 按钮
+
+#### Chat 工具基础设施 Smoke Test
+
+**Web Search（非 Anthropic 模型）**
+- [ ] 选 OpenAI/gpt-5-mini → 开 Web Search → 问 "今天有什么新闻" → 应返回真实搜索结果（非 "I don't have web access"）
+- [ ] 验证 tool-call 事件正常显示（模型调用 web_search → 返回结果 → 生成回答）
+
+**Web Search（Anthropic 模型）**
+- [ ] 切 claude-sonnet → 开 Web Search → 问新闻 → 同样能搜索到结果
+- [ ] 验证 Anthropic 走 Vercel AI SDK 路径正常（不再走 Agent SDK）
+
+**无工具回归**
+- [ ] 关闭 Web Search → 正常聊天 → 无 tool call，响应正常
+- [ ] 切换多个 provider（OpenAI / Anthropic / Google）均正常
+
+**原生能力跳过**
+- [ ] 有原生 webSearch 的模型（如 Perplexity）→ 开 Web Search → 不注入自定义 web_search 工具（用原生）
+
+**错误处理**
+- [ ] 无 Web Search Profile 配置时 → 开 Web Search → 不崩溃，正常降级为无工具
 
 #### 历史验证（仍需）
 - [ ] Phase S 验证：15 个 RC 全量测试
@@ -292,6 +313,23 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-09 (Session 24) — Copilot Token 显示 + 请求取消
+- Done: **Token Usage Display**
+  - `ActionUsage` 接口 + `usage?` 字段加到 `ActionResult` 三种变体
+  - `queryTextStream` 的 `done` 事件携带 `usage`；`queryStructured` 加 `usageCallback` opts
+  - `toActionUsage()` 转换 helper，10 个 LLM action 全部捕获并返回 usage
+  - `UsageFooter` 组件：result 阶段底部 "X in + Y out tokens"
+- Done: **Request Cancellation**
+  - `CopilotAction.execute` 签名加 `signal?: AbortSignal`，15 个 action 全部透传
+  - `CopilotResultModal.onOpen()` 创建 `AbortController`
+  - Loading 阶段 Cancel 按钮（X 图标），点击 abort + 显示 `CancelledView`
+  - `CancelledView`：Ban 图标 + "Cancelled" + "Back to Copilot" 按钮
+  - Back 按钮 / modal close 同步 abort
+  - catch 中判断 `signal.aborted` → 显示 cancelled 而非 error
+- Files: CopilotActionRegistry.ts, service-manager.ts, actions/index.ts, CopilotResultModal.tsx
+- Build + tests 通过
+- Next: 15 个 action smoke test + Suggest Links 本地化（可选）
 
 ### 2026-05-09 (Session 23) — Bug 修复 + 清理
 - Done: **移除独立 Copilot 命令**
