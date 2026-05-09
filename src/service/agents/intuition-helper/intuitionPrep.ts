@@ -20,7 +20,6 @@ import {
 	buildBackboneMap,
 	topTokensFromBasenames,
 	normalizeVaultFolderPath,
-	isPathExcludedByPrefixes,
 	visibleChildFolders,
 	scanFolderTree,
 	getBackboneExcludedPrefixes,
