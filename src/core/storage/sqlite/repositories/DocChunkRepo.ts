@@ -143,15 +143,15 @@ export class DocChunkRepo {
 	}
 
 	/**
-	 * Insert FTS row for document metadata (title/path).
+	 * Insert FTS row for document metadata (title/path/tags).
 	 * Only one row per document.
 	 */
 	insertMetaFts(params: FtsMetaInsertParams): void {
 		const stmt = this.rawDb.prepare(`
-			INSERT INTO doc_meta_fts (doc_id, path, title)
-			VALUES (@doc_id, @path, @title)
+			INSERT INTO doc_meta_fts (doc_id, path, title, tags)
+			VALUES (@doc_id, @path, @title, @tags)
 		`);
-		stmt.run(params);
+		stmt.run({ ...params, tags: params.tags ?? '' });
 	}
 
 	/**
@@ -407,6 +407,105 @@ export class DocChunkRepo {
 			docId: string;
 			path: string;
 			title: string | null;
+			bm25: number;
+		}>;
+	}
+
+	/**
+	 * Insert a stemmed content chunk into doc_fts_stem for morphological matching.
+	 */
+	insertFtsStem(chunkId: string, docId: string, stemmedContent: string): void {
+		this.rawDb.prepare(
+			`INSERT INTO doc_fts_stem (chunk_id, doc_id, content) VALUES (?, ?, ?)`,
+		).run(chunkId, docId, stemmedContent);
+	}
+
+	/**
+	 * Delete all stemmed FTS entries for a document.
+	 */
+	deleteFtsStemByDocId(docId: string): void {
+		this.rawDb.prepare(`DELETE FROM doc_fts_stem WHERE doc_id = ?`).run(docId);
+	}
+
+	/**
+	 * Delete all stemmed FTS entries for multiple documents (batch).
+	 */
+	deleteFtsStemByDocIds(docIds: string[]): void {
+		if (!docIds.length) return;
+		this.rawDb.prepare(
+			`DELETE FROM doc_fts_stem WHERE doc_id IN (${docIds.map(() => '?').join(',')})`,
+		).run(...docIds);
+	}
+
+	/**
+	 * Get all unique titles from doc_meta_fts. Used by FuzzyRetriever for title token cache.
+	 */
+	getAllMetaTitles(): Array<{ title: string | null }> {
+		return this.rawDb.prepare(`SELECT DISTINCT title FROM doc_meta_fts`).all() as Array<{ title: string | null }>;
+	}
+
+	/**
+	 * Search the stemmed FTS5 table. Same structure as searchFts() but targets doc_fts_stem.
+	 */
+	searchFtsStem(
+		term: string,
+		limit: number = 50,
+		scopeMode?: SearchScopeMode,
+		scopeValue?: SearchScopeValue,
+		excludeFolderPrefixes?: string[],
+	): Array<{
+		chunkId: string;
+		docId: string;
+		path: string;
+		title: string | null;
+		content: string;
+		bm25: number;
+	}> {
+		let pathFilter = '';
+		const pathParams: string[] = [];
+
+		if (scopeMode === 'inFile' && scopeValue?.currentFilePath) {
+			pathFilter = 'AND dm.path = ?';
+			pathParams.push(scopeValue.currentFilePath);
+		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
+			const folderPath = (scopeValue.folderPath ?? '').trim().replace(/\/+$/, '') || undefined;
+			if (folderPath) {
+				pathFilter = 'AND (dm.path = ? OR dm.path LIKE ?)';
+				pathParams.push(folderPath, `${folderPath}/%`);
+			}
+		}
+
+		if (excludeFolderPrefixes?.length) {
+			for (const p of excludeFolderPrefixes) {
+				const folderLike = p.endsWith('/') ? p : p + '/';
+				const exact = folderLike.slice(0, -1);
+				pathFilter += ' AND NOT (dm.path LIKE ? OR dm.path = ?)';
+				pathParams.push(`${folderLike}%`, exact);
+			}
+		}
+
+		const sql = `
+			SELECT
+				f.chunk_id as chunkId,
+				f.doc_id as docId,
+				dm.path as path,
+				dm.title as title,
+				f.content as content,
+				bm25(doc_fts_stem) as bm25
+			FROM doc_fts_stem f
+			INNER JOIN mobius_node dm ON f.doc_id = dm.node_id AND dm.type IN ('${GraphNodeType.Document}', '${GraphNodeType.HubDoc}')
+			WHERE doc_fts_stem MATCH ?
+			${pathFilter}
+			ORDER BY bm25 ASC
+			LIMIT ?
+		`;
+		const stmt = this.rawDb.prepare(sql);
+		return stmt.all(term, ...pathParams, limit) as Array<{
+			chunkId: string;
+			docId: string;
+			path: string;
+			title: string | null;
+			content: string;
 			bm25: number;
 		}>;
 	}
