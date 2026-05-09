@@ -35,6 +35,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | X2. Provider Settings Polish | Pill 搜索面板 + AddProfileGrid 去重 + 凭证显示修复 + authToken fallback | 完成 |
 | Y. Token Usage Dashboard | 全站 AI 调用追踪 + SQLite 持久化 + 统计面板（KPI/趋势/分布/明细） | 完成 |
 | Z. Mockup Gap 补全 | @菜单面包屑/分组/元数据、/菜单模板分组、工具栏响应式、智能建议、Diff高亮、变量高亮 | 完成 (8 commits) |
+| AA. 代码库精简 | 71.2k→66.7k (-4,485行): 死代码删除 + 算法简化 + 架构重构 + 冗余压缩 | 完成 (24 commits) |
 
 ## Next
 
