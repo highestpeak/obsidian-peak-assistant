@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { ChatProject, ChatConversation } from '@/service/chat/types';
 import { formatRelativeDate } from '@/core/utils/date-utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { Folder, MessageSquare, FileText, Search, ClipboardList } from 'lucide-react';
+import { Folder, MessageSquare, FileText, Search } from 'lucide-react';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { useChatViewStore } from './store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
@@ -135,15 +135,6 @@ export const HomeViewComponent: React.FC = () => {
 			action: () => {
 				setPendingConversation({ title: 'Research', project: null });
 				chatViewStore.setChatMode('agent');
-			},
-		},
-		{
-			icon: <ClipboardList className="pktw-w-5 pktw-h-5 pktw-text-muted-foreground" />,
-			label: 'Plan a project',
-			description: 'Break down goals into steps',
-			action: () => {
-				setPendingConversation({ title: 'New plan', project: null });
-				chatViewStore.setChatMode('plan');
 			},
 		},
 	];

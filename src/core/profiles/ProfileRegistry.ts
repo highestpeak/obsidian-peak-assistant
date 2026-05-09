@@ -117,10 +117,10 @@ export class ProfileRegistry {
 
   /**
    * Returns the appropriate config for a given conversation mode.
-   * 'agent' and 'plan' use the Agent config; all others use the Chat config.
+   * 'agent' uses the Agent config; all others use the Chat config.
    */
   getConfigForMode(mode: string): { profile: Profile; modelId: string } | null {
-    if (mode === 'agent' || mode === 'plan') return this.getActiveAgentConfig();
+    if (mode === 'agent') return this.getActiveAgentConfig();
     return this.getActiveChatConfig();
   }
 
