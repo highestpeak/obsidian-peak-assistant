@@ -39,6 +39,17 @@ export class QueryService {
 		this.reranker = new Reranker(aiServiceManager, searchSettings);
 	}
 
+	/** Resolve display title: yaml title > filename without extension > path */
+	private resolveTitle(metaTitle: string | null | undefined, path: string): string {
+		if (metaTitle) return metaTitle;
+		if (path) {
+			const parts = path.split('/');
+			const filename = parts[parts.length - 1] || path;
+			return filename.replace(/\.[^/.]+$/, '') || path;
+		}
+		return path;
+	}
+
 	async textSearch(query: SearchQuery, enableLLMRerank: boolean = false): Promise<SearchResponse & { duration: number }> {
 		const sw = new Stopwatch('SearchQuery');
 
@@ -46,11 +57,7 @@ export class QueryService {
 		const scopeMode = query?.scopeMode ?? DEFAULT_SEARCH_MODE;
 		const scopeValue = query?.scopeValue ?? {};
 
-		// Always perform tri-hybrid search (content + meta)
-		// Content includes: fulltext + vector (if embedding available)
 		const vectorSearchAvailable = sqliteStoreManager.isVectorSearchEnabled();
-
-		// Generate embedding first (if configured and vector search is available)
 		const registry = ProfileRegistry.getInstance();
 		const embProfile = registry.getActiveEmbeddingProfile() ?? registry.getActiveAgentProfile();
 		const hasEmbedding = !!(embProfile?.embeddingEndpoint && embProfile?.embeddingModel);
@@ -62,15 +69,11 @@ export class QueryService {
 				embedding = await embedText(termRaw);
 			} catch (error) {
 				console.error(`[QueryService] Failed to generate embedding for search:`, error);
-				// Continue with fulltext search only if embedding generation fails
 			}
 			sw.stop();
 		}
 
-		// Parallel execution with individual timing: fulltext search, vector search, and meta search
 		sw.start('parallel_search_execution');
-
-		// Helper function to time async operations
 		const timeAsyncOperation = async <T>(
 			operation: () => Promise<T>,
 		): Promise<{ result: T; duration: number }> => {
@@ -79,32 +82,13 @@ export class QueryService {
 			const duration = Date.now() - startTime;
 			return { result, duration };
 		};
-		// Execute all searches in parallel with individual timing
-		const searchPromises = [
-			// Fulltext search
-			timeAsyncOperation(
-				() => this.executeFulltextSearch({ query, scopeMode, scopeValue }),
-			),
-			// Vector search (conditional)
+		const [textResult, vecResult, metaResult] = await Promise.all([
+			timeAsyncOperation(() => this.executeFulltextSearch({ query, scopeMode, scopeValue })),
 			embedding && vectorSearchAvailable
-				? timeAsyncOperation(
-					() => this.executeVectorSearch({
-						query,
-						mode: scopeMode,
-						scope: scopeValue,
-						embedding,
-					}),
-				)
+				? timeAsyncOperation(() => this.executeVectorSearch({ query, mode: scopeMode, scope: scopeValue, embedding }))
 				: Promise.resolve({ result: [] as SearchResultItem[], duration: 0 }),
-			// Meta search
-			timeAsyncOperation(
-				() => this.executeMetaSearch({ query, scopeMode, scopeValue }),
-			),
-		];
-		const [textResult, vecResult, metaResult] = await Promise.all(searchPromises);
-		// console.debug('textResult', JSON.stringify(textResult));
-		// console.debug('vecResult', JSON.stringify(vecResult));
-		// console.debug('metaResult', JSON.stringify(metaResult));
+			timeAsyncOperation(() => this.executeMetaSearch({ query, scopeMode, scopeValue })),
+		]);
 		const textItems = textResult.result;
 		const vecItems = vecResult.result;
 		const metaItems = metaResult.result;
@@ -113,15 +97,12 @@ export class QueryService {
 		sw.addSegmentDetail('meta_search', metaResult.duration);
 		sw.stop();
 
-		// Two-stage merge: content sources first, then with meta
 		sw.start('merge_operations');
-		// Stage 1: Merge fulltext and vector into unified content hits
 		const contentHits = this.mergeContentSources(
 			textItems.map((i) => ({ ...i, score: i.score ?? 0 })),
 			vecItems.map((i) => ({ ...i, score: i.score ?? 0 })),
 		);
 
-		// Stage 2: Merge content hits with meta hits using equal weights
 		const resultItems = this.mergeContentAndMetaWithRRF(
 			contentHits,
 			metaItems.map((i) => ({ ...i, score: i.score ?? 0 })),
@@ -129,7 +110,6 @@ export class QueryService {
 		);
 		sw.stop();
 
-		// PPR graph-based reranking
 		const tenant = query?.indexTenant ?? 'vault';
 		let pprEnriched = resultItems;
 		const enablePPR = query.enablePPR !== false;
@@ -334,30 +314,13 @@ export class QueryService {
 			const meta = metaById.get(r.docId);
 			const content = r.content ?? '';
 			const snippet = buildHighlightSnippet(content, termRaw);
+			const keywordMatchCount = this.countKeywordMatches(content, keywords);
+			const totalOccurrences = this.countTotalKeywordOccurrences(content, keywords);
+			const title = this.resolveTitle(meta?.title, r.path);
 
-			// Count keyword matches in content
-			const keywordMatchCount = this.countKeywordMatches(content, keywords); // diversity: different keywords matched
-			const totalOccurrences = this.countTotalKeywordOccurrences(content, keywords); // density: total occurrences
-
-			// Title logic: use yaml title from meta, fallback to filename without extension
-			let title = meta?.title ?? null;
-			if (!title && r.path) {
-				const pathParts = r.path.split('/');
-				const filename = pathParts[pathParts.length - 1] || r.path;
-				title = filename.replace(/\.[^/.]+$/, ''); // Remove extension
-			}
-			title = title || r.path; // Final fallback to path
-
-			// Base score from BM25 (smaller is better, convert to larger-is-better)
 			const bm25Score = 1 / (1 + Math.max(0, Number(r.bm25 ?? 0)));
-
-			// Enhanced scoring: prioritize diversity (different keywords matched) over density (total occurrences)
-			// Diversity boost: up to 50% boost for matching all keywords
 			const diversityRatio = keywords.length > 0 ? keywordMatchCount / keywords.length : 0;
 			const diversityBoost = 1 + (diversityRatio * SEARCH_SCORING_DIVERSITY_BOOST_CONTENT);
-
-			// Density boost: additional boost based on total occurrences, but with diminishing returns
-			// Cap at reasonable maximum to prevent single keyword spamming
 			const maxReasonableOccurrences = keywords.length * SEARCH_SCORING_MAX_OCCURRENCES_CONTENT;
 			const densityRatio = Math.min(totalOccurrences / maxReasonableOccurrences, 1);
 			const densityBoost = 1 + (densityRatio * SEARCH_SCORING_DENSITY_BOOST_CONTENT);
@@ -430,29 +393,13 @@ export class QueryService {
 			const content = r.content_raw ?? '';
 			const snippet = buildHighlightSnippet(content, termRaw);
 			const score = Number(scoreByKey.get(String(r.chunk_id)) ?? 0);
-			const ct = (r.chunk_type as ChunkType) ?? 'body_raw';
-
-			let title = meta?.title ?? null;
-			if (!title && path) {
-				const pathParts = path.split('/');
-				const filename = pathParts[pathParts.length - 1] || path;
-				title = filename.replace(/\.[^/.]+$/, '');
-			}
-			title = title || path;
-
 			items.push({
-				id: path,
-				type: (meta?.type ?? 'unknown') as SearchResultType,
-				title,
-				path,
-				lastModified: Number(meta?.mtime ?? r.mtime ?? 0),
-				content,
+				id: path, type: (meta?.type ?? 'unknown') as SearchResultType,
+				title: this.resolveTitle(meta?.title, path), path,
+				lastModified: Number(meta?.mtime ?? r.mtime ?? 0), content,
 				highlight: snippet ? { text: snippet.text, highlights: snippet.highlights } : null,
-				score,
-				finalScore: score,
-				docId: r.doc_id,
-				chunkId: r.chunk_id,
-				chunkType: ct,
+				score, finalScore: score, docId: r.doc_id, chunkId: r.chunk_id,
+				chunkType: (r.chunk_type as ChunkType) ?? 'body_raw',
 			});
 		}
 
@@ -462,26 +409,12 @@ export class QueryService {
 			const summaryText = [meta?.summary, meta?.full_summary].filter(Boolean).join('\n\n') || '';
 			const snippet = buildHighlightSnippet(summaryText, termRaw);
 			const score = Number(scoreByKey.get(r.id) ?? 0);
-
-			let title = meta?.title ?? null;
-			if (!title && path) {
-				const pathParts = path.split('/');
-				const filename = pathParts[pathParts.length - 1] || path;
-				title = filename.replace(/\.[^/.]+$/, '');
-			}
-			title = title || path;
-
 			items.push({
-				id: path,
-				type: (meta?.type ?? 'unknown') as SearchResultType,
-				title,
-				path,
-				lastModified: Number(meta?.mtime ?? 0),
-				content: summaryText,
+				id: path, type: (meta?.type ?? 'unknown') as SearchResultType,
+				title: this.resolveTitle(meta?.title, path), path,
+				lastModified: Number(meta?.mtime ?? 0), content: summaryText,
 				highlight: snippet ? { text: snippet.text, highlights: snippet.highlights } : null,
-				score,
-				finalScore: score,
-				docId: r.doc_id,
+				score, finalScore: score, docId: r.doc_id,
 				chunkType: (r.chunk_type as ChunkType | null) ?? undefined,
 			});
 		}
@@ -534,55 +467,28 @@ export class QueryService {
 		const metaRows_ = await indexedDocumentRepo.getByIds(docIds);
 		const metaById = new Map(metaRows_.map((m) => [m.id, m]));
 
-		// Score results by keyword match count in title/path
 		const items: SearchResultItem[] = metaRows.map((r) => {
 			const meta = metaById.get(r.docId);
-
-			// Title logic: use yaml title from meta, fallback to filename without extension
-			let title = meta?.title ?? r.title ?? null;
-			if (!title && r.path) {
-				const pathParts = r.path.split('/');
-				const filename = pathParts[pathParts.length - 1] || r.path;
-				title = filename.replace(/\.[^/.]+$/, ''); // Remove extension
-			}
-			title = title || r.path; // Final fallback to path
-
-			// Count keyword matches in title and path
-			const titleText = title ?? '';
-			const pathText = r.path ?? '';
-			const combinedText = `${titleText} ${pathText}`;
-			const keywordMatchCount = this.countKeywordMatches(combinedText, keywords); // diversity: different keywords matched
-			const totalOccurrences = this.countTotalKeywordOccurrences(combinedText, keywords); // density: total occurrences
-
-			// For meta search, create snippet from title and path
+			const title = this.resolveTitle(meta?.title ?? r.title, r.path);
+			const combinedText = `${title} ${r.path ?? ''}`;
+			const keywordMatchCount = this.countKeywordMatches(combinedText, keywords);
+			const totalOccurrences = this.countTotalKeywordOccurrences(combinedText, keywords);
 			const content = `${title} ${r.path}`;
 			const snippet = buildHighlightSnippet(content, termRaw);
 
-			// Base score from BM25 (smaller is better, convert to larger-is-better)
 			const bm25Score = 1 / (1 + Math.max(0, Number(r.bm25 ?? 0)));
-
-			// Enhanced scoring for meta matches: prioritize diversity (different keywords matched) over density
-			// Meta matches are important, so give higher boost
 			const diversityRatio = keywords.length > 0 ? keywordMatchCount / keywords.length : 0;
 			const diversityBoost = 1 + (diversityRatio * SEARCH_SCORING_DIVERSITY_BOOST_META);
-
-			// Density boost: additional boost based on total occurrences in title/path
 			const maxReasonableOccurrences = keywords.length * SEARCH_SCORING_MAX_OCCURRENCES_META;
 			const densityRatio = Math.min(totalOccurrences / maxReasonableOccurrences, 1);
 			const densityBoost = 1 + (densityRatio * SEARCH_SCORING_DENSITY_BOOST_META);
-
 			const score = bm25Score * diversityBoost * densityBoost;
 
 			return {
-				id: r.path,
-				type: (meta?.type ?? 'unknown') as SearchResultType,
-				title,
-				path: r.path,
-				lastModified: Number(meta?.mtime ?? 0),
-				content,
+				id: r.path, type: (meta?.type ?? 'unknown') as SearchResultType, title, path: r.path,
+				lastModified: Number(meta?.mtime ?? 0), content,
 				highlight: snippet ? { text: snippet.text, highlights: snippet.highlights } : null,
-				score,
-				finalScore: score,
+				score, finalScore: score,
 			};
 		});
 
@@ -590,11 +496,6 @@ export class QueryService {
 		return items.sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, topK);
 	}
 
-	/**
-	 * Merge content sources (fulltext + vector) into unified content hits.
-	 * This creates a "content match" where items that appear in either content source
-	 * are considered content hits with combined RRF scoring.
-	 */
 	private mergeContentSources<T extends { path: string; chunkType?: ChunkType }>(
 		textHits: Array<T & { score: number }>,
 		vectorHits: Array<T & { score: number }>,
@@ -650,17 +551,6 @@ export class QueryService {
 		return merged.sort((a, b) => b.score - a.score);
 	}
 
-	/**
-	 * Merge content hits with meta hits using two-stage RRF approach.
-	 *
-	 * Stage 1: Content sources (fulltext + vector) are merged into unified "content hits"
-	 * Stage 2: Content hits are merged with meta hits using equal weights
-	 *
-	 * This design recognizes that:
-	 * - Content matches (text/vector) represent semantic/content relevance
-	 * - Meta matches (title/path) represent explicit user intent
-	 * - Both are valuable signals that should be balanced equally
-	 */
 	private mergeContentAndMetaWithRRF<T extends { path: string }>(
 		contentHits: Array<T & { score: number }>,
 		metaHits: Array<T & { score: number }>,
@@ -698,14 +588,6 @@ export class QueryService {
 			.map((x) => ({ ...x.hit, score: x.score }));
 	}
 
-	/**
-	 * Apply Personalized PageRank to rerank and expand search results.
-	 *
-	 * 1. Select top-K items with docId as PPR seeds (weights from RRF scores).
-	 * 2. Run Forward Push PPR over the multi-layer graph.
-	 * 3. Fuse original CM ranks with PPR ranks via weighted RRF.
-	 * 4. Expand with PPR-discovered docs not in the original result set.
-	 */
 	private async applyPPR(
 		items: Array<{ path: string; score: number; docId?: string }>,
 		tenant: IndexTenant,

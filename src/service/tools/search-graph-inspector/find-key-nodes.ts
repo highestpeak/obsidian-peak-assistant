@@ -5,23 +5,13 @@ import { KEY_NODES_RRF_K, RRF_RANKING_POOL_SIZE } from "@/core/constant";
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
-import { emptyMap } from "@/core/utils/collection-utils";
-/**
- * Get unique categories connected to each node to detect bridge nodes
- */
+
 async function getNodeCategoryConnections(nodeIds: string[]): Promise<Map<string, number>> {
     if (!nodeIds.length) return new Map();
-
-    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
-    const categoryConnections = await mobiusEdgeRepo.getByFromNodesAndTypes(nodeIds, [...GRAPH_TAGGED_EDGE_TYPES]);
-
-    const categoryCountMap = new Map<string, number>();
-    for (const edge of categoryConnections) {
-        const count = categoryCountMap.get(edge.from_node_id) || 0;
-        categoryCountMap.set(edge.from_node_id, count + 1);
-    }
-
-    return categoryCountMap;
+    const edges = await sqliteStoreManager.getMobiusEdgeRepo().getByFromNodesAndTypes(nodeIds, [...GRAPH_TAGGED_EDGE_TYPES]);
+    const map = new Map<string, number>();
+    for (const e of edges) map.set(e.from_node_id, (map.get(e.from_node_id) || 0) + 1);
+    return map;
 }
 
 export async function findKeyNodes(params: any, templateManager?: TemplateManager) {

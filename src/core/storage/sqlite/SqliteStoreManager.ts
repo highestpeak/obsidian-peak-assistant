@@ -26,15 +26,7 @@ import { CascadeDebtRepo } from './repositories/CascadeDebtRepo';
 import { AmbientPushRepo } from './repositories/AmbientPushRepo';
 import { VAULT_DB_FILENAME, CHAT_DB_FILENAME } from '@/core/constant';
 
-/**
- * Global singleton manager for SQLite database connection.
- * 
- * This provides a centralized way to access the database connection
- * across different parts of the application without passing it through
- * multiple layers.
- * 
- * Uses better-sqlite3 only (native backend).
- */
+/** Global singleton manager for SQLite database connections (better-sqlite3). */
 export class SqliteStoreManager {
 	private static instance: SqliteStoreManager | null = null;
 
@@ -60,28 +52,27 @@ export class SqliteStoreManager {
 	/** Set at start of close() so getters throw and no new work starts; avoids in-flight DB ops after close. */
 	private closing = false;
 
-	// Search database repositories (search.sqlite) — vault index tenant
+	// Search database repositories (vault tenant)
 	private indexedDocumentRepo: IndexedDocumentRepo | null = null;
 	private docChunkRepo: DocChunkRepo | null = null;
 	private embeddingRepo: EmbeddingRepo | null = null;
 	private indexStateRepo: IndexStateRepo | null = null;
 	private graphRepo: GraphRepo | null = null;
 	private userProfileProcessedHashRepo: UserProfileProcessedHashRepo | null = null;
+	private mobiusNodeRepo: MobiusNodeRepo | null = null;
+	private mobiusEdgeRepo: MobiusEdgeRepo | null = null;
+	private cascadeDebtRepo: CascadeDebtRepo | null = null;
+	private ambientPushRepo: AmbientPushRepo | null = null;
 
-	// Meta database index repositories (meta.sqlite) — chat index tenant (ChatFolder)
+	// Meta database repositories (chat tenant + chat-only tables)
 	private indexedDocumentRepoChat: IndexedDocumentRepo | null = null;
 	private docChunkRepoChat: DocChunkRepo | null = null;
 	private embeddingRepoChat: EmbeddingRepo | null = null;
 	private indexStateRepoChat: IndexStateRepo | null = null;
 	private graphRepoChat: GraphRepo | null = null;
-	private mobiusNodeRepo: MobiusNodeRepo | null = null;
-	private mobiusEdgeRepo: MobiusEdgeRepo | null = null;
 	private mobiusNodeRepoChat: MobiusNodeRepo | null = null;
 	private mobiusEdgeRepoChat: MobiusEdgeRepo | null = null;
-	/** User operation log; uses meta.sqlite (same as chat/ai tables). */
 	private mobiusOperationRepo: MobiusOperationRepo | null = null;
-
-	// Meta database repositories (meta.sqlite) — chat/ai tables only
 	private chatProjectRepo: ChatProjectRepo | null = null;
 	private chatConversationRepo: ChatConversationRepo | null = null;
 	private chatMessageRepo: ChatMessageRepo | null = null;
@@ -89,17 +80,20 @@ export class SqliteStoreManager {
 	private chatStarRepo: ChatStarRepo | null = null;
 	private aiAnalysisRepo: AIAnalysisRepo | null = null;
 	private queryPatternRepo: QueryPatternRepo | null = null;
-	/** Cascade debt tracking (vault DB). */
-	private cascadeDebtRepo: CascadeDebtRepo | null = null;
-	/** Cascade debt tracking (chat/meta DB). */
 	private cascadeDebtRepoChat: CascadeDebtRepo | null = null;
-	/** Ambient push log repo (vault DB only). */
-	private ambientPushRepo: AmbientPushRepo | null = null;
+
+	/** Asserts initialized and not closing, returns the repo or throws. */
+	private requireRepo<T>(repo: T | null): T {
+		if (this.closing || !repo) throw new Error('SqliteStoreManager not initialized or is closing.');
+		return repo;
+	}
+
+	/** Tenant-aware repo selector. */
+	private tenantRepo<T>(tenant: IndexTenant, vault: T | null, chat: T | null): T {
+		return this.requireRepo(tenant === 'chat' ? chat : vault);
+	}
 
 
-	/**
-	 * Create a database connection with the specified path and settings.
-	 */
 	private async createDatabaseConnection(
 		dbFilePath: string,
 		settings?: { sqliteBackend?: 'auto' | 'better-sqlite3' }
@@ -110,9 +104,6 @@ export class SqliteStoreManager {
 		return result.store;
 	}
 
-	/**
-	 * Ensures better-sqlite3 is available. Throws if not (no fallback backend).
-	 */
 	private async selectBackend(userSetting?: 'auto' | 'better-sqlite3'): Promise<void> {
 		const available = await BetterSqliteStore.checkAvailable(this.app ?? undefined);
 		if (!available) {
@@ -135,9 +126,6 @@ export class SqliteStoreManager {
 		}
 	}
 
-	/**
-	 * Calculate database file path with proper storage folder handling.
-	 */
 	private async buildDatabasePath(
 		app: App,
 		storageFolder: string | undefined,
@@ -164,17 +152,6 @@ export class SqliteStoreManager {
 		return dbPath;
 	}
 
-	/**
-	 * Initialize the database connection.
-	 * Should be called once during plugin initialization.
-	 *
-	 * Requires better-sqlite3 (no other backend).
-	 *
-	 * @param app - Obsidian app instance
-	 * @param storageFolder - Storage folder path (relative to vault root)
-	 * @param filename - Database filename (default: SEARCH_DB_FILENAME)
-	 * @param settings - Optional plugin settings (sqliteBackend is ignored; kept for API compatibility)
-	 */
 	async init(params: {
 		app: App;
 		storageFolder?: string;

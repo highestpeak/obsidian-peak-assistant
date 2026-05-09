@@ -213,26 +213,11 @@ export class SemanticRelatedEdgesReadService {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Rebuild service (tenant-wide maintenance pass)
-// ---------------------------------------------------------------------------
-
-/**
- * Rebuilds doc→doc `semantic_related` edges from doc-center vector KNN (sqlite-vec).
- * Not used during single-document indexing.
- */
+/** Rebuilds doc→doc `semantic_related` edges from doc-center vector KNN (sqlite-vec). */
 export class SemanticRelatedEdgesRebuildService {
-	private static async yieldToMainThread(): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, 0));
-	}
+	private static yieldToMainThread = () => new Promise<void>((r) => setTimeout(r, 0));
 
-	/**
-	 * Rebuilds all `semantic_related` edges for one index tenant using vector similarity.
-	 * Clears existing edges of this type, clears cached Mermaid overlays, then writes new edges and overlays.
-	 *
-	 * Uses one query vector per source doc via {@link EmbeddingRepo.getEmbeddingForSemanticSearch} and one KNN;
-	 * target chunk types are weighted only at aggregation time.
-	 */
+	/** Rebuilds all `semantic_related` edges for one index tenant using vector similarity. */
 	static async rebuildForTenant(
 		tenant: IndexTenant,
 		options?: {
@@ -241,13 +226,7 @@ export class SemanticRelatedEdgesRebuildService {
 		},
 	): Promise<RebuildSemanticEdgesBatchResult> {
 		if (!sqliteStoreManager.isVectorSearchEnabled()) {
-			return {
-				tenant,
-				documentsProcessed: 0,
-				edgesWritten: 0,
-				skipped: true,
-				reason: 'Vector search (sqlite-vec) is not enabled.',
-			};
+			return { tenant, documentsProcessed: 0, edgesWritten: 0, skipped: true, reason: 'Vector search (sqlite-vec) is not enabled.' };
 		}
 
 		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
@@ -258,157 +237,43 @@ export class SemanticRelatedEdgesRebuildService {
 		try {
 			docIds = await embeddingRepo.listDistinctDocIdsWithEmbeddings();
 		} catch (e) {
-			return {
-				tenant,
-				documentsProcessed: 0,
-				edgesWritten: 0,
-				skipped: true,
-				reason: e instanceof Error ? e.message : String(e),
-			};
+			return { tenant, documentsProcessed: 0, edgesWritten: 0, skipped: true, reason: e instanceof Error ? e.message : String(e) };
 		}
+		if (!docIds.length) return { tenant, documentsProcessed: 0, edgesWritten: 0, skipped: false };
 
-		if (!docIds.length) {
-			return { tenant, documentsProcessed: 0, edgesWritten: 0, skipped: false };
-		}
-
-		const probeId = docIds[0]!;
-		const probeVec = await embeddingRepo.getEmbeddingForSemanticSearch(probeId);
+		// Probe to verify vec_embeddings table exists
+		const probeVec = await embeddingRepo.getEmbeddingForSemanticSearch(docIds[0]!);
 		if (probeVec) {
 			try {
-				await embeddingRepo.searchSimilarAndGetId(probeVec, 1, 'excludeDocIdsSet', {
-					excludeDocIdsSet: new Set([probeId]),
-				});
+				await embeddingRepo.searchSimilarAndGetId(probeVec, 1, 'excludeDocIdsSet', { excludeDocIdsSet: new Set([docIds[0]!]) });
 			} catch (e) {
 				if (e instanceof BusinessError && e.code === ErrorCode.VEC_EMBEDDINGS_TABLE_MISSING) {
-					return {
-						tenant,
-						documentsProcessed: 0,
-						edgesWritten: 0,
-						skipped: true,
-						reason: e.message,
-					};
+					return { tenant, documentsProcessed: 0, edgesWritten: 0, skipped: true, reason: e.message };
 				}
 				throw e;
 			}
 		}
 
 		const yieldEvery = options?.yieldEveryDocs ?? 40;
-		const total = docIds.length;
+		const now = Date.now();
 		let edgesWritten = 0;
 		let processed = 0;
-		const now = Date.now();
 
 		await mobiusEdgeRepo.deleteByType(GraphEdgeType.SemanticRelated);
-
 		await mobiusNodeRepo.clearSemanticOverlayFieldsForIndexedNotes(now, SEMANTIC_EDGE_RULE_VERSION);
 
 		for (const fromId of docIds) {
 			processed++;
-			options?.onProgress?.({ tenant, processed, total });
-
-			const queryVector = await embeddingRepo.getEmbeddingForSemanticSearch(fromId);
-			if (!queryVector) {
-				if (processed % yieldEvery === 0) await this.yieldToMainThread();
-				continue;
-			}
-
-			let results: Awaited<ReturnType<EmbeddingRepo['searchSimilarAndGetId']>>;
-			try {
-				results = await embeddingRepo.searchSimilarAndGetId(
-					queryVector,
-					SEMANTIC_VECTOR_KNN_LIMIT,
-					'excludeDocIdsSet',
-					{ excludeDocIdsSet: new Set([fromId]) },
-				);
-			} catch (e) {
-				console.warn('[semanticRelatedEdges] KNN failed:', fromId, e);
-				if (processed % yieldEvery === 0) await this.yieldToMainThread();
-				continue;
-			}
-
-			const byNeighbor = new Map<string, NeighborAgg>();
-
-			for (const r of results) {
-				if (r.doc_id === fromId) continue;
-				if (r.similarity < SEMANTIC_VECTOR_MIN_SIMILARITY) continue;
-				const targetChunkType = ((r.chunk_type as ChunkType | null) ?? 'body_raw') as ChunkType;
-				const w = SEMANTIC_EDGE_CHUNK_TYPE_WEIGHT[targetChunkType];
-				const weighted = r.similarity * w;
-				const prev = byNeighbor.get(r.doc_id);
-				if (!prev || weighted > prev.bestWeighted) {
-					byNeighbor.set(r.doc_id, {
-						bestWeighted: weighted,
-						bestDistance: r.distance,
-						bestSimilarity: r.similarity,
-						targetChunkType,
-					});
-				}
-			}
-
-			const ranked = [...byNeighbor.entries()]
-				.filter(([, v]) => v.bestSimilarity >= SEMANTIC_VECTOR_MIN_SIMILARITY)
-				.sort((a, b) => b[1].bestWeighted - a[1].bestWeighted)
-				.slice(0, SEMANTIC_VECTOR_TOP_K_PER_DOC);
-
-			const toIds = ranked.map(([id]) => id);
-			const targetNodes = await mobiusNodeRepo.getByIds(toIds);
-
-			const writes: SemanticEdgeWrite[] = [];
-			for (const [toId, agg] of ranked) {
-				const target = targetNodes.get(toId);
-				if (!target || !isIndexedNoteNodeType(target.type)) continue;
-				writes.push({
-					toNodeId: toId,
-					weight: Math.min(1, agg.bestWeighted),
-					attributes: {
-						source: 'vector',
-						rule: 'semantic_doc_center_knn',
-						ruleVersion: SEMANTIC_EDGE_RULE_VERSION,
-						bestDistance: agg.bestDistance,
-						bestSimilarity: agg.bestSimilarity,
-						targetChunkType: agg.targetChunkType,
-						bestWeightedSimilarity: agg.bestWeighted,
-					},
-				});
-			}
-
-			for (const w of writes) {
-				await mobiusEdgeRepo.upsert({
-					id: MobiusEdgeRepo.generateEdgeId(fromId, w.toNodeId, GraphEdgeType.SemanticRelated),
-					from_node_id: fromId,
-					to_node_id: w.toNodeId,
-					type: GraphEdgeType.SemanticRelated,
-					weight: w.weight,
-					attributes: JSON.stringify({ ...w.attributes, updatedAt: now }),
-				});
-				edgesWritten++;
-			}
-
-			if (writes.length > 0) {
-				const centerNode = await mobiusNodeRepo.getByNodeId(fromId);
-				const centerLabel = centerNode?.label ?? fromId.slice(0, SLICE_CAPS.semanticEdges.nodeIdFallbackLabel);
-				const mermaid = await SemanticRelatedEdgesOverlayService.buildMermaidForWrites(centerLabel, writes, mobiusNodeRepo);
-				await mobiusNodeRepo.mergeJsonAttributesForIndexedNoteNode(
-					fromId,
-					{
-						semantic_overlay_mermaid: mermaid ?? null,
-						semantic_edge_rule_version: SEMANTIC_EDGE_RULE_VERSION,
-					},
-					now,
-				);
-			}
-
+			options?.onProgress?.({ tenant, processed, total: docIds.length });
+			const writes = await computeSemanticWritesForDoc(fromId, embeddingRepo, mobiusNodeRepo);
+			edgesWritten += await persistWritesAndOverlay(fromId, writes, mobiusEdgeRepo, mobiusNodeRepo, now);
 			if (processed % yieldEvery === 0) await this.yieldToMainThread();
 		}
 
 		return { tenant, documentsProcessed: processed, edgesWritten, skipped: false };
 	}
 
-	/**
-	 * Incrementally rebuilds `semantic_related` edges FROM the given doc IDs only.
-	 * Deletes existing outgoing semantic edges for each doc, re-runs KNN, upserts new edges,
-	 * and rebuilds mermaid overlays for all affected nodes (changed docs + their neighbors).
-	 */
+	/** Incrementally rebuilds `semantic_related` edges FROM the given doc IDs only. */
 	static async rebuildForDocIds(
 		docIds: string[],
 		tenant: IndexTenant,
@@ -420,142 +285,38 @@ export class SemanticRelatedEdgesRebuildService {
 		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
 		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
 		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
-
 		const now = Date.now();
 		let edgesCreated = 0;
-		/** All node IDs that need mermaid overlay rebuild (changed docs + their new neighbors). */
 		const affectedNodeIds = new Set<string>(docIds);
-		/** Cached writes per source doc for mermaid rebuild. */
 		const writesByDoc = new Map<string, SemanticEdgeWrite[]>();
 
 		for (const fromId of docIds) {
-			// 1. Delete all semantic_related edges FROM this doc
 			await mobiusEdgeRepo.deleteByFromNodeAndType(fromId, GraphEdgeType.SemanticRelated);
-
-			// 2. Fetch this doc's query vector
-			const queryVector = await embeddingRepo.getEmbeddingForSemanticSearch(fromId);
-			if (!queryVector) {
-				writesByDoc.set(fromId, []);
-				continue;
-			}
-
-			// 3. Run KNN query
-			let results: Awaited<ReturnType<EmbeddingRepo['searchSimilarAndGetId']>>;
-			try {
-				results = await embeddingRepo.searchSimilarAndGetId(
-					queryVector,
-					SEMANTIC_VECTOR_KNN_LIMIT,
-					'excludeDocIdsSet',
-					{ excludeDocIdsSet: new Set([fromId]) },
-				);
-			} catch (e) {
-				console.warn('[semanticRelatedEdges] KNN failed for incremental rebuild:', fromId, e);
-				writesByDoc.set(fromId, []);
-				continue;
-			}
-
-			// 4. Aggregate best weighted neighbor per doc
-			const byNeighbor = new Map<string, NeighborAgg>();
-			for (const r of results) {
-				if (r.doc_id === fromId) continue;
-				if (r.similarity < SEMANTIC_VECTOR_MIN_SIMILARITY) continue;
-				const targetChunkType = ((r.chunk_type as ChunkType | null) ?? 'body_raw') as ChunkType;
-				const w = SEMANTIC_EDGE_CHUNK_TYPE_WEIGHT[targetChunkType];
-				const weighted = r.similarity * w;
-				const prev = byNeighbor.get(r.doc_id);
-				if (!prev || weighted > prev.bestWeighted) {
-					byNeighbor.set(r.doc_id, {
-						bestWeighted: weighted,
-						bestDistance: r.distance,
-						bestSimilarity: r.similarity,
-						targetChunkType,
-					});
-				}
-			}
-
-			// 5. Take top SEMANTIC_VECTOR_TOP_K_PER_DOC neighbors
-			const ranked = [...byNeighbor.entries()]
-				.filter(([, v]) => v.bestSimilarity >= SEMANTIC_VECTOR_MIN_SIMILARITY)
-				.sort((a, b) => b[1].bestWeighted - a[1].bestWeighted)
-				.slice(0, SEMANTIC_VECTOR_TOP_K_PER_DOC);
-
-			const toIds = ranked.map(([id]) => id);
-			const targetNodes = await mobiusNodeRepo.getByIds(toIds);
-
-			const writes: SemanticEdgeWrite[] = [];
-			for (const [toId, agg] of ranked) {
-				const target = targetNodes.get(toId);
-				if (!target || !isIndexedNoteNodeType(target.type)) continue;
-				writes.push({
-					toNodeId: toId,
-					weight: Math.min(1, agg.bestWeighted),
-					attributes: {
-						source: 'vector',
-						rule: 'semantic_doc_center_knn',
-						ruleVersion: SEMANTIC_EDGE_RULE_VERSION,
-						bestDistance: agg.bestDistance,
-						bestSimilarity: agg.bestSimilarity,
-						targetChunkType: agg.targetChunkType,
-						bestWeightedSimilarity: agg.bestWeighted,
-					},
-				});
-			}
-
-			// 6. Upsert new semantic_related edges FROM this doc
-			for (const w of writes) {
-				await mobiusEdgeRepo.upsert({
-					id: MobiusEdgeRepo.generateEdgeId(fromId, w.toNodeId, GraphEdgeType.SemanticRelated),
-					from_node_id: fromId,
-					to_node_id: w.toNodeId,
-					type: GraphEdgeType.SemanticRelated,
-					weight: w.weight,
-					attributes: JSON.stringify({ ...w.attributes, updatedAt: now }),
-				});
-				edgesCreated++;
-				affectedNodeIds.add(w.toNodeId);
-			}
-
+			const writes = await computeSemanticWritesForDoc(fromId, embeddingRepo, mobiusNodeRepo);
+			edgesCreated += await persistWritesAndOverlay(fromId, writes, mobiusEdgeRepo, mobiusNodeRepo, now);
+			for (const w of writes) affectedNodeIds.add(w.toNodeId);
 			writesByDoc.set(fromId, writes);
 		}
 
-		// Rebuild mermaid overlays for all affected nodes
-		let nodesUpdated = 0;
+		// Rebuild mermaid overlays for neighbor nodes (not directly changed)
+		let nodesUpdated = docIds.length;
 		for (const nodeId of affectedNodeIds) {
-			const cachedWrites = writesByDoc.get(nodeId);
-			let writes: SemanticEdgeWrite[];
-
-			if (cachedWrites !== undefined) {
-				// Changed doc — use the writes we just computed
-				writes = cachedWrites;
-			} else {
-				// Neighbor node — read its current outgoing semantic edges from DB
-				const edges = await mobiusEdgeRepo.getByFromNode(nodeId);
-				const semanticEdges = edges.filter((e) => e.type === GraphEdgeType.SemanticRelated);
-				writes = semanticEdges.map((e) => {
-					const attrs = JSON.parse(e.attributes || '{}') as Record<string, unknown>;
-					return {
-						toNodeId: e.to_node_id,
-						weight: e.weight,
-						attributes: attrs,
-					};
-				});
-			}
-
+			if (writesByDoc.has(nodeId)) continue; // already handled above
+			const edges = await mobiusEdgeRepo.getByFromNode(nodeId);
+			const writes = edges
+				.filter((e) => e.type === GraphEdgeType.SemanticRelated)
+				.map((e) => ({
+					toNodeId: e.to_node_id,
+					weight: e.weight,
+					attributes: JSON.parse(e.attributes || '{}') as Record<string, unknown>,
+				}));
 			const centerNode = await mobiusNodeRepo.getByNodeId(nodeId);
 			const centerLabel = centerNode?.label ?? nodeId.slice(0, SLICE_CAPS.semanticEdges.nodeIdFallbackLabel);
-			const mermaid = await SemanticRelatedEdgesOverlayService.buildMermaidForWrites(
-				centerLabel,
-				writes,
-				mobiusNodeRepo,
-			);
-			await mobiusNodeRepo.mergeJsonAttributesForIndexedNoteNode(
-				nodeId,
-				{
-					semantic_overlay_mermaid: mermaid ?? null,
-					semantic_edge_rule_version: SEMANTIC_EDGE_RULE_VERSION,
-				},
-				now,
-			);
+			const mermaid = await SemanticRelatedEdgesOverlayService.buildMermaidForWrites(centerLabel, writes, mobiusNodeRepo);
+			await mobiusNodeRepo.mergeJsonAttributesForIndexedNoteNode(nodeId, {
+				semantic_overlay_mermaid: mermaid ?? null,
+				semantic_edge_rule_version: SEMANTIC_EDGE_RULE_VERSION,
+			}, now);
 			nodesUpdated++;
 		}
 

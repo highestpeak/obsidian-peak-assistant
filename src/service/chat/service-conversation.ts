@@ -13,7 +13,6 @@ import {
 	ChatMessage,
 	ChatProject,
 	ChatProjectMeta,
-	StarredMessageRecord,
 	ChatResourceRef,
 } from './types';
 import type { ConversationType } from './conversation-types';
@@ -392,10 +391,6 @@ export class ConversationService {
 
 		// Update starred status with preview data
 		await this.storage.updateMessageStarred(messageId, starred, contentPreview, attachmentSummary);
-	}
-
-	async loadStarred(): Promise<StarredMessageRecord[]> {
-		return this.storage.listStarred();
 	}
 
 	async listStarredMessagesByProject(projectId: string): Promise<{

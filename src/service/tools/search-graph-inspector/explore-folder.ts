@@ -44,7 +44,6 @@ const EMPTY_DOC_STATS: DocStats = {
     topLinksIn: [], topLinksOut: [], hasTopLinks: false, languageStats: undefined,
 };
 
-/** Helper: compact a list with suffix, or '' if empty. */
 function compactOrEmpty<T>(items: T[], mapFn: (i: T) => { path: string; suffix: string }): string {
     return items.length > 0 ? compactPathsWithSuffix(items.map(mapFn), 40, 3500) : '';
 }
@@ -72,8 +71,8 @@ export async function exploreFolder(params: any, templateManager?: TemplateManag
             ? getTagsAndCategoriesByDocPaths(visibleFilePaths, perFolderLimit)
             : getTagsAndCategoriesByFolderPath(normalizedPath, perFolderLimit),
         exclusions.enabled
-            ? getDocStatisticsByDocPaths(visibleFilePaths, perFolderLimit)
-            : getDocStatisticsByFolderPath(normalizedPath, perFolderLimit),
+            ? getDocStatistics({ byPaths: visibleFilePaths }, perFolderLimit)
+            : getDocStatistics({ pathPrefix: normalizedPath }, perFolderLimit),
     ]);
 
     const data = {
@@ -276,13 +275,25 @@ function buildDocStatsResult(
     };
 }
 
-async function getDocStatisticsByFolderPath(pathPrefix: string, topK = 5): Promise<DocStats> {
+/** Unified doc statistics fetcher. When `byPaths` is provided, scopes by those paths; otherwise by folder prefix. */
+async function getDocStatistics(opts: { pathPrefix?: string; byPaths?: string[] }, topK = 5): Promise<DocStats> {
     const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
     const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
-    const docIdsMaps = pathPrefix === "" ? null : await indexedDocumentRepo.getIdsByFolderPath(pathPrefix);
+
+    let docIdsMaps: Array<{ id: string; path: string }> | null;
+    if (opts.byPaths) {
+        const unique = [...new Set(opts.byPaths)].filter(Boolean).slice(0, SLICE_CAPS.inspector.exploreFolderPaths);
+        if (!unique.length) return { ...EMPTY_DOC_STATS };
+        docIdsMaps = await indexedDocumentRepo.getIdsByPaths(unique);
+    } else {
+        const p = opts.pathPrefix ?? "";
+        docIdsMaps = p === "" ? null : await indexedDocumentRepo.getIdsByFolderPath(p);
+    }
+
     const docIds = docIdsMaps === null ? undefined : docIdsMaps.map((m) => m.id);
     if (docIds !== undefined && !docIds.length) return { ...EMPTY_DOC_STATS };
+    const isWholeVault = docIds === undefined;
 
     const [topRecentEditedRaw, topWordCount, topCharCount, topRichness, languageStatsRows, totalFiles, { topLinksInRaw, topLinksOutRaw }] = await Promise.all([
         mobiusNodeRepo.getTopRecentEditedByDocIds(docIds, topK),
@@ -290,8 +301,8 @@ async function getDocStatisticsByFolderPath(pathPrefix: string, topK = 5): Promi
         mobiusNodeRepo.getTopCharCountByDocIds(docIds, topK),
         mobiusNodeRepo.getTopRichnessByDocIds(docIds, topK),
         mobiusNodeRepo.getLanguageStatsByDocIds(docIds),
-        docIds === undefined ? mobiusNodeRepo.countAllDocumentStatisticsRows() : Promise.resolve(docIds.length),
-        pathPrefix === ""
+        isWholeVault ? mobiusNodeRepo.countAllDocumentStatisticsRows() : Promise.resolve(docIds!.length),
+        isWholeVault
             ? mobiusEdgeRepo.getTopNodeIdsByDegree(topK, undefined, GRAPH_WIKI_REFERENCE_EDGE_TYPES).then((r) => ({
                 topLinksInRaw: r.topByInDegree.map((x) => ({ node_id: x.nodeId, inDegree: x.inDegree })),
                 topLinksOutRaw: r.topByOutDegree.map((x) => ({ node_id: x.nodeId, outDegree: x.outDegree })),
@@ -344,32 +355,21 @@ export function getFullVaultFilePathsForGrep(): string[] {
 }
 
 function renderExploreFolderExcludedMarkdown(requestedFolderPath: unknown, excludedPrefixes: string[]): string {
-    const req = requestedFolderPath == null ? "" : String(requestedFolderPath);
-    return `## explore_folder\n\nThe requested folder is excluded by settings and cannot be explored.\n\n- Requested: \`${req}\`\n- Excluded prefixes:\n${excludedPrefixes.map((p) => `- \`${p}\``).join("\n") || "- (none)"}`;
+    return `## explore_folder\n\nFolder excluded by settings.\n- Requested: \`${requestedFolderPath ?? ""}\`\n- Excluded: ${excludedPrefixes.map(p => `\`${p}\``).join(", ") || "(none)"}`;
 }
 
 async function buildExploreFolderResponse(responseFormat: 'structured' | 'markdown' | 'hybrid', data: any, templateManager?: TemplateManager): Promise<any> {
     if (responseFormat === 'structured') return data;
-    const markdown = await renderExploreFolderMarkdown(data, templateManager);
-    return responseFormat === 'markdown' ? markdown : { data, template: markdown };
-}
-
-async function renderExploreFolderMarkdown(data: any, templateManager?: TemplateManager): Promise<string> {
     const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
-    if (tm) {
-        try {
-            const rendered = await tm.render(ToolTemplateId.ExploreFolder, data);
-            if (typeof rendered === 'string' && rendered.trim() !== '') return rendered;
-        } catch { /* fall back */ }
+    let markdown: string | undefined;
+    if (tm) { try { const r = await tm.render(ToolTemplateId.ExploreFolder, data); if (typeof r === 'string' && r.trim()) markdown = r; } catch {} }
+    if (!markdown) {
+        const tree = Array.isArray(data?.fileTree) ? (data.fileTree as IterFile[]) : [];
+        const treeBody = tree.length ? tree.flatMap(renderTreeLines).join("\n") : "(empty)";
+        const om = data?.rootOmitted as OmittedSummary | undefined;
+        markdown = `## Folder: \`${data?.current_path ?? "/"}\`\n\n\`\`\`\n${treeBody}\n\`\`\`${om?.total ? `\n\nomitted: ${om.total} (folders: ${om.folderCount})` : ""}`;
     }
-    return fallbackExploreFolderMarkdown(data);
-}
-
-function fallbackExploreFolderMarkdown(data: any): string {
-    const tree = Array.isArray(data?.fileTree) ? (data.fileTree as IterFile[]) : [];
-    const treeBody = tree.length ? tree.flatMap(renderTreeLines).join("\n") : "(empty)";
-    const omitted = data?.rootOmitted as OmittedSummary | undefined;
-    return `## Folder: \`${data?.current_path ?? "/"}\`\n\n- recursive: \`${String(Boolean(data?.recursive))}\`\n- max_depth: \`${String(data?.max_depth ?? 3)}\`\n\n\`\`\`\n${treeBody}\n\`\`\`${omitted?.total ? `\n\n- omitted_at_root: ${omitted.total} item(s) (folders: ${omitted.folderCount})` : ""}`;
+    return responseFormat === 'markdown' ? markdown : { data, template: markdown };
 }
 
 function renderTreeLines(node: IterFile): string[] {
@@ -389,29 +389,3 @@ async function getTagsAndCategoriesByDocPaths(paths: string[], topN = 20) {
     return formatTagResult(await sqliteStoreManager.getGraphRepo().getTagsByDocIds(docIds), topN);
 }
 
-async function getDocStatisticsByDocPaths(paths: string[], topK = 5): Promise<DocStats> {
-    const uniquePaths = [...new Set(paths)].filter(Boolean);
-    if (!uniquePaths.length) return { ...EMPTY_DOC_STATS };
-    const cappedPaths = uniquePaths.slice(0, SLICE_CAPS.inspector.exploreFolderPaths);
-    const docIdsMaps = await sqliteStoreManager.getIndexedDocumentRepo().getIdsByPaths(cappedPaths);
-    const docIds = docIdsMaps.map((m) => m.id);
-    if (!docIds.length) return { ...EMPTY_DOC_STATS };
-
-    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
-    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
-    const idToPathMap = new Map(docIdsMaps.map((m) => [m.id, m.path]));
-
-    const [topRecentEditedRaw, topWordCount, topCharCount, topRichness, languageStatsRows, { topLinksInRaw, topLinksOutRaw }] = await Promise.all([
-        mobiusNodeRepo.getTopRecentEditedByDocIds(docIds, topK),
-        mobiusNodeRepo.getTopWordCountByDocIds(docIds, topK),
-        mobiusNodeRepo.getTopCharCountByDocIds(docIds, topK),
-        mobiusNodeRepo.getTopRichnessByDocIds(docIds, topK),
-        mobiusNodeRepo.getLanguageStatsByDocIds(docIds),
-        mobiusEdgeRepo.countEdges(docIds).then(({ incoming, outgoing }) => ({
-            topLinksInRaw: topKFromMap(incoming, topK, (id, n) => ({ node_id: id, inDegree: n })),
-            topLinksOutRaw: topKFromMap(outgoing, topK, (id, n) => ({ node_id: id, outDegree: n })),
-        })),
-    ]);
-
-    return buildDocStatsResult(docIds.length, topRecentEditedRaw, topWordCount, topCharCount, topRichness, topLinksInRaw, topLinksOutRaw, languageStatsRows, idToPathMap);
-}

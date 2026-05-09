@@ -9,7 +9,6 @@ import {
 	ChatFilePaths,
 	ChatConversation,
 	ChatProject,
-	StarredMessageRecord,
 } from '@/service/chat/types';
 import { ensureFolder, joinPath, writeFile, getAbsolutePath, getRelativePath } from '@/core/utils/vault-utils';
 import { ChatDocName } from './chat-docs/ChatDocName';
@@ -422,9 +421,6 @@ export class ChatStorageService {
 
 	/**
 	 * Update starred status for a message.
-	 */
-	/**
-	 * Update starred status for a message.
 	 * Optionally accepts content preview and attachment summary to store when starring.
 	 */
 	async updateMessageStarred(
@@ -491,24 +487,6 @@ export class ChatStorageService {
 		}
 		
 		return { messages, messageToConversationId };
-	}
-
-	/**
-	 * List active starred message records from sqlite.
-	 * @deprecated This method is deprecated. Starred status is now stored directly in chat_message table.
-	 */
-	async listStarred(): Promise<StarredMessageRecord[]> {
-		if (!this.dbReady) return [];
-		const starRepo = sqliteStoreManager.getChatStarRepo();
-		const rows = await starRepo.listActive();
-		return rows.map((row) => ({
-			id: row.id,
-			sourceMessageId: row.source_message_id,
-			conversationId: row.conversation_id,
-			projectId: row.project_id ?? undefined,
-			createdAt: row.created_at_ts,
-			active: row.active === 1,
-		}));
 	}
 
 	// file and path operations =================================================
@@ -764,43 +742,15 @@ export class ChatStorageService {
 			topic?: string;
 		}>
 	): void {
-		// Build a map of message keys to message data for fast lookup
-		const messageKeyToDocData = new Map<string, {
-			content: string;
-			title?: string;
-			role: 'user' | 'assistant' | 'system';
-			topic?: string;
-		}>();
-
-		for (const docMsg of allMarkdownMessages) {
-			const key = ChatConversationDoc.createMessageKey(docMsg.role, docMsg.content, docMsg.title);
-			messageKeyToDocData.set(key, docMsg);
-		}
-
-		// Merge message content/title/role/topic from markdown into sqlite messages
-		// Strategy: Use index-based matching (assuming chronological order), then verify/correct by message key
-		// Topic priority: markdown topic > sqlite topic (already on msg.topic from convertSqliteRowsToMessages)
+		// Index-based merge: assumes chronological order matches between sqlite and markdown.
 		const minLength = Math.min(messages.length, allMarkdownMessages.length);
 		for (let i = 0; i < minLength; i++) {
 			const docData = allMarkdownMessages[i];
 			messages[i].content = docData.content;
 			messages[i].title = docData.title;
-			messages[i].role = docData.role; // Use role from markdown as source of truth
-			// Only overwrite topic from markdown if markdown has one; preserve sqlite topic otherwise
+			messages[i].role = docData.role;
 			if (docData.topic) {
 				messages[i].topic = docData.topic;
-			}
-		}
-
-		// Verify and correct matches using message key (handles cases where order might differ)
-		for (const msg of messages) {
-			if (!msg.content) {
-				continue;
-			}
-			const msgKey = ChatConversationDoc.createMessageKey(msg.role, msg.content, msg.title);
-			const docData = messageKeyToDocData.get(msgKey);
-			if (docData && docData.topic) {
-				msg.topic = docData.topic;
 			}
 		}
 	}
