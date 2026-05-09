@@ -289,6 +289,14 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ## Log
 
+### 2026-05-08~09 (Session 17+20) — Codebase Deep Refactor
+- Done: **100,002 → 71,582 code lines (-28,420 = -28.4%)**, 40 commits on `refactor/codebase-50k-target`
+- Hub 系统完整删除 (-6,750), D3 graph-viz → ReactFlow (-6,373), Wave 0 dead code (-5,448)
+- Wave 2 store migration (-630), 结构分析管线删除 (-920), 遥测系统删除 (-1,009)
+- Service 简化 (-2,800), Loader 基类提取 (-911), Feature 删除 (-2,600)
+- 死 UI 组件 (-830), console strip (-234), dead exports/files/stubs (-315)
+- Next: UI 组件精简, MobiusNodeRepo 瘦身, service/chat 合并 (target 50k)
+
 ### 2026-05-09 (Session 19) — Provider Settings Polish
 - Done: **Phase X2 — Provider Settings Polish** (7 commits)
   - **Pill 搜索面板**：`RoleModelPicker` 组件，Command Palette 风格浮动面板，实时搜索 + 键盘导航 + CapTags（reason/vision/search/上下文窗口）+ 按 profile 分组
