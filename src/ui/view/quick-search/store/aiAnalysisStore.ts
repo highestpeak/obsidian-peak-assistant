@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AISearchGraph, AISearchSource, AISearchTopic, type AnalysisMode, DashboardBlock, type EvidenceIndex } from '@/service/agents/shared-types';
+import type { AISearchGraph, AISearchSource, AISearchTopic, AnalysisMode, DashboardBlock, EvidenceIndex } from '@/service/agents/shared-types';
 export type { AnalysisMode };
 import { useSearchSessionStore } from './searchSessionStore';
 import { useAIGraphStore } from './aiGraphStore';
@@ -8,7 +8,7 @@ import { useGraphAgentStore } from './graphAgentStore';
 import type { LLMUsage } from '@/core/providers/types';
 import type { SearchResultItem } from '@/service/search/types';
 import type { GraphPreview } from '@/core/storage/graph/types';
-import { SnapshotChatMessage } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
+import type { SnapshotChatMessage } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 
 /** Per-topic completed Q&A from Analyze. */
 export type SectionAnalyzeResult = { question: string; answer: string };
@@ -117,19 +117,10 @@ export function getSnapshotSummary(snapshot: CompletedAnalysisSnapshot): string 
 }
 
 // ---------------------------------------------------------------------------
-// Split stores (6) for isolation; all in this file.
+// Remaining stores: Topics & Interactions (no V2 equivalent yet)
 // ---------------------------------------------------------------------------
 
-/** Single phase for analysis lifecycle; bools below kept in sync for compatibility. */
-export type AnalysisPhase = 'idle' | 'starting' | 'streaming' | 'completed' | 'error' | 'canceled';
-
-// useAIAnalysisRuntimeStore — DELETED (Wave 2.1). State migrated to searchSessionStore.
-
-// useAIAnalysisStepsStore — DELETED (Wave 2.1). State migrated to searchSessionStore v2Steps/v2Timeline.
-
-// useAIAnalysisSummaryStore — DELETED (Wave 2.1). State migrated to searchSessionStore v2Summary/v2SummaryStreaming.
-
-/** Topic streaming buffer — RAF-throttled to avoid O(n²) chunk array copies. */
+/** Topic streaming buffer -- RAF-throttled to avoid O(n^2) chunk array copies. */
 const _topicBuf = { text: '', raf: null as number | null };
 function _resetTopicBuf() {
 	if (_topicBuf.raf !== null) { cancelAnimationFrame(_topicBuf.raf); _topicBuf.raf = null; }
@@ -274,19 +265,17 @@ export const useAIAnalysisInteractionsStore = create<{
 	}),
 }));
 
-// useAIAnalysisResultStore — DELETED (Wave 2.1). State migrated to searchSessionStore v2PlanSections/v2Sources.
+// ---------------------------------------------------------------------------
+// Orchestration
+// ---------------------------------------------------------------------------
 
-// markAIAnalysisCompleted — DELETED (Wave 2.1). Use searchSessionStore.markCompleted() directly.
-
-/** Orchestration: reset remaining legacy stores (Topics + Interactions). */
+/** Reset remaining legacy stores (Topics + Interactions). */
 export function resetAIAnalysisAll(): void {
 	useAIAnalysisTopicsStore.getState().resetTopics();
 	useAIAnalysisInteractionsStore.getState().resetInteractions();
 }
 
-// buildCompletedAnalysisSnapshot — DELETED (Wave 2.1). Use snapshotFromState() in sessionSnapshot.ts.
-
-/** Orchestration: load snapshot into remaining stores + searchSessionStore. */
+/** Load snapshot into remaining stores + searchSessionStore. */
 export function loadCompletedAnalysisSnapshot(snapshot: CompletedAnalysisSnapshot, sourceVaultPath?: string): void {
 	// Populate kept legacy stores (Topics + Interactions)
 	useAIAnalysisTopicsStore.setState({
@@ -311,14 +300,11 @@ export function loadCompletedAnalysisSnapshot(snapshot: CompletedAnalysisSnapsho
 	bridgeSnapshotToSearchSessionStore(snapshot, sourceVaultPath);
 }
 
-/**
- * Bridge: convert CompletedAnalysisSnapshot into SearchStep[] for the new unified store.
- * This ensures restored history displays correctly in SearchResultView → StepList.
- */
-/**
- * Reconstruct V2ToolStep[] + V2TimelineItem[] from saved process log strings.
- * Format: "ICON DISPLAY_NAME — SUMMARY — DURs" or "ICON DISPLAY_NAME — DURs" or "ICON DISPLAY_NAME"
- */
+// ---------------------------------------------------------------------------
+// Snapshot bridge
+// ---------------------------------------------------------------------------
+
+/** Reconstruct V2ToolStep[] + V2TimelineItem[] from saved process log strings. */
 function reconstructProcessTimeline(
 	processLog: string[],
 	startedAt: number,
@@ -491,9 +477,7 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 	});
 }
 
-// getHas* helpers — DELETED (Wave 2.1). Use searchSessionStore computed methods.
-
-// Get clean query without @web@ for actual search
+/** Get clean query without @web@ for actual search. */
 export const getCleanQuery = (query: string): string => {
 	return query.replace(/@web@\s*/g, '').trim();
 };

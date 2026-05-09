@@ -1499,27 +1499,6 @@ export class MobiusNodeRepo {
 		return rows as MobiusNodeHubDiscoveryScoredRow[];
 	}
 
-	/** Single `document` row by vault path (hub discovery helpers). */
-	async getDocumentNodeForHubByPath(vaultPath: string): Promise<MobiusNodeHubDiscoveryRow | undefined> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.select([
-				'node_id',
-				'path',
-				'label',
-				'type',
-				'doc_incoming_cnt',
-				'doc_outgoing_cnt',
-				'pagerank',
-				'semantic_pagerank',
-				'word_count',
-			])
-			.where('path', '=', vaultPath)
-			.where('type', '=', GraphNodeType.Document)
-			.executeTakeFirst();
-		return row as MobiusNodeHubDiscoveryRow | undefined;
-	}
-
 	/** Indexed note row by path (`document` or `hub_doc`) for manual Hub-Summaries/Manual notes. */
 	async getIndexedHubOrDocumentRowByPath(vaultPath: string): Promise<MobiusNodeHubDiscoveryRow | undefined> {
 		const row = await this.db
@@ -1642,18 +1621,6 @@ export class MobiusNodeRepo {
 		return rows as MobiusNodeHubClusterSeedRow[];
 	}
 
-	/** Resolve paths for a set of document node ids (cluster member listing). */
-	async listDocumentNodeIdPathByIds(nodeIds: string[]): Promise<MobiusNodeIdPathRow[]> {
-		if (!nodeIds.length) return [];
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select(['node_id', 'path'])
-			.where('node_id', 'in', nodeIds)
-			.where('type', '=', GraphNodeType.Document)
-			.execute();
-		return rows as MobiusNodeIdPathRow[];
-	}
-
 	/** Resolve document `node_id` from vault path (hub coverage / inspector). */
 	async getDocumentNodeIdByVaultPath(vaultPath: string): Promise<string | undefined> {
 		const row = await this.db
@@ -1699,19 +1666,6 @@ export class MobiusNodeRepo {
 		return out;
 	}
 
-	/** Documents under a path prefix (folder hub coverage estimate). */
-	async listDocumentNodeIdPathByPathPrefix(pathPrefix: string, limit: number): Promise<MobiusNodeIdPathRow[]> {
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_node')
-			.select(['node_id', 'path'])
-			.where('type', '=', GraphNodeType.Document)
-			.where('path', 'like', `${pathPrefix}%`)
-			.limit(lim)
-			.execute();
-		return rows as MobiusNodeIdPathRow[];
-	}
-
 	/** Sample document vault paths under a folder prefix (HubDoc member list). */
 	async listDocumentPathsByPathPrefix(pathPrefix: string, limit: number): Promise<string[]> {
 		const lim = Math.max(1, limit);
@@ -1732,6 +1686,19 @@ export class MobiusNodeRepo {
 	async listFolderHubDocMemberPathsSample(folderPath: string, limit: number = 40): Promise<string[]> {
 		const prefix = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
 		return this.listDocumentPathsByPathPrefix(prefix, limit);
+	}
+
+	/** Documents under a path prefix (folder hub coverage estimate). */
+	async listDocumentNodeIdPathByPathPrefix(pathPrefix: string, limit: number): Promise<MobiusNodeIdPathRow[]> {
+		const lim = Math.max(1, limit);
+		const rows = await this.db
+			.selectFrom('mobius_node')
+			.select(['node_id', 'path'])
+			.where('type', '=', GraphNodeType.Document)
+			.where('path', 'like', `${pathPrefix}%`)
+			.limit(lim)
+			.execute();
+		return rows as MobiusNodeIdPathRow[];
 	}
 
 	/**
@@ -1801,16 +1768,6 @@ export class MobiusNodeRepo {
 			.where('node_id', 'in', nodeIds)
 			.execute();
 		return rows as MobiusNodeHubLocalGraphMetaRow[];
-	}
-
-	/** Count `mobius_node` rows with `type = document` (vault-backed notes). */
-	async countDocumentNodes(): Promise<number> {
-		const r = await this.db
-			.selectFrom('mobius_node')
-			.select(({ fn }) => fn.countAll<number>().as('c'))
-			.where('type', '=', GraphNodeType.Document)
-			.executeTakeFirst();
-		return Number(r?.c ?? 0);
 	}
 
 	/** Center node row for local hub graph expansion. */
