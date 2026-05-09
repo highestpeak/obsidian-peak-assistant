@@ -120,7 +120,7 @@ export const FOLDER_COHESION_MAX_DOCS = 200;
 export const FOLDER_COHESION_INTRA_EDGE_LIMIT = 1200;
 
 /**
- * Folder `hub_graph_score` blend in {@link MobiusNodeRepo.listTopFolderNodesForHubDiscovery} (SQL). Sum = 1.
+ * Folder `hub_graph_score` blend weights. Sum = 1.
  * Cohesion is multiplied by size reliability: min(1, ln(1+tag_doc_count)/ln(1+FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT)).
  */
 export const FOLDER_HUB_GRAPH_WEIGHT_PHYSICAL = 0.25;
@@ -364,34 +364,6 @@ export const DEFAULT_RECENT_SEARCH_RESULTS_COUNT = 30;
  * Tune here instead of scattering magic numbers across call sites.
  */
 export const SLICE_CAPS = {
-	hub: {
-		/** Cluster / member path lists in hub discovery, assembly, YAML, and local graph. */
-		clusterMemberPaths: 48,
-		/** Hex prefix length for stable cluster id from SHA256 (and MD5 UUID grouping below). */
-		clusterHashHexPrefix: 16,
-		/** Merged folder + local-graph member path sample. */
-		memberPathsMergedSample: 48,
-		/** Weighted document paths in hub assembly from local graph nodes. */
-		assemblyMemberPathsSample: 32,
-		/** Wiki-style member list lines in hub markdown skeleton. */
-		markdownMemberWikiLines: 24,
-		/** Max `hub_cluster_members` entries in Hub body JSON (`# Hub Metadata`). */
-		hubBodyMetadataClusterMembers: 48,
-		/** Routes / cluster paths embedded in Hub LLM metadata JSON. */
-		llmMetadataRoutes: 24,
-		/** Member notes to read snippets from for Hub LLM excerpts. */
-		llmClusterMemberSnippets: 6,
-		/** Hub draft markdown body chars sent to LLM. */
-		llmDraftBodyChars: 28_000,
-		/** Paths processed per discover round. */
-		discoverRoundPaths: 120,
-		/** Top folder-prefix buckets in local hub graph coverage. */
-		localGraphTopFolderPrefixes: 8,
-		/** Boundary node ids in frontier summary. */
-		localGraphBoundaryNodes: 48,
-		/** Path segment depth for folder aggregation (e.g. `a/b`). */
-		pathFolderSegmentParts: 2,
-	},
 	indexing: {
 		structuredChunkTop: 8,
 	},
