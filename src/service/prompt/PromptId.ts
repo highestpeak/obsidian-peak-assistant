@@ -100,37 +100,23 @@ export enum PromptId {
 
 	// Copilot Document Intelligence
 	DocPolish = 'doc-polish',
-	DocPolishSystem = 'doc-polish-system',
 	DocReview = 'doc-review',
-	DocReviewSystem = 'doc-review-system',
 	DocSuggestLinks = 'doc-suggest-links',
-	DocSuggestLinksSystem = 'doc-suggest-links-system',
 	DocSplitSuggestion = 'doc-split-suggestion',
-	DocSplitSuggestionSystem = 'doc-split-suggestion-system',
 	DocSuggestTags = 'doc-suggest-tags',
-	DocSuggestTagsSystem = 'doc-suggest-tags-system',
 	DocSummarize = 'doc-summarize',
-	DocSummarizeSystem = 'doc-summarize-system',
 	DocExtractConcepts = 'doc-extract-concepts',
-	DocExtractConceptsSystem = 'doc-extract-concepts-system',
 	DocTranslate = 'doc-translate',
-	DocTranslateSystem = 'doc-translate-system',
 
 	// Copilot Vault Intelligence
 	VaultKnowledgeGaps = 'vault-knowledge-gaps',
-	VaultKnowledgeGapsSystem = 'vault-knowledge-gaps-system',
 	VaultSynthesize = 'vault-synthesize',
-	VaultSynthesizeSystem = 'vault-synthesize-system',
 	VaultHealth = 'vault-health',
-	VaultHealthSystem = 'vault-health-system',
 
 	// Copilot Writing Assistance
 	WritingContinue = 'writing-continue',
-	WritingContinueSystem = 'writing-continue-system',
 	WritingRewrite = 'writing-rewrite',
-	WritingRewriteSystem = 'writing-rewrite-system',
 	WritingAddEvidence = 'writing-add-evidence',
-	WritingAddEvidenceSystem = 'writing-add-evidence-system',
 
 	// Chat intelligence
 	ChatTopicAggregation = 'chat-topic-aggregation',
@@ -141,7 +127,6 @@ export enum PromptId {
 	WorkingThemeInference = 'working-theme-inference',
 	WorkingContextRender = 'working-context-render',
 	ActivityIndexRender = 'activity-index-render',
-	MessageChunkSummarize = 'message-chunk-summarize',
 }
 
 /**
@@ -425,81 +410,67 @@ export interface PromptVariables {
 		scope: 'full' | 'selection';
 		instruction?: string;
 	};
-	[PromptId.DocPolishSystem]: Record<string, never>;
 	[PromptId.DocReview]: {
 		content: string;
 		title?: string;
 		scope: 'full' | 'selection';
 	};
-	[PromptId.DocReviewSystem]: Record<string, never>;
 	[PromptId.DocSuggestLinks]: {
 		content: string;
 		title?: string;
 		existingLinks: string;
 	};
-	[PromptId.DocSuggestLinksSystem]: Record<string, never>;
 	[PromptId.DocSplitSuggestion]: {
 		content: string;
 		title?: string;
 		wordCount: number;
 	};
-	[PromptId.DocSplitSuggestionSystem]: Record<string, never>;
 	[PromptId.DocSuggestTags]: {
 		content: string;
 		title?: string;
 	};
-	[PromptId.DocSuggestTagsSystem]: Record<string, never>;
 	[PromptId.DocSummarize]: {
 		content: string;
 		title?: string;
 		scope: string;
 		length: string;
 	};
-	[PromptId.DocSummarizeSystem]: Record<string, never>;
 	[PromptId.DocExtractConcepts]: {
 		content: string;
 		title?: string;
 	};
-	[PromptId.DocExtractConceptsSystem]: Record<string, never>;
 	[PromptId.DocTranslate]: {
 		content: string;
 		title?: string;
 		scope: string;
 		targetLanguage: string;
 	};
-	[PromptId.DocTranslateSystem]: Record<string, never>;
 	[PromptId.VaultKnowledgeGaps]: {
 		content: string;
 		title?: string;
 		relatedNotes: string;
 	};
-	[PromptId.VaultKnowledgeGapsSystem]: Record<string, never>;
 	[PromptId.VaultSynthesize]: {
 		topic: string;
 		sources: string;
 	};
-	[PromptId.VaultSynthesizeSystem]: Record<string, never>;
 	[PromptId.VaultHealth]: {
 		stats: string;
 	};
-	[PromptId.VaultHealthSystem]: Record<string, never>;
 	[PromptId.WritingContinue]: {
 		content: string;
 		title?: string;
 	};
-	[PromptId.WritingContinueSystem]: Record<string, never>;
 	[PromptId.WritingRewrite]: {
 		selection: string;
 		content: string;
 		title?: string;
 		style: string;
 	};
-	[PromptId.WritingRewriteSystem]: Record<string, never>;
 	[PromptId.WritingAddEvidence]: {
 		context: string;
 		sources: string;
 	};
-	[PromptId.WritingAddEvidenceSystem]: Record<string, never>;
 
 	// Chat intelligence
 	[PromptId.ChatTopicAggregation]: {
@@ -525,9 +496,6 @@ export interface PromptVariables {
 	[PromptId.ActivityIndexRender]: {
 		activities: Array<{ id: string; timeAgo: string; summary: string }>;
 		counts: Record<string, number>;
-	};
-	[PromptId.MessageChunkSummarize]: {
-		messages: Array<{ role: string; content: string }>;
 	};
 }
 
