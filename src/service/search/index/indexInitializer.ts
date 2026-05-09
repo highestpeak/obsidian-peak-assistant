@@ -7,12 +7,22 @@ import { IndexProgressTracker } from '../support/progress-tracker';
 import {
 	defaultIndexDocumentOptions,
 	IndexService,
+	type IndexDocumentOptions,
 	type IndexDocumentReason,
 } from '@/service/search/index/indexService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { INDEX_CHECK_BATCH_SIZE, VAULT_DB_FILENAME } from '@/core/constant';
 import { formatLlmEnrichmentProgressLine } from '@/service/search/support/llm-progress-format';
 import { getFileSize } from '@/core/utils/obsidian-utils';
+import type { IndexLevel } from './types';
+import { defaultIndexDocumentOptionsForLevel } from './types';
+
+export type IndexErrorAction = 'continue' | 'retry' | 'cancel';
+export type IndexErrorHandler = (error: {
+	step: string;
+	failedCount: number;
+	error: Error;
+}) => Promise<IndexErrorAction>;
 
 const PHASE_LABELS: Record<string, string> = {
 	semantic_pagerank_edges: 'semantic PR edges',
@@ -136,7 +146,11 @@ export class IndexInitializer {
 	}
 
 	/** Full pipeline: FTS → vector embeddings → LLM tags/summaries → Mobius maintenance. */
-	async performStagedFullIndexing(showNotification: boolean): Promise<void> {
+	async performStagedFullIndexing(
+		showNotification: boolean = true,
+		level: IndexLevel = 'full',
+		onError?: IndexErrorHandler,
+	): Promise<void> {
 		if (!sqliteStoreManager.isInitialized()) {
 			new Notice('Search index is not ready. Open the vault and wait for the plugin to load.', 6000);
 			return;
@@ -188,27 +202,90 @@ export class IndexInitializer {
 			new Notice(`Peak: Step 1/4 done — FTS indexed ${indexedCount} file(s). DB ~${mb} MB.`, 5000);
 		}
 
-		const pipelineUi = this.openPipelineNotice('Peak: Step 2/4 — Vector embeddings…');
-		try {
-			await IndexService.runPendingVectorIndexEnrichment(this.settings, {
-				onProgress: ({ processed, total, path }) => {
-					const short = path.length > 48 ? `${path.slice(0, 45)}…` : path;
-					pipelineUi.setMessage(`Peak: Step 2/4 — Vector ${processed}/${total}\n${short}`);
-				},
-			});
-			pipelineUi.setMessage('Peak: Step 3/4 — LLM tags & summaries…');
-			await IndexService.runPendingLlmIndexEnrichment(this.settings, {
-				onProgress: (ev) => {
-					const short = ev.path.length > 48 ? `${ev.path.slice(0, 45)}…` : ev.path;
-					pipelineUi.setMessage(
-						`Peak: Step 3/4 — LLM ${ev.processed}/${ev.total}\n${formatLlmEnrichmentProgressLine(ev)}\n${short}`,
-					);
-				},
-			});
+		if (level === 'semantic' || level === 'full') {
+			const pipelineUi = this.openPipelineNotice('Peak: Step 2/4 — Vector embeddings…');
+			try {
+				await IndexService.runPendingVectorIndexEnrichment(this.settings, {
+					onProgress: ({ processed, total, path }) => {
+						const short = path.length > 48 ? `${path.slice(0, 45)}…` : path;
+						pipelineUi.setMessage(`Peak: Step 2/4 — Vector ${processed}/${total}\n${short}`);
+					},
+				});
+			} catch (e) {
+				if (onError) {
+					const action = await onError({ step: 'Embedding generation', failedCount: 0, error: e as Error });
+					if (action === 'cancel') {
+						pipelineUi.hide();
+						return;
+					}
+					if (action === 'retry') {
+						try {
+							await IndexService.runPendingVectorIndexEnrichment(this.settings, {
+								onProgress: ({ processed, total, path }) => {
+									const short = path.length > 48 ? `${path.slice(0, 45)}…` : path;
+									pipelineUi.setMessage(`Peak: Step 2/4 — Vector (retry) ${processed}/${total}\n${short}`);
+								},
+							});
+						} catch (retryErr) {
+							pipelineUi.hide();
+							console.error('[IndexInitializer] Step 2 retry failed:', retryErr);
+						}
+					}
+					// 'continue' → proceed to next step
+				} else {
+					pipelineUi.hide();
+					console.error('[IndexInitializer] Step 2 failed:', e);
+					new Notice(`Peak: Step 2/4 failed — ${(e as Error).message}`, 8000);
+				}
+			}
+
+			if (level === 'full') {
+				pipelineUi.setMessage('Peak: Step 3/4 — LLM tags & summaries…');
+				try {
+					await IndexService.runPendingLlmIndexEnrichment(this.settings, {
+						onProgress: (ev) => {
+							const short = ev.path.length > 48 ? `${ev.path.slice(0, 45)}…` : ev.path;
+							pipelineUi.setMessage(
+								`Peak: Step 3/4 — LLM ${ev.processed}/${ev.total}\n${formatLlmEnrichmentProgressLine(ev)}\n${short}`,
+							);
+						},
+					});
+				} catch (e) {
+					if (onError) {
+						const action = await onError({ step: 'LLM enrichment', failedCount: 0, error: e as Error });
+						if (action === 'cancel') {
+							pipelineUi.hide();
+							return;
+						}
+						if (action === 'retry') {
+							try {
+								await IndexService.runPendingLlmIndexEnrichment(this.settings, {
+									onProgress: (ev) => {
+										const short = ev.path.length > 48 ? `${ev.path.slice(0, 45)}…` : ev.path;
+										pipelineUi.setMessage(
+											`Peak: Step 3/4 — LLM (retry) ${ev.processed}/${ev.total}\n${formatLlmEnrichmentProgressLine(ev)}\n${short}`,
+										);
+									},
+								});
+							} catch (retryErr) {
+								console.error('[IndexInitializer] Step 3 retry failed:', retryErr);
+							}
+						}
+						// 'continue' → proceed to next step
+					} else {
+						console.error('[IndexInitializer] Step 3 failed:', e);
+					}
+				}
+			}
+
 			pipelineUi.setMessage('Peak: Step 4/4 — Graph maintenance…');
-			await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
-				onProgress: (ev) => pipelineUi.setMessage(maintenanceProgressMsg('Peak: Step 4/4', ev)),
-			});
+			try {
+				await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
+					onProgress: (ev) => pipelineUi.setMessage(maintenanceProgressMsg('Peak: Step 4/4', ev)),
+				});
+			} catch (e) {
+				console.error('[IndexInitializer] Step 4 (maintenance) failed:', e);
+			}
 			pipelineUi.hide();
 			if (showNotification) {
 				new Notice(
@@ -216,10 +293,20 @@ export class IndexInitializer {
 					8000,
 				);
 			}
-		} catch (e) {
+		} else {
+			// level === 'fast': only FTS done, run maintenance step
+			const pipelineUi = this.openPipelineNotice('Peak: Step 2/2 — Graph maintenance…');
+			try {
+				await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
+					onProgress: (ev) => pipelineUi.setMessage(maintenanceProgressMsg('Peak: Step 2/2', ev)),
+				});
+			} catch (e) {
+				console.error('[IndexInitializer] Graph maintenance failed:', e);
+			}
 			pipelineUi.hide();
-			console.error('[IndexInitializer] Staged pipeline failed:', e);
-			new Notice(`Peak pipeline failed: ${(e as Error).message}`, 8000);
+			if (showNotification) {
+				new Notice('Peak: Fast indexing finished (FTS + graph maintenance).', 5000);
+			}
 		}
 	}
 
@@ -235,9 +322,11 @@ export class IndexInitializer {
 		try {
 			IndexService.resetCancellation();
 			filesToIndexPaths = await this.resolveFilesToIndex(filesToIndexPaths);
+			const level: IndexLevel = this.settings.indexLevel ?? 'fast';
+			const opts = defaultIndexDocumentOptionsForLevel(level);
 			await Promise.all([
 				this.checkAndDeleteRemovedFiles(),
-				this.indexNewAndModifiedFiles(filesToIndexPaths),
+				this.indexDocumentPaths(filesToIndexPaths, 'Indexing', opts),
 			]);
 			await this.runMobiusMaintenanceIfDue();
 		} catch (e) {
@@ -310,7 +399,7 @@ export class IndexInitializer {
 	private async indexDocumentPaths(
 		filesToIndexPaths: string[],
 		progressStartLabel: string,
-		reason: IndexDocumentReason,
+		reasonOrOpts: IndexDocumentReason | IndexDocumentOptions,
 	): Promise<void> {
 		if (filesToIndexPaths.length === 0) {
 			return;
@@ -322,7 +411,7 @@ export class IndexInitializer {
 		let indexedCount = 0;
 		let lastProgressUpdate = Date.now();
 		const PROGRESS_INTERVAL_MS = 2000;
-		const opts = defaultIndexDocumentOptions(reason);
+		const opts = typeof reasonOrOpts === 'string' ? defaultIndexDocumentOptions(reasonOrOpts) : reasonOrOpts;
 
 		for (const path of filesToIndexPaths) {
 			if (IndexService.isCancelled() || progressTracker?.isCancelled()) {
