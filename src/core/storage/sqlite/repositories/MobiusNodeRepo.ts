@@ -623,47 +623,15 @@ export class MobiusNodeRepo {
 		return out;
 	}
 
-	/**
-	 * Persists vault PageRank scalars on document-like rows (`pagerank*` columns, not `attributes_json`).
-	 */
+	/** Persists PageRank or semantic PageRank scalars on document-like rows. */
 	async setPageRankForDocLikeNode(
 		nodeId: string,
-		fields: { pagerank: number; pagerank_updated_at: number; pagerank_version: number },
+		fields: Partial<Pick<MobiusNodeRow, 'pagerank' | 'pagerank_updated_at' | 'pagerank_version' | 'semantic_pagerank' | 'semantic_pagerank_updated_at' | 'semantic_pagerank_version'>>,
 		now: number = Date.now(),
 	): Promise<void> {
 		await this.db
 			.updateTable('mobius_node')
-			.set({
-				pagerank: fields.pagerank,
-				pagerank_updated_at: fields.pagerank_updated_at,
-				pagerank_version: fields.pagerank_version,
-				updated_at: now,
-			})
-			.where('node_id', '=', nodeId)
-			.where('type', 'in', [...GRAPH_DOCUMENT_LIKE_NODE_TYPES])
-			.execute();
-	}
-
-	/**
-	 * Persists weighted semantic PageRank on `semantic_related` (`semantic_pagerank*` columns).
-	 */
-	async setSemanticPageRankForDocLikeNode(
-		nodeId: string,
-		fields: {
-			semantic_pagerank: number;
-			semantic_pagerank_updated_at: number;
-			semantic_pagerank_version: number;
-		},
-		now: number = Date.now(),
-	): Promise<void> {
-		await this.db
-			.updateTable('mobius_node')
-			.set({
-				semantic_pagerank: fields.semantic_pagerank,
-				semantic_pagerank_updated_at: fields.semantic_pagerank_updated_at,
-				semantic_pagerank_version: fields.semantic_pagerank_version,
-				updated_at: now,
-			})
+			.set({ ...fields, updated_at: now })
 			.where('node_id', '=', nodeId)
 			.where('type', 'in', [...GRAPH_DOCUMENT_LIKE_NODE_TYPES])
 			.execute();
@@ -712,12 +680,8 @@ export class MobiusNodeRepo {
 		await this.db
 			.updateTable('mobius_node')
 			.set({
-				word_count: null,
-				char_count: null,
-				language: null,
-				richness_score: null,
-				last_open_ts: null,
-				open_count: null,
+				word_count: null, char_count: null, language: null,
+				richness_score: null, last_open_ts: null, open_count: null,
 				updated_at: Date.now(),
 			})
 			.where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES])
@@ -731,64 +695,33 @@ export class MobiusNodeRepo {
 		return Number(r?.c ?? 0);
 	}
 
-	async getTopRecentEditedByDocIds(
+	private async getTopDocStat<K extends string>(
+		col: K & keyof MobiusNodeRow,
 		docIds: string[] | undefined,
 		limit: number,
-	): Promise<Array<{ doc_id: string; updated_at: number }>> {
+	): Promise<Array<{ doc_id: string } & Record<K, number>>> {
 		if (docIds !== undefined && docIds.length === 0) return [];
 		let q = this.docStatisticsRowQuery()
-			.select(['node_id', 'updated_at'])
-			.where('updated_at', 'is not', null)
-			.orderBy('updated_at', 'desc')
+			.select(['node_id', col])
+			.where(col, 'is not', null)
+			.orderBy(col, 'desc')
 			.limit(limit);
 		if (docIds !== undefined) q = q.where('node_id', 'in', docIds);
 		const rows = await q.execute();
-		return rows.map((r) => ({ doc_id: r.node_id, updated_at: r.updated_at }));
+		return rows.map((r) => ({ doc_id: r.node_id, [col]: Number((r as any)[col]) } as any));
 	}
 
-	async getTopWordCountByDocIds(
-		docIds: string[] | undefined,
-		limit: number,
-	): Promise<Array<{ doc_id: string; word_count: number }>> {
-		if (docIds !== undefined && docIds.length === 0) return [];
-		let q = this.docStatisticsRowQuery()
-			.select(['node_id', 'word_count'])
-			.where('word_count', 'is not', null)
-			.orderBy('word_count', 'desc')
-			.limit(limit);
-		if (docIds !== undefined) q = q.where('node_id', 'in', docIds);
-		const rows = await q.execute();
-		return rows.map((r) => ({ doc_id: r.node_id, word_count: Number(r.word_count) }));
+	async getTopRecentEditedByDocIds(docIds: string[] | undefined, limit: number) {
+		return this.getTopDocStat('updated_at', docIds, limit);
 	}
-
-	async getTopCharCountByDocIds(
-		docIds: string[] | undefined,
-		limit: number,
-	): Promise<Array<{ doc_id: string; char_count: number }>> {
-		if (docIds !== undefined && docIds.length === 0) return [];
-		let q = this.docStatisticsRowQuery()
-			.select(['node_id', 'char_count'])
-			.where('char_count', 'is not', null)
-			.orderBy('char_count', 'desc')
-			.limit(limit);
-		if (docIds !== undefined) q = q.where('node_id', 'in', docIds);
-		const rows = await q.execute();
-		return rows.map((r) => ({ doc_id: r.node_id, char_count: Number(r.char_count) }));
+	async getTopWordCountByDocIds(docIds: string[] | undefined, limit: number) {
+		return this.getTopDocStat('word_count', docIds, limit);
 	}
-
-	async getTopRichnessByDocIds(
-		docIds: string[] | undefined,
-		limit: number,
-	): Promise<Array<{ doc_id: string; richness_score: number }>> {
-		if (docIds !== undefined && docIds.length === 0) return [];
-		let q = this.docStatisticsRowQuery()
-			.select(['node_id', 'richness_score'])
-			.where('richness_score', 'is not', null)
-			.orderBy('richness_score', 'desc')
-			.limit(limit);
-		if (docIds !== undefined) q = q.where('node_id', 'in', docIds);
-		const rows = await q.execute();
-		return rows.map((r) => ({ doc_id: r.node_id, richness_score: Number(r.richness_score) }));
+	async getTopCharCountByDocIds(docIds: string[] | undefined, limit: number) {
+		return this.getTopDocStat('char_count', docIds, limit);
+	}
+	async getTopRichnessByDocIds(docIds: string[] | undefined, limit: number) {
+		return this.getTopDocStat('richness_score', docIds, limit);
 	}
 
 	async getLanguageStatsByDocIds(

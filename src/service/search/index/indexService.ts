@@ -1668,7 +1668,7 @@ class GlobalMaintenanceService {
 		let persistBatchIndex = 0;
 		for (const id of nodeIds) {
 			const score = scores.get(id) ?? 0;
-			await mobiusNodeRepo.setSemanticPageRankForDocLikeNode(
+			await mobiusNodeRepo.setPageRankForDocLikeNode(
 				id,
 				{
 					semantic_pagerank: score,
