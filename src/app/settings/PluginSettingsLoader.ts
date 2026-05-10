@@ -212,6 +212,9 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 		settings.searchUpgradePromptDismissedAt = rawDismissed;
 	}
 
+	// enablePPR: restore persisted value or keep default
+	settings.enablePPR = getBoolean((rawSearch as any).enablePPR, settings.enablePPR);
+
 	return settings;
 }
 

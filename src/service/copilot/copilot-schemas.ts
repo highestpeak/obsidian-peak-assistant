@@ -41,7 +41,8 @@ export const tagSuggestionsSchema = z.object({
         tag: z.string(),
         confidence: z.number(),
         reason: z.string(),
-        source: z.enum(['content', 'graph', 'history']),
+        category: z.enum(['topic', 'keyword', 'functional']),
+        sources: z.array(z.enum(['content', 'graph', 'history'])).optional(),
     })),
     summary: z.string(),
 });

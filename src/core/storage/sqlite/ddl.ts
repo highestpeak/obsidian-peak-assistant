@@ -368,6 +368,21 @@ export interface Database {
 		reason: string | null;
 		snooze_until: number | null;
 	};
+	tag_suggestion: {
+		id: string;
+		doc_path: string;
+		tag: string;
+		category: string;
+		confidence: number;
+		sources: string;
+		reason: string;
+		is_existing: number;
+		status: string;
+		edited_tag: string | null;
+		created_at: number;
+		resolved_at: number | null;
+		batch_id: string | null;
+	};
 	usage_log: {
 		id: number;
 		session_id: string;
@@ -865,6 +880,28 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			UNIQUE(date, feature, action, provider, model)
 		);
 		CREATE INDEX IF NOT EXISTS idx_usage_daily_date ON usage_daily(date);
+	`);
+
+	// ── Tag suggestion feedback table ──
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS tag_suggestion (
+			id              TEXT PRIMARY KEY,
+			doc_path        TEXT NOT NULL,
+			tag             TEXT NOT NULL,
+			category        TEXT NOT NULL,
+			confidence      REAL NOT NULL,
+			sources         TEXT NOT NULL,
+			reason          TEXT NOT NULL,
+			is_existing     INTEGER NOT NULL DEFAULT 0,
+			status          TEXT NOT NULL DEFAULT 'pending',
+			edited_tag      TEXT,
+			created_at      INTEGER NOT NULL,
+			resolved_at     INTEGER,
+			batch_id        TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_tag_suggestion_doc ON tag_suggestion(doc_path);
+		CREATE INDEX IF NOT EXISTS idx_tag_suggestion_status ON tag_suggestion(status);
+		CREATE INDEX IF NOT EXISTS idx_tag_suggestion_tag ON tag_suggestion(tag);
 	`);
 
 	// ── Schema evolution: add columns (idempotent) ──

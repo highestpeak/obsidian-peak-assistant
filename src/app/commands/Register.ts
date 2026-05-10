@@ -22,6 +22,7 @@ import { OnboardingModal } from '@/ui/view/modals/OnboardingModal';
 import { AppContext } from '@/app/context/AppContext';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
+import { BatchTagModal } from '@/ui/view/copilot/BatchTagModal';
 import { registerAllCopilotActions } from '@/service/copilot/actions';
 import { PromptTemplateModal } from '@/ui/view/prompt-template/PromptTemplateModal';
 import { SettingsModal } from '@/ui/view/SettingsModal';
@@ -32,6 +33,8 @@ import { KnowledgeIntuitionAgent } from '@/service/agents/KnowledgeIntuitionAgen
 import { BulkOperationCostEstimator } from '@/service/search/support/cost-estimator';
 import { CostEstimationModal } from '@/ui/view/modals/CostEstimationModal';
 import { IndexingProgressModal } from '@/ui/view/modals/IndexingProgressModal';
+import { VaultLintService } from '@/service/lint/VaultLintService';
+import { computeEvalMetrics, formatEvalReport } from '@/service/search/query/pprEvaluator';
 
 /**
  * Persistent bottom notice with updatable message (Obsidian 1.5+ `setMessage` when available).
@@ -629,6 +632,53 @@ function buildSettingsCommands(appContext: AppContext): Command[] {
 }
 
 /**
+ * PPR evaluation command — side-by-side comparison of baseline vs PPR search.
+ */
+function buildPPREvalCommands(viewManager: ViewManager): Command[] {
+	return [
+		{
+			id: 'peak-compare-search-results',
+			name: 'Compare Search Results (PPR vs Baseline)',
+			callback: async () => {
+				const query = await viewManager.promptForInput('Enter search query for PPR comparison');
+				if (!query) return;
+
+				const searchClient = AppContext.getSearchClient();
+
+				// Baseline: PPR disabled
+				const t0 = Date.now();
+				const baseline = await searchClient.search(
+					{ text: query, scopeMode: 'vault', enablePPR: false },
+				);
+				const baselineMs = Date.now() - t0;
+
+				// PPR: enabled
+				const t1 = Date.now();
+				const pprResult = await searchClient.search(
+					{ text: query, scopeMode: 'vault', enablePPR: true },
+				);
+				const pprMs = Date.now() - t1;
+
+				const metrics = computeEvalMetrics(
+					query,
+					baseline.items.map(i => i.path),
+					pprResult.items.map(i => i.path),
+					baselineMs,
+					pprMs,
+				);
+
+				const report = formatEvalReport(metrics);
+				console.log(report);
+				new Notice(
+					`PPR eval: ${metrics.pprOnlyPaths.length} graph-discovered, displacement=${metrics.rankDisplacement}`,
+					8000,
+				);
+			},
+		},
+	];
+}
+
+/**
  * Registers core commands exposed via Obsidian command palette.
  */
 export function buildCoreCommands(
@@ -664,6 +714,13 @@ export function buildCoreCommands(
 			},
 		},
 		{
+			id: 'peak-copilot-batch-suggest-tags',
+			name: 'Copilot: Batch Tag Suggestions',
+			callback: () => {
+				new BatchTagModal(appContext).open();
+			},
+		},
+		{
 			id: 'peak-prompt-templates',
 			name: 'Open Prompt Templates',
 			callback: () => {
@@ -671,12 +728,22 @@ export function buildCoreCommands(
 			},
 		},
 		...buildAmbientPushCommands(viewManager),
+		...(isDesktop() ? buildPPREvalCommands(viewManager) : []),
 		...buildOnboardingCommands(),
 		...buildSettingsCommands(appContext),
 		{
 			id: 'peak-usage-dashboard',
 			name: 'Open Usage Dashboard',
 			callback: () => void viewManager.activateUsageDashboardView(),
+		},
+		{
+			id: 'peak-vault-xray',
+			name: 'Vault X-Ray',
+			callback: async () => {
+				const lintService = VaultLintService.getInstance();
+				lintService.initRegistry();
+				await viewManager.activateVaultXRayView();
+			},
 		},
 	];
 }

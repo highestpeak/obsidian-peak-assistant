@@ -1,0 +1,36 @@
+{
+  "dimensionWeights": {
+    "structural": 0.30,
+    "content": 0.20,
+    "temporal": 0.15,
+    "semantic": 0.25,
+    "tags": 0.10
+  },
+  "thresholds": {
+    "stubMaxChars": 100,
+    "oversizedMinWords": 5000,
+    "duplicateMinSimilarity": 0.92,
+    "duplicateMinTitleJaccard": 0.50,
+    "staleHubDays": 180,
+    "staleHubMinPageRankPercentile": 75,
+    "decayingBridgeDays": 365,
+    "abandonedClusterDays": 180,
+    "abandonedFolderDays": 365,
+    "recentDriftActiveDays": 30,
+    "recentDriftStaleDays": 180,
+    "tagExplosionMultiplier": 5,
+    "softOrphanMaxDegree": 2,
+    "phantomNodeMinReferences": 3,
+    "contradictionMinSimilarity": 0.80,
+    "missingBacklinkMinSimilarity": 0.70,
+    "lowCohesionMaxDensity": 0.30,
+    "islandClusterMaxSize": 5,
+    "redundantHubMinOverlap": 0.70
+  },
+  "scan": {
+    "incrementalDebounceMs": 30000,
+    "fullScanIntervalHours": 168,
+    "contradictionBatchSize": 20,
+    "contradictionConcurrency": 2
+  }
+}

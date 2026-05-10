@@ -4,12 +4,13 @@ import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
 import { writeTagsToFrontmatter } from '@/service/copilot/frontmatterTagWriter';
 import type { TagSuggestions } from '@/service/copilot/copilot-schemas';
+import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { Check, X, Pencil, Tag } from 'lucide-react';
 
 type TagStatus = 'pending' | 'accepted' | 'rejected';
 
 interface TagSuggestionPanelProps {
-  result: TagSuggestions;
+  result: TagSuggestions & { batchId?: string };
   file: TFile;
   onClose: () => void;
 }
@@ -67,6 +68,26 @@ export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
     try {
       await writeTagsToFrontmatter(file, acceptedTags);
       new Notice(`Added ${acceptedTags.length} tag${acceptedTags.length > 1 ? 's' : ''} to frontmatter.`);
+      // Record feedback to tag_suggestion table
+      if (result.batchId) {
+        try {
+          const repo = SqliteStoreManager.getInstance().getTagSuggestionRepo();
+          const resolutions = Object.entries(statuses)
+            .filter(([, s]) => s !== 'pending')
+            .map(([tag, status]) => ({
+              tag,
+              docPath: file.path,
+              batchId: result.batchId!,
+              status: status as 'accepted' | 'rejected' | 'edited',
+              editedTag: undefined,
+            }));
+          if (resolutions.length > 0) {
+            await repo.resolveBatch(resolutions);
+          }
+        } catch (e) {
+          console.warn('[TagSuggestionPanel] Failed to record feedback:', e);
+        }
+      }
       onClose();
     } catch (e) {
       new Notice(`Failed: ${(e as Error).message}`);
@@ -195,6 +216,21 @@ export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
         <span className="pktw-text-[11px] pktw-text-muted-foreground pktw-mr-auto">
           {acceptedTags.length} of {result.suggestions.length} accepted
         </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const highConf = result.suggestions.filter(s => s.confidence >= 0.7);
+            if (highConf.length === 0) return;
+            setStatuses(prev => {
+              const next = { ...prev };
+              for (const s of highConf) next[s.tag] = 'accepted';
+              return next;
+            });
+          }}
+        >
+          Accept High Confidence
+        </Button>
         <Button variant="ghost" onClick={onClose}>Skip All</Button>
         <Button onClick={handleApply} disabled={acceptedTags.length === 0}>
           Apply {acceptedTags.length} Tag{acceptedTags.length !== 1 ? 's' : ''}

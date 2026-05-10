@@ -10,6 +10,8 @@ import {
 	PPR_RRF_WEIGHT,
 	PPR_CM_RRF_WEIGHT,
 	PPR_MAX_EXPANSION_RESULTS,
+	PPR_QUERY_NODE_SEED_K,
+	PPR_QUERY_NODE_WEIGHT_FRACTION,
 } from '@/core/constant';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
@@ -92,12 +94,23 @@ export class QueryService {
 
 		// PPR graph-based reranking
 		const tenant = query?.indexTenant ?? 'vault';
-		const enablePPR = query.enablePPR !== false;
+		// Settings flag takes priority; query-level flag can still force-disable.
+		const enablePPR = this.searchSettings.enablePPR !== false && query.enablePPR !== false;
 		let pprActive = false;
 		if (enablePPR && resultItems.length > 0) {
+			// Collect docIds from FTS retrievers for query-node seeding in PPR.
+			const ftsDocIds: string[] = (() => {
+				const ftsResult = retrieverResults.get('fts');
+				if (!ftsResult) return [];
+				return ftsResult
+					.slice(0, PPR_QUERY_NODE_SEED_K)
+					.map(r => r.docId)
+					.filter((id): id is string => typeof id === 'string');
+			})();
+
 			sw.start('ppr_computation');
 			try {
-				const pprEnriched = await this.applyPPR(resultItems, tenant);
+				const pprEnriched = await this.applyPPR(resultItems, tenant, ftsDocIds);
 				pprActive = pprEnriched !== resultItems;
 				resultItems = pprEnriched as SearchResultItem[];
 			} catch (error) {
@@ -233,6 +246,7 @@ export class QueryService {
 	private async applyPPR(
 		items: Array<{ path: string; score: number; docId?: string }>,
 		tenant: IndexTenant,
+		queryNodeDocIds: string[] = [],
 	): Promise<Array<{ path: string; score: number; docId?: string }>> {
 		const seeds = items.filter((i) => i.docId).slice(0, PPR_SEED_K);
 		if (seeds.length === 0) return items;
@@ -242,10 +256,48 @@ export class QueryService {
 			? seeds.map((i) => ({ nodeId: i.docId!, weight: i.score / totalSeedScore }))
 			: seeds.map((i) => ({ nodeId: i.docId!, weight: 1 / seeds.length }));
 
+		// Blend query-node seeds into the seed distribution.
+		// Query-node seeds get PPR_QUERY_NODE_WEIGHT_FRACTION of total weight;
+		// RRF seeds are scaled to (1 - PPR_QUERY_NODE_WEIGHT_FRACTION).
+		if (queryNodeDocIds.length > 0 && PPR_QUERY_NODE_WEIGHT_FRACTION > 0) {
+			const rrfFraction = 1 - PPR_QUERY_NODE_WEIGHT_FRACTION;
+			for (const seed of pprSeeds) seed.weight *= rrfFraction;
+
+			const existingNodeIds = new Set(pprSeeds.map(s => s.nodeId));
+			const queryOnlyNodes = queryNodeDocIds
+				.filter(id => !existingNodeIds.has(id))
+				.slice(0, PPR_QUERY_NODE_SEED_K);
+
+			if (queryOnlyNodes.length > 0) {
+				const perQueryNodeWeight = PPR_QUERY_NODE_WEIGHT_FRACTION / queryOnlyNodes.length;
+				for (const nodeId of queryOnlyNodes) {
+					pprSeeds.push({ nodeId, weight: perQueryNodeWeight });
+				}
+			}
+		}
+
 		const pprResult = await computePPR(pprSeeds, createPPREdgeFetcher(tenant), {});
 		if (pprResult.scores.size === 0) return items;
 
 		const pprEntries = [...pprResult.scores.entries()].sort((a, b) => b[1] - a[1]);
+
+		// Build candidateNodeIds early for debug logging.
+		const existingDocIdsForLog = new Set(items.filter(i => i.docId).map(i => i.docId!));
+		const candidateNodeIdsForLog: string[] = [];
+		for (const [nid] of pprEntries) {
+			if (candidateNodeIdsForLog.length >= PPR_MAX_EXPANSION_RESULTS) break;
+			if (!existingDocIdsForLog.has(nid)) candidateNodeIdsForLog.push(nid);
+		}
+
+		console.debug('[PPR]', {
+			seeds: pprSeeds.length,
+			queryNodeSeeds: queryNodeDocIds.length,
+			pushOps: pprResult.pushOps,
+			nodesExplored: pprResult.nodesExplored,
+			elapsedMs: pprResult.elapsedMs,
+			truncated: pprResult.truncated,
+			expansion: candidateNodeIdsForLog.length,
+		});
 		const pprRankByNodeId = new Map<string, number>();
 		for (let i = 0; i < pprEntries.length; i++) pprRankByNodeId.set(pprEntries[i]![0], i + 1);
 

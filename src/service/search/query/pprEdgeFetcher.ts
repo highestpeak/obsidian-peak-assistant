@@ -22,7 +22,9 @@ import {
 	PPR_LAYER_WEIGHT_REFERENCE,
 	PPR_LAYER_WEIGHT_SEMANTIC,
 	PPR_LAYER_WEIGHT_TAG,
+	PPR_LAYER_WEIGHT_COCITATION,
 } from '@/core/constant';
+import { buildCoCitationQuery } from '@/service/search/coCitationService';
 import type { MultiLayerEdge } from './personalizedPageRank';
 
 // ---------------------------------------------------------------------------
@@ -157,16 +159,37 @@ export function createPPREdgeFetcher(
 			}
 		}
 
-		// 4. Normalize each layer independently.
+		// 4. Co-citation: nodes that share reference citers with `nodeId`.
+		//    Reuses the existing buildCoCitationQuery (IDF-weighted SQL).
+		const coCitRaw: MultiLayerEdge[] = [];
+		try {
+			const { sql: coCitSql, params: coCitParams } = buildCoCitationQuery(nodeId, 20);
+			const rawDb = sqliteStoreManager.getSearchStore();
+			if (rawDb) {
+				type CoCitRow = { co_cited_id: string; weighted_score: number };
+				const rows = rawDb.prepare(coCitSql).all(...coCitParams) as CoCitRow[];
+				for (const row of rows) {
+					if (row.co_cited_id && row.weighted_score > 0) {
+						coCitRaw.push({ to: row.co_cited_id, weight: row.weighted_score });
+					}
+				}
+			}
+		} catch {
+			// Co-citation is best-effort; failure falls back to 3-layer PPR.
+		}
+
+		// 5. Normalize each layer independently.
 		const refNorm = normalizeLayer(refRaw);
 		const semNorm = normalizeLayer(semRaw);
 		const tagNorm = normalizeLayer(tagRaw);
+		const coCitNorm = normalizeLayer(coCitRaw);
 
-		// 5. Combine with layer weights.
+		// 6. Combine with layer weights.
 		const result = combineLayers([
 			{ edges: refNorm, lambda: PPR_LAYER_WEIGHT_REFERENCE },
 			{ edges: semNorm, lambda: PPR_LAYER_WEIGHT_SEMANTIC },
 			{ edges: tagNorm, lambda: PPR_LAYER_WEIGHT_TAG },
+			{ edges: coCitNorm, lambda: PPR_LAYER_WEIGHT_COCITATION },
 		]);
 
 		cache.set(nodeId, result);
