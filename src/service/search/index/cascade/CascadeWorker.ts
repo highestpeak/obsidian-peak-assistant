@@ -3,8 +3,7 @@ import { SemanticRelatedEdgesRebuildService } from '../helper/semanticRelatedEdg
 import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import type { CascadeDebtRecord } from './types';
-import { CASCADE_IDLE_DELAY_MS, CASCADE_MAX_ITEMS_PER_WINDOW } from '@/core/constant';
-import { GraphEdgeType } from '@/core/po/graph.po';
+import { CASCADE_IDLE_DELAY_MS, CASCADE_MAX_ITEMS_PER_WINDOW, CASCADE_DEBT_HUB_REGEN_PRIORITY } from '@/core/constant';
 import { CascadeScheduler } from './CascadeScheduler';
 import type { App } from 'obsidian';
 
@@ -93,36 +92,41 @@ export class CascadeWorker {
             case 'mermaid_overlay':
                 break; // handled by rebuildForDocIds
             case 'hub_invalidate': {
-                const edgeRepo = storeManager.getMobiusEdgeRepo('vault');
-                // Find docs that link TO this document
-                const incomingEdges = await edgeRepo.getByToNodesAndTypes([item.targetId], [GraphEdgeType.References]);
-                if (incomingEdges.length === 0) break;
+                // item.targetId = the changed document node id
+                const hubConstituentRepo = storeManager.getHubConstituentRepo();
+                const mobiusNodeRepo = storeManager.getMobiusNodeRepo('vault');
+                const hubNodeIds = await hubConstituentRepo.getHubsForMemberDoc(item.targetId);
 
-                const sourceIds = incomingEdges.map(e => e.from_node_id);
-                // MobiusNodeRepo.getByIds returns GraphNode (graph_nodes schema) which has no path field.
-                // Query mobius_node directly to get the path column (a real column on mobius_node).
-                const db = storeManager.getIndexContext('vault');
-                const rows = await db
-                    .selectFrom('mobius_node' as any)
-                    .select(['node_id', 'path', 'hub_stale_since'] as any)
-                    .where('node_id' as any, 'in', sourceIds)
-                    .execute() as Array<{ node_id: string; path: string | null; hub_stale_since: number | null }>;
+                if (hubNodeIds.length === 0) break;
 
                 const now = Date.now();
-                for (const row of rows) {
-                    const p = row.path;
-                    if (p?.startsWith('Hub-Summaries/') && !p.startsWith('Hub-Summaries/Manual/') && row.hub_stale_since == null) {
-                        await db
-                            .updateTable('mobius_node' as any)
-                            .set({ hub_stale_since: now } as any)
-                            .where('node_id' as any, '=', row.node_id)
-                            .execute();
-                    }
+                const cascadeRepo = storeManager.getCascadeDebtRepo('vault');
+
+                for (const hubNodeId of hubNodeIds) {
+                    // Mark hub stale (no-op if already stale)
+                    await mobiusNodeRepo.markHubStale(hubNodeId, now);
+
+                    // Enqueue hub_regen debt so S6 / future handler can regenerate it
+                    await cascadeRepo.insertOrUpdatePriority({
+                        tenant: 'vault',
+                        sourcePath: item.sourcePath,
+                        targetId: hubNodeId,
+                        debtType: 'hub_regen',
+                        priority: CASCADE_DEBT_HUB_REGEN_PRIORITY,
+                        changeMagnitude: item.changeMagnitude,
+                        createdAt: now,
+                    });
                 }
                 break;
             }
+            case 'hub_regen':
+                // S6 will implement hub regeneration.
+                // This no-op ensures the debt record is consumed and marked processed
+                // so the queue does not grow indefinitely. S6 will replace this with
+                // the actual LLM-based hub doc rewrite / incremental patch logic.
+                break;
             case 'folder_stats':
-                break; // deferred
+                break; // deferred — implemented in Task 7
         }
     }
 
