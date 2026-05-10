@@ -2,6 +2,7 @@ import type { SearchQuery, SearchResultItem } from '@/service/search/types';
 import type { AmbientContext, AmbientPushItem, AmbientSignal } from './types';
 import { generateExplanation } from './RelevanceExplainer';
 import { AppContext } from '@/app/context/AppContext';
+import type { CoCitationResult } from '@/service/search/coCitationService';
 
 const DEDUP_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -20,6 +21,77 @@ function extractHighlightTerms(highlight: string): string[] {
 		}
 	}
 	return [...terms];
+}
+
+/**
+ * Detect shared tags between source document and a result.
+ * Uses the graph's topic/keyword tags from GraphRepo.getTagsByDocIds().
+ */
+export function detectSharedTags(
+	sourceTags: Set<string>,
+	resultTags: string[],
+): AmbientSignal[] {
+	const signals: AmbientSignal[] = [];
+	for (const tag of resultTags) {
+		if (sourceTags.has(tag)) {
+			signals.push({ type: 'shared_tag', tag });
+		}
+	}
+	return signals;
+}
+
+/**
+ * Detect if a result path is a graph neighbor of the source.
+ * Returns the signal with hop distance and bridge note (for 2-hop).
+ *
+ * @param resultPath - The file path of the search result
+ * @param directNeighbors - Set of 1-hop neighbor paths
+ * @param twoHopBridgeMap - Map of 2-hop neighbor path → bridge note title
+ */
+export function detectGraphNeighborSignal(
+	resultPath: string,
+	directNeighbors: Set<string>,
+	twoHopBridgeMap: Map<string, string>,
+): AmbientSignal | null {
+	if (directNeighbors.has(resultPath)) {
+		return { type: 'graph_neighbor', hop: 1 };
+	}
+	const bridge = twoHopBridgeMap.get(resultPath);
+	if (bridge !== undefined) {
+		return { type: 'graph_neighbor', hop: 2, via: bridge || undefined };
+	}
+	return null;
+}
+
+/**
+ * Detect co-citation signal for a result path.
+ */
+export function detectCoCitationSignal(
+	resultPath: string,
+	coCitations: CoCitationResult[],
+): AmbientSignal | null {
+	const match = coCitations.find((c) => c.path === resultPath);
+	if (match && match.citingNotes.length > 0) {
+		return { type: 'co_citation', citingNote: match.citingNotes[0] };
+	}
+	return null;
+}
+
+/**
+ * Detect hub membership signal — both source and result belong to the same hub.
+ *
+ * @param resultPath - path of the candidate result
+ * @param sharedHubNames - hub labels that contain both source and result
+ */
+export function detectHubMemberSignal(
+	resultPath: string,
+	sharedHubNames: Map<string, string>,
+): AmbientSignal | null {
+	const hubName = sharedHubNames.get(resultPath);
+	if (hubName) {
+		return { type: 'hub_member', hubName };
+	}
+	return null;
 }
 
 /**

@@ -216,4 +216,88 @@ import type { AmbientSignal } from '@/service/ambient/types';
 	console.log('generateExplanation: all passed');
 }
 
+// --- Phase 2: signal detection functions ---
+import {
+	detectSharedTags,
+	detectGraphNeighborSignal,
+	detectCoCitationSignal,
+	detectHubMemberSignal,
+} from '@/service/ambient/AmbientSearcher';
+
+// --- detectSharedTags ---
+{
+	const sourceTags = new Set(['process', 'dev', 'ai']);
+	const resultTags = ['dev', 'testing', 'ai'];
+	const signals = detectSharedTags(sourceTags, resultTags);
+	assert.equal(signals.length, 2);
+	assert.equal(signals[0].type, 'shared_tag');
+	assert.equal((signals[0] as any).tag, 'dev');
+	assert.equal((signals[1] as any).tag, 'ai');
+
+	// No overlap
+	const empty = detectSharedTags(new Set(['a']), ['b']);
+	assert.equal(empty.length, 0);
+
+	console.log('detectSharedTags: all passed');
+}
+
+// --- detectGraphNeighborSignal ---
+{
+	// 1-hop neighbor
+	const s1 = detectGraphNeighborSignal('note-a.md', new Set(['note-a.md', 'note-b.md']), new Map());
+	assert.equal(s1?.type, 'graph_neighbor');
+	assert.equal((s1 as any).hop, 1);
+
+	// 2-hop neighbor with bridge
+	const bridgeMap = new Map([['note-c.md', 'Bridge Note']]);
+	const s2 = detectGraphNeighborSignal('note-c.md', new Set(), bridgeMap);
+	assert.equal(s2?.type, 'graph_neighbor');
+	assert.equal((s2 as any).hop, 2);
+	assert.equal((s2 as any).via, 'Bridge Note');
+
+	// Not a neighbor
+	const s3 = detectGraphNeighborSignal('note-x.md', new Set(), new Map());
+	assert.equal(s3, null);
+
+	console.log('detectGraphNeighborSignal: all passed');
+}
+
+// --- detectCoCitationSignal ---
+{
+	const coCitations = [
+		{ nodeId: 'n1', path: 'note-a.md', label: 'Note A', citingNotes: ['MOC Note'], score: 0.8 },
+		{ nodeId: 'n2', path: 'note-b.md', label: 'Note B', citingNotes: [], score: 0.3 },
+	];
+
+	const s1 = detectCoCitationSignal('note-a.md', coCitations);
+	assert.equal(s1?.type, 'co_citation');
+	assert.equal((s1 as any).citingNote, 'MOC Note');
+
+	// No citing notes
+	const s2 = detectCoCitationSignal('note-b.md', coCitations);
+	assert.equal(s2, null);
+
+	// Not found
+	const s3 = detectCoCitationSignal('note-x.md', coCitations);
+	assert.equal(s3, null);
+
+	console.log('detectCoCitationSignal: all passed');
+}
+
+// --- detectHubMemberSignal ---
+{
+	const sharedHubNames = new Map([['note-a.md', 'Systems Thinking']]);
+
+	const s1 = detectHubMemberSignal('note-a.md', sharedHubNames);
+	assert.equal(s1?.type, 'hub_member');
+	assert.equal((s1 as any).hubName, 'Systems Thinking');
+
+	const s2 = detectHubMemberSignal('note-x.md', sharedHubNames);
+	assert.equal(s2, null);
+
+	console.log('detectHubMemberSignal: all passed');
+}
+
+console.log('All Phase 2 signal detection tests passed');
+
 console.log('All tests passed');
