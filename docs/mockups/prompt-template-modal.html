@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Template Modal — Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1e1e1e;
+    color: #dcddde;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+
+  /* Modal overlay */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .modal {
+    width: 680px;
+    max-height: 80vh;
+    background: #2b2b2b;
+    border: 1px solid #3c3c3c;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  /* Header */
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #3c3c3c;
+    flex-shrink: 0;
+  }
+  .modal-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #e0e0e0;
+  }
+  .search-box {
+    width: 220px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #3c3c3c;
+    background: #1e1e1e;
+    color: #dcddde;
+    font-size: 12px;
+    outline: none;
+  }
+  .search-box:focus { border-color: #7c3aed; }
+  .search-box::placeholder { color: #666; }
+
+  /* Body */
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  .modal-body::-webkit-scrollbar { width: 6px; }
+  .modal-body::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+  /* Group */
+  .group { margin: 0; }
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .group-header:hover { background: #333; }
+  .group-chevron {
+    width: 14px; height: 14px;
+    color: #888;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .group-chevron.collapsed { transform: rotate(-90deg); }
+  .group-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .group-count {
+    font-size: 10px;
+    color: #666;
+    margin-left: auto;
+  }
+  .group-count .has-override { color: #7c3aed; }
+  .group-items { padding: 0 0 4px 0; }
+  .group-items.hidden { display: none; }
+
+  /* Prompt Item */
+  .prompt-item {
+    padding: 6px 20px 6px 42px;
+    cursor: default;
+  }
+  .prompt-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+  }
+  .prompt-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    border: 1.5px solid #555;
+    flex-shrink: 0;
+  }
+  .prompt-dot.overridden {
+    background: #7c3aed;
+    border-color: #7c3aed;
+  }
+  .prompt-dot.partial {
+    background: transparent;
+    border-color: #7c3aed;
+    position: relative;
+  }
+  .prompt-dot.partial::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: #7c3aed;
+  }
+  .prompt-label {
+    font-size: 13px;
+    color: #dcddde;
+    flex: 1;
+  }
+  .badge {
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .badge-overridden {
+    background: rgba(124, 58, 237, 0.15);
+    color: #a78bfa;
+    border: 1px solid rgba(124, 58, 237, 0.3);
+  }
+  .reset-btn {
+    font-size: 10px;
+    color: #888;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .prompt-item-header:hover .reset-btn { opacity: 1; }
+  .reset-btn:hover { color: #e55; background: rgba(238, 85, 85, 0.1); }
+
+  /* Sub-items (system / user) */
+  .prompt-sub-items {
+    display: flex;
+    gap: 4px;
+    padding: 4px 0 2px 15px;
+  }
+  .sub-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 5px;
+    border: 1px solid #3c3c3c;
+    font-size: 11px;
+    color: #999;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sub-item:hover {
+    border-color: #7c3aed;
+    color: #c4b5fd;
+    background: rgba(124, 58, 237, 0.05);
+  }
+  .sub-item .sub-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    border: 1px solid #555;
+  }
+  .sub-item.overridden .sub-dot {
+    background: #7c3aed;
+    border-color: #7c3aed;
+  }
+  .sub-item.overridden {
+    border-color: rgba(124, 58, 237, 0.3);
+    color: #a78bfa;
+  }
+
+  /* Single-file items (no sub-items, whole row clickable) */
+  .prompt-item.clickable .prompt-item-header {
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin: -4px -8px;
+    transition: background 0.15s;
+  }
+  .prompt-item.clickable .prompt-item-header:hover {
+    background: rgba(124, 58, 237, 0.06);
+  }
+
+  /* Footer */
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-top: 1px solid #3c3c3c;
+    flex-shrink: 0;
+  }
+  .footer-stats {
+    font-size: 11px;
+    color: #888;
+  }
+  .footer-stats span { color: #a78bfa; font-weight: 500; }
+  .footer-btn {
+    font-size: 11px;
+    color: #999;
+    background: none;
+    border: 1px solid #3c3c3c;
+    padding: 4px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .footer-btn:hover {
+    border-color: #555;
+    color: #ccc;
+  }
+
+  /* Tooltip */
+  .tooltip-wrapper {
+    position: relative;
+  }
+  .tooltip {
+    display: none;
+    position: absolute;
+    left: 0; top: 100%;
+    margin-top: 4px;
+    padding: 8px 12px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    font-size: 11px;
+    color: #bbb;
+    line-height: 1.5;
+    max-width: 340px;
+    z-index: 100;
+    white-space: normal;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .tooltip-wrapper:hover .tooltip { display: block; }
+  .tooltip .tooltip-title { color: #e0e0e0; font-weight: 500; margin-bottom: 2px; }
+  .tooltip .tooltip-scene { color: #7c3aed; font-size: 10px; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div class="modal-overlay">
+  <div class="modal">
+
+    <!-- Header -->
+    <div class="modal-header">
+      <div class="modal-title">Prompt Templates</div>
+      <input class="search-box" placeholder="Search prompts..." />
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+
+      <!-- Chat Group (expanded) -->
+      <div class="group">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <svg class="group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="group-label">Chat</span>
+          <span class="group-count"><span class="has-override">2</span> / 10</span>
+        </div>
+        <div class="group-items">
+
+          <!-- Has override, has paired system prompt -->
+          <div class="prompt-item">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot overridden"></div>
+              <span class="prompt-label">Chat System Prompt</span>
+              <span class="badge badge-overridden">overridden</span>
+              <button class="reset-btn">Reset</button>
+              <div class="tooltip">
+                <div class="tooltip-title">Chat System Prompt</div>
+                <div class="tooltip-scene">Chat > Every conversation</div>
+                The core system instruction for all chat conversations. Defines AI persona, capabilities, response style and behavioral rules.
+              </div>
+            </div>
+            <div class="prompt-sub-items">
+              <div class="sub-item overridden"><div class="sub-dot"></div>system</div>
+              <div class="sub-item"><div class="sub-dot"></div>user</div>
+            </div>
+          </div>
+
+          <!-- No override, has paired -->
+          <div class="prompt-item">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Conversation Summary (Short)</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Conversation Summary (Short)</div>
+                <div class="tooltip-scene">Chat > Auto-generated after conversation</div>
+                Generates a concise one-line summary of the conversation for the sidebar list.
+              </div>
+            </div>
+            <div class="prompt-sub-items">
+              <div class="sub-item"><div class="sub-dot"></div>system</div>
+              <div class="sub-item"><div class="sub-dot"></div>user</div>
+            </div>
+          </div>
+
+          <!-- No override, has paired -->
+          <div class="prompt-item">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Conversation Summary (Full)</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Conversation Summary (Full)</div>
+                <div class="tooltip-scene">Chat > On demand</div>
+                Generates a detailed summary preserving key decisions and context.
+              </div>
+            </div>
+            <div class="prompt-sub-items">
+              <div class="sub-item"><div class="sub-dot"></div>system</div>
+              <div class="sub-item"><div class="sub-dot"></div>user</div>
+            </div>
+          </div>
+
+          <!-- Single file, no paired system prompt -->
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Generate Title</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Generate Title</div>
+                <div class="tooltip-scene">Chat > New conversation</div>
+                Auto-generates a conversation title from the first few messages.
+              </div>
+            </div>
+          </div>
+
+          <!-- Has override, single file -->
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot overridden"></div>
+              <span class="prompt-label">Suggest Follow-ups</span>
+              <span class="badge badge-overridden">overridden</span>
+              <button class="reset-btn">Reset</button>
+              <div class="tooltip">
+                <div class="tooltip-title">Suggest Follow-ups</div>
+                <div class="tooltip-scene">Chat > After each assistant reply</div>
+                Generates 3 suggested follow-up questions shown below the last message.
+              </div>
+            </div>
+          </div>
+
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Suggest Actions</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Suggest Actions</div>
+                <div class="tooltip-scene">Chat > After each assistant reply</div>
+                Generates contextual action suggestions (sparkle buttons) for the conversation.
+              </div>
+            </div>
+          </div>
+
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Search Rerank</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Search Rerank (RankGPT)</div>
+                <div class="tooltip-scene">Search > Reranking results</div>
+                LLM-based reranker that reorders search results by relevance using RankGPT method.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- User Profile Group (expanded) -->
+      <div class="group">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <svg class="group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="group-label">User Profile</span>
+          <span class="group-count">0 / 5</span>
+        </div>
+        <div class="group-items">
+
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">User Profile Context</span>
+              <div class="tooltip">
+                <div class="tooltip-title">User Profile Context</div>
+                <div class="tooltip-scene">Chat > Context building</div>
+                Renders the user profile into the conversation context window.
+              </div>
+            </div>
+          </div>
+
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Profile Extraction</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Profile From Vault (JSON)</div>
+                <div class="tooltip-scene">User Profile > Auto-build</div>
+                Extracts structured user profile data from vault notes.
+              </div>
+            </div>
+          </div>
+
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Profile Organize</span>
+              <div class="tooltip">
+                <div class="tooltip-title">User Profile Organize (Markdown)</div>
+                <div class="tooltip-scene">User Profile > Auto-build</div>
+                Organizes raw profile data into a clean markdown format.
+              </div>
+            </div>
+          </div>
+
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Memory Extraction</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Memory Extract Candidates</div>
+                <div class="tooltip-scene">Chat > After messages</div>
+                Identifies facts worth remembering from conversation messages.
+              </div>
+            </div>
+          </div>
+
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Context Memory</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Context Memory</div>
+                <div class="tooltip-scene">Chat > Context building</div>
+                Renders long-term memory entries into the conversation context.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Copilot Group (expanded) -->
+      <div class="group">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <svg class="group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="group-label">Copilot</span>
+          <span class="group-count"><span class="has-override">1</span> / 14</span>
+        </div>
+        <div class="group-items">
+
+          <div class="prompt-item">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot partial"></div>
+              <span class="prompt-label">Document Polish</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Document Polish</div>
+                <div class="tooltip-scene">Copilot > Document Intelligence</div>
+                Polishes writing for clarity, grammar, and flow. Works on full document or selection.
+              </div>
+            </div>
+            <div class="prompt-sub-items">
+              <div class="sub-item"><div class="sub-dot"></div>system</div>
+              <div class="sub-item overridden"><div class="sub-dot"></div>user</div>
+            </div>
+          </div>
+
+          <div class="prompt-item">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Document Review</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Document Review</div>
+                <div class="tooltip-scene">Copilot > Document Intelligence</div>
+                Provides structured feedback on document quality with severity-ranked issues.
+              </div>
+            </div>
+            <div class="prompt-sub-items">
+              <div class="sub-item"><div class="sub-dot"></div>system</div>
+              <div class="sub-item"><div class="sub-dot"></div>user</div>
+            </div>
+          </div>
+
+          <div class="prompt-item">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Suggest Links (Agent)</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Suggest Links Agent Playbook</div>
+                <div class="tooltip-scene">Copilot > Document Intelligence</div>
+                Agent playbook that searches vault and suggests wiki-links for the current document.
+              </div>
+            </div>
+            <div class="prompt-sub-items">
+              <div class="sub-item"><div class="sub-dot"></div>system</div>
+              <div class="sub-item"><div class="sub-dot"></div>user</div>
+            </div>
+          </div>
+
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Summarize</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Document Summarize</div>
+                <div class="tooltip-scene">Copilot > Document Intelligence</div>
+                Generates a concise summary of the document content.
+              </div>
+            </div>
+          </div>
+
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Extract Concepts</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Extract Concepts</div>
+                <div class="tooltip-scene">Copilot > Document Intelligence</div>
+                Identifies and extracts key concepts and entities from the document.
+              </div>
+            </div>
+          </div>
+
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header tooltip-wrapper">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Translate</span>
+              <div class="tooltip">
+                <div class="tooltip-title">Document Translate</div>
+                <div class="tooltip-scene">Copilot > Document Intelligence</div>
+                Translates document content. Auto-detects CJK to choose target language.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Search & Analysis Group (collapsed) -->
+      <div class="group">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <svg class="group-chevron collapsed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="group-label">Search & Analysis</span>
+          <span class="group-count">0 / 17</span>
+        </div>
+        <div class="group-items hidden">
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Analysis Title</span>
+            </div>
+          </div>
+          <div class="prompt-item">
+            <div class="prompt-item-header">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Doc Simple Analysis</span>
+            </div>
+            <div class="prompt-sub-items">
+              <div class="sub-item"><div class="sub-dot"></div>system</div>
+              <div class="sub-item"><div class="sub-dot"></div>user</div>
+            </div>
+          </div>
+          <div class="prompt-item">
+            <div class="prompt-item-header">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Mermaid Fix</span>
+            </div>
+            <div class="prompt-sub-items">
+              <div class="sub-item"><div class="sub-dot"></div>system</div>
+              <div class="sub-item"><div class="sub-dot"></div>user</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Indexing Group (collapsed) -->
+      <div class="group">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <svg class="group-chevron collapsed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="group-label">Indexing</span>
+          <span class="group-count">0 / 9</span>
+        </div>
+        <div class="group-items hidden">
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Doc Summary (Short)</span>
+            </div>
+          </div>
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Image Description</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ambient Context Group (collapsed) -->
+      <div class="group">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <svg class="group-chevron collapsed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="group-label">Ambient Context</span>
+          <span class="group-count">0 / 4</span>
+        </div>
+        <div class="group-items hidden">
+          <div class="prompt-item clickable">
+            <div class="prompt-item-header">
+              <div class="prompt-dot"></div>
+              <span class="prompt-label">Working Theme Inference</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <div class="footer-stats"><span>3</span> of 63 overridden</div>
+      <button class="footer-btn">Open Prompts Folder</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function toggleGroup(header) {
+  const chevron = header.querySelector('.group-chevron');
+  const items = header.nextElementSibling;
+  chevron.classList.toggle('collapsed');
+  items.classList.toggle('hidden');
+}
+</script>
+</body>
+</html>
