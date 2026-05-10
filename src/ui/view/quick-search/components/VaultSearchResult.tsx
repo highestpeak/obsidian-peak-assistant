@@ -3,7 +3,7 @@ import { ChevronRight, ExternalLink } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { getFileIcon } from '@/ui/view/shared/file-utils';
 import { humanReadableTime } from '@/core/utils/date-utils';
-import type { SearchResultItem } from '@/service/search/types';
+import type { SearchResultItem, SearchSnippet } from '@/service/search/types';
 import type { HighlightResult } from '@/service/search/query/highlight-engine';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
 import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickRepo';
@@ -49,6 +49,37 @@ function renderHighlightSpans(result: HighlightResult): React.ReactNode {
 
 	if (lastEnd < result.text.length) {
 		parts.push(<span key={`t-${lastEnd}`}>{result.text.slice(lastEnd)}</span>);
+	}
+
+	return <>{parts}</>;
+}
+
+/**
+ * Render text with legacy SearchSnippet highlights (start/end spans without type).
+ * Fallback for in-file search results that use the older highlight format.
+ */
+function renderLegacyHighlights(snippet: SearchSnippet): React.ReactNode {
+	const { text, highlights } = snippet;
+	if (!highlights?.length) return <span>{text}</span>;
+
+	const parts: React.ReactNode[] = [];
+	let lastEnd = 0;
+
+	const sorted = [...highlights].sort((a, b) => a.start - b.start);
+	for (const span of sorted) {
+		if (span.start > lastEnd) {
+			parts.push(<span key={`t-${lastEnd}`}>{text.slice(lastEnd, span.start)}</span>);
+		}
+		parts.push(
+			<mark key={`h-${span.start}`} className="pktw-bg-[#fef3c7] pktw-text-[#92400e]">
+				{text.slice(span.start, span.end)}
+			</mark>
+		);
+		lastEnd = span.end;
+	}
+
+	if (lastEnd < text.length) {
+		parts.push(<span key={`t-${lastEnd}`}>{text.slice(lastEnd)}</span>);
 	}
 
 	return <>{parts}</>;
@@ -111,15 +142,17 @@ export const SearchResultRow: React.FC<{
 						<span className="pktw-text-sm pktw-text-[#6c757d] pktw-line-clamp-2 pktw-mt-1">
 							{(result.highlight as unknown as HighlightResult).spans
 								? renderHighlightSpans(result.highlight as unknown as HighlightResult)
-								: result.highlight.text}
+								: result.highlight.highlights?.length
+									? renderLegacyHighlights(result.highlight)
+									: result.highlight.text}
 						</span>
 					)}
 				</div>
 
-				{/* Relevance score badge — shown when score exists */}
-				{result.score != null && result.score > 0 && (
+				{/* Relevance score badge — prefer finalScore (post-rerank) over raw score */}
+				{(result.finalScore ?? result.score) != null && (result.finalScore ?? result.score)! > 0 && (
 					<span className="pktw-flex-shrink-0 pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-[#f5f3ff] pktw-text-pk-accent">
-						{Math.round(result.score * 100)}%
+						{Math.round((result.finalScore ?? result.score ?? 0) * 100)}%
 					</span>
 				)}
 
