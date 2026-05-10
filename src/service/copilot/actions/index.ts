@@ -9,6 +9,7 @@ import { TagSuggestionEngine } from '../TagSuggestionEngine';
 import {
 	reviewResultSchema, splitPlanSchema,
 	extractConceptsSchema, vaultHealthSchema,
+	type TagSuggestions,
 } from '../copilot-schemas';
 import { CopilotActionRegistry } from '../CopilotActionRegistry';
 import type { CopilotAction, DocumentContext, ActionResult, ActionUsage } from '../CopilotActionRegistry';
@@ -147,11 +148,14 @@ export const suggestTagsAction: CopilotAction = {
 			type: 'structured',
 			data: {
 				suggestions: ranked.map(r => ({
-					tag: r.tag, confidence: r.confidence, reason: r.reason,
-					source: r.sources[0]?.source ?? 'content',
+					tag: r.tag,
+					confidence: r.confidence,
+					reason: r.reason,
+					category: r.category,
+					sources: r.sources,
 				})),
-				summary: `Found ${ranked.length} tag suggestions using content analysis, graph neighbors, and folder history.`,
-			},
+				summary: `Found ${ranked.length} tag suggestion${ranked.length !== 1 ? 's' : ''} using content, graph, and folder signals.`,
+			} satisfies TagSuggestions,
 		};
 	},
 	ResultPanel: null as any,
