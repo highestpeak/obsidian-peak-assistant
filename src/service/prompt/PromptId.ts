@@ -97,6 +97,7 @@ export enum PromptId {
 	MessageResources = 'message-resources',
 
 	// Copilot Document Intelligence
+	DocFormatPolish = 'doc-format-polish',
 	DocPolish = 'doc-polish',
 	DocReview = 'doc-review',
 	DocSplitSuggestion = 'doc-split-suggestion',
@@ -411,6 +412,11 @@ export interface PromptVariables {
 		queriesJson: string;
 		existingPatternsJson: string;
 		vaultStructureJson: string;
+	};
+	[PromptId.DocFormatPolish]: {
+		content: string;
+		title?: string;
+		scope: 'full' | 'selection';
 	};
 	[PromptId.DocPolish]: {
 		content: string;

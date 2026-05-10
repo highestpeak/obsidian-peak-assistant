@@ -1,6 +1,7 @@
 import {
 	Sparkles, Tag, MessageSquareText, Link2, GitFork, Lightbulb, AlignLeft,
 	Languages, Search, HelpCircle, Layers, Activity, ChevronRight, PenLine, BookOpen,
+	WrapText,
 } from 'lucide-react';
 
 import { PromptId } from '@/service/prompt/PromptId';
@@ -77,6 +78,14 @@ export const polishDocumentAction: CopilotAction = {
 	icon: Sparkles, category: 'document',
 	relevance: (ctx) => ctx.selection ? 0.8 : ctx.wordCount > 200 ? 0.5 : 0.2,
 	execute: (ctx, signal) => streamAction(PromptId.DocPolish, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope }, signal),
+	ResultPanel: null as any,
+};
+
+export const formatDocumentAction: CopilotAction = {
+	id: 'format-polish', label: 'Format Polish', description: 'Fix heading hierarchy, list consistency, whitespace, and broken links',
+	icon: WrapText, category: 'document',
+	relevance: (ctx) => ctx.selection ? 0.6 : ctx.wordCount > 200 ? 0.5 : 0.2,
+	execute: (ctx, signal) => streamAction(PromptId.DocFormatPolish, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope }, signal),
 	ResultPanel: null as any,
 };
 
@@ -380,6 +389,7 @@ export const addEvidenceAction: CopilotAction = {
 // ── Panel imports (static so esbuild resolves @/ aliases) ─────────────
 
 import { PolishPanel } from '@/ui/view/copilot/panels/PolishPanel';
+import { FormatPolishPanel } from '@/ui/view/copilot/panels/FormatPolishPanel';
 import { ReviewPanel } from '@/ui/view/copilot/panels/ReviewPanel';
 import { LinkSuggestPanel } from '@/ui/view/copilot/panels/LinkSuggestPanel';
 import { SplitPanel } from '@/ui/view/copilot/panels/SplitPanel';
@@ -399,6 +409,7 @@ import { AddEvidencePanel } from '@/ui/view/copilot/panels/AddEvidencePanel';
 
 const PANEL_MAP: Record<string, React.FC<any>> = {
 	'polish': PolishPanel,
+	'format-polish': FormatPolishPanel,
 	'review': ReviewPanel,
 	'suggest-links': LinkSuggestPanel,
 	'suggest-split': SplitPanel,
@@ -419,7 +430,7 @@ const PANEL_MAP: Record<string, React.FC<any>> = {
 const ALL_ACTIONS: CopilotAction[] = [
 	// Document
 	suggestTagsAction, suggestLinksAction, suggestSplitAction, reviewArticleAction,
-	polishDocumentAction, summarizeAction, extractConceptsAction, translateAction,
+	polishDocumentAction, formatDocumentAction, summarizeAction, extractConceptsAction, translateAction,
 	// Vault
 	findRelatedAction, knowledgeGapsAction, synthesizeTopicAction, vaultHealthAction,
 	// Writing
