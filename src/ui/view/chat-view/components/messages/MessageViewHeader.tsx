@@ -12,6 +12,7 @@ import { ResourcesPopover } from './ResourcesPopover';
 import { SummaryPopover } from './SummaryPopover';
 import { SystemPromptPopover } from './SystemPromptPopover';
 import { OpenMenuButton } from './OpenMenuButton';
+import { FocusFolderIndicator } from './FocusFolderIndicator';
 
 interface MessageHeaderProps {
 }
@@ -149,6 +150,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 							</>
 						)}
 						{titleElement}
+						<FocusFolderIndicator />
 						{!activeConversation.meta.titleManuallyEdited && (
 							<IconButton
 								size="md"

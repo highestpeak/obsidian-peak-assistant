@@ -388,6 +388,20 @@ export class ConversationService {
 		}
 	}
 
+	async updateConversationFocusFolder(params: {
+		conversationId: string;
+		focusFolder?: string;
+	}): Promise<void> {
+		await this.storage.upsertConversationMeta(params.conversationId, {
+			focusFolder: params.focusFolder || undefined,
+			updatedAtTimestamp: Date.now(),
+		});
+		const updatedConversation = await this.storage.readConversation(params.conversationId, false);
+		if (updatedConversation) {
+			EventBus.getInstance(this.app).dispatch(new ConversationUpdatedEvent({ conversation: updatedConversation }));
+		}
+	}
+
 	async updateConversationTitle(params: {
 		conversationId: string;
 		title: string;
