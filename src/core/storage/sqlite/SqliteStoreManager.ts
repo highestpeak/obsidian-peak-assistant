@@ -23,6 +23,7 @@ import { AIAnalysisRepo } from './repositories/AIAnalysisRepo';
 import { QueryPatternRepo } from './repositories/QueryPatternRepo';
 import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcessedHashRepo';
 import { CascadeDebtRepo } from './repositories/CascadeDebtRepo';
+import { HubConstituentRepo } from './repositories/HubConstituentRepo';
 import { AmbientPushRepo } from './repositories/AmbientPushRepo';
 import { TagSuggestionRepo } from './repositories/TagSuggestionRepo';
 import { VaultLintRepo } from './repositories/VaultLintRepo';
@@ -64,6 +65,7 @@ export class SqliteStoreManager {
 	private mobiusNodeRepo: MobiusNodeRepo | null = null;
 	private mobiusEdgeRepo: MobiusEdgeRepo | null = null;
 	private cascadeDebtRepo: CascadeDebtRepo | null = null;
+	private hubConstituentRepo: HubConstituentRepo | null = null;
 	private ambientPushRepo: AmbientPushRepo | null = null;
 	private vaultLintRepo: VaultLintRepo | null = null;
 
@@ -251,6 +253,13 @@ export class SqliteStoreManager {
 	getAmbientPushRepo(): AmbientPushRepo { return this.requireRepo(this.ambientPushRepo); }
 	getVaultLintRepo(): VaultLintRepo { return this.requireRepo(this.vaultLintRepo); }
 
+	getHubConstituentRepo(): HubConstituentRepo {
+		if (!this.hubConstituentRepo) {
+			this.hubConstituentRepo = new HubConstituentRepo(this.getIndexContext('vault'));
+		}
+		return this.hubConstituentRepo;
+	}
+
 	getTagSuggestionRepo(): TagSuggestionRepo {
 		if (this.closing) throw new Error('SqliteStoreManager is closing');
 		if (!this.metaStore) throw new Error('chat.sqlite not initialized');
@@ -276,6 +285,7 @@ export class SqliteStoreManager {
 		this.app = null;
 		this.indexedDocumentRepo = this.docChunkRepo = this.embeddingRepo = this.indexStateRepo = this.graphRepo = null;
 		this.mobiusNodeRepo = this.mobiusEdgeRepo = this.cascadeDebtRepo = this.ambientPushRepo = null;
+		this.hubConstituentRepo = null;
 		this.vaultLintRepo = null;
 		this.tagSuggestionRepo = null;
 		this.userProfileProcessedHashRepo = null;
