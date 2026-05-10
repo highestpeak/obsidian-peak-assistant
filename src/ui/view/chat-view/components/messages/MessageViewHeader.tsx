@@ -10,6 +10,7 @@ import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
 import { TYPEWRITER_EFFECT_SPEED_MS } from '@/core/constant';
 import { ResourcesPopover } from './ResourcesPopover';
 import { SummaryPopover } from './SummaryPopover';
+import { SystemPromptPopover } from './SystemPromptPopover';
 import { OpenMenuButton } from './OpenMenuButton';
 
 interface MessageHeaderProps {
@@ -178,6 +179,9 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 					<>
 						{/* Action buttons */}
 						<div className="pktw-flex pktw-items-center pktw-gap-1">
+							{/* System prompt button */}
+							<SystemPromptPopover />
+
 							{/* Resources button */}
 							<ResourcesPopover />
 

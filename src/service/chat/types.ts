@@ -98,6 +98,11 @@ export interface ChatConversationMeta {
 	 * Optional for backward compatibility — existing conversations without this field default to { kind: 'chat' }.
 	 */
 	conversationType?: ConversationType;
+	/**
+	 * Per-conversation custom system prompt. Prepended to the default system prompt
+	 * when building the LLM request. Allows users to customize AI behavior per conversation.
+	 */
+	customSystemPrompt?: string;
 }
 
 export interface ChatProjectMeta {

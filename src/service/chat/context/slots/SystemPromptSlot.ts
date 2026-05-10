@@ -30,7 +30,14 @@ export class SystemPromptSlot implements ContextSlot {
     const promptId = (ctx.systemPromptId as PromptId) ?? PromptId.ConversationSystem;
     const capabilities = buildCapabilities();
     const vars = { ...(ctx.systemPromptVars ?? {}), capabilities };
-    const text = await this.promptService.render(promptId, vars);
+    let text = await this.promptService.render(promptId, vars);
+
+    // Prepend per-conversation custom system prompt if set
+    const customPrompt = ctx.conversation?.meta?.customSystemPrompt;
+    if (customPrompt) {
+      text = customPrompt.trim() + '\n\n' + text;
+    }
+
     return { data: text, tokens: estimateTokensFromText(text), compressionLevel: 0 };
   }
 
