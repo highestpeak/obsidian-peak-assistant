@@ -3,7 +3,7 @@ import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { LLMUsage, LLMOutputControlSettings, LLMStreamEvent, ToolEvent } from '@/core/providers/types';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, getAIUploadFolder } from '@/app/settings/types';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
-import { DEFAULT_SUMMARY } from '@/core/constant';
+import { DEFAULT_SUMMARY, PLAN_MODE_SYSTEM_PROMPT } from '@/core/constant';
 import { EventBus, MessageSentEvent, ConversationCreatedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
 import { LLMRequestMessage } from '@/core/providers/types';
 import {
@@ -176,13 +176,51 @@ export class ConversationService {
 				throw new Error(`No active profile found for provider "${convProvider}". Please configure it in Settings → Profiles.`);
 			}
 
-			// Build tools based on UI toggles + model capabilities
-			const { enableWebSearch } = useChatViewStore.getState();
-			const ctx = AppContext.getInstance();
-			const { tools, maxSteps } = buildChatTools(
-				{ app: ctx.app, pluginId: ctx.plugin.manifest.id, enableWebSearch },
-				prepared.modelCapabilities,
-			);
+			// Resolve conversation mode from UI store (runtime mode) or conversation metadata
+			const runtimeMode = useChatViewStore.getState().chatMode;
+			const convTypeKind = params.conversation.meta.conversationType?.kind;
+			const effectiveMode = runtimeMode ?? convTypeKind ?? 'chat';
+
+			// Build tools based on mode + UI toggles + model capabilities
+			// Chat mode: no tools (pure conversation)
+			// Agent mode: full tool access
+			// Plan mode: no tools (planning focus), but prepend planning system prompt
+			let tools: Record<string, any> = {};
+			let maxSteps = 1;
+
+			if (effectiveMode === 'agent') {
+				const { enableWebSearch } = useChatViewStore.getState();
+				const ctx = AppContext.getInstance();
+				const built = buildChatTools(
+					{ app: ctx.app, pluginId: ctx.plugin.manifest.id, enableWebSearch },
+					prepared.modelCapabilities,
+				);
+				tools = built.tools;
+				maxSteps = built.maxSteps;
+			}
+			// chat and plan modes: no tools
+
+			// Plan mode: prepend planning-focused system prompt
+			if (effectiveMode === 'plan') {
+				const planSystemPrompt = PLAN_MODE_SYSTEM_PROMPT;
+				// Find the system message and prepend planning instructions
+				const systemIdx = prepared.prompt.findIndex(m => m.role === 'system');
+				if (systemIdx >= 0) {
+					const existing = prepared.prompt[systemIdx];
+					const existingText = existing.content
+						.map((c: any) => c.text ?? '')
+						.join('');
+					prepared.prompt[systemIdx] = {
+						role: 'system',
+						content: [{ type: 'text', text: planSystemPrompt + '\n\n' + existingText }],
+					};
+				} else {
+					prepared.prompt.unshift({
+						role: 'system',
+						content: [{ type: 'text', text: planSystemPrompt }],
+					});
+				}
+			}
 
 			const { vercelStreamChat } = await import('@/core/providers/vercel');
 			yield* vercelStreamChat(profile, convModelId || profile.primaryModel, {
