@@ -130,3 +130,109 @@ export const addEvidenceSchema = z.object({
 	})),
 });
 export type AddEvidence = z.infer<typeof addEvidenceSchema>;
+
+// --- Write Article (#32) ---
+
+export const writeArticleResultSchema = z.object({
+	title: z.string(),
+	content: z.string().describe('Full article text with [[wikilink]] citations'),
+	sources: z.array(z.object({
+		path: z.string(),
+		title: z.string(),
+		contribution: z.string(),
+	})),
+	gaps: z.array(z.object({
+		topic: z.string(),
+		description: z.string(),
+	})).optional(),
+	summary: z.string(),
+});
+export type WriteArticleResult = z.infer<typeof writeArticleResultSchema>;
+
+// --- Detect & File (#34) ---
+
+export const detectAndFileResultSchema = z.object({
+	contentType: z.enum(['todo', 'reference', 'quote', 'idea', 'meeting-note', 'snippet', 'bookmark']),
+	confidence: z.number().min(0).max(1),
+	summary: z.string(),
+	suggestions: z.array(z.object({
+		path: z.string(),
+		title: z.string(),
+		reason: z.string(),
+		score: z.number().min(0).max(1),
+		insertionPoint: z.string(),
+		formattedText: z.string(),
+	})),
+	fallbackAction: z.object({
+		suggestedTitle: z.string(),
+		suggestedFolder: z.string(),
+		formattedText: z.string(),
+	}).optional(),
+});
+export type DetectAndFileResult = z.infer<typeof detectAndFileResultSchema>;
+
+// --- Check Task List (#43) ---
+
+export const checkTaskListResultSchema = z.object({
+	tasks: z.array(z.object({
+		text: z.string(),
+		lineNumber: z.number(),
+		completed: z.boolean(),
+		priority: z.enum(['high', 'medium', 'low']),
+		priorityReason: z.string(),
+		isOverdue: z.boolean(),
+		dueDate: z.string().optional(),
+		blockers: z.array(z.string()),
+		isStale: z.boolean(),
+		staleReason: z.string().optional(),
+	})),
+	recommendations: z.array(z.object({
+		type: z.enum(['reorder', 'break-down', 'mark-stale', 'escalate', 'remove']),
+		description: z.string(),
+		affectedTasks: z.array(z.number()),
+		suggestedAction: z.string(),
+	})),
+	summary: z.object({
+		total: z.number(),
+		completed: z.number(),
+		incomplete: z.number(),
+		overdue: z.number(),
+		blocked: z.number(),
+		stale: z.number(),
+		completionRate: z.number(),
+	}),
+});
+export type CheckTaskListResult = z.infer<typeof checkTaskListResultSchema>;
+
+// --- Prompt Audit (#29) ---
+
+export const promptAuditResultSchema = z.object({
+	audits: z.array(z.object({
+		promptId: z.string(),
+		overallScore: z.number().min(1).max(10),
+		scores: z.object({
+			clarity: z.number().min(1).max(10),
+			specificity: z.number().min(1).max(10),
+			consistency: z.number().min(1).max(10),
+			variableUsage: z.number().min(1).max(10),
+			outputControl: z.number().min(1).max(10),
+			errorHandling: z.number().min(1).max(10),
+		}),
+		strengths: z.array(z.string()),
+		issues: z.array(z.object({
+			severity: z.enum(['high', 'medium', 'low']),
+			dimension: z.string(),
+			description: z.string(),
+			suggestion: z.string(),
+		})),
+		rewriteSuggestion: z.string().optional(),
+	})),
+	summary: z.object({
+		totalPrompts: z.number(),
+		averageScore: z.number(),
+		topIssues: z.array(z.string()),
+		bestPracticed: z.array(z.string()),
+		needsWork: z.array(z.string()),
+	}),
+});
+export type PromptAuditResult = z.infer<typeof promptAuditResultSchema>;

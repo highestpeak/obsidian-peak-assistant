@@ -2,6 +2,7 @@ import {
 	Sparkles, Tag, MessageSquareText, Link2, GitFork, Lightbulb, AlignLeft,
 	Languages, Search, HelpCircle, Layers, Activity, ChevronRight, PenLine, BookOpen,
 	WrapText, Share2, ShieldCheck, Calendar, CheckSquare, ClipboardList, Workflow,
+	FileText, Inbox, ListChecks, ClipboardCheck, Fingerprint, CircleHelp, Zap,
 } from 'lucide-react';
 
 import { PromptId } from '@/service/prompt/PromptId';
@@ -622,6 +623,326 @@ export const runWorkflowAction: CopilotAction = {
 	ResultPanel: null as any,
 };
 
+// ── Write Article (#32) ───────────────────────────────────────────────
+
+export const writeArticleAction: CopilotAction = {
+	id: 'write-article', label: 'Write Article', description: 'Find vault notes on a topic and synthesize an article with [[citations]]',
+	icon: FileText, category: 'writing',
+	relevance: (ctx) => ctx.wordCount < 100 ? 0.6 : 0.3,
+	async *execute(ctx, signal) {
+		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
+			PromptId.CopilotAgentWriteArticle, {},
+		);
+		const userPrompt = [
+			`## Topic`,
+			'',
+			`Write an article about: "${ctx.title}"`,
+			'',
+			ctx.content ? `## Existing Notes/Context\n${ctx.content.slice(0, 2000)}` : '',
+		].filter(Boolean).join('\n');
+
+		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
+	},
+	ResultPanel: null as any,
+};
+
+// ── Detect & File (#34) ───────────────────────────────────────────────
+
+export const detectAndFileAction: CopilotAction = {
+	id: 'detect-and-file', label: 'Detect & File', description: 'Analyze text and suggest which note to append it to',
+	icon: Inbox, category: 'vault',
+	guard: (ctx) => !ctx.selection ? 'Select text to detect and file' : null,
+	relevance: (ctx) => ctx.selection ? 0.7 : 0.1,
+	async *execute(ctx, signal) {
+		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
+			PromptId.CopilotAgentDetectAndFile, {},
+		);
+		const textToAnalyze = ctx.selection ?? ctx.content.slice(0, 2000);
+		const userPrompt = [
+			`## Text to Analyze and File`,
+			'',
+			textToAnalyze,
+			'',
+			`## Source Document: "${ctx.title}"`,
+		].join('\n');
+
+		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
+	},
+	ResultPanel: null as any,
+};
+
+// ── Check Task List (#43) ─────────────────────────────────────────────
+
+export const checkTaskListAction: CopilotAction = {
+	id: 'check-task-list', label: 'Check Task List', description: 'Analyze tasks for priority, overdue items, blockers, and staleness',
+	icon: ListChecks, category: 'document',
+	guard: (ctx) => {
+		const hasTasks = /- \[[ x]\]/.test(ctx.content);
+		return hasTasks ? null : 'No task items found in document (need - [ ] or - [x])';
+	},
+	relevance: (ctx) => /- \[[ x]\]/.test(ctx.content) ? 0.8 : 0.1,
+	async *execute(ctx, signal) {
+		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
+			PromptId.CopilotAgentCheckTaskList, {},
+		);
+		const userPrompt = [
+			`## Document: "${ctx.title}"`,
+			'',
+			'## Content',
+			ctx.content,
+		].join('\n');
+
+		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
+	},
+	ResultPanel: null as any,
+};
+
+// ── Prompt Audit (#29) ────────────────────────────────────────────────
+
+export const promptAuditAction: CopilotAction = {
+	id: 'prompt-audit', label: 'Prompt Audit', description: 'Evaluate prompt templates for quality and suggest improvements',
+	icon: ClipboardCheck, category: 'vault',
+	relevance: () => 0.3,
+	async *execute(_ctx, signal) {
+		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
+			PromptId.CopilotAgentPromptAudit, {},
+		);
+		// List all prompt templates for the agent to read
+		const userPrompt = [
+			`## Task: Audit Prompt Templates`,
+			'',
+			'Read all prompt template files in the vault (search for "prompt" or browse the templates/prompts folder).',
+			'Evaluate each prompt template for quality using the evaluation criteria.',
+			'Focus on the copilot and document-related prompts.',
+			'',
+			'Start by using vault_list_folders and vault_grep to find prompt files,',
+			'then read and evaluate each one.',
+		].join('\n');
+
+		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
+	},
+	ResultPanel: null as any,
+};
+
+// ── Deduplicate Scan (#20) ───────────────────────────────────────────
+
+export const deduplicateScanAction: CopilotAction = {
+	id: 'deduplicate-scan', label: 'Deduplicate Scan', description: 'Find files with identical content by MD5 hash',
+	icon: Fingerprint, category: 'vault',
+	relevance: () => 0.4,
+	async *execute(_ctx, _signal) {
+		const app = AppContext.getInstance().app;
+		const files = app.vault.getMarkdownFiles();
+		const { hashMD5 } = await import('@/core/utils/hash-utils');
+
+		const hashMap = new Map<string, Array<{ path: string; size: number; modified: number }>>();
+
+		for (const file of files) {
+			const content = await app.vault.cachedRead(file);
+			const hash = hashMD5(content);
+			const entry = { path: file.path, size: file.stat.size, modified: file.stat.mtime };
+			const existing = hashMap.get(hash);
+			if (existing) {
+				existing.push(entry);
+			} else {
+				hashMap.set(hash, [entry]);
+			}
+		}
+
+		// Only keep groups with duplicates, sort files in each by modified desc
+		const groups = Array.from(hashMap.entries())
+			.filter(([_, entries]) => entries.length > 1)
+			.map(([hash, entries]) => ({
+				hash,
+				files: entries.sort((a, b) => b.modified - a.modified),
+			}))
+			.sort((a, b) => b.files.length - a.files.length);
+
+		const duplicateFiles = groups.reduce((sum, g) => sum + g.files.length, 0);
+
+		return {
+			type: 'structured',
+			data: {
+				groups,
+				totalFiles: files.length,
+				duplicateFiles,
+				summary: `Found ${groups.length} duplicate group${groups.length !== 1 ? 's' : ''} (${duplicateFiles} files) across ${files.length} total files.`,
+			},
+		};
+	},
+	ResultPanel: null as any,
+};
+
+// ── Find & Solve Tasks (#44) ─────────────────────────────────────────
+
+export const findAndSolveTasksAction: CopilotAction = {
+	id: 'find-solve-tasks', label: 'Find & Solve Tasks', description: 'Find open tasks with questions and suggest answers from vault notes',
+	icon: CircleHelp, category: 'vault',
+	relevance: () => 0.5,
+	async *execute(_ctx, signal) {
+		const systemPrompt = `You are a task resolution assistant. You search a knowledge vault to find answers to open tasks that contain questions or research items.
+
+Your job:
+1. You will receive a list of open tasks (checkboxes) from the vault.
+2. For each task that contains a question or research item, search the vault for relevant notes that might answer it.
+3. Return a structured JSON result via submit_result with this schema:
+{
+  "tasks": [
+    {
+      "filePath": "path/to/file.md",
+      "lineNumber": 42,
+      "taskText": "the original task text",
+      "suggestedAnswer": "concise answer found in vault",
+      "sourceNotePath": "path/to/source.md",
+      "sourceNoteTitle": "Source Note Title",
+      "confidence": 0.85
+    }
+  ],
+  "totalTasksScanned": 15,
+  "summary": "Found answers for 3 of 15 tasks"
+}
+
+Focus on tasks that ask questions (contain "?"), request research, or mention finding/looking up information. Skip simple action items like "buy groceries" unless the vault contains relevant information.
+Only include tasks where you found a credible answer with confidence >= 0.5.`;
+
+		const app = AppContext.getInstance().app;
+		const files = app.vault.getMarkdownFiles();
+		const todoPattern = /^(\s*)-\s\[\s\]\s(.+)$/;
+		const questionIndicators = /\?|find|research|look up|investigate|what|how|why|when|where|figure out/i;
+
+		// Collect tasks that look like questions/research items
+		const candidateTasks: Array<{ filePath: string; lineNumber: number; text: string }> = [];
+		for (const file of files) {
+			const content = await app.vault.cachedRead(file);
+			const lines = content.split('\n');
+			for (let i = 0; i < lines.length; i++) {
+				const match = lines[i].match(todoPattern);
+				if (!match) continue;
+				const text = match[2].trim();
+				if (questionIndicators.test(text)) {
+					candidateTasks.push({ filePath: file.path, lineNumber: i + 1, text });
+				}
+			}
+		}
+
+		if (candidateTasks.length === 0) {
+			return {
+				type: 'structured',
+				data: {
+					tasks: [],
+					totalTasksScanned: 0,
+					summary: 'No question-like tasks found in the vault.',
+				},
+			};
+		}
+
+		const taskList = candidateTasks.slice(0, 30).map(t =>
+			`- [${t.filePath}:L${t.lineNumber}] ${t.text}`
+		).join('\n');
+
+		const userPrompt = `## Open Tasks with Questions/Research Items
+
+${taskList}
+
+Search the vault for answers to these tasks. Use vault_grep and vault_read_note to find relevant information.`;
+
+		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
+	},
+	ResultPanel: null as any,
+};
+
+// ── Smart Connections (#89) ──────────────────────────────────────────
+
+export const smartConnectionsAction: CopilotAction = {
+	id: 'smart-connections', label: 'Smart Connections', description: 'Find semantically similar unlinked notes via graph inspector',
+	icon: Zap, category: 'vault',
+	relevance: (ctx) => ctx.isOrphan ? 0.9 : ctx.links.length < 5 ? 0.6 : 0.3,
+	async *execute(ctx, _signal) {
+		const { getSemanticNeighbors } = await import('@/service/tools/search-graph-inspector/common');
+
+		const storeManager = SqliteStoreManager.getInstance();
+		const indexedDocRepo = storeManager.getIndexedDocumentRepo();
+
+		// 1. Resolve the current document's node ID
+		const docMeta = await indexedDocRepo.getByPath(ctx.file.path);
+		if (!docMeta) {
+			return {
+				type: 'structured',
+				data: {
+					connections: [],
+					summary: 'Document not indexed yet. Run indexing first.',
+				},
+			};
+		}
+
+		// 2. Get existing direct links to exclude them
+		const app = AppContext.getInstance().app;
+		const cache = app.metadataCache.getFileCache(ctx.file);
+		const existingLinkPaths = new Set<string>();
+		for (const l of cache?.links ?? []) {
+			const resolved = app.metadataCache.getFirstLinkpathDest(l.link, ctx.file.path);
+			if (resolved) existingLinkPaths.add(resolved.path);
+		}
+
+		// Resolve existing link paths to node IDs for filtering
+		const existingNodeIds = new Set<string>();
+		for (const linkPath of existingLinkPaths) {
+			const linkedDoc = await indexedDocRepo.getByPath(linkPath);
+			if (linkedDoc) existingNodeIds.add(linkedDoc.id);
+		}
+
+		// 3. Get semantic neighbors using the graph inspector's function
+		const semanticNeighbors = await getSemanticNeighbors(docMeta.id, 20, existingNodeIds);
+
+		// 4. Build connections with shared themes
+		const connections: Array<{
+			path: string; title: string; similarityScore: number;
+			sharedThemes: string[]; suggestedLinkText: string;
+		}> = [];
+
+		// Get tags for the current document
+		const { idMapToTags } = await storeManager.getGraphRepo().getTagsByDocIds([docMeta.id]);
+		const myTags = new Set<string>(
+			idMapToTags.get(docMeta.id)?.topicTags ?? []
+		);
+
+		for (const neighbor of semanticNeighbors) {
+			const path = JSON.parse(neighbor.attributes || '{}').path;
+			if (!path) continue;
+			if (path === ctx.file.path) continue;
+			if (existingLinkPaths.has(path)) continue;
+
+			// Get tags for the neighbor to find shared themes
+			const { idMapToTags: neighborTagsMap } = await storeManager.getGraphRepo().getTagsByDocIds([neighbor.id]);
+			const neighborTags = neighborTagsMap.get(neighbor.id)?.topicTags ?? [];
+			const sharedThemes = neighborTags.filter(t => myTags.has(t));
+
+			const similarity = parseFloat(neighbor.similarity) / 100;
+			const title = neighbor.label || path.replace(/\.md$/, '').split('/').pop() || path;
+
+			connections.push({
+				path,
+				title,
+				similarityScore: similarity,
+				sharedThemes: sharedThemes.slice(0, 5),
+				suggestedLinkText: title,
+			});
+		}
+
+		// Sort by similarity
+		connections.sort((a, b) => b.similarityScore - a.similarityScore);
+
+		return {
+			type: 'structured',
+			data: {
+				connections: connections.slice(0, 15),
+				summary: `Found ${connections.length} semantically similar note${connections.length !== 1 ? 's' : ''} not directly linked to "${ctx.title}".`,
+			},
+		};
+	},
+	ResultPanel: null as any,
+};
+
 // ── Panel imports (static so esbuild resolves @/ aliases) ─────────────
 
 import { PolishPanel } from '@/ui/view/copilot/panels/PolishPanel';
@@ -646,6 +967,13 @@ import { AddEvidencePanel } from '@/ui/view/copilot/panels/AddEvidencePanel';
 import { ExtractTodosPanel } from '@/ui/view/copilot/panels/ExtractTodosPanel';
 import { WritingPlanPanel } from '@/ui/view/copilot/panels/WritingPlanPanel';
 import { WorkflowPanel } from '@/ui/view/copilot/panels/WorkflowPanel';
+import { WriteArticlePanel } from '@/ui/view/copilot/panels/WriteArticlePanel';
+import { DetectAndFilePanel } from '@/ui/view/copilot/panels/DetectAndFilePanel';
+import { CheckTaskListPanel } from '@/ui/view/copilot/panels/CheckTaskListPanel';
+import { PromptAuditPanel } from '@/ui/view/copilot/panels/PromptAuditPanel';
+import { DeduplicateScanPanel } from '@/ui/view/copilot/panels/DeduplicateScanPanel';
+import { FindAndSolveTasksPanel } from '@/ui/view/copilot/panels/FindAndSolveTasksPanel';
+import { SmartConnectionsPanel } from '@/ui/view/copilot/panels/SmartConnectionsPanel';
 
 // ── Registration ───────────────────────────────────────────────────────
 
@@ -672,6 +1000,13 @@ const PANEL_MAP: Record<string, React.FC<any>> = {
 	'extract-todos': ExtractTodosPanel,
 	'writing-plan': WritingPlanPanel,
 	'run-workflow': WorkflowPanel,
+	'write-article': WriteArticlePanel,
+	'detect-and-file': DetectAndFilePanel,
+	'check-task-list': CheckTaskListPanel,
+	'prompt-audit': PromptAuditPanel,
+	'deduplicate-scan': DeduplicateScanPanel,
+	'find-solve-tasks': FindAndSolveTasksPanel,
+	'smart-connections': SmartConnectionsPanel,
 };
 
 /** All actions in display order: document → vault → writing. */
@@ -679,10 +1014,13 @@ const ALL_ACTIONS: CopilotAction[] = [
 	// Document
 	suggestTagsAction, suggestLinksAction, suggestSemanticLinksAction, suggestSplitAction, reviewArticleAction,
 	correctContentAction, polishDocumentAction, formatDocumentAction, summarizeAction, extractConceptsAction, translateAction,
+	checkTaskListAction,
 	// Vault
-	findRelatedAction, knowledgeGapsAction, synthesizeTopicAction, vaultHealthAction, vaultSummaryAction, extractTodosAction, runWorkflowAction,
+	findRelatedAction, knowledgeGapsAction, synthesizeTopicAction, vaultHealthAction, vaultSummaryAction, extractTodosAction,
+	deduplicateScanAction, findAndSolveTasksAction, smartConnectionsAction,
+	detectAndFileAction, promptAuditAction, runWorkflowAction,
 	// Writing
-	continueWritingAction, rewriteSelectionAction, addEvidenceAction, writingPlanAction,
+	continueWritingAction, rewriteSelectionAction, addEvidenceAction, writingPlanAction, writeArticleAction,
 ];
 
 export function registerAllCopilotActions(): void {
@@ -690,6 +1028,28 @@ export function registerAllCopilotActions(): void {
 	for (const action of ALL_ACTIONS) {
 		const panel = PANEL_MAP[action.id];
 		if (panel) action.ResultPanel = panel;
+		registry.register(action);
+	}
+
+	// Load custom prompts from vault (async, non-blocking)
+	loadCustomPrompts().catch(e => console.warn('[Copilot] Failed to load custom prompts:', e));
+}
+
+async function loadCustomPrompts(): Promise<void> {
+	const { CustomPromptRegistry } = await import('../CustomPromptRegistry');
+	const { WritingPlanPanel } = await import('@/ui/view/copilot/panels/WritingPlanPanel');
+	const appContext = AppContext.getInstance();
+	const settings = AppContext.getSettings();
+	const folder = settings.customPromptsFolder ?? '_prompts';
+
+	const customRegistry = CustomPromptRegistry.getInstance();
+	await customRegistry.loadFromVault(appContext.app, folder);
+
+	const registry = CopilotActionRegistry.getInstance();
+	for (const def of customRegistry.getAll()) {
+		const action = customRegistry.buildAction(def);
+		// Custom prompts reuse WritingPlanPanel (agent stream → text result)
+		action.ResultPanel = WritingPlanPanel;
 		registry.register(action);
 	}
 }
