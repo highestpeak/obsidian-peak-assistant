@@ -130,6 +130,11 @@ export function useChatSubmit() {
 	const submitMessage = useCallback(async (options: ChatSubmitOptions): Promise<void> => {
 		const { text, files, conversation: inputConversation, project } = options;
 
+		// Record input text in session history for Ctrl+Up/Down recall (#81)
+		if (text.trim()) {
+			useChatViewStore.getState().pushInputHistory(text);
+		}
+
 		// Ensure conversation exists
 		const conversation = inputConversation || await ensureConversation();
 		if (!conversation) {
