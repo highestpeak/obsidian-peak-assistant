@@ -614,6 +614,16 @@ function buildAmbientPushCommands(viewManager: ViewManager): Command[] {
 			name: 'Peak: Refresh Related Notes',
 			callback: () => AmbientPushService.getInstance().triggerManual(),
 		},
+		{
+			id: 'peak-refresh-hub-summaries',
+			name: 'Peak: Refresh Hub Summaries',
+			callback: async () => {
+				new Notice('Hub summary refresh started...');
+				const { HubRegenService } = await import('@/service/search/index/helper/hub/hubRegenService');
+				const result = await HubRegenService.getInstance().processQueueNow();
+				new Notice(`Hub refresh complete: ${result.processed} regenerated, ${result.failed} failed`);
+			},
+		},
 	];
 }
 
