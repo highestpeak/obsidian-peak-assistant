@@ -41,6 +41,14 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | AC. Onboarding Index Config | 4步Onboarding + 三档索引(fast/semantic/full) + Settings面板 + 智能升级提示 | 完成 (7 tasks, 7 commits) |
 | AD. P0-P1 批量执行 | authToken 清理 + Plan 模式移除 + Usage Dashboard 恢复 + 动态能力感知 | 完成 (4 commits) |
 | AE. Copilot Agent Loop | 4 action (suggest-links/knowledge-gaps/synthesize-topic/add-evidence) 升级为 agent loop + 步骤展示 UI | 完成 (9 commits, 13 files, +832 lines) |
+| AF. Inspector Tools Overhaul | Schema 重设计 + find-path 拆分(1→5 文件) + 类型化 params + forceFormat + 描述重写 | 完成 (12 tasks, 12 commits) |
+| AG. Report UI Polish | V2InlinePlanReview sticky footer（flex 布局） | 完成 (1 commit) |
+| S1. Ambient Push Phase 1 | FTS5 pipeline + 模板解释 + 侧边栏面板 + SQLite 日志 + 状态栏 | 完成 (10 tasks) |
+| S1. Ambient Push Phase 2 | 图谱 2-hop 扩展 + shared_tag/graph_neighbor/co_citation/hub_member 信号 + 反馈学习 | 完成 (7 tasks, 7 commits) |
+| S1. Ambient Push Phase 3 | Serendipity Engine: CM6 gutter + 偶然发现算法 + LLM 微解释 + 跨会话模式学习 | 完成 (10 tasks, 8 commits) |
+| S1. Ambient Push 可见性 | 首次启动自动打开右侧栏 + 布局切换不覆盖 AmbientPush tab | 完成 |
+| AH. Provider MCP Phase 1-3 | Model Registry JSON 化 + 自定义 OpenAI 兼容端点 + MCP Client (stdio/SSE) + Settings UI | 完成 (12 tasks, 12 commits) |
+| AI. MCP Spike | @modelcontextprotocol/sdk 可行性验证 — GO (所有 transport 可用, +450KB) | 完成 |
 
 ## Next
 
@@ -64,19 +72,18 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 ### 2. 竞品差异化功能（核心产品方向）
 
 > 目标定位："Obsidian-native ambient knowledge graph intelligence"
-> 三根支柱：Ambient Push + Vault Lint + 级联更新 — 目前 0% 进度
+> 三根支柱：Ambient Push + Vault Lint + 级联更新
 > 研究来源：`kb2-learn-prd/.../AI-peakAssistant-竞品分析与学术验证.md` + `AI-peakAssistant-差异化定位与护城河分析-2026-04.md`
 
-#### S1. Ambient Push — 写作时主动推送相关内容 + 解释原因 ★★★★★
+#### S1. Ambient Push — 写作时主动推送相关内容 + 解释原因 ★★★★★ — Phase 1-3 完成
 
-- 优先级：最高（与 Smart Connections 的关键差异点）
-- 学术支撑：Koskela 2018 (ACM TiiS) 主动信息检索 + Brain Cache (CHI 2025) 三层认知外骨骼
-- 现有基础：vault event listener + maintenance debt 系统（但从不触发主动推送）
-- 需要产出：
-  - [ ] **Spec**：事件触发模型 + 上下文提取 + 相关内容检索 + 推送 UI + 解释生成
-  - [ ] **Plan**：实现任务拆分
-  - [ ] **Mockup**：推送面板 / sidebar 设计
-  - [ ] **实现**
+- Phase 1 (Core Pipeline): FTS5 搜索 + 模板解释 + 侧边栏面板 + SQLite 日志 ✅
+- Phase 2 (Graph Intelligence): 2-hop 图谱扩展 + 4 种信号 + 反馈学习 ✅
+- Phase 3 (Serendipity Engine): CM6 gutter 提示 + 偶然发现算法 + LLM 微解释 + 模式学习 ✅
+- Phase 4 (Morning Briefing): 启动时每日简报 — **待实现**
+- 可见性修复: 首次自动打开右侧栏 + 布局切换保留 tab ✅
+- Spec: `docs/superpowers/specs/2026-05-01-ambient-push-design.md`
+- Plans: `docs/superpowers/plans/2026-05-01-ambient-push-phase1.md`, `2026-05-10-*-phase2/3.md`
 
 #### S2. Vault Lint / Health Check — 知识库健康体检 ★★★★★
 
@@ -141,13 +148,14 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ### 3. 未实现的 Spec/Plan（已有文档但未执行）
 
-| 文档 | 内容 | 规模 | Spec |
+| 文档 | 内容 | 规模 | 状态 |
 |------|------|------|------|
-| `provider-mcp-skills-design` | MCP Client（MCPClientManager, stdio/HTTP）+ Skill 系统（markdown 定义 + 在线商店）+ Usage Dashboard + Model Registry 同步 | 大 | `specs/2026-04-10` |
-| `search-inspector-tools-overhaul` | 11 个 Inspector 工具重构：消除 MarkdownOnly → `forceFormat`、find-path 拆分策略模式、类型化 `params: any`、bug 修复 | 大 | `specs/2026-04-10` |
+| ~~`provider-mcp-skills-design`~~ Phase 1-3 | ~~MCP Client + Model Registry + Custom Endpoints~~ | ~~大~~ | COMPLETED (Session 26) |
+| `provider-mcp-skills-design` Phase 4-5 | Skill 系统（markdown 定义 + 执行器）+ Usage Dashboard 同步 | 中 | **待实现** |
+| ~~`search-inspector-tools-overhaul`~~ | ~~Inspector 工具重构~~ | ~~大~~ | COMPLETED (Session 26) |
 | ~~`graph-layout-fix`~~ | ~~5 个图布局修复~~ | ~~中~~ | COMPLETED |
-| `v2-persistence-fix` | 5 个 V2 持久化 bug：v2FullyDone 守卫、graph store 错配、restore 数据丢失 | 中 | `plans/2026-04-18` |
-| `report-ui-quality` Task 3-4 | 粘性 V2PlanReview footer + 内联 plan 编辑（onUpdate） | 小 | `plans/2026-04-14` |
+| ~~`v2-persistence-fix`~~ | ~~5 个 V2 持久化 bug~~ | ~~中~~ | COMPLETED (已在之前 session 修复) |
+| ~~`report-ui-quality` Task 3-4~~ | ~~粘性 footer + 内联编辑~~ | ~~小~~ | COMPLETED (Session 26) |
 | ~~`ai-analysis-ux-overhaul` Phase ③~~ | ~~SynthesizeAgent + 多轮 round 分离 UI~~ | ~~中~~ | COMPLETED |
 
 ### 3. TASKS.md 按阶段待做
@@ -221,6 +229,46 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-10 (Session 26) — Wave 1+2 并行执行（Ambient Push + Inspector + MCP + Report UI）
+
+- Done: **并行执行框架** — `docs/parallel-execution-plan.md`，4 wave 编排，worktree 隔离
+- Done: **Wave 1（5 条线并行）**
+  - **Line A — Inspector Tools Overhaul** (12 tasks, 12 commits)
+    - Schema 重设计：`BaseLimit.limit` 语义统一、`findPathInputSchema` strategy enum、`SemanticFilter.topK` max 30
+    - `find-path.ts` 2032 行拆为 5 文件（scorer/reliable/fast-track/brainstorm/index），删除 temporal 策略
+    - `makeTool` 工厂 + `forceFormat` 选项，消除 3 个 MarkdownOnly 变体
+    - 11 个工具描述重写（When to use / Avoid when 格式）
+    - 7 个实现文件从 `params: any` → Zod 推断类型
+    - Recon system prompt 加工具选择指南
+    - `search_by_dimensions` 结构化诊断输出、`find_orphans` 双重过滤 bug 修复
+  - **Line B — V2 Persistence Bug Fix**: 5 个 bug 全部已在之前 session 修复
+  - **Line C — Report UI**: V2InlinePlanReview sticky footer（flex 布局），Task 4 inline edit 已实现
+  - **Line D — Ambient Push Phase 2** (7 tasks, 7 commits)
+    - 图谱 2-hop 扩展 via `GraphRepo.getRelatedFilePaths()`
+    - 4 种新信号：shared_tag、graph_neighbor、co_citation、hub_member
+    - 反馈学习：opened/linked +0.1(cap +0.3)、ignored -0.05(cap -0.15)、dismissed 抑制 7 天
+    - `getPositivePairs()`/`getIgnoredPenalties()` 聚合查询
+  - **Line E — MCP Spike**: **GO** — `@modelcontextprotocol/sdk` 全 transport 可用，+450KB bundle
+- Done: **Ambient Push 可见性修复**
+  - `main.ts` onLayoutReady 首次自动打开右侧栏
+  - `ViewSwitchConsistentHandler` Chat/Doc 布局切换不覆盖 AmbientPush tab
+- Done: **Wave 2（3 条线并行）**
+  - **Line F — AI UX Phase 3**: 17/17 tasks 全部已实现，`progress.md` 更新标记 COMPLETED
+  - **Line D — Ambient Push Phase 3** (10 tasks, 8 commits)
+    - `SerendipitySearcher`: 2-hop 邻居 + 最大 embedding 距离算法
+    - `SerendipityGutterPlugin`: CM6 ViewPlugin，光标行 `?` 图标 + hover tooltip + click 打开
+    - `RelevanceExplainer`: LLM Tier 2 微解释（fire-and-forget，rate-limited 2min）
+    - `PatternLearner`: 跨会话 recurring pairs 缓存（10min 刷新，0-0.4 boost）
+    - `PushCard` LLM 标记（Sparkles icon）
+  - **Line E — Provider MCP Phase 1-3** (12 tasks, 12 commits)
+    - Phase 1: 4 个 provider JSON + TemplateManager 运行时加载 + `ModelRegistry.loadFromTemplateManager()`
+    - Phase 2: `OpenAICompatibleEndpoint` + 模型自动发现 + preset（LM Studio/LiteLLM/vLLM）+ Settings UI
+    - Phase 3: `MCPClientManager`（stdio + SSE）+ `MCPToolAdapter`（JSON Schema→Zod）+ MCP Settings tab + 3 agent 集成
+- Plans written: `inspector-tools-overhaul`, `ambient-push-phase2/3`, `provider-mcp-phase1-3`, `parallel-execution-plan`
+- Spike report: `docs/superpowers/specs/2026-05-10-mcp-spike-report.md`
+- Build 通过，ambient-push tests 通过
+- Next: Wave 3 — Ambient Push Phase 4 (Morning Briefing) + Provider MCP Phase 4-5 (Skill System)
 
 ### 2026-05-10 (Session 25) — OpenRouter Stall Timeout + UI 小修
 - Done: **OpenRouter PROCESSING 卡住修复**
@@ -813,6 +861,15 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | graph-layout-fix | 05-01 | COMPLETED |
 | ui-stability-batch-fix | 05-03 | COMPLETED |
 | provider-settings-polish | 05-09 | COMPLETED |
+| ambient-push-phase1 | 05-01 | COMPLETED |
+| ambient-push-phase2 | 05-10 | COMPLETED |
+| ambient-push-phase3 | 05-10 | COMPLETED |
+| inspector-tools-overhaul | 05-10 | COMPLETED |
+| v2-persistence-fix | 04-18 | COMPLETED (verified already done) |
+| report-ui-quality | 05-10 | COMPLETED (Task 3 done, Task 4 already done) |
+| ai-analysis-ux-overhaul | 04-17 | COMPLETED (all 17 tasks verified) |
+| provider-mcp-phase1-3 | 05-10 | COMPLETED |
+| mcp-spike | 05-10 | COMPLETED (GO) |
 | milestone-based-persistence | 04-20 | MOSTLY DONE (核心函数存在，4 触发点待验证) |
 | per-section-report-v2 | 04-13 | SUPERSEDED |
 | v2-report-quality-and-ui-fixes | 04-13 | SUPERSEDED |
