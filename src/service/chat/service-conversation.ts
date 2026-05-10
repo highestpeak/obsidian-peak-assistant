@@ -421,6 +421,23 @@ export class ConversationService {
 		});
 	}
 
+	/**
+	 * Move a conversation into (or out of) a project.
+	 */
+	async moveToProject(params: {
+		conversationId: string;
+		projectId?: string;
+	}): Promise<void> {
+		await this.storage.upsertConversationMeta(params.conversationId, {
+			projectId: params.projectId || undefined,
+			updatedAtTimestamp: Date.now(),
+		});
+		const updatedConversation = await this.storage.readConversation(params.conversationId, false);
+		if (updatedConversation) {
+			EventBus.getInstance(this.app).dispatch(new ConversationUpdatedEvent({ conversation: updatedConversation }));
+		}
+	}
+
 	async updateConversationFocusFolder(params: {
 		conversationId: string;
 		focusFolder?: string;

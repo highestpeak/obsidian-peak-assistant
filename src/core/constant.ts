@@ -379,6 +379,11 @@ export const COLLAPSED_USER_MESSAGE_CHAR_LIMIT = 200;
 export const MESSAGE_TIMEOUT_MS = 60_000;
 
 /**
+ * Number of messages in a standalone conversation before suggesting project conversion.
+ */
+export const CONVERSATION_TO_PROJECT_THRESHOLD = 10;
+
+/**
  * Maximum number of conversations to display in conversation sections before showing "See more" button.
  */
 export const MAX_CONVERSATIONS_DISPLAY = 50;
