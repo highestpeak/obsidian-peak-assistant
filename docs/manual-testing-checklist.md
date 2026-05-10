@@ -594,6 +594,370 @@ npm run trace -- vault-search --fixture small "my custom query"
 
 ---
 
+## 16. Ambient Push Phase 4 — Morning Briefing (Session 27)
+
+### 16.1 Startup Trigger
+
+- [ ] Close Obsidian, wait >4 hours (or manually set `last_session_end` in index_state), reopen
+- [ ] Morning Briefing modal appears ~3 seconds after startup
+- [ ] Modal does NOT appear if re-opened within 4 hours
+
+### 16.2 Briefing Content
+
+- [ ] Three sections visible: Unresolved Connections, Changed Hubs, Decaying Engagement
+- [ ] Each card shows note title + reason text + category icon
+- [ ] Cards sorted by score within each section
+- [ ] Empty sections are hidden (not shown with "no items")
+
+### 16.3 Card Actions
+
+- [ ] Hover on a card → Open + Dismiss buttons appear
+- [ ] Click Open → note opens in Obsidian, modal stays open
+- [ ] Click Dismiss → card removed from list
+- [ ] When all cards dismissed → modal auto-closes
+
+---
+
+## 17. Provider MCP Phase 4-5 — Skills + Usage (Session 27)
+
+### 17.1 Skill Picker
+
+- [ ] Cmd+P → "Peak: Run Skill" → Skill Picker modal opens
+- [ ] 3 built-in skills visible: weekly-report, literature-review, vault-health-check
+- [ ] Search bar filters skills by name/tag
+- [ ] Click a skill → input form appears for required inputs
+- [ ] Submit → skill executes via agent loop
+
+### 17.2 Custom Skills from Vault
+
+- [ ] Create `_skills/test-skill.md` with YAML frontmatter (name, description, tools, prompt)
+- [ ] Reopen Skill Picker → custom skill appears
+- [ ] Rename/delete the file → skill updates in registry (hot reload)
+
+### 17.3 Model Registry Sync
+
+- [ ] Settings → Provider → model list reflects JSON registry data
+- [ ] No console errors about missing model metadata
+
+---
+
+## 18. S2 — Vault X-Ray (Session 28)
+
+### 18.1 Vault X-Ray View
+
+- [ ] Cmd+P → "Peak: Vault X-Ray" → dedicated leaf opens
+- [ ] Score Ring shows overall health score (0-100) with color gradient
+- [ ] 5 Dimension Bars: Structural, Content Quality, Tagging, Cohesion, Freshness
+- [ ] Priority Actions list sorted by severity (high → low)
+
+### 18.2 Signal Detection
+
+- [ ] S-ORPHAN: orphan notes detected (no inlinks/outlinks)
+- [ ] S-BROKEN-LINK: broken `[[links]]` to non-existent notes detected
+- [ ] C-EMPTY: empty files detected
+- [ ] C-STUB: very short files (<50 words) detected
+- [ ] G-UNTAGGED: notes without tags detected
+
+### 18.3 Interactivity
+
+- [ ] Click a finding → opens the affected note
+- [ ] Dismiss a finding → removed from list, persisted in SQLite
+
+---
+
+## 19. S3 — Cascade Update (Session 28)
+
+### 19.1 Hub Invalidation
+
+- [ ] Edit a note that is a hub constituent → hub marked stale (check `hub_stale_since` in SQLite)
+- [ ] `hub_regen` debt enqueued (visible in `cascade_debt` table)
+
+### 19.2 Folder Stats
+
+- [ ] Edit a note → ancestor folder stats updated (check `mobius_node` folder rows)
+
+---
+
+## 20. S4 — Structural Hole / Gap Analysis (Session 28)
+
+### 20.1 Gap Analysis View
+
+- [ ] Cmd+P → "Peak: Open Gap Analysis" → dedicated leaf opens
+- [ ] Community Map (ReactFlow) shows colored community clusters
+- [ ] Gap details sidebar shows gaps with score + type badge
+- [ ] Bridge node list shows potential bridge notes
+
+### 20.2 Gap Actions
+
+- [ ] "Add Link" button → inserts `[[link]]` in Related section of source note
+- [ ] "Create Bridge Note" → creates new note from template
+- [ ] Refresh button → recomputes structural analysis
+
+### 20.3 MultiLensGraph Integration
+
+- [ ] In AI Analysis graph → "Gap Analysis" lens tab available (Layers icon)
+- [ ] Gap analysis layout shows community circles + dashed gap arcs
+
+---
+
+## 21. S5 — PPR Tuning (Session 28)
+
+### 21.1 Settings
+
+- [ ] Settings → Search → "Graph Search" section visible
+- [ ] PPR toggle switch works (enable/disable)
+- [ ] Setting persists after reload
+
+### 21.2 Evaluation
+
+- [ ] Cmd+P → "Peak: Compare Search Results" → runs both pipelines
+- [ ] Console shows PPR evaluation report (rank displacement, discovery count)
+- [ ] Notice shows summary metrics
+
+---
+
+## 22. S6 — Precompiled Knowledge (Session 28)
+
+### 22.1 Hub Regeneration
+
+- [ ] Edit hub constituent notes → stale hubs detected
+- [ ] After 30s debounce → HubRegenService processes queue (check console)
+- [ ] Cmd+P → "Peak: Refresh Hub Summaries" → manually triggers regen
+
+### 22.2 Reranker Boost
+
+- [ ] Search for a topic with hub docs → hub_doc results get subtle boost
+- [ ] Hub docs appear slightly higher in results than pure similarity would suggest
+
+---
+
+## 23. S7 — Auto-tag (Session 28)
+
+### 23.1 Single Document
+
+- [ ] Open Copilot → "Suggest Tags" action
+- [ ] Tags displayed with confidence tiers (high/medium/low)
+- [ ] Accept individual tags → applied to frontmatter
+- [ ] "Accept High Confidence" button → bulk accept high-tier tags
+- [ ] Feedback recorded in `tag_suggestion` table
+
+### 23.2 Batch Mode
+
+- [ ] Cmd+P → "Copilot: Batch Tag Suggestions"
+- [ ] Folder picker appears → select a folder
+- [ ] Progress notice shows scan progress
+- [ ] Batch panel shows per-document tag suggestions
+- [ ] Bulk apply works across documents
+
+---
+
+## 24. Chat System Enhancements (Session 28)
+
+### 24.1 Conversation Modes (#73)
+
+- [ ] Mode selector shows 3 options: Chat / Agent / Plan
+- [ ] Chat mode: no tools sent to LLM
+- [ ] Agent mode: tools available (web search, etc.)
+- [ ] Plan mode: planning system prompt prepended
+- [ ] Mode persists per-conversation
+
+### 24.2 Work Focus (#57)
+
+- [ ] Chat header → click folder icon → folder picker opens
+- [ ] Select folder → blue focus badge appears in header
+- [ ] Focus affects system prompt context
+- [ ] Click X on badge → focus cleared
+
+### 24.3 Message Branching (#14)
+
+- [ ] Hover on assistant message → GitBranch icon appears
+- [ ] Click → new conversation created with messages up to that point
+- [ ] New conversation opens with "Branch: ..." title
+
+### 24.4 Message Lifecycle (#2)
+
+- [ ] During sending: spinner indicator visible
+- [ ] After 60s with no response: timeout status shown
+- [ ] On error: error icon + label shown
+- [ ] Completed messages: no indicator (clean)
+
+### 24.5 Delete Conversation (#93)
+
+- [ ] Hover on conversation tab → trash icon appears
+- [ ] Click trash → confirmation popover: "Delete this conversation?"
+- [ ] Confirm → conversation deleted, switches to next
+
+### 24.6 Suggest Convert to Project (#21)
+
+- [ ] After >10 messages in a conversation → subtle "Convert to project?" banner appears
+- [ ] Click Convert → conversation moved to a project
+- [ ] Dismiss X → banner hidden
+
+### 24.7 Per-Conversation System Prompt (#83)
+
+- [ ] Chat header → system prompt button → popover with textarea
+- [ ] Enter custom prompt → save → accent dot indicator shows
+- [ ] Custom prompt prepended to default in LLM requests
+- [ ] Clear → removes custom prompt
+
+### 24.8 Prompt Enhance (#12)
+
+- [ ] Type a short message (<20 chars) → "Enhance prompt?" suggestion appears after ~1s
+- [ ] Click → prompt rewritten via LLM, replaces input text
+- [ ] Messages starting with `/` or `@` → no suggestion shown
+
+### 24.9 Input History (#81)
+
+- [ ] Send a few messages → Ctrl+Up recalls previous message
+- [ ] Ctrl+Down goes forward / restores draft
+
+---
+
+## 25. Search Enhancements (Session 28)
+
+### 25.1 Ctrl+Click New Tab (#90)
+
+- [ ] In vault search, Ctrl/Cmd+click a result → opens in new tab
+- [ ] Ctrl/Cmd+Enter → opens selected result in new tab
+- [ ] Normal click still opens in current tab
+
+### 25.2 Recent Queries (#67)
+
+- [ ] Focus empty search input → recent queries dropdown appears
+- [ ] Click a query → re-executes it
+- [ ] "Clear" button removes all recent queries
+
+### 25.3 Search Mode Picker (#91)
+
+- [ ] Pill buttons visible: All / Folder / Heading / Line
+- [ ] Click a mode → query prefix changes
+- [ ] Active mode visually highlighted
+
+### 25.4 Search Highlights (#60)
+
+- [ ] In-file search highlights preserve original casing
+- [ ] Score badge shows post-rerank finalScore
+
+### 25.5 Popover Position (#79)
+
+- [ ] Open menu near bottom of viewport → popover flips above
+- [ ] Open menu near top → popover shows below
+- [ ] No overflow outside viewport
+
+---
+
+## 26. New Copilot Actions (Session 28)
+
+### 26.1 Format Polish (#42)
+
+- [ ] Open Copilot → "Format Polish" action
+- [ ] Shows diff with Accept/Reject
+
+### 26.2 Semantic Link Suggestions (#38)
+
+- [ ] Open Copilot → "Suggest Semantic Links"
+- [ ] Shows unlinked semantic neighbors with similarity %
+- [ ] One-click insert adds Related Notes section
+
+### 26.3 Content Correction (#39)
+
+- [ ] Open Copilot → "Correct Content"
+- [ ] Per-correction accept/reject with before/after + severity badge
+
+### 26.4 Vault Summary (#47)
+
+- [ ] Open Copilot → "Vault Summary"
+- [ ] Groups modified notes by topic, narrative summary
+- [ ] "Save as Note" button works
+
+### 26.5 Write Article (#32)
+
+- [ ] Open Copilot → "Write Article" → enter topic
+- [ ] Draft with [[citations]] from vault notes
+- [ ] "Save as Note" works
+
+### 26.6 Detect & File (#34)
+
+- [ ] Select text → Open Copilot → "Detect & File"
+- [ ] Content type identified + destination suggestions
+- [ ] "Append Here" inserts to selected note
+
+### 26.7 Custom Prompts (#40)
+
+- [ ] Create `_prompts/my-prompt.md` with frontmatter (label, description, category)
+- [ ] Copilot Picker shows custom prompt tile
+- [ ] Note with `prompts: [my-prompt]` in frontmatter → that prompt ranked higher
+
+### 26.8 Task Check (#43)
+
+- [ ] Open doc with `- [ ]` items → Copilot → "Check Task List"
+- [ ] Priority analysis + recommendations shown
+
+### 26.9 Prompt Audit (#29)
+
+- [ ] Open Copilot → "Prompt Audit"
+- [ ] Rates each template 1-10 with expand/collapse details
+
+### 26.10 Dedup Scan (#20)
+
+- [ ] Open Copilot → "Duplicate Scan"
+- [ ] Groups identical-content files with delete/merge options
+
+### 26.11 Find & Solve Tasks (#44)
+
+- [ ] Open Copilot → "Find & Solve Tasks"
+- [ ] Finds open tasks with answers from vault
+- [ ] "Mark Done" appends answer
+
+### 26.12 Smart Connections (#89)
+
+- [ ] Open Copilot → "Smart Connections"
+- [ ] Shows semantically similar unlinked notes
+- [ ] One-click insert [[link]]
+
+### 26.13 Workflow Runner (#48)
+
+- [ ] Open Copilot → "Run Workflow" → describe workflow
+- [ ] Steps execute sequentially with status indicators
+- [ ] Final output with copy/save
+
+---
+
+## 27. UI Theme (Session 28)
+
+### 27.1 Dark Theme (#92)
+
+- [ ] Switch Obsidian to dark theme → plugin UI follows
+- [ ] All text readable (no white-on-white or black-on-black)
+- [ ] Borders and surfaces use appropriate dark palette
+- [ ] Switch back to light → plugin reverts correctly
+
+### 27.2 Style Isolation (#77)
+
+- [ ] Plugin UI doesn't leak styles into Obsidian native elements
+- [ ] Obsidian headings/links don't break inside plugin panels
+
+### 27.3 FileIcon (#74)
+
+- [ ] Various file types show correct Lucide icons (md, pdf, png, xlsx, json, etc.)
+- [ ] No broken or missing icon placeholders
+
+---
+
+## 28. Infrastructure (Session 28)
+
+### 28.1 Save Graph to Vault (#76)
+
+- [ ] In AI graph → Save button → graph saved as markdown in vault
+- [ ] File contains mermaid code block + metadata
+
+### 28.2 Desktop Mocks (#58)
+
+- [ ] `npm run test` passes with expanded mock coverage
+- [ ] Mock workspace.openLinkText, vault.create/modify, metadataCache.getFileCache all functional
+
+---
+
 ## Notes
 
 _Record any issues, unexpected behavior, or suggestions here:_

@@ -226,10 +226,14 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
   - **S4 Structural Hole** (8 tasks): Brandes betweenness + Louvain community + Burt constraint + StructuralAnalysisRepo + Gap Analysis View + bridge actions + MCP tools
 - Done: **Wave 3（S3 依赖已落地）**
   - **S6 Precompiled Knowledge** (6 tasks): HubStalenessDetector + HubRegenService (30s debounce, batch-10, 3x retry) + hub_regen_queue + reranker hub_doc boost
-- 总计: 37 tasks, 3 waves, 文件冲突矩阵分析 + worktree 隔离
+- Done: **TASKS Batch 1 (3 线并行)** — Phase 0 cleanup + 7 issues (#90 #81 #79 #76 #42 #38 #83)
+- Done: **TASKS Batch 2 (3 线并行)** — #73 #57 #17 #14 #39 #47 #45 #31 #46 #12
+- Done: **TASKS Batch 3 (3 线并行)** — #92 #77 #74 #93 #72 #2 #21 #60 #67 #91 #48
+- Done: **TASKS Batch 4 (2 线并行)** — #32 #34 #40 #43 #29 #20 #44 #89 #58
+- 总计本 session: 37 S-feature tasks + 35 TASKS.md issues = **72 tasks/issues**
 - Build 通过，tests 通过
-- **竞品差异化功能 S1-S7 全部完成**
-- Next: TASKS.md Phase 4-11 issues + 基础设施清理
+- **竞品差异化 S1-S7 全部完成 + TASKS Phase 3-9 大部分完成**
+- Next: Phase 10 integrations, Phase 11 docs, 依赖瘦身, 真机验证
 
 ### 2026-05-10 (Session 27) — Wave 3 并行执行（Ambient Push Phase 4 + Provider MCP Phase 4-5）
 
