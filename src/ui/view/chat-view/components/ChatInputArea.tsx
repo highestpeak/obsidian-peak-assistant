@@ -1,33 +1,21 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import {
 	PromptInput,
 	PromptInputBody,
 	PromptInputAttachments,
-	PromptInputFileButton,
-	PromptInputSearchButton,
-	PromptInputSubmit,
-	TokenUsage,
 	usePromptInputContext,
-	type PromptInputMessage,
 } from '@/ui/component/prompt-input';
-import { ToolButton } from '@/ui/component/prompt-input';
-import { ModeSelector } from '../../../component/prompt-input/ModeSelector';
 import { cn } from '@/ui/react/lib/utils';
-import { useChatSubmit } from '../hooks/useChatSubmit';
-import { ChatTag, useChatViewStore } from '../store/chatViewStore';
-import { ModelSelector } from '@/ui/component/mine/ModelSelector';
-import { HoverButton, OutputControlSettingsList } from '@/ui/component/mine';
-import { Settings2 } from 'lucide-react';
-import { useModels } from '@/ui/hooks/useModels';
-import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { useChatViewStore } from '../store/chatViewStore';
 import { useContextSearch } from '../hooks/useContextSearch';
 import { useInputKeyboard } from '../hooks/useInputKeyboard';
-import { useTokenUsage } from '../hooks/useTokenUsage';
+import { useInputSubmit } from '../hooks/useInputSubmit';
 import { PromptEnhanceSuggestion } from './PromptEnhanceSuggestion';
+import { InputToolbar } from './InputToolbar';
 
 // ---------------------------------------------------------------------------
-// Internal helper: clears input on send start
+// Internal helpers (must be children of PromptInput to access context)
 // ---------------------------------------------------------------------------
 
 const InputClearHandler: React.FC<{ isSending: boolean }> = ({ isSending }) => {
@@ -59,86 +47,28 @@ const InsertToInputHandler: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
-// ChatInputAreaComponent
+// ChatInputAreaComponent — thin composition layer
 // ---------------------------------------------------------------------------
 
 export const ChatInputAreaComponent: React.FC = () => {
 	const store = useChatViewStore();
-	const { models, isModelsLoading } = useModels();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
-	const activeProject = useChatDataStore((s) => s.activeProject);
-	const isStreaming = useChatDataStore((s) => s.streamingMessageId !== null);
 
-	const [isSending, setIsSending] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const inputFocusRef = useRef<{ focus: () => void } | null>(null);
 
-	const { submitMessage, cancelStream } = useChatSubmit();
-
-	useEffect(() => {
-		const action = (text: string) => {
-			const conv = useChatDataStore.getState().activeConversation;
-			const project = useChatDataStore.getState().activeProject;
-			if (conv) {
-				void submitMessage({ text, files: [], conversation: conv, project });
-			}
-		};
-		useChatViewStore.getState().setSubmitAction(action);
-		return () => useChatViewStore.getState().setSubmitAction(null);
-	}, [submitMessage]);
+	const {
+		isSending,
+		isStreaming,
+		status,
+		placeholder,
+		handleSubmit,
+		handleCancelStream,
+		handleTextChange,
+	} = useInputSubmit();
 
 	const { menuContextItems, folderStack, handleSearchContext, handleSearchPrompts, handleMenuSelect, handleFolderUp } = useContextSearch();
 	useInputKeyboard(textareaRef, activeConversation?.meta?.id ?? null);
-	const tokenUsage = useTokenUsage(activeConversation);
-
-	// Responsive toolbar: measure width and hide elements at narrow sizes
-	const toolbarRef = useRef<HTMLDivElement>(null);
-	const [toolbarWidth, setToolbarWidth] = useState(600);
-	useEffect(() => {
-		const el = toolbarRef.current;
-		if (!el) return;
-		const ro = new ResizeObserver(entries => {
-			const w = entries[0]?.contentRect.width ?? 600;
-			setToolbarWidth(w);
-		});
-		ro.observe(el);
-		return () => ro.disconnect();
-	}, []);
-	const isNarrow = toolbarWidth < 400;
-	const isVeryNarrow = toolbarWidth < 300;
-
-	const handleTextChange = useCallback((_text: string, tags: ChatTag[]) => {
-		store.setCurrentInputTags(tags);
-	}, [store.setCurrentInputTags]);
-
-	const handleSubmit = useCallback(async (message: PromptInputMessage) => {
-		if (!message.text.trim() && message.files.length === 0) return;
-		if (isSending) return;
-		setIsSending(true);
-		try {
-			await submitMessage({
-				text: message.text,
-				files: message.files,
-				conversation: activeConversation,
-				project: activeProject,
-			});
-		} catch (error) {
-			console.error('[ChatInputArea] handleSubmit error:', error);
-		} finally {
-			setIsSending(false);
-		}
-	}, [submitMessage, activeConversation, activeProject, isSending]);
-
-	const handleCancelStream = useCallback(async () => {
-		if (isStreaming) {
-			await cancelStream();
-			setIsSending(false);
-		}
-	}, [isStreaming, cancelStream]);
-
-	const status: 'ready' | 'submitted' | 'streaming' = isStreaming ? 'streaming' : (isSending ? 'submitted' : 'ready');
-	const hasMessages = activeConversation && activeConversation.messages.length > 0;
-	const placeholder = hasMessages ? 'Ask anything...' : 'Ask anything... (@ for context, / for prompts)';
 
 	return (
 		<div className="pktw-relative pktw-px-6 pktw-pt-2 pktw-pb-6 pktw-border-t pktw-border-border pktw-flex-shrink-0">
@@ -169,61 +99,11 @@ export const ChatInputAreaComponent: React.FC = () => {
 				<PromptEnhanceSuggestion />
 
 				{/* Footer: tools + submit */}
-				<div ref={toolbarRef} className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-1.5 pktw-px-3 pktw-py-2">
-					<div className="pktw-flex pktw-items-center pktw-gap-0.5">
-						<PromptInputFileButton
-							attachmentHandlingMode={store.attachmentHandlingMode}
-							onAttachmentHandlingModeChange={store.setAttachmentHandlingMode}
-						/>
-						<PromptInputSearchButton
-							active={store.isSearchActive}
-							searchProvider={store.searchProvider}
-							enableWebSearch={store.enableWebSearch}
-							enableVaultSearch={store.enableVaultSearch}
-							enableTwitterSearch={false}
-							enableRedditSearch={false}
-							onToggleActive={() => store.setSearchActive(!store.isSearchActive)}
-							onChangeProvider={store.setSearchProvider}
-							onToggleWebSearch={store.setEnableWebSearch}
-							onToggleVaultSearch={store.setEnableVaultSearch}
-							onToggleTwitterSearch={() => {}}
-							onToggleRedditSearch={() => {}}
-						/>
-						<HoverButton
-							icon={Settings2}
-							menuId="output-control-settings"
-							menuClassName="pktw-w-[560px] pktw-p-1 pktw-border pktw-z-50"
-							hoverMenuContent={
-								<OutputControlSettingsList
-									settings={store.llmOutputControlSettings}
-									onChange={store.setLlmOutputControlSettings}
-									variant="compact"
-									useLocalState
-								/>
-							}
-						/>
-						<ToolButton
-							isCodeInterpreterEnabled={store.isCodeInterpreterEnabled}
-							onCodeInterpreterEnabledChange={store.setIsCodeInterpreterEnabled}
-						/>
-					</div>
-					<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-min-w-0">
-						{!isVeryNarrow && <ModeSelector selectedMode={store.chatMode} onModeChange={store.setChatMode} />}
-						<ModelSelector
-							models={models}
-							isLoading={isModelsLoading}
-							currentModel={store.selectedModel}
-							onChange={async (p: string, m: string) => store.setSelectedModel(p, m)}
-							truncate={isNarrow}
-							placeholder={(() => {
-								const config = ProfileRegistry.getInstance().getConfigForMode(store.chatMode);
-								return config ? `Auto (${config.modelId})` : 'No profile configured';
-							})()}
-						/>
-						{!isNarrow && <TokenUsage usage={tokenUsage} conversation={activeConversation} />}
-						<PromptInputSubmit status={status} onCancel={isStreaming ? handleCancelStream : undefined} />
-					</div>
-				</div>
+				<InputToolbar
+					status={status}
+					isStreaming={isStreaming}
+					onCancel={handleCancelStream}
+				/>
 			</PromptInput>
 		</div>
 	);
