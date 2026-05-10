@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { Check, MessageSquare, BotMessageSquare } from 'lucide-react';
+import { Check, MessageSquare, BotMessageSquare, ListChecks } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { HoverButton } from '@/ui/component/mine';
 
-export type ChatMode = 'chat' | 'agent';
+export type ChatMode = 'chat' | 'agent' | 'plan';
 
 interface ModeSelectorProps {
 	className?: string;
@@ -22,8 +22,14 @@ const modes = [
 	{
 		id: 'agent' as ChatMode,
 		label: 'Agent',
-		description: 'Document editing',
+		description: 'Research with tools',
 		icon: BotMessageSquare,
+	},
+	{
+		id: 'plan' as ChatMode,
+		label: 'Plan',
+		description: 'Structured planning',
+		icon: ListChecks,
 	},
 ];
 

@@ -616,6 +616,18 @@ export const COMMUNITY_COLORS_FALLBACK = [
 	'#b4befe', '#eba0ac', '#a6adc8', '#9399b2',
 ];
 
+/**
+ * System prompt prepended in Plan conversation mode.
+ * Instructs the LLM to focus on structured planning, goals, and actionable steps.
+ */
+export const PLAN_MODE_SYSTEM_PROMPT =
+	'You are in PLAN mode. Focus on structured planning and analysis. ' +
+	'Break down tasks into clear, actionable steps with priorities and dependencies. ' +
+	'Use numbered lists, headers, and checklists. ' +
+	'Identify goals, constraints, risks, and milestones. ' +
+	'Ask clarifying questions when the scope is ambiguous. ' +
+	'Prefer concrete deliverables over vague descriptions.';
+
 export const MISSION_ROLES: Array<{ key: string; label: string; icon: string; color: string; bgColor: string; required: boolean }> = [
 	{ key: 'synthesis', label: 'Synthesis', icon: 'Microscope', color: 'pktw-text-emerald-700', bgColor: 'pktw-bg-emerald-50 pktw-border-emerald-200', required: true },
 	{ key: 'contradictions', label: 'Contradictions', icon: 'Zap', color: 'pktw-text-red-700', bgColor: 'pktw-bg-red-50 pktw-border-red-200', required: false },

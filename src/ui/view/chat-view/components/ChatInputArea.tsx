@@ -24,6 +24,7 @@ import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { useContextSearch } from '../hooks/useContextSearch';
 import { useInputKeyboard } from '../hooks/useInputKeyboard';
 import { useTokenUsage } from '../hooks/useTokenUsage';
+import { PromptEnhanceSuggestion } from './PromptEnhanceSuggestion';
 
 // ---------------------------------------------------------------------------
 // Internal helper: clears input on send start
@@ -165,6 +166,7 @@ export const ChatInputAreaComponent: React.FC = () => {
 				<InsertToInputHandler />
 				<PromptInputAttachments />
 				<PromptInputBody ref={textareaRef} inputRef={inputFocusRef} placeholder={placeholder} />
+				<PromptEnhanceSuggestion />
 
 				{/* Footer: tools + submit */}
 				<div ref={toolbarRef} className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-1.5 pktw-px-3 pktw-py-2">

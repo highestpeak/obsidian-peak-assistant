@@ -38,6 +38,14 @@ export class SystemPromptSlot implements ContextSlot {
       text = customPrompt.trim() + '\n\n' + text;
     }
 
+    // Append focus folder context if set
+    const focusFolder = ctx.conversation?.meta?.focusFolder;
+    if (focusFolder) {
+      text += `\n\n[Focus Mode] The user is focusing on the folder "${focusFolder}". ` +
+        'Prioritize notes and context from this folder. When searching, default to this folder scope. ' +
+        'Reference files in this folder when relevant to the conversation.';
+    }
+
     return { data: text, tokens: estimateTokensFromText(text), compressionLevel: 0 };
   }
 

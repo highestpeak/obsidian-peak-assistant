@@ -46,7 +46,7 @@ interface ChatViewState {
 	draftInput: string;
 
 	// ── Session settings (absorbed from chatSessionStore) ──
-	chatMode: 'chat' | 'agent';
+	chatMode: 'chat' | 'agent' | 'plan';
 	selectedModel: { provider: string; modelId: string } | undefined;
 	isSearchActive: boolean;
 	searchProvider: 'local' | 'perplexity' | 'model-builtin';
@@ -84,7 +84,7 @@ interface ChatViewActions {
 	navigateHistory: (direction: 'up' | 'down') => string | null;
 
 	// ── Session settings actions ──
-	setChatMode: (mode: 'chat' | 'agent') => void;
+	setChatMode: (mode: 'chat' | 'agent' | 'plan') => void;
 	setSelectedModel: (provider: string, modelId: string) => void;
 	setSearchActive: (active: boolean) => void;
 	setSearchProvider: (provider: 'local' | 'perplexity' | 'model-builtin') => void;

@@ -43,11 +43,21 @@ export const useChatSession = () => {
 
         setAttachmentHandlingMode,
         setLlmOutputControlSettings,
-        setSelectedModel
+        setSelectedModel,
+        setChatMode,
     } = useChatViewStore();
 
     const { manager } = useServiceContext();
     const activeConversation = useChatDataStore((state) => state.activeConversation);
+
+    // Sync chatMode from conversation metadata when opening an existing conversation
+    useEffect(() => {
+        if (!activeConversation) return;
+        const convKind = activeConversation.meta.conversationType?.kind;
+        if (convKind === 'chat' || convKind === 'agent' || convKind === 'plan') {
+            setChatMode(convKind);
+        }
+    }, [activeConversation?.meta.id, setChatMode]);
 
     // Initialize attachment handling mode from active conversation
     useEffect(() => {

@@ -36,6 +36,7 @@ import { IndexingProgressModal } from '@/ui/view/modals/IndexingProgressModal';
 import { VaultLintService } from '@/service/lint/VaultLintService';
 import { computeEvalMetrics, formatEvalReport } from '@/service/search/query/pprEvaluator';
 import { runStructuralAnalysis } from '@/service/search/index/helper/structural/orchestrator';
+import { QuickNoteModal } from '@/ui/view/modals/QuickNoteModal';
 
 /**
  * Persistent bottom notice with updatable message (Obsidian 1.5+ `setMessage` when available).
@@ -717,6 +718,13 @@ export function buildCoreCommands(
 			: []),
 		...buildSystemCommands({ settings, viewManager, aiManager }),
 		...(registerAllCopilotActions(), []),
+		{
+			id: 'peak-quick-note',
+			name: 'Peak: Quick Note',
+			callback: () => {
+				new QuickNoteModal().open();
+			},
+		},
 		{
 			id: 'peak-copilot-open',
 			name: 'Open Copilot Panel',

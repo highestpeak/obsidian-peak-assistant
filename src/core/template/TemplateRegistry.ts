@@ -264,9 +264,14 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'doc-translate': meta('prompts', 'doc-translate', { systemPromptId: 'doc-translate-system' as PromptId, label: 'Translate', description: 'Translates document content. Auto-detects CJK to choose target language.', group: 'copilot' }),
 	'doc-translate-system': meta('prompts', 'doc-translate-system', { label: 'Translate (System)', description: 'System instructions for the translate action.', group: 'copilot' }),
 
+	'doc-correct-content': meta('prompts', 'doc-correct-content', { expectsJson: true, systemPromptId: 'doc-correct-content-system' as PromptId, label: 'Correct Content', description: 'Identifies factual errors, logical inconsistencies, broken references, and typos.', group: 'copilot' }),
+	'doc-correct-content-system': meta('prompts', 'doc-correct-content-system', { label: 'Correct Content (System)', description: 'System instructions for content error correction.', group: 'copilot' }),
+
 	// Copilot Vault Intelligence
 	'vault-health': meta('prompts', 'vault-health', { expectsJson: true, systemPromptId: 'vault-health-system' as PromptId, label: 'Vault Health', description: 'Analyzes vault structure for orphans, duplicates, stale notes, and tag issues.', group: 'copilot' }),
 	'vault-health-system': meta('prompts', 'vault-health-system', { label: 'Vault Health (System)', description: 'System instructions for vault health analysis.', group: 'copilot' }),
+	'vault-summary': meta('prompts', 'vault-summary', { expectsJson: true, systemPromptId: 'vault-summary-system' as PromptId, label: 'Vault Summary', description: 'Generates a narrative summary of recent vault activity.', group: 'copilot' }),
+	'vault-summary-system': meta('prompts', 'vault-summary-system', { label: 'Vault Summary (System)', description: 'System instructions for vault activity summarization.', group: 'copilot' }),
 
 	// Copilot Writing Assistance
 	'writing-continue': meta('prompts', 'writing-continue', { systemPromptId: 'writing-continue-system' as PromptId, label: 'Continue Writing', description: 'Continues writing from the current cursor position.', group: 'copilot' }),
@@ -279,6 +284,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'copilot-agent-knowledge-gaps': meta('prompts', 'copilot-agent-knowledge-gaps', { label: 'Knowledge Gaps (Agent)', description: 'Agent playbook that identifies knowledge gaps in vault coverage.', group: 'copilot' }),
 	'copilot-agent-synthesize-topic': meta('prompts', 'copilot-agent-synthesize-topic', { label: 'Synthesize Topic (Agent)', description: 'Agent playbook that synthesizes information across vault notes.', group: 'copilot' }),
 	'copilot-agent-add-evidence': meta('prompts', 'copilot-agent-add-evidence', { label: 'Add Evidence (Agent)', description: 'Agent playbook that finds and ranks supporting evidence.', group: 'copilot' }),
+	'copilot-agent-writing-plan': meta('prompts', 'copilot-agent-writing-plan', { label: 'Writing Plan (Agent)', description: 'Agent playbook that creates a structured writing plan grounded in vault notes.', group: 'copilot' }),
 
 	// Chat intelligence
 	'chat-topic-aggregation': meta('prompts', 'chat-topic-aggregation', {
@@ -308,6 +314,9 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'working-context-render': meta('prompts', 'working-context-render', { label: 'Working Context Render', description: 'Renders working context into conversation context.', group: 'ambientContext' }),
 	'activity-index-render': meta('prompts', 'activity-index-render', { label: 'Activity Index Render', description: 'Renders recent vault activity into conversation context.', group: 'ambientContext' }),
 	'message-chunk-summarize': meta('prompts', 'message-chunk-summarize', { label: 'Message Chunk Summarize', description: 'Summarizes a chunk of messages for context compression.', group: 'ambientContext' }),
+
+	// Prompt enhancement
+	'prompt-enhance': meta('prompts', 'prompt-enhance', { label: 'Prompt Enhance', description: 'Rewrites vague prompts into clear, specific ones.', group: 'chat' }),
 
 	// --- Tools ---
 	[ToolTemplateId.LocalSearch]: meta('tools', 'local-search'),

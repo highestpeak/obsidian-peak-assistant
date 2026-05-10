@@ -103,6 +103,12 @@ export interface ChatConversationMeta {
 	 * when building the LLM request. Allows users to customize AI behavior per conversation.
 	 */
 	customSystemPrompt?: string;
+	/**
+	 * Folder path focus for this conversation.
+	 * When set, context building prioritizes notes in this folder
+	 * and search defaults to this scope.
+	 */
+	focusFolder?: string;
 }
 
 export interface ChatProjectMeta {

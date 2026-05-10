@@ -92,6 +92,34 @@ export const vaultHealthSchema = z.object({
 });
 export type VaultHealth = z.infer<typeof vaultHealthSchema>;
 
+export const correctContentSchema = z.object({
+	corrections: z.array(z.object({
+		original: z.string().describe('The original text containing the error'),
+		corrected: z.string().describe('The corrected text'),
+		type: z.enum(['factual', 'logical', 'reference', 'typo']).describe('Type of error'),
+		explanation: z.string().describe('Why this is an error and what was changed'),
+		severity: z.enum(['critical', 'major', 'minor']),
+	})),
+	summary: z.string().describe('Overall summary of issues found'),
+});
+export type CorrectContentResult = z.infer<typeof correctContentSchema>;
+
+export const vaultSummarySchema = z.object({
+	period: z.string().describe('The time period covered'),
+	totalNotes: z.number().describe('Total notes modified in the period'),
+	groups: z.array(z.object({
+		topic: z.string().describe('Topic or folder grouping'),
+		notes: z.array(z.object({
+			title: z.string(),
+			path: z.string(),
+			modifiedDate: z.string(),
+		})),
+		summary: z.string().describe('Narrative summary of work in this group'),
+	})),
+	narrative: z.string().describe('Overall narrative summary of what was worked on'),
+});
+export type VaultSummaryResult = z.infer<typeof vaultSummarySchema>;
+
 export const addEvidenceSchema = z.object({
 	evidence: z.array(z.object({
 		sourceTitle: z.string(),
