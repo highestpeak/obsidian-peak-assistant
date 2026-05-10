@@ -315,6 +315,9 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'activity-index-render': meta('prompts', 'activity-index-render', { label: 'Activity Index Render', description: 'Renders recent vault activity into conversation context.', group: 'ambientContext' }),
 	'message-chunk-summarize': meta('prompts', 'message-chunk-summarize', { label: 'Message Chunk Summarize', description: 'Summarizes a chunk of messages for context compression.', group: 'ambientContext' }),
 
+	// Prompt enhancement
+	'prompt-enhance': meta('prompts', 'prompt-enhance', { label: 'Prompt Enhance', description: 'Rewrites vague prompts into clear, specific ones.', group: 'chat' }),
+
 	// --- Tools ---
 	[ToolTemplateId.LocalSearch]: meta('tools', 'local-search'),
 	[ToolTemplateId.SearchByDimensions]: meta('tools', 'search-by-dimensions'),

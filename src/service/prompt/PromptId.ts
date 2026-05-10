@@ -134,6 +134,9 @@ export enum PromptId {
 
 	// Structural analysis
 	GapExplanation = 'gap-explanation',
+
+	// Prompt enhancement
+	PromptEnhance = 'prompt-enhance',
 }
 
 /**
@@ -518,6 +521,10 @@ export interface PromptVariables {
 		communityBLabel: string;
 		gapScore: number;
 		potentialBridges: Array<{ sourceLabel: string; targetLabel: string; similarity: number }>;
+	};
+
+	[PromptId.PromptEnhance]: {
+		userPrompt: string;
 	};
 }
 
