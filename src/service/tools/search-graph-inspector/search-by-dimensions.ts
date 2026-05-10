@@ -1,3 +1,4 @@
+import { z } from "zod/v3";
 import { GraphNodeType } from '@/core/po/graph.po';
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
 import { BooleanExpressionParser } from "./boolean-expression-parser";
@@ -6,7 +7,11 @@ import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
-export async function searchByDimensions(params: any, templateManager?: TemplateManager) {
+import { searchByDimensionsInputSchema } from "@/core/schemas/tools/searchGraphInspector";
+
+type SearchByDimensionsParams = z.infer<typeof searchByDimensionsInputSchema> & { mode: string };
+
+export async function searchByDimensions(params: SearchByDimensionsParams, templateManager?: TemplateManager) {
     const { boolean_expression, semantic_filter, filters, sorter, limit, response_format } = params;
     const expr = typeof boolean_expression === 'string' ? boolean_expression.trim() : '';
     if (!expr) {

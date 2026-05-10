@@ -1,3 +1,4 @@
+import { z } from "zod/v3";
 import { isIndexedNoteNodeType } from '@/core/po/graph.po';
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
@@ -6,9 +7,12 @@ import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { ORPHAN_FETCH_LIMIT } from "@/core/constant";
+import { findOrphansInputSchema } from "@/core/schemas/tools/searchGraphInspector";
+
+type FindOrphansParams = z.infer<typeof findOrphansInputSchema> & { mode: string };
 // Define types for orphan analysis
 type OrphanNode = GraphNode & { orphanType: string; }
-export async function findOrphanNotes(params: any, templateManager?: TemplateManager) {
+export async function findOrphanNotes(params: FindOrphansParams, templateManager?: TemplateManager) {
     const { filters, sorter, limit, response_format } = params;
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
     const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();

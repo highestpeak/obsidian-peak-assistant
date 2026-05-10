@@ -1,3 +1,4 @@
+import { z } from "zod/v3";
 import { GRAPH_TAGGED_EDGE_TYPES } from '@/core/po/graph.po';
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
@@ -6,6 +7,9 @@ import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { emptyMap } from "@/core/utils/collection-utils";
+import { findKeyNodesInputSchema } from "@/core/schemas/tools/searchGraphInspector";
+
+type FindKeyNodesParams = z.infer<typeof findKeyNodesInputSchema> & { mode: string };
 /**
  * Get unique categories connected to each node to detect bridge nodes
  */
@@ -24,7 +28,7 @@ async function getNodeCategoryConnections(nodeIds: string[]): Promise<Map<string
     return categoryCountMap;
 }
 
-export async function findKeyNodes(params: any, templateManager?: TemplateManager) {
+export async function findKeyNodes(params: FindKeyNodesParams, templateManager?: TemplateManager) {
     const { limit, semantic_filter, response_format, filters, sorter } = params;
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
     const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();

@@ -42,7 +42,12 @@ export type IterFile = {
  * Explore folder by vault structure only (no DB filter). Keeps full directory hierarchy;
  * per-folder we show first N items by recent mtime and summarize the rest by extension.
  */
-export async function exploreFolder(params: any, templateManager?: TemplateManager) {
+import { z } from "zod/v3";
+import { exploreFolderInputSchema } from "@/core/schemas/tools/searchGraphInspector";
+
+type ExploreFolderParams = z.infer<typeof exploreFolderInputSchema> & { mode: string };
+
+export async function exploreFolder(params: ExploreFolderParams, templateManager?: TemplateManager) {
     const { folderPath, recursive, max_depth, limit, response_format } = params;
     const perFolderLimit = Math.max(1, Number(limit) ?? EXPLORE_FOLDER_DEFAULT_LIMIT);
 
