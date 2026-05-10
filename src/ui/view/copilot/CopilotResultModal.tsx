@@ -22,7 +22,7 @@ interface CopilotResultModalProps {
 type ModalPhase =
 	| { phase: 'loading'; startTime: number }
 	| { phase: 'streaming'; steps: V2ToolStep[]; progressText: string; startTime: number }
-	| { phase: 'result'; data: any; usage?: ActionUsage }
+	| { phase: 'result'; data: any; usage?: ActionUsage; completedSteps?: V2ToolStep[] }
 	| { phase: 'cancelled' }
 	| { phase: 'error'; error: Error };
 
@@ -309,9 +309,18 @@ const CopilotResultContent: React.FC<{
 	return (
 		<div className="pktw-relative pktw-flex pktw-flex-col">
 			{backButton}
+			{phase.completedSteps && phase.completedSteps.length > 0 && (
+				<div className="pktw-px-4 pktw-pt-4">
+					<CopilotStepTimeline steps={phase.completedSteps} collapsed />
+				</div>
+			)}
 			<Panel
 				result={phase.data}
 				ctx={ctx}
+				file={ctx.file}
+				scope={ctx.scope}
+				originalContent={ctx.content}
+				selectedText={ctx.selection}
 				onClose={onClose}
 			/>
 			{phase.usage && <UsageFooter usage={phase.usage} />}
@@ -374,12 +383,19 @@ export class CopilotResultModal extends Modal {
 		(async () => {
 			try {
 				const generator = action.execute(ctx, signal);
+				let lastSteps: V2ToolStep[] = [];
 				const result = await consumeCopilotStream(generator, (p) => {
 					_currentSetPhase?.(p);
+					if (p.phase === 'streaming') lastSteps = p.steps;
 				}, startTime, signal);
 				if (signal.aborted) return;
 				if (result) {
-					this.setResult(result.data ?? result.text ?? result, result.usage);
+					_currentSetPhase?.({
+						phase: 'result',
+						data: result.data ?? result.text ?? result,
+						usage: result.usage,
+						completedSteps: lastSteps.length > 0 ? lastSteps : undefined,
+					});
 				}
 			} catch (err) {
 				if (signal.aborted) {
