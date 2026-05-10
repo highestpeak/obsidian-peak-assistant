@@ -1,9 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { Notice } from 'obsidian';
 import { motion } from 'framer-motion';
 import { FileText, List, Network, ChevronRight, Folder, Loader2 } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
+import { saveAiGraphToMarkdown } from '../callbacks/save-ai-analyze-to-md';
 import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
+import { AppContext } from '@/app/context/AppContext';
 import type { V2Source } from '../types/search-steps';
 import { useGraphAgent } from '../hooks/useGraphAgent';
 
@@ -29,6 +32,32 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
         await leaf.setViewState({ type: GRAPH_FULLSCREEN_VIEW_TYPE, active: true });
     }, []);
 
+    const handleSaveToVault = useCallback(async () => {
+        if (!graphData) {
+            new Notice('No graph data to save');
+            return;
+        }
+        try {
+            const ctx = AppContext.getInstance();
+            const saveFolder = ctx.settings.search?.aiAnalysisAutoSaveFolder?.trim() || 'AI-Analysis';
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const querySlug = (searchQuery || 'graph').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 40);
+            const fileName = `Graph-${querySlug}-${timestamp}`;
+            const summary = `${graphData.nodes.length} nodes, ${graphData.edges.length} edges`;
+            const { path } = await saveAiGraphToMarkdown({
+                folderPath: saveFolder,
+                fileName,
+                query: searchQuery || '',
+                summary,
+                graphData,
+                lensHint: 'topology',
+            });
+            new Notice(`Graph saved: ${path}`);
+        } catch (e) {
+            new Notice(`Failed to save graph: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    }, [graphData, searchQuery]);
+
     return (
         <div className="pktw-h-[500px] pktw-w-full pktw-border pktw-border-[--background-modifier-border] pktw-rounded-lg pktw-overflow-hidden">
             <MultiLensGraph
@@ -41,12 +70,13 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
                 loadingSteps={steps}
                 onRequestGenerate={start}
                 onExpand={handleExpand}
+                onSaveToVault={handleSaveToVault}
             />
         </div>
     );
 };
 
-function SourceItem({ source, onClick }: { source: V2Source; onClick: () => void }) {
+function SourceItem({ source, onClick }: { source: V2Source; onClick: (e: React.MouseEvent) => void }) {
     const refCount = useSearchSessionStore(s =>
         s.v2PlanSections.filter(sec => sec.evidencePaths?.includes(source.path)).length
     );
@@ -79,7 +109,9 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
     const viewMode = storeViewMode as SourceViewMode;
     const setViewMode = useCallback((m: SourceViewMode) => { if (m === 'list' || m === 'graph') setStoreViewMode(m); }, [setStoreViewMode]);
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-    const handleOpen = useMemo(() => createOpenSourceCallback(onClose), [onClose]);
+    const handleOpen = useCallback((pathOrResult: string, newTab?: boolean) => {
+        createOpenSourceCallback(onClose, newTab ?? true)(pathOrResult);
+    }, [onClose]);
 
     const toggleGroup = (prefix: string) => {
         setCollapsedGroups(prev => {
@@ -163,7 +195,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
                             {!collapsedGroups.has(prefix) && (
                                 <div className="pktw-ml-5 pktw-space-y-0.5">
                                     {items.map(src => (
-                                        <SourceItem key={src.path} source={src} onClick={() => handleOpen(src.path)} />
+                                        <SourceItem key={src.path} source={src} onClick={(e) => handleOpen(src.path, e.metaKey || e.ctrlKey)} />
                                     ))}
                                 </div>
                             )}
@@ -174,7 +206,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 
             {/* Graph view */}
             {viewMode === 'graph' && (
-                <SourcesGraph sources={sources} onOpen={handleOpen} />
+                <SourcesGraph sources={sources} onOpen={(path) => handleOpen(path)} />
             )}
         </motion.div>
     );
