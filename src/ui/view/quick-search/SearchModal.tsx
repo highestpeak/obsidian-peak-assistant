@@ -591,6 +591,31 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 				</div>
 			</div>
 
+			{/* Mode picker row */}
+			<div className="pktw-flex-shrink-0 pktw-px-3 pktw-py-1.5 pktw-bg-pk-background pktw-border-b pktw-border-pk-border pktw-flex pktw-items-center pktw-gap-1">
+				{(['vault', 'inFolder', 'inFile', 'goToLine'] as const).map((mode) => {
+					const labels: Record<string, string> = { vault: 'All', inFolder: 'Folder', inFile: 'Heading', goToLine: 'Line' };
+					const isActive = displayMode === mode;
+					return (
+						<Button
+							key={mode}
+							variant="ghost"
+							size="sm"
+							style={{ cursor: 'pointer' }}
+							onClick={() => setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, mode))}
+							className={cn(
+								'pktw-shadow-none pktw-h-6 pktw-px-2.5 pktw-text-[11px] pktw-font-medium pktw-rounded-full pktw-transition-colors',
+								isActive
+									? 'pktw-bg-pk-accent/10 pktw-text-pk-accent pktw-border pktw-border-pk-accent/25'
+									: 'pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground hover:pktw-bg-pk-background-hover',
+							)}
+						>
+							{labels[mode]}
+						</Button>
+					);
+				})}
+			</div>
+
 			{/* Content area — side-by-side results + inspector */}
 			<div className="pktw-flex-1 pktw-min-h-0 pktw-flex">
 				{/* Results panel — always visible */}
