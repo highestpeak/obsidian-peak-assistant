@@ -47,6 +47,10 @@ export const MOBIUS_MAINTENANCE_STATE_KEYS = {
 	dirtyScore: 'mobius_maintenance_dirty_score',
 	needed: 'mobius_maintenance_needed',
 	lastFullAt: 'mobius_maintenance_last_full_at',
+	// Cascade tracking
+	cascadePendingCount: 'cascade_pending_count',
+	lastCascadeAt: 'last_cascade_at',
+	cascadeTotalProcessed: 'cascade_total_processed',
 } as const;
 
 /** Debt points added per successful indexed document upsert. */
@@ -92,6 +96,10 @@ export const CASCADE_DEBT_SEMANTIC_EDGE_PRIORITY = 1;
 export const CASCADE_DEBT_DEGREE_REFRESH_PRIORITY = 2;
 export const CASCADE_DEBT_MERMAID_OVERLAY_PRIORITY = 3;
 export const CASCADE_DEBT_FOLDER_STATS_PRIORITY = 4;
+/** Priority for hub_invalidate debt items (must run after degree_refresh). */
+export const CASCADE_DEBT_HUB_INVALIDATE_PRIORITY = 3;
+/** Priority for hub_regen debt items (lowest; runs last in window). */
+export const CASCADE_DEBT_HUB_REGEN_PRIORITY = 5;
 
 /**
  * YAML frontmatter keys used when resolving document timestamps during indexing.

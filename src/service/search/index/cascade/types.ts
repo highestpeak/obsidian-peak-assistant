@@ -3,6 +3,7 @@ export type CascadeDebtType =
     | 'degree_refresh'
     | 'mermaid_overlay'
     | 'hub_invalidate'
+    | 'hub_regen'
     | 'folder_stats';
 
 export interface CascadeDebtRecord {
