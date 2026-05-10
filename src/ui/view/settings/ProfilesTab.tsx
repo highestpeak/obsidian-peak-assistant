@@ -12,6 +12,7 @@ import type { SettingsUpdates } from './hooks/useSettingsUpdate';
 import { StatusBar } from './components/StatusBar';
 import { ProfileCard } from './components/ProfileCard';
 import { AddProfileGrid } from './components/AddProfileGrid';
+import { CustomEndpointSection } from './components/CustomEndpointSection';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 
@@ -148,6 +149,12 @@ export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
                     Add Profile
                 </Button>
             )}
+
+            {/* Custom Endpoints */}
+            <CustomEndpointSection
+                endpoints={registry.getCustomEndpoints()}
+                onUpdate={bump}
+            />
 
             {/* Advanced section */}
             <div className="pktw-border pktw-border-pk-border pktw-rounded-lg pktw-overflow-hidden">

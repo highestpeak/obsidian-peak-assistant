@@ -1,0 +1,15 @@
+{
+  "defaultCapabilities": {
+    "vision": false,
+    "pdfInput": false,
+    "tools": false,
+    "webSearch": false,
+    "reasoning": false
+  },
+  "defaultTokenLimits": {
+    "maxTokens": 4096,
+    "maxInputTokens": 4096,
+    "maxOutputTokens": 2048,
+    "recommendedSummaryThreshold": 3200
+  }
+}

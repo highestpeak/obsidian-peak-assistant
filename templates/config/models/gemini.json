@@ -1,0 +1,166 @@
+{
+  "provider": "gemini",
+  "models": {
+    "gemini-2.5-pro": {
+      "apiModelId": "gemini-2.5-pro",
+      "icon": "gemini",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 2097152,
+        "maxInputTokens": 2097152,
+        "recommendedSummaryThreshold": 1600000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": true,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 2097152
+      }
+    },
+    "gemini-2.5-flash": {
+      "apiModelId": "gemini-2.5-flash",
+      "icon": "gemini",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 1048576,
+        "maxInputTokens": 1048576,
+        "recommendedSummaryThreshold": 800000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": true,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 1048576
+      }
+    },
+    "gemini-2.0-flash": {
+      "apiModelId": "gemini-2.0-flash-001",
+      "icon": "gemini",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 1048576,
+        "maxInputTokens": 1048576,
+        "recommendedSummaryThreshold": 800000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": true,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 1048576
+      }
+    },
+    "gemini-2.0-flash-lite": {
+      "apiModelId": "gemini-2.0-flash-lite-001",
+      "icon": "gemini",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 1048576,
+        "maxInputTokens": 1048576,
+        "recommendedSummaryThreshold": 800000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": true,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 1048576
+      }
+    },
+    "gemini-2.0-flash-thinking": {
+      "apiModelId": "gemini-2.0-flash-thinking-exp-01-21",
+      "icon": "gemini",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 1171712,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 65536,
+        "recommendedSummaryThreshold": 800000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": true,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": true,
+        "maxCtx": 1048576
+      }
+    },
+    "gemini-1.5-pro": {
+      "apiModelId": "gemini-1.5-pro-002",
+      "icon": "gemini",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 2097152,
+        "maxInputTokens": 2097152,
+        "recommendedSummaryThreshold": 1600000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": true,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 2097152
+      }
+    },
+    "gemini-1.5-flash": {
+      "apiModelId": "gemini-1.5-flash-002",
+      "icon": "gemini",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 1048576,
+        "maxInputTokens": 1048576,
+        "recommendedSummaryThreshold": 800000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": true,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 1048576
+      }
+    },
+    "gemini-1.5-flash-8b": {
+      "apiModelId": "gemini-1.5-flash-8b-001",
+      "icon": "gemini",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 1048576,
+        "maxInputTokens": 1048576,
+        "recommendedSummaryThreshold": 800000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": true,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 1048576
+      }
+    }
+  }
+}

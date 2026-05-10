@@ -56,6 +56,9 @@ import { serendipityGutterExtension } from '@/service/ambient/SerendipityGutterP
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
+import { ModelRegistry } from '@/core/providers/model-registry';
+import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
+import { MCPClientManager } from '@/service/mcp/MCPClientManager';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -133,6 +136,19 @@ export default class MyPlugin extends Plugin {
 					e,
 				);
 			}
+
+			// Load per-provider model registry JSON files (overrides bundled catalog data)
+			try {
+				await ModelRegistry.loadFromTemplateManager(this.templateManager, [
+					ConfigTemplateId.ModelsOpenAI,
+					ConfigTemplateId.ModelsClaude,
+					ConfigTemplateId.ModelsGemini,
+					ConfigTemplateId.ModelsPerplexity,
+					ConfigTemplateId.ModelsOllamaFamilies,
+				]);
+			} catch (e) {
+				console.warn('[Peak Assistant] Failed to load model registry templates; using bundled catalog.', e);
+			}
 		}
 
 		// Create AIServiceManager (ConversationService and ProjectService will be initialized in init())
@@ -202,6 +218,16 @@ export default class MyPlugin extends Plugin {
 
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
+
+		// Connect enabled MCP servers (non-blocking)
+		const mcpConfigs = this.settings.mcpServers ?? [];
+		for (const config of mcpConfigs) {
+			if (config.enabled) {
+				MCPClientManager.getInstance().connect(config).catch(e => {
+					console.warn(`[Peak Assistant] Failed to connect MCP server "${config.name}":`, e);
+				});
+			}
+		}
 
 		// Ambient Push — proactive related-note suggestions
 		const ambientPushSettings = this.settings.ambientPush;
@@ -361,6 +387,9 @@ export default class MyPlugin extends Plugin {
 		this.ambientStoreUnsub?.();
 		this.ambientStoreUnsub = null;
 		AmbientPushService.getInstance().dispose();
+
+		// Disconnect MCP servers
+		MCPClientManager.getInstance().dispose().catch(() => { /* ignore */ });
 
 		clearPendingConversationTimeouts();
 		this.viewManager?.unload();

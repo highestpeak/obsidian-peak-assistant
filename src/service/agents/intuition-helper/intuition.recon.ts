@@ -34,7 +34,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
-import { agentToolsToMcpServer, mcpToolNames } from '@/service/agents/core/agentToolMcpAdapter';
+import { agentToolsToMcpServer, mcpToolNames, mergeExternalMcpTools } from '@/service/agents/core/agentToolMcpAdapter';
 
 export type IntuitionReconCompleteCallback = (memory: IntuitionMemory) => void;
 
@@ -108,8 +108,9 @@ export async function* runKnowledgeIntuitionLoop(options: {
 	];
 
 	// Build MCP server and tool names once (tools don't change across iterations)
-	const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, tools);
-	const allowedTools = mcpToolNames(MCP_SERVER_NAME, tools);
+	const allTools = mergeExternalMcpTools(tools);
+	const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, allTools);
+	const allowedTools = mcpToolNames(MCP_SERVER_NAME, allTools);
 
 	// Get app + profile for SDK calls
 	const appCtx = AppContext.getInstance();

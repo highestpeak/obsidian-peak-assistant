@@ -243,6 +243,75 @@ export class ModelRegistry {
 		}
 	}
 
+	/**
+	 * Merge runtime-loaded provider data (from TemplateManager JSON) into the registry.
+	 * Overrides bundled catalog entries for matching providers; adds new providers.
+	 * Called during plugin init after TemplateManager loads.
+	 */
+	public mergeProviderData(providerJson: {
+		provider: string;
+		models: Record<string, any>;
+	}): void {
+		const providerId = normalizeProviderId(providerJson.provider);
+
+		const models: InternalModelEntry[] = Object.entries(providerJson.models).map(
+			([id, model]: [string, any]) => ({
+				...model,
+				id,
+				displayName: model.displayName ?? id,
+				modelType: resolveModelType(model.modelType),
+				normalizedId: normalizeModelKey(id),
+				normalizedApiModelId: model.apiModelId
+					? normalizeModelKey(model.apiModelId.trim())
+					: undefined,
+				costInput: model.pricing?.input ?? model.costInput,
+				costOutput: model.pricing?.output ?? model.costOutput,
+			})
+		);
+
+		const modelById = new Map<string, InternalModelEntry>();
+		const modelByApiModelId = new Map<string, InternalModelEntry>();
+		for (const model of models) {
+			modelById.set(model.normalizedId, model);
+			if (model.normalizedApiModelId) {
+				modelByApiModelId.set(model.normalizedApiModelId, model);
+			}
+		}
+
+		const existing = this.providers.get(providerId);
+		this.providers.set(providerId, {
+			id: providerJson.provider,
+			name: existing?.name ?? providerJson.provider,
+			defaultBaseUrl: existing?.defaultBaseUrl ?? '',
+			icon: existing?.icon,
+			models,
+			modelById,
+			modelByApiModelId,
+		});
+	}
+
+	/**
+	 * Load per-provider JSON files from TemplateManager and merge into registry.
+	 * Called once during plugin bootstrap, after TemplateManager is ready.
+	 * Non-blocking: failures fall through to bundled catalog data.
+	 */
+	public static async loadFromTemplateManager(
+		templateManager: { loadJson: <T>(id: string) => Promise<T> },
+		templateIds: string[],
+	): Promise<void> {
+		const registry = ModelRegistry.getInstance();
+		for (const templateId of templateIds) {
+			try {
+				const data = await templateManager.loadJson<{ provider?: string; models?: Record<string, any> }>(templateId);
+				if (data?.provider && data?.models) {
+					registry.mergeProviderData(data as { provider: string; models: Record<string, any> });
+				}
+			} catch (e) {
+				console.warn(`[ModelRegistry] Failed to load template ${templateId}, using bundled fallback`, e);
+			}
+		}
+	}
+
 	private findModel(providerId: string, modelId: string): InternalModelEntry | undefined {
 		const provider = this.providers.get(normalizeProviderId(providerId));
 		if (!provider) return undefined;

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProviderModelRegistry",
+  "description": "Model definitions for a single AI provider. Loaded at runtime via TemplateManager.",
+  "type": "object",
+  "required": ["provider", "models"],
+  "properties": {
+    "provider": { "type": "string", "description": "Provider identifier (e.g. 'openai', 'claude')" },
+    "models": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "apiModelId": { "type": "string", "description": "Wire-format model ID sent to API" },
+          "displayName": { "type": "string" },
+          "icon": { "type": "string" },
+          "modelType": { "enum": ["llm", "embedding", "image"] },
+          "pricing": {
+            "type": "object",
+            "properties": {
+              "input": { "type": "string", "description": "USD per 1M tokens" },
+              "output": { "type": "string" },
+              "cachedInput": { "type": "string" }
+            }
+          },
+          "tokenLimits": {
+            "type": "object",
+            "properties": {
+              "maxTokens": { "type": "integer" },
+              "maxInputTokens": { "type": "integer" },
+              "maxOutputTokens": { "type": "integer" },
+              "recommendedSummaryThreshold": { "type": "integer" }
+            }
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "vision": { "type": "boolean" },
+              "pdfInput": { "type": "boolean" },
+              "tools": { "type": "boolean" },
+              "webSearch": { "type": "boolean" },
+              "reasoning": { "type": "boolean" },
+              "maxCtx": { "type": "integer" }
+            }
+          },
+          "releaseDate": { "type": "string", "format": "date" }
+        }
+      }
+    }
+  }
+}
