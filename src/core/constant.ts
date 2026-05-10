@@ -181,6 +181,9 @@ export const INDEX_SEARCH_HUB_INCOMING_BOOST = 0.08;
 /** Hybrid rerank: boost when incoming is secondary band (below hub, above none). */
 export const INDEX_SEARCH_SECONDARY_INCOMING_BOOST = 0.04;
 
+/** Additive score boost applied when a search result is a hub_doc type (compiled knowledge summary). */
+export const INDEX_SEARCH_HUB_DOC_TYPE_BOOST = 0.12;
+
 /** Incoming/outgoing degree bands for hybrid rerank anchor boosts. */
 export const INDEX_HUB_TIER_THRESHOLDS = {
 	hubIncomingMin: 5,
