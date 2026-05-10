@@ -112,7 +112,7 @@ const SectionBlock: React.FC<{
 				{/* Status indicator */}
 				{section.status === 'done' && <CheckCircle className="pktw-w-4 pktw-h-4 pktw-text-green-500 pktw-shrink-0" />}
 				{section.status === 'generating' && <Loader2 className="pktw-w-4 pktw-h-4 pktw-text-pk-accent pktw-animate-spin pktw-shrink-0" />}
-				{section.status === 'pending' && <Clock className="pktw-w-4 pktw-h-4 pktw-text-[#d1d5db] pktw-shrink-0" />}
+				{section.status === 'pending' && <Clock className="pktw-w-4 pktw-h-4 pktw-text-pk-border-light pktw-shrink-0" />}
 				<span className="pktw-text-sm pktw-font-semibold pktw-text-pk-foreground pktw-flex-1 pktw-line-clamp-2" title={section.title}>
 					{section.title}
 				</span>
@@ -134,14 +134,14 @@ const SectionBlock: React.FC<{
 				}`}>
 					<div
 						onClick={handleCopy}
-						className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-transition-colors"
+						className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-pk-highlight pktw-transition-colors"
 						title="Copy section"
 					>
 						{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />}
 					</div>
 					<div
 						onClick={handleRegenerate}
-						className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-transition-colors"
+						className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-pk-highlight pktw-transition-colors"
 						title="Regenerate section"
 					>
 						<RefreshCw className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
@@ -164,12 +164,12 @@ const SectionBlock: React.FC<{
 								onChange={(e) => setPrompt(e.target.value)}
 								onKeyDown={(e) => { if (e.key === 'Enter') handleRegenerate(); }}
 								placeholder="Describe what to change..."
-								className="pktw-flex-1 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-border pktw-border-pk-border pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-[#7c3aed]/50"
+								className="pktw-flex-1 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-border pktw-border-pk-border pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-pk-accent/50"
 								autoFocus
 							/>
 							<div
 								onClick={() => { onRegenerate?.(section.id, prompt.trim() || undefined); setPrompt(''); setShowPrompt(false); }}
-								className="pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-white pktw-bg-pk-accent pktw-rounded-lg pktw-cursor-pointer hover:pktw-bg-[#6d28d9]"
+								className="pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-pk-text-inverted pktw-bg-pk-accent pktw-rounded-lg pktw-cursor-pointer hover:pktw-bg-pk-accent-hover"
 							>
 								Regenerate
 							</div>
@@ -181,12 +181,12 @@ const SectionBlock: React.FC<{
 			{/* Skeleton when generating but no content yet */}
 			{section.status === 'generating' && !content && (
 				<div className="pktw-space-y-3 pktw-animate-pulse">
-					<div className="pktw-h-3 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-full" />
-					<div className="pktw-h-3 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-5/6" />
-					<div className="pktw-h-3 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-4/6" />
-					<div className="pktw-h-8 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-full pktw-mt-2" />
-					<div className="pktw-h-3 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-full" />
-					<div className="pktw-h-3 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-3/4" />
+					<div className="pktw-h-3 pktw-bg-pk-skeleton pktw-rounded pktw-w-full" />
+					<div className="pktw-h-3 pktw-bg-pk-skeleton pktw-rounded pktw-w-5/6" />
+					<div className="pktw-h-3 pktw-bg-pk-skeleton pktw-rounded pktw-w-4/6" />
+					<div className="pktw-h-8 pktw-bg-pk-skeleton pktw-rounded pktw-w-full pktw-mt-2" />
+					<div className="pktw-h-3 pktw-bg-pk-skeleton pktw-rounded pktw-w-full" />
+					<div className="pktw-h-3 pktw-bg-pk-skeleton pktw-rounded pktw-w-3/4" />
 				</div>
 			)}
 
@@ -257,7 +257,7 @@ const CollapsibleSummary: React.FC<{ summary: string; summaryStreaming: boolean 
 			>
 				<ChevronRight className={`pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted pktw-transition-transform ${expanded ? 'pktw-rotate-90' : ''}`} />
 				<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
-				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Executive Summary</span>
+				<span className="pktw-text-sm pktw-font-semibold pktw-text-pk-text-primary">Executive Summary</span>
 				{summaryStreaming && <Loader2 className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent pktw-animate-spin" />}
 			</div>
 			{expanded && (
@@ -316,7 +316,7 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 			{/* Back to Process button — visible when coming from a round's Report link */}
 			{rounds.length > 0 && (
 				<div
-					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2 pktw-py-1.5 pktw-mb-2 pktw-text-xs pktw-text-pk-accent pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-w-fit pktw-transition-colors"
+					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2 pktw-py-1.5 pktw-mb-2 pktw-text-xs pktw-text-pk-accent pktw-cursor-pointer hover:pktw-bg-pk-highlight pktw-rounded-lg pktw-w-fit pktw-transition-colors"
 					onClick={() => useSearchSessionStore.getState().setV2View('process')}
 				>
 					<ArrowLeft className="pktw-w-3.5 pktw-h-3.5" />
@@ -379,7 +379,7 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 							{progress.pct}%
 						</span>
 					</div>
-					<div className="pktw-h-1.5 pktw-bg-[#e5e7eb] pktw-rounded-full pktw-overflow-hidden">
+					<div className="pktw-h-1.5 pktw-bg-pk-skeleton pktw-rounded-full pktw-overflow-hidden">
 						<motion.div
 							className="pktw-h-full pktw-bg-pk-accent pktw-rounded-full"
 							initial={{ width: 0 }}

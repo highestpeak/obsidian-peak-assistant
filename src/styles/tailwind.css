@@ -11,6 +11,55 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+/* ═══════════════════════════════════════════════════════════
+   Style Isolation Reset — scoped to .pktw-root
+   Prevents Obsidian global styles from leaking into plugin UI
+   and ensures plugin styles don't bleed into Obsidian.
+   ═══════════════════════════════════════════════════════════ */
+.pktw-root {
+	/* Reset inherited styles from Obsidian that interfere */
+	line-height: 1.5;
+	font-family: var(--font-interface, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	color: var(--pk-fg, var(--text-normal));
+	box-sizing: border-box;
+}
+
+.pktw-root *,
+.pktw-root *::before,
+.pktw-root *::after {
+	box-sizing: border-box;
+}
+
+/* Neutralize Obsidian's global element styles within plugin root */
+.pktw-root input,
+.pktw-root textarea,
+.pktw-root select,
+.pktw-root button {
+	font-family: inherit;
+	font-size: inherit;
+	line-height: inherit;
+	color: inherit;
+}
+
+.pktw-root input:not([type]),
+.pktw-root input[type="text"],
+.pktw-root input[type="search"],
+.pktw-root input[type="number"],
+.pktw-root textarea {
+	background-color: var(--pk-surface, var(--background-primary));
+	border: 1px solid var(--pk-border, var(--background-modifier-border));
+	border-radius: 0.375rem;
+	padding: 0.5rem 0.75rem;
+}
+
+/* Prevent Obsidian link styles from leaking */
+.pktw-root a {
+	color: inherit;
+	text-decoration: none;
+}
+
 /* CodeMirror styles */
 @import "./codemirror.css";
 

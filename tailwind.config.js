@@ -11,42 +11,42 @@ module.exports = {
 		extend: {
 			colors: {
 				// Background colors
-				background: 'var(--background-primary)',
-				card: '#ffffff',
-				popover: 'var(--pk-popover, #ffffff)',
+				background: 'var(--pk-bg, var(--background-primary))',
+				card: 'var(--pk-surface)',
+				popover: 'var(--pk-popover)',
 				// Text colors
-				foreground: '#8C8C8C',
+				foreground: 'var(--pk-fg-muted, #8C8C8C)',
 				// Primary colors
 				primary: {
-					DEFAULT: '#3b82f6',
-					foreground: '#ffffff',
+					DEFAULT: 'var(--pk-info)',
+					foreground: 'var(--pk-text-inverted)',
 				},
 				// Secondary colors
 				secondary: {
-					DEFAULT: '#f3f4f6',
-					foreground: '#1a1a1a',
+					DEFAULT: 'var(--pk-surface-sunken)',
+					foreground: 'var(--pk-text-primary)',
 				},
 				// Muted colors
 				muted: {
-					DEFAULT: '#f3f4f6',
-					foreground: '#8C8C8C',
+					DEFAULT: 'var(--pk-surface-sunken)',
+					foreground: 'var(--pk-text-secondary)',
 				},
 				// Accent colors
 				accent: {
-					DEFAULT: '#3b82f6',
-					foreground: '#ffffff',
+					DEFAULT: 'var(--pk-accent)',
+					foreground: 'var(--pk-accent-fg)',
 				},
 				// Destructive colors
 				destructive: {
-					DEFAULT: '#ef4444',
-					foreground: '#ffffff',
+					DEFAULT: 'var(--pk-error)',
+					foreground: 'var(--pk-text-inverted)',
 				},
 				// Border colors
-				border: 'rgba(128, 128, 128, 0.15)',
-				'border-default': '#666666',
-				'border-hover': '#3b82f6',
-				input: 'rgba(128, 128, 128, 0.2)',
-				ring: '#3b82f6',
+				border: 'var(--pk-border, rgba(128, 128, 128, 0.15))',
+				'border-default': 'var(--pk-text-secondary)',
+				'border-hover': 'var(--pk-info)',
+				input: 'var(--pk-border, rgba(128, 128, 128, 0.2))',
+				ring: 'var(--pk-info)',
 
 				// ── Peak CSS variable colors (Obsidian-aware + dark-mode-safe) ──
 				// Structural (Obsidian-aware)
@@ -70,6 +70,30 @@ module.exports = {
 				'pk-warning': { DEFAULT: 'var(--pk-warning)', muted: 'var(--pk-warning-muted)' },
 				'pk-error': { DEFAULT: 'var(--pk-error)', muted: 'var(--pk-error-muted)' },
 				'pk-info': { DEFAULT: 'var(--pk-info)', muted: 'var(--pk-info-muted)' },
+
+				// Surfaces (theme-aware opaque backgrounds)
+				'pk-surface': 'var(--pk-surface)',
+				'pk-surface-raised': 'var(--pk-surface-raised)',
+				'pk-surface-sunken': 'var(--pk-surface-sunken)',
+				'pk-surface-overlay': 'var(--pk-surface-overlay)',
+
+				// Text (theme-aware opaque text colors)
+				'pk-text-primary': 'var(--pk-text-primary)',
+				'pk-text-secondary': 'var(--pk-text-secondary)',
+				'pk-text-tertiary': 'var(--pk-text-tertiary)',
+				'pk-text-inverted': 'var(--pk-text-inverted)',
+
+				// Border extras
+				'pk-border-light': 'var(--pk-border-light)',
+				'pk-border-accent': 'var(--pk-border-accent)',
+
+				// Skeleton / placeholder
+				'pk-skeleton': 'var(--pk-skeleton)',
+
+				// Interaction highlights
+				'pk-highlight': 'var(--pk-highlight)',
+				'pk-highlight-info': 'var(--pk-highlight-info)',
+				'pk-highlight-info-border': 'var(--pk-highlight-info-border)',
 			},
 			borderRadius: {
 				lg: '0.5rem', // 8px

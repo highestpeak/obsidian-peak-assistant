@@ -83,7 +83,7 @@ export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, 
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     onClick={() => setCollapsed(false)}
-                    className="pktw-w-9 pktw-h-9 pktw-rounded-full pktw-bg-pk-accent pktw-shadow-lg pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer pktw-text-white hover:pktw-bg-[#6d28d9] pktw-transition-all"
+                    className="pktw-w-9 pktw-h-9 pktw-rounded-full pktw-bg-pk-accent pktw-shadow-lg pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer pktw-text-pk-text-inverted hover:pktw-bg-pk-accent-hover pktw-transition-all"
                     title="Table of Contents"
                 >
                     <List className="pktw-w-4 pktw-h-4" />
@@ -107,7 +107,7 @@ export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, 
                             onClick={() => setCollapsed(true)}
                         >
                             <List className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
-                            <span className="pktw-text-xs pktw-font-semibold pktw-text-[#2e3338] pktw-flex-1">
+                            <span className="pktw-text-xs pktw-font-semibold pktw-text-pk-text-primary pktw-flex-1">
                                 Table of Contents
                             </span>
                             <ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
@@ -120,7 +120,7 @@ export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, 
                                     key={i}
                                     className={`pktw-text-xs pktw-py-1 pktw-px-2 pktw-rounded pktw-cursor-pointer pktw-truncate pktw-transition-colors ${
                                         heading.level === 3 ? 'pktw-pl-6' : 'pktw-font-medium'
-                                    } pktw-text-pk-foreground-muted hover:pktw-text-pk-accent hover:pktw-bg-[#f5f3ff]`}
+                                    } pktw-text-pk-foreground-muted hover:pktw-text-pk-accent hover:pktw-bg-pk-highlight`}
                                     title={heading.text}
                                     onClick={() => handleClick(heading)}
                                 >

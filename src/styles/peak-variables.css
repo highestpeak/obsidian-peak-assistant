@@ -29,6 +29,30 @@
   --pk-error-muted: rgba(239, 68, 68, 0.12);
   --pk-info: #3b82f6;
   --pk-info-muted: rgba(59, 130, 246, 0.12);
+
+  /* ── Surface colors (for cards, modals, inputs) ── */
+  --pk-surface: #ffffff;
+  --pk-surface-raised: #fafafa;
+  --pk-surface-sunken: #f3f4f6;
+  --pk-surface-overlay: #ffffff;
+
+  /* ── Text colors (opaque, for use where Obsidian vars are unavailable) ── */
+  --pk-text-primary: #2e3338;
+  --pk-text-secondary: #6c757d;
+  --pk-text-tertiary: #999999;
+  --pk-text-inverted: #ffffff;
+
+  /* ── Border extras ── */
+  --pk-border-light: #d1d5db;
+  --pk-border-accent: rgba(124, 58, 237, 0.25);
+
+  /* ── Skeleton / placeholder loading ── */
+  --pk-skeleton: #e5e7eb;
+
+  /* ── Interaction state colors ── */
+  --pk-highlight: #f5f3ff;
+  --pk-highlight-info: #eff6ff;
+  --pk-highlight-info-border: #93c5fd;
 }
 
 /* ── Dark mode overrides ── */
@@ -47,4 +71,28 @@
   --pk-error-muted: rgba(248, 113, 113, 0.15);
   --pk-info: #60a5fa;
   --pk-info-muted: rgba(96, 165, 250, 0.15);
+
+  /* ── Surface colors ── */
+  --pk-surface: #1e1e2e;
+  --pk-surface-raised: #252535;
+  --pk-surface-sunken: #181825;
+  --pk-surface-overlay: #2a2a3c;
+
+  /* ── Text colors ── */
+  --pk-text-primary: #cdd6f4;
+  --pk-text-secondary: #a6adc8;
+  --pk-text-tertiary: #6c7086;
+  --pk-text-inverted: #1e1b2e;
+
+  /* ── Border extras ── */
+  --pk-border-light: #45475a;
+  --pk-border-accent: rgba(167, 139, 250, 0.3);
+
+  /* ── Skeleton / placeholder loading ── */
+  --pk-skeleton: #313244;
+
+  /* ── Interaction state colors ── */
+  --pk-highlight: #2a2640;
+  --pk-highlight-info: #1e293b;
+  --pk-highlight-info-border: #3b6fad;
 }

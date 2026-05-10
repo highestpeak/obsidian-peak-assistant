@@ -48,7 +48,7 @@ export const ModeHelpList: React.FC<ModeHelpListProps> = ({ onSelectMode, select
 						key={mode.name}
 						className={cn(
 							'pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-2.5 pktw-cursor-pointer pktw-relative pktw-transition-colors',
-							isSelected ? 'pktw-bg-[#f5f3ff]' : 'hover:pktw-bg-[#fafafa]'
+							isSelected ? 'pktw-bg-pk-highlight' : 'hover:pktw-bg-pk-surface-raised'
 						)}
 						onClick={() => onSelectMode(mode.prefix)}
 						onMouseEnter={() => onSelectIndex(i)}
@@ -60,18 +60,18 @@ export const ModeHelpList: React.FC<ModeHelpListProps> = ({ onSelectMode, select
 						{/* Icon */}
 						<div className={cn(
 							'pktw-flex pktw-items-center pktw-justify-center pktw-w-7 pktw-h-7 pktw-rounded-md pktw-flex-shrink-0',
-							isSelected ? 'pktw-bg-pk-accent' : 'pktw-bg-[#f0f0f0]'
+							isSelected ? 'pktw-bg-pk-accent' : 'pktw-bg-pk-surface-sunken'
 						)}>
 							<Icon className={cn(
 								'pktw-w-3.5 pktw-h-3.5',
-								isSelected ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted'
+								isSelected ? 'pktw-text-pk-text-inverted' : 'pktw-text-pk-foreground-muted'
 							)} />
 						</div>
 						{/* Text */}
 						<div className="pktw-flex pktw-flex-col pktw-flex-1 pktw-min-w-0">
 							<span className={cn(
 								'pktw-text-sm pktw-font-medium pktw-leading-tight',
-								isSelected ? 'pktw-text-pk-accent' : 'pktw-text-[#1f2937]'
+								isSelected ? 'pktw-text-pk-accent' : 'pktw-text-pk-text-primary'
 							)}>
 								{mode.name}
 							</span>
@@ -84,8 +84,8 @@ export const ModeHelpList: React.FC<ModeHelpListProps> = ({ onSelectMode, select
 							<span className={cn(
 								'pktw-flex-shrink-0 pktw-text-[11px] pktw-font-mono pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-border',
 								isSelected
-									? 'pktw-bg-[#ede9fe] pktw-text-pk-accent pktw-border-[#7c3aed]/30'
-									: 'pktw-bg-[#f9f9f9] pktw-text-pk-foreground-muted pktw-border-pk-border'
+									? 'pktw-bg-pk-accent-muted pktw-text-pk-accent pktw-border-pk-accent/30'
+									: 'pktw-bg-pk-surface-raised pktw-text-pk-foreground-muted pktw-border-pk-border'
 							)}>
 								{mode.prefix}
 							</span>
@@ -105,7 +105,7 @@ export const ModeHelpList: React.FC<ModeHelpListProps> = ({ onSelectMode, select
 					key={op.prefix}
 					className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-1.5"
 				>
-					<span className="pktw-flex-shrink-0 pktw-text-[11px] pktw-font-mono pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-border pktw-bg-[#f9f9f9] pktw-text-pk-foreground-muted pktw-border-pk-border">
+					<span className="pktw-flex-shrink-0 pktw-text-[11px] pktw-font-mono pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-border pktw-bg-pk-surface-raised pktw-text-pk-foreground-muted pktw-border-pk-border">
 						{op.prefix}
 					</span>
 					<span className="pktw-text-[11px] pktw-text-pk-foreground-muted">
