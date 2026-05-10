@@ -223,6 +223,15 @@ export default class MyPlugin extends Plugin {
 					statusBarEl.setText(count > 0 ? `\u26A1 ${count} related` : '\u26A1 \u2013');
 				});
 			}
+
+			// Auto-open the Related Notes panel in the right sidebar on first run
+			this.app.workspace.onLayoutReady(() => {
+				const { AMBIENT_PUSH_VIEW_TYPE } = require('@/ui/view/AmbientPushView');
+				const existing = this.app.workspace.getLeavesOfType(AMBIENT_PUSH_VIEW_TYPE);
+				if (existing.length === 0) {
+					void this.viewManager?.activateAmbientPushView();
+				}
+			});
 		}
 
 		// Auto-open onboarding wizard on first run (no profiles configured)
