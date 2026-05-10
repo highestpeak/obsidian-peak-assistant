@@ -24,6 +24,7 @@ import { QueryPatternRepo } from './repositories/QueryPatternRepo';
 import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcessedHashRepo';
 import { CascadeDebtRepo } from './repositories/CascadeDebtRepo';
 import { AmbientPushRepo } from './repositories/AmbientPushRepo';
+import { TagSuggestionRepo } from './repositories/TagSuggestionRepo';
 import { VaultLintRepo } from './repositories/VaultLintRepo';
 import { VAULT_DB_FILENAME, CHAT_DB_FILENAME } from '@/core/constant';
 
@@ -83,6 +84,7 @@ export class SqliteStoreManager {
 	private aiAnalysisRepo: AIAnalysisRepo | null = null;
 	private queryPatternRepo: QueryPatternRepo | null = null;
 	private cascadeDebtRepoChat: CascadeDebtRepo | null = null;
+	private tagSuggestionRepo: TagSuggestionRepo | null = null;
 
 	/** Asserts initialized and not closing, returns the repo or throws. */
 	private requireRepo<T>(repo: T | null): T {
@@ -249,6 +251,15 @@ export class SqliteStoreManager {
 	getAmbientPushRepo(): AmbientPushRepo { return this.requireRepo(this.ambientPushRepo); }
 	getVaultLintRepo(): VaultLintRepo { return this.requireRepo(this.vaultLintRepo); }
 
+	getTagSuggestionRepo(): TagSuggestionRepo {
+		if (this.closing) throw new Error('SqliteStoreManager is closing');
+		if (!this.metaStore) throw new Error('chat.sqlite not initialized');
+		if (!this.tagSuggestionRepo) {
+			this.tagSuggestionRepo = new TagSuggestionRepo(this.metaStore.kysely<DbSchema>());
+		}
+		return this.tagSuggestionRepo;
+	}
+
 	/** No-op for compatibility. better-sqlite3 persists to file automatically. */
 	save(): void {}
 
@@ -266,6 +277,7 @@ export class SqliteStoreManager {
 		this.indexedDocumentRepo = this.docChunkRepo = this.embeddingRepo = this.indexStateRepo = this.graphRepo = null;
 		this.mobiusNodeRepo = this.mobiusEdgeRepo = this.cascadeDebtRepo = this.ambientPushRepo = null;
 		this.vaultLintRepo = null;
+		this.tagSuggestionRepo = null;
 		this.userProfileProcessedHashRepo = null;
 		this.indexedDocumentRepoChat = this.docChunkRepoChat = this.embeddingRepoChat = this.indexStateRepoChat = this.graphRepoChat = null;
 		this.mobiusNodeRepoChat = this.mobiusEdgeRepoChat = this.mobiusOperationRepo = this.cascadeDebtRepoChat = null;
