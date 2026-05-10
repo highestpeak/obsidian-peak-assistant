@@ -212,13 +212,27 @@ export const PPR_EPSILON = 1e-6;
 export const PPR_MAX_PUSH_OPS = 50_000;
 export const PPR_MAX_MS = 200;
 export const PPR_SEED_K = 10;
-export const PPR_LAYER_WEIGHT_REFERENCE = 0.4;
-export const PPR_LAYER_WEIGHT_SEMANTIC = 0.5;
-export const PPR_LAYER_WEIGHT_TAG = 0.1;
+export const PPR_LAYER_WEIGHT_REFERENCE = 0.35;
+export const PPR_LAYER_WEIGHT_SEMANTIC = 0.40;
+export const PPR_LAYER_WEIGHT_TAG = 0.10;
 export const PPR_RRF_WEIGHT = 0.3;
 export const PPR_CM_RRF_WEIGHT = 0.7;
 export const PPR_GLOBAL_PR_DAMPENING = 0.3;
 export const PPR_MAX_EXPANSION_RESULTS = 20;
+
+// PPR query-node seeding
+/** Max FTS-matched nodes to add to seed distribution alongside top-K RRF results. */
+export const PPR_QUERY_NODE_SEED_K = 5;
+/**
+ * Fraction of the total seed weight budget allocated to query-node seeds.
+ * RRF seeds get (1 - PPR_QUERY_NODE_WEIGHT_FRACTION), query nodes get this fraction.
+ * Set to 0 to disable query-node seeding.
+ */
+export const PPR_QUERY_NODE_WEIGHT_FRACTION = 0.25;
+
+// PPR co-citation layer
+/** Layer weight for co-citation edges. Reference + Semantic + Tag + CoCitation must sum to 1.0. */
+export const PPR_LAYER_WEIGHT_COCITATION = 0.15;
 
 /**
  * Search scoring constants for keyword matching.
