@@ -1,6 +1,6 @@
 import React from 'react';
 import { MarkdownView } from 'obsidian';
-import { FileText, Link, ExternalLink, X } from 'lucide-react';
+import { FileText, Link, ExternalLink, X, Sparkles } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { AppContext } from '@/app/context/AppContext';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
@@ -59,9 +59,17 @@ export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
 
 			{/* Explanation badge */}
 			<span
-				className="pktw-mt-1.5 pktw-inline-block pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw-text-xs"
-				style={{ color: 'var(--text-accent)', backgroundColor: 'color-mix(in srgb, var(--text-accent) 12%, transparent)' }}
+				className="pktw-mt-1.5 pktw-inline-flex pktw-items-center pktw-gap-1 pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw-text-xs"
+				style={{
+					color: item.explanationType === 'llm' ? 'var(--text-normal)' : 'var(--text-accent)',
+					backgroundColor: item.explanationType === 'llm'
+						? 'color-mix(in srgb, var(--interactive-accent) 12%, transparent)'
+						: 'color-mix(in srgb, var(--text-accent) 12%, transparent)',
+				}}
 			>
+				{item.explanationType === 'llm' && (
+					<Sparkles className="pktw-h-3 pktw-w-3" />
+				)}
 				{item.explanation}
 			</span>
 
