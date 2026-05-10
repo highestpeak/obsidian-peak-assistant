@@ -373,6 +373,12 @@ export const DEFAULT_NEW_CONVERSATION_TITLE = 'New Conversation';
 export const COLLAPSED_USER_MESSAGE_CHAR_LIMIT = 200;
 
 /**
+ * Timeout in milliseconds for waiting on assistant response.
+ * If no streaming content is received within this window, the message is marked as timeout.
+ */
+export const MESSAGE_TIMEOUT_MS = 60_000;
+
+/**
  * Maximum number of conversations to display in conversation sections before showing "See more" button.
  */
 export const MAX_CONVERSATIONS_DISPLAY = 50;

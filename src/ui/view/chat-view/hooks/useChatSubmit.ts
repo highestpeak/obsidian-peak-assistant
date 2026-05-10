@@ -6,7 +6,9 @@ import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { useStreamChat } from './useStreamChat';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types';
+import { MessageStatus } from '@/service/chat/types';
 import { TopicAggregationService } from '@/service/chat/TopicAggregationService';
+import { MESSAGE_TIMEOUT_MS } from '@/core/constant';
 
 export interface ChatSubmitOptions {
 	text: string;
@@ -119,13 +121,14 @@ export function useChatSubmit() {
 	const cancelStream = useCallback(async (): Promise<void> => {
 		if (abortControllerRef.current) {
 			console.log('[useChatSubmit] Canceling stream');
-			abortControllerRef.current.abort();
+			abortControllerRef.current.abort('cancelled');
 			abortControllerRef.current = null;
 		}
 	}, []);
 
 	/**
 	 * Submit a chat message and handle the complete flow.
+	 * Tracks message lifecycle status: sending -> completed/error/timeout/cancelled.
 	 */
 	const submitMessage = useCallback(async (options: ChatSubmitOptions): Promise<void> => {
 		const { text, files, conversation: inputConversation, project } = options;
@@ -141,8 +144,9 @@ export function useChatSubmit() {
 			console.error('[useChatSubmit] Failed to ensure conversation');
 			return;
 		}
-		// Create user message
+		// Create user message with sending status
 		const userMessage = createUserMessage(conversation, text);
+		userMessage.status = MessageStatus.SENDING;
 		// Upload files and create resource references if any. no summary will be generated until start streaming.
 		const resources = files.length > 0
 			? await manager.conv.uploadFilesAndCreateResources(files)
@@ -152,6 +156,8 @@ export function useChatSubmit() {
 			userMessage.resources = resources;
 		}
 
+		// Mark user message as completed once saved
+		userMessage.status = MessageStatus.COMPLETED;
 		await addMessageToBoth(
 			conversation.meta.id,
 			userMessage,
@@ -180,8 +186,15 @@ export function useChatSubmit() {
 		};
 		updateConv(conversationWithUserMessage);
 
-		// Create new AbortController for this stream
+		// Create new AbortController for this stream with timeout
 		abortControllerRef.current = new AbortController();
+		const timeoutId = setTimeout(() => {
+			// If still streaming with no content after timeout, abort
+			const state = useChatDataStore.getState();
+			if (state.streamingMessageId && !state.streamingContent) {
+				abortControllerRef.current?.abort('timeout');
+			}
+		}, MESSAGE_TIMEOUT_MS);
 
 		// Stream chat (use conversationWithUserMessage which includes the user message)
 		// Note: The userMessage already saved above includes resources, so we don't need to pass attachments
@@ -193,6 +206,7 @@ export function useChatSubmit() {
 			attachments: resources.map(resource => resource.source),
 			abortSignal: abortControllerRef.current.signal,
 		});
+		clearTimeout(timeoutId);
 		// Clear abort controller
 		abortControllerRef.current = null;
 
@@ -200,6 +214,13 @@ export function useChatSubmit() {
 		// If streaming was interrupted, finalMessage might be null, but we should still
 		// save any partial content from the streaming state
 		if (streamResult.finalMessage) {
+			// Determine assistant message status based on error/cancellation
+			if (streamResult.finalMessage.isErrorMessage) {
+				streamResult.finalMessage.status = MessageStatus.ERROR;
+			} else {
+				streamResult.finalMessage.status = MessageStatus.COMPLETED;
+			}
+
 			await addMessageToBoth(
 				conversation.meta.id,
 				streamResult.finalMessage,
