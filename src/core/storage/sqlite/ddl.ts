@@ -833,6 +833,19 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_cascade_debt_pending ON cascade_debt(tenant, processed_at, priority);
 	`);
 
+	// ── Hub constituent membership tracking ──
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS hub_constituent (
+			hub_node_id   TEXT NOT NULL,
+			member_doc_id TEXT NOT NULL,
+			role          TEXT NOT NULL DEFAULT 'core',
+			added_at      INTEGER NOT NULL,
+			PRIMARY KEY (hub_node_id, member_doc_id)
+		);
+		CREATE INDEX IF NOT EXISTS idx_hub_constituent_member ON hub_constituent(member_doc_id);
+		CREATE INDEX IF NOT EXISTS idx_hub_constituent_hub ON hub_constituent(hub_node_id);
+	`);
+
 	// ── Vault lint / health-check tables ──
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS vault_lint_scan (
