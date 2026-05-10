@@ -339,7 +339,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 
 	// --- Config (runtime-editable JSON) ---
 	[ConfigTemplateId.TimeWithinNormalize]: meta('config', 'time-within-normalize', { expectsJson: true }),
-	[ConfigTemplateId.VaultLintConfig]: meta('config', 'vault-lint-config'),
+	[ConfigTemplateId.VaultLintConfig]: meta('config', 'vault-lint-config', { expectsJson: true }),
 
 	// --- Model Registry (per-provider JSON) ---
 	[ConfigTemplateId.ModelsOpenAI]: meta('config', 'models/openai', { expectsJson: true }),
