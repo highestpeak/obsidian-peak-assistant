@@ -41,6 +41,8 @@ export interface AmbientPushSettings {
 	minCharDelta: number;
 	maxPushItems: number;
 	showStatusBar: boolean;
+	graphExpansionHops: number;
+	feedbackLearning: boolean;
 }
 
 export const DEFAULT_AMBIENT_PUSH_SETTINGS: AmbientPushSettings = {
@@ -51,4 +53,6 @@ export const DEFAULT_AMBIENT_PUSH_SETTINGS: AmbientPushSettings = {
 	minCharDelta: 30,
 	maxPushItems: 5,
 	showStatusBar: true,
+	graphExpansionHops: 2,
+	feedbackLearning: true,
 };
