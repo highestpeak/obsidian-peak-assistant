@@ -96,6 +96,8 @@ import {
 	CASCADE_DEBT_SEMANTIC_EDGE_PRIORITY,
 	CASCADE_DEBT_DEGREE_REFRESH_PRIORITY,
 	CASCADE_DEBT_MERMAID_OVERLAY_PRIORITY,
+	CASCADE_DEBT_HUB_INVALIDATE_PRIORITY,
+	CASCADE_DEBT_FOLDER_STATS_PRIORITY,
 } from '@/core/constant';
 export type StorageType = 'sqlite' | 'graph';
 
@@ -1486,6 +1488,30 @@ export class IndexService {
 				});
 			}
 		}
+
+		// hub_invalidate — changed doc may belong to a hub
+		// targetId = the changed doc; CascadeWorker will do the hub lookup
+		await cascadeRepo.insertOrUpdatePriority({
+			tenant,
+			sourcePath: change.docPath,
+			targetId: change.docNodeId,
+			debtType: 'hub_invalidate',
+			priority: CASCADE_DEBT_HUB_INVALIDATE_PRIORITY,
+			changeMagnitude: change.changeMagnitude,
+			createdAt: now,
+		});
+
+		// folder_stats — changed doc's ancestor folders need stat refresh
+		// targetId = docNodeId; CascadeWorker resolves the folder path ancestry
+		await cascadeRepo.insertOrUpdatePriority({
+			tenant,
+			sourcePath: change.docPath,
+			targetId: change.docNodeId,
+			debtType: 'folder_stats',
+			priority: CASCADE_DEBT_FOLDER_STATS_PRIORITY,
+			changeMagnitude: null,
+			createdAt: now,
+		});
 	}
 
 	// --- Global maintenance (formerly GlobalMaintenanceService) ---
