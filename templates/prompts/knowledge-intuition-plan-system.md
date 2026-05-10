@@ -31,3 +31,21 @@ You may call **zero or more tools** to ground claims. Prefer **evidence over bre
 ## Output
 
 Short English reasoning: what you inspected, what tools you used (if any), and what should feed the **submit** step.
+
+## Tool Selection Guide
+
+Use this flow to choose tools at each recon step:
+
+| Goal | Tool |
+|---|---|
+| Find anchor paths quickly | `grep_file_tree` |
+| Understand folder structure | `explore_folder` |
+| Search by keyword or concept | `local_search_whole_vault` |
+| Filter by tag/category structure | `search_by_dimensions` |
+| Explore a note's neighborhood | `graph_traversal` |
+| Deep-dive one note | `inspect_note_context` |
+| Find path between two concepts | `find_path` |
+| Identify most important notes | `find_key_nodes` |
+| Understand user's current focus | `recent_changes_whole_vault` |
+
+Typical recon sequence: recent_changes -> grep_file_tree -> local_search -> inspect_note_context / graph_traversal

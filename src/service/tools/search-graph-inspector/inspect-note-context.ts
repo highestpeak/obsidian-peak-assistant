@@ -1,3 +1,4 @@
+import { z } from "zod/v3";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { distillClusterNodesData, SemanticNeighborNode } from "./common";
 import { getSemanticNeighbors } from "./common";
@@ -7,9 +8,12 @@ import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { GraphNodeType } from "@/core/po/graph.po";
 import type { FunctionalTagEntry } from '@/core/document/helper/TagService';
+import { inspectNoteContextInputSchema } from "@/core/schemas/tools/searchGraphInspector";
+
+type InspectNoteContextParams = z.infer<typeof inspectNoteContextInputSchema> & { mode: string };
 
 /** Inspect note context (tags, functional tags, keywords, in/out links, semantic neighbors). */
-export async function inspectNoteContext(params: any, templateManager?: TemplateManager) {
+export async function inspectNoteContext(params: InspectNoteContextParams, templateManager?: TemplateManager) {
     const { note_path, limit, include_semantic_paths, response_format } = params;
     // Get note metadata
     const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();

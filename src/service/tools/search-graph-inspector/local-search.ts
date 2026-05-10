@@ -1,11 +1,21 @@
+import { z } from "zod/v3";
 import { AppContext } from "@/app/context/AppContext";
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
 import { applyFiltersAndSorters } from "./common";
-import { SearchResultItem, SearchSnippet } from "@/service/search/types";
+import { SearchResultItem, SearchSnippet, SearchScopeValue } from "@/service/search/types";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
+import { localSearchWholeVaultInputSchema } from "@/core/schemas/tools/searchGraphInspector";
+
+type LocalSearchParams = z.infer<typeof localSearchWholeVaultInputSchema> & {
+    mode: string;
+    scopeValue?: SearchScopeValue;
+};
+/**
+ * Convert SearchSnippet to a text string with highlights marked using **bold** syntax.
+ */
 function convertHighlightToText(highlight: SearchSnippet | null | undefined): string {
     if (!highlight || !highlight.text) {
         return '';
@@ -32,6 +42,11 @@ function convertHighlightToText(highlight: SearchSnippet | null | undefined): st
     return result;
 }
 
+/**
+ * Slim down search result items to reduce token output.
+ * Removes content field which can be very large and cause context overflow.
+ * Converts highlight snippets to highlighted text strings.
+ */
 function slimSearchResults(
     items: SearchResultItem[]
 ): (Omit<SearchResultItem, 'content' | 'highlight'> & { highlightedText?: string })[] {
@@ -48,14 +63,42 @@ function slimSearchResults(
     });
 }
 
+/**
+ * Build a field getter for SearchResultItem that works with path-based items.
+ * Unlike getDefaultItemFiledGetter which expects graph node IDs, this works directly
+ * with SearchResultItem which uses path as id.
+ */
 async function getSearchResultItemFieldGetter(items: SearchResultItem[], filters?: any, sorter?: string) {
-    const pathToMetaMap = await sqliteStoreManager.getIndexedDocumentRepo().getByPaths(items.map(i => i.path));
-    let tagsTripleByPath = new Map<string, { topicTags: string[]; topicTagEntries?: TopicTagEntry[]; functionalTagEntries: FunctionalTagEntry[]; keywordTags: string[]; timeTags: string[]; geoTags: string[]; personTags: string[] }>();
+    // Get doc metadata by paths for time-based filtering
+    const paths = items.map(item => item.path);
+    const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+    const pathToMetaMap = await indexedDocumentRepo.getByPaths(paths);
+
+    // Build tags and categories map if needed for boolean expression filter
+    let tagsTripleByPath = new Map<
+        string,
+        {
+            topicTags: string[];
+            topicTagEntries?: TopicTagEntry[];
+            functionalTagEntries: FunctionalTagEntry[];
+            keywordTags: string[];
+            timeTags: string[];
+            geoTags: string[];
+            personTags: string[];
+        }
+    >();
     if (filters?.tag_category_boolean_expression) {
-        const docIds = [...pathToMetaMap.values()].map(m => m.id);
-        const { idMapToTags } = await sqliteStoreManager.getGraphRepo().getTagsByDocIds(docIds);
-        for (const [path, meta] of pathToMetaMap) { const d = idMapToTags.get(meta.id); if (d) tagsTripleByPath.set(path, d); }
+        const docIds = Array.from(pathToMetaMap.values()).map((meta) => meta.id);
+        const graphData = await sqliteStoreManager.getGraphRepo().getTagsByDocIds(docIds);
+        const docIdToData = graphData.idMapToTags;
+        for (const [path, meta] of pathToMetaMap) {
+            const data = docIdToData.get(meta.id);
+            if (data) {
+                tagsTripleByPath.set(path, data);
+            }
+        }
     }
+
     return (item: SearchResultItem) => ({
         getPath: () => item.path,
         getModified: () => {
@@ -84,13 +127,13 @@ async function getSearchResultItemFieldGetter(items: SearchResultItem[], filters
         },
         getCategory: () => tagsTripleByPath.get(item.path)?.functionalTagEntries?.[0]?.id,
         getResultRank: () => item.finalScore || item.score || 0,
-        getTotalLinksCount: () => 0,
+        getTotalLinksCount: () => 0, // Not available for search results
         getInCominglinksCount: () => 0,
         getOutgoingCount: () => 0,
     });
 }
 
-export async function localSearch(params: any, templateManager?: TemplateManager) {
+export async function localSearch(params: LocalSearchParams, templateManager?: TemplateManager) {
     const { query, searchMode, scopeMode, scopeValue, limit, response_format, filters, sorter } = params;
     const { items: rawItems, duration } = await AppContext.getInstance().searchClient.search({
         text: query,

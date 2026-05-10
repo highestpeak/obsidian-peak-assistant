@@ -121,6 +121,7 @@ export interface TemplateMetadata {
  * Config template IDs (runtime-editable JSON configs under templates/config/).
  */
 export const ConfigTemplateId = {
+	TimeWithinNormalize: 'time-within-normalize' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -329,6 +330,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[StopwordTemplateId.Chinese]: meta('stopwords', 'zh'),
 
 	// --- Config (runtime-editable JSON) ---
+	[ConfigTemplateId.TimeWithinNormalize]: meta('config', 'time-within-normalize', { expectsJson: true }),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {

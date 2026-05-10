@@ -36,6 +36,14 @@ const TIME_WITHIN_NORMALIZE: Record<string, (typeof TIME_WITHIN_VALUES)[number]>
 	recent: "this_month",
 };
 
+/** Mutable cache for runtime-loaded normalize map; initializes to compiled defaults. */
+let timeWithinNormalizeMap: Record<string, string> = { ...TIME_WITHIN_NORMALIZE };
+
+/** Called by TemplateManager after loading time-within-normalize.json. */
+export function setTimeWithinNormalizeMap(loaded: Record<string, string>): void {
+	timeWithinNormalizeMap = loaded;
+}
+
 export function normalizeTimeWithin(
 	val: unknown
 ): (typeof TIME_WITHIN_VALUES)[number] | null {
@@ -43,7 +51,7 @@ export function normalizeTimeWithin(
 	const s = String(val).trim().toLowerCase();
 	if (TIME_WITHIN_VALUES.includes(s as (typeof TIME_WITHIN_VALUES)[number]))
 		return s as (typeof TIME_WITHIN_VALUES)[number];
-	return TIME_WITHIN_NORMALIZE[s] ?? "this_year";
+	return (timeWithinNormalizeMap[s] as (typeof TIME_WITHIN_VALUES)[number]) ?? "this_year";
 }
 
 export const FilterOption = z.object({
@@ -82,7 +90,7 @@ export const SemanticFilter = z.object({
 	topK: z
 		.number()
 		.min(1)
-		.max(50)
+		.max(30)
 		.default(20)
 		.describe("Number of top similar nodes to keep"),
 });
@@ -93,8 +101,8 @@ export const ResponseFormat = z.object({
 		.default("hybrid")
 		.describe(
 			"Choose 'markdown' if you need to reason about relationships, summarize content, or present findings. " +
-				"Choose 'structured' if you are performing multi-step operations for programmatic piping (e.g., getting IDs for another tool)." +
-				"Choose 'hybrid' if you need to get both data and context. But avoid this as it may cause context overflow(especially for graph_traversal)."
+			"Choose 'structured' if you are performing multi-step operations for programmatic piping (e.g., getting IDs for another tool). " +
+			"Choose 'hybrid' if you need to get both data and context."
 		),
 });
 
@@ -106,7 +114,7 @@ export const BaseLimit = z.object({
 		.nullable()
 		.default(20)
 		.describe(
-			"Maximum number of results(each step inner also. not so strictly.)"
+			"Maximum number of results returned to the agent."
 		),
 });
 
@@ -174,23 +182,49 @@ export const graphTraversalInputSchema = z
 			.nullable()
 			.default(15)
 			.describe(
-				"Maximum number of results. do not set too large as it may cause context overflow."
+				"Maximum number of document nodes returned per depth level."
 			),
 	});
 
-export const findPathInputSchema = z
+export const hubLocalGraphInputSchema = z
 	.object({
-		start_note_path: z.string().min(1, 'start_note_path must be a non-empty vault path — retry with a valid path'),
-		end_note_path: z.string(),
+		center_note_path: z.string().describe("Vault-relative note path used as hub center."),
+		max_depth: z
+			.number()
+			.min(1)
+			.max(6)
+			.nullable()
+			.default(4)
+			.describe(
+				"Maximum local expansion depth for the hub neighborhood. Start with 2-4 and only increase when the graph is too sparse."
+			),
 	})
-	.merge(BaseLimit)
 	.extend({
-		filters: NullableFilterOption.describe(
-			"Filter nodes in the path. May cost much more time and resources. As the graph algorithm is time-consuming."
-		),
-		include_semantic_paths: SemanticOptions.shape.include_semantic_paths,
 		response_format: ResponseFormat.shape.response_format.default("structured"),
 	});
+
+export const findPathInputSchema = z.object({
+	start_note_path: z.string().min(1, 'start_note_path must be a non-empty vault path — retry with a valid path'),
+	end_note_path: z.string().min(1, 'end_note_path must be a non-empty vault path — retry with a valid path'),
+	strategy: z
+		.enum(["reliable", "fastTrack", "brainstorm"])
+		.default("reliable")
+		.describe(
+			"Path-finding strategy:\n" +
+			"- 'reliable' — bidirectional BFS on physical links only. Fast, deterministic. " +
+			"Use when you need the shortest actual wiki-link chain between two notes.\n" +
+			"- 'fastTrack' — A* guided by semantic gravity. Finds conceptually coherent paths " +
+			"even if physically longer. Use when direct links are sparse.\n" +
+			"- 'brainstorm' — forces cross-domain jumps to surface unexpected bridges between concepts. " +
+			"Use for creative discovery, not for precise relationship mapping."
+		),
+	max_paths: z
+		.number().min(1).max(5).default(3)
+		.describe("Maximum number of distinct paths to return. Higher values increase computation time."),
+	filters: NullableFilterOption,
+	include_semantic_paths: SemanticOptions.shape.include_semantic_paths,
+	response_format: ResponseFormat.shape.response_format.default("structured"),
+});
 
 export const findKeyNodesInputSchema = z
 	.object({})
@@ -228,9 +262,7 @@ export const searchByDimensionsInputSchema = z
 	})
 	.merge(BaseLimit)
 	.extend({
-		filters: FilterOption.omit({ 
-			// tag_category_boolean_expression: true
-		 }).nullable(),
+		filters: FilterOption.nullable(),
 		sorter: SorterOption.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("structured"),
 	});
@@ -302,13 +334,11 @@ export const localSearchWholeVaultInputSchema = z
 		current_file_path: z
 			.string()
 			.nullable()
-			.nullable()
 			.describe(
 				"Current file path (if any). Used for inFile mode and directory boost."
 			),
 		folder_path: z
 			.string()
-			.nullable()
 			.nullable()
 			.describe("Folder path (if inFolder mode)."),
 		limit_ids_set: z

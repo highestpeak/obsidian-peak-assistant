@@ -1,3 +1,4 @@
+import { z } from "zod/v3";
 import { GraphNodeType } from '@/core/po/graph.po';
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
 import { BooleanExpressionParser } from "./boolean-expression-parser";
@@ -6,7 +7,11 @@ import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
-export async function searchByDimensions(params: any, templateManager?: TemplateManager) {
+import { searchByDimensionsInputSchema } from "@/core/schemas/tools/searchGraphInspector";
+
+type SearchByDimensionsParams = z.infer<typeof searchByDimensionsInputSchema> & { mode: string };
+
+export async function searchByDimensions(params: SearchByDimensionsParams, templateManager?: TemplateManager) {
     const { boolean_expression, semantic_filter, filters, sorter, limit, response_format } = params;
     const expr = typeof boolean_expression === 'string' ? boolean_expression.trim() : '';
     if (!expr) {
@@ -27,9 +32,17 @@ export async function searchByDimensions(params: any, templateManager?: Template
         return 'Boolean expression must contain at least one tag:functional: or keyword: filter.';
     }
 
-    const { success: matchingDocumentsSuccess, message: matchingDocumentsMessage, data: matchingExpressionDocNodes } =
+    const { success: matchingDocumentsSuccess, message: matchingDocumentsMessage, data: matchingExpressionDocNodes, diagnosis: matchingDocumentsDiagnosis } =
         await findByExpressionWhere(expressionTags, expressionFunctionals, expressionKeywords);
     if (!matchingDocumentsSuccess || !matchingExpressionDocNodes) {
+        if (matchingDocumentsDiagnosis) {
+            const diagData = {
+                boolean_expression,
+                matched: 0,
+                diagnosis: matchingDocumentsDiagnosis,
+            };
+            return buildResponse(response_format, ToolTemplateId.SearchByDimensions, diagData, { templateManager });
+        }
         return matchingDocumentsMessage || 'Error finding matching documents.';
     }
 
@@ -82,7 +95,18 @@ async function findByExpressionWhere(
     expressionTags: string[],
     expressionFunctionals: string[],
     expressionKeywords: string[],
-): Promise<{ success: boolean; message?: string; data?: Map<string, GraphNode>; }> {
+): Promise<{
+    success: boolean;
+    message?: string;
+    data?: Map<string, GraphNode>;
+    diagnosis?: {
+        unknown_tags: string[];
+        unknown_functionals: string[];
+        known_tags: string[];
+        known_functionals: string[];
+        suggestion: string;
+    };
+}> {
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
     const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
 
@@ -96,20 +120,45 @@ async function findByExpressionWhere(
         .getByTypeAndLabels(GraphNodeType.KeywordTag, expressionKeywords)
         .then((nodes) => new Map(nodes.map((node) => [node.label, node.id])));
 
+    const unknownTags = expressionTags.filter(t => !tagLookupMap.has(t));
+    const unknownFunctionals = expressionFunctionals.filter(f => !functionalLookupMap.has(f));
+    const knownTags = expressionTags.filter(t => tagLookupMap.has(t));
+    const knownFunctionals = expressionFunctionals.filter(f => functionalLookupMap.has(f));
+
     const allTargetNodeIds: string[] = [];
     tagLookupMap.forEach((id) => allTargetNodeIds.push(id));
     functionalLookupMap.forEach((id) => allTargetNodeIds.push(id));
     keywordLookupMap.forEach((id) => allTargetNodeIds.push(id));
 
     if (allTargetNodeIds.length === 0) {
-        return { success: false, message: 'No valid tag/functional/keyword nodes found for expression.' };
+        return {
+            success: false,
+            diagnosis: {
+                unknown_tags: unknownTags,
+                unknown_functionals: unknownFunctionals,
+                known_tags: knownTags,
+                known_functionals: knownFunctionals,
+                suggestion: unknownTags.length + unknownFunctionals.length > 0
+                    ? `Tags/functionals not found in vault: ${[...unknownTags, ...unknownFunctionals].join(', ')}. Check spelling or use local_search to discover valid tags.`
+                    : 'All tags/functionals exist but no documents match the expression.',
+            },
+        };
     }
 
     // Use GROUP BY and HAVING to find documents connected to ALL specified targets
     const documentIds = await mobiusEdgeRepo.getSourceNodesConnectedToAllTargets(allTargetNodeIds);
 
     if (documentIds.length === 0) {
-        return { success: false, message: 'No documents found matching all criteria.' };
+        return {
+            success: false,
+            diagnosis: {
+                unknown_tags: unknownTags,
+                unknown_functionals: unknownFunctionals,
+                known_tags: knownTags,
+                known_functionals: knownFunctionals,
+                suggestion: 'Tags exist but AND intersection is empty. Try OR instead of AND, or check if tags are used on different documents.',
+            },
+        };
     }
 
     return {
