@@ -166,106 +166,109 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 						transition={{ duration: 0.2, ease: 'easeInOut' }}
 						className="pktw-overflow-hidden"
 					>
-						<div className="pktw-px-3 pktw-pb-3">
-							{/* Overview */}
-							{overview && (
-								<div className="pktw-bg-pk-background pktw-rounded-lg pktw-p-3 pktw-border pktw-border-pk-border pktw-mb-3">
-									<StreamdownIsolated isAnimating={false} className="pktw-text-sm pktw-text-pk-foreground-muted">
-										{overview}
-									</StreamdownIsolated>
-								</div>
-							)}
+						<div className="pktw-flex pktw-flex-col pktw-max-h-[50vh]">
+							{/* Scrollable content area */}
+							<div className="pktw-flex-1 pktw-overflow-y-auto pktw-min-h-0 pktw-px-3">
+								{/* Overview */}
+								{overview && (
+									<div className="pktw-bg-pk-background pktw-rounded-lg pktw-p-3 pktw-border pktw-border-pk-border pktw-mb-3">
+										<StreamdownIsolated isAnimating={false} className="pktw-text-sm pktw-text-pk-foreground-muted">
+											{overview}
+										</StreamdownIsolated>
+									</div>
+								)}
 
-							{/* Executive Summary marker */}
-							<div className="pktw-mb-2 pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-[#7c3aed]/30">
-								<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5">
-									<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
-									<span className="pktw-text-xs pktw-font-semibold pktw-text-pk-accent">Executive Summary</span>
-									<span className="pktw-text-[9px] pktw-text-pk-foreground-muted pktw-italic">auto-generated</span>
-								</div>
-							</div>
-
-							{/* Role groups with nested sections */}
-							{MISSION_ROLES.map((role) => {
-								const roleSections = roleGroups.get(role.key) ?? [];
-								if (roleSections.length === 0) return null;
-
-								return (
-									<motion.div
-										key={role.key}
-										initial={{ opacity: 0, y: 6 }}
-										animate={{ opacity: 1, y: 0 }}
-										className="pktw-mb-2 pktw-ml-1"
-									>
-										{/* Role header */}
-										<div className={`pktw-pl-3 pktw-border-l-2 ${role.bgColor.split(' ')[1] ?? 'pktw-border-gray-200'}`}>
-											<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1">
-												{(() => { const RIcon = ROLE_ICON_MAP[role.key]; return RIcon ? <RIcon className={`pktw-w-3.5 pktw-h-3.5 ${role.color}`} /> : null; })()}
-												<span className={`pktw-text-xs pktw-font-semibold ${role.color}`}>{role.label}</span>
-												{role.required && (
-													<span className="pktw-text-[8px] pktw-text-pk-foreground-muted pktw-uppercase">required</span>
-												)}
-											</div>
-											{/* Nested section cards */}
-											<div className="pktw-space-y-1.5 pktw-pb-2">
-												{roleSections.map((sec) => (
-													<SectionCard
-														key={sec.id}
-														sec={sec}
-														index={sections.indexOf(sec)}
-														total={sections.length}
-														onMove={moveSection}
-														onRemove={removePlanSection}
-														onUpdate={updatePlanSection}
-													/>
-												))}
-												{/* Add section button */}
-												{!planApproved && (
-													<div
-														onClick={() => addPlanSection(role.key)}
-														className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1.5 pktw-px-3 pktw-text-[11px] pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-transition-colors"
-													>
-														<Plus className="pktw-w-3 pktw-h-3" />
-														<span>Add section</span>
-													</div>
-												)}
-											</div>
-										</div>
-									</motion.div>
-								);
-							})}
-
-							{/* Missing roles warning */}
-							{missingRequired.length > 0 && (
-								<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-red-200 pktw-py-2">
-									<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-										<AlertTriangle className="pktw-w-3.5 pktw-h-3.5 pktw-text-red-400" />
-										<span className="pktw-text-[10px] pktw-text-red-500">
-											Missing: {missingRequired.map((r) => r.label).join(', ')}
-										</span>
+								{/* Executive Summary marker */}
+								<div className="pktw-mb-2 pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-[#7c3aed]/30">
+									<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5">
+										<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
+										<span className="pktw-text-xs pktw-font-semibold pktw-text-pk-accent">Executive Summary</span>
+										<span className="pktw-text-[9px] pktw-text-pk-foreground-muted pktw-italic">auto-generated</span>
 									</div>
 								</div>
-							)}
 
-							{/* Uncovered optional roles hint */}
-							{MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).length > 0 && (
-								<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-gray-100 pktw-py-1.5">
-									<span className="pktw-text-[9px] pktw-text-pk-foreground-muted">
-										Not covered: {MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).map((r) => {
-								const RIcon = ROLE_ICON_MAP[r.key];
-								return (
-									<span key={r.key} className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-mr-1.5">
-										{RIcon && <RIcon className="pktw-w-2.5 pktw-h-2.5" />}
-										{r.label}
-									</span>
-								);
-							})}
-									</span>
-								</div>
-							)}
+								{/* Role groups with nested sections */}
+								{MISSION_ROLES.map((role) => {
+									const roleSections = roleGroups.get(role.key) ?? [];
+									if (roleSections.length === 0) return null;
 
-							{/* Divider before footer area */}
-							<div className="pktw-border-t pktw-border-pk-border pktw-mt-2 pktw-pt-3">
+									return (
+										<motion.div
+											key={role.key}
+											initial={{ opacity: 0, y: 6 }}
+											animate={{ opacity: 1, y: 0 }}
+											className="pktw-mb-2 pktw-ml-1"
+										>
+											{/* Role header */}
+											<div className={`pktw-pl-3 pktw-border-l-2 ${role.bgColor.split(' ')[1] ?? 'pktw-border-gray-200'}`}>
+												<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1">
+													{(() => { const RIcon = ROLE_ICON_MAP[role.key]; return RIcon ? <RIcon className={`pktw-w-3.5 pktw-h-3.5 ${role.color}`} /> : null; })()}
+													<span className={`pktw-text-xs pktw-font-semibold ${role.color}`}>{role.label}</span>
+													{role.required && (
+														<span className="pktw-text-[8px] pktw-text-pk-foreground-muted pktw-uppercase">required</span>
+													)}
+												</div>
+												{/* Nested section cards */}
+												<div className="pktw-space-y-1.5 pktw-pb-2">
+													{roleSections.map((sec) => (
+														<SectionCard
+															key={sec.id}
+															sec={sec}
+															index={sections.indexOf(sec)}
+															total={sections.length}
+															onMove={moveSection}
+															onRemove={removePlanSection}
+															onUpdate={updatePlanSection}
+														/>
+													))}
+													{/* Add section button */}
+													{!planApproved && (
+														<div
+															onClick={() => addPlanSection(role.key)}
+															className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1.5 pktw-px-3 pktw-text-[11px] pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-transition-colors"
+														>
+															<Plus className="pktw-w-3 pktw-h-3" />
+															<span>Add section</span>
+														</div>
+													)}
+												</div>
+											</div>
+										</motion.div>
+									);
+								})}
+
+								{/* Missing roles warning */}
+								{missingRequired.length > 0 && (
+									<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-red-200 pktw-py-2">
+										<div className="pktw-flex pktw-items-center pktw-gap-1.5">
+											<AlertTriangle className="pktw-w-3.5 pktw-h-3.5 pktw-text-red-400" />
+											<span className="pktw-text-[10px] pktw-text-red-500">
+												Missing: {missingRequired.map((r) => r.label).join(', ')}
+											</span>
+										</div>
+									</div>
+								)}
+
+								{/* Uncovered optional roles hint */}
+								{MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).length > 0 && (
+									<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-gray-100 pktw-py-1.5">
+										<span className="pktw-text-[9px] pktw-text-pk-foreground-muted">
+											Not covered: {MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).map((r) => {
+									const RIcon = ROLE_ICON_MAP[r.key];
+									return (
+										<span key={r.key} className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-mr-1.5">
+											{RIcon && <RIcon className="pktw-w-2.5 pktw-h-2.5" />}
+											{r.label}
+										</span>
+									);
+								})}
+										</span>
+									</div>
+								)}
+							</div>
+
+							{/* Sticky footer — always visible without scrolling */}
+							<div className="pktw-flex-shrink-0 pktw-border-t pktw-border-pk-border pktw-px-3 pktw-pt-3 pktw-pb-3">
 								{/* Insight chips (only editable before approval) */}
 								{!planApproved && insights.length > 0 && (
 									<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-mb-2">
