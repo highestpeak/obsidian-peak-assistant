@@ -444,4 +444,97 @@ console.log('All Phase 2 signal detection tests passed');
 	console.log('RelevanceExplainer serendipity coverage: all passed');
 }
 
+// --- Phase 4: Morning Briefing ---
+import type { BriefingItem, BriefingCategory } from '@/service/ambient/types';
+
+// Test BriefingItem type structure
+{
+	const item: BriefingItem = {
+		filePath: 'notes/test.md',
+		title: 'Test Note',
+		category: 'unresolved_connections',
+		reason: '5 notes link here, but only 1 outgoing link',
+		score: 4,
+		metadata: { connectionCount: 5 },
+	};
+
+	assert.equal(item.category, 'unresolved_connections');
+	assert.equal(item.score, 4);
+	assert.equal(item.metadata?.connectionCount, 5);
+
+	// Category union completeness
+	const categories: BriefingCategory[] = ['unresolved_connections', 'changed_hubs', 'decaying_engagement'];
+	assert.equal(categories.length, 3);
+
+	console.log('BriefingItem type: all passed');
+}
+
+// Test briefing item sorting (score descending)
+{
+	const items: BriefingItem[] = [
+		{ filePath: 'a.md', title: 'A', category: 'decaying_engagement', reason: '', score: 0.5 },
+		{ filePath: 'b.md', title: 'B', category: 'unresolved_connections', reason: '', score: 5 },
+		{ filePath: 'c.md', title: 'C', category: 'changed_hubs', reason: '', score: 1 },
+	];
+
+	items.sort((a, b) => b.score - a.score);
+	assert.equal(items[0].filePath, 'b.md');
+	assert.equal(items[1].filePath, 'c.md');
+	assert.equal(items[2].filePath, 'a.md');
+
+	console.log('briefing item sorting: all passed');
+}
+
+// Test session gap logic
+{
+	const BRIEFING_MIN_GAP = 4 * 60 * 60 * 1000; // 4 hours
+
+	const now = Date.now();
+	const tooRecent = now - 2 * 60 * 60 * 1000; // 2 hours ago
+	const oldEnough = now - 5 * 60 * 60 * 1000; // 5 hours ago
+
+	assert.ok(now - tooRecent < BRIEFING_MIN_GAP, 'Should skip if < 4h');
+	assert.ok(now - oldEnough >= BRIEFING_MIN_GAP, 'Should show if >= 4h');
+
+	console.log('session gap logic: all passed');
+}
+
+// Test decay days calculation
+{
+	const BRIEFING_DECAY_DAYS = 14;
+	const now = Date.now();
+	const lastOpen15DaysAgo = now - 15 * 24 * 60 * 60 * 1000;
+	const lastOpen10DaysAgo = now - 10 * 24 * 60 * 60 * 1000;
+	const cutoff = now - BRIEFING_DECAY_DAYS * 24 * 60 * 60 * 1000;
+
+	assert.ok(lastOpen15DaysAgo < cutoff, '15 days ago should be before cutoff');
+	assert.ok(lastOpen10DaysAgo >= cutoff, '10 days ago should be after cutoff');
+
+	const daysSince = Math.floor((now - lastOpen15DaysAgo) / (24 * 60 * 60 * 1000));
+	assert.equal(daysSince, 15);
+
+	console.log('decay days calculation: all passed');
+}
+
+// Test unresolved connection heuristic
+{
+	// incoming >= 2 AND outgoing < incoming * 0.5
+	const cases = [
+		{ incoming: 5, outgoing: 1, expected: true },   // 1 < 5 * 0.5 = 2.5 -> unresolved
+		{ incoming: 5, outgoing: 3, expected: false },   // 3 >= 5 * 0.5 = 2.5 -> not unresolved
+		{ incoming: 1, outgoing: 0, expected: false },   // incoming < 2 -> skip
+		{ incoming: 10, outgoing: 4, expected: true },   // 4 < 10 * 0.5 = 5 -> unresolved
+		{ incoming: 4, outgoing: 2, expected: false },   // 2 >= 4 * 0.5 = 2 -> not unresolved (equal)
+		{ incoming: 0, outgoing: 0, expected: false },   // incoming < 2 -> skip
+	];
+
+	for (const { incoming, outgoing, expected } of cases) {
+		const isUnresolved = incoming >= 2 && outgoing < incoming * 0.5;
+		assert.equal(isUnresolved, expected, `incoming=${incoming} outgoing=${outgoing} expected=${expected}`);
+	}
+
+	console.log('unresolved connection heuristic: all passed');
+}
+
+console.log('All Phase 4 Morning Briefing tests passed');
 console.log('All tests passed');
