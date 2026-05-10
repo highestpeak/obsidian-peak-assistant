@@ -1,4 +1,4 @@
-import type { Kysely } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 import type { TriggerType, UserAction } from '@/service/ambient/types';
 
@@ -90,5 +90,45 @@ export class AmbientPushRepo {
 			pairs.add(`${row.source_file_path}::${row.pushed_file_path}`);
 		}
 		return pairs;
+	}
+
+	/**
+	 * Discover recurring (source -> pushed) pairs with positive feedback.
+	 * A "recurring pair" is one where the user opened/linked the same
+	 * (source, pushed) combination at least `minCount` times within `withinDays`.
+	 *
+	 * Used by PatternLearner to seed future ambient queries with known-good patterns.
+	 *
+	 * @returns Array of { sourceFilePath, pushedFilePath, count, avgScore }
+	 */
+	async getRecurringPairs(
+		withinDays: number,
+		minCount: number = 2,
+	): Promise<Array<{
+		sourceFilePath: string;
+		pushedFilePath: string;
+		count: number;
+		avgScore: number;
+	}>> {
+		const cutoff = Date.now() - withinDays * 24 * 60 * 60 * 1000;
+		const rows = await this.db
+			.selectFrom('ambient_push_log')
+			.select(['source_file_path', 'pushed_file_path'])
+			.select((eb) => eb.fn.count<number>('id').as('cnt'))
+			.select((eb) => eb.fn.avg<number>('pushed_score').as('avg_score'))
+			.where('user_action', 'in', ['opened', 'linked'])
+			.where('user_action_ts', '>=', cutoff)
+			.groupBy(['source_file_path', 'pushed_file_path'])
+			.having(sql`COUNT(id)`, '>=', minCount)
+			.orderBy('cnt', 'desc')
+			.limit(50)
+			.execute();
+
+		return rows.map((row) => ({
+			sourceFilePath: row.source_file_path,
+			pushedFilePath: row.pushed_file_path,
+			count: row.cnt,
+			avgScore: row.avg_score ?? 0,
+		}));
 	}
 }

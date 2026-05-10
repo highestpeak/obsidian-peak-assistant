@@ -52,6 +52,7 @@ import { useGraphAnimationStore } from '@/ui/component/mine/graph-viz/graphAnima
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
+import { serendipityGutterExtension } from '@/service/ambient/SerendipityGutterPlugin';
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
@@ -219,6 +220,11 @@ export default class MyPlugin extends Plugin {
 					const count = state.items.length;
 					statusBarEl.setText(count > 0 ? `\u26A1 ${count} related` : '\u26A1 \u2013');
 				});
+			}
+
+			// CM6 gutter hint for serendipity items (Phase 3)
+			if (!ambientPushSettings || ambientPushSettings.enableSerendipityGutter !== false) {
+				this.registerEditorExtension(serendipityGutterExtension());
 			}
 		}
 

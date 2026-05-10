@@ -289,6 +289,18 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 					? Math.max(1, Math.min(20, rawAmbient.maxPushItems))
 					: DEFAULT_AMBIENT_PUSH_SETTINGS.maxPushItems,
 			showStatusBar: getBoolean(rawAmbient.showStatusBar, DEFAULT_AMBIENT_PUSH_SETTINGS.showStatusBar),
+			enableLlmExplanation: getBoolean(
+				rawAmbient.enableLlmExplanation,
+				DEFAULT_AMBIENT_PUSH_SETTINGS.enableLlmExplanation,
+			),
+			llmExplanationCooldownMs:
+				typeof rawAmbient.llmExplanationCooldownMs === 'number'
+					? Math.max(30_000, rawAmbient.llmExplanationCooldownMs)
+					: DEFAULT_AMBIENT_PUSH_SETTINGS.llmExplanationCooldownMs,
+			enableSerendipityGutter: getBoolean(
+				rawAmbient.enableSerendipityGutter,
+				DEFAULT_AMBIENT_PUSH_SETTINGS.enableSerendipityGutter,
+			),
 		};
 	}
 
