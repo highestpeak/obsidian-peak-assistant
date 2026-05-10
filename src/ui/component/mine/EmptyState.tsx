@@ -22,14 +22,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 	action,
 }) => (
 	<div className="pktw-h-full pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-8">
-		<div className="pktw-w-20 pktw-h-20 pktw-rounded-full pktw-bg-gray-50 pktw-flex pktw-items-center pktw-justify-center pktw-mb-4">
-			<Icon className="pktw-w-10 pktw-h-10 pktw-text-gray-400" />
+		<div className="pktw-w-20 pktw-h-20 pktw-rounded-full pktw-bg-pk-surface-sunken pktw-flex pktw-items-center pktw-justify-center pktw-mb-4">
+			<Icon className="pktw-w-10 pktw-h-10 pktw-text-pk-foreground-muted" />
 		</div>
-		<span className="pktw-font-semibold pktw-text-[#2e3338] pktw-mb-2 pktw-text-lg">
+		<span className="pktw-font-semibold pktw-text-pk-text-primary pktw-mb-2 pktw-text-lg">
 			{title}
 		</span>
 		{description && (
-			<span className="pktw-text-sm pktw-text-[#6c757d] pktw-max-w-md">
+			<span className="pktw-text-sm pktw-text-pk-text-secondary pktw-max-w-md">
 				{description}
 			</span>
 		)}

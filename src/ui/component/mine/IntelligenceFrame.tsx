@@ -22,7 +22,7 @@ export const IntelligenceFrame: React.FC<{
 			}}
 		>
 			{/* Inner content with frosted glass */}
-			<div className={`pktw-relative pktw-rounded-[11px] pktw-bg-white dark:pktw-bg-gray-900 ${innerClassName}`.trim()}>
+			<div className={`pktw-relative pktw-rounded-[11px] pktw-bg-pk-surface ${innerClassName}`.trim()}>
 				{children}
 			</div>
 		</div>
@@ -87,7 +87,7 @@ export const AnalysisTimer: React.FC<{
 	const dots = useMemo(() => (isRunning ? '.'.repeat(dotsTick + 1) : ''), [dotsTick, isRunning]);
 
 	return (
-		<span className="pktw-text-xs pktw-font-mono pktw-tabular-nums pktw-text-[#6c757d] pktw-transition-opacity pktw-duration-200 pktw-opacity-100">
+		<span className="pktw-text-xs pktw-font-mono pktw-tabular-nums pktw-text-pk-text-secondary pktw-transition-opacity pktw-duration-200 pktw-opacity-100">
 			{seconds}s
 			{isRunning ? <span className="pktw-inline-block pktw-min-w-4">{dots}</span> : null}
 		</span>

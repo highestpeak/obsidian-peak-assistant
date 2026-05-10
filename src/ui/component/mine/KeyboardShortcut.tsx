@@ -25,11 +25,11 @@ export const KeyboardShortcut: React.FC<KeyboardShortcutProps> = ({
 }) => (
 	<span className={className || (warning ? 'pktw-flex pktw-items-center pktw-gap-1' : '')}>
 		{prefix && <>{prefix}{' '}</>}
-		{keys && (<kbd className="pktw-px-1.5 pktw-py-0.5 pktw-bg-white pktw-border pktw-border-[#d1d5db] pktw-rounded pktw-text-[#6c757d]">
+		{keys && (<kbd className="pktw-px-1.5 pktw-py-0.5 pktw-bg-pk-surface pktw-border pktw-border-pk-border-light pktw-rounded pktw-text-pk-text-secondary">
 			{keys}
 		</kbd>)}
 		{description && (' ' + description)}
-		{warning && <span className="pktw-text-[#f59e0b] pktw-ml-1">{warning}</span>}
+		{warning && <span className="pktw-text-pk-warning pktw-ml-1">{warning}</span>}
 	</span>
 );
 

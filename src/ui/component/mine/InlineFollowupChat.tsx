@@ -118,9 +118,9 @@ export const InlineFollowupChat: React.FC<{
 	};
 
 	return (
-		<div className="pktw-bg-white pktw-border pktw-border-pk-border pktw-rounded-lg pktw-p-3">
+		<div className="pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-rounded-lg pktw-p-3">
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-2">
-				<span className="pktw-text-xs pktw-font-semibold pktw-text-[#2e3338]">{title}</span>
+				<span className="pktw-text-xs pktw-font-semibold pktw-text-pk-text-primary">{title}</span>
 				<div className="pktw-flex-1" />
 				{onCancel ? (
 					<Button
@@ -137,7 +137,7 @@ export const InlineFollowupChat: React.FC<{
 						<Button
 							variant="ghost"
 							style={{ cursor: 'pointer' }}
-							className={`pktw-text-[11px] pktw-px-2 pktw-py-1 ${mode === 'append' ? 'pktw-bg-[#f3f4f6] pktw-text-[#2e3338]' : 'pktw-bg-white pktw-text-pk-foreground-muted'}`}
+							className={`pktw-text-[11px] pktw-px-2 pktw-py-1 ${mode === 'append' ? 'pktw-bg-pk-surface-sunken pktw-text-pk-text-primary' : 'pktw-bg-pk-surface pktw-text-pk-foreground-muted'}`}
 							onClick={() => setMode('append')}
 							disabled={isStreaming}
 							title="Append answer below"
@@ -147,7 +147,7 @@ export const InlineFollowupChat: React.FC<{
 						<Button
 							variant="ghost"
 							style={{ cursor: 'pointer' }}
-							className={`pktw-text-[11px] pktw-px-2 pktw-py-1 ${mode === 'replace' ? 'pktw-bg-[#f3f4f6] pktw-text-[#2e3338]' : 'pktw-bg-white pktw-text-pk-foreground-muted'}`}
+							className={`pktw-text-[11px] pktw-px-2 pktw-py-1 ${mode === 'replace' ? 'pktw-bg-pk-surface-sunken pktw-text-pk-text-primary' : 'pktw-bg-pk-surface pktw-text-pk-foreground-muted'}`}
 							onClick={() => setMode('replace')}
 							disabled={isStreaming}
 							title="Replace the section content"
@@ -160,7 +160,7 @@ export const InlineFollowupChat: React.FC<{
 
 			<div className="pktw-flex pktw-gap-2 pktw-items-center">
 				<input
-					className="pktw-shadow-none pktw-flex-1 pktw-min-w-0 pktw-h-9 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-white pktw-px-3 pktw-text-sm pktw-text-[#2e3338] focus:pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-[#7c3aed]/30"
+					className="pktw-shadow-none pktw-flex-1 pktw-min-w-0 pktw-h-9 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-px-3 pktw-text-sm pktw-text-pk-text-primary focus:pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-pk-accent/30"
 					value={question}
 					onChange={(e) => setQuestion(e.target.value)}
 					placeholder={placeholder || 'Ask a follow-up…'}
@@ -191,7 +191,7 @@ export const InlineFollowupChat: React.FC<{
 
 			{outputPlace === 'inline' && !(mode === 'replace' && onStreamingReplace) && answer ? (
 				<StreamdownIsolated
-					className="pktw-mt-3 pktw-text-sm pktw-text-[#2e3338]"
+					className="pktw-mt-3 pktw-text-sm pktw-text-pk-text-primary"
 					isAnimating={isStreaming}
 				>
 					{answer}
