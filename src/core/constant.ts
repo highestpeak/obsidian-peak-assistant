@@ -58,6 +58,11 @@ export const MOBIUS_MAINTENANCE_DEBT_RENAME = 1;
 /** When cumulative debt reaches this, `needed` is set so UI can suggest full maintenance. */
 export const MOBIUS_MAINTENANCE_DIRTY_THRESHOLD = 30;
 
+/**
+ * Default vault folder for user-defined skills (markdown-based agent workflows).
+ */
+export const DEFAULT_SKILLS_FOLDER = '_skills';
+
 // ── Cascade update constants ──
 export const CASCADE_IDLE_DELAY_MS = 5000;
 export const CASCADE_MAX_ITEMS_PER_WINDOW = 20;

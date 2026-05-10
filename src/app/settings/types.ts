@@ -10,6 +10,7 @@ import {
 	type HubDiscoverSettings,
 } from '@/service/search/index/helper/hub/types';
 import type { AmbientPushSettings } from '@/service/ambient/types';
+import type { MCPServerConfig } from '@/service/mcp/types';
 /**
  * Document chunking configuration.
  */
@@ -430,6 +431,12 @@ export interface MyPluginSettings {
 
 	/** How many days to retain per-call detail rows before compaction. */
 	usageDetailRetentionDays: number;
+
+	/** External MCP server connections (stdio/SSE). */
+	mcpServers?: MCPServerConfig[];
+
+	/** Vault folder for user-defined skills (default: _skills). */
+	skillsFolder?: string;
 
 	/**
 	 * Vault Search (Claude Agent SDK).
