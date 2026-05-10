@@ -281,6 +281,7 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 					? rawAmbient.llmExplanationCooldownMs
 					: DEFAULT_AMBIENT_PUSH_SETTINGS.llmExplanationCooldownMs,
 			enableSerendipityGutter: getBoolean(rawAmbient.enableSerendipityGutter, DEFAULT_AMBIENT_PUSH_SETTINGS.enableSerendipityGutter),
+			enableMorningBriefing: getBoolean(rawAmbient.enableMorningBriefing, DEFAULT_AMBIENT_PUSH_SETTINGS.enableMorningBriefing),
 		};
 	}
 

@@ -33,6 +33,24 @@ export type AmbientSignal =
 export type TriggerType = 'writing_pause' | 'doc_switch' | 'manual';
 export type UserAction = 'opened' | 'linked' | 'dismissed' | 'ignored';
 
+// --- Morning Briefing (Phase 4) ---
+
+export type BriefingCategory = 'unresolved_connections' | 'changed_hubs' | 'decaying_engagement';
+
+export interface BriefingItem {
+	filePath: string;
+	title: string;
+	category: BriefingCategory;
+	reason: string;
+	score: number;
+	metadata?: {
+		lastEditedTs?: number;
+		daysSinceOpened?: number;
+		hubName?: string;
+		connectionCount?: number;
+	};
+}
+
 export interface AmbientPushSettings {
 	enabled: boolean;
 	triggerCooldownMs: number;
@@ -44,6 +62,7 @@ export interface AmbientPushSettings {
 	enableLlmExplanation: boolean;
 	llmExplanationCooldownMs: number;
 	enableSerendipityGutter: boolean;
+	enableMorningBriefing: boolean;
 }
 
 export const DEFAULT_AMBIENT_PUSH_SETTINGS: AmbientPushSettings = {
@@ -57,4 +76,5 @@ export const DEFAULT_AMBIENT_PUSH_SETTINGS: AmbientPushSettings = {
 	enableLlmExplanation: false,
 	llmExplanationCooldownMs: 120_000,
 	enableSerendipityGutter: true,
+	enableMorningBriefing: true,
 };
