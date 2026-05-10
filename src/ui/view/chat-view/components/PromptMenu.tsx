@@ -181,15 +181,17 @@ export const PromptMenu: React.FC<PromptMenuProps> = ({
 										)}
 									</div>
 
-									{/* Template badge for non-Quick-Actions groups */}
-									{item.group && item.group !== 'Quick Actions' && (
+									{/* Category badge — different label per group */}
+									{item.group && (
 										<span className={cn(
 											'pktw-ml-auto pktw-text-[8px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-flex-shrink-0',
 											isSelected
 												? 'pktw-bg-white/20 pktw-text-white'
-												: 'pktw-bg-[var(--pk-accent-muted,rgba(124,58,237,0.15))] pktw-text-[var(--pk-accent,#7c3aed)]',
+												: item.group === 'Quick Actions'
+													? 'pktw-bg-blue-500/10 pktw-text-blue-600'
+													: 'pktw-bg-[var(--pk-accent-muted,rgba(124,58,237,0.15))] pktw-text-[var(--pk-accent,#7c3aed)]',
 										)}>
-											Template
+											{item.group === 'Quick Actions' ? 'Action' : 'Template'}
 										</span>
 									)}
 								</div>
