@@ -431,6 +431,9 @@ export interface MyPluginSettings {
 	/** How many days to retain per-call detail rows before compaction. */
 	usageDetailRetentionDays: number;
 
+	/** External MCP server configurations. */
+	mcpServers?: import('@/service/mcp/types').MCPServerConfig[];
+
 	/**
 	 * Vault Search (Claude Agent SDK).
 	 */
