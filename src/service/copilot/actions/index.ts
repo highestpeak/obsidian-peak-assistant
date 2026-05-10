@@ -11,8 +11,8 @@ import {
 	extractConceptsSchema, knowledgeGapsSchema, vaultHealthSchema, addEvidenceSchema,
 } from '../copilot-schemas';
 import { CopilotActionRegistry } from '../CopilotActionRegistry';
-import type { CopilotAction, DocumentContext, ActionResult, ActionUsage, ProgressCallback } from '../CopilotActionRegistry';
-import type { LLMUsage } from '@/core/providers/types';
+import type { CopilotAction, DocumentContext, ActionResult, ActionUsage } from '../CopilotActionRegistry';
+import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
 
 // ── Re-exported types (consumed by UI panels) ──────────────────────────
 
@@ -37,20 +37,20 @@ function toActionUsage(u?: LLMUsage): ActionUsage | undefined {
 	return { inputTokens: u.inputTokens ?? 0, outputTokens: u.outputTokens ?? 0 };
 }
 
-/** Run a queryTextStream prompt and collect the full text, reporting progress. */
-async function streamAction(promptId: PromptId, vars: Record<string, any>, progress: ProgressCallback, signal?: AbortSignal): Promise<ActionResult> {
+/** Run a queryTextStream prompt, yielding text-delta events and returning the final result. */
+async function* streamAction(promptId: PromptId, vars: Record<string, any>, signal?: AbortSignal): AsyncGenerator<LLMStreamEvent, ActionResult> {
 	const mgr = AppContext.getInstance().manager;
 	let fullText = '';
 	let usage: ActionUsage | undefined;
 	for await (const chunk of mgr.queryTextStream(promptId, vars, { signal })) {
 		if (chunk.type === 'delta') {
 			fullText += chunk.text;
-			progress(fullText);
+			yield { type: 'text-delta', text: chunk.text } as LLMStreamEvent;
 		} else if (chunk.type === 'done') {
 			usage = toActionUsage(chunk.usage);
 		}
 	}
-	return { type: 'stream', text: fullText, usage };
+	return { type: 'stream' as const, text: fullText, usage };
 }
 
 /** Scoped content: selection if available, otherwise full content. */
@@ -72,7 +72,7 @@ export const polishDocumentAction: CopilotAction = {
 	id: 'polish', label: 'Polish Document', description: 'Improve clarity and style',
 	icon: Sparkles, category: 'document',
 	relevance: (ctx) => ctx.selection ? 0.8 : ctx.wordCount > 200 ? 0.5 : 0.2,
-	execute: (ctx, progress) => streamAction(PromptId.DocPolish, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope }, progress),
+	execute: (ctx, signal) => streamAction(PromptId.DocPolish, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope }, signal),
 	ResultPanel: null as any,
 };
 
@@ -80,12 +80,14 @@ export const reviewArticleAction: CopilotAction = {
 	id: 'review', label: 'Review Article', description: 'Get structural and content feedback',
 	icon: MessageSquareText, category: 'document',
 	relevance: (ctx) => ctx.wordCount > 500 ? 0.7 : ctx.wordCount > 300 ? 0.5 : 0.2,
-	async execute(ctx) {
+	async *execute(ctx, signal) {
+		let usage: ActionUsage | undefined;
 		const result = await AppContext.getInstance().manager.queryStructured(
 			PromptId.DocReview, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope },
 			await toJsonSchema(reviewResultSchema),
+			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
 		);
-		return { type: 'structured', data: result };
+		return { type: 'structured', data: result, usage };
 	},
 	ResultPanel: null as any,
 };
@@ -94,15 +96,17 @@ export const suggestLinksAction: CopilotAction = {
 	id: 'suggest-links', label: 'Suggest Links', description: 'Find potential wiki-link connections',
 	icon: Link2, category: 'document',
 	relevance: (ctx) => ctx.isOrphan ? 0.8 : ctx.links.length < 3 ? 0.5 : 0.2,
-	async execute(ctx) {
+	async *execute(ctx, signal) {
 		const app = AppContext.getInstance().app;
 		const cache = app.metadataCache.getFileCache(ctx.file);
 		const existingLinks = (cache?.links ?? []).map(l => l.link).join(', ');
+		let usage: ActionUsage | undefined;
 		const result = await AppContext.getInstance().manager.queryStructured(
 			PromptId.DocSuggestLinks, { content: ctx.content, title: ctx.title, existingLinks },
 			await toJsonSchema(linkSuggestionsSchema),
+			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
 		);
-		return { type: 'structured', data: result };
+		return { type: 'structured', data: result, usage };
 	},
 	ResultPanel: null as any,
 };
@@ -112,12 +116,14 @@ export const suggestSplitAction: CopilotAction = {
 	icon: GitFork, category: 'document',
 	relevance: (ctx) => ctx.wordCount > 2000 ? 0.8 : ctx.wordCount > 1000 ? 0.5 : 0.2,
 	guard: (ctx) => ctx.wordCount < 500 ? 'Document is too short to split (< 500 words)' : null,
-	async execute(ctx) {
+	async *execute(ctx, signal) {
+		let usage: ActionUsage | undefined;
 		const result = await AppContext.getInstance().manager.queryStructured(
 			PromptId.DocSplitSuggestion, { content: ctx.content, title: ctx.title, wordCount: ctx.wordCount },
 			await toJsonSchema(splitPlanSchema),
+			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
 		);
-		return { type: 'structured', data: result };
+		return { type: 'structured', data: result, usage };
 	},
 	ResultPanel: null as any,
 };
@@ -126,7 +132,7 @@ export const suggestTagsAction: CopilotAction = {
 	id: 'suggest-tags', label: 'Suggest Tags', description: 'Analyze content and suggest relevant tags',
 	icon: Tag, category: 'document',
 	relevance: (ctx) => ctx.tags.length === 0 ? 0.9 : ctx.tags.length < 2 ? 0.6 : 0.2,
-	async execute(ctx) {
+	async *execute(ctx, _signal) {
 		const engine = new TagSuggestionEngine(AppContext.getInstance().manager);
 		const ranked = await engine.suggestTags(ctx.file.path, ctx.content, ctx.title);
 		return {
@@ -148,7 +154,7 @@ export const summarizeAction: CopilotAction = {
 	icon: AlignLeft, category: 'document',
 	guard: (ctx) => ctx.wordCount < 100 ? 'Document is too short to summarize (minimum 100 words).' : null,
 	relevance: (ctx) => ctx.wordCount > 1500 ? 0.8 : ctx.wordCount > 800 ? 0.5 : 0.2,
-	execute: (ctx, progress) => streamAction(PromptId.DocSummarize, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope, length: 'short' }, progress),
+	execute: (ctx, signal) => streamAction(PromptId.DocSummarize, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope, length: 'short' }, signal),
 	ResultPanel: null as any,
 };
 
@@ -157,12 +163,14 @@ export const extractConceptsAction: CopilotAction = {
 	icon: Lightbulb, category: 'document',
 	guard: (ctx) => ctx.wordCount < 100 ? 'Document is too short to extract concepts from (minimum 100 words).' : null,
 	relevance: (ctx) => ctx.wordCount > 1000 && ctx.tags.length < 2 ? 0.7 : ctx.wordCount > 500 ? 0.5 : 0.2,
-	async execute(ctx) {
+	async *execute(ctx, signal) {
+		let usage: ActionUsage | undefined;
 		const result = await AppContext.getInstance().manager.queryStructured(
 			PromptId.DocExtractConcepts, { content: scopedContent(ctx), title: ctx.title },
 			await toJsonSchema(extractConceptsSchema),
+			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
 		);
-		return { type: 'structured', data: result };
+		return { type: 'structured', data: result, usage };
 	},
 	ResultPanel: null as any,
 };
@@ -174,10 +182,10 @@ export const translateAction: CopilotAction = {
 		const content = ctx.scope === 'selection' ? ctx.selection ?? ctx.content : ctx.content;
 		return hasCJKMajority(content) ? 0.6 : 0.3;
 	},
-	execute(ctx, progress) {
+	execute(ctx, signal) {
 		const content = scopedContent(ctx);
 		const targetLanguage = hasCJKMajority(content) ? 'English' : '中文';
-		return streamAction(PromptId.DocTranslate, { content, title: ctx.title, scope: ctx.scope, targetLanguage }, progress);
+		return streamAction(PromptId.DocTranslate, { content, title: ctx.title, scope: ctx.scope, targetLanguage }, signal);
 	},
 	ResultPanel: null as any,
 };
@@ -186,7 +194,7 @@ export const findRelatedAction: CopilotAction = {
 	id: 'find-related', label: 'Find Related', description: 'Find semantically related notes in your vault',
 	icon: Search, category: 'vault',
 	relevance: (ctx) => ctx.isOrphan ? 0.8 : ctx.links.length < 3 ? 0.5 : 0.3,
-	async execute(ctx) {
+	async *execute(ctx, _signal) {
 		const response = await AppContext.getInstance().searchClient.vectorSearch({
 			text: ctx.content.slice(0, 1000), scopeMode: 'vault', topK: 10,
 		});
@@ -207,7 +215,7 @@ export const knowledgeGapsAction: CopilotAction = {
 	id: 'knowledge-gaps', label: 'Knowledge Gaps', description: 'Identify missing topics and knowledge gaps',
 	icon: HelpCircle, category: 'vault',
 	relevance: (ctx) => ctx.headingCount > 5 ? 0.7 : ctx.headingCount > 3 ? 0.5 : 0.2,
-	async execute(ctx) {
+	async *execute(ctx, signal) {
 		const app = AppContext.getInstance().app;
 		const cache = app.metadataCache.getFileCache(ctx.file);
 		const resolvedLinks = (cache?.links ?? []).map(l => {
@@ -215,11 +223,13 @@ export const knowledgeGapsAction: CopilotAction = {
 			return resolved?.basename ?? l.link;
 		});
 		const relatedNotes = [...new Set(resolvedLinks)].join(', ');
+		let usage: ActionUsage | undefined;
 		const result = await AppContext.getInstance().manager.queryStructured(
 			PromptId.VaultKnowledgeGaps, { content: ctx.content, title: ctx.title, relatedNotes },
 			await toJsonSchema(knowledgeGapsSchema),
+			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
 		);
-		return { type: 'structured', data: result };
+		return { type: 'structured', data: result, usage };
 	},
 	ResultPanel: null as any,
 };
@@ -232,7 +242,7 @@ export const synthesizeTopicAction: CopilotAction = {
 		return /moc|overview|summary|index/.test(t) ? 0.8 : ctx.tags.length > 0 ? 0.4 : 0.2;
 	},
 	guard: (ctx) => ctx.wordCount < 50 ? 'Document is too short to synthesize (< 50 words)' : null,
-	async execute(ctx, progress) {
+	async *execute(ctx, signal) {
 		const searchClient = AppContext.getInstance().searchClient;
 		const response = await searchClient.vectorSearch({
 			text: ctx.content.slice(0, 1000), scopeMode: 'vault', topK: 8,
@@ -246,14 +256,17 @@ export const synthesizeTopicAction: CopilotAction = {
 			}));
 		const sourcesText = sources.map((s, i) => `[${i + 1}] ${s.title}\n${s.excerpt}`).join('\n\n');
 		let fullText = '';
-		for await (const chunk of AppContext.getInstance().manager.queryTextStream(PromptId.VaultSynthesize, { topic: ctx.title, sources: sourcesText })) {
+		let usage: ActionUsage | undefined;
+		for await (const chunk of AppContext.getInstance().manager.queryTextStream(PromptId.VaultSynthesize, { topic: ctx.title, sources: sourcesText }, { signal })) {
 			if (chunk.type === 'delta') {
 				fullText += chunk.text;
-				progress(fullText);
+				yield { type: 'text-delta', text: chunk.text } as LLMStreamEvent;
+			} else if (chunk.type === 'done') {
+				usage = toActionUsage(chunk.usage);
 			}
 		}
 		const result: SynthesizeResult = { text: fullText, sources: sources.map(s => ({ path: s.path, title: s.title })) };
-		return { type: 'structured', data: result };
+		return { type: 'structured' as const, data: result, usage };
 	},
 	ResultPanel: null as any,
 };
@@ -262,7 +275,7 @@ export const vaultHealthAction: CopilotAction = {
 	id: 'vault-health', label: 'Vault Health', description: 'Analyze vault structure for orphans, duplicates, and stale notes',
 	icon: Activity, category: 'vault',
 	relevance: () => 0.5,
-	async execute() {
+	async *execute(_ctx, signal) {
 		const aiManager = AppContext.getInstance().manager;
 		const app = AppContext.getInstance().app;
 		const files = app.vault.getMarkdownFiles();
@@ -294,10 +307,12 @@ export const vaultHealthAction: CopilotAction = {
 			`Top tags: ${Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([t, c]) => `${t}(${c})`).join(', ')}`,
 		].join('\n');
 
+		let usage: ActionUsage | undefined;
 		const result = await aiManager.queryStructured(
 			PromptId.VaultHealth, { stats }, await toJsonSchema(vaultHealthSchema),
+			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
 		);
-		return { type: 'structured', data: result };
+		return { type: 'structured', data: result, usage };
 	},
 	ResultPanel: null as any,
 };
@@ -307,7 +322,7 @@ export const continueWritingAction: CopilotAction = {
 	icon: ChevronRight, category: 'writing',
 	guard: (ctx) => ctx.wordCount === 0 ? 'Document is empty — write something first' : null,
 	relevance: (ctx) => ctx.wordCount >= 50 && ctx.wordCount <= 2000 ? 0.6 : ctx.wordCount > 0 ? 0.4 : 0.1,
-	execute: (ctx, progress) => streamAction(PromptId.WritingContinue, { content: ctx.content, title: ctx.title }, progress),
+	execute: (ctx, signal) => streamAction(PromptId.WritingContinue, { content: ctx.content, title: ctx.title }, signal),
 	ResultPanel: null as any,
 };
 
@@ -316,7 +331,7 @@ export const rewriteSelectionAction: CopilotAction = {
 	icon: PenLine, category: 'writing',
 	guard: (ctx) => ctx.selection ? null : 'Select text to rewrite',
 	relevance: (ctx) => ctx.selection ? 0.8 : 0.1,
-	execute: (ctx, progress) => streamAction(PromptId.WritingRewrite, { selection: ctx.selection!, content: ctx.content, title: ctx.title, style: 'concise' }, progress),
+	execute: (ctx, signal) => streamAction(PromptId.WritingRewrite, { selection: ctx.selection!, content: ctx.content, title: ctx.title, style: 'concise' }, signal),
 	ResultPanel: null as any,
 };
 
@@ -325,7 +340,7 @@ export const addEvidenceAction: CopilotAction = {
 	icon: BookOpen, category: 'writing',
 	guard: (ctx) => ctx.wordCount < 50 ? 'Write at least 50 words before searching for evidence' : null,
 	relevance: (ctx) => ctx.wordCount > 500 ? 0.5 : 0.2,
-	async execute(ctx) {
+	async *execute(ctx, signal) {
 		const searchClient = AppContext.getInstance().searchClient;
 		const queryText = ctx.selection ?? ctx.content.slice(0, 500);
 		const searchResult = await searchClient.vectorSearch({ text: queryText, topK: 10, scopeMode: 'vault' });
@@ -336,10 +351,12 @@ export const addEvidenceAction: CopilotAction = {
 			.map((item, i) => `[${i + 1}] ${item.title} (${item.path})\n${item.content ?? item.highlight?.text ?? ''}`)
 			.join('\n\n');
 		const context = ctx.selection ?? ctx.content.slice(0, 1000);
+		let usage: ActionUsage | undefined;
 		const result = await AppContext.getInstance().manager.queryStructured(
 			PromptId.WritingAddEvidence, { context, sources }, await toJsonSchema(addEvidenceSchema),
+			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
 		);
-		return { type: 'structured', data: result };
+		return { type: 'structured', data: result, usage };
 	},
 	ResultPanel: null as any,
 };
