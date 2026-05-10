@@ -1,7 +1,7 @@
 import {
 	Sparkles, Tag, MessageSquareText, Link2, GitFork, Lightbulb, AlignLeft,
 	Languages, Search, HelpCircle, Layers, Activity, ChevronRight, PenLine, BookOpen,
-	WrapText, Share2, ShieldCheck, Calendar, CheckSquare, ClipboardList,
+	WrapText, Share2, ShieldCheck, Calendar, CheckSquare, ClipboardList, Workflow,
 } from 'lucide-react';
 
 import { PromptId } from '@/service/prompt/PromptId';
@@ -607,6 +607,21 @@ export const writingPlanAction: CopilotAction = {
 	ResultPanel: null as any,
 };
 
+export const runWorkflowAction: CopilotAction = {
+	id: 'run-workflow', label: 'Run Workflow', description: 'Execute a multi-step workflow (find → summarize → report)',
+	icon: Workflow, category: 'vault',
+	relevance: () => 0.3,
+	async *execute(ctx, signal) {
+		const { runWorkflow } = await import('@/service/workflow/WorkflowAgent');
+		const description = ctx.selection
+			? ctx.selection
+			: `Find notes related to "${ctx.title}" and create a summary report`;
+		const result = await runWorkflow(description, signal);
+		return { type: 'structured', data: result };
+	},
+	ResultPanel: null as any,
+};
+
 // ── Panel imports (static so esbuild resolves @/ aliases) ─────────────
 
 import { PolishPanel } from '@/ui/view/copilot/panels/PolishPanel';
@@ -630,6 +645,7 @@ import { RewriteSelectionPanel } from '@/ui/view/copilot/panels/RewriteSelection
 import { AddEvidencePanel } from '@/ui/view/copilot/panels/AddEvidencePanel';
 import { ExtractTodosPanel } from '@/ui/view/copilot/panels/ExtractTodosPanel';
 import { WritingPlanPanel } from '@/ui/view/copilot/panels/WritingPlanPanel';
+import { WorkflowPanel } from '@/ui/view/copilot/panels/WorkflowPanel';
 
 // ── Registration ───────────────────────────────────────────────────────
 
@@ -655,6 +671,7 @@ const PANEL_MAP: Record<string, React.FC<any>> = {
 	'add-evidence': AddEvidencePanel,
 	'extract-todos': ExtractTodosPanel,
 	'writing-plan': WritingPlanPanel,
+	'run-workflow': WorkflowPanel,
 };
 
 /** All actions in display order: document → vault → writing. */
@@ -663,7 +680,7 @@ const ALL_ACTIONS: CopilotAction[] = [
 	suggestTagsAction, suggestLinksAction, suggestSemanticLinksAction, suggestSplitAction, reviewArticleAction,
 	correctContentAction, polishDocumentAction, formatDocumentAction, summarizeAction, extractConceptsAction, translateAction,
 	// Vault
-	findRelatedAction, knowledgeGapsAction, synthesizeTopicAction, vaultHealthAction, vaultSummaryAction, extractTodosAction,
+	findRelatedAction, knowledgeGapsAction, synthesizeTopicAction, vaultHealthAction, vaultSummaryAction, extractTodosAction, runWorkflowAction,
 	// Writing
 	continueWritingAction, rewriteSelectionAction, addEvidenceAction, writingPlanAction,
 ];
