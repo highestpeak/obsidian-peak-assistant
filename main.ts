@@ -241,6 +241,16 @@ export default class MyPlugin extends Plugin {
 			console.warn('[Peak Assistant] SkillRegistry init failed:', e);
 		});
 
+		// Register "Run Skill" command
+		this.addCommand({
+			id: 'peak-run-skill',
+			name: 'Run Skill',
+			callback: () => {
+				const { SkillPickerModal } = require('@/ui/view/skills/SkillPickerModal');
+				new SkillPickerModal(appContext).open();
+			},
+		});
+
 		// Ambient Push — proactive related-note suggestions
 		const ambientPushSettings = this.settings.ambientPush;
 		if (!ambientPushSettings || ambientPushSettings.enabled !== false) {
