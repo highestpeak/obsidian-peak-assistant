@@ -312,6 +312,74 @@ export class ModelRegistry {
 		}
 	}
 
+	/**
+	 * Fetch latest model definitions from a server API and merge into registry.
+	 *
+	 * Endpoint: GET {baseUrl}/api/model-registry/latest?provider={providerId}
+	 * Response format: same JSON as per-provider template files.
+	 * Auth: Bearer {authToken} header (subscription feature).
+	 *
+	 * Non-destructive: merges with existing data, never removes models.
+	 * Pricing data takes precedence from server (fresher data).
+	 *
+	 * @param serverBaseUrl - Base URL of the sync server
+	 * @param authToken - Subscription auth token
+	 * @param providerIds - Optional list of provider IDs to sync (defaults to all known)
+	 * @returns Object with arrays of synced and failed provider IDs
+	 */
+	public static async syncFromServer(
+		serverBaseUrl: string,
+		authToken: string,
+		providerIds?: string[],
+	): Promise<{ synced: string[]; failed: string[] }> {
+		const registry = ModelRegistry.getInstance();
+		const ids = providerIds ?? registry.getAllProviderIds();
+		const synced: string[] = [];
+		const failed: string[] = [];
+
+		const baseUrl = serverBaseUrl.replace(/\/+$/, '');
+
+		for (const providerId of ids) {
+			try {
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), 10_000);
+
+				const response = await fetch(
+					`${baseUrl}/api/model-registry/latest?provider=${encodeURIComponent(providerId)}`,
+					{
+						headers: {
+							'Authorization': `Bearer ${authToken}`,
+							'Content-Type': 'application/json',
+						},
+						signal: controller.signal,
+					},
+				);
+				clearTimeout(timeoutId);
+
+				if (!response.ok) {
+					console.warn(`[ModelRegistry] Sync failed for ${providerId}: ${response.status}`);
+					failed.push(providerId);
+					continue;
+				}
+
+				const data = await response.json() as { provider?: string; models?: Record<string, any> };
+				if (data?.provider && data?.models) {
+					registry.mergeProviderData(data as { provider: string; models: Record<string, any> });
+					synced.push(providerId);
+				} else {
+					console.warn(`[ModelRegistry] Invalid sync response for ${providerId}`);
+					failed.push(providerId);
+				}
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : String(e);
+				console.warn(`[ModelRegistry] Sync error for ${providerId}: ${msg}`);
+				failed.push(providerId);
+			}
+		}
+
+		return { synced, failed };
+	}
+
 	private findModel(providerId: string, modelId: string): InternalModelEntry | undefined {
 		const provider = this.providers.get(normalizeProviderId(providerId));
 		if (!provider) return undefined;
