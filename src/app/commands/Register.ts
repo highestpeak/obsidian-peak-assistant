@@ -33,6 +33,7 @@ import { KnowledgeIntuitionAgent } from '@/service/agents/KnowledgeIntuitionAgen
 import { BulkOperationCostEstimator } from '@/service/search/support/cost-estimator';
 import { CostEstimationModal } from '@/ui/view/modals/CostEstimationModal';
 import { IndexingProgressModal } from '@/ui/view/modals/IndexingProgressModal';
+import { VaultLintService } from '@/service/lint/VaultLintService';
 import { computeEvalMetrics, formatEvalReport } from '@/service/search/query/pprEvaluator';
 
 /**
@@ -734,6 +735,15 @@ export function buildCoreCommands(
 			id: 'peak-usage-dashboard',
 			name: 'Open Usage Dashboard',
 			callback: () => void viewManager.activateUsageDashboardView(),
+		},
+		{
+			id: 'peak-vault-xray',
+			name: 'Vault X-Ray',
+			callback: async () => {
+				const lintService = VaultLintService.getInstance();
+				lintService.initRegistry();
+				await viewManager.activateVaultXRayView();
+			},
 		},
 	];
 }

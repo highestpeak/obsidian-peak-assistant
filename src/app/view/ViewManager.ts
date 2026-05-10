@@ -6,6 +6,7 @@ import { MESSAGE_HISTORY_VIEW_TYPE, MessageHistoryView } from '@/ui/view/Message
 import { GRAPH_FULLSCREEN_VIEW_TYPE, GraphFullscreenView } from '@/ui/view/graph-fullscreen/GraphFullscreenView';
 import { AmbientPushView, AMBIENT_PUSH_VIEW_TYPE } from '@/ui/view/AmbientPushView';
 import { UsageDashboardView, USAGE_DASHBOARD_VIEW_TYPE } from '@/ui/view/usage-dashboard/UsageDashboardView';
+import { VaultXRayView, VAULT_XRAY_VIEW_TYPE } from '@/ui/view/vault-lint/VaultXRayView';
 import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
 import { InputModal } from '@/ui/component/InputModal';
 import { App, ViewCreator } from 'obsidian';
@@ -42,6 +43,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(USAGE_DASHBOARD_VIEW_TYPE, (leaf) => {
 			return new UsageDashboardView(leaf, appContext);
+		});
+		this.viewCreators.set(VAULT_XRAY_VIEW_TYPE, (leaf) => {
+			return new VaultXRayView(leaf, appContext);
 		});
 	}
 
@@ -114,6 +118,21 @@ export class ViewManager {
 		const leaf = this.plugin.app.workspace.getLeaf('tab');
 		await leaf.setViewState({ type: USAGE_DASHBOARD_VIEW_TYPE, active: true });
 		this.plugin.app.workspace.revealLeaf(leaf);
+	}
+
+	/**
+	 * Open or reveal the Vault X-Ray view in a new tab.
+	 */
+	async activateVaultXRayView(): Promise<void> {
+		const { workspace } = this.plugin.app;
+		const existing = workspace.getLeavesOfType(VAULT_XRAY_VIEW_TYPE);
+		if (existing.length > 0) {
+			workspace.revealLeaf(existing[0]);
+			return;
+		}
+		const leaf = workspace.getLeaf('tab');
+		await leaf.setViewState({ type: VAULT_XRAY_VIEW_TYPE, active: true });
+		workspace.revealLeaf(leaf);
 	}
 
 	/**
