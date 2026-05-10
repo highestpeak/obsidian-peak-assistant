@@ -1,7 +1,7 @@
 import {
 	Sparkles, Tag, MessageSquareText, Link2, GitFork, Lightbulb, AlignLeft,
 	Languages, Search, HelpCircle, Layers, Activity, ChevronRight, PenLine, BookOpen,
-	WrapText, Share2,
+	WrapText, Share2, ShieldCheck, Calendar, CheckSquare,
 } from 'lucide-react';
 
 import { PromptId } from '@/service/prompt/PromptId';
@@ -10,6 +10,7 @@ import { TagSuggestionEngine } from '../TagSuggestionEngine';
 import {
 	reviewResultSchema, splitPlanSchema,
 	extractConceptsSchema, vaultHealthSchema,
+	correctContentSchema, vaultSummarySchema,
 	type TagSuggestions,
 } from '../copilot-schemas';
 import { CopilotActionRegistry } from '../CopilotActionRegistry';
@@ -87,6 +88,23 @@ export const formatDocumentAction: CopilotAction = {
 	icon: WrapText, category: 'document',
 	relevance: (ctx) => ctx.selection ? 0.6 : ctx.wordCount > 200 ? 0.5 : 0.2,
 	execute: (ctx, signal) => streamAction(PromptId.DocFormatPolish, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope }, signal),
+	ResultPanel: null as any,
+};
+
+export const correctContentAction: CopilotAction = {
+	id: 'correct-content', label: 'Correct Content', description: 'Find factual errors, logical inconsistencies, broken references, and typos',
+	icon: ShieldCheck, category: 'document',
+	guard: (ctx) => ctx.wordCount < 50 ? 'Document is too short to check for errors (minimum 50 words).' : null,
+	relevance: (ctx) => ctx.selection ? 0.7 : ctx.wordCount > 300 ? 0.6 : 0.3,
+	async *execute(ctx, signal) {
+		let usage: ActionUsage | undefined;
+		const result = await AppContext.getInstance().manager.queryStructured(
+			PromptId.DocCorrectContent, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope },
+			await toJsonSchema(correctContentSchema),
+			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
+		);
+		return { type: 'structured', data: result, usage };
+	},
 	ResultPanel: null as any,
 };
 
@@ -440,6 +458,50 @@ export const vaultHealthAction: CopilotAction = {
 	ResultPanel: null as any,
 };
 
+export const vaultSummaryAction: CopilotAction = {
+	id: 'vault-summary', label: 'Vault Summary', description: 'Summarize recent vault activity over a time period',
+	icon: Calendar, category: 'vault',
+	relevance: () => 0.5,
+	async *execute(_ctx, signal) {
+		const app = AppContext.getInstance().app;
+		const files = app.vault.getMarkdownFiles();
+		const now = Date.now();
+		const days = 7; // default weekly
+		const cutoff = now - days * 86400000;
+
+		// Collect recently modified files
+		const recentFiles = files
+			.filter(f => f.stat.mtime >= cutoff)
+			.sort((a, b) => b.stat.mtime - a.stat.mtime);
+
+		if (recentFiles.length === 0) {
+			return { type: 'structured', data: { period: `Past ${days} days`, totalNotes: 0, groups: [], narrative: 'No notes were modified in this period.' } };
+		}
+
+		// Build note list for LLM
+		const noteListLines = recentFiles.map(f => {
+			const date = new Date(f.stat.mtime).toISOString().slice(0, 10);
+			const title = f.basename;
+			const folder = f.parent?.path ?? '/';
+			return `- **${title}** (${folder}) — modified ${date}`;
+		});
+
+		const startDate = new Date(cutoff).toISOString().slice(0, 10);
+		const endDate = new Date(now).toISOString().slice(0, 10);
+		const period = `Past ${days} days (${startDate} to ${endDate})`;
+
+		let usage: ActionUsage | undefined;
+		const result = await AppContext.getInstance().manager.queryStructured(
+			PromptId.VaultSummary,
+			{ period, noteList: noteListLines.join('\n') },
+			await toJsonSchema(vaultSummarySchema),
+			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
+		);
+		return { type: 'structured', data: result, usage };
+	},
+	ResultPanel: null as any,
+};
+
 export const continueWritingAction: CopilotAction = {
 	id: 'continue-writing', label: 'Continue Writing', description: 'Continue writing from where you left off',
 	icon: ChevronRight, category: 'writing',
@@ -480,6 +542,47 @@ export const addEvidenceAction: CopilotAction = {
 	ResultPanel: null as any,
 };
 
+export const extractTodosAction: CopilotAction = {
+	id: 'extract-todos', label: 'Extract Todos', description: 'Find all unchecked todos across the vault',
+	icon: CheckSquare, category: 'vault',
+	relevance: () => 0.6,
+	async *execute(_ctx, _signal) {
+		const app = AppContext.getInstance().app;
+		const files = app.vault.getMarkdownFiles();
+		const todoPattern = /^(\s*)-\s\[\s\]\s(.+)$/;
+		const tagPattern = /#[\w/-]+/g;
+
+		const todos: Array<{ filePath: string; text: string; lineNumber: number; tags: string[] }> = [];
+
+		for (const file of files) {
+			const content = await app.vault.cachedRead(file);
+			const lines = content.split('\n');
+			for (let i = 0; i < lines.length; i++) {
+				const match = lines[i].match(todoPattern);
+				if (!match) continue;
+				const text = match[2].trim();
+				const tags = text.match(tagPattern) ?? [];
+				todos.push({
+					filePath: file.path,
+					text,
+					lineNumber: i + 1,
+					tags,
+				});
+			}
+		}
+
+		return {
+			type: 'structured',
+			data: {
+				todos,
+				totalFiles: files.length,
+				summary: `Found ${todos.length} todo${todos.length !== 1 ? 's' : ''} across ${files.length} files.`,
+			},
+		};
+	},
+	ResultPanel: null as any,
+};
+
 // ── Panel imports (static so esbuild resolves @/ aliases) ─────────────
 
 import { PolishPanel } from '@/ui/view/copilot/panels/PolishPanel';
@@ -496,9 +599,12 @@ import { FindRelatedPanel } from '@/ui/view/copilot/panels/FindRelatedPanel';
 import { KnowledgeGapsPanel } from '@/ui/view/copilot/panels/KnowledgeGapsPanel';
 import { SynthesizePanel } from '@/ui/view/copilot/panels/SynthesizePanel';
 import { VaultHealthPanel } from '@/ui/view/copilot/panels/VaultHealthPanel';
+import { CorrectContentPanel } from '@/ui/view/copilot/panels/CorrectContentPanel';
+import { VaultSummaryPanel } from '@/ui/view/copilot/panels/VaultSummaryPanel';
 import { ContinueWritingPanel } from '@/ui/view/copilot/panels/ContinueWritingPanel';
 import { RewriteSelectionPanel } from '@/ui/view/copilot/panels/RewriteSelectionPanel';
 import { AddEvidencePanel } from '@/ui/view/copilot/panels/AddEvidencePanel';
+import { ExtractTodosPanel } from '@/ui/view/copilot/panels/ExtractTodosPanel';
 
 // ── Registration ───────────────────────────────────────────────────────
 
@@ -517,18 +623,21 @@ const PANEL_MAP: Record<string, React.FC<any>> = {
 	'knowledge-gaps': KnowledgeGapsPanel,
 	'synthesize-topic': SynthesizePanel,
 	'vault-health': VaultHealthPanel,
+	'correct-content': CorrectContentPanel,
+	'vault-summary': VaultSummaryPanel,
 	'continue-writing': ContinueWritingPanel,
 	'rewrite-selection': RewriteSelectionPanel,
 	'add-evidence': AddEvidencePanel,
+	'extract-todos': ExtractTodosPanel,
 };
 
 /** All actions in display order: document → vault → writing. */
 const ALL_ACTIONS: CopilotAction[] = [
 	// Document
 	suggestTagsAction, suggestLinksAction, suggestSemanticLinksAction, suggestSplitAction, reviewArticleAction,
-	polishDocumentAction, formatDocumentAction, summarizeAction, extractConceptsAction, translateAction,
+	correctContentAction, polishDocumentAction, formatDocumentAction, summarizeAction, extractConceptsAction, translateAction,
 	// Vault
-	findRelatedAction, knowledgeGapsAction, synthesizeTopicAction, vaultHealthAction,
+	findRelatedAction, knowledgeGapsAction, synthesizeTopicAction, vaultHealthAction, vaultSummaryAction, extractTodosAction,
 	// Writing
 	continueWritingAction, rewriteSelectionAction, addEvidenceAction,
 ];
