@@ -148,7 +148,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | ~~`graph-layout-fix`~~ | ~~5 个图布局修复~~ | ~~中~~ | COMPLETED |
 | `v2-persistence-fix` | 5 个 V2 持久化 bug：v2FullyDone 守卫、graph store 错配、restore 数据丢失 | 中 | `plans/2026-04-18` |
 | `report-ui-quality` Task 3-4 | 粘性 V2PlanReview footer + 内联 plan 编辑（onUpdate） | 小 | `plans/2026-04-14` |
-| `ai-analysis-ux-overhaul` Phase ③ | SynthesizeAgent + 多轮 round 分离 UI | 中 | `plans/2026-04-17` |
+| ~~`ai-analysis-ux-overhaul` Phase ③~~ | ~~SynthesizeAgent + 多轮 round 分离 UI~~ | ~~中~~ | COMPLETED |
 
 ### 3. TASKS.md 按阶段待做
 
@@ -792,7 +792,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | report-quality-overhaul | 04-15 | COMPLETED |
 | ai-graph-multi-lens | 04-15 | COMPLETED |
 | continue-analysis-process-view | 04-17 | COMPLETED |
-| ai-analysis-ux-overhaul | 04-17 | PARTIAL (Phase ①② done, Phase ③ SynthesizeAgent 缺失) |
+| ai-analysis-ux-overhaul | 04-17 | COMPLETED (all 6 phases, Phase ⑥ superseded by PatternDiscovery) |
 | ai-graph-agent | 04-18 | COMPLETED |
 | mobile-support | 04-18 | COMPLETED |
 | ui-improvements-all-strategies | 04-18 | COMPLETED |

@@ -1,0 +1,105 @@
+{
+  "provider": "perplexity",
+  "models": {
+    "sonar-deep-research": {
+      "apiModelId": "sonar-deep-research",
+      "icon": "perplexity",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 131072,
+        "maxInputTokens": 131072,
+        "recommendedSummaryThreshold": 100000
+      },
+      "capabilities": {
+        "vision": false,
+        "pdfInput": false,
+        "tools": false,
+        "webSearch": true,
+        "reasoning": true,
+        "maxCtx": 131072
+      }
+    },
+    "sonar-reasoning-pro": {
+      "apiModelId": "sonar-reasoning-pro",
+      "icon": "perplexity",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 131072,
+        "maxInputTokens": 131072,
+        "recommendedSummaryThreshold": 100000
+      },
+      "capabilities": {
+        "vision": false,
+        "pdfInput": false,
+        "tools": false,
+        "webSearch": true,
+        "reasoning": true,
+        "maxCtx": 131072
+      }
+    },
+    "sonar-reasoning": {
+      "apiModelId": "sonar-reasoning",
+      "icon": "perplexity",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 131072,
+        "maxInputTokens": 131072,
+        "recommendedSummaryThreshold": 100000
+      },
+      "capabilities": {
+        "vision": false,
+        "pdfInput": false,
+        "tools": false,
+        "webSearch": true,
+        "reasoning": true,
+        "maxCtx": 131072
+      }
+    },
+    "sonar-pro": {
+      "apiModelId": "sonar-pro",
+      "icon": "perplexity",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 204800,
+        "maxInputTokens": 204800,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": false,
+        "pdfInput": false,
+        "tools": false,
+        "webSearch": true,
+        "reasoning": false,
+        "maxCtx": 204800
+      }
+    },
+    "sonar": {
+      "apiModelId": "sonar",
+      "icon": "perplexity",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 131072,
+        "maxInputTokens": 131072,
+        "recommendedSummaryThreshold": 100000
+      },
+      "capabilities": {
+        "vision": false,
+        "pdfInput": false,
+        "tools": false,
+        "webSearch": true,
+        "reasoning": false,
+        "maxCtx": 131072
+      }
+    }
+  }
+}

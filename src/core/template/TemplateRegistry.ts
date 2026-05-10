@@ -122,6 +122,14 @@ export interface TemplateMetadata {
  */
 export const ConfigTemplateId = {
 	TimeWithinNormalize: 'time-within-normalize' as const,
+	VaultLintConfig: 'config-vault-lint',
+	// Model registry
+	ModelsOpenAI: 'config-models-openai' as const,
+	ModelsClaude: 'config-models-claude' as const,
+	ModelsGemini: 'config-models-gemini' as const,
+	ModelsPerplexity: 'config-models-perplexity' as const,
+	ModelsOllamaFamilies: 'config-models-ollama-families' as const,
+	ModelsDefaults: 'config-models-defaults' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -331,6 +339,15 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 
 	// --- Config (runtime-editable JSON) ---
 	[ConfigTemplateId.TimeWithinNormalize]: meta('config', 'time-within-normalize', { expectsJson: true }),
+	[ConfigTemplateId.VaultLintConfig]: meta('config', 'vault-lint-config'),
+
+	// --- Model Registry (per-provider JSON) ---
+	[ConfigTemplateId.ModelsOpenAI]: meta('config', 'models/openai', { expectsJson: true }),
+	[ConfigTemplateId.ModelsClaude]: meta('config', 'models/claude', { expectsJson: true }),
+	[ConfigTemplateId.ModelsGemini]: meta('config', 'models/gemini', { expectsJson: true }),
+	[ConfigTemplateId.ModelsPerplexity]: meta('config', 'models/perplexity', { expectsJson: true }),
+	[ConfigTemplateId.ModelsOllamaFamilies]: meta('config', 'models/ollama-families', { expectsJson: true }),
+	[ConfigTemplateId.ModelsDefaults]: meta('config', 'models/defaults', { expectsJson: true }),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {

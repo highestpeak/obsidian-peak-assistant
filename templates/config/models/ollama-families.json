@@ -1,0 +1,148 @@
+{
+  "families": {
+    "llama3.1": {
+      "icon": "llama-3.1",
+      "maxContext": 131072,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "llama3": {
+      "icon": "llama-3",
+      "maxContext": 8192,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "qwen2.5": {
+      "icon": "qwen",
+      "maxContext": 32768,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "qwen3": {
+      "icon": "qwen",
+      "maxContext": 32768,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "deepseek-r1": {
+      "icon": "deepseek",
+      "maxContext": 32768,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": true
+      }
+    },
+    "mistral": {
+      "icon": "mistral",
+      "maxContext": 8192,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "mixtral": {
+      "icon": "mixtral",
+      "maxContext": 32768,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "gemma2": {
+      "icon": "gemma",
+      "maxContext": 8192,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "phi3": {
+      "icon": "phi-3",
+      "maxContext": 4096,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "codellama": {
+      "icon": "codellama",
+      "maxContext": 16384,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "llava": {
+      "icon": "llava",
+      "maxContext": 4096,
+      "capabilities": {
+        "tools": true,
+        "vision": true,
+        "reasoning": false
+      }
+    },
+    "gpt-oss": {
+      "icon": "gpt-oss",
+      "maxContext": 8192,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": true
+      }
+    },
+    "gemma3": {
+      "icon": "gemma",
+      "maxContext": 128000,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "phi4": {
+      "icon": "phi-4",
+      "maxContext": 128000,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "llama-3.3": {
+      "icon": "llama-3.3",
+      "maxContext": 128000,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    },
+    "mistral-small": {
+      "icon": "mistral",
+      "maxContext": 128000,
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "reasoning": false
+      }
+    }
+  }
+}

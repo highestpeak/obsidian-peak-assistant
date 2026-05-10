@@ -275,6 +275,12 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 				typeof rawAmbient.feedbackLearning === 'boolean'
 					? rawAmbient.feedbackLearning
 					: DEFAULT_AMBIENT_PUSH_SETTINGS.feedbackLearning,
+			enableLlmExplanation: getBoolean(rawAmbient.enableLlmExplanation, DEFAULT_AMBIENT_PUSH_SETTINGS.enableLlmExplanation),
+			llmExplanationCooldownMs:
+				typeof rawAmbient.llmExplanationCooldownMs === 'number'
+					? rawAmbient.llmExplanationCooldownMs
+					: DEFAULT_AMBIENT_PUSH_SETTINGS.llmExplanationCooldownMs,
+			enableSerendipityGutter: getBoolean(rawAmbient.enableSerendipityGutter, DEFAULT_AMBIENT_PUSH_SETTINGS.enableSerendipityGutter),
 		};
 	}
 

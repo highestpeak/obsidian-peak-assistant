@@ -3,6 +3,7 @@ import { App } from 'obsidian';
 import { ModelInfoForSwitch, LLMUsage, LLMStreamEvent, LLMRequestMessage, ModelTokenLimits } from '@/core/providers/types';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
 import { modelRegistry } from '@/core/providers/model-registry';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { ChatConversation } from './types';
 import { PromptService } from '@/service/prompt/PromptService';
@@ -437,6 +438,17 @@ ${sourcesList}${topicsList}
 					result.push({ ...model, provider: providerId });
 				}
 				// If modelConfig is missing or not enabled → skip
+			}
+		}
+
+		// Include models from custom OpenAI-compatible endpoints
+		const customEndpoints = ProfileRegistry.getInstance().getCustomEndpoints();
+		for (const endpoint of customEndpoints) {
+			if (!endpoint.enabled) continue;
+			const endpointProviderId = `custom:${endpoint.id}`;
+			const endpointModels = modelRegistry.getModelsForProvider(endpointProviderId);
+			for (const m of endpointModels) {
+				result.push({ ...m, provider: endpointProviderId });
 			}
 		}
 

@@ -7,13 +7,14 @@ interface AmbientPushStoreState {
 	sourceFilePath: string;
 	pushHistory: Map<string, number>;
 	lastUpdateTs: number;
+	serendipityItem: AmbientPushItem | null;
 
 	setItems: (items: AmbientPushItem[], sourceFilePath: string) => void;
 	clearItems: () => void;
 	dismissItem: (filePath: string) => void;
 	recordPush: (filePath: string, timestamp: number) => void;
 	recordAction: (sourceFilePath: string, pushedFilePath: string, action: UserAction) => void;
-	cleanPushHistory: () => void;
+	updateLlmExplanation: (filePath: string, explanation: string) => void;
 }
 
 export const useAmbientPushStore = create<AmbientPushStoreState>((set, get) => ({
@@ -21,12 +22,19 @@ export const useAmbientPushStore = create<AmbientPushStoreState>((set, get) => (
 	sourceFilePath: '',
 	pushHistory: new Map(),
 	lastUpdateTs: 0,
+	serendipityItem: null,
 
-	setItems: (items: AmbientPushItem[], sourceFilePath: string) =>
-		set({ items, sourceFilePath, lastUpdateTs: Date.now() }),
+	setItems: (items: AmbientPushItem[], sourceFilePath: string) => {
+		// Pick the most serendipitous item for gutter tooltip
+		// (first item with 2-hop graph_neighbor signal)
+		const serendipityItem = items.find((item) =>
+			item.signals.some((s) => s.type === 'graph_neighbor' && s.hop === 2),
+		) ?? null;
+		set({ items, sourceFilePath, lastUpdateTs: Date.now(), serendipityItem });
+	},
 
 	clearItems: () =>
-		set({ items: [], lastUpdateTs: Date.now() }),
+		set({ items: [], lastUpdateTs: Date.now(), serendipityItem: null }),
 
 	dismissItem: (filePath: string) =>
 		set((state) => ({
@@ -57,13 +65,13 @@ export const useAmbientPushStore = create<AmbientPushStoreState>((set, get) => (
 		}
 	},
 
-	cleanPushHistory: () => {
-		const history = get().pushHistory;
-		const cutoff = Date.now() - 10 * 60 * 1000; // 10 min dedup window
-		for (const [path, ts] of history.entries()) {
-			if (ts < cutoff) {
-				history.delete(path);
-			}
-		}
-	},
+	updateLlmExplanation: (filePath: string, explanation: string) =>
+		set((state) => ({
+			items: state.items.map((item) =>
+				item.filePath === filePath
+					? { ...item, explanation, explanationType: 'llm' as const }
+					: item,
+			),
+			lastUpdateTs: Date.now(),
+		})),
 }));

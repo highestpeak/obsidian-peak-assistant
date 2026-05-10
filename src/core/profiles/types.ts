@@ -31,6 +31,27 @@ export interface RoleConfig {
   modelId: string;
 }
 
+/**
+ * User-defined OpenAI-compatible endpoint (LM Studio, LiteLLM, vLLM, etc.).
+ * Each endpoint can auto-discover models via GET /v1/models.
+ */
+export interface OpenAICompatibleEndpoint {
+  id: string;
+  name: string;
+  icon?: string;
+  baseUrl: string;
+  apiKey?: string;
+  preset?: 'lmstudio' | 'litellm' | 'vllm' | 'custom';
+  enabled: boolean;
+  /** Per-model capability/display overrides */
+  modelConfigs?: Record<string, {
+    displayName?: string;
+    icon?: string;
+    tokenLimitsOverride?: import('@/core/providers/types').ModelTokenLimits;
+    capabilitiesOverride?: Partial<import('@/core/providers/types').ModelCapabilities>;
+  }>;
+}
+
 export interface ProfileSettings {
   profiles: Profile[];
   activeAgentConfig: RoleConfig | null;
@@ -40,6 +61,8 @@ export interface ProfileSettings {
   activeEmbeddingConfig: RoleConfig | null;
   activeWebSearchConfig: RoleConfig | null;
   sdkSettings: SdkSettings;
+  /** User-defined OpenAI-compatible endpoints (LM Studio, LiteLLM, vLLM, custom). */
+  customEndpoints?: OpenAICompatibleEndpoint[];
 }
 
 export interface SdkSettings {

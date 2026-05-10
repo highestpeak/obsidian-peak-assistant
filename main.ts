@@ -49,9 +49,14 @@ import { useGraphAnimationStore } from '@/ui/store/graphAnimationStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
+import { serendipityGutterExtension } from '@/service/ambient/SerendipityGutterPlugin';
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
+import { ModelRegistry } from '@/core/providers/model-registry';
+import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
+import { MCPClientManager } from '@/service/mcp/MCPClientManager';
+
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
  */
@@ -137,6 +142,19 @@ export default class MyPlugin extends Plugin {
 					e,
 				);
 			}
+
+			// Load per-provider model registry JSON files (overrides bundled catalog data)
+			try {
+				await ModelRegistry.loadFromTemplateManager(this.templateManager, [
+					ConfigTemplateId.ModelsOpenAI,
+					ConfigTemplateId.ModelsClaude,
+					ConfigTemplateId.ModelsGemini,
+					ConfigTemplateId.ModelsPerplexity,
+					ConfigTemplateId.ModelsOllamaFamilies,
+				]);
+			} catch (e) {
+				console.warn('[Peak Assistant] Failed to load model registry templates; using bundled catalog.', e);
+			}
 		}
 
 		// Create AIServiceManager (ConversationService and ProjectService will be initialized in init())
@@ -205,6 +223,16 @@ export default class MyPlugin extends Plugin {
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
 
+		// Connect enabled MCP servers (non-blocking)
+		const mcpConfigs = this.settings.mcpServers ?? [];
+		for (const config of mcpConfigs) {
+			if (config.enabled) {
+				MCPClientManager.getInstance().connect(config).catch(e => {
+					console.warn(`[Peak Assistant] Failed to connect MCP server "${config.name}":`, e);
+				});
+			}
+		}
+
 		// Ambient Push — proactive related-note suggestions
 		const ambientPushSettings = this.settings.ambientPush;
 		if (!ambientPushSettings || ambientPushSettings.enabled !== false) {
@@ -232,6 +260,11 @@ export default class MyPlugin extends Plugin {
 					void this.viewManager?.activateAmbientPushView();
 				}
 			});
+
+			// CM6 gutter hint for serendipity items (Phase 3)
+			if (!ambientPushSettings || ambientPushSettings.enableSerendipityGutter !== false) {
+				this.registerEditorExtension(serendipityGutterExtension());
+			}
 		}
 
 		// Auto-open onboarding wizard on first run (no profiles configured)
@@ -367,6 +400,9 @@ export default class MyPlugin extends Plugin {
 		this.ambientStoreUnsub?.();
 		this.ambientStoreUnsub = null;
 		AmbientPushService.getInstance().dispose();
+
+		// Disconnect MCP servers
+		MCPClientManager.getInstance().dispose().catch(() => { /* ignore */ });
 
 		clearPendingConversationTimeouts();
 		this.viewManager?.unload();

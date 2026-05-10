@@ -1,0 +1,165 @@
+{
+  "provider": "claude",
+  "models": {
+    "claude-4-opus": {
+      "apiModelId": "claude-4-opus-20250514",
+      "icon": "claude",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 200000,
+        "maxInputTokens": 200000,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": false,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 200000
+      }
+    },
+    "claude-4-sonnet": {
+      "apiModelId": "claude-4-sonnet-20250514",
+      "icon": "claude",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 200000,
+        "maxInputTokens": 200000,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": false,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 200000
+      }
+    },
+    "claude-3-7-sonnet": {
+      "apiModelId": "claude-3-7-sonnet-20250219",
+      "icon": "claude",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 200000,
+        "maxInputTokens": 200000,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": false,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 200000
+      }
+    },
+    "claude-3-5-sonnet": {
+      "apiModelId": "claude-3-5-sonnet-20241022",
+      "icon": "claude",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 200000,
+        "maxInputTokens": 200000,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": false,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 200000
+      }
+    },
+    "claude-3-5-haiku": {
+      "apiModelId": "claude-3-5-haiku-20241022",
+      "icon": "claude",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 200000,
+        "maxInputTokens": 200000,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": false,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 200000
+      }
+    },
+    "claude-3-opus": {
+      "apiModelId": "claude-3-opus-20240229",
+      "icon": "claude",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 200000,
+        "maxInputTokens": 200000,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": false,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 200000
+      }
+    },
+    "claude-3-sonnet": {
+      "apiModelId": "claude-3-sonnet-20240229",
+      "icon": "claude",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 200000,
+        "maxInputTokens": 200000,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": false,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 200000
+      }
+    },
+    "claude-3-haiku": {
+      "apiModelId": "claude-3-haiku-20240307",
+      "icon": "claude",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 200000,
+        "maxInputTokens": 200000,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": false,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 200000
+      }
+    }
+  }
+}

@@ -58,6 +58,25 @@ export const MOBIUS_MAINTENANCE_DEBT_RENAME = 1;
 /** When cumulative debt reaches this, `needed` is set so UI can suggest full maintenance. */
 export const MOBIUS_MAINTENANCE_DIRTY_THRESHOLD = 30;
 
+// ── OpenAI-compatible endpoint presets ──
+export const OPENAI_COMPATIBLE_PRESETS = {
+	lmstudio: {
+		name: 'LM Studio',
+		baseUrl: 'http://localhost:1234/v1',
+		icon: 'server',
+	},
+	litellm: {
+		name: 'LiteLLM Proxy',
+		baseUrl: 'http://localhost:4000/v1',
+		icon: 'server',
+	},
+	vllm: {
+		name: 'vLLM',
+		baseUrl: 'http://localhost:8000/v1',
+		icon: 'server',
+	},
+} as const;
+
 // ── Cascade update constants ──
 export const CASCADE_IDLE_DELAY_MS = 5000;
 export const CASCADE_MAX_ITEMS_PER_WINDOW = 20;
