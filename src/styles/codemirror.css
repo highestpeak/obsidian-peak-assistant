@@ -12,7 +12,7 @@
   color: rgb(31 41 55) !important; /* text-gray-900 */
 }
 
-.dark .pktw-codemirror-custom .cm-editor {
+.theme-dark .pktw-codemirror-custom .cm-editor {
   color: rgb(243 244 246) !important; /* text-gray-100 */
 }
 
@@ -67,7 +67,7 @@
   border-left: 2px solid rgb(31 41 55) !important;
 }
 
-.dark .pktw-codemirror-custom .cm-cursor {
+.theme-dark .pktw-codemirror-custom .cm-cursor {
   border-left: 2px solid rgb(243 244 246) !important;
 }
 
