@@ -55,6 +55,8 @@ import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
+import { ModelRegistry } from '@/core/providers/model-registry';
+import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -131,6 +133,19 @@ export default class MyPlugin extends Plugin {
 					'[Peak Assistant] Failed to hydrate stopword templates; keyword extraction may be noisier.',
 					e,
 				);
+			}
+
+			// Load per-provider model registry JSON files (overrides bundled catalog data)
+			try {
+				await ModelRegistry.loadFromTemplateManager(this.templateManager, [
+					ConfigTemplateId.ModelsOpenAI,
+					ConfigTemplateId.ModelsClaude,
+					ConfigTemplateId.ModelsGemini,
+					ConfigTemplateId.ModelsPerplexity,
+					ConfigTemplateId.ModelsOllamaFamilies,
+				]);
+			} catch (e) {
+				console.warn('[Peak Assistant] Failed to load model registry templates; using bundled catalog.', e);
 			}
 		}
 
