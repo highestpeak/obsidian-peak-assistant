@@ -5,6 +5,7 @@ import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
+import { ORPHAN_FETCH_LIMIT } from "@/core/constant";
 // Define types for orphan analysis
 type OrphanNode = GraphNode & { orphanType: string; }
 export async function findOrphanNotes(params: any, templateManager?: TemplateManager) {
@@ -12,31 +13,29 @@ export async function findOrphanNotes(params: any, templateManager?: TemplateMan
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
     const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
 
-    const hardOrphanIds = await mobiusEdgeRepo.getHardOrphans(params.limit || 100);
-    let filteredHardOrphans: OrphanNode[] = [];
+    const hardOrphanIds = await mobiusEdgeRepo.getHardOrphans(ORPHAN_FETCH_LIMIT);
+    let candidateAllOrphanNodes: OrphanNode[] = [];
     if (hardOrphanIds.length > 0) {
         const hardOrphanNodeMap = await mobiusNodeRepo.getByIds(hardOrphanIds);
-        const hardOrphanNodes: OrphanNode[] = Array.from(hardOrphanNodeMap.values()).map(node => ({
+        candidateAllOrphanNodes = Array.from(hardOrphanNodeMap.values()).map(node => ({
             ...node,
             orphanType: 'hard'
         }));
-        const itemFiledGetter = await getDefaultItemFiledGetter<OrphanNode>(hardOrphanIds, filters, sorter);
-        filteredHardOrphans = applyFiltersAndSorters(hardOrphanNodes, filters, sorter, limit, itemFiledGetter);
     }
 
-    // Note: only hard orphans (zero connections) are detected here.
-    // Soft orphan detection (few connections, mostly to other orphans) is not implemented.
+    // NOT YET IMPLEMENTED: soft orphan detection (requires low-degree index)
 
-    // Find semantic revival suggestions for each orphan
-    const cadidateAllOrphanNodes: OrphanNode[] = [...filteredHardOrphans];
-    // apply filters and sorting for all orphans
-    const itemFiledGetter = await getDefaultItemFiledGetter<OrphanNode>(cadidateAllOrphanNodes.map(node => node.id), filters, sorter);
-    const finalAllOrphanNodes = applyFiltersAndSorters(cadidateAllOrphanNodes, filters, sorter, limit, itemFiledGetter);
+    // Apply filters, sorting, and limit ONCE
+    const itemFiledGetter = await getDefaultItemFiledGetter<OrphanNode>(
+        candidateAllOrphanNodes.map(node => node.id), filters, sorter
+    );
+    const finalAllOrphanNodes = applyFiltersAndSorters(
+        candidateAllOrphanNodes, filters, sorter, limit, itemFiledGetter
+    );
 
-    // find revival suggestions for all orphans
+    // Find revival suggestions for all orphans
     const orphanRevivalSuggestions = await findRevivalSuggestions(finalAllOrphanNodes);
 
-    // Prepare orphans data
     const hardOrphans = finalAllOrphanNodes.map((orphan: any, i: number) => {
         const suggestion = orphanRevivalSuggestions.get(orphan.id);
         return {
@@ -51,7 +50,7 @@ export async function findOrphanNotes(params: any, templateManager?: TemplateMan
     });
 
     const data = {
-        total_count: cadidateAllOrphanNodes.length,
+        total_count: candidateAllOrphanNodes.length,
         filtered_count: finalAllOrphanNodes.length,
         hard_orphans: hardOrphans,
     };
