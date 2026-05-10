@@ -6,6 +6,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { defaultIndexDocumentOptions, IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
 import { EventBus } from '@/core/eventBus';
 import { CascadeWorker } from './cascade/CascadeWorker';
+import { HubStalenessDetector } from './helper/hub/hubStalenessDetector';
 import type MyPlugin from 'main';
 
 /**
@@ -18,6 +19,7 @@ import type MyPlugin from 'main';
  */
 export class SearchUpdateListener {
 	private readonly loaderManager: DocumentLoaderManager;
+	private readonly stalenessDetector = new HubStalenessDetector();
 	private readonly upsertPaths = new Set<string>();
 	private readonly deletePaths = new Set<string>();
 	/** Pending vault renames: process before deletes/upserts so stable doc id is preserved. */
@@ -222,6 +224,19 @@ export class SearchUpdateListener {
 				.then(() => {
 					// Notify cascade worker that indexing is done; it will drain debt on next idle
 					CascadeWorker.getInstance()?.notifyFlushCompleted();
+
+					// Detect and queue stale hub docs from constituent changes (S6)
+					if (upsertPaths.length > 0) {
+						// Fire-and-forget; errors are caught inside detectAndMarkStale
+						void this.stalenessDetector.detectAndMarkStale(upsertPaths).then(({ staleHubCount }) => {
+							if (staleHubCount > 0) {
+								// Trigger regeneration sweep after 30s debounce
+								import('@/service/search/index/helper/hub/hubRegenService').then(({ HubRegenService }) => {
+									HubRegenService.getInstance().scheduleRegenSweep();
+								});
+							}
+						});
+					}
 				})
 				.catch((e) => {
 					console.error('Search update operations failed:', e);
