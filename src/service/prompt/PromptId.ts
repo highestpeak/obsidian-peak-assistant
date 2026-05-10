@@ -127,6 +127,9 @@ export enum PromptId {
 	WorkingThemeInference = 'working-theme-inference',
 	WorkingContextRender = 'working-context-render',
 	ActivityIndexRender = 'activity-index-render',
+
+	// Structural analysis
+	GapExplanation = 'gap-explanation',
 }
 
 /**
@@ -489,6 +492,13 @@ export interface PromptVariables {
 	[PromptId.ActivityIndexRender]: {
 		activities: Array<{ id: string; timeAgo: string; summary: string }>;
 		counts: Record<string, number>;
+	};
+
+	[PromptId.GapExplanation]: {
+		communityALabel: string;
+		communityBLabel: string;
+		gapScore: number;
+		potentialBridges: Array<{ sourceLabel: string; targetLabel: string; similarity: number }>;
 	};
 }
 

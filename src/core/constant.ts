@@ -47,6 +47,10 @@ export const MOBIUS_MAINTENANCE_STATE_KEYS = {
 	dirtyScore: 'mobius_maintenance_dirty_score',
 	needed: 'mobius_maintenance_needed',
 	lastFullAt: 'mobius_maintenance_last_full_at',
+	// Cascade tracking
+	cascadePendingCount: 'cascade_pending_count',
+	lastCascadeAt: 'last_cascade_at',
+	cascadeTotalProcessed: 'cascade_total_processed',
 } as const;
 
 /** Debt points added per successful indexed document upsert. */
@@ -92,6 +96,10 @@ export const CASCADE_DEBT_SEMANTIC_EDGE_PRIORITY = 1;
 export const CASCADE_DEBT_DEGREE_REFRESH_PRIORITY = 2;
 export const CASCADE_DEBT_MERMAID_OVERLAY_PRIORITY = 3;
 export const CASCADE_DEBT_FOLDER_STATS_PRIORITY = 4;
+/** Priority for hub_invalidate debt items (must run after degree_refresh). */
+export const CASCADE_DEBT_HUB_INVALIDATE_PRIORITY = 3;
+/** Priority for hub_regen debt items (lowest; runs last in window). */
+export const CASCADE_DEBT_HUB_REGEN_PRIORITY = 5;
 
 /**
  * YAML frontmatter keys used when resolving document timestamps during indexing.
@@ -576,6 +584,32 @@ export const CAPABILITY_SUGGESTION_PATTERNS = {
 } as const;
 
 /** Mission role definitions for plan review section grouping. */
+// ── Structural analysis thresholds (Burt + Brandes + Louvain) ──
+export const STRUCTURAL_ANALYSIS_APPROX_THRESHOLD = 10_000;
+export const STRUCTURAL_ANALYSIS_APPROX_K = 500;
+export const LOUVAIN_RESOLUTION = 1.0;
+export const LOUVAIN_MIN_COMMUNITY_SIZE = 3;
+export const GAP_DENSITY_THRESHOLD = 0.01;
+export const GAP_INTRA_DENSITY_MIN = 0.05;
+export const GAP_COMMUNITY_SIZE_MIN = 5;
+export const GAP_SEMANTIC_THRESHOLD = 0.3;
+export const STRUCTURAL_HOLE_OCCUPANT_BC_MIN = 0.1;
+export const STRUCTURAL_HOLE_OCCUPANT_CONSTRAINT_MAX = 0.3;
+
+// Gap scoring weights (sum to 1.0)
+export const GAP_WEIGHT_SEMANTIC = 0.5;
+export const GAP_WEIGHT_SIZE = 0.2;
+export const GAP_WEIGHT_ISOLATION = 0.3;
+
+// Structural analysis UI constants
+export const COMMUNITY_NODE_SIZE_MIN = 24;
+export const COMMUNITY_NODE_SIZE_MAX = 64;
+export const COMMUNITY_COLORS_FALLBACK = [
+	'#89b4fa', '#a6e3a1', '#f9e2af', '#cba6f7',
+	'#fab387', '#94e2d5', '#f38ba8', '#74c7ec',
+	'#b4befe', '#eba0ac', '#a6adc8', '#9399b2',
+];
+
 export const MISSION_ROLES: Array<{ key: string; label: string; icon: string; color: string; bgColor: string; required: boolean }> = [
 	{ key: 'synthesis', label: 'Synthesis', icon: 'Microscope', color: 'pktw-text-emerald-700', bgColor: 'pktw-bg-emerald-50 pktw-border-emerald-200', required: true },
 	{ key: 'contradictions', label: 'Contradictions', icon: 'Zap', color: 'pktw-text-red-700', bgColor: 'pktw-bg-red-50 pktw-border-red-200', required: false },

@@ -37,7 +37,9 @@ import {
 	SEMANTIC_PAGERANK_ALGORITHM_VERSION,
 	FOLDER_HUB_STATS_DOC_PAGE_SIZE,
 	FOLDER_HUB_BOUNDARY_EDGE_BATCH_SIZE,
+	LOUVAIN_RESOLUTION,
 } from '@/core/constant';
+import { runStructuralAnalysis } from '@/service/search/index/helper/structural/orchestrator';
 import {
 	accumulateSemanticOutgoingWeightSums,
 	computeSemanticPageRankStreaming,
@@ -96,6 +98,8 @@ import {
 	CASCADE_DEBT_SEMANTIC_EDGE_PRIORITY,
 	CASCADE_DEBT_DEGREE_REFRESH_PRIORITY,
 	CASCADE_DEBT_MERMAID_OVERLAY_PRIORITY,
+	CASCADE_DEBT_HUB_INVALIDATE_PRIORITY,
+	CASCADE_DEBT_FOLDER_STATS_PRIORITY,
 } from '@/core/constant';
 export type StorageType = 'sqlite' | 'graph';
 
@@ -315,6 +319,25 @@ export class IndexService {
 
 			const metaMap = await indexedDocumentRepo.getByPaths(tenantPaths);
 			const docIds = Array.from(metaMap.values()).map((m) => m.id);
+
+			// Clean up hub_constituent rows before the main deletion transaction
+			if (tenant === 'vault' && docIds.length > 0) {
+				try {
+					const hubConstituentRepo = sqliteStoreManager.getHubConstituentRepo();
+					for (const p of tenantPaths) {
+						if (this.resolveMobiusGraphNodeTypeForPath(p) === GraphNodeType.HubDoc) {
+							const meta = metaMap.get(p);
+							if (meta) await hubConstituentRepo.deleteByHub(meta.id);
+						}
+					}
+					// Also remove any membership rows where deleted docs were constituents
+					for (const docId of docIds) {
+						await hubConstituentRepo.deleteByMember(docId);
+					}
+				} catch {
+					// Non-critical: hub constituent cleanup is best-effort
+				}
+			}
 
 			await kdb.transaction().execute(async () => {
 				docChunkRepo.deleteFtsByDocIds(docIds);
@@ -713,6 +736,28 @@ export class IndexService {
 					}
 				} catch {
 					// Non-critical: cascade debt is best-effort
+				}
+			}
+
+			// Populate hub_constituent when indexing a hub_doc
+			// Hub doc references point to the constituent documents that compose the hub summary
+			if (tenant === 'vault' && this.resolveMobiusGraphNodeTypeForPath(docPath) === GraphNodeType.HubDoc) {
+				try {
+					const hubConstituentRepo = sqliteStoreManager.getHubConstituentRepo();
+					const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+					const outgoingRefs = await mobiusEdgeRepo.getByFromNodesAndTypes(
+						[doc.id],
+						[GraphEdgeType.References],
+					);
+					const constituentDocIds = outgoingRefs.map((e) => e.to_node_id);
+					if (constituentDocIds.length > 0) {
+						await hubConstituentRepo.replaceHubMembers(
+							doc.id,
+							constituentDocIds.map((id) => ({ docId: id, role: 'core' as const })),
+						);
+					}
+				} catch {
+					// Non-critical: hub constituent population is best-effort
 				}
 			}
 
@@ -1486,6 +1531,30 @@ export class IndexService {
 				});
 			}
 		}
+
+		// hub_invalidate — changed doc may belong to a hub
+		// targetId = the changed doc; CascadeWorker will do the hub lookup
+		await cascadeRepo.insertOrUpdatePriority({
+			tenant,
+			sourcePath: change.docPath,
+			targetId: change.docNodeId,
+			debtType: 'hub_invalidate',
+			priority: CASCADE_DEBT_HUB_INVALIDATE_PRIORITY,
+			changeMagnitude: change.changeMagnitude,
+			createdAt: now,
+		});
+
+		// folder_stats — changed doc's ancestor folders need stat refresh
+		// targetId = docNodeId; CascadeWorker resolves the folder path ancestry
+		await cascadeRepo.insertOrUpdatePriority({
+			tenant,
+			sourcePath: change.docPath,
+			targetId: change.docNodeId,
+			debtType: 'folder_stats',
+			priority: CASCADE_DEBT_FOLDER_STATS_PRIORITY,
+			changeMagnitude: null,
+			createdAt: now,
+		});
 	}
 
 	// --- Global maintenance (formerly GlobalMaintenanceService) ---
@@ -1547,6 +1616,12 @@ export class IndexService {
 			await this.computeAndPersistSemanticPageRankInternal(tenant, onProgress);
 		}
 		sw.stop();
+
+		if (tenants.includes('vault')) {
+			sw.start('structural_analysis');
+			await runStructuralAnalysis({ louvainResolution: LOUVAIN_RESOLUTION });
+			sw.stop();
+		}
 
 		if (tenants.includes('vault')) {
 			sw.start('folder_hub_stats');

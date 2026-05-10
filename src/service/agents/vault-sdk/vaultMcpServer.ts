@@ -18,6 +18,7 @@ import type { Vault, MetadataCache, CachedMetadata, TFile, App } from 'obsidian'
 import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import type { ZodObject, ZodRawShape } from 'zod/v3';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { getActivityDetailTool } from '@/service/context/context-tools/getActivityDetailTool';
 import { getRecentAnalysisResultTool } from '@/service/context/context-tools/getRecentAnalysisResultTool';
 import { getWorkingThemeTool } from '@/service/context/context-tools/getWorkingThemeTool';
@@ -488,6 +489,47 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
     const getRecentAnalysis = wrapAgentTool(getRecentAnalysisResultTool, 'get_recent_analysis');
     const getWorkingTheme = wrapAgentTool(getWorkingThemeTool, 'get_working_theme');
 
+    // ─── structural analysis MCP tools ──────────────────────────────────────
+
+    const vaultGetClusters = tool(
+        'vault_get_clusters',
+        'List detected knowledge communities (Louvain clusters) with labels, sizes, and dominant topics.',
+        {},
+        async (_input, _extra) => {
+            const repo = sqliteStoreManager.getStructuralAnalysisRepo();
+            const communities = await repo.getCommunities();
+            const result = communities.map(c => ({
+                id: c.id,
+                label: c.label,
+                memberCount: c.memberCount,
+                dominantTopics: c.dominantTopics,
+            }));
+            return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        },
+    );
+
+    const vaultGetBridges = tool(
+        'vault_get_bridges',
+        'List top bridge nodes — documents with high betweenness centrality connecting different knowledge communities.',
+        {},
+        async (_input, _extra) => {
+            const repo = sqliteStoreManager.getStructuralAnalysisRepo();
+            const bridges = await repo.getTopBridgeNodes(20);
+            return { content: [{ type: 'text' as const, text: JSON.stringify(bridges, null, 2) }] };
+        },
+    );
+
+    const vaultFindGaps = tool(
+        'vault_find_gaps',
+        'Find structural holes — knowledge gaps between communities with scores and potential bridges for cross-domain synthesis.',
+        {},
+        async (_input, _extra) => {
+            const repo = sqliteStoreManager.getStructuralAnalysisRepo();
+            const holes = await repo.getTopHoles(10);
+            return { content: [{ type: 'text' as const, text: JSON.stringify(holes, null, 2) }] };
+        },
+    );
+
     return createSdkMcpServer({
         name: 'vault',
         version: '1.0.0',
@@ -501,6 +543,9 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
             getActivityDetail,
             getRecentAnalysis,
             getWorkingTheme,
+            vaultGetClusters,
+            vaultGetBridges,
+            vaultFindGaps,
         ],
     });
 }

@@ -1,6 +1,6 @@
 import type { Node, Edge } from '@xyflow/react';
 
-export type LensType = 'topology' | 'thinking-tree' | 'bridge' | 'timeline';
+export type LensType = 'topology' | 'thinking-tree' | 'bridge' | 'timeline' | 'gap-analysis';
 
 export interface LensNodeData extends Record<string, unknown> {
 	label: string;
@@ -15,6 +15,9 @@ export interface LensNodeData extends Record<string, unknown> {
 	score?: number;
 	clusterId?: string;
 	importance?: number;
+	betweenness?: number;     // [0,1] — drives node sizing in gap-analysis lens
+	constraint?: number;      // Burt coefficient — drives opacity
+	communityId?: string;     // Louvain community — drives color
 }
 
 export type LensNode = Node<LensNodeData, 'lensNode'>;
@@ -48,4 +51,18 @@ export interface LensGraphData {
 		bridges?: string;
 		timeline?: string;
 	};
+	gaps?: Array<{
+		id: string;
+		communityA: string;
+		communityB: string;
+		score: number;
+		suggestedBridges: number;
+		gapType: string;
+	}>;
+	communityMetrics?: Array<{
+		id: string;
+		label: string;
+		memberCount: number;
+		color: string;
+	}>;
 }

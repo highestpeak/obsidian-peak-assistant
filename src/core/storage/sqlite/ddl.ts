@@ -277,6 +277,14 @@ export interface Database {
 		/** Monotonic counter incremented each time semantic edges are rebuilt for this node. */
 		semantic_edges_version: number;
 		attributes_json: string;
+		/** Brandes betweenness centrality, normalized [0,1]. */
+		betweenness_centrality: number | null;
+		/** Burt structural constraint coefficient. */
+		structural_constraint: number | null;
+		/** Louvain community assignment (e.g. "c_0"). */
+		community_id: string | null;
+		/** Monotonic version of the last structural analysis run that touched this row. */
+		structural_analysis_version: number | null;
 	};
 	/** Graph edges without foreign keys (parallel to graph_edges). */
 	mobius_edge: {
@@ -315,6 +323,13 @@ export interface Database {
 		explanation_text: string;
 		user_action: string | null;
 		user_action_ts: number | null;
+	};
+	/** Hub membership tracking: which notes belong to which hub doc. */
+	hub_constituent: {
+		hub_node_id: string;   // FK to mobius_node (the hub_doc node)
+		member_doc_id: string; // FK to mobius_node (a constituent document note)
+		role: string;          // 'core' | 'peripheral'
+		added_at: number;      // epoch ms
 	};
 	/** Cascade update debt tracking: pending side-effect work after document index changes. */
 	cascade_debt: {
@@ -382,6 +397,35 @@ export interface Database {
 		created_at: number;
 		resolved_at: number | null;
 		batch_id: string | null;
+	};
+	structural_analysis_state: {
+		key: string;
+		value: string;
+	};
+	community_metadata: {
+		community_id: string;
+		label: string;
+		member_count: number;
+		dominant_topics_json: string;
+		top_nodes_json: string;
+		internal_density: number;
+		centroid_embedding: Buffer | null;
+		analysis_version: number;
+	};
+	structural_holes: {
+		id: string;
+		community_a_id: string;
+		community_b_id: string;
+		gap_type: string;
+		gap_score: number;
+		semantic_bridge_potential: number;
+		inter_density: number;
+		existing_bridge_count: number;
+		potential_bridges_json: string;
+		explanation: string | null;
+		status: string;
+		analysis_version: number;
+		created_at: number;
 	};
 	usage_log: {
 		id: number;
@@ -789,6 +833,19 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_cascade_debt_pending ON cascade_debt(tenant, processed_at, priority);
 	`);
 
+	// ── Hub constituent membership tracking ──
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS hub_constituent (
+			hub_node_id   TEXT NOT NULL,
+			member_doc_id TEXT NOT NULL,
+			role          TEXT NOT NULL DEFAULT 'core',
+			added_at      INTEGER NOT NULL,
+			PRIMARY KEY (hub_node_id, member_doc_id)
+		);
+		CREATE INDEX IF NOT EXISTS idx_hub_constituent_member ON hub_constituent(member_doc_id);
+		CREATE INDEX IF NOT EXISTS idx_hub_constituent_hub ON hub_constituent(hub_node_id);
+	`);
+
 	// ── Vault lint / health-check tables ──
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS vault_lint_scan (
@@ -906,6 +963,50 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 
 	// ── Schema evolution: add columns (idempotent) ──
 	try { db.exec('ALTER TABLE chat_message ADD COLUMN topic TEXT'); } catch { /* column already exists */ }
+
+	// ── Structural analysis columns on mobius_node (idempotent) ──
+	try { db.exec('ALTER TABLE mobius_node ADD COLUMN betweenness_centrality REAL'); } catch { /* column already exists */ }
+	try { db.exec('ALTER TABLE mobius_node ADD COLUMN structural_constraint REAL'); } catch { /* column already exists */ }
+	try { db.exec('ALTER TABLE mobius_node ADD COLUMN community_id TEXT'); } catch { /* column already exists */ }
+	try { db.exec('ALTER TABLE mobius_node ADD COLUMN structural_analysis_version INTEGER'); } catch { /* column already exists */ }
+	db.exec('CREATE INDEX IF NOT EXISTS idx_mobius_node_community_id ON mobius_node(community_id)');
+
+	// ── Structural analysis tables ──
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS structural_analysis_state (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL
+		);
+
+		CREATE TABLE IF NOT EXISTS community_metadata (
+			community_id TEXT PRIMARY KEY,
+			label TEXT NOT NULL,
+			member_count INTEGER NOT NULL,
+			dominant_topics_json TEXT NOT NULL,
+			top_nodes_json TEXT NOT NULL,
+			internal_density REAL NOT NULL,
+			centroid_embedding BLOB,
+			analysis_version INTEGER NOT NULL
+		);
+
+		CREATE TABLE IF NOT EXISTS structural_holes (
+			id TEXT PRIMARY KEY,
+			community_a_id TEXT NOT NULL,
+			community_b_id TEXT NOT NULL,
+			gap_type TEXT NOT NULL,
+			gap_score REAL NOT NULL,
+			semantic_bridge_potential REAL NOT NULL,
+			inter_density REAL NOT NULL,
+			existing_bridge_count INTEGER NOT NULL,
+			potential_bridges_json TEXT NOT NULL,
+			explanation TEXT,
+			status TEXT NOT NULL DEFAULT 'open',
+			analysis_version INTEGER NOT NULL,
+			created_at INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_structural_holes_score ON structural_holes(gap_score DESC);
+		CREATE INDEX IF NOT EXISTS idx_structural_holes_version ON structural_holes(analysis_version);
+	`);
 }
 
 

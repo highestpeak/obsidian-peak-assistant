@@ -1010,6 +1010,38 @@ export class MobiusNodeRepo {
 			.execute();
 	}
 
+	/** Mark a hub doc node as stale (set hub_stale_since if currently null). */
+	async markHubStale(hubNodeId: string, now: number = Date.now()): Promise<void> {
+		await this.db
+			.updateTable('mobius_node')
+			.set({ hub_stale_since: now, updated_at: now })
+			.where('node_id', '=', hubNodeId)
+			.where('hub_stale_since', 'is', null)  // only mark if not already stale
+			.execute();
+	}
+
+	/** Clear staleness flag after regeneration completes. */
+	async clearHubStale(hubNodeId: string, now: number = Date.now()): Promise<void> {
+		await this.db
+			.updateTable('mobius_node')
+			.set({ hub_stale_since: null, updated_at: now })
+			.where('node_id', '=', hubNodeId)
+			.execute();
+	}
+
+	/** Load stale hub docs ordered by pagerank descending (highest priority first). */
+	async getStaleHubs(limit: number): Promise<Array<{ node_id: string; hub_stale_since: number; pagerank: number | null }>> {
+		const rows = await this.db
+			.selectFrom('mobius_node')
+			.select(['node_id', 'hub_stale_since', 'pagerank'])
+			.where('hub_stale_since', 'is not', null)
+			.where('type', '=', GraphNodeType.HubDoc)
+			.orderBy('pagerank', 'desc')
+			.limit(limit)
+			.execute();
+		return rows as Array<{ node_id: string; hub_stale_since: number; pagerank: number | null }>;
+	}
+
 	/**
 	 * Top folder nodes for conversational search Orient: ordered by PageRank, then doc count under folder.
 	 * Intuition text lives in `attributes_json` (see {@link parseFolderIntuitionFromMobiusFolderRow}).

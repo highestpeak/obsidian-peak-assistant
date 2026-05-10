@@ -236,6 +236,24 @@ export const findKeyNodesInputSchema = z
 		response_format: ResponseFormat.shape.response_format.default("markdown"),
 	});
 
+export const findStructuralHolesInputSchema = z.object({
+	limit: z
+		.number()
+		.min(1)
+		.max(50)
+		.nullable()
+		.default(10)
+		.describe("Maximum number of structural holes to return."),
+	bridge_limit: z
+		.number()
+		.min(1)
+		.max(30)
+		.nullable()
+		.default(8)
+		.describe("Maximum number of bridge nodes to return."),
+	response_format: ResponseFormat.shape.response_format.default("markdown"),
+});
+
 export const findOrphansInputSchema = z.object({}).extend({
 	limit: z
 		.number()

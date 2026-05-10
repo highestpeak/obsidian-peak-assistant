@@ -4,6 +4,7 @@ import { computeTopologyLayout, estimateNodeWidth } from '../layouts/topology-la
 import { computeTreeLayout } from '../layouts/tree-layout';
 import { computeBridgeLayout } from '../layouts/bridge-layout';
 import { computeTimelineLayout } from '../layouts/timeline-layout';
+import { computeGapAnalysisLayout } from '../layouts/gap-analysis-layout';
 
 type RawEdge = LensGraphData['edges'][number];
 
@@ -102,6 +103,10 @@ export function useLensLayout(graphData: LensGraphData | null, lens: LensType) {
 					evolutionChains: graphData.evolutionChains,
 				});
 				break;
+			case 'gap-analysis': {
+				const gapResult = computeGapAnalysisLayout(graphData);
+				return { nodes: gapResult.nodes, edges: gapResult.edges };
+			}
 			case 'topology':
 			default:
 				filteredEdges = filterTopologyEdges(graphData.edges, graphData.nodes.length);
