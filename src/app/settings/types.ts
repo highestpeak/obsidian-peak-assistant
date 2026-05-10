@@ -58,6 +58,8 @@ export interface SearchSettings {
 	indexLevel: IndexLevel;
 	/** Timestamp when the user dismissed the index-level upgrade prompt. null = never dismissed. */
 	searchUpgradePromptDismissedAt: number | null;
+	/** Enable Personalized PageRank graph reranking during text search. Default: true. */
+	enablePPR: boolean;
 }
 
 export interface InspectorLinksSettings {
@@ -107,6 +109,7 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	inspectorLinks: DEFAULT_INSPECTOR_LINKS_SETTINGS,
 	indexLevel: 'fast' as IndexLevel,
 	searchUpgradePromptDismissedAt: null,
+	enablePPR: true,
 };
 
 /** Subfolder names under rootFolder. Only rootFolder is configurable. */

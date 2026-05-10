@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Scissors, Sparkles } from 'lucide-react';
+import { Database, Network, Scissors, Sparkles } from 'lucide-react';
 import type { MyPluginSettings } from '@/app/settings/types';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
 import { Switch } from '@/ui/component/shared-ui/switch';
@@ -76,6 +76,21 @@ export function SearchTab({ settings, settingsUpdates }: SearchTabProps) {
 					<Button size="sm" onClick={saveIgnorePatterns}>Save</Button>
 				</div>
 			)}
+
+			<div className="pktw-border-t pktw-border-border pktw-my-1" />
+
+			{/* ── Graph Search ── */}
+			<SectionHeader icon={Network} title="Graph Search" />
+
+			<SettingCard
+				label="Personalized PageRank"
+				description="Rerank results using per-query graph walks. Surfaces related notes that keyword and vector search miss."
+			>
+				<Switch
+					checked={settings.search.enablePPR ?? true}
+					onChange={(v) => updateSearch('enablePPR', v)}
+				/>
+			</SettingCard>
 
 			{/* ── Chunking ── */}
 			<SectionHeader icon={Scissors} title="Chunking" />
