@@ -15,6 +15,8 @@ import { CopilotActionRegistry } from '../CopilotActionRegistry';
 import type { CopilotAction, DocumentContext, ActionResult, ActionUsage } from '../CopilotActionRegistry';
 import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
 import { buildCopilotAgentStream } from './agent-actions';
+import { v4 as uuidv4 } from 'uuid';
+import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 // ── Re-exported types (consumed by UI panels) ──────────────────────────
 
@@ -144,6 +146,25 @@ export const suggestTagsAction: CopilotAction = {
 	async *execute(ctx, _signal) {
 		const engine = new TagSuggestionEngine(AppContext.getInstance().manager);
 		const ranked = await engine.suggestTags(ctx.file.path, ctx.content, ctx.title);
+		const batchId = uuidv4();
+		// Persist initial suggestions to DB for feedback tracking
+		try {
+			const repo = SqliteStoreManager.getInstance().getTagSuggestionRepo();
+			await repo.insertBatch({
+				docPath: ctx.file.path,
+				batchId,
+				suggestions: ranked.map(r => ({
+					tag: r.tag,
+					category: r.category,
+					confidence: r.confidence,
+					sources: r.sources,
+					reason: r.reason,
+					isExisting: false,
+				})),
+			});
+		} catch (e) {
+			console.warn('[suggestTagsAction] Failed to persist suggestions:', e);
+		}
 		return {
 			type: 'structured',
 			data: {
@@ -155,7 +176,8 @@ export const suggestTagsAction: CopilotAction = {
 					sources: r.sources,
 				})),
 				summary: `Found ${ranked.length} tag suggestion${ranked.length !== 1 ? 's' : ''} using content, graph, and folder signals.`,
-			} satisfies TagSuggestions,
+				batchId,
+			},
 		};
 	},
 	ResultPanel: null as any,
