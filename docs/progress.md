@@ -40,118 +40,26 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | AB. Search Pipeline Upgrade | QueryParser + 5 Retrievers + adaptive RRF + HighlightEngine + stemming + fuzzy + click-through | 完成 (19 tasks, 19 commits) |
 | AC. Onboarding Index Config | 4步Onboarding + 三档索引(fast/semantic/full) + Settings面板 + 智能升级提示 | 完成 (7 tasks, 7 commits) |
 | AD. P0-P1 批量执行 | authToken 清理 + Plan 模式移除 + Usage Dashboard 恢复 + 动态能力感知 | 完成 (4 commits) |
+| AE. Copilot Agent Loop | 4 action (suggest-links/knowledge-gaps/synthesize-topic/add-evidence) 升级为 agent loop + 步骤展示 UI | 完成 (9 commits, 13 files, +832 lines) |
 
 ## Next
 
-### 0. 已知 Bug
+### 0. 已知 Bug — 全部已修复
 
-- [x] ~~**P0 稳定性：AI 分析流式传输 renderer 崩溃**~~ — 已修复（Phase R）
-- [x] ~~**P0**：`mySessionId is not defined`~~ — 已修复（7389135: `let` 移到 `try` 外）
-- [x] ~~**P1**：Onboarding 按钮颜色偏暗~~ — 已修复（`background` 已改为 `var(--background-primary)`）
-- [x] ~~**P1**：AI Analysis mode dropdown "Vault Analysis" 图标缺失~~ — 已修复（Brain → Library）
-- [x] ~~**P2**：PatternDiscovery 无有效 profile 时仍可能启动~~ — 已修复（`onAnalysisComplete()` 已有 profile 检查）
-- [x] ~~**P0**：collectJson 无错误检测 → 401 auth 错误显示为 "Unexpected token 'I'"~~ — 已修复（Phase S Wave A: typed error classes + collectText/Json 加固）
-- [x] ~~**P0**：AI Analysis 865 条全量加载 → 白屏崩溃~~ — 已修复（Phase S Wave C: 搜索过滤 + 懒加载 + content-visibility）
-- [x] ~~**P1**：VaultSearchAgent max turns → "Oops!" 错误~~ — 已修复（Phase S Wave A: MaxTurnsError graceful degradation）
-- [x] ~~**P1**：MessageStyleButtons 是 console.log 占位符~~ — 已修复（Phase S Wave B: 接线到 submitAction）
-- [x] ~~**P1**：错误消息显示 Regenerate + Style 按钮~~ — 已修复（Phase S Wave B: isErrorMessage 守卫）
-- [x] ~~**P1**：Chat 中 AI Analysis 不渲染 Markdown~~ — 已修复（Phase S Wave B: isMarkdownContent + StreamdownIsolated）
-- [x] ~~**P1**：Tag Suggestion 幽灵命令（schema 断线）~~ — 已修固（Phase S Wave D: schema + command + modal route）
-- [x] ~~**P1**：Copilot 缺专属入口 Modal~~ — 已修复（Phase S Wave D: CopilotPickerModal）
-- [x] ~~**P1**：Model 选择无 Auto 默认~~ — 已修复（Phase S Wave F: auto-select from active profile）
-- [x] ~~**P1**：Recent AI Analysis 无搜索过滤~~ — 已修复（Phase S Wave C: typing filters, Enter analyzes）
-- [x] ~~**P1**：Quick action 按钮是空占位符~~ — 已修复（Phase S Wave G: 接线到 submitAction）
-- [x] ~~**P2**：CodeMirrorInput .select() TypeError~~ — 已修复（Phase S Wave E: forwardRef 类型补全 + ?.）
-- [x] ~~**P2**：Profile-Role-Model 绑定过简（toggle-only）~~ — 已修复（Phase S Wave F: RoleConfig + per-role model dropdown）
-- [x] ~~**P2**：Local Chromium 功能 0% 但 UI 存在~~ — 已修复（Phase S Wave E: 移除选项）
+18 个 P0-P2 bug 全部修复（Phase R/S/AC），包括流式崩溃、auth 错误处理、白屏、幽灵命令等。
 
-### 0.5 待修 Bug / UI 调整
+### 0.5 UI 调整 — 全部已完成
 
-- [x] ~~**Chat Outline**: 去掉消息区域内的 OUTLINE 面板~~ — 已删除（ConversationOutline.tsx + toggle button + store state）
-- [x] ~~**换模型重新输出**: 每条 AI 消息可选择不同模型重新生成~~ — 已实现（split button: regenerate + chevron model picker, 新回复 append 至会话末尾）
-- [x] ~~**Settings hover 效果验证**~~ — 基础设施已确认正确（pktw-root + CSS vars + Tailwind 3.4 color-mix），需真机视觉验证
-- [x] ~~**Message UI v9 Redesign**~~ — 去掉 PEAK/You 标签 + 用户头像，provider icon 与内容同行，非最后消息 footer(metadata+actions+followups) 隐藏 hover 显示，reasoning 默认折叠，SuggestedFollowups 所有消息可见
-- [x] ~~**Conversation Outline padding**~~ — 右侧/底部溢出修复
-- [x] ~~**Topic 自动聚合**~~ — LLM 驱动话题分组（TopicAggregationService + SQLite topic 列 + prompt 模板），6条未分组消息触发
-- [x] ~~**Suggested Follow-ups**~~ — 每条 AI 消息下方 LLM 生成后续问题建议
-- [x] ~~**Home Recent Conv 空白**~~ — handleConversationClick 未触发 readConversation，加 notifySelectionChange
-- [x] ~~**Model picker 被裁切**~~ — popover 从 absolute 改 fixed 定位，z-9999 逃逸 overflow-hidden
-- [x] ~~**Reasoning 文字过深**~~ — text-xs + opacity-60 + text-muted-foreground
-- [x] ~~**最后消息 action 按钮隐藏**~~ — isLastMessage 时跳过 hoverFade
+11 项 UI 调整全部完成，包括 Chat Outline 移除、换模型重输出、Message UI v9、Topic 聚合、Follow-ups 等。
 
 ### 1. 真机验证
 
-#### Phase W Copilot Smoke Test
+> 所有测试清单统一维护在 `docs/manual-testing-checklist.md`，此处只记录验证状态。
 
-**Picker 面板基础**
-- [ ] Cmd+Shift+P → "Open Copilot Panel" → 面板弹出
-- [ ] 验证 3 个分组标题显示（Document 蓝 / Vault 紫 / Writing 绿）
-- [ ] 验证 15 个 action 全部显示，图标 + 标签 + 描述
-- [ ] 键盘导航（↑↓←→）跨分组正常
-- [ ] Enter 触发选中 action
-- [ ] 无文件打开时显示 "Open a document first"
-
-**上下文推荐 (★ 标记)**
-- [ ] 打开一个无 tag 的文档 → Suggest Tags 应有 ★
-- [ ] 打开一个 >2000 词的文档 → Suggest Split 应有 ★
-- [ ] 打开一个 orphan 文档（无 backlink）→ Find Related 应有 ★
-- [ ] 选中文本后打开 Copilot → Rewrite Selection 应有 ★
-
-**现有 5 功能回归**
-- [ ] Suggest Tags → 结果面板正常（验证 TagSuggestionEngine 多信号融合是否工作）
-- [ ] Suggest Links → 链接建议列表 + 勾选 + 插入
-- [ ] Suggest Split → 拆分预览 + 执行（需 >500 词文档）
-- [ ] Review Article → 分级反馈 + Fix 子流程
-- [ ] Polish Document → 流式输出 + Apply
-
-**新 Document 功能**
-- [ ] Summarize → 流式输出 + Copy + Insert at Top（检查 callout 格式）
-- [ ] Extract Concepts → 概念卡片 + 勾选 + Create Notes（检查新建文件内容）
-- [ ] Translate → 流式输出 + 前后对比 + Apply（检查自动语言检测方向）
-
-**新 Vault 功能**
-- [ ] Find Related → 相似笔记列表 + 相似度 % + 点击跳转（无 LLM 调用，应很快）
-- [ ] Knowledge Gaps → 知识空白列表 + 优先级 + Create 按钮
-- [ ] Synthesize Topic → "Searching..." 进度 → 流式综合文章 + 源文件列表 + Create
-- [ ] Vault Health → 扫描进度 → 4 tab（Orphans/Duplicates/Stale/Tags）+ 点击跳转
-
-**新 Writing 功能**
-- [ ] Continue Writing → 流式续写 + Insert at End + Discard
-- [ ] Rewrite Selection → 选中文本必须，前后对比 + Apply（检查替换是否正确）
-- [ ] Add Evidence → "Searching..." → 证据卡片 + 来源链接 + Insert
-
-**边界情况**
-- [ ] guard 拦截：空文档 → Summarize/Continue 应弹 Notice
-- [ ] guard 拦截：未选中文本 → Rewrite Selection 应弹 Notice
-- [ ] guard 拦截：<500 词文档 → Suggest Split 应弹 Notice
-- [ ] 错误处理：无有效 API key → 错误面板 + Open Settings 按钮
-
-#### Chat 工具基础设施 Smoke Test
-
-**Web Search（非 Anthropic 模型）**
-- [ ] 选 OpenAI/gpt-5-mini → 开 Web Search → 问 "今天有什么新闻" → 应返回真实搜索结果（非 "I don't have web access"）
-- [ ] 验证 tool-call 事件正常显示（模型调用 web_search → 返回结果 → 生成回答）
-
-**Web Search（Anthropic 模型）**
-- [ ] 切 claude-sonnet → 开 Web Search → 问新闻 → 同样能搜索到结果
-- [ ] 验证 Anthropic 走 Vercel AI SDK 路径正常（不再走 Agent SDK）
-
-**无工具回归**
-- [ ] 关闭 Web Search → 正常聊天 → 无 tool call，响应正常
-- [ ] 切换多个 provider（OpenAI / Anthropic / Google）均正常
-
-**原生能力跳过**
-- [ ] 有原生 webSearch 的模型（如 Perplexity）→ 开 Web Search → 不注入自定义 web_search 工具（用原生）
-
-**错误处理**
-- [ ] 无 Web Search Profile 配置时 → 开 Web Search → 不崩溃，正常降级为无工具
-
-#### 历史验证（仍需）
-- [ ] Phase S 验证：15 个 RC 全量测试
-- [ ] Chat 全流程：Onboarding → 配置 Profile → 新建会话 → 发消息 → 收到回复 → 切换模型
-- [ ] Provider v2 全流程：Profile CRUD → Set Active → Chat/Search/Agent 全部走 Agent SDK
-- [ ] AI Analysis 全流程：查询 → Plan → Report → Graph → 后台 Session → Restore
-- [ ] Onboarding Wizard：首次无 profile 自动弹出 → 配置 → 测试连接 → SQLite 初始化
+- [ ] Phase AE (Copilot Agent Loop) — checklist §15
+- [ ] Phase W (Copilot 15 actions) — checklist §14
+- [ ] Chat 工具基础设施 — checklist (待迁移)
+- [ ] 历史回归（Phase S / Provider v2 / AI Analysis / Onboarding）— checklist §1-13
 
 ### 2. 竞品差异化功能（核心产品方向）
 
