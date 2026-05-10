@@ -7,12 +7,13 @@ import { PromptId } from '@/service/prompt/PromptId';
 import { AppContext } from '@/app/context/AppContext';
 import { TagSuggestionEngine } from '../TagSuggestionEngine';
 import {
-	reviewResultSchema, linkSuggestionsSchema, splitPlanSchema,
-	extractConceptsSchema, knowledgeGapsSchema, vaultHealthSchema, addEvidenceSchema,
+	reviewResultSchema, splitPlanSchema,
+	extractConceptsSchema, vaultHealthSchema,
 } from '../copilot-schemas';
 import { CopilotActionRegistry } from '../CopilotActionRegistry';
 import type { CopilotAction, DocumentContext, ActionResult, ActionUsage } from '../CopilotActionRegistry';
 import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
+import { buildCopilotAgentStream } from './agent-actions';
 
 // ── Re-exported types (consumed by UI panels) ──────────────────────────
 
@@ -100,13 +101,20 @@ export const suggestLinksAction: CopilotAction = {
 		const app = AppContext.getInstance().app;
 		const cache = app.metadataCache.getFileCache(ctx.file);
 		const existingLinks = (cache?.links ?? []).map(l => l.link).join(', ');
-		let usage: ActionUsage | undefined;
-		const result = await AppContext.getInstance().manager.queryStructured(
-			PromptId.DocSuggestLinks, { content: ctx.content, title: ctx.title, existingLinks },
-			await toJsonSchema(linkSuggestionsSchema),
-			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
+
+		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
+			PromptId.CopilotAgentSuggestLinks, {},
 		);
-		return { type: 'structured', data: result, usage };
+		const userPrompt = [
+			`## Document: "${ctx.title}"`,
+			`Word count: ${ctx.wordCount}`,
+			existingLinks ? `Existing links: ${existingLinks}` : 'No existing links.',
+			'',
+			'## Content',
+			ctx.content,
+		].join('\n');
+
+		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
 	ResultPanel: null as any,
 };
@@ -216,20 +224,19 @@ export const knowledgeGapsAction: CopilotAction = {
 	icon: HelpCircle, category: 'vault',
 	relevance: (ctx) => ctx.headingCount > 5 ? 0.7 : ctx.headingCount > 3 ? 0.5 : 0.2,
 	async *execute(ctx, signal) {
-		const app = AppContext.getInstance().app;
-		const cache = app.metadataCache.getFileCache(ctx.file);
-		const resolvedLinks = (cache?.links ?? []).map(l => {
-			const resolved = app.metadataCache.getFirstLinkpathDest(l.link, ctx.file.path);
-			return resolved?.basename ?? l.link;
-		});
-		const relatedNotes = [...new Set(resolvedLinks)].join(', ');
-		let usage: ActionUsage | undefined;
-		const result = await AppContext.getInstance().manager.queryStructured(
-			PromptId.VaultKnowledgeGaps, { content: ctx.content, title: ctx.title, relatedNotes },
-			await toJsonSchema(knowledgeGapsSchema),
-			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
+		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
+			PromptId.CopilotAgentKnowledgeGaps, {},
 		);
-		return { type: 'structured', data: result, usage };
+		const userPrompt = [
+			`## Document: "${ctx.title}"`,
+			`Tags: ${ctx.tags.length > 0 ? ctx.tags.join(', ') : 'none'}`,
+			`Headings: ${ctx.headingCount}`,
+			'',
+			'## Content',
+			ctx.content,
+		].join('\n');
+
+		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
 	ResultPanel: null as any,
 };
@@ -243,30 +250,17 @@ export const synthesizeTopicAction: CopilotAction = {
 	},
 	guard: (ctx) => ctx.wordCount < 50 ? 'Document is too short to synthesize (< 50 words)' : null,
 	async *execute(ctx, signal) {
-		const searchClient = AppContext.getInstance().searchClient;
-		const response = await searchClient.vectorSearch({
-			text: ctx.content.slice(0, 1000), scopeMode: 'vault', topK: 8,
-		});
-		const sources = response.items
-			.filter(item => item.path !== ctx.file.path)
-			.map(item => ({
-				path: item.path,
-				title: item.title || item.path.replace(/\.md$/, '').split('/').pop() || item.path,
-				excerpt: item.content?.slice(0, 500) ?? '',
-			}));
-		const sourcesText = sources.map((s, i) => `[${i + 1}] ${s.title}\n${s.excerpt}`).join('\n\n');
-		let fullText = '';
-		let usage: ActionUsage | undefined;
-		for await (const chunk of AppContext.getInstance().manager.queryTextStream(PromptId.VaultSynthesize, { topic: ctx.title, sources: sourcesText }, { signal })) {
-			if (chunk.type === 'delta') {
-				fullText += chunk.text;
-				yield { type: 'text-delta', text: chunk.text } as LLMStreamEvent;
-			} else if (chunk.type === 'done') {
-				usage = toActionUsage(chunk.usage);
-			}
-		}
-		const result: SynthesizeResult = { text: fullText, sources: sources.map(s => ({ path: s.path, title: s.title })) };
-		return { type: 'structured' as const, data: result, usage };
+		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
+			PromptId.CopilotAgentSynthesizeTopic, {},
+		);
+		const userPrompt = [
+			`## Seed Document: "${ctx.title}"`,
+			'',
+			'## Content',
+			ctx.content,
+		].join('\n');
+
+		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
 	ResultPanel: null as any,
 };
@@ -341,22 +335,18 @@ export const addEvidenceAction: CopilotAction = {
 	guard: (ctx) => ctx.wordCount < 50 ? 'Write at least 50 words before searching for evidence' : null,
 	relevance: (ctx) => ctx.wordCount > 500 ? 0.5 : 0.2,
 	async *execute(ctx, signal) {
-		const searchClient = AppContext.getInstance().searchClient;
-		const queryText = ctx.selection ?? ctx.content.slice(0, 500);
-		const searchResult = await searchClient.vectorSearch({ text: queryText, topK: 10, scopeMode: 'vault' });
-		const candidates = searchResult.items.filter(item => item.path !== ctx.file.path);
-		if (candidates.length === 0) return { type: 'structured', data: { evidence: [] } };
-
-		const sources = candidates
-			.map((item, i) => `[${i + 1}] ${item.title} (${item.path})\n${item.content ?? item.highlight?.text ?? ''}`)
-			.join('\n\n');
-		const context = ctx.selection ?? ctx.content.slice(0, 1000);
-		let usage: ActionUsage | undefined;
-		const result = await AppContext.getInstance().manager.queryStructured(
-			PromptId.WritingAddEvidence, { context, sources }, await toJsonSchema(addEvidenceSchema),
-			{ signal, usageCallback: u => { usage = toActionUsage(u); } },
+		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
+			PromptId.CopilotAgentAddEvidence, {},
 		);
-		return { type: 'structured', data: result, usage };
+		const userPrompt = [
+			`## Document: "${ctx.title}"`,
+			ctx.selection ? `## Selected Text\n${ctx.selection}` : '',
+			'',
+			'## Full Content',
+			ctx.content,
+		].filter(Boolean).join('\n');
+
+		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
 	ResultPanel: null as any,
 };
