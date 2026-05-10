@@ -48,6 +48,7 @@ import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useGraphAnimationStore } from '@/ui/store/graphAnimationStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
+import { MorningBriefingService } from '@/service/ambient/MorningBriefingService';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { serendipityGutterExtension } from '@/service/ambient/SerendipityGutterPlugin';
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
@@ -319,6 +320,20 @@ export default class MyPlugin extends Plugin {
 					console.log('[Peak Assistant] No active profile — skipping PatternDiscovery and agent pool warmup');
 				}
 				console.log('[Peak Assistant] SQLite and search services initialized');
+
+				// Morning Briefing — show proactive recommendations on session start (Phase 4)
+				setTimeout(async () => {
+					try {
+						const shouldShow = await MorningBriefingService.getInstance().tryShow();
+						if (shouldShow) {
+							const { MorningBriefingModal } = await import('@/ui/view/morning-briefing/MorningBriefingModal');
+							const modal = new MorningBriefingModal(this.app);
+							modal.open();
+						}
+					} catch {
+						// Morning briefing is non-critical
+					}
+				}, 3000);
 			} catch (e) {
 				// Clear so next call retries instead of returning a rejected promise
 				this.sqliteInitPromise = null;
@@ -400,6 +415,7 @@ export default class MyPlugin extends Plugin {
 		this.ambientStoreUnsub?.();
 		this.ambientStoreUnsub = null;
 		AmbientPushService.getInstance().dispose();
+		MorningBriefingService.getInstance().dispose();
 
 		// Disconnect MCP servers
 		MCPClientManager.getInstance().dispose().catch(() => { /* ignore */ });
