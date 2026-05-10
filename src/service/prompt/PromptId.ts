@@ -105,9 +105,11 @@ export enum PromptId {
 	DocSummarize = 'doc-summarize',
 	DocExtractConcepts = 'doc-extract-concepts',
 	DocTranslate = 'doc-translate',
+	DocCorrectContent = 'doc-correct-content',
 
 	// Copilot Vault Intelligence
 	VaultHealth = 'vault-health',
+	VaultSummary = 'vault-summary',
 
 	// Copilot Writing Assistance
 	WritingContinue = 'writing-continue',
@@ -118,6 +120,7 @@ export enum PromptId {
 	CopilotAgentKnowledgeGaps = 'copilot-agent-knowledge-gaps',
 	CopilotAgentSynthesizeTopic = 'copilot-agent-synthesize-topic',
 	CopilotAgentAddEvidence = 'copilot-agent-add-evidence',
+	CopilotAgentWritingPlan = 'copilot-agent-writing-plan',
 
 	// Chat intelligence
 	ChatTopicAggregation = 'chat-topic-aggregation',
@@ -454,8 +457,17 @@ export interface PromptVariables {
 		scope: string;
 		targetLanguage: string;
 	};
+	[PromptId.DocCorrectContent]: {
+		content: string;
+		title?: string;
+		scope: 'full' | 'selection';
+	};
 	[PromptId.VaultHealth]: {
 		stats: string;
+	};
+	[PromptId.VaultSummary]: {
+		period: string;
+		noteList: string;
 	};
 	[PromptId.WritingContinue]: {
 		content: string;
@@ -473,6 +485,7 @@ export interface PromptVariables {
 	[PromptId.CopilotAgentKnowledgeGaps]: Record<string, never>;
 	[PromptId.CopilotAgentSynthesizeTopic]: Record<string, never>;
 	[PromptId.CopilotAgentAddEvidence]: Record<string, never>;
+	[PromptId.CopilotAgentWritingPlan]: Record<string, never>;
 
 	// Chat intelligence
 	[PromptId.ChatTopicAggregation]: {

@@ -1,7 +1,7 @@
 import {
 	Sparkles, Tag, MessageSquareText, Link2, GitFork, Lightbulb, AlignLeft,
 	Languages, Search, HelpCircle, Layers, Activity, ChevronRight, PenLine, BookOpen,
-	WrapText, Share2, ShieldCheck, Calendar, CheckSquare,
+	WrapText, Share2, ShieldCheck, Calendar,
 } from 'lucide-react';
 
 import { PromptId } from '@/service/prompt/PromptId';
@@ -542,47 +542,6 @@ export const addEvidenceAction: CopilotAction = {
 	ResultPanel: null as any,
 };
 
-export const extractTodosAction: CopilotAction = {
-	id: 'extract-todos', label: 'Extract Todos', description: 'Find all unchecked todos across the vault',
-	icon: CheckSquare, category: 'vault',
-	relevance: () => 0.6,
-	async *execute(_ctx, _signal) {
-		const app = AppContext.getInstance().app;
-		const files = app.vault.getMarkdownFiles();
-		const todoPattern = /^(\s*)-\s\[\s\]\s(.+)$/;
-		const tagPattern = /#[\w/-]+/g;
-
-		const todos: Array<{ filePath: string; text: string; lineNumber: number; tags: string[] }> = [];
-
-		for (const file of files) {
-			const content = await app.vault.cachedRead(file);
-			const lines = content.split('\n');
-			for (let i = 0; i < lines.length; i++) {
-				const match = lines[i].match(todoPattern);
-				if (!match) continue;
-				const text = match[2].trim();
-				const tags = text.match(tagPattern) ?? [];
-				todos.push({
-					filePath: file.path,
-					text,
-					lineNumber: i + 1,
-					tags,
-				});
-			}
-		}
-
-		return {
-			type: 'structured',
-			data: {
-				todos,
-				totalFiles: files.length,
-				summary: `Found ${todos.length} todo${todos.length !== 1 ? 's' : ''} across ${files.length} files.`,
-			},
-		};
-	},
-	ResultPanel: null as any,
-};
-
 // ── Panel imports (static so esbuild resolves @/ aliases) ─────────────
 
 import { PolishPanel } from '@/ui/view/copilot/panels/PolishPanel';
@@ -604,8 +563,6 @@ import { VaultSummaryPanel } from '@/ui/view/copilot/panels/VaultSummaryPanel';
 import { ContinueWritingPanel } from '@/ui/view/copilot/panels/ContinueWritingPanel';
 import { RewriteSelectionPanel } from '@/ui/view/copilot/panels/RewriteSelectionPanel';
 import { AddEvidencePanel } from '@/ui/view/copilot/panels/AddEvidencePanel';
-import { ExtractTodosPanel } from '@/ui/view/copilot/panels/ExtractTodosPanel';
-
 // ── Registration ───────────────────────────────────────────────────────
 
 const PANEL_MAP: Record<string, React.FC<any>> = {
@@ -628,7 +585,6 @@ const PANEL_MAP: Record<string, React.FC<any>> = {
 	'continue-writing': ContinueWritingPanel,
 	'rewrite-selection': RewriteSelectionPanel,
 	'add-evidence': AddEvidencePanel,
-	'extract-todos': ExtractTodosPanel,
 };
 
 /** All actions in display order: document → vault → writing. */
@@ -637,7 +593,7 @@ const ALL_ACTIONS: CopilotAction[] = [
 	suggestTagsAction, suggestLinksAction, suggestSemanticLinksAction, suggestSplitAction, reviewArticleAction,
 	correctContentAction, polishDocumentAction, formatDocumentAction, summarizeAction, extractConceptsAction, translateAction,
 	// Vault
-	findRelatedAction, knowledgeGapsAction, synthesizeTopicAction, vaultHealthAction, vaultSummaryAction, extractTodosAction,
+	findRelatedAction, knowledgeGapsAction, synthesizeTopicAction, vaultHealthAction, vaultSummaryAction,
 	// Writing
 	continueWritingAction, rewriteSelectionAction, addEvidenceAction,
 ];
