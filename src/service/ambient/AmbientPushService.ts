@@ -83,7 +83,10 @@ export class AmbientPushService {
 
 		let items: AmbientPushItem[];
 		try {
-			items = await ambientSearch(context, settings.maxPushItems, store.pushHistory);
+			items = await ambientSearch(context, settings.maxPushItems, store.pushHistory, {
+				graphExpansionHops: settings.graphExpansionHops,
+				feedbackLearning: settings.feedbackLearning,
+			});
 		} catch {
 			return;
 		}
