@@ -247,6 +247,8 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'message-resources': meta('prompts', 'message-resources', { label: 'Message Resources', description: 'Formats attached resources for inclusion in messages.', group: 'ambientContext' }),
 
 	// Copilot Document Intelligence
+	'doc-format-polish': meta('prompts', 'doc-format-polish', { systemPromptId: 'doc-format-polish-system' as PromptId, label: 'Format Polish', description: 'Fixes heading hierarchy, list consistency, trailing whitespace, and broken link syntax.', group: 'copilot' }),
+	'doc-format-polish-system': meta('prompts', 'doc-format-polish-system', { label: 'Format Polish (System)', description: 'System instructions for the format polish action.', group: 'copilot' }),
 	'doc-polish': meta('prompts', 'doc-polish', { systemPromptId: 'doc-polish-system' as PromptId, label: 'Document Polish', description: 'Polishes writing for clarity, grammar, and flow.', group: 'copilot' }),
 	'doc-polish-system': meta('prompts', 'doc-polish-system', { label: 'Document Polish (System)', description: 'System instructions for the document polish action.', group: 'copilot' }),
 	'doc-review': meta('prompts', 'doc-review', { expectsJson: true, systemPromptId: 'doc-review-system' as PromptId, label: 'Document Review', description: 'Structured feedback on document quality with severity-ranked issues.', group: 'copilot' }),

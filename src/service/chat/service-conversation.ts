@@ -336,6 +336,20 @@ export class ConversationService {
 		}
 	}
 
+	async updateConversationCustomSystemPrompt(params: {
+		conversationId: string;
+		customSystemPrompt?: string;
+	}): Promise<void> {
+		await this.storage.upsertConversationMeta(params.conversationId, {
+			customSystemPrompt: params.customSystemPrompt || undefined,
+			updatedAtTimestamp: Date.now(),
+		});
+		const updatedConversation = await this.storage.readConversation(params.conversationId, false);
+		if (updatedConversation) {
+			EventBus.getInstance(this.app).dispatch(new ConversationUpdatedEvent({ conversation: updatedConversation }));
+		}
+	}
+
 	async updateConversationTitle(params: {
 		conversationId: string;
 		title: string;

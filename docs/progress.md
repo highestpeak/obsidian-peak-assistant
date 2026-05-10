@@ -49,6 +49,14 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | S1. Ambient Push 可见性 | 首次启动自动打开右侧栏 + 布局切换不覆盖 AmbientPush tab | 完成 |
 | AH. Provider MCP Phase 1-3 | Model Registry JSON 化 + 自定义 OpenAI 兼容端点 + MCP Client (stdio/SSE) + Settings UI | 完成 (12 tasks, 12 commits) |
 | AI. MCP Spike | @modelcontextprotocol/sdk 可行性验证 — GO (所有 transport 可用, +450KB) | 完成 |
+| S1. Ambient Push Phase 4 | Morning Briefing: 启动时每日简报弹窗（未解决连接+变化Hub+衰减笔记） | 完成 (7 commits) |
+| AJ. Provider MCP Phase 4-5 | Skill System（Registry+Parser+Executor+Picker UI）+ Usage Dashboard 定价同步 | 完成 (7 commits) |
+| S2. Vault Lint | Health Check: 5 信号检测器 + VaultXRayView + ScoreRing + 配置模板 | 完成 (7 tasks) |
+| S5. PPR Tuning | Co-citation 第 4 层 + query-node seeding + Settings UI + 评估命令 | 完成 (4 tasks) |
+| S7. Auto-tag | Schema 修复 + 反馈持久化 + batch 模式 + FolderPicker | 完成 (4 tasks) |
+| S3. Cascade Update | hub_constituent 表 + CascadeWorker 补全 + folder_stats + hub_regen stub | 完成 (8 tasks) |
+| S4. Structural Hole | Brandes BC + Louvain + Burt constraint + Gap Analysis UI + bridge actions | 完成 (8 tasks) |
+| S6. Precompiled Knowledge | HubStalenessDetector + HubRegenService + hub_regen_queue + reranker boost | 完成 (6 tasks) |
 
 ## Next
 
@@ -75,83 +83,58 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 > 三根支柱：Ambient Push + Vault Lint + 级联更新
 > 研究来源：`kb2-learn-prd/.../AI-peakAssistant-竞品分析与学术验证.md` + `AI-peakAssistant-差异化定位与护城河分析-2026-04.md`
 
-#### S1. Ambient Push — 写作时主动推送相关内容 + 解释原因 ★★★★★ — Phase 1-3 完成
+#### S1. Ambient Push — 写作时主动推送相关内容 + 解释原因 ★★★★★ — Phase 1-4 完成
 
 - Phase 1 (Core Pipeline): FTS5 搜索 + 模板解释 + 侧边栏面板 + SQLite 日志 ✅
 - Phase 2 (Graph Intelligence): 2-hop 图谱扩展 + 4 种信号 + 反馈学习 ✅
 - Phase 3 (Serendipity Engine): CM6 gutter 提示 + 偶然发现算法 + LLM 微解释 + 模式学习 ✅
-- Phase 4 (Morning Briefing): 启动时每日简报 — **待实现**
+- Phase 4 (Morning Briefing): 启动时每日简报（4h+ 间隔触发，3 类推荐） ✅
 - 可见性修复: 首次自动打开右侧栏 + 布局切换保留 tab ✅
 - Spec: `docs/superpowers/specs/2026-05-01-ambient-push-design.md`
-- Plans: `docs/superpowers/plans/2026-05-01-ambient-push-phase1.md`, `2026-05-10-*-phase2/3.md`
+- Plans: `docs/superpowers/plans/2026-05-01-ambient-push-phase1.md`, `2026-05-10-*-phase2/3/4.md`
 
-#### S2. Vault Lint / Health Check — 知识库健康体检 ★★★★★
+#### S2. Vault Lint / Health Check — 知识库健康体检 ★★★★★ — 完成
 
-- 优先级：最高（Karpathy 验证的 Lint 操作，竞品完全空白）
-- 设计概念：差异化分析 §9.3 有 "Vault X-Ray" 设计（健康分数、hub 列表、orphan 岛、bridge notes、potential links、community map、decaying notes）
-- 现有基础：`find_orphans` 工具 + `HubDiscoverCoverageGap`
-- 需要产出：
-  - [ ] **Spec**：多信号健康报告模型（断链 + orphans + 低内聚 + stale hubs + 矛盾检测 + topic 盲区）
-  - [ ] **Plan**：实现任务拆分
-  - [ ] **Mockup**：Health Dashboard UI（参考 §9.3 Vault X-Ray）
-  - [ ] **实现**
+- Phase 1: 5 信号检测器 (S-ORPHAN, S-BROKEN-LINK, C-EMPTY, C-STUB, G-UNTAGGED) + VaultXRayView + ScoreRing ✅
+- Spec: `docs/superpowers/specs/2026-05-01-vault-lint-design.md`
+- Plan: `docs/superpowers/plans/2026-05-10-vault-lint.md`
 
-#### S3. 级联关系更新 — 笔记修改时联动更新知识图谱 ★★★★★
+#### S3. 级联关系更新 — 笔记修改时联动更新知识图谱 ★★★★★ — 完成
 
-- 优先级：最高（Karpathy Ingest 多页联动，当前只做孤立 re-embed）
-- 现有基础：`indexDocument()` 只更新单文档；neighbor 完全不感知变化；hub summary 不失效
-- 需要产出：
-  - [ ] **Spec**：增量语义边更新 + hub summary 失效/重生成 + neighbor re-scoring + 触发策略（即时 vs 延迟 vs 批量）
-  - [ ] **Plan**：实现任务拆分
-  - [ ] **实现**
+- hub_constituent 表 + HubConstituentRepo + CascadeWorker hub_invalidate/folder_stats 补全 + hub_regen stub ✅
+- Spec: `docs/superpowers/specs/2026-05-01-cascade-update-design.md`
+- Plan: `docs/superpowers/plans/2026-05-10-cascade-update.md`
 
-#### S4. Structural Hole / Hub 检测可视化 — InfraNodus 级 gap analysis ★★★★
+#### S4. Structural Hole / Hub 检测可视化 — InfraNodus 级 gap analysis ★★★★ — 完成
 
-- 优先级：高（有后端基础，缺 UI）
-- 学术支撑：Burt (2004 AJS) "Structural Holes and Good Ideas"
-- 现有代码：hub bridge/authority 角色分类 + coverage gap + `find-path.ts` betweenness（但是启发式，非算法）
-- 需要产出：
-  - [ ] **Spec**：全 vault betweenness centrality + Burt constraint + gap analysis UI
-  - [ ] **Plan**
-  - [ ] **Mockup**：Gap Analysis 面板设计
-  - [ ] **实现**：算法 + UI
+- Brandes betweenness + Louvain community + Burt constraint + Gap Analysis View + bridge actions ✅
+- Spec: `docs/superpowers/specs/2026-05-01-structural-hole-design.md`
+- Plan: `docs/superpowers/plans/2026-05-10-structural-hole.md`
 
-#### S5. KG + PPR 搜索 — Personalized PageRank 替代纯向量 ★★★★
+#### S5. KG + PPR 搜索 — Personalized PageRank 替代纯向量 ★★★★ — 完成
 
-- 优先级：高（有后端基础，缺 PPR 核心）
-- 学术支撑：HippoRAG (NeurIPS 2024)，比 SOTA RAG 高 20%
-- 现有代码：global PageRank + semantic PageRank **已完整实现**（`documentPageRank.ts`），`reranker.ts` 用作静态 boost
-- 需要产出：
-  - [ ] **Spec**：PPR 算法设计（seed nodes → biased random walk → 加入 reranker 管道）
-  - [ ] **Plan**
-  - [ ] **实现**：PPR 算法 + reranker 集成
+- PPR 已有完整实现；本轮新增 co-citation 第 4 层 + query-node seeding + Settings UI + 评估命令 ✅
+- Spec: `docs/superpowers/specs/2026-05-01-ppr-search-design.md`
+- Plan: `docs/superpowers/plans/2026-05-10-ppr-tuning.md`
 
-#### S6. 预编译知识层 — Karpathy 式预处理摘要/摘要 ★★★★
+#### S6. 预编译知识层 — Karpathy 式预处理摘要 ★★★★ — 完成
 
-- 优先级：高（最成熟的部分，60-70% 基础设施已有）
-- 现有代码：Hub Doc pipeline（`hubDocServices.ts` + `hubDiscover.ts`）生成 LLM 摘要存为 vault Markdown
-- 缺失：hub docs 不是预嵌入向量；constituent notes 变化时不触发失效/重生成
-- 需要产出：
-  - [ ] **Spec**：增量触发机制（note change → hub invalidation → 后台重生成）+ 预嵌入策略
-  - [ ] **Plan**
-  - [ ] **实现**
+- HubStalenessDetector + HubRegenService (30s debounce, batch-10, 3x retry) + hub_regen_queue + reranker hub_doc boost ✅
+- Spec: `docs/superpowers/specs/2026-05-01-precompiled-knowledge-design.md`
+- Plan: `docs/superpowers/plans/2026-05-10-precompiled-knowledge.md`
 
-#### S7. Auto-tag 建议（建议模式，非静默）★★★
+#### S7. Auto-tag 建议（建议模式，非静默）★★★ — 完成
 
-- 优先级：中（竞品空白 vs Mem.ai）
-- 设计红线：必须是建议模式（Generation Effect），不能静默执行
-- 现有基础：`indexDocument` 有 `includeLlmTags`，但只在 manual_full 时触发
-- 需要产出：
-  - [ ] **Spec**：触发时机 + 用户确认 UI + 批量/单文档模式
-  - [ ] **Plan**
-  - [ ] **实现**
+- Schema 修复 + tag_suggestion 反馈持久化 + Accept High Confidence + batch FolderPicker 模式 ✅
+- Spec: `docs/superpowers/specs/2026-05-01-auto-tag-design.md`
+- Plan: `docs/superpowers/plans/2026-05-10-auto-tag.md`
 
 ### 3. 未实现的 Spec/Plan（已有文档但未执行）
 
 | 文档 | 内容 | 规模 | 状态 |
 |------|------|------|------|
 | ~~`provider-mcp-skills-design`~~ Phase 1-3 | ~~MCP Client + Model Registry + Custom Endpoints~~ | ~~大~~ | COMPLETED (Session 26) |
-| `provider-mcp-skills-design` Phase 4-5 | Skill 系统（markdown 定义 + 执行器）+ Usage Dashboard 同步 | 中 | **待实现** |
+| ~~`provider-mcp-skills-design` Phase 4-5~~ | ~~Skill 系统（markdown 定义 + 执行器）+ Usage Dashboard 同步~~ | ~~中~~ | COMPLETED (Session 27) |
 | ~~`search-inspector-tools-overhaul`~~ | ~~Inspector 工具重构~~ | ~~大~~ | COMPLETED (Session 26) |
 | ~~`graph-layout-fix`~~ | ~~5 个图布局修复~~ | ~~中~~ | COMPLETED |
 | ~~`v2-persistence-fix`~~ | ~~5 个 V2 持久化 bug~~ | ~~中~~ | COMPLETED (已在之前 session 修复) |
@@ -230,6 +213,45 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ## Log
 
+### 2026-05-10 (Session 28) — S2-S7 全量并行执行（6 竞品差异化功能）
+
+- Done: **Pre-wave — 6 个 Plan 并行编写**
+  - `vault-lint.md` (7 tasks), `cascade-update.md` (8 tasks), `structural-hole.md` (8 tasks), `ppr-tuning.md` (4 tasks), `precompiled-knowledge.md` (6 tasks), `auto-tag.md` (4 tasks)
+- Done: **Wave 1（3 线并行，零文件冲突）**
+  - **S2 Vault Lint** (7 tasks): 5 信号检测器 + VaultLintService + VaultXRayView + ScoreRing/DimensionBars/PriorityActions
+  - **S5 PPR Tuning** (4 tasks): co-citation 第 4 层 + query-node seeding + Settings enablePPR toggle + 评估命令
+  - **S7 Auto-tag** (4 tasks): Schema 修复 + tag_suggestion 反馈持久化 + Accept High Confidence + batch FolderPicker
+- Done: **Wave 2（2 线并行，协调 ddl.ts）**
+  - **S3 Cascade Update** (8 tasks): hub_constituent 表 + HubConstituentRepo + CascadeWorker hub_invalidate/folder_stats 补全 + hub_regen stub
+  - **S4 Structural Hole** (8 tasks): Brandes betweenness + Louvain community + Burt constraint + StructuralAnalysisRepo + Gap Analysis View + bridge actions + MCP tools
+- Done: **Wave 3（S3 依赖已落地）**
+  - **S6 Precompiled Knowledge** (6 tasks): HubStalenessDetector + HubRegenService (30s debounce, batch-10, 3x retry) + hub_regen_queue + reranker hub_doc boost
+- 总计: 37 tasks, 3 waves, 文件冲突矩阵分析 + worktree 隔离
+- Build 通过，tests 通过
+- **竞品差异化功能 S1-S7 全部完成**
+- Next: TASKS.md Phase 4-11 issues + 基础设施清理
+
+### 2026-05-10 (Session 27) — Wave 3 并行执行（Ambient Push Phase 4 + Provider MCP Phase 4-5）
+
+- Done: **Ambient Push Phase 4 — Morning Briefing** (7 commits, 12 files, +1660 lines)
+  - `BriefingItem` 类型 + `enableMorningBriefing` 设置
+  - 3 类 SQLite 查询：未解决连接（incoming >= 2, outgoing < incoming*0.5）、变化的 Hub、衰减笔记（14 天未打开 + 高 PageRank）
+  - `MorningBriefingService`：4h 间隔检查 + 并行数据收集
+  - Zustand store + Obsidian Modal + React panel（三分组卡片 + hover Open/Dismiss）
+  - `main.ts` 3s 延迟触发，cleanup on unload
+  - 修复 Phase 2 缺失的信号检测导出函数
+- Done: **Provider MCP Phase 4-5 — Skill System + Usage Dashboard** (7 commits, 13 files, +2099 lines)
+  - Phase 4: `SkillDefinition` 类型 + YAML frontmatter markdown 解析器
+  - `SkillRegistry` 单例：vault `_skills/` 目录扫描 + Obsidian vault 事件热加载
+  - 3 个内置 skill：weekly-report、literature-review、vault-health-check
+  - `SkillExecutor`：simple（单阶段）+ pipeline（多阶段）模式，复用 `queryWithProfile()` + AgentTool
+  - Skill Picker Modal（搜索 + tag 过滤 + 动态输入表单）+ `peak-run-skill` 命令
+  - Phase 5: `ModelRegistry.syncFromServer()` 服务端定价同步（Bearer auth, 10s timeout, 非破坏性合并）
+- Plans written: `2026-05-10-ambient-push-phase4.md`, `2026-05-10-provider-mcp-phase4-5.md`
+- Build 通过，ambient-push tests 全部通过（30 tests）
+- Ambient Push S1 全 4 Phase 完成；Provider MCP 全 5 Phase 完成
+- Next: S2 Vault Lint/Health Check spec + S3 级联关系更新 spec
+
 ### 2026-05-10 (Session 26) — Wave 1+2 并行执行（Ambient Push + Inspector + MCP + Report UI）
 
 - Done: **并行执行框架** — `docs/parallel-execution-plan.md`，4 wave 编排，worktree 隔离
@@ -268,7 +290,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - Plans written: `inspector-tools-overhaul`, `ambient-push-phase2/3`, `provider-mcp-phase1-3`, `parallel-execution-plan`
 - Spike report: `docs/superpowers/specs/2026-05-10-mcp-spike-report.md`
 - Build 通过，ambient-push tests 通过
-- Next: Wave 3 — Ambient Push Phase 4 (Morning Briefing) + Provider MCP Phase 4-5 (Skill System)
+- Next: Wave 3 已完成（Session 27）
 
 ### 2026-05-10 (Session 25) — OpenRouter Stall Timeout + UI 小修
 - Done: **OpenRouter PROCESSING 卡住修复**

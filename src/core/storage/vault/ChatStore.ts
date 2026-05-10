@@ -157,6 +157,11 @@ export class ChatStorageService {
 
 		// Update in sqlite
 		if (this.dbReady) {
+			// Build extensible meta_json for fields not in dedicated columns
+			const metaExtras: Record<string, unknown> = {};
+			if (updatedMeta.customSystemPrompt) metaExtras.customSystemPrompt = updatedMeta.customSystemPrompt;
+			const metaJson = Object.keys(metaExtras).length > 0 ? JSON.stringify(metaExtras) : null;
+
 			await sqliteStoreManager
 				.getChatConversationRepo()
 				.upsertConversation({
@@ -173,6 +178,7 @@ export class ChatStorageService {
 					titleAutoUpdated: updatedMeta.titleAutoUpdated ?? false,
 					contextLastUpdatedTimestamp: updatedMeta.contextLastUpdatedTimestamp ?? null,
 					contextLastMessageIndex: updatedMeta.contextLastMessageIndex ?? null,
+					metaJson,
 				});
 		}
 
@@ -283,6 +289,13 @@ export class ChatStorageService {
 		if (!convRow) {
 			return null;
 		}
+
+		// Parse extensible meta_json for fields not in dedicated columns
+		let metaExtras: Record<string, unknown> = {};
+		if (convRow.meta_json) {
+			try { metaExtras = JSON.parse(convRow.meta_json); } catch { /* ignore parse errors */ }
+		}
+
 		return {
 			id: convRow.conversation_id,
 			title: convRow.title,
@@ -297,6 +310,7 @@ export class ChatStorageService {
 			contextLastUpdatedTimestamp: convRow.context_last_updated_ts ?? undefined,
 			contextLastMessageIndex: convRow.context_last_message_index ?? undefined,
 			fileRelPath: convRow.file_rel_path,
+			customSystemPrompt: (metaExtras.customSystemPrompt as string) ?? undefined,
 		};
 	}
 

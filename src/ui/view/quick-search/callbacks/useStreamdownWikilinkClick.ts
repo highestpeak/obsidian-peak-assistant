@@ -73,8 +73,9 @@ export function extractWikilinkPath(href: string): string | null {
 /**
  * Open a vault file path via Obsidian workspace.
  * Closes the Quick Search modal so the opened file is visible.
+ * When newTab is true, opens in a new tab instead of replacing the current one.
  */
-export function openWikilinkPath(path: string): void {
+export function openWikilinkPath(path: string, newTab: boolean = false): void {
 	try {
 		const app = AppContext.getInstance().app;
 		// Close the Quick Search modal first so the opened file is visible
@@ -82,7 +83,11 @@ export function openWikilinkPath(path: string): void {
 		if (modalEl) {
 			(modalEl.querySelector('.modal-close-button') as HTMLElement)?.click();
 		}
-		app.workspace.openLinkText(path, '', false);
+		if (newTab) {
+			app.workspace.openLinkText(path, '', 'tab');
+		} else {
+			app.workspace.openLinkText(path, '', false);
+		}
 	} catch {
 		// ignore
 	}
@@ -128,6 +133,11 @@ export function useStreamdownWikilinkClick(
 			if (!pathToOpen) return;
 			evt.preventDefault();
 			evt.stopPropagation();
+			// Ctrl/Cmd+click opens in new tab
+			if (evt.metaKey || evt.ctrlKey) {
+				openWikilinkPath(pathToOpen, true);
+				return;
+			}
 			await onOpenWikilink(pathToOpen);
 		},
 		[onOpenWikilink]

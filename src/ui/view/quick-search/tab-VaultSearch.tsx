@@ -37,6 +37,7 @@ export const VaultSearchFooterHints: React.FC = () => (
 	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-[#999999]">
 		<KeyboardShortcut keys="↑↓" description="navigate" />
 		<KeyboardShortcut keys="Enter" description="open" />
+		<KeyboardShortcut keys="Ctrl+Enter" description="new tab" />
 		<KeyboardShortcut keys="→" description="inspector" />
 		<KeyboardShortcut keys="#" description="in-file" />
 		<KeyboardShortcut keys="?" description="modes" />
@@ -140,7 +141,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 						useSharedStore.getState().setVaultSearchQuery(prefix);
 						break;
 					}
-					// Open selected result
+					// Open selected result — Ctrl/Cmd+Enter forces new tab
 					const selectedResult = displayedResults[selectedIndex];
 					if (selectedResult) {
 						try {
@@ -152,7 +153,9 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 								if (queryStems) clickRepo.record(queryStems, selectedResult.path, selectedIndex);
 							}
 						} catch { /* non-critical */ }
-						await createOpenSourceCallback(onClose, currentMode !== 'goToLine' && currentMode !== 'inFile')(selectedResult);
+						const defaultNewTab = currentMode !== 'goToLine' && currentMode !== 'inFile';
+						const openInNewTab = (e.metaKey || e.ctrlKey) || defaultNewTab;
+						await createOpenSourceCallback(onClose, openInNewTab)(selectedResult);
 					}
 					break;
 				}
