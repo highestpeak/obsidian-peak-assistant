@@ -91,4 +91,50 @@ export class AmbientPushRepo {
 		}
 		return pairs;
 	}
+
+	/**
+	 * Get (source, pushed) pairs with positive feedback (opened/linked) in last N days.
+	 * Returns a Map of `source::pushed` → action count for score boosting.
+	 */
+	async getPositivePairs(withinDays: number): Promise<Map<string, number>> {
+		const cutoff = Date.now() - withinDays * 24 * 60 * 60 * 1000;
+		const rows = await this.db
+			.selectFrom('ambient_push_log')
+			.select(['source_file_path', 'pushed_file_path'])
+			.select((eb) => eb.fn.count<number>('id').as('cnt'))
+			.where('user_action', 'in', ['opened', 'linked'])
+			.where('user_action_ts', '>=', cutoff)
+			.groupBy(['source_file_path', 'pushed_file_path'])
+			.execute();
+
+		const result = new Map<string, number>();
+		for (const row of rows) {
+			result.set(`${row.source_file_path}::${row.pushed_file_path}`, row.cnt);
+		}
+		return result;
+	}
+
+	/**
+	 * Get (source, pushed) pairs that were ignored (no user action) in last N days.
+	 * Returns a Map of `source::pushed` → ignore count for score penalty.
+	 */
+	async getIgnoredPenalties(withinDays: number): Promise<Map<string, number>> {
+		const cutoff = Date.now() - withinDays * 24 * 60 * 60 * 1000;
+		const rows = await this.db
+			.selectFrom('ambient_push_log')
+			.select(['source_file_path', 'pushed_file_path'])
+			.select((eb) => eb.fn.count<number>('id').as('cnt'))
+			.where('user_action', 'is', null)
+			.where('timestamp', '>=', cutoff)
+			// Only count pushes old enough that the user had time to act (>5 min ago)
+			.where('timestamp', '<=', Date.now() - 5 * 60 * 1000)
+			.groupBy(['source_file_path', 'pushed_file_path'])
+			.execute();
+
+		const result = new Map<string, number>();
+		for (const row of rows) {
+			result.set(`${row.source_file_path}::${row.pushed_file_path}`, row.cnt);
+		}
+		return result;
+	}
 }

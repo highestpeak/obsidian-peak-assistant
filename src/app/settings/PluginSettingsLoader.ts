@@ -267,6 +267,14 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 					? Math.max(1, Math.min(20, rawAmbient.maxPushItems))
 					: DEFAULT_AMBIENT_PUSH_SETTINGS.maxPushItems,
 			showStatusBar: getBoolean(rawAmbient.showStatusBar, DEFAULT_AMBIENT_PUSH_SETTINGS.showStatusBar),
+			graphExpansionHops:
+				typeof rawAmbient.graphExpansionHops === 'number'
+					? rawAmbient.graphExpansionHops
+					: DEFAULT_AMBIENT_PUSH_SETTINGS.graphExpansionHops,
+			feedbackLearning:
+				typeof rawAmbient.feedbackLearning === 'boolean'
+					? rawAmbient.feedbackLearning
+					: DEFAULT_AMBIENT_PUSH_SETTINGS.feedbackLearning,
 		};
 	}
 

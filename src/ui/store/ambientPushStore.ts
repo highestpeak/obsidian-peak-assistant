@@ -13,6 +13,7 @@ interface AmbientPushStoreState {
 	dismissItem: (filePath: string) => void;
 	recordPush: (filePath: string, timestamp: number) => void;
 	recordAction: (sourceFilePath: string, pushedFilePath: string, action: UserAction) => void;
+	cleanPushHistory: () => void;
 }
 
 export const useAmbientPushStore = create<AmbientPushStoreState>((set, get) => ({
@@ -53,6 +54,16 @@ export const useAmbientPushStore = create<AmbientPushStoreState>((set, get) => (
 				});
 		} catch {
 			/* sqliteStoreManager not initialized — fail silently */
+		}
+	},
+
+	cleanPushHistory: () => {
+		const history = get().pushHistory;
+		const cutoff = Date.now() - 10 * 60 * 1000; // 10 min dedup window
+		for (const [path, ts] of history.entries()) {
+			if (ts < cutoff) {
+				history.delete(path);
+			}
 		}
 	},
 }));
