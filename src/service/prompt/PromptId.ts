@@ -121,6 +121,10 @@ export enum PromptId {
 	CopilotAgentSynthesizeTopic = 'copilot-agent-synthesize-topic',
 	CopilotAgentAddEvidence = 'copilot-agent-add-evidence',
 	CopilotAgentWritingPlan = 'copilot-agent-writing-plan',
+	CopilotAgentWriteArticle = 'copilot-agent-write-article',
+	CopilotAgentDetectAndFile = 'copilot-agent-detect-and-file',
+	CopilotAgentCheckTaskList = 'copilot-agent-check-task-list',
+	CopilotAgentPromptAudit = 'copilot-agent-prompt-audit',
 
 	// Chat intelligence
 	ChatTopicAggregation = 'chat-topic-aggregation',
@@ -489,6 +493,10 @@ export interface PromptVariables {
 	[PromptId.CopilotAgentSynthesizeTopic]: Record<string, never>;
 	[PromptId.CopilotAgentAddEvidence]: Record<string, never>;
 	[PromptId.CopilotAgentWritingPlan]: Record<string, never>;
+	[PromptId.CopilotAgentWriteArticle]: Record<string, never>;
+	[PromptId.CopilotAgentDetectAndFile]: Record<string, never>;
+	[PromptId.CopilotAgentCheckTaskList]: Record<string, never>;
+	[PromptId.CopilotAgentPromptAudit]: Record<string, never>;
 
 	// Chat intelligence
 	[PromptId.ChatTopicAggregation]: {

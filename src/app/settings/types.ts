@@ -224,6 +224,9 @@ export interface MyPluginSettings {
 	/** Vault folder for quick-captured notes (default: _inbox). */
 	inboxFolder?: string;
 
+	/** Vault folder for user-defined custom prompts (default: _prompts). */
+	customPromptsFolder?: string;
+
 	vaultSearch?: {
 		sdkProfile?: {
 			kind?: 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom';

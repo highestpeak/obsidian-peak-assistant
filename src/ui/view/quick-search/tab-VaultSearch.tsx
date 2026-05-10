@@ -13,6 +13,7 @@ import { ModeHelpList, MODE_COUNT } from './components/ModeHelpList';
 import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickRepo';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SearchUpgradePrompt } from './components/SearchUpgradePrompt';
+import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 
 const NoResultsState: React.FC<{ mode?: string }> = ({ mode }) => (
 	<EmptyState
@@ -34,7 +35,7 @@ const NoRecentlyAccessedState: React.FC = () => (
 
 /** Footer hints for vault search tab. Exported for use in SearchModal footer. */
 export const VaultSearchFooterHints: React.FC = () => (
-	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-[#999999]">
+	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-pk-text-tertiary">
 		<KeyboardShortcut keys="↑↓" description="navigate" />
 		<KeyboardShortcut keys="Enter" description="open" />
 		<KeyboardShortcut keys="Ctrl+Enter" description="new tab" />
@@ -144,6 +145,10 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 					// Open selected result — Ctrl/Cmd+Enter forces new tab
 					const selectedResult = displayedResults[selectedIndex];
 					if (selectedResult) {
+						const vaultQuery = useVaultSearchStore.getState().parsedQuery?.text ?? '';
+						if (vaultQuery.trim()) {
+							useSharedStore.getState().addRecentQuery(vaultQuery.trim());
+						}
 						try {
 							const db = sqliteStoreManager.getDatabase('vault');
 							const query = useVaultSearchStore.getState().parsedQuery?.text ?? '';
@@ -221,9 +226,18 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 						) : (
 							<>
 								{!hasSearchQuery && (
-									<div className="pktw-px-4 pktw-pb-2">
-										<span className="pktw-text-xs pktw-text-[#999999]">Recently opened</span>
-									</div>
+									<>
+										<RecentQueriesDropdown
+											queries={useSharedStore.getState().recentQueries}
+											onSelect={(query) => {
+												useSharedStore.getState().setVaultSearchQuery(query);
+											}}
+											onClear={() => useSharedStore.getState().clearRecentQueries()}
+										/>
+										<div className="pktw-px-4 pktw-pb-2">
+											<span className="pktw-text-xs pktw-text-pk-text-tertiary">Recently opened</span>
+										</div>
+									</>
 								)}
 								{displayedResults.map((result, index) => (
 									<SearchResultRow

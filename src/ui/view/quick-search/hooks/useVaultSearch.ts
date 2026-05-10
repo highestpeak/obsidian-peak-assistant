@@ -5,7 +5,7 @@ import { DEFAULT_SEARCH_QUERY, GoToLine, InFileSearch, useVaultSearchStore } fro
 import { SearchQuery } from '@/service/search/types';
 import { AppContext } from '@/app/context/AppContext';
 import { readFileAsText, openFileAtLine } from '@/core/utils/obsidian-utils';
-import type { SearchResultItem } from '@/service/search/types';
+import type { SearchResultItem, SearchSnippet } from '@/service/search/types';
 
 export const useSearchQuery = (): InFileSearch | GoToLine | SearchQuery => {
 	const { quickSearchMode, inFileSearch, goToLine, parsedQuery } = useVaultSearchStore();
@@ -94,6 +94,7 @@ async function performInFileSearch(text: string, filePath: string): Promise<{ re
 			// If no heading found, show line number
 			const displayTitle = recentHeadingTitle || `Line ${index + 1}`;
 
+			const matchStart = line.toLowerCase().indexOf(searchText);
 			results.push({
 				id: `${filePath}:${index + 1}`,
 				path: filePath,
@@ -101,12 +102,9 @@ async function performInFileSearch(text: string, filePath: string): Promise<{ re
 				type: 'heading',
 				lastModified: Date.now(),
 				highlight: {
-					text: line.toLowerCase(),
-					highlights: [{
-						start: line.toLowerCase().indexOf(searchText),
-						end: line.toLowerCase().indexOf(searchText) + searchText.length
-					}]
-				},
+					text: line,
+					highlights: [{ start: matchStart, end: matchStart + searchText.length }],
+				} as SearchSnippet,
 				loc: {
 					line: index + 1, // 1-based line number
 					charOffset: lineOffsets[index]
