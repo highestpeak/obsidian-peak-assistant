@@ -6,6 +6,7 @@ import type { DocumentType } from '@/core/document/types';
 import { PromptId, CONFIGURABLE_PROMPT_IDS, INDEXING_AND_HUB_PROMPT_IDS, SEARCH_AI_ANALYSIS_PROMPT_IDS } from '@/service/prompt/PromptId';
 import type { ProfileSettings } from '@/core/profiles/types';
 import type { AmbientPushSettings } from '@/service/ambient/types';
+import type { MCPServerConfig } from '@/service/mcp/types';
 import type { IndexLevel } from '@/service/search/index/types';
 
 export interface ChunkingSettings {
@@ -210,6 +211,13 @@ export interface MyPluginSettings {
 	ambientPush?: AmbientPushSettings;
 	usageTrackingEnabled: boolean;
 	usageDetailRetentionDays: number;
+
+	/** External MCP server connections (stdio/SSE). */
+	mcpServers?: MCPServerConfig[];
+
+	/** Vault folder for user-defined skills (default: _skills). */
+	skillsFolder?: string;
+
 	vaultSearch?: {
 		sdkProfile?: {
 			kind?: 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom';
