@@ -182,16 +182,37 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 		const coords = view.coordsAtPos(from);
 		if (!coords) return null;
 		const menuHeight = 300;
-		const showAbove = coords.top > menuHeight + 20;
-		const pos = showAbove
-			? { top: coords.top - menuHeight - 4, left: coords.left }
-			: { top: coords.bottom + 4, left: coords.left };
-		const viewportWidth = window.innerWidth;
 		const menuWidth = 400;
-		if (pos.left + menuWidth > viewportWidth - 8) {
-			pos.left = Math.max(8, viewportWidth - menuWidth - 8);
+		const viewportHeight = window.innerHeight;
+		const viewportWidth = window.innerWidth;
+		const margin = 8;
+
+		// Vertical: prefer above the cursor; flip to below if not enough space above
+		const spaceAbove = coords.top;
+		const spaceBelow = viewportHeight - coords.bottom;
+		let top: number;
+		if (spaceAbove >= menuHeight + margin) {
+			// Show above: menu bottom aligns just above the trigger
+			top = coords.top - menuHeight - 4;
+		} else if (spaceBelow >= menuHeight + margin) {
+			// Show below: menu top aligns just below the trigger
+			top = coords.bottom + 4;
+		} else {
+			// Neither side has full room — pick the side with more space and clamp
+			if (spaceAbove >= spaceBelow) {
+				top = Math.max(margin, coords.top - menuHeight - 4);
+			} else {
+				top = coords.bottom + 4;
+			}
 		}
-		return pos;
+
+		// Horizontal: start at trigger, shift left if overflowing right edge
+		let left = coords.left;
+		if (left + menuWidth > viewportWidth - margin) {
+			left = Math.max(margin, viewportWidth - menuWidth - margin);
+		}
+
+		return { top, left };
 	}, []);
 
 	/** Shared menu open + async-load logic for both context and prompt menus. */
