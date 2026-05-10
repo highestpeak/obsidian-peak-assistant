@@ -10,7 +10,6 @@ async function run(): Promise<void> {
 					kind: 'anthropic',
 					baseUrl: 'https://api.anthropic.com',
 					apiKey: 'sk-ant-test',
-					authToken: null,
 					primaryModel: 'claude-opus-4-6',
 					fastModel: 'claude-haiku-4-5',
 				};
@@ -23,18 +22,17 @@ async function run(): Promise<void> {
 			},
 		},
 		{
-			name: 'toAgentSdkEnv: openrouter requires empty api key and bearer token',
+			name: 'toAgentSdkEnv: openrouter sends apiKey as bearer token',
 			fn: () => {
 				const profile: SdkProfile = {
 					kind: 'openrouter',
-					baseUrl: 'https://openrouter.ai/api',
-					apiKey: null,
-					authToken: 'sk-or-test',
+					baseUrl: 'https://openrouter.ai/api/v1',
+					apiKey: 'sk-or-test',
 					primaryModel: 'anthropic/claude-opus-4-6',
 					fastModel: 'deepseek/deepseek-v3',
 				};
 				const env = toAgentSdkEnv(profile);
-				assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://openrouter.ai/api');
+				assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://openrouter.ai/api/v1');
 				assert.strictEqual(env.ANTHROPIC_API_KEY, '');
 				assert.strictEqual(env.ANTHROPIC_AUTH_TOKEN, 'sk-or-test');
 				assert.strictEqual(env.ANTHROPIC_DEFAULT_OPUS_MODEL, 'anthropic/claude-opus-4-6');
@@ -57,11 +55,10 @@ async function run(): Promise<void> {
 					kind: 'anthropic',
 					baseUrl: 'https://api.anthropic.com',
 					apiKey: null,
-					authToken: null,
 					primaryModel: 'claude-opus-4-6',
 					fastModel: 'claude-haiku-4-5',
 				};
-				assert.throws(() => toAgentSdkEnv(broken), /credentials/i);
+				assert.throws(() => toAgentSdkEnv(broken), /missing/i);
 			},
 		},
 		{
@@ -71,15 +68,15 @@ async function run(): Promise<void> {
 					vaultSearch: {
 						sdkProfile: {
 							kind: 'openrouter' as const,
-							baseUrl: 'https://openrouter.ai/api',
-							authToken: 'sk-or-key',
+							baseUrl: 'https://openrouter.ai/api/v1',
+							apiKey: 'sk-or-key',
 							primaryModel: 'openai/gpt-5',
 						},
 					},
 				};
 				const profile = readProfileFromSettings(mockSettings);
 				assert.strictEqual(profile.kind, 'openrouter');
-				assert.strictEqual(profile.authToken, 'sk-or-key');
+				assert.strictEqual(profile.apiKey, 'sk-or-key');
 				assert.strictEqual(profile.primaryModel, 'openai/gpt-5');
 				// Default fastModel carries through since user didn't override
 				assert.strictEqual(profile.fastModel, 'claude-haiku-4-5');
@@ -101,11 +98,11 @@ async function run(): Promise<void> {
 	for (const test of tests) {
 		try {
 			await test.fn();
-			console.log(`✅ PASS: ${test.name}`);
+			console.log(`  PASS: ${test.name}`);
 			passed += 1;
 		} catch (error) {
 			failed += 1;
-			console.error(`❌ FAIL: ${test.name}`);
+			console.error(`  FAIL: ${test.name}`);
 			console.error(error);
 		}
 	}

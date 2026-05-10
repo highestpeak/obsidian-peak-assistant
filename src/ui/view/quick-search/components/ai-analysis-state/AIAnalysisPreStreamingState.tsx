@@ -1,15 +1,15 @@
 import { AnalysisTimer } from "../../../../component/mine/IntelligenceFrame";
 import React, { useCallback } from "react";
 import { AnimatedSparkles } from "@/ui/component/mine";
-import { useAIAnalysisRuntimeStore, useAIAnalysisSummaryStore } from "../../store/aiAnalysisStore";
+import { useSearchSessionStore } from "../../store/searchSessionStore";
 import { PRESET_LABELS } from "../../SearchModal";
 
 export const AIAnalysisPreStreamingState: React.FC = () => {
-    const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
-    const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
-    const analysisStartedAtMs = useAIAnalysisRuntimeStore((s) => s.analysisStartedAtMs);
-    const analysisMode = useAIAnalysisRuntimeStore((s) => s.analysisMode);
-    const isSummaryStreaming = useAIAnalysisSummaryStore((s) => s.isSummaryStreaming);
+    const isAnalyzing = useSearchSessionStore((s) => s.status === 'starting' || s.status === 'streaming');
+    const analysisCompleted = useSearchSessionStore((s) => s.status === 'completed');
+    const analysisStartedAtMs = useSearchSessionStore((s) => s.startedAt);
+    const analysisMode = useSearchSessionStore((s) => s.analysisMode);
+    const isSummaryStreaming = useSearchSessionStore((s) => s.v2SummaryStreaming);
 
     const checkIfAnalyzing = useCallback(() => {
         return isAnalyzing && !analysisCompleted;

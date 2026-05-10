@@ -31,7 +31,6 @@ export interface NavigableMenuProps {
 	emptyMessage?: string;
 	loadingMessage?: string;
 	isLoading?: boolean; // Whether the menu is in loading state
-	containerRef?: React.RefObject<HTMLElement>; // Reference to container element for position calculation
 }
 
 /**
@@ -46,7 +45,6 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 	emptyMessage = 'No items found',
 	loadingMessage = 'Loading...',
 	isLoading = false,
-	containerRef,
 }) => {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const menuRef = useRef<HTMLDivElement>(null);
@@ -56,146 +54,56 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 	const enabledItems = React.useMemo(() => items.filter(item => !item.disabled), [items]);
 	const currentItem = enabledItems[selectedIndex];
 
-	// Get items length and ids for stable dependencies
-	const itemsLength = items.length;
 	const itemsIds = items.map(item => item.id).join(',');
 
 	// Reset selection when items change
 	useEffect(() => {
 		setSelectedIndex(0);
 		setSelectedItemRect(null);
-	}, [itemsIds]); // Use stable string instead of items array
-
-	// Update selected item position when selection changes - use useLayoutEffect to ensure DOM is ready
-	React.useLayoutEffect(() => {
-		if (menuRef.current && enabledItems.length > 0) {
-			const selectedItem = menuRef.current.querySelector(`[data-item-id="${enabledItems[selectedIndex]?.id}"]`) as HTMLElement;
-			if (selectedItem) {
-				const rect = selectedItem.getBoundingClientRect();
-				setSelectedItemRect(rect);
-			}
-		}
-	}, [enabledItems, selectedIndex]);
-
-	// Clear selected item rect when component unmounts or items change
-	useEffect(() => {
-		return () => {
-			setSelectedItemRect(null);
-		};
 	}, [itemsIds]);
 
-	// Recalculate position on window resize - throttled to avoid excessive updates
+	/** Measure the selected item's bounding rect from the DOM. */
+	const measureSelectedRect = useCallback(() => {
+		if (!menuRef.current || enabledItems.length === 0) return;
+		const el = menuRef.current.querySelector(`[data-item-id="${enabledItems[selectedIndex]?.id}"]`) as HTMLElement;
+		if (el) setSelectedItemRect(el.getBoundingClientRect());
+	}, [enabledItems, selectedIndex]);
+
+	// Update selected item position when selection changes
+	React.useLayoutEffect(measureSelectedRect, [measureSelectedRect]);
+
+	// Recalculate position on window resize (debounced)
 	useEffect(() => {
 		let timeoutId: NodeJS.Timeout;
-
 		const handleResize = () => {
-			// Clear existing timeout
-			if (timeoutId) clearTimeout(timeoutId);
-
-			// Debounce the update - trigger recalculation without depending on current values
-			timeoutId = setTimeout(() => {
-				// Use a fresh calculation instead of depending on stale closure values
-				const currentEnabledItems = items.filter(item => !item.disabled);
-				const currentSelectedIndex = Math.min(selectedIndex, currentEnabledItems.length - 1);
-
-				if (menuRef.current && currentEnabledItems.length > 0) {
-					const selectedItem = menuRef.current.querySelector(`[data-item-id="${currentEnabledItems[currentSelectedIndex]?.id}"]`) as HTMLElement;
-					if (selectedItem) {
-						const rect = selectedItem.getBoundingClientRect();
-						setSelectedItemRect(rect);
-					}
-				}
-			}, 100); // 100ms debounce
+			clearTimeout(timeoutId);
+			timeoutId = setTimeout(measureSelectedRect, 100);
 		};
-
 		window.addEventListener('resize', handleResize);
-		return () => {
-			window.removeEventListener('resize', handleResize);
-			if (timeoutId) clearTimeout(timeoutId);
-		};
-	}, []); // No dependencies to avoid loops
+		return () => { window.removeEventListener('resize', handleResize); clearTimeout(timeoutId); };
+	}, [measureSelectedRect]);
 
 	// Calculate floating description position and dimensions
 	const floatingDescription = React.useMemo(() => {
-		if (!selectedItemRect || !enabledItems[selectedIndex]?.description) {
-			return null;
-		}
+		if (!selectedItemRect || !enabledItems[selectedIndex]?.description) return null;
+		if (!menuRef.current) return null;
 
-		const POPOVER_WIDTH = 300;
-		const POPOVER_HEIGHT = 200; // Approximate max height
-		const MARGIN = 8;
+		const MAX_W = 300, MAX_H = 200, M = 8, MIN_W = 100;
+		const vw = window.innerWidth, vh = window.innerHeight;
+		const r = selectedItemRect;
+		const spaceR = vw - r.right, spaceL = r.left;
 
-		// Get container bounds for relative positioning (if provided)
-		const containerRect = containerRef?.current?.getBoundingClientRect();
-
-		// Get menu container bounds for relative positioning
-		const menuRect = menuRef.current?.getBoundingClientRect();
-		if (!menuRect) return null;
-
-		// Convert selected item coordinates to relative to menu container
-		const relativeItemLeft = selectedItemRect.left - menuRect.left;
-		const relativeItemRight = selectedItemRect.right - menuRect.left;
-
-		// Calculate available space within menu container
-		const spaceOnRight = menuRect.width - relativeItemRight;
-		const spaceOnLeft = relativeItemLeft;
-
-		// For very narrow menus, allow showing outside the menu bounds
-		// Check viewport space as fallback
-		const viewportWidth = window.innerWidth;
-		const viewportSpaceOnRight = viewportWidth - selectedItemRect.right;
-		const viewportSpaceOnLeft = selectedItemRect.left;
-
-		const effectiveSpaceOnRight = viewportSpaceOnRight;
-		const effectiveSpaceOnLeft = viewportSpaceOnLeft;
-		const MIN_WIDTH = 100; // Reduced minimum width since we allow overflow
-
-		// Decide position: prefer right, fallback to left
-		const showOnRight = effectiveSpaceOnRight >= MIN_WIDTH;
-		const showOnLeft = !showOnRight && effectiveSpaceOnLeft >= MIN_WIDTH;
-
-		let left, top, actualWidth, positioning;
-
-		if (showOnRight) {
-			actualWidth = Math.min(POPOVER_WIDTH, effectiveSpaceOnRight - MARGIN);
-			// Position in viewport (outside menu bounds)
-			left = selectedItemRect.right + MARGIN;
-			top = selectedItemRect.top;
-			positioning = 'viewport';
-		} else if (showOnLeft) {
-			actualWidth = Math.min(POPOVER_WIDTH, effectiveSpaceOnLeft - MARGIN);
-			// Position in viewport (outside menu bounds)
-			left = selectedItemRect.left - actualWidth - MARGIN;
-			top = selectedItemRect.top;
-			positioning = 'viewport';
+		let left: number, top: number, width: number;
+		if (spaceR >= MIN_W) {
+			width = Math.min(MAX_W, spaceR - M); left = r.right + M; top = r.top;
+		} else if (spaceL >= MIN_W) {
+			width = Math.min(MAX_W, spaceL - M); left = r.left - width - M; top = r.top;
 		} else {
-			// Fallback: show below - always use viewport positioning for below
-			actualWidth = Math.min(POPOVER_WIDTH, viewportWidth - selectedItemRect.left - 2 * MARGIN);
-			left = Math.max(MARGIN, selectedItemRect.left);
-			top = selectedItemRect.bottom;
-			positioning = 'viewport';
+			width = Math.min(MAX_W, vw - r.left - 2 * M); left = Math.max(M, r.left); top = r.bottom;
 		}
+		top = Math.max(M, Math.min(top, vh - MAX_H - M));
 
-		// Adjust left position relative to container if containerRef is provided
-		// if (containerRect) {
-		// 	left -= containerRect.left;
-		// }
-
-		// Clamp top so popover stays within viewport
-		const viewportHeight = window.innerHeight;
-		top = Math.min(top, viewportHeight - POPOVER_HEIGHT - MARGIN);
-		top = Math.max(top, MARGIN);
-
-		return {
-			left,
-			top,
-			width: actualWidth,
-			positioning,
-			content: {
-				label: enabledItems[selectedIndex].label,
-				description: enabledItems[selectedIndex].description
-			}
-		};
+		return { left, top, width, content: { label: enabledItems[selectedIndex].label, description: enabledItems[selectedIndex].description } };
 	}, [selectedItemRect, enabledItems, selectedIndex]);
 
 	// Handle keyboard navigation
@@ -317,19 +225,11 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 				{/* Floating description for selected item */}
 				{floatingDescription && (
 					<div
-						className={`${floatingDescription.positioning === 'relative' ? 'pktw-absolute' : 'pktw-fixed'} pktw-z-[9999] pktw-max-w-sm pktw-p-3 pktw-bg-popover pktw-border pktw-border-border pktw-rounded-lg pktw-shadow-xl pktw-text-sm pktw-pointer-events-none`}
-						style={{
-							left: floatingDescription.left,
-							top: floatingDescription.top,
-							width: floatingDescription.width,
-						}}
+						className="pktw-fixed pktw-z-[9999] pktw-max-w-sm pktw-p-3 pktw-bg-popover pktw-border pktw-border-border pktw-rounded-lg pktw-shadow-xl pktw-text-sm pktw-pointer-events-none"
+						style={{ left: floatingDescription.left, top: floatingDescription.top, width: floatingDescription.width }}
 					>
-						<div className="pktw-font-medium pktw-mb-2 pktw-text-foreground">
-							{floatingDescription.content.label}
-						</div>
-						<div className="pktw-text-muted-foreground pktw-whitespace-pre-wrap pktw-break-words">
-							{floatingDescription.content.description}
-						</div>
+						<div className="pktw-font-medium pktw-mb-2 pktw-text-foreground">{floatingDescription.content.label}</div>
+						<div className="pktw-text-muted-foreground pktw-whitespace-pre-wrap pktw-break-words">{floatingDescription.content.description}</div>
 					</div>
 				)}
 			</div>

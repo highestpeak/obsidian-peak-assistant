@@ -189,7 +189,7 @@ export class UsageTrackingService {
 				cost_usd: payload.costUsd,
 				duration_ms: payload.durationMs,
 				is_streaming: payload.isStreaming ? 1 : 0,
-				metadata: payload.metadata ? JSON.stringify(payload.metadata) : null,
+				metadata_json: payload.metadata ? JSON.stringify(payload.metadata) : null,
 				created_at: Date.now(),
 			});
 		} catch (e) {

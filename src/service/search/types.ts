@@ -150,22 +150,32 @@ export interface SearchResultItem {
 	 * Chunk provenance for rerank and display.
 	 */
 	chunkType?: ChunkType;
+	/**
+	 * Raw (un-normalized) content for highlight snippet generation.
+	 */
+	contentRaw?: string;
+	/**
+	 * How this result was matched (exact, stem, semantic, fuzzy, meta).
+	 */
+	matchType?: string;
+	/**
+	 * If the query was fuzzy-corrected, the corrected term.
+	 */
+	fuzzyCorrection?: string;
+	/**
+	 * Highlighted title with span positions.
+	 */
+	titleHighlight?: { text: string; spans: Array<{ start: number; end: number; type: string }> };
 }
 
 /**
  * Returned by search() calls.
  */
-/** Optional anchor from the current retrieval pass (for agents / expansion). */
-export interface RuntimeHubHint {
-	anchorPath: string;
-	anchorScore: number;
-}
-
 export interface SearchResponse {
 	query: SearchQuery;
 	items: SearchResultItem[];
-	/** Best-effort top result anchor after rerank (not persisted). */
-	runtimeHub?: RuntimeHubHint;
+	/** If the query was fuzzy-corrected, the corrected term (e.g. "Did you mean: ..."). */
+	fuzzyCorrection?: string;
 }
 
 

@@ -13,7 +13,6 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
     const query = useSearchSessionStore((s) => s.query);
     const status = useSearchSessionStore((s) => s.status);
     const sources = useSearchSessionStore((s) => s.v2Sources);
-    const proposedOutline = useSearchSessionStore((s) => s.v2ProposedOutline);
     const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
     const usage = useSearchSessionStore((s) => s.usage);
     const duration = useSearchSessionStore((s) => s.duration);
@@ -63,7 +62,6 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                     timeline={round.timeline}
                     sections={round.sections}
                     sources={{ length: round.sources.length }}
-                    proposedOutline={round.proposedOutline}
                     usage={round.usage}
                     duration={round.duration}
                     isCurrent={false}
@@ -79,7 +77,6 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                 timeline={timeline}
                 sections={sections}
                 sources={{ length: sources.length }}
-                proposedOutline={proposedOutline}
                 usage={usage}
                 duration={duration}
                 isCurrent={true}

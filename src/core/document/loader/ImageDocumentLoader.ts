@@ -1,26 +1,25 @@
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
-import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { binaryContentHash } from '@/core/utils/hash-utils';
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import type { Chunk } from '@/service/search/index/types';
-import type { ChunkingSettings, SearchSettings } from '@/app/settings/types';
-import { generateDocIdFromPath, generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { generateDocIdFromPath } from '@/core/utils/id-utils';
+import type { SearchSettings } from '@/app/settings/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
-import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
+import { BaseDocumentLoader } from './BaseDocumentLoader';
 
 /**
  * Image document loader.
  * Uses OCR and AI model to generate text description.
  */
-export class ImageDocumentLoader implements DocumentLoader {
+export class ImageDocumentLoader extends BaseDocumentLoader {
 	constructor(
-		private readonly app: App,
+		app: App,
 		private readonly settings: SearchSettings,
-		private readonly aiServiceManager?: AIServiceManager
-	) { }
+		aiServiceManager?: AIServiceManager,
+	) {
+		super(app, aiServiceManager);
+	}
 
 	getDocumentType(): DocumentType {
 		return 'image';
@@ -30,91 +29,17 @@ export class ImageDocumentLoader implements DocumentLoader {
 		return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
 	}
 
-	async readByPath(
-		filePath: string,
-		genCacheContent?: boolean,
-		_readOptions?: DocumentLoaderReadOptions,
-	): Promise<Document | null> {
-		const file = this.app.vault.getAbstractFileByPath(filePath);
-		if (!file || !(file instanceof TFile)) return null;
-		const ext = file.extension.toLowerCase();
-		if (!this.getSupportedExtensions().includes(ext)) return null;
-		return await this.readImageFile(file, genCacheContent);
-	}
-
-	async chunkContent(
-		doc: Document,
-		settings: ChunkingSettings,
-	): Promise<Chunk[]> {
-		const content = doc.cacheFileInfo.content;
-		const minSize = settings.minDocumentSizeForChunking;
-
-		if (content.length <= minSize) {
-			return assembleIndexedChunks(
-				doc,
-				[
-					{
-						docId: doc.id,
-						chunkType: 'body_raw',
-						content: content,
-					},
-				],
-				settings,
-			);
-		}
-
-		const splitter = new RecursiveCharacterTextSplitter({
-			chunkSize: settings.maxChunkSize,
-			chunkOverlap: settings.chunkOverlap,
-		});
-
-		const langchainDocs = await splitter.createDocuments([content]);
-		const chunks: Chunk[] = [];
-		for (let i = 0; i < langchainDocs.length; i++) {
-			const langchainDoc = langchainDocs[i];
-			chunks.push({
-				docId: doc.id,
-				chunkType: 'body_raw',
-				content: langchainDoc.pageContent,
-				chunkId: generateUuidWithoutHyphens(),
-				chunkIndex: i,
-			});
-		}
-
-		return assembleIndexedChunks(doc, chunks, settings);
-	}
-
-	async *scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
-		const limit = params?.limit ?? Infinity;
-		const batchSize = params?.batchSize ?? 100;
-
-		const supportedExts = this.getSupportedExtensions();
-		const files = this.app.vault.getFiles()
-			.filter(f => supportedExts.includes(f.extension.toLowerCase()))
-			.slice(0, limit);
-		let batch: Array<{ path: string; mtime: number; type: DocumentType }> = [];
-
-		for (const file of files) {
-			batch.push({
-				path: file.path,
-				mtime: file.stat.mtime,
-				type: 'image',
-			});
-			if (batch.length >= batchSize) {
-				yield batch;
-				batch = [];
-			}
-		}
-		if (batch.length) yield batch;
+	protected override getContentForChunking(doc: Document): string {
+		return doc.cacheFileInfo.content;
 	}
 
 	/**
-	 * Get summary for an image document
+	 * Custom summary: uses AI image description prompt instead of default text summary.
 	 */
-	async getSummary(
+	override async getSummary(
 		source: Document | string,
 		provider?: string,
-		modelId?: string
+		modelId?: string,
 	): Promise<ResourceSummary> {
 		if (!this.aiServiceManager) {
 			throw new Error('ImageDocumentLoader requires AIServiceManager to generate summaries');
@@ -135,7 +60,7 @@ export class ImageDocumentLoader implements DocumentLoader {
 		return { shortSummary, fullSummary: shortSummary };
 	}
 
-	private async readImageFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
+	protected async readFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
 		try {
 			if (genCacheContent) {
 				console.debug('[ImageDocumentLoader] reading image file:', file.path, 'genCacheContent:', genCacheContent);
@@ -144,7 +69,6 @@ export class ImageDocumentLoader implements DocumentLoader {
 			const realContentHash = binaryContentHash(realContent);
 
 			const cacheContent = genCacheContent ? await this.generateImageDescription(file) : '';
-			// const cacheContentHash = generateContentHash(cacheContent);
 
 			return {
 				id: generateDocIdFromPath(file.path),
@@ -226,4 +150,3 @@ export class ImageDocumentLoader implements DocumentLoader {
 		return mimeTypes[ext] || 'image/jpeg';
 	}
 }
-

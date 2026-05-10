@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
-import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
+import type { DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { parseMarkdownWithRemark } from '@/core/utils/markdown-utils';
 import { hashString } from '@/core/utils/hash-utils';
@@ -16,6 +16,7 @@ import { extractTopicAndFunctionalTags, type DocLlmTagResult } from '@/core/docu
 import { computeKeywordTagBundles, extractTextRankFeatures, stripForTextRank } from '@/core/document/loader/helper/textRank';
 import { resolveTextRankLocaleFromStripped } from '@/core/utils/stopword-utils';
 import { assembleIndexedChunks, type TextrankSentenceStructured } from './helper/assembleIndexedChunks';
+import { BaseDocumentLoader } from './BaseDocumentLoader';
 
 /** Re-export for callers that import from this module. */
 export { assembleIndexedChunks, type TextrankSentenceStructured };
@@ -26,11 +27,10 @@ export { assembleIndexedChunks, type TextrankSentenceStructured };
  * This runs on the main thread because it uses Obsidian APIs.
  * Worker code must never import this module.
  */
-export class MarkdownDocumentLoader implements DocumentLoader {
-	constructor(
-		private readonly app: App,
-		private readonly aiServiceManager?: AIServiceManager
-	) { }
+export class MarkdownDocumentLoader extends BaseDocumentLoader {
+	constructor(app: App, aiServiceManager?: AIServiceManager) {
+		super(app, aiServiceManager);
+	}
 
 	getDocumentType(): DocumentType {
 		return 'markdown';
@@ -41,30 +41,9 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	}
 
 	/**
-	 * Read a markdown document by its path.
-	 * Returns core Document model.
-	 */
-	async readByPath(
-		path: string,
-		_genCacheContent?: boolean,
-		readOptions?: DocumentLoaderReadOptions,
-	): Promise<Document | null> {
-		const file = this.app.vault.getAbstractFileByPath(path);
-		if (!file || !(file instanceof TFile)) return null;
-		if (!this.getSupportedExtensions().includes(file.extension.toLowerCase())) return null;
-		const includeLlmTags = readOptions?.includeLlmTags ?? true;
-		const includeLlmSummary = readOptions?.includeLlmSummary ?? true;
-		return await this.readMarkdownFile(file, {
-			includeLlmTags,
-			includeLlmSummary,
-			onLlmIndexingComplete: readOptions?.onLlmIndexingComplete,
-		});
-	}
-
-	/**
 	 * Splits markdown body with RecursiveCharacterTextSplitter, then appends summary / TextRank chunks for indexing.
 	 */
-	async chunkContent(
+	override async chunkContent(
 		doc: Document,
 		settings: ChunkingSettings,
 	): Promise<Chunk[]> {
@@ -115,37 +94,23 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	}
 
 	/**
-	 * Scan markdown documents metadata without loading content.
-	 * Returns lightweight metadata: path, mtime, type.
-	 */
-	async *scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
-		const limit = params?.limit ?? Infinity;
-		const batchSize = params?.batchSize ?? 100;
-
-		const supportedExts = this.getSupportedExtensions();
-		const files = this.app.vault.getFiles()
-			.filter(f => supportedExts.includes(f.extension.toLowerCase()))
-			.slice(0, limit);
-		let batch: Array<{ path: string; mtime: number; type: DocumentType }> = [];
-
-		for (const file of files) {
-			batch.push({
-				path: file.path,
-				mtime: file.stat.mtime,
-				type: 'markdown',
-			});
-			if (batch.length >= batchSize) {
-				yield batch;
-				batch = [];
-			}
-		}
-		if (batch.length) yield batch;
-	}
-
-	/**
 	 * Read a markdown file and convert to core Document model.
 	 * TextRank always runs. LLM tag/summary runs only when {@link DocumentLoaderReadOptions} allows (default: on).
 	 */
+	protected async readFile(
+		file: TFile,
+		_genCacheContent?: boolean,
+		readOptions?: DocumentLoaderReadOptions,
+	): Promise<Document | null> {
+		const includeLlmTags = readOptions?.includeLlmTags ?? true;
+		const includeLlmSummary = readOptions?.includeLlmSummary ?? true;
+		return this.readMarkdownFile(file, {
+			includeLlmTags,
+			includeLlmSummary,
+			onLlmIndexingComplete: readOptions?.onLlmIndexingComplete,
+		});
+	}
+
 	private async readMarkdownFile(
 		file: TFile,
 		readOptions: DocumentLoaderReadOptions & { includeLlmTags: boolean; includeLlmSummary: boolean },
@@ -372,7 +337,7 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	 * Get summary for a markdown document
 	 * // todo implement getSummary. many types: raw knowledge base markdown, conv and project markdown, resources markdown
 	 */
-	async getSummary(
+	override async getSummary(
 		source: Document | string,
 		provider?: string,
 		modelId?: string
@@ -380,4 +345,3 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 		return getDefaultDocumentSummary(source, this.aiServiceManager, provider, modelId);
 	}
 }
-

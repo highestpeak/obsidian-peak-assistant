@@ -6,7 +6,7 @@ import { MessageHeader } from './components/messages/MessageViewHeader';
 import { MessageListRenderer } from './components/messages/MessageListRenderer';
 import { ChatInputAreaComponent } from './components/ChatInputArea';
 import { FileChangesList } from './components/messages/FileChangesList';
-import { SuggestionActions } from './components/SuggestionActions';
+
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
 import { useAutoScroll } from './hooks/useAutoScroll';
@@ -120,18 +120,8 @@ export const MessagesViewComponent: React.FC = () => {
                 <FileChangesList />
             </div>
 
-            {/* Footer Upper Area - positioned between body and footer, outside scroll area */}
-            <div className="pktw-flex-shrink-0 pktw-flex pktw-justify-between pktw-items-center pktw-px-6 pktw-pt-6 pktw-border-b pktw-border-borde">
-                {/* Suggestion actions on the left */}
-                {activeConversation && activeConversation.messages.length > 0 && (
-                    <SuggestionActions
-                        conversationId={activeConversation.meta?.id ?? ''}
-                        messages={activeConversation.messages.map(m => ({ role: m.role, content: m.content }))}
-                        onSelect={(prompt) => useChatViewStore.getState().submitAction?.(prompt)}
-                    />
-                )}
-
-                {/* Scroll buttons on the right */}
+            {/* Footer Upper Area - scroll buttons */}
+            <div className="pktw-flex-shrink-0 pktw-flex pktw-justify-end pktw-items-center pktw-px-6 pktw-pt-2">
                 <div className="pktw-flex pktw-items-center pktw-gap-1">
                     <IconButton
                         size="lg"

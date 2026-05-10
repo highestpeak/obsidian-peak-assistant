@@ -7,13 +7,6 @@
 
 import { useCallback, useRef } from 'react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
-import {
-	useAIAnalysisRuntimeStore,
-	useAIAnalysisStepsStore,
-	useAIAnalysisSummaryStore,
-	useAIAnalysisResultStore,
-	markAIAnalysisCompleted,
-} from '../store/aiAnalysisStore';
 import type { UIStepRecord } from '../store/aiAnalysisStore';
 
 import type { SearchAgentResult } from '@/service/agents/shared-types';
@@ -29,7 +22,6 @@ import {
 } from './eventDispatcher';
 import type {
 	EventDispatchTarget,
-	LegacyBridgeTarget,
 	SummaryBuffer,
 	UiStepAccumRef,
 } from './eventDispatcher';
@@ -84,13 +76,7 @@ export function useEventRouter() {
 			clearTimeout(summaryFlushTimerRef.current);
 			summaryFlushTimerRef.current = null;
 		}
-		const chunks = summaryBufferRef.current;
-		if (chunks.length === 0) return;
-		const joined = chunks.join('');
 		summaryBufferRef.current = [];
-
-		// Bridge: old store
-		useAIAnalysisSummaryStore.getState().appendSummaryDelta(joined);
 	}, [store]);
 
 	const bufferSummaryDelta = useCallback((delta: string) => {
@@ -141,30 +127,6 @@ export function useEventRouter() {
 			setV2Sources: (sources) => useSearchSessionStore.setState({ v2Sources: sources }),
 	});
 
-	const buildLegacy = (): LegacyBridgeTarget => ({
-		isSummaryStreaming: () => useAIAnalysisSummaryStore.getState().isSummaryStreaming,
-		startSummaryStreaming: () => useAIAnalysisSummaryStore.getState().startSummaryStreaming(),
-		setSummary: (summary) => useAIAnalysisSummaryStore.getState().setSummary(summary),
-
-		setSources: (sources) => useAIAnalysisResultStore.getState().setSources(sources),
-		setEvidenceIndex: (index) => useAIAnalysisResultStore.getState().setEvidenceIndex(index),
-		setDashboardBlocks: (blocks) => useAIAnalysisResultStore.getState().setDashboardBlocks(blocks),
-		setTopics: (topics) => useAIAnalysisResultStore.getState().setTopics(topics),
-		pushOverviewMermaidVersion: (code, opts) => useAIAnalysisResultStore.getState().pushOverviewMermaidVersion(code, opts),
-
-		setTitle: (title) => useAIAnalysisRuntimeStore.getState().setTitle(title),
-		setHasAnalyzed: (v) => useAIAnalysisRuntimeStore.getState().setHasAnalyzed(v),
-		setDashboardUpdatedLine: (line) => useAIAnalysisRuntimeStore.getState().setDashboardUpdatedLine(line),
-		setUsage: (usage) => useAIAnalysisRuntimeStore.getState().setUsage(usage),
-		setDuration: (duration) => useAIAnalysisRuntimeStore.getState().setDuration(duration),
-		recordError: (error) => useAIAnalysisRuntimeStore.getState().recordError(error),
-		setHitlPause: (state) => useAIAnalysisRuntimeStore.getState().setHitlPause(state),
-
-		appendCompletedUiStep: (step) => useAIAnalysisStepsStore.getState().appendCompletedUiStep(step),
-
-		markCompleted: () => markAIAnalysisCompleted(),
-	});
-
 	const buildSummaryBuffer = (): SummaryBuffer => ({
 		appendDelta: bufferSummaryDelta,
 		flush: flushSummaryBuffer,
@@ -180,7 +142,7 @@ export function useEventRouter() {
 	// -------------------------------------------------------------------
 
 	const applySearchResult = useCallback((result: SearchAgentResult) => {
-		applySearchResultImpl(result, buildTarget(), buildLegacy());
+		applySearchResultImpl(result, buildTarget());
 	}, [store]);
 
 	// -------------------------------------------------------------------
@@ -192,14 +154,12 @@ export function useEventRouter() {
 			dispatchEvent(
 				event,
 				eventTargetRedirect.target,
-				null,
 				eventTargetRedirect.summaryBuffer ?? noopSummaryBuffer,
 				eventTargetRedirect.uiStepRef ?? noopUiStepRef,
 			);
 			return;
 		}
-		// console.debug removed: flooding DevTools IPC causes renderer crash under high event rate
-		dispatchEvent(event, buildTarget(), buildLegacy(), buildSummaryBuffer(), buildUiStepRef());
+		dispatchEvent(event, buildTarget(), buildSummaryBuffer(), buildUiStepRef());
 	}, [store, bufferSummaryDelta, flushSummaryBuffer]);
 
 	return { routeEvent, flushSummaryBuffer, applySearchResult, currentUiStepRef, summaryBufferRef };

@@ -1,3 +1,4 @@
+import { z } from "zod/v3";
 import { GRAPH_TAGGED_EDGE_TYPES } from '@/core/po/graph.po';
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
@@ -6,6 +7,9 @@ import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { emptyMap } from "@/core/utils/collection-utils";
+import { findKeyNodesInputSchema } from "@/core/schemas/tools/searchGraphInspector";
+
+type FindKeyNodesParams = z.infer<typeof findKeyNodesInputSchema> & { mode: string };
 /**
  * Get unique categories connected to each node to detect bridge nodes
  */
@@ -24,7 +28,7 @@ async function getNodeCategoryConnections(nodeIds: string[]): Promise<Map<string
     return categoryCountMap;
 }
 
-export async function findKeyNodes(params: any, templateManager?: TemplateManager) {
+export async function findKeyNodes(params: FindKeyNodesParams, templateManager?: TemplateManager) {
     const { limit, semantic_filter, response_format, filters, sorter } = params;
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
     const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
@@ -53,12 +57,16 @@ export async function findKeyNodes(params: any, templateManager?: TemplateManage
     );
     const candidateNodeIds = sortedNodes.map(node => node.nodeId);
 
-    // Get degree stats only for candidate nodes
-    // For two getTopNodeIdsByDegree query: Above RRF algorithm requires a sufficiently large node pool (500 nodes) 
-    //     to calculate accurate ranking scores, avoiding bias from considering too few nodes.
-    //     Then we use the user-specified limit (a smaller number, e.g., 10-20) on top of this pool.
-    const { topByOutDegree: candidateOutDegrees, topByInDegree: candidateInDegrees } =
-        await mobiusEdgeRepo.getTopNodeIdsByDegree(limit, candidateNodeIds);
+    // Build degree maps from first query (no second DB call needed)
+    const outDegreeMap = new Map(allOutDegreeStats.map(s => [s.nodeId, s.outDegree]));
+    const inDegreeMap = new Map(allInDegreeStats.map(s => [s.nodeId, s.inDegree]));
+
+    const candidateOutDegrees = candidateNodeIds
+        .filter(id => outDegreeMap.has(id))
+        .map(id => ({ nodeId: id, outDegree: outDegreeMap.get(id)! }));
+    const candidateInDegrees = candidateNodeIds
+        .filter(id => inDegreeMap.has(id))
+        .map(id => ({ nodeId: id, inDegree: inDegreeMap.get(id)! }));
 
     // Batch fetch node labels
     const nodeMap = await mobiusNodeRepo.getByIds(candidateNodeIds);

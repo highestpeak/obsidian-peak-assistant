@@ -17,7 +17,6 @@ import { DocxDocumentLoader } from '../DocxDocumentLoader';
 import { PptxDocumentLoader } from '../PptxDocumentLoader';
 import { ExcalidrawDocumentLoader } from '../ExcalidrawDocumentLoader';
 import { CanvasDocumentLoader } from '../CanvasDocumentLoader';
-import { DataloomDocumentLoader } from '../DataloomDocumentLoader';
 import { UrlDocumentLoader } from '../UrlDocumentLoader';
 
 /**
@@ -90,7 +89,6 @@ export class DocumentLoaderManager {
 		this.registerLoader(new PptxDocumentLoader(this.app, this.aiServiceManager));
 		this.registerLoader(new ExcalidrawDocumentLoader(this.app, this.aiServiceManager));
 		this.registerLoader(new CanvasDocumentLoader(this.app, this.aiServiceManager));
-		this.registerLoader(new DataloomDocumentLoader(this.app, this.aiServiceManager));
 		this.registerLoader(new UrlDocumentLoader(this.app, this.aiServiceManager));
 	}
 
@@ -158,7 +156,7 @@ export class DocumentLoaderManager {
 		}
 
 		// Extract extension from path for normal files
-		// Canvas and dataloom files will be matched by their extensions ('canvas', 'loom')
+		// Canvas files will be matched by their extension ('canvas')
 		const extension = path.split('.').pop()?.toLowerCase() || '';
 		return this.getLoaderForExtension(extension)?.getDocumentType() || null;
 	}

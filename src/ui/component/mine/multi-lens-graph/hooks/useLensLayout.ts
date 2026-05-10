@@ -7,59 +7,39 @@ import { computeTimelineLayout } from '../layouts/timeline-layout';
 
 type RawEdge = LensGraphData['edges'][number];
 
-const DEFAULT_NODE_HEIGHT = 60;
-const OVERLAP_PAD_X = 20;
-const OVERLAP_PAD_Y = 15;
-const MAX_ITERATIONS = 50;
+const NODE_H = 60;
+const CELL_PAD_X = 20;
+const CELL_PAD_Y = 15;
 
 /**
- * Post-layout pass: detect and resolve overlapping nodes by iteratively pushing them apart.
- * Only moves `lensNode` type nodes; swimlanes / axis nodes are left untouched.
+ * Post-layout pass: snap movable nodes to a virtual grid, shifting colliders right/down.
+ * Single-pass O(n log n) sort-then-place replaces the old O(n² × 50) iterative resolver.
  */
 function resolveOverlaps(nodes: LensNode[]): void {
 	const movable = nodes.filter((n) => n.type === 'lensNode');
 	if (movable.length <= 1) return;
 
-	// Pre-compute bounding box widths per node
-	const widths = new Map<string, number>();
+	// Sort by Y then X so we process top-left first
+	movable.sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x);
+
+	// Occupied cells: for each placed node, check new nodes against it and shift if overlapping
+	const placed: { x: number; y: number; w: number }[] = [];
 	for (const n of movable) {
-		widths.set(n.id, estimateNodeWidth(n.data.label));
-	}
-
-	for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
-		let hadOverlap = false;
-		for (let i = 0; i < movable.length; i++) {
-			for (let j = i + 1; j < movable.length; j++) {
-				const a = movable[i];
-				const b = movable[j];
-				const aw = widths.get(a.id)! + OVERLAP_PAD_X;
-				const bw = widths.get(b.id)! + OVERLAP_PAD_X;
-				const ah = DEFAULT_NODE_HEIGHT + OVERLAP_PAD_Y;
-				const bh = DEFAULT_NODE_HEIGHT + OVERLAP_PAD_Y;
-
-				const dx = b.position.x - a.position.x;
-				const dy = b.position.y - a.position.y;
-				const overlapX = (aw + bw) / 2 - Math.abs(dx);
-				const overlapY = (ah + bh) / 2 - Math.abs(dy);
-
-				if (overlapX > 0 && overlapY > 0) {
-					hadOverlap = true;
-					// Push apart along the axis with less overlap (minimum displacement)
-					if (overlapX < overlapY) {
-						const push = (overlapX / 2) + 5;
-						const signX = dx >= 0 ? 1 : -1;
-						a.position = { ...a.position, x: a.position.x - push * signX };
-						b.position = { ...b.position, x: b.position.x + push * signX };
-					} else {
-						const push = (overlapY / 2) + 5;
-						const signY = dy >= 0 ? 1 : -1;
-						a.position = { ...a.position, y: a.position.y - push * signY };
-						b.position = { ...b.position, y: b.position.y + push * signY };
-					}
+		const w = estimateNodeWidth(n.data.label) + CELL_PAD_X;
+		const h = NODE_H + CELL_PAD_Y;
+		for (const p of placed) {
+			const overlapX = (w + p.w) / 2 - Math.abs(n.position.x - p.x);
+			const overlapY = h - Math.abs(n.position.y - p.y);
+			if (overlapX > 0 && overlapY > 0) {
+				// Nudge right or down depending on which displacement is smaller
+				if (overlapX < overlapY) {
+					n.position = { ...n.position, x: n.position.x + overlapX + 5 };
+				} else {
+					n.position = { ...n.position, y: n.position.y + overlapY + 5 };
 				}
 			}
 		}
-		if (!hadOverlap) break;
+		placed.push({ x: n.position.x, y: n.position.y, w });
 	}
 }
 

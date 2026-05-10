@@ -28,13 +28,14 @@ interface VaultSearchStore {
 	lastSearchDuration: number | null;
 	isSearching: boolean;
 	lastSearchResults: SearchResultItem[];
+	fuzzyCorrection: string | null;
 	inspectorOpen: boolean;
 	setInspectorOpen: (open: boolean) => void;
 	toggleInspector: () => void;
 
 	// Actions
 	updateParsedQuery: (app: App, searchQuery: string) => void;
-	setLastSearchData: (data: { results: SearchResultItem[]; duration: number | null }) => void;
+	setLastSearchData: (data: { results: SearchResultItem[]; duration: number | null; fuzzyCorrection?: string | null }) => void;
 	setIsSearching: (isSearching: boolean) => void;
 	reset: () => void;
 }
@@ -50,6 +51,7 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 	lastSearchDuration: null,
 	isSearching: false,
 	lastSearchResults: [],
+	fuzzyCorrection: null,
 	inspectorOpen: false,
 	setInspectorOpen: (open) => set({ inspectorOpen: open }),
 	toggleInspector: () => set((s) => ({ inspectorOpen: !s.inspectorOpen })),
@@ -76,9 +78,10 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 			parsedQuery: mode === 'vault' || mode === 'inFolder' ? { text, scopeMode: mode, scopeValue: scope } : undefined,
 		});
 	},
-	setLastSearchData: ({ results, duration }) => set({
+	setLastSearchData: ({ results, duration, fuzzyCorrection }) => set({
 		lastSearchResults: results,
 		lastSearchDuration: duration,
+		fuzzyCorrection: fuzzyCorrection ?? null,
 	}),
 	setIsSearching: (isSearching) => set({ isSearching }),
 	reset: () => set({
@@ -89,6 +92,7 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 		lastSearchDuration: null,
 		isSearching: false,
 		lastSearchResults: [],
+		fuzzyCorrection: null,
 	}),
 }));
 

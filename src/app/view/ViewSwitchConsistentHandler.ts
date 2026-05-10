@@ -1,5 +1,6 @@
 import { App, ViewState, WorkspaceLeaf } from 'obsidian';
 import { CHAT_VIEW_TYPE, PROJECT_LIST_VIEW_TYPE, MESSAGE_HISTORY_VIEW_TYPE, TRACKED_VIEW_TYPES } from '@/app/view/types';
+import { AMBIENT_PUSH_VIEW_TYPE } from '@/ui/view/AmbientPushView';
 
 /**
  * Ensures that when in chat view, the left, center, and right panes always maintain a consistent chat-related layout
@@ -64,9 +65,18 @@ export class ViewSwitchConsistentHandler {
 				await leftLeaf.setViewState({ type: PROJECT_LIST_VIEW_TYPE, state: {}, active: true });
 			}
 
-			// Find existing message history leaf or create new one
+			// Find existing message history leaf or create new one (without clobbering ambient push)
 			const existingMessageHistoryLeaves = this.app.workspace.getLeavesOfType(MESSAGE_HISTORY_VIEW_TYPE);
-			const rightLeaf = existingMessageHistoryLeaves[0] ?? this.app.workspace.getRightLeaf(false);
+			let rightLeaf = existingMessageHistoryLeaves[0];
+			if (!rightLeaf) {
+				const candidate = this.app.workspace.getRightLeaf(false);
+				if (candidate && candidate.view?.getViewType() === AMBIENT_PUSH_VIEW_TYPE) {
+					// Ambient push is already in the right sidebar — create a sibling tab instead of replacing it
+					rightLeaf = this.app.workspace.getRightLeaf(true);
+				} else {
+					rightLeaf = candidate;
+				}
+			}
 			if (rightLeaf) {
 				await rightLeaf.setViewState({ type: MESSAGE_HISTORY_VIEW_TYPE, state: {}, active: true });
 			}
@@ -96,9 +106,17 @@ export class ViewSwitchConsistentHandler {
 				await leftLeaf.setViewState({ ...fallbackLeft, active: true });
 			}
 
-			// Find existing outline leaf or create new one
+			// Find existing outline leaf or create new one (without clobbering ambient push)
 			const existingOutlineLeaves = this.app.workspace.getLeavesOfType('outline');
-			const rightLeaf = existingOutlineLeaves[0] ?? this.app.workspace.getRightLeaf(false);
+			let rightLeaf = existingOutlineLeaves[0];
+			if (!rightLeaf) {
+				const candidate = this.app.workspace.getRightLeaf(false);
+				if (candidate && candidate.view?.getViewType() === AMBIENT_PUSH_VIEW_TYPE) {
+					rightLeaf = this.app.workspace.getRightLeaf(true);
+				} else {
+					rightLeaf = candidate;
+				}
+			}
 			if (rightLeaf) {
 				await rightLeaf.setViewState({ ...fallbackRight, active: true });
 			}

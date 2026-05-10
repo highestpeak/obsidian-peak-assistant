@@ -19,6 +19,18 @@ const MODES: ModeItem[] = [
 
 export const MODE_COUNT = MODES.length;
 
+interface OperatorItem {
+	prefix: string;
+	description: string;
+}
+
+const OPERATORS: OperatorItem[] = [
+	{ prefix: '"..."', description: 'Exact phrase match' },
+	{ prefix: '-word', description: 'Exclude results containing word' },
+	{ prefix: 'tag:value', description: 'Filter by tag' },
+	{ prefix: 'ext:pdf', description: 'Filter by file type' },
+];
+
 interface ModeHelpListProps {
 	onSelectMode: (prefix: string) => void;
 	selectedIndex: number;
@@ -81,6 +93,26 @@ export const ModeHelpList: React.FC<ModeHelpListProps> = ({ onSelectMode, select
 					</div>
 				);
 			})}
+
+			{/* Query syntax operators section */}
+			<div className="pktw-px-4 pktw-pt-3 pktw-pb-1">
+				<span className="pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-pk-foreground-muted">
+					Query Operators
+				</span>
+			</div>
+			{OPERATORS.map((op) => (
+				<div
+					key={op.prefix}
+					className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-1.5"
+				>
+					<span className="pktw-flex-shrink-0 pktw-text-[11px] pktw-font-mono pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-border pktw-bg-[#f9f9f9] pktw-text-pk-foreground-muted pktw-border-pk-border">
+						{op.prefix}
+					</span>
+					<span className="pktw-text-[11px] pktw-text-pk-foreground-muted">
+						{op.description}
+					</span>
+				</div>
+			))}
 		</div>
 	);
 };

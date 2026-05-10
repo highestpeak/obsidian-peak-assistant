@@ -455,7 +455,6 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const { app } = useServiceContext();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
 	const { updateParsedQuery, isSearching, quickSearchMode, inspectorOpen, lastSearchDuration, lastSearchResults } = useVaultSearchStore();
-	const incrementTriggerAnalysis = useSearchSessionStore((s) => s.incrementTriggerAnalysis);
 	const hasSearchQuery = !!vaultSearchQuery.trim();
 	const [inspectorPath, setInspectorPath] = useState<string | null>(null);
 	const [navigateToPath, setNavigateToPath] = useState<string | null>(null);
@@ -479,14 +478,6 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 		const safeIdx = idx >= 0 ? idx : 0;
 		const nextMode = VAULT_CYCLE_MODES[(safeIdx + dir + VAULT_CYCLE_MODES.length) % VAULT_CYCLE_MODES.length];
 		setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, nextMode));
-	};
-
-	const handleAskAI = () => {
-		setSearchQuery(vaultSearchQuery);
-		setActiveTab('ai');
-		useSearchSessionStore.getState().resetAll();
-		resetAIAnalysisAll();
-		incrementTriggerAnalysis();
 	};
 
 	const handleInputKeyDown = (e: React.KeyboardEvent) => {

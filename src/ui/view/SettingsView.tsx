@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { ViewEventType } from '@/core/eventBus';
+import type { MyPluginSettings } from '@/app/settings/types';
 import { ProfilesTab } from './settings/ProfilesTab';
 import { SearchTab } from './settings/SearchTab';
 import { GeneralTab } from './settings/GeneralTab';
+import { MCPServerSection } from './settings/components/MCPServerSection';
 import { useSettingsUpdate } from './settings/hooks/useSettingsUpdate';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 
-type TabId = 'profiles' | 'search' | 'general';
+type TabId = 'profiles' | 'mcp' | 'search' | 'general';
 
 /**
  * Root component for plugin settings with tab navigation.
@@ -31,6 +33,7 @@ export function SettingsRoot() {
 
 	const tabs: Array<{ id: TabId; label: string }> = [
 		{ id: 'profiles', label: 'Profiles' },
+		{ id: 'mcp', label: 'MCP Servers' },
 		{ id: 'search', label: 'Search & Indexing' },
 		{ id: 'general', label: 'General' },
 	];
@@ -53,6 +56,7 @@ export function SettingsRoot() {
 			{/* Tab Content */}
 			<div className="peak-settings-content">
 				{activeTab === 'profiles' && <ProfilesTab settings={settings} settingsUpdates={settingsUpdates} />}
+				{activeTab === 'mcp' && <MCPServerSection settings={settings} settingsUpdates={settingsUpdates} />}
 				{activeTab === 'search' && <SearchTab settings={settings} settingsUpdates={settingsUpdates} />}
 				{activeTab === 'general' && <GeneralTab settings={settings} settingsUpdates={settingsUpdates} />}
 			</div>

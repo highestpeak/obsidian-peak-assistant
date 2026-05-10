@@ -6,6 +6,8 @@ import {
 	getCursorSection,
 } from '@/service/ambient/ContextExtractor';
 import { generateExplanation } from '@/service/ambient/RelevanceExplainer';
+import { cosineDistance } from '@/service/ambient/SerendipitySearcher';
+import { getPatternBoost } from '@/service/ambient/PatternLearner';
 import type { AmbientSignal } from '@/service/ambient/types';
 
 // --- extractParagraphAtLine ---
@@ -214,6 +216,232 @@ import type { AmbientSignal } from '@/service/ambient/types';
 	);
 
 	console.log('generateExplanation: all passed');
+}
+
+// --- Phase 2: signal detection functions ---
+import {
+	detectSharedTags,
+	detectGraphNeighborSignal,
+	detectCoCitationSignal,
+	detectHubMemberSignal,
+} from '@/service/ambient/AmbientSearcher';
+
+// --- detectSharedTags ---
+{
+	const sourceTags = new Set(['process', 'dev', 'ai']);
+	const resultTags = ['dev', 'testing', 'ai'];
+	const signals = detectSharedTags(sourceTags, resultTags);
+	assert.equal(signals.length, 2);
+	assert.equal(signals[0].type, 'shared_tag');
+	assert.equal((signals[0] as any).tag, 'dev');
+	assert.equal((signals[1] as any).tag, 'ai');
+
+	// No overlap
+	const empty = detectSharedTags(new Set(['a']), ['b']);
+	assert.equal(empty.length, 0);
+
+	console.log('detectSharedTags: all passed');
+}
+
+// --- detectGraphNeighborSignal ---
+{
+	// 1-hop neighbor
+	const s1 = detectGraphNeighborSignal('note-a.md', new Set(['note-a.md', 'note-b.md']), new Map());
+	assert.equal(s1?.type, 'graph_neighbor');
+	assert.equal((s1 as any).hop, 1);
+
+	// 2-hop neighbor with bridge
+	const bridgeMap = new Map([['note-c.md', 'Bridge Note']]);
+	const s2 = detectGraphNeighborSignal('note-c.md', new Set(), bridgeMap);
+	assert.equal(s2?.type, 'graph_neighbor');
+	assert.equal((s2 as any).hop, 2);
+	assert.equal((s2 as any).via, 'Bridge Note');
+
+	// Not a neighbor
+	const s3 = detectGraphNeighborSignal('note-x.md', new Set(), new Map());
+	assert.equal(s3, null);
+
+	console.log('detectGraphNeighborSignal: all passed');
+}
+
+// --- detectCoCitationSignal ---
+{
+	const coCitations = [
+		{ nodeId: 'n1', path: 'note-a.md', label: 'Note A', citingNotes: ['MOC Note'], score: 0.8 },
+		{ nodeId: 'n2', path: 'note-b.md', label: 'Note B', citingNotes: [], score: 0.3 },
+	];
+
+	const s1 = detectCoCitationSignal('note-a.md', coCitations);
+	assert.equal(s1?.type, 'co_citation');
+	assert.equal((s1 as any).citingNote, 'MOC Note');
+
+	// No citing notes
+	const s2 = detectCoCitationSignal('note-b.md', coCitations);
+	assert.equal(s2, null);
+
+	// Not found
+	const s3 = detectCoCitationSignal('note-x.md', coCitations);
+	assert.equal(s3, null);
+
+	console.log('detectCoCitationSignal: all passed');
+}
+
+// --- detectHubMemberSignal ---
+{
+	const sharedHubNames = new Map([['note-a.md', 'Systems Thinking']]);
+
+	const s1 = detectHubMemberSignal('note-a.md', sharedHubNames);
+	assert.equal(s1?.type, 'hub_member');
+	assert.equal((s1 as any).hubName, 'Systems Thinking');
+
+	const s2 = detectHubMemberSignal('note-x.md', sharedHubNames);
+	assert.equal(s2, null);
+
+	console.log('detectHubMemberSignal: all passed');
+}
+
+console.log('All Phase 2 signal detection tests passed');
+
+// --- Feedback score adjustments ---
+{
+	// Positive boost: capped at 0.3
+	const posMap = new Map<string, number>([['src::target', 5]]);
+	const boost = Math.min(0.3, (posMap.get('src::target') ?? 0) * 0.1);
+	assert.equal(boost, 0.3); // capped
+
+	// Below cap
+	const boost2 = Math.min(0.3, (posMap.get('src::other') ?? 0) * 0.1);
+	assert.equal(boost2, 0); // no entry
+
+	const posMap2 = new Map<string, number>([['src::target', 2]]);
+	const boost3 = Math.min(0.3, (posMap2.get('src::target') ?? 0) * 0.1);
+	assert.equal(boost3, 0.2); // 2 * 0.1
+
+	// Ignore penalty: capped at -0.15
+	const ignMap = new Map<string, number>([['src::target', 2]]);
+	const penalty = Math.min(0.15, (ignMap.get('src::target') ?? 0) * 0.05);
+	assert.equal(penalty, 0.1); // 2 * 0.05
+
+	const ignMap2 = new Map<string, number>([['src::target', 10]]);
+	const penalty2 = Math.min(0.15, (ignMap2.get('src::target') ?? 0) * 0.05);
+	assert.equal(penalty2, 0.15); // capped at 0.15
+
+	console.log('feedback scoring: all passed');
+}
+
+// --- RelevanceExplainer coverage for Phase 2 signals ---
+{
+	// Co-citation
+	assert.equal(
+		generateExplanation([{ type: 'co_citation', citingNote: 'MOC Note' }]),
+		'Co-cited in [[MOC Note]]',
+	);
+
+	// Hub member
+	assert.equal(
+		generateExplanation([{ type: 'hub_member', hubName: 'Systems Thinking' }]),
+		'Both in "Systems Thinking" cluster',
+	);
+
+	// Graph neighbor 2-hop with bridge
+	assert.equal(
+		generateExplanation([{ type: 'graph_neighbor', hop: 2, via: 'Design Patterns' }]),
+		'Connected via [[Design Patterns]]',
+	);
+
+	// Priority: graph_neighbor beats shared_tag
+	const multi = generateExplanation([
+		{ type: 'shared_tag', tag: 'dev' },
+		{ type: 'graph_neighbor', hop: 1 },
+	]);
+	assert.equal(multi, 'Directly linked');
+
+	console.log('RelevanceExplainer Phase 2 coverage: all passed');
+}
+
+// --- cosineDistance ---
+{
+	// Identical vectors: distance = 0
+	const d1 = cosineDistance([1, 0, 0], [1, 0, 0]);
+	assert.ok(Math.abs(d1) < 1e-6, `Expected ~0, got ${d1}`);
+
+	// Orthogonal vectors: distance = 1
+	const d2 = cosineDistance([1, 0, 0], [0, 1, 0]);
+	assert.ok(Math.abs(d2 - 1) < 1e-6, `Expected ~1, got ${d2}`);
+
+	// Opposite vectors: distance = 2
+	const d3 = cosineDistance([1, 0, 0], [-1, 0, 0]);
+	assert.ok(Math.abs(d3 - 2) < 1e-6, `Expected ~2, got ${d3}`);
+
+	// Empty vectors: distance = 1 (fallback)
+	const d4 = cosineDistance([], []);
+	assert.equal(d4, 1);
+
+	// Mismatched lengths: distance = 1 (fallback)
+	const d5 = cosineDistance([1, 2], [1, 2, 3]);
+	assert.equal(d5, 1);
+
+	console.log('cosineDistance: all passed');
+}
+
+// --- getPatternBoost ---
+{
+	const patterns = [
+		{ sourceFilePath: 'notes/a.md', pushedFilePath: 'notes/b.md', strength: 4 },
+		{ sourceFilePath: 'notes/a.md', pushedFilePath: 'notes/c.md', strength: 10 },
+	];
+
+	// Matching pattern: strength 4 -> boost = min(0.4, 4 * 0.05) = 0.2
+	const boost1 = getPatternBoost('notes/a.md', 'notes/b.md', patterns);
+	assert.equal(boost1, 0.2);
+
+	// Matching pattern: strength 10 -> boost = min(0.4, 10 * 0.05) = 0.4 (capped)
+	const boost2 = getPatternBoost('notes/a.md', 'notes/c.md', patterns);
+	assert.equal(boost2, 0.4);
+
+	// No matching pattern: boost = 0
+	const boost3 = getPatternBoost('notes/x.md', 'notes/b.md', patterns);
+	assert.equal(boost3, 0);
+
+	// Empty patterns: boost = 0
+	const boost4 = getPatternBoost('notes/a.md', 'notes/b.md', []);
+	assert.equal(boost4, 0);
+
+	console.log('getPatternBoost: all passed');
+}
+
+// --- Serendipity + Pattern Learning integration ---
+{
+	// Verify that cosineDistance sorts candidates correctly
+	const candidates = [
+		{ path: 'close.md', distance: cosineDistance([1, 0, 0], [0.9, 0.1, 0]) },
+		{ path: 'far.md', distance: cosineDistance([1, 0, 0], [0, 0, 1]) },
+		{ path: 'medium.md', distance: cosineDistance([1, 0, 0], [0.5, 0.5, 0]) },
+	];
+
+	// Sort by distance DESC (most serendipitous first)
+	candidates.sort((a, b) => b.distance - a.distance);
+	assert.equal(candidates[0].path, 'far.md', 'Most distant should be first');
+	assert.equal(candidates[2].path, 'close.md', 'Closest should be last');
+
+	// Verify pattern boost doesn't exceed cap
+	const patternsHigh = [
+		{ sourceFilePath: 'a.md', pushedFilePath: 'b.md', strength: 100 },
+	];
+	const boost = getPatternBoost('a.md', 'b.md', patternsHigh);
+	assert.equal(boost, 0.4, 'Pattern boost should be capped at 0.4');
+
+	console.log('serendipity + pattern integration: all passed');
+}
+
+// --- RelevanceExplainer: serendipity signal coverage ---
+{
+	const serendipityExplanation = generateExplanation([
+		{ type: 'graph_neighbor', hop: 2, via: 'Distributed Systems' },
+	]);
+	assert.equal(serendipityExplanation, 'Connected via [[Distributed Systems]]');
+
+	console.log('RelevanceExplainer serendipity coverage: all passed');
 }
 
 console.log('All tests passed');

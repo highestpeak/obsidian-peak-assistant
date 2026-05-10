@@ -254,7 +254,7 @@ export const useVaultSearch = () => {
 							setIsSearching(false);
 						}
 					}
-				}, 300); // Shorter debounce for in-file search
+				}, 150); // Shorter debounce for in-file search
 
 				return () => {
 					cancelled = true;
@@ -287,7 +287,7 @@ export const useVaultSearch = () => {
 							}
 						}
 					})();
-				}, 500); // 500ms delay - shorter than vault search but prevents immediate triggering
+				}, 100); // 100ms delay - fast response for go-to-line
 			} else if (parsedQuery) {
 				// Perform regular vault/folder search
 				const searchId = `${parsedQuery.text}-${parsedQuery.scopeMode}-${parsedQuery.scopeValue}`;
@@ -300,7 +300,7 @@ export const useVaultSearch = () => {
 					try {
 						const res = await searchClient.search(parsedQuery);
 						if (!cancelled && currentSearchId.current === searchId) {
-							setLastSearchData({ results: res.items, duration: res.duration ?? null });
+							setLastSearchData({ results: res.items, duration: res.duration ?? null, fuzzyCorrection: res.fuzzyCorrection ?? null });
 							setIsSearching(false);
 						}
 					} catch (e) {
@@ -310,7 +310,7 @@ export const useVaultSearch = () => {
 							setIsSearching(false);
 						}
 					}
-				}, 500); // Wait 500ms after user stops typing
+				}, 200); // Wait 200ms after user stops typing
 
 				return () => {
 					cancelled = true;

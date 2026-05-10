@@ -1,13 +1,10 @@
 import type { App, EventRef, TAbstractFile } from 'obsidian';
 import { TFile } from 'obsidian';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
-import { getAIHubSummaryFolder, getAIManualHubFolder, type SearchSettings } from '@/app/settings/types';
-import { isVaultPathUnderPrefix } from '@/core/utils/hub-path-utils';
+import type { SearchSettings } from '@/app/settings/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { defaultIndexDocumentOptions, IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
-import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { EventBus } from '@/core/eventBus';
-import { HubStalenessDetector } from './helper/hub/hubStalenessDetector';
 import { CascadeWorker } from './cascade/CascadeWorker';
 import type MyPlugin from 'main';
 
@@ -21,7 +18,6 @@ import type MyPlugin from 'main';
  */
 export class SearchUpdateListener {
 	private readonly loaderManager: DocumentLoaderManager;
-	private readonly stalenessDetector = new HubStalenessDetector();
 	private readonly upsertPaths = new Set<string>();
 	private readonly deletePaths = new Set<string>();
 	/** Pending vault renames: process before deletes/upserts so stable doc id is preserved. */
@@ -70,7 +66,6 @@ export class SearchUpdateListener {
 		const eventBus = EventBus.getInstance(this.app);
 		this.settingsUnsubscribe = eventBus.on('peak:settings-updated', () => {
 			if (this.debounceMs !== this.plugin.settings.search.indexRefreshInterval) {
-				console.log('Index refresh interval changed, restarting search update listener');
 				this.restartWithNewInterval();
 			}
 		});
@@ -112,23 +107,14 @@ export class SearchUpdateListener {
 	 * listener-triggered indexing to avoid redundant work or racing upserts.
 	 *
 	 * Excluded folders:
-	 * - Hub-Summaries (auto hub notes) — indexed by hub maintenance with `hub_maintenance`
-	 *   (manual hub notes under Hub-Summaries/Manual are NOT excluded)
 	 * - AI-Analysis auto-save folder — written repeatedly during report generation,
 	 *   each vault.modify fires a listener index; these are wasteful since the file
 	 *   content is ephemeral until analysis completes
 	 */
 	private shouldSkipListenerIndexing(path: string): boolean {
 		try {
-			// Hub-Summaries (excluding Manual subfolder)
-			const hubRoot = getAIHubSummaryFolder();
-			const manualRoot = getAIManualHubFolder();
-			if (isVaultPathUnderPrefix(path, hubRoot) && !isVaultPathUnderPrefix(path, manualRoot)) {
-				return true;
-			}
-			// AI-Analysis auto-save folder
 			const aiAnalysisFolder = this.settings.aiAnalysisAutoSaveFolder?.trim() || 'ChatFolder/AI-Analysis';
-			if (aiAnalysisFolder && isVaultPathUnderPrefix(path, aiAnalysisFolder)) {
+			if (aiAnalysisFolder && path.startsWith(aiAnalysisFolder)) {
 				return true;
 			}
 			return false;
@@ -215,11 +201,7 @@ export class SearchUpdateListener {
 		this.deletePaths.clear();
 		this.upsertPaths.clear();
 
-		const uuid = generateUuidWithoutHyphens();
-		const startTime = Date.now();
 		try {
-			console.log('flush start processing. flush id: ', uuid);
-
 			const work = (async () => {
 				for (const { oldPath, newPath } of renameBatch) {
 					try {
@@ -238,15 +220,6 @@ export class SearchUpdateListener {
 				]);
 			})()
 				.then(() => {
-					console.log(
-						`[SearchUpdateListener] Flush completed: renamed ${renameBatch.length}, deleted ${deletePaths.length} files, indexed ${upsertPaths.length} files`,
-					);
-					// Detect stale hub docs from constituent changes
-					if (upsertPaths.length > 0) {
-						this.stalenessDetector.detectAndMarkStale(upsertPaths).catch((e) => {
-							console.warn('[SearchUpdateListener] Hub staleness detection failed:', e);
-						});
-					}
 					// Notify cascade worker that indexing is done; it will drain debt on next idle
 					CascadeWorker.getInstance()?.notifyFlushCompleted();
 				})
@@ -255,7 +228,6 @@ export class SearchUpdateListener {
 				})
 				.finally(() => {
 					this.lastFlushPromise = null;
-					console.log('flush end processing. flush id: ', uuid, 'duration: ', Date.now() - startTime, 'ms');
 				});
 			this.lastFlushPromise = work;
 		} catch (e) {

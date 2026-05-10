@@ -1,4 +1,4 @@
-import { SLICE_CAPS } from '@/core/constant';
+import { EXPLORE_FOLDER_DEFAULT_LIMIT, SLICE_CAPS } from '@/core/constant';
 import { GRAPH_WIKI_REFERENCE_EDGE_TYPES } from '@/core/po/graph.po';
 import { AppContext } from "@/app/context/AppContext";
 import { getAIHubSummaryFolder } from '@/app/settings/types';
@@ -36,16 +36,20 @@ export type IterFile = {
     omitted?: OmittedSummary;
 };
 
-/** Per-folder item cap; use ≥50 for inventory/full-list breadth (see RawSearch prompt). */
-const DEFAULT_LIMIT = 50;
+
 
 /**
  * Explore folder by vault structure only (no DB filter). Keeps full directory hierarchy;
  * per-folder we show first N items by recent mtime and summarize the rest by extension.
  */
-export async function exploreFolder(params: any, templateManager?: TemplateManager) {
+import { z } from "zod/v3";
+import { exploreFolderInputSchema } from "@/core/schemas/tools/searchGraphInspector";
+
+type ExploreFolderParams = z.infer<typeof exploreFolderInputSchema> & { mode: string };
+
+export async function exploreFolder(params: ExploreFolderParams, templateManager?: TemplateManager) {
     const { folderPath, recursive, max_depth, limit, response_format } = params;
-    const perFolderLimit = Math.max(1, Number(limit) ?? DEFAULT_LIMIT);
+    const perFolderLimit = Math.max(1, Number(limit) ?? EXPLORE_FOLDER_DEFAULT_LIMIT);
 
     const vault = AppContext.getInstance().app.vault;
     const normalizedPath = normalizeVaultFolderPath(folderPath);

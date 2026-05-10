@@ -16,27 +16,29 @@ export function toAgentSdkEnv(
   agentModelId: string,
   agentFastModelId: string,
 ): Record<string, string> {
-  const hasAuth = Boolean(profile.apiKey || profile.authToken);
-  if (!hasAuth) {
-    throw new Error(
-      'Profile is missing credentials: at least one of apiKey or authToken must be set',
-    );
+  if (!profile.apiKey) {
+    throw new Error('Profile is missing API key');
   }
 
+  // OpenRouter profiles migrated from legacy settings may have empty baseUrl;
+  // fall back to the canonical endpoint to avoid sending credentials to the wrong API.
+  const baseUrl = profile.baseUrl
+    || (profile.kind === 'openrouter' ? 'https://openrouter.ai/api/v1' : '');
+
   const env: Record<string, string> = {
-    ANTHROPIC_BASE_URL: profile.baseUrl,
+    ANTHROPIC_BASE_URL: baseUrl,
     ANTHROPIC_DEFAULT_OPUS_MODEL: agentModelId,
     ANTHROPIC_DEFAULT_HAIKU_MODEL: agentFastModelId,
     ANTHROPIC_DEFAULT_SONNET_MODEL: agentModelId,
   };
 
   if (profile.kind === 'openrouter') {
-    // OpenRouter requires ANTHROPIC_API_KEY explicitly empty; auth via Bearer token.
+    // OpenRouter: API key is sent as Bearer token via ANTHROPIC_AUTH_TOKEN.
+    // ANTHROPIC_API_KEY must be explicitly empty so the CLI doesn't reject the missing key.
     env.ANTHROPIC_API_KEY = '';
-    env.ANTHROPIC_AUTH_TOKEN = profile.authToken ?? '';
+    env.ANTHROPIC_AUTH_TOKEN = profile.apiKey;
   } else {
-    if (profile.apiKey) env.ANTHROPIC_API_KEY = profile.apiKey;
-    if (profile.authToken) env.ANTHROPIC_AUTH_TOKEN = profile.authToken;
+    env.ANTHROPIC_API_KEY = profile.apiKey;
   }
 
   if (Object.keys(profile.customHeaders).length > 0) {

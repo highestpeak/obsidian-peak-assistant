@@ -35,7 +35,7 @@ export function useProjectLoad(projectId: string | null) {
 	useEffect(() => {
 		const loadConversations = async () => {
 			if (!project || !manager) return;
-			const convs = await manager.listConversations(project.meta.id);
+			const convs = await manager.conv.listConversations(project.meta.id);
 			convs.sort((a: ChatConversation, b: ChatConversation) => {
 				const timeA = a.meta.createdAtTimestamp || 0;
 				const timeB = b.meta.createdAtTimestamp || 0;
@@ -51,7 +51,7 @@ export function useProjectLoad(projectId: string | null) {
 		const loadStarredMessages = async () => {
 			if (!project || !manager) return;
 			try {
-				const result = await manager.listStarredMessagesByProject(project.meta.id);
+				const result = await manager.conv.listStarredMessagesByProject(project.meta.id);
 				setStarredMessages(result.messages);
 				setMessageToConversationId(result.messageToConversationId);
 			} catch (error) {

@@ -1,23 +1,20 @@
 import type { App } from 'obsidian';
-import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
-import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
+import type { DocumentLoaderReadOptions } from './types';
+import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import { PlaywrightWebBaseLoader } from '@langchain/community/document_loaders/web/playwright';
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import type { Chunk } from '@/service/search/index/types';
-import type { ChunkingSettings } from '@/app/settings/types';
-import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
+import { generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
-import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
+import { BaseDocumentLoader } from './BaseDocumentLoader';
+import { TFile } from 'obsidian';
 
 /**
  * URL document loader using PlaywrightWebBaseLoader.
- * 
+ *
  * Note: URLs are not files in the vault, so readByPath and scanDocuments
  * may need special handling. This loader is designed for URL indexing.
  */
-export class UrlDocumentLoader implements DocumentLoader {
+export class UrlDocumentLoader extends BaseDocumentLoader {
 	private readonly playwrightConfig = {
 		launchOptions: {
 			headless: true,
@@ -27,10 +24,9 @@ export class UrlDocumentLoader implements DocumentLoader {
 		},
 	};
 
-	constructor(
-		private readonly app: App,
-		private readonly aiServiceManager?: AIServiceManager
-	) { }
+	constructor(app: App, aiServiceManager?: AIServiceManager) {
+		super(app, aiServiceManager);
+	}
 
 	getDocumentType(): DocumentType {
 		return 'url';
@@ -40,79 +36,34 @@ export class UrlDocumentLoader implements DocumentLoader {
 		return ['url'];
 	}
 
-	async readByPath(
+	protected override getContentForChunking(doc: Document): string {
+		return doc.cacheFileInfo.content;
+	}
+
+	/**
+	 * For URLs, path is the URL itself — not a vault file.
+	 */
+	override async readByPath(
 		path: string,
 		genCacheContent?: boolean,
 		_readOptions?: DocumentLoaderReadOptions,
 	): Promise<Document | null> {
-		// For URLs, path is the URL itself
 		if (!this.isValidUrl(path)) return null;
-		return await this.readUrl(path, genCacheContent);
-	}
-
-	async chunkContent(
-		doc: Document,
-		settings: ChunkingSettings,
-	): Promise<Chunk[]> {
-		const content = doc.cacheFileInfo.content;
-		const minSize = settings.minDocumentSizeForChunking;
-
-		if (content.length <= minSize) {
-			return assembleIndexedChunks(
-				doc,
-				[
-					{
-						docId: doc.id,
-						chunkType: 'body_raw',
-						content: content,
-					},
-				],
-				settings,
-			);
-		}
-
-		const splitter = new RecursiveCharacterTextSplitter({
-			chunkSize: settings.maxChunkSize,
-			chunkOverlap: settings.chunkOverlap,
-		});
-
-		const langchainDocs = await splitter.createDocuments([content]);
-		const chunks: Chunk[] = [];
-		for (let i = 0; i < langchainDocs.length; i++) {
-			const langchainDoc = langchainDocs[i];
-			chunks.push({
-				docId: doc.id,
-				chunkType: 'body_raw',
-				content: langchainDoc.pageContent,
-				chunkId: generateUuidWithoutHyphens(),
-				chunkIndex: i,
-			});
-		}
-
-		return assembleIndexedChunks(doc, chunks, settings);
-	}
-
-	async *scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
-		// URLs are not files in the vault, so this may return empty
-		// In practice, URLs might be stored in a special index or metadata
-		yield [];
+		return this.readUrl(path, genCacheContent);
 	}
 
 	/**
-	 * Get summary for a URL document
+	 * URLs are not vault files — nothing to scan.
 	 */
-	async getSummary(
-		source: Document | string,
-		provider?: string,
-		modelId?: string
-	): Promise<ResourceSummary> {
-		if (!this.aiServiceManager) {
-			throw new Error('UrlDocumentLoader requires AIServiceManager to generate summaries');
-		}
-		if (typeof source === 'string') {
-			throw new Error('UrlDocumentLoader.getSummary requires a Document, not a string');
-		}
-		return getDefaultDocumentSummary(source, this.aiServiceManager, provider, modelId);
+	override async *scanDocuments(
+		_params?: { limit?: number; batchSize?: number },
+	): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
+		yield [];
+	}
+
+	/** Not used — readByPath is overridden. */
+	protected async readFile(_file: TFile): Promise<Document | null> {
+		return null;
 	}
 
 	private isValidUrl(url: string): boolean {
@@ -125,10 +76,7 @@ export class UrlDocumentLoader implements DocumentLoader {
 	}
 
 	private async readUrl(url: string, genCacheContent?: boolean): Promise<Document | null> {
-		// Validate URL before creating loader instance
-		if (!this.isValidUrl(url)) {
-			return null;
-		}
+		if (!this.isValidUrl(url)) return null;
 
 		try {
 			let content = '';
@@ -140,7 +88,6 @@ export class UrlDocumentLoader implements DocumentLoader {
 				const docs = await loader.load();
 				content = docs.map(doc => doc.pageContent).join('\n\n');
 
-				// Use URL as the document ID
 				const urlObj = new URL(url);
 				title = urlObj.hostname + urlObj.pathname;
 			}
@@ -185,4 +132,3 @@ export class UrlDocumentLoader implements DocumentLoader {
 		}
 	}
 }
-

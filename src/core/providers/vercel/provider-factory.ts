@@ -43,9 +43,19 @@ export function createLanguageModel(profile: Profile, modelId: string): Language
             return provider(modelId);
         }
         case 'openrouter': {
+            // Fix legacy profiles that saved baseUrl without /v1
+            let orBaseUrl = baseUrl || undefined;
+            if (orBaseUrl && orBaseUrl.endsWith('/api')) {
+                orBaseUrl = orBaseUrl + '/v1';
+            }
             const provider = createOpenRouter({
-                baseURL: baseUrl || undefined,
+                baseURL: orBaseUrl,
                 apiKey: apiKey ?? undefined,
+                // Referer + title improve OpenRouter routing priority
+                headers: {
+                    'HTTP-Referer': 'https://github.com/user/obsidian-peak-assistant',
+                    'X-Title': 'Peak Assistant',
+                },
             });
             return provider(modelId);
         }

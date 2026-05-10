@@ -29,12 +29,12 @@ function effectiveReconMaxIterations(budgetDerived: number, debug?: ReconLoopDeb
 }
 import { mergeIntuitionSubmitIntoMemory, buildInitialIntuitionMemory } from './intuition.memory';
 import type { IntuitionMemory, IntuitionPrepContext } from './types';
-import { exploreFolderToolMarkdownOnly, findPathTool, graphTraversalToolMarkdownOnly, grepFileTreeTool, hubLocalGraphTool, inspectNoteContextToolMarkdownOnly, localSearchWholeVaultTool } from '@/service/tools/search-graph-inspector';
+import { exploreFolderTool, findPathTool, graphTraversalTool, grepFileTreeTool, inspectNoteContextTool, localSearchWholeVaultTool } from '@/service/tools/search-graph-inspector';
 import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
-import { agentToolsToMcpServer, mcpToolNames } from '@/service/agents/core/agentToolMcpAdapter';
+import { agentToolsToMcpServer, mcpToolNames, mergeExternalMcpTools } from '@/service/agents/core/agentToolMcpAdapter';
 
 export type IntuitionReconCompleteCallback = (memory: IntuitionMemory) => void;
 
@@ -76,12 +76,11 @@ export async function* runKnowledgeIntuitionLoop(options: {
 	const { ctx, stepId, aiServiceManager, onComplete, debug } = options;
 	const stopwatch = new Stopwatch('Knowledge intuition recon');
 	const tools = {
-		explore_folder: exploreFolderToolMarkdownOnly(ctx.tm),
+		explore_folder: exploreFolderTool(ctx.tm, { forceFormat: 'markdown' }),
 		grep_file_tree: grepFileTreeTool(),
 		local_search_whole_vault: localSearchWholeVaultTool(ctx.tm),
-		inspect_note_context: inspectNoteContextToolMarkdownOnly(ctx.tm),
-		graph_traversal: graphTraversalToolMarkdownOnly(ctx.tm),
-		hub_local_graph: hubLocalGraphTool(ctx.tm),
+		inspect_note_context: inspectNoteContextTool(ctx.tm, { forceFormat: 'markdown' }),
+		graph_traversal: graphTraversalTool(ctx.tm, { forceFormat: 'markdown' }),
 		find_path: findPathTool(ctx.tm),
 	}
 	const budgetDerived = Math.min(6, Math.max(3, Math.floor(ctx.indexBudgetRaw.limitTotal / 160)));
@@ -108,8 +107,9 @@ export async function* runKnowledgeIntuitionLoop(options: {
 	];
 
 	// Build MCP server and tool names once (tools don't change across iterations)
-	const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, tools);
-	const allowedTools = mcpToolNames(MCP_SERVER_NAME, tools);
+	const allTools = mergeExternalMcpTools(tools);
+	const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, allTools);
+	const allowedTools = mcpToolNames(MCP_SERVER_NAME, allTools);
 
 	// Get app + profile for SDK calls
 	const appCtx = AppContext.getInstance();

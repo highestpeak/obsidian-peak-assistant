@@ -25,6 +25,8 @@ import { MessageActionsList } from './MessageActionsList';
 import { MessageRoleAvatar } from '../MessageRoleAvatar';
 import { MessageStyleButtons } from '../MessageStyleButtons';
 import { SuggestedFollowups } from '../SuggestedFollowups';
+import { SuggestionActions } from '../SuggestionActions';
+import { CapabilitySuggestion } from './CapabilitySuggestion';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 
 interface StreamingState {
@@ -72,7 +74,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	const handleToggleStar = useCallback(async (messageId: string, starred: boolean) => {
 		console.debug('[MessageItem] Toggling star for message:', { messageId, starred });
 		if (!activeConversation) return;
-		await manager.toggleStar({
+		await manager.conv.toggleStar({
 			messageId,
 			conversationId: activeConversation.meta.id,
 			starred,
@@ -136,7 +138,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
 			// Append the new message at the end of the conversation
 			if (streamResult.finalMessage) {
-				await manager.addMessage({
+				await manager.conv.addMessage({
 					conversationId: activeConversation.meta.id,
 					message: streamResult.finalMessage,
 					model: streamResult.finalMessage.model,
@@ -369,12 +371,17 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 							</div>
 						) : null}
 
+						{/* Capability suggestion — only on the last assistant message, not while streaming */}
+						{isLastMessage && !streamingState.isStreaming && !message.isErrorMessage && (
+							<CapabilitySuggestion message={message} />
+						)}
+
 						{/* Footer: visible on last message, hover-reveal on others */}
 						<div className={cn(
 							"pktw-overflow-hidden pktw-transition-all pktw-duration-200",
 							isLastMessage
-								? "pktw-max-h-[200px] pktw-opacity-100"
-								: "pktw-max-h-0 pktw-opacity-0 group-hover:pktw-max-h-[200px] group-hover:pktw-opacity-100"
+								? "pktw-max-h-[300px] pktw-opacity-100"
+								: "pktw-max-h-0 pktw-opacity-0 group-hover:pktw-max-h-[300px] group-hover:pktw-opacity-100"
 						)}>
 							<MessageActionsList
 								message={message}
@@ -387,9 +394,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 								onRegenerate={handleRegenerate}
 							/>
 
-							{/* Style chips — extra hover animation even when footer is visible */}
+							{/* Style chips — always visible on last message, hover-reveal on others */}
 							{!streamingState.isStreaming && !message.isErrorMessage && (
-								<div className="pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity">
+								<div className={cn(
+									"pktw-transition-opacity",
+									isLastMessage ? "pktw-opacity-100" : "pktw-opacity-0 group-hover:pktw-opacity-100"
+								)}>
 									<MessageStyleButtons onStyleSelect={(prompt) => {
 										const submitAction = useChatViewStore.getState().submitAction;
 										if (submitAction) submitAction(prompt);
@@ -397,8 +407,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 								</div>
 							)}
 
-							{/* Suggested follow-ups — shown on ALL assistant messages */}
-							{!streamingState.isStreaming && !message.isErrorMessage && (
+							{/* Suggested follow-ups — only on the last assistant message */}
+							{isLastMessage && !streamingState.isStreaming && !message.isErrorMessage && (
 								<SuggestedFollowups
 									messageId={message.id}
 									userContent={(() => {
@@ -414,6 +424,18 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 									onSelect={(q) => {
 										const submitAction = useChatViewStore.getState().submitAction;
 										if (submitAction) submitAction(q);
+									}}
+								/>
+							)}
+
+							{/* Action suggestions — always visible on the last assistant message */}
+							{isLastMessage && !streamingState.isStreaming && !message.isErrorMessage && activeConversation && activeConversation.messages.length > 0 && (
+								<SuggestionActions
+									conversationId={activeConversation.meta?.id ?? ''}
+									messages={activeConversation.messages.map(m => ({ role: m.role, content: m.content }))}
+									onSelect={(prompt) => {
+										const submitAction = useChatViewStore.getState().submitAction;
+										if (submitAction) submitAction(prompt);
 									}}
 								/>
 							)}

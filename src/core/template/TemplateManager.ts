@@ -75,6 +75,15 @@ export class TemplateManager {
 		return id in TEMPLATE_METADATA;
 	}
 
+	/**
+	 * Load a JSON config template and parse it. Returns the parsed object.
+	 * Throws if the file cannot be loaded or parsed.
+	 */
+	async loadJson<T = unknown>(id: TemplateId): Promise<T> {
+		const raw = await this.getTemplate(id);
+		return JSON.parse(raw) as T;
+	}
+
 	/** Clear all caches. Call on plugin unload. */
 	clear(): void {
 		this.contentCache.clear();

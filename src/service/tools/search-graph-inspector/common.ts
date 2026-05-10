@@ -348,20 +348,20 @@ export function getPathFromNode(node?: GraphNode | null): string {
 
 export async function getDefaultItemFiledGetter<T extends { id: string }>(nodeIds: string[], filters?: any, sorter?: string): Promise<ItemFiledGetter<T>> {
     const nodesMap = await sqliteStoreManager.getMobiusNodeRepo().getByIds(nodeIds);
-    const tagsTripleMap = filters?.tag_category_boolean_expression
-        ? (await sqliteStoreManager.getGraphRepo().getTagsByDocIds(nodeIds)).idMapToTags
-        : emptyMap<
-              string,
-              {
-                  topicTags: string[];
-                  topicTagEntries?: TopicTagEntry[];
-                  functionalTagEntries: FunctionalTagEntry[];
-                  keywordTags: string[];
-                  timeTags: string[];
-                  geoTags: string[];
-                  personTags: string[];
-              }
-          >();
+    // tag_category_boolean_expression is not in the public schema; tag data is resolved
+    // downstream in shouldIncludeItem via getCachedBooleanExpression.
+    const tagsTripleMap = emptyMap<
+          string,
+          {
+              topicTags: string[];
+              topicTagEntries?: TopicTagEntry[];
+              functionalTagEntries: FunctionalTagEntry[];
+              keywordTags: string[];
+              timeTags: string[];
+              geoTags: string[];
+              personTags: string[];
+          }
+      >();
     const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
     const { incoming: inCominglinksCountMap, outgoing: outGoinglinksCountMap, total: totalLinksCountMap } =
         (sorter === 'backlinks_count_asc' || sorter === 'backlinks_count_desc' || sorter === 'outlinks_count_asc' || sorter === 'outlinks_count_desc')

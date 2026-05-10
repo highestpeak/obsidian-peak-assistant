@@ -150,7 +150,7 @@ export const OpenMenuButton: React.FC = () => {
 									const confirmed = window.confirm('Delete this conversation? This cannot be undone.');
 									if (!confirmed) return;
 									try {
-										await AppContext.getInstance().manager.deleteConversation(convId);
+										await AppContext.getInstance().manager.conv.deleteConversation(convId);
 										useChatDataStore.getState().deleteConversation(convId);
 										useChatViewStore.getState().setHome();
 									} catch (e) {

@@ -1,4 +1,4 @@
-import { GRAPH_INSPECT_STEP_TIME_LIMIT } from "@/core/constant";
+import { GRAPH_INSPECT_STEP_TIME_LIMIT, GRAPH_TRAVERSAL_EDGES_PER_NODE, GRAPH_TRAVERSAL_SEMANTIC_DEPTH_DECAY } from "@/core/constant";
 import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { GraphEdge } from "@/core/storage/sqlite/repositories/MobiusEdgeRepo";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
@@ -33,7 +33,9 @@ export interface GraphVisualizationEdge {
     type: string;
     weight: number;
 }
-export async function graphTraversal(params: any, templateManager?: TemplateManager) {
+export type GraphTraversalInternalOpts = { includeGraph?: boolean };
+
+export async function graphTraversal(params: any, templateManager?: TemplateManager, internalOpts?: GraphTraversalInternalOpts) {
     const { start_note_path, hops, include_semantic_paths, limit, response_format, filters, sorter } = params;
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
     const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
@@ -77,7 +79,7 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
         }
 
         // physical neighbors: two directions; And we limit by type to avoid too many edges.
-        const physicalInAndOutEdges = await mobiusEdgeRepo.getAllEdgesForNode(current.id, limit);
+        const physicalInAndOutEdges = await mobiusEdgeRepo.getAllEdgesForNode(current.id, GRAPH_TRAVERSAL_EDGES_PER_NODE);
         
         // Collect edges for visualization (only edges between visited or to-be-visited nodes)
         for (const edge of physicalInAndOutEdges) {
@@ -99,8 +101,7 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
         let semanticLimit = limit;
         if (include_semantic_paths && current.depth > 0) {
             // Reduce semantic neighbor limit for farther hops (deeper nodes are less likely to be relevant).
-            const decayMap = [limit, 3, 1];
-            semanticLimit = decayMap[current.depth] ?? 0;
+            semanticLimit = GRAPH_TRAVERSAL_SEMANTIC_DEPTH_DECAY[current.depth - 1] ?? 0;
         }
         const semanticFilterSet = new Set([...inComingNode, ...outGoingNode]);
         const semanticNodes = include_semantic_paths && current.type === "document"
@@ -173,38 +174,58 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
 
     // Build graph visualization data from collected nodes and edges
     const visitedNodeIds = new Set(result.map(n => n.id));
-    const graphVisualizationNodes: (GraphVisualizationNode & { path?: string; attributes?: Record<string, unknown> })[] = result.map(node => {
-        let path: string | undefined;
-        try {
-            const attrs = typeof node.attributes === 'string' ? JSON.parse(node.attributes || '{}') : node.attributes;
-            if (attrs && typeof attrs === 'object' && typeof attrs.path === 'string' && attrs.path.trim()) {
-                path = attrs.path.trim();
-            }
-        } catch { /* ignore */ }
-        return {
-            id: node.id,
-            label: node.label || node.id,
-            type: node.type,
-            depth: node.depth,
-            foundBy: node.foundBy,
-            ...(path ? { path } : {}),
-            ...(node.attributes ? { attributes: typeof node.attributes === 'string' ? (() => { try { return JSON.parse(node.attributes); } catch { return {}; } })() : node.attributes } : {}),
-        };
-    });
-    // Filter edges to only include those between visited nodes
-    const graphVisualizationEdges = collectedEdges.filter(
-        edge => visitedNodeIds.has(edge.from_node_id) && visitedNodeIds.has(edge.to_node_id)
-    );
+    const includeGraph = internalOpts?.includeGraph || response_format === 'hybrid';
 
-    const data = {
+    const parseAttrs = (raw: string | undefined | null) => {
+        try { return typeof raw === 'string' ? JSON.parse(raw || '{}') : raw; } catch { return {}; }
+    };
+
+    const data: Record<string, any> = {
         isTimeOut,
         start_note_path,
         hops,
         levels,
-        graph: {
-            nodes: graphVisualizationNodes,
-            edges: graphVisualizationEdges
-        }
     };
+
+    if (includeGraph) {
+        if (response_format === 'hybrid') {
+            // For hybrid: slim graph (no full attributes)
+            data.graph = {
+                nodes: result.map(node => {
+                    const attrs = parseAttrs(node.attributes);
+                    const path = typeof attrs?.path === 'string' && attrs.path.trim() ? attrs.path.trim() : undefined;
+                    return { id: node.id, type: node.type, depth: node.depth, ...(path ? { path } : {}) };
+                }),
+                edges: collectedEdges
+                    .filter(e => visitedNodeIds.has(e.from_node_id) && visitedNodeIds.has(e.to_node_id))
+                    .map(e => ({ from: e.from_node_id, to: e.to_node_id, type: e.type, weight: e.weight })),
+            };
+        } else {
+            // Internal callers (UI) get full graph
+            const graphVisualizationNodes: (GraphVisualizationNode & { path?: string; attributes?: Record<string, unknown> })[] = result.map(node => {
+                let path: string | undefined;
+                try {
+                    const attrs = typeof node.attributes === 'string' ? JSON.parse(node.attributes || '{}') : node.attributes;
+                    if (attrs && typeof attrs === 'object' && typeof attrs.path === 'string' && attrs.path.trim()) {
+                        path = attrs.path.trim();
+                    }
+                } catch { /* ignore */ }
+                return {
+                    id: node.id,
+                    label: node.label || node.id,
+                    type: node.type,
+                    depth: node.depth,
+                    foundBy: node.foundBy,
+                    ...(path ? { path } : {}),
+                    ...(node.attributes ? { attributes: typeof node.attributes === 'string' ? (() => { try { return JSON.parse(node.attributes); } catch { return {}; } })() : node.attributes } : {}),
+                };
+            });
+            const graphVisualizationEdges = collectedEdges.filter(
+                edge => visitedNodeIds.has(edge.from_node_id) && visitedNodeIds.has(edge.to_node_id)
+            );
+            data.graph = { nodes: graphVisualizationNodes, edges: graphVisualizationEdges };
+        }
+    }
+
     return buildResponse(response_format, ToolTemplateId.GraphTraversal, data, { templateManager });
 }

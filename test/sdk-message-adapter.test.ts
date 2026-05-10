@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { translateSdkMessage } from '@/service/agents/vault-sdk/sdkMessageAdapter';
+import { translateSdkMessage } from '@/service/agents/core/sdkMessageAdapter';
 import { StreamTriggerName } from '@/core/providers/types';
 
 async function run(): Promise<void> {

@@ -5,6 +5,8 @@ import { AmbientTrigger } from './AmbientTrigger';
 import { extractContext } from './ContextExtractor';
 import { ambientSearch } from './AmbientSearcher';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
+import { generateLlmExplanation } from './RelevanceExplainer';
+import { invalidatePatternCache } from './PatternLearner';
 import { AppContext } from '@/app/context/AppContext';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
@@ -83,7 +85,7 @@ export class AmbientPushService {
 
 		let items: AmbientPushItem[];
 		try {
-			items = await ambientSearch(context, settings.maxPushItems, store.pushHistory);
+			items = await ambientSearch(context, settings.maxPushItems, store.pushHistory, settings);
 		} catch {
 			return;
 		}
@@ -97,6 +99,27 @@ export class AmbientPushService {
 		}
 
 		store.setItems(items, context.filePath);
+
+		// --- LLM Tier 2 micro-explanation (async, non-blocking) ---
+		if (settings.enableLlmExplanation && items.length > 0) {
+			const topItem = items[0];
+			generateLlmExplanation(
+				context.currentParagraph,
+				topItem.title,
+				topItem.excerpt,
+				settings.llmExplanationCooldownMs,
+			)
+				.then((llmExplanation) => {
+					if (llmExplanation) {
+						useAmbientPushStore
+							.getState()
+							.updateLlmExplanation(topItem.filePath, llmExplanation);
+					}
+				})
+				.catch(() => {
+					/* LLM explanation is non-critical — fail silently */
+				});
+		}
 
 		const now = Date.now();
 		for (const item of items) {
@@ -126,6 +149,7 @@ export class AmbientPushService {
 					explanationText: item.explanation,
 				});
 			}
+			invalidatePatternCache();
 		} catch {
 			/* SQLite may not be ready — fail silently */
 		}

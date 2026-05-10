@@ -5,7 +5,6 @@ import { MySettings } from 'src/app/settings/MySetting';
 import { normalizePluginSettings } from 'src/app/settings/PluginSettingsLoader';
 import { ViewManager } from 'src/app/view/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
-import { registerRunTraceScenarioCommand } from 'src/app/commands/run-trace-scenario';
 import { registerCoreEvents, removeAllChatViewButtons, clearPendingConversationTimeouts } from 'src/app/events/Register';
 import { MyPluginSettings } from '@/app/settings/types';
 import { SearchClient } from '@/service/search/SearchClient';
@@ -35,12 +34,10 @@ import { clearTemplateEngineForUnload } from '@/core/template-engine-helper';
 import { clearFormatUtilsCaches } from '@/core/utils/format-utils';
 import { getPluginDirAbsolute } from '@/core/utils/obsidian-utils';
 import {
-	hydrateClusterHubWeakTitleTokensFromTemplateManager,
 	hydrateCodeStopwordsFromTemplateManager,
 } from '@/core/utils/markdown-utils';
 import { hydrateTextStopwordsFromTemplateManager } from '@/core/utils/stopword-utils';
 import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
-import { loadPeakConfig } from '@/core/profiles/peak-config';
 import { resetAIAnalysisAll } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { useVaultSearchStore } from '@/ui/view/quick-search/store/vaultSearchStore';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
@@ -48,13 +45,17 @@ import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
 import { useSharedStore } from '@/ui/view/quick-search/store/sharedStore';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { useGraphAnimationStore } from '@/ui/component/mine/graph-viz/graphAnimationStore';
+import { useGraphAnimationStore } from '@/ui/store/graphAnimationStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
+import { serendipityGutterExtension } from '@/service/ambient/SerendipityGutterPlugin';
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
+import { ModelRegistry } from '@/core/providers/model-registry';
+import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
+import { MCPClientManager } from '@/service/mcp/MCPClientManager';
 import { DEFAULT_SKILLS_FOLDER } from '@/core/constant';
 import { SkillRegistry } from '@/service/skills/SkillRegistry';
 
@@ -100,12 +101,13 @@ export default class MyPlugin extends Plugin {
 
 		const data = await this.loadData();
 		this.settings = normalizePluginSettings(data);
-		await loadPeakConfig(this.app);
-
 		// Initialize ProfileRegistry from persisted settings (must precede AIServiceManager)
 		const ps = this.settings.profileSettings ?? {
 			profiles: [],
 			activeAgentConfig: null,
+			activeAgentFastConfig: null,
+			activeChatConfig: null,
+			activeCopilotConfig: null,
 			activeEmbeddingConfig: null,
 			activeWebSearchConfig: null,
 			sdkSettings: { ...DEFAULT_SDK_SETTINGS },
@@ -114,6 +116,15 @@ export default class MyPlugin extends Plugin {
 			this.settings.profileSettings = updated;
 			void this.saveSettings();
 		});
+
+		// Auto-detect indexLevel for existing users who already have an embedding profile configured.
+		// Only upgrades 'fast' → 'semantic'; never downgrades an explicit user choice.
+		if (!this.settings.search.indexLevel || this.settings.search.indexLevel === 'fast') {
+			const embProfile = ProfileRegistry.getInstance().getActiveEmbeddingProfile();
+			if (embProfile?.embeddingEndpoint && embProfile?.embeddingModel) {
+				this.settings.search.indexLevel = 'semantic';
+			}
+		}
 
 		// Template manager loads prompts/templates from plugin dir on demand (absolute path for Node fs)
 		try {
@@ -126,13 +137,25 @@ export default class MyPlugin extends Plugin {
 		if (this.templateManager) {
 			try {
 				await hydrateCodeStopwordsFromTemplateManager(this.templateManager);
-				await hydrateClusterHubWeakTitleTokensFromTemplateManager(this.templateManager);
 				await hydrateTextStopwordsFromTemplateManager(this.templateManager);
 			} catch (e) {
 				console.warn(
 					'[Peak Assistant] Failed to hydrate stopword templates; keyword extraction may be noisier.',
 					e,
 				);
+			}
+
+			// Load per-provider model registry JSON files (overrides bundled catalog data)
+			try {
+				await ModelRegistry.loadFromTemplateManager(this.templateManager, [
+					ConfigTemplateId.ModelsOpenAI,
+					ConfigTemplateId.ModelsClaude,
+					ConfigTemplateId.ModelsGemini,
+					ConfigTemplateId.ModelsPerplexity,
+					ConfigTemplateId.ModelsOllamaFamilies,
+				]);
+			} catch (e) {
+				console.warn('[Peak Assistant] Failed to load model registry templates; using bundled catalog.', e);
 			}
 		}
 
@@ -199,10 +222,18 @@ export default class MyPlugin extends Plugin {
 			this.settings.search,
 			this.settings.dataStorageFolder,
 		).forEach((command) => this.addCommand(command));
-		registerRunTraceScenarioCommand(this);
-
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
+
+		// Connect enabled MCP servers (non-blocking)
+		const mcpConfigs = this.settings.mcpServers ?? [];
+		for (const config of mcpConfigs) {
+			if (config.enabled) {
+				MCPClientManager.getInstance().connect(config).catch(e => {
+					console.warn(`[Peak Assistant] Failed to connect MCP server "${config.name}":`, e);
+				});
+			}
+		}
 
 		// Initialize Skill Registry (vault folder skills + built-ins)
 		const skillsFolder = this.settings.skillsFolder ?? DEFAULT_SKILLS_FOLDER;
@@ -227,6 +258,20 @@ export default class MyPlugin extends Plugin {
 					const count = state.items.length;
 					statusBarEl.setText(count > 0 ? `\u26A1 ${count} related` : '\u26A1 \u2013');
 				});
+			}
+
+			// Auto-open the Related Notes panel in the right sidebar on first run
+			this.app.workspace.onLayoutReady(() => {
+				const { AMBIENT_PUSH_VIEW_TYPE } = require('@/ui/view/AmbientPushView');
+				const existing = this.app.workspace.getLeavesOfType(AMBIENT_PUSH_VIEW_TYPE);
+				if (existing.length === 0) {
+					void this.viewManager?.activateAmbientPushView();
+				}
+			});
+
+			// CM6 gutter hint for serendipity items (Phase 3)
+			if (!ambientPushSettings || ambientPushSettings.enableSerendipityGutter !== false) {
+				this.registerEditorExtension(serendipityGutterExtension());
 			}
 		}
 
@@ -258,10 +303,6 @@ export default class MyPlugin extends Plugin {
 					filename: VAULT_DB_FILENAME,
 					settings: { sqliteBackend: this.settings.sqliteBackend },
 				});
-				await this.initializeSearchService();
-				if (this.appContext) {
-					this.appContext.searchClient = this.searchClient!;
-				}
 				UsageTrackingService.getInstance().init(
 					sqliteStoreManager.getIndexContext('chat'),
 					this.app,
@@ -270,6 +311,10 @@ export default class MyPlugin extends Plugin {
 						usageDetailRetentionDays: this.settings.usageDetailRetentionDays,
 					},
 				);
+				await this.initializeSearchService();
+				if (this.appContext) {
+					this.appContext.searchClient = this.searchClient!;
+				}
 				const sessionContext = SessionContextService.getInstance(this.app, EventBus.getInstance(this.app));
 				await sessionContext.init();
 				// Only start background AI services if an active profile is configured
@@ -364,6 +409,9 @@ export default class MyPlugin extends Plugin {
 		this.ambientStoreUnsub = null;
 		AmbientPushService.getInstance().dispose();
 
+		// Disconnect MCP servers
+		MCPClientManager.getInstance().dispose().catch(() => { /* ignore */ });
+
 		clearPendingConversationTimeouts();
 		this.viewManager?.unload();
 		removeAllChatViewButtons();
@@ -433,9 +481,6 @@ export default class MyPlugin extends Plugin {
 		// Release AI service timers and subscriptions before closing DB so no async touches DB after close
 		this.aiServiceManager?.cleanup();
 
-		// Tear down usage tracking before closing DB so the timer and subscription are cleared
-		UsageTrackingService.getInstance().destroy();
-
 		// Close global SQLite store (sync; already imported at top)
 		sqliteStoreManager.close();
 
@@ -452,6 +497,7 @@ export default class MyPlugin extends Plugin {
 		SkillRegistry.getInstance().destroy();
 
 		// Break singletons so old bundle can be GC'd
+		UsageTrackingService.getInstance().destroy();
 		AppContext.clearForUnload();
 		SessionContextService.destroyInstance();
 		EventBus.destroyInstance();

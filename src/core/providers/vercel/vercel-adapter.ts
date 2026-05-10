@@ -6,7 +6,7 @@
  * ai-sdk-adapter.ts deleted in commit 9f293a4.
  */
 
-import { streamText, type LanguageModel, type ModelMessage } from 'ai';
+import { streamText, type LanguageModel, type ModelMessage, type ToolSet } from 'ai';
 import type {
     LLMRequestMessage,
     LLMStreamEvent,
@@ -96,31 +96,79 @@ function toAiSdkMessages(messages: LLMRequestMessage[]): ModelMessage[] {
 
 // ─── Stream translation ────────────────────────────────────────
 
+/**
+ * Stall-protected streaming: aborts the request when no data chunk arrives
+ * within `timeoutStepMs` (default 30 s) or total time exceeds `timeoutTotalMs`
+ * (default 5 min). This guards against providers that keep the connection
+ * alive with SSE comments (e.g. OpenRouter's `: OPENROUTER PROCESSING`)
+ * but never deliver real data.
+ */
 export async function* streamChat(
     model: LanguageModel,
     messages: LLMRequestMessage[],
     options?: {
         outputControl?: LLMOutputControlSettings;
+        tools?: ToolSet;
+        maxSteps?: number;
         abortSignal?: AbortSignal;
     },
 ): AsyncGenerator<LLMStreamEvent> {
     const startTime = Date.now();
+    const stallMs = options?.outputControl?.timeoutStepMs ?? 30_000;
+    const totalMs = options?.outputControl?.timeoutTotalMs ?? 300_000;
+
+    // Combine external abort signal + stall/total timeouts into one controller
+    const timeoutController = new AbortController();
+    let timeoutReason: string | null = null;
+    const externalSignal = options?.abortSignal;
+
+    if (externalSignal?.aborted) return;
+    const onExternalAbort = () => timeoutController.abort();
+    externalSignal?.addEventListener('abort', onExternalAbort, { once: true });
+
+    // Stall timer — resets on each data chunk
+    let stallTimer: ReturnType<typeof setTimeout> | null = null;
+    const clearStall = () => { if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } };
+    const resetStallTimer = () => {
+        clearStall();
+        stallTimer = setTimeout(() => {
+            timeoutReason = `No response data received for ${stallMs / 1000}s. The provider may be queuing or overloaded — try again or switch models.`;
+            timeoutController.abort();
+        }, stallMs);
+    };
+
+    // Total timeout
+    const totalTimer = setTimeout(() => {
+        timeoutReason = `Request timed out after ${Math.round(totalMs / 1000)}s.`;
+        timeoutController.abort();
+    }, totalMs);
+
+    const cleanup = () => {
+        clearStall();
+        clearTimeout(totalTimer);
+        externalSignal?.removeEventListener('abort', onExternalAbort);
+    };
 
     try {
+        resetStallTimer();
+
         const result = streamText({
             model,
             system: extractSystemMessage(messages),
             prompt: toAiSdkMessages(messages),
+            tools: options?.tools,
+            maxSteps: options?.maxSteps ?? (options?.tools ? 5 : 1),
             maxOutputTokens: options?.outputControl?.maxOutputTokens,
             temperature: options?.outputControl?.temperature,
             topP: options?.outputControl?.topP,
             topK: options?.outputControl?.topK,
             frequencyPenalty: options?.outputControl?.frequencyPenalty,
             presencePenalty: options?.outputControl?.presencePenalty,
-            abortSignal: options?.abortSignal,
+            abortSignal: timeoutController.signal,
         });
 
         for await (const chunk of result.fullStream) {
+            resetStallTimer();
             switch (chunk.type) {
                 case 'text-delta':
                     yield { type: 'text-delta', text: chunk.text };
@@ -159,10 +207,17 @@ export async function* streamChat(
             }
         }
 
-        const finalUsage = await result.usage;
-        yield { type: 'complete', usage: finalUsage, finishReason: 'stop', durationMs: Date.now() - startTime };
     } catch (error) {
-        console.error('[vercel-adapter] Stream exception:', error);
-        yield { type: 'error', error: error as Error, durationMs: Date.now() - startTime };
+        if (timeoutReason) {
+            console.warn('[vercel-adapter] Stream timeout:', timeoutReason);
+            yield { type: 'error', error: new Error(timeoutReason), durationMs: Date.now() - startTime };
+        } else if (externalSignal?.aborted) {
+            // User cancelled — silently end the generator
+        } else {
+            console.error('[vercel-adapter] Stream exception:', error);
+            yield { type: 'error', error: error as Error, durationMs: Date.now() - startTime };
+        }
+    } finally {
+        cleanup();
     }
 }

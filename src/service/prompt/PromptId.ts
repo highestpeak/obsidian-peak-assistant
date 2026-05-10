@@ -38,15 +38,6 @@ export enum PromptId {
 	ImageSummary = 'image-summary',
 	/** Topic + functional + context tags and optional vault document-type classification (same JSON). */
 	DocTagGenerateJson = 'doc-tag-generate-json',
-	/** System: Hub navigation note JSON fill (maintenance). Paired with {@link HubDocSummary}. */
-	HubDocSummarySystem = 'hub-doc-summary-system',
-	/** User: Hub metadata + draft markdown + vault excerpts → JSON for hub_doc sections. */
-	HubDocSummary = 'hub-doc-summary',
-	/** System: Hub semantic merge (duplicate / same-topic folds). */
-	HubSemanticMergeSystem = 'hub-semantic-merge-system',
-	/** User: Hub card JSON → merge groups (does not invent stableKeys). */
-	HubSemanticMerge = 'hub-semantic-merge',
-
 	/** Pattern discovery agent: analyze query history → new query templates. */
 	PatternDiscovery = 'pattern-discovery',
 
@@ -58,8 +49,6 @@ export enum PromptId {
 	KnowledgeIntuitionSubmit = 'knowledge-intuition-submit',
 
 	// Search prompts
-	/** Regenerate overview from current result snapshot (UI only; not used by pipeline). */
-	AiAnalysisOverviewRegenerate = 'ai-analysis-overview-regenerate',
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
 	AiAnalysisTitle = 'ai-analysis-title',
 	/** Doc Simple mode: scope prefix (current file only + full coverage). */
@@ -109,37 +98,25 @@ export enum PromptId {
 
 	// Copilot Document Intelligence
 	DocPolish = 'doc-polish',
-	DocPolishSystem = 'doc-polish-system',
 	DocReview = 'doc-review',
-	DocReviewSystem = 'doc-review-system',
-	DocSuggestLinks = 'doc-suggest-links',
-	DocSuggestLinksSystem = 'doc-suggest-links-system',
 	DocSplitSuggestion = 'doc-split-suggestion',
-	DocSplitSuggestionSystem = 'doc-split-suggestion-system',
 	DocSuggestTags = 'doc-suggest-tags',
-	DocSuggestTagsSystem = 'doc-suggest-tags-system',
 	DocSummarize = 'doc-summarize',
-	DocSummarizeSystem = 'doc-summarize-system',
 	DocExtractConcepts = 'doc-extract-concepts',
-	DocExtractConceptsSystem = 'doc-extract-concepts-system',
 	DocTranslate = 'doc-translate',
-	DocTranslateSystem = 'doc-translate-system',
 
 	// Copilot Vault Intelligence
-	VaultKnowledgeGaps = 'vault-knowledge-gaps',
-	VaultKnowledgeGapsSystem = 'vault-knowledge-gaps-system',
-	VaultSynthesize = 'vault-synthesize',
-	VaultSynthesizeSystem = 'vault-synthesize-system',
 	VaultHealth = 'vault-health',
-	VaultHealthSystem = 'vault-health-system',
 
 	// Copilot Writing Assistance
 	WritingContinue = 'writing-continue',
-	WritingContinueSystem = 'writing-continue-system',
 	WritingRewrite = 'writing-rewrite',
-	WritingRewriteSystem = 'writing-rewrite-system',
-	WritingAddEvidence = 'writing-add-evidence',
-	WritingAddEvidenceSystem = 'writing-add-evidence-system',
+
+	// Copilot Agent Playbooks
+	CopilotAgentSuggestLinks = 'copilot-agent-suggest-links',
+	CopilotAgentKnowledgeGaps = 'copilot-agent-knowledge-gaps',
+	CopilotAgentSynthesizeTopic = 'copilot-agent-synthesize-topic',
+	CopilotAgentAddEvidence = 'copilot-agent-add-evidence',
 
 	// Chat intelligence
 	ChatTopicAggregation = 'chat-topic-aggregation',
@@ -150,7 +127,6 @@ export enum PromptId {
 	WorkingThemeInference = 'working-theme-inference',
 	WorkingContextRender = 'working-context-render',
 	ActivityIndexRender = 'activity-index-render',
-	MessageChunkSummarize = 'message-chunk-summarize',
 }
 
 /**
@@ -158,7 +134,6 @@ export enum PromptId {
  * Shown in a dedicated "Search AI Analysis" section with a "Set All" control.
  */
 export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
-	PromptId.AiAnalysisOverviewRegenerate,
 	PromptId.AiAnalysisTitle,
 	PromptId.AiAnalysisDocSimpleScope,
 	PromptId.AiAnalysisDocSimpleSystem,
@@ -186,8 +161,6 @@ export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.ImageDescription,
 	PromptId.ImageSummary,
 	PromptId.DocTagGenerateJson,
-	PromptId.HubDocSummary,
-	PromptId.HubSemanticMerge,
 	PromptId.KnowledgeIntuitionPlan,
 	PromptId.KnowledgeIntuitionSubmit,
 ] as const;
@@ -221,40 +194,19 @@ export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
 ] as const;
 
 /**
- * All prompt IDs exposed in Model Configuration UI (general + Search AI Analysis + Indexing & Hub).
- * Used for bulk reset and counts; arrays are disjoint.
- */
-export const ALL_MODEL_CONFIG_PROMPT_IDS: readonly PromptId[] = [
-	...CONFIGURABLE_PROMPT_IDS,
-	...SEARCH_AI_ANALYSIS_PROMPT_IDS,
-	...INDEXING_AND_HUB_PROMPT_IDS,
-] as const;
-
-/**
- * Check if a prompt ID allows model configuration (general, Search AI Analysis, or Indexing & Hub sections).
- */
-export function isPromptModelConfigurable(promptId: PromptId): boolean {
-	return (
-		CONFIGURABLE_PROMPT_IDS.includes(promptId) ||
-		SEARCH_AI_ANALYSIS_PROMPT_IDS.includes(promptId) ||
-		INDEXING_AND_HUB_PROMPT_IDS.includes(promptId)
-	);
-}
-
-export interface ErrorRetryInfo {
-	/** The number of times the error has been retried. */
-	attemptTimes?: number;
-	/** The error messages from the last attempt. */
-	lastAttemptErrorMessages?: string;
-}
-
-/**
  * Variable schemas for each prompt type.
  * Used for type-safe rendering.
  * // todo some prompts may have expected output format, we should add it to the interface. maybe turn into an agent
  */
 export interface PromptVariables {
-	[PromptId.ConversationSystem]: Record<string, never>;
+	[PromptId.ConversationSystem]: {
+		capabilities?: {
+			webSearchAvailable: boolean;
+			webSearchEnabled: boolean;
+			vaultSearchAvailable: boolean;
+			vaultSearchEnabled: boolean;
+		};
+	};
 	[PromptId.ConversationSummaryShort]: {
 		messages: Array<{ role: string; content: string }>;
 		projectContext?: string;
@@ -312,20 +264,6 @@ export interface PromptVariables {
 		title?: string;
 		path?: string;
 	};
-	[PromptId.HubDocSummarySystem]: Record<string, never>;
-	[PromptId.HubDocSummary]: {
-		/** JSON string of hub candidate metadata (graph signals, routes, members). */
-		hubMetadataJson: string;
-		/** Draft hub body without YAML frontmatter (structure reference). */
-		draftMarkdownBody: string;
-		/** Truncated vault excerpts or placeholder when empty. */
-		vaultExcerpts: string;
-	};
-	[PromptId.HubSemanticMergeSystem]: Record<string, never>;
-	[PromptId.HubSemanticMerge]: {
-		/** JSON array of hub cards for merge (stableKey, path, labels, signals). */
-		hubCardsJson: string;
-	};
 	[PromptId.KnowledgeIntuitionPlanSystem]: Record<string, never>;
 	[PromptId.KnowledgeIntuitionPlan]: {
 		userGoal: string;
@@ -379,7 +317,6 @@ export interface PromptVariables {
 	};
 
 	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
-	[PromptId.AiAnalysisOverviewRegenerate]: { originalQuery: string; currentResultSnapshot: string };
 
 	[PromptId.AiAnalysisSaveFileName]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string; candidateFoldersFromSearch?: string; defaultSaveFolder?: string };
@@ -478,81 +415,55 @@ export interface PromptVariables {
 		scope: 'full' | 'selection';
 		instruction?: string;
 	};
-	[PromptId.DocPolishSystem]: Record<string, never>;
 	[PromptId.DocReview]: {
 		content: string;
 		title?: string;
 		scope: 'full' | 'selection';
 	};
-	[PromptId.DocReviewSystem]: Record<string, never>;
-	[PromptId.DocSuggestLinks]: {
-		content: string;
-		title?: string;
-		existingLinks: string;
-	};
-	[PromptId.DocSuggestLinksSystem]: Record<string, never>;
 	[PromptId.DocSplitSuggestion]: {
 		content: string;
 		title?: string;
 		wordCount: number;
 	};
-	[PromptId.DocSplitSuggestionSystem]: Record<string, never>;
 	[PromptId.DocSuggestTags]: {
 		content: string;
 		title?: string;
 	};
-	[PromptId.DocSuggestTagsSystem]: Record<string, never>;
 	[PromptId.DocSummarize]: {
 		content: string;
 		title?: string;
 		scope: string;
 		length: string;
 	};
-	[PromptId.DocSummarizeSystem]: Record<string, never>;
 	[PromptId.DocExtractConcepts]: {
 		content: string;
 		title?: string;
 	};
-	[PromptId.DocExtractConceptsSystem]: Record<string, never>;
 	[PromptId.DocTranslate]: {
 		content: string;
 		title?: string;
 		scope: string;
 		targetLanguage: string;
 	};
-	[PromptId.DocTranslateSystem]: Record<string, never>;
-	[PromptId.VaultKnowledgeGaps]: {
-		content: string;
-		title?: string;
-		relatedNotes: string;
-	};
-	[PromptId.VaultKnowledgeGapsSystem]: Record<string, never>;
-	[PromptId.VaultSynthesize]: {
-		topic: string;
-		sources: string;
-	};
-	[PromptId.VaultSynthesizeSystem]: Record<string, never>;
 	[PromptId.VaultHealth]: {
 		stats: string;
 	};
-	[PromptId.VaultHealthSystem]: Record<string, never>;
 	[PromptId.WritingContinue]: {
 		content: string;
 		title?: string;
 	};
-	[PromptId.WritingContinueSystem]: Record<string, never>;
 	[PromptId.WritingRewrite]: {
 		selection: string;
 		content: string;
 		title?: string;
 		style: string;
 	};
-	[PromptId.WritingRewriteSystem]: Record<string, never>;
-	[PromptId.WritingAddEvidence]: {
-		context: string;
-		sources: string;
-	};
-	[PromptId.WritingAddEvidenceSystem]: Record<string, never>;
+
+	// Copilot Agent Playbooks
+	[PromptId.CopilotAgentSuggestLinks]: Record<string, never>;
+	[PromptId.CopilotAgentKnowledgeGaps]: Record<string, never>;
+	[PromptId.CopilotAgentSynthesizeTopic]: Record<string, never>;
+	[PromptId.CopilotAgentAddEvidence]: Record<string, never>;
 
 	// Chat intelligence
 	[PromptId.ChatTopicAggregation]: {
@@ -578,9 +489,6 @@ export interface PromptVariables {
 	[PromptId.ActivityIndexRender]: {
 		activities: Array<{ id: string; timeAgo: string; summary: string }>;
 		counts: Record<string, number>;
-	};
-	[PromptId.MessageChunkSummarize]: {
-		messages: Array<{ role: string; content: string }>;
 	};
 }
 

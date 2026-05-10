@@ -13,8 +13,6 @@ interface TypeOption {
 const TYPE_OPTIONS: TypeOption[] = [
   { type: { kind: 'chat' }, label: 'Chat', description: 'Free-form conversation' },
   { type: { kind: 'agent' }, label: 'Agent', description: 'Research with vault tools' },
-  { type: { kind: 'plan' }, label: 'Plan', description: 'Structured planning' },
-  { type: { kind: 'canvas' }, label: 'Canvas', description: 'Visual thinking', disabled: true },
 ];
 
 interface Props {

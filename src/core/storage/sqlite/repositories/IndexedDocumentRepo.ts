@@ -54,114 +54,14 @@ export class IndexedDocumentRepo {
 	/** Merge indexed-document fields into `attributes_json` (ddl-backed document attrs). */
 	private buildDocumentAttributesJson(params: {
 		existingJson?: string;
-		docType?: string | null;
-		frontmatter_json?: string | null;
-		last_processed_at?: number | null;
-		path?: string | null;
-		full_summary?: string | null;
-		hub_tier?: string | null;
-		summary_generated_at?: number | null;
-		heading_skeleton?: string | null;
-		llm_tags_source_hash?: string | null;
-		llm_summary_source_hash?: string | null;
-		llm_tags_generated_at?: number | null;
-		llm_summary_generated_at?: number | null;
-		llm_pending?: boolean;
-		llm_pending_reason?: string | null;
-		vector_source_hash?: string | null;
-		vector_generated_at?: number | null;
-		vector_pending?: boolean;
-		vector_pending_reason?: string | null;
-		functional_tags_status?: 'pending' | 'failed' | 'success-empty' | 'success';
-	}): string {
+	} & Partial<DocAttrsJson>): string {
 		const prev = this.parseDocAttrs(params.existingJson ?? '{}');
-		const next: DocAttrsJson = {
-			...prev,
-			docType: params.docType !== undefined ? params.docType : prev.docType,
-			frontmatter_json:
-				params.frontmatter_json !== undefined ? params.frontmatter_json : prev.frontmatter_json,
-			last_processed_at:
-				params.last_processed_at !== undefined ? params.last_processed_at : prev.last_processed_at,
-			path: params.path !== undefined ? params.path : prev.path,
-			full_summary: params.full_summary !== undefined ? params.full_summary : prev.full_summary,
-			hub_tier: params.hub_tier !== undefined ? params.hub_tier : prev.hub_tier,
-			summary_generated_at:
-				params.summary_generated_at !== undefined ? params.summary_generated_at : prev.summary_generated_at,
-			heading_skeleton:
-				params.heading_skeleton !== undefined ? params.heading_skeleton : prev.heading_skeleton,
-			llm_tags_source_hash:
-				params.llm_tags_source_hash !== undefined ? params.llm_tags_source_hash : prev.llm_tags_source_hash,
-			llm_summary_source_hash:
-				params.llm_summary_source_hash !== undefined
-					? params.llm_summary_source_hash
-					: prev.llm_summary_source_hash,
-			llm_tags_generated_at:
-				params.llm_tags_generated_at !== undefined
-					? params.llm_tags_generated_at
-					: prev.llm_tags_generated_at,
-			llm_summary_generated_at:
-				params.llm_summary_generated_at !== undefined
-					? params.llm_summary_generated_at
-					: prev.llm_summary_generated_at,
-			llm_pending: params.llm_pending !== undefined ? params.llm_pending : prev.llm_pending,
-			llm_pending_reason:
-				params.llm_pending_reason !== undefined ? params.llm_pending_reason : prev.llm_pending_reason,
-			vector_source_hash:
-				params.vector_source_hash !== undefined ? params.vector_source_hash : prev.vector_source_hash,
-			vector_generated_at:
-				params.vector_generated_at !== undefined ? params.vector_generated_at : prev.vector_generated_at,
-			vector_pending: params.vector_pending !== undefined ? params.vector_pending : prev.vector_pending,
-			vector_pending_reason:
-				params.vector_pending_reason !== undefined
-					? params.vector_pending_reason
-					: prev.vector_pending_reason,
-			functional_tags_status:
-				params.functional_tags_status !== undefined
-					? params.functional_tags_status
-					: prev.functional_tags_status,
-		};
-		return JSON.stringify(next);
-	}
-
-	/**
-	 * Merges index-time extras (tiered summaries) into the document row without dropping other attrs.
-	 */
-	async mergeIndexedSummaryFields(
-		docId: string,
-		patch: {
-			summary?: string | null;
-			full_summary?: string | null;
-			hub_tier?: string | null;
-			summary_generated_at?: number | null;
-			heading_skeleton?: string | null;
-		},
-	): Promise<void> {
-		const row = await this.db
-			.selectFrom('mobius_node')
-			.selectAll()
-			.where('node_id', '=', docId)
-			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
-			.executeTakeFirst();
-		if (!row) return;
-
-		const attrs = this.buildDocumentAttributesJson({
-			existingJson: row.attributes_json,
-			full_summary: patch.full_summary,
-			hub_tier: patch.hub_tier,
-			summary_generated_at: patch.summary_generated_at,
-			heading_skeleton: patch.heading_skeleton,
-		});
-
-		await this.db
-			.updateTable('mobius_node')
-			.set({
-				summary: patch.summary !== undefined ? patch.summary : row.summary,
-				attributes_json: attrs,
-				updated_at: Date.now(),
-			})
-			.where('node_id', '=', docId)
-			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
-			.execute();
+		const patch: Partial<DocAttrsJson> = {};
+		for (const key of Object.keys(params) as Array<keyof DocAttrsJson>) {
+			if (key === ('existingJson' as any)) continue;
+			if (params[key] !== undefined) (patch as any)[key] = params[key];
+		}
+		return JSON.stringify({ ...prev, ...patch });
 	}
 
 	/** Build {@link IndexedDocumentRecord} from a document `mobius_node` row. */
@@ -322,15 +222,6 @@ export class IndexedDocumentRepo {
 			.where('node_id', '=', id)
 			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
 			.execute();
-	}
-
-	async updateByPath(
-		path: string,
-		updates: Partial<Omit<IndexedDocumentRecord, 'id' | 'path' | 'created_at'>>,
-	): Promise<void> {
-		const row = await this.docNodeQuery().select('node_id').where('path', '=', path).executeTakeFirst();
-		if (!row) return;
-		await this.updateById(row.node_id, updates);
 	}
 
 	async upsert(doc: Partial<IndexedDocumentRecord> & { path: string; mobiusGraphNodeType?: GraphNodeType }): Promise<void> {
@@ -506,17 +397,6 @@ export class IndexedDocumentRepo {
 		return Number(row?.cnt ?? 0);
 	}
 
-	async countByFolderPath(folderPath: string): Promise<number> {
-		if (folderPath === '') return 0;
-		const row = await this.docNodeQuery()
-			.select(({ fn }) => fn.count<number>('node_id').as('cnt'))
-			.where((eb) =>
-				eb.or([eb('path', 'like', `${folderPath}/%`), eb('path', '=', folderPath)]),
-			)
-			.executeTakeFirst();
-		return Number(row?.cnt ?? 0);
-	}
-
 	async getIdsByPathPrefixes(prefixes: string[]): Promise<{ id: string; path: string }[]> {
 		if (!prefixes.length) return [];
 		const rows = await this.docNodeQuery()
@@ -544,11 +424,6 @@ export class IndexedDocumentRepo {
 			.where('node_id', 'in', ids)
 			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
 			.execute();
-		return rows.map((r) => this.rowToIndexedDocument(r)).filter((m): m is IndexedDocumentRecord => m != null);
-	}
-
-	async getByContentHash(contentHash: string): Promise<IndexedDocumentRecord[]> {
-		const rows = await this.docNodeQuery().selectAll().where('content_hash', '=', contentHash).execute();
 		return rows.map((r) => this.rowToIndexedDocument(r)).filter((m): m is IndexedDocumentRecord => m != null);
 	}
 

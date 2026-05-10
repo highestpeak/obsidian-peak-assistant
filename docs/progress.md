@@ -30,118 +30,60 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | S. UI 稳定性批量修复 | 15 个 RC 全量修复：错误处理/Chat UI/AI 列表/Copilot/Settings/Profile-Model/Quick Actions | 完成 (7 waves, 9 commits) |
 | T. Vercel AI SDK 恢复 | 双轨 dispatch + Chat role + 模型路由修复 + 白闪修复 + typewriter 流式 | 完成 (12 commits) |
 | U. Chat UI v9 + 智能功能 | Message UI 重构 + 换模型重新输出 + Topic 聚合 + Suggested Follow-ups + Outline 修复 + bug fixes | 完成 |
-| W. Copilot 扩展 | 5→15 actions，注册表架构，分组 UI + 上下文推荐，Document/Vault/Writing 三类 | 进行中 |
+| W. Copilot 扩展 | 5→15 actions，注册表架构，分组 UI + 上下文推荐，Document/Vault/Writing 三类 | 完成 |
 | X. Model Selection 统一 | Provider 卡片简化 + Agent Fast pill + Ollama 动态模型 + baseUrl 修复 | 完成 |
+| X2. Provider Settings Polish | Pill 搜索面板 + AddProfileGrid 去重 + 凭证显示修复 + authToken fallback | 完成 |
+| X3. Profile authToken 清理 | 删除 authToken 字段 + 统一 apiKey + 迁移 legacy data + OpenRouter baseUrl 修复 | 完成 |
 | Y. Token Usage Dashboard | 全站 AI 调用追踪 + SQLite 持久化 + 统计面板（KPI/趋势/分布/明细） | 完成 |
+| Z. Mockup Gap 补全 | @菜单面包屑/分组/元数据、/菜单模板分组、工具栏响应式、智能建议、Diff高亮、变量高亮 | 完成 (8 commits) |
+| AA. 代码库精简 | 71.2k→66.7k (-4,485行): 死代码删除 + 算法简化 + 架构重构 + 冗余压缩 | 完成 (24 commits) |
+| AB. Search Pipeline Upgrade | QueryParser + 5 Retrievers + adaptive RRF + HighlightEngine + stemming + fuzzy + click-through | 完成 (19 tasks, 19 commits) |
+| AC. Onboarding Index Config | 4步Onboarding + 三档索引(fast/semantic/full) + Settings面板 + 智能升级提示 | 完成 (7 tasks, 7 commits) |
+| AD. P0-P1 批量执行 | authToken 清理 + Plan 模式移除 + Usage Dashboard 恢复 + 动态能力感知 | 完成 (4 commits) |
+| AE. Copilot Agent Loop | 4 action (suggest-links/knowledge-gaps/synthesize-topic/add-evidence) 升级为 agent loop + 步骤展示 UI | 完成 (9 commits, 13 files, +832 lines) |
+| AF. Inspector Tools Overhaul | Schema 重设计 + find-path 拆分(1→5 文件) + 类型化 params + forceFormat + 描述重写 | 完成 (12 tasks, 12 commits) |
+| AG. Report UI Polish | V2InlinePlanReview sticky footer（flex 布局） | 完成 (1 commit) |
+| S1. Ambient Push Phase 1 | FTS5 pipeline + 模板解释 + 侧边栏面板 + SQLite 日志 + 状态栏 | 完成 (10 tasks) |
+| S1. Ambient Push Phase 2 | 图谱 2-hop 扩展 + shared_tag/graph_neighbor/co_citation/hub_member 信号 + 反馈学习 | 完成 (7 tasks, 7 commits) |
+| S1. Ambient Push Phase 3 | Serendipity Engine: CM6 gutter + 偶然发现算法 + LLM 微解释 + 跨会话模式学习 | 完成 (10 tasks, 8 commits) |
+| S1. Ambient Push 可见性 | 首次启动自动打开右侧栏 + 布局切换不覆盖 AmbientPush tab | 完成 |
+| AH. Provider MCP Phase 1-3 | Model Registry JSON 化 + 自定义 OpenAI 兼容端点 + MCP Client (stdio/SSE) + Settings UI | 完成 (12 tasks, 12 commits) |
+| AI. MCP Spike | @modelcontextprotocol/sdk 可行性验证 — GO (所有 transport 可用, +450KB) | 完成 |
 
 ## Next
 
-### 0. 已知 Bug
+### 0. 已知 Bug — 全部已修复
 
-- [x] ~~**P0 稳定性：AI 分析流式传输 renderer 崩溃**~~ — 已修复（Phase R）
-- [x] ~~**P0**：`mySessionId is not defined`~~ — 已修复（7389135: `let` 移到 `try` 外）
-- [x] ~~**P1**：Onboarding 按钮颜色偏暗~~ — 已修复（`background` 已改为 `var(--background-primary)`）
-- [x] ~~**P1**：AI Analysis mode dropdown "Vault Analysis" 图标缺失~~ — 已修复（Brain → Library）
-- [x] ~~**P2**：PatternDiscovery 无有效 profile 时仍可能启动~~ — 已修复（`onAnalysisComplete()` 已有 profile 检查）
-- [x] ~~**P0**：collectJson 无错误检测 → 401 auth 错误显示为 "Unexpected token 'I'"~~ — 已修复（Phase S Wave A: typed error classes + collectText/Json 加固）
-- [x] ~~**P0**：AI Analysis 865 条全量加载 → 白屏崩溃~~ — 已修复（Phase S Wave C: 搜索过滤 + 懒加载 + content-visibility）
-- [x] ~~**P1**：VaultSearchAgent max turns → "Oops!" 错误~~ — 已修复（Phase S Wave A: MaxTurnsError graceful degradation）
-- [x] ~~**P1**：MessageStyleButtons 是 console.log 占位符~~ — 已修复（Phase S Wave B: 接线到 submitAction）
-- [x] ~~**P1**：错误消息显示 Regenerate + Style 按钮~~ — 已修复（Phase S Wave B: isErrorMessage 守卫）
-- [x] ~~**P1**：Chat 中 AI Analysis 不渲染 Markdown~~ — 已修复（Phase S Wave B: isMarkdownContent + StreamdownIsolated）
-- [x] ~~**P1**：Tag Suggestion 幽灵命令（schema 断线）~~ — 已修固（Phase S Wave D: schema + command + modal route）
-- [x] ~~**P1**：Copilot 缺专属入口 Modal~~ — 已修复（Phase S Wave D: CopilotPickerModal）
-- [x] ~~**P1**：Model 选择无 Auto 默认~~ — 已修复（Phase S Wave F: auto-select from active profile）
-- [x] ~~**P1**：Recent AI Analysis 无搜索过滤~~ — 已修复（Phase S Wave C: typing filters, Enter analyzes）
-- [x] ~~**P1**：Quick action 按钮是空占位符~~ — 已修复（Phase S Wave G: 接线到 submitAction）
-- [x] ~~**P2**：CodeMirrorInput .select() TypeError~~ — 已修复（Phase S Wave E: forwardRef 类型补全 + ?.）
-- [x] ~~**P2**：Profile-Role-Model 绑定过简（toggle-only）~~ — 已修复（Phase S Wave F: RoleConfig + per-role model dropdown）
-- [x] ~~**P2**：Local Chromium 功能 0% 但 UI 存在~~ — 已修复（Phase S Wave E: 移除选项）
+18 个 P0-P2 bug 全部修复（Phase R/S/AC），包括流式崩溃、auth 错误处理、白屏、幽灵命令等。
 
-### 0.5 待修 Bug / UI 调整
+### 0.5 UI 调整 — 全部已完成
 
-- [x] ~~**Chat Outline**: 去掉消息区域内的 OUTLINE 面板~~ — 已删除（ConversationOutline.tsx + toggle button + store state）
-- [x] ~~**换模型重新输出**: 每条 AI 消息可选择不同模型重新生成~~ — 已实现（split button: regenerate + chevron model picker, 新回复 append 至会话末尾）
-- [x] ~~**Settings hover 效果验证**~~ — 基础设施已确认正确（pktw-root + CSS vars + Tailwind 3.4 color-mix），需真机视觉验证
-- [x] ~~**Message UI v9 Redesign**~~ — 去掉 PEAK/You 标签 + 用户头像，provider icon 与内容同行，非最后消息 footer(metadata+actions+followups) 隐藏 hover 显示，reasoning 默认折叠，SuggestedFollowups 所有消息可见
-- [x] ~~**Conversation Outline padding**~~ — 右侧/底部溢出修复
-- [x] ~~**Topic 自动聚合**~~ — LLM 驱动话题分组（TopicAggregationService + SQLite topic 列 + prompt 模板），6条未分组消息触发
-- [x] ~~**Suggested Follow-ups**~~ — 每条 AI 消息下方 LLM 生成后续问题建议
-- [x] ~~**Home Recent Conv 空白**~~ — handleConversationClick 未触发 readConversation，加 notifySelectionChange
-- [x] ~~**Model picker 被裁切**~~ — popover 从 absolute 改 fixed 定位，z-9999 逃逸 overflow-hidden
-- [x] ~~**Reasoning 文字过深**~~ — text-xs + opacity-60 + text-muted-foreground
-- [x] ~~**最后消息 action 按钮隐藏**~~ — isLastMessage 时跳过 hoverFade
+11 项 UI 调整全部完成，包括 Chat Outline 移除、换模型重输出、Message UI v9、Topic 聚合、Follow-ups 等。
 
 ### 1. 真机验证
 
-#### Phase W Copilot Smoke Test
+> 所有测试清单统一维护在 `docs/manual-testing-checklist.md`，此处只记录验证状态。
 
-**Picker 面板基础**
-- [ ] Cmd+Shift+P → "Open Copilot Panel" → 面板弹出
-- [ ] 验证 3 个分组标题显示（Document 蓝 / Vault 紫 / Writing 绿）
-- [ ] 验证 15 个 action 全部显示，图标 + 标签 + 描述
-- [ ] 键盘导航（↑↓←→）跨分组正常
-- [ ] Enter 触发选中 action
-- [ ] 无文件打开时显示 "Open a document first"
-
-**上下文推荐 (★ 标记)**
-- [ ] 打开一个无 tag 的文档 → Suggest Tags 应有 ★
-- [ ] 打开一个 >2000 词的文档 → Suggest Split 应有 ★
-- [ ] 打开一个 orphan 文档（无 backlink）→ Find Related 应有 ★
-- [ ] 选中文本后打开 Copilot → Rewrite Selection 应有 ★
-
-**现有 5 功能回归**
-- [ ] Suggest Tags → 结果面板正常（验证 TagSuggestionEngine 多信号融合是否工作）
-- [ ] Suggest Links → 链接建议列表 + 勾选 + 插入
-- [ ] Suggest Split → 拆分预览 + 执行（需 >500 词文档）
-- [ ] Review Article → 分级反馈 + Fix 子流程
-- [ ] Polish Document → 流式输出 + Apply
-
-**新 Document 功能**
-- [ ] Summarize → 流式输出 + Copy + Insert at Top（检查 callout 格式）
-- [ ] Extract Concepts → 概念卡片 + 勾选 + Create Notes（检查新建文件内容）
-- [ ] Translate → 流式输出 + 前后对比 + Apply（检查自动语言检测方向）
-
-**新 Vault 功能**
-- [ ] Find Related → 相似笔记列表 + 相似度 % + 点击跳转（无 LLM 调用，应很快）
-- [ ] Knowledge Gaps → 知识空白列表 + 优先级 + Create 按钮
-- [ ] Synthesize Topic → "Searching..." 进度 → 流式综合文章 + 源文件列表 + Create
-- [ ] Vault Health → 扫描进度 → 4 tab（Orphans/Duplicates/Stale/Tags）+ 点击跳转
-
-**新 Writing 功能**
-- [ ] Continue Writing → 流式续写 + Insert at End + Discard
-- [ ] Rewrite Selection → 选中文本必须，前后对比 + Apply（检查替换是否正确）
-- [ ] Add Evidence → "Searching..." → 证据卡片 + 来源链接 + Insert
-
-**边界情况**
-- [ ] guard 拦截：空文档 → Summarize/Continue 应弹 Notice
-- [ ] guard 拦截：未选中文本 → Rewrite Selection 应弹 Notice
-- [ ] guard 拦截：<500 词文档 → Suggest Split 应弹 Notice
-- [ ] 错误处理：无有效 API key → 错误面板 + Open Settings 按钮
-
-#### 历史验证（仍需）
-- [ ] Phase S 验证：15 个 RC 全量测试
-- [ ] Chat 全流程：Onboarding → 配置 Profile → 新建会话 → 发消息 → 收到回复 → 切换模型
-- [ ] Provider v2 全流程：Profile CRUD → Set Active → Chat/Search/Agent 全部走 Agent SDK
-- [ ] AI Analysis 全流程：查询 → Plan → Report → Graph → 后台 Session → Restore
-- [ ] Onboarding Wizard：首次无 profile 自动弹出 → 配置 → 测试连接 → SQLite 初始化
+- [ ] Phase AE (Copilot Agent Loop) — checklist §15
+- [ ] Phase W (Copilot 15 actions) — checklist §14
+- [ ] Chat 工具基础设施 — checklist (待迁移)
+- [ ] 历史回归（Phase S / Provider v2 / AI Analysis / Onboarding）— checklist §1-13
 
 ### 2. 竞品差异化功能（核心产品方向）
 
 > 目标定位："Obsidian-native ambient knowledge graph intelligence"
-> 三根支柱：Ambient Push + Vault Lint + 级联更新 — 目前 0% 进度
+> 三根支柱：Ambient Push + Vault Lint + 级联更新
 > 研究来源：`kb2-learn-prd/.../AI-peakAssistant-竞品分析与学术验证.md` + `AI-peakAssistant-差异化定位与护城河分析-2026-04.md`
 
-#### S1. Ambient Push — 写作时主动推送相关内容 + 解释原因 ★★★★★
+#### S1. Ambient Push — 写作时主动推送相关内容 + 解释原因 ★★★★★ — Phase 1-3 完成
 
-- 优先级：最高（与 Smart Connections 的关键差异点）
-- 学术支撑：Koskela 2018 (ACM TiiS) 主动信息检索 + Brain Cache (CHI 2025) 三层认知外骨骼
-- 现有基础：vault event listener + maintenance debt 系统（但从不触发主动推送）
-- 需要产出：
-  - [ ] **Spec**：事件触发模型 + 上下文提取 + 相关内容检索 + 推送 UI + 解释生成
-  - [ ] **Plan**：实现任务拆分
-  - [ ] **Mockup**：推送面板 / sidebar 设计
-  - [ ] **实现**
+- Phase 1 (Core Pipeline): FTS5 搜索 + 模板解释 + 侧边栏面板 + SQLite 日志 ✅
+- Phase 2 (Graph Intelligence): 2-hop 图谱扩展 + 4 种信号 + 反馈学习 ✅
+- Phase 3 (Serendipity Engine): CM6 gutter 提示 + 偶然发现算法 + LLM 微解释 + 模式学习 ✅
+- Phase 4 (Morning Briefing): 启动时每日简报 — **待实现**
+- 可见性修复: 首次自动打开右侧栏 + 布局切换保留 tab ✅
+- Spec: `docs/superpowers/specs/2026-05-01-ambient-push-design.md`
+- Plans: `docs/superpowers/plans/2026-05-01-ambient-push-phase1.md`, `2026-05-10-*-phase2/3.md`
 
 #### S2. Vault Lint / Health Check — 知识库健康体检 ★★★★★
 
@@ -206,14 +148,15 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ### 3. 未实现的 Spec/Plan（已有文档但未执行）
 
-| 文档 | 内容 | 规模 | Spec |
+| 文档 | 内容 | 规模 | 状态 |
 |------|------|------|------|
-| `provider-mcp-skills-design` | MCP Client（MCPClientManager, stdio/HTTP）+ Skill 系统（markdown 定义 + 在线商店）+ Usage Dashboard + Model Registry 同步 | 大 | `specs/2026-04-10` |
-| `search-inspector-tools-overhaul` | 11 个 Inspector 工具重构：消除 MarkdownOnly → `forceFormat`、find-path 拆分策略模式、类型化 `params: any`、bug 修复 | 大 | `specs/2026-04-10` |
+| ~~`provider-mcp-skills-design`~~ Phase 1-3 | ~~MCP Client + Model Registry + Custom Endpoints~~ | ~~大~~ | COMPLETED (Session 26) |
+| `provider-mcp-skills-design` Phase 4-5 | Skill 系统（markdown 定义 + 执行器）+ Usage Dashboard 同步 | 中 | **待实现** |
+| ~~`search-inspector-tools-overhaul`~~ | ~~Inspector 工具重构~~ | ~~大~~ | COMPLETED (Session 26) |
 | ~~`graph-layout-fix`~~ | ~~5 个图布局修复~~ | ~~中~~ | COMPLETED |
-| `v2-persistence-fix` | 5 个 V2 持久化 bug：v2FullyDone 守卫、graph store 错配、restore 数据丢失 | 中 | `plans/2026-04-18` |
-| `report-ui-quality` Task 3-4 | 粘性 V2PlanReview footer + 内联 plan 编辑（onUpdate） | 小 | `plans/2026-04-14` |
-| `ai-analysis-ux-overhaul` Phase ③ | SynthesizeAgent + 多轮 round 分离 UI | 中 | `plans/2026-04-17` |
+| ~~`v2-persistence-fix`~~ | ~~5 个 V2 持久化 bug~~ | ~~中~~ | COMPLETED (已在之前 session 修复) |
+| ~~`report-ui-quality` Task 3-4~~ | ~~粘性 footer + 内联编辑~~ | ~~小~~ | COMPLETED (Session 26) |
+| ~~`ai-analysis-ux-overhaul` Phase ③~~ | ~~SynthesizeAgent + 多轮 round 分离 UI~~ | ~~中~~ | COMPLETED |
 
 ### 3. TASKS.md 按阶段待做
 
@@ -286,6 +229,208 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-10 (Session 26) — Wave 1+2 并行执行（Ambient Push + Inspector + MCP + Report UI）
+
+- Done: **并行执行框架** — `docs/parallel-execution-plan.md`，4 wave 编排，worktree 隔离
+- Done: **Wave 1（5 条线并行）**
+  - **Line A — Inspector Tools Overhaul** (12 tasks, 12 commits)
+    - Schema 重设计：`BaseLimit.limit` 语义统一、`findPathInputSchema` strategy enum、`SemanticFilter.topK` max 30
+    - `find-path.ts` 2032 行拆为 5 文件（scorer/reliable/fast-track/brainstorm/index），删除 temporal 策略
+    - `makeTool` 工厂 + `forceFormat` 选项，消除 3 个 MarkdownOnly 变体
+    - 11 个工具描述重写（When to use / Avoid when 格式）
+    - 7 个实现文件从 `params: any` → Zod 推断类型
+    - Recon system prompt 加工具选择指南
+    - `search_by_dimensions` 结构化诊断输出、`find_orphans` 双重过滤 bug 修复
+  - **Line B — V2 Persistence Bug Fix**: 5 个 bug 全部已在之前 session 修复
+  - **Line C — Report UI**: V2InlinePlanReview sticky footer（flex 布局），Task 4 inline edit 已实现
+  - **Line D — Ambient Push Phase 2** (7 tasks, 7 commits)
+    - 图谱 2-hop 扩展 via `GraphRepo.getRelatedFilePaths()`
+    - 4 种新信号：shared_tag、graph_neighbor、co_citation、hub_member
+    - 反馈学习：opened/linked +0.1(cap +0.3)、ignored -0.05(cap -0.15)、dismissed 抑制 7 天
+    - `getPositivePairs()`/`getIgnoredPenalties()` 聚合查询
+  - **Line E — MCP Spike**: **GO** — `@modelcontextprotocol/sdk` 全 transport 可用，+450KB bundle
+- Done: **Ambient Push 可见性修复**
+  - `main.ts` onLayoutReady 首次自动打开右侧栏
+  - `ViewSwitchConsistentHandler` Chat/Doc 布局切换不覆盖 AmbientPush tab
+- Done: **Wave 2（3 条线并行）**
+  - **Line F — AI UX Phase 3**: 17/17 tasks 全部已实现，`progress.md` 更新标记 COMPLETED
+  - **Line D — Ambient Push Phase 3** (10 tasks, 8 commits)
+    - `SerendipitySearcher`: 2-hop 邻居 + 最大 embedding 距离算法
+    - `SerendipityGutterPlugin`: CM6 ViewPlugin，光标行 `?` 图标 + hover tooltip + click 打开
+    - `RelevanceExplainer`: LLM Tier 2 微解释（fire-and-forget，rate-limited 2min）
+    - `PatternLearner`: 跨会话 recurring pairs 缓存（10min 刷新，0-0.4 boost）
+    - `PushCard` LLM 标记（Sparkles icon）
+  - **Line E — Provider MCP Phase 1-3** (12 tasks, 12 commits)
+    - Phase 1: 4 个 provider JSON + TemplateManager 运行时加载 + `ModelRegistry.loadFromTemplateManager()`
+    - Phase 2: `OpenAICompatibleEndpoint` + 模型自动发现 + preset（LM Studio/LiteLLM/vLLM）+ Settings UI
+    - Phase 3: `MCPClientManager`（stdio + SSE）+ `MCPToolAdapter`（JSON Schema→Zod）+ MCP Settings tab + 3 agent 集成
+- Plans written: `inspector-tools-overhaul`, `ambient-push-phase2/3`, `provider-mcp-phase1-3`, `parallel-execution-plan`
+- Spike report: `docs/superpowers/specs/2026-05-10-mcp-spike-report.md`
+- Build 通过，ambient-push tests 通过
+- Next: Wave 3 — Ambient Push Phase 4 (Morning Briefing) + Provider MCP Phase 4-5 (Skill System)
+
+### 2026-05-10 (Session 25) — OpenRouter Stall Timeout + UI 小修
+- Done: **OpenRouter PROCESSING 卡住修复**
+  - 根因：OpenRouter 排队时发送 `: OPENROUTER PROCESSING` SSE 心跳，`eventsource-parser` 静默消费不产生 data event，`for-await` 无限挂起
+  - `vercel-adapter.ts`：stall timeout（30s 无 chunk → abort）+ total timeout（5min → abort），接入已有但未使用的 `timeoutStepMs`/`timeoutTotalMs` 设置
+  - `provider-factory.ts`：OpenRouter 加 `HTTP-Referer` + `X-Title` headers 提高路由优先级
+  - `CopilotResultModal.tsx`：LOADING_STEPS 精简（移除 60s 无效提示，25s 提示 provider 排队），Back 按钮 `<button>` → `<Button>`
+  - 用户取消时静默结束 generator（不再 yield error）
+- Done: **UI 小修**
+  - `MessageViewItem.tsx`：Style chips 最后一条消息始终可见，其余 hover 显示
+  - `PromptItem.tsx`：所有 item 统一 hover 背景，非成对 item 加 cursor-pointer
+- Build 通过
+- Next: 真机验证 stall timeout 效果
+
+### 2026-05-09 (Session 24) — Copilot Token 显示 + 请求取消
+- Done: **Token Usage Display**
+  - `ActionUsage` 接口 + `usage?` 字段加到 `ActionResult` 三种变体
+  - `queryTextStream` 的 `done` 事件携带 `usage`；`queryStructured` 加 `usageCallback` opts
+  - `toActionUsage()` 转换 helper，10 个 LLM action 全部捕获并返回 usage
+  - `UsageFooter` 组件：result 阶段底部 "X in + Y out tokens"
+- Done: **Request Cancellation**
+  - `CopilotAction.execute` 签名加 `signal?: AbortSignal`，15 个 action 全部透传
+  - `CopilotResultModal.onOpen()` 创建 `AbortController`
+  - Loading 阶段 Cancel 按钮（X 图标），点击 abort + 显示 `CancelledView`
+  - `CancelledView`：Ban 图标 + "Cancelled" + "Back to Copilot" 按钮
+  - Back 按钮 / modal close 同步 abort
+  - catch 中判断 `signal.aborted` → 显示 cancelled 而非 error
+- Files: CopilotActionRegistry.ts, service-manager.ts, actions/index.ts, CopilotResultModal.tsx
+- Build + tests 通过
+- Next: 15 个 action smoke test + Suggest Links 本地化（可选）
+
+### 2026-05-09 (Session 23) — Bug 修复 + 清理
+- Done: **移除独立 Copilot 命令**
+  - 删除 `copilot-commands.ts`，移除 `Register.ts` 中 `buildCopilotCommands()` 调用
+  - 命令面板只保留 "Open Copilot Panel"（Picker Modal），不再注册 15 个独立 action 命令
+- Done: **OpenRouter 404 修复** — `baseUrl` 缺少 `/v1` 后缀
+  - 根因：`presets.ts` / `materialize.ts` / `sdkProfile.ts` 硬编码 `https://openrouter.ai/api`，覆盖了 `@openrouter/ai-sdk-provider` 库的正确默认值 `https://openrouter.ai/api/v1`
+  - 修复 3 个源文件 + `provider-factory.ts` 加运行时兼容（已保存的旧 profile URL 以 `/api` 结尾自动补 `/v1`）
+  - 测试文件同步更新，全部通过
+- Done: **SuggestedFollowups 级联 LLM 调用修复**
+  - 根因：`SuggestedFollowups` 在所有 assistant 消息上渲染（CSS 隐藏 ≠ 不执行 useEffect），切换对话时 N 个 assistant 消息 = N 个并发 LLM 请求
+  - 修复：`MessageViewItem.tsx` 加 `isLastMessage` 条件，只在最后一条消息渲染 `SuggestedFollowups`
+- Build + tests 通过
+- Next: 重载插件验证 OpenRouter 连接 + chat 无级联报错
+
+### 2026-05-09 (Session 22) — Profile authToken 清理
+- Done: **Phase X3 — Profile authToken 清理**
+  - **根因调查**：PatternDiscovery 启动 401 错误 → Agent config 指向 "Migrated OpenRouter" profile（baseUrl 空 → OpenRouter token 发到 Anthropic API）；Copilot TagSuggestion 报 "OpenRouter API key missing" → Copilot config 指向无 key 的空 OpenRouter profile
+  - **数据清理**：合并两个 OpenRouter profile（Migrated authToken → OpenRouter apiKey），删除 Migrated OpenRouter，重新绑定 4 个 slot
+  - **authToken 字段删除**：Profile 接口移除 `authToken`，所有 provider 统一用 `apiKey`
+  - **代码清理**（10 个文件）：
+    - `types.ts` 移除字段、`presets.ts` 8 个工厂方法清理
+    - `materialize.ts` 简化：Anthropic → `ANTHROPIC_API_KEY`，OpenRouter → `apiKey` 映射到 `ANTHROPIC_AUTH_TOKEN`（CLI 要求 Bearer）
+    - `provider-factory.ts` / `testProviderConnection.ts` 直接用 `apiKey`
+    - `ProfileCard.tsx` 移除 "auth token set" 显示
+    - `sdkProfile.ts` 移除 `authToken` + 统一 OpenRouter fallback 用 `apiKey`
+    - `PluginSettingsLoader.ts` 加 legacy 迁移：旧 `authToken` → `apiKey`
+  - **OpenRouter baseUrl 修复**：空 baseUrl fallback 到 `https://openrouter.ai/api/v1`（`materialize.ts` + `provider-factory.ts`）
+  - **测试更新**：3 个测试文件同步更新（profile-registry、sdk-profile、embed-client），全部通过
+  - Build 通过
+- Next: 重载插件验证无启动错误
+
+### 2026-05-09 (Session 21) — Search Pipeline Upgrade + Onboarding Index Config
+- Done: **Phase AC — Onboarding Index Configuration** (7 tasks, 7 commits on `feat/onboarding-index-config`, merged to master)
+  - **Onboarding 4步流程**：Welcome → Provider → **Index Config** → System Check+Indexing
+  - **三档索引选择**：Quick Index (FTS only, ~30s) / +Semantic Search (+embedding, ~5min) / +Smart Enrichment (+LLM, ~30min)
+  - **Smart Provider Defaults**：OpenAI→自动选semantic+预填embedding、Ollama→fast+hint、Anthropic→fast+警告(无embedding API)
+  - **Inline Embedding Config**：endpoint/model/apiKey 直接在 onboarding 里配置 + Test Connection
+  - **IndexProgressDisplay**：进度条 + 步骤标签 + 文件计数
+  - **IndexErrorDialog**：embedding/LLM 失败时 Continue/Retry/Cancel 三选一
+  - **IndexInitializer 升级**：`performStagedFullIndexing(level)` 按档位跳过 embedding/LLM 步骤 + error callback
+  - **Settings SearchIndexSection**：索引级别下拉 + 文件统计 + Rebuild Index 按钮
+  - **SearchUpgradePrompt**：搜索 ≥10 次且无 semantic search 时，结果底部淡色提示 → Settings（7天冷却）
+  - **Settings 迁移**：已有 embedding 配置的老用户自动升级为 `semantic`
+- Spec: `docs/superpowers/specs/2026-05-09-onboarding-index-config-design.md`
+- Plan: `docs/superpowers/plans/2026-05-09-onboarding-index-config.md`
+
+### 2026-05-09 (Session 21) — Search Pipeline Upgrade
+- Done: **Phase AB — Vault Search Pipeline Upgrade** (19 tasks, 19 commits on `feat/search-pipeline-upgrade`, merged to master)
+  - **架构重构**：硬编码三路搜索 → 可组合 Query Pipeline（QueryParser → 5 Retrievers → adaptive RRF Merger → Ranker → HighlightEngine）
+  - **关键 Bug 修复**：BM25 分数被 `Math.max(0, negative)` 清零 → batch 归一化恢复 TF-IDF 信号
+  - **QueryParser**：`"短语"` 精确匹配、`-排除` 否定搜索、`tag:` / `ext:` 过滤、auto prefix 匹配
+  - **5 路 Retriever 注册表**：FTS (BM25 fix + chunk decay)、FTS-Stem (Porter Stemmer 词干匹配)、Vector (KNN)、Meta (title/path/tags)、Fuzzy (Levenshtein ≤2 错字修正)
+  - **自适应 RRF 融合**：query-dependent 权重（短语→压低语义、长查询→拉高语义、CJK→跳过 stem）
+  - **Per-document Chunk Decay**：指数衰减（decay=0.5），防长文档碾压短文档
+  - **Click-through 学习**：search_click 表记录用户点击，stemmed query key 泛化，+0.15 ranking boost
+  - **HighlightEngine 统一**：原始文本 snippet（非 FTS 归一化文本）、exact/stem/fuzzy 三色高亮、双因子窗口选择（diversity×2 + density）
+  - **Ranker 微调**：recency 衰减 30d→40d、frequency 0.15→0.10、新增 exclude post-filter
+  - **Debounce 优化**：vault 500ms→200ms、in-file 300ms→150ms、go-to-line 500ms→100ms
+  - **UI**：统一 `renderHighlightSpans` 渲染器、fuzzy correction banner、`?` 帮助增加查询语法文档
+  - **Cleanup**：删除 `highlight-builder.ts`、删除 6 个过时 RRF/scoring 常量、queryService.ts -517 行
+- Spec: `docs/superpowers/specs/2026-05-09-vault-search-pipeline-upgrade-design.md`
+- Plan: `docs/superpowers/plans/2026-05-09-vault-search-pipeline-upgrade.md`
+- Next: 真机验证搜索效果 + Onboarding 流程验证 + Phase W Copilot smoke test
+
+### 2026-05-08~09 (Session 17+20) — Codebase Deep Refactor
+- Done: **100,002 → 71,582 code lines (-28,420 = -28.4%)**, 40 commits on `refactor/codebase-50k-target`
+- Hub 系统完整删除 (-6,750), D3 graph-viz → ReactFlow (-6,373), Wave 0 dead code (-5,448)
+- Wave 2 store migration (-630), 结构分析管线删除 (-920), 遥测系统删除 (-1,009)
+- Service 简化 (-2,800), Loader 基类提取 (-911), Feature 删除 (-2,600)
+- 死 UI 组件 (-830), console strip (-234), dead exports/files/stubs (-315)
+- Next: UI 组件精简, MobiusNodeRepo 瘦身, service/chat 合并 (target 50k)
+
+### 2026-05-09 (Session 21) — Codebase Deep Refactor Phase 2
+- Done: **71,227 → 66,742 code lines (-4,485 = -6.3%)**, 25 commits on `refactor/codebase-50k-target`
+- 死代码删除 (-800): hub SQL/NativeModule tryCompile/BetterSqlite require.cache/dead files/dead props/PromptId/MobiusEdgeRepo 9 methods
+- 算法简化 (-1,200): find-path.ts A*→min-heap+BFS合并(1514→986), buildBackboneMap tag-ranking折叠+DFS合并(1519→1208)
+- 架构重构 (-1,000): 14 copilot actions→factory(787→377), service-manager 18 wrappers→getter, IndexService 3 classes→1
+- 冗余压缩 (-750): tools 8文件简化(-710), search infra 去重(indexInitializer/semanticEdges/SqliteStoreManager/highlight-builder/progress-tracker, -1099)
+- 注释/类型精简 (-700): document/types.ts(325→109), settings/types.ts(468→242), analysis-markdown parser+builder
+- V1退役: SectionExtraChatModal(-450), V1 topic/interaction stores, followupContextRuntime V1 paths
+- 代码量评估: 66.7k 对功能体量(Chat+RAG搜索+Agent工具链+向量索引+Graph分析+多Provider+Copilot)合理，各模块量级均衡
+- 可继续方向: quick-search store/hooks层(偏复杂), sqlite repo层(偏冗余), 但不急
+
+### 2026-05-09 (Session 19) — Provider Settings Polish
+- Done: **Phase X2 — Provider Settings Polish** (7 commits)
+  - **Pill 搜索面板**：`RoleModelPicker` 组件，Command Palette 风格浮动面板，实时搜索 + 键盘导航 + CapTags（reason/vision/search/上下文窗口）+ 按 profile 分组
+  - **共享 utils 提取**：`model-display-utils.tsx` 提取 `CapTags`/`highlightMatch`/`formatCtx`，`ModelCombobox` 和 `RoleModelPicker` 共用
+  - **StatusBar 重写**：`RoleSelectorChip` 从平铺下拉改为 `RoleModelPicker` 弹出面板，删除冗余的 `PROVIDER_CATALOG`/`getModelsForProfile`
+  - **AddProfileGrid 去重**：已配置的 provider 默认隐藏，底部 "Add another instance of existing provider" 链接可展示全部
+  - **凭证状态修复**：`ProfileCard` subtitle 区分显示 — Ollama "no key needed"、有 authToken "auth token set"、有 apiKey "API key set"
+  - **连接测试修复**：`testProviderConnection.ts` Bearer token 优先使用 `authToken`，修复 OpenRouter 认证
+- Spec: `docs/superpowers/specs/2026-05-09-provider-settings-polish-design.md`
+- Plan: `docs/superpowers/plans/2026-05-09-provider-settings-polish.md`
+- Next: 真机验证 pill 搜索 + AddProfileGrid 去重效果
+
+### 2026-05-09 (Session 18) — Settings UI Redesign
+- Done: **Settings General & Search Tab UI Redesign**
+  - **设计决策**：现代卡片式 + General 不分组 + Search 轻量 section header + pill chips
+  - **新建 3 个共享组件**：`SettingCard`（统一卡片）、`SectionHeader`（轻量标题）、`DocTypePills`（flex-wrap 药丸标签替代 4 列 grid）
+  - **GeneralTab 重写**：去掉 3 个 CollapsibleSettingsSection，4 项设置平铺为卡片，DevTools 加 "Developer" badge，删除 Graph Visualization Tuning（5 个死滑块）
+  - **SearchTab 重写**：统一卡片样式，SectionHeading→SectionHeader（11px uppercase + icon），DocTypeGrid→DocTypePills
+  - **清理**：types.ts 删除 5 个死 graphViz 设置项（clusterForceStrength/nodeBaseRadiusPhysical/nodeBaseRadiusSemantic/nodeDegreeBoost/skeletonMinBranchNodes），删除 DocTypeGrid.tsx + CollapsibleSettingsSection.tsx
+  - Build 通过
+- Spec: `docs/superpowers/specs/2026-05-09-settings-general-search-ui-redesign.md`
+- Plan: `docs/superpowers/plans/2026-05-09-settings-general-search-ui-redesign.md`
+- Mockups: `.superpowers/brainstorm/21332-1778293900/content/`
+- Next: 真机验证两个 tab 的视觉效果 + 功能回归
+
+### 2026-05-08~09 (Session 17) — Codebase Deep Refactor
+- Done: **100,002 → 81,632 code lines (cloc TypeScript, -18,370 = -18.4%)**, 21 commits on `refactor/codebase-50k-target`
+- Wave 0 (dead code purge, -5,448): tmp_code_ref_for_cursor, src/desktop, index-debug-tools, dead hooks/utils/exports, 44 dead repo methods, dead templates
+- Wave 1 (D3→ReactFlow, -6,373): Delete entire graph-viz/ (46 files, 6,456 lines) + shim + preset, replace with 100-line ReactFlow SearchGraph
+- Wave 3 (hub/backbone consolidation): Inline 4 hub helpers into hubDiscover.ts, merge backbone 15→4 files
+- Wave 4 partial: merge duplicate agent SDK files, simplify find-path.ts/explore-folder.ts/inspectorService.ts, delete 5 dead inspector functions
+- Wave 5.3: Extract BaseDocumentLoader, simplify 10 loaders (-911 lines)
+- Feature deletions: usage-dashboard (init never called), vault-xray (isolated), 7 dead files
+- Cleanup: strip 234 console.log/debug, delete dead exports from constant/markdown-utils/PromptId/types
+- Plan: `docs/superpowers/plans/2026-05-08-codebase-deep-refactor.md`
+- Next: Wave 2 store migration (-5k), Wave 4/5/6 service+core+UI simplification (target 50k)
+
+### 2026-05-08 (Session 16)
+- Done: **Phase Z — Mockup Gap 补全** (8 commits)
+  - **审计**：对比 7 个 HTML mockup 与实际代码，识别出 9 个未实现设计项
+  - **NavigableMenuItem 类型扩展**：新增 `group` + `meta` 可选字段
+  - **@ 菜单改进**：文件夹面包屑导航（ChevronLeft + Backspace 快捷键）、"Recent" 分组标签、文件元数据 badge（PDF/DOCX/word count）
+  - **/ 菜单模板分组**：`item.group` 动态分组（替代硬编码 Quick Actions）、"Template" 紫色 badge、CopilotActionRegistry 15 个 action 自动接线到 / 菜单
+  - **输入工具栏响应式**：ResizeObserver 监测宽度，<400px 隐藏 TokenUsage + 截断模型名，<300px 隐藏 ModeSelector
+  - **智能建议 actions**：LLM 生成上下文感知建议（chat-suggest-actions prompt），失败时 fallback 到默认建议（Summarize/Search vault/Explain further）
+  - **Diff 高亮**：wordDiff.ts LCS 算法 + DiffView 组件（红色删除线/绿色高亮），PolishPanel 集成
+  - **变量高亮**：SuggestionGrid 卡片中引号包裹的动态变量黄色高亮（warning-muted CSS var）
+- Next: 真机验证各 mockup 功能视觉效果
 
 ### 2026-05-08 (Session 15)
 - Done: **Bug fix — Auto 模型选择不感知 chatMode**
@@ -695,7 +840,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | report-quality-overhaul | 04-15 | COMPLETED |
 | ai-graph-multi-lens | 04-15 | COMPLETED |
 | continue-analysis-process-view | 04-17 | COMPLETED |
-| ai-analysis-ux-overhaul | 04-17 | PARTIAL (Phase ①② done, Phase ③ SynthesizeAgent 缺失) |
+| ai-analysis-ux-overhaul | 04-17 | COMPLETED (all 6 phases, Phase ⑥ superseded by PatternDiscovery) |
 | ai-graph-agent | 04-18 | COMPLETED |
 | mobile-support | 04-18 | COMPLETED |
 | ui-improvements-all-strategies | 04-18 | COMPLETED |
@@ -715,6 +860,16 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | agent-trace-observability | 04-22 | COMPLETED |
 | graph-layout-fix | 05-01 | COMPLETED |
 | ui-stability-batch-fix | 05-03 | COMPLETED |
+| provider-settings-polish | 05-09 | COMPLETED |
+| ambient-push-phase1 | 05-01 | COMPLETED |
+| ambient-push-phase2 | 05-10 | COMPLETED |
+| ambient-push-phase3 | 05-10 | COMPLETED |
+| inspector-tools-overhaul | 05-10 | COMPLETED |
+| v2-persistence-fix | 04-18 | COMPLETED (verified already done) |
+| report-ui-quality | 05-10 | COMPLETED (Task 3 done, Task 4 already done) |
+| ai-analysis-ux-overhaul | 04-17 | COMPLETED (all 17 tasks verified) |
+| provider-mcp-phase1-3 | 05-10 | COMPLETED |
+| mcp-spike | 05-10 | COMPLETED (GO) |
 | milestone-based-persistence | 04-20 | MOSTLY DONE (核心函数存在，4 触发点待验证) |
 | per-section-report-v2 | 04-13 | SUPERSEDED |
 | v2-report-quality-and-ui-fixes | 04-13 | SUPERSEDED |

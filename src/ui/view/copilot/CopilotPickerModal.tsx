@@ -6,6 +6,7 @@ import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { CopilotActionRegistry, type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';
+import { CopilotResultModal } from '@/ui/view/copilot/CopilotResultModal';
 import { getSelectedTextFromActiveEditor } from '@/core/utils/obsidian-utils';
 import { cn } from '@/ui/react/lib/utils';
 
@@ -161,7 +162,7 @@ export class CopilotPickerModal extends Modal {
 					ctx,
 					onSelect: (action: CopilotAction) => {
 						this.close();
-						(app as any).commands.executeCommandById(`obsidian-peak-assistant:peak-copilot-${action.id}`);
+						if (ctx) new CopilotResultModal(app, { action, ctx }).open();
 					},
 				},
 				this.appContext,

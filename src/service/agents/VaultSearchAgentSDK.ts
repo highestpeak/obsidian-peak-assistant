@@ -30,7 +30,6 @@ import { buildWebSearchMcpServer } from './vault-sdk/webSearchTool';
 import { translateSdkMessage } from './core/sdkMessageAdapter';
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import type { TraceSink } from '@/core/telemetry/traceSink';
 
 export interface VaultSearchAgentSdkOptions {
     app: App;
@@ -41,7 +40,6 @@ export interface VaultSearchAgentSdkOptions {
     systemPromptOverride?: string;
     /** Prefix prepended to the user query before sending to the SDK agent (e.g. previous round context). */
     contextPrefix?: string;
-    traceSink?: TraceSink;
 }
 
 /**
@@ -271,7 +269,6 @@ export class VaultSearchAgentSDK {
 
             for await (const raw of messages) {
                 const msg = raw as { type?: string };
-                this.options.traceSink?.consume(raw as any);
                 // Round markers: only log assistant/user boundaries, not every stream event
                 if (msg.type === 'assistant') {
                     roundIndex += 1;

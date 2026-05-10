@@ -2,7 +2,6 @@
  * Builds deterministic prep context: backbone map, hub world snapshot, folder digests, doc shortlist.
  */
 
-import ignore from 'ignore';
 import { TFolder } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { getAIHubSummaryFolder } from '@/app/settings/types';
@@ -11,12 +10,20 @@ import { IndexingTemplateId } from '@/core/template/TemplateRegistry';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { basenameFromPath } from '@/core/utils/file-utils';
 import { normalizeVaultPath } from '@/core/utils/vault-path-utils';
-import { computeHubDiscoverBudgets } from '@/service/search/index/helper/hub/hubDiscover';
-import { buildFolderHubEnrichmentMap } from '@/service/search/index/helper/hub/hubDiscover';
+import {
+	HUB_DISCOVER_LIMIT_MIN,
+	HUB_DISCOVER_LIMIT_MAX,
+	HUB_DISCOVER_LIMIT_SQRT_SCALE,
+} from '@/core/constant';
 import type { MobiusNodeFolderHubDiscoveryRow } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
-import { IgnoreService } from '@/service/search/IgnoreService';
-import { buildBackboneMap } from '@/service/search/index/helper/backbone';
-import { topTokensFromBasenames } from '@/service/search/index/helper/backbone/digestLoader';
+import {
+	buildBackboneMap,
+	topTokensFromBasenames,
+	normalizeVaultFolderPath,
+	visibleChildFolders,
+	scanFolderTree,
+	getBackboneExcludedPrefixes,
+} from '@/service/search/index/helper/backbone';
 import type { BackboneMapResult } from '@/service/search/index/helper/backbone';
 import type {
 	DocumentHubShortlistRow,
@@ -24,6 +31,7 @@ import type {
 	HubFolderTreePage,
 	HubWorldSnapshot,
 	WorldMetricsDigest,
+	VaultExploreBudgets,
 } from './types';
 import type { IntuitionPrepContext } from './types';
 
@@ -34,138 +42,23 @@ const PLAN_DEEP_FOLDER_DIGEST_MAX = 48;
 const PLAN_DOC_SHORTLIST_MAX = 80;
 const HUB_DIGEST_NAME_TOKEN_TOP = 6;
 
-// ─── Folder snapshot helpers ──────────────────────────────────────────────────
-
-/** Settings-driven prefixes excluded from hub snapshot / explore (e.g. autosave). */
-export function getExploreFolderExcludedPrefixes(): string[] {
-	const settings = AppContext.getInstance().settings;
-	const enabled = settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch ?? true;
-	if (!enabled) return [];
-	const rootFolder = normalizeVaultFolderPath(settings.ai.rootFolder);
-	const autoSaveFolder = normalizeVaultFolderPath(settings.search.aiAnalysisAutoSaveFolder);
-	return [...new Set([rootFolder, autoSaveFolder].filter(Boolean))];
+/**
+ * Computes scaling budgets for vault exploration (formerly hub discover budgets).
+ */
+function computeHubDiscoverBudgets(documentNodeCount: number): VaultExploreBudgets {
+	const n = Math.max(0, Math.floor(documentNodeCount));
+	const raw = Math.floor(Math.sqrt(n) * HUB_DISCOVER_LIMIT_SQRT_SCALE);
+	const limitTotal = Math.max(HUB_DISCOVER_LIMIT_MIN, Math.min(HUB_DISCOVER_LIMIT_MAX, raw));
+	const documentFetchLimit = Math.max(1, Math.ceil(limitTotal * 1.8));
+	const folderFetchLimit = Math.max(1, Math.ceil(limitTotal * 0.6));
+	const clusterLimit = Math.max(1, Math.ceil(limitTotal * 0.35));
+	const topDocExcludeLimit = Math.max(1, Math.ceil(limitTotal * 0.4));
+	const clusterSeedFetchLimit = Math.min(120, Math.max(20, topDocExcludeLimit + clusterLimit * 3));
+	return { limitTotal, documentFetchLimit, folderFetchLimit, clusterLimit, topDocExcludeLimit, clusterSeedFetchLimit };
 }
 
-function normalizeVaultFolderPath(folderPath: unknown): string {
-	const raw = folderPath == null ? '' : String(folderPath).trim();
-	if (raw === '' || raw === '/') return '';
-	return raw.replace(/^\/+|\/+$/g, '');
-}
-
-function isPathExcludedByPrefixes(path: string, excludedPathPrefixes: string[]): boolean {
-	if (!excludedPathPrefixes.length) return false;
-	const p = normalizeVaultFolderPath(path);
-	if (p === '') return false;
-	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder());
-	if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
-	for (const raw of excludedPathPrefixes) {
-		const prefix = normalizeVaultFolderPath(raw);
-		if (!prefix) continue;
-		if (p === prefix) return true;
-		if (p.startsWith(`${prefix}/`)) return true;
-	}
-	return false;
-}
-
-function shouldIgnoreFolderForHubSnapshot(path: string): boolean {
-	const p = normalizeVaultFolderPath(path);
-	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder());
-	if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
-	try {
-		return IgnoreService.getInstance().shouldIgnore(path);
-	} catch {
-		const patterns = AppContext.getInstance().settings.search.ignorePatterns ?? [];
-		if (!patterns.length) return false;
-		const ig = ignore();
-		ig.add(patterns);
-		const clean = String(path).replace(/\\/g, '/').replace(/^\//, '');
-		return ig.ignores(clean);
-	}
-}
-
-type FolderScanRow = { path: string; depth: number; childFolderCount: number };
-type SubtreeDepthAgg = { sumDepths: number; count: number; maxDepth: number };
-
-function buildFolderSubtreeStatsMap(
-	root: TFolder,
-	excludedPathPrefixes: string[],
-): Map<string, { subtreeMaxDepth: number; subtreeAvgDepth: number }> {
-	const map = new Map<string, { subtreeMaxDepth: number; subtreeAvgDepth: number }>();
-
-	function dfs(folder: TFolder, depth: number): SubtreeDepthAgg {
-		const visibleSubs = visibleChildFolders(folder, excludedPathPrefixes);
-		let sumDepths = depth;
-		let count = 1;
-		let maxDepth = depth;
-		for (const sub of visibleSubs) {
-			const a = dfs(sub, depth + 1);
-			sumDepths += a.sumDepths;
-			count += a.count;
-			maxDepth = Math.max(maxDepth, a.maxDepth);
-		}
-		map.set(normalizeVaultPath(folder.path), {
-			subtreeMaxDepth: maxDepth,
-			subtreeAvgDepth: count > 0 ? sumDepths / count : depth,
-		});
-		return { sumDepths, count, maxDepth };
-	}
-
-	const top = root.children
-		.filter((c): c is TFolder => c instanceof TFolder)
-		.sort((a, b) => a.path.localeCompare(b.path));
-	for (const ch of top) {
-		dfs(ch, 1);
-	}
-	return map;
-}
-
-function visibleChildFolders(folder: TFolder, excludedPathPrefixes: string[]): TFolder[] {
-	return folder.children
-		.filter((c): c is TFolder => c instanceof TFolder)
-		.sort((a, b) => a.path.localeCompare(b.path))
-		.filter(
-			(s) =>
-				!isPathExcludedByPrefixes(s.path, excludedPathPrefixes) &&
-				!shouldIgnoreFolderForHubSnapshot(s.path),
-		);
-}
-
-function collectFoldersDfsPreorder(
-	folder: TFolder,
-	depth: number,
-	maxDepth: number,
-	maxFolders: number,
-	excludedPathPrefixes: string[],
-	out: FolderScanRow[],
-): void {
-	if (out.length >= maxFolders) return;
-	if (isPathExcludedByPrefixes(folder.path, excludedPathPrefixes)) return;
-	if (shouldIgnoreFolderForHubSnapshot(folder.path)) return;
-	const visibleSubs = visibleChildFolders(folder, excludedPathPrefixes);
-	out.push({ path: folder.path, depth, childFolderCount: visibleSubs.length });
-	if (out.length >= maxFolders || depth >= maxDepth) return;
-	for (const sub of visibleSubs) {
-		collectFoldersDfsPreorder(sub, depth + 1, maxDepth, maxFolders, excludedPathPrefixes, out);
-		if (out.length >= maxFolders) return;
-	}
-}
-
-function collectFolderTreeRows(
-	root: TFolder,
-	maxDepth: number,
-	maxFolders: number,
-	excludedPathPrefixes: string[],
-): FolderScanRow[] {
-	const out: FolderScanRow[] = [];
-	const top = root.children
-		.filter((c): c is TFolder => c instanceof TFolder)
-		.sort((a, b) => a.path.localeCompare(b.path));
-	for (const ch of top) {
-		collectFoldersDfsPreorder(ch, 1, maxDepth, maxFolders, excludedPathPrefixes, out);
-		if (out.length >= maxFolders) break;
-	}
-	return out;
-}
+// Re-export for callers that imported from here
+export const getExploreFolderExcludedPrefixes = getBackboneExcludedPrefixes;
 
 function sanitizeDigestCell(text: string): string {
 	return text.replace(/\|/g, ' ');
@@ -272,8 +165,7 @@ export async function buildHubWorldSnapshot(
 	const vault = AppContext.getInstance().app.vault;
 	const root = vault.getRoot();
 	const excluded = [...getExploreFolderExcludedPrefixes(), ...extraExcludePathPrefixes.map((p) => normalizeVaultFolderPath(p))];
-	const rows = collectFolderTreeRows(root, maxDepth, maxFolders, excluded);
-	const subtreeStatsMap = buildFolderSubtreeStatsMap(root, excluded);
+	const { rows, subtreeStats: subtreeStatsMap } = scanFolderTree(root, maxDepth, maxFolders, excluded);
 	const paths = rows.map((r) => r.path);
 	const degreeMap = await sqliteStoreManager.getMobiusNodeRepo().listFolderDocDegreesByVaultPaths(paths);
 	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
@@ -345,19 +237,9 @@ export async function buildHubWorldSnapshot(
 	} catch {
 		folderRows = [];
 	}
-	const enrichMap = folderRows.length > 0 ? await buildFolderHubEnrichmentMap(mobiusRepo, folderRows) : new Map();
 	const folderRowByPath = new Map(folderRows.map((r) => [normalizeVaultPath(String(r.path ?? '')), r] as const));
 	for (const n of nodes) {
 		const np = normalizeVaultPath(n.path);
-		const e = enrichMap.get(np);
-		if (e) {
-			n.topicPurity = e.topicPurity;
-			n.containerPenalty = e.containerPenalty;
-			n.strongChildDocShare = e.strongChildDocShare;
-			n.residualRatio = e.residualRatio;
-			n.folderRank = e.folderRank;
-			n.strongChildCount = e.strongChildCount;
-		}
 		const fr = folderRowByPath.get(np);
 		if (fr && typeof fr.hub_graph_score === 'number') n.hubGraphScore = fr.hub_graph_score;
 	}
@@ -486,7 +368,7 @@ function buildBackboneEdgesJson(backbone: BackboneMapResult): string {
 function buildVaultSummaryMarkdown(
 	world: HubWorldSnapshot,
 	backbone: BackboneMapResult,
-	indexBudgetRaw: ReturnType<typeof computeHubDiscoverBudgets>,
+	indexBudgetRaw: VaultExploreBudgets,
 ): string {
 	const m = world.metrics;
 	const b = backbone.metrics;

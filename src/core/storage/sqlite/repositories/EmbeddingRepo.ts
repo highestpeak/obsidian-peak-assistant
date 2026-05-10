@@ -155,8 +155,6 @@ export class EmbeddingRepo {
 		// Update cache
 		this.vecEmbeddingsTableExists = true;
 		this.vecEmbeddingsTableDimension = dimension;
-
-		console.log(`[EmbeddingRepo] Recreated vec_embeddings table with dimension ${dimension}`);
 	}
 
 	/**
@@ -179,7 +177,6 @@ export class EmbeddingRepo {
 					embedding float[${dimension}]
 				)
 			`);
-			console.log(`[EmbeddingRepo] Created vec_embeddings table with dimension ${dimension}`);
 			// Update cache
 			this.vecEmbeddingsTableExists = true;
 			this.vecEmbeddingsTableDimension = dimension;
@@ -270,7 +267,6 @@ export class EmbeddingRepo {
 			);
 			this.recreateVecEmbeddingsTable(embeddingDimension);
 			this.syncToVecEmbeddings(embeddingRowid, embeddingBuffer, 'retry after dimension mismatch');
-			console.log(`[EmbeddingRepo] Successfully inserted embedding after recreating table`);
 			return;
 		}
 
@@ -437,14 +433,6 @@ export class EmbeddingRepo {
 	}
 
 	/**
-	 * Get embedding by ID.
-	 */
-	async getById(id: string): Promise<DbSchema['embedding'] | null> {
-		const row = await this.db.selectFrom('embedding').selectAll().where('id', '=', id).executeTakeFirst();
-		return row ?? null;
-	}
-
-	/**
 	 * Get embeddings by file ID.
 	 */
 	async getByDocId(docId: string): Promise<DbSchema['embedding'][]> {
@@ -480,20 +468,6 @@ export class EmbeddingRepo {
 			chunk_type: r.chunk_type ?? null,
 			embedding: r.embedding,
 		}));
-	}
-
-	/**
-	 * Get embeddings by chunk IDs (batch).
-	 * Returns embedding as Buffer (BLOB format).
-	 */
-	async getByChunkIds(chunkIds: string[]): Promise<Array<{ id: string; doc_id: string; chunk_id: string; embedding: Buffer }>> {
-		if (!chunkIds.length) return [];
-		const rows = await this.db
-			.selectFrom('embedding')
-			.select(['id', 'doc_id', 'chunk_id', 'embedding'])
-			.where('chunk_id', 'in', chunkIds)
-			.execute();
-		return rows.filter((r): r is { id: string; doc_id: string; chunk_id: string; embedding: Buffer } => r.chunk_id != null);
 	}
 
 	async searchSimilarAndGetId(
@@ -561,7 +535,7 @@ export class EmbeddingRepo {
 	 * @param scopeValue Optional scope value for filtering
 	 * @returns Array of results with embedding_id (from embedding table) and distance
 	 */
-	async searchSimilar(
+	private async searchSimilar(
 		queryEmbedding: number[] | Buffer,
 		limit: number,
 		scopeMode?: SearchScopeMode,
@@ -683,37 +657,6 @@ export class EmbeddingRepo {
 	}
 
 	/**
-	 * Get embeddings by file IDs (batch).
-	 */
-	async getByDocIds(docIds: string[]): Promise<Map<string, DbSchema['embedding'][]>> {
-		if (!docIds.length) return new Map();
-		const rows = await this.db.selectFrom('embedding').selectAll().where('doc_id', 'in', docIds).execute();
-		const result = new Map<string, DbSchema['embedding'][]>();
-		for (const row of rows) {
-			const arr = result.get(row.doc_id) ?? [];
-			arr.push(row);
-			result.set(row.doc_id, arr);
-		}
-		return result;
-	}
-
-	/**
-	 * Get embedding by chunk ID.
-	 */
-	async getByChunkId(chunkId: string): Promise<DbSchema['embedding'] | null> {
-		const row = await this.db.selectFrom('embedding').selectAll().where('chunk_id', '=', chunkId).executeTakeFirst();
-		return row ?? null;
-	}
-
-	/**
-	 * Get embedding by content hash.
-	 */
-	async getByContentHash(contentHash: string): Promise<DbSchema['embedding'] | null> {
-		const row = await this.db.selectFrom('embedding').selectAll().where('content_hash', '=', contentHash).executeTakeFirst();
-		return row ?? null;
-	}
-
-	/**
 	 * Delete embeddings and their corresponding vec_embeddings records by rowids.
 	 * This is a private helper method that ensures both tables stay in sync.
 	 */
@@ -733,22 +676,6 @@ export class EmbeddingRepo {
 				DELETE FROM vec_embeddings WHERE rowid IN (${placeholders})
 			`);
 			deleteVecStmt.run(...rowids);
-		}
-	}
-
-	/**
-	 * Delete embeddings by file ID.
-	 */
-	async deleteByDocId(docId: string): Promise<void> {
-		// Get rowids of embeddings to delete
-		const stmt = this.rawDb.prepare(`
-			SELECT rowid FROM embedding WHERE doc_id = ?
-		`);
-		const rows = stmt.all(docId) as Array<{ rowid: number }>;
-
-		if (rows.length > 0) {
-			const rowids = rows.map(r => r.rowid);
-			await this.deleteEmbeddingsAndVecEmbeddingsByRowids(rowids);
 		}
 	}
 
@@ -800,35 +727,6 @@ export class EmbeddingRepo {
 
 		if (rows.length > 0) {
 			const rowids = rows.map(r => r.rowid);
-			await this.deleteEmbeddingsAndVecEmbeddingsByRowids(rowids);
-		}
-	}
-
-	/**
-	 * Delete embedding by ID.
-	 */
-	async deleteById(id: string): Promise<void> {
-		const rowid = this.getEmbeddingRowid(id);
-		if (rowid !== null) {
-			await this.deleteEmbeddingsAndVecEmbeddingsByRowids([rowid]);
-		}
-	}
-
-	/**
-	 * Delete embeddings by IDs (batch).
-	 */
-	async deleteByIds(ids: string[]): Promise<void> {
-		if (!ids.length) return;
-
-		const rowids: number[] = [];
-		for (const id of ids) {
-			const rowid = this.getEmbeddingRowid(id);
-			if (rowid !== null) {
-				rowids.push(rowid);
-			}
-		}
-
-		if (rowids.length > 0) {
 			await this.deleteEmbeddingsAndVecEmbeddingsByRowids(rowids);
 		}
 	}
@@ -936,7 +834,6 @@ export class EmbeddingRepo {
 			const tableExists = checkStmt.get() !== undefined;
 
 			if (!tableExists) {
-				console.log('[EmbeddingRepo] vec_embeddings table does not exist, nothing to clean up');
 				return { found: 0, deleted: 0 };
 			}
 
@@ -952,11 +849,8 @@ export class EmbeddingRepo {
 			found = orphanedRecords.length;
 
 			if (found === 0) {
-				console.log('[EmbeddingRepo] No orphaned vec_embeddings records found');
 				return { found: 0, deleted: 0 };
 			}
-
-			console.log(`[EmbeddingRepo] Found ${found} orphaned vec_embeddings records`);
 
 			// Delete orphaned records
 			const rowids = orphanedRecords.map(r => r.rowid);
@@ -967,8 +861,6 @@ export class EmbeddingRepo {
 
 			deleteStmt.run(...rowids);
 			deleted = rowids.length;
-
-			console.log(`[EmbeddingRepo] Successfully deleted ${deleted} orphaned vec_embeddings records`);
 
 		} catch (error) {
 			console.error('[EmbeddingRepo] Error during cleanup:', error);

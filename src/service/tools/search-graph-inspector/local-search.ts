@@ -1,11 +1,18 @@
+import { z } from "zod/v3";
 import { AppContext } from "@/app/context/AppContext";
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
 import { applyFiltersAndSorters } from "./common";
-import { SearchResultItem, SearchSnippet } from "@/service/search/types";
+import { SearchResultItem, SearchSnippet, SearchScopeValue } from "@/service/search/types";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
+import { localSearchWholeVaultInputSchema } from "@/core/schemas/tools/searchGraphInspector";
+
+type LocalSearchParams = z.infer<typeof localSearchWholeVaultInputSchema> & {
+    mode: string;
+    scopeValue?: SearchScopeValue;
+};
 /**
  * Convert SearchSnippet to a text string with highlights marked using **bold** syntax.
  */
@@ -126,7 +133,7 @@ async function getSearchResultItemFieldGetter(items: SearchResultItem[], filters
     });
 }
 
-export async function localSearch(params: any, templateManager?: TemplateManager) {
+export async function localSearch(params: LocalSearchParams, templateManager?: TemplateManager) {
     const { query, searchMode, scopeMode, scopeValue, limit, response_format, filters, sorter } = params;
     const { items: rawItems, duration } = await AppContext.getInstance().searchClient.search({
         text: query,

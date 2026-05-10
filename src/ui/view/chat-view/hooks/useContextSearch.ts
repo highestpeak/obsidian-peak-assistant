@@ -116,14 +116,6 @@ export function useContextSearch() {
 			);
 		}
 
-		// Also search external prompts when query is present
-		if (query.trim()) {
-			try {
-				const ext = await manager.searchPrompts(query);
-				results.push(...ext);
-			} catch { /* ignore */ }
-		}
-
 		// Deduplicate by value
 		const seen = new Set<string>();
 		return results.filter((item) => {

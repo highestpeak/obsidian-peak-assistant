@@ -90,7 +90,7 @@ export const useChatSession = () => {
                 }
                 const mode = state.attachmentHandlingMode;
                 if (activeConversation) {
-                    await manager.updateConversationAttachmentHandling({
+                    await manager.conv.updateConversationAttachmentHandling({
                         conversationId: activeConversation.meta.id,
                         attachmentHandlingOverride: mode,
                     });
@@ -130,7 +130,7 @@ export const useChatSession = () => {
                 const convId = activeConversation.meta.id;
 
                 // Update conversation meta with override (empty object means no override)
-                await manager.updateConversationOutputControl({
+                await manager.conv.updateConversationOutputControl({
                     conversationId: String(convId),
                     outputControlOverride: Object.keys(override).length > 0 ? override : undefined,
                 });
@@ -153,7 +153,7 @@ export const useChatSession = () => {
                 }
 
                 // Update conversation model
-                await manager.updateConversationModel({
+                await manager.conv.updateConversationModel({
                     conversationId: activeConversation.meta.id,
                     modelId: state.selectedModel?.modelId!,
                     provider: state.selectedModel?.provider!,

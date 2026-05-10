@@ -6,7 +6,7 @@
  */
 
 import type { LLMStreamEvent, LLMUsage } from '@/core/providers/types';
-import { StreamTriggerName, UISignalChannel } from '@/core/providers/types';
+import { StreamTriggerName } from '@/core/providers/types';
 import { getDeltaEventDeltaText } from '@/core/providers/types';
 import { v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '../types/search-steps';
 import type { V2ToolStep, V2Source } from '../types/search-steps';
@@ -62,35 +62,6 @@ export interface EventDispatchTarget {
 	setV2Sources(sources: V2Source[]): void;
 }
 
-export interface LegacyBridgeTarget {
-	// Summary
-	isSummaryStreaming(): boolean;
-	startSummaryStreaming(): void;
-	setSummary(summary: string): void;
-
-	// Result
-	setSources(sources: any): void;
-	setEvidenceIndex(index: any): void;
-	setDashboardBlocks(blocks: any): void;
-	setTopics(topics: any): void;
-	pushOverviewMermaidVersion(code: string, opts: { makeActive: boolean; dedupe: boolean }): void;
-
-	// Runtime
-	setTitle(title: string | null): void;
-	setHasAnalyzed(v: boolean): void;
-	setDashboardUpdatedLine(line: string): void;
-	setUsage(usage: LLMUsage): void;
-	setDuration(duration: number): void;
-	recordError(error: string): void;
-	setHitlPause(state: { pauseId: string; phase: string; snapshot: PlanSnapshot }): void;
-
-	// Steps
-	appendCompletedUiStep(step: UIStepRecord): void;
-
-	// Orchestration
-	markCompleted(): void;
-}
-
 export interface SummaryBuffer {
 	appendDelta(delta: string): void;
 	flush(): void;
@@ -108,35 +79,11 @@ export interface UiStepAccumRef {
 export function applySearchResult(
 	result: SearchAgentResult,
 	target: EventDispatchTarget,
-	legacy: LegacyBridgeTarget | null,
 ): void {
-	if (result.summary) {
-		legacy?.setSummary(result.summary);
-	}
-	if (result.sources) {
-		legacy?.setSources(result.sources);
-	}
-	if (result.evidenceIndex !== undefined) {
-		legacy?.setEvidenceIndex(result.evidenceIndex ?? {});
-	}
-	if (result.dashboardBlocks) {
-		legacy?.setDashboardBlocks(result.dashboardBlocks);
-	}
-	if (result.topics) {
-		legacy?.setTopics(result.topics);
-	}
-	if (result.evidenceMermaidOverviewAgent != null) {
-		legacy?.pushOverviewMermaidVersion(
-			result.evidenceMermaidOverviewAgent,
-			{ makeActive: true, dedupe: true },
-		);
-	}
 	if (result.title !== undefined) {
 		target.setTitle(result.title ?? null);
-		legacy?.setTitle(result.title ?? null);
 	}
 	target.setHasAnalyzed(true);
-	legacy?.setHasAnalyzed(true);
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +93,6 @@ export function applySearchResult(
 export function dispatchEvent(
 	event: LLMStreamEvent,
 	target: EventDispatchTarget,
-	legacy: LegacyBridgeTarget | null,
 	summaryBuffer: SummaryBuffer,
 	uiStepRef: UiStepAccumRef,
 ): void {
@@ -176,16 +122,6 @@ export function dispatchEvent(
 		}
 
 		// ---- Summary streaming ----
-		case 'text-start': {
-			if (
-				event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
-			) {
-				if (!legacy?.isSummaryStreaming()) {
-					legacy?.startSummaryStreaming();
-				}
-			}
-			break;
-		}
 		case 'text-delta': {
 			if (
 				event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
@@ -216,7 +152,7 @@ export function dispatchEvent(
 		case 'tool-result': {
 			const ev = event as any;
 			const currentResult = ev.extra?.currentResult as SearchAgentResult | undefined;
-			if (currentResult) applySearchResult(currentResult, target, legacy);
+			if (currentResult) applySearchResult(currentResult, target);
 			const toolCallId = ev.id ?? '';
 			const resolvedToolName = target.resolveV2ToolName(toolCallId);
 			if (resolvedToolName.startsWith('mcp__vault__')) {
@@ -253,7 +189,7 @@ export function dispatchEvent(
 			if (stepId) {
 				const prev = uiStepRef.get();
 				if (prev && prev.stepId !== stepId) {
-					legacy?.appendCompletedUiStep(flushUiStep(prev));
+					flushUiStep(prev);
 				}
 				if (!prev || prev.stepId !== stepId) {
 					uiStepRef.set({
@@ -285,21 +221,6 @@ export function dispatchEvent(
 
 		// ---- UI signals ----
 		case 'ui-signal': {
-			const ev = event as { channel?: string; payload?: { mermaid?: string; dimensions?: any; completedIndices?: any; tasks?: any; groupProgress?: any } };
-
-			if (ev.channel === UISignalChannel.OVERVIEW_MERMAID && typeof ev.payload?.mermaid === 'string') {
-				const code = ev.payload.mermaid.trim();
-				legacy?.pushOverviewMermaidVersion(code, { makeActive: true, dedupe: true });
-			}
-
-			if (ev.channel === UISignalChannel.SEARCH_STAGE && ev.payload) {
-				const payload = ev.payload as any;
-				const stage = payload.stage as string | undefined;
-				if (stage === 'report' && payload.status === 'blocks-complete' && payload.blocks) {
-					legacy?.setDashboardBlocks(payload.blocks);
-				}
-			}
-
 			publish(event.type, event);
 			break;
 		}
@@ -314,7 +235,7 @@ export function dispatchEvent(
 		case 'complete': {
 			const lastStep = uiStepRef.get();
 			if (lastStep) {
-				legacy?.appendCompletedUiStep(flushUiStep(lastStep));
+				flushUiStep(lastStep);
 				uiStepRef.set(null);
 			}
 			publish('complete', event);
@@ -326,26 +247,23 @@ export function dispatchEvent(
 				const completeEvent = event as any;
 				if (completeEvent.usage) {
 					target.setUsage(completeEvent.usage);
-					legacy?.setUsage(completeEvent.usage);
 				}
 				{
 					const duration = completeEvent.durationMs || (target.getStartedAt() ? Date.now() - target.getStartedAt()! : 0);
 					if (duration) {
 						target.setDuration(duration);
-						legacy?.setDuration(duration);
 					}
 				}
 
 				const finalResult = completeEvent.result as SearchAgentResult | undefined;
 				if (finalResult) {
-					applySearchResult(finalResult, target, legacy);
+					applySearchResult(finalResult, target);
 				}
 
 				target.markCompleted();
 				if (target.getV2StepsLength() > 0) {
 					target.markV2ReportComplete();
 				}
-				legacy?.markCompleted();
 			}
 			break;
 		}
@@ -355,7 +273,6 @@ export function dispatchEvent(
 			const errMsg = (event as any).error?.message ?? String((event as any).error);
 			if (errMsg && target.enableDevTools()) {
 				target.recordError(errMsg);
-				legacy?.recordError(errMsg);
 			}
 			break;
 		}

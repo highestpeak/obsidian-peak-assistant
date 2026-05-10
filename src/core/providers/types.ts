@@ -1,17 +1,17 @@
 // ── Standalone type definitions (formerly re-exported from 'ai') ──────────────
 
 /** JSON-safe value type. */
-export type JSONValue = null | string | number | boolean | JSONValue[] | { [key: string]: JSONValue };
+type JSONValue = null | string | number | boolean | JSONValue[] | { [key: string]: JSONValue };
 
 /** Reason the generation finished. */
-export type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other' | 'unknown';
+type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other' | 'unknown';
 
 /**
  * Token usage counters.
  * Field semantics match the Vercel AI SDK LanguageModelUsage so downstream
  * code that already handles these fields continues to work unchanged.
  */
-export interface LanguageModelUsage {
+interface LanguageModelUsage {
 	inputTokens?: number;
 	outputTokens?: number;
 	totalTokens?: number;
@@ -36,7 +36,7 @@ export interface ProviderConfig {
 	extra?: Record<string, any>;
 }
 
-export interface ModelConfig {
+interface ModelConfig {
 	id: string;
 	enabled?: boolean;
 	/**
@@ -126,14 +126,6 @@ export interface ModelMetaData {
  */
 export type ModelInfoForSwitch = ModelMetaData & {
 	provider: string;
-};
-
-/**
- * Model metadata with enabled status for settings.
- * Used in provider settings to display models with their enabled/disabled state.
- */
-export type ModelInfoForSettings = ModelMetaData & {
-	enabled: boolean;
 };
 
 /**
@@ -247,33 +239,6 @@ export function resolveModelCapabilities(model?: { capabilities?: ModelCapabilit
 		maxCtx: undefined,
 	};
 }
-
-export interface ProviderOptionsConfig {
-	noReasoning?: boolean;
-	reasoningEffort?: 'low' | 'medium' | 'high';
-}
-
-export type ProviderOptions = Record<string, Record<string, JSONValue>>;
-
-export type LLMRequest<TOOLS extends any = any> = {
-	provider: string;
-	model: string;
-	system?: string;
-	messages: LLMRequestMessage[];
-	/**
-	 * LLM output control settings.
-	 * If not provided, uses model defaults or model config settings.
-	 */
-	outputControl?: LLMOutputControlSettings;
-	abortSignal?: AbortSignal;
-	toolChoice?: 'auto' | 'none' | 'required' | {
-		type: 'tool';
-		toolName: string;
-	};
-	tools?: {
-		[key: string]: TOOLS;
-	};
-};
 
 export type ChatRole = 'user' | 'assistant' | 'system';
 
@@ -400,7 +365,7 @@ type RawStreamEvent =
  *    - Semantics: "do this now" (ephemeral: animate, apply patch, change state).
  *    - Subscribers filter by channel (e.g. channel === 'graph'); kind + payload are component-specific.
  */
-export type RawUIStreamEvent =
+type RawUIStreamEvent =
 	{ type: 'ui-step'; uiType: UIStepType, stepId: string; title: string; description?: string; } |
 	{ type: 'ui-step-delta'; uiType: UIStepType, stepId: string; titleDelta?: string; descriptionDelta?: string; } |
 	{
@@ -419,7 +384,7 @@ export type RawUIStreamEvent =
 	{ type: 'parallel-stream-progress'; completed: number; total: number; completedIndices?: number[] };
 
 /** Agent loop stream events (plan progress, stats, debug). */
-export type AgentStreamEvent =
+type AgentStreamEvent =
 	{ type: 'agent-step-progress'; stepLabel: string; detail: string; taskIndex?: number; } |
 	{ type: 'agent-stats'; stats: any; };
 
@@ -447,6 +412,7 @@ export enum StreamTriggerName {
 	KNOWLEDGE_INTUITION_SUBMIT = 'knowledge-intuition-submit',
 	SEARCH_MERMAID_FIX = 'search-mermaid-fix',
 	DOC_SIMPLE_AGENT = 'doc-simple-agent',
+	COPILOT = 'copilot',
 }
 
 export enum ToolEvent {
@@ -477,7 +443,7 @@ export enum UISignalChannel {
 	SEARCH_STAGE = 'search-stage',
 }
 
-export enum UISignalKind {
+enum UISignalKind {
 	PATCH = 'patch',
 	STAGE = 'stage',
 	PROGRESS = 'progress',
@@ -568,7 +534,7 @@ export interface LLMOutputControlSettings {
 /**
  * All keys of LLMOutputControlSettings for runtime access
  */
-export const LLM_OUTPUT_CONTROL_SETTING_KEYS = {
+const LLM_OUTPUT_CONTROL_SETTING_KEYS = {
 	temperature: 'temperature',
 	topP: 'topP',
 	topK: 'topK',
@@ -588,63 +554,7 @@ export function getLLMOutputControlSettingKeys(): (keyof LLMOutputControlSetting
 	return Object.keys(LLM_OUTPUT_CONTROL_SETTING_KEYS) as (keyof LLMOutputControlSettings)[];
 }
 
-/**
- * Copy from AI SDK's Source: LanguageModelV3Source
- */
-export type LLMResponseSource = {
-	type: 'source';
-	/**
-	 * The type of source - URL sources reference web content.
-	 */
-	sourceType: 'url';
-	/**
-	 * The ID of the source.
-	 */
-	id: string;
-	/**
-	 * The URL of the source.
-	 */
-	url: string;
-	/**
-	 * The title of the source.
-	 */
-	title?: string;
-	/**
-	 * Additional provider metadata for the source.
-	 */
-	providerMetadata?: Record<string, any>;
-} | {
-	type: 'source';
-	/**
-	 * The type of source - document sources reference files/documents.
-	 */
-	sourceType: 'document';
-	/**
-	 * The ID of the source.
-	 */
-	id: string;
-	/**
-	 * IANA media type of the document (e.g., 'application/pdf').
-	 */
-	mediaType: string;
-	/**
-	 * The title of the document.
-	 */
-	title: string;
-	/**
-	 * Optional filename of the document.
-	 */
-	filename?: string;
-	/**
-	 * Additional provider metadata for the source.
-	 */
-	providerMetadata?: Record<string, any>;
-};
-
 // ── Utilities moved from helpers/stream-helper.ts ──────────────────────────
-
-/** Max chars per prompt for pk-debug (avoids huge console dumps). */
-export const PK_DEBUG_PROMPT_TRUNCATE_CHARS = 2000;
 
 /** Build a pk-debug event for prompt trace (system + user truncated). */
 export function buildPromptTraceDebugEvent(

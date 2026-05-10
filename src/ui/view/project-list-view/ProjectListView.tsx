@@ -46,7 +46,7 @@ export const ProjectListViewComponent: React.FC = () => {
 		}
 
 		// Load conversations
-		const conversationsList = await manager.listConversations(null);
+		const conversationsList = await manager.conv.listConversations(null);
 		conversationsList.sort((a, b) => {
 			const timeA = a.meta.createdAtTimestamp || 0;
 			const timeB = b.meta.createdAtTimestamp || 0;

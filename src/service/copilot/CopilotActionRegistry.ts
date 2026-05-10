@@ -1,5 +1,6 @@
 import type { TFile } from 'obsidian';
 import type { LucideIcon } from 'lucide-react';
+import type { LLMStreamEvent } from '@/core/providers/types';
 
 export interface DocumentContext {
 	file: TFile;
@@ -16,11 +17,14 @@ export interface DocumentContext {
 	frontmatter: Record<string, any>;
 }
 
-export type ProgressCallback = (text: string) => void;
+export interface ActionUsage {
+	inputTokens: number;
+	outputTokens: number;
+}
 
 export type ActionResult =
-	| { type: 'structured'; data: any }
-	| { type: 'stream'; text: string }
+	| { type: 'structured'; data: any; usage?: ActionUsage }
+	| { type: 'stream'; text: string; usage?: ActionUsage }
 	| { type: 'error'; message: string };
 
 export interface CopilotAction {
@@ -31,7 +35,7 @@ export interface CopilotAction {
 	category: 'document' | 'vault' | 'writing';
 	relevance(ctx: DocumentContext): number;
 	guard?(ctx: DocumentContext): string | null;
-	execute(ctx: DocumentContext, progress: ProgressCallback): Promise<ActionResult>;
+	execute(ctx: DocumentContext, signal?: AbortSignal): AsyncGenerator<LLMStreamEvent, ActionResult | void>;
 	ResultPanel: React.ComponentType<{ result: any; ctx: DocumentContext; onClose: () => void }>;
 }
 

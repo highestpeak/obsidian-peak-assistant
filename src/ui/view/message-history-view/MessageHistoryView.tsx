@@ -2,17 +2,14 @@ import React, { useCallback, useRef, useState, useMemo, useEffect } from 'react'
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { ScrollToMessageEvent, ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
 import { cn } from '@/ui/react/lib/utils';
-import { Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { Star, ChevronDown, ChevronRight } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager } from '../shared/scroll-utils';
 import { ScrollArea } from '@/ui/component/shared-ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/ui/component/shared-ui/collapsible';
-import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { Button } from '@/ui/component/shared-ui/button';
-import { openSourceFile } from '@/ui/view/shared/view-utils';
 import type { ChatMessage } from '@/service/chat/types';
 
-const NO_TOPIC_NAME = 'NoTopic';
 const MESSAGE_SUMMARY_MAX_LENGTH = 100;
 
 interface TopicGroup {
@@ -29,7 +26,6 @@ function groupMessagesIntoTopics(messages: ChatMessage[]): {
 	topics: TopicGroup[];
 	noTopicMessages: ChatMessage[];
 } {
-	console.debug('[MessageHistoryView] groupMessagesIntoTopics messages', messages);
 	if (messages.length === 0) return { topics: [], noTopicMessages: [] };
 
 	// Group messages by topic name
@@ -166,26 +162,14 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isActive, onClick, o
  */
 interface HeaderProps {
 	title: string;
-	onOpenSource?: () => void;
-	showSourceButton?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ title, onOpenSource, showSourceButton }) => (
+const Header: React.FC<HeaderProps> = ({ title }) => (
 	<div className="pktw-p-4 pktw-border-b pktw-border-border">
 		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-justify-between">
 			<div className="pktw-text-base pktw-font-semibold pktw-text-foreground pktw-m-0 pktw-truncate pktw-flex-1">
 				{title}
 			</div>
-			{showSourceButton && onOpenSource && (
-				<IconButton
-					size="md"
-					onClick={onOpenSource}
-					title="Open source document"
-					className="pktw-flex-shrink-0"
-				>
-					<ExternalLink className="pktw-w-4 pktw-h-4" />
-				</IconButton>
-			)}
 		</div>
 	</div>
 );
@@ -328,10 +312,8 @@ export const MessageHistoryViewComponent: React.FC = () => {
 	const handleStarToggle = useCallback(async (messageId: string, starred: boolean) => {
 		if (!activeConversation || !manager) return;
 		
-		console.debug('[MessageHistoryView] Toggling star for message:', { messageId, starred });
-
 		try {
-			await manager.toggleStar({
+			await manager.conv.toggleStar({
 				messageId,
 				conversationId: activeConversation.meta.id,
 				starred,
@@ -364,12 +346,6 @@ export const MessageHistoryViewComponent: React.FC = () => {
 		});
 	}, []);
 
-	const handleOpenSource = useCallback(async () => {
-		if (activeConversation?.file) {
-			await openSourceFile(app, activeConversation.file);
-		}
-	}, [app, activeConversation?.file]);
-
 	if (!activeConversation) {
 		return (
 			<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-text-muted-foreground pktw-text-sm">
@@ -382,12 +358,7 @@ export const MessageHistoryViewComponent: React.FC = () => {
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-overflow-hidden">
-			<Header
-				title="Conversation Outline"
-				onOpenSource={handleOpenSource}
-				// abort this idea for now. i don't like this idea now.
-				showSourceButton={false}
-			/>
+			<Header title="Conversation Outline" />
 
 			{!hasMessages ? (
 				<div className="pktw-flex pktw-items-center pktw-justify-center pktw-flex-1 pktw-text-muted-foreground pktw-text-sm">

@@ -491,3 +491,22 @@
 	0%, 100% { opacity: 0.25; transform: scale(0.9); }
 	50% { opacity: 0.7; transform: scale(1); }
 }
+
+/* Serendipity Engine — gutter hint */
+.peak-serendipity-hint {
+	vertical-align: middle;
+	user-select: none;
+	font-family: var(--font-interface);
+}
+
+/* Dark mode adjustments */
+.theme-dark .peak-serendipity-tooltip {
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Reduce motion preference */
+@media (prefers-reduced-motion: reduce) {
+	.peak-serendipity-hint {
+		transition: none;
+	}
+}

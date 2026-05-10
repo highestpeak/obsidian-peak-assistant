@@ -4,7 +4,6 @@
  * Field requirements by provider type:
  * - 'cohere' / 'jina': requires apiKey, modelId
  * - 'llm': requires modelId, extra.provider (actual LLM provider), extra.aiServiceManager
- * - 'flashrank': requires modelId (optional)
  */
 export interface RerankProviderConfig {
 	/**
@@ -12,7 +11,6 @@ export interface RerankProviderConfig {
 	 * - 'cohere': Cohere Rerank API
 	 * - 'jina': Jina Rerank API
 	 * - 'llm': LLM-based reranking (uses AIServiceManager.queryText)
-	 * - 'flashrank': FlashRank local reranking
 	 */
 	type: string;
 	/**

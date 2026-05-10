@@ -58,7 +58,7 @@ export async function notifySelectionChange(
  * Load and sort projects, then update store
  */
 export async function hydrateProjects(manager: AIServiceManager): Promise<void> {
-	const projectsList = await manager.listProjects();
+	const projectsList = await manager.proj.listProjects();
 	projectsList.sort((a, b) => {
 		const timeA = a.meta.createdAtTimestamp || 0;
 		const timeB = b.meta.createdAtTimestamp || 0;

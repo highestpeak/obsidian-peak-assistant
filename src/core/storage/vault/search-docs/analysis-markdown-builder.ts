@@ -1,14 +1,5 @@
-/**
- * analysis-markdown-builder.ts
- * =============================
- * Build markdown from AiSearchAnalysisDocModel for vault persistence.
- * Extracted from AiSearchAnalysisDoc.ts — pure refactoring, no behavior changes.
- */
-
 import { SLICE_CAPS } from '@/core/constant';
-import type { AISearchGraph } from '@/service/agents/shared-types';
 import type { GraphPreview } from '@/core/storage/graph/types';
-import { GraphNodeType } from '@/core/po/graph.po';
 import type { AnalysisMode, SectionAnalyzeResult } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import type { AiSearchAnalysisDocModel, BuildMarkdownOptions } from './AiSearchAnalysisDoc';
 import { rebaseHeadings } from '@/core/storage/vault/framework/MarkdownDocEngine';
@@ -29,16 +20,6 @@ function escapeMermaidLabel(label: string): string {
 		.replace(/\n/g, ' ')
 		.slice(0, SLICE_CAPS.utils.mermaidQuotedLabel);
 }
-
-/** Node types allowed when reconstructing a preview from mermaid (no type in syntax). */
-const MERMAID_PREVIEW_NODE_TYPES: readonly GraphNodeType[] = [
-	GraphNodeType.TopicTag,
-	GraphNodeType.FunctionalTag,
-	GraphNodeType.Document,
-	GraphNodeType.Resource,
-	GraphNodeType.Folder,
-	GraphNodeType.HubDoc,
-];
 
 function buildMermaidBlock(graph: GraphPreview | null | undefined): string {
 	if (!graph || !graph.nodes?.length) {
@@ -61,24 +42,6 @@ function buildMermaidBlock(graph: GraphPreview | null | undefined): string {
 	return lines.join('\n');
 }
 
-function aiSearchGraphToGraphPreview(ai: AISearchGraph | null): GraphPreview | null {
-	if (!ai) return null;
-	return {
-		nodes: ai.nodes.map((node) => ({
-			id: node.id,
-			label: node.title ?? node.id,
-			type: (MERMAID_PREVIEW_NODE_TYPES.includes(node.type as GraphNodeType)
-				? (node.type as GraphNodeType)
-				: GraphNodeType.Document),
-		})),
-		edges: ai.edges.map((edge) => ({
-			from_node_id: edge.source,
-			to_node_id: edge.target,
-			weight: edge.attributes?.weight ?? 1,
-		})),
-	};
-}
-
 function pushFollowupHistory(b: MarkdownDocBuilder, sectionTitle: string, items: SectionAnalyzeResult[] | undefined) {
 	if (!items?.length) return;
 	b.heading(1, sectionTitle);
@@ -91,17 +54,12 @@ function pushFollowupHistory(b: MarkdownDocBuilder, sectionTitle: string, items:
 	}
 }
 
-/**
- * Build markdown from AiSearchAnalysisDocModel.
- * Use options to write sections only when relevant (e.g. full-only sections for vaultFull, Steps when dev tools on).
- */
 export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: BuildMarkdownOptions): string {
 	const b = new MarkdownDocBuilder();
 	const fullOnly = isFullAnalysisMode(options?.runAnalysisMode ?? docModel.runAnalysisMode);
 
 	const now = docModel.created || new Date().toISOString();
 
-	// Frontmatter
 	const fmFields: Array<[string, string | number | boolean | undefined | null]> = [
 		['type', 'ai-search-result'],
 		['version', 1],
@@ -122,19 +80,16 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 	b.frontmatterRaw(fmFields);
 	b.blankLine();
 
-	// Summary
 	b.heading(1, 'Summary');
 	b.blankLine();
 	b.text(docModel.summary || '');
 	b.blankLine();
 
-	// Query
 	b.heading(1, 'Query');
 	b.blankLine();
 	b.text(docModel.query);
 	b.blankLine();
 
-	// V2 callouts: Process Log and Analysis Plan (after Query, before V1 full-only sections)
 	if (docModel.v2ProcessLog?.length) {
 		b.callout('abstract', 'Process Log', docModel.v2ProcessLog.map(i => `- ${i}`).join('\n'), true);
 		b.blankLine();
@@ -144,7 +99,6 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 		b.blankLine();
 	}
 
-	// V2 numbered report sections (before Sources)
 	if (docModel.v2ReportSections?.length) {
 		for (let i = 0; i < docModel.v2ReportSections.length; i++) {
 			const sec = docModel.v2ReportSections[i];
@@ -158,7 +112,6 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 	if (fullOnly) {
 		const overviewVersions = docModel.overviewMermaidVersions ?? [];
 		const overviewActiveIndex = docModel.overviewMermaidActiveIndex ?? 0;
-		// Only write Overview History; current overview = versions[activeIndex], no separate Overview section.
 		if (overviewVersions.length > 0) {
 			b.heading(1, 'Overview History');
 			b.blankLine();
@@ -193,7 +146,6 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 			b.blankLine();
 		}
 
-		// Consulting report order: Dashboard Blocks before Sources
 		if (docModel.dashboardBlocks.length > 0) {
 			b.heading(1, 'Dashboard Blocks');
 			b.blankLine();
@@ -220,7 +172,6 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 		}
 	}
 
-	// Sources
 	b.heading(1, 'Sources');
 	b.blankLine();
 	for (const s of docModel.sources) {
@@ -231,9 +182,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 	}
 	b.blankLine();
 
-	// V2 trailing callouts: Graph Data and Follow-up Questions (after Sources)
 	if (docModel.v2GraphJson) {
-		// Build Graph Data callout manually — inner content has a fenced code block
 		b.text('> [!tip]- Graph Data');
 		b.text('> ```json');
 		for (const line of docModel.v2GraphJson.split('\n')) {
@@ -303,8 +252,6 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 			}
 		}
 
-		// Knowledge Graph section no longer persisted (removed).
-
 		pushFollowupHistory(b, 'Graph Follow-ups', docModel.graphFollowups);
 		if (docModel.blocksFollowupsByBlockId && Object.keys(docModel.blocksFollowupsByBlockId).length > 0) {
 			b.heading(1, 'Blocks Follow-ups By Block');
@@ -316,7 +263,6 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 
 	pushFollowupHistory(b, 'Sources Follow-ups', docModel.sourcesFollowups);
 
-	// Continue Analysis: each question = H2; answer content rebased so all headings start at H3 (baseHeading 3)
 	if (docModel.fullAnalysisFollowUp?.length) {
 		const continueBaseHeading = 3;
 		b.heading(1, 'Continue Analysis');

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { ChatMessage } from '@/service/chat/types';
 import { cn } from '@/ui/react/lib/utils';
 import { Copy, RefreshCw, Star, Check, ChevronDown } from 'lucide-react';
@@ -124,7 +125,7 @@ const RegenerateWithModelButton: React.FC<{
 				<ChevronDown size={12} strokeWidth={2} />
 			</MessageAction>
 
-			{showPicker && pickerPos && (
+			{showPicker && pickerPos && createPortal(
 				<ModelPickerPopover
 					models={models}
 					position={pickerPos}
@@ -133,7 +134,8 @@ const RegenerateWithModelButton: React.FC<{
 						onRegenerate(messageId, { provider, modelId });
 					}}
 					onClose={() => setShowPicker(false)}
-				/>
+				/>,
+				document.body,
 			)}
 		</div>
 	);

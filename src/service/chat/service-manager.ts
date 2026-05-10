@@ -1,11 +1,11 @@
 import { SLICE_CAPS } from '@/core/constant';
 import { App } from 'obsidian';
-import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart, LLMRequestMessage, ModelTokenLimits, ModelMetaData } from '@/core/providers/types';
+import { ModelInfoForSwitch, LLMUsage, LLMStreamEvent, LLMRequestMessage, ModelTokenLimits } from '@/core/providers/types';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
 import { modelRegistry } from '@/core/providers/model-registry';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
-import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef } from './types';
-import type { ConversationType } from './conversation-types';
+import { ChatConversation } from './types';
 import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId, PromptInfo, PromptVariables } from '@/service/prompt/PromptId';
 import { ProjectService } from './service-project';
@@ -53,11 +53,26 @@ import { AppContext } from '@/app/context/AppContext';
 export class AIServiceManager {
 	private storage: ChatStorageService;
 	private promptService: PromptService;
-	private projectService?: ProjectService;
-	private conversationService?: ConversationService;
+	private _projectService?: ProjectService;
+	private _conversationService?: ConversationService;
 	private resourceSummaryService: ResourceSummaryService;
 	private profileService?: UserProfileService;
 	private contextUpdateService?: ContextUpdateService;
+
+	get proj(): ProjectService {
+		if (!this._projectService) throw new Error('ProjectService not initialized. Call init() first.');
+		return this._projectService;
+	}
+
+	get conv(): ConversationService {
+		if (!this._conversationService) throw new Error('ConversationService not initialized. Call init() first.');
+		return this._conversationService;
+	}
+
+	/** Public accessor for PromptService (needed by PromptTemplateList UI). */
+	get prompt(): PromptService {
+		return this.promptService;
+	}
 
 	constructor(
 		private readonly app: App,
@@ -114,13 +129,13 @@ export class AIServiceManager {
 		}
 
 		// Initialize Project- and conversation-level services after DocumentLoaderManager is ready
-		this.projectService = new ProjectService(
+		this._projectService = new ProjectService(
 			this.app,
 			this.storage,
 			this.settings.rootFolder,
 			this.promptService,
 		);
-		this.conversationService = new ConversationService(
+		this._conversationService = new ConversationService(
 			this.app,
 			this.storage,
 			this.promptService,
@@ -144,15 +159,15 @@ export class AIServiceManager {
 			new VaultIntuitionSlot(),
 			new CurrentFileSlot(),
 		]);
-		this.conversationService.setContextPipeline(contextPipeline);
+		this.conv.setContextPipeline(contextPipeline);
 
 		// Initialize summary update service
 		const eventBus = EventBus.getInstance(this.app);
 		this.contextUpdateService = new ContextUpdateService(
 			eventBus,
 			this.storage,
-			this.conversationService,
-			this.projectService,
+			this.conv,
+			this.proj,
 		);
 	}
 
@@ -208,7 +223,7 @@ export class AIServiceManager {
 			);
 		}
 
-		this.projectService = new ProjectService(
+		this._projectService = new ProjectService(
 			this.app,
 			this.storage, this.settings.rootFolder, this.promptService,
 		);
@@ -217,7 +232,7 @@ export class AIServiceManager {
 			this.settings.rootFolder,
 			getAIResourcesSummaryFolder(this.settings.rootFolder),
 		);
-		this.conversationService = new ConversationService(
+		this._conversationService = new ConversationService(
 			this.app,
 			this.storage,
 			this.promptService,
@@ -241,7 +256,7 @@ export class AIServiceManager {
 			new VaultIntuitionSlot(),
 			new CurrentFileSlot(),
 		]);
-		this.conversationService.setContextPipeline(refreshedPipeline);
+		this.conv.setContextPipeline(refreshedPipeline);
 
 		// Reinitialize summary update service
 		const eventBus = EventBus.getInstance(this.app);
@@ -251,8 +266,8 @@ export class AIServiceManager {
 		this.contextUpdateService = new ContextUpdateService(
 			eventBus,
 			this.storage,
-			this.conversationService,
-			this.projectService,
+			this.conv,
+			this.proj,
 		);
 
 		// Update IndexService with updated AIServiceManager instance
@@ -261,68 +276,6 @@ export class AIServiceManager {
 
 	setPromptFolder(folder: string): void {
 		this.promptService.setPromptFolder(folder);
-	}
-
-	/**
-	 * Create a new project on disk.
-	 */
-	async createProject(input: Omit<ChatProjectMeta, 'id' | 'createdAtTimestamp' | 'updatedAtTimestamp'>): Promise<ChatProject> {
-		if (!this.projectService) {
-			throw new Error('ProjectService not initialized. Call init() first.');
-		}
-		return this.projectService.createProject(input);
-	}
-
-	/**
-	 * List projects managed by the service.
-	 */
-	async listProjects(): Promise<ChatProject[]> {
-		if (!this.projectService) {
-			throw new Error('ProjectService not initialized. Call init() first.');
-		}
-		return this.projectService.listProjects();
-	}
-
-	/**
-	 * List conversations, optionally filtered by project.
-	 * Supports pagination with limit and offset parameters.
-	 */
-	async listConversations(
-		projectId: string | null | undefined,
-		limit?: number,
-		offset?: number
-	): Promise<ChatConversation[]> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		return this.conversationService.listConversations(projectId ?? null, limit, offset);
-	}
-
-	/**
-	 * Count conversations, optionally filtered by project.
-	 */
-	async countConversations(projectId: string | null | undefined): Promise<number> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		return this.conversationService.countConversations(projectId ?? null);
-	}
-
-	async deleteConversation(conversationId: string): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		return this.conversationService.deleteConversation(conversationId);
-	}
-
-	/**
-	 * Create a new conversation with optional seed messages.
-	 */
-	async createConversation(params: { title: string; project?: ChatProjectMeta | null; initialMessages?: ChatMessage[]; modelId?: string; provider?: string; conversationType?: ConversationType }): Promise<ChatConversation> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		return this.conversationService.createConversation(params);
 	}
 
 	/**
@@ -335,15 +288,8 @@ export class AIServiceManager {
 		sources: Array<{ path: string; title: string; content?: string }>;
 		topics?: Array<{ label: string; weight: number }>;
 	}): Promise<ChatConversation> {
-		console.debug('[AIServiceManager] createConvFromSearchAIAnalysis called', {
-			query: params.query,
-			sourcesCount: params.sources.length,
-			topicsCount: params.topics?.length ?? 0,
-		});
-
 		// Build title from query
 		const title = params.query.trim() || 'AI Search Analysis';
-		console.debug('[AIServiceManager] Conversation title:', title);
 
 		// Build content with sources as markdown links for context
 		const sourcesList = params.sources.slice(0, SLICE_CAPS.chat.sourcesList).map((s, i) => {
@@ -368,8 +314,6 @@ ${sourcesList}${topicsList}
 ---
 *This conversation was created from an AI Search analysis. You can reference the sources above to continue the discussion.*`;
 
-		console.debug('[AIServiceManager] Initial message content length:', content.length);
-
 		// Get default model and timezone
 		const defaultModel = this.settings.defaultModel;
 		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -384,103 +328,19 @@ ${sourcesList}${topicsList}
 		);
 		initialMessage.isMarkdownContent = true;
 
-		console.debug('[AIServiceManager] Creating conversation with initial message', {
-			messageId: initialMessage.id,
-			model: defaultModel.modelId,
-			provider: defaultModel.provider,
-		});
-
 		// Create conversation with initial message containing all search context
-		const conversation = await this.createConversation({
+		const conversation = await this.conv.createConversation({
 			title,
 			initialMessages: [initialMessage],
-		});
-
-		console.debug('[AIServiceManager] Conversation created successfully', {
-			conversationId: conversation.meta.id,
-			projectId: conversation.meta.projectId ?? null,
 		});
 
 		return conversation;
 	}
 
 	/**
-	 * Send a message and wait for the full model response (blocking).
-	 * Returns the assistant message and usage without persisting. Call addMessage to persist.
-	 *
-	 * @experimental This method is temporarily not supported. Use streamChat instead.
-	 */
-	async blockChat(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
-		userContent: string;
-		attachments?: string[];
-	}): Promise<{ message: ChatMessage; usage?: LLMUsage }> {
-		throw new Error('Unsupported operation. Use streamChat instead.');
-	}
-
-	/**
-	 * Send a message and stream incremental model output.
-	 */
-	streamChat(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
-		userContent: string;
-		attachments?: string[];
-	}): AsyncGenerator<LLMStreamEvent> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		return this.conversationService.streamChat(params);
-	}
-
-	/**
-	 * Update conversation's active model.
-	 */
-	async updateConversationModel(params: {
-		conversationId: string;
-		modelId: string;
-		provider: string;
-	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		await this.conversationService.updateConversationModel(params);
-	}
-
-	/**
-	 * Update conversation title and mark it as manually edited.
-	 */
-	async updateConversationTitle(params: {
-		conversationId: string;
-		title: string;
-	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		await this.conversationService.updateConversationTitle(params);
-	}
-
-	/**
-	 * Update conversation's attachment handling mode override.
-	 */
-	async updateConversationAttachmentHandling(params: {
-		conversationId: string;
-		attachmentHandlingOverride?: 'direct' | 'degrade_to_text';
-	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		await this.conversationService.updateConversationAttachmentHandling(params);
-	}
-
-	/**
 	 * Regenerate conversation title based on current messages and context.
 	 */
 	async regenerateConversationTitle(conversationId: string): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 
 		// Load conversation with messages
 		const conversation = await this.readConversation(conversationId, true);
@@ -489,132 +349,28 @@ ${sourcesList}${topicsList}
 		}
 
 		// Get project if exists
-		const projects = await this.listProjects();
+		const projects = await this.proj.listProjects();
 		const project = conversation.meta.projectId
 			? projects.find(p => p.meta.id === conversation.meta.projectId) || null
 			: null;
 
 		// Build context window for title generation
-		const context = await this.conversationService.buildContextWindow(conversation.messages, project);
+		const context = await this.conv.buildContextWindow(conversation.messages, project);
 
 		// Generate new title based on messages and context
-		const newTitle = await this.conversationService.generateConversationTitle(conversation.messages, context);
+		const newTitle = await this.conv.generateConversationTitle(conversation.messages, context);
 
 		if (!newTitle || newTitle.trim().length === 0) {
 			return;
 		}
 
 		// Update title - preserve titleManuallyEdited status, but mark as auto-updated
-		await this.conversationService.updateConversationTitle({
+		await this.conv.updateConversationTitle({
 			conversationId: conversation.meta.id,
 			title: newTitle.trim(),
 			titleManuallyEdited: conversation.meta.titleManuallyEdited ?? false,
 			titleAutoUpdated: true,
 		});
-	}
-
-	/**
-	 * Update conversation's output control override settings.
-	 */
-	async updateConversationOutputControl(params: {
-		conversationId: string;
-		outputControlOverride?: LLMOutputControlSettings;
-	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		await this.conversationService.updateConversationOutputControl(params);
-	}
-
-	/**
-	 * Upload files and create resource references.
-	 * Uploads files to vault and creates resourceRef for each file.
-	 */
-	async uploadFilesAndCreateResources(files: File[]): Promise<ChatResourceRef[]> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		return this.conversationService.uploadFilesAndCreateResources(files);
-	}
-
-	/**
-	 * Add a message to conversation and save it.
-	 */
-	async addMessage(params: {
-		conversationId: string;
-		message: ChatMessage;
-		model: string;
-		provider: string;
-		usage: LLMUsage;
-	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		this.conversationService.addMessage({
-			conversationId: params.conversationId,
-			message: params.message,
-			model: params.model,
-			provider: params.provider,
-			usage: params.usage,
-		});
-	}
-
-
-	/**
-	 * Toggle star status on a message.
-	 */
-	async toggleStar(params: {
-		messageId: string;
-		conversationId: string;
-		starred: boolean;
-	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		return this.conversationService.toggleStar(params);
-	}
-
-	/**
-	 * Load starred message records.
-	 */
-	async loadStarred(): Promise<StarredMessageRecord[]> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		return this.conversationService.loadStarred();
-	}
-
-	/**
-	 * List starred messages for a project.
-	 */
-	async listStarredMessagesByProject(projectId: string): Promise<{
-		messages: ChatMessage[];
-		messageToConversationId: Map<string, string>;
-	}> {
-		if (!this.storage) {
-			throw new Error('StorageService not initialized. Call init() first.');
-		}
-		return this.storage.listStarredMessagesByProject(projectId);
-	}
-
-	/**
-	 * Delete a project and all its conversations.
-	 */
-	async deleteProject(projectId: string): Promise<void> {
-		if (!this.projectService) {
-			throw new Error('ProjectService not initialized. Call init() first.');
-		}
-		return this.projectService.deleteProject(projectId);
-	}
-
-	/**
-	 * Rename a project by renaming its folder.
-	 */
-	async renameProject(projectId: string, newName: string): Promise<ChatProject> {
-		if (!this.projectService) {
-			throw new Error('ProjectService not initialized. Call init() first.');
-		}
-		return this.projectService.renameProject(projectId, newName);
 	}
 
 	async getPromptInfo<T extends PromptId>(
@@ -659,15 +415,6 @@ ${sourcesList}${topicsList}
 
 
 	/**
-	 * Search for external prompts by query string.
-	 * Stub: always returns an empty array. AI-powered prompt search is not yet implemented.
-	 */
-	async searchPrompts(query: string): Promise<Array<{ id: string; label: string; description: string; value: string; icon: string; showArrow: boolean }>> {
-		console.debug('[AIServiceManager] searchPrompts called with query:', query);
-		return [];
-	}
-
-	/**
 	 * Get all available models from all configured providers.
 	 * Uses the static model catalog (no runtime API calls).
 	 * Only returns models from enabled providers and enabled models.
@@ -691,6 +438,17 @@ ${sourcesList}${topicsList}
 					result.push({ ...model, provider: providerId });
 				}
 				// If modelConfig is missing or not enabled → skip
+			}
+		}
+
+		// Include models from custom OpenAI-compatible endpoints
+		const customEndpoints = ProfileRegistry.getInstance().getCustomEndpoints();
+		for (const endpoint of customEndpoints) {
+			if (!endpoint.enabled) continue;
+			const endpointProviderId = `custom:${endpoint.id}`;
+			const endpointModels = modelRegistry.getModelsForProvider(endpointProviderId);
+			for (const m of endpointModels) {
+				result.push({ ...m, provider: endpointProviderId });
 			}
 		}
 
@@ -926,7 +684,7 @@ ${sourcesList}${topicsList}
 		promptOrText: string,
 		variables?: Record<string, unknown>,
 		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
-	): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; fullText: string }> {
+	): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; fullText: string; usage?: LLMUsage }> {
 		const startMs = Date.now();
 		const { profile, modelId } = this.resolveCopilotProfileAndModel();
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
@@ -953,7 +711,7 @@ ${sourcesList}${topicsList}
 				capturedUsage = event.usage;
 			}
 		}
-		yield { type: 'done', fullText };
+		yield { type: 'done', fullText, usage: capturedUsage };
 
 		this.emitUsage(capturedUsage, startMs, true, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
 	}
@@ -1032,7 +790,7 @@ ${sourcesList}${topicsList}
 		promptOrText: string,
 		variables?: Record<string, unknown>,
 		schema?: unknown,
-		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; usageCallback?: (usage: LLMUsage) => void },
 	): Promise<T> {
 		const startMs = Date.now();
 		const { profile, modelId } = this.resolveCopilotProfileAndModel();
@@ -1054,9 +812,12 @@ ${sourcesList}${topicsList}
 		];
 		const { text, usage } = await vercelGenerateText(profile, modelId, llmMessages);
 		this.emitUsage(usage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
+		if (usage && opts?.usageCallback) opts.usageCallback(usage);
 		// Extract JSON from potential markdown code fences
 		const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
-		return JSON.parse(jsonMatch[1]!.trim()) as T;
+		const raw = jsonMatch[1]?.trim();
+		if (!raw) throw new Error('LLM returned empty response — no JSON to parse');
+		return JSON.parse(raw) as T;
 	}
 
 }

@@ -98,18 +98,6 @@ export class ChatProjectRepo {
 	}
 
 	/**
-	 * Get project by folder path.
-	 */
-	async getByFolderPath(folderRelPath: string): Promise<DbSchema['chat_project'] | null> {
-		const row = await this.db
-			.selectFrom('chat_project')
-			.selectAll()
-			.where('folder_rel_path', '=', folderRelPath)
-			.executeTakeFirst();
-		return row ?? null;
-	}
-
-	/**
 	 * List all projects (excluding archived by default).
 	 */
 	async listProjects(includeArchived: boolean = false): Promise<DbSchema['chat_project'][]> {
@@ -130,21 +118,4 @@ export class ChatProjectRepo {
 			.execute();
 	}
 
-	/**
-	 * Update folder path when project is moved/renamed.
-	 */
-	async updatePathsOnMove(
-		projectId: string,
-		newFolderRelPath: string,
-		newArchivedRelPath?: string | null
-	): Promise<void> {
-		await this.db
-			.updateTable('chat_project')
-			.set({
-				folder_rel_path: newFolderRelPath,
-				archived_rel_path: newArchivedRelPath ?? null,
-			})
-			.where('project_id', '=', projectId)
-			.execute();
-	}
 }

@@ -1,6 +1,15 @@
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import type { BackboneMapResult } from '@/service/search/index/helper/backbone';
-import type { computeHubDiscoverBudgets } from '@/service/search/index/helper/hub/hubDiscover';
+
+/** Budget limits computed from vault document count for exploration scaling. */
+export type VaultExploreBudgets = {
+	limitTotal: number;
+	documentFetchLimit: number;
+	folderFetchLimit: number;
+	clusterLimit: number;
+	topDocExcludeLimit: number;
+	clusterSeedFetchLimit: number;
+};
 
 /** One digest row used to render compact folder tree lines. */
 export type FolderTreeNodeDigest = {
@@ -105,7 +114,7 @@ export type IntuitionPrepContext = {
 	folderTreeMarkdown: string;
 	backboneMarkdownExcerpt: string;
 	backboneEdgesJson: string;
-	indexBudgetRaw: ReturnType<typeof computeHubDiscoverBudgets>;
+	indexBudgetRaw: VaultExploreBudgets;
 };
 
 /** Options for {@link KnowledgeIntuitionAgent}. */

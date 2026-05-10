@@ -6,7 +6,7 @@
  * the provided callback.
  */
 
-import type { Profile, ProfileSettings, RoleConfig, SdkSettings } from './types';
+import type { Profile, ProfileSettings, RoleConfig, SdkSettings, OpenAICompatibleEndpoint } from './types';
 import { DEFAULT_SDK_SETTINGS } from './types';
 
 export type PersistFn = (settings: ProfileSettings) => void | Promise<void>;
@@ -22,6 +22,7 @@ export class ProfileRegistry {
   private activeEmbeddingConfig: RoleConfig | null = null;
   private activeWebSearchConfig: RoleConfig | null = null;
   private sdkSettings: SdkSettings = { ...DEFAULT_SDK_SETTINGS };
+  private customEndpoints: OpenAICompatibleEndpoint[] = [];
   private persistFn: PersistFn | null = null;
 
   private constructor() {}
@@ -61,6 +62,7 @@ export class ProfileRegistry {
     this.activeEmbeddingConfig = settings.activeEmbeddingConfig ?? this.migrateOldId(settings.activeEmbeddingProfileId);
     this.activeWebSearchConfig = settings.activeWebSearchConfig ?? this.migrateOldId(settings.activeWebSearchProfileId);
     this.sdkSettings = { ...DEFAULT_SDK_SETTINGS, ...settings.sdkSettings };
+    this.customEndpoints = [...(settings.customEndpoints ?? [])];
     this.persistFn = persistFn;
   }
 
@@ -117,10 +119,10 @@ export class ProfileRegistry {
 
   /**
    * Returns the appropriate config for a given conversation mode.
-   * 'agent' and 'plan' use the Agent config; all others use the Chat config.
+   * 'agent' uses the Agent config; all others use the Chat config.
    */
   getConfigForMode(mode: string): { profile: Profile; modelId: string } | null {
-    if (mode === 'agent' || mode === 'plan') return this.getActiveAgentConfig();
+    if (mode === 'agent') return this.getActiveAgentConfig();
     return this.getActiveChatConfig();
   }
 
@@ -293,6 +295,29 @@ export class ProfileRegistry {
     this.persist();
   }
 
+  // --------------- Custom Endpoints ---------------
+
+  getCustomEndpoints(): OpenAICompatibleEndpoint[] {
+    return [...this.customEndpoints];
+  }
+
+  addCustomEndpoint(endpoint: OpenAICompatibleEndpoint): void {
+    this.customEndpoints.push({ ...endpoint });
+    this.persist();
+  }
+
+  updateCustomEndpoint(id: string, updates: Partial<OpenAICompatibleEndpoint>): void {
+    const idx = this.customEndpoints.findIndex(e => e.id === id);
+    if (idx === -1) throw new Error(`Endpoint "${id}" not found`);
+    this.customEndpoints[idx] = { ...this.customEndpoints[idx], ...updates, id };
+    this.persist();
+  }
+
+  deleteCustomEndpoint(id: string): void {
+    this.customEndpoints = this.customEndpoints.filter(e => e.id !== id);
+    this.persist();
+  }
+
   // --------------- Internal ---------------
 
   private persist(): void {
@@ -306,6 +331,7 @@ export class ProfileRegistry {
       activeEmbeddingConfig: this.activeEmbeddingConfig,
       activeWebSearchConfig: this.activeWebSearchConfig,
       sdkSettings: { ...this.sdkSettings },
+      customEndpoints: this.customEndpoints.map(e => ({ ...e })),
     };
     void this.persistFn(snapshot);
   }

@@ -20,16 +20,24 @@ export const ProgressBarSelector: React.FC<ProgressBarSelectorProps> = ({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Find current selected index
   const currentIndex = options.findIndex(option => option.value === value);
 
-  // Calculate position for each node
-  const getNodePosition = (index: number) => {
-    if (options.length <= 1) return 50;
-    return (index / (options.length - 1)) * 100;
-  };
+  const getNodePosition = (index: number) =>
+    options.length <= 1 ? 50 : (index / (options.length - 1)) * 100;
 
-  // Handle mouse/touch events
+  /** Find the option index closest to a percentage position on the bar. */
+  const closestIndexAt = useCallback((percentage: number) =>
+    options.reduce((closest, _, i) =>
+      Math.abs(getNodePosition(i) - percentage) < Math.abs(getNodePosition(closest) - percentage) ? i : closest, 0),
+    [options.length]);
+
+  /** Convert a pointer event clientX to a 0-100 percentage on the bar. */
+  const pctFromEvent = useCallback((clientX: number) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+  }, []);
+
   const handlePointerDown = useCallback((index: number, event: React.PointerEvent) => {
     if (disabled) return;
     event.preventDefault();
@@ -39,40 +47,23 @@ export const ProgressBarSelector: React.FC<ProgressBarSelectorProps> = ({
   }, [disabled, onChange, options]);
 
   const handlePointerMove = useCallback((event: PointerEvent) => {
-    if (!isDragging || dragIndex === null || !containerRef.current) return;
+    if (!isDragging || dragIndex === null) return;
+    const pct = pctFromEvent(event.clientX);
+    if (pct === null) return;
+    const idx = closestIndexAt(pct);
+    if (idx !== currentIndex) { onChange(options[idx].value); setDragIndex(idx); }
+  }, [isDragging, dragIndex, currentIndex, onChange, options, pctFromEvent, closestIndexAt]);
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+  const handlePointerUp = useCallback(() => { setIsDragging(false); setDragIndex(null); }, []);
 
-    // Find closest node
-    const closestIndex = options.reduce((closest, _, index) => {
-      const nodePos = getNodePosition(index);
-      const currentPos = getNodePosition(closest);
-      return Math.abs(nodePos - percentage) < Math.abs(currentPos - percentage) ? index : closest;
-    }, 0);
-
-    if (closestIndex !== currentIndex) {
-      onChange(options[closestIndex].value);
-      setDragIndex(closestIndex);
-    }
-  }, [isDragging, dragIndex, currentIndex, onChange, options]);
-
-  const handlePointerUp = useCallback(() => {
-    setIsDragging(false);
-    setDragIndex(null);
-  }, []);
-
-  // Add global event listeners
   useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('pointermove', handlePointerMove);
-      document.addEventListener('pointerup', handlePointerUp);
-      return () => {
-        document.removeEventListener('pointermove', handlePointerMove);
-        document.removeEventListener('pointerup', handlePointerUp);
-      };
-    }
+    if (!isDragging) return;
+    document.addEventListener('pointermove', handlePointerMove);
+    document.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
+    };
   }, [isDragging, handlePointerMove, handlePointerUp]);
 
   return (
@@ -87,16 +78,9 @@ export const ProgressBarSelector: React.FC<ProgressBarSelectorProps> = ({
         )}
         onClick={(e) => {
           if (disabled) return;
-          const rect = containerRef.current?.getBoundingClientRect();
-          if (!rect) return;
-          const x = e.clientX - rect.left;
-          const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
-          const closestIndex = options.reduce((closest, _, index) => {
-            const nodePos = getNodePosition(index);
-            const currentPos = getNodePosition(closest);
-            return Math.abs(nodePos - percentage) < Math.abs(currentPos - percentage) ? index : closest;
-          }, 0);
-          onChange(options[closestIndex].value);
+          const pct = pctFromEvent(e.clientX);
+          if (pct === null) return;
+          onChange(options[closestIndexAt(pct)].value);
         }}
       >
         {/* Active Progress Fill */}
