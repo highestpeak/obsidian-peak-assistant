@@ -22,6 +22,7 @@ import { OnboardingModal } from '@/ui/view/modals/OnboardingModal';
 import { AppContext } from '@/app/context/AppContext';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
+import { BatchTagModal } from '@/ui/view/copilot/BatchTagModal';
 import { registerAllCopilotActions } from '@/service/copilot/actions';
 import { PromptTemplateModal } from '@/ui/view/prompt-template/PromptTemplateModal';
 import { SettingsModal } from '@/ui/view/SettingsModal';
@@ -709,6 +710,13 @@ export function buildCoreCommands(
 			name: 'Open Copilot Panel',
 			callback: () => {
 				new CopilotPickerModal(appContext).open();
+			},
+		},
+		{
+			id: 'peak-copilot-batch-suggest-tags',
+			name: 'Copilot: Batch Tag Suggestions',
+			callback: () => {
+				new BatchTagModal(appContext).open();
 			},
 		},
 		{
