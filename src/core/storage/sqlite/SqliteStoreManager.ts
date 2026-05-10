@@ -27,6 +27,7 @@ import { HubConstituentRepo } from './repositories/HubConstituentRepo';
 import { AmbientPushRepo } from './repositories/AmbientPushRepo';
 import { TagSuggestionRepo } from './repositories/TagSuggestionRepo';
 import { VaultLintRepo } from './repositories/VaultLintRepo';
+import { StructuralAnalysisRepo } from './repositories/StructuralAnalysisRepo';
 import { VAULT_DB_FILENAME, CHAT_DB_FILENAME } from '@/core/constant';
 
 /** Global singleton manager for SQLite database connections (better-sqlite3). */
@@ -68,6 +69,7 @@ export class SqliteStoreManager {
 	private hubConstituentRepo: HubConstituentRepo | null = null;
 	private ambientPushRepo: AmbientPushRepo | null = null;
 	private vaultLintRepo: VaultLintRepo | null = null;
+	private structuralAnalysisRepo: StructuralAnalysisRepo | null = null;
 
 	// Meta database repositories (chat tenant + chat-only tables)
 	private indexedDocumentRepoChat: IndexedDocumentRepo | null = null;
@@ -253,6 +255,14 @@ export class SqliteStoreManager {
 	getAmbientPushRepo(): AmbientPushRepo { return this.requireRepo(this.ambientPushRepo); }
 	getVaultLintRepo(): VaultLintRepo { return this.requireRepo(this.vaultLintRepo); }
 
+	getStructuralAnalysisRepo(): StructuralAnalysisRepo {
+		if (this.closing) throw new Error('SqliteStoreManager is closing');
+		if (!this.structuralAnalysisRepo) {
+			this.structuralAnalysisRepo = new StructuralAnalysisRepo(this.getIndexContext('vault'));
+		}
+		return this.structuralAnalysisRepo;
+	}
+
 	getHubConstituentRepo(): HubConstituentRepo {
 		if (!this.hubConstituentRepo) {
 			this.hubConstituentRepo = new HubConstituentRepo(this.getIndexContext('vault'));
@@ -287,6 +297,7 @@ export class SqliteStoreManager {
 		this.mobiusNodeRepo = this.mobiusEdgeRepo = this.cascadeDebtRepo = this.ambientPushRepo = null;
 		this.hubConstituentRepo = null;
 		this.vaultLintRepo = null;
+		this.structuralAnalysisRepo = null;
 		this.tagSuggestionRepo = null;
 		this.userProfileProcessedHashRepo = null;
 		this.indexedDocumentRepoChat = this.docChunkRepoChat = this.embeddingRepoChat = this.indexStateRepoChat = this.graphRepoChat = null;

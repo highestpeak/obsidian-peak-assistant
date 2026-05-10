@@ -17,6 +17,7 @@ export const ToolTemplateId = {
 	ExploreFolder: 'explore-folder',
 	OrphanNotes: 'orphan-notes',
 	FindKeyNodes: 'find-key-nodes',
+	FindStructuralHoles: 'find-structural-holes',
 	GraphTraversal: 'graph-traversal',
 } as const;
 
@@ -130,6 +131,7 @@ export const ConfigTemplateId = {
 	ModelsPerplexity: 'config-models-perplexity' as const,
 	ModelsOllamaFamilies: 'config-models-ollama-families' as const,
 	ModelsDefaults: 'config-models-defaults' as const,
+	CommunityColors: 'config-community-colors' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -314,6 +316,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ToolTemplateId.ExploreFolder]: meta('tools', 'explore-folder'),
 	[ToolTemplateId.OrphanNotes]: meta('tools', 'orphan-notes'),
 	[ToolTemplateId.FindKeyNodes]: meta('tools', 'find-key-nodes'),
+	[ToolTemplateId.FindStructuralHoles]: meta('tools', 'structural-holes'),
 	[ToolTemplateId.GraphTraversal]: meta('tools', 'graph-traversal'),
 
 	// --- Agents ---
@@ -348,6 +351,10 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ConfigTemplateId.ModelsPerplexity]: meta('config', 'models/perplexity', { expectsJson: true }),
 	[ConfigTemplateId.ModelsOllamaFamilies]: meta('config', 'models/ollama-families', { expectsJson: true }),
 	[ConfigTemplateId.ModelsDefaults]: meta('config', 'models/defaults', { expectsJson: true }),
+	[ConfigTemplateId.CommunityColors]: meta('config', 'community-colors', { expectsJson: true }),
+
+	// --- Structural analysis prompts ---
+	'gap-explanation': meta('prompts', 'gap-explanation', { label: 'Gap Explanation', description: 'LLM prompt for lazy gap explanations.', group: 'indexing' }),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {
