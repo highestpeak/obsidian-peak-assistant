@@ -6,6 +6,7 @@ import { MessageHeader } from './components/messages/MessageViewHeader';
 import { MessageListRenderer } from './components/messages/MessageListRenderer';
 import { ChatInputAreaComponent } from './components/ChatInputArea';
 import { FileChangesList } from './components/messages/FileChangesList';
+import { ConvertToProjectSuggestion } from './components/ConvertToProjectSuggestion';
 
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
@@ -119,6 +120,9 @@ export const MessagesViewComponent: React.FC = () => {
                 {/* File Changes List - positioned after messages, before footer */}
                 <FileChangesList />
             </div>
+
+            {/* Convert to project suggestion */}
+            <ConvertToProjectSuggestion />
 
             {/* Footer Upper Area - scroll buttons */}
             <div className="pktw-flex-shrink-0 pktw-flex pktw-justify-end pktw-items-center pktw-px-6 pktw-pt-2">
