@@ -5,6 +5,24 @@ import type { TFile } from 'obsidian';
 import type { ConversationType } from './conversation-types';
 
 /**
+ * Lifecycle status for a chat message.
+ * - sending: user message submitted, waiting for server
+ * - streaming: assistant response actively streaming
+ * - completed: message fully received and persisted
+ * - error: an error occurred during generation
+ * - cancelled: user cancelled the streaming response
+ * - timeout: no response received within the timeout window
+ */
+export enum MessageStatus {
+	SENDING = 'sending',
+	STREAMING = 'streaming',
+	COMPLETED = 'completed',
+	ERROR = 'error',
+	CANCELLED = 'cancelled',
+	TIMEOUT = 'timeout',
+}
+
+/**
  * Base chat message structure (persisted to markdown).
  * Runtime helper fields (displayText, processedText, contextText) should use ChatMessageVO.
  * Assistant-specific fields (thinking, genTimeMs, tokenUsage) should use composition pattern.
@@ -65,6 +83,11 @@ export interface ChatMessage {
 	 * If undefined, the message is in NoTopic section.
 	 */
 	topic?: string;
+	/**
+	 * Lifecycle status of this message (runtime only, not persisted).
+	 * Defaults to 'completed' for saved messages loaded from storage.
+	 */
+	status?: MessageStatus;
 }
 
 export interface ChatConversationMeta {

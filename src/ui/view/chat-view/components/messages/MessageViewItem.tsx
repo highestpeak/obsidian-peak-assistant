@@ -27,6 +27,7 @@ import { MessageStyleButtons } from '../MessageStyleButtons';
 import { SuggestedFollowups } from '../SuggestedFollowups';
 import { SuggestionActions } from '../SuggestionActions';
 import { CapabilitySuggestion } from './CapabilitySuggestion';
+import { MessageStatusIndicator } from './MessageStatusIndicator';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 
 interface StreamingState {
@@ -346,6 +347,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 							<Star className={cn("pktw-w-3 pktw-h-3", message.starred && "pktw-fill-current")} />
 						</MessageAction>
 					</div>
+					<MessageStatusIndicator status={message.status} className="pktw-mt-1" />
 				</div>
 			) : (
 				/* Assistant: provider icon inline left of content column */
@@ -484,6 +486,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 								Open Settings
 							</span>
 						)}
+						<MessageStatusIndicator status={message.status} className="pktw-mt-1" />
 					</div>
 				</div>
 			)}
