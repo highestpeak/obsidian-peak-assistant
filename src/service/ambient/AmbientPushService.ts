@@ -81,6 +81,9 @@ export class AmbientPushService {
 		const settings = this.getSettings();
 		const store = useAmbientPushStore.getState();
 
+		// Clean stale push history entries
+		store.cleanPushHistory();
+
 		let items: AmbientPushItem[];
 		try {
 			items = await ambientSearch(context, settings.maxPushItems, store.pushHistory, {
