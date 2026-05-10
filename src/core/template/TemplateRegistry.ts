@@ -101,6 +101,7 @@ export interface TemplateMetadata {
  */
 export const ConfigTemplateId = {
 	VaultLintConfig: 'config-vault-lint',
+	TimeWithinNormalize: 'time-within-normalize' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -291,6 +292,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 
 	// --- Config (runtime-editable JSON) ---
 	[ConfigTemplateId.VaultLintConfig]: meta('config', 'vault-lint-config'),
+	[ConfigTemplateId.TimeWithinNormalize]: meta('config', 'time-within-normalize', { expectsJson: true }),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {

@@ -691,14 +691,9 @@ export const SEARCH_SCORING_DENSITY_BOOST_META = 0.4; // Up to 40% boost for den
 export const SEARCH_SCORING_MAX_OCCURRENCES_META = 5; // Max reasonable occurrences per keyword in meta
 
 /**
- * TODO: Turn these constants into configuration options, or make them optional parameters for tools.
- * 	This will allow the AI Agent to adjust them according to the specific scenario.
- * 	Different tasks require different "exploration scales". If the Agent can fine-tune PHYSICAL_CONNECTION_BONUS,
- * 	its ability to explore and discover will be significantly improved.
- * 
  * Graph Inspector RRF weights for document node ranking.
+ * Compiled defaults; not runtime-configurable by design.
  * Weights are applied to each ranking dimension in the RRF formula.
- * Higher weight gives more importance to that dimension.
  */
 export const GRAPH_RRF_WEIGHTS = {
 	// Connection density (how well connected a node is)
@@ -740,6 +735,21 @@ export const PATH_FINDING_CONSTANTS = {
 	 */
 	MAX_HOPS_LIMIT: 5,
 } as const;
+
+/** Per-node edge query limit for graph traversal (decoupled from user-facing `limit`). */
+export const GRAPH_TRAVERSAL_EDGES_PER_NODE = 50;
+
+/**
+ * Semantic neighbor limit for BFS depth > 0. Index = depth-1.
+ * depth=0 uses the full `limit` param; depth=1 -> 3; depth=2 -> 1.
+ */
+export const GRAPH_TRAVERSAL_SEMANTIC_DEPTH_DECAY = [3, 1] as const;
+
+/** Internal fetch size for orphan candidate pool (decoupled from user-facing `limit`). */
+export const ORPHAN_FETCH_LIMIT = 200;
+
+/** Default per-folder item cap for explore_folder tool. */
+export const EXPLORE_FOLDER_DEFAULT_LIMIT = 50;
 
 export const KEY_NODES_RRF_K = 60;
 
