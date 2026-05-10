@@ -23,6 +23,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { registerAllCopilotActions } from '@/service/copilot/actions';
+import { PromptTemplateModal } from '@/ui/view/prompt-template/PromptTemplateModal';
 import { SettingsModal } from '@/ui/view/SettingsModal';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
@@ -660,6 +661,13 @@ export function buildCoreCommands(
 			name: 'Open Copilot Panel',
 			callback: () => {
 				new CopilotPickerModal(appContext).open();
+			},
+		},
+		{
+			id: 'peak-prompt-templates',
+			name: 'Open Prompt Templates',
+			callback: () => {
+				new PromptTemplateModal(appContext).open();
 			},
 		},
 		...buildAmbientPushCommands(viewManager),
