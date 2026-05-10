@@ -8,7 +8,7 @@ import { compileTemplate } from '@/core/template-engine-helper';
 import { LLMStreamEvent, LLMUsage, emptyUsage, MessagePart } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { TemplateManager } from '@/core/template/TemplateManager';
-import { getTemplateMetadata } from '@/core/template/TemplateRegistry';
+import { getTemplateMetadata, type TemplateId } from '@/core/template/TemplateRegistry';
 import { AppContext } from '@/app/context/AppContext';
 
 /**
@@ -121,6 +121,10 @@ export class PromptService {
 		};
 	}
 
+	getPromptFolder(): string {
+		return this.promptFolder;
+	}
+
 	async render<K extends PromptId>(
 		id: K,
 		variables: PromptVariables[K] | null,
@@ -135,6 +139,67 @@ export class PromptService {
 		}
 		const data = (variables ?? {}) as Record<string, unknown>;
 		return this.templateManager.render(id, data);
+	}
+
+	/** Check if an override file exists for the given template id. */
+	checkOverrideExists(id: TemplateId): boolean {
+		const filePath = normalizePath(`${this.promptFolder}/${id}.prompt.md`);
+		return this.app.vault.getAbstractFileByPath(filePath) instanceof TFile;
+	}
+
+	/** Scan the prompts folder and return a set of template ids that have override files. */
+	scanOverrides(): Set<string> {
+		const folder = this.app.vault.getAbstractFileByPath(this.promptFolder);
+		const result = new Set<string>();
+		if (!folder || !('children' in folder)) return result;
+		for (const child of (folder as any).children) {
+			if (child instanceof TFile && child.extension === 'md' && child.name.endsWith('.prompt.md')) {
+				const id = child.name.replace(/\.prompt\.md$/, '');
+				result.add(id);
+			}
+		}
+		return result;
+	}
+
+	/** Create an override file in the vault with the default template content + prompt-meta header. */
+	async createOverrideFile(id: TemplateId): Promise<string> {
+		const filePath = normalizePath(`${this.promptFolder}/${id}.prompt.md`);
+
+		if (this.app.vault.getAbstractFileByPath(filePath) instanceof TFile) {
+			return filePath;
+		}
+
+		const defaultContent = this.templateManager
+			? await this.templateManager.getTemplate(id)
+			: '';
+
+		const meta = getTemplateMetadata(id);
+
+		const metaBlock = [
+			'```prompt-meta',
+			`id: ${id}`,
+			meta.label ? `label: ${meta.label}` : null,
+			meta.description ? `description: ${meta.description}` : null,
+			'note: Changes take effect immediately. Delete this file to restore the default.',
+			'```',
+		].filter(Boolean).join('\n');
+
+		const fileContent = `${metaBlock}\n\n${defaultContent}`;
+
+		await ensureFolder(this.promptFolder);
+		await this.app.vault.create(filePath, fileContent);
+		return filePath;
+	}
+
+	/** Delete an override file and clear its cache entry. */
+	async deleteOverride(id: TemplateId): Promise<void> {
+		const filePath = normalizePath(`${this.promptFolder}/${id}.prompt.md`);
+		const file = this.app.vault.getAbstractFileByPath(filePath);
+		if (file instanceof TFile) {
+			await this.app.vault.delete(file);
+		}
+		this.overrideCache.delete(`override:${id}`);
+		this.overrideCompiledCache.delete(`override:${id}`);
 	}
 
 	private async loadOverride(id: PromptId): Promise<string | undefined> {
@@ -152,7 +217,8 @@ export class PromptService {
 		}
 
 		try {
-			const content = (await this.app.vault.read(file)).trim();
+			const raw = (await this.app.vault.read(file)).trim();
+			const content = this.stripPromptMeta(raw);
 			this.overrideCache.set(cacheKey, content);
 			return content;
 		} catch (error) {
@@ -188,5 +254,22 @@ export class PromptService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Strips the prompt-meta documentation block from override file content.
+	 * Block must start at the first line. Content after closing fence is the template.
+	 */
+	private stripPromptMeta(content: string): string {
+		const lines = content.split('\n');
+		const firstLine = lines[0]?.trim();
+		if (!firstLine?.startsWith('```prompt-meta')) {
+			return content;
+		}
+		const closeIndex = lines.findIndex((line, i) => i > 0 && line.trim() === '```');
+		if (closeIndex === -1) {
+			return content;
+		}
+		return lines.slice(closeIndex + 1).join('\n').trimStart();
 	}
 }
