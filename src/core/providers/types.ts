@@ -412,6 +412,7 @@ export enum StreamTriggerName {
 	KNOWLEDGE_INTUITION_SUBMIT = 'knowledge-intuition-submit',
 	SEARCH_MERMAID_FIX = 'search-mermaid-fix',
 	DOC_SIMPLE_AGENT = 'doc-simple-agent',
+	COPILOT = 'copilot',
 }
 
 export enum ToolEvent {
