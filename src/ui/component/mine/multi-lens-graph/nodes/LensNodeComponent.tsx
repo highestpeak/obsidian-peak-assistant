@@ -30,6 +30,14 @@ export const LensNodeComponent = memo(({ data }: NodeProps<LensNode>) => {
 	const isHub = data.role === 'hub' || data.role === 'root';
 	const isBridge = data.role === 'bridge';
 	const showSummary = (data.role === 'hub' || data.role === 'bridge') && data.summary;
+	const hasStructuralBridge = isBridge && data.communityId != null;
+
+	const titleParts = [
+		data.path,
+		data.betweenness != null ? `BC: ${data.betweenness.toFixed(3)}` : null,
+		data.constraint != null ? `C: ${data.constraint.toFixed(3)}` : null,
+		data.communityId ? `Community: ${data.communityId}` : null,
+	].filter(Boolean).join(' \u00b7 ');
 
 	return (
 		<div
@@ -40,8 +48,10 @@ export const LensNodeComponent = memo(({ data }: NodeProps<LensNode>) => {
 				borderColor: isBridge ? '#f38ba8' : borderColor,
 				borderStyle: isBridge ? 'dashed' : 'solid',
 				borderLeft: `3px solid ${borderColor}`,
+				outline: hasStructuralBridge ? `2px solid ${borderColor}` : undefined,
+				outlineOffset: hasStructuralBridge ? '3px' : undefined,
 			}}
-			title={data.path}
+			title={titleParts}
 		>
 			<span className={`pktw-font-medium pktw-text-[#2e3338] ${
 				isImportant || isHub ? 'pktw-text-sm' : 'pktw-text-[13px]'

@@ -9,6 +9,7 @@ import {
 	INDEX_HUB_TIER_THRESHOLDS,
 	INDEX_SEARCH_HUB_INCOMING_BOOST,
 	INDEX_SEARCH_SECONDARY_INCOMING_BOOST,
+	INDEX_SEARCH_HUB_DOC_TYPE_BOOST,
 	PPR_GLOBAL_PR_DAMPENING,
 } from '@/core/constant';
 import type { DocRankingSignal } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
@@ -367,7 +368,11 @@ export class Reranker {
 			}
 
 			const clickBoost = params.clickedPaths?.has(item.path) ? 0.15 : 0;
-			item.finalScore = base + freqBoost + recencyBoost + graphBoost + anchorBoost + clickBoost;
+
+			// Hub doc type boost: compiled summaries get a modest preference boost
+			const hubDocBoost = (s.mobiusNodeType === 'hub_doc') ? INDEX_SEARCH_HUB_DOC_TYPE_BOOST : 0;
+
+			item.finalScore = base + freqBoost + recencyBoost + graphBoost + anchorBoost + clickBoost + hubDocBoost;
 		}
 
 		// Sort by final score (descending)

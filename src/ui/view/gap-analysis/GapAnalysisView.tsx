@@ -9,7 +9,7 @@ import React, { useEffect } from 'react';
 import { type IconName, ItemView, WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { Button } from '@/ui/component/shared-ui/button';
-import { RefreshCw, Loader2 } from 'lucide-react';
+import { RefreshCw, Loader2, AlertTriangle } from 'lucide-react';
 import { useGapAnalysisStore } from './gapAnalysisStore';
 import { CommunityMap } from './CommunityMap';
 import { GapDetailsSidebar } from './GapDetailsSidebar';
@@ -68,12 +68,16 @@ function GapAnalysisPanel() {
 	const isLoading = useGapAnalysisStore(s => s.isLoading);
 	const lastComputedAt = useGapAnalysisStore(s => s.lastComputedAt);
 	const communities = useGapAnalysisStore(s => s.communities);
+	const staleNodeCount = useGapAnalysisStore(s => s.staleNodeCount);
 	const triggerRecompute = useGapAnalysisStore(s => s.triggerRecompute);
 	const loadData = useGapAnalysisStore(s => s.loadData);
 
 	useEffect(() => {
 		loadData();
 	}, []);
+
+	const totalNodes = communities.reduce((sum, c) => sum + c.memberCount, 0);
+	const isStale = totalNodes > 0 && staleNodeCount / totalNodes > 0.2;
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-bg-pk-background">
@@ -83,6 +87,17 @@ function GapAnalysisPanel() {
 				communityCount={communities.length}
 				onRefresh={triggerRecompute}
 			/>
+			{isStale && (
+				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-4 pktw-py-2 pktw-bg-amber-50 pktw-text-sm pktw-border-b pktw-border-amber-200">
+					<AlertTriangle className="pktw-h-4 pktw-w-4 pktw-text-amber-600" />
+					<span className="pktw-text-amber-800 pktw-text-xs">
+						Gap analysis is stale -- {staleNodeCount} nodes changed.
+					</span>
+					<Button size="sm" variant="outline" onClick={triggerRecompute} style={{ cursor: 'pointer' }}>
+						Recompute
+					</Button>
+				</div>
+			)}
 			<div className="pktw-flex pktw-flex-1 pktw-min-h-0">
 				<div className="pktw-w-[60%] pktw-h-full pktw-border-r pktw-border-pk-border">
 					<CommunityMap />

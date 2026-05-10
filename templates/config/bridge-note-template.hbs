@@ -1,0 +1,21 @@
+---
+tags: [bridge-note, {{communityA.label}}, {{communityB.label}}]
+---
+
+# Bridge: {{communityA.label}} <-> {{communityB.label}}
+
+## Context
+This note bridges two knowledge communities in your vault.
+
+## From {{communityA.label}}
+{{#each communityA.topNodes}}
+- [[{{this.path}}]]
+{{/each}}
+
+## From {{communityB.label}}
+{{#each communityB.topNodes}}
+- [[{{this.path}}]]
+{{/each}}
+
+## Connections
+<!-- Add your synthesis here -->

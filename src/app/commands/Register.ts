@@ -35,6 +35,7 @@ import { CostEstimationModal } from '@/ui/view/modals/CostEstimationModal';
 import { IndexingProgressModal } from '@/ui/view/modals/IndexingProgressModal';
 import { VaultLintService } from '@/service/lint/VaultLintService';
 import { computeEvalMetrics, formatEvalReport } from '@/service/search/query/pprEvaluator';
+import { runStructuralAnalysis } from '@/service/search/index/helper/structural/orchestrator';
 
 /**
  * Persistent bottom notice with updatable message (Obsidian 1.5+ `setMessage` when available).
@@ -613,6 +614,16 @@ function buildAmbientPushCommands(viewManager: ViewManager): Command[] {
 			name: 'Peak: Refresh Related Notes',
 			callback: () => AmbientPushService.getInstance().triggerManual(),
 		},
+		{
+			id: 'peak-refresh-hub-summaries',
+			name: 'Peak: Refresh Hub Summaries',
+			callback: async () => {
+				new Notice('Hub summary refresh started...');
+				const { HubRegenService } = await import('@/service/search/index/helper/hub/hubRegenService');
+				const result = await HubRegenService.getInstance().processQueueNow();
+				new Notice(`Hub refresh complete: ${result.processed} regenerated, ${result.failed} failed`);
+			},
+		},
 	];
 }
 
@@ -744,6 +755,27 @@ export function buildCoreCommands(
 				lintService.initRegistry();
 				await viewManager.activateVaultXRayView();
 			},
+		},
+		{
+			id: 'peak-recompute-gap-analysis',
+			name: 'Peak: Recompute Gap Analysis',
+			callback: async () => {
+				const ui = openProgressNotice('Gap Analysis: recomputing structural analysis...');
+				try {
+					await runStructuralAnalysis({ forceFullRecompute: true });
+					ui.hide();
+					new Notice('Gap Analysis: structural analysis complete.', 4000);
+				} catch (e) {
+					ui.hide();
+					console.error('[peak-recompute-gap-analysis]', e);
+					new Notice(`Gap Analysis failed: ${(e as Error).message}`, 8000);
+				}
+			},
+		},
+		{
+			id: 'peak-open-gap-analysis',
+			name: 'Peak: Open Gap Analysis',
+			callback: () => void viewManager.activateGapAnalysisView(),
 		},
 	];
 }

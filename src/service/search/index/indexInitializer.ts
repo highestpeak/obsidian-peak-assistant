@@ -109,6 +109,21 @@ export class IndexInitializer {
 		} catch (e) {
 			console.error('Index check/update failed:', e);
 		}
+
+		// S6: Init hub regen service and drain any stale queue from previous session
+		try {
+			const { HubRegenService } = await import('./helper/hub/hubRegenService');
+			HubRegenService.getInstance().init(() => this.settings);
+			if (sqliteStoreManager.isInitialized()) {
+				const pendingCount = await sqliteStoreManager.getHubConstituentRepo().pendingCount();
+				if (pendingCount > 0) {
+					console.log(`[IndexInitializer] ${pendingCount} stale hub(s) queued — processing in background`);
+					void HubRegenService.getInstance().processQueueNow();
+				}
+			}
+		} catch (e) {
+			console.warn('[IndexInitializer] Hub regen service init failed:', e);
+		}
 	}
 
 	private async collectAllIndexableFilePaths(): Promise<string[]> {

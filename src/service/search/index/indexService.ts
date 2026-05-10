@@ -739,22 +739,32 @@ export class IndexService {
 				}
 			}
 
-			// Populate hub_constituent when indexing a hub_doc
+			// Populate hub_constituent when indexing a hub_doc (S6 path-based schema)
 			// Hub doc references point to the constituent documents that compose the hub summary
 			if (tenant === 'vault' && this.resolveMobiusGraphNodeTypeForPath(docPath) === GraphNodeType.HubDoc) {
 				try {
 					const hubConstituentRepo = sqliteStoreManager.getHubConstituentRepo();
 					const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+					const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
 					const outgoingRefs = await mobiusEdgeRepo.getByFromNodesAndTypes(
 						[doc.id],
 						[GraphEdgeType.References],
 					);
 					const constituentDocIds = outgoingRefs.map((e) => e.to_node_id);
 					if (constituentDocIds.length > 0) {
-						await hubConstituentRepo.replaceHubMembers(
-							doc.id,
-							constituentDocIds.map((id) => ({ docId: id, role: 'core' as const })),
-						);
+						// Resolve paths for constituent node IDs
+						const nodeMap = await mobiusNodeRepo.getByIds(constituentDocIds);
+						const members = constituentDocIds
+							.map((id) => {
+								const node = nodeMap.get(id);
+								let memberPath: string | null = null;
+								try {
+									const attrs = JSON.parse(node?.attributes ?? '{}') as { path?: string };
+									memberPath = attrs?.path ?? null;
+								} catch { /* ignore */ }
+								return { nodeId: id, path: memberPath };
+							});
+						await hubConstituentRepo.replaceHubMembers(doc.id, docPath, members);
 					}
 				} catch {
 					// Non-critical: hub constituent population is best-effort
