@@ -221,6 +221,9 @@ export interface MyPluginSettings {
 	/** Vault folder for user-defined skills (default: _skills). */
 	skillsFolder?: string;
 
+	/** Vault folder for quick-captured notes (default: _inbox). */
+	inboxFolder?: string;
+
 	vaultSearch?: {
 		sdkProfile?: {
 			kind?: 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom';
