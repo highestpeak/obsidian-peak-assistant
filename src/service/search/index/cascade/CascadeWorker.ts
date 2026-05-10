@@ -1,9 +1,11 @@
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import type { MobiusNodeRepo } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 import { SemanticRelatedEdgesRebuildService } from '../helper/semanticRelatedEdges';
 import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import type { CascadeDebtRecord } from './types';
 import { CASCADE_IDLE_DELAY_MS, CASCADE_MAX_ITEMS_PER_WINDOW, CASCADE_DEBT_HUB_REGEN_PRIORITY } from '@/core/constant';
+import { getAIHubSummaryFolder } from '@/app/settings/types';
 import { CascadeScheduler } from './CascadeScheduler';
 import type { App } from 'obsidian';
 
@@ -125,9 +127,100 @@ export class CascadeWorker {
                 // so the queue does not grow indefinitely. S6 will replace this with
                 // the actual LLM-based hub doc rewrite / incremental patch logic.
                 break;
-            case 'folder_stats':
-                break; // deferred — implemented in Task 7
+            case 'folder_stats': {
+                // item.targetId = the changed document's node id
+                // Resolve the doc's vault path, then walk ancestor folders up the tree
+                const mobiusNodeRepo = storeManager.getMobiusNodeRepo('vault');
+                const docRow = await mobiusNodeRepo.getByNodeId(item.targetId);
+                if (!docRow?.path) break;
+
+                const hubSummaryFolder = getAIHubSummaryFolder();
+                const docPath = docRow.path;
+                const ancestorFolders: string[] = [];
+
+                // Walk path upward: "a/b/c.md" -> ["a/b", "a"]
+                let cur = docPath;
+                for (;;) {
+                    const slash = cur.lastIndexOf('/');
+                    if (slash <= 0) break;
+                    const folder = cur.slice(0, slash);
+                    if (hubSummaryFolder && folder.startsWith(hubSummaryFolder)) break;
+                    ancestorFolders.push(folder);
+                    cur = folder;
+                }
+                if (!ancestorFolders.length) break;
+
+                const now = Date.now();
+                // For each ancestor folder, recompute the materialized stats
+                for (const folderPath of ancestorFolders) {
+                    await this.refreshFolderStats(folderPath, mobiusNodeRepo, now);
+                }
+                break;
+            }
         }
+    }
+
+    /**
+     * Incrementally refreshes materialized hub stats for a single folder node.
+     * Queries child document rows directly -- O(docs in folder), not O(all vault docs).
+     */
+    private async refreshFolderStats(folderPath: string, mobiusNodeRepo: MobiusNodeRepo, now: number): Promise<void> {
+        const storeManager = SqliteStoreManager.getInstance();
+        const db = storeManager.getIndexContext('vault');
+
+        // Query documents anywhere under this folder prefix for aggregate stats
+        const prefix = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
+
+        const childRows = await db
+            .selectFrom('mobius_node' as any)
+            .select(['node_id', 'path', 'pagerank', 'semantic_pagerank', 'doc_incoming_cnt', 'doc_outgoing_cnt', 'other_incoming_cnt', 'other_outgoing_cnt', 'tags_json'] as any)
+            .where('type' as any, '=', 'document')
+            .where('path' as any, 'like', `${prefix}%`)
+            .execute() as Array<{
+                node_id: string;
+                path: string | null;
+                pagerank: number | null;
+                semantic_pagerank: number | null;
+                doc_incoming_cnt: number | null;
+                doc_outgoing_cnt: number | null;
+                other_incoming_cnt: number | null;
+                other_outgoing_cnt: number | null;
+                tags_json: string | null;
+            }>;
+
+        if (!childRows.length) return;
+
+        let sumPr = 0, sumSpr = 0, docIn = 0, docOut = 0, otherIn = 0, otherOut = 0;
+        for (const r of childRows) {
+            sumPr += r.pagerank ?? 0;
+            sumSpr += r.semantic_pagerank ?? 0;
+            docIn += r.doc_incoming_cnt ?? 0;
+            docOut += r.doc_outgoing_cnt ?? 0;
+            otherIn += r.other_incoming_cnt ?? 0;
+            otherOut += r.other_outgoing_cnt ?? 0;
+        }
+        const count = childRows.length;
+
+        // Look up the folder node_id for this path
+        const folderRow = await db
+            .selectFrom('mobius_node' as any)
+            .select('node_id' as any)
+            .where('type' as any, '=', 'folder')
+            .where('path' as any, '=', folderPath)
+            .executeTakeFirst() as { node_id: string } | undefined;
+
+        if (!folderRow) return;
+
+        await mobiusNodeRepo.updateFolderNodeHubMaterializedStats(folderRow.node_id, {
+            tagDocCount: count,
+            avgPagerank: count > 0 ? sumPr / count : 0,
+            avgSemanticPagerank: count > 0 ? sumSpr / count : 0,
+            folderCohesionScore: null, // cohesion requires embedding computation; defer to full maintenance
+            docIncoming: docIn,
+            docOutgoing: docOut,
+            otherIncoming: otherIn,
+            otherOutgoing: otherOut,
+        }, now);
     }
 
     dispose(): void {
