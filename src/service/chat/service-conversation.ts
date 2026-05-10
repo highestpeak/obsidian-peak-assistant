@@ -388,6 +388,39 @@ export class ConversationService {
 		}
 	}
 
+	/**
+	 * Branch (fork) a conversation from a specific message.
+	 * Creates a new conversation with all messages up to and including the given messageId.
+	 */
+	async branchFromMessage(params: {
+		sourceConversation: ChatConversation;
+		messageId: string;
+		project?: ChatProjectMeta | null;
+	}): Promise<ChatConversation> {
+		const { sourceConversation, messageId, project } = params;
+		const messageIndex = sourceConversation.messages.findIndex(m => m.id === messageId);
+		if (messageIndex === -1) {
+			throw new Error(`Message not found: ${messageId}`);
+		}
+
+		// Copy all messages up to and including the target message
+		const branchedMessages = sourceConversation.messages.slice(0, messageIndex + 1).map(m => ({
+			...m,
+			id: generateUuidWithoutHyphens(), // New IDs for the copied messages
+		}));
+
+		const branchTitle = `Branch: ${sourceConversation.meta.title}`;
+
+		return this.createConversation({
+			title: branchTitle,
+			project,
+			initialMessages: branchedMessages,
+			modelId: sourceConversation.meta.activeModel,
+			provider: sourceConversation.meta.activeProvider,
+			conversationType: sourceConversation.meta.conversationType,
+		});
+	}
+
 	async updateConversationFocusFolder(params: {
 		conversationId: string;
 		focusFolder?: string;

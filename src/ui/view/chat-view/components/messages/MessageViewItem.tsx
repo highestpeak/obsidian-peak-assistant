@@ -151,6 +151,23 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 		}
 	}, [activeConversation, activeProject, streamChat, manager]);
 
+	const handleBranch = useCallback(async (messageId: string) => {
+		if (!activeConversation) return;
+		try {
+			const branchedConv = await manager.conv.branchFromMessage({
+				sourceConversation: activeConversation,
+				messageId,
+				project: activeProject?.meta ?? null,
+			});
+			// Navigate to the new branched conversation
+			useChatViewStore.getState().setConversation(branchedConv);
+			useChatDataStore.getState().updateConversation(branchedConv);
+			useChatDataStore.getState().setActiveConversation(branchedConv);
+		} catch (error) {
+			console.error('Failed to branch conversation:', error);
+		}
+	}, [activeConversation, activeProject, manager]);
+
 	const [copied, setCopied] = useState(false);
 	const [isExpanded, setIsExpanded] = useState(false);
 
@@ -232,9 +249,21 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 			});
 		}
 
+		// Branch from this message
+		if (message.role === 'assistant') {
+			menu.addSeparator();
+			menu.addItem((item) => {
+				item.setTitle('Branch from here');
+				item.setIcon('git-branch');
+				item.onClick(() => {
+					handleBranch(message.id);
+				});
+			});
+		}
+
 		// Show menu at cursor position
 		menu.showAtPosition({ x: e.clientX, y: e.clientY });
-	}, [message, handleCopy, handleToggleStar, handleRegenerate]);
+	}, [message, handleCopy, handleToggleStar, handleRegenerate, handleBranch]);
 
 	// Character limit for collapsed user messages (only for user messages, not streaming)
 	const contentLength = String(displayContent || '').length;
@@ -392,6 +421,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 								onToggleStar={handleToggleStar}
 								onCopy={handleCopy}
 								onRegenerate={handleRegenerate}
+								onBranch={handleBranch}
 							/>
 
 							{/* Style chips — always visible on last message, hover-reveal on others */}

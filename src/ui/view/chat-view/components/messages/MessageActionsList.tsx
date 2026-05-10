@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ChatMessage } from '@/service/chat/types';
 import { cn } from '@/ui/react/lib/utils';
-import { Copy, RefreshCw, Star, Check, ChevronDown } from 'lucide-react';
+import { Copy, RefreshCw, Star, Check, ChevronDown, GitBranch } from 'lucide-react';
 import { MessageAction } from '@/ui/component/ai-elements';
 import { formatTimestampLocale } from '@/core/utils/date-utils';
 import { ModelInfoForSwitch } from '@/core/providers/types';
@@ -212,7 +212,8 @@ export const MessageActionsList: React.FC<{
 	onToggleStar: (messageId: string, starred: boolean) => void;
 	onCopy: () => void;
 	onRegenerate: (messageId: string, modelOverride?: { provider: string; modelId: string }) => void;
-}> = ({ message, isStreaming, isLastMessage, copied, models, onToggleStar, onCopy, onRegenerate }) => {
+	onBranch?: (messageId: string) => void;
+}> = ({ message, isStreaming, isLastMessage, copied, models, onToggleStar, onCopy, onRegenerate, onBranch }) => {
 	if (isStreaming) return null;
 
 	const isAssistant = message.role === 'assistant';
@@ -272,6 +273,20 @@ export const MessageActionsList: React.FC<{
 							className={cn(message.starred && 'pktw-fill-red-500 pktw-text-red-500')}
 						/>
 					</MessageAction>
+
+					{onBranch && (
+						<MessageAction
+							tooltip="Branch from here"
+							label="Branch conversation from this message"
+							className="pktw-h-6 pktw-w-6 pktw-rounded"
+							onClick={(e) => {
+								e.stopPropagation();
+								onBranch(message.id);
+							}}
+						>
+							<GitBranch size={16} strokeWidth={2} />
+						</MessageAction>
+					)}
 				</div>
 			</div>
 		);
