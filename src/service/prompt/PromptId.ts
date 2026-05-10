@@ -49,8 +49,6 @@ export enum PromptId {
 	KnowledgeIntuitionSubmit = 'knowledge-intuition-submit',
 
 	// Search prompts
-	/** Regenerate overview from current result snapshot (UI only; not used by pipeline). */
-	AiAnalysisOverviewRegenerate = 'ai-analysis-overview-regenerate',
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
 	AiAnalysisTitle = 'ai-analysis-title',
 	/** Doc Simple mode: scope prefix (current file only + full coverage). */
@@ -101,7 +99,6 @@ export enum PromptId {
 	// Copilot Document Intelligence
 	DocPolish = 'doc-polish',
 	DocReview = 'doc-review',
-	DocSuggestLinks = 'doc-suggest-links',
 	DocSplitSuggestion = 'doc-split-suggestion',
 	DocSuggestTags = 'doc-suggest-tags',
 	DocSummarize = 'doc-summarize',
@@ -109,14 +106,11 @@ export enum PromptId {
 	DocTranslate = 'doc-translate',
 
 	// Copilot Vault Intelligence
-	VaultKnowledgeGaps = 'vault-knowledge-gaps',
-	VaultSynthesize = 'vault-synthesize',
 	VaultHealth = 'vault-health',
 
 	// Copilot Writing Assistance
 	WritingContinue = 'writing-continue',
 	WritingRewrite = 'writing-rewrite',
-	WritingAddEvidence = 'writing-add-evidence',
 
 	// Copilot Agent Playbooks
 	CopilotAgentSuggestLinks = 'copilot-agent-suggest-links',
@@ -140,7 +134,6 @@ export enum PromptId {
  * Shown in a dedicated "Search AI Analysis" section with a "Set All" control.
  */
 export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
-	PromptId.AiAnalysisOverviewRegenerate,
 	PromptId.AiAnalysisTitle,
 	PromptId.AiAnalysisDocSimpleScope,
 	PromptId.AiAnalysisDocSimpleSystem,
@@ -324,7 +317,6 @@ export interface PromptVariables {
 	};
 
 	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
-	[PromptId.AiAnalysisOverviewRegenerate]: { originalQuery: string; currentResultSnapshot: string };
 
 	[PromptId.AiAnalysisSaveFileName]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string; candidateFoldersFromSearch?: string; defaultSaveFolder?: string };
@@ -428,11 +420,6 @@ export interface PromptVariables {
 		title?: string;
 		scope: 'full' | 'selection';
 	};
-	[PromptId.DocSuggestLinks]: {
-		content: string;
-		title?: string;
-		existingLinks: string;
-	};
 	[PromptId.DocSplitSuggestion]: {
 		content: string;
 		title?: string;
@@ -458,15 +445,6 @@ export interface PromptVariables {
 		scope: string;
 		targetLanguage: string;
 	};
-	[PromptId.VaultKnowledgeGaps]: {
-		content: string;
-		title?: string;
-		relatedNotes: string;
-	};
-	[PromptId.VaultSynthesize]: {
-		topic: string;
-		sources: string;
-	};
 	[PromptId.VaultHealth]: {
 		stats: string;
 	};
@@ -479,10 +457,6 @@ export interface PromptVariables {
 		content: string;
 		title?: string;
 		style: string;
-	};
-	[PromptId.WritingAddEvidence]: {
-		context: string;
-		sources: string;
 	};
 
 	// Copilot Agent Playbooks

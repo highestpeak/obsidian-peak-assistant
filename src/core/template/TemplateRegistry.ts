@@ -173,7 +173,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-doc-simple-system': meta('prompts', 'ai-analysis-doc-simple-system', { label: 'Doc Simple (System)', description: 'System prompt for single-file Q&A agent.', group: 'searchAnalysis' }),
 	'ai-analysis-mermaid-fix-system': meta('prompts', 'ai-analysis-mermaid-fix-system', { label: 'Mermaid Fix (System)', description: 'System prompt for fixing mermaid syntax errors.', group: 'searchAnalysis' }),
 	'ai-analysis-mermaid-fix': meta('prompts', 'ai-analysis-mermaid-fix', { label: 'Mermaid Fix', description: 'Fixes broken mermaid diagram syntax in reports.', group: 'searchAnalysis' }),
-	'ai-analysis-overview-regenerate': meta('prompts', 'ai-analysis-overview-regenerate', { label: 'Overview Regenerate', description: 'Regenerates overview from result snapshot (currently unused).', group: 'searchAnalysis' }),
 	'ai-analysis-save-filename': meta('prompts', 'ai-analysis-save-filename', { label: 'Save Filename', description: 'Suggests a filename when saving analysis results.', group: 'searchAnalysis' }),
 	'ai-analysis-save-folder': meta('prompts', 'ai-analysis-save-folder', { label: 'Save Folder', description: 'Suggests a folder path when saving analysis results.', group: 'searchAnalysis' }),
 	'ai-analysis-vault-report-summary-system': meta('prompts', 'ai-analysis-vault-report-summary-system', { label: 'Report Summary (System)', description: 'System prompt for vault report executive summaries.', group: 'searchAnalysis' }),
@@ -241,8 +240,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'doc-polish-system': meta('prompts', 'doc-polish-system', { label: 'Document Polish (System)', description: 'System instructions for the document polish action.', group: 'copilot' }),
 	'doc-review': meta('prompts', 'doc-review', { expectsJson: true, systemPromptId: 'doc-review-system' as PromptId, label: 'Document Review', description: 'Structured feedback on document quality with severity-ranked issues.', group: 'copilot' }),
 	'doc-review-system': meta('prompts', 'doc-review-system', { label: 'Document Review (System)', description: 'System instructions for the document review action.', group: 'copilot' }),
-	'doc-suggest-links': meta('prompts', 'doc-suggest-links', { expectsJson: true, systemPromptId: 'doc-suggest-links-system' as PromptId, label: 'Suggest Links (Direct)', description: 'Direct prompt for link suggestions (superseded by agent playbook).', group: 'copilot' }),
-	'doc-suggest-links-system': meta('prompts', 'doc-suggest-links-system', { label: 'Suggest Links (Direct, System)', description: 'System prompt for direct link suggestion.', group: 'copilot' }),
 	'doc-split-suggestion': meta('prompts', 'doc-split-suggestion', { expectsJson: true, systemPromptId: 'doc-split-suggestion-system' as PromptId, label: 'Split Suggestion', description: 'Analyzes document structure and suggests how to split into smaller notes.', group: 'copilot' }),
 	'doc-split-suggestion-system': meta('prompts', 'doc-split-suggestion-system', { label: 'Split Suggestion (System)', description: 'System instructions for the split suggestion action.', group: 'copilot' }),
 	'doc-suggest-tags': meta('prompts', 'doc-suggest-tags', { expectsJson: true, systemPromptId: 'doc-suggest-tags-system' as PromptId, label: 'Suggest Tags', description: 'Suggests tags based on content and existing vault tags.', group: 'copilot' }),
@@ -255,10 +252,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'doc-translate-system': meta('prompts', 'doc-translate-system', { label: 'Translate (System)', description: 'System instructions for the translate action.', group: 'copilot' }),
 
 	// Copilot Vault Intelligence
-	'vault-knowledge-gaps': meta('prompts', 'vault-knowledge-gaps', { expectsJson: true, systemPromptId: 'vault-knowledge-gaps-system' as PromptId, label: 'Knowledge Gaps (Direct)', description: 'Direct prompt for knowledge gap analysis (superseded by agent playbook).', group: 'copilot' }),
-	'vault-knowledge-gaps-system': meta('prompts', 'vault-knowledge-gaps-system', { label: 'Knowledge Gaps (Direct, System)', description: 'System prompt for direct knowledge gaps.', group: 'copilot' }),
-	'vault-synthesize': meta('prompts', 'vault-synthesize', { systemPromptId: 'vault-synthesize-system' as PromptId, label: 'Synthesize (Direct)', description: 'Direct prompt for topic synthesis (superseded by agent playbook).', group: 'copilot' }),
-	'vault-synthesize-system': meta('prompts', 'vault-synthesize-system', { label: 'Synthesize (Direct, System)', description: 'System prompt for direct synthesis.', group: 'copilot' }),
 	'vault-health': meta('prompts', 'vault-health', { expectsJson: true, systemPromptId: 'vault-health-system' as PromptId, label: 'Vault Health', description: 'Analyzes vault structure for orphans, duplicates, stale notes, and tag issues.', group: 'copilot' }),
 	'vault-health-system': meta('prompts', 'vault-health-system', { label: 'Vault Health (System)', description: 'System instructions for vault health analysis.', group: 'copilot' }),
 
@@ -267,8 +260,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'writing-continue-system': meta('prompts', 'writing-continue-system', { label: 'Continue Writing (System)', description: 'System instructions for continue writing.', group: 'copilot' }),
 	'writing-rewrite': meta('prompts', 'writing-rewrite', { systemPromptId: 'writing-rewrite-system' as PromptId, label: 'Rewrite Selection', description: 'Rewrites selected text with improved clarity and style.', group: 'copilot' }),
 	'writing-rewrite-system': meta('prompts', 'writing-rewrite-system', { label: 'Rewrite Selection (System)', description: 'System instructions for rewrite selection.', group: 'copilot' }),
-	'writing-add-evidence': meta('prompts', 'writing-add-evidence', { expectsJson: true, systemPromptId: 'writing-add-evidence-system' as PromptId, label: 'Add Evidence (Direct)', description: 'Direct prompt for evidence addition (superseded by agent playbook).', group: 'copilot' }),
-	'writing-add-evidence-system': meta('prompts', 'writing-add-evidence-system', { label: 'Add Evidence (Direct, System)', description: 'System prompt for direct evidence addition.', group: 'copilot' }),
 
 	// Copilot Agent Playbooks (system prompts for agent loop actions)
 	'copilot-agent-suggest-links': meta('prompts', 'copilot-agent-suggest-links', { label: 'Suggest Links (Agent)', description: 'Agent playbook that searches vault and suggests wiki-links.', group: 'copilot' }),
