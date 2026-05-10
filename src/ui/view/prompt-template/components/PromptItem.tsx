@@ -38,7 +38,8 @@ export const PromptItem: React.FC<Props> = ({ item, overrides, onOpen, onReset }
             <div
                 className={cn(
                     'pktw-flex pktw-items-center pktw-gap-2 pktw-min-h-[28px] pktw-group pktw-relative',
-                    !hasPair && 'pktw-cursor-pointer pktw-rounded-md pktw-px-2 pktw-py-1 pktw-mx-[-8px] hover:pktw-bg-[var(--pk-accent,#7c3aed)]/5',
+                    'pktw-rounded-md pktw-px-2 pktw-py-1 pktw-mx-[-8px] hover:pktw-bg-[var(--pk-accent,#7c3aed)]/5',
+                    !hasPair && 'pktw-cursor-pointer',
                 )}
                 onClick={!hasPair ? () => onOpen(item.id) : undefined}
                 onMouseEnter={() => setShowTooltip(true)}

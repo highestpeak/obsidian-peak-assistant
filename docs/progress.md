@@ -222,6 +222,19 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ## Log
 
+### 2026-05-10 (Session 25) — OpenRouter Stall Timeout + UI 小修
+- Done: **OpenRouter PROCESSING 卡住修复**
+  - 根因：OpenRouter 排队时发送 `: OPENROUTER PROCESSING` SSE 心跳，`eventsource-parser` 静默消费不产生 data event，`for-await` 无限挂起
+  - `vercel-adapter.ts`：stall timeout（30s 无 chunk → abort）+ total timeout（5min → abort），接入已有但未使用的 `timeoutStepMs`/`timeoutTotalMs` 设置
+  - `provider-factory.ts`：OpenRouter 加 `HTTP-Referer` + `X-Title` headers 提高路由优先级
+  - `CopilotResultModal.tsx`：LOADING_STEPS 精简（移除 60s 无效提示，25s 提示 provider 排队），Back 按钮 `<button>` → `<Button>`
+  - 用户取消时静默结束 generator（不再 yield error）
+- Done: **UI 小修**
+  - `MessageViewItem.tsx`：Style chips 最后一条消息始终可见，其余 hover 显示
+  - `PromptItem.tsx`：所有 item 统一 hover 背景，非成对 item 加 cursor-pointer
+- Build 通过
+- Next: 真机验证 stall timeout 效果
+
 ### 2026-05-09 (Session 24) — Copilot Token 显示 + 请求取消
 - Done: **Token Usage Display**
   - `ActionUsage` 接口 + `usage?` 字段加到 `ActionResult` 三种变体

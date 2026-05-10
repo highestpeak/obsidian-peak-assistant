@@ -394,9 +394,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 								onRegenerate={handleRegenerate}
 							/>
 
-							{/* Style chips — extra hover animation even when footer is visible */}
+							{/* Style chips — always visible on last message, hover-reveal on others */}
 							{!streamingState.isStreaming && !message.isErrorMessage && (
-								<div className="pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity">
+								<div className={cn(
+									"pktw-transition-opacity",
+									isLastMessage ? "pktw-opacity-100" : "pktw-opacity-0 group-hover:pktw-opacity-100"
+								)}>
 									<MessageStyleButtons onStyleSelect={(prompt) => {
 										const submitAction = useChatViewStore.getState().submitAction;
 										if (submitAction) submitAction(prompt);

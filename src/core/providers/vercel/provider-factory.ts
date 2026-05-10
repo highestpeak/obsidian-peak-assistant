@@ -51,6 +51,11 @@ export function createLanguageModel(profile: Profile, modelId: string): Language
             const provider = createOpenRouter({
                 baseURL: orBaseUrl,
                 apiKey: apiKey ?? undefined,
+                // Referer + title improve OpenRouter routing priority
+                headers: {
+                    'HTTP-Referer': 'https://github.com/user/obsidian-peak-assistant',
+                    'X-Title': 'Peak Assistant',
+                },
             });
             return provider(modelId);
         }

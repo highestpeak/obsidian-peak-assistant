@@ -31,8 +31,7 @@ const LOADING_STEPS = [
 	{ after: 2, text: 'Analyzing content...' },
 	{ after: 6, text: 'Generating response...' },
 	{ after: 15, text: 'Still working — large documents take longer...' },
-	{ after: 30, text: 'This is taking longer than expected...' },
-	{ after: 60, text: 'The request is unusually slow. You can close and retry, or check your API connection.' },
+	{ after: 25, text: 'Waiting for provider response — the model may be queuing...' },
 ];
 
 type ToolCallRegistry = Map<string, string>;
@@ -253,13 +252,15 @@ const CopilotResultContent: React.FC<{
 	}, []);
 
 	const backButton = (
-		<button
+		<Button
+			variant="ghost"
+			size="sm"
 			onClick={onBack}
-			className="pktw-absolute pktw-top-3 pktw-left-3 pktw-flex pktw-items-center pktw-gap-1 pktw-text-xs pktw-text-muted-foreground hover:pktw-text-foreground pktw-transition-colors pktw-cursor-pointer pktw-bg-transparent pktw-border-none pktw-p-1"
+			className="pktw-absolute pktw-top-3 pktw-left-3 pktw-gap-1 pktw-text-xs pktw-text-muted-foreground hover:pktw-text-foreground"
 		>
 			<ArrowLeft className="pktw-w-3.5 pktw-h-3.5" />
 			<span>Back</span>
-		</button>
+		</Button>
 	);
 
 	if (phase.phase === 'loading') {
