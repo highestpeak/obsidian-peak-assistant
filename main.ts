@@ -55,6 +55,8 @@ import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
+import { DEFAULT_SKILLS_FOLDER } from '@/core/constant';
+import { SkillRegistry } from '@/service/skills/SkillRegistry';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -201,6 +203,12 @@ export default class MyPlugin extends Plugin {
 
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
+
+		// Initialize Skill Registry (vault folder skills + built-ins)
+		const skillsFolder = this.settings.skillsFolder ?? DEFAULT_SKILLS_FOLDER;
+		SkillRegistry.getInstance().init(this.app, skillsFolder).catch(e => {
+			console.warn('[Peak Assistant] SkillRegistry init failed:', e);
+		});
 
 		// Ambient Push — proactive related-note suggestions
 		const ambientPushSettings = this.settings.ambientPush;
@@ -439,6 +447,9 @@ export default class MyPlugin extends Plugin {
 
 		// Shutdown SDK agent pool (clear cached node info so reload re-probes)
 		shutdownPool();
+
+		// Destroy skill registry (removes vault watchers)
+		SkillRegistry.getInstance().destroy();
 
 		// Break singletons so old bundle can be GC'd
 		AppContext.clearForUnload();
