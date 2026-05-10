@@ -557,6 +557,43 @@ npm run trace -- vault-search --fixture small "my custom query"
 
 ---
 
+## 15. Copilot Agent Loop (05-10)
+
+### 15.1 Agent Loop — Step Timeline
+
+- [ ] **Suggest Links** → loading spinner → step timeline appears (vault_grep / vault_read_note / submit_result)
+- [ ] Running step: purple spinner + tool display name + "..."
+- [ ] Completed step: green check + tool display name + summary (e.g. "5 hits") + elapsed time (e.g. "1.2s")
+- [ ] Consecutive `vault_read_note` calls collapse into BatchRow ("Reading N notes in depth")
+- [ ] **Knowledge Gaps** → step timeline → knowledge gap cards with priority
+- [ ] **Synthesize Topic** → step timeline → synthesis text + sources
+- [ ] **Add Evidence** → step timeline → evidence cards with quotes
+
+### 15.2 Step Collapse on Completion
+
+- [ ] After agent finishes → steps collapse to summary row: "[check] N steps completed · Xs"
+- [ ] Click collapsed row → expands to full step list
+- [ ] Click "collapse" header → collapses back
+- [ ] Result panel renders below the collapsed steps
+
+### 15.3 Cancel & Error Handling
+
+- [ ] During agent loop, click Cancel → stream stops, "Cancelled" view shown
+- [ ] Click "Back to Copilot" → returns to picker
+- [ ] No agent profile configured → error panel + "Open Settings" button
+- [ ] Agent hits max turns (20) → graceful completion with partial results
+
+### 15.4 Single-Turn Action Regression
+
+- [ ] **Polish** → streams text normally (no step timeline, just loading → result)
+- [ ] **Review** → structured result (no step timeline, loading → result)
+- [ ] **Find Related** → instant vector search result (no LLM call)
+- [ ] **Summarize** → streaming text with progress preview
+- [ ] **Translate** → streaming text, auto-detect language direction
+- [ ] **Suggest Tags** → multi-signal suggestions (content + graph + history)
+
+---
+
 ## Notes
 
 _Record any issues, unexpected behavior, or suggestions here:_
