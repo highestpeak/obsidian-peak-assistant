@@ -20,7 +20,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from './core/sdkAgentPool';
 import { translateSdkMessages } from './core/sdkMessageAdapter';
-import { agentToolsToMcpServer, mcpToolNames } from './core/agentToolMcpAdapter';
+import { agentToolsToMcpServer, mcpToolNames, mergeExternalMcpTools } from './core/agentToolMcpAdapter';
 
 export type HistorySearchFn = (query: string, options?: { maxChars?: number }) => string;
 
@@ -81,8 +81,9 @@ export class FollowupChatAgent {
 
         const ctx = AppContext.getInstance();
         const profile = ProfileRegistry.getInstance().getActiveAgentProfile()!;
-        const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, this.tools);
-        const allowedTools = mcpToolNames(MCP_SERVER_NAME, this.tools);
+        const allTools = mergeExternalMcpTools(this.tools);
+        const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, allTools);
+        const allowedTools = mcpToolNames(MCP_SERVER_NAME, allTools);
 
         const messages = queryWithProfile(ctx.app, ctx.pluginId, profile, {
             prompt,
