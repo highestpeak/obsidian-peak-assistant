@@ -7,7 +7,7 @@ import { TimelineAxisNode } from './nodes/TimelineAxisNode';
 import { LensEdgeComponent } from './edges/LensEdgeComponent';
 import { useLensLayout } from './hooks/useLensLayout';
 import { Button } from '@/ui/component/shared-ui/button';
-import { Network, GitBranch, Waypoints, Clock, CheckCircle2, Loader2, Maximize2 } from 'lucide-react';
+import { Network, GitBranch, Waypoints, Clock, Layers, CheckCircle2, Loader2, Maximize2 } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 
 const nodeTypes = { lensNode: LensNodeComponent, swimlane: SwimlaneNode, timelineAxis: TimelineAxisNode };
@@ -18,6 +18,7 @@ const LENS_TOOLTIPS: Record<LensType, string> = {
 	bridge: 'Key documents bridging across knowledge domains',
 	timeline: 'Knowledge accumulation and idea evolution over time',
 	'thinking-tree': 'Thought derivation and hierarchical relations between documents',
+	'gap-analysis': 'Structural holes and knowledge gap analysis across topic communities',
 };
 
 const LENS_EMPTY_MESSAGES: Record<LensType, string> = {
@@ -25,6 +26,7 @@ const LENS_EMPTY_MESSAGES: Record<LensType, string> = {
 	bridge: 'No cross-domain bridge connections found among current sources',
 	timeline: 'Current sources lack temporal or evolutionary relations',
 	'thinking-tree': 'Click generate to infer the thinking tree',
+	'gap-analysis': 'Run gap analysis to detect structural holes. Click Refresh to compute.',
 };
 
 const LENS_CONFIG: Array<{
@@ -36,6 +38,7 @@ const LENS_CONFIG: Array<{
 	{ type: 'thinking-tree', icon: GitBranch, label: 'Thinking Tree' },
 	{ type: 'bridge', icon: Waypoints, label: 'Bridges' },
 	{ type: 'timeline', icon: Clock, label: 'Timeline' },
+	{ type: 'gap-analysis', icon: Layers, label: 'Gaps' },
 ];
 
 interface MultiLensGraphProps {
