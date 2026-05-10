@@ -1,7 +1,7 @@
 import {
 	Sparkles, Tag, MessageSquareText, Link2, GitFork, Lightbulb, AlignLeft,
 	Languages, Search, HelpCircle, Layers, Activity, ChevronRight, PenLine, BookOpen,
-	WrapText,
+	WrapText, Share2,
 } from 'lucide-react';
 
 import { PromptId } from '@/service/prompt/PromptId';
@@ -18,6 +18,7 @@ import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
 import { buildCopilotAgentStream } from './agent-actions';
 import { v4 as uuidv4 } from 'uuid';
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { GraphEdgeType } from '@/core/po/graph.po';
 
 // ── Re-exported types (consumed by UI panels) ──────────────────────────
 
@@ -127,6 +128,99 @@ export const suggestLinksAction: CopilotAction = {
 		].join('\n');
 
 		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
+	},
+	ResultPanel: null as any,
+};
+
+export const suggestSemanticLinksAction: CopilotAction = {
+	id: 'suggest-semantic-links', label: 'Suggest Links (Graph)', description: 'Find unlinked semantic neighbors from the knowledge graph',
+	icon: Share2, category: 'document',
+	relevance: (ctx) => ctx.isOrphan ? 0.9 : ctx.links.length < 3 ? 0.6 : 0.3,
+	async *execute(ctx, _signal) {
+		const storeManager = SqliteStoreManager.getInstance();
+		const nodeRepo = storeManager.getMobiusNodeRepo();
+		const edgeRepo = storeManager.getMobiusEdgeRepo();
+
+		// 1. Find the mobius node for this document
+		const docNode = await nodeRepo.getByPath(ctx.file.path);
+		if (!docNode) {
+			return { type: 'structured', data: { suggestions: [], summary: 'Document not indexed yet. Run indexing first.' } };
+		}
+		const docNodeId = docNode.node_id;
+
+		// 2. Get semantic_related edges (both directions)
+		const outEdges = await edgeRepo.getByFromNode(docNodeId);
+		const semanticOut = outEdges.filter(e => e.type === GraphEdgeType.SemanticRelated);
+
+		// Also check incoming semantic edges
+		const inRows = await edgeRepo.getByToNodesAndTypes([docNodeId], [GraphEdgeType.SemanticRelated]);
+		const inFromIds = inRows.map(r => r.from_node_id);
+
+		// Merge all neighbor node IDs with weights
+		const neighborMap = new Map<string, { weight: number; direction: 'outgoing' | 'incoming' }>();
+		for (const e of semanticOut) {
+			neighborMap.set(e.to_node_id, { weight: e.weight, direction: 'outgoing' });
+		}
+		for (const nid of inFromIds) {
+			if (!neighborMap.has(nid)) {
+				neighborMap.set(nid, { weight: 0.5, direction: 'incoming' });
+			}
+		}
+
+		if (neighborMap.size === 0) {
+			return { type: 'structured', data: { suggestions: [], summary: 'No semantic neighbors found. The document may not have been indexed.' } };
+		}
+
+		// 3. Resolve neighbor node IDs to paths/labels
+		const neighborIds = [...neighborMap.keys()];
+		const neighborMeta = new Map<string, { path: string | null; label: string }>();
+		for (const nid of neighborIds) {
+			const row = await nodeRepo.getByNodeId(nid);
+			if (row) neighborMeta.set(nid, { path: row.path, label: row.label });
+		}
+
+		// 4. Get existing links to filter them out
+		const app = AppContext.getInstance().app;
+		const cache = app.metadataCache.getFileCache(ctx.file);
+		const existingLinkTargets = new Set<string>();
+		for (const l of cache?.links ?? []) {
+			const resolved = app.metadataCache.getFirstLinkpathDest(l.link, ctx.file.path);
+			if (resolved) existingLinkTargets.add(resolved.path);
+		}
+
+		// 5. Build suggestions: unlinked semantic neighbors
+		const suggestions: Array<{
+			path: string; title: string; score: number;
+			direction: 'outgoing' | 'incoming'; snippet: string;
+		}> = [];
+
+		for (const [nid, info] of neighborMap.entries()) {
+			const meta = neighborMeta.get(nid);
+			if (!meta || !meta.path) continue;
+			if (existingLinkTargets.has(meta.path)) continue;
+			if (meta.path === ctx.file.path) continue;
+
+			const title = meta.label || meta.path.replace(/\.md$/, '').split('/').pop() || meta.path;
+			suggestions.push({
+				path: meta.path,
+				title,
+				score: info.weight,
+				direction: info.direction,
+				snippet: `Similarity: ${(info.weight * 100).toFixed(0)}%`,
+			});
+		}
+
+		// Sort by score descending
+		suggestions.sort((a, b) => b.score - a.score);
+		const topSuggestions = suggestions.slice(0, 20);
+
+		return {
+			type: 'structured',
+			data: {
+				suggestions: topSuggestions,
+				summary: `Found ${topSuggestions.length} unlinked semantic neighbor${topSuggestions.length !== 1 ? 's' : ''} from ${neighborMap.size} total neighbors.`,
+			},
+		};
 	},
 	ResultPanel: null as any,
 };
@@ -392,6 +486,7 @@ import { PolishPanel } from '@/ui/view/copilot/panels/PolishPanel';
 import { FormatPolishPanel } from '@/ui/view/copilot/panels/FormatPolishPanel';
 import { ReviewPanel } from '@/ui/view/copilot/panels/ReviewPanel';
 import { LinkSuggestPanel } from '@/ui/view/copilot/panels/LinkSuggestPanel';
+import { SemanticLinkSuggestPanel } from '@/ui/view/copilot/panels/SemanticLinkSuggestPanel';
 import { SplitPanel } from '@/ui/view/copilot/panels/SplitPanel';
 import { TagSuggestionPanel } from '@/ui/view/copilot/panels/TagSuggestionPanel';
 import { SummarizePanel } from '@/ui/view/copilot/panels/SummarizePanel';
@@ -412,6 +507,7 @@ const PANEL_MAP: Record<string, React.FC<any>> = {
 	'format-polish': FormatPolishPanel,
 	'review': ReviewPanel,
 	'suggest-links': LinkSuggestPanel,
+	'suggest-semantic-links': SemanticLinkSuggestPanel,
 	'suggest-split': SplitPanel,
 	'suggest-tags': TagSuggestionPanel,
 	'summarize': SummarizePanel,
@@ -429,7 +525,7 @@ const PANEL_MAP: Record<string, React.FC<any>> = {
 /** All actions in display order: document → vault → writing. */
 const ALL_ACTIONS: CopilotAction[] = [
 	// Document
-	suggestTagsAction, suggestLinksAction, suggestSplitAction, reviewArticleAction,
+	suggestTagsAction, suggestLinksAction, suggestSemanticLinksAction, suggestSplitAction, reviewArticleAction,
 	polishDocumentAction, formatDocumentAction, summarizeAction, extractConceptsAction, translateAction,
 	// Vault
 	findRelatedAction, knowledgeGapsAction, synthesizeTopicAction, vaultHealthAction,
