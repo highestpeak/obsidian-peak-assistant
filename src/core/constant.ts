@@ -139,6 +139,9 @@ export const DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS = {
 	outgoing: 0.048,
 } as const;
 
+/** When true, hub maintenance writes compiled hub .md files to the vault (S6 precompiled knowledge). */
+export const HUB_MAINTENANCE_MATERIALIZE_DOCS = true;
+
 /** Minimum distinct documents under a folder path for folder hub candidates. */
 export const FOLDER_HUB_MIN_DOCS = 4;
 
