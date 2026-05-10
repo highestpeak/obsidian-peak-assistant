@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ChatConversation } from '@/service/chat/types';
 import { formatRelativeDate } from '@/core/utils/date-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
+import { Popover, PopoverTrigger, PopoverContent } from '@/ui/component/shared-ui/popover';
 import {
 	ConversationType,
 	DEFAULT_CONVERSATION_TYPE,
@@ -39,6 +40,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
 		conversation.meta.conversationType ?? DEFAULT_CONVERSATION_TYPE;
 	const typeLabel = getConversationTypeLabel(convType);
 	const badgeColor = getConversationTypeBadgeColor(convType);
+	const [deleteOpen, setDeleteOpen] = useState(false);
 
 	return (
 		<div
@@ -63,14 +65,48 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
 					</span>
 				)}
 				{onDelete && (
-					<Button
-						variant="ghost"
-						size="icon"
-						className="pktw-h-6 pktw-w-6 pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity pktw-text-muted-foreground hover:pktw-text-destructive pktw-flex-shrink-0"
-						onClick={(e) => { e.stopPropagation(); onDelete(conversation); }}
-					>
-						<Trash2 className="pktw-h-3.5 pktw-w-3.5" />
-					</Button>
+					<Popover open={deleteOpen} onOpenChange={setDeleteOpen}>
+						<PopoverTrigger asChild>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="pktw-h-6 pktw-w-6 pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity pktw-text-muted-foreground hover:pktw-text-destructive pktw-flex-shrink-0"
+								onClick={(e) => { e.stopPropagation(); }}
+							>
+								<Trash2 className="pktw-h-3.5 pktw-w-3.5" />
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent
+							className="pktw-w-auto pktw-p-3"
+							side="bottom"
+							align="end"
+							onClick={(e) => e.stopPropagation()}
+						>
+							<span className="pktw-text-sm pktw-text-foreground">Delete this conversation?</span>
+							<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mt-2">
+								<Button
+									variant="outline"
+									size="sm"
+									className="pktw-h-7 pktw-text-xs"
+									onClick={(e) => { e.stopPropagation(); setDeleteOpen(false); }}
+								>
+									Cancel
+								</Button>
+								<Button
+									variant="destructive"
+									size="sm"
+									className="pktw-h-7 pktw-text-xs"
+									onClick={(e) => {
+										e.stopPropagation();
+										setDeleteOpen(false);
+										onDelete(conversation);
+									}}
+								>
+									Delete
+								</Button>
+							</div>
+						</PopoverContent>
+					</Popover>
 				)}
 			</div>
 
