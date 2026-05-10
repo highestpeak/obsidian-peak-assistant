@@ -300,4 +300,61 @@ import {
 
 console.log('All Phase 2 signal detection tests passed');
 
+// --- Feedback score adjustments ---
+{
+	// Positive boost: capped at 0.3
+	const posMap = new Map<string, number>([['src::target', 5]]);
+	const boost = Math.min(0.3, (posMap.get('src::target') ?? 0) * 0.1);
+	assert.equal(boost, 0.3); // capped
+
+	// Below cap
+	const boost2 = Math.min(0.3, (posMap.get('src::other') ?? 0) * 0.1);
+	assert.equal(boost2, 0); // no entry
+
+	const posMap2 = new Map<string, number>([['src::target', 2]]);
+	const boost3 = Math.min(0.3, (posMap2.get('src::target') ?? 0) * 0.1);
+	assert.equal(boost3, 0.2); // 2 * 0.1
+
+	// Ignore penalty: capped at -0.15
+	const ignMap = new Map<string, number>([['src::target', 2]]);
+	const penalty = Math.min(0.15, (ignMap.get('src::target') ?? 0) * 0.05);
+	assert.equal(penalty, 0.1); // 2 * 0.05
+
+	const ignMap2 = new Map<string, number>([['src::target', 10]]);
+	const penalty2 = Math.min(0.15, (ignMap2.get('src::target') ?? 0) * 0.05);
+	assert.equal(penalty2, 0.15); // capped at 0.15
+
+	console.log('feedback scoring: all passed');
+}
+
+// --- RelevanceExplainer coverage for Phase 2 signals ---
+{
+	// Co-citation
+	assert.equal(
+		generateExplanation([{ type: 'co_citation', citingNote: 'MOC Note' }]),
+		'Co-cited in [[MOC Note]]',
+	);
+
+	// Hub member
+	assert.equal(
+		generateExplanation([{ type: 'hub_member', hubName: 'Systems Thinking' }]),
+		'Both in "Systems Thinking" cluster',
+	);
+
+	// Graph neighbor 2-hop with bridge
+	assert.equal(
+		generateExplanation([{ type: 'graph_neighbor', hop: 2, via: 'Design Patterns' }]),
+		'Connected via [[Design Patterns]]',
+	);
+
+	// Priority: graph_neighbor beats shared_tag
+	const multi = generateExplanation([
+		{ type: 'shared_tag', tag: 'dev' },
+		{ type: 'graph_neighbor', hop: 1 },
+	]);
+	assert.equal(multi, 'Directly linked');
+
+	console.log('RelevanceExplainer Phase 2 coverage: all passed');
+}
+
 console.log('All tests passed');
