@@ -118,6 +118,12 @@ export enum PromptId {
 	WritingRewrite = 'writing-rewrite',
 	WritingAddEvidence = 'writing-add-evidence',
 
+	// Copilot Agent Playbooks
+	CopilotAgentSuggestLinks = 'copilot-agent-suggest-links',
+	CopilotAgentKnowledgeGaps = 'copilot-agent-knowledge-gaps',
+	CopilotAgentSynthesizeTopic = 'copilot-agent-synthesize-topic',
+	CopilotAgentAddEvidence = 'copilot-agent-add-evidence',
+
 	// Chat intelligence
 	ChatTopicAggregation = 'chat-topic-aggregation',
 	ChatSuggestFollowups = 'chat-suggest-followups',
@@ -478,6 +484,12 @@ export interface PromptVariables {
 		context: string;
 		sources: string;
 	};
+
+	// Copilot Agent Playbooks
+	[PromptId.CopilotAgentSuggestLinks]: Record<string, never>;
+	[PromptId.CopilotAgentKnowledgeGaps]: Record<string, never>;
+	[PromptId.CopilotAgentSynthesizeTopic]: Record<string, never>;
+	[PromptId.CopilotAgentAddEvidence]: Record<string, never>;
 
 	// Chat intelligence
 	[PromptId.ChatTopicAggregation]: {

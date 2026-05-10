@@ -231,6 +231,12 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'writing-add-evidence': meta('prompts', 'writing-add-evidence', { expectsJson: true, systemPromptId: 'writing-add-evidence-system' as PromptId }),
 	'writing-add-evidence-system': meta('prompts', 'writing-add-evidence-system'),
 
+	// Copilot Agent Playbooks (system prompts for agent loop actions)
+	'copilot-agent-suggest-links': meta('prompts', 'copilot-agent-suggest-links'),
+	'copilot-agent-knowledge-gaps': meta('prompts', 'copilot-agent-knowledge-gaps'),
+	'copilot-agent-synthesize-topic': meta('prompts', 'copilot-agent-synthesize-topic'),
+	'copilot-agent-add-evidence': meta('prompts', 'copilot-agent-add-evidence'),
+
 	// Chat intelligence
 	'chat-topic-aggregation': meta('prompts', 'chat-topic-aggregation', {
 		expectsJson: true,
