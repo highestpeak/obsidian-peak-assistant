@@ -25,6 +25,7 @@ import { MessageActionsList } from './MessageActionsList';
 import { MessageRoleAvatar } from '../MessageRoleAvatar';
 import { MessageStyleButtons } from '../MessageStyleButtons';
 import { SuggestedFollowups } from '../SuggestedFollowups';
+import { SuggestionActions } from '../SuggestionActions';
 import { CapabilitySuggestion } from './CapabilitySuggestion';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 
@@ -379,8 +380,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 						<div className={cn(
 							"pktw-overflow-hidden pktw-transition-all pktw-duration-200",
 							isLastMessage
-								? "pktw-max-h-[200px] pktw-opacity-100"
-								: "pktw-max-h-0 pktw-opacity-0 group-hover:pktw-max-h-[200px] group-hover:pktw-opacity-100"
+								? "pktw-max-h-[300px] pktw-opacity-100"
+								: "pktw-max-h-0 pktw-opacity-0 group-hover:pktw-max-h-[300px] group-hover:pktw-opacity-100"
 						)}>
 							<MessageActionsList
 								message={message}
@@ -420,6 +421,18 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 									onSelect={(q) => {
 										const submitAction = useChatViewStore.getState().submitAction;
 										if (submitAction) submitAction(q);
+									}}
+								/>
+							)}
+
+							{/* Action suggestions — always visible on the last assistant message */}
+							{isLastMessage && !streamingState.isStreaming && !message.isErrorMessage && activeConversation && activeConversation.messages.length > 0 && (
+								<SuggestionActions
+									conversationId={activeConversation.meta?.id ?? ''}
+									messages={activeConversation.messages.map(m => ({ role: m.role, content: m.content }))}
+									onSelect={(prompt) => {
+										const submitAction = useChatViewStore.getState().submitAction;
+										if (submitAction) submitAction(prompt);
 									}}
 								/>
 							)}
