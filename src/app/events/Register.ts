@@ -2,10 +2,10 @@ import { MarkdownView, TFile } from 'obsidian';
 import type MyPlugin from 'main';
 import { parseFrontmatter } from '@/core/utils/markdown-utils';
 import { ViewManager } from '@/app/view/ViewManager';
-import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
-import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
+import { EventBus } from '@/core/eventBus';
 import { createElement, icons } from 'lucide';
 import { CHAT_PROJECT_SUMMARY_FILENAME } from '@/core/constant';
+import { openConversationInChat } from '@/ui/view/chat-view/chatNavigation';
 
 /**
  * Register workspace-level reactive events. Uses plugin.registerEvent so listeners are auto-removed on unload.
@@ -151,47 +151,18 @@ function addChatViewButton(
 
 	// Add click handler
 	button.addEventListener('click', async () => {
-		// Switch to chat view
-		await viewManager.getViewSwitchConsistentHandler().activateChatView();
-
-		// Find conversation and open it in chat view
 		const aiManager = plugin.aiServiceManager;
 		if (!aiManager) {
 			return;
 		}
-
-		// Read file again to get projectId from frontmatter
-		let projectId: string | undefined;
-		try {
-			const content = await plugin.app.vault.read(file);
-			const frontmatter = parseFrontmatter<Record<string, unknown>>(content);
-			projectId = frontmatter?.data?.projectId as string | undefined;
-		} catch (error) {
-			console.error('Failed to read file for projectId:', error);
-		}
-
-		// Find project first if projectId exists
-		let project = null;
-		if (projectId) {
-			const projects = await aiManager.listProjects();
-			project = projects.find(p => p.meta.id === projectId) || null;
-		}
-
-		// Find conversation using the correct project context
-		const conversations = await aiManager.listConversations(projectId);
-		const conversation = conversations.find(c => c.meta.id === conversationId);
-		
+		const conversation = await aiManager.readConversation(conversationId, true);
 		if (conversation) {
-			// Notify chat view to open conversation - directly update store
-			const { setConversation } = useChatViewStore.getState();
-			setConversation(conversation);
-
-			// Dispatch selection changed event to highlight conversation and expand project
-			eventBus.dispatch(new SelectionChangedEvent({
-				conversationId: conversation.meta.id,
-				projectId: project?.meta.id ?? null,
-			}));
+			await openConversationInChat(conversation, {
+				manager: aiManager,
+				viewManager,
+				eventBus,
+				loadMessages: false,
+			});
 		}
 	});
 }
-

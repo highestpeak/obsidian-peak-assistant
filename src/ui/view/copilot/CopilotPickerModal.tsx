@@ -1,6 +1,6 @@
 import { Modal } from 'obsidian';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { FileText, FolderOpen, Pen, Star } from 'lucide-react';
+import { FileText, FolderOpen, Pen, Star, Tags } from 'lucide-react';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
@@ -9,6 +9,8 @@ import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder
 import { CopilotResultModal } from '@/ui/view/copilot/CopilotResultModal';
 import { getSelectedTextFromActiveEditor } from '@/core/utils/obsidian-utils';
 import { cn } from '@/ui/react/lib/utils';
+import { Button } from '@/ui/component/shared-ui/button';
+import { openBatchTagSuggestions } from '@/app/commands/PeakCommandActions';
 
 const CATEGORY_META = {
 	document: { label: 'Document', icon: FileText, color: 'pktw-text-blue-400' },
@@ -20,8 +22,9 @@ const CATEGORIES: Array<'document' | 'vault' | 'writing'> = ['document', 'vault'
 
 const CopilotPickerContent: React.FC<{
 	onSelect: (action: CopilotAction) => void;
+	onBatchTag: () => void;
 	ctx: DocumentContext | null;
-}> = ({ onSelect, ctx }) => {
+}> = ({ onSelect, onBatchTag, ctx }) => {
 	const registry = CopilotActionRegistry.getInstance();
 
 	const scored = useMemo(() => {
@@ -55,8 +58,23 @@ const CopilotPickerContent: React.FC<{
 	if (!ctx) {
 		return (
 			<div className="pktw-p-4">
-				<div className="pktw-text-xs pktw-text-muted-foreground pktw-text-center pktw-py-8">
-					Open a document first
+				<div className="pktw-flex pktw-flex-col pktw-gap-3">
+					<span className="pktw-text-xs pktw-text-muted-foreground pktw-text-center pktw-py-4">
+						Open a document first for document-level Copilot actions.
+					</span>
+					<Button
+						variant="outline"
+						className="pktw-h-auto pktw-whitespace-normal pktw-justify-start pktw-gap-3 pktw-p-3 pktw-text-left"
+						onClick={onBatchTag}
+					>
+						<Tags className="pktw-w-4 pktw-h-4 pktw-text-purple-400 pktw-flex-shrink-0" />
+						<span className="pktw-flex pktw-flex-col pktw-gap-1">
+							<span className="pktw-text-xs pktw-font-medium">Batch Tag Suggestions</span>
+							<span className="pktw-text-[10px] pktw-text-muted-foreground">
+								Pick a folder and review AI tag suggestions across documents.
+							</span>
+						</span>
+					</Button>
 				</div>
 			</div>
 		);
@@ -65,7 +83,7 @@ const CopilotPickerContent: React.FC<{
 	let flatIdx = 0;
 
 	return (
-		<div className="pktw-p-4">
+		<div className="pktw-p-5">
 			<div className="pktw-flex pktw-justify-between pktw-items-center pktw-mb-4">
 				<span className="pktw-text-sm pktw-font-semibold">Copilot</span>
 				<span className="pktw-text-xs pktw-text-muted-foreground pktw-font-mono">{ctx.title}</span>
@@ -86,6 +104,21 @@ const CopilotPickerContent: React.FC<{
 									{meta.label}
 								</span>
 							</div>
+							{cat === 'vault' && (
+								<Button
+									variant="ghost"
+									className="pktw-h-auto pktw-w-full pktw-whitespace-normal pktw-justify-start pktw-gap-3 pktw-p-3 pktw-mb-2 pktw-rounded-lg pktw-border pktw-border-border pktw-text-left hover:pktw-bg-accent/60"
+									onClick={onBatchTag}
+								>
+									<Tags className="pktw-w-4 pktw-h-4 pktw-text-purple-400 pktw-flex-shrink-0" />
+									<span className="pktw-flex pktw-flex-col pktw-gap-1">
+										<span className="pktw-text-xs pktw-font-medium">Batch Tag Suggestions</span>
+										<span className="pktw-text-[10px] pktw-text-muted-foreground">
+											Pick a folder and review AI tag suggestions across documents.
+										</span>
+									</span>
+								</Button>
+							)}
 							<div className="pktw-grid pktw-grid-cols-3 pktw-gap-2">
 								{actions.map(action => {
 									const idx = flatIdx++;
@@ -98,10 +131,10 @@ const CopilotPickerContent: React.FC<{
 										<div
 											key={action.id}
 											className={cn(
-												'pktw-flex pktw-flex-col pktw-items-center pktw-gap-2 pktw-p-4 pktw-rounded-lg pktw-border pktw-cursor-pointer pktw-transition-all pktw-relative',
+												'pktw-flex pktw-flex-col pktw-items-center pktw-gap-2 pktw-p-4 pktw-rounded-lg pktw-border pktw-cursor-pointer pktw-transition-all pktw-relative peak-soft-hover-card pktw-min-h-[118px]',
 												isSelected
-													? 'pktw-border-accent pktw-bg-accent/10 pktw-shadow-sm'
-													: 'pktw-border-border hover:pktw-border-accent/50 hover:pktw-shadow-sm',
+													? 'is-selected pktw-border-pk-accent pktw-bg-pk-highlight pktw-shadow-sm'
+													: 'pktw-border-border',
 												isRecommended && 'pktw-border-yellow-500/30',
 											)}
 											onClick={() => onSelect(action)}
@@ -110,9 +143,9 @@ const CopilotPickerContent: React.FC<{
 											{isRecommended && (
 												<Star className="pktw-w-3 pktw-h-3 pktw-text-yellow-500 pktw-fill-yellow-500 pktw-absolute pktw-top-1.5 pktw-right-1.5" />
 											)}
-											<Icon className={cn('pktw-w-5 pktw-h-5', meta.color)} />
-											<span className="pktw-text-xs pktw-font-medium">{action.label}</span>
-											<span className="pktw-text-[10px] pktw-text-muted-foreground pktw-text-center pktw-leading-tight">{action.description}</span>
+											<Icon className={cn('pktw-w-5 pktw-h-5 peak-card-icon', meta.color)} />
+											<span className="pktw-text-xs pktw-font-medium pktw-text-pk-text-primary pktw-text-center peak-card-title">{action.label}</span>
+											<span className="pktw-text-[10px] pktw-text-pk-text-secondary pktw-text-center pktw-leading-tight peak-card-muted">{action.description}</span>
 										</div>
 									);
 								})}
@@ -142,8 +175,8 @@ export class CopilotPickerModal extends Modal {
 		this.contentEl.empty();
 		this.modalEl.addClass('peak-copilot-picker-modal');
 		this.contentEl.addClass('pktw-root');
-		this.modalEl.style.width = '680px';
-		this.modalEl.style.maxWidth = '90vw';
+		this.modalEl.style.width = '920px';
+		this.modalEl.style.maxWidth = '92vw';
 
 		const app = this.appContext.app;
 		const file = app.workspace.getActiveFile();
@@ -163,6 +196,10 @@ export class CopilotPickerModal extends Modal {
 					onSelect: (action: CopilotAction) => {
 						this.close();
 						if (ctx) new CopilotResultModal(app, { action, ctx }).open();
+					},
+					onBatchTag: () => {
+						this.close();
+						openBatchTagSuggestions();
 					},
 				},
 				this.appContext,

@@ -15,7 +15,8 @@ export class PromptTemplateModal extends Modal {
         this.contentEl.empty();
         this.modalEl.addClass('peak-prompt-template-modal');
         this.contentEl.addClass('pktw-root');
-        this.modalEl.style.width = '680px';
+        this.modalEl.style.width = '860px';
+        this.modalEl.style.maxWidth = '92vw';
 
         this.reactRenderer = new ReactRenderer(this.containerEl);
         this.reactRenderer.render(

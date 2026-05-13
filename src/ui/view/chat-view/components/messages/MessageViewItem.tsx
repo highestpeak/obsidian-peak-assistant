@@ -29,6 +29,7 @@ import { SuggestionActions } from '../SuggestionActions';
 import { CapabilitySuggestion } from './CapabilitySuggestion';
 import { MessageStatusIndicator } from './MessageStatusIndicator';
 import { ModelInfoForSwitch } from '@/core/providers/types';
+import { openConversationInChat } from '@/ui/view/chat-view/chatNavigation';
 
 interface StreamingState {
 	isStreaming: boolean;
@@ -67,7 +68,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	isLastMessage = false,
 	models = [],
 }) => {
-	const { manager, app, eventBus } = useServiceContext();
+	const { manager, app, eventBus, viewManager } = useServiceContext();
 
 	const activeConversation = useChatDataStore((state) => state.activeConversation);
 	const activeProject = useChatDataStore((state) => state.activeProject);
@@ -160,14 +161,16 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 				messageId,
 				project: activeProject?.meta ?? null,
 			});
-			// Navigate to the new branched conversation
-			useChatViewStore.getState().setConversation(branchedConv);
-			useChatDataStore.getState().updateConversation(branchedConv);
-			useChatDataStore.getState().setActiveConversation(branchedConv);
+			await openConversationInChat(branchedConv, {
+				manager,
+				eventBus,
+				viewManager,
+				loadMessages: false,
+			});
 		} catch (error) {
 			console.error('Failed to branch conversation:', error);
 		}
-	}, [activeConversation, activeProject, manager]);
+	}, [activeConversation, activeProject, manager, eventBus, viewManager]);
 
 	const [copied, setCopied] = useState(false);
 	const [isExpanded, setIsExpanded] = useState(false);

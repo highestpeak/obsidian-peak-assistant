@@ -18,6 +18,7 @@ export class MorningBriefingModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('peak-morning-briefing-modal');
+		contentEl.addClass('pktw-root');
 
 		// Set modal width
 		this.modalEl.style.maxWidth = '520px';

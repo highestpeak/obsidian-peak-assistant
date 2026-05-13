@@ -3,8 +3,7 @@ import { AppContext } from "@/app/context/AppContext";
 import { useSearchSessionStore } from "../store/searchSessionStore";
 import { useSharedStore } from "../store/sharedStore";
 import { saveAiAnalyzeResultToMarkdown } from "../callbacks/save-ai-analyze-to-md";
-import { CHAT_VIEW_TYPE } from "../../ChatView";
-import { EventBus, SelectionChangedEvent } from "@/core/eventBus";
+import { openConversationInChat } from '@/ui/view/chat-view/chatNavigation';
 
 export function useAIAnalysisResult() {
     const { searchQuery } = useSharedStore();
@@ -91,44 +90,7 @@ export function useAIAnalysisResult() {
                 summary: summary,
                 sources: mappedSources,
             });
-            await new Promise<void>((resolve) => {
-                requestAnimationFrame(() => {
-                    setTimeout(() => resolve(), 50);
-                });
-            });
-            if (AppContext.getInstance().viewManager) {
-                const handler = AppContext.getInstance().viewManager.getViewSwitchConsistentHandler();
-                if (handler) {
-                    await handler.activateChatView();
-                } else {
-                    console.warn('[AISearchTab] ViewSwitchConsistentHandler not available');
-                }
-            } else {
-                console.warn('[AISearchTab] ViewManager not available');
-            }
-
-            let retries = 0;
-            let chatViewReady = false;
-            while (retries < 20) { // Increased retries for more reliable loading
-                const chatLeaves = AppContext.getInstance().app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
-                if (chatLeaves.length > 0 && chatLeaves[0]?.view) {
-                    chatViewReady = true;
-                    break;
-                }
-                await new Promise(resolve => setTimeout(resolve, 100)); // Increased delay
-                retries++;
-            }
-            if (!chatViewReady) {
-                console.warn('[AISearchTab] Chat view not ready after 20 retries');
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 200));
-
-            const eventBus = EventBus.getInstance(AppContext.getInstance().app);
-            eventBus.dispatch(new SelectionChangedEvent({
-                conversationId: conversation.meta.id,
-                projectId: conversation.meta.projectId ?? null,
-            }));
+            await openConversationInChat(conversation);
             await new Promise(resolve => setTimeout(resolve, 100));
 
             onClose?.();
@@ -145,4 +107,3 @@ export function useAIAnalysisResult() {
         handleOpenInChat,
     }
 }
-

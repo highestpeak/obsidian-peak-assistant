@@ -7,8 +7,9 @@ import { GeneralTab } from './settings/GeneralTab';
 import { MCPServerSection } from './settings/components/MCPServerSection';
 import { useSettingsUpdate } from './settings/hooks/useSettingsUpdate';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { MaintenanceTab } from './settings/MaintenanceTab';
 
-type TabId = 'profiles' | 'mcp' | 'search' | 'general';
+type TabId = 'profiles' | 'mcp' | 'search' | 'maintenance' | 'general';
 
 /**
  * Root component for plugin settings with tab navigation.
@@ -35,6 +36,7 @@ export function SettingsRoot() {
 		{ id: 'profiles', label: 'Profiles' },
 		{ id: 'mcp', label: 'MCP Servers' },
 		{ id: 'search', label: 'Search & Indexing' },
+		{ id: 'maintenance', label: 'Maintenance' },
 		{ id: 'general', label: 'General' },
 	];
 
@@ -58,6 +60,7 @@ export function SettingsRoot() {
 				{activeTab === 'profiles' && <ProfilesTab settings={settings} settingsUpdates={settingsUpdates} />}
 				{activeTab === 'mcp' && <MCPServerSection settings={settings} settingsUpdates={settingsUpdates} />}
 				{activeTab === 'search' && <SearchTab settings={settings} settingsUpdates={settingsUpdates} />}
+				{activeTab === 'maintenance' && <MaintenanceTab />}
 				{activeTab === 'general' && <GeneralTab settings={settings} settingsUpdates={settingsUpdates} />}
 			</div>
 		</div>

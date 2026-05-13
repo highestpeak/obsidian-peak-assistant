@@ -1,8 +1,53 @@
 import { useEffect } from 'react';
 import { useChatViewStore } from '../store/chatViewStore';
+import type { PromptInputEditorHandle } from '@/ui/component/prompt-input/PromptInputBody';
+
+type KeyboardTarget = HTMLTextAreaElement | PromptInputEditorHandle;
+
+function isPromptEditor(target: KeyboardTarget): target is PromptInputEditorHandle {
+	return 'getValue' in target && 'setValue' in target && 'insertText' in target;
+}
+
+function isFocused(target: KeyboardTarget): boolean {
+	if (isPromptEditor(target)) return target.isFocused();
+	return document.activeElement === target;
+}
+
+function getValue(target: KeyboardTarget): string {
+	if (isPromptEditor(target)) return target.getValue();
+	return target.value;
+}
+
+function setValue(target: KeyboardTarget, value: string) {
+	if (isPromptEditor(target)) {
+		target.setValue(value);
+		return;
+	}
+	target.value = value;
+	target.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function insertText(target: KeyboardTarget, text: string) {
+	if (isPromptEditor(target)) {
+		target.insertText(text);
+		return;
+	}
+	const { selectionStart, selectionEnd, value } = target;
+	target.value = value.substring(0, selectionStart) + text + value.substring(selectionEnd);
+	target.selectionStart = target.selectionEnd = selectionStart + text.length;
+	target.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function selectAll(target: KeyboardTarget) {
+	if (isPromptEditor(target)) {
+		target.select();
+		return;
+	}
+	target.select();
+}
 
 export function useInputKeyboard(
-	textareaRef: React.RefObject<HTMLTextAreaElement>,
+	textareaRef: React.RefObject<KeyboardTarget>,
 	conversationId: string | null,
 ) {
 	// Refocus textarea on conversation change
@@ -15,58 +60,53 @@ export function useInputKeyboard(
 	// Keyboard shortcuts
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
+			const target = textareaRef.current;
 			const isModKey = e.metaKey || e.ctrlKey;
 
 			// Cmd/Ctrl+K: focus input
 			if (isModKey && (e.key === 'k' || e.key === 'K')) {
-				if (textareaRef.current && document.activeElement !== textareaRef.current) {
+				if (target && !isFocused(target)) {
 					e.preventDefault();
 					e.stopPropagation();
 					e.stopImmediatePropagation();
-					setTimeout(() => textareaRef.current?.focus(), 100);
+					setTimeout(() => target.focus(), 100);
 					return false;
 				}
 			}
 
 			// Cmd/Ctrl+Enter: line break
-			if (isModKey && e.key === 'Enter' && textareaRef.current) {
+			if (isModKey && e.key === 'Enter' && target && isFocused(target)) {
 				e.preventDefault();
 				e.stopPropagation();
-				const ta = textareaRef.current;
-				const { selectionStart, selectionEnd, value } = ta;
-				ta.value = value.substring(0, selectionStart) + '\n' + value.substring(selectionEnd);
-				ta.selectionStart = ta.selectionEnd = selectionStart + 1;
-				ta.dispatchEvent(new Event('input', { bubbles: true }));
+				insertText(target, '\n');
 			}
 
 			// Cmd/Ctrl+A: select all
-			if (isModKey && (e.key === 'a' || e.key === 'A') && textareaRef.current) {
+			if (isModKey && (e.key === 'a' || e.key === 'A') && target && isFocused(target)) {
 				e.preventDefault();
 				e.stopPropagation();
-				textareaRef.current.select();
+				selectAll(target);
 			}
 
 			// Ctrl+ArrowUp: input history up (#81)
-			if (isModKey && e.key === 'ArrowUp' && textareaRef.current) {
+			if (isModKey && e.key === 'ArrowUp' && target && isFocused(target)) {
 				e.preventDefault();
 				const store = useChatViewStore.getState();
 				if (store.historyIndex === -1) {
-					useChatViewStore.setState({ draftInput: textareaRef.current.value });
+					useChatViewStore.setState({ draftInput: getValue(target) });
 				}
 				const text = store.navigateHistory('up');
 				if (text !== null) {
-					textareaRef.current.value = text;
-					textareaRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+					setValue(target, text);
 				}
 			}
 
 			// Ctrl+ArrowDown: input history down (#81)
-			if (isModKey && e.key === 'ArrowDown' && textareaRef.current) {
+			if (isModKey && e.key === 'ArrowDown' && target && isFocused(target)) {
 				e.preventDefault();
 				const text = useChatViewStore.getState().navigateHistory('down');
 				if (text !== null) {
-					textareaRef.current.value = text;
-					textareaRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+					setValue(target, text);
 				}
 			}
 		};

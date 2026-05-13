@@ -130,10 +130,10 @@ export function IndexConfigStep({ onNext, onBack, onSkip }: Props) {
 						key={level}
 						onClick={() => setSelectedLevel(level)}
 						className={cn(
-							'pktw-flex pktw-items-center pktw-gap-3 pktw-p-3 pktw-rounded-md pktw-cursor-pointer pktw-border pktw-transition-colors',
+							'pktw-flex pktw-items-center pktw-gap-3 pktw-p-3 pktw-rounded-md pktw-cursor-pointer pktw-border pktw-transition-colors peak-soft-hover-card',
 							selectedLevel === level
-								? 'pktw-border-[--interactive-accent] pktw-bg-[--background-modifier-active-hover]'
-								: 'pktw-border-[--background-modifier-border] hover:pktw-bg-[--background-modifier-hover]',
+								? 'is-selected pktw-border-pk-accent pktw-bg-pk-highlight'
+								: 'pktw-border-[--background-modifier-border]',
 						)}
 					>
 						<input
@@ -145,7 +145,7 @@ export function IndexConfigStep({ onNext, onBack, onSkip }: Props) {
 						/>
 						<div className="pktw-flex-1">
 							<div className="pktw-flex pktw-items-center pktw-gap-2">
-								<Icon className="pktw-w-4 pktw-h-4 pktw-text-[--text-muted] pktw-shrink-0" />
+								<Icon className="pktw-w-4 pktw-h-4 pktw-text-pk-foreground-muted pktw-shrink-0 peak-card-icon" />
 								<span className="pktw-text-sm pktw-font-medium pktw-text-[--text-normal]">
 									{label}
 								</span>

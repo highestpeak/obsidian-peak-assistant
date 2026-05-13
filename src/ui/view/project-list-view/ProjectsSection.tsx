@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChatConversation, ChatProject } from '@/service/chat/types';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { useChatViewStore } from '../chat-view/store/chatViewStore';
-import { notifySelectionChange, hydrateProjects as hydrateProjectsFromManager, showContextMenu } from './utils';
+import { openAllProjectsInChat, openConversationInChat, openPendingConversationInChat, openProjectConversationsListInChat, openProjectOverviewInChat } from '@/ui/view/chat-view/chatNavigation';
+import { hydrateProjects as hydrateProjectsFromManager, showContextMenu } from './utils';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { Button } from '@/ui/component/shared-ui/button';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
@@ -31,7 +31,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	onTypewriterComplete,
 	onDeleteConversation,
 }) => {
-	const { app, manager } = useServiceContext();
+	const { app, manager, eventBus, viewManager } = useServiceContext();
 	// Directly access store in component
 	const {
 		projects,
@@ -43,7 +43,6 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		updateProject,
 		updateConversation,
 	} = useChatDataStore();
-	const { setProjectOverview, setProjectConversationsList, setPendingConversation } = useChatViewStore();
 
 	const conversationsToShow = conversations.slice(0, MAX_CONVERSATIONS_PER_PROJECT);
 	const hasMoreConversations = conversations.length > MAX_CONVERSATIONS_PER_PROJECT;
@@ -68,22 +67,19 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	const handleProjectHeaderClick = async () => {
 		toggleProjectExpanded(project.meta.id);
 		setActiveProject(project);
-		setProjectOverview(project);
+		await openProjectOverviewInChat(project, { viewManager, eventBus });
 	};
 
 	const handleConversationClick = async (conversation: ChatConversation) => {
-		// Don't set state here, let notifySelectionChange handle it
-		// This ensures the state is set correctly and consistently
-		await notifySelectionChange(app, conversation);
+		await openConversationInChat(conversation, { manager, viewManager, eventBus });
 	};
 
 	const handleNewConversation = async () => {
 		setActiveProject(project);
-		setPendingConversation({
+		await openPendingConversationInChat({
 			title: DEFAULT_NEW_CONVERSATION_TITLE,
 			project: project,
-		});
-		await notifySelectionChange(app, null);
+		}, { viewManager, eventBus });
 	};
 
 	const handleEditProjectName = useCallback((projectItem: ChatProject) => {
@@ -228,13 +224,13 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 			>
 				{isExpanded ? (
 					<>
-						<ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
-						<FolderOpen className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+						<ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
+						<FolderOpen className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 					</>
 				) : (
 					<>
-						<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
-						<Folder className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+						<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
+						<Folder className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 					</>
 				)}
 				<span className="pktw-flex-1 pktw-text-sm pktw-text-foreground pktw-break-words pktw-leading-snug">
@@ -293,7 +289,10 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 						onClick={(e) => {
 							e.stopPropagation();
 							// Show all conversations for this project in list view
-							setProjectConversationsList(project);
+							void openProjectConversationsListInChat(project, {
+								viewManager,
+								eventBus,
+							});
 						}}
 					>
 						<MoreHorizontal className="pktw-w-3.5 pktw-h-3.5" />
@@ -323,15 +322,13 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
  * Projects section component
  */
 export const ProjectsSection: React.FC = () => {
-	const { manager, eventBus } = useServiceContext();
+	const { manager, eventBus, viewManager } = useServiceContext();
 	const {
 		projects,
 		expandedProjects,
 		isProjectsCollapsed,
 		toggleProjectsCollapsed,
 	} = useChatDataStore();
-	const { setAllProjects } = useChatViewStore();
-
 	const [projectConversations, setProjectConversations] = useState<
 		Map<string, ChatConversation[]>
 	>(new Map());
@@ -479,22 +476,22 @@ export const ProjectsSection: React.FC = () => {
 			>
 				<div className="pktw-flex pktw-items-center pktw-gap-2">
 					{isProjectsCollapsed ? (
-						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 					) : (
-						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 					)}
 					<h3 className="pktw-flex-1 pktw-m-0 pktw-text-[13px] pktw-font-semibold pktw-text-foreground pktw-uppercase pktw-tracking-wide">Projects</h3>
 				</div>
 				<IconButton
 					size="lg"
-					className="pktw-shrink-0 group-hover:pktw-bg-gray-200 group-hover:pktw-shadow-sm hover:pktw-shadow-sm"
+					className="pktw-shrink-0 group-hover:pktw-bg-muted group-hover:pktw-shadow-sm hover:pktw-shadow-sm"
 					onClick={(e) => {
 						e.stopPropagation();
 						handleCreateProject();
 					}}
 					title="New Project"
 				>
-					<Plus className="pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+					<Plus className="pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 				</IconButton>
 			</div>
 
@@ -520,7 +517,9 @@ export const ProjectsSection: React.FC = () => {
 				{hasMoreProjects && (
 					<div
 						className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-[13px] pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
-						onClick={() => setAllProjects()}
+						onClick={() => {
+							void openAllProjectsInChat({ viewManager, eventBus });
+						}}
 					>
 						<MoreHorizontal className="pktw-w-4 pktw-h-4" />
 						<span className="pktw-flex-1">See more</span>
@@ -544,4 +543,3 @@ export const ProjectsSection: React.FC = () => {
 		</div>
 	);
 };
-

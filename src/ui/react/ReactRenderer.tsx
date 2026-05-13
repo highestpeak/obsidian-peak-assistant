@@ -49,6 +49,7 @@ export class ReactRenderer {
 			return;
 		}
 
+		targetContainer.classList.add('pktw-root');
 		this.root = createRoot(targetContainer);
 		this.root.render(element);
 	}
@@ -74,4 +75,3 @@ export class ReactRenderer {
 		}
 	}
 }
-

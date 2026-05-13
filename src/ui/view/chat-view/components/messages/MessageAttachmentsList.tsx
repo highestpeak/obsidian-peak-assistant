@@ -198,10 +198,10 @@ export const MessageAttachmentsList: React.FC<{
 								<FileText className="pktw-size-4 pktw-text-white" />
 							</div>
 							<div className="pktw-flex-1 pktw-flex pktw-flex-col pktw-gap-1 pktw-min-w-0">
-								<span className="pktw-text-sm pktw-font-medium pktw-text-gray-900 pktw-truncate">
+								<span className="pktw-text-sm pktw-font-medium pktw-text-foreground pktw-truncate">
 									{attachment.filename}
 								</span>
-								<span className="pktw-text-xs pktw-text-gray-500 pktw-uppercase pktw-font-medium">
+								<span className="pktw-text-xs pktw-text-muted-foreground pktw-uppercase pktw-font-medium">
 									PDF
 								</span>
 							</div>

@@ -1,6 +1,7 @@
 /* CodeMirror custom styling to match textarea appearance */
 
 /* Base editor styling */
+.pktw-codemirror-custom.cm-editor,
 .pktw-codemirror-custom .cm-editor {
   outline: none !important;
   border: none !important;
@@ -9,11 +10,12 @@
   font-size: 15px !important;
   line-height: 1.5 !important;
   font-weight: 500 !important;
-  color: rgb(31 41 55) !important; /* text-gray-900 */
+  color: var(--pk-text-primary, var(--text-normal)) !important;
 }
 
+.theme-dark .pktw-codemirror-custom.cm-editor,
 .theme-dark .pktw-codemirror-custom .cm-editor {
-  color: rgb(243 244 246) !important; /* text-gray-100 */
+  color: var(--pk-text-primary, var(--text-normal)) !important;
 }
 
 /* Content area */
@@ -52,7 +54,14 @@
 }
 
 /* Focus states */
-.pktw-codemirror-custom .cm-focused {
+.pktw-codemirror-custom.cm-focused,
+.pktw-codemirror-custom .cm-focused,
+.pktw-codemirror-custom .cm-scroller:focus,
+.pktw-codemirror-custom .cm-scroller:focus-visible,
+.pktw-codemirror-custom .cm-content:focus,
+.pktw-codemirror-custom .cm-content:focus-visible,
+.pktw-codemirror-custom [contenteditable="true"]:focus,
+.pktw-codemirror-custom [contenteditable="true"]:focus-visible {
   outline: none !important;
   box-shadow: none !important;
 }
@@ -73,7 +82,7 @@
 
 /* Placeholder */
 .pktw-codemirror-custom .cm-placeholder {
-  color: rgb(107 114 128) !important; /* text-muted-foreground */
+  color: var(--pk-text-tertiary, var(--text-muted)) !important;
   font-style: normal !important;
 }
 

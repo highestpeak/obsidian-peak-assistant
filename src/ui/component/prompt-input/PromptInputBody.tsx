@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/ui/react/lib/utils';
 import { usePromptInputContext } from './PromptInput';
 import CodeMirror from '@uiw/react-codemirror';
-import { EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
+import { EditorView } from '@codemirror/view';
 import { tagPlugin } from '@/ui/component/mine/tagPlugin';
 import { keymapExtension } from './keymap';
 import { parseTagsFromText } from '../mine/tagParser';
@@ -109,6 +109,7 @@ interface MenuState {
 }
 
 const INITIAL_MENU: MenuState = { visible: false, items: [], selectedIndex: 0, position: { top: 0, left: 0 }, triggerMatch: null, isLoading: false };
+const MENU_SEARCH_DEBOUNCE_MS = 320;
 
 // ---------------------------------------------------------------------------
 // Props / Component
@@ -120,11 +121,20 @@ export interface PromptInputBodyProps extends Omit<TextareaHTMLAttributes<HTMLTe
 	onTextChange?: (text: string, tags: Array<{ type: 'context' | 'prompt'; text: string; start: number; end: number }>) => void;
 }
 
+export interface PromptInputEditorHandle {
+	focus: () => void;
+	select: () => void;
+	insertText: (text: string) => void;
+	setValue: (text: string) => void;
+	getValue: () => string;
+	isFocused: () => boolean;
+}
+
 /**
  * CodeMirror-based prompt input with custom React menus for @ / [[ context triggers
  * and / prompt triggers.
  */
-export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
+export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBodyProps>(({
 	className,
 	placeholder = 'What would you like to know?',
 	inputRef,
@@ -168,18 +178,66 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 	// Track the latest pending load to avoid race conditions
 	const loadIdRef = useRef(0);
 	const promptLoadIdRef = useRef(0);
+	const loadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const promptLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const loadedKeyRef = useRef('');
+	const promptLoadedKeyRef = useRef('');
+	const pendingKeyRef = useRef('');
+	const promptPendingKeyRef = useRef('');
+	const activeTriggerKeyRef = useRef('');
+	const promptActiveTriggerKeyRef = useRef('');
+	const cacheRef = useRef<Map<string, NavigableMenuItem[]>>(new Map());
+	const promptCacheRef = useRef<Map<string, NavigableMenuItem[]>>(new Map());
+	React.useEffect(() => {
+		return () => {
+			if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+			if (promptLoadTimerRef.current) clearTimeout(promptLoadTimerRef.current);
+		};
+	}, []);
 
 	// ----- Expose focus -----
+	const getView = useCallback(() => codeMirrorRef.current?.view as EditorView | undefined, []);
+	const focusEditor = useCallback(() => {
+		getView()?.focus();
+	}, [getView]);
+
 	React.useImperativeHandle(inputRef, () => ({
-		focus: () => {
-			codeMirrorRef.current?.view?.focus();
+		focus: focusEditor,
+	}), [focusEditor]);
+	React.useImperativeHandle(ref, () => ({
+		focus: focusEditor,
+		select: () => {
+			const view = getView();
+			if (!view) return;
+			view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
+			view.focus();
 		},
-	}), []);
-	React.useImperativeHandle(ref, () => codeMirrorRef.current?.view);
+		insertText: (text: string) => {
+			const view = getView();
+			if (!view) return;
+			const selection = view.state.selection.main;
+			view.dispatch({
+				changes: { from: selection.from, to: selection.to, insert: text },
+				selection: { anchor: selection.from + text.length },
+			});
+			view.focus();
+		},
+		setValue: (text: string) => {
+			const view = getView();
+			if (!view) return;
+			view.dispatch({
+				changes: { from: 0, to: view.state.doc.length, insert: text },
+				selection: { anchor: text.length },
+			});
+			view.focus();
+		},
+		getValue: () => getView()?.state.doc.toString() ?? '',
+		isFocused: () => getView()?.hasFocus ?? false,
+	}), [focusEditor, getView]);
 
 	// ----- Shared: compute menu position from trigger coords -----
 	const computeMenuPosition = useCallback((view: EditorView, from: number): { top: number; left: number } | null => {
-		const coords = view.coordsAtPos(from);
+		const coords = view.coordsAtPos(from) ?? view.coordsAtPos(view.state.selection.main.head);
 		if (!coords) return null;
 		const menuHeight = 300;
 		const menuWidth = 400;
@@ -219,21 +277,56 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 	const openMenuWithLoad = useCallback((
 		setFn: React.Dispatch<React.SetStateAction<MenuState>>,
 		loadIdRef: React.MutableRefObject<number>,
-		loaderRef: React.MutableRefObject<((q: string) => Promise<NavigableMenuItem[]>) | undefined>,
+		timerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
+		loadedKeyRef: React.MutableRefObject<string>,
+		pendingKeyRef: React.MutableRefObject<string>,
+		cacheRef: React.MutableRefObject<Map<string, NavigableMenuItem[]>>,
+		loaderRef: React.MutableRefObject<((q: string, currentFolder?: string) => Promise<NavigableMenuItem[]>) | undefined>,
 		fallbackRef: React.MutableRefObject<NavigableMenuItem[]>,
 		match: TriggerMatch,
 		pos: { top: number; left: number },
+		currentFolder?: string,
 	) => {
+		const queryKey = `${match.trigger}:${currentFolder ?? ''}:${match.query.trim().toLowerCase()}`;
+		if (loadedKeyRef.current === queryKey) {
+			setFn(prev => ({ ...prev, visible: true, position: pos, triggerMatch: match }));
+			return;
+		}
+
+		const cachedItems = cacheRef.current.get(queryKey);
+		if (cachedItems) {
+			loadedKeyRef.current = queryKey;
+			setFn(prev => ({
+				...prev, visible: true, position: pos, triggerMatch: match,
+				selectedIndex: prev.triggerMatch?.query !== match.query ? 0 : prev.selectedIndex,
+				items: cachedItems, isLoading: false,
+			}));
+			return;
+		}
+
+		if (pendingKeyRef.current === queryKey) return;
 		const currentLoadId = ++loadIdRef.current;
+		pendingKeyRef.current = queryKey;
+		const q = match.query.toLowerCase();
+		const fallbackItems = fallbackRef.current
+			.filter((it: any) => !q || it.label.toLowerCase().includes(q) || it.description?.toLowerCase().includes(q))
+			.slice(0, SLICE_CAPS.ui.promptOptions);
 		setFn(prev => ({
-			...prev, visible: true, position: pos, triggerMatch: match, isLoading: true,
+			...prev,
+			visible: true,
+			position: pos,
+			triggerMatch: match,
+			items: fallbackItems,
+			isLoading: false,
 			selectedIndex: prev.triggerMatch?.query !== match.query ? 0 : prev.selectedIndex,
 		}));
-		(async () => {
+
+		if (timerRef.current) clearTimeout(timerRef.current);
+		timerRef.current = setTimeout(async () => {
 			let items: NavigableMenuItem[];
 			try {
 				if (loaderRef.current) {
-					items = await loaderRef.current(match.query);
+					items = await loaderRef.current(match.query, currentFolder);
 				} else {
 					const q = match.query.toLowerCase();
 					items = fallbackRef.current.filter((it: any) =>
@@ -243,8 +336,12 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 				items = fallbackRef.current;
 			}
 			if (loadIdRef.current !== currentLoadId) return;
-			setFn(prev => ({ ...prev, items: items.slice(0, SLICE_CAPS.ui.promptOptions), isLoading: false }));
-		})();
+			const slicedItems = items.slice(0, SLICE_CAPS.ui.promptOptions);
+			cacheRef.current.set(queryKey, slicedItems);
+			loadedKeyRef.current = queryKey;
+			pendingKeyRef.current = '';
+			setFn(prev => ({ ...prev, items: slicedItems, isLoading: false }));
+		}, match.query.trim() ? MENU_SEARCH_DEBOUNCE_MS : 0);
 	}, []);
 
 	// ----- Trigger detection callback (called by CM update listener) -----
@@ -255,10 +352,28 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 		if (!match) {
 			if (menuRef.current.visible) setMenu(INITIAL_MENU);
 			if (promptMenuRef.current.visible) setPromptMenu(INITIAL_MENU);
+			activeTriggerKeyRef.current = '';
+			promptActiveTriggerKeyRef.current = '';
+			pendingKeyRef.current = '';
+			promptPendingKeyRef.current = '';
+			if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+			if (promptLoadTimerRef.current) clearTimeout(promptLoadTimerRef.current);
 			return;
 		}
 
 		const isPrompt = match.trigger === '/';
+		const currentFolder = isPrompt ? undefined : folderStack?.[folderStack.length - 1];
+		const triggerStateKey = `${match.trigger}:${currentFolder ?? ''}:${match.from}:${match.query.trim().toLowerCase()}`;
+		if (isPrompt) {
+			if (promptActiveTriggerKeyRef.current === triggerStateKey && promptMenuRef.current.visible) return;
+			promptActiveTriggerKeyRef.current = triggerStateKey;
+			activeTriggerKeyRef.current = '';
+		} else {
+			if (activeTriggerKeyRef.current === triggerStateKey && menuRef.current.visible) return;
+			activeTriggerKeyRef.current = triggerStateKey;
+			promptActiveTriggerKeyRef.current = '';
+		}
+
 		// Close the other menu
 		if (isPrompt && menuRef.current.visible) setMenu(INITIAL_MENU);
 		if (!isPrompt && promptMenuRef.current.visible) setPromptMenu(INITIAL_MENU);
@@ -271,11 +386,11 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 		}
 
 		if (isPrompt) {
-			openMenuWithLoad(setPromptMenu, promptLoadIdRef, onLoadPromptItemsRef, promptItemsRef, match, pos);
+			openMenuWithLoad(setPromptMenu, promptLoadIdRef, promptLoadTimerRef, promptLoadedKeyRef, promptPendingKeyRef, promptCacheRef, onLoadPromptItemsRef, promptItemsRef, match, pos);
 		} else {
-			openMenuWithLoad(setMenu, loadIdRef, onLoadContextItemsRef, contextItemsRef, match, pos);
+			openMenuWithLoad(setMenu, loadIdRef, loadTimerRef, loadedKeyRef, pendingKeyRef, cacheRef, onLoadContextItemsRef, contextItemsRef, match, pos, currentFolder);
 		}
-	}, [computeMenuPosition, openMenuWithLoad]);
+	}, [computeMenuPosition, folderStack, openMenuWithLoad]);
 
 	// ----- Context menu callbacks -----
 	const handleMenuSelect = useCallback((item: NavigableMenuItem) => {
@@ -288,6 +403,23 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 			if (onMenuItemSelectRef.current) {
 				onMenuItemSelectRef.current(match.trigger, item);
 			}
+			const folderPath = item.value;
+			const currentLoadId = ++loadIdRef.current;
+			setMenu(prev => ({ ...prev, isLoading: true, selectedIndex: 0 }));
+			void (async () => {
+				let items: NavigableMenuItem[] = [];
+				try {
+					items = await (onLoadContextItemsRef.current?.('', folderPath) ?? Promise.resolve([]));
+				} catch {
+					items = [];
+				}
+				if (loadIdRef.current !== currentLoadId) return;
+				const slicedItems = items.slice(0, SLICE_CAPS.ui.promptOptions);
+				const queryKey = `${match.trigger}:${folderPath}:`;
+				cacheRef.current.set(queryKey, slicedItems);
+				loadedKeyRef.current = queryKey;
+				setMenu(prev => ({ ...prev, items: slicedItems, isLoading: false, selectedIndex: 0 }));
+			})();
 			return;
 		}
 
@@ -362,16 +494,20 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 			tagPlugin,
 			keymapExtension,
 			EditorView.lineWrapping,
-			// Update listener for @ / [[ / slash trigger detection
-			ViewPlugin.fromClass(
-				class {
-					update(update: ViewUpdate) {
-						if (update.docChanged || update.selectionSet) {
-							handleTriggerUpdateRef.current(update.view);
-						}
-					}
-				},
-			),
+			EditorView.theme({
+				'&': { outline: 'none !important' },
+				'&.cm-focused': { outline: 'none !important', boxShadow: 'none !important' },
+				'.cm-scroller': { outline: 'none !important' },
+				'.cm-content': { outline: 'none !important' },
+				'.cm-content:focus': { outline: 'none !important' },
+				'.cm-content:focus-visible': { outline: 'none !important' },
+				'[contenteditable="true"]:focus': { outline: 'none !important' },
+			}),
+			EditorView.updateListener.of((update) => {
+				if (update.docChanged || update.selectionSet) {
+					handleTriggerUpdateRef.current(update.view);
+				}
+			}),
 		];
 		return exts;
 	}, [tagPlugin, keymapExtension]);
@@ -406,7 +542,7 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 				onChange={handleChange}
 				placeholder={placeholder}
 				className={cn(
-					'pktw-w-full pktw-text-[15px] pktw-leading-[1.5] pktw-font-medium pktw-codemirror-custom',
+					'pktw-w-full pktw-text-[15px] pktw-leading-[1.5] pktw-font-medium pktw-codemirror-custom peak-no-native-outline',
 					'pktw-py-3',
 					className,
 				)}
@@ -433,31 +569,35 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 
 			{/* Custom context menu for @ / [[ triggers */}
 			{menu.visible && createPortal(
-				<ContextMenu
-					items={menu.items}
-					selectedIndex={menu.selectedIndex}
-					position={menu.position}
-					isLoading={menu.isLoading}
-					onSelect={handleMenuSelect}
-					onClose={handleMenuClose}
-					onSelectedIndexChange={handleSelectedIndexChange}
-					folderStack={folderStack}
-					onFolderUp={onFolderUp}
-				/>,
+				<div className="pktw-root">
+					<ContextMenu
+						items={menu.items}
+						selectedIndex={menu.selectedIndex}
+						position={menu.position}
+						isLoading={menu.isLoading}
+						onSelect={handleMenuSelect}
+						onClose={handleMenuClose}
+						onSelectedIndexChange={handleSelectedIndexChange}
+						folderStack={folderStack}
+						onFolderUp={onFolderUp}
+					/>
+				</div>,
 				document.body,
 			)}
 
 			{/* Custom prompt menu for / triggers */}
 			{promptMenu.visible && createPortal(
-				<PromptMenu
-					items={promptMenu.items}
-					selectedIndex={promptMenu.selectedIndex}
-					position={promptMenu.position}
-					isLoading={promptMenu.isLoading}
-					onSelect={handlePromptMenuSelect}
-					onClose={handlePromptMenuClose}
-					onSelectedIndexChange={handlePromptSelectedIndexChange}
-				/>,
+				<div className="pktw-root">
+					<PromptMenu
+						items={promptMenu.items}
+						selectedIndex={promptMenu.selectedIndex}
+						position={promptMenu.position}
+						isLoading={promptMenu.isLoading}
+						onSelect={handlePromptMenuSelect}
+						onClose={handlePromptMenuClose}
+						onSelectedIndexChange={handlePromptSelectedIndexChange}
+					/>
+				</div>,
 				document.body,
 			)}
 		</div>

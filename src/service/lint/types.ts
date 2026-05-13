@@ -89,7 +89,10 @@ export interface OrphanMetadata {
 
 export interface BrokenLinkMetadata {
   sourcePath: string;
-  brokenTarget: string;
+  brokenTarget?: string;
+  brokenTargets?: string[];
+  brokenTargetCount?: number;
+  brokenOccurrenceCount?: number;
   suggestedReplacement?: string;
   matchConfidence?: number;
 }

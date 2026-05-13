@@ -22,9 +22,9 @@ export const SummaryPopover: React.FC = () => {
 				<IconButton
 					size="lg"
 					title="View conversation summary"
-					className="hover:pktw-bg-gray-200"
+					className="hover:pktw-bg-muted"
 				>
-					<Brain className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground group-hover:pktw-text-black" />
+					<Brain className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground group-hover:pktw-text-foreground" />
 				</IconButton>
 			</HoverCardTrigger>
 			<HoverCardContent

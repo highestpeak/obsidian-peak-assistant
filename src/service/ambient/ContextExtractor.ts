@@ -106,8 +106,8 @@ export function getCursorSection(lines: string[], lineIndex: number): string {
  * Build full AmbientContext from the active Obsidian editor.
  * Returns null if no active MarkdownView.
  */
-export function extractContext(app: App, fileOpenedAt: number): AmbientContext | null {
-	const mdView = app.workspace.getActiveViewOfType(MarkdownView);
+export function extractContext(app: App, fileOpenedAt: number, filePath?: string): AmbientContext | null {
+	const mdView = getMarkdownView(app, filePath);
 	if (!mdView || !mdView.file) return null;
 
 	const editor = mdView.editor;
@@ -136,4 +136,22 @@ export function extractContext(app: App, fileOpenedAt: number): AmbientContext |
 		filePath: file.path,
 		lastModified: file.stat.mtime,
 	};
+}
+
+function getMarkdownView(app: App, filePath?: string): MarkdownView | null {
+	if (filePath) {
+		const leaf = app.workspace
+			.getLeavesOfType('markdown')
+			.find((candidate) => {
+				const view = candidate.view as MarkdownView | undefined;
+				return view?.file?.path === filePath;
+			});
+		if (leaf) return leaf.view as MarkdownView;
+	}
+
+	const activeView = app.workspace.getActiveViewOfType(MarkdownView);
+	if (!filePath) return activeView;
+	if (activeView?.file?.path === filePath) return activeView;
+
+	return activeView;
 }

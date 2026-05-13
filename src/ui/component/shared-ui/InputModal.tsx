@@ -66,17 +66,17 @@ export const InputModal: React.FC<InputModalProps> = ({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="pktw-bg-white pktw-border-0 pktw-p-4 pktw-shadow-lg pktw-rounded-xl pktw-max-w-md pktw-w-full">
+			<DialogContent className="pktw-bg-popover pktw-border pktw-border-border pktw-p-4 pktw-shadow-lg pktw-rounded-xl pktw-max-w-md pktw-w-full">
 				<div className="pktw-flex pktw-items-start pktw-justify-between">
 					<DialogHeader className="pktw-p-0 pktw-m-0">
-						<DialogTitle className="pktw-text-lg pktw-font-medium pktw-text-gray-900 pktw-leading-tight pktw-m-0">
+						<DialogTitle className="pktw-text-lg pktw-font-medium pktw-text-foreground pktw-leading-tight pktw-m-0">
 							{message}
 						</DialogTitle>
 					</DialogHeader>
 					<DialogClose asChild>
 						<IconButton
 							onClick={() => onOpenChange(false)}
-							className="pktw-text-gray-700 hover:pktw-text-gray-900 hover:pktw-bg-gray-100 pktw-transition-colors pktw-rounded-md"
+							className="pktw-text-muted-foreground hover:pktw-text-foreground hover:pktw-bg-muted pktw-transition-colors pktw-rounded-md"
 							size="lg"
 						>
 							<X />
@@ -92,7 +92,7 @@ export const InputModal: React.FC<InputModalProps> = ({
 								})}
 								placeholder={placeholderText || message}
 								autoFocus
-								className="pktw-bg-white pktw-h-9 pktw-text-sm pktw-text-black pktw-border pktw-border-gray-300 pktw-border-solid focus:pktw-border-black pktw-transition-all pktw-rounded-xl"
+								className="pktw-bg-background pktw-h-9 pktw-text-sm pktw-text-foreground pktw-border pktw-border-input pktw-border-solid focus:pktw-border-pk-accent pktw-transition-all pktw-rounded-xl"
 								onKeyDown={(e) => {
 									if (e.key === 'Escape') {
 										onOpenChange(false);
@@ -107,8 +107,8 @@ export const InputModal: React.FC<InputModalProps> = ({
 						)}
 						{hintText && (
 							<div className="pktw-flex pktw-items-center pktw-justify-start pktw-gap-2 pktw-mt-2">
-								<Lightbulb className="pktw-w-4 pktw-h-4 pktw-text-gray-500 pktw-flex-shrink-0" />
-								<p className="pktw-text-xs pktw-text-gray-600 pktw-leading-relaxed">
+								<Lightbulb className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground pktw-flex-shrink-0" />
+								<p className="pktw-text-xs pktw-text-muted-foreground pktw-leading-relaxed">
 									{hintText}
 								</p>
 							</div>
@@ -117,7 +117,7 @@ export const InputModal: React.FC<InputModalProps> = ({
 					<DialogFooter className="pktw-pt-3 pktw-pb-0 pktw-mt-0">
 						<Button
 							type="submit"
-							className="pktw-bg-gray-900 hover:pktw-bg-gray-800 pktw-text-white pktw-h-9 pktw-px-4 pktw-text-sm pktw-font-medium pktw-rounded-xl pktw-w-full sm:pktw-w-auto"
+							className="pktw-bg-primary hover:pktw-bg-primary/90 pktw-text-primary-foreground pktw-h-9 pktw-px-4 pktw-text-sm pktw-font-medium pktw-rounded-xl pktw-w-full sm:pktw-w-auto"
 						>
 							{submitButtonText}
 						</Button>
@@ -127,4 +127,3 @@ export const InputModal: React.FC<InputModalProps> = ({
 		</Dialog>
 	);
 };
-

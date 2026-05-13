@@ -34,6 +34,7 @@ export class ChatView extends ItemView {
 	async onOpen(): Promise<void> {
 		this.containerEl.empty();
 		this.containerEl.addClass('peak-chat-view');
+		this.containerEl.addClass('pktw-root');
 
 		// Create React renderer
 		this.reactRenderer = new ReactRenderer(this.containerEl);

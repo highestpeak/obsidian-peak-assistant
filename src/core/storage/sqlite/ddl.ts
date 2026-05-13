@@ -487,6 +487,27 @@ interface SqliteDatabaseLike {
 	prepare?(sql: string): { all(): unknown[] };
 }
 
+function tableColumns(db: SqliteDatabaseLike, tableName: string): Set<string> | null {
+	const rows = db.prepare?.(`PRAGMA table_info(${tableName})`)?.all() as Array<{ name?: unknown }> | undefined;
+	if (!rows || rows.length === 0) return null;
+	return new Set(rows.map(row => String(row.name)));
+}
+
+function resetDerivedTableWhenColumnsDiffer(
+	db: SqliteDatabaseLike,
+	tableName: string,
+	requiredColumns: string[],
+): void {
+	try {
+		const columns = tableColumns(db, tableName);
+		if (!columns) return;
+		if (requiredColumns.every(column => columns.has(column))) return;
+		db.exec(`DROP TABLE IF EXISTS ${tableName}`);
+	} catch {
+		/* table does not exist yet or PRAGMA is unavailable */
+	}
+}
+
 /**
  * Create all tables and indexes. Idempotent (uses IF NOT EXISTS throughout).
  * Uses raw SQL for full SQLite feature support (FTS5, etc.).
@@ -1000,6 +1021,32 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	try { db.exec('ALTER TABLE mobius_node ADD COLUMN structural_analysis_version INTEGER'); } catch { /* column already exists */ }
 	db.exec('CREATE INDEX IF NOT EXISTS idx_mobius_node_community_id ON mobius_node(community_id)');
 
+	resetDerivedTableWhenColumnsDiffer(db, 'community_metadata', [
+		'community_id',
+		'label',
+		'member_count',
+		'dominant_topics_json',
+		'top_nodes_json',
+		'internal_density',
+		'centroid_embedding',
+		'analysis_version',
+	]);
+	resetDerivedTableWhenColumnsDiffer(db, 'structural_holes', [
+		'id',
+		'community_a_id',
+		'community_b_id',
+		'gap_type',
+		'gap_score',
+		'semantic_bridge_potential',
+		'inter_density',
+		'existing_bridge_count',
+		'potential_bridges_json',
+		'explanation',
+		'status',
+		'analysis_version',
+		'created_at',
+	]);
+
 	// ── Structural analysis tables ──
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS structural_analysis_state (
@@ -1037,5 +1084,4 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_structural_holes_version ON structural_holes(analysis_version);
 	`);
 }
-
 

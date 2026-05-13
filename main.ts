@@ -48,6 +48,7 @@ import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useGraphAnimationStore } from '@/ui/store/graphAnimationStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
+import { markAmbientPushPanelAutoOpened, shouldAutoOpenAmbientPushPanel } from '@/service/ambient/ambientPanelStartup';
 import { MorningBriefingService } from '@/service/ambient/MorningBriefingService';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { serendipityGutterExtension } from '@/service/ambient/SerendipityGutterPlugin';
@@ -242,16 +243,6 @@ export default class MyPlugin extends Plugin {
 			console.warn('[Peak Assistant] SkillRegistry init failed:', e);
 		});
 
-		// Register "Run Skill" command
-		this.addCommand({
-			id: 'peak-run-skill',
-			name: 'Run Skill',
-			callback: () => {
-				const { SkillPickerModal } = require('@/ui/view/skills/SkillPickerModal');
-				new SkillPickerModal(appContext).open();
-			},
-		});
-
 		// Ambient Push — proactive related-note suggestions
 		const ambientPushSettings = this.settings.ambientPush;
 		if (!ambientPushSettings || ambientPushSettings.enabled !== false) {
@@ -273,11 +264,12 @@ export default class MyPlugin extends Plugin {
 
 			// Auto-open the Related Notes panel in the right sidebar on first run
 			this.app.workspace.onLayoutReady(() => {
-				const { AMBIENT_PUSH_VIEW_TYPE } = require('@/ui/view/AmbientPushView');
-				const existing = this.app.workspace.getLeavesOfType(AMBIENT_PUSH_VIEW_TYPE);
-				if (existing.length === 0) {
-					void this.viewManager?.activateAmbientPushView();
-				}
+				if (!shouldAutoOpenAmbientPushPanel(this.settings.ambientPush)) return;
+
+				void this.viewManager?.activateAmbientPushView().then(() => {
+					this.settings.ambientPush = markAmbientPushPanelAutoOpened(this.settings.ambientPush);
+					void this.saveSettings();
+				});
 			});
 
 			// CM6 gutter hint for serendipity items (Phase 3)

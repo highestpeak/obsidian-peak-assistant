@@ -157,7 +157,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 								onClick={isRegeneratingTitle ? undefined : handleRegenerateTitle}
 								title={isRegeneratingTitle ? "Regenerating..." : "Regenerate conversation title"}
 								className={cn(
-									"hover:pktw-bg-gray-200",
+									"hover:pktw-bg-muted",
 									isRegeneratingTitle && [
 										"pktw-opacity-40",
 										"pktw-cursor-not-allowed",
@@ -168,7 +168,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 									]
 								)}
 							>
-								<RefreshCw className={cn("pktw-text-muted-foreground group-hover:pktw-text-black", isRegeneratingTitle && "pktw-animate-spin")} />
+								<RefreshCw className={cn("pktw-text-muted-foreground group-hover:pktw-text-foreground", isRegeneratingTitle && "pktw-animate-spin")} />
 							</IconButton>
 						)}
 					</>

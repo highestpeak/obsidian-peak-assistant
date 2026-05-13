@@ -211,7 +211,7 @@ export const ResourcePreviewHover: React.FC<ResourcePreviewHoverProps> = ({
 			{previewContent && (
 				<HoverCardContent
 					className={cn(
-						'pktw-bg-white pktw-shadow-lg pktw-border pktw-border-border',
+						'pktw-bg-popover pktw-shadow-lg pktw-border pktw-border-border',
 						isPdfPreview ? 'pktw-w-[850px] pktw-max-w-[850px]' : 'pktw-w-auto pktw-max-w-sm',
 						isImagePreview || isPdfPreview ? 'pktw-p-2' : 'pktw-p-3',
 						previewClassName
@@ -246,4 +246,3 @@ export const ResourcePreviewHover: React.FC<ResourcePreviewHoverProps> = ({
 		</HoverCard>
 	);
 };
-

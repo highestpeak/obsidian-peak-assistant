@@ -106,9 +106,9 @@ export const OpenMenuButton: React.FC = () => {
 					<PopoverTrigger asChild>
 						<div className={cn(
 							"pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer pktw-bg-transparent pktw-border-none pktw-outline-none pktw-select-none pktw-rounded-md pktw-group active:pktw-opacity-80 focus-visible:pktw-outline-2 focus-visible:pktw-outline-primary focus-visible:pktw-outline-offset-2 pktw-transition-colors",
-							"pktw-h-8 pktw-w-8 hover:pktw-bg-gray-200"
+							"pktw-h-8 pktw-w-8 hover:pktw-bg-muted"
 						)}>
-							<ExternalLink className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground group-hover:pktw-text-black" />
+							<ExternalLink className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground group-hover:pktw-text-foreground" />
 						</div>
 					</PopoverTrigger>
 					<PopoverContent

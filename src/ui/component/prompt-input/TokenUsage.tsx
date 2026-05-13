@@ -117,7 +117,7 @@ export const TokenUsage: React.FC<TokenUsageProps> = ({ usage, conversation, cla
 		return (
 			<div
 				className={cn(
-					'pktw-inline-flex pktw-items-center pktw-justify-center pktw-h-8 pktw-px-2.5 pktw-rounded-md pktw-text-xs pktw-font-medium pktw-bg-gray-100 pktw-text-[#22c55e]',
+					'pktw-inline-flex pktw-items-center pktw-justify-center pktw-h-8 pktw-px-2.5 pktw-rounded-md pktw-text-xs pktw-font-medium pktw-bg-pk-success-muted pktw-text-pk-success',
 					className
 				)}
 			>
@@ -131,10 +131,9 @@ export const TokenUsage: React.FC<TokenUsageProps> = ({ usage, conversation, cla
 			text={`Used ${formattedTokens}`}
 			menuId="token-usage"
 			hoverMenuContent={menuContent}
-			menuClassName="pktw-w-auto pktw-bg-white pktw-shadow-lg pktw-border pktw-border-border"
+			menuClassName="pktw-w-auto pktw-bg-popover pktw-shadow-lg pktw-border pktw-border-border"
 			align="end"
 			side="bottom"
 		/>
 	);
 };
-

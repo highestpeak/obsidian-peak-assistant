@@ -1,6 +1,12 @@
 import { App, ViewState, WorkspaceLeaf } from 'obsidian';
-import { CHAT_VIEW_TYPE, PROJECT_LIST_VIEW_TYPE, MESSAGE_HISTORY_VIEW_TYPE, TRACKED_VIEW_TYPES } from '@/app/view/types';
-import { AMBIENT_PUSH_VIEW_TYPE } from '@/ui/view/AmbientPushView';
+import {
+	AMBIENT_PUSH_VIEW_TYPE,
+	CHAT_VIEW_TYPE,
+	MESSAGE_HISTORY_VIEW_TYPE,
+	PROJECT_LIST_VIEW_TYPE,
+	STANDALONE_PEAK_VIEW_TYPES,
+	TRACKED_VIEW_TYPES,
+} from '@/app/view/types';
 
 /**
  * Ensures that when in chat view, the left, center, and right panes always maintain a consistent chat-related layout
@@ -36,6 +42,7 @@ export class ViewSwitchConsistentHandler {
 	 */
 	handleActiveLeafChange(leaf?: WorkspaceLeaf | null): void {
 		const viewType = leaf?.view?.getViewType();
+		if (viewType && STANDALONE_PEAK_VIEW_TYPES.has(viewType)) return;
 		if (viewType && TRACKED_VIEW_TYPES.has(viewType)) {
 			void this.activateChatView();
 		} else if (viewType !== 'empty') {
@@ -47,7 +54,9 @@ export class ViewSwitchConsistentHandler {
 	 * Ensures chat layout views are active and focused.
 	 */
 	async activateChatView(): Promise<void> {
-		if (this.isChatLayoutActive || this.isActivating) return;
+		if (this.isActivating) return;
+		const activeViewType = this.app.workspace.activeLeaf?.view?.getViewType();
+		if (this.isChatLayoutActive && activeViewType === CHAT_VIEW_TYPE) return;
 
 		this.isActivating = true;
 		try {
@@ -163,5 +172,3 @@ export class ViewSwitchConsistentHandler {
 	}
 
 }
-
-

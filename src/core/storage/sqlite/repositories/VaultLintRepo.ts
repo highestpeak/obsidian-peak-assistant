@@ -2,50 +2,62 @@ import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 import type { LintScanResult, LintFinding, LintDismissal, LintTrendPoint, LintSignalId } from '@/service/lint/types';
 
+const FINDING_INSERT_BATCH_SIZE = 80;
+
+function persistedFindingId(scanId: string, findingId: string, index: number): string {
+	return `${scanId}:${index}:${findingId}`;
+}
+
 export class VaultLintRepo {
 	constructor(private readonly db: Kysely<DbSchema>) {}
 
 	/** Persist a completed scan and its findings atomically. */
 	async saveScanResult(result: LintScanResult): Promise<void> {
-		await this.db
-			.insertInto('vault_lint_scan')
-			.values({
-				id: result.id,
-				scan_type: result.scanType,
-				started_at: result.startedAt,
-				completed_at: result.completedAt,
-				duration_ms: result.durationMs,
-				total_notes: result.totalNotes,
-				health_score: result.healthScore,
-				dim_structural: result.dimensionScores.structural,
-				dim_content: result.dimensionScores.content,
-				dim_temporal: result.dimensionScores.temporal,
-				dim_semantic: result.dimensionScores.semantic,
-				dim_tags: result.dimensionScores.tags,
-				signal_counts: JSON.stringify(result.signalCounts),
-				config_hash: null,
-			})
-			.execute();
-
-		if (result.findings.length > 0) {
-			await this.db
-				.insertInto('vault_lint_finding')
-				.values(result.findings.map(f => ({
-					id: f.id,
-					scan_id: result.id,
-					signal_id: f.signalId,
-					severity: f.severity,
-					file_path: f.filePath,
-					title: f.title,
-					description: f.description,
-					fix_actions: JSON.stringify(f.fixActions),
-					metadata: JSON.stringify(f.metadata),
-					status: f.status,
-					dismissed_at: null,
-					fixed_at: null,
-				})))
+		await this.db.transaction().execute(async (trx) => {
+			await trx
+				.insertInto('vault_lint_scan')
+				.values({
+					id: result.id,
+					scan_type: result.scanType,
+					started_at: result.startedAt,
+					completed_at: result.completedAt,
+					duration_ms: result.durationMs,
+					total_notes: result.totalNotes,
+					health_score: result.healthScore,
+					dim_structural: result.dimensionScores.structural,
+					dim_content: result.dimensionScores.content,
+					dim_temporal: result.dimensionScores.temporal,
+					dim_semantic: result.dimensionScores.semantic,
+					dim_tags: result.dimensionScores.tags,
+					signal_counts: JSON.stringify(result.signalCounts),
+					config_hash: null,
+				})
 				.execute();
-		}
+
+			for (let i = 0; i < result.findings.length; i += FINDING_INSERT_BATCH_SIZE) {
+				const batchStart = i;
+				const batch = result.findings.slice(batchStart, batchStart + FINDING_INSERT_BATCH_SIZE);
+				if (batch.length === 0) continue;
+
+				await trx
+					.insertInto('vault_lint_finding')
+					.values(batch.map((f, batchIndex) => ({
+						id: persistedFindingId(result.id, f.id, batchStart + batchIndex),
+						scan_id: result.id,
+						signal_id: f.signalId,
+						severity: f.severity,
+						file_path: f.filePath,
+						title: f.title,
+						description: f.description,
+						fix_actions: JSON.stringify(f.fixActions),
+						metadata: JSON.stringify(f.metadata),
+						status: f.status,
+						dismissed_at: null,
+						fixed_at: null,
+					})))
+					.execute();
+			}
+		});
 	}
 
 	/** Load the latest completed scan with its findings. */

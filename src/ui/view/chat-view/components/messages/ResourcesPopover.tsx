@@ -73,9 +73,9 @@ export const ResourcesPopover: React.FC = () => {
 				<IconButton
 					size="lg"
 					title="View conversation resources"
-					className="hover:pktw-bg-gray-200"
+					className="hover:pktw-bg-muted"
 				>
-					<LibraryBig className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground group-hover:pktw-text-black" />
+					<LibraryBig className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground group-hover:pktw-text-foreground" />
 				</IconButton>
 			</HoverCardTrigger>
 			<HoverCardContent

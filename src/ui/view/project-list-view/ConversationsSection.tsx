@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChatConversation } from '@/service/chat/types';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { useChatViewStore } from '../chat-view/store/chatViewStore';
-import { notifySelectionChange, showContextMenu } from './utils';
+import { openAllConversationsInChat, openConversationInChat, openPendingConversationInChat } from '@/ui/view/chat-view/chatNavigation';
+import { showContextMenu } from './utils';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ChevronDown, ChevronRight, Plus, Pencil, FileText, Calendar } from 'lucide-react';
@@ -120,16 +120,14 @@ export const ConversationList: React.FC<ConversationListProps> = ({
  * Conversations section component
  */
 export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
-	const { app, manager, eventBus } = useServiceContext();
+	const { app, manager, eventBus, viewManager } = useServiceContext();
 	const {
 		conversations,
 		activeConversation,
 		isConversationsCollapsed,
-		setActiveConversation,
 		toggleConversationsCollapsed,
 		updateConversation,
 	} = useChatDataStore();
-	const { setPendingConversation, setAllConversations } = useChatViewStore();
 
 	const [inputModalOpen, setInputModalOpen] = useState(false);
 	const [inputModalConfig, setInputModalConfig] = useState<{
@@ -145,16 +143,14 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 	const [typewriterEnabled, setTypewriterEnabled] = useState<Map<string, boolean>>(new Map());
 
 	const handleNewConversation = async () => {
-		setPendingConversation({
+		await openPendingConversationInChat({
 			title: DEFAULT_NEW_CONVERSATION_TITLE,
 			project: null,
-		});
-		await notifySelectionChange(app);
+		}, { viewManager, eventBus });
 	};
 
 	const handleConversationClick = async (conversation: ChatConversation) => {
-		setActiveConversation(conversation);
-		await notifySelectionChange(app, conversation);
+		await openConversationInChat(conversation, { manager, viewManager, eventBus });
 	};
 
 	const handleEditConversationTitle = useCallback((conversation: ChatConversation) => {
@@ -290,22 +286,22 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 			>
 				<div className="pktw-flex pktw-items-center pktw-gap-2">
 					{isConversationsCollapsed ? (
-						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 					) : (
-						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 					)}
 					<h3 className="pktw-flex-1 pktw-m-0 pktw-text-[13px] pktw-font-semibold pktw-text-foreground pktw-uppercase pktw-tracking-wide">Conversations</h3>
 				</div>
 				<IconButton
 					size="lg"
-					className="pktw-shrink-0 group-hover:pktw-bg-gray-200 group-hover:pktw-shadow-sm hover:pktw-shadow-sm"
+					className="pktw-shrink-0 group-hover:pktw-bg-muted group-hover:pktw-shadow-sm hover:pktw-shadow-sm"
 					onClick={(e) => {
 						e.stopPropagation();
 						handleNewConversation();
 					}}
 					title={DEFAULT_NEW_CONVERSATION_TITLE}
 				>
-					<Plus className="pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+					<Plus className="pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 				</IconButton>
 			</div>
 
@@ -337,7 +333,9 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 				{hasMoreConversations && (
 					<div
 						className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-mx-2 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-xs pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
-						onClick={() => setAllConversations()}
+						onClick={() => {
+							void openAllConversationsInChat({ viewManager, eventBus });
+						}}
 					>
 						<MoreHorizontal className="pktw-w-3.5 pktw-h-3.5" />
 						<span className="pktw-flex-1">See more</span>
@@ -361,4 +359,3 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 		</div>
 	);
 };
-

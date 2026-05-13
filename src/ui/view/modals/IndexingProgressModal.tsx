@@ -21,7 +21,7 @@ type IndexingProgressContentProps = {
 function ProgressBar({ value, max }: { value: number; max: number }) {
 	const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
 	return (
-		<div className="pktw-w-full pktw-bg-gray-200 pktw-rounded-full pktw-h-2 pktw-overflow-hidden">
+		<div className="pktw-w-full pktw-bg-muted pktw-rounded-full pktw-h-2 pktw-overflow-hidden">
 			<div
 				className="pktw-bg-blue-500 pktw-h-2 pktw-rounded-full pktw-transition-all pktw-duration-300"
 				style={{ width: `${pct}%` }}
@@ -33,8 +33,8 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 function StatRow({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="pktw-flex pktw-justify-between pktw-py-1">
-			<span className="pktw-text-xs pktw-text-gray-500">{label}</span>
-			<span className="pktw-text-xs pktw-font-medium pktw-text-gray-800">{value}</span>
+			<span className="pktw-text-xs pktw-text-muted-foreground">{label}</span>
+			<span className="pktw-text-xs pktw-font-medium pktw-text-foreground">{value}</span>
 		</div>
 	);
 }
@@ -61,25 +61,25 @@ function IndexingProgressContent({ onCancel, subscribe }: IndexingProgressConten
 			: '—';
 
 	return (
-		<div className="pktw-bg-white pktw-rounded-xl pktw-shadow-lg pktw-p-5 pktw-w-full pktw-max-w-sm">
-			<span className="pktw-block pktw-text-base pktw-font-semibold pktw-text-gray-900 pktw-mb-1">
+		<div className="pktw-bg-popover pktw-rounded-xl pktw-shadow-lg pktw-p-5 pktw-w-full pktw-max-w-sm">
+			<span className="pktw-block pktw-text-base pktw-font-semibold pktw-text-foreground pktw-mb-1">
 				LLM Enrichment — Running
 			</span>
 
 			{!ev && (
 				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-4">
-					<div className="pktw-w-4 pktw-h-4 pktw-border-2 pktw-border-gray-300 pktw-border-t-blue-500 pktw-rounded-full pktw-animate-spin" />
-					<span className="pktw-text-sm pktw-text-gray-500">Starting...</span>
+					<div className="pktw-w-4 pktw-h-4 pktw-border-2 pktw-border-border pktw-border-t-blue-500 pktw-rounded-full pktw-animate-spin" />
+					<span className="pktw-text-sm pktw-text-muted-foreground">Starting...</span>
 				</div>
 			)}
 
 			{ev && (
 				<div className="pktw-flex pktw-flex-col pktw-gap-3">
 					<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-1">
-						<span className="pktw-text-sm pktw-text-gray-600">
+						<span className="pktw-text-sm pktw-text-muted-foreground">
 							{ev.processed} / {ev.total} docs
 						</span>
-						<span className="pktw-text-sm pktw-font-medium pktw-text-gray-900">
+						<span className="pktw-text-sm pktw-font-medium pktw-text-foreground">
 							{ev.total > 0
 								? `${Math.round((ev.processed / ev.total) * 100)}%`
 								: '0%'}
@@ -88,7 +88,7 @@ function IndexingProgressContent({ onCancel, subscribe }: IndexingProgressConten
 
 					<ProgressBar value={ev.processed} max={ev.total} />
 
-					<div className="pktw-bg-gray-50 pktw-rounded-lg pktw-px-3 pktw-py-2">
+					<div className="pktw-bg-muted pktw-rounded-lg pktw-px-3 pktw-py-2">
 						<StatRow label="Speed" value={`${docsPerMin} docs/min · ${tokPerSec} tok/s`} />
 						<StatRow label="ETA" value={formatDurationEstimateMs(ev.estimatedRemainingMs)} />
 						<StatRow
@@ -101,8 +101,8 @@ function IndexingProgressContent({ onCancel, subscribe }: IndexingProgressConten
 						/>
 					</div>
 
-					<div className="pktw-bg-gray-50 pktw-rounded-lg pktw-px-3 pktw-py-1">
-						<span className="pktw-block pktw-text-xs pktw-text-gray-400 pktw-font-mono pktw-truncate">
+					<div className="pktw-bg-muted pktw-rounded-lg pktw-px-3 pktw-py-1">
+						<span className="pktw-block pktw-text-xs pktw-text-muted-foreground pktw-font-mono pktw-truncate">
 							{truncatePath(ev.path)}
 						</span>
 					</div>
@@ -113,7 +113,7 @@ function IndexingProgressContent({ onCancel, subscribe }: IndexingProgressConten
 				<Button
 					onClick={onCancel}
 					variant="ghost"
-					className="pktw-w-full pktw-text-sm pktw-text-gray-500"
+					className="pktw-w-full pktw-text-sm pktw-text-muted-foreground"
 				>
 					Cancel
 				</Button>

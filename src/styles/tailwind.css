@@ -60,6 +60,45 @@
 	text-decoration: none;
 }
 
+.pktw-root .peak-no-native-outline,
+.pktw-root .peak-no-native-outline:focus,
+.pktw-root .peak-no-native-outline:focus-visible,
+.pktw-root .peak-no-native-outline *:focus,
+.pktw-root .peak-no-native-outline *:focus-visible {
+	outline: none !important;
+}
+
+.pktw-root .peak-soft-hover-card {
+	color: var(--pk-text-primary, var(--text-normal)) !important;
+}
+
+.pktw-root .peak-soft-hover-card:hover,
+.pktw-root .peak-soft-hover-card.is-selected {
+	background-color: var(--pk-highlight, var(--background-modifier-hover)) !important;
+	border-color: var(--pk-border-accent, rgba(124, 58, 237, 0.25)) !important;
+	color: var(--pk-text-primary, var(--text-normal)) !important;
+	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08) !important;
+}
+
+.pktw-root .peak-soft-hover-card:hover .peak-card-title,
+.pktw-root .peak-soft-hover-card.is-selected .peak-card-title {
+	color: var(--pk-text-primary, var(--text-normal)) !important;
+}
+
+.pktw-root .peak-soft-hover-card:hover .peak-card-muted,
+.pktw-root .peak-soft-hover-card.is-selected .peak-card-muted {
+	color: var(--pk-text-secondary, var(--text-muted)) !important;
+}
+
+.pktw-root .peak-soft-hover-card:hover .peak-card-icon,
+.pktw-root .peak-soft-hover-card.is-selected .peak-card-icon {
+	color: var(--pk-accent, var(--interactive-accent)) !important;
+}
+
+.pktw-root .peak-soft-hover-row:hover {
+	background-color: var(--pk-highlight, var(--background-modifier-hover)) !important;
+}
+
 /* CodeMirror styles */
 @import "./codemirror.css";
 

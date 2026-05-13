@@ -16,8 +16,10 @@ import { IndexConfigStep } from './onboarding/IndexConfigStep';
 import { IndexProgressDisplay } from './onboarding/IndexProgressDisplay';
 import { IndexErrorDialog } from './onboarding/IndexErrorDialog';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
+import { IndexService } from '@/service/search/index/indexService';
 import type { IndexLevel } from '@/service/search/index/types';
 import type { IndexErrorAction } from '@/service/search/index/indexInitializer';
+import { hasUsableVaultIndex } from './onboarding/indexingStartup';
 
 // ─── Obsidian Modal wrapper ────────────────────────────────────────────
 
@@ -398,14 +400,24 @@ function SystemCheckStep({
 }) {
 	const [sqliteStatus, setSqliteStatus] = useState<SystemStatus>('checking');
 	const [errorMsg, setErrorMsg] = useState('');
+	const [indexStatusLabel, setIndexStatusLabel] = useState('');
 	const [isIndexing, setIsIndexing] = useState(false);
 	const [indexProgress, setIndexProgress] = useState({ step: 0, total: 0, label: '', processed: 0, totalFiles: 0, complete: false });
 	const [indexError, setIndexError] = useState<{ step: string; failedCount: number; errorMessage: string } | null>(null);
 	const [errorResolver, setErrorResolver] = useState<((action: IndexErrorAction) => void) | null>(null);
 
-	const triggerIndexing = useCallback(async () => {
+	const triggerInitialIndexing = useCallback(async () => {
 		if (!indexLevel) return;
 		setIsIndexing(true);
+		setIndexStatusLabel('');
+		setIndexProgress({
+			step: 1,
+			total: indexLevel === 'fast' ? 2 : 4,
+			label: 'Preparing vault index',
+			processed: 0,
+			totalFiles: 0,
+			complete: false,
+		});
 		try {
 			const appCtx = AppContext.getInstance();
 			const initializer = new IndexInitializer(
@@ -431,6 +443,21 @@ function SystemCheckStep({
 		setIndexProgress(prev => ({ ...prev, complete: true }));
 	}, [indexLevel]);
 
+	const ensureIndexReady = useCallback(async () => {
+		try {
+			const status = await IndexService.getInstance().getIndexStatus();
+			if (hasUsableVaultIndex(status)) {
+				const count = status.indexedDocs ?? 0;
+				setIndexStatusLabel(count > 0 ? `Search index ready (${count} documents)` : 'Search index ready');
+				setIsIndexing(false);
+				return;
+			}
+		} catch (e) {
+			console.warn('[Onboarding] Failed to read index status:', e);
+		}
+		await triggerInitialIndexing();
+	}, [triggerInitialIndexing]);
+
 	const runCheck = useCallback(async () => {
 		setSqliteStatus('checking');
 		setErrorMsg('');
@@ -438,7 +465,7 @@ function SystemCheckStep({
 		// Check if already initialized
 		if (sqliteStoreManager.isInitialized()) {
 			setSqliteStatus('ready');
-			void triggerIndexing();
+			void ensureIndexReady();
 			return;
 		}
 
@@ -456,13 +483,13 @@ function SystemCheckStep({
 			const plugin = AppContext.getInstance().plugin!;
 			await (plugin as any).initSqlite();
 			setSqliteStatus('ready');
-			void triggerIndexing();
+			void ensureIndexReady();
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
 			setErrorMsg(msg);
 			setSqliteStatus('failed');
 		}
-	}, [triggerIndexing]);
+	}, [ensureIndexReady]);
 
 	// Auto-run on mount
 	React.useEffect(() => { void runCheck(); }, [runCheck]);
@@ -495,6 +522,15 @@ function SystemCheckStep({
 			</div>
 
 			{/* Indexing progress */}
+			{!isIndexing && !indexError && indexStatusLabel && (
+				<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-p-4 pktw-rounded-lg pktw-border pktw-border-[--background-modifier-border]">
+					<Check size={18} className="pktw-text-green-600 pktw-shrink-0" />
+					<div className="pktw-flex-1">
+						<span className="pktw-block pktw-text-sm pktw-font-medium pktw-text-[--text-normal]">Vault Index</span>
+						<span className="pktw-block pktw-text-xs pktw-text-[--text-muted]">{indexStatusLabel}</span>
+					</div>
+				</div>
+			)}
 			{isIndexing && !indexError && (
 				<IndexProgressDisplay
 					currentStep={indexProgress.step}

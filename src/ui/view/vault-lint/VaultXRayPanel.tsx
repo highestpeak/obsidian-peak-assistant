@@ -3,9 +3,10 @@ import { RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useVaultLintStore } from '@/ui/store/vaultLintStore';
 import { VaultLintService } from '@/service/lint/VaultLintService';
+import { buildVaultHealthInsights } from '@/service/lint/insights';
 import { ScoreRing } from './components/ScoreRing';
 import { DimensionBars } from './components/DimensionBars';
-import { PriorityActionsList } from './components/PriorityActionsList';
+import { HealthInsightsPanel } from './components/HealthInsightsPanel';
 
 function relativeTime(ts: number): string {
 	const diff = Date.now() - ts;
@@ -18,6 +19,7 @@ function relativeTime(ts: number): string {
 
 export const VaultXRayPanel: React.FC = () => {
 	const { currentScan, isScanning } = useVaultLintStore();
+	const insights = currentScan ? buildVaultHealthInsights(currentScan.findings) : [];
 
 	const startScan = async () => {
 		await VaultLintService.getInstance().runFullScan();
@@ -64,13 +66,13 @@ export const VaultXRayPanel: React.FC = () => {
 							<DimensionBars scores={currentScan.dimensionScores} />
 						</div>
 
-						{/* Priority Actions */}
+						{/* Repair Opportunities */}
 						<div className="pktw-border pktw-border-border pktw-rounded-lg pktw-p-4">
 							<span className="pktw-text-[11px] pktw-font-semibold pktw-text-muted-foreground
 								pktw-uppercase pktw-tracking-wider pktw-block pktw-mb-3">
-								Priority Actions ({currentScan.findings.filter(f => f.status === 'open').length})
+								Repair Opportunities ({insights.length})
 							</span>
-							<PriorityActionsList findings={currentScan.findings.filter(f => f.status === 'open')} />
+							<HealthInsightsPanel insights={insights} />
 						</div>
 					</>
 				)}

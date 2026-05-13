@@ -74,7 +74,7 @@ export class AmbientPushService {
 		if (!app || !this.trigger) return;
 
 		// Extract context from the active editor
-		const context = extractContext(app, this.trigger.getFileOpenedAt());
+		const context = extractContext(app, this.trigger.getFileOpenedAt(), filePath);
 		if (!context) return;
 
 		// Skip if paragraph is too short

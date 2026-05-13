@@ -90,4 +90,3 @@ export class MessageHistoryView extends ItemView {
 		);
 	}
 }
-

@@ -20,9 +20,9 @@ type CostEstimationContentProps = {
 
 function EstimateRow({ label, value }: { label: string; value: string }) {
 	return (
-		<div className="pktw-flex pktw-justify-between pktw-py-1 pktw-border-b pktw-border-gray-100 last:pktw-border-0">
-			<span className="pktw-text-sm pktw-text-gray-600">{label}</span>
-			<span className="pktw-text-sm pktw-font-medium pktw-text-gray-900">{value}</span>
+		<div className="pktw-flex pktw-justify-between pktw-py-1 pktw-border-b pktw-border-border last:pktw-border-0">
+			<span className="pktw-text-sm pktw-text-muted-foreground">{label}</span>
+			<span className="pktw-text-sm pktw-font-medium pktw-text-foreground">{value}</span>
 		</div>
 	);
 }
@@ -30,8 +30,8 @@ function EstimateRow({ label, value }: { label: string; value: string }) {
 function LoadingSpinner() {
 	return (
 		<div className="pktw-flex pktw-items-center pktw-justify-center pktw-py-6 pktw-gap-2">
-			<div className="pktw-w-4 pktw-h-4 pktw-border-2 pktw-border-gray-300 pktw-border-t-blue-500 pktw-rounded-full pktw-animate-spin" />
-			<span className="pktw-text-sm pktw-text-gray-500">Calculating estimate...</span>
+			<div className="pktw-w-4 pktw-h-4 pktw-border-2 pktw-border-border pktw-border-t-blue-500 pktw-rounded-full pktw-animate-spin" />
+			<span className="pktw-text-sm pktw-text-muted-foreground">Calculating estimate...</span>
 		</div>
 	);
 }
@@ -47,11 +47,11 @@ function CostEstimationContent({ onRun, onSkip, onCancel, estimatePromise }: Cos
 	}, [estimatePromise]);
 
 	return (
-		<div className="pktw-bg-white pktw-rounded-xl pktw-shadow-lg pktw-p-5 pktw-w-full pktw-max-w-sm">
-			<span className="pktw-block pktw-text-base pktw-font-semibold pktw-text-gray-900 pktw-mb-1">
+		<div className="pktw-bg-popover pktw-rounded-xl pktw-shadow-lg pktw-p-5 pktw-w-full pktw-max-w-sm">
+			<span className="pktw-block pktw-text-base pktw-font-semibold pktw-text-foreground pktw-mb-1">
 				LLM Enrichment — Cost Estimate
 			</span>
-			<span className="pktw-block pktw-text-xs pktw-text-gray-500 pktw-mb-4">
+			<span className="pktw-block pktw-text-xs pktw-text-muted-foreground pktw-mb-4">
 				Review the estimated cost before running LLM enrichment on pending documents.
 			</span>
 
@@ -64,7 +64,7 @@ function CostEstimationContent({ onRun, onSkip, onCancel, estimatePromise }: Cos
 			)}
 
 			{estimate && estimate.totalDocs > 0 && (
-				<div className="pktw-bg-gray-50 pktw-rounded-lg pktw-px-3 pktw-py-2 pktw-mb-4">
+				<div className="pktw-bg-muted pktw-rounded-lg pktw-px-3 pktw-py-2 pktw-mb-4">
 					<EstimateRow label="Documents" value={String(estimate.totalDocs)} />
 					<EstimateRow
 						label="Input tokens"
@@ -86,7 +86,7 @@ function CostEstimationContent({ onRun, onSkip, onCancel, estimatePromise }: Cos
 			)}
 
 			{estimate?.totalDocs === 0 && (
-				<span className="pktw-block pktw-text-sm pktw-text-gray-500 pktw-mb-4">
+				<span className="pktw-block pktw-text-sm pktw-text-muted-foreground pktw-mb-4">
 					No pending documents found.
 				</span>
 			)}
@@ -114,7 +114,7 @@ function CostEstimationContent({ onRun, onSkip, onCancel, estimatePromise }: Cos
 				<Button
 					onClick={onCancel}
 					variant="ghost"
-					className="pktw-w-full pktw-text-sm pktw-text-gray-500"
+					className="pktw-w-full pktw-text-sm pktw-text-muted-foreground"
 				>
 					Cancel
 				</Button>

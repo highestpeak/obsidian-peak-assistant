@@ -7,12 +7,19 @@ import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { useChatViewStore } from './store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
-import { hydrateProjects, notifySelectionChange } from '@/ui/view/project-list-view/utils';
+import { hydrateProjects } from '@/ui/view/project-list-view/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import {
 	DEFAULT_CONVERSATION_TYPE,
 } from '@/service/chat/conversation-types';
 import { ConversationTypeIcon } from '@/ui/component/mine/ConversationTypeIcon';
+import {
+	openAllConversationsInChat,
+	openAllProjectsInChat,
+	openConversationInChat,
+	openPendingConversationInChat,
+	openProjectOverviewInChat,
+} from '@/ui/view/chat-view/chatNavigation';
 
 const RECENT_CONVERSATIONS_LIMIT = 5;
 const RECENT_PROJECTS_LIMIT = 5;
@@ -35,10 +42,9 @@ interface SuggestionCard {
  * Home view component showing greeting, suggestion cards, recent conversations and projects
  */
 export const HomeViewComponent: React.FC = () => {
-	const { app, manager } = useServiceContext();
+	const { manager, eventBus, viewManager } = useServiceContext();
 	const chatViewStore = useChatViewStore();
 	const { projects, conversations } = useChatDataStore();
-	const { setPendingConversation } = chatViewStore;
 
 	// State for input modal
 	const [inputModalOpen, setInputModalOpen] = useState(false);
@@ -72,21 +78,19 @@ export const HomeViewComponent: React.FC = () => {
 	// ── Handlers ──
 
 	const handleConversationClick = useCallback(async (conversation: ChatConversation) => {
-		chatViewStore.setConversation(conversation);
-		await notifySelectionChange(app, conversation);
-	}, [chatViewStore, app]);
+		await openConversationInChat(conversation, { manager, eventBus, viewManager });
+	}, [manager, eventBus, viewManager]);
 
 	const handleProjectClick = useCallback((project: ChatProject) => {
-		chatViewStore.setProjectOverview(project);
-	}, [chatViewStore]);
+		void openProjectOverviewInChat(project, { eventBus, viewManager });
+	}, [eventBus, viewManager]);
 
 	const handleCreateConversation = useCallback(async () => {
-		setPendingConversation({
+		await openPendingConversationInChat({
 			title: DEFAULT_NEW_CONVERSATION_TITLE,
 			project: null,
-		});
-		await app.workspace.trigger('layout-ready');
-	}, [setPendingConversation, app]);
+		}, { eventBus, viewManager });
+	}, [eventBus, viewManager]);
 
 	const handleCreateProject = useCallback(() => {
 		setInputModalConfig({
@@ -113,7 +117,7 @@ export const HomeViewComponent: React.FC = () => {
 			action: () => {
 				const latest = allConversations[0];
 				if (latest) {
-					chatViewStore.setConversation(latest);
+					void openConversationInChat(latest, { manager, eventBus, viewManager });
 				} else {
 					handleCreateConversation();
 				}
@@ -124,7 +128,7 @@ export const HomeViewComponent: React.FC = () => {
 			label: 'Summarize recent notes',
 			description: 'Get a digest of what changed',
 			action: () => {
-				setPendingConversation({ title: 'Summarize recent notes', project: null });
+				void openPendingConversationInChat({ title: 'Summarize recent notes', project: null }, { eventBus, viewManager });
 				chatViewStore.setChatMode('chat');
 			},
 		},
@@ -133,7 +137,7 @@ export const HomeViewComponent: React.FC = () => {
 			label: 'Research a topic',
 			description: 'Deep-dive with an AI agent',
 			action: () => {
-				setPendingConversation({ title: 'Research', project: null });
+				void openPendingConversationInChat({ title: 'Research', project: null }, { eventBus, viewManager });
 				chatViewStore.setChatMode('agent');
 			},
 		},
@@ -182,7 +186,7 @@ export const HomeViewComponent: React.FC = () => {
 							</span>
 							<Button
 								variant="ghost"
-								onClick={() => chatViewStore.setAllConversations()}
+								onClick={() => void openAllConversationsInChat({ eventBus, viewManager })}
 								className="pktw-text-xs pktw-font-medium pktw-h-auto pktw-py-0.5 pktw-px-1.5"
 							>
 								View all →
@@ -218,7 +222,7 @@ export const HomeViewComponent: React.FC = () => {
 							</span>
 							<Button
 								variant="ghost"
-								onClick={() => chatViewStore.setAllProjects()}
+								onClick={() => void openAllProjectsInChat({ eventBus, viewManager })}
 								className="pktw-text-xs pktw-font-medium pktw-h-auto pktw-py-0.5 pktw-px-1.5"
 							>
 								View all →

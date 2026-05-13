@@ -46,9 +46,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 	};
 
 	return (
-		<div className="pktw-bg-white pktw-border pktw-border-gray-200 pktw-p-3 pktw-shadow-lg pktw-rounded-xl pktw-w-full">
+		<div className="pktw-bg-popover pktw-border pktw-border-border pktw-p-3 pktw-shadow-lg pktw-rounded-xl pktw-w-full">
 			<div className="pktw-mb-4">
-				<span className="pktw-text-lg pktw-font-medium pktw-text-gray-900 pktw-leading-tight pktw-mb-2">
+				<span className="pktw-text-lg pktw-font-medium pktw-text-foreground pktw-leading-tight pktw-mb-2">
 					{title}
 				</span>
 			</div>
@@ -80,7 +80,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 				<Button
 					onClick={handleCancel}
 					variant="ghost"
-					className="pktw-px-4 pktw-py-2 pktw-text-sm pktw-font-medium pktw-rounded-lg pktw-border pktw-border-gray-300 hover:pktw-bg-gray-50"
+					className="pktw-px-4 pktw-py-2 pktw-text-sm pktw-font-medium pktw-rounded-lg pktw-border pktw-border-border hover:pktw-bg-muted"
 				>
 					{cancelText}
 				</Button>

@@ -1,6 +1,5 @@
 import React from 'react';
-import { Sun, Link2, RefreshCw, AlertCircle, X } from 'lucide-react';
-import { Button } from '@/ui/component/shared-ui/button';
+import { Sun, Link2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useMorningBriefingStore } from '@/ui/store/morningBriefingStore';
 import { BriefingCard } from './BriefingCard';
 import type { BriefingCategory } from '@/service/ambient/types';
@@ -57,7 +56,7 @@ export const MorningBriefingPanel: React.FC<{ onDismiss: () => void }> = ({ onDi
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-4 pktw-max-h-[70vh] pktw-overflow-y-auto">
 			{/* Header */}
-			<div className="pktw-flex pktw-items-center pktw-justify-between">
+			<div className="pktw-flex pktw-items-center">
 				<div className="pktw-flex pktw-items-center pktw-gap-2">
 					<Sun className="pktw-h-5 pktw-w-5" style={{ color: 'var(--text-accent)' }} />
 					<span
@@ -67,9 +66,6 @@ export const MorningBriefingPanel: React.FC<{ onDismiss: () => void }> = ({ onDi
 						Today's Briefing
 					</span>
 				</div>
-				<Button variant="ghost" size="xs" onClick={onDismiss} title="Dismiss all">
-					<X className="pktw-h-4 pktw-w-4" />
-				</Button>
 			</div>
 
 			<span className="pktw-text-xs" style={{ color: 'var(--text-muted)' }}>

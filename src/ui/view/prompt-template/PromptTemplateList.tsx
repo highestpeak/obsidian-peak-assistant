@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Notice } from 'obsidian';
 import { FolderOpen, Search } from 'lucide-react';
+import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { AppContext } from '@/app/context/AppContext';
 import { PromptGroupSection } from './components/PromptGroupSection';
@@ -155,13 +156,15 @@ export const PromptTemplateList: React.FC<Props> = ({ onClose }) => {
                     <span className="pktw-text-[var(--pk-accent,#7c3aed)] pktw-font-medium">{totalOverridden}</span>
                     {' '}of {totalPrompts} overridden
                 </span>
-                <button
-                    className="pktw-text-[11px] pktw-text-[var(--text-muted)] pktw-bg-transparent pktw-border pktw-border-[var(--background-modifier-border)] pktw-px-3 pktw-py-1 pktw-rounded-md pktw-cursor-pointer hover:pktw-border-[var(--text-faint)] hover:pktw-text-[var(--text-normal)] pktw-transition-all pktw-flex pktw-items-center pktw-gap-1.5"
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="pktw-shadow-none pktw-h-7 pktw-text-[11px] pktw-text-[var(--text-muted)] pktw-bg-transparent pktw-border-[var(--background-modifier-border)] pktw-px-3 pktw-py-1 pktw-cursor-pointer hover:pktw-bg-pk-highlight hover:pktw-border-pk-border-accent hover:pktw-text-pk-accent pktw-transition-all pktw-flex pktw-items-center pktw-gap-1.5"
                     onClick={handleOpenFolder}
                 >
                     <FolderOpen className="pktw-w-3 pktw-h-3" />
                     Open Prompts Folder
-                </button>
+                </Button>
             </div>
         </div>
     );

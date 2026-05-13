@@ -97,6 +97,20 @@ function extractHighlightTerms(highlight: string): string[] {
 	return [...terms];
 }
 
+function getResultTitle(result: SearchResultItem): string {
+	if (typeof result.title === 'string' && result.title.trim()) return result.title;
+	const filename = result.path.replace(/^.*\//, '').replace(/\.md$/, '');
+	return filename || result.path;
+}
+
+function getResultExcerpt(result: SearchResultItem, highlightText: string, title: string): string {
+	if (highlightText.trim()) return highlightText;
+	if (typeof result.content === 'string' && result.content.trim()) {
+		return result.content.trim().slice(0, 180);
+	}
+	return title;
+}
+
 /**
  * Run an ambient search against the vault and return filtered, scored push items.
  *
@@ -168,6 +182,8 @@ export async function ambientSearch(
 			}
 		}
 
+		const title = getResultTitle(result);
+		const excerpt = getResultExcerpt(result, highlightText, title);
 		const explanation = generateExplanation(signals);
 
 		let adjustedScore = result.finalScore ?? result.score ?? 0;
@@ -182,8 +198,8 @@ export async function ambientSearch(
 
 		items.push({
 			filePath: result.path,
-			title: result.title,
-			excerpt: highlightText || result.title,
+			title,
+			excerpt,
 			score: adjustedScore,
 			explanation,
 			explanationType: 'template',

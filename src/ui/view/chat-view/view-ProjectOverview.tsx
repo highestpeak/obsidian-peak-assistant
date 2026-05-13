@@ -10,6 +10,7 @@ import { openAttachment } from '@/core/utils/vault-utils';
 import { useChatViewStore } from './store/chatViewStore';
 import { ProjectSummary } from './components/project-summary';
 import { ConversationList } from './components/conversation-list';
+import { openPendingConversationInChat } from '@/ui/view/chat-view/chatNavigation';
 
 interface ProjectOverviewViewProps {
 }
@@ -167,15 +168,15 @@ const ConversationsTab: React.FC<ConversationsTabProps> = ({
 	conversationCount,
 }) => {
 
-	const { loadConversation } = useConversationLoad();
+	const { eventBus, viewManager } = useServiceContext();
 
 	const [summaryExpanded, setSummaryExpanded] = useState<boolean>(summaryText ? true : false);
 
 	const handleNewConversation = () => {
-		useChatViewStore.getState().setPendingConversation({
+		void openPendingConversationInChat({
 			title: 'New Conversation',
 			project,
-		});
+		}, { eventBus, viewManager });
 	};
 
 	if (conversationCount === 0) {
@@ -265,9 +266,6 @@ interface ResourcesTabProps {
 }
 
 const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources }) => {
-
-	const { app } = useServiceContext();
-
 	if (resources.length === 0) {
 		return (
 			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-12">

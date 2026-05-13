@@ -29,10 +29,17 @@ export const PriorityActionsList: React.FC<PriorityActionsListProps> = ({ findin
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-1">
 			{visible.map(f => (
-				<div key={f.id} className="pktw-flex pktw-items-center pktw-gap-2.5 pktw-px-3 pktw-py-2
+				<div key={f.id} className="pktw-flex pktw-items-start pktw-gap-2.5 pktw-px-3 pktw-py-2
 					pktw-rounded-lg hover:pktw-bg-muted pktw-transition-colors pktw-cursor-pointer">
 					<SeverityIcon severity={f.severity} />
-					<span className="pktw-flex-1 pktw-text-[12px]">{f.title}</span>
+					<div className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-flex-col pktw-gap-0.5">
+						<span className="pktw-text-[12px] pktw-leading-5 pktw-text-foreground">{f.title}</span>
+						{f.description && (
+							<span className="pktw-text-[11px] pktw-leading-4 pktw-text-muted-foreground pktw-break-words">
+								{f.description}
+							</span>
+						)}
+					</div>
 				</div>
 			))}
 

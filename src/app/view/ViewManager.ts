@@ -8,6 +8,7 @@ import { AmbientPushView, AMBIENT_PUSH_VIEW_TYPE } from '@/ui/view/AmbientPushVi
 import { UsageDashboardView, USAGE_DASHBOARD_VIEW_TYPE } from '@/ui/view/usage-dashboard/UsageDashboardView';
 import { VaultXRayView, VAULT_XRAY_VIEW_TYPE } from '@/ui/view/vault-lint/VaultXRayView';
 import { GapAnalysisView, GAP_ANALYSIS_VIEW_TYPE } from '@/ui/view/gap-analysis/GapAnalysisView';
+import { KnowledgeCenterView, KNOWLEDGE_CENTER_VIEW_TYPE } from '@/ui/view/knowledge-center/KnowledgeCenterView';
 import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
 import { InputModal } from '@/ui/component/InputModal';
 import { App, ViewCreator } from 'obsidian';
@@ -50,6 +51,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(GAP_ANALYSIS_VIEW_TYPE, (leaf) => {
 			return new GapAnalysisView(leaf);
+		});
+		this.viewCreators.set(KNOWLEDGE_CENTER_VIEW_TYPE, (leaf) => {
+			return new KnowledgeCenterView(leaf, appContext);
 		});
 	}
 
@@ -106,10 +110,14 @@ export class ViewManager {
 		const { workspace } = this.plugin.app;
 		let leaf = workspace.getLeavesOfType(AMBIENT_PUSH_VIEW_TYPE)[0];
 		if (!leaf) {
-			const rightLeaf = workspace.getRightLeaf(false);
-			if (rightLeaf) {
-				await rightLeaf.setViewState({ type: AMBIENT_PUSH_VIEW_TYPE, active: true });
-				leaf = rightLeaf;
+			const candidate = workspace.getRightLeaf(false);
+			if (candidate?.view?.getViewType() === AMBIENT_PUSH_VIEW_TYPE) {
+				leaf = candidate;
+			} else {
+				leaf = workspace.getRightLeaf(true) ?? candidate ?? null;
+			}
+			if (leaf) {
+				await leaf.setViewState({ type: AMBIENT_PUSH_VIEW_TYPE, state: {}, active: true });
 			}
 		}
 		if (leaf) workspace.revealLeaf(leaf);
@@ -151,6 +159,18 @@ export class ViewManager {
 		workspace.revealLeaf(leaf);
 	}
 
+	async activateKnowledgeCenterView(): Promise<void> {
+		const { workspace } = this.plugin.app;
+		const existing = workspace.getLeavesOfType(KNOWLEDGE_CENTER_VIEW_TYPE);
+		if (existing.length > 0) {
+			workspace.revealLeaf(existing[0]);
+			return;
+		}
+		const leaf = workspace.getLeaf('tab');
+		await leaf.setViewState({ type: KNOWLEDGE_CENTER_VIEW_TYPE, active: true });
+		workspace.revealLeaf(leaf);
+	}
+
 	/**
 	 * Show a modal prompt and resolve with user input.
 	 */
@@ -161,4 +181,3 @@ export class ViewManager {
 		});
 	}
 }
-

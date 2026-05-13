@@ -47,12 +47,13 @@ const TabButton: React.FC<TabButtonProps> = ({ tab, label, activeTab, onClick, c
 	const isActive = activeTab === tab;
 	return (
 		<Button
+			variant="ghost"
 			onClick={onClick}
 			className={cn(
-				'pktw-shadow-none pktw-rounded-none pktw-inline-flex pktw-items-center pktw-justify-center pktw-whitespace-nowrap pktw-font-medium focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-offset-2 disabled:pktw-pointer-events-none disabled:pktw-opacity-50 pktw-flex-1 pktw-relative',
+				'pktw-shadow-none pktw-rounded-none pktw-inline-flex pktw-items-center pktw-justify-center pktw-whitespace-nowrap pktw-font-medium focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-offset-0 disabled:pktw-pointer-events-none disabled:pktw-opacity-50 pktw-flex-1 pktw-relative',
 				isActive
 					? 'pktw-text-pk-accent pktw-bg-pk-background hover:pktw-bg-pk-background hover:pktw-text-pk-accent'
-					: 'pktw-text-pk-text-primary hover:pktw-text-pk-text-inverted pktw-bg-pk-surface-sunken',
+					: 'pktw-text-pk-text-primary pktw-bg-pk-surface-sunken hover:pktw-text-pk-accent hover:pktw-bg-pk-highlight',
 				className
 			)}
 		>
@@ -215,7 +216,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 								enableSearchTags={true}
 								singleLine={true}
 								disabled={isInputFrozen}
-								containerClassName={`pktw-flex-1 pktw-min-w-0 ${analysisMode === 'aiGraph' ? 'pktw-pl-[105px]' : 'pktw-pl-[140px]'} pktw-pr-16 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border-muted-foreground pktw-rounded-full pktw-transition-all pktw-z-0`}
+								containerClassName={`pktw-flex-1 pktw-min-w-0 ${analysisMode === 'aiGraph' ? 'pktw-pl-[105px]' : 'pktw-pl-[140px]'} pktw-pr-16 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border focus-within:pktw-border-pk-accent focus-within:pktw-shadow-sm pktw-rounded-full pktw-transition-all pktw-z-0`}
 								className="pktw-pr-4"
 							/>
 							{/* Mode dropdown */}
@@ -560,7 +561,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 								placeholder="Search in vault... (# in-file, @ folder, : go to line, ? help)"
 								enableSearchTags={false}
 								singleLine={true}
-								containerClassName="pktw-flex-1 pktw-min-w-0 pktw-pl-4 pktw-pr-16 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border-muted-foreground pktw-rounded-full pktw-transition-all pktw-z-0"
+								containerClassName="pktw-flex-1 pktw-min-w-0 pktw-pl-4 pktw-pr-16 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border focus-within:pktw-border-pk-accent focus-within:pktw-shadow-sm pktw-rounded-full pktw-transition-all pktw-z-0"
 								className="pktw-pr-4"
 							/>
 							{/* Mode badge — right edge inside input */}
@@ -687,7 +688,7 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 
 	return (
 		<div
-			className="pktw-w-full pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-overflow-hidden"
+			className="pktw-w-full pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-overflow-hidden peak-no-native-outline"
 			onKeyDown={handleContainerKeyDown}
 			tabIndex={-1}
 			style={{ maxHeight: 'calc(100vh - 160px)', minHeight: '400px' }}

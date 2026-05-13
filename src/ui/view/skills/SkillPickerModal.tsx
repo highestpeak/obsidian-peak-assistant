@@ -16,8 +16,8 @@ import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { SkillRegistry } from '@/service/skills/SkillRegistry';
-import { SkillExecutor } from '@/service/skills/SkillExecutor';
 import { SkillInputForm } from './SkillInputForm';
+import { SkillRunModal } from './SkillRunModal';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import type { SkillDefinition } from '@/service/skills/types';
@@ -48,14 +48,14 @@ const SkillCard: React.FC<{
 				'pktw-flex pktw-flex-col pktw-items-start pktw-gap-1.5',
 				'pktw-p-3 pktw-h-auto pktw-w-full',
 				'pktw-rounded-lg pktw-border pktw-border-solid',
-				'hover:pktw-border-blue-400/40',
+				'pktw-whitespace-normal pktw-text-left pktw-overflow-hidden peak-soft-hover-card',
 			)}
 			style={{ borderColor: 'var(--background-modifier-border)' }}
 			onClick={onClick}
 		>
-			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-w-full">
-				<Icon className="pktw-w-4 pktw-h-4 pktw-text-blue-400 pktw-shrink-0" />
-				<span className="pktw-text-sm pktw-font-medium pktw-truncate" style={{ color: 'var(--text-normal)' }}>
+			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-w-full pktw-min-w-0">
+				<Icon className="pktw-w-4 pktw-h-4 pktw-text-blue-400 pktw-shrink-0 peak-card-icon" />
+				<span className="pktw-text-sm pktw-font-medium pktw-truncate pktw-min-w-0 peak-card-title" style={{ color: 'var(--text-normal)' }}>
 					{skill.name}
 				</span>
 				<span className={cn(
@@ -65,7 +65,7 @@ const SkillCard: React.FC<{
 					{skill.type}
 				</span>
 			</div>
-			<span className="pktw-text-xs pktw-text-muted-foreground pktw-line-clamp-2 pktw-text-left">
+			<span className="pktw-text-xs pktw-text-muted-foreground pktw-line-clamp-2 pktw-text-left pktw-w-full pktw-whitespace-normal pktw-break-words peak-card-muted">
 				{skill.description}
 			</span>
 			{skill.tags.length > 0 && (
@@ -179,7 +179,7 @@ const SkillPickerContent: React.FC<{
 			<div className="pktw-relative">
 				<Search className="pktw-absolute pktw-left-2.5 pktw-top-1/2 pktw-transform pktw--translate-y-1/2 pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground" />
 				<input
-					className="pktw-w-full pktw-pl-8 pktw-pr-3 pktw-py-1.5 pktw-text-sm pktw-rounded pktw-border pktw-border-solid"
+					className="pktw-w-full pktw-pl-8 pktw-pr-3 pktw-py-1.5 pktw-text-sm pktw-rounded pktw-border pktw-border-solid pktw-outline-none focus:pktw-border-pk-accent"
 					style={{
 						backgroundColor: 'var(--background-modifier-form-field)',
 						borderColor: 'var(--background-modifier-border)',
@@ -253,26 +253,14 @@ export class SkillPickerModal extends Modal {
 	onOpen(): void {
 		const { contentEl } = this;
 		contentEl.empty();
+		contentEl.addClass('pktw-root');
+		this.modalEl.style.width = '760px';
+		this.modalEl.style.maxWidth = '92vw';
 		this.renderer = new ReactRenderer(contentEl);
 
 		const handleRun = (skill: SkillDefinition, inputs: Record<string, string>) => {
 			this.close();
-			// Execute skill (fire and forget — results stream through existing UI)
-			const executor = new SkillExecutor();
-			const gen = executor.execute(skill, {
-				skillId: skill.id,
-				inputs,
-			});
-			// Consume the generator to trigger execution
-			void (async () => {
-				try {
-					for await (const _ev of gen) {
-						// Events could be routed to a UI panel in future
-					}
-				} catch (e) {
-					console.error('[SkillPickerModal] Skill execution failed:', e);
-				}
-			})();
+			new SkillRunModal(this.appContext, { skill, inputs }).open();
 		};
 
 		const element = createReactElementWithServices(

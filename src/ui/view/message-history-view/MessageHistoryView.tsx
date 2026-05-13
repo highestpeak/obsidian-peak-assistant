@@ -9,6 +9,7 @@ import { ScrollArea } from '@/ui/component/shared-ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/ui/component/shared-ui/collapsible';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { ChatMessage } from '@/service/chat/types';
+import { revealChatView } from '@/ui/view/chat-view/chatNavigation';
 
 const MESSAGE_SUMMARY_MAX_LENGTH = 100;
 
@@ -94,20 +95,20 @@ function getRoleBadgeClass(role: ChatMessage['role']): string {
 		return cn(
 			base,
 			'pktw-bg-blue-500/15 pktw-text-blue-700 dark:pktw-bg-blue-500/20 dark:pktw-text-blue-400',
-			'group-hover:pktw-bg-white group-hover:pktw-text-blue-500 dark:group-hover:pktw-bg-white dark:group-hover:pktw-text-blue-500'
+			'group-hover:pktw-bg-background group-hover:pktw-text-blue-500'
 		);
 	}
 	if (role === 'assistant') {
 		return cn(
 			base,
 			'pktw-bg-purple-500/15 pktw-text-purple-700 dark:pktw-bg-purple-500/20 dark:pktw-text-purple-400',
-			'group-hover:pktw-bg-white group-hover:pktw-text-purple-500 dark:group-hover:pktw-bg-white dark:group-hover:pktw-text-purple-500'
+			'group-hover:pktw-bg-background group-hover:pktw-text-purple-500'
 		);
 	}
 	return cn(
 		base,
 		'pktw-bg-gray-500/15 pktw-text-gray-700 dark:pktw-bg-gray-500/20 dark:pktw-text-gray-400',
-		'group-hover:pktw-bg-white group-hover:pktw-text-gray-500 dark:group-hover:pktw-bg-white dark:group-hover:pktw-text-gray-500'
+		'group-hover:pktw-bg-background group-hover:pktw-text-muted-foreground'
 	);
 }
 
@@ -257,7 +258,7 @@ const TopicGroupComponent: React.FC<TopicGroupComponentProps> = ({
  * Right sidebar view displaying conversation message history with topic grouping
  */
 export const MessageHistoryViewComponent: React.FC = () => {
-	const { eventBus, app } = useServiceContext();
+	const { eventBus, viewManager } = useServiceContext();
 	const activeConversation = useChatDataStore((state) => state.activeConversation);
 	const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
 
@@ -301,11 +302,12 @@ export const MessageHistoryViewComponent: React.FC = () => {
 		prevOpenTopicsRef.current = new Set(openTopics);
 	}, [openTopics, topicGroups, eventBus]);
 
-	const scrollToMessage = useCallback((messageId: string) => {
+	const scrollToMessage = useCallback(async (messageId: string) => {
 		setActiveMessageId(messageId);
+		await revealChatView({ eventBus, viewManager });
 		eventBus.dispatch(new ScrollToMessageEvent({ messageId }));
 		setTimeout(() => setActiveMessageId(null), 2000);
-	}, [eventBus]);
+	}, [eventBus, viewManager]);
 
 	const { manager } = useServiceContext();
 	

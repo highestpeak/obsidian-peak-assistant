@@ -34,6 +34,7 @@ export class ProjectListView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		this.containerEl.empty();
+		this.containerEl.addClass('pktw-root');
 
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 		this.openRafId = requestAnimationFrame(() => {
@@ -77,5 +78,3 @@ export class ProjectListView extends ItemView {
 	}
 
 }
-
-

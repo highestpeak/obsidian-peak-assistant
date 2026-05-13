@@ -72,9 +72,9 @@ export class IndexInitializer {
 					new Notice('Building search index...', 3000);
 					await this.performFullIndexing(true);
 				} else {
-					// Auto index disabled: notify user they can enable it or use command
+					// Auto index disabled: notify user they can enable it or open Knowledge Center.
 					new Notice(
-						'Search index not found. Enable "Auto Index" in settings or use command "Search: fast index documents (FTS)" to build it.',
+						'Search index not found. Enable "Auto Index" in settings or open Knowledge Center to build it.',
 						6000,
 					);
 				}
@@ -99,7 +99,7 @@ export class IndexInitializer {
 					// Auto index disabled: notify user to manually trigger indexing
 					const fileCount = filesToIndex.length;
 					new Notice(
-						`Search index has ${fileCount} file${fileCount === 1 ? '' : 's'} to update. Use command "Search: fast index documents (FTS)" to update. Enable "Auto Index" in settings to update automatically.`,
+						`Search index has ${fileCount} file${fileCount === 1 ? '' : 's'} to update. Open Knowledge Center to update it, or enable "Auto Index" in settings.`,
 						8000,
 					);
 				}

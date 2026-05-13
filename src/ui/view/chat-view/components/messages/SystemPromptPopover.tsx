@@ -80,12 +80,12 @@ export const SystemPromptPopover: React.FC = () => {
         <IconButton
           size="lg"
           title="Custom system prompt"
-          className="hover:pktw-bg-gray-200"
+          className="hover:pktw-bg-muted"
         >
           <SlidersHorizontal className={`pktw-w-4 pktw-h-4 ${
             hasCustomPrompt
               ? 'pktw-text-accent'
-              : 'pktw-text-muted-foreground group-hover:pktw-text-black'
+              : 'pktw-text-muted-foreground group-hover:pktw-text-foreground'
           }`} />
           {hasCustomPrompt && (
             <span className="pktw-absolute pktw-top-0.5 pktw-right-0.5 pktw-w-1.5 pktw-h-1.5 pktw-rounded-full pktw-bg-accent" />

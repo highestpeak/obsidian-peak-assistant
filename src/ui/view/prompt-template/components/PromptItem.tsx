@@ -37,8 +37,8 @@ export const PromptItem: React.FC<Props> = ({ item, overrides, onOpen, onReset }
             {/* Main row */}
             <div
                 className={cn(
-                    'pktw-flex pktw-items-center pktw-gap-2 pktw-min-h-[28px] pktw-group pktw-relative',
-                    'pktw-rounded-md pktw-px-2 pktw-py-1 pktw-mx-[-8px] hover:pktw-bg-[var(--pk-accent,#7c3aed)]/5',
+                    'pktw-flex pktw-items-center pktw-gap-2 pktw-min-h-[28px] pktw-group pktw-relative peak-soft-hover-row',
+                    'pktw-rounded-md pktw-px-2 pktw-py-1 pktw-mx-[-8px]',
                     !hasPair && 'pktw-cursor-pointer',
                 )}
                 onClick={!hasPair ? () => onOpen(item.id) : undefined}
@@ -82,7 +82,7 @@ export const PromptItem: React.FC<Props> = ({ item, overrides, onOpen, onReset }
 
                 {/* Tooltip */}
                 {showTooltip && item.meta.description && (
-                    <div className="pktw-absolute pktw-left-0 pktw-top-full pktw-mt-1 pktw-py-2 pktw-px-3 pktw-bg-[var(--background-primary)] pktw-border pktw-border-[var(--background-modifier-border)] pktw-rounded-lg pktw-text-[11px] pktw-text-[var(--text-muted)] pktw-leading-relaxed pktw-max-w-[340px] pktw-z-50 pktw-shadow-lg">
+                    <div className="pktw-absolute pktw-left-0 pktw-top-full pktw-mt-1 pktw-py-2 pktw-px-3 pktw-bg-pk-surface-overlay pktw-border pktw-border-pk-border pktw-rounded-lg pktw-text-[11px] pktw-text-pk-text-secondary pktw-leading-relaxed pktw-max-w-[420px] pktw-z-50 pktw-shadow-lg">
                         <div className="pktw-text-[var(--text-normal)] pktw-font-medium pktw-mb-0.5">
                             {item.meta.label || String(item.id)}
                         </div>

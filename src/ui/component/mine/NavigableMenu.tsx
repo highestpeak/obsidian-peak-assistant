@@ -174,7 +174,7 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 			<div
 				ref={menuRef}
 				className={cn(
-					'pktw-max-h-[200px] pktw-overflow-y-auto pktw-bg-white pktw-border pktw-rounded-md pktw-shadow-lg',
+					'pktw-max-h-[200px] pktw-overflow-y-auto pktw-bg-popover pktw-border pktw-border-border pktw-rounded-md pktw-shadow-lg',
 					className
 				)}
 				style={{ maxHeight }}

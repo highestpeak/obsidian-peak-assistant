@@ -21,7 +21,8 @@
 .idea
 .mcp.json
 .superpowers/
-.vscode 
+.vscode
+.codex/
 bun.lock
 data.json
 data/traces/

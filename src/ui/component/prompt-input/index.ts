@@ -17,10 +17,9 @@ export { TokenUsage } from './TokenUsage';
 // Types
 export type { PromptInputMessage, FileAttachment, TokenUsageInfo, PromptInputStatus } from './types';
 export type { PromptInputProps } from './PromptInput';
-export type { PromptInputBodyProps } from './PromptInputBody';
+export type { PromptInputBodyProps, PromptInputEditorHandle } from './PromptInputBody';
 export type { PromptInputSubmitProps } from './PromptInputSubmit';
 export type { PromptInputFileButtonProps } from './PromptInputFileButton';
 export type { PromptInputSearchButtonProps } from './PromptInputSearchButton';
 export type { PromptInputAttachmentsProps } from './PromptInputAttachments';
 export type { TokenUsageProps } from './TokenUsage';
-

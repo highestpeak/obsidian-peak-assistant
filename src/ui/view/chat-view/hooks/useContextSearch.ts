@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { getFileIcon } from '@/ui/view/shared/file-utils';
 import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
@@ -9,6 +9,7 @@ import { useChatViewStore } from '../store/chatViewStore';
 
 const RECENT_FILES_COUNT = 3;
 const SEARCH_RESULTS_TOP_K = 20;
+const MIN_CONTEXT_SEARCH_CHARS = 2;
 
 /** Approximate word count from content length (avg ~5 chars/word). */
 function formatWordCount(content: string | undefined): string | undefined {
@@ -35,21 +36,46 @@ function deriveMetaBadge(item: SearchResultItem): string | undefined {
 }
 
 export function useContextSearch() {
-	const { searchClient, manager } = useServiceContext();
+	const { searchClient } = useServiceContext();
 	const promptsSuggest = useChatViewStore((s) => s.promptsSuggest);
 	const [menuContextItems, setMenuContextItems] = useState<NavigableMenuItem[]>([]);
 	const [folderStack, setFolderStack] = useState<string[]>([]);
+	const contextCacheRef = useRef<Map<string, NavigableMenuItem[]>>(new Map());
+	const menuContextItemsRef = useRef<NavigableMenuItem[]>([]);
+	menuContextItemsRef.current = menuContextItems;
 
 	const handleSearchContext = useCallback(async (query: string, currentFolder?: string): Promise<NavigableMenuItem[]> => {
 		if (!searchClient) return [];
-		try {
-			const isInitial = !query.trim() && !currentFolder;
-			let results: SearchResultItem[] = await searchClient.getRecent(RECENT_FILES_COUNT);
-			const recentCount = results.length;
+		const normalizedQuery = query.trim();
+		const cacheKey = `${currentFolder ?? ''}\n${normalizedQuery.toLowerCase()}`;
+		const cached = contextCacheRef.current.get(cacheKey);
+		if (cached) return cached;
+		const shouldSearchVault = Boolean(currentFolder) || normalizedQuery.length >= MIN_CONTEXT_SEARCH_CHARS;
 
-			if (query.trim() || currentFolder) {
+		if (normalizedQuery && !shouldSearchVault) {
+			const fallbackKey = `${currentFolder ?? ''}\n`;
+			const fallbackItems = contextCacheRef.current.get(fallbackKey) ?? menuContextItemsRef.current;
+			const lq = normalizedQuery.toLowerCase();
+			return fallbackItems.filter((item) =>
+				item.label.toLowerCase().includes(lq) ||
+				item.description?.toLowerCase().includes(lq) ||
+				item.value.toLowerCase().includes(lq),
+			);
+		}
+
+		try {
+			const isInitial = !normalizedQuery && !currentFolder;
+			let results: SearchResultItem[] = [];
+			let recentCount = 0;
+
+			if (isInitial) {
+				results = await searchClient.getRecent(RECENT_FILES_COUNT);
+				recentCount = results.length;
+			}
+
+			if (shouldSearchVault) {
 				const searchResults = await searchClient.search({
-					text: query.trim() || '',
+					text: normalizedQuery,
 					scopeMode: currentFolder ? 'inFolder' : 'vault',
 					scopeValue: currentFolder ? { folderPath: currentFolder } : undefined,
 					topK: SEARCH_RESULTS_TOP_K,
@@ -64,7 +90,7 @@ export function useContextSearch() {
 				seen.add(key);
 				return true;
 			});
-			return unique.map((item, idx) => ({
+			const items = unique.map((item, idx) => ({
 				id: item.path || item.id,
 				label: item.title || item.path || item.id,
 				description: item.path || item.id,
@@ -74,6 +100,8 @@ export function useContextSearch() {
 				group: isInitial && idx < recentCount ? 'Recent' : undefined,
 				meta: deriveMetaBadge(item),
 			}));
+			contextCacheRef.current.set(cacheKey, items);
+			return items;
 		} catch (error) {
 			console.error('Error searching files:', error);
 			return [];
@@ -123,7 +151,7 @@ export function useContextSearch() {
 			seen.add(item.value);
 			return true;
 		});
-	}, [promptsSuggest, manager]);
+	}, [promptsSuggest]);
 
 	const handleMenuSelect = useCallback(async (triggerChar: string, selectedItem?: any) => {
 		const isContextTrigger = triggerChar === '@' || triggerChar === '[[';

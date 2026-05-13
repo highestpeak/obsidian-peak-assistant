@@ -68,6 +68,11 @@ const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void; select: (
         EditorView.lineWrapping,
         EditorView.editable.of(!disabled),
         EditorView.contentAttributes.of({ spellcheck: 'false' }),
+        EditorView.theme({
+          '&.cm-focused': { outline: 'none !important' },
+          '.cm-scroller': { outline: 'none !important' },
+          '.cm-content': { outline: 'none !important' },
+        }),
         // High priority keymap to prevent Tab key from inserting tabs
         Prec.high(keymap.of([
           {

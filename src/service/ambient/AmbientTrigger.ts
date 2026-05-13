@@ -90,12 +90,12 @@ export class AmbientTrigger {
 	 * Force-trigger an ambient search for the current active file.
 	 */
 	triggerManual(): void {
-		const activeFile = this.app.workspace.getActiveFile();
-		if (!activeFile) return;
-		if (this.shouldSkip(activeFile.path)) return;
+		const filePath = this.getManualTriggerFilePath();
+		if (!filePath) return;
+		if (this.shouldSkip(filePath)) return;
 
 		this.lastTriggerTs = Date.now();
-		this.onTrigger(activeFile.path, 'manual');
+		this.onTrigger(filePath, 'manual');
 	}
 
 	/**
@@ -135,5 +135,23 @@ export class AmbientTrigger {
 	 */
 	private canTrigger(cooldownMs: number): boolean {
 		return Date.now() - this.lastTriggerTs >= cooldownMs;
+	}
+
+	private getManualTriggerFilePath(): string | null {
+		const activeFile = this.app.workspace.getActiveFile();
+		if (activeFile) return activeFile.path;
+
+		const markdownLeaf = this.app.workspace
+			.getLeavesOfType('markdown')
+			.find((leaf) => {
+				const view = leaf.view as { file?: TFile | null };
+				return Boolean(view.file?.path);
+			});
+		if (markdownLeaf) {
+			const view = markdownLeaf.view as { file?: TFile | null };
+			return view.file?.path ?? null;
+		}
+
+		return this.lastFilePath;
 	}
 }

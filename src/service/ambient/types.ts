@@ -59,10 +59,13 @@ export interface AmbientPushSettings {
 	minCharDelta: number;
 	maxPushItems: number;
 	showStatusBar: boolean;
+	graphExpansionHops: number;
+	feedbackLearning: boolean;
 	enableLlmExplanation: boolean;
 	llmExplanationCooldownMs: number;
 	enableSerendipityGutter: boolean;
 	enableMorningBriefing: boolean;
+	autoOpenedPanel: boolean;
 }
 
 export const DEFAULT_AMBIENT_PUSH_SETTINGS: AmbientPushSettings = {
@@ -73,8 +76,11 @@ export const DEFAULT_AMBIENT_PUSH_SETTINGS: AmbientPushSettings = {
 	minCharDelta: 30,
 	maxPushItems: 5,
 	showStatusBar: true,
+	graphExpansionHops: 2,
+	feedbackLearning: true,
 	enableLlmExplanation: false,
 	llmExplanationCooldownMs: 120_000,
 	enableSerendipityGutter: true,
 	enableMorningBriefing: true,
+	autoOpenedPanel: false,
 };

@@ -12,6 +12,10 @@ interface PushCardProps {
 }
 
 export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
+	const title = item.title?.trim() || item.filePath.replace(/^.*\//, '').replace(/\.md$/, '');
+	const excerpt = item.excerpt?.trim() || title;
+	const explanation = item.explanation?.trim() || 'Related content';
+
 	async function handleOpen() {
 		const app = AppContext.getApp();
 		await app.workspace.openLinkText(item.filePath, '', true);
@@ -24,7 +28,7 @@ export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
 		if (!mdView) return;
 		const editor = mdView.editor;
 		const cursor = editor.getCursor();
-		editor.replaceRange(`[[${item.title}]]`, cursor);
+		editor.replaceRange(`[[${title}]]`, cursor);
 		useAmbientPushStore.getState().recordAction(sourceFilePath, item.filePath, 'linked');
 	}
 
@@ -45,7 +49,7 @@ export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
 					style={{ color: 'var(--text-normal)' }}
 					onClick={handleOpen}
 				>
-					{item.title}
+					{title}
 				</span>
 			</div>
 
@@ -54,7 +58,7 @@ export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
 				className="pktw-mt-1 pktw-line-clamp-2 pktw-block pktw-text-xs"
 				style={{ color: 'var(--text-muted)' }}
 			>
-				{item.excerpt.length > 100 ? `${item.excerpt.slice(0, 100)}...` : item.excerpt}
+				{excerpt.length > 100 ? `${excerpt.slice(0, 100)}...` : excerpt}
 			</span>
 
 			{/* Explanation badge */}
@@ -70,7 +74,7 @@ export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
 				{item.explanationType === 'llm' && (
 					<Sparkles className="pktw-h-3 pktw-w-3" />
 				)}
-				{item.explanation}
+				{explanation}
 			</span>
 
 			{/* Action buttons — hover-reveal */}

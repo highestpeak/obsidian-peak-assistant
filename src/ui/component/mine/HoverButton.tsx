@@ -157,7 +157,10 @@ export const HoverButton: React.FC<HoverButtonProps> = ({
 						{buttonElement}
 					</HoverCardTrigger>
 					<HoverCardContent
-						className={cn("pktw-w-auto pktw-p-3 pktw-bg-popover pktw-shadow-lg", menuClassName)}
+						className={cn(
+							"pktw-w-auto pktw-p-3 pktw-bg-[var(--pk-popover,var(--background-primary,#fff))] pktw-shadow-lg",
+							menuClassName
+						)}
 						align={align}
 						side={side}
 						sideOffset={8}

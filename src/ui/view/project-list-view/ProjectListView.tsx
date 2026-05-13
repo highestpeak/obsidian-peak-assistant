@@ -2,20 +2,19 @@ import React, { useEffect, useCallback } from 'react';
 import { ProjectsSection } from './ProjectsSection';
 import { ConversationsSection } from './ConversationsSection';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { ViewEventType, SelectionChangedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
 import { notifySelectionChange, hydrateProjects } from './utils';
 import { RefreshCw, Minus, Home } from 'lucide-react';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { showToast } from '@/ui/utils/toast';
+import { openChatHome } from '@/ui/view/chat-view/chatNavigation';
 
 /**
  * Main React component for ProjectListView
  */
 export const ProjectListViewComponent: React.FC = () => {
-	const { app, manager, eventBus } = useServiceContext();
-	const chatViewStore = useChatViewStore();
+	const { app, manager, eventBus, viewManager } = useServiceContext();
 	const {
 		setProjects,
 		setConversations,
@@ -91,7 +90,7 @@ export const ProjectListViewComponent: React.FC = () => {
 
 	// Navigate to home view
 	const handleGoHome = () => {
-		chatViewStore.setHome();
+		void openChatHome({ viewManager, eventBus });
 	};
 
 	// Refresh projects and conversations
@@ -191,7 +190,7 @@ export const ProjectListViewComponent: React.FC = () => {
 					onClick={handleGoHome}
 					title="Go to home"
 				>
-					<Home className="pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+					<Home className="pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 				</IconButton>
 				<IconButton
 					size="lg"
@@ -199,7 +198,7 @@ export const ProjectListViewComponent: React.FC = () => {
 					onClick={handleRefresh}
 					title="Refresh projects and conversations"
 				>
-					<RefreshCw className="pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+					<RefreshCw className="pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 				</IconButton>
 				<IconButton
 					size="lg"
@@ -207,7 +206,7 @@ export const ProjectListViewComponent: React.FC = () => {
 					onClick={() => clearExpandedProjects()}
 					title="Collapse all projects"
 				>
-					<Minus className="pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+					<Minus className="pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 				</IconButton>
 			</div>
 
@@ -221,4 +220,3 @@ export const ProjectListViewComponent: React.FC = () => {
 		</div>
 	);
 };
-

@@ -146,7 +146,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	if (isLoading) {
 		return (
 			<div
-				className="pktw-fixed pktw-z-[999] pktw-bg-popover pktw-border-2 pktw-border-[var(--background-modifier-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
+				className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--background-modifier-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
 				style={{ top: position.top, left: position.left }}
 			>
 				<span className="pktw-text-xs pktw-text-[var(--text-muted)]">Loading...</span>
@@ -157,7 +157,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	if (items.length === 0) {
 		return (
 			<div
-				className="pktw-fixed pktw-z-[999] pktw-bg-popover pktw-border-2 pktw-border-[var(--background-modifier-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
+				className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--background-modifier-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
 				style={{ top: position.top, left: position.left }}
 			>
 				<span className="pktw-text-xs pktw-text-[var(--text-muted)]">No matching files</span>
@@ -171,7 +171,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	return (
 		<div
 			ref={listRef}
-			className="pktw-fixed pktw-z-[999] pktw-bg-popover pktw-border-2 pktw-border-[var(--background-modifier-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-min-w-[280px] pktw-max-w-[400px] pktw-max-h-[300px] pktw-overflow-y-auto pktw-p-1"
+			className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--background-modifier-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-min-w-[280px] pktw-max-w-[400px] pktw-max-h-[300px] pktw-overflow-y-auto pktw-p-1"
 			style={{ top: position.top, left: position.left }}
 		>
 			{/* Breadcrumb bar */}

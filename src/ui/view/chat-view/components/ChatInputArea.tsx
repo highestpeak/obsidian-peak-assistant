@@ -5,6 +5,7 @@ import {
 	PromptInputBody,
 	PromptInputAttachments,
 	usePromptInputContext,
+	type PromptInputEditorHandle,
 } from '@/ui/component/prompt-input';
 import { cn } from '@/ui/react/lib/utils';
 import { useChatViewStore } from '../store/chatViewStore';
@@ -54,7 +55,7 @@ export const ChatInputAreaComponent: React.FC = () => {
 	const store = useChatViewStore();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const textareaRef = useRef<PromptInputEditorHandle>(null);
 	const inputFocusRef = useRef<{ focus: () => void } | null>(null);
 
 	const {
