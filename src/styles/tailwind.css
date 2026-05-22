@@ -8,7 +8,6 @@
 @import "./peak-variables.css";    /* 历史别名 alias 壳，待 Phase 3 后删 */
 @import "./peak-style-settings.css";
 @import "./obsidian-reset.css";
-@import "./vault-review.css";
 
 @import "tailwindcss/base";
 @import "tailwindcss/components";
