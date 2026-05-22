@@ -1,6 +1,13 @@
 import { Modal, Platform } from 'obsidian';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, History, Search, Sparkles, Zap } from 'lucide-react';
+import {
+	ChevronRight,
+	History,
+	Search,
+	ListChecks,
+	Sliders,
+	HelpCircle,
+} from 'lucide-react';
 import {
 	getCopilotReviewHistoryService,
 	type CopilotReviewHistoryRecord,
@@ -17,12 +24,13 @@ import { getSelectedTextFromActiveEditor } from '@/core/utils/obsidian-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import { Input } from '@/ui/component/shared-ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/ui/component/shared-ui/tabs';
+import { Pill } from '@/ui/component/shared-ui/pill';
 import type { IntentTabId } from '@/service/copilot/intent-hub';
 import { buildCopilotCommandModel, type CopilotActionListItem } from './copilot-command-model';
 import { ReviewStatusBadge } from '@/ui/view/copilot/review/ReviewStatusBadge';
 import {
 	VaultContextLine,
-	VaultIntentCard,
 	VaultReviewHistoryList,
 	useVaultTabState,
 } from '@/ui/view/copilot/vault/VaultPickerSections';
@@ -31,10 +39,22 @@ import {
 	type VaultReviewHistoryRecord,
 } from '@/service/copilot/vault/VaultReviewReportService';
 import { VaultAutoRunModal, openVaultReviewHistoryRecord } from '@/ui/view/copilot/vault/VaultAutoRunModal';
+import { PickerReadinessCard, SuggestedIntentRow } from './PickerReadinessCard';
+import {
+	documentReadiness,
+	vaultReadiness,
+	settingReadiness,
+} from './PickerReadinessAdapters';
 
 interface CopilotPickerOptions {
 	initialTab?: IntentTabId;
 }
+
+const SCOPE_TABS: Array<{ id: IntentTabId; title: string; subtitle: string; placeholder: string }> = [
+	{ id: 'document', title: 'Document', subtitle: '= Copilot', placeholder: 'Search or ask in current document... (# heading, @ note, ? help)' },
+	{ id: 'vault',    title: 'Vault',    subtitle: '= Vault Intelligence', placeholder: 'Search or ask across vault... (# in-file, @ folder, ? help)' },
+	{ id: 'setting',  title: 'Setting',  subtitle: '= System', placeholder: 'Search settings, index, models, skills, prompts...' },
+];
 
 const CopilotPickerContent: React.FC<{
 	onSelect: (action: CopilotAction) => void;
@@ -48,15 +68,11 @@ const CopilotPickerContent: React.FC<{
 	const registry = CopilotActionRegistry.getInstance();
 	const [activeTab, setActiveTab] = useState<IntentTabId>(initialTab);
 	const [query, setQuery] = useState('');
-	// Per-tab expanded state. The React tree is recreated each time the modal opens,
-	// so this naturally resets on close. Setting tab is computed (always expanded),
-	// only Document/Vault store user-toggled state here.
 	const [showAllByTab, setShowAllByTab] = useState<Partial<Record<IntentTabId, boolean>>>({});
-	// Vault tab state (fingerprint + 5-state derivation)
 	const vaultState = useVaultTabState(0);
-	// Vault review history list — fetched independently of doc-scope reviews
 	const [vaultRecords, setVaultRecords] = useState<VaultReviewHistoryRecord[]>([]);
 	const [vaultRecordsLoading, setVaultRecordsLoading] = useState(true);
+
 	useEffect(() => {
 		if (activeTab !== 'vault') return;
 		let cancelled = false;
@@ -75,187 +91,239 @@ const CopilotPickerContent: React.FC<{
 		});
 		return () => { cancelled = true; };
 	}, [activeTab]);
+
 	const model = useMemo(() => buildCopilotCommandModel({
 		ctx,
 		activeTab,
 		query,
 		actions: registry.getAll(),
 	}), [ctx, activeTab, query, registry]);
+
 	const isMobile = Platform.isMobile;
-	const autoDisabled = !ctx || isMobile;
-	const autoDisabledReason = isMobile
-		? 'Auto Review is not available on mobile yet.'
-		: !ctx
-			? 'Open a document first to run Auto.'
-			: undefined;
-	// Setting tab has no AutoIntentCard/history above, so default to full catalog
-	// expanded — otherwise the tab looks half-empty.
+	const tabMeta = SCOPE_TABS.find(t => t.id === activeTab) ?? SCOPE_TABS[0];
 	const showAll = activeTab === 'setting' ? true : (showAllByTab[activeTab] ?? false);
 	const showCatalog = showAll || query.trim().length > 0;
 	const setShowAll = (value: boolean) => {
-		if (activeTab === 'setting') return; // setting is always-on, ignore writes
+		if (activeTab === 'setting') return;
 		setShowAllByTab(prev => ({ ...prev, [activeTab]: value }));
 	};
 
-	return (
-		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-bg-background">
-			<div className="pktw-grid pktw-grid-cols-3 pktw-bg-muted/50 pktw-border-b pktw-border-border">
-				{model.tabs.map(tab => (
-					<Button
-						key={tab.id}
-						variant="ghost"
-						onClick={() => setActiveTab(tab.id)}
-						className={cn(
-							'pktw-relative pktw-flex pktw-h-[72px] pktw-flex-col pktw-items-center pktw-justify-center pktw-gap-1 pktw-rounded-none pktw-bg-transparent pktw-text-sm pktw-font-semibold',
-							activeTab === tab.id
-								? 'pktw-text-pk-accent pktw-bg-background after:pktw-content-[""] after:pktw-absolute after:pktw-left-0 after:pktw-right-0 after:pktw-bottom-0 after:pktw-h-[3px] after:pktw-bg-pk-accent'
-								: 'pktw-text-muted-foreground',
-						)}
-					>
-						<span>{tab.label}</span>
-						<span className="pktw-text-[11px] pktw-font-medium pktw-text-muted-foreground">{tab.subtitle}</span>
-					</Button>
-				))}
-			</div>
+	const readinessProps = useMemo(() => {
+		switch (activeTab) {
+			case 'document':
+				return documentReadiness({
+					ctx,
+					isMobile,
+					onAuto: () => onAuto('document', 'complete'),
+					onFast: () => onAuto('document', 'fast'),
+				});
+			case 'vault':
+				return vaultReadiness({
+					fingerprint: vaultState.fingerprint,
+					lastRecord: vaultState.lastRecord,
+					freshness: vaultState.freshness,
+					filesChanged: vaultState.filesChanged,
+					wordDeltaPct: vaultState.wordDeltaPct,
+					onAuto: () => onAuto('vault', 'complete'),
+					onFast: () => onAuto('vault', 'fast'),
+					onOpenLast: () => vaultState.lastRecord && onOpenVaultRecord(vaultState.lastRecord),
+				});
+			case 'setting':
+				return settingReadiness({
+					// TODO(Phase D): wire to actual SystemDiagnosticsService
+					onRunCheck: () => setShowAll(true),
+					onViewDiagnostics: () => setShowAll(true),
+				});
+		}
+	}, [activeTab, ctx, isMobile, vaultState, onAuto, onOpenVaultRecord]);
 
-			<div className="pktw-border-b pktw-border-border pktw-p-5 pktw-space-y-3">
-				<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-rounded-full pktw-border pktw-border-border pktw-bg-background pktw-px-4 pktw-py-2 pktw-shadow-sm">
-					<Search className="pktw-h-4 pktw-w-4 pktw-text-muted-foreground" />
+	return (
+		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-bg-pk-background">
+			{/* ─── Scope tabs ─── */}
+			<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as IntentTabId)} variant="segment">
+				<TabsList>
+					{SCOPE_TABS.map(t => (
+						<TabsTrigger key={t.id} value={t.id} title={t.title} subtitle={t.subtitle} />
+					))}
+				</TabsList>
+			</Tabs>
+
+			{/* ─── Body ─── */}
+			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-px-7 pktw-py-5 pktw-flex pktw-flex-col pktw-gap-4">
+				{/* Search */}
+				<div className="pktw-flex pktw-items-center pktw-gap-2.5 pktw-px-4 pktw-py-2.5 pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-rounded-full pktw-shadow-sm">
+					<Search className="pktw-w-4 pktw-h-4 pktw-text-pk-foreground-faint" />
 					<Input
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
-						placeholder={model.activeTab.searchPlaceholder}
-						className="pktw-h-10 pktw-flex-1 pktw-border-0 pktw-bg-transparent pktw-px-0 pktw-text-sm focus-visible:pktw-ring-0"
+						placeholder={tabMeta.placeholder}
+						className="pktw-h-8 pktw-flex-1 pktw-border-0 pktw-bg-transparent pktw-px-0 pktw-text-sm focus-visible:pktw-ring-0"
 						autoFocus
 					/>
-					<span className="pktw-rounded-full pktw-bg-pk-accent/10 pktw-px-2 pktw-py-1 pktw-text-[11px] pktw-font-medium pktw-text-pk-accent">
-						{activeTab}
-					</span>
+					<Pill variant="accent">{activeTab}</Pill>
 				</div>
-				{activeTab === 'vault'
-					? <VaultContextLine fingerprint={vaultState.fingerprint} lastRecord={vaultState.lastRecord} />
-					: <span className="pktw-block pktw-text-xs pktw-text-muted-foreground">{model.contextLine}</span>
-				}
-			</div>
 
-			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-p-5 pktw-space-y-4">
-				{activeTab === 'vault' ? (
-					<>
-						<VaultIntentCard
-							state={vaultState}
-							onAuto={() => onAuto('vault', 'complete')}
-							onFast={() => onAuto('vault', 'fast')}
-							onOpenLast={() => vaultState.lastRecord && onOpenVaultRecord(vaultState.lastRecord)}
-						/>
-						<div className="pktw-space-y-2">
-							<div className="pktw-flex pktw-items-center pktw-justify-between">
-								<span className="pktw-text-[11px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">
-									Past vault reviews
-								</span>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="pktw-h-7 pktw-gap-1.5 pktw-text-[11px]"
-									onClick={onOpenAllHistory}
-								>
-									<History className="pktw-h-3.5 pktw-w-3.5" />
-									All reviews
-								</Button>
-							</div>
+				{/* Metadata line */}
+				<MetadataLine
+					activeTab={activeTab}
+					ctx={ctx}
+					vaultFingerprint={vaultState.fingerprint}
+					vaultLastRecord={vaultState.lastRecord}
+					fallbackLine={model.contextLine}
+				/>
+
+				{/* Readiness card */}
+				<PickerReadinessCard {...readinessProps} />
+
+				{/* 2-col split: recent reviews / suggested intents */}
+				<div className="pktw-grid pktw-grid-cols-[minmax(0,0.95fr)_minmax(0,1.1fr)] pktw-gap-7">
+					<div>
+						<PickerSectionTitle title={recentTitle(activeTab)} link={{ label: recentLinkLabel(activeTab), onClick: onOpenAllHistory }} />
+						{activeTab === 'vault' ? (
 							<VaultReviewHistoryList
 								records={vaultRecords}
 								loading={vaultRecordsLoading}
 								onOpen={onOpenVaultRecord}
 							/>
-						</div>
-					</>
-				) : (
-					<>
-						{activeTab !== 'setting' && (
-							<AutoIntentCard
-								tabLabel={model.activeTab.label}
-								autoLabel={model.activeTab.autoLabel}
-								disabled={autoDisabled}
-								disabledReason={autoDisabledReason}
-								onAuto={() => onAuto(activeTab, 'complete')}
-								onFast={() => onAuto(activeTab, 'fast')}
-							/>
-						)}
-						{activeTab !== 'setting' && (
+						) : activeTab === 'document' ? (
 							<DocumentReviewHistory
-								scope="document"
 								subjectPath={ctx?.file.path ?? null}
 								onOpenRecord={onOpenHistoryRecord}
-								onOpenAll={onOpenAllHistory}
 							/>
+						) : (
+							<SettingDiagnosticsList />
 						)}
-					</>
-				)}
-				<RecommendedActions actions={model.recommendedActions} onSelect={onSelect} />
+					</div>
+					<div>
+						<PickerSectionTitle title="Suggested intents" />
+						<SuggestedIntents
+							actions={model.recommendedActions}
+							onSelect={onSelect}
+						/>
+					</div>
+				</div>
+
+				{/* Expanded capability catalog (only when "show all" / search active) */}
 				{showCatalog ? (
 					<CapabilityList actions={model.visibleActions} onSelect={onSelect} />
-				) : (
-					<Button
-						variant="ghost"
-						className="pktw-h-12 pktw-w-full pktw-justify-between pktw-rounded-lg pktw-border pktw-border-border pktw-px-4"
+				) : null}
+
+				{/* Footer row: Show all capabilities */}
+				{!showCatalog ? (
+					<button
+						type="button"
 						onClick={() => setShowAll(true)}
+						className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-w-full pktw-px-4.5 pktw-py-3.5 pktw-bg-pk-background-secondary pktw-border pktw-border-pk-border-soft pktw-rounded-lg pktw-text-left hover:pktw-bg-pk-accent-tint"
 					>
-						<span className="pktw-text-sm pktw-font-medium">Show all capabilities</span>
-						<ChevronRight className="pktw-h-4 pktw-w-4 pktw-text-muted-foreground" />
-					</Button>
-				)}
+						<span className="pktw-w-8 pktw-h-8 pktw-rounded-lg pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-text-pk-foreground-muted pktw-flex pktw-items-center pktw-justify-center">
+							<ListChecks className="pktw-w-4 pktw-h-4" />
+						</span>
+						<span>
+							<span className="pktw-flex pktw-items-center pktw-gap-1 pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">
+								Show all capabilities <ChevronRight className="pktw-w-3 pktw-h-3" />
+							</span>
+							<span className="pktw-block pktw-text-[11.5px] pktw-text-pk-foreground-muted">
+								{footerSubtitle(activeTab)}
+							</span>
+						</span>
+						<span />
+					</button>
+				) : null}
 			</div>
 		</div>
 	);
 };
 
-function AutoIntentCard({
-	tabLabel,
-	autoLabel,
-	disabled,
-	disabledReason,
-	onAuto,
-	onFast,
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function recentTitle(tab: IntentTabId): string {
+	if (tab === 'document') return 'Recent reviews';
+	if (tab === 'vault') return 'Past vault reviews';
+	return 'Recent diagnostics';
+}
+function recentLinkLabel(tab: IntentTabId): string {
+	if (tab === 'setting') return 'All diagnostics';
+	return 'All reviews';
+}
+function footerSubtitle(tab: IntentTabId): string {
+	if (tab === 'vault') return 'Vault tools are available to the agent during a refresh.';
+	if (tab === 'setting') return 'System tools help the agent verify runtime health before a review.';
+	return 'Tools are available to the agent during the run.';
+}
+
+function PickerSectionTitle({
+	title,
+	link,
 }: {
-	tabLabel: string;
-	autoLabel: string;
-	disabled: boolean;
-	disabledReason?: string;
-	onAuto: () => void;
-	onFast: () => void;
+	title: string;
+	link?: { label: string; onClick: () => void };
 }) {
 	return (
-		<div className="pktw-rounded-xl pktw-border pktw-border-pk-accent/30 pktw-bg-pk-highlight/30 pktw-p-4">
-			<div className="pktw-flex pktw-items-center pktw-gap-3">
-				<div className="pktw-flex pktw-h-10 pktw-w-10 pktw-items-center pktw-justify-center pktw-rounded-full pktw-bg-pk-accent/10">
-					<Sparkles className="pktw-h-5 pktw-w-5 pktw-text-pk-accent" />
-				</div>
-				<div className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-flex-col pktw-gap-0.5">
-					<span className="pktw-text-sm pktw-font-semibold">Auto: let the agent decide</span>
-					<span className="pktw-text-xs pktw-text-muted-foreground">
-						{tabLabel} sets the initial scope. Fast = one focused pass. {autoLabel} = up to 3 rounds with compact.
-					</span>
-				</div>
-				<Button
-					variant="outline"
-					className="pktw-h-10 pktw-gap-2 pktw-rounded-lg pktw-font-semibold"
-					onClick={onFast}
-					disabled={disabled}
-					title={disabled ? disabledReason : 'Single-pass review (~8 turns).'}
+		<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-3">
+			<span className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground">{title}</span>
+			{link ? (
+				<button
+					type="button"
+					onClick={link.onClick}
+					className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[12px] pktw-font-semibold pktw-text-pk-info hover:pktw-underline pktw-bg-transparent pktw-border-0 pktw-p-0 pktw-cursor-pointer"
 				>
-					<Zap className="pktw-h-4 pktw-w-4" />
-					Fast
-				</Button>
-				<Button
-					className="pktw-h-10 pktw-min-w-[116px] pktw-gap-2 pktw-rounded-lg pktw-font-semibold"
-					onClick={onAuto}
-					disabled={disabled}
-					title={disabled ? disabledReason : 'Up to 3 rounds with cross-round compaction.'}
-				>
-					<Sparkles className="pktw-h-4 pktw-w-4" />
-					{disabled ? (disabledReason?.includes('mobile') ? 'Desktop only' : 'Open note') : autoLabel}
-				</Button>
+					{link.label}
+					<ChevronRight className="pktw-w-3 pktw-h-3" />
+				</button>
+			) : null}
+		</div>
+	);
+}
+
+function MetadataLine({
+	activeTab,
+	ctx,
+	vaultFingerprint,
+	vaultLastRecord,
+	fallbackLine,
+}: {
+	activeTab: IntentTabId;
+	ctx: DocumentContext | null;
+	vaultFingerprint: ReturnType<typeof useVaultTabState>['fingerprint'];
+	vaultLastRecord: ReturnType<typeof useVaultTabState>['lastRecord'];
+	fallbackLine: string | null;
+}) {
+	if (activeTab === 'vault') {
+		return (
+			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-[12px] pktw-text-pk-foreground-muted">
+				<VaultContextLine fingerprint={vaultFingerprint} lastRecord={vaultLastRecord} />
 			</div>
+		);
+	}
+	if (activeTab === 'setting') {
+		return (
+			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-[12px] pktw-text-pk-foreground-muted">
+				<span>System environment</span>
+				<span className="pktw-text-pk-foreground-faint">·</span>
+				<span>providers</span>
+				<span className="pktw-text-pk-foreground-faint">·</span>
+				<span>index</span>
+				<span className="pktw-text-pk-foreground-faint">·</span>
+				<span>skills</span>
+				<span className="pktw-text-pk-foreground-faint">·</span>
+				<span>prompts</span>
+			</div>
+		);
+	}
+	// Document tab
+	return (
+		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-[12px] pktw-text-pk-foreground-muted pktw-min-w-0">
+			{ctx?.file.path ? (
+				<>
+					<span className="pktw-font-mono pktw-truncate">{ctx.file.path}</span>
+					<span className="pktw-text-pk-foreground-faint">·</span>
+					<span className="pktw-shrink-0">current note</span>
+				</>
+			) : (
+				<span>{fallbackLine ?? 'No active note'}</span>
+			)}
 		</div>
 	);
 }
@@ -274,15 +342,11 @@ function relativeTime(ts: number): string {
 }
 
 function DocumentReviewHistory({
-	scope,
 	subjectPath,
 	onOpenRecord,
-	onOpenAll,
 }: {
-	scope: 'document' | 'vault';
 	subjectPath: string | null;
 	onOpenRecord: (record: CopilotReviewHistoryRecord) => void;
-	onOpenAll: () => void;
 }) {
 	const [records, setRecords] = useState<CopilotReviewHistoryRecord[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -291,11 +355,9 @@ function DocumentReviewHistory({
 		let cancelled = false;
 		setLoading(true);
 		const svc = getCopilotReviewHistoryService();
-		// Document tab → reviews of THIS note that originated from a document-scoped trigger.
-		// Vault tab → all vault-scoped reviews (regardless of subject note).
-		const promise = scope === 'vault'
-			? svc.listAll(8, 'vault')
-			: (subjectPath ? svc.listForSubject(subjectPath, 8, 'document') : Promise.resolve([] as CopilotReviewHistoryRecord[]));
+		const promise = subjectPath
+			? svc.listForSubject(subjectPath, 8, 'document')
+			: Promise.resolve([] as CopilotReviewHistoryRecord[]);
 		promise.then(list => {
 			if (!cancelled) {
 				setRecords(list);
@@ -308,91 +370,113 @@ function DocumentReviewHistory({
 				setLoading(false);
 			}
 		});
-		return () => {
-			cancelled = true;
-		};
-	}, [scope, subjectPath]);
+		return () => { cancelled = true; };
+	}, [subjectPath]);
 
-	const title = scope === 'vault' ? 'Recent reviews across vault' : 'Past reviews of this note';
-	const emptyLabel = scope === 'vault'
-		? 'No reviews recorded yet. Run Auto or Fast on a note to start.'
-		: 'No reviews of this note yet. Run Auto or Fast to start one.';
-
-	const isEmpty = !loading && records.length === 0;
+	if (loading) {
+		return <span className="pktw-block pktw-text-xs pktw-italic pktw-text-pk-foreground-muted">Loading history…</span>;
+	}
+	if (records.length === 0) {
+		return (
+			<div className="pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-5 pktw-py-9 pktw-bg-pk-background-secondary pktw-border pktw-border-dashed pktw-border-pk-border pktw-rounded-2xl">
+				<span className="pktw-w-10 pktw-h-10 pktw-rounded-full pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-text-pk-foreground-faint pktw-flex pktw-items-center pktw-justify-center pktw-mb-2.5">
+					<History className="pktw-w-4 pktw-h-4" />
+				</span>
+				<span className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">No reviews of this note yet</span>
+				<span className="pktw-text-[12px] pktw-text-pk-foreground-muted">Run Auto or Fast to start one.</span>
+			</div>
+		);
+	}
 
 	return (
-		<div className="pktw-space-y-2">
-			<div className="pktw-flex pktw-items-center pktw-justify-between">
-				<span className="pktw-text-[11px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">
-					{title}
-				</span>
-				<Button
-					variant="ghost"
-					size="sm"
-					className="pktw-h-7 pktw-gap-1.5 pktw-text-[11px]"
-					onClick={onOpenAll}
+		<div className="pktw-flex pktw-flex-col pktw-gap-2">
+			{records.map(r => (
+				<button
+					key={r.id}
+					type="button"
+					onClick={() => onOpenRecord(r)}
+					className="pktw-w-full pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-[10px] pktw-text-left hover:pktw-border-pk-accent-soft hover:pktw-bg-pk-accent-tint"
 				>
-					<History className="pktw-h-3.5 pktw-w-3.5" />
-					All reviews
-				</Button>
-			</div>
-			{loading ? (
-				<span className="pktw-block pktw-text-xs pktw-text-muted-foreground pktw-italic">Loading history…</span>
-			) : isEmpty ? (
-				<span className="pktw-block pktw-rounded-lg pktw-border pktw-border-dashed pktw-border-border pktw-px-3 pktw-py-2 pktw-text-[11px] pktw-text-muted-foreground">
-					{emptyLabel}
-				</span>
-			) : (
-				<div className="pktw-flex pktw-flex-col">
-					{records.map(r => (
-						<div
-							key={r.id}
-							role="button"
-							tabIndex={0}
-							onClick={() => onOpenRecord(r)}
-							onKeyDown={e => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									e.preventDefault();
-									onOpenRecord(r);
-								}
-							}}
-							className="pktw-group pktw-flex pktw-cursor-pointer pktw-items-center pktw-gap-3 pktw-rounded-md pktw-px-3 pktw-py-2 pktw-text-left pktw-transition-colors hover:pktw-bg-pk-accent/8 hover:pktw-text-pk-accent"
-						>
-							<History className="pktw-h-3.5 pktw-w-3.5 pktw-shrink-0 pktw-text-muted-foreground group-hover:pktw-text-pk-accent" />
-							<div className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-flex-col">
-								<span className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-foreground group-hover:pktw-text-pk-accent">
-									<span className="pktw-truncate">{r.headline?.trim() || (r.mode === 'fast' ? 'Fast review' : 'Auto review')}</span>
-									<span className="pktw-shrink-0 pktw-text-muted-foreground">· {relativeTime(r.completedAt)}</span>
-									<ReviewStatusBadge status={r.status} />
-								</span>
-								<span className="pktw-text-[10px] pktw-text-muted-foreground">
-									{r.insightCount} insight{r.insightCount === 1 ? '' : 's'} · {r.changeCount} change{r.changeCount === 1 ? '' : 's'} · {r.sourceCount} source{r.sourceCount === 1 ? '' : 's'} · {r.roundCount} round{r.roundCount === 1 ? '' : 's'}
-								</span>
-							</div>
-							<ChevronRight className="pktw-h-3.5 pktw-w-3.5 pktw-text-muted-foreground/60 pktw-opacity-0 group-hover:pktw-opacity-100 group-hover:pktw-text-pk-accent" />
+					<span className="pktw-w-8 pktw-h-8 pktw-rounded-lg pktw-bg-pk-background-secondary pktw-text-pk-foreground-muted pktw-flex pktw-items-center pktw-justify-center">
+						<History className="pktw-w-4 pktw-h-4" />
+					</span>
+					<div className="pktw-min-w-0">
+						<div className="pktw-flex pktw-items-baseline pktw-gap-2 pktw-min-w-0">
+							<span className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground pktw-truncate">
+								{r.headline?.trim() || (r.mode === 'fast' ? 'Fast review' : 'Auto review')}
+							</span>
+							<span className="pktw-text-[11.5px] pktw-text-pk-foreground-faint pktw-shrink-0">{relativeTime(r.completedAt)}</span>
+							<ReviewStatusBadge status={r.status} />
 						</div>
-					))}
-				</div>
-			)}
+						<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-mt-0.5">
+							{r.insightCount} insight{r.insightCount === 1 ? '' : 's'} · {r.changeCount} change{r.changeCount === 1 ? '' : 's'} · {r.sourceCount} source{r.sourceCount === 1 ? '' : 's'} · {r.roundCount} round{r.roundCount === 1 ? '' : 's'}
+						</div>
+					</div>
+					<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-faint" />
+				</button>
+			))}
 		</div>
 	);
 }
 
-function RecommendedActions({
+function SettingDiagnosticsList() {
+	// TODO(Phase D): real recent diagnostics history.
+	return (
+		<div className="pktw-flex pktw-flex-col pktw-gap-2">
+			<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-[10px]">
+				<span className="pktw-w-8 pktw-h-8 pktw-rounded-lg pktw-bg-pink-100 dark:pktw-bg-pink-900/30 pktw-text-pink-700 dark:pktw-text-pink-300 pktw-flex pktw-items-center pktw-justify-center">
+					<HelpCircle className="pktw-w-4 pktw-h-4" />
+				</span>
+				<div>
+					<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">Provider health check</div>
+					<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted">2h ago · <span className="pktw-text-pk-warning-text pktw-font-semibold">1 warning</span></div>
+				</div>
+				<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-faint" />
+			</div>
+			<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-[10px]">
+				<span className="pktw-w-8 pktw-h-8 pktw-rounded-lg pktw-bg-pk-indigo-bg pktw-text-pk-indigo-text pktw-flex pktw-items-center pktw-justify-center">
+					<Sliders className="pktw-w-4 pktw-h-4" />
+				</span>
+				<div>
+					<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">Index integrity scan</div>
+					<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted">yesterday · <span className="pktw-text-pk-success-text pktw-font-semibold">clean</span></div>
+				</div>
+				<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-faint" />
+			</div>
+		</div>
+	);
+}
+
+function SuggestedIntents({
 	actions,
 	onSelect,
 }: {
 	actions: CopilotActionListItem[];
 	onSelect: (action: CopilotAction) => void;
 }) {
-	if (actions.length === 0) return null;
-
+	if (actions.length === 0) {
+		return (
+			<span className="pktw-block pktw-rounded-lg pktw-border pktw-border-dashed pktw-border-pk-border pktw-px-4 pktw-py-8 pktw-text-center pktw-text-[12px] pktw-text-pk-foreground-muted">
+				No suggested intents for this scope yet.
+			</span>
+		);
+	}
+	const top = actions.slice(0, 3);
+	const tones: Array<'accent' | 'indigo' | 'cyan'> = ['accent', 'indigo', 'cyan'];
 	return (
-		<div className="pktw-space-y-2">
-			<span className="pktw-text-[11px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">Recommended now</span>
-			<div className="pktw-grid pktw-grid-cols-3 pktw-gap-2">
-				{actions.map(item => <CapabilityButton key={item.action.id} item={item} onSelect={onSelect} />)}
-			</div>
+		<div className="pktw-flex pktw-flex-col pktw-gap-2">
+			{top.map((item, i) => (
+				<SuggestedIntentRow
+					key={item.action.id}
+					icon={item.action.icon}
+					title={item.action.label}
+					subtitle={item.action.description}
+					pill={item.recommended ? { label: 'recommended', variant: 'accent' } : undefined}
+					tone={tones[i % tones.length]}
+					disabled={!!item.disabledReason}
+					onClick={() => onSelect(item.action)}
+				/>
+			))}
 		</div>
 	);
 }
@@ -405,10 +489,10 @@ function CapabilityList({
 	onSelect: (action: CopilotAction) => void;
 }) {
 	return (
-		<div className="pktw-space-y-2">
-			<span className="pktw-text-[11px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">All capabilities</span>
+		<div className="pktw-flex pktw-flex-col pktw-gap-2">
+			<PickerSectionTitle title="All capabilities" />
 			{actions.length === 0 ? (
-				<span className="pktw-block pktw-rounded-lg pktw-border pktw-border-dashed pktw-border-border pktw-p-8 pktw-text-center pktw-text-xs pktw-text-muted-foreground">
+				<span className="pktw-block pktw-rounded-lg pktw-border pktw-border-dashed pktw-border-pk-border pktw-p-8 pktw-text-center pktw-text-xs pktw-text-pk-foreground-muted">
 					No matching capability in this tab.
 				</span>
 			) : (
@@ -433,15 +517,15 @@ function CapabilityButton({
 			variant="ghost"
 			disabled={!!item.disabledReason}
 			className={cn(
-				'pktw-h-auto pktw-min-h-[72px] pktw-whitespace-normal pktw-justify-start pktw-items-start pktw-gap-3 pktw-p-3 pktw-border pktw-border-border pktw-rounded-lg pktw-text-left hover:pktw-bg-accent/60',
-				item.recommended && 'pktw-border-pk-accent/40 pktw-bg-pk-highlight/40',
+				'pktw-h-auto pktw-min-h-[72px] pktw-whitespace-normal pktw-justify-start pktw-items-start pktw-gap-3 pktw-p-3 pktw-border pktw-border-pk-border pktw-rounded-lg pktw-text-left hover:pktw-bg-pk-accent-tint',
+				item.recommended && 'pktw-border-pk-accent-soft pktw-bg-pk-accent-tint',
 			)}
 			onClick={() => onSelect(item.action)}
 		>
-			<Icon className="pktw-w-4 pktw-h-4 pktw-mt-0.5 pktw-flex-shrink-0 pktw-text-pk-accent" />
+			<Icon className="pktw-w-4 pktw-h-4 pktw-mt-0.5 pktw-shrink-0 pktw-text-pk-accent" />
 			<span className="pktw-flex pktw-flex-col pktw-gap-1 pktw-min-w-0">
-				<span className="pktw-text-sm pktw-font-medium pktw-text-foreground">{item.action.label}</span>
-				<span className="pktw-text-xs pktw-leading-snug pktw-text-muted-foreground">
+				<span className="pktw-text-sm pktw-font-medium pktw-text-pk-foreground">{item.action.label}</span>
+				<span className="pktw-text-xs pktw-leading-snug pktw-text-pk-foreground-muted">
 					{item.disabledReason ?? item.action.description}
 				</span>
 			</span>
@@ -463,10 +547,11 @@ export class CopilotPickerModal extends Modal {
 		this.closed = false;
 		this.contentEl.empty();
 		this.modalEl.addClass('peak-copilot-picker-modal');
+		this.modalEl.addClass('peak-design-root');
 		this.contentEl.addClass('pktw-root');
-		this.modalEl.style.width = '980px';
-		this.modalEl.style.maxWidth = '94vw';
-		this.modalEl.style.height = 'min(720px, calc(100vh - 96px))';
+		this.modalEl.style.width = '1080px';
+		this.modalEl.style.maxWidth = '96vw';
+		this.modalEl.style.height = 'min(820px, calc(100vh - 64px))';
 		this.modalEl.style.padding = '0';
 		this.contentEl.style.padding = '0';
 
