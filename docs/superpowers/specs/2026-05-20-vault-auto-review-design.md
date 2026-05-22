@@ -146,6 +146,62 @@ Vault Auto Review 的坐标：
 
 ## 8. 信息架构
 
+### 8.0 Review Launcher Picker（进入具体 review 前）
+
+顶部 `Document / Vault / Setting` 这个面板不是“能力大全”，而是 **review launcher**：用户在进入具体 agent review 前，先确认当前 scope、当前状态、运行策略和最近历史。
+
+第一屏要回答四个问题：
+
+1. **我现在在哪个 scope？** 当前 note、整个 vault，还是系统环境。
+2. **现在值不值得跑？** 是否刚跑过、是否有变化、是否有 warning。
+3. **我要怎么跑？** Auto、Fast、Refresh、Run system check，或看上次结果。
+4. **如果我不想 Auto，有哪些最相关 intent？** 只展示 2-3 个 suggested intents，其余收进 capability catalog。
+
+#### 8.0.1 区域说明
+
+| 区域 | 用户看到什么 | 设计意图 | 点击 / 交互 |
+|---|---|---|---|
+| **Top scope tabs** | `Document = Copilot` / `Vault = Vault Intelligence` / `Setting = System` | 建立三种工作域，避免把所有能力混在一个 command center 里 | 切换 scope，同时更新搜索 placeholder、metadata、readiness card 和推荐 intent |
+| **Search / Ask 输入框** | 当前 scope 的搜索提示，如 `Search or ask in current document...` | 给“我知道我要什么”的用户快速入口；不是主 CTA | 输入短词时过滤 capability；输入自然语言时作为 initial intent；回车可进入 intent run 或展示匹配项 |
+| **Scope metadata line** | 当前 note 路径 / vault 规模 / system environment | 让用户确认 agent 将要看的对象，避免跑错 scope | 一般不可点击；文件路径 / vault stats 可 hover 展开详情 |
+| **Readiness card** | 当前 scope 是否 ready、是否刚 review、是否有 warning | 核心决策面，替代大面积能力网格 | 根据状态决定主按钮：Auto / View last report / Run system check |
+| **Signal chips** | `few links`、`no past review`、`1 note changed`、`2 warnings` | 解释推荐动作的依据，让 Auto 看起来不是玄学按钮 | 可 hover 查看信号来源；不作为主要操作按钮 |
+| **Run strategy controls** | `Auto`、`Fast`、`Refresh`、`Run system check`、`View last report` | 把“怎么跑”从能力列表里提出来，成为主决策 | 直接进入对应 agent run 或打开已有 review artifact |
+| **Customize** | 小的次级入口 | 高级用户限制 scope、模型、深度、输出形态；默认用户不用碰 | 打开轻量 sheet：scope、depth、model、output artifacts、是否允许长报告 |
+| **Recent / Past reviews** | 最近该 scope 的 review / diagnostics | 告诉用户以前跑过什么，避免重复消费 token | 点击打开历史 review result；`All reviews` 进入全局历史 |
+| **Suggested intents** | 2-3 个最相关入口，如 `Connect links`、`Knowledge gaps`、`Prompt audit` | 手动入口只是 initial intent，不是让用户先选一堆工具 | 点击后启动 agent run，并把该 intent 作为开场目标；agent 仍可调用其他工具 |
+| **Show all capabilities** | 一行次级入口 | 保留能力目录，但不让它占据第一屏 | 展开完整 capability catalog / command list |
+
+#### 8.0.2 按钮语义
+
+这些按钮不是新增“孤立功能”，而是同一个 review launcher 的不同运行策略：
+
+| 按钮 | 含义 | 适用 scope | 去向 |
+|---|---|---|---|
+| **Auto** | 让 agent 自己观察 context、选择 tools、产出 review artifacts | Document / Vault | 进入 Auto Review modal；Document 默认产生 Changes + Insights，Vault 默认产生 Overview / Clusters / Gaps / Actions / Trace |
+| **Fast** | 低成本、短链路扫描；通常一轮，不做深挖 | Document / Vault | 进入同一个 review modal，但 trace 标注为 fast run，artifact 可能更少 |
+| **View last report** | 不重新跑，直接看上次结果 | Vault 优先，Document 有历史时可出现 | 打开最近 review artifact / 落盘 Markdown |
+| **Refresh** | 用户明确要求重新计算 / 重跑 | Vault | 重新 fingerprint + digest；若变化显著则进入 Auto run，否则可提示“仍可查看旧报告” |
+| **Run system check** | 检查运行环境，不分析内容 | Setting | 进入 System diagnostics run：providers / index / skills / prompts / recent failures |
+| **View diagnostics** | 查看上次系统检查 | Setting | 打开 diagnostics artifact，不启动新 agent |
+| **Customize** | 改运行约束 | 全部 scope | 打开配置 sheet，确认后回到 Auto / Fast / Refresh |
+
+#### 8.0.3 三个 tab 的差异
+
+| Tab | 用户问题 | Readiness card 应该讲什么 | 主按钮逻辑 | Suggested intents |
+|---|---|---|---|---|
+| **Document** | “这篇 note 现在要不要改 / 补 / 连接？” | 当前 note 的长度、链接、tag、任务、历史 review、选区状态 | 没跑过或信号明显时突出 `Auto`；短 note 可突出 `Fast` | `Connect links`、`Improve note`、`Add evidence`、`Check task list` |
+| **Vault** | “整个 vault 现在怎么样？值得重跑吗？” | fingerprint delta、notes / words、上次 review、变化规模、缓存是否可用 | 没变或微变时突出 `View last report`；显著变化 / 久未跑时突出 `Auto` 或 `Refresh` | `Knowledge gaps`、`Vault health`、`Smart connections`、`Find related` |
+| **Setting** | “我的 agent 运行环境是否健康？” | index 状态、model/profile warning、skills/prompts 变化、最近失败 | 有 warning 时突出 `Run system check`；刚检查过时突出 `View diagnostics` | `Prompt audit`、`Model profiles`、`Index health`、`Run workflow` |
+
+#### 8.0.4 设计边界
+
+- **不要把第一屏做成 capability grid**。工具很多不是问题，但用户不该先承担分类成本。
+- **Suggested intents 不是 tool whitelist**。点了 `Connect links` 也只是告诉 agent 初始目标；agent 仍可调用 evidence、review、task check 等辅助 tools。
+- **Auto 不等于黑箱**。Readiness card + signal chips 解释为什么现在推荐 Auto / Refresh / View last report。
+- **Setting 不是普通设置页**。它是 system-scope review launcher，关注运行健康、诊断和修复建议。
+- **Search 是旁路，不是主路径**。默认主路径应该是 readiness card 的 CTA，而不是要求用户先搜索命令。
+
 ### 8.1 入口（Vault tab）
 
 进入 Vault tab 时根据 vault fingerprint vs 上一次 review 的状态决定显示什么：
@@ -497,6 +553,12 @@ Vault Review 落盘后的 Markdown，自动进入 vault → 被 IndexService 索
 
 交付物：
 
+0. **Review Launcher Picker 统一信息架构**
+   - 三个 tab 共用同一套 launcher 语言：scope tabs + search/ask + metadata + readiness card + recent history + suggested intents
+   - Document / Vault / Setting 只改变 scope 语义和主按钮策略，不另造三套视觉系统
+   - 第一屏不做 capability grid；完整能力入口收进 `Show all capabilities`
+   - Suggested intents 只是 initial intent，不限制 agent 后续可调用的 tools
+
 1. **Vault tab 入口改造**
    - 替换 active doc 路径行为 vault 元数据（file count / word count / last reviewed）
    - 五状态卡（A-E）
@@ -612,6 +674,9 @@ Document Fast 模式已支持 Haiku override。Vault 跑得久、token 多，是
 （视觉留给设计师，下面是必须遵守的功能性约束）
 
 - **Vault tab 头部必须显示 vault 元数据**，不能再显示某个 doc 路径
+- **Picker 是 Review Launcher，不是能力大全**；能力目录只能作为 `Show all capabilities` 的次级路径
+- **三个 tab 保持同一设计语言**：Document / Vault / Setting 都有 metadata、readiness card、run controls、history、suggested intents
+- **按钮表达运行策略，不表达孤立功能**：Auto/Fast/Refresh/System check 是 agent run 的模式，Suggested intents 是开场目标
 - **状态卡（A-E）是核心交互单元**，让用户 2 秒判断"该不该重跑"
 - **Overview 是默认消费界面**，5 秒内给出结论；Clusters / Gaps / Actions 承接深入查看和下一步操作
 - **Sources 不做顶层 tab**，每个结论以 source chips / evidence drawer 解释来源

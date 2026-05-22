@@ -1,0 +1,4146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>Vault Review · UI Mock v2 (2026-05-22)</title>
+<style>
+  /* ============================================================
+     Design tokens — aligned to src/styles/peak-tokens.css source.
+     Mockup keeps inline copy; production renders via --pk-* vars.
+     ============================================================ */
+  :root {
+    --bg: #F4F5F8;
+    --surface: #FFFFFF;
+    --surface-muted: #F7F7FA;
+    --surface-soft: #FAFAFC;
+    --surface-tint: #F4F1FB;
+
+    --border: #E5E7EB;
+    --border-soft: #EEEEF2;
+    --border-strong: #D1D5DB;
+
+    --text: #18181B;
+    --text-muted: #6B7280;
+    --text-faint: #9CA3AF;
+    --text-link: #5B43D1;
+
+    --accent: #7C3AED;
+    --accent-hover: #6D28D9;
+    --accent-deep: #5B21B6;
+    --accent-soft: rgba(124, 58, 237, 0.18);
+    --accent-tint: rgba(124, 58, 237, 0.08);
+    --accent-tint-strong: rgba(124, 58, 237, 0.14);
+
+    --blue: #2563EB;
+    --blue-hover: #1D4ED8;
+    --blue-tint: #E6EEFE;
+    --blue-text: #1E40AF;
+
+    --success: #15803D;
+    --success-tint: #E5F6EC;
+    --success-text: #166534;
+
+    --warning: #B45309;
+    --warning-tint: #FCE8C6;
+    --warning-text: #92400E;
+
+    --danger: #B91C1C;
+    --danger-tint: #FCE4E4;
+    --danger-text: #991B1B;
+
+    --indigo: #4F46E5;
+    --indigo-tint: #E8E6FD;
+    --indigo-text: #4338CA;
+
+    --cyan: #0891B2;
+    --cyan-tint: #DBF1F8;
+    --orange: #C2410C;
+    --orange-tint: #FCE4D4;
+    --pink: #DB2777;
+    --pink-tint: #FCE4ED;
+
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+
+    --shadow-card: 0 1px 2px rgba(15, 18, 25, 0.04), 0 0 0 1px rgba(15, 18, 25, 0.04);
+    --shadow-pop: 0 4px 12px rgba(15, 18, 25, 0.08), 0 1px 3px rgba(15, 18, 25, 0.06);
+    --shadow-modal: 0 18px 60px rgba(15, 18, 25, 0.16), 0 4px 12px rgba(15, 18, 25, 0.08);
+  }
+
+  /* ============================================================
+     Reset & typography
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "PingFang SC", "Segoe UI", "Helvetica Neue", sans-serif;
+    font-size: 13.5px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* ============================================================
+     Page chrome — scene navigator
+     ============================================================ */
+  .page-nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: saturate(140%) blur(8px);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .page-nav h1 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--text);
+  }
+  .page-nav h1 small {
+    margin-left: 8px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .nav-spacer { flex: 1; }
+  .nav-group-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-right: 4px;
+  }
+  .nav-tab {
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    border: 1px solid var(--border-soft);
+    font-size: 11.5px;
+    font-weight: 600;
+    transition: all 0.12s ease;
+  }
+  .nav-tab:hover { background: var(--surface-tint); color: var(--accent); }
+  .nav-tab.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .nav-divider {
+    width: 1px; height: 18px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+
+  .page-content {
+    padding: 32px 24px 80px;
+  }
+  .scene { display: none; }
+  .scene.active { display: block; }
+  .scene-caption {
+    max-width: 1280px;
+    margin: 0 auto 14px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .scene-caption .dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* ============================================================
+     Lucide-style icons (24x24 viewBox, currentColor stroke)
+     ============================================================ */
+  .icon {
+    width: 16px; height: 16px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+  }
+  .icon-sm { width: 13px; height: 13px; stroke-width: 2; }
+  .icon-lg { width: 20px; height: 20px; }
+  .icon-xl { width: 28px; height: 28px; stroke-width: 1.8; }
+
+  /* ============================================================
+     Reusable primitives — button, pill, badge
+     ============================================================ */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    transition: all 0.12s ease;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface-muted); border-color: var(--border-strong); }
+  .btn.primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn.primary-blue {
+    background: var(--blue);
+    color: white;
+    border-color: var(--blue);
+  }
+  .btn.primary-blue:hover { background: var(--blue-hover); }
+  .btn.ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-muted);
+  }
+  .btn.ghost:hover { background: var(--surface-muted); color: var(--text); }
+  .btn.outline-accent {
+    background: var(--surface);
+    color: var(--accent-deep);
+    border-color: var(--accent-soft);
+  }
+  .btn.outline-accent:hover { background: var(--accent-tint); }
+  .btn.sm { padding: 4px 9px; font-size: 11.5px; gap: 4px; }
+  .btn.lg { padding: 9px 16px; font-size: 13px; }
+  .btn.block { width: 100%; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .pill.success { background: var(--success-tint); color: var(--success-text); }
+  .pill.warning { background: var(--warning-tint); color: var(--warning-text); }
+  .pill.danger  { background: var(--danger-tint);  color: var(--danger-text); }
+  .pill.info    { background: var(--blue-tint);    color: var(--blue-text); }
+  .pill.accent  { background: var(--accent-tint-strong); color: var(--accent-deep); }
+  .pill.indigo  { background: var(--indigo-tint);  color: var(--indigo-text); }
+  .pill.neutral { background: var(--surface-muted); color: var(--text-muted); }
+
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* Tab count badge */
+  .tab-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: 10.5px;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .modal-tab.active .tab-badge {
+    background: var(--accent-tint-strong);
+    color: var(--accent-deep);
+  }
+
+  /* Status status-dot */
+  .status-dot {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--success-text);
+  }
+  .status-dot::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 0 3px var(--success-tint);
+  }
+
+  /* Inline wiki-link style */
+  .wiki { color: var(--text-link); font-weight: 500; }
+  .wiki:hover { text-decoration: underline; }
+  .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; font-size: 12px; }
+
+  /* ============================================================
+     Picker (Review Launcher) — Document / Vault / Setting
+     ============================================================ */
+  .picker {
+    max-width: 1080px;
+    margin: 0 auto;
+    background: var(--surface);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-modal);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .picker-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+  .picker-tab {
+    text-align: center;
+    padding: 16px 12px 12px;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .picker-tab .pt-title {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .picker-tab .pt-sub {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-faint);
+    font-weight: 400;
+  }
+  .picker-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .picker-tab.active .pt-title { font-weight: 700; }
+  .picker-tab.active .pt-sub { color: var(--accent-deep); opacity: 0.75; }
+  .picker-tab:not(.active):hover { background: var(--surface-soft); color: var(--text); }
+
+  .picker-body {
+    padding: 22px 28px 24px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+
+  .picker-search {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: 0 1px 2px rgba(15, 18, 25, 0.03);
+  }
+  .picker-search input {
+    flex: 1;
+    border: 0; outline: 0; background: transparent;
+    font-size: 13.5px;
+    color: var(--text);
+    font-family: inherit;
+  }
+  .picker-search input::placeholder { color: var(--text-faint); }
+  .picker-search .icon { color: var(--text-faint); }
+  .picker-search .scope-pill {
+    background: var(--accent-tint-strong);
+    color: var(--accent-deep);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+
+  .picker-meta {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 0 4px;
+  }
+  .picker-meta .icon { color: var(--text-faint); }
+  .picker-meta .sep { color: var(--text-faint); }
+
+  .readiness-card {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 28px;
+    padding: 22px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
+  .readiness-left { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; }
+  .readiness-icon {
+    width: 54px; height: 54px;
+    border-radius: 14px;
+    background: var(--accent-tint);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .readiness-icon .icon { width: 26px; height: 26px; stroke-width: 1.8; }
+  .readiness-icon .badge-dot {
+    position: absolute;
+    bottom: -4px; right: -4px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--warning-tint);
+    color: var(--warning);
+    border: 3px solid var(--surface);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .readiness-icon .badge-dot .icon { width: 12px; height: 12px; stroke-width: 2.5; }
+  .readiness-body { min-width: 0; }
+  .readiness-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 2px 0 6px;
+    line-height: 1.3;
+  }
+  .readiness-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin: 0 0 14px;
+  }
+  .signal-chips {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-top: 10px;
+  }
+  .signal-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .signal-chip .icon { width: 13px; height: 13px; color: var(--text-faint); }
+  .signal-chip.success { color: var(--success-text); background: var(--success-tint); border-color: transparent; }
+  .signal-chip.success .icon { color: var(--success); }
+  .signal-chip.warning { color: var(--warning-text); background: var(--warning-tint); border-color: transparent; }
+  .signal-chip.warning .icon { color: var(--warning); }
+  .signal-chip.dot-amber::before {
+    content: "";
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #F59E0B;
+    margin-right: -2px;
+  }
+
+  .run-strategy { display: flex; flex-direction: column; gap: 8px; }
+  .run-strategy-header {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+  .run-strategy .btn { width: 100%; padding: 9px 14px; font-size: 13px; }
+
+  .picker-split {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.1fr);
+    gap: 28px;
+    padding: 4px 4px;
+  }
+  .picker-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 0 0 12px;
+  }
+  .picker-section-title.normal {
+    font-size: 14px;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .picker-section-link {
+    color: var(--text-link);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .picker-section-link .icon { width: 12px; height: 12px; }
+
+  .recent-list { display: flex; flex-direction: column; gap: 8px; }
+  .recent-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    transition: all 0.12s;
+  }
+  .recent-row:hover { border-color: var(--accent-soft); background: var(--surface-tint); }
+  .recent-row .recent-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .recent-row .recent-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.4;
+    margin: 0;
+    display: flex; align-items: baseline; gap: 8px;
+    overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .recent-row .recent-title .recent-age {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-faint);
+  }
+  .recent-row .recent-meta {
+    margin-top: 3px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  .recent-row .chev { color: var(--text-faint); }
+
+  .recent-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 36px 18px;
+    background: var(--surface-soft);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-muted);
+  }
+  .recent-empty .icon-wrap {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-faint);
+    margin-bottom: 10px;
+  }
+  .recent-empty-title { font-size: 13px; font-weight: 600; color: var(--text); margin: 0 0 2px; }
+  .recent-empty-sub { font-size: 12px; color: var(--text-muted); }
+
+  .intent-list { display: flex; flex-direction: column; gap: 8px; }
+  .intent-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    transition: all 0.12s;
+  }
+  .intent-row:hover { border-color: var(--accent-soft); background: var(--surface-tint); }
+  .intent-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--accent-tint);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .intent-icon .icon { width: 18px; height: 18px; }
+  .intent-icon.indigo { background: var(--indigo-tint); color: var(--indigo-text); }
+  .intent-icon.cyan { background: var(--cyan-tint); color: var(--cyan); }
+  .intent-icon.orange { background: var(--orange-tint); color: var(--orange); }
+  .intent-icon.pink { background: var(--pink-tint); color: var(--pink); }
+  .intent-body .intent-title {
+    font-size: 13px; font-weight: 600; color: var(--text); margin: 0 0 2px;
+  }
+  .intent-body .intent-sub {
+    font-size: 11.5px; color: var(--text-muted);
+  }
+  .intent-row .chev { color: var(--text-faint); }
+
+  .picker-footer-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 18px;
+    background: var(--surface-soft);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    margin-top: 4px;
+  }
+  .picker-footer-row .pfr-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .picker-footer-row .pfr-title {
+    font-size: 13px; font-weight: 600; color: var(--text); margin: 0 0 2px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .picker-footer-row .pfr-title .icon { width: 12px; height: 12px; }
+  .picker-footer-row .pfr-sub {
+    font-size: 11.5px; color: var(--text-muted);
+  }
+  .picker-footer-row .chev { color: var(--text-faint); }
+
+  /* ============================================================
+     Report modal — shared chrome (header + tabs + body + footer)
+     ============================================================ */
+  .modal {
+    max-width: 1280px;
+    margin: 0 auto;
+    background: var(--surface);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-modal);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .modal-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 18px;
+    align-items: center;
+    padding: 22px 28px 16px;
+  }
+  .modal-brand {
+    width: 50px; height: 50px;
+    border-radius: 14px;
+    background: var(--accent-tint);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .modal-brand .icon { width: 28px; height: 28px; stroke-width: 1.6; }
+  .modal-title-block .modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 4px;
+    letter-spacing: -0.005em;
+  }
+  .modal-title-block .modal-subtitle {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    display: inline-flex; align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .modal-title-block .modal-subtitle .sep { color: var(--text-faint); }
+  .modal-header-actions {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--text-muted);
+  }
+  .modal-header-actions .icon-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .modal-header-actions .icon-btn:hover { background: var(--surface-muted); color: var(--text); }
+
+  .modal-tabs {
+    display: flex; align-items: center; gap: 22px;
+    padding: 6px 28px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-tab {
+    background: transparent;
+    border: 0;
+    padding: 10px 0 12px;
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex; align-items: center;
+    transition: color 0.1s;
+  }
+  .modal-tab:hover { color: var(--text); }
+  .modal-tab.active {
+    color: var(--accent);
+    font-weight: 600;
+    border-bottom-color: var(--accent);
+  }
+
+  .modal-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 28px;
+    padding: 22px 28px 24px;
+  }
+  .modal-body.full {
+    grid-template-columns: 1fr;
+  }
+  .modal-body.sources-cols {
+    grid-template-columns: 220px minmax(0, 1fr) 280px;
+  }
+  .modal-body.trace-cols {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  .modal-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-soft);
+    gap: 12px;
+  }
+  .modal-footer .footer-left {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .modal-footer .footer-left .icon { color: var(--text-faint); }
+  .modal-footer .footer-actions {
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+
+  /* ============================================================
+     Agent trace right-rail (Overview / Clusters / Gaps / Actions)
+     ============================================================ */
+  .trace-rail-title {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .trace-rail-title .label-sub {
+    margin-left: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .trace-events {
+    position: relative;
+    display: flex; flex-direction: column;
+    gap: 18px;
+  }
+  .trace-events::before {
+    content: "";
+    position: absolute;
+    left: 60px;
+    top: 12px; bottom: 12px;
+    width: 1px;
+    background: var(--border);
+  }
+  .trace-event {
+    display: grid;
+    grid-template-columns: 52px 22px 1fr;
+    gap: 8px;
+    align-items: start;
+  }
+  .trace-event .te-time {
+    font-size: 11px;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+    padding-top: 2px;
+  }
+  .trace-event .te-marker {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--success-tint);
+    color: var(--success);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1;
+    border: 3px solid var(--surface);
+  }
+  .trace-event .te-marker .icon { width: 12px; height: 12px; stroke-width: 3; }
+  .trace-event.in-progress .te-marker {
+    background: var(--accent-tint);
+    color: var(--accent);
+  }
+  .trace-event .te-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 1px 0 2px;
+  }
+  .trace-event .te-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .trace-rail-foot {
+    margin-top: 16px;
+  }
+  .trace-rail-status {
+    margin-left: auto;
+  }
+
+  /* ============================================================
+     Overview tab — insight card, snapshot grid, what-changed, top action
+     ============================================================ */
+  .insight-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 18px;
+    padding: 20px 22px;
+    background: var(--surface-tint);
+    border-radius: var(--radius-lg);
+    margin-bottom: 22px;
+  }
+  .insight-card .insight-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .insight-card .insight-icon .icon { width: 22px; height: 22px; }
+  .insight-card .insight-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 4px 0 10px;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .insight-card .insight-body p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .insight-card .insight-body p + p { margin-top: 6px; }
+  .insight-card .insight-body .em { font-weight: 600; }
+
+  .section-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 22px 0 10px;
+  }
+  .section-label .label-sub {
+    margin-left: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .snapshot-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .snapshot-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    align-items: start;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+  }
+  .snapshot-card .sc-icon {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    background: var(--accent-tint);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .snapshot-card .sc-icon .icon { width: 16px; height: 16px; }
+  .snapshot-card .sc-icon.indigo { background: var(--indigo-tint); color: var(--indigo-text); }
+  .snapshot-card .sc-icon.success { background: var(--success-tint); color: var(--success); }
+  .snapshot-card .sc-icon.cyan { background: var(--cyan-tint); color: var(--cyan); }
+  .snapshot-card .sc-icon.orange { background: var(--orange-tint); color: var(--orange); }
+  .snapshot-card .sc-icon.pink { background: var(--pink-tint); color: var(--pink); }
+  .snapshot-card .sc-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0;
+    font-weight: 500;
+  }
+  .snapshot-card .sc-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 2px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .snapshot-card .sc-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+
+  .changed-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .changed-chip {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+  }
+  .changed-chip .cc-badge {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .changed-chip .cc-badge.touched { background: var(--success-tint); color: var(--success); }
+  .changed-chip .cc-badge.touched::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+  .changed-chip .cc-badge.new      { background: var(--success-tint); color: var(--success); }
+  .changed-chip .cc-badge.deleted  { background: var(--danger-tint);  color: var(--danger); }
+  .changed-chip .cc-badge.trend    { background: var(--success-tint); color: var(--success); }
+  .changed-chip .cc-badge .icon { width: 13px; height: 13px; stroke-width: 2.5; }
+  .changed-chip .cc-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .changed-chip .cc-value.up    { color: var(--success-text); }
+  .changed-chip .cc-value.down  { color: var(--danger-text); }
+  .changed-chip .cc-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+
+  .top-action-banner {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 18px;
+    background: var(--accent-tint);
+    border: 1px solid var(--accent-soft);
+    border-radius: var(--radius-lg);
+    margin-top: 18px;
+  }
+  .top-action-banner .tab-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .top-action-banner .tab-icon .icon { width: 18px; height: 18px; }
+  .top-action-banner .tab-title {
+    font-size: 13.5px;
+    color: var(--text);
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .top-action-banner .tab-title strong { font-weight: 600; }
+  .top-action-banner .tab-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ============================================================
+     Breadcrumb (within modal body)
+     ============================================================ */
+  .modal-breadcrumb {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin: 0 0 4px;
+  }
+  .modal-breadcrumb a { color: var(--text-link); font-weight: 500; }
+  .modal-breadcrumb .sep { color: var(--text-faint); }
+  .modal-page-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 16px;
+  }
+
+  /* ============================================================
+     Clusters tab
+     ============================================================ */
+  .cluster-table {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .cluster-table-head {
+    display: grid;
+    grid-template-columns: 2.3fr 0.7fr 0.8fr 0.9fr 2fr 24px;
+    gap: 14px;
+    padding: 10px 18px;
+    background: var(--surface-soft);
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .cluster-row {
+    display: grid;
+    grid-template-columns: 2.3fr 0.7fr 0.8fr 0.9fr 2fr 24px;
+    gap: 14px;
+    padding: 14px 18px;
+    align-items: center;
+    border-bottom: 1px solid var(--border-soft);
+    transition: background 0.1s;
+  }
+  .cluster-row:last-child { border-bottom: 0; }
+  .cluster-row:hover { background: var(--surface-soft); }
+  .cluster-row.selected {
+    background: var(--accent-tint);
+    box-shadow: inset 0 0 0 2px var(--accent-soft);
+    border-bottom-color: transparent;
+    position: relative;
+    z-index: 1;
+  }
+  .cluster-row .cl-name {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: center;
+    min-width: 0;
+  }
+  .cluster-row .cl-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .cluster-row .cl-icon.brain     { background: var(--accent-tint); color: var(--accent); }
+  .cluster-row .cl-icon.search    { background: var(--cyan-tint);   color: var(--cyan); }
+  .cluster-row .cl-icon.palette   { background: var(--orange-tint); color: var(--orange); }
+  .cluster-row .cl-icon.user      { background: var(--warning-tint);color: var(--warning); }
+  .cluster-row .cl-icon.briefcase { background: var(--orange-tint); color: var(--orange); }
+  .cluster-row .cl-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 2px;
+  }
+  .cluster-row .cl-desc {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+  .cluster-row .cl-num {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .cluster-row .cl-num-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .cluster-row .cl-change.up   { color: var(--success-text); font-weight: 600; }
+  .cluster-row .cl-change.flat { color: var(--text-muted); }
+  .cluster-row .cl-change.none { color: var(--text-faint); }
+  .cluster-row .cl-status .pill { margin-bottom: 3px; }
+  .cluster-row .cl-status-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .cluster-row .cl-reps {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text);
+    overflow: hidden;
+  }
+  .cluster-row .cl-reps .more {
+    color: var(--text-muted);
+    font-size: 11.5px;
+  }
+  .cluster-row .cl-chev { color: var(--text-faint); }
+
+  .cluster-detail {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    margin-top: 14px;
+  }
+  .cd-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1.2fr 1.1fr 0.9fr;
+    gap: 22px;
+    align-items: start;
+  }
+  .cd-cluster {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+  .cd-cluster .cd-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--accent-tint);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .cd-cluster .cd-name {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 2px 0 4px;
+  }
+  .cd-cluster .cd-desc {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .cd-cluster .cd-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+  .cd-section-label {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0 0 8px;
+  }
+  .cd-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cd-tag {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--accent-tint);
+    color: var(--accent-deep);
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+  .cd-hubs { display: flex; flex-direction: column; gap: 5px; }
+  .cd-hub-row {
+    display: flex; justify-content: space-between;
+    font-size: 12px;
+  }
+  .cd-hub-row .num {
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .cd-health { display: flex; flex-direction: column; gap: 5px; }
+  .cd-health-row {
+    display: flex; justify-content: space-between;
+    font-size: 12px;
+  }
+  .cd-health-row .label { color: var(--text-muted); }
+  .cd-health-row .val { color: var(--text); font-weight: 500; }
+  .cd-health-row .val.up { color: var(--success-text); }
+  .cd-spark-wrap {
+    display: flex; flex-direction: column;
+    align-items: flex-start;
+  }
+  .cd-spark-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .cd-spark-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--success-text);
+    margin: 0 0 6px;
+    line-height: 1;
+  }
+  .cd-spark {
+    width: 100%;
+    height: 36px;
+  }
+  .cd-spark path { fill: none; stroke: var(--success); stroke-width: 2; }
+  .cd-spark .area { fill: var(--success-tint); stroke: none; }
+
+  .cd-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 14px;
+    margin-top: 14px;
+    border-top: 1px solid var(--border-soft);
+    gap: 14px;
+  }
+  .cd-foot-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-right: 8px;
+    font-weight: 500;
+  }
+  .cd-foot-notes {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    flex: 1;
+    font-size: 12px;
+  }
+  .cd-foot-notes .sep { color: var(--text-faint); }
+
+  /* ============================================================
+     Gaps tab
+     ============================================================ */
+  .gap-card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+  .gap-card:last-child { margin-bottom: 0; }
+  .gap-card-head {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 16px;
+    align-items: start;
+    margin-bottom: 14px;
+  }
+  .gap-card-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--accent-tint);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .gap-card-icon.indigo { background: var(--indigo-tint); color: var(--indigo-text); }
+  .gap-card-icon.warning { background: var(--warning-tint); color: var(--warning); }
+  .gap-card-icon .icon { width: 20px; height: 20px; }
+  .gap-card-headline {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin: 4px 0 2px;
+  }
+  .gap-card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+    line-height: 1.3;
+  }
+  .gap-meta-col {
+    text-align: right;
+    min-width: 70px;
+    align-self: center;
+  }
+  .gap-meta-label {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .gap-meta-val {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--warning-text);
+    font-variant-numeric: tabular-nums;
+  }
+  .gap-meta-val.success { color: var(--success-text); }
+  .gap-meta-val.danger  { color: var(--danger-text); }
+  .gap-meta-val.link    { color: var(--text-link); font-weight: 600; font-size: 12.5px; }
+
+  .gap-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin: 0 0 14px;
+  }
+  .bridge-score-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+    margin: 0 0 18px;
+  }
+  .bridge-score-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .bridge-bar {
+    height: 6px;
+    background: var(--surface-muted);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bridge-bar .bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 999px;
+  }
+  .bridge-score-val {
+    font-size: 12.5px;
+    color: var(--text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .gap-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+  }
+  .gap-subhead {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 8px;
+  }
+  .gap-subhead .icon { color: var(--text-faint); width: 13px; height: 13px; }
+  .gap-bullets {
+    margin: 0 0 10px;
+    padding-left: 18px;
+    font-size: 12.5px;
+    color: var(--text);
+    line-height: 1.8;
+  }
+  .gap-bullets li::marker { color: var(--text-faint); }
+
+  .gap-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .gap-table th {
+    text-align: left;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .gap-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 12.5px;
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .gap-table tr:last-child td { border-bottom: 0; }
+  .gap-table .num {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .gap-table .truncated {
+    color: var(--text-muted);
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+
+  /* ============================================================
+     Actions tab
+     ============================================================ */
+  .info-banner {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 16px;
+    background: var(--blue-tint);
+    border: 1px solid #C7DAFB;
+    border-radius: var(--radius);
+    color: var(--blue-text);
+    font-size: 12.5px;
+    font-weight: 500;
+    margin-bottom: 14px;
+  }
+  .info-banner .icon { color: var(--blue); }
+
+  .actions-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 0 0 14px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .actions-toolbar-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .actions-toolbar-title .sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 6px;
+  }
+  .filter-pills { display: inline-flex; align-items: center; gap: 6px; }
+  .filter-pill {
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .filter-pill:hover { color: var(--text); border-color: var(--border-strong); }
+  .filter-pill.active {
+    color: var(--accent-deep);
+    background: var(--accent-tint);
+    border-color: var(--accent-soft);
+  }
+  .filter-icon-btn {
+    padding: 5px 8px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    color: var(--text-muted);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .action-card {
+    display: grid;
+    grid-template-columns: 28px 56px 1fr auto;
+    gap: 12px;
+    align-items: start;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    margin-bottom: 10px;
+  }
+  .action-card .ac-drag {
+    display: flex; align-items: center;
+    color: var(--text-faint);
+    align-self: center;
+  }
+  .action-card .ac-rank {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px;
+    padding-top: 2px;
+  }
+  .action-card .ac-rank-num {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .action-card .ac-rank-trend {
+    width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--success);
+  }
+  .action-card .ac-rank-trend.up   { color: var(--success); }
+  .action-card .ac-rank-trend.flat { color: var(--text-faint); }
+  .action-card .ac-rank-trend.down { color: var(--text-muted); }
+  .action-card .ac-rank-trend .icon { width: 14px; height: 14px; stroke-width: 2.5; }
+
+  .action-card .ac-body { min-width: 0; }
+  .action-card .ac-tag {
+    margin-bottom: 6px;
+  }
+  .action-card .ac-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 4px;
+    line-height: 1.4;
+  }
+  .action-card .ac-sub {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin: 0 0 8px;
+  }
+  .action-card .ac-bullets {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.65;
+  }
+  .action-card .ac-bullets li::marker { color: var(--text-faint); }
+
+  .action-card .ac-side {
+    display: flex; flex-direction: column;
+    align-items: flex-end;
+    gap: 14px;
+    min-width: 200px;
+  }
+  .action-card .ac-stats {
+    display: grid;
+    grid-template-columns: auto auto auto;
+    gap: 18px;
+    text-align: right;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  .action-card .ac-stat-label {
+    margin: 0 0 3px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .action-card .ac-stat-val {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .action-card .ac-stat-val.medium { font-size: 12.5px; }
+  .action-card .ac-stat-val .pill { vertical-align: middle; }
+
+  .pill.impact-high { background: #FCE0DD; color: var(--danger-text); }
+  .pill.impact-medium { background: var(--warning-tint); color: var(--warning-text); }
+  .pill.impact-low { background: var(--blue-tint); color: var(--blue-text); }
+  .pill.risk-medium { background: var(--warning-tint); color: var(--warning-text); }
+  .pill.risk-low { background: var(--success-tint); color: var(--success-text); }
+  .pill.status-planned { background: var(--surface-muted); color: var(--text-muted); }
+
+  .action-footer-hint {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 6px 0;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  .action-footer-hint .icon { color: var(--text-faint); }
+
+  /* ============================================================
+     Sources tab — 3-col layout
+     ============================================================ */
+  .sources-filters {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+  }
+  .sf-section { margin-bottom: 18px; }
+  .sf-section:last-child { margin-bottom: 0; }
+  .sf-section-title {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0 0 8px;
+  }
+  .sf-group-list { display: flex; flex-direction: column; gap: 2px; }
+  .sf-group-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--text);
+  }
+  .sf-group-item:hover { background: var(--surface-soft); }
+  .sf-group-item.active { background: var(--accent-tint); color: var(--accent-deep); font-weight: 600; }
+  .sf-group-item .count { color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 11.5px; }
+  .sf-group-item.active .count { color: var(--accent-deep); }
+
+  .sf-check-list { display: flex; flex-direction: column; gap: 4px; }
+  .sf-check {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 4px;
+    font-size: 12.5px;
+    color: var(--text);
+  }
+  .sf-check label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .sf-check input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; }
+  .sf-check .count { color: var(--text-muted); font-size: 11.5px; }
+
+  .sources-toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin: 0 0 12px;
+    gap: 12px;
+  }
+  .sources-toolbar-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .sources-toolbar-actions {
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .sort-select {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 12px;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .sort-select .icon { color: var(--text-faint); width: 12px; height: 12px; }
+  .sort-select .label { color: var(--text-muted); }
+
+  .sources-table {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .sources-table-head, .sources-row {
+    display: grid;
+    grid-template-columns: 2.2fr 1.4fr 1.1fr 0.8fr 2.4fr;
+    gap: 12px;
+    padding: 10px 16px;
+    align-items: start;
+  }
+  .sources-table-head {
+    background: var(--surface-soft);
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .sources-row {
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 12.5px;
+  }
+  .sources-row:last-child { border-bottom: 0; }
+  .sources-row:hover { background: var(--surface-soft); }
+  .sources-row.selected { background: var(--accent-tint); box-shadow: inset 0 0 0 2px var(--accent-soft); position: relative; z-index: 1; }
+  .sources-row .src-title {
+    font-size: 13px;
+    color: var(--text-link);
+    font-weight: 500;
+    margin: 0 0 2px;
+  }
+  .sources-row .src-path {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-family: ui-monospace, monospace;
+  }
+  .sources-row .src-used {
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .sources-row .src-used .more { color: var(--text-muted); font-size: 11.5px; display: block; margin-top: 2px; }
+  .sources-row .src-signals { display: flex; flex-wrap: wrap; gap: 4px; }
+  .sources-row .src-excerpt {
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .pill.signal-graph    { background: var(--accent-tint-strong); color: var(--accent-deep); }
+  .pill.signal-cluster  { background: var(--indigo-tint);  color: var(--indigo-text); }
+  .pill.signal-backlink { background: var(--blue-tint);    color: var(--blue-text); }
+  .pill.signal-stale    { background: var(--warning-tint); color: var(--warning-text); }
+  .pill.signal-dangling { background: var(--danger-tint);  color: var(--danger-text); }
+  .pill.conf-high   { background: var(--success-tint); color: var(--success-text); }
+  .pill.conf-medium { background: var(--warning-tint); color: var(--warning-text); }
+  .pill.conf-low    { background: var(--danger-tint);  color: var(--danger-text); }
+
+  .sources-pagination {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 4px 0;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .pag-pages { display: inline-flex; align-items: center; gap: 4px; }
+  .pag-page {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .pag-page.active { background: var(--accent-tint); color: var(--accent-deep); border-color: var(--accent-soft); }
+  .pag-page.disabled { color: var(--text-faint); cursor: default; }
+
+  .source-preview {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+  }
+  .source-preview .sp-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin: 0 0 12px;
+  }
+  .source-preview .sp-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .source-preview .sp-icons {
+    display: inline-flex; gap: 6px;
+    color: var(--text-faint);
+  }
+  .source-preview .sp-icons .icon-btn {
+    width: 24px; height: 24px;
+    border: 0;
+    background: transparent;
+    color: var(--text-faint);
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .source-preview .sp-icons .icon-btn:hover { background: var(--surface-muted); color: var(--text); }
+  .source-preview .sp-note-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-deep);
+    margin: 0 0 4px;
+  }
+  .source-preview .sp-note-path {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-family: ui-monospace, monospace;
+    margin: 0 0 10px;
+  }
+  .source-preview .sp-tags {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .source-preview .sp-tags .pill { background: var(--surface-muted); color: var(--text-muted); }
+  .source-preview .sp-section {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin: 14px 0 6px;
+  }
+  .source-preview .sp-links { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+  .source-preview .sp-links .more { color: var(--text-muted); font-size: 11.5px; }
+  .source-preview .sp-excerpt {
+    font-size: 12px;
+    color: var(--text);
+    background: var(--surface-soft);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    line-height: 1.55;
+  }
+  .source-preview .sp-dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .source-preview .sp-date-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+  .source-preview .sp-date-val {
+    font-size: 12.5px;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .source-preview .sp-open {
+    margin-top: 16px;
+  }
+
+  /* ============================================================
+     Trace tab
+     ============================================================ */
+  .trace-section-head {
+    display: flex; align-items: center;
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .trace-section-head .sub {
+    margin-left: 6px;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    font-weight: 500;
+  }
+  .trace-section-head .live {
+    margin-left: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--accent-tint-strong);
+    color: var(--accent-deep);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .trace-table {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .trace-table-head, .trace-row {
+    display: grid;
+    grid-template-columns: 90px 32px 1.5fr 1.7fr 70px;
+    gap: 10px;
+    padding: 10px 16px;
+    align-items: center;
+  }
+  .trace-table-head {
+    background: var(--surface-soft);
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .trace-row {
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 12.5px;
+  }
+  .trace-row:last-child { border-bottom: 0; }
+  .trace-row:hover { background: var(--surface-soft); }
+  .trace-row.selected {
+    background: var(--accent-tint);
+    box-shadow: inset 0 0 0 2px var(--accent-soft);
+    position: relative; z-index: 1;
+  }
+  .trace-time {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .trace-icon {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--success-tint);
+    color: var(--success);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto;
+  }
+  .trace-icon .icon { width: 13px; height: 13px; stroke-width: 2.6; }
+  .trace-icon.tool { background: var(--accent-tint); color: var(--accent); }
+  .trace-icon.writing { background: var(--surface-muted); color: var(--text-muted); }
+  .trace-icon.in-progress { background: var(--blue-tint); color: var(--blue); }
+  .trace-step-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .trace-step-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    line-height: 1.45;
+  }
+  .trace-duration {
+    text-align: right;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+  }
+  .trace-duration .tool-glyph {
+    color: var(--text-faint);
+  }
+
+  .trace-legend {
+    display: inline-flex; align-items: center; gap: 16px;
+    margin-top: 14px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  .trace-legend .leg {
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .trace-legend .leg .dot {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .trace-legend .leg .dot.ok       { background: var(--success-tint); color: var(--success); }
+  .trace-legend .leg .dot.tool     { background: var(--accent-tint); color: var(--accent); }
+  .trace-legend .leg .dot.writing  { background: var(--surface-muted); color: var(--text-muted); }
+  .trace-legend .leg .dot.pending  { background: var(--blue-tint); color: var(--blue); }
+  .trace-legend .leg .dot .icon { width: 10px; height: 10px; stroke-width: 3; }
+
+  .step-detail {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+  }
+  .sd-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 0 0 14px;
+  }
+  .sd-head .sd-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .sd-head .sd-counter {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 6px;
+  }
+  .sd-head .sd-pager {
+    display: inline-flex; gap: 2px;
+  }
+  .sd-head .sd-pager button {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sd-step-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+  .sd-section {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 14px 0 6px;
+  }
+  .sd-section:first-of-type { margin-top: 0; }
+  .sd-tool {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface-soft);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 7px 10px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .sd-tool .copy {
+    background: transparent; border: 0;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 2px;
+  }
+  .sd-kv {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 14px;
+    font-size: 12px;
+  }
+  .sd-kv .k { color: var(--text-muted); }
+  .sd-kv .v { color: var(--text); text-align: right; font-weight: 500; }
+  .sd-kv .v.mono { font-family: ui-monospace, monospace; font-size: 11.5px; }
+
+  .sd-touched {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px;
+    border: 1px solid var(--border-soft);
+    background: var(--surface-soft);
+    border-radius: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--text);
+  }
+  .sd-touched .icon { color: var(--accent); width: 13px; height: 13px; }
+
+  .sd-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .sd-stat {
+    padding: 10px 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+  }
+  .sd-stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+  .sd-stat-val {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .trace-foot-banner {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+  .trace-foot-banner .icon-wrap {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--surface-muted);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     Lucide-style icon symbol library — referenced via <use href>
+     ============================================================ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- search -->
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+    <!-- shield with star (header brand) -->
+    <symbol id="i-shield-star" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V5l-8-3z"/><path d="m12 8 1.5 3 3.3.3-2.5 2.2.8 3.3L12 15l-3.1 1.8.8-3.3-2.5-2.2 3.3-.3z"/></symbol>
+    <!-- shield with check / shield-alert -->
+    <symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M12 2 4 5v7c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V5l-8-3z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-shield-alert" viewBox="0 0 24 24"><path d="M12 2 4 5v7c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V5l-8-3z"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.6" fill="currentColor"/></symbol>
+    <!-- sparkles -->
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3 13.5 8.5 19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/><path d="M19 16v3M17.5 17.5h3"/></symbol>
+    <!-- zap -->
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></symbol>
+    <!-- clock -->
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+    <!-- refresh-cw -->
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><polyline points="21 3 21 8 16 8"/></symbol>
+    <!-- activity / pulse -->
+    <symbol id="i-activity" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
+    <!-- file-text -->
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+    <!-- link -->
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></symbol>
+    <!-- target -->
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <!-- check -->
+    <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+    <!-- check-circle -->
+    <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="16 10 11 15 8 12"/></symbol>
+    <!-- alert-triangle -->
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h16.9a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></symbol>
+    <!-- info -->
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r="0.6" fill="currentColor"/></symbol>
+    <!-- x -->
+    <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <!-- more-horizontal -->
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/></symbol>
+    <!-- chevron-right -->
+    <symbol id="i-chev-r" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></symbol>
+    <!-- chevron-left -->
+    <symbol id="i-chev-l" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"/></symbol>
+    <!-- external-link -->
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
+    <!-- download -->
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <!-- copy -->
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <!-- pin -->
+    <symbol id="i-pin" viewBox="0 0 24 24"><line x1="12" y1="17" x2="12" y2="22"/><path d="M8 17h8l-1.5-3V6h-5v8z"/></symbol>
+    <!-- maximize-2 -->
+    <symbol id="i-expand" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></symbol>
+    <!-- filter -->
+    <symbol id="i-filter" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></symbol>
+    <!-- sliders / customize -->
+    <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="2" y1="14" x2="6" y2="14"/><line x1="10" y1="8" x2="14" y2="8"/><line x1="18" y1="16" x2="22" y2="16"/></symbol>
+    <!-- help-circle -->
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2l-1.5 1.5V14"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></symbol>
+    <!-- bar-chart -->
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/></symbol>
+    <!-- trend-up -->
+    <symbol id="i-trend-up" viewBox="0 0 24 24"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></symbol>
+    <!-- arrow-up -->
+    <symbol id="i-arr-up" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></symbol>
+    <!-- arrow-down -->
+    <symbol id="i-arr-dn" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></symbol>
+    <!-- minus -->
+    <symbol id="i-minus" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <!-- plus -->
+    <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <!-- brain -->
+    <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9.5 3A2.5 2.5 0 0 1 12 5.5v13A2.5 2.5 0 0 1 9.5 21 2.5 2.5 0 0 1 7 18.5 2.5 2.5 0 0 1 4.5 16 2.5 2.5 0 0 1 3 13.5 2.5 2.5 0 0 1 4 11 2.5 2.5 0 0 1 3.5 8 2.5 2.5 0 0 1 6 5.5 2.5 2.5 0 0 1 9.5 3z"/><path d="M14.5 3A2.5 2.5 0 0 0 12 5.5v13a2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0 1.5-2.5 2.5 2.5 0 0 0-1-2.5 2.5 2.5 0 0 0 .5-3A2.5 2.5 0 0 0 18 5.5 2.5 2.5 0 0 0 14.5 3z"/></symbol>
+    <!-- network / cluster nodes -->
+    <symbol id="i-network" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><circle cx="12" cy="12" r="2"/><line x1="8" y1="7" x2="10.5" y2="10.5"/><line x1="16" y1="7" x2="13.5" y2="10.5"/><line x1="12" y1="14" x2="12" y2="16"/></symbol>
+    <!-- share-2 (clusters generic) -->
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></symbol>
+    <!-- palette -->
+    <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".7" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".7" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".7" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".7" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c1.4 0 2-1 2-2 0-.5-.2-1-.5-1.4-.3-.4-.5-.9-.5-1.4 0-1 .9-2 2-2h2.4c2.5 0 4.6-2 4.6-4.6C22 6 17.5 2 12 2z"/></symbol>
+    <!-- user -->
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></symbol>
+    <!-- briefcase -->
+    <symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+    <!-- database -->
+    <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"/></symbol>
+    <!-- link-2-off (gap) -->
+    <symbol id="i-link-off" viewBox="0 0 24 24"><path d="M15 7h2a5 5 0 0 1 5 5"/><path d="M9 17H7A5 5 0 0 1 7 7"/><line x1="2" y1="2" x2="22" y2="22"/></symbol>
+    <!-- git-fork (structural) -->
+    <symbol id="i-fork" viewBox="0 0 24 24"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9"/><line x1="12" y1="12" x2="12" y2="15"/></symbol>
+    <!-- grip-vertical (drag) -->
+    <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="18" r="1" fill="currentColor"/><circle cx="15" cy="6" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="18" r="1" fill="currentColor"/></symbol>
+    <!-- list-checks -->
+    <symbol id="i-list-check" viewBox="0 0 24 24"><polyline points="3 6 4.5 7.5 7 5"/><polyline points="3 12 4.5 13.5 7 11"/><polyline points="3 18 4.5 19.5 7 17"/><line x1="11" y1="6" x2="21" y2="6"/><line x1="11" y1="12" x2="21" y2="12"/><line x1="11" y1="18" x2="21" y2="18"/></symbol>
+    <!-- archive -->
+    <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="5" rx="1"/><path d="M5 8v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><line x1="10" y1="13" x2="14" y2="13"/></symbol>
+    <!-- file-plus -->
+    <symbol id="i-file-plus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></symbol>
+    <!-- merge -->
+    <symbol id="i-merge" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></symbol>
+    <!-- play / launch -->
+    <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></symbol>
+    <!-- check-square -->
+    <symbol id="i-check-sq" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+    <!-- puzzle -->
+    <symbol id="i-puzzle" viewBox="0 0 24 24"><path d="M19.4 7.5c0-1.4-1.1-2.5-2.5-2.5-.7 0-1.3.3-1.8.8V4c0-1.1-.9-2-2-2s-2 .9-2 2v2H9c-1.1 0-2 .9-2 2s.9 2 2 2h2v3.7c-.5-.5-1.1-.7-1.8-.7-1.4 0-2.5 1.1-2.5 2.5S7.8 18 9.2 18c.7 0 1.3-.3 1.8-.8V20c0 1.1.9 2 2 2s2-.9 2-2v-2h2c1.1 0 2-.9 2-2s-.9-2-2-2h-2v-2h2c1.1 0 2-.9 2-2z"/></symbol>
+    <!-- circle (writing/in-progress) -->
+    <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></symbol>
+    <!-- hourglass -->
+    <symbol id="i-hourglass" viewBox="0 0 24 24"><path d="M6 2h12"/><path d="M6 22h12"/><path d="M6 2v3l6 7 6-7V2"/><path d="M6 22v-3l6-7 6 7v3"/></symbol>
+    <!-- pen -->
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M14 4l6 6L9 21H3v-6z"/><path d="M12 6l6 6"/></symbol>
+    <!-- save -->
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+    <!-- compass / overview -->
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></symbol>
+    <!-- folder -->
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+    <!-- tag -->
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></symbol>
+    <!-- eye -->
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <!-- circle-dot -->
+    <symbol id="i-circle-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></symbol>
+    <!-- map -->
+    <symbol id="i-map" viewBox="0 0 24 24"><polygon points="1 6 8 3 16 6 23 3 23 18 16 21 8 18 1 21 1 6"/><line x1="8" y1="3" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="21"/></symbol>
+    <!-- compass-rose simple -->
+    <symbol id="i-rocket" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.5-2 5-2 5s3.5-.5 5-2c.9-.9 1-2.4 0-3.3-.9-1-2.5-1-3.4.1z"/><path d="M12 15l-3-3a22 22 0 0 1 2-9 13 13 0 0 1 9-2 22 22 0 0 1-2 9z"/><path d="M9 12H4l2-4h5"/><path d="M12 15v5l4-2v-5"/></symbol>
+  </defs>
+</svg>
+
+<header class="page-nav">
+  <h1>Vault Review · UI Mock <small>(v2 · 2026-05-22 · aligned to UX sketches)</small></h1>
+  <span class="nav-spacer"></span>
+  <span class="nav-group-label">Picker</span>
+  <button class="nav-tab" data-target="picker-document">Document</button>
+  <button class="nav-tab active" data-target="picker-vault">Vault</button>
+  <button class="nav-tab" data-target="picker-setting">Setting</button>
+  <span class="nav-divider"></span>
+  <span class="nav-group-label">Report</span>
+  <button class="nav-tab" data-target="report-overview">Overview</button>
+  <button class="nav-tab" data-target="report-clusters">Clusters</button>
+  <button class="nav-tab" data-target="report-gaps">Gaps</button>
+  <button class="nav-tab" data-target="report-actions">Actions</button>
+  <button class="nav-tab" data-target="report-sources">Sources</button>
+  <button class="nav-tab" data-target="report-trace">Trace</button>
+</header>
+
+<main class="page-content">
+
+<!-- ============================================================
+     PICKER · DOCUMENT (= Copilot)
+     ============================================================ -->
+<section class="scene" id="picker-document">
+  <div class="scene-caption"><span class="dot"></span><span>Picker · Document tab — single-note Copilot launcher</span></div>
+  <div class="picker">
+
+    <div class="picker-tabs">
+      <button class="picker-tab active">
+        <span class="pt-title">Document</span>
+        <span class="pt-sub">= Copilot</span>
+      </button>
+      <button class="picker-tab">
+        <span class="pt-title">Vault</span>
+        <span class="pt-sub">= Vault Intelligence</span>
+      </button>
+      <button class="picker-tab">
+        <span class="pt-title">Setting</span>
+        <span class="pt-sub">= System</span>
+      </button>
+    </div>
+
+    <div class="picker-body">
+
+      <div class="picker-search">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <input placeholder="Search or ask in current document... (# heading, @ note, ? help)" />
+        <span class="scope-pill">document</span>
+      </div>
+
+      <div class="picker-meta">
+        <svg class="icon"><use href="#i-file"/></svg>
+        <span class="mono">kb3-tech-articles/C-总2-领域探索/SAAS公司.md</span>
+        <span class="sep">·</span>
+        <span>current note</span>
+        <span class="sep">·</span>
+        <span>53 words</span>
+      </div>
+
+      <div class="readiness-card">
+        <div class="readiness-left">
+          <div class="readiness-icon">
+            <svg class="icon"><use href="#i-sparkles"/></svg>
+          </div>
+          <div class="readiness-body">
+            <h2 class="readiness-title">Ready to review this note</h2>
+            <p class="readiness-desc">Agent will inspect the current note, choose useful tools, and prepare Changes + Insights. <span style="color:var(--text-faint)">No auto-apply.</span></p>
+            <div class="signal-chips">
+              <span class="signal-chip"><svg class="icon"><use href="#i-file"/></svg>53 words</span>
+              <span class="signal-chip"><svg class="icon"><use href="#i-link"/></svg>few links</span>
+              <span class="signal-chip"><svg class="icon"><use href="#i-clock"/></svg>no past review</span>
+              <span class="signal-chip"><svg class="icon"><use href="#i-list-check"/></svg>current note</span>
+              <span class="signal-chip success"><svg class="icon"><use href="#i-check"/></svg>safe to run</span>
+            </div>
+          </div>
+        </div>
+        <div class="run-strategy">
+          <div class="run-strategy-header"><span>Run strategy</span><svg class="icon icon-sm"><use href="#i-help"/></svg></div>
+          <button class="btn primary-blue lg"><svg class="icon"><use href="#i-sparkles"/></svg>Auto</button>
+          <button class="btn lg"><svg class="icon"><use href="#i-zap"/></svg>Fast</button>
+          <button class="btn ghost"><svg class="icon"><use href="#i-sliders"/></svg>Customize</button>
+        </div>
+      </div>
+
+      <div class="picker-split">
+        <div>
+          <div class="picker-section-title normal">
+            <span>Recent reviews</span>
+            <a class="picker-section-link">All reviews <svg class="icon"><use href="#i-chev-r"/></svg></a>
+          </div>
+          <div class="recent-empty">
+            <div class="icon-wrap"><svg class="icon"><use href="#i-clock"/></svg></div>
+            <div class="recent-empty-title">No reviews of this note yet</div>
+            <div class="recent-empty-sub">Run Auto or Fast to start one.</div>
+          </div>
+        </div>
+        <div>
+          <div class="picker-section-title normal">Suggested intents</div>
+          <div class="intent-list">
+            <div class="intent-row">
+              <span class="intent-icon"><svg class="icon"><use href="#i-link"/></svg></span>
+              <div class="intent-body">
+                <div class="intent-title">Connect links</div>
+                <div class="intent-sub">Find potential wiki-link connections</div>
+              </div>
+              <span class="pill accent">recommended</span>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+            <div class="intent-row">
+              <span class="intent-icon indigo"><svg class="icon"><use href="#i-pen"/></svg></span>
+              <div class="intent-body">
+                <div class="intent-title">Improve note</div>
+                <div class="intent-sub">Polish and refine the content</div>
+              </div>
+              <span class="pill accent">recommended</span>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+            <div class="intent-row">
+              <span class="intent-icon cyan"><svg class="icon"><use href="#i-target"/></svg></span>
+              <div class="intent-body">
+                <div class="intent-title">Add evidence</div>
+                <div class="intent-sub">Find and suggest source materials</div>
+              </div>
+              <span class="pill accent">recommended</span>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="picker-footer-row">
+        <span class="pfr-icon"><svg class="icon"><use href="#i-list-check"/></svg></span>
+        <div>
+          <div class="pfr-title">Show all capabilities <svg class="icon"><use href="#i-chev-r"/></svg></div>
+          <div class="pfr-sub">Tools are available to the agent during the run.</div>
+        </div>
+        <span></span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     PICKER · VAULT (= Vault Intelligence) — state C "minor change"
+     ============================================================ -->
+<section class="scene" id="picker-vault">
+  <div class="scene-caption"><span class="dot"></span><span>Picker · Vault tab — fingerprint state C (minor change, cached report)</span></div>
+  <div class="picker">
+
+    <div class="picker-tabs">
+      <button class="picker-tab"><span class="pt-title">Document</span><span class="pt-sub">= Copilot</span></button>
+      <button class="picker-tab active"><span class="pt-title">Vault</span><span class="pt-sub">= Vault Intelligence</span></button>
+      <button class="picker-tab"><span class="pt-title">Setting</span><span class="pt-sub">= System</span></button>
+    </div>
+
+    <div class="picker-body">
+
+      <div class="picker-search">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <input placeholder="Search or ask across vault... (# in-file, @ folder, ? help)" />
+        <span class="scope-pill">vault</span>
+      </div>
+
+      <div class="picker-meta">
+        <span class="tnum">2.0K notes</span>
+        <span class="sep">·</span>
+        <span class="tnum">700.3K words</span>
+        <span class="sep">·</span>
+        <span>last reviewed 1d ago</span>
+      </div>
+
+      <div class="readiness-card">
+        <div class="readiness-left">
+          <div class="readiness-icon">
+            <svg class="icon"><use href="#i-clock"/></svg>
+          </div>
+          <div class="readiness-body">
+            <h2 class="readiness-title">Last reviewed 1d ago · 1 note changed</h2>
+            <p class="readiness-desc">Fingerprint changed lightly. Last report is still mostly accurate; <span style="color:var(--text-faint)">refresh only if you want a fresh read.</span></p>
+            <div class="signal-chips">
+              <span class="signal-chip dot-amber">1 note changed</span>
+              <span class="signal-chip"><svg class="icon"><use href="#i-activity"/></svg>2.0% word drift</span>
+              <span class="signal-chip"><svg class="icon"><use href="#i-db"/></svg>cached report</span>
+              <span class="signal-chip success"><svg class="icon"><use href="#i-check"/></svg>safe to skip</span>
+              <span class="signal-chip"><svg class="icon"><use href="#i-refresh"/></svg>can refresh</span>
+            </div>
+          </div>
+        </div>
+        <div class="run-strategy">
+          <div class="run-strategy-header"><span>Run strategy</span><svg class="icon icon-sm"><use href="#i-help"/></svg></div>
+          <button class="btn primary-blue lg"><svg class="icon"><use href="#i-file"/></svg>View last report</button>
+          <button class="btn lg"><svg class="icon"><use href="#i-refresh"/></svg>Refresh</button>
+          <button class="btn ghost"><svg class="icon"><use href="#i-sliders"/></svg>Customize</button>
+        </div>
+      </div>
+
+      <div class="picker-split">
+        <div>
+          <div class="picker-section-title">
+            <span>Past vault reviews</span>
+            <a class="picker-section-link">All reviews <svg class="icon"><use href="#i-chev-r"/></svg></a>
+          </div>
+          <div class="recent-list">
+            <div class="recent-row">
+              <span class="recent-icon"><svg class="icon"><use href="#i-clock"/></svg></span>
+              <div>
+                <div class="recent-title">
+                  <span>This vault review reveals a sophisticated AI developme…</span>
+                  <span class="recent-age">1d ago</span>
+                </div>
+                <div class="recent-meta">5 clusters · 2 gaps · 4 actions · 6 insights</div>
+              </div>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+            <div class="recent-row">
+              <span class="recent-icon"><svg class="icon"><use href="#i-clock"/></svg></span>
+              <div>
+                <div class="recent-title">
+                  <span>Vault review</span>
+                  <span class="recent-age">1w ago</span>
+                </div>
+                <div class="recent-meta">5 clusters · 1 gap · 3 actions · 5 insights</div>
+              </div>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="picker-section-title"><span>Suggested intents</span></div>
+          <div class="intent-list">
+            <div class="intent-row">
+              <span class="intent-icon"><svg class="icon"><use href="#i-help"/></svg></span>
+              <div class="intent-body">
+                <div class="intent-title">Knowledge gaps</div>
+                <div class="intent-sub">Identify missing topics and knowledge gaps</div>
+              </div>
+              <span class="pill accent">recommended</span>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+            <div class="intent-row">
+              <span class="intent-icon indigo"><svg class="icon"><use href="#i-activity"/></svg></span>
+              <div class="intent-body">
+                <div class="intent-title">Vault health</div>
+                <div class="intent-sub">Analyze index health, duplicates, and stale notes</div>
+              </div>
+              <span class="pill warning">timely</span>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+            <div class="intent-row">
+              <span class="intent-icon cyan"><svg class="icon"><use href="#i-share"/></svg></span>
+              <div class="intent-body">
+                <div class="intent-title">Smart connections</div>
+                <div class="intent-sub">Find semantically similar unlinked notes</div>
+              </div>
+              <span class="pill accent">recommended</span>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="picker-footer-row">
+        <span class="pfr-icon"><svg class="icon"><use href="#i-list-check"/></svg></span>
+        <div>
+          <div class="pfr-title">Show all capabilities <svg class="icon"><use href="#i-chev-r"/></svg></div>
+          <div class="pfr-sub">Vault tools are available to the agent during a refresh.</div>
+        </div>
+        <span></span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     PICKER · SETTING (= System) — system check launcher
+     ============================================================ -->
+<section class="scene" id="picker-setting">
+  <div class="scene-caption"><span class="dot"></span><span>Picker · Setting tab — system diagnostics launcher</span></div>
+  <div class="picker">
+
+    <div class="picker-tabs">
+      <button class="picker-tab"><span class="pt-title">Document</span><span class="pt-sub">= Copilot</span></button>
+      <button class="picker-tab"><span class="pt-title">Vault</span><span class="pt-sub">= Vault Intelligence</span></button>
+      <button class="picker-tab active"><span class="pt-title">Setting</span><span class="pt-sub">= System</span></button>
+    </div>
+
+    <div class="picker-body">
+
+      <div class="picker-search">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <input placeholder="Search settings, index, models, skills, prompts..." />
+        <span class="scope-pill">setting</span>
+      </div>
+
+      <div class="picker-meta">
+        <span>System environment</span>
+        <span class="sep">·</span>
+        <span>providers</span>
+        <span class="sep">·</span>
+        <span>index</span>
+        <span class="sep">·</span>
+        <span>skills</span>
+        <span class="sep">·</span>
+        <span>prompts</span>
+      </div>
+
+      <div class="readiness-card">
+        <div class="readiness-left">
+          <div class="readiness-icon">
+            <svg class="icon"><use href="#i-shield-check"/></svg>
+            <span class="badge-dot"><svg class="icon"><use href="#i-alert"/></svg></span>
+          </div>
+          <div class="readiness-body">
+            <h2 class="readiness-title">System ready · 2 warnings</h2>
+            <p class="readiness-desc">Index is current. One model profile needs attention. <span style="color:var(--text-faint)">Prompt templates changed yesterday.</span></p>
+            <div class="signal-chips">
+              <span class="signal-chip success"><svg class="icon"><use href="#i-check"/></svg>index ready</span>
+              <span class="signal-chip warning"><svg class="icon"><use href="#i-alert"/></svg>1 model warning</span>
+              <span class="signal-chip"><svg class="icon"><use href="#i-refresh"/></svg>prompts changed</span>
+              <span class="signal-chip"><svg class="icon"><use href="#i-user"/></svg>skills available</span>
+              <span class="signal-chip success"><svg class="icon"><use href="#i-check"/></svg>safe to check</span>
+            </div>
+          </div>
+        </div>
+        <div class="run-strategy">
+          <div class="run-strategy-header"><span>Run strategy</span><svg class="icon icon-sm"><use href="#i-help"/></svg></div>
+          <button class="btn primary-blue lg"><svg class="icon"><use href="#i-activity"/></svg>Run system check</button>
+          <button class="btn lg"><svg class="icon"><use href="#i-chart"/></svg>View diagnostics</button>
+          <button class="btn ghost"><svg class="icon"><use href="#i-sliders"/></svg>Customize</button>
+        </div>
+      </div>
+
+      <div class="picker-split">
+        <div>
+          <div class="picker-section-title">
+            <span>Recent diagnostics</span>
+            <a class="picker-section-link">All diagnostics <svg class="icon"><use href="#i-chev-r"/></svg></a>
+          </div>
+          <div class="recent-list">
+            <div class="recent-row">
+              <span class="recent-icon" style="background:var(--pink-tint);color:var(--pink)"><svg class="icon"><use href="#i-activity"/></svg></span>
+              <div>
+                <div class="recent-title">
+                  <span>Provider health check</span>
+                  <span class="recent-age">2h ago · <span style="color:var(--warning-text);font-weight:600">1 warning</span></span>
+                </div>
+              </div>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+            <div class="recent-row">
+              <span class="recent-icon" style="background:var(--indigo-tint);color:var(--indigo-text)"><svg class="icon"><use href="#i-db"/></svg></span>
+              <div>
+                <div class="recent-title">
+                  <span>Index integrity scan</span>
+                  <span class="recent-age">yesterday · <span style="color:var(--success-text);font-weight:600">clean</span></span>
+                </div>
+              </div>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="picker-section-title"><span>Suggested intents</span></div>
+          <div class="intent-list">
+            <div class="intent-row">
+              <span class="intent-icon"><svg class="icon"><use href="#i-file"/></svg></span>
+              <div class="intent-body">
+                <div class="intent-title">Prompt audit</div>
+                <div class="intent-sub">Review prompt templates for quality and consistency</div>
+              </div>
+              <span class="pill warning">warning</span>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+            <div class="intent-row">
+              <span class="intent-icon indigo"><svg class="icon"><use href="#i-user"/></svg></span>
+              <div class="intent-body">
+                <div class="intent-title">Model profiles</div>
+                <div class="intent-sub">Check models, providers, and routing configuration</div>
+              </div>
+              <span class="pill warning">warning</span>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+            <div class="intent-row">
+              <span class="intent-icon cyan"><svg class="icon"><use href="#i-db"/></svg></span>
+              <div class="intent-body">
+                <div class="intent-title">Index health</div>
+                <div class="intent-sub">Verify index status, coverage, and potential issues</div>
+              </div>
+              <span class="pill success">routine</span>
+              <svg class="icon chev"><use href="#i-chev-r"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="picker-footer-row">
+        <span class="pfr-icon"><svg class="icon"><use href="#i-sliders"/></svg></span>
+        <div>
+          <div class="pfr-title">Show all capabilities <svg class="icon"><use href="#i-chev-r"/></svg></div>
+          <div class="pfr-sub">System tools help the agent verify runtime health before a review.</div>
+        </div>
+        <span></span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     REPORT · OVERVIEW
+     ============================================================ -->
+<section class="scene" id="report-overview">
+  <div class="scene-caption"><span class="dot"></span><span>Modal · Overview tab — 5-second summary + snapshot + top action</span></div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div class="modal-brand"><svg class="icon"><use href="#i-shield-star"/></svg></div>
+      <div class="modal-title-block">
+        <h2 class="modal-title">Vault Review · 2026-05-20</h2>
+        <div class="modal-subtitle">
+          <span class="tnum">12,847 notes</span>
+          <span class="sep">·</span>
+          <span class="tnum">4.2M words</span>
+          <span class="sep">·</span>
+          <span class="tnum">37 changed notes</span>
+          <span class="sep">·</span>
+          <span>saved report ready</span>
+        </div>
+      </div>
+      <div class="modal-header-actions">
+        <button class="icon-btn"><svg class="icon"><use href="#i-more"/></svg></button>
+        <button class="icon-btn"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+    </div>
+
+    <div class="modal-tabs">
+      <button class="modal-tab active">Overview</button>
+      <button class="modal-tab">Clusters<span class="tab-badge">5</span></button>
+      <button class="modal-tab">Gaps<span class="tab-badge">3</span></button>
+      <button class="modal-tab">Actions<span class="tab-badge">4</span></button>
+      <button class="modal-tab">Sources<span class="tab-badge">18</span></button>
+      <button class="modal-tab">Trace<span class="tab-badge">12</span></button>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-main">
+        <div class="insight-card">
+          <div class="insight-icon"><svg class="icon"><use href="#i-chart"/></svg></div>
+          <div class="insight-body">
+            <div class="insight-title">AI Engineering is growing; Travel notes is going stale.</div>
+            <p><span class="em">AI Engineering</span> and <span class="em">Context Engineering</span> are the most active areas, with strong growth in writing and content creation.</p>
+            <p><span class="em">Travel notes</span> shows low recent activity and high staleness; consider archiving or refreshing.</p>
+          </div>
+        </div>
+
+        <div class="section-label">Snapshot</div>
+        <div class="snapshot-grid">
+          <div class="snapshot-card">
+            <div class="sc-icon indigo"><svg class="icon"><use href="#i-file"/></svg></div>
+            <div>
+              <div class="sc-label">Notes</div>
+              <div class="sc-value tnum">12,847</div>
+              <div class="sc-sub">Total in vault</div>
+            </div>
+          </div>
+          <div class="snapshot-card">
+            <div class="sc-icon"><svg class="icon"><use href="#i-pen"/></svg></div>
+            <div>
+              <div class="sc-label">Words</div>
+              <div class="sc-value tnum">4.2M</div>
+              <div class="sc-sub">Total in vault</div>
+            </div>
+          </div>
+          <div class="snapshot-card">
+            <div class="sc-icon success"><svg class="icon"><use href="#i-activity"/></svg></div>
+            <div>
+              <div class="sc-label">Health</div>
+              <div class="sc-value tnum">7.4<span style="font-size:14px;font-weight:500;color:var(--text-faint)">/10</span></div>
+              <div class="sc-sub">Vault health score</div>
+            </div>
+          </div>
+          <div class="snapshot-card">
+            <div class="sc-icon"><svg class="icon"><use href="#i-network"/></svg></div>
+            <div>
+              <div class="sc-label">Active clusters</div>
+              <div class="sc-value tnum">5</div>
+              <div class="sc-sub">With recent activity</div>
+            </div>
+          </div>
+          <div class="snapshot-card">
+            <div class="sc-icon"><svg class="icon"><use href="#i-share"/></svg></div>
+            <div>
+              <div class="sc-label">Hubs</div>
+              <div class="sc-value tnum">23</div>
+              <div class="sc-sub">High centrality notes</div>
+            </div>
+          </div>
+          <div class="snapshot-card">
+            <div class="sc-icon orange"><svg class="icon"><use href="#i-user"/></svg></div>
+            <div>
+              <div class="sc-label">Orphans</div>
+              <div class="sc-value tnum">142</div>
+              <div class="sc-sub">Low or no links</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">What changed <span class="label-sub">since last review (14 days ago)</span></div>
+        <div class="changed-grid">
+          <div class="changed-chip">
+            <div class="cc-badge touched"></div>
+            <div>
+              <div class="cc-value tnum">37</div>
+              <div class="cc-sub">Touched notes</div>
+            </div>
+          </div>
+          <div class="changed-chip">
+            <div class="cc-badge new"><svg class="icon"><use href="#i-plus"/></svg></div>
+            <div>
+              <div class="cc-value tnum up">4</div>
+              <div class="cc-sub">New notes</div>
+            </div>
+          </div>
+          <div class="changed-chip">
+            <div class="cc-badge deleted"><svg class="icon"><use href="#i-minus"/></svg></div>
+            <div>
+              <div class="cc-value tnum down">1</div>
+              <div class="cc-sub">Deleted note</div>
+            </div>
+          </div>
+          <div class="changed-chip">
+            <div class="cc-badge trend"><svg class="icon"><use href="#i-trend-up"/></svg></div>
+            <div>
+              <div class="cc-value tnum up">+14%</div>
+              <div class="cc-sub">Activity change</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">Top recommended next action</div>
+        <div class="top-action-banner">
+          <div class="tab-icon"><svg class="icon"><use href="#i-target"/></svg></div>
+          <div>
+            <div class="tab-title">Create <a class="wiki">[[Context Engineering]]</a> and connect 7 dangling references.</div>
+            <div class="tab-sub">High-impact action to improve coverage and reduce knowledge gaps.</div>
+          </div>
+          <button class="btn outline-accent">View in Actions</button>
+        </div>
+      </div>
+
+      <aside class="modal-rail">
+        <div class="trace-rail-title">
+          <div>Agent trace <span class="label-sub">(live)</span></div>
+          <div class="status-dot">Running</div>
+        </div>
+        <div class="trace-events">
+          <div class="trace-event">
+            <div class="te-time">10:21:03</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Compute fingerprint</div>
+              <div class="te-sub">Traversed 12,847 notes<br>Fingerprint: a7f9c3e2</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:05</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Load VaultDigest</div>
+              <div class="te-sub">12,847 notes · 4.2M words</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:07</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Read cluster metadata</div>
+              <div class="te-sub">5 clusters · 23 hubs · 142 orphans</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:09</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Identify gaps</div>
+              <div class="te-sub">3 gap themes · 27 missing links</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:12</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Compose report</div>
+              <div class="te-sub">Overview · Clusters · Gaps · Actions · Sources</div>
+            </div>
+          </div>
+          <div class="trace-event in-progress">
+            <div class="te-time">10:21:19</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-save"/></svg></div>
+            <div>
+              <div class="te-title">Save markdown</div>
+              <div class="te-sub">Report saved to vault</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="modal-footer">
+      <div class="footer-left">
+        <svg class="icon"><use href="#i-file"/></svg>
+        <span>Saved to <span class="mono">peak-system/vault-reviews/2026-05-20-a7f9c3e2.md</span></span>
+      </div>
+      <div class="footer-actions">
+        <button class="btn"><svg class="icon"><use href="#i-ext"/></svg>Open report note</button>
+        <button class="btn"><svg class="icon"><use href="#i-download"/></svg>Export summary</button>
+        <button class="btn primary">Close</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+     REPORT · CLUSTERS
+     ============================================================ -->
+<section class="scene" id="report-clusters">
+  <div class="scene-caption"><span class="dot"></span><span>Modal · Clusters tab — full-width activity table with inline expanded detail</span></div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div class="modal-brand"><svg class="icon"><use href="#i-shield-star"/></svg></div>
+      <div class="modal-title-block">
+        <h2 class="modal-title">Vault Review · 2026-05-20</h2>
+        <div class="modal-subtitle">
+          <span class="tnum">12,847 notes</span><span class="sep">·</span>
+          <span class="tnum">4.2M words</span><span class="sep">·</span>
+          <span class="tnum">37 changed notes</span><span class="sep">·</span>
+          <span>saved report ready</span>
+        </div>
+      </div>
+      <div class="modal-header-actions">
+        <button class="icon-btn"><svg class="icon"><use href="#i-more"/></svg></button>
+        <button class="icon-btn"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+    </div>
+
+    <div class="modal-tabs">
+      <button class="modal-tab">Overview</button>
+      <button class="modal-tab active">Clusters<span class="tab-badge">5</span></button>
+      <button class="modal-tab">Gaps<span class="tab-badge">3</span></button>
+      <button class="modal-tab">Actions<span class="tab-badge">4</span></button>
+      <button class="modal-tab">Sources<span class="tab-badge">18</span></button>
+      <button class="modal-tab">Trace<span class="tab-badge">12</span></button>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-main">
+        <div class="modal-breadcrumb">
+          <a>Vault</a><svg class="icon icon-sm"><use href="#i-chev-r"/></svg><span>Clusters</span>
+        </div>
+        <h3 class="modal-page-title">Cluster activity</h3>
+
+        <div class="cluster-table">
+          <div class="cluster-table-head">
+            <div>Cluster</div>
+            <div>Size (notes)</div>
+            <div>Change (14d)</div>
+            <div>Status</div>
+            <div>Representative notes</div>
+            <div></div>
+          </div>
+
+          <div class="cluster-row selected">
+            <div class="cl-name">
+              <div class="cl-icon brain"><svg class="icon icon-lg"><use href="#i-brain"/></svg></div>
+              <div>
+                <div class="cl-title">AI Engineering</div>
+                <div class="cl-desc">Core AI systems, agents, tools, evals, and workflows</div>
+              </div>
+            </div>
+            <div>
+              <div class="cl-num tnum">47</div>
+              <div class="cl-num-sub tnum">(12%)</div>
+            </div>
+            <div>
+              <div class="cl-change up tnum"><svg class="icon icon-sm" style="display:inline;vertical-align:-2px"><use href="#i-arr-up"/></svg> 12</div>
+              <div class="cl-num-sub tnum">(+34%)</div>
+            </div>
+            <div class="cl-status">
+              <div><span class="pill success">Central</span></div>
+              <div class="cl-status-sub">High centrality</div>
+            </div>
+            <div class="cl-reps">
+              <a class="wiki">[[claude-code-sdk-deep-dive]]</a>
+              <a class="wiki">[[meta-agent-redesign]]</a>
+              <a class="wiki">[[copilot-output-collector]]</a>
+              <div class="more">+24 more</div>
+            </div>
+            <svg class="icon cl-chev"><use href="#i-chev-r"/></svg>
+          </div>
+
+          <div class="cluster-row">
+            <div class="cl-name">
+              <div class="cl-icon search"><svg class="icon icon-lg"><use href="#i-search"/></svg></div>
+              <div>
+                <div class="cl-title">Search Architecture</div>
+                <div class="cl-desc">Search design, ranking, index, retrieval, embeddings</div>
+              </div>
+            </div>
+            <div>
+              <div class="cl-num tnum">33</div>
+              <div class="cl-num-sub tnum">(8%)</div>
+            </div>
+            <div>
+              <div class="cl-change up tnum"><svg class="icon icon-sm" style="display:inline;vertical-align:-2px"><use href="#i-arr-up"/></svg> 4</div>
+              <div class="cl-num-sub tnum">(+14%)</div>
+            </div>
+            <div class="cl-status">
+              <div><span class="pill success">Stable</span></div>
+              <div class="cl-status-sub">Healthy</div>
+            </div>
+            <div class="cl-reps">
+              <a class="wiki">[[Search Architecture MOC]]</a>
+              <a class="wiki">[[retrieval-pipeline]]</a>
+              <a class="wiki">[[hybrid-search]]</a>
+              <div class="more">+18 more</div>
+            </div>
+            <svg class="icon cl-chev"><use href="#i-chev-r"/></svg>
+          </div>
+
+          <div class="cluster-row">
+            <div class="cl-name">
+              <div class="cl-icon palette"><svg class="icon icon-lg"><use href="#i-palette"/></svg></div>
+              <div>
+                <div class="cl-title">Product Design</div>
+                <div class="cl-desc">UX, flows, components, visual design</div>
+              </div>
+            </div>
+            <div>
+              <div class="cl-num tnum">29</div>
+              <div class="cl-num-sub tnum">(7%)</div>
+            </div>
+            <div>
+              <div class="cl-change up tnum"><svg class="icon icon-sm" style="display:inline;vertical-align:-2px"><use href="#i-arr-up"/></svg> 2</div>
+              <div class="cl-num-sub tnum">(+7%)</div>
+            </div>
+            <div class="cl-status">
+              <div><span class="pill success">Stable</span></div>
+              <div class="cl-status-sub">Healthy</div>
+            </div>
+            <div class="cl-reps">
+              <a class="wiki">[[design-system-principles]]</a>
+              <a class="wiki">[[onboarding-flow]]</a>
+              <a class="wiki">[[components-library]]</a>
+              <div class="more">+16 more</div>
+            </div>
+            <svg class="icon cl-chev"><use href="#i-chev-r"/></svg>
+          </div>
+
+          <div class="cluster-row">
+            <div class="cl-name">
+              <div class="cl-icon user"><svg class="icon icon-lg"><use href="#i-user"/></svg></div>
+              <div>
+                <div class="cl-title">Personal</div>
+                <div class="cl-desc">Daily notes, ideas, reference, habits</div>
+              </div>
+            </div>
+            <div>
+              <div class="cl-num tnum">31</div>
+              <div class="cl-num-sub tnum">(8%)</div>
+            </div>
+            <div>
+              <div class="cl-change flat tnum"><svg class="icon icon-sm" style="display:inline;vertical-align:-2px"><use href="#i-minus"/></svg> 0</div>
+              <div class="cl-num-sub tnum">(0%)</div>
+            </div>
+            <div class="cl-status">
+              <div><span class="pill success">Stable</span></div>
+              <div class="cl-status-sub">Healthy</div>
+            </div>
+            <div class="cl-reps">
+              <a class="wiki">[[2026-05-19]]</a>
+              <a class="wiki">[[reading-notes]]</a>
+              <a class="wiki">[[ideas-backlog]]</a>
+              <div class="more">+22 more</div>
+            </div>
+            <svg class="icon cl-chev"><use href="#i-chev-r"/></svg>
+          </div>
+
+          <div class="cluster-row">
+            <div class="cl-name">
+              <div class="cl-icon briefcase"><svg class="icon icon-lg"><use href="#i-briefcase"/></svg></div>
+              <div>
+                <div class="cl-title">Travel notes</div>
+                <div class="cl-desc">Trips, places, logistics, itineraries</div>
+              </div>
+            </div>
+            <div>
+              <div class="cl-num tnum">28</div>
+              <div class="cl-num-sub tnum">(7%)</div>
+            </div>
+            <div>
+              <div class="cl-change none tnum">—</div>
+              <div class="cl-num-sub">No activity 5mo</div>
+            </div>
+            <div class="cl-status">
+              <div><span class="pill warning">Stale</span></div>
+              <div class="cl-status-sub">Low activity</div>
+            </div>
+            <div class="cl-reps">
+              <a class="wiki">[[Japan 2024 Trip]]</a>
+              <a class="wiki">[[Kyoto Guide]]</a>
+              <a class="wiki">[[Packing List]]</a>
+              <div class="more">+12 more</div>
+            </div>
+            <svg class="icon cl-chev"><use href="#i-chev-r"/></svg>
+          </div>
+        </div>
+
+        <!-- Expanded detail for selected cluster -->
+        <div class="cluster-detail">
+          <div class="cd-grid">
+            <div class="cd-cluster">
+              <div class="cd-icon"><svg class="icon icon-lg"><use href="#i-brain"/></svg></div>
+              <div>
+                <div class="cd-name">AI Engineering <span class="pill success">Central</span></div>
+                <div class="cd-desc">Core AI systems, agents, tools, evals, and workflows</div>
+                <div class="cd-meta">47 notes · 12% of vault · High centrality</div>
+              </div>
+            </div>
+            <div>
+              <div class="cd-section-label">Dominant topics</div>
+              <div class="cd-tags">
+                <span class="cd-tag">Agents</span>
+                <span class="cd-tag">RAG</span>
+                <span class="cd-tag">LLM Ops</span>
+                <span class="cd-tag">Evaluation</span>
+                <span class="cd-tag">Tools</span>
+                <span class="cd-tag">Context Engineering</span>
+              </div>
+            </div>
+            <div>
+              <div class="cd-section-label">Top hubs</div>
+              <div class="cd-hubs">
+                <div class="cd-hub-row"><a class="wiki">[[meta-agent-redesign]]</a><span class="num">18</span></div>
+                <div class="cd-hub-row"><a class="wiki">[[Context Engineering]]</a><span class="num">15</span></div>
+                <div class="cd-hub-row"><a class="wiki">[[evaluation-framework]]</a><span class="num">13</span></div>
+                <div class="cd-hub-row" style="color:var(--text-muted)"><span>+9 more</span></div>
+              </div>
+            </div>
+            <div>
+              <div class="cd-section-label">Cluster health</div>
+              <div class="cd-health">
+                <div class="cd-health-row"><span class="label">Centrality</span><span class="val">High</span></div>
+                <div class="cd-health-row"><span class="label">Trend (14d)</span><span class="val up">▲ 14%</span></div>
+                <div class="cd-health-row"><span class="label">Freshness</span><span class="val">Active</span></div>
+                <div class="cd-health-row"><span class="label">Orphans</span><span class="val">3</span></div>
+              </div>
+              <div class="cd-spark-wrap" style="margin-top:10px">
+                <div class="cd-spark-label">Centrality up</div>
+                <div class="cd-spark-value tnum">+14%</div>
+                <svg class="cd-spark" viewBox="0 0 80 36" preserveAspectRatio="none">
+                  <path class="area" d="M0,28 C12,26 20,22 30,20 C40,18 48,16 58,10 C68,6 74,4 80,2 L80,36 L0,36 Z"/>
+                  <path d="M0,28 C12,26 20,22 30,20 C40,18 48,16 58,10 C68,6 74,4 80,2"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="cd-foot">
+            <span class="cd-foot-label">Representative notes</span>
+            <div class="cd-foot-notes">
+              <a class="wiki">[[claude-code-sdk-deep-dive]]</a><span class="sep">·</span>
+              <a class="wiki">[[meta-agent-redesign]]</a><span class="sep">·</span>
+              <a class="wiki">[[copilot-output-collector]]</a><span class="sep">·</span>
+              <a class="wiki">[[agentic-workflows]]</a><span class="sep">·</span>
+              <a class="wiki">[[eval-suite-design]]</a>
+            </div>
+            <button class="btn sm"><svg class="icon"><use href="#i-ext"/></svg>View all 24 notes</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="modal-rail">
+        <div class="trace-rail-title">
+          <div>Agent trace <span class="label-sub">(live)</span></div>
+          <div class="status-dot">Running</div>
+        </div>
+        <div class="trace-events">
+          <div class="trace-event">
+            <div class="te-time">10:21:03</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Compute vault fingerprint</div>
+              <div class="te-sub">Traversed 12,847 notes</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:05</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Load VaultDigest</div>
+              <div class="te-sub">12,847 notes · 4.2M words</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:07</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Read cluster metadata</div>
+              <div class="te-sub">5 clusters · 23 hubs · 142 orphans</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:11</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Analyze cluster activity</div>
+              <div class="te-sub">Changes, health, centrality</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:14</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Identify gaps &amp; risks</div>
+              <div class="te-sub">3 gap themes · 4 risks</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:18</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Compose report</div>
+              <div class="te-sub">Clusters · Gaps · Actions · Sources</div>
+            </div>
+          </div>
+          <div class="trace-event in-progress">
+            <div class="te-time">10:21:22</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-save"/></svg></div>
+            <div>
+              <div class="te-title">Saved markdown report</div>
+              <div class="te-sub">2026-05-20-a7f9c3e2.md</div>
+            </div>
+          </div>
+        </div>
+        <div class="trace-rail-foot">
+          <button class="btn block"><svg class="icon"><use href="#i-ext"/></svg>View full trace</button>
+        </div>
+      </aside>
+    </div>
+
+    <div class="modal-footer">
+      <div class="footer-left">
+        <svg class="icon"><use href="#i-file"/></svg>
+        <span>Saved to <span class="mono">peak-system/vault-reviews/2026-05-20-a7f9c3e2.md</span></span>
+      </div>
+      <div class="footer-actions">
+        <button class="btn"><svg class="icon"><use href="#i-ext"/></svg>Open report note</button>
+        <button class="btn"><svg class="icon"><use href="#i-download"/></svg>Export summary</button>
+        <button class="btn primary">Close</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+     REPORT · GAPS
+     ============================================================ -->
+<section class="scene" id="report-gaps">
+  <div class="scene-caption"><span class="dot"></span><span>Modal · Gaps tab — structural holes, dangling refs, stale hubs</span></div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div class="modal-brand"><svg class="icon"><use href="#i-shield-star"/></svg></div>
+      <div class="modal-title-block">
+        <h2 class="modal-title">Vault Review · 2026-05-20</h2>
+        <div class="modal-subtitle">
+          <span class="tnum">12,847 notes</span><span class="sep">·</span>
+          <span class="tnum">4.2M words</span><span class="sep">·</span>
+          <span class="tnum">37 changed notes</span><span class="sep">·</span>
+          <span>saved report ready</span>
+        </div>
+      </div>
+      <div class="modal-header-actions">
+        <button class="icon-btn"><svg class="icon"><use href="#i-more"/></svg></button>
+        <button class="icon-btn"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+    </div>
+
+    <div class="modal-tabs">
+      <button class="modal-tab">Overview</button>
+      <button class="modal-tab">Clusters<span class="tab-badge">5</span></button>
+      <button class="modal-tab active">Gaps<span class="tab-badge">3</span></button>
+      <button class="modal-tab">Actions<span class="tab-badge">4</span></button>
+      <button class="modal-tab">Sources<span class="tab-badge">18</span></button>
+      <button class="modal-tab">Trace<span class="tab-badge">12</span></button>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-main">
+
+        <!-- Structural holes -->
+        <div class="gap-card">
+          <div class="gap-card-head">
+            <div class="gap-card-icon"><svg class="icon"><use href="#i-fork"/></svg></div>
+            <div>
+              <div class="gap-card-headline">Structural holes</div>
+              <div class="gap-card-title">AI Engineering ↔ Product Design</div>
+            </div>
+            <div class="gap-meta-col">
+              <div class="gap-meta-label">Confidence</div>
+              <div class="gap-meta-val success">72%</div>
+            </div>
+            <div class="gap-meta-col">
+              <div class="gap-meta-label">Source</div>
+              <a class="gap-meta-val link">Graph analysis</a>
+            </div>
+          </div>
+
+          <p class="gap-desc">Low connection strength between these clusters. Strengthening this bridge can unlock stronger alignment between AI capabilities and user experience outcomes.</p>
+
+          <div class="bridge-score-row">
+            <span class="bridge-score-label">Bridge score</span>
+            <div class="bridge-bar"><div class="bar-fill" style="width:28%"></div></div>
+            <span class="bridge-score-val tnum">28 / 100</span>
+            <span class="pill accent">Weak</span>
+          </div>
+
+          <div class="gap-2col">
+            <div>
+              <div class="gap-subhead"><svg class="icon"><use href="#i-circle-dot"/></svg>Candidate bridge notes</div>
+              <ul class="gap-bullets">
+                <li><a class="wiki">[[ai-product-pattern]]</a></li>
+                <li><a class="wiki">[[copilot-ux-thoughts]]</a></li>
+              </ul>
+              <button class="btn outline-accent sm">View candidates</button>
+            </div>
+            <div>
+              <div class="gap-subhead"><svg class="icon"><use href="#i-circle-dot"/></svg>Candidate questions</div>
+              <ul class="gap-bullets">
+                <li>AI capability productization</li>
+                <li>Agent UX patterns</li>
+              </ul>
+              <button class="btn sm"><svg class="icon"><use href="#i-plus"/></svg>Add question</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dangling references -->
+        <div class="gap-card">
+          <div class="gap-card-head">
+            <div class="gap-card-icon indigo"><svg class="icon"><use href="#i-link"/></svg></div>
+            <div>
+              <div class="gap-card-headline" style="display:none"></div>
+              <div class="gap-card-title">Dangling references</div>
+              <div class="gap-desc" style="margin:4px 0 0">Notes that are referenced but under-documented.</div>
+            </div>
+            <div class="gap-meta-col">
+              <div class="gap-meta-label">Confidence</div>
+              <div class="gap-meta-val">65%</div>
+            </div>
+            <div class="gap-meta-col">
+              <div class="gap-meta-label">Source</div>
+              <a class="gap-meta-val link">Reference scan</a>
+            </div>
+          </div>
+
+          <table class="gap-table">
+            <thead>
+              <tr>
+                <th>Note</th>
+                <th>Cited by</th>
+                <th>Example ref (truncated)</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a class="wiki">[[Context Engineering]]</a></td>
+                <td class="num">7 times</td>
+                <td class="truncated">… see [[Context Engineering]] for more on …</td>
+                <td style="text-align:right"><button class="btn sm"><svg class="icon"><use href="#i-file-plus"/></svg>Create note</button></td>
+              </tr>
+              <tr>
+                <td><a class="wiki">[[Provider Tier]]</a></td>
+                <td class="num">5 times</td>
+                <td class="truncated">… depends on provider tier (see [[Provider Tier]]) …</td>
+                <td style="text-align:right"><button class="btn sm"><svg class="icon"><use href="#i-file-plus"/></svg>Create note</button></td>
+              </tr>
+              <tr>
+                <td><a class="wiki">[[Agent Workflow Memory]]</a></td>
+                <td class="num">4 times</td>
+                <td class="truncated">… store state in [[Agent Workflow Memory]] …</td>
+                <td style="text-align:right"><button class="btn sm"><svg class="icon"><use href="#i-search"/></svg>Review refs</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Stale hubs -->
+        <div class="gap-card">
+          <div class="gap-card-head">
+            <div class="gap-card-icon warning"><svg class="icon"><use href="#i-clock"/></svg></div>
+            <div>
+              <div class="gap-card-title">Stale hubs</div>
+              <div class="gap-desc" style="margin:4px 0 0">Important hubs that haven't been updated recently.</div>
+            </div>
+            <div class="gap-meta-col">
+              <div class="gap-meta-label">Confidence</div>
+              <div class="gap-meta-val">68%</div>
+            </div>
+            <div class="gap-meta-col">
+              <div class="gap-meta-label">Source</div>
+              <a class="gap-meta-val link">Activity scan</a>
+            </div>
+          </div>
+
+          <table class="gap-table">
+            <thead>
+              <tr>
+                <th>Note</th>
+                <th>Last updated</th>
+                <th>Inbound links</th>
+                <th>Why it matters</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a class="wiki">[[Vault Architecture Overview]]</a></td>
+                <td>6 months ago</td>
+                <td class="num">14</td>
+                <td>Core map; referenced by key MOCs and projects.</td>
+                <td style="text-align:right"><button class="btn sm"><svg class="icon"><use href="#i-ext"/></svg>Review note</button></td>
+              </tr>
+              <tr>
+                <td><a class="wiki">[[Knowledge Management Principles]]</a></td>
+                <td>4 months ago</td>
+                <td class="num">9</td>
+                <td>Foundational guidance; cited across vault.</td>
+                <td style="text-align:right"><button class="btn sm"><svg class="icon"><use href="#i-ext"/></svg>Review note</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <aside class="modal-rail">
+        <div class="trace-rail-title">
+          <div>Agent trace <span class="label-sub">(live)</span></div>
+          <div class="status-dot">Running</div>
+        </div>
+        <div class="trace-events">
+          <div class="trace-event">
+            <div class="te-time">10:21:03</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Read graph communities</div>
+              <div class="te-sub">Loaded 27 clusters and link stats<br>12,847 notes</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:08</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Detect bridge candidates</div>
+              <div class="te-sub">Scanned inter-cluster edges<br>Found 3 weak bridges</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:13</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Check dangling refs</div>
+              <div class="te-sub">Scanning backlinks<br>Identified 3 dangling topics</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:18</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Score stale hubs</div>
+              <div class="te-sub">Analyzing note activity<br>Found 2 stale hubs</div>
+            </div>
+          </div>
+          <div class="trace-event in-progress">
+            <div class="te-time">10:21:22</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-pen"/></svg></div>
+            <div>
+              <div class="te-title">Produce gap findings</div>
+              <div class="te-sub">Compiling and scoring gaps</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="modal-footer">
+      <div class="footer-left">
+        <svg class="icon"><use href="#i-file"/></svg>
+        <span>Saved to <span class="mono">peak-system/vault-reviews/2026-05-20-a7f9c3e2.md</span></span>
+      </div>
+      <div class="footer-actions">
+        <button class="btn"><svg class="icon"><use href="#i-ext"/></svg>Open report note</button>
+        <button class="btn"><svg class="icon"><use href="#i-download"/></svg>Export summary</button>
+        <button class="btn primary">Close</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+     REPORT · ACTIONS
+     ============================================================ -->
+<section class="scene" id="report-actions">
+  <div class="scene-caption"><span class="dot"></span><span>Modal · Actions tab — prioritized dry-run queue with rank, impact, status</span></div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div class="modal-brand"><svg class="icon"><use href="#i-shield-star"/></svg></div>
+      <div class="modal-title-block">
+        <h2 class="modal-title">Vault Review · 2026-05-20</h2>
+        <div class="modal-subtitle">
+          <span class="tnum">12,847 notes</span><span class="sep">·</span>
+          <span class="tnum">4.2M words</span><span class="sep">·</span>
+          <span class="tnum">37 changed notes</span><span class="sep">·</span>
+          <span>saved report ready</span>
+        </div>
+      </div>
+      <div class="modal-header-actions">
+        <button class="icon-btn"><svg class="icon"><use href="#i-more"/></svg></button>
+        <button class="icon-btn"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+    </div>
+
+    <div class="modal-tabs">
+      <button class="modal-tab">Overview</button>
+      <button class="modal-tab">Clusters<span class="tab-badge">5</span></button>
+      <button class="modal-tab">Gaps<span class="tab-badge">3</span></button>
+      <button class="modal-tab active">Actions<span class="tab-badge">4</span></button>
+      <button class="modal-tab">Sources<span class="tab-badge">18</span></button>
+      <button class="modal-tab">Trace<span class="tab-badge">12</span></button>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-main">
+        <div class="info-banner">
+          <svg class="icon"><use href="#i-info"/></svg>
+          <span>No vault changes will be applied automatically. Every restructure stays dry-run until approved.</span>
+        </div>
+
+        <div class="actions-toolbar">
+          <div class="actions-toolbar-title">Prioritized action queue <span class="sub">(Phase 1: text-only recommendations)</span></div>
+          <div class="filter-pills">
+            <button class="filter-pill active">All</button>
+            <button class="filter-pill">High impact</button>
+            <button class="filter-pill">Low risk</button>
+            <button class="filter-pill">Needs source</button>
+            <button class="filter-icon-btn"><svg class="icon"><use href="#i-filter"/></svg></button>
+          </div>
+        </div>
+
+        <div class="action-card">
+          <div class="ac-drag"><svg class="icon"><use href="#i-grip"/></svg></div>
+          <div class="ac-rank">
+            <div class="ac-rank-num">1</div>
+            <div class="ac-rank-trend up"><svg class="icon"><use href="#i-arr-up"/></svg></div>
+          </div>
+          <div class="ac-body">
+            <div class="ac-tag"><span class="pill impact-high">High impact</span></div>
+            <div class="ac-title">Create <a class="wiki">[[Context Engineering]]</a> note</div>
+            <p class="ac-sub">Connect 7 dangling references</p>
+            <ul class="ac-bullets">
+              <li>Central concept is missing; strong demand and good signal.</li>
+            </ul>
+          </div>
+          <div class="ac-side">
+            <div class="ac-stats">
+              <div>
+                <div class="ac-stat-label">Affected notes</div>
+                <div class="ac-stat-val tnum">12</div>
+              </div>
+              <div>
+                <div class="ac-stat-label">Estimated impact</div>
+                <div class="ac-stat-val medium"><span class="pill impact-high">High</span></div>
+              </div>
+              <div>
+                <div class="ac-stat-label">Status</div>
+                <div class="ac-stat-val medium"><span class="pill status-planned">Planned</span></div>
+              </div>
+            </div>
+            <button class="btn outline-accent"><svg class="icon"><use href="#i-file-plus"/></svg>Create proposal</button>
+          </div>
+        </div>
+
+        <div class="action-card">
+          <div class="ac-drag"><svg class="icon"><use href="#i-grip"/></svg></div>
+          <div class="ac-rank">
+            <div class="ac-rank-num">2</div>
+            <div class="ac-rank-trend flat"><svg class="icon"><use href="#i-minus"/></svg></div>
+          </div>
+          <div class="ac-body">
+            <div class="ac-tag"><span class="pill risk-medium">Medium risk</span></div>
+            <div class="ac-title">Merge 5 short Search Architecture notes into <a class="wiki">[[Search Architecture MOC]]</a></div>
+            <ul class="ac-bullets">
+              <li>Reduce fragmentation and unify architecture documentation.</li>
+            </ul>
+          </div>
+          <div class="ac-side">
+            <div class="ac-stats">
+              <div>
+                <div class="ac-stat-label">Affected notes</div>
+                <div class="ac-stat-val tnum">7</div>
+              </div>
+              <div>
+                <div class="ac-stat-label">Estimated impact</div>
+                <div class="ac-stat-val medium"><span class="pill impact-high">High</span></div>
+              </div>
+              <div>
+                <div class="ac-stat-label">Status</div>
+                <div class="ac-stat-val medium"><span class="pill status-planned">Planned</span></div>
+              </div>
+            </div>
+            <button class="btn"><svg class="icon"><use href="#i-eye"/></svg>Preview dry-run</button>
+          </div>
+        </div>
+
+        <div class="action-card">
+          <div class="ac-drag"><svg class="icon"><use href="#i-grip"/></svg></div>
+          <div class="ac-rank">
+            <div class="ac-rank-num">3</div>
+            <div class="ac-rank-trend flat"><svg class="icon"><use href="#i-minus"/></svg></div>
+          </div>
+          <div class="ac-body">
+            <div class="ac-tag"><span class="pill impact-low">Low impact</span></div>
+            <div class="ac-title">Archive Travel notes cluster</div>
+            <p class="ac-sub">28 notes · add <span class="mono">#archive/travel</span></p>
+            <ul class="ac-bullets">
+              <li>Stale cluster with very low recent activity.</li>
+              <li>Keep links via archive and update hub references.</li>
+            </ul>
+          </div>
+          <div class="ac-side">
+            <div class="ac-stats">
+              <div>
+                <div class="ac-stat-label">Affected notes</div>
+                <div class="ac-stat-val tnum">28</div>
+              </div>
+              <div>
+                <div class="ac-stat-label">Estimated impact</div>
+                <div class="ac-stat-val medium"><span class="pill risk-medium">Medium</span></div>
+              </div>
+              <div>
+                <div class="ac-stat-label">Status</div>
+                <div class="ac-stat-val medium"><span class="pill status-planned">Planned</span></div>
+              </div>
+            </div>
+            <button class="btn"><svg class="icon"><use href="#i-archive"/></svg>Review scope</button>
+          </div>
+        </div>
+
+        <div class="action-card">
+          <div class="ac-drag"><svg class="icon"><use href="#i-grip"/></svg></div>
+          <div class="ac-rank">
+            <div class="ac-rank-num">4</div>
+            <div class="ac-rank-trend down"><svg class="icon"><use href="#i-arr-dn"/></svg></div>
+          </div>
+          <div class="ac-body">
+            <div class="ac-tag"><span class="pill risk-low">Low risk</span></div>
+            <div class="ac-title">Refresh <a class="wiki">[[Vault Architecture Overview]]</a> as living document</div>
+            <p class="ac-sub">Update structure and link map · 14 inbound links</p>
+            <ul class="ac-bullets">
+              <li>Keep it as the system-level map for onboarding and decisions.</li>
+            </ul>
+          </div>
+          <div class="ac-side">
+            <div class="ac-stats">
+              <div>
+                <div class="ac-stat-label">Affected notes</div>
+                <div class="ac-stat-val tnum">1</div>
+              </div>
+              <div>
+                <div class="ac-stat-label">Estimated impact</div>
+                <div class="ac-stat-val medium"><span class="pill risk-medium">Medium</span></div>
+              </div>
+              <div>
+                <div class="ac-stat-label">Status</div>
+                <div class="ac-stat-val medium"><span class="pill status-planned">Planned</span></div>
+              </div>
+            </div>
+            <button class="btn"><svg class="icon"><use href="#i-ext"/></svg>Open note</button>
+          </div>
+        </div>
+
+        <div class="action-footer-hint">
+          <svg class="icon"><use href="#i-grip"/></svg>
+          <span>Drag to reorder priorities. Rankings are based on impact, risk, and evidence strength.</span>
+        </div>
+      </div>
+
+      <aside class="modal-rail">
+        <div class="trace-rail-title">
+          <div>Agent trace <span class="label-sub">(live)</span></div>
+          <div class="status-dot">Running</div>
+        </div>
+        <div class="trace-events">
+          <div class="trace-event">
+            <div class="te-time">10:21:03</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Rank opportunities</div>
+              <div class="te-sub">Scored 27 opportunities by impact, risk, and effort.<br>Top 4 selected.</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:06</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Estimate blast radius</div>
+              <div class="te-sub">Estimated affected notes, links, and downstream impact for each action.</div>
+            </div>
+          </div>
+          <div class="trace-event">
+            <div class="te-time">10:21:09</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="te-title">Attach sources</div>
+              <div class="te-sub">Linked supporting notes, evidence, and recent activity as context.</div>
+            </div>
+          </div>
+          <div class="trace-event in-progress">
+            <div class="te-time">10:21:12</div>
+            <div class="te-marker"><svg class="icon"><use href="#i-pen"/></svg></div>
+            <div>
+              <div class="te-title">Prepare recommendations</div>
+              <div class="te-sub">Composed prioritized actions with rationale and preview summary.</div>
+            </div>
+          </div>
+        </div>
+        <div class="trace-rail-foot">
+          <button class="btn block"><svg class="icon"><use href="#i-ext"/></svg>View trace details</button>
+        </div>
+      </aside>
+    </div>
+
+    <div class="modal-footer">
+      <div class="footer-left">
+        <svg class="icon"><use href="#i-file"/></svg>
+        <span>Saved to <span class="mono">peak-system/vault-reviews/2026-05-20-a7f9c3e2.md</span></span>
+      </div>
+      <div class="footer-actions">
+        <button class="btn"><svg class="icon"><use href="#i-ext"/></svg>Open report note</button>
+        <button class="btn"><svg class="icon"><use href="#i-download"/></svg>Export summary</button>
+        <button class="btn primary">Close</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+     REPORT · SOURCES (3-col layout: filters / table / preview)
+     ============================================================ -->
+<section class="scene" id="report-sources">
+  <div class="scene-caption"><span class="dot"></span><span>Modal · Sources tab — filterable evidence table with right-rail preview</span></div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div class="modal-brand"><svg class="icon"><use href="#i-shield-star"/></svg></div>
+      <div class="modal-title-block">
+        <h2 class="modal-title">Vault Review · 2026-05-20</h2>
+        <div class="modal-subtitle">
+          <span class="tnum">12,847 notes</span><span class="sep">·</span>
+          <span class="tnum">4.2M words</span><span class="sep">·</span>
+          <span class="tnum">37 changed notes</span><span class="sep">·</span>
+          <span>saved report ready</span>
+        </div>
+      </div>
+      <div class="modal-header-actions">
+        <div class="status-dot">Running</div>
+        <button class="icon-btn"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+    </div>
+
+    <div class="modal-tabs">
+      <button class="modal-tab">Overview</button>
+      <button class="modal-tab">Clusters<span class="tab-badge">5</span></button>
+      <button class="modal-tab">Gaps<span class="tab-badge">3</span></button>
+      <button class="modal-tab">Actions<span class="tab-badge">4</span></button>
+      <button class="modal-tab active">Sources<span class="tab-badge">18</span></button>
+      <button class="modal-tab">Trace<span class="tab-badge">12</span></button>
+    </div>
+
+    <div style="padding: 14px 28px 0">
+      <div class="info-banner" style="background:var(--surface-soft);border-color:var(--border-soft);color:var(--text-muted)">
+        <svg class="icon"><use href="#i-info"/></svg>
+        <span>Every vault-level claim links back to source notes.</span>
+      </div>
+    </div>
+
+    <div class="modal-body sources-cols">
+
+      <!-- Left filter column -->
+      <aside class="sources-filters">
+        <div class="sf-section">
+          <div class="sf-section-title">Source groups</div>
+          <div class="sf-group-list">
+            <div class="sf-group-item active"><span>All sources</span><span class="count">18</span></div>
+            <div class="sf-group-item"><span>Cluster Activity</span><span class="count">6</span></div>
+            <div class="sf-group-item"><span>Structural Holes</span><span class="count">3</span></div>
+            <div class="sf-group-item"><span>Dangling References</span><span class="count">4</span></div>
+            <div class="sf-group-item"><span>Stale Hubs</span><span class="count">2</span></div>
+            <div class="sf-group-item"><span>Actions</span><span class="count">3</span></div>
+          </div>
+        </div>
+        <div class="sf-section">
+          <div class="sf-section-title">Filters</div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">Signal type</div>
+          <div class="sf-check-list">
+            <div class="sf-check"><label><input type="checkbox"/>graph</label><span class="count">9</span></div>
+            <div class="sf-check"><label><input type="checkbox"/>cluster</label><span class="count">6</span></div>
+            <div class="sf-check"><label><input type="checkbox"/>backlink</label><span class="count">7</span></div>
+            <div class="sf-check"><label><input type="checkbox"/>stale</label><span class="count">3</span></div>
+            <div class="sf-check"><label><input type="checkbox"/>dangling-ref</label><span class="count">4</span></div>
+          </div>
+        </div>
+        <div class="sf-section">
+          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">Confidence</div>
+          <div class="sf-check-list">
+            <div class="sf-check"><label><input type="checkbox"/>High</label><span class="count">10</span></div>
+            <div class="sf-check"><label><input type="checkbox"/>Medium</label><span class="count">6</span></div>
+            <div class="sf-check"><label><input type="checkbox"/>Low</label><span class="count">2</span></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Middle table -->
+      <div>
+        <div class="sources-toolbar">
+          <div class="sources-toolbar-count">18 sources</div>
+          <div class="sources-toolbar-actions">
+            <button class="sort-select"><span class="label">Sort:</span> Relevance <svg class="icon"><use href="#i-chev-r"/></svg></button>
+            <button class="filter-icon-btn"><svg class="icon"><use href="#i-filter"/></svg></button>
+          </div>
+        </div>
+
+        <div class="sources-table">
+          <div class="sources-table-head">
+            <div>Note</div>
+            <div>Used in</div>
+            <div>Signal</div>
+            <div>Confidence</div>
+            <div>Excerpt</div>
+          </div>
+
+          <div class="sources-row selected">
+            <div>
+              <div class="src-title"><a class="wiki">[[meta-agent-redesign]]</a></div>
+              <div class="src-path">/meta/</div>
+            </div>
+            <div class="src-used">Overview, Cluster Activity, Actions <span class="more">+1 more</span></div>
+            <div class="src-signals">
+              <span class="pill signal-graph">graph</span>
+              <span class="pill signal-cluster">cluster</span>
+            </div>
+            <div><span class="pill conf-high">High</span></div>
+            <div class="src-excerpt">The meta-agent orchestrates search, tools, and memory with ReAct loops and structured responses…</div>
+          </div>
+
+          <div class="sources-row">
+            <div>
+              <div class="src-title"><a class="wiki">[[claude-code-sdk-deep-dive]]</a></div>
+              <div class="src-path">/research/claude/</div>
+            </div>
+            <div class="src-used">Cluster Activity, Actions</div>
+            <div class="src-signals">
+              <span class="pill signal-backlink">backlink</span>
+              <span class="pill signal-cluster">cluster</span>
+            </div>
+            <div><span class="pill conf-high">High</span></div>
+            <div class="src-excerpt">Claude Code SDK enables tool calls, streaming outputs, and structured continuous improvement…</div>
+          </div>
+
+          <div class="sources-row">
+            <div>
+              <div class="src-title"><a class="wiki">[[copilot-output-collector]]</a></div>
+              <div class="src-path">/tooling/</div>
+            </div>
+            <div class="src-used">Actions, Structural Holes</div>
+            <div class="src-signals">
+              <span class="pill signal-backlink">backlink</span>
+              <span class="pill signal-graph">graph</span>
+            </div>
+            <div><span class="pill conf-medium">Medium</span></div>
+            <div class="src-excerpt">Collect and normalize Copilot outputs for analysis and continuous improvement…</div>
+          </div>
+
+          <div class="sources-row">
+            <div>
+              <div class="src-title"><a class="wiki">[[Search Architecture MOC]]</a></div>
+              <div class="src-path">/moc/</div>
+            </div>
+            <div class="src-used">Overview, Structural Holes, Actions <span class="more">+1 more</span></div>
+            <div class="src-signals">
+              <span class="pill signal-graph">graph</span>
+              <span class="pill signal-cluster">cluster</span>
+            </div>
+            <div><span class="pill conf-high">High</span></div>
+            <div class="src-excerpt">MOC for search system design, retrieval pipeline, and index strategy across the vault…</div>
+          </div>
+
+          <div class="sources-row">
+            <div>
+              <div class="src-title"><a class="wiki">[[Context Engineering]]</a></div>
+              <div class="src-path">/concepts/</div>
+            </div>
+            <div class="src-used">Gaps, Actions</div>
+            <div class="src-signals">
+              <span class="pill signal-graph">graph</span>
+              <span class="pill signal-dangling">dangling-ref</span>
+            </div>
+            <div><span class="pill conf-medium">Medium</span></div>
+            <div class="src-excerpt">Define principles and practices for building high-signal context for LLM systems…</div>
+          </div>
+
+          <div class="sources-row">
+            <div>
+              <div class="src-title"><a class="wiki">[[Vault Architecture Overview]]</a></div>
+              <div class="src-path">/architecture/</div>
+            </div>
+            <div class="src-used">Overview, Cluster Activity</div>
+            <div class="src-signals">
+              <span class="pill signal-graph">graph</span>
+              <span class="pill signal-cluster">cluster</span>
+            </div>
+            <div><span class="pill conf-high">High</span></div>
+            <div class="src-excerpt">Architecture overview of the vault: components, data flow, and key design decisions…</div>
+          </div>
+
+          <div class="sources-row">
+            <div>
+              <div class="src-title"><a class="wiki">[[User Research Index]]</a></div>
+              <div class="src-path">/research/users/</div>
+            </div>
+            <div class="src-used">Cluster Activity</div>
+            <div class="src-signals">
+              <span class="pill signal-cluster">cluster</span>
+              <span class="pill signal-backlink">backlink</span>
+            </div>
+            <div><span class="pill conf-medium">Medium</span></div>
+            <div class="src-excerpt">Index of user interviews, surveys, and usability studies across products…</div>
+          </div>
+
+          <div class="sources-row">
+            <div>
+              <div class="src-title"><a class="wiki">[[Writing Principles]]</a></div>
+              <div class="src-path">/standards/</div>
+            </div>
+            <div class="src-used">Gaps</div>
+            <div class="src-signals">
+              <span class="pill signal-stale">stale</span>
+              <span class="pill signal-backlink">backlink</span>
+            </div>
+            <div><span class="pill conf-low">Low</span></div>
+            <div class="src-excerpt">Core writing guidelines and tone principles for product communication…</div>
+          </div>
+        </div>
+
+        <div class="sources-pagination">
+          <span>1–18 of 18</span>
+          <div class="pag-pages">
+            <span class="pag-page disabled"><svg class="icon icon-sm"><use href="#i-chev-l"/></svg></span>
+            <span class="pag-page active">1</span>
+            <span class="pag-page disabled"><svg class="icon icon-sm"><use href="#i-chev-r"/></svg></span>
+          </div>
+          <span>50 per page <svg class="icon icon-sm" style="display:inline;vertical-align:-2px"><use href="#i-chev-r"/></svg></span>
+        </div>
+      </div>
+
+      <!-- Right preview -->
+      <aside class="source-preview">
+        <div class="sp-head">
+          <div class="sp-title">Source preview</div>
+          <div class="sp-icons">
+            <button class="icon-btn"><svg class="icon"><use href="#i-expand"/></svg></button>
+            <button class="icon-btn"><svg class="icon"><use href="#i-pin"/></svg></button>
+          </div>
+        </div>
+        <div class="sp-note-name">[[meta-agent-redesign]]</div>
+        <div class="sp-note-path">/meta/</div>
+        <div class="sp-tags">
+          <span class="pill">project</span>
+          <span class="pill">architecture</span>
+        </div>
+        <div class="sp-section">Inbound links (12)</div>
+        <div class="sp-links">
+          <a class="wiki">[[Strategy Direction]]</a>
+          <a class="wiki">[[Search Architecture MOC]]</a>
+          <a class="wiki">[[meta-agent-roadmap]]</a>
+          <span class="more">+9 more</span>
+        </div>
+        <div class="sp-section">Cluster</div>
+        <div><span class="pill"><svg class="icon" style="display:inline;vertical-align:-2px"><use href="#i-brain"/></svg> AI Engineering</span></div>
+        <div class="sp-section">Excerpt</div>
+        <div class="sp-excerpt">The meta-agent orchestrates search, tools, and memory with ReAct loops and guardrails. It decomposes user intent, selects capabilities, and ensures traceable, safe execution across the vault.</div>
+        <div class="sp-dates">
+          <div>
+            <div class="sp-date-label">First cited</div>
+            <div class="sp-date-val">2026-04-18</div>
+          </div>
+          <div>
+            <div class="sp-date-label">Last cited</div>
+            <div class="sp-date-val">2026-05-20</div>
+          </div>
+        </div>
+        <button class="btn outline-accent block sp-open"><svg class="icon"><use href="#i-ext"/></svg>Open source note</button>
+      </aside>
+    </div>
+
+    <div class="modal-footer">
+      <div class="footer-left">
+        <svg class="icon"><use href="#i-file"/></svg>
+        <span>Saved to <span class="mono">peak-system/vault-reviews/2026-05-20-a7f9c3e2.md</span></span>
+      </div>
+      <div class="footer-actions">
+        <button class="btn"><svg class="icon"><use href="#i-ext"/></svg>Open report note</button>
+        <button class="btn"><svg class="icon"><use href="#i-download"/></svg>Export summary</button>
+        <button class="btn primary">Close</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+     REPORT · TRACE (ReAct timeline + step detail right rail)
+     ============================================================ -->
+<section class="scene" id="report-trace">
+  <div class="scene-caption"><span class="dot"></span><span>Modal · Trace tab — ReAct timeline with step-detail inspector</span></div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div class="modal-brand"><svg class="icon"><use href="#i-shield-star"/></svg></div>
+      <div class="modal-title-block">
+        <h2 class="modal-title">Vault Review · 2026-05-20</h2>
+        <div class="modal-subtitle">
+          <span class="tnum">12,847 notes</span><span class="sep">·</span>
+          <span class="tnum">4.2M words</span><span class="sep">·</span>
+          <span class="tnum">37 changed notes</span><span class="sep">·</span>
+          <span>saved report ready</span>
+        </div>
+      </div>
+      <div class="modal-header-actions">
+        <button class="icon-btn"><svg class="icon"><use href="#i-more"/></svg></button>
+        <button class="icon-btn"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+    </div>
+
+    <div class="modal-tabs">
+      <button class="modal-tab">Overview</button>
+      <button class="modal-tab">Clusters<span class="tab-badge">5</span></button>
+      <button class="modal-tab">Gaps<span class="tab-badge">3</span></button>
+      <button class="modal-tab">Actions<span class="tab-badge">4</span></button>
+      <button class="modal-tab">Sources<span class="tab-badge">18</span></button>
+      <button class="modal-tab active">Trace<span class="tab-badge">12</span></button>
+    </div>
+
+    <div class="modal-body trace-cols">
+
+      <!-- Main timeline -->
+      <div>
+        <div class="trace-section-head">
+          <span>Agent trace</span>
+          <span class="sub">(ReAct timeline)</span>
+          <span class="live">live</span>
+        </div>
+
+        <div class="trace-table">
+          <div class="trace-table-head">
+            <div>Time</div>
+            <div></div>
+            <div>Step</div>
+            <div>Action &amp; reasoning</div>
+            <div></div>
+          </div>
+
+          <div class="trace-row selected">
+            <div class="trace-time">10:21:03</div>
+            <div><div class="trace-icon"><svg class="icon"><use href="#i-check"/></svg></div></div>
+            <div class="trace-step-title">Compute vault fingerprint</div>
+            <div>
+              <div>Checked unchanged cache; no full rescan needed.</div>
+              <div class="trace-step-sub">Using cached fingerprint <span class="mono">a7f9c3e2</span> (14 days old)</div>
+            </div>
+            <div class="trace-duration"><svg class="icon icon-sm tool-glyph"><use href="#i-db"/></svg>210ms</div>
+          </div>
+
+          <div class="trace-row">
+            <div class="trace-time">10:21:04</div>
+            <div><div class="trace-icon"><svg class="icon"><use href="#i-check"/></svg></div></div>
+            <div class="trace-step-title">Load VaultDigest</div>
+            <div>
+              <div>Loaded vault digest summary.</div>
+              <div class="trace-step-sub">12,847 notes · 4.2M words · 5 clusters · 142 orphans</div>
+            </div>
+            <div class="trace-duration">256ms</div>
+          </div>
+
+          <div class="trace-row">
+            <div class="trace-time">10:21:07</div>
+            <div><div class="trace-icon"><svg class="icon"><use href="#i-check"/></svg></div></div>
+            <div class="trace-step-title">Read community metadata</div>
+            <div>
+              <div>Loaded Louvain clusters and hub/orphan stats.</div>
+              <div class="trace-step-sub">5 clusters · 23 hubs · 142 orphans</div>
+            </div>
+            <div class="trace-duration">312ms</div>
+          </div>
+
+          <div class="trace-row">
+            <div class="trace-time">10:21:10</div>
+            <div><div class="trace-icon tool"><svg class="icon"><use href="#i-puzzle"/></svg></div></div>
+            <div class="trace-step-title">Called Structural hole detector</div>
+            <div>
+              <div>Detected weak bridges between clusters.</div>
+              <div class="trace-step-sub">AI Engineering ↔ Product Design (low connection strength)</div>
+            </div>
+            <div class="trace-duration">487ms</div>
+          </div>
+
+          <div class="trace-row">
+            <div class="trace-time">10:21:13</div>
+            <div><div class="trace-icon tool"><svg class="icon"><use href="#i-puzzle"/></svg></div></div>
+            <div class="trace-step-title">Called VaultLintService</div>
+            <div>
+              <div>Evaluated vault health and consistency.</div>
+              <div class="trace-step-sub">Health score 7.4/10 · 3 gap themes · 4 actions</div>
+            </div>
+            <div class="trace-duration">403ms</div>
+          </div>
+
+          <div class="trace-row">
+            <div class="trace-time">10:21:18</div>
+            <div><div class="trace-icon"><svg class="icon"><use href="#i-check"/></svg></div></div>
+            <div class="trace-step-title">Read source notes</div>
+            <div>
+              <div>Collected supporting notes for claims.</div>
+              <div class="trace-step-sub">18 notes read across 6 clusters</div>
+            </div>
+            <div class="trace-duration">892ms</div>
+          </div>
+
+          <div class="trace-row">
+            <div class="trace-time">10:21:22</div>
+            <div><div class="trace-icon tool"><svg class="icon"><use href="#i-puzzle"/></svg></div></div>
+            <div class="trace-step-title">Produced cluster insights</div>
+            <div>
+              <div>Analyzed cluster activity and trends.</div>
+              <div class="trace-step-sub">5 findings · top changes by cluster</div>
+            </div>
+            <div class="trace-duration">1.22s</div>
+          </div>
+
+          <div class="trace-row">
+            <div class="trace-time">10:21:25</div>
+            <div><div class="trace-icon tool"><svg class="icon"><use href="#i-puzzle"/></svg></div></div>
+            <div class="trace-step-title">Produced gap findings</div>
+            <div>
+              <div>Identified structural holes, dangling refs, and stale hubs.</div>
+              <div class="trace-step-sub">3 gaps · 27 missing links · 2 stale hubs</div>
+            </div>
+            <div class="trace-duration">1.05s</div>
+          </div>
+
+          <div class="trace-row">
+            <div class="trace-time">10:21:28</div>
+            <div><div class="trace-icon tool"><svg class="icon"><use href="#i-puzzle"/></svg></div></div>
+            <div class="trace-step-title">Ranked recommended actions</div>
+            <div>
+              <div>Scored and prioritized actionable recommendations.</div>
+              <div class="trace-step-sub">4 actions ranked · impact/risk evaluated</div>
+            </div>
+            <div class="trace-duration">610ms</div>
+          </div>
+
+          <div class="trace-row">
+            <div class="trace-time">10:21:31</div>
+            <div><div class="trace-icon in-progress"><svg class="icon"><use href="#i-save"/></svg></div></div>
+            <div class="trace-step-title">Saved markdown report</div>
+            <div>
+              <div>Wrote report to vault.</div>
+              <div class="trace-step-sub"><span class="mono">peak-system/vault-reviews/2026-05-20-a7f9c3e2.md</span></div>
+            </div>
+            <div class="trace-duration">184ms</div>
+          </div>
+        </div>
+
+        <div class="trace-legend">
+          <span class="leg"><span class="dot ok"><svg class="icon"><use href="#i-check"/></svg></span>Completed</span>
+          <span class="leg"><span class="dot tool"><svg class="icon"><use href="#i-puzzle"/></svg></span>Tool call</span>
+          <span class="leg"><span class="dot writing"><svg class="icon"><use href="#i-circle"/></svg></span>Writing</span>
+          <span class="leg"><span class="dot pending"><svg class="icon"><use href="#i-hourglass"/></svg></span>In progress</span>
+        </div>
+      </div>
+
+      <!-- Step detail right rail -->
+      <aside class="step-detail">
+        <div class="sd-head">
+          <div>
+            <span class="sd-title">Step details</span>
+            <span class="sd-counter">1 of 10</span>
+          </div>
+          <div class="sd-pager">
+            <button><svg class="icon icon-sm"><use href="#i-chev-l"/></svg></button>
+            <button><svg class="icon icon-sm"><use href="#i-chev-r"/></svg></button>
+          </div>
+        </div>
+        <div class="sd-step-row">
+          <span>Compute vault fingerprint</span>
+          <span class="pill success">Completed</span>
+          <span style="margin-left:auto;color:var(--text-muted);font-weight:500">210ms</span>
+        </div>
+
+        <div class="sd-section">Tool</div>
+        <div class="sd-tool">
+          <span>VaultFingerprintService.compute()</span>
+          <button class="copy"><svg class="icon"><use href="#i-copy"/></svg></button>
+        </div>
+
+        <div class="sd-section">Input</div>
+        <div class="sd-kv">
+          <div class="k">Mode</div><div class="v">incremental</div>
+          <div class="k">Vault path</div><div class="v mono">peak-system</div>
+          <div class="k">Cache policy</div><div class="v">allow-stale (≤ 30d)</div>
+          <div class="k">Include attachments</div><div class="v">false</div>
+        </div>
+
+        <div class="sd-section">Output</div>
+        <div class="sd-kv">
+          <div class="k">Fingerprint ID</div><div class="v mono">a7f9c3e2</div>
+          <div class="k">Created at</div><div class="v tnum">2026-05-06 09:14</div>
+          <div class="k">Age</div><div class="v">14 days</div>
+          <div class="k">Changed since last</div><div class="v">37 notes</div>
+          <div class="k">Status</div><div class="v">cache used</div>
+        </div>
+
+        <div class="sd-section">Sources touched</div>
+        <div class="sd-touched">
+          <svg class="icon"><use href="#i-db"/></svg>
+          .vault/fingerprint.json
+        </div>
+
+        <div class="sd-stats">
+          <div class="sd-stat">
+            <div class="sd-stat-label">Token estimate</div>
+            <div class="sd-stat-val tnum">1,024 tokens</div>
+          </div>
+          <div class="sd-stat">
+            <div class="sd-stat-label">Total duration</div>
+            <div class="sd-stat-val tnum">9.31s</div>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+
+    <div class="modal-footer">
+      <div class="footer-left trace-foot-banner">
+        <span class="icon-wrap"><svg class="icon"><use href="#i-shield-check"/></svg></span>
+        <div>
+          <div style="font-weight:600;color:var(--text)">No vault changes applied.</div>
+          <div>Trace is read-only and for review purposes only.</div>
+        </div>
+      </div>
+      <div class="footer-actions">
+        <button class="btn"><svg class="icon"><use href="#i-ext"/></svg>Open report note</button>
+        <button class="btn"><svg class="icon"><use href="#i-copy"/></svg>Copy trace</button>
+        <button class="btn primary">Close</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+</main>
+
+<script>
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.target;
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.scene').forEach(s => s.classList.toggle('active', s.id === target));
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
+  });
+  // Default-open: first nav tab whose target scene exists.
+  const firstAvailable = Array.from(document.querySelectorAll('.nav-tab'))
+    .find(t => document.getElementById(t.dataset.target));
+  firstAvailable?.click();
+</script>
+</body>
+</html>
