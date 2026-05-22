@@ -180,6 +180,14 @@ export interface QueryOptions {
     usageFeature?: UsageFeature;
     usageAction?: string;
     usageSessionId?: string;
+    /**
+     * Override both primary and fast model for this query. When set, the value
+     * is materialized into ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL so the
+     * agent SDK uses this model regardless of which "class" it picks.
+     * Caller should pass an already-canonical model id (the SDK side runs it
+     * through resolveApiModelId).
+     */
+    modelOverride?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -246,8 +254,16 @@ export async function* queryWithProfile(
     const registry = ProfileRegistry.getInstance();
     const agentConfig = registry.getActiveAgentConfig();
     const agentFastConfig = registry.getActiveAgentFastConfig();
-    const agentModelId = agentConfig?.modelId ?? profile.primaryModel;
-    const agentFastModelId = agentFastConfig?.modelId ?? profile.fastModel;
+    const resolvedPrimary = modelRegistry.resolveApiModelId(profile.kind, agentConfig?.modelId ?? profile.primaryModel);
+    const resolvedFast = modelRegistry.resolveApiModelId(profile.kind, agentFastConfig?.modelId ?? profile.fastModel);
+    // When caller specifies a modelOverride (e.g. Fast Auto Review wants Haiku),
+    // point ALL model env vars at that model so the SDK can't fall back to the
+    // primary even when it requests the "sonnet" class internally.
+    const overrideResolved = options.modelOverride
+        ? modelRegistry.resolveApiModelId(profile.kind, options.modelOverride)
+        : null;
+    const agentModelId = overrideResolved ?? resolvedPrimary;
+    const agentFastModelId = overrideResolved ?? resolvedFast;
     const subprocessEnv: Record<string, string> = {
         ...toAgentSdkEnv(profile, agentModelId, agentFastModelId),
         PATH: process.env.PATH ?? '',

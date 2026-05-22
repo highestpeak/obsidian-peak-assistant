@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant Panel Flow Prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #1f2026;
+      --panel: #262832;
+      --panel-2: #2f313c;
+      --line: #3b3d48;
+      --text: #ececf1;
+      --muted: #a5a8b6;
+      --subtle: #787c8c;
+      --blue: #8fb8ff;
+      --green: #82d49d;
+      --amber: #e0b15e;
+      --red: #e68181;
+      --accent: #b6a6ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 220px minmax(420px, 1fr) 388px;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px) 0 0 / 24px 24px,
+        var(--bg);
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: #202129;
+      padding: 14px;
+      overflow: hidden;
+    }
+
+    .sidebar-title,
+    .note-title,
+    .panel-title {
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .file {
+      margin-top: 8px;
+      padding: 7px 8px;
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file.active {
+      background: #30323d;
+      color: var(--text);
+    }
+
+    .editor {
+      min-width: 0;
+      padding: 22px clamp(20px, 4vw, 58px);
+      border-right: 1px solid var(--line);
+    }
+
+    .note-path {
+      color: var(--subtle);
+      font-size: 12px;
+      margin-bottom: 14px;
+    }
+
+    .note-title {
+      font-size: 25px;
+      margin-bottom: 18px;
+    }
+
+    .para {
+      max-width: 760px;
+      color: #d8dae3;
+      font-size: 15px;
+      line-height: 1.72;
+      margin: 0 0 16px;
+    }
+
+    .selection {
+      border-left: 3px solid var(--blue);
+      background: rgba(143, 184, 255, 0.09);
+      padding: 10px 12px;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .command-palette {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      width: min(560px, calc(100vw - 48px));
+      border: 1px solid var(--line);
+      background: rgba(38, 40, 50, 0.96);
+      border-radius: 8px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.32);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .kbd {
+      border: 1px solid var(--line);
+      background: #1f2027;
+      color: var(--text);
+      border-radius: 5px;
+      padding: 3px 6px;
+      font-size: 11px;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .panel {
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      max-height: 100vh;
+      overflow: auto;
+    }
+
+    .panel-header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: rgba(38, 40, 50, 0.96);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 14px;
+    }
+
+    .panel-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .status {
+      font-size: 11px;
+      color: var(--green);
+      border: 1px solid rgba(130, 212, 157, 0.35);
+      border-radius: 999px;
+      padding: 3px 7px;
+    }
+
+    .search {
+      height: 34px;
+      border: 1px solid var(--line);
+      background: #1f2027;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .section {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-title {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      margin-bottom: 9px;
+    }
+
+    .context {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .context-main {
+      color: var(--text);
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .context-sub {
+      color: var(--subtle);
+      font-size: 11px;
+      margin-top: 3px;
+    }
+
+    .pill {
+      color: var(--blue);
+      background: rgba(143, 184, 255, 0.1);
+      border: 1px solid rgba(143, 184, 255, 0.22);
+      border-radius: 999px;
+      padding: 3px 7px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .action {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 7px;
+      padding: 10px;
+      margin-bottom: 8px;
+    }
+
+    .action-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: baseline;
+    }
+
+    .action-name {
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .reason {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 5px;
+    }
+
+    .risk {
+      color: var(--amber);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .groups {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .group {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      min-height: 48px;
+      background: rgba(255,255,255,0.025);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .group strong {
+      display: block;
+      color: var(--text);
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      background: #22242c;
+      border-radius: 7px;
+      overflow: hidden;
+    }
+
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .step-body {
+      padding: 10px;
+    }
+
+    .candidate {
+      border: 1px solid #454754;
+      border-radius: 6px;
+      padding: 8px;
+      margin-bottom: 8px;
+      background: rgba(255,255,255,0.025);
+    }
+
+    .candidate-title {
+      font-size: 12px;
+      font-weight: 650;
+      margin-bottom: 5px;
+    }
+
+    .candidate-meta {
+      color: var(--subtle);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .diff {
+      border-left: 3px solid var(--green);
+      background: rgba(130, 212, 157, 0.08);
+      padding: 8px;
+      border-radius: 0 6px 6px 0;
+      color: #dcefe2;
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .button {
+      border: 1px solid var(--line);
+      background: #383a46;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 7px 9px;
+      font-size: 12px;
+    }
+
+    .button.primary {
+      background: #315f43;
+      border-color: rgba(130, 212, 157, 0.4);
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: minmax(0, 1fr) 360px;
+      }
+
+      .sidebar {
+        display: none;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .editor {
+        min-height: 48vh;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .panel {
+        max-height: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="sidebar">
+      <div class="sidebar-title">Vault</div>
+      <div class="file active">Projects / AI knowledge systems.md</div>
+      <div class="file">Research / graph intelligence.md</div>
+      <div class="file">Inbox / reading notes.md</div>
+      <div class="file">Archive / old drafts.md</div>
+    </aside>
+
+    <article class="editor">
+      <div class="note-path">Projects / Knowledge Products</div>
+      <div class="note-title">AI knowledge systems</div>
+      <p class="para">Obsidian users do not need another detached AI workspace. The useful assistant should stay near the note, understand the current project, and offer small reviewable changes.</p>
+      <p class="para selection">A knowledge assistant should strengthen links, surface missing evidence, and keep long-lived notes healthy without forcing the writer to inspect every internal retrieval strategy.</p>
+      <p class="para">The key design problem is trust. The user should see the source, the proposed change, and the recovery path before anything touches the vault.</p>
+    </article>
+
+    <aside class="panel" aria-label="Peak Assistant panel">
+      <div class="panel-header">
+        <div class="panel-topline">
+          <div class="panel-title">Peak Assistant</div>
+          <div class="status">Index ready</div>
+        </div>
+        <div class="search">Search actions, skills, recent runs</div>
+      </div>
+
+      <section class="section">
+        <div class="section-title">Current Context</div>
+        <div class="context">
+          <div>
+            <div class="context-main">AI knowledge systems.md</div>
+            <div class="context-sub">Selection active · Projects folder · 4 weak outgoing links</div>
+          </div>
+          <div class="pill">selection</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">Recommended Now</div>
+        <div class="action">
+          <div class="action-head">
+            <div class="action-name">Connect Related Notes</div>
+            <div class="risk">preview</div>
+          </div>
+          <div class="reason">Recommended because related notes exist but this selection has no wiki-links.</div>
+        </div>
+        <div class="action">
+          <div class="action-head">
+            <div class="action-name">Add Evidence</div>
+            <div class="risk">review</div>
+          </div>
+          <div class="reason">Recommended because the selected paragraph makes a product claim without a cited source.</div>
+        </div>
+        <div class="action">
+          <div class="action-head">
+            <div class="action-name">Improve Selected Paragraph</div>
+            <div class="risk">diff</div>
+          </div>
+          <div class="reason">Recommended because the paragraph is broad and can be tightened without changing meaning.</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">Action Groups</div>
+        <div class="groups">
+          <div class="group"><strong>Improve</strong>Review, rewrite, summarize</div>
+          <div class="group"><strong>Connect</strong>Links, tags, related notes</div>
+          <div class="group"><strong>Evidence</strong>Sources, quotes, claims</div>
+          <div class="group"><strong>Maintain</strong>Health, tasks, duplicates</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">Selected Flow</div>
+        <div class="flow">
+          <div class="step">
+            <div class="step-header">
+              <span>1. Scope</span>
+              <span class="pill">current selection</span>
+            </div>
+            <div class="step-body">
+              <div class="candidate-meta">Use selected paragraph and current folder. Search semantic, backlinks, graph neighbors as hidden signals.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-header">
+              <span>2. Review candidates</span>
+              <span class="pill">3 found</span>
+            </div>
+            <div class="step-body">
+              <div class="candidate">
+                <div class="candidate-title">[[Ambient Push]]</div>
+                <div class="candidate-meta">Reason: same claim about low-interruption note assistance. Signals: semantic, graph, co-citation.</div>
+              </div>
+              <div class="candidate">
+                <div class="candidate-title">[[Vault Lint]]</div>
+                <div class="candidate-meta">Reason: supports the "long-lived notes healthy" sentence. Signals: tag, backlink.</div>
+              </div>
+              <div class="diff">Preview: insert wiki-links into the selected paragraph. No text rewrite unless accepted.</div>
+              <div class="buttons">
+                <div class="button primary">Apply selected</div>
+                <div class="button">Open sources</div>
+                <div class="button">Ignore</div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-header">
+              <span>3. Recent review</span>
+              <span class="pill">saved</span>
+            </div>
+            <div class="step-body">
+              <div class="candidate-meta">Applied 2 links · View applied diff · Undo available for this run.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <div class="command-palette">
+    <span class="kbd">⌘P</span>
+    <span>Peak Assistant: connect this selection, add evidence, improve paragraph</span>
+  </div>
+</body>
+</html>

@@ -1,0 +1,840 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant Capability Visual Gallery</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eef1f5;
+      --panel: #ffffff;
+      --soft: #f8fafc;
+      --line: #dbe1ea;
+      --text: #252b33;
+      --muted: #65707c;
+      --subtle: #9aa3af;
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --purple: #7c3aed;
+      --purple-soft: #f4f0ff;
+      --green: #16834a;
+      --green-soft: #eaf8f0;
+      --amber: #b7791f;
+      --amber-soft: #fff8e1;
+      --red: #c24135;
+      --red-soft: #fff1f1;
+      --shadow: 0 18px 46px rgba(15, 23, 42, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .page {
+      width: min(1440px, calc(100vw - 40px));
+      margin: 0 auto;
+      padding: 30px 0 42px;
+    }
+
+    .hero {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 22px 24px;
+      margin-bottom: 18px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      margin: 8px 0 0;
+      max-width: 880px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(2, auto);
+      gap: 8px;
+      justify-content: end;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend span,
+    .tag {
+      height: 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0 8px;
+      display: inline-flex;
+      align-items: center;
+      background: #fff;
+      white-space: nowrap;
+    }
+
+    .filters {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+    }
+
+    .filter {
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      padding: 0 12px;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      cursor: default;
+    }
+
+    .filter.active {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+
+    .section {
+      margin: 24px 0 14px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .section h2 {
+      margin: 0;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .section span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      min-height: 360px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .card.hub {
+      border-color: rgba(37, 99, 235, 0.26);
+    }
+
+    .card.advanced {
+      border-color: rgba(124, 58, 237, 0.22);
+    }
+
+    .card-head {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: start;
+      background: linear-gradient(180deg, #fff 0%, #fbfcfe 100%);
+    }
+
+    .mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: var(--blue);
+      background: var(--blue-soft);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .hub .mark {
+      color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .document .mark {
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .knowledge .mark {
+      color: var(--purple);
+      background: var(--purple-soft);
+    }
+
+    .vault .mark {
+      color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .advanced .mark {
+      color: var(--purple);
+      background: var(--purple-soft);
+    }
+
+    .title {
+      min-width: 0;
+    }
+
+    .title strong {
+      display: block;
+      font-size: 15px;
+      line-height: 1.25;
+      margin-bottom: 4px;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      display: block;
+    }
+
+    .mode {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      height: 24px;
+      padding: 0 8px;
+      display: inline-flex;
+      align-items: center;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+      background: #fff;
+    }
+
+    .mode.auto {
+      color: var(--green);
+      background: var(--green-soft);
+      border-color: rgba(22, 131, 74, 0.22);
+    }
+
+    .mode.ask {
+      color: var(--amber);
+      background: var(--amber-soft);
+      border-color: rgba(183, 121, 31, 0.26);
+    }
+
+    .mode.manual {
+      color: var(--purple);
+      background: var(--purple-soft);
+      border-color: rgba(124, 58, 237, 0.18);
+    }
+
+    .story {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .lane {
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 8px;
+      padding: 9px;
+    }
+
+    .lane-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      color: var(--subtle);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .lane-text {
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.42;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .node {
+      min-height: 52px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+      font-size: 12px;
+      line-height: 1.35;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .arrow {
+      color: var(--subtle);
+      font-size: 16px;
+    }
+
+    .artifact {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px;
+      background: #fff;
+    }
+
+    .artifact-title {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .artifact-lines {
+      display: grid;
+      gap: 5px;
+    }
+
+    .line {
+      height: 8px;
+      border-radius: 999px;
+      background: #e7ebf2;
+    }
+
+    .line.short {
+      width: 62%;
+    }
+
+    .line.green {
+      background: rgba(22, 131, 74, 0.24);
+    }
+
+    .line.blue {
+      background: rgba(37, 99, 235, 0.22);
+    }
+
+    .card-foot {
+      border-top: 1px solid var(--line);
+      padding: 10px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 46px;
+      align-items: center;
+    }
+
+    .tag.scope {
+      color: var(--blue);
+      border-color: rgba(37, 99, 235, 0.18);
+      background: var(--blue-soft);
+    }
+
+    .tag.risk {
+      color: var(--amber);
+      border-color: rgba(183, 121, 31, 0.22);
+      background: var(--amber-soft);
+    }
+
+    .tag.safe {
+      color: var(--green);
+      border-color: rgba(22, 131, 74, 0.22);
+      background: var(--green-soft);
+    }
+
+    @media (max-width: 1120px) {
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: calc(100vw - 22px);
+        padding-top: 12px;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .legend {
+        justify-content: start;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <h1>Peak Assistant 功能图册</h1>
+        <p>每张卡都是一个独立功能图：从哪个 intent hub 触发，系统自动做什么，最后给用户什么 review artifact，以及哪些操作必须 preview/apply。这里把旧 action grid 降级为 capability registry。</p>
+      </div>
+      <div class="legend">
+        <span>Auto-discover: 可自动搜索/读取/准备</span>
+        <span>Ask first: 运行前确认</span>
+        <span>Manual: 搜索或高级入口</span>
+        <span>Auto-apply never: 改文档前必须确认</span>
+      </div>
+    </section>
+
+    <div class="filters">
+      <div class="filter active">All</div>
+      <div class="filter">Intent Hubs</div>
+      <div class="filter">Document</div>
+      <div class="filter">Knowledge</div>
+      <div class="filter">Vault</div>
+      <div class="filter">Writing</div>
+      <div class="filter">Advanced</div>
+    </div>
+
+    <section class="section">
+      <h2>Intent Hubs</h2>
+      <span>用户优先点击这些入口，让系统自动规划能力组合</span>
+    </section>
+    <div class="grid" id="hub-grid"></div>
+
+    <section class="section">
+      <h2>Capabilities</h2>
+      <span>这些是被 intent hub 调用的底层功能，也可被手动搜索</span>
+    </section>
+    <div class="grid" id="capability-grid"></div>
+  </main>
+
+  <script>
+    const items = [
+      {
+        type: "hub",
+        group: "hub",
+        mark: "CP",
+        title: "Copilot",
+        subtitle: "帮助当前 note / selection",
+        mode: "auto",
+        trigger: "用户点 Copilot、选中文本菜单、或侧栏 Run Copilot",
+        system: "扫描结构、链接、标签、证据、任务、视觉机会",
+        output: "生成一个 action plan，而不是展示一堆卡片",
+        artifact: "推荐能力队列：links、evidence、improve、diagram",
+        tags: ["Current note", "Selection", "Auto-plan", "No auto-apply"]
+      },
+      {
+        type: "hub",
+        group: "hub",
+        mark: "VI",
+        title: "Vault Intelligence",
+        subtitle: "分析、综合、维护 vault context",
+        mode: "auto",
+        trigger: "用户点 Vault Intelligence、选择 topic/folder、或从 vault health 信号进入",
+        system: "判断 scope，再选择 Analyze / Synthesize / Maintain 模式",
+        output: "生成 vault-level action plan，而不是让用户先选 gaps/summary/health/dedupe",
+        artifact: "insight digest、source-backed artifact、maintenance queue",
+        tags: ["Topic", "Folder", "Vault", "Analyze", "Synthesize", "Maintain"]
+      },
+      {
+        type: "hub",
+        group: "hub advanced",
+        mark: "MS",
+        title: "Manage System",
+        subtitle: "管理模型、索引、skills、prompts",
+        mode: "manual",
+        trigger: "用户搜索设置或打开 Manage",
+        system: "诊断 index/model/provider/skill/prompt 状态",
+        output: "配置与诊断，不混入日常 Copilot 推荐",
+        artifact: "settings panels、diagnostics、usage",
+        tags: ["Admin", "Settings", "Diagnostics"]
+      },
+      {
+        type: "capability",
+        group: "document",
+        mark: "TG",
+        title: "Suggest Tags",
+        subtitle: "给当前 note / folder 建议标签",
+        mode: "auto",
+        trigger: "Copilot scan 发现无标签或标签稀疏",
+        system: "读取 note + 相邻 notes，生成标签候选和理由",
+        output: "tag suggestion rows with confidence",
+        artifact: "frontmatter preview + accept selected",
+        tags: ["Note", "Folder", "Preview", "Feedback"]
+      },
+      {
+        type: "capability",
+        group: "document knowledge",
+        mark: "LN",
+        title: "Connect Related Notes",
+        subtitle: "合并 Suggest Links / Graph / Related / Smart",
+        mode: "auto",
+        trigger: "Copilot 或 Vault Intelligence / Analyze 发现弱链接",
+        system: "semantic、graph、backlink、agent 信号共同生成候选",
+        output: "link proposals with anchor text and insertion location",
+        artifact: "diff preview + provenance badges",
+        tags: ["Selection", "Current note", "Diff", "Provenance"]
+      },
+      {
+        type: "capability",
+        group: "document knowledge",
+        mark: "EV",
+        title: "Add Evidence",
+        subtitle: "给 claim 找 vault 里的证据",
+        mode: "auto",
+        trigger: "选中文本或 Copilot 检测到无来源判断",
+        system: "搜索 source notes、抽取 quote、生成插入建议",
+        output: "evidence candidate cards",
+        artifact: "insert preview + open sources",
+        tags: ["Claim", "Sources", "Insert preview"]
+      },
+      {
+        type: "capability",
+        group: "document",
+        mark: "FX",
+        title: "Improve Current Note",
+        subtitle: "合并 review / correct / polish / format",
+        mode: "ask",
+        trigger: "Copilot scan 发现结构、事实、风格或格式问题",
+        system: "按 issue category 生成修复项和 patch",
+        output: "issue cards with generated fixes",
+        artifact: "per-issue diff + accept / skip",
+        tags: ["Note", "Diff", "Issue cards", "Undo"]
+      },
+      {
+        type: "capability",
+        group: "document",
+        mark: "SP",
+        title: "Suggest Split",
+        subtitle: "建议长文拆分结构",
+        mode: "ask",
+        trigger: "note 过长、主题混杂、heading 层级过弱",
+        system: "检测主题边界、候选新 note title、迁移范围",
+        output: "split plan with affected sections",
+        artifact: "preview new notes + backlinks",
+        tags: ["Long note", "Structure", "Review"]
+      },
+      {
+        type: "capability",
+        group: "document writing",
+        mark: "SM",
+        title: "Summarize",
+        subtitle: "生成摘要，但要可选长度和位置",
+        mode: "ask",
+        trigger: "用户手动、Copilot 检测 note 较长",
+        system: "生成 brief / concise / decisions-only 等版本",
+        output: "rendered summary preview",
+        artifact: "copy / insert at location / save",
+        tags: ["Note", "Placement", "Format"]
+      },
+      {
+        type: "capability",
+        group: "document knowledge",
+        mark: "CN",
+        title: "Extract Concepts",
+        subtitle: "抽取关键概念和定义",
+        mode: "auto",
+        trigger: "Vault Intelligence / Analyze 或 Copilot 检测概念密度高",
+        system: "识别 terms、definitions、candidate glossary links",
+        output: "concept cards and missing-definition prompts",
+        artifact: "create/link concept notes",
+        tags: ["Concepts", "Definitions", "Links"]
+      },
+      {
+        type: "capability",
+        group: "document vault",
+        mark: "TS",
+        title: "Task Review",
+        subtitle: "合并 Extract Todos / Check Task List / Find & Solve Tasks",
+        mode: "auto",
+        trigger: "note 或 vault 发现任务、过期项、阻塞项",
+        system: "抽取任务、分类优先级、识别可回答问题",
+        output: "task review queue",
+        artifact: "create follow-up / mark reviewed / insert answer",
+        tags: ["Tasks", "Review queue", "No silent complete"]
+      },
+      {
+        type: "capability",
+        group: "writing",
+        mark: "WR",
+        title: "Continue / Rewrite Text",
+        subtitle: "只在有 cursor/selection 时出现",
+        mode: "ask",
+        trigger: "用户选中文本或光标停在可续写位置",
+        system: "读取局部上下文，生成可编辑候选",
+        output: "candidate continuation or rewrite",
+        artifact: "inline diff + placement choice",
+        tags: ["Selection", "Cursor", "Diff"]
+      },
+      {
+        type: "capability",
+        group: "writing",
+        mark: "TR",
+        title: "Translate",
+        subtitle: "上下文触发，不作为默认 Copilot 能力",
+        mode: "manual",
+        trigger: "检测语言不匹配、用户选中文本或手动搜索",
+        system: "保留 markdown links / frontmatter / formatting",
+        output: "translation preview",
+        artifact: "replace selection / copy / create note",
+        tags: ["Contextual", "Selection", "Formatting"]
+      },
+      {
+        type: "capability",
+        group: "writing document",
+        mark: "VG",
+        title: "Suggest Visual / Diagram / Example",
+        subtitle: "补足图片、图表、例子、Mermaid",
+        mode: "ask",
+        trigger: "Copilot 检测抽象段落、流程、对比或概念密集区",
+        system: "判断适合 image、diagram、table、example",
+        output: "visual suggestion cards",
+        artifact: "draft prompt / Mermaid preview / insert placeholder",
+        tags: ["Section", "Draft", "Document enrichment"]
+      },
+      {
+        type: "capability",
+        group: "writing knowledge",
+        mark: "PL",
+        title: "Writing Plan",
+        subtitle: "必须先确定 topic、scope、target",
+        mode: "ask",
+        trigger: "用户要写作规划或 Vault Intelligence / Synthesize 生成输出前",
+        system: "选择 source scope、目标结构、缺失材料",
+        output: "outline with source requirements",
+        artifact: "save plan / create tasks",
+        tags: ["Topic", "Sources", "Plan"]
+      },
+      {
+        type: "capability",
+        group: "writing knowledge",
+        mark: "AR",
+        title: "Draft Article With Citations",
+        subtitle: "原 Write Article 的可信版本",
+        mode: "ask",
+        trigger: "用户提供 topic 且 source scope 明确",
+        system: "检索 source notes、组织 claims、生成 cited draft",
+        output: "Markdown article preview",
+        artifact: "save as note + citations + duplicate warning",
+        tags: ["Topic", "Citations", "Save as note"]
+      },
+      {
+        type: "capability",
+        group: "knowledge",
+        mark: "KG",
+        title: "Knowledge Gaps",
+        subtitle: "发现缺失主题和薄弱证据",
+        mode: "auto",
+        trigger: "Vault Intelligence / Analyze 发现 topic/folder scope",
+        system: "比较现有 notes、相关概念、未覆盖问题",
+        output: "gap cards with suggested next notes",
+        artifact: "create note / add backlog / ignore",
+        tags: ["Topic", "Gaps", "Backlog"]
+      },
+      {
+        type: "capability",
+        group: "knowledge",
+        mark: "SY",
+        title: "Topic Synthesis",
+        subtitle: "带来源的主题综合",
+        mode: "ask",
+        trigger: "Vault Intelligence / Synthesize 选定 topic",
+        system: "聚合 source notes，按 claim/theme 组织",
+        output: "cited synthesis preview",
+        artifact: "save as note / refine / open sources",
+        tags: ["Sources", "Claims", "Save"]
+      },
+      {
+        type: "capability",
+        group: "knowledge vault",
+        mark: "VS",
+        title: "Vault Summary",
+        subtitle: "按时间/范围总结 vault 活动",
+        mode: "ask",
+        trigger: "Vault Intelligence / Analyze 选择 folder/time range",
+        system: "按主题、变化、任务、决策聚合",
+        output: "summary with source groups",
+        artifact: "save report / copy / schedule",
+        tags: ["Range", "Activity", "Report"]
+      },
+      {
+        type: "capability",
+        group: "vault",
+        mark: "VH",
+        title: "Vault Health",
+        subtitle: "从 raw counts 改成健康叙事和队列",
+        mode: "ask",
+        trigger: "Vault Intelligence / Maintain 或 health 信号触发",
+        system: "检测 orphan、stale、broken links、empty/stub、tags",
+        output: "health score + priority issue queue",
+        artifact: "review all / fix / ignore / save report",
+        tags: ["Vault", "Severity", "Recovery"]
+      },
+      {
+        type: "capability",
+        group: "vault",
+        mark: "DD",
+        title: "Deduplicate Scan",
+        subtitle: "Vault Health 内的维护模块",
+        mode: "ask",
+        trigger: "Vault Intelligence / Maintain 或重复信号明显",
+        system: "分组重复文件，判断 canonical candidate",
+        output: "duplicate groups with rationale",
+        artifact: "open compare / merge preview / keep newest guarded",
+        tags: ["Vault", "Destructive guard", "Preview"]
+      },
+      {
+        type: "capability",
+        group: "vault",
+        mark: "DF",
+        title: "Detect & File",
+        subtitle: "把 loose text 建议归档位置",
+        mode: "ask",
+        trigger: "用户捕获文本、Inbox 里有未归档内容",
+        system: "分析内容，推荐目标 note/folder 和 append location",
+        output: "filing candidates",
+        artifact: "append preview / create note / ignore",
+        tags: ["Inbox", "Folder", "Append preview"]
+      },
+      {
+        type: "capability",
+        group: "vault document",
+        mark: "BT",
+        title: "Batch Tag Suggestions",
+        subtitle: "Folder/Vault 范围的 tag review",
+        mode: "ask",
+        trigger: "Vault Intelligence / Maintain 或用户选择 folder",
+        system: "批量扫描文档，按置信度和影响范围分组",
+        output: "batch tag queue",
+        artifact: "accept selected / explain no-op / feedback",
+        tags: ["Folder", "Batch", "Review"]
+      },
+      {
+        type: "capability",
+        group: "advanced",
+        mark: "PA",
+        title: "Prompt Audit",
+        subtitle: "高级/管理能力，不进日常 Copilot",
+        mode: "manual",
+        trigger: "Manage System 或高级搜索",
+        system: "检查 prompt 模板质量、变量、重复和风险",
+        output: "prompt issue cards",
+        artifact: "edit prompt / save suggestion / ignore",
+        tags: ["Admin", "Prompt", "Advanced"]
+      },
+      {
+        type: "capability",
+        group: "advanced",
+        mark: "WF",
+        title: "Run Workflow",
+        subtitle: "工作流构建器，不是普通日常动作",
+        mode: "manual",
+        trigger: "Manage System、manual search、advanced mode",
+        system: "串联 find -> read -> summarize -> report 等步骤",
+        output: "workflow run plan and trace",
+        artifact: "run / inspect / save workflow",
+        tags: ["Advanced", "Workflow", "Inspect"]
+      }
+    ];
+
+    function modeLabel(mode) {
+      if (mode === "auto") return "Auto-discover";
+      if (mode === "ask") return "Ask first";
+      return "Manual";
+    }
+
+    function card(item) {
+      const tags = item.tags.map((tag) => {
+        let kind = "tag";
+        if (/Diff|Preview|Insert|No auto|No silent|Recovery|Destructive/.test(tag)) kind += " risk";
+        if (/Auto|Sources|Provenance|Citations|Claims|Feedback/.test(tag)) kind += " safe";
+        if (/Note|Selection|Folder|Vault|Topic|Section|Cursor|Inbox|Admin/.test(tag)) kind += " scope";
+        return `<span class="${kind}">${tag}</span>`;
+      }).join("");
+
+      return `
+        <article class="card ${item.type} ${item.group}">
+          <header class="card-head">
+            <div class="mark">${item.mark}</div>
+            <div class="title">
+              <strong>${item.title}</strong>
+              <span>${item.subtitle}</span>
+            </div>
+            <div class="mode ${item.mode}">${modeLabel(item.mode)}</div>
+          </header>
+          <div class="story">
+            <div class="flow">
+              <div class="node">${item.trigger}</div>
+              <div class="arrow">→</div>
+              <div class="node">${item.system}</div>
+              <div class="arrow">→</div>
+              <div class="node">${item.output}</div>
+            </div>
+            <div class="lane">
+              <div class="lane-label"><span>Review Artifact</span><span>用户看这个做决定</span></div>
+              <div class="lane-text">${item.artifact}</div>
+            </div>
+            <div class="artifact">
+              <div class="artifact-title">Visual result shape</div>
+              <div class="artifact-lines">
+                <div class="line blue"></div>
+                <div class="line"></div>
+                <div class="line green short"></div>
+              </div>
+            </div>
+          </div>
+          <footer class="card-foot">${tags}</footer>
+        </article>
+      `;
+    }
+
+    document.getElementById("hub-grid").innerHTML = items.filter((item) => item.type === "hub").map(card).join("");
+    document.getElementById("capability-grid").innerHTML = items.filter((item) => item.type === "capability").map(card).join("");
+  </script>
+</body>
+</html>

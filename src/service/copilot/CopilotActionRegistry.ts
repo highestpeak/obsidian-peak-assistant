@@ -33,6 +33,8 @@ export interface CopilotAction {
 	description: string;
 	icon: LucideIcon;
 	category: 'document' | 'vault' | 'writing';
+	intentTab?: 'document' | 'vault' | 'setting';
+	requiresDocument?: boolean;
 	relevance(ctx: DocumentContext): number;
 	guard?(ctx: DocumentContext): string | null;
 	execute(ctx: DocumentContext, signal?: AbortSignal): AsyncGenerator<LLMStreamEvent, ActionResult | void>;

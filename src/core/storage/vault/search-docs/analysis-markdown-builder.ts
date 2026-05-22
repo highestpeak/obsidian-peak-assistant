@@ -100,6 +100,22 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 	}
 
 	if (docModel.v2ReportSections?.length) {
+		// Write section metadata as a collapsed callout for round-trip fidelity.
+		// Only emitted when at least one section carries rich metadata (missionRole / visualType / sources).
+		const secMeta = docModel.v2ReportSections.map(s => ({
+			title: s.title,
+			visualType: s.visualType ?? '',
+			missionRole: s.missionRole ?? '',
+			evidencePaths: s.evidencePaths ?? [],
+			brief: s.brief ?? '',
+			contentType: s.contentType ?? '',
+			weight: s.weight ?? 1,
+		}));
+		if (secMeta.some(m => m.visualType || m.missionRole || m.evidencePaths.length > 0)) {
+			b.text('> [!abstract]- V2 Section Meta');
+			b.text(`> ${JSON.stringify(secMeta)}`);
+			b.blankLine();
+		}
 		for (let i = 0; i < docModel.v2ReportSections.length; i++) {
 			const sec = docModel.v2ReportSections[i];
 			b.heading(2, `${i + 1}. ${sec.title}`);

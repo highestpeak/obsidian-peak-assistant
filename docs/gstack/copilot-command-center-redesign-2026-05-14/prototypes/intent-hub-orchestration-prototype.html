@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant Intent Hub Orchestration Prototype</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #e7e9ee;
+      --obsidian: #f6f7f9;
+      --panel: #ffffff;
+      --soft: #f8fafc;
+      --line: #dbe1ea;
+      --text: #262b33;
+      --muted: #66707c;
+      --subtle: #9aa3af;
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --green: #16834a;
+      --green-soft: #eaf8f0;
+      --amber: #b7791f;
+      --amber-soft: #fff7df;
+      --purple: #7c3aed;
+      --purple-soft: #f4f0ff;
+      --shadow: 0 26px 76px rgba(15, 23, 42, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .obsidian {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 58px 220px minmax(440px, 1fr) 340px;
+      background: var(--obsidian);
+    }
+
+    .rail {
+      background: #575a62;
+      color: rgba(255,255,255,0.75);
+      padding-top: 28px;
+      display: grid;
+      justify-items: center;
+      align-content: start;
+      gap: 28px;
+      font-size: 24px;
+    }
+
+    .files,
+    .assistant-dock {
+      border-right: 1px solid #d5dae2;
+      background: #eff1f4;
+      padding: 16px 12px;
+      overflow: hidden;
+    }
+
+    .files div {
+      height: 30px;
+      border-radius: 6px;
+      padding: 0 8px;
+      display: flex;
+      align-items: center;
+      color: #737b87;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .files .active {
+      background: #dceaff;
+      color: #2f5f9e;
+    }
+
+    .editor {
+      background: #fbfbfc;
+      padding: 54px 66px;
+      overflow: hidden;
+    }
+
+    .editor h1 {
+      margin: 0 0 24px;
+      font-size: 30px;
+      line-height: 1.2;
+    }
+
+    .editor p {
+      max-width: 760px;
+      font-size: 16px;
+      line-height: 1.75;
+      color: #555e69;
+    }
+
+    .selection {
+      background: #dbeafe;
+      color: #1f3d68;
+      padding: 2px 4px;
+      border-radius: 5px;
+    }
+
+    .assistant-dock {
+      border-left: 1px solid #d5dae2;
+      border-right: 0;
+      background: #f8fafc;
+    }
+
+    .dock-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .dock-card {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .dock-card strong {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .dock-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(32, 36, 43, 0.38);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 42px;
+    }
+
+    .hub {
+      width: min(1220px, calc(100vw - 88px));
+      height: min(830px, calc(100vh - 84px));
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+
+    .hub-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 12px;
+    }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 750;
+    }
+
+    .context {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    .search {
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 14px;
+    }
+
+    .hub-body {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 270px 1fr 320px;
+    }
+
+    .hubs {
+      border-right: 1px solid var(--line);
+      padding: 16px;
+      background: #fbfcfe;
+      overflow: auto;
+    }
+
+    .intent {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .intent.active {
+      border-color: rgba(37, 99, 235, 0.36);
+      background: var(--blue-soft);
+    }
+
+    .intent-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .intent-desc {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .intent-button {
+      height: 32px;
+      margin-top: 10px;
+      border-radius: 7px;
+      background: var(--blue);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .plan {
+      padding: 18px 20px;
+      overflow: auto;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .section-title strong {
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      color: #4d5560;
+      text-transform: uppercase;
+    }
+
+    .section-title span {
+      color: var(--subtle);
+      font-size: 12px;
+    }
+
+    .scan-card,
+    .capability {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .scan-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .metric {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .capability-head {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .check {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: var(--green-soft);
+      color: var(--green);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .cap-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .cap-reason {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.42;
+    }
+
+    .mode {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      background: #fff;
+    }
+
+    .mode.auto {
+      color: var(--green);
+      background: var(--green-soft);
+      border-color: rgba(22, 131, 74, 0.22);
+    }
+
+    .mode.ask {
+      color: var(--amber);
+      background: var(--amber-soft);
+      border-color: rgba(183, 121, 31, 0.22);
+    }
+
+    .badges {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-top: 9px;
+    }
+
+    .badge {
+      height: 22px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      padding: 0 7px;
+      display: inline-flex;
+      align-items: center;
+      color: var(--muted);
+      font-size: 11px;
+      background: #fff;
+    }
+
+    .badge.diff {
+      background: var(--green-soft);
+      color: var(--green);
+      border-color: rgba(22, 131, 74, 0.22);
+    }
+
+    .badge.ai {
+      background: var(--purple-soft);
+      color: var(--purple);
+      border-color: rgba(124, 58, 237, 0.18);
+    }
+
+    .review {
+      border-left: 1px solid var(--line);
+      background: #fbfcfe;
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .review-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .review-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .review-text {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.42;
+    }
+
+    .diff {
+      margin-top: 8px;
+      border-left: 3px solid var(--green);
+      background: var(--green-soft);
+      border-radius: 0 6px 6px 0;
+      padding: 7px;
+      color: #1f633d;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .button {
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: #3f4650;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .button.primary {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    @media (max-width: 1080px) {
+      .hub-body {
+        grid-template-columns: 240px 1fr;
+      }
+
+      .review {
+        display: none;
+      }
+    }
+
+    @media (max-width: 780px) {
+      .overlay {
+        padding: 0;
+      }
+
+      .hub {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+      }
+
+      .hub-body {
+        grid-template-columns: 1fr;
+      }
+
+      .hubs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .scan-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="obsidian">
+    <aside class="rail">
+      <div>+</div>
+      <div>⌕</div>
+      <div>□</div>
+    </aside>
+    <aside class="files">
+      <div>Inbox</div>
+      <div class="active">独立开发想法评价.md</div>
+      <div>Copilot design notes.md</div>
+      <div>Knowledge graph.md</div>
+      <div>Product research.md</div>
+    </aside>
+    <article class="editor">
+      <h1>独立开发想法评价</h1>
+      <p>这个笔记正在讨论一个面向 Obsidian 的知识助手。用户想要在写作中快速调用能力，但不希望自己判断该点 tags、links、split、evidence 还是 summary。</p>
+      <p><span class="selection">更好的体验应该是点击 Copilot 或 Vault Intelligence 后，系统自动分析当前上下文并提出一组可审核的行动。</span></p>
+      <p>所有会改变文档的操作都应该先显示 diff 和来源，再由用户决定应用。</p>
+    </article>
+    <aside class="assistant-dock">
+      <div class="dock-title">Peak Assistant</div>
+      <div class="dock-card">
+        <strong>Current note scan ready</strong>
+        <span>Selection active · weak links · evidence opportunity · possible diagram.</span>
+      </div>
+      <div class="dock-card">
+        <strong>Run Copilot</strong>
+        <span>Analyze this note and prepare actions.</span>
+      </div>
+      <div class="dock-card">
+        <strong>Pending review</strong>
+        <span>2 link proposals · 1 evidence candidate.</span>
+      </div>
+    </aside>
+  </main>
+
+  <div class="overlay">
+    <section class="hub" aria-label="Peak Assistant intent hub">
+      <header class="hub-header">
+        <div class="topline">
+          <div>
+            <div class="title">Peak Assistant Intent Hub</div>
+            <div class="context">独立开发想法评价.md · selection active · current note scope</div>
+          </div>
+          <div class="context">Not a tool grid: Copilot plans which capabilities to run.</div>
+        </div>
+        <div class="search">Search capabilities manually, or click an intent hub to auto-plan</div>
+      </header>
+
+      <div class="hub-body">
+        <aside class="hubs">
+          <div class="intent active">
+            <div class="intent-title">Copilot</div>
+            <div class="intent-desc">Analyze the current note/selection and decide which document capabilities are useful.</div>
+            <div class="intent-button">Run Copilot scan</div>
+          </div>
+          <div class="intent">
+            <div class="intent-title">Vault Intelligence</div>
+            <div class="intent-desc">Analyze, synthesize, or maintain a topic/folder/vault scope after the system resolves context.</div>
+            <div class="intent-button">Analyze · Synthesize · Maintain</div>
+          </div>
+          <div class="intent">
+            <div class="intent-title">Manage System</div>
+            <div class="intent-desc">Index, models, skills, prompts, diagnostics, usage.</div>
+          </div>
+        </aside>
+
+        <section class="plan">
+          <div class="section-title">
+            <strong>Auto Plan From Current Context</strong>
+            <span>Safe discovery can run; mutations require review</span>
+          </div>
+
+          <div class="scan-card">
+            <div class="cap-title">Context scan result</div>
+            <div class="cap-reason">The note has a selected paragraph, few outgoing links, a claim without source evidence, and one section that may benefit from a diagram.</div>
+            <div class="scan-grid">
+              <div class="metric"><strong>4</strong><span>relevant capabilities</span></div>
+              <div class="metric"><strong>2</strong><span>safe auto-discovery steps</span></div>
+              <div class="metric"><strong>0</strong><span>auto-apply mutations</span></div>
+            </div>
+          </div>
+
+          <article class="capability">
+            <div class="capability-head">
+              <div class="check">✓</div>
+              <div>
+                <div class="cap-title">Connect Related Notes</div>
+                <div class="cap-reason">Recommended because similar notes exist but the selected paragraph has no wiki-links. Uses semantic, graph, backlink, and agent signals internally.</div>
+              </div>
+              <div class="mode auto">Auto-discover</div>
+            </div>
+            <div class="badges">
+              <span class="badge">Selection</span>
+              <span class="badge ai">semantic + graph</span>
+              <span class="badge diff">Diff required</span>
+            </div>
+          </article>
+
+          <article class="capability">
+            <div class="capability-head">
+              <div class="check">✓</div>
+              <div>
+                <div class="cap-title">Add Evidence</div>
+                <div class="cap-reason">Recommended because the selected sentence makes a product claim that should be grounded in existing notes.</div>
+              </div>
+              <div class="mode auto">Auto-discover</div>
+            </div>
+            <div class="badges">
+              <span class="badge">Current note</span>
+              <span class="badge ai">source notes</span>
+              <span class="badge diff">Insert preview</span>
+            </div>
+          </article>
+
+          <article class="capability">
+            <div class="capability-head">
+              <div class="check">✓</div>
+              <div>
+                <div class="cap-title">Suggest Diagram</div>
+                <div class="cap-reason">Recommended because the paragraph explains a surface system that may be clearer as a diagram.</div>
+              </div>
+              <div class="mode ask">Ask first</div>
+            </div>
+            <div class="badges">
+              <span class="badge">Section</span>
+              <span class="badge">Draft only</span>
+            </div>
+          </article>
+
+          <article class="capability">
+            <div class="capability-head">
+              <div class="check">–</div>
+              <div>
+                <div class="cap-title">Translate</div>
+                <div class="cap-reason">Not relevant now. No language mismatch detected; available through manual search.</div>
+              </div>
+              <div class="mode">Manual only</div>
+            </div>
+            <div class="badges">
+              <span class="badge">Hidden by context</span>
+            </div>
+          </article>
+        </section>
+
+        <aside class="review">
+          <div class="section-title">
+            <strong>Review Queue</strong>
+            <span>after safe discovery</span>
+          </div>
+          <div class="review-card">
+            <div class="review-title">2 link proposals</div>
+            <div class="review-text">Candidate targets: [[Copilot workflow]], [[Knowledge graph maintenance]].</div>
+            <div class="diff">Preview: insert links into selected paragraph. No rewrite unless accepted.</div>
+            <div class="button primary">Review links</div>
+          </div>
+          <div class="review-card">
+            <div class="review-title">1 evidence candidate</div>
+            <div class="review-text">Source note supports the claim about fast contextual action routing.</div>
+            <div class="button">Open source</div>
+          </div>
+          <div class="review-card">
+            <div class="review-title">Safety rule</div>
+            <div class="review-text">Copilot can automatically discover and prepare, but cannot apply tags, links, text, or files without preview/apply.</div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

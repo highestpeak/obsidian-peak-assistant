@@ -285,6 +285,10 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'copilot-agent-synthesize-topic': meta('prompts', 'copilot-agent-synthesize-topic', { label: 'Synthesize Topic (Agent)', description: 'Agent playbook that synthesizes information across vault notes.', group: 'copilot' }),
 	'copilot-agent-add-evidence': meta('prompts', 'copilot-agent-add-evidence', { label: 'Add Evidence (Agent)', description: 'Agent playbook that finds and ranks supporting evidence.', group: 'copilot' }),
 	'copilot-agent-writing-plan': meta('prompts', 'copilot-agent-writing-plan', { label: 'Writing Plan (Agent)', description: 'Agent playbook that creates a structured writing plan grounded in vault notes.', group: 'copilot' }),
+	'copilot-agent-write-article': meta('prompts', 'copilot-agent-write-article', { label: 'Write Article (Agent)', description: 'Agent playbook that drafts article sections grounded in vault notes.', group: 'copilot' }),
+	'copilot-agent-detect-and-file': meta('prompts', 'copilot-agent-detect-and-file', { label: 'Detect & File (Agent)', description: 'Agent playbook that detects misfiled notes and proposes target folders.', group: 'copilot' }),
+	'copilot-agent-check-task-list': meta('prompts', 'copilot-agent-check-task-list', { label: 'Check Task List (Agent)', description: 'Agent playbook that analyzes tasks for priority, overdue items, and blockers.', group: 'copilot' }),
+	'copilot-agent-prompt-audit': meta('prompts', 'copilot-agent-prompt-audit', { label: 'Prompt Audit (Agent)', description: 'Agent playbook that audits prompt quality and surfaces improvements.', group: 'copilot' }),
 
 	// Chat intelligence
 	'chat-topic-aggregation': meta('prompts', 'chat-topic-aggregation', {

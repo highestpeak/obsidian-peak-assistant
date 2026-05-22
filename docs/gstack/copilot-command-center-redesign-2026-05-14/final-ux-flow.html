@@ -1,0 +1,1586 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Copilot Panel UX Flow</title>
+	<style>
+		:root {
+			--bg: #f5f6f8;
+			--panel: #ffffff;
+			--ink: #20242a;
+			--muted: #68717f;
+			--line: #dce1e8;
+			--accent: #7c3aed;
+			--accent-soft: #f1e9ff;
+			--blue: #2f6fe8;
+			--green: #169b53;
+			--red: #d64b4b;
+			--shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			margin: 0;
+			background:
+				linear-gradient(rgba(124, 58, 237, 0.03) 1px, transparent 1px),
+				linear-gradient(90deg, rgba(124, 58, 237, 0.03) 1px, transparent 1px),
+				var(--bg);
+			background-size: 24px 24px;
+			color: var(--ink);
+			font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+			letter-spacing: 0;
+		}
+
+		.board {
+			width: min(1500px, calc(100vw - 48px));
+			margin: 0 auto;
+			padding: 34px 0 56px;
+		}
+
+		.hero {
+			display: grid;
+			grid-template-columns: 1.15fr 0.85fr;
+			gap: 18px;
+			align-items: stretch;
+			margin-bottom: 18px;
+		}
+
+		.card {
+			background: rgba(255, 255, 255, 0.88);
+			border: 1px solid var(--line);
+			border-radius: 12px;
+			box-shadow: var(--shadow);
+		}
+
+		.intro {
+			padding: 26px;
+		}
+
+		.eyebrow {
+			display: inline-flex;
+			align-items: center;
+			gap: 8px;
+			color: var(--accent);
+			font-size: 12px;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+		}
+
+		h1 {
+			margin: 12px 0 10px;
+			font-size: 32px;
+			line-height: 1.15;
+			letter-spacing: 0;
+		}
+
+		p {
+			margin: 0;
+			color: var(--muted);
+			font-size: 14px;
+			line-height: 1.65;
+		}
+
+		.principles {
+			display: grid;
+			gap: 10px;
+			padding: 18px;
+		}
+
+		.principle {
+			display: grid;
+			grid-template-columns: 28px 1fr;
+			gap: 10px;
+			padding: 12px;
+			border: 1px solid var(--line);
+			border-radius: 10px;
+			background: #fff;
+		}
+
+		.badge {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-width: 28px;
+			height: 28px;
+			border-radius: 8px;
+			background: var(--accent-soft);
+			color: var(--accent);
+			font-weight: 800;
+			font-size: 13px;
+		}
+
+		.principle strong {
+			display: block;
+			margin-bottom: 3px;
+			font-size: 14px;
+		}
+
+		.section-title {
+			display: flex;
+			align-items: end;
+			justify-content: space-between;
+			gap: 16px;
+			margin: 28px 0 12px;
+		}
+
+		.section-title h2 {
+			margin: 0;
+			font-size: 22px;
+			letter-spacing: 0;
+		}
+
+		.section-title span {
+			color: var(--muted);
+			font-size: 13px;
+		}
+
+		.flow {
+			padding: 18px;
+		}
+
+		.simple-flow {
+			display: grid;
+			gap: 18px;
+		}
+
+		.primary-flow {
+			display: grid;
+			grid-template-columns: minmax(150px, 0.72fr) 42px minmax(260px, 1.35fr) 42px minmax(280px, 1.45fr) 42px minmax(170px, 0.78fr);
+			gap: 12px;
+			align-items: center;
+		}
+
+		.flow-node {
+			overflow: hidden;
+			min-height: 150px;
+			border: 1px solid #d8dee8;
+			border-radius: 12px;
+			background: #fff;
+			box-shadow: 0 10px 26px rgba(31, 41, 55, 0.08);
+		}
+
+		.flow-node.start,
+		.flow-node.result {
+			display: grid;
+			place-items: center;
+			padding: 16px;
+			text-align: center;
+		}
+
+		.flow-node.start {
+			border-radius: 999px;
+			background: #eef2f7;
+			box-shadow: none;
+		}
+
+		.flow-node.result {
+			background: linear-gradient(180deg, #fff, #fbfcff);
+		}
+
+		.flow-node strong {
+			display: block;
+			margin-bottom: 6px;
+			font-size: 15px;
+		}
+
+		.node-caption {
+			padding: 11px 12px;
+			border-bottom: 1px solid var(--line);
+			background: #fff;
+		}
+
+		.node-caption strong {
+			margin: 0;
+			font-size: 13px;
+		}
+
+		.node-caption span {
+			display: block;
+			margin-top: 2px;
+			color: var(--muted);
+			font-size: 12px;
+		}
+
+		.flow-thumb {
+			display: block;
+			width: 100%;
+			aspect-ratio: 16 / 9;
+			object-fit: cover;
+			object-position: top center;
+			background: #eef1f5;
+		}
+
+		.flow-link {
+			position: relative;
+			height: 1px;
+			background: #a8b1bd;
+		}
+
+		.flow-link::after {
+			content: "";
+			position: absolute;
+			top: -5px;
+			right: -1px;
+			border-top: 5px solid transparent;
+			border-bottom: 5px solid transparent;
+			border-left: 8px solid #a8b1bd;
+		}
+
+		.flow-link span {
+			position: absolute;
+			left: 50%;
+			bottom: 10px;
+			transform: translateX(-50%);
+			min-width: max-content;
+			padding: 4px 7px;
+			border: 1px solid var(--line);
+			border-radius: 999px;
+			background: #fff;
+			color: var(--muted);
+			font-size: 11px;
+			font-weight: 750;
+			white-space: nowrap;
+		}
+
+		.branch-lanes {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 12px;
+		}
+
+		.branch-lane {
+			padding: 14px;
+			border: 1px solid var(--line);
+			border-radius: 12px;
+			background: #fff;
+		}
+
+		.branch-lane strong {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			margin-bottom: 8px;
+			font-size: 14px;
+		}
+
+		.branch-mini {
+			display: grid;
+			grid-template-columns: 54px 1fr;
+			gap: 10px;
+			align-items: center;
+			padding-top: 10px;
+			margin-top: 10px;
+			border-top: 1px solid #eef1f5;
+		}
+
+		.mini-screen {
+			display: grid;
+			place-items: center;
+			width: 54px;
+			height: 40px;
+			border: 1px solid #d7ddec;
+			border-radius: 7px;
+			background: #f8fafc;
+			color: var(--accent);
+			font-size: 11px;
+			font-weight: 850;
+		}
+
+		.complete-flow {
+			display: grid;
+			gap: 16px;
+		}
+
+		.flow-overview {
+			display: grid;
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+			gap: 12px;
+		}
+
+		.overview-card {
+			padding: 13px;
+			border: 1px solid var(--line);
+			border-radius: 12px;
+			background: #fff;
+		}
+
+		.overview-card strong {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			margin-bottom: 6px;
+			font-size: 14px;
+		}
+
+		.swim-map {
+			overflow: hidden;
+			border: 1px solid var(--line);
+			border-radius: 14px;
+			background: #fff;
+		}
+
+		.swim-row {
+			display: grid;
+			grid-template-columns: 0.9fr 1.05fr 1.1fr 1.25fr 1.05fr;
+			border-bottom: 1px solid #eef1f5;
+		}
+
+		.swim-row:last-child {
+			border-bottom: 0;
+		}
+
+		.swim-row.header {
+			background: #f8fafc;
+			color: #475569;
+			font-size: 12px;
+			font-weight: 800;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		.swim-cell {
+			position: relative;
+			min-height: 116px;
+			padding: 13px;
+			border-right: 1px solid #eef1f5;
+		}
+
+		.swim-cell:last-child {
+			border-right: 0;
+		}
+
+		.swim-row.header .swim-cell {
+			min-height: 0;
+			padding: 10px 13px;
+		}
+
+		.swim-cell strong {
+			display: block;
+			margin-bottom: 6px;
+			font-size: 13px;
+		}
+
+		.swim-cell p {
+			font-size: 12px;
+			line-height: 1.55;
+		}
+
+		.swim-cell.next::after {
+			content: "";
+			position: absolute;
+			top: 50%;
+			right: -7px;
+			z-index: 2;
+			border-top: 6px solid transparent;
+			border-bottom: 6px solid transparent;
+			border-left: 8px solid #b5bfca;
+		}
+
+		.route-title {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			margin-bottom: 8px;
+			font-weight: 800;
+		}
+
+		.route-title .badge {
+			min-width: 24px;
+			width: 24px;
+			height: 24px;
+			font-size: 12px;
+		}
+
+		.screen-ref {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			margin-top: 8px;
+			padding: 5px 8px;
+			border: 1px solid rgba(124, 58, 237, 0.24);
+			border-radius: 999px;
+			background: var(--accent-soft);
+			color: var(--accent);
+			font-size: 11px;
+			font-weight: 750;
+		}
+
+		.intent-list {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 6px;
+			margin-top: 8px;
+		}
+
+		.visual-flow {
+			display: grid;
+			gap: 16px;
+		}
+
+		.screen-index {
+			display: grid;
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+			gap: 12px;
+		}
+
+		.screen-tile {
+			overflow: hidden;
+			border: 1px solid var(--line);
+			border-radius: 12px;
+			background: #fff;
+		}
+
+		.screen-tile img {
+			display: block;
+			width: 100%;
+			aspect-ratio: 16 / 9;
+			object-fit: cover;
+			object-position: top center;
+			background: #eef1f5;
+		}
+
+		.screen-tile figcaption {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 8px;
+			padding: 10px 12px;
+			border-bottom: 1px solid var(--line);
+			font-size: 12px;
+			font-weight: 800;
+		}
+
+		.screen-tile span {
+			color: var(--muted);
+			font-size: 11px;
+			font-weight: 700;
+		}
+
+		.lane-board {
+			display: grid;
+			gap: 12px;
+		}
+
+		.visual-lane {
+			display: grid;
+			grid-template-columns: 150px 30px minmax(160px, 1fr) 30px minmax(160px, 1fr) 30px minmax(180px, 1.1fr) 30px 150px;
+			gap: 8px;
+			align-items: stretch;
+			padding: 12px;
+			border: 1px solid var(--line);
+			border-radius: 14px;
+			background: #fff;
+		}
+
+		.lane-label,
+		.visual-stage,
+		.lane-outcome {
+			border: 1px solid #dce2ec;
+			border-radius: 10px;
+			background: #fff;
+		}
+
+		.lane-label {
+			display: grid;
+			align-content: center;
+			gap: 8px;
+			padding: 12px;
+			background: #fbfcff;
+		}
+
+		.lane-label strong {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			font-size: 14px;
+		}
+
+		.lane-label p,
+		.lane-outcome p,
+		.visual-stage p {
+			font-size: 12px;
+			line-height: 1.45;
+		}
+
+		.stage-arrow {
+			position: relative;
+			align-self: center;
+			height: 1px;
+			background: #aeb8c5;
+		}
+
+		.stage-arrow::after {
+			content: "";
+			position: absolute;
+			top: -5px;
+			right: -1px;
+			border-top: 5px solid transparent;
+			border-bottom: 5px solid transparent;
+			border-left: 8px solid #aeb8c5;
+		}
+
+		.visual-stage {
+			overflow: hidden;
+			min-height: 150px;
+		}
+
+		.stage-label {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 8px;
+			padding: 9px 10px;
+			border-bottom: 1px solid var(--line);
+			background: #f8fafc;
+			font-size: 12px;
+			font-weight: 800;
+		}
+
+		.stage-label span {
+			color: var(--muted);
+			font-size: 10px;
+			font-weight: 750;
+			text-transform: uppercase;
+		}
+
+		.stage-shot {
+			display: block;
+			width: 100%;
+			height: 112px;
+			object-fit: cover;
+			object-position: top center;
+			background: #eef1f5;
+		}
+
+		.stage-shot.left-crop {
+			object-position: left top;
+		}
+
+		.stage-note {
+			padding: 8px 10px 10px;
+		}
+
+		.lane-outcome {
+			display: grid;
+			align-content: center;
+			gap: 8px;
+			padding: 12px;
+			background: linear-gradient(180deg, #fff, #fbfcff);
+		}
+
+		.outcome-buttons {
+			display: grid;
+			gap: 6px;
+		}
+
+		.outcome-button {
+			padding: 7px 8px;
+			border: 1px solid #d8dee8;
+			border-radius: 8px;
+			background: #fff;
+			color: #334155;
+			font-size: 11px;
+			font-weight: 750;
+			text-align: center;
+		}
+
+		.outcome-button.primary {
+			border-color: rgba(124, 58, 237, 0.32);
+			background: var(--accent-soft);
+			color: var(--accent);
+		}
+
+		.wireflow {
+			overflow-x: auto;
+			padding: 18px;
+		}
+
+		.wire-canvas {
+			position: relative;
+			display: grid;
+			grid-template-columns: 140px 210px 54px 250px 54px 250px 130px;
+			grid-template-rows: auto auto auto;
+			gap: 24px 6px;
+			min-width: 1120px;
+			align-items: center;
+		}
+
+		.wire-card {
+			position: relative;
+			overflow: hidden;
+			min-height: 178px;
+			border: 1px solid #cfd6df;
+			border-radius: 10px;
+			background: #fff;
+			box-shadow: 0 8px 18px rgba(31, 41, 55, 0.08);
+		}
+
+		.wire-card.large {
+			min-height: 220px;
+		}
+
+		.wire-card.compact {
+			min-height: 132px;
+		}
+
+		.wire-card.output {
+			display: grid;
+			place-items: center;
+			padding: 16px;
+			text-align: center;
+			min-height: 150px;
+		}
+
+		.wire-card.output::before {
+			content: "";
+			position: absolute;
+			top: 50%;
+			left: -28px;
+			width: 28px;
+			height: 1px;
+			background: #9aa5b1;
+		}
+
+		.wire-card.output::after {
+			content: "";
+			position: absolute;
+			top: calc(50% - 5px);
+			left: -8px;
+			border-top: 5px solid transparent;
+			border-bottom: 5px solid transparent;
+			border-left: 8px solid #9aa5b1;
+		}
+
+		.wire-head {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 8px;
+			padding: 7px 9px;
+			background: #2f6fe8;
+			color: #fff;
+			font-size: 12px;
+			font-weight: 750;
+		}
+
+		.wire-head.accent {
+			background: var(--accent);
+		}
+
+		.wire-head.neutral {
+			background: #334155;
+		}
+
+		.wire-body {
+			padding: 10px;
+		}
+
+		.wire-img {
+			display: block;
+			width: 100%;
+			max-height: 158px;
+			object-fit: cover;
+			object-position: top center;
+			border-top: 1px solid #dbe1ea;
+			background: #eef1f5;
+		}
+
+		.wire-card.large .wire-img {
+			max-height: 195px;
+		}
+
+		.wire-placeholder {
+			display: grid;
+			place-items: center;
+			min-height: 102px;
+			border: 1px solid #b8c0cc;
+			background:
+				linear-gradient(135deg, transparent 49.4%, #b8c0cc 50%, transparent 50.6%),
+				linear-gradient(45deg, transparent 49.4%, #b8c0cc 50%, transparent 50.6%),
+				#f8fafc;
+			color: var(--muted);
+			font-size: 12px;
+		}
+
+		.wire-meta {
+			margin-top: 8px;
+			color: var(--muted);
+			font-size: 12px;
+			line-height: 1.45;
+		}
+
+		.wire-actions {
+			display: grid;
+			gap: 7px;
+			margin-top: 9px;
+		}
+
+		.wire-button {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			min-height: 28px;
+			padding: 6px 8px;
+			border: 1px solid #d7ddec;
+			border-radius: 6px;
+			background: #fff;
+			color: #334155;
+			font-size: 12px;
+			font-weight: 650;
+		}
+
+		.wire-button.primary {
+			border-color: rgba(124, 58, 237, 0.35);
+			background: var(--accent-soft);
+			color: var(--accent);
+		}
+
+		.wire-start {
+			display: grid;
+			place-items: center;
+			min-height: 92px;
+			padding: 12px;
+			border-radius: 999px;
+			background: #eef2f7;
+			color: #475569;
+			font-size: 13px;
+			font-weight: 750;
+			text-align: center;
+		}
+
+		.connector {
+			position: relative;
+			height: 1px;
+			background: #9aa5b1;
+		}
+
+		.connector::after {
+			content: "";
+			position: absolute;
+			top: -5px;
+			right: -1px;
+			border-top: 5px solid transparent;
+			border-bottom: 5px solid transparent;
+			border-left: 8px solid #9aa5b1;
+		}
+
+		.connector span {
+			position: absolute;
+			left: 50%;
+			bottom: 10px;
+			transform: translateX(-50%);
+			min-width: max-content;
+			padding: 3px 6px;
+			border: 1px solid var(--line);
+			border-radius: 999px;
+			background: #fff;
+			color: var(--muted);
+			font-size: 11px;
+			font-weight: 700;
+			white-space: nowrap;
+		}
+
+		.connector.vertical {
+			width: 1px;
+			height: 70px;
+			margin: 0 auto;
+			background: #9aa5b1;
+		}
+
+		.connector.vertical::after {
+			top: auto;
+			right: -5px;
+			bottom: -1px;
+			border-left: 5px solid transparent;
+			border-right: 5px solid transparent;
+			border-top: 8px solid #9aa5b1;
+			border-bottom: 0;
+		}
+
+		.wire-note {
+			padding: 12px;
+			border: 1px dashed rgba(124, 58, 237, 0.38);
+			border-radius: 10px;
+			background: rgba(241, 233, 255, 0.56);
+			color: #4c1d95;
+			font-size: 12px;
+			line-height: 1.5;
+		}
+
+		.flow-grid {
+			display: grid;
+			grid-template-columns: 1fr 0.9fr 1.1fr 1.1fr;
+			gap: 14px;
+			align-items: stretch;
+		}
+
+		.node {
+			position: relative;
+			min-height: 168px;
+			padding: 16px;
+			border: 1px solid var(--line);
+			border-radius: 12px;
+			background: #fff;
+		}
+
+		.node::after {
+			content: "";
+			position: absolute;
+			top: 50%;
+			right: -14px;
+			width: 14px;
+			height: 1px;
+			background: var(--line);
+		}
+
+		.node:last-child::after {
+			display: none;
+		}
+
+		.node-title {
+			display: flex;
+			align-items: center;
+			gap: 9px;
+			margin-bottom: 10px;
+			font-weight: 750;
+		}
+
+		.node-title .badge {
+			width: 30px;
+			height: 30px;
+		}
+
+		.actions {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 7px;
+			margin-top: 12px;
+		}
+
+		.pill {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 6px 9px;
+			border: 1px solid var(--line);
+			border-radius: 999px;
+			background: #fff;
+			color: var(--muted);
+			font-size: 12px;
+			white-space: nowrap;
+		}
+
+		.pill.primary {
+			border-color: rgba(47, 111, 232, 0.35);
+			background: rgba(47, 111, 232, 0.08);
+			color: var(--blue);
+			font-weight: 700;
+		}
+
+		.pill.accent {
+			border-color: rgba(124, 58, 237, 0.28);
+			background: var(--accent-soft);
+			color: var(--accent);
+			font-weight: 700;
+		}
+
+		.split {
+			display: grid;
+			grid-template-columns: 0.9fr 1.1fr;
+			gap: 14px;
+			margin-top: 14px;
+		}
+
+		.subflow {
+			padding: 16px;
+			border: 1px solid var(--line);
+			border-radius: 12px;
+			background: #fff;
+		}
+
+		.subflow h3 {
+			margin: 0 0 12px;
+			font-size: 16px;
+		}
+
+		.step {
+			display: grid;
+			grid-template-columns: 24px 1fr;
+			gap: 10px;
+			padding: 10px 0;
+			border-bottom: 1px solid #eef1f5;
+		}
+
+		.step:last-child {
+			border-bottom: 0;
+		}
+
+		.dot {
+			width: 11px;
+			height: 11px;
+			margin: 6px auto 0;
+			border-radius: 999px;
+			background: var(--line);
+		}
+
+		.dot.live {
+			background: var(--accent);
+			box-shadow: 0 0 0 5px var(--accent-soft);
+		}
+
+		.dot.done {
+			background: var(--green);
+		}
+
+		.step strong {
+			display: block;
+			margin-bottom: 2px;
+			font-size: 13px;
+		}
+
+		.step span {
+			color: var(--muted);
+			font-size: 12px;
+			line-height: 1.5;
+		}
+
+		.preview-grid {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 16px;
+		}
+
+		.preview {
+			overflow: hidden;
+		}
+
+		.preview-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			padding: 14px 16px;
+			border-bottom: 1px solid var(--line);
+			background: #fff;
+		}
+
+		.preview-header strong {
+			font-size: 15px;
+		}
+
+		.preview-header span {
+			color: var(--muted);
+			font-size: 12px;
+		}
+
+		.preview img {
+			display: block;
+			width: 100%;
+			height: auto;
+			background: #eef1f5;
+		}
+
+		.mapping {
+			display: grid;
+			gap: 10px;
+			padding: 16px;
+		}
+
+		.artifact-grid {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 14px;
+		}
+
+		.artifact {
+			padding: 16px;
+			border: 1px solid var(--line);
+			border-radius: 12px;
+			background: #fff;
+		}
+
+		.artifact strong {
+			display: block;
+			margin-bottom: 8px;
+			font-size: 14px;
+		}
+
+		.artifact .actions {
+			margin-top: 14px;
+		}
+
+		.layout-modes {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 12px;
+			margin-top: 14px;
+		}
+
+		.layout-mode {
+			padding: 14px;
+			border: 1px solid var(--line);
+			border-radius: 12px;
+			background: #fff;
+		}
+
+		.layout-mode strong {
+			display: block;
+			margin-bottom: 7px;
+			font-size: 13px;
+		}
+
+		.map-row {
+			display: grid;
+			grid-template-columns: 0.8fr 0.34fr 1.05fr;
+			gap: 10px;
+			align-items: center;
+			padding: 11px;
+			border: 1px solid var(--line);
+			border-radius: 10px;
+			background: #fff;
+		}
+
+		.map-row strong {
+			font-size: 13px;
+		}
+
+		.arrow {
+			color: var(--accent);
+			text-align: center;
+			font-weight: 900;
+		}
+
+		.footer-note {
+			padding: 16px 18px;
+			border-left: 4px solid var(--accent);
+			background: #fff;
+			color: var(--muted);
+			font-size: 13px;
+			line-height: 1.65;
+		}
+
+		@media (max-width: 1100px) {
+			.hero,
+			.split,
+			.preview-grid,
+			.artifact-grid,
+			.layout-modes,
+			.flow-grid,
+			.primary-flow,
+			.branch-lanes,
+			.flow-overview,
+			.swim-row,
+			.screen-index,
+			.visual-lane {
+				grid-template-columns: 1fr;
+			}
+
+			.stage-arrow {
+				width: 1px;
+				height: 28px;
+				margin: 0 auto;
+			}
+
+			.stage-arrow::after {
+				top: auto;
+				right: -5px;
+				bottom: -1px;
+				border-left: 5px solid transparent;
+				border-right: 5px solid transparent;
+				border-top: 8px solid #aeb8c5;
+				border-bottom: 0;
+			}
+
+			.swim-row.header {
+				display: none;
+			}
+
+			.swim-cell {
+				border-right: 0;
+				border-bottom: 1px solid #eef1f5;
+			}
+
+			.swim-cell:last-child {
+				border-bottom: 0;
+			}
+
+			.swim-cell.next::after {
+				display: none;
+			}
+
+			.flow-link {
+				width: 1px;
+				height: 34px;
+				margin: 0 auto;
+			}
+
+			.flow-link::after {
+				top: auto;
+				right: -5px;
+				bottom: -1px;
+				border-left: 5px solid transparent;
+				border-right: 5px solid transparent;
+				border-top: 8px solid #a8b1bd;
+				border-bottom: 0;
+			}
+
+			.flow-link span {
+				left: 16px;
+				bottom: 7px;
+				transform: none;
+			}
+
+			.node::after {
+				display: none;
+			}
+
+			.map-row {
+				grid-template-columns: 1fr;
+			}
+
+			.arrow {
+				text-align: left;
+			}
+
+			.wire-canvas {
+				grid-template-columns: 1fr;
+				min-width: 0;
+			}
+
+			.connector,
+			.connector.vertical {
+				width: 1px;
+				height: 34px;
+				margin: 0 auto;
+			}
+
+			.connector span {
+				left: 16px;
+				bottom: 7px;
+				transform: none;
+			}
+		}
+	</style>
+</head>
+<body>
+	<main class="board">
+		<section class="hero">
+			<div class="card intro">
+				<span class="eyebrow">Copilot Command Center Redesign</span>
+				<h1>最终 UX Wireflow：从入口到 Review 的完整流转</h1>
+				<p>
+					这版报告按 wireflow 阅读：每个小框都是一个真实界面节点，箭头标注用户点击的按钮或 agent 产生的分支。
+					入口 panel 只负责捕捉 intent；Auto 和手动工具都会进入同一套 Agent Run / Review Surface；
+					最终根据 artifact 自动落到 Changes、Insights、Sources、Chat。
+				</p>
+			</div>
+			<div class="card principles">
+				<div class="principle">
+					<span class="badge">1</span>
+					<div>
+						<strong>入口不是工具目录</strong>
+						<p>默认只展示 Auto 和 3-4 个当前最相关动作，其余能力通过搜索或 Show all tools 找到。</p>
+					</div>
+				</div>
+				<div class="principle">
+					<span class="badge">2</span>
+					<div>
+						<strong>Auto 是 ReAct，不是固定流水线</strong>
+						<p>Agent 边观察边调用工具，trace 是行动记录，右侧 diff 随工具结果逐步更新。</p>
+					</div>
+				</div>
+				<div class="principle">
+					<span class="badge">3</span>
+					<div>
+						<strong>结果层不是二选一</strong>
+						<p>Auto 可以同时产生 diff 和 insight。Diff 负责可应用改动，Insight 负责解释、来源、下一步和继续对话。</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<div class="section-title">
+			<h2>一图看完整流转</h2>
+			<span>按钮点击到界面节点的关系</span>
+		</div>
+
+		<section class="card flow">
+			<div class="visual-flow">
+				<div class="screen-index">
+					<figure class="screen-tile">
+						<figcaption>Screen B: Entry panel <span>intent capture</span></figcaption>
+						<img src="assets/final-flow/01-copilot-entry-panel.png" alt="Entry panel" />
+					</figure>
+					<figure class="screen-tile">
+						<figcaption>Screen C/D: Auto Review <span>trace + artifacts</span></figcaption>
+						<img src="assets/final-flow/02-auto-review-resizable-insights.png" alt="Auto review" />
+					</figure>
+					<figure class="screen-tile">
+						<figcaption>Screen E: Manual Diff <span>write proposal</span></figcaption>
+						<img src="assets/final-flow/03-manual-tool-diff-review.png" alt="Manual diff" />
+					</figure>
+					<figure class="screen-tile">
+						<figcaption>Screen F: Insight Review <span>report + chat</span></figcaption>
+						<img src="assets/final-flow/04-readonly-summary-review.png" alt="Insight review" />
+					</figure>
+				</div>
+
+				<div class="lane-board">
+					<div class="visual-lane">
+						<div class="lane-label">
+							<strong><span class="badge">A</span>Document Auto</strong>
+							<p>当前 note / selection 里点击 Copilot 或 Run Auto。</p>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Entry <span>Screen B</span></div>
+							<img class="stage-shot" src="assets/final-flow/01-copilot-entry-panel.png" alt="Document entry" />
+							<div class="stage-note"><p>Document tab，Auto 是主入口。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Agent ReAct <span>live trace</span></div>
+							<img class="stage-shot left-crop" src="assets/final-flow/02-auto-review-resizable-insights.png" alt="Agent trace" />
+							<div class="stage-note"><p>观察上下文，按需调用工具。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Review <span>Screen C/D</span></div>
+							<img class="stage-shot" src="assets/final-flow/02-auto-review-resizable-insights.png" alt="Auto review changes" />
+							<div class="stage-note"><p>Changes 主视图，Insights 可展开。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="lane-outcome">
+							<strong>Outcome</strong>
+							<div class="outcome-buttons">
+								<div class="outcome-button primary">Apply reviewed changes</div>
+								<div class="outcome-button">Continue chat</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="visual-lane">
+						<div class="lane-label">
+							<strong><span class="badge">B</span>Manual write</strong>
+							<p>点击推荐动作，或搜索写入类能力。</p>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Intent <span>Screen B</span></div>
+							<img class="stage-shot" src="assets/final-flow/01-copilot-entry-panel.png" alt="Manual intent" />
+							<div class="stage-note"><p>工具只是 initial intent。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Agent support <span>tools</span></div>
+							<img class="stage-shot left-crop" src="assets/final-flow/02-auto-review-resizable-insights.png" alt="Agent helper tools" />
+							<div class="stage-note"><p>仍可读来源、查图谱、做风险检查。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Unified diff <span>Screen E</span></div>
+							<img class="stage-shot" src="assets/final-flow/03-manual-tool-diff-review.png" alt="Manual write diff" />
+							<div class="stage-note"><p>整篇 rendered diff，不分散成小面板。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="lane-outcome">
+							<strong>Outcome</strong>
+							<div class="outcome-buttons">
+								<div class="outcome-button primary">Apply selected</div>
+								<div class="outcome-button">Reject all</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="visual-lane">
+						<div class="lane-label">
+							<strong><span class="badge">C</span>Insight / no change</strong>
+							<p>总结、体检、gap，或 Auto 判断无需改文档。</p>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Analysis intent <span>Screen B</span></div>
+							<img class="stage-shot" src="assets/final-flow/01-copilot-entry-panel.png" alt="Analysis intent" />
+							<div class="stage-note"><p>从搜索或推荐分析能力进入。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Synthesize <span>sources</span></div>
+							<img class="stage-shot" src="assets/final-flow/04-readonly-summary-review.png" alt="Insight synthesis" />
+							<div class="stage-note"><p>读 vault、sources、graph。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Insight review <span>Screen F</span></div>
+							<img class="stage-shot" src="assets/final-flow/04-readonly-summary-review.png" alt="Interactive insight" />
+							<div class="stage-note"><p>默认全宽，可继续对话。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="lane-outcome">
+							<strong>Outcome</strong>
+							<div class="outcome-buttons">
+								<div class="outcome-button primary">Create proposal</div>
+								<div class="outcome-button">Ask follow-up</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="visual-lane">
+						<div class="lane-label">
+							<strong><span class="badge">D</span>Vault Intelligence</strong>
+							<p>切到 Vault tab，分析整个 vault。</p>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Vault tab <span>Screen B</span></div>
+							<img class="stage-shot" src="assets/final-flow/01-copilot-entry-panel.png" alt="Vault entry" />
+							<div class="stage-note"><p>Analyze / Synthesize / Maintain 合并。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Cross-vault run <span>graph</span></div>
+							<img class="stage-shot" src="assets/final-flow/04-readonly-summary-review.png" alt="Vault run" />
+							<div class="stage-note"><p>查 index、graph、gap、health。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Vault report <span>Insights</span></div>
+							<img class="stage-shot" src="assets/final-flow/04-readonly-summary-review.png" alt="Vault report" />
+							<div class="stage-note"><p>报告为主，批量修改进 proposal。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="lane-outcome">
+							<strong>Outcome</strong>
+							<div class="outcome-buttons">
+								<div class="outcome-button primary">Create batch proposal</div>
+								<div class="outcome-button">Open affected notes</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="visual-lane">
+						<div class="lane-label">
+							<strong><span class="badge">E</span>Setting / System</strong>
+							<p>切到 Setting tab，检查模型、索引、skills。</p>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">System tab <span>Screen B</span></div>
+							<img class="stage-shot" src="assets/final-flow/01-copilot-entry-panel.png" alt="System entry" />
+							<div class="stage-note"><p>运行环境，不是内容工作流。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Diagnostics <span>status</span></div>
+							<img class="stage-shot left-crop" src="assets/final-flow/02-auto-review-resizable-insights.png" alt="Diagnostics run" />
+							<div class="stage-note"><p>检查 provider、index、tool schema。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="visual-stage">
+							<div class="stage-label">Diagnostic review <span>report</span></div>
+							<img class="stage-shot" src="assets/final-flow/04-readonly-summary-review.png" alt="Diagnostics review" />
+							<div class="stage-note"><p>展示问题、证据、建议操作。</p></div>
+						</div>
+						<div class="stage-arrow"></div>
+						<div class="lane-outcome">
+							<strong>Outcome</strong>
+							<div class="outcome-buttons">
+								<div class="outcome-button primary">Fix config</div>
+								<div class="outcome-button">Re-run</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="split">
+				<div class="subflow">
+					<h3>Auto 路径</h3>
+					<div class="step">
+						<span class="dot done"></span>
+						<div><strong>点击 Run Auto</strong><span>进入 Auto Review。Agent 不预先暴露一堆功能卡片。</span></div>
+					</div>
+					<div class="step">
+						<span class="dot live"></span>
+						<div><strong>ReAct trace 持续更新</strong><span>Observed note -> Called Connect links -> Read sources -> Called Add evidence -> Revised proposal。</span></div>
+					</div>
+					<div class="step">
+						<span class="dot live"></span>
+						<div><strong>右侧 diff 同步更新</strong><span>每个变更块标注 provenance，例如 Connect links、Add evidence、Task check。</span></div>
+					</div>
+					<div class="step">
+						<span class="dot live"></span>
+						<div><strong>Insights 同时沉淀</strong><span>Agent 的判断、未应用建议、sources 和 follow-up 问题进入 Insights tab，不挤进 diff。</span></div>
+					</div>
+					<div class="step">
+						<span class="dot done"></span>
+						<div><strong>完成后进入可 apply 状态</strong><span>Apply reviewed changes 只在 diff 稳定后可用，支持 reject 和 undo。</span></div>
+					</div>
+				</div>
+
+				<div class="subflow">
+					<h3>手动工具路径</h3>
+					<div class="step">
+						<span class="dot done"></span>
+						<div><strong>点击推荐动作</strong><span>例如 Improve note、Connect links、Add evidence。</span></div>
+					</div>
+					<div class="step">
+						<span class="dot live"></span>
+						<div><strong>仍然允许 agent 调辅助工具</strong><span>用户点的是入口意图，不是限制 agent 只能用一个工具。</span></div>
+					</div>
+					<div class="step">
+						<span class="dot done"></span>
+						<div><strong>写入类进入 Diff Review</strong><span>最终结果是整篇文档 diff，不是多个功能 section。</span></div>
+					</div>
+					<div class="step">
+						<span class="dot done"></span>
+						<div><strong>分析类进入 Insight Review</strong><span>Summarize、Vault Health、Knowledge Gaps 等不直接改文档，但可以继续对话、保存、或升级成 diff。</span></div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<div class="section-title">
+			<h2>Auto 里 Diff 和 Insight 如何共存</h2>
+			<span>不是“写入 vs 只读”的功能分叉，而是一个 run 的两个结果层</span>
+		</div>
+
+		<section class="artifact-grid">
+			<div class="card artifact">
+				<strong>1. 一个 Agent Run，多个 Artifact</strong>
+				<p>Auto 启动后不先问用户选哪些工具。Agent 在 ReAct 里边读上下文边调用工具，最后可能同时产生可应用的 change artifact 和解释性的 insight artifact。</p>
+				<div class="actions">
+					<span class="pill accent">Trace</span>
+					<span class="pill primary">Change artifact</span>
+					<span class="pill">Insight artifact</span>
+				</div>
+			</div>
+			<div class="card artifact">
+				<strong>2. 有改动时，Diff 是主视图</strong>
+				<p>用户最关心“会不会改我的笔记”。所以只要有修改建议，右侧默认打开 Changes，红绿 diff 逐行展示；每一行都可追溯到对应工具和来源。</p>
+				<div class="actions">
+					<span class="pill primary">Changes</span>
+					<span class="pill">Insights</span>
+					<span class="pill">Sources</span>
+				</div>
+			</div>
+			<div class="card artifact">
+				<strong>3. 没改动时，Insight 是主视图</strong>
+				<p>如果这次只是体检、总结、发现 gap，界面不显示空 diff。它展示结论、证据和下一步，并保留输入框继续追问：也可以点 Create proposal 转成新的 diff run。</p>
+				<div class="actions">
+					<span class="pill">Ask follow-up</span>
+					<span class="pill">Save to note</span>
+					<span class="pill primary">Create proposal</span>
+				</div>
+			</div>
+		</section>
+
+		<section class="card flow" style="margin-top: 14px;">
+			<div class="node-title"><span class="badge">E</span>Insight 区域可变尺寸</div>
+			<p>
+				Insight 不是固定右侧小栏。它默认作为 diff 的旁路上下文出现；当内容变成长报告、vault health、knowledge gaps 或研究总结时，
+				用户可以切到更大的阅读区域，继续追问或把某段 insight 转成新的 change proposal。
+			</p>
+			<div class="layout-modes">
+				<div class="layout-mode">
+					<strong>Docked rail: 默认旁栏</strong>
+					<p>有文档改动时使用。Changes 占主区域，Insights 作为 280-360px 旁栏，展示风险、来源、未应用建议和 follow-up。</p>
+				</div>
+				<div class="layout-mode">
+					<strong>Split view: 可拖拽阅读</strong>
+					<p>用户拖动分隔线，Changes / Insights 可以 60/40、50/50 切换。适合一边看 diff，一边看长解释和来源。</p>
+				</div>
+				<div class="layout-mode">
+					<strong>Full width: 报告模式</strong>
+					<p>点击 Insights tab 或 expand 后，Insights 占满主区域。顶部仍保留 Changes badge，底部保留 Chat / Save / Create proposal。</p>
+				</div>
+			</div>
+		</section>
+
+		<div class="section-title">
+			<h2>按钮到界面的映射</h2>
+			<span>实现时可直接按这张表连 routing</span>
+		</div>
+
+		<section class="card mapping">
+			<div class="map-row">
+				<strong>Command Center: Document / Vault / Setting</strong>
+				<span class="arrow">-></span>
+				<p>打开入口面板，并切到对应 tab。Document 是当前 note；Vault 是 vault intelligence；Setting 是系统和能力管理。</p>
+			</div>
+			<div class="map-row">
+				<strong>入口面板: Run Auto</strong>
+				<span class="arrow">-></span>
+				<p>进入 Auto Review。左侧 live ReAct trace，右侧按 artifact 展示：有改动就默认 Changes + Insight rail；没有改动就默认 Insights full width；始终可以继续对话。</p>
+			</div>
+			<div class="map-row">
+				<strong>入口面板: 推荐写入类工具</strong>
+				<span class="arrow">-></span>
+				<p>进入同一个 Diff Review shell。工具名称只是 initial intent；agent 仍可自然调用其它工具，diff line 上标 provenance。</p>
+			</div>
+			<div class="map-row">
+				<strong>入口面板: 推荐分析类工具</strong>
+				<span class="arrow">-></span>
+				<p>进入 Insight Review shell。它不直接写回原文，但不是静态只读页：默认全宽阅读，可追问、保存、打开来源，或 Create proposal 进入 diff。</p>
+			</div>
+			<div class="map-row">
+				<strong>Diff Review: provenance badge</strong>
+				<span class="arrow">-></span>
+				<p>点击或 hover 可展开对应 trace/tool evidence：这个变更为什么出现，来自哪个工具和源文档。</p>
+			</div>
+		</section>
+
+		<div class="section-title">
+			<h2>最终保留的设计图</h2>
+			<span>旧的稀疏版和超模按钮版作为探索，不进入主流程</span>
+		</div>
+
+		<section class="preview-grid">
+			<figure class="card preview">
+				<div class="preview-header">
+					<div><strong>01. 入口面板</strong><br><span>Auto 主路径 + 少量推荐动作</span></div>
+					<span>Screen B</span>
+				</div>
+				<img src="assets/final-flow/01-copilot-entry-panel.png" alt="Copilot entry panel" />
+			</figure>
+			<figure class="card preview">
+				<div class="preview-header">
+					<div><strong>02. Auto Review: Changes + Insights</strong><br><span>左 trace，右 diff，Insights 可拖拽/全宽</span></div>
+					<span>Screen C/D</span>
+				</div>
+				<img src="assets/final-flow/02-auto-review-resizable-insights.png" alt="Auto review with resizable insights" />
+			</figure>
+			<figure class="card preview">
+				<div class="preview-header">
+					<div><strong>03. 手动写入类 Diff</strong><br><span>手动工具也进入统一 diff review</span></div>
+					<span>Manual write</span>
+				</div>
+				<img src="assets/final-flow/03-manual-tool-diff-review.png" alt="Manual tool diff review" />
+			</figure>
+			<figure class="card preview">
+				<div class="preview-header">
+					<div><strong>04. 交互型 Insight Review</strong><br><span>分析能力进入可对话的 insight review</span></div>
+					<span>Insight</span>
+				</div>
+				<img src="assets/final-flow/04-readonly-summary-review.png" alt="Read-only summary review" />
+			</figure>
+		</section>
+
+		<div class="section-title">
+			<h2>实现口径</h2>
+			<span>给后续代码改造用</span>
+		</div>
+		<div class="card footer-note">
+			<strong>核心决策：</strong>
+			入口 panel 只负责 intent capture；agent run 只展示用户可理解的行动 trace；最终 review surface 按 artifact 类型分为 Changes 与 Insights。
+			写入类能力不再各自弹不同 panel，而是统一生成 patch/diff artifact；分析类能力统一生成 insight/report artifact，支持继续对话和升级成 diff。
+			Insight 区域支持 docked rail、split view、full width 三种阅读尺寸。Auto 和手动工具的差别只是 initial intent 不同，后续都允许 agent 在 ReAct 循环里自然调用工具。
+		</div>
+	</main>
+</body>
+</html>

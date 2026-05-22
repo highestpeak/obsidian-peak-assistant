@@ -1,0 +1,89 @@
+/*
+ * Obsidian bare-tag reset, opt-in via `.peak-design-root` class.
+ *
+ * See docs/conventions/obsidian-css-defense.md for the full rule. TL;DR:
+ *   Obsidian injects global styles onto <button>, <input>, <h1-6>, <a>, etc.
+ *   Any modal/panel that wants pixel-perfect visuals must add the
+ *   `peak-design-root` class to its outermost wrapper. That triggers this
+ *   reset, neutralising Obsidian's bare-tag styling within the scope.
+ *
+ * Add new tags here as we discover Obsidian-injected ones.
+ */
+
+.peak-design-root *,
+.peak-design-root *::before,
+.peak-design-root *::after {
+	box-sizing: border-box;
+}
+
+.peak-design-root button,
+.peak-design-root input,
+.peak-design-root select,
+.peak-design-root textarea {
+	background: none;
+	border: 0;
+	padding: 0;
+	margin: 0;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+	box-shadow: none;
+	outline: none;
+	border-radius: 0;
+	line-height: inherit;
+	text-align: inherit;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+.peak-design-root button:disabled {
+	cursor: not-allowed;
+}
+
+.peak-design-root button:focus-visible,
+.peak-design-root input:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+.peak-design-root h1,
+.peak-design-root h2,
+.peak-design-root h3,
+.peak-design-root h4,
+.peak-design-root h5,
+.peak-design-root h6 {
+	margin: 0;
+	font-weight: inherit;
+	font-size: inherit;
+	line-height: inherit;
+}
+
+.peak-design-root p,
+.peak-design-root ul,
+.peak-design-root ol,
+.peak-design-root figure,
+.peak-design-root blockquote {
+	margin: 0;
+	padding: 0;
+}
+
+.peak-design-root ul,
+.peak-design-root ol {
+	list-style: none;
+}
+
+.peak-design-root a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.peak-design-root table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+.peak-design-root img,
+.peak-design-root svg {
+	display: block;
+	max-width: 100%;
+}

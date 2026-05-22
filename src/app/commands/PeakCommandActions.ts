@@ -8,6 +8,7 @@ import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
 import { OnboardingModal } from '@/ui/view/modals/OnboardingModal';
 import { SettingsModal } from '@/ui/view/SettingsModal';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
+import { CopilotReviewHistoryModal } from '@/ui/view/copilot/CopilotReviewHistoryModal';
 import { BatchTagModal } from '@/ui/view/copilot/BatchTagModal';
 import { PromptTemplateModal } from '@/ui/view/prompt-template/PromptTemplateModal';
 import { BuildUserProfileProgressModal } from '@/ui/view/BuildUserProfileProgressModal';
@@ -110,6 +111,22 @@ export function openSettingsModal(): void {
 
 export function openCopilotPanel(): void {
 	new CopilotPickerModal(getContext()).open();
+}
+
+export function openCopilotReviewHistory(): void {
+	new CopilotReviewHistoryModal(getContext().app).open();
+}
+
+export function openDocumentCopilotPanel(): void {
+	new CopilotPickerModal(getContext(), { initialTab: 'document' }).open();
+}
+
+export function openVaultIntelligencePanel(): void {
+	new CopilotPickerModal(getContext(), { initialTab: 'vault' }).open();
+}
+
+export function openManageSystemPanel(): void {
+	new CopilotPickerModal(getContext(), { initialTab: 'setting' }).open();
 }
 
 export function openBatchTagSuggestions(): void {

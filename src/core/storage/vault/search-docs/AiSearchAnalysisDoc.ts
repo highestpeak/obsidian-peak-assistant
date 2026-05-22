@@ -40,6 +40,18 @@ export interface BuildMarkdownOptions {
 /** Single chat message for snapshot (graph/source/block context chats). */
 export type SnapshotChatMessage = { role: string; content: string };
 
+/** Persisted V2 report section — carries rich metadata for UI round-trip fidelity. */
+export type V2PersistedSection = {
+	title: string;
+	content: string;
+	visualType?: string;
+	missionRole?: string;
+	evidencePaths?: string[];
+	brief?: string;
+	contentType?: string;
+	weight?: number;
+};
+
 /** Document model for AI search analysis. Matches CompletedAnalysisSnapshot plus query/webEnabled. */
 export interface AiSearchAnalysisDocModel {
 	version: 1;
@@ -89,7 +101,7 @@ export interface AiSearchAnalysisDocModel {
 	// V2 fields (SDK pipeline)
 	v2ProcessLog?: string[];
 	v2PlanOutline?: string;
-	v2ReportSections?: Array<{ title: string; content: string }>;
+	v2ReportSections?: V2PersistedSection[];
 	v2GraphJson?: string;
 	v2FollowUpQuestions?: string[];
 }

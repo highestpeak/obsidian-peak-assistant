@@ -38,8 +38,14 @@ function normalizeModelKey(modelId: string): string {
 	return modelId.trim().toLowerCase();
 }
 
+const PROVIDER_ID_ALIASES: Record<string, string> = {
+	anthropic: 'claude',
+	gemini: 'google',
+};
+
 function normalizeProviderId(providerId: string): string {
-	return providerId.trim().toLowerCase();
+	const key = providerId.trim().toLowerCase();
+	return PROVIDER_ID_ALIASES[key] ?? key;
 }
 
 function normalizeModelForFuzzyMatch(modelId: string): string {

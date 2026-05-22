@@ -87,6 +87,7 @@
 }
 
 /* Context tag styling - purple */
+.pktw-codemirror-custom.cm-editor .cm-context-tag,
 .pktw-codemirror-custom .cm-context-tag {
   background-color: rgba(139, 92, 246, 0.1) !important;
   color: rgb(139, 92, 246) !important;
@@ -97,6 +98,7 @@
 }
 
 /* Prompt tag styling - blue */
+.pktw-codemirror-custom.cm-editor .cm-prompt-tag,
 .pktw-codemirror-custom .cm-prompt-tag {
   background-color: rgba(59, 130, 246, 0.1) !important;
   color: rgb(59, 130, 246) !important;
@@ -107,6 +109,7 @@
 }
 
 /* Search tag styling - blue (matching the original InputWithOverlay) */
+.pktw-codemirror-custom.cm-editor .cm-search-tag,
 .pktw-codemirror-custom .cm-search-tag {
   background-color: rgba(59, 130, 246, 0.15) !important;
   color: rgb(55, 65, 81) !important;

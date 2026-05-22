@@ -393,7 +393,31 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 	const v2FollowUpContent = extractCalloutBlock(body, 'question', 'Follow-up Questions');
 	const v2FollowUpQuestions = v2FollowUpContent ? parseCalloutListItems(v2FollowUpContent) : undefined;
 
-	const v2ReportSections = parseV2ReportSections(body);
+	const v2ReportSections: import('./AiSearchAnalysisDoc').V2PersistedSection[] = parseV2ReportSections(body);
+
+	// Enrich parsed sections with persisted metadata (visualType, missionRole, evidencePaths, etc.)
+	const v2SectionMetaRaw = extractCalloutBlock(body, 'abstract', 'V2 Section Meta');
+	if (v2SectionMetaRaw && v2ReportSections.length > 0) {
+		try {
+			const metaArray = JSON.parse(v2SectionMetaRaw.trim()) as Array<{
+				title?: string; visualType?: string; missionRole?: string;
+				evidencePaths?: string[]; brief?: string; contentType?: string; weight?: number;
+			}>;
+			if (Array.isArray(metaArray)) {
+				for (let i = 0; i < v2ReportSections.length && i < metaArray.length; i++) {
+					const meta = metaArray[i];
+					if (meta && typeof meta === 'object') {
+						if (meta.visualType !== undefined) v2ReportSections[i].visualType = meta.visualType;
+						if (meta.missionRole !== undefined) v2ReportSections[i].missionRole = meta.missionRole;
+						if (meta.evidencePaths !== undefined) v2ReportSections[i].evidencePaths = meta.evidencePaths;
+						if (meta.brief !== undefined) v2ReportSections[i].brief = meta.brief;
+						if (meta.contentType !== undefined) v2ReportSections[i].contentType = meta.contentType;
+						if (meta.weight !== undefined) v2ReportSections[i].weight = meta.weight;
+					}
+				}
+			}
+		} catch { /* ignore malformed metadata */ }
+	}
 
 	return {
 		...EMPTY_DOC_MODEL,

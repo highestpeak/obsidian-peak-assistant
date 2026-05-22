@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Archived Peak Assistant Command Center Prototype</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f8;
+      --panel: #ffffff;
+      --panel-soft: #fafbfb;
+      --text: #1f2428;
+      --muted: #65707a;
+      --line: #dfe4e8;
+      --line-strong: #c8d0d7;
+      --blue: #2f6fbb;
+      --green: #267a4f;
+      --amber: #9a6700;
+      --red: #b42318;
+      --purple: #7453b6;
+      --radius: 8px;
+      --shadow: 0 16px 44px rgba(15, 23, 42, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .workspace {
+      min-height: 100vh;
+      padding: 28px;
+    }
+
+    .archive-note {
+      max-width: 1420px;
+      margin: 0 auto 12px;
+      border: 1px solid #f1c56f;
+      background: #fff8e8;
+      color: #6d4a00;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .shell {
+      max-width: 1420px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .title-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: #e8f1fb;
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .title-main {
+      display: block;
+      font-weight: 650;
+      font-size: 16px;
+    }
+
+    .title-sub {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 720px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      color: var(--text);
+      min-height: 32px;
+      padding: 0 11px;
+      border-radius: 7px;
+      font: inherit;
+      font-weight: 560;
+    }
+
+    .btn.primary {
+      border-color: #1f6b45;
+      background: #277a50;
+      color: #fff;
+    }
+
+    .btn.ghost {
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .context {
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) repeat(4, auto);
+      gap: 8px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--panel-soft);
+      white-space: nowrap;
+    }
+
+    .chip strong {
+      color: var(--text);
+      font-weight: 620;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 230px minmax(480px, 1fr) 420px;
+      min-height: 760px;
+    }
+
+    .rail,
+    .detail {
+      background: #fbfcfd;
+    }
+
+    .rail {
+      border-right: 1px solid var(--line);
+      padding: 16px 12px;
+    }
+
+    .detail {
+      border-left: 1px solid var(--line);
+      padding: 16px;
+    }
+
+    .content {
+      padding: 16px 18px 22px;
+      background: #fff;
+    }
+
+    .search {
+      display: flex;
+      align-items: center;
+      height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      color: var(--muted);
+      background: #fff;
+      margin-bottom: 14px;
+    }
+
+    .nav-item {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 9px 8px;
+      border-radius: 7px;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .nav-item.active {
+      color: var(--blue);
+      background: #eaf2fb;
+      font-weight: 650;
+    }
+
+    .nav-icon {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: #eef1f4;
+      color: inherit;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 14px 0 9px;
+      gap: 12px;
+    }
+
+    .section-title span:first-child {
+      font-weight: 680;
+      font-size: 13px;
+      letter-spacing: 0;
+    }
+
+    .section-title span:last-child {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .recommendations {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .rec-card,
+    .tool-card,
+    .candidate,
+    .issue {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+
+    .rec-card {
+      padding: 12px;
+      min-height: 132px;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .rec-card.selected {
+      border-color: #8bb8e8;
+      box-shadow: 0 0 0 2px #e5f1ff inset;
+    }
+
+    .rec-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 650;
+    }
+
+    .reason {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .scope-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .scope {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 7px;
+      color: var(--muted);
+      font-size: 11px;
+      background: #fafafa;
+    }
+
+    .scope.ai {
+      color: var(--purple);
+      border-color: #d7c8f4;
+      background: #f6f1ff;
+    }
+
+    .scope.safe {
+      color: var(--green);
+      border-color: #bbdbc8;
+      background: #effaf3;
+    }
+
+    .scope.warn {
+      color: var(--amber);
+      border-color: #ead59d;
+      background: #fff8e7;
+    }
+
+    .group-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .tool-card {
+      min-height: 94px;
+      padding: 12px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .tool-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 640;
+    }
+
+    .tool-desc {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .detail-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .detail-title {
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .status {
+      color: var(--green);
+      background: #eefaf3;
+      border: 1px solid #bfdfca;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .candidate,
+    .issue {
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .candidate-top,
+    .issue-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .candidate-title,
+    .issue-title {
+      font-weight: 650;
+    }
+
+    .score {
+      color: var(--green);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .source {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .preview {
+      border: 1px solid var(--line);
+      background: #fbfcfd;
+      border-radius: 7px;
+      padding: 9px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: #35414c;
+      margin-top: 8px;
+    }
+
+    .insert {
+      color: var(--green);
+      background: #eefaf3;
+    }
+
+    .detail-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 14px 0;
+    }
+
+    .trace {
+      border: 1px dashed var(--line-strong);
+      border-radius: 7px;
+      padding: 10px;
+      color: var(--muted);
+      background: #fff;
+      font-size: 12px;
+    }
+
+    .health {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 9px;
+      background: #fff;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 17px;
+      margin-bottom: 3px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    @media (max-width: 1120px) {
+      .main {
+        grid-template-columns: 210px 1fr;
+      }
+
+      .detail {
+        grid-column: 1 / -1;
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .workspace {
+        padding: 10px;
+      }
+
+      .topbar,
+      .context,
+      .main,
+      .recommendations,
+      .group-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .rail {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="workspace">
+    <div class="archive-note">
+      Archived exploration: this full workbench direction was superseded by the panel-first Obsidian prototype.
+    </div>
+    <div class="shell">
+      <div class="topbar">
+        <div class="title">
+          <div class="title-mark">PA</div>
+          <div>
+            <span class="title-main">Command Center</span>
+            <span class="title-sub">Intent-first router for the current note and vault maintenance</span>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="btn ghost">Recent runs</button>
+          <button class="btn">Manage system</button>
+        </div>
+      </div>
+
+      <div class="context">
+        <div class="chip"><strong>Current note</strong> SAAS公司.md</div>
+        <div class="chip"><strong>Selection</strong> none</div>
+        <div class="chip"><strong>Folder</strong> kb2-learn-prd</div>
+        <div class="chip"><strong>Model</strong> Agent Fast</div>
+        <div class="chip"><strong>Index</strong> ready</div>
+      </div>
+
+      <div class="main">
+        <aside class="rail">
+          <div class="search">Search actions, settings, skills...</div>
+
+          <div class="nav-item active">
+            <div class="nav-icon">N</div>
+            <div>Current Note</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">K</div>
+            <div>Connect Knowledge</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">M</div>
+            <div>Maintain Vault</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">R</div>
+            <div>Research & Synthesize</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">S</div>
+            <div>Manage System</div>
+          </div>
+
+          <div class="section-title">
+            <span>Recent runs</span>
+            <span>3</span>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">L</div>
+            <div>Links ready</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">Q</div>
+            <div>Quality review</div>
+          </div>
+        </aside>
+
+        <main class="content">
+          <div class="section-title">
+            <span>Recommended now</span>
+            <span>Based on this note and vault state</span>
+          </div>
+
+          <div class="recommendations">
+            <div class="rec-card selected">
+              <div class="rec-head">
+                <span>Connect Related Notes</span>
+                <span class="scope ai">AI</span>
+              </div>
+              <div class="reason">Recommended because 9 related notes exist but this note has only 1 outgoing link.</div>
+              <div class="scope-row">
+                <span class="scope">Current note</span>
+                <span class="scope safe">Preview first</span>
+              </div>
+            </div>
+
+            <div class="rec-card">
+              <div class="rec-head">
+                <span>Add Evidence</span>
+                <span class="scope warn">Review</span>
+              </div>
+              <div class="reason">Recommended because two claims mention search vendors without source links.</div>
+              <div class="scope-row">
+                <span class="scope">Paragraph</span>
+                <span class="scope">Vault</span>
+              </div>
+            </div>
+
+            <div class="rec-card">
+              <div class="rec-head">
+                <span>Improve Current Note</span>
+                <span class="scope safe">Diff</span>
+              </div>
+              <div class="reason">Recommended because the note has inconsistent headings and weak source citations.</div>
+              <div class="scope-row">
+                <span class="scope">Full note</span>
+                <span class="scope">Accept/reject</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title">
+            <span>All tools</span>
+            <span>Grouped by intent, searchable by old names</span>
+          </div>
+
+          <div class="group-grid">
+            <div class="tool-card">
+              <div class="tool-title">
+                <span>Improve Current Note</span>
+                <span class="scope">Review</span>
+              </div>
+              <div class="tool-desc">Review article, correct content, polish, and format fixes in one diff-based workflow.</div>
+            </div>
+
+            <div class="tool-card">
+              <div class="tool-title">
+                <span>Connect Related Notes</span>
+                <span class="scope">Links</span>
+              </div>
+              <div class="tool-desc">Merge semantic, graph, backlink, and agent-discovered candidates into link proposals.</div>
+            </div>
+
+            <div class="tool-card">
+              <div class="tool-title">
+                <span>Vault Maintenance Queue</span>
+                <span class="scope warn">Review</span>
+              </div>
+              <div class="tool-desc">Review duplicates, stale notes, orphan notes, tag cleanup, and filing suggestions safely.</div>
+            </div>
+
+            <div class="tool-card">
+              <div class="tool-title">
+                <span>Task Review</span>
+                <span class="scope">Vault</span>
+              </div>
+              <div class="tool-desc">Scan tasks, remove noise, group by project, and suggest next steps from vault evidence.</div>
+            </div>
+
+            <div class="tool-card">
+              <div class="tool-title">
+                <span>Research & Synthesize</span>
+                <span class="scope ai">Cited</span>
+              </div>
+              <div class="tool-desc">Generate source-backed topic synthesis, knowledge gaps, and vault summaries.</div>
+            </div>
+
+            <div class="tool-card">
+              <div class="tool-title">
+                <span>Suggest Visual</span>
+                <span class="scope">New</span>
+              </div>
+              <div class="tool-desc">Suggest diagrams, examples, tables, or article illustrations for the current section.</div>
+            </div>
+          </div>
+        </main>
+
+        <aside class="detail">
+          <div class="detail-head">
+            <div>
+              <div class="detail-title">Connect Related Notes</div>
+              <div class="source">Completed in 42s · 18 candidates · 5 proposed insertions</div>
+            </div>
+            <div class="status">Result ready</div>
+          </div>
+
+          <div class="candidate">
+            <div class="candidate-top">
+              <div class="candidate-title">Add link to Algolia comparison note</div>
+              <div class="score">88%</div>
+            </div>
+            <div class="source">Source paragraph: "Algolia 的 connectors 上看到..."</div>
+            <div class="scope-row">
+              <span class="scope ai">semantic</span>
+              <span class="scope ai">graph</span>
+              <span class="scope">backlink</span>
+            </div>
+            <div class="preview">Before: Algolia 的 connectors 上看到...<br>After: <span class="insert">[[Algolia connectors]]</span> 上看到...</div>
+          </div>
+
+          <div class="candidate">
+            <div class="candidate-top">
+              <div class="candidate-title">Related note only: SAAS tool matrix</div>
+              <div class="score">74%</div>
+            </div>
+            <div class="source">Not a direct insertion. Useful as nearby context for the current section.</div>
+            <div class="scope-row">
+              <span class="scope ai">semantic</span>
+              <span class="scope">related</span>
+            </div>
+          </div>
+
+          <div class="health">
+            <div class="metric">
+              <strong>5</strong>
+              <span>safe insertions</span>
+            </div>
+            <div class="metric">
+              <strong>7</strong>
+              <span>related only</span>
+            </div>
+            <div class="metric">
+              <strong>6</strong>
+              <span>ignored low confidence</span>
+            </div>
+          </div>
+
+          <div class="detail-actions">
+            <button class="btn primary">Apply selected links</button>
+            <button class="btn">Open target notes</button>
+            <button class="btn">Save suggestions</button>
+            <button class="btn ghost">Ignore all</button>
+          </div>
+
+          <div class="issue">
+            <div class="issue-top">
+              <div class="issue-title">Vault maintenance preview</div>
+              <span class="scope warn">Queued</span>
+            </div>
+            <div class="source">3 duplicate groups and 2 orphan notes need review. Nothing will be changed without preview.</div>
+          </div>
+
+          <div class="trace">Inspect run details collapsed · searched 5 queries · read 8 notes · selected 5 insertions</div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

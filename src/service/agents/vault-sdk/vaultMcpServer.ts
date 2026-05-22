@@ -147,14 +147,14 @@ export interface ReadNoteResult {
 /**
  * Read a note's frontmatter, body preview, wikilinks, and tags. Returns an
  * error field if the file can't be located. Body preview is truncated to
- * `maxChars` (default 3000) and strips the frontmatter block.
+ * `maxChars` (default 5000) and strips the frontmatter block.
  */
 export async function readNoteImpl(
     vault: Vault,
     metadataCache: MetadataCache,
     params: ReadNoteParams
 ): Promise<ReadNoteResult> {
-    const maxChars = params.maxChars ?? 3000;
+    const maxChars = params.maxChars ?? 5000;
     const file = vault.getAbstractFileByPath(params.path) as TFile | null;
     if (!file || !('extension' in file)) {
         return {
@@ -335,7 +335,7 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
 
     const listFolders = tool(
         'vault_list_folders',
-        'List top-level folders in the vault with markdown file counts. CALL THIS FIRST for reflective queries like "my X" or "all Y". The result shows you the user\'s folder taxonomy so you can decide which folders to enumerate.',
+        'List top-level folders in the vault with markdown file counts. CALL THIS FIRST for reflective queries like "my X" or "all Y". The result shows you the user\'s folder taxonomy so you can decide which folders to enumerate. IMPORTANT: paths returned here are FOLDERS, not notes — they are NOT valid wikilink targets. Use vault_read_folder to discover specific notes inside.',
         {
             maxDepth: z.number().min(1).max(5).default(2),
         },
@@ -369,10 +369,11 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
 
     const readNote = tool(
         'vault_read_note',
-        'Read a single note: frontmatter, wikilinks, tags, and body preview (first N chars). Use after vault_read_folder gives you candidate paths.',
+        'Read a single note. Returns frontmatter, wikilinks, tags, and a body preview truncated to `maxChars` characters. YOU choose `maxChars` based on how much of the note you actually need: ~1500 for a quick title/intent scan, ~5000 for normal context, 10000-20000 for a central note. Raise it deliberately rather than re-reading the same note twice. Prefer reading multiple notes in PARALLEL within a single turn (the SDK supports parallel tool_use blocks).',
         {
             path: z.string(),
-            maxChars: z.number().min(100).max(20000).default(3000),
+            maxChars: z.number().min(100).max(20000).default(5000)
+                .describe('Number of body characters to return. Pick based on need: small for scanning, large for deep analysis. Max 20000.'),
         },
         async (input, _extra) => {
             const result = await readNoteImpl(

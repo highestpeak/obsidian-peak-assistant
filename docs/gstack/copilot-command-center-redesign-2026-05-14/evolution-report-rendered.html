@@ -1,0 +1,1572 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant UX Direction Board</title>
+  <style>
+    :root {
+      --bg: #edf1f5;
+      --paper: #ffffff;
+      --ink: #20242c;
+      --muted: #667085;
+      --subtle: #98a2b3;
+      --line: #d9e1ec;
+      --soft: #f8fafc;
+      --purple: #7c3aed;
+      --purple-soft: #f4f0ff;
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --green: #16834a;
+      --green-soft: #ecfdf3;
+      --amber: #a15c07;
+      --amber-soft: #fff7ed;
+      --red: #c24135;
+      --red-soft: #fff1f1;
+      --shadow: 0 18px 52px rgba(15, 23, 42, 0.11);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px) 0 0 / 26px 26px,
+        linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px) 0 0 / 26px 26px,
+        var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      max-width: 920px;
+      font-size: 36px;
+      line-height: 1.12;
+    }
+
+    h2 {
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    h3 {
+      font-size: 15px;
+      line-height: 1.28;
+    }
+
+    p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .board {
+      width: min(1480px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
+    }
+
+    .hero,
+    .panel,
+    .image-card,
+    .flow-card,
+    .rule-card,
+    .evidence-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .hero-copy {
+      display: grid;
+      align-content: space-between;
+      gap: 18px;
+    }
+
+    .kicker {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: var(--purple-soft);
+      color: var(--purple);
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .claim {
+      padding: 15px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(124, 58, 237, 0.22);
+      background: var(--purple-soft);
+      color: #4c1d95;
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.42;
+    }
+
+    .hero-preview {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.86);
+      overflow: hidden;
+      box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+    }
+
+    .preview-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      min-height: 70px;
+      background: #f5f6f8;
+    }
+
+    .preview-tab {
+      position: relative;
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      color: #4b5563;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .preview-tab span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .preview-tab.active {
+      color: var(--purple);
+      background: #fff;
+    }
+
+    .preview-tab.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 4px;
+      background: var(--purple);
+    }
+
+    .preview-body {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .preview-search-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 120px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .preview-search {
+      min-height: 56px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 18px;
+      color: #667085;
+      font-size: 14px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    .preview-search-icon {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #475467;
+      border-radius: 999px;
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .preview-search-icon::after {
+      content: "";
+      position: absolute;
+      right: -6px;
+      bottom: -5px;
+      width: 8px;
+      height: 2px;
+      border-radius: 999px;
+      background: #475467;
+      transform: rotate(45deg);
+    }
+
+    .preview-auto {
+      min-height: 56px;
+      border-radius: 14px;
+      border: 1px solid rgba(124, 58, 237, 0.32);
+      background: var(--purple-soft);
+      color: var(--purple);
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .preview-agent-card {
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #fff, #fbfaff);
+      padding: 15px;
+    }
+
+    .preview-agent-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 850;
+    }
+
+    .preview-ready {
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green);
+      padding: 5px 9px;
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .preview-capabilities {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 13px;
+    }
+
+    .preview-capability {
+      border: 1px solid rgba(124, 58, 237, 0.18);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .preview-capability strong {
+      display: block;
+      color: var(--ink);
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+
+    .preview-capability span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .decision-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .decision {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--soft);
+      padding: 13px;
+    }
+
+    .decision strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .decision.selected {
+      border-color: rgba(22, 131, 74, 0.28);
+      background: var(--green-soft);
+    }
+
+    .section {
+      margin-top: 20px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 12px;
+    }
+
+    .section-head span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .baseline-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+      gap: 14px;
+    }
+
+    .image-card {
+      overflow: hidden;
+    }
+
+    .image-card img {
+      width: 100%;
+      height: 520px;
+      object-fit: contain;
+      display: block;
+      background: #fff;
+    }
+
+    .image-card.primary img {
+      height: 610px;
+    }
+
+    .caption {
+      border-top: 1px solid var(--line);
+      padding: 12px 14px;
+    }
+
+    .caption strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .caption p {
+      font-size: 13px;
+    }
+
+    .design-map {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .panel {
+      padding: 15px;
+      min-height: 168px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 12px;
+      background: var(--purple-soft);
+      color: var(--purple);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .panel h3 {
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .tag-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .tag.purple {
+      border-color: rgba(124, 58, 237, 0.22);
+      background: var(--purple-soft);
+      color: var(--purple);
+    }
+
+    .tag.green {
+      border-color: rgba(22, 131, 74, 0.22);
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .ux-flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .flow-card {
+      position: relative;
+      min-height: 160px;
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .flow-card::after {
+      content: "→";
+      position: absolute;
+      right: -12px;
+      top: 42%;
+      color: var(--purple);
+      font-size: 24px;
+      font-weight: 900;
+      z-index: 2;
+    }
+
+    .flow-card:last-child::after {
+      display: none;
+    }
+
+    .flow-card strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .flow-card p {
+      font-size: 12px;
+    }
+
+    .flow-visual {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--soft);
+      padding: 8px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .tab-mini {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 5px;
+    }
+
+    .tab-mini span {
+      border-radius: 6px;
+      background: #fff;
+      border: 1px solid var(--line);
+      min-height: 28px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .tab-mini .active {
+      color: var(--purple);
+      border-bottom: 3px solid var(--purple);
+      background: var(--purple-soft);
+    }
+
+    .bar {
+      height: 10px;
+      border-radius: 999px;
+      background: #dfe6f0;
+    }
+
+    .bar.purple {
+      background: rgba(124, 58, 237, 0.24);
+    }
+
+    .bar.green {
+      background: rgba(22, 131, 74, 0.24);
+    }
+
+    .rules {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .rule-card {
+      padding: 15px;
+      box-shadow: none;
+    }
+
+    .rule-card h3 {
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .rule-card.warning {
+      background: var(--amber-soft);
+      border-color: rgba(161, 92, 7, 0.22);
+    }
+
+    .diff-preview {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      overflow: hidden;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      background: var(--line);
+    }
+
+    .panel-flow-board {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(380px, 0.85fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .workspace-frame {
+      min-height: 560px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #0f1720;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr) 320px;
+    }
+
+    .workspace-nav {
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      background: #111923;
+      padding: 16px 12px;
+      color: #b7c1d1;
+    }
+
+    .workspace-nav strong,
+    .note-surface strong,
+    .assistant-panel strong {
+      display: block;
+    }
+
+    .nav-item {
+      min-height: 28px;
+      border-radius: 7px;
+      padding: 6px 8px;
+      margin-top: 6px;
+      color: #9aa6b7;
+      font-size: 12px;
+    }
+
+    .nav-item.active {
+      background: rgba(124, 58, 237, 0.22);
+      color: #f7f3ff;
+    }
+
+    .note-surface {
+      padding: 26px;
+      background: #151d27;
+      color: #f8fafc;
+    }
+
+    .note-title {
+      font-size: 28px;
+      font-weight: 850;
+      margin-bottom: 18px;
+    }
+
+    .note-block {
+      margin-top: 16px;
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .note-selection {
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(37, 99, 235, 0.26);
+      color: #eaf2ff;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .assistant-panel {
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      background: #101720;
+      padding: 14px;
+      color: #e5e7eb;
+      display: grid;
+      align-content: start;
+      gap: 12px;
+    }
+
+    .assistant-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 10px;
+    }
+
+    .assistant-top span {
+      color: #9ca3af;
+      font-size: 11px;
+    }
+
+    .panel-state-card {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 10px;
+      background: #151d27;
+      padding: 12px;
+    }
+
+    .panel-state-card h3 {
+      color: #f8fafc;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .panel-state-card p {
+      color: #aeb8c7;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .run-button {
+      margin-top: 10px;
+      min-height: 34px;
+      border-radius: 7px;
+      background: #2563eb;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .step-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 9px;
+      background: rgba(15, 23, 42, 0.62);
+      padding: 9px;
+    }
+
+    .step-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(124, 58, 237, 0.2);
+      color: #c4b5fd;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .step strong {
+      color: #f8fafc;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .step p {
+      color: #9ca3af;
+      font-size: 11px;
+      line-height: 1.38;
+    }
+
+    .step-status {
+      border-radius: 999px;
+      padding: 3px 7px;
+      background: rgba(148, 163, 184, 0.14);
+      color: #cbd5e1;
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .step-status.done {
+      background: rgba(22, 163, 74, 0.18);
+      color: #86efac;
+    }
+
+    .step-status.active {
+      background: rgba(37, 99, 235, 0.24);
+      color: #bfdbfe;
+    }
+
+    .step-status.review {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fde68a;
+    }
+
+    .panel-flow-spec {
+      display: grid;
+      gap: 12px;
+    }
+
+    .flow-spec-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .flow-spec-card h3 {
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .flow-spec-row {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr);
+      gap: 10px;
+      padding: 9px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .flow-spec-row:first-of-type {
+      border-top: 0;
+    }
+
+    .flow-spec-row strong {
+      color: var(--ink);
+      font-size: 12px;
+    }
+
+    .flow-spec-row span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .capability-step-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .capability-step-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .capability-step-card h3 {
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .mini-step-list {
+      display: grid;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .mini-step {
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px;
+      background: var(--soft);
+    }
+
+    .mini-step-index {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--purple-soft);
+      color: var(--purple);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .mini-step strong {
+      display: block;
+      color: var(--ink);
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .mini-step span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.42;
+    }
+
+    .diff-pane {
+      background: #fff;
+      padding: 18px;
+      min-height: 290px;
+    }
+
+    .diff-pane h3 {
+      margin-bottom: 12px;
+      color: var(--ink);
+    }
+
+    .diff-block {
+      margin: 12px 0;
+      padding: 12px 12px 12px 18px;
+      border-radius: 9px;
+    }
+
+    .diff-block.remove {
+      background: var(--red-soft);
+      border: 1px solid #fecdd3;
+      border-left: 5px solid #dc2626;
+    }
+
+    .diff-block.add {
+      background: var(--green-soft);
+      border: 1px solid #bbf7d0;
+      border-left: 5px solid #16a34a;
+    }
+
+    .diff-label {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .diff-label.remove {
+      color: #991b1b;
+      background: #fee2e2;
+    }
+
+    .diff-label.add {
+      color: #166534;
+      background: #dcfce7;
+    }
+
+    .evidence-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .evidence-card {
+      overflow: hidden;
+      box-shadow: none;
+    }
+
+    .evidence-card img {
+      width: 100%;
+      height: 230px;
+      object-fit: cover;
+      object-position: top left;
+      display: block;
+      background: #fff;
+    }
+
+    .evidence-card .caption {
+      padding: 10px;
+    }
+
+    .evidence-card strong {
+      font-size: 12px;
+    }
+
+    .archive-note {
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      border: 1px dashed #cbd5e1;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 1120px) {
+      .hero,
+      .baseline-grid,
+      .design-map,
+      .panel-flow-board,
+      .workspace-frame,
+      .capability-step-grid,
+      .ux-flow,
+      .rules,
+      .diff-preview {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-card::after {
+        display: none;
+      }
+
+      .evidence-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .preview-capabilities {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .board {
+        width: calc(100vw - 20px);
+      }
+
+      h1 {
+        font-size: 27px;
+      }
+
+      .image-card img,
+      .image-card.primary img {
+        height: auto;
+      }
+
+      .evidence-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .preview-search-row {
+        grid-template-columns: 1fr;
+      }
+
+      .preview-tabs,
+      .preview-capabilities {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="board">
+    <section class="hero">
+      <div class="hero-copy">
+        <div>
+          <div class="kicker">Current UX Baseline</div>
+          <h1>Peak Assistant 只按两张符合方向的图继续设计</h1>
+          <p>报告从“解释很多方案”收敛成“视觉基准 + UX 流程”。旧 HTML 原型和 full-page 方向只保留为历史，不再作为当前设计依据。</p>
+        </div>
+        <div class="claim">核心交互：顶部 Document / Vault / Setting tab，当前 tab 有 Auto。点 Auto 后 agent 自动分析上下文和能力，决定该跑什么，再给可审核结果。</div>
+        <div class="hero-preview" aria-label="Top tab and auto agent interaction contract">
+          <div class="preview-tabs">
+            <div class="preview-tab active">Document<span>= Copilot</span></div>
+            <div class="preview-tab">Vault<span>= Vault Intelligence</span></div>
+            <div class="preview-tab">Setting<span>= System</span></div>
+          </div>
+          <div class="preview-body">
+            <div class="preview-search-row">
+              <div class="preview-search">
+                <span class="preview-search-icon" aria-hidden="true"></span>
+                <span>Search or ask in current document... (# heading, @ note, ? help)</span>
+              </div>
+              <div class="preview-auto">AI Auto</div>
+            </div>
+            <div class="preview-agent-card">
+              <div class="preview-agent-title">
+                <span>Auto: analyze current context and decide what to run</span>
+                <span class="preview-ready">Ready</span>
+              </div>
+              <div class="preview-capabilities">
+                <div class="preview-capability">
+                  <strong>Connect links</strong>
+                  <span>related notes</span>
+                </div>
+                <div class="preview-capability">
+                  <strong>Add evidence</strong>
+                  <span>source blocks</span>
+                </div>
+                <div class="preview-capability">
+                  <strong>Improve note</strong>
+                  <span>polish safely</span>
+                </div>
+                <div class="preview-capability">
+                  <strong>Full diff</strong>
+                  <span>review before apply</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="decision-stack">
+        <div class="decision selected">
+          <strong>Conforming Baselines</strong>
+          <p>基准 1：Search-like tab + Auto agent 入口。基准 2：Obsidian panel + quick action + review/apply。</p>
+        </div>
+        <div class="decision">
+          <strong>Product Mapping</strong>
+          <p>Document = Copilot，Vault = Vault Intelligence，Setting = Manage System。这是 UI 命名，不是再拆出一堆功能页。</p>
+        </div>
+        <div class="decision">
+          <strong>Design Rule</strong>
+          <p>视觉探索优先 imagegen 图；HTML 报告只负责组织、引用和说明，不再手写复杂原型当主方案。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>1. 两张视觉基准</h2>
+        <span>后续所有 UX 细节都从这里展开</span>
+      </div>
+      <div class="baseline-grid">
+        <figure class="image-card primary">
+          <img src="assets/search-like-tabs-auto-agent-codex-imagegen.png" alt="Search-like tabs auto agent command panel" />
+          <figcaption class="caption">
+            <strong>基准 1：Search-like Tab + Auto Agent</strong>
+            <p>顶部 tab、紫色 active underline、大搜索框、Auto 主按钮。Document/Vault/Setting 只是入口域，Auto 才是核心操作。</p>
+          </figcaption>
+        </figure>
+        <figure class="image-card primary">
+          <img src="assets/obsidian-panel-flow-codex-imagegen.png" alt="Obsidian panel quick action review apply flow" />
+          <figcaption class="caption">
+            <strong>基准 2：Obsidian Panel + Quick Action + Review/Apply</strong>
+            <p>保持在 Obsidian 里，右侧 panel 承接建议、配置、候选审核、安全 apply 和 undo。</p>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>2. 每个设计部分怎么跟两张图对齐</h2>
+        <span>不再按“功能卡片”设计，而按入口、自动规划、审核和应用设计</span>
+      </div>
+      <div class="design-map">
+        <div class="panel">
+          <div class="panel-number">1</div>
+          <h3>Entry Surface</h3>
+          <p>大弹出面板只保留 Document / Vault / Setting 顶部 tab。样式按基准 1：浅色面板、紫色 active underline、宽搜索框。</p>
+          <div class="tag-row">
+            <span class="tag purple">Document</span>
+            <span class="tag">Vault</span>
+            <span class="tag">Setting</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-number">2</div>
+          <h3>Auto Agent</h3>
+          <p>每个 tab 都有 Auto。点一下就开始：分析上下文、选 capabilities、跑 safe discovery、生成 review artifacts。</p>
+          <div class="tag-row">
+            <span class="tag purple">Auto</span>
+            <span class="tag">Planner</span>
+            <span class="tag green">No auto-apply</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-number">3</div>
+          <h3>Daily Panel</h3>
+          <p>右侧 panel 只承担轻量工作：当前 note 摘要、2-3 个建议、运行配置、候选结果、pending review。</p>
+          <div class="tag-row">
+            <span class="tag">Current note</span>
+            <span class="tag">Quick action</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-number">4</div>
+          <h3>Review / Apply</h3>
+          <p>轻量建议可在侧栏审核；整段/全文变化进入 rendered document diff，必须有红/绿线、来源和 undo。</p>
+          <div class="tag-row">
+            <span class="tag green">Apply selected</span>
+            <span class="tag">Undo</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>3. Panel 流程蓝图</h2>
+        <span>把 Auto、Analysis、功能步骤和 review 统一到同一个侧栏状态机</span>
+      </div>
+      <div class="panel-flow-board">
+        <div class="workspace-frame" aria-label="Panel flow blueprint">
+          <div class="workspace-nav">
+            <strong>Peak OS</strong>
+            <div class="nav-item">00 Inbox</div>
+            <div class="nav-item active">Strategy Direction</div>
+            <div class="nav-item">Market Positioning</div>
+            <div class="nav-item">User Research</div>
+            <div class="nav-item">Writing Principles</div>
+          </div>
+          <div class="note-surface">
+            <div class="note-title">Strategy Direction</div>
+            <div class="note-block">
+              <strong>Context</strong>
+              Peak OS is our bet on a calm, fast, deeply useful knowledge operating system.
+            </div>
+            <div class="note-block">
+              <strong>Current Focus</strong>
+              Our immediate focus is accelerating writing and synthesis for knowledge workers.
+            </div>
+            <div class="note-selection">
+              Selection active: reducing context switching, surfacing the right information at the right time, and helping teams ship more thoughtful documents.
+            </div>
+          </div>
+          <div class="assistant-panel">
+            <div class="assistant-top">
+              <div>
+                <strong>Peak Assistant</strong>
+                <span>Document tab · Auto run</span>
+              </div>
+              <span class="step-status active">Analyzing</span>
+            </div>
+            <div class="panel-state-card">
+              <h3>Auto plan for this note</h3>
+              <p>Agent reads current note, selection, backlinks, tags, graph neighbors, and recent edits before choosing steps.</p>
+              <div class="run-button">Running Auto</div>
+            </div>
+            <div class="step-list">
+              <div class="step">
+                <div class="step-dot">1</div>
+                <div>
+                  <strong>Analyze context</strong>
+                  <p>Detect note scope, selection, intent, missing links, evidence gaps, and mutation risk.</p>
+                </div>
+                <span class="step-status done">done</span>
+              </div>
+              <div class="step">
+                <div class="step-dot">2</div>
+                <div>
+                  <strong>Choose capabilities</strong>
+                  <p>Planner selects Connect Links, Add Evidence, Improve Note, and Full Diff Review.</p>
+                </div>
+                <span class="step-status active">now</span>
+              </div>
+              <div class="step">
+                <div class="step-dot">3</div>
+                <div>
+                  <strong>Run discovery</strong>
+                  <p>Search vault, inspect sources, score candidates, and record why each result appears.</p>
+                </div>
+                <span class="step-status">queued</span>
+              </div>
+              <div class="step">
+                <div class="step-dot">4</div>
+                <div>
+                  <strong>Review artifacts</strong>
+                  <p>Show candidates, provenance, confidence, preview, diff, and apply controls.</p>
+                </div>
+                <span class="step-status review">review</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-flow-spec">
+          <div class="flow-spec-card">
+            <h3>Panel 状态机</h3>
+            <div class="flow-spec-row">
+              <strong>Passive</strong>
+              <span>打开 panel 后先展示 current context、推荐 2-3 个动作、最近运行和 pending review。</span>
+            </div>
+            <div class="flow-spec-row">
+              <strong>Planning</strong>
+              <span>点击 Auto 或具体功能后，第一步永远是分析上下文和解释为什么要跑这些能力。</span>
+            </div>
+            <div class="flow-spec-row">
+              <strong>Running</strong>
+              <span>每个功能显示自己的子步骤、数据源、scope、进度和可取消入口。</span>
+            </div>
+            <div class="flow-spec-row">
+              <strong>Reviewing</strong>
+              <span>结果不直接写入。先给 candidates、reason、confidence、sources、preview 或 rendered diff。</span>
+            </div>
+            <div class="flow-spec-row">
+              <strong>Applied</strong>
+              <span>应用后保留 undo、run log、引用来源，以及“继续下一步”的建议。</span>
+            </div>
+          </div>
+          <div class="flow-spec-card">
+            <h3>和 AI Analysis 一致的展示原则</h3>
+            <p>用户需要看到 agent 正在想什么，但不要被 chain-of-thought 淹没。展示的是可产品化的分析摘要：输入信号、选择理由、运行步骤、结果证据、风险和下一步。</p>
+            <div class="tag-row">
+              <span class="tag purple">Signals</span>
+              <span class="tag">Reason</span>
+              <span class="tag">Steps</span>
+              <span class="tag green">Review</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>4. 功能触发后的 Step 展示</h2>
+        <span>每个能力都有自己的小流程，但外层交互保持一致</span>
+      </div>
+      <div class="capability-step-grid">
+        <div class="capability-step-card">
+          <h3>Connect Links</h3>
+          <p>适合从选中文本、当前段落或整篇 note 触发。</p>
+          <div class="mini-step-list">
+            <div class="mini-step">
+              <div class="mini-step-index">1</div>
+              <div>
+                <strong>Analyze selection</strong>
+                <span>识别关键概念、已有链接、语义意图和不该改写的文本。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">2</div>
+              <div>
+                <strong>Find candidates</strong>
+                <span>结合 semantic search、backlinks、graph neighbors 和 tags 排序。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">3</div>
+              <div>
+                <strong>Preview links</strong>
+                <span>展示候选、原因、置信度和插入位置，用户选择后 apply。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="capability-step-card">
+          <h3>Add Evidence</h3>
+          <p>适合文章、研究笔记和观点段落。</p>
+          <div class="mini-step-list">
+            <div class="mini-step">
+              <div class="mini-step-index">1</div>
+              <div>
+                <strong>Detect claim</strong>
+                <span>找出需要证据支撑的陈述、假设和薄弱段落。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">2</div>
+              <div>
+                <strong>Search sources</strong>
+                <span>从 vault、引用笔记、相关文档里找可追溯来源。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">3</div>
+              <div>
+                <strong>Insert proposal</strong>
+                <span>展示证据块、来源和插入预览；长改动进入 full diff。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="capability-step-card">
+          <h3>Improve Note</h3>
+          <p>适合 polish、结构调整和局部改写。</p>
+          <div class="mini-step-list">
+            <div class="mini-step">
+              <div class="mini-step-index">1</div>
+              <div>
+                <strong>Assess risk</strong>
+                <span>判断是轻量语气调整，还是可能改变事实/结构的高风险修改。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">2</div>
+              <div>
+                <strong>Draft changes</strong>
+                <span>生成局部建议或文档级修改，并标明 rewrite rationale。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">3</div>
+              <div>
+                <strong>Rendered diff</strong>
+                <span>红线/绿线展示删除和新增；用户选择 apply selected。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="capability-step-card">
+          <h3>Vault Intelligence</h3>
+          <p>Vault tab 的 Auto 不再让用户先选 Analyze / Synthesize / Maintain。</p>
+          <div class="mini-step-list">
+            <div class="mini-step">
+              <div class="mini-step-index">1</div>
+              <div>
+                <strong>Resolve scope</strong>
+                <span>判断当前 folder、project、topic、recent edits 或 entire vault。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">2</div>
+              <div>
+                <strong>Pick mode</strong>
+                <span>自动选择分析、综合或维护，也可以组合成一个 run。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">3</div>
+              <div>
+                <strong>Produce queue</strong>
+                <span>输出 digest、topic map、gap list、maintenance queue 或 saved plan。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="capability-step-card">
+          <h3>Manage System</h3>
+          <p>Setting tab 的 Auto 是系统诊断，不是知识工作流。</p>
+          <div class="mini-step-list">
+            <div class="mini-step">
+              <div class="mini-step-index">1</div>
+              <div>
+                <strong>Check readiness</strong>
+                <span>检查 index、providers、models、skills、prompts、usage 和错误日志。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">2</div>
+              <div>
+                <strong>Explain blockers</strong>
+                <span>把不可用原因翻译成用户能处理的动作。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">3</div>
+              <div>
+                <strong>Fix or guide</strong>
+                <span>能自动修的提出补丁；不能修的给设置入口和检查清单。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="capability-step-card">
+          <h3>Manual Command</h3>
+          <p>手动搜索是 fallback，不是默认首页。</p>
+          <div class="mini-step-list">
+            <div class="mini-step">
+              <div class="mini-step-index">1</div>
+              <div>
+                <strong>Search command</strong>
+                <span>支持输入 capability、note、folder、setting、recent run。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">2</div>
+              <div>
+                <strong>Configure run</strong>
+                <span>必要时展示 scope、model、risk、output format。</span>
+              </div>
+            </div>
+            <div class="mini-step">
+              <div class="mini-step-index">3</div>
+              <div>
+                <strong>Same review</strong>
+                <span>即使手动触发，也走同一套 step、review、apply 和 undo。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>5. UX 主流程</h2>
+        <span>从 tab 到 Auto，再到可审核结果</span>
+      </div>
+      <div class="ux-flow">
+        <div class="flow-card">
+          <strong>Open Peak Command</strong>
+          <p>从侧栏、命令面板、选中文本、toolbar 打开同一个弹出入口。</p>
+          <div class="flow-visual">
+            <div class="tab-mini">
+              <span class="active">Document</span>
+              <span>Vault</span>
+              <span>Setting</span>
+            </div>
+            <div class="bar"></div>
+          </div>
+        </div>
+        <div class="flow-card">
+          <strong>Choose Tab</strong>
+          <p>Document 处理当前 note；Vault 处理知识库范围；Setting 处理系统状态。</p>
+          <div class="flow-visual">
+            <div class="bar purple"></div>
+            <div class="bar"></div>
+          </div>
+        </div>
+        <div class="flow-card">
+          <strong>Press Auto</strong>
+          <p>Auto 是主按钮，不是“打开更多卡片”。它直接启动 agent planner。</p>
+          <div class="flow-visual">
+            <div class="bar purple"></div>
+            <div class="bar purple"></div>
+          </div>
+        </div>
+        <div class="flow-card">
+          <strong>Agent Plans</strong>
+          <p>系统决定要跑 links、evidence、improve、tasks、synthesis、health 或 settings diagnostics。</p>
+          <div class="flow-visual">
+            <div class="bar green"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+          </div>
+        </div>
+        <div class="flow-card">
+          <strong>Review / Apply</strong>
+          <p>输出是 proposals、source cards、diff、digest 或 maintenance queue；用户审核后应用。</p>
+          <div class="flow-visual">
+            <div class="bar green"></div>
+            <div class="bar purple"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>6. Tab 行为</h2>
+        <span>三个 tab 的 Auto 都是 agent 自动编排，不是静态工具分类</span>
+      </div>
+      <div class="rules">
+        <div class="rule-card">
+          <h3>Document / Copilot</h3>
+          <p>Auto 会检查当前 note 或 selection：tags、links、evidence gaps、tasks、diagram opportunities、rewrite risk。结果进入右侧 panel 或 full diff。</p>
+          <div class="tag-row">
+            <span class="tag purple">Connect links</span>
+            <span class="tag">Add evidence</span>
+            <span class="tag">Improve note</span>
+          </div>
+        </div>
+        <div class="rule-card">
+          <h3>Vault / Vault Intelligence</h3>
+          <p>Auto 会先解析 scope，再选择 Analyze / Synthesize / Maintain。它可以生成 digest、source-backed report 或 maintenance queue。</p>
+          <div class="tag-row">
+            <span class="tag purple">Analyze</span>
+            <span class="tag">Synthesize</span>
+            <span class="tag">Maintain</span>
+          </div>
+        </div>
+        <div class="rule-card">
+          <h3>Setting / Manage System</h3>
+          <p>Auto 会诊断 index、models、providers、skills、prompts、usage 和配置健康。它不混进日常写作建议。</p>
+          <div class="tag-row">
+            <span class="tag">Index</span>
+            <span class="tag">Models</span>
+            <span class="tag">Skills</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>7. Review 规则</h2>
+        <span>侧栏负责轻量审核；文档级修改必须进入 rendered diff</span>
+      </div>
+      <div class="diff-preview">
+        <div class="diff-pane">
+          <h3>Current rendered note</h3>
+          <p>小侧栏可以展示 link/tag/evidence 候选，但不适合承载全文改写。</p>
+          <div class="diff-block remove">
+            <div class="diff-label remove">- Removed block</div>
+            <p>The product can provide tags, links, summaries, and review comments from the side panel.</p>
+          </div>
+        </div>
+        <div class="diff-pane">
+          <h3>Proposed rendered note</h3>
+          <p>全文或多段修改要在 rendered Markdown 上审核，不能只给 raw markdown。</p>
+          <div class="diff-block add">
+            <div class="diff-label add">+ Added block</div>
+            <p>Every document mutation is reviewed in a full rendered diff before apply, with provenance and undo.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>8. 原始证据缩略图</h2>
+        <span>这些是设计推导证据，不是当前视觉基准</span>
+      </div>
+      <div class="evidence-grid">
+        <figure class="evidence-card">
+          <img src="assets/evidence-01-original-concept-sketch.png" alt="Original concept sketch" />
+          <figcaption class="caption">
+            <strong>原始手绘架构</strong>
+          </figcaption>
+        </figure>
+        <figure class="evidence-card">
+          <img src="assets/evidence-05-vault-action-grid.png" alt="Vault action grid annotations" />
+          <figcaption class="caption">
+            <strong>Vault 能力混在一起</strong>
+          </figcaption>
+        </figure>
+        <figure class="evidence-card">
+          <img src="assets/evidence-13-auto-agent-links-diff.png" alt="Agent links and diff annotations" />
+          <figcaption class="caption">
+            <strong>自动推荐 + diff/apply</strong>
+          </figcaption>
+        </figure>
+        <figure class="evidence-card">
+          <img src="assets/evidence-16-taxonomy-merge-notes.png" alt="Taxonomy merge notes" />
+          <figcaption class="caption">
+            <strong>功能需要合并</strong>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="archive-note">
+        当前报告刻意不再嵌入旧 HTML command-panel 原型，也不再把 full-page Command Center 图作为主视觉。它们可以作为历史资料存在，但当前 UX design 只围绕两张符合方向的 imagegen 基准图推进。
+      </div>
+    </section>
+  </main>
+</body>
+</html>

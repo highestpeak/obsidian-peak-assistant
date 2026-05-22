@@ -14,6 +14,8 @@ import { buildVaultMcpServer, type GrepHit } from '@/service/agents/vault-sdk/va
 import { translateSdkMessage } from '@/service/agents/core/sdkMessageAdapter';
 import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
+import { CopilotOutputCollector } from '../CopilotOutputCollector';
+import { buildCopilotOutputMcpServer, COPILOT_OUTPUT_TOOL_NAMES } from '../CopilotOutputMcpServer';
 
 export interface CopilotAgentOptions {
 	/** System prompt for the agent */
@@ -22,6 +24,10 @@ export interface CopilotAgentOptions {
 	userPrompt: string;
 	/** AbortSignal for cancellation */
 	signal?: AbortSignal;
+	/** Optional collector — if provided, propose_* tools are available and proposals are captured here. */
+	collector?: CopilotOutputCollector;
+	/** Max agent turns (default 20). */
+	maxTurns?: number;
 }
 
 /**
@@ -38,7 +44,7 @@ function buildSubmitResultMcpServer(onSubmit: (result: string) => void) {
 			return { content: [{ type: 'text' as const, text: '{"acknowledged": true}' }] };
 		},
 	);
-	return createSdkMcpServer({ tools: [submitResult] });
+	return createSdkMcpServer({ name: 'copilot', version: '1.0.0', tools: [submitResult] });
 }
 
 /**
@@ -100,11 +106,15 @@ export async function* buildCopilotAgentStream(
 		}),
 	});
 
-	// 4. Build submit_result MCP server
+	// 4. Build copilot MCP server.
+	// - If a collector is supplied, use the new propose_*/submit_review toolset.
+	// - Otherwise fall back to the legacy submit_result tool (older capability playbooks).
 	let capturedResult: string | null = null;
-	const submitMcpServer = buildSubmitResultMcpServer((result) => {
-		capturedResult = result;
-	});
+	const copilotMcpServer = options.collector
+		? buildCopilotOutputMcpServer({ collector: options.collector })
+		: buildSubmitResultMcpServer((result) => {
+			capturedResult = result;
+		});
 
 	// 5. Run agent
 	let sdkUsage: { inputTokens: number; outputTokens: number } | null = null;
@@ -117,18 +127,20 @@ export async function* buildCopilotAgentStream(
 			'mcp__vault__vault_read_note',
 			'mcp__vault__vault_grep',
 			'mcp__vault__vault_wikilink_expand',
-			'mcp__copilot__submit_result',
+			...(options.collector
+				? [...COPILOT_OUTPUT_TOOL_NAMES]
+				: ['mcp__copilot__submit_result']),
 		];
 
 		const messages = queryWithProfile(app, pluginId, profile, {
 			prompt: options.userPrompt,
 			systemPrompt: options.systemPrompt,
-			maxTurns: 20,
+			maxTurns: options.maxTurns ?? 20,
 			allowedTools,
 			disallowedTools: ['AskUserQuestion', 'mcp__vault__vault_submit_plan'],
 			mcpServers: {
 				vault: vaultMcpServer,
-				copilot: submitMcpServer,
+				copilot: copilotMcpServer,
 			},
 			signal: options.signal,
 		});

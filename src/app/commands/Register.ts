@@ -10,6 +10,7 @@ import { CommandCenterModal } from '@/ui/view/command-center/CommandCenterModal'
 import {
 	openAssistant,
 	openCopilotPanel,
+	openCopilotReviewHistory,
 	openKnowledgeCenter,
 	openQuickSearch,
 	openSettingsModal,
@@ -63,6 +64,11 @@ export function buildCoreCommands(
 			id: 'peak-copilot-open',
 			name: 'Open Copilot',
 			callback: openCopilotPanel,
+		},
+		{
+			id: 'peak-copilot-review-history',
+			name: 'Open Auto Review History',
+			callback: openCopilotReviewHistory,
 		},
 		{
 			id: 'peak-knowledge-center',

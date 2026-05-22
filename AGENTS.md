@@ -55,6 +55,14 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 - Agents: follow `runAgentLoop` / `AgentLoop` (`service/agents/core`); reuse tool + schema patterns from existing agents; wire through `src/core/schemas/` for Zod
 - Streaming: normalize with `src/core/providers/helpers/stream-helper.ts` (`streamTransform`, etc.) and `LLMStreamEvent`; UI streaming hooks live under `ui/view/chat-view/hooks/`
 
+## Design Documentation & UX Flow Reports
+
+- When creating UX flow reports, product evolution reports, or flow diagrams for this project, prefer image-first visual flows over text-heavy tables.
+- Use real screen thumbnails or generated mock images as the flow nodes, connected with arrows. Text should be short captions, not long prose blocks.
+- For complete flows, split branches into visual lanes such as `user trigger -> entry/intent -> agent run -> review surface -> outcome`.
+- Include all important branches while keeping each lane readable. For Copilot / Command Center work, cover Document Auto, manual write intents, insight/no-change flows, Vault Intelligence, and Setting/System.
+- If a report starts looking like a prose matrix, redesign it into visual screen-node lanes before considering it done.
+
 ## Key External Dependencies
 
 - **AI:** Vercel AI SDK adapters (`@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`, etc.)

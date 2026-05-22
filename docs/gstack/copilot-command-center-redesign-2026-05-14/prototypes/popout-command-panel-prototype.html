@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant Pop-Out Command Panel Prototype</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #e5e7eb;
+      --obsidian: #f4f4f5;
+      --panel: #ffffff;
+      --panel-soft: #f8fafc;
+      --text: #272b31;
+      --muted: #6f7783;
+      --subtle: #9aa1ad;
+      --line: #d9dee7;
+      --blue: #3b82f6;
+      --blue-soft: #eff6ff;
+      --purple: #8b5cf6;
+      --purple-soft: #f3efff;
+      --green: #1f8a55;
+      --green-soft: #eaf8f0;
+      --amber: #b7791f;
+      --amber-soft: #fff7df;
+      --red: #c24135;
+      --shadow: 0 28px 80px rgba(15, 23, 42, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .obsidian {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 64px 230px minmax(420px, 1fr) 330px;
+      background: var(--obsidian);
+      filter: saturate(0.72);
+    }
+
+    .superseded-note {
+      position: fixed;
+      left: 50%;
+      top: 14px;
+      z-index: 5;
+      transform: translateX(-50%);
+      width: min(960px, calc(100vw - 42px));
+      border: 1px solid rgba(183, 121, 31, 0.28);
+      background: #fff8e8;
+      color: #6d4a00;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      box-shadow: 0 10px 32px rgba(15, 23, 42, 0.12);
+    }
+
+    .rail {
+      background: #575a61;
+      color: rgba(255,255,255,0.72);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 26px;
+      padding-top: 28px;
+      font-size: 28px;
+    }
+
+    .files,
+    .outline {
+      border-right: 1px solid #d2d6dd;
+      background: #eeeeef;
+      padding: 18px 14px;
+      color: #777f8a;
+      overflow: hidden;
+    }
+
+    .files div,
+    .outline div {
+      height: 32px;
+      display: flex;
+      align-items: center;
+      border-radius: 6px;
+      padding: 0 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 13px;
+    }
+
+    .files .active {
+      background: #d8e8ff;
+      color: #365f91;
+    }
+
+    .editor {
+      padding: 58px 70px;
+      background: #fafafa;
+      color: #42464d;
+      overflow: hidden;
+    }
+
+    .editor h1 {
+      margin: 0 0 28px;
+      font-size: 30px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .editor p {
+      max-width: 760px;
+      color: #5d646f;
+      font-size: 16px;
+      line-height: 1.72;
+    }
+
+    .selection {
+      background: #dbeafe;
+      color: #1f3b61;
+      border-radius: 5px;
+      padding: 2px 4px;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(31, 35, 42, 0.42);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 42px;
+    }
+
+    .command-panel {
+      width: min(1180px, calc(100vw - 92px));
+      height: min(820px, calc(100vh - 86px));
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 14px;
+    }
+
+    .topline {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .context {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .icon-button {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      background: var(--panel-soft);
+      color: var(--muted);
+    }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .tab-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .tab {
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+      border-radius: 8px;
+      padding: 10px 12px;
+      min-height: 64px;
+      display: grid;
+      align-content: center;
+      gap: 4px;
+    }
+
+    .tab.active {
+      border-color: rgba(59, 130, 246, 0.42);
+      background: var(--blue-soft);
+      box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.08);
+    }
+
+    .tab strong {
+      font-size: 14px;
+      color: #344054;
+    }
+
+    .tab.active strong {
+      color: #1e5ea8;
+    }
+
+    .tab span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .search {
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      display: flex;
+      align-items: center;
+      padding: 0 13px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .command-prefix {
+      height: 24px;
+      min-width: 24px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      color: #1e5ea8;
+      background: #e2efff;
+      font-size: 12px;
+      font-weight: 800;
+      margin-right: 8px;
+    }
+
+    .chip {
+      height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 10px;
+      color: var(--muted);
+      background: #fff;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .panel-body {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 290px;
+    }
+
+    .nav {
+      border-right: 1px solid var(--line);
+      background: #fbfcfe;
+      padding: 16px 12px;
+      display: none;
+    }
+
+    .nav-item {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      border-radius: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .nav-item.active {
+      background: var(--blue-soft);
+      color: #1e5ea8;
+      font-weight: 650;
+    }
+
+    .count {
+      color: var(--subtle);
+      font-size: 11px;
+    }
+
+    .content {
+      min-width: 0;
+      overflow: auto;
+      padding: 18px 20px 24px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .section-title strong {
+      font-size: 13px;
+      text-transform: uppercase;
+      color: #4d5561;
+      letter-spacing: 0.04em;
+    }
+
+    .section-title span {
+      color: var(--subtle);
+      font-size: 12px;
+    }
+
+    .recommended-grid,
+    .catalog-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .catalog-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      min-height: 128px;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 7px;
+    }
+
+    .card.recommended {
+      border-color: rgba(59, 130, 246, 0.36);
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      box-shadow: 0 8px 26px rgba(59, 130, 246, 0.10);
+    }
+
+    .card.disabled {
+      background: #fafafa;
+      color: var(--subtle);
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 680;
+      line-height: 1.25;
+    }
+
+    .glyph {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 750;
+      flex: 0 0 auto;
+    }
+
+    .glyph.purple {
+      background: var(--purple-soft);
+      color: var(--purple);
+    }
+
+    .glyph.green {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .desc {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.38;
+    }
+
+    .reason {
+      color: #315f9f;
+      background: var(--blue-soft);
+      border: 1px solid rgba(59, 130, 246, 0.22);
+      border-radius: 6px;
+      padding: 6px 7px;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .badges {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      height: 22px;
+      border-radius: 999px;
+      padding: 0 7px;
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: #fff;
+    }
+
+    .badge.preview {
+      background: var(--green-soft);
+      color: var(--green);
+      border-color: rgba(31, 138, 85, 0.2);
+    }
+
+    .badge.review {
+      background: var(--amber-soft);
+      color: var(--amber);
+      border-color: rgba(183, 121, 31, 0.22);
+    }
+
+    .details {
+      border-left: 1px solid var(--line);
+      background: #fbfcfe;
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .detail-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .detail-title {
+      font-weight: 680;
+      font-size: 13px;
+      margin-bottom: 7px;
+    }
+
+    .detail-text {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .button {
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #404854;
+      background: #fff;
+      margin-top: 8px;
+    }
+
+    .button.primary {
+      color: #fff;
+      border-color: #2869c8;
+      background: var(--blue);
+    }
+
+    @media (max-width: 1040px) {
+      .panel-body {
+        grid-template-columns: 1fr;
+      }
+
+      .details {
+        display: none;
+      }
+
+      .catalog-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .overlay {
+        padding: 0;
+      }
+
+      .command-panel {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+      }
+
+      .panel-body {
+        grid-template-columns: 1fr;
+      }
+
+      .recommended-grid,
+      .catalog-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tab-row,
+      .search-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="superseded-note">
+    Updated surface prototype: the pop-out panel uses top tabs like the Search view. Document maps to Copilot, Vault maps to Vault Intelligence, Setting maps to Manage System.
+  </div>
+  <main class="obsidian">
+    <aside class="rail">
+      <div>+</div>
+      <div>⌕</div>
+      <div>□</div>
+    </aside>
+    <aside class="files">
+      <div>Inbox</div>
+      <div class="active">1778719954128</div>
+      <div>独立开发想法评价</div>
+      <div>Market Research</div>
+      <div>Conversation Notes</div>
+    </aside>
+    <article class="editor">
+      <h1>1778719954128 - 独立开发想法评价</h1>
+      <p>当前文档正在讨论一个独立开发产品方向。这里有一些未连接的概念、缺少来源的判断，以及可以拆分成任务的后续行动。</p>
+      <p><span class="selection">需要让 Copilot 在写作流里快速调用，但当操作很多能力时，也需要一个更大的弹出面板来浏览、配置和确认。</span></p>
+      <p>侧边栏适合保持上下文，弹出式 panel 适合做更清晰的操作。</p>
+    </article>
+    <aside class="outline">
+      <div>Conversation Outline</div>
+      <div>No matching outline item</div>
+    </aside>
+  </main>
+
+  <div class="overlay">
+    <section class="command-panel" aria-label="Peak Assistant pop-out command panel">
+      <header class="panel-header">
+        <div class="topline">
+          <div>
+            <div class="title">Peak Assistant Command</div>
+            <div class="context">1778719954128 - 独立开发想法评价 · selection active · same command surface as Search</div>
+          </div>
+          <div class="header-actions">
+            <span>Open in side panel</span>
+            <div class="icon-button">⌘</div>
+            <div class="icon-button">×</div>
+          </div>
+        </div>
+        <div class="tab-row" aria-label="Command tabs">
+          <div class="tab active">
+            <strong>Document</strong>
+            <span>Copilot for current note, selection, writing, links, evidence, diff.</span>
+          </div>
+          <div class="tab">
+            <strong>Vault</strong>
+            <span>Vault Intelligence: Analyze, Synthesize, Maintain scoped knowledge.</span>
+          </div>
+          <div class="tab">
+            <strong>Setting</strong>
+            <span>Models, index, providers, skills, prompts, diagnostics.</span>
+          </div>
+        </div>
+        <div class="search-row">
+          <div class="search"><span class="command-prefix">⌘</span>Search command in current tab, or jump to vault health / model settings / recent runs</div>
+          <div class="chip">Index ready</div>
+          <div class="chip">Model: Agent Fast</div>
+        </div>
+      </header>
+
+      <div class="panel-body">
+        <section class="content">
+          <div class="section">
+            <div class="section-title">
+              <strong>Document tab · recommended commands</strong>
+              <span>Like Search: type first, tabs narrow the command domain</span>
+            </div>
+            <div class="recommended-grid">
+              <article class="card recommended">
+                <div class="card-head">
+                  <div class="card-title">Connect Related Notes</div>
+                  <div class="glyph">LN</div>
+                </div>
+                <div class="desc">Suggest wiki-link insertions and related notes.</div>
+                <div class="reason">Recommended because this selection mentions Copilot surfaces but has no outgoing links.</div>
+                <div class="badges">
+                  <span class="badge">Selection</span>
+                  <span class="badge preview">Diff preview</span>
+                </div>
+              </article>
+
+              <article class="card recommended">
+                <div class="card-head">
+                  <div class="card-title">Add Evidence</div>
+                  <div class="glyph purple">EV</div>
+                </div>
+                <div class="desc">Find source notes and propose cited evidence blocks.</div>
+                <div class="reason">Recommended because the selected sentence makes a product design claim.</div>
+                <div class="badges">
+                  <span class="badge">Current note</span>
+                  <span class="badge review">Review</span>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">
+              <strong>Document command results</strong>
+              <span>Only valid actions are emphasized; hidden actions stay searchable</span>
+            </div>
+            <div class="catalog-grid">
+              <article class="card">
+                <div class="card-head">
+                  <div class="card-title">Suggest Tags</div>
+                  <div class="glyph purple">TG</div>
+                </div>
+                <div class="desc">Analyze note content and suggest frontmatter tags.</div>
+                <div></div>
+                <div class="badges">
+                  <span class="badge">Note</span>
+                  <span class="badge preview">Preview</span>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="card-head">
+                  <div class="card-title">Improve Current Note</div>
+                  <div class="glyph green">FX</div>
+                </div>
+                <div class="desc">Review structure, clarity, citations, and factual risks.</div>
+                <div></div>
+                <div class="badges">
+                  <span class="badge">Note</span>
+                  <span class="badge preview">Diff</span>
+                </div>
+              </article>
+
+              <article class="card disabled">
+                <div class="card-head">
+                  <div class="card-title">Translate</div>
+                  <div class="glyph">TR</div>
+                </div>
+                <div class="desc">Hidden unless language mismatch or selected text makes it relevant.</div>
+                <div></div>
+                <div class="badges">
+                  <span class="badge">Contextual</span>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="card-head">
+                  <div class="card-title">Suggest Split</div>
+                  <div class="glyph">SP</div>
+                </div>
+                <div class="desc">Propose section boundaries for long notes.</div>
+                <div></div>
+                <div class="badges">
+                  <span class="badge">Note</span>
+                  <span class="badge review">Review</span>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="card-head">
+                  <div class="card-title">Review Tasks</div>
+                  <div class="glyph green">TS</div>
+                </div>
+                <div class="desc">Merge task scan, task check, and task solving into one flow.</div>
+                <div></div>
+                <div class="badges">
+                  <span class="badge">Note/Vault</span>
+                  <span class="badge review">Review</span>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="card-head">
+                  <div class="card-title">Suggest Diagram</div>
+                  <div class="glyph purple">DG</div>
+                </div>
+                <div class="desc">Find places where a visual or Mermaid diagram clarifies the note.</div>
+                <div></div>
+                <div class="badges">
+                  <span class="badge">Section</span>
+                  <span class="badge">Draft</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <aside class="details">
+          <div class="detail-card">
+            <div class="detail-title">Selected command</div>
+            <div class="detail-text">Connect Related Notes merges semantic, graph, backlink, and agent discovery into one user-facing workflow.</div>
+            <div class="button primary">Configure and run</div>
+            <div class="button">Open as side panel flow</div>
+          </div>
+          <div class="detail-card">
+            <div class="detail-title">Tab model</div>
+            <div class="detail-text">Document is current-note Copilot. Vault is Vault Intelligence with Analyze/Synthesize/Maintain. Setting is assistant infrastructure. The command input remains available in every tab.</div>
+          </div>
+          <div class="detail-card">
+            <div class="detail-title">Safety model</div>
+            <div class="detail-text">Mutating actions route to a review/apply panel with provenance, diff preview, and undo or recovery notes.</div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Full Document Rendered Diff Prototype</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111c2e;
+      --panel-2: #172235;
+      --line: #2d3c54;
+      --paper: #ffffff;
+      --soft: #f8fafc;
+      --ink: #1f2937;
+      --muted: #64748b;
+      --blue: #2563eb;
+      --green: #16834a;
+      --green-soft: #ecfdf3;
+      --red-soft: #fff1f2;
+      --red-line: #fecdd3;
+      --green-line: #bbf7d0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: #e5eefb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 12px 16px;
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .title strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 3px;
+    }
+
+    .title span {
+      color: #9fb0c8;
+      font-size: 12px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .button {
+      border: 1px solid #334760;
+      background: #20314a;
+      color: #dce8f8;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .button.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+
+    .button.ghost {
+      background: transparent;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: 0;
+    }
+
+    .outline {
+      background: #0b1220;
+      border-right: 1px solid var(--line);
+      padding: 14px;
+      overflow: auto;
+    }
+
+    .outline h2 {
+      margin: 0 0 12px;
+      color: #dce8f8;
+      font-size: 13px;
+    }
+
+    .change {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #111827;
+    }
+
+    .change.active {
+      border-color: rgba(37, 99, 235, 0.9);
+      background: #16223a;
+    }
+
+    .change strong {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .change span {
+      color: #9fb0c8;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .diff {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      background: #0b1220;
+    }
+
+    .diff-head {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .pane-title {
+      padding: 10px 14px;
+      border-right: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .pane-title:last-child {
+      border-right: 0;
+    }
+
+    .pane-title strong {
+      font-size: 13px;
+    }
+
+    .pane-title span {
+      color: #9fb0c8;
+      font-size: 12px;
+    }
+
+    .panes {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--line);
+      overflow: hidden;
+    }
+
+    .pane {
+      background: #f1f5f9;
+      overflow: auto;
+    }
+
+    .markdown {
+      width: min(760px, calc(100% - 56px));
+      margin: 28px auto 44px;
+      padding: 38px 46px;
+      min-height: calc(100% - 72px);
+      background: var(--paper);
+      border: 1px solid #d8e1ee;
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+      color: var(--ink);
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+      line-height: 1.72;
+    }
+
+    .markdown h1,
+    .markdown h2 {
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      line-height: 1.2;
+      letter-spacing: 0;
+      color: #111827;
+    }
+
+    .markdown h1 {
+      margin: 0 0 20px;
+      font-size: 30px;
+    }
+
+    .markdown h2 {
+      margin: 28px 0 10px;
+      font-size: 20px;
+    }
+
+    .markdown p,
+    .markdown li {
+      color: #334155;
+      font-size: 15px;
+    }
+
+    .markdown ul {
+      margin: 8px 0 0;
+      padding-left: 23px;
+    }
+
+    .wikilink {
+      color: #2563eb;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .block {
+      margin: 16px -14px;
+      padding: 12px 14px 12px 22px;
+      border-radius: 9px;
+      border: 1px solid transparent;
+      position: relative;
+    }
+
+    .block.removed {
+      background: var(--red-soft);
+      border-color: var(--red-line);
+      border-left: 5px solid #dc2626;
+    }
+
+    .block.added {
+      background: var(--green-soft);
+      border-color: var(--green-line);
+      border-left: 5px solid #16a34a;
+    }
+
+    .diff-label {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      margin-bottom: 10px;
+      padding: 0 9px;
+      border-radius: 999px;
+      font: 700 12px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .diff-label.remove {
+      color: #991b1b;
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+    }
+
+    .diff-label.add {
+      color: #166534;
+      background: #dcfce7;
+      border: 1px solid #bbf7d0;
+    }
+
+    .line-added,
+    .line-removed {
+      position: relative;
+      margin-left: -14px;
+      padding-left: 14px;
+      border-radius: 7px;
+    }
+
+    .line-added {
+      border-left: 4px solid #16a34a;
+      background: rgba(34, 197, 94, 0.08);
+    }
+
+    .line-removed {
+      border-left: 4px solid #dc2626;
+      background: rgba(239, 68, 68, 0.08);
+    }
+
+    .callout {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border-left: 5px solid #16a34a;
+      background: #eff6ff;
+      border-radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .callout strong {
+      display: block;
+      color: #174ea6;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .callout span {
+      color: #475569;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 16px;
+      background: var(--panel-2);
+      border-top: 1px solid var(--line);
+      color: #9fb0c8;
+      font-size: 12px;
+    }
+
+    @media (max-width: 980px) {
+      .main {
+        grid-template-columns: 1fr;
+      }
+
+      .outline {
+        display: none;
+      }
+
+      .panes,
+      .diff-head {
+        grid-template-columns: 1fr;
+      }
+
+      .pane-title {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="title">
+        <strong>Review Document Changes</strong>
+        <span>Strategy Direction.md · rendered Markdown diff · 3 changed blocks</span>
+      </div>
+      <div class="toolbar">
+        <div class="button ghost">Inspect source</div>
+        <div class="button">Reject all</div>
+        <div class="button">Apply selected</div>
+        <div class="button primary">Apply reviewed changes</div>
+      </div>
+    </header>
+
+    <main class="main">
+      <aside class="outline">
+        <h2>Change Outline</h2>
+        <div class="change active">
+          <strong>1. Current Focus</strong>
+          <span>Replace generic tool-list framing with intent hub framing.</span>
+        </div>
+        <div class="change">
+          <strong>2. Evidence</strong>
+          <span>Add source-backed callout with screenshot rationale.</span>
+        </div>
+        <div class="change">
+          <strong>3. Risks</strong>
+          <span>Add risk about side-panel-only diff for document edits.</span>
+        </div>
+      </aside>
+
+      <section class="diff">
+        <div class="diff-head">
+          <div class="pane-title">
+            <strong>Current rendered Markdown</strong>
+            <span>Before</span>
+          </div>
+          <div class="pane-title">
+            <strong>Proposed rendered Markdown</strong>
+            <span>After · Copilot proposal</span>
+          </div>
+        </div>
+
+        <div class="panes">
+          <section class="pane">
+            <article class="markdown">
+              <h1>Strategy Direction</h1>
+              <p>Peak Assistant should help users improve notes and find related knowledge. The current flow has several separate actions that the user can choose manually.</p>
+
+              <div class="block removed">
+                <div class="diff-label remove">- Removed block</div>
+                <h2>Current Focus</h2>
+                <p>The product can provide tags, links, summaries, and review comments from the side panel.</p>
+              </div>
+
+              <h2>Risks</h2>
+              <ul>
+                <li>Users may not know which action to choose.</li>
+                <li>Some results are hard to trust without sources.</li>
+              </ul>
+
+              <p>Related notes: <a class="wikilink">[[Knowledge graph maintenance]]</a></p>
+            </article>
+          </section>
+
+          <section class="pane">
+            <article class="markdown">
+              <h1>Strategy Direction</h1>
+              <p>Peak Assistant should help users improve notes and find related knowledge. The current flow has several separate actions that the user can choose manually.</p>
+
+              <div class="block added">
+                <div class="diff-label add">+ Added block</div>
+                <h2>Current Focus</h2>
+                <p>The product should behave as an intent hub: the user clicks <a class="wikilink">Copilot</a>, the system prepares a plan, and every document mutation is reviewed in a full rendered diff before apply.</p>
+              </div>
+
+              <div class="callout">
+                <div class="diff-label add">+ Added evidence callout</div>
+                <strong>Evidence added</strong>
+                <span>Screenshot annotations show that recommendations should become concrete proposals with provenance, diff, and safe apply controls.</span>
+              </div>
+
+              <h2>Risks</h2>
+              <ul>
+                <li>Users may not know which action to choose.</li>
+                <li>Some results are hard to trust without sources.</li>
+                <li class="line-added">Small side-panel diffs are insufficient for whole-document rewrite, polish, format, or synthesis changes.</li>
+              </ul>
+
+              <p class="line-added">Related notes: <a class="wikilink">[[Knowledge graph maintenance]]</a> · <a class="wikilink">[[Copilot workflow]]</a></p>
+            </article>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Default review surface: rendered Markdown, not raw Markdown.</span>
+      <span>Per-block accept/reject · source inspection · undo after apply</span>
+    </footer>
+  </div>
+</body>
+</html>

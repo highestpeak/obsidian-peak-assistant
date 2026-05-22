@@ -196,17 +196,27 @@
       "models": [
         {
           "id": "claude-4-opus",
-          "apiModelId": "claude-4-opus-20250514",
+          "apiModelId": "claude-opus-4-7",
           "icon": "claude",
           "modelType": "llm",
           "costInput": "0",
           "costOutput": "0",
-          "tokenLimits": { "maxTokens": 200000, "maxInputTokens": 200000, "recommendedSummaryThreshold": 150000 },
-          "capabilities": { "vision": true, "pdfInput": false, "tools": true, "webSearch": false, "reasoning": false, "maxCtx": 200000 }
+          "tokenLimits": { "maxTokens": 1000000, "maxInputTokens": 1000000, "recommendedSummaryThreshold": 750000 },
+          "capabilities": { "vision": true, "pdfInput": false, "tools": true, "webSearch": false, "reasoning": false, "maxCtx": 1000000 }
         },
         {
           "id": "claude-4-sonnet",
-          "apiModelId": "claude-4-sonnet-20250514",
+          "apiModelId": "claude-sonnet-4-6",
+          "icon": "claude",
+          "modelType": "llm",
+          "costInput": "0",
+          "costOutput": "0",
+          "tokenLimits": { "maxTokens": 1000000, "maxInputTokens": 1000000, "recommendedSummaryThreshold": 750000 },
+          "capabilities": { "vision": true, "pdfInput": false, "tools": true, "webSearch": false, "reasoning": false, "maxCtx": 1000000 }
+        },
+        {
+          "id": "claude-4-haiku",
+          "apiModelId": "claude-haiku-4-5-20251001",
           "icon": "claude",
           "modelType": "llm",
           "costInput": "0",
@@ -295,6 +305,16 @@
         {
           "id": "gemini-2.5-flash",
           "apiModelId": "gemini-2.5-flash",
+          "icon": "gemini",
+          "modelType": "llm",
+          "costInput": "0",
+          "costOutput": "0",
+          "tokenLimits": { "maxTokens": 1048576, "maxInputTokens": 1048576, "recommendedSummaryThreshold": 800000 },
+          "capabilities": { "vision": true, "pdfInput": true, "tools": true, "webSearch": false, "reasoning": false, "maxCtx": 1048576 }
+        },
+        {
+          "id": "gemini-2.5-flash-lite",
+          "apiModelId": "gemini-2.5-flash-lite",
           "icon": "gemini",
           "modelType": "llm",
           "costInput": "0",

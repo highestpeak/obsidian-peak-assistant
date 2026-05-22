@@ -313,5 +313,11 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		};
 	}
 
+	// Usage tracking settings
+	settings.usageTrackingEnabled = getBoolean(raw?.usageTrackingEnabled, DEFAULT_SETTINGS.usageTrackingEnabled);
+	settings.usageDetailRetentionDays = typeof raw?.usageDetailRetentionDays === 'number'
+		? Math.max(1, raw.usageDetailRetentionDays)
+		: DEFAULT_SETTINGS.usageDetailRetentionDays;
+
 	return settings;
 }
