@@ -140,6 +140,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | ~~`v2-persistence-fix`~~ | ~~5 个 V2 持久化 bug~~ | ~~中~~ | COMPLETED (已在之前 session 修复) |
 | ~~`report-ui-quality` Task 3-4~~ | ~~粘性 footer + 内联编辑~~ | ~~小~~ | COMPLETED (Session 26) |
 | ~~`ai-analysis-ux-overhaul` Phase ③~~ | ~~SynthesizeAgent + 多轮 round 分离 UI~~ | ~~中~~ | COMPLETED |
+| `2026-05-14-copilot-command-center-user-centered-redesign` | Copilot / Command Center intent hub 修正版：点 Copilot / Knowledge Analysis 后自动规划 capability，再用侧边 panel / 弹出 panel / review panel 承载 | 中 | PLANNED (docs/design only, not implemented) |
 
 ### 3. TASKS.md 按阶段待做
 
@@ -212,6 +213,78 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-22 — Vault Auto Review 全量交付 + 设计系统暴雷 + 整改 spec
+
+整天工作量超大，分四大块。
+
+**Block 1 · Copilot doc-scope Auto Review 收尾**（剩余 H 列表 + 多轮 UX 迭代）
+- Done: H#2/#3A/#4/#5 完成（debounce 立即写、Fast=Haiku auto override、Cancel 状态徽章、peak-system folder onboarding Notice）
+- Done: G1-G3 自我检查 prompt 强化、capability chip 删除、Changes view toggle 移到 tab 行 sticky
+- Done: I1-I2 卡片样式柔化、footer 合并 Apply 双按钮为单 Apply N changes 仅 Changes tab 显示、删 Close 按钮
+- Done: H1 文档语言检测注入 + 用户偏好（profile markdown）系统 prompt 注入；H2 sources 改 div role=button + getLeaf('tab') 新 tab 打开
+- Done: J1/J2 review headline frontmatter 持久化（first insight / first change title）+ 行 border 删干净
+- Done: M1 Changes view toggle 移到顶层 tab bar 右侧、默认 Blocks only
+- Done: N1/O1 Vault tab 用 listAll 全库 review、Setting tab 隐藏 history + Auto 按钮、show all 默认展开
+- Done: K1 Sources 卡片 button → div role=button 修复 Obsidian button 全局样式注入导致的 flex 错乱（recurring pitfall #1 首次遇到）
+- Done: L1 Insights tab hover popover TOC 加 Suggested follow-ups 入口
+- Done: Q1 Trace 顶部 elapsed time summary
+- Done: R1 Sources 新 tab 打开 + 头部解释卡；S1 Insights bg `bg-muted/30` 加 shadow，info severity 终于看着像卡片
+- Done: P1/P2 行 hover bg 加深 + 完整 stat 标签；`originScope` 字段持久化到 frontmatter + 按 scope 过滤列表
+
+**Block 2 · Vault Auto Review 从零交付**（8 任务 T1-T8 + 4 修复 + 全量重写）
+- Done: 综合分析报告（北极星 / 竞品 / 学界 / 现有能力盘点 / 5 条差异化机会）
+- Done: 综合设计文档 `docs/superpowers/specs/2026-05-20-vault-auto-review-design.md`（18 节，被 Codex 改过加 5 tab modal 结构 + Sources tab）
+- Done: Mock HTML `docs/superpowers/mockups/2026-05-20-vault-review-mockup.html` 还原 Codex 7 张设计稿（picker + 6 tabs）
+- Done: T1 VaultFingerprintService（sha1 over sorted path:contentHash + 30s 缓存 + 五状态映射 A-E）
+- Done: T2 VaultDigestService（counts/clusters/holes/hubs/orphans/lint/activity 一次性聚合 + formatVaultDigestForPrompt）
+- Done: T3 三个新 propose tool（`propose_cluster_observation` / `propose_gap` / `propose_action`）+ collector 新类型 + VaultMetaAgentStream system prompt
+- Done: T4 runVaultReview session 多轮编排（无 ctx.file，独立轮数 SAFETY_CAP=12）
+- Done: T5 VaultReviewReportService 落盘 `peak-system/vault-reviews/{ISO-date}-{hash}.md` + frontmatter 完整 schema
+- Done: T6 Picker Vault tab UI（VaultContextLine / VaultIntentCard 5 状态 / VaultReviewHistoryList）
+- Done: T7 VaultAutoRunModal + 6 tabs（Overview / Clusters / Gaps / Actions / Sources / Trace）
+- Done: T8 picker onAuto 分流到 VaultAutoRunModal、history 还原走 openVaultReviewHistoryRecord
+- Bug: U1 `translateSdkMessage` 第二参数 opts 对象未传，agent 流首条消息就崩 "B.split is not a function" — 修
+- Bug: W1 cluster topNodes 实际是 `{path,label,betweenness}` 对象数组不是 string[]，点 cluster 行白屏 — 修
+
+**Block 3 · UI 视觉还原 4 轮迭代 + Tailwind 翻译终局放弃**
+- Iteration 1: V1-V6 修小问题（隐藏运行结束后的 trace rail / 删 Recent activity / cluster 行可选 + 异步 fetch members / Actions 空 chip 过滤 / TOC hover popover / prompt 强化 coverage targets）
+- Iteration 2: 用户多次截图指出视觉跟 mock 差距大，**承认 Tailwind 翻译每属性 5% 损耗 × 10 属性 = 肉眼可见差异**
+- Decision: 放弃 Tailwind 翻译路径，转 Mock CSS verbatim 复制方案
+- Done: 新 `src/styles/vault-review.css`（730 行，scope 在 `.peak-vault-auto-run-modal`），mock `<style>` 块 1:1 复制
+- Done: VaultAutoRunModal 完整重写，全部 className 改用 `vr-*` 命名（Tailwind 全清），inline SVG 替代 lucide
+- Done: fallback 链补全：cluster label / dominantTopics / status / prevRecord 反查
+- Iteration 3: 用户报"边框很多 / X 按钮不一致" → 定位到 Obsidian `<button>` 全局样式注入（recurring pitfall，跟之前 trace panel 同根因）
+
+**Block 4 · Convention 体系建立 + 设计系统暴雷**
+- Done: `docs/conventions/README.md` 索引 + 加新规则的格式约定
+- Done: `docs/conventions/obsidian-css-defense.md` 详细规则（TL;DR / 原理 / Do / Don't / Checklist）
+- Done: `src/styles/obsidian-reset.css`（`.peak-design-root` 类触发的 bare-tag 中和 reset）
+- Done: `CLAUDE.md` 加 Project Rules section 一行指针
+- Done: VaultAutoRunModal modal root 加 `peak-design-root` class
+- Audit: 用户要求审所有 mock 文件 → 发现 12 个 mock 共 **5 套并行 token 系统**：
+  - 真源 `peak-variables.css` 用 `#7c3aed`
+  - 旧 chat redesign mock 用 `--accent` `--bg` 无前缀但值对
+  - ai-analysis mock 用 `--pk-*` 完全对齐
+  - dark variants 4 个 mock 各自一套
+  - **我的 vault-review 用 `#7B5CFF` ❌ 偏离**
+  - prompt-template-modal 用 Obsidian native dark
+  - Streamdown shadow DOM 是第 6 套独立 shadcn HSL 系统
+- Numbers: 200+ `pk-*` Tailwind class 引用、71 文件 hardcoded hex、25 文件直接引用 Obsidian theme var
+- Done: 完整 spec `docs/superpowers/specs/2026-05-22-design-system-migration.md`（17 风险 / 6 phase 5-8 天 / 7 个待评审决策）
+
+**关键沉淀（永久价值）**
+- `docs/conventions/` 文件夹模式（rule 拆分而非堆 CLAUDE.md）
+- `peak-design-root` 防 Obsidian 注入的可复用 class
+- Obsidian CSS defense 规则文档
+- 全局 design system 现状清单 + 暴雷分析（17 风险）
+- 颜色不一致根因：`#7B5CFF` vs `#7c3aed` 早已埋下
+
+**Known limitations / Next**
+- Design system 迁移 spec 等用户评审 §3 风险 + §7 决策（紫色定哪个？Obsidian 主题继承否？Dark mode 时机？旧 mock 处置？）
+- Vault Auto Review 视觉部分还有几处细节需要在确认设计系统统一方案后再修
+- agent 产出量仍偏少（Fast 1-2 cluster / Complete 5 cluster），V6 prompt 改了但实际 vault 跑一次的覆盖未到 mock 期望水位
+- Cluster member fetcher 依赖 `mobius_node.community_id` 字段，新 vault 没跑过 community detection 时为空（需引导跑一次 index）
 
 ### 2026-05-10 (Session 28) — S2-S7 全量并行执行（6 竞品差异化功能）
 
