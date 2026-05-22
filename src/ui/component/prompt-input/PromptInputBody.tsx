@@ -8,8 +8,7 @@ import { EditorView } from '@codemirror/view';
 import { tagPlugin } from '@/ui/component/mine/tagPlugin';
 import { keymapExtension } from './keymap';
 import { parseTagsFromText } from '../mine/tagParser';
-import { ContextMenu, type ContextMenuPosition } from '@/ui/view/chat-view/components/ContextMenu';
-import { PromptMenu, type PromptMenuPosition } from '@/ui/view/chat-view/components/PromptMenu';
+import { ContextMenu } from '@/ui/view/chat-view/components/ContextMenu';
 import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
 
 // ---------------------------------------------------------------------------
@@ -17,9 +16,9 @@ import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
 // ---------------------------------------------------------------------------
 
 interface TriggerMatch {
-	trigger: '@' | '[[' | '/';
+	trigger: '@' | '[[';
 	query: string;
-	/** Absolute offset of the trigger start (including `@` or `[[` or `/`) */
+	/** Absolute offset of the trigger start (including `@` or `[[`) */
 	from: number;
 	/** Absolute offset of the cursor (end of the typed query) */
 	to: number;
@@ -27,7 +26,7 @@ interface TriggerMatch {
 
 /**
  * Scans the text to the left of `cursorPos` and returns a trigger match if
- * the cursor sits inside an `@query`, `[[query`, or `/query` span.
+ * the cursor sits inside an `@query` or `[[query` span.
  */
 function detectTrigger(docText: string, cursorPos: number): TriggerMatch | null {
 	// Look backwards from cursor (up to 200 chars) for the trigger character
@@ -38,10 +37,9 @@ function detectTrigger(docText: string, cursorPos: number): TriggerMatch | null 
 	// Check [[ first (longer prefix)
 	const bracketIdx = textBefore.lastIndexOf('[[');
 	const atIdx = textBefore.lastIndexOf('@');
-	const slashIdx = textBefore.lastIndexOf('/');
 
 	// Pick the rightmost trigger
-	const maxIdx = Math.max(bracketIdx, atIdx, slashIdx);
+	const maxIdx = Math.max(bracketIdx, atIdx);
 	if (maxIdx < 0) return null;
 
 	if (bracketIdx === maxIdx) {
@@ -70,24 +68,6 @@ function detectTrigger(docText: string, cursorPos: number): TriggerMatch | null 
 			trigger: '@',
 			query: afterAt,
 			from: start + atIdx,
-			to: cursorPos,
-		};
-	}
-
-	if (slashIdx === maxIdx) {
-		const afterSlash = textBefore.slice(slashIdx + 1);
-		// Bail if newline between trigger and cursor
-		if (afterSlash.includes('\n')) return null;
-		// Bail if there's a space in the query (slash commands are single tokens)
-		if (afterSlash.includes(' ')) return null;
-		// Only trigger if / is at start of line or preceded by whitespace
-		if (slashIdx > 0 && !/\s/.test(textBefore[slashIdx - 1])) return null;
-		// Bail if already closed with /
-		if (afterSlash.includes('/')) return null;
-		return {
-			trigger: '/',
-			query: afterSlash,
-			from: start + slashIdx,
 			to: cursorPos,
 		};
 	}
@@ -144,9 +124,7 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 	const { textInput, autocompletion: autocompletionData } = usePromptInputContext();
 	const {
 		contextItems = [],
-		promptItems = [],
 		onLoadContextItems,
-		onLoadPromptItems,
 		onMenuItemSelect,
 		folderStack,
 		onFolderUp,
@@ -158,11 +136,6 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 	const menuRef = useRef(menu);
 	menuRef.current = menu;
 
-	// ----- Prompt menu state (/) -----
-	const [promptMenu, setPromptMenu] = useState<MenuState>(INITIAL_MENU);
-	const promptMenuRef = useRef(promptMenu);
-	promptMenuRef.current = promptMenu;
-
 	// Refs for the latest loader callbacks so the async load never reads stale closures
 	const onLoadContextItemsRef = useRef(onLoadContextItems);
 	onLoadContextItemsRef.current = onLoadContextItems;
@@ -170,28 +143,17 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 	contextItemsRef.current = contextItems;
 	const onMenuItemSelectRef = useRef(onMenuItemSelect);
 	onMenuItemSelectRef.current = onMenuItemSelect;
-	const onLoadPromptItemsRef = useRef(onLoadPromptItems);
-	onLoadPromptItemsRef.current = onLoadPromptItems;
-	const promptItemsRef = useRef(promptItems);
-	promptItemsRef.current = promptItems;
 
 	// Track the latest pending load to avoid race conditions
 	const loadIdRef = useRef(0);
-	const promptLoadIdRef = useRef(0);
 	const loadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const promptLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const loadedKeyRef = useRef('');
-	const promptLoadedKeyRef = useRef('');
 	const pendingKeyRef = useRef('');
-	const promptPendingKeyRef = useRef('');
 	const activeTriggerKeyRef = useRef('');
-	const promptActiveTriggerKeyRef = useRef('');
 	const cacheRef = useRef<Map<string, NavigableMenuItem[]>>(new Map());
-	const promptCacheRef = useRef<Map<string, NavigableMenuItem[]>>(new Map());
 	React.useEffect(() => {
 		return () => {
 			if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
-			if (promptLoadTimerRef.current) clearTimeout(promptLoadTimerRef.current);
 		};
 	}, []);
 
@@ -236,33 +198,35 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 	}), [focusEditor, getView]);
 
 	// ----- Shared: compute menu position from trigger coords -----
-	const computeMenuPosition = useCallback((view: EditorView, from: number): { top: number; left: number } | null => {
-		const coords = view.coordsAtPos(from) ?? view.coordsAtPos(view.state.selection.main.head);
+	const computeMenuPosition = useCallback((view: EditorView, from: number): { top: number; left: number; placement?: 'top' | 'bottom' } | null => {
+		const cursorPos = view.state.selection.main.head;
+		const rawCoords = view.coordsAtPos(cursorPos) ?? view.coordsAtPos(from);
+		const editorRect = view.dom.getBoundingClientRect();
+		const coordsAreInsideEditor = rawCoords
+			&& rawCoords.top >= editorRect.top - 8
+			&& rawCoords.bottom <= editorRect.bottom + 8;
+		const coords = coordsAreInsideEditor
+			? rawCoords
+			: {
+				top: editorRect.top + 12,
+				bottom: Math.min(editorRect.bottom, editorRect.top + 36),
+				left: editorRect.left + 4,
+				right: editorRect.left + 4,
+			};
 		if (!coords) return null;
-		const menuHeight = 300;
+		const minMenuHeight = 180;
 		const menuWidth = 400;
 		const viewportHeight = window.innerHeight;
 		const viewportWidth = window.innerWidth;
 		const margin = 8;
 
-		// Vertical: prefer above the cursor; flip to below if not enough space above
+		// Anchor to the actual caret/input line; CSS transform handles true menu height.
 		const spaceAbove = coords.top;
 		const spaceBelow = viewportHeight - coords.bottom;
-		let top: number;
-		if (spaceAbove >= menuHeight + margin) {
-			// Show above: menu bottom aligns just above the trigger
-			top = coords.top - menuHeight - 4;
-		} else if (spaceBelow >= menuHeight + margin) {
-			// Show below: menu top aligns just below the trigger
-			top = coords.bottom + 4;
-		} else {
-			// Neither side has full room — pick the side with more space and clamp
-			if (spaceAbove >= spaceBelow) {
-				top = Math.max(margin, coords.top - menuHeight - 4);
-			} else {
-				top = coords.bottom + 4;
-			}
-		}
+		const placement: 'top' | 'bottom' = spaceAbove >= minMenuHeight || spaceAbove >= spaceBelow ? 'top' : 'bottom';
+		const top = placement === 'top'
+			? Math.max(margin, coords.top - 6)
+			: Math.min(viewportHeight - margin, coords.bottom + 6);
 
 		// Horizontal: start at trigger, shift left if overflowing right edge
 		let left = coords.left;
@@ -270,7 +234,7 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 			left = Math.max(margin, viewportWidth - menuWidth - margin);
 		}
 
-		return { top, left };
+		return { top, left, placement };
 	}, []);
 
 	/** Shared menu open + async-load logic for both context and prompt menus. */
@@ -351,45 +315,24 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 
 		if (!match) {
 			if (menuRef.current.visible) setMenu(INITIAL_MENU);
-			if (promptMenuRef.current.visible) setPromptMenu(INITIAL_MENU);
 			activeTriggerKeyRef.current = '';
-			promptActiveTriggerKeyRef.current = '';
 			pendingKeyRef.current = '';
-			promptPendingKeyRef.current = '';
 			if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
-			if (promptLoadTimerRef.current) clearTimeout(promptLoadTimerRef.current);
 			return;
 		}
 
-		const isPrompt = match.trigger === '/';
-		const currentFolder = isPrompt ? undefined : folderStack?.[folderStack.length - 1];
+		const currentFolder = folderStack?.[folderStack.length - 1];
 		const triggerStateKey = `${match.trigger}:${currentFolder ?? ''}:${match.from}:${match.query.trim().toLowerCase()}`;
-		if (isPrompt) {
-			if (promptActiveTriggerKeyRef.current === triggerStateKey && promptMenuRef.current.visible) return;
-			promptActiveTriggerKeyRef.current = triggerStateKey;
-			activeTriggerKeyRef.current = '';
-		} else {
-			if (activeTriggerKeyRef.current === triggerStateKey && menuRef.current.visible) return;
-			activeTriggerKeyRef.current = triggerStateKey;
-			promptActiveTriggerKeyRef.current = '';
-		}
-
-		// Close the other menu
-		if (isPrompt && menuRef.current.visible) setMenu(INITIAL_MENU);
-		if (!isPrompt && promptMenuRef.current.visible) setPromptMenu(INITIAL_MENU);
+		if (activeTriggerKeyRef.current === triggerStateKey && menuRef.current.visible) return;
+		activeTriggerKeyRef.current = triggerStateKey;
 
 		const pos = computeMenuPosition(view, match.from);
 		if (!pos) {
-			if (isPrompt && promptMenuRef.current.visible) setPromptMenu(INITIAL_MENU);
-			if (!isPrompt && menuRef.current.visible) setMenu(INITIAL_MENU);
+			if (menuRef.current.visible) setMenu(INITIAL_MENU);
 			return;
 		}
 
-		if (isPrompt) {
-			openMenuWithLoad(setPromptMenu, promptLoadIdRef, promptLoadTimerRef, promptLoadedKeyRef, promptPendingKeyRef, promptCacheRef, onLoadPromptItemsRef, promptItemsRef, match, pos);
-		} else {
-			openMenuWithLoad(setMenu, loadIdRef, loadTimerRef, loadedKeyRef, pendingKeyRef, cacheRef, onLoadContextItemsRef, contextItemsRef, match, pos, currentFolder);
-		}
+		openMenuWithLoad(setMenu, loadIdRef, loadTimerRef, loadedKeyRef, pendingKeyRef, cacheRef, onLoadContextItemsRef, contextItemsRef, match, pos, currentFolder);
 	}, [computeMenuPosition, folderStack, openMenuWithLoad]);
 
 	// ----- Context menu callbacks -----
@@ -425,9 +368,7 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 
 		// Build insertion text
 		const value = item.value || item.label;
-		const text = match.trigger === '@'
-			? ` @${value}@ `
-			: ` [[${value}]] `;
+		const text = match.trigger === '@' ? ` @${value}@ ` : ` [[${value}]] `;
 
 		view.dispatch({
 			changes: { from: match.from, to: match.to, insert: text },
@@ -450,37 +391,6 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 
 	const handleSelectedIndexChange = useCallback((index: number) => {
 		setMenu(prev => ({ ...prev, selectedIndex: index }));
-	}, []);
-
-	// ----- Prompt menu callbacks -----
-	const handlePromptMenuSelect = useCallback((item: NavigableMenuItem) => {
-		const view = codeMirrorRef.current?.view as EditorView | undefined;
-		const match = promptMenuRef.current.triggerMatch;
-		if (!view || !match) return;
-
-		const value = item.value || item.label;
-		const text = ` /${value}/ `;
-
-		view.dispatch({
-			changes: { from: match.from, to: match.to, insert: text },
-			selection: { anchor: match.from + text.length },
-		});
-
-		if (onMenuItemSelectRef.current) {
-			onMenuItemSelectRef.current('/', item);
-		}
-
-		setPromptMenu(INITIAL_MENU);
-		view.focus();
-	}, []);
-
-	const handlePromptMenuClose = useCallback(() => {
-		setPromptMenu(INITIAL_MENU);
-		codeMirrorRef.current?.view?.focus();
-	}, []);
-
-	const handlePromptSelectedIndexChange = useCallback((index: number) => {
-		setPromptMenu(prev => ({ ...prev, selectedIndex: index }));
 	}, []);
 
 	// ----- CodeMirror extensions -----
@@ -580,22 +490,6 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 						onSelectedIndexChange={handleSelectedIndexChange}
 						folderStack={folderStack}
 						onFolderUp={onFolderUp}
-					/>
-				</div>,
-				document.body,
-			)}
-
-			{/* Custom prompt menu for / triggers */}
-			{promptMenu.visible && createPortal(
-				<div className="pktw-root">
-					<PromptMenu
-						items={promptMenu.items}
-						selectedIndex={promptMenu.selectedIndex}
-						position={promptMenu.position}
-						isLoading={promptMenu.isLoading}
-						onSelect={handlePromptMenuSelect}
-						onClose={handlePromptMenuClose}
-						onSelectedIndexChange={handlePromptSelectedIndexChange}
 					/>
 				</div>,
 				document.body,

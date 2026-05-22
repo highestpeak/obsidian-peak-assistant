@@ -57,7 +57,7 @@ export const SemanticLinkSuggestPanel: React.FC<SemanticLinkSuggestPanelProps> =
 
   const formatScore = (score: number) => {
     const pct = Math.round(score * 100);
-    if (pct >= 80) return { label: `${pct}%`, className: 'pktw-text-[var(--pk-success,#22c55e)]' };
+    if (pct >= 80) return { label: `${pct}%`, className: 'pktw-text-[var(--pk-success)]' };
     if (pct >= 50) return { label: `${pct}%`, className: 'pktw-text-accent' };
     return { label: `${pct}%`, className: 'pktw-text-muted-foreground' };
   };
@@ -110,7 +110,7 @@ export const SemanticLinkSuggestPanel: React.FC<SemanticLinkSuggestPanelProps> =
                     <span className={`pktw-text-[8px] pktw-font-bold pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-uppercase ${
                       suggestion.direction === 'outgoing'
                         ? 'pktw-bg-accent/10 pktw-text-accent'
-                        : 'pktw-bg-[var(--pk-success,#22c55e)]/10 pktw-text-[var(--pk-success,#22c55e)]'
+                        : 'pktw-bg-[var(--pk-success)]/10 pktw-text-[var(--pk-success)]'
                     }`}>
                       {suggestion.direction === 'outgoing' ? 'out' : 'in'}
                     </span>

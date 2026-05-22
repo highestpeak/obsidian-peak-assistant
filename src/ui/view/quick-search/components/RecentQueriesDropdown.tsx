@@ -44,7 +44,7 @@ export const RecentQueriesDropdown: React.FC<RecentQueriesDropdownProps> = ({
 						className={cn(
 							'pktw-flex pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1.5',
 							'pktw-rounded-md pktw-cursor-pointer pktw-transition-colors',
-							'hover:pktw-bg-[#f5f3ff]',
+							'hover:pktw-bg-pk-accent-tint',
 						)}
 					>
 						<Clock className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted pktw-shrink-0" />

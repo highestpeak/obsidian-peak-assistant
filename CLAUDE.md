@@ -55,6 +55,15 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 - Agents: follow `runAgentLoop` / `AgentLoop` (`service/agents/core`); reuse tool + schema patterns from existing agents; wire through `src/core/schemas/` for Zod
 - Streaming: normalize with `src/core/providers/helpers/stream-helper.ts` (`streamTransform`, etc.) and `LLMStreamEvent`; UI streaming hooks live under `ui/view/chat-view/hooks/`
 
+## Project Rules
+
+Detailed conventions live in `docs/conventions/`. Read `docs/conventions/README.md` for the index and how to add new rules.
+
+Critical rules to keep in mind:
+
+- **Obsidian CSS defense** — any scoped UI surface (modal / panel) MUST add the `peak-design-root` class to its outermost wrapper, otherwise raw `<button>` / `<input>` / `<h1-6>` / `<a>` will get Obsidian's theme styles injected and look inconsistent with the design. Detail: [`docs/conventions/obsidian-css-defense.md`](./docs/conventions/obsidian-css-defense.md).
+- **Design tokens** — all colors / spacing / radius / typography come from `--pk-*` tokens in `src/styles/peak-tokens.css` (source of truth). No inline hex; no `var(--text-normal)` / `var(--background-primary)` etc. direct Obsidian-theme refs; no `var(--pk-X, fallback)` chains. Visual reference: `docs/mockups/_design-tokens-preview.html`. Detail: [`docs/conventions/design-tokens.md`](./docs/conventions/design-tokens.md).
+
 ## Key External Dependencies
 
 - **AI:** Vercel AI SDK adapters (`@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`, etc.)

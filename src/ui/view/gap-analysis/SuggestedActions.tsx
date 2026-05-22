@@ -13,11 +13,11 @@ const SuggestedActionCard: React.FC<{
 }> = ({ bridge }) => (
 	<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-p-3 pktw-rounded pktw-border pktw-border-pk-border">
 		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs">
-			<span className="pktw-font-medium pktw-text-[#2e3338] pktw-truncate">
+			<span className="pktw-font-medium pktw-text-pk-text-primary pktw-truncate">
 				{bridge.sourceNode.label}
 			</span>
 			<span className="pktw-text-pk-foreground-muted">--</span>
-			<span className="pktw-font-medium pktw-text-[#2e3338] pktw-truncate">
+			<span className="pktw-font-medium pktw-text-pk-text-primary pktw-truncate">
 				{bridge.targetNode.label}
 			</span>
 		</div>
@@ -53,7 +53,7 @@ export const SuggestedActions: React.FC = () => {
 
 	return (
 		<div className="pktw-mt-4">
-			<span className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-mb-2 pktw-block">
+			<span className="pktw-text-sm pktw-font-medium pktw-text-pk-text-primary pktw-mb-2 pktw-block">
 				Suggested Actions
 			</span>
 			<div className="pktw-flex pktw-flex-col pktw-gap-2">

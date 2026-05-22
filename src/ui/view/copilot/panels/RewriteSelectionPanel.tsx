@@ -55,14 +55,14 @@ export const RewriteSelectionPanel: React.FC<RewriteSelectionPanelProps> = ({
 				<div className="pktw-grid pktw-grid-cols-2 pktw-border pktw-border-border pktw-rounded-lg pktw-overflow-hidden">
 					<div className="pktw-p-4 pktw-bg-secondary pktw-border-r pktw-border-border">
 						<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mb-2.5">
-							<div className="pktw-w-1.5 pktw-h-1.5 pktw-rounded-full pktw-bg-[var(--pk-error,#ef4444)] pktw-opacity-60" />
+							<div className="pktw-w-1.5 pktw-h-1.5 pktw-rounded-full pktw-bg-[var(--pk-error)] pktw-opacity-60" />
 							<span className="pktw-text-[9px] pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">Original</span>
 						</div>
 						<div className="pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap">{original}</div>
 					</div>
 					<div className="pktw-p-4">
 						<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mb-2.5">
-							<div className="pktw-w-1.5 pktw-h-1.5 pktw-rounded-full pktw-bg-[var(--pk-success,#22c55e)] pktw-opacity-60" />
+							<div className="pktw-w-1.5 pktw-h-1.5 pktw-rounded-full pktw-bg-[var(--pk-success)] pktw-opacity-60" />
 							<span className="pktw-text-[9px] pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">Rewritten</span>
 						</div>
 						<div className="pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap">{rewritten}</div>

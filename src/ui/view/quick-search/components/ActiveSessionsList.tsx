@@ -20,11 +20,11 @@ interface StatusConfig {
 }
 
 const STATUS_CONFIG: Record<BackgroundSessionStatus, StatusConfig> = {
-    streaming: { Icon: Loader2, color: '#7c3aed', label: 'Analyzing...', spin: true },
-    'plan-ready': { Icon: CheckCircle, color: '#2563eb', label: 'Plan Ready' },
-    queued: { Icon: Clock, color: '#6b7280', label: 'Queued' },
-    completed: { Icon: CheckCircle, color: '#059669', label: 'Complete' },
-    error: { Icon: AlertCircle, color: '#dc2626', label: 'Failed' },
+    streaming: { Icon: Loader2, color: 'var(--pk-accent)', label: 'Analyzing...', spin: true },
+    'plan-ready': { Icon: CheckCircle, color: 'var(--pk-info-text)', label: 'Plan Ready' },
+    queued: { Icon: Clock, color: 'var(--pk-text-secondary)', label: 'Queued' },
+    completed: { Icon: CheckCircle, color: 'var(--pk-success-text)', label: 'Complete' },
+    error: { Icon: AlertCircle, color: 'var(--pk-error-text)', label: 'Failed' },
 };
 
 // ---------------------------------------------------------------------------
@@ -49,15 +49,15 @@ const SessionCard: React.FC<{
 				'pktw-flex pktw-items-center pktw-gap-3 pktw-px-3.5 pktw-py-2.5',
 				'pktw-rounded-lg pktw-border pktw-cursor-pointer pktw-transition-all pktw-group',
 				isPlanReady
-					? 'pktw-border-[#93c5fd] pktw-bg-[#eff6ff] hover:pktw-border-[#60a5fa] hover:pktw-bg-[#dbeafe]'
-					: 'pktw-border-pk-border pktw-bg-pk-background hover:pktw-border-[#7c3aed]/25 hover:pktw-bg-[#faf8ff]'
+					? 'pktw-border-pk-highlight-info-border pktw-bg-pk-highlight-info hover:pktw-border-pk-info hover:pktw-bg-pk-info-bg'
+					: 'pktw-border-pk-border pktw-bg-pk-background hover:pktw-border-pk-accent/25 hover:pktw-bg-pk-accent-tint'
 			)}
 		>
 			<div className={cn(
 				'pktw-w-7 pktw-h-7 pktw-rounded-md pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0',
-				isPlanReady ? 'pktw-bg-[#dbeafe] pktw-text-[#2563eb]' :
-				session.status === 'streaming' ? 'pktw-bg-[#ede9fe] pktw-text-pk-accent' :
-				'pktw-bg-[#f3f4f6] pktw-text-pk-foreground-muted'
+				isPlanReady ? 'pktw-bg-pk-info-bg pktw-text-pk-info-text' :
+				session.status === 'streaming' ? 'pktw-bg-pk-accent-soft pktw-text-pk-accent' :
+				'pktw-bg-pk-surface-sunken pktw-text-pk-foreground-muted'
 			)}>
 				<Icon
 					className={cn('pktw-w-3.5 pktw-h-3.5', cfg.spin && 'pktw-animate-spin')}
@@ -82,7 +82,7 @@ const SessionCard: React.FC<{
 			{isPlanReady && (
 				<span
 					onClick={(e) => { e.stopPropagation(); onRestore(session.id); }}
-					className="pktw-text-[11px] pktw-font-semibold pktw-text-[#2563eb] pktw-bg-[#dbeafe] pktw-border pktw-border-[#93c5fd] pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-shrink-0 pktw-cursor-pointer hover:pktw-bg-[#bfdbfe] pktw-transition-colors"
+					className="pktw-text-[11px] pktw-font-semibold pktw-text-pk-info-text pktw-bg-pk-info-bg pktw-border pktw-border-pk-highlight-info-border pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-shrink-0 pktw-cursor-pointer hover:pktw-bg-pk-highlight-info pktw-transition-colors"
 				>
 					Review Plan →
 				</span>
@@ -92,7 +92,7 @@ const SessionCard: React.FC<{
 				className={cn(
 					'pktw-w-6 pktw-h-6 pktw-rounded-md pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0',
 					'pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-all',
-					'pktw-text-pk-foreground-muted hover:pktw-bg-[#fee2e2] hover:pktw-text-[#dc2626] pktw-cursor-pointer',
+					'pktw-text-pk-foreground-muted hover:pktw-bg-pk-error-bg hover:pktw-text-pk-error-text pktw-cursor-pointer',
 				)}
 				title="Cancel"
 			>

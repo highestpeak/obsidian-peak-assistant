@@ -13,7 +13,7 @@ export const BridgeNodeList: React.FC = () => {
 
 	return (
 		<div className="pktw-mt-4">
-			<span className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-mb-2 pktw-block">
+			<span className="pktw-text-sm pktw-font-medium pktw-text-pk-text-primary pktw-mb-2 pktw-block">
 				Top Bridge Nodes
 			</span>
 			<div className="pktw-grid pktw-grid-cols-[1fr_80px_80px_120px] pktw-gap-1 pktw-text-xs">
@@ -24,7 +24,7 @@ export const BridgeNodeList: React.FC = () => {
 				{bridges.map(b => (
 					<React.Fragment key={b.nodeId}>
 						<span
-							className="pktw-px-2 pktw-py-1 pktw-text-[#2e3338] pktw-truncate pktw-cursor-pointer hover:pktw-text-pk-accent"
+							className="pktw-px-2 pktw-py-1 pktw-text-pk-text-primary pktw-truncate pktw-cursor-pointer hover:pktw-text-pk-accent"
 							title={b.path}
 						>
 							{b.label}

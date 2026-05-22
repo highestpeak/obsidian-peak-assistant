@@ -63,8 +63,8 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 	const hasSections = sections.length > 0;
 
 	const borderClass = isCurrent
-		? 'pktw-border-[#7c3aed]/30 pktw-bg-pk-background'
-		: 'pktw-border-pk-border pktw-bg-[#fafafa]';
+		? 'pktw-border-pk-accent/30 pktw-bg-pk-background'
+		: 'pktw-border-pk-border pktw-bg-pk-surface-raised';
 
 	// Group timeline for rendering (memoized to avoid recomputing for frozen rounds)
 	const grouped = useMemo(() => groupTimeline(timeline), [timeline]);
@@ -91,7 +91,7 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 				</span>
 
 				{/* Query text (truncated) */}
-				<span className="pktw-text-xs pktw-text-[#2e3338] pktw-truncate pktw-flex-1 pktw-min-w-0">
+				<span className="pktw-text-xs pktw-text-pk-text-primary pktw-truncate pktw-flex-1 pktw-min-w-0">
 					{query}
 				</span>
 

@@ -10,98 +10,164 @@ module.exports = {
 	theme: {
 		extend: {
 			colors: {
-				// Background colors
-				background: 'var(--pk-bg, var(--background-primary, #ffffff))',
-				card: 'var(--pk-surface, var(--background-secondary, var(--background-primary, #ffffff)))',
+				// ── shadcn-style aliases (kept for shadcn components) ──
+				background: 'var(--pk-bg)',
+				card: 'var(--pk-surface)',
 				popover: {
-					DEFAULT: 'var(--pk-popover, var(--background-primary, #ffffff))',
-					foreground: 'var(--pk-text-primary, var(--text-normal, #2e3338))',
+					DEFAULT: 'var(--pk-surface-overlay)',
+					foreground: 'var(--pk-text-primary)',
 				},
-				// Text colors
-				foreground: 'var(--pk-fg, var(--text-normal, #2e3338))',
-				// Primary colors
+				foreground: 'var(--pk-text-primary)',
 				primary: {
-					DEFAULT: 'var(--pk-info, var(--interactive-accent, #3b82f6))',
-					foreground: 'var(--pk-text-inverted, var(--text-on-accent, #ffffff))',
+					DEFAULT: 'var(--pk-info)',
+					foreground: 'var(--pk-text-inverted)',
 				},
-				// Secondary colors
 				secondary: {
-					DEFAULT: 'var(--pk-surface-sunken, var(--background-secondary, #f3f4f6))',
-					foreground: 'var(--pk-text-primary, var(--text-normal, #2e3338))',
+					DEFAULT: 'var(--pk-surface-sunken)',
+					foreground: 'var(--pk-text-primary)',
 				},
-				// Muted colors
 				muted: {
-					DEFAULT: 'var(--pk-surface-sunken, var(--background-secondary, #f3f4f6))',
-					foreground: 'var(--pk-text-secondary, var(--text-muted, #6c757d))',
+					DEFAULT: 'var(--pk-surface-sunken)',
+					foreground: 'var(--pk-text-secondary)',
 				},
-				// Accent colors
 				accent: {
-					DEFAULT: 'var(--pk-accent, var(--interactive-accent, #7c3aed))',
-					foreground: 'var(--pk-accent-fg, var(--text-on-accent, #ffffff))',
+					DEFAULT: 'var(--pk-accent)',
+					foreground: 'var(--pk-accent-fg)',
 				},
-				// Destructive colors
 				destructive: {
-					DEFAULT: 'var(--pk-error, #ef4444)',
-					foreground: 'var(--pk-text-inverted, #ffffff)',
+					DEFAULT: 'var(--pk-error)',
+					foreground: 'var(--pk-text-inverted)',
 				},
-				// Border colors
-				border: 'var(--pk-border, rgba(128, 128, 128, 0.15))',
-				'border-default': 'var(--pk-border, var(--background-modifier-border, rgba(128, 128, 128, 0.15)))',
-				'border-hover': 'var(--pk-info, var(--interactive-accent, #3b82f6))',
-				input: 'var(--pk-border, rgba(128, 128, 128, 0.2))',
-				ring: 'var(--pk-info, var(--interactive-accent, #3b82f6))',
+				border: 'var(--pk-border)',
+				'border-default': 'var(--pk-border)',
+				'border-hover': 'var(--pk-info)',
+				input: 'var(--pk-border)',
+				ring: 'var(--pk-info)',
 
-				// ── Peak CSS variable colors (Obsidian-aware + dark-mode-safe) ──
-				// Structural (Obsidian-aware)
-				'pk-background': 'var(--pk-bg, var(--background-primary, #ffffff))',
-				'pk-background-secondary': 'var(--pk-bg-secondary, var(--background-secondary, #f3f4f6))',
-				'pk-foreground': 'var(--pk-fg, var(--text-normal, #2e3338))',
-				'pk-foreground-muted': 'var(--pk-fg-muted, var(--text-muted, #6c757d))',
-				'pk-foreground-faint': 'var(--pk-fg-faint, var(--text-faint, #999999))',
-				'pk-border': 'var(--pk-border, var(--background-modifier-border, rgba(128, 128, 128, 0.15)))',
+				// ── Peak token utilities (canonical) ──
+				'pk-background': 'var(--pk-bg)',
+				'pk-background-secondary': 'var(--pk-bg-secondary)',
+				'pk-foreground': 'var(--pk-text-primary)',         // alias kept; canonical = pk-text-primary
+				'pk-foreground-muted': 'var(--pk-text-secondary)',
+				'pk-foreground-faint': 'var(--pk-text-tertiary)',
+				'pk-border': 'var(--pk-border)',
 
 				// Brand
 				'pk-accent': {
-					DEFAULT: 'var(--pk-accent, var(--interactive-accent, #7c3aed))',
-					hover: 'var(--pk-accent-hover, var(--interactive-accent-hover, #6d28d9))',
-					muted: 'var(--pk-accent-muted, rgba(124, 58, 237, 0.15))',
-					fg: 'var(--pk-accent-fg, var(--text-on-accent, #ffffff))',
+					DEFAULT: 'var(--pk-accent)',
+					hover: 'var(--pk-accent-hover)',
+					muted: 'var(--pk-accent-tint)',                 // legacy "muted" = new "tint"
+					tint: 'var(--pk-accent-tint)',
+					soft: 'var(--pk-accent-soft)',
+					text: 'var(--pk-accent-text)',
+					fg: 'var(--pk-accent-fg)',
 				},
 
 				// Semantic
-				'pk-success': { DEFAULT: 'var(--pk-success, #22c55e)', muted: 'var(--pk-success-muted, rgba(34, 197, 94, 0.12))' },
-				'pk-warning': { DEFAULT: 'var(--pk-warning, #f59e0b)', muted: 'var(--pk-warning-muted, rgba(245, 158, 11, 0.12))' },
-				'pk-error': { DEFAULT: 'var(--pk-error, #ef4444)', muted: 'var(--pk-error-muted, rgba(239, 68, 68, 0.12))' },
-				'pk-info': { DEFAULT: 'var(--pk-info, #3b82f6)', muted: 'var(--pk-info-muted, rgba(59, 130, 246, 0.12))' },
+				'pk-success': {
+					DEFAULT: 'var(--pk-success)',
+					muted: 'var(--pk-success-bg)',                  // legacy alias
+					bg: 'var(--pk-success-bg)',
+					text: 'var(--pk-success-text)',
+				},
+				'pk-warning': {
+					DEFAULT: 'var(--pk-warning)',
+					muted: 'var(--pk-warning-bg)',
+					bg: 'var(--pk-warning-bg)',
+					text: 'var(--pk-warning-text)',
+				},
+				'pk-error': {
+					DEFAULT: 'var(--pk-error)',
+					muted: 'var(--pk-error-bg)',
+					bg: 'var(--pk-error-bg)',
+					text: 'var(--pk-error-text)',
+				},
+				'pk-info': {
+					DEFAULT: 'var(--pk-info)',
+					muted: 'var(--pk-info-bg)',
+					bg: 'var(--pk-info-bg)',
+					text: 'var(--pk-info-text)',
+				},
+				'pk-indigo': {
+					DEFAULT: 'var(--pk-indigo)',
+					bg: 'var(--pk-indigo-bg)',
+				},
 
-				// Surfaces (theme-aware opaque backgrounds)
-				'pk-surface': 'var(--pk-surface, var(--background-primary, #ffffff))',
-				'pk-surface-raised': 'var(--pk-surface-raised, var(--background-primary, #fafafa))',
-				'pk-surface-sunken': 'var(--pk-surface-sunken, var(--background-secondary, #f3f4f6))',
-				'pk-surface-overlay': 'var(--pk-surface-overlay, var(--background-primary, #ffffff))',
+				// Surfaces
+				'pk-surface': 'var(--pk-surface)',
+				'pk-surface-raised': 'var(--pk-surface-raised)',
+				'pk-surface-sunken': 'var(--pk-surface-sunken)',
+				'pk-surface-overlay': 'var(--pk-surface-overlay)',
 
-				// Text (theme-aware opaque text colors)
-				'pk-text-primary': 'var(--pk-text-primary, var(--text-normal, #2e3338))',
-				'pk-text-secondary': 'var(--pk-text-secondary, var(--text-muted, #6c757d))',
-				'pk-text-tertiary': 'var(--pk-text-tertiary, var(--text-faint, #999999))',
-				'pk-text-inverted': 'var(--pk-text-inverted, var(--text-on-accent, #ffffff))',
+				// Text
+				'pk-text-primary': 'var(--pk-text-primary)',
+				'pk-text-secondary': 'var(--pk-text-secondary)',
+				'pk-text-tertiary': 'var(--pk-text-tertiary)',
+				'pk-text-faint': 'var(--pk-text-faint)',
+				'pk-text-inverted': 'var(--pk-text-inverted)',
 
 				// Border extras
-				'pk-border-light': 'var(--pk-border-light, var(--background-modifier-border, #d1d5db))',
-				'pk-border-accent': 'var(--pk-border-accent, rgba(124, 58, 237, 0.25))',
+				'pk-border-soft': 'var(--pk-border-soft)',
+				'pk-border-strong': 'var(--pk-border-strong)',
+				'pk-border-light': 'var(--pk-border-strong)',       // legacy alias
+				'pk-border-accent': 'var(--pk-border-accent)',
 
 				// Skeleton / placeholder
-				'pk-skeleton': 'var(--pk-skeleton, #e5e7eb)',
+				'pk-skeleton': 'var(--pk-skeleton)',
 
 				// Interaction highlights
-				'pk-highlight': 'var(--pk-highlight, var(--background-modifier-hover, #f5f3ff))',
-				'pk-highlight-info': 'var(--pk-highlight-info, #eff6ff)',
-				'pk-highlight-info-border': 'var(--pk-highlight-info-border, #93c5fd)',
+				'pk-highlight': 'var(--pk-accent-tint)',            // legacy alias
+				'pk-highlight-info': 'var(--pk-highlight-info)',
+				'pk-highlight-info-border': 'var(--pk-highlight-info-border)',
+			},
+			boxShadow: {
+				'pk-card': 'var(--pk-shadow-card)',
+				'pk-popover': 'var(--pk-shadow-popover)',
+				'pk-modal': 'var(--pk-shadow-modal)',
 			},
 			borderRadius: {
 				lg: '0.5rem', // 8px
 				md: '0.375rem', // 6px
 				sm: '0.25rem', // 4px
+				'pk-sm': 'var(--pk-radius-sm)',
+				'pk-md': 'var(--pk-radius-md)',
+				'pk-lg': 'var(--pk-radius-lg)',
+				'pk-xl': 'var(--pk-radius-xl)',
+				'pk-full': 'var(--pk-radius-full)',
+			},
+			fontSize: {
+				'pk-xs': 'var(--pk-text-xs)',
+				'pk-sm': 'var(--pk-text-sm)',
+				'pk-base': 'var(--pk-text-base)',
+				'pk-md': 'var(--pk-text-md)',
+				'pk-lg': 'var(--pk-text-lg)',
+				'pk-xl': 'var(--pk-text-xl)',
+				'pk-2xl': 'var(--pk-text-2xl)',
+				'pk-3xl': 'var(--pk-text-3xl)',
+			},
+			spacing: {
+				'pk-1': 'var(--pk-space-1)',
+				'pk-2': 'var(--pk-space-2)',
+				'pk-3': 'var(--pk-space-3)',
+				'pk-4': 'var(--pk-space-4)',
+				'pk-5': 'var(--pk-space-5)',
+				'pk-6': 'var(--pk-space-6)',
+				'pk-8': 'var(--pk-space-8)',
+				'pk-10': 'var(--pk-space-10)',
+				'pk-12': 'var(--pk-space-12)',
+			},
+			zIndex: {
+				'pk-base': 'var(--pk-z-base)',
+				'pk-sticky': 'var(--pk-z-sticky)',
+				'pk-dropdown': 'var(--pk-z-dropdown)',
+				'pk-modal': 'var(--pk-z-modal)',
+				'pk-popover': 'var(--pk-z-popover)',
+				'pk-tooltip': 'var(--pk-z-tooltip)',
+			},
+			transitionDuration: {
+				'pk-fast': '100ms',
+				'pk-base': '150ms',
+				'pk-slow': '300ms',
 			},
 			keyframes: {
 				shimmer: {

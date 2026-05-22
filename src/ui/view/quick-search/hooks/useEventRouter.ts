@@ -122,6 +122,7 @@ export function useEventRouter() {
 			registerV2ToolCall: (id, toolName) => store.getState().registerV2ToolCall(id, toolName),
 			addV2Source: (source) => store.getState().addV2Source(source),
 			setPlanSections: (sections) => store.getState().setPlanSections(sections),
+			setPlanReady: () => store.getState().setPlanReady(),
 			setProposedOutline: (outline) => useSearchSessionStore.setState({ v2ProposedOutline: outline }),
 			setFollowUpQuestions: (questions) => useSearchSessionStore.setState({ v2FollowUpQuestions: questions }),
 			setV2Sources: (sources) => useSearchSessionStore.setState({ v2Sources: sources }),

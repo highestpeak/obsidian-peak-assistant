@@ -23,7 +23,7 @@ export const AIAnalysisPreStreamingState: React.FC = () => {
             <div className="pktw-w-16 pktw-h-16 pktw-rounded-full pktw-flex pktw-items-center pktw-justify-center pktw-mb-4">
                 <AnimatedSparkles isAnimating={checkIfAnalyzing() || isSummaryStreaming} />
             </div>
-            <span className="pktw-font-semibold pktw-text-[#2e3338] pktw-mb-2">
+            <span className="pktw-font-semibold pktw-text-pk-text-primary pktw-mb-2">
                 {checkIfAnalyzing() || isSummaryStreaming ? 'Analyzing...' : 'Ready to Analyze with AI'}
             </span>
             {!(checkIfAnalyzing() || isSummaryStreaming) && analysisMode ? (
@@ -36,7 +36,7 @@ export const AIAnalysisPreStreamingState: React.FC = () => {
                     <AnalysisTimer startedAtMs={analysisStartedAtMs} isRunning={true} />
                 </div>
             ) : null}
-            <span className="pktw-text-sm pktw-text-[#6c757d] pktw-mb-4 pktw-max-w-md">
+            <span className="pktw-text-sm pktw-text-pk-text-secondary pktw-mb-4 pktw-max-w-md">
                 {checkIfAnalyzing() || isSummaryStreaming
                     ? 'AI is processing your query and searching through your vault...'
                     : ''

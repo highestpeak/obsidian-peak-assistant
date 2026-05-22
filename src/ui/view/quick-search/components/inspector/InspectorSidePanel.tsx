@@ -17,7 +17,7 @@ const CollapsibleSection: React.FC<{
 		<div className="pktw-border-b pktw-border-pk-border">
 			<div
 				onClick={() => setOpen(!open)}
-				className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-4 pktw-py-2 pktw-cursor-pointer hover:pktw-bg-[#fafafa]"
+				className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-4 pktw-py-2 pktw-cursor-pointer hover:pktw-bg-pk-surface-raised"
 			>
 				{open
 					? <ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />

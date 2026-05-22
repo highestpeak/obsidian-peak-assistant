@@ -76,48 +76,60 @@ export function useLensLayout(graphData: LensGraphData | null, lens: LensType) {
 			return { nodes: [] as LensNode[], edges: [] as LensEdge[] };
 		}
 
+		// Deduplicate nodes by path to prevent overlapping at same position
+		const seenPaths = new Set<string>();
+		const dedupedNodeData = graphData.nodes.filter(n => {
+			if (seenPaths.has(n.path)) return false;
+			seenPaths.add(n.path);
+			return true;
+		});
+		const dedupedGraphData = dedupedNodeData.length < graphData.nodes.length
+			? { ...graphData, nodes: dedupedNodeData }
+			: graphData;
+
 		let layoutResult: { positions: Map<string, { x: number; y: number }>; [key: string]: unknown };
 		let filteredEdges: RawEdge[];
 
 		switch (lens) {
 			case 'thinking-tree':
-				filteredEdges = graphData.edges;
+				filteredEdges = dedupedGraphData.edges;
 				layoutResult = computeTreeLayout({
-					nodes: graphData.nodes,
+					nodes: dedupedGraphData.nodes,
 					edges: filteredEdges,
 				});
 				break;
 			case 'bridge':
-				filteredEdges = graphData.edges.filter((e) => e.kind === 'cross-domain');
+				filteredEdges = dedupedGraphData.edges.filter((e) => e.kind === 'cross-domain');
 				layoutResult = computeBridgeLayout({
-					nodes: graphData.nodes,
+					nodes: dedupedGraphData.nodes,
 					edges: filteredEdges,
-					clusters: graphData.clusters,
-					bridges: graphData.bridges,
+					clusters: dedupedGraphData.clusters,
+					bridges: dedupedGraphData.bridges,
 				});
 				break;
 			case 'timeline':
-				filteredEdges = graphData.edges.filter((e) => e.kind === 'temporal');
+				filteredEdges = dedupedGraphData.edges.filter((e) => e.kind === 'temporal');
 				layoutResult = computeTimelineLayout({
-					nodes: graphData.nodes,
-					evolutionChains: graphData.evolutionChains,
+					nodes: dedupedGraphData.nodes,
+					evolutionChains: dedupedGraphData.evolutionChains,
 				});
 				break;
 			case 'gap-analysis': {
-				const gapResult = computeGapAnalysisLayout(graphData);
+				const gapResult = computeGapAnalysisLayout(dedupedGraphData);
+				resolveOverlaps(gapResult.nodes);
 				return { nodes: gapResult.nodes, edges: gapResult.edges };
 			}
 			case 'topology':
 			default:
-				filteredEdges = filterTopologyEdges(graphData.edges, graphData.nodes.length);
+				filteredEdges = filterTopologyEdges(dedupedGraphData.edges, dedupedGraphData.nodes.length);
 				layoutResult = computeTopologyLayout({
-					nodes: graphData.nodes,
+					nodes: dedupedGraphData.nodes,
 					edges: filteredEdges,
 				});
 				break;
 		}
 
-		const nodes: LensNode[] = graphData.nodes.map((n) => ({
+		const nodes: LensNode[] = dedupedGraphData.nodes.map((n) => ({
 			id: n.path,
 			type: 'lensNode' as const,
 			position: layoutResult.positions.get(n.path) ?? { x: 0, y: 0 },

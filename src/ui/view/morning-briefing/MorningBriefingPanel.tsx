@@ -58,17 +58,17 @@ export const MorningBriefingPanel: React.FC<{ onDismiss: () => void }> = ({ onDi
 			{/* Header */}
 			<div className="pktw-flex pktw-items-center">
 				<div className="pktw-flex pktw-items-center pktw-gap-2">
-					<Sun className="pktw-h-5 pktw-w-5" style={{ color: 'var(--text-accent)' }} />
+					<Sun className="pktw-h-5 pktw-w-5" style={{ color: 'var(--pk-accent-text)' }} />
 					<span
 						className="pktw-text-lg pktw-font-semibold"
-						style={{ color: 'var(--text-normal)' }}
+						style={{ color: 'var(--pk-text-primary)' }}
 					>
 						Today's Briefing
 					</span>
 				</div>
 			</div>
 
-			<span className="pktw-text-xs" style={{ color: 'var(--text-muted)' }}>
+			<span className="pktw-text-xs" style={{ color: 'var(--pk-text-secondary)' }}>
 				{items.length} {items.length === 1 ? 'item' : 'items'} to review
 			</span>
 
@@ -84,16 +84,16 @@ export const MorningBriefingPanel: React.FC<{ onDismiss: () => void }> = ({ onDi
 						<div className="pktw-flex pktw-items-center pktw-gap-1.5">
 							<CatIcon
 								className="pktw-h-3.5 pktw-w-3.5"
-								style={{ color: 'var(--text-accent)' }}
+								style={{ color: 'var(--pk-accent-text)' }}
 							/>
 							<span
 								className="pktw-text-xs pktw-font-medium pktw-uppercase pktw-tracking-wide"
-								style={{ color: 'var(--text-muted)' }}
+								style={{ color: 'var(--pk-text-secondary)' }}
 							>
 								{meta.label}
 							</span>
 						</div>
-						<span className="pktw-text-xs" style={{ color: 'var(--text-faint)' }}>
+						<span className="pktw-text-xs" style={{ color: 'var(--pk-text-tertiary)' }}>
 							{meta.description}
 						</span>
 						<div className="pktw-flex pktw-flex-col pktw-gap-1.5">

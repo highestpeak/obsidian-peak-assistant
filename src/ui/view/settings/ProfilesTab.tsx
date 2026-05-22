@@ -188,7 +188,7 @@ export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
                                     <div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-w-full">
                                         <div className="pktw-flex pktw-items-center pktw-gap-2">
                                             <input type="range" step="0.1" min="0" max="2"
-                                                className="pktw-flex-1 pktw-h-1.5 pktw-accent-[var(--interactive-accent)]"
+                                                className="pktw-flex-1 pktw-h-1.5 pktw-accent-[var(--pk-accent)]"
                                                 value={outputControl.temperature ?? 1}
                                                 onChange={(e) => updateOutputControl('temperature', parseFloat(e.target.value))}
                                             />
@@ -203,7 +203,7 @@ export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
                                     <div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-w-full">
                                         <div className="pktw-flex pktw-items-center pktw-gap-2">
                                             <input type="range" step="0.05" min="0" max="1"
-                                                className="pktw-flex-1 pktw-h-1.5 pktw-accent-[var(--interactive-accent)]"
+                                                className="pktw-flex-1 pktw-h-1.5 pktw-accent-[var(--pk-accent)]"
                                                 value={outputControl.topP ?? 0.9}
                                                 onChange={(e) => updateOutputControl('topP', parseFloat(e.target.value))}
                                             />

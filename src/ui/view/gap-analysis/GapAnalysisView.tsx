@@ -127,7 +127,7 @@ function GapAnalysisHeader({
 }) {
 	return (
 		<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-2 pktw-border-b pktw-border-pk-border">
-			<span className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338]">
+			<span className="pktw-text-sm pktw-font-medium pktw-text-pk-text-primary">
 				Gap Analysis
 			</span>
 			<Button

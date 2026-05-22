@@ -93,7 +93,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	useEffect(() => {
 		const id = setTimeout(() => rfInstance.current?.fitView({ padding: 0.15 }), 50);
 		return () => clearTimeout(id);
-	}, [activeLens]);
+	}, [activeLens, layoutNodes]);
 
 	const handleLensSwitch = useCallback(
 		(lens: LensType) => {
@@ -125,7 +125,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 								) : (
 									<div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-border pktw-border-pk-border pktw-shrink-0" />
 								)}
-								<span className={cn('pktw-text-xs', s.status === 'done' ? 'pktw-text-pk-foreground-muted' : 'pktw-text-[#2e3338]')}>
+								<span className={cn('pktw-text-xs', s.status === 'done' ? 'pktw-text-pk-foreground-muted' : 'pktw-text-pk-text-primary')}>
 									{s.label}
 								</span>
 								{s.detail && (
@@ -156,7 +156,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 					variant="ghost"
 					size="sm"
 					onClick={onRequestGenerate}
-					className="pktw-gap-1.5 pktw-border pktw-border-[#7c3aed]/30 pktw-bg-transparent pktw-text-pk-accent hover:pktw-bg-[#7c3aed]/10 hover:pktw-border-[#7c3aed]/50 hover:pktw-text-pk-accent"
+					className="pktw-gap-1.5 pktw-border pktw-border-pk-accent/30 pktw-bg-transparent pktw-text-pk-accent hover:pktw-bg-pk-accent/10 hover:pktw-border-pk-accent/50 hover:pktw-text-pk-accent"
 					style={{ cursor: 'pointer' }}
 				>
 					<Network className="pktw-w-3.5 pktw-h-3.5" />
@@ -235,9 +235,9 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 					minZoom={0.3}
 					maxZoom={3}
 				>
-					<Background color="#f3f4f6" gap={20} />
+					<Background color="var(--pk-surface-sunken)" gap={20} />
 					{showControls && <Controls />}
-					{showMiniMap && <MiniMap nodeColor="#e9d5ff" maskColor="rgba(255,255,255,0.7)" style={{ backgroundColor: '#fafafa' }} />}
+					{showMiniMap && <MiniMap nodeColor="var(--pk-accent-soft)" maskColor="rgba(255,255,255,0.7)" style={{ backgroundColor: 'var(--pk-surface-raised)' }} />}
 				</ReactFlow>
 			</div>
 			{graphData?.insights?.[activeLens === 'bridge' ? 'bridges' : activeLens as 'topology' | 'timeline'] && (

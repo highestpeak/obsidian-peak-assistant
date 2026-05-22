@@ -29,24 +29,24 @@ export const BriefingCard: React.FC<BriefingCardProps> = ({ item }) => {
 
 	return (
 		<div
-			className="pktw-group pktw-flex pktw-items-start pktw-gap-2.5 pktw-rounded-md pktw-border pktw-p-3 pktw-transition-colors hover:pktw-bg-[var(--background-modifier-hover)]"
-			style={{ borderColor: 'var(--background-modifier-border)' }}
+			className="pktw-group pktw-flex pktw-items-start pktw-gap-2.5 pktw-rounded-md pktw-border pktw-p-3 pktw-transition-colors hover:pktw-bg-[var(--pk-state-hover)]"
+			style={{ borderColor: 'var(--pk-border)' }}
 		>
 			<Icon
 				className="pktw-mt-0.5 pktw-h-4 pktw-w-4 pktw-shrink-0"
-				style={{ color: 'var(--text-accent)' }}
+				style={{ color: 'var(--pk-accent-text)' }}
 			/>
 			<div className="pktw-flex-1 pktw-min-w-0">
 				<span
 					className="pktw-block pktw-cursor-pointer pktw-truncate pktw-text-sm pktw-font-medium"
-					style={{ color: 'var(--text-normal)' }}
+					style={{ color: 'var(--pk-text-primary)' }}
 					onClick={handleOpen}
 				>
 					{item.title}
 				</span>
 				<span
 					className="pktw-mt-0.5 pktw-block pktw-text-xs"
-					style={{ color: 'var(--text-muted)' }}
+					style={{ color: 'var(--pk-text-secondary)' }}
 				>
 					{item.reason}
 				</span>

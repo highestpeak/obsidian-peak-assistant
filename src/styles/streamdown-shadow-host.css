@@ -2,6 +2,40 @@
  * Shadow DOM host styles for Streamdown isolation.
  * Injected first into the Shadow Root; read and concatenated by scripts/concat-css.mjs.
  * Aligned with https://streamdown.ai/docs/styling (CSS variables + data-streamdown selectors).
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Phase 5 boundary note (per spec docs/superpowers/specs/2026-05-22-*):
+ *
+ * Streamdown intentionally lives in its own token namespace (shadcn-style HSL
+ * `--background` / `--foreground` / etc.) and does NOT consume `--pk-*` tokens
+ * directly. Reason: Streamdown is a vendored library following its own theming
+ * contract; rewriting it would invite regressions in markdown rendering.
+ *
+ * For visual coherence with the rest of the plugin, the shadcn tokens defined
+ * below should stay roughly in lockstep with the peak tokens per this mapping:
+ *
+ *   ┌─────────────────────────────┬───────────────────────────────┐
+ *   │ Streamdown (shadcn HSL)     │ Peak equivalent (peak-tokens) │
+ *   ├─────────────────────────────┼───────────────────────────────┤
+ *   │ --background                │ --pk-surface                  │
+ *   │ --foreground                │ --pk-text-primary             │
+ *   │ --card / --card-foreground  │ --pk-surface / --pk-text-primary │
+ *   │ --popover                   │ --pk-surface-overlay          │
+ *   │ --primary                   │ --pk-accent (brand purple)    │
+ *   │ --secondary                 │ --pk-surface-sunken           │
+ *   │ --muted / --muted-foreground│ --pk-surface-sunken / --pk-text-secondary │
+ *   │ --accent                    │ --pk-surface-sunken (subtle hover) │
+ *   │ --destructive               │ --pk-error                    │
+ *   │ --border / --input          │ --pk-border                   │
+ *   │ --ring                      │ --pk-accent                   │
+ *   │ --radius                    │ --pk-radius-md (8px)          │
+ *   └─────────────────────────────┴───────────────────────────────┘
+ *
+ * When peak tokens change, eyeball the markdown surface (chat / analysis / insights)
+ * in both light + dark to confirm streamdown still feels "of the same family".
+ * Two systems will never match exactly — that's accepted, the mapping is for
+ * "close enough" coherence.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 :host {

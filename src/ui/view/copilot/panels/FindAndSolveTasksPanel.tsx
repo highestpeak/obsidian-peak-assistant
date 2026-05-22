@@ -72,7 +72,7 @@ export const FindAndSolveTasksPanel: React.FC<FindAndSolveTasksPanelProps> = ({
 
 	const formatConfidence = (confidence: number) => {
 		const pct = Math.round(confidence * 100);
-		if (pct >= 80) return { label: `${pct}%`, className: 'pktw-text-[var(--pk-success,#22c55e)]' };
+		if (pct >= 80) return { label: `${pct}%`, className: 'pktw-text-[var(--pk-success)]' };
 		if (pct >= 50) return { label: `${pct}%`, className: 'pktw-text-accent' };
 		return { label: `${pct}%`, className: 'pktw-text-muted-foreground' };
 	};
@@ -114,7 +114,7 @@ export const FindAndSolveTasksPanel: React.FC<FindAndSolveTasksPanelProps> = ({
 								<div className="pktw-px-3.5 pktw-py-2.5 pktw-bg-secondary pktw-border-b pktw-border-border">
 									<div className="pktw-flex pktw-items-start pktw-gap-2">
 										<CheckCircle2 className={`pktw-w-3.5 pktw-h-3.5 pktw-flex-shrink-0 pktw-mt-0.5 ${
-											isDone ? 'pktw-text-[var(--pk-success,#22c55e)]' : 'pktw-text-muted-foreground'
+											isDone ? 'pktw-text-[var(--pk-success)]' : 'pktw-text-muted-foreground'
 										}`} />
 										<div className="pktw-flex-1 pktw-min-w-0">
 											<span className="pktw-text-[12px] pktw-font-semibold pktw-block">{task.taskText}</span>

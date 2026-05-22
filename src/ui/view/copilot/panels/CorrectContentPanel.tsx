@@ -8,9 +8,9 @@ import type { CorrectContentResult } from '@/service/copilot/copilot-schemas';
 import { ShieldCheck, Check, X, AlertCircle, AlertTriangle, Info, type LucideIcon } from 'lucide-react';
 
 const SEVERITY_CONFIG: Record<string, { icon: LucideIcon; label: string; bg: string; text: string }> = {
-	critical: { icon: AlertCircle, label: 'Critical', bg: 'pktw-bg-[var(--pk-error,#ef4444)]/10', text: 'pktw-text-[var(--pk-error,#ef4444)]' },
-	major: { icon: AlertTriangle, label: 'Major', bg: 'pktw-bg-[var(--pk-warning,#f59e0b)]/10', text: 'pktw-text-[var(--pk-warning,#f59e0b)]' },
-	minor: { icon: Info, label: 'Minor', bg: 'pktw-bg-[var(--pk-info,#3b82f6)]/10', text: 'pktw-text-[var(--pk-info,#3b82f6)]' },
+	critical: { icon: AlertCircle, label: 'Critical', bg: 'pktw-bg-[var(--pk-error)]/10', text: 'pktw-text-[var(--pk-error)]' },
+	major: { icon: AlertTriangle, label: 'Major', bg: 'pktw-bg-[var(--pk-warning)]/10', text: 'pktw-text-[var(--pk-warning)]' },
+	minor: { icon: Info, label: 'Minor', bg: 'pktw-bg-[var(--pk-info)]/10', text: 'pktw-text-[var(--pk-info)]' },
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -125,7 +125,7 @@ export const CorrectContentPanel: React.FC<CorrectContentPanelProps> = ({
 								{decision && (
 									<span className={`pktw-ml-auto pktw-text-[9px] pktw-font-semibold pktw-px-1.5 pktw-py-0.5 pktw-rounded ${
 										decision === 'accepted'
-											? 'pktw-bg-[var(--pk-success,#22c55e)]/10 pktw-text-[var(--pk-success,#22c55e)]'
+											? 'pktw-bg-[var(--pk-success)]/10 pktw-text-[var(--pk-success)]'
 											: 'pktw-bg-muted pktw-text-muted-foreground'
 									}`}>
 										{decision === 'accepted' ? 'Applied' : 'Skipped'}
@@ -136,12 +136,12 @@ export const CorrectContentPanel: React.FC<CorrectContentPanelProps> = ({
 								{/* Before/After */}
 								<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-mb-2">
 									<div className="pktw-flex pktw-items-start pktw-gap-2">
-										<span className="pktw-text-[9px] pktw-font-semibold pktw-uppercase pktw-text-[var(--pk-error,#ef4444)] pktw-flex-shrink-0 pktw-mt-0.5 pktw-w-10">Before</span>
-										<span className="pktw-text-[11px] pktw-leading-relaxed pktw-p-1.5 pktw-rounded pktw-bg-[var(--pk-error,#ef4444)]/5 pktw-flex-1 pktw-line-through">{correction.original}</span>
+										<span className="pktw-text-[9px] pktw-font-semibold pktw-uppercase pktw-text-[var(--pk-error)] pktw-flex-shrink-0 pktw-mt-0.5 pktw-w-10">Before</span>
+										<span className="pktw-text-[11px] pktw-leading-relaxed pktw-p-1.5 pktw-rounded pktw-bg-[var(--pk-error)]/5 pktw-flex-1 pktw-line-through">{correction.original}</span>
 									</div>
 									<div className="pktw-flex pktw-items-start pktw-gap-2">
-										<span className="pktw-text-[9px] pktw-font-semibold pktw-uppercase pktw-text-[var(--pk-success,#22c55e)] pktw-flex-shrink-0 pktw-mt-0.5 pktw-w-10">After</span>
-										<span className="pktw-text-[11px] pktw-leading-relaxed pktw-p-1.5 pktw-rounded pktw-bg-[var(--pk-success,#22c55e)]/5 pktw-flex-1">{correction.corrected}</span>
+										<span className="pktw-text-[9px] pktw-font-semibold pktw-uppercase pktw-text-[var(--pk-success)] pktw-flex-shrink-0 pktw-mt-0.5 pktw-w-10">After</span>
+										<span className="pktw-text-[11px] pktw-leading-relaxed pktw-p-1.5 pktw-rounded pktw-bg-[var(--pk-success)]/5 pktw-flex-1">{correction.corrected}</span>
 									</div>
 								</div>
 								{/* Explanation */}
@@ -150,7 +150,7 @@ export const CorrectContentPanel: React.FC<CorrectContentPanelProps> = ({
 								{!decision && (
 									<div className="pktw-flex pktw-gap-2 pktw-mt-2">
 										<span
-											className="pktw-text-[10px] pktw-font-semibold pktw-px-2.5 pktw-py-1 pktw-rounded pktw-border pktw-border-[var(--pk-success,#22c55e)] pktw-bg-[var(--pk-success,#22c55e)]/10 pktw-text-[var(--pk-success,#22c55e)] pktw-cursor-pointer hover:pktw-bg-[var(--pk-success,#22c55e)] hover:pktw-text-white pktw-transition-all pktw-inline-flex pktw-items-center pktw-gap-1"
+											className="pktw-text-[10px] pktw-font-semibold pktw-px-2.5 pktw-py-1 pktw-rounded pktw-border pktw-border-[var(--pk-success)] pktw-bg-[var(--pk-success)]/10 pktw-text-[var(--pk-success)] pktw-cursor-pointer hover:pktw-bg-[var(--pk-success)] hover:pktw-text-white pktw-transition-all pktw-inline-flex pktw-items-center pktw-gap-1"
 											onClick={() => handleAccept(i)}
 										>
 											<Check className="pktw-w-3 pktw-h-3" /> Accept

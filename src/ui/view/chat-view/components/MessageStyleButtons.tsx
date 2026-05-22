@@ -17,7 +17,7 @@ export const MessageStyleButtons: React.FC<Props> = ({ onStyleSelect }) => (
     {STYLES.map(s => (
       <span
         key={s.label}
-        className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-rounded pktw-border pktw-border-border pktw-bg-background pktw-text-muted-foreground pktw-text-[10px] pktw-cursor-pointer hover:pktw-border-[var(--pk-accent,#6d28d9)] hover:pktw-text-[var(--pk-accent,#6d28d9)] hover:pktw-bg-accent/10 pktw-transition-all"
+        className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-rounded pktw-border pktw-border-border pktw-bg-background pktw-text-muted-foreground pktw-text-[10px] pktw-cursor-pointer hover:pktw-border-[var(--pk-accent)] hover:pktw-text-[var(--pk-accent)] hover:pktw-bg-accent/10 pktw-transition-all"
         onClick={() => onStyleSelect(s.prompt)}
       >
         <s.icon className="pktw-w-3 pktw-h-3" />

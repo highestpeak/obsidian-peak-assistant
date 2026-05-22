@@ -1,5 +1,5 @@
-import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, keymap } from "@codemirror/view";
-import { RangeSetBuilder } from "@codemirror/state";
+import { Decoration, DecorationSet, EditorView } from "@codemirror/view";
+import { RangeSetBuilder, StateField } from "@codemirror/state";
 import { parseTagsFromText } from "../mine/tagParser";
 
 const contextTagDeco = Decoration.mark({
@@ -18,52 +18,37 @@ const searchTagDeco = Decoration.mark({
 	class: "cm-search-tag"
 });
 
-const tagPlugin = ViewPlugin.fromClass(class {
-	decorations: DecorationSet;
-
-	constructor(view: EditorView) {
-		this.decorations = this.buildDeco(view);
-	}
-
-	update(update: ViewUpdate) {
-		if (update.docChanged || update.viewportChanged) {
-			this.decorations = this.buildDeco(update.view);
+function buildTagDecorations(docText: string): DecorationSet {
+	const builder = new RangeSetBuilder<Decoration>();
+	for (const tag of parseTagsFromText(docText)) {
+		let deco;
+		switch (tag.type) {
+			case 'context':
+				deco = contextTagDeco;
+				break;
+			case 'prompt':
+				deco = promptTagDeco;
+				break;
+			case 'search':
+				deco = searchTagDeco;
+				break;
+			default:
+				deco = contextTagDeco;
 		}
+		builder.add(tag.start, tag.end, deco);
 	}
+	return builder.finish();
+}
 
-	buildDeco(view: EditorView) {
-		const builder = new RangeSetBuilder<Decoration>();
-
-		for (let { from, to } of view.visibleRanges) {
-			const text = view.state.doc.sliceString(from, to);
-
-			// Use shared parsing logic (already filtered and sorted)
-			const parsedTags = parseTagsFromText(text);
-
-			// Convert to decoration format and adjust positions
-			for (const tag of parsedTags) {
-				let deco;
-				switch (tag.type) {
-					case 'context':
-						deco = contextTagDeco;
-						break;
-					case 'prompt':
-						deco = promptTagDeco;
-						break;
-					case 'search':
-						deco = searchTagDeco;
-						break;
-					default:
-						deco = contextTagDeco;
-				}
-				builder.add(from + tag.start, from + tag.end, deco);
-			}
-		}
-
-		return builder.finish();
-	}
-}, {
-	decorations: v => v.decorations
+const tagPlugin = StateField.define<DecorationSet>({
+	create(state) {
+		return buildTagDecorations(state.doc.toString());
+	},
+	update(decorations, transaction) {
+		if (!transaction.docChanged) return decorations.map(transaction.changes);
+		return buildTagDecorations(transaction.state.doc.toString());
+	},
+	provide: field => EditorView.decorations.from(field),
 });
 
 

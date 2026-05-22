@@ -20,7 +20,7 @@ settings:
     type: variable-themed-color
     format: hex
     default-light: '#6d28d9'
-    default-dark: '#8b5cf6'
+    default-dark: '#c4b5fd'
   -
     id: pk-success
     title: Success

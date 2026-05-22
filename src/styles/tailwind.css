@@ -4,12 +4,18 @@
   todo we should define our own themes to revert obsidian's default themes.
 */
 
-@import "./peak-variables.css";
+@import "./peak-tokens.css";       /* Phase 1 真源（必须先于 alias 壳） */
+@import "./peak-variables.css";    /* 历史别名 alias 壳，待 Phase 3 后删 */
 @import "./peak-style-settings.css";
+@import "./obsidian-reset.css";
+@import "./vault-review.css";
 
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+
+/* React Flow base styles (required for graph rendering) */
+@import "@xyflow/react/dist/base.css";
 
 /* ═══════════════════════════════════════════════════════════
    Style Isolation Reset — scoped to .pktw-root
@@ -158,6 +164,11 @@
 		opacity: 1;
 		transform: translateY(0);
 	}
+}
+
+/* Agent trace step entrance animation */
+.pktw-trace-enter {
+	animation: fadeInSlide 240ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 /* Icon */

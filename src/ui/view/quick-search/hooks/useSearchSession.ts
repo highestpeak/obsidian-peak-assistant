@@ -44,12 +44,19 @@ export const sessionRefs = {
 
 /**
  * Persist the current foreground session to vault.
- * Called at completion milestones (plan ready / fully complete).
+ * Called at completion milestones (plan ready / fully complete) and after
+ * on-demand graph generation (so the saved markdown captures the graph).
  * Updates the store's autoSaveState with the saved path.
+ *
+ * If existingPath is not supplied, falls back to autoSaveState.lastSavedPath
+ * then restoredFromVaultPath, so re-saves after restoring from history
+ * overwrite the original markdown instead of creating a new file.
  */
-function persistForegroundSession(existingPath?: string | null): void {
+export function persistForegroundSession(existingPath?: string | null): void {
 	const store = useSearchSessionStore.getState();
 	const snapshot = snapshotFromState(store);
+	const resolvedExistingPath =
+		existingPath ?? store.autoSaveState?.lastSavedPath ?? store.restoredFromVaultPath ?? null;
 
 	// Capture graph JSON from foreground-only stores (not in V2SessionSnapshot)
 	let graphJson: string | null = null;
@@ -70,7 +77,7 @@ function persistForegroundSession(existingPath?: string | null): void {
 		}
 	} catch { /* graph stores not available */ }
 
-	void persistSessionToVault(snapshot, { existingPath, graphJson }).then((result) => {
+	void persistSessionToVault(snapshot, { existingPath: resolvedExistingPath, graphJson }).then((result) => {
 		if (result) {
 			useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });
 		}
@@ -234,6 +241,8 @@ export function useSearchSession() {
 
 				useAIGraphStore.getState().setLoading(false);
 				store.getState().markCompleted();
+				// Persist graph to markdown — aiGraph mode produces the graph as its primary result
+				persistForegroundSession();
 				return;
 			}
 

@@ -68,7 +68,7 @@ export const ChatInputAreaComponent: React.FC = () => {
 		handleTextChange,
 	} = useInputSubmit();
 
-	const { menuContextItems, folderStack, handleSearchContext, handleSearchPrompts, handleMenuSelect, handleFolderUp } = useContextSearch();
+	const { menuContextItems, folderStack, handleSearchContext, handleMenuSelect, handleFolderUp } = useContextSearch();
 	useInputKeyboard(textareaRef, activeConversation?.meta?.id ?? null);
 
 	return (
@@ -76,7 +76,7 @@ export const ChatInputAreaComponent: React.FC = () => {
 			<PromptInput
 				className={cn(
 					'pktw-flex pktw-flex-col pktw-w-full pktw-border pktw-rounded-lg',
-					'pktw-border-[var(--background-modifier-border)]',
+					'pktw-border-[var(--pk-border)]',
 					'pktw-shadow-[0_0_0_2px_rgba(59,130,246,0.1)]',
 					'focus-within:pktw-border-accent focus-within:pktw-shadow-[0_0_0_4px_rgba(59,130,246,0.4)]',
 				)}
@@ -85,9 +85,7 @@ export const ChatInputAreaComponent: React.FC = () => {
 				inputFocusRef={inputFocusRef}
 				onSubmit={handleSubmit}
 				contextItems={menuContextItems}
-				promptItems={store.promptsSuggest}
 				onLoadContextItems={handleSearchContext}
-				onLoadPromptItems={handleSearchPrompts}
 				onMenuItemSelect={handleMenuSelect}
 				folderStack={folderStack}
 				onFolderUp={handleFolderUp}

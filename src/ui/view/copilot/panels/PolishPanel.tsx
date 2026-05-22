@@ -83,13 +83,13 @@ export const PolishPanel: React.FC<PolishPanelProps> = ({
           </div>
         )}
         <div className="pktw-space-y-3">
-          <div className="pktw-flex pktw-items-center pktw-gap-3 pktw-text-xs pktw-text-[var(--text-muted)]">
+          <div className="pktw-flex pktw-items-center pktw-gap-3 pktw-text-xs pktw-text-[var(--pk-text-secondary)]">
             <span className="pktw-inline-flex pktw-items-center pktw-gap-1">
-              <span className="pktw-w-2 pktw-h-2 pktw-rounded-full pktw-bg-[var(--pk-error,#ef4444)]" />
+              <span className="pktw-w-2 pktw-h-2 pktw-rounded-full pktw-bg-[var(--pk-error)]" />
               Removed
             </span>
             <span className="pktw-inline-flex pktw-items-center pktw-gap-1">
-              <span className="pktw-w-2 pktw-h-2 pktw-rounded-full pktw-bg-[var(--pk-success,#22c55e)]" />
+              <span className="pktw-w-2 pktw-h-2 pktw-rounded-full pktw-bg-[var(--pk-success)]" />
               Added
             </span>
           </div>

@@ -33,9 +33,9 @@ export const AmbientPushPanel: React.FC = () => {
 		<div className="pktw-flex pktw-h-full pktw-flex-col">
 			{/* Header */}
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-border-b pktw-px-3 pktw-py-2"
-				style={{ borderColor: 'var(--background-modifier-border)' }}>
-				<Zap className="pktw-h-4 pktw-w-4" style={{ color: 'var(--text-accent)' }} />
-				<span className="pktw-flex-1 pktw-text-sm pktw-font-medium" style={{ color: 'var(--text-normal)' }}>
+				style={{ borderColor: 'var(--pk-border)' }}>
+				<Zap className="pktw-h-4 pktw-w-4" style={{ color: 'var(--pk-accent-text)' }} />
+				<span className="pktw-flex-1 pktw-text-sm pktw-font-medium" style={{ color: 'var(--pk-text-primary)' }}>
 					Related Notes
 				</span>
 				<Button variant="ghost" size="xs" onClick={handleRefresh} title="Refresh">
@@ -46,8 +46,8 @@ export const AmbientPushPanel: React.FC = () => {
 			{/* Content */}
 			{items.length === 0 ? (
 				<div className="pktw-flex pktw-flex-1 pktw-flex-col pktw-items-center pktw-justify-center pktw-gap-2 pktw-px-4">
-					<Zap className="pktw-h-8 pktw-w-8 pktw-opacity-20" style={{ color: 'var(--text-faint)' }} />
-					<span className="pktw-text-center pktw-text-xs" style={{ color: 'var(--text-faint)' }}>
+					<Zap className="pktw-h-8 pktw-w-8 pktw-opacity-20" style={{ color: 'var(--pk-text-tertiary)' }} />
+					<span className="pktw-text-center pktw-text-xs" style={{ color: 'var(--pk-text-tertiary)' }}>
 						Start writing to see related notes
 					</span>
 				</div>
@@ -62,11 +62,11 @@ export const AmbientPushPanel: React.FC = () => {
 			{/* Footer */}
 			{items.length > 0 && (
 				<div className="pktw-flex pktw-items-center pktw-justify-between pktw-border-t pktw-px-3 pktw-py-1.5"
-					style={{ borderColor: 'var(--background-modifier-border)' }}>
-					<span className="pktw-text-xs" style={{ color: 'var(--text-faint)' }}>
+					style={{ borderColor: 'var(--pk-border)' }}>
+					<span className="pktw-text-xs" style={{ color: 'var(--pk-text-tertiary)' }}>
 						{items.length} {items.length === 1 ? 'note' : 'notes'}
 					</span>
-					<span className="pktw-text-xs" style={{ color: 'var(--text-faint)' }}>
+					<span className="pktw-text-xs" style={{ color: 'var(--pk-text-tertiary)' }}>
 						{formatElapsed(lastUpdateTs)}
 					</span>
 				</div>

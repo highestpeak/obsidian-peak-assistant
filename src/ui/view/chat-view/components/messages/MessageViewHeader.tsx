@@ -96,7 +96,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 					fontSize: 'var(--font-ui-large)',
 					width: 'fit-content',
 					color: '#0000',
-					background: 'linear-gradient(90deg, #3b82f6 33%, #10b981 0 66%, #8b5cf6 0) 0 0/400% 100%',
+					background: 'linear-gradient(90deg, var(--pk-info) 33%, var(--pk-success-text) 0 66%, var(--pk-accent) 0) 0 0/400% 100%',
 					backgroundClip: 'text',
 					WebkitBackgroundClip: 'text',
 					animation: 'scanEffect 5s infinite cubic-bezier(0.3, 1, 0, 1)',

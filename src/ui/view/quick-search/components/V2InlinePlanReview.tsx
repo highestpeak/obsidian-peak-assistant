@@ -33,13 +33,13 @@ const SectionCard: React.FC<{
 		<div className="pktw-flex pktw-flex-col pktw-gap-0 pktw-shrink-0 pktw-pt-0.5">
 			<div
 				onClick={() => onMove(sec.id, -1)}
-				className={`pktw-p-0.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors ${index === 0 ? 'pktw-text-[#e5e7eb]' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted'}`}
+				className={`pktw-p-0.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors ${index === 0 ? 'pktw-text-pk-border' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted'}`}
 			>
 				<ChevronUp className="pktw-w-3 pktw-h-3" />
 			</div>
 			<div
 				onClick={() => onMove(sec.id, 1)}
-				className={`pktw-p-0.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors ${index === total - 1 ? 'pktw-text-[#e5e7eb]' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted'}`}
+				className={`pktw-p-0.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors ${index === total - 1 ? 'pktw-text-pk-border' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted'}`}
 			>
 				<ChevronDown className="pktw-w-3 pktw-h-3" />
 			</div>
@@ -47,7 +47,7 @@ const SectionCard: React.FC<{
 		{/* Content */}
 		<div className="pktw-flex-1 pktw-min-w-0">
 			<span
-				className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-block pktw-mb-0.5 pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-pk-border hover:pktw-bg-pk-background focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-pk-background focus:pktw-border-[#7c3aed]/30 pktw-cursor-text pktw-transition-all"
+				className="pktw-text-sm pktw-font-medium pktw-text-pk-text-primary pktw-block pktw-mb-0.5 pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-pk-border hover:pktw-bg-pk-background focus:pktw-ring-1 focus:pktw-ring-pk-accent/40 focus:pktw-bg-pk-background focus:pktw-border-pk-accent/30 pktw-cursor-text pktw-transition-all"
 				contentEditable
 				suppressContentEditableWarning
 				onBlur={(e) => {
@@ -67,7 +67,7 @@ const SectionCard: React.FC<{
 				<span className="pktw-text-[9px] pktw-text-pk-foreground-muted">{sec.evidencePaths.length} sources</span>
 			</div>
 			<span
-				className="pktw-text-xs pktw-text-pk-foreground-muted pktw-leading-relaxed pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-pk-border hover:pktw-bg-pk-background focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-pk-background focus:pktw-border-[#7c3aed]/30 pktw-cursor-text pktw-transition-all"
+				className="pktw-text-xs pktw-text-pk-foreground-muted pktw-leading-relaxed pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-pk-border hover:pktw-bg-pk-background focus:pktw-ring-1 focus:pktw-ring-pk-accent/40 focus:pktw-bg-pk-background focus:pktw-border-pk-accent/30 pktw-cursor-text pktw-transition-all"
 				contentEditable
 				suppressContentEditableWarning
 				onBlur={(e) => {
@@ -82,7 +82,7 @@ const SectionCard: React.FC<{
 		{/* Delete */}
 		<div
 			onClick={() => onRemove(sec.id)}
-			className="pktw-p-1 pktw-rounded pktw-text-[#e5e7eb] group-hover:pktw-text-pk-foreground-muted hover:!pktw-text-red-500 pktw-cursor-pointer pktw-transition-colors pktw-shrink-0"
+			className="pktw-p-1 pktw-rounded pktw-text-pk-border group-hover:pktw-text-pk-foreground-muted hover:!pktw-text-red-500 pktw-cursor-pointer pktw-transition-colors pktw-shrink-0"
 		>
 			<Trash2 className="pktw-w-3 pktw-h-3" />
 		</div>
@@ -97,13 +97,14 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 	const sections = useSearchSessionStore((s) => s.v2PlanSections);
 	const overview = useSearchSessionStore((s) => s.v2ProposedOutline);
 	const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
+	const restoredFromHistory = useSearchSessionStore((s) => s.restoredFromHistory);
 	const removePlanSection = useSearchSessionStore((s) => s.removePlanSection);
 	const reorderPlanSections = useSearchSessionStore((s) => s.reorderPlanSections);
 	const updatePlanSection = useSearchSessionStore((s) => s.updatePlanSection);
 	const addPlanSection = useSearchSessionStore((s) => s.addPlanSection);
 	const insights = useSearchSessionStore((s) => s.v2UserInsights);
 	const [insightInput, setInsightInput] = useState('');
-	const [expanded, setExpanded] = useState(!planApproved);
+	const [expanded, setExpanded] = useState(restoredFromHistory || !planApproved);
 
 	const moveSection = useCallback((id: string, direction: -1 | 1) => {
 		const ids = sections.map((s) => s.id);
@@ -136,7 +137,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 			{/* Collapsible Header */}
 			<div
 				onClick={() => setExpanded((prev) => !prev)}
-				className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-cursor-pointer pktw-select-none hover:pktw-bg-[#f3f4f6] pktw-rounded-t-lg pktw-transition-colors"
+				className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-cursor-pointer pktw-select-none hover:pktw-bg-pk-surface-sunken pktw-rounded-t-lg pktw-transition-colors"
 			>
 				<motion.div
 					animate={{ rotate: expanded ? 90 : 0 }}
@@ -145,7 +146,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 					<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
 				</motion.div>
 				<FileText className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
-				<span className="pktw-text-xs pktw-font-semibold pktw-text-[#2e3338]">Report Outline</span>
+				<span className="pktw-text-xs pktw-font-semibold pktw-text-pk-text-primary">Report Outline</span>
 				<span className="pktw-text-[10px] pktw-text-pk-foreground-muted">{sections.length} sections</span>
 				<div className="pktw-flex-1" />
 				{planApproved && (
@@ -166,9 +167,8 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 						transition={{ duration: 0.2, ease: 'easeInOut' }}
 						className="pktw-overflow-hidden"
 					>
-						<div className="pktw-flex pktw-flex-col pktw-max-h-[50vh]">
-							{/* Scrollable content area */}
-							<div className="pktw-flex-1 pktw-overflow-y-auto pktw-min-h-0 pktw-px-3">
+						<div className="pktw-flex pktw-flex-col">
+							<div className="pktw-px-3">
 								{/* Overview */}
 								{overview && (
 									<div className="pktw-bg-pk-background pktw-rounded-lg pktw-p-3 pktw-border pktw-border-pk-border pktw-mb-3">
@@ -179,7 +179,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 								)}
 
 								{/* Executive Summary marker */}
-								<div className="pktw-mb-2 pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-[#7c3aed]/30">
+								<div className="pktw-mb-2 pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-pk-accent/30">
 									<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5">
 										<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
 										<span className="pktw-text-xs pktw-font-semibold pktw-text-pk-accent">Executive Summary</span>
@@ -225,7 +225,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 													{!planApproved && (
 														<div
 															onClick={() => addPlanSection(role.key)}
-															className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1.5 pktw-px-3 pktw-text-[11px] pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-transition-colors"
+															className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1.5 pktw-px-3 pktw-text-[11px] pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-rounded-lg pktw-transition-colors"
 														>
 															<Plus className="pktw-w-3 pktw-h-3" />
 															<span>Add section</span>
@@ -275,7 +275,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 										{insights.map((insight, i) => (
 											<span
 												key={i}
-												className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2.5 pktw-py-1 pktw-text-xs pktw-bg-[#f5f3ff] pktw-text-pk-accent pktw-rounded-full pktw-border pktw-border-[#7c3aed]/20"
+												className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2.5 pktw-py-1 pktw-text-xs pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-rounded-full pktw-border pktw-border-pk-accent/20"
 											>
 												{insight}
 												<span
@@ -301,7 +301,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 											}
 										}}
 										placeholder="Add insight (Enter to add)..."
-										className="pktw-w-full pktw-px-3 pktw-py-2 pktw-text-sm pktw-border pktw-border-pk-border pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-[#7c3aed]/50 pktw-mb-2"
+										className="pktw-w-full pktw-px-3 pktw-py-2 pktw-text-sm pktw-border pktw-border-pk-border pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-pk-accent/50 pktw-mb-2"
 									/>
 								)}
 								{/* Generate button — only before approval */}

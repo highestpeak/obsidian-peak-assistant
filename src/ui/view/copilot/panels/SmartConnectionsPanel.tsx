@@ -70,7 +70,7 @@ export const SmartConnectionsPanel: React.FC<SmartConnectionsPanelProps> = ({
 
 	const formatScore = (score: number) => {
 		const pct = Math.round(score * 100);
-		if (pct >= 80) return { label: `${pct}%`, className: 'pktw-text-[var(--pk-success,#22c55e)]' };
+		if (pct >= 80) return { label: `${pct}%`, className: 'pktw-text-[var(--pk-success)]' };
 		if (pct >= 50) return { label: `${pct}%`, className: 'pktw-text-accent' };
 		return { label: `${pct}%`, className: 'pktw-text-muted-foreground' };
 	};
@@ -116,7 +116,7 @@ export const SmartConnectionsPanel: React.FC<SmartConnectionsPanelProps> = ({
 							>
 								<div className={`pktw-w-4 pktw-h-4 pktw-rounded pktw-border-2 pktw-flex pktw-items-center pktw-justify-center pktw-flex-shrink-0 pktw-mt-0.5 pktw-transition-all ${
 									isInserted
-										? 'pktw-bg-[var(--pk-success,#22c55e)] pktw-border-[var(--pk-success,#22c55e)] pktw-text-white'
+										? 'pktw-bg-[var(--pk-success)] pktw-border-[var(--pk-success)] pktw-text-white'
 										: isChecked
 											? 'pktw-bg-accent pktw-border-accent pktw-text-white pktw-text-[10px]'
 											: 'pktw-border-border'

@@ -8,9 +8,9 @@ import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { HelpCircle, AlertTriangle, AlertCircle, Info, FilePlus, type LucideIcon } from 'lucide-react';
 
 const PRIORITY_CONFIG: Record<string, { icon: LucideIcon; label: string; bg: string; text: string; order: number }> = {
-	high: { icon: AlertTriangle, label: 'High', bg: 'pktw-bg-[var(--pk-error,#ef4444)]/10', text: 'pktw-text-[var(--pk-error,#ef4444)]', order: 0 },
-	medium: { icon: AlertCircle, label: 'Medium', bg: 'pktw-bg-[var(--pk-warning,#f59e0b)]/10', text: 'pktw-text-[var(--pk-warning,#f59e0b)]', order: 1 },
-	low: { icon: Info, label: 'Low', bg: 'pktw-bg-[var(--pk-info,#3b82f6)]/10', text: 'pktw-text-[var(--pk-info,#3b82f6)]', order: 2 },
+	high: { icon: AlertTriangle, label: 'High', bg: 'pktw-bg-[var(--pk-error)]/10', text: 'pktw-text-[var(--pk-error)]', order: 0 },
+	medium: { icon: AlertCircle, label: 'Medium', bg: 'pktw-bg-[var(--pk-warning)]/10', text: 'pktw-text-[var(--pk-warning)]', order: 1 },
+	low: { icon: Info, label: 'Low', bg: 'pktw-bg-[var(--pk-info)]/10', text: 'pktw-text-[var(--pk-info)]', order: 2 },
 };
 
 interface KnowledgeGapsPanelProps {

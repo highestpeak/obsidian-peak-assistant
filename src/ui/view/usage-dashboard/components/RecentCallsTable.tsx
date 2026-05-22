@@ -75,23 +75,23 @@ export function RecentCallsTable({ range }: RecentCallsTableProps) {
 	}, [fetchCalls]);
 
 	const thStyle: React.CSSProperties = {
-		color: 'var(--text-muted)',
-		borderBottom: '1px solid var(--background-modifier-border)',
+		color: 'var(--pk-text-secondary)',
+		borderBottom: '1px solid var(--pk-border)',
 	};
 
 	const tdStyle: React.CSSProperties = {
-		color: 'var(--text-normal)',
-		borderBottom: '1px solid var(--background-modifier-border)',
+		color: 'var(--pk-text-primary)',
+		borderBottom: '1px solid var(--pk-border)',
 	};
 
 	return (
 		<div
 			className="pktw-rounded-lg pktw-p-4"
-			style={{ backgroundColor: 'var(--background-secondary)', border: '1px solid var(--background-modifier-border)' }}
+			style={{ backgroundColor: 'var(--pk-bg-secondary)', border: '1px solid var(--pk-border)' }}
 		>
 			{/* Header + Filter */}
 			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-3">
-				<span className="pktw-text-sm pktw-font-medium" style={{ color: 'var(--text-normal)' }}>
+				<span className="pktw-text-sm pktw-font-medium" style={{ color: 'var(--pk-text-primary)' }}>
 					Recent Calls
 				</span>
 				<div className="pktw-flex pktw-gap-1">
@@ -111,11 +111,11 @@ export function RecentCallsTable({ range }: RecentCallsTableProps) {
 			{/* Table */}
 			{loading ? (
 				<div className="pktw-h-32 pktw-flex pktw-items-center pktw-justify-center">
-					<span className="pktw-text-xs" style={{ color: 'var(--text-muted)' }}>Loading...</span>
+					<span className="pktw-text-xs" style={{ color: 'var(--pk-text-secondary)' }}>Loading...</span>
 				</div>
 			) : calls.length === 0 ? (
 				<div className="pktw-h-32 pktw-flex pktw-items-center pktw-justify-center">
-					<span className="pktw-text-xs" style={{ color: 'var(--text-muted)' }}>No usage data yet</span>
+					<span className="pktw-text-xs" style={{ color: 'var(--pk-text-secondary)' }}>No usage data yet</span>
 				</div>
 			) : (
 				<div className="pktw-overflow-x-auto">

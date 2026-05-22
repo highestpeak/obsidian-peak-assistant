@@ -36,7 +36,7 @@ export const AIAnalysisErrorState: React.FC<{ error: string; onRetry: () => void
                 </div>
                 <div className="pktw-flex-1 pktw-min-w-0">
                     <div className="pktw-flex pktw-items-center pktw-gap-2">
-                        <span className="pktw-font-semibold pktw-text-[#2e3338] pktw-text-sm">
+                        <span className="pktw-font-semibold pktw-text-pk-text-primary pktw-text-sm">
                             Oops! Something went wrong
                         </span>
                         <Button
@@ -57,17 +57,17 @@ export const AIAnalysisErrorState: React.FC<{ error: string; onRetry: () => void
                             className="pktw-shadow-none pktw-shrink-0 pktw-p-1 pktw-h-7 pktw-w-7"
                             title={copied ? 'Copied!' : 'Copy error'}
                         >
-                            <Copy className={`pktw-w-3.5 pktw-h-3.5 ${copied ? 'pktw-text-green-600' : 'pktw-text-[#6c757d]'}`} />
+                            <Copy className={`pktw-w-3.5 pktw-h-3.5 ${copied ? 'pktw-text-green-600' : 'pktw-text-pk-text-secondary'}`} />
                         </Button>
                         <Button
                             style={{ cursor: 'pointer' }}
                             onClick={onRetry}
-                            className="pktw-shadow-none pktw-h-7 pktw-px-3 pktw-bg-pk-accent pktw-text-white hover:pktw-bg-[#6d28d9] !pktw-rounded-md pktw-text-xs"
+                            className="pktw-shadow-none pktw-h-7 pktw-px-3 pktw-bg-pk-accent pktw-text-white hover:pktw-bg-pk-accent-hover !pktw-rounded-md pktw-text-xs"
                         >
                             Try Again
                         </Button>
                     </div>
-                    <div className="pktw-text-xs pktw-text-[#6c757d] pktw-mt-1 pktw-line-clamp-2">
+                    <div className="pktw-text-xs pktw-text-pk-text-secondary pktw-mt-1 pktw-line-clamp-2">
                         {friendlyMessage}
                     </div>
                     {expanded ? (

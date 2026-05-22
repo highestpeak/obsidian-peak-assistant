@@ -163,7 +163,7 @@ export const HomeViewComponent: React.FC = () => {
 					{suggestionCards.map((card) => (
 						<div
 							key={card.label}
-							className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-3 pktw-rounded-lg pktw-border pktw-border-border pktw-bg-card hover:pktw-border-[var(--pk-accent,#6d28d9)] hover:pktw-bg-accent/5 pktw-cursor-pointer pktw-transition-all"
+							className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-3 pktw-rounded-lg pktw-border pktw-border-border pktw-bg-card hover:pktw-border-[var(--pk-accent)] hover:pktw-bg-accent/5 pktw-cursor-pointer pktw-transition-all"
 							onClick={card.action}
 						>
 							{card.icon}

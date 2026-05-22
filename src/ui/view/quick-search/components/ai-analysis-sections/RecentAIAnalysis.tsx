@@ -25,12 +25,12 @@ function PresetIcon({ mode, className }: { mode: AnalysisMode | null | undefined
 // Active Session Card (background sessions)
 // ---------------------------------------------------------------------------
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; spinning?: boolean }> = {
-    streaming: { label: 'Analyzing...', color: '#7c3aed', spinning: true },
-    'plan-ready': { label: 'Plan Ready', color: '#d97706' },
-    queued: { label: 'Queued', color: '#6b7280' },
-    completed: { label: 'Complete', color: '#059669' },
-    error: { label: 'Failed', color: '#dc2626' },
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; spinning?: boolean }> = {
+    streaming: { label: 'Analyzing...', color: 'var(--pk-accent)', bg: 'var(--pk-accent-tint)', spinning: true },
+    'plan-ready': { label: 'Plan Ready', color: 'var(--pk-warning-text)', bg: 'var(--pk-warning-bg)' },
+    queued: { label: 'Queued', color: 'var(--pk-text-secondary)', bg: 'var(--pk-surface-sunken)' },
+    completed: { label: 'Complete', color: 'var(--pk-success-text)', bg: 'var(--pk-success-bg)' },
+    error: { label: 'Failed', color: 'var(--pk-error-text)', bg: 'var(--pk-error-bg)' },
 };
 
 const ActiveSessionCard: React.FC<{
@@ -53,20 +53,20 @@ const ActiveSessionCard: React.FC<{
                 style={{ color: config.color }}
             />
             <div className="pktw-flex-1 pktw-min-w-0">
-                <span className="pktw-text-sm pktw-font-medium pktw-text-[#1f2937] pktw-truncate pktw-block">
+                <span className="pktw-text-sm pktw-font-medium pktw-text-pk-text-primary pktw-truncate pktw-block">
                     {session.title || session.query.slice(0, 60)}
                 </span>
                 <span className="pktw-text-xs pktw-text-pk-foreground-muted">{elapsedStr}</span>
             </div>
             <span
                 className="pktw-text-xs pktw-font-medium pktw-px-2 pktw-py-0.5 pktw-rounded-full"
-                style={{ color: config.color, backgroundColor: `${config.color}15` }}
+                style={{ color: config.color, backgroundColor: config.bg }}
             >
                 {config.label}
             </span>
             <span
                 onClick={(e) => { e.stopPropagation(); onCancel(session.id); }}
-                className="pktw-p-1 pktw-text-pk-foreground-muted hover:pktw-text-[#ef4444] pktw-rounded pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity pktw-cursor-pointer"
+                className="pktw-p-1 pktw-text-pk-foreground-muted hover:pktw-text-pk-error pktw-rounded pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity pktw-cursor-pointer"
                 title="Cancel"
             >
                 <X className="pktw-w-3.5 pktw-h-3.5" />
@@ -258,7 +258,7 @@ export const RecentAIAnalysis: React.FC<{
             <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
                 <History className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
                 <span className="pktw-text-sm pktw-font-semibold">Recent AI Analysis</span>
-                <span className="pktw-text-xs pktw-text-[#999999]">({recentTotal ?? recentRecords.length})</span>
+                <span className="pktw-text-xs pktw-text-pk-text-tertiary">({recentTotal ?? recentRecords.length})</span>
                 <div className="pktw-flex-1" />
                 <Button
                     size="sm"
@@ -307,7 +307,7 @@ export const RecentAIAnalysis: React.FC<{
                             pktw-rounded-lg
                             pktw-bg-pk-background 
                             pktw-transition-all
-                            hover:pktw-border-[#7c3aed] hover:pktw-shadow-md
+                            hover:pktw-border-pk-accent hover:pktw-shadow-md
                             hover:pktw-bg-pk-accent
                             pktw-group
                         `}
@@ -322,7 +322,7 @@ export const RecentAIAnalysis: React.FC<{
                                     />
                                     <span
                                         className="
-                                            pktw-text-sm pktw-font-semibold pktw-text-[#1a1c1e] 
+                                            pktw-text-sm pktw-font-semibold pktw-text-pk-text-primary
                                             pktw-line-clamp-2 pktw-flex-1 pktw-min-w-0
                                             group-hover:pktw-text-white
                                         "
@@ -334,7 +334,7 @@ export const RecentAIAnalysis: React.FC<{
                                     className="
                                         pktw-text-[10px] pktw-text-pk-foreground-muted pktw-mt-0.5
                                         pktw-whitespace-nowrap pktw-tabular-nums
-                                        group-hover:pktw-text-[#ede9fe] 
+                                        group-hover:pktw-text-pk-accent-soft
                                     "
                                 >
                                     {humanReadableTime(item.created_at_ts)}
@@ -343,7 +343,7 @@ export const RecentAIAnalysis: React.FC<{
                             <div
                                 className="
                                     pktw-text-[11px] pktw-text-pk-foreground-muted pktw-truncate pktw-opacity-80
-                                    group-hover:pktw-text-[#ddd6fe]
+                                    group-hover:pktw-text-pk-accent-soft
                                 "
                             >
                                 {item.vault_rel_path}

@@ -115,7 +115,7 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 								'pktw-px-4 pktw-py-2.5 pktw-text-xl pktw-font-medium pktw-transition-all pktw-relative',
 								'pktw-border-b-2 pktw-border-transparent',
 								activeTab === tab
-									? 'pktw-text-[var(--pk-accent,#6d28d9)] pktw-border-[var(--pk-accent,#6d28d9)]'
+									? 'pktw-text-[var(--pk-accent)] pktw-border-[var(--pk-accent)]'
 									: 'pktw-text-muted-foreground'
 							)}
 							onClick={() => setActiveTab(tab)}
@@ -244,7 +244,7 @@ const StarredTab: React.FC<StarredTabProps> = ({ entries }) => {
 						onClick={() => openConvAndScroll2Msg(entry.conversation.meta.id, entry.message.id)}
 					>
 						<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-2">
-							<Star className="pktw-w-4 pktw-h-4 pktw-fill-[var(--pk-warning,#f59e0b)] pktw-text-[var(--pk-warning,#f59e0b)] pktw-shrink-0" />
+							<Star className="pktw-w-4 pktw-h-4 pktw-fill-[var(--pk-warning)] pktw-text-[var(--pk-warning)] pktw-shrink-0" />
 							<div className="pktw-text-xs pktw-font-medium pktw-text-muted-foreground pktw-truncate">
 								{entry.conversation.meta.title}
 							</div>

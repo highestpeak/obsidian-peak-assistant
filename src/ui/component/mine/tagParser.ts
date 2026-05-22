@@ -50,48 +50,6 @@ export function parseTagsFromText(text: string): ParsedTag[] {
 		});
 	}
 
-	// Parse / tags - find valid /.../ pairs manually
-	const slashPositions: number[] = [];
-	for (let i = 0; i < text.length; i++) {
-		if (text[i] === '/') {
-			slashPositions.push(i);
-		}
-	}
-
-	for (let i = 0; i < slashPositions.length - 1; i++) {
-		const startPos = slashPositions[i];
-		const endPos = slashPositions[i + 1];
-
-		// Check if this forms a valid /.../ (not empty, and not containing other slashes)
-		const content = text.substring(startPos + 1, endPos);
-		const hasInternalSlashes = content.includes('/');
-		const isOnlyWhitespace = content.trim().length === 0;
-
-		if (!hasInternalSlashes && !isOnlyWhitespace && content.length > 0) {
-			const matchStart = startPos;
-			const matchEnd = endPos + 1;
-
-			// Check if this /.../ crosses any existing @...@ match boundaries
-			const crossesTagBoundary = tags.some(existing => {
-				// Check if the /.../ starts inside a tag but ends outside, or vice versa
-				const startsInside = existing.start <= matchStart && existing.end > matchStart;
-				const endsInside = existing.start < matchEnd && existing.end >= matchEnd;
-				const crosses = startsInside !== endsInside;
-
-				return crosses;
-			});
-
-			if (!crossesTagBoundary) {
-				tags.push({
-					type: 'prompt',
-					text: text.substring(matchStart, matchEnd),
-					start: matchStart,
-					end: matchEnd,
-				});
-			}
-		}
-	}
-
 	// Sort matches by priority: longer matches first, then by position
 	tags.sort((a, b) => {
 		const lengthDiff = (b.end - b.start) - (a.end - a.start);

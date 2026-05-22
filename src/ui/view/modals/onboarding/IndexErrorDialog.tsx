@@ -28,7 +28,7 @@ export function IndexErrorDialog({ step, failedCount, errorMessage, onAction }: 
 
 			<pre
 				className="pktw-text-xs pktw-p-2.5 pktw-rounded-md pktw-overflow-auto pktw-max-h-24 pktw-font-mono pktw-text-[--text-normal] pktw-border pktw-border-[--background-modifier-border]"
-				style={{ background: 'var(--background-primary-alt)' }}
+				style={{ background: 'var(--pk-bg-secondary)' }}
 			>
 				{errorMessage}
 			</pre>

@@ -88,7 +88,7 @@ export const TokenUsage: React.FC<TokenUsageProps> = ({ usage, conversation, cla
 										{item.model}
 									</span>
 								</div>
-								<span className="pktw-text-xs pktw-font-semibold pktw-text-[#22c55e]">
+								<span className="pktw-text-xs pktw-font-semibold pktw-text-pk-success">
 									{formatCount(item.totalTokens)}
 								</span>
 							</div>
@@ -107,7 +107,7 @@ export const TokenUsage: React.FC<TokenUsageProps> = ({ usage, conversation, cla
 				</div>
 				<div className="pktw-pt-2 pktw-border-t pktw-border-border pktw-flex pktw-items-center pktw-justify-between">
 					<span className="pktw-text-sm pktw-font-semibold pktw-text-foreground">Total</span>
-					<span className="pktw-text-sm pktw-font-semibold pktw-text-[#22c55e]">{formatCount(usage.totalUsed)}</span>
+					<span className="pktw-text-sm pktw-font-semibold pktw-text-pk-success">{formatCount(usage.totalUsed)}</span>
 				</div>
 			</div>
 		);

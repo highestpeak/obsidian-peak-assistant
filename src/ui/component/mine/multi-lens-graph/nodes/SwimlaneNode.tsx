@@ -6,14 +6,14 @@ export const SwimlaneNode: React.FC<{ data: { label: string; width: number; heig
 		style={{
 			width: data.width,
 			height: data.height,
-			border: '1px dashed #d1d5db',
+			border: '1px dashed var(--pk-border-strong)',
 			borderRadius: 8,
 			background: 'rgba(249,250,251,0.5)',
 			padding: '8px 12px',
 			pointerEvents: 'none',
 		}}
 	>
-		<span style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+		<span style={{ fontSize: 10, fontWeight: 600, color: 'var(--pk-text-tertiary)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
 			{data.label}
 		</span>
 		<Handle type="target" position={Position.Left} style={{ display: 'none' }} />

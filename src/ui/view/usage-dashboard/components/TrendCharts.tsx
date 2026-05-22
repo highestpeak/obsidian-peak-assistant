@@ -43,10 +43,10 @@ function ChartSkeleton() {
 	return (
 		<div
 			className="pktw-rounded-lg pktw-p-4 pktw-h-[280px] pktw-animate-pulse"
-			style={{ backgroundColor: 'var(--background-secondary)', border: '1px solid var(--background-modifier-border)' }}
+			style={{ backgroundColor: 'var(--pk-bg-secondary)', border: '1px solid var(--pk-border)' }}
 		>
-			<div className="pktw-h-4 pktw-w-32 pktw-rounded pktw-mb-4" style={{ backgroundColor: 'var(--background-modifier-border)' }} />
-			<div className="pktw-h-[200px] pktw-rounded" style={{ backgroundColor: 'var(--background-modifier-border)', opacity: 0.3 }} />
+			<div className="pktw-h-4 pktw-w-32 pktw-rounded pktw-mb-4" style={{ backgroundColor: 'var(--pk-border)' }} />
+			<div className="pktw-h-[200px] pktw-rounded" style={{ backgroundColor: 'var(--pk-border)', opacity: 0.3 }} />
 		</div>
 	);
 }
@@ -62,9 +62,9 @@ function TokenTrendChart({ data }: { data: TokenTrendPoint[] }) {
 	return (
 		<div
 			className="pktw-rounded-lg pktw-p-4"
-			style={{ backgroundColor: 'var(--background-secondary)', border: '1px solid var(--background-modifier-border)' }}
+			style={{ backgroundColor: 'var(--pk-bg-secondary)', border: '1px solid var(--pk-border)' }}
 		>
-			<span className="pktw-text-sm pktw-font-medium pktw-mb-3 pktw-block" style={{ color: 'var(--text-normal)' }}>
+			<span className="pktw-text-sm pktw-font-medium pktw-mb-3 pktw-block" style={{ color: 'var(--pk-text-primary)' }}>
 				Token Usage Trend
 			</span>
 			<ResponsiveContainer width="100%" height={220}>
@@ -75,17 +75,17 @@ function TokenTrendChart({ data }: { data: TokenTrendPoint[] }) {
 							<stop offset="95%" stopColor="#89b4fa" stopOpacity={0} />
 						</linearGradient>
 					</defs>
-					<CartesianGrid strokeDasharray="3 3" stroke="var(--background-modifier-border)" />
-					<XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
-					<YAxis tickFormatter={formatTokenAxis} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={50} />
+					<CartesianGrid strokeDasharray="3 3" stroke="var(--pk-border)" />
+					<XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--pk-text-secondary)' }} />
+					<YAxis tickFormatter={formatTokenAxis} tick={{ fontSize: 11, fill: 'var(--pk-text-secondary)' }} width={50} />
 					<Tooltip
 						contentStyle={{
-							backgroundColor: 'var(--background-primary)',
-							border: '1px solid var(--background-modifier-border)',
+							backgroundColor: 'var(--pk-bg)',
+							border: '1px solid var(--pk-border)',
 							borderRadius: 6,
 							fontSize: 12,
 						}}
-						labelStyle={{ color: 'var(--text-normal)' }}
+						labelStyle={{ color: 'var(--pk-text-primary)' }}
 					/>
 					<Area type="monotone" dataKey="total" stroke="#89b4fa" fill="url(#tokenGrad)" strokeWidth={2} />
 				</AreaChart>
@@ -110,28 +110,28 @@ function CostTrendChart({ data }: { data: CostTrendPoint[] }) {
 	return (
 		<div
 			className="pktw-rounded-lg pktw-p-4"
-			style={{ backgroundColor: 'var(--background-secondary)', border: '1px solid var(--background-modifier-border)' }}
+			style={{ backgroundColor: 'var(--pk-bg-secondary)', border: '1px solid var(--pk-border)' }}
 		>
-			<span className="pktw-text-sm pktw-font-medium pktw-mb-3 pktw-block" style={{ color: 'var(--text-normal)' }}>
+			<span className="pktw-text-sm pktw-font-medium pktw-mb-3 pktw-block" style={{ color: 'var(--pk-text-primary)' }}>
 				Cost Trend
 			</span>
 			<ResponsiveContainer width="100%" height={220}>
 				<LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-					<CartesianGrid strokeDasharray="3 3" stroke="var(--background-modifier-border)" />
-					<XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+					<CartesianGrid strokeDasharray="3 3" stroke="var(--pk-border)" />
+					<XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--pk-text-secondary)' }} />
 					<YAxis
 						tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-						tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+						tick={{ fontSize: 11, fill: 'var(--pk-text-secondary)' }}
 						width={55}
 					/>
 					<Tooltip
 						contentStyle={{
-							backgroundColor: 'var(--background-primary)',
-							border: '1px solid var(--background-modifier-border)',
+							backgroundColor: 'var(--pk-bg)',
+							border: '1px solid var(--pk-border)',
 							borderRadius: 6,
 							fontSize: 12,
 						}}
-						labelStyle={{ color: 'var(--text-normal)' }}
+						labelStyle={{ color: 'var(--pk-text-primary)' }}
 						formatter={(value: number) => [`$${value.toFixed(4)}`, undefined]}
 					/>
 					<Legend wrapperStyle={{ fontSize: 11 }} />

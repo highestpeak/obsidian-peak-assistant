@@ -215,10 +215,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 					</div>
 				) : filteredModels.length === 0 ? (
 					<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-items-start pktw-justify-between pktw-px-6 pktw-py-2.5">
-						<div className="pktw-text-[14px] pktw-font-medium pktw-text-[#000000] pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
+						<div className="pktw-text-[14px] pktw-font-medium pktw-text-pk-text-primary pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
 							No models available
 						</div>
-						<div className="pktw-text-[12px] pktw-text-[#666666] pktw-mt-1">
+						<div className="pktw-text-[12px] pktw-text-pk-text-secondary pktw-mt-1">
 							Please go to <span className="pktw-font-semibold">Settings</span> to configure your model api key and proxys.
 						</div>
 					</div>

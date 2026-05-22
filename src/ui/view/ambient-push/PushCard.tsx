@@ -39,14 +39,14 @@ export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
 	}
 
 	return (
-		<div className="pktw-group pktw-rounded-md pktw-border pktw-p-3 pktw-transition-colors hover:pktw-bg-[var(--background-modifier-hover)]"
-			style={{ borderColor: 'var(--background-modifier-border)' }}>
+		<div className="pktw-group pktw-rounded-md pktw-border pktw-p-3 pktw-transition-colors hover:pktw-bg-[var(--pk-state-hover)]"
+			style={{ borderColor: 'var(--pk-border)' }}>
 			{/* Title row */}
 			<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-				<FileText className="pktw-h-3.5 pktw-w-3.5 pktw-shrink-0" style={{ color: 'var(--text-muted)' }} />
+				<FileText className="pktw-h-3.5 pktw-w-3.5 pktw-shrink-0" style={{ color: 'var(--pk-text-secondary)' }} />
 				<span
 					className="pktw-flex-1 pktw-cursor-pointer pktw-truncate pktw-text-sm pktw-font-medium"
-					style={{ color: 'var(--text-normal)' }}
+					style={{ color: 'var(--pk-text-primary)' }}
 					onClick={handleOpen}
 				>
 					{title}
@@ -56,7 +56,7 @@ export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
 			{/* Excerpt */}
 			<span
 				className="pktw-mt-1 pktw-line-clamp-2 pktw-block pktw-text-xs"
-				style={{ color: 'var(--text-muted)' }}
+				style={{ color: 'var(--pk-text-secondary)' }}
 			>
 				{excerpt.length > 100 ? `${excerpt.slice(0, 100)}...` : excerpt}
 			</span>
@@ -65,10 +65,10 @@ export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
 			<span
 				className="pktw-mt-1.5 pktw-inline-flex pktw-items-center pktw-gap-1 pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw-text-xs"
 				style={{
-					color: item.explanationType === 'llm' ? 'var(--text-normal)' : 'var(--text-accent)',
+					color: item.explanationType === 'llm' ? 'var(--pk-text-primary)' : 'var(--pk-accent-text)',
 					backgroundColor: item.explanationType === 'llm'
-						? 'color-mix(in srgb, var(--interactive-accent) 12%, transparent)'
-						: 'color-mix(in srgb, var(--text-accent) 12%, transparent)',
+						? 'color-mix(in srgb, var(--pk-accent) 12%, transparent)'
+						: 'color-mix(in srgb, var(--pk-accent-text) 12%, transparent)',
 				}}
 			>
 				{item.explanationType === 'llm' && (

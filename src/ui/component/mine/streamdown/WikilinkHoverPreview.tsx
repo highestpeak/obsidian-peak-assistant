@@ -163,19 +163,19 @@ export const WikilinkHoverCard: React.FC<WikilinkHoverCardProps> = ({ path, prev
 				top: Math.min(top, window.innerHeight - maxH - 16),
 				maxWidth: maxW,
 				maxHeight: maxH,
-				backgroundColor: 'var(--background-primary)',
-				borderColor: 'var(--background-modifier-border)',
+				backgroundColor: 'var(--pk-bg)',
+				borderColor: 'var(--pk-border)',
 			}}
 			onMouseLeave={onClose}
 			onMouseEnter={onEnterCard}
 		>
-			<div className="pktw-p-2 pktw-border-b pktw-text-xs pktw-font-medium pktw-truncate" style={{ borderColor: 'var(--background-modifier-border)', color: 'var(--text-muted)' }} title={path}>
+			<div className="pktw-p-2 pktw-border-b pktw-text-xs pktw-font-medium pktw-truncate" style={{ borderColor: 'var(--pk-border)', color: 'var(--pk-text-secondary)' }} title={path}>
 				{path}
 			</div>
 			<div className="pktw-p-2 pktw-overflow-auto" style={{ maxHeight: maxH - 40 }}>
-				{loading && !preview && <span className="pktw-text-xs" style={{ color: 'var(--text-muted)' }}>Loading…</span>}
+				{loading && !preview && <span className="pktw-text-xs" style={{ color: 'var(--pk-text-secondary)' }}>Loading…</span>}
 				{preview?.type === 'text' && (
-					<pre className="pktw-text-xs pktw-whitespace-pre-wrap pktw-font-mono pktw-m-0" style={{ color: 'var(--text-normal)' }}>
+					<pre className="pktw-text-xs pktw-whitespace-pre-wrap pktw-font-mono pktw-m-0" style={{ color: 'var(--pk-text-primary)' }}>
 						{preview.content}
 					</pre>
 				)}

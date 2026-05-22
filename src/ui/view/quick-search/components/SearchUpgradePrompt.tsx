@@ -49,18 +49,18 @@ export function SearchUpgradePrompt() {
 	if (!visible) return null;
 
 	return (
-		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-muted-foreground pktw-border-l-2 pktw-border-[var(--interactive-accent)]">
+		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-muted-foreground pktw-border-l-2 pktw-border-[var(--pk-accent)]">
 			<Sparkles className="pktw-w-3 pktw-h-3 pktw-shrink-0" />
 			<span>
 				Enable semantic search for better results
 				<span
-					className="pktw-ml-1 pktw-underline pktw-cursor-pointer hover:pktw-text-[var(--text-normal)]"
+					className="pktw-ml-1 pktw-underline pktw-cursor-pointer hover:pktw-text-[var(--pk-text-primary)]"
 					onClick={handleOpenSettings}
 				>
 					→ Settings
 				</span>
 			</span>
-			<button onClick={handleDismiss} className="pktw-ml-auto pktw-p-0.5 pktw-rounded hover:pktw-bg-[var(--background-modifier-hover)]">
+			<button onClick={handleDismiss} className="pktw-ml-auto pktw-p-0.5 pktw-rounded hover:pktw-bg-[var(--pk-state-hover)]">
 				<X className="pktw-w-3 pktw-h-3" />
 			</button>
 		</div>

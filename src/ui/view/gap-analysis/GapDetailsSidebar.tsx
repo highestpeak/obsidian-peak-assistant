@@ -32,7 +32,7 @@ export const GapDetailsSidebar: React.FC = () => {
 	if (!selectedHoleId) {
 		return (
 			<div className="pktw-flex pktw-flex-col pktw-gap-2 pktw-p-4">
-				<span className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338]">
+				<span className="pktw-text-sm pktw-font-medium pktw-text-pk-text-primary">
 					Structural Holes
 				</span>
 				{holes.length === 0 ? (
@@ -58,7 +58,7 @@ export const GapDetailsSidebar: React.FC = () => {
 			</Button>
 
 			<div className="pktw-flex pktw-flex-col pktw-gap-1">
-				<span className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338]">
+				<span className="pktw-text-sm pktw-font-medium pktw-text-pk-text-primary">
 					{hole.communityA.label}
 				</span>
 				<span className="pktw-text-xs pktw-text-pk-foreground-muted">
@@ -70,7 +70,7 @@ export const GapDetailsSidebar: React.FC = () => {
 			<span className="pktw-text-xs pktw-text-pk-foreground-muted pktw-text-center">---</span>
 
 			<div className="pktw-flex pktw-flex-col pktw-gap-1">
-				<span className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338]">
+				<span className="pktw-text-sm pktw-font-medium pktw-text-pk-text-primary">
 					{hole.communityB.label}
 				</span>
 				<span className="pktw-text-xs pktw-text-pk-foreground-muted">
@@ -98,7 +98,7 @@ export const GapDetailsSidebar: React.FC = () => {
 
 			{hole.existingBridges.length > 0 && (
 				<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-mt-2">
-					<span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">
+					<span className="pktw-text-xs pktw-font-medium pktw-text-pk-text-primary">
 						Existing Bridges ({hole.existingBridges.length})
 					</span>
 					{hole.existingBridges.map(b => (
@@ -118,7 +118,7 @@ export const GapDetailsSidebar: React.FC = () => {
 
 			{hole.potentialBridges.length > 0 && (
 				<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-mt-2">
-					<span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">
+					<span className="pktw-text-xs pktw-font-medium pktw-text-pk-text-primary">
 						Suggested Bridges
 					</span>
 					{hole.potentialBridges.map((pb, i) => (
@@ -152,7 +152,7 @@ const HoleListItem: React.FC<{
 		className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-2 pktw-rounded pktw-border pktw-border-pk-border hover:pktw-bg-pk-surface-subtle pktw-cursor-pointer"
 		onClick={() => onSelect(hole.id)}
 	>
-		<span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">
+		<span className="pktw-text-xs pktw-font-medium pktw-text-pk-text-primary">
 			{hole.communityA.label} -- {hole.communityB.label}
 		</span>
 		<div className="pktw-flex pktw-items-center pktw-gap-2">

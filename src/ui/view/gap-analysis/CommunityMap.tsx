@@ -4,8 +4,9 @@
  * Gap arcs rendered as dashed edges.
  */
 
-import React, { useMemo } from 'react';
-import { ReactFlow, Background, Controls } from '@xyflow/react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactFlow, Background, Controls, applyNodeChanges } from '@xyflow/react';
+import type { NodeChange } from '@xyflow/react';
 import { LensNodeComponent } from '@/ui/component/mine/multi-lens-graph/nodes/LensNodeComponent';
 import { LensEdgeComponent } from '@/ui/component/mine/multi-lens-graph/edges/LensEdgeComponent';
 import { computeGapAnalysisLayout } from '@/ui/component/mine/multi-lens-graph/layouts/gap-analysis-layout';
@@ -21,7 +22,7 @@ export const CommunityMap: React.FC = () => {
 	const bridges = useGapAnalysisStore(s => s.bridges);
 	const selectHole = useGapAnalysisStore(s => s.selectHole);
 
-	const { nodes, edges } = useMemo(() => {
+	const layoutResult = useMemo(() => {
 		if (communities.length === 0) {
 			return { nodes: [], edges: [] };
 		}
@@ -68,6 +69,12 @@ export const CommunityMap: React.FC = () => {
 		return computeGapAnalysisLayout(graphData);
 	}, [communities, holes, bridges]);
 
+	const [nodes, setNodes] = useState(layoutResult.nodes);
+	useEffect(() => setNodes(layoutResult.nodes), [layoutResult.nodes]);
+	const onNodesChange = useCallback((changes: NodeChange[]) => {
+		setNodes((nds) => applyNodeChanges(changes, nds) as typeof nds);
+	}, []);
+
 	if (nodes.length === 0) {
 		return (
 			<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-text-sm pktw-text-pk-foreground-muted">
@@ -79,7 +86,8 @@ export const CommunityMap: React.FC = () => {
 	return (
 		<ReactFlow
 			nodes={nodes}
-			edges={edges}
+			edges={layoutResult.edges}
+			onNodesChange={onNodesChange}
 			nodeTypes={nodeTypes}
 			edgeTypes={edgeTypes}
 			fitView
@@ -88,7 +96,7 @@ export const CommunityMap: React.FC = () => {
 			minZoom={0.3}
 			maxZoom={3}
 		>
-			<Background color="#f3f4f6" gap={20} />
+			<Background color="var(--pk-surface-sunken)" gap={20} />
 			<Controls />
 		</ReactFlow>
 	);

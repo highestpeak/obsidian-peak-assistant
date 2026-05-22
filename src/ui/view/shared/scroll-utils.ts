@@ -153,7 +153,7 @@ export function scrollToMessage(options: ScrollToMessageOptions): void {
 						: [
 								'pktw-outline',
 								'pktw-outline-2',
-								'pktw-outline-[var(--interactive-accent)]',
+								'pktw-outline-[var(--pk-accent)]',
 								'pktw-outline-offset-0',
 						  ];
 

@@ -35,10 +35,10 @@ function ChartSkeleton() {
 	return (
 		<div
 			className="pktw-rounded-lg pktw-p-4 pktw-h-[300px] pktw-animate-pulse"
-			style={{ backgroundColor: 'var(--background-secondary)', border: '1px solid var(--background-modifier-border)' }}
+			style={{ backgroundColor: 'var(--pk-bg-secondary)', border: '1px solid var(--pk-border)' }}
 		>
-			<div className="pktw-h-4 pktw-w-24 pktw-rounded pktw-mb-4" style={{ backgroundColor: 'var(--background-modifier-border)' }} />
-			<div className="pktw-mx-auto pktw-w-[140px] pktw-h-[140px] pktw-rounded-full" style={{ backgroundColor: 'var(--background-modifier-border)', opacity: 0.3 }} />
+			<div className="pktw-h-4 pktw-w-24 pktw-rounded pktw-mb-4" style={{ backgroundColor: 'var(--pk-border)' }} />
+			<div className="pktw-mx-auto pktw-w-[140px] pktw-h-[140px] pktw-rounded-full" style={{ backgroundColor: 'var(--pk-border)', opacity: 0.3 }} />
 		</div>
 	);
 }
@@ -55,14 +55,14 @@ function DonutChart({ title, data, formatValue }: DonutChartProps) {
 	return (
 		<div
 			className="pktw-rounded-lg pktw-p-4 pktw-flex pktw-flex-col"
-			style={{ backgroundColor: 'var(--background-secondary)', border: '1px solid var(--background-modifier-border)' }}
+			style={{ backgroundColor: 'var(--pk-bg-secondary)', border: '1px solid var(--pk-border)' }}
 		>
-			<span className="pktw-text-sm pktw-font-medium pktw-mb-3" style={{ color: 'var(--text-normal)' }}>
+			<span className="pktw-text-sm pktw-font-medium pktw-mb-3" style={{ color: 'var(--pk-text-primary)' }}>
 				{title}
 			</span>
 			{data.length === 0 ? (
 				<div className="pktw-flex-1 pktw-flex pktw-items-center pktw-justify-center">
-					<span className="pktw-text-xs" style={{ color: 'var(--text-muted)' }}>No data</span>
+					<span className="pktw-text-xs" style={{ color: 'var(--pk-text-secondary)' }}>No data</span>
 				</div>
 			) : (
 				<>
@@ -85,8 +85,8 @@ function DonutChart({ title, data, formatValue }: DonutChartProps) {
 							</Pie>
 							<Tooltip
 								contentStyle={{
-									backgroundColor: 'var(--background-primary)',
-									border: '1px solid var(--background-modifier-border)',
+									backgroundColor: 'var(--pk-bg)',
+									border: '1px solid var(--pk-border)',
 									borderRadius: 6,
 									fontSize: 12,
 								}}
@@ -103,11 +103,11 @@ function DonutChart({ title, data, formatValue }: DonutChartProps) {
 										className="pktw-inline-block pktw-w-2 pktw-h-2 pktw-rounded-full pktw-flex-shrink-0"
 										style={{ backgroundColor: entry.color }}
 									/>
-									<span style={{ color: 'var(--text-muted)' }} className="pktw-truncate pktw-max-w-[120px]">
+									<span style={{ color: 'var(--pk-text-secondary)' }} className="pktw-truncate pktw-max-w-[120px]">
 										{entry.name}
 									</span>
 								</div>
-								<span style={{ color: 'var(--text-normal)' }} className="pktw-font-medium pktw-ml-2">
+								<span style={{ color: 'var(--pk-text-primary)' }} className="pktw-font-medium pktw-ml-2">
 									{formatValue(entry.value)}
 								</span>
 							</div>

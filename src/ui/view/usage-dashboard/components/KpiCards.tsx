@@ -35,11 +35,11 @@ function ChangeIndicator({ pct, invertColor }: { pct: number | null; invertColor
 	// For cost, up = bad (red); for tokens, up = neutral info
 	const color = invertColor
 		? isUp
-			? 'var(--pk-error, #ef4444)'
-			: 'var(--pk-success, #22c55e)'
+			? 'var(--pk-error)'
+			: 'var(--pk-success)'
 		: isUp
-			? 'var(--pk-success, #22c55e)'
-			: 'var(--pk-error, #ef4444)';
+			? 'var(--pk-success)'
+			: 'var(--pk-error)';
 
 	return (
 		<span className="pktw-text-xs pktw-font-medium" style={{ color }}>
@@ -52,10 +52,10 @@ function SkeletonCard() {
 	return (
 		<div
 			className="pktw-rounded-lg pktw-p-4 pktw-animate-pulse"
-			style={{ backgroundColor: 'var(--background-secondary)', border: '1px solid var(--background-modifier-border)' }}
+			style={{ backgroundColor: 'var(--pk-bg-secondary)', border: '1px solid var(--pk-border)' }}
 		>
-			<div className="pktw-h-4 pktw-w-24 pktw-rounded pktw-mb-3" style={{ backgroundColor: 'var(--background-modifier-border)' }} />
-			<div className="pktw-h-8 pktw-w-32 pktw-rounded" style={{ backgroundColor: 'var(--background-modifier-border)' }} />
+			<div className="pktw-h-4 pktw-w-24 pktw-rounded pktw-mb-3" style={{ backgroundColor: 'var(--pk-border)' }} />
+			<div className="pktw-h-8 pktw-w-32 pktw-rounded" style={{ backgroundColor: 'var(--pk-border)' }} />
 		</div>
 	);
 }
@@ -72,14 +72,14 @@ function Card({ icon, label, value, change, invertColor }: CardProps) {
 	return (
 		<div
 			className="pktw-rounded-lg pktw-p-4 pktw-flex pktw-flex-col pktw-gap-2"
-			style={{ backgroundColor: 'var(--background-secondary)', border: '1px solid var(--background-modifier-border)' }}
+			style={{ backgroundColor: 'var(--pk-bg-secondary)', border: '1px solid var(--pk-border)' }}
 		>
 			<div className="pktw-flex pktw-items-center pktw-gap-2">
-				<span style={{ color: 'var(--text-muted)' }}>{icon}</span>
-				<span className="pktw-text-xs pktw-font-medium" style={{ color: 'var(--text-muted)' }}>{label}</span>
+				<span style={{ color: 'var(--pk-text-secondary)' }}>{icon}</span>
+				<span className="pktw-text-xs pktw-font-medium" style={{ color: 'var(--pk-text-secondary)' }}>{label}</span>
 			</div>
 			<div className="pktw-flex pktw-items-baseline pktw-gap-2">
-				<span className="pktw-text-2xl pktw-font-bold" style={{ color: 'var(--text-normal)' }}>{value}</span>
+				<span className="pktw-text-2xl pktw-font-bold" style={{ color: 'var(--pk-text-primary)' }}>{value}</span>
 				<ChangeIndicator pct={change} invertColor={invertColor} />
 			</div>
 		</div>

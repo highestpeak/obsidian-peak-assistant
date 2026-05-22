@@ -1,6 +1,19 @@
 import { useCallback, useRef } from 'react';
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
 import { useGraphAgentStore, type GraphAgentStep } from '../store/graphAgentStore';
+import { useSearchSessionStore } from '../store/searchSessionStore';
+
+// Persist the foreground session after graph generation so the markdown
+// captures the graph. Only fires when the session is in 'completed' status —
+// avoids spamming saves during analysis. Dynamic import to dodge the
+// hook → session → store cycle.
+function persistAfterGraphReady(): void {
+	const sessionStatus = useSearchSessionStore.getState().status;
+	if (sessionStatus !== 'completed') return;
+	void import('./useSearchSession').then(({ persistForegroundSession }) => {
+		persistForegroundSession();
+	}).catch((e) => console.warn('[useGraphAgent] persist after graph failed:', e));
+}
 
 interface SourceItem {
 	path: string;
@@ -86,6 +99,7 @@ export function useGraphAgent(
 					const { graphOutputToLensData } = await import('@/service/agents/ai-graph/graph-output-to-lens');
 					const sourcePaths = sources.map(s => s.path);
 					useGraphAgentStore.getState().setGraphData(graphOutputToLensData(result, sourcePaths));
+					persistAfterGraphReady();
 				} else {
 					console.warn('[useGraphAgent] agent returned null, falling back');
 					useGraphAgentStore.getState().addStep({ id: 'fallback', label: 'AI analysis returned no result, using physical links...', status: 'running' });
@@ -141,6 +155,7 @@ async function fallbackToPhysicalGraph(sources: SourceItem[]) {
 			let data: LensGraphData = { nodes, edges, availableLenses: ['topology'] };
 			data = enrichWithCrossDomain(data);
 			useGraphAgentStore.getState().setGraphData(data);
+			persistAfterGraphReady();
 		}
 	} catch (err) {
 		console.error('[useGraphAgent] fallback also failed', err);

@@ -1,0 +1,889 @@
+/*
+ * Vault Auto Review · scoped stylesheet (Phase 2 migrated to peak tokens).
+ *
+ * Sourced from `docs/superpowers/mockups/2026-05-20-vault-review-mockup.html`.
+ * All selectors are scoped under `.peak-vault-auto-run-modal` so they only
+ * apply inside the modal and never collide with Obsidian global styles or
+ * the plugin's Tailwind layer.
+ *
+ * Phase 2 (2026-05-22): all `--vr-*` tokens removed; styles now consume
+ * the unified `--pk-*` source from `peak-tokens.css`. Modal root must have
+ * the `peak-design-root` class so peak-tokens are inherited (per
+ * docs/conventions/obsidian-css-defense.md).
+ *
+ * If you change the mock, change this file in lockstep.
+ */
+
+.peak-vault-auto-run-modal {
+	font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 14px;
+	line-height: 1.45;
+	color: var(--pk-text-primary);
+	-webkit-font-smoothing: antialiased;
+	background: var(--pk-surface);
+}
+
+/* box-sizing + bare-tag reset come from src/styles/obsidian-reset.css
+ * via the `peak-design-root` class on the modal root. */
+.peak-vault-auto-run-modal .tabular { font-variant-numeric: tabular-nums; }
+
+/* ───── Modal frame ───── */
+.peak-vault-auto-run-modal .vr-modal {
+	background: var(--pk-surface);
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+}
+
+.peak-vault-auto-run-modal .vr-header {
+	display: flex; align-items: flex-start; justify-content: space-between;
+	gap: 16px;
+	padding: 18px 20px;
+	border-bottom: 1px solid var(--pk-border);
+}
+.peak-vault-auto-run-modal .vr-header .vh-left { display: flex; gap: 12px; align-items: flex-start; }
+.peak-vault-auto-run-modal .vr-header .vh-icon {
+	width: 40px; height: 40px;
+	border-radius: 12px;
+	background: var(--pk-accent-tint);
+	color: var(--pk-accent);
+	display: flex; align-items: center; justify-content: center;
+	flex-shrink: 0;
+}
+.peak-vault-auto-run-modal .vr-header .vh-title {
+	font-size: 18px; font-weight: 700; color: var(--pk-text-primary);
+	line-height: 1.2;
+}
+.peak-vault-auto-run-modal .vr-header .vh-sub {
+	font-size: 12px; color: var(--pk-text-secondary);
+	margin-top: 4px;
+	display: flex; gap: 8px; flex-wrap: wrap;
+}
+.peak-vault-auto-run-modal .vr-header .vh-sub .dot { color: var(--pk-text-tertiary); }
+.peak-vault-auto-run-modal .vr-header .vh-actions { display: flex; align-items: center; gap: 8px; }
+
+.peak-vault-auto-run-modal .vr-badge {
+	display: inline-flex; align-items: center; gap: 6px;
+	padding: 4px 10px;
+	border-radius: 999px;
+	font-size: 11px; font-weight: 600;
+}
+.peak-vault-auto-run-modal .vr-badge.success { background: var(--pk-success-bg); color: var(--pk-success-text); }
+.peak-vault-auto-run-modal .vr-badge.running { background: var(--pk-success-bg); color: var(--pk-success-text); }
+.peak-vault-auto-run-modal .vr-badge.error { background: var(--pk-error-bg); color: var(--pk-error-text); }
+.peak-vault-auto-run-modal .vr-badge.warning { background: var(--pk-warning-bg); color: var(--pk-warning-text); }
+.peak-vault-auto-run-modal .vr-badge.indigo { background: var(--pk-indigo-bg); color: var(--pk-indigo); }
+
+.peak-vault-auto-run-modal .vr-icon-btn {
+	border: 0; background: transparent;
+	width: 30px; height: 30px; border-radius: 8px;
+	color: var(--pk-text-secondary);
+	cursor: pointer;
+	display: inline-flex; align-items: center; justify-content: center;
+}
+.peak-vault-auto-run-modal .vr-icon-btn:hover { background: var(--pk-surface-sunken); color: var(--pk-text-primary); }
+
+/* ───── Tab bar ───── */
+.peak-vault-auto-run-modal .vr-tabs {
+	display: flex; align-items: center; gap: 6px;
+	padding: 10px 20px;
+	border-bottom: 1px solid var(--pk-border);
+}
+.peak-vault-auto-run-modal .vr-tab {
+	display: inline-flex; align-items: center; gap: 6px;
+	padding: 7px 12px;
+	border-radius: 10px;
+	border: 1px solid transparent;
+	background: transparent;
+	color: var(--pk-text-secondary);
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	position: relative;
+}
+.peak-vault-auto-run-modal .vr-tab:hover { background: var(--pk-surface-sunken); color: var(--pk-text-primary); }
+.peak-vault-auto-run-modal .vr-tab.active {
+	background: var(--pk-accent-tint);
+	color: var(--pk-accent);
+	border-color: var(--pk-accent-soft);
+}
+.peak-vault-auto-run-modal .vr-tab .vr-count {
+	background: var(--pk-surface-sunken);
+	color: var(--pk-text-secondary);
+	font-size: 10px;
+	padding: 1px 6px;
+	border-radius: 999px;
+	font-weight: 600;
+}
+.peak-vault-auto-run-modal .vr-tab.active .vr-count { background: var(--pk-accent-soft); color: var(--pk-accent-text); }
+.peak-vault-auto-run-modal .vr-tabs .spacer { flex: 1; }
+.peak-vault-auto-run-modal .vr-tabs .vr-time-summary { font-size: 11px; color: var(--pk-text-secondary); }
+
+/* TOC popover */
+.peak-vault-auto-run-modal .vr-tab-wrap { position: relative; }
+.peak-vault-auto-run-modal .vr-toc-popover {
+	position: absolute;
+	left: 0; top: calc(100% + 4px);
+	z-index: 30;
+	width: 280px;
+	max-height: 420px;
+	overflow-y: auto;
+	background: var(--pk-surface);
+	border: 1px solid var(--pk-border);
+	border-radius: 10px;
+	box-shadow: 0 12px 32px rgba(15, 18, 25, 0.12);
+	padding: 8px;
+}
+.peak-vault-auto-run-modal .vr-toc-popover .vr-toc-head {
+	padding: 4px 8px;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--pk-text-secondary);
+}
+.peak-vault-auto-run-modal .vr-toc-popover .vr-toc-item {
+	display: flex; align-items: center; gap: 6px;
+	padding: 6px 8px;
+	border-radius: 6px;
+	font-size: 12px;
+	cursor: pointer;
+	color: var(--pk-text-primary);
+}
+.peak-vault-auto-run-modal .vr-toc-popover .vr-toc-item:hover { background: var(--pk-accent-tint); color: var(--pk-accent); }
+.peak-vault-auto-run-modal .vr-toc-popover .vr-toc-item .vr-toc-arrow { color: var(--pk-text-tertiary); flex-shrink: 0; }
+.peak-vault-auto-run-modal .vr-toc-popover .vr-toc-item .vr-toc-label {
+	flex: 1; min-width: 0;
+	overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ───── Body grid ───── */
+.peak-vault-auto-run-modal .vr-body {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	flex: 1;
+	min-height: 0;
+	transition: grid-template-columns 0.3s ease;
+}
+.peak-vault-auto-run-modal .vr-body.with-rail {
+	grid-template-columns: minmax(0, 1fr) 320px;
+}
+.peak-vault-auto-run-modal .vr-panel {
+	overflow-y: auto;
+	padding: 20px 24px;
+	min-width: 0;
+}
+.peak-vault-auto-run-modal .vr-rail {
+	border-left: 1px solid var(--pk-border);
+	background: var(--pk-surface-raised);
+	overflow-y: auto;
+}
+.peak-vault-auto-run-modal .vr-rail-head {
+	padding: 16px 16px 12px;
+	border-bottom: 1px solid var(--pk-border);
+}
+.peak-vault-auto-run-modal .vr-rail-head .vr-rail-title { font-size: 13px; font-weight: 600; }
+.peak-vault-auto-run-modal .vr-rail-head .vr-rail-sub { font-size: 11px; color: var(--pk-text-secondary); margin-top: 2px; display: block; }
+
+/* Footer */
+.peak-vault-auto-run-modal .vr-footer {
+	display: flex; align-items: center; gap: 12px;
+	padding: 14px 20px;
+	border-top: 1px solid var(--pk-border);
+	background: var(--pk-surface);
+}
+.peak-vault-auto-run-modal .vr-footer .vr-ft-status {
+	flex: 1;
+	font-size: 11px;
+	color: var(--pk-text-secondary);
+	display: flex; gap: 6px; align-items: center;
+}
+.peak-vault-auto-run-modal .vr-footer .vr-ft-status .lock { color: var(--pk-text-tertiary); }
+
+/* ───── Buttons ───── */
+.peak-vault-auto-run-modal .vr-btn {
+	height: 34px;
+	padding: 0 14px;
+	border-radius: 10px;
+	border: 1px solid var(--pk-border);
+	background: var(--pk-surface);
+	color: var(--pk-text-primary);
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	display: inline-flex; align-items: center; gap: 6px;
+}
+.peak-vault-auto-run-modal .vr-btn:hover:not(:disabled) { border-color: var(--pk-accent); color: var(--pk-accent); }
+.peak-vault-auto-run-modal .vr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.peak-vault-auto-run-modal .vr-btn.primary {
+	background: var(--pk-accent);
+	color: white;
+	border-color: var(--pk-accent);
+}
+.peak-vault-auto-run-modal .vr-btn.primary:hover:not(:disabled) { background: var(--pk-accent-hover); }
+.peak-vault-auto-run-modal .vr-btn.ghost {
+	background: transparent;
+	border-color: transparent;
+	color: var(--pk-text-secondary);
+}
+.peak-vault-auto-run-modal .vr-btn.ghost:hover:not(:disabled) { color: var(--pk-accent); }
+
+/* ───── Primitives ───── */
+.peak-vault-auto-run-modal .vr-hint {
+	display: flex; gap: 10px; align-items: flex-start;
+	background: var(--pk-surface-sunken);
+	border-radius: 10px;
+	padding: 10px 12px;
+	color: var(--pk-text-secondary);
+	font-size: 12px;
+	margin-bottom: 16px;
+}
+.peak-vault-auto-run-modal .vr-hint .vr-hint-icon { color: var(--pk-accent); flex-shrink: 0; margin-top: 2px; }
+
+.peak-vault-auto-run-modal .vr-kicker {
+	font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--pk-accent);
+}
+.peak-vault-auto-run-modal .vr-kicker.muted { color: var(--pk-text-secondary); }
+
+.peak-vault-auto-run-modal .vr-pill {
+	display: inline-flex; align-items: center; gap: 4px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+.peak-vault-auto-run-modal .vr-pill.muted { background: var(--pk-surface-sunken); color: var(--pk-text-secondary); }
+.peak-vault-auto-run-modal .vr-pill.accent { background: var(--pk-accent-tint); color: var(--pk-accent-text); }
+.peak-vault-auto-run-modal .vr-pill.success { background: var(--pk-success-bg); color: var(--pk-success-text); }
+.peak-vault-auto-run-modal .vr-pill.warning { background: var(--pk-warning-bg); color: var(--pk-warning-text); }
+.peak-vault-auto-run-modal .vr-pill.error { background: var(--pk-error-bg); color: var(--pk-error-text); }
+.peak-vault-auto-run-modal .vr-pill.info { background: var(--pk-info-bg); color: var(--pk-info-text); }
+.peak-vault-auto-run-modal .vr-pill.indigo { background: var(--pk-indigo-bg); color: var(--pk-indigo); }
+
+.peak-vault-auto-run-modal .vr-chip {
+	display: inline-flex; align-items: center; gap: 4px;
+	padding: 3px 8px;
+	border-radius: 6px;
+	background: var(--pk-surface-sunken);
+	color: var(--pk-text-primary);
+	font-size: 11px;
+	font-weight: 500;
+	cursor: pointer;
+	border: 0;
+	font-family: inherit;
+}
+.peak-vault-auto-run-modal .vr-chip:hover { background: var(--pk-accent-tint); color: var(--pk-accent); }
+
+.peak-vault-auto-run-modal .vr-card {
+	border: 1px solid var(--pk-border);
+	border-radius: 14px;
+	background: var(--pk-surface);
+	padding: 16px;
+	box-shadow: var(--pk-shadow-card);
+}
+
+.peak-vault-auto-run-modal .vr-empty {
+	display: flex; align-items: center; justify-content: center;
+	min-height: 200px;
+	padding: 40px;
+	text-align: center;
+	font-size: 13px;
+	color: var(--pk-text-secondary);
+}
+
+/* ───── Overview tab ───── */
+.peak-vault-auto-run-modal .vr-headline-card {
+	border-radius: 18px;
+	background: linear-gradient(135deg, #F8F5FF 0%, #F0EAFF 100%);
+	padding: 22px 24px;
+	border: 1px solid var(--pk-accent-soft);
+	display: flex; gap: 16px; align-items: flex-start;
+}
+.peak-vault-auto-run-modal .vr-headline-card .vr-hc-icon {
+	width: 42px; height: 42px;
+	border-radius: 12px;
+	background: white;
+	color: var(--pk-accent);
+	display: flex; align-items: center; justify-content: center;
+	box-shadow: 0 4px 12px rgba(124, 58, 237, 0.18);
+	flex-shrink: 0;
+}
+.peak-vault-auto-run-modal .vr-headline-card .vr-hc-title {
+	font-size: 20px; font-weight: 700; color: var(--pk-text-primary); line-height: 1.35;
+}
+.peak-vault-auto-run-modal .vr-headline-card .vr-hc-body {
+	font-size: 13px; color: var(--pk-text-secondary);
+	margin-top: 6px; line-height: 1.6;
+}
+
+.peak-vault-auto-run-modal .vr-metric-grid {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+	margin-top: 16px;
+}
+.peak-vault-auto-run-modal .vr-metric-grid.cols-3 { grid-template-columns: repeat(3, 1fr); margin-top: 12px; }
+.peak-vault-auto-run-modal .vr-metric-card {
+	border: 1px solid var(--pk-border);
+	border-radius: 14px;
+	padding: 14px 16px;
+	background: var(--pk-surface);
+	box-shadow: var(--pk-shadow-card);
+}
+.peak-vault-auto-run-modal .vr-metric-card .vr-m-label {
+	font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+	color: var(--pk-text-secondary); text-transform: uppercase;
+}
+.peak-vault-auto-run-modal .vr-metric-card .vr-m-value {
+	font-size: 28px; font-weight: 700; color: var(--pk-text-primary);
+	margin-top: 6px;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.1;
+}
+.peak-vault-auto-run-modal .vr-metric-card .vr-m-foot {
+	font-size: 11px; color: var(--pk-text-secondary);
+	margin-top: 4px;
+	display: flex; gap: 6px; align-items: center;
+}
+.peak-vault-auto-run-modal .vr-metric-card.small .vr-m-value { font-size: 20px; }
+.peak-vault-auto-run-modal .vr-delta-up { color: var(--pk-success-text); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.peak-vault-auto-run-modal .vr-delta-down { color: var(--pk-error-text); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.peak-vault-auto-run-modal .vr-delta-flat { color: var(--pk-text-secondary); display: inline-flex; align-items: center; gap: 4px; }
+
+.peak-vault-auto-run-modal .vr-since-card {
+	margin-top: 14px;
+	padding: 16px 18px;
+	border: 1px solid var(--pk-border);
+	border-radius: 14px;
+	background: var(--pk-surface);
+	display: flex; align-items: center; gap: 18px;
+	box-shadow: var(--pk-shadow-card);
+}
+.peak-vault-auto-run-modal .vr-since-card .vr-sc-label {
+	font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+	color: var(--pk-text-secondary); text-transform: uppercase;
+}
+.peak-vault-auto-run-modal .vr-since-card .vr-sc-row {
+	display: flex; gap: 22px;
+	margin-top: 4px;
+	align-items: baseline;
+}
+.peak-vault-auto-run-modal .vr-since-card .vr-sc-stat {
+	display: flex; align-items: baseline; gap: 4px;
+}
+.peak-vault-auto-run-modal .vr-since-card .vr-sc-stat .vr-sc-stat-num {
+	font-size: 20px; font-weight: 700; color: var(--pk-text-primary);
+	font-variant-numeric: tabular-nums;
+}
+.peak-vault-auto-run-modal .vr-since-card .vr-sc-stat .vr-sc-stat-label {
+	font-size: 11px; color: var(--pk-text-secondary);
+}
+.peak-vault-auto-run-modal .vr-since-card .vr-sc-stat.delta-up .vr-sc-stat-num { color: var(--pk-success-text); }
+.peak-vault-auto-run-modal .vr-since-card .vr-sc-stat.delta-down .vr-sc-stat-num { color: var(--pk-error-text); }
+.peak-vault-auto-run-modal .vr-since-card .vr-sc-spacer { flex: 1; }
+
+.peak-vault-auto-run-modal .vr-top-action {
+	margin-top: 18px;
+	border: 1px solid var(--pk-accent-soft);
+	background: var(--pk-accent-tint);
+	border-radius: 14px;
+	padding: 18px 20px;
+	display: flex; align-items: center; gap: 16px;
+}
+.peak-vault-auto-run-modal .vr-top-action .vr-tac-icon {
+	width: 36px; height: 36px;
+	border-radius: 10px;
+	background: white; color: var(--pk-accent);
+	display: flex; align-items: center; justify-content: center;
+	box-shadow: 0 2px 6px rgba(124, 58, 237, 0.12);
+	flex-shrink: 0;
+}
+.peak-vault-auto-run-modal .vr-top-action .vr-tac-body { flex: 1; min-width: 0; }
+.peak-vault-auto-run-modal .vr-top-action .vr-tac-title {
+	font-size: 13px; color: var(--pk-text-primary); line-height: 1.55;
+}
+.peak-vault-auto-run-modal .vr-top-action .vr-tac-title b { color: var(--pk-accent-text); font-weight: 700; }
+.peak-vault-auto-run-modal .vr-top-action .vr-tac-meta { font-size: 11px; color: var(--pk-text-secondary); margin-top: 4px; }
+.peak-vault-auto-run-modal .vr-top-action .vr-tac-cta { white-space: nowrap; }
+
+/* ───── Clusters tab ───── */
+.peak-vault-auto-run-modal .vr-clusters-split {
+	display: grid;
+	grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+	gap: 16px;
+	align-items: start;
+}
+.peak-vault-auto-run-modal .vr-cluster-list {
+	border: 1px solid var(--pk-border);
+	border-radius: 14px;
+	overflow: hidden;
+	background: var(--pk-surface);
+	box-shadow: var(--pk-shadow-card);
+	max-height: calc(100vh - 320px);
+	display: flex; flex-direction: column;
+}
+.peak-vault-auto-run-modal .vr-cluster-list-head {
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--pk-border);
+	background: var(--pk-surface-sunken);
+	display: flex; align-items: center; justify-content: space-between;
+}
+.peak-vault-auto-run-modal .vr-cluster-list-head .vr-clh-label {
+	font-size: 10px; font-weight: 700;
+	color: var(--pk-text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+.peak-vault-auto-run-modal .vr-cluster-list-body { overflow-y: auto; flex: 1; }
+.peak-vault-auto-run-modal .vr-cluster-list-row {
+	display: grid;
+	grid-template-columns: 1fr 60px;
+	gap: 8px;
+	padding: 10px 14px;
+	align-items: center;
+	border-top: 1px solid var(--pk-border-soft);
+	cursor: pointer;
+	transition: background 0.1s ease;
+}
+.peak-vault-auto-run-modal .vr-cluster-list-row:first-child { border-top: 0; }
+.peak-vault-auto-run-modal .vr-cluster-list-row:hover { background: var(--pk-accent-tint); }
+.peak-vault-auto-run-modal .vr-cluster-list-row.selected {
+	background: var(--pk-accent-tint);
+	border-left: 3px solid var(--pk-accent);
+	padding-left: 11px;
+}
+.peak-vault-auto-run-modal .vr-cluster-list-row .vr-cll-name { font-size: 13px; font-weight: 600; color: var(--pk-text-primary); }
+.peak-vault-auto-run-modal .vr-cluster-list-row .vr-cll-meta {
+	font-size: 10px; color: var(--pk-text-tertiary);
+	margin-top: 2px;
+	display: flex; gap: 6px; flex-wrap: wrap;
+}
+.peak-vault-auto-run-modal .vr-cluster-list-row .vr-cll-meta .vr-meta-pill {
+	background: var(--pk-surface-sunken);
+	color: var(--pk-text-secondary);
+	border-radius: 4px;
+	padding: 1px 4px;
+	font-weight: 600;
+}
+.peak-vault-auto-run-modal .vr-cluster-list-row.selected .vr-cll-meta .vr-meta-pill {
+	background: rgba(124, 58, 237, 0.16);
+	color: var(--pk-accent-text);
+}
+.peak-vault-auto-run-modal .vr-cluster-list-row .vr-cll-side {
+	display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+}
+.peak-vault-auto-run-modal .vr-cluster-list-row .vr-cll-side .vr-cll-size {
+	font-size: 13px; font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.peak-vault-auto-run-modal .vr-cluster-detail {
+	border: 1px solid var(--pk-accent-soft);
+	border-radius: 14px;
+	background: linear-gradient(180deg, #FBFAFF 0%, white 60%);
+	padding: 18px 20px;
+	box-shadow: var(--pk-shadow-card);
+	position: sticky;
+	top: 0;
+	max-height: calc(100vh - 320px);
+	overflow-y: auto;
+}
+.peak-vault-auto-run-modal .vr-cluster-detail-head {
+	display: flex; align-items: center; gap: 12px;
+	margin-bottom: 14px;
+}
+.peak-vault-auto-run-modal .vr-cluster-detail-head .vr-cdh-icon {
+	width: 32px; height: 32px;
+	border-radius: 10px;
+	background: var(--pk-accent-tint);
+	color: var(--pk-accent);
+	display: flex; align-items: center; justify-content: center;
+	flex-shrink: 0;
+}
+.peak-vault-auto-run-modal .vr-cluster-detail-head .vr-cdh-title { font-size: 15px; font-weight: 700; }
+.peak-vault-auto-run-modal .vr-cluster-detail-head .vr-cdh-sub { font-size: 11px; color: var(--pk-text-secondary); margin-top: 2px; display: block; }
+.peak-vault-auto-run-modal .vr-cluster-detail-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr 1fr;
+	gap: 18px;
+}
+.peak-vault-auto-run-modal .vr-cluster-detail-grid .vr-cdg-block .vr-cdg-label {
+	font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+	color: var(--pk-text-secondary); text-transform: uppercase;
+}
+.peak-vault-auto-run-modal .vr-cluster-detail-grid .vr-cdg-block .vr-cdg-value {
+	font-size: 18px; font-weight: 700; color: var(--pk-text-primary);
+	margin-top: 4px;
+	font-variant-numeric: tabular-nums;
+}
+.peak-vault-auto-run-modal .vr-cluster-detail-grid .vr-cdg-block .vr-cdg-list {
+	font-size: 12px; color: var(--pk-text-secondary);
+	margin-top: 4px;
+	line-height: 1.55;
+}
+.peak-vault-auto-run-modal .vr-cluster-detail-foot {
+	display: flex; align-items: center; gap: 10px;
+	margin-top: 16px;
+	padding-top: 14px;
+	border-top: 1px solid var(--pk-border-soft);
+}
+.peak-vault-auto-run-modal .vr-cluster-detail-foot .vr-cdf-text {
+	font-size: 11px; color: var(--pk-text-secondary); flex: 1; font-style: italic;
+}
+.peak-vault-auto-run-modal .vr-cluster-members {
+	margin-top: 14px;
+	padding-top: 14px;
+	border-top: 1px solid var(--pk-border-soft);
+}
+.peak-vault-auto-run-modal .vr-cluster-members .vr-cm-head {
+	display: flex; align-items: center; justify-content: space-between;
+	margin-bottom: 8px;
+}
+.peak-vault-auto-run-modal .vr-cluster-members .vr-member-row {
+	display: flex; align-items: center; gap: 10px;
+	padding: 6px 8px;
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 12px;
+	color: var(--pk-text-primary);
+	background: transparent;
+	border: 0;
+	width: 100%;
+	font-family: inherit;
+	text-align: left;
+}
+.peak-vault-auto-run-modal .vr-cluster-members .vr-member-row:hover {
+	background: var(--pk-accent-tint);
+	color: var(--pk-accent);
+}
+.peak-vault-auto-run-modal .vr-cluster-members .vr-member-row .vr-mr-icon { color: var(--pk-text-secondary); flex-shrink: 0; }
+.peak-vault-auto-run-modal .vr-cluster-members .vr-member-row:hover .vr-mr-icon { color: var(--pk-accent); }
+.peak-vault-auto-run-modal .vr-cluster-members .vr-member-row .vr-mr-title {
+	flex: 1; min-width: 0;
+	overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.peak-vault-auto-run-modal .vr-cluster-members .vr-member-row .vr-mr-meta {
+	font-size: 10px; color: var(--pk-text-secondary); flex-shrink: 0;
+}
+
+/* ───── Gaps tab ───── */
+.peak-vault-auto-run-modal .vr-gap-card {
+	border: 1px solid var(--pk-border);
+	border-radius: 14px;
+	background: var(--pk-surface);
+	padding: 18px 20px;
+	margin-bottom: 16px;
+	box-shadow: var(--pk-shadow-card);
+	scroll-margin-top: 12px;
+}
+.peak-vault-auto-run-modal .vr-gap-card-head {
+	display: flex; align-items: center; gap: 10px;
+	margin-bottom: 12px;
+}
+.peak-vault-auto-run-modal .vr-gap-card-head .vr-gch-title { font-size: 15px; font-weight: 700; flex: 1; min-width: 0; }
+.peak-vault-auto-run-modal .vr-gap-card-body { font-size: 13px; color: var(--pk-text-primary); line-height: 1.6; }
+.peak-vault-auto-run-modal .vr-gap-card-body p { margin: 0 0 8px; }
+.peak-vault-auto-run-modal .vr-gap-card-body strong { color: var(--pk-text-primary); font-weight: 700; }
+
+.peak-vault-auto-run-modal .vr-gap-subhead {
+	font-size: 12px; font-weight: 700;
+	margin-top: 14px; margin-bottom: 8px;
+	display: flex; align-items: center; gap: 6px;
+}
+
+.peak-vault-auto-run-modal .vr-bridge-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+	margin-top: 6px;
+}
+.peak-vault-auto-run-modal .vr-bridge-tile {
+	border: 1px dashed var(--pk-accent-soft);
+	border-radius: 12px;
+	padding: 12px;
+	background: var(--pk-accent-tint);
+	cursor: pointer;
+	transition: border-color 0.1s;
+}
+.peak-vault-auto-run-modal .vr-bridge-tile:hover { border-color: var(--pk-accent); }
+.peak-vault-auto-run-modal .vr-bridge-tile .vr-bt-label {
+	font-size: 11px; color: var(--pk-accent-text); font-weight: 600;
+}
+.peak-vault-auto-run-modal .vr-bridge-tile .vr-bt-text {
+	font-size: 12px; color: var(--pk-text-primary); margin-top: 4px; line-height: 1.5;
+}
+
+.peak-vault-auto-run-modal .vr-dangling-table {
+	display: grid;
+	grid-template-columns: 1.4fr 60px 1fr 110px;
+	gap: 0;
+	border: 1px solid var(--pk-border);
+	border-radius: 12px;
+	overflow: hidden;
+	background: var(--pk-surface);
+}
+.peak-vault-auto-run-modal .vr-dangling-table .vr-dt-cell {
+	padding: 10px 14px;
+	font-size: 12px;
+	border-top: 1px solid var(--pk-border-soft);
+	display: flex; align-items: center;
+	min-width: 0;
+}
+.peak-vault-auto-run-modal .vr-dangling-table .vr-dt-cell.head {
+	background: var(--pk-surface-sunken);
+	border-top: 0;
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--pk-text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+.peak-vault-auto-run-modal .vr-dangling-table .vr-dt-cell.count {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+	justify-content: flex-end;
+}
+.peak-vault-auto-run-modal .vr-dangling-table .vr-dt-cell.link {
+	color: var(--pk-accent); font-weight: 600;
+	cursor: pointer;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: block;
+}
+.peak-vault-auto-run-modal .vr-dangling-table .vr-dt-cell.link:hover { text-decoration: underline; }
+
+/* ───── Actions tab ───── */
+.peak-vault-auto-run-modal .vr-actions-toolbar {
+	display: flex; align-items: center; gap: 12px;
+	margin-bottom: 16px;
+	flex-wrap: wrap;
+}
+.peak-vault-auto-run-modal .vr-actions-toolbar .vr-at-label {
+	font-size: 12px; font-weight: 600; color: var(--pk-text-secondary);
+}
+.peak-vault-auto-run-modal .vr-select-pill {
+	border: 1px solid var(--pk-border);
+	border-radius: 999px;
+	padding: 4px 12px;
+	font-size: 11px;
+	font-weight: 600;
+	background: var(--pk-surface);
+	color: var(--pk-text-secondary);
+	cursor: pointer;
+}
+.peak-vault-auto-run-modal .vr-select-pill.active {
+	border-color: var(--pk-accent);
+	color: var(--pk-accent);
+	background: var(--pk-accent-tint);
+}
+.peak-vault-auto-run-modal .vr-actions-tip {
+	font-size: 11px;
+	color: var(--pk-text-secondary);
+	font-style: italic;
+	margin-left: auto;
+}
+
+.peak-vault-auto-run-modal .vr-action-card {
+	border: 1px solid var(--pk-border);
+	border-radius: 14px;
+	background: var(--pk-surface);
+	padding: 16px 18px;
+	margin-bottom: 12px;
+	box-shadow: var(--pk-shadow-card);
+	display: grid;
+	grid-template-columns: 100px 1fr 170px;
+	gap: 16px;
+	align-items: center;
+	scroll-margin-top: 12px;
+}
+.peak-vault-auto-run-modal .vr-action-card .vr-ac-priority {
+	display: flex; flex-direction: column; gap: 6px;
+	align-items: flex-start;
+}
+.peak-vault-auto-run-modal .vr-action-card .vr-ac-title { font-size: 14px; font-weight: 700; color: var(--pk-text-primary); }
+.peak-vault-auto-run-modal .vr-action-card .vr-ac-body { font-size: 12px; color: var(--pk-text-secondary); margin-top: 4px; line-height: 1.55; }
+.peak-vault-auto-run-modal .vr-action-card .vr-ac-impact { font-size: 11px; color: var(--pk-text-tertiary); font-style: italic; margin-top: 6px; }
+.peak-vault-auto-run-modal .vr-action-card .vr-ac-notes {
+	margin-top: 8px;
+	display: flex; flex-wrap: wrap; gap: 6px;
+}
+.peak-vault-auto-run-modal .vr-action-card .vr-ac-side {
+	display: flex; flex-direction: column; gap: 8px;
+	align-items: flex-end;
+}
+.peak-vault-auto-run-modal .vr-action-card .vr-ac-side .vr-ac-notes-count {
+	font-size: 11px; color: var(--pk-text-secondary);
+}
+.peak-vault-auto-run-modal .vr-actions-foot {
+	display: flex; align-items: center; gap: 12px;
+	margin-top: 18px;
+	padding-top: 16px;
+	border-top: 1px solid var(--pk-border);
+}
+.peak-vault-auto-run-modal .vr-actions-foot .vr-af-label { flex: 1; font-size: 12px; color: var(--pk-text-secondary); }
+
+/* ───── Sources tab ───── */
+.peak-vault-auto-run-modal .vr-sources-layout {
+	display: grid;
+	grid-template-columns: 220px 1fr 280px;
+	gap: 16px;
+}
+.peak-vault-auto-run-modal .vr-sources-filter {
+	border: 1px solid var(--pk-border);
+	border-radius: 14px;
+	background: var(--pk-surface);
+	padding: 14px;
+	box-shadow: var(--pk-shadow-card);
+	height: max-content;
+	position: sticky;
+	top: 0;
+}
+.peak-vault-auto-run-modal .vr-sources-filter h4 {
+	margin: 0 0 8px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	color: var(--pk-text-secondary);
+	text-transform: uppercase;
+}
+.peak-vault-auto-run-modal .vr-sources-filter .vr-sf-group { margin-bottom: 14px; }
+.peak-vault-auto-run-modal .vr-sources-filter .vr-sf-item {
+	display: flex; align-items: center; gap: 8px;
+	font-size: 12px;
+	padding: 4px 0;
+	color: var(--pk-text-primary);
+	cursor: pointer;
+}
+.peak-vault-auto-run-modal .vr-sources-filter .vr-sf-item .vr-checkbox { flex-shrink: 0; }
+.peak-vault-auto-run-modal .vr-sources-filter .vr-sf-item .vr-sf-count {
+	margin-left: auto;
+	font-size: 11px;
+	color: var(--pk-text-tertiary);
+}
+
+.peak-vault-auto-run-modal .vr-checkbox {
+	width: 16px; height: 16px;
+	border: 1.5px solid var(--pk-border);
+	border-radius: 4px;
+	background: var(--pk-surface);
+	position: relative;
+	flex-shrink: 0;
+}
+.peak-vault-auto-run-modal .vr-checkbox.checked {
+	background: var(--pk-accent);
+	border-color: var(--pk-accent);
+}
+.peak-vault-auto-run-modal .vr-checkbox.checked::after {
+	content: '';
+	position: absolute;
+	left: 4px; top: 1px;
+	width: 4px; height: 8px;
+	border: solid white;
+	border-width: 0 2px 2px 0;
+	transform: rotate(45deg);
+}
+
+.peak-vault-auto-run-modal .vr-sources-table {
+	border: 1px solid var(--pk-border);
+	border-radius: 14px;
+	overflow: hidden;
+	background: var(--pk-surface);
+	box-shadow: var(--pk-shadow-card);
+}
+.peak-vault-auto-run-modal .vr-src-head,
+.peak-vault-auto-run-modal .vr-src-row {
+	display: grid;
+	grid-template-columns: 1.8fr 1fr 0.8fr 0.8fr 30px;
+	gap: 8px;
+	padding: 10px 14px;
+	align-items: center;
+	font-size: 12px;
+}
+.peak-vault-auto-run-modal .vr-src-head {
+	background: var(--pk-surface-sunken);
+	border-bottom: 1px solid var(--pk-border);
+	font-size: 11px; font-weight: 700;
+	color: var(--pk-text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+.peak-vault-auto-run-modal .vr-src-row {
+	border-top: 1px solid var(--pk-border-soft);
+	cursor: pointer;
+}
+.peak-vault-auto-run-modal .vr-src-row:hover { background: var(--pk-accent-tint); }
+.peak-vault-auto-run-modal .vr-src-row.selected { background: var(--pk-accent-tint); }
+.peak-vault-auto-run-modal .vr-src-row .vr-src-title { font-weight: 600; color: var(--pk-text-primary); }
+.peak-vault-auto-run-modal .vr-src-row .vr-src-path { font-size: 11px; color: var(--pk-text-secondary); }
+.peak-vault-auto-run-modal .vr-src-row .vr-src-meter {
+	display: flex; align-items: center; gap: 6px;
+}
+.peak-vault-auto-run-modal .vr-src-row .vr-src-bar {
+	width: 60px; height: 4px;
+	background: var(--pk-surface-sunken);
+	border-radius: 2px;
+	overflow: hidden;
+}
+.peak-vault-auto-run-modal .vr-src-row .vr-src-bar > div {
+	height: 100%; background: var(--pk-accent);
+}
+
+.peak-vault-auto-run-modal .vr-sources-drawer {
+	border: 1px solid var(--pk-border);
+	border-radius: 14px;
+	background: var(--pk-surface);
+	padding: 16px;
+	box-shadow: var(--pk-shadow-card);
+	height: max-content;
+	position: sticky;
+	top: 0;
+}
+.peak-vault-auto-run-modal .vr-sources-drawer h4 {
+	margin: 0 0 4px;
+	font-size: 13px;
+	font-weight: 700;
+}
+.peak-vault-auto-run-modal .vr-sources-drawer .vr-sd-sub { font-size: 11px; color: var(--pk-text-secondary); }
+.peak-vault-auto-run-modal .vr-sources-drawer .vr-sd-section { margin-top: 14px; }
+.peak-vault-auto-run-modal .vr-sources-drawer .vr-sd-section h5 {
+	margin: 0 0 6px;
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--pk-text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+.peak-vault-auto-run-modal .vr-sources-drawer .vr-sd-excerpt {
+	font-size: 12px;
+	color: var(--pk-text-primary);
+	background: var(--pk-surface-sunken);
+	border-radius: 8px;
+	padding: 10px;
+	line-height: 1.5;
+	user-select: text;
+}
+
+/* ───── Trace tab — defer to existing TraceArtifactPanel ───── */
+.peak-vault-auto-run-modal .vr-trace-wrap {
+	padding: 0;
+}
+
+/* ───── Status indicators inside cluster rows ───── */
+.peak-vault-auto-run-modal .vr-status-pill {
+	display: inline-flex; align-items: center; gap: 4px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 10px;
+	font-weight: 600;
+}
+.peak-vault-auto-run-modal .vr-status-pill.central { background: var(--pk-accent-tint); color: var(--pk-accent-text); }
+.peak-vault-auto-run-modal .vr-status-pill.growing { background: var(--pk-success-bg); color: var(--pk-success-text); }
+.peak-vault-auto-run-modal .vr-status-pill.stable { background: var(--pk-surface-sunken); color: var(--pk-text-secondary); }
+.peak-vault-auto-run-modal .vr-status-pill.fragmenting { background: var(--pk-warning-bg); color: var(--pk-warning-text); }
+.peak-vault-auto-run-modal .vr-status-pill.dying { background: var(--pk-indigo-bg); color: var(--pk-indigo); }

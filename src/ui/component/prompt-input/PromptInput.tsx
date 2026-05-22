@@ -26,9 +26,7 @@ interface PromptInputContextValue {
 	// Autocompletion data
 	autocompletion: {
 		contextItems: any[];
-		promptItems: any[];
 		onLoadContextItems?: (query: string, currentFolder?: string) => Promise<any[]>;
-		onLoadPromptItems?: (query: string) => Promise<any[]>;
 		onMenuItemSelect?: (triggerChar: string, selectedItem: any) => void;
 		folderStack?: string[];
 		onFolderUp?: () => void;
@@ -57,9 +55,7 @@ export interface PromptInputProps extends Omit<HTMLAttributes<HTMLFormElement>, 
 	inputFocusRef?: React.RefObject<{ focus: () => void }>;
 	// Autocompletion data
 	contextItems?: any[];
-	promptItems?: any[];
 	onLoadContextItems?: (query: string, currentFolder?: string) => Promise<any[]>;
-	onLoadPromptItems?: (query: string) => Promise<any[]>;
 	onMenuItemSelect?: (triggerChar: string, selectedItem: any) => void;
 	folderStack?: string[];
 	onFolderUp?: () => void;
@@ -79,9 +75,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 	initialInput = '',
 	inputFocusRef,
 	contextItems = [],
-	promptItems = [],
 	onLoadContextItems,
-	onLoadPromptItems,
 	onMenuItemSelect,
 	folderStack,
 	onFolderUp,
@@ -245,15 +239,13 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 			},
 			autocompletion: {
 				contextItems,
-				promptItems,
 				onLoadContextItems,
-				onLoadPromptItems,
 				onMenuItemSelect,
 				folderStack,
 				onFolderUp,
 			},
 		}),
-		[textInput, setInput, clearInput, focusInput, attachments, addFiles, removeFile, clearFiles, openFileDialog, registerFileInput, contextItems, promptItems, onLoadContextItems, onLoadPromptItems, onMenuItemSelect, folderStack, onFolderUp]
+		[textInput, setInput, clearInput, focusInput, attachments, addFiles, removeFile, clearFiles, openFileDialog, registerFileInput, contextItems, onLoadContextItems, onMenuItemSelect, folderStack, onFolderUp]
 	);
 
 	// Register file input
@@ -358,4 +350,3 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 		</PromptInputContext.Provider>
 	);
 };
-

@@ -23,7 +23,7 @@ export function UsageDashboard() {
 		<div className="pktw-flex pktw-flex-col pktw-gap-6 pktw-p-6 pktw-h-full pktw-overflow-y-auto">
 			{/* Header */}
 			<div className="pktw-flex pktw-items-center pktw-justify-between">
-				<span className="pktw-text-xl pktw-font-semibold" style={{ color: 'var(--text-normal)' }}>
+				<span className="pktw-text-xl pktw-font-semibold" style={{ color: 'var(--pk-text-primary)' }}>
 					Token Usage
 				</span>
 				<div className="pktw-flex pktw-gap-1">

@@ -11,6 +11,7 @@ import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
 export interface ContextMenuPosition {
 	top: number;
 	left: number;
+	placement?: 'top' | 'bottom';
 }
 
 export interface ContextMenuProps {
@@ -78,6 +79,11 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	onFolderUp,
 }) => {
 	const listRef = useRef<HTMLDivElement>(null);
+	const menuStyle = {
+		top: position.top,
+		left: position.left,
+		transform: position.placement === 'top' ? 'translateY(-100%)' : undefined,
+	};
 
 	// Scroll the highlighted row into view whenever it changes
 	useLayoutEffect(() => {
@@ -146,10 +152,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	if (isLoading) {
 		return (
 			<div
-				className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--background-modifier-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
-				style={{ top: position.top, left: position.left }}
+				className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--pk-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
+				style={menuStyle}
 			>
-				<span className="pktw-text-xs pktw-text-[var(--text-muted)]">Loading...</span>
+				<span className="pktw-text-xs pktw-text-[var(--pk-text-secondary)]">Loading...</span>
 			</div>
 		);
 	}
@@ -157,10 +163,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	if (items.length === 0) {
 		return (
 			<div
-				className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--background-modifier-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
-				style={{ top: position.top, left: position.left }}
+				className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--pk-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
+				style={menuStyle}
 			>
-				<span className="pktw-text-xs pktw-text-[var(--text-muted)]">No matching files</span>
+				<span className="pktw-text-xs pktw-text-[var(--pk-text-secondary)]">No matching files</span>
 			</div>
 		);
 	}
@@ -171,15 +177,15 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	return (
 		<div
 			ref={listRef}
-			className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--background-modifier-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-min-w-[280px] pktw-max-w-[400px] pktw-max-h-[300px] pktw-overflow-y-auto pktw-p-1"
-			style={{ top: position.top, left: position.left }}
+			className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--pk-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-min-w-[280px] pktw-max-w-[400px] pktw-max-h-[300px] pktw-overflow-y-auto pktw-p-1"
+			style={menuStyle}
 		>
 			{/* Breadcrumb bar */}
 			{folderStack.length > 0 && onFolderUp && (
 				<button
 					type="button"
 					onClick={onFolderUp}
-					className="pktw-flex pktw-items-center pktw-gap-1 pktw-w-full pktw-px-2 pktw-py-1.5 pktw-text-[10px] pktw-text-[var(--text-muted)] hover:pktw-text-[var(--text-normal)] pktw-border-b pktw-border-[var(--background-modifier-border)] pktw-mb-1 pktw-cursor-pointer pktw-bg-transparent"
+					className="pktw-flex pktw-items-center pktw-gap-1 pktw-w-full pktw-px-2 pktw-py-1.5 pktw-text-[10px] pktw-text-[var(--pk-text-secondary)] hover:pktw-text-[var(--pk-text-primary)] pktw-border-b pktw-border-[var(--pk-border)] pktw-mb-1 pktw-cursor-pointer pktw-bg-transparent"
 				>
 					<ChevronLeft className="pktw-w-3 pktw-h-3 pktw-flex-shrink-0" />
 					<span className="pktw-truncate">
@@ -187,8 +193,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 							? 'Vault'
 							: folderName(folderStack[folderStack.length - 2])}
 					</span>
-					<span className="pktw-text-[var(--text-faint)]">/</span>
-					<span className="pktw-font-medium pktw-text-[var(--text-normal)] pktw-truncate">
+					<span className="pktw-text-[var(--pk-text-tertiary)]">/</span>
+					<span className="pktw-font-medium pktw-text-[var(--pk-text-primary)] pktw-truncate">
 						{folderName(folderStack[folderStack.length - 1])}
 					</span>
 				</button>
@@ -197,7 +203,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 			{groups.map(({ group, items: groupEntries }) => (
 				<div key={group || '__ungrouped'}>
 					{group && (
-						<span className="pktw-text-[9px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-[var(--text-muted)] pktw-px-3 pktw-py-1.5 pktw-block">
+						<span className="pktw-text-[9px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-[var(--pk-text-secondary)] pktw-px-3 pktw-py-1.5 pktw-block">
 							{group}
 						</span>
 					)}
@@ -214,8 +220,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 								onMouseEnter={() => onSelectedIndexChange(globalIdx)}
 								className={cn(
 									'pktw-w-full pktw-px-3 pktw-py-2 pktw-text-left pktw-text-sm pktw-transition-colors pktw-h-auto pktw-rounded',
-									'hover:pktw-bg-[var(--background-modifier-hover)]',
-									isSelected && 'pktw-bg-[var(--interactive-accent)] pktw-text-[var(--text-on-accent)]',
+									'hover:pktw-bg-[var(--pk-state-hover)]',
+									isSelected && 'pktw-bg-[var(--pk-accent)] pktw-text-[var(--pk-accent-fg)]',
 								)}
 							>
 								<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-w-full">
@@ -226,13 +232,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
 									{/* Label + path */}
 									<div className="pktw-flex-1 pktw-min-w-0">
-										<span className="pktw-font-medium pktw-truncate pktw-block pktw-text-[var(--text-normal)]">
+										<span className="pktw-font-medium pktw-truncate pktw-block pktw-text-[var(--pk-text-primary)]">
 											{item.label}
 										</span>
 										{item.description && (
 											<span className={cn(
 												'pktw-text-[10px] pktw-truncate pktw-block',
-												isSelected ? 'pktw-text-white/70' : 'pktw-text-[var(--text-muted)]',
+												isSelected ? 'pktw-text-white/70' : 'pktw-text-[var(--pk-text-secondary)]',
 											)}>
 												{item.description}
 											</span>
@@ -245,7 +251,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 											'pktw-text-[9px] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-flex-shrink-0 pktw-self-center pktw-font-medium',
 											isSelected
 												? 'pktw-bg-white/20 pktw-text-white'
-												: 'pktw-bg-[var(--background-modifier-hover)] pktw-text-[var(--text-muted)]',
+												: 'pktw-bg-[var(--pk-state-hover)] pktw-text-[var(--pk-text-secondary)]',
 										)}>
 											{item.meta}
 										</span>
@@ -255,7 +261,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 									{item.showArrow && (
 										<span className={cn(
 											'pktw-text-sm pktw-flex-shrink-0',
-											isSelected ? 'pktw-text-white' : 'pktw-text-[var(--text-muted)]',
+											isSelected ? 'pktw-text-white' : 'pktw-text-[var(--pk-text-secondary)]',
 										)}>
 											&gt;
 										</span>

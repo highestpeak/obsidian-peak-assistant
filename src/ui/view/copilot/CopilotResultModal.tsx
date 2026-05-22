@@ -1,5 +1,5 @@
 // src/ui/view/copilot/CopilotResultModal.tsx
-import { Modal, type App } from 'obsidian';
+import { Modal, Notice, type App } from 'obsidian';
 import React, { useState, useEffect } from 'react';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
@@ -9,20 +9,30 @@ import { Loader2, AlertTriangle, Settings2, ArrowLeft, X, Ban } from 'lucide-rea
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { CopilotAction, DocumentContext, ActionUsage, ActionResult } from '@/service/copilot/CopilotActionRegistry';
+import { actionResultToArtifacts } from '@/service/copilot/CopilotArtifactAdapter';
+import { applyCopilotArtifactsToContext } from '@/service/copilot/CopilotArtifactApply';
+import {
+	createEmptyCopilotRunArtifacts,
+	mergeCapabilityArtifact,
+	type CopilotRunArtifacts,
+} from '@/service/copilot/CopilotRunArtifacts';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import type { V2ToolStep } from '@/ui/view/quick-search/types/search-steps';
 import { v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '@/ui/view/quick-search/types/search-steps';
 import { CopilotStepTimeline } from './components/CopilotStepTimeline';
+import { CopilotReviewShell } from './review/CopilotReviewShell';
 
 interface CopilotResultModalProps {
 	action: CopilotAction;
 	ctx: DocumentContext;
+	initialResult?: ActionResult;
+	completedSteps?: V2ToolStep[];
 }
 
 type ModalPhase =
 	| { phase: 'loading'; startTime: number }
 	| { phase: 'streaming'; steps: V2ToolStep[]; progressText: string; startTime: number }
-	| { phase: 'result'; data: any; usage?: ActionUsage; completedSteps?: V2ToolStep[] }
+	| { phase: 'result'; data: any; usage?: ActionUsage; completedSteps?: V2ToolStep[]; resultType?: 'structured' | 'stream' }
 	| { phase: 'cancelled' }
 	| { phase: 'error'; error: Error };
 
@@ -36,6 +46,72 @@ const LOADING_STEPS = [
 
 type ToolCallRegistry = Map<string, string>;
 
+function getToolEventId(event: any): string | undefined {
+	const id = event.id ?? event.toolCallId;
+	return typeof id === 'string' && id.length > 0 ? id : undefined;
+}
+
+function normalizeToolName(toolName: unknown): string | undefined {
+	return typeof toolName === 'string' && toolName.length > 0 && toolName !== 'unknown'
+		? toolName
+		: undefined;
+}
+
+function actionResultData(result: ActionResult): any {
+	if (result.type === 'structured') return result.data;
+	if (result.type === 'stream') return result.text;
+	return result;
+}
+
+function actionResultFromPhase(phase: Extract<ModalPhase, { phase: 'result' }>): ActionResult {
+	if (phase.resultType === 'stream') {
+		return { type: 'stream', text: String(phase.data ?? ''), usage: phase.usage };
+	}
+	return { type: 'structured', data: phase.data, usage: phase.usage };
+}
+
+function buildManualReviewArtifacts(params: {
+	action: CopilotAction;
+	ctx: DocumentContext;
+	phase: Extract<ModalPhase, { phase: 'result' }>;
+}): CopilotRunArtifacts {
+	let artifacts = createEmptyCopilotRunArtifacts();
+	for (const step of params.phase.completedSteps ?? []) {
+		artifacts = mergeCapabilityArtifact(artifacts, {
+			id: `${params.action.id}-${step.id}`,
+			type: 'trace',
+			label: step.displayName,
+			status: step.status,
+			summary: step.summary,
+		});
+	}
+
+	for (const artifact of actionResultToArtifacts({
+		action: params.action,
+		result: actionResultFromPhase(params.phase),
+		ctx: params.ctx,
+	})) {
+		artifacts = mergeCapabilityArtifact(artifacts, artifact);
+	}
+
+	return artifacts;
+}
+
+function shouldUseArtifactReview(actionId: string, artifacts: CopilotRunArtifacts): boolean {
+	if (artifacts.changes.length > 0 || artifacts.sources.length > 0) return true;
+	return [
+		'summarize',
+		'review',
+		'find-related',
+		'knowledge-gaps',
+		'synthesize-topic',
+		'vault-health',
+		'vault-summary',
+		'prompt-audit',
+		'check-task-list',
+	].includes(actionId);
+}
+
 async function consumeCopilotStream(
 	generator: AsyncGenerator<LLMStreamEvent, ActionResult | void>,
 	setPhase: (phase: ModalPhase) => void,
@@ -44,6 +120,8 @@ async function consumeCopilotStream(
 ): Promise<ActionResult | void> {
 	const steps: V2ToolStep[] = [];
 	const callRegistry: ToolCallRegistry = new Map();
+	const pendingNoIdCalls: string[] = [];
+	let fallbackCounter = 0;
 	let progressText = '';
 	let lastUsage: ActionUsage | undefined;
 
@@ -69,12 +147,16 @@ async function consumeCopilotStream(
 			const event = value as LLMStreamEvent;
 			switch (event.type) {
 				case 'tool-call': {
-					const { id, toolName, input } = event as any;
-					callRegistry.set(id, toolName);
-					const display = v2ToolDisplay(toolName, input ?? {});
+					const { toolName, input } = event as any;
+					const eventId = getToolEventId(event);
+					const resolvedToolName = normalizeToolName(toolName) ?? 'unknown';
+					const stepId = eventId ?? `${resolvedToolName}-${Date.now()}-${fallbackCounter++}`;
+					callRegistry.set(stepId, resolvedToolName);
+					if (!eventId) pendingNoIdCalls.push(stepId);
+					const display = v2ToolDisplay(resolvedToolName, input ?? {});
 					pushStep({
-						id,
-						toolName,
+						id: stepId,
+						toolName: resolvedToolName,
 						displayName: display.displayName,
 						icon: display.icon,
 						input: input ?? {},
@@ -84,11 +166,32 @@ async function consumeCopilotStream(
 					break;
 				}
 				case 'tool-result': {
-					const { id, output } = event as any;
-					const toolName = callRegistry.get(id) ?? 'unknown';
-					const summary = extractV2Summary(toolName, output);
-					updateStep(id, s => ({
+					const { toolName, output } = event as any;
+					const eventId = getToolEventId(event);
+					const stepId = eventId ?? pendingNoIdCalls.pop() ?? `${normalizeToolName(toolName) ?? 'tool'}-${Date.now()}-${fallbackCounter++}`;
+					const resolvedToolName = normalizeToolName(toolName) ?? callRegistry.get(stepId) ?? 'unknown';
+					callRegistry.set(stepId, resolvedToolName);
+					const summary = extractV2Summary(resolvedToolName, output);
+					const hasExistingStep = steps.some(step => step.id === stepId);
+					if (!hasExistingStep) {
+						const display = v2ToolDisplay(resolvedToolName, {});
+						pushStep({
+							id: stepId,
+							toolName: resolvedToolName,
+							displayName: display.displayName,
+							icon: display.icon,
+							input: {},
+							status: 'done',
+							startedAt: Date.now(),
+							endedAt: Date.now(),
+							summary,
+							resultPreview: unwrapToolOutput(output).slice(0, 500),
+						});
+						break;
+					}
+					updateStep(stepId, s => ({
 						...s,
+						toolName: resolvedToolName,
 						status: 'done',
 						endedAt: Date.now(),
 						summary,
@@ -168,18 +271,27 @@ const StreamingView: React.FC<{
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-3 pktw-py-4 pktw-px-4">
-			<div className="pktw-flex pktw-items-center pktw-justify-between">
+			<div className="pktw-rounded-lg pktw-border pktw-border-border pktw-bg-muted/30 pktw-p-3">
 				<div className="pktw-flex pktw-items-center pktw-gap-2">
 					<Loader2 className="pktw-w-4 pktw-h-4 pktw-animate-spin pktw-text-accent" />
 					<span className="pktw-text-sm pktw-font-medium">{label}</span>
+					<span className="pktw-flex-1" />
+					<span className="pktw-text-[10px] pktw-text-muted-foreground pktw-font-mono">{elapsed}s</span>
 				</div>
-				<span className="pktw-text-[10px] pktw-text-muted-foreground pktw-font-mono">{elapsed}s</span>
+				<span className="pktw-block pktw-mt-1 pktw-text-xs pktw-text-muted-foreground">
+					Analyzing context, running tools, then preparing reviewable output. No changes are applied automatically.
+				</span>
 			</div>
 			{steps.length > 0 && <CopilotStepTimeline steps={steps} />}
 			{progressText && (
-				<div className="pktw-max-h-[200px] pktw-overflow-y-auto pktw-text-xs pktw-text-muted-foreground pktw-whitespace-pre-wrap pktw-mt-2">
-					{progressText}
-				</div>
+				<details className="pktw-rounded-md pktw-border pktw-border-border pktw-bg-muted/20 pktw-p-2 pktw-mt-2">
+					<summary className="pktw-cursor-pointer pktw-text-xs pktw-font-medium pktw-text-muted-foreground">
+						Inspect run details
+					</summary>
+					<div className="pktw-max-h-[200px] pktw-overflow-y-auto pktw-text-xs pktw-text-muted-foreground pktw-whitespace-pre-wrap pktw-mt-2">
+						{progressText}
+					</div>
+				</details>
 			)}
 			<div className="pktw-flex pktw-justify-center pktw-mt-2">
 				<Button variant="ghost" size="sm" onClick={onCancel}>
@@ -306,6 +418,34 @@ const CopilotResultContent: React.FC<{
 		);
 	}
 
+	const artifacts = buildManualReviewArtifacts({ action, ctx, phase });
+	if (shouldUseArtifactReview(action.id, artifacts)) {
+		const applyArtifacts = async (selectedOnly: boolean) => {
+			const result = await applyCopilotArtifactsToContext({ ctx, artifacts, selectedOnly });
+			if (result.appliedBlocks === 0) {
+				new Notice('No matching changes were applied.');
+				return;
+			}
+			new Notice(`Applied ${result.appliedBlocks} change block${result.appliedBlocks === 1 ? '' : 's'}.`);
+			onClose();
+		};
+
+		return (
+			<div className="pktw-relative pktw-h-[min(760px,calc(100vh-96px))]">
+				<CopilotReviewShell
+					title={action.label}
+					subtitle="Review the generated artifacts. No changes are applied until you approve them."
+					artifacts={artifacts}
+					onClose={onClose}
+					onRejectAll={onClose}
+					onApplySelected={() => void applyArtifacts(true)}
+					onApplyReviewed={() => void applyArtifacts(false)}
+					onCreateProposal={() => new Notice('Proposal creation is not wired yet.')}
+				/>
+			</div>
+		);
+	}
+
 	const Panel = action.ResultPanel;
 	return (
 		<div className="pktw-relative pktw-flex pktw-flex-col">
@@ -341,11 +481,23 @@ export class CopilotResultModal extends Modal {
 		this.contentEl.empty();
 		this.modalEl.addClass('peak-copilot-modal');
 		this.contentEl.addClass('pktw-root');
-		this.modalEl.style.width = '720px';
-		this.modalEl.style.maxWidth = '90vw';
+		this.modalEl.style.width = '1120px';
+		this.modalEl.style.maxWidth = '92vw';
+		this.modalEl.style.padding = '0';
+		this.contentEl.style.padding = '0';
 
 		this.abortController = new AbortController();
-		const initialPhase: ModalPhase = { phase: 'loading', startTime: Date.now() };
+		const initialPhase: ModalPhase = this.props.initialResult
+			? this.props.initialResult.type === 'error'
+				? { phase: 'error', error: new Error(this.props.initialResult.message) }
+			: {
+				phase: 'result',
+				data: actionResultData(this.props.initialResult),
+				usage: this.props.initialResult.usage,
+				completedSteps: this.props.completedSteps,
+				resultType: this.props.initialResult.type,
+			}
+			: { phase: 'loading', startTime: Date.now() };
 		const appContext = AppContext.getInstance();
 
 		this.reactRenderer = new ReactRenderer(this.containerEl);
@@ -371,6 +523,8 @@ export class CopilotResultModal extends Modal {
 			),
 		);
 
+		if (this.props.initialResult) return;
+
 		// Execute the action and wire results into the modal
 		const { action, ctx } = this.props;
 		const guard = action.guard?.(ctx);
@@ -391,11 +545,16 @@ export class CopilotResultModal extends Modal {
 				}, startTime, signal);
 				if (signal.aborted) return;
 				if (result) {
+					if (result.type === 'error') {
+						this.setError(new Error(result.message));
+						return;
+					}
 					_currentSetPhase?.({
 						phase: 'result',
-						data: result.data ?? result.text ?? result,
+						data: actionResultData(result),
 						usage: result.usage,
 						completedSteps: lastSteps.length > 0 ? lastSteps : undefined,
+						resultType: result.type,
 					});
 				}
 			} catch (err) {
@@ -409,7 +568,7 @@ export class CopilotResultModal extends Modal {
 	}
 
 	setResult(data: any, usage?: ActionUsage): void {
-		_currentSetPhase?.({ phase: 'result', data, usage });
+		_currentSetPhase?.({ phase: 'result', data, usage, resultType: 'structured' });
 	}
 
 	setError(error: Error): void {

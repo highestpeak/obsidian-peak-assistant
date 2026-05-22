@@ -31,7 +31,7 @@ const FileChangeItem: React.FC<{
 				</span>
 				<div className="pktw-whitespace-nowrap pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-gap-1">
 					{change.addedLines > 0 && change.removedLines === 0 && (
-						<span className="pktw-text-[8px] pktw-font-bold pktw-px-1 pktw-py-0.5 pktw-rounded pktw-bg-[var(--pk-success,#22c55e)]/10 pktw-text-[var(--pk-success,#22c55e)]">NEW</span>
+						<span className="pktw-text-[8px] pktw-font-bold pktw-px-1 pktw-py-0.5 pktw-rounded pktw-bg-[var(--pk-success)]/10 pktw-text-[var(--pk-success)]">NEW</span>
 					)}
 					{change.addedLines > 0 && (
 						<span className="pktw-text-green-600">

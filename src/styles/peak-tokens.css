@@ -1,0 +1,205 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   Peak Assistant · Design Token Source of Truth
+   ─────────────────────────────────────────────────────────────────────────────
+   Spec  : docs/superpowers/specs/2026-05-22-design-system-migration.md
+   Preview: docs/mockups/_design-tokens-preview.html (Phase 0 visual contract)
+
+   Phase 1 (2026-05-22) — Q2=A 完全自治：所有 token 硬编码 light + dark 两套，
+   不再 chain `var(--background-primary)` 等 Obsidian 主题变量。Obsidian 切换
+   light/dark 时靠 body 上 `.theme-light` / `.theme-dark` 类作 cascade 跟随。
+
+   Scoping rule (per docs/conventions/obsidian-css-defense.md):
+     插件 UI 必须在 `.pktw-root` 或 `.peak-design-root` 内才能拿到 token。
+     `:root` 选择器仅在 standalone mock HTML 里有用，这里不污染。
+
+   编辑规则：
+     - 新 token 必须先加在这里，再去任何地方引用
+     - 修改既有 token 视为视觉变更，需走视觉走查
+     - 旧别名 (--pk-fg/--pk-fg-muted/--pk-popover 等) 在 peak-variables.css
+       里以 alias 形式保留，**不要在这里复活**
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Light (默认，含无 theme-class 兜底) ───────────────────────────────── */
+.pktw-root,
+.peak-design-root,
+.theme-light .pktw-root,
+.theme-light .peak-design-root {
+	/* ── surface ────────────────────────────────────────────────────────── */
+	--pk-bg:                 #ffffff;
+	--pk-bg-secondary:       #f7f7fa;
+	--pk-bg-tertiary:        #f0f0f5;
+	--pk-surface:            #ffffff;
+	--pk-surface-raised:     #fafafa;
+	--pk-surface-sunken:     #f3f4f6;
+	--pk-surface-overlay:    #ffffff;
+
+	/* ── border ─────────────────────────────────────────────────────────── */
+	--pk-border:             #e5e7eb;
+	--pk-border-soft:        #ececef;
+	--pk-border-strong:      #d1d5db;
+	--pk-border-accent:      rgba(124, 58, 237, 0.25);
+
+	/* ── text ───────────────────────────────────────────────────────────── */
+	--pk-text-primary:       #2e3338;
+	--pk-text-secondary:     #6c757d;
+	--pk-text-tertiary:      #999999;
+	--pk-text-faint:         #b9bcc1;
+	--pk-text-inverted:      #ffffff;
+
+	/* ── accent (brand purple #7c3aed, Q1) ─────────────────────────────── */
+	--pk-accent:             #7c3aed;
+	--pk-accent-hover:       #6d28d9;
+	--pk-accent-tint:        rgba(124, 58, 237, 0.10);
+	--pk-accent-soft:        rgba(124, 58, 237, 0.25);
+	--pk-accent-text:        #6d28d9;
+	--pk-accent-fg:          #ffffff;
+
+	/* ── semantic ───────────────────────────────────────────────────────── */
+	--pk-success:            #22c55e;
+	--pk-success-bg:         rgba(34, 197, 94, 0.12);
+	--pk-success-text:       #15803d;
+
+	--pk-warning:            #f59e0b;
+	--pk-warning-bg:         rgba(245, 158, 11, 0.14);
+	--pk-warning-text:       #b45309;
+
+	--pk-error:              #ef4444;
+	--pk-error-bg:           rgba(239, 68, 68, 0.12);
+	--pk-error-text:         #b91c1c;
+
+	--pk-info:               #3b82f6;
+	--pk-info-bg:            rgba(59, 130, 246, 0.12);
+	--pk-info-text:          #1d4ed8;
+
+	--pk-indigo:             #6366f1;     /* vault review "dying" status */
+	--pk-indigo-bg:          rgba(99, 102, 241, 0.12);
+
+	/* ── interaction states ─────────────────────────────────────────────── */
+	--pk-state-hover:        rgba(0, 0, 0, 0.04);
+	--pk-state-active:       rgba(0, 0, 0, 0.06);
+	--pk-state-selected:     rgba(124, 58, 237, 0.10);
+	--pk-skeleton:           #e5e7eb;
+
+	/* ── highlight tints (specialised; kept for compat) ────────────────── */
+	--pk-highlight-info:        #eff6ff;
+	--pk-highlight-info-border: #93c5fd;
+
+	/* ── shadow ─────────────────────────────────────────────────────────── */
+	--pk-shadow-card:        0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.04);
+	--pk-shadow-popover:     0 4px 12px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(0, 0, 0, 0.04);
+	--pk-shadow-modal:       0 16px 40px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
+
+	/* ── typography (px per Q6) ─────────────────────────────────────────── */
+	--pk-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+	--pk-font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+	--pk-text-xs:   10px;
+	--pk-text-sm:   11px;
+	--pk-text-base: 12px;
+	--pk-text-md:   13px;
+	--pk-text-lg:   14px;
+	--pk-text-xl:   16px;
+	--pk-text-2xl:  20px;
+	--pk-text-3xl:  28px;
+
+	/* ── spacing (4px grid) ─────────────────────────────────────────────── */
+	--pk-space-1:   4px;
+	--pk-space-2:   8px;
+	--pk-space-3:   12px;
+	--pk-space-4:   16px;
+	--pk-space-5:   20px;
+	--pk-space-6:   24px;
+	--pk-space-8:   32px;
+	--pk-space-10:  40px;
+	--pk-space-12:  48px;
+
+	/* ── radius ─────────────────────────────────────────────────────────── */
+	--pk-radius-sm:   4px;
+	--pk-radius-md:   8px;
+	--pk-radius-lg:   12px;
+	--pk-radius-xl:   16px;
+	--pk-radius-full: 9999px;
+
+	/* ── z-index ────────────────────────────────────────────────────────── */
+	--pk-z-base:     0;
+	--pk-z-sticky:   10;
+	--pk-z-dropdown: 20;
+	--pk-z-modal:    50;
+	--pk-z-popover:  60;
+	--pk-z-tooltip:  80;
+
+	/* ── transition ─────────────────────────────────────────────────────── */
+	--pk-transition-fast: 100ms ease;
+	--pk-transition-base: 150ms ease;
+	--pk-transition-slow: 300ms ease;
+}
+
+/* ─── Dark (Q3=B: Phase 1 一次到位) ─────────────────────────────────────── */
+.theme-dark .pktw-root,
+.theme-dark .peak-design-root {
+	/* ── surface ────────────────────────────────────────────────────────── */
+	--pk-bg:                 #1e1e2e;
+	--pk-bg-secondary:       #181825;
+	--pk-bg-tertiary:        #11111b;
+	--pk-surface:            #1e1e2e;
+	--pk-surface-raised:     #252535;
+	--pk-surface-sunken:     #181825;
+	--pk-surface-overlay:    #2a2a3c;
+
+	/* ── border ─────────────────────────────────────────────────────────── */
+	--pk-border:             #313244;
+	--pk-border-soft:        #2a2b3a;
+	--pk-border-strong:      #45475a;
+	--pk-border-accent:      rgba(167, 139, 250, 0.30);
+
+	/* ── text ───────────────────────────────────────────────────────────── */
+	--pk-text-primary:       #cdd6f4;
+	--pk-text-secondary:     #a6adc8;
+	--pk-text-tertiary:      #7f849c;
+	--pk-text-faint:         #585b70;
+	--pk-text-inverted:      #1e1b2e;
+
+	/* ── accent ─────────────────────────────────────────────────────────── */
+	--pk-accent:             #a78bfa;
+	--pk-accent-hover:       #c4b5fd;
+	--pk-accent-tint:        rgba(167, 139, 250, 0.16);
+	--pk-accent-soft:        rgba(167, 139, 250, 0.30);
+	--pk-accent-text:        #c4b5fd;
+	--pk-accent-fg:          #1e1b2e;
+
+	/* ── semantic ───────────────────────────────────────────────────────── */
+	--pk-success:            #4ade80;
+	--pk-success-bg:         rgba(74, 222, 128, 0.15);
+	--pk-success-text:       #86efac;
+
+	--pk-warning:            #fbbf24;
+	--pk-warning-bg:         rgba(251, 191, 36, 0.16);
+	--pk-warning-text:       #fcd34d;
+
+	--pk-error:              #f87171;
+	--pk-error-bg:           rgba(248, 113, 113, 0.16);
+	--pk-error-text:         #fca5a5;
+
+	--pk-info:               #60a5fa;
+	--pk-info-bg:            rgba(96, 165, 250, 0.15);
+	--pk-info-text:          #93c5fd;
+
+	--pk-indigo:             #93b1ff;
+	--pk-indigo-bg:          rgba(147, 177, 255, 0.16);
+
+	/* ── interaction states ─────────────────────────────────────────────── */
+	--pk-state-hover:        rgba(255, 255, 255, 0.06);
+	--pk-state-active:       rgba(255, 255, 255, 0.10);
+	--pk-state-selected:     rgba(167, 139, 250, 0.18);
+	--pk-skeleton:           #313244;
+
+	/* ── highlight tints ───────────────────────────────────────────────── */
+	--pk-highlight-info:        #1e293b;
+	--pk-highlight-info-border: #3b6fad;
+
+	/* ── shadow ─────────────────────────────────────────────────────────── */
+	--pk-shadow-card:        0 0 0 1px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.25);
+	--pk-shadow-popover:     0 6px 18px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.4);
+	--pk-shadow-modal:       0 18px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(0, 0, 0, 0.5);
+
+	/* typography / spacing / radius / z-index / transition: 不随主题变，沿用 light 定义 */
+}

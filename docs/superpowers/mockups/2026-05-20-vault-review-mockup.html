@@ -1,0 +1,2161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>Vault Review · UI Mock</title>
+<style>
+  :root {
+    --bg: #F7F7FA;
+    --surface: #FFFFFF;
+    --muted-surface: #F4F4F8;
+    --soft-surface: #FAFAFC;
+    --border: #E5E7EB;
+    --border-soft: #EEEEF2;
+    --text: #1F1F23;
+    --text-muted: #6B7280;
+    --text-faint: #9CA3AF;
+    /* Phase 2 (2026-05-22): aligned to peak-tokens.css source-of-truth.
+       Modal in-plugin renders identical to mock; in-mock kept self-contained
+       (gets unified token link in Phase 4 / docs/mockups/_shared/). */
+    --accent: #7c3aed;
+    --accent-hover: #6d28d9;
+    --accent-soft: rgba(124, 58, 237, 0.25);
+    --accent-tint: rgba(124, 58, 237, 0.10);
+    --accent-text: #6d28d9;
+    --success-bg: #E7F8EE;
+    --success-text: #1B7F45;
+    --warning-bg: #FFF4E1;
+    --warning-text: #B46A00;
+    --error-bg: #FFE7E7;
+    --error-text: #B23030;
+    --info-bg: #E7F0FF;
+    --info-text: #2F6FE0;
+    --indigo-bg: #ECEAFD;
+    --indigo-text: #5546B7;
+    --shadow-card: 0 1px 2px rgba(15, 18, 25, 0.04), 0 0 0 1px rgba(15, 18, 25, 0.04);
+    --shadow-modal: 0 18px 60px rgba(15, 18, 25, 0.18), 0 4px 12px rgba(15, 18, 25, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; }
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  /* ───── Page chrome (navigation) ───── */
+  .page-nav {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+  }
+  .page-nav h1 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .page-nav h1 small {
+    margin-left: 8px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .page-nav .nav-spacer { flex: 1; }
+  .page-nav .nav-tab {
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: var(--muted-surface);
+    color: var(--text-muted);
+    border: 1px solid var(--border-soft);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .page-nav .nav-tab.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .page-content {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+  .scene {
+    background: var(--bg);
+    border-radius: 16px;
+  }
+  .scene-label {
+    display: flex; align-items: center; gap: 8px;
+    margin: 0 0 10px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* ───── Picker frame ───── */
+  .picker-frame {
+    background: var(--surface);
+    border-radius: 16px;
+    box-shadow: var(--shadow-modal);
+    width: 100%;
+    max-width: 760px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .picker-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    background: var(--muted-surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .picker-tabs .pt {
+    text-align: center;
+    padding: 14px 12px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+  }
+  .picker-tabs .pt .pt-sub {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-faint);
+    margin-top: 2px;
+  }
+  .picker-tabs .pt.active {
+    color: var(--accent);
+    background: var(--surface);
+    border-bottom-color: var(--accent);
+  }
+  .picker-search {
+    padding: 18px 20px 8px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .search-bar {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 14px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(15, 18, 25, 0.03);
+  }
+  .search-bar input {
+    flex: 1; border: 0; outline: 0; background: transparent;
+    font-size: 13px; color: var(--text);
+  }
+  .search-bar .scope-pill {
+    background: var(--accent-tint);
+    color: var(--accent-text);
+    font-size: 11px; font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+  .picker-meta {
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 0 20px 16px;
+  }
+  .picker-body {
+    padding: 4px 20px 20px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  /* Vault status hero card */
+  .vault-status {
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--surface);
+    padding: 18px 18px 18px 18px;
+    display: flex; align-items: center; gap: 16px;
+    box-shadow: var(--shadow-card);
+  }
+  .vault-status .vs-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--warning-bg);
+    color: var(--warning-text);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .vault-status .vs-body {
+    flex: 1; display: flex; flex-direction: column; gap: 2px;
+  }
+  .vault-status .vs-title {
+    font-weight: 600; font-size: 14px; color: var(--text);
+  }
+  .vault-status .vs-sub {
+    font-size: 12px; color: var(--text-muted);
+  }
+  .vault-status .vs-actions {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .btn {
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn.ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-muted);
+  }
+  .btn.ghost:hover { color: var(--accent); }
+  .btn.muted {
+    background: var(--muted-surface);
+    color: var(--text-muted);
+    border-color: var(--border-soft);
+  }
+
+  /* Past vault reviews */
+  .picker-section h3 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .picker-section .all-reviews {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .picker-section .all-reviews:hover { color: var(--accent); }
+  .pv-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .pv-row:hover { background: var(--accent-tint); }
+  .pv-row:hover .pv-title { color: var(--accent); }
+  .pv-row .pv-icon { color: var(--text-faint); font-size: 14px; }
+  .pv-row .pv-title { font-size: 12px; font-weight: 500; color: var(--text); }
+  .pv-row .pv-meta { font-size: 10px; color: var(--text-faint); }
+
+  .recommended-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .rec-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    background: var(--surface);
+    display: flex; flex-direction: column; gap: 6px;
+    cursor: pointer;
+  }
+  .rec-card:hover { border-color: var(--accent); }
+  .rec-card .rec-icon { color: var(--accent); font-size: 18px; }
+  .rec-card .rec-title { font-weight: 600; font-size: 13px; color: var(--text); }
+  .rec-card .rec-sub { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+  /* ───── Modal frame ───── */
+  .modal {
+    background: var(--surface);
+    border-radius: 16px;
+    box-shadow: var(--shadow-modal);
+    width: 100%;
+    max-width: 1240px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    min-height: 720px;
+  }
+  .modal-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-header .mh-left { display: flex; gap: 12px; align-items: flex-start; }
+  .modal-header .mh-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: var(--accent-tint);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .modal-header .mh-title {
+    font-size: 18px; font-weight: 700; color: var(--text);
+    line-height: 1.2;
+  }
+  .modal-header .mh-sub {
+    font-size: 12px; color: var(--text-muted);
+    margin-top: 4px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .modal-header .mh-sub .dot { color: var(--text-faint); }
+  .badge-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px; font-weight: 600;
+  }
+  .badge-status.success { background: var(--success-bg); color: var(--success-text); }
+  .badge-status.running { background: var(--success-bg); color: var(--success-text); }
+  .badge-status.error { background: var(--error-bg); color: var(--error-text); }
+  .modal-header .mh-actions { display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    border: 0; background: transparent;
+    width: 30px; height: 30px; border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .icon-btn:hover { background: var(--muted-surface); color: var(--text); }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+  }
+  .tab-btn:hover { background: var(--muted-surface); color: var(--text); }
+  .tab-btn.active {
+    background: var(--accent-tint);
+    color: var(--accent);
+    border-color: var(--accent-soft);
+  }
+  .tab-btn .count {
+    background: var(--muted-surface);
+    color: var(--text-muted);
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  .tab-btn.active .count { background: var(--accent-soft); color: var(--accent-text); }
+  .tab-bar .spacer { flex: 1; }
+  .tab-bar .time-summary { font-size: 11px; color: var(--text-muted); }
+
+  /* Modal body grid */
+  .modal-body {
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+    flex: 1;
+    min-height: 0;
+  }
+  .modal-body.with-rail {
+    grid-template-columns: minmax(0,1fr) 320px;
+  }
+  .panel {
+    overflow-y: auto;
+    padding: 20px 24px;
+    min-width: 0;
+  }
+  .rail {
+    border-left: 1px solid var(--border);
+    background: var(--soft-surface);
+    overflow-y: auto;
+  }
+  .rail-head {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .rail-head .rail-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .rail-head .rail-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; display: block; }
+
+  /* Footer */
+  .modal-footer {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .modal-footer .ft-status {
+    flex: 1;
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex; gap: 6px; align-items: center;
+  }
+  .modal-footer .ft-status .lock { color: var(--text-faint); }
+
+  /* ───── Generic primitives ───── */
+  .hint {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: var(--muted-surface);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+  .hint .hint-icon { color: var(--accent); font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+
+  .kicker {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .kicker.muted { color: var(--text-muted); }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .pill.muted { background: var(--muted-surface); color: var(--text-muted); }
+  .pill.accent { background: var(--accent-tint); color: var(--accent-text); }
+  .pill.success { background: var(--success-bg); color: var(--success-text); }
+  .pill.warning { background: var(--warning-bg); color: var(--warning-text); }
+  .pill.error { background: var(--error-bg); color: var(--error-text); }
+  .pill.info { background: var(--info-bg); color: var(--info-text); }
+  .pill.indigo { background: var(--indigo-bg); color: var(--indigo-text); }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--muted-surface);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .chip:hover { background: var(--accent-tint); color: var(--accent); }
+
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    padding: 16px;
+    box-shadow: var(--shadow-card);
+  }
+
+  /* ───── Overview tab ───── */
+  .headline-card {
+    border-radius: 18px;
+    background: linear-gradient(135deg, #F8F5FF 0%, #F0EAFF 100%);
+    padding: 22px 24px;
+    border: 1px solid var(--accent-soft);
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .headline-card .hc-icon {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    background: white;
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.18);
+    flex-shrink: 0;
+  }
+  .headline-card .hc-title {
+    font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.35;
+  }
+  .headline-card .hc-body {
+    font-size: 13px; color: var(--text-muted);
+    margin-top: 6px; line-height: 1.6;
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .metric-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  .metric-card .m-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    color: var(--text-muted); text-transform: uppercase;
+  }
+  .metric-card .m-value {
+    font-size: 28px; font-weight: 700; color: var(--text);
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric-card .m-foot {
+    font-size: 11px; color: var(--text-muted);
+    margin-top: 4px;
+    display: flex; gap: 6px; align-items: center;
+  }
+  .metric-card.small .m-value { font-size: 20px; }
+  .metric-card .delta-up { color: var(--success-text); font-weight: 600; }
+  .metric-card .delta-down { color: var(--error-text); font-weight: 600; }
+  .metric-card .delta-flat { color: var(--text-muted); }
+
+  .since-card {
+    margin-top: 14px;
+    padding: 16px 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    display: flex; align-items: center; gap: 18px;
+    box-shadow: var(--shadow-card);
+  }
+  .since-card .sc-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+    color: var(--text-muted); text-transform: uppercase;
+  }
+  .since-card .sc-row {
+    display: flex; gap: 22px;
+    margin-top: 4px;
+    align-items: baseline;
+  }
+  .since-card .sc-stat .sc-stat-num {
+    font-size: 20px; font-weight: 700; color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .since-card .sc-stat .sc-stat-label {
+    font-size: 11px; color: var(--text-muted);
+    margin-left: 4px;
+  }
+  .since-card .sc-stat.delta-up .sc-stat-num { color: var(--success-text); }
+  .since-card .sc-stat.delta-down .sc-stat-num { color: var(--error-text); }
+  .since-card .sc-spacer { flex: 1; }
+
+  .top-action-card {
+    margin-top: 18px;
+    border: 1px solid var(--accent-soft);
+    background: var(--accent-tint);
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .top-action-card .tac-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: white; color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 2px 6px rgba(124, 58, 237, 0.12);
+    flex-shrink: 0;
+  }
+  .top-action-card .tac-body { flex: 1; }
+  .top-action-card .tac-title {
+    font-size: 13px; color: var(--text); line-height: 1.55;
+  }
+  .top-action-card .tac-title b { color: var(--accent-text); }
+  .top-action-card .tac-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .top-action-card .tac-cta { white-space: nowrap; }
+
+  /* ───── Clusters tab · 2-column (list left, sticky detail right) ───── */
+  .clusters-split {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+  .cluster-list {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    max-height: calc(100vh - 320px);
+    display: flex; flex-direction: column;
+  }
+  .cluster-list-head {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--muted-surface);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cluster-list-head .clh-label {
+    font-size: 10px; font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .cluster-list-head .clh-search {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .cluster-list-body {
+    overflow-y: auto;
+    flex: 1;
+  }
+  .cluster-list-row {
+    display: grid;
+    grid-template-columns: 1fr 60px;
+    gap: 8px;
+    padding: 10px 14px;
+    align-items: center;
+    border-top: 1px solid var(--border-soft);
+    cursor: pointer;
+    transition: background 0.1s ease;
+  }
+  .cluster-list-row:first-child { border-top: 0; }
+  .cluster-list-row:hover { background: var(--accent-tint); }
+  .cluster-list-row.selected {
+    background: var(--accent-tint);
+    border-left: 3px solid var(--accent);
+    padding-left: 11px;
+  }
+  .cluster-list-row .cll-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .cluster-list-row .cll-meta {
+    font-size: 10px; color: var(--text-faint);
+    margin-top: 2px;
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .cluster-list-row .cll-meta .meta-pill {
+    background: var(--muted-surface);
+    color: var(--text-muted);
+    border-radius: 4px;
+    padding: 1px 4px;
+    font-weight: 600;
+  }
+  .cluster-list-row.selected .cll-meta .meta-pill { background: rgba(124, 58, 237, 0.16); color: var(--accent-text); }
+  .cluster-list-row .cll-side {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  }
+  .cluster-list-row .cll-side .cll-size { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .cluster-list-row .cll-side .cll-status .pill { font-size: 9px; }
+  .checkbox {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+  }
+  .checkbox.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+    position: relative;
+  }
+  .checkbox.checked::after {
+    content: '';
+    position: absolute;
+    left: 4px; top: 1px;
+    width: 4px; height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .delta-up::before { content: '▲ '; }
+  .delta-down::before { content: '▼ '; }
+  .delta-flat::before { content: '⏸ '; color: var(--text-faint); }
+
+  .cluster-detail {
+    border: 1px solid var(--accent-soft);
+    border-radius: 14px;
+    background: linear-gradient(180deg, #FBFAFF 0%, white 60%);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-card);
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 320px);
+    overflow-y: auto;
+  }
+  .cluster-detail-head {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 14px;
+  }
+  .cluster-detail-head .cdh-icon {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    background: var(--accent-tint);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cluster-detail-head .cdh-title { font-size: 15px; font-weight: 700; }
+  .cluster-detail-head .cdh-pill { margin-left: auto; }
+  .cluster-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 18px;
+  }
+  .cluster-detail-grid .cdg-block .cdg-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+    color: var(--text-muted); text-transform: uppercase;
+  }
+  .cluster-detail-grid .cdg-block .cdg-value {
+    font-size: 18px; font-weight: 700; color: var(--text);
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .cluster-detail-grid .cdg-block .cdg-list {
+    font-size: 12px; color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.55;
+  }
+  .cluster-detail-foot {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-soft);
+  }
+  .cluster-detail-foot .cdf-text { font-size: 11px; color: var(--text-muted); flex: 1; }
+
+  /* ───── Gaps tab ───── */
+  .gap-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-card);
+  }
+  .gap-card-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .gap-card-head .gch-title { font-size: 15px; font-weight: 700; }
+  .gap-card-head .gch-conf { margin-left: auto; }
+  .gap-card-body { font-size: 13px; color: var(--text); line-height: 1.6; }
+  .gap-card-body p { margin: 0 0 8px; }
+  .gap-card-body strong { color: var(--text); }
+
+  .gap-sub-head {
+    font-size: 12px; font-weight: 700; color: var(--text);
+    margin-top: 14px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .bridge-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 6px;
+  }
+  .bridge-tile {
+    border: 1px dashed var(--accent-soft);
+    border-radius: 12px;
+    padding: 12px;
+    background: var(--accent-tint);
+  }
+  .bridge-tile .bt-label { font-size: 11px; color: var(--accent-text); font-weight: 600; }
+  .bridge-tile .bt-text { font-size: 12px; color: var(--text); margin-top: 4px; line-height: 1.5; }
+
+  .dangling-table {
+    display: grid;
+    grid-template-columns: 1.4fr 60px 1fr 110px;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .dangling-table .dt-head, .dangling-table .dt-row {
+    display: contents;
+  }
+  .dangling-table .dt-cell {
+    padding: 10px 14px;
+    font-size: 12px;
+    border-top: 1px solid var(--border-soft);
+  }
+  .dangling-table .dt-head .dt-cell {
+    background: var(--muted-surface);
+    border-top: 0;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .dangling-table .dt-cell.count { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* ───── Actions tab ───── */
+  .actions-toolbar {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .actions-toolbar .at-label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  .select-pill {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--surface);
+    cursor: pointer;
+  }
+  .select-pill.active { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
+
+  .action-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-card);
+    display: grid;
+    grid-template-columns: 90px 1fr 160px;
+    gap: 16px;
+    align-items: center;
+  }
+  .action-card .ac-priority {
+    display: flex; flex-direction: column; gap: 4px;
+    align-items: flex-start;
+  }
+  .action-card .ac-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .action-card .ac-body { font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.55; }
+  .action-card .ac-impact { font-size: 11px; color: var(--text-faint); font-style: italic; margin-top: 6px; }
+  .action-card .ac-side {
+    display: flex; flex-direction: column; gap: 8px;
+    align-items: flex-end;
+  }
+  .action-card .ac-side .ac-notes-count {
+    font-size: 11px; color: var(--text-muted);
+  }
+  .actions-foot {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .actions-foot .af-label { flex: 1; font-size: 12px; color: var(--text-muted); }
+
+  /* ───── Sources tab ───── */
+  .sources-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr 280px;
+    gap: 16px;
+  }
+  .sources-filter {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    padding: 14px;
+    box-shadow: var(--shadow-card);
+    height: max-content;
+  }
+  .sources-filter h4 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .sources-filter .sf-group { margin-bottom: 14px; }
+  .sources-filter .sf-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px;
+    padding: 4px 0;
+    color: var(--text);
+  }
+  .sources-filter .sf-item .checkbox { flex-shrink: 0; }
+  .sources-filter .sf-item .count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  .sources-table {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  .src-head, .src-row {
+    display: grid;
+    grid-template-columns: 1.8fr 1fr 0.8fr 0.8fr 80px;
+    gap: 8px;
+    padding: 10px 14px;
+    align-items: center;
+    font-size: 12px;
+  }
+  .src-head {
+    background: var(--muted-surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .src-row { border-top: 1px solid var(--border-soft); cursor: pointer; }
+  .src-row:hover { background: var(--accent-tint); }
+  .src-row.selected { background: var(--accent-tint); }
+  .src-row .src-title { font-weight: 600; color: var(--text); }
+  .src-row .src-path { font-size: 11px; color: var(--text-muted); }
+
+  .sources-drawer {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    padding: 16px;
+    box-shadow: var(--shadow-card);
+    height: max-content;
+  }
+  .sources-drawer h4 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .sources-drawer .sd-sub { font-size: 11px; color: var(--text-muted); }
+  .sources-drawer .sd-section { margin-top: 14px; }
+  .sources-drawer .sd-section h5 {
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .sources-drawer .sd-excerpt {
+    font-size: 12px;
+    color: var(--text);
+    background: var(--muted-surface);
+    border-radius: 8px;
+    padding: 10px;
+    line-height: 1.5;
+  }
+  .sources-drawer .sd-links { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+  .sources-drawer .sd-links a {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* ───── Trace tab ───── */
+  .trace-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 16px;
+  }
+  .trace-timeline {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  .trace-timeline .tt-summary {
+    padding: 10px 16px;
+    background: var(--muted-surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex; gap: 8px; align-items: center;
+  }
+  .trace-row {
+    display: grid;
+    grid-template-columns: 70px 30px 1fr;
+    gap: 10px;
+    padding: 9px 16px;
+    border-top: 1px solid var(--border-soft);
+    align-items: center;
+    font-size: 12px;
+  }
+  .trace-row.selected { background: var(--accent-tint); }
+  .trace-row .tr-time {
+    font-size: 11px;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .trace-row .tr-icon {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: var(--muted-surface);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+  .trace-row .tr-icon.success { background: var(--success-bg); color: var(--success-text); }
+  .trace-row .tr-icon.error { background: var(--error-bg); color: var(--error-text); }
+  .trace-row .tr-label { font-size: 12px; font-weight: 600; color: var(--text); }
+  .trace-row .tr-detail { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  .trace-detail {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    padding: 14px;
+    box-shadow: var(--shadow-card);
+    height: max-content;
+  }
+  .trace-detail h4 { margin: 0 0 8px; font-size: 13px; font-weight: 700; }
+  .trace-detail .td-kv {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 14px;
+    font-size: 11px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border-soft);
+  }
+  .trace-detail .td-kv .k { color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
+  .trace-detail .td-kv .v { color: var(--text); }
+
+  /* Tabs (frame switching) */
+  .tab-section { display: none; }
+  .tab-section.active { display: block; }
+</style>
+</head>
+<body>
+  <div class="page-nav">
+    <h1>Vault Auto Review · UI Mock <small>(faithful to Codex design)</small></h1>
+    <span class="nav-spacer"></span>
+    <button class="nav-tab" data-page="picker">Picker (Vault tab)</button>
+    <button class="nav-tab active" data-page="overview">Modal · Overview</button>
+    <button class="nav-tab" data-page="clusters">Modal · Clusters</button>
+    <button class="nav-tab" data-page="gaps">Modal · Gaps</button>
+    <button class="nav-tab" data-page="actions">Modal · Actions</button>
+    <button class="nav-tab" data-page="sources">Modal · Sources</button>
+    <button class="nav-tab" data-page="trace">Modal · Trace</button>
+  </div>
+
+  <div class="page-content">
+
+    <!-- ─────── PICKER VAULT TAB ─────── -->
+    <section class="scene tab-section" id="page-picker">
+      <p class="scene-label"><span>◉</span> Picker · Vault tab (state D — major change)</p>
+      <div class="picker-frame">
+        <div class="picker-tabs">
+          <div class="pt">
+            <span>Document</span>
+            <span class="pt-sub">= Copilot</span>
+          </div>
+          <div class="pt active">
+            <span>Vault</span>
+            <span class="pt-sub">= Vault Intelligence</span>
+          </div>
+          <div class="pt">
+            <span>Setting</span>
+            <span class="pt-sub">= System</span>
+          </div>
+        </div>
+        <div class="picker-search">
+          <div class="search-bar">
+            <span style="color: var(--text-faint);">⌕</span>
+            <input placeholder="Search or ask across vault... (# in-file, @ folder, ? help)" />
+            <span class="scope-pill">vault</span>
+          </div>
+        </div>
+        <div class="picker-meta">2,048 notes · 4.2M words · last reviewed 14d ago</div>
+        <div class="picker-body">
+          <div class="vault-status">
+            <div class="vs-icon">⚠</div>
+            <div class="vs-body">
+              <span class="vs-title">37 notes changed · 4 new · 1 deleted since last review</span>
+              <span class="vs-sub">Significant change. A new review is recommended.</span>
+            </div>
+            <div class="vs-actions">
+              <button class="btn ghost">↺ View last</button>
+              <button class="btn primary">✦ Run vault review</button>
+            </div>
+          </div>
+
+          <div class="picker-section">
+            <h3>
+              <span>Past vault reviews</span>
+              <span class="all-reviews">↺ All reviews</span>
+            </h3>
+            <div class="pv-row">
+              <span class="pv-icon">⟳</span>
+              <div style="flex:1">
+                <div class="pv-title">AI Engineering is growing; Travel notes is going stale <span style="margin-left:6px;color:var(--text-faint);font-weight:400">· 14d ago</span></div>
+                <div class="pv-meta">5 clusters · 4 gaps · 6 actions · 3 insights</div>
+              </div>
+              <span style="color:var(--text-faint)">›</span>
+            </div>
+            <div class="pv-row">
+              <span class="pv-icon">⟳</span>
+              <div style="flex:1">
+                <div class="pv-title">Search architecture solidifying; Personal notes need archival <span style="margin-left:6px;color:var(--text-faint);font-weight:400">· 42d ago</span></div>
+                <div class="pv-meta">5 clusters · 2 gaps · 4 actions · 2 insights</div>
+              </div>
+              <span style="color:var(--text-faint)">›</span>
+            </div>
+          </div>
+
+          <div class="picker-section">
+            <h3>Recommended now</h3>
+            <div class="recommended-grid">
+              <div class="rec-card">
+                <span class="rec-icon">⤳</span>
+                <span class="rec-title">Smart Connections</span>
+                <span class="rec-sub">Find semantically similar unlinked notes</span>
+              </div>
+              <div class="rec-card">
+                <span class="rec-icon">⊙</span>
+                <span class="rec-title">Find Related</span>
+                <span class="rec-sub">Notes related to your current focus</span>
+              </div>
+              <div class="rec-card">
+                <span class="rec-icon">?</span>
+                <span class="rec-title">Knowledge Gaps</span>
+                <span class="rec-sub">Topics referenced but not written</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────── MODAL · OVERVIEW ─────── -->
+    <section class="scene tab-section active" id="page-overview">
+      <p class="scene-label"><span>◉</span> Modal · Overview tab (review completed)</p>
+      <div class="modal">
+        <div class="modal-header">
+          <div class="mh-left">
+            <div class="mh-icon">✦</div>
+            <div>
+              <div class="mh-title">Vault Review · 2026-05-20</div>
+              <div class="mh-sub">
+                <span>12,847 notes</span><span class="dot">·</span>
+                <span>4.2M words</span><span class="dot">·</span>
+                <span>37 changed notes</span><span class="dot">·</span>
+                <span>saved</span>
+              </div>
+            </div>
+          </div>
+          <div class="mh-actions">
+            <span class="badge-status success">● Completed</span>
+            <button class="icon-btn" title="Close">✕</button>
+          </div>
+        </div>
+
+        <div class="tab-bar">
+          <button class="tab-btn active">✦ Overview</button>
+          <button class="tab-btn">⊟ Clusters <span class="count">5</span></button>
+          <button class="tab-btn">? Gaps <span class="count">5</span></button>
+          <button class="tab-btn">✎ Actions <span class="count">7</span></button>
+          <button class="tab-btn">⌕ Sources <span class="count">14</span></button>
+          <button class="tab-btn">⟁ Trace <span class="count">32</span></button>
+          <span class="spacer"></span>
+          <span class="time-summary">Total 2m 14s · 3 rounds · 47 turns</span>
+        </div>
+
+        <div class="modal-body">
+          <div class="panel">
+            <div class="headline-card">
+              <div class="hc-icon">✧</div>
+              <div>
+                <div class="kicker">Headline</div>
+                <div class="hc-title" style="margin-top: 6px;">AI Engineering is growing; Travel notes is going stale.</div>
+                <div class="hc-body">
+                  AI Engineering and Context Engineering are the most active areas, with strong growth in writing and current creation.
+                  Travel notes shows low recent activity and high transience, consider archiving or refreshing.
+                </div>
+              </div>
+            </div>
+
+            <div class="metric-grid">
+              <div class="metric-card">
+                <div class="m-label">Notes</div>
+                <div class="m-value">12,847</div>
+                <div class="m-foot"><span class="delta-up">▲ 37</span> · since last</div>
+              </div>
+              <div class="metric-card">
+                <div class="m-label">Words</div>
+                <div class="m-value">4.2M</div>
+                <div class="m-foot"><span class="delta-up">▲ 14%</span> · this month</div>
+              </div>
+              <div class="metric-card">
+                <div class="m-label">Clusters</div>
+                <div class="m-value">5</div>
+                <div class="m-foot">3 active · 2 dormant</div>
+              </div>
+              <div class="metric-card">
+                <div class="m-label">Health</div>
+                <div class="m-value">7.4</div>
+                <div class="m-foot"><span class="delta-up">▲ 0.3</span> · from 7.1</div>
+              </div>
+            </div>
+
+            <div class="metric-grid" style="grid-template-columns: repeat(3,1fr); margin-top: 12px;">
+              <div class="metric-card small">
+                <div class="m-label">Hubs</div>
+                <div class="m-value">23</div>
+              </div>
+              <div class="metric-card small">
+                <div class="m-label">Orphans</div>
+                <div class="m-value">142</div>
+              </div>
+              <div class="metric-card small">
+                <div class="m-label">Dangling refs</div>
+                <div class="m-value">12</div>
+              </div>
+            </div>
+
+            <div class="since-card">
+              <div>
+                <div class="sc-label">What changed since last review</div>
+                <div class="sc-row">
+                  <div class="sc-stat"><span class="sc-stat-num tabular">37</span><span class="sc-stat-label">touched</span></div>
+                  <div class="sc-stat delta-up"><span class="sc-stat-num">+4</span><span class="sc-stat-label">new</span></div>
+                  <div class="sc-stat delta-down"><span class="sc-stat-num">-1</span><span class="sc-stat-label">deleted</span></div>
+                  <div class="sc-stat delta-up"><span class="sc-stat-num">+14%</span><span class="sc-stat-label">words</span></div>
+                </div>
+              </div>
+              <span class="sc-spacer"></span>
+              <button class="btn">⟳ View diff</button>
+            </div>
+
+            <div class="top-action-card">
+              <div class="tac-icon">✦</div>
+              <div class="tac-body">
+                <div class="kicker">Top recommended next action</div>
+                <div class="tac-title" style="margin-top:4px">
+                  Create <b>[[Context Engineering]]</b> note and connect 7 dangling references.
+                </div>
+                <div class="tac-meta">Impact · Connects 7 dangling references and bridges AI Engineering ↔ Product Design clusters</div>
+              </div>
+              <button class="btn primary tac-cta">View in Actions</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="ft-status">
+            <span class="lock">🔒</span>
+            Saved to peak-system/vault-reviews/2026-05-20T07-02-32-936Z-e1d5f5ab.md
+          </div>
+          <button class="btn">⤴ Open report note</button>
+          <button class="btn">Export summary</button>
+          <button class="btn primary">✓ Close</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────── MODAL · CLUSTERS ─────── -->
+    <section class="scene tab-section" id="page-clusters">
+      <p class="scene-label"><span>◉</span> Modal · Clusters tab</p>
+      <div class="modal">
+        <div class="modal-header">
+          <div class="mh-left">
+            <div class="mh-icon">✦</div>
+            <div>
+              <div class="mh-title">Vault Review · 2026-05-20</div>
+              <div class="mh-sub">
+                <span>12,847 notes</span><span class="dot">·</span>
+                <span>4.2M words</span><span class="dot">·</span>
+                <span>saved</span>
+              </div>
+            </div>
+          </div>
+          <div class="mh-actions">
+            <span class="badge-status success">● Completed</span>
+            <button class="icon-btn">✕</button>
+          </div>
+        </div>
+
+        <div class="tab-bar">
+          <button class="tab-btn">✦ Overview</button>
+          <button class="tab-btn active">⊟ Clusters <span class="count">5</span></button>
+          <button class="tab-btn">? Gaps <span class="count">5</span></button>
+          <button class="tab-btn">✎ Actions <span class="count">7</span></button>
+          <button class="tab-btn">⌕ Sources <span class="count">14</span></button>
+          <button class="tab-btn">⟁ Trace <span class="count">32</span></button>
+          <span class="spacer"></span>
+          <span class="time-summary">Total 2m 14s · 3 rounds · 47 turns</span>
+        </div>
+
+        <div class="modal-body">
+          <div class="panel">
+            <div class="hint">
+              <span class="hint-icon">💡</span>
+              Top knowledge clusters detected by Louvain community detection. Select a cluster on the left to inspect topics, hubs and members on the right.
+            </div>
+
+            <div class="clusters-split">
+              <div class="cluster-list">
+                <div class="cluster-list-head">
+                  <span class="clh-label">12 clusters · sorted by size</span>
+                  <span class="clh-search">⌕ filter</span>
+                </div>
+                <div class="cluster-list-body">
+                  <div class="cluster-list-row selected">
+                    <div>
+                      <div class="cll-name">AI Engineering</div>
+                      <div class="cll-meta"><span class="meta-pill">density 0.42</span> · 12 new</div>
+                    </div>
+                    <div class="cll-side">
+                      <span class="cll-size">47</span>
+                      <span class="cll-status"><span class="pill accent">🔥 central</span></span>
+                    </div>
+                  </div>
+                  <div class="cluster-list-row">
+                    <div>
+                      <div class="cll-name">Search Architecture</div>
+                      <div class="cll-meta"><span class="meta-pill">density 0.31</span> · ▲ 4</div>
+                    </div>
+                    <div class="cll-side">
+                      <span class="cll-size">33</span>
+                      <span class="cll-status"><span class="pill muted">stable</span></span>
+                    </div>
+                  </div>
+                  <div class="cluster-list-row">
+                    <div>
+                      <div class="cll-name">Personal</div>
+                      <div class="cll-meta"><span class="meta-pill">density 0.22</span> · stable</div>
+                    </div>
+                    <div class="cll-side">
+                      <span class="cll-size">31</span>
+                      <span class="cll-status"><span class="pill muted">stable</span></span>
+                    </div>
+                  </div>
+                  <div class="cluster-list-row">
+                    <div>
+                      <div class="cll-name">Product Design</div>
+                      <div class="cll-meta"><span class="meta-pill">density 0.28</span> · ▲ 2</div>
+                    </div>
+                    <div class="cll-side">
+                      <span class="cll-size">29</span>
+                      <span class="cll-status"><span class="pill muted">stable</span></span>
+                    </div>
+                  </div>
+                  <div class="cluster-list-row">
+                    <div>
+                      <div class="cll-name">Travel notes</div>
+                      <div class="cll-meta"><span class="meta-pill">density 0.18</span> · idle 5mo</div>
+                    </div>
+                    <div class="cll-side">
+                      <span class="cll-size">28</span>
+                      <span class="cll-status"><span class="pill indigo">💤</span></span>
+                    </div>
+                  </div>
+                  <div class="cluster-list-row">
+                    <div>
+                      <div class="cll-name">Vault Tooling</div>
+                      <div class="cll-meta"><span class="meta-pill">density 0.24</span> · ▲ 3</div>
+                    </div>
+                    <div class="cll-side">
+                      <span class="cll-size">22</span>
+                      <span class="cll-status"><span class="pill muted">stable</span></span>
+                    </div>
+                  </div>
+                  <div class="cluster-list-row">
+                    <div>
+                      <div class="cll-name">Reading Notes</div>
+                      <div class="cll-meta"><span class="meta-pill">density 0.19</span> · stable</div>
+                    </div>
+                    <div class="cll-side">
+                      <span class="cll-size">19</span>
+                      <span class="cll-status"><span class="pill muted">stable</span></span>
+                    </div>
+                  </div>
+                  <div class="cluster-list-row">
+                    <div>
+                      <div class="cll-name">Health Logs</div>
+                      <div class="cll-meta"><span class="meta-pill">density 0.16</span> · ▼ 1</div>
+                    </div>
+                    <div class="cll-side">
+                      <span class="cll-size">16</span>
+                      <span class="cll-status"><span class="pill warning">fragmenting</span></span>
+                    </div>
+                  </div>
+                  <div class="cluster-list-row">
+                    <div>
+                      <div class="cll-name">Long-form Drafts</div>
+                      <div class="cll-meta"><span class="meta-pill">density 0.14</span> · stable</div>
+                    </div>
+                    <div class="cll-side">
+                      <span class="cll-size">14</span>
+                      <span class="cll-status"><span class="pill muted">stable</span></span>
+                    </div>
+                  </div>
+                  <div class="cluster-list-row">
+                    <div>
+                      <div class="cll-name">Daily Capture</div>
+                      <div class="cll-meta"><span class="meta-pill">density 0.11</span> · stable</div>
+                    </div>
+                    <div class="cll-side">
+                      <span class="cll-size">12</span>
+                      <span class="cll-status"><span class="pill muted">stable</span></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cluster-detail">
+              <div class="cluster-detail-head">
+                <div class="cdh-icon">⊟</div>
+                <div>
+                  <div class="cdh-title">AI Engineering · 47 notes</div>
+                  <div class="sd-sub">Cluster expanding rapidly · centrality up 14% this month</div>
+                </div>
+                <span class="cdh-pill"><span class="pill accent">🔥 central</span></span>
+              </div>
+
+              <div class="cluster-detail-grid">
+                <div class="cdg-block">
+                  <div class="cdg-label">Dominant topics</div>
+                  <div class="cdg-list">claude code, agent SDK, meta agent, copilot, MCP, propose tools, tool calling</div>
+                </div>
+                <div class="cdg-block">
+                  <div class="cdg-label">Top hubs</div>
+                  <div class="cdg-list">[[claude-code-sdk-deep-dive]] · [[meta-agent-redesign]] · [[copilot-output-collector]]</div>
+                </div>
+                <div class="cdg-block">
+                  <div class="cdg-label">Growth</div>
+                  <div class="cdg-value delta-up" style="color: var(--success-text)">+14%</div>
+                  <div class="cdg-list">12 new notes · 8 existing significantly modified</div>
+                </div>
+              </div>
+
+              <div class="cluster-detail-foot">
+                <span class="cdf-text">"This cluster is absorbing links from other clusters — its centrality is rising. Consider promoting a dedicated MOC if not present."</span>
+                <button class="btn">↗ Open hub note</button>
+              </div>
+
+              <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border-soft);">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                  <span class="kicker muted">Members · 8 of 47 visible</span>
+                  <span class="btn ghost" style="font-size:10px;">Show all 47</span>
+                </div>
+                <div style="display:flex; flex-direction:column;">
+                  <a class="member-row" style="display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px;">
+                    <span style="color:var(--text-muted)">📄</span>
+                    <span style="flex:1; min-width:0;">claude-code-sdk-deep-dive</span>
+                    <span style="font-size:10px; color:var(--text-muted)">14 in · 3.2K w</span>
+                  </a>
+                  <a class="member-row" style="display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px;">
+                    <span style="color:var(--text-muted)">📄</span>
+                    <span style="flex:1; min-width:0;">meta-agent-redesign</span>
+                    <span style="font-size:10px; color:var(--text-muted)">12 in · 4.7K w</span>
+                  </a>
+                  <a class="member-row" style="display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px;">
+                    <span style="color:var(--text-muted)">📄</span>
+                    <span style="flex:1; min-width:0;">copilot-output-collector</span>
+                    <span style="font-size:10px; color:var(--text-muted)">9 in · 1.4K w</span>
+                  </a>
+                  <a class="member-row" style="display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px;">
+                    <span style="color:var(--text-muted)">📄</span>
+                    <span style="flex:1; min-width:0;">propose-tools-design</span>
+                    <span style="font-size:10px; color:var(--text-muted)">8 in · 2.1K w</span>
+                  </a>
+                  <a class="member-row" style="display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px;">
+                    <span style="color:var(--text-muted)">📄</span>
+                    <span style="flex:1; min-width:0;">agent-sdk-comparison</span>
+                    <span style="font-size:10px; color:var(--text-muted)">7 in · 980 w</span>
+                  </a>
+                  <a class="member-row" style="display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px;">
+                    <span style="color:var(--text-muted)">📄</span>
+                    <span style="flex:1; min-width:0;">mcp-server-patterns</span>
+                    <span style="font-size:10px; color:var(--text-muted)">6 in · 1.8K w</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="ft-status">
+            <span class="lock">🔒</span>
+            Saved to peak-system/vault-reviews/2026-05-20T07-02-32-936Z-e1d5f5ab.md
+          </div>
+          <button class="btn">⤴ Open report note</button>
+          <button class="btn">Export summary</button>
+          <button class="btn primary">✓ Close</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────── MODAL · GAPS ─────── -->
+    <section class="scene tab-section" id="page-gaps">
+      <p class="scene-label"><span>◉</span> Modal · Gaps tab</p>
+      <div class="modal">
+        <div class="modal-header">
+          <div class="mh-left">
+            <div class="mh-icon">✦</div>
+            <div>
+              <div class="mh-title">Vault Review · 2026-05-20</div>
+              <div class="mh-sub">
+                <span>12,847 notes</span><span class="dot">·</span>
+                <span>4.2M words</span><span class="dot">·</span>
+                <span>saved</span>
+              </div>
+            </div>
+          </div>
+          <div class="mh-actions">
+            <span class="badge-status success">● Completed</span>
+            <button class="icon-btn">✕</button>
+          </div>
+        </div>
+
+        <div class="tab-bar">
+          <button class="tab-btn">✦ Overview</button>
+          <button class="tab-btn">⊟ Clusters <span class="count">5</span></button>
+          <button class="tab-btn active">? Gaps <span class="count">5</span></button>
+          <button class="tab-btn">✎ Actions <span class="count">7</span></button>
+          <button class="tab-btn">⌕ Sources <span class="count">14</span></button>
+          <button class="tab-btn">⟁ Trace <span class="count">32</span></button>
+          <span class="spacer"></span>
+          <span class="time-summary">Total 2m 14s</span>
+        </div>
+
+        <div class="modal-body">
+          <div class="panel">
+            <div class="hint">
+              <span class="hint-icon">💡</span>
+              Structural problems detected: missing bridges, unresolved wikilinks, stale hubs, abstraction mix-ups. Hover any [[link]] for evidence.
+            </div>
+
+            <div class="gap-card">
+              <div class="gap-card-head">
+                <span class="pill accent">Structural Hole</span>
+                <span class="gch-title">AI Engineering ↔ Product Design</span>
+                <span class="gch-conf"><span class="pill warning">medium confidence</span></span>
+              </div>
+              <div class="gap-card-body">
+                <p>These clusters share <strong>8 wikilink targets</strong> but only <strong>2 direct edges</strong>. This is a structural hole — your engineering and product perspectives lack bridging notes.</p>
+                <p><span class="kicker muted">Evidence</span> · Shared concepts: agent, ux, copilot, mcp · Strong topic overlap but low link density (gap score 0.41).</p>
+
+                <div class="gap-sub-head">⊕ Suggested bridge note</div>
+                <p>Create <a style="color:var(--accent); font-weight:600">[[Agent Product Patterns]]</a> covering how AI engineering decisions surface as product UX.</p>
+
+                <div class="gap-sub-head">⊙ Candidate bridging notes</div>
+                <div class="bridge-grid">
+                  <div class="bridge-tile">
+                    <div class="bt-label">From Product Design</div>
+                    <div class="bt-text">[[ai-product-pattern]] mentions agent ergonomics; could pull into AI Engineering.</div>
+                  </div>
+                  <div class="bridge-tile">
+                    <div class="bt-label">From AI Engineering</div>
+                    <div class="bt-text">[[copilot-ux-thoughts]] discusses Product UX; promote as bridge.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="gap-card">
+              <div class="gap-card-head">
+                <span class="pill accent">Dangling References</span>
+                <span class="gch-title">12 frequently cited concepts have no dedicated note</span>
+                <span class="gch-conf"><span class="pill success">high confidence</span></span>
+              </div>
+              <div class="dangling-table">
+                <div class="dt-head">
+                  <span class="dt-cell">Target</span>
+                  <span class="dt-cell count">Citations</span>
+                  <span class="dt-cell">Cited from</span>
+                  <span class="dt-cell">Suggested kind</span>
+                </div>
+                <div class="dt-row">
+                  <span class="dt-cell"><a style="color:var(--accent); font-weight:600">[[Context Engineering]]</a></span>
+                  <span class="dt-cell count">7</span>
+                  <span class="dt-cell">[[meta-agent-redesign]] +6</span>
+                  <span class="dt-cell"><span class="pill info">concept</span></span>
+                </div>
+                <div class="dt-row">
+                  <span class="dt-cell"><a style="color:var(--accent); font-weight:600">[[Provider Tier]]</a></span>
+                  <span class="dt-cell count">5</span>
+                  <span class="dt-cell">[[claude-code-sdk-deep-dive]] +4</span>
+                  <span class="dt-cell"><span class="pill info">concept</span></span>
+                </div>
+                <div class="dt-row">
+                  <span class="dt-cell"><a style="color:var(--accent); font-weight:600">[[Skill Marketplace]]</a></span>
+                  <span class="dt-cell count">4</span>
+                  <span class="dt-cell">[[copilot-output-collector]] +3</span>
+                  <span class="dt-cell"><span class="pill info">concept</span></span>
+                </div>
+                <div class="dt-row">
+                  <span class="dt-cell"><a style="color:var(--accent); font-weight:600">[[Vault Lint Theory]]</a></span>
+                  <span class="dt-cell count">3</span>
+                  <span class="dt-cell">[[ambient-push-design]] +2</span>
+                  <span class="dt-cell"><span class="pill info">concept</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="gap-card">
+              <div class="gap-card-head">
+                <span class="pill accent">Stale Hubs</span>
+                <span class="gch-title">3 hubs are central but untouched 6+ months</span>
+                <span class="gch-conf"><span class="pill warning">medium confidence</span></span>
+              </div>
+              <div class="gap-card-body">
+                <ul style="margin:0; padding-left:20px; line-height:1.7;">
+                  <li><a style="color:var(--accent); font-weight:600">[[Vault Architecture Overview]]</a> · 6 months unedited · 14 backlinks</li>
+                  <li><a style="color:var(--accent); font-weight:600">[[Knowledge Management Principles]]</a> · 4 months unedited · 9 backlinks</li>
+                  <li><a style="color:var(--accent); font-weight:600">[[Productivity Stack]]</a> · 5 months unedited · 7 backlinks</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="ft-status">
+            <span class="lock">🔒</span>
+            Saved to peak-system/vault-reviews/2026-05-20T07-02-32-936Z-e1d5f5ab.md
+          </div>
+          <button class="btn">⤴ Open report note</button>
+          <button class="btn">Export summary</button>
+          <button class="btn primary">✓ Close</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────── MODAL · ACTIONS ─────── -->
+    <section class="scene tab-section" id="page-actions">
+      <p class="scene-label"><span>◉</span> Modal · Actions tab</p>
+      <div class="modal">
+        <div class="modal-header">
+          <div class="mh-left">
+            <div class="mh-icon">✦</div>
+            <div>
+              <div class="mh-title">Vault Review · 2026-05-20</div>
+              <div class="mh-sub">
+                <span>12,847 notes</span><span class="dot">·</span>
+                <span>4.2M words</span><span class="dot">·</span>
+                <span>saved</span>
+              </div>
+            </div>
+          </div>
+          <div class="mh-actions">
+            <span class="badge-status success">● Completed</span>
+            <button class="icon-btn">✕</button>
+          </div>
+        </div>
+
+        <div class="tab-bar">
+          <button class="tab-btn">✦ Overview</button>
+          <button class="tab-btn">⊟ Clusters <span class="count">5</span></button>
+          <button class="tab-btn">? Gaps <span class="count">5</span></button>
+          <button class="tab-btn active">✎ Actions <span class="count">7</span></button>
+          <button class="tab-btn">⌕ Sources <span class="count">14</span></button>
+          <button class="tab-btn">⟁ Trace <span class="count">32</span></button>
+          <span class="spacer"></span>
+          <span class="time-summary">Total 2m 14s</span>
+        </div>
+
+        <div class="modal-body">
+          <div class="panel">
+            <div class="actions-toolbar">
+              <span class="at-label">Prioritized action queue</span>
+              <span class="select-pill active">All</span>
+              <span class="select-pill">High</span>
+              <span class="select-pill">Medium</span>
+              <span class="select-pill">Low</span>
+              <span class="sc-spacer" style="flex:1"></span>
+              <span style="font-size:11px; color:var(--text-muted)">No code changes applied. Every restructure stays a dry-run until you approve.</span>
+            </div>
+
+            <div class="action-card">
+              <div class="ac-priority">
+                <span class="pill error">HIGH</span>
+                <span class="pill accent">create-note</span>
+              </div>
+              <div>
+                <div class="ac-title">Create [[Context Engineering]] note</div>
+                <div class="ac-body">Connect 7 dangling references currently scattered across 7 notes. Will also help bridge AI Engineering and Product Design clusters.</div>
+                <div class="ac-impact">Impact · Connects 7 dangling references and bridges 2 clusters</div>
+              </div>
+              <div class="ac-side">
+                <span class="ac-notes-count">Involves 7 notes</span>
+                <button class="btn">Preview action</button>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="ac-priority">
+                <span class="pill warning">MEDIUM</span>
+                <span class="pill accent">merge-notes</span>
+              </div>
+              <div>
+                <div class="ac-title">Merge 5 short Search Architecture notes into [[Search Architecture MOC]]</div>
+                <div class="ac-body">Cluster mixes fleeting fragments with mature articles. Consolidating short stubs into a MOC will reduce noise.</div>
+                <div class="ac-impact">Impact · Reduces cluster fragmentation by 18%</div>
+              </div>
+              <div class="ac-side">
+                <span class="ac-notes-count">Involves 6 notes</span>
+                <button class="btn">Preview action</button>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="ac-priority">
+                <span class="pill warning">MEDIUM</span>
+                <span class="pill accent">archive-cluster</span>
+              </div>
+              <div>
+                <div class="ac-title">Archive Travel notes cluster</div>
+                <div class="ac-body">28 notes idle 5+ months, 3 hubs stale. Apply <code>#archive/travel</code> and move to <code>/archive/travel/</code>.</div>
+                <div class="ac-impact">Impact · Removes 28 notes from active surface area</div>
+              </div>
+              <div class="ac-side">
+                <span class="ac-notes-count">Involves 28 notes</span>
+                <button class="btn">Preview action</button>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="ac-priority">
+                <span class="pill muted">LOW</span>
+                <span class="pill accent">refresh-note</span>
+              </div>
+              <div>
+                <div class="ac-title">Refresh [[Vault Architecture Overview]] as a living document</div>
+                <div class="ac-body">Stale hub (6 months unedited, 14 backlinks). Either revise or split into per-area MOCs.</div>
+                <div class="ac-impact">Impact · Revives one of the vault's top-3 entry points</div>
+              </div>
+              <div class="ac-side">
+                <span class="ac-notes-count">Involves 1 note</span>
+                <button class="btn">Preview action</button>
+              </div>
+            </div>
+
+            <div class="actions-foot">
+              <span class="af-label">4 of 7 actions visible. Select to queue for Phase 2 dry-run execution.</span>
+              <button class="btn">Select all visible</button>
+              <button class="btn muted">Apply queued reorganization · Phase 2</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="ft-status">
+            <span class="lock">🔒</span>
+            Saved to peak-system/vault-reviews/2026-05-20T07-02-32-936Z-e1d5f5ab.md
+          </div>
+          <button class="btn">⤴ Open report note</button>
+          <button class="btn">Export summary</button>
+          <button class="btn primary">✓ Close</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────── MODAL · SOURCES ─────── -->
+    <section class="scene tab-section" id="page-sources">
+      <p class="scene-label"><span>◉</span> Modal · Sources tab</p>
+      <div class="modal">
+        <div class="modal-header">
+          <div class="mh-left">
+            <div class="mh-icon">✦</div>
+            <div>
+              <div class="mh-title">Vault Review · 2026-05-20</div>
+              <div class="mh-sub">
+                <span>12,847 notes</span><span class="dot">·</span>
+                <span>4.2M words</span><span class="dot">·</span>
+                <span>saved</span>
+              </div>
+            </div>
+          </div>
+          <div class="mh-actions">
+            <span class="badge-status success">● Completed</span>
+            <button class="icon-btn">✕</button>
+          </div>
+        </div>
+
+        <div class="tab-bar">
+          <button class="tab-btn">✦ Overview</button>
+          <button class="tab-btn">⊟ Clusters <span class="count">5</span></button>
+          <button class="tab-btn">? Gaps <span class="count">5</span></button>
+          <button class="tab-btn">✎ Actions <span class="count">7</span></button>
+          <button class="tab-btn active">⌕ Sources <span class="count">14</span></button>
+          <button class="tab-btn">⟁ Trace <span class="count">32</span></button>
+          <span class="spacer"></span>
+          <span class="time-summary">Total 2m 14s</span>
+        </div>
+
+        <div class="modal-body">
+          <div class="panel">
+            <div class="hint">
+              <span class="hint-icon">💡</span>
+              Notes the agent cited as evidence during this review. Not your document's own backlinks — these are vault notes the agent read and judged relevant.
+            </div>
+
+            <div class="sources-layout">
+              <div class="sources-filter">
+                <div class="sf-group">
+                  <h4>Cluster</h4>
+                  <div class="sf-item"><span class="checkbox checked"></span> AI Engineering <span class="count">5</span></div>
+                  <div class="sf-item"><span class="checkbox checked"></span> Search Architecture <span class="count">4</span></div>
+                  <div class="sf-item"><span class="checkbox"></span> Product Design <span class="count">2</span></div>
+                  <div class="sf-item"><span class="checkbox"></span> Personal <span class="count">2</span></div>
+                  <div class="sf-item"><span class="checkbox"></span> Travel notes <span class="count">1</span></div>
+                </div>
+                <div class="sf-group">
+                  <h4>Signal type</h4>
+                  <div class="sf-item"><span class="checkbox checked"></span> Cluster evidence <span class="count">6</span></div>
+                  <div class="sf-item"><span class="checkbox checked"></span> Gap evidence <span class="count">5</span></div>
+                  <div class="sf-item"><span class="checkbox"></span> Insight reference <span class="count">3</span></div>
+                </div>
+                <div class="sf-group">
+                  <h4>Confidence</h4>
+                  <div class="sf-item"><span class="checkbox checked"></span> High <span class="count">8</span></div>
+                  <div class="sf-item"><span class="checkbox checked"></span> Medium <span class="count">5</span></div>
+                  <div class="sf-item"><span class="checkbox"></span> Low <span class="count">1</span></div>
+                </div>
+              </div>
+
+              <div class="sources-table">
+                <div class="src-head">
+                  <span>Title</span>
+                  <span>Cluster</span>
+                  <span>Signal</span>
+                  <span>Confidence</span>
+                  <span style="text-align:right">↗</span>
+                </div>
+                <div class="src-row selected">
+                  <div>
+                    <div class="src-title">meta-agent-redesign</div>
+                    <div class="src-path">kb1/projects/peak-assistant/specs/2026-05-17.md</div>
+                  </div>
+                  <span><span class="pill accent">AI Engineering</span></span>
+                  <span><span class="pill info">cluster</span></span>
+                  <span><span class="pill success">high</span></span>
+                  <span style="text-align:right; color:var(--text-muted)">↗</span>
+                </div>
+                <div class="src-row">
+                  <div>
+                    <div class="src-title">copilot-output-collector</div>
+                    <div class="src-path">kb1/projects/peak-assistant/services/copilot/CopilotOutputCollector.ts</div>
+                  </div>
+                  <span><span class="pill accent">AI Engineering</span></span>
+                  <span><span class="pill info">cluster</span></span>
+                  <span><span class="pill success">high</span></span>
+                  <span style="text-align:right; color:var(--text-muted)">↗</span>
+                </div>
+                <div class="src-row">
+                  <div>
+                    <div class="src-title">claude-code-sdk-deep-dive</div>
+                    <div class="src-path">kb3-tech-articles/Z-mess/claude-code-sdk-deep-dive.md</div>
+                  </div>
+                  <span><span class="pill accent">AI Engineering</span></span>
+                  <span><span class="pill info">gap</span></span>
+                  <span><span class="pill success">high</span></span>
+                  <span style="text-align:right; color:var(--text-muted)">↗</span>
+                </div>
+                <div class="src-row">
+                  <div>
+                    <div class="src-title">ai-product-pattern</div>
+                    <div class="src-path">kb2-learn-prd/product-strategy/ai-product-pattern.md</div>
+                  </div>
+                  <span><span class="pill accent">Product Design</span></span>
+                  <span><span class="pill info">gap</span></span>
+                  <span><span class="pill warning">medium</span></span>
+                  <span style="text-align:right; color:var(--text-muted)">↗</span>
+                </div>
+                <div class="src-row">
+                  <div>
+                    <div class="src-title">hybrid-retriever</div>
+                    <div class="src-path">kb1/projects/peak-assistant/search/hybrid-retriever.md</div>
+                  </div>
+                  <span><span class="pill accent">Search Architecture</span></span>
+                  <span><span class="pill info">cluster</span></span>
+                  <span><span class="pill warning">medium</span></span>
+                  <span style="text-align:right; color:var(--text-muted)">↗</span>
+                </div>
+                <div class="src-row">
+                  <div>
+                    <div class="src-title">2024-japan-trip</div>
+                    <div class="src-path">kb1/life/travel/2024-japan-trip.md</div>
+                  </div>
+                  <span><span class="pill indigo">Travel notes</span></span>
+                  <span><span class="pill muted">cluster</span></span>
+                  <span><span class="pill warning">medium</span></span>
+                  <span style="text-align:right; color:var(--text-muted)">↗</span>
+                </div>
+              </div>
+
+              <div class="sources-drawer">
+                <h4>meta-agent-redesign</h4>
+                <div class="sd-sub">kb1/projects/peak-assistant/specs/2026-05-17.md</div>
+
+                <div class="sd-section">
+                  <h5>Why cited</h5>
+                  <div style="font-size:12px; color:var(--text);">Primary evidence that AI Engineering cluster is centralising via the meta-agent rewrite. Used in cluster observation + structural-hole reasoning.</div>
+                </div>
+
+                <div class="sd-section">
+                  <h5>Excerpt</h5>
+                  <div class="sd-excerpt">
+                    "The meta-agent flow now drives 1..N rounds of buildCopilotMetaAgentStream, compacting the transcript between rounds by only carrying summaries + propose_* output + note_findings into the next system prompt..."
+                  </div>
+                </div>
+
+                <div class="sd-section">
+                  <h5>Inbound from</h5>
+                  <div class="sd-links">
+                    <a>↗ Cluster: AI Engineering · observation</a>
+                    <a>↗ Gap: AI Engineering ↔ Product Design</a>
+                    <a>↗ Action: Create [[Context Engineering]]</a>
+                  </div>
+                </div>
+
+                <div class="sd-section">
+                  <h5>Open</h5>
+                  <button class="btn primary" style="width:100%">↗ Open in new tab</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="ft-status">
+            <span class="lock">🔒</span>
+            Saved to peak-system/vault-reviews/2026-05-20T07-02-32-936Z-e1d5f5ab.md
+          </div>
+          <button class="btn">⤴ Open report note</button>
+          <button class="btn">Export summary</button>
+          <button class="btn primary">✓ Close</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────── MODAL · TRACE ─────── -->
+    <section class="scene tab-section" id="page-trace">
+      <p class="scene-label"><span>◉</span> Modal · Trace tab</p>
+      <div class="modal">
+        <div class="modal-header">
+          <div class="mh-left">
+            <div class="mh-icon">✦</div>
+            <div>
+              <div class="mh-title">Vault Review · 2026-05-20</div>
+              <div class="mh-sub">
+                <span>12,847 notes</span><span class="dot">·</span>
+                <span>4.2M words</span><span class="dot">·</span>
+                <span>saved</span>
+              </div>
+            </div>
+          </div>
+          <div class="mh-actions">
+            <span class="badge-status success">● Completed</span>
+            <button class="icon-btn">✕</button>
+          </div>
+        </div>
+
+        <div class="tab-bar">
+          <button class="tab-btn">✦ Overview</button>
+          <button class="tab-btn">⊟ Clusters <span class="count">5</span></button>
+          <button class="tab-btn">? Gaps <span class="count">5</span></button>
+          <button class="tab-btn">✎ Actions <span class="count">7</span></button>
+          <button class="tab-btn">⌕ Sources <span class="count">14</span></button>
+          <button class="tab-btn active">⟁ Trace <span class="count">32</span></button>
+          <span class="spacer"></span>
+          <span class="time-summary">Total 2m 14s · 3 rounds · 47 turns</span>
+        </div>
+
+        <div class="modal-body">
+          <div class="panel">
+            <div class="trace-layout">
+              <div class="trace-timeline">
+                <div class="tt-summary">
+                  <span style="color:var(--accent)">⏱</span> Total 2m 14s · 3 rounds · 47 turns
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:02:32</span>
+                  <span class="tr-icon">⚑</span>
+                  <div>
+                    <div class="tr-label">Round 1</div>
+                    <div class="tr-detail">47 turns · 3 insights · 1 source</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:02:33</span>
+                  <span class="tr-icon">📋</span>
+                  <div>
+                    <div class="tr-label">Plan</div>
+                    <div class="tr-detail">Compute fingerprint, walk clusters by size, drill into AI Engineering and Travel...</div>
+                  </div>
+                </div>
+                <div class="trace-row selected">
+                  <span class="tr-time">19:02:34</span>
+                  <span class="tr-icon">⛁</span>
+                  <div>
+                    <div class="tr-label">Compute vault fingerprint</div>
+                    <div class="tr-detail">sha1 over 12,847 docs · 49ms</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:02:34</span>
+                  <span class="tr-icon">⊟</span>
+                  <div>
+                    <div class="tr-label">Load Louvain communities</div>
+                    <div class="tr-detail">12 communities · top 5 by size</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:02:35</span>
+                  <span class="tr-icon">⌖</span>
+                  <div>
+                    <div class="tr-label">Read cluster metadata</div>
+                    <div class="tr-detail">community_metadata · dominant_topics · top_nodes</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:02:39</span>
+                  <span class="tr-icon">🔍</span>
+                  <div>
+                    <div class="tr-label">vault_grep("structural hole")</div>
+                    <div class="tr-detail">7 hits · scope=vault</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:02:45</span>
+                  <span class="tr-icon">🔍</span>
+                  <div>
+                    <div class="tr-label">vault_read_note([[meta-agent-redesign]])</div>
+                    <div class="tr-detail">3,420 chars · summary extracted</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:03:12</span>
+                  <span class="tr-icon success">✓</span>
+                  <div>
+                    <div class="tr-label">propose_cluster_observation</div>
+                    <div class="tr-detail">AI Engineering · status: central · 12 notes added this month</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:03:24</span>
+                  <span class="tr-icon success">✓</span>
+                  <div>
+                    <div class="tr-label">propose_gap</div>
+                    <div class="tr-detail">Structural Hole · AI Engineering ↔ Product Design</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:04:01</span>
+                  <span class="tr-icon">✎</span>
+                  <div>
+                    <div class="tr-label">Compose report</div>
+                    <div class="tr-detail">building markdown from 14 propose_* calls</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:04:36</span>
+                  <span class="tr-icon">⚑</span>
+                  <div>
+                    <div class="tr-label">Round 2</div>
+                    <div class="tr-detail">11 turns · 2 actions · 4 sources</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:04:46</span>
+                  <span class="tr-icon">📋</span>
+                  <div>
+                    <div class="tr-label">Plan (round 2)</div>
+                    <div class="tr-detail">Focus on stale hubs and dangling references discovered last round.</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:05:14</span>
+                  <span class="tr-icon success">✓</span>
+                  <div>
+                    <div class="tr-label">propose_action</div>
+                    <div class="tr-detail">create-note · Create [[Context Engineering]] · HIGH priority</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:05:51</span>
+                  <span class="tr-icon">⚑</span>
+                  <div>
+                    <div class="tr-label">Round 3</div>
+                    <div class="tr-detail">14 turns · pre-submit self-check + final report</div>
+                  </div>
+                </div>
+                <div class="trace-row">
+                  <span class="tr-time">19:06:46</span>
+                  <span class="tr-icon success">✓</span>
+                  <div>
+                    <div class="tr-label">submit_review</div>
+                    <div class="tr-detail">continue: false · headline written</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="trace-detail">
+                <h4>Step details</h4>
+                <div class="sd-sub" style="font-size:11px; color:var(--text-muted)">Compute vault fingerprint</div>
+                <div class="td-kv">
+                  <span class="k">Tool</span><span class="v">vault.computeFingerprint</span>
+                  <span class="k">Input</span><span class="v">scope = full vault</span>
+                  <span class="k">Output</span><span class="v">sha1: <code>a7f9c3e2…</code></span>
+                  <span class="k">Notes seen</span><span class="v">12,847</span>
+                  <span class="k">Word count</span><span class="v">4,234,567</span>
+                  <span class="k">Latency</span><span class="v">49ms</span>
+                </div>
+                <div style="margin-top: 12px;">
+                  <h4>Source readers</h4>
+                </div>
+                <div class="td-kv">
+                  <span class="k">vault_read_note</span><span class="v">14 calls</span>
+                  <span class="k">vault_grep</span><span class="v">6 calls</span>
+                  <span class="k">vault_list_folders</span><span class="v">2 calls</span>
+                </div>
+                <div style="margin-top: 12px;">
+                  <h4>Round summary</h4>
+                </div>
+                <div class="td-kv">
+                  <span class="k">Rounds</span><span class="v">3</span>
+                  <span class="k">Turns</span><span class="v">47</span>
+                  <span class="k">Findings</span><span class="v">9 note_finding</span>
+                  <span class="k">Proposals</span><span class="v">5 clusters · 5 gaps · 7 actions · 14 sources</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="ft-status">
+            <span class="lock">🔒</span>
+            Saved to peak-system/vault-reviews/2026-05-20T07-02-32-936Z-e1d5f5ab.md
+          </div>
+          <button class="btn">⤴ Open report note</button>
+          <button class="btn">Export summary</button>
+          <button class="btn primary">✓ Close</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // Tab switching
+    const navTabs = document.querySelectorAll('.nav-tab');
+    const sections = document.querySelectorAll('.tab-section');
+    function showPage(name) {
+      navTabs.forEach(t => t.classList.toggle('active', t.dataset.page === name));
+      sections.forEach(s => s.classList.toggle('active', s.id === 'page-' + name));
+    }
+    navTabs.forEach(t => t.addEventListener('click', () => showPage(t.dataset.page)));
+  </script>
+</body>
+</html>

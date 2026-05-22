@@ -92,8 +92,8 @@ export const SuggestionActions: React.FC<Props> = ({ conversationId, messages, o
 					className={cn(
 						"pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-border pktw-bg-background pktw-text-muted-foreground pktw-text-[10px] pktw-cursor-pointer pktw-transition-all",
 						focusedIndex === i
-							? "pktw-border-[var(--pk-accent,#6d28d9)] pktw-text-[var(--pk-accent,#6d28d9)] pktw-bg-accent/5"
-							: "pktw-border-border hover:pktw-border-[var(--pk-accent,#6d28d9)] hover:pktw-text-[var(--pk-accent,#6d28d9)] hover:pktw-bg-accent/5"
+							? "pktw-border-[var(--pk-accent)] pktw-text-[var(--pk-accent)] pktw-bg-accent/5"
+							: "pktw-border-border hover:pktw-border-[var(--pk-accent)] hover:pktw-text-[var(--pk-accent)] hover:pktw-bg-accent/5"
 					)}
 					onClick={() => onSelect(s.prompt)}
 					onMouseEnter={() => setFocusedIndex(i)}

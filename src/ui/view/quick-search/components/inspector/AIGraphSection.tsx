@@ -62,7 +62,7 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-2">
 			{pastResult && (
-				<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-2 pktw-rounded pktw-bg-[#faf5ff] pktw-border pktw-border-[#e9d5ff]">
+				<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-2 pktw-rounded pktw-bg-pk-accent-tint pktw-border pktw-border-pk-accent-soft">
 					<div className="pktw-flex pktw-items-start pktw-justify-between pktw-gap-2">
 						<div className="pktw-flex pktw-flex-col pktw-gap-0.5 pktw-min-w-0">
 							<span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground pktw-truncate" title={pastResult.query ?? ''}>
@@ -75,7 +75,7 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 						<Button
 							variant="ghost"
 							size="xs"
-							className="pktw-shadow-none pktw-h-6 pktw-px-1.5 pktw-text-[10px] pktw-text-pk-accent hover:pktw-bg-[#f5f3ff] pktw-shrink-0"
+							className="pktw-shadow-none pktw-h-6 pktw-px-1.5 pktw-text-[10px] pktw-text-pk-accent hover:pktw-bg-pk-accent-tint pktw-shrink-0"
 							onClick={handleOpenPastResult}
 							title="Open in new window"
 						>
@@ -92,7 +92,7 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 					size="sm"
 					className={cn(
 						'pktw-shadow-none pktw-w-full pktw-justify-start pktw-gap-1.5 pktw-bg-pk-background',
-						'pktw-text-xs pktw-text-pk-foreground hover:pktw-text-pk-accent hover:pktw-border-[#c4b5fd]',
+						'pktw-text-xs pktw-text-pk-foreground hover:pktw-text-pk-accent hover:pktw-border-pk-accent-soft',
 					)}
 					onClick={handleGenerate}
 				>

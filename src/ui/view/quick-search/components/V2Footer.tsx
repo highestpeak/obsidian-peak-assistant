@@ -197,7 +197,7 @@ export const V2Footer: React.FC<{
 						onClick={handleDefaultCopy}
 						onMouseEnter={startHoverTimer}
 						onMouseLeave={startHideTimer}
-						className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
 						title={copied ? 'Copied!' : copyLabel}
 					>
 						{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
@@ -229,7 +229,7 @@ export const V2Footer: React.FC<{
 				</div>
 				<div
 					onClick={onSave}
-					className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+					className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
 					title="Save to Vault"
 				>
 					<Save className="pktw-w-3.5 pktw-h-3.5" />
@@ -237,7 +237,7 @@ export const V2Footer: React.FC<{
 				{hasGraphData && onSaveGraph && (
 					<div
 						onClick={onSaveGraph}
-						className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
 						title="Save Graph to Vault"
 					>
 						<Download className="pktw-w-3.5 pktw-h-3.5" />
@@ -251,7 +251,7 @@ export const V2Footer: React.FC<{
 							const app = AppContext.getInstance().app;
 							await openFile(lastSavedPath, false, app);
 						}}
-						className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
 						title="Open saved analysis note"
 					>
 						<FileSearch className="pktw-w-3.5 pktw-h-3.5" />

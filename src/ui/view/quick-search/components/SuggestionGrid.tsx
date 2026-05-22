@@ -44,7 +44,7 @@ const SuggestionCard: React.FC<{
 			onClick={() => onSelect(suggestion)}
 			className={cn(
 				'pktw-flex pktw-flex-col pktw-gap-2 pktw-p-3.5 pktw-border pktw-border-pk-border pktw-rounded-lg',
-				'pktw-bg-pk-background hover:pktw-border-[#7c3aed]/40 hover:pktw-bg-[#f5f3ff]',
+				'pktw-bg-pk-background hover:pktw-border-pk-accent/40 hover:pktw-bg-pk-accent-tint',
 				'pktw-cursor-pointer pktw-transition-all pktw-group',
 			)}
 		>
@@ -57,7 +57,7 @@ const SuggestionCard: React.FC<{
 				</span>
 			)}
 			{scopeTag && (
-				<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[10px] pktw-font-mono pktw-text-pk-accent pktw-bg-[#ede9fe] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-w-fit">
+				<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[10px] pktw-font-mono pktw-text-pk-accent pktw-bg-pk-accent-soft pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-w-fit">
 					{scopeTag}
 				</span>
 			)}

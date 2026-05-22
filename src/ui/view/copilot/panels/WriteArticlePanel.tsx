@@ -117,7 +117,7 @@ export const WriteArticlePanel: React.FC<WriteArticlePanelProps> = ({
 								? <ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground" />
 								: <ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground" />
 							}
-							<AlertTriangle className="pktw-w-3 pktw-h-3 pktw-text-[var(--pk-warning,#f59e0b)]" />
+							<AlertTriangle className="pktw-w-3 pktw-h-3 pktw-text-[var(--pk-warning)]" />
 							<span className="pktw-text-[11px] pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-tracking-wider">
 								Knowledge Gaps ({result.gaps.length})
 							</span>

@@ -13,7 +13,7 @@ import { useSearchSessionStore } from './store/searchSessionStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
 import { useSearchSession } from './hooks/useSearchSession';
-import { Notice } from 'obsidian';
+import { Notice, TFile } from 'obsidian';
 import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { AppContext } from '@/app/context/AppContext';
 import { SearchQueryEvent } from '@/core/eventBus';
@@ -392,9 +392,23 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 							const path = String(record.vault_rel_path ?? '').trim();
 							if (!path) return;
 							try {
-								const svc = AppContext.getInstance().aiAnalysisHistoryService;
-								const md = await svc.getMarkdownForReplay(path);
-								if (!md) return;
+								let md: string | null = null;
+								const file = app.vault.getAbstractFileByPath(path);
+								if (file instanceof TFile) {
+									md = await app.vault.read(file);
+								}
+								if (!md) {
+									const svc = AppContext.getInstance().aiAnalysisHistoryService as {
+										getMarkdownForReplay?: (p: string) => Promise<string | null>;
+									};
+									if (typeof svc.getMarkdownForReplay === 'function') {
+										md = await svc.getMarkdownForReplay(path);
+									}
+								}
+								if (!md) {
+									new Notice('Analysis file not found in vault.');
+									return;
+								}
 								const docModel = parseAiSearchAnalysisDoc(md);
 								const snapshot = toCompletedAnalysisSnapshot(docModel, Number.isFinite(record.created_at_ts) ? record.created_at_ts : undefined);
 								loadCompletedAnalysisSnapshot(snapshot, path);
@@ -404,12 +418,10 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 									useSearchSessionStore.setState({ query });
 								}
 							} catch (e) {
-								console.warn('[SearchModal] Failed to load snapshot, falling back to re-analysis:', e);
+								console.warn('[SearchModal] Failed to load snapshot:', e);
+								new Notice('Failed to load saved analysis.');
 								if (record.query) {
 									useSharedStore.getState().setSearchQuery(record.query);
-									useSearchSessionStore.getState().resetAll();
-									resetAIAnalysisAll();
-									useSearchSessionStore.getState().incrementTriggerAnalysis();
 								}
 							}
 						}}

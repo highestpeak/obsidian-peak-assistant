@@ -37,7 +37,7 @@ export const ToolRow: React.FC<{ step: V2ToolStep }> = ({ step }) => {
 
             {/* Tool icon + name */}
             <div className="pktw-text-pk-accent pktw-shrink-0"><ToolIcon toolName={step.toolName} /></div>
-            <span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338] pktw-truncate">
+            <span className="pktw-text-xs pktw-font-medium pktw-text-pk-text-primary pktw-truncate">
                 {step.displayName}
             </span>
 

@@ -45,19 +45,19 @@ export const PromptGroupSection: React.FC<Props> = ({
     return (
         <div>
             <div
-                className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-5 pktw-py-2.5 pktw-cursor-pointer pktw-select-none hover:pktw-bg-[var(--background-secondary)] pktw-transition-colors"
+                className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-5 pktw-py-2.5 pktw-cursor-pointer pktw-select-none hover:pktw-bg-[var(--pk-bg-secondary)] pktw-transition-colors"
                 onClick={() => setManualExpanded(!manualExpanded)}
             >
                 <ChevronDown className={cn(
-                    'pktw-w-3.5 pktw-h-3.5 pktw-text-[var(--text-faint)] pktw-transition-transform pktw-duration-200',
+                    'pktw-w-3.5 pktw-h-3.5 pktw-text-[var(--pk-text-tertiary)] pktw-transition-transform pktw-duration-200',
                     !isExpanded && 'pktw-rotate-[-90deg]',
                 )} />
-                <span className="pktw-text-[12px] pktw-font-semibold pktw-text-[var(--text-muted)] pktw-uppercase pktw-tracking-wider">
+                <span className="pktw-text-[12px] pktw-font-semibold pktw-text-[var(--pk-text-secondary)] pktw-uppercase pktw-tracking-wider">
                     {label}
                 </span>
-                <span className="pktw-text-[10px] pktw-text-[var(--text-faint)] pktw-ml-auto">
+                <span className="pktw-text-[10px] pktw-text-[var(--pk-text-tertiary)] pktw-ml-auto">
                     {overrideCount > 0 && (
-                        <span className="pktw-text-[var(--pk-accent,#7c3aed)]">{overrideCount}</span>
+                        <span className="pktw-text-[var(--pk-accent)]">{overrideCount}</span>
                     )}
                     {overrideCount > 0 && ' / '}
                     {totalCount}

@@ -35,8 +35,8 @@ export const NewConversationTypePicker: React.FC<Props> = ({ selectedKind, onSel
               opt.disabled
                 ? "pktw-opacity-50 pktw-cursor-not-allowed pktw-border-border"
                 : isSelected
-                  ? "pktw-border-[var(--pk-accent,#6d28d9)] pktw-bg-accent/5"
-                  : "pktw-border-border hover:pktw-border-[var(--pk-accent,#6d28d9)] hover:pktw-bg-accent/5"
+                  ? "pktw-border-[var(--pk-accent)] pktw-bg-accent/5"
+                  : "pktw-border-border hover:pktw-border-[var(--pk-accent)] hover:pktw-bg-accent/5"
             )}
             onClick={() => !opt.disabled && onSelectType(opt.type)}
           >

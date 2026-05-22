@@ -23,10 +23,10 @@ const AnalysisRow: React.FC<{
 			className={cn(
 				'pktw-flex pktw-items-center pktw-gap-3 pktw-px-1 pktw-py-2.5',
 				'pktw-border-b pktw-border-pk-border/50 last:pktw-border-b-0',
-				'hover:pktw-bg-[#f5f3ff] pktw-cursor-pointer pktw-transition-colors pktw-group',
+				'hover:pktw-bg-pk-accent-tint pktw-cursor-pointer pktw-transition-colors pktw-group',
 			)}
 		>
-			<div className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0 pktw-bg-[#ede9fe] pktw-text-pk-accent">
+			<div className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0 pktw-bg-pk-accent-soft pktw-text-pk-accent">
 				<Icon className="pktw-w-3.5 pktw-h-3.5" />
 			</div>
 			<div className="pktw-flex-1 pktw-min-w-0">

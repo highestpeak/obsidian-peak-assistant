@@ -114,14 +114,14 @@ export const PromptTemplateList: React.FC<Props> = ({ onClose }) => {
     return (
         <div className="pktw-flex pktw-flex-col pktw-h-full" style={{ maxHeight: '70vh' }}>
             {/* Header */}
-            <div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-py-4 pktw-border-b pktw-border-[var(--background-modifier-border)]">
-                <span className="pktw-text-[15px] pktw-font-semibold pktw-text-[var(--text-normal)]">
+            <div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-py-4 pktw-border-b pktw-border-[var(--pk-border)]">
+                <span className="pktw-text-[15px] pktw-font-semibold pktw-text-[var(--pk-text-primary)]">
                     Prompt Templates
                 </span>
                 <div className="pktw-relative">
-                    <Search className="pktw-absolute pktw-left-2.5 pktw-top-1/2 pktw-transform pktw-translate-y-[-50%] pktw-w-3.5 pktw-h-3.5 pktw-text-[var(--text-faint)]" />
+                    <Search className="pktw-absolute pktw-left-2.5 pktw-top-1/2 pktw-transform pktw-translate-y-[-50%] pktw-w-3.5 pktw-h-3.5 pktw-text-[var(--pk-text-tertiary)]" />
                     <input
-                        className="pktw-w-[220px] pktw-py-1.5 pktw-pl-8 pktw-pr-3 pktw-rounded-md pktw-border pktw-border-[var(--background-modifier-border)] pktw-bg-[var(--background-primary)] pktw-text-[var(--text-normal)] pktw-text-[12px] pktw-outline-none focus:pktw-border-[var(--pk-accent,#7c3aed)]"
+                        className="pktw-w-[220px] pktw-py-1.5 pktw-pl-8 pktw-pr-3 pktw-rounded-md pktw-border pktw-border-[var(--pk-border)] pktw-bg-[var(--pk-bg)] pktw-text-[var(--pk-text-primary)] pktw-text-[12px] pktw-outline-none focus:pktw-border-[var(--pk-accent)]"
                         placeholder="Search prompts..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -151,15 +151,15 @@ export const PromptTemplateList: React.FC<Props> = ({ onClose }) => {
             </div>
 
             {/* Footer */}
-            <div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-py-3 pktw-border-t pktw-border-[var(--background-modifier-border)]">
-                <span className="pktw-text-[11px] pktw-text-[var(--text-faint)]">
-                    <span className="pktw-text-[var(--pk-accent,#7c3aed)] pktw-font-medium">{totalOverridden}</span>
+            <div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-py-3 pktw-border-t pktw-border-[var(--pk-border)]">
+                <span className="pktw-text-[11px] pktw-text-[var(--pk-text-tertiary)]">
+                    <span className="pktw-text-[var(--pk-accent)] pktw-font-medium">{totalOverridden}</span>
                     {' '}of {totalPrompts} overridden
                 </span>
                 <Button
                     variant="outline"
                     size="sm"
-                    className="pktw-shadow-none pktw-h-7 pktw-text-[11px] pktw-text-[var(--text-muted)] pktw-bg-transparent pktw-border-[var(--background-modifier-border)] pktw-px-3 pktw-py-1 pktw-cursor-pointer hover:pktw-bg-pk-highlight hover:pktw-border-pk-border-accent hover:pktw-text-pk-accent pktw-transition-all pktw-flex pktw-items-center pktw-gap-1.5"
+                    className="pktw-shadow-none pktw-h-7 pktw-text-[11px] pktw-text-[var(--pk-text-secondary)] pktw-bg-transparent pktw-border-[var(--pk-border)] pktw-px-3 pktw-py-1 pktw-cursor-pointer hover:pktw-bg-pk-highlight hover:pktw-border-pk-border-accent hover:pktw-text-pk-accent pktw-transition-all pktw-flex pktw-items-center pktw-gap-1.5"
                     onClick={handleOpenFolder}
                 >
                     <FolderOpen className="pktw-w-3 pktw-h-3" />

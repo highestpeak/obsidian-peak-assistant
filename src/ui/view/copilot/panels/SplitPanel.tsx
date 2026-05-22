@@ -14,7 +14,7 @@ interface SplitPanelProps {
   onClose: () => void;
 }
 
-const SPLIT_COLORS = ['pktw-bg-accent', 'pktw-bg-[var(--pk-info,#3b82f6)]', 'pktw-bg-[var(--pk-success,#22c55e)]', 'pktw-bg-[var(--pk-warning,#f59e0b)]', 'pktw-bg-[var(--pk-error,#ef4444)]'];
+const SPLIT_COLORS = ['pktw-bg-accent', 'pktw-bg-[var(--pk-info)]', 'pktw-bg-[var(--pk-success)]', 'pktw-bg-[var(--pk-warning)]', 'pktw-bg-[var(--pk-error)]'];
 
 export const SplitPanel: React.FC<SplitPanelProps> = ({
   result, file, originalContent, onClose,
@@ -77,7 +77,7 @@ export const SplitPanel: React.FC<SplitPanelProps> = ({
       {/* Body */}
       <div className="pktw-flex-1 pktw-overflow-y-auto pktw-p-5">
         {/* Reason */}
-        <div className="pktw-flex pktw-items-start pktw-gap-1.5 pktw-p-3 pktw-bg-secondary pktw-rounded-lg pktw-mb-4 pktw-text-xs pktw-text-muted-foreground pktw-leading-relaxed pktw-border-l-3 pktw-border-l-[var(--pk-warning,#f59e0b)]">
+        <div className="pktw-flex pktw-items-start pktw-gap-1.5 pktw-p-3 pktw-bg-secondary pktw-rounded-lg pktw-mb-4 pktw-text-xs pktw-text-muted-foreground pktw-leading-relaxed pktw-border-l-3 pktw-border-l-[var(--pk-warning)]">
           <Ruler className="pktw-w-3.5 pktw-h-3.5 pktw-flex-shrink-0 pktw-mt-0.5" />
           {result.reason}
         </div>

@@ -10,9 +10,9 @@ import { PolishPanel } from './PolishPanel';
 import { AlertCircle, AlertTriangle, Info, FileCheck, Wrench, Lightbulb, Check, type LucideIcon } from 'lucide-react';
 
 const SEVERITY_CONFIG: Record<string, { icon: LucideIcon; label: string; bg: string; text: string }> = {
-  error: { icon: AlertCircle, label: 'Error', bg: 'pktw-bg-[var(--pk-error,#ef4444)]/10', text: 'pktw-text-[var(--pk-error,#ef4444)]' },
-  warning: { icon: AlertTriangle, label: 'Warning', bg: 'pktw-bg-[var(--pk-warning,#f59e0b)]/10', text: 'pktw-text-[var(--pk-warning,#f59e0b)]' },
-  info: { icon: Info, label: 'Info', bg: 'pktw-bg-[var(--pk-info,#3b82f6)]/10', text: 'pktw-text-[var(--pk-info,#3b82f6)]' },
+  error: { icon: AlertCircle, label: 'Error', bg: 'pktw-bg-[var(--pk-error)]/10', text: 'pktw-text-[var(--pk-error)]' },
+  warning: { icon: AlertTriangle, label: 'Warning', bg: 'pktw-bg-[var(--pk-warning)]/10', text: 'pktw-text-[var(--pk-warning)]' },
+  info: { icon: Info, label: 'Info', bg: 'pktw-bg-[var(--pk-info)]/10', text: 'pktw-text-[var(--pk-info)]' },
 };
 
 interface ReviewPanelProps {
@@ -146,7 +146,7 @@ export const ReviewPanel: React.FC<ReviewPanelProps> = ({
                 </div>
                 <div className="pktw-mt-2">
                   {isFixed ? (
-                    <span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[10px] pktw-font-semibold pktw-px-2.5 pktw-py-1 pktw-rounded pktw-bg-[var(--pk-success,#22c55e)]/10 pktw-text-[var(--pk-success,#22c55e)]">
+                    <span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[10px] pktw-font-semibold pktw-px-2.5 pktw-py-1 pktw-rounded pktw-bg-[var(--pk-success)]/10 pktw-text-[var(--pk-success)]">
                       <Check className="pktw-w-3 pktw-h-3" /> Fixed
                     </span>
                   ) : (

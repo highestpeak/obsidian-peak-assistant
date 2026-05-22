@@ -65,7 +65,7 @@ export function useInputSubmit() {
 	const hasMessages = activeConversation && activeConversation.messages.length > 0;
 	const placeholder = hasMessages
 		? 'Ask anything...'
-		: 'Ask anything... (@ for context, / for prompts)';
+		: 'Ask anything... (@ for context)';
 
 	return {
 		isSending,

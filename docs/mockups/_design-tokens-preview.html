@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="zh" class="theme-light">
+<head>
+  <meta charset="utf-8" />
+  <title>Peak Assistant · Design Tokens Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* ============================================================
+       Peak Tokens · Phase 0 Preview
+       决策来源：docs/superpowers/specs/2026-05-22-design-system-migration.md
+       - Q1 紫色 #7c3aed
+       - Q2 完全自治（不 chain Obsidian）
+       - Q3 light + dark 双套硬编码
+       - Q6 字号单位 px
+       这份预览作为 Phase 1 落盘 peak-tokens.css 的视觉合约。
+    ============================================================ */
+
+    :root,
+    .theme-light {
+      /* ── surface ── */
+      --pk-bg:                 #ffffff;
+      --pk-bg-secondary:       #f7f7fa;
+      --pk-bg-tertiary:        #f0f0f5;
+      --pk-surface:            #ffffff;
+      --pk-surface-raised:     #fafafa;
+      --pk-surface-sunken:     #f3f4f6;
+      --pk-surface-overlay:    #ffffff;
+
+      /* ── border ── */
+      --pk-border:             #e5e7eb;
+      --pk-border-soft:        #ececef;
+      --pk-border-strong:      #d1d5db;
+
+      /* ── text ── */
+      --pk-text-primary:       #2e3338;
+      --pk-text-secondary:     #6c757d;
+      --pk-text-tertiary:      #999999;
+      --pk-text-faint:         #b9bcc1;
+      --pk-text-inverted:      #ffffff;
+
+      /* ── accent (brand purple #7c3aed) ── */
+      --pk-accent:             #7c3aed;
+      --pk-accent-hover:       #6d28d9;
+      --pk-accent-tint:        rgba(124, 58, 237, 0.10);
+      --pk-accent-soft:        rgba(124, 58, 237, 0.25);
+      --pk-accent-text:        #6d28d9;
+      --pk-accent-fg:          #ffffff;
+
+      /* ── semantic ── */
+      --pk-success:            #22c55e;
+      --pk-success-bg:         rgba(34, 197, 94, 0.12);
+      --pk-success-text:       #15803d;
+
+      --pk-warning:            #f59e0b;
+      --pk-warning-bg:         rgba(245, 158, 11, 0.14);
+      --pk-warning-text:       #b45309;
+
+      --pk-error:              #ef4444;
+      --pk-error-bg:           rgba(239, 68, 68, 0.12);
+      --pk-error-text:         #b91c1c;
+
+      --pk-info:               #3b82f6;
+      --pk-info-bg:            rgba(59, 130, 246, 0.12);
+      --pk-info-text:          #1d4ed8;
+
+      --pk-indigo:             #6366f1;     /* vault review "dying" status */
+      --pk-indigo-bg:          rgba(99, 102, 241, 0.12);
+
+      /* ── shadow ── */
+      --pk-shadow-card:        0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.04);
+      --pk-shadow-popover:     0 4px 12px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(0, 0, 0, 0.04);
+      --pk-shadow-modal:       0 16px 40px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
+
+      /* ── typography (px per Q6) ── */
+      --pk-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+      --pk-font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+      --pk-text-xs:   10px;
+      --pk-text-sm:   11px;
+      --pk-text-base: 12px;
+      --pk-text-md:   13px;
+      --pk-text-lg:   14px;
+      --pk-text-xl:   16px;
+      --pk-text-2xl:  20px;
+      --pk-text-3xl:  28px;
+
+      /* ── spacing (4px grid) ── */
+      --pk-space-1:   4px;
+      --pk-space-2:   8px;
+      --pk-space-3:   12px;
+      --pk-space-4:   16px;
+      --pk-space-5:   20px;
+      --pk-space-6:   24px;
+      --pk-space-8:   32px;
+      --pk-space-10:  40px;
+      --pk-space-12:  48px;
+
+      /* ── radius ── */
+      --pk-radius-sm:   4px;
+      --pk-radius-md:   8px;
+      --pk-radius-lg:   12px;
+      --pk-radius-xl:   16px;
+      --pk-radius-full: 9999px;
+
+      /* ── z-index ── */
+      --pk-z-base:     0;
+      --pk-z-sticky:   10;
+      --pk-z-dropdown: 20;
+      --pk-z-modal:    50;
+      --pk-z-popover:  60;
+      --pk-z-tooltip:  80;
+
+      /* ── transition ── */
+      --pk-transition-fast: 100ms ease;
+      --pk-transition-base: 150ms ease;
+      --pk-transition-slow: 300ms ease;
+    }
+
+    .theme-dark {
+      /* ── surface ── */
+      --pk-bg:                 #1e1e2e;
+      --pk-bg-secondary:       #181825;
+      --pk-bg-tertiary:        #11111b;
+      --pk-surface:            #1e1e2e;
+      --pk-surface-raised:     #252535;
+      --pk-surface-sunken:     #181825;
+      --pk-surface-overlay:    #2a2a3c;
+
+      /* ── border ── */
+      --pk-border:             #313244;
+      --pk-border-soft:        #2a2b3a;
+      --pk-border-strong:      #45475a;
+
+      /* ── text ── */
+      --pk-text-primary:       #cdd6f4;
+      --pk-text-secondary:     #a6adc8;
+      --pk-text-tertiary:      #7f849c;
+      --pk-text-faint:         #585b70;
+      --pk-text-inverted:      #1e1b2e;
+
+      /* ── accent ── */
+      --pk-accent:             #a78bfa;
+      --pk-accent-hover:       #c4b5fd;
+      --pk-accent-tint:        rgba(167, 139, 250, 0.16);
+      --pk-accent-soft:        rgba(167, 139, 250, 0.30);
+      --pk-accent-text:        #c4b5fd;
+      --pk-accent-fg:          #1e1b2e;
+
+      /* ── semantic ── */
+      --pk-success:            #4ade80;
+      --pk-success-bg:         rgba(74, 222, 128, 0.15);
+      --pk-success-text:       #86efac;
+
+      --pk-warning:            #fbbf24;
+      --pk-warning-bg:         rgba(251, 191, 36, 0.16);
+      --pk-warning-text:       #fcd34d;
+
+      --pk-error:              #f87171;
+      --pk-error-bg:           rgba(248, 113, 113, 0.16);
+      --pk-error-text:         #fca5a5;
+
+      --pk-info:               #60a5fa;
+      --pk-info-bg:            rgba(96, 165, 250, 0.15);
+      --pk-info-text:          #93c5fd;
+
+      --pk-indigo:             #93b1ff;
+      --pk-indigo-bg:          rgba(147, 177, 255, 0.16);
+
+      /* ── shadow ── */
+      --pk-shadow-card:        0 0 0 1px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.25);
+      --pk-shadow-popover:     0 6px 18px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.4);
+      --pk-shadow-modal:       0 18px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(0, 0, 0, 0.5);
+    }
+
+    /* ── page chrome (not part of tokens) ── */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: var(--pk-font-sans);
+      font-size: var(--pk-text-md);
+      color: var(--pk-text-primary);
+      background: var(--pk-bg-secondary);
+      transition: background var(--pk-transition-base), color var(--pk-transition-base);
+      line-height: 1.55;
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: var(--pk-space-8); }
+
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: var(--pk-space-5);
+      border-bottom: 1px solid var(--pk-border);
+      margin-bottom: var(--pk-space-8);
+    }
+    .header h1 { margin: 0; font-size: var(--pk-text-2xl); font-weight: 600; }
+    .header .subtitle {
+      font-size: var(--pk-text-base); color: var(--pk-text-secondary);
+      margin-top: var(--pk-space-1);
+    }
+    .toggle {
+      display: inline-flex; gap: var(--pk-space-1);
+      padding: var(--pk-space-1); border-radius: var(--pk-radius-md);
+      background: var(--pk-surface-sunken); border: 1px solid var(--pk-border);
+    }
+    .toggle button {
+      font: inherit; font-size: var(--pk-text-sm);
+      padding: 4px 10px; border: 0; border-radius: var(--pk-radius-sm);
+      cursor: pointer; background: transparent; color: var(--pk-text-secondary);
+    }
+    .toggle button.active { background: var(--pk-accent); color: var(--pk-accent-fg); }
+
+    section { margin-bottom: var(--pk-space-12); }
+    section > h2 {
+      font-size: var(--pk-text-lg); font-weight: 600;
+      letter-spacing: 0.02em; text-transform: uppercase;
+      color: var(--pk-text-tertiary);
+      margin: 0 0 var(--pk-space-4) 0;
+    }
+
+    .grid {
+      display: grid; gap: var(--pk-space-3);
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+    .swatch {
+      display: flex; flex-direction: column;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-md);
+      background: var(--pk-surface);
+      overflow: hidden;
+      box-shadow: var(--pk-shadow-card);
+    }
+    .swatch .chip { height: 56px; border-bottom: 1px solid var(--pk-border-soft); }
+    .swatch .meta { padding: var(--pk-space-2) var(--pk-space-3); font-size: var(--pk-text-sm); }
+    .swatch .meta .name { font-weight: 600; color: var(--pk-text-primary); }
+    .swatch .meta .val  { font-family: var(--pk-font-mono); color: var(--pk-text-tertiary); font-size: 10px; }
+
+    .type-row {
+      display: flex; align-items: baseline; gap: var(--pk-space-4);
+      padding: var(--pk-space-2) 0; border-bottom: 1px solid var(--pk-border-soft);
+    }
+    .type-row:last-child { border-bottom: 0; }
+    .type-row .label { width: 120px; font-family: var(--pk-font-mono); font-size: 10px; color: var(--pk-text-tertiary); }
+    .type-row .sample { color: var(--pk-text-primary); }
+
+    .scale-row { display: flex; align-items: center; gap: var(--pk-space-3); padding: var(--pk-space-2) 0; }
+    .scale-row .label { width: 110px; font-family: var(--pk-font-mono); font-size: 10px; color: var(--pk-text-tertiary); }
+    .scale-row .bar { background: var(--pk-accent); height: 16px; border-radius: var(--pk-radius-sm); }
+
+    .radius-grid { display: flex; gap: var(--pk-space-4); align-items: flex-end; flex-wrap: wrap; }
+    .radius-grid .box {
+      width: 88px; height: 88px;
+      background: var(--pk-accent-tint);
+      border: 1px solid var(--pk-accent-soft);
+      display: flex; align-items: flex-end; justify-content: center;
+      padding-bottom: var(--pk-space-1);
+      font-family: var(--pk-font-mono); font-size: 10px; color: var(--pk-accent-text);
+    }
+
+    .shadow-grid { display: flex; gap: var(--pk-space-6); flex-wrap: wrap; }
+    .shadow-grid .card {
+      background: var(--pk-surface); padding: var(--pk-space-4) var(--pk-space-5);
+      border-radius: var(--pk-radius-md);
+      font-size: var(--pk-text-sm); color: var(--pk-text-secondary);
+      min-width: 160px;
+    }
+
+    .components { display: grid; gap: var(--pk-space-4); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .panel {
+      background: var(--pk-surface); border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-lg); padding: var(--pk-space-5);
+      box-shadow: var(--pk-shadow-card);
+    }
+    .panel h3 { margin: 0 0 var(--pk-space-3) 0; font-size: var(--pk-text-md); font-weight: 600; }
+    .btn {
+      font: inherit; font-size: var(--pk-text-sm); font-weight: 500;
+      padding: 6px 14px; border-radius: var(--pk-radius-md);
+      border: 1px solid transparent; cursor: pointer;
+      transition: background var(--pk-transition-fast);
+    }
+    .btn-primary { background: var(--pk-accent); color: var(--pk-accent-fg); }
+    .btn-primary:hover { background: var(--pk-accent-hover); }
+    .btn-secondary { background: var(--pk-surface-raised); color: var(--pk-text-primary); border-color: var(--pk-border-strong); }
+    .btn-ghost { background: transparent; color: var(--pk-accent-text); }
+    .btn-ghost:hover { background: var(--pk-accent-tint); }
+
+    .input {
+      font: inherit; font-size: var(--pk-text-md);
+      width: 100%; padding: 6px 10px;
+      background: var(--pk-surface-sunken);
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-md);
+      color: var(--pk-text-primary);
+    }
+    .input:focus { outline: none; border-color: var(--pk-accent); box-shadow: 0 0 0 3px var(--pk-accent-tint); }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: var(--pk-text-xs); font-weight: 500;
+      padding: 2px 8px; border-radius: var(--pk-radius-full);
+    }
+    .badge-success { background: var(--pk-success-bg); color: var(--pk-success-text); }
+    .badge-warning { background: var(--pk-warning-bg); color: var(--pk-warning-text); }
+    .badge-error   { background: var(--pk-error-bg);   color: var(--pk-error-text); }
+    .badge-info    { background: var(--pk-info-bg);    color: var(--pk-info-text); }
+    .badge-indigo  { background: var(--pk-indigo-bg);  color: var(--pk-indigo); }
+    .badge-accent  { background: var(--pk-accent-tint); color: var(--pk-accent-text); }
+
+    .stack > * + * { margin-top: var(--pk-space-2); }
+    .row { display: flex; gap: var(--pk-space-2); align-items: center; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="header">
+      <div>
+        <h1>Peak Tokens · Phase 0 Preview</h1>
+        <div class="subtitle">2026-05-22 · 决策 Q1–Q7 已落定 · 此页是 Phase 1 落盘 peak-tokens.css 的视觉合约</div>
+      </div>
+      <div class="toggle" role="tablist">
+        <button class="active" data-theme="light">Light</button>
+        <button data-theme="dark">Dark</button>
+      </div>
+    </div>
+
+    <!-- ── Surface colors ── -->
+    <section>
+      <h2>Surface · 底色 / 卡片底</h2>
+      <div class="grid">
+        <div class="swatch"><div class="chip" style="background: var(--pk-bg)"></div><div class="meta"><div class="name">--pk-bg</div><div class="val">应用底</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-bg-secondary)"></div><div class="meta"><div class="name">--pk-bg-secondary</div><div class="val">次级底</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-bg-tertiary)"></div><div class="meta"><div class="name">--pk-bg-tertiary</div><div class="val">沉浸底</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-surface)"></div><div class="meta"><div class="name">--pk-surface</div><div class="val">卡片底</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-surface-raised)"></div><div class="meta"><div class="name">--pk-surface-raised</div><div class="val">浮起卡片</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-surface-sunken)"></div><div class="meta"><div class="name">--pk-surface-sunken</div><div class="val">沉降区</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-surface-overlay)"></div><div class="meta"><div class="name">--pk-surface-overlay</div><div class="val">浮层 / popover</div></div></div>
+      </div>
+    </section>
+
+    <!-- ── Border ── -->
+    <section>
+      <h2>Border · 描边层级</h2>
+      <div class="grid">
+        <div class="swatch"><div class="chip" style="background: var(--pk-border)"></div><div class="meta"><div class="name">--pk-border</div><div class="val">标准</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-border-soft)"></div><div class="meta"><div class="name">--pk-border-soft</div><div class="val">hairline 分隔</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-border-strong)"></div><div class="meta"><div class="name">--pk-border-strong</div><div class="val">强调</div></div></div>
+      </div>
+    </section>
+
+    <!-- ── Text ── -->
+    <section>
+      <h2>Text · 文字层级</h2>
+      <div class="panel stack">
+        <div style="color: var(--pk-text-primary);   font-size: var(--pk-text-md);">Primary · 主文 · The quick brown fox</div>
+        <div style="color: var(--pk-text-secondary); font-size: var(--pk-text-md);">Secondary · 次文 · The quick brown fox</div>
+        <div style="color: var(--pk-text-tertiary);  font-size: var(--pk-text-md);">Tertiary · 三级 · The quick brown fox</div>
+        <div style="color: var(--pk-text-faint);     font-size: var(--pk-text-md);">Faint · placeholder · The quick brown fox</div>
+        <div style="background: var(--pk-accent); color: var(--pk-text-inverted); padding: 4px 10px; border-radius: var(--pk-radius-sm); display: inline-block;">Inverted · 在 accent 上的字</div>
+      </div>
+    </section>
+
+    <!-- ── Accent ── -->
+    <section>
+      <h2>Accent · 品牌色（#7c3aed）+ 状态</h2>
+      <div class="grid">
+        <div class="swatch"><div class="chip" style="background: var(--pk-accent)"></div><div class="meta"><div class="name">--pk-accent</div><div class="val">主品牌</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-accent-hover)"></div><div class="meta"><div class="name">--pk-accent-hover</div><div class="val">hover 态</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-accent-tint)"></div><div class="meta"><div class="name">--pk-accent-tint</div><div class="val">背景填色</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-accent-soft); height: 56px; border: none;"></div><div class="meta"><div class="name">--pk-accent-soft</div><div class="val">浅边 / 焦点环</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-accent-tint); display: flex; align-items: center; justify-content: center; color: var(--pk-accent-text); font-weight: 600;">7c3aed</div><div class="meta"><div class="name">--pk-accent-text</div><div class="val">tinted 上的字</div></div></div>
+      </div>
+    </section>
+
+    <!-- ── Semantic ── -->
+    <section>
+      <h2>Semantic · 语义色</h2>
+      <div class="grid">
+        <div class="swatch"><div class="chip" style="background: var(--pk-success)"></div><div class="meta"><div class="name">--pk-success</div><div class="val">22c55e</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-warning)"></div><div class="meta"><div class="name">--pk-warning</div><div class="val">f59e0b</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-error)"></div><div class="meta"><div class="name">--pk-error</div><div class="val">ef4444</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-info)"></div><div class="meta"><div class="name">--pk-info</div><div class="val">3b82f6</div></div></div>
+        <div class="swatch"><div class="chip" style="background: var(--pk-indigo)"></div><div class="meta"><div class="name">--pk-indigo</div><div class="val">6366f1 · vault dying</div></div></div>
+      </div>
+      <div style="margin-top: var(--pk-space-3);" class="row">
+        <span class="badge badge-success">Success</span>
+        <span class="badge badge-warning">Warning</span>
+        <span class="badge badge-error">Error</span>
+        <span class="badge badge-info">Info</span>
+        <span class="badge badge-indigo">Dying (vault)</span>
+        <span class="badge badge-accent">Accent</span>
+      </div>
+    </section>
+
+    <!-- ── Typography ── -->
+    <section>
+      <h2>Typography · 字号 (px)</h2>
+      <div class="panel">
+        <div class="type-row"><div class="label">--pk-text-xs · 10</div><div class="sample" style="font-size: var(--pk-text-xs)">10px · 角标 / 时间戳</div></div>
+        <div class="type-row"><div class="label">--pk-text-sm · 11</div><div class="sample" style="font-size: var(--pk-text-sm)">11px · meta 信息</div></div>
+        <div class="type-row"><div class="label">--pk-text-base · 12</div><div class="sample" style="font-size: var(--pk-text-base)">12px · 默认正文</div></div>
+        <div class="type-row"><div class="label">--pk-text-md · 13</div><div class="sample" style="font-size: var(--pk-text-md)">13px · 主体阅读字号</div></div>
+        <div class="type-row"><div class="label">--pk-text-lg · 14</div><div class="sample" style="font-size: var(--pk-text-lg)">14px · 强调段</div></div>
+        <div class="type-row"><div class="label">--pk-text-xl · 16</div><div class="sample" style="font-size: var(--pk-text-xl)">16px · 卡片标题</div></div>
+        <div class="type-row"><div class="label">--pk-text-2xl · 20</div><div class="sample" style="font-size: var(--pk-text-2xl); font-weight: 600;">20px · panel 标题</div></div>
+        <div class="type-row"><div class="label">--pk-text-3xl · 28</div><div class="sample" style="font-size: var(--pk-text-3xl); font-weight: 600;">28px · 大型 hero</div></div>
+      </div>
+    </section>
+
+    <!-- ── Spacing ── -->
+    <section>
+      <h2>Spacing · 4px grid</h2>
+      <div class="panel">
+        <div class="scale-row"><div class="label">--pk-space-1 · 4</div><div class="bar" style="width: 4px;"></div></div>
+        <div class="scale-row"><div class="label">--pk-space-2 · 8</div><div class="bar" style="width: 8px;"></div></div>
+        <div class="scale-row"><div class="label">--pk-space-3 · 12</div><div class="bar" style="width: 12px;"></div></div>
+        <div class="scale-row"><div class="label">--pk-space-4 · 16</div><div class="bar" style="width: 16px;"></div></div>
+        <div class="scale-row"><div class="label">--pk-space-5 · 20</div><div class="bar" style="width: 20px;"></div></div>
+        <div class="scale-row"><div class="label">--pk-space-6 · 24</div><div class="bar" style="width: 24px;"></div></div>
+        <div class="scale-row"><div class="label">--pk-space-8 · 32</div><div class="bar" style="width: 32px;"></div></div>
+        <div class="scale-row"><div class="label">--pk-space-10 · 40</div><div class="bar" style="width: 40px;"></div></div>
+        <div class="scale-row"><div class="label">--pk-space-12 · 48</div><div class="bar" style="width: 48px;"></div></div>
+      </div>
+    </section>
+
+    <!-- ── Radius ── -->
+    <section>
+      <h2>Radius</h2>
+      <div class="radius-grid">
+        <div class="box" style="border-radius: var(--pk-radius-sm)">sm · 4</div>
+        <div class="box" style="border-radius: var(--pk-radius-md)">md · 8</div>
+        <div class="box" style="border-radius: var(--pk-radius-lg)">lg · 12</div>
+        <div class="box" style="border-radius: var(--pk-radius-xl)">xl · 16</div>
+        <div class="box" style="border-radius: var(--pk-radius-full); width: 88px; height: 36px;">full</div>
+      </div>
+    </section>
+
+    <!-- ── Shadow ── -->
+    <section>
+      <h2>Shadow · 三档</h2>
+      <div class="shadow-grid">
+        <div class="card" style="box-shadow: var(--pk-shadow-card);">--pk-shadow-card<br/><span style="color: var(--pk-text-tertiary);">卡片 / 列表项</span></div>
+        <div class="card" style="box-shadow: var(--pk-shadow-popover);">--pk-shadow-popover<br/><span style="color: var(--pk-text-tertiary);">popover / dropdown</span></div>
+        <div class="card" style="box-shadow: var(--pk-shadow-modal);">--pk-shadow-modal<br/><span style="color: var(--pk-text-tertiary);">modal / dialog</span></div>
+      </div>
+    </section>
+
+    <!-- ── Component sampler ── -->
+    <section>
+      <h2>组件抽样 · 验证 token 组合后是否好看</h2>
+      <div class="components">
+
+        <div class="panel">
+          <h3>Buttons</h3>
+          <div class="row">
+            <button class="btn btn-primary">Primary</button>
+            <button class="btn btn-secondary">Secondary</button>
+            <button class="btn btn-ghost">Ghost</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Input</h3>
+          <div class="stack">
+            <input class="input" placeholder="Search anything…" />
+            <input class="input" value="focused state" autofocus />
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Status badges</h3>
+          <div class="row">
+            <span class="badge badge-success">indexed</span>
+            <span class="badge badge-warning">stale</span>
+            <span class="badge badge-error">failed</span>
+            <span class="badge badge-info">12 refs</span>
+            <span class="badge badge-indigo">dying</span>
+            <span class="badge badge-accent">vault</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Tinted accent card</h3>
+          <div style="background: var(--pk-accent-tint); border: 1px solid var(--pk-accent-soft); border-radius: var(--pk-radius-md); padding: var(--pk-space-3);">
+            <div style="color: var(--pk-accent-text); font-weight: 600; font-size: var(--pk-text-md);">11 篇文档已被引用</div>
+            <div style="color: var(--pk-text-secondary); font-size: var(--pk-text-sm); margin-top: 4px;">基于过去 7 天的访问与编辑记录</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer style="margin-top: var(--pk-space-12); padding-top: var(--pk-space-4); border-top: 1px solid var(--pk-border-soft); font-size: var(--pk-text-sm); color: var(--pk-text-tertiary);">
+      Phase 0 deliverable · 评审通过后将原样落到 <code style="font-family: var(--pk-font-mono);">src/styles/peak-tokens.css</code>。
+    </footer>
+  </main>
+
+  <script>
+    const btns = document.querySelectorAll('.toggle button');
+    btns.forEach(b => b.addEventListener('click', () => {
+      const theme = b.dataset.theme;
+      document.documentElement.classList.toggle('theme-dark', theme === 'dark');
+      document.documentElement.classList.toggle('theme-light', theme === 'light');
+      btns.forEach(x => x.classList.toggle('active', x === b));
+    }));
+  </script>
+</body>
+</html>

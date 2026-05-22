@@ -9,7 +9,7 @@ export const keymapExtension = Prec.highest(keymap.of([
 		run: (view) => {
 			if (view.composing) return false; // IME is active, don't submit
 
-			// Check if there's an active NavigableMenu, ContextMenu, or PromptMenu (dropdown menus)
+			// Check if there's an active NavigableMenu or ContextMenu (dropdown menus)
 			const activeMenu = document.querySelector('[data-item-id]') || document.querySelector('[data-ctx-index]') || document.querySelector('[data-prompt-index]');
 			if (activeMenu) {
 				// Let the menu handle the Enter key

@@ -130,7 +130,7 @@ export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
                       <div
                         key={suggestion.tag}
                         className={`pktw-flex pktw-items-start pktw-gap-2.5 pktw-px-3 pktw-py-2.5 pktw-rounded-lg pktw-transition-colors ${
-                          status === 'accepted' ? 'pktw-bg-[var(--pk-success,#22c55e)]/5' :
+                          status === 'accepted' ? 'pktw-bg-[var(--pk-success)]/5' :
                           status === 'rejected' ? 'pktw-bg-muted/50 pktw-opacity-50' :
                           'hover:pktw-bg-muted'
                         }`}
@@ -180,7 +180,7 @@ export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
                           <div className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-flex-shrink-0">
                             <Button
                               variant="ghost" size="sm"
-                              className={`pktw-h-6 pktw-w-6 pktw-p-0 ${status === 'accepted' ? 'pktw-text-[var(--pk-success,#22c55e)]' : ''}`}
+                              className={`pktw-h-6 pktw-w-6 pktw-p-0 ${status === 'accepted' ? 'pktw-text-[var(--pk-success)]' : ''}`}
                               onClick={() => setTagStatus(suggestion.tag, status === 'accepted' ? 'pending' : 'accepted')}
                             >
                               <Check className="pktw-w-3.5 pktw-h-3.5" />

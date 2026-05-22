@@ -93,7 +93,7 @@ function _resetSectionBuffers() {
 // Session status
 // ---------------------------------------------------------------------------
 
-export type SessionStatus = 'idle' | 'starting' | 'streaming' | 'completed' | 'error' | 'canceled';
+export type SessionStatus = 'idle' | 'starting' | 'streaming' | 'plan_ready' | 'completed' | 'error' | 'canceled';
 
 // ---------------------------------------------------------------------------
 // HITL state
@@ -196,6 +196,7 @@ interface SearchSessionActions {
 	addV2Source: (source: V2Source) => void;
 
 	// Plan & section generation
+	setPlanReady: () => void;
 	approvePlan: () => void;
 	addUserInsight: (insight: string) => void;
 	removeUserInsight: (index: number) => void;
@@ -545,6 +546,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	// Plan & section generation
 	// -----------------------------------------------------------------------
 
+	setPlanReady: () => set({ status: 'plan_ready' }),
 	approvePlan: () => set({ v2PlanApproved: true }),
 
 	addUserInsight: (insight) => set((s) => ({ v2UserInsights: [...s.v2UserInsights, insight] })),

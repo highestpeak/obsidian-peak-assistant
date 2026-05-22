@@ -99,7 +99,7 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                             <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-pk-accent pktw-animate-spin" />
                         </div>
                         <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
-                        <span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">Preparing analysis plan...</span>
+                        <span className="pktw-text-xs pktw-font-medium pktw-text-pk-text-primary">Preparing analysis plan...</span>
                     </div>
                 )}
 
@@ -110,7 +110,7 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                             <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-pk-accent pktw-animate-spin" />
                         </div>
                         <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
-                        <span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">Generating report...</span>
+                        <span className="pktw-text-xs pktw-font-medium pktw-text-pk-text-primary">Generating report...</span>
                         <span className="pktw-flex-1" />
                         <div className="pktw-w-24 pktw-h-1 pktw-bg-gray-200 pktw-rounded-full pktw-overflow-hidden">
                             <motion.div
@@ -133,7 +133,7 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                     <div className="pktw-mt-3 pktw-space-y-1">
                         <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-1 pktw-mb-2">
                             <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
-                            <span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">
+                            <span className="pktw-text-xs pktw-font-medium pktw-text-pk-text-primary">
                                 Generating sections ({sections.filter((s) => s.status === 'done').length}/{sections.length})
                             </span>
                         </div>

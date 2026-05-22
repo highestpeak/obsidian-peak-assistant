@@ -33,7 +33,7 @@ const FILE_TYPE_CONFIG: Record<FileAttachment['type'], FileTypeConfig> = {
 	},
 	pdf: {
 		icon: FileText,
-		containerClassName: 'pktw-bg-[#c92a2a] pktw-border-[#ca1f1f] pktw-text-white',
+		containerClassName: 'pktw-bg-pk-error-text pktw-border-pk-error-text pktw-text-white',
 	},
 	file: {
 		icon: Paperclip,

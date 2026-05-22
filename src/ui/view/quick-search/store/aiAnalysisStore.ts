@@ -7,7 +7,7 @@ import { useGraphAgentStore } from './graphAgentStore';
 import type { LLMUsage } from '@/core/providers/types';
 import type { SearchResultItem } from '@/service/search/types';
 import type { GraphPreview } from '@/core/storage/graph/types';
-import type { SnapshotChatMessage } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
+import type { SnapshotChatMessage, V2PersistedSection } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 
 /** Per-topic completed Q&A from Analyze. */
 export type SectionAnalyzeResult = { question: string; answer: string };
@@ -87,7 +87,7 @@ export type CompletedAnalysisSnapshot = {
 	// V2 fields
 	v2ProcessLog?: string[];
 	v2PlanOutline?: string | null;
-	v2ReportSections?: Array<{ title: string; content: string }>;
+	v2ReportSections?: V2PersistedSection[];
 	v2FollowUpQuestions?: string[];
 	v2GraphJson?: string | null;
 };
@@ -196,12 +196,12 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 		const v2PlanSections: import('./searchSessionStore').V2Section[] = (snapshot.v2ReportSections ?? []).map((sec, i) => ({
 			id: `restored-sec-${i}`,
 			title: sec.title,
-			contentType: '',
-			visualType: '',
-			evidencePaths: [],
-			brief: '',
-			weight: 1,
-			missionRole: '',
+			contentType: sec.contentType ?? '',
+			visualType: sec.visualType ?? '',
+			evidencePaths: sec.evidencePaths ?? [],
+			brief: sec.brief ?? '',
+			weight: sec.weight ?? 1,
+			missionRole: sec.missionRole ?? '',
 			status: 'done' as const,
 			content: sec.content,
 			streamingText: '',
@@ -246,7 +246,7 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 			} catch { /* ignore malformed graph JSON */ }
 		}
 
-		useSearchSessionStore.setState({
+		useSearchSessionStore.setState((prev) => ({
 			id: snapshot.analysisStartedAtMs ? `restored:${snapshot.analysisStartedAtMs}` : `restored:${now}`,
 			query: snapshot.query ?? '',
 			status: 'completed',
@@ -258,6 +258,10 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 			restoredFromHistory: true,
 			restoredFromVaultPath: sourceVaultPath ?? null,
 			analysisMode: snapshot.runAnalysisMode ?? 'vaultFull',
+			// Seed lastSavedPath so any later re-save (e.g. on-demand graph
+			// generation after restore) overwrites the original markdown
+			// instead of creating a new file.
+			autoSaveState: { ...prev.autoSaveState, lastSavedPath: sourceVaultPath ?? null },
 			// V2 state
 			v2Active: true,
 			v2View: 'report',
@@ -271,12 +275,12 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 			v2SummaryStreaming: false,
 			v2Steps: restoredSteps,
 			v2Timeline: restoredTimeline,
-		});
+		}));
 		return;
 	}
 
 	// Non-V2 snapshots: restore minimal session state for display
-	useSearchSessionStore.setState({
+	useSearchSessionStore.setState((prev) => ({
 		id: snapshot.analysisStartedAtMs ? `restored:${snapshot.analysisStartedAtMs}` : `restored:${now}`,
 		query: snapshot.query ?? '',
 		status: 'completed',
@@ -288,7 +292,8 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 		restoredFromHistory: true,
 		restoredFromVaultPath: sourceVaultPath ?? null,
 		analysisMode: snapshot.runAnalysisMode ?? 'vaultFull',
-	});
+		autoSaveState: { ...prev.autoSaveState, lastSavedPath: sourceVaultPath ?? null },
+	}));
 }
 
 /** Get clean query without @web@ for actual search. */

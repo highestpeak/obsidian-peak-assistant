@@ -86,14 +86,14 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 							</span>
 
 							{showBadge && (
-								<span className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-text-[10px] pktw-text-[#16a34a] pktw-shrink-0">
+								<span className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-text-[10px] pktw-text-pk-success-text pktw-shrink-0">
 									<Check className="pktw-w-2.5 pktw-h-2.5" />
 									{scorePercent}%
 								</span>
 							)}
 
 							{link.convergenceCount > 3 && (
-								<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-bg-[#f3f4f6] pktw-px-1 pktw-rounded pktw-shrink-0">
+								<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-bg-pk-surface-sunken pktw-px-1 pktw-rounded pktw-shrink-0">
 									{link.convergenceCount} refs
 								</span>
 							)}

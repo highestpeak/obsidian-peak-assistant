@@ -72,7 +72,7 @@ export const LinkSuggestPanel: React.FC<LinkSuggestPanelProps> = ({
         {/* Summary */}
         <div className="pktw-flex pktw-items-center pktw-gap-3 pktw-p-3 pktw-bg-secondary pktw-rounded-lg pktw-mb-3 pktw-text-[11px] pktw-text-muted-foreground">
           <span className="pktw-text-lg pktw-font-bold pktw-text-accent">{result.links.length}</span>
-          <span>potential links · <span className="pktw-font-semibold pktw-text-accent">{outgoingCount}</span> outgoing · <span className="pktw-font-semibold pktw-text-[var(--pk-success,#22c55e)]">{incomingCount}</span> incoming</span>
+          <span>potential links · <span className="pktw-font-semibold pktw-text-accent">{outgoingCount}</span> outgoing · <span className="pktw-font-semibold pktw-text-[var(--pk-success)]">{incomingCount}</span> incoming</span>
         </div>
 
         {/* Links */}
@@ -98,7 +98,7 @@ export const LinkSuggestPanel: React.FC<LinkSuggestPanelProps> = ({
                   <span className={`pktw-text-[8px] pktw-font-bold pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-uppercase ${
                     isOutgoing
                       ? 'pktw-bg-accent/10 pktw-text-accent'
-                      : 'pktw-bg-[var(--pk-success,#22c55e)]/10 pktw-text-[var(--pk-success,#22c55e)]'
+                      : 'pktw-bg-[var(--pk-success)]/10 pktw-text-[var(--pk-success)]'
                   }`}>
                     {isOutgoing ? '→ Out' : '← In'}
                   </span>

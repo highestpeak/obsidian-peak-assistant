@@ -51,7 +51,7 @@ export const V2ContinueAnalysisInput: React.FC<V2ContinueAnalysisInputProps> = (
                 <div className="pktw-bg-popover pktw-border pktw-border-pk-border pktw-rounded-xl pktw-shadow-2xl pktw-overflow-hidden">
                     {/* Header */}
                     <div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-4 pktw-py-3 pktw-border-b pktw-border-pk-border">
-                        <span className="pktw-text-xs pktw-font-semibold pktw-text-[#2e3338]">
+                        <span className="pktw-text-xs pktw-font-semibold pktw-text-pk-text-primary">
                             Continue Analysis
                         </span>
                         <div
@@ -77,13 +77,13 @@ export const V2ContinueAnalysisInput: React.FC<V2ContinueAnalysisInputProps> = (
                                     }
                                 }}
                                 placeholder="Ask a follow-up question..."
-                                className="pktw-flex-1 pktw-px-3 pktw-py-2 pktw-text-sm pktw-border pktw-border-pk-border pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-[#7c3aed]/50 focus:pktw-border-transparent"
+                                className="pktw-flex-1 pktw-px-3 pktw-py-2 pktw-text-sm pktw-border pktw-border-pk-border pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-pk-accent/50 focus:pktw-border-transparent"
                             />
                             <div
                                 onClick={() => handleSubmit()}
                                 className={`pktw-flex-none pktw-p-2 pktw-rounded-lg pktw-transition-colors pktw-cursor-pointer ${
                                     input.trim()
-                                        ? 'pktw-text-white pktw-bg-pk-accent hover:pktw-bg-[#6d28d9]'
+                                        ? 'pktw-text-white pktw-bg-pk-accent hover:pktw-bg-pk-accent-hover'
                                         : 'pktw-text-pk-foreground-muted pktw-bg-gray-100'
                                 }`}
                             >

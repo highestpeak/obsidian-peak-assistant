@@ -38,7 +38,7 @@ function renderHighlightSpans(result: HighlightResult): React.ReactNode {
 			? 'pktw-bg-blue-50 pktw-text-blue-800 pktw-underline pktw-decoration-dashed'
 			: span.type === 'stem'
 				? 'pktw-bg-amber-50 pktw-text-amber-800'
-				: 'pktw-bg-[#fef3c7] pktw-text-[#92400e]';
+				: 'pktw-bg-pk-warning-bg pktw-text-pk-warning-text';
 		parts.push(
 			<mark key={`h-${span.start}`} className={className}>
 				{result.text.slice(span.start, span.end)}
@@ -71,7 +71,7 @@ function renderLegacyHighlights(snippet: SearchSnippet): React.ReactNode {
 			parts.push(<span key={`t-${lastEnd}`}>{text.slice(lastEnd, span.start)}</span>);
 		}
 		parts.push(
-			<mark key={`h-${span.start}`} className="pktw-bg-[#fef3c7] pktw-text-[#92400e]">
+			<mark key={`h-${span.start}`} className="pktw-bg-pk-warning-bg pktw-text-pk-warning-text">
 				{text.slice(span.start, span.end)}
 			</mark>
 		);
@@ -108,14 +108,14 @@ export const SearchResultRow: React.FC<{
 	return (
 		<div
 			ref={itemRef}
-			className={`pktw-group pktw-relative pktw-px-4 pktw-py-2 pktw-cursor-pointer pktw-transition-colors pktw-mb-2 ${isSelected ? 'pktw-bg-[#eef2ff]' : 'hover:pktw-bg-[#fafafa]'
+			className={`pktw-group pktw-relative pktw-px-4 pktw-py-2 pktw-cursor-pointer pktw-transition-colors pktw-mb-2 ${isSelected ? 'pktw-bg-pk-indigo-bg' : 'hover:pktw-bg-pk-surface-raised'
 				}`}
 			onClick={handleClick}
 		>
 			{/* Leading accent bar */}
 			<div
 				className="pktw-absolute pktw-left-0 pktw-top-0 pktw-bottom-0 pktw-w-1 pktw-rounded-r-full"
-				style={{ backgroundColor: '#7c3aed', opacity: isSelected ? 1 : 0 }}
+				style={{ backgroundColor: 'var(--pk-accent)', opacity: isSelected ? 1 : 0 }}
 			/>
 
 			<div className="pktw-flex pktw-items-start pktw-gap-3">
@@ -126,20 +126,20 @@ export const SearchResultRow: React.FC<{
 				<div className="pktw-flex-1 pktw-min-w-0">
 					{/* Title and Path */}
 					<div className="pktw-flex pktw-items-baseline pktw-gap-2 pktw-mb-1">
-						<span className="pktw-font-semibold pktw-text-[#2e3338] pktw-truncate" style={{ fontWeight: 800, fontSize: '1.2rem', lineHeight: '1.2' }}>
+						<span className="pktw-font-semibold pktw-text-pk-text-primary pktw-truncate" style={{ fontWeight: 800, fontSize: '1.2rem', lineHeight: '1.2' }}>
 							{result.titleHighlight
 								? renderHighlightSpans(result.titleHighlight as HighlightResult)
 								: result.title}
 						</span>
-						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-text-[#d1d5db] pktw-flex-shrink-0" />
-						<span className="pktw-text-xs pktw-text-[#999999] pktw-truncate" title={result.path}>
+						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-text-pk-border-strong pktw-flex-shrink-0" />
+						<span className="pktw-text-xs pktw-text-pk-text-tertiary pktw-truncate" title={result.path}>
 							{result.path.split('/').slice(-2).join('/')}
 						</span>
 					</div>
 
 					{/* Snippet */}
 					{result.highlight?.text && (
-						<span className="pktw-text-sm pktw-text-[#6c757d] pktw-line-clamp-2 pktw-mt-1">
+						<span className="pktw-text-sm pktw-text-pk-text-secondary pktw-line-clamp-2 pktw-mt-1">
 							{(result.highlight as unknown as HighlightResult).spans
 								? renderHighlightSpans(result.highlight as unknown as HighlightResult)
 								: result.highlight.highlights?.length
@@ -151,7 +151,7 @@ export const SearchResultRow: React.FC<{
 
 				{/* Relevance score badge — prefer finalScore (post-rerank) over raw score */}
 				{(result.finalScore ?? result.score) != null && (result.finalScore ?? result.score)! > 0 && (
-					<span className="pktw-flex-shrink-0 pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-[#f5f3ff] pktw-text-pk-accent">
+					<span className="pktw-flex-shrink-0 pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent">
 						{Math.round((result.finalScore ?? result.score ?? 0) * 100)}%
 					</span>
 				)}
@@ -168,11 +168,11 @@ export const SearchResultRow: React.FC<{
 						createOpenSourceCallback(onClose, true)(result);
 					}}
 				>
-					<ExternalLink className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#999999]" />
+					<ExternalLink className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-text-tertiary" />
 				</Button>
 
 				{/* Last Modified Time */}
-				<div className="pktw-flex-shrink-0 pktw-ml-4 pktw-text-xs pktw-text-[#999999] pktw-whitespace-nowrap">
+				<div className="pktw-flex-shrink-0 pktw-ml-4 pktw-text-xs pktw-text-pk-text-tertiary pktw-whitespace-nowrap">
 					{humanReadableTime(result.lastModified)}
 				</div>
 			</div>

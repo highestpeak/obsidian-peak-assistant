@@ -85,7 +85,7 @@ export const ToolCallSummary: React.FC<Props> = ({ toolCalls, isStreaming }) => 
 								<span className="pktw-w-3.5 pktw-text-center pktw-text-[10px]">{display.icon}</span>
 								<span className="pktw-font-medium pktw-text-foreground">{display.label}</span>
 								{inputPreview && <span className="pktw-text-muted-foreground/60 pktw-italic">{String(inputPreview).slice(0, 50)}</span>}
-								{resultPreview && <span className="pktw-ml-auto pktw-text-[10px] pktw-text-[var(--pk-success,#22c55e)] pktw-whitespace-nowrap">{resultPreview}</span>}
+								{resultPreview && <span className="pktw-ml-auto pktw-text-[10px] pktw-text-[var(--pk-success)] pktw-whitespace-nowrap">{resultPreview}</span>}
 							</div>
 						);
 					})}

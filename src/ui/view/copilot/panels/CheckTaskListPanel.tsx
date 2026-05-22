@@ -6,9 +6,9 @@ import { ListChecks, AlertTriangle, AlertCircle, Info, ChevronDown, ChevronRight
 import { cn } from '@/ui/react/lib/utils';
 
 const PRIORITY_CONFIG: Record<string, { icon: LucideIcon; bg: string; text: string }> = {
-	high: { icon: AlertTriangle, bg: 'pktw-bg-[var(--pk-error,#ef4444)]/10', text: 'pktw-text-[var(--pk-error,#ef4444)]' },
-	medium: { icon: AlertCircle, bg: 'pktw-bg-[var(--pk-warning,#f59e0b)]/10', text: 'pktw-text-[var(--pk-warning,#f59e0b)]' },
-	low: { icon: Info, bg: 'pktw-bg-[var(--pk-info,#3b82f6)]/10', text: 'pktw-text-[var(--pk-info,#3b82f6)]' },
+	high: { icon: AlertTriangle, bg: 'pktw-bg-[var(--pk-error)]/10', text: 'pktw-text-[var(--pk-error)]' },
+	medium: { icon: AlertCircle, bg: 'pktw-bg-[var(--pk-warning)]/10', text: 'pktw-text-[var(--pk-warning)]' },
+	low: { icon: Info, bg: 'pktw-bg-[var(--pk-info)]/10', text: 'pktw-text-[var(--pk-info)]' },
 };
 
 const REC_TYPE_LABELS: Record<string, string> = {
@@ -55,7 +55,7 @@ export const CheckTaskListPanel: React.FC<CheckTaskListPanelProps> = ({
 					<span className="pktw-text-[9px] pktw-text-muted-foreground pktw-uppercase">Done</span>
 				</div>
 				<div className="pktw-text-center">
-					<span className={cn('pktw-text-[16px] pktw-font-bold pktw-block', summary.overdue > 0 && 'pktw-text-[var(--pk-error,#ef4444)]')}>
+					<span className={cn('pktw-text-[16px] pktw-font-bold pktw-block', summary.overdue > 0 && 'pktw-text-[var(--pk-error)]')}>
 						{summary.overdue}
 					</span>
 					<span className="pktw-text-[9px] pktw-text-muted-foreground pktw-uppercase">Overdue</span>
@@ -135,7 +135,7 @@ export const CheckTaskListPanel: React.FC<CheckTaskListPanelProps> = ({
 												{task.isStale && task.staleReason && ` — ${task.staleReason}`}
 											</span>
 											{task.blockers.length > 0 && (
-												<span className="pktw-text-[10px] pktw-text-[var(--pk-warning,#f59e0b)] pktw-block pktw-mt-0.5">
+												<span className="pktw-text-[10px] pktw-text-[var(--pk-warning)] pktw-block pktw-mt-0.5">
 													Blocked: {task.blockers.join(', ')}
 												</span>
 											)}

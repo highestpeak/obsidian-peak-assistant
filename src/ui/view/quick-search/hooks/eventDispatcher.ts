@@ -57,6 +57,7 @@ export interface EventDispatchTarget {
 	registerV2ToolCall(id: string, toolName: string): void;
 	addV2Source(source: V2Source): void;
 	setPlanSections(sections: V2Section[]): void;
+	setPlanReady(): void;
 	setProposedOutline(outline: string): void;
 	setFollowUpQuestions(questions: string[]): void;
 	setV2Sources(sources: V2Source[]): void;
@@ -387,6 +388,8 @@ export function dispatchEvent(
 								});
 							}
 						}
+						// Pause at plan_ready so user can review/edit plan before report generation
+						target.setPlanReady();
 					}
 				}
 			}

@@ -153,10 +153,10 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
             <div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-4 pktw-px-1">
                 <div className="pktw-flex pktw-items-center pktw-gap-2">
                     <FileText className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
-                    <span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">
+                    <span className="pktw-text-sm pktw-font-semibold pktw-text-pk-text-primary">
                         Top Sources
                     </span>
-                    <span className="pktw-text-xs pktw-text-[#999999]">
+                    <span className="pktw-text-xs pktw-text-pk-text-tertiary">
                         ({sources.length} files)
                     </span>
                 </div>
@@ -167,7 +167,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
                             onClick={() => setViewMode(id)}
                             className={`pktw-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-1 pktw-text-xs pktw-font-medium pktw-rounded pktw-cursor-pointer pktw-transition-colors ${
                                 viewMode === id
-                                    ? 'pktw-bg-gray-100 pktw-text-[#2e3338]'
+                                    ? 'pktw-bg-gray-100 pktw-text-pk-text-primary'
                                     : 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-background'
                             }`}
                         >

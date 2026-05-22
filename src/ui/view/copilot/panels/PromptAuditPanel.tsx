@@ -6,15 +6,15 @@ import { ClipboardCheck, ChevronDown, ChevronRight, AlertTriangle, AlertCircle, 
 import { cn } from '@/ui/react/lib/utils';
 
 const SEVERITY_CONFIG: Record<string, { icon: LucideIcon; bg: string; text: string }> = {
-	high: { icon: AlertTriangle, bg: 'pktw-bg-[var(--pk-error,#ef4444)]/10', text: 'pktw-text-[var(--pk-error,#ef4444)]' },
-	medium: { icon: AlertCircle, bg: 'pktw-bg-[var(--pk-warning,#f59e0b)]/10', text: 'pktw-text-[var(--pk-warning,#f59e0b)]' },
-	low: { icon: Info, bg: 'pktw-bg-[var(--pk-info,#3b82f6)]/10', text: 'pktw-text-[var(--pk-info,#3b82f6)]' },
+	high: { icon: AlertTriangle, bg: 'pktw-bg-[var(--pk-error)]/10', text: 'pktw-text-[var(--pk-error)]' },
+	medium: { icon: AlertCircle, bg: 'pktw-bg-[var(--pk-warning)]/10', text: 'pktw-text-[var(--pk-warning)]' },
+	low: { icon: Info, bg: 'pktw-bg-[var(--pk-info)]/10', text: 'pktw-text-[var(--pk-info)]' },
 };
 
 function scoreColor(score: number): string {
 	if (score >= 8) return 'pktw-text-emerald-600';
-	if (score >= 6) return 'pktw-text-[var(--pk-warning,#f59e0b)]';
-	return 'pktw-text-[var(--pk-error,#ef4444)]';
+	if (score >= 6) return 'pktw-text-[var(--pk-warning)]';
+	return 'pktw-text-[var(--pk-error)]';
 }
 
 interface PromptAuditPanelProps {
@@ -53,7 +53,7 @@ export const PromptAuditPanel: React.FC<PromptAuditPanelProps> = ({
 				</span>
 				<div className="pktw-flex pktw-flex-wrap pktw-gap-1">
 					{result.summary.topIssues.map((issue, i) => (
-						<span key={i} className="pktw-text-[10px] pktw-px-2 pktw-py-0.5 pktw-rounded pktw-bg-[var(--pk-warning,#f59e0b)]/10 pktw-text-[var(--pk-warning,#f59e0b)]">
+						<span key={i} className="pktw-text-[10px] pktw-px-2 pktw-py-0.5 pktw-rounded pktw-bg-[var(--pk-warning)]/10 pktw-text-[var(--pk-warning)]">
 							{issue}
 						</span>
 					))}
@@ -112,7 +112,7 @@ export const PromptAuditPanel: React.FC<PromptAuditPanelProps> = ({
 									{/* Issues */}
 									{audit.issues.length > 0 && (
 										<div className="pktw-mb-2">
-											<span className="pktw-text-[9px] pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-text-[var(--pk-error,#ef4444)] pktw-block pktw-mb-1">
+											<span className="pktw-text-[9px] pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-text-[var(--pk-error)] pktw-block pktw-mb-1">
 												Issues
 											</span>
 											{audit.issues.map((issue, i) => {

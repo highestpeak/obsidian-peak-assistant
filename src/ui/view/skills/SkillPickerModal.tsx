@@ -50,12 +50,12 @@ const SkillCard: React.FC<{
 				'pktw-rounded-lg pktw-border pktw-border-solid',
 				'pktw-whitespace-normal pktw-text-left pktw-overflow-hidden peak-soft-hover-card',
 			)}
-			style={{ borderColor: 'var(--background-modifier-border)' }}
+			style={{ borderColor: 'var(--pk-border)' }}
 			onClick={onClick}
 		>
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-w-full pktw-min-w-0">
 				<Icon className="pktw-w-4 pktw-h-4 pktw-text-blue-400 pktw-shrink-0 peak-card-icon" />
-				<span className="pktw-text-sm pktw-font-medium pktw-truncate pktw-min-w-0 peak-card-title" style={{ color: 'var(--text-normal)' }}>
+				<span className="pktw-text-sm pktw-font-medium pktw-truncate pktw-min-w-0 peak-card-title" style={{ color: 'var(--pk-text-primary)' }}>
 					{skill.name}
 				</span>
 				<span className={cn(
@@ -75,8 +75,8 @@ const SkillCard: React.FC<{
 							key={tag}
 							className="pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-rounded"
 							style={{
-								backgroundColor: 'var(--background-modifier-hover)',
-								color: 'var(--text-muted)',
+								backgroundColor: 'var(--pk-state-hover)',
+								color: 'var(--pk-text-secondary)',
 							}}
 						>
 							{tag}
@@ -136,7 +136,7 @@ const SkillPickerContent: React.FC<{
 					<Button variant="ghost" size="sm" onClick={() => setSelectedSkill(null)}>
 						<ArrowLeft className="pktw-w-4 pktw-h-4" />
 					</Button>
-					<span className="pktw-text-sm pktw-font-semibold" style={{ color: 'var(--text-normal)' }}>
+					<span className="pktw-text-sm pktw-font-semibold" style={{ color: 'var(--pk-text-primary)' }}>
 						{selectedSkill.name}
 					</span>
 				</div>
@@ -167,7 +167,7 @@ const SkillPickerContent: React.FC<{
 		<div className="pktw-p-4 pktw-flex pktw-flex-col pktw-gap-4">
 			{/* Header */}
 			<div className="pktw-flex pktw-items-center pktw-justify-between">
-				<span className="pktw-text-sm pktw-font-semibold" style={{ color: 'var(--text-normal)' }}>
+				<span className="pktw-text-sm pktw-font-semibold" style={{ color: 'var(--pk-text-primary)' }}>
 					Skills
 				</span>
 				<span className="pktw-text-xs pktw-text-muted-foreground">
@@ -181,9 +181,9 @@ const SkillPickerContent: React.FC<{
 				<input
 					className="pktw-w-full pktw-pl-8 pktw-pr-3 pktw-py-1.5 pktw-text-sm pktw-rounded pktw-border pktw-border-solid pktw-outline-none focus:pktw-border-pk-accent"
 					style={{
-						backgroundColor: 'var(--background-modifier-form-field)',
-						borderColor: 'var(--background-modifier-border)',
-						color: 'var(--text-normal)',
+						backgroundColor: 'var(--pk-surface-sunken)',
+						borderColor: 'var(--pk-border)',
+						color: 'var(--pk-text-primary)',
 					}}
 					placeholder="Search skills..."
 					value={searchQuery}

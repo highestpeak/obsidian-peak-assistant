@@ -5,6 +5,7 @@
 
 import type { LLMUsage } from '@/core/providers/types';
 import type { V2ToolStep, V2TimelineItem, V2Source } from '../types/search-steps';
+import type { V2PersistedSection } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 
 // ---------------------------------------------------------------------------
 // Annotation & Round types (for Continue Append Mode)
@@ -141,7 +142,7 @@ export function buildV2AnalysisSnapshot(
 export type V2AnalysisSnapshotData = {
 	v2ProcessLog: string[];
 	v2PlanOutline: string | null;
-	v2ReportSections: Array<{ title: string; content: string }>;
+	v2ReportSections: V2PersistedSection[];
 	v2Sources: V2Source[];
 	v2FollowUpQuestions: string[];
 	v2Summary: string;
@@ -207,11 +208,18 @@ function serializeAllRounds(
 
 		// Round sections
 		for (const sec of round.sections) {
-			if (sec.status === 'done' && sec.content) {
-				allSections.push({ title: sec.title, content: sec.content });
-			} else if (sec.title) {
-				allSections.push({ title: sec.title, content: formatPlanSectionBrief(sec) });
-			}
+			if (!sec.title) continue;
+			const secContent = sec.status === 'done' && sec.content ? sec.content : formatPlanSectionBrief(sec);
+			allSections.push({
+				title: sec.title,
+				content: secContent,
+				visualType: sec.visualType,
+				missionRole: sec.missionRole,
+				evidencePaths: sec.evidencePaths,
+				brief: sec.brief,
+				contentType: sec.contentType,
+				weight: sec.weight,
+			});
 		}
 
 		// Merge round process log into main log (for the Process Log callout)
@@ -231,11 +239,17 @@ function serializeAllRounds(
 	// Current round's sections
 	for (const sec of currentSections) {
 		if (!sec.title) continue;
-		if (sec.status === 'done' && sec.content) {
-			allSections.push({ title: sec.title, content: sec.content });
-		} else {
-			allSections.push({ title: sec.title, content: formatPlanSectionBrief(sec) });
-		}
+		const secContent = sec.status === 'done' && sec.content ? sec.content : formatPlanSectionBrief(sec);
+		allSections.push({
+			title: sec.title,
+			content: secContent,
+			visualType: sec.visualType,
+			missionRole: sec.missionRole,
+			evidencePaths: sec.evidencePaths,
+			brief: sec.brief,
+			contentType: sec.contentType,
+			weight: sec.weight,
+		});
 	}
 
 	// If no rounds, just use current outline; otherwise it's already embedded in round headers

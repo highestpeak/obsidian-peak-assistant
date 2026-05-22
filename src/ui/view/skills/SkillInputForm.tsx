@@ -55,7 +55,7 @@ export const SkillInputForm: React.FC<SkillInputFormProps> = ({ inputs, onSubmit
 					<div key={input.name} className="pktw-flex pktw-flex-col pktw-gap-1.5">
 						<div className="pktw-flex pktw-items-center pktw-gap-2">
 							<Icon className="pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground" />
-							<span className="pktw-text-sm pktw-font-medium" style={{ color: 'var(--text-normal)' }}>
+							<span className="pktw-text-sm pktw-font-medium" style={{ color: 'var(--pk-text-primary)' }}>
 								{input.name}
 								{input.required && (
 									<span className="pktw-text-red-400 pktw-ml-0.5">*</span>
@@ -74,9 +74,9 @@ export const SkillInputForm: React.FC<SkillInputFormProps> = ({ inputs, onSubmit
 									'pktw-border pktw-border-solid',
 								)}
 								style={{
-									backgroundColor: 'var(--background-modifier-form-field)',
-									borderColor: 'var(--background-modifier-border)',
-									color: 'var(--text-normal)',
+									backgroundColor: 'var(--pk-surface-sunken)',
+									borderColor: 'var(--pk-border)',
+									color: 'var(--pk-text-primary)',
 								}}
 								type="text"
 								value={values[input.name] ?? ''}

@@ -51,11 +51,11 @@ export function IndexProgressDisplay({
 
 			<div
 				className="pktw-w-full pktw-h-1.5 pktw-rounded-full pktw-overflow-hidden"
-				style={{ background: 'var(--background-modifier-border)' }}
+				style={{ background: 'var(--pk-border)' }}
 			>
 				<div
 					className="pktw-h-full pktw-rounded-full pktw-transition-all pktw-duration-300"
-					style={{ width: `${pct}%`, background: 'var(--interactive-accent)' }}
+					style={{ width: `${pct}%`, background: 'var(--pk-accent)' }}
 				/>
 			</div>
 
