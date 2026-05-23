@@ -1,6 +1,6 @@
 import { Modal, type App, TFile, Notice } from 'obsidian';
-import React, { useEffect, useState } from 'react';
-import { ChevronRight, History, RefreshCw, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { History, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
@@ -42,7 +42,7 @@ function groupBySubject(records: CopilotReviewHistoryRecord[]): Map<string, Copi
 const CopilotReviewHistoryContent: React.FC<{
 	onOpenRecord: (record: CopilotReviewHistoryRecord) => void;
 	onClose: () => void;
-}> = ({ onOpenRecord, onClose }) => {
+}> = ({ onOpenRecord }) => {
 	const [records, setRecords] = useState<CopilotReviewHistoryRecord[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [query, setQuery] = useState('');
@@ -71,13 +71,15 @@ const CopilotReviewHistoryContent: React.FC<{
 		};
 	}, [refreshTick]);
 
-	const filtered = query.trim()
-		? records.filter(r =>
-			r.subjectBasename.toLowerCase().includes(query.toLowerCase())
-			|| r.subjectPath.toLowerCase().includes(query.toLowerCase()),
-		)
-		: records;
-	const grouped = groupBySubject(filtered);
+	const filtered = useMemo(() => {
+		const q = query.trim().toLowerCase();
+		if (!q) return records;
+		return records.filter(r =>
+			r.subjectBasename.toLowerCase().includes(q) || r.subjectPath.toLowerCase().includes(q),
+		);
+	}, [records, query]);
+
+	const grouped = useMemo(() => groupBySubject(filtered), [filtered]);
 
 	const handleDelete = async (record: CopilotReviewHistoryRecord) => {
 		await getCopilotReviewHistoryService().delete(record);
@@ -86,102 +88,170 @@ const CopilotReviewHistoryContent: React.FC<{
 	};
 
 	return (
-		<div className="pktw-flex pktw-h-full pktw-flex-col pktw-bg-background">
-			<div className="pktw-flex pktw-items-start pktw-justify-between pktw-gap-4 pktw-border-b pktw-border-border pktw-p-4">
-				<div className="pktw-flex pktw-min-w-0 pktw-items-start pktw-gap-3">
-					<div className="pktw-flex pktw-h-9 pktw-w-9 pktw-items-center pktw-justify-center pktw-rounded-lg pktw-bg-pk-accent/10">
-						<History className="pktw-h-5 pktw-w-5 pktw-text-pk-accent" />
+		<div className="pktw-flex pktw-h-full pktw-flex-col pktw-bg-pk-background">
+
+			{/* Header */}
+			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-4 pktw-px-7 pktw-pt-6 pktw-pb-4">
+				<div className="pktw-flex pktw-min-w-0 pktw-items-center pktw-gap-3">
+					<div className="pktw-flex pktw-h-10 pktw-w-10 pktw-items-center pktw-justify-center pktw-rounded-xl pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-shrink-0">
+						<History className="pktw-h-[18px] pktw-w-[18px]" />
 					</div>
-					<div className="pktw-flex pktw-min-w-0 pktw-flex-col pktw-gap-1">
-						<span className="pktw-text-base pktw-font-semibold">All Auto Reviews</span>
-						<span className="pktw-text-xs pktw-text-muted-foreground">
+					<div className="pktw-flex pktw-min-w-0 pktw-flex-col">
+						<span className="pktw-text-[18px] pktw-font-bold pktw-text-pk-foreground pktw-leading-tight">All Auto Reviews</span>
+						<span className="pktw-text-[12px] pktw-text-pk-foreground-muted pktw-mt-0.5">
 							{records.length} review{records.length === 1 ? '' : 's'} across {grouped.size} document{grouped.size === 1 ? '' : 's'}
 						</span>
 					</div>
 				</div>
-				<Button variant="ghost" size="sm" onClick={() => setRefreshTick(t => t + 1)} className="pktw-gap-1.5 pktw-text-xs">
-					<RefreshCw className="pktw-h-3.5 pktw-w-3.5" />
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => setRefreshTick(t => t + 1)}
+					className="pktw-gap-1.5 pktw-text-[12px] pktw-text-pk-foreground-muted"
+				>
+					<RefreshCw className="pktw-h-[14px] pktw-w-[14px]" />
 					Refresh
 				</Button>
 			</div>
 
-			<div className="pktw-border-b pktw-border-border pktw-p-4">
-				<Input
-					placeholder="Filter by document path or name..."
-					value={query}
-					onChange={e => setQuery(e.target.value)}
-					autoFocus
-				/>
+			{/* Search */}
+			<div className="pktw-px-7 pktw-pb-4">
+				<div className="pktw-flex pktw-items-center pktw-gap-2.5 pktw-px-4 pktw-py-2.5 pktw-bg-pk-background-secondary pktw-border pktw-border-pk-border pktw-rounded-full">
+					<Search className="pktw-w-4 pktw-h-4 pktw-text-pk-foreground-faint pktw-shrink-0" />
+					<Input
+						placeholder="Filter by document path or name…"
+						value={query}
+						onChange={e => setQuery(e.target.value)}
+						autoFocus
+						className="pktw-h-7 pktw-flex-1 pktw-border-0 pktw-bg-transparent pktw-px-0 pktw-text-[13px] focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"
+					/>
+				</div>
 			</div>
 
-			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-p-4 pktw-space-y-4" style={{ userSelect: 'text' }}>
+			{/* Body */}
+			<div
+				className="pktw-flex-1 pktw-overflow-y-auto pktw-px-7 pktw-pb-6"
+				style={{ userSelect: 'text' }}
+			>
 				{loading ? (
-					<span className="pktw-block pktw-text-sm pktw-text-muted-foreground pktw-italic">Loading…</span>
+					<div className="pktw-text-[13px] pktw-text-pk-foreground-muted pktw-italic pktw-py-8 pktw-text-center">Loading…</div>
 				) : grouped.size === 0 ? (
-					<span className="pktw-block pktw-rounded-lg pktw-border pktw-border-dashed pktw-border-border pktw-p-8 pktw-text-center pktw-text-sm pktw-text-muted-foreground">
-						{query ? 'No reviews match your filter.' : 'No reviews yet. Run an Auto Review from any note to start.'}
-					</span>
-				) : (
-					Array.from(grouped.entries()).map(([subjectPath, recs]) => (
-						<div key={subjectPath} className="pktw-rounded-lg pktw-border pktw-border-border pktw-bg-muted/10">
-							<div className="pktw-flex pktw-items-baseline pktw-gap-2 pktw-border-b pktw-border-border pktw-px-3 pktw-py-2">
-								<span className="pktw-text-sm pktw-font-semibold pktw-text-foreground">{recs[0].subjectBasename || subjectPath}</span>
-								<span className="pktw-text-[11px] pktw-text-muted-foreground">{subjectPath}</span>
-								<span className="pktw-flex-1" />
-								<span className="pktw-text-[10px] pktw-text-muted-foreground">
-									{recs.length} review{recs.length === 1 ? '' : 's'}
-								</span>
-							</div>
-							<div className="pktw-flex pktw-flex-col">
-								{recs.map((r, i) => (
-									<div
-										key={r.id}
-										className={cn(
-											'pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2',
-											i < recs.length - 1 && 'pktw-border-b pktw-border-border/60',
-										)}
-									>
-										<button
-											type="button"
-											onClick={() => onOpenRecord(r)}
-											className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-items-center pktw-gap-3 pktw-rounded pktw-text-left hover:pktw-text-pk-accent"
-										>
-											<History className="pktw-h-3.5 pktw-w-3.5 pktw-text-muted-foreground" />
-											<div className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-flex-col">
-												<span className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-font-medium pktw-text-foreground">
-													<span className="pktw-truncate">{r.headline?.trim() || (r.mode === 'fast' ? 'Fast review' : 'Auto review')}</span>
-													<span className="pktw-shrink-0 pktw-text-muted-foreground">· {relativeTime(r.completedAt)}</span>
-													<ReviewStatusBadge status={r.status} />
-												</span>
-												<span className="pktw-text-[10px] pktw-text-muted-foreground">
-													{r.insightCount}i · {r.changeCount}c · {r.sourceCount}s · {r.roundCount}r · {r.turnCount} turns
-												</span>
-											</div>
-											<ChevronRight className="pktw-h-3.5 pktw-w-3.5 pktw-text-muted-foreground" />
-										</button>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="pktw-h-7 pktw-w-7"
-											onClick={() => void handleDelete(r)}
-											title="Delete this review record"
-										>
-											<Trash2 className="pktw-h-3.5 pktw-w-3.5 pktw-text-muted-foreground" />
-										</Button>
-									</div>
-								))}
-							</div>
+					<div className="pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-py-16 pktw-text-center pktw-text-pk-foreground-muted">
+						<div className="pktw-w-12 pktw-h-12 pktw-rounded-full pktw-bg-pk-background-secondary pktw-flex pktw-items-center pktw-justify-center pktw-mb-3">
+							<History className="pktw-w-5 pktw-h-5 pktw-text-pk-foreground-faint" />
 						</div>
-					))
+						<div className="pktw-text-[13px]">
+							{query ? 'No reviews match your filter.' : 'No reviews yet. Run an Auto Review from any note to start.'}
+						</div>
+					</div>
+				) : (
+					<div className="pktw-flex pktw-flex-col pktw-gap-7">
+						{Array.from(grouped.entries()).map(([subjectPath, recs]) => (
+							<ReviewGroup
+								key={subjectPath}
+								subjectPath={subjectPath}
+								records={recs}
+								onOpen={onOpenRecord}
+								onDelete={handleDelete}
+							/>
+						))}
+					</div>
 				)}
-			</div>
-
-			<div className="pktw-flex pktw-items-center pktw-justify-end pktw-border-t pktw-border-border pktw-p-3">
-				<Button variant="outline" onClick={onClose}>Close</Button>
 			</div>
 		</div>
 	);
 };
+
+function ReviewGroup({
+	subjectPath,
+	records,
+	onOpen,
+	onDelete,
+}: {
+	subjectPath: string;
+	records: CopilotReviewHistoryRecord[];
+	onOpen: (r: CopilotReviewHistoryRecord) => void;
+	onDelete: (r: CopilotReviewHistoryRecord) => void;
+}) {
+	const head = records[0];
+	return (
+		<div className="pktw-flex pktw-flex-col pktw-gap-2">
+			{/* Group title — no border, just text hierarchy */}
+			<div className="pktw-flex pktw-items-baseline pktw-gap-2.5 pktw-mb-1">
+				<span className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground">
+					{head.subjectBasename || subjectPath}
+				</span>
+				<span className="pktw-text-[11px] pktw-text-pk-foreground-faint pktw-font-mono pktw-truncate pktw-min-w-0">
+					{subjectPath}
+				</span>
+				<span className="pktw-ml-auto pktw-text-[11px] pktw-text-pk-foreground-muted pktw-shrink-0">
+					{records.length} review{records.length === 1 ? '' : 's'}
+				</span>
+			</div>
+
+			{/* Review rows */}
+			<div className="pktw-flex pktw-flex-col pktw-gap-1.5">
+				{records.map(r => (
+					<ReviewRow key={r.id} record={r} onOpen={onOpen} onDelete={onDelete} />
+				))}
+			</div>
+		</div>
+	);
+}
+
+function ReviewRow({
+	record,
+	onOpen,
+	onDelete,
+}: {
+	record: CopilotReviewHistoryRecord;
+	onOpen: (r: CopilotReviewHistoryRecord) => void;
+	onDelete: (r: CopilotReviewHistoryRecord) => void;
+}) {
+	return (
+		<div
+			className={cn(
+				'pktw-group pktw-flex pktw-items-center pktw-gap-3 pktw-px-3.5 pktw-py-2.5 pktw-rounded-lg pktw-transition-colors',
+				'hover:pktw-bg-pk-background-secondary',
+			)}
+		>
+			<button
+				type="button"
+				onClick={() => onOpen(record)}
+				className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-items-center pktw-gap-3 pktw-text-left"
+			>
+				<History className="pktw-h-[14px] pktw-w-[14px] pktw-text-pk-foreground-faint pktw-shrink-0" />
+				<div className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-flex-col">
+					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-min-w-0">
+						<span className="pktw-text-[13px] pktw-font-medium pktw-text-pk-foreground pktw-truncate group-hover:pktw-text-pk-accent">
+							{record.headline?.trim() || (record.mode === 'fast' ? 'Fast review' : 'Auto review')}
+						</span>
+						<span className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-shrink-0">
+							· {relativeTime(record.completedAt)}
+						</span>
+						<ReviewStatusBadge status={record.status} />
+					</div>
+					<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-mt-0.5">
+						{record.insightCount}i · {record.changeCount}c · {record.sourceCount}s · {record.roundCount}r · {record.turnCount} turns
+					</div>
+				</div>
+			</button>
+			<button
+				type="button"
+				onClick={() => void onDelete(record)}
+				title="Delete this review record"
+				aria-label="Delete this review record"
+				className={cn(
+					'pktw-flex pktw-h-7 pktw-w-7 pktw-items-center pktw-justify-center pktw-rounded-md pktw-text-pk-foreground-faint pktw-transition-opacity',
+					'pktw-opacity-0 group-hover:pktw-opacity-100',
+					'hover:pktw-bg-pk-error-bg hover:pktw-text-pk-error',
+				)}
+			>
+				<Trash2 className="pktw-h-[14px] pktw-w-[14px]" />
+			</button>
+		</div>
+	);
+}
 
 export class CopilotReviewHistoryModal extends Modal {
 	private reactRenderer: ReactRenderer | null = null;
@@ -192,6 +262,8 @@ export class CopilotReviewHistoryModal extends Modal {
 
 	onOpen(): void {
 		this.contentEl.empty();
+		this.modalEl.addClass('peak-copilot-review-history-modal');
+		this.modalEl.addClass('peak-design-root');
 		this.contentEl.addClass('pktw-root');
 		this.contentEl.style.padding = '0';
 		this.modalEl.style.width = '880px';
