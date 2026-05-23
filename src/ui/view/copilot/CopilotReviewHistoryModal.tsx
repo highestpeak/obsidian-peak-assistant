@@ -1,6 +1,6 @@
 import { Modal, type App, TFile, Notice } from 'obsidian';
 import React, { useEffect, useMemo, useState } from 'react';
-import { History, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, History, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
@@ -42,7 +42,8 @@ function groupBySubject(records: CopilotReviewHistoryRecord[]): Map<string, Copi
 const CopilotReviewHistoryContent: React.FC<{
 	onOpenRecord: (record: CopilotReviewHistoryRecord) => void;
 	onClose: () => void;
-}> = ({ onOpenRecord }) => {
+	onBackToPicker?: () => void;
+}> = ({ onOpenRecord, onBackToPicker }) => {
 	const [records, setRecords] = useState<CopilotReviewHistoryRecord[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [query, setQuery] = useState('');
@@ -93,6 +94,18 @@ const CopilotReviewHistoryContent: React.FC<{
 			{/* Header */}
 			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-4 pktw-px-7 pktw-pt-6 pktw-pb-4">
 				<div className="pktw-flex pktw-min-w-0 pktw-items-center pktw-gap-3">
+					{onBackToPicker ? (
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={onBackToPicker}
+							className="pktw-gap-1.5 pktw-text-[12px] pktw-text-pk-foreground-muted hover:pktw-text-pk-accent"
+							title="Back to Copilot picker"
+						>
+							<ArrowLeft className="pktw-h-[14px] pktw-w-[14px]" />
+							Back
+						</Button>
+					) : null}
 					<div className="pktw-flex pktw-h-10 pktw-w-10 pktw-items-center pktw-justify-center pktw-rounded-xl pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-shrink-0">
 						<History className="pktw-h-[18px] pktw-w-[18px]" />
 					</div>
@@ -253,10 +266,15 @@ function ReviewRow({
 	);
 }
 
+export interface CopilotReviewHistoryModalOptions {
+	/** When provided, header shows a "Back" button that fires this callback (after closing the modal). */
+	onBackToPicker?: () => void;
+}
+
 export class CopilotReviewHistoryModal extends Modal {
 	private reactRenderer: ReactRenderer | null = null;
 
-	constructor(app: App) {
+	constructor(app: App, private readonly options: CopilotReviewHistoryModalOptions = {}) {
 		super(app);
 	}
 
@@ -312,6 +330,13 @@ export class CopilotReviewHistoryModal extends Modal {
 						}).open();
 					},
 					onClose: () => this.close(),
+					onBackToPicker: this.options.onBackToPicker
+						? () => {
+							const cb = this.options.onBackToPicker!;
+							this.close();
+							cb();
+						}
+						: undefined,
 				},
 				AppContext.getInstance(),
 			),

@@ -616,8 +616,14 @@ export class CopilotPickerModal extends Modal {
 						}).open();
 					},
 					onOpenAllHistory: () => {
+						const tabAtOpen = this.options.initialTab;
+						const ctxAppContext = this.appContext;
 						this.close();
-						new CopilotReviewHistoryModal(app).open();
+						new CopilotReviewHistoryModal(app, {
+							onBackToPicker: () => {
+								new CopilotPickerModal(ctxAppContext, { initialTab: tabAtOpen }).open();
+							},
+						}).open();
 					},
 					onOpenVaultRecord: (record: VaultReviewHistoryRecord) => {
 						this.close();
