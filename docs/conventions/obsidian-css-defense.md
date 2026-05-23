@@ -153,8 +153,48 @@ The reset itself lives at `src/styles/obsidian-reset.css`. It's imported by
 The reset is scoped by `.peak-design-root` so it's a no-op outside your
 opted-in surfaces.
 
+## Properties the reset must null
+
+Each property Obsidian touches on bare tags has to be explicitly defended.
+The list below grew incident-by-incident — **add to it every time we find
+a new leak** instead of letting future code rediscover the same trap.
+
+| Property | Why Obsidian sets it | Symptom when leaked |
+|---|---|---|
+| `background` / `border` / `padding` / `border-radius` / `box-shadow` / `outline` | Default `button` chrome | Card-style buttons get pill shape, theme colours, extra ring |
+| `height: var(--input-height)` (32px) | Obsidian wants every modal button to be touch-target-sized | **Our card buttons get locked to 32px even when content needs 60+px** — flex layout breaks, hover bg fills only a 32px strip, content overflows the visible area. **Required:** `height: auto !important; min-height: 0 !important; max-height: none !important` |
+| `justify-content: center` | Same reason as above | Custom flex content gets centered instead of `flex-start` |
+| `transform: translateY(-1px)` on `:hover` | Theme "press" animation | Hovered row visibly shifts up 1–2px, looks taller than siblings |
+| `transform: scale(1.05)` on `:focus` / `:active` | Theme focus emphasis | Clicked row visually grows |
+| `box-shadow: 0 0 0 Npx ...` on `:hover`/`:focus` | Theme glow/halo | Coloured halo around hovered/focused buttons that extends beyond their box |
+| `outline: 2px solid ...` on `:focus-visible` | Browser/Obsidian focus indicator | Visible ring after click — looks like the row got bigger |
+| `padding`/`margin` on `:hover` | Some themes bump padding for "active" state | Row geometry changes only on hover |
+| `transition: ... padding ...` | Theme animates state changes | Animated size pop on hover |
+| `::before` / `::after` with absolute positioning | Theme ripple / hover glow effects | "Halo" around button that can't be killed from the button itself |
+
+**Defensive default in the reset for `:hover`, `:focus`, `:active`,
+`:focus-visible`**: every property above is set to `none !important`
+(or the safe-default equivalent), so a new component can rely on its
+own Tailwind / inline styles being the only thing that takes effect.
+
+## Diagnosing a suspected leak
+
+When a component looks wrong in Obsidian but fine in the static mock:
+
+1. Open DevTools, select the offending element, look at **Computed** styles.
+2. Search for properties that aren't from your CSS (no `--pk-*` source).
+   Common smoking guns: `height: var(--input-height)`, `transform: translateY`,
+   `box-shadow: ... var(--background-modifier-...)`, `outline: ... var(--focus-ring-color)`.
+3. If found → it's an Obsidian leak. Either add the property to the reset
+   above with `!important`, or add an explicit Tailwind utility that
+   overrides it on your component.
+4. **Always reproduce the same markup in `/tmp/*.html` with the built
+   `styles.css` loaded** — if it renders correctly there, the bug is
+   100% an Obsidian leak (not your component code).
+
 ## Where this rule is enforced
 
 - Vault Auto Review modal (`peak-vault-auto-run-modal`)
+- Copilot Picker modal (`peak-copilot-picker-modal`)
 
 Add your component here when you adopt the convention.

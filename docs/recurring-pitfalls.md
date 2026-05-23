@@ -123,6 +123,46 @@ For any streaming text accumulation:
 
 ---
 
+## 3. Obsidian global bare-tag rule leaks through scoped reset
+
+### Symptom
+- A component looks fine in the static mock HTML / Playwright render with `styles.css` loaded, but **wrong inside Obsidian**.
+- One state (hover / focus / active) looks visibly different in size, colour, or position from the default state — even though all instances have identical class names.
+- User reports "this row looks taller / wider / has a halo / a glow", but the markup is identical between rows.
+- DevTools Computed Styles shows a property value that doesn't come from any `--pk-*` token (e.g. `height: var(--input-height)`, `transform: translateY(...)`, `box-shadow: ... var(--background-modifier-...)`).
+
+### Mechanism
+1. Obsidian's `app.css` and themes set properties on bare tags inside `.modal` / `.modal-content`: `button { height: 32px; justify-content: center; }`, `button:hover { transform: translateY(-1px); box-shadow: ...; }`, etc. — often with `!important`.
+2. Our `.peak-design-root` reset nulls **some** of these (`background`, `border`, `padding`, `margin`, `outline`) but not all.
+3. Any property the reset doesn't explicitly null leaks through: it has either higher specificity (`.modal button` > `.peak-design-root button`) or the same specificity + later declaration order doesn't help once `!important` is in play on the Obsidian side.
+4. Tailwind utilities with `important: true` cover the properties they generate (`bg`, `border`, `padding`, `text-*`), but if the component doesn't use a Tailwind utility for that property, nothing fights the Obsidian rule.
+5. Result: visual mismatch only inside Obsidian. The static-page reproduction will look correct because there's no Obsidian CSS to leak.
+
+### Instances
+
+| Date | Symptom | Obsidian property leaking through | Fix |
+|---|---|---|---|
+| 2026-05-23 | Copilot picker — hovered Suggested Intent row visually taller than siblings; bg fills only a strip; row geometry varies between cards | `height: var(--input-height)` (32px) + `justify-content: center` on `.modal button`; combined with `transform: translateY(-1px)` on `button:hover` | Add `height: auto !important; min-height: 0 !important; max-height: none !important; justify-content: flex-start` to `.peak-design-root button` base rule, and `transform/box-shadow/filter/outline: none !important` to `:hover/:focus/:active/:focus-visible` (commits `7d37916`, `c57bf56`, `eaa82f9`) |
+| _(add next instance here)_ | | | |
+
+### Detection signals
+- Component works perfectly in `/tmp/picker-test.html` (or any standalone page loading the built `styles.css`), broken in Obsidian.
+- User shows DevTools computed styles that include `var(--input-...)`, `var(--background-modifier-...)`, `var(--focus-ring-color)` — those are Obsidian-theme variables, not ours.
+- The visual symptom is **state-specific** (hover / focus / active looks different from default), not present in default state alone.
+- Identical markup, identical Tailwind classes, but different visual result between rows / elements.
+
+### Prevention checklist
+**Before debugging "why does my hover look wrong":**
+1. Reproduce in `/tmp/*.html` with `<link rel="stylesheet" href=".../styles.css">` and the same markup. If it renders correctly → it's an Obsidian leak. Skip steps 2–3 and jump to "find the leak".
+2. (If not reproducible standalone) Look at the component for actual layout bugs first.
+3. **Find the leak:** in Obsidian DevTools, select the broken element → Computed → search for non-`--pk-*` token references. Each one is a candidate.
+4. **Fix:** add an explicit null with `!important` to `src/styles/obsidian-reset.css` for that property on the relevant pseudo-class (`:hover`, `:focus`, `:active`, `:focus-visible`).
+5. Document the new property in `docs/conventions/obsidian-css-defense.md` "Properties the reset must null" table.
+
+**Critical:** plugin CSS doesn't hot-reload. After updating `styles.css`, the user must **disable + re-enable the plugin** (or fully quit Obsidian) — Cmd+R does NOT reload the plugin's bundled CSS. A "v1/v2/v3" marker in the UI is a cheap way to confirm the latest build is actually loaded before further debugging.
+
+---
+
 ## How to consult this doc
 
 - Bug feels familiar? `grep` this file for the symptom phrase before re-deriving the root cause.
