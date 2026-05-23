@@ -177,7 +177,13 @@ const CopilotPickerContent: React.FC<{
 				{/* 2-col split: recent reviews / suggested intents */}
 				<div className="pktw-grid pktw-grid-cols-[minmax(0,0.95fr)_minmax(0,1.1fr)] pktw-gap-7 pktw-items-stretch">
 					<div className="pktw-flex pktw-flex-col pktw-min-h-0">
-						<PickerSectionTitle title={recentTitle(activeTab)} link={{ label: recentLinkLabel(activeTab), onClick: onOpenAllHistory }} />
+						<PickerSectionTitle
+							title={recentTitle(activeTab)}
+							link={activeTab === 'setting'
+								? undefined  // no real diagnostics history yet — Phase D
+								: { label: recentLinkLabel(activeTab), onClick: onOpenAllHistory }}
+							badge={activeTab === 'setting' ? 'preview' : undefined}
+						/>
 						<div className="pktw-flex-1 pktw-flex pktw-flex-col">
 							{activeTab === 'vault' ? (
 								<VaultReviewHistoryList
@@ -260,13 +266,18 @@ function footerSubtitle(tab: IntentTabId): string {
 function PickerSectionTitle({
 	title,
 	link,
+	badge,
 }: {
 	title: string;
 	link?: { label: string; onClick: () => void };
+	badge?: string;
 }) {
 	return (
 		<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-3">
-			<span className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground">{title}</span>
+			<div className="pktw-inline-flex pktw-items-center pktw-gap-2">
+				<span className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground">{title}</span>
+				{badge ? <Pill variant="warning" size="sm" className="pktw-uppercase pktw-tracking-wider">{badge}</Pill> : null}
+			</div>
 			{link ? (
 				<button
 					type="button"
@@ -426,28 +437,18 @@ function DocumentReviewHistory({
 }
 
 function SettingDiagnosticsList() {
-	// TODO(Phase D): real recent diagnostics history.
+	// SystemDiagnosticsService is a Phase D follow-up. Until then, show an
+	// honest empty state instead of fake rows — earlier fake data caused
+	// "what is this?" confusion (it pretended to be clickable + linked to
+	// a non-existent diagnostics page).
 	return (
-		<div className="pktw-flex pktw-flex-col pktw-gap-2">
-			<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-rounded-[10px]">
-				<span className="pktw-w-8 pktw-h-8 pktw-rounded-lg pktw-bg-pink-100 dark:pktw-bg-pink-900/30 pktw-text-pink-700 dark:pktw-text-pink-300 pktw-flex pktw-items-center pktw-justify-center">
-					<HelpCircle className="pktw-w-4 pktw-h-4" />
-				</span>
-				<div>
-					<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">Provider health check</div>
-					<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted">2h ago · <span className="pktw-text-pk-warning-text pktw-font-semibold">1 warning</span></div>
-				</div>
-				<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-faint" />
-			</div>
-			<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-rounded-[10px]">
-				<span className="pktw-w-8 pktw-h-8 pktw-rounded-lg pktw-bg-pk-indigo-bg pktw-text-pk-indigo-text pktw-flex pktw-items-center pktw-justify-center">
-					<Sliders className="pktw-w-4 pktw-h-4" />
-				</span>
-				<div>
-					<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">Index integrity scan</div>
-					<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted">yesterday · <span className="pktw-text-pk-success-text pktw-font-semibold">clean</span></div>
-				</div>
-				<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-faint" />
+		<div className="pktw-h-full pktw-min-h-[160px] pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-5 pktw-py-9 pktw-bg-pk-background-secondary pktw-border pktw-border-dashed pktw-border-pk-border pktw-rounded-2xl">
+			<span className="pktw-w-10 pktw-h-10 pktw-rounded-full pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-text-pk-foreground-faint pktw-flex pktw-items-center pktw-justify-center pktw-mb-2.5">
+				<Sliders className="pktw-w-4 pktw-h-4" />
+			</span>
+			<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground pktw-mb-1">No diagnostics yet</div>
+			<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-max-w-[280px]">
+				Run System Check to see provider health, index integrity, and prompt status here.
 			</div>
 		</div>
 	);
