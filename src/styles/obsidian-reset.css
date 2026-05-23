@@ -34,6 +34,23 @@
 	text-align: inherit;
 	-webkit-appearance: none;
 	appearance: none;
+	transform: none;
+	transition: none;
+}
+
+/*
+ * Defend against Obsidian's :hover / :active rules on bare <button> elements.
+ * Obsidian themes commonly attach transform: translateY, box-shadow, padding
+ * bumps, etc. to button:hover — those leak through unless we explicitly null
+ * them here. Tailwind's hover: utilities still apply on top (with !important).
+ */
+.peak-design-root button:hover,
+.peak-design-root button:active,
+.peak-design-root button:focus {
+	transform: none;
+	box-shadow: none;
+	padding: inherit;
+	margin: inherit;
 }
 
 .peak-design-root button:disabled {

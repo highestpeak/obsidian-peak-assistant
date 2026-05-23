@@ -211,7 +211,7 @@ export function SuggestedIntentRow({
 			onClick={onClick}
 			disabled={disabled}
 			className={cn(
-				'pktw-w-full pktw-flex pktw-items-center pktw-gap-3.5 pktw-px-4 pktw-py-3 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background-secondary pktw-text-left pktw-transition-colors',
+				'pktw-w-full pktw-flex pktw-items-center pktw-gap-3.5 pktw-px-[14px] pktw-py-3 pktw-rounded-[10px] pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-text-left pktw-transition-colors',
 				'hover:pktw-border-pk-accent-soft hover:pktw-bg-pk-accent-tint',
 				'disabled:pktw-opacity-60 disabled:pktw-pointer-events-none',
 			)}

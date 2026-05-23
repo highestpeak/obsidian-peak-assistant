@@ -401,7 +401,7 @@ function DocumentReviewHistory({
 					key={r.id}
 					type="button"
 					onClick={() => onOpenRecord(r)}
-					className="pktw-w-full pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-background-secondary pktw-border pktw-border-pk-border pktw-rounded-[10px] pktw-text-left hover:pktw-border-pk-accent-soft hover:pktw-bg-pk-accent-tint"
+					className="pktw-w-full pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-rounded-[10px] pktw-text-left hover:pktw-border-pk-accent-soft hover:pktw-bg-pk-accent-tint"
 				>
 					<span className="pktw-w-8 pktw-h-8 pktw-rounded-lg pktw-bg-pk-background-secondary pktw-text-pk-foreground-muted pktw-flex pktw-items-center pktw-justify-center">
 						<History className="pktw-w-4 pktw-h-4" />
@@ -429,7 +429,7 @@ function SettingDiagnosticsList() {
 	// TODO(Phase D): real recent diagnostics history.
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-2">
-			<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-background-secondary pktw-border pktw-border-pk-border pktw-rounded-[10px]">
+			<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-rounded-[10px]">
 				<span className="pktw-w-8 pktw-h-8 pktw-rounded-lg pktw-bg-pink-100 dark:pktw-bg-pink-900/30 pktw-text-pink-700 dark:pktw-text-pink-300 pktw-flex pktw-items-center pktw-justify-center">
 					<HelpCircle className="pktw-w-4 pktw-h-4" />
 				</span>
@@ -439,7 +439,7 @@ function SettingDiagnosticsList() {
 				</div>
 				<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-faint" />
 			</div>
-			<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-background-secondary pktw-border pktw-border-pk-border pktw-rounded-[10px]">
+			<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-rounded-[10px]">
 				<span className="pktw-w-8 pktw-h-8 pktw-rounded-lg pktw-bg-pk-indigo-bg pktw-text-pk-indigo-text pktw-flex pktw-items-center pktw-justify-center">
 					<Sliders className="pktw-w-4 pktw-h-4" />
 				</span>
@@ -478,7 +478,7 @@ function SuggestedIntents({
 
 	const tones: Array<'accent' | 'indigo' | 'cyan'> = ['accent', 'indigo', 'cyan'];
 	return (
-		<div className="pktw-flex pktw-flex-col pktw-gap-2.5">
+		<div className="pktw-flex pktw-flex-col pktw-gap-2">
 			{top.map((item, i) => (
 				<SuggestedIntentRow
 					key={item.action.id}
