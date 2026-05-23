@@ -213,7 +213,7 @@ const CopilotPickerContent: React.FC<{
 					<button
 						type="button"
 						onClick={() => setShowAll(true)}
-						className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-w-full pktw-px-4.5 pktw-py-3.5 pktw-bg-pk-background-secondary pktw-border pktw-border-pk-border-soft pktw-rounded-lg pktw-text-left hover:pktw-bg-pk-accent-tint"
+						className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3 pktw-items-center pktw-w-full pktw-px-[18px] pktw-py-3.5 pktw-bg-pk-background-secondary pktw-border pktw-border-pk-border-soft pktw-rounded-lg pktw-text-left hover:pktw-bg-pk-accent-tint"
 					>
 						<span className="pktw-w-8 pktw-h-8 pktw-rounded-lg pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-text-pk-foreground-muted pktw-flex pktw-items-center pktw-justify-center">
 							<ListChecks className="pktw-w-4 pktw-h-4" />

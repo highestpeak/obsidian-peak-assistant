@@ -601,9 +601,9 @@ const OverviewPanel: React.FC<{
 		<>
 			{/* Insight card */}
 			{headlineTitle && (
-				<div className="pktw-grid pktw-grid-cols-[auto_1fr] pktw-gap-4.5 pktw-px-5.5 pktw-py-5 pktw-bg-pk-accent-tint pktw-rounded-2xl pktw-mb-5.5">
+				<div className="pktw-grid pktw-grid-cols-[auto_1fr] pktw-gap-[18px] pktw-px-[22px] pktw-py-5 pktw-bg-pk-accent-tint pktw-rounded-2xl pktw-mb-[22px]">
 					<div className="pktw-w-12 pktw-h-12 pktw-rounded-xl pktw-bg-pk-surface pktw-text-pk-accent pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
-						<BarChart3 className="pktw-w-5.5 pktw-h-5.5" />
+						<BarChart3 className="pktw-w-[22px] pktw-h-[22px]" />
 					</div>
 					<div>
 						<div className="pktw-text-[18px] pktw-font-bold pktw-text-pk-foreground pktw-mt-1 pktw-mb-2.5 pktw-leading-tight">{headlineTitle}</div>
@@ -650,9 +650,9 @@ const OverviewPanel: React.FC<{
 			{topAction && (
 				<>
 					<SectionLabel>Top recommended next action</SectionLabel>
-					<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3.5 pktw-items-center pktw-px-4.5 pktw-py-3.5 pktw-bg-pk-accent-tint pktw-border pktw-border-pk-accent-soft pktw-rounded-2xl">
+					<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto] pktw-gap-3.5 pktw-items-center pktw-px-[18px] pktw-py-3.5 pktw-bg-pk-accent-tint pktw-border pktw-border-pk-accent-soft pktw-rounded-2xl">
 						<div className="pktw-w-9 pktw-h-9 pktw-rounded-[10px] pktw-bg-pk-surface pktw-text-pk-accent pktw-flex pktw-items-center pktw-justify-center">
-							<Target className="pktw-w-4.5 pktw-h-4.5" />
+							<Target className="pktw-w-[18px] pktw-h-[18px]" />
 						</div>
 						<div>
 							<div className="pktw-text-[13.5px] pktw-text-pk-foreground pktw-leading-snug">
@@ -747,15 +747,15 @@ function ChangedChip({ badge, value, label, formatPercent }: {
 
 function ChangedBadge({ badge }: { badge: 'touched' | 'new' | 'deleted' | 'trend' }) {
 	if (badge === 'touched') {
-		return <span className="pktw-w-6.5 pktw-h-6.5 pktw-rounded-full pktw-bg-pk-success-bg pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"><span className="pktw-w-2.5 pktw-h-2.5 pktw-rounded-full pktw-bg-pk-success" /></span>;
+		return <span className="pktw-w-[26px] pktw-h-[26px] pktw-rounded-full pktw-bg-pk-success-bg pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"><span className="pktw-w-2.5 pktw-h-2.5 pktw-rounded-full pktw-bg-pk-success" /></span>;
 	}
 	if (badge === 'new') {
-		return <span className="pktw-w-6.5 pktw-h-6.5 pktw-rounded-full pktw-bg-pk-success-bg pktw-text-pk-success pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"><Plus className="pktw-w-3 pktw-h-3" strokeWidth={2.5} /></span>;
+		return <span className="pktw-w-[26px] pktw-h-[26px] pktw-rounded-full pktw-bg-pk-success-bg pktw-text-pk-success pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"><Plus className="pktw-w-3 pktw-h-3" strokeWidth={2.5} /></span>;
 	}
 	if (badge === 'deleted') {
-		return <span className="pktw-w-6.5 pktw-h-6.5 pktw-rounded-full pktw-bg-pk-error-bg pktw-text-pk-error pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"><Minus className="pktw-w-3 pktw-h-3" strokeWidth={2.5} /></span>;
+		return <span className="pktw-w-[26px] pktw-h-[26px] pktw-rounded-full pktw-bg-pk-error-bg pktw-text-pk-error pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"><Minus className="pktw-w-3 pktw-h-3" strokeWidth={2.5} /></span>;
 	}
-	return <span className="pktw-w-6.5 pktw-h-6.5 pktw-rounded-full pktw-bg-pk-success-bg pktw-text-pk-success pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"><TrendingUp className="pktw-w-3 pktw-h-3" strokeWidth={2.5} /></span>;
+	return <span className="pktw-w-[26px] pktw-h-[26px] pktw-rounded-full pktw-bg-pk-success-bg pktw-text-pk-success pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"><TrendingUp className="pktw-w-3 pktw-h-3" strokeWidth={2.5} /></span>;
 }
 
 function Empty({ label }: { label: string }) {
@@ -812,7 +812,7 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 			<h3 className="pktw-text-[17px] pktw-font-bold pktw-text-pk-foreground pktw-mt-1 pktw-mb-4">Cluster activity</h3>
 
 			<div className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-overflow-hidden">
-				<div className="pktw-grid pktw-grid-cols-[2.3fr_0.7fr_0.8fr_0.9fr_2fr_24px] pktw-gap-3.5 pktw-px-4.5 pktw-py-2.5 pktw-bg-pk-background-secondary pktw-border-b pktw-border-pk-border-soft pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-font-semibold">
+				<div className="pktw-grid pktw-grid-cols-[2.3fr_0.7fr_0.8fr_0.9fr_2fr_24px] pktw-gap-3.5 pktw-px-[18px] pktw-py-2.5 pktw-bg-pk-background-secondary pktw-border-b pktw-border-pk-border-soft pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-font-semibold">
 					<div>Cluster</div>
 					<div>Size (notes)</div>
 					<div>Change (14d)</div>
@@ -837,12 +837,12 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 							id={`vault-cluster-${c.id}`}
 							onClick={() => setSelectedId(c.id)}
 							className={cn(
-								'pktw-w-full pktw-grid pktw-grid-cols-[2.3fr_0.7fr_0.8fr_0.9fr_2fr_24px] pktw-gap-3.5 pktw-px-4.5 pktw-py-3.5 pktw-items-center pktw-border-b pktw-border-pk-border-soft pktw-text-left pktw-bg-transparent pktw-border-x-0 pktw-border-t-0 pktw-cursor-pointer last:pktw-border-b-0',
+								'pktw-w-full pktw-grid pktw-grid-cols-[2.3fr_0.7fr_0.8fr_0.9fr_2fr_24px] pktw-gap-3.5 pktw-px-[18px] pktw-py-3.5 pktw-items-center pktw-border-b pktw-border-pk-border-soft pktw-text-left pktw-bg-transparent pktw-border-x-0 pktw-border-t-0 pktw-cursor-pointer last:pktw-border-b-0',
 								isSelected ? 'pktw-bg-pk-accent-tint pktw-shadow-[inset_0_0_0_2px_var(--pk-accent-soft)] pktw-relative pktw-z-[1]' : 'hover:pktw-bg-pk-background-secondary',
 							)}
 						>
 							<div className="pktw-grid pktw-grid-cols-[auto_1fr] pktw-gap-3 pktw-items-center pktw-min-w-0">
-								<span className={cn('pktw-w-9.5 pktw-h-9.5 pktw-rounded-[10px] pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0', toneClass)}>
+								<span className={cn('pktw-w-[38px] pktw-h-[38px] pktw-rounded-[10px] pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0', toneClass)}>
 									<Icon className="pktw-w-5 pktw-h-5" />
 								</span>
 								<div className="pktw-min-w-0">
@@ -884,7 +884,7 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 
 			{/* Expanded detail card */}
 			{selectedCluster && selectedIcon && (
-				<div className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-4.5 pktw-mt-3.5">
+				<div className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-[18px] pktw-mt-3.5">
 					<div className="pktw-grid pktw-grid-cols-[1.4fr_1.2fr_1.1fr_0.9fr] pktw-gap-5 pktw-items-start">
 						<div className="pktw-grid pktw-grid-cols-[auto_1fr] pktw-gap-3 pktw-items-start">
 							<span className={cn('pktw-w-10 pktw-h-10 pktw-rounded-[10px] pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0', selectedIcon.toneClass)}>
@@ -1050,12 +1050,12 @@ function GapCardHeader({ Icon, headline, title, confidence, source }: {
 
 function StructuralHoleCard({ gap }: { gap: { id: string; title: string; body: string; confidence: 'low' | 'medium' | 'high'; references: string[] } }) {
 	return (
-		<div id={`vault-gap-${gap.id}`} className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-4.5">
+		<div id={`vault-gap-${gap.id}`} className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-[18px]">
 			<GapCardHeader Icon={GitFork} headline="Structural holes" title={gap.title} confidence={gap.confidence} source="Graph analysis" />
 			<div className="pktw-text-[13px] pktw-text-pk-foreground-muted pktw-leading-relaxed pktw-mb-3.5">
 				<StreamdownIsolated>{gap.body}</StreamdownIsolated>
 			</div>
-			<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto_auto] pktw-gap-3 pktw-items-center pktw-mb-4.5">
+			<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto_auto] pktw-gap-3 pktw-items-center pktw-mb-[18px]">
 				<span className="pktw-text-[12px] pktw-text-pk-foreground-muted pktw-font-medium">Bridge score</span>
 				<div className="pktw-h-1.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-overflow-hidden">
 					<div className="pktw-h-full pktw-bg-pk-accent pktw-rounded-full" style={{ width: '28%' }} />
@@ -1103,7 +1103,7 @@ function StructuralHoleCard({ gap }: { gap: { id: string; title: string; body: s
 
 function DanglingRefsCard({ gaps }: { gaps: Array<{ id: string; title: string; body: string; confidence: 'low' | 'medium' | 'high'; references: string[] }> }) {
 	return (
-		<div className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-4.5">
+		<div className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-[18px]">
 			<GapCardHeader
 				Icon={LinkIcon}
 				title="Dangling references"
@@ -1142,7 +1142,7 @@ function DanglingRefsCard({ gaps }: { gaps: Array<{ id: string; title: string; b
 
 function StaleHubsCard({ gaps }: { gaps: Array<{ id: string; title: string; body: string; confidence: 'low' | 'medium' | 'high' }> }) {
 	return (
-		<div className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-4.5">
+		<div className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-[18px]">
 			<GapCardHeader
 				Icon={Clock}
 				title="Stale hubs"
@@ -1180,7 +1180,7 @@ function GenericGapCard({ gap, title, Icon }: {
 	Icon: LucideIcon;
 }) {
 	return (
-		<div id={`vault-gap-${gap.id}`} className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-4.5">
+		<div id={`vault-gap-${gap.id}`} className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-[18px]">
 			<GapCardHeader Icon={Icon} headline={title} title={gap.title} confidence={gap.confidence} source="Agent analysis" />
 			<div className="pktw-text-[13px] pktw-text-pk-foreground-muted pktw-leading-relaxed">
 				<StreamdownIsolated>{gap.body}</StreamdownIsolated>
@@ -1286,7 +1286,7 @@ function ActionCard({ action, rank }: {
 	const TrendIcon = rank === 1 ? ArrowUp : rank > 3 ? ArrowDown : Minus;
 	const trendClass = rank === 1 ? 'pktw-text-pk-success' : rank > 3 ? 'pktw-text-pk-foreground-faint' : 'pktw-text-pk-foreground-muted';
 	return (
-		<div id={`vault-action-${action.id}`} className="pktw-grid pktw-grid-cols-[28px_56px_1fr_auto] pktw-gap-3 pktw-items-start pktw-px-4.5 pktw-py-4 pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl">
+		<div id={`vault-action-${action.id}`} className="pktw-grid pktw-grid-cols-[28px_56px_1fr_auto] pktw-gap-3 pktw-items-start pktw-px-[18px] pktw-py-4 pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl">
 			<div className="pktw-flex pktw-items-center pktw-text-pk-foreground-faint pktw-self-center">
 				<GripVertical className="pktw-w-3.5 pktw-h-3.5" />
 			</div>
@@ -1522,7 +1522,7 @@ const TracePanel: React.FC<{
 								)}
 							>
 								<div className="pktw-text-[12px] pktw-tabular-nums pktw-text-pk-foreground-muted">{t.timestamp ? new Date(t.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}</div>
-								<div><span className={cn('pktw-w-6.5 pktw-h-6.5 pktw-rounded-full pktw-flex pktw-items-center pktw-justify-center pktw-mx-auto', iconBg)}><StatusIcon className="pktw-w-3 pktw-h-3" strokeWidth={2.6} /></span></div>
+								<div><span className={cn('pktw-w-[26px] pktw-h-[26px] pktw-rounded-full pktw-flex pktw-items-center pktw-justify-center pktw-mx-auto', iconBg)}><StatusIcon className="pktw-w-3 pktw-h-3" strokeWidth={2.6} /></span></div>
 								<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">{traceTitle(t)}</div>
 								<div>
 									<div className="pktw-text-pk-foreground pktw-leading-snug">{desc.split('\n')[0] || '—'}</div>
@@ -1549,10 +1549,10 @@ const TracePanel: React.FC<{
 						<span className="pktw-ml-1.5 pktw-text-[11.5px] pktw-text-pk-foreground-muted">{selectedIdx + 1} of {trace.length}</span>
 					</div>
 					<div className="pktw-inline-flex pktw-gap-0.5">
-						<button onClick={() => setSelectedIdx(Math.max(0, selectedIdx - 1))} disabled={selectedIdx === 0} className="pktw-w-6.5 pktw-h-6.5 pktw-rounded-md pktw-border pktw-border-pk-border-soft pktw-bg-pk-surface pktw-text-pk-foreground-muted pktw-cursor-pointer pktw-flex pktw-items-center pktw-justify-center disabled:pktw-opacity-50">
+						<button onClick={() => setSelectedIdx(Math.max(0, selectedIdx - 1))} disabled={selectedIdx === 0} className="pktw-w-[26px] pktw-h-[26px] pktw-rounded-md pktw-border pktw-border-pk-border-soft pktw-bg-pk-surface pktw-text-pk-foreground-muted pktw-cursor-pointer pktw-flex pktw-items-center pktw-justify-center disabled:pktw-opacity-50">
 							<ChevronLeft className="pktw-w-3.5 pktw-h-3.5" />
 						</button>
-						<button onClick={() => setSelectedIdx(Math.min(trace.length - 1, selectedIdx + 1))} disabled={selectedIdx === trace.length - 1} className="pktw-w-6.5 pktw-h-6.5 pktw-rounded-md pktw-border pktw-border-pk-border-soft pktw-bg-pk-surface pktw-text-pk-foreground-muted pktw-cursor-pointer pktw-flex pktw-items-center pktw-justify-center disabled:pktw-opacity-50">
+						<button onClick={() => setSelectedIdx(Math.min(trace.length - 1, selectedIdx + 1))} disabled={selectedIdx === trace.length - 1} className="pktw-w-[26px] pktw-h-[26px] pktw-rounded-md pktw-border pktw-border-pk-border-soft pktw-bg-pk-surface pktw-text-pk-foreground-muted pktw-cursor-pointer pktw-flex pktw-items-center pktw-justify-center disabled:pktw-opacity-50">
 							<ChevronRight className="pktw-w-3.5 pktw-h-3.5" />
 						</button>
 					</div>
