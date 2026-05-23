@@ -618,8 +618,15 @@ export class CopilotPickerModal extends Modal {
 					onOpenAllHistory: () => {
 						const tabAtOpen = this.options.initialTab;
 						const ctxAppContext = this.appContext;
+						// Scope inherits from current tab: Vault tab → vault auto-reviews;
+						// Document tab → per-note Copilot reviews (with this-note/all-notes toggle);
+						// Setting tab → fall back to document scope (it has no history of its own).
+						const scope: 'document' | 'vault' = tabAtOpen === 'vault' ? 'vault' : 'document';
+						const currentNotePath = ctx?.file.path ?? null;
 						this.close();
 						new CopilotReviewHistoryModal(app, {
+							scope,
+							currentNotePath,
 							onBackToPicker: () => {
 								new CopilotPickerModal(ctxAppContext, { initialTab: tabAtOpen }).open();
 							},
