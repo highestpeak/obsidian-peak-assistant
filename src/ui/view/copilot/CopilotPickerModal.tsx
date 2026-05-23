@@ -175,31 +175,35 @@ const CopilotPickerContent: React.FC<{
 				<PickerReadinessCard {...readinessProps} />
 
 				{/* 2-col split: recent reviews / suggested intents */}
-				<div className="pktw-grid pktw-grid-cols-[minmax(0,0.95fr)_minmax(0,1.1fr)] pktw-gap-7">
-					<div>
+				<div className="pktw-grid pktw-grid-cols-[minmax(0,0.95fr)_minmax(0,1.1fr)] pktw-gap-7 pktw-items-stretch">
+					<div className="pktw-flex pktw-flex-col pktw-min-h-0">
 						<PickerSectionTitle title={recentTitle(activeTab)} link={{ label: recentLinkLabel(activeTab), onClick: onOpenAllHistory }} />
-						{activeTab === 'vault' ? (
-							<VaultReviewHistoryList
-								records={vaultRecords}
-								loading={vaultRecordsLoading}
-								onOpen={onOpenVaultRecord}
-							/>
-						) : activeTab === 'document' ? (
-							<DocumentReviewHistory
-								subjectPath={ctx?.file.path ?? null}
-								onOpenRecord={onOpenHistoryRecord}
-							/>
-						) : (
-							<SettingDiagnosticsList />
-						)}
+						<div className="pktw-flex-1 pktw-flex pktw-flex-col">
+							{activeTab === 'vault' ? (
+								<VaultReviewHistoryList
+									records={vaultRecords}
+									loading={vaultRecordsLoading}
+									onOpen={onOpenVaultRecord}
+								/>
+							) : activeTab === 'document' ? (
+								<DocumentReviewHistory
+									subjectPath={ctx?.file.path ?? null}
+									onOpenRecord={onOpenHistoryRecord}
+								/>
+							) : (
+								<SettingDiagnosticsList />
+							)}
+						</div>
 					</div>
-					<div>
+					<div className="pktw-flex pktw-flex-col pktw-min-h-0">
 						<PickerSectionTitle title="Suggested intents" />
-						<SuggestedIntents
-							recommended={model.recommendedActions}
-							fallback={model.visibleActions}
-							onSelect={onSelect}
-						/>
+						<div className="pktw-flex-1">
+							<SuggestedIntents
+								recommended={model.recommendedActions}
+								fallback={model.visibleActions}
+								onSelect={onSelect}
+							/>
+						</div>
 					</div>
 				</div>
 
@@ -380,7 +384,7 @@ function DocumentReviewHistory({
 	}
 	if (records.length === 0) {
 		return (
-			<div className="pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-5 pktw-py-9 pktw-bg-pk-background-secondary pktw-border pktw-border-dashed pktw-border-pk-border pktw-rounded-2xl">
+			<div className="pktw-h-full pktw-min-h-[160px] pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-5 pktw-py-9 pktw-bg-pk-background-secondary pktw-border pktw-border-dashed pktw-border-pk-border pktw-rounded-2xl">
 				<span className="pktw-w-10 pktw-h-10 pktw-rounded-full pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-text-pk-foreground-faint pktw-flex pktw-items-center pktw-justify-center pktw-mb-2.5">
 					<History className="pktw-w-4 pktw-h-4" />
 				</span>

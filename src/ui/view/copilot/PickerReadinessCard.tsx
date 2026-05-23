@@ -211,13 +211,13 @@ export function SuggestedIntentRow({
 			onClick={onClick}
 			disabled={disabled}
 			className={cn(
-				'pktw-w-full pktw-flex pktw-items-center pktw-gap-4 pktw-px-5 pktw-py-4 pktw-rounded-xl pktw-border pktw-border-pk-border pktw-bg-pk-background-secondary pktw-text-left pktw-transition-colors',
+				'pktw-w-full pktw-flex pktw-items-center pktw-gap-3.5 pktw-px-4 pktw-py-3 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background-secondary pktw-text-left pktw-transition-colors',
 				'hover:pktw-border-pk-accent-soft hover:pktw-bg-pk-accent-tint',
 				'disabled:pktw-opacity-60 disabled:pktw-pointer-events-none',
 			)}
 		>
-			<span className={cn('pktw-w-10 pktw-h-10 pktw-rounded-xl pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0', intentToneClass[tone])}>
-				<Icon className="pktw-w-[18px] pktw-h-[18px]" />
+			<span className={cn('pktw-w-9 pktw-h-9 pktw-rounded-lg pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0', intentToneClass[tone])}>
+				<Icon className="pktw-w-4 pktw-h-4" />
 			</span>
 			<span className="pktw-flex pktw-flex-col pktw-flex-1 pktw-min-w-0 pktw-gap-1">
 				<span className="pktw-text-[13.5px] pktw-font-semibold pktw-text-pk-foreground pktw-truncate pktw-leading-tight">{title}</span>
