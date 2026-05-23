@@ -101,10 +101,9 @@ const CopilotPickerContent: React.FC<{
 
 	const isMobile = Platform.isMobile;
 	const tabMeta = SCOPE_TABS.find(t => t.id === activeTab) ?? SCOPE_TABS[0];
-	const showAll = activeTab === 'setting' ? true : (showAllByTab[activeTab] ?? false);
+	const showAll = showAllByTab[activeTab] ?? false;
 	const showCatalog = showAll || query.trim().length > 0;
 	const setShowAll = (value: boolean) => {
-		if (activeTab === 'setting') return;
 		setShowAllByTab(prev => ({ ...prev, [activeTab]: value }));
 	};
 
@@ -197,7 +196,8 @@ const CopilotPickerContent: React.FC<{
 					<div>
 						<PickerSectionTitle title="Suggested intents" />
 						<SuggestedIntents
-							actions={model.recommendedActions}
+							recommended={model.recommendedActions}
+							fallback={model.visibleActions}
 							onSelect={onSelect}
 						/>
 					</div>
@@ -318,8 +318,10 @@ function MetadataLine({
 			{ctx?.file.path ? (
 				<>
 					<span className="pktw-font-mono pktw-truncate">{ctx.file.path}</span>
-					<span className="pktw-text-pk-foreground-faint">·</span>
+					<span className="pktw-text-pk-foreground-faint pktw-shrink-0">·</span>
 					<span className="pktw-shrink-0">current note</span>
+					<span className="pktw-text-pk-foreground-faint pktw-shrink-0">·</span>
+					<span className="pktw-shrink-0 pktw-tabular-nums">{ctx.wordCount.toLocaleString()} words</span>
 				</>
 			) : (
 				<span>{fallbackLine ?? 'No active note'}</span>
@@ -448,20 +450,28 @@ function SettingDiagnosticsList() {
 }
 
 function SuggestedIntents({
-	actions,
+	recommended,
+	fallback,
 	onSelect,
 }: {
-	actions: CopilotActionListItem[];
+	recommended: CopilotActionListItem[];
+	fallback: CopilotActionListItem[];
 	onSelect: (action: CopilotAction) => void;
 }) {
-	if (actions.length === 0) {
+	// Prefer recommended; if fewer than 3, top up with other tab-visible actions
+	// (deduped). Mockup always shows up to 3 stable intents per tab.
+	const seen = new Set(recommended.map(r => r.action.id));
+	const padding = fallback.filter(f => !seen.has(f.action.id));
+	const top = [...recommended, ...padding].slice(0, 3);
+
+	if (top.length === 0) {
 		return (
 			<span className="pktw-block pktw-rounded-lg pktw-border pktw-border-dashed pktw-border-pk-border pktw-px-4 pktw-py-8 pktw-text-center pktw-text-[12px] pktw-text-pk-foreground-muted">
-				No suggested intents for this scope yet.
+				No actions registered for this scope yet.
 			</span>
 		);
 	}
-	const top = actions.slice(0, 3);
+
 	const tones: Array<'accent' | 'indigo' | 'cyan'> = ['accent', 'indigo', 'cyan'];
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-2">
