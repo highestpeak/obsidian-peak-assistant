@@ -55,11 +55,23 @@
 .peak-design-root button:focus-visible {
 	transform: none !important;
 	box-shadow: none !important;
+	filter: none !important;
 	scale: none !important;
 	translate: none !important;
 	rotate: none !important;
 	outline: none !important;
 	outline-offset: 0 !important;
+}
+
+/*
+ * Some Obsidian themes add ::before / ::after pseudo-elements on buttons
+ * for ripple effects or hover glows. These can render outside the button's
+ * box and look like a "halo" — kill them too.
+ */
+.peak-design-root button::before,
+.peak-design-root button::after {
+	content: none !important;
+	display: none !important;
 }
 
 .peak-design-root button:disabled {
