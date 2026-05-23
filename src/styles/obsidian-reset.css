@@ -39,28 +39,31 @@
 }
 
 /*
- * Defend against Obsidian's :hover / :active rules on bare <button> elements.
- * Obsidian themes commonly attach transform: translateY, box-shadow, padding
- * bumps, etc. to button:hover — those leak through unless we explicitly null
- * them here. Tailwind's hover: utilities still apply on top (with !important).
+ * Defend against Obsidian's :hover / :active / :focus rules on bare <button>
+ * elements. Obsidian themes attach transform: translateY, box-shadow,
+ * scale(), and focus outlines to button states — they leak through unless
+ * we explicitly null them with !important here (because Obsidian's rules
+ * also use !important, and Tailwind utilities don't set these properties,
+ * so they have nothing to override the Obsidian rule with).
+ *
+ * Tailwind's hover:pktw-bg-* / hover:pktw-border-* still apply on top — we
+ * only kill the geometry-changing properties (transform, box-shadow, size).
  */
 .peak-design-root button:hover,
 .peak-design-root button:active,
-.peak-design-root button:focus {
-	transform: none;
-	box-shadow: none;
-	padding: inherit;
-	margin: inherit;
+.peak-design-root button:focus,
+.peak-design-root button:focus-visible {
+	transform: none !important;
+	box-shadow: none !important;
+	scale: none !important;
+	translate: none !important;
+	rotate: none !important;
+	outline: none !important;
+	outline-offset: 0 !important;
 }
 
 .peak-design-root button:disabled {
 	cursor: not-allowed;
-}
-
-.peak-design-root button:focus-visible,
-.peak-design-root input:focus-visible {
-	outline: 2px solid currentColor;
-	outline-offset: 2px;
 }
 
 .peak-design-root h1,
