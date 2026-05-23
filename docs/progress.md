@@ -214,6 +214,42 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ## Log
 
+### 2026-05-23 — Codex UX sketches → real picker + report UI（mockup v2 → impl → 整天 debug Obsidian CSS 干扰）
+
+整天分三大块。
+
+**Block 1 · Mockup v2 重做（commit `8fc5784`）**
+- Done: 用户提供 7 张 Codex UX 设计稿（picker · vault tab + 6 report tabs）+ 3 张 picker 稿（Document / Vault / Setting）。先逐张视觉 diff 现有 mockup（`2026-05-20-vault-review-mockup.html`），发现结构性差异（不对称 snapshot grid、缺 agent trace right rail、tab 样式 pill vs underline、Sources 3-col 缺等等）
+- Done: 归档旧 mockup 到 `_archive/`，新文件 `2026-05-22-vault-review-mockup.html`（4146 行，10 scenes：3 picker + 6 report），按草稿 1:1 重做：Lucide-style SVG symbol library、`--pk-*` token、顶部 scene 切换 navigator
+- Done: spec 加 §8.0 "Review Launcher Picker"（picker 4 个问题 + 区域/按钮/差异 3 张表 + 设计边界）
+
+**Block 2 · 真实代码实现（Phase A → D，5 commits）**
+- Done: Phase A — 新基础原语：`<Pill>` 8 个 token-aligned variants（success/warning/danger/info/accent/indigo/neutral/outline）+ `<Tabs>` 两个 variant（segment / underline）
+- Done: Phase B — `CopilotPickerModal` 重画：3-tab segment header（Document/Vault/Setting）+ search + scope metadata + 新 `<PickerReadinessCard>` 通用 layout（icon + title/desc + signal chips + run-strategy 按钮列）+ 3 个 readiness adapter（document/vault/setting）+ 2-col split + Show all capabilities footer。删除 old `VaultIntentCard`，5-state 逻辑搬到 `vaultReadiness()`
+- Done: Phase C — `VaultAutoRunModal` 1220 行 → 1850 行重写，6 个 tab 全按 mockup 重做：shield-check brand、count-badge tab、3×2 snapshot grid、4-chip "What changed"、cluster table+inline expanded card、Bridge score progress、action card with rank+drag+3-stats、Sources 3-col、Trace timeline+step inspector。删 `vault-review.css`（889 行），全 Tailwind 化
+- Done: Phase D — placeholder stubs 都在位（bridge score、source signal pills、setting diagnostics 3 个 TODO marker），等真 service ships 再接
+
+**Block 3 · 整天 debug Obsidian CSS 干扰（recurring pitfall 首次系统整理，12+ commits）**
+
+用户反复反馈 "picker 的 row hover 看着比其他高一截 / 整体感觉错乱 / 拥挤"。多轮误诊后定位根因。
+
+- 弯路 1 (`3d79b74`/`a5176e6`/`176a3a7`)：以为是 truncate/line-clamp/spacing 问题，反复调 layout — 无效
+- 弯路 2 (`164f73c`)：发现 Tailwind 半步 spacing scale 只到 `3.5`，我用了大量 `4.5/5.5/6.5/9.5` 全是 silently failing — 替换成 `[Npx]` arbitrary 语法。改完仍有"错乱"
+- 弯路 3 (`1fa79d3`)：以为白底 card 跟白 modal 融合不可见 → 改成灰底。结果还是错乱
+- 弯路 4 (`91a9c4c`/`c57bf56`/`eaa82f9`)：以为是 Obsidian button `:hover` 加了 transform/box-shadow → reset 加 `transform/box-shadow/outline/filter: none !important` + 禁用 `::before/::after` 伪元素。用 Playwright 模拟 Obsidian 极端 hover 干扰验证 reset 真挡住了 — 然而 in-Obsidian 仍错乱
+- 弯路 5 (`e352074`)：加 `· v3` 标题 marker 让用户能肉眼判断 CSS 是否真重载
+- **真凶 (`7d37916`)**：用户贴 DevTools computed styles dump，**直接看到** Obsidian 的 `.modal button { height: var(--input-height); justify-content: center; }` ——把所有 modal button 高度锁死成 32px，flex 行为崩坏，hover 颜色只填充 32px 中间条。我的 reset 一直没盖 `height`。Fix：reset 加 `height/min-height/max-height: auto !important; justify-content: flex-start`。**一次性彻底解决**
+- Done: 沉淀到 `docs/conventions/obsidian-css-defense.md`（新增 "Properties the reset must null" 完整属性清单表 + "Diagnosing a suspected leak" 流程）+ `docs/recurring-pitfalls.md` 新条目 #3（Obsidian global bare-tag rule leaks through scoped reset，含本次实例 + Detection signals + Prevention checklist）
+
+**Block 4 · 后续 UX 调整（多 commit）**
+- Done: `redesign(history-modal)` `4138095` — `CopilotReviewHistoryModal` 去 5 层 border，加 `peak-design-root`（同 CSS 干扰治了），trash 改成 hover-only ghost，去掉底部 Close 按钮（modal 已有 ×）
+- Done: `ae9bcf5` — 顶部 tab 恢复 hover/active 反馈（之前误删的）+ history modal 加 Back 按钮
+- Done: `d0c4224` — active tab 加 `bg-pk-accent-tint`（用户嫌 underline 不够明显）+ Run strategy primary 按钮从 shadcn 蓝色（`--pk-info`）改成品牌紫
+- Done: `80becaf` — history modal 加 scope prop：Vault tab "All reviews" 直接接 `VaultReviewReportService`；Document tab 加 "This note / All notes" segmented toggle；统一 NormalizedRecord 类型让两种数据共用 row 渲染
+- Done: `fe2b16c` — Setting tab 假数据洁净化：去掉 "All diagnostics" 误导 link、`SettingDiagnosticsList` 两个假行换成 "No diagnostics yet" 空状态、section title 加 `[preview]` pill
+
+**Total: ~24 commits**。10-scene picker + 6-tab report UI 全部 live，1 个 recurring pitfall 正式建档，CSS defense convention 全面扩张。
+
 ### 2026-05-22 — Vault Auto Review 全量交付 + 设计系统暴雷 + 整改 spec
 
 整天工作量超大，分四大块。
