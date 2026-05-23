@@ -110,7 +110,7 @@ export function TabsTrigger({ value, count, title, subtitle, className, children
 				className={cn(
 					'pktw-flex pktw-flex-col pktw-items-center pktw-gap-0.5 pktw-py-4 pktw-px-3 pktw-text-center pktw-bg-transparent pktw-border-0 pktw-border-b-2 pktw-border-transparent pktw-cursor-pointer pktw-transition-colors',
 					isActive
-						? 'pktw-text-pk-accent pktw-border-pk-accent'
+						? 'pktw-text-pk-accent pktw-border-pk-accent pktw-bg-pk-accent-tint'
 						: 'pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground hover:pktw-bg-pk-state-hover active:pktw-bg-pk-state-active',
 					className,
 				)}

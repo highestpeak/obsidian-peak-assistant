@@ -120,6 +120,9 @@ export function PickerReadinessCard({
 						}
 						className={cn(
 							'pktw-w-full pktw-h-10 pktw-px-3 pktw-gap-2 pktw-font-semibold pktw-text-[13px]',
+							// Primary → use brand accent (purple), not the shadcn 'primary' alias
+							// which maps to --pk-info (blue). Mockup spec calls for accent.
+							btn.variant === 'primary' && 'pktw-bg-pk-accent pktw-text-pk-accent-fg hover:pktw-bg-pk-accent-hover pktw-border-pk-accent',
 							btn.variant === 'ghost' && 'pktw-justify-center pktw-text-pk-foreground-muted',
 						)}
 					>
