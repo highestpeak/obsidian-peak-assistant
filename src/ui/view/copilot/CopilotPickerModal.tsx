@@ -196,7 +196,7 @@ const CopilotPickerContent: React.FC<{
 						</div>
 					</div>
 					<div className="pktw-flex pktw-flex-col pktw-min-h-0">
-						<PickerSectionTitle title="Suggested intents" />
+						<PickerSectionTitle title="Suggested intents · v3" />
 						<div className="pktw-flex-1">
 							<SuggestedIntents
 								recommended={model.recommendedActions}
