@@ -211,27 +211,20 @@ export function SuggestedIntentRow({
 			onClick={onClick}
 			disabled={disabled}
 			className={cn(
-				'pktw-w-full pktw-grid pktw-grid-cols-[auto_minmax(0,1fr)_auto] pktw-items-start pktw-gap-3.5 pktw-px-4 pktw-py-3.5 pktw-rounded-lg pktw-border pktw-border-pk-border-soft pktw-bg-pk-surface pktw-text-left pktw-transition-colors',
+				'pktw-w-full pktw-flex pktw-items-center pktw-gap-4 pktw-px-5 pktw-py-4 pktw-rounded-xl pktw-border pktw-border-pk-border-soft pktw-bg-pk-surface pktw-text-left pktw-transition-colors',
 				'hover:pktw-border-pk-accent-soft hover:pktw-bg-pk-accent-tint',
 				'disabled:pktw-opacity-60 disabled:pktw-pointer-events-none',
 			)}
 		>
-			<span className={cn('pktw-w-9 pktw-h-9 pktw-rounded-[10px] pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0', intentToneClass[tone])}>
-				<Icon className="pktw-w-4 pktw-h-4" />
+			<span className={cn('pktw-w-10 pktw-h-10 pktw-rounded-xl pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0', intentToneClass[tone])}>
+				<Icon className="pktw-w-[18px] pktw-h-[18px]" />
 			</span>
-			<span className="pktw-flex pktw-flex-col pktw-min-w-0 pktw-gap-0.5 pktw-pt-0.5">
-				<span className="pktw-flex pktw-items-center pktw-gap-2 pktw-min-w-0">
-					<span className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground pktw-truncate">{title}</span>
-					{pill ? <Pill variant={pill.variant} size="sm" className="pktw-shrink-0">{pill.label}</Pill> : null}
-				</span>
-				<span
-					className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-leading-snug"
-					style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden' }}
-				>
-					{subtitle}
-				</span>
+			<span className="pktw-flex pktw-flex-col pktw-flex-1 pktw-min-w-0 pktw-gap-1">
+				<span className="pktw-text-[13.5px] pktw-font-semibold pktw-text-pk-foreground pktw-truncate pktw-leading-tight">{title}</span>
+				<span className="pktw-text-[12px] pktw-text-pk-foreground-muted pktw-truncate pktw-leading-tight">{subtitle}</span>
 			</span>
-			<span className="pktw-text-pk-foreground-faint pktw-shrink-0 pktw-self-center pktw-text-lg pktw-leading-none" aria-hidden>
+			{pill ? <Pill variant={pill.variant} className="pktw-shrink-0">{pill.label}</Pill> : null}
+			<span className="pktw-text-pk-foreground-faint pktw-shrink-0 pktw-text-lg pktw-leading-none pktw-ml-1" aria-hidden>
 				›
 			</span>
 		</button>

@@ -474,7 +474,7 @@ function SuggestedIntents({
 
 	const tones: Array<'accent' | 'indigo' | 'cyan'> = ['accent', 'indigo', 'cyan'];
 	return (
-		<div className="pktw-flex pktw-flex-col pktw-gap-2">
+		<div className="pktw-flex pktw-flex-col pktw-gap-2.5">
 			{top.map((item, i) => (
 				<SuggestedIntentRow
 					key={item.action.id}
