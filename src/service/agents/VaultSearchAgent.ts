@@ -10,6 +10,9 @@ import type { VaultSearchEvent } from './vault/types';
 import { VaultSearchAgentSDK } from './VaultSearchAgentSDK';
 import { AppContext } from '@/app/context/AppContext';
 
+/**
+ * Harness tier: local-deep (delegates to VaultSearchAgentSDK for the online SDK path).
+ */
 export class VaultSearchAgent {
 	constructor(
 		private readonly aiServiceManager: AIServiceManager,

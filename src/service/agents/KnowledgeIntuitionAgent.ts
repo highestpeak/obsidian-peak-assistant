@@ -34,6 +34,7 @@ export type { KnowledgeIntuitionAgentOptions, KnowledgeIntuitionAgentResult };
 
 /**
  * Orchestrates prep, tool-assisted recon, and fixed-layout markdown + JSON output.
+ * Harness tier: local-deep (multi-turn recon loop; delegates to runKnowledgeIntuitionLoop).
  */
 export class KnowledgeIntuitionAgent {
 	/** Last merged intuition memory after a full or partial recon run. */

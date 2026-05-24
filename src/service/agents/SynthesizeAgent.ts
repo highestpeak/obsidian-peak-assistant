@@ -12,6 +12,8 @@ export interface SynthesizeResult {
  *
  * Simple text-in/text-out agent (no vault tools). Sends all rounds
  * to the LLM with instructions to merge, gets back a unified JSON report.
+ *
+ * Harness tier: local-fast (single-turn, no tools).
  */
 export class SynthesizeAgent {
 	async synthesize(rounds: Round[]): Promise<SynthesizeResult> {

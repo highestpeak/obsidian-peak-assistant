@@ -44,6 +44,9 @@ export interface VaultSearchAgentSdkOptions {
 
 /**
  * Main shell. Constructed by VaultSearchAgent when the feature flag is on.
+ *
+ * Harness tier: online (runs via Claude Agent SDK; M4 TODO: migrate to bridge.run({ useSDK: true })
+ * once VaultMcpServer tools can be adapted to harness ToolDef format).
  */
 export class VaultSearchAgentSDK {
 

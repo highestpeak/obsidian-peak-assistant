@@ -18,18 +18,18 @@ import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
 import { DocumentLoaderManager } from "@/core/document/loader/helper/DocumentLoaderManager";
 import { submitFinalAnswerTool } from "@/service/tools/submit-final-answer";
 import { emptyUsage, LLMUsage, mergeTokenUsage } from "@/core/providers/types";
-import { AppContext } from "@/app/context/AppContext";
-import { ProfileRegistry } from "@/core/profiles/ProfileRegistry";
 import { getActivityDetailTool } from '@/service/context/context-tools/getActivityDetailTool';
 import { getRecentAnalysisResultTool } from '@/service/context/context-tools/getRecentAnalysisResultTool';
 import { getWorkingThemeTool } from '@/service/context/context-tools/getWorkingThemeTool';
-import { queryWithProfile } from "./core/sdkAgentPool";
-import { translateSdkMessages } from "./core/sdkMessageAdapter";
-import { agentToolsToMcpServer, mcpToolNames, mergeExternalMcpTools } from "./core/agentToolMcpAdapter";
+import { TierController } from '@/service/agents/harness/tier/TierController';
+import { defaultTierBindings } from '@/service/agents/harness/tier/bindings';
+import { runAgentLoop } from '@/service/agents/harness';
+import { adaptAgentTools } from '@/service/agents/harness-bridge/agentToolAdapter';
 import type { AgentTool } from "@/service/tools/types";
 
 /** Max chars for doc-simple inline file content; beyond this we truncate. */
 const DOC_SIMPLE_FILE_CONTENT_MAX_CHARS = 120_000;
+const TIER = 'local-deep';
 
 async function loadDocSimpleFileContent(filePath: string): Promise<string> {
 	const document = await DocumentLoaderManager.getInstance().readByPath(filePath, true);
@@ -43,11 +43,9 @@ async function loadDocSimpleFileContent(filePath: string): Promise<string> {
 	);
 }
 
-const MCP_SERVER_NAME = 'doc';
-
 /**
  * DocSimpleAgent: single-file quick Q&A. Same tools as RawSearchAgent, different prompt.
- * Uses Agent SDK query() via MCP server for tool dispatch.
+ * Runs via the self-hosted harness (tier=local-deep).
  */
 export class DocSimpleAgent {
 	private readonly tools: Record<string, AgentTool>;
@@ -110,40 +108,36 @@ export class DocSimpleAgent {
 			triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
 		};
 
-		// Build MCP server from tools and call Agent SDK
-		const ctx = AppContext.getInstance();
-		const profile = ProfileRegistry.getInstance().getActiveAgentProfile()!;
-		const allTools = mergeExternalMcpTools(this.tools);
-		const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, allTools);
-		const allowedTools = mcpToolNames(MCP_SERVER_NAME, allTools);
-
-		const messages = queryWithProfile(ctx.app, ctx.pluginId, profile, {
-			prompt,
-			systemPrompt: system,
-			maxTurns: 15,
-			mcpServers: { [MCP_SERVER_NAME]: mcpServer },
-			allowedTools,
+		const loopId = `doc-simple-${generateUuidWithoutHyphens()}`;
+		const tierController = new TierController({
+			bindings: defaultTierBindings(),
+			policy: { preferred: TIER },
+			loopId,
 		});
 
-		let answerText: string[] = [];
-		let totalUsage: LLMUsage = emptyUsage();
+		const result = await runAgentLoop({
+			loopId,
+			systemPrompt: system,
+			initialMessages: [{ role: 'user', content: prompt }],
+			tools: adaptAgentTools(this.tools),
+			tierController,
+			budget: { maxSteps: 15, maxTokens: 80_000, maxToolCalls: 30 },
+		});
 
-		for await (const ev of translateSdkMessages(messages, {
-			triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-			hasPartialMessages: true,
-		})) {
-			// Collect text from text-delta events
-			if (ev.type === 'text-delta' && typeof (ev as any).text === 'string') {
-				answerText.push((ev as any).text);
-			}
-			// Collect usage from complete events
-			if (ev.type === 'complete' && (ev as any).usage) {
-				totalUsage = mergeTokenUsage(totalUsage, (ev as any).usage);
-			}
-			yield ev;
+		const finalAnswerText = result.finalText.trim() || "(No answer generated.)";
+		let totalUsage: LLMUsage = emptyUsage();
+		if (result.totalTokens > 0) {
+			totalUsage = mergeTokenUsage(totalUsage, { inputTokens: 0, outputTokens: 0, totalTokens: result.totalTokens });
 		}
 
-		const finalAnswerText = answerText.join('').trim() || "(No answer generated.)";
+		// Emit text delta
+		if (finalAnswerText) {
+			yield {
+				type: 'text-delta',
+				text: finalAnswerText,
+				triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
+			} as any;
+		}
 
 		// Generate title
 		let title: string | undefined = undefined;

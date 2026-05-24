@@ -43,6 +43,9 @@ export interface ContinueAnalysisAgentOptions {
     aiServiceManager: AIServiceManager;
 }
 
+/**
+ * Harness tier: local-deep (delegates to VaultSearchAgentSDK for vault recon).
+ */
 export class ContinueAnalysisAgent {
     constructor(private readonly options: ContinueAnalysisAgentOptions) {}
 

@@ -18,6 +18,9 @@ import type { SearchResultItem } from '@/service/search/types';
 
 export type AIGraphEvent = LLMStreamEvent;
 
+/**
+ * Harness tier: local-deep (graph build is compute-heavy; no LLM loop by default).
+ */
 export class AIGraphAgent {
 	constructor(private readonly aiServiceManager: AIServiceManager) {}
 

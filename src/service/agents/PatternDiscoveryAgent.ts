@@ -25,6 +25,7 @@ let isRunning = false;
  * Analyse recent queries and discover reusable query-template patterns.
  *
  * Fire-and-forget — returns `null` when skipped (already running) or on error.
+ * Harness tier: local-fast (single-turn, no tools).
  */
 export async function runPatternDiscovery(input: PatternDiscoveryInput): Promise<PatternDiscoveryOutput | null> {
 	if (isRunning) return null;
