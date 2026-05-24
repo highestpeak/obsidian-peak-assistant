@@ -1,0 +1,54 @@
+/**
+ * Public surface for the self-hosted agent harness. Consumers should only
+ * import from this module — internal layout may shift between M-phases.
+ */
+
+// Loop
+export { runAgentLoop } from './loop/AgentLoop';
+export { evaluateStopConditions, hasFinalAnswer, budgetExceeded, abortRequested } from './loop/stopConditions';
+export type {
+    AgentLoopConfig,
+    AgentLoopResult,
+    AgentLoopBudget,
+    AgentLoopFinishReason,
+} from './loop/types';
+export { DEFAULT_BUDGET } from './loop/types';
+
+// Tier
+export { TierController } from './tier/TierController';
+export { defaultTierBindings } from './tier/bindings';
+export { scoreStep } from './tier/scoreStep';
+export {
+    TIER_ORDER,
+    DEFAULT_TIER_POLICY,
+    DEFAULT_TIER_CAPABILITIES,
+} from './tier/types';
+export type {
+    ModelTier,
+    TierBinding,
+    TierBindings,
+    TierPolicy,
+    TierCapabilities,
+} from './tier/types';
+
+// Tool
+export { ToolRegistry } from './tool/registry';
+export { ok, fail } from './tool/types';
+export { adaptMcpServer, adaptAllMcpTools } from './tool/McpToolAdapter';
+export type { ToolDef, ToolExecCtx, ToolResult } from './tool/types';
+
+// Skill
+export { HarnessSkillRegistry, defaultLifter } from './skill/SkillRegistry';
+export type { HarnessSkill, SkillSummary, SkillInvocation } from './skill/types';
+
+// Trace
+export { TraceBus } from './trace/events';
+export type {
+    StepResult,
+    ToolCallTrace,
+    ToolResultTrace,
+    TierUpgradeEvent,
+    TraceEventMap,
+    TraceEventName,
+    TraceHandler,
+} from './trace/events';
