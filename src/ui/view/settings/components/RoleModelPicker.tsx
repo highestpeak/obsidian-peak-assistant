@@ -1,11 +1,16 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Search, Check } from 'lucide-react';
+import { Search, Check, AlertTriangle } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { modelRegistry } from '@/core/providers/model-registry';
 import { ProviderIcon } from './ProviderIcon';
 import { CapTags, highlightMatch } from './model-display-utils';
 import type { Profile, RoleConfig } from '@/core/profiles/types';
 import type { ModelCapabilities } from '@/core/providers/types';
+
+const EXPENSIVE_FAST_MODEL_RE = /\b(sonnet|opus)\b/i;
+function isExpensiveForFast(modelId: string): boolean {
+    return EXPENSIVE_FAST_MODEL_RE.test(modelId);
+}
 
 // Map provider kind → catalog id for model lookup
 const PROVIDER_CATALOG: Record<string, string | null> = {
@@ -44,6 +49,7 @@ function buildPickerItems(profiles: Profile[], modelFilter?: (modelId: string) =
 }
 
 export interface RoleModelPickerProps {
+    role?: string;
     activeConfig: { profile: Profile; modelId: string } | null;
     profiles: Profile[];
     onSelect: (config: RoleConfig) => void;
@@ -51,7 +57,19 @@ export interface RoleModelPickerProps {
     modelFilter?: (modelId: string) => boolean;
 }
 
-export function RoleModelPicker({ activeConfig, profiles, onSelect, onClear, modelFilter }: RoleModelPickerProps) {
+export function RoleModelPicker({ role, activeConfig, profiles, onSelect, onClear, modelFilter }: RoleModelPickerProps) {
+    const isFastRole = role === 'agent-fast';
+    const guardedSelect = (config: RoleConfig) => {
+        if (isFastRole && isExpensiveForFast(config.modelId)) {
+            const ok = window.confirm(
+                `${config.modelId} is much more expensive than Haiku for the Fast role.\n\n` +
+                `Haiku is roughly 12× cheaper and is usually sufficient for tool-call loops.\n\n` +
+                `Use ${config.modelId} for Agent Fast anyway?`,
+            );
+            if (!ok) return;
+        }
+        onSelect(config);
+    };
     const [query, setQuery] = useState('');
     const [highlightIdx, setHighlightIdx] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +125,7 @@ export function RoleModelPicker({ activeConfig, profiles, onSelect, onClear, mod
         } else if (e.key === 'Enter') {
             e.preventDefault();
             const item = flatFiltered[highlightIdx];
-            if (item) onSelect({ profileId: item.profileId, modelId: item.modelId });
+            if (item) guardedSelect({ profileId: item.profileId, modelId: item.modelId });
         } else if (e.key === 'Escape') {
             e.preventDefault();
             // Parent handles close via onClear or click-outside
@@ -121,6 +139,12 @@ export function RoleModelPicker({ activeConfig, profiles, onSelect, onClear, mod
 
     return (
         <div className="pktw-w-[320px] pktw-max-h-[380px] pktw-flex pktw-flex-col pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-popover pktw-shadow-lg">
+            {isFastRole && (
+                <div className="pktw-flex pktw-items-start pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-[11px] pktw-bg-pk-warning-bg pktw-text-pk-warning-text pktw-border-b pktw-border-pk-border">
+                    <AlertTriangle className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-mt-px" />
+                    <span>Use <b>Haiku</b> here — roughly 12× cheaper than Sonnet for the Fast role.</span>
+                </div>
+            )}
             {/* Search input */}
             <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-border-b pktw-border-pk-border">
                 <Search className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-muted-foreground pktw-shrink-0" />
@@ -154,7 +178,7 @@ export function RoleModelPicker({ activeConfig, profiles, onSelect, onClear, mod
                                     type="button"
                                     data-idx={idx}
                                     onMouseEnter={() => setHighlightIdx(idx)}
-                                    onClick={() => onSelect({ profileId: item.profileId, modelId: item.modelId })}
+                                    onClick={() => guardedSelect({ profileId: item.profileId, modelId: item.modelId })}
                                     className={cn(
                                         'pktw-w-full pktw-text-left pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors pktw-cursor-pointer',
                                         idx === highlightIdx && 'pktw-bg-pk-accent/10',
@@ -164,6 +188,12 @@ export function RoleModelPicker({ activeConfig, profiles, onSelect, onClear, mod
                                     <span className="pktw-pl-2 pktw-flex-1 pktw-truncate pktw-font-mono">
                                         {highlightMatch(item.modelId, query)}
                                     </span>
+                                    {isFastRole && isExpensiveForFast(item.modelId) && (
+                                        <span
+                                            title="Expensive for Fast role"
+                                            className="pktw-shrink-0 pktw-text-[9px] pktw-font-semibold pktw-tracking-wider pktw-px-1.5 pktw-py-px pktw-rounded pktw-bg-pk-warning-bg pktw-text-pk-warning-text"
+                                        >$$$</span>
+                                    )}
                                     <CapTags caps={item.capabilities} />
                                     {selected && <Check className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-pk-accent" />}
                                 </button>

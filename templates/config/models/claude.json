@@ -1,8 +1,8 @@
 {
   "provider": "claude",
   "models": {
-    "claude-4-opus": {
-      "apiModelId": "claude-4-opus-20250514",
+    "claude-opus-4-7": {
+      "apiModelId": "claude-opus-4-7",
       "icon": "claude",
       "modelType": "llm",
       "costInput": "0",
@@ -21,8 +21,68 @@
         "maxCtx": 200000
       }
     },
-    "claude-4-sonnet": {
-      "apiModelId": "claude-4-sonnet-20250514",
+    "claude-sonnet-4-6": {
+      "apiModelId": "claude-sonnet-4-6",
+      "icon": "claude",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 200000,
+        "maxInputTokens": 200000,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": false,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 200000
+      }
+    },
+    "claude-haiku-4-5": {
+      "apiModelId": "claude-haiku-4-5-20251001",
+      "icon": "claude",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 200000,
+        "maxInputTokens": 200000,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": false,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 200000
+      }
+    },
+    "claude-opus-4": {
+      "apiModelId": "claude-opus-4-20250514",
+      "icon": "claude",
+      "modelType": "llm",
+      "costInput": "0",
+      "costOutput": "0",
+      "tokenLimits": {
+        "maxTokens": 200000,
+        "maxInputTokens": 200000,
+        "recommendedSummaryThreshold": 150000
+      },
+      "capabilities": {
+        "vision": true,
+        "pdfInput": false,
+        "tools": true,
+        "webSearch": false,
+        "reasoning": false,
+        "maxCtx": 200000
+      }
+    },
+    "claude-sonnet-4": {
+      "apiModelId": "claude-sonnet-4-20250514",
       "icon": "claude",
       "modelType": "llm",
       "costInput": "0",

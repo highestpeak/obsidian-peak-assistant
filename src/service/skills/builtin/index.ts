@@ -80,7 +80,7 @@ tags: [academic, research]
 license: free
 type: pipeline
 model:
-  recommended: claude-3-5-sonnet
+  recommended: claude-sonnet-4-6
   minCapabilities:
     tools: true
 inputs:

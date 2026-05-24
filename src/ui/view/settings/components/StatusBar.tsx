@@ -6,7 +6,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { RoleModelPicker } from './RoleModelPicker';
 import type { Profile, RoleConfig } from '@/core/profiles/types';
 
-type RoleKind = 'agent' | 'chat' | 'copilot' | 'embedding' | 'webSearch';
+type RoleKind = 'agent' | 'agent-fast' | 'chat' | 'copilot' | 'embedding' | 'webSearch';
 
 interface RoleSelectorChipProps {
     role: RoleKind;
@@ -55,6 +55,7 @@ function RoleSelectorChip({ role, label, activeConfig, profiles, onSelect, onCle
             {open && (
                 <div className="pktw-absolute pktw-left-0 pktw-top-full pktw-mt-1 pktw-z-50">
                     <RoleModelPicker
+                        role={role}
                         activeConfig={activeConfig}
                         profiles={profiles}
                         onSelect={(config) => { onSelect(config); setOpen(false); }}
@@ -96,7 +97,12 @@ export function StatusBar() {
     const sqliteReady = sqliteStoreManager.isInitialized();
 
     const agentProfiles = profiles.filter(p => p.kind === 'anthropic' || p.kind === 'openrouter');
-    const agentModelFilter = (modelId: string) => !modelId.includes('/') || modelId.startsWith('anthropic/');
+    // Claude Agent SDK only supports Claude 4.x models; 3.x are rejected with "model not found".
+    const agentModelFilter = (modelId: string) => {
+        if (modelId.includes('/') && !modelId.startsWith('anthropic/')) return false;
+        const base = modelId.startsWith('anthropic/') ? modelId.slice('anthropic/'.length) : modelId;
+        return !/^claude-3[-_]/.test(base);
+    };
 
     return (
         <div className="pktw-flex pktw-gap-2.5 pktw-mt-4 pktw-mb-5 pktw-flex-wrap">
@@ -108,7 +114,7 @@ export function StatusBar() {
                 modelFilter={agentModelFilter}
             />
             <RoleSelectorChip
-                role="agent" label="Agent Fast"
+                role="agent-fast" label="Agent Fast"
                 activeConfig={agentFastConfig} profiles={agentProfiles}
                 onSelect={(config) => { registry.setActiveAgentFastConfig(config); bump(); }}
                 onClear={() => { registry.setActiveAgentFastConfig(null); bump(); }}

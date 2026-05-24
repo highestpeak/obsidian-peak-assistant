@@ -54,16 +54,80 @@ export class ProfileRegistry {
     },
     persistFn: PersistFn,
   ): void {
-    this.profiles = [...settings.profiles];
-    this.activeAgentConfig = settings.activeAgentConfig ?? this.migrateOldId(settings.activeAgentProfileId);
-    this.activeAgentFastConfig = (settings as any).activeAgentFastConfig ?? null;
-    this.activeChatConfig = (settings as any).activeChatConfig ?? null;
-    this.activeCopilotConfig = (settings as any).activeCopilotConfig ?? null;
-    this.activeEmbeddingConfig = settings.activeEmbeddingConfig ?? this.migrateOldId(settings.activeEmbeddingProfileId);
-    this.activeWebSearchConfig = settings.activeWebSearchConfig ?? this.migrateOldId(settings.activeWebSearchProfileId);
+    this.profiles = settings.profiles.map(p => this.migrateProfileModelIds(p));
+    // Agent SDK only accepts Claude 4.x — migrate both renames AND 3.x → 4.x for agent roles.
+    this.activeAgentConfig = this.migrateAgentRoleConfig(settings.activeAgentConfig ?? this.migrateOldId(settings.activeAgentProfileId));
+    this.activeAgentFastConfig = this.migrateAgentRoleConfig((settings as any).activeAgentFastConfig) ?? this.deriveDefaultAgentFastConfig();
+    // Chat / Copilot / Embedding / Web Search go through Vercel SDK which still accepts 3.x —
+    // only apply pure renames, not the 3.x → 4.x bump.
+    this.activeChatConfig = this.migrateRoleConfig((settings as any).activeChatConfig);
+    this.activeCopilotConfig = this.migrateRoleConfig((settings as any).activeCopilotConfig);
+    this.activeEmbeddingConfig = this.migrateRoleConfig(settings.activeEmbeddingConfig ?? this.migrateOldId(settings.activeEmbeddingProfileId));
+    this.activeWebSearchConfig = this.migrateRoleConfig(settings.activeWebSearchConfig ?? this.migrateOldId(settings.activeWebSearchProfileId));
     this.sdkSettings = { ...DEFAULT_SDK_SETTINGS, ...settings.sdkSettings };
     this.customEndpoints = [...(settings.customEndpoints ?? [])];
     this.persistFn = persistFn;
+  }
+
+  /**
+   * Renamed catalog entries — keep persisted user data working when we change ids.
+   * Maps legacy modelIds → canonical equivalents. Applied on load and migrated to disk
+   * on next persist.
+   */
+  // Pure renames — safe everywhere (Chat / Copilot / Agent / Vercel SDK all match).
+  private static readonly MODEL_ID_REWRITES: Record<string, string> = {
+    'claude-4-opus': 'claude-opus-4',
+    'claude-4-sonnet': 'claude-sonnet-4',
+    'claude-opus-4-6': 'claude-opus-4-7',
+    'anthropic/claude-4-opus': 'anthropic/claude-opus-4',
+    'anthropic/claude-4-sonnet': 'anthropic/claude-sonnet-4',
+    'anthropic/claude-opus-4-6': 'anthropic/claude-opus-4-7',
+  };
+
+  // Claude Agent SDK rejects 3.x — bump persisted Agent / Agent Fast picks to 4.x equivalents.
+  // Only applied to agent-role configs; Chat / Copilot can still use 3.x via Vercel SDK.
+  private static readonly AGENT_3X_REWRITES: Record<string, string> = {
+    'claude-3-5-haiku': 'claude-haiku-4-5',
+    'claude-3-haiku': 'claude-haiku-4-5',
+    'claude-3-5-sonnet': 'claude-sonnet-4-6',
+    'claude-3-7-sonnet': 'claude-sonnet-4-6',
+    'claude-3-sonnet': 'claude-sonnet-4-6',
+    'claude-3-opus': 'claude-opus-4-7',
+    'anthropic/claude-3-5-haiku': 'anthropic/claude-haiku-4-5',
+    'anthropic/claude-3-haiku': 'anthropic/claude-haiku-4-5',
+    'anthropic/claude-3-5-sonnet': 'anthropic/claude-sonnet-4-6',
+    'anthropic/claude-3-7-sonnet': 'anthropic/claude-sonnet-4-6',
+    'anthropic/claude-3-sonnet': 'anthropic/claude-sonnet-4-6',
+    'anthropic/claude-3-opus': 'anthropic/claude-opus-4-7',
+  };
+
+  private static rewriteModelId(id: string | null | undefined): string {
+    if (!id) return id ?? '';
+    return ProfileRegistry.MODEL_ID_REWRITES[id] ?? id;
+  }
+
+  private static rewriteAgentModelId(id: string | null | undefined): string {
+    if (!id) return id ?? '';
+    const renamed = ProfileRegistry.MODEL_ID_REWRITES[id] ?? id;
+    return ProfileRegistry.AGENT_3X_REWRITES[renamed] ?? renamed;
+  }
+
+  private migrateRoleConfig(cfg: RoleConfig | null | undefined): RoleConfig | null {
+    if (!cfg) return null;
+    return { profileId: cfg.profileId, modelId: ProfileRegistry.rewriteModelId(cfg.modelId) };
+  }
+
+  private migrateAgentRoleConfig(cfg: RoleConfig | null | undefined): RoleConfig | null {
+    if (!cfg) return null;
+    return { profileId: cfg.profileId, modelId: ProfileRegistry.rewriteAgentModelId(cfg.modelId) };
+  }
+
+  private migrateProfileModelIds(p: Profile): Profile {
+    // Profile-level primary/fast feed Agent SDK env vars, so also apply the 3.x bump.
+    const primary = ProfileRegistry.rewriteAgentModelId(p.primaryModel);
+    const fast = ProfileRegistry.rewriteAgentModelId(p.fastModel);
+    if (primary === p.primaryModel && fast === p.fastModel) return p;
+    return { ...p, primaryModel: primary, fastModel: fast };
   }
 
   private migrateOldId(id: string | null | undefined): RoleConfig | null {
@@ -71,6 +135,18 @@ export class ProfileRegistry {
     const profile = this.profiles.find(p => p.id === id);
     if (!profile) return null;
     return { profileId: id, modelId: profile.primaryModel };
+  }
+
+  /**
+   * When Agent Fast is unset, derive a sensible default from the Agent profile's
+   * fast tier (typically Haiku). Keeps users out of the trap of paying Sonnet
+   * prices for the Fast role.
+   */
+  private deriveDefaultAgentFastConfig(): RoleConfig | null {
+    if (!this.activeAgentConfig) return null;
+    const profile = this.profiles.find(p => p.id === this.activeAgentConfig!.profileId);
+    if (!profile) return null;
+    return { profileId: profile.id, modelId: profile.fastModel };
   }
 
   // --------------- Selectors ---------------
@@ -220,6 +296,7 @@ export class ProfileRegistry {
     const profile = this.profiles.find((p) => p.id === id);
     if (!profile) throw new Error(`Profile with id "${id}" not found`);
     this.activeAgentConfig = { profileId: id, modelId: profile.primaryModel };
+    this.autoSeedAgentFast(profile);
     this.persist();
   }
 
@@ -228,7 +305,17 @@ export class ProfileRegistry {
       throw new Error(`Profile with id "${config.profileId}" not found`);
     }
     this.activeAgentConfig = config;
+    if (config) {
+      const profile = this.profiles.find(p => p.id === config.profileId);
+      if (profile) this.autoSeedAgentFast(profile);
+    }
     this.persist();
+  }
+
+  /** When Agent gets set and Agent Fast is still empty, seed Fast to the profile's fast tier. */
+  private autoSeedAgentFast(profile: Profile): void {
+    if (this.activeAgentFastConfig) return;
+    this.activeAgentFastConfig = { profileId: profile.id, modelId: profile.fastModel };
   }
 
   setActiveAgentFastConfig(config: RoleConfig | null): void {

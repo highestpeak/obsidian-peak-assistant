@@ -26,7 +26,7 @@ export const DEFAULT_SDK_PROFILE: SdkProfile = {
 	kind: 'anthropic',
 	baseUrl: 'https://api.anthropic.com',
 	apiKey: null, // must be filled from settings at runtime
-	primaryModel: 'claude-opus-4-6',
+	primaryModel: 'claude-sonnet-4-6',
 	fastModel: 'claude-haiku-4-5',
 };
 

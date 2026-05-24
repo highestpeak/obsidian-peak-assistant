@@ -258,7 +258,7 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 		sdkProfile: {
 			kind: 'anthropic',
 			baseUrl: 'https://api.anthropic.com',
-			primaryModel: 'claude-opus-4-6',
+			primaryModel: 'claude-sonnet-4-6',
 			fastModel: 'claude-haiku-4-5',
 		},
 	},
