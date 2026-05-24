@@ -45,6 +45,19 @@ export interface TierUpgradeEvent {
     auto: boolean;
 }
 
+export interface ContextCompactedEvent {
+    loopId: string;
+    stepIndex: number;
+    /** Tokens estimated before compaction ran (input). */
+    tokensBefore: number;
+    /** Tokens estimated after compaction (kept blocks + windowed messages). */
+    tokensAfter: number;
+    /** Number of MemoryBlock entries dropped (evictable, lowest priority first). */
+    droppedBlocks: number;
+    /** Count of middle messages folded into the summary placeholder. */
+    droppedMessages: number;
+}
+
 export type TraceEventMap = {
     step_start: { loopId: string; stepIndex: number; tier: ModelTier; modelId: string };
     step_finish: StepResult;
@@ -53,6 +66,7 @@ export type TraceEventMap = {
     tier_escalate: TierUpgradeEvent;
     loop_start: { loopId: string; startedAt: number };
     loop_finish: { loopId: string; finishReason: string; durationMs: number };
+    context_compacted: ContextCompactedEvent;
 };
 
 export type TraceEventName = keyof TraceEventMap;

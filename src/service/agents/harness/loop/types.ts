@@ -11,6 +11,8 @@ import type { StepResult, TraceBus } from '../trace/events';
 import type { HookBus } from '../hook/HookBus';
 import type { PermissionGuard } from '../permission/PermissionGuard';
 import type { SubAgentDefinition } from '../subagent/types';
+import type { ContextManager } from '../context/ContextManager';
+import type { MemoryStore } from '../memory/MemoryStore';
 
 export interface AgentLoopBudget {
     /** Hard cap on outer-loop iterations (one model call per iteration). */
@@ -64,6 +66,19 @@ export interface AgentLoopConfig {
      * surfaces as `subagent.<name>` in the parent model's tool list.
      */
     subagents?: SubAgentDefinition[];
+    /**
+     * Optional working-memory bag. When supplied, blocks (priority-sorted)
+     * are injected into the system prompt at every step and feed
+     * `ContextManager.compactIfNeeded` so the budget is enforced across
+     * blocks + history together.
+     */
+    memory?: MemoryStore;
+    /**
+     * Optional context manager. When present, the loop runs `compactIfNeeded`
+     * before each `generateText` call and emits `context_compacted` traces.
+     * Absent → no compaction (M1+M2 behavior).
+     */
+    context?: ContextManager;
 }
 
 export interface AgentLoopResult {

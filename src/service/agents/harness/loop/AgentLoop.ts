@@ -26,6 +26,8 @@ import type {
 import { evaluateStopConditions, hasFinalAnswer } from './stopConditions';
 import { SubAgentDispatcher } from '../subagent/SubAgentDispatcher';
 import { buildSubagentTool } from '../subagent/subagentTool';
+import type { MemoryBlock } from '../memory/types';
+import { renderMemoryBlocks } from '../memory/MemoryBlock';
 
 const ESCALATE_TOOL_NAME = 'escalate';
 
@@ -89,8 +91,8 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
         }
     }
 
-    const systemPrompt = buildSystemPrompt(cfg);
-    const messages: ModelMessage[] = [...cfg.initialMessages];
+    const baseSystemPrompt = buildSystemPrompt(cfg);
+    let messages: ModelMessage[] = [...cfg.initialMessages];
 
     const steps: StepResult[] = [];
     let totalTokens = 0;
@@ -126,6 +128,29 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
             toolSet[t.name] = wrapTool(t, cfg, tier.tier, stepIndex, trace, captured);
         }
         toolSet[ESCALATE_TOOL_NAME] = cfg.tierController.escalateTool();
+
+        // Compact (if configured) BEFORE the model call so the request fits
+        // the tier's context window. Memory blocks are sourced fresh each
+        // step in case prior steps mutated the store.
+        const activeBlocks: MemoryBlock[] = cfg.memory ? cfg.memory.activeBlocks() : [];
+        let keptBlocks: MemoryBlock[] = activeBlocks;
+        if (cfg.context) {
+            const before = cfg.context.estimateTokens(messages, activeBlocks);
+            const compaction = await cfg.context.compactIfNeeded(messages, activeBlocks);
+            if (compaction.compacted) {
+                messages = compaction.messages;
+                trace.emit('context_compacted', {
+                    loopId: cfg.loopId,
+                    stepIndex,
+                    tokensBefore: before,
+                    tokensAfter: compaction.estimatedTokens,
+                    droppedBlocks: compaction.droppedBlocks.length,
+                    droppedMessages: compaction.droppedMessageCount,
+                });
+            }
+            keptBlocks = compaction.keptBlocks;
+        }
+        const systemPrompt = composeSystemPrompt(baseSystemPrompt, keptBlocks);
 
         const stepStart = Date.now();
         let result: Awaited<ReturnType<typeof generateText>>;
@@ -257,6 +282,17 @@ function buildSystemPrompt(cfg: AgentLoopConfig): string {
         }
     }
     return parts.join('\n\n');
+}
+
+/**
+ * Append rendered memory blocks (priority desc) to the base system prompt.
+ * Called each step so block content reflects the latest store snapshot.
+ */
+function composeSystemPrompt(base: string, blocks: ReadonlyArray<MemoryBlock>): string {
+    if (blocks.length === 0) return base;
+    const rendered = renderMemoryBlocks(blocks);
+    if (!rendered) return base;
+    return base ? `${base}\n\n${rendered}` : rendered;
 }
 
 function wrapTool(

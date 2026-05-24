@@ -48,6 +48,7 @@ export type {
     ToolCallTrace,
     ToolResultTrace,
     TierUpgradeEvent,
+    ContextCompactedEvent,
     TraceEventMap,
     TraceEventName,
     TraceHandler,
@@ -88,3 +89,24 @@ export type {
     SubAgentDefinition,
     SubAgentDispatchSummary,
 } from './subagent';
+
+// Memory (M3)
+export {
+    MemoryStore,
+    ReflectionStore,
+    InMemoryReflectionStore,
+    createMemoryBlock,
+    renderMemoryBlock,
+    renderMemoryBlocks,
+    DEFAULT_BLOCK_PRIORITY,
+} from './memory';
+export type {
+    MemoryBlock,
+    MemoryStoreSnapshot,
+    Reflection,
+    ReflectionStoreLike,
+} from './memory';
+
+// Context (M3)
+export { ContextManager, DEFAULT_CONTEXT_CONFIG } from './context';
+export type { ContextManagerConfig, CompactionResult } from './context';

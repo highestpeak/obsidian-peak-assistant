@@ -474,6 +474,18 @@ export interface Database {
 		avg_duration_ms: number;
 		max_duration_ms: number;
 	};
+	/**
+	 * Harness procedural memory: distilled insights from past agent loops.
+	 * Written by an offline batch job (M5+); M3 only ships the storage layer.
+	 */
+	harness_reflection: {
+		id: number | undefined; // AUTOINCREMENT — omit on insert
+		loop_id: string;
+		agent_name: string;
+		insight: string;
+		created_at: number;
+		metadata_json: string | null;
+	};
 }
 
 export type UsageLogRow = Database['usage_log'];
@@ -987,6 +999,21 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			UNIQUE(date, feature, action, provider, model)
 		);
 		CREATE INDEX IF NOT EXISTS idx_usage_daily_date ON usage_daily(date);
+	`);
+
+	// ── Harness procedural memory (reflections) ──
+	// Spec §3.8: written by an offline batch job (M5+); M3 ships storage only.
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS harness_reflection (
+			id            INTEGER PRIMARY KEY AUTOINCREMENT,
+			loop_id       TEXT NOT NULL,
+			agent_name    TEXT NOT NULL,
+			insight       TEXT NOT NULL,
+			created_at    INTEGER NOT NULL,
+			metadata_json TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_harness_reflection_agent ON harness_reflection(agent_name, created_at DESC);
+		CREATE INDEX IF NOT EXISTS idx_harness_reflection_loop ON harness_reflection(loop_id);
 	`);
 
 	// ── Tag suggestion feedback table ──
