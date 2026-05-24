@@ -142,18 +142,18 @@ export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSet
                 <div className="pktw-flex pktw-items-start pktw-gap-1.5 pktw-mt-1 pktw-mb-3 pktw-p-2.5 pktw-rounded-md pktw-bg-pk-accent/5 pktw-border pktw-border-pk-accent/20">
                     <Info className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-mt-px pktw-text-pk-accent" />
                     <span className="pktw-text-[11px] pktw-text-pk-foreground-faint">
-                        Which engine runs migrated agents (FollowupChat, DocSimple). VaultSearch always uses Claude Agent SDK due to HITL coupling.
+                        Which loop engine runs agents. Harness is our in-process ReAct loop on Vercel AI SDK (any provider — Claude, GPT, Ollama, OpenRouter). Claude Agent SDK is Anthropic's official SDK (requires API key, runs Anthropic models only). Vault Search currently requires Claude Agent SDK until its MCP tools are adapted to harness.
                     </span>
                 </div>
-                <FieldRow label="Backend" hint="Auto = harness for migrated agents; Claude Agent SDK requires API key">
+                <FieldRow label="Backend" hint="Picks the loop engine; model selection is via Tier Bindings below">
                     <select
                         value={harness.agentBackend}
                         onChange={(e) => updateHarness({ agentBackend: e.target.value as HarnessSettings['agentBackend'] })}
                         className={INPUT_CLS}
                     >
-                        <option value="auto">Auto (harness, fallback per agent)</option>
-                        <option value="harness">Self-hosted harness only (local models, low cost)</option>
-                        <option value="claude-agent-sdk">Claude Agent SDK only (highest quality, API key)</option>
+                        <option value="auto">Auto (harness for migrated agents, SDK for the rest)</option>
+                        <option value="harness">Self-hosted harness (Vercel AI SDK, any provider)</option>
+                        <option value="claude-agent-sdk">Claude Agent SDK (Anthropic only)</option>
                     </select>
                 </FieldRow>
             </div>

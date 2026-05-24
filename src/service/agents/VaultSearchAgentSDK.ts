@@ -20,6 +20,7 @@ import type { Profile } from '@/core/profiles/types';
 import { PromptId } from '@/service/prompt/PromptId';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { warmupPool, queryWithProfile } from './core/sdkAgentPool';
+import { AppContext } from '@/app/context/AppContext';
 import {
     buildVaultMcpServer,
     type GrepHit,
@@ -43,10 +44,12 @@ export interface VaultSearchAgentSdkOptions {
 }
 
 /**
- * Main shell. Constructed by VaultSearchAgent when the feature flag is on.
- *
- * Harness tier: online (runs via Claude Agent SDK; M4 TODO: migrate to bridge.run({ useSDK: true })
- * once VaultMcpServer tools can be adapted to harness ToolDef format).
+ * Main shell for vault search. Currently only supports the Claude Agent SDK
+ * backend because vaultMcpServer's 6 tools (vault_list_folders / vault_read_*
+ * / vault_grep / vault_wikilink_expand / vault_submit_plan) use the Anthropic
+ * SDK MCP protocol shape. Adapting them to harness ToolDef + HITL handler is
+ * tracked as future work; until then, selecting harness backend errors out
+ * with a clear message rather than silently falling back.
  */
 export class VaultSearchAgentSDK {
 
@@ -76,6 +79,21 @@ export class VaultSearchAgentSDK {
         const { app, pluginId, searchClient, aiServiceManager } = this.options;
         const triggerName = StreamTriggerName.SEARCH_AI_AGENT;
         const startTs = Date.now();
+
+        // 0. Backend gate — vault MCP tools aren't yet adapted to harness.
+        const backend = AppContext.getHarnessSettings().agentBackend;
+        if (backend === 'harness') {
+            yield {
+                type: 'error',
+                error: new Error(
+                    'Vault Search currently requires the Claude Agent SDK backend. ' +
+                    'Switch Agent Backend to "Auto" or "Claude Agent SDK" in Settings → Agent Harness, ' +
+                    'or wait for the vault MCP tools to be adapted to the harness loop.',
+                ),
+                triggerName,
+            } as LLMStreamEvent;
+            return;
+        }
 
         // 1. Ensure pool is warmed up (idempotent)
         try {
