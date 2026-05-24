@@ -1,15 +1,19 @@
 /**
- * Build TierBindings from the existing ProfileRegistry.
+ * Build TierBindings from settings + ProfileRegistry.
  *
- * M1 wiring: each tier reads a role-config (agent-fast / agent / chat) off
- * ProfileRegistry and resolves the LanguageModel via the existing provider
- * factory. Profiles are unchanged; UI still drives them via the normal
- * settings flow.
+ * Resolution order per tier:
+ *   1. HarnessSettings.{localFast,localDeep,online}Config — explicit harness tier picks
+ *   2. ProfileRegistry role configs (agent-fast / agent / chat) — fallback to existing UI pickers
+ *
+ * This lets users override per-tier models in Settings → Agent Harness while
+ * still working for users who only configured the StatusBar role pickers.
  */
 
 import type { LanguageModel } from 'ai';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createLanguageModel } from '@/core/providers/vercel/provider-factory';
+import { AppContext } from '@/app/context/AppContext';
+import type { RoleConfig } from '@/core/profiles/types';
 import type { ModelTier, TierBinding, TierBindings, TierCapabilities } from './types';
 import { DEFAULT_TIER_CAPABILITIES } from './types';
 
@@ -47,14 +51,39 @@ function bindingFromRole(
 }
 
 /**
- * Read currently-active role configs out of ProfileRegistry and produce a
- * partial map. Tiers without a bound role are simply absent.
+ * Resolve a HarnessSettings.tier RoleConfig to the {profile, modelId} shape
+ * bindingFromRole expects. Returns null if profile lookup fails.
+ */
+function resolveTierConfig(cfg: RoleConfig | null): { profile: { id: string; kind: string }; modelId: string } | null {
+    if (!cfg) return null;
+    const profile = ProfileRegistry.getInstance().getProfileById(cfg.profileId);
+    if (!profile) return null;
+    return { profile, modelId: cfg.modelId };
+}
+
+/**
+ * Build the tier→binding map.
+ *
+ * Reads HarnessSettings tier configs first, then falls back to the existing
+ * StatusBar role configs (agent-fast / agent / chat). Tiers with neither
+ * source bound are absent from the result; TierController handles missing
+ * tiers by falling forward to the next bound one.
  */
 export function defaultTierBindings(): TierBindings {
     const reg = ProfileRegistry.getInstance();
+    const harness = AppContext.getHarnessSettings();
     return {
-        'local-fast': bindingFromRole('local-fast', reg.getActiveAgentFastConfig()),
-        'local-deep': bindingFromRole('local-deep', reg.getActiveAgentConfig()),
-        online: bindingFromRole('online', reg.getActiveChatConfig()),
+        'local-fast': bindingFromRole(
+            'local-fast',
+            resolveTierConfig(harness.localFastConfig) ?? reg.getActiveAgentFastConfig(),
+        ),
+        'local-deep': bindingFromRole(
+            'local-deep',
+            resolveTierConfig(harness.localDeepConfig) ?? reg.getActiveAgentConfig(),
+        ),
+        online: bindingFromRole(
+            'online',
+            resolveTierConfig(harness.onlineConfig) ?? reg.getActiveChatConfig(),
+        ),
     };
 }
