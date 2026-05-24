@@ -24,6 +24,8 @@ import type {
     AgentLoopResult,
 } from './types';
 import { evaluateStopConditions, hasFinalAnswer } from './stopConditions';
+import { SubAgentDispatcher } from '../subagent/SubAgentDispatcher';
+import { buildSubagentTool } from '../subagent/subagentTool';
 
 const ESCALATE_TOOL_NAME = 'escalate';
 
@@ -38,11 +40,54 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
     const startedAt = Date.now();
     trace.emit('loop_start', { loopId: cfg.loopId, startedAt });
 
+    // Fire session_start hook before any model work. A block here aborts the
+    // entire loop — the harness layer is the guarantee point, not the model.
+    if (cfg.hooks) {
+        const sessionStart = await cfg.hooks.fire('session_start', {
+            loopId: cfg.loopId,
+            timestamp: startedAt,
+        });
+        if (sessionStart.kind === 'block') {
+            trace.emit('loop_finish', {
+                loopId: cfg.loopId,
+                finishReason: 'hook_block',
+                durationMs: Date.now() - startedAt,
+            });
+            return {
+                loopId: cfg.loopId,
+                finalText: '',
+                steps: [],
+                finishReason: 'hook_block',
+                tierUsage: { 'local-fast': 0, 'local-deep': 0, online: 0 },
+                totalTokens: 0,
+                totalToolCalls: 0,
+                durationMs: Date.now() - startedAt,
+                error: `session_start blocked: ${sessionStart.reason}`,
+            };
+        }
+    }
+
     const tierUsage: Record<ModelTier, number> = {
         'local-fast': 0,
         'local-deep': 0,
         online: 0,
     };
+
+    // Auto-inject subagent tools. The parent loop never sees subagent
+    // internals — only the tool surface. We construct one dispatcher per loop
+    // run so subagent loopIds nest under the parent.
+    const effectiveTools: ToolDef[] = [...cfg.tools];
+    if (cfg.subagents && cfg.subagents.length > 0) {
+        const dispatcher = new SubAgentDispatcher({
+            parentLoopId: cfg.loopId,
+            tierController: cfg.tierController,
+            trace,
+            hooks: cfg.hooks,
+        });
+        for (const def of cfg.subagents) {
+            effectiveTools.push(buildSubagentTool(def, dispatcher) as ToolDef);
+        }
+    }
 
     const systemPrompt = buildSystemPrompt(cfg);
     const messages: ModelMessage[] = [...cfg.initialMessages];
@@ -73,7 +118,7 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
         });
 
         const captured: CapturedToolEvent[] = [];
-        const allowedTools = cfg.tools.filter(
+        const allowedTools = effectiveTools.filter(
             (t) => !t.allowedTiers || t.allowedTiers.includes(tier.tier),
         );
         const toolSet: ToolSet = {};
@@ -172,6 +217,16 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
         }
     }
 
+    // Fire stop hook before emitting loop_finish. Block here is informational
+    // only — the loop has already exited and there's no further work to halt.
+    if (cfg.hooks) {
+        try {
+            await cfg.hooks.fire('stop', { loopId: cfg.loopId, timestamp: Date.now() });
+        } catch (err) {
+            console.error('[AgentLoop] stop hook error:', err);
+        }
+    }
+
     const last = steps[steps.length - 1];
     const finalText = last?.text ?? '';
     const durationMs = Date.now() - startedAt;
@@ -223,6 +278,64 @@ function wrapTool(
             };
             trace.emit('tool_call', { loopId: cfg.loopId, stepIndex, ...callTrace });
             const start = Date.now();
+
+            const finalize = (result: ToolResult): ToolResult => {
+                const resultTrace: ToolResultTrace = {
+                    toolName: def.name,
+                    toolCallId: info.toolCallId,
+                    ok: result.ok,
+                    payload: result.ok ? result.data : result.error,
+                    durationMs: Date.now() - start,
+                };
+                captured.push({ call: callTrace, result: resultTrace });
+                trace.emit('tool_result', { loopId: cfg.loopId, stepIndex, ...resultTrace });
+                return result;
+            };
+
+            // (1) Permission check FIRST — deny-first invariant. Even if a
+            // pre_tool_use hook would allow, an explicit deny rule wins.
+            if (cfg.permission) {
+                const decision = cfg.permission.check(
+                    { name: def.name, kind: def.kind },
+                    args,
+                );
+                if (decision.decision === 'deny') {
+                    return finalize({
+                        ok: false,
+                        error: `permission denied: ${decision.reason}`,
+                        recoverable: false,
+                    });
+                }
+            }
+
+            // (2) PreToolUse hook — block / continue. Hooks run in harness,
+            // not via model, so guarantees hold even for adversarial outputs.
+            if (cfg.hooks) {
+                const pre = await cfg.hooks.fire(
+                    'pre_tool_use',
+                    {
+                        loopId: cfg.loopId,
+                        stepIndex,
+                        tier,
+                        toolName: def.name,
+                        toolCallId: info.toolCallId,
+                        args,
+                    },
+                    def.name,
+                );
+                if (pre.kind === 'block') {
+                    return finalize({
+                        ok: false,
+                        error: `blocked by pre_tool_use hook: ${pre.reason}`,
+                        recoverable: false,
+                    });
+                }
+                // PreToolUse modify is intentionally NOT supported in M2 — we'd
+                // need typed arg patching; revisit in M3 if a real use case
+                // emerges.
+            }
+
+            // (3) Execute the tool.
             const ctx: ToolExecCtx = {
                 loopId: cfg.loopId,
                 stepIndex,
@@ -239,16 +352,35 @@ function wrapTool(
                     recoverable: false,
                 };
             }
-            const resultTrace: ToolResultTrace = {
-                toolName: def.name,
-                toolCallId: info.toolCallId,
-                ok: result.ok,
-                payload: result.ok ? result.data : result.error,
-                durationMs: Date.now() - start,
-            };
-            captured.push({ call: callTrace, result: resultTrace });
-            trace.emit('tool_result', { loopId: cfg.loopId, stepIndex, ...resultTrace });
-            return result;
+
+            // (4) PostToolUse hook — may modify the result before it reaches
+            // the model (e.g. redact secrets) or block to surface an error.
+            if (cfg.hooks) {
+                const post = await cfg.hooks.fire(
+                    'post_tool_use',
+                    {
+                        loopId: cfg.loopId,
+                        stepIndex,
+                        tier,
+                        toolName: def.name,
+                        toolCallId: info.toolCallId,
+                        args,
+                        result,
+                    },
+                    def.name,
+                );
+                if (post.kind === 'block') {
+                    result = {
+                        ok: false,
+                        error: `blocked by post_tool_use hook: ${post.reason}`,
+                        recoverable: false,
+                    };
+                } else if (post.kind === 'modify') {
+                    result = post.result;
+                }
+            }
+
+            return finalize(result);
         },
     });
 }

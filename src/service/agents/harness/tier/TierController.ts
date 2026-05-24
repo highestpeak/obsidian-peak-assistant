@@ -64,6 +64,14 @@ export class TierController {
         return this.activeTier;
     }
 
+    /**
+     * Expose bindings read-only so satellite components (e.g. SubAgentDispatcher)
+     * can spawn isolated child controllers without sharing escalation state.
+     */
+    getBindings(): TierBindings {
+        return this.bindings;
+    }
+
     escalationCount(): number {
         return this.escalations;
     }

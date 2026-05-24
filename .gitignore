@@ -30,6 +30,7 @@ dist-desktop/
 fonts/
 main.css
 main.js
+temp-test.js
 native/
 node_modules
 opencode.json

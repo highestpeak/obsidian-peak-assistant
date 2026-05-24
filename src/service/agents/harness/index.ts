@@ -52,3 +52,39 @@ export type {
     TraceEventName,
     TraceHandler,
 } from './trace/events';
+
+// Permission (M2)
+export { PermissionGuard, DEFAULT_PERMISSION_MODE, isMutating, ruleMatches } from './permission';
+export type {
+    PermissionConfig,
+    PermissionDecision,
+    PermissionDecisionAllow,
+    PermissionDecisionDeny,
+    PermissionMode,
+    PermissionRule,
+    ToolForPermission,
+    ToolKind,
+} from './permission';
+
+// Hook (M2)
+export { HookBus, runHook, matcherApplies } from './hook';
+export type {
+    HookConfig,
+    HookContext,
+    HookContextMap,
+    HookEvent,
+    HookHandler,
+    HookResult,
+    HookSessionPayload,
+    HookToolCallPayload,
+    HookToolResultPayload,
+} from './hook';
+
+// SubAgent (M2)
+export { SubAgentDispatcher, buildSubagentTool, subagentToolName } from './subagent';
+export type {
+    DispatcherCtx,
+    DispatchOptions,
+    SubAgentDefinition,
+    SubAgentDispatchSummary,
+} from './subagent';

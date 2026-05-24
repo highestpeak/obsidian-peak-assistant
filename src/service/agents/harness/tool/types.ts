@@ -28,6 +28,12 @@ export interface ToolDef<TInput = any, TOutput = unknown> {
     inputSchema: ZodTypeAny;
     /** Tier whitelist. Undefined = all tiers. */
     allowedTiers?: ModelTier[];
+    /**
+     * Optional classification used by PermissionGuard. Defaults to 'read' if
+     * unspecified — tools that mutate state should declare 'edit' or
+     * 'destructive' explicitly.
+     */
+    kind?: 'read' | 'edit' | 'destructive' | 'meta';
     execute(args: TInput, ctx: ToolExecCtx): Promise<ToolResult<TOutput>>;
 }
 
