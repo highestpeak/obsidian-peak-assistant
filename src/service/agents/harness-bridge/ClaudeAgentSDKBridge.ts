@@ -1,12 +1,11 @@
 /**
  * ClaudeAgentSDKBridge — unified run() entry point.
  *
- * - useSDK=false (default): delegates to runAgentLoop (self-hosted harness).
- * - useSDK=true: delegates to sdkAgentPool.queryWithProfile, wraps the result
- *   into AgentLoopResult shape so callers stay provider-agnostic.
- *
- * Design goal: thin adapter, zero new abstractions. sdkAgentPool is NOT
- * rewritten — it's imported as-is.
+ * Routing rules (in order):
+ * 1. cfg.useSDK explicitly true/false  → honor caller's choice (overrides settings)
+ * 2. Settings agentBackend = 'claude-agent-sdk'  → SDK
+ * 3. Settings agentBackend = 'harness'           → harness
+ * 4. Settings agentBackend = 'auto' (default)    → harness (with SDK reserved for hard-coded callers like VaultSearchAgentSDK)
  */
 
 import type { AgentLoopConfig, AgentLoopResult } from '@/service/agents/harness/loop/types';
@@ -17,7 +16,10 @@ import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
 
 export interface BridgeRunConfig extends AgentLoopConfig {
-    /** When true, route through Claude Agent SDK pool instead of harness loop. */
+    /**
+     * Explicit backend override. When set, ignores user settings.
+     * Used by VaultSearchAgentSDK which is HITL-coupled to vaultMcpServer.
+     */
     useSDK?: boolean;
     /** SDK-specific: system prompt string (used instead of AgentLoopConfig.systemPrompt when routing via SDK). */
     sdkPrompt?: string;
@@ -31,10 +33,17 @@ export interface BridgeRunConfig extends AgentLoopConfig {
 
 export class ClaudeAgentSDKBridge {
     async run(cfg: BridgeRunConfig): Promise<AgentLoopResult> {
-        if (cfg.useSDK) {
+        if (this.shouldUseSDK(cfg)) {
             return this.runViaSDK(cfg);
         }
         return runAgentLoop(cfg);
+    }
+
+    /** Resolve which backend to use, honoring caller override then settings. */
+    private shouldUseSDK(cfg: BridgeRunConfig): boolean {
+        if (typeof cfg.useSDK === 'boolean') return cfg.useSDK;
+        const backend = AppContext.getHarnessSettings().agentBackend;
+        return backend === 'claude-agent-sdk';
     }
 
     private async runViaSDK(cfg: BridgeRunConfig): Promise<AgentLoopResult> {

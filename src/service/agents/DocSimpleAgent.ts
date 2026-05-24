@@ -23,7 +23,7 @@ import { getRecentAnalysisResultTool } from '@/service/context/context-tools/get
 import { getWorkingThemeTool } from '@/service/context/context-tools/getWorkingThemeTool';
 import { TierController } from '@/service/agents/harness/tier/TierController';
 import { defaultTierBindings } from '@/service/agents/harness/tier/bindings';
-import { runAgentLoop } from '@/service/agents/harness';
+import { getAgentBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
 import { adaptAgentTools } from '@/service/agents/harness-bridge/agentToolAdapter';
 import type { AgentTool } from "@/service/tools/types";
 
@@ -115,7 +115,7 @@ export class DocSimpleAgent {
 			loopId,
 		});
 
-		const result = await runAgentLoop({
+		const result = await getAgentBridge().run({
 			loopId,
 			systemPrompt: system,
 			initialMessages: [{ role: 'user', content: prompt }],

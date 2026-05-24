@@ -205,7 +205,17 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
  * The three tier RoleConfig fields map to ProfileRegistry role configs so the
  * same profiles/models already configured by the user can be reused.
  */
+/**
+ * Which backend runs agent loops:
+ * - 'auto'              — prefer self-hosted harness; fall back to SDK only for agents that hard-code it (VaultSearchAgentSDK).
+ * - 'harness'           — always use the self-hosted loop (local models). VaultSearchAgentSDK still uses SDK regardless (HITL coupling).
+ * - 'claude-agent-sdk'  — route migrated agents through Claude Agent SDK (highest quality, requires Anthropic API key).
+ */
+export type AgentBackend = 'auto' | 'harness' | 'claude-agent-sdk';
+
 export interface HarnessSettings {
+	/** Which backend runs agent loops. Default 'auto'. */
+	agentBackend: AgentBackend;
 	/** local-fast tier profile+model (e.g. Ollama Qwen3-14B). null = disabled. */
 	localFastConfig: RoleConfig | null;
 	/** local-deep tier profile+model (e.g. Ollama Qwen3-32B). null = disabled. */
@@ -225,6 +235,7 @@ export interface HarnessSettings {
 }
 
 export const DEFAULT_HARNESS_SETTINGS: HarnessSettings = {
+	agentBackend: 'auto',
 	localFastConfig: null,
 	localDeepConfig: null,
 	onlineConfig: null,

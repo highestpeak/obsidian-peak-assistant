@@ -16,6 +16,7 @@ import { normalizePluginSettings } from '@/app/settings/PluginSettingsLoader';
 // ─── 1. Default values ────────────────────────────────────────────────────────
 
 function testDefaults() {
+    assert.strictEqual(DEFAULT_HARNESS_SETTINGS.agentBackend, 'auto', 'agentBackend default');
     assert.strictEqual(DEFAULT_HARNESS_SETTINGS.allowEscalation, true, 'allowEscalation default');
     assert.strictEqual(DEFAULT_HARNESS_SETTINGS.maxEscalationsPerLoop, 3, 'maxEscalationsPerLoop default');
     assert.strictEqual(DEFAULT_HARNESS_SETTINGS.autoEscalateScoreBelow, 0.4, 'autoEscalateScoreBelow default');
@@ -36,6 +37,7 @@ function testDefaults() {
 function testFullRoundtrip() {
     const saved = {
         harnessSettings: {
+            agentBackend: 'claude-agent-sdk',
             localFastConfig: { profileId: 'ollama-1', modelId: 'qwen3:14b' },
             localDeepConfig: { profileId: 'ollama-1', modelId: 'qwen3:32b' },
             onlineConfig: { profileId: 'anthropic-1', modelId: 'claude-sonnet-4-7' },
@@ -50,6 +52,7 @@ function testFullRoundtrip() {
     const result = normalizePluginSettings(saved);
     const h = result.harnessSettings!;
 
+    assert.strictEqual(h.agentBackend, 'claude-agent-sdk', 'agentBackend roundtrip');
     assert.deepStrictEqual(h.localFastConfig, { profileId: 'ollama-1', modelId: 'qwen3:14b' }, 'localFastConfig roundtrip');
     assert.deepStrictEqual(h.localDeepConfig, { profileId: 'ollama-1', modelId: 'qwen3:32b' }, 'localDeepConfig roundtrip');
     assert.deepStrictEqual(h.onlineConfig, { profileId: 'anthropic-1', modelId: 'claude-sonnet-4-7' }, 'onlineConfig roundtrip');
@@ -122,6 +125,24 @@ function testValidPermissionModes() {
     console.log('[harness-settings-roundtrip] valid permission modes: PASS');
 }
 
+// ─── 7. Invalid agentBackend falls back to default ────────────────────────────
+
+function testInvalidAgentBackend() {
+    const result = normalizePluginSettings({
+        harnessSettings: { agentBackend: 'bogus' },
+    });
+    assert.strictEqual(result.harnessSettings!.agentBackend, 'auto', 'invalid backend → default');
+    console.log('[harness-settings-roundtrip] invalid agent backend: PASS');
+}
+
+function testValidAgentBackends() {
+    for (const backend of ['auto', 'harness', 'claude-agent-sdk'] as const) {
+        const result = normalizePluginSettings({ harnessSettings: { agentBackend: backend } });
+        assert.strictEqual(result.harnessSettings!.agentBackend, backend, `backend ${backend} preserved`);
+    }
+    console.log('[harness-settings-roundtrip] valid agent backends: PASS');
+}
+
 // ─── run all ──────────────────────────────────────────────────────────────────
 
 (async () => {
@@ -131,6 +152,8 @@ function testValidPermissionModes() {
     testClamping();
     testInvalidPermissionMode();
     testValidPermissionModes();
+    testInvalidAgentBackend();
+    testValidAgentBackends();
     console.log('[harness-settings-roundtrip] all tests passed');
 })().catch((err) => {
     console.error('[harness-settings-roundtrip] FAIL:', err);

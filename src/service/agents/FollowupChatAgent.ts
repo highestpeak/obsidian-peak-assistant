@@ -18,7 +18,7 @@ import { PromptId, type PromptVariables } from '@/service/prompt/PromptId';
 import { mergeTokenUsage, type LLMStreamEvent, type LLMUsage } from '@/core/providers/types';
 import { TierController } from '@/service/agents/harness/tier/TierController';
 import { defaultTierBindings } from '@/service/agents/harness/tier/bindings';
-import { runAgentLoop } from '@/service/agents/harness';
+import { getAgentBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
 import { adaptAgentTools } from '@/service/agents/harness-bridge/agentToolAdapter';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 
@@ -86,7 +86,7 @@ export class FollowupChatAgent {
             loopId,
         });
 
-        const result = await runAgentLoop({
+        const result = await getAgentBridge().run({
             loopId,
             systemPrompt: system,
             initialMessages: [{ role: 'user', content: prompt }],
