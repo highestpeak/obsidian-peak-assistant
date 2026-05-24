@@ -1,4 +1,4 @@
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings, SearchSettings } from '@/app/settings/types';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_HARNESS_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, HarnessSettings, MyPluginSettings, SearchSettings } from '@/app/settings/types';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS, type AmbientPushSettings } from '@/service/ambient/types';
 import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
@@ -318,6 +318,30 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	settings.usageDetailRetentionDays = typeof raw?.usageDetailRetentionDays === 'number'
 		? Math.max(1, raw.usageDetailRetentionDays)
 		: DEFAULT_SETTINGS.usageDetailRetentionDays;
+
+	// Harness settings (M5)
+	const rawHarness = raw?.harnessSettings as Partial<HarnessSettings> | undefined;
+	if (rawHarness && typeof rawHarness === 'object') {
+		const d = DEFAULT_HARNESS_SETTINGS;
+		settings.harnessSettings = {
+			localFastConfig: rawHarness.localFastConfig ?? d.localFastConfig,
+			localDeepConfig: rawHarness.localDeepConfig ?? d.localDeepConfig,
+			onlineConfig: rawHarness.onlineConfig ?? d.onlineConfig,
+			allowEscalation: typeof rawHarness.allowEscalation === 'boolean' ? rawHarness.allowEscalation : d.allowEscalation,
+			maxEscalationsPerLoop: typeof rawHarness.maxEscalationsPerLoop === 'number'
+				? Math.max(1, Math.min(3, rawHarness.maxEscalationsPerLoop))
+				: d.maxEscalationsPerLoop,
+			autoEscalateScoreBelow: typeof rawHarness.autoEscalateScoreBelow === 'number'
+				? Math.max(0, Math.min(1, rawHarness.autoEscalateScoreBelow))
+				: d.autoEscalateScoreBelow,
+			hooksEnabled: typeof rawHarness.hooksEnabled === 'boolean' ? rawHarness.hooksEnabled : d.hooksEnabled,
+			defaultPermissionMode: (rawHarness.defaultPermissionMode === 'read' || rawHarness.defaultPermissionMode === 'acceptEdits' || rawHarness.defaultPermissionMode === 'bypassPermissions')
+				? rawHarness.defaultPermissionMode
+				: d.defaultPermissionMode,
+		};
+	} else {
+		settings.harnessSettings = { ...DEFAULT_HARNESS_SETTINGS };
+	}
 
 	return settings;
 }

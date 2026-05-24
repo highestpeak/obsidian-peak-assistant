@@ -3,7 +3,7 @@ import { AIServiceManager } from '@/service/chat/service-manager';
 import { SearchClient } from '@/service/search/SearchClient';
 import { ViewManager } from '@/app/view/ViewManager';
 import type MyPlugin from 'main';
-import { MyPluginSettings } from '../settings/types';
+import { MyPluginSettings, HarnessSettings, DEFAULT_HARNESS_SETTINGS } from '../settings/types';
 import { BusinessError, ErrorCode } from '@/core/errors';
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import { GraphInspectorTestTools, AISearchAgentTestTools } from '@/app/context/test-tools';
@@ -15,6 +15,7 @@ import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import { getVaultPersona } from '@/service/tools/system-info';
 import { SessionContextService } from '@/service/context/SessionContextService';
+import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
 
 /**
  * Application context containing all global dependencies.
@@ -23,6 +24,8 @@ import { SessionContextService } from '@/service/context/SessionContextService';
 export class AppContext {
 	public viewManager: ViewManager;
 	public readonly eventBus: EventBus;
+	/** Bridge instance shared across the plugin lifetime. */
+	public readonly _bridge: ClaudeAgentSDKBridge;
 
 	private static instance: AppContext | null = null;
 
@@ -76,6 +79,16 @@ export class AppContext {
 		return SessionContextService.getInstance();
 	}
 
+	/** Current harness settings — falls back to defaults if not persisted yet. */
+	public static getHarnessSettings(): HarnessSettings {
+		return AppContext.getInstance().settings.harnessSettings ?? { ...DEFAULT_HARNESS_SETTINGS };
+	}
+
+	/** Singleton ClaudeAgentSDKBridge instance. */
+	public static getBridge(): ClaudeAgentSDKBridge {
+		return AppContext.getInstance()._bridge;
+	}
+
 	/**
 	 * Clear singleton and unsubscribe from workspace events.
 	 * Must be called from plugin onunload to break reference chains and allow GC.
@@ -110,6 +123,7 @@ export class AppContext {
 		// viewManager will be set after ViewManager is created
 		this.viewManager = null as any;
 		this.eventBus = EventBus.getInstance(app);
+		this._bridge = new ClaudeAgentSDKBridge();
 		AppContext.instance = this;
 
 		this.handleDevToolsSettingChange(this.settings.enableDevTools ?? false);

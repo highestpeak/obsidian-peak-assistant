@@ -488,6 +488,14 @@ ${sourcesList}${topicsList}
 		return AppContext.getInstance().plugin.manifest.id;
 	}
 
+	/**
+	 * Return the current harness settings so agents can read tier config and
+	 * escalation policy without importing AppContext directly.
+	 */
+	getHarnessSettings() {
+		return AppContext.getHarnessSettings();
+	}
+
 	private isAgentSdkProfile(profile: Profile): boolean {
 		return profile.kind === 'anthropic' || profile.kind === 'openrouter';
 	}

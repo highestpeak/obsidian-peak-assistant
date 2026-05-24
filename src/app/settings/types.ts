@@ -4,7 +4,7 @@ import { BusinessError, ErrorCode } from '@/core/errors';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import type { DocumentType } from '@/core/document/types';
 import { PromptId, CONFIGURABLE_PROMPT_IDS, INDEXING_AND_HUB_PROMPT_IDS, SEARCH_AI_ANALYSIS_PROMPT_IDS } from '@/service/prompt/PromptId';
-import type { ProfileSettings } from '@/core/profiles/types';
+import type { ProfileSettings, RoleConfig } from '@/core/profiles/types';
 import type { AmbientPushSettings } from '@/service/ambient/types';
 import type { MCPServerConfig } from '@/service/mcp/types';
 import type { IndexLevel } from '@/service/search/index/types';
@@ -198,6 +198,43 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	},
 };
 
+/**
+ * Configuration for the self-hosted agent harness (M5).
+ *
+ * All fields are optional with safe defaults — see DEFAULT_HARNESS_SETTINGS.
+ * The three tier RoleConfig fields map to ProfileRegistry role configs so the
+ * same profiles/models already configured by the user can be reused.
+ */
+export interface HarnessSettings {
+	/** local-fast tier profile+model (e.g. Ollama Qwen3-14B). null = disabled. */
+	localFastConfig: RoleConfig | null;
+	/** local-deep tier profile+model (e.g. Ollama Qwen3-32B). null = disabled. */
+	localDeepConfig: RoleConfig | null;
+	/** online tier profile+model (e.g. Anthropic Claude). null = inherit from active chat config. */
+	onlineConfig: RoleConfig | null;
+	/** Allow automatic tier escalation when self-score drops below threshold. Default true. */
+	allowEscalation: boolean;
+	/** Hard cap on automatic tier upgrades per loop. Range 1-3. Default 3. */
+	maxEscalationsPerLoop: number;
+	/** Score threshold below which auto-escalation triggers. Range 0-1. Default 0.4. */
+	autoEscalateScoreBelow: number;
+	/** Enable user-defined hooks (pre_tool_use / post_tool_use etc.). Default false. */
+	hooksEnabled: boolean;
+	/** Default permission mode for agent actions. Default 'acceptEdits'. */
+	defaultPermissionMode: 'read' | 'acceptEdits' | 'bypassPermissions';
+}
+
+export const DEFAULT_HARNESS_SETTINGS: HarnessSettings = {
+	localFastConfig: null,
+	localDeepConfig: null,
+	onlineConfig: null,
+	allowEscalation: true,
+	maxEscalationsPerLoop: 3,
+	autoEscalateScoreBelow: 0.4,
+	hooksEnabled: false,
+	defaultPermissionMode: 'acceptEdits',
+};
+
 export interface MyPluginSettings {
 	dataStorageFolder: string;
 	ai: AIServiceSettings;
@@ -227,6 +264,9 @@ export interface MyPluginSettings {
 	/** Vault folder for user-defined custom prompts (default: _prompts). */
 	customPromptsFolder?: string;
 
+	/** Self-hosted agent harness configuration. */
+	harnessSettings?: HarnessSettings;
+
 	vaultSearch?: {
 		sdkProfile?: {
 			kind?: 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom';
@@ -246,6 +286,7 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	sqliteBackend: 'auto',
 	enableDevTools: false,
 	ambientPush: undefined,
+	harnessSettings: { ...DEFAULT_HARNESS_SETTINGS },
 	graphViz: {
 		mstPruneDepth: 2,
 		skeletonBackboneOnly: false,
