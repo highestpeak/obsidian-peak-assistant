@@ -132,6 +132,7 @@ export const ConfigTemplateId = {
 	ModelsOllamaFamilies: 'config-models-ollama-families' as const,
 	ModelsDefaults: 'config-models-defaults' as const,
 	CommunityColors: 'config-community-colors' as const,
+	CuratorCatalog: 'config-curator-catalog' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -367,6 +368,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ConfigTemplateId.ModelsOllamaFamilies]: meta('config', 'models/ollama-families', { expectsJson: true }),
 	[ConfigTemplateId.ModelsDefaults]: meta('config', 'models/defaults', { expectsJson: true }),
 	[ConfigTemplateId.CommunityColors]: meta('config', 'community-colors', { expectsJson: true }),
+	[ConfigTemplateId.CuratorCatalog]: meta('config', 'curator-catalog', { expectsJson: true }),
 
 	// --- Structural analysis prompts ---
 	'gap-explanation': meta('prompts', 'gap-explanation', { label: 'Gap Explanation', description: 'LLM prompt for lazy gap explanations.', group: 'indexing' }),

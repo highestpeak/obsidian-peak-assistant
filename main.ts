@@ -159,6 +159,14 @@ export default class MyPlugin extends Plugin {
 			} catch (e) {
 				console.warn('[Peak Assistant] Failed to load model registry templates; using bundled catalog.', e);
 			}
+
+			// Load curator catalog for the Agent Harness onboarding wizard.
+			try {
+				const { loadCuratorCatalog } = await import('@/service/agents/harness/curator');
+				await loadCuratorCatalog(this.templateManager);
+			} catch (e) {
+				console.warn('[Peak Assistant] Failed to load curator catalog; harness onboarding will use fallback rules.', e);
+			}
 		}
 
 		// Create AIServiceManager (ConversationService and ProjectService will be initialized in init())
