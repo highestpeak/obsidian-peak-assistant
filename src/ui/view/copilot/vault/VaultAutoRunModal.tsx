@@ -13,7 +13,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
 	ShieldCheck,
 	MoreHorizontal,
-	X,
 	BarChart3,
 	FileText,
 	Pen,
@@ -364,7 +363,6 @@ const VaultAutoRunContent: React.FC<{
 					{status === 'cancelled' && <Pill variant="warning">Cancelled</Pill>}
 					{status === 'error' && <Pill variant="danger">Error</Pill>}
 					<IconButton aria-label="More"><MoreHorizontal className="pktw-w-4 pktw-h-4" /></IconButton>
-					<IconButton onClick={onClose} aria-label="Close"><X className="pktw-w-4 pktw-h-4" /></IconButton>
 				</div>
 			</div>
 
@@ -440,7 +438,6 @@ const VaultAutoRunContent: React.FC<{
 							<Download className="pktw-w-4 pktw-h-4" />Export summary
 						</Button>
 					)}
-					<Button onClick={onClose}>Close</Button>
 				</div>
 			</div>
 		</div>
@@ -1630,6 +1627,9 @@ export class VaultAutoRunModal extends Modal {
 		this.contentEl.style.height = '100%';
 		this.contentEl.style.overflow = 'hidden';
 		this.contentEl.addClass('pktw-root');
+
+		const closeBtn = this.modalEl.querySelector<HTMLElement>('.modal-close-button');
+		if (closeBtn) closeBtn.style.display = 'none';
 
 		this.reactRenderer = new ReactRenderer(this.contentEl);
 		this.reactRenderer.render(
