@@ -11,6 +11,7 @@ import {
 	openAssistant,
 	openCopilotPanel,
 	openCopilotReviewHistory,
+	openHarnessSetupWizard,
 	openKnowledgeCenter,
 	openQuickSearch,
 	openSettingsModal,
@@ -84,6 +85,11 @@ export function buildCoreCommands(
 			id: 'peak-setup-wizard',
 			name: 'Setup Wizard',
 			callback: openSetupWizard,
+		},
+		{
+			id: 'peak-harness-setup-wizard',
+			name: 'Agent Harness — Setup Wizard',
+			callback: openHarnessSetupWizard,
 		},
 		{
 			id: 'peak-open-settings',

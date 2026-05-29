@@ -6,10 +6,11 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, Info, Wand2 } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { RoleModelPicker } from './RoleModelPicker';
+import { openHarnessSetupWizard } from '@/app/commands/PeakCommandActions';
 import type { Profile, RoleConfig } from '@/core/profiles/types';
 import type { HarnessSettings } from '@/app/settings/types';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
@@ -134,6 +135,26 @@ export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSet
 
     return (
         <div className="pktw-space-y-5">
+            {/* Setup wizard re-run */}
+            <div className="pktw-flex pktw-items-start pktw-gap-3 pktw-p-3 pktw-rounded-lg pktw-border pktw-border-pk-accent/30 pktw-bg-pk-accent/5">
+                <Wand2 className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-mt-0.5 pktw-text-pk-accent" />
+                <div className="pktw-flex-1 pktw-flex pktw-flex-col pktw-gap-1">
+                    <span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground">
+                        Re-run setup wizard
+                    </span>
+                    <span className="pktw-text-[11px] pktw-text-pk-foreground-faint">
+                        Let the Curator agent re-pick tier bindings from your current environment.
+                    </span>
+                </div>
+                <button
+                    type="button"
+                    onClick={openHarnessSetupWizard}
+                    className="pktw-text-xs pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-bg-pk-accent pktw-text-white hover:pktw-opacity-90 pktw-transition-opacity"
+                >
+                    Run
+                </button>
+            </div>
+
             {/* Agent backend selection */}
             <div>
                 <span className="pktw-text-[11px] pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint">

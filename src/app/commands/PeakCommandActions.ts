@@ -6,6 +6,7 @@ import type { ChatProjectMeta } from '@/service/chat/types';
 import { openPendingConversationInChat } from '@/ui/view/chat-view/chatNavigation';
 import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
 import { OnboardingModal } from '@/ui/view/modals/OnboardingModal';
+import { HarnessOnboardingModal } from '@/ui/view/modals/HarnessOnboardingModal';
 import { SettingsModal } from '@/ui/view/SettingsModal';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { CopilotReviewHistoryModal } from '@/ui/view/copilot/CopilotReviewHistoryModal';
@@ -103,6 +104,13 @@ export function createChatConversation(): void {
 
 export function openSetupWizard(): void {
 	new OnboardingModal(getContext()).open();
+}
+
+export function openHarnessSetupWizard(): void {
+	const ctx = getContext();
+	const harness = ctx.settings?.harnessSettings;
+	const hasBindings = !!(harness?.localFastConfig || harness?.localDeepConfig || harness?.onlineConfig);
+	new HarnessOnboardingModal(ctx, { isReRun: hasBindings }).open();
 }
 
 export function openSettingsModal(): void {
