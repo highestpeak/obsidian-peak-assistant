@@ -57,6 +57,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | S3. Cascade Update | hub_constituent 表 + CascadeWorker 补全 + folder_stats + hub_regen stub | 完成 (8 tasks) |
 | S4. Structural Hole | Brandes BC + Louvain + Burt constraint + Gap Analysis UI + bridge actions | 完成 (8 tasks) |
 | S6. Precompiled Knowledge | HubStalenessDetector + HubRegenService + hub_regen_queue + reranker boost | 完成 (6 tasks) |
+| AK. Agent Harness Curator Onboarding | Curator agent + 22-model catalog + zod validation + fallback + 9-step wizard（Welcome / Provider / Bootstrap / Preferences / Running / Review / Edit / Redo / Done）+ 接受写入 HarnessSettings | 完成 (3 commits, 56 tests, +3,614 lines) |
 
 ## Next
 
@@ -213,6 +214,42 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-29 — Agent Harness Curator Onboarding 全量落地（PR1+2+3+4）
+
+按 `docs/superpowers/specs/2026-05-25-agent-model-selection-design.md` 4-PR 分阶段执行，全部上线。背景：M5 之后用户没法判断 Quick/Deep/Premium 该绑哪个 model — 用户不知道答案（学界 RouteLLM 等论文：>4 类后 routing 准确率反降）。设计采用 LLM-curator 软决策 + zod 硬约束 + 规则兜底。
+
+**PR1 · Backend（commit `e6760de`，+1,622 行）**
+- Done: `templates/config/curator-catalog.json` — 22 model 元数据（Anthropic / OpenAI / Google / DeepSeek / Qwen / GLM / Llama / Gemma / Perplexity），含 BFCL / CEval / MMLU / cost / RAM / latency / language — 新 model 上线只加一行 JSON
+- Done: `src/service/agents/harness/curator/`（10 文件）— types / catalog loader / RecommendationSchema (zod) / validation (unknown id / RAM / budget=0 / empty / tier_mismatch 软警告) / envProbe (RAM + Ollama + Profile + 中文比例采样 60 文件) / prompt (中文 system + soft suggestions + 错误反馈回灌) / fallback (规则兜底，保证 validation-clean) / CuratorAgent.runCurator (generateText → JSON.parse → zod → validate → 3 次 retry → fallback)
+- Done: TemplateRegistry 注册 `CuratorCatalog` + main.ts boot 加载
+- Done: 14/14 单元测试（catalog hydrate / schema 校验 / 硬约束 / fallback 在 RAM / budget / 语言 / 已装条件下的选择）
+
+**PR2 · Wizard 框架（commit `1c81e5c`，+1,083 行）**
+- Done: 共享 `onboarding/ProviderForm.tsx`（提取 PROVIDER_OPTIONS + AddProviderForm + SavedProfileRow），新增 setActiveOnFirst / autoAssignWebSearch flags 让 harness wizard 不污染 active role
+- Done: `harness-onboarding/state.ts` — 纯 reducer + StepId + canContinue/stepIndex（先实现 Welcome / ChooseProvider / ChooseBootstrap 三态）
+- Done: 3 步 UI — WelcomeStep（入口 CTA + 跳过逃生口）/ ProviderStep（单选高亮 + 自动选唯一可用 profile）/ BootstrapModelStep（Ollama 实时 fetchOllamaModels 按 size 排序，云用 modelRegistry，推荐 regex 打 ⭐）
+- Done: `HarnessOnboardingModal` Obsidian Modal 壳 + StepIndicator + `openHarnessSetupWizard` 命令 + Settings → Agent Harness 顶部 "Re-run setup wizard" 按钮
+- Done: 18/18 reducer 测试
+
+**PR3+4 · 完整 Curator 集成（commit `a2a1610`，+909 行）**
+- Done: state.ts 扩 preferences / isRunning / result / error / redoNote + 新事件 set-budget / set-speed-quality / run-curator-{start,success,error} / open-edit / open-redo / submit-redo / accept-recommendation / update-binding；detour 处理（back from edit/redo → review）
+- Done: PreferenceQuestionsStep — 2 题（budget x speed/quality）
+- Done: RunningCuratorStep — detectEnvironment + runCurator，abort signal，catalog 缺失时自动 buildFallbackRecommendation
+- Done: ReviewRecommendationStep — bindings 表（含 cost/RAM hint）+ modelsToDownload + apiKeysNeeded callouts + rationale + cascade 状态 + fromLLM=false 时显示"规则兜底"角标
+- Done: EditRecommendationStep — 每档 dropdown 用 filterByTier 拉候选
+- Done: RedoInputStep — textarea + preset chips（"Premium 太贵换 Sonnet" 等），dispatched 为 userFollowup
+- Done: `applyRecommendation.ts` — capability → 现有 HarnessSettings 字段映射（quick→localFastConfig / deep→localDeepConfig / premium→onlineConfig）+ 缺 profile 跳过 + Notice 告知；cascadeEnabled → allowEscalation；plugin.saveSettings
+- Done: 28/28 state machine 测试（含 curator 生命周期 + edit gating + binding mutation + detour 返回 + submit-redo 保留 note + accept→done）
+
+**验证**
+- npm run build clean（3 次）
+- 56/56 相关测试通过（14 curator + 28 state machine + 8 harness-tier + 6 harness-loop）
+- harness-bridge.test.ts 在 master 上原本就 fail（test runner 不构造 AppContext），不是这次引入
+- 命令面板暴露 "Agent Harness — Setup Wizard"，Settings → Agent Harness 顶部有 "Re-run" 入口
+- 完整流程：Welcome → ChooseProvider → ChooseBootstrap → Preferences → RunningCurator → ReviewRecommendation → (Edit / Redo) → Accept 写 HarnessSettings → Done
+
+**Total: 3 commits, +3,614 行**。spec §12 的 5 个开放问题（Curator 用哪个 model 跑、Re-run wizard 主动提示频率、Per-agent override 暴露形式、Cascade policy 形态、多设备同步）未决，按默认实现，可在后续 PR 决定。
 
 ### 2026-05-23 — Codex UX sketches → real picker + report UI（mockup v2 → impl → 整天 debug Obsidian CSS 干扰）
 
