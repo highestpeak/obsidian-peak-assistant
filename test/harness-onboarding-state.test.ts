@@ -161,6 +161,105 @@ test('cancel resets to welcome but preserves isReRun', () => {
         && expectEq(reset.isReRun, true, 'isReRun preserved');
 });
 
+// ─── preferences ──────────────────────────────────────────────────
+
+test('set-budget updates budget only', () => {
+    const next = reduce(initialState(), { type: 'set-budget', budget: 'zero' });
+    return expectEq(next.preferences.budget, 'zero', 'budget set')
+        && expectEq(next.preferences.speedQuality, 'balanced', 'speedQuality unchanged');
+});
+
+test('set-speed-quality updates preference only', () => {
+    const next = reduce(initialState(), { type: 'set-speed-quality', preference: 'quality' });
+    return expectEq(next.preferences.speedQuality, 'quality', 'speedQuality set')
+        && expectEq(next.preferences.budget, 'low', 'budget unchanged');
+});
+
+// ─── curator lifecycle ───────────────────────────────────────────
+
+const FAKE_RESULT = {
+    recommendation: {
+        bindings: { quick: 'a', deep: 'b', premium: 'c' },
+        cascadeEnabled: true,
+        modelsToDownload: [] as string[],
+        apiKeysNeeded: [] as never[],
+        rationale: '...',
+    },
+    fromLLM: true,
+    attempts: [] as never[],
+} as const;
+
+test('continue from preference-questions starts running-curator', () => {
+    const s: WizardState = { ...initialState(), step: 'preference-questions' };
+    const next = reduce(s, { type: 'continue' });
+    return expectEq(next.step, 'running-curator', 'enters running-curator')
+        && expectEq(next.isRunning, true, 'isRunning true');
+});
+
+test('run-curator-success transitions to review with result', () => {
+    const s: WizardState = { ...initialState(), step: 'running-curator', isRunning: true };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const next = reduce(s, { type: 'run-curator-success', result: FAKE_RESULT as any });
+    return expectEq(next.step, 'review-recommendation', 'goes to review')
+        && expectEq(next.isRunning, false, 'isRunning cleared')
+        && expectEq(next.result?.recommendation.bindings.quick, 'a', 'result stored');
+});
+
+test('run-curator-error clears isRunning and records message', () => {
+    const s: WizardState = { ...initialState(), step: 'running-curator', isRunning: true };
+    const next = reduce(s, { type: 'run-curator-error', message: 'boom' });
+    return expectEq(next.isRunning, false, 'isRunning cleared')
+        && expectEq(next.error, 'boom', 'error stored')
+        && expectEq(next.step, 'running-curator', 'step unchanged so user sees error inline');
+});
+
+// ─── edit + redo ─────────────────────────────────────────────────
+
+test('open-edit only works after a result', () => {
+    const noResult = reduce(initialState(), { type: 'open-edit' });
+    const withResult: WizardState = {
+        ...initialState(),
+        step: 'review-recommendation',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        result: FAKE_RESULT as any,
+    };
+    const ok = reduce(withResult, { type: 'open-edit' });
+    return expectEq(noResult.step, 'welcome', 'no-op without result')
+        && expectEq(ok.step, 'edit-recommendation', 'goes to edit with result');
+});
+
+test('update-binding mutates the active recommendation', () => {
+    const s: WizardState = {
+        ...initialState(),
+        step: 'edit-recommendation',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        result: FAKE_RESULT as any,
+    };
+    const next = reduce(s, { type: 'update-binding', capability: 'quick', modelId: 'NEW' });
+    return expectEq(next.result?.recommendation.bindings.quick, 'NEW', 'quick updated')
+        && expectEq(next.result?.recommendation.bindings.deep, 'b', 'deep unchanged');
+});
+
+test('back from edit/redo returns to review', () => {
+    const e: WizardState = { ...initialState(), step: 'edit-recommendation' };
+    const r: WizardState = { ...initialState(), step: 'redo-input' };
+    return expectEq(reduce(e, { type: 'back' }).step, 'review-recommendation', 'edit→review')
+        && expectEq(reduce(r, { type: 'back' }).step, 'review-recommendation', 'redo→review');
+});
+
+test('submit-redo enters running-curator with isRunning', () => {
+    const s: WizardState = { ...initialState(), step: 'redo-input', redoNote: 'cheaper plz' };
+    const next = reduce(s, { type: 'submit-redo' });
+    return expectEq(next.step, 'running-curator', 'reruns curator')
+        && expectEq(next.isRunning, true, 'isRunning true')
+        && expectEq(next.redoNote, 'cheaper plz', 'note preserved for the next run');
+});
+
+test('accept-recommendation moves to done', () => {
+    const s: WizardState = { ...initialState(), step: 'review-recommendation' };
+    return expectEq(reduce(s, { type: 'accept-recommendation' }).step, 'done', 'accepted → done');
+});
+
 // ─── run ───────────────────────────────────────────────────────────
 
 function runTests(): boolean {

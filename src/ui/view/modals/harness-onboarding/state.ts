@@ -3,18 +3,24 @@
  *
  * UI lives in HarnessOnboardingModal.tsx; this file is framework-agnostic so
  * the transitions can be unit-tested without React. See spec §5.2.
- *
- * PR2 covers steps Welcome → ChooseProvider → ChooseBootstrap. PR3 will add
- * PreferenceQuestions / RunningCurator / ReviewRecommendation / Done.
  */
+
+import type {
+    BudgetTier,
+    CuratorResult,
+    SpeedQualityPreference,
+    UserPreferences,
+} from '@/service/agents/harness/curator';
 
 export type StepId =
     | 'welcome'
     | 'choose-provider'
     | 'choose-bootstrap'
-    | 'preference-questions'  // PR3
-    | 'running-curator'        // PR3
-    | 'review-recommendation'  // PR3
+    | 'preference-questions'
+    | 'running-curator'
+    | 'review-recommendation'
+    | 'edit-recommendation'
+    | 'redo-input'
     | 'done';
 
 export interface BootstrapSelection {
@@ -30,10 +36,20 @@ export interface WizardState {
      * wizard.
      */
     selectedProfileId: string | null;
-    /** Selected bootstrap model. Set in ChooseBootstrap, used by Curator (PR3). */
+    /** Selected bootstrap model. Set in ChooseBootstrap, used by Curator. */
     bootstrap: BootstrapSelection | null;
+    /** Preferences gathered from the user. Defaults seed sensible mid-points. */
+    preferences: UserPreferences;
     /** True when the wizard was launched as "re-run", i.e. user already has bindings. */
     isReRun: boolean;
+    /** Set while RunningCurator step is in flight. */
+    isRunning: boolean;
+    /** Latest curator result (LLM or fallback). null until first run completes. */
+    result: CuratorResult | null;
+    /** Last invocation error, if any. */
+    error: string | null;
+    /** Free-form note appended on "redo". Cleared after the next run. */
+    redoNote: string;
 }
 
 export type WizardEvent =
@@ -42,17 +58,38 @@ export type WizardEvent =
     | { type: 'select-profile'; profileId: string }
     | { type: 'clear-profile' }
     | { type: 'select-bootstrap'; profileId: string; modelId: string }
+    | { type: 'set-budget'; budget: BudgetTier }
+    | { type: 'set-speed-quality'; preference: SpeedQualityPreference }
+    | { type: 'run-curator-start' }
+    | { type: 'run-curator-success'; result: CuratorResult }
+    | { type: 'run-curator-error'; message: string }
+    | { type: 'open-edit' }
+    | { type: 'open-redo' }
+    | { type: 'set-redo-note'; note: string }
+    | { type: 'submit-redo' }
+    | { type: 'accept-recommendation' }
+    | { type: 'update-binding'; capability: 'quick' | 'deep' | 'premium'; modelId: string }
     | { type: 'back' }
-    | { type: 'continue' }   // generic next; the reducer decides where based on current step
+    | { type: 'continue' }
     | { type: 'finish' }
     | { type: 'cancel' };
+
+const DEFAULT_PREFERENCES: UserPreferences = {
+    budget: 'low',
+    speedQuality: 'balanced',
+};
 
 export function initialState(opts: { isReRun?: boolean } = {}): WizardState {
     return {
         step: 'welcome',
         selectedProfileId: null,
         bootstrap: null,
+        preferences: { ...DEFAULT_PREFERENCES },
         isReRun: !!opts.isReRun,
+        isRunning: false,
+        result: null,
+        error: null,
+        redoNote: '',
     };
 }
 
@@ -73,6 +110,8 @@ function advance(step: StepId): StepId {
 }
 
 function retreat(step: StepId): StepId {
+    // Edit / redo are detours off review; back from them returns to review.
+    if (step === 'edit-recommendation' || step === 'redo-input') return 'review-recommendation';
     const i = ORDER.indexOf(step);
     if (i <= 0) return step;
     return ORDER[i - 1];
@@ -104,6 +143,60 @@ export function reduce(state: WizardState, event: WizardEvent): WizardState {
                 bootstrap: { profileId: event.profileId, modelId: event.modelId },
             };
 
+        case 'set-budget':
+            return { ...state, preferences: { ...state.preferences, budget: event.budget } };
+
+        case 'set-speed-quality':
+            return { ...state, preferences: { ...state.preferences, speedQuality: event.preference } };
+
+        case 'run-curator-start':
+            return { ...state, step: 'running-curator', isRunning: true, error: null };
+
+        case 'run-curator-success':
+            return {
+                ...state,
+                step: 'review-recommendation',
+                isRunning: false,
+                result: event.result,
+                error: null,
+                redoNote: '',
+            };
+
+        case 'run-curator-error':
+            return { ...state, isRunning: false, error: event.message };
+
+        case 'open-edit':
+            if (!state.result) return state;
+            return { ...state, step: 'edit-recommendation' };
+
+        case 'open-redo':
+            if (!state.result) return state;
+            return { ...state, step: 'redo-input' };
+
+        case 'set-redo-note':
+            return { ...state, redoNote: event.note };
+
+        case 'submit-redo':
+            return { ...state, step: 'running-curator', isRunning: true, error: null };
+
+        case 'update-binding': {
+            if (!state.result) return state;
+            const next = {
+                ...state.result,
+                recommendation: {
+                    ...state.result.recommendation,
+                    bindings: {
+                        ...state.result.recommendation.bindings,
+                        [event.capability]: event.modelId,
+                    },
+                },
+            };
+            return { ...state, result: next };
+        }
+
+        case 'accept-recommendation':
+            return { ...state, step: 'done' };
+
         case 'continue': {
             if (state.step === 'choose-provider') {
                 if (!state.selectedProfileId) return state;
@@ -111,8 +204,13 @@ export function reduce(state: WizardState, event: WizardEvent): WizardState {
             }
             if (state.step === 'choose-bootstrap') {
                 if (!state.bootstrap) return state;
-                // PR3 will transition into preference-questions instead of done.
                 return { ...state, step: 'preference-questions' };
+            }
+            if (state.step === 'preference-questions') {
+                return { ...state, step: 'running-curator', isRunning: true, error: null };
+            }
+            if (state.step === 'edit-recommendation') {
+                return { ...state, step: 'review-recommendation' };
             }
             return { ...state, step: advance(state.step) };
         }
@@ -124,7 +222,6 @@ export function reduce(state: WizardState, event: WizardEvent): WizardState {
             return { ...state, step: 'done' };
 
         case 'cancel':
-            // Reset to welcome — the modal close handler takes care of unmount.
             return initialState({ isReRun: state.isReRun });
     }
 }
@@ -141,12 +238,18 @@ export function canContinue(state: WizardState): boolean {
             return !!state.selectedProfileId;
         case 'choose-bootstrap':
             return !!state.bootstrap;
+        case 'preference-questions':
+            return true;
+        case 'review-recommendation':
+            return !!state.result;
+        case 'edit-recommendation':
+            return !!state.result;
         default:
             return false;
     }
 }
 
-/** Visible steps for the StepIndicator dots (excludes terminal 'done'). */
+/** Visible steps for the StepIndicator dots (excludes terminal 'done' and detour steps). */
 export const VISIBLE_STEPS: readonly StepId[] = [
     'welcome',
     'choose-provider',
@@ -157,6 +260,8 @@ export const VISIBLE_STEPS: readonly StepId[] = [
 ];
 
 export function stepIndex(step: StepId): number {
+    // Detour steps collapse onto review for indicator purposes.
+    if (step === 'edit-recommendation' || step === 'redo-input') return VISIBLE_STEPS.indexOf('review-recommendation');
     const i = VISIBLE_STEPS.indexOf(step);
     return i === -1 ? VISIBLE_STEPS.length - 1 : i;
 }

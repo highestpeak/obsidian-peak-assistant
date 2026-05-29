@@ -30,7 +30,11 @@ import {
 import { WelcomeStep } from './harness-onboarding/WelcomeStep';
 import { ProviderStep } from './harness-onboarding/ProviderStep';
 import { BootstrapModelStep } from './harness-onboarding/BootstrapModelStep';
-import { CuratorPlaceholderStep } from './harness-onboarding/CuratorPlaceholderStep';
+import { PreferenceQuestionsStep } from './harness-onboarding/PreferenceQuestionsStep';
+import { RunningCuratorStep } from './harness-onboarding/RunningCuratorStep';
+import { ReviewRecommendationStep } from './harness-onboarding/ReviewRecommendationStep';
+import { EditRecommendationStep } from './harness-onboarding/EditRecommendationStep';
+import { RedoInputStep } from './harness-onboarding/RedoInputStep';
 
 // ─── Obsidian Modal wrapper ────────────────────────────────────────────
 
@@ -155,9 +159,64 @@ function HarnessOnboardingWizard({ isReRun, onClose }: WizardProps) {
                     />
                 );
             case 'preference-questions':
+                return (
+                    <PreferenceQuestionsStep
+                        preferences={s.preferences}
+                        onBudgetChange={(budget) => dispatch({ type: 'set-budget', budget })}
+                        onSpeedQualityChange={(preference) => dispatch({ type: 'set-speed-quality', preference })}
+                        onBack={() => dispatch({ type: 'back' })}
+                        onContinue={() => dispatch({ type: 'continue' })}
+                    />
+                );
             case 'running-curator':
+                return (
+                    <RunningCuratorStep
+                        bootstrap={s.bootstrap}
+                        preferences={s.preferences}
+                        userNote={s.redoNote}
+                        error={s.error}
+                        onSuccess={(result) => dispatch({ type: 'run-curator-success', result })}
+                        onError={(message) => dispatch({ type: 'run-curator-error', message })}
+                        onCancel={() => dispatch({ type: 'back' })}
+                    />
+                );
             case 'review-recommendation':
-                return <CuratorPlaceholderStep onBack={() => dispatch({ type: 'back' })} onClose={onClose} />;
+                if (!s.result) {
+                    // Shouldn't happen — running-curator gates this. Fall back to back.
+                    dispatch({ type: 'back' });
+                    return null;
+                }
+                return (
+                    <ReviewRecommendationStep
+                        result={s.result}
+                        onEdit={() => dispatch({ type: 'open-edit' })}
+                        onRedo={() => dispatch({ type: 'open-redo' })}
+                        onAccepted={() => dispatch({ type: 'accept-recommendation' })}
+                        onBack={() => dispatch({ type: 'back' })}
+                    />
+                );
+            case 'edit-recommendation':
+                if (!s.result) {
+                    dispatch({ type: 'back' });
+                    return null;
+                }
+                return (
+                    <EditRecommendationStep
+                        recommendation={s.result.recommendation}
+                        onChange={(capability, modelId) => dispatch({ type: 'update-binding', capability, modelId })}
+                        onBack={() => dispatch({ type: 'back' })}
+                        onDone={() => dispatch({ type: 'continue' })}
+                    />
+                );
+            case 'redo-input':
+                return (
+                    <RedoInputStep
+                        note={s.redoNote}
+                        onNoteChange={(note) => dispatch({ type: 'set-redo-note', note })}
+                        onBack={() => dispatch({ type: 'back' })}
+                        onSubmit={() => dispatch({ type: 'submit-redo' })}
+                    />
+                );
             case 'done':
                 onClose();
                 return null;
