@@ -27,17 +27,7 @@ export {
 } from './Popover';
 export type { PopoverItemProps } from './Popover';
 
-export {
-	Modal,
-	ModalTrigger,
-	ModalContent,
-	ModalHeader,
-	ModalTitle,
-	ModalSubtitle,
-	ModalClose,
-	ModalBody,
-	ModalFooter,
-} from './Modal';
+export { Modal } from './Modal';
 export type { ModalContentProps, ModalCloseProps } from './Modal';
 
 export { Row } from './Row';

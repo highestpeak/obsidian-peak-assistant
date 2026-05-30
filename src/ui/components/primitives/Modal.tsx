@@ -4,11 +4,13 @@ import { X } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { IconButton } from './IconButton';
 
-/** Modal Root — Radix Dialog. Pass `open` + `onOpenChange` for controlled use. */
-export const Modal = DialogPrimitive.Root;
+/** Modal Root — thin pass-through over Radix Dialog (isolates the `Modal.X` namespace). */
+const ModalRoot: React.FC<React.ComponentProps<typeof DialogPrimitive.Root>> = (
+	props
+) => <DialogPrimitive.Root {...props} />;
+ModalRoot.displayName = 'Modal';
 
-/** Modal Trigger — Radix Dialog Trigger. */
-export const ModalTrigger = DialogPrimitive.Trigger;
+const ModalTrigger = DialogPrimitive.Trigger;
 
 const ModalOverlay = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Overlay>,
@@ -16,7 +18,6 @@ const ModalOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
 	<DialogPrimitive.Overlay
 		ref={ref}
-		data-open="true"
 		className={cn('pk-modal-overlay', className)}
 		{...props}
 	/>
@@ -28,8 +29,7 @@ export interface ModalContentProps
 	width?: 'narrow' | 'default' | 'wide';
 }
 
-/** Modal shell — overlay + width-aware shell. Renders into Radix Portal. */
-export const ModalContent = React.forwardRef<
+const ModalContent = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Content>,
 	ModalContentProps
 >(({ className, width = 'default', children, ...props }, ref) => (
@@ -49,10 +49,9 @@ export const ModalContent = React.forwardRef<
 		</DialogPrimitive.Content>
 	</DialogPrimitive.Portal>
 ));
-ModalContent.displayName = 'ModalContent';
+ModalContent.displayName = 'Modal.Content';
 
-/** Modal header — flex row containing title block + ModalClose. */
-export const ModalHeader = React.forwardRef<
+const ModalHeader = React.forwardRef<
 	HTMLDivElement,
 	React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
@@ -62,10 +61,9 @@ export const ModalHeader = React.forwardRef<
 		{...props}
 	/>
 ));
-ModalHeader.displayName = 'ModalHeader';
+ModalHeader.displayName = 'Modal.Header';
 
-/** Modal title — Radix DialogTitle for screen readers. */
-export const ModalTitle = React.forwardRef<
+const ModalTitle = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Title>,
 	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
@@ -75,10 +73,9 @@ export const ModalTitle = React.forwardRef<
 		{...props}
 	/>
 ));
-ModalTitle.displayName = 'ModalTitle';
+ModalTitle.displayName = 'Modal.Title';
 
-/** Modal subtitle — Radix DialogDescription. */
-export const ModalSubtitle = React.forwardRef<
+const ModalSubtitle = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Description>,
 	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => (
@@ -88,7 +85,7 @@ export const ModalSubtitle = React.forwardRef<
 		{...props}
 	/>
 ));
-ModalSubtitle.displayName = 'ModalSubtitle';
+ModalSubtitle.displayName = 'Modal.Subtitle';
 
 export interface ModalCloseProps
 	extends Omit<
@@ -98,12 +95,7 @@ export interface ModalCloseProps
 	label?: string;
 }
 
-/**
- * Close affordance — renders an `<IconButton>` (which applies `.pk-icon-btn`)
- * wired to Radix DialogClose. Deduplicates the now-removed
- * `.pk-modal-shell__close` CSS rule.
- */
-export const ModalClose = React.forwardRef<HTMLButtonElement, ModalCloseProps>(
+const ModalClose = React.forwardRef<HTMLButtonElement, ModalCloseProps>(
 	({ label = 'Close', className, ...props }, ref) => (
 		<DialogPrimitive.Close asChild>
 			<IconButton ref={ref} label={label} className={className} {...props}>
@@ -112,10 +104,9 @@ export const ModalClose = React.forwardRef<HTMLButtonElement, ModalCloseProps>(
 		</DialogPrimitive.Close>
 	)
 );
-ModalClose.displayName = 'ModalClose';
+ModalClose.displayName = 'Modal.Close';
 
-/** Modal body — scrollable content region. */
-export const ModalBody = React.forwardRef<
+const ModalBody = React.forwardRef<
 	HTMLDivElement,
 	React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
@@ -125,10 +116,9 @@ export const ModalBody = React.forwardRef<
 		{...props}
 	/>
 ));
-ModalBody.displayName = 'ModalBody';
+ModalBody.displayName = 'Modal.Body';
 
-/** Modal footer — right-aligned action bar. */
-export const ModalFooter = React.forwardRef<
+const ModalFooter = React.forwardRef<
 	HTMLDivElement,
 	React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
@@ -138,4 +128,21 @@ export const ModalFooter = React.forwardRef<
 		{...props}
 	/>
 ));
-ModalFooter.displayName = 'ModalFooter';
+ModalFooter.displayName = 'Modal.Footer';
+
+/**
+ * Compound Modal — `Modal` is the Radix Dialog root; sub-parts hang off it:
+ * `Modal.Trigger / .Content (width: narrow|default|wide) / .Header / .Title /
+ * .Subtitle / .Close / .Body / .Footer`. `Modal.Close` renders an `<IconButton>`
+ * internally; the now-removed `.pk-modal-shell__close` CSS rule was a duplicate.
+ */
+export const Modal = Object.assign(ModalRoot, {
+	Trigger: ModalTrigger,
+	Content: ModalContent,
+	Header: ModalHeader,
+	Title: ModalTitle,
+	Subtitle: ModalSubtitle,
+	Close: ModalClose,
+	Body: ModalBody,
+	Footer: ModalFooter,
+});

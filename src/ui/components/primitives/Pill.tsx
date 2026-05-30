@@ -12,6 +12,7 @@ export const Pill = React.forwardRef<HTMLButtonElement, PillProps>(
 		<button
 			ref={ref}
 			type={type}
+			aria-pressed={selected}
 			data-selected={selected ? 'true' : undefined}
 			className={cn('pk-pill', className)}
 			{...props}

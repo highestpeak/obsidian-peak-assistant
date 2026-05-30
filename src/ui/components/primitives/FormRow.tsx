@@ -137,14 +137,14 @@ export interface FormNumberProps
 	extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
 	/** Optional unit label rendered to the right of the input. */
 	unit?: string;
-	/** ClassName for the outer `<div class="pk-form-number">` wrapper. */
-	wrapperClassName?: string;
+	/** Override for the inner `<input>` className (rarely needed). */
+	inputClassName?: string;
 }
 
 const FormNumber = React.forwardRef<HTMLInputElement, FormNumberProps>(
-	({ className, wrapperClassName, unit, ...props }, ref) => (
-		<div className={cn('pk-form-number', wrapperClassName)}>
-			<input ref={ref} type="number" className={className} {...props} />
+	({ className, inputClassName, unit, ...props }, ref) => (
+		<div className={cn('pk-form-number', className)}>
+			<input ref={ref} type="number" className={inputClassName} {...props} />
 			{unit ? <span className="pk-form-number__unit">{unit}</span> : null}
 		</div>
 	)

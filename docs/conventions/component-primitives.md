@@ -155,7 +155,7 @@ Selected state via `data-selected="true"`.
 
 **Title font** — uses `--pk-text-lg` (14px). Mock specified 15px which doesn't exist as a token; if it ever feels too small in real surfaces, file an issue rather than reintroducing a 15px literal.
 
-**When React wrapper exists (`<Modal>` + `ModalTrigger` / `ModalContent` / `ModalHeader` / `ModalTitle` / `ModalSubtitle` / `ModalClose` / `ModalBody` / `ModalFooter`)** — use it for focus trap, escape-to-close, and portal mounting (Radix Dialog under the hood). `ModalClose` renders an `<IconButton>` internally — the previous `.pk-modal-shell__close` CSS rule was removed as a duplicate of `.pk-icon-btn`. The CSS classes are for static usage or when you need a custom shell shape.
+**When React wrapper exists (`<Modal>` compound: `Modal.Trigger` / `Modal.Content` (`width: 'narrow' | 'default' | 'wide'`) / `Modal.Header` / `Modal.Title` / `Modal.Subtitle` / `Modal.Close` / `Modal.Body` / `Modal.Footer`)** — use it for focus trap, escape-to-close, and portal mounting (Radix Dialog under the hood). Mirrors the `Row.Body` / `FormRow.Label` compound convention so all 3 compound primitives feel the same to callers. `Modal.Close` renders an `<IconButton>` internally — the previous `.pk-modal-shell__close` CSS rule was removed as a duplicate of `.pk-icon-btn`. The CSS classes are for static usage or when you need a custom shell shape.
 
 ### `.pk-popover` + `.pk-pop-item`
 
