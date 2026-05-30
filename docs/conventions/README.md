@@ -33,6 +33,6 @@ These are short enough to keep in `CLAUDE.md` without bloating it:
 - shadcn `Button` over raw `<button>`
 - No semantic HTML (`<h1-h6>`, `<p>`) — `<span>` + Tailwind
 - Component extraction at ~8 lines
-- Configurability via `templates/config/` or `core/constant.ts`
+- Configurability via `templates/config/` or `core/constant.ts` (4 surface configs registered: `onboarding`, `settings`, `chat`, `dashboard` — PR-0 scaffold, 2026-05-30)
 
 If a convention's explanation grows past ~3 lines, move it here.

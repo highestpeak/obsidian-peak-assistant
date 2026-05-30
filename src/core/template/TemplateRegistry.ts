@@ -133,6 +133,11 @@ export const ConfigTemplateId = {
 	ModelsDefaults: 'config-models-defaults' as const,
 	CommunityColors: 'config-community-colors' as const,
 	CuratorCatalog: 'config-curator-catalog' as const,
+	// Surface configs (design-system-unification-2026-05-30)
+	Onboarding: 'config-onboarding' as const,
+	Settings: 'config-settings' as const,
+	Chat: 'config-chat' as const,
+	Dashboard: 'config-dashboard' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -369,6 +374,12 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ConfigTemplateId.ModelsDefaults]: meta('config', 'models/defaults', { expectsJson: true }),
 	[ConfigTemplateId.CommunityColors]: meta('config', 'community-colors', { expectsJson: true }),
 	[ConfigTemplateId.CuratorCatalog]: meta('config', 'curator-catalog', { expectsJson: true }),
+
+	// --- Surface configs (design-system-unification-2026-05-30) ---
+	[ConfigTemplateId.Onboarding]: meta('config', 'onboarding', { expectsJson: true }),
+	[ConfigTemplateId.Settings]: meta('config', 'settings', { expectsJson: true }),
+	[ConfigTemplateId.Chat]: meta('config', 'chat', { expectsJson: true }),
+	[ConfigTemplateId.Dashboard]: meta('config', 'dashboard', { expectsJson: true }),
 
 	// --- Structural analysis prompts ---
 	'gap-explanation': meta('prompts', 'gap-explanation', { label: 'Gap Explanation', description: 'LLM prompt for lazy gap explanations.', group: 'indexing' }),

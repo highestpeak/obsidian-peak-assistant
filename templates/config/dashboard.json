@@ -1,0 +1,4 @@
+{
+  "_doc": "PR-0 scaffold — surface-specific user-facing strings will be added in per-surface refactor PRs. Loaded via TemplateManager.loadJson(ConfigTemplateId.Dashboard).",
+  "_owner": "design-system-unification-2026-05-30"
+}
