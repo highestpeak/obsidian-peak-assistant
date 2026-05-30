@@ -58,6 +58,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | S4. Structural Hole | Brandes BC + Louvain + Burt constraint + Gap Analysis UI + bridge actions | 完成 (8 tasks) |
 | S6. Precompiled Knowledge | HubStalenessDetector + HubRegenService + hub_regen_queue + reranker boost | 完成 (6 tasks) |
 | AK. Agent Harness Curator Onboarding | Curator agent + 22-model catalog + zod validation + fallback + 9-step wizard（Welcome / Provider / Bootstrap / Preferences / Running / Review / Edit / Redo / Done）+ 接受写入 HarnessSettings | 完成 (3 commits, 56 tests, +3,614 lines) |
+| AL. Design System Unification | PR-0 地基（tokens + 10 共享原语 CSS + 9 React 薄壳 + telemetry/capabilities/templates 脚手架）+ Copilot skin + 3 worktree 并行（chat 4 PR / dashboard 4 PR / onboarding+settings 5 PR）+ 3 路 merge into master | 完成 (21 PR, master @ d2bdf42) |
 
 ## Next
 
@@ -214,6 +215,80 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-30 — Design System Unification 全量交付（21 PR / 单 session 并行 worktree dispatch）
+
+按 `docs/superpowers/plans/2026-05-30-design-system-unification.md` 7 个开放问题拍板后全量实施。背景：4 条 in-flight redesign 流（onboarding+settings / chat / dashboard / copilot）各自做 mock 后视觉语言开始裂——accent 紫/蓝、light/dark 覆盖、token 命名 `--pk-space-*` vs `--pk-s-*` 都分叉。先做地基统一再放并行。
+
+**§5 决议（一次拍板，不再重谈）**
+- Accent: **Purple #7c3aed**（保留 production，blue 改紫）
+- 主题: **light + dark 双模，Obsidian 主题驱动**（dashboard 放弃强制深色）
+- Provider 色板: **一等公民**（peak-tokens.css 加 6 provider × {base, soft} × {light, dark}）
+- 原语层: **CSS class（peak-components.css）+ React 薄壳（src/ui/components/primitives/）**
+- usage_outcome 表: **进通用 telemetry layer**（dashboard / agent trace / copilot review 共用）
+- per-surface 适配器: **共享层 `src/service/capabilities/`** 定义 SurfaceCapability interface
+- Copilot: **不开 worktree**，PR-0 后小 skin PR 注册 adapter + 字符串重命名
+
+**PR-0 · Design System Landing（commits `a7f0578` → `e28001d`，7 tasks 全 done，subagent-driven-development 流程）**
+- Task 1: `peak-tokens.css` 扩 `--pk-radius-pill` + `--pk-shadow-sm/md` + provider 色板 6×2 (a7f0578)
+- Task 2: 新建 `peak-components.css` 10 共享原语（pk-row + 7 chip 色调 + pill + icon-btn + segmented + modal + popover + form + disclosure + brand-av），全部 `:where(.pktw-root, .peak-design-root)` scoped (7f3a775)
+- Task 3: 新建 `src/ui/components/primitives/` 9 React 薄壳 + types.ts + barrel (4599571, fix 87b4eb4) — Modal compound `Modal.X` 模式 + Pill aria-pressed + FormNumber className 修正
+- Task 4: 新建 telemetry layer — `usage_outcome` 表 + Repo（insert/find/count/countUsefulMessages）+ Service（recordEvent + 5 convenience methods），9/9 tests pass (c944acc)
+- Task 5: 新建 `src/service/capabilities/` SurfaceCapability interface + CapabilityRegistry 单例（6 capability 名 / 4 readiness / 5 surface id），6/6 tests pass (f554d6f, fix f5aee0a)
+- Task 6: `templates/config/` 脚手架 — ConfigTemplateId 加 4 surface entry + 4 空 JSON shell (5a2396e)
+- Task 7: 4 个 mock 包机械迁移——token rename 到生产名 + dashboard 补 light 主题 + accent 改紫，planning artifacts 一并 land (e28001d)
+
+**Copilot skin（commit `a459578`）**
+- 注册 SurfaceCapabilityAdapter（Fast Lookup + Research + Safety capability）
+- MODE_LABELS 重命名（fast → Fast Lookup, complete → Research，5 个 UI 文件用户面字符串清理）
+- Obsidian native Modal shell 保留，不重写
+
+**路 B 并行 worktree dispatch（3 worktree × 4-5 PR = 13 PR，单 session 并行 Opus subagent）**
+
+chat-retained → merged at fb94620（4 PR）:
+- PR-Chat-1 (7f608e1): shell + HeaderRetained + ComposerRetained（Popover run-chip）+ `pkchat-*` CSS namespace
+- PR-Chat-2 (1ff9a22): document-style message rendering + suggested-next + More popover + delete-conversation 回header + 14 orphan 文件删除
+- PR-Chat-3 (77994b6): ConversationIndex 4 tab（All / Topics accordion / Artifacts cards / Messages）右 panel
+- PR-Chat-4 (62aba8c): Chat CapabilityAdapter + telemetry (recordVaultSave / recordContinuation) + receipt slot + useCurrentContextUtilization hook + chat 终于写 usage_log + chatStrings → TemplateManager
+
+dashboard-redesign → merged at b153e56（4 PR）:
+- PR-Dash-1 (bc345d7): 6-screen 重做（Overview/ProviderModel/OutcomeValue/BudgetAlerts/History/Optimization）+ 8 chart 原语骨架 + Segmented 时间范围
+- PR-Dash-2 (6bbc480): useDashboardMetrics hook — MPG + 3 阶 funnel + outcome breakdown，Overview 填实数；新增 `countAdoptedMessages` repo 方法
+- PR-Dash-3 (eb16d27): "What was this about" 详情 Modal（per-feature switch）+ ProviderModel + OutcomeValue 填实数；Modal 加 `portalClassName` + `container` 修 Radix Portal 出 scope bug
+- PR-Dash-4 (261156a): InlineReceipt + ContextRing + CuratorRuntimePushService（receipt 通过 chatBridge.ts 跨 worktree 集成）
+
+onboarding-settings → merged at 56a842b（5 PR）:
+- PR-A (a93daa6): OnboardingStateMachine 抽出来对齐 7 步契约，31/31 tests pass
+- PR-B (a068427): 字符串全量外置到 onboarding.json + settings.json + 词汇契约 rename（Profile→Provider, Quick→Fast Lookup, Deep→Research, Embedding→Knowledge Index, MCP Servers→External tools, Permission Mode→Safety），grep 通过零违规
+- PR-C (8840ec1): 视觉重写到 PR-0 原语 + 4 placeholder step 填实内容（capabilities / indexReadiness / systemCheck / readyToTry）+ `pkonb-*` CSS namespace
+- PR-D (0b26a6e): 5-tab Settings IA 重排（Overview / AI Setup / Knowledge Index / Tools / Advanced）+ `pkset-*` CSS namespace + 横向 underlined tab bar
+- PR-E (ec2d84d): useSurfaceReadiness hook 消费 CapabilityRegistry.getInstance().getAll()，Overview 实时反映已注册 surface（Option A: 只显示已注册）
+
+**Merge 路径**
+- chat → dashboard 干净 merge（fb94620, b153e56）
+- onboarding merge 时 peak-components.css 冲突——chat 和 onboarding 都在 PR-0 末尾 append 自己 namespace，git 的 3-way diff 看成同位置冲突。union merge 太粗暴会切断 chat 半路 rule body。换策略：重建 = base(645 行) + chat-added(1120 行) + onboarding-added(921 行) = 2686 行，0 冲突 marker，build green
+- 最终 master HEAD = d2bdf42（含 final completion log）
+
+**3 个 worktree 物理 cleanup**（`/Users/zhangjike/code/peak-{chat,dashboard,onboarding}` 通过 `git worktree remove` 撤除）
+
+**单 session 并行 dispatch 经验**
+- 5 轮 round（每轮 2-3 subagent 后台并行），每个 round 等通知再开下一批
+- Round 4 一次撞 session quota（auckland 8:10pm 重置），retry 间隔后顺利恢复
+- 每个 subagent 跑 4-40 分钟不等，最长一个跑了 46 分钟做 PR-Chat-4
+- 每轮 dispatch 前 controller 解决依赖（dashboard PR-Dash-4 等 chat PR-Chat-4 暴露 receipt slot + context hook）
+- Subagent 的 followup notes 直接写进下一轮 dispatch prompt，避免重新调研
+
+**测试 + 验证**
+- `npm run build` master 全绿
+- 5 关键测试套件全 pass：onboarding-state-machine (31/31), capability-registry (6/6), usage-outcome-repo (5/5), usage-outcome-service (5/5), usage-log-repo (4/4)
+
+**已知遗留（不阻断，留给后续 polish）**
+- 项目无 React 测试基础设施 → 6 个原语的 smoke test 待补（建 jsdom + @testing-library/react 后回补）
+- Segmented roving-focus a11y 是 TODO
+- chat 历史 v2-v5 草稿（chat-message-v5.css / chat-interaction-v4.css 等）残留 mock-only token，是历史快照非 retained 真源
+- peak-components.css 几处 magic number（10px compact padding / 18px modal body padding）缺 inline rationale
+- vault-search / ai-analysis / web-chat 暂无 CapabilityAdapter，Overview tab 只看到 Chat + Copilot 行（这些 surface 不在本 redesign 范围）
+- usage_outcome `view_dwell` event_type 没在闭合 enum，dashboard funnel 第 2 阶（inspected）用 useful count 近似
 
 ### 2026-05-29 — Agent Harness Curator Onboarding 全量落地（PR1+2+3+4）
 
