@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useChatViewStore } from './store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { OpenLinkEvent, ViewEventType } from '@/core/eventBus';
-import { MessageListRenderer } from './components/messages/MessageListRenderer';
+import { MessageListRendererRetained } from './components/messages/MessageListRendererRetained';
 import { FileChangesList } from './components/messages/FileChangesList';
 import { ConvertToProjectSuggestion } from './components/ConvertToProjectSuggestion';
 import { HeaderRetained } from './components/HeaderRetained';
@@ -127,11 +127,11 @@ export const MessagesViewComponent: React.FC = () => {
 					style={{ scrollBehavior: 'smooth' }}
 				>
 					{/*
-					  PR-Chat-2 SLOT: message rendering and document-style chrome live
-					  inside <MessageListRenderer />. PR-Chat-2 will replace the inner
-					  components without changing this slot.
+					  PR-Chat-2: document-style message rendering lives inside
+					  <MessageListRendererRetained />. It supersedes the legacy
+					  MessageListRenderer + MessageViewItem pair (now removed).
 					*/}
-					<MessageListRenderer />
+					<MessageListRendererRetained />
 					<FileChangesList />
 				</div>
 

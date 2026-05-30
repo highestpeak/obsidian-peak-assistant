@@ -944,3 +944,319 @@
   color: var(--pk-text-tertiary);
   line-height: 1.5;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   Chat retained surface — PR-Chat-2 (message rendering + suggested next + More)
+   ─────────────────────────────────────────────────────────────────────────────
+   Document-style message anatomy per chat-retained-mock.html:
+     .pkchat-msg
+       ├─ .pkchat-msg__head     (avatar + name + mode chip + inline meta)
+       ├─ .pkchat-msg__body     (markdown content; user variant has bubble)
+       ├─ .pkchat-msg__meta-row (model chip + timestamp + actions + More)
+       └─ .pkchat-msg__suggest  (suggested-next chips + More)
+   All selectors scoped via :where(.pktw-root, .peak-design-root).
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  padding: var(--pk-space-4) var(--pk-space-5) var(--pk-space-6);
+  gap: var(--pk-space-6);
+  box-sizing: border-box;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-3);
+  width: 100%;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__head {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  flex-wrap: wrap;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--pk-accent-soft);
+  color: var(--pk-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex: 0 0 26px;
+  border: 1px solid var(--pk-border-accent);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__avatar--user {
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-primary);
+  border-color: var(--pk-border);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__name {
+  font-weight: 650;
+  font-size: 13.5px;
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__head-meta {
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-sm);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__head-meta .pkchat-msg__dot {
+  margin: 0 var(--pk-space-1);
+  opacity: 0.6;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__body {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg--user .pkchat-msg__body {
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  padding: var(--pk-space-3) var(--pk-space-4);
+  font-size: var(--pk-text-md);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__meta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-sm);
+  flex-wrap: wrap;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__model-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--pk-space-2);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-accent-soft);
+  color: var(--pk-accent-hover, var(--pk-accent));
+  font-size: 11.5px;
+  font-family: var(--pk-font-mono);
+  border: 1px solid var(--pk-border-accent);
+  margin-right: var(--pk-space-1);
+  user-select: text;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__sep {
+  opacity: 0.5;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  height: 24px;
+  padding: 0 var(--pk-space-2);
+  border-radius: var(--pk-radius-sm);
+  color: var(--pk-text-secondary);
+  background: transparent;
+  border: 0;
+  font-size: var(--pk-text-sm);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__action:hover {
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__action--danger:hover {
+  color: var(--pk-error);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__action > svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__action--more {
+  margin-left: auto;
+  width: 24px;
+  padding: 0;
+  justify-content: center;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-label {
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-tertiary);
+  margin-right: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  height: 28px;
+  padding: 0 11px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-border);
+  color: var(--pk-text-primary);
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-chip:hover {
+  background: var(--pk-surface-sunken);
+  border-color: var(--pk-border-accent);
+  color: var(--pk-accent-hover, var(--pk-accent));
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-chip > svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  height: 28px;
+  padding: 0 var(--pk-space-3);
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  border: 0;
+  color: var(--pk-text-secondary);
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-more:hover {
+  color: var(--pk-text-primary);
+  background: var(--pk-surface-sunken);
+}
+
+/* Inline follow-up affordance (default OFF; toggled on via the More popover) */
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup {
+  margin-top: var(--pk-space-2);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+  padding: var(--pk-space-3);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-tertiary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__textarea {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  background: var(--pk-bg);
+  color: var(--pk-text-primary);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-sm);
+  padding: var(--pk-space-2) var(--pk-space-3);
+  font-family: inherit;
+  font-size: var(--pk-text-md);
+  line-height: 1.5;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__textarea:focus {
+  outline: none;
+  border-color: var(--pk-border-accent);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__submit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  height: 28px;
+  padding: 0 var(--pk-space-3);
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-accent);
+  color: var(--pk-accent-fg);
+  border: 0;
+  font-family: inherit;
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  height: 28px;
+  padding: 0 var(--pk-space-3);
+  border-radius: var(--pk-radius-sm);
+  background: transparent;
+  color: var(--pk-text-secondary);
+  border: 1px solid var(--pk-border);
+  font-family: inherit;
+  font-size: var(--pk-text-sm);
+  cursor: pointer;
+}
+
+/* Mode chip — small pill next to assistant name, e.g. "Agent" / "Chat" / "Plan" */
+:where(.pktw-root, .peak-design-root) .pkchat-msg__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  height: 22px;
+  padding: 0 var(--pk-space-2);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-accent-soft);
+  color: var(--pk-accent-hover, var(--pk-accent));
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid var(--pk-border-accent);
+}

@@ -1,10 +1,14 @@
 import React, { useMemo } from 'react';
 import { ChatRole } from '@/core/providers/types';
-import { MessageItem, MessageItemProps } from './MessageViewItem';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { DateSeparator } from '../DateSeparator';
 import { useModels } from '@/ui/hooks/useModels';
+import {
+	MessageViewItemRetained,
+	MessageItemRetainedProps,
+} from './MessageViewItemRetained';
+import { CHAT_STRINGS } from '../../chatStrings';
 
 /** Get date-only string for comparison */
 function getDateOnly(ts: number | undefined): string {
@@ -14,17 +18,11 @@ function getDateOnly(ts: number | undefined): string {
 }
 
 /**
- * Props for MessageListRenderer component
+ * MessageListRendererRetained — message list using the 2026-05-29 retained
+ * document-style message rendering. Replaces the legacy MessageListRenderer
+ * + MessageViewItem path. Streaming and dataflow behavior unchanged.
  */
-interface MessageListRendererProps {
-}
-
-/**
- * Component for efficiently rendering messages list with optimized last message handling
- */
-export const MessageListRenderer: React.FC<MessageListRendererProps> = ({
-}) => {
-	// Get messages and streaming state from messageStore
+export const MessageListRendererRetained: React.FC = () => {
 	const {
 		messages,
 		streamingMessageId,
@@ -36,14 +34,11 @@ export const MessageListRenderer: React.FC<MessageListRendererProps> = ({
 	} = useChatDataStore();
 	const { models } = useModels();
 
-	// Prepare saved messages for rendering (exclude streaming message if it's being streamed)
-	const savedMessagesToRender: Array<MessageItemProps> = useMemo(() => {
-		const result: Array<MessageItemProps> = [];
-
-		messages.forEach(message => {
+	const savedMessagesToRender: Array<MessageItemRetainedProps> = useMemo(() => {
+		const result: Array<MessageItemRetainedProps> = [];
+		messages.forEach((message) => {
 			result.push({
 				message,
-
 				streamingState: {
 					isStreaming: false,
 					streamingContent: '',
@@ -52,24 +47,17 @@ export const MessageListRenderer: React.FC<MessageListRendererProps> = ({
 					currentToolCalls: message.toolCalls || [],
 					isToolSequenceActive: false,
 				},
-
 				isLastMessage: false,
 			});
 		});
-
 		if (result.length > 0) {
 			result[result.length - 1].isLastMessage = true;
 		}
-
 		return result;
 	}, [messages]);
 
-	// Prepare streaming message separately (only when actively streaming)
-	const streamingMessageToRender: MessageItemProps | null = useMemo(() => {
-		if (!streamingMessageId) {
-			return null;
-		}
-
+	const streamingMessageToRender: MessageItemRetainedProps | null = useMemo(() => {
+		if (!streamingMessageId) return null;
 		return {
 			message: {
 				id: streamingMessageId,
@@ -81,54 +69,54 @@ export const MessageListRenderer: React.FC<MessageListRendererProps> = ({
 				model: DEFAULT_AI_SERVICE_SETTINGS.defaultModel.modelId,
 				provider: DEFAULT_AI_SERVICE_SETTINGS.defaultModel.provider,
 			},
-
 			streamingState: {
 				isStreaming: true,
-				streamingContent: streamingContent,
-				reasoningContent: reasoningContent,
-				isReasoningActive: isReasoningActive,
-				currentToolCalls: currentToolCalls,
-				isToolSequenceActive: isToolSequenceActive,
+				streamingContent,
+				reasoningContent,
+				isReasoningActive,
+				currentToolCalls,
+				isToolSequenceActive,
 			},
 			isLastMessage: true,
 		};
-	}, [streamingMessageId, streamingContent, reasoningContent, isReasoningActive, currentToolCalls, isToolSequenceActive]);
+	}, [
+		streamingMessageId,
+		streamingContent,
+		reasoningContent,
+		isReasoningActive,
+		currentToolCalls,
+		isToolSequenceActive,
+	]);
 
-	// Render loading state for empty conversation
 	if (savedMessagesToRender.length === 0 && !streamingMessageToRender) {
 		return (
 			<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]">
-				<div className="pktw-text-2xl pktw-font-light pktw-text-muted-foreground pktw-text-center">Ready when you are.</div>
+				<div className="pktw-text-2xl pktw-font-light pktw-text-muted-foreground pktw-text-center">
+					{CHAT_STRINGS.message.emptyHero}
+				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="pktw-flex pktw-flex-col pktw-w-full pktw-max-w-none pktw-m-0 pktw-px-4 pktw-py-6 pktw-gap-0 pktw-box-border">
-			{/* Render saved messages */}
+		<div className="pkchat-msg-list">
 			{savedMessagesToRender.map((item, index) => {
 				const prevItem = index > 0 ? savedMessagesToRender[index - 1] : null;
 				const currentDate = getDateOnly(item.message.createdAtTimestamp);
 				const prevDate = prevItem ? getDateOnly(prevItem.message.createdAtTimestamp) : '';
-				const showDateSeparator = currentDate !== prevDate && !!item.message.createdAtTimestamp;
+				const showDateSeparator =
+					currentDate !== prevDate && !!item.message.createdAtTimestamp;
 				return (
 					<React.Fragment key={item.message.id ?? index}>
 						{showDateSeparator && (
 							<DateSeparator date={new Date(item.message.createdAtTimestamp)} />
 						)}
-						<MessageItem
-							{...item}
-							models={models}
-						/>
+						<MessageViewItemRetained {...item} models={models} />
 					</React.Fragment>
 				);
 			})}
-			{/* Render streaming message */}
 			{streamingMessageToRender && (
-				<MessageItem
-					{...streamingMessageToRender}
-					models={models}
-				/>
+				<MessageViewItemRetained {...streamingMessageToRender} models={models} />
 			)}
 		</div>
 	);
