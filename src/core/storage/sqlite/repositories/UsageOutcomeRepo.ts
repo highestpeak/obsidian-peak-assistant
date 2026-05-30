@@ -79,4 +79,25 @@ export class UsageOutcomeRepo {
 
 		return Number(result.rows[0]?.n ?? 0);
 	}
+
+	/**
+	 * Funnel stage-3 ("adopted") helper: count of distinct `message_id`s with
+	 * ≥1 "strong" outcome — i.e. an event_type that represents the user
+	 * actually keeping the AI output (vault save, copilot accept, agent file
+	 * emit). Excludes the weaker `search_click` (mere inspection) and
+	 * `continuation` (engagement, not adoption).
+	 *
+	 * Mirrors {@link countUsefulMessages} but with an event_type filter; used
+	 * by the dashboard Overview's 3-stage funnel (invoked → inspected → adopted).
+	 */
+	async countAdoptedMessages(range: { from: number; to: number }): Promise<number> {
+		const result = await sql<{ n: number }>`
+			SELECT COUNT(DISTINCT message_id) AS n
+			FROM usage_outcome
+			WHERE occurred_at >= ${range.from} AND occurred_at <= ${range.to}
+			  AND event_type IN ('vault_save', 'copilot_accept', 'agent_file_emit')
+		`.execute(this.db);
+
+		return Number(result.rows[0]?.n ?? 0);
+	}
 }

@@ -163,6 +163,32 @@ async function testCountUsefulMessages(): Promise<void> {
 	console.log('PASS: countUsefulMessages');
 }
 
+async function testCountAdoptedMessages(): Promise<void> {
+	const { repo } = makeRepo();
+	// m1: vault_save (strong) — counts
+	await repo.insert({ message_id: 'm1', session_id: 's', event_type: 'vault_save',     occurred_at: 100, target: null, metadata_json: null });
+	// m2: copilot_accept (strong) — counts
+	await repo.insert({ message_id: 'm2', session_id: 's', event_type: 'copilot_accept', occurred_at: 200, target: null, metadata_json: null });
+	// m3: only search_click (weak) — does NOT count
+	await repo.insert({ message_id: 'm3', session_id: 's', event_type: 'search_click',   occurred_at: 300, target: null, metadata_json: null });
+	// m4: only continuation (weak) — does NOT count
+	await repo.insert({ message_id: 'm4', session_id: 's', event_type: 'continuation',   occurred_at: 400, target: null, metadata_json: null });
+	// m5: agent_file_emit (strong) — counts
+	await repo.insert({ message_id: 'm5', session_id: 's', event_type: 'agent_file_emit', occurred_at: 500, target: null, metadata_json: null });
+	// m6: out of range — does NOT count
+	await repo.insert({ message_id: 'm6', session_id: 's', event_type: 'vault_save',     occurred_at: 5000, target: null, metadata_json: null });
+	// m2 duplicate event — distinct, still counts once
+	await repo.insert({ message_id: 'm2', session_id: 's', event_type: 'vault_save',     occurred_at: 250, target: null, metadata_json: null });
+
+	const n = await repo.countAdoptedMessages({ from: 0, to: 1000 });
+	assert.strictEqual(n, 3, 'm1, m2, m5 — distinct strong-outcome message_ids in range');
+
+	const nEmpty = await repo.countAdoptedMessages({ from: 6000, to: 7000 });
+	assert.strictEqual(nEmpty, 0);
+
+	console.log('PASS: countAdoptedMessages');
+}
+
 // ── Run ─────────────────────────────────────────────────────────────────────
 
 (async () => {
@@ -170,5 +196,6 @@ async function testCountUsefulMessages(): Promise<void> {
 	await testFindBySession();
 	await testCountByType();
 	await testCountUsefulMessages();
+	await testCountAdoptedMessages();
 	console.log('\nAll usage-outcome-repo tests passed!');
 })();

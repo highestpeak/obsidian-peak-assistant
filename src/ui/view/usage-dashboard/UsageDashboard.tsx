@@ -45,10 +45,38 @@ interface TimeRangeMeta {
 	label: string;
 }
 
-interface DashboardStrings {
+export interface OverviewKpiStrings {
+	label: string;
+	help?: string;
+	empty?: string;
+}
+
+export interface OverviewStrings {
+	kpi: {
+		mpg: OverviewKpiStrings;
+		totalCost: OverviewKpiStrings;
+		usefulMessages: OverviewKpiStrings;
+		totalCalls: OverviewKpiStrings;
+	};
+	funnel: {
+		title: string;
+		subtitle: string;
+		stages: { invoked: string; inspected: string; adopted: string };
+		empty: string;
+	};
+	outcomeBreakdown: {
+		title: string;
+		subtitle: string;
+		empty: string;
+		events: Record<string, string>;
+	};
+}
+
+export interface DashboardStrings {
 	title: string;
 	timeRange: Record<TimeRange, string>;
 	screens: Record<string, ScreenMeta>;
+	overview: OverviewStrings;
 }
 
 /**
@@ -72,6 +100,39 @@ const FALLBACK_STRINGS: DashboardStrings = {
 		history: { id: 'history', num: '05', label: 'History', title: 'Usage History', subtitle: 'Audit and drill into individual calls.' },
 		optimization: { id: 'optimization', num: '06', label: 'Optimization', title: 'Usage Optimization', subtitle: 'Curator recommendations with Apply / Preview verbs.' },
 	},
+	overview: {
+		kpi: {
+			mpg: {
+				label: 'Cost / useful message',
+				help: 'Sum of usage cost in this range divided by the number of AI messages that produced a real outcome (vault save, copilot accept, agent file emit). Spec §11.2.',
+				empty: '—',
+			},
+			totalCost: { label: 'Total cost' },
+			usefulMessages: {
+				label: 'Useful messages',
+				help: 'Distinct AI messages with ≥1 outcome event in this range.',
+			},
+			totalCalls: { label: 'AI calls' },
+		},
+		funnel: {
+			title: 'Outcome funnel',
+			subtitle: 'Invoked → inspected → adopted · spec §11.3',
+			stages: { invoked: 'Invoked', inspected: 'Inspected', adopted: 'Adopted' },
+			empty: 'No AI activity in this range.',
+		},
+		outcomeBreakdown: {
+			title: 'Outcome breakdown',
+			subtitle: 'Events by type',
+			empty: 'No outcome events recorded in this range.',
+			events: {
+				vault_save: 'Vault save',
+				copilot_accept: 'Copilot accept',
+				search_click: 'Search click',
+				agent_file_emit: 'Agent file emit',
+				continuation: 'Continuation',
+			},
+		},
+	},
 };
 
 const SCREEN_ORDER: Array<keyof DashboardStrings['screens']> = [
@@ -85,7 +146,7 @@ const SCREEN_ORDER: Array<keyof DashboardStrings['screens']> = [
 
 const TIME_RANGE_ORDER: TimeRange[] = ['today', '7d', '30d', 'all'];
 
-function useDashboardStrings(): DashboardStrings {
+export function useDashboardStrings(): DashboardStrings {
 	const [strings, setStrings] = useState<DashboardStrings>(FALLBACK_STRINGS);
 	useEffect(() => {
 		let cancelled = false;
@@ -96,7 +157,14 @@ function useDashboardStrings(): DashboardStrings {
 					ConfigTemplateId.Dashboard
 				);
 				if (!cancelled && loaded && loaded.screens) {
-					setStrings({ ...FALLBACK_STRINGS, ...loaded });
+					// Shallow-merge each known top-level group so an upstream
+					// dashboard.json that omits e.g. the overview block still
+					// renders with English fallbacks instead of crashing.
+					setStrings({
+						...FALLBACK_STRINGS,
+						...loaded,
+						overview: { ...FALLBACK_STRINGS.overview, ...(loaded.overview ?? {}) },
+					});
 				}
 			} catch {
 				/* fallback already in state */
@@ -161,7 +229,9 @@ export function UsageDashboard() {
 				aria-label="Dashboard screen"
 			/>
 
-			{activeScreen === 'overview' && <OverviewScreen range={range} />}
+			{activeScreen === 'overview' && (
+				<OverviewScreen range={range} strings={strings.overview} />
+			)}
 			{activeScreen === 'provider-model' && <ProviderModelScreen range={range} />}
 			{activeScreen === 'outcome-value' && <OutcomeValueScreen range={range} />}
 			{activeScreen === 'budget-alerts' && <BudgetAlertsScreen range={range} />}

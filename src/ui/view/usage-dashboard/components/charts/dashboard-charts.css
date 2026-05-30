@@ -304,4 +304,86 @@
 		font-size: var(--pk-text-sm);
 		color: var(--pk-text-secondary);
 	}
+
+	/* ── KPI row ── 4 KpiActionCards laid out side-by-side, responsive */
+	.pk-dash-kpi-row {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+		gap: var(--pk-space-3);
+	}
+	.pk-kpi-value {
+		font-size: var(--pk-text-2xl, 24px);
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		color: var(--pk-text-primary);
+		line-height: 1.2;
+	}
+	.pk-kpi-value--muted {
+		color: var(--pk-text-tertiary);
+	}
+	.pk-kpi-sub {
+		margin-top: var(--pk-space-1, 4px);
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+	}
+
+	/* ── outcome funnel ── 3 horizontal bars, each labelled with stage + count.
+	   Bars share a max-width baseline (the largest stage = 100%), so the
+	   visual taper communicates conversion at a glance. */
+	.pk-funnel {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pk-space-2);
+	}
+	.pk-funnel__row {
+		display: grid;
+		grid-template-columns: minmax(96px, max-content) 1fr auto;
+		align-items: center;
+		gap: var(--pk-space-3);
+	}
+	.pk-funnel__label {
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+	}
+	.pk-funnel__bar {
+		height: 16px;
+		background: var(--pk-surface-sunken);
+		border-radius: var(--pk-radius-pill);
+		overflow: hidden;
+	}
+	.pk-funnel__bar-fill {
+		display: block;
+		height: 100%;
+		background: var(--pk-accent);
+		border-radius: var(--pk-radius-pill);
+		transition: width var(--pk-motion-base, 240ms) ease;
+	}
+	.pk-funnel__bar-fill--inspected {
+		background: var(--pk-accent-soft, var(--pk-accent));
+		opacity: 0.85;
+	}
+	.pk-funnel__bar-fill--adopted {
+		background: var(--pk-accent);
+	}
+	.pk-funnel__count {
+		font-variant-numeric: tabular-nums;
+		font-size: var(--pk-text-base);
+		color: var(--pk-text-primary);
+		min-width: 56px;
+		text-align: right;
+	}
+	.pk-funnel__pct {
+		font-variant-numeric: tabular-nums;
+		font-size: var(--pk-text-xs, 11px);
+		color: var(--pk-text-tertiary);
+		margin-left: 4px;
+	}
+
+	/* ── empty state for sections without data ── */
+	.pk-dash-empty {
+		padding: var(--pk-space-4) var(--pk-space-3);
+		color: var(--pk-text-tertiary);
+		font-size: var(--pk-text-sm);
+		text-align: center;
+	}
 }
