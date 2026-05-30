@@ -1,0 +1,784 @@
+/*
+ * Usage Dashboard chart primitives
+ * ─────────────────────────────────
+ * Scope: `.peak-design-root.usage-dashboard` only. These patterns are
+ * dashboard-local on purpose — they encode chart conventions (inline-table
+ * bars, horizontal bar grids, KPI action slots, savings dials, help
+ * affordances, explainer panels, numbered pagers) that don't generalize to
+ * other surfaces. If chat/onboarding need any of these, promote to
+ * `peak-components.css` first (see PR-0 promotion playbook).
+ *
+ * Mock origin: docs/gstack/usage-dashboard-mockups-2026-05-29/*.html
+ * Class names mirror the mock's `.tbl-bar / .hbar / .kpi__action /
+ * .savings-dial / .help / .explainer / .pager / .btn--pill` patterns.
+ *
+ * Tokens: production `--pk-*` only — no inline hex, no Obsidian-theme refs.
+ */
+
+:where(.peak-design-root.usage-dashboard) {
+	/* ── help affordance ── ⓘ next to a metric label, native tooltip */
+	.pk-help {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 14px;
+		height: 14px;
+		font-size: 10px;
+		color: var(--pk-text-tertiary);
+		cursor: help;
+		user-select: none;
+	}
+	.pk-help:hover {
+		color: var(--pk-text-secondary);
+	}
+
+	/* ── inline table bar ── % cell with embedded bar + numeric value */
+	.pk-tbl-bar {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: var(--pk-space-2);
+		min-width: 88px;
+	}
+	.pk-tbl-bar__track {
+		flex: 1;
+		height: 6px;
+		background: var(--pk-surface-sunken);
+		border-radius: var(--pk-radius-pill);
+		overflow: hidden;
+	}
+	.pk-tbl-bar__fill {
+		display: block;
+		height: 100%;
+		background: var(--pk-accent);
+		border-radius: var(--pk-radius-pill);
+	}
+	.pk-tbl-bar__value {
+		font-variant-numeric: tabular-nums;
+		font-size: var(--pk-text-base);
+		color: var(--pk-text-primary);
+		min-width: 32px;
+		text-align: right;
+	}
+
+	/* ── horizontal bar list ── 4-column grid: label / bar / $ / %
+	   `$` ALWAYS sits OUTSIDE the bar (mock anti-pattern guard) */
+	.pk-hbar {
+		display: grid;
+		grid-template-columns: minmax(120px, 1.2fr) minmax(160px, 3fr) auto auto;
+		align-items: center;
+		gap: var(--pk-space-3);
+		padding: var(--pk-space-2) 0;
+	}
+	.pk-hbar + .pk-hbar {
+		border-top: 1px solid var(--pk-border-soft);
+	}
+	.pk-hbar__label {
+		font-size: var(--pk-text-base);
+		color: var(--pk-text-primary);
+		display: flex;
+		align-items: center;
+		gap: var(--pk-space-2);
+		min-width: 0;
+	}
+	.pk-hbar__label-text {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pk-hbar__bar {
+		height: 8px;
+		background: var(--pk-surface-sunken);
+		border-radius: var(--pk-radius-pill);
+		overflow: hidden;
+	}
+	.pk-hbar__bar-fill {
+		display: block;
+		height: 100%;
+		background: var(--pk-accent);
+		border-radius: var(--pk-radius-pill);
+	}
+	.pk-hbar__cost {
+		font-variant-numeric: tabular-nums;
+		font-size: var(--pk-text-base);
+		color: var(--pk-text-primary);
+		min-width: 56px;
+		text-align: right;
+	}
+	.pk-hbar__pct {
+		font-variant-numeric: tabular-nums;
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+		min-width: 40px;
+		text-align: right;
+	}
+
+	/* ── KPI top-right action slot ── verb button on the KPI card head */
+	.pk-kpi-action {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		background: transparent;
+		border: 1px solid var(--pk-border);
+		color: var(--pk-text-secondary);
+		font-size: var(--pk-text-sm);
+		padding: 2px var(--pk-space-2);
+		border-radius: var(--pk-radius-sm);
+		cursor: pointer;
+	}
+	.pk-kpi-action:hover {
+		background: var(--pk-state-hover);
+		color: var(--pk-text-primary);
+	}
+
+	/* ── savings dial ── small ring + caption pair */
+	.pk-savings-dial {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--pk-space-3);
+	}
+	.pk-savings-dial__ring {
+		position: relative;
+		width: 48px;
+		height: 48px;
+		flex-shrink: 0;
+	}
+	.pk-savings-dial__ring svg {
+		width: 100%;
+		height: 100%;
+		transform: rotate(-90deg);
+	}
+	.pk-savings-dial__track {
+		stroke: var(--pk-surface-sunken);
+	}
+	.pk-savings-dial__fill {
+		stroke: var(--pk-accent);
+		transition: stroke-dashoffset var(--pk-motion-base, 240ms) ease;
+	}
+	.pk-savings-dial__num {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: var(--pk-text-sm);
+		font-variant-numeric: tabular-nums;
+		color: var(--pk-text-primary);
+	}
+	.pk-savings-dial__caption {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.pk-savings-dial__caption-strong {
+		font-size: var(--pk-text-base);
+		color: var(--pk-text-primary);
+	}
+	.pk-savings-dial__caption-sub {
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+	}
+
+	/* ── explainer panel ── definition list (term/description pairs) */
+	.pk-explainer {
+		display: grid;
+		grid-template-columns: minmax(120px, max-content) 1fr;
+		gap: var(--pk-space-2) var(--pk-space-3);
+		padding: var(--pk-space-3);
+		background: var(--pk-surface-sunken);
+		border: 1px solid var(--pk-border-soft);
+		border-radius: var(--pk-radius-md);
+		font-size: var(--pk-text-sm);
+		margin: 0;
+	}
+	.pk-explainer dt {
+		color: var(--pk-text-secondary);
+		font-weight: 500;
+	}
+	.pk-explainer dd {
+		margin: 0;
+		color: var(--pk-text-primary);
+	}
+
+	/* ── numbered pager ── compact page numbers, e.g. ‹ 1 2 3 … 8 › */
+	.pk-pager {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+	}
+	.pk-pager__btn {
+		min-width: 26px;
+		height: 26px;
+		padding: 0 var(--pk-space-2);
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--pk-radius-sm);
+		color: var(--pk-text-secondary);
+		font-size: var(--pk-text-sm);
+		font-variant-numeric: tabular-nums;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.pk-pager__btn:hover:not([disabled]) {
+		background: var(--pk-state-hover);
+		color: var(--pk-text-primary);
+	}
+	.pk-pager__btn[aria-current="page"] {
+		background: var(--pk-surface);
+		border-color: var(--pk-border);
+		color: var(--pk-text-primary);
+		font-weight: 500;
+	}
+	.pk-pager__btn[disabled] {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	.pk-pager__ellipsis {
+		color: var(--pk-text-tertiary);
+		padding: 0 4px;
+		user-select: none;
+	}
+
+	/* ── dashboard shell ── outer view container */
+	.pk-dash-shell {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pk-space-5);
+		padding: var(--pk-space-5);
+		height: 100%;
+		overflow-y: auto;
+		background: var(--pk-bg);
+		color: var(--pk-text-primary);
+	}
+	.pk-dash-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--pk-space-4);
+		flex-wrap: wrap;
+	}
+	.pk-dash-title {
+		font-size: var(--pk-text-xl);
+		font-weight: 600;
+		color: var(--pk-text-primary);
+	}
+	.pk-dash-meta {
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+	}
+	.pk-dash-screen {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pk-space-4);
+	}
+	.pk-dash-placeholder {
+		padding: var(--pk-space-5);
+		background: var(--pk-surface);
+		border: 1px dashed var(--pk-border);
+		border-radius: var(--pk-radius-md);
+		color: var(--pk-text-secondary);
+		font-size: var(--pk-text-sm);
+		text-align: center;
+	}
+	.pk-dash-section {
+		padding: var(--pk-space-4);
+		background: var(--pk-surface);
+		border: 1px solid var(--pk-border);
+		border-radius: var(--pk-radius-md);
+	}
+	.pk-dash-section__head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--pk-space-3);
+		margin-bottom: var(--pk-space-3);
+	}
+	.pk-dash-section__title {
+		font-size: var(--pk-text-base);
+		font-weight: 600;
+		color: var(--pk-text-primary);
+	}
+	.pk-dash-section__sub {
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+	}
+
+	/* ── KPI row ── 4 KpiActionCards laid out side-by-side, responsive */
+	.pk-dash-kpi-row {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+		gap: var(--pk-space-3);
+	}
+	.pk-kpi-value {
+		font-size: var(--pk-text-2xl, 24px);
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		color: var(--pk-text-primary);
+		line-height: 1.2;
+	}
+	.pk-kpi-value--muted {
+		color: var(--pk-text-tertiary);
+	}
+	.pk-kpi-sub {
+		margin-top: var(--pk-space-1, 4px);
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+	}
+
+	/* ── outcome funnel ── 3 horizontal bars, each labelled with stage + count.
+	   Bars share a max-width baseline (the largest stage = 100%), so the
+	   visual taper communicates conversion at a glance. */
+	.pk-funnel {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pk-space-2);
+	}
+	.pk-funnel__row {
+		display: grid;
+		grid-template-columns: minmax(96px, max-content) 1fr auto;
+		align-items: center;
+		gap: var(--pk-space-3);
+	}
+	.pk-funnel__label {
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+	}
+	.pk-funnel__bar {
+		height: 16px;
+		background: var(--pk-surface-sunken);
+		border-radius: var(--pk-radius-pill);
+		overflow: hidden;
+	}
+	.pk-funnel__bar-fill {
+		display: block;
+		height: 100%;
+		background: var(--pk-accent);
+		border-radius: var(--pk-radius-pill);
+		transition: width var(--pk-motion-base, 240ms) ease;
+	}
+	.pk-funnel__bar-fill--inspected {
+		background: var(--pk-accent-soft, var(--pk-accent));
+		opacity: 0.85;
+	}
+	.pk-funnel__bar-fill--adopted {
+		background: var(--pk-accent);
+	}
+	.pk-funnel__count {
+		font-variant-numeric: tabular-nums;
+		font-size: var(--pk-text-base);
+		color: var(--pk-text-primary);
+		min-width: 56px;
+		text-align: right;
+	}
+	.pk-funnel__pct {
+		font-variant-numeric: tabular-nums;
+		font-size: var(--pk-text-xs, 11px);
+		color: var(--pk-text-tertiary);
+		margin-left: 4px;
+	}
+
+	/* ── empty state for sections without data ── */
+	.pk-dash-empty {
+		padding: var(--pk-space-4) var(--pk-space-3);
+		color: var(--pk-text-tertiary);
+		font-size: var(--pk-text-sm);
+		text-align: center;
+	}
+
+	/* ── History calls table ── */
+	.pk-dash-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: var(--pk-text-sm);
+	}
+	.pk-dash-table th,
+	.pk-dash-table td {
+		padding: var(--pk-space-2) var(--pk-space-3);
+		text-align: left;
+		border-bottom: 1px solid var(--pk-border-soft);
+		vertical-align: middle;
+	}
+	.pk-dash-table th {
+		color: var(--pk-text-secondary);
+		font-weight: 500;
+		font-size: var(--pk-text-xs, 11px);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	.pk-dash-table td.pk-dash-table__num,
+	.pk-dash-table th.pk-dash-table__num {
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+	.pk-dash-table tbody tr {
+		cursor: pointer;
+		transition: background var(--pk-motion-base, 240ms) ease;
+	}
+	.pk-dash-table tbody tr:hover {
+		background: var(--pk-state-hover);
+	}
+	.pk-dash-table__provider {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--pk-space-2);
+	}
+
+	.pk-dash-pager-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--pk-space-3);
+		margin-top: var(--pk-space-3);
+	}
+	.pk-dash-pager-row__count {
+		color: var(--pk-text-tertiary);
+		font-size: var(--pk-text-sm);
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* ── What was this about detail modal ── */
+	.pk-detail-head {
+		display: flex;
+		align-items: center;
+		gap: var(--pk-space-3);
+		flex: 1;
+	}
+	.pk-detail-head__text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+	.pk-detail-body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pk-space-3);
+	}
+	.pk-detail-empty {
+		padding: var(--pk-space-4);
+		text-align: center;
+		color: var(--pk-text-tertiary);
+		font-size: var(--pk-text-sm);
+	}
+	.pk-detail-privacy {
+		padding: var(--pk-space-3);
+		background: var(--pk-surface-sunken);
+		border: 1px dashed var(--pk-border);
+		border-radius: var(--pk-radius-md);
+		color: var(--pk-text-secondary);
+		font-size: var(--pk-text-sm);
+		text-align: center;
+	}
+	.pk-detail-breadcrumb {
+		display: inline-flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--pk-space-2);
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+	}
+	.pk-detail-breadcrumb__sep {
+		color: var(--pk-text-tertiary);
+	}
+	.pk-detail-breadcrumb__title {
+		color: var(--pk-text-primary);
+		font-weight: 500;
+	}
+	.pk-detail-section {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pk-space-1, 4px);
+	}
+	.pk-detail-section__title {
+		font-size: var(--pk-text-xs, 11px);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--pk-text-tertiary);
+		font-weight: 500;
+	}
+	.pk-detail-section__body {
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-primary);
+	}
+	.pk-detail-query {
+		padding: var(--pk-space-2) var(--pk-space-3);
+		background: var(--pk-surface-sunken);
+		border-radius: var(--pk-radius-sm);
+		font-family: var(--pk-font-mono, monospace);
+		color: var(--pk-text-primary);
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+	.pk-detail-filepath {
+		font-family: var(--pk-font-mono, monospace);
+		color: var(--pk-text-primary);
+		word-break: break-all;
+	}
+	.pk-detail-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--pk-space-1, 4px);
+	}
+	.pk-detail-list code {
+		font-family: var(--pk-font-mono, monospace);
+		color: var(--pk-text-primary);
+		font-size: var(--pk-text-sm);
+	}
+	.pk-detail-tools {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--pk-space-2);
+	}
+	.pk-detail-tools__count {
+		margin-left: 4px;
+		color: var(--pk-text-tertiary);
+		font-variant-numeric: tabular-nums;
+	}
+	.pk-detail-results {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--pk-space-1, 4px);
+		counter-reset: results;
+	}
+	.pk-detail-results__item {
+		display: grid;
+		grid-template-columns: 1fr auto auto;
+		align-items: center;
+		gap: var(--pk-space-2);
+		padding: var(--pk-space-2);
+		background: var(--pk-surface-sunken);
+		border-radius: var(--pk-radius-sm);
+		border: 1px solid transparent;
+	}
+	.pk-detail-results__item--clicked {
+		border-color: var(--pk-accent);
+		background: color-mix(in srgb, var(--pk-accent) 8%, var(--pk-surface-sunken));
+	}
+	.pk-detail-results__path {
+		font-family: var(--pk-font-mono, monospace);
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-primary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pk-detail-results__score {
+		font-variant-numeric: tabular-nums;
+		font-size: var(--pk-text-xs, 11px);
+		color: var(--pk-text-tertiary);
+	}
+	.pk-detail-results__badge {
+		font-size: var(--pk-text-xs, 11px);
+		color: var(--pk-accent);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		font-weight: 500;
+	}
+	.pk-detail-stepline {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--pk-space-3);
+	}
+	.pk-detail-stepline__num {
+		font-size: var(--pk-text-lg, 16px);
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		color: var(--pk-text-primary);
+	}
+	.pk-detail-stepline__name {
+		color: var(--pk-text-secondary);
+		font-size: var(--pk-text-sm);
+	}
+	.pk-detail-prev {
+		padding: var(--pk-space-2);
+		background: var(--pk-surface-sunken);
+		border-radius: var(--pk-radius-sm);
+		color: var(--pk-text-secondary);
+		font-style: italic;
+		font-size: var(--pk-text-sm);
+	}
+	.pk-detail-accepted {
+		display: flex;
+		align-items: center;
+		gap: var(--pk-space-2);
+	}
+	.pk-detail-diff {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pk-space-2);
+	}
+	.pk-detail-quote {
+		padding: var(--pk-space-2) var(--pk-space-3);
+		border-left: 3px solid var(--pk-border);
+		background: var(--pk-surface-sunken);
+		border-radius: 0 var(--pk-radius-sm) var(--pk-radius-sm) 0;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.pk-detail-quote--user {
+		border-left-color: var(--pk-prov-anthropic, #4a90e2);
+	}
+	.pk-detail-quote--assistant {
+		border-left-color: var(--pk-prov-ollama, #2ecc71);
+	}
+	.pk-detail-quote__label {
+		font-size: var(--pk-text-xs, 11px);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--pk-text-tertiary);
+		font-weight: 500;
+	}
+	.pk-detail-quote__text {
+		color: var(--pk-text-primary);
+		font-size: var(--pk-text-sm);
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+	.pk-detail-verb {
+		appearance: none;
+		background: var(--pk-accent);
+		color: var(--pk-text-on-accent, #ffffff);
+		border: 1px solid var(--pk-accent);
+		border-radius: var(--pk-radius-sm);
+		padding: var(--pk-space-2) var(--pk-space-3);
+		font-size: var(--pk-text-sm);
+		font-weight: 500;
+		cursor: pointer;
+		transition: filter var(--pk-motion-base, 240ms) ease;
+	}
+	.pk-detail-verb:hover {
+		filter: brightness(1.05);
+	}
+}
+
+/*
+ * PR-Dash-4 — inline receipt / context ring / Curator push
+ * ---------------------------------------------------------
+ * These three patterns live OUTSIDE the `.peak-design-root.usage-dashboard`
+ * scope above because they mount inside other surfaces (chat view, composer,
+ * floating modal). They are still scoped to `.peak-design-root` so Obsidian's
+ * theme rules don't bleed in, but they don't need the `usage-dashboard`
+ * surface scope — the chat host already provides `.peak-design-root` on its
+ * wrapper, and the modal root is mounted under `peak-design-root usage-dashboard`
+ * via mountCuratorPushRoot.
+ */
+
+/* ── inline receipt (Dashboard carrier A) ──────────────────────────────── */
+:where(.peak-design-root) .pk-inline-receipt {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--pk-space-2, 6px);
+	padding: var(--pk-space-1, 3px) var(--pk-space-2, 6px);
+	margin-top: var(--pk-space-2, 6px);
+	background: transparent;
+	border: none;
+	border-radius: var(--pk-radius-sm, 4px);
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs, 11px);
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+	transition: background var(--pk-motion-base, 160ms) ease, color var(--pk-motion-base, 160ms) ease;
+}
+:where(.peak-design-root) .pk-inline-receipt:hover {
+	background: var(--pk-surface-sunken, rgba(0, 0, 0, 0.04));
+	color: var(--pk-text-secondary);
+}
+:where(.peak-design-root) .pk-inline-receipt:focus-visible {
+	outline: 2px solid var(--pk-accent);
+	outline-offset: 1px;
+}
+:where(.peak-design-root) .pk-inline-receipt__tokens,
+:where(.peak-design-root) .pk-inline-receipt__cost {
+	color: inherit;
+}
+:where(.peak-design-root) .pk-inline-receipt__sep {
+	color: var(--pk-text-tertiary);
+	opacity: 0.6;
+}
+
+/* ── context ring (Dashboard carrier C) ────────────────────────────────── */
+:where(.peak-design-root) .pk-context-ring {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--pk-space-1, 3px);
+	font-size: var(--pk-text-xs, 11px);
+	font-variant-numeric: tabular-nums;
+	color: var(--pk-text-tertiary);
+}
+:where(.peak-design-root) .pk-context-ring__track {
+	stroke: var(--pk-surface-sunken, rgba(0, 0, 0, 0.08));
+	stroke-width: 3;
+}
+:where(.peak-design-root) .pk-context-ring__fill {
+	stroke: var(--pk-success);
+	stroke-width: 3;
+	stroke-linecap: round;
+	transition: stroke-dasharray var(--pk-motion-base, 240ms) ease,
+	            stroke var(--pk-motion-base, 240ms) ease;
+}
+:where(.peak-design-root) .pk-context-ring[data-band="warn"] .pk-context-ring__fill {
+	stroke: var(--pk-warning);
+}
+:where(.peak-design-root) .pk-context-ring[data-band="danger"] .pk-context-ring__fill {
+	stroke: var(--pk-error);
+}
+:where(.peak-design-root) .pk-context-ring__label {
+	min-width: 28px;
+	text-align: right;
+}
+
+/* ── Curator runtime push modal (Dashboard carrier B) ──────────────────── */
+:where(.peak-design-root) .pk-curator-push__head {
+	display: flex;
+	flex-direction: column;
+	gap: var(--pk-space-2, 6px);
+}
+:where(.peak-design-root) .pk-curator-push__badge {
+	display: inline-flex;
+	align-items: center;
+	width: max-content;
+	padding: var(--pk-space-1, 3px) var(--pk-space-2, 6px);
+	font-size: var(--pk-text-xs, 11px);
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--pk-accent);
+	background: var(--pk-accent-soft, rgba(124, 58, 237, 0.12));
+	border-radius: var(--pk-radius-pill, 999px);
+}
+:where(.peak-design-root) .pk-curator-push__body {
+	margin: 0;
+	color: var(--pk-text-primary);
+	font-size: var(--pk-text-sm);
+	line-height: var(--pk-leading-normal, 1.5);
+}
+:where(.peak-design-root) .pk-curator-push__actions {
+	display: flex;
+	gap: var(--pk-space-2, 6px);
+	justify-content: flex-end;
+	flex-wrap: wrap;
+}
+:where(.peak-design-root) .pk-curator-push__apply {
+	appearance: none;
+	background: var(--pk-accent);
+	color: var(--pk-text-on-accent, #ffffff);
+	border: 1px solid var(--pk-accent);
+	border-radius: var(--pk-radius-sm);
+	padding: var(--pk-space-2) var(--pk-space-3);
+	font-size: var(--pk-text-sm);
+	font-weight: 500;
+	cursor: pointer;
+	transition: filter var(--pk-motion-base, 240ms) ease;
+}
+:where(.peak-design-root) .pk-curator-push__apply:hover {
+	filter: brightness(1.05);
+}

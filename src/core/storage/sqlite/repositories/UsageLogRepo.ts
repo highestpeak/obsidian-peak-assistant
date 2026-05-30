@@ -217,6 +217,121 @@ export class UsageLogRepo {
 	}
 
 	/**
+	 * Per-feature cost + call totals (no outcome join — that join happens
+	 * in the dashboard hook so this stays a pure usage_log aggregate).
+	 *
+	 * Used by the Outcome Value screen (spec §6.2) to render per-feature MPG
+	 * once outcome counts are joined in JS land.
+	 */
+	async groupByFeatureCost(startMs: number, endMs: number): Promise<Array<{
+		feature: string;
+		totalCost: number;
+		callCount: number;
+	}>> {
+		const result = await sql<{
+			feature: string;
+			total_cost: number;
+			call_count: number;
+		}>`
+			SELECT
+				feature,
+				COALESCE(SUM(cost_usd), 0) AS total_cost,
+				COUNT(*)                   AS call_count
+			FROM usage_log
+			WHERE created_at >= ${startMs} AND created_at <= ${endMs}
+			GROUP BY feature
+			ORDER BY total_cost DESC
+		`.execute(this.db);
+
+		return result.rows.map(r => ({
+			feature: r.feature,
+			totalCost: r.total_cost,
+			callCount: r.call_count,
+		}));
+	}
+
+	/**
+	 * Distinct message_ids per feature whose `metadata_json` carries the chat
+	 * surface's `message_id`. Used in tandem with `groupByFeatureCost` to
+	 * compute per-feature MPG (cost / useful messages) — `feature` here is
+	 * the `usage_log.feature` column, not `usage_outcome.event_type`.
+	 *
+	 * The dashboard hook joins this with UsageOutcomeService to figure out
+	 * which message_ids are "useful" / "adopted"; this repo method just
+	 * surfaces the message_ids per feature so the JS side can intersect.
+	 */
+	async messageIdsByFeature(startMs: number, endMs: number): Promise<Array<{
+		feature: string;
+		messageId: string;
+	}>> {
+		const result = await sql<{
+			feature: string;
+			message_id: string;
+		}>`
+			SELECT
+				feature,
+				json_extract(metadata_json, '$.message_id') AS message_id
+			FROM usage_log
+			WHERE created_at >= ${startMs}
+			  AND created_at <= ${endMs}
+			  AND metadata_json IS NOT NULL
+			  AND json_extract(metadata_json, '$.message_id') IS NOT NULL
+		`.execute(this.db);
+
+		return result.rows.map(r => ({
+			feature: r.feature,
+			messageId: r.message_id,
+		}));
+	}
+
+	/**
+	 * Look up a single usage_log row by id. Used by the History screen's
+	 * "What was this about" detail panel — caller already has the row from
+	 * the listing query, so this exists mostly for re-fetch on stale state.
+	 */
+	async getById(id: number): Promise<UsageLogRow | undefined> {
+		return this.db
+			.selectFrom('usage_log')
+			.selectAll()
+			.where('id', '=', id)
+			.executeTakeFirst();
+	}
+
+	/**
+	 * Look up the latest usage_log row that carries `message_id` (and
+	 * optionally `session_id`) in its metadata. Used by the inline message
+	 * receipt (Dashboard carrier A) to attach token/cost data to a chat
+	 * message. Returns the most recent row if multiple match (e.g. retries
+	 * within the same message). Returns undefined when the chat path did
+	 * not write a usage_log row — the caller renders nothing in that case.
+	 *
+	 * Note: this scans `metadata_json` via `json_extract`. The chat surface
+	 * is responsible for stamping `{ message_id, session_id }` into the
+	 * metadata payload at call time.
+	 */
+	async findByMessageId(
+		message_id: string,
+		session_id?: string,
+	): Promise<UsageLogRow | undefined> {
+		const rows = session_id
+			? await sql<UsageLogRow>`
+				SELECT * FROM usage_log
+				WHERE json_extract(metadata_json, '$.message_id') = ${message_id}
+				  AND session_id = ${session_id}
+				ORDER BY created_at DESC
+				LIMIT 1
+			`.execute(this.db)
+			: await sql<UsageLogRow>`
+				SELECT * FROM usage_log
+				WHERE json_extract(metadata_json, '$.message_id') = ${message_id}
+				ORDER BY created_at DESC
+				LIMIT 1
+			`.execute(this.db);
+
+		return rows.rows[0];
+	}
+
+	/**
 	 * Group by provider × model, return tokens.
 	 */
 	async groupByModel(startMs: number, endMs: number): Promise<Array<{

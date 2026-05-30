@@ -169,6 +169,33 @@ export class UsageOutcomeService {
 		return this.getRepo().countUsefulMessages(range);
 	}
 
+	/**
+	 * Distinct `message_id`s in range whose outcomes include ≥1 "strong" event
+	 * (vault_save / copilot_accept / agent_file_emit). Powers the dashboard
+	 * Overview's funnel stage-3 (adopted). See repo for the rationale on
+	 * excluding search_click + continuation.
+	 */
+	async countAdoptedMessages(range: { from: number; to: number }): Promise<number> {
+		return this.getRepo().countAdoptedMessages(range);
+	}
+
+	/**
+	 * Distinct `message_id`s in range with ≥1 outcome (any type). Used by
+	 * the Outcome Value screen to intersect with per-feature message_id sets
+	 * for per-feature MPG.
+	 */
+	async usefulMessageIds(range: { from: number; to: number }): Promise<string[]> {
+		return this.getRepo().usefulMessageIds(range);
+	}
+
+	/**
+	 * Distinct `message_id`s in range with ≥1 strong outcome. Sibling of
+	 * {@link countAdoptedMessages}.
+	 */
+	async adoptedMessageIds(range: { from: number; to: number }): Promise<string[]> {
+		return this.getRepo().adoptedMessageIds(range);
+	}
+
 	// ── Private ─────────────────────────────────────────────
 
 	private getRepo(): UsageOutcomeRepo {

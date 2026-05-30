@@ -262,6 +262,14 @@ export interface MyPluginSettings {
 	ambientPush?: AmbientPushSettings;
 	usageTrackingEnabled: boolean;
 	usageDetailRetentionDays: number;
+	/**
+	 * Whether dashboard surfaces (e.g. History "What was this about" panel) may
+	 * render the prompt / response previews captured in `usage_log.metadata_json`.
+	 * Default true. Spec §11.7 — users who want raw audit data only can flip
+	 * this off; the underlying preview fields stay in DB but the UI suppresses
+	 * them.
+	 */
+	usagePreviewEnabled?: boolean;
 
 	/** External MCP server connections (stdio/SSE). */
 	mcpServers?: MCPServerConfig[];
@@ -306,6 +314,7 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	},
 	usageTrackingEnabled: true,
 	usageDetailRetentionDays: 30,
+	usagePreviewEnabled: true,
 	vaultSearch: {
 		sdkProfile: {
 			kind: 'anthropic',

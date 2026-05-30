@@ -27,6 +27,10 @@ export class UsageDashboardView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		this.containerEl.empty();
+		// `peak-design-root` scopes shared PR-0 primitives; `usage-dashboard`
+		// scopes dashboard-local chart primitives (dashboard-charts.css).
+		this.containerEl.addClass('peak-design-root');
+		this.containerEl.addClass('usage-dashboard');
 		this.containerEl.addClass('peak-usage-dashboard');
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 		this.openRafId = requestAnimationFrame(() => {
