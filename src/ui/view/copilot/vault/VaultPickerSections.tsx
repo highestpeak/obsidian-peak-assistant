@@ -26,6 +26,7 @@ import {
 	getVaultReviewReportService,
 	type VaultReviewHistoryRecord,
 } from '@/service/copilot/vault/VaultReviewReportService';
+import { MODE_LABELS } from '@/service/copilot/CopilotMetaAgentStream';
 
 const STALENESS_DAYS = 30;
 const STALENESS_MS = STALENESS_DAYS * 86_400_000;
@@ -130,7 +131,7 @@ export const VaultReviewHistoryList: React.FC<{
 					<History className="pktw-h-3.5 pktw-w-3.5 pktw-shrink-0 pktw-text-muted-foreground group-hover:pktw-text-pk-accent" />
 					<div className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-flex-col">
 						<span className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-foreground group-hover:pktw-text-pk-accent">
-							<span className="pktw-truncate">{r.headline?.trim() || (r.mode === 'fast' ? 'Fast vault review' : 'Vault review')}</span>
+							<span className="pktw-truncate">{r.headline?.trim() || (r.mode === 'fast' ? `${MODE_LABELS.fast} vault review` : 'Vault review')}</span>
 							<span className="pktw-shrink-0 pktw-text-muted-foreground">· {relativeTime(r.completedAt)}</span>
 						</span>
 						<span className="pktw-text-[10px] pktw-text-muted-foreground">

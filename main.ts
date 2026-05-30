@@ -61,6 +61,8 @@ import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 import { MCPClientManager } from '@/service/mcp/MCPClientManager';
 import { DEFAULT_SKILLS_FOLDER } from '@/core/constant';
 import { SkillRegistry } from '@/service/skills/SkillRegistry';
+import { CapabilityRegistry } from '@/service/capabilities';
+import { openSettingsModal } from '@/app/commands/PeakCommandActions';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -235,6 +237,48 @@ export default class MyPlugin extends Plugin {
 		).forEach((command) => this.addCommand(command));
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
+
+		// Register Copilot surface capability adapter so Settings sees readiness.
+		// Reports: Fast Lookup (single-pass review), Research (multi-round review),
+		// Safety (inherited from harness permission mode — optional from copilot's
+		// perspective, since copilot does not own permission settings).
+		CapabilityRegistry.getInstance().register({
+			surfaceId: 'copilot',
+			surfaceLabel: 'Copilot',
+			getCapabilityStatus: async () => {
+				const profileRegistry = ProfileRegistry.getInstance();
+				const profile = profileRegistry.getActiveAgentProfile();
+				const fastConfig = profileRegistry.getActiveAgentFastConfig();
+				const fastReady = !!fastConfig?.modelId;
+				const researchReady = !!profile?.primaryModel;
+				return [
+					{
+						capability: 'Fast Lookup',
+						status: fastReady ? 'ready' : 'needs-attention',
+						reason: fastReady ? undefined : 'No fast model configured',
+						repair: fastReady ? undefined : {
+							label: 'Configure AI behavior',
+							action: () => openSettingsModal(),
+						},
+					},
+					{
+						capability: 'Research',
+						status: researchReady ? 'ready' : 'not-ready',
+						reason: researchReady ? undefined : 'No Research model selected',
+						repair: researchReady ? undefined : {
+							label: 'Configure AI behavior',
+							action: () => openSettingsModal(),
+						},
+					},
+					{
+						// Copilot inherits permission mode from harness —
+						// optional from copilot's perspective.
+						capability: 'Safety',
+						status: 'optional',
+					},
+				];
+			},
+		});
 
 		// Connect enabled MCP servers (non-blocking)
 		const mcpConfigs = this.settings.mcpServers ?? [];

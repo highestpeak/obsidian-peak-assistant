@@ -19,6 +19,7 @@ import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder
 import { CopilotAutoRunModal } from './CopilotAutoRunModal';
 import { VaultAutoRunModal, openVaultReviewHistoryRecord } from './vault/VaultAutoRunModal';
 import { ReviewStatusBadge } from './review/ReviewStatusBadge';
+import { MODE_LABELS, type ReviewMode } from '@/service/copilot/CopilotMetaAgentStream';
 
 type Scope = 'document' | 'vault';
 type DocSubFilter = 'this-note' | 'all-notes';
@@ -60,7 +61,7 @@ function normalizeDoc(r: CopilotReviewHistoryRecord): NormalizedRecord {
 	return {
 		id: r.id,
 		scope: 'document',
-		headline: r.headline?.trim() || (r.mode === 'fast' ? 'Fast review' : 'Auto review'),
+		headline: r.headline?.trim() || `${MODE_LABELS[r.mode as ReviewMode] ?? MODE_LABELS.complete} review`,
 		completedAt: r.completedAt,
 		status: r.status,
 		subjectPath: r.subjectPath || '(unknown)',
@@ -74,7 +75,7 @@ function normalizeVault(r: VaultReviewHistoryRecord): NormalizedRecord {
 	return {
 		id: r.id,
 		scope: 'vault',
-		headline: r.headline?.trim() || (r.mode === 'fast' ? 'Fast vault review' : 'Vault review'),
+		headline: r.headline?.trim() || (r.mode === 'fast' ? `${MODE_LABELS.fast} vault review` : 'Vault review'),
 		completedAt: r.completedAt,
 		status: r.status,
 		subjectPath: 'vault',

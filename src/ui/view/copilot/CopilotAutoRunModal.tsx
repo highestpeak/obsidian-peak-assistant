@@ -8,7 +8,7 @@ import { applyCopilotArtifactsToContext } from '@/service/copilot/CopilotArtifac
 import type { IntentTabId } from '@/service/copilot/intent-hub';
 import { runCopilotReview, type ReviewSessionSnapshot } from '@/service/copilot/CopilotReviewSession';
 import { buildReviewArtifacts, reviewSubtitle } from '@/service/copilot/CopilotReviewArtifactBuilder';
-import type { ReviewMode } from '@/service/copilot/CopilotMetaAgentStream';
+import { MODE_LABELS, type ReviewMode } from '@/service/copilot/CopilotMetaAgentStream';
 import { getCopilotReviewHistoryService, type InsightChatHistories } from '@/service/copilot/CopilotReviewHistoryService';
 import type { ChatTurn } from './review/InsightInlineChat';
 import { CopilotReviewShell } from './review/CopilotReviewShell';
@@ -204,7 +204,7 @@ const CopilotAutoRunContent: React.FC<{
 		? (snapshot.status === 'completed' || snapshot.status === 'cancelled')
 		: false;
 
-	const baseTitle = mode === 'fast' ? 'Auto Review · Fast' : 'Auto Review';
+	const baseTitle = `Auto Review · ${MODE_LABELS[mode]}`;
 	const title = readOnly ? `${baseTitle} · History` : baseTitle;
 
 	return (

@@ -27,6 +27,22 @@ import { formatSignalReportForPrompt } from './CopilotSignalReport';
 
 export type ReviewMode = 'fast' | 'complete';
 
+/**
+ * User-facing labels for ReviewMode.
+ *
+ * Internal identifiers ('fast' | 'complete') are stable and tied to the
+ * meta-agent / collector / persistence layer; user-visible strings live
+ * here so that vocabulary changes don't ripple through call sites.
+ *
+ * 2026-05-30 — unified with the SurfaceCapability vocabulary:
+ *   fast     → "Fast Lookup"   (single-pass, ~8 turns)
+ *   complete → "Research"      (multi-round, up to 3 rounds)
+ */
+export const MODE_LABELS: Record<ReviewMode, string> = {
+	fast: 'Fast Lookup',
+	complete: 'Research',
+};
+
 export interface PreviousRoundSummary {
 	roundIndex: number;
 	submission: ReviewSubmission;

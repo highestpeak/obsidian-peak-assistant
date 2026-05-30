@@ -36,6 +36,7 @@ import type {
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
 import type { VaultFingerprint, VaultReviewFreshness } from '@/service/copilot/vault/VaultFingerprintService';
+import { MODE_LABELS } from '@/service/copilot/CopilotMetaAgentStream';
 
 const STALENESS_DAYS = 30;
 
@@ -94,7 +95,7 @@ export function documentReadiness(input: DocumentReadinessInput): PickerReadines
 
 	const runStrategy: RunStrategyButton[] = [
 		{
-			label: 'Auto',
+			label: MODE_LABELS.complete,
 			icon: Sparkles,
 			onClick: onAuto,
 			disabled,
@@ -102,7 +103,7 @@ export function documentReadiness(input: DocumentReadinessInput): PickerReadines
 			variant: 'primary',
 		},
 		{
-			label: 'Fast',
+			label: MODE_LABELS.fast,
 			icon: Zap,
 			onClick: onFast,
 			disabled,
@@ -222,8 +223,8 @@ export function vaultReadiness(input: VaultReadinessInput): PickerReadinessCardP
 		switch (freshness) {
 			case 'A-no-prior':
 				return [
-					{ label: 'Auto', icon: Sparkles, onClick: onAuto, variant: 'primary' as const },
-					{ label: 'Fast', icon: Zap, onClick: onFast, variant: 'secondary' as const },
+					{ label: MODE_LABELS.complete, icon: Sparkles, onClick: onAuto, variant: 'primary' as const },
+					{ label: MODE_LABELS.fast, icon: Zap, onClick: onFast, variant: 'secondary' as const },
 				];
 			case 'B-unchanged':
 				return [
@@ -238,7 +239,7 @@ export function vaultReadiness(input: VaultReadinessInput): PickerReadinessCardP
 			case 'D-major':
 			case 'E-stale':
 				return [
-					{ label: 'Auto', icon: Sparkles, onClick: onAuto, variant: 'primary' as const },
+					{ label: MODE_LABELS.complete, icon: Sparkles, onClick: onAuto, variant: 'primary' as const },
 					{ label: 'View last report', icon: History, onClick: onOpenLast, variant: 'secondary' as const, disabled: !lastRecord },
 				];
 		}

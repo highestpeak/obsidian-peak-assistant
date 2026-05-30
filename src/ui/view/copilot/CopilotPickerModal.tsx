@@ -27,6 +27,7 @@ import { Input } from '@/ui/component/shared-ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/ui/component/shared-ui/tabs';
 import { Pill } from '@/ui/component/shared-ui/pill';
 import type { IntentTabId } from '@/service/copilot/intent-hub';
+import { MODE_LABELS, type ReviewMode } from '@/service/copilot/CopilotMetaAgentStream';
 import { buildCopilotCommandModel, type CopilotActionListItem } from './copilot-command-model';
 import { ReviewStatusBadge } from '@/ui/view/copilot/review/ReviewStatusBadge';
 import {
@@ -420,7 +421,7 @@ function DocumentReviewHistory({
 					<div className="pktw-min-w-0">
 						<div className="pktw-flex pktw-items-baseline pktw-gap-2 pktw-min-w-0">
 							<span className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground pktw-truncate">
-								{r.headline?.trim() || (r.mode === 'fast' ? 'Fast review' : 'Auto review')}
+								{r.headline?.trim() || `${MODE_LABELS[r.mode as ReviewMode] ?? MODE_LABELS.complete} review`}
 							</span>
 							<span className="pktw-text-[11.5px] pktw-text-pk-foreground-faint pktw-shrink-0">{relativeTime(r.completedAt)}</span>
 							<ReviewStatusBadge status={r.status} />
