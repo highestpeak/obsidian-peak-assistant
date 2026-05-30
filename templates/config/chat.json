@@ -1,4 +1,37 @@
 {
-  "_doc": "PR-0 scaffold — surface-specific user-facing strings will be added in per-surface refactor PRs. Loaded via TemplateManager.loadJson(ConfigTemplateId.Chat).",
-  "_owner": "design-system-unification-2026-05-30"
+  "_doc": "Surface-specific user-facing strings for the Chat view. Loaded via TemplateManager.loadJson(ConfigTemplateId.Chat). Owned by chat-retained refactor (2026-05-30).",
+  "_owner": "chat-retained-refactor-2026-05-30",
+  "header": {
+    "openSourceLabel": "Open source document",
+    "refreshLabel": "Refresh title",
+    "refreshLabelBusy": "Regenerating…"
+  },
+  "composer": {
+    "placeholder": "Ask anything…",
+    "placeholderEmpty": "Ask anything… (@ for context)",
+    "sendLabel": "Send",
+    "cancelLabel": "Cancel",
+    "voiceLabel": "Voice",
+    "runChipLabel": "Run settings",
+    "runChipModeChat": "Chat",
+    "runChipModeAgent": "Agent",
+    "runChipModePlan": "Plan",
+    "runChipModelAuto": "Auto model",
+    "runChipCtxSuffix": "ctx"
+  },
+  "runSettings": {
+    "title": "Run settings",
+    "subtitle": "Next message only",
+    "fieldMode": "Run mode",
+    "fieldRole": "Role",
+    "fieldModel": "Model routing",
+    "roleHint": "Role changes behavior for the next message only.",
+    "modelAutoTitle": "Auto profile model",
+    "modelManualTitle": "Choose model…",
+    "modelManualSub": "Manual override"
+  },
+  "indexSlot": {
+    "placeholderTitle": "Conversation Index",
+    "placeholderHint": "Topics, artifacts, and messages will appear here."
+  }
 }

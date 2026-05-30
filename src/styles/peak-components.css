@@ -643,3 +643,304 @@
   background: var(--pk-prov-ollama-soft);
   color: var(--pk-prov-ollama);
 }
+
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   Chat retained surface — PR-Chat-1 (shell + header + composer)
+   ─────────────────────────────────────────────────────────────────────────────
+   Scope: only the new chat-view chrome introduced by the 2026-05-29 retained
+   redesign. Selectors prefixed `pkchat-*` to avoid colliding with PR-0
+   primitives. All values flow through --pk-* tokens — no inline hex.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* ── pkchat-shell ───────────────────────────────────────────────────────────
+   Outer grid: center chat column + right index slot. When the right slot is
+   hidden (default for PR-Chat-1), the chat column expands to full width.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkchat-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  height: 100%;
+  width: 100%;
+  background: var(--pk-bg);
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-shell--with-index {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-center {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-right {
+  border-left: 1px solid var(--pk-border);
+  background: var(--pk-surface);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── pkchat-header ──────────────────────────────────────────────────────────
+   Title + Open source + Refresh — minimal chrome per locked design.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkchat-header {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  padding: var(--pk-space-3) var(--pk-space-5);
+  border-bottom: 1px solid var(--pk-border-soft);
+  background: var(--pk-surface);
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-header__title {
+  font-size: var(--pk-text-lg);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-header__spacer {
+  flex: 1;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-header__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* Reuse .pk-icon-btn for the header action buttons (no new icon-button shape). */
+
+/* ── pkchat-body ────────────────────────────────────────────────────────────
+   Scrollable message list area between header and composer.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkchat-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  position: relative;
+}
+
+/* ── pkchat-composer ────────────────────────────────────────────────────────
+   Bottom input capsule: editor + footer with single run-chip + send.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkchat-composer-wrap {
+  padding: var(--pk-space-3) var(--pk-space-5) var(--pk-space-5);
+  flex-shrink: 0;
+  background: var(--pk-surface);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-composer {
+  border: 1px solid var(--pk-border-accent);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface);
+  box-shadow: var(--pk-shadow-card);
+  display: flex;
+  flex-direction: column;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-composer:focus-within {
+  border-color: var(--pk-accent);
+  box-shadow: 0 0 0 3px var(--pk-accent-tint);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-composer__editor {
+  padding: var(--pk-space-3) var(--pk-space-4) 0;
+  min-height: 44px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-composer__foot {
+  padding: var(--pk-space-2) var(--pk-space-3);
+  border-top: 1px solid var(--pk-border-soft);
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-composer__foot-right {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+}
+
+/* ── pkchat-run-chip ────────────────────────────────────────────────────────
+   The single mode/model/ctx affordance — clicking opens the run settings
+   popover.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  height: 28px;
+  padding: 0 var(--pk-space-3);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-border);
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-primary);
+  cursor: pointer;
+  transition: background var(--pk-transition-fast),
+              border-color var(--pk-transition-fast),
+              color var(--pk-transition-fast);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip:hover,
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip[data-state="open"] {
+  border-color: var(--pk-border-accent);
+  background: var(--pk-accent-tint);
+  color: var(--pk-accent-text);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip__label {
+  font-weight: 600;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip__sep {
+  color: var(--pk-text-tertiary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip__mid {
+  color: var(--pk-text-secondary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip__ctx {
+  font-family: var(--pk-font-mono);
+  color: var(--pk-accent);
+  font-size: var(--pk-text-sm);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip > svg,
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip .icon {
+  width: 12px;
+  height: 12px;
+  color: currentColor;
+}
+
+/* ── pkchat-send ────────────────────────────────────────────────────────────
+   Primary send button on the right edge of the composer footer.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkchat-send {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-accent);
+  border: 0;
+  color: var(--pk-accent-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--pk-transition-fast);
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-send:hover {
+  background: var(--pk-accent-hover);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-send:disabled {
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-tertiary);
+  cursor: not-allowed;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-send > svg,
+:where(.pktw-root, .peak-design-root) .pkchat-send .icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── pkchat-runpop ──────────────────────────────────────────────────────────
+   Run settings popover anchored to the run chip. Layout primitives (section
+   labels, segmented mode selector) reuse PR-0 atoms where possible.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkchat-runpop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-3);
+  min-width: 280px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__title {
+  font-size: var(--pk-text-md);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__sub {
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-tertiary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__label {
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+  color: var(--pk-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0 var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__hint {
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-tertiary);
+  padding: 0 var(--pk-space-2);
+}
+
+/* ── pkchat-index-empty ─────────────────────────────────────────────────────
+   Placeholder for right index slot (PR-Chat-3 will replace with full panel).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkchat-index-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--pk-space-6);
+  gap: var(--pk-space-2);
+  color: var(--pk-text-tertiary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-index-empty__title {
+  font-size: var(--pk-text-md);
+  font-weight: 600;
+  color: var(--pk-text-secondary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-index-empty__hint {
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-tertiary);
+  line-height: 1.5;
+}
