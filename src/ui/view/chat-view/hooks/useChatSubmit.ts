@@ -9,6 +9,10 @@ import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/
 import { MessageStatus } from '@/service/chat/types';
 import { TopicAggregationService } from '@/service/chat/TopicAggregationService';
 import { MESSAGE_TIMEOUT_MS } from '@/core/constant';
+import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
+
+/** Engagement window for `continuation` outcome events (PR-Chat-4 §11.4). */
+const CONTINUATION_WINDOW_MS = 60_000;
 
 export interface ChatSubmitOptions {
 	text: string;
@@ -147,6 +151,23 @@ export function useChatSubmit() {
 		// Create user message with sending status
 		const userMessage = createUserMessage(conversation, text);
 		userMessage.status = MessageStatus.SENDING;
+
+		// PR-Chat-4 §11.4 — record a `continuation` outcome event if the user
+		// sent this follow-up within 60s of the previous assistant completion.
+		// Fire-and-forget; failure here MUST NOT block the send.
+		const viewState = useChatViewStore.getState();
+		const prevAssistantId = viewState.lastAssistantMessageId;
+		const prevTs = viewState.lastAssistantCompletedAt;
+		if (prevAssistantId && prevTs && Date.now() - prevTs < CONTINUATION_WINDOW_MS) {
+			void UsageOutcomeService.getInstance()
+				.recordContinuation(prevAssistantId, conversation.meta.id, userMessage.id)
+				.catch((err) => {
+					console.warn('[useChatSubmit] recordContinuation failed:', err);
+				});
+		}
+		// Clear regardless so the same completion isn't double-counted for the
+		// next message.
+		viewState.clearAssistantCompletion();
 		// Upload files and create resource references if any. no summary will be generated until start streaming.
 		const resources = files.length > 0
 			? await manager.conv.uploadFilesAndCreateResources(files)
@@ -196,6 +217,9 @@ export function useChatSubmit() {
 			}
 		}, MESSAGE_TIMEOUT_MS);
 
+		// Capture start time for usage durationMs (§11.6).
+		const streamStartMs = Date.now();
+
 		// Stream chat (use conversationWithUserMessage which includes the user message)
 		// Note: The userMessage already saved above includes resources, so we don't need to pass attachments
 		// to streamChat since the resources are already in the conversation messages
@@ -228,6 +252,29 @@ export function useChatSubmit() {
 				streamResult.finalMessage.provider,
 				streamResult.finalUsage ?? { inputTokens: -1, outputTokens: -1, totalTokens: -1 }
 			);
+
+			// PR-Chat-4 §11.6 — chat-side usage_log with the metadata contract.
+			// Skipped silently when usage data is absent (error / cancel paths).
+			try {
+				const turnCount = (conversationWithUserMessage.messages?.length ?? 0) + 1;
+				manager.emitChatUsage({
+					usage: streamResult.finalUsage,
+					startMs: streamStartMs,
+					conversationId: conversation.meta.id,
+					conversationTitle: conversation.meta.title ?? '',
+					turnIndex: turnCount - 1,
+					turnCount,
+					messageId: streamResult.finalMessage.id,
+					modelId: streamResult.finalMessage.model ?? actualModel ?? '',
+					provider: streamResult.finalMessage.provider ?? actualProvider ?? '',
+					promptText: text,
+					responseText: String(streamResult.finalMessage.content ?? ''),
+					attachedFiles: (userMessage.resources ?? []).map((r) => r.source),
+					toolCalls: streamResult.finalMessage.toolCalls ?? [],
+				});
+			} catch (emitErr) {
+				console.warn('[useChatSubmit] emitChatUsage failed:', emitErr);
+			}
 
 			// Update UI immediately with assistant message (don't reload from file to avoid timing issues)
 			const conversationWithAssistantMessage: ChatConversation = {

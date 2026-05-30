@@ -258,6 +258,10 @@ export function useStreamChat() {
 						if (event.usage) {
 							finalUsage = event.usage;
 						}
+						// PR-Chat-4 §11.4: mark assistant completion so the next
+						// user submit can record a `continuation` outcome event
+						// if it lands within the 60s engagement window.
+						useChatViewStore.getState().markAssistantCompleted(assistantMessageId);
 						onComplete?.(finalMessage!, finalUsage);
 						break;
 					case 'source':

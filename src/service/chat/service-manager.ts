@@ -565,6 +565,74 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
+	 * Emit a chat-feature usage tracking event with the §11.6 metadata
+	 * contract — `message_id`, conversation context, preview, attachments,
+	 * tools. Fire-and-forget. Called by the chat send pipeline after the
+	 * assistant message lands so the Usage Dashboard can correlate the
+	 * usage_log row with outcome events (vault_save / continuation).
+	 *
+	 * The model + provider come from the conversation meta (not the active
+	 * profile) because chat supports per-conversation model overrides.
+	 */
+	emitChatUsage(input: {
+		usage: LLMUsage | undefined;
+		startMs: number;
+		conversationId: string;
+		conversationTitle: string;
+		turnIndex: number;
+		turnCount: number;
+		messageId: string;
+		modelId: string;
+		provider: string;
+		promptText: string;
+		responseText: string;
+		attachedFiles: string[];
+		toolCalls: Array<{ toolName: string }>;
+	}): void {
+		try {
+			if (!input.usage) return;
+			const action = 'chat_stream';
+			const toolCounts = new Map<string, number>();
+			for (const call of input.toolCalls) {
+				toolCounts.set(call.toolName, (toolCounts.get(call.toolName) ?? 0) + 1);
+			}
+			const toolsUsed = Array.from(toolCounts, ([name, count]) => ({ name, count }));
+			const metadata = {
+				message_id: input.messageId,
+				session_title: input.conversationTitle,
+				turn_index: input.turnIndex,
+				turn_count: input.turnCount,
+				prompt_preview: String(input.promptText ?? '').slice(0, 200),
+				response_preview: String(input.responseText ?? '').slice(0, 200),
+				attached_files: input.attachedFiles,
+				tools_used: toolsUsed,
+			};
+			void this.getModelInfo(input.modelId, input.provider).then(modelInfo => {
+				const costUsd = computeUsdFromUsage(input.usage!, modelInfo);
+				EventBus.getInstance(this.app).dispatch(new UsageRecordedViewEvent({
+					sessionId: input.conversationId,
+					feature: 'chat',
+					action,
+					provider: input.provider,
+					model: input.modelId,
+					inputTokens: input.usage!.inputTokens ?? 0,
+					outputTokens: input.usage!.outputTokens ?? 0,
+					cachedTokens: input.usage!.cachedInputTokens ?? 0,
+					reasoningTokens: input.usage!.reasoningTokens ?? 0,
+					costUsd,
+					durationMs: Date.now() - input.startMs,
+					isStreaming: true,
+					metadata,
+				}));
+			}).catch(err => {
+				console.warn('[AIServiceManager] emitChatUsage: failed to compute cost', err);
+			});
+		} catch (err) {
+			console.warn('[AIServiceManager] emitChatUsage: unexpected error', err);
+		}
+	}
+
+	/**
 	 * Emit a usage tracking event. Fire-and-forget — failures are logged but never propagate.
 	 */
 	private emitUsage(
