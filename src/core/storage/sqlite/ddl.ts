@@ -475,6 +475,21 @@ export interface Database {
 		max_duration_ms: number;
 	};
 	/**
+	 * Outcome events that follow a usage_log row (vault save, copilot accept,
+	 * search click, agent file emit, continuation). Telemetry layer for the
+	 * Usage Dashboard's "useful message" / MPG metric — also reusable by
+	 * agent-trace / copilot-review / search-analytics surfaces.
+	 */
+	usage_outcome: {
+		id: number | undefined; // AUTOINCREMENT — omit on insert
+		message_id: string;
+		session_id: string;
+		event_type: string;
+		occurred_at: number;
+		target: string | null;
+		metadata_json: string | null;
+	};
+	/**
 	 * Harness procedural memory: distilled insights from past agent loops.
 	 * Written by an offline batch job (M5+); M3 only ships the storage layer.
 	 */
@@ -490,6 +505,7 @@ export interface Database {
 
 export type UsageLogRow = Database['usage_log'];
 export type UsageDailyRow = Database['usage_daily'];
+export type UsageOutcomeRow = Database['usage_outcome'];
 
 /**
  * Database interface for schema creation (exec + optional prepare for migrations).
@@ -999,6 +1015,18 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			UNIQUE(date, feature, action, provider, model)
 		);
 		CREATE INDEX IF NOT EXISTS idx_usage_daily_date ON usage_daily(date);
+
+		CREATE TABLE IF NOT EXISTS usage_outcome (
+			id            INTEGER PRIMARY KEY AUTOINCREMENT,
+			message_id    TEXT NOT NULL,
+			session_id    TEXT NOT NULL,
+			event_type    TEXT NOT NULL,
+			occurred_at   INTEGER NOT NULL,
+			target        TEXT,
+			metadata_json TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_outcome_message ON usage_outcome(message_id);
+		CREATE INDEX IF NOT EXISTS idx_outcome_session_time ON usage_outcome(session_id, occurred_at);
 	`);
 
 	// ── Harness procedural memory (reflections) ──

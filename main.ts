@@ -55,6 +55,7 @@ import { serendipityGutterExtension } from '@/service/ambient/SerendipityGutterP
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
+import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 import { ModelRegistry } from '@/core/providers/model-registry';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 import { MCPClientManager } from '@/service/mcp/MCPClientManager';
@@ -322,6 +323,9 @@ export default class MyPlugin extends Plugin {
 						usageDetailRetentionDays: this.settings.usageDetailRetentionDays,
 					},
 				);
+				UsageOutcomeService.getInstance().init(
+					sqliteStoreManager.getIndexContext('chat'),
+				);
 				await this.initializeSearchService();
 				if (this.appContext) {
 					this.appContext.searchClient = this.searchClient!;
@@ -524,6 +528,7 @@ export default class MyPlugin extends Plugin {
 
 		// Break singletons so old bundle can be GC'd
 		UsageTrackingService.getInstance().destroy();
+		UsageOutcomeService.getInstance().destroy();
 		AppContext.clearForUnload();
 		SessionContextService.destroyInstance();
 		EventBus.destroyInstance();
