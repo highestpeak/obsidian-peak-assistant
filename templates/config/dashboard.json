@@ -1,4 +1,55 @@
 {
-  "_doc": "PR-0 scaffold — surface-specific user-facing strings will be added in per-surface refactor PRs. Loaded via TemplateManager.loadJson(ConfigTemplateId.Dashboard).",
-  "_owner": "design-system-unification-2026-05-30"
+	"_doc": "User-facing strings for Usage Dashboard. PR-Dash-1 seeds title + screen labels + time-range labels. PR-Dash-2 will add metric labels, action verbs, recommendation copy.",
+	"_owner": "design-system-unification-2026-05-30",
+	"title": "Token Usage",
+	"timeRange": {
+		"today": "Today",
+		"7d": "7d",
+		"30d": "30d",
+		"all": "All"
+	},
+	"screens": {
+		"overview": {
+			"id": "overview",
+			"num": "01",
+			"label": "Overview",
+			"title": "Usage Intelligence",
+			"subtitle": "Understand usage, control cost, and keep context healthy."
+		},
+		"providerModel": {
+			"id": "provider-model",
+			"num": "02",
+			"label": "Provider & Model",
+			"title": "Provider & Model",
+			"subtitle": "Table-first breakdown; no truncation."
+		},
+		"outcomeValue": {
+			"id": "outcome-value",
+			"num": "03",
+			"label": "Outcome Value",
+			"title": "Outcome Value",
+			"subtitle": "Cost per useful message and outcome funnel."
+		},
+		"budgetAlerts": {
+			"id": "budget-alerts",
+			"num": "04",
+			"label": "Budget & Alerts",
+			"title": "Budget & Alerts",
+			"subtitle": "Set-and-forget guardrails and alert rules."
+		},
+		"history": {
+			"id": "history",
+			"num": "05",
+			"label": "History",
+			"title": "Usage History",
+			"subtitle": "Audit and drill into individual calls."
+		},
+		"optimization": {
+			"id": "optimization",
+			"num": "06",
+			"label": "Optimization",
+			"title": "Usage Optimization",
+			"subtitle": "Curator recommendations with Apply / Preview verbs."
+		}
+	}
 }

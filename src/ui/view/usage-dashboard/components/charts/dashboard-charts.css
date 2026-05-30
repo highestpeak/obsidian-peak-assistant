@@ -1,0 +1,307 @@
+/*
+ * Usage Dashboard chart primitives
+ * ─────────────────────────────────
+ * Scope: `.peak-design-root.usage-dashboard` only. These patterns are
+ * dashboard-local on purpose — they encode chart conventions (inline-table
+ * bars, horizontal bar grids, KPI action slots, savings dials, help
+ * affordances, explainer panels, numbered pagers) that don't generalize to
+ * other surfaces. If chat/onboarding need any of these, promote to
+ * `peak-components.css` first (see PR-0 promotion playbook).
+ *
+ * Mock origin: docs/gstack/usage-dashboard-mockups-2026-05-29/*.html
+ * Class names mirror the mock's `.tbl-bar / .hbar / .kpi__action /
+ * .savings-dial / .help / .explainer / .pager / .btn--pill` patterns.
+ *
+ * Tokens: production `--pk-*` only — no inline hex, no Obsidian-theme refs.
+ */
+
+:where(.peak-design-root.usage-dashboard) {
+	/* ── help affordance ── ⓘ next to a metric label, native tooltip */
+	.pk-help {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 14px;
+		height: 14px;
+		font-size: 10px;
+		color: var(--pk-text-tertiary);
+		cursor: help;
+		user-select: none;
+	}
+	.pk-help:hover {
+		color: var(--pk-text-secondary);
+	}
+
+	/* ── inline table bar ── % cell with embedded bar + numeric value */
+	.pk-tbl-bar {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: var(--pk-space-2);
+		min-width: 88px;
+	}
+	.pk-tbl-bar__track {
+		flex: 1;
+		height: 6px;
+		background: var(--pk-surface-sunken);
+		border-radius: var(--pk-radius-pill);
+		overflow: hidden;
+	}
+	.pk-tbl-bar__fill {
+		display: block;
+		height: 100%;
+		background: var(--pk-accent);
+		border-radius: var(--pk-radius-pill);
+	}
+	.pk-tbl-bar__value {
+		font-variant-numeric: tabular-nums;
+		font-size: var(--pk-text-base);
+		color: var(--pk-text-primary);
+		min-width: 32px;
+		text-align: right;
+	}
+
+	/* ── horizontal bar list ── 4-column grid: label / bar / $ / %
+	   `$` ALWAYS sits OUTSIDE the bar (mock anti-pattern guard) */
+	.pk-hbar {
+		display: grid;
+		grid-template-columns: minmax(120px, 1.2fr) minmax(160px, 3fr) auto auto;
+		align-items: center;
+		gap: var(--pk-space-3);
+		padding: var(--pk-space-2) 0;
+	}
+	.pk-hbar + .pk-hbar {
+		border-top: 1px solid var(--pk-border-soft);
+	}
+	.pk-hbar__label {
+		font-size: var(--pk-text-base);
+		color: var(--pk-text-primary);
+		display: flex;
+		align-items: center;
+		gap: var(--pk-space-2);
+		min-width: 0;
+	}
+	.pk-hbar__label-text {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pk-hbar__bar {
+		height: 8px;
+		background: var(--pk-surface-sunken);
+		border-radius: var(--pk-radius-pill);
+		overflow: hidden;
+	}
+	.pk-hbar__bar-fill {
+		display: block;
+		height: 100%;
+		background: var(--pk-accent);
+		border-radius: var(--pk-radius-pill);
+	}
+	.pk-hbar__cost {
+		font-variant-numeric: tabular-nums;
+		font-size: var(--pk-text-base);
+		color: var(--pk-text-primary);
+		min-width: 56px;
+		text-align: right;
+	}
+	.pk-hbar__pct {
+		font-variant-numeric: tabular-nums;
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+		min-width: 40px;
+		text-align: right;
+	}
+
+	/* ── KPI top-right action slot ── verb button on the KPI card head */
+	.pk-kpi-action {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		background: transparent;
+		border: 1px solid var(--pk-border);
+		color: var(--pk-text-secondary);
+		font-size: var(--pk-text-sm);
+		padding: 2px var(--pk-space-2);
+		border-radius: var(--pk-radius-sm);
+		cursor: pointer;
+	}
+	.pk-kpi-action:hover {
+		background: var(--pk-state-hover);
+		color: var(--pk-text-primary);
+	}
+
+	/* ── savings dial ── small ring + caption pair */
+	.pk-savings-dial {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--pk-space-3);
+	}
+	.pk-savings-dial__ring {
+		position: relative;
+		width: 48px;
+		height: 48px;
+		flex-shrink: 0;
+	}
+	.pk-savings-dial__ring svg {
+		width: 100%;
+		height: 100%;
+		transform: rotate(-90deg);
+	}
+	.pk-savings-dial__track {
+		stroke: var(--pk-surface-sunken);
+	}
+	.pk-savings-dial__fill {
+		stroke: var(--pk-accent);
+		transition: stroke-dashoffset var(--pk-motion-base, 240ms) ease;
+	}
+	.pk-savings-dial__num {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: var(--pk-text-sm);
+		font-variant-numeric: tabular-nums;
+		color: var(--pk-text-primary);
+	}
+	.pk-savings-dial__caption {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.pk-savings-dial__caption-strong {
+		font-size: var(--pk-text-base);
+		color: var(--pk-text-primary);
+	}
+	.pk-savings-dial__caption-sub {
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+	}
+
+	/* ── explainer panel ── definition list (term/description pairs) */
+	.pk-explainer {
+		display: grid;
+		grid-template-columns: minmax(120px, max-content) 1fr;
+		gap: var(--pk-space-2) var(--pk-space-3);
+		padding: var(--pk-space-3);
+		background: var(--pk-surface-sunken);
+		border: 1px solid var(--pk-border-soft);
+		border-radius: var(--pk-radius-md);
+		font-size: var(--pk-text-sm);
+		margin: 0;
+	}
+	.pk-explainer dt {
+		color: var(--pk-text-secondary);
+		font-weight: 500;
+	}
+	.pk-explainer dd {
+		margin: 0;
+		color: var(--pk-text-primary);
+	}
+
+	/* ── numbered pager ── compact page numbers, e.g. ‹ 1 2 3 … 8 › */
+	.pk-pager {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+	}
+	.pk-pager__btn {
+		min-width: 26px;
+		height: 26px;
+		padding: 0 var(--pk-space-2);
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--pk-radius-sm);
+		color: var(--pk-text-secondary);
+		font-size: var(--pk-text-sm);
+		font-variant-numeric: tabular-nums;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.pk-pager__btn:hover:not([disabled]) {
+		background: var(--pk-state-hover);
+		color: var(--pk-text-primary);
+	}
+	.pk-pager__btn[aria-current="page"] {
+		background: var(--pk-surface);
+		border-color: var(--pk-border);
+		color: var(--pk-text-primary);
+		font-weight: 500;
+	}
+	.pk-pager__btn[disabled] {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	.pk-pager__ellipsis {
+		color: var(--pk-text-tertiary);
+		padding: 0 4px;
+		user-select: none;
+	}
+
+	/* ── dashboard shell ── outer view container */
+	.pk-dash-shell {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pk-space-5);
+		padding: var(--pk-space-5);
+		height: 100%;
+		overflow-y: auto;
+		background: var(--pk-bg);
+		color: var(--pk-text-primary);
+	}
+	.pk-dash-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--pk-space-4);
+		flex-wrap: wrap;
+	}
+	.pk-dash-title {
+		font-size: var(--pk-text-xl);
+		font-weight: 600;
+		color: var(--pk-text-primary);
+	}
+	.pk-dash-meta {
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+	}
+	.pk-dash-screen {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pk-space-4);
+	}
+	.pk-dash-placeholder {
+		padding: var(--pk-space-5);
+		background: var(--pk-surface);
+		border: 1px dashed var(--pk-border);
+		border-radius: var(--pk-radius-md);
+		color: var(--pk-text-secondary);
+		font-size: var(--pk-text-sm);
+		text-align: center;
+	}
+	.pk-dash-section {
+		padding: var(--pk-space-4);
+		background: var(--pk-surface);
+		border: 1px solid var(--pk-border);
+		border-radius: var(--pk-radius-md);
+	}
+	.pk-dash-section__head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--pk-space-3);
+		margin-bottom: var(--pk-space-3);
+	}
+	.pk-dash-section__title {
+		font-size: var(--pk-text-base);
+		font-weight: 600;
+		color: var(--pk-text-primary);
+	}
+	.pk-dash-section__sub {
+		font-size: var(--pk-text-sm);
+		color: var(--pk-text-secondary);
+	}
+}
