@@ -119,6 +119,56 @@ color: var(--pk-text-primary);
 }
 ```
 
+## Token reference cheatsheet
+
+### Radius — `--pk-radius-pill` vs `--pk-radius-full`
+
+Both resolve to `9999px`. Use whichever reads more accurately at the call site:
+
+| Token | When |
+|---|---|
+| `--pk-radius-pill` | Chips, badges, pill buttons, tag rows — anything semantically "pill-shaped". Preferred for these. |
+| `--pk-radius-full` | Avatars, circular icon buttons, dot indicators — "max rounding on an arbitrary surface". |
+
+They are aliases today; the split is purely intent-signalling for readers and future-proofing if pill ever decouples from "fully round".
+
+### Shadow rungs — sm / md / card / popover / modal
+
+Five rungs, ordered by visual weight:
+
+| Token | When |
+|---|---|
+| `--pk-shadow-sm` | Faint lift for compact UI (inline chips, sparkline tiles, hover micro-affordances). |
+| `--pk-shadow-md` | Mid lift for raised cards in dense layouts (dashboard tiles, popout previews). |
+| `--pk-shadow-card` | Default card surface — includes a 1px ring; use for main content cards in lists/grids. |
+| `--pk-shadow-popover` | Floating menus, dropdowns, tooltips with body. |
+| `--pk-shadow-modal` | Modal dialogs, command palette, full-overlay surfaces. |
+
+`sm` / `md` are pure drop-shadows (no ring). `card` / `popover` / `modal` include a 1px ring for surface definition. Pick `sm` / `md` when the surface already has a border; pick `card` when it doesn't.
+
+### Provider brand hues — `--pk-prov-*`
+
+Brand-coded accents for provider chips, sparklines, usage bars. Each provider has a `base` (hex) and `-soft` (rgba, ~0.18 light / ~0.22 dark) variant for tinted backgrounds.
+
+| Provider | Token base | Hex |
+|---|---|---|
+| OpenAI | `--pk-prov-openai` | `#54d39e` |
+| Anthropic | `--pk-prov-anthropic` | `#e0934f` |
+| Google | `--pk-prov-google` | `#6bb6e0` |
+| OpenRouter | `--pk-prov-openrouter` | `#b58ce0` |
+| Perplexity | `--pk-prov-perplexity` | `#e8b056` |
+| Ollama | `--pk-prov-ollama` | `#7a8696` |
+
+Same hex base in light + dark (calibrated to read on both); only the `-soft` alpha bumps in dark. Use the base for borders/icons/strokes; use `-soft` for filled backgrounds behind text or icons.
+
+```tsx
+<span style={{ background: 'var(--pk-prov-anthropic-soft)', color: 'var(--pk-prov-anthropic)' }}>
+  Claude
+</span>
+```
+
+These supersede the ad-hoc hex literals previously in `ProviderIcon.tsx` / `provider-brand-icons.tsx` (still listed under exceptions until migrated).
+
 ## Legitimate exceptions (keep hex)
 
 Some hex literals are legitimate and should stay:

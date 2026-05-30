@@ -84,7 +84,23 @@
 	--pk-highlight-info:        #eff6ff;
 	--pk-highlight-info-border: #93c5fd;
 
+	/* ── provider brand hues ───────────────────────────────────────────── */
+	--pk-prov-openai:          #54d39e;
+	--pk-prov-openai-soft:     rgba(84, 211, 158, 0.18);
+	--pk-prov-anthropic:       #e0934f;
+	--pk-prov-anthropic-soft:  rgba(224, 147, 79, 0.18);
+	--pk-prov-google:          #6bb6e0;
+	--pk-prov-google-soft:     rgba(107, 182, 224, 0.18);
+	--pk-prov-openrouter:      #b58ce0;
+	--pk-prov-openrouter-soft: rgba(181, 140, 224, 0.18);
+	--pk-prov-perplexity:      #e8b056;
+	--pk-prov-perplexity-soft: rgba(232, 176, 86, 0.18);
+	--pk-prov-ollama:          #7a8696;
+	--pk-prov-ollama-soft:     rgba(122, 134, 150, 0.18);
+
 	/* ── shadow ─────────────────────────────────────────────────────────── */
+	--pk-shadow-sm:          0 1px 2px rgba(0, 0, 0, 0.06);
+	--pk-shadow-md:          0 4px 12px rgba(0, 0, 0, 0.10);
 	--pk-shadow-card:        0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.04);
 	--pk-shadow-popover:     0 4px 12px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(0, 0, 0, 0.04);
 	--pk-shadow-modal:       0 16px 40px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
@@ -118,6 +134,7 @@
 	--pk-radius-lg:   12px;
 	--pk-radius-xl:   16px;
 	--pk-radius-full: 9999px;
+	--pk-radius-pill: 9999px;   /* semantic alias for chip/button/badge rounding */
 
 	/* ── z-index ────────────────────────────────────────────────────────── */
 	--pk-z-base:     0;
@@ -196,7 +213,23 @@
 	--pk-highlight-info:        #1e293b;
 	--pk-highlight-info-border: #3b6fad;
 
+	/* ── provider brand hues ───────────────────────────────────────────── */
+	--pk-prov-openai:          #54d39e;
+	--pk-prov-openai-soft:     rgba(84, 211, 158, 0.22);
+	--pk-prov-anthropic:       #e0934f;
+	--pk-prov-anthropic-soft:  rgba(224, 147, 79, 0.22);
+	--pk-prov-google:          #6bb6e0;
+	--pk-prov-google-soft:     rgba(107, 182, 224, 0.22);
+	--pk-prov-openrouter:      #b58ce0;
+	--pk-prov-openrouter-soft: rgba(181, 140, 224, 0.22);
+	--pk-prov-perplexity:      #e8b056;
+	--pk-prov-perplexity-soft: rgba(232, 176, 86, 0.22);
+	--pk-prov-ollama:          #7a8696;
+	--pk-prov-ollama-soft:     rgba(122, 134, 150, 0.22);
+
 	/* ── shadow ─────────────────────────────────────────────────────────── */
+	--pk-shadow-sm:          0 1px 2px rgba(0, 0, 0, 0.4);
+	--pk-shadow-md:          0 4px 14px rgba(0, 0, 0, 0.5);
 	--pk-shadow-card:        0 0 0 1px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.25);
 	--pk-shadow-popover:     0 6px 18px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.4);
 	--pk-shadow-modal:       0 18px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(0, 0, 0, 0.5);
