@@ -18,6 +18,8 @@ export class CapabilityRegistry {
 	private static instance: CapabilityRegistry | null = null;
 	private adapters = new Map<SurfaceId, SurfaceCapabilityAdapter>();
 
+	private constructor() {}
+
 	static getInstance(): CapabilityRegistry {
 		if (!this.instance) this.instance = new CapabilityRegistry();
 		return this.instance;
