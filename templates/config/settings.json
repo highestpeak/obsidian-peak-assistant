@@ -1,6 +1,251 @@
 {
-  "_doc": "PR-B (2026-05-30) — user-facing strings for the Settings surface (PR-B scope: high-vocab-violation sections only — Harness section + External-tools section). Loaded via TemplateManager.loadJson(ConfigTemplateId.Settings). Vocabulary contract: Profile→Provider, Quick→Fast Lookup, Deep→Research, Premium/online tier→Use stronger model when needed, Embedding→Knowledge Index, Web Search slot→Web Access, MCP Servers→External tools, Permission mode→Safety, Agent Harness→Agent runtime (the word \"Harness\" is allowed only in the Advanced tab). Edit values freely; the Settings UI falls back to DEFAULT_SETTINGS_STRINGS in src/ui/view/settings/settingsStrings.ts if any key is missing. PR-D will rewrite Settings into the 5-tab IA on top of these strings.",
+  "_doc": "PR-D (2026-05-30) — user-facing strings for the 5-tab Settings IA (Overview / AI Setup / Knowledge Index / Tools / Advanced). Loaded via TemplateManager.loadJson(ConfigTemplateId.Settings). Vocabulary contract: Profile→Provider, Quick→Fast Lookup, Deep→Research, Premium/online tier→Use stronger model when needed, Embedding→Knowledge Index, Web Search slot→Web Access, MCP Servers→External tools, Permission mode→Safety, Agent Harness→Agent runtime. The word \"Harness\" is allowed ONLY inside the Advanced tab. Edit values freely; the Settings UI falls back to DEFAULT_SETTINGS_STRINGS in src/ui/view/settings/settingsStrings.ts if any key is missing.",
   "_owner": "design-system-unification-2026-05-30",
+  "tabs": {
+    "overview": "Overview",
+    "aiSetup": "AI Setup",
+    "knowledgeIndex": "Knowledge Index",
+    "tools": "Tools",
+    "advanced": "Advanced"
+  },
+  "overview": {
+    "readiness": {
+      "sectionTitle": "Peak readiness",
+      "sectionSub": "Check what is ready and what needs attention before using Peak.",
+      "providers": {
+        "title": "Providers",
+        "desc": "AI services and local runtimes Peak can talk to.",
+        "ready": "Ready",
+        "needsAttention": "Needs attention",
+        "manage": "Manage"
+      },
+      "aiBehavior": {
+        "title": "AI behavior",
+        "desc": "Conversation, Fast Lookup, and Research model bindings.",
+        "ready": "Ready",
+        "needsAttention": "Needs attention",
+        "manage": "Fix"
+      },
+      "knowledgeIndex": {
+        "title": "Knowledge Index",
+        "desc": "Vault search and semantic understanding.",
+        "ready": "Ready",
+        "needsAttention": "Needs attention",
+        "check": "Check"
+      },
+      "webAccess": {
+        "title": "Web Access",
+        "desc": "Current web information for chat and research.",
+        "optional": "Optional",
+        "setup": "Setup"
+      },
+      "safety": {
+        "title": "Safety",
+        "desc": "How Peak handles risky writes and tool calls.",
+        "ready": "Ready",
+        "review": "Review"
+      }
+    },
+    "actions": {
+      "sectionTitle": "Shortcuts",
+      "runSetup": "Re-run setup wizard",
+      "checkIndex": "Check Knowledge Index",
+      "tryChat": "Try a chat"
+    }
+  },
+  "aiSetup": {
+    "aiBehavior": {
+      "sectionTitle": "AI behavior",
+      "conversation": {
+        "title": "Conversation",
+        "desc": "Chat and daily writing."
+      },
+      "fastLookup": {
+        "title": "Fast Lookup",
+        "desc": "Single-step replies, ~1s (works well with small local models)."
+      },
+      "research": {
+        "title": "Research",
+        "desc": "Multi-step reasoning and long documents."
+      },
+      "strongerModel": {
+        "title": "Use stronger model when needed",
+        "desc": "Cloud model used as the fallback when local tiers are not enough.",
+        "offChip": "Off"
+      },
+      "knowledgeIndex": {
+        "title": "Knowledge Index",
+        "desc": "Model used to power semantic vault search."
+      },
+      "change": "Change",
+      "setup": "Set up",
+      "fallsBack": "Falls back to Conversation",
+      "usesConversationModel": "Uses Conversation model"
+    },
+    "providers": {
+      "sectionTitle": "Providers",
+      "sectionSub": "AI services and local runtimes connected to Peak.",
+      "connectedChip": "Connected",
+      "test": "Test",
+      "edit": "Edit",
+      "addProvider": "Add Provider"
+    },
+    "safety": {
+      "sectionTitle": "Safety",
+      "sectionSub": "How Peak handles risky writes and tool calls."
+    }
+  },
+  "knowledgeIndex": {
+    "readiness": {
+      "sectionTitle": "Knowledge Index status",
+      "sectionSub": "Current index state and repair actions.",
+      "store": {
+        "title": "Vector store",
+        "desc": "Local SQLite store used for semantic search.",
+        "ready": "Ready"
+      },
+      "current": {
+        "title": "Indexed files",
+        "desc": "Total documents currently in the search index."
+      },
+      "mode": {
+        "title": "Index depth",
+        "desc": "Controls which enrichment steps run during indexing."
+      }
+    },
+    "behavior": {
+      "sectionTitle": "Indexing",
+      "indexMode": {
+        "title": "Index depth",
+        "desc": "Controls which enrichment steps run during indexing.",
+        "fast": "Fast",
+        "semantic": "Semantic",
+        "full": "Full"
+      },
+      "autoIndex": {
+        "title": "Auto-index on startup",
+        "desc": "Run the fast index when Obsidian opens."
+      },
+      "documentTypes": {
+        "title": "Document types",
+        "desc": "File types included in the search index."
+      },
+      "ignorePatterns": {
+        "title": "Ignore patterns",
+        "desc": "Glob patterns to exclude (one per line).",
+        "edit": "Edit"
+      },
+      "rebuild": {
+        "title": "Rebuild index",
+        "desc": "Re-run the full pipeline at the current index level.",
+        "cta": "Rebuild",
+        "running": "Rebuilding…"
+      }
+    },
+    "searchQuality": {
+      "sectionTitle": "Search quality",
+      "ppr": {
+        "title": "Personalized PageRank",
+        "desc": "Rerank results using per-query graph walks. Surfaces related notes that keyword and vector search miss."
+      }
+    },
+    "chunking": {
+      "sectionTitle": "Chunking",
+      "maxChunkSize": {
+        "title": "Max chunk size",
+        "desc": "Maximum characters per chunk (default 1000)."
+      },
+      "chunkOverlap": {
+        "title": "Chunk overlap",
+        "desc": "Overlap characters between chunks (default 200)."
+      }
+    },
+    "aiAnalysis": {
+      "sectionTitle": "AI Analysis",
+      "autoSave": {
+        "title": "Auto-save results",
+        "desc": "Save completed analysis to your vault."
+      },
+      "saveFolder": {
+        "title": "Save folder",
+        "desc": "Vault-relative path for saved analyses."
+      },
+      "recentLimit": {
+        "title": "Recent history limit",
+        "desc": "Items shown in the Recent AI Analysis list."
+      }
+    }
+  },
+  "tools": {
+    "externalTools": {
+      "sectionTitle": "External tools",
+      "sectionSub": "Connect external tool servers to extend agent capabilities."
+    },
+    "webAccess": {
+      "sectionTitle": "Web Access",
+      "provider": {
+        "title": "Web search provider",
+        "desc": "Used by chat and research when current information is needed.",
+        "optional": "Optional",
+        "notConfigured": "Not configured",
+        "setup": "Setup"
+      },
+      "usedBy": {
+        "title": "Used by",
+        "desc": "Surfaces that read from Web Access when enabled.",
+        "chips": {
+          "chat": "Chat",
+          "research": "Research"
+        }
+      }
+    }
+  },
+  "advanced": {
+    "intro": {
+      "sectionTitle": "Advanced",
+      "sectionSub": "Low-level runtime, storage, and diagnostics. Most users do not need to change anything here."
+    },
+    "reRun": {
+      "title": "Re-run setup wizard",
+      "desc": "Let the setup assistant re-pick tier bindings from your current environment.",
+      "cta": "Run"
+    },
+    "diagnostics": {
+      "sectionTitle": "Diagnostics",
+      "sectionSub": "Read-only runtime state for debugging.",
+      "runtimeRow": {
+        "title": "Agent runtime",
+        "desc": "Which loop engine drives agents (Harness / Claude Agent SDK)."
+      },
+      "backendRow": {
+        "title": "Backend status",
+        "desc": "Reports whether the active runtime is healthy."
+      }
+    },
+    "storage": {
+      "sectionTitle": "Storage",
+      "dataFolder": {
+        "title": "Data storage folder",
+        "desc": "Folder for storing plugin data files (e.g., search database). Leave empty to use plugin directory."
+      },
+      "chatRoot": {
+        "title": "Chat root folder",
+        "desc": "Root folder for AI conversation data (Prompts, Attachments, Hub-Summaries, etc. are derived automatically)."
+      }
+    },
+    "general": {
+      "sectionTitle": "General",
+      "attachmentHandling": {
+        "title": "Attachment handling",
+        "desc": "How attachments are sent to the model. \"Direct\" requires model vision support; \"Degrade to text\" uses OCR/parsing for compatibility."
+      },
+      "devTools": {
+        "title": "Enable DevTools Graph Inspector",
+        "desc": "Exposes window.testGraphTools in browser DevTools console with convenience methods for graph testing.",
+        "tag": "Developer"
+      }
+    }
+  },
   "harness": {
     "reRunBanner": {
       "title": "Re-run setup wizard",
@@ -68,7 +313,7 @@
   },
   "externalTools": {
     "title": "External tools",
-    "description": "Connect external tool servers (MCP) to extend agent capabilities with additional commands.",
+    "description": "Connect external tool servers to extend agent capabilities with additional commands.",
     "emptyHint": "No external tools configured. Add one to get started.",
     "addCta": "Add tool server",
     "defaultServerName": "New tool server"
