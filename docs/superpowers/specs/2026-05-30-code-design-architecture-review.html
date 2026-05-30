@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant Code Design & Architecture Review — 2026-05-30</title>
+  <script src="../../../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --paper: #ffffff;
+      --ink: #17202a;
+      --muted: #5d6978;
+      --line: #d9dee7;
+      --soft: #edf1f6;
+      --accent: #2563eb;
+      --accent-2: #0f766e;
+      --risk: #b42318;
+      --warn: #b45309;
+      --ok: #15803d;
+      --code: #111827;
+      --code-bg: #f3f5f9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 40px 24px 72px;
+    }
+
+    header {
+      padding: 36px 0 26px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0 12px;
+      font-size: 40px;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 44px 0 16px;
+      font-size: 25px;
+      line-height: 1.22;
+      border-top: 1px solid var(--line);
+      padding-top: 28px;
+    }
+
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 18px;
+      line-height: 1.3;
+    }
+
+    h4 {
+      margin: 20px 0 8px;
+      font-size: 15px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    p { margin: 10px 0; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    code {
+      color: var(--code);
+      background: var(--code-bg);
+      border: 1px solid #e2e7ef;
+      padding: 1px 5px;
+      border-radius: 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .92em;
+    }
+
+    pre {
+      background: #0f172a;
+      color: #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      overflow: auto;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: 1.3fr .7fr;
+      gap: 18px;
+      margin-top: 24px;
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .verdict {
+      border-left: 5px solid var(--risk);
+    }
+
+    .verdict strong {
+      color: var(--risk);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .metric {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .metric .num {
+      display: block;
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1.1;
+      color: var(--ink);
+    }
+
+    .metric .label {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      display: table;
+      margin: 14px 0 22px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft);
+      font-size: 13px;
+      color: #394150;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      color: #334155;
+      white-space: nowrap;
+    }
+
+    .tag.p0 { color: var(--risk); background: #fff1f1; border-color: #fecaca; }
+    .tag.p1 { color: var(--warn); background: #fff7ed; border-color: #fed7aa; }
+    .tag.p2 { color: var(--accent-2); background: #ecfdf5; border-color: #bbf7d0; }
+    .tag.ok { color: var(--ok); background: #f0fdf4; border-color: #bbf7d0; }
+
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #eef5ff;
+      padding: 14px 16px;
+      border-radius: 6px;
+      margin: 16px 0;
+    }
+
+    .callout.risk {
+      border-left-color: var(--risk);
+      background: #fff1f1;
+    }
+
+    .callout.warn {
+      border-left-color: var(--warn);
+      background: #fff7ed;
+    }
+
+    .mermaid-wrap {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      margin: 14px 0 24px;
+      overflow: auto;
+    }
+
+    .mermaid {
+      min-width: 720px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .small { color: var(--muted); font-size: 13px; }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 22px 0 8px;
+    }
+
+    .toc a {
+      display: block;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--ink);
+    }
+
+    .foot {
+      margin-top: 52px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .summary, .two-col, .toc { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      h1 { font-size: 31px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="eyebrow">Code Design Review</div>
+      <h1>Peak Assistant 全仓库代码设计与架构报告</h1>
+      <p class="small">
+        日期：2026-05-30 · 范围：<code>src/</code>、<code>test/</code>、<code>templates/</code>、<code>scripts/</code>、关键启动/搜索/Agent/Copilot/SQLite/UI 路径 · 重点：逻辑结构、工程边界、重构优先级。
+      </p>
+    </header>
+
+    <section class="summary">
+      <div class="panel verdict">
+        <h3>总判断</h3>
+        <p>
+          这个项目的产品方向和核心能力已经很强：它不是一个简单 Obsidian RAG 插件，而是一个围绕
+          <code>Chat</code>、<code>AI Analysis</code>、<code>Copilot</code>、<code>Knowledge Maintenance</code>、
+          <code>Ambient Push</code> 展开的知识工作层。
+        </p>
+        <p>
+          但代码设计已经进入<strong>需要主动治理</strong>的阶段：当前可维护风险不是“某个文件太长”这么简单，而是
+          <strong>类型守门失效、依赖方向反复穿透、服务层直接抓 UI、核心层反向依赖业务层、AppContext 成为全局服务定位器</strong>。
+          这些问题会让 AI 后续继续写代码时越来越难判断哪里才是正确落点。
+        </p>
+      </div>
+      <div class="panel">
+        <h3>最优先的结论</h3>
+        <p><span class="tag p0">P0</span> 先恢复 <code>src</code> 类型检查通过，把类型系统重新变成门禁。</p>
+        <p><span class="tag p0">P0</span> 再治理跨层 import，尤其是 <code>core -> service/app/ui</code> 和 <code>service -> ui/app</code>。</p>
+        <p><span class="tag p1">P1</span> 拆 <code>IndexService</code>、<code>Copilot actions</code>、<code>BackgroundSessionManager</code> 这三处最大架构压力点。</p>
+      </div>
+    </section>
+
+    <nav class="toc">
+      <a href="#metrics">1. 代码规模与事实</a>
+      <a href="#architecture">2. 当前架构图</a>
+      <a href="#findings">3. 主要设计问题</a>
+      <a href="#flows">4. 关键流程图</a>
+      <a href="#target">5. 目标架构</a>
+      <a href="#roadmap">6. 重构路线</a>
+    </nav>
+
+    <section id="metrics">
+      <h2>1. 代码规模与事实</h2>
+      <div class="grid">
+        <div class="metric"><span class="num">125,333</span><span class="label"><code>src/**/*.ts(x)</code> 行数</span></div>
+        <div class="metric"><span class="num">765</span><span class="label"><code>src</code> TypeScript 文件数</span></div>
+        <div class="metric"><span class="num">148,331</span><span class="label"><code>src/test/templates/scripts</code> 可维护内容行数</span></div>
+        <div class="metric"><span class="num">98</span><span class="label">超过 300 行的 <code>src</code> 文件</span></div>
+      </div>
+
+      <h3>1.1 分层行数</h3>
+      <table>
+        <thead>
+          <tr><th>区域</th><th>行数</th><th>解读</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>src/ui</code></td><td>52,887</td><td>最大区域。UI 已经承载了很多状态、流程和数据保存逻辑，不只是视图。</td></tr>
+          <tr><td><code>src/service</code></td><td>44,101</td><td>业务层很重，Search、Agents、Copilot、Tools 是主要增长源。</td></tr>
+          <tr><td><code>src/core</code></td><td>25,730</td><td>本应最稳定，但已经出现反向依赖 <code>service/app/ui</code> 的迹象。</td></tr>
+          <tr><td><code>src/app</code></td><td>2,579</td><td>Obsidian integration 层相对小，但 <code>AppContext</code> 影响半径极大。</td></tr>
+          <tr><td><code>test</code></td><td>13,966</td><td>测试量不低，但部分测试和当前代码签名已经漂移。</td></tr>
+          <tr><td><code>templates</code></td><td>6,825</td><td>提示词和配置抽取方向是正确的，应继续强化 manifest 校验。</td></tr>
+        </tbody>
+      </table>
+
+      <h3>1.2 最大文件</h3>
+      <table>
+        <thead>
+          <tr><th>文件</th><th>行数</th><th>判断</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>src/service/search/index/indexService.ts</code></td><td>2,266</td><td>索引 CRUD、单文档索引、embedding、graph projection、maintenance 混在一个 singleton facade 中。</td></tr>
+          <tr><td><code>src/ui/view/copilot/vault/VaultAutoRunModal.tsx</code></td><td>1,664</td><td>Modal 级组件过大，可能混合 workflow state、render、side effects。</td></tr>
+          <tr><td><code>src/core/storage/sqlite/repositories/MobiusNodeRepo.ts</code></td><td>1,292</td><td>Repo 复杂度高，并且类型检查已暴露 schema shape drift。</td></tr>
+          <tr><td><code>src/service/search/index/helper/backbone/buildBackboneMap.ts</code></td><td>1,207</td><td>算法/数据聚合逻辑重，适合拆成 pipeline stages。</td></tr>
+          <tr><td><code>src/core/storage/sqlite/ddl.ts</code></td><td>1,114</td><td>单文件 schema 中心过大，迁移/类型生成需要更强约束。</td></tr>
+          <tr><td><code>src/service/copilot/actions/index.ts</code></td><td>1,055</td><td>action manifest、执行器、prompt 调用、panel map 混在一起。</td></tr>
+        </tbody>
+      </table>
+
+      <h3>1.3 依赖图扫描</h3>
+      <table>
+        <thead>
+          <tr><th>信号</th><th>数字</th><th>为什么重要</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>AppContext</code> 文本出现</td><td>461</td><td>全局定位器已经成为默认取依赖方式，测试和生命周期会变脆。</td></tr>
+          <tr><td><code>AppContext.ts</code> inbound import</td><td>150</td><td>一个文件变化可能影响大量模块。</td></tr>
+          <tr><td>可疑跨层依赖边</td><td>315</td><td>包括 type-only import，但数量足以说明边界没有被工具守住。</td></tr>
+          <tr><td>最大循环依赖连通块</td><td>401 文件</td><td>说明不是零星 cycle，而是 UI/service/core/app 混成了大团。</td></tr>
+          <tr><td><code>as any</code> / TS 逃逸候选</td><td>350</td><td>类型系统已经被大量绕开，AI 继续改动时回归风险高。</td></tr>
+          <tr><td><code>console.*</code></td><td>401</td><td>调试日志分散，缺统一 logger 和 feature flag。</td></tr>
+          <tr><td>UI 规则漂移：<code>&lt;button</code>/<code>&lt;h1-h6</code>/<code>&lt;p&gt;</code></td><td>64</td><td>项目约定要求 shadcn Button 与避免语义标签，当前已有偏离。</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout risk">
+        <strong>类型检查结果：</strong>
+        <code>npx tsc --noEmit --pretty false --skipLibCheck</code> 仍有 124 条 <code>src/</code> 报错行。
+        全量 <code>tsc</code> 输出约 493 行，除了第三方类型问题，还包括项目自身的接口漂移、schema 漂移、prompt 变量漂移和 stale test。
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2>2. 当前架构图</h2>
+
+      <h3>2.1 当前产品/系统形态</h3>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart LR
+  User["Obsidian user"]
+
+  User --> Chat["Chat\nask and continue"]
+  User --> Analysis["AI Analysis\ninvestigate and report"]
+  User --> Copilot["Copilot\nimprove current note"]
+  User --> Knowledge["Knowledge Center\nmaintain vault"]
+  User --> Ambient["Ambient Push\nproactive related notes"]
+  User --> Settings["Settings / Onboarding\noperate system"]
+
+  Chat --> ChatStore["Vault markdown chat docs\nchat.sqlite"]
+  Analysis --> SearchAgent["VaultSearchAgent / Report agents"]
+  Copilot --> CopilotAgents["Action registry / Meta agent / Artifacts"]
+  Knowledge --> IndexGraph["SQLite index + Mobius graph"]
+  Ambient --> IndexGraph
+  SearchAgent --> SearchPipeline["Multi-retriever search\nRRF + PPR + rerank"]
+  SearchPipeline --> IndexGraph
+  CopilotAgents --> Providers["Provider profiles\nVercel AI SDK / Claude Agent SDK"]
+  Chat --> Providers
+  Analysis --> Providers
+        </div>
+      </div>
+
+      <p>
+        这个形态本身是好的：产品已经有差异化，不是“聊天 + 搜索”拼装。
+        设计问题在于代码边界没有跟上产品复杂度，尤其是 Agent、Search、Copilot、UI session state 同时长大后，依赖方向开始互相穿透。
+      </p>
+
+      <h3>2.2 当前代码依赖现实</h3>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TB
+  App["app\nObsidian integration"]
+  UI["ui\nReact views and stores"]
+  Service["service\nbusiness and agents"]
+  Core["core\nstorage, providers, docs, utils"]
+  Types["types/templates"]
+
+  App --> Service
+  App --> UI
+  App --> Core
+
+  UI --> UI
+  UI --> Service
+  UI --> Core
+  UI -. "108 edges" .-> App
+
+  Service --> Service
+  Service --> Core
+  Service -. "74 edges" .-> App
+  Service -. "55 edges" .-> UI
+
+  Core --> Core
+  Core -. "56 edges" .-> Service
+  Core -. "17 edges" .-> App
+  Core -. "5 edges" .-> UI
+
+  classDef ok fill:#ecfdf5,stroke:#0f766e,color:#0f172a;
+  classDef risk fill:#fff1f1,stroke:#b42318,color:#0f172a;
+  class App,UI,Service,Core,Types ok;
+        </div>
+      </div>
+
+      <p>
+        实际依赖图显示，代码并没有保持“core 最底层、service 中间、ui 外层、app 组装”的稳定方向。
+        <code>core</code> 反向 import <code>service/app/ui</code> 是最需要处理的结构性问题；<code>service</code> 直接 import UI store/modal 也会让业务逻辑难以测试和复用。
+      </p>
+
+      <h3>2.3 启动生命周期</h3>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+  Load["Plugin onload"]
+  Template["TemplateManager\nmodel registry\nstopwords"]
+  Profiles["ProfileRegistry\nnormalize settings"]
+  AI["AIServiceManager"]
+  Context["AppContext created early\nsearchClient temporarily null"]
+  Loaders["DocumentLoaderManager.init"]
+  Desktop{"Desktop?"}
+  SQLite["sqliteStoreManager.init"]
+  Search["IndexService + SearchClient\nSearchUpdateListener\nCascadeWorker"]
+  Usage["UsageTrackingService"]
+  Session["SessionContextService\nPatternDiscovery\nSDK warmup"]
+  Views["ViewManager\nReact views"]
+  Commands["Commands + Settings tab"]
+  MCP["MCP connections\nSkillRegistry"]
+  Ambient["AmbientPush + MorningBriefing"]
+  Ready["Ready"]
+
+  Load --> Template --> Profiles --> AI --> Context --> Loaders --> Desktop
+  Desktop -->|yes| SQLite --> Search --> Usage --> Session --> Views
+  Desktop -->|no| Views
+  Views --> Commands --> MCP --> Ambient --> Ready
+        </div>
+      </div>
+
+      <p>
+        启动顺序设计是有经验沉淀的：<code>AppContext</code> 提前创建是为了解决下游 init 期间的 singleton 访问。
+        但这也造成一个长期成本：很多模块可以绕过构造函数直接从全局拿依赖。短期方便，长期让生命周期和测试隔离变困难。
+      </p>
+    </section>
+
+    <section id="findings">
+      <h2>3. 主要设计问题</h2>
+
+      <h3><span class="tag p0">P0</span> 类型系统没有形成有效门禁</h3>
+      <p>
+        当前 <code>tsconfig.json</code> 开了 <code>noImplicitAny</code> 与 <code>strictNullChecks</code>，这是好事；
+        但真实 <code>tsc --noEmit --skipLibCheck</code> 仍然有 124 条 <code>src/</code> 报错行。
+        这意味着类型系统不是“偶尔有噪音”，而是已经不能作为日常合并门禁。
+      </p>
+      <table>
+        <thead><tr><th>错误族</th><th>例子</th><th>设计含义</th></tr></thead>
+        <tbody>
+          <tr><td>全局上下文 API 漂移</td><td><code>AppContext.getPluginId()</code> 不存在；<code>ctx.pluginId</code> 不存在</td><td>服务层对 app runtime 依赖没有稳定 port。</td></tr>
+          <tr><td>schema/repo shape 漂移</td><td><code>MobiusNodeRepo</code> 缺 structural 字段；<code>UsageLogRepo</code> insert shape 不匹配</td><td>SQLite DDL、Kysely 类型、repo 返回 shape 没有单一真相源。</td></tr>
+          <tr><td>prompt/template registry 漂移</td><td><code>hub-doc-summary-system</code> registry mismatch；prompt variables 缺 key</td><td>模板系统已经需要 manifest 校验和生成型类型。</td></tr>
+          <tr><td>tool schema / zod 版本漂移</td><td>Zod v3/v4 类型互不兼容</td><td>Agent tool adapter 层缺统一 schema adapter。</td></tr>
+          <tr><td>stale tests/scripts</td><td>telemetry modules missing；hub/lint tests import 旧模块</td><td>测试资产没有被当前架构演进同步维护。</td></tr>
+        </tbody>
+      </table>
+      <div class="callout risk">
+        <strong>建议：</strong>先不要做大重构。第一步应该是新增 <code>typecheck:src</code>，让 <code>src</code> 在 <code>skipLibCheck</code> 下先绿；
+        再把 <code>test</code>/<code>scripts</code> 分到单独 tsconfig，逐步收复。否则后续重构是在没有护栏的状态下开车。
+      </div>
+
+      <h3><span class="tag p0">P0</span> 依赖方向已经破坏分层模型</h3>
+      <p>
+        当前最危险的不是 UI 大，而是底层模块反向依赖上层模块。
+        <code>core</code> 里出现了对 <code>service/chat/service-manager</code>、<code>service/prompt/PromptId</code>、<code>app/settings/types</code>、
+        <code>AppContext</code>、甚至 <code>ui</code> store/type 的依赖。
+      </p>
+      <table>
+        <thead><tr><th>反向依赖</th><th>数量</th><th>应对方式</th></tr></thead>
+        <tbody>
+          <tr><td><code>core -> service</code></td><td>56</td><td>把 prompt id、AI capability、search index shared types 下沉到 <code>core/contracts</code> 或 <code>service/*/contracts</code>。</td></tr>
+          <tr><td><code>core -> app</code></td><td>17</td><td>把 settings 类型拆成纯配置 contract；Obsidian runtime 访问通过 port 注入。</td></tr>
+          <tr><td><code>core -> ui</code></td><td>5</td><td>Graph/search doc 类型不要引用 UI store 类型；建立 neutral DTO。</td></tr>
+          <tr><td><code>service -> ui</code></td><td>55</td><td>业务层不要直接读 Zustand store 或打开 modal；改为事件/adapter。</td></tr>
+          <tr><td><code>service -> app</code></td><td>74</td><td>逐步把 <code>AppContext</code> 改成 ports，例如 <code>VaultPort</code>、<code>SettingsPort</code>、<code>ProviderPort</code>。</td></tr>
+        </tbody>
+      </table>
+
+      <h3><span class="tag p0">P0</span> <code>AppContext</code> 已经从 DI root 变成 service locator</h3>
+      <p>
+        <code>AppContext</code> 作为插件启动时的 DI root 是合理的；问题是现在它被服务层、core、UI、工具函数大量直接调用。
+        这导致依赖关系从构造函数和接口转移到静态全局状态，测试时很难替换，卸载时也要靠大量手动清理。
+      </p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart LR
+  Many["150+ importing files"] --> AppContext["AppContext singleton"]
+  AppContext --> App["Obsidian App"]
+  AppContext --> Manager["AIServiceManager"]
+  AppContext --> Search["SearchClient"]
+  AppContext --> Plugin["Plugin instance"]
+  AppContext --> Settings["settings"]
+  AppContext --> EventBus["EventBus"]
+  AppContext --> Bridge["ClaudeAgentSDKBridge"]
+  AppContext --> ViewManager["ViewManager"]
+
+  Core["core helpers"] -.-> AppContext
+  Service["service agents/tools"] -.-> AppContext
+  UI["React views/stores"] -.-> AppContext
+        </div>
+      </div>
+      <p>
+        这类结构的典型后果是：一旦 <code>AppContext</code> 缺一个 accessor，比如当前 <code>getPluginId</code>，会在多条 Agent/ambient/workflow 路径同时暴露。
+      </p>
+
+      <h3><span class="tag p0">P0</span> 401 文件级循环依赖连通块</h3>
+      <p>
+        依赖扫描中最大 SCC 达到 401 文件。这里不能粗暴理解为“401 个真实 runtime cycle 都会爆”，因为里面包含 type import 和 index re-export；
+        但从设计角度看，它已经说明模块边界不可推理：改 UI type 可能牵动 service，改 service type 可能牵动 core，再回到 app。
+      </p>
+      <div class="callout warn">
+        <strong>最先断开的环：</strong>
+        <code>BackgroundSessionManager</code> 直接 import <code>QuickSearchModal</code>、<code>useSearchSessionStore</code>、<code>eventTargetRedirect</code>；
+        <code>ReportOrchestrator</code> 直接 import <code>useSearchSessionStore</code>；
+        <code>analysisDocPersistence</code> 直接 import UI callbacks/store types。先把 AI Analysis session domain 抽成 service-neutral 类型，会比全仓大迁移更有效。
+      </div>
+
+      <h3><span class="tag p1">P1</span> <code>IndexService</code> 是搜索系统的复杂度汇聚点</h3>
+      <p>
+        <code>IndexService</code> 现在承担太多职责：tenant resolution、文档读取、chunk、embedding、FTS、graph node/edge、cascade debt、global maintenance、pending enrichment。
+        这让 Search 系统虽然能力强，但任何索引变更都容易影响多个阶段。
+      </p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+  IndexService["IndexService singleton\n2266 lines"]
+  IndexService --> Tenant["Tenant resolver"]
+  IndexService --> Crud["Document CRUD cleanup"]
+  IndexService --> Read["DocumentLoaderManager read"]
+  IndexService --> Chunk["Chunking + safe overlap"]
+  IndexService --> Embed["Embedding generation"]
+  IndexService --> FTS["FTS / stem / meta FTS"]
+  IndexService --> Graph["Mobius graph projection"]
+  IndexService --> Cascade["Cascade debt"]
+  IndexService --> Maintenance["Pagerank / semantic PR / hub stats"]
+  IndexService --> Enrich["Pending LLM/vector enrichment"]
+        </div>
+      </div>
+      <p>
+        推荐目标不是把它拆成很多同等小文件，而是保留一个薄 facade，然后把稳定阶段拆出去：
+        <code>IndexTenantResolver</code>、<code>DocumentIndexWriter</code>、<code>GraphProjectionService</code>、
+        <code>IndexEnrichmentQueue</code>、<code>MobiusMaintenanceService</code>。
+      </p>
+
+      <h3><span class="tag p1">P1</span> Copilot action registry 把 data/action/UI 三件事混在一起</h3>
+      <p>
+        <code>src/service/copilot/actions/index.ts</code> 超过 1000 行，且包含 action 定义、prompt 调用、执行器、panel placeholder、custom prompt loading。
+        这会让新增 action 的“正确写法”越来越不明显。
+      </p>
+      <table>
+        <thead><tr><th>当前混合内容</th><th>目标拆法</th></tr></thead>
+        <tbody>
+          <tr><td>Action metadata</td><td><code>actions/manifests/*.ts</code>，纯数据，可测试。</td></tr>
+          <tr><td>Action executor</td><td><code>actions/executors/*.ts</code>，只依赖 service ports。</td></tr>
+          <tr><td>React result panels</td><td><code>ui/view/copilot/panels/panelMap.tsx</code>，只在 UI 层绑定。</td></tr>
+          <tr><td>Custom prompt registry</td><td>独立 registry，输出标准 action manifest，不 import UI。</td></tr>
+        </tbody>
+      </table>
+
+      <h3><span class="tag p1">P1</span> SQLite schema 与 repo 类型需要单一真相源</h3>
+      <p>
+        <code>ddl.ts</code> 过大本身不是罪，真正的问题是 DDL、Kysely Database 类型、repo insert/select shape、测试 fixture 不同步。
+        类型检查已经暴露 <code>MobiusNodeRepo</code>、<code>UsageLogRepo</code>、hub constituent 等漂移。
+      </p>
+      <p>
+        建议把 schema 分成 migration files + generated Kysely types，或者至少把 <code>Database</code> type 从 DDL 旁边拆成可生成/可校验层。
+        每次改表结构时，必须有一个 repo-level migration test 跟着改。
+      </p>
+
+      <h3><span class="tag p1">P1</span> Prompt/template registry 已经需要 manifest 校验</h3>
+      <p>
+        当前模板抽到 <code>templates/prompts</code> 和 <code>TemplateRegistry</code> 是对的，但 <code>PromptId</code>、<code>PromptVariables</code>、
+        <code>TemplateRegistry</code>、真实模板文件之间仍会漂移。
+      </p>
+      <p>
+        推荐建立一个 <code>prompt-manifest.test.ts</code>：枚举所有 <code>PromptId</code>，确认文件存在、registry 有 metadata、variables 类型可被 render smoke test 覆盖。
+      </p>
+
+      <h3><span class="tag p2">P2</span> UI convention、日志、any 债务需要工具化</h3>
+      <p>
+        <code>as any</code>、<code>console.*</code>、raw <code>&lt;button&gt;</code>、语义标题标签这些问题不适合靠人肉 review。
+        应该用 ESLint restricted imports/rules + custom script 作为轻量门禁。
+      </p>
+    </section>
+
+    <section id="flows">
+      <h2>4. 关键流程图</h2>
+
+      <h3>4.1 Search / Index / Analysis 主链路</h3>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+  Query["User query"] --> Parse["parseQuery\nterms phrases filters"]
+  Parse --> Registry["RetrieverRegistry"]
+  Registry --> FTS["FTS retriever"]
+  Registry --> Stem["FTS stem retriever"]
+  Registry --> Vector["Vector retriever"]
+  Registry --> Meta["Meta retriever"]
+  Registry --> Fuzzy["Fuzzy retriever"]
+  FTS --> RRF["adaptive RRF merge"]
+  Stem --> RRF
+  Vector --> RRF
+  Meta --> RRF
+  Fuzzy --> RRF
+  RRF --> PPR["PPR graph enrichment"]
+  PPR --> Boost["ranking boosts\nrecency graph hub click"]
+  Boost --> Highlight["highlight final results"]
+  Highlight --> LLM{"LLM rerank?"}
+  LLM -->|yes| Rerank["Reranker"]
+  LLM -->|no| Results["Search results"]
+  Rerank --> Results
+  Results --> Report["AI Analysis\nVaultSearchAgent / ReportOrchestrator"]
+        </div>
+      </div>
+
+      <h3>4.2 AI Analysis background session 当前耦合</h3>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart LR
+  UIStore["Zustand searchSessionStore"] --> Snapshot["V2SessionSnapshot"]
+  Snapshot --> BG["BackgroundSessionManager"]
+  BG --> Redirect["eventTargetRedirect"]
+  BG --> Modal["QuickSearchModal"]
+  BG --> Persist["analysisDocPersistence"]
+  Persist --> UICallback["UI save callback/store types"]
+  Report["ReportOrchestrator"] --> UIStore
+  Agent["VaultSearchAgent"] --> Redirect
+
+  classDef risk fill:#fff1f1,stroke:#b42318,color:#0f172a;
+  class UIStore,BG,Modal,UICallback,Report risk;
+        </div>
+      </div>
+      <p>
+        这里应该改为：service 层只维护 <code>AnalysisSession</code> 和事件流；UI store 订阅事件并渲染；modal 打开由 app/view adapter 处理。
+      </p>
+
+      <h3>4.3 数据持久化地图</h3>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart LR
+  subgraph Vault["Vault markdown artifacts"]
+    ChatDocs["chat conversations"]
+    AnalysisDocs["AI analysis reports"]
+    CopilotHistory["copilot review snapshots"]
+    HubDocs["hub summary docs"]
+    Skills["skills markdown"]
+    PromptOverrides["prompt overrides"]
+  end
+
+  subgraph SQLite["SQLite"]
+    Indexed["indexed_document"]
+    Chunk["doc_chunk + FTS"]
+    Embed["embedding + sqlite-vec"]
+    Graph["mobius_node / mobius_edge"]
+    Usage["usage_log / usage_daily"]
+    Ambient["ambient push log"]
+    Lint["vault lint findings"]
+    Structural["structural analysis"]
+    HubQueue["hub_regen_queue / hub_constituent"]
+  end
+
+  Vault --> UI["User-visible surfaces"]
+  SQLite --> Search["Search / Graph / Maintenance"]
+  Search --> UI
+  HubDocs --> Graph
+  Usage --> UsageDashboard["Usage Dashboard"]
+        </div>
+      </div>
+
+      <h3>4.4 当前类型守门状态</h3>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+  Build["npm run build\nesbuild + css + bundle check"] --> Pass["Can pass without full type safety"]
+  TSC["npx tsc --noEmit"] --> Fail["Fails"]
+  Fail --> External["third-party/moduleResolution noise"]
+  Fail --> Source["124 src error lines with skipLibCheck"]
+  Source --> Drift1["AppContext/pluginId drift"]
+  Source --> Drift2["SQLite repo/schema drift"]
+  Source --> Drift3["Prompt variables drift"]
+  Source --> Drift4["Tool schema/Zod drift"]
+  Source --> Drift5["UI nullability drift"]
+        </div>
+      </div>
+    </section>
+
+    <section id="target">
+      <h2>5. 建议目标架构</h2>
+      <p>
+        目标不是“大重写”，而是把现在已经存在的能力按更稳定的边界重新摆放。
+        最小可行原则：保留现有产品功能和文件名认知，只先切断最伤人的反向依赖。
+      </p>
+
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TB
+  subgraph AppShell["app shell"]
+    Plugin["main.ts"]
+    Views["ViewManager"]
+    Commands["commands/events"]
+    AppAdapters["Obsidian adapters"]
+  end
+
+  subgraph UI["ui"]
+    ReactViews["React views"]
+    UIStores["UI-local stores"]
+    UIPanels["Panels/modals"]
+  end
+
+  subgraph Domain["domain/service"]
+    ChatDomain["chat domain"]
+    SearchDomain["search domain"]
+    AnalysisDomain["analysis session domain"]
+    CopilotDomain["copilot domain"]
+    KnowledgeDomain["knowledge maintenance domain"]
+  end
+
+  subgraph Core["core"]
+    Contracts["contracts and DTOs"]
+    Storage["storage repos"]
+    Providers["provider adapters"]
+    Templates["template engine"]
+    Utils["pure utils"]
+  end
+
+  subgraph Ports["ports"]
+    VaultPort["VaultPort"]
+    SettingsPort["SettingsPort"]
+    ProviderPort["ProviderPort"]
+    EventPort["EventPort"]
+  end
+
+  Plugin --> AppAdapters
+  AppAdapters --> Ports
+  Views --> UI
+  Commands --> Domain
+  UI --> Domain
+  Domain --> Ports
+  Domain --> Core
+  Core --> Contracts
+  Core -. no import .-> UI
+  Core -. no import .-> AppShell
+  Domain -. no import .-> UI
+        </div>
+      </div>
+
+      <h3>5.1 新边界规则</h3>
+      <table>
+        <thead><tr><th>层</th><th>可以 import</th><th>不应该 import</th></tr></thead>
+        <tbody>
+          <tr><td><code>core</code></td><td>纯类型、utils、storage 基础、provider 基础</td><td><code>service</code>、<code>ui</code>、<code>app/context</code></td></tr>
+          <tr><td><code>service</code></td><td><code>core</code>、domain contracts、ports</td><td>React components、Zustand stores、modals</td></tr>
+          <tr><td><code>ui</code></td><td>service public APIs、UI stores、shared components</td><td>直接写 SQLite、直接操纵 Agent internals</td></tr>
+          <tr><td><code>app</code></td><td>全部组装层依赖</td><td>业务细节膨胀到 commands 中</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.2 重构时最该保留的好设计</h3>
+      <ul>
+        <li><code>TemplateManager</code> + prompt/config 外置方向正确，应继续加强。</li>
+        <li>Search pipeline 的多 retriever + RRF + PPR 方向正确，不要退回简单向量搜索。</li>
+        <li>Markdown artifact + SQLite index 的双存储策略适合 Obsidian，不要改成纯数据库产品。</li>
+        <li>Agent loop / tool schema / MCP 的方向正确，但 schema adapter 需要统一。</li>
+        <li>On unload 的资源清理意识很强，应把清理逻辑继续从 <code>main.ts</code> 抽成 lifecycle services。</li>
+      </ul>
+    </section>
+
+    <section id="roadmap">
+      <h2>6. 重构路线</h2>
+
+      <h3>6.1 推荐顺序</h3>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TD
+  A["PR0: Typecheck split\nsrc first, skipLibCheck"] --> B["PR1: Fix current src type errors\nno behavior refactor"]
+  B --> C["PR2: Add dependency guard\nrestricted imports / dep audit"]
+  C --> D["PR3: Extract AnalysisSession domain\nbreak service -> UI loop"]
+  D --> E["PR4: Split IndexService facade\nwriter/projection/enrichment/maintenance"]
+  E --> F["PR5: Split Copilot action registry\nmanifest/executor/panel map"]
+  F --> G["PR6: Schema and prompt manifest tests"]
+  G --> H["PR7: Logger + any budget + UI convention lint"]
+        </div>
+      </div>
+
+      <h3>6.2 具体任务表</h3>
+      <table>
+        <thead>
+          <tr><th>优先级</th><th>任务</th><th>验收标准</th><th>风险</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag p0">P0</span></td>
+            <td>新增 <code>tsconfig.src.json</code> 与 <code>npm run typecheck:src</code></td>
+            <td><code>src</code> 在 <code>skipLibCheck</code> 下通过；CI/本地 build 前可跑。</td>
+            <td>会暴露一批真实漂移，但这是必要成本。</td>
+          </tr>
+          <tr>
+            <td><span class="tag p0">P0</span></td>
+            <td>修复当前 <code>src</code> 类型漂移</td>
+            <td>不通过 <code>any</code> 糊掉；把 <code>pluginId</code>、PromptVariables、repo shape、EventDispatchTarget 等修到 contract 层。</td>
+            <td>如果边修边重构，容易扩大范围；建议只做类型收敛。</td>
+          </tr>
+          <tr>
+            <td><span class="tag p0">P0</span></td>
+            <td>加 import boundary 检查</td>
+            <td><code>core</code> 禁 import <code>service/ui/app</code>；<code>service</code> 禁 import <code>ui</code>，少量例外白名单。</td>
+            <td>先只 warn/report，再逐步 fail。</td>
+          </tr>
+          <tr>
+            <td><span class="tag p1">P1</span></td>
+            <td>抽 <code>AnalysisSession</code> domain</td>
+            <td><code>BackgroundSessionManager</code> 不再 import modal/store/hook；ReportOrchestrator 不 import UI store。</td>
+            <td>AI Analysis 流程复杂，需要保留 snapshot 兼容。</td>
+          </tr>
+          <tr>
+            <td><span class="tag p1">P1</span></td>
+            <td>拆 <code>IndexService</code></td>
+            <td><code>IndexService</code> 降到 facade，核心写入/graph/maintenance/enrichment 各有测试。</td>
+            <td>搜索/索引是核心功能，必须 test-near。</td>
+          </tr>
+          <tr>
+            <td><span class="tag p1">P1</span></td>
+            <td>拆 Copilot action system</td>
+            <td>新增 action 不需要编辑 1000 行 index；UI panel map 只在 UI 层。</td>
+            <td>涉及 15+ actions，先迁移一类 action 做样板。</td>
+          </tr>
+          <tr>
+            <td><span class="tag p1">P1</span></td>
+            <td>SQLite schema/prompt manifest 校验</td>
+            <td>DDL/repo/prompt/template 任何漂移能在测试中被抓到。</td>
+            <td>一开始会发现历史债，允许先建 quarantine list。</td>
+          </tr>
+          <tr>
+            <td><span class="tag p2">P2</span></td>
+            <td>日志与 <code>any</code> budget</td>
+            <td>新增 <code>logger</code>，限制新增 <code>as any</code>，把旧债做计数趋势。</td>
+            <td>不要一次性追求 0，先阻止继续增长。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>6.3 不建议做的事</h3>
+      <ul>
+        <li>不要一次性“重写架构”。现在系统功能多，重写会丢掉已经有效的产品路径。</li>
+        <li>不要按文件长度机械拆分。拆分应该服务于依赖方向和职责边界。</li>
+        <li>不要用更多 <code>any</code> 让 typecheck 变绿。那只是把警报器静音。</li>
+        <li>不要先改 UI/产品命名。当前问题主要是工程边界，不是用户界面。</li>
+        <li>不要把 <code>AppContext</code> 一次性消灭。先禁止它继续进入 core/service 新代码，再逐步替换已有热点。</li>
+      </ul>
+
+      <h3>6.4 可执行的第一周计划</h3>
+      <table>
+        <thead><tr><th>天</th><th>目标</th><th>产物</th></tr></thead>
+        <tbody>
+          <tr><td>Day 1</td><td>建立 <code>typecheck:src</code> 和 import audit 脚本</td><td>不改业务行为，只让问题可见。</td></tr>
+          <tr><td>Day 2-3</td><td>修复 <code>src</code> 类型错误第一批</td><td><code>AppContext/pluginId</code>、settings nullability、PromptVariables、schema shape。</td></tr>
+          <tr><td>Day 4</td><td>切断 AI Analysis session 的 service/UI 环</td><td><code>AnalysisSession</code> DTO + UI adapter。</td></tr>
+          <tr><td>Day 5</td><td>给 <code>IndexService</code> 写拆分计划和第一刀 facade</td><td>保留 public API，抽 tenant resolver / writer。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>7. 证据与命令</h2>
+      <table>
+        <thead><tr><th>命令</th><th>结果</th></tr></thead>
+        <tbody>
+          <tr><td><code>git ls-files src | rg '\.(ts|tsx)$' | xargs wc -l</code></td><td><code>125333 total</code></td></tr>
+          <tr><td><code>git ls-files src | rg '\.(ts|tsx)$' | wc -l</code></td><td><code>765</code></td></tr>
+          <tr><td><code>git ls-files src test scripts templates ... | xargs wc -l</code></td><td><code>148331 total</code></td></tr>
+          <tr><td>自写 import graph scanner</td><td>315 条可疑跨层边；4 个 SCC；最大 SCC 401 文件。</td></tr>
+          <tr><td><code>npx tsc --noEmit --pretty false --skipLibCheck</code></td><td>失败；<code>src</code> 报错行计数 124。</td></tr>
+          <tr><td><code>rg -n "AppContext" src | wc -l</code></td><td><code>461</code></td></tr>
+          <tr><td><code>rg -n "\bas any\b|@ts-ignore|@ts-expect-error|eslint-disable" src | wc -l</code></td><td><code>350</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>注意：</strong>本报告没有修改生产代码，只做结构审计和 HTML 文档输出。
+        仓库当前已有一批未跟踪设计文档/素材目录，本报告没有触碰它们。
+      </div>
+    </section>
+
+    <footer class="foot">
+      Report generated for <code>obsidian-peak-assistant</code>. Mermaid 使用仓库本地 <code>node_modules/mermaid/dist/mermaid.min.js</code>；
+      如果直接打开 HTML 时图没有渲染，页面仍保留原始 Mermaid 文本，可在支持 Mermaid 的环境中查看。
+    </footer>
+  </div>
+
+  <script>
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: true,
+        securityLevel: "loose",
+        theme: "base",
+        themeVariables: {
+          fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          primaryColor: "#eef5ff",
+          primaryBorderColor: "#2563eb",
+          primaryTextColor: "#17202a",
+          lineColor: "#64748b",
+          secondaryColor: "#f0fdf4",
+          tertiaryColor: "#fff7ed"
+        }
+      });
+    }
+  </script>
+</body>
+</html>

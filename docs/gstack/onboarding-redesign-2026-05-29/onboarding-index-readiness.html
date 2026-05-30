@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Step 5 · Check your vault index</title>
+<link rel="stylesheet" href="mock.css" />
+</head>
+<body>
+<div class="mock-stage-hint">Step 5 · Detect first, then recommend an action · don't start indexing on open</div>
+<div class="mock-stage">
+  <div class="modal modal--wide">
+
+    <div class="modal__progress">
+      <div class="progress">
+        <div class="progress__dots">
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Welcome</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">What Peak<br/>can do</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Add<br/>Provider</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Choose how<br/>Peak should<br/>work</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="active"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Check your<br/>vault index</div></div>
+          <div class="progress__connector"></div>
+          <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">System<br/>check</div></div>
+          <div class="progress__connector"></div>
+          <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Ready<br/>to try</div></div>
+        </div>
+        <div class="progress__title">Step <strong>5 of 7</strong> · Check your vault index</div>
+      </div>
+    </div>
+
+    <div class="modal__body col gap-5">
+      <div class="row" style="justify-content:space-between;align-items:flex-end;">
+        <div class="col gap-1">
+          <div class="h2">Check your vault index</div>
+          <div class="sub">Peak will detect what already exists before running anything.</div>
+        </div>
+        <a class="muted" style="font-size:12px;display:inline-flex;align-items:center;gap:4px;" href="#">
+          <span data-icon="info"></span> Learn more
+        </a>
+      </div>
+
+      <!-- ─── Current readiness ─── -->
+      <div class="col gap-2">
+        <div class="h4 muted" style="font-weight:500;">Current readiness</div>
+
+        <div class="readiness-row">
+          <div class="readiness-row__icon"><span data-icon="db"></span></div>
+          <div class="readiness-row__body">
+            <div class="readiness-row__title">SQLite engine</div>
+            <div class="readiness-row__detail">Local database engine</div>
+          </div>
+          <div class="readiness-row__right">
+            <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+          </div>
+        </div>
+
+        <div class="readiness-row">
+          <div class="readiness-row__icon"><span data-icon="fileText"></span></div>
+          <div class="readiness-row__body">
+            <div class="readiness-row__title">Existing index</div>
+            <div class="readiness-row__detail">Indexed notes in your vault · <strong>1,240 notes</strong></div>
+          </div>
+          <div class="readiness-row__right">
+            <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+          </div>
+        </div>
+
+        <div class="readiness-row">
+          <div class="readiness-row__icon"><span data-icon="layout"></span></div>
+          <div class="readiness-row__body">
+            <div class="readiness-row__title">Vault coverage</div>
+            <div class="readiness-row__detail">
+              Based on current vault scan ·
+              <strong>1,380 eligible</strong> <span class="muted">·</span>
+              <span class="accent">140 missing</span> <span class="muted">·</span>
+              <span class="accent">23 changed</span>
+            </div>
+          </div>
+          <div class="readiness-row__right">
+            <span class="chip chip--yellow"><span data-icon="alert"></span> Attention</span>
+          </div>
+        </div>
+
+        <div class="readiness-row">
+          <div class="readiness-row__icon"><span data-icon="sparkles"></span></div>
+          <div class="readiness-row__body">
+            <div class="readiness-row__title">Semantic search</div>
+            <div class="readiness-row__detail"><span class="accent">Missing embeddings</span></div>
+          </div>
+          <div class="readiness-row__right">
+            <span class="chip chip--yellow"><span data-icon="alert"></span> Attention</span>
+          </div>
+        </div>
+
+        <div class="readiness-row">
+          <div class="readiness-row__icon"><span data-icon="search"></span></div>
+          <div class="readiness-row__body">
+            <div class="readiness-row__title">Current mode</div>
+            <div class="readiness-row__detail">Text only</div>
+          </div>
+          <div class="readiness-row__right">
+            <span class="chip chip--neutral">Text</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Recommended action ─── -->
+      <div class="col gap-2">
+        <div class="h4 muted" style="font-weight:500;">Recommended action</div>
+
+        <div class="col gap-2" data-radio-group>
+          <div class="radio-card" data-radio-card data-selected="true">
+            <div class="radio-dot"></div>
+            <div class="radio-card__body">
+              <div class="row gap-2" style="align-items:center;">
+                <span class="radio-card__title">Update changed notes</span>
+                <span class="chip chip--accent">Recommended</span>
+              </div>
+              <div class="radio-card__hint">Index only the 23 notes that have changed since last scan.</div>
+            </div>
+            <button class="btn btn--primary btn--sm" style="margin-top:0;">Continue</button>
+          </div>
+
+          <div class="radio-card" data-radio-card>
+            <div class="radio-dot"></div>
+            <div class="radio-card__body">
+              <div class="radio-card__title">Use existing index</div>
+              <div class="radio-card__hint">Keep everything as is. No changes will be made.</div>
+            </div>
+            <button class="btn btn--secondary btn--sm" style="margin-top:0;">Choose</button>
+          </div>
+
+          <div class="radio-card" data-radio-card>
+            <div class="radio-dot"></div>
+            <div class="radio-card__body">
+              <div class="radio-card__title">Enable semantic search</div>
+              <div class="radio-card__hint">
+                Unlock semantic (vector) search for better results.
+                <a href="#" style="color:var(--pk-accent-text);"><span data-icon="plus" style="display:inline-flex;vertical-align:-2px;width:11px;height:11px;"></span> Add embedding provider</a>
+              </div>
+            </div>
+            <button class="btn btn--secondary btn--sm" style="margin-top:0;">Choose</button>
+          </div>
+        </div>
+
+        <details style="margin-top:4px;">
+          <summary style="font-size:12px;color:var(--pk-text-secondary);cursor:pointer;list-style:none;">
+            <span style="display:inline-flex;gap:6px;align-items:center;">
+              <span data-icon="chevronRight" style="display:inline-flex;"></span>
+              Advanced
+            </span>
+          </summary>
+          <div class="card mt-2" style="padding:14px;">
+            <div class="row gap-3" style="justify-content:space-between;align-items:center;">
+              <div class="col gap-1" style="flex:1;">
+                <div class="h4">Rebuild from scratch</div>
+                <div class="sub" style="font-size:12px;">Delete the existing index and build a new one from all eligible notes.</div>
+              </div>
+              <button class="btn btn--ghost btn--sm">Rebuild</button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="modal__footer">
+      <button class="btn btn--ghost"><span data-icon="chevronLeft"></span> Back</button>
+      <div class="row gap-2">
+        <button class="btn btn--ghost">Skip for now</button>
+        <button class="btn btn--primary">Continue <span data-icon="chevronRight"></span></button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="mock.js"></script>
+</body>
+</html>

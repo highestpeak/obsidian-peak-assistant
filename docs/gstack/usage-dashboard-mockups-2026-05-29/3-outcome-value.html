@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1280" />
+	<title>Mock 03 · Outcome Value</title>
+	<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark">
+	<div id="nav-root"></div>
+
+	<main class="mock-shell">
+		<header class="mock-header">
+			<div>
+				<div class="mock-meta">03 · MPG metrics</div>
+				<h1 class="mock-title">Outcome Value</h1>
+				<div class="mock-sub">Find the value you're getting for what you spend.</div>
+			</div>
+			<div class="mock-header__right">
+				<div class="seg" role="group" aria-label="Range">
+					<button class="seg__btn" aria-pressed="true">Last 7 days</button>
+					<button class="seg__btn" aria-pressed="false">30d</button>
+				</div>
+				<span class="muted" style="font-size:11px;">Compared to previous 7 days</span>
+			</div>
+		</header>
+
+		<!-- KPI strip with mini-sparks -->
+		<section class="kpi-grid">
+			<div class="kpi kpi--tight">
+				<div class="kpi__head">
+					<span class="kpi__label">Saved artifacts</span>
+					<span class="kpi__delta kpi__delta--up">+21%</span>
+				</div>
+				<div class="kpi__value">34</div>
+				<svg class="spark kpi__spark" viewBox="0 0 200 26" preserveAspectRatio="none" style="color: var(--pk-success);">
+					<path class="area" d="M0 20 L25 19 L50 16 L75 18 L100 12 L125 14 L150 8 L175 10 L200 4 L200 26 L0 26 Z" />
+					<path class="line" d="M0 20 L25 19 L50 16 L75 18 L100 12 L125 14 L150 8 L175 10 L200 4" />
+				</svg>
+				<a class="kpi__verb" href="#">Open vault filter →</a>
+			</div>
+
+			<div class="kpi kpi--tight">
+				<div class="kpi__head">
+					<span class="kpi__label">
+						Cost / saved artifact
+						<span class="help" title="Sum of cost of all calls that ended in a save-to-vault, divided by the number of saves.">ⓘ</span>
+					</span>
+					<span class="badge badge--info">MPG</span>
+				</div>
+				<div class="kpi__value-row">
+					<span class="kpi__value">$0.018</span>
+					<span class="kpi__delta kpi__delta--up">−14%</span>
+				</div>
+				<svg class="spark kpi__spark" viewBox="0 0 200 26" preserveAspectRatio="none" style="color: var(--pk-success);">
+					<path class="area" d="M0 6 L25 7 L50 9 L75 8 L100 12 L125 14 L150 17 L175 19 L200 21 L200 26 L0 26 Z" />
+					<path class="line" d="M0 6 L25 7 L50 9 L75 8 L100 12 L125 14 L150 17 L175 19 L200 21" />
+				</svg>
+				<a class="kpi__verb" href="6-optimization.html">See what would lower it →</a>
+			</div>
+
+			<div class="kpi kpi--tight">
+				<div class="kpi__head">
+					<span class="kpi__label">Search clicks</span>
+					<span class="kpi__delta kpi__delta--up">+5%</span>
+				</div>
+				<div class="kpi__value">92</div>
+				<svg class="spark kpi__spark" viewBox="0 0 200 26" preserveAspectRatio="none" style="color: var(--pk-info);">
+					<path class="area" d="M0 18 L25 16 L50 17 L75 15 L100 12 L125 13 L150 11 L175 8 L200 9 L200 26 L0 26 Z" />
+					<path class="line" d="M0 18 L25 16 L50 17 L75 15 L100 12 L125 13 L150 11 L175 8 L200 9" />
+				</svg>
+				<a class="kpi__verb" href="5-history.html?feature=search">Open search history →</a>
+			</div>
+
+			<div class="kpi kpi--tight">
+				<div class="kpi__head">
+					<span class="kpi__label">
+						Cost / useful click
+						<span class="help" title="Cost of all search-and-rerank calls divided by the number of times a search result was actually opened.">ⓘ</span>
+					</span>
+					<span class="badge badge--info">MPG</span>
+				</div>
+				<div class="kpi__value-row">
+					<span class="kpi__value">$0.004</span>
+					<span class="kpi__delta kpi__delta--up">−9%</span>
+				</div>
+				<svg class="spark kpi__spark" viewBox="0 0 200 26" preserveAspectRatio="none" style="color: var(--pk-success);">
+					<path class="area" d="M0 8 L25 10 L50 9 L75 12 L100 14 L125 13 L150 16 L175 18 L200 20 L200 26 L0 26 Z" />
+					<path class="line" d="M0 8 L25 10 L50 9 L75 12 L100 14 L125 13 L150 16 L175 18 L200 20" />
+				</svg>
+				<a class="kpi__verb" href="#">Trim retrieval depth →</a>
+			</div>
+		</section>
+
+		<!-- Main row: outcomes table + funnel -->
+		<section class="row" style="margin-top:20px; grid-template-columns: minmax(0,1.55fr) minmax(0,1fr);">
+			<div class="card card--flush">
+				<div class="card__head">
+					<span class="card__title">Outcomes</span>
+					<span class="card__sub">Every call grouped by whether it produced value</span>
+				</div>
+				<div style="overflow-x:auto;">
+				<table class="tbl" style="min-width:620px;">
+					<thead>
+						<tr>
+							<th>Outcome</th>
+							<th class="num">Count</th>
+							<th class="num">Cost</th>
+							<th class="num">Outcome rate</th>
+							<th class="num">Cost / outcome</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><span class="badge badge--ok"><span class="dot"></span>Saved to vault</span></td>
+							<td class="num">34</td>
+							<td class="num">$0.61</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill" style="width:30%;"></span></span><span class="tbl-bar__val">15.0%</span></span></td>
+							<td class="num num--good">$0.018</td>
+						</tr>
+						<tr>
+							<td><span class="badge badge--ok"><span class="dot"></span>Accepted copilot edit</span></td>
+							<td class="num">44</td>
+							<td class="num">$0.81</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill" style="width:38.8%;"></span></span><span class="tbl-bar__val">19.4%</span></span></td>
+							<td class="num num--good">$0.018</td>
+						</tr>
+						<tr>
+							<td><span class="badge badge--info"><span class="dot"></span>Search result clicked</span></td>
+							<td class="num">92</td>
+							<td class="num">$0.31</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill tbl-bar__fill--info" style="width:81%;"></span></span><span class="tbl-bar__val">40.5%</span></span></td>
+							<td class="num num--good">$0.003</td>
+						</tr>
+						<tr>
+							<td><span class="badge badge--info"><span class="dot"></span>Agent task completed</span></td>
+							<td class="num">8</td>
+							<td class="num num--warn">$1.81</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill tbl-bar__fill--warn" style="width:7%;"></span></span><span class="tbl-bar__val">3.5%</span></span></td>
+							<td class="num num--bad">$0.226</td>
+						</tr>
+						<tr>
+							<td><span class="badge badge--bad"><span class="dot"></span>No outcome</span></td>
+							<td class="num">49</td>
+							<td class="num num--bad">$0.59</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill tbl-bar__fill--bad" style="width:43.2%;"></span></span><span class="tbl-bar__val">21.6%</span></span></td>
+							<td class="num">—</td>
+						</tr>
+						<tr class="row-foot">
+							<td>Total</td>
+							<td class="num">227</td>
+							<td class="num">$4.13</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill" style="width:78.4%;"></span></span><span class="tbl-bar__val strong">78.4%</span></span></td>
+							<td class="num">$0.023</td>
+						</tr>
+					</tbody>
+				</table>
+				</div>
+				<div class="card__head" style="border-top:1px solid var(--pk-border-soft); border-bottom:0;">
+					<span class="card__sub">Outcome signals captured at message, search-click, save-to-vault, and agent-finish events.</span>
+				</div>
+			</div>
+
+			<!-- Funnel: simplified to 3 stages, each clearly instrumentable -->
+			<div class="card card--pad-lg">
+				<div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+					<span class="card__title">
+						From calls to value
+						<span class="help" title="A 3-stage funnel from every AI call you made down to the ones that ended up saved in your vault. Each step has a defined event that triggers it (see definitions below).">ⓘ</span>
+					</span>
+					<span class="card__sub">Last 7 days</span>
+				</div>
+
+				<div class="funnel-wrap">
+					<svg width="160" height="180" viewBox="0 0 160 180" aria-hidden="true">
+						<!-- Stage 1: 587 total -->
+						<polygon points="0,0 160,0 138,54 22,54" fill="#2a3344" stroke="#3a4360" stroke-width="1" />
+						<text x="80" y="33" text-anchor="middle" fill="#e7ebf2" font-size="14" font-weight="600">587</text>
+						<!-- Stage 2: 178 useful -->
+						<polygon points="22,60 138,60 110,114 50,114" fill="#3a557c" stroke="#3a4360" stroke-width="1" />
+						<text x="80" y="93" text-anchor="middle" fill="#e7ebf2" font-size="14" font-weight="600">178</text>
+						<!-- Stage 3: 34 saved -->
+						<polygon points="50,120 110,120 96,174 64,174" fill="#5dbe93" stroke="#3a4360" stroke-width="1" />
+						<text x="80" y="152" text-anchor="middle" fill="#0a0d14" font-size="14" font-weight="700">34</text>
+					</svg>
+
+					<div class="funnel-legend">
+						<div class="leg">
+							<div>
+								<div class="leg-name">Total calls</div>
+								<div class="leg-sub" style="margin-left:0;">$4.13 · 100 %</div>
+							</div>
+							<div class="leg-val">587</div>
+						</div>
+						<div class="leg">
+							<div>
+								<div class="leg-name">Useful calls</div>
+								<div class="leg-sub" style="margin-left:0;">$3.54 · 86 %</div>
+							</div>
+							<div class="leg-val">178</div>
+						</div>
+						<div class="leg">
+							<div>
+								<div class="leg-name">Saved artifacts</div>
+								<div class="leg-sub" style="margin-left:0;">$0.61 · 15 %</div>
+							</div>
+							<div class="leg-val" style="color: var(--pk-success);">34</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="explainer" style="margin-top:14px;">
+					<div class="explainer__title">How we count this</div>
+					<dl>
+						<dt>Total calls</dt>
+						<dd>Every API call recorded in <span class="mono">usage_log</span> — chat, search, agent, embed.</dd>
+						<dt>Useful calls</dt>
+						<dd>Calls followed by any user action within 60 s: save, search-click, accept edit, or a follow-up message.</dd>
+						<dt>Saved artifacts</dt>
+						<dd>Calls linked to a vault commit — note created, snippet inserted, or accepted copilot edit.</dd>
+					</dl>
+				</div>
+			</div>
+		</section>
+
+		<!-- High spend no outcome -->
+		<section style="margin-top:14px;">
+			<div class="card card--flush">
+				<div class="card__head" style="display:flex; gap:10px;">
+					<span class="badge badge--warn"><span class="dot"></span>High spend with no outcome</span>
+					<span class="card__sub">These sessions had high spend but no outcome.</span>
+					<a class="muted right" href="5-history.html" style="font-size:11.5px;">View all sessions →</a>
+				</div>
+				<table class="tbl">
+					<thead>
+						<tr>
+							<th>Time</th>
+							<th>Session</th>
+							<th>Provider · model</th>
+							<th class="num">Tokens</th>
+							<th class="num">Cost</th>
+							<th>Outcome</th>
+							<th>Recommendation</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td class="mono subtle">May 17 · 1:42 PM</td>
+							<td>Refactor API states and tests</td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<span>Anthropic · Claude 3.7 Sonnet</span>
+								</div>
+							</td>
+							<td class="num">114k</td>
+							<td class="num num--bad">$0.41</td>
+							<td>—</td>
+							<td>Cut context to top sources only</td>
+							<td style="white-space:nowrap;"><button class="btn btn--sm btn--pill-primary">Adjust model</button> <button class="btn btn--sm btn--ghost">Open trace</button></td>
+						</tr>
+						<tr>
+							<td class="mono subtle">May 16 · 9:12 PM</td>
+							<td>Agent · "summarize earnings"</td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--openai">O</span>
+									<span>OpenAI · GPT-4.1</span>
+								</div>
+							</td>
+							<td class="num">76k</td>
+							<td class="num num--bad">$0.23</td>
+							<td>Aborted at step 4 / 6</td>
+							<td>Increase exit criterion strictness</td>
+							<td style="white-space:nowrap;"><button class="btn btn--sm btn--pill-primary">Adjust model</button> <button class="btn btn--sm btn--ghost">Open trace</button></td>
+						</tr>
+						<tr>
+							<td class="mono subtle">May 15 · 3:05 PM</td>
+							<td>Search · "philosopher kings"</td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<span>Anthropic · Claude 3.7 Sonnet</span>
+								</div>
+							</td>
+							<td class="num">58k</td>
+							<td class="num num--bad">$0.19</td>
+							<td>No results clicked</td>
+							<td>Drop rerank topK to 8</td>
+							<td style="white-space:nowrap;"><button class="btn btn--sm btn--pill-primary">Adjust model</button> <button class="btn btn--sm btn--ghost">Open trace</button></td>
+						</tr>
+					</tbody>
+				</table>
+				<div class="card__head" style="border-top:1px solid var(--pk-border-soft); border-bottom:0;">
+					<span class="card__sub">Try a cheaper model for exploratory sessions.</span>
+					<div style="display:flex; gap:6px;">
+						<a class="btn btn--sm btn--primary" href="6-optimization.html">View recommendations</a>
+					</div>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<script src="partials.js"></script>
+	<script>renderNav('outcome');</script>
+</body>
+</html>

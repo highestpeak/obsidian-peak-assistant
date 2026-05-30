@@ -1,0 +1,2366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Peak Assistant · Settings redesign mock</title>
+<link rel="stylesheet" href="mock.css" />
+</head>
+<body>
+
+<div class="stage">
+
+  <!-- ── Stage head ──────────────────────────────────────────── -->
+  <div class="stage__head">
+    <div class="stage__title" data-stage-title>Overview</div>
+    <div class="stage__sub stage-hint">Settings redesign mock · 2026-05-29</div>
+  </div>
+
+  <!-- ── Tab bar ─────────────────────────────────────────────── -->
+  <div class="tabs">
+    <button class="tabs__tab" data-tab="overview" data-active="true">Overview</button>
+    <button class="tabs__tab" data-tab="aiSetup" data-active="false">AI Setup</button>
+    <button class="tabs__tab" data-tab="knowledgeIndex" data-active="false">Knowledge Index</button>
+    <button class="tabs__tab" data-tab="tools" data-active="false">Tools</button>
+    <button class="tabs__tab" data-tab="advanced" data-active="false">Advanced</button>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       TAB 1 · OVERVIEW
+       ════════════════════════════════════════════════════════════ -->
+  <div class="panel" data-panel="overview" data-active="true">
+
+    <div class="section">
+      <h3 class="section__title">Peak readiness</h3>
+      <p class="section__sub">Check what is ready and what needs attention before using Peak.</p>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="plug"></span></div>
+        <div class="row__body">
+          <div class="row__title">Providers</div>
+          <div class="row__desc">AI services and local runtimes Peak can talk to.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+          <span class="muted">3 connected</span>
+          <button class="btn" data-open-modal="providerList">Manage</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="sparkles"></span></div>
+        <div class="row__body">
+          <div class="row__title">AI behavior</div>
+          <div class="row__desc">Conversation, Fast Lookup, and Research model bindings.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--yellow"><span data-icon="alert"></span> Needs attention</span>
+          <span class="muted">Fast Lookup falls back to Conversation</span>
+          <button class="btn" data-open-modal="chooseModel" data-context-capability="Fast Lookup">Fix</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="db"></span></div>
+        <div class="row__body">
+          <div class="row__title">Knowledge Index</div>
+          <div class="row__desc">Vault search and semantic understanding.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+          <span class="muted">96% indexed</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Index status" data-context-body="Jumps to Knowledge Index tab. Shows index readiness panel.">Check</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="globe"></span></div>
+        <div class="row__body">
+          <div class="row__title">Web Access</div>
+          <div class="row__desc">Current web information for chat and research.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--neutral">Optional</span>
+          <span class="muted">Not configured</span>
+          <button class="btn" data-open-modal="webAccess">Setup</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="shield"></span></div>
+        <div class="row__body">
+          <div class="row__title">Safety</div>
+          <div class="row__desc">How Peak handles risky writes and tool calls.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+          <span class="muted">Ask before risky writes</span>
+          <button class="btn" data-open-modal="safety">Review</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">AI behavior</h3>
+      <p class="section__sub">Read-only summary. Change bindings in <strong>AI Setup</strong>.</p>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="message"></span></div>
+        <div class="row__body">
+          <div class="row__title">Conversation</div>
+          <div class="row__desc">Chat and daily writing.</div>
+        </div>
+        <div class="row__right">
+          <span class="value-mono">OpenAI GPT-5 mini</span>
+          <span data-icon="chevronRight" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="zap"></span></div>
+        <div class="row__body">
+          <div class="row__title">Fast Lookup</div>
+          <div class="row__desc">Short answers and simple note actions.</div>
+        </div>
+        <div class="row__right">
+          <span class="muted">Falls back to Conversation</span>
+          <span data-icon="chevronRight" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="microscope"></span></div>
+        <div class="row__body">
+          <div class="row__title">Research</div>
+          <div class="row__desc">Vault synthesis, AI Analysis, and multi-step agent work.</div>
+        </div>
+        <div class="row__right">
+          <span class="value-mono">Claude Sonnet</span>
+          <span data-icon="chevronRight" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="trendingUp"></span></div>
+        <div class="row__body">
+          <div class="row__title">Use stronger model when needed</div>
+          <div class="row__desc">Let longer runs switch to a stronger model when confidence is low.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--neutral">Off</span>
+          <span data-icon="chevronRight" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Actions</h3>
+      <div class="action-strip">
+        <button class="btn" data-open-modal="runSetup"><span data-icon="wrench"></span> Run setup</button>
+        <button class="btn" data-open-modal="testProviders"><span data-icon="plug"></span> Test providers</button>
+        <button class="btn" data-open-modal="checkIndex"><span data-icon="db"></span> Check index</button>
+        <button class="btn btn--primary" data-open-modal="stub" data-context-title="Open Chat" data-context-body="Opens the Peak Chat panel and starts a new thread."><span data-icon="message"></span> Try Chat</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       TAB 2 · AI SETUP
+       ════════════════════════════════════════════════════════════ -->
+  <div class="panel" data-panel="aiSetup" data-active="false">
+
+    <div class="section">
+      <h3 class="section__title">Recommended setup</h3>
+      <p class="section__sub">Quick presets that adjust your AI bindings. You can still change individual roles below.</p>
+
+      <div class="preset-grid" data-radio-group>
+        <button class="preset" data-radio data-selected="true">
+          <span class="preset__check"><span data-icon="check"></span></span>
+          <div class="preset__icon"><span data-icon="scale"></span></div>
+          <div class="preset__title">Balanced</div>
+          <div class="preset__desc">Best of both quality and everyday cost.</div>
+        </button>
+        <button class="preset" data-radio data-selected="false">
+          <span class="preset__check"><span data-icon="check"></span></span>
+          <div class="preset__icon"><span data-icon="zap"></span></div>
+          <div class="preset__title">Lowest cost</div>
+          <div class="preset__desc">Prefer cheaper or local models for everyday use.</div>
+        </button>
+        <button class="preset" data-radio data-selected="false">
+          <span class="preset__check"><span data-icon="check"></span></span>
+          <div class="preset__icon"><span data-icon="microscope"></span></div>
+          <div class="preset__title">Research quality</div>
+          <div class="preset__desc">Prefer deeper synthesis for vault work.</div>
+        </button>
+        <button class="preset" data-radio data-selected="false">
+          <span class="preset__check"><span data-icon="check"></span></span>
+          <div class="preset__icon"><span data-icon="shield"></span></div>
+          <div class="preset__title">Local/private</div>
+          <div class="preset__desc">Keep routine work on your machine when possible.</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">AI behavior</h3>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="message"></span></div>
+        <div class="row__body">
+          <div class="row__title">Conversation</div>
+          <div class="row__desc">Chat and daily writing.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+          <span class="value-mono">OpenAI GPT-5 mini</span>
+          <button class="btn" data-open-modal="chooseModel" data-context-capability="Conversation">Change</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="zap"></span></div>
+        <div class="row__body">
+          <div class="row__title">Fast Lookup</div>
+          <div class="row__desc">Short answers and simple note actions.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--yellow"><span data-icon="alert"></span> Falls back</span>
+          <span class="muted">Uses Conversation model</span>
+          <button class="btn" data-open-modal="chooseModel" data-context-capability="Fast Lookup">Change</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="microscope"></span></div>
+        <div class="row__body">
+          <div class="row__title">Research</div>
+          <div class="row__desc">Vault synthesis and AI Analysis.</div>
+          <div class="row__meta">
+            <span class="usedby">Vault Search</span>
+            <span class="usedby">AI Analysis</span>
+            <span class="usedby">Copilot</span>
+          </div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+          <span class="value-mono">Claude Sonnet</span>
+          <button class="btn" data-open-modal="chooseModel" data-context-capability="Research">Change</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="trendingUp"></span></div>
+        <div class="row__body">
+          <div class="row__title">Use stronger model when needed</div>
+          <div class="row__desc">Let longer Research runs escalate to a stronger model when confidence is low.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--neutral">Off</span>
+          <span class="muted">Not configured</span>
+          <button class="btn" data-open-modal="strongerModel">Setup</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="db"></span></div>
+        <div class="row__body">
+          <div class="row__title">Knowledge Index</div>
+          <div class="row__desc">Semantic understanding of your vault.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+          <span class="value-mono">voyage-embed-text</span>
+          <button class="btn" data-open-modal="chooseModel" data-context-capability="Knowledge Index">Change</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="globe"></span></div>
+        <div class="row__body">
+          <div class="row__title">Web Access</div>
+          <div class="row__desc">Current web information.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--neutral">Optional</span>
+          <span class="muted">Off</span>
+          <button class="btn" data-open-modal="webAccess">Setup</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Providers</h3>
+      <p class="section__sub">Each provider can power Conversation, Fast Lookup, Research, or Knowledge Index.</p>
+
+      <div class="row">
+        <div class="row__icon row__icon--brand"><span data-icon="brandAnthropic"></span></div>
+        <div class="row__body">
+          <div class="row__title">Anthropic Direct</div>
+          <div class="row__desc">API key set · used by Research</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--green"><span data-icon="check"></span> Connected</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Testing Anthropic Direct" data-context-body="Pings /v1/models with the saved API key and reports model count + latency.">Test</button>
+          <button class="btn" data-open-modal="providerEdit" data-context-name="Anthropic Direct">Edit</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon row__icon--brand"><span data-icon="brandOpenAI"></span></div>
+        <div class="row__body">
+          <div class="row__title">OpenAI</div>
+          <div class="row__desc">API key set · used by Conversation</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--green"><span data-icon="check"></span> Connected</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Testing OpenAI" data-context-body="Pings /v1/models with the saved API key and reports model count + latency.">Test</button>
+          <button class="btn" data-open-modal="providerEdit" data-context-name="OpenAI">Edit</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon row__icon--brand"><span data-icon="brandOllama"></span></div>
+        <div class="row__body">
+          <div class="row__title">Ollama</div>
+          <div class="row__desc">Local · 4 models available · not bound to a capability</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--green"><span data-icon="check"></span> Connected</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Testing Ollama" data-context-body="Pings http://localhost:11434/api/tags and reports model list.">Test</button>
+          <button class="btn" data-open-modal="providerEdit" data-context-name="Ollama">Edit</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon row__icon--brand"><span data-icon="brandOpenRouter"></span></div>
+        <div class="row__body">
+          <div class="row__title">OpenRouter</div>
+          <div class="row__desc">API key set · used by Knowledge Index</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--green"><span data-icon="check"></span> Connected</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Testing OpenRouter" data-context-body="Pings the OpenRouter models endpoint and reports availability.">Test</button>
+          <button class="btn" data-open-modal="providerEdit" data-context-name="OpenRouter">Edit</button>
+        </div>
+      </div>
+
+      <button class="row-add" data-open-modal="addProvider"><span data-icon="plus"></span> Add Provider</button>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Custom endpoints</h3>
+      <p class="section__sub">OpenAI-compatible endpoints. Use for LM Studio, LiteLLM, vLLM, or anything self-hosted.</p>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="brandLiteLLM" style="display:none;"></span><span data-icon="cpu"></span></div>
+        <div class="row__body">
+          <div class="row__title">My LiteLLM proxy</div>
+          <div class="row__desc">http://localhost:4000 · 12 models</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--green"><span data-icon="check"></span> Enabled</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Testing custom endpoint" data-context-body="Calls /v1/models on the saved base URL.">Test</button>
+          <button class="btn" data-open-modal="customEndpointEdit" data-context-name="My LiteLLM proxy">Edit</button>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 8px;">
+        <button class="row-add" data-open-modal="addCustomEndpoint" style="flex: 2;"><span data-icon="plus"></span> Add custom endpoint</button>
+        <button class="row-add" data-open-modal="addCustomFromPreset" style="flex: 1;"><span data-icon="sparkles"></span> Add from preset</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="cog"></span></div>
+          <div class="row__body">
+            <div class="row__title">Advanced model controls</div>
+            <div class="row__desc">Temperature, top-p/k, reasoning effort, timeouts, attachment handling, per-prompt overrides.</div>
+          </div>
+          <div class="row__right">
+            <span class="muted">11 fields</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+
+        <div class="disclosure-body">
+          <div class="form-grid" style="padding: 4px;">
+            <div class="form-row">
+              <label class="form-label">Temperature<span class="form-label__hint">Randomness applied to all generations.</span></label>
+              <div class="form-control">
+                <div class="form-slider"><input type="range" min="0" max="2" step="0.1" value="0.7" /><span class="form-slider__value">0.7</span></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Top P<span class="form-label__hint">Nucleus sampling cap.</span></label>
+              <div class="form-control">
+                <div class="form-slider"><input type="range" min="0" max="1" step="0.05" value="0.95" /><span class="form-slider__value">0.95</span></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Top K<span class="form-label__hint">Sample only from top-K candidates.</span></label>
+              <div class="form-control"><span class="form-number"><input type="number" value="40" /></span></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Presence penalty<span class="form-label__hint">Discourage repeating topics already mentioned.</span></label>
+              <div class="form-control">
+                <div class="form-slider"><input type="range" min="-2" max="2" step="0.1" value="0" /><span class="form-slider__value">0.0</span></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Frequency penalty<span class="form-label__hint">Discourage exact-token repetition.</span></label>
+              <div class="form-control">
+                <div class="form-slider"><input type="range" min="-2" max="2" step="0.1" value="0" /><span class="form-slider__value">0.0</span></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Reasoning effort<span class="form-label__hint">For reasoning-capable models.</span></label>
+              <div class="form-control">
+                <select class="form-select"><option>Low</option><option selected>Medium</option><option>High</option></select>
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Text verbosity<span class="form-label__hint">Bias output length.</span></label>
+              <div class="form-control">
+                <select class="form-select"><option>Concise</option><option selected>Medium</option><option>Detailed</option></select>
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Total timeout<span class="form-label__hint">Max wall-clock per request.</span></label>
+              <div class="form-control"><span class="form-number"><input type="number" value="120" /><span class="form-number__unit">sec</span></span></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Step timeout<span class="form-label__hint">Max per streaming chunk.</span></label>
+              <div class="form-control"><span class="form-number"><input type="number" value="30" /><span class="form-number__unit">sec</span></span></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Attachment handling<span class="form-label__hint">How Peak sends attached files.</span></label>
+              <div class="form-control">
+                <select class="form-select"><option selected>Send directly</option><option>Convert to text first</option></select>
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Per-prompt overrides<span class="form-label__hint">Pin built-in prompts to a chosen model.</span></label>
+              <div class="form-control">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="muted">3 overrides set</span>
+                  <button class="btn" data-open-modal="promptOverrides">Open table</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       TAB 3 · KNOWLEDGE INDEX
+       ════════════════════════════════════════════════════════════ -->
+  <div class="panel" data-panel="knowledgeIndex" data-active="false">
+
+    <div class="section">
+      <h3 class="section__title">Index readiness</h3>
+      <p class="section__sub">Detected from your current vault and index state. Peak does not auto-rebuild.</p>
+
+      <div class="readiness-panel">
+        <div class="row">
+          <div class="row__icon"><span data-icon="hardDrive"></span></div>
+          <div class="row__body">
+            <div class="row__title">SQLite store</div>
+            <div class="row__desc">On-disk index database.</div>
+          </div>
+          <div class="row__right">
+            <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row__icon"><span data-icon="fileText"></span></div>
+          <div class="row__body">
+            <div class="row__title">Current index</div>
+            <div class="row__desc">Notes already indexed for search.</div>
+          </div>
+          <div class="row__right">
+            <span class="value-mono">1,842 files</span>
+            <span class="muted">96% coverage</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row__icon"><span data-icon="alert"></span></div>
+          <div class="row__body">
+            <div class="row__title">Missing or changed notes</div>
+            <div class="row__desc">Files that need an update for search to reflect current content.</div>
+          </div>
+          <div class="row__right">
+            <span class="chip chip--yellow"><span data-icon="alert"></span> 71 to update</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row__icon"><span data-icon="sparkles"></span></div>
+          <div class="row__body">
+            <div class="row__title">Semantic readiness</div>
+            <div class="row__desc">Whether meaning-based search can run.</div>
+          </div>
+          <div class="row__right">
+            <span class="chip chip--green"><span data-icon="check"></span> Provider connected</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row__icon"><span data-icon="layoutDashboard"></span></div>
+          <div class="row__body">
+            <div class="row__title">Current mode</div>
+            <div class="row__desc">What kind of index Peak maintains right now.</div>
+          </div>
+          <div class="row__right">
+            <span class="value-mono">Fast Index</span>
+          </div>
+        </div>
+
+        <div class="recommended-row">
+          <div class="row__icon"><span data-icon="refresh"></span></div>
+          <div class="row__body">
+            <div class="recommended-row__title">Recommended action</div>
+            <div class="recommended-row__desc">Update changed notes</div>
+          </div>
+          <div class="row__right">
+            <button class="btn btn--primary" data-open-modal="stub" data-context-title="Updating changed notes" data-context-body="Re-indexes the 71 changed notes in place. Safe to interrupt."><span data-icon="refresh"></span> Update now</button>
+            <button class="btn" data-open-modal="stub" data-context-title="Changed notes" data-context-body="Opens a panel listing all 71 changed notes with last-modified timestamps.">View changed notes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Index behavior</h3>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="layoutDashboard"></span></div>
+        <div class="row__body">
+          <div class="row__title">Index mode</div>
+          <div class="row__desc">Fast Index is local-only. Semantic and Full add meaning-based search and LLM tags.</div>
+        </div>
+        <div class="row__right">
+          <div class="segmented" data-radio-group>
+            <button class="segmented__opt" data-radio data-selected="true">Fast Index</button>
+            <button class="segmented__opt" data-radio data-selected="false">Semantic Index</button>
+            <button class="segmented__opt" data-radio data-selected="false">Full Knowledge Index</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="play"></span></div>
+        <div class="row__body">
+          <div class="row__title">Auto-index on startup</div>
+          <div class="row__desc">Check for changed files when Obsidian launches.</div>
+        </div>
+        <div class="row__right">
+          <span class="toggle" data-toggle data-on="false"></span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="refresh"></span></div>
+        <div class="row__body">
+          <div class="row__title">Refresh interval</div>
+          <div class="row__desc">How often Peak rechecks for changed files in the background.</div>
+        </div>
+        <div class="row__right">
+          <span class="form-number"><input type="number" value="15" style="width:48px;" /><span class="form-number__unit">min</span></span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="fileText"></span></div>
+        <div class="row__body">
+          <div class="row__title">Document types</div>
+          <div class="row__desc">Which file types Peak will read and index.</div>
+        </div>
+        <div class="row__right">
+          <div class="chip-pickers">
+            <span class="pill" data-pill data-selected="true">Markdown</span>
+            <span class="pill" data-pill data-selected="true">PDF</span>
+            <span class="pill" data-pill data-selected="true">Images</span>
+            <span class="pill" data-pill data-selected="true">Excalidraw</span>
+            <span class="pill" data-pill data-selected="false">CSV</span>
+            <span class="pill" data-pill data-selected="false">JSON</span>
+            <span class="pill" data-pill data-selected="false">HTML</span>
+            <span class="pill" data-pill data-selected="false">DOCX</span>
+            <span class="pill" data-pill data-selected="false">XLSX</span>
+            <span class="pill" data-pill data-selected="false">PPTX</span>
+            <span class="pill" data-pill data-selected="false">Canvas</span>
+            <span class="pill" data-pill data-selected="false">URL</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="x"></span></div>
+        <div class="row__body">
+          <div class="row__title">Ignore patterns</div>
+          <div class="row__desc">Glob patterns for files Peak should not index.</div>
+        </div>
+        <div class="row__right">
+          <span class="muted">6 patterns</span>
+          <button class="btn" data-open-modal="ignorePatterns">Edit</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Search quality</h3>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="bar"></span></div>
+        <div class="row__body">
+          <div class="row__title">Personalized PageRank</div>
+          <div class="row__desc">Boost results based on how your notes link together.</div>
+        </div>
+        <div class="row__right">
+          <span class="toggle" data-toggle data-on="true"></span>
+        </div>
+      </div>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="cog"></span></div>
+          <div class="row__body">
+            <div class="row__title">Inspector links</div>
+            <div class="row__desc">Side-panel suggestions for related notes around a query.</div>
+          </div>
+          <div class="row__right">
+            <span class="muted">Keyword 8 · Tag 5 · Folders on</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="search"></span></div>
+            <div class="row__body">
+              <div class="row__title">Keyword link count</div>
+              <div class="row__desc">How many keyword-based related notes to show.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="8" /></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="search"></span></div>
+            <div class="row__body">
+              <div class="row__title">Tag link count</div>
+              <div class="row__desc">How many tag-based related notes to show.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="5" /></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="folder"></span></div>
+            <div class="row__body">
+              <div class="row__title">Folder grouping</div>
+              <div class="row__desc">Group related notes by their containing folder.</div>
+            </div>
+            <div class="row__right"><span class="toggle" data-toggle data-on="true"></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="folder"></span></div>
+            <div class="row__body">
+              <div class="row__title">Folder group minimum count</div>
+              <div class="row__desc">Only form a group if a folder has at least this many notes.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="3" /></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="folder"></span></div>
+            <div class="row__body">
+              <div class="row__title">Folder group max depth</div>
+              <div class="row__desc">Max folder depth Peak will group by.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="2" /></span></div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">AI Analysis output</h3>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="microscope"></span></div>
+        <div class="row__body">
+          <div class="row__title">Auto-save results</div>
+          <div class="row__desc">Save AI Analysis outputs to a folder in your vault.</div>
+        </div>
+        <div class="row__right">
+          <span class="toggle" data-toggle data-on="true"></span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="folder"></span></div>
+        <div class="row__body">
+          <div class="row__title">Save folder</div>
+          <div class="row__desc">Folder path inside your vault for saved analyses.</div>
+        </div>
+        <div class="row__right">
+          <span class="value-mono">ChatFolder/AI-Analysis</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Choose save folder" data-context-body="Opens an Obsidian folder picker rooted at your vault.">Change</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="listChecks"></span></div>
+        <div class="row__body">
+          <div class="row__title">Recent history</div>
+          <div class="row__desc">How many recent AI Analysis runs to keep in the panel.</div>
+        </div>
+        <div class="row__right">
+          <span class="form-number"><input type="number" value="5" min="1" max="50" /></span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="x"></span></div>
+        <div class="row__body">
+          <div class="row__title">Exclude saved analyses from search</div>
+          <div class="row__desc">Prevent prior AI Analysis output from polluting future search results.</div>
+        </div>
+        <div class="row__right">
+          <span class="toggle" data-toggle data-on="true"></span>
+        </div>
+      </div>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="cog"></span></div>
+          <div class="row__body">
+            <div class="row__title">Summary lengths (advanced)</div>
+            <div class="row__desc">Word counts Peak targets when generating summaries.</div>
+          </div>
+          <div class="row__right">
+            <span class="muted">Session 60 · Short 25 · Full 200</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="fileText"></span></div>
+            <div class="row__body">
+              <div class="row__title">Session summary word count</div>
+              <div class="row__desc">Target length when summarizing one analysis session.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="60" /><span class="form-number__unit">words</span></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="fileText"></span></div>
+            <div class="row__body">
+              <div class="row__title">Short summary length</div>
+              <div class="row__desc">Target length for inline short summaries.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="25" /><span class="form-number__unit">words</span></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="fileText"></span></div>
+            <div class="row__body">
+              <div class="row__title">Full summary length</div>
+              <div class="row__desc">Target length for detailed summaries.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="200" /><span class="form-number__unit">words</span></span></div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="section">
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="cog"></span></div>
+          <div class="row__body">
+            <div class="row__title">Advanced chunking</div>
+            <div class="row__desc">Chunk size, overlap, and code-block handling for embedding.</div>
+          </div>
+          <div class="row__right">
+            <span class="muted">6 fields</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">Max chunk size</div>
+              <div class="row__desc">Tokens per chunk before splitting.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="800" /><span class="form-number__unit">tok</span></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">Chunk overlap</div>
+              <div class="row__desc">Tokens of context shared between adjacent chunks.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="120" /><span class="form-number__unit">tok</span></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="fileText"></span></div>
+            <div class="row__body">
+              <div class="row__title">Minimum document size for chunking</div>
+              <div class="row__desc">Smaller docs are embedded whole, not split.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="400" /><span class="form-number__unit">tok</span></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="code"></span></div>
+            <div class="row__body">
+              <div class="row__title">Skip code blocks when chunking</div>
+              <div class="row__desc">Replace code blocks with a placeholder instead of embedding them.</div>
+            </div>
+            <div class="row__right"><span class="toggle" data-toggle data-on="true"></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="code"></span></div>
+            <div class="row__body">
+              <div class="row__title">Code block placeholder</div>
+              <div class="row__desc">String used when a code block is skipped.</div>
+            </div>
+            <div class="row__right"><input class="form-input" type="text" value="[code block]" style="width: 160px;" /></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="code"></span></div>
+            <div class="row__body">
+              <div class="row__title">Max code block chars</div>
+              <div class="row__desc">Max characters of code embedded inline when not skipped.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="2000" /><span class="form-number__unit">chars</span></span></div>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="refresh"></span></div>
+          <div class="row__body">
+            <div class="row__title">Advanced rebuild</div>
+            <div class="row__desc">Heavier operations. Peak does not run these automatically.</div>
+          </div>
+          <div class="row__right">
+            <span class="muted">4 actions</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="action-strip" style="border: 0; padding: 0; background: transparent;">
+            <button class="btn" data-open-modal="stub" data-context-title="Full re-index" data-context-body="Re-reads every file in scope. Slow; only do this after Index mode or chunking changes."><span data-icon="refresh"></span> Full re-index</button>
+            <button class="btn" data-open-modal="stub" data-context-title="Rebuild vector store" data-context-body="Rebuilds embeddings for all chunks. Requires a configured Knowledge Index provider."><span data-icon="db"></span> Rebuild vectors</button>
+            <button class="btn" data-open-modal="stub" data-context-title="Run LLM enrichment" data-context-body="Generates LLM tags and summaries on pending docs."><span data-icon="sparkles"></span> Run LLM enrichment</button>
+            <button class="btn" data-open-modal="stub" data-context-title="Compare PPR vs baseline" data-context-body="Runs the same query against both PPR and baseline search and diffs results."><span data-icon="bar"></span> Compare PPR search</button>
+          </div>
+        </div>
+      </details>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       TAB 4 · TOOLS
+       ════════════════════════════════════════════════════════════ -->
+  <div class="panel" data-panel="tools" data-active="false">
+
+    <div class="section">
+      <h3 class="section__title">External tools</h3>
+      <p class="section__sub">Tool servers that extend Peak with vault, web, and system capabilities.</p>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="folder"></span></div>
+          <div class="row__body">
+            <div class="row__title">Filesystem Tools</div>
+            <div class="row__desc">Connected · 8 tools · stdio</div>
+          </div>
+          <div class="row__right">
+            <span class="chip chip--green"><span data-icon="check"></span> Connected</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="form-grid" style="padding: 4px;">
+            <div class="form-row">
+              <label class="form-label">Transport</label>
+              <div class="form-control"><select class="form-select"><option selected>stdio</option><option>SSE (HTTP)</option></select></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Command</label>
+              <div class="form-control"><input class="form-input" type="text" value="npx -y @modelcontextprotocol/server-filesystem" /></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Arguments<span class="form-label__hint">Space-separated.</span></label>
+              <div class="form-control"><input class="form-input" type="text" value="/Users/zhangjike/code /Users/zhangjike/vault" /></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Environment<span class="form-label__hint">KEY=value lines.</span></label>
+              <div class="form-control"><textarea class="form-textarea" rows="3" placeholder="LOG_LEVEL=info"></textarea></div>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 4px;">
+              <button class="btn" data-open-modal="stub" data-context-title="Reconnect" data-context-body="Restarts the MCP stdio subprocess.">Reconnect</button>
+              <button class="btn">Disable</button>
+              <button class="btn btn--danger">Delete</button>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="globe"></span></div>
+          <div class="row__body">
+            <div class="row__title">Browser Search</div>
+            <div class="row__desc">Error · missing command · stdio</div>
+          </div>
+          <div class="row__right">
+            <span class="chip chip--yellow"><span data-icon="alert"></span> Needs attention</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="stub-banner"><span data-icon="alert"></span> The configured command was not found on PATH. Update the command below, or remove this tool.</div>
+          <div class="form-grid" style="padding: 4px;">
+            <div class="form-row">
+              <label class="form-label">Transport</label>
+              <div class="form-control"><select class="form-select"><option selected>stdio</option><option>SSE (HTTP)</option></select></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Command</label>
+              <div class="form-control"><input class="form-input" type="text" value="mcp-browser-search" /><span class="form-status form-status--error"><span data-icon="alert"></span> command not found on PATH</span></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Arguments</label>
+              <div class="form-control"><input class="form-input" type="text" value="" /></div>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 4px;">
+              <button class="btn">Disable</button>
+              <button class="btn btn--danger">Delete</button>
+              <button class="btn btn--primary" data-open-modal="stub" data-context-title="Reconnect" data-context-body="Saves changes and tries to start the tool subprocess.">Save &amp; reconnect</button>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="flask"></span></div>
+          <div class="row__body">
+            <div class="row__title">Local Research Tools</div>
+            <div class="row__desc">Disabled · SSE</div>
+          </div>
+          <div class="row__right">
+            <span class="chip chip--neutral">Off</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="form-grid" style="padding: 4px;">
+            <div class="form-row">
+              <label class="form-label">Transport</label>
+              <div class="form-control"><select class="form-select"><option>stdio</option><option selected>SSE (HTTP)</option></select></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">URL</label>
+              <div class="form-control"><input class="form-input" type="text" value="http://localhost:8765/sse" /></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Headers<span class="form-label__hint">JSON object.</span></label>
+              <div class="form-control"><textarea class="form-textarea" rows="3">{
+  "Authorization": "Bearer ..."
+}</textarea></div>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 4px;">
+              <button class="btn btn--primary" data-open-modal="stub" data-context-title="Enable" data-context-body="Saves and connects.">Enable</button>
+              <button class="btn btn--danger">Delete</button>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <button class="row-add" data-open-modal="addExternalTool"><span data-icon="plus"></span> Add external tool</button>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Web Access</h3>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="globe"></span></div>
+        <div class="row__body">
+          <div class="row__title">Provider</div>
+          <div class="row__desc">Search engine or web index Peak uses for current information.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--neutral">Optional</span>
+          <span class="muted">Not configured</span>
+          <button class="btn" data-open-modal="webAccess">Setup</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="user"></span></div>
+        <div class="row__body">
+          <div class="row__title">Used by</div>
+          <div class="row__desc">Capabilities that will turn on once Web Access is configured.</div>
+        </div>
+        <div class="row__right">
+          <span class="usedby">Chat</span>
+          <span class="usedby">Research</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Skills</h3>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="folder"></span></div>
+        <div class="row__body">
+          <div class="row__title">Skills folder</div>
+          <div class="row__desc">Where reusable skill packs live inside your vault.</div>
+        </div>
+        <div class="row__right">
+          <span class="value-mono">_skills</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Choose skills folder" data-context-body="Opens an Obsidian folder picker rooted at your vault.">Change</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="sparkles"></span></div>
+        <div class="row__body">
+          <div class="row__title">Installed skills</div>
+          <div class="row__desc">Skill packs Peak found in your skills folder.</div>
+        </div>
+        <div class="row__right">
+          <span class="muted">12 found</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Skills inventory" data-context-body="Opens a panel listing every installed skill with metadata.">Open</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Capture destinations</h3>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="inbox"></span></div>
+        <div class="row__body">
+          <div class="row__title">Inbox folder</div>
+          <div class="row__desc">Where quick captures and ambient suggestions land.</div>
+        </div>
+        <div class="row__right">
+          <span class="value-mono">_inbox</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Choose inbox folder" data-context-body="Opens an Obsidian folder picker rooted at your vault.">Change</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="folder"></span></div>
+        <div class="row__body">
+          <div class="row__title">Custom prompts folder</div>
+          <div class="row__desc">Where Peak picks up your hand-written prompt templates.</div>
+        </div>
+        <div class="row__right">
+          <span class="value-mono">_prompts</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Choose prompts folder" data-context-body="Opens an Obsidian folder picker rooted at your vault.">Change</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       TAB 5 · ADVANCED
+       ════════════════════════════════════════════════════════════ -->
+  <div class="panel" data-panel="advanced" data-active="false">
+
+    <div class="section">
+      <h3 class="section__title">Agent runtime</h3>
+      <p class="section__sub">The engine that runs longer multi-step work. Most users can leave this on Auto.</p>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="cpu"></span></div>
+        <div class="row__body">
+          <div class="row__title">Runtime mode</div>
+          <div class="row__desc">Auto picks the best available runtime. Peak runtime and Claude Agent SDK are explicit overrides.</div>
+        </div>
+        <div class="row__right">
+          <select class="form-select" style="width: 160px;"><option selected>Auto</option><option>Peak runtime</option><option>Claude Agent SDK</option></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="shield"></span></div>
+        <div class="row__body">
+          <div class="row__title">Safety</div>
+          <div class="row__desc">Default permission Peak uses for risky vault writes and tool calls.</div>
+        </div>
+        <div class="row__right">
+          <select class="form-select" style="width: 200px;"><option>Read only</option><option selected>Ask before risky writes</option><option>Bypass permissions</option></select>
+        </div>
+      </div>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="trendingUp"></span></div>
+          <div class="row__body">
+            <div class="row__title">Use stronger model when needed</div>
+            <div class="row__desc">Max escalations per run, confidence threshold for switching, target provider.</div>
+          </div>
+          <div class="row__right">
+            <span class="chip chip--neutral">Off</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="trendingUp"></span></div>
+            <div class="row__body">
+              <div class="row__title">Allow escalation</div>
+              <div class="row__desc">Master switch for stronger-model use during a run.</div>
+            </div>
+            <div class="row__right"><span class="toggle" data-toggle data-on="false"></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="trendingUp"></span></div>
+            <div class="row__body">
+              <div class="row__title">Target provider</div>
+              <div class="row__desc">Which provider Peak uses when it escalates.</div>
+            </div>
+            <div class="row__right"><button class="btn" data-open-modal="chooseModel" data-context-capability="Stronger model">Choose model</button></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="listChecks"></span></div>
+            <div class="row__body">
+              <div class="row__title">Max escalations per run</div>
+              <div class="row__desc">Hard cap on how many times Peak will use the stronger model.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" min="1" max="3" value="1" /></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="bar"></span></div>
+            <div class="row__body">
+              <div class="row__title">Confidence threshold</div>
+              <div class="row__desc">Switch when the agent's self-confidence falls below this score.</div>
+            </div>
+            <div class="row__right">
+              <div class="form-slider" style="width: 200px;"><input type="range" min="0" max="1" step="0.05" value="0.5" /><span class="form-slider__value">0.50</span></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="code"></span></div>
+        <div class="row__body">
+          <div class="row__title">Hooks</div>
+          <div class="row__desc">Run custom commands before/after agent steps.</div>
+        </div>
+        <div class="row__right">
+          <span class="chip chip--neutral">Coming soon</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="wrench"></span></div>
+        <div class="row__body">
+          <div class="row__title">Re-run setup wizard</div>
+          <div class="row__desc">Walks you through the 7-step onboarding again. Current values are pre-filled, nothing is reset.</div>
+        </div>
+        <div class="row__right">
+          <button class="btn" data-open-modal="runSetup">Re-run</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Storage and folders</h3>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="hardDrive"></span></div>
+        <div class="row__body">
+          <div class="row__title">Data storage folder</div>
+          <div class="row__desc">Where Peak keeps its SQLite databases and derived caches.</div>
+        </div>
+        <div class="row__right">
+          <span class="value-mono">A-control/PeakAssistant/DataStore</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Choose data storage folder" data-context-body="Asks for confirmation, then moves on-disk SQLite files to the new path.">Change</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="folder"></span></div>
+        <div class="row__body">
+          <div class="row__title">Chat root folder</div>
+          <div class="row__desc">Root folder for chat threads, prompts, attachments, and derived caches.</div>
+        </div>
+        <div class="row__right">
+          <span class="value-mono">ChatFolder</span>
+          <button class="btn" data-open-modal="stub" data-context-title="Choose chat root folder" data-context-body="Asks for confirmation, then relocates ChatFolder and its derived subfolders.">Change</button>
+        </div>
+      </div>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="folder"></span></div>
+          <div class="row__body">
+            <div class="row__title">Derived folders</div>
+            <div class="row__desc">Subfolders Peak maintains under the chat root.</div>
+          </div>
+          <div class="row__right">
+            <span class="muted">5 derived</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <ul class="kv-list" style="padding: 4px;">
+            <li><span>Prompts</span><span>ChatFolder/Prompts</span></li>
+            <li><span>Attachments</span><span>ChatFolder/Attachments</span></li>
+            <li><span>Resources summary cache</span><span>ChatFolder/resources-summary-cache</span></li>
+            <li><span>Hub summaries</span><span>ChatFolder/Hub-Summaries</span></li>
+            <li><span>User profile</span><span>ChatFolder/system/User-Profile.md</span></li>
+          </ul>
+        </div>
+      </details>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="db"></span></div>
+        <div class="row__body">
+          <div class="row__title">SQLite backend</div>
+          <div class="row__desc">Better-sqlite3, sqlite-vec, or auto-detect.</div>
+        </div>
+        <div class="row__right">
+          <select class="form-select" style="width: 160px;"><option selected>Auto</option><option>better-sqlite3</option><option>sqlite-vec</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Proactive suggestions</h3>
+      <p class="section__sub">Inline related notes and ambient briefings while you write. Fully optional.</p>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="sparkles"></span></div>
+        <div class="row__body">
+          <div class="row__title">Suggest related notes</div>
+          <div class="row__desc">Master switch for the ambient related-notes panel.</div>
+        </div>
+        <div class="row__right"><span class="toggle" data-toggle data-on="true"></span></div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="sparkles"></span></div>
+        <div class="row__body">
+          <div class="row__title">Show inline suggestions</div>
+          <div class="row__desc">Render related-note pointers in the editor gutter.</div>
+        </div>
+        <div class="row__right"><span class="toggle" data-toggle data-on="false"></span></div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="sparkles"></span></div>
+        <div class="row__body">
+          <div class="row__title">Morning briefing</div>
+          <div class="row__desc">Daily summary of recent changes and starting points.</div>
+        </div>
+        <div class="row__right"><span class="toggle" data-toggle data-on="true"></span></div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="bell"></span></div>
+        <div class="row__body">
+          <div class="row__title">Status bar</div>
+          <div class="row__desc">Show suggestion counts and quick status in Obsidian's status bar.</div>
+        </div>
+        <div class="row__right"><span class="toggle" data-toggle data-on="true"></span></div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="info"></span></div>
+        <div class="row__body">
+          <div class="row__title">Auto-open panel</div>
+          <div class="row__desc">Open the suggestion panel on document switch.</div>
+        </div>
+        <div class="row__right"><span class="toggle" data-toggle data-on="false"></span></div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="info"></span></div>
+        <div class="row__body">
+          <div class="row__title">Use AI explanations</div>
+          <div class="row__desc">Ask the LLM to explain why a related note was suggested.</div>
+        </div>
+        <div class="row__right"><span class="toggle" data-toggle data-on="false"></span></div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="user"></span></div>
+        <div class="row__body">
+          <div class="row__title">Learn from feedback</div>
+          <div class="row__desc">Improve future suggestions from thumbs up/down.</div>
+        </div>
+        <div class="row__right"><span class="toggle" data-toggle data-on="true"></span></div>
+      </div>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="cog"></span></div>
+          <div class="row__body">
+            <div class="row__title">Tuning</div>
+            <div class="row__desc">Cooldowns, hop count, suggestion cap, AI explanation cooldown.</div>
+          </div>
+          <div class="row__right">
+            <span class="muted">6 advanced</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">Trigger cooldown</div>
+              <div class="row__desc">Min interval between any two ambient triggers.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="30000" /><span class="form-number__unit">ms</span></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">Document switch cooldown</div>
+              <div class="row__desc">Min interval after switching documents before triggering again.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="2000" /><span class="form-number__unit">ms</span></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">Writing pause</div>
+              <div class="row__desc">How long Peak waits for you to pause typing.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="1500" /><span class="form-number__unit">ms</span></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">Minimum writing change</div>
+              <div class="row__desc">Min chars added/removed before considering a new trigger.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="40" /><span class="form-number__unit">chars</span></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">Max suggestions</div>
+              <div class="row__desc">Hard cap on suggestions shown at once.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="6" /></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">Graph expansion hops</div>
+              <div class="row__desc">How many graph hops Peak walks when expanding context.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="2" /></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">AI explanation cooldown</div>
+              <div class="row__desc">Min interval between LLM explanations.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="60000" /><span class="form-number__unit">ms</span></span></div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Usage and retention</h3>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="bar"></span></div>
+        <div class="row__body">
+          <div class="row__title">Usage tracking</div>
+          <div class="row__desc">Record token cost per provider, used for the usage dashboard.</div>
+        </div>
+        <div class="row__right"><span class="toggle" data-toggle data-on="true"></span></div>
+      </div>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="listChecks"></span></div>
+        <div class="row__body">
+          <div class="row__title">Detailed logs retained</div>
+          <div class="row__desc">How long Peak keeps detailed per-request usage records.</div>
+        </div>
+        <div class="row__right">
+          <span class="form-number"><input type="number" value="30" /><span class="form-number__unit">days</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Maintenance</h3>
+      <p class="section__sub">Periodic upkeep tasks. Safe to run at any time.</p>
+
+      <div class="kicker" style="margin: 8px 0 4px;">Index</div>
+      <div class="action-strip">
+        <button class="btn" data-open-modal="stub" data-context-title="Update index" data-context-body="Re-indexes changed files using the current index mode."><span data-icon="refresh"></span> Update index</button>
+        <button class="btn" data-open-modal="stub" data-context-title="Full pipeline" data-context-body="Runs the full configured pipeline: detect → chunk → embed → enrich. Slow."><span data-icon="play"></span> Full pipeline</button>
+        <button class="btn" data-open-modal="stub" data-context-title="Cancel indexing" data-context-body="Cancels any running indexing job."><span data-icon="x"></span> Cancel indexing</button>
+      </div>
+
+      <div class="kicker" style="margin: 12px 0 4px;">Knowledge graph</div>
+      <div class="action-strip">
+        <button class="btn" data-open-modal="stub" data-context-title="Refresh related notes" data-context-body="Recomputes related-notes edges from the current index."><span data-icon="refresh"></span> Refresh related notes</button>
+        <button class="btn" data-open-modal="stub" data-context-title="Refresh hub summaries" data-context-body="Re-summarizes hub nodes used by the briefing system."><span data-icon="refresh"></span> Refresh hub summaries</button>
+        <button class="btn" data-open-modal="stub" data-context-title="Recompute gap analysis" data-context-body="Updates the structural gap-analysis caches."><span data-icon="refresh"></span> Recompute gap analysis</button>
+        <button class="btn" data-open-modal="stub" data-context-title="Analyze vault intuition" data-context-body="Runs the vault-intuition pipeline end-to-end. May take several minutes."><span data-icon="sparkles"></span> Analyze vault intuition</button>
+      </div>
+
+      <div class="kicker" style="margin: 12px 0 4px;">Verification &amp; cleanup</div>
+      <div class="action-strip">
+        <button class="btn" data-open-modal="stub" data-context-title="Verify database" data-context-body="Runs SQLite integrity checks across all Peak databases."><span data-icon="db"></span> Verify database</button>
+        <button class="btn" data-open-modal="stub" data-context-title="Cleanup useless data" data-context-body="Drops orphaned rows, stale embeddings, and abandoned caches."><span data-icon="trash"></span> Cleanup useless data</button>
+        <button class="btn" data-open-modal="stub" data-context-title="Build pending vectors" data-context-body="Computes embeddings for any docs still missing them."><span data-icon="db"></span> Build pending vectors</button>
+        <button class="btn" data-open-modal="stub" data-context-title="Run pending LLM enrichment" data-context-body="Runs tagging and summarization on any docs still missing them."><span data-icon="sparkles"></span> Run pending LLM enrichment</button>
+        <button class="btn" data-open-modal="stub" data-context-title="Global maintenance" data-context-body="Runs all of the above in a single ordered pass."><span data-icon="wrench"></span> Global maintenance</button>
+      </div>
+
+      <details style="margin-top: 12px;">
+        <summary>
+          <div class="danger-zone">
+            <div class="danger-zone__head">
+              <span data-icon="alertOctagon"></span> Danger zone
+              <span class="muted" style="font-weight: 400; margin-left: auto; font-size: 11px;">Click to expand · confirm before any of these run.</span>
+            </div>
+          </div>
+        </summary>
+        <div style="margin-top: 8px; padding: 12px 14px; border: 1px solid rgba(196, 61, 61, 0.35); border-radius: var(--pk-radius-lg); background: rgba(196, 61, 61, 0.04);">
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="trash"></span></div>
+            <div class="row__body">
+              <div class="row__title">Clear profile build record</div>
+              <div class="row__desc">Erase the cached provider build state. Forces a clean rebuild on next launch.</div>
+            </div>
+            <div class="row__right"><button class="btn btn--danger" data-open-modal="confirmDanger" data-context-title="Clear profile build record" data-context-body="This erases cached provider build state. Peak will rebuild on next launch.">Clear</button></div>
+          </div>
+          <div class="row row--compact" style="margin-top: 6px;">
+            <div class="row__icon"><span data-icon="trash"></span></div>
+            <div class="row__body">
+              <div class="row__title">Delete index data</div>
+              <div class="row__desc">Wipe all SQLite index data. You will need to reindex from scratch.</div>
+            </div>
+            <div class="row__right"><button class="btn btn--danger" data-open-modal="confirmDanger" data-context-title="Delete index data" data-context-body="This wipes all SQLite index data. You will need to reindex from scratch.">Delete</button></div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="section">
+      <h3 class="section__title">Developer</h3>
+      <p class="section__sub">Low-level controls. Most users should leave these alone.</p>
+
+      <div class="row">
+        <div class="row__icon"><span data-icon="code"></span></div>
+        <div class="row__body">
+          <div class="row__title">Graph inspector</div>
+          <div class="row__desc">Show in-app graph debugging tools (DevTools panel).</div>
+        </div>
+        <div class="row__right"><span class="toggle" data-toggle data-on="false"></span></div>
+      </div>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="cog"></span></div>
+          <div class="row__body">
+            <div class="row__title">Graph visualization</div>
+            <div class="row__desc">MST prune depth, backbone-only, leaf opacity, leaf width.</div>
+          </div>
+          <div class="row__right">
+            <span class="muted">4 fields</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">MST prune depth</div>
+              <div class="row__desc">How aggressively to prune the minimum spanning tree.</div>
+            </div>
+            <div class="row__right"><span class="form-number"><input type="number" value="3" /></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">Skeleton backbone only</div>
+              <div class="row__desc">Render only the backbone, hide all leaf paths.</div>
+            </div>
+            <div class="row__right"><span class="toggle" data-toggle data-on="false"></span></div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">MST leaf opacity</div>
+              <div class="row__desc">Opacity multiplier for leaf edges.</div>
+            </div>
+            <div class="row__right">
+              <div class="form-slider" style="width: 180px;"><input type="range" min="0" max="1" step="0.05" value="0.4" /><span class="form-slider__value">0.40</span></div>
+            </div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">MST leaf width scale</div>
+              <div class="row__desc">Width multiplier for leaf edges.</div>
+            </div>
+            <div class="row__right">
+              <div class="form-slider" style="width: 180px;"><input type="range" min="0.1" max="2" step="0.1" value="1.0" /><span class="form-slider__value">1.0</span></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="cog"></span></div>
+          <div class="row__body">
+            <div class="row__title">SDK process settings</div>
+            <div class="row__desc">Claude Agent SDK CLI path, subprocess pool size, warmup on load.</div>
+          </div>
+          <div class="row__right">
+            <span class="muted">3 fields</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="form-grid" style="padding: 4px;">
+            <div class="form-row">
+              <label class="form-label">CLI path override</label>
+              <div class="form-control"><input class="form-input" type="text" placeholder="/usr/local/bin/claude (optional)" /></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Pool size<span class="form-label__hint">Concurrent SDK subprocesses.</span></label>
+              <div class="form-control"><span class="form-number"><input type="number" min="1" max="10" value="2" /></span></div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Warmup on load</label>
+              <div class="form-control"><span class="toggle" data-toggle data-on="true"></span></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary class="row row--disclosure">
+          <div class="row__icon"><span data-icon="cog"></span></div>
+          <div class="row__body">
+            <div class="row__title">Legacy compatibility</div>
+            <div class="row__desc">Old provider configs and Vault Search SDK profile, kept only for migration.</div>
+          </div>
+          <div class="row__right">
+            <span class="muted">2 fields</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">Vault Search SDK profile</div>
+              <div class="row__desc">Legacy: forces Vault Search through the SDK profile.</div>
+            </div>
+            <div class="row__right">
+              <select class="form-select" style="width: 200px;"><option selected>(none)</option><option>SDK profile A</option></select>
+            </div>
+          </div>
+          <div class="row row--compact">
+            <div class="row__icon"><span data-icon="cog"></span></div>
+            <div class="row__body">
+              <div class="row__title">Legacy provider configs</div>
+              <div class="row__desc">Read-only view of pre-Provider provider entries kept for migration.</div>
+            </div>
+            <div class="row__right">
+              <span class="muted">2 entries</span>
+              <button class="btn" data-open-modal="stub" data-context-title="Legacy providers" data-context-body="Read-only table of legacy ai.llmProviderConfigs entries.">View</button>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+  </div>
+
+  <!-- ── Reference strip (collapsed by default) ──────────────── -->
+  <details class="refstrip">
+    <summary>Reference images used to derive this mock (click to expand)</summary>
+    <div class="refstrip__grid">
+      <div class="refstrip__tile">
+        <img src="assets/ref-overview.png" alt="Reference: Overview" />
+        <span>Overview</span>
+      </div>
+      <div class="refstrip__tile">
+        <img src="assets/ref-ai-setup.png" alt="Reference: AI Setup" />
+        <span>AI Setup</span>
+      </div>
+      <div class="refstrip__tile">
+        <img src="assets/ref-knowledge-index.png" alt="Reference: Knowledge Index" />
+        <span>Knowledge Index</span>
+      </div>
+      <div class="refstrip__tile">
+        <img src="assets/ref-tools.png" alt="Reference: Tools" />
+        <span>Tools</span>
+      </div>
+      <div class="refstrip__tile">
+        <img src="assets/ref-advanced.png" alt="Reference: Advanced" />
+        <span>Advanced</span>
+      </div>
+    </div>
+  </details>
+
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MODALS
+     Hidden by default. Open via [data-open-modal="<id>"] triggers.
+     Close via [data-close-modal], overlay click, or Esc.
+     ════════════════════════════════════════════════════════════ -->
+
+<!-- Generic stub modal — used for any button without a dedicated UI yet. -->
+<div class="modal-overlay" data-modal="stub" data-open="false">
+  <div class="modal-shell modal-shell--narrow">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title" data-stub-title>Demo modal</div>
+        <div class="modal-shell__sub">This stub stands in for the real flow.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="stub-banner">
+        <span data-icon="info"></span>
+        <span data-stub-body>The full dialog isn't wired in this mock — this banner explains what would happen.</span>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Provider — chooser grid (8 chip pattern reused from onboarding). -->
+<div class="modal-overlay" data-modal="addProvider" data-open="false">
+  <div class="modal-shell">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Add Provider</div>
+        <div class="modal-shell__sub">Choose the kind of AI service or local runtime to connect.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="provider-chooser">
+        <button class="provider-chooser__chip" data-open-modal="providerEdit" data-context-name="Anthropic Direct">
+          <span data-icon="brandAnthropic"></span>
+          <div>
+            <div class="provider-chooser__name">Anthropic Direct</div>
+            <div class="provider-chooser__hint">Claude Sonnet, Opus, Haiku</div>
+          </div>
+        </button>
+        <button class="provider-chooser__chip" data-open-modal="providerEdit" data-context-name="OpenAI">
+          <span data-icon="brandOpenAI"></span>
+          <div>
+            <div class="provider-chooser__name">OpenAI</div>
+            <div class="provider-chooser__hint">GPT-5, o-series, embeddings</div>
+          </div>
+        </button>
+        <button class="provider-chooser__chip" data-open-modal="providerEdit" data-context-name="Google">
+          <span data-icon="brandGoogle"></span>
+          <div>
+            <div class="provider-chooser__name">Google</div>
+            <div class="provider-chooser__hint">Gemini 2.5 family</div>
+          </div>
+        </button>
+        <button class="provider-chooser__chip" data-open-modal="providerEdit" data-context-name="Perplexity">
+          <span data-icon="brandPerplexity"></span>
+          <div>
+            <div class="provider-chooser__name">Perplexity</div>
+            <div class="provider-chooser__hint">Online + Sonar models</div>
+          </div>
+        </button>
+        <button class="provider-chooser__chip" data-open-modal="providerEdit" data-context-name="Ollama">
+          <span data-icon="brandOllama"></span>
+          <div>
+            <div class="provider-chooser__name">Ollama</div>
+            <div class="provider-chooser__hint">Local models on your machine</div>
+          </div>
+        </button>
+        <button class="provider-chooser__chip" data-open-modal="providerEdit" data-context-name="OpenRouter">
+          <span data-icon="brandOpenRouter"></span>
+          <div>
+            <div class="provider-chooser__name">OpenRouter</div>
+            <div class="provider-chooser__hint">300+ models via one key</div>
+          </div>
+        </button>
+        <button class="provider-chooser__chip" data-open-modal="providerEdit" data-context-name="LiteLLM">
+          <span data-icon="cpu"></span>
+          <div>
+            <div class="provider-chooser__name">LiteLLM</div>
+            <div class="provider-chooser__hint">Self-hosted gateway</div>
+          </div>
+        </button>
+        <button class="provider-chooser__chip" data-open-modal="providerEdit" data-context-name="Custom">
+          <span data-icon="code"></span>
+          <div>
+            <div class="provider-chooser__name">Custom</div>
+            <div class="provider-chooser__hint">Any OpenAI-compatible endpoint</div>
+          </div>
+        </button>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Provider Edit — full per-Profile detail form -->
+<div class="modal-overlay" data-modal="providerEdit" data-open="false">
+  <div class="modal-shell modal-shell--wide">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title" data-provider-title>Edit Provider</div>
+        <div class="modal-shell__sub">Connection, models, and embedding endpoint for this provider.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="kicker">Connection</div>
+      <div class="form-grid" style="margin: 8px 0 16px;">
+        <div class="form-row">
+          <label class="form-label">Provider name</label>
+          <div class="form-control"><input class="form-input form-input--sans" type="text" value="Anthropic Direct" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Provider type</label>
+          <div class="form-control">
+            <select class="form-select"><option selected>Anthropic</option><option>OpenAI</option><option>Google</option><option>Perplexity</option><option>Ollama</option><option>OpenRouter</option><option>LiteLLM</option><option>Custom (OpenAI-compatible)</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Base URL</label>
+          <div class="form-control"><input class="form-input" type="text" value="https://api.anthropic.com" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">API key</label>
+          <div class="form-control">
+            <input class="form-input" type="password" value="sk-ant-•••••••••••••••" />
+            <span class="form-status form-status--success"><span data-icon="check"></span> Key validated 2 min ago</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kicker">Models</div>
+      <div class="form-grid" style="margin: 8px 0 16px;">
+        <div class="form-row">
+          <label class="form-label">Primary model<span class="form-label__hint">Used for Conversation + Research.</span></label>
+          <div class="form-control">
+            <select class="form-select"><option selected>claude-sonnet-4-6</option><option>claude-opus-4-7</option><option>claude-haiku-4-5</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Fast model<span class="form-label__hint">Used for Fast Lookup.</span></label>
+          <div class="form-control">
+            <select class="form-select"><option>claude-sonnet-4-6</option><option>claude-opus-4-7</option><option selected>claude-haiku-4-5</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="kicker">Knowledge Index (embedding)</div>
+      <div class="form-grid" style="margin: 8px 0 16px;">
+        <div class="form-row">
+          <label class="form-label">Endpoint<span class="form-label__hint">Leave blank to reuse Base URL.</span></label>
+          <div class="form-control"><input class="form-input" type="text" placeholder="(reuses Base URL)" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">API key<span class="form-label__hint">Leave blank to reuse the connection key.</span></label>
+          <div class="form-control"><input class="form-input" type="password" placeholder="(reuses connection API key)" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Model</label>
+          <div class="form-control"><input class="form-input" type="text" placeholder="voyage-3 / text-embedding-3-large / ..." /></div>
+        </div>
+      </div>
+
+      <details>
+        <summary class="row row--disclosure" style="background: var(--pk-surface-sunken);">
+          <div class="row__icon"><span data-icon="cog"></span></div>
+          <div class="row__body">
+            <div class="row__title">Custom headers</div>
+            <div class="row__desc">Extra HTTP headers sent with every request.</div>
+          </div>
+          <div class="row__right">
+            <span class="muted">Advanced</span>
+            <span data-icon="chevronDown" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+          </div>
+        </summary>
+        <div class="disclosure-body">
+          <textarea class="form-textarea" rows="4" placeholder='{ "X-Custom": "value" }'></textarea>
+        </div>
+      </details>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn btn--danger" style="margin-right: auto;" data-close-modal>Delete provider</button>
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn" data-open-modal="stub" data-context-title="Testing connection" data-context-body="Pings the saved Base URL + API key.">Test</button>
+      <button class="btn btn--primary" data-close-modal>Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Choose Model (capability-scoped) -->
+<div class="modal-overlay" data-modal="chooseModel" data-open="false">
+  <div class="modal-shell">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title" data-capability-title>Choose model</div>
+        <div class="modal-shell__sub">Models available from your connected providers.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="choice-search">
+        <span data-icon="search"></span>
+        <input type="text" placeholder="Search models" />
+      </div>
+      <div class="choice-list" data-radio-group>
+        <button class="choice-row" data-radio data-selected="true">
+          <span class="choice-row__check"><span data-icon="check"></span></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">Claude Sonnet 4.6 <span class="chip chip--accent" style="font-size:10px;">Recommended</span></div>
+            <div class="choice-row__desc">Balanced quality and cost.</div>
+          </div>
+          <div class="choice-row__provider">Anthropic</div>
+        </button>
+        <button class="choice-row" data-radio data-selected="false">
+          <span class="choice-row__check"><span data-icon="check"></span></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">Claude Opus 4.7</div>
+            <div class="choice-row__desc">Highest quality, slower and pricier.</div>
+          </div>
+          <div class="choice-row__provider">Anthropic</div>
+        </button>
+        <button class="choice-row" data-radio data-selected="false">
+          <span class="choice-row__check"><span data-icon="check"></span></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">Claude Haiku 4.5</div>
+            <div class="choice-row__desc">Fast and cheap.</div>
+          </div>
+          <div class="choice-row__provider">Anthropic</div>
+        </button>
+        <button class="choice-row" data-radio data-selected="false">
+          <span class="choice-row__check"><span data-icon="check"></span></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">GPT-5 mini</div>
+            <div class="choice-row__desc">OpenAI everyday model.</div>
+          </div>
+          <div class="choice-row__provider">OpenAI</div>
+        </button>
+        <button class="choice-row" data-radio data-selected="false">
+          <span class="choice-row__check"><span data-icon="check"></span></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">GPT-5</div>
+            <div class="choice-row__desc">OpenAI flagship.</div>
+          </div>
+          <div class="choice-row__provider">OpenAI</div>
+        </button>
+        <button class="choice-row" data-radio data-selected="false">
+          <span class="choice-row__check"><span data-icon="check"></span></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">Gemini 2.5 Pro</div>
+            <div class="choice-row__desc">Long context, strong general reasoning.</div>
+          </div>
+          <div class="choice-row__provider">Google</div>
+        </button>
+        <button class="choice-row" data-radio data-selected="false">
+          <span class="choice-row__check"><span data-icon="check"></span></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">qwen2.5-coder:14b</div>
+            <div class="choice-row__desc">Local · runs on your machine.</div>
+          </div>
+          <div class="choice-row__provider">Ollama</div>
+        </button>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn btn--primary" data-close-modal>Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add External Tool -->
+<div class="modal-overlay" data-modal="addExternalTool" data-open="false">
+  <div class="modal-shell">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Add external tool</div>
+        <div class="modal-shell__sub">Connect an MCP-compatible tool server.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Tool name</label>
+          <div class="form-control"><input class="form-input form-input--sans" type="text" placeholder="My filesystem tools" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Transport</label>
+          <div class="form-control">
+            <select class="form-select"><option selected>stdio</option><option>SSE (HTTP)</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Command<span class="form-label__hint">Used for stdio transport.</span></label>
+          <div class="form-control"><input class="form-input" type="text" placeholder="npx -y @modelcontextprotocol/server-filesystem" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Arguments<span class="form-label__hint">Space-separated.</span></label>
+          <div class="form-control"><input class="form-input" type="text" placeholder="/path/one /path/two" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">URL<span class="form-label__hint">Used for SSE transport.</span></label>
+          <div class="form-control"><input class="form-input" type="text" placeholder="http://localhost:8765/sse" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Environment<span class="form-label__hint">KEY=value lines, optional.</span></label>
+          <div class="form-control"><textarea class="form-textarea" rows="3" placeholder="LOG_LEVEL=info"></textarea></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn btn--primary" data-close-modal>Add tool</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Custom Endpoint -->
+<div class="modal-overlay" data-modal="addCustomEndpoint" data-open="false">
+  <div class="modal-shell">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Add custom endpoint</div>
+        <div class="modal-shell__sub">Any OpenAI-compatible HTTP endpoint.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Endpoint name</label>
+          <div class="form-control"><input class="form-input form-input--sans" type="text" placeholder="My LiteLLM proxy" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Base URL</label>
+          <div class="form-control"><input class="form-input" type="text" placeholder="http://localhost:4000" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">API key</label>
+          <div class="form-control"><input class="form-input" type="password" placeholder="sk-..." /></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn" data-open-modal="stub" data-context-title="Testing endpoint" data-context-body="Calls /v1/models on the entered Base URL.">Test</button>
+      <button class="btn btn--primary" data-close-modal>Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add from preset (custom-endpoint quick chooser) -->
+<div class="modal-overlay" data-modal="addCustomFromPreset" data-open="false">
+  <div class="modal-shell modal-shell--narrow">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Add from preset</div>
+        <div class="modal-shell__sub">Pre-filled defaults for common OpenAI-compatible servers.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="choice-list">
+        <button class="choice-row" data-open-modal="addCustomEndpoint">
+          <span class="choice-row__check"></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">LM Studio</div>
+            <div class="choice-row__desc">http://localhost:1234 · runs on your machine</div>
+          </div>
+          <span data-icon="chevronRight" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+        </button>
+        <button class="choice-row" data-open-modal="addCustomEndpoint">
+          <span class="choice-row__check"></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">LiteLLM</div>
+            <div class="choice-row__desc">http://localhost:4000 · self-hosted gateway</div>
+          </div>
+          <span data-icon="chevronRight" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+        </button>
+        <button class="choice-row" data-open-modal="addCustomEndpoint">
+          <span class="choice-row__check"></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">vLLM</div>
+            <div class="choice-row__desc">http://localhost:8000 · GPU inference server</div>
+          </div>
+          <span data-icon="chevronRight" style="width:14px;height:14px;display:inline-block;color:var(--pk-text-tertiary);"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Custom Endpoint Edit (alias of providerEdit for simplicity) -->
+<div class="modal-overlay" data-modal="customEndpointEdit" data-open="false">
+  <div class="modal-shell">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Edit custom endpoint</div>
+        <div class="modal-shell__sub">My LiteLLM proxy · OpenAI-compatible</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Endpoint name</label>
+          <div class="form-control"><input class="form-input form-input--sans" type="text" value="My LiteLLM proxy" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Base URL</label>
+          <div class="form-control"><input class="form-input" type="text" value="http://localhost:4000" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">API key</label>
+          <div class="form-control"><input class="form-input" type="password" value="sk-•••••••" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Enabled</label>
+          <div class="form-control"><span class="toggle" data-toggle data-on="true"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn btn--danger" style="margin-right: auto;" data-close-modal>Delete</button>
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn" data-open-modal="stub" data-context-title="Testing endpoint" data-context-body="Calls /v1/models.">Test</button>
+      <button class="btn btn--primary" data-close-modal>Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ignore Patterns -->
+<div class="modal-overlay" data-modal="ignorePatterns" data-open="false">
+  <div class="modal-shell">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Ignore patterns</div>
+        <div class="modal-shell__sub">One glob pattern per line. Peak skips matching files when indexing.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <textarea class="form-textarea" rows="10">**/.obsidian/**
+**/.trash/**
+**/_archive/**
+**/*.tmp
+**/.git/**
+**/node_modules/**</textarea>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn btn--primary" data-close-modal>Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Web Access Setup -->
+<div class="modal-overlay" data-modal="webAccess" data-open="false">
+  <div class="modal-shell">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Configure Web Access</div>
+        <div class="modal-shell__sub">Pick a search provider and key Peak can use for current information.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Provider</label>
+          <div class="form-control">
+            <select class="form-select"><option>Perplexity</option><option>Tavily</option><option>Exa</option><option>Brave Search</option><option>SerpAPI</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">API key</label>
+          <div class="form-control"><input class="form-input" type="password" placeholder="Web Access API key" /></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Used by</label>
+          <div class="form-control" style="padding-top: 6px;"><span class="usedby">Chat</span> <span class="usedby">Research</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn btn--primary" data-close-modal>Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Safety Review -->
+<div class="modal-overlay" data-modal="safety" data-open="false">
+  <div class="modal-shell">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Review safety</div>
+        <div class="modal-shell__sub">How Peak handles risky vault writes and tool calls.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="choice-list" data-radio-group>
+        <button class="choice-row" data-radio data-selected="false">
+          <span class="choice-row__check"><span data-icon="check"></span></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">Read only</div>
+            <div class="choice-row__desc">Peak never writes to your vault or runs side-effect tools.</div>
+          </div>
+        </button>
+        <button class="choice-row" data-radio data-selected="true">
+          <span class="choice-row__check"><span data-icon="check"></span></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">Ask before risky writes</div>
+            <div class="choice-row__desc">Recommended. Peak asks for confirmation on any write or tool execution it judges risky.</div>
+          </div>
+        </button>
+        <button class="choice-row" data-radio data-selected="false">
+          <span class="choice-row__check"><span data-icon="check"></span></span>
+          <div class="choice-row__body">
+            <div class="choice-row__title">Bypass permissions</div>
+            <div class="choice-row__desc">Peak runs writes and tools without asking. Use only in controlled vaults.</div>
+          </div>
+        </button>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn btn--primary" data-close-modal>Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Stronger Model Setup -->
+<div class="modal-overlay" data-modal="strongerModel" data-open="false">
+  <div class="modal-shell">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Use stronger model when needed</div>
+        <div class="modal-shell__sub">Let Research escalate to a stronger model on low-confidence steps.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Allow escalation</label>
+          <div class="form-control"><span class="toggle" data-toggle data-on="false"></span></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Target model</label>
+          <div class="form-control"><button class="btn" data-open-modal="chooseModel" data-context-capability="Stronger model">Choose model</button></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Max escalations per run<span class="form-label__hint">Hard cap. Recommended 1–2.</span></label>
+          <div class="form-control"><span class="form-number"><input type="number" min="1" max="3" value="1" /></span></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Confidence threshold<span class="form-label__hint">Escalate when below this score.</span></label>
+          <div class="form-control"><div class="form-slider"><input type="range" min="0" max="1" step="0.05" value="0.5" /><span class="form-slider__value">0.50</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn btn--primary" data-close-modal>Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Provider list quick-jump (from Overview > Providers > Manage) -->
+<div class="modal-overlay" data-modal="providerList" data-open="false">
+  <div class="modal-shell">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Manage providers</div>
+        <div class="modal-shell__sub">In the final UI, this just jumps to AI Setup → Providers.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="stub-banner">
+        <span data-icon="info"></span>
+        <span>This button is a shortcut to <strong>AI Setup → Providers</strong>. In the static mock, click <strong>AI Setup</strong> in the tab bar to see the list.</span>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Close</button>
+      <button class="btn btn--primary" onclick="document.querySelector('[data-tab=&quot;aiSetup&quot;]').click(); document.querySelectorAll('[data-modal]').forEach(m=>m.setAttribute('data-open','false')); document.body.style.overflow='';">Open AI Setup</button>
+    </div>
+  </div>
+</div>
+
+<!-- Run Setup (re-open onboarding) -->
+<div class="modal-overlay" data-modal="runSetup" data-open="false">
+  <div class="modal-shell modal-shell--narrow">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Run setup</div>
+        <div class="modal-shell__sub">Re-runs the onboarding flow.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="stub-banner">
+        <span data-icon="info"></span>
+        <span>Re-opens the 7-step onboarding modal with current values pre-filled. Designed in the sibling <code>onboarding-redesign-2026-05-29/</code> mock.</span>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn btn--primary" data-close-modal>Re-run setup</button>
+    </div>
+  </div>
+</div>
+
+<!-- Test providers batch -->
+<div class="modal-overlay" data-modal="testProviders" data-open="false">
+  <div class="modal-shell">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Test providers</div>
+        <div class="modal-shell__sub">Pings each connected provider and reports status.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <ul class="kv-list">
+        <li><span><span data-icon="check" style="color:var(--pk-success);"></span> Anthropic Direct</span><span>200 OK · 12 models · 312 ms</span></li>
+        <li><span><span data-icon="check" style="color:var(--pk-success);"></span> OpenAI</span><span>200 OK · 28 models · 421 ms</span></li>
+        <li><span><span data-icon="check" style="color:var(--pk-success);"></span> Ollama</span><span>200 OK · 4 models · 18 ms</span></li>
+        <li><span><span data-icon="check" style="color:var(--pk-success);"></span> OpenRouter</span><span>200 OK · 312 models · 540 ms</span></li>
+      </ul>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Check Index (jump) -->
+<div class="modal-overlay" data-modal="checkIndex" data-open="false">
+  <div class="modal-shell modal-shell--narrow">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Check index</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="stub-banner">
+        <span data-icon="info"></span>
+        <span>Jumps to <strong>Knowledge Index</strong> → Index readiness panel.</span>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn btn--primary" onclick="document.querySelector('[data-tab=&quot;knowledgeIndex&quot;]').click(); document.querySelectorAll('[data-modal]').forEach(m=>m.setAttribute('data-open','false')); document.body.style.overflow='';">Open Knowledge Index</button>
+    </div>
+  </div>
+</div>
+
+<!-- Prompt Overrides table -->
+<div class="modal-overlay" data-modal="promptOverrides" data-open="false">
+  <div class="modal-shell modal-shell--wide">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title">Per-prompt overrides</div>
+        <div class="modal-shell__sub">Pin specific built-in prompts to a chosen model. Very advanced.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <table style="width:100%; border-collapse: collapse; font-size: 12px;">
+        <thead>
+          <tr style="background: var(--pk-surface-sunken); text-align: left;">
+            <th style="padding: 8px 10px; border-bottom: 1px solid var(--pk-border);">Prompt</th>
+            <th style="padding: 8px 10px; border-bottom: 1px solid var(--pk-border);">Model</th>
+            <th style="padding: 8px 10px; border-bottom: 1px solid var(--pk-border);"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 10px; border-bottom: 1px solid var(--pk-border-soft);" class="mono">vault.routing.classifyQuery</td>
+            <td style="padding: 10px; border-bottom: 1px solid var(--pk-border-soft);" class="mono">claude-haiku-4-5</td>
+            <td style="padding: 10px; border-bottom: 1px solid var(--pk-border-soft); text-align: right;"><button class="btn btn--ghost"><span data-icon="x"></span></button></td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border-bottom: 1px solid var(--pk-border-soft);" class="mono">aiAnalysis.titleSuggestion</td>
+            <td style="padding: 10px; border-bottom: 1px solid var(--pk-border-soft);" class="mono">gpt-5-mini</td>
+            <td style="padding: 10px; border-bottom: 1px solid var(--pk-border-soft); text-align: right;"><button class="btn btn--ghost"><span data-icon="x"></span></button></td>
+          </tr>
+          <tr>
+            <td style="padding: 10px;" class="mono">copilot.draftReply</td>
+            <td style="padding: 10px;" class="mono">claude-sonnet-4-6</td>
+            <td style="padding: 10px; text-align: right;"><button class="btn btn--ghost"><span data-icon="x"></span></button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn"><span data-icon="plus"></span> Add override</button>
+      <button class="btn" data-close-modal>Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Danger confirm -->
+<div class="modal-overlay" data-modal="confirmDanger" data-open="false">
+  <div class="modal-shell modal-shell--narrow">
+    <div class="modal-shell__head">
+      <div>
+        <div class="modal-shell__title" data-stub-title>Confirm destructive action</div>
+        <div class="modal-shell__sub">This cannot be undone.</div>
+      </div>
+      <button class="modal-shell__close" data-close-modal><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-shell__body">
+      <div class="stub-banner" style="background: var(--pk-error-bg); border-color: rgba(196, 61, 61, 0.35); color: var(--pk-error);">
+        <span data-icon="alertOctagon"></span>
+        <span data-stub-body>Are you sure?</span>
+      </div>
+    </div>
+    <div class="modal-shell__footer">
+      <button class="btn" data-close-modal>Cancel</button>
+      <button class="btn btn--danger" data-close-modal>Yes, do it</button>
+    </div>
+  </div>
+</div>
+
+<script src="mock.js"></script>
+</body>
+</html>

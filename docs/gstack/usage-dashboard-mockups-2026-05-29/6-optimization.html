@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1280" />
+	<title>Mock 06 · Usage Optimization</title>
+	<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark">
+	<div id="nav-root"></div>
+
+	<main class="mock-shell">
+		<header class="mock-header">
+			<div>
+				<div class="mock-meta">06 · Action</div>
+				<h1 class="mock-title">Usage Optimization</h1>
+				<div class="mock-sub">
+					<span class="badge badge--ok"><span class="dot"></span>3 changes</span>
+					<span style="margin-left:8px;">can cut projected spend by <span class="strong">24 %</span>.</span>
+				</div>
+			</div>
+			<div class="mock-header__right">
+				<button class="btn btn--sm btn--ghost">Refresh</button>
+			</div>
+		</header>
+
+		<section class="row" style="grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);">
+
+			<!-- Recommendations -->
+			<div class="card card--flush">
+				<div class="card__head">
+					<span class="card__title">Recommended changes</span>
+					<span class="card__sub">Ranked by impact · evaluated against last 30 days</span>
+				</div>
+
+				<div class="rec-list">
+					<!-- Rec 1 -->
+					<div class="rec-block">
+						<div class="rec-block__num">1</div>
+						<div>
+							<div style="display:flex; gap:8px; align-items:center;">
+								<span class="rec-block__title">Route quick asks to Haiku</span>
+								<span class="badge badge--bad">High impact</span>
+							</div>
+							<div class="rec-block__sub">
+								Quick asks are short and frequent. Haiku can answer these accurately in a fraction of the cost.
+							</div>
+							<dl class="rec-block__detail">
+								<div><dt>Affected feature</dt><dd>chat · quick</dd></div>
+								<div><dt>Before</dt><dd>Anthropic · Sonnet 3.7</dd></div>
+								<div><dt>After</dt><dd>Anthropic · Haiku 3.5</dd></div>
+								<div><dt>Quality est.</dt><dd>−2 % win rate</dd></div>
+							</dl>
+						</div>
+						<div class="rec-block__side">
+							<div>
+								<div class="card__sub" style="text-align:right;">Est. monthly saving</div>
+								<div class="rec-block__save">$6.40</div>
+							</div>
+							<button class="btn btn--primary btn--sm">Apply change</button>
+							<button class="btn btn--sm btn--ghost">Preview</button>
+						</div>
+					</div>
+
+					<!-- Rec 2 -->
+					<div class="rec-block">
+						<div class="rec-block__num">2</div>
+						<div>
+							<div style="display:flex; gap:8px; align-items:center;">
+								<span class="rec-block__title">Compact long research sessions earlier</span>
+								<span class="badge badge--warn">Medium impact</span>
+							</div>
+							<div class="rec-block__sub">
+								Lowering compact threshold from 80 % → 70 % reduces token bloat without hurting recall quality.
+							</div>
+							<div style="margin-top:10px;">
+								<div style="display:flex; justify-content:space-between; font-size:11.5px;">
+									<span class="muted">Compact threshold</span>
+									<span class="strong tnum">70 %</span>
+								</div>
+								<div class="pace" style="margin-top:6px; height:6px;"><div class="pace__fill" style="width:70%; background: var(--pk-warning);"></div></div>
+							</div>
+							<dl class="rec-block__detail">
+								<div><dt>Affected feature</dt><dd>agent · research</dd></div>
+								<div><dt>Quality est.</dt><dd>no change</dd></div>
+							</dl>
+						</div>
+						<div class="rec-block__side">
+							<div>
+								<div class="card__sub" style="text-align:right;">Est. monthly saving</div>
+								<div class="rec-block__save">$3.10</div>
+							</div>
+							<button class="btn btn--primary btn--sm">Apply change</button>
+							<button class="btn btn--sm btn--ghost">Preview</button>
+						</div>
+					</div>
+
+					<!-- Rec 3 -->
+					<div class="rec-block">
+						<div class="rec-block__num">3</div>
+						<div>
+							<div style="display:flex; gap:8px; align-items:center;">
+								<span class="rec-block__title">Review no-outcome deep tasks</span>
+								<span class="badge badge--info">Investigate</span>
+							</div>
+							<div class="rec-block__sub">
+								These tasks did not lead to a usable outcome. Consider tightening exit criteria or splitting goals.
+							</div>
+							<table class="tbl" style="margin-top:10px; border-top:1px solid var(--pk-border-soft);">
+								<thead>
+									<tr><th>Started</th><th>Goal</th><th>Model</th><th class="num">Cost</th></tr>
+								</thead>
+								<tbody>
+									<tr>
+										<td class="mono subtle">May 16</td>
+										<td>Summarize Q1 earnings</td>
+										<td>OpenAI · GPT-4.1</td>
+										<td class="num num--bad">$0.83</td>
+									</tr>
+									<tr>
+										<td class="mono subtle">May 14</td>
+										<td>Comparative migration plan</td>
+										<td>Anthropic · Claude 3.7 Sonnet</td>
+										<td class="num num--bad">$0.74</td>
+									</tr>
+									<tr>
+										<td class="mono subtle">May 13</td>
+										<td>Library audit</td>
+										<td>OpenAI · GPT-4.1</td>
+										<td class="num num--bad">$0.53</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+						<div class="rec-block__side">
+							<div>
+								<div class="card__sub" style="text-align:right;">Est. monthly saving</div>
+								<div class="rec-block__save">$2.10</div>
+							</div>
+							<button class="btn btn--sm">Open traces</button>
+							<button class="btn btn--sm btn--ghost">Adjust exit rules</button>
+						</div>
+					</div>
+				</div>
+
+				<div class="card__head" style="border-top:1px solid var(--pk-border-soft); border-bottom:0; padding: 10px 18px;">
+					<div class="savings-dial">
+						<div class="ring ring--warn" aria-label="0% of recommended savings applied">
+							<svg width="44" height="44" viewBox="0 0 44 44">
+								<circle class="ring__track" cx="22" cy="22" r="17" fill="none" stroke-width="4" />
+								<circle class="ring__fill" cx="22" cy="22" r="34" fill="none" stroke-width="4"
+									stroke-dasharray="0 1000" stroke-linecap="round" />
+							</svg>
+							<div class="ring__label">
+								<span class="ring__num">0%</span>
+							</div>
+						</div>
+						<div class="savings-dial__copy">
+							<span class="strong">No changes applied yet</span>
+							<span class="muted">$0 / $11.60 potential monthly savings</span>
+						</div>
+					</div>
+					<a href="4-budget-alerts.html" class="muted" style="font-size:11.5px;">Open budget settings →</a>
+				</div>
+			</div>
+
+			<!-- Right side -->
+			<div class="stack">
+				<div class="card card--pad-lg">
+					<div style="display:flex; justify-content:space-between; align-items:baseline;">
+						<span class="card__title">Projected spend</span>
+						<span class="card__sub">May 1 → 31</span>
+					</div>
+
+					<div style="margin-top:14px;">
+						<div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:0.04em;">Without changes</div>
+						<div class="strong tnum" style="font-size:24px;">$26.80</div>
+					</div>
+
+					<div style="margin-top:10px;">
+						<div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:0.04em;">With recommended changes</div>
+						<div style="display:flex; align-items:baseline; gap:8px;">
+							<div class="strong tnum" style="font-size:24px; color: var(--pk-success);">$20.30</div>
+							<span class="kpi__delta kpi__delta--up tnum">−$6.50 (−24 %)</span>
+						</div>
+					</div>
+
+					<div class="pace" style="margin-top:12px; height:8px;">
+						<div class="pace__fill" style="width:50.75%;"></div>
+						<div class="pace__mark" style="left:67%; background:var(--pk-warning);" title="Without changes (67%)"></div>
+					</div>
+					<div class="pace__legend">
+						<span class="tnum">$20.30</span>
+						<span class="tnum">$26.80</span>
+						<span class="tnum">$40 budget</span>
+					</div>
+				</div>
+
+				<div class="card card--pad-lg">
+					<div style="display:flex; justify-content:space-between; align-items:center;">
+						<span class="card__title">Choose a scenario</span>
+						<a class="muted" href="#" style="font-size:11px;">Compare</a>
+					</div>
+					<div class="stack" style="margin-top:12px; gap:8px;">
+						<div class="scenario">
+							<div>
+								<div class="scenario__name">Conservative</div>
+								<div class="scenario__sub">Apply only #1 · saves $6.40 / mo</div>
+							</div>
+							<div class="scenario__radio"></div>
+						</div>
+						<div class="scenario scenario--active">
+							<div>
+								<div class="scenario__name">Balanced <span class="badge badge--info" style="margin-left:6px;">Recommended</span></div>
+								<div class="scenario__sub">Apply #1 + #2 · saves $9.50 / mo</div>
+							</div>
+							<div class="scenario__radio"></div>
+						</div>
+						<div class="scenario">
+							<div>
+								<div class="scenario__name">Aggressive</div>
+								<div class="scenario__sub">Apply all 3 · saves $11.60 / mo</div>
+							</div>
+							<div class="scenario__radio"></div>
+						</div>
+					</div>
+
+					<div style="display:flex; gap:8px; margin-top:14px;">
+						<button class="btn btn--primary btn--sm" style="flex:1; justify-content:center;">Apply Balanced</button>
+						<button class="btn btn--sm btn--ghost">Customize</button>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section style="margin-top:14px;">
+			<div class="banner banner--info">
+				<span class="banner__icon">i</span>
+				<div>
+					<span class="strong">All recommendations are reversible.</span>
+					<span class="muted">  Applied changes are logged to Budget &amp; Alerts and can be undone with a single click.</span>
+				</div>
+				<a href="4-budget-alerts.html" class="muted right" style="font-size:11.5px;">View change log →</a>
+			</div>
+		</section>
+	</main>
+
+	<script src="partials.js"></script>
+	<script>renderNav('optimization');</script>
+</body>
+</html>

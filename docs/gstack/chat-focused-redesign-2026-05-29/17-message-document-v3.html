@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Message V3 A Document</title>
+<link rel="stylesheet" href="chat-input-message-v3.css">
+</head>
+<body>
+<main class="stage">
+  <section class="message-page">
+    <div class="day">Today</div>
+    <div class="user-note">
+      Find weak spots in this product strategy and cite related notes.
+      <div style="margin-top:8px;text-align:right;color:var(--pk-text-muted);font-size:12px">10:18 AM</div>
+    </div>
+    <article class="answer-turn">
+      <div class="peak-mark">P</div>
+      <div>
+        <div class="turn-meta">
+          <strong>Peak</strong>
+          <span class="tiny-pill">Agent</span>
+          <span>3 tools</span>
+          <span>1.2k tokens</span>
+          <span>8.4s</span>
+        </div>
+        <div class="tool-line">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M8 14a6 6 0 1 1 8 0c-.7.6-1 1.4-1 2H9c0-.6-.3-1.4-1-2Z"/></svg>
+          Searched vault, read 3 notes, checked graph links
+          <span style="color:var(--pk-accent-text)">show trace</span>
+        </div>
+        <div class="doc-body">
+          <p>I analyzed your product strategy notes and connected them with related research. The strongest weak spots are not about vision. They are about trust, onboarding clarity, and operational follow-through.</p>
+          <ul>
+            <li><strong>macOS development environment</strong> is a useful constraint, but the setup docs still assume too much contributor knowledge. Link it to <a>Dev Environment Choices</a>.</li>
+            <li><strong>Automation workspace documentation</strong> is promising, but the workflow examples stop before error handling. Add a recovery example from <a>Automation Playbook</a>.</li>
+            <li><strong>API authentication failures</strong> are becoming user-visible. Treat provider setup as a first-run product surface, not a settings footnote.</li>
+          </ul>
+          <p>These changes should improve onboarding speed and reduce support loops without making the product feel heavier.</p>
+        </div>
+        <div class="quiet-actions">
+          <span class="tiny-pill">openrouter/openai/gpt-5-mini</span>
+          <button>Copy</button>
+          <button>Regenerate</button>
+          <button>Star</button>
+          <button>Branch</button>
+          <button data-primary="true">More</button>
+        </div>
+        <div class="disclosure-row">
+          <span>3 follow-up questions</span>
+          <span>3 suggested actions</span>
+          <span>4 style refinements</span>
+        </div>
+      </div>
+    </article>
+  </section>
+</main>
+</body>
+</html>

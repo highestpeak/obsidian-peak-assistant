@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1280" />
+	<title>Mock 02 · Provider & Model</title>
+	<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark">
+	<div id="nav-root"></div>
+
+	<main class="mock-shell">
+		<header class="mock-header">
+			<div>
+				<div class="mock-meta">02 · Breakdown</div>
+				<h1 class="mock-title">Provider &amp; Model</h1>
+				<div class="mock-sub">Where spend, performance, and outcomes go — by provider and model.</div>
+			</div>
+			<div class="mock-header__right">
+				<div class="seg" role="group" aria-label="Range">
+					<button class="seg__btn" aria-pressed="false">7d</button>
+					<button class="seg__btn" aria-pressed="true">30d</button>
+					<button class="seg__btn" aria-pressed="false">All</button>
+				</div>
+				<button class="btn btn--sm">All features ▾</button>
+			</div>
+		</header>
+
+		<section class="row" style="grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);">
+
+			<!-- Left: table -->
+			<div class="card card--flush">
+				<div class="card__head">
+					<span class="card__title">By provider · model</span>
+					<span class="card__sub">8 models · grouped, sortable</span>
+				</div>
+				<div style="overflow-x:auto;">
+				<table class="tbl" style="min-width:720px;">
+					<thead>
+						<tr>
+							<th>Provider · model</th>
+							<th class="num">Calls</th>
+							<th class="num">Tokens</th>
+							<th class="num">Cost</th>
+							<th class="num">Avg latency</th>
+							<th class="num">Outcome rate</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						<!-- OpenAI -->
+						<tr>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--openai">O</span>
+									<div class="model-cell">
+										<span class="model-name">OpenAI · GPT-4.1</span>
+										<span class="model-meta">gpt-4.1-2025-04-14 · 1M ctx</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">412</td>
+							<td class="num">1.92M</td>
+							<td class="num">$3.20</td>
+							<td class="num">1.4s</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill" style="width:58.1%;"></span></span><span class="tbl-bar__val num--good">58.1%</span></span></td>
+							<td class="num"><button class="btn btn--sm btn--ghost">⋯</button></td>
+						</tr>
+						<tr>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--openai">O</span>
+									<div class="model-cell">
+										<span class="model-name">OpenAI · GPT-4.1 mini</span>
+										<span class="model-meta">gpt-4.1-mini-2025-04-14</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">980</td>
+							<td class="num">4.05M</td>
+							<td class="num">$1.62</td>
+							<td class="num">0.9s</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill" style="width:53.4%;"></span></span><span class="tbl-bar__val num--good">53.4%</span></span></td>
+							<td class="num"><button class="btn btn--sm btn--ghost">⋯</button></td>
+						</tr>
+
+						<!-- Anthropic -->
+						<tr>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<div class="model-cell">
+										<span class="model-name">Anthropic · Claude 3.7 Sonnet</span>
+										<span class="model-meta">claude-3-7-sonnet-2025-02-19</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">2,632</td>
+							<td class="num">18.4M</td>
+							<td class="num num--bad">$8.94</td>
+							<td class="num">1.7s</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill tbl-bar__fill--warn" style="width:46.7%;"></span></span><span class="tbl-bar__val num--warn">46.7%</span></span></td>
+							<td class="num"><button class="btn btn--sm btn--ghost">⋯</button></td>
+						</tr>
+						<tr>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<div class="model-cell">
+										<span class="model-name">Anthropic · Claude 3.5 Haiku</span>
+										<span class="model-meta">claude-3-5-haiku-2024-10-22</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">1,544</td>
+							<td class="num">5.18M</td>
+							<td class="num">$0.92</td>
+							<td class="num">0.8s</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill" style="width:55.2%;"></span></span><span class="tbl-bar__val num--good">55.2%</span></span></td>
+							<td class="num"><button class="btn btn--sm btn--ghost">⋯</button></td>
+						</tr>
+
+						<!-- Google -->
+						<tr>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--google">G</span>
+									<div class="model-cell">
+										<span class="model-name">Google · Gemini 2.5 Pro</span>
+										<span class="model-meta">gemini-2.5-pro-preview-05-06</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">218</td>
+							<td class="num">1.08M</td>
+							<td class="num">$1.34</td>
+							<td class="num">2.1s</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill" style="width:52.8%;"></span></span><span class="tbl-bar__val num--good">52.8%</span></span></td>
+							<td class="num"><button class="btn btn--sm btn--ghost">⋯</button></td>
+						</tr>
+						<tr>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--google">G</span>
+									<div class="model-cell">
+										<span class="model-name">Google · Gemini 2.5 Flash</span>
+										<span class="model-meta">gemini-2.5-flash-preview-05-20</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">1,215</td>
+							<td class="num">3.30M</td>
+							<td class="num">$0.41</td>
+							<td class="num">0.6s</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill" style="width:49.1%;"></span></span><span class="tbl-bar__val num--good">49.1%</span></span></td>
+							<td class="num"><button class="btn btn--sm btn--ghost">⋯</button></td>
+						</tr>
+
+						<!-- OpenRouter -->
+						<tr>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--openrouter">R</span>
+									<div class="model-cell">
+										<span class="model-name">OpenRouter · DeepSeek-R1 0528</span>
+										<span class="model-meta">deepseek/deepseek-r1-0528 (via OpenRouter)</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">186</td>
+							<td class="num">2.21M</td>
+							<td class="num">$0.74</td>
+							<td class="num">3.4s</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill tbl-bar__fill--warn" style="width:41.4%;"></span></span><span class="tbl-bar__val num--warn">41.4%</span></span></td>
+							<td class="num"><button class="btn btn--sm btn--ghost">⋯</button></td>
+						</tr>
+						<tr>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--openrouter">R</span>
+									<div class="model-cell">
+										<span class="model-name">OpenRouter · Llama 3.1 70B Instruct</span>
+										<span class="model-meta">meta-llama/llama-3.1-70b-instruct (via OpenRouter)</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">228</td>
+							<td class="num">1.46M</td>
+							<td class="num">$0.18</td>
+							<td class="num">2.8s</td>
+							<td class="num"><span class="tbl-bar"><span class="tbl-bar__track"><span class="tbl-bar__fill tbl-bar__fill--warn" style="width:38.6%;"></span></span><span class="tbl-bar__val num--warn">38.6%</span></span></td>
+							<td class="num"><button class="btn btn--sm btn--ghost">⋯</button></td>
+						</tr>
+
+						<tr class="row-foot">
+							<td>Total · 8 models</td>
+							<td class="num">7,415</td>
+							<td class="num">37.6M</td>
+							<td class="num">$17.35</td>
+							<td class="num">1.5s avg</td>
+							<td class="num">49.4%</td>
+							<td></td>
+						</tr>
+					</tbody>
+				</table>
+				</div>
+				<div class="card__head" style="border-top:1px solid var(--pk-border-soft); border-bottom:0;">
+					<span class="card__sub">Showing 8 of 8 models · sorted by cost desc</span>
+					<div style="display:flex; gap:6px;">
+						<button class="btn btn--sm">Export CSV</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Right: cost breakdown + model share -->
+			<div class="stack">
+				<div class="card card--pad">
+					<div style="display:flex; justify-content:space-between; align-items:baseline;">
+						<span class="card__title">Cost by provider</span>
+						<span class="card__sub tnum">$17.35 · 30d</span>
+					</div>
+					<div class="hbar-list" style="margin-top:14px;">
+						<div class="hbar">
+							<div class="hbar__label"><span class="brand-av brand-av--sm brand-av--anthropic">A</span>Anthropic</div>
+							<div class="hbar__bar"><div class="hbar__fill" style="width:55.3%; background: var(--pk-prov-anthropic);"></div></div>
+							<div class="hbar__val">$9.86</div>
+							<div class="hbar__pct">55.3%</div>
+						</div>
+						<div class="hbar">
+							<div class="hbar__label"><span class="brand-av brand-av--sm brand-av--openai">O</span>OpenAI</div>
+							<div class="hbar__bar"><div class="hbar__fill" style="width:27.8%; background: var(--pk-prov-openai);"></div></div>
+							<div class="hbar__val">$4.82</div>
+							<div class="hbar__pct">27.8%</div>
+						</div>
+						<div class="hbar">
+							<div class="hbar__label"><span class="brand-av brand-av--sm brand-av--google">G</span>Google</div>
+							<div class="hbar__bar"><div class="hbar__fill" style="width:10.1%; background: var(--pk-prov-google);"></div></div>
+							<div class="hbar__val">$1.75</div>
+							<div class="hbar__pct">10.1%</div>
+						</div>
+						<div class="hbar">
+							<div class="hbar__label"><span class="brand-av brand-av--sm brand-av--openrouter">R</span>OpenRouter</div>
+							<div class="hbar__bar"><div class="hbar__fill" style="width:5.3%; background: var(--pk-prov-openrouter);"></div></div>
+							<div class="hbar__val">$0.92</div>
+							<div class="hbar__pct">5.3%</div>
+						</div>
+						<div class="hbar">
+							<div class="hbar__label"><span class="brand-av brand-av--sm brand-av--perplexity">P</span>Perplexity</div>
+							<div class="hbar__bar"><div class="hbar__fill" style="width:1.5%; background: var(--pk-prov-perplexity);"></div></div>
+							<div class="hbar__val">$0.26</div>
+							<div class="hbar__pct">1.5%</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="card card--pad">
+					<div style="display:flex; justify-content:space-between; align-items:baseline;">
+						<span class="card__title">Model share (by tokens)</span>
+						<span class="card__sub">% of 37.6M</span>
+					</div>
+					<div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+						<div>
+							<div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--pk-text-primary);">
+								<span>Claude 3.7 Sonnet</span>
+								<span class="tnum subtle">48.9%</span>
+							</div>
+							<div class="pace" style="margin-top:4px;"><div class="pace__fill" style="width:48.9%; background:var(--pk-prov-anthropic);"></div></div>
+						</div>
+						<div>
+							<div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--pk-text-primary);">
+								<span>GPT-4.1 mini</span>
+								<span class="tnum subtle">10.8%</span>
+							</div>
+							<div class="pace" style="margin-top:4px;"><div class="pace__fill" style="width:10.8%; background:var(--pk-prov-openai);"></div></div>
+						</div>
+						<div>
+							<div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--pk-text-primary);">
+								<span>Google Gemini 2.5 Flash</span>
+								<span class="tnum subtle">8.8%</span>
+							</div>
+							<div class="pace" style="margin-top:4px;"><div class="pace__fill" style="width:8.8%; background:var(--pk-prov-google);"></div></div>
+						</div>
+						<div>
+							<div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--pk-text-primary);">
+								<span>Claude 3.5 Haiku</span>
+								<span class="tnum subtle">13.8%</span>
+							</div>
+							<div class="pace" style="margin-top:4px;"><div class="pace__fill" style="width:13.8%; background:var(--pk-prov-anthropic);"></div></div>
+						</div>
+						<div>
+							<div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--pk-text-primary);">
+								<span>OpenAI GPT-4.1</span>
+								<span class="tnum subtle">5.1%</span>
+							</div>
+							<div class="pace" style="margin-top:4px;"><div class="pace__fill" style="width:5.1%; background:var(--pk-prov-openai);"></div></div>
+						</div>
+						<div>
+							<div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--pk-text-primary);">
+								<span>DeepSeek-R1 0528 (OpenRouter)</span>
+								<span class="tnum subtle">5.9%</span>
+							</div>
+							<div class="pace" style="margin-top:4px;"><div class="pace__fill" style="width:5.9%; background:var(--pk-prov-openrouter);"></div></div>
+						</div>
+						<div>
+							<div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--pk-text-primary);">
+								<span>Llama 3.1 70B Instruct (OpenRouter)</span>
+								<span class="tnum subtle">3.9%</span>
+							</div>
+							<div class="pace" style="margin-top:4px;"><div class="pace__fill" style="width:3.9%; background:var(--pk-prov-openrouter);"></div></div>
+						</div>
+						<div>
+							<div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--pk-text-primary);">
+								<span>Gemini 2.5 Pro</span>
+								<span class="tnum subtle">2.9%</span>
+							</div>
+							<div class="pace" style="margin-top:4px;"><div class="pace__fill" style="width:2.9%; background:var(--pk-prov-google);"></div></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Footer insight banner with verbs -->
+		<section style="margin-top:14px;">
+			<div class="card card--pad" style="display:flex; justify-content:space-between; gap:18px; align-items:center;">
+				<div style="display:flex; gap:12px; align-items:flex-start;">
+					<span class="badge badge--info">Insight</span>
+					<div>
+						<div class="strong">Claude 3.7 Sonnet handled 35.5 % of calls but drove 51.5 % of cost.</div>
+						<div class="muted" style="font-size:12px; margin-top:3px;">
+							Consider routing simple prompts (≤3 turns, no tools) to Claude 3.5 Haiku or GPT-4.1 mini — projected $4.20/mo savings.
+						</div>
+					</div>
+				</div>
+				<div style="display:flex; gap:8px;">
+					<button class="btn btn--sm btn--primary">Set routing rule</button>
+					<a class="btn btn--sm" href="5-history.html">View traces</a>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<script src="partials.js"></script>
+	<script>renderNav('provider');</script>
+</body>
+</html>

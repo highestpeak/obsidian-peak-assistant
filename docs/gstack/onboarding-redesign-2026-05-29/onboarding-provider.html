@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Step 3 · Add a provider</title>
+<link rel="stylesheet" href="mock.css" />
+</head>
+<body>
+<div class="mock-stage-hint">Step 3 · Term: "Provider" only · saved row + grid + inline form</div>
+<div class="mock-stage">
+  <div class="modal">
+    <div class="modal__progress">
+      <div class="progress">
+        <div class="progress__dots">
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Welcome</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">What Peak<br/>can do</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="active"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Add<br/>Provider</div></div>
+          <div class="progress__connector"></div>
+          <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Choose how<br/>Peak should<br/>work</div></div>
+          <div class="progress__connector"></div>
+          <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Check your<br/>vault index</div></div>
+          <div class="progress__connector"></div>
+          <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">System<br/>check</div></div>
+          <div class="progress__connector"></div>
+          <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Ready<br/>to try</div></div>
+        </div>
+        <div class="progress__title">Step <strong>3 of 7</strong> · Add a provider</div>
+      </div>
+    </div>
+
+    <div class="modal__body col gap-4">
+      <div class="col gap-1">
+        <div class="h2">Add a provider</div>
+        <div class="sub">Connect one AI provider or local runtime. You can add more later.</div>
+      </div>
+
+      <!-- Saved providers -->
+      <div class="col gap-2">
+        <div class="h4 muted" style="font-weight:500;">Saved providers</div>
+        <div class="provider-row">
+          <div class="provider-row__logo"><span data-icon="brandOpenAI"></span></div>
+          <div class="provider-row__body">
+            <div class="provider-row__name">OpenAI</div>
+            <div class="provider-row__status">
+              <span style="display:inline-flex;align-items:center;gap:5px;color:var(--pk-success);">
+                <span style="width:6px;height:6px;border-radius:50%;background:var(--pk-success);display:inline-block;"></span>
+                Connected
+              </span>
+            </div>
+          </div>
+          <div class="provider-row__actions">
+            <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+            <button class="btn btn--secondary btn--sm">Test</button>
+            <button class="btn btn--ghost btn--sm" style="padding:6px 8px;"><span data-icon="more"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Provider grid -->
+      <div class="col gap-2">
+        <div class="h4 muted" style="font-weight:500;">Add a new provider</div>
+        <div class="provider-grid" data-radio-group>
+          <div class="provider-chip" data-radio-card>
+            <div class="provider-chip__badge"><span data-icon="check"></span></div>
+            <div class="provider-chip__logo"><span data-icon="brandAnthropic"></span></div>
+            <div class="provider-chip__name">Anthropic</div>
+          </div>
+          <div class="provider-chip" data-radio-card>
+            <div class="provider-chip__badge"><span data-icon="check"></span></div>
+            <div class="provider-chip__logo"><span data-icon="brandOpenAI"></span></div>
+            <div class="provider-chip__name">OpenAI</div>
+          </div>
+          <div class="provider-chip" data-radio-card>
+            <div class="provider-chip__badge"><span data-icon="check"></span></div>
+            <div class="provider-chip__logo"><span data-icon="brandGoogle"></span></div>
+            <div class="provider-chip__name">Google</div>
+          </div>
+          <div class="provider-chip" data-radio-card data-selected="true">
+            <div class="provider-chip__badge"><span data-icon="check"></span></div>
+            <div class="provider-chip__logo"><span data-icon="brandOpenRouter"></span></div>
+            <div class="provider-chip__name">OpenRouter</div>
+          </div>
+          <div class="provider-chip" data-radio-card>
+            <div class="provider-chip__badge"><span data-icon="check"></span></div>
+            <div class="provider-chip__logo"><span data-icon="brandOllama"></span></div>
+            <div class="provider-chip__name">Ollama</div>
+          </div>
+          <div class="provider-chip" data-radio-card>
+            <div class="provider-chip__badge"><span data-icon="check"></span></div>
+            <div class="provider-chip__logo"><span data-icon="brandPerplexity"></span></div>
+            <div class="provider-chip__name">Perplexity</div>
+          </div>
+          <div class="provider-chip" data-radio-card>
+            <div class="provider-chip__badge"><span data-icon="check"></span></div>
+            <div class="provider-chip__logo"><span data-icon="brandLiteLLM"></span></div>
+            <div class="provider-chip__name">LiteLLM</div>
+          </div>
+          <div class="provider-chip" data-radio-card>
+            <div class="provider-chip__badge"><span data-icon="check"></span></div>
+            <div class="provider-chip__logo"><span data-icon="brandCustom"></span></div>
+            <div class="provider-chip__name">Custom</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inline form (OpenRouter expanded) -->
+      <div class="card">
+        <div class="row gap-3" style="justify-content:space-between;align-items:center;">
+          <div class="row gap-2" style="align-items:center;">
+            <div class="provider-row__logo" style="width:28px;height:28px;"><span data-icon="brandOpenRouter"></span></div>
+            <div class="col">
+              <div class="h4" style="font-weight:600;">OpenRouter</div>
+              <div class="subtle" style="font-size:11px;">Connect to OpenRouter's model marketplace</div>
+            </div>
+          </div>
+          <span data-icon="chevronUp"></span>
+        </div>
+
+        <div class="col gap-3 mt-4">
+          <div class="field">
+            <label class="field__label">API key</label>
+            <div class="input-group">
+              <input type="password" class="input" value="sk-or-v1-•••••••••••••" />
+              <button class="btn btn--secondary btn--sm" title="Show"><span data-icon="eye"></span></button>
+            </div>
+            <div class="field__hint">Your API key is stored locally and never sent anywhere else.</div>
+          </div>
+
+          <div class="field">
+            <label class="field__label">Base URL <span class="muted" style="font-weight:400;">— optional</span></label>
+            <input type="text" class="input" value="https://openrouter.ai/api/v1" />
+            <div class="field__hint">Leave as default unless you self-host or proxy elsewhere.</div>
+          </div>
+
+          <div class="row gap-2" style="color:var(--pk-text-tertiary);font-size:12px;align-items:center;">
+            <span data-icon="info" style="width:14px;height:14px;display:inline-flex;"></span>
+            <span>Test connection before continuing.</span>
+          </div>
+
+          <div class="row gap-2" style="justify-content:flex-end;">
+            <button class="btn btn--secondary">Test</button>
+            <button class="btn btn--primary">Save provider</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal__footer">
+      <button class="btn btn--ghost"><span data-icon="chevronLeft"></span> Back</button>
+      <button class="btn btn--primary">Continue <span data-icon="chevronRight"></span></button>
+    </div>
+  </div>
+</div>
+<script src="mock.js"></script>
+</body>
+</html>

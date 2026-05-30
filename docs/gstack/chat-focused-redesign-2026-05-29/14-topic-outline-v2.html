@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peak Chat Topic Outline V2</title>
+<link rel="stylesheet" href="chat-component-v2.css">
+</head>
+<body>
+<main class="stage">
+  <aside class="outline-panel" aria-label="Conversation topic outline">
+    <header class="outline-head">
+      <div class="outline-title-row">
+        <strong>Conversation Outline</strong>
+        <button class="icon-btn" title="Outline settings">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M2 14h4M10 8h4M18 16h4"/></svg>
+        </button>
+      </div>
+      <div class="outline-summary">4 topics · 11 message entries · grouped by conversation meaning</div>
+      <div class="outline-search">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        Filter topics or messages
+      </div>
+    </header>
+
+    <div class="outline-body">
+      <section class="topic-card" data-active="true">
+        <div class="topic-head">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          <div>
+            <div class="topic-name">Product strategy weak spots</div>
+            <div class="topic-meta">Main active topic · latest answer</div>
+          </div>
+          <span class="topic-count">4</span>
+        </div>
+        <div class="topic-messages">
+          <div class="outline-msg">
+            <span class="role-dot" data-role="user">U</span>
+            <div>
+              <div class="outline-msg-title">Ask for strategy review</div>
+              <div class="outline-msg-preview">Find weak spots in this product strategy and cite related notes.</div>
+            </div>
+            <span class="outline-time">10:18</span>
+          </div>
+          <div class="outline-msg" data-active="true">
+            <span class="role-dot" data-role="assistant">P</span>
+            <div>
+              <div class="outline-msg-title">Trust, onboarding, operational follow-through</div>
+              <div class="outline-msg-preview">The strongest weak spots are not vision, but setup docs, recovery examples, and provider setup.</div>
+            </div>
+            <span class="outline-time">10:19</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="topic-card">
+        <div class="topic-head">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <div>
+            <div class="topic-name">macOS environment</div>
+            <div class="topic-meta">Setup constraints and contributor docs</div>
+          </div>
+          <span class="topic-count">2</span>
+        </div>
+      </section>
+
+      <section class="topic-card">
+        <div class="topic-head">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          <div>
+            <div class="topic-name">API authentication</div>
+            <div class="topic-meta">Errors, setup flow, recovery guidance</div>
+          </div>
+          <span class="topic-count">3</span>
+        </div>
+        <div class="topic-messages">
+          <div class="outline-msg">
+            <span class="role-dot" data-role="assistant">P</span>
+            <div>
+              <div class="outline-msg-title">401 unauthorized surfaced to user</div>
+              <div class="outline-msg-preview">Provider setup is becoming a visible product issue, not just a settings issue.</div>
+            </div>
+            <span class="outline-time">10:21</span>
+          </div>
+          <div class="outline-msg">
+            <span class="role-dot" data-role="user">U</span>
+            <div>
+              <div class="outline-msg-title">Ask for implementation examples</div>
+              <div class="outline-msg-preview">Can you provide Java + React integration code examples?</div>
+            </div>
+            <span class="outline-time">10:24</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="topic-card">
+        <div class="topic-head">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <div>
+            <div class="topic-name">Project organization</div>
+            <div class="topic-meta">Conversation is ready to become a project</div>
+          </div>
+          <span class="topic-count">2</span>
+        </div>
+      </section>
+
+      <div class="label" style="margin:18px 10px 8px">Ungrouped message entries</div>
+      <div class="outline-msg">
+        <span class="role-dot" data-role="user">U</span>
+        <div>
+          <div class="outline-msg-title">Short greeting</div>
+          <div class="outline-msg-preview">hello ha</div>
+        </div>
+        <span class="outline-time">9:55</span>
+      </div>
+    </div>
+
+    <footer class="outline-foot">
+      <span>Click any entry to jump to the message</span>
+      <span style="color:var(--pk-accent-text)">Jump latest</span>
+    </footer>
+  </aside>
+</main>
+</body>
+</html>

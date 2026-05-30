@@ -1,0 +1,1605 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant 核心产品能力架构与 Agent 后端 Review</title>
+  <script src="../../../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --paper: #ffffff;
+      --ink: #17201d;
+      --muted: #64716b;
+      --faint: #8b9690;
+      --line: #ccd6ce;
+      --soft: #e7ece7;
+      --green: #2e6f50;
+      --teal: #2f7775;
+      --blue: #315f86;
+      --violet: #63598f;
+      --amber: #8a6831;
+      --red: #9b433e;
+      --mint: #eef7f1;
+      --sky: #eef5fb;
+      --cream: #fbf7ee;
+      --rose: #fff2f1;
+      --shadow: 0 18px 54px rgba(26, 42, 34, 0.08);
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 0%, rgba(49, 95, 134, 0.09), transparent 34%),
+        linear-gradient(180deg, rgba(46, 111, 80, 0.06), transparent 320px),
+        var(--bg);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      color: #22332d;
+      background: #eef3ef;
+      border: 1px solid #d9e2dc;
+      border-radius: 5px;
+      padding: 1px 5px;
+    }
+    pre { overflow: auto; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 284px minmax(0, 1fr);
+      gap: 28px;
+      max-width: 1460px;
+      margin: 0 auto;
+      padding: 28px 28px 70px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      backdrop-filter: blur(14px);
+    }
+    .toc-title {
+      display: block;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .toc a {
+      display: block;
+      color: var(--ink);
+      font-size: 13px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(204, 214, 206, 0.7);
+    }
+    .toc a:last-child { border-bottom: 0; }
+
+    main { min-width: 0; }
+    .hero, section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+    .hero {
+      padding: 36px;
+      margin-bottom: 24px;
+    }
+    section {
+      padding: 28px;
+      margin: 22px 0;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--green);
+      border: 1px solid rgba(46, 111, 80, 0.23);
+      border-radius: 999px;
+      background: rgba(46, 111, 80, 0.07);
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      font-size: clamp(31px, 4.2vw, 54px);
+      line-height: 1.12;
+      letter-spacing: 0;
+      margin: 18px 0 14px;
+      max-width: 1040px;
+    }
+    h2 {
+      font-size: 25px;
+      line-height: 1.28;
+      letter-spacing: 0;
+      margin: 0 0 14px;
+    }
+    h3 {
+      font-size: 18px;
+      line-height: 1.36;
+      letter-spacing: 0;
+      margin: 24px 0 10px;
+    }
+    p { margin: 10px 0; }
+    ul, ol { padding-left: 21px; }
+    li { margin: 6px 0; }
+
+    .lead {
+      max-width: 1050px;
+      color: var(--muted);
+      font-size: 17px;
+      margin: 0;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      color: var(--muted);
+      background: #f9fbf9;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+    .section-kicker {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .muted { color: var(--muted); }
+    .faint { color: var(--faint); }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      border: 1px solid var(--soft);
+      border-radius: 9px;
+      background: #fbfcfb;
+      padding: 16px;
+    }
+    .card strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+    .card.mint { background: var(--mint); border-color: #cfe0d4; }
+    .card.sky { background: var(--sky); border-color: #ccdceb; }
+    .card.cream { background: var(--cream); border-color: #e5d8bd; }
+    .card.rose { background: var(--rose); border-color: #e6c9c6; }
+    .metric {
+      display: block;
+      font-size: 28px;
+      line-height: 1.1;
+      font-weight: 780;
+      color: var(--green);
+      margin-bottom: 6px;
+    }
+
+    .callout {
+      border-left: 4px solid var(--green);
+      border-radius: 9px;
+      background: var(--mint);
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+    .callout.warning { border-color: var(--amber); background: var(--cream); }
+    .callout.problem { border-color: var(--red); background: var(--rose); }
+    .callout.blue { border-color: var(--blue); background: var(--sky); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 11px 10px;
+      border-bottom: 1px solid var(--soft);
+    }
+    th {
+      color: #30403a;
+      background: #f2f5f2;
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .priority {
+      display: inline-flex;
+      justify-content: center;
+      min-width: 34px;
+      border-radius: 999px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 760;
+      padding: 2px 8px;
+    }
+    .p0 { background: var(--red); }
+    .p1 { background: var(--amber); }
+    .p2 { background: var(--blue); }
+    .p3 { background: var(--teal); }
+
+    .mermaid-wrap {
+      border: 1px solid var(--soft);
+      border-radius: 10px;
+      background: #fbfcfb;
+      padding: 18px;
+      margin: 18px 0;
+      overflow-x: auto;
+    }
+    .mermaid { min-width: 780px; }
+    .mermaid.small { min-width: 600px; }
+    .caption {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .capability-map {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .capability {
+      border: 1px solid var(--soft);
+      border-radius: 10px;
+      padding: 15px;
+      background: #fbfcfb;
+      min-height: 142px;
+    }
+    .capability .label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .capability .label strong { font-size: 16px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: #fff;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+    .chip.ask { background: var(--blue); }
+    .chip.find { background: var(--teal); }
+    .chip.change { background: var(--red); }
+    .chip.cost { background: var(--amber); }
+    .chip.safe { background: var(--green); }
+    .chip.beta { background: var(--violet); }
+
+    .stack {
+      display: grid;
+      grid-template-columns: 1.25fr 0.85fr;
+      gap: 18px;
+      align-items: stretch;
+      margin: 18px 0;
+    }
+    .prompt-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border: 1px solid var(--soft);
+      border-radius: 12px;
+      background: #fbfcfb;
+      padding: 14px;
+    }
+    .layer {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr) 92px;
+      gap: 12px;
+      align-items: center;
+      border-radius: 8px;
+      border: 1px solid rgba(204, 214, 206, 0.9);
+      padding: 10px 12px;
+      background: #fff;
+    }
+    .layer.required { border-color: rgba(46, 111, 80, 0.34); background: #f7fbf8; }
+    .layer.compress { border-color: rgba(138, 104, 49, 0.32); background: #fffaf0; }
+    .layer.optional { border-color: rgba(49, 95, 134, 0.28); background: #f7fbff; }
+    .layer .name { font-weight: 760; }
+    .layer .budget { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; }
+    .budget-panel {
+      border: 1px solid var(--soft);
+      border-radius: 12px;
+      padding: 14px;
+      background: #fbfcfb;
+    }
+    .budget-bar {
+      height: 18px;
+      border-radius: 999px;
+      overflow: hidden;
+      display: flex;
+      border: 1px solid #d9e2dc;
+      margin: 12px 0;
+    }
+    .budget-bar span:nth-child(1) { background: var(--green); width: 52%; }
+    .budget-bar span:nth-child(2) { background: var(--amber); width: 30%; }
+    .budget-bar span:nth-child(3) { background: var(--red); width: 18%; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend i {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 4px;
+    }
+
+    .layer-model {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .band {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr) 230px;
+      gap: 14px;
+      align-items: start;
+      border: 1px solid var(--soft);
+      border-radius: 10px;
+      padding: 14px;
+      background: #fbfcfb;
+    }
+    .band.core { border-left: 5px solid var(--green); }
+    .band.service { border-left: 5px solid var(--blue); }
+    .band.ui { border-left: 5px solid var(--violet); }
+    .band.app { border-left: 5px solid var(--amber); }
+    .band strong { font-size: 16px; }
+
+    .manifest-card {
+      border: 1px solid #d7dfd9;
+      border-radius: 10px;
+      background: #101814;
+      color: #e9f2ec;
+      padding: 16px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.62;
+      overflow-x: auto;
+    }
+    .manifest-card .k { color: #91d3ab; }
+    .manifest-card .s { color: #a7c7e7; }
+    .manifest-card .c { color: #d9bd7a; }
+
+    .matrix td:first-child,
+    .matrix th:first-child { width: 190px; }
+    .status-ok { color: var(--green); font-weight: 760; }
+    .status-warn { color: var(--amber); font-weight: 760; }
+    .status-no { color: var(--red); font-weight: 760; }
+
+    .evidence-list {
+      columns: 2;
+      column-gap: 28px;
+      font-size: 13px;
+    }
+    .evidence-list li { break-inside: avoid; }
+
+    @media (max-width: 1060px) {
+      .layout { grid-template-columns: 1fr; padding: 18px; }
+      .toc { position: relative; top: auto; }
+      .grid.two, .grid.three, .grid.four, .split, .stack, .capability-map, .band, .layer {
+        grid-template-columns: 1fr;
+      }
+      .layer .budget { text-align: left; }
+      .hero, section { padding: 22px; }
+      .evidence-list { columns: 1; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .layout { display: block; max-width: none; }
+      .toc { display: none; }
+      .hero, section { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc">
+      <span class="toc-title">目录</span>
+      <a href="#summary">0. 这版报告改了什么</a>
+      <a href="#primer">1. 给技术人的项目导览</a>
+      <a href="#diagnosis">2. 最核心判断</a>
+      <a href="#diagram">3. 图应该怎么画</a>
+      <a href="#capability">4. 产品能力模型</a>
+      <a href="#chat">5. General Chat 设计</a>
+      <a href="#context">6. Prompt / Context 堆叠</a>
+      <a href="#manifest">7. 能力说明书</a>
+      <a href="#copilot">8. Copilot / Auto Review</a>
+      <a href="#harness">9. HermesAgent / Harness</a>
+      <a href="#layers">10. 分层与 AppContext</a>
+      <a href="#roadmap">11. 重构路线</a>
+      <a href="#evidence">12. 代码证据</a>
+    </aside>
+
+    <main>
+      <header class="hero">
+        <span class="eyebrow">Revised report · 2026-05-30</span>
+        <h1>Peak Assistant 核心产品能力架构与 Agent 后端 Review</h1>
+        <p class="lead">
+          这份报告面向一个“懂后端、懂 agent，但第一次读 Peak Assistant 代码”的技术人。
+          它先解释这个 Obsidian 插件到底由哪些服务组成，再把 Chat、Search、AI Analysis、Copilot、Knowledge、Ambient 看成一组可调度的产品能力；
+          HermesAgent / Harness 则是为了用 DeepSeek、OpenRouter、Ollama 等低成本模型承接这些能力的自研 agent runtime。
+        </p>
+        <div class="meta-row">
+          <span class="tag">读者: 有经验但不熟本项目</span>
+          <span class="tag">核心: 能力模型 + 后端边界</span>
+          <span class="tag">图形: sequence / state / class / stack / matrix</span>
+          <span class="tag">未修改 production src</span>
+        </div>
+      </header>
+
+      <section id="summary">
+        <div class="section-kicker">Revision</div>
+        <h2>0. 这版报告改了什么</h2>
+        <div class="grid four">
+          <div class="card mint">
+            <span class="metric">1</span>
+            <strong>Chat 不再是模式选择器</strong>
+            <span class="muted">用户面应该只有一个 General Chat，内部自己判断要不要查、分析、改文档、计划或追问。</span>
+          </div>
+          <div class="card sky">
+            <span class="metric">2</span>
+            <strong>能力先于入口</strong>
+            <span class="muted">Chat、Copilot、AI Analysis 不应该各维护一套能力入口；应共用能力说明书。</span>
+          </div>
+          <div class="card cream">
+            <span class="metric">3</span>
+            <strong>Harness 是主线，不是旁支</strong>
+            <span class="muted">它的意义就是摆脱昂贵 SDK 后端，用便宜模型跑 vault 和 copilot agent。</span>
+          </div>
+          <div class="card rose">
+            <span class="metric">4</span>
+            <strong>分层边界必须硬起来</strong>
+            <span class="muted">保留 AppContext，但不能让 service 反向抓 UI、core 被 service 污染、模块横向乱穿。</span>
+          </div>
+        </div>
+
+        <div class="callout">
+          <strong>一句话版本：</strong>
+          Peak Assistant 应该从“多个 UI 入口各自长出 agent 能力”，重构成“统一能力目录 + 统一运行会话 + 可替换 agent 后端”。Chat 是入口，不是模式；Copilot 是能力集合，不是孤岛；HermesAgent/Harness 是成本和模型自由度的核心工程投资。
+        </div>
+      </section>
+
+      <section id="primer">
+        <div class="section-kicker">Project primer</div>
+        <h2>1. 给技术人的项目导览：Peak Assistant 到底是什么</h2>
+        <p>
+          如果用一个后端工程师熟悉的方式说，Peak Assistant 是一个跑在 Obsidian 里的“个人知识库 agent 系统”。
+          Obsidian 提供文件系统、编辑器、workspace、metadata cache；Peak Assistant 在上面加了搜索索引、LLM provider、agent runtime、React UI 和一组面向知识工作的产品能力。
+        </p>
+
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart TB
+  subgraph Host["Obsidian 宿主"]
+    Vault["Vault<br/>markdown files"]
+    Editor["Editor / Workspace"]
+    Metadata["Metadata Cache<br/>links / tags / headings"]
+  end
+
+  subgraph Peak["Peak Assistant 插件"]
+    AppLayer["app<br/>commands / views / lifecycle / AppContext"]
+    ServiceLayer["service<br/>chat / search / agents / copilot / ambient"]
+    CoreLayer["core<br/>providers / schemas / storage / document loaders"]
+    UiLayer["ui<br/>React views / stores / components"]
+  end
+
+  subgraph Data["本地数据"]
+    VaultSqlite["vault.sqlite<br/>search / graph / embeddings"]
+    ChatSqlite["chat.sqlite<br/>conversation / usage / agent memory"]
+    HistoryMd["Vault markdown artifacts<br/>reports / histories / summaries"]
+  end
+
+  subgraph Models["模型和 agent 后端"]
+    Providers["OpenAI / Anthropic / Google / OpenRouter / Ollama"]
+    ClaudeSDK["Claude Agent SDK<br/>current heavy agent backend"]
+    Harness["HermesAgent / Harness<br/>self-hosted agent runtime"]
+  end
+
+  Host --> Peak
+  AppLayer --> ServiceLayer
+  ServiceLayer --> CoreLayer
+  UiLayer --> ServiceLayer
+  CoreLayer --> Data
+  ServiceLayer --> Providers
+  ServiceLayer --> ClaudeSDK
+  ServiceLayer --> Harness
+          </pre>
+        </div>
+
+        <h3>用你熟悉的工程类比</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Peak 里的词</th>
+              <th>可以怎么理解</th>
+              <th>它不是</th>
+              <th>为什么重要</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Vault</td>
+              <td>一个本地 markdown 文档库，相当于用户私有知识数据库。</td>
+              <td>不是远程 SaaS 数据库。</td>
+              <td>所有搜索、分析、copilot 都围绕 vault 文件和 metadata 发生。</td>
+            </tr>
+            <tr>
+              <td>Chat</td>
+              <td>用户和系统持续交互的主入口，类似一个带上下文的 agent console。</td>
+              <td>不应该只是普通 LLM chat，也不应该让用户选很多模式。</td>
+              <td>最终应该自动调度 Search、Copilot、Analysis 等能力。</td>
+            </tr>
+            <tr>
+              <td>General Search</td>
+              <td>本地检索服务，像内部 search service：FTS、vector、RRF、PPR、rerank。</td>
+              <td>不是 UI 搜索框本身。</td>
+              <td>它是 Chat、AI Analysis、Copilot、Ambient 的共同地基。</td>
+            </tr>
+            <tr>
+              <td>AI Analysis</td>
+              <td>长任务调查系统：先搜、再读、再生成 plan/report/graph。</td>
+              <td>不是一条普通 assistant 回复。</td>
+              <td>它需要 session、后台运行、HITL、报告持久化。</td>
+            </tr>
+            <tr>
+              <td>Copilot</td>
+              <td>围绕当前文档或整个 vault 的操作能力集合，比如审阅、补链接、提出改动。</td>
+              <td>不是一个单独聊天机器人。</td>
+              <td>它应该被 Chat 和 UI picker 共同调用，而不是孤立入口。</td>
+            </tr>
+            <tr>
+              <td>Knowledge</td>
+              <td>vault 级结构治理：hub、cluster、结构洞、orphan、重复、stale notes。</td>
+              <td>不是单篇文档工具。</td>
+              <td>它应该进入 Knowledge Center / Vault Review，而不是散在菜单里。</td>
+            </tr>
+            <tr>
+              <td>Ambient</td>
+              <td>被动信号层：写作停顿、切文件时推相关笔记或轻提示。</td>
+              <td>不是主导航里的大功能。</td>
+              <td>它应该给 Chat/Knowledge/Dashboard 提供上下文信号。</td>
+            </tr>
+            <tr>
+              <td>AppContext</td>
+              <td>插件的 composition root / service locator，负责把 Obsidian app、settings、services 串起来。</td>
+              <td>不应该变成任何层随便穿透拿任何对象的后门。</td>
+              <td>可以保留，但要收紧成稳定 ports 和 registries。</td>
+            </tr>
+            <tr>
+              <td>HermesAgent / Harness</td>
+              <td>自研 agent runtime：模型 tier、tool calling、permission、hooks、memory、context compaction。</td>
+              <td>不是 Claude Agent SDK 的小 wrapper。</td>
+              <td>它是降低 agent 成本、接 DeepSeek/Ollama/OpenRouter 的核心后端。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>读代码时先抓这四条主链路</h3>
+        <div class="grid four">
+          <div class="card">
+            <strong>Chat 链路</strong>
+            <p class="muted">输入消息 → 保存 conversation → 组装 context → 选模型/工具 → stream 回复。</p>
+            <code>ui/view/chat-view</code><br/>
+            <code>service/chat</code>
+          </div>
+          <div class="card">
+            <strong>Search / Analysis 链路</strong>
+            <p class="muted">搜索 query → 检索和排序 → agent 调查 → plan/report/graph。</p>
+            <code>service/search</code><br/>
+            <code>service/agents</code>
+          </div>
+          <div class="card">
+            <strong>Copilot 链路</strong>
+            <p class="muted">当前文档上下文 → action / auto review → structured artifacts → 用户确认应用。</p>
+            <code>service/copilot</code><br/>
+            <code>ui/view/copilot</code>
+          </div>
+          <div class="card">
+            <strong>Agent 后端链路</strong>
+            <p class="muted">Claude SDK 或 Harness 执行多轮工具调用，最终统一成 UI 可消费事件。</p>
+            <code>service/agents/core</code><br/>
+            <code>service/agents/harness</code>
+          </div>
+        </div>
+
+        <div class="callout blue">
+          <strong>后面所有架构建议都围绕这件事：</strong>
+          把这些主链路里的“能力”从具体 UI 和具体后端里拆出来，让一个懂权限、成本、上下文和后端支持情况的调度层来决定怎么执行。
+        </div>
+      </section>
+
+      <section id="diagnosis">
+        <div class="section-kicker">Core diagnosis</div>
+        <h2>2. 最核心判断：问题不是能力少，而是能力没有被建模</h2>
+        <p>
+          现在代码里能力很多：Chat 能上下文对话，Search 有 hybrid + PPR，AI Analysis 能做 vaultFull 报告，Copilot 有二十多个 action，Auto Review 有 structured propose 工具，Harness 也已经有 loop、tier、permission、subagent、memory。
+          但这些能力没有被一个统一的产品模型组织起来。
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>现在的形态</th>
+              <th>用户感受</th>
+              <th>工程后果</th>
+              <th>应该变成</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Chat 有 <code>chat / agent / plan</code> 模式</td>
+              <td>用户要猜该选哪个模式</td>
+              <td><code>ConversationService</code> 反向读 UI store</td>
+              <td>General Chat + 内部 execution planner</td>
+            </tr>
+            <tr>
+              <td>Copilot actions 自己注册、自己执行</td>
+              <td>像另一个产品入口</td>
+              <td>Chat 不知道 Copilot 能力存在</td>
+              <td>能力说明书，被 Chat / Copilot / Command 共用</td>
+            </tr>
+            <tr>
+              <td>AI Analysis session 长在 React hook</td>
+              <td>分析和报告很强，但运行状态复杂</td>
+              <td>后台、恢复、持久化、错误处理难复用</td>
+              <td>统一 <code>RunSession</code> 模型</td>
+            </tr>
+            <tr>
+              <td>VaultFull 和 Auto Review 依赖 Claude Agent SDK MCP</td>
+              <td>功能强但贵</td>
+              <td>Harness backend 不能完整替代</td>
+              <td>MCP 工具后端中立化，Harness 也能跑</td>
+            </tr>
+            <tr>
+              <td>AppContext 可拿到很多东西</td>
+              <td>开发快</td>
+              <td>边界不受控，服务之间互相穿透</td>
+              <td>AppContext 作为 composition root，只暴露稳定 ports</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout warning">
+          <strong>类型守门不是第一原则。</strong>
+          类型检查有必要，但它是边界设计后的守门员，不是架构本身。第一步应该先决定：core/service/ui/app/context/capability/harness 各自负责什么，哪些方向的依赖被允许，哪些必须禁止。
+        </div>
+      </section>
+
+      <section id="diagram">
+        <div class="section-kicker">Diagram language</div>
+        <h2>3. 这些图应该怎么画</h2>
+        <p>
+          上一版全是 flowchart，这不合理。代码执行路径可以用 flowchart，但产品能力、prompt 注入、状态机、依赖边界都需要不同图形。这里把后续报告的画图规则也定下来。
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>要表达的东西</th>
+              <th>适合图形</th>
+              <th>为什么</th>
+              <th>本报告位置</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>用户怎么理解产品</td>
+              <td>Journey / capability map</td>
+              <td>它不是代码流，而是心智路径。</td>
+              <td>产品能力模型</td>
+            </tr>
+            <tr>
+              <td>Chat 一条消息如何被处理</td>
+              <td>Sequence diagram</td>
+              <td>核心是 UI、planner、session、backend 的时序协作。</td>
+              <td>General Chat 设计</td>
+            </tr>
+            <tr>
+              <td>Prompt / context 注入</td>
+              <td>堆叠图 + budget 漏斗</td>
+              <td>它是层层组装和压缩，不是线性流程。</td>
+              <td>Prompt / Context 堆叠</td>
+            </tr>
+            <tr>
+              <td>Capability Manifest</td>
+              <td>Class diagram + 示例卡片</td>
+              <td>要解释字段和约束，不是执行顺序。</td>
+              <td>能力说明书</td>
+            </tr>
+            <tr>
+              <td>Copilot Auto Review</td>
+              <td>State machine</td>
+              <td>它有运行、提出 artifacts、继续下一轮、完成、取消、错误等状态。</td>
+              <td>Copilot / Auto Review</td>
+            </tr>
+            <tr>
+              <td>Harness 后端</td>
+              <td>组件图 + capability matrix</td>
+              <td>要说明哪些能力现在能跑、哪些需要 adapter。</td>
+              <td>HermesAgent / Harness</td>
+            </tr>
+            <tr>
+              <td>分层和反向依赖</td>
+              <td>Layer boundary map</td>
+              <td>要展示允许依赖方向和禁止穿透。</td>
+              <td>分层与 AppContext</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+journey
+  title Peak Assistant 用户心智不是模式选择，而是任务意图
+  section Ask
+    提问或继续对话: 5: User
+    系统自动选择上下文: 4: Peak
+  section Find
+    查 vault 或网页: 5: User
+    显示来源和证据: 4: Peak
+  section Analyze
+    需要深度报告: 3: User
+    提示成本和范围: 4: Peak
+  section Improve
+    修改当前笔记: 4: User
+    先提出变更再确认应用: 5: Peak
+  section Maintain
+    维护整个知识库: 3: User
+    进入 Knowledge Review: 4: Peak
+          </pre>
+        </div>
+      </section>
+
+      <section id="capability">
+        <div class="section-kicker">Product capability architecture</div>
+        <h2>4. 产品能力模型：先定义“系统会做什么”</h2>
+        <p>
+          用户真正关心的不是入口名，而是系统能做什么。下面这些能力应该是一等对象；UI 只是把它们以不同方式呈现出来。
+        </p>
+
+        <div class="capability-map">
+          <div class="capability">
+            <div class="label"><strong>Answer</strong><span class="chip safe">auto</span></div>
+            <p>普通回答、解释当前上下文、继续对话。默认低风险，可以自动执行。</p>
+            <code>chat.answer</code>
+          </div>
+          <div class="capability">
+            <div class="label"><strong>Search Vault</strong><span class="chip safe">auto read</span></div>
+            <p>搜索 vault、读取相关笔记、引用来源。只读能力，可以由 Chat 自动触发。</p>
+            <code>vault.search</code>
+          </div>
+          <div class="capability">
+            <div class="label"><strong>Search Web</strong><span class="chip ask">policy</span></div>
+            <p>外部 web 搜索。可以自动或半自动，但需要受 provider、隐私、预算控制。</p>
+            <code>web.search</code>
+          </div>
+          <div class="capability">
+            <div class="label"><strong>Analyze Vault</strong><span class="chip cost">cost gate</span></div>
+            <p>全库调查、计划、报告、AI Graph。高成本，应提示范围和成本。</p>
+            <code>analysis.vaultFull</code>
+          </div>
+          <div class="capability">
+            <div class="label"><strong>Review Current Note</strong><span class="chip safe">read</span></div>
+            <p>审阅当前笔记，提出 insights、sources、changes。提出建议可以自动，应用必须确认。</p>
+            <code>doc.review</code>
+          </div>
+          <div class="capability">
+            <div class="label"><strong>Apply Changes</strong><span class="chip change">confirm</span></div>
+            <p>修改 vault 文件、应用 Copilot diff、创建/移动/合并笔记。必须显式确认。</p>
+            <code>doc.applyChange</code>
+          </div>
+          <div class="capability">
+            <div class="label"><strong>Knowledge Health</strong><span class="chip ask">review</span></div>
+            <p>结构洞、hub、orphan、重复、stale notes、cluster 观察。应归入 Knowledge Center。</p>
+            <code>knowledge.review</code>
+          </div>
+          <div class="capability">
+            <div class="label"><strong>Ambient Suggest</strong><span class="chip beta">ambient</span></div>
+            <p>写作时自动推相关笔记、早报、轻提示。不占主导航，是横切信号层。</p>
+            <code>ambient.suggest</code>
+          </div>
+          <div class="capability">
+            <div class="label"><strong>System Readiness</strong><span class="chip ask">control</span></div>
+            <p>provider、index、native module、harness backend、usage cost 的控制面。</p>
+            <code>system.readiness</code>
+          </div>
+        </div>
+
+        <div class="callout blue">
+          <strong>设计原则：</strong>
+          UI 不应该决定能力边界。Chat、Copilot、Command Palette、Knowledge Center 都只是 surfaces；真正的能力应该有统一 id、输入、输出、权限、成本、后端支持和验证规则。
+        </div>
+      </section>
+
+      <section id="chat">
+        <div class="section-kicker">General Chat</div>
+        <h2>5. Chat 应该取消用户面模式，改成 General Chat</h2>
+        <p>
+          我同意你的判断：不要再让用户选择 <code>Chat / Agent / Plan</code>。用户只是在问助手；系统应该自己决定是普通回答、查 vault、跑轻量 Copilot、生成 plan、还是提示需要启动高成本分析。
+          但内部仍然要有 execution policy，不能让模型无限自由调用。
+        </p>
+
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant User
+  participant ChatUI as General Chat UI
+  participant Planner as Execution Planner
+  participant Registry as Capability Registry
+  participant Session as RunSession
+  participant Context as Context Stack
+  participant Backend as Harness or SDK
+  participant Review as Confirm / Review UI
+
+  User->>ChatUI: 输入一句话
+  ChatUI->>Planner: message + active file + vault state
+  Planner->>Registry: 找可用能力和限制
+  Registry-->>Planner: allowed capabilities + policy
+  Planner->>Session: create execution plan
+  Session->>Context: assemble prompt stack
+  alt 低风险只读能力
+    Session->>Backend: run automatically
+  else 高成本或写入能力
+    Session->>Review: ask user confirmation
+    Review-->>Session: approve / cancel / adjust
+    Session->>Backend: run with approval
+  end
+  Backend-->>Session: stream events / artifacts
+  Session-->>ChatUI: answer + sources + actions
+          </pre>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>用户面</th>
+              <th>内部可以有</th>
+              <th>展示方式</th>
+              <th>限制</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>一个 Chat 输入框</td>
+              <td><code>intent = answer</code></td>
+              <td>直接回答</td>
+              <td>不调用工具或只用已有上下文。</td>
+            </tr>
+            <tr>
+              <td>还是同一个 Chat</td>
+              <td><code>intent = search-vault</code></td>
+              <td>显示 “Using vault search” 和 sources</td>
+              <td>只读，允许自动。</td>
+            </tr>
+            <tr>
+              <td>还是同一个 Chat</td>
+              <td><code>intent = doc-review</code></td>
+              <td>生成 Review artifacts</td>
+              <td>提出修改可以自动，应用修改必须确认。</td>
+            </tr>
+            <tr>
+              <td>还是同一个 Chat</td>
+              <td><code>intent = full-vault-analysis</code></td>
+              <td>转入 AI Analysis / report run</td>
+              <td>高成本，先提示 scope、backend、预算。</td>
+            </tr>
+            <tr>
+              <td>还是同一个 Chat</td>
+              <td><code>intent = plan</code></td>
+              <td>以计划形式输出</td>
+              <td>不需要用户手动切 Plan mode。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout problem">
+          <strong>当前代码里的具体问题：</strong>
+          <code>ConversationService.streamChat</code> 从 <code>useChatViewStore.getState().chatMode</code> 读取运行模式，这是典型 service 反向依赖 UI。重构目标不是“把模式变量搬个地方”，而是删除用户面模式，让 Chat run 自己生成 execution plan。
+        </div>
+      </section>
+
+      <section id="context">
+        <div class="section-kicker">Prompt stack</div>
+        <h2>6. Prompt / Context 应画成堆叠图，不是流程图</h2>
+        <p>
+          Chat context 的本质是“把不同来源的上下文按优先级堆进 prompt，再按 token budget 压缩”。这应该用堆叠图和预算图表达。
+        </p>
+
+        <div class="stack">
+          <div class="prompt-stack">
+            <div class="layer required">
+              <span class="name">System Prompt</span>
+              <span>身份、边界、当前 execution policy、允许能力。</span>
+              <span class="budget">required</span>
+            </div>
+            <div class="layer optional">
+              <span class="name">User Profile</span>
+              <span>用户长期偏好、写作风格、工作流规则。</span>
+              <span class="budget">small</span>
+            </div>
+            <div class="layer required">
+              <span class="name">Recent Messages</span>
+              <span>最近对话、用户当前问题、assistant 最近回复。</span>
+              <span class="budget">large</span>
+            </div>
+            <div class="layer compress">
+              <span class="name">Conversation Summary</span>
+              <span>长对话压缩摘要，用于替代被丢弃的中间消息。</span>
+              <span class="budget">compress</span>
+            </div>
+            <div class="layer optional">
+              <span class="name">Current File</span>
+              <span>当前 Obsidian note、selection、frontmatter、links。</span>
+              <span class="budget">policy</span>
+            </div>
+            <div class="layer optional">
+              <span class="name">Resources</span>
+              <span>附件、资源摘要、direct attachment 内容。</span>
+              <span class="budget">policy</span>
+            </div>
+            <div class="layer compress">
+              <span class="name">Vault Intuition</span>
+              <span>folder intuition、knowledge_intuition_json、hub / graph 信号。</span>
+              <span class="budget">compress</span>
+            </div>
+            <div class="layer optional">
+              <span class="name">Previous Analysis</span>
+              <span>最近 AI Analysis / report / graph 结果。</span>
+              <span class="budget">optional</span>
+            </div>
+            <div class="layer optional">
+              <span class="name">Ambient Signals</span>
+              <span>相关笔记、写作上下文、近期被推送/点击的信号。</span>
+              <span class="budget">future</span>
+            </div>
+          </div>
+
+          <div class="budget-panel">
+            <strong>Budget Governor 应该回答三个问题</strong>
+            <p class="muted">不是所有 context 都等价。系统需要先保 required，再压缩 compressible，最后丢 optional。</p>
+            <div class="budget-bar"><span></span><span></span><span></span></div>
+            <div class="legend">
+              <span><i style="background:var(--green)"></i>保留</span>
+              <span><i style="background:var(--amber)"></i>压缩</span>
+              <span><i style="background:var(--red)"></i>丢弃</span>
+            </div>
+            <h3>这块的设计结论</h3>
+            <ul>
+              <li><code>ContextPipeline</code> 是正确方向。</li>
+              <li>旧 <code>ContextBuilder</code> fallback 应该收口删除。</li>
+              <li>direct attachment / resource summary 的语义必须补齐测试。</li>
+              <li>slot 不应该直接抓 UI store；应从 ChatRunContext 读 execution policy。</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="callout warning">
+          <strong>具体改法：</strong>
+          先不要大改 prompt 内容。第一步是把 <code>ChatProfile</code> 和 slots 变成稳定 contract：每个 slot 声明来源、预算、是否可压缩、依赖哪个 port。然后补 fixture 测试，确保 direct attachment、current file、recent messages 不会在新旧路径里漂移。
+        </div>
+      </section>
+
+      <section id="manifest">
+        <div class="section-kicker">Capability manifest</div>
+        <h2>7. “Capability Manifest” 用中文说就是能力说明书</h2>
+        <p>
+          这个词听起来抽象，但意思很朴素：系统每一种能力都要有一张说明书，写清楚它叫什么、能在哪里被使用、需要什么输入、会产出什么、成本如何、能不能自动运行、用哪个 agent 后端、失败时怎么回退。
+        </p>
+
+        <div class="split">
+          <div>
+            <div class="mermaid-wrap">
+              <pre class="mermaid small">
+classDiagram
+  class CapabilityManifest {
+    id
+    label
+    surfaces
+    inputSchema
+    outputArtifacts
+    permissionLevel
+    costLevel
+    supportedBackends
+    requiredContext
+    validators
+    execute()
+  }
+  class ChatSurface
+  class CopilotSurface
+  class KnowledgeSurface
+  class RunSession
+  CapabilityManifest --> ChatSurface
+  CapabilityManifest --> CopilotSurface
+  CapabilityManifest --> KnowledgeSurface
+  CapabilityManifest --> RunSession
+              </pre>
+            </div>
+          </div>
+          <div class="manifest-card" aria-label="Capability manifest example">
+<span class="c">// 这是能力说明书，不是新概念游戏</span><br/>
+{<br/>
+&nbsp;&nbsp;<span class="k">id</span>: <span class="s">"doc.review"</span>,<br/>
+&nbsp;&nbsp;<span class="k">label</span>: <span class="s">"Review current document"</span>,<br/>
+&nbsp;&nbsp;<span class="k">surfaces</span>: [<span class="s">"chat"</span>, <span class="s">"copilot"</span>],<br/>
+&nbsp;&nbsp;<span class="k">requiresDocument</span>: true,<br/>
+&nbsp;&nbsp;<span class="k">permission</span>: <span class="s">"read"</span>,<br/>
+&nbsp;&nbsp;<span class="k">costLevel</span>: <span class="s">"medium"</span>,<br/>
+&nbsp;&nbsp;<span class="k">supportedBackends</span>: [<span class="s">"harness"</span>, <span class="s">"claude-agent-sdk"</span>],<br/>
+&nbsp;&nbsp;<span class="k">outputs</span>: [<span class="s">"insight"</span>, <span class="s">"changeProposal"</span>, <span class="s">"source"</span>],<br/>
+&nbsp;&nbsp;<span class="k">validators</span>: [<span class="s">"exactSubstringChange"</span>, <span class="s">"realNoteLinks"</span>]<br/>
+}
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>字段</th>
+              <th>通俗解释</th>
+              <th>解决什么真实问题</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>surfaces</code></td>
+              <td>这个能力能出现在 Chat、Copilot、Command、Knowledge Center 哪些地方。</td>
+              <td>Chat 不再不知道 Copilot 能做什么。</td>
+            </tr>
+            <tr>
+              <td><code>permission</code></td>
+              <td>只读、要确认、会写文件、危险操作。</td>
+              <td>让 General Chat 能自动调用安全能力，但不能乱改 vault。</td>
+            </tr>
+            <tr>
+              <td><code>costLevel</code></td>
+              <td>低成本、中等、高成本。</td>
+              <td>全库分析、长报告、web 搜索需要预算提示。</td>
+            </tr>
+            <tr>
+              <td><code>supportedBackends</code></td>
+              <td>Harness、Claude Agent SDK、普通 Vercel chat、local-only。</td>
+              <td>让系统知道 DeepSeek 能跑什么，Claude SDK 才跑什么。</td>
+            </tr>
+            <tr>
+              <td><code>validators</code></td>
+              <td>输出必须满足的检查，比如 diff before 必须是原文。</td>
+              <td>便宜模型能用，但要有修复和验证层兜底。</td>
+            </tr>
+            <tr>
+              <td><code>outputs</code></td>
+              <td>文本回答、sources、insights、change proposals、report、graph。</td>
+              <td>UI 可以稳定渲染，不靠猜模型文字。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout">
+          <strong>最小可行版本：</strong>
+          不需要一开始把所有功能都重写。先把现有 <code>CopilotActionRegistry</code> 包一层 manifest adapter，再把 <code>buildChatTools</code> 改为从 manifest 中挑只读能力。这样 Chat 就能先安全调用 search / current doc review / find related。
+        </div>
+      </section>
+
+      <section id="copilot">
+        <div class="section-kicker">Copilot state model</div>
+        <h2>8. Copilot / Auto Review 应画成状态机</h2>
+        <p>
+          Copilot Auto Review 不是普通流程。它会预检、跑一轮或多轮 agent、不断产生 structured artifacts、决定是否继续、保存历史、最后让用户选择是否应用。用 state machine 比 flowchart 更准确。
+        </p>
+
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+stateDiagram-v2
+  [*] --> Preflight
+  Preflight --> RunningRound: build signal report
+  RunningRound --> PublishingArtifacts: propose_insight / propose_change / propose_source
+  PublishingArtifacts --> RunningRound: continue tool use
+  RunningRound --> Submitted: submit_review
+  Submitted --> Compacting: continue = true
+  Compacting --> RunningRound: next round with summary
+  Submitted --> ReviewReady: continue = false
+  ReviewReady --> Applying: user approves selected changes
+  ReviewReady --> SavedHistory: user closes or keeps result
+  Applying --> Completed
+  SavedHistory --> Completed
+  RunningRound --> Cancelled: user cancels
+  RunningRound --> Error: backend or validation failure
+  Error --> ReviewReady: partial artifacts available
+  Cancelled --> ReviewReady: partial artifacts available
+  Completed --> [*]
+          </pre>
+        </div>
+
+        <div class="split">
+          <div class="card">
+            <strong>当前好的地方</strong>
+            <ul>
+              <li><code>CopilotOutputCollector</code> 是正确抽象：模型通过工具发布结构化结果。</li>
+              <li><code>propose_change.before</code> 要求 exact substring，这对可应用修改很关键。</li>
+              <li><code>runCopilotReview</code> 已经有多轮、snapshot、history 保存。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <strong>当前缺的地方</strong>
+            <ul>
+              <li>输出工具还绑定 Claude SDK MCP 形状，Harness 不能直接跑。</li>
+              <li>validator / repair loop 应从 prompt 规则升级成代码层保障。</li>
+              <li>普通 Copilot action、Auto Review、Vault Review 还没有统一 manifest。</li>
+            </ul>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Copilot 能力</th>
+              <th>应归属</th>
+              <th>Chat 是否能自动调用</th>
+              <th>是否需要确认</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>总结当前文档</td>
+              <td>Doc Copilot</td>
+              <td>可以</td>
+              <td>不需要</td>
+            </tr>
+            <tr>
+              <td>找相关笔记 / 建议链接</td>
+              <td>Doc Copilot + Search</td>
+              <td>可以</td>
+              <td>只展示建议不需要，写入 link 需要</td>
+            </tr>
+            <tr>
+              <td>Auto Review 当前文档</td>
+              <td>Doc Copilot</td>
+              <td>可以，但应显示 review 状态</td>
+              <td>应用变更必须确认</td>
+            </tr>
+            <tr>
+              <td>Vault Auto Review</td>
+              <td>Knowledge Copilot</td>
+              <td>不应静默自动</td>
+              <td>高成本，先确认 scope/backend/budget</td>
+            </tr>
+            <tr>
+              <td>批量改 vault</td>
+              <td>Knowledge Copilot</td>
+              <td>不应自动</td>
+              <td>必须确认，最好分批 dry-run</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="harness">
+        <div class="section-kicker">HermesAgent / Harness</div>
+        <h2>9. HermesAgent / Harness 必须成为完整后端，不只是实验功能</h2>
+        <p>
+          你实现 Harness 的动机是对的：Claude Agent SDK / ChatGPT Agent SDK 太贵，长期跑 vaultFull 和 Auto Review 成本会压不住。
+          自研 HermesAgent/Harness 的产品价值，就是让这些能力能跑在 DeepSeek、OpenRouter、Ollama、本地模型上。
+        </p>
+
+        <div class="callout blue">
+          <strong>因此目标不是“Harness 能跑一点 agent”。</strong>
+          目标应该是：Claude Agent SDK 只是一个高质量可选后端；HermesAgent/Harness 是 Peak Assistant 默认 agent runtime。贵模型用于兜底、升级、关键验证，不是所有多轮 agent 的默认执行引擎。
+        </div>
+
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+stateDiagram-v2
+  [*] --> ResolveCapability
+  ResolveCapability --> CheckBackendSupport
+  CheckBackendSupport --> HarnessRun: supported by Harness
+  CheckBackendSupport --> SDKRun: SDK only today
+  CheckBackendSupport --> AskToSwitch: user selected unsupported backend
+  HarnessRun --> ToolCall
+  ToolCall --> PermissionCheck
+  PermissionCheck --> ExecuteTool: allowed
+  PermissionCheck --> AwaitUser: needs confirmation
+  AwaitUser --> ExecuteTool: approved
+  AwaitUser --> Cancelled: denied
+  ExecuteTool --> ValidateOutput
+  ValidateOutput --> RepairLoop: invalid but repairable
+  RepairLoop --> ValidateOutput
+  ValidateOutput --> StreamArtifacts: valid
+  StreamArtifacts --> Completed
+  SDKRun --> StreamArtifacts
+  AskToSwitch --> [*]
+  Completed --> [*]
+          </pre>
+        </div>
+
+        <h3>为什么现在还没实现完整后端</h3>
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>缺口</th>
+              <th>现在是什么</th>
+              <th>要补什么</th>
+              <th>为什么重要</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Vault tools backend-neutral</td>
+              <td><code>vaultMcpServer</code> 是 Claude SDK MCP server</td>
+              <td>抽 <code>VaultToolDef</code>，同时适配 MCP 和 Harness <code>ToolDef</code></td>
+              <td>否则 vaultFull 永远只能走 Claude SDK。</td>
+            </tr>
+            <tr>
+              <td>Output tools backend-neutral</td>
+              <td><code>CopilotOutputMcpServer</code> 暴露 <code>propose_*</code></td>
+              <td>把 propose tools 改成通用 tool definitions</td>
+              <td>否则 Auto Review 不能用 DeepSeek 这类模型后端。</td>
+            </tr>
+            <tr>
+              <td>HITL / resume 协议</td>
+              <td>VaultFull 有 <code>submit_plan</code>，UI plan_ready 依赖 SDK 流</td>
+              <td>Harness 中支持 tool pause、user approve、resume</td>
+              <td>全库分析不能只是一次性 final answer。</td>
+            </tr>
+            <tr>
+              <td>Stream adapter</td>
+              <td>SDK 走 <code>translateSdkMessage</code>，Harness 多为 <code>AgentLoopResult</code> + TraceBus</td>
+              <td><code>HarnessStreamAdapter</code> 输出同一套 <code>LLMStreamEvent</code></td>
+              <td>UI 不应该关心后端是 SDK 还是 Harness。</td>
+            </tr>
+            <tr>
+              <td>Validator / repair</td>
+              <td>主要靠 prompt 要求模型守规则</td>
+              <td>exact substring、真实 wikilink、JSON schema、source path 验证</td>
+              <td>便宜模型更需要代码级安全网。</td>
+            </tr>
+            <tr>
+              <td>Model capability tests</td>
+              <td>Settings 里绑定 tier，但不验证工具可靠性</td>
+              <td>每个 backend 跑 tool-call conformance tests</td>
+              <td>DeepSeek 便宜，但要知道哪些任务能放心交给它。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>当前能力后端矩阵</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>能力</th>
+              <th>当前后端</th>
+              <th>Harness 现状</th>
+              <th>目标</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>DocSimpleAgent</td>
+              <td>Harness bridge</td>
+              <td><span class="status-ok">已可跑</span></td>
+              <td>继续作为 harness reference implementation。</td>
+            </tr>
+            <tr>
+              <td>Followup / memory search</td>
+              <td>Harness bridge</td>
+              <td><span class="status-ok">部分可跑</span></td>
+              <td>统一进入 RunSession。</td>
+            </tr>
+            <tr>
+              <td>Vault Full Analysis</td>
+              <td>Claude Agent SDK</td>
+              <td><span class="status-no">显式 blocked</span></td>
+              <td>适配 vault tools + HITL 后迁入 Harness。</td>
+            </tr>
+            <tr>
+              <td>Copilot Auto Review</td>
+              <td>Claude Agent SDK + output MCP</td>
+              <td><span class="status-warn">runtime 不兼容</span></td>
+              <td>适配 output tools + validators。</td>
+            </tr>
+            <tr>
+              <td>Vault Auto Review</td>
+              <td>Claude Agent SDK + vault digest + output MCP</td>
+              <td><span class="status-warn">runtime 不兼容</span></td>
+              <td>第二批迁移，先只读审阅，再开放动作建议。</td>
+            </tr>
+            <tr>
+              <td>General Chat tool calling</td>
+              <td>Vercel stream + chat tools</td>
+              <td><span class="status-warn">未统一</span></td>
+              <td>通过 Capability Manifest 调度 Harness 或普通 provider。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="layers">
+        <div class="section-kicker">Layer boundaries</div>
+        <h2>10. 分层与 AppContext：保留模式，收紧边界</h2>
+        <p>
+          我同意你的判断：<code>AppContext</code> 这个设计可以保留。全局注册、static 获取、composition root 这些不是问题。问题是它现在容易变成“谁都能拿任何东西”的万能入口，导致 service、UI、core 之间互相穿透。
+        </p>
+
+        <div class="layer-model">
+          <div class="band core">
+            <strong>core</strong>
+            <span>纯模型、schema、provider abstraction、storage primitives、constants。不要 import UI，不要 import service orchestration。</span>
+            <span><code>src/core/**</code></span>
+          </div>
+          <div class="band service">
+            <strong>service</strong>
+            <span>业务编排：chat、search、agents、copilot、ambient、usage。可以依赖 core，可以通过 ports 调 Obsidian/app 能力。</span>
+            <span><code>src/service/**</code></span>
+          </div>
+          <div class="band ui">
+            <strong>ui</strong>
+            <span>React views、stores、hooks、components。UI 可以发起 action、订阅 session，但不应把业务编排逻辑写进 hook 里。</span>
+            <span><code>src/ui/**</code></span>
+          </div>
+          <div class="band app">
+            <strong>app / AppContext</strong>
+            <span>Obsidian integration、commands、view lifecycle、composition root。暴露稳定 services / ports，不鼓励随处拿内部实现。</span>
+            <span><code>src/app/**</code></span>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>规则</th>
+              <th>允许</th>
+              <th>禁止</th>
+              <th>原因</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>依赖方向</td>
+              <td>UI → service → core，app 负责装配</td>
+              <td>service → UI store，core → service/UI</td>
+              <td>避免反向依赖让业务层无法测试和复用。</td>
+            </tr>
+            <tr>
+              <td>跨模块共享 UI</td>
+              <td>抽到 <code>ui/component</code> 或 shared view components</td>
+              <td>search 直接 import chat 里的 UI token 组件</td>
+              <td>模块内部 UI 自成体系，通用组件放 shared。</td>
+            </tr>
+            <tr>
+              <td>AppContext 使用</td>
+              <td>获取稳定 registry/service/port</td>
+              <td>在任意 service 里穿透拿 UI/runtime store</td>
+              <td>保留便利性，但限制破坏边界的自由度。</td>
+            </tr>
+            <tr>
+              <td>状态管理</td>
+              <td>UI store 存 UI 状态；RunSession 存运行状态</td>
+              <td>React hook 里承载完整 agent orchestration</td>
+              <td>后台运行、恢复、测试都需要 service 层 session。</td>
+            </tr>
+            <tr>
+              <td>类型守门</td>
+              <td>为跨层 contract 加类型和测试</td>
+              <td>把所有代码先全面类型洁癖式重写</td>
+              <td>类型服务于边界，不是反过来。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout">
+          <strong>对 AppContext 的目标定义：</strong>
+          它应该像系统注册表和服务入口，而不是万能依赖注入黑洞。可以保留 <code>AppContext.getInstance()</code>，但要逐步把“拿具体实现”改成“拿稳定接口”：<code>ChatPort</code>、<code>VaultPort</code>、<code>ProfilePort</code>、<code>CapabilityRegistry</code>、<code>RunSessionManager</code>。
+        </div>
+      </section>
+
+      <section id="roadmap">
+        <div class="section-kicker">Refactor roadmap</div>
+        <h2>11. 最高收益重构路线</h2>
+        <p>
+          这里按“收益最大、风险可控、能逐步验证”的顺序排。不要一上来大重写，也不要只补类型错误。
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>阶段</th>
+              <th>要做什么</th>
+              <th>触达文件</th>
+              <th>验收标准</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="priority p0">0</span></td>
+              <td>写下目标架构规则：General Chat、Capability Manifest、RunSession、Harness backend、分层边界。</td>
+              <td><code>docs/superpowers/specs</code></td>
+              <td>团队/AI 后续写代码时有明确架构约束。</td>
+            </tr>
+            <tr>
+              <td><span class="priority p0">1</span></td>
+              <td>先建立 import boundary 守门：service 不 import UI store，core 不 import service/UI。</td>
+              <td>lint rule 或自定义 script</td>
+              <td>CI 能发现新的反向依赖。</td>
+            </tr>
+            <tr>
+              <td><span class="priority p0">2</span></td>
+              <td>抽最小 <code>CapabilityManifest</code>，包住现有 Copilot actions 和 chat tools。</td>
+              <td><code>service/capability/**</code>、<code>service/copilot/**</code>、<code>service/chat/tools/**</code></td>
+              <td>同一个能力能被 Chat 和 Copilot 查询。</td>
+            </tr>
+            <tr>
+              <td><span class="priority p1">3</span></td>
+              <td>把 Chat 用户面模式隐藏，新增 <code>ExecutionPlanner</code>，先只调只读能力。</td>
+              <td><code>ui/view/chat-view</code>、<code>service/chat</code></td>
+              <td>UI 没有 Chat/Agent/Plan 模式；service 不读 UI store mode。</td>
+            </tr>
+            <tr>
+              <td><span class="priority p1">4</span></td>
+              <td>完成 ContextPipeline 收口，删除旧 ContextBuilder fallback。</td>
+              <td><code>service/chat/context/**</code></td>
+              <td>附件、资源、当前文件、摘要都有 fixture 测试。</td>
+            </tr>
+            <tr>
+              <td><span class="priority p1">5</span></td>
+              <td>抽 <code>RunSession</code>，先承接 AI Analysis 与 Copilot Review 的 streaming/abort/history。</td>
+              <td><code>service/session/**</code>、<code>quick-search hooks</code>、<code>copilot sessions</code></td>
+              <td>React hook 不再承载完整 agent 编排。</td>
+            </tr>
+            <tr>
+              <td><span class="priority p1">6</span></td>
+              <td>HarnessStreamAdapter：把 Harness TraceBus/steps 转成 UI 统一事件。</td>
+              <td><code>service/agents/harness/**</code></td>
+              <td>UI 不区分 SDK/Harness stream。</td>
+            </tr>
+            <tr>
+              <td><span class="priority p1">7</span></td>
+              <td>适配 vault tools 和 copilot output tools 到 Harness ToolDef。</td>
+              <td><code>vaultMcpServer</code>、<code>CopilotOutputMcpServer</code></td>
+              <td>Doc Auto Review 可用 Harness 跑只读审阅。</td>
+            </tr>
+            <tr>
+              <td><span class="priority p2">8</span></td>
+              <td>HITL/resume 协议迁移，支持 submit_plan、review continue、approval。</td>
+              <td><code>service/session</code>、<code>service/agents/harness</code></td>
+              <td>VaultFull 可以在 Harness 后端进入 plan_ready 并继续。</td>
+            </tr>
+            <tr>
+              <td><span class="priority p2">9</span></td>
+              <td>便宜模型 conformance tests：DeepSeek/OpenRouter/Ollama tool-call、schema、validator 修复能力。</td>
+              <td><code>test/agents</code>、<code>service/agents/harness</code></td>
+              <td>每个 backend 有明确可用能力矩阵。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>现在不要先做什么</h3>
+        <div class="grid three">
+          <div class="card">
+            <strong>不要先删 AppContext</strong>
+            <p class="muted">它不是根问题。先限制它暴露什么，再逐步引入 ports。</p>
+          </div>
+          <div class="card">
+            <strong>不要先全量类型洁癖</strong>
+            <p class="muted">先把跨层 contract 和 import boundary 守住，类型修复才有方向。</p>
+          </div>
+          <div class="card">
+            <strong>不要立刻把 vaultFull 强切 Harness</strong>
+            <p class="muted">先做 tools adapter、stream adapter、HITL、validator，否则便宜模型会省钱但不可靠。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="evidence">
+        <div class="section-kicker">Code evidence</div>
+        <h2>12. 本报告依据的关键代码证据</h2>
+        <ul class="evidence-list">
+          <li><code>src/service/chat/service-conversation.ts</code>：Chat mode 从 UI store 读取，agent mode 只注入 chat tools。</li>
+          <li><code>src/service/chat/tools/chatToolBuilder.ts</code>：当前 Chat tool 主要是 web_search。</li>
+          <li><code>src/service/chat/context/ContextPipeline.ts</code>：slot 并行构建和 BudgetGovernor。</li>
+          <li><code>src/service/chat/context/profiles/ChatProfile.ts</code>：Chat prompt stack 的实际 slot 定义。</li>
+          <li><code>src/ui/view/quick-search/hooks/useSearchSession.ts</code>：AI Analysis orchestration 仍主要在 hook 中。</li>
+          <li><code>src/service/search/query/queryService.ts</code>：General Search 的 multi-retriever、RRF、PPR、boost、highlight、rerank。</li>
+          <li><code>src/service/agents/VaultSearchAgentSDK.ts</code>：vaultFull 仍硬依赖 Claude Agent SDK MCP，harness backend 会直接 error。</li>
+          <li><code>src/service/agents/DocSimpleAgent.ts</code>：Harness bridge 已经能跑 doc-simple。</li>
+          <li><code>src/service/copilot/CopilotActionRegistry.ts</code>：Copilot action 作为独立 registry 存在。</li>
+          <li><code>src/service/copilot/actions/index.ts</code>：现有 Copilot action 可以成为 Capability Manifest 的第一批来源。</li>
+          <li><code>src/service/copilot/CopilotReviewSession.ts</code>：Doc Auto Review 是多轮 stateful session。</li>
+          <li><code>src/service/copilot/CopilotOutputMcpServer.ts</code>：structured output tools 仍是 SDK MCP server 形状。</li>
+          <li><code>src/service/copilot/vault/VaultReviewSession.ts</code>：Vault Review 和 Doc Review 有相似 session 结构。</li>
+          <li><code>src/service/agents/harness/loop/AgentLoop.ts</code>：自研 loop 支持 step、tools、permission、hooks、tier、memory/context。</li>
+          <li><code>src/service/agents/harness/tier/TierController.ts</code>：local-fast / local-deep / online 级联。</li>
+          <li><code>src/service/agents/harness/context/ContextManager.ts</code>：Harness 侧 context compaction 还未完成 LLM summarization。</li>
+          <li><code>src/ui/view/settings/components/HarnessSettingsSection.tsx</code>：Settings 已经承认 Vault Search 需要 Claude Agent SDK。</li>
+          <li><code>src/service/ambient/AmbientPushService.ts</code>：Ambient 应作为横切信号层，而不是主任务面。</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    if (window.mermaid) {
+      mermaid.initialize({
+        startOnLoad: true,
+        securityLevel: "loose",
+        theme: "base",
+        themeVariables: {
+          fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          primaryColor: "#eef6f0",
+          primaryTextColor: "#17201d",
+          primaryBorderColor: "#8fa698",
+          lineColor: "#6d8276",
+          secondaryColor: "#eef5fb",
+          tertiaryColor: "#fbf7ee",
+          background: "#fbfcfb",
+          mainBkg: "#fbfcfb",
+          clusterBkg: "#f5f8f5",
+          clusterBorder: "#cbd8ce",
+          noteBkgColor: "#fff8e8",
+          noteTextColor: "#17201d",
+          actorBkg: "#eef5fb",
+          actorBorder: "#8fb0cf",
+          activationBkgColor: "#eef7f1",
+          activationBorderColor: "#8fa698"
+        }
+      });
+    }
+  </script>
+</body>
+</html>

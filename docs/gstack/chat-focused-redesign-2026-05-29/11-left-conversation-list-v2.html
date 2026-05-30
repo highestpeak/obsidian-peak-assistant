@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peak Chat Left Conversation List V2</title>
+<link rel="stylesheet" href="chat-component-v2.css">
+</head>
+<body>
+<main class="stage">
+  <section class="obsidian-shell" aria-label="Peak Chat sidebar">
+    <aside class="rail">
+      <button class="rail-btn" aria-label="Home">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      </button>
+      <button class="rail-btn" data-active="true" aria-label="Chat">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+      </button>
+      <button class="rail-btn" aria-label="Calendar">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      </button>
+      <button class="rail-btn" aria-label="Sync">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6l3 3"/><path d="M21 12a9 9 0 0 1-15 6l-3-3"/></svg>
+      </button>
+      <div style="flex:1"></div>
+      <button class="rail-btn" aria-label="Settings">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 1 1 7.1 4l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6h.1a1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 20 7.1l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.6 1h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.8.8z"/></svg>
+      </button>
+    </aside>
+    <div class="conv-sidebar">
+      <div class="conv-top">
+        <div class="conv-titlebar">
+          <strong>Peak Chat</strong>
+          <button class="dark-icon" aria-label="New conversation">+</button>
+        </div>
+        <div class="dark-search">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          Search conversations
+        </div>
+      </div>
+
+      <div class="dark-section">Projects <span>+</span></div>
+      <div class="dark-list">
+        <div class="dark-row">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h7l2 2h9v10H3z"/></svg>
+          <div>
+            <div class="dark-title">AI Ethics Research</div>
+            <div class="dark-preview">18 chats · 4 active notes</div>
+          </div>
+          <span class="folder-dot"></span>
+        </div>
+        <div class="dark-row">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h7l2 2h9v10H3z"/></svg>
+          <div>
+            <div class="dark-title">Product Strategy</div>
+            <div class="dark-preview">Market, positioning, roadmap</div>
+          </div>
+          <span class="dark-date">12</span>
+        </div>
+        <div class="dark-row">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h7l2 2h9v10H3z"/></svg>
+          <div>
+            <div class="dark-title">Org Knowledge</div>
+            <div class="dark-preview">People, decisions, retros</div>
+          </div>
+          <span class="dark-date">8</span>
+        </div>
+      </div>
+
+      <div class="dark-section">Conversations <span>+</span></div>
+      <div class="dark-list">
+        <div class="dark-section" style="padding:6px 6px 4px">Today</div>
+        <div class="dark-row" data-active="true">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+          <div>
+            <div class="dark-title">Hello - KB5 Automation Workspace</div>
+            <div class="dark-preview">Current context, environment, next steps</div>
+          </div>
+          <span class="dark-date">10:18</span>
+        </div>
+        <div class="dark-row">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+          <div>
+            <div class="dark-title">Alignment paper findings</div>
+            <div class="dark-preview">3 weak spots and citations</div>
+          </div>
+          <span class="dark-date">9:41</span>
+        </div>
+
+        <div class="dark-section" style="padding:10px 6px 4px">This Week</div>
+        <div class="dark-row">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+          <div>
+            <div class="dark-title">Constitutional AI principles</div>
+            <div class="dark-preview">Topic cluster: safety, critique, rules</div>
+          </div>
+          <span class="dark-date">May 12</span>
+        </div>
+        <div class="dark-row">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          <div>
+            <div class="dark-title">Bias mitigation ideas</div>
+            <div class="dark-preview">Draft plan · 5 follow-ups</div>
+          </div>
+          <span class="dark-date">May 10</span>
+        </div>
+        <div class="dark-row">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+          <div>
+            <div class="dark-title">API authentication failure</div>
+            <div class="dark-preview" style="color:#f0a0a0">401 error · needs setup</div>
+          </div>
+          <span class="dark-date">May 8</span>
+        </div>
+
+        <div class="dark-section" style="padding:10px 6px 4px">Older</div>
+        <div class="dark-row">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+          <div>
+            <div class="dark-title">Safe RLHF practices</div>
+            <div class="dark-preview">Evidence list and synthesis</div>
+          </div>
+          <span class="dark-date">May 1</span>
+        </div>
+      </div>
+
+      <div class="workspace-footer">
+        <span>mobius-highestpeak-kb</span>
+        <span>2.0k notes</span>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

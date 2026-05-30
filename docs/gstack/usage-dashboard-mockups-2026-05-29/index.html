@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1240" />
+	<title>Usage Dashboard Mocks · Peak Assistant</title>
+	<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark">
+	<div id="nav-root"></div>
+
+	<main class="mock-shell">
+		<header style="margin-bottom:28px;">
+			<div class="mock-meta">Mock package · 2026-05-29</div>
+			<h1 class="mock-title" style="font-size:26px;">Usage Dashboard rework — design mocks</h1>
+			<p class="mock-sub" style="max-width: 760px; line-height:1.6;">
+				HTML/CSS mocks that translate the directions in
+				<a href="../../superpowers/specs/2026-05-29-usage-dashboard-insights.md">the insights spec</a>
+				into screens we can iterate on. No production code is touched.
+				Six independent screens; not real data; not a final visual treatment.
+			</p>
+		</header>
+
+		<section style="margin-bottom:22px;">
+			<div class="card card--pad" style="display:flex; gap:14px; align-items:center;">
+				<span class="badge badge--info">Scope</span>
+				<div class="muted" style="font-size:12.5px;">
+					Mock-only. <span class="strong">No changes</span> to <code class="mono">src/</code>,
+					<code class="mono">main.ts</code>, styles, React components, SQLite schema, or settings schema.
+					Next step is Playwright visual iteration, then a formal spec.
+				</div>
+			</div>
+		</section>
+
+		<section class="idx-grid" aria-label="Screens">
+			<a class="idx-card" href="1-overview.html">
+				<div class="idx-card__num">01 · Overview</div>
+				<div class="idx-card__title">Usage Intelligence</div>
+				<div class="idx-card__sub">
+					Budget pace · context risk · cost / saved artifact · calls this week.
+					Recommended-actions list replaces the old KPI wall.
+				</div>
+				<div class="idx-card__tags">
+					<span class="badge badge--soft">JTBD 1 · 3 · 4</span>
+					<span class="badge badge--ok">Default surface</span>
+				</div>
+			</a>
+
+			<a class="idx-card" href="2-provider-model.html">
+				<div class="idx-card__num">02 · Breakdown</div>
+				<div class="idx-card__title">Provider &amp; Model</div>
+				<div class="idx-card__sub">
+					Table-first, no truncation of provider+model names. Stacked bar by provider.
+					Footer insight ends with a verb (Set routing rule / View traces).
+				</div>
+				<div class="idx-card__tags">
+					<span class="badge badge--soft">Fixes user-reported issue</span>
+				</div>
+			</a>
+
+			<a class="idx-card" href="3-outcome-value.html">
+				<div class="idx-card__num">03 · MPG</div>
+				<div class="idx-card__title">Outcome Value</div>
+				<div class="idx-card__sub">
+					Cost / saved artifact and cost / useful click. Funnel from calls to value.
+					Surfaces high-spend-no-outcome sessions with verbs.
+				</div>
+				<div class="idx-card__tags">
+					<span class="badge badge--info">MPG metric</span>
+					<span class="badge badge--soft">Needs usage_outcome table</span>
+				</div>
+			</a>
+
+			<a class="idx-card" href="4-budget-alerts.html">
+				<div class="idx-card__num">04 · Guardrails</div>
+				<div class="idx-card__title">Budget &amp; Alerts</div>
+				<div class="idx-card__sub">
+					Monthly budget, alert rules, model defaults (Quick / Deep / Premium).
+					Bottom row previews what users see in-app.
+				</div>
+				<div class="idx-card__tags">
+					<span class="badge badge--soft">JTBD 4 · 8 · set-and-forget</span>
+				</div>
+			</a>
+
+			<a class="idx-card" href="5-history.html">
+				<div class="idx-card__num">05 · Audit</div>
+				<div class="idx-card__title">Usage History</div>
+				<div class="idx-card__sub">
+					Current dashboard, descended into an audit / trace drilldown surface.
+					Right-side detail panel with token/cost breakdown and "Create routing rule".
+				</div>
+				<div class="idx-card__tags">
+					<span class="badge badge--soft">Secondary entry</span>
+				</div>
+			</a>
+
+			<a class="idx-card" href="6-optimization.html">
+				<div class="idx-card__num">06 · Action</div>
+				<div class="idx-card__title">Usage Optimization</div>
+				<div class="idx-card__sub">
+					Recommendation cards with Apply / Preview verbs.
+					Projected spend swing and Conservative / Balanced / Aggressive scenarios.
+				</div>
+				<div class="idx-card__tags">
+					<span class="badge badge--ok">Highest leverage</span>
+					<span class="badge badge--soft">Curator runtime</span>
+				</div>
+			</a>
+		</section>
+
+		<section style="margin-top:22px;">
+			<div class="card card--pad">
+				<div class="card__title" style="margin-bottom:8px;">Where each screen lives in the report</div>
+				<table class="tbl">
+					<thead>
+						<tr>
+							<th>Screen</th>
+							<th>Maps to (in insights spec)</th>
+							<th>Reference image</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>01 · Usage Intelligence</td>
+							<td>§6 default surface, JTBD 1/3/4 (context, this turn, monthly)</td>
+							<td><a href="reference-images.md">img 01</a></td>
+						</tr>
+						<tr>
+							<td>02 · Provider &amp; Model</td>
+							<td>§1.4 truncation fix · §6 Curator inputs</td>
+							<td><a href="reference-images.md">img 02</a></td>
+						</tr>
+						<tr>
+							<td>03 · Outcome Value</td>
+							<td>§4.3 MPG metric · §7 usage_outcome</td>
+							<td><a href="reference-images.md">img 03</a></td>
+						</tr>
+						<tr>
+							<td>04 · Budget &amp; Alerts</td>
+							<td>§6 budget settings, alert rules, model defaults</td>
+							<td><a href="reference-images.md">img 04</a></td>
+						</tr>
+						<tr>
+							<td>05 · Usage History</td>
+							<td>§6 descended dashboard · §2 JTBD 6 (debug spend)</td>
+							<td><a href="reference-images.md">img 05</a></td>
+						</tr>
+						<tr>
+							<td>06 · Usage Optimization</td>
+							<td>§6 Curator runtime · §5 anti-pattern 5 (transparency + agency)</td>
+							<td><a href="reference-images.md">img 06</a></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</section>
+	</main>
+
+	<script src="partials.js"></script>
+	<script>renderNav('');</script>
+</body>
+</html>

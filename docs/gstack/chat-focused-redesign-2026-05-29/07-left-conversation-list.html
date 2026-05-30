@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Chat - Left Conversation List</title>
+  <style>
+    :root {
+      --bg: #111427;
+      --rail: #20232f;
+      --text: #eef2ff;
+      --muted: #a6afc5;
+      --faint: #68728a;
+      --line: rgba(255,255,255,.08);
+      --select: #3b82f6;
+      --purple: #7c3aed;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 420px;
+      min-height: 1080px;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .shell { display: grid; grid-template-columns: 50px 1fr; min-height: 1080px; }
+    .rail {
+      background: #22252f;
+      border-right: 1px solid rgba(255,255,255,.08);
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .dotbar { height: 20px; display: flex; gap: 6px; margin: 2px 0 12px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .red { background: #ff605c; } .yellow { background: #ffbd44; } .green { background: #00ca4e; }
+    .rail-btn {
+      width: 32px; height: 32px; border-radius: 7px;
+      display: grid; place-items: center;
+      color: #c2cadb;
+    }
+    .rail-btn.active { background: rgba(255,255,255,.10); color: white; }
+    .rail-btn svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.9; }
+    .spacer { flex: 1; }
+    .panel {
+      padding: 18px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 26px;
+    }
+    .title { font-size: 17px; font-weight: 650; letter-spacing: .01em; }
+    .chev { color: var(--muted); font-size: 11px; margin-left: 4px; }
+    .plus { color: #bba8ff; font-size: 28px; font-weight: 200; line-height: 1; }
+    .section { margin: 0 0 26px; }
+    .section-title {
+      color: #cbd3e7;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      margin: 0 0 10px 4px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .row {
+      height: 40px;
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 0 9px;
+      border-radius: 7px;
+      color: #cfd6e8;
+      margin-bottom: 3px;
+    }
+    .row.project { grid-template-columns: 16px 20px minmax(0,1fr); }
+    .row.active {
+      background: var(--select);
+      color: #061225;
+    }
+    .row.active .date, .row.active svg { color: #0b2348; }
+    .row:hover:not(.active) { background: rgba(255,255,255,.055); }
+    .name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+    }
+    .date {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      color: #a5aec4;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .icon svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; color: #b3bdd4; }
+    .caret { color: #8a94aa; font-size: 15px; }
+    .pulse { width: 7px; height: 7px; border-radius: 999px; background: var(--purple); justify-self: end; }
+    .footer {
+      margin-top: auto;
+      border-top: 1px solid var(--line);
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #dbe3f7;
+      font-weight: 550;
+      font-size: 13px;
+    }
+    .footer .muted { display: flex; gap: 10px; color: #a8b2ca; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="rail">
+      <div class="dotbar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+      <div class="rail-btn active"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg></div>
+      <div class="rail-btn"><svg viewBox="0 0 24 24"><path d="M4 4h16v13H7l-3 3z"/></svg></div>
+      <div class="rail-btn"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg></div>
+      <div class="rail-btn"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13-6"/><path d="M20 4v6h-6"/><path d="M20 12a8 8 0 0 1-13 6"/><path d="M4 20v-6h6"/></svg></div>
+      <div class="rail-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></div>
+      <div class="rail-btn"><svg viewBox="0 0 24 24"><path d="M8 7h8M8 12h8M8 17h5"/><rect x="5" y="4" width="14" height="16" rx="2"/></svg></div>
+      <div class="spacer"></div>
+      <div class="rail-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4"/><path d="M12 17h.01"/></svg></div>
+      <div class="rail-btn"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M4.2 7.5l2.6 1.5M17.2 15l2.6 1.5M4.2 16.5l2.6-1.5M17.2 9l2.6-1.5"/><circle cx="12" cy="12" r="4"/></svg></div>
+    </aside>
+    <main class="panel">
+      <div class="head">
+        <div class="title">Peak Chat <span class="chev">v</span></div>
+        <div class="plus">+</div>
+      </div>
+
+      <section class="section">
+        <div class="section-title">PROJECTS <span class="plus" style="font-size:22px">+</span></div>
+        <div class="row project"><span class="caret">›</span><span class="icon"><svg viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span class="name">Current World Events - No Real-time Access</span></div>
+        <div class="row project"><span class="caret">›</span><span class="icon"><svg viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span class="name">sadsad</span></div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">CONVERSATIONS <span class="plus" style="font-size:22px">+</span></div>
+        <div class="row"><span></span><span class="name">AI Profile Configuration Error ...</span><span class="date">May 12</span></div>
+        <div class="row"><span></span><span class="name">New Conversation</span><span class="date">May 8</span></div>
+        <div class="row active"><span></span><span class="name">Hello - KB5 Automation Workspace</span><span class="date">May 5</span></div>
+        <div class="row"><span></span><span class="name">Deep analysis of 01-gate-self-c...</span><span class="date">May 1</span></div>
+        <div class="row"><span></span><span class="name">Research</span><span class="date">Apr 24</span></div>
+        <div class="row"><span></span><span class="name">New Conversation</span><span class="date">Apr 18</span></div>
+        <div class="row"><span></span><span class="name">AI-Peak-Assistant-ObsiDian: St...</span><span class="date">Apr 11</span></div>
+      </section>
+
+      <div class="footer">
+        <span>⌄ mobius-highestpeak-kb</span>
+        <span class="muted">◷ ⚙</span>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

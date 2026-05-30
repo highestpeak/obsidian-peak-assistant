@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Step 4 · Choose how Peak should work</title>
+<link rel="stylesheet" href="mock.css" />
+</head>
+<body>
+<div class="mock-stage-hint">Step 4 · AI behavior · uses Conversation / Fast Lookup / Research · no Quick/Deep/Premium</div>
+<div class="mock-stage">
+  <div class="modal modal--wide">
+
+    <div class="modal__progress">
+      <div class="progress">
+        <div class="progress__dots">
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Welcome</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">What Peak<br/>can do</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Add<br/>Provider</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="active"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Choose how<br/>Peak should<br/>work</div></div>
+          <div class="progress__connector"></div>
+          <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Check your<br/>vault index</div></div>
+          <div class="progress__connector"></div>
+          <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">System<br/>check</div></div>
+          <div class="progress__connector"></div>
+          <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Ready<br/>to try</div></div>
+        </div>
+        <div class="progress__title">Step <strong>4 of 7</strong> · Choose how Peak should work</div>
+      </div>
+    </div>
+
+    <div class="modal__body col gap-5">
+      <div class="col gap-1">
+        <div class="h2">Choose how Peak should work</div>
+        <div class="sub">Peak will recommend defaults for chat, lookup, and research.</div>
+      </div>
+
+      <!-- 1. Starter model -->
+      <div class="col gap-3">
+        <div class="row gap-2" style="align-items:baseline;">
+          <span class="kicker" style="font-size:11px;">1</span>
+          <div class="h3">Starter model <span class="muted" style="font-weight:400;font-size:12px;">— one-time recommendation</span></div>
+        </div>
+        <div class="sub">Used once to generate AI behavior recommendation. Cheap is fine.</div>
+
+        <div class="radio-card" data-selected="true" style="cursor:default;">
+          <div class="radio-card__icon"><span data-icon="sparkles"></span></div>
+          <div class="radio-card__body">
+            <div class="row gap-2" style="align-items:center;">
+              <span class="mono" style="font-weight:600;color:var(--pk-text-primary);">gpt-5-mini</span>
+              <span class="muted">·</span>
+              <span class="muted" style="font-size:12px;">OpenAI</span>
+              <span class="chip chip--accent"><span data-icon="sparkles"></span> Recommended</span>
+            </div>
+            <div class="radio-card__hint">Low cost · ~$0.15 / 1M tokens (input) · Fast</div>
+          </div>
+          <div class="radio-card__check"><span data-icon="check"></span></div>
+        </div>
+      </div>
+
+      <!-- 2. Your preferences -->
+      <div class="col gap-3">
+        <div class="row gap-2" style="align-items:baseline;">
+          <span class="kicker" style="font-size:11px;">2</span>
+          <div class="h3">Your preferences</div>
+        </div>
+        <div class="sub">Help Peak balance speed, quality, and cost for your setup.</div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;" data-radio-group>
+          <div class="radio-card radio-card--compact" data-radio-card>
+            <div class="radio-card__check"><span data-icon="check"></span></div>
+            <div class="radio-card__icon"><span data-icon="zap"></span></div>
+            <div class="radio-card__title">Fast responses</div>
+            <div class="radio-card__hint">Replies in under a second.</div>
+          </div>
+          <div class="radio-card radio-card--compact" data-radio-card data-selected="true">
+            <div class="radio-card__check"><span data-icon="check"></span></div>
+            <div class="radio-card__icon"><span data-icon="scale"></span></div>
+            <div class="radio-card__title">Balanced</div>
+            <div class="radio-card__hint">Best mix of speed, quality, and cost.</div>
+          </div>
+          <div class="radio-card radio-card--compact" data-radio-card>
+            <div class="radio-card__check"><span data-icon="check"></span></div>
+            <div class="radio-card__icon"><span data-icon="microscope"></span></div>
+            <div class="radio-card__title">Research quality</div>
+            <div class="radio-card__hint">Stronger models for deeper results.</div>
+          </div>
+          <div class="radio-card radio-card--compact" data-radio-card>
+            <div class="radio-card__check"><span data-icon="check"></span></div>
+            <div class="radio-card__icon"><span data-icon="shield"></span></div>
+            <div class="radio-card__title">Local / private</div>
+            <div class="radio-card__hint">Prefer local models. Offline OK.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Stronger model toggle -->
+      <div class="col gap-2">
+        <div class="row gap-2" style="align-items:baseline;">
+          <span class="kicker" style="font-size:11px;">3</span>
+          <div class="h3">Use a stronger model when needed</div>
+        </div>
+        <div class="card" style="padding:14px;">
+          <div class="row gap-3" style="justify-content:space-between;align-items:center;">
+            <div class="col gap-1" style="flex:1;">
+              <div class="h4">Use a stronger model when needed</div>
+              <div class="sub" style="font-size:12px;">For research tasks where quality matters more than speed or cost.</div>
+            </div>
+            <div class="toggle" data-toggle data-on="false"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. AI behavior preview -->
+      <div class="col gap-3">
+        <div class="h3">AI behavior preview</div>
+        <div class="sub">How Peak will handle different types of work.</div>
+
+        <div class="col gap-2">
+          <div class="behavior-row">
+            <div class="behavior-row__icon"><span data-icon="message"></span></div>
+            <div class="behavior-row__main">
+              <div class="behavior-row__role">Conversation</div>
+              <div class="behavior-row__purpose">Chat and everyday writing.</div>
+            </div>
+            <div class="col" style="text-align:right;">
+              <span class="mono behavior-row__model">gpt-5-mini</span>
+              <span class="behavior-row__provider">OpenAI</span>
+            </div>
+            <div class="behavior-row__usedby">
+              <span class="usedby">Chat</span>
+              <span class="usedby">Quick replies</span>
+            </div>
+          </div>
+
+          <div class="behavior-row">
+            <div class="behavior-row__icon"><span data-icon="zap"></span></div>
+            <div class="behavior-row__main">
+              <div class="behavior-row__role">Fast Lookup</div>
+              <div class="behavior-row__purpose">Short answers and simple note actions.</div>
+            </div>
+            <div class="col" style="text-align:right;">
+              <span class="mono behavior-row__model">claude-3.5-haiku</span>
+              <span class="behavior-row__provider">Anthropic</span>
+            </div>
+            <div class="behavior-row__usedby">
+              <span class="usedby">Quick Search</span>
+              <span class="usedby">Copilot (simple)</span>
+            </div>
+          </div>
+
+          <div class="behavior-row">
+            <div class="behavior-row__icon"><span data-icon="microscope"></span></div>
+            <div class="behavior-row__main">
+              <div class="behavior-row__role">Research</div>
+              <div class="behavior-row__purpose">Vault research and synthesis.</div>
+            </div>
+            <div class="col" style="text-align:right;">
+              <span class="mono behavior-row__model">claude-3.5-sonnet</span>
+              <span class="behavior-row__provider">Anthropic</span>
+            </div>
+            <div class="behavior-row__usedby">
+              <span class="usedby">AI Analysis</span>
+              <span class="usedby">Auto Review</span>
+            </div>
+          </div>
+        </div>
+
+        <details style="margin-top:4px;">
+          <summary style="font-size:12px;color:var(--pk-text-secondary);cursor:pointer;list-style:none;">
+            <span style="display:inline-flex;gap:6px;align-items:center;">
+              <span data-icon="chevronRight" style="display:inline-flex;"></span>
+              Why this recommendation
+            </span>
+          </summary>
+          <div class="hint mt-2">
+            <span data-icon="info"></span>
+            <span>You picked <strong>Balanced</strong> with budget <strong>$5–20</strong>. Conversation uses gpt-5-mini for cheap fast turns. Fast Lookup uses Haiku since you already have an Anthropic provider — sub-second on short tasks. Research uses Sonnet to handle multi-step vault work without escalating to Premium.</span>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="modal__footer">
+      <button class="btn btn--ghost"><span data-icon="chevronLeft"></span> Back</button>
+      <button class="btn btn--primary"><span data-icon="wand"></span> Generate recommendation <span data-icon="chevronRight"></span></button>
+    </div>
+  </div>
+</div>
+<script src="mock.js"></script>
+</body>
+</html>

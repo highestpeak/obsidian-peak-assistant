@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1280" />
+	<title>Mock 04 · Budget & Alerts</title>
+	<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark">
+	<div id="nav-root"></div>
+
+	<main class="mock-shell">
+		<header class="mock-header">
+			<div>
+				<div class="mock-meta">04 · Guardrails</div>
+				<h1 class="mock-title">Budget &amp; Alerts</h1>
+				<div class="mock-sub">Control spend, set guardrails, and choose defaults that fit your workflow.</div>
+			</div>
+			<div class="mock-header__right">
+				<button class="btn btn--sm">Reset to recommended</button>
+			</div>
+		</header>
+
+		<section class="row row--3">
+			<!-- Monthly budget -->
+			<div class="card card--pad-lg">
+				<div style="display:flex; justify-content:space-between; align-items:center;">
+					<span class="card__title">Monthly budget</span>
+					<span class="badge badge--soft">May 2026</span>
+				</div>
+				<div class="stack" style="margin-top:14px;">
+					<div class="field">
+						<span class="field__label">Budget</span>
+						<div style="display:flex; gap:6px;">
+							<input class="field__input mono" value="$40.00" />
+							<button class="btn btn--sm" aria-label="Decrease">−</button>
+							<button class="btn btn--sm" aria-label="Increase">+</button>
+						</div>
+						<span class="field__hint">Used when projecting and triggering alerts.</span>
+					</div>
+
+					<div>
+						<div style="display:flex; justify-content:space-between; align-items:baseline; font-size:12px;">
+							<span class="muted">Used · projected · remaining</span>
+							<span class="strong tnum">$14.20 / $28.60 / $25.80</span>
+						</div>
+						<div class="pace" style="margin-top:8px; height:8px;">
+							<div class="pace__fill" style="width:35.5%;"></div>
+							<div class="pace__mark" style="left:71.5%;" title="Projected end of month"></div>
+						</div>
+						<div class="pace__legend">
+							<span>35% used</span>
+							<span>72% projected</span>
+							<span>100%</span>
+						</div>
+					</div>
+
+					<div style="display:flex; gap:8px;">
+						<button class="btn btn--primary btn--sm">Save budget</button>
+						<button class="btn btn--sm btn--ghost">Edit reset day (1st)</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Alert rules -->
+			<div class="card card--pad-lg">
+				<div style="display:flex; justify-content:space-between; align-items:center;">
+					<span class="card__title">Alert rules</span>
+					<button class="btn btn--sm btn--ghost">Edit thresholds</button>
+				</div>
+
+				<div class="stack" style="margin-top:6px;">
+					<div class="rule">
+						<button class="tog" aria-pressed="true"><span class="tog__track"></span></button>
+						<div>
+							<div class="rule__title">Notify at 40 % monthly budget</div>
+							<div class="rule__sub">Single in-app notification, then silenced until next threshold.</div>
+						</div>
+						<span class="badge badge--soft">In-app</span>
+					</div>
+
+					<div class="rule">
+						<button class="tog" aria-pressed="true"><span class="tog__track"></span></button>
+						<div>
+							<div class="rule__title">Suggest compact when context ≥ 70 %</div>
+							<div class="rule__sub">Surface inline in chat with "Compact now" verb.</div>
+						</div>
+						<span class="badge badge--soft">Inline</span>
+					</div>
+
+					<div class="rule">
+						<button class="tog" aria-pressed="true"><span class="tog__track"></span></button>
+						<div>
+							<div class="rule__title">Summarize expensive agent tasks</div>
+							<div class="rule__sub">Post-task receipt for any task over $0.15 or 50k tokens.</div>
+						</div>
+						<span class="badge badge--soft">Receipt</span>
+					</div>
+
+					<div class="rule">
+						<button class="tog" aria-pressed="false"><span class="tog__track"></span></button>
+						<div>
+							<div class="rule__title">Silence low-cost receipts</div>
+							<div class="rule__sub">Hide per-message pip when call is under $0.0005.</div>
+						</div>
+						<span class="badge badge--soft">Pip</span>
+					</div>
+				</div>
+
+				<div style="margin-top:12px; display:flex; gap:8px;">
+					<button class="btn btn--sm">Test alerts</button>
+					<a class="muted" href="#" style="font-size:11.5px; align-self:center;">How alerts are delivered →</a>
+				</div>
+			</div>
+
+			<!-- Model defaults -->
+			<div class="card card--pad-lg">
+				<div style="display:flex; justify-content:space-between; align-items:center;">
+					<span class="card__title">Model defaults</span>
+					<button class="btn btn--sm btn--ghost">Manage models</button>
+				</div>
+				<div class="muted" style="font-size:11.5px; margin-top:4px;">Pick the right model for the job.</div>
+
+				<div class="seg" style="margin-top:14px; align-self:flex-start;">
+					<button class="seg__btn" aria-pressed="true">Quick</button>
+					<button class="seg__btn" aria-pressed="false">Deep research</button>
+					<button class="seg__btn" aria-pressed="false">Premium</button>
+				</div>
+
+				<div class="stack" style="margin-top:14px; gap:10px;">
+					<div class="rule">
+						<span class="rec__icon" style="background:var(--pk-success-bg); color:var(--pk-success);">⚡</span>
+						<div>
+							<div class="rule__title">Quick · Claude 3.5 Haiku</div>
+							<div class="rule__sub">Default mode · short chats, copilot edits, search rerank.</div>
+						</div>
+						<span class="mono tnum">$0.002 / call</span>
+					</div>
+
+					<div class="rule">
+						<span class="rec__icon" style="background:var(--pk-info-bg); color:var(--pk-info);">⌖</span>
+						<div>
+							<div class="rule__title">Deep · Claude 3.7 Sonnet</div>
+							<div class="rule__sub">Long research, multi-step agents, structured reports.</div>
+						</div>
+						<span class="mono tnum">$0.013 / call</span>
+					</div>
+
+					<div class="rule">
+						<span class="rec__icon" style="background:var(--pk-warning-bg); color:var(--pk-warning);">★</span>
+						<div>
+							<div class="rule__title">Premium · OpenAI o3-pro</div>
+							<div class="rule__sub">Hardest reasoning, when accuracy &gt; cost.</div>
+						</div>
+						<span class="mono tnum">$0.060 / call</span>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- What users will see -->
+		<section style="margin-top:20px;">
+			<div class="card card--flush">
+				<div class="card__head">
+					<span class="card__title">What users will see</span>
+					<button class="btn btn--sm btn--ghost">Customize messages</button>
+				</div>
+				<div class="card__body row" style="grid-template-columns: repeat(3, minmax(0,1fr)); gap:16px;">
+
+					<div>
+						<div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em;">1 · Spend at 40 % of budget</div>
+						<div style="margin-top:8px; padding:12px 14px; border:1px solid var(--pk-border); border-radius:var(--pk-radius-md); background:var(--pk-bg-secondary);">
+							<div style="display:flex; justify-content:space-between; align-items:baseline;">
+								<span class="strong tnum">$14.20 / $40.00</span>
+								<span class="badge badge--warn">Pace high</span>
+							</div>
+							<div class="pace" style="margin-top:8px; height:6px;"><div class="pace__fill pace__fill--warn" style="width:35.5%;"></div></div>
+							<div style="display:flex; gap:6px; margin-top:10px;">
+								<button class="btn btn--sm">Open Optimization</button>
+								<button class="btn btn--sm btn--ghost">Snooze</button>
+							</div>
+						</div>
+					</div>
+
+					<div>
+						<div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em;">2 · Context warning at 70 %</div>
+						<div style="margin-top:8px; padding:12px 14px; border:1px solid var(--pk-warning); border-radius:var(--pk-radius-md); background:var(--pk-warning-bg);">
+							<div style="display:flex; justify-content:space-between; align-items:baseline;">
+								<span class="strong" style="color:var(--pk-warning);">Context at 72 %</span>
+								<span class="badge badge--warn">Session warning</span>
+							</div>
+							<div class="muted" style="font-size:11.5px; margin-top:6px;">
+								Compact now to keep answers focused and cut next-turn cost.
+							</div>
+							<div style="display:flex; gap:6px; margin-top:10px;">
+								<button class="btn btn--sm btn--primary">Compact now</button>
+								<button class="btn btn--sm btn--ghost">Dismiss</button>
+							</div>
+						</div>
+					</div>
+
+					<div>
+						<div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em;">3 · Post-task receipt</div>
+						<div style="margin-top:8px; padding:12px 14px; border:1px solid var(--pk-border); border-radius:var(--pk-radius-md); background:var(--pk-bg-secondary);">
+							<div style="font-size:11px; color:var(--pk-text-tertiary);">Agent · "Index research notes"</div>
+							<div style="display:flex; gap:12px; margin-top:6px; flex-wrap:wrap; font-size:12px;">
+								<span class="mono">12k tok</span>
+								<span class="mono">$0.012</span>
+								<span class="mono">0.4 s</span>
+								<span class="badge badge--soft">Quick · Haiku 3.5</span>
+							</div>
+							<div style="display:flex; gap:6px; margin-top:10px;">
+								<button class="btn btn--sm">Save receipt</button>
+								<button class="btn btn--sm btn--ghost">Open trace</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<script src="partials.js"></script>
+	<script>renderNav('budget');</script>
+</body>
+</html>

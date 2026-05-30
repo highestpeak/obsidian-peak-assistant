@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1320" />
+	<title>Mock 05 · Usage History</title>
+	<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark">
+	<div id="nav-root"></div>
+
+	<main class="mock-shell" style="max-width: 1320px;">
+		<header class="mock-header">
+			<div>
+				<div class="mock-meta">05 · Audit · trace drilldown</div>
+				<h1 class="mock-title">Usage History</h1>
+				<div class="mock-sub">Detailed record of assistant calls, costs, and outcomes. Use this to debug or audit.</div>
+			</div>
+			<div class="mock-header__right">
+				<button class="btn btn--sm">Export CSV</button>
+			</div>
+		</header>
+
+		<!-- Filter chip row -->
+		<div class="chip-row" style="margin-bottom:14px;">
+			<span class="chip"><span class="chip__label">Range:</span><span class="chip__val">May 11 → May 17</span> ▾</span>
+			<span class="chip"><span class="chip__label">Feature:</span><span class="chip__val">All</span> ▾</span>
+			<span class="chip"><span class="chip__label">Provider:</span><span class="chip__val">All</span> ▾</span>
+			<span class="chip"><span class="chip__label">Model:</span><span class="chip__val">All</span> ▾</span>
+			<span class="chip"><span class="chip__label">Outcome:</span><span class="chip__val">All</span> ▾</span>
+			<span class="chip"><span class="chip__label">Cost ≥</span><span class="chip__val">$0.00</span> ▾</span>
+			<button class="btn btn--sm btn--ghost">More filters</button>
+		</div>
+
+		<!-- compact KPI strip -->
+		<section class="kpi-grid" style="grid-template-columns: repeat(5, minmax(0, 1fr));">
+			<div class="kpi" style="min-height:78px;">
+				<span class="kpi__label">Calls</span>
+				<span class="kpi__value tnum">128</span>
+			</div>
+			<div class="kpi" style="min-height:78px;">
+				<span class="kpi__label">Tokens</span>
+				<span class="kpi__value tnum">1.24M</span>
+			</div>
+			<div class="kpi" style="min-height:78px;">
+				<span class="kpi__label">Cost</span>
+				<span class="kpi__value tnum">$14.20</span>
+			</div>
+			<div class="kpi" style="min-height:78px;">
+				<span class="kpi__label">Cost / saved</span>
+				<span class="kpi__value tnum">$0.018</span>
+			</div>
+			<div class="kpi" style="min-height:78px;">
+				<span class="kpi__label">Outcome rate</span>
+				<span class="kpi__value tnum">41.7%</span>
+			</div>
+		</section>
+
+		<!-- main: table + detail panel -->
+		<section class="row" style="margin-top:14px; grid-template-columns: minmax(0,1fr) 360px;">
+
+			<!-- Table -->
+			<div class="card card--flush">
+				<div class="card__head">
+					<span class="card__title">Calls · 128</span>
+					<span class="card__sub">Click a row to inspect</span>
+				</div>
+				<div style="overflow-x:auto;">
+				<table class="tbl tbl--dense" style="min-width:820px;">
+					<thead>
+						<tr>
+							<th>Time</th>
+							<th>Status</th>
+							<th>Provider · model</th>
+							<th class="num">Tokens</th>
+							<th class="num">Cost</th>
+							<th class="num">Duration</th>
+							<th>Outcome</th>
+							<th>Trace</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr style="background: rgba(91,141,239,0.08);">
+							<td class="mono subtle">May 17 · 1:42 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<div class="model-cell">
+										<span class="model-name">Anthropic · Claude 3.7 Sonnet</span>
+										<span class="model-meta">chat · refactor-thread</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">8,540</td>
+							<td class="num num--warn">$0.23</td>
+							<td class="num">1.4s</td>
+							<td><span class="badge badge--ok">Accepted</span></td>
+							<td><a href="#">trace_a14c</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 17 · 1:38 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--openai">O</span>
+									<div class="model-cell">
+										<span class="model-name">OpenAI · GPT-4.1 mini</span>
+										<span class="model-meta">search · rerank</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">1,820</td>
+							<td class="num">$0.004</td>
+							<td class="num">0.4s</td>
+							<td><span class="badge badge--info">Search click</span></td>
+							<td><a href="#">trace_a13b</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 17 · 1:21 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<div class="model-cell">
+										<span class="model-name">Anthropic · Claude 3.5 Haiku</span>
+										<span class="model-meta">copilot · inline-edit</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">680</td>
+							<td class="num">$0.001</td>
+							<td class="num">0.3s</td>
+							<td><span class="badge badge--ok">Accepted</span></td>
+							<td><a href="#">trace_a12a</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 17 · 11:08 AM</td>
+							<td><span class="badge badge--warn"><span class="dot"></span>retry</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--google">G</span>
+									<div class="model-cell">
+										<span class="model-name">Google · Gemini 2.5 Pro</span>
+										<span class="model-meta">agent · 6-step (step 3)</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">14,300</td>
+							<td class="num">$0.046</td>
+							<td class="num">3.8s</td>
+							<td>—</td>
+							<td><a href="#">trace_a118</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 16 · 9:12 PM</td>
+							<td><span class="badge badge--bad"><span class="dot"></span>aborted</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--openai">O</span>
+									<div class="model-cell">
+										<span class="model-name">OpenAI · GPT-4.1</span>
+										<span class="model-meta">agent · summarize-earnings</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">76,200</td>
+							<td class="num num--bad">$0.23</td>
+							<td class="num">12.4s</td>
+							<td><span class="badge badge--bad">No outcome</span></td>
+							<td><a href="#">trace_a0fd</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 16 · 8:50 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<div class="model-cell">
+										<span class="model-name">Anthropic · Claude 3.7 Sonnet</span>
+										<span class="model-meta">chat · plan-review</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">11,860</td>
+							<td class="num">$0.041</td>
+							<td class="num">1.9s</td>
+							<td><span class="badge badge--ok">Saved</span></td>
+							<td><a href="#">trace_a0ec</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 16 · 7:33 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--openrouter">R</span>
+									<div class="model-cell">
+										<span class="model-name">OpenRouter · DeepSeek-R1 0528</span>
+										<span class="model-meta">deepseek/deepseek-r1-0528</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">19,400</td>
+							<td class="num">$0.022</td>
+							<td class="num">3.2s</td>
+							<td>—</td>
+							<td><a href="#">trace_a0dc</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 16 · 4:08 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--google">G</span>
+									<div class="model-cell">
+										<span class="model-name">Google · Gemini 2.5 Flash</span>
+										<span class="model-meta">embed · vault-index</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">4,012</td>
+							<td class="num">$0.001</td>
+							<td class="num">0.3s</td>
+							<td>—</td>
+							<td><a href="#">trace_a0c4</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 15 · 3:05 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<div class="model-cell">
+										<span class="model-name">Anthropic · Claude 3.7 Sonnet</span>
+										<span class="model-meta">search · philosopher-kings</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">58,100</td>
+							<td class="num num--bad">$0.19</td>
+							<td class="num">2.1s</td>
+							<td><span class="badge badge--bad">No click</span></td>
+							<td><a href="#">trace_a05f</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 15 · 2:48 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<div class="model-cell">
+										<span class="model-name">Anthropic · Claude 3.5 Haiku</span>
+										<span class="model-meta">chat · note-summary</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">2,720</td>
+							<td class="num">$0.002</td>
+							<td class="num">0.6s</td>
+							<td><span class="badge badge--ok">Saved</span></td>
+							<td><a href="#">trace_a05c</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 15 · 11:30 AM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--openai">O</span>
+									<div class="model-cell">
+										<span class="model-name">OpenAI · GPT-4.1 mini</span>
+										<span class="model-meta">copilot · inline-edit</span>
+								</div>
+								</div>
+							</td>
+							<td class="num">1,210</td>
+							<td class="num">$0.002</td>
+							<td class="num">0.4s</td>
+							<td><span class="badge badge--ok">Accepted</span></td>
+							<td><a href="#">trace_a058</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 14 · 8:14 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<div class="model-cell">
+										<span class="model-name">Anthropic · Claude 3.7 Sonnet</span>
+										<span class="model-meta">agent · comparative-migration (step 5)</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">42,180</td>
+							<td class="num num--bad">$0.74</td>
+							<td class="num">8.2s</td>
+							<td><span class="badge badge--bad">No outcome</span></td>
+							<td><a href="#">trace_a04e</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 14 · 6:01 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--google">G</span>
+									<div class="model-cell">
+										<span class="model-name">Google · Gemini 2.5 Flash</span>
+										<span class="model-meta">search · rerank</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">2,860</td>
+							<td class="num">$0.000</td>
+							<td class="num">0.3s</td>
+							<td><span class="badge badge--info">Search click</span></td>
+							<td><a href="#">trace_a042</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 14 · 5:55 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<div class="model-cell">
+										<span class="model-name">Anthropic · Claude 3.5 Haiku</span>
+										<span class="model-meta">chat · quick-answer</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">1,140</td>
+							<td class="num">$0.001</td>
+							<td class="num">0.3s</td>
+							<td>—</td>
+							<td><a href="#">trace_a040</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 13 · 9:48 AM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--openai">O</span>
+									<div class="model-cell">
+										<span class="model-name">OpenAI · GPT-4.1</span>
+										<span class="model-meta">agent · library-audit</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">28,400</td>
+							<td class="num num--warn">$0.53</td>
+							<td class="num">7.1s</td>
+							<td><span class="badge badge--bad">No outcome</span></td>
+							<td><a href="#">trace_a02c</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 13 · 9:42 AM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<div class="model-cell">
+										<span class="model-name">Anthropic · Claude 3.7 Sonnet</span>
+										<span class="model-meta">chat · architecture-q</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">9,420</td>
+							<td class="num">$0.034</td>
+							<td class="num">2.4s</td>
+							<td><span class="badge badge--ok">Saved</span></td>
+							<td><a href="#">trace_a028</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 12 · 6:13 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--openrouter">R</span>
+									<div class="model-cell">
+										<span class="model-name">OpenRouter · Llama 3.1 70B Instruct</span>
+										<span class="model-meta">meta-llama/llama-3.1-70b-instruct</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">5,440</td>
+							<td class="num">$0.001</td>
+							<td class="num">2.6s</td>
+							<td>—</td>
+							<td><a href="#">trace_a019</a></td>
+						</tr>
+
+						<tr>
+							<td class="mono subtle">May 12 · 5:48 PM</td>
+							<td><span class="badge badge--ok"><span class="dot"></span>ok</span></td>
+							<td>
+								<div class="provider-cell">
+									<span class="brand-av brand-av--sm brand-av--anthropic">A</span>
+									<div class="model-cell">
+										<span class="model-name">Anthropic · Claude 3.5 Haiku</span>
+										<span class="model-meta">copilot · inline-edit</span>
+									</div>
+								</div>
+							</td>
+							<td class="num">820</td>
+							<td class="num">$0.001</td>
+							<td class="num">0.2s</td>
+							<td><span class="badge badge--ok">Accepted</span></td>
+							<td><a href="#">trace_a013</a></td>
+						</tr>
+					</tbody>
+				</table>
+				</div>
+				<div class="card__head" style="border-top:1px solid var(--pk-border-soft); border-bottom:0;">
+					<span class="card__sub">Showing 19 of 128 · sorted by time desc</span>
+					<div class="pager">
+						<button class="pager__btn" aria-label="Previous">‹</button>
+						<button class="pager__btn" aria-current="page">1</button>
+						<button class="pager__btn">2</button>
+						<button class="pager__btn">3</button>
+						<button class="pager__btn">4</button>
+						<span class="pager__ellipsis">…</span>
+						<button class="pager__btn">13</button>
+						<button class="pager__btn" aria-label="Next">›</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Detail panel -->
+			<aside class="card card--flush" style="position:sticky; top:64px; align-self:start;">
+				<div class="subtabs">
+					<button class="subtabs__btn" aria-pressed="true">Overview</button>
+					<button class="subtabs__btn" aria-pressed="false">Tokens</button>
+					<button class="subtabs__btn" aria-pressed="false">Metadata</button>
+					<button class="subtabs__btn" aria-pressed="false">Session</button>
+				</div>
+
+				<div class="card__body stack" style="gap:14px;">
+					<div>
+						<div class="card__sub" style="font-size:10.5px;">Selected · trace_a14c</div>
+						<div class="strong" style="font-size:14px; margin-top:2px;">Anthropic · Claude 3.7 Sonnet</div>
+						<div class="muted" style="font-size:11.5px;">
+							chat → <a href="#" style="color: var(--pk-accent-text);">Refactor API states and tests</a> → turn 4 / 7
+						</div>
+						<div class="muted" style="font-size:11.5px; margin-top:2px;">1.4 s · 8,540 tok · $0.0547</div>
+					</div>
+
+					<div class="divider"></div>
+
+					<!-- What was this about -->
+					<div>
+						<div class="card__sub" style="margin-bottom:8px;">
+							What was this about
+							<span class="help" title="Truncated prompt and response. Click 'Open in chat' to see the full turn.">ⓘ</span>
+						</div>
+						<div style="display:flex; flex-direction:column; gap:8px;">
+							<div style="padding:8px 10px; background:var(--pk-bg-secondary); border-radius:var(--pk-radius-md); border-left:2px solid var(--pk-info);">
+								<div class="card__sub" style="font-size:10px;">You</div>
+								<div style="font-size:12px; color:var(--pk-text-primary); line-height:1.5;">
+									"How should we structure the state machine so loading and error states share the same retry path? Refer to <span class="mono">src/state-machine.ts</span>…"
+								</div>
+							</div>
+							<div style="padding:8px 10px; background:var(--pk-bg-secondary); border-radius:var(--pk-radius-md); border-left:2px solid var(--pk-success);">
+								<div class="card__sub" style="font-size:10px;">Assistant</div>
+								<div style="font-size:12px; color:var(--pk-text-primary); line-height:1.5;">
+									"Here's a refactor that splits state into <span class="mono">Idle | Loading | Error | Ready</span> and gives retry a single entry point…"
+								</div>
+							</div>
+						</div>
+						<div style="margin-top:8px; font-size:11px; color:var(--pk-text-secondary);">
+							<div><span class="subtle">Attached files</span> &nbsp;·&nbsp; <span class="mono">src/state-machine.ts</span>, <span class="mono">docs/api-states.md</span></div>
+							<div style="margin-top:3px;"><span class="subtle">Tools used</span> &nbsp;·&nbsp; <code class="mono">search_vault</code> (1), <code class="mono">read_file</code> (2)</div>
+						</div>
+						<div style="margin-top:8px; display:flex; gap:6px;">
+							<button class="btn btn--sm">Open in chat</button>
+							<button class="btn btn--sm btn--ghost">Show full prompt</button>
+						</div>
+					</div>
+
+					<div>
+						<div class="card__sub" style="margin-bottom:8px;">Token breakdown</div>
+						<dl class="dl">
+							<dt>Input</dt><dd>6,210</dd>
+							<dt>Output</dt><dd>2,330</dd>
+							<dt>Cached</dt><dd>4,012 <span class="subtle">(of input)</span></dd>
+							<dt>Reasoning</dt><dd>—</dd>
+							<dt>Total</dt><dd class="strong">8,540</dd>
+						</dl>
+					</div>
+
+					<div>
+						<div class="card__sub" style="margin-bottom:8px;">Cost breakdown</div>
+						<dl class="dl">
+							<dt>Input</dt><dd>$0.0186</dd>
+							<dt>Output</dt><dd>$0.0349</dd>
+							<dt>Cache read</dt><dd>$0.0012</dd>
+							<dt>Total</dt><dd class="strong">$0.0547</dd>
+						</dl>
+					</div>
+
+					<div>
+						<div class="card__sub" style="margin-bottom:8px;">Call metadata</div>
+						<dl class="dl">
+							<dt>Call ID</dt><dd><span class="mono">a14c-7e21</span></dd>
+							<dt>Created</dt><dd>May 17, 1:42:18 PM</dd>
+							<dt>Feature</dt><dd>chat</dd>
+							<dt>Action</dt><dd>assistant_turn</dd>
+							<dt>Streaming</dt><dd>yes</dd>
+						</dl>
+					</div>
+
+					<div>
+						<div class="card__sub" style="margin-bottom:8px;">Linked items</div>
+						<dl class="dl">
+							<dt>Session</dt><dd><a href="#">Refactor API states and tests</a></dd>
+							<dt>Vault save</dt><dd><a href="#">notes / refactor-states.md</a></dd>
+						</dl>
+					</div>
+
+					<button class="btn btn--primary btn--sm" style="align-self:flex-start;">Create routing rule from call</button>
+				</div>
+			</aside>
+		</section>
+	</main>
+
+	<script src="partials.js"></script>
+	<script>renderNav('history');</script>
+</body>
+</html>

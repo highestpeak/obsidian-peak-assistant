@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Peak Chat — Retained UX Static Mock</title>
+  <link rel="stylesheet" href="chat-retained-mock.css" />
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- Reusable SVG icon symbols (Lucide-style)                     -->
+<!-- ============================================================ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></symbol>
+    <symbol id="i-doc-open" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="14" x2="15" y2="14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></symbol>
+    <symbol id="i-tools" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="12" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+    <symbol id="i-chevron-up" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></symbol>
+    <symbol id="i-msg-square" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></symbol>
+    <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></symbol>
+    <symbol id="i-bar-chart" viewBox="0 0 24 24"><line x1="6" y1="20" x2="6" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="14"/></symbol>
+    <symbol id="i-network" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><line x1="8.5" y1="6" x2="15.5" y2="6"/><line x1="6" y1="8.5" x2="6" y2="15.5"/><line x1="18" y1="8.5" x2="18" y2="15.5"/><line x1="8.5" y1="18" x2="15.5" y2="18"/></symbol>
+    <symbol id="i-git-diff" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M6 8v8a3 3 0 0 0 3 3h6"/><path d="M18 16V8a3 3 0 0 0-3-3H9"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+    <symbol id="i-trace" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="18" r="2"/><line x1="6.5" y1="7.5" x2="10.5" y2="11"/><line x1="13.5" y1="13.5" x2="17.5" y2="16.5"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><line x1="12" y1="17" x2="12" y2="22"/><path d="M9 17h6V11l2-2V4H7v5l2 2z"/></symbol>
+    <symbol id="i-slider" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="2" fill="#fff"/><circle cx="15" cy="12" r="2" fill="#fff"/><circle cx="8" cy="18" r="2" fill="#fff"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></symbol>
+    <symbol id="i-check-list" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12" y2="17.01"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></symbol>
+    <symbol id="i-microscope" viewBox="0 0 24 24"><circle cx="9" cy="7" r="2"/><path d="M9 9v9"/><path d="M5 18h14"/><path d="M7 21h10"/><path d="M14 7l4-3"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 0 20"/><path d="M12 2a15.3 15.3 0 0 0 0 20"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/></symbol>
+  </defs>
+</svg>
+
+<main class="page">
+
+  <!-- ============================================================ -->
+  <!-- Hero                                                          -->
+  <!-- ============================================================ -->
+  <section class="hero">
+    <div class="eyebrow">Static HTML mock · Peak Chat retained design · 2026-05-30</div>
+    <h1>Peak Chat retained UX — playable mock</h1>
+    <p>
+      只有 HTML/CSS，没有产品代码。复刻已经收敛的方向：Header 只保留 conversation title / source document / refresh；
+      Input 通过 run chip 承担 mode/model/role/context；Message 保持文档阅读感；Conversation Index 是 topic / artifact / message 的导航索引。
+    </p>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- Main app shell                                                -->
+  <!-- ============================================================ -->
+  <section class="shell">
+
+    <!-- LEFT RAIL ------------------------------------------------- -->
+    <aside class="pane left">
+      <div class="left-head">
+        <div class="title">Peak</div>
+        <div class="sub">KB5 Automation Workspace</div>
+      </div>
+      <div class="left-search">
+        <svg class="ico ico-14"><use href="#i-search"/></svg>
+        <span>Find chat or project</span>
+      </div>
+
+      <div class="left-sec">Projects</div>
+      <div class="left-item">
+        <svg class="ico"><use href="#i-folder"/></svg>
+        <span class="truncate">kb5-automation</span>
+        <span class="badge">8</span>
+      </div>
+      <div class="left-item">
+        <svg class="ico"><use href="#i-folder"/></svg>
+        <span class="truncate">people analysis</span>
+      </div>
+
+      <div class="left-sec">Today</div>
+      <div class="left-item active">
+        <svg class="ico"><use href="#i-msg-square"/></svg>
+        <span class="truncate">Hello — KB5 Automation Workspace</span>
+      </div>
+      <div class="left-item">
+        <svg class="ico"><use href="#i-msg-square"/></svg>
+        <span class="truncate">API authentication review</span>
+      </div>
+      <div class="left-item">
+        <svg class="ico"><use href="#i-msg-square"/></svg>
+        <span class="truncate">SpreadJS examples</span>
+      </div>
+
+      <div class="left-sec">Yesterday</div>
+      <div class="left-item">
+        <svg class="ico"><use href="#i-msg-square"/></svg>
+        <span class="truncate">workspace setup</span>
+      </div>
+      <div class="left-item">
+        <svg class="ico"><use href="#i-msg-square"/></svg>
+        <span class="truncate">Project organization</span>
+      </div>
+    </aside>
+
+    <!-- CENTER CHAT ----------------------------------------------- -->
+    <section class="pane center">
+
+      <!-- (1) Clean header ----------------------------------------- -->
+      <header class="chat-header">
+        <div class="chat-title">Hello — KB5 Automation Workspace</div>
+        <div class="hdr-actions">
+          <button class="icon-btn has-tip tip-open" data-tip="Open source document" aria-label="Open source document">
+            <svg class="ico ico-18"><use href="#i-doc-open"/></svg>
+          </button>
+          <button class="icon-btn has-tip" data-tip="Refresh" aria-label="Refresh">
+            <svg class="ico ico-18"><use href="#i-refresh"/></svg>
+          </button>
+        </div>
+        <div class="spacer"></div>
+      </header>
+
+      <!-- chat scroll body ---------------------------------------- -->
+      <div class="chat-scroll">
+
+        <!-- user message ------------------------------------------ -->
+        <article class="msg user">
+          <div class="msg-head">
+            <div class="avatar user">U</div>
+            <div class="msg-name">You</div>
+            <span class="msg-meta-inline">May 9, 2026 · 09:42 PM</span>
+          </div>
+          <div class="msg-body">
+            Take a look at my product strategy notes and find weak spots. Cross-reference anything in this vault that touches macOS dev, automation playbook, or the API integration patterns.
+          </div>
+        </article>
+
+        <!-- (4) text answer with suggested next ------------------- -->
+        <article class="msg">
+          <div class="msg-head">
+            <div class="avatar">P</div>
+            <div class="msg-name">Peak</div>
+            <span class="msg-mode"><svg class="ico ico-14"><use href="#i-sparkles"/></svg> Agent</span>
+            <span class="msg-meta-inline">3 tools <span class="dot">·</span> 1.2k tokens <span class="dot">·</span> 8.4s</span>
+          </div>
+
+          <div class="msg-body">
+            <p>I analyzed your product strategy notes and connected them with related research. Here are the top weak spots and supporting insights.</p>
+            <ul>
+              <li><strong>macOS development environment.</strong> You mention macOS as your primary setup. Consider backup options and onboarding docs for contributors on Windows or Linux to reduce friction. <a>Dev Environment Choices</a></li>
+              <li><strong>Automation workspace documentation.</strong> The workspace setup is clear, but some automation flows lack end-to-end examples with error handling. <a>Automation Playbook</a></li>
+              <li><strong>API authentication &amp; error handling.</strong> Recent logs show API auth failures causing workflow breaks. Add automatic token refresh and clearer error messaging. <a>API Integration Patterns</a></li>
+            </ul>
+            <p>These areas, when strengthened, will improve stability, onboarding speed, and team scalability.</p>
+            <p>What would you like to dive into today? Whether it's the cowork instructions, your automation setup, or something else entirely — I'm here to help.</p>
+          </div>
+
+          <div class="meta-row">
+            <span class="model-chip">openrouter/openai/gpt-5-mini</span>
+            <span>May 9, 2026, 09:45 PM</span>
+            <span class="meta-sep">·</span>
+            <button class="meta-action"><svg class="ico"><use href="#i-copy"/></svg> Copy</button>
+            <button class="meta-action"><svg class="ico"><use href="#i-rotate"/></svg> Regenerate</button>
+            <button class="meta-action"><svg class="ico"><use href="#i-star"/></svg> Star</button>
+            <button class="meta-action"><svg class="ico"><use href="#i-trace"/></svg> Trace</button>
+            <button class="meta-action" style="margin-left:auto;"><svg class="ico"><use href="#i-more"/></svg></button>
+          </div>
+
+          <div class="suggest-row">
+            <span class="suggest-label">Suggested next</span>
+            <button class="suggest-chip active">
+              <svg class="ico"><use href="#i-arrow-up-right"/></svg>
+              Show SpreadJS example
+            </button>
+            <button class="suggest-chip">
+              <svg class="ico"><use href="#i-warn"/></svg>
+              Fix API authentication
+            </button>
+            <button class="suggest-more">
+              More…
+              <svg class="ico ico-14"><use href="#i-chevron-down"/></svg>
+            </button>
+          </div>
+        </article>
+
+        <!-- (6) visual artifacts message -------------------------- -->
+        <article class="msg">
+          <div class="msg-head">
+            <div class="avatar">P</div>
+            <div class="msg-name">Peak</div>
+            <span class="msg-mode"><svg class="ico ico-14"><use href="#i-sparkles"/></svg> Agent</span>
+            <span class="msg-meta-inline">5 tools <span class="dot">·</span> 2 artifacts <span class="dot">·</span> 13.2s</span>
+          </div>
+
+          <div class="msg-body">
+            <p>I generated two visual artifacts for the workflow.</p>
+          </div>
+
+          <div class="artifact-row two">
+            <div class="artifact-card">
+              <div class="artifact-canvas">
+                <div class="fake-diagram">
+                  <span class="node">Clients</span><span class="arrow">→</span>
+                  <span class="node">Web Frontend (React)</span><br/>
+                  <span class="node">API Gateway (OAuth2)</span><span class="arrow">→</span>
+                  <span class="node">Auth Service</span><br/>
+                  <span class="node">Backend Service (Node.js)</span><span class="arrow">→</span>
+                  <span class="node">PostgreSQL</span>
+                  <span class="node">Redis Cache</span>
+                </div>
+              </div>
+              <div class="artifact-foot">
+                <span class="artifact-name">architecture-sketch.png</span>
+                <span class="artifact-type">Image</span>
+                <button class="meta-action"><svg class="ico"><use href="#i-doc-open"/></svg> Open</button>
+                <button class="meta-action"><svg class="ico"><use href="#i-copy"/></svg> Copy link</button>
+              </div>
+            </div>
+
+            <div class="artifact-card">
+              <div class="artifact-canvas">
+                <div class="fake-diagram">
+                  <span class="node">Start</span><span class="arrow">→</span>
+                  <span class="node">Auth?</span><span class="arrow">→</span>
+                  <span class="node">Show results</span><br/>
+                  <span class="node">Login</span><span class="arrow">→</span>
+                  <span class="node">Create session</span><span class="arrow">→</span>
+                  <span class="node">Done</span>
+                </div>
+              </div>
+              <div class="artifact-foot">
+                <span class="artifact-name">vault-flow.drawio</span>
+                <span class="artifact-type">Diagram</span>
+                <button class="meta-action"><svg class="ico"><use href="#i-doc-open"/></svg> Open</button>
+                <button class="meta-action"><svg class="ico"><use href="#i-edit"/></svg> Edit</button>
+                <button class="meta-action"><svg class="ico"><use href="#i-folder"/></svg> Reveal</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="saved-note">
+            Saved to vault attachments · indexed in <span class="link">Conversation Index</span>
+          </div>
+
+          <div class="meta-row">
+            <span class="model-chip">openrouter/openai/gpt-5-mini</span>
+            <span>May 9, 2026, 09:45 PM</span>
+            <span class="meta-sep">·</span>
+            <button class="meta-action"><svg class="ico"><use href="#i-copy"/></svg> Copy</button>
+            <button class="meta-action"><svg class="ico"><use href="#i-rotate"/></svg> Regenerate</button>
+            <button class="meta-action"><svg class="ico"><use href="#i-star"/></svg> Star</button>
+            <button class="meta-action"><svg class="ico"><use href="#i-trace"/></svg> Trace</button>
+          </div>
+
+          <div class="suggest-row">
+            <button class="suggest-chip">
+              <svg class="ico"><use href="#i-arrow-up-right"/></svg>
+              Open in canvas
+            </button>
+            <button class="suggest-chip">
+              <svg class="ico"><use href="#i-check-list"/></svg>
+              Create implementation plan
+            </button>
+            <button class="suggest-more">
+              More suggestions
+              <svg class="ico ico-14"><use href="#i-chevron-down"/></svg>
+            </button>
+          </div>
+        </article>
+
+        <!-- (7) file / report / diff artifacts -------------------- -->
+        <article class="msg">
+          <div class="msg-head">
+            <div class="avatar">P</div>
+            <div class="msg-name">Peak</div>
+            <span class="msg-mode"><svg class="ico ico-14"><use href="#i-sparkles"/></svg> Agent</span>
+            <span class="msg-meta-inline">4 tools <span class="dot">·</span> 2 files <span class="dot">·</span> 10.1s</span>
+          </div>
+
+          <div class="msg-body">
+            <p>I prepared the implementation plan and a reviewable change proposal.</p>
+          </div>
+
+          <div class="file-row">
+            <div class="file-icon md"><svg class="ico"><use href="#i-file-text"/></svg></div>
+            <div>
+              <div class="file-meta-line">implementation-plan.md</div>
+              <div class="file-meta-sub">
+                <span class="tag-saved">Markdown</span>
+                saved in <code>docs/superpowers/plans</code> · 1.2 KB · just now
+              </div>
+            </div>
+            <div class="file-actions">
+              <button class="btn-mini"><svg class="ico"><use href="#i-doc-open"/></svg> Open</button>
+              <button class="btn-mini"><svg class="ico"><use href="#i-folder"/></svg> Reveal</button>
+            </div>
+          </div>
+
+          <div class="file-row">
+            <div class="file-icon diff"><svg class="ico"><use href="#i-git-diff"/></svg></div>
+            <div>
+              <div class="file-meta-line">
+                review-proposal.diff
+                <span class="diff-strip" aria-hidden="true">
+                  <span class="s-add" style="width:38%"></span>
+                  <span class="s-keep" style="width:42%"></span>
+                  <span class="s-del" style="width:20%"></span>
+                </span>
+                <span class="diff-stat diff-add">+126</span>
+                <span class="diff-stat diff-del">−48</span>
+              </div>
+              <div class="file-meta-sub">
+                <span class="tag-saved">Diff</span>
+                6 changed blocks · just now
+              </div>
+            </div>
+            <div class="file-actions">
+              <button class="btn-mini primary"><svg class="ico"><use href="#i-eye"/></svg> Review</button>
+              <button class="btn-mini"><svg class="ico"><use href="#i-zap"/></svg> Apply later</button>
+            </div>
+          </div>
+
+          <div class="meta-row">
+            <span class="model-chip">openrouter/openai/gpt-5-mini</span>
+            <span>May 9, 2026, 09:45 PM</span>
+            <span class="meta-sep">·</span>
+            <button class="meta-action"><svg class="ico"><use href="#i-copy"/></svg> Copy</button>
+            <button class="meta-action"><svg class="ico"><use href="#i-rotate"/></svg> Regenerate</button>
+            <button class="meta-action"><svg class="ico"><use href="#i-star"/></svg> Star</button>
+            <button class="meta-action"><svg class="ico"><use href="#i-trace"/></svg> Trace</button>
+          </div>
+
+          <div class="suggest-row">
+            <span class="suggest-label">Suggested next</span>
+            <button class="suggest-chip active">
+              <svg class="ico"><use href="#i-eye"/></svg>
+              Review changes
+            </button>
+            <button class="suggest-chip">
+              <svg class="ico"><use href="#i-file-text"/></svg>
+              Summarize plan
+            </button>
+            <button class="suggest-more">
+              More
+              <svg class="ico ico-14"><use href="#i-chevron-down"/></svg>
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <!-- (2) Default input ------------------------------------- -->
+      <div class="composer-wrap">
+        <div class="composer">
+          <div class="editor">
+            <span class="mention">[[people analysis/</span>
+          </div>
+          <div class="enhance-row">
+            <span class="link">Enhance prompt?</span>
+            <span>dismiss</span>
+          </div>
+          <div class="composer-foot">
+            <button class="icon-btn has-tip" data-tip="Add"><svg class="ico"><use href="#i-plus"/></svg></button>
+            <button class="icon-btn has-tip" data-tip="Attach"><svg class="ico"><use href="#i-paperclip"/></svg></button>
+            <button class="icon-btn has-tip" data-tip="Context"><svg class="ico"><use href="#i-database"/></svg></button>
+            <button class="icon-btn has-tip" data-tip="Tools"><svg class="ico"><use href="#i-tools"/></svg></button>
+
+            <div class="right">
+              <button class="run-chip" aria-label="Run settings">
+                <span class="label">Chat</span>
+                <span class="mid">Auto model</span>
+                <span class="ctx">0 ctx</span>
+                <svg class="ico"><use href="#i-chevron-down"/></svg>
+              </button>
+              <button class="icon-btn has-tip" data-tip="Voice"><svg class="ico"><use href="#i-mic"/></svg></button>
+              <button class="send-btn" aria-label="Send"><svg class="ico" style="color:#fff"><use href="#i-send"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT INDEX — Topics expanded ------------------------------ -->
+    <aside class="pane right">
+      <div class="idx-head">
+        <span class="title">Conversation Index</span>
+        <div class="right">
+          <button class="icon-btn" aria-label="Pin"><svg class="ico ico-14"><use href="#i-pin"/></svg></button>
+          <button class="icon-btn" aria-label="Close"><svg class="ico ico-14"><use href="#i-x"/></svg></button>
+        </div>
+      </div>
+
+      <div class="idx-search">
+        <svg class="ico ico-14"><use href="#i-search"/></svg>
+        <span>Search topics, files, images…</span>
+        <span class="kbd">⌘K</span>
+      </div>
+
+      <div class="idx-tabs">
+        <button>All</button>
+        <button class="active">Topics</button>
+        <button>Artifacts</button>
+        <button>Messages</button>
+      </div>
+
+      <div class="idx-subbar">
+        <span>Sort by: <strong style="color:var(--pk-text-primary)">relevance</strong></span>
+        <span class="toggle-mini">Collapse resolved
+          <span class="switch off" style="display:inline-block;width:26px;height:14px;background:var(--pk-border);border-radius:999px;position:relative;">
+            <span style="position:absolute;left:2px;top:2px;width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.15);"></span>
+          </span>
+        </span>
+      </div>
+
+      <div class="idx-list">
+
+        <!-- expanded topic -->
+        <div class="idx-row expanded">
+          <div class="idx-row-head">
+            <svg class="ico"><use href="#i-chevron-down"/></svg>
+            <svg class="ico"><use href="#i-msg-square"/></svg>
+            <span class="name">API authentication</span>
+            <span class="count">3</span>
+          </div>
+          <div class="idx-row-sub">401 errors, token refresh, provider setup</div>
+
+          <div class="idx-expand-body">
+            <div class="idx-row-sub" style="margin-bottom:8px;">Messages 6 — 9</div>
+
+            <div class="idx-pos-line">
+              <span class="pos-bar">
+                <span class="pos-range" style="left:36%;width:18%;"></span>
+                <span class="pos-dot" style="left:36%;"></span>
+                <span class="pos-dot" style="left:54%;"></span>
+              </span>
+            </div>
+
+            <div class="idx-row-sub" style="margin:10px 0 6px;">Sources / Attachments</div>
+            <div class="idx-attach-row">
+              <span class="attach-pill"><svg class="ico"><use href="#i-file-text"/></svg> implementation-plan.md</span>
+              <span class="attach-pill"><svg class="ico"><use href="#i-eye"/></svg> review-summary.md</span>
+              <span class="attach-pill"><svg class="ico"><use href="#i-code"/></svg> auth-log.txt</span>
+              <span class="attach-more">+1 more</span>
+            </div>
+
+            <div class="idx-row-sub" style="margin:6px 0 4px;">Key messages</div>
+            <div class="idx-msg-row">
+              <span class="who err">P</span>
+              <div class="body">
+                <div class="body-text">401 unauthorized surfaced to user</div>
+                <div class="body-meta"><span class="ts">10:21</span></div>
+              </div>
+            </div>
+            <div class="idx-msg-row">
+              <span class="who user">U</span>
+              <div class="body">
+                <div class="body-text">Ask for implementation examples</div>
+                <div class="body-meta"><span class="ts">10:24</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- collapsed topics -->
+        <div class="idx-row">
+          <div class="idx-row-head">
+            <svg class="ico"><use href="#i-chevron-right"/></svg>
+            <svg class="ico"><use href="#i-msg-square"/></svg>
+            <span class="name">SpreadJS examples</span>
+            <span class="count">2</span>
+          </div>
+          <div class="idx-row-sub">Lark Sheets integration and sample code</div>
+          <div class="idx-attach-row" style="margin-top:8px;">
+            <span class="attach-pill"><svg class="ico"><use href="#i-image"/></svg> architecture-sketch.png</span>
+          </div>
+          <div class="idx-pos-line" style="margin-top:8px;">
+            <span class="pos-bar">
+              <span class="pos-range" style="left:62%;width:10%;"></span>
+              <span class="pos-dot" style="left:62%;"></span>
+              <span class="pos-dot" style="left:72%;"></span>
+            </span>
+          </div>
+        </div>
+
+        <div class="idx-row">
+          <div class="idx-row-head">
+            <svg class="ico"><use href="#i-chevron-right"/></svg>
+            <svg class="ico"><use href="#i-msg-square"/></svg>
+            <span class="name">workspace setup</span>
+            <span class="count">2</span>
+          </div>
+          <div class="idx-row-sub">macOS dev environment and automation workspace</div>
+        </div>
+
+        <div class="idx-row">
+          <div class="idx-row-head">
+            <svg class="ico"><use href="#i-chevron-right"/></svg>
+            <svg class="ico"><use href="#i-msg-square"/></svg>
+            <span class="name">Project organization</span>
+            <span class="count">2</span>
+          </div>
+          <div class="idx-row-sub">Conversation is ready to become a project</div>
+          <div class="idx-attach-row" style="margin-top:8px;">
+            <span class="attach-pill"><svg class="ico"><use href="#i-folder"/></svg> kb5-automation</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="idx-foot">
+        <span>Topics are generated from conversation content.</span>
+        <span class="link">Click entries to jump</span>
+      </div>
+    </aside>
+
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- Alternate states                                              -->
+  <!-- ============================================================ -->
+  <section class="alt-section">
+    <div class="alt-head">
+      <h2>Alternate states</h2>
+      <p>同一界面的其他状态：input run settings、more suggestions、Conversation Index 其他 tab。</p>
+    </div>
+
+    <div class="alt-grid">
+
+      <!-- (3) Run settings popover ------------------------------ -->
+      <div class="alt-card">
+        <div class="alt-caption"><strong>Input — run settings popover (with role)</strong><span>State #3</span></div>
+        <div class="alt-stage">
+          <div class="alt-inner" style="justify-content:flex-end;">
+            <div style="flex:1"></div>
+
+            <!-- popover anchored above composer -->
+            <div style="position:relative;padding:0 16px;">
+              <div class="run-pop" style="position:relative;right:auto;bottom:auto;margin:0 0 8px auto;width:300px;">
+                <h4>Run settings</h4>
+                <div class="pop-cap">Next message only</div>
+
+                <div class="field-label">Run mode</div>
+                <div class="seg">
+                  <button class="active">Chat</button>
+                  <button>Agent</button>
+                  <button>Plan</button>
+                </div>
+
+                <div class="field-label">Role</div>
+                <div class="role-grid">
+                  <button class="role-pill active"><svg class="ico"><use href="#i-help"/></svg> Default</button>
+                  <button class="role-pill"><svg class="ico"><use href="#i-microscope"/></svg> Researcher</button>
+                  <button class="role-pill"><svg class="ico"><use href="#i-pen"/></svg> Writer</button>
+                  <button class="role-pill"><svg class="ico"><use href="#i-check-list"/></svg> Planner</button>
+                  <button class="role-pill"><svg class="ico"><use href="#i-code"/></svg> Coder</button>
+                </div>
+                <div class="role-help">Role changes behavior for the next message only.</div>
+
+                <div class="field-label">Model routing</div>
+                <div class="row-card">
+                  <svg class="ico"><use href="#i-sparkles"/></svg>
+                  <div>
+                    <div class="name">Auto profile model</div>
+                    <div class="sub">openai/gpt-5-mini</div>
+                  </div>
+                  <div class="right">
+                    <span style="font-size:11px;color:var(--pk-accent)">●</span>
+                  </div>
+                </div>
+                <div class="row-card">
+                  <svg class="ico"><use href="#i-tools"/></svg>
+                  <div>
+                    <div class="name">Choose model…</div>
+                    <div class="sub">Manual override</div>
+                  </div>
+                  <div class="right">
+                    <svg class="ico" style="color:var(--pk-text-secondary)"><use href="#i-chevron-right"/></svg>
+                  </div>
+                </div>
+
+                <div class="field-label">Context</div>
+                <div class="row-card toggle">
+                  <svg class="ico"><use href="#i-file"/></svg>
+                  <div><div class="name">Current note</div></div>
+                  <div class="right"><span class="switch"></span></div>
+                </div>
+                <div class="row-card toggle">
+                  <svg class="ico"><use href="#i-database"/></svg>
+                  <div><div class="name">Vault search</div></div>
+                  <div class="right"><span class="switch"></span></div>
+                </div>
+                <div class="row-card">
+                  <svg class="ico"><use href="#i-network"/></svg>
+                  <div><div class="name">0 ctx</div></div>
+                  <div class="right"><span class="ctx-chip">0 ctx</span></div>
+                </div>
+                <div class="row-card">
+                  <svg class="ico"><use href="#i-star"/></svg>
+                  <div><div class="name">2 pinned sources</div></div>
+                  <div class="right"><svg class="ico" style="color:var(--pk-text-secondary)"><use href="#i-chevron-down"/></svg></div>
+                </div>
+              </div>
+
+              <!-- mini composer underneath -->
+              <div class="composer quiet" style="border-radius:14px;">
+                <div class="editor placeholder">Ask anything…</div>
+                <div class="composer-foot">
+                  <button class="icon-btn"><svg class="ico"><use href="#i-plus"/></svg></button>
+                  <button class="icon-btn"><svg class="ico"><use href="#i-paperclip"/></svg></button>
+                  <button class="icon-btn"><svg class="ico"><use href="#i-database"/></svg></button>
+                  <button class="icon-btn"><svg class="ico"><use href="#i-tools"/></svg></button>
+                  <div class="right">
+                    <button class="run-chip" style="border-color:var(--pk-border-accent); background:var(--pk-accent-soft); color:var(--pk-accent-hover);">
+                      <span class="label">Chat</span>
+                      <span class="mid">·</span>
+                      <span>Auto model</span>
+                      <span class="mid">·</span>
+                      <span class="ctx">0 ctx</span>
+                      <span class="mid">·</span>
+                      <span>Default</span>
+                      <svg class="ico"><use href="#i-chevron-down"/></svg>
+                    </button>
+                    <button class="icon-btn"><svg class="ico"><use href="#i-mic"/></svg></button>
+                    <button class="send-btn"><svg class="ico" style="color:#fff"><use href="#i-send"/></svg></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- (5) More suggestions popover -------------------------- -->
+      <div class="alt-card">
+        <div class="alt-caption"><strong>Message — More suggestions popover</strong><span>State #5</span></div>
+        <div class="alt-stage">
+          <div class="alt-inner" style="padding:18px 22px;">
+            <div class="msg-body" style="font-size:14px; color:var(--pk-text-secondary)">
+              <p>… helping teams ship more thoughtful documents.</p>
+              <p><strong>Key initiatives:</strong></p>
+              <ul>
+                <li>Improve capture and backlog hygiene</li>
+                <li>Strengthen linking and discoverability</li>
+                <li>Ship writing assistants that respect user intent</li>
+              </ul>
+              <p>What would you like to dive into today? Whether it's the cowork instructions, your automation setup, or something else entirely — I'm here to help.</p>
+            </div>
+
+            <div class="meta-row" style="margin-top:14px;">
+              <span class="model-chip">openrouter/openai/gpt-5-mini</span>
+              <span>May 9, 2026, 09:45 PM</span>
+              <span class="meta-sep">·</span>
+              <button class="meta-action"><svg class="ico"><use href="#i-copy"/></svg> Copy</button>
+              <button class="meta-action"><svg class="ico"><use href="#i-rotate"/></svg> Regenerate</button>
+              <button class="meta-action"><svg class="ico"><use href="#i-star"/></svg> Star</button>
+            </div>
+
+            <div class="suggest-row" style="margin-top:10px; position:relative;">
+              <span class="suggest-label">Suggested next</span>
+              <button class="suggest-chip active">
+                <svg class="ico"><use href="#i-arrow-up-right"/></svg>
+                Show SpreadJS example
+              </button>
+              <button class="suggest-chip">
+                <svg class="ico"><use href="#i-warn"/></svg>
+                Fix API authentication
+              </button>
+              <button class="suggest-more" style="color:var(--pk-accent); background:var(--pk-accent-soft); border-radius:999px;">
+                More…
+                <svg class="ico ico-14"><use href="#i-chevron-up"/></svg>
+              </button>
+
+              <div class="more-pop" style="position:absolute; right:18px; top:36px;">
+                <div class="pop-sec">Follow-up</div>
+                <div class="pop-item"><svg class="ico"><use href="#i-help"/></svg> Can you provide Java + React integration code examples?</div>
+                <div class="pop-item"><svg class="ico"><use href="#i-help"/></svg> How to configure systemd for a Java service?</div>
+                <div class="pop-item"><svg class="ico"><use href="#i-help"/></svg> What should I document first?</div>
+
+                <div class="pop-sec">Actions</div>
+                <div class="pop-item"><svg class="ico"><use href="#i-pen"/></svg> Rewrite last reply simply</div>
+                <div class="pop-item"><svg class="ico"><use href="#i-check-list"/></svg> Create implementation checklist</div>
+                <div class="pop-item"><svg class="ico"><use href="#i-message"/></svg> Save answer to note</div>
+                <div class="pop-item"><svg class="ico"><use href="#i-folder"/></svg> Open related notes</div>
+                <div class="pop-item" style="color:var(--pk-text-tertiary); font-style:italic;">
+                  <svg class="ico"><use href="#i-edit"/></svg> Ask custom follow-up…
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- (9) Conversation Index — Artifacts -------------------- -->
+      <div class="alt-card">
+        <div class="alt-caption"><strong>Conversation Index — Artifacts tab</strong><span>State #9</span></div>
+        <div class="alt-stage" style="padding:0;">
+          <div class="alt-inner full">
+            <div class="idx-head">
+              <span class="title">Conversation Index</span>
+              <div class="right">
+                <button class="icon-btn"><svg class="ico ico-14"><use href="#i-slider"/></svg></button>
+              </div>
+            </div>
+            <div class="idx-search">
+              <svg class="ico ico-14"><use href="#i-search"/></svg>
+              <span>Search artifacts…</span>
+            </div>
+            <div class="idx-tabs">
+              <button>All</button>
+              <button>Topics</button>
+              <button class="active">Artifacts</button>
+              <button>Messages</button>
+            </div>
+
+            <div class="art-filter-row">
+              <button class="art-filter active">All</button>
+              <button class="art-filter">Images</button>
+              <button class="art-filter">Diagrams</button>
+              <button class="art-filter">Files</button>
+              <button class="art-filter">Reports</button>
+              <button class="art-filter">Diffs</button>
+            </div>
+
+            <div class="idx-subbar">
+              <span>Sort: <strong style="color:var(--pk-text-primary)">recent</strong></span>
+              <span>5 artifacts</span>
+            </div>
+
+            <div class="idx-list">
+              <div class="art-card">
+                <div class="art-thumb"><svg><use href="#i-image"/></svg></div>
+                <div>
+                  <div class="art-name">architecture-sketch.png</div>
+                  <div class="art-sub">
+                    <span><svg class="ico" style="width:11px;height:11px;flex-basis:11px;vertical-align:-2px;"><use href="#i-image"/></svg> Image · 10:21 AM · May 6</span>
+                    <span class="tag">Saved</span><span class="tag indexed">Indexed</span>
+                  </div>
+                </div>
+                <div class="art-actions">
+                  <button class="btn-mini"><svg class="ico"><use href="#i-doc-open"/></svg> Open</button>
+                  <button class="btn-mini"><svg class="ico"><use href="#i-folder"/></svg> Reveal</button>
+                </div>
+              </div>
+
+              <div class="art-card">
+                <div class="art-thumb draw"><svg><use href="#i-network"/></svg></div>
+                <div>
+                  <div class="art-name">vault-flow.drawio</div>
+                  <div class="art-sub">
+                    <span>Diagram · 10:25 AM · May 7</span>
+                    <span class="tag">Saved</span><span class="tag indexed">Indexed</span>
+                  </div>
+                </div>
+                <div class="art-actions">
+                  <button class="btn-mini"><svg class="ico"><use href="#i-doc-open"/></svg> Open</button>
+                  <button class="btn-mini"><svg class="ico"><use href="#i-edit"/></svg> Edit</button>
+                </div>
+              </div>
+
+              <div class="art-card">
+                <div class="art-thumb draw"><svg><use href="#i-bar-chart"/></svg></div>
+                <div>
+                  <div class="art-name">wireframe.excalidraw</div>
+                  <div class="art-sub">
+                    <span>Excalidraw · May 7</span>
+                    <span class="tag">Saved</span><span class="tag indexed">Indexed</span>
+                  </div>
+                </div>
+                <div class="art-actions">
+                  <button class="btn-mini"><svg class="ico"><use href="#i-doc-open"/></svg> Open</button>
+                  <button class="btn-mini"><svg class="ico"><use href="#i-edit"/></svg> Edit</button>
+                </div>
+              </div>
+
+              <div class="art-card">
+                <div class="art-thumb report"><svg><use href="#i-file-text"/></svg></div>
+                <div>
+                  <div class="art-name">implementation-plan.md</div>
+                  <div class="art-sub">
+                    <span>Markdown · May 8</span>
+                    <span class="tag">Saved</span><span class="tag indexed">Indexed</span>
+                  </div>
+                </div>
+                <div class="art-actions">
+                  <button class="btn-mini"><svg class="ico"><use href="#i-doc-open"/></svg> Open</button>
+                  <button class="btn-mini"><svg class="ico"><use href="#i-folder"/></svg> Reveal</button>
+                </div>
+              </div>
+
+              <div class="art-card">
+                <div class="art-thumb diff"><svg><use href="#i-git-diff"/></svg></div>
+                <div>
+                  <div class="art-name">review-proposal.diff</div>
+                  <div class="art-sub">
+                    <span>Diff · May 9</span>
+                    <span class="tag">Saved</span><span class="tag indexed">Indexed</span>
+                  </div>
+                </div>
+                <div class="art-actions">
+                  <button class="btn-mini primary"><svg class="ico"><use href="#i-eye"/></svg> Review</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="idx-foot">
+              <span>All artifacts are saved to your vault.</span>
+              <span class="link">Open attachments folder</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- (10) Conversation Index — Messages -------------------- -->
+      <div class="alt-card">
+        <div class="alt-caption"><strong>Conversation Index — Messages tab</strong><span>State #10</span></div>
+        <div class="alt-stage" style="padding:0;">
+          <div class="alt-inner full">
+            <div class="idx-head">
+              <span class="title">Conversation Index</span>
+              <div class="right">
+                <button class="icon-btn"><svg class="ico ico-14"><use href="#i-slider"/></svg></button>
+              </div>
+            </div>
+            <div class="idx-search">
+              <svg class="ico ico-14"><use href="#i-search"/></svg>
+              <span>Search messages…</span>
+            </div>
+            <div class="idx-tabs">
+              <button>All</button>
+              <button>Topics</button>
+              <button>Artifacts</button>
+              <button class="active">Messages</button>
+            </div>
+
+            <div class="msg-filter-row">
+              <button class="msg-filter active">All</button>
+              <button class="msg-filter">User</button>
+              <button class="msg-filter">Assistant</button>
+              <button class="msg-filter">Errors</button>
+              <button class="msg-filter">With artifacts</button>
+            </div>
+
+            <div class="idx-list" style="padding-top:0;">
+              <div class="msg-day">May 9, 2026</div>
+
+              <div class="idx-msg-row">
+                <span class="who user">U</span>
+                <div class="body">
+                  <div class="body-text">Find weak spots in this product strategy…</div>
+                  <div class="body-meta"><span class="ts">10:18 AM</span><span>Msg 1</span></div>
+                </div>
+              </div>
+
+              <div class="idx-msg-row">
+                <span class="who">P</span>
+                <div class="body">
+                  <div class="body-text">I analyzed your product strategy notes…</div>
+                  <div class="body-meta"><span class="ts">10:21 AM</span><span>Msg 2</span> · 3 tools · 2 suggestions</div>
+                </div>
+              </div>
+
+              <div class="msg-viewport-label">Current viewport</div>
+              <div class="msg-viewport-mark">
+                <div class="idx-msg-row">
+                  <span class="who">P</span>
+                  <div class="body">
+                    <div class="body-text">I generated two visual artifacts…</div>
+                    <div class="body-meta"><span class="ts">10:25 AM</span><span>Msg 6</span> · Image · Diagram</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="idx-msg-row">
+                <span class="who user">U</span>
+                <div class="body">
+                  <div class="body-text">Can you show the diagram as drawio?</div>
+                  <div class="body-meta"><span class="ts">10:27 AM</span><span>Msg 7</span></div>
+                </div>
+              </div>
+
+              <div class="idx-msg-row">
+                <span class="who">P</span>
+                <div class="body">
+                  <div class="body-text">Prepared implementation-plan.md…</div>
+                  <div class="body-meta"><span class="ts">10:31 AM</span><span>Msg 8</span> · implementation-plan.md</div>
+                </div>
+              </div>
+
+              <div class="idx-msg-row">
+                <span class="who err">ERROR</span>
+                <div class="body">
+                  <div class="body-text">API Error: 401 unauthorized</div>
+                  <div class="body-meta"><span class="ts">10:35 AM</span><span>Msg 9</span> · <span class="error-tag" style="padding:1px 6px;height:18px;line-height:14px;"><svg class="ico ico-14"><use href="#i-warn"/></svg> Authentication error</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="idx-foot">
+              <span>Showing 6 messages</span>
+              <span class="link">Auto-scroll on</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bonus: Conversation Index — All -------------------- -->
+      <div class="alt-card">
+        <div class="alt-caption"><strong>Conversation Index — All overview</strong><span>Bonus</span></div>
+        <div class="alt-stage" style="padding:0;">
+          <div class="alt-inner full">
+            <div class="idx-head">
+              <span class="title">Conversation Index</span>
+              <div class="right">
+                <button class="icon-btn"><svg class="ico ico-14"><use href="#i-slider"/></svg></button>
+              </div>
+            </div>
+            <div class="idx-search">
+              <svg class="ico ico-14"><use href="#i-search"/></svg>
+              <span>Search topics, files, images…</span>
+            </div>
+            <div class="idx-tabs">
+              <button class="active">All</button>
+              <button>Topics</button>
+              <button>Artifacts</button>
+              <button>Messages</button>
+            </div>
+
+            <div class="idx-list">
+              <div style="font-size:12px; color:var(--pk-text-primary); font-weight:700; margin: 4px 4px 8px; display:flex; align-items:center; gap:6px;">
+                Topics <span class="count" style="background:var(--pk-surface-sunken); padding:1px 7px; border-radius:999px; border:1px solid var(--pk-border); font-size:11px; color:var(--pk-text-secondary); font-weight:600;">3</span>
+              </div>
+              <div class="idx-row">
+                <div class="idx-row-head">
+                  <svg class="ico"><use href="#i-msg-square"/></svg>
+                  <span class="name">API authentication</span>
+                  <span class="count">3</span>
+                  <svg class="ico"><use href="#i-arrow-up-right"/></svg>
+                </div>
+              </div>
+              <div class="idx-row">
+                <div class="idx-row-head">
+                  <svg class="ico"><use href="#i-msg-square"/></svg>
+                  <span class="name">SpreadJS examples</span>
+                  <span class="count">2</span>
+                  <svg class="ico"><use href="#i-arrow-up-right"/></svg>
+                </div>
+              </div>
+              <div class="idx-row">
+                <div class="idx-row-head">
+                  <svg class="ico"><use href="#i-msg-square"/></svg>
+                  <span class="name">workspace setup</span>
+                  <span class="count">2</span>
+                  <svg class="ico"><use href="#i-arrow-up-right"/></svg>
+                </div>
+              </div>
+
+              <div style="font-size:12px; color:var(--pk-text-primary); font-weight:700; margin: 14px 4px 8px; display:flex; align-items:center; gap:6px;">
+                Artifacts <span class="count" style="background:var(--pk-surface-sunken); padding:1px 7px; border-radius:999px; border:1px solid var(--pk-border); font-size:11px; color:var(--pk-text-secondary); font-weight:600;">4</span>
+              </div>
+              <div class="art-card">
+                <div class="art-thumb"><svg><use href="#i-image"/></svg></div>
+                <div>
+                  <div class="art-name">architecture-sketch.png</div>
+                  <div class="art-sub"><span>Image · May 6</span></div>
+                </div>
+                <div class="art-actions"><button class="btn-mini"><svg class="ico"><use href="#i-doc-open"/></svg></button></div>
+              </div>
+              <div class="art-card">
+                <div class="art-thumb draw"><svg><use href="#i-network"/></svg></div>
+                <div>
+                  <div class="art-name">vault-flow.drawio</div>
+                  <div class="art-sub"><span>Diagram · May 7</span></div>
+                </div>
+                <div class="art-actions"><button class="btn-mini"><svg class="ico"><use href="#i-doc-open"/></svg></button></div>
+              </div>
+              <div class="art-card">
+                <div class="art-thumb report"><svg><use href="#i-file-text"/></svg></div>
+                <div>
+                  <div class="art-name">implementation-plan.md</div>
+                  <div class="art-sub"><span>Markdown · May 8</span></div>
+                </div>
+                <div class="art-actions"><button class="btn-mini"><svg class="ico"><use href="#i-doc-open"/></svg></button></div>
+              </div>
+
+              <div style="font-size:12px; color:var(--pk-text-primary); font-weight:700; margin: 14px 4px 8px; display:flex; align-items:center; gap:6px;">
+                Messages
+              </div>
+              <div class="idx-msg-row">
+                <span class="who">P</span>
+                <div class="body">
+                  <div class="body-text">Peak Assistant · I can see you're working in your kb5-automation cowork…</div>
+                  <div class="body-meta">May 6 · 10:21 AM</div>
+                </div>
+              </div>
+              <div class="idx-msg-row">
+                <span class="who user">U</span>
+                <div class="body">
+                  <div class="body-text">You · Failed to authenticate. API Error: 401 "unauthorized"…</div>
+                  <div class="body-meta">May 7 · 10:25 AM</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="idx-foot">
+              <span>Updated just now</span>
+              <span class="link">Open full index</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

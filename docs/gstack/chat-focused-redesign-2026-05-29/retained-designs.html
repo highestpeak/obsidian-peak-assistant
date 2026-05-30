@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Peak Chat Retained UX Designs</title>
+  <style>
+    :root {
+      --bg: #f6f7fa;
+      --paper: #ffffff;
+      --ink: #151922;
+      --muted: #667084;
+      --subtle: #9aa2b1;
+      --line: #e4e8f0;
+      --soft: #f2f4f8;
+      --purple: #7c3aed;
+      --purple-soft: #f3edff;
+      --purple-line: #d9ccff;
+      --shadow: 0 20px 64px rgba(20, 24, 35, 0.10), 0 2px 8px rgba(20, 24, 35, 0.04);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(32, 36, 47, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(32, 36, 47, 0.025) 1px, transparent 1px),
+        var(--bg);
+      background-size: 18px 18px;
+    }
+
+    .page {
+      width: min(1280px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 42px 0 64px;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--purple-soft);
+      color: var(--purple);
+      border: 1px solid var(--purple-line);
+      font-size: 12px;
+      font-weight: 650;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      margin: 12px 0 0;
+      max-width: 880px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .principles {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .principle {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 14px;
+      min-height: 116px;
+    }
+
+    .principle strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 7px;
+    }
+
+    .principle span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .section {
+      margin-top: 24px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 8px 30px rgba(20, 24, 35, 0.05);
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff, #fafbfe);
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.25;
+    }
+
+    .section-note {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .tag {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+      padding: 22px;
+    }
+
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .figure {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #fff;
+    }
+
+    .figure figcaption {
+      border-top: 1px solid var(--line);
+      padding: 14px;
+    }
+
+    .figure strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+
+    .figure span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .decision-list {
+      display: grid;
+      gap: 10px;
+      padding: 0 22px 22px;
+    }
+
+    .decision {
+      display: grid;
+      grid-template-columns: 9px 1fr;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      margin-top: 7px;
+      border-radius: 50%;
+      background: var(--purple);
+    }
+
+    .do-dont {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      padding: 22px;
+    }
+
+    .box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      padding: 16px;
+    }
+
+    .box h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+    }
+
+    .box ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    code {
+      padding: 1px 5px;
+      border-radius: 5px;
+      background: var(--soft);
+      color: #4b5565;
+      font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    @media (max-width: 900px) {
+      .page { width: min(100vw - 24px, 1280px); padding-top: 20px; }
+      .principles, .grid.two, .grid.three, .do-dont { grid-template-columns: 1fr; }
+      h1 { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="eyebrow">Retained UX Direction · 2026-05-30</div>
+      <h1>Peak Chat Final Design Set</h1>
+      <p>这份报告只保留已经收敛的 chat 方向：Header 只负责标题、source document 和刷新，Input 负责下一次运行的 mode/model/role/context，Message 负责回答和当下产物，Conversation Index 负责跨会话内容的搜索、筛选和跳转。</p>
+
+      <div class="principles">
+        <div class="principle">
+          <strong>Header</strong>
+          <span>只放标题、source document 入口和刷新；不再放右侧 toolbar。</span>
+        </div>
+        <div class="principle">
+          <strong>Input</strong>
+          <span><code>Chat · Auto model · 0 ctx</code> 是一个 run chip；role 也从这里选择。</span>
+        </div>
+        <div class="principle">
+          <strong>Message</strong>
+          <span>正文保持文档阅读感；底部最多露出 1-2 个 suggested next。</span>
+        </div>
+        <div class="principle">
+          <strong>Index</strong>
+          <span>右侧是 topics、artifacts、messages 的导航索引，不是消息流水账。</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">1. Clean Header</h2>
+          <div class="section-note">Header 单独收敛：不放 role，不放 resources，不放外部 ChatGPT/Gemini，也不再放右侧 Search/Index/Pop out。标题旁只保留 source document 和刷新。</div>
+        </div>
+        <span class="tag">Navigation Only</span>
+      </div>
+      <div class="grid">
+        <figure class="figure">
+          <img src="retained/10-header-minimal-source-only.png" alt="Clean chat header" />
+          <figcaption>
+            <strong>Header retained direction</strong>
+            <span>Title 后是 <code>Open source document</code> 和 refresh。右侧不再放 toolbar；Search/Index 由右侧 Conversation Index 自身承担，Pop out 暂不作为主入口。</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">2. Input Run Chip</h2>
+          <div class="section-note">保留原来的单 capsule 设计，同时把 role 选择合并进它的 popover。用户下一次要怎么跑，由输入区决定。</div>
+        </div>
+        <span class="tag">Run Identity</span>
+      </div>
+      <div class="grid two">
+        <figure class="figure">
+          <img src="retained/00-input-default-v4-selected.png" alt="Input default" />
+          <figcaption>
+            <strong>Default input</strong>
+            <span>默认态安静：左侧是 add/attach/context/tools，右侧是 run chip、voice、send。</span>
+          </figcaption>
+        </figure>
+        <figure class="figure">
+          <img src="retained/11-input-run-chip-role-menu.png" alt="Input run chip role menu" />
+          <figcaption>
+            <strong>Run settings with role</strong>
+            <span><code>Chat · Auto model · 0 ctx</code> 保持一个 chip；Role 作为 next-message behavior 在 popover 内选择。</span>
+          </figcaption>
+        </figure>
+      </div>
+      <div class="decision-list">
+        <div class="decision"><span class="dot"></span><span>Role/persona 是下一次运行的行为参数，所以放在 input run chip 的 popover 内。</span></div>
+        <div class="decision"><span class="dot"></span><span>Model、mode、context、role 都是 run identity；不要拆成 header 上的多个 icon。</span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">3. Conversation Index</h2>
+          <div class="section-note">右侧保留四个 tab。它的本质是会话导航和产物索引：能搜索、筛选、跳转、打开 artifact。</div>
+        </div>
+        <span class="tag">Right Sidebar</span>
+      </div>
+      <div class="grid two">
+        <figure class="figure">
+          <img src="retained/02-conversation-index-all.png" alt="Conversation Index All" />
+          <figcaption>
+            <strong>All</strong>
+            <span>混合总览：topics、artifacts、messages 都露一点，用于快速扫当前会话。</span>
+          </figcaption>
+        </figure>
+        <figure class="figure">
+          <img src="retained/01-conversation-index-topics-accordion-final.png" alt="Conversation Index Topics" />
+          <figcaption>
+            <strong>Topics</strong>
+            <span>最终方向：accordion topic，无 Jump 按钮。message entry hover 跳转，source pill hover 打开。</span>
+          </figcaption>
+        </figure>
+        <figure class="figure">
+          <img src="retained/03-conversation-index-artifacts.png" alt="Conversation Index Artifacts" />
+          <figcaption>
+            <strong>Artifacts</strong>
+            <span>图片、Excalidraw、drawio、md、diff、report 都是一等对象，可以筛选、打开、编辑、Reveal。</span>
+          </figcaption>
+        </figure>
+        <figure class="figure">
+          <img src="retained/04-conversation-index-messages.png" alt="Conversation Index Messages" />
+          <figcaption>
+            <strong>Messages</strong>
+            <span>消息页是可搜索 jump list，不再承担主要 outline 职责。</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">4. Message Styles</h2>
+          <div class="section-note">Message 需要同时支持普通回答、图片/diagram 产物、文件/report/diff 产物，但不能变成 dashboard。</div>
+        </div>
+        <span class="tag">Answer Surface</span>
+      </div>
+      <div class="grid two">
+        <figure class="figure">
+          <img src="retained/06-message-text-answer-suggested-next.png" alt="Text answer with suggested next" />
+          <figcaption>
+            <strong>Text answer</strong>
+            <span>正文文档化；底部只有 meta/action row 和 1-2 个 suggested next。</span>
+          </figcaption>
+        </figure>
+        <figure class="figure">
+          <img src="retained/09-message-suggested-next-more-expanded.png" alt="More suggestions popover" />
+          <figcaption>
+            <strong>More suggestions</strong>
+            <span>More 展开更多 follow-up/actions；custom follow-up 只是弱入口，不默认要求输入。</span>
+          </figcaption>
+        </figure>
+        <figure class="figure">
+          <img src="retained/07-message-visual-artifacts.png" alt="Visual artifact message" />
+          <figcaption>
+            <strong>Visual artifacts</strong>
+            <span>图片、drawio、Excalidraw 在 originating message 内预览，同时进入右侧 Artifacts。</span>
+          </figcaption>
+        </figure>
+        <figure class="figure">
+          <img src="retained/08-message-file-report-diff.png" alt="File report diff message" />
+          <figcaption>
+            <strong>File/report/diff artifacts</strong>
+            <span>文件型产物用紧凑行；diff 可显示小红绿 preview strip。</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">5. Final Rules</h2>
+          <div class="section-note">这些是实现时要遵守的取舍边界。</div>
+        </div>
+        <span class="tag">Implementation Guardrails</span>
+      </div>
+      <div class="do-dont">
+        <div class="box">
+          <h3>Keep</h3>
+          <ul>
+            <li>Header: title + source document + refresh。</li>
+            <li>Input: run chip owns mode/model/role/context。</li>
+            <li>Topics: accordion + position bar + sources/attachments。</li>
+            <li>Messages: quiet body + one suggested next strip。</li>
+            <li>Artifacts: inline in message, indexed in sidebar。</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>Remove / Avoid</h3>
+          <ul>
+            <li>Header role/brain/persona icon。</li>
+            <li>Header resources/library icon。</li>
+            <li>Open in ChatGPT/Gemini buttons。</li>
+            <li>Header Search / Index / Pop out toolbar。</li>
+            <li>Visible Jump buttons in Topics。</li>
+            <li>Default local follow-up composer under every answer。</li>
+            <li>Always-visible TUNE / FOLLOW-UP / ACTIONS rows。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

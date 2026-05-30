@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Step 7 · Ready to try</title>
+<link rel="stylesheet" href="mock.css" />
+</head>
+<body>
+<div class="mock-stage-hint">Step 7 · Final launchpad · summary + 4 first-action cards</div>
+<div class="mock-stage">
+  <div class="modal modal--wide">
+
+    <div class="modal__progress">
+      <div class="progress">
+        <div class="progress__dots">
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Welcome</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">What Peak<br/>can do</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Add<br/>Provider</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Choose how<br/>Peak should<br/>work</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Check your<br/>vault index</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">System<br/>check</div></div>
+          <div class="progress__connector" data-state="completed"></div>
+          <div class="progress__step" data-state="active"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Ready<br/>to try</div></div>
+        </div>
+        <div class="progress__title">Step <strong>7 of 7</strong> · Ready to try</div>
+      </div>
+    </div>
+
+    <div class="modal__body col gap-5">
+      <div class="col" style="align-items:center;text-align:center;gap:8px;">
+        <div class="done-check"><span data-icon="check"></span></div>
+        <div class="h1">You're ready to use Peak Assistant</div>
+        <div class="sub">Everything is set up. Here's a summary and some ideas to try first.</div>
+      </div>
+
+      <!-- Summary -->
+      <div class="col">
+        <div class="summary-row">
+          <div class="summary-row__label"><span data-icon="layout"></span> Providers</div>
+          <div class="summary-row__value">OpenAI, Anthropic</div>
+          <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+        </div>
+        <div class="summary-row">
+          <div class="summary-row__label"><span data-icon="cpu"></span> AI behavior</div>
+          <div class="summary-row__value">
+            <span class="usedby">Conversation</span>
+            <span class="usedby">Fast Lookup</span>
+            <span class="usedby">Research</span>
+          </div>
+          <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+        </div>
+        <div class="summary-row">
+          <div class="summary-row__label"><span data-icon="db"></span> Index</div>
+          <div class="summary-row__value">1,240 notes indexed · Text search only</div>
+          <span class="chip chip--yellow"><span data-icon="alert"></span> Yellow</span>
+        </div>
+      </div>
+
+      <!-- 4 first actions -->
+      <div class="action-grid">
+        <div class="action-card">
+          <div class="action-card__header">
+            <div class="action-card__icon"><span data-icon="message"></span></div>
+            <div class="action-card__title">Ask in Chat</div>
+          </div>
+          <div class="action-card__body">Ask questions, summarize, draft, and continue a conversation.</div>
+          <div class="action-card__try">Summarize my notes from this week.</div>
+        </div>
+
+        <div class="action-card">
+          <div class="action-card__header">
+            <div class="action-card__icon action-card__icon--green"><span data-icon="search"></span></div>
+            <div class="action-card__title">Search your vault</div>
+          </div>
+          <div class="action-card__body">Find what you've written with keyword search.</div>
+          <div class="action-card__try">retrieval augmented generation</div>
+        </div>
+
+        <div class="action-card">
+          <div class="action-card__header">
+            <div class="action-card__icon action-card__icon--violet"><span data-icon="bar"></span></div>
+            <div class="action-card__title">Run AI Analysis</div>
+          </div>
+          <div class="action-card__body">Discover connections, gaps, and themes across your notes.</div>
+          <div class="action-card__try">Find connections across my AI safety notes.</div>
+        </div>
+
+        <div class="action-card">
+          <div class="action-card__header">
+            <div class="action-card__icon action-card__icon--amber"><span data-icon="pencil"></span></div>
+            <div class="action-card__title">Use Copilot on this note</div>
+          </div>
+          <div class="action-card__body">Improve the note you're currently writing.</div>
+          <div class="action-card__try">Rewrite this section more clearly.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal__footer">
+      <button class="btn btn--ghost"><span data-icon="settings"></span> Open Settings</button>
+      <button class="btn btn--primary"><span data-icon="message"></span> Open Chat</button>
+    </div>
+  </div>
+</div>
+<script src="mock.js"></script>
+</body>
+</html>

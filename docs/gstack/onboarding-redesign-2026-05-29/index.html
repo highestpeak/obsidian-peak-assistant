@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Onboarding redesign · Review board</title>
+<link rel="stylesheet" href="mock.css" />
+</head>
+<body>
+<div class="review-board">
+  <div class="review-board__head">
+    <div class="col gap-1">
+      <div class="kicker">2026-05-29 · Peak Assistant</div>
+      <div class="h1">Onboarding redesign · Review board</div>
+    </div>
+    <div class="muted" style="font-size:12px;">Static HTML mocks. Not connected to any product code.</div>
+  </div>
+
+  <div class="sub" style="max-width:720px;">
+    Each tile below is a focused mock for a single onboarding region. Open them individually to review one concern at a time, or open the
+    <a href="onboarding-full-flow.html">Full flow viewer</a> for end-to-end navigation.
+  </div>
+
+  <div class="review-board__nav">
+    <a href="#progress">Progress</a>
+    <a href="#capabilities">Capabilities</a>
+    <a href="#provider">Provider</a>
+    <a href="#behavior">AI Behavior</a>
+    <a href="#index">Index Readiness</a>
+    <a href="#ready">Ready Launchpad</a>
+    <a href="#flow">Full Flow</a>
+  </div>
+
+  <div class="review-board__grid">
+
+    <a class="review-tile" id="progress" href="onboarding-progress.html">
+      <div class="review-tile__frame">
+        <div style="transform:scale(0.78);transform-origin:center top;padding:24px;">
+          <div class="progress">
+            <div class="progress__dots">
+              <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div></div>
+              <div class="progress__connector" data-state="completed"></div>
+              <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div></div>
+              <div class="progress__connector" data-state="completed"></div>
+              <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div></div>
+              <div class="progress__connector"></div>
+              <div class="progress__step" data-state="active"><div class="progress__bubble"><span data-icon="dot"></span></div></div>
+              <div class="progress__connector"></div>
+              <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div></div>
+              <div class="progress__connector"></div>
+              <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div></div>
+              <div class="progress__connector"></div>
+              <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div></div>
+            </div>
+            <div class="progress__title" style="margin-top:14px;">Step <strong>4 of 7</strong> · Choose how Peak should work</div>
+          </div>
+        </div>
+      </div>
+      <div class="review-tile__caption">
+        <strong>Progress indicator</strong>
+        <span>Where am I? What's left? Title sits below dots; hover for step tooltip.</span>
+      </div>
+    </a>
+
+    <a class="review-tile" id="capabilities" href="onboarding-capabilities.html">
+      <div class="review-tile__frame">
+        <span data-icon="message"></span>
+      </div>
+      <div class="review-tile__caption">
+        <strong>Step 2 · What Peak can do</strong>
+        <span>Teach the four surfaces (Chat, Vault Search, AI Analysis, Copilot) before any model choice.</span>
+      </div>
+    </a>
+
+    <a class="review-tile" id="provider" href="onboarding-provider.html">
+      <div class="review-tile__frame">
+        <span data-icon="layout"></span>
+      </div>
+      <div class="review-tile__caption">
+        <strong>Step 3 · Add Provider</strong>
+        <span>Saved row + 4×2 provider grid + inline test/save form. Term is "Provider", nothing else.</span>
+      </div>
+    </a>
+
+    <a class="review-tile" id="behavior" href="onboarding-ai-behavior.html">
+      <div class="review-tile__frame">
+        <span data-icon="cpu"></span>
+      </div>
+      <div class="review-tile__caption">
+        <strong>Step 4 · Choose how Peak should work</strong>
+        <span>Starter model + preferences + stronger-fallback toggle + Conversation / Fast Lookup / Research preview.</span>
+      </div>
+    </a>
+
+    <a class="review-tile" id="index" href="onboarding-index-readiness.html">
+      <div class="review-tile__frame">
+        <span data-icon="db"></span>
+      </div>
+      <div class="review-tile__caption">
+        <strong>Step 5 · Check your vault index</strong>
+        <span>Detect SQLite + existing index + coverage + semantic state first. Then recommend an action — never start indexing on open.</span>
+      </div>
+    </a>
+
+    <a class="review-tile" id="ready" href="onboarding-ready-launchpad.html">
+      <div class="review-tile__frame">
+        <span data-icon="check"></span>
+      </div>
+      <div class="review-tile__caption">
+        <strong>Step 7 · Ready to try</strong>
+        <span>Summary card + 4 first-action cards (Chat, Search, Analysis, Copilot). Primary CTA opens Chat.</span>
+      </div>
+    </a>
+
+    <a class="review-tile" id="flow" href="onboarding-full-flow.html">
+      <div class="review-tile__frame">
+        <span data-icon="layout"></span>
+      </div>
+      <div class="review-tile__caption">
+        <strong>Full flow viewer</strong>
+        <span>All 7 primary steps in one page with a tab strip — review overall rhythm.</span>
+      </div>
+    </a>
+
+  </div>
+
+  <div class="divider" style="margin-top:48px;"></div>
+
+  <div class="col gap-2" style="max-width:720px;">
+    <div class="kicker">Vocabulary contract</div>
+    <div class="sub">
+      Allowed in chrome: <strong>Provider</strong>, <strong>Conversation</strong>, <strong>Fast Lookup</strong>, <strong>Research</strong>,
+      <strong>"Use a stronger model when needed"</strong>.
+      Forbidden in chrome: Profile, AI Account, AI Connection, Quick / Deep / Premium, Quality Review, Harness, Cascade.
+    </div>
+    <div class="sub mt-2">
+      Reference brief: <code>docs/superpowers/specs/2026-05-29-onboarding-design-brief.md</code><br/>
+      Settings IA: <code>docs/superpowers/specs/2026-05-26-settings-mental-model-redesign.md</code>
+    </div>
+  </div>
+</div>
+<script src="mock.js"></script>
+</body>
+</html>

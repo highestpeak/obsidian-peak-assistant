@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Chat - Semantic Topic Outline</title>
+  <style>
+    :root {
+      --text: #141a27;
+      --muted: #697386;
+      --line: #e3e8f1;
+      --purple: #7c3aed;
+      --purple-soft: #f3edff;
+      --blue-soft: #eef4ff;
+      --warn: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 420px;
+      min-height: 980px;
+      background: #fff;
+      color: var(--text);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      border-left: 1px solid var(--line);
+    }
+    .panel { padding: 24px 22px; }
+    .head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 24px;
+    }
+    .title { font-size: 17px; font-weight: 700; }
+    .head svg { width: 17px; height: 17px; stroke: #68728a; fill: none; stroke-width: 1.8; }
+    .group { border-bottom: 1px solid var(--line); padding-bottom: 19px; margin-bottom: 19px; }
+    .group:last-child { border-bottom: 0; }
+    .group-title {
+      display: flex; align-items: center; gap: 8px;
+      color: #2c3546;
+      font-weight: 650;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    .group-title .chev { color: #536074; font-size: 12px; }
+    .chip-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+    .chip {
+      border: 1px solid #d7dfec;
+      background: #fff;
+      border-radius: 7px;
+      padding: 5px 10px;
+      color: #465267;
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .count {
+      margin-left: auto;
+      width: 22px; height: 22px; border-radius: 7px;
+      display: grid; place-items: center;
+      color: var(--purple);
+      background: var(--purple-soft);
+      font-weight: 650;
+      font-size: 12px;
+    }
+    .item {
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 10px;
+      margin: 13px 0;
+      align-items: start;
+    }
+    .num {
+      width: 22px; height: 22px;
+      border-radius: 7px;
+      background: var(--purple-soft);
+      color: var(--purple);
+      font-weight: 650;
+      font-size: 12px;
+      display: grid; place-items: center;
+    }
+    .item-title { color: #394456; font-size: 13px; line-height: 1.35; }
+    .action-row {
+      display: flex; align-items: center; gap: 10px;
+      color: #4a5568;
+      margin: 15px 0;
+    }
+    .action-row svg { width: 16px; height: 16px; stroke: #5b6578; fill: none; stroke-width: 1.8; }
+    .error {
+      border: 1px solid #eadcc8;
+      background: #fffaf2;
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 18px 1fr auto;
+      gap: 9px;
+      align-items: center;
+      color: #59412a;
+    }
+    .error svg { width: 17px; height: 17px; stroke: var(--warn); fill: none; stroke-width: 1.8; }
+    .error small { display: block; color: #8b6b45; margin-top: 2px; }
+    .empty-note {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 22px;
+    }
+  </style>
+</head>
+<body>
+  <aside class="panel">
+    <div class="head">
+      <div class="title">Conversation Outline</div>
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg>
+    </div>
+
+    <section class="group">
+      <div class="group-title"><span class="chev">⌃</span> Current thread</div>
+      <div class="chip-row"><span class="chip">macOS environment</span><span class="count">1</span></div>
+      <div class="chip-row"><span class="chip">automation workspace</span><span class="count">1</span></div>
+      <div class="chip-row"><span class="chip">API authentication</span><span class="count">1</span></div>
+    </section>
+
+    <section class="group">
+      <div class="group-title"><span class="chev">⌃</span> Follow-ups</div>
+      <div class="item"><span class="num">1</span><span class="item-title">Can you provide Java + React integration code examples?</span></div>
+      <div class="item"><span class="num">2</span><span class="item-title">Show an example using SpreadJS in Lark Sheets.</span></div>
+      <div class="item"><span class="num">3</span><span class="item-title">How to configure systemd for a Java service?</span></div>
+    </section>
+
+    <section class="group">
+      <div class="group-title"><span class="chev">⌃</span> Actions</div>
+      <div class="action-row"><svg viewBox="0 0 24 24"><path d="M14 7l3 3-7 7H7v-3z"/><path d="M12 5l2-2 3 3-2 2"/></svg><span>Fix API authentication</span></div>
+      <div class="action-row"><svg viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Convert to project</span></div>
+      <div class="action-row"><svg viewBox="0 0 24 24"><path d="M12 3v5M12 16v5M3 12h5M16 12h5"/></svg><span>Expand profile</span></div>
+    </section>
+
+    <section class="group">
+      <div class="group-title"><span class="chev">⌃</span> Errors</div>
+      <div class="error">
+        <svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 9v5M12 17h.01"/></svg>
+        <span>API Error: 401 unauthorized<small>Path: /api/auth/refresh</small></span>
+        <span>›</span>
+      </div>
+    </section>
+
+    <div class="empty-note">Outline is semantic navigation. It should not repeat every USER / ASSISTANT message.</div>
+  </aside>
+</body>
+</html>

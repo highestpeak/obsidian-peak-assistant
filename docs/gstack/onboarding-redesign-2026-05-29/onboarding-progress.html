@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Onboarding · Progress indicator</title>
+<link rel="stylesheet" href="mock.css" />
+</head>
+<body>
+<div class="mock-stage-hint">Step indicator only · hover dots for tooltip</div>
+<div class="mock-stage">
+  <div class="modal">
+    <div class="modal__progress">
+      <div class="progress">
+        <div class="progress__dots">
+
+          <div class="progress__step" data-state="completed" tabindex="0">
+            <div class="progress__tooltip"><strong>Welcome</strong><span>What am I setting up?</span></div>
+            <div class="progress__bubble"><span data-icon="check"></span></div>
+            <div class="progress__label">Welcome</div>
+          </div>
+          <div class="progress__connector" data-state="completed"></div>
+
+          <div class="progress__step" data-state="completed" tabindex="0">
+            <div class="progress__tooltip"><strong>What Peak can do</strong><span>What can I actually use after this?</span></div>
+            <div class="progress__bubble"><span data-icon="check"></span></div>
+            <div class="progress__label">What Peak<br/>can do</div>
+          </div>
+          <div class="progress__connector" data-state="completed"></div>
+
+          <div class="progress__step" data-state="completed" tabindex="0">
+            <div class="progress__tooltip"><strong>Add Provider</strong><span>Which AI service or local runtime powers this?</span></div>
+            <div class="progress__bubble"><span data-icon="check"></span></div>
+            <div class="progress__label">Add<br/>Provider</div>
+          </div>
+          <div class="progress__connector" data-state="completed"></div>
+
+          <div class="progress__step" data-state="active" tabindex="0">
+            <div class="progress__tooltip"><strong>Choose how Peak should work</strong><span>Fast, balanced, research quality, or local/private.</span></div>
+            <div class="progress__bubble"><span data-icon="dot"></span></div>
+            <div class="progress__label">Choose how<br/>Peak should<br/>work</div>
+          </div>
+          <div class="progress__connector"></div>
+
+          <div class="progress__step" data-state="future" tabindex="0">
+            <div class="progress__tooltip"><strong>Check your vault index</strong><span>Detect existing index before running anything.</span></div>
+            <div class="progress__bubble"><span data-icon="dot"></span></div>
+            <div class="progress__label">Check your<br/>vault index</div>
+          </div>
+          <div class="progress__connector"></div>
+
+          <div class="progress__step" data-state="future" tabindex="0">
+            <div class="progress__tooltip"><strong>System check</strong><span>Is everything ready enough to start?</span></div>
+            <div class="progress__bubble"><span data-icon="dot"></span></div>
+            <div class="progress__label">System<br/>check</div>
+          </div>
+          <div class="progress__connector"></div>
+
+          <div class="progress__step" data-state="future" tabindex="0">
+            <div class="progress__tooltip"><strong>Ready to try</strong><span>What should I try first?</span></div>
+            <div class="progress__bubble"><span data-icon="dot"></span></div>
+            <div class="progress__label">Ready<br/>to try</div>
+          </div>
+
+        </div>
+        <div class="progress__title">Step <strong>4 of 7</strong> · Choose how Peak should work</div>
+      </div>
+    </div>
+    <div class="modal__body">
+      <div class="card card--soft">
+        <div class="kicker">Demo notes</div>
+        <ul class="muted" style="font-size:12px;margin:8px 0 0;padding-left:18px;line-height:1.6;">
+          <li>Completed steps render with check + are clickable (back-navigation).</li>
+          <li>Active step uses soft accent bubble + accent connector behind it.</li>
+          <li>Future steps stay visible but disabled (cursor not-allowed, muted color).</li>
+          <li>Hover/focus any dot to see the tooltip with title + one-line purpose.</li>
+          <li>Detour substates (e.g. "Reviewing your model choices") keep the parent dot active and just swap the title line.</li>
+          <li>Re-run mode shows a shortened map, e.g. <code>Step 1 of 2 · Choose how Peak should work</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="mock.js"></script>
+</body>
+</html>

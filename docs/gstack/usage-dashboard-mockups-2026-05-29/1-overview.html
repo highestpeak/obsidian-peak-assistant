@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1280" />
+	<title>Mock 01 · Usage Intelligence</title>
+	<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark">
+	<div id="nav-root"></div>
+
+	<main class="mock-shell">
+		<header class="mock-header">
+			<div>
+				<div class="mock-meta">01 · Overview</div>
+				<h1 class="mock-title">Usage Intelligence</h1>
+				<div class="mock-sub">Understand usage, control cost, and keep context healthy.</div>
+			</div>
+			<div class="mock-header__right">
+				<div class="seg" role="group" aria-label="Time range">
+					<button class="seg__btn" aria-pressed="true">Today</button>
+					<button class="seg__btn" aria-pressed="false">7d</button>
+					<button class="seg__btn" aria-pressed="false">30d</button>
+				</div>
+			</div>
+		</header>
+
+		<!-- KPI strip -->
+		<section class="kpi-grid" aria-label="Key metrics">
+			<!-- Budget pace -->
+			<div class="kpi kpi--tight">
+				<div class="kpi__head">
+					<span class="kpi__label">Budget pace</span>
+					<button class="kpi__action">Set bands</button>
+				</div>
+				<div>
+					<div class="kpi__value-row">
+						<span class="kpi__value">$14.20</span>
+						<span class="kpi__value-sub">/ $40.00</span>
+						<span class="badge badge--ok" style="margin-left:auto;"><span class="dot"></span>On track</span>
+					</div>
+					<div class="pace" aria-hidden="true" style="margin-top:8px;">
+						<div class="pace__fill" style="width:35.5%;"></div>
+						<div class="pace__mark" style="left:53%;" title="Today's expected pace"></div>
+					</div>
+					<div class="pace__legend">
+						<span>35% of monthly budget</span>
+						<span>Projected · $38.60</span>
+					</div>
+				</div>
+				<a class="kpi__verb" href="4-budget-alerts.html">Action: Adjust budget →</a>
+			</div>
+
+			<!-- Context risk -->
+			<div class="kpi kpi--tight">
+				<div class="kpi__head">
+					<span class="kpi__label">Context risk</span>
+					<button class="kpi__action">Manage</button>
+				</div>
+				<div style="display:flex; align-items:center; gap:14px;">
+					<div class="ring" aria-label="Context utilization 48%">
+						<svg width="84" height="84" viewBox="0 0 84 84">
+							<circle class="ring__track" cx="42" cy="42" r="34" fill="none" stroke-width="8" />
+							<circle class="ring__fill"  cx="42" cy="42" r="34" fill="none" stroke-width="8"
+								stroke-dasharray="213.6" stroke-dashoffset="111.07" stroke-linecap="round" />
+						</svg>
+						<div class="ring__label">
+							<span class="ring__num">48%</span>
+							<span class="ring__sub">used</span>
+						</div>
+					</div>
+					<div style="font-size:11.5px; color:var(--pk-text-secondary);">
+						<span class="badge badge--ok"><span class="dot"></span>Healthy</span>
+						<div style="margin-top:6px;">Avg session below 70%</div>
+						<div class="subtle" style="margin-top:2px;">Auto-compact at 80%</div>
+					</div>
+				</div>
+				<a class="kpi__verb" href="#" data-verb="compact-rule">Action: Compact at 75% →</a>
+			</div>
+
+			<!-- Cost per saved artifact -->
+			<div class="kpi kpi--tight">
+				<div class="kpi__head">
+					<span class="kpi__label">
+						Cost / saved artifact
+						<span class="help" title="Total cost of all AI calls that ended in something saved to your vault (note, snippet, accepted edit), divided by the count of saves. Lower = more value per dollar.">ⓘ</span>
+					</span>
+					<button class="kpi__action">Details</button>
+				</div>
+				<div class="kpi__value-row">
+					<span class="kpi__value">$0.012</span>
+					<span class="kpi__delta kpi__delta--up">−21% vs last 7d</span>
+				</div>
+				<div class="subtle" style="font-size:11px; line-height:1.45;">
+					$0.41 spent across calls that produced 34 saved items
+				</div>
+				<a class="kpi__verb" href="3-outcome-value.html">Action: Use default mode →</a>
+			</div>
+
+			<!-- Calls this week -->
+			<div class="kpi kpi--tight">
+				<div class="kpi__head">
+					<span class="kpi__label">Calls this week</span>
+					<button class="kpi__action">View all</button>
+				</div>
+				<div class="kpi__value-row">
+					<span class="kpi__value">128</span>
+					<span class="kpi__value-sub">412k tokens</span>
+					<span class="kpi__delta kpi__delta--up" style="margin-left:auto;">+8% wow</span>
+				</div>
+				<svg class="spark kpi__spark" viewBox="0 0 200 28" preserveAspectRatio="none" style="color: var(--pk-info);">
+					<path class="area" d="M0 22 L20 21 L40 16 L60 18 L80 13 L100 10 L120 14 L140 8 L160 12 L180 6 L200 4 L200 28 L0 28 Z" />
+					<path class="line" d="M0 22 L20 21 L40 16 L60 18 L80 13 L100 10 L120 14 L140 8 L160 12 L180 6 L200 4" />
+				</svg>
+				<a class="kpi__verb" href="5-history.html">Action: Review high-cost calls →</a>
+			</div>
+		</section>
+
+		<!-- Bottom: Recommended actions + This week -->
+		<section class="row row--main-wide" style="margin-top:20px;">
+			<div class="card card--flush">
+				<div class="card__head">
+					<span class="card__title">Recommended actions</span>
+					<span class="card__sub">From Curator · last 7 days</span>
+				</div>
+				<div class="rec-list">
+					<div class="rec">
+						<div class="rec__icon" style="color: var(--pk-warning);">●</div>
+						<div class="rec__body">
+							<div class="rec__title">Set default model for quick chat → Claude Haiku 3.5</div>
+							<div class="rec__meta">
+								<span>78% of chats &lt; 3 turns, no tools</span>
+								<span>·</span>
+								<span>Sonnet → Haiku, cheaper answers</span>
+							</div>
+						</div>
+						<span class="rec__impact"><span class="badge badge--bad">High impact</span></span>
+						<div class="rec__actions">
+							<button class="btn btn--pill btn--pill-primary">Apply</button>
+							<button class="btn btn--pill">Preview</button>
+						</div>
+					</div>
+
+					<div class="rec">
+						<div class="rec__icon" style="color: var(--pk-info);">●</div>
+						<div class="rec__body">
+							<div class="rec__title">Compact long research sessions earlier (at 70%)</div>
+							<div class="rec__meta">
+								<span>3 sessions hit auto-compact this week</span>
+								<span>·</span>
+								<span>Compacting now prevents context drift and reruns</span>
+							</div>
+						</div>
+						<span class="rec__impact"><span class="badge badge--warn">Medium impact</span></span>
+						<div class="rec__actions">
+							<button class="btn btn--sm btn--primary">Apply</button>
+							<button class="btn btn--sm btn--ghost">Review</button>
+						</div>
+					</div>
+
+					<div class="rec">
+						<div class="rec__icon" style="color: var(--pk-error);">●</div>
+						<div class="rec__body">
+							<div class="rec__title">Review 3 expensive agent tasks with no saved outcome</div>
+							<div class="rec__meta">
+								<span>4 agent runs used 41% of cost</span>
+								<span>·</span>
+								<span>Check recursivity, inputs, exit criteria</span>
+							</div>
+						</div>
+						<span class="rec__impact"><span class="badge badge--warn">Medium impact</span></span>
+						<div class="rec__actions">
+							<button class="btn btn--sm">Open trace</button>
+						</div>
+					</div>
+				</div>
+				<div class="card__head" style="border-top:1px solid var(--pk-border-soft); border-bottom:0;">
+					<a href="6-optimization.html" style="font-size:12px; color: var(--pk-accent-text);">View all 8 actions →</a>
+					<span class="card__sub">last refreshed 4 min ago</span>
+				</div>
+			</div>
+
+			<div class="card card--flush">
+				<div class="card__head">
+					<span class="card__title">This week</span>
+					<a class="muted" href="5-history.html" style="font-size:11.5px;">View full usage →</a>
+				</div>
+				<div class="card__body stack">
+					<div>
+						<div style="display:flex; justify-content:space-between; align-items:baseline;">
+							<span class="muted" style="font-size:11.5px;">Spend</span>
+							<div>
+								<span class="strong tnum">$14.20</span>
+								<span class="kpi__delta kpi__delta--down" style="margin-left:6px;">+18% wow</span>
+							</div>
+						</div>
+						<svg class="spark" viewBox="0 0 240 40" preserveAspectRatio="none" style="color: var(--pk-warning);">
+							<path class="area" d="M0 32 L30 30 L60 26 L90 28 L120 22 L150 18 L180 22 L210 14 L240 12 L240 40 L0 40 Z" />
+							<path class="line" d="M0 32 L30 30 L60 26 L90 28 L120 22 L150 18 L180 22 L210 14 L240 12" />
+						</svg>
+					</div>
+
+					<div class="divider"></div>
+
+					<div>
+						<div style="display:flex; justify-content:space-between; align-items:baseline;">
+							<span class="muted" style="font-size:11.5px;">Tokens</span>
+							<div>
+								<span class="strong tnum">412k</span>
+								<span class="kpi__delta kpi__delta--down" style="margin-left:6px;">+5% wow</span>
+							</div>
+						</div>
+						<svg class="spark" viewBox="0 0 240 40" preserveAspectRatio="none" style="color: var(--pk-info);">
+							<path class="area" d="M0 28 L30 26 L60 24 L90 26 L120 20 L150 22 L180 16 L210 18 L240 14 L240 40 L0 40 Z" />
+							<path class="line" d="M0 28 L30 26 L60 24 L90 26 L120 20 L150 22 L180 16 L210 18 L240 14" />
+						</svg>
+					</div>
+
+					<div class="divider"></div>
+
+					<div>
+						<div style="display:flex; justify-content:space-between; align-items:baseline;">
+							<span class="muted" style="font-size:11.5px;">Cost / saved artifact</span>
+							<div>
+								<span class="strong tnum">$0.012</span>
+								<span class="kpi__delta kpi__delta--up" style="margin-left:6px;">−21% wow</span>
+							</div>
+						</div>
+						<svg class="spark" viewBox="0 0 240 40" preserveAspectRatio="none" style="color: var(--pk-success);">
+							<path class="area" d="M0 14 L30 16 L60 20 L90 18 L120 22 L150 24 L180 22 L210 28 L240 30 L240 40 L0 40 Z" />
+							<path class="line" d="M0 14 L30 16 L60 20 L90 18 L120 22 L150 24 L180 22 L210 28 L240 30" />
+						</svg>
+					</div>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<script src="partials.js"></script>
+	<script>renderNav('overview');</script>
+</body>
+</html>

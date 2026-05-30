@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Full flow · 7-step preview</title>
+<link rel="stylesheet" href="mock.css" />
+<style>
+  .flow-wrap { padding: 24px; max-width: 800px; margin: 0 auto; }
+  .flow-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="flow-wrap">
+  <div class="flow-header">
+    <a href="index.html" style="font-size:12px;">← Back to review board</a>
+  </div>
+  <div class="h1" style="margin-top:8px;">Full flow preview</div>
+  <div class="sub">Click a step to jump. This is a static review aid — no real navigation logic.</div>
+
+  <div class="flow-tabs mt-4">
+    <button class="flow-tabs__tab" data-flow-tab="welcome" data-active="true">1 · Welcome</button>
+    <button class="flow-tabs__tab" data-flow-tab="capabilities">2 · What Peak can do</button>
+    <button class="flow-tabs__tab" data-flow-tab="provider">3 · Add Provider</button>
+    <button class="flow-tabs__tab" data-flow-tab="behavior-loading">4a · Generating</button>
+    <button class="flow-tabs__tab" data-flow-tab="behavior-review">4b · Review</button>
+    <button class="flow-tabs__tab" data-flow-tab="index">5 · Check index</button>
+    <button class="flow-tabs__tab" data-flow-tab="system">6 · System check</button>
+    <button class="flow-tabs__tab" data-flow-tab="ready">7 · Ready to try</button>
+  </div>
+
+  <!-- ─── Step 1 Welcome ─── -->
+  <div class="flow-stage" data-flow-stage="welcome" data-active="true">
+    <div class="modal">
+      <div class="modal__progress">
+        <div class="progress">
+          <div class="progress__dots">
+            <div class="progress__step" data-state="active"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Welcome</div></div>
+            <div class="progress__connector"></div>
+            <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">What Peak<br/>can do</div></div>
+            <div class="progress__connector"></div>
+            <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Add<br/>Provider</div></div>
+            <div class="progress__connector"></div>
+            <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Choose how<br/>Peak should<br/>work</div></div>
+            <div class="progress__connector"></div>
+            <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Check your<br/>vault index</div></div>
+            <div class="progress__connector"></div>
+            <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">System<br/>check</div></div>
+            <div class="progress__connector"></div>
+            <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Ready<br/>to try</div></div>
+          </div>
+          <div class="progress__title">Step <strong>1 of 7</strong> · Welcome</div>
+        </div>
+      </div>
+      <div class="modal__body">
+        <div class="hero">
+          <div class="hero__mark"><span data-icon="sparkles"></span></div>
+          <div class="hero__title">Welcome to Peak Assistant</div>
+          <div class="hero__sub">In a few minutes you can chat with your vault, search it, run analysis, and use Copilot on notes.</div>
+        </div>
+      </div>
+      <div class="modal__footer" style="justify-content:flex-end;">
+        <button class="btn btn--primary">Get started <span data-icon="chevronRight"></span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Step 2 Capabilities ─── -->
+  <div class="flow-stage" data-flow-stage="capabilities">
+    <iframe src="onboarding-capabilities.html" style="width:600px;height:780px;border:0;border-radius:8px;box-shadow:var(--pk-shadow-modal);"></iframe>
+  </div>
+
+  <!-- ─── Step 3 Provider ─── -->
+  <div class="flow-stage" data-flow-stage="provider">
+    <iframe src="onboarding-provider.html" style="width:600px;height:920px;border:0;border-radius:8px;box-shadow:var(--pk-shadow-modal);"></iframe>
+  </div>
+
+  <!-- ─── Step 4a Generating ─── -->
+  <div class="flow-stage" data-flow-stage="behavior-loading">
+    <div class="modal modal--wide">
+      <div class="modal__progress">
+        <div class="progress">
+          <div class="progress__dots">
+            <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Welcome</div></div>
+            <div class="progress__connector" data-state="completed"></div>
+            <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">What Peak<br/>can do</div></div>
+            <div class="progress__connector" data-state="completed"></div>
+            <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Add<br/>Provider</div></div>
+            <div class="progress__connector" data-state="completed"></div>
+            <div class="progress__step" data-state="active"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Choose how<br/>Peak should<br/>work</div></div>
+            <div class="progress__connector"></div>
+            <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Check your<br/>vault index</div></div>
+            <div class="progress__connector"></div>
+            <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">System<br/>check</div></div>
+            <div class="progress__connector"></div>
+            <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Ready<br/>to try</div></div>
+          </div>
+          <div class="progress__title">Step <strong>4 of 7</strong> · Building your recommendation</div>
+        </div>
+      </div>
+      <div class="modal__body">
+        <div class="split">
+          <div class="split__left">
+            <div class="spinner"></div>
+            <div class="h3">Building your AI behavior</div>
+            <div class="sub" style="text-align:center;">Usually 5–15 seconds.</div>
+          </div>
+          <div class="check-list">
+            <div class="check-list__item" data-state="done">
+              <span class="check-list__bullet"><span data-icon="check"></span></span>
+              <span>Checking available providers</span>
+            </div>
+            <div class="check-list__item" data-state="done">
+              <span class="check-list__bullet"><span data-icon="check"></span></span>
+              <span>Detecting local models</span>
+            </div>
+            <div class="check-list__item" data-state="active">
+              <span class="check-list__bullet"><span class="spinner" style="width:14px;height:14px;border-width:2px;"></span></span>
+              <span>Matching tasks to model behavior</span>
+            </div>
+            <div class="check-list__item" data-state="pending">
+              <span class="check-list__bullet"><span data-icon="dot"></span></span>
+              <span>Building your recommendation</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost"><span data-icon="x"></span> Cancel</button>
+        <span class="muted" style="font-size:12px;">Hang tight…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Step 4b Review ─── -->
+  <div class="flow-stage" data-flow-stage="behavior-review">
+    <iframe src="onboarding-ai-behavior.html" style="width:720px;height:1100px;border:0;border-radius:8px;box-shadow:var(--pk-shadow-modal);"></iframe>
+  </div>
+
+  <!-- ─── Step 5 Index ─── -->
+  <div class="flow-stage" data-flow-stage="index">
+    <iframe src="onboarding-index-readiness.html" style="width:720px;height:1100px;border:0;border-radius:8px;box-shadow:var(--pk-shadow-modal);"></iframe>
+  </div>
+
+  <!-- ─── Step 6 System check ─── -->
+  <div class="flow-stage" data-flow-stage="system">
+    <div class="modal">
+      <div class="modal__progress">
+        <div class="progress">
+          <div class="progress__dots">
+            <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Welcome</div></div>
+            <div class="progress__connector" data-state="completed"></div>
+            <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">What Peak<br/>can do</div></div>
+            <div class="progress__connector" data-state="completed"></div>
+            <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Add<br/>Provider</div></div>
+            <div class="progress__connector" data-state="completed"></div>
+            <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Choose how<br/>Peak should<br/>work</div></div>
+            <div class="progress__connector" data-state="completed"></div>
+            <div class="progress__step" data-state="completed"><div class="progress__bubble"><span data-icon="check"></span></div><div class="progress__label">Check your<br/>vault index</div></div>
+            <div class="progress__connector" data-state="completed"></div>
+            <div class="progress__step" data-state="active"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">System<br/>check</div></div>
+            <div class="progress__connector"></div>
+            <div class="progress__step" data-state="future"><div class="progress__bubble"><span data-icon="dot"></span></div><div class="progress__label">Ready<br/>to try</div></div>
+          </div>
+          <div class="progress__title">Step <strong>6 of 7</strong> · System check</div>
+        </div>
+      </div>
+      <div class="modal__body col gap-3">
+        <div class="col gap-1">
+          <div class="h2">System check</div>
+          <div class="sub">Final readiness summary before you finish.</div>
+        </div>
+
+        <div class="readiness-row">
+          <div class="readiness-row__icon"><span data-icon="layout"></span></div>
+          <div class="readiness-row__body">
+            <div class="readiness-row__title">Provider</div>
+            <div class="readiness-row__detail">2 connected · last tested 30s ago</div>
+          </div>
+          <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+        </div>
+        <div class="readiness-row">
+          <div class="readiness-row__icon"><span data-icon="cpu"></span></div>
+          <div class="readiness-row__body">
+            <div class="readiness-row__title">AI behavior</div>
+            <div class="readiness-row__detail">Conversation, Fast Lookup, Research configured</div>
+          </div>
+          <span class="chip chip--green"><span data-icon="check"></span> Ready</span>
+        </div>
+        <div class="readiness-row">
+          <div class="readiness-row__icon"><span data-icon="db"></span></div>
+          <div class="readiness-row__body">
+            <div class="readiness-row__title">Vault index</div>
+            <div class="readiness-row__detail">1,240 notes · <span class="accent">Text search only</span></div>
+          </div>
+          <span class="chip chip--yellow"><span data-icon="alert"></span> Yellow</span>
+        </div>
+        <div class="readiness-row">
+          <div class="readiness-row__icon"><span data-icon="globe"></span></div>
+          <div class="readiness-row__body">
+            <div class="readiness-row__title">Web Access</div>
+            <div class="readiness-row__detail">Not configured</div>
+          </div>
+          <span class="chip chip--neutral">Optional</span>
+        </div>
+        <div class="readiness-row">
+          <div class="readiness-row__icon"><span data-icon="shield"></span></div>
+          <div class="readiness-row__body">
+            <div class="readiness-row__title">Safety</div>
+            <div class="readiness-row__detail">Apply note changes automatically</div>
+          </div>
+          <span class="chip chip--neutral">Default</span>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost"><span data-icon="chevronLeft"></span> Back</button>
+        <button class="btn btn--primary">Finish <span data-icon="check"></span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Step 7 Ready ─── -->
+  <div class="flow-stage" data-flow-stage="ready">
+    <iframe src="onboarding-ready-launchpad.html" style="width:720px;height:1000px;border:0;border-radius:8px;box-shadow:var(--pk-shadow-modal);"></iframe>
+  </div>
+
+</div>
+<script src="mock.js"></script>
+</body>
+</html>

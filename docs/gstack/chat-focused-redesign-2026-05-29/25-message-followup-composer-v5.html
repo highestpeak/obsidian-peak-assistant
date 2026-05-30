@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Message V5 Follow-up Composer</title>
+<link rel="stylesheet" href="chat-message-v5.css">
+</head>
+<body>
+<main class="stage">
+  <section class="message-page">
+    <div class="day">Today</div>
+    <div class="user-note">
+      Find weak spots in this product strategy and cite related notes.
+      <div class="user-time">10:18 AM</div>
+    </div>
+
+    <article class="answer-turn">
+      <div class="peak-mark">P</div>
+
+      <div>
+        <div class="line-meta">
+          <strong>Peak</strong>
+          <span class="agent-pill">Agent</span>
+          <span>3 tools</span>
+          <span>1.2k tokens</span>
+          <span>8.4s</span>
+        </div>
+        <div class="doc-body">
+          <p>I analyzed your product strategy notes and connected them with related research. The strongest weak spots are not about vision. They are about trust, onboarding clarity, and operational follow-through.</p>
+          <ul>
+            <li><strong>macOS development environment</strong> is a useful constraint, but the setup docs still assume too much contributor knowledge.</li>
+            <li><strong>Automation workspace documentation</strong> is promising, but the workflow examples stop before error handling.</li>
+            <li><strong>API authentication failures</strong> are becoming user-visible.</li>
+          </ul>
+        </div>
+
+        <section class="inline-followup">
+          <div class="followup-head">
+            <strong>Follow up from this answer</strong>
+            <span class="followup-context"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5V4a2 2 0 0 1 2-2h9l5 5v12.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M14 2v6h6"/></svg>same answer + same context</span>
+          </div>
+          <div class="suggestion-row">
+            <span class="suggestion-chip"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Turn into checklist</span>
+            <span class="suggestion-chip"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M8 14a6 6 0 1 1 8 0c-.7.6-1 1.4-1 2H9c0-.6-.3-1.4-1-2Z"/></svg>Explain evidence</span>
+            <span class="suggestion-chip"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Rewrite as note</span>
+          </div>
+          <div class="reply-composer">
+            <div class="reply-input">Can you turn the API authentication point into a concrete migration plan?</div>
+            <div class="reply-footer">
+              <button class="mini-btn" title="Attach"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.4 11.6-8.5 8.5a5 5 0 0 1-7.1-7.1l9.2-9.2a3.5 3.5 0 0 1 4.9 4.9l-9.2 9.2a2 2 0 1 1-2.8-2.8l8.5-8.5"/></svg></button>
+              <button class="mini-btn" title="Context"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg></button>
+              <span class="spacer"></span>
+              <span class="run-chip">Chat · Auto model · from this answer</span>
+              <button class="send" title="Send follow-up"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="action-gutter">
+        <div class="hover-rail">
+          <button title="Copy"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          <button title="Regenerate"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6l3 3"/><path d="M21 12a9 9 0 0 1-15 6l-3-3"/></svg></button>
+          <button title="Ask follow-up" data-active="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg></button>
+          <button title="More actions"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+        </div>
+      </div>
+
+      <div class="trace-hint">
+        Follow-up is scoped to this answer, but it keeps the same conversation context. It feels like continuing the thought, not opening a separate tool panel.
+      </div>
+    </article>
+  </section>
+</main>
+</body>
+</html>
+
