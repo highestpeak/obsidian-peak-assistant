@@ -1,20 +1,22 @@
 /**
- * Provider step for the harness onboarding wizard. Lets the user pick an
- * existing profile or add a new one (form is the shared ProviderForm so
- * behaviour matches the general OnboardingModal).
+ * Provider step for the harness onboarding wizard.
  *
- * Differs from the general onboarding by emphasising profile selection — the
- * wizard needs ONE selected profile to power the bootstrap model picker.
+ * Layout (mocked):
+ *   - Saved providers list (pk-row + chip + delete icon-btn)
+ *   - "Add a new provider" 4-col chip grid (pkonb-provider-grid)
+ *   - Inline AddProviderForm reused from the general onboarding modal
+ *
+ * Visual: design-token only, accent-soft selected state with check icon.
+ * Strings: useOnboardingStrings (vocabulary contract: "Provider", not "Profile").
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, Check, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/ui/component/shared-ui/button';
+import { Plus, Check, Trash2 } from 'lucide-react';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { cn } from '@/ui/react/lib/utils';
 import type { Profile } from '@/core/profiles/types';
-import { Trash2 } from 'lucide-react';
+import { Row, Chip, Pill, IconButton } from '@/ui/components/primitives';
 import { AddProviderForm, PROVIDER_OPTIONS } from '../onboarding/ProviderForm';
+import { useOnboardingStrings, type OnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
 export interface ProviderStepProps {
     selectedProfileId: string | null;
@@ -24,7 +26,9 @@ export interface ProviderStepProps {
     onContinue: () => void;
 }
 
-export function ProviderStep({ selectedProfileId, onSelect, onClear, onBack, onContinue }: ProviderStepProps) {
+export function ProviderStep({ selectedProfileId, onSelect, onClear }: ProviderStepProps) {
+    const strings = useOnboardingStrings();
+    const copy = strings.steps.provider;
     const [profiles, setProfiles] = useState<Profile[]>(() => ProfileRegistry.getInstance().getAllProfiles());
     const [showForm, setShowForm] = useState(profiles.length === 0);
 
@@ -60,97 +64,85 @@ export function ProviderStep({ selectedProfileId, onSelect, onClear, onBack, onC
     );
 
     return (
-        <div className="pktw-flex pktw-flex-col pktw-gap-4 pktw-py-4 pktw-px-8">
-            <div className="pktw-flex pktw-flex-col pktw-gap-1">
-                <span className="pktw-text-base pktw-font-semibold pktw-text-[--text-normal]">
-                    选一个 Provider
-                </span>
-                <span className="pktw-text-xs pktw-text-[--text-muted]">
-                    配置助手会从这个 provider 拉一个模型起步；最终的能力档绑定可以是任意 provider。
-                </span>
+        <div className="pkonb-section">
+            <div>
+                <div className="pkonb-section__title">{copy.title}</div>
+                <div className="pkonb-section__desc">{copy.description}</div>
             </div>
 
-            {/* Saved profiles list — click to select */}
             {profiles.length > 0 && (
-                <div className="pktw-flex pktw-flex-col pktw-gap-1.5">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--pk-space-2)' }}>
                     {profiles.map((p) => (
-                        <SelectableProfileRow
+                        <SavedProviderRow
                             key={p.id}
                             profile={p}
                             selected={selectedProfileId === p.id}
                             onSelect={() => onSelect(p.id)}
                             onDelete={() => handleDelete(p.id)}
+                            strings={strings}
                         />
                     ))}
                 </div>
             )}
 
-            {/* Add form or add button */}
             {showForm ? (
                 <AddProviderForm onAdded={handleAdded} setActiveOnFirst={false} autoAssignWebSearch={false} />
             ) : (
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowForm(true)}
-                    className="pktw-gap-1.5 pktw-self-start"
-                >
-                    <Plus size={14} /> 添加 Provider
-                </Button>
+                <Pill onClick={() => setShowForm(true)} style={{ alignSelf: 'flex-start' }}>
+                    <Plus />
+                    <span>{strings.actions.addProvider}</span>
+                </Pill>
             )}
-
-            {/* Actions */}
-            <div className="pktw-flex pktw-justify-between pktw-pt-1">
-                <Button variant="ghost" size="sm" onClick={onBack} className="pktw-gap-1">
-                    <ChevronLeft size={14} /> 返回
-                </Button>
-                <Button size="sm" onClick={onContinue} disabled={!selectedProfileId} className="pktw-gap-1">
-                    继续 <ChevronRight size={14} />
-                </Button>
-            </div>
         </div>
     );
 }
 
-interface SelectableRowProps {
+interface SavedProviderRowProps {
     profile: Profile;
     selected: boolean;
     onSelect: () => void;
     onDelete: () => void;
+    strings: OnboardingStrings;
 }
 
-function SelectableProfileRow({ profile, selected, onSelect, onDelete }: SelectableRowProps) {
+function SavedProviderRow({ profile, selected, onSelect, onDelete, strings }: SavedProviderRowProps) {
     const option = PROVIDER_OPTIONS.find((p) => p.kind === profile.kind);
     const Icon = option?.Icon ?? null;
     const hasUsableCredentials = profile.kind === 'ollama' || !!(profile.apiKey && profile.apiKey.length > 0);
 
     return (
-        <div
-            className={cn(
-                'pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2 pktw-rounded-md pktw-border pktw-transition-colors',
-                selected
-                    ? 'pktw-border-[--interactive-accent] pktw-bg-[--interactive-accent]/10'
-                    : 'pktw-border-[--background-modifier-border]',
-                hasUsableCredentials ? 'pktw-cursor-pointer hover:pktw-bg-[--background-modifier-hover]' : 'pktw-opacity-60',
-            )}
+        <Row
             onClick={hasUsableCredentials ? onSelect : undefined}
+            style={{
+                cursor: hasUsableCredentials ? 'pointer' : 'default',
+                ...(selected ? { borderColor: 'var(--pk-accent)', background: 'var(--pk-accent-soft)' } : {}),
+            }}
         >
-            {Icon && <Icon size={14} className="pktw-text-[--text-muted] pktw-shrink-0" />}
-            <span className="pktw-flex-1 pktw-text-sm pktw-text-[--text-normal] pktw-truncate">{profile.name}</span>
-            {!hasUsableCredentials && (
-                <span className="pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-red-100 pktw-text-red-700">
-                    缺 API key
-                </span>
-            )}
-            {selected && <Check size={14} className="pktw-text-[--interactive-accent]" />}
-            <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                className="pktw-p-1 pktw-rounded hover:pktw-bg-[--background-modifier-error] pktw-text-[--text-muted] hover:pktw-text-red-500"
-                title="Delete profile"
-            >
-                <Trash2 size={12} />
-            </button>
-        </div>
+            <Row.Icon>{Icon ? <Icon /> : null}</Row.Icon>
+            <Row.Body>
+                <Row.Title>{profile.name}</Row.Title>
+                <Row.Desc>{option?.desc ?? ''}</Row.Desc>
+            </Row.Body>
+            <Row.Right>
+                {!hasUsableCredentials && (
+                    <Chip variant="danger">{strings.steps.provider.missingCredentialsChip}</Chip>
+                )}
+                {hasUsableCredentials && selected && (
+                    <Chip variant="success">
+                        <Check />
+                        <span>Selected</span>
+                    </Chip>
+                )}
+                <IconButton
+                    label={strings.steps.provider.deleteProviderTitle}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete();
+                    }}
+                >
+                    <Trash2 />
+                </IconButton>
+            </Row.Right>
+        </Row>
     );
 }

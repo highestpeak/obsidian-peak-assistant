@@ -1,22 +1,23 @@
 /**
- * Bootstrap model picker — Step 3 of the Harness Onboarding wizard.
+ * Bootstrap model picker — substep of the ai-behavior primary step.
  *
- * The user picks ONE model from their selected provider to power the Curator
- * agent (PR3). We mark a "recommended" model per provider — typically the
- * cheapest viable one — so the user can click through quickly.
+ * Layout (mocked):
+ *   - Section title + desc
+ *   - List of pkonb-radio-card items, "Recommended" chip on the auto-pick
+ *   - Loading spinner / empty hint
  *
  * For Ollama, models come from the live `/api/tags` endpoint rather than the
  * bundled catalog, since users install their own.
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Loader2, Sparkles, Wand2 } from 'lucide-react';
-import { Button } from '@/ui/component/shared-ui/button';
+import { Sparkles, Cpu, Check } from 'lucide-react';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { modelRegistry } from '@/core/providers/model-registry';
 import { fetchOllamaModels } from '@/core/providers/ollama/fetchOllamaModels';
-import { cn } from '@/ui/react/lib/utils';
 import type { Profile, ProfileKind } from '@/core/profiles/types';
+import { Chip } from '@/ui/components/primitives';
+import { useOnboardingStrings, type OnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
 const PROVIDER_CATALOG: Partial<Record<ProfileKind, string>> = {
     anthropic: 'claude',
@@ -26,7 +27,6 @@ const PROVIDER_CATALOG: Partial<Record<ProfileKind, string>> = {
     openrouter: 'openrouter',
 };
 
-/** Provider-specific recommended starter models (cheapest viable for tool-calling JSON). */
 const RECOMMENDED_BY_KIND: Partial<Record<ProfileKind, RegExp>> = {
     anthropic: /haiku/i,
     openai: /^gpt-[45]-mini$|^o4-mini$|^gpt-5-mini$/i,
@@ -35,7 +35,6 @@ const RECOMMENDED_BY_KIND: Partial<Record<ProfileKind, RegExp>> = {
     openrouter: /haiku|mini|flash|3\.5|free/i,
 };
 
-/** Ollama models with strong tool-calling that work as a bootstrap LLM. */
 const OLLAMA_PREFERRED_RE = /^(qwen3|qwen2\.5|llama3\.[123]|gpt-oss|deepseek-r1|gemma3)/i;
 const OLLAMA_RECOMMENDED_RE = /^qwen3:?(4b|7b|8b|14b)/i;
 
@@ -58,9 +57,9 @@ export function BootstrapModelStep({
     profileId,
     selectedModelId,
     onSelect,
-    onBack,
-    onContinue,
 }: BootstrapModelStepProps) {
+    const strings = useOnboardingStrings();
+    const copy = strings.steps.bootstrap;
     const profile = useMemo(
         () => (profileId ? ProfileRegistry.getInstance().getProfileById(profileId) : null),
         [profileId],
@@ -96,7 +95,6 @@ export function BootstrapModelStep({
         };
     }, [profile]);
 
-    // Auto-pick the recommended model when nothing is selected yet.
     useEffect(() => {
         if (!profile || selectedModelId || models.length === 0) return;
         const rec = models.find((m) => m.recommended) ?? models[0];
@@ -104,97 +102,95 @@ export function BootstrapModelStep({
     }, [models, profile, selectedModelId, onSelect]);
 
     return (
-        <div className="pktw-flex pktw-flex-col pktw-gap-4 pktw-py-4 pktw-px-8">
-            <div className="pktw-flex pktw-flex-col pktw-gap-1">
-                <span className="pktw-text-base pktw-font-semibold pktw-text-[--text-normal]">
-                    选一个起步 Model
-                </span>
-                <span className="pktw-text-xs pktw-text-[--text-muted]">
-                    配置助手会用这个 model 跑一轮，根据你的环境推荐三档绑定。
-                    推荐选最便宜的 — 它只跑一次。
-                </span>
+        <div className="pkonb-section">
+            <div>
+                <div className="pkonb-section__title">{copy.title}</div>
+                <div className="pkonb-section__desc">{copy.description}</div>
             </div>
 
             {!profile && (
-                <span className="pktw-text-sm pktw-text-[--text-muted]">
-                    请先在上一步选一个 Provider。
-                </span>
+                <div className="pkonb-hint">
+                    <span>{copy.missingProviderHint}</span>
+                </div>
             )}
 
             {profile && loading && (
-                <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-sm pktw-text-[--text-muted] pktw-py-4">
-                    <Loader2 size={14} className="pktw-animate-spin" /> 拉取模型列表…
+                <div className="pkonb-hint">
+                    <span className="pkonb-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                    <span>{copy.loadingModels}</span>
                 </div>
             )}
 
             {profile && !loading && error && (
-                <div className="pktw-text-sm pktw-text-red-500 pktw-bg-red-50 pktw-border pktw-border-red-200 pktw-rounded-md pktw-px-3 pktw-py-2">
-                    {error}
+                <div className="pkonb-hint pkonb-hint--danger">
+                    <span>{error}</span>
                 </div>
             )}
 
             {profile && !loading && !error && models.length === 0 && (
-                <div className="pktw-text-sm pktw-text-[--text-muted] pktw-bg-[--background-primary-alt] pktw-border pktw-border-[--background-modifier-border] pktw-rounded-md pktw-px-3 pktw-py-3">
-                    {profile.kind === 'ollama'
-                        ? '没找到本地 model — 跑一下 `ollama pull qwen3:4b` 后回来。'
-                        : '没找到这个 provider 的可用 model。可能 catalog 还没同步。'}
+                <div className="pkonb-hint">
+                    <span>
+                        {profile.kind === 'ollama' ? copy.noLocalModelsHint : copy.noCatalogModelsHint}
+                    </span>
                 </div>
             )}
 
             {profile && !loading && models.length > 0 && (
-                <div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-max-h-72 pktw-overflow-y-auto">
+                <div className="pkonb-radio-list" style={{ maxHeight: 320, overflowY: 'auto' }}>
                     {models.map((m) => (
-                        <ModelRow
+                        <ModelCard
                             key={m.id}
                             option={m}
                             selected={selectedModelId === m.id}
                             onClick={() => onSelect(profile.id, m.id)}
+                            strings={strings}
                         />
                     ))}
                 </div>
             )}
-
-            {/* Actions */}
-            <div className="pktw-flex pktw-justify-between pktw-pt-1">
-                <Button variant="ghost" size="sm" onClick={onBack} className="pktw-gap-1">
-                    <ChevronLeft size={14} /> 返回
-                </Button>
-                <Button
-                    size="sm"
-                    onClick={onContinue}
-                    disabled={!selectedModelId}
-                    className="pktw-gap-1"
-                >
-                    <Wand2 size={14} /> 跑配置助手 <ChevronRight size={14} />
-                </Button>
-            </div>
         </div>
     );
 }
 
-function ModelRow({ option, selected, onClick }: { option: ModelOption; selected: boolean; onClick: () => void }) {
+function ModelCard({
+    option,
+    selected,
+    onClick,
+    strings,
+}: {
+    option: ModelOption;
+    selected: boolean;
+    onClick: () => void;
+    strings: OnboardingStrings;
+}) {
     return (
-        <div
+        <button
+            type="button"
+            className="pkonb-radio-card"
+            data-selected={selected ? 'true' : undefined}
             onClick={onClick}
-            className={cn(
-                'pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2 pktw-rounded-md pktw-border pktw-cursor-pointer pktw-transition-colors',
-                selected
-                    ? 'pktw-border-[--interactive-accent] pktw-bg-[--interactive-accent]/10'
-                    : 'pktw-border-[--background-modifier-border] hover:pktw-bg-[--background-modifier-hover]',
-            )}
         >
-            <span className="pktw-flex-1 pktw-text-sm pktw-text-[--text-normal] pktw-font-mono">
-                {option.displayName}
+            <span className="pkonb-radio-card__icon">
+                <Cpu />
             </span>
-            {option.recommended && (
-                <span className="pktw-text-[10px] pktw-flex pktw-items-center pktw-gap-1 pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-[--interactive-accent]/15 pktw-text-[--interactive-accent]">
-                    <Sparkles size={10} /> 推荐
+            <span className="pkonb-radio-card__body">
+                <span className="pkonb-radio-card__title" style={{ fontFamily: 'var(--pk-font-mono)' }}>
+                    {option.displayName}
                 </span>
-            )}
-            {option.hint && (
-                <span className="pktw-text-[10px] pktw-text-[--text-muted]">{option.hint}</span>
-            )}
-        </div>
+                <span className="pkonb-radio-card__hint">
+                    {option.recommended ? (
+                        <Chip variant="accent" style={{ marginRight: 6 }}>
+                            <Sparkles />
+                            <span>{strings.steps.bootstrap.recommendedChip}</span>
+                        </Chip>
+                    ) : null}
+                    {option.hint ?? ''}
+                </span>
+            </span>
+            <span className="pkonb-radio-card__check">
+                <Check />
+            </span>
+        </button>
     );
 }
 
@@ -215,7 +211,6 @@ async function loadModelsForProfile(profile: Profile): Promise<ModelOption[]> {
 
     const catalogId = PROVIDER_CATALOG[profile.kind];
     if (!catalogId) {
-        // litellm / custom — surface profile-level defaults if any.
         const candidates = [profile.fastModel, profile.primaryModel].filter((m) => !!m);
         return [...new Set(candidates)].map((id) => ({ id, displayName: id, recommended: false }));
     }
@@ -233,10 +228,6 @@ async function loadModelsForProfile(profile: Profile): Promise<ModelOption[]> {
         );
 }
 
-/**
- * Order Ollama models smallest-first so the recommended (small) ones float to
- * the top. Falls back to alphabetical when the size can't be parsed.
- */
 function sizeRank(name: string): number {
     const m = name.match(/(\d+(?:\.\d+)?)b/i);
     if (!m) return 9999;
