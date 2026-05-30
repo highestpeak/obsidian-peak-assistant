@@ -12,6 +12,13 @@
     "readiness": {
       "sectionTitle": "Peak readiness",
       "sectionSub": "Check what is ready and what needs attention before using Peak.",
+      "empty": "No surfaces have reported readiness yet. Surfaces (Chat, Vault Search, Copilot, etc.) register themselves at startup — give it a moment, or check the console if this persists.",
+      "statusLabels": {
+        "ready": "Ready",
+        "needsAttention": "Needs attention",
+        "notReady": "Not ready",
+        "optional": "Optional"
+      },
       "providers": {
         "title": "Providers",
         "desc": "AI services and local runtimes Peak can talk to.",

@@ -29,7 +29,6 @@ import { AISetupTab } from './settings/tabs/AISetupTab';
 import { KnowledgeIndexTab } from './settings/tabs/KnowledgeIndexTab';
 import { ToolsTab } from './settings/tabs/ToolsTab';
 import { AdvancedTab } from './settings/tabs/AdvancedTab';
-import type { SurfaceReadinessRow } from './settings/tabs/readinessStub';
 
 type TabId = 'overview' | 'aiSetup' | 'knowledgeIndex' | 'tools' | 'advanced';
 
@@ -70,29 +69,12 @@ export function SettingsRoot() {
     ];
 
     /**
-     * Overview row action dispatcher. Each readiness row's `actionKind` maps to
-     * either a tab switch (so the user lands in the section that owns that
-     * surface) or a modal launch (e.g. harness setup wizard).
+     * PR-E note: Overview-row CTAs are no longer dispatched centrally — each
+     * surface's CapabilityStatus.repair.action is invoked directly by the
+     * OverviewTab (adapters self-supply the right repair UX, e.g. opening
+     * the Obsidian settings modal). Removed the surface-id → tab switch
+     * map that PR-D used while the stub was the data source.
      */
-    const handleOverviewAction = (row: SurfaceReadinessRow) => {
-        switch (row.actionKind) {
-            case 'manage-providers':
-                setActiveTab('aiSetup');
-                return;
-            case 'fix-ai-behavior':
-                setActiveTab('aiSetup');
-                return;
-            case 'check-index':
-                setActiveTab('knowledgeIndex');
-                return;
-            case 'setup-web-access':
-                setActiveTab('tools');
-                return;
-            case 'review-safety':
-                setActiveTab('aiSetup');
-                return;
-        }
-    };
 
     return (
         <SettingsStringsProvider strings={strings}>
@@ -116,9 +98,7 @@ export function SettingsRoot() {
                     </div>
 
                     {/* Tab content */}
-                    {activeTab === 'overview' && (
-                        <OverviewTab settings={settings} onAction={handleOverviewAction} />
-                    )}
+                    {activeTab === 'overview' && <OverviewTab />}
                     {activeTab === 'aiSetup' && (
                         <AISetupTab settings={settings} settingsUpdates={settingsUpdates} />
                     )}

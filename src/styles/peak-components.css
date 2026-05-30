@@ -1511,6 +1511,22 @@
 }
 
 
+/* ── pkset-empty — empty-state copy for readiness panel (PR-E) ─────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkset-empty {
+  padding: var(--pk-space-4);
+  border-radius: var(--pk-radius-md);
+  border: 1px dashed var(--pk-border-soft);
+  background: var(--pk-surface-sunken);
+}
+
+:where(.pktw-root, .peak-design-root) .pkset-empty__text {
+  font-size: 12px;
+  color: var(--pk-text-tertiary);
+  line-height: 1.5;
+}
+
+
 /* ── pkset-banner — re-run wizard advisory banner ──────────────────────────── */
 
 :where(.pktw-root, .peak-design-root) .pkset-banner {

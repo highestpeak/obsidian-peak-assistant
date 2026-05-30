@@ -48,6 +48,18 @@ export interface SettingsStrings {
         readiness: {
             sectionTitle: string;
             sectionSub: string;
+            /** Empty-state copy shown when no surface has registered an adapter. */
+            empty: string;
+            /** Status chip labels (PR-E — universal, no longer per-surface). */
+            statusLabels: {
+                ready: string;
+                needsAttention: string;
+                notReady: string;
+                optional: string;
+            };
+            /** Per-surface legacy stub copy (PR-D). Retained so JSON overrides
+             * still parse but unused by the PR-E OverviewTab. Safe to remove
+             * once all surfaces have adapters and the stub file is deleted. */
             providers: { title: string; desc: string; ready: string; needsAttention: string; manage: string };
             aiBehavior: { title: string; desc: string; ready: string; needsAttention: string; manage: string };
             knowledgeIndex: { title: string; desc: string; ready: string; needsAttention: string; check: string };
@@ -233,6 +245,14 @@ export const DEFAULT_SETTINGS_STRINGS: SettingsStrings = {
         readiness: {
             sectionTitle: 'Peak readiness',
             sectionSub: 'Check what is ready and what needs attention before using Peak.',
+            empty:
+                'No surfaces have reported readiness yet. Surfaces (Chat, Vault Search, Copilot, etc.) register themselves at startup — give it a moment, or check the console if this persists.',
+            statusLabels: {
+                ready: 'Ready',
+                needsAttention: 'Needs attention',
+                notReady: 'Not ready',
+                optional: 'Optional',
+            },
             providers: {
                 title: 'Providers',
                 desc: 'AI services and local runtimes Peak can talk to.',
