@@ -81,6 +81,38 @@ export class UsageOutcomeRepo {
 	}
 
 	/**
+	 * Distinct `message_id`s in range with ≥1 outcome (any type). Like
+	 * {@link countUsefulMessages} but returns the IDs themselves so the
+	 * caller can intersect with per-feature message_id sets — used by the
+	 * Outcome Value screen to compute per-feature MPG.
+	 */
+	async usefulMessageIds(range: { from: number; to: number }): Promise<string[]> {
+		const result = await sql<{ message_id: string }>`
+			SELECT DISTINCT message_id
+			FROM usage_outcome
+			WHERE occurred_at >= ${range.from} AND occurred_at <= ${range.to}
+		`.execute(this.db);
+
+		return result.rows.map((r) => r.message_id);
+	}
+
+	/**
+	 * Distinct `message_id`s in range with ≥1 "strong" outcome (vault_save /
+	 * copilot_accept / agent_file_emit). Sibling of {@link countAdoptedMessages}
+	 * that returns the IDs for per-feature intersection.
+	 */
+	async adoptedMessageIds(range: { from: number; to: number }): Promise<string[]> {
+		const result = await sql<{ message_id: string }>`
+			SELECT DISTINCT message_id
+			FROM usage_outcome
+			WHERE occurred_at >= ${range.from} AND occurred_at <= ${range.to}
+			  AND event_type IN ('vault_save', 'copilot_accept', 'agent_file_emit')
+		`.execute(this.db);
+
+		return result.rows.map((r) => r.message_id);
+	}
+
+	/**
 	 * Funnel stage-3 ("adopted") helper: count of distinct `message_id`s with
 	 * ≥1 "strong" outcome — i.e. an event_type that represents the user
 	 * actually keeping the AI output (vault save, copilot accept, agent file

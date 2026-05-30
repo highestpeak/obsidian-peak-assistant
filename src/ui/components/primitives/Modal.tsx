@@ -27,28 +27,51 @@ ModalOverlay.displayName = 'ModalOverlay';
 export interface ModalContentProps
 	extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
 	width?: 'narrow' | 'default' | 'wide';
+	/**
+	 * Optional Radix Portal container. When omitted, the Portal renders into
+	 * `document.body` (Radix default). Note that the `pk-modal-*` CSS rules
+	 * are scoped to `:where(.pktw-root, .peak-design-root) .pk-modal-*` —
+	 * which means the Portal target needs to be (or live inside) one of those
+	 * scope roots. Set `portalClassName` to wrap the Overlay + Content in a
+	 * synthetic scope-root div without changing the Portal container.
+	 */
+	container?: HTMLElement | null;
+	/**
+	 * Adds a className to a wrapper div inside the Portal that contains both
+	 * the Overlay and Content. Set this to `'peak-design-root'` (+ optional
+	 * surface scope like `'usage-dashboard'`) to keep the `pk-modal-*` rules
+	 * matching when the Portal targets `document.body`.
+	 */
+	portalClassName?: string;
 }
 
 const ModalContent = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Content>,
 	ModalContentProps
->(({ className, width = 'default', children, ...props }, ref) => (
-	<DialogPrimitive.Portal>
-		<ModalOverlay />
-		<DialogPrimitive.Content
-			ref={ref}
-			className={cn(
-				'pk-modal-shell',
-				width === 'narrow' && 'pk-modal-shell--narrow',
-				width === 'wide' && 'pk-modal-shell--wide',
-				className
-			)}
-			{...props}
-		>
-			{children}
-		</DialogPrimitive.Content>
-	</DialogPrimitive.Portal>
-));
+>(({ className, width = 'default', container, portalClassName, children, ...props }, ref) => {
+	const shell = (
+		<>
+			<ModalOverlay />
+			<DialogPrimitive.Content
+				ref={ref}
+				className={cn(
+					'pk-modal-shell',
+					width === 'narrow' && 'pk-modal-shell--narrow',
+					width === 'wide' && 'pk-modal-shell--wide',
+					className
+				)}
+				{...props}
+			>
+				{children}
+			</DialogPrimitive.Content>
+		</>
+	);
+	return (
+		<DialogPrimitive.Portal container={container ?? undefined}>
+			{portalClassName ? <div className={portalClassName}>{shell}</div> : shell}
+		</DialogPrimitive.Portal>
+	);
+});
 ModalContent.displayName = 'Modal.Content';
 
 const ModalHeader = React.forwardRef<

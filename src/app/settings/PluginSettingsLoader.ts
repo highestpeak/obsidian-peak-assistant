@@ -318,6 +318,7 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	settings.usageDetailRetentionDays = typeof raw?.usageDetailRetentionDays === 'number'
 		? Math.max(1, raw.usageDetailRetentionDays)
 		: DEFAULT_SETTINGS.usageDetailRetentionDays;
+	settings.usagePreviewEnabled = getBoolean(raw?.usagePreviewEnabled, DEFAULT_SETTINGS.usagePreviewEnabled ?? true);
 
 	// Harness settings (M5)
 	const rawHarness = raw?.harnessSettings as Partial<HarnessSettings> | undefined;

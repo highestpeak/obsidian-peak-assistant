@@ -179,6 +179,23 @@ export class UsageOutcomeService {
 		return this.getRepo().countAdoptedMessages(range);
 	}
 
+	/**
+	 * Distinct `message_id`s in range with ≥1 outcome (any type). Used by
+	 * the Outcome Value screen to intersect with per-feature message_id sets
+	 * for per-feature MPG.
+	 */
+	async usefulMessageIds(range: { from: number; to: number }): Promise<string[]> {
+		return this.getRepo().usefulMessageIds(range);
+	}
+
+	/**
+	 * Distinct `message_id`s in range with ≥1 strong outcome. Sibling of
+	 * {@link countAdoptedMessages}.
+	 */
+	async adoptedMessageIds(range: { from: number; to: number }): Promise<string[]> {
+		return this.getRepo().adoptedMessageIds(range);
+	}
+
 	// ── Private ─────────────────────────────────────────────
 
 	private getRepo(): UsageOutcomeRepo {

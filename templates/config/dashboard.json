@@ -1,7 +1,90 @@
 {
-	"_doc": "User-facing strings for Usage Dashboard. PR-Dash-1 seeds title + screen labels + time-range labels. PR-Dash-2 adds Overview KPI labels, funnel stage labels, outcome event labels, and empty-state copy.",
+	"_doc": "User-facing strings for Usage Dashboard. PR-Dash-1 seeds title + screen labels + time-range labels. PR-Dash-2 adds Overview KPI labels, funnel stage labels, outcome event labels, and empty-state copy. PR-Dash-3 adds providerModel + outcomeValue screen copy and the 'What was this about' detail-panel per-feature labels.",
 	"_owner": "design-system-unification-2026-05-30",
 	"title": "Token Usage",
+	"detailPanel": {
+		"title": "What was this about",
+		"subtitle": "Context first — usage numbers below",
+		"close": "Close",
+		"privacyDisabled": "Preview hidden by privacy settings (Settings → Usage → Enable previews).",
+		"missingMetadata": "No metadata captured for this call — usage row exists, but the feature did not write a per-feature payload.",
+		"unknownFeature": "No detail renderer registered for feature \"{feature}\".",
+		"sections": {
+			"prompt": "User prompt",
+			"response": "Assistant response",
+			"attachedFiles": "Attached files",
+			"toolsUsed": "Tools used",
+			"query": "Query",
+			"topResults": "Top results",
+			"clicked": "Clicked",
+			"taskGoal": "Task goal",
+			"stepName": "Step",
+			"stepTools": "Tools in step",
+			"previousStep": "Previous step summary",
+			"filePath": "File",
+			"selectionBefore": "Before",
+			"selectionAfter": "After",
+			"accepted": "Accepted",
+			"rejected": "Rejected",
+			"document": "Document",
+			"chunks": "Chunks",
+			"embeddingModel": "Embedding model",
+			"showFullPrompt": "Show full prompt"
+		},
+		"verbs": {
+			"openChat": "Open in chat",
+			"openSearch": "Open in search",
+			"openTrace": "Open trace",
+			"openEditor": "Open in editor",
+			"openDocument": "Open document"
+		}
+	},
+	"providerModel": {
+		"providerSection": {
+			"title": "Cost by provider",
+			"subtitle": "$ outside the bar by design"
+		},
+		"modelSection": {
+			"title": "By model",
+			"subtitle": "Table — grouped by provider, no truncation"
+		},
+		"columns": {
+			"provider": "Provider",
+			"model": "Model",
+			"calls": "Calls",
+			"tokens": "Tokens",
+			"cost": "Cost",
+			"share": "Share"
+		},
+		"empty": "No provider or model usage in this range."
+	},
+	"outcomeValue": {
+		"perFeatureSection": {
+			"title": "Cost per useful message · by feature",
+			"subtitle": "MPG = total cost ÷ useful messages (spec §11.2)"
+		},
+		"columns": {
+			"feature": "Feature",
+			"calls": "Calls",
+			"useful": "Useful",
+			"adopted": "Adopted",
+			"adoptRate": "Adopt rate",
+			"totalCost": "Total cost",
+			"mpg": "Cost / useful"
+		},
+		"features": {
+			"chat": "Chat",
+			"search_analysis": "Search analysis",
+			"copilot": "Copilot",
+			"graph": "Graph",
+			"indexing": "Indexing",
+			"internal": "Internal",
+			"skill": "Skill"
+		},
+		"empty": "No per-feature usage in this range.",
+		"unattributed": "Unattributed",
+		"unattributedHelp": "Calls without a message_id in metadata — adoption rate cannot be computed."
+	},
 	"overview": {
 		"kpi": {
 			"mpg": { "label": "Cost / useful message", "help": "Sum of usage cost in this range divided by the number of AI messages that produced a real outcome (vault save, copilot accept, agent file emit). Spec §11.2.", "empty": "—" },

@@ -72,11 +72,83 @@ export interface OverviewStrings {
 	};
 }
 
+export interface DetailPanelStrings {
+	title: string;
+	subtitle: string;
+	close: string;
+	privacyDisabled: string;
+	missingMetadata: string;
+	unknownFeature: string;
+	sections: {
+		prompt: string;
+		response: string;
+		attachedFiles: string;
+		toolsUsed: string;
+		query: string;
+		topResults: string;
+		clicked: string;
+		taskGoal: string;
+		stepName: string;
+		stepTools: string;
+		previousStep: string;
+		filePath: string;
+		selectionBefore: string;
+		selectionAfter: string;
+		accepted: string;
+		rejected: string;
+		document: string;
+		chunks: string;
+		embeddingModel: string;
+		showFullPrompt: string;
+	};
+	verbs: {
+		openChat: string;
+		openSearch: string;
+		openTrace: string;
+		openEditor: string;
+		openDocument: string;
+	};
+}
+
+export interface ProviderModelStrings {
+	providerSection: { title: string; subtitle: string };
+	modelSection: { title: string; subtitle: string };
+	columns: {
+		provider: string;
+		model: string;
+		calls: string;
+		tokens: string;
+		cost: string;
+		share: string;
+	};
+	empty: string;
+}
+
+export interface OutcomeValueStrings {
+	perFeatureSection: { title: string; subtitle: string };
+	columns: {
+		feature: string;
+		calls: string;
+		useful: string;
+		adopted: string;
+		adoptRate: string;
+		totalCost: string;
+		mpg: string;
+	};
+	features: Record<string, string>;
+	empty: string;
+	unattributed: string;
+	unattributedHelp: string;
+}
+
 export interface DashboardStrings {
 	title: string;
 	timeRange: Record<TimeRange, string>;
 	screens: Record<string, ScreenMeta>;
 	overview: OverviewStrings;
+	detailPanel: DetailPanelStrings;
+	providerModel: ProviderModelStrings;
+	outcomeValue: OutcomeValueStrings;
 }
 
 /**
@@ -133,6 +205,86 @@ const FALLBACK_STRINGS: DashboardStrings = {
 			},
 		},
 	},
+	detailPanel: {
+		title: 'What was this about',
+		subtitle: 'Context first — usage numbers below',
+		close: 'Close',
+		privacyDisabled:
+			'Preview hidden by privacy settings (Settings → Usage → Enable previews).',
+		missingMetadata:
+			'No metadata captured for this call — usage row exists, but the feature did not write a per-feature payload.',
+		unknownFeature: 'No detail renderer registered for feature "{feature}".',
+		sections: {
+			prompt: 'User prompt',
+			response: 'Assistant response',
+			attachedFiles: 'Attached files',
+			toolsUsed: 'Tools used',
+			query: 'Query',
+			topResults: 'Top results',
+			clicked: 'Clicked',
+			taskGoal: 'Task goal',
+			stepName: 'Step',
+			stepTools: 'Tools in step',
+			previousStep: 'Previous step summary',
+			filePath: 'File',
+			selectionBefore: 'Before',
+			selectionAfter: 'After',
+			accepted: 'Accepted',
+			rejected: 'Rejected',
+			document: 'Document',
+			chunks: 'Chunks',
+			embeddingModel: 'Embedding model',
+			showFullPrompt: 'Show full prompt',
+		},
+		verbs: {
+			openChat: 'Open in chat',
+			openSearch: 'Open in search',
+			openTrace: 'Open trace',
+			openEditor: 'Open in editor',
+			openDocument: 'Open document',
+		},
+	},
+	providerModel: {
+		providerSection: { title: 'Cost by provider', subtitle: '$ outside the bar by design' },
+		modelSection: { title: 'By model', subtitle: 'Table — grouped by provider, no truncation' },
+		columns: {
+			provider: 'Provider',
+			model: 'Model',
+			calls: 'Calls',
+			tokens: 'Tokens',
+			cost: 'Cost',
+			share: 'Share',
+		},
+		empty: 'No provider or model usage in this range.',
+	},
+	outcomeValue: {
+		perFeatureSection: {
+			title: 'Cost per useful message · by feature',
+			subtitle: 'MPG = total cost ÷ useful messages (spec §11.2)',
+		},
+		columns: {
+			feature: 'Feature',
+			calls: 'Calls',
+			useful: 'Useful',
+			adopted: 'Adopted',
+			adoptRate: 'Adopt rate',
+			totalCost: 'Total cost',
+			mpg: 'Cost / useful',
+		},
+		features: {
+			chat: 'Chat',
+			search_analysis: 'Search analysis',
+			copilot: 'Copilot',
+			graph: 'Graph',
+			indexing: 'Indexing',
+			internal: 'Internal',
+			skill: 'Skill',
+		},
+		empty: 'No per-feature usage in this range.',
+		unattributed: 'Unattributed',
+		unattributedHelp:
+			'Calls without a message_id in metadata — adoption rate cannot be computed.',
+	},
 };
 
 const SCREEN_ORDER: Array<keyof DashboardStrings['screens']> = [
@@ -164,6 +316,38 @@ export function useDashboardStrings(): DashboardStrings {
 						...FALLBACK_STRINGS,
 						...loaded,
 						overview: { ...FALLBACK_STRINGS.overview, ...(loaded.overview ?? {}) },
+						detailPanel: {
+							...FALLBACK_STRINGS.detailPanel,
+							...(loaded.detailPanel ?? {}),
+							sections: {
+								...FALLBACK_STRINGS.detailPanel.sections,
+								...(loaded.detailPanel?.sections ?? {}),
+							},
+							verbs: {
+								...FALLBACK_STRINGS.detailPanel.verbs,
+								...(loaded.detailPanel?.verbs ?? {}),
+							},
+						},
+						providerModel: {
+							...FALLBACK_STRINGS.providerModel,
+							...(loaded.providerModel ?? {}),
+							columns: {
+								...FALLBACK_STRINGS.providerModel.columns,
+								...(loaded.providerModel?.columns ?? {}),
+							},
+						},
+						outcomeValue: {
+							...FALLBACK_STRINGS.outcomeValue,
+							...(loaded.outcomeValue ?? {}),
+							columns: {
+								...FALLBACK_STRINGS.outcomeValue.columns,
+								...(loaded.outcomeValue?.columns ?? {}),
+							},
+							features: {
+								...FALLBACK_STRINGS.outcomeValue.features,
+								...(loaded.outcomeValue?.features ?? {}),
+							},
+						},
 					});
 				}
 			} catch {
@@ -232,10 +416,16 @@ export function UsageDashboard() {
 			{activeScreen === 'overview' && (
 				<OverviewScreen range={range} strings={strings.overview} />
 			)}
-			{activeScreen === 'provider-model' && <ProviderModelScreen range={range} />}
-			{activeScreen === 'outcome-value' && <OutcomeValueScreen range={range} />}
+			{activeScreen === 'provider-model' && (
+				<ProviderModelScreen range={range} strings={strings.providerModel} />
+			)}
+			{activeScreen === 'outcome-value' && (
+				<OutcomeValueScreen range={range} strings={strings.outcomeValue} />
+			)}
 			{activeScreen === 'budget-alerts' && <BudgetAlertsScreen range={range} />}
-			{activeScreen === 'history' && <HistoryScreen range={range} />}
+			{activeScreen === 'history' && (
+				<HistoryScreen range={range} detailStrings={strings.detailPanel} />
+			)}
 			{activeScreen === 'optimization' && <OptimizationScreen range={range} />}
 		</div>
 	);

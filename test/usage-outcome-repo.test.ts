@@ -189,6 +189,27 @@ async function testCountAdoptedMessages(): Promise<void> {
 	console.log('PASS: countAdoptedMessages');
 }
 
+async function testUsefulAndAdoptedMessageIds(): Promise<void> {
+	const { repo } = makeRepo();
+	// m1: vault_save (strong)
+	await repo.insert({ message_id: 'm1', session_id: 's', event_type: 'vault_save',     occurred_at: 100, target: null, metadata_json: null });
+	// m2: copilot_accept (strong) + duplicate vault_save — still one id
+	await repo.insert({ message_id: 'm2', session_id: 's', event_type: 'copilot_accept', occurred_at: 200, target: null, metadata_json: null });
+	await repo.insert({ message_id: 'm2', session_id: 's', event_type: 'vault_save',     occurred_at: 220, target: null, metadata_json: null });
+	// m3: search_click (weak — useful but NOT adopted)
+	await repo.insert({ message_id: 'm3', session_id: 's', event_type: 'search_click',   occurred_at: 300, target: null, metadata_json: null });
+	// m4: out of range
+	await repo.insert({ message_id: 'm4', session_id: 's', event_type: 'vault_save',     occurred_at: 5000, target: null, metadata_json: null });
+
+	const useful = (await repo.usefulMessageIds({ from: 0, to: 1000 })).sort();
+	assert.deepStrictEqual(useful, ['m1', 'm2', 'm3'], 'all in-range messages with any outcome');
+
+	const adopted = (await repo.adoptedMessageIds({ from: 0, to: 1000 })).sort();
+	assert.deepStrictEqual(adopted, ['m1', 'm2'], 'only strong-outcome messages');
+
+	console.log('PASS: usefulMessageIds + adoptedMessageIds');
+}
+
 // ── Run ─────────────────────────────────────────────────────────────────────
 
 (async () => {
@@ -197,5 +218,6 @@ async function testCountAdoptedMessages(): Promise<void> {
 	await testCountByType();
 	await testCountUsefulMessages();
 	await testCountAdoptedMessages();
+	await testUsefulAndAdoptedMessageIds();
 	console.log('\nAll usage-outcome-repo tests passed!');
 })();

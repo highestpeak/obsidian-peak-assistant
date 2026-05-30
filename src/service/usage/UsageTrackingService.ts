@@ -172,6 +172,33 @@ export class UsageTrackingService {
 		return this.getRepo().getLogsByRangeFiltered(start, end, feature, limit, offset);
 	}
 
+	/**
+	 * Per-feature cost + call count rollup. Drives the Outcome Value screen
+	 * (spec §6.2 per-feature MPG).
+	 */
+	async getCostByFeature(range: TimeRange) {
+		const { start, end } = rangeToMs(range);
+		return this.getRepo().groupByFeatureCost(start, end);
+	}
+
+	/**
+	 * Per-feature message_id list (extracted from usage_log.metadata_json).
+	 * The dashboard hook intersects this with UsageOutcomeService to find
+	 * useful / adopted counts per feature.
+	 */
+	async getMessageIdsByFeature(range: TimeRange) {
+		const { start, end } = rangeToMs(range);
+		return this.getRepo().messageIdsByFeature(start, end);
+	}
+
+	/**
+	 * Single usage_log row lookup — used by the History detail panel after
+	 * the user clicks a row.
+	 */
+	async getLogById(id: number) {
+		return this.getRepo().getById(id);
+	}
+
 	// ── Private ─────────────────────────────────────────────
 
 	private async record(payload: UsageRecordPayload): Promise<void> {
