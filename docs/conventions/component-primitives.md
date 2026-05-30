@@ -1,6 +1,6 @@
 # Component Primitives
 
-**TL;DR** — 10 shared `.pk-*` CSS classes live in `src/styles/peak-components.css`. They are the visual atoms used across settings, onboarding, chat, and usage-dashboard surfaces. Downstream React wrappers (PR-1+) thin-wrap these classes; you may also drop the class directly on a `div`/`button` when JSX scaffolding would be overkill.
+**TL;DR** — 10 shared `.pk-*` CSS classes live in `src/styles/peak-components.css`, with matching React wrappers in `src/ui/components/primitives/` (PR-0 Task 3). They are the visual atoms used across settings, onboarding, chat, and usage-dashboard surfaces. Reach for the React primitives by default (`import { Row, Chip, Modal, ... } from '@/ui/components/primitives'`); drop the class directly on a `div`/`button` only when JSX scaffolding would be overkill.
 
 ## Why
 
@@ -68,7 +68,7 @@ Chip variants in the mock had explicit colored borders (`rgba(47, 148, 96, 0.2)`
 - `.pk-row--disclosure` — clickable; hover surfaces sunken background; `align-items: start` so the chevron stays beside the title on multi-line descriptions.
 - `.pk-row__value--sans` — override default mono font.
 
-**When to use the class directly** — single ad-hoc row outside any list. **When to use the React wrapper** (PR-1+ `<PkRow />`) — anywhere you assemble multiple rows or want sub-slots typed.
+**When to use the class directly** — single ad-hoc row outside any list. **When to use the React wrapper** (`<Row>` + `Row.Icon` / `Row.Body` / `Row.Title` / `Row.Desc` / `Row.Meta` / `Row.Right` / `Row.Value`) — anywhere you assemble multiple rows or want sub-slots typed.
 
 ### `.pk-chip` (+ 6 color variants)
 
@@ -138,7 +138,7 @@ Selected state via `data-selected="true"`.
         <span class="pk-modal-shell__title">Add Provider</span>
         <span class="pk-modal-shell__sub">Pick a vendor to connect</span>
       </div>
-      <button class="pk-modal-shell__close"><XIcon /></button>
+      <button class="pk-icon-btn" aria-label="Close"><XIcon /></button>
     </div>
     <div class="pk-modal-shell__body">…</div>
     <div class="pk-modal-shell__footer">
@@ -155,7 +155,7 @@ Selected state via `data-selected="true"`.
 
 **Title font** — uses `--pk-text-lg` (14px). Mock specified 15px which doesn't exist as a token; if it ever feels too small in real surfaces, file an issue rather than reintroducing a 15px literal.
 
-**When React wrapper exists (PR-1+ `<PkModal />`)** — use it for focus trap, escape-to-close, and portal mounting. The CSS classes are for static usage or when you need a custom shell shape.
+**When React wrapper exists (`<Modal>` + `ModalTrigger` / `ModalContent` / `ModalHeader` / `ModalTitle` / `ModalSubtitle` / `ModalClose` / `ModalBody` / `ModalFooter`)** — use it for focus trap, escape-to-close, and portal mounting (Radix Dialog under the hood). `ModalClose` renders an `<IconButton>` internally — the previous `.pk-modal-shell__close` CSS rule was removed as a duplicate of `.pk-icon-btn`. The CSS classes are for static usage or when you need a custom shell shape.
 
 ### `.pk-popover` + `.pk-pop-item`
 

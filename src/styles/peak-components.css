@@ -361,33 +361,10 @@
   margin-top: 2px;
 }
 
-/* Built-in close affordance — mirrors .pk-icon-btn semantics so call sites
-   can use either class. Kept as its own selector to avoid forcing every
-   close button to also wear .pk-icon-btn. */
-:where(.pktw-root, .peak-design-root) .pk-modal-shell__close {
-  background: transparent;
-  border: 0;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--pk-radius-md);
-  color: var(--pk-text-secondary);
-  cursor: pointer;
-  transition: background var(--pk-transition-fast), color var(--pk-transition-fast);
-}
-
-:where(.pktw-root, .peak-design-root) .pk-modal-shell__close:hover {
-  background: var(--pk-surface-sunken);
-  color: var(--pk-text-primary);
-}
-
-:where(.pktw-root, .peak-design-root) .pk-modal-shell__close > svg,
-:where(.pktw-root, .peak-design-root) .pk-modal-shell__close .icon {
-  width: 14px;
-  height: 14px;
-}
+/* Close affordance — use the <ModalClose /> React primitive (which renders
+   an <IconButton class="pk-icon-btn">) or apply `.pk-icon-btn` directly.
+   The previous `.pk-modal-shell__close` rule was removed in PR-0 Task 3 as
+   it duplicated `.pk-icon-btn`. */
 
 :where(.pktw-root, .peak-design-root) .pk-modal-shell__body {
   padding: 18px var(--pk-space-5);
