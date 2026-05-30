@@ -35,6 +35,8 @@ export class MessageHistoryView extends ItemView {
 	async onOpen(): Promise<void> {
 		this.containerEl.empty();
 		this.containerEl.addClass('peak-message-history-view');
+		this.containerEl.addClass('peak-design-root');
+		this.containerEl.addClass('pktw-root');
 		
 		// Check if chat view exists, if not, hide this view
 		this.checkChatViewAndUpdateVisibility();

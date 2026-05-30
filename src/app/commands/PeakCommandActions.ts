@@ -5,7 +5,6 @@ import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import type { ChatProjectMeta } from '@/service/chat/types';
 import { openPendingConversationInChat } from '@/ui/view/chat-view/chatNavigation';
 import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
-import { OnboardingModal } from '@/ui/view/modals/OnboardingModal';
 import { HarnessOnboardingModal } from '@/ui/view/modals/HarnessOnboardingModal';
 import { SettingsModal } from '@/ui/view/SettingsModal';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
@@ -100,10 +99,6 @@ export function createChatConversation(): void {
 		title: DEFAULT_NEW_CONVERSATION_TITLE,
 		project: null,
 	});
-}
-
-export function openSetupWizard(): void {
-	new OnboardingModal(getContext()).open();
 }
 
 export function openHarnessSetupWizard(): void {

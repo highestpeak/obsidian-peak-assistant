@@ -15,6 +15,7 @@ export class SettingsModal extends Modal {
 		const { contentEl, modalEl } = this;
 		contentEl.empty();
 		contentEl.addClass('peak-settings-modal');
+		contentEl.addClass('peak-design-root');
 		contentEl.addClass('pktw-root');
 		contentEl.style.padding = '0';
 

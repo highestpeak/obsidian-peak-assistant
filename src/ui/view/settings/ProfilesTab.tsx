@@ -38,13 +38,21 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 interface ProfilesTabProps {
     settings: MyPluginSettings;
     settingsUpdates: SettingsUpdates;
+    /**
+     * Hide the legacy StatusBar (role-binding chip row). Defaults to false to
+     * preserve existing behavior; AISetupTab passes true because the new
+     * "AI Behavior" section already presents tier→model bindings without
+     * leaking internal role names (Agent / Agent Fast / Chat / Embedding /
+     * Web Search) that violate the user-facing vocab contract.
+     */
+    hideStatusBar?: boolean;
 }
 
 // ---------------------------------------------------------------------------
 // ProfilesTab
 // ---------------------------------------------------------------------------
 
-export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
+export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }: ProfilesTabProps) {
     const registry = ProfileRegistry.getInstance();
     const [showAddGrid, setShowAddGrid] = useState(false);
     const [tick, setTick] = useState(0);
@@ -115,8 +123,9 @@ export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
 
     return (
         <div className="pktw-space-y-4">
-            {/* Status bar */}
-            <StatusBar />
+            {/* Status bar — opt-out via hideStatusBar (AI Setup tab uses
+                the higher-level AI Behavior section instead). */}
+            {!hideStatusBar && <StatusBar />}
 
             {/* Profile cards */}
             <div className="pktw-space-y-3">

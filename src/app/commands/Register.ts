@@ -15,7 +15,6 @@ import {
 	openKnowledgeCenter,
 	openQuickSearch,
 	openSettingsModal,
-	openSetupWizard,
 	openUsageDashboard,
 } from '@/app/commands/PeakCommandActions';
 
@@ -82,13 +81,8 @@ export function buildCoreCommands(
 			callback: openUsageDashboard,
 		},
 		{
-			id: 'peak-setup-wizard',
-			name: 'Setup Wizard',
-			callback: openSetupWizard,
-		},
-		{
 			id: 'peak-harness-setup-wizard',
-			name: 'Agent Harness — Setup Wizard',
+			name: 'Setup Wizard',
 			callback: openHarnessSetupWizard,
 		},
 		{

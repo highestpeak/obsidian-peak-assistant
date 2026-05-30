@@ -46,7 +46,7 @@ export function AISetupTab({ settings, settingsUpdates }: AISetupTabProps) {
                     profile cards + add/edit). Vocab inside ProfilesTab is
                     already largely "Provider" — full vocab pass is a future
                     sweep. */}
-                <ProfilesTab settings={settings} settingsUpdates={settingsUpdates} />
+                <ProfilesTab settings={settings} settingsUpdates={settingsUpdates} hideStatusBar />
             </div>
 
             {/* ── AI Behavior summary ───────────────────────────────── */}

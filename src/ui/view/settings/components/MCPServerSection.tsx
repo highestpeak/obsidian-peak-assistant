@@ -71,13 +71,9 @@ export function MCPServerSection({ settings, settingsUpdates }: MCPServerSection
 
 	return (
 		<div className="pktw-space-y-4">
-			{/* Header */}
-			<div>
-				<span className="pktw-text-base pktw-font-semibold">{copy.title}</span>
-				<span className="pktw-block pktw-text-xs pktw-text-pk-foreground-faint pktw-mt-1">
-					{copy.description}
-				</span>
-			</div>
+			{/* Heading intentionally omitted — ToolsTab already renders the
+			    section title + sub for this surface. Keeping it here produced
+			    a duplicate "External tools" header. */}
 
 			{/* Server cards */}
 			{servers.length === 0 && (

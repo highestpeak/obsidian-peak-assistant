@@ -11,19 +11,34 @@ export const PopoverTrigger = PopoverPrimitive.Trigger;
 /** Radix Popover Portal re-export — use when explicit portal control is needed. */
 export const PopoverPortal = PopoverPrimitive.Portal;
 
-/** Floating menu surface — applies `.pk-popover` to Radix Content. */
+export interface PopoverContentProps
+	extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
+	container?: HTMLElement | null;
+	portalClassName?: string;
+}
+
+/**
+ * Floating menu surface — applies `.pk-popover` to Radix Content.
+ *
+ * Wraps the Portal output in a `peak-design-root` div so `.pk-*` token
+ * styles still apply after Radix moves the content under `document.body`,
+ * escaping any ancestor scope. Mirrors the Modal portalClassName fix from
+ * PR-Dash-3.
+ */
 export const PopoverContent = React.forwardRef<
 	React.ElementRef<typeof PopoverPrimitive.Content>,
-	React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = 'start', sideOffset = 4, ...props }, ref) => (
-	<PopoverPrimitive.Portal>
-		<PopoverPrimitive.Content
-			ref={ref}
-			align={align}
-			sideOffset={sideOffset}
-			className={cn('pk-popover', className)}
-			{...props}
-		/>
+	PopoverContentProps
+>(({ className, align = 'start', sideOffset = 4, container, portalClassName, ...props }, ref) => (
+	<PopoverPrimitive.Portal container={container ?? undefined}>
+		<div className={cn('peak-design-root', portalClassName)}>
+			<PopoverPrimitive.Content
+				ref={ref}
+				align={align}
+				sideOffset={sideOffset}
+				className={cn('pk-popover', className)}
+				{...props}
+			/>
+		</div>
 	</PopoverPrimitive.Portal>
 ));
 PopoverContent.displayName = 'PopoverContent';

@@ -49,8 +49,8 @@ import {
 	openPromptTemplates,
 	openQuickSearch,
 	openRelatedNotes,
+	openHarnessSetupWizard,
 	openSettingsModal,
-	openSetupWizard,
 	openSkillPicker,
 	openUsageDashboard,
 	openVaultIntelligencePanel,
@@ -131,7 +131,7 @@ function baseSections(): CommandCenterSection[] {
 				{ id: 'usage-dashboard', label: 'Usage Dashboard', description: 'Inspect token usage and cost trends.', icon: BarChart3, run: openUsageDashboard },
 				{ id: 'prompt-templates', label: 'Prompt Templates', description: 'Edit reusable prompt templates.', icon: FileSearch, run: openPromptTemplates },
 				{ id: 'settings', label: 'Settings', description: 'Open Peak Assistant settings.', icon: Settings, run: openSettingsModal },
-				{ id: 'setup-wizard', label: 'Setup Wizard', description: 'Run onboarding and native-module setup.', icon: LayoutDashboard, run: openSetupWizard },
+				{ id: 'setup-wizard', label: 'Setup Wizard', description: 'Run onboarding and native-module setup.', icon: LayoutDashboard, run: openHarnessSetupWizard },
 			],
 		},
 	];
