@@ -15,6 +15,11 @@ import type { Profile, RoleConfig } from '@/core/profiles/types';
 import type { HarnessSettings } from '@/app/settings/types';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import type { MyPluginSettings } from '@/app/settings/types';
+import {
+    DEFAULT_SETTINGS_STRINGS,
+    loadSettingsStrings,
+    type SettingsStrings,
+} from '../settingsStrings';
 
 const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent/60 pktw-transition-colors';
 const LABEL_CLS = 'pktw-text-xs pktw-text-pk-foreground-faint';
@@ -35,6 +40,7 @@ function FieldRow({ label, hint, children }: { label: string; hint?: string; chi
 
 interface TierPickerProps {
     label: string;
+    unsetSuffix: string;
     activeConfig: RoleConfig | null;
     profiles: Profile[];
     onSelect: (cfg: RoleConfig) => void;
@@ -42,7 +48,7 @@ interface TierPickerProps {
     modelFilter?: (modelId: string) => boolean;
 }
 
-function TierPicker({ label, activeConfig, profiles, onSelect, onClear, modelFilter }: TierPickerProps) {
+function TierPicker({ label, unsetSuffix, activeConfig, profiles, onSelect, onClear, modelFilter }: TierPickerProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -76,7 +82,7 @@ function TierPicker({ label, activeConfig, profiles, onSelect, onClear, modelFil
                 )}
             >
                 <span className="pktw-truncate pktw-max-w-[200px]">
-                    {resolved ?? `${label}: Not configured`}
+                    {resolved ?? `${label}: ${unsetSuffix}`}
                 </span>
                 <ChevronDown className={cn('pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-transition-transform', open && 'pktw-rotate-180')} />
             </button>
@@ -111,6 +117,18 @@ interface HarnessSettingsSectionProps {
 
 export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSettingsSectionProps) {
     const [hooksOpen, setHooksOpen] = useState(false);
+    const [strings, setStrings] = useState<SettingsStrings>(DEFAULT_SETTINGS_STRINGS);
+    useEffect(() => {
+        let cancelled = false;
+        void (async () => {
+            const loaded = await loadSettingsStrings();
+            if (!cancelled) setStrings(loaded);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+    const harnessCopy = strings.harness;
 
     const harness: HarnessSettings = settings.harnessSettings ?? {
         agentBackend: 'auto',
@@ -140,10 +158,10 @@ export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSet
                 <Wand2 className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-mt-0.5 pktw-text-pk-accent" />
                 <div className="pktw-flex-1 pktw-flex pktw-flex-col pktw-gap-1">
                     <span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground">
-                        Re-run setup wizard
+                        {harnessCopy.reRunBanner.title}
                     </span>
                     <span className="pktw-text-[11px] pktw-text-pk-foreground-faint">
-                        Let the Curator agent re-pick tier bindings from your current environment.
+                        {harnessCopy.reRunBanner.description}
                     </span>
                 </div>
                 <button
@@ -151,30 +169,30 @@ export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSet
                     onClick={openHarnessSetupWizard}
                     className="pktw-text-xs pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-bg-pk-accent pktw-text-white hover:pktw-opacity-90 pktw-transition-opacity"
                 >
-                    Run
+                    {harnessCopy.reRunBanner.cta}
                 </button>
             </div>
 
-            {/* Agent backend selection */}
+            {/* Agent runtime selection */}
             <div>
                 <span className="pktw-text-[11px] pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint">
-                    Agent Backend
+                    {harnessCopy.backend.sectionLabel}
                 </span>
                 <div className="pktw-flex pktw-items-start pktw-gap-1.5 pktw-mt-1 pktw-mb-3 pktw-p-2.5 pktw-rounded-md pktw-bg-pk-accent/5 pktw-border pktw-border-pk-accent/20">
                     <Info className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-mt-px pktw-text-pk-accent" />
                     <span className="pktw-text-[11px] pktw-text-pk-foreground-faint">
-                        Which loop engine runs agents. Harness is our in-process ReAct loop on Vercel AI SDK (any provider — Claude, GPT, Ollama, OpenRouter). Claude Agent SDK is Anthropic's official SDK (requires API key, runs Anthropic models only). Vault Search currently requires Claude Agent SDK until its MCP tools are adapted to harness.
+                        {harnessCopy.backend.info}
                     </span>
                 </div>
-                <FieldRow label="Backend" hint="Picks the loop engine; model selection is via Tier Bindings below">
+                <FieldRow label={harnessCopy.backend.fieldLabel} hint={harnessCopy.backend.fieldHint}>
                     <select
                         value={harness.agentBackend}
                         onChange={(e) => updateHarness({ agentBackend: e.target.value as HarnessSettings['agentBackend'] })}
                         className={INPUT_CLS}
                     >
-                        <option value="auto">Auto (harness for migrated agents, SDK for the rest)</option>
-                        <option value="harness">Self-hosted harness (Vercel AI SDK, any provider)</option>
-                        <option value="claude-agent-sdk">Claude Agent SDK (Anthropic only)</option>
+                        <option value="auto">{harnessCopy.backend.options.auto}</option>
+                        <option value="harness">{harnessCopy.backend.options.harness}</option>
+                        <option value="claude-agent-sdk">{harnessCopy.backend.options.claudeAgentSdk}</option>
                     </select>
                 </FieldRow>
             </div>
@@ -182,37 +200,39 @@ export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSet
             {/* Tier model bindings */}
             <div>
                 <span className="pktw-text-[11px] pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint">
-                    Tier Model Bindings
+                    {harnessCopy.tierBindings.sectionLabel}
                 </span>
                 <div className="pktw-flex pktw-items-start pktw-gap-1.5 pktw-mt-1 pktw-mb-3 pktw-p-2.5 pktw-rounded-md pktw-bg-pk-accent/5 pktw-border pktw-border-pk-accent/20">
                     <Info className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-mt-px pktw-text-pk-accent" />
                     <span className="pktw-text-[11px] pktw-text-pk-foreground-faint">
-                        Configure which model serves each tier. Local tiers use Ollama profiles; online tier uses Anthropic or OpenRouter.
-                        Unset tiers are skipped in the cascade.
+                        {harnessCopy.tierBindings.info}
                     </span>
                 </div>
                 <div className="pktw-space-y-2.5">
-                    <FieldRow label="Local Fast tier" hint="Fast single-step tasks (14B models)">
+                    <FieldRow label={harnessCopy.tierBindings.fastTier.label} hint={harnessCopy.tierBindings.fastTier.hint}>
                         <TierPicker
-                            label="Local Fast"
+                            label={harnessCopy.tierBindings.fastTier.pickerLabel}
+                            unsetSuffix={harnessCopy.tierBindings.unsetPickerSuffix}
                             activeConfig={harness.localFastConfig}
                             profiles={localProfiles}
                             onSelect={(cfg) => updateHarness({ localFastConfig: cfg })}
                             onClear={() => updateHarness({ localFastConfig: null })}
                         />
                     </FieldRow>
-                    <FieldRow label="Local Deep tier" hint="Multi-step reasoning (32B+ models)">
+                    <FieldRow label={harnessCopy.tierBindings.researchTier.label} hint={harnessCopy.tierBindings.researchTier.hint}>
                         <TierPicker
-                            label="Local Deep"
+                            label={harnessCopy.tierBindings.researchTier.pickerLabel}
+                            unsetSuffix={harnessCopy.tierBindings.unsetPickerSuffix}
                             activeConfig={harness.localDeepConfig}
                             profiles={localProfiles}
                             onSelect={(cfg) => updateHarness({ localDeepConfig: cfg })}
                             onClear={() => updateHarness({ localDeepConfig: null })}
                         />
                     </FieldRow>
-                    <FieldRow label="Online tier" hint="Cloud model (Claude, GPT, etc.)">
+                    <FieldRow label={harnessCopy.tierBindings.strongerTier.label} hint={harnessCopy.tierBindings.strongerTier.hint}>
                         <TierPicker
-                            label="Online"
+                            label={harnessCopy.tierBindings.strongerTier.pickerLabel}
+                            unsetSuffix={harnessCopy.tierBindings.unsetPickerSuffix}
                             activeConfig={harness.onlineConfig}
                             profiles={onlineProfiles}
                             onSelect={(cfg) => updateHarness({ onlineConfig: cfg })}
@@ -225,10 +245,10 @@ export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSet
             {/* Escalation policy */}
             <div>
                 <span className="pktw-text-[11px] pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint">
-                    Escalation Policy
+                    {harnessCopy.escalation.sectionLabel}
                 </span>
                 <div className="pktw-space-y-2.5 pktw-mt-2.5">
-                    <FieldRow label="Allow escalation" hint="Auto-upgrade to next tier on low confidence">
+                    <FieldRow label={harnessCopy.escalation.allowFieldLabel} hint={harnessCopy.escalation.allowFieldHint}>
                         <label className="pktw-flex pktw-items-center pktw-gap-2 pktw-cursor-pointer">
                             <input
                                 type="checkbox"
@@ -237,12 +257,12 @@ export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSet
                                 className="pktw-rounded pktw-border-pk-border"
                             />
                             <span className="pktw-text-xs pktw-text-pk-foreground-faint">
-                                Enable automatic tier escalation
+                                {harnessCopy.escalation.allowToggleLabel}
                             </span>
                         </label>
                     </FieldRow>
 
-                    <FieldRow label="Max escalations / loop" hint="Hard cap per agent run (1–3)">
+                    <FieldRow label={harnessCopy.escalation.maxFieldLabel} hint={harnessCopy.escalation.maxFieldHint}>
                         <input
                             type="number" min="1" max="3"
                             disabled={!harness.allowEscalation}
@@ -255,7 +275,7 @@ export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSet
                         />
                     </FieldRow>
 
-                    <FieldRow label="Auto-escalate score threshold" hint="Escalate when step score falls below this (0–1)">
+                    <FieldRow label={harnessCopy.escalation.thresholdFieldLabel} hint={harnessCopy.escalation.thresholdFieldHint}>
                         <div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-w-full">
                             <div className="pktw-flex pktw-items-center pktw-gap-2">
                                 <input
@@ -274,21 +294,21 @@ export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSet
                 </div>
             </div>
 
-            {/* Permission mode */}
+            {/* Safety (formerly Permission mode) */}
             <div>
                 <span className="pktw-text-[11px] pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint">
-                    Permission Mode
+                    {harnessCopy.safety.sectionLabel}
                 </span>
                 <div className="pktw-space-y-2.5 pktw-mt-2.5">
-                    <FieldRow label="Default permission mode" hint="Controls how agents handle write operations">
+                    <FieldRow label={harnessCopy.safety.fieldLabel} hint={harnessCopy.safety.fieldHint}>
                         <select
                             className={INPUT_CLS}
                             value={harness.defaultPermissionMode}
                             onChange={(e) => updateHarness({ defaultPermissionMode: e.target.value as HarnessSettings['defaultPermissionMode'] })}
                         >
-                            <option value="read">Read only (no writes)</option>
-                            <option value="acceptEdits">Accept edits (auto-approve vault writes)</option>
-                            <option value="bypassPermissions">Bypass permissions (unsafe)</option>
+                            <option value="read">{harnessCopy.safety.options.read}</option>
+                            <option value="acceptEdits">{harnessCopy.safety.options.acceptEdits}</option>
+                            <option value="bypassPermissions">{harnessCopy.safety.options.bypassPermissions}</option>
                         </select>
                     </FieldRow>
                 </div>
@@ -307,15 +327,15 @@ export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSet
                             hooksOpen && 'pktw-rotate-90',
                         )}
                     />
-                    <span className="pktw-text-sm pktw-font-medium">Hooks (advanced)</span>
+                    <span className="pktw-text-sm pktw-font-medium">{harnessCopy.hooks.sectionLabel}</span>
                     <span className="pktw-ml-auto pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-pk-foreground-faint/10 pktw-text-pk-foreground-faint">
-                        Coming soon
+                        {harnessCopy.hooks.comingSoonChip}
                     </span>
                 </div>
 
                 {hooksOpen && (
                     <div className="pktw-px-4 pktw-pb-4 pktw-border-t pktw-border-pk-border pktw-space-y-3 pktw-mt-3">
-                        <FieldRow label="Enable hooks">
+                        <FieldRow label={harnessCopy.hooks.enableLabel}>
                             <label className="pktw-flex pktw-items-center pktw-gap-2 pktw-cursor-not-allowed pktw-opacity-50">
                                 <input
                                     type="checkbox"
@@ -324,13 +344,12 @@ export function HarnessSettingsSection({ settings, settingsUpdates }: HarnessSet
                                     className="pktw-rounded pktw-border-pk-border"
                                 />
                                 <span className="pktw-text-xs pktw-text-pk-foreground-faint">
-                                    Enable pre/post tool-use hooks
+                                    {harnessCopy.hooks.enableHint}
                                 </span>
                             </label>
                         </FieldRow>
                         <span className="pktw-block pktw-text-[11px] pktw-text-pk-foreground-faint/70">
-                            Hook configuration DSL is not yet available. This section will allow defining
-                            deny rules and command hooks for pre_tool_use / post_tool_use events.
+                            {harnessCopy.hooks.description}
                         </span>
                     </div>
                 )}

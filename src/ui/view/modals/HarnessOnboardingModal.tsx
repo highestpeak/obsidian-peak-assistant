@@ -17,7 +17,7 @@
  * persistence (via applyRecommendation.ts) are unchanged.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Modal } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
@@ -31,6 +31,13 @@ import {
     type PrimaryStep,
     useOnboardingState,
 } from '@/ui/view/onboarding/OnboardingStateMachine';
+import {
+    DEFAULT_ONBOARDING_STRINGS,
+    OnboardingStringsProvider,
+    loadOnboardingStrings,
+    useOnboardingStrings,
+    type OnboardingStrings,
+} from '@/ui/view/onboarding/onboardingStrings';
 import { WelcomeStep } from './harness-onboarding/WelcomeStep';
 import { ProviderStep } from './harness-onboarding/ProviderStep';
 import { BootstrapModelStep } from './harness-onboarding/BootstrapModelStep';
@@ -134,16 +141,32 @@ function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: WizardProps)
     const controller = useOnboardingState({ isReRun, initialStep });
     const { state, dispatch } = controller;
 
+    // Load user-facing strings from the JSON template; falls back to embedded
+    // defaults on any error so the wizard always renders.
+    const [strings, setStrings] = useState<OnboardingStrings>(DEFAULT_ONBOARDING_STRINGS);
+    useEffect(() => {
+        let cancelled = false;
+        void (async () => {
+            const loaded = await loadOnboardingStrings();
+            if (!cancelled) setStrings(loaded);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     // Auto-close when the wizard reaches the `done` state.
     React.useEffect(() => {
         if (state.done) onClose();
     }, [state.done, onClose]);
 
     return (
-        <div className="pktw-flex pktw-flex-col">
-            <StepIndicator current={state.step} />
-            <PrimaryStepView state={state} dispatch={dispatch} onClose={onClose} />
-        </div>
+        <OnboardingStringsProvider strings={strings}>
+            <div className="pktw-flex pktw-flex-col">
+                <StepIndicator current={state.step} />
+                <PrimaryStepView state={state} dispatch={dispatch} onClose={onClose} />
+            </div>
+        </OnboardingStringsProvider>
     );
 }
 
@@ -289,18 +312,19 @@ function StepFooter({
     onBack,
     onContinue,
     continueDisabled = false,
-    continueLabel = 'Continue',
+    continueLabel,
 }: {
     onBack?: () => void;
     onContinue: () => void;
     continueDisabled?: boolean;
     continueLabel?: string;
 }) {
+    const strings = useOnboardingStrings();
     return (
         <div className="pktw-flex pktw-items-center pktw-justify-between pktw-mt-6">
             {onBack ? (
                 <button type="button" className="pktw-text-sm pktw-opacity-70 hover:pktw-opacity-100" onClick={onBack}>
-                    Back
+                    {strings.actions.back}
                 </button>
             ) : (
                 <span />
@@ -315,7 +339,7 @@ function StepFooter({
                 disabled={continueDisabled}
                 onClick={onContinue}
             >
-                {continueLabel}
+                {continueLabel ?? strings.actions.continue}
             </button>
         </div>
     );
@@ -323,19 +347,18 @@ function StepFooter({
 
 function CapabilitiesPlaceholder({ dispatch }: PlaceholderProps) {
     // PR-C will replace with the 4-card "What Peak can do" layout (spec §5.3 Step 2).
+    const strings = useOnboardingStrings();
     return (
         <div className="pktw-px-6 pktw-pb-6">
-            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">What Peak can do</div>
-            <div className="pktw-text-sm pktw-opacity-80">
-                Chat with your vault, search it, run analysis, and use Copilot on notes.
-            </div>
+            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">{strings.steps.capabilities.title}</div>
+            <div className="pktw-text-sm pktw-opacity-80">{strings.steps.capabilities.description}</div>
             <StepFooter
                 onBack={() => dispatch({ type: 'back' })}
                 onContinue={() => {
                     dispatch({ type: 'acknowledge-capabilities' });
                     dispatch({ type: 'next' });
                 }}
-                continueLabel="Got it"
+                continueLabel={strings.actions.gotIt}
             />
         </div>
     );
@@ -345,13 +368,13 @@ function IndexReadinessPlaceholder({ state, dispatch }: IndexReadinessPlaceholde
     // PR-C will replace with the detected-state + recommended-action layout
     // (spec §5.3 Step 5). For PR-A, expose the action selector minimally so the
     // user can walk through.
+    const strings = useOnboardingStrings();
     const selected = state.indexReadiness.selectedAction;
+    const labels = strings.steps.indexReadiness.actionLabels;
     return (
         <div className="pktw-px-6 pktw-pb-6">
-            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">Check your vault index</div>
-            <div className="pktw-text-sm pktw-opacity-80 pktw-mb-3">
-                Pick an indexing action to continue. (PR-C will replace this with the recommended-action UI.)
-            </div>
+            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">{strings.steps.indexReadiness.title}</div>
+            <div className="pktw-text-sm pktw-opacity-80 pktw-mb-3">{strings.steps.indexReadiness.description}</div>
             <div className="pktw-flex pktw-flex-col pktw-gap-2">
                 {(['use-existing', 'build-text', 'enable-semantic', 'skip'] as const).map((action) => (
                     <button
@@ -364,7 +387,7 @@ function IndexReadinessPlaceholder({ state, dispatch }: IndexReadinessPlaceholde
                         )}
                         onClick={() => dispatch({ type: 'select-index-action', action })}
                     >
-                        {action}
+                        {labels[action]}
                     </button>
                 ))}
             </div>
@@ -380,12 +403,11 @@ function IndexReadinessPlaceholder({ state, dispatch }: IndexReadinessPlaceholde
 function SystemCheckPlaceholder({ dispatch }: PlaceholderProps) {
     // PR-C / PR-E will replace with the readiness-row summary fed by
     // CapabilityRegistry.getAll().
+    const strings = useOnboardingStrings();
     return (
         <div className="pktw-px-6 pktw-pb-6">
-            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">System check</div>
-            <div className="pktw-text-sm pktw-opacity-80">
-                Provider, AI behavior, vault index, web access, and safety summary. (PR-C / PR-E will replace.)
-            </div>
+            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">{strings.steps.systemCheck.title}</div>
+            <div className="pktw-text-sm pktw-opacity-80">{strings.steps.systemCheck.description}</div>
             <StepFooter
                 onBack={() => dispatch({ type: 'back' })}
                 onContinue={() => {
@@ -399,13 +421,16 @@ function SystemCheckPlaceholder({ dispatch }: PlaceholderProps) {
 
 function ReadyToTryPlaceholder({ dispatch }: PlaceholderProps) {
     // PR-C will replace with the launchpad (summary card + action cards).
+    const strings = useOnboardingStrings();
     return (
         <div className="pktw-px-6 pktw-pb-6">
-            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">You&apos;re ready to use Peak Assistant</div>
-            <div className="pktw-text-sm pktw-opacity-80">
-                Open Chat, search your vault, run AI Analysis, or use Copilot. (PR-C will replace with the launchpad.)
-            </div>
-            <StepFooter onBack={() => dispatch({ type: 'back' })} onContinue={() => dispatch({ type: 'finish' })} continueLabel="Open Chat" />
+            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">{strings.steps.readyToTry.title}</div>
+            <div className="pktw-text-sm pktw-opacity-80">{strings.steps.readyToTry.description}</div>
+            <StepFooter
+                onBack={() => dispatch({ type: 'back' })}
+                onContinue={() => dispatch({ type: 'finish' })}
+                continueLabel={strings.steps.readyToTry.launchCta}
+            />
         </div>
     );
 }

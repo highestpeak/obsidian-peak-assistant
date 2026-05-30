@@ -24,18 +24,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { lookupModel, type CuratorResult } from '@/service/agents/harness/curator';
 import { applyRecommendation } from './applyRecommendation';
 import type { Capability } from '@/service/agents/harness/curator';
-
-const CAPABILITY_LABEL: Record<Capability, string> = {
-    quick: 'Quick',
-    deep: 'Deep',
-    premium: 'Premium',
-};
-
-const CAPABILITY_DESC: Record<Capability, string> = {
-    quick: '~1s 单步回复',
-    deep: '多步推理 / 长文档',
-    premium: '兜底 / 关键时刻',
-};
+import { useOnboardingStrings, type OnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
 export interface ReviewRecommendationStepProps {
     result: CuratorResult;
@@ -52,6 +41,8 @@ export function ReviewRecommendationStep({
     onAccepted,
     onBack,
 }: ReviewRecommendationStepProps) {
+    const strings = useOnboardingStrings();
+    const copy = strings.steps.review;
     const { recommendation, fromLLM } = result;
     const [applying, setApplying] = useState(false);
 
@@ -60,27 +51,31 @@ export function ReviewRecommendationStep({
         const res = await applyRecommendation(recommendation);
         setApplying(false);
         if (!res.success) {
-            new Notice('应用失败：每个能力档都缺少对应的 Profile。先去配 Provider。');
+            new Notice(copy.applyAllFailedNotice);
             return;
         }
         if (res.skippedCapabilities.length > 0) {
-            new Notice(`已应用：${res.appliedCapabilities.join(', ')}；跳过：${res.skippedCapabilities.join(', ')}（缺 profile）`);
+            new Notice(
+                copy.applyPartialNotice
+                    .replace('{applied}', res.appliedCapabilities.join(', '))
+                    .replace('{skipped}', res.skippedCapabilities.join(', ')),
+            );
         } else {
-            new Notice('Tier bindings 已应用。');
+            new Notice(copy.applySuccessNotice);
         }
         onAccepted();
-    }, [recommendation, onAccepted]);
+    }, [recommendation, onAccepted, copy]);
 
     return (
         <div className="pktw-flex pktw-flex-col pktw-gap-4 pktw-py-4 pktw-px-8">
             <div className="pktw-flex pktw-items-center pktw-gap-2">
                 <Sparkles size={16} className="pktw-text-[--interactive-accent]" />
                 <span className="pktw-text-base pktw-font-semibold pktw-text-[--text-normal]">
-                    推荐配置
+                    {copy.title}
                 </span>
                 {!fromLLM && (
                     <span className="pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-amber-100 pktw-text-amber-700 pktw-flex pktw-items-center pktw-gap-1">
-                        <AlertTriangle size={10} /> 规则兜底
+                        <AlertTriangle size={10} /> {copy.fallbackChip}
                     </span>
                 )}
             </div>
@@ -88,7 +83,7 @@ export function ReviewRecommendationStep({
             {/* Bindings table */}
             <div className="pktw-flex pktw-flex-col pktw-gap-1.5">
                 {(['quick', 'deep', 'premium'] as const).map((cap) => (
-                    <BindingRow key={cap} capability={cap} modelId={recommendation.bindings[cap]} />
+                    <BindingRow key={cap} capability={cap} modelId={recommendation.bindings[cap]} strings={strings} />
                 ))}
             </div>
 
@@ -96,7 +91,7 @@ export function ReviewRecommendationStep({
             {recommendation.modelsToDownload.length > 0 && (
                 <InfoBlock
                     icon={<ArrowDownToLine size={14} />}
-                    title="需要下载"
+                    title={copy.downloadsTitle}
                     items={recommendation.modelsToDownload.map((m) => `ollama pull ${m}`)}
                 />
             )}
@@ -105,23 +100,23 @@ export function ReviewRecommendationStep({
             {recommendation.apiKeysNeeded.length > 0 && (
                 <InfoBlock
                     icon={<KeyRound size={14} />}
-                    title="需要 API Key"
-                    items={recommendation.apiKeysNeeded.map((k) => `${k}（去 Settings 添加）`)}
+                    title={copy.apiKeysTitle}
+                    items={recommendation.apiKeysNeeded.map((k) => `${k} ${copy.apiKeyInstructionSuffix}`)}
                 />
             )}
 
             {/* Cascade */}
             <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[--text-muted]">
-                <span>Cascade:</span>
+                <span>{copy.cascadeLabel}</span>
                 <span className={cn('pktw-font-medium', recommendation.cascadeEnabled ? 'pktw-text-green-600' : 'pktw-text-[--text-muted]')}>
-                    {recommendation.cascadeEnabled ? '开启' : '关闭'}
+                    {recommendation.cascadeEnabled ? copy.cascadeOn : copy.cascadeOff}
                 </span>
             </div>
 
             {/* Rationale */}
             <div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-3 pktw-rounded-lg pktw-bg-[--background-primary-alt] pktw-border pktw-border-[--background-modifier-border]">
                 <span className="pktw-text-[10px] pktw-uppercase pktw-tracking-wider pktw-text-[--text-muted] pktw-font-semibold">
-                    为什么这样推荐
+                    {copy.rationaleTitle}
                 </span>
                 <span className="pktw-text-xs pktw-text-[--text-normal] pktw-leading-relaxed">
                     {recommendation.rationale}
@@ -131,18 +126,18 @@ export function ReviewRecommendationStep({
             {/* Actions */}
             <div className="pktw-flex pktw-justify-between pktw-items-center pktw-pt-1">
                 <Button variant="ghost" size="sm" onClick={onBack} className="pktw-gap-1 pktw-text-xs" disabled={applying}>
-                    <ChevronLeft size={14} /> 返回
+                    <ChevronLeft size={14} /> {strings.actions.back}
                 </Button>
                 <div className="pktw-flex pktw-gap-2">
                     <Button variant="ghost" size="sm" onClick={onRedo} disabled={applying} className="pktw-gap-1 pktw-text-xs">
-                        <RotateCcw size={12} /> 重来
+                        <RotateCcw size={12} /> {strings.actions.regenerate}
                     </Button>
                     <Button variant="ghost" size="sm" onClick={onEdit} disabled={applying} className="pktw-gap-1 pktw-text-xs">
-                        <Edit3 size={12} /> 编辑
+                        <Edit3 size={12} /> {strings.actions.edit}
                     </Button>
                     <Button size="sm" onClick={handleAccept} disabled={applying} className="pktw-gap-1">
                         {applying ? <Loader2 size={12} className="pktw-animate-spin" /> : <Check size={14} />}
-                        接受
+                        {strings.actions.accept}
                     </Button>
                 </div>
             </div>
@@ -150,13 +145,22 @@ export function ReviewRecommendationStep({
     );
 }
 
-function BindingRow({ capability, modelId }: { capability: Capability; modelId: string }) {
+function BindingRow({
+    capability,
+    modelId,
+    strings,
+}: {
+    capability: Capability;
+    modelId: string;
+    strings: OnboardingStrings;
+}) {
     const entry = lookupModel(modelId);
+    const copy = strings.steps.review;
     return (
         <div className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2 pktw-rounded-md pktw-border pktw-border-[--background-modifier-border]">
-            <div className="pktw-w-16 pktw-shrink-0">
+            <div className="pktw-w-32 pktw-shrink-0">
                 <span className="pktw-text-xs pktw-font-semibold pktw-text-[--text-normal]">
-                    {CAPABILITY_LABEL[capability]}
+                    {copy.tierLabels[capability]}
                 </span>
             </div>
             <div className="pktw-flex-1 pktw-min-w-0">
@@ -164,7 +168,7 @@ function BindingRow({ capability, modelId }: { capability: Capability; modelId: 
                     {modelId}
                 </span>
                 <span className="pktw-block pktw-text-[10px] pktw-text-[--text-muted]">
-                    {entry ? entry.displayName : '⚠ 未知 model'} · {CAPABILITY_DESC[capability]}
+                    {entry ? entry.displayName : copy.unknownModel} · {copy.tierDescriptions[capability]}
                 </span>
             </div>
             {entry && (

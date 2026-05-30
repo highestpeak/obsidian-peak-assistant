@@ -17,6 +17,7 @@ import { modelRegistry } from '@/core/providers/model-registry';
 import { fetchOllamaModels } from '@/core/providers/ollama/fetchOllamaModels';
 import { cn } from '@/ui/react/lib/utils';
 import type { Profile, ProfileKind } from '@/core/profiles/types';
+import { useOnboardingStrings, type OnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
 const PROVIDER_CATALOG: Partial<Record<ProfileKind, string>> = {
     anthropic: 'claude',
@@ -61,6 +62,8 @@ export function BootstrapModelStep({
     onBack,
     onContinue,
 }: BootstrapModelStepProps) {
+    const strings = useOnboardingStrings();
+    const copy = strings.steps.bootstrap;
     const profile = useMemo(
         () => (profileId ? ProfileRegistry.getInstance().getProfileById(profileId) : null),
         [profileId],
@@ -107,23 +110,22 @@ export function BootstrapModelStep({
         <div className="pktw-flex pktw-flex-col pktw-gap-4 pktw-py-4 pktw-px-8">
             <div className="pktw-flex pktw-flex-col pktw-gap-1">
                 <span className="pktw-text-base pktw-font-semibold pktw-text-[--text-normal]">
-                    选一个起步 Model
+                    {copy.title}
                 </span>
                 <span className="pktw-text-xs pktw-text-[--text-muted]">
-                    配置助手会用这个 model 跑一轮，根据你的环境推荐三档绑定。
-                    推荐选最便宜的 — 它只跑一次。
+                    {copy.description}
                 </span>
             </div>
 
             {!profile && (
                 <span className="pktw-text-sm pktw-text-[--text-muted]">
-                    请先在上一步选一个 Provider。
+                    {copy.missingProviderHint}
                 </span>
             )}
 
             {profile && loading && (
                 <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-sm pktw-text-[--text-muted] pktw-py-4">
-                    <Loader2 size={14} className="pktw-animate-spin" /> 拉取模型列表…
+                    <Loader2 size={14} className="pktw-animate-spin" /> {copy.loadingModels}
                 </div>
             )}
 
@@ -135,9 +137,7 @@ export function BootstrapModelStep({
 
             {profile && !loading && !error && models.length === 0 && (
                 <div className="pktw-text-sm pktw-text-[--text-muted] pktw-bg-[--background-primary-alt] pktw-border pktw-border-[--background-modifier-border] pktw-rounded-md pktw-px-3 pktw-py-3">
-                    {profile.kind === 'ollama'
-                        ? '没找到本地 model — 跑一下 `ollama pull qwen3:4b` 后回来。'
-                        : '没找到这个 provider 的可用 model。可能 catalog 还没同步。'}
+                    {profile.kind === 'ollama' ? copy.noLocalModelsHint : copy.noCatalogModelsHint}
                 </div>
             )}
 
@@ -149,6 +149,7 @@ export function BootstrapModelStep({
                             option={m}
                             selected={selectedModelId === m.id}
                             onClick={() => onSelect(profile.id, m.id)}
+                            strings={strings}
                         />
                     ))}
                 </div>
@@ -157,7 +158,7 @@ export function BootstrapModelStep({
             {/* Actions */}
             <div className="pktw-flex pktw-justify-between pktw-pt-1">
                 <Button variant="ghost" size="sm" onClick={onBack} className="pktw-gap-1">
-                    <ChevronLeft size={14} /> 返回
+                    <ChevronLeft size={14} /> {strings.actions.back}
                 </Button>
                 <Button
                     size="sm"
@@ -165,14 +166,24 @@ export function BootstrapModelStep({
                     disabled={!selectedModelId}
                     className="pktw-gap-1"
                 >
-                    <Wand2 size={14} /> 跑配置助手 <ChevronRight size={14} />
+                    <Wand2 size={14} /> {strings.actions.runCurator} <ChevronRight size={14} />
                 </Button>
             </div>
         </div>
     );
 }
 
-function ModelRow({ option, selected, onClick }: { option: ModelOption; selected: boolean; onClick: () => void }) {
+function ModelRow({
+    option,
+    selected,
+    onClick,
+    strings,
+}: {
+    option: ModelOption;
+    selected: boolean;
+    onClick: () => void;
+    strings: OnboardingStrings;
+}) {
     return (
         <div
             onClick={onClick}
@@ -188,7 +199,7 @@ function ModelRow({ option, selected, onClick }: { option: ModelOption; selected
             </span>
             {option.recommended && (
                 <span className="pktw-text-[10px] pktw-flex pktw-items-center pktw-gap-1 pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-[--interactive-accent]/15 pktw-text-[--interactive-accent]">
-                    <Sparkles size={10} /> 推荐
+                    <Sparkles size={10} /> {strings.steps.bootstrap.recommendedChip}
                 </span>
             )}
             {option.hint && (

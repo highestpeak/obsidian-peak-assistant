@@ -22,6 +22,7 @@ import {
     type UserPreferences,
 } from '@/service/agents/harness/curator';
 import type { BootstrapSelection } from './state';
+import { useOnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
 export interface RunningCuratorStepProps {
     bootstrap: BootstrapSelection | null;
@@ -42,16 +43,20 @@ export function RunningCuratorStep({
     onError,
     onCancel,
 }: RunningCuratorStepProps) {
+    const strings = useOnboardingStrings();
+    const copy = strings.steps.running;
     const onSuccessRef = useRef(onSuccess);
     const onErrorRef = useRef(onError);
+    const stringsRef = useRef(strings);
     useEffect(() => {
         onSuccessRef.current = onSuccess;
         onErrorRef.current = onError;
+        stringsRef.current = strings;
     });
 
     useEffect(() => {
         if (!bootstrap) {
-            onErrorRef.current('Bootstrap model missing. Go back and select one.');
+            onErrorRef.current(stringsRef.current.steps.running.bootstrapMissingError);
             return;
         }
 
@@ -66,14 +71,14 @@ export function RunningCuratorStep({
                     // Catalog hydration runs at boot; if it failed we still want to
                     // give the user a valid (fallback) recommendation rather than
                     // block the wizard.
-                    onErrorRef.current('Model catalog unavailable. Using rule-based fallback.');
+                    onErrorRef.current(stringsRef.current.steps.running.catalogUnavailableError);
                     const recommendation = buildFallbackRecommendation(ctx);
                     onSuccessRef.current({ recommendation, fromLLM: false, attempts: [] });
                     return;
                 }
                 const profile = ProfileRegistry.getInstance().getProfileById(bs.profileId);
                 if (!profile) {
-                    onErrorRef.current('Selected profile no longer exists. Go back and reselect.');
+                    onErrorRef.current(stringsRef.current.steps.running.profileGoneError);
                     return;
                 }
                 const result = await runCurator({
@@ -99,12 +104,10 @@ export function RunningCuratorStep({
             <Loader2 size={36} className="pktw-animate-spin pktw-text-[--interactive-accent]" />
             <div className="pktw-text-center pktw-max-w-md">
                 <span className="pktw-block pktw-text-base pktw-font-semibold pktw-text-[--text-normal] pktw-mb-1">
-                    配置助手正在分析…
+                    {copy.title}
                 </span>
                 <span className="pktw-block pktw-text-xs pktw-text-[--text-muted] pktw-leading-relaxed">
-                    扫描 RAM、Ollama、已配 provider、笔记语言；
-                    匹配 catalog 中的 model；生成推荐 + 理由。
-                    通常 5-15 秒。
+                    {copy.description}
                 </span>
             </div>
             {error && (
@@ -113,7 +116,7 @@ export function RunningCuratorStep({
                 </div>
             )}
             <Button variant="ghost" size="sm" onClick={onCancel} className="pktw-gap-1 pktw-text-xs">
-                <X size={12} /> 取消
+                <X size={12} /> {copy.cancelCta}
             </Button>
         </div>
     );

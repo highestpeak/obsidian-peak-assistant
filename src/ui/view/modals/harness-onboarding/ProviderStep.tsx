@@ -15,6 +15,7 @@ import { cn } from '@/ui/react/lib/utils';
 import type { Profile } from '@/core/profiles/types';
 import { Trash2 } from 'lucide-react';
 import { AddProviderForm, PROVIDER_OPTIONS } from '../onboarding/ProviderForm';
+import { useOnboardingStrings, type OnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
 export interface ProviderStepProps {
     selectedProfileId: string | null;
@@ -25,6 +26,8 @@ export interface ProviderStepProps {
 }
 
 export function ProviderStep({ selectedProfileId, onSelect, onClear, onBack, onContinue }: ProviderStepProps) {
+    const strings = useOnboardingStrings();
+    const copy = strings.steps.provider;
     const [profiles, setProfiles] = useState<Profile[]>(() => ProfileRegistry.getInstance().getAllProfiles());
     const [showForm, setShowForm] = useState(profiles.length === 0);
 
@@ -63,10 +66,10 @@ export function ProviderStep({ selectedProfileId, onSelect, onClear, onBack, onC
         <div className="pktw-flex pktw-flex-col pktw-gap-4 pktw-py-4 pktw-px-8">
             <div className="pktw-flex pktw-flex-col pktw-gap-1">
                 <span className="pktw-text-base pktw-font-semibold pktw-text-[--text-normal]">
-                    选一个 Provider
+                    {copy.title}
                 </span>
                 <span className="pktw-text-xs pktw-text-[--text-muted]">
-                    配置助手会从这个 provider 拉一个模型起步；最终的能力档绑定可以是任意 provider。
+                    {copy.description}
                 </span>
             </div>
 
@@ -80,6 +83,7 @@ export function ProviderStep({ selectedProfileId, onSelect, onClear, onBack, onC
                             selected={selectedProfileId === p.id}
                             onSelect={() => onSelect(p.id)}
                             onDelete={() => handleDelete(p.id)}
+                            strings={strings}
                         />
                     ))}
                 </div>
@@ -95,17 +99,17 @@ export function ProviderStep({ selectedProfileId, onSelect, onClear, onBack, onC
                     onClick={() => setShowForm(true)}
                     className="pktw-gap-1.5 pktw-self-start"
                 >
-                    <Plus size={14} /> 添加 Provider
+                    <Plus size={14} /> {strings.actions.addProvider}
                 </Button>
             )}
 
             {/* Actions */}
             <div className="pktw-flex pktw-justify-between pktw-pt-1">
                 <Button variant="ghost" size="sm" onClick={onBack} className="pktw-gap-1">
-                    <ChevronLeft size={14} /> 返回
+                    <ChevronLeft size={14} /> {strings.actions.back}
                 </Button>
                 <Button size="sm" onClick={onContinue} disabled={!selectedProfileId} className="pktw-gap-1">
-                    继续 <ChevronRight size={14} />
+                    {strings.actions.continue} <ChevronRight size={14} />
                 </Button>
             </div>
         </div>
@@ -117,9 +121,10 @@ interface SelectableRowProps {
     selected: boolean;
     onSelect: () => void;
     onDelete: () => void;
+    strings: OnboardingStrings;
 }
 
-function SelectableProfileRow({ profile, selected, onSelect, onDelete }: SelectableRowProps) {
+function SelectableProfileRow({ profile, selected, onSelect, onDelete, strings }: SelectableRowProps) {
     const option = PROVIDER_OPTIONS.find((p) => p.kind === profile.kind);
     const Icon = option?.Icon ?? null;
     const hasUsableCredentials = profile.kind === 'ollama' || !!(profile.apiKey && profile.apiKey.length > 0);
@@ -139,7 +144,7 @@ function SelectableProfileRow({ profile, selected, onSelect, onDelete }: Selecta
             <span className="pktw-flex-1 pktw-text-sm pktw-text-[--text-normal] pktw-truncate">{profile.name}</span>
             {!hasUsableCredentials && (
                 <span className="pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-red-100 pktw-text-red-700">
-                    缺 API key
+                    {strings.steps.provider.missingCredentialsChip}
                 </span>
             )}
             {selected && <Check size={14} className="pktw-text-[--interactive-accent]" />}
@@ -147,7 +152,7 @@ function SelectableProfileRow({ profile, selected, onSelect, onDelete }: Selecta
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
                 className="pktw-p-1 pktw-rounded hover:pktw-bg-[--background-modifier-error] pktw-text-[--text-muted] hover:pktw-text-red-500"
-                title="Delete profile"
+                title={strings.steps.provider.deleteProviderTitle}
             >
                 <Trash2 size={12} />
             </button>

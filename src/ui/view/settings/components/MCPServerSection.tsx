@@ -1,11 +1,12 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { MyPluginSettings } from '@/app/settings/types';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import type { MCPServerConfig } from '@/service/mcp/types';
 import { MCPServerCard } from './MCPServerCard';
+import { DEFAULT_SETTINGS_STRINGS, loadSettingsStrings, type SettingsStrings } from '../settingsStrings';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,6 +26,19 @@ export function MCPServerSection({ settings, settingsUpdates }: MCPServerSection
 	const bump = () => setTick(t => t + 1);
 	void tick;
 
+	const [strings, setStrings] = useState<SettingsStrings>(DEFAULT_SETTINGS_STRINGS);
+	useEffect(() => {
+		let cancelled = false;
+		void (async () => {
+			const loaded = await loadSettingsStrings();
+			if (!cancelled) setStrings(loaded);
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+	const copy = strings.externalTools;
+
 	const servers = settings.mcpServers ?? [];
 
 	const persistServers = (updated: MCPServerConfig[]) => {
@@ -35,7 +49,7 @@ export function MCPServerSection({ settings, settingsUpdates }: MCPServerSection
 	const handleAdd = () => {
 		const newServer: MCPServerConfig = {
 			id: crypto.randomUUID(),
-			name: 'New Server',
+			name: copy.defaultServerName,
 			enabled: true,
 			transport: 'stdio',
 			command: '',
@@ -59,16 +73,16 @@ export function MCPServerSection({ settings, settingsUpdates }: MCPServerSection
 		<div className="pktw-space-y-4">
 			{/* Header */}
 			<div>
-				<span className="pktw-text-base pktw-font-semibold">MCP Servers</span>
+				<span className="pktw-text-base pktw-font-semibold">{copy.title}</span>
 				<span className="pktw-block pktw-text-xs pktw-text-pk-foreground-faint pktw-mt-1">
-					Connect external MCP servers to extend agent capabilities with additional tools.
+					{copy.description}
 				</span>
 			</div>
 
 			{/* Server cards */}
 			{servers.length === 0 && (
 				<div className="pktw-text-sm pktw-text-pk-muted-foreground pktw-text-center pktw-py-8">
-					No MCP servers configured. Add one to get started.
+					{copy.emptyHint}
 				</div>
 			)}
 			{servers.map(s => (
@@ -87,7 +101,7 @@ export function MCPServerSection({ settings, settingsUpdates }: MCPServerSection
 				onClick={handleAdd}
 			>
 				<Plus size={16} />
-				Add Server
+				{copy.addCta}
 			</Button>
 		</div>
 	);

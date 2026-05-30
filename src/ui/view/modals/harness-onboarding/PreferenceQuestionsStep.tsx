@@ -2,8 +2,11 @@
  * Two-question preference form. See spec §5.3.
  *
  * Mirrors the mockup verbatim:
- *   1. 每月愿意花多少 API 钱?      ($0 / 极少 / $5-20 / $50+)
- *   2. 速度 vs 质量?               (速度 / 平衡 / 质量)
+ *   1. Monthly API budget?           ($0 / minimal | $5–20 | $50+)
+ *   2. Speed vs quality?             (Speed first | Balanced | Quality first)
+ *
+ * User-visible copy lives in `templates/config/onboarding.json` (key
+ * `steps.preferences`); see `src/ui/view/onboarding/onboardingStrings.ts`.
  */
 
 import React from 'react';
@@ -11,6 +14,7 @@ import { ChevronLeft, ChevronRight, Wand2 } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import type { BudgetTier, SpeedQualityPreference, UserPreferences } from '@/service/agents/harness/curator';
+import { useOnboardingStrings, type OnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
 export interface PreferenceQuestionsStepProps {
     preferences: UserPreferences;
@@ -26,17 +30,23 @@ interface Option<T> {
     hint: string;
 }
 
-const BUDGET_OPTIONS: Option<BudgetTier>[] = [
-    { value: 'zero', label: '$0 / 极少', hint: '全本地，离线可用' },
-    { value: 'low', label: '$5-20', hint: '中等使用' },
-    { value: 'high', label: '$50+', hint: '重度使用' },
-];
+function buildBudgetOptions(strings: OnboardingStrings): Option<BudgetTier>[] {
+    const opts = strings.steps.preferences.budgetOptions;
+    return [
+        { value: 'zero', label: opts.zero.label, hint: opts.zero.hint },
+        { value: 'low', label: opts.low.label, hint: opts.low.hint },
+        { value: 'high', label: opts.high.label, hint: opts.high.hint },
+    ];
+}
 
-const SPEED_OPTIONS: Option<SpeedQualityPreference>[] = [
-    { value: 'speed', label: '速度优先', hint: '1s 内出结果' },
-    { value: 'balanced', label: '平衡', hint: '默认推荐' },
-    { value: 'quality', label: '质量优先', hint: '关键时刻用旗舰' },
-];
+function buildSpeedOptions(strings: OnboardingStrings): Option<SpeedQualityPreference>[] {
+    const opts = strings.steps.preferences.speedOptions;
+    return [
+        { value: 'speed', label: opts.speed.label, hint: opts.speed.hint },
+        { value: 'balanced', label: opts.balanced.label, hint: opts.balanced.hint },
+        { value: 'quality', label: opts.quality.label, hint: opts.quality.hint },
+    ];
+}
 
 export function PreferenceQuestionsStep({
     preferences,
@@ -45,37 +55,39 @@ export function PreferenceQuestionsStep({
     onBack,
     onContinue,
 }: PreferenceQuestionsStepProps) {
+    const strings = useOnboardingStrings();
+    const copy = strings.steps.preferences;
     return (
         <div className="pktw-flex pktw-flex-col pktw-gap-5 pktw-py-4 pktw-px-8">
             <div className="pktw-flex pktw-flex-col pktw-gap-1">
                 <span className="pktw-text-base pktw-font-semibold pktw-text-[--text-normal]">
-                    最后 2 个问题
+                    {copy.title}
                 </span>
                 <span className="pktw-text-xs pktw-text-[--text-muted]">
-                    配置助手会根据你的回答给出推荐 — 不是承诺，你可以接受、编辑或重来。
+                    {copy.description}
                 </span>
             </div>
 
             <RadioGroup
-                label="1. 每月愿意花多少 API 钱？"
-                options={BUDGET_OPTIONS}
+                label={copy.budgetQuestion}
+                options={buildBudgetOptions(strings)}
                 value={preferences.budget}
                 onChange={onBudgetChange}
             />
 
             <RadioGroup
-                label="2. 速度 vs 质量？"
-                options={SPEED_OPTIONS}
+                label={copy.speedQuestion}
+                options={buildSpeedOptions(strings)}
                 value={preferences.speedQuality}
                 onChange={onSpeedQualityChange}
             />
 
             <div className="pktw-flex pktw-justify-between pktw-pt-1">
                 <Button variant="ghost" size="sm" onClick={onBack} className="pktw-gap-1">
-                    <ChevronLeft size={14} /> 返回
+                    <ChevronLeft size={14} /> {strings.actions.back}
                 </Button>
                 <Button size="sm" onClick={onContinue} className="pktw-gap-1">
-                    <Wand2 size={14} /> 跑配置助手 <ChevronRight size={14} />
+                    <Wand2 size={14} /> {strings.actions.runCurator} <ChevronRight size={14} />
                 </Button>
             </div>
         </div>
