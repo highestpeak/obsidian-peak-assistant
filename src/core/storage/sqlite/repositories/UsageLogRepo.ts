@@ -298,6 +298,40 @@ export class UsageLogRepo {
 	}
 
 	/**
+	 * Look up the latest usage_log row that carries `message_id` (and
+	 * optionally `session_id`) in its metadata. Used by the inline message
+	 * receipt (Dashboard carrier A) to attach token/cost data to a chat
+	 * message. Returns the most recent row if multiple match (e.g. retries
+	 * within the same message). Returns undefined when the chat path did
+	 * not write a usage_log row — the caller renders nothing in that case.
+	 *
+	 * Note: this scans `metadata_json` via `json_extract`. The chat surface
+	 * is responsible for stamping `{ message_id, session_id }` into the
+	 * metadata payload at call time.
+	 */
+	async findByMessageId(
+		message_id: string,
+		session_id?: string,
+	): Promise<UsageLogRow | undefined> {
+		const rows = session_id
+			? await sql<UsageLogRow>`
+				SELECT * FROM usage_log
+				WHERE json_extract(metadata_json, '$.message_id') = ${message_id}
+				  AND session_id = ${session_id}
+				ORDER BY created_at DESC
+				LIMIT 1
+			`.execute(this.db)
+			: await sql<UsageLogRow>`
+				SELECT * FROM usage_log
+				WHERE json_extract(metadata_json, '$.message_id') = ${message_id}
+				ORDER BY created_at DESC
+				LIMIT 1
+			`.execute(this.db);
+
+		return rows.rows[0];
+	}
+
+	/**
 	 * Group by provider × model, return tokens.
 	 */
 	async groupByModel(startMs: number, endMs: number): Promise<Array<{

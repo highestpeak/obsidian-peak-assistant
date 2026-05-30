@@ -1,5 +1,5 @@
 {
-	"_doc": "User-facing strings for Usage Dashboard. PR-Dash-1 seeds title + screen labels + time-range labels. PR-Dash-2 adds Overview KPI labels, funnel stage labels, outcome event labels, and empty-state copy. PR-Dash-3 adds providerModel + outcomeValue screen copy and the 'What was this about' detail-panel per-feature labels.",
+	"_doc": "User-facing strings for Usage Dashboard. PR-Dash-1 seeds title + screen labels + time-range labels. PR-Dash-2 adds Overview KPI labels, funnel stage labels, outcome event labels, and empty-state copy. PR-Dash-3 adds providerModel + outcomeValue screen copy and the 'What was this about' detail-panel per-feature labels. PR-Dash-4 adds inlineReceipt + contextRing + curatorPush strings for the three new carriers (A/B/C).",
 	"_owner": "design-system-unification-2026-05-30",
 	"title": "Token Usage",
 	"detailPanel": {
@@ -120,6 +120,28 @@
 		"7d": "7d",
 		"30d": "30d",
 		"all": "All"
+	},
+	"inlineReceipt": {
+		"inLabel": "in",
+		"outLabel": "out",
+		"openDetail": "Show usage detail",
+		"chips": {
+			"saved": "Saved",
+			"accepted": "Accepted",
+			"clicked": "Clicked",
+			"emitted": "Emitted",
+			"useful": "Useful"
+		}
+	},
+	"contextRing": {
+		"tooltip": "Context: {used} / {max} tokens"
+	},
+	"curatorPush": {
+		"heading": "Curator suggestion",
+		"apply": "Apply",
+		"dismiss": "Dismiss",
+		"dismissSession": "Don't show this session",
+		"close": "Close"
 	},
 	"screens": {
 		"overview": {

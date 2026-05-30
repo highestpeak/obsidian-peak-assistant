@@ -199,6 +199,16 @@ export class UsageTrackingService {
 		return this.getRepo().getById(id);
 	}
 
+	/**
+	 * Most-recent usage_log row whose metadata carries `message_id` (scoped
+	 * by `session_id` when provided). Backs the inline message receipt
+	 * (Dashboard carrier A). Returns undefined when no matching row exists,
+	 * which the caller treats as "no receipt to render".
+	 */
+	async getLogByMessageId(message_id: string, session_id?: string) {
+		return this.getRepo().findByMessageId(message_id, session_id);
+	}
+
 	// ── Private ─────────────────────────────────────────────
 
 	private async record(payload: UsageRecordPayload): Promise<void> {

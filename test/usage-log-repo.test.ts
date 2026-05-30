@@ -189,6 +189,63 @@ async function testGetById(): Promise<void> {
 	console.log('PASS: getById');
 }
 
+async function testFindByMessageId(): Promise<void> {
+	const { repo } = makeRepo();
+	// Two rows with same message_id but different created_at — should return latest
+	await repo.insert(baseRow({
+		session_id: 's1',
+		feature: 'chat',
+		metadata_json: JSON.stringify({ message_id: 'm1' }),
+		created_at: 100,
+		cost_usd: 0.01,
+	}));
+	await repo.insert(baseRow({
+		session_id: 's1',
+		feature: 'chat',
+		metadata_json: JSON.stringify({ message_id: 'm1' }),
+		created_at: 200,
+		cost_usd: 0.02,
+	}));
+	// Same message_id but different session — should be excluded when session scope passed
+	await repo.insert(baseRow({
+		session_id: 's2',
+		feature: 'chat',
+		metadata_json: JSON.stringify({ message_id: 'm1' }),
+		created_at: 300,
+		cost_usd: 0.03,
+	}));
+	// Different message_id — must never match
+	await repo.insert(baseRow({
+		session_id: 's1',
+		feature: 'chat',
+		metadata_json: JSON.stringify({ message_id: 'm2' }),
+		created_at: 400,
+	}));
+
+	// Without session scope — latest across all sessions
+	const latest = await repo.findByMessageId('m1');
+	assert.ok(latest, 'finds latest row by message_id');
+	assert.strictEqual(latest!.session_id, 's2');
+	assert.ok(Math.abs(latest!.cost_usd - 0.03) < 1e-9);
+
+	// With session scope — most recent within that session
+	const scoped = await repo.findByMessageId('m1', 's1');
+	assert.ok(scoped, 'finds row within scoped session');
+	assert.strictEqual(scoped!.session_id, 's1');
+	assert.strictEqual(scoped!.created_at, 200);
+	assert.ok(Math.abs(scoped!.cost_usd - 0.02) < 1e-9);
+
+	// Unknown message_id returns undefined
+	const missing = await repo.findByMessageId('nope');
+	assert.strictEqual(missing, undefined);
+
+	// Mismatched session returns undefined
+	const mismatch = await repo.findByMessageId('m1', 's-nonexistent');
+	assert.strictEqual(mismatch, undefined);
+
+	console.log('PASS: findByMessageId');
+}
+
 // ── Run ─────────────────────────────────────────────────────────────────────
 
 (async () => {
@@ -196,5 +253,6 @@ async function testGetById(): Promise<void> {
 	await testGroupByFeatureCostEmpty();
 	await testMessageIdsByFeature();
 	await testGetById();
+	await testFindByMessageId();
 	console.log('\nAll usage-log-repo tests passed!');
 })();

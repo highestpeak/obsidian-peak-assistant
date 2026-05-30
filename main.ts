@@ -56,6 +56,8 @@ import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
 import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
+import { CuratorRuntimePushService } from '@/service/usage/CuratorRuntimePushService';
+import { mountCuratorPushRoot } from '@/ui/view/usage-dashboard/runtime/mountCuratorPushRoot';
 import { ModelRegistry } from '@/core/providers/model-registry';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 import { MCPClientManager } from '@/service/mcp/MCPClientManager';
@@ -95,6 +97,9 @@ export default class MyPlugin extends Plugin {
 
 	/** Cleanup function for hover menu globals. */
 	private uninstallHoverMenuGlobals?: () => void;
+
+	/** Cleanup function for the Curator runtime push hidden React root + chat-bridge slot registrations. */
+	private unmountCuratorPushRoot?: () => void;
 
 	/**
 	 * Bootstraps services, views, commands, and layout handling.
@@ -330,6 +335,14 @@ export default class MyPlugin extends Plugin {
 				this.registerEditorExtension(serendipityGutterExtension());
 			}
 		}
+
+		// Dashboard carrier B/A/C — mount Curator runtime push modal + register
+		// chat-bridge slots (inline receipt, context ring). The hidden React
+		// root is GC-safe; unload tears it down via `unmountCuratorPushRoot`.
+		CuratorRuntimePushService.getInstance().init(this.app, {
+			usagePreviewEnabled: this.settings.usagePreviewEnabled ?? true,
+		});
+		this.unmountCuratorPushRoot = mountCuratorPushRoot();
 
 		// Auto-open onboarding wizard on first run (no profiles configured)
 		const profiles = ProfileRegistry.getInstance().getAllProfiles();
@@ -571,6 +584,9 @@ export default class MyPlugin extends Plugin {
 		SkillRegistry.getInstance().destroy();
 
 		// Break singletons so old bundle can be GC'd
+		try { this.unmountCuratorPushRoot?.(); } catch { /* ignore */ }
+		this.unmountCuratorPushRoot = undefined;
+		CuratorRuntimePushService.getInstance().destroy();
 		UsageTrackingService.getInstance().destroy();
 		UsageOutcomeService.getInstance().destroy();
 		AppContext.clearForUnload();
