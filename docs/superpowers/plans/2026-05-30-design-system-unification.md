@@ -2,7 +2,7 @@
 
 **日期**：2026-05-30
 **作者**：planning session
-**状态**：✅ 开放问题已拍板（§5）；PR-0 准备启动
+**状态**：✅ §5 决议已拍板；✅ PR-0 已实施 + landed on master（2026-05-30，commits a7f0578 → e28001d，7 tasks 全部 done）
 **前置 spec**：
 - `docs/superpowers/specs/2026-05-29-onboarding-design-brief.md`
 - `docs/superpowers/specs/2026-05-29-settings-interface-design.md`
@@ -212,21 +212,35 @@ git worktree add /Users/zhangjike/code/peak-openrouter openrouter-test-fix
 
 ---
 
-## §7 下一步
+## §7 PR-0 实施记录（2026-05-30 已完成）
 
-1. ✅ §5 决议已拍板（2026-05-30）
-2. 开 PR-0 实施（不需要新 worktree，直接在 master 上做，因为是地基）
-   - 扩 `src/styles/peak-tokens.css`（radius-pill / shadow-sm/md / provider 色板 light+dark）
-   - 新建 `src/styles/peak-components.css`（9 个共享原语）
-   - 新建 `src/ui/components/primitives/`（React 薄壳）
-   - 新建 `src/service/telemetry/`（usage_outcome 表 + 事件 ingest，给 dashboard / agent trace / copilot 共用）
-   - 新建 `src/service/capabilities/`（`SurfaceCapability` interface 骨架，不实现具体 surface）
-   - `templates/config/` scaffold（onboarding / settings / chat / dashboard 空壳）
-   - docs/conventions/ 补 design-tokens.md + 新建 component-primitives.md
-   - mock 机械迁移（dashboard 补 light 主题、accent 改 purple；chat rename `--ink→--pk-text-strong` 等）
-   - Playwright 截图三屏并排验证无视觉退化
-3. PR-0 merge 后并行开 3 个 worktree（A onboarding-settings / B chat / C dashboard）+ 1 个小 PR（copilot skin housekeeping）
-4. 每个 worktree 自己的 PR chain 独立 review + merge
-5. 合并顺序建议：B → C → copilot skin → A 的 PR-A..D → A 的 PR-E（per-surface 适配器最后，等所有 surface 都 implement `SurfaceCapability` 接口）
+### Commit chain
 
-PR-0 工作量估：1–2 个 session。
+| Task | Commit | 描述 |
+|---|---|---|
+| 1 | `a7f0578` | 扩 peak-tokens.css：+`--pk-radius-pill` / `--pk-shadow-sm,md` / `--pk-prov-*` 6 个 provider 色板 light+dark；docs/conventions/design-tokens.md 同步 |
+| 2 | `7f3a775` | 新建 peak-components.css 10 个共享原语 + docs/conventions/component-primitives.md；接入 tailwind.css |
+| 3 | `4599571` + `87b4eb4` | 新建 src/ui/components/primitives/ 9 个 React 薄壳 + types.ts + index.ts；review fix 把 Modal 改成 compound `Modal.X` 模式 + Pill `aria-pressed` + FormNumber className 修正 |
+| 4 | `c944acc` | 新建 telemetry layer：usage_outcome 表 + UsageOutcomeRepo（5 query methods）+ UsageOutcomeService（recordEvent + 5 convenience methods + 闭合 enum 校验）；9/9 tests pass |
+| 5 | `f554d6f` + `f5aee0a` | 新建 src/service/capabilities/：`SurfaceCapability` interface（6 capability names + 4 readiness + 5 surface ids）+ `CapabilityRegistry` 单例（稳定排序）；6/6 tests pass |
+| 6 | `5a2396e` | templates/config 脚手架：ConfigTemplateId 加 4 个 surface entry + 4 个空 JSON shell |
+| 7 | `e28001d` | mock 机械迁移：4 个 mock 包 token 全部 rename 到生产名 + dashboard 补 light theme + accent 全部统一 purple #7c3aed；planning artifacts（plan + 4 specs + 2 review html）一并 land |
+
+### 已知遗留（不阻断）
+
+- React component smoke tests skipped（项目无 React 测试基础设施）—— PR-0 后单独建 jsdom + @testing-library/react，回补 6 个原语的 render 测试
+- Segmented 缺 roving-focus a11y —— TODO 已写在 JSDoc
+- chat 历史迭代草稿（`chat-message-v5.css` / `chat-interaction-v4.css` / `13-input-composer-v2.html` 等 v2/v3/v4/v5 文件）残留 `--pk-divider/-text-strong/-text-muted` —— 这些是设计过程的历史快照，不是 retained 真源（`chat-retained-mock.css` 已干净）
+- peak-components.css 内一些 magic number（10px compact padding / 18px modal body padding 等）缺 inline rationale —— polish 项
+
+### 下一步
+
+PR-0 已 landed on master。下一波并行开 3 个 worktree + copilot skin 小 PR：
+
+```bash
+git worktree add /Users/zhangjike/code/peak-chat       chat-retained
+git worktree add /Users/zhangjike/code/peak-onboarding onboarding-settings
+git worktree add /Users/zhangjike/code/peak-dashboard  dashboard-redesign
+```
+
+合并顺序见 §4。每个 worktree 自己的 PR chain 独立 review + merge。
