@@ -2,7 +2,6 @@ import { App, ViewState, WorkspaceLeaf } from 'obsidian';
 import {
 	AMBIENT_PUSH_VIEW_TYPE,
 	CHAT_VIEW_TYPE,
-	MESSAGE_HISTORY_VIEW_TYPE,
 	PROJECT_LIST_VIEW_TYPE,
 	STANDALONE_PEAK_VIEW_TYPES,
 	TRACKED_VIEW_TYPES,
@@ -74,21 +73,9 @@ export class ViewSwitchConsistentHandler {
 				await leftLeaf.setViewState({ type: PROJECT_LIST_VIEW_TYPE, state: {}, active: true });
 			}
 
-			// Find existing message history leaf or create new one (without clobbering ambient push)
-			const existingMessageHistoryLeaves = this.app.workspace.getLeavesOfType(MESSAGE_HISTORY_VIEW_TYPE);
-			let rightLeaf = existingMessageHistoryLeaves[0];
-			if (!rightLeaf) {
-				const candidate = this.app.workspace.getRightLeaf(false);
-				if (candidate && candidate.view?.getViewType() === AMBIENT_PUSH_VIEW_TYPE) {
-					// Ambient push is already in the right sidebar — create a sibling tab instead of replacing it
-					rightLeaf = this.app.workspace.getRightLeaf(true);
-				} else {
-					rightLeaf = candidate;
-				}
-			}
-			if (rightLeaf) {
-				await rightLeaf.setViewState({ type: MESSAGE_HISTORY_VIEW_TYPE, state: {}, active: true });
-			}
+			// Right sidebar intentionally left alone — ConversationIndex panel inside chat view
+			// now subsumes the old MessageHistoryView outline. AmbientPushView remains the only
+			// peak-owned right-sidebar surface and is mounted on demand by ViewManager.
 
 			this.app.workspace.revealLeaf(centerLeaf);
 			this.isChatLayoutActive = true;

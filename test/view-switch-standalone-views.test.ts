@@ -3,7 +3,6 @@ import {
 	CHAT_VIEW_TYPE,
 	GAP_ANALYSIS_VIEW_TYPE,
 	KNOWLEDGE_CENTER_VIEW_TYPE,
-	MESSAGE_HISTORY_VIEW_TYPE,
 	PROJECT_LIST_VIEW_TYPE,
 	STANDALONE_PEAK_VIEW_TYPES,
 } from '@/app/view/types';
@@ -82,7 +81,6 @@ async function testActivateChatViewRevealsChatFromStandaloneView(): Promise<void
 	const activeStandaloneLeaf = mockWorkspaceLeaf(KNOWLEDGE_CENTER_VIEW_TYPE);
 	const chatLeaf = mockWorkspaceLeaf(CHAT_VIEW_TYPE);
 	const projectLeaf = mockWorkspaceLeaf(PROJECT_LIST_VIEW_TYPE);
-	const historyLeaf = mockWorkspaceLeaf(MESSAGE_HISTORY_VIEW_TYPE);
 	let revealedLeaf: any = null;
 	const handler = new ViewSwitchConsistentHandler({
 		workspace: {
@@ -90,12 +88,10 @@ async function testActivateChatViewRevealsChatFromStandaloneView(): Promise<void
 			getLeavesOfType: (type: string) => {
 				if (type === CHAT_VIEW_TYPE) return [chatLeaf];
 				if (type === PROJECT_LIST_VIEW_TYPE) return [projectLeaf];
-				if (type === MESSAGE_HISTORY_VIEW_TYPE) return [historyLeaf];
 				return [];
 			},
 			getLeaf: () => chatLeaf,
 			getLeftLeaf: () => projectLeaf,
-			getRightLeaf: () => historyLeaf,
 			revealLeaf: (leaf: any) => {
 				revealedLeaf = leaf;
 			},

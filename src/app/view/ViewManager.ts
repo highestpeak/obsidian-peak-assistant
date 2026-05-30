@@ -2,7 +2,6 @@ import type MyPlugin from 'main';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { CHAT_VIEW_TYPE, ChatView } from '@/ui/view/ChatView';
 import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from '@/ui/view/ProjectListView';
-import { MESSAGE_HISTORY_VIEW_TYPE, MessageHistoryView } from '@/ui/view/MessageHistoryView';
 import { GRAPH_FULLSCREEN_VIEW_TYPE, GraphFullscreenView } from '@/ui/view/graph-fullscreen/GraphFullscreenView';
 import { AmbientPushView, AMBIENT_PUSH_VIEW_TYPE } from '@/ui/view/AmbientPushView';
 import { UsageDashboardView, USAGE_DASHBOARD_VIEW_TYPE } from '@/ui/view/usage-dashboard/UsageDashboardView';
@@ -33,9 +32,6 @@ export class ViewManager {
 		});
 		this.viewCreators.set(PROJECT_LIST_VIEW_TYPE, (leaf) => {
 			return new ProjectListView(leaf, appContext);
-		});
-		this.viewCreators.set(MESSAGE_HISTORY_VIEW_TYPE, (leaf) => {
-			return new MessageHistoryView(leaf, appContext);
 		});
 		this.viewCreators.set(GRAPH_FULLSCREEN_VIEW_TYPE, (leaf) => {
 			return new GraphFullscreenView(leaf);
