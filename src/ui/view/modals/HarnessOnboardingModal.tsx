@@ -1,30 +1,54 @@
 /**
  * Harness Onboarding Modal — the Curator-driven capability-binding wizard.
  *
- * As of PR-A this modal is driven by the new 7-step OnboardingStateMachine
- * (see src/ui/view/onboarding/OnboardingStateMachine.ts). The existing per-step
- * components for the Curator sub-flow (Welcome / Provider / Bootstrap /
- * PreferenceQuestions / RunningCurator / Review / Edit / Redo) are reused
- * verbatim during PR-A; PR-C will rewrite them on top of the PR-0 design-system
- * primitives.
+ * PR-C scope (2026-05-30):
+ *   - Rewrites the shell on top of PR-0 primitives (Modal/Row/Chip/Pill/etc.)
+ *     plus the `pkonb-*` onboarding namespace defined in peak-components.css.
+ *   - Replaces the 4 placeholder primary steps (capabilities, indexReadiness,
+ *     systemCheck, readyToTry) with full UIs sourced from the mock.
+ *   - Sub-step components (Welcome, Provider, Bootstrap, PreferenceQuestions,
+ *     RunningCurator, Review, Edit, Redo) are rewritten in their own files.
  *
- * The 4 brand-new primary steps introduced by the 7-step contract —
- * `capabilities`, `index-readiness`, `system-check`, `ready-to-try` — render
- * a minimal pass-through placeholder so the wizard compiles and walks end-to-
- * end. Visual fidelity to the mocks lands in PR-C.
+ * Architecture is unchanged from PR-A:
+ *   - State machine in src/ui/view/onboarding/OnboardingStateMachine.ts
+ *   - User-facing copy in templates/config/onboarding.json (via PR-B layer)
+ *   - Curator backend in src/service/agents/harness/curator/* (NOT TOUCHED)
  *
- * Curator backend (src/service/agents/harness/curator/*) and HarnessSettings
- * persistence (via applyRecommendation.ts) are unchanged.
+ * Visual goals (per docs/superpowers/specs/2026-05-29-onboarding-design-brief):
+ *   - 720px wide modal with progress indicator at top, footer with Back/Continue
+ *   - Single-column body, max-width hugged by modal shell (mock uses 680px)
+ *   - Cards only for: capability cards, action launchpad cards, provider grid
+ *   - Selected state: solid `--pk-accent-soft` + 3px left accent border + check
+ *   - Strict design-token discipline (no inline hex; no Obsidian theme vars)
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Modal } from 'obsidian';
+import { Modal as ObsidianModal } from 'obsidian';
+import {
+    MessageSquare,
+    Search,
+    BarChart3,
+    Pencil,
+    Database,
+    FileText,
+    Layout,
+    Sparkles,
+    ShieldCheck,
+    Globe,
+    Cpu,
+    Check,
+    Info,
+    Settings,
+    ChevronLeft,
+    ChevronRight,
+    Wand2,
+} from 'lucide-react';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
-import { cn } from '@/ui/react/lib/utils';
 import {
     PRIMARY_STEPS,
+    canContinue,
     type OnboardingController,
     type OnboardingEvent,
     type OnboardingState,
@@ -38,6 +62,7 @@ import {
     useOnboardingStrings,
     type OnboardingStrings,
 } from '@/ui/view/onboarding/onboardingStrings';
+import { Row, Chip, Pill } from '@/ui/components/primitives';
 import { WelcomeStep } from './harness-onboarding/WelcomeStep';
 import { ProviderStep } from './harness-onboarding/ProviderStep';
 import { BootstrapModelStep } from './harness-onboarding/BootstrapModelStep';
@@ -56,7 +81,7 @@ export interface HarnessOnboardingOptions {
     initialStep?: PrimaryStep;
 }
 
-export class HarnessOnboardingModal extends Modal {
+export class HarnessOnboardingModal extends ObsidianModal {
     private reactRenderer: ReactRenderer | null = null;
 
     constructor(
@@ -72,9 +97,12 @@ export class HarnessOnboardingModal extends Modal {
         contentEl.addClass('peak-harness-onboarding-modal');
         contentEl.addClass('peak-design-root');
         contentEl.addClass('pktw-root');
+        contentEl.addClass('pkonb-modal');
         contentEl.style.padding = '0';
 
-        modalEl.style.width = '560px';
+        // Mock's "modal--wide" = 680px; we use a comparable width that still
+        // fits the 92vw safety. The pk-modal-shell tokens cover narrower views.
+        modalEl.style.width = '720px';
         modalEl.style.maxWidth = '92vw';
         modalEl.style.padding = '0';
 
@@ -104,29 +132,6 @@ export class HarnessOnboardingModal extends Modal {
             this.contentEl.empty();
         }
     }
-}
-
-// ─── Step indicator (7-step contract) ──────────────────────────────────
-
-function StepIndicator({ current }: { current: PrimaryStep }) {
-    const idx = PRIMARY_STEPS.indexOf(current);
-    return (
-        <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-justify-center pktw-py-3">
-            {PRIMARY_STEPS.map((step, i) => (
-                <div
-                    key={step}
-                    className={cn(
-                        'pktw-h-1.5 pktw-rounded-full pktw-transition-all pktw-duration-300',
-                        i === idx
-                            ? 'pktw-w-8 pktw-bg-[--interactive-accent]'
-                            : i < idx
-                                ? 'pktw-w-4 pktw-bg-[--interactive-accent]/50'
-                                : 'pktw-w-4 pktw-bg-[--background-modifier-border]',
-                    )}
-                />
-            ))}
-        </div>
-    );
 }
 
 // ─── Wizard root ───────────────────────────────────────────────────────
@@ -162,11 +167,229 @@ function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: WizardProps)
 
     return (
         <OnboardingStringsProvider strings={strings}>
-            <div className="pktw-flex pktw-flex-col">
-                <StepIndicator current={state.step} />
+            <ProgressBar state={state} />
+            <div className="pkonb-modal__body">
                 <PrimaryStepView state={state} dispatch={dispatch} onClose={onClose} />
             </div>
+            <StepFooter state={state} dispatch={dispatch} onClose={onClose} />
         </OnboardingStringsProvider>
+    );
+}
+
+// ─── Progress indicator (7-step contract w/ labels + tooltip) ──────────
+
+function ProgressBar({ state }: { state: OnboardingState }) {
+    const strings = useOnboardingStrings();
+    const idx = PRIMARY_STEPS.indexOf(state.step);
+    const labels = strings.progressLabels;
+    const tooltips = strings.progressTooltips;
+
+    function labelFor(step: PrimaryStep): string {
+        switch (step) {
+            case 'welcome':
+                return labels.welcome;
+            case 'capabilities':
+                return labels.capabilities;
+            case 'provider':
+                return labels.provider;
+            case 'ai-behavior':
+                return labels.aiBehavior;
+            case 'index-readiness':
+                return labels.indexReadiness;
+            case 'system-check':
+                return labels.systemCheck;
+            case 'ready-to-try':
+                return labels.readyToTry;
+        }
+    }
+    function tooltipFor(step: PrimaryStep): string {
+        switch (step) {
+            case 'welcome':
+                return tooltips.welcome;
+            case 'capabilities':
+                return tooltips.capabilities;
+            case 'provider':
+                return tooltips.provider;
+            case 'ai-behavior':
+                return tooltips.aiBehavior;
+            case 'index-readiness':
+                return tooltips.indexReadiness;
+            case 'system-check':
+                return tooltips.systemCheck;
+            case 'ready-to-try':
+                return tooltips.readyToTry;
+        }
+    }
+
+    const counter = strings.progressCounter
+        .replace('{n}', String(idx + 1))
+        .replace('{total}', String(PRIMARY_STEPS.length))
+        .replace('{title}', labelFor(state.step));
+
+    return (
+        <div className="pkonb-modal__progress">
+            <div className="pkonb-progress">
+                <div className="pkonb-progress__dots">
+                    {PRIMARY_STEPS.map((step, i) => {
+                        const stateAttr = i < idx ? 'completed' : i === idx ? 'active' : 'future';
+                        return (
+                            <React.Fragment key={step}>
+                                <div
+                                    className="pkonb-progress__step"
+                                    data-state={stateAttr}
+                                    title={`${labelFor(step)} — ${tooltipFor(step)}`}
+                                >
+                                    <div className="pkonb-progress__bubble">
+                                        {stateAttr === 'completed' ? <Check /> : null}
+                                    </div>
+                                    <div className="pkonb-progress__label">{labelFor(step)}</div>
+                                </div>
+                                {i < PRIMARY_STEPS.length - 1 && (
+                                    <div
+                                        className="pkonb-progress__connector"
+                                        data-state={i < idx ? 'completed' : undefined}
+                                    />
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                </div>
+                <div className="pkonb-progress__title">
+                    <span dangerouslySetInnerHTML={{ __html: emphasizeStrong(counter) }} />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/** Replace "{n} of {total}" portion with <strong> for visual emphasis. */
+function emphasizeStrong(counter: string): string {
+    // Match the leading "Step N of N" portion if present and wrap the digits.
+    return counter.replace(/(\d+\s*of\s*\d+)/, '<strong>$1</strong>');
+}
+
+// ─── Footer with Back / Continue / Skip ────────────────────────────────
+
+interface FooterProps {
+    state: OnboardingState;
+    dispatch: (event: OnboardingEvent) => void;
+    onClose: () => void;
+}
+
+function StepFooter({ state, dispatch, onClose }: FooterProps) {
+    const strings = useOnboardingStrings();
+
+    // Welcome step has its own CTAs in the hero; no footer.
+    if (state.step === 'welcome') return null;
+
+    // Inside the Curator sub-flow the per-substep components own their own
+    // continue affordances (e.g. recommendation Accept/Edit/Redo). We still
+    // expose a Back when valid.
+    const inCuratorTerminal =
+        state.step === 'ai-behavior' &&
+        (state.aiBehavior.substep === 'running-curator' ||
+            state.aiBehavior.substep === 'review-recommendation');
+
+    const canBack = state.step !== 'welcome';
+    const continueDisabled = !canContinue(state);
+
+    const handleBack = useCallback(() => dispatch({ type: 'back' }), [dispatch]);
+    const handleContinue = useCallback(() => {
+        if (state.step === 'capabilities') {
+            dispatch({ type: 'acknowledge-capabilities' });
+            dispatch({ type: 'next' });
+            return;
+        }
+        if (state.step === 'system-check') {
+            dispatch({ type: 'acknowledge-system-check' });
+            dispatch({ type: 'next' });
+            return;
+        }
+        if (state.step === 'ready-to-try') {
+            dispatch({ type: 'finish' });
+            return;
+        }
+        dispatch({ type: 'next' });
+    }, [dispatch, state.step]);
+
+    function continueLabel(): string {
+        if (state.step === 'capabilities') return strings.steps.capabilities.continueCta;
+        if (state.step === 'ready-to-try') return strings.steps.readyToTry.launchCta;
+        if (state.step === 'ai-behavior') {
+            if (state.aiBehavior.substep === 'choose-bootstrap') return strings.actions.continue;
+            if (state.aiBehavior.substep === 'preference-questions') return strings.actions.runCurator;
+            if (state.aiBehavior.substep === 'edit-recommendation') return strings.steps.editRecommendation.doneCta;
+            if (state.aiBehavior.substep === 'redo-input') return strings.steps.redoInput.submitCta;
+        }
+        return strings.actions.continue;
+    }
+
+    function continueIcon(): React.ReactNode {
+        if (state.step === 'ready-to-try') return <MessageSquare />;
+        if (
+            state.step === 'ai-behavior' &&
+            (state.aiBehavior.substep === 'preference-questions' ||
+                state.aiBehavior.substep === 'redo-input')
+        ) {
+            return <Wand2 />;
+        }
+        return <ChevronRight />;
+    }
+
+    function handleRedoSubmit() {
+        dispatch({ type: 'submit-redo' });
+    }
+
+    if (state.step === 'ai-behavior' && state.aiBehavior.substep === 'redo-input') {
+        return (
+            <div className="pkonb-modal__footer">
+                <Pill onClick={handleBack}>
+                    <ChevronLeft />
+                    <span>{strings.actions.back}</span>
+                </Pill>
+                <Pill selected onClick={handleRedoSubmit} disabled={!state.aiBehavior.redoNote.trim()}>
+                    <Wand2 />
+                    <span>{strings.steps.redoInput.submitCta}</span>
+                </Pill>
+            </div>
+        );
+    }
+
+    return (
+        <div className="pkonb-modal__footer">
+            {canBack ? (
+                <Pill onClick={handleBack}>
+                    <ChevronLeft />
+                    <span>{strings.actions.back}</span>
+                </Pill>
+            ) : (
+                <span />
+            )}
+            <div style={{ display: 'flex', gap: 'var(--pk-space-2)' }}>
+                {state.step === 'index-readiness' && (
+                    <Pill
+                        onClick={() => {
+                            dispatch({ type: 'select-index-action', action: 'skip' });
+                            dispatch({ type: 'next' });
+                        }}
+                    >
+                        {strings.steps.indexReadiness.skipCta}
+                    </Pill>
+                )}
+                {state.step === 'ready-to-try' && (
+                    <Pill onClick={onClose}>
+                        <Settings />
+                        <span>{strings.steps.readyToTry.openSettingsCta}</span>
+                    </Pill>
+                )}
+                {!inCuratorTerminal && (
+                    <Pill selected onClick={handleContinue} disabled={continueDisabled}>
+                        {continueIcon()}
+                        <span>{continueLabel()}</span>
+                    </Pill>
+                )}
+            </div>
+        </div>
     );
 }
 
@@ -189,7 +412,7 @@ function PrimaryStepView({ state, dispatch, onClose }: PrimaryStepViewProps) {
                 />
             );
         case 'capabilities':
-            return <CapabilitiesPlaceholder dispatch={dispatch} />;
+            return <CapabilitiesStep />;
         case 'provider':
             return (
                 <ProviderStep
@@ -203,11 +426,11 @@ function PrimaryStepView({ state, dispatch, onClose }: PrimaryStepViewProps) {
         case 'ai-behavior':
             return <AiBehaviorRouter state={state} dispatch={dispatch} />;
         case 'index-readiness':
-            return <IndexReadinessPlaceholder state={state} dispatch={dispatch} />;
+            return <IndexReadinessStep state={state} dispatch={dispatch} />;
         case 'system-check':
-            return <SystemCheckPlaceholder dispatch={dispatch} />;
+            return <SystemCheckStep />;
         case 'ready-to-try':
-            return <ReadyToTryPlaceholder dispatch={dispatch} />;
+            return <ReadyToTryStep />;
     }
 }
 
@@ -216,7 +439,6 @@ function PrimaryStepView({ state, dispatch, onClose }: PrimaryStepViewProps) {
 function AiBehaviorRouter({ state, dispatch }: { state: OnboardingState; dispatch: (e: OnboardingEvent) => void }) {
     const ai = state.aiBehavior;
     const back = useCallback(() => {
-        // From the first substep, back returns to the previous primary step.
         if (ai.substep === 'choose-bootstrap') {
             dispatch({ type: 'back' });
             return;
@@ -230,7 +452,9 @@ function AiBehaviorRouter({ state, dispatch }: { state: OnboardingState; dispatc
                 <BootstrapModelStep
                     profileId={state.provider.selectedProfileId}
                     selectedModelId={ai.bootstrap?.modelId ?? null}
-                    onSelect={(profileId, modelId) => dispatch({ type: 'select-bootstrap', profileId, modelId })}
+                    onSelect={(profileId, modelId) =>
+                        dispatch({ type: 'select-bootstrap', profileId, modelId })
+                    }
                     onBack={back}
                     onContinue={() => dispatch({ type: 'next' })}
                 />
@@ -240,7 +464,9 @@ function AiBehaviorRouter({ state, dispatch }: { state: OnboardingState; dispatc
                 <PreferenceQuestionsStep
                     preferences={ai.preferences}
                     onBudgetChange={(budget) => dispatch({ type: 'set-budget', budget })}
-                    onSpeedQualityChange={(preference) => dispatch({ type: 'set-speed-quality', preference })}
+                    onSpeedQualityChange={(preference) =>
+                        dispatch({ type: 'set-speed-quality', preference })
+                    }
                     onBack={back}
                     onContinue={() => dispatch({ type: 'next' })}
                 />
@@ -259,7 +485,6 @@ function AiBehaviorRouter({ state, dispatch }: { state: OnboardingState; dispatc
             );
         case 'review-recommendation':
             if (!ai.result) {
-                // Defensive: running-curator gates this; fall back to bootstrap.
                 dispatch({ type: 'ai-behavior-back-substep' });
                 return null;
             }
@@ -280,7 +505,9 @@ function AiBehaviorRouter({ state, dispatch }: { state: OnboardingState; dispatc
             return (
                 <EditRecommendationStep
                     recommendation={ai.result.recommendation}
-                    onChange={(capability, modelId) => dispatch({ type: 'update-binding', capability, modelId })}
+                    onChange={(capability, modelId) =>
+                        dispatch({ type: 'update-binding', capability, modelId })
+                    }
                     onBack={back}
                     onDone={() => dispatch({ type: 'next' })}
                 />
@@ -297,140 +524,274 @@ function AiBehaviorRouter({ state, dispatch }: { state: OnboardingState; dispatc
     }
 }
 
-// ─── Placeholder UIs for new primary steps (PR-C will replace) ─────────
+// ─── 4 primary steps that PR-C introduces in full ──────────────────────
 
-interface PlaceholderProps {
-    dispatch: (e: OnboardingEvent) => void;
+/** Maps capability card `id` (from onboarding.json) to the rendered icon. */
+const CAPABILITY_ICON: Record<string, React.ComponentType> = {
+    chat: MessageSquare,
+    search: Search,
+    analysis: BarChart3,
+    copilot: Pencil,
+};
+
+/** Step 2 — "What Peak can do" (capabilities). */
+function CapabilitiesStep() {
+    const strings = useOnboardingStrings();
+    const copy = strings.steps.capabilities;
+    return (
+        <div className="pkonb-section">
+            <div style={{ textAlign: 'center' }}>
+                <div className="pkonb-section__title">{copy.title}</div>
+                <div className="pkonb-section__desc">{copy.description}</div>
+            </div>
+            <div className="pkonb-cap-grid">
+                {copy.cards.map((c) => {
+                    const Icon = CAPABILITY_ICON[c.id] ?? MessageSquare;
+                    return (
+                        <div key={c.id} className="pkonb-cap-card">
+                            <div className="pkonb-cap-card__head">
+                                <span className="pkonb-cap-card__icon">
+                                    <Icon />
+                                </span>
+                                <span className="pkonb-cap-card__title">{c.title}</span>
+                            </div>
+                            <div className="pkonb-cap-card__body">{c.body}</div>
+                            <div className="pkonb-cap-card__try">
+                                Try later: <code>{c.tryLater}</code>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
 }
 
-interface IndexReadinessPlaceholderProps {
+/** Maps readiness-row `id` to the rendered icon for the index-readiness step. */
+const READINESS_ICON: Record<string, React.ComponentType> = {
+    engine: Database,
+    'existing-index': FileText,
+    coverage: Layout,
+    semantic: Sparkles,
+};
+
+/** Maps system-check row `id` to the rendered icon. */
+const SYSTEM_CHECK_ICON: Record<string, React.ComponentType> = {
+    provider: Layout,
+    'ai-behavior': Cpu,
+    'knowledge-index': Database,
+    'web-access': Globe,
+    safety: ShieldCheck,
+};
+
+/** Maps summary-row `id` (ready-to-try) to the rendered icon. */
+const SUMMARY_ICON: Record<string, React.ComponentType> = {
+    providers: Layout,
+    'ai-behavior': Cpu,
+    index: Database,
+};
+
+/** Maps Ready-to-Try action `id` to the rendered icon. */
+const READY_ACTION_ICON: Record<string, React.ComponentType> = {
+    chat: MessageSquare,
+    search: Search,
+    analysis: BarChart3,
+    copilot: Pencil,
+};
+
+function chipVariantForState(s: 'ready' | 'attention' | 'neutral'): 'success' | 'warning' | 'neutral' {
+    if (s === 'ready') return 'success';
+    if (s === 'attention') return 'warning';
+    return 'neutral';
+}
+
+/** Step 5 — "Check your vault index" (index-readiness). */
+function IndexReadinessStep({
+    state,
+    dispatch,
+}: {
     state: OnboardingState;
     dispatch: (e: OnboardingEvent) => void;
-}
-
-function StepFooter({
-    onBack,
-    onContinue,
-    continueDisabled = false,
-    continueLabel,
-}: {
-    onBack?: () => void;
-    onContinue: () => void;
-    continueDisabled?: boolean;
-    continueLabel?: string;
 }) {
     const strings = useOnboardingStrings();
-    return (
-        <div className="pktw-flex pktw-items-center pktw-justify-between pktw-mt-6">
-            {onBack ? (
-                <button type="button" className="pktw-text-sm pktw-opacity-70 hover:pktw-opacity-100" onClick={onBack}>
-                    {strings.actions.back}
-                </button>
-            ) : (
-                <span />
-            )}
-            <button
-                type="button"
-                className={cn(
-                    'pktw-px-4 pktw-py-2 pktw-rounded-md pktw-text-sm',
-                    'pktw-bg-[--interactive-accent] pktw-text-[--text-on-accent]',
-                    continueDisabled && 'pktw-opacity-50 pktw-cursor-not-allowed',
-                )}
-                disabled={continueDisabled}
-                onClick={onContinue}
-            >
-                {continueLabel ?? strings.actions.continue}
-            </button>
-        </div>
-    );
-}
-
-function CapabilitiesPlaceholder({ dispatch }: PlaceholderProps) {
-    // PR-C will replace with the 4-card "What Peak can do" layout (spec §5.3 Step 2).
-    const strings = useOnboardingStrings();
-    return (
-        <div className="pktw-px-6 pktw-pb-6">
-            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">{strings.steps.capabilities.title}</div>
-            <div className="pktw-text-sm pktw-opacity-80">{strings.steps.capabilities.description}</div>
-            <StepFooter
-                onBack={() => dispatch({ type: 'back' })}
-                onContinue={() => {
-                    dispatch({ type: 'acknowledge-capabilities' });
-                    dispatch({ type: 'next' });
-                }}
-                continueLabel={strings.actions.gotIt}
-            />
-        </div>
-    );
-}
-
-function IndexReadinessPlaceholder({ state, dispatch }: IndexReadinessPlaceholderProps) {
-    // PR-C will replace with the detected-state + recommended-action layout
-    // (spec §5.3 Step 5). For PR-A, expose the action selector minimally so the
-    // user can walk through.
-    const strings = useOnboardingStrings();
+    const copy = strings.steps.indexReadiness;
     const selected = state.indexReadiness.selectedAction;
-    const labels = strings.steps.indexReadiness.actionLabels;
+
+    const primaryActions: Array<{ id: typeof selected; label: string; hint: string; recommended?: boolean }> = [
+        {
+            id: 'update-changed',
+            label: copy.actionLabels['update-changed'],
+            hint: copy.actionDescriptions['update-changed'],
+            recommended: true,
+        },
+        {
+            id: 'use-existing',
+            label: copy.actionLabels['use-existing'],
+            hint: copy.actionDescriptions['use-existing'],
+        },
+        {
+            id: 'enable-semantic',
+            label: copy.actionLabels['enable-semantic'],
+            hint: copy.actionDescriptions['enable-semantic'],
+        },
+    ];
+
     return (
-        <div className="pktw-px-6 pktw-pb-6">
-            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">{strings.steps.indexReadiness.title}</div>
-            <div className="pktw-text-sm pktw-opacity-80 pktw-mb-3">{strings.steps.indexReadiness.description}</div>
-            <div className="pktw-flex pktw-flex-col pktw-gap-2">
-                {(['use-existing', 'build-text', 'enable-semantic', 'skip'] as const).map((action) => (
-                    <button
-                        type="button"
-                        key={action}
-                        className={cn(
-                            'pktw-px-3 pktw-py-2 pktw-rounded-md pktw-text-sm pktw-text-left',
-                            'pktw-border pktw-border-[--background-modifier-border]',
-                            selected === action && 'pktw-bg-[--background-secondary]',
-                        )}
-                        onClick={() => dispatch({ type: 'select-index-action', action })}
-                    >
-                        {labels[action]}
-                    </button>
-                ))}
+        <div className="pkonb-section">
+            <div>
+                <div className="pkonb-section__title">{copy.title}</div>
+                <div className="pkonb-section__desc">{copy.description}</div>
             </div>
-            <StepFooter
-                onBack={() => dispatch({ type: 'back' })}
-                onContinue={() => dispatch({ type: 'next' })}
-                continueDisabled={selected === null}
-            />
+
+            <div className="pkonb-section">
+                <span className="pkonb-section__kicker">{copy.currentReadinessTitle}</span>
+                {copy.readinessRows.map((row) => {
+                    const Icon = READINESS_ICON[row.id] ?? Database;
+                    return (
+                        <Row key={row.id}>
+                            <Row.Icon>
+                                <Icon />
+                            </Row.Icon>
+                            <Row.Body>
+                                <Row.Title>{row.title}</Row.Title>
+                                <Row.Desc>{row.detail}</Row.Desc>
+                            </Row.Body>
+                            <Row.Right>
+                                <Chip variant={chipVariantForState(row.state)}>{row.chipLabel}</Chip>
+                            </Row.Right>
+                        </Row>
+                    );
+                })}
+            </div>
+
+            <div className="pkonb-section">
+                <span className="pkonb-section__kicker">{copy.recommendedActionTitle}</span>
+                <div className="pkonb-radio-list">
+                    {primaryActions.map((action) => {
+                        const isSelected = selected === action.id;
+                        return (
+                            <button
+                                type="button"
+                                key={action.id}
+                                className="pkonb-radio-card"
+                                data-selected={isSelected ? 'true' : undefined}
+                                onClick={() => action.id && dispatch({ type: 'select-index-action', action: action.id })}
+                            >
+                                <span className="pkonb-radio-card__body">
+                                    <span
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 'var(--pk-space-2)',
+                                        }}
+                                    >
+                                        <span className="pkonb-radio-card__title">{action.label}</span>
+                                        {action.recommended && (
+                                            <Chip variant="accent">{copy.recommendedChip}</Chip>
+                                        )}
+                                    </span>
+                                    <span className="pkonb-radio-card__hint">{action.hint}</span>
+                                </span>
+                                <span className="pkonb-radio-card__check">
+                                    <Check />
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
         </div>
     );
 }
 
-function SystemCheckPlaceholder({ dispatch }: PlaceholderProps) {
-    // PR-C / PR-E will replace with the readiness-row summary fed by
-    // CapabilityRegistry.getAll().
+/** Step 6 — "System check" (pre-flight). */
+function SystemCheckStep() {
     const strings = useOnboardingStrings();
+    const copy = strings.steps.systemCheck;
     return (
-        <div className="pktw-px-6 pktw-pb-6">
-            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">{strings.steps.systemCheck.title}</div>
-            <div className="pktw-text-sm pktw-opacity-80">{strings.steps.systemCheck.description}</div>
-            <StepFooter
-                onBack={() => dispatch({ type: 'back' })}
-                onContinue={() => {
-                    dispatch({ type: 'acknowledge-system-check' });
-                    dispatch({ type: 'next' });
-                }}
-            />
+        <div className="pkonb-section">
+            <div>
+                <div className="pkonb-section__title">{copy.title}</div>
+                <div className="pkonb-section__desc">{copy.description}</div>
+            </div>
+
+            <div className="pkonb-section">
+                <span className="pkonb-section__kicker">{copy.sectionTitle}</span>
+                {copy.checkRows.map((row) => {
+                    const Icon = SYSTEM_CHECK_ICON[row.id] ?? Cpu;
+                    return (
+                        <Row key={row.id}>
+                            <Row.Icon>
+                                <Icon />
+                            </Row.Icon>
+                            <Row.Body>
+                                <Row.Title>{row.title}</Row.Title>
+                                <Row.Desc>{row.detail}</Row.Desc>
+                            </Row.Body>
+                            <Row.Right>
+                                <Chip variant={chipVariantForState(row.state)}>{row.chipLabel}</Chip>
+                            </Row.Right>
+                        </Row>
+                    );
+                })}
+            </div>
         </div>
     );
 }
 
-function ReadyToTryPlaceholder({ dispatch }: PlaceholderProps) {
-    // PR-C will replace with the launchpad (summary card + action cards).
+/** Step 7 — "Ready to try" launchpad. */
+function ReadyToTryStep() {
     const strings = useOnboardingStrings();
+    const copy = strings.steps.readyToTry;
     return (
-        <div className="pktw-px-6 pktw-pb-6">
-            <div className="pktw-text-lg pktw-font-semibold pktw-mb-2">{strings.steps.readyToTry.title}</div>
-            <div className="pktw-text-sm pktw-opacity-80">{strings.steps.readyToTry.description}</div>
-            <StepFooter
-                onBack={() => dispatch({ type: 'back' })}
-                onContinue={() => dispatch({ type: 'finish' })}
-                continueLabel={strings.steps.readyToTry.launchCta}
-            />
+        <div className="pkonb-section">
+            <div className="pkonb-hero" style={{ padding: 'var(--pk-space-5) 0' }}>
+                <span className="pkonb-hero__mark pkonb-hero__mark--success">
+                    <Check />
+                </span>
+                <span className="pkonb-hero__title">{copy.celebrationTitle}</span>
+                <span className="pkonb-hero__sub">{copy.celebrationSub}</span>
+            </div>
+
+            <div className="pkonb-section">
+                <span className="pkonb-section__kicker">{copy.summaryTitle}</span>
+                <div>
+                    {copy.summaryRows.map((row) => {
+                        const Icon = SUMMARY_ICON[row.id] ?? Info;
+                        return (
+                            <div key={row.id} className="pkonb-summary-row">
+                                <span className="pkonb-summary-row__label">
+                                    <Icon />
+                                    <span>{row.label}</span>
+                                </span>
+                                <span className="pkonb-summary-row__value">{row.value}</span>
+                                <Chip variant={chipVariantForState(row.state)}>{row.chipLabel}</Chip>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="pkonb-section">
+                <span className="pkonb-section__kicker">{copy.actionsTitle}</span>
+                <div className="pkonb-action-grid">
+                    {copy.actions.map((a) => {
+                        const Icon = READY_ACTION_ICON[a.id] ?? MessageSquare;
+                        return (
+                            <div key={a.id} className="pkonb-action-card">
+                                <div className="pkonb-action-card__header">
+                                    <span className="pkonb-action-card__icon" data-tone={a.tone}>
+                                        <Icon />
+                                    </span>
+                                    <span className="pkonb-action-card__title">{a.title}</span>
+                                </div>
+                                <div className="pkonb-action-card__body">{a.body}</div>
+                                <div className="pkonb-action-card__try">{a.tryLater}</div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
         </div>
     );
 }

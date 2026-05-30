@@ -1,9 +1,10 @@
 /**
- * Shows the Curator recommendation: bindings table, models-to-download list,
- * api-keys-needed list, and a rationale. Three actions: accept (writes to
- * HarnessSettings), edit (per-tier override), redo (re-run with a note).
+ * Shows the Curator recommendation: tier-bindings (pk-row), models-to-download
+ * + api-keys-needed (pk-disclosure-body), and the rationale hint. Three terminal
+ * actions: accept (writes to HarnessSettings), edit, regenerate.
  *
- * See spec §5.4.
+ * Visual primitives: <Row>, <Chip>, <Pill>, <BrandAvatar>; namespaced helpers
+ * use pkonb-hint for the rationale banner. All strings via useOnboardingStrings.
  */
 
 import React, { useCallback, useState } from 'react';
@@ -12,18 +13,17 @@ import {
     AlertTriangle,
     ArrowDownToLine,
     Check,
-    ChevronLeft,
     Edit3,
     KeyRound,
     Loader2,
     RotateCcw,
     Sparkles,
+    Info,
 } from 'lucide-react';
-import { Button } from '@/ui/component/shared-ui/button';
-import { cn } from '@/ui/react/lib/utils';
 import { lookupModel, type CuratorResult } from '@/service/agents/harness/curator';
 import { applyRecommendation } from './applyRecommendation';
 import type { Capability } from '@/service/agents/harness/curator';
+import { Row, Chip, Pill } from '@/ui/components/primitives';
 import { useOnboardingStrings, type OnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
 export interface ReviewRecommendationStepProps {
@@ -39,7 +39,6 @@ export function ReviewRecommendationStep({
     onEdit,
     onRedo,
     onAccepted,
-    onBack,
 }: ReviewRecommendationStepProps) {
     const strings = useOnboardingStrings();
     const copy = strings.steps.review;
@@ -67,79 +66,90 @@ export function ReviewRecommendationStep({
     }, [recommendation, onAccepted, copy]);
 
     return (
-        <div className="pktw-flex pktw-flex-col pktw-gap-4 pktw-py-4 pktw-px-8">
-            <div className="pktw-flex pktw-items-center pktw-gap-2">
-                <Sparkles size={16} className="pktw-text-[--interactive-accent]" />
-                <span className="pktw-text-base pktw-font-semibold pktw-text-[--text-normal]">
-                    {copy.title}
-                </span>
+        <div className="pkonb-section">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--pk-space-2)' }}>
+                <Sparkles
+                    style={{ width: 16, height: 16, color: 'var(--pk-accent)' }}
+                />
+                <div className="pkonb-section__title">{copy.title}</div>
                 {!fromLLM && (
-                    <span className="pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-amber-100 pktw-text-amber-700 pktw-flex pktw-items-center pktw-gap-1">
-                        <AlertTriangle size={10} /> {copy.fallbackChip}
-                    </span>
+                    <Chip variant="warning">
+                        <AlertTriangle />
+                        <span>{copy.fallbackChip}</span>
+                    </Chip>
                 )}
             </div>
 
-            {/* Bindings table */}
-            <div className="pktw-flex pktw-flex-col pktw-gap-1.5">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--pk-space-2)' }}>
                 {(['quick', 'deep', 'premium'] as const).map((cap) => (
-                    <BindingRow key={cap} capability={cap} modelId={recommendation.bindings[cap]} strings={strings} />
+                    <BindingRow
+                        key={cap}
+                        capability={cap}
+                        modelId={recommendation.bindings[cap]}
+                        strings={strings}
+                    />
                 ))}
             </div>
 
-            {/* Models to download */}
             {recommendation.modelsToDownload.length > 0 && (
                 <InfoBlock
-                    icon={<ArrowDownToLine size={14} />}
+                    icon={<ArrowDownToLine />}
                     title={copy.downloadsTitle}
                     items={recommendation.modelsToDownload.map((m) => `ollama pull ${m}`)}
                 />
             )}
 
-            {/* API keys needed */}
             {recommendation.apiKeysNeeded.length > 0 && (
                 <InfoBlock
-                    icon={<KeyRound size={14} />}
+                    icon={<KeyRound />}
                     title={copy.apiKeysTitle}
                     items={recommendation.apiKeysNeeded.map((k) => `${k} ${copy.apiKeyInstructionSuffix}`)}
                 />
             )}
 
-            {/* Cascade */}
-            <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[--text-muted]">
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--pk-space-2)',
+                    fontSize: 'var(--pk-text-base)',
+                    color: 'var(--pk-text-secondary)',
+                }}
+            >
                 <span>{copy.cascadeLabel}</span>
-                <span className={cn('pktw-font-medium', recommendation.cascadeEnabled ? 'pktw-text-green-600' : 'pktw-text-[--text-muted]')}>
+                <Chip variant={recommendation.cascadeEnabled ? 'success' : 'neutral'}>
                     {recommendation.cascadeEnabled ? copy.cascadeOn : copy.cascadeOff}
-                </span>
+                </Chip>
             </div>
 
-            {/* Rationale */}
-            <div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-3 pktw-rounded-lg pktw-bg-[--background-primary-alt] pktw-border pktw-border-[--background-modifier-border]">
-                <span className="pktw-text-[10px] pktw-uppercase pktw-tracking-wider pktw-text-[--text-muted] pktw-font-semibold">
-                    {copy.rationaleTitle}
-                </span>
-                <span className="pktw-text-xs pktw-text-[--text-normal] pktw-leading-relaxed">
-                    {recommendation.rationale}
-                </span>
-            </div>
-
-            {/* Actions */}
-            <div className="pktw-flex pktw-justify-between pktw-items-center pktw-pt-1">
-                <Button variant="ghost" size="sm" onClick={onBack} className="pktw-gap-1 pktw-text-xs" disabled={applying}>
-                    <ChevronLeft size={14} /> {strings.actions.back}
-                </Button>
-                <div className="pktw-flex pktw-gap-2">
-                    <Button variant="ghost" size="sm" onClick={onRedo} disabled={applying} className="pktw-gap-1 pktw-text-xs">
-                        <RotateCcw size={12} /> {strings.actions.regenerate}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={onEdit} disabled={applying} className="pktw-gap-1 pktw-text-xs">
-                        <Edit3 size={12} /> {strings.actions.edit}
-                    </Button>
-                    <Button size="sm" onClick={handleAccept} disabled={applying} className="pktw-gap-1">
-                        {applying ? <Loader2 size={12} className="pktw-animate-spin" /> : <Check size={14} />}
-                        {strings.actions.accept}
-                    </Button>
+            <div className="pkonb-hint pkonb-hint--accent">
+                <Info />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span className="pkonb-section__kicker">{copy.rationaleTitle}</span>
+                    <span>{recommendation.rationale}</span>
                 </div>
+            </div>
+
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: 'var(--pk-space-2)',
+                    marginTop: 'var(--pk-space-2)',
+                }}
+            >
+                <Pill onClick={onRedo} disabled={applying}>
+                    <RotateCcw />
+                    <span>{strings.actions.regenerate}</span>
+                </Pill>
+                <Pill onClick={onEdit} disabled={applying}>
+                    <Edit3 />
+                    <span>{strings.actions.edit}</span>
+                </Pill>
+                <Pill selected onClick={handleAccept} disabled={applying}>
+                    {applying ? <Loader2 className="pkonb-spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : <Check />}
+                    <span>{strings.actions.accept}</span>
+                </Pill>
             </div>
         </div>
     );
@@ -156,44 +166,64 @@ function BindingRow({
 }) {
     const entry = lookupModel(modelId);
     const copy = strings.steps.review;
+    const cost =
+        entry?.kind === 'ollama'
+            ? entry.ramRequiredGB
+                ? `${entry.ramRequiredGB}GB RAM`
+                : 'local'
+            : entry
+                ? entry.costPer1MInput > 0
+                    ? `$${entry.costPer1MInput}/1M`
+                    : 'free'
+                : undefined;
     return (
-        <div className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2 pktw-rounded-md pktw-border pktw-border-[--background-modifier-border]">
-            <div className="pktw-w-32 pktw-shrink-0">
-                <span className="pktw-text-xs pktw-font-semibold pktw-text-[--text-normal]">
-                    {copy.tierLabels[capability]}
-                </span>
-            </div>
-            <div className="pktw-flex-1 pktw-min-w-0">
-                <span className="pktw-block pktw-text-sm pktw-font-mono pktw-text-[--text-normal] pktw-truncate">
-                    {modelId}
-                </span>
-                <span className="pktw-block pktw-text-[10px] pktw-text-[--text-muted]">
-                    {entry ? entry.displayName : copy.unknownModel} · {copy.tierDescriptions[capability]}
-                </span>
-            </div>
-            {entry && (
-                <span className="pktw-text-[10px] pktw-text-[--text-muted] pktw-shrink-0 pktw-font-mono">
-                    {entry.kind === 'ollama'
-                        ? entry.ramRequiredGB
-                            ? `${entry.ramRequiredGB}GB RAM`
-                            : 'local'
-                        : entry.costPer1MInput > 0
-                            ? `$${entry.costPer1MInput}/1M`
-                            : 'free'}
-                </span>
-            )}
-        </div>
+        <Row>
+            <Row.Icon>
+                <Sparkles />
+            </Row.Icon>
+            <Row.Body>
+                <Row.Title>{copy.tierLabels[capability]}</Row.Title>
+                <Row.Desc>{copy.tierDescriptions[capability]}</Row.Desc>
+            </Row.Body>
+            <Row.Right>
+                <Row.Value>{modelId}</Row.Value>
+                {cost && <Chip variant="neutral">{cost}</Chip>}
+                {!entry && <Chip variant="warning">{copy.unknownModel}</Chip>}
+            </Row.Right>
+        </Row>
     );
 }
 
 function InfoBlock({ icon, title, items }: { icon: React.ReactNode; title: string; items: string[] }) {
     return (
-        <div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-p-2.5 pktw-rounded-md pktw-bg-[--background-primary-alt] pktw-border pktw-border-[--background-modifier-border]">
-            <span className="pktw-text-[10px] pktw-text-[--text-muted] pktw-flex pktw-items-center pktw-gap-1.5 pktw-font-semibold pktw-uppercase pktw-tracking-wider">
+        <div
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--pk-space-1)',
+                padding: 'var(--pk-space-3)',
+                borderRadius: 'var(--pk-radius-md)',
+                background: 'var(--pk-surface-sunken)',
+                border: '1px solid var(--pk-border)',
+            }}
+        >
+            <span
+                className="pkonb-section__kicker"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
                 {icon} {title}
             </span>
             {items.map((it) => (
-                <span key={it} className="pktw-text-xs pktw-font-mono pktw-text-[--text-normal]">{it}</span>
+                <span
+                    key={it}
+                    style={{
+                        fontFamily: 'var(--pk-font-mono)',
+                        fontSize: 'var(--pk-text-base)',
+                        color: 'var(--pk-text-primary)',
+                    }}
+                >
+                    {it}
+                </span>
             ))}
         </div>
     );

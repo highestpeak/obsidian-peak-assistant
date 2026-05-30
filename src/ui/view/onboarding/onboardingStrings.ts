@@ -60,6 +60,14 @@ export interface OnboardingStrings {
         capabilities: {
             title: string;
             description: string;
+            /** 4 capability cards shown after Welcome. */
+            cards: Array<{
+                id: string;
+                title: string;
+                body: string;
+                tryLater: string;
+            }>;
+            continueCta: string;
         };
         provider: {
             title: string;
@@ -141,7 +149,28 @@ export interface OnboardingStrings {
         indexReadiness: {
             title: string;
             description: string;
+            currentReadinessTitle: string;
+            recommendedActionTitle: string;
+            advancedToggle: string;
+            skipCta: string;
+            readinessRows: Array<{
+                id: string;
+                title: string;
+                detail: string;
+                /** 'ready' / 'attention' / 'neutral' */
+                state: 'ready' | 'attention' | 'neutral';
+                chipLabel: string;
+            }>;
+            recommendedChip: string;
             actionLabels: {
+                'use-existing': string;
+                'update-changed': string;
+                'build-text': string;
+                'enable-semantic': string;
+                'skip': string;
+                'rebuild': string;
+            };
+            actionDescriptions: {
                 'use-existing': string;
                 'update-changed': string;
                 'build-text': string;
@@ -153,11 +182,38 @@ export interface OnboardingStrings {
         systemCheck: {
             title: string;
             description: string;
+            sectionTitle: string;
+            checkRows: Array<{
+                id: string;
+                title: string;
+                detail: string;
+                state: 'ready' | 'attention' | 'neutral';
+                chipLabel: string;
+            }>;
         };
         readyToTry: {
             title: string;
             description: string;
             launchCta: string;
+            openSettingsCta: string;
+            celebrationTitle: string;
+            celebrationSub: string;
+            summaryTitle: string;
+            summaryRows: Array<{
+                id: string;
+                label: string;
+                value: string;
+                state: 'ready' | 'attention' | 'neutral';
+                chipLabel: string;
+            }>;
+            actionsTitle: string;
+            actions: Array<{
+                id: string;
+                title: string;
+                body: string;
+                tryLater: string;
+                tone: 'accent' | 'success' | 'info' | 'warning';
+            }>;
         };
     };
     substepLabels: {
@@ -168,6 +224,28 @@ export interface OnboardingStrings {
         editRecommendation: string;
         redoInput: string;
     };
+    /** Short labels for the progress indicator bubbles (one per primary step). */
+    progressLabels: {
+        welcome: string;
+        capabilities: string;
+        provider: string;
+        aiBehavior: string;
+        indexReadiness: string;
+        systemCheck: string;
+        readyToTry: string;
+    };
+    /** Tooltip hint for each progress bubble (one-line "what is this step"). */
+    progressTooltips: {
+        welcome: string;
+        capabilities: string;
+        provider: string;
+        aiBehavior: string;
+        indexReadiness: string;
+        systemCheck: string;
+        readyToTry: string;
+    };
+    /** "Step N of 7 · {title}" header — {n} / {total} / {title} placeholders. */
+    progressCounter: string;
 }
 
 // ─── Defaults ──────────────────────────────────────────────────────────
@@ -205,8 +283,34 @@ export const DEFAULT_ONBOARDING_STRINGS: OnboardingStrings = {
         },
         capabilities: {
             title: 'What Peak can do',
-            description:
-                'Chat with your vault, search across notes, run analysis, and use Copilot inline on a note.',
+            description: 'After setup, these are the first things you can try.',
+            cards: [
+                {
+                    id: 'chat',
+                    title: 'Chat',
+                    body: 'Ask questions, draft, summarize, and continue a conversation.',
+                    tryLater: 'Summarize my notes from this week.',
+                },
+                {
+                    id: 'search',
+                    title: 'Vault Search',
+                    body: 'Search by keyword now; unlock semantic search when the index is ready.',
+                    tryLater: 'retrieval augmented generation',
+                },
+                {
+                    id: 'analysis',
+                    title: 'AI Analysis',
+                    body: 'Find connections, gaps, themes, and evidence across notes.',
+                    tryLater: 'Find connections across my AI safety notes.',
+                },
+                {
+                    id: 'copilot',
+                    title: 'Copilot',
+                    body: 'Improve the note you are currently writing.',
+                    tryLater: 'Rewrite this section more clearly.',
+                },
+            ],
+            continueCta: "Got it — let's configure",
         },
         provider: {
             title: 'Pick a Provider',
@@ -300,8 +404,42 @@ export const DEFAULT_ONBOARDING_STRINGS: OnboardingStrings = {
         },
         indexReadiness: {
             title: 'Check your Knowledge Index',
-            description:
-                'Pick an indexing action to continue. (Detailed recommended-action UI lands in the next refresh.)',
+            description: 'Peak will detect what already exists before running anything.',
+            currentReadinessTitle: 'Current readiness',
+            recommendedActionTitle: 'Recommended action',
+            advancedToggle: 'Advanced',
+            skipCta: 'Skip for now',
+            readinessRows: [
+                {
+                    id: 'engine',
+                    title: 'SQLite engine',
+                    detail: 'Local database engine',
+                    state: 'ready',
+                    chipLabel: 'Ready',
+                },
+                {
+                    id: 'existing-index',
+                    title: 'Existing index',
+                    detail: 'No index yet — Peak will create one when you choose an action.',
+                    state: 'neutral',
+                    chipLabel: 'Not yet',
+                },
+                {
+                    id: 'coverage',
+                    title: 'Vault coverage',
+                    detail: 'Scanning your vault for eligible notes.',
+                    state: 'neutral',
+                    chipLabel: 'Scanning',
+                },
+                {
+                    id: 'semantic',
+                    title: 'Semantic search',
+                    detail: 'Missing embeddings',
+                    state: 'attention',
+                    chipLabel: 'Attention',
+                },
+            ],
+            recommendedChip: 'Recommended',
             actionLabels: {
                 'use-existing': 'Use the existing index',
                 'update-changed': 'Update changed notes only',
@@ -310,17 +448,119 @@ export const DEFAULT_ONBOARDING_STRINGS: OnboardingStrings = {
                 'skip': 'Skip indexing for now',
                 'rebuild': 'Rebuild from scratch',
             },
+            actionDescriptions: {
+                'use-existing': 'Keep everything as is. No changes will be made.',
+                'update-changed': 'Index only the notes that have changed since the last scan.',
+                'build-text': 'Start a text-only index covering all eligible notes.',
+                'enable-semantic': 'Unlock semantic (vector) search for better results.',
+                'skip': "Skip for now — you can run it from Settings later.",
+                'rebuild': 'Delete the existing index and build a new one from scratch.',
+            },
         },
         systemCheck: {
             title: 'System check',
-            description:
-                'Summary of Provider, AI behaviour, Knowledge Index, Web Access, and Safety. (Live readiness rows land in the next refresh.)',
+            description: 'Quick pass over everything we just set up.',
+            sectionTitle: 'Pre-flight checks',
+            checkRows: [
+                {
+                    id: 'provider',
+                    title: 'Provider',
+                    detail: 'API key configured and reachable.',
+                    state: 'ready',
+                    chipLabel: 'Ready',
+                },
+                {
+                    id: 'ai-behavior',
+                    title: 'AI behavior',
+                    detail: 'Conversation, Fast Lookup, Research tiers bound.',
+                    state: 'ready',
+                    chipLabel: 'Ready',
+                },
+                {
+                    id: 'knowledge-index',
+                    title: 'Knowledge Index',
+                    detail: 'Text search ready · semantic search optional.',
+                    state: 'attention',
+                    chipLabel: 'Optional',
+                },
+                {
+                    id: 'web-access',
+                    title: 'Web Access',
+                    detail: 'Not configured — add a search provider in Settings.',
+                    state: 'neutral',
+                    chipLabel: 'Optional',
+                },
+                {
+                    id: 'safety',
+                    title: 'Safety',
+                    detail: 'Default tool permission mode active.',
+                    state: 'ready',
+                    chipLabel: 'Ready',
+                },
+            ],
         },
         readyToTry: {
-            title: 'You are ready to use Peak Assistant',
-            description:
-                'Open Chat, search your vault, run AI Analysis, or use Copilot inline. (Launchpad UI lands in the next refresh.)',
+            title: 'Ready to try',
+            description: '',
             launchCta: 'Open Chat',
+            openSettingsCta: 'Open Settings',
+            celebrationTitle: "You're ready to use Peak Assistant",
+            celebrationSub: "Everything is set up. Here's a summary and some ideas to try first.",
+            summaryTitle: 'Summary',
+            summaryRows: [
+                {
+                    id: 'providers',
+                    label: 'Providers',
+                    value: 'Configured',
+                    state: 'ready',
+                    chipLabel: 'Ready',
+                },
+                {
+                    id: 'ai-behavior',
+                    label: 'AI behavior',
+                    value: 'Conversation · Fast Lookup · Research',
+                    state: 'ready',
+                    chipLabel: 'Ready',
+                },
+                {
+                    id: 'index',
+                    label: 'Index',
+                    value: 'Text search · semantic optional',
+                    state: 'attention',
+                    chipLabel: 'Optional',
+                },
+            ],
+            actionsTitle: 'Try first',
+            actions: [
+                {
+                    id: 'chat',
+                    title: 'Ask in Chat',
+                    body: 'Ask questions, summarize, draft, and continue a conversation.',
+                    tryLater: 'Summarize my notes from this week.',
+                    tone: 'accent',
+                },
+                {
+                    id: 'search',
+                    title: 'Search your vault',
+                    body: "Find what you've written with keyword search.",
+                    tryLater: 'retrieval augmented generation',
+                    tone: 'success',
+                },
+                {
+                    id: 'analysis',
+                    title: 'Run AI Analysis',
+                    body: 'Discover connections, gaps, and themes across your notes.',
+                    tryLater: 'Find connections across my AI safety notes.',
+                    tone: 'info',
+                },
+                {
+                    id: 'copilot',
+                    title: 'Use Copilot on this note',
+                    body: "Improve the note you're currently writing.",
+                    tryLater: 'Rewrite this section more clearly.',
+                    tone: 'warning',
+                },
+            ],
         },
     },
     substepLabels: {
@@ -331,6 +571,25 @@ export const DEFAULT_ONBOARDING_STRINGS: OnboardingStrings = {
         editRecommendation: 'Editing model choices',
         redoInput: 'Regenerate with a note',
     },
+    progressLabels: {
+        welcome: 'Welcome',
+        capabilities: 'What Peak can do',
+        provider: 'Add Provider',
+        aiBehavior: 'Choose how Peak should work',
+        indexReadiness: 'Check your vault index',
+        systemCheck: 'System check',
+        readyToTry: 'Ready to try',
+    },
+    progressTooltips: {
+        welcome: 'What am I setting up?',
+        capabilities: 'What can I actually use after this?',
+        provider: 'Which AI service or local runtime powers this?',
+        aiBehavior: 'Fast, balanced, research quality, or local/private.',
+        indexReadiness: 'Detect existing index before running anything.',
+        systemCheck: 'Is everything ready enough to start?',
+        readyToTry: 'What should I try first?',
+    },
+    progressCounter: 'Step {n} of {total} · {title}',
 };
 
 // ─── React context for injection ───────────────────────────────────────
@@ -387,6 +646,9 @@ function mergeOnboardingStrings(
         actions: { ...defaults.actions, ...(overrides.actions ?? {}) },
         steps: mergeSteps(defaults.steps, overrides.steps ?? {}),
         substepLabels: { ...defaults.substepLabels, ...(overrides.substepLabels ?? {}) },
+        progressLabels: { ...defaults.progressLabels, ...(overrides.progressLabels ?? {}) },
+        progressTooltips: { ...defaults.progressTooltips, ...(overrides.progressTooltips ?? {}) },
+        progressCounter: overrides.progressCounter ?? defaults.progressCounter,
     };
 }
 

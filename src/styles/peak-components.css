@@ -643,3 +643,741 @@
   background: var(--pk-prov-ollama-soft);
   color: var(--pk-prov-ollama);
 }
+
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   Onboarding-only namespace · pkonb-*
+   ─────────────────────────────────────────────────────────────────────────────
+   Bits that are specific to the onboarding wizard (progress bubbles, capability
+   cards, launchpad action cards, hero, etc.) live here so they don't pollute
+   the shared `.pk-*` primitives but still flow through `peak-components.css`
+   instead of a separate stylesheet.
+
+   Source mock: docs/gstack/onboarding-redesign-2026-05-29/mock.css
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+
+/* ── pkonb-modal — onboarding modal sizing ─────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-modal {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-modal__progress {
+  border-bottom: 1px solid var(--pk-border-soft);
+  padding: 18px var(--pk-space-6) 14px;
+  background: var(--pk-surface);
+  overflow: visible;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-modal__body {
+  padding: var(--pk-space-6);
+  overflow-y: auto;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-5);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-modal__footer {
+  border-top: 1px solid var(--pk-border-soft);
+  padding: 14px var(--pk-space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pk-space-3);
+  background: var(--pk-surface);
+}
+
+
+/* ── pkonb-progress — 7-step indicator (dots, connectors, labels) ──────────── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__dots {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+  margin-bottom: 36px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  flex: 0 0 auto;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="future"] {
+  cursor: not-allowed;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__bubble {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--pk-surface);
+  border: 1.5px solid var(--pk-border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pk-text-tertiary);
+  transition: all var(--pk-transition-fast);
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__bubble > svg {
+  width: 12px;
+  height: 12px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="completed"] .pkonb-progress__bubble {
+  background: var(--pk-accent);
+  border-color: var(--pk-accent);
+  color: var(--pk-accent-fg);
+}
+
+/* Active step renders as a wide pill bar, not a circle. */
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble {
+  width: 56px;
+  height: 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-accent);
+  border-color: var(--pk-accent);
+  color: transparent;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble > svg {
+  display: none;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble {
+  background: var(--pk-surface);
+  border-color: var(--pk-border);
+  color: var(--pk-border-strong);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble > svg {
+  width: 6px;
+  height: 6px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__connector {
+  flex: 1 1 auto;
+  min-width: 14px;
+  height: 1.5px;
+  background: var(--pk-border);
+  border-radius: 2px;
+  margin: 0 6px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__connector[data-state="completed"] {
+  background: var(--pk-accent);
+}
+
+/* Labels positioned absolutely below the bubble so they never affect
+   the flex width of the dots row. */
+:where(.pktw-root, .peak-design-root) .pkonb-progress__label {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-tertiary);
+  width: 76px;
+  text-align: center;
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="completed"] .pkonb-progress__label {
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="active"] .pkonb-progress__label {
+  color: var(--pk-accent-text);
+  font-weight: 500;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__title {
+  text-align: center;
+  font-size: var(--pk-text-md);
+  color: var(--pk-text-secondary);
+  margin-top: 14px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-progress__title strong {
+  color: var(--pk-text-primary);
+  font-weight: 600;
+}
+
+
+/* ── pkonb-section — primary step body section ─────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-3);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-section__title {
+  font-size: var(--pk-text-xl);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+  line-height: 1.35;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-section__desc {
+  font-size: var(--pk-text-md);
+  color: var(--pk-text-secondary);
+  line-height: 1.5;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-section__kicker {
+  font-size: var(--pk-text-sm);
+  font-weight: 500;
+  color: var(--pk-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+
+/* ── pkonb-hero — welcome + done celebrations ──────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pk-space-5);
+  padding: var(--pk-space-8) var(--pk-space-4);
+  text-align: center;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-hero__mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--pk-accent-soft);
+  color: var(--pk-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-hero__mark > svg {
+  width: 28px;
+  height: 28px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-hero__mark--success {
+  background: var(--pk-success-bg);
+  color: var(--pk-success);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-hero__title {
+  font-size: var(--pk-text-2xl);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-hero__sub {
+  font-size: var(--pk-text-md);
+  color: var(--pk-text-secondary);
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-hero__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+  width: 100%;
+  max-width: 280px;
+}
+
+
+/* ── pkonb-cap-grid — capabilities step (2x2 cards) ────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-cap-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pk-space-3);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card {
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface);
+  padding: var(--pk-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+  min-width: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-3);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-accent-soft);
+  color: var(--pk-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__icon > svg {
+  width: 18px;
+  height: 18px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__title {
+  font-size: var(--pk-text-lg);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__body {
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-secondary);
+  line-height: 1.5;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__try {
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  margin-top: auto;
+  min-width: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__try code {
+  font-family: var(--pk-font-mono);
+  background: var(--pk-surface-sunken);
+  padding: 4px var(--pk-space-2);
+  border-radius: var(--pk-radius-pill);
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+
+/* ── pkonb-radio-card — selectable card with check icon + accent border ────── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pk-space-3);
+  border: 1px solid var(--pk-border);
+  border-left: 3px solid var(--pk-border);
+  background: var(--pk-surface);
+  border-radius: var(--pk-radius-md);
+  padding: var(--pk-space-3) 14px;
+  cursor: pointer;
+  transition: background var(--pk-transition-fast), border-color var(--pk-transition-fast);
+  text-align: left;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card:hover {
+  background: var(--pk-surface-sunken);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card[data-selected="true"] {
+  background: var(--pk-accent-soft);
+  border-color: var(--pk-accent-soft);
+  border-left-color: var(--pk-accent);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-sunken);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--pk-text-secondary);
+  border: 1px solid var(--pk-border);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__icon {
+  background: var(--pk-surface);
+  color: var(--pk-accent);
+  border-color: var(--pk-accent-soft);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__icon > svg {
+  width: 16px;
+  height: 16px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__title {
+  font-size: var(--pk-text-md);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__hint {
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-secondary);
+  line-height: 1.45;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--pk-accent);
+  color: var(--pk-accent-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: opacity var(--pk-transition-fast);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__check > svg {
+  width: 12px;
+  height: 12px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__check {
+  opacity: 1;
+}
+
+/* Compact variant — 4-up preference cards */
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card--compact {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 14px;
+  gap: var(--pk-space-2);
+  min-height: 108px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card--compact .pkonb-radio-card__icon {
+  width: 28px;
+  height: 28px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card--compact .pkonb-radio-card__check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  margin-top: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+}
+
+
+/* ── pkonb-provider-grid — 4-col provider chooser ──────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px var(--pk-space-2);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface);
+  cursor: pointer;
+  transition: background var(--pk-transition-fast), border-color var(--pk-transition-fast);
+  position: relative;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip:hover {
+  background: var(--pk-surface-sunken);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip[data-selected="true"] {
+  background: var(--pk-accent-soft);
+  border-color: var(--pk-accent);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip__name {
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-primary);
+  font-weight: 500;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip__check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--pk-accent);
+  color: var(--pk-accent-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--pk-transition-fast);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip__check > svg {
+  width: 11px;
+  height: 11px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip[data-selected="true"] .pkonb-provider-chip__check {
+  opacity: 1;
+}
+
+
+/* ── pkonb-hint — informational banner ─────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pk-space-2);
+  padding: var(--pk-space-3);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border);
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-secondary);
+  line-height: 1.5;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-hint > svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--pk-text-tertiary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-hint--accent {
+  background: var(--pk-accent-soft);
+  border-color: var(--pk-accent-soft);
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-hint--accent > svg {
+  color: var(--pk-accent);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-hint--warning {
+  background: var(--pk-warning-bg);
+  border-color: var(--pk-warning-bg);
+  color: var(--pk-warning-text);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-hint--danger {
+  background: var(--pk-error-bg);
+  border-color: var(--pk-error-bg);
+  color: var(--pk-error-text);
+}
+
+
+/* ── pkonb-summary-row — Ready-to-Try summary table ────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-summary-row {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  gap: var(--pk-space-3);
+  align-items: center;
+  padding: 10px var(--pk-space-3);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-summary-row + .pkonb-summary-row {
+  margin-top: 6px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-summary-row__label {
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-summary-row__label > svg {
+  width: 14px;
+  height: 14px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-summary-row__value {
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-primary);
+}
+
+
+/* ── pkonb-action-grid — Ready-to-Try launchpad cards ──────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pk-space-3);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card {
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface);
+  padding: var(--pk-space-4);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+  transition: background var(--pk-transition-fast), border-color var(--pk-transition-fast);
+  text-align: left;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card:hover {
+  background: var(--pk-surface-sunken);
+  border-color: var(--pk-border-strong);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--pk-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon > svg {
+  width: 16px;
+  height: 16px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="accent"] {
+  background: var(--pk-accent-soft);
+  color: var(--pk-accent);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="success"] {
+  background: var(--pk-success-bg);
+  color: var(--pk-success);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="info"] {
+  background: var(--pk-info-bg);
+  color: var(--pk-info);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="warning"] {
+  background: var(--pk-warning-bg);
+  color: var(--pk-warning);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__title {
+  font-size: var(--pk-text-md);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__body {
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-secondary);
+  line-height: 1.5;
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__try {
+  margin-top: 4px;
+  padding: 10px var(--pk-space-3);
+  background: var(--pk-accent-soft);
+  border-radius: var(--pk-radius-md);
+  font-family: var(--pk-font-mono);
+  font-size: var(--pk-text-base);
+  color: var(--pk-accent-text);
+  border: 1px solid var(--pk-accent-soft);
+}
+
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__try::before {
+  content: 'Try: ';
+  font-family: var(--pk-font-sans);
+  color: var(--pk-text-secondary);
+}
+
+
+/* ── pkonb-spinner — circular loader ──────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--pk-border);
+  border-top-color: var(--pk-accent);
+  border-radius: 50%;
+  animation: pkonb-spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pkonb-spin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* ── pkonb-preset-pill-row — wrappable inline pills (RedoInput presets) ───── */
+
+:where(.pktw-root, .peak-design-root) .pkonb-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
