@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useChatViewStore } from './store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { OpenLinkEvent, ViewEventType } from '@/core/eventBus';
@@ -7,6 +7,7 @@ import { FileChangesList } from './components/messages/FileChangesList';
 import { ConvertToProjectSuggestion } from './components/ConvertToProjectSuggestion';
 import { HeaderRetained } from './components/HeaderRetained';
 import { ComposerRetained } from './components/ComposerRetained';
+import { ConversationIndex } from './components/ConversationIndex';
 
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
@@ -48,6 +49,13 @@ export const MessagesViewComponent: React.FC = () => {
 			clearMessages();
 		}
 	}, [activeConversation, activeMessages, setMessages, clearMessages]);
+
+	// Right Conversation Index panel: default ON for desktop, OFF for narrow.
+	// We initialize once from window width; user toggles override afterwards.
+	const [indexVisible, setIndexVisible] = useState<boolean>(() => {
+		if (typeof window === 'undefined') return true;
+		return window.innerWidth >= 720;
+	});
 
 	// Scroll management — kept identical to pre-refactor behavior
 	const bodyScrollRef = useRef<HTMLDivElement>(null);
@@ -116,10 +124,17 @@ export const MessagesViewComponent: React.FC = () => {
 		);
 	}
 
+	const shellClass = indexVisible
+		? 'peak-design-root pkchat-shell pkchat-shell--with-index'
+		: 'peak-design-root pkchat-shell';
+
 	return (
-		<div className="peak-design-root pkchat-shell">
+		<div className={shellClass}>
 			<div className="pkchat-center">
-				<HeaderRetained />
+				<HeaderRetained
+					indexVisible={indexVisible}
+					onToggleIndex={() => setIndexVisible((v) => !v)}
+				/>
 
 				<div
 					ref={bodyScrollRef}
@@ -163,14 +178,15 @@ export const MessagesViewComponent: React.FC = () => {
 			</div>
 
 			{/*
-			  PR-Chat-3 SLOT: <aside className="pkchat-right"> goes here.
-			  Will render the 4-tab Conversation Index panel
-			  (All / Topics / Artifacts / Messages). To enable the slot, also
-			  swap `pkchat-shell` to `pkchat-shell pkchat-shell--with-index`
-			  so the grid allocates the 320px column. Until then, the chat
-			  keeps full-width center, matching the perceived footprint of the
-			  legacy layout.
+			  PR-Chat-3: Conversation Index right panel (4 tabs).
+			  Toggle lives on HeaderRetained — keeps the chat chrome unchanged
+			  when collapsed (chat column reclaims full width).
 			*/}
+			{indexVisible && (
+				<aside className="pkchat-right">
+					<ConversationIndex onClose={() => setIndexVisible(false)} />
+				</aside>
+			)}
 		</div>
 	);
 };

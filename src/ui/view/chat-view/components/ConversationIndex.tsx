@@ -1,0 +1,673 @@
+import React, { useMemo, useState, useCallback } from 'react';
+import {
+	Search,
+	X,
+	ChevronRight,
+	MessageSquare,
+	FileText,
+	Code,
+	Network,
+	Image as ImageIcon,
+	Paperclip,
+	ArrowUpRight,
+} from 'lucide-react';
+import { Segmented, IconButton } from '@/ui/components/primitives';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
+import type { ChatMessage } from '@/service/chat/types';
+import { CHAT_STRINGS } from '../chatStrings';
+
+/**
+ * ConversationIndex — right-side navigator with 4 tabs (PR-Chat-3).
+ *
+ * Tabs:
+ *   - All        : flat newest-first list (topics + artifacts + messages)
+ *   - Topics     : accordion of topic groups with position bar + attachments
+ *   - Artifacts  : first-class card grid (code/file/diagram/image)
+ *   - Messages   : flat scrollable list with role filters and quick jump
+ *
+ * Data sources:
+ *   - `message.topic`   (string, optional)  → topic grouping
+ *   - `message.resources` (ChatResourceRef[]) → attachment chips
+ *   - assistant message ```fenced``` code blocks → code/diagram artifacts
+ *
+ * Click any row/card → scrolls to the matching `[data-message-id]` element
+ * in the chat body (rendered by MessageViewItemRetained).
+ *
+ * Strings live in `chatStrings.ts` + `templates/config/chat.json`. PR-Chat-4
+ * will migrate to the TemplateManager runtime loader. Service layer is NOT
+ * touched — this is a pure UI consumer of the message store.
+ */
+
+type TabId = 'all' | 'topics' | 'artifacts' | 'messages';
+type ArtifactKind = 'code' | 'file' | 'diagram' | 'image';
+type ArtifactFilter = 'all' | ArtifactKind;
+type MessageFilter = 'all' | 'user' | 'assistant' | 'error';
+
+interface Artifact {
+	id: string;
+	messageId: string;
+	messageIndex: number;
+	kind: ArtifactKind;
+	name: string;
+	language?: string;
+	createdAt: number;
+}
+
+interface TopicGroup {
+	name: string;        // canonical name, '' = no-topic bucket
+	messages: ChatMessage[];
+	indices: number[];   // positions in the full message array (0-based)
+	firstIndex: number;
+	lastIndex: number;
+}
+
+const FENCE_RE = /```(\w*)[^\n]*\n([\s\S]*?)```/g;
+const MAX_PREVIEW = 60;
+
+function trimText(text: string, max = MAX_PREVIEW): string {
+	const flat = text.replace(/\s+/g, ' ').trim();
+	if (flat.length <= max) return flat;
+	return flat.slice(0, max - 1).trimEnd() + '…';
+}
+
+function formatTimestamp(ts: number): string {
+	if (!ts) return '';
+	try {
+		const d = new Date(ts);
+		return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+	} catch {
+		return '';
+	}
+}
+
+function inferArtifactKindFromLang(lang: string): ArtifactKind {
+	const l = lang.toLowerCase();
+	if (l === 'mermaid' || l === 'plantuml' || l === 'dot') return 'diagram';
+	if (l === 'svg' || l === 'graphviz') return 'diagram';
+	if (l === '' || l === 'text') return 'file';
+	return 'code';
+}
+
+function inferArtifactKindFromResource(kind: string | undefined, source: string): ArtifactKind {
+	const k = (kind || '').toLowerCase();
+	if (k.startsWith('image') || /\.(png|jpe?g|gif|webp|svg)$/i.test(source)) return 'image';
+	if (/\.(drawio|excalidraw|mmd)$/i.test(source)) return 'diagram';
+	return 'file';
+}
+
+function scrollToMessage(messageId: string) {
+	const el = document.querySelector(
+		`[data-message-id="${CSS.escape(messageId)}"]`
+	) as HTMLElement | null;
+	if (!el) return;
+	el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	// Flash highlight: use the same accent tint briefly.
+	el.style.transition = 'background-color 0.4s ease';
+	const prev = el.style.backgroundColor;
+	el.style.backgroundColor = 'var(--pk-accent-tint)';
+	window.setTimeout(() => {
+		el.style.backgroundColor = prev;
+	}, 900);
+}
+
+function ArtifactIcon({ kind }: { kind: ArtifactKind }) {
+	if (kind === 'code') return <Code aria-hidden />;
+	if (kind === 'diagram') return <Network aria-hidden />;
+	if (kind === 'image') return <ImageIcon aria-hidden />;
+	return <FileText aria-hidden />;
+}
+
+function MessageRowItem({
+	role,
+	text,
+	timestamp,
+	suffix,
+	onClick,
+	isError,
+}: {
+	role: 'user' | 'assistant' | 'system';
+	text: string;
+	timestamp: number;
+	suffix?: string;
+	onClick: () => void;
+	isError?: boolean;
+}) {
+	const whoRole = isError ? 'error' : role === 'user' ? 'user' : 'assistant';
+	const letter = isError ? '!' : role === 'user' ? 'U' : 'P';
+	return (
+		<button type="button" className="pkchat-idx-msg" onClick={onClick}>
+			<span className="pkchat-idx-msg__who" data-role={whoRole}>{letter}</span>
+			<span className="pkchat-idx-msg__body">
+				<span className="pkchat-idx-msg__text">{text || ' '}</span>
+				<span className="pkchat-idx-msg__meta">
+					{timestamp ? <span className="pkchat-idx-msg__ts">{formatTimestamp(timestamp)}</span> : null}
+					{suffix ? <span>{suffix}</span> : null}
+				</span>
+			</span>
+		</button>
+	);
+}
+
+export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+	const messages = useChatDataStore((s) => s.messages);
+	const [tab, setTab] = useState<TabId>('topics');
+	const [query, setQuery] = useState('');
+	const [artifactFilter, setArtifactFilter] = useState<ArtifactFilter>('all');
+	const [messageFilter, setMessageFilter] = useState<MessageFilter>('all');
+
+	const totalMessages = messages.length;
+
+	// Derive artifacts from message resources + fenced code blocks.
+	const artifacts = useMemo<Artifact[]>(() => {
+		const out: Artifact[] = [];
+		messages.forEach((m, idx) => {
+			(m.resources ?? []).forEach((r, j) => {
+				const baseName = r.source.split('/').pop() || r.source;
+				out.push({
+					id: `${m.id}::res::${r.id || j}`,
+					messageId: m.id,
+					messageIndex: idx,
+					kind: inferArtifactKindFromResource(r.kind as string, r.source),
+					name: trimText(baseName, 48),
+					createdAt: m.createdAtTimestamp,
+				});
+			});
+			if (m.role !== 'assistant' && m.role !== 'user') return;
+			const text = m.content || '';
+			FENCE_RE.lastIndex = 0;
+			let match: RegExpExecArray | null;
+			let count = 0;
+			while ((match = FENCE_RE.exec(text)) !== null) {
+				const lang = (match[1] || '').trim();
+				const body = (match[2] || '').trim();
+				if (!body) continue;
+				count += 1;
+				const kind = inferArtifactKindFromLang(lang);
+				const firstLine = body.split('\n')[0].slice(0, 40);
+				const label = lang
+					? `${lang} · ${firstLine || `block ${count}`}`
+					: firstLine || `block ${count}`;
+				out.push({
+					id: `${m.id}::code::${count}`,
+					messageId: m.id,
+					messageIndex: idx,
+					kind,
+					name: trimText(label, 48),
+					language: lang || undefined,
+					createdAt: m.createdAtTimestamp,
+				});
+			}
+		});
+		return out;
+	}, [messages]);
+
+	// Derive topic groups in order of first occurrence.
+	const topics = useMemo<TopicGroup[]>(() => {
+		const groupMap = new Map<string, TopicGroup>();
+		const order: string[] = [];
+		messages.forEach((m, idx) => {
+			const key = (m.topic || '').trim();
+			let g = groupMap.get(key);
+			if (!g) {
+				g = { name: key, messages: [], indices: [], firstIndex: idx, lastIndex: idx };
+				groupMap.set(key, g);
+				order.push(key);
+			}
+			g.messages.push(m);
+			g.indices.push(idx);
+			g.lastIndex = idx;
+		});
+		return order.map((k) => groupMap.get(k)!);
+	}, [messages]);
+
+	const filteredArtifacts = useMemo(() => {
+		const q = query.trim().toLowerCase();
+		return artifacts.filter((a) => {
+			if (artifactFilter !== 'all' && a.kind !== artifactFilter) return false;
+			if (q && !a.name.toLowerCase().includes(q)) return false;
+			return true;
+		});
+	}, [artifacts, artifactFilter, query]);
+
+	const filteredMessages = useMemo(() => {
+		const q = query.trim().toLowerCase();
+		return messages
+			.map((m, idx) => ({ m, idx }))
+			.filter(({ m }) => {
+				if (messageFilter === 'user' && m.role !== 'user') return false;
+				if (messageFilter === 'assistant' && m.role !== 'assistant') return false;
+				if (messageFilter === 'error' && !m.isErrorMessage) return false;
+				if (q && !(m.content || '').toLowerCase().includes(q)) return false;
+				return true;
+			});
+	}, [messages, messageFilter, query]);
+
+	const searchPlaceholder =
+		tab === 'topics' ? CHAT_STRINGS.index.searchTopics
+		: tab === 'artifacts' ? CHAT_STRINGS.index.searchArtifacts
+		: tab === 'messages' ? CHAT_STRINGS.index.searchMessages
+		: CHAT_STRINGS.index.searchAll;
+
+	const handleArtifactFilterChange = useCallback((next: ArtifactFilter) => setArtifactFilter(next), []);
+	const handleMessageFilterChange = useCallback((next: MessageFilter) => setMessageFilter(next), []);
+
+	return (
+		<div className="pkchat-idx">
+			<div className="pkchat-idx__head">
+				<span className="pkchat-idx__title">{CHAT_STRINGS.index.panelTitle}</span>
+				<div className="pkchat-idx__head-actions">
+					{onClose && (
+						<IconButton
+							label={CHAT_STRINGS.index.closeLabel}
+							title={CHAT_STRINGS.index.closeLabel}
+							onClick={onClose}
+						>
+							<X />
+						</IconButton>
+					)}
+				</div>
+			</div>
+
+			<div className="pkchat-idx__search">
+				<Search aria-hidden />
+				<input
+					type="text"
+					value={query}
+					placeholder={searchPlaceholder}
+					onChange={(e) => setQuery(e.target.value)}
+				/>
+			</div>
+
+			<div className="pkchat-idx__tabs">
+				<Segmented<TabId>
+					value={tab}
+					onValueChange={setTab}
+					aria-label={CHAT_STRINGS.index.panelTitle}
+					options={[
+						{ value: 'all', label: CHAT_STRINGS.index.tabAll },
+						{ value: 'topics', label: CHAT_STRINGS.index.tabTopics },
+						{ value: 'artifacts', label: CHAT_STRINGS.index.tabArtifacts },
+						{ value: 'messages', label: CHAT_STRINGS.index.tabMessages },
+					]}
+				/>
+			</div>
+
+			{tab === 'artifacts' && (
+				<div className="pkchat-idx__filters">
+					{(
+						[
+							['all', CHAT_STRINGS.index.artifactFilterAll],
+							['code', CHAT_STRINGS.index.artifactFilterCode],
+							['diagram', CHAT_STRINGS.index.artifactFilterDiagrams],
+							['file', CHAT_STRINGS.index.artifactFilterFiles],
+							['image', CHAT_STRINGS.index.artifactFilterImages],
+						] as Array<[ArtifactFilter, string]>
+					).map(([v, label]) => (
+						<button
+							key={v}
+							type="button"
+							className="pkchat-idx__filter"
+							data-selected={artifactFilter === v ? 'true' : undefined}
+							onClick={() => handleArtifactFilterChange(v)}
+						>
+							{label}
+						</button>
+					))}
+				</div>
+			)}
+
+			{tab === 'messages' && (
+				<div className="pkchat-idx__filters">
+					{(
+						[
+							['all', CHAT_STRINGS.index.messageFilterAll],
+							['user', CHAT_STRINGS.index.messageFilterUser],
+							['assistant', CHAT_STRINGS.index.messageFilterAssistant],
+							['error', CHAT_STRINGS.index.messageFilterErrors],
+						] as Array<[MessageFilter, string]>
+					).map(([v, label]) => (
+						<button
+							key={v}
+							type="button"
+							className="pkchat-idx__filter"
+							data-selected={messageFilter === v ? 'true' : undefined}
+							onClick={() => handleMessageFilterChange(v)}
+						>
+							{label}
+						</button>
+					))}
+				</div>
+			)}
+
+			<div className="pkchat-idx__list">
+				{tab === 'all' && (
+					<AllTabBody
+						topics={topics}
+						artifacts={artifacts}
+						messages={messages}
+						query={query}
+					/>
+				)}
+				{tab === 'topics' && (
+					<TopicsTabBody
+						topics={topics}
+						totalMessages={totalMessages}
+						artifacts={artifacts}
+						query={query}
+					/>
+				)}
+				{tab === 'artifacts' && (
+					<ArtifactsTabBody artifacts={filteredArtifacts} />
+				)}
+				{tab === 'messages' && (
+					<MessagesTabBody entries={filteredMessages} />
+				)}
+			</div>
+
+			<div className="pkchat-idx__foot">
+				<span>
+					{tab === 'topics' ? CHAT_STRINGS.index.footerTopics
+						: tab === 'artifacts' ? CHAT_STRINGS.index.footerArtifacts
+						: tab === 'messages' ? CHAT_STRINGS.index.footerMessages
+						: CHAT_STRINGS.index.footerAll}
+				</span>
+			</div>
+		</div>
+	);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tab bodies (kept inside this file — small, single-purpose, share helpers)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AllTabBody({
+	topics,
+	artifacts,
+	messages,
+	query,
+}: {
+	topics: TopicGroup[];
+	artifacts: Artifact[];
+	messages: ChatMessage[];
+	query: string;
+}) {
+	const q = query.trim().toLowerCase();
+	const filteredTopics = topics.filter((t) => !q || t.name.toLowerCase().includes(q));
+	const filteredArtifacts = artifacts.filter((a) => !q || a.name.toLowerCase().includes(q));
+	const filteredMessages = messages.filter((m) => !q || (m.content || '').toLowerCase().includes(q));
+
+	if (!messages.length) {
+		return <div className="pkchat-idx__empty">{CHAT_STRINGS.index.emptyAll}</div>;
+	}
+
+	return (
+		<>
+			{filteredTopics.length > 0 && (
+				<>
+					<div className="pkchat-idx__section-header">
+						{CHAT_STRINGS.index.allTopicsHeader}
+						<span className="pkchat-idx__count-pill">{filteredTopics.length}</span>
+					</div>
+					{filteredTopics.slice(0, 5).map((t, i) => (
+						<button
+							key={`topic-${i}-${t.name}`}
+							type="button"
+							className="pkchat-idx-msg"
+							onClick={() => scrollToMessage(t.messages[0].id)}
+						>
+							<span className="pkchat-idx-msg__who" data-role="assistant">
+								<MessageSquare aria-hidden style={{ width: 10, height: 10 }} />
+							</span>
+							<span className="pkchat-idx-msg__body">
+								<span className="pkchat-idx-msg__text">
+									{t.name || CHAT_STRINGS.index.topicNoTopic}
+								</span>
+								<span className="pkchat-idx-msg__meta">
+									<span>{t.messages.length} msg</span>
+								</span>
+							</span>
+							<ArrowUpRight aria-hidden style={{ width: 14, height: 14, color: 'var(--pk-text-tertiary)', marginTop: 2 }} />
+						</button>
+					))}
+				</>
+			)}
+
+			{filteredArtifacts.length > 0 && (
+				<>
+					<div className="pkchat-idx__section-header">
+						{CHAT_STRINGS.index.allArtifactsHeader}
+						<span className="pkchat-idx__count-pill">{filteredArtifacts.length}</span>
+					</div>
+					{filteredArtifacts.slice(0, 5).map((a) => (
+						<ArtifactCard key={a.id} artifact={a} />
+					))}
+				</>
+			)}
+
+			{filteredMessages.length > 0 && (
+				<>
+					<div className="pkchat-idx__section-header">
+						{CHAT_STRINGS.index.allMessagesHeader}
+						<span className="pkchat-idx__count-pill">{filteredMessages.length}</span>
+					</div>
+					{filteredMessages
+						.slice()
+						.reverse()
+						.slice(0, 8)
+						.map((m) => (
+							<MessageRowItem
+								key={m.id}
+								role={m.role === 'user' ? 'user' : 'assistant'}
+								isError={m.isErrorMessage}
+								text={trimText(m.content || '')}
+								timestamp={m.createdAtTimestamp}
+								onClick={() => scrollToMessage(m.id)}
+							/>
+						))}
+				</>
+			)}
+		</>
+	);
+}
+
+function TopicsTabBody({
+	topics,
+	totalMessages,
+	artifacts,
+	query,
+}: {
+	topics: TopicGroup[];
+	totalMessages: number;
+	artifacts: Artifact[];
+	query: string;
+}) {
+	const q = query.trim().toLowerCase();
+	const filtered = topics.filter((t) => !q || t.name.toLowerCase().includes(q));
+
+	if (!filtered.length) {
+		return <div className="pkchat-idx__empty">{CHAT_STRINGS.index.emptyTopics}</div>;
+	}
+
+	return (
+		<>
+			{filtered.map((t, i) => {
+				const isFirst = i === 0;
+				const startPct = totalMessages > 0
+					? Math.max(0, Math.min(100, (t.firstIndex / Math.max(1, totalMessages - 1)) * 100))
+					: 0;
+				const endPct = totalMessages > 0
+					? Math.max(startPct, Math.min(100, (t.lastIndex / Math.max(1, totalMessages - 1)) * 100))
+					: 0;
+				const widthPct = Math.max(2, endPct - startPct);
+				// Collect attachments + first artifact mention from messages within the topic.
+				const attachments = t.messages
+					.flatMap((m) => (m.resources || []).map((r) => ({
+						source: r.source,
+						messageId: m.id,
+						kind: inferArtifactKindFromResource(r.kind as string, r.source),
+					})))
+					.slice(0, 4);
+				const topicArtifacts = artifacts.filter((a) =>
+					t.indices.includes(a.messageIndex)
+				);
+				const sub = trimText(t.messages.map((m) => m.content || '').join(' '), 80);
+
+				return (
+					<details
+						key={`${t.name}-${i}`}
+						className="pkchat-idx-topic"
+						open={isFirst}
+					>
+						<summary className="pkchat-idx-topic__summary">
+							<ChevronRight className="pkchat-idx-topic__chev" aria-hidden />
+							<MessageSquare className="pkchat-idx-topic__icon" aria-hidden />
+							<span className="pkchat-idx-topic__name">
+								{t.name || CHAT_STRINGS.index.topicNoTopic}
+							</span>
+							<span className="pkchat-idx-topic__count">{t.messages.length}</span>
+						</summary>
+						<div className="pkchat-idx-topic__body">
+							<div className="pkchat-idx-topic__sub">{sub}</div>
+
+							<div className="pkchat-idx-topic__sub" style={{ marginTop: 8 }}>
+								{CHAT_STRINGS.index.topicMessagesRange
+									.replace('{start}', String(t.firstIndex + 1))
+									.replace('{end}', String(t.lastIndex + 1))}
+							</div>
+
+							<div className="pkchat-idx-posbar">
+								<span className="pkchat-idx-posbar__bar">
+									<span
+										className="pkchat-idx-posbar__range"
+										style={{ left: `${startPct}%`, width: `${widthPct}%` }}
+									/>
+									<span
+										className="pkchat-idx-posbar__dot"
+										style={{ left: `${startPct}%` }}
+									/>
+									<span
+										className="pkchat-idx-posbar__dot"
+										style={{ left: `${endPct}%` }}
+									/>
+								</span>
+							</div>
+
+							{attachments.length > 0 && (
+								<>
+									<div className="pkchat-idx-topic__sub" style={{ marginTop: 10 }}>
+										{CHAT_STRINGS.index.topicAttachments}
+									</div>
+									<div className="pkchat-idx-attach-row">
+										{attachments.map((att, j) => (
+											<button
+												key={`${att.source}-${j}`}
+												type="button"
+												className="pkchat-idx-attach"
+												title={att.source}
+												onClick={() => scrollToMessage(att.messageId)}
+											>
+												{att.kind === 'image' ? <ImageIcon aria-hidden />
+													: att.kind === 'diagram' ? <Network aria-hidden />
+													: <Paperclip aria-hidden />}
+												<span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+													{(att.source.split('/').pop() || att.source).slice(0, 28)}
+												</span>
+											</button>
+										))}
+									</div>
+								</>
+							)}
+
+							{topicArtifacts.length > 0 && (
+								<>
+									<div className="pkchat-idx-topic__sub" style={{ marginTop: 10 }}>
+										{CHAT_STRINGS.index.allArtifactsHeader}
+									</div>
+									{topicArtifacts.slice(0, 3).map((a) => (
+										<ArtifactCard key={a.id} artifact={a} />
+									))}
+								</>
+							)}
+
+							<div className="pkchat-idx-topic__sub" style={{ marginTop: 10 }}>
+								{CHAT_STRINGS.index.topicKeyMessages}
+							</div>
+							{t.messages.slice(0, 3).map((m) => (
+								<MessageRowItem
+									key={m.id}
+									role={m.role === 'user' ? 'user' : 'assistant'}
+									isError={m.isErrorMessage}
+									text={trimText(m.content || '')}
+									timestamp={m.createdAtTimestamp}
+									onClick={() => scrollToMessage(m.id)}
+								/>
+							))}
+						</div>
+					</details>
+				);
+			})}
+		</>
+	);
+}
+
+function ArtifactsTabBody({ artifacts }: { artifacts: Artifact[] }) {
+	if (!artifacts.length) {
+		return <div className="pkchat-idx__empty">{CHAT_STRINGS.index.emptyArtifacts}</div>;
+	}
+	return (
+		<>
+			{artifacts.map((a) => (
+				<ArtifactCard key={a.id} artifact={a} />
+			))}
+		</>
+	);
+}
+
+function ArtifactCard({ artifact }: { artifact: Artifact }) {
+	const kindLabel =
+		artifact.kind === 'code' ? CHAT_STRINGS.index.artifactKindCode
+		: artifact.kind === 'diagram' ? CHAT_STRINGS.index.artifactKindDiagram
+		: artifact.kind === 'image' ? CHAT_STRINGS.index.artifactKindImage
+		: CHAT_STRINGS.index.artifactKindFile;
+	return (
+		<button
+			type="button"
+			className="pkchat-idx-art"
+			title={CHAT_STRINGS.index.artifactOpenLabel}
+			onClick={() => scrollToMessage(artifact.messageId)}
+		>
+			<span className="pkchat-idx-art__thumb" data-kind={artifact.kind}>
+				<ArtifactIcon kind={artifact.kind} />
+			</span>
+			<span className="pkchat-idx-art__body">
+				<span className="pkchat-idx-art__name">{artifact.name}</span>
+				<span className="pkchat-idx-art__sub">
+					<span className="pkchat-idx-art__kind">{kindLabel}</span>
+					{artifact.createdAt ? <span>{formatTimestamp(artifact.createdAt)}</span> : null}
+				</span>
+			</span>
+			<ArrowUpRight aria-hidden style={{ width: 14, height: 14, color: 'var(--pk-text-tertiary)' }} />
+		</button>
+	);
+}
+
+function MessagesTabBody({ entries }: { entries: Array<{ m: ChatMessage; idx: number }> }) {
+	if (!entries.length) {
+		return <div className="pkchat-idx__empty">{CHAT_STRINGS.index.emptyMessages}</div>;
+	}
+	return (
+		<>
+			{entries.map(({ m, idx }) => (
+				<MessageRowItem
+					key={m.id}
+					role={m.role === 'user' ? 'user' : 'assistant'}
+					isError={m.isErrorMessage}
+					text={trimText(m.content || '')}
+					timestamp={m.createdAtTimestamp}
+					suffix={`Msg ${idx + 1}`}
+					onClick={() => scrollToMessage(m.id)}
+				/>
+			))}
+		</>
+	);
+}

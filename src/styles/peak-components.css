@@ -946,6 +946,509 @@
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
+   Chat retained surface — PR-Chat-3 (Conversation Index, 4 tabs)
+   ─────────────────────────────────────────────────────────────────────────────
+   Right-side panel: All / Topics / Artifacts / Messages. Selectors prefixed
+   `pkchat-idx-*` to scope to the chat surface without colliding with other
+   pk-* primitives. All values flow through --pk-* tokens.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__head {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  padding: var(--pk-space-3) var(--pk-space-4);
+  border-bottom: 1px solid var(--pk-border-soft);
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__title {
+  font-size: var(--pk-text-md);
+  font-weight: 650;
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__head-actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 2px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__search {
+  margin: var(--pk-space-2) var(--pk-space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  height: 32px;
+  padding: 0 var(--pk-space-3);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface);
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-sm);
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__search input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--pk-text-primary);
+  font-size: var(--pk-text-sm);
+  padding: 0;
+  min-width: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__search input::placeholder {
+  color: var(--pk-text-tertiary);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__search > svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__tabs {
+  margin: 0 var(--pk-space-4) var(--pk-space-2);
+  flex-shrink: 0;
+}
+
+/* Override .pk-segmented internals when used in the index header to fit
+   the 4-tab equal-width pattern from the mock. */
+:where(.pktw-root, .peak-design-root) .pkchat-idx__tabs .pk-segmented {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+  padding: 3px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__filters {
+  display: flex;
+  gap: var(--pk-space-2);
+  flex-wrap: wrap;
+  margin: 0 var(--pk-space-4) var(--pk-space-2);
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__filter {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--pk-space-3);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-border);
+  font-size: var(--pk-text-xs);
+  color: var(--pk-text-secondary);
+  cursor: pointer;
+  transition: background var(--pk-transition-fast),
+              border-color var(--pk-transition-fast),
+              color var(--pk-transition-fast);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__filter:hover {
+  border-color: var(--pk-border-accent);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__filter[data-selected="true"] {
+  background: var(--pk-accent-soft);
+  border-color: var(--pk-border-accent);
+  color: var(--pk-accent-hover);
+  font-weight: 600;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--pk-space-2) var(--pk-space-3) var(--pk-space-3);
+  min-height: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pk-space-6) var(--pk-space-4);
+  text-align: center;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-sm);
+  line-height: 1.5;
+  gap: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  margin: var(--pk-space-3) var(--pk-space-1) var(--pk-space-2);
+  font-size: var(--pk-text-xs);
+  font-weight: 700;
+  color: var(--pk-text-primary);
+  text-transform: none;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__section-header:first-child {
+  margin-top: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__count-pill {
+  font-size: var(--pk-text-xs);
+  color: var(--pk-text-secondary);
+  background: var(--pk-surface-sunken);
+  padding: 1px 7px;
+  border-radius: var(--pk-radius-pill);
+  border: 1px solid var(--pk-border);
+  font-weight: 600;
+}
+
+/* Topic row — uses native <details>/<summary> for accordion. */
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic {
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  margin-bottom: var(--pk-space-2);
+  background: var(--pk-surface);
+  overflow: hidden;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic[open] {
+  border-color: var(--pk-border-accent);
+  background: var(--pk-accent-tint);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  padding: var(--pk-space-2) var(--pk-space-3);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__summary::-webkit-details-marker {
+  display: none;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__chev {
+  width: 14px;
+  height: 14px;
+  color: var(--pk-text-secondary);
+  flex-shrink: 0;
+  transition: transform var(--pk-transition-fast);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic[open] .pkchat-idx-topic__chev {
+  transform: rotate(90deg);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__icon {
+  width: 14px;
+  height: 14px;
+  color: var(--pk-text-secondary);
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__name {
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__count {
+  font-size: var(--pk-text-xs);
+  color: var(--pk-text-secondary);
+  background: var(--pk-surface-sunken);
+  padding: 1px 7px;
+  border-radius: var(--pk-radius-pill);
+  border: 1px solid var(--pk-border);
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__body {
+  padding: 0 var(--pk-space-3) var(--pk-space-3);
+  border-top: 1px dashed var(--pk-border-accent);
+  margin: 0 0 0 0;
+  padding-top: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__sub {
+  font-size: var(--pk-text-xs);
+  color: var(--pk-text-secondary);
+  margin-top: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-posbar {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  margin-top: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-posbar__bar {
+  flex: 1;
+  height: 4px;
+  background: var(--pk-border-soft);
+  border-radius: var(--pk-radius-pill);
+  position: relative;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-posbar__range {
+  position: absolute;
+  height: 100%;
+  background: var(--pk-border-accent);
+  border-radius: var(--pk-radius-pill);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-posbar__dot {
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  background: var(--pk-accent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-attach-row {
+  display: flex;
+  gap: var(--pk-space-2);
+  flex-wrap: wrap;
+  margin-top: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-attach {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--pk-text-xs);
+  height: 22px;
+  padding: 0 var(--pk-space-2);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-border);
+  color: var(--pk-text-primary);
+  font-family: var(--pk-font-mono);
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-attach:hover {
+  border-color: var(--pk-border-accent);
+  background: var(--pk-accent-tint);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-attach > svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--pk-text-secondary);
+}
+
+/* Message row — used in Topics body, Messages tab, All tab. */
+:where(.pktw-root, .peak-design-root) .pkchat-idx-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pk-space-2);
+  padding: var(--pk-space-2) var(--pk-space-3);
+  border-radius: var(--pk-radius-md);
+  margin-top: 4px;
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-border-soft);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background var(--pk-transition-fast),
+              border-color var(--pk-transition-fast);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-msg:hover {
+  border-color: var(--pk-border-accent);
+  background: var(--pk-accent-tint);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__who {
+  font-size: 10px;
+  font-weight: 700;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--pk-accent-soft);
+  color: var(--pk-accent-hover);
+  display: inline-flex;
+  align-items: center;
+  letter-spacing: 0.03em;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__who[data-role="user"] {
+  background: var(--pk-info-bg);
+  color: var(--pk-info);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__who[data-role="error"] {
+  background: var(--pk-error-bg);
+  color: var(--pk-error);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__body {
+  flex: 1;
+  min-width: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__text {
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__meta {
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+  margin-top: 2px;
+  display: flex;
+  gap: var(--pk-space-2);
+  align-items: center;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__ts {
+  font-family: var(--pk-font-mono);
+}
+
+/* Artifact card. */
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: var(--pk-space-2);
+  align-items: center;
+  padding: var(--pk-space-2) var(--pk-space-3);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  margin-bottom: var(--pk-space-2);
+  background: var(--pk-surface);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background var(--pk-transition-fast),
+              border-color var(--pk-transition-fast);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art:hover {
+  border-color: var(--pk-border-accent);
+  background: var(--pk-accent-tint);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb {
+  width: 44px;
+  height: 40px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pk-text-secondary);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb[data-kind="code"] {
+  background: var(--pk-success-bg);
+  color: var(--pk-success);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb[data-kind="file"] {
+  background: var(--pk-info-bg);
+  color: var(--pk-info);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb[data-kind="diagram"] {
+  background: var(--pk-warning-bg);
+  color: var(--pk-warning);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb[data-kind="image"] {
+  background: var(--pk-accent-soft);
+  color: var(--pk-accent);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb > svg {
+  width: 20px;
+  height: 20px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art__name {
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--pk-font-mono);
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art__sub {
+  font-size: var(--pk-text-xs);
+  color: var(--pk-text-tertiary);
+  display: flex;
+  gap: var(--pk-space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx-art__kind {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--pk-text-secondary);
+  font-size: 10px;
+}
+
+:where(.pktw-root, .peak-design-root) .pkchat-idx__foot {
+  border-top: 1px solid var(--pk-border-soft);
+  padding: var(--pk-space-2) var(--pk-space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  font-size: var(--pk-text-xs);
+  color: var(--pk-text-tertiary);
+  flex-shrink: 0;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
    Chat retained surface — PR-Chat-2 (message rendering + suggested next + More)
    ─────────────────────────────────────────────────────────────────────────────
    Document-style message anatomy per chat-retained-mock.html:

@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
-import { ExternalLink, RefreshCw, Trash2 } from 'lucide-react';
+import { ExternalLink, RefreshCw, Trash2, PanelRight, PanelRightClose } from 'lucide-react';
 import { IconButton, Modal } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useChatViewStore } from '../store/chatViewStore';
 import { CHAT_STRINGS } from '../chatStrings';
+
+export interface HeaderRetainedProps {
+	/** When provided, renders a panel-toggle IconButton anchored before the actions group. */
+	indexVisible?: boolean;
+	onToggleIndex?: () => void;
+}
 
 /**
  * HeaderRetained — minimal chat header per the 2026-05-29 retained design.
@@ -19,7 +25,10 @@ import { CHAT_STRINGS } from '../chatStrings';
  * legacy OpenMenuButton (orphaned by PR-Chat-1). PR-Chat-2 wires it to a
  * confirm modal using the PR-0 Modal primitive.
  */
-export const HeaderRetained: React.FC = () => {
+export const HeaderRetained: React.FC<HeaderRetainedProps> = ({
+	indexVisible,
+	onToggleIndex,
+}) => {
 	const { app, manager } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 	const [isRegenerating, setIsRegenerating] = useState(false);
@@ -93,6 +102,19 @@ export const HeaderRetained: React.FC = () => {
 				>
 					<RefreshCw className={isRegenerating ? 'pktw-animate-spin' : undefined} />
 				</IconButton>
+				{onToggleIndex && (
+					<IconButton
+						label={indexVisible
+							? CHAT_STRINGS.index.toggleHideLabel
+							: CHAT_STRINGS.index.toggleShowLabel}
+						title={indexVisible
+							? CHAT_STRINGS.index.toggleHideLabel
+							: CHAT_STRINGS.index.toggleShowLabel}
+						onClick={onToggleIndex}
+					>
+						{indexVisible ? <PanelRightClose /> : <PanelRight />}
+					</IconButton>
+				)}
 			</div>
 
 			<Modal

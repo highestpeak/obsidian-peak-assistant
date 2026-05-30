@@ -49,6 +49,50 @@ export interface ChatStrings {
 		placeholderTitle: string;
 		placeholderHint: string;
 	};
+	index: {
+		panelTitle: string;
+		toggleShowLabel: string;
+		toggleHideLabel: string;
+		closeLabel: string;
+		searchAll: string;
+		searchTopics: string;
+		searchArtifacts: string;
+		searchMessages: string;
+		tabAll: string;
+		tabTopics: string;
+		tabArtifacts: string;
+		tabMessages: string;
+		allTopicsHeader: string;
+		allArtifactsHeader: string;
+		allMessagesHeader: string;
+		emptyAll: string;
+		emptyTopics: string;
+		emptyArtifacts: string;
+		emptyMessages: string;
+		topicNoTopic: string;
+		topicKeyMessages: string;
+		topicAttachments: string;
+		topicMessagesRange: string;
+		topicCountSuffix: string;
+		artifactFilterAll: string;
+		artifactFilterCode: string;
+		artifactFilterFiles: string;
+		artifactFilterDiagrams: string;
+		artifactFilterImages: string;
+		artifactKindCode: string;
+		artifactKindFile: string;
+		artifactKindDiagram: string;
+		artifactKindImage: string;
+		artifactOpenLabel: string;
+		messageFilterAll: string;
+		messageFilterUser: string;
+		messageFilterAssistant: string;
+		messageFilterErrors: string;
+		footerTopics: string;
+		footerArtifacts: string;
+		footerMessages: string;
+		footerAll: string;
+	};
 	message: {
 		assistantName: string;
 		youName: string;
@@ -117,6 +161,50 @@ export const CHAT_STRINGS: ChatStrings = {
 	indexSlot: {
 		placeholderTitle: 'Conversation Index',
 		placeholderHint: 'Topics, artifacts, and messages will appear here.',
+	},
+	index: {
+		panelTitle: 'Conversation Index',
+		toggleShowLabel: 'Show conversation index',
+		toggleHideLabel: 'Hide conversation index',
+		closeLabel: 'Close index',
+		searchAll: 'Search topics, files, messages…',
+		searchTopics: 'Search topics…',
+		searchArtifacts: 'Search artifacts…',
+		searchMessages: 'Search messages…',
+		tabAll: 'All',
+		tabTopics: 'Topics',
+		tabArtifacts: 'Artifacts',
+		tabMessages: 'Messages',
+		allTopicsHeader: 'Topics',
+		allArtifactsHeader: 'Artifacts',
+		allMessagesHeader: 'Messages',
+		emptyAll: 'Nothing here yet. Send a message to populate the index.',
+		emptyTopics: 'No topics yet. Topics are derived from message headings.',
+		emptyArtifacts: 'No artifacts yet. Code blocks and attachments will appear here.',
+		emptyMessages: 'No messages yet.',
+		topicNoTopic: 'No topic',
+		topicKeyMessages: 'Key messages',
+		topicAttachments: 'Sources / Attachments',
+		topicMessagesRange: 'Messages {start} — {end}',
+		topicCountSuffix: '',
+		artifactFilterAll: 'All',
+		artifactFilterCode: 'Code',
+		artifactFilterFiles: 'Files',
+		artifactFilterDiagrams: 'Diagrams',
+		artifactFilterImages: 'Images',
+		artifactKindCode: 'Code',
+		artifactKindFile: 'File',
+		artifactKindDiagram: 'Diagram',
+		artifactKindImage: 'Image',
+		artifactOpenLabel: 'Jump to artifact',
+		messageFilterAll: 'All',
+		messageFilterUser: 'You',
+		messageFilterAssistant: 'Assistant',
+		messageFilterErrors: 'Errors',
+		footerTopics: 'Topics are derived from message structure.',
+		footerArtifacts: 'Click any artifact to jump to it in the chat.',
+		footerMessages: 'Click any message to jump to it.',
+		footerAll: 'Click any entry to jump in chat.',
 	},
 	message: {
 		assistantName: 'Peak',
