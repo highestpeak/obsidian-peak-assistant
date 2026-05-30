@@ -1,0 +1,668 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   Peak Assistant · Shared Component Primitives
+   ─────────────────────────────────────────────────────────────────────────────
+   Spec  : docs/superpowers/plans/2026-05-29-onboarding-settings-unification.md
+           (PR-0: Design System Landing)
+   Tokens: src/styles/peak-tokens.css (source of truth)
+   Docs  : docs/conventions/component-primitives.md
+
+   This file defines the 10 shared CSS primitives that downstream React
+   wrappers (Task 3) and direct callers use across settings, onboarding,
+   chat, and usage-dashboard surfaces.
+
+   Scoping rule (per docs/conventions/obsidian-css-defense.md):
+     ALL selectors are wrapped in `:where(.pktw-root, .peak-design-root) &`
+     low-specificity prefix so styles don't escape plugin chrome and aren't
+     accidentally overridden by Obsidian's defaults.
+
+   Token discipline:
+     - Production token names only (see component-primitives.md for
+       mock→production rename table)
+     - No inline hex except the modal overlay scrim (intentional)
+     - No Obsidian theme variables
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+
+/* ── pk-row ─────────────────────────────────────────────────────────────────
+   Single-line settings/onboarding row.
+   Anatomy: [32px icon] [body: title + desc + meta] [right: chip + value + control]
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pk-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: var(--pk-space-3);
+  padding: var(--pk-space-3) calc(var(--pk-space-3) + 2px);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface);
+  box-shadow: var(--pk-shadow-card);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row + .pk-row {
+  margin-top: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pk-text-secondary);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row__icon > svg,
+:where(.pktw-root, .peak-design-root) .pk-row__icon .icon {
+  width: 16px;
+  height: 16px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row__title {
+  font-size: var(--pk-text-md);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row__desc {
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-secondary);
+  line-height: 1.45;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row__meta {
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-tertiary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row__right {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row__value {
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-primary);
+  font-family: var(--pk-font-mono);
+  white-space: nowrap;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row__value--sans {
+  font-family: var(--pk-font-sans);
+}
+
+/* Compact variant for dense tables (Advanced, chunking) */
+:where(.pktw-root, .peak-design-root) .pk-row--compact {
+  padding: 10px calc(var(--pk-space-3) + 2px);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row--compact .pk-row__icon {
+  width: 28px;
+  height: 28px;
+}
+
+/* Disclosure variant — clickable, shows ChevronRight on right edge.
+   align-items: start so multi-line descriptions don't drop the chevron. */
+:where(.pktw-root, .peak-design-root) .pk-row--disclosure {
+  cursor: pointer;
+  align-items: start;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row--disclosure .pk-row__icon {
+  margin-top: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row--disclosure .pk-row__right {
+  padding-top: 1px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-row--disclosure:hover {
+  background: var(--pk-surface-sunken);
+}
+
+
+/* ── pk-chip ────────────────────────────────────────────────────────────────
+   Pill-shaped status/label chip. Variants set background + text color;
+   borders are transparent (semantic color comes from bg + text alone).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px var(--pk-space-2);
+  border-radius: var(--pk-radius-pill);
+  font-size: var(--pk-text-sm);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-chip > svg,
+:where(.pktw-root, .peak-design-root) .pk-chip .icon {
+  width: 11px;
+  height: 11px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-chip--success {
+  background: var(--pk-success-bg);
+  color: var(--pk-success);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-chip--warning {
+  background: var(--pk-warning-bg);
+  color: var(--pk-warning);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-chip--danger {
+  background: var(--pk-error-bg);
+  color: var(--pk-error);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-chip--neutral {
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-secondary);
+  border-color: var(--pk-border);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-chip--accent {
+  background: var(--pk-accent-soft);
+  color: var(--pk-accent-text);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-chip--info {
+  background: var(--pk-info-bg);
+  color: var(--pk-info);
+}
+
+/* Provider chip — color comes from per-provider data attribute, picked up by
+   the .pk-brand-av selectors below. Use this class to set chip-shaped
+   wrapping when you want a brand-tinted background + label combo. */
+:where(.pktw-root, .peak-design-root) .pk-chip--provider {
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-secondary);
+}
+
+
+/* ── pk-pill ────────────────────────────────────────────────────────────────
+   Toggleable filter pill (document-type pickers, tag filters).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px var(--pk-space-3);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-surface);
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-secondary);
+  cursor: pointer;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-pill > svg,
+:where(.pktw-root, .peak-design-root) .pk-pill .icon {
+  width: 11px;
+  height: 11px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-pill[data-selected="true"] {
+  background: var(--pk-accent-soft);
+  border-color: var(--pk-accent-soft);
+  color: var(--pk-accent-text);
+}
+
+
+/* ── pk-icon-btn ────────────────────────────────────────────────────────────
+   Square 28px transparent button — header close/dismiss affordances,
+   secondary toolbar icons.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pk-icon-btn {
+  background: transparent;
+  border: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-text-secondary);
+  cursor: pointer;
+  transition: background var(--pk-transition-fast), color var(--pk-transition-fast);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-icon-btn:hover {
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-icon-btn > svg,
+:where(.pktw-root, .peak-design-root) .pk-icon-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+
+/* ── pk-segmented ───────────────────────────────────────────────────────────
+   Inline segmented control (e.g. Index mode picker, view toggles).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pk-segmented {
+  display: inline-flex;
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  padding: 2px;
+  gap: 2px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-segmented__opt {
+  background: transparent;
+  border: 0;
+  padding: 6px var(--pk-space-3);
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-secondary);
+  cursor: pointer;
+  border-radius: var(--pk-radius-sm);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-segmented__opt[data-selected="true"] {
+  background: var(--pk-surface);
+  color: var(--pk-text-primary);
+  font-weight: 500;
+  box-shadow: var(--pk-shadow-sm);
+}
+
+
+/* ── pk-modal ───────────────────────────────────────────────────────────────
+   Overlay + shell + head/body/foot subparts. Overlay scrim is intentionally
+   hardcoded (rgba 0/0/0/.42) — it's the only inline hex/rgba in this file
+   and lives outside the token system on purpose.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pk-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 64px var(--pk-space-6);
+  z-index: var(--pk-z-modal);
+  overflow-y: auto;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-modal-overlay[data-open="true"] {
+  display: flex;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-modal-shell {
+  width: 560px;
+  max-width: 100%;
+  background: var(--pk-surface);
+  border-radius: var(--pk-radius-lg);
+  border: 1px solid var(--pk-border);
+  box-shadow: var(--pk-shadow-modal);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-modal-shell--wide {
+  width: 720px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-modal-shell--narrow {
+  width: 460px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pk-space-3);
+  padding: var(--pk-space-4) var(--pk-space-5);
+  border-bottom: 1px solid var(--pk-border-soft);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__title {
+  font-size: var(--pk-text-lg);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__sub {
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-secondary);
+  margin-top: 2px;
+}
+
+/* Built-in close affordance — mirrors .pk-icon-btn semantics so call sites
+   can use either class. Kept as its own selector to avoid forcing every
+   close button to also wear .pk-icon-btn. */
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__close {
+  background: transparent;
+  border: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-text-secondary);
+  cursor: pointer;
+  transition: background var(--pk-transition-fast), color var(--pk-transition-fast);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__close:hover {
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__close > svg,
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__close .icon {
+  width: 14px;
+  height: 14px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__body {
+  padding: 18px var(--pk-space-5);
+  overflow-y: auto;
+  max-height: 70vh;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--pk-space-2);
+  padding: var(--pk-space-3) var(--pk-space-5);
+  border-top: 1px solid var(--pk-border-soft);
+  background: var(--pk-surface-sunken);
+}
+
+
+/* ── pk-popover ─────────────────────────────────────────────────────────────
+   Floating menu surface (model picker, action menus, command palettes).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pk-popover {
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  box-shadow: var(--pk-shadow-popover);
+  padding: var(--pk-space-1);
+  z-index: var(--pk-z-popover);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-pop-item {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: var(--pk-space-2) var(--pk-space-3);
+  text-align: left;
+  font-size: var(--pk-text-md);
+  color: var(--pk-text-primary);
+  border-radius: var(--pk-radius-sm);
+  cursor: pointer;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-pop-item:hover {
+  background: var(--pk-surface-sunken);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-pop-item > svg,
+:where(.pktw-root, .peak-design-root) .pk-pop-item .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--pk-text-secondary);
+}
+
+
+/* ── pk-form ────────────────────────────────────────────────────────────────
+   Form grid + rows + inputs. Inputs default to mono font (mock convention
+   for technical/config inputs — provider keys, IDs, paths); override with
+   `.pk-form-input--sans` for free-text fields.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pk-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: var(--pk-space-3);
+  align-items: start;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-row--stack {
+  grid-template-columns: 1fr;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-label {
+  font-size: var(--pk-text-base);
+  font-weight: 500;
+  color: var(--pk-text-primary);
+  padding-top: 7px;
+  line-height: 1.4;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-label__hint {
+  display: block;
+  font-weight: 400;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-sm);
+  margin-top: 2px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-1);
+  min-width: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-control__hint {
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-tertiary);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-input,
+:where(.pktw-root, .peak-design-root) .pk-form-select,
+:where(.pktw-root, .peak-design-root) .pk-form-textarea {
+  width: 100%;
+  border: 1px solid var(--pk-border-strong);
+  background: var(--pk-surface);
+  border-radius: var(--pk-radius-md);
+  padding: 7px 10px;
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-primary);
+  font-family: var(--pk-font-mono);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-input--sans,
+:where(.pktw-root, .peak-design-root) .pk-form-select {
+  font-family: var(--pk-font-sans);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-input:focus,
+:where(.pktw-root, .peak-design-root) .pk-form-select:focus,
+:where(.pktw-root, .peak-design-root) .pk-form-textarea:focus {
+  outline: none;
+  border-color: var(--pk-accent);
+  box-shadow: 0 0 0 3px var(--pk-accent-soft);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+/* Slider — range + right-aligned mono value readout */
+:where(.pktw-root, .peak-design-root) .pk-form-slider {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-slider input[type="range"] {
+  flex: 1;
+  accent-color: var(--pk-accent);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-slider__value {
+  font-family: var(--pk-font-mono);
+  font-size: var(--pk-text-base);
+  width: 44px;
+  text-align: right;
+  color: var(--pk-text-primary);
+}
+
+/* Number stepper — number input with right-edge unit label */
+:where(.pktw-root, .peak-design-root) .pk-form-number {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--pk-border-strong);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface);
+  overflow: hidden;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-number input {
+  width: 64px;
+  padding: 6px var(--pk-space-2);
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: var(--pk-font-mono);
+  font-size: var(--pk-text-base);
+  text-align: right;
+  color: var(--pk-text-primary);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-form-number__unit {
+  padding: 0 var(--pk-space-2);
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-tertiary);
+  border-left: 1px solid var(--pk-border-soft);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+
+/* ── pk-disclosure-body ─────────────────────────────────────────────────────
+   Frame that sits flush below a .pk-row--disclosure, sharing borders.
+   Nested .pk-row instances flip to .pk-surface for contrast against the
+   sunken disclosure background.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pk-disclosure-body {
+  padding: var(--pk-space-3) calc(var(--pk-space-3) + 2px);
+  border: 1px solid var(--pk-border);
+  border-top: 0;
+  border-bottom-left-radius: var(--pk-radius-lg);
+  border-bottom-right-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-sunken);
+  margin-top: -1px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-disclosure-body .pk-row {
+  background: var(--pk-surface);
+}
+
+
+/* ── pk-brand-av ────────────────────────────────────────────────────────────
+   Circular provider avatar — displays brand SVG/icon or letter fallback.
+   Per-provider color binding via [data-provider="..."] data attribute,
+   driven by the --pk-prov-* tokens.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:where(.pktw-root, .peak-design-root) .pk-brand-av {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-secondary);
+  flex-shrink: 0;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-brand-av--sm {
+  width: 20px;
+  height: 20px;
+}
+
+:where(.pktw-root, .peak-design-root) .pk-brand-av > svg,
+:where(.pktw-root, .peak-design-root) .pk-brand-av .icon {
+  width: 60%;
+  height: 60%;
+}
+
+/* Provider color bindings — same six providers as --pk-prov-* in peak-tokens.css */
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="openai"] {
+  background: var(--pk-prov-openai-soft);
+  color: var(--pk-prov-openai);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="anthropic"] {
+  background: var(--pk-prov-anthropic-soft);
+  color: var(--pk-prov-anthropic);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="google"] {
+  background: var(--pk-prov-google-soft);
+  color: var(--pk-prov-google);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="openrouter"] {
+  background: var(--pk-prov-openrouter-soft);
+  color: var(--pk-prov-openrouter);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="perplexity"] {
+  background: var(--pk-prov-perplexity-soft);
+  color: var(--pk-prov-perplexity);
+}
+
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="ollama"] {
+  background: var(--pk-prov-ollama-soft);
+  color: var(--pk-prov-ollama);
+}

@@ -6,6 +6,7 @@
 
 @import "./peak-tokens.css";       /* Phase 1 真源（必须先于 alias 壳） */
 @import "./peak-variables.css";    /* 历史别名 alias 壳，待 Phase 3 后删 */
+@import "./peak-components.css";   /* PR-0: 共享原子样式 (.pk-row/-chip/-modal/etc.) */
 @import "./peak-style-settings.css";
 @import "./obsidian-reset.css";
 
