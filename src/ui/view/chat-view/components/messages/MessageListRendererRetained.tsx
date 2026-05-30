@@ -8,7 +8,7 @@ import {
 	MessageViewItemRetained,
 	MessageItemRetainedProps,
 } from './MessageViewItemRetained';
-import { CHAT_STRINGS } from '../../chatStrings';
+import { useChatStrings } from '../../chatStringsContext';
 
 /** Get date-only string for comparison */
 function getDateOnly(ts: number | undefined): string {
@@ -23,6 +23,7 @@ function getDateOnly(ts: number | undefined): string {
  * + MessageViewItem path. Streaming and dataflow behavior unchanged.
  */
 export const MessageListRendererRetained: React.FC = () => {
+	const strings = useChatStrings();
 	const {
 		messages,
 		streamingMessageId,
@@ -92,7 +93,7 @@ export const MessageListRendererRetained: React.FC = () => {
 		return (
 			<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]">
 				<div className="pktw-text-2xl pktw-font-light pktw-text-muted-foreground pktw-text-center">
-					{CHAT_STRINGS.message.emptyHero}
+					{strings.message.emptyHero}
 				</div>
 			</div>
 		);

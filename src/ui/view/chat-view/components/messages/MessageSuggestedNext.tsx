@@ -8,7 +8,7 @@ import {
 } from '@/ui/components/primitives';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { PromptId } from '@/service/prompt/PromptId';
-import { CHAT_STRINGS } from '../../chatStrings';
+import { useChatStrings } from '../../chatStringsContext';
 
 const CONTENT_LIMIT = 500;
 const MAX_INLINE_CHIPS = 2;
@@ -34,6 +34,7 @@ export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
 	assistantContent,
 	onSelect,
 }) => {
+	const strings = useChatStrings();
 	const { manager } = useServiceContext();
 	const [suggestions, setSuggestions] = useState<string[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -76,7 +77,7 @@ export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
 	return (
 		<div className="pkchat-msg__suggest">
 			<span className="pkchat-msg__suggest-label">
-				{CHAT_STRINGS.message.suggestedNextLabel}
+				{strings.message.suggestedNextLabel}
 			</span>
 			{inline.map((q, i) => (
 				<button
@@ -93,7 +94,7 @@ export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
 				<Popover>
 					<PopoverTrigger asChild>
 						<button type="button" className="pkchat-msg__suggest-more">
-							<span>{CHAT_STRINGS.message.suggestedNextMore}</span>
+							<span>{strings.message.suggestedNextMore}</span>
 							<ChevronDown />
 						</button>
 					</PopoverTrigger>

@@ -21,7 +21,7 @@ import { useContextSearch } from '../hooks/useContextSearch';
 import { useInputKeyboard } from '../hooks/useInputKeyboard';
 import { useInputSubmit } from '../hooks/useInputSubmit';
 import { PromptEnhanceSuggestion } from './PromptEnhanceSuggestion';
-import { CHAT_STRINGS } from '../chatStrings';
+import { useChatStrings } from '../chatStringsContext';
 
 // ---------------------------------------------------------------------------
 // Helpers wired into PromptInput context
@@ -61,22 +61,23 @@ const InsertToInputHandler: React.FC = () => {
 // placeholders for model and role. PR-Chat-2+ may extend.
 // ---------------------------------------------------------------------------
 
-const RUN_MODE_OPTIONS = [
-	{ value: 'chat' as const, label: CHAT_STRINGS.composer.runChipModeChat },
-	{ value: 'agent' as const, label: CHAT_STRINGS.composer.runChipModeAgent },
-	{ value: 'plan' as const, label: CHAT_STRINGS.composer.runChipModePlan },
-];
-
 const RunChip: React.FC = () => {
+	const strings = useChatStrings();
 	const [open, setOpen] = useState(false);
 	const chatMode = useChatViewStore((s) => s.chatMode);
 	const setChatMode = useChatViewStore((s) => s.setChatMode);
 	const currentTags = useChatViewStore((s) => s.currentInputTags);
 	const ctxCount = currentTags.filter((t) => t.type === 'context').length;
 
+	const RUN_MODE_OPTIONS = [
+		{ value: 'chat' as const, label: strings.composer.runChipModeChat },
+		{ value: 'agent' as const, label: strings.composer.runChipModeAgent },
+		{ value: 'plan' as const, label: strings.composer.runChipModePlan },
+	];
+
 	const modeLabel =
 		RUN_MODE_OPTIONS.find((opt) => opt.value === chatMode)?.label ??
-		CHAT_STRINGS.composer.runChipModeChat;
+		strings.composer.runChipModeChat;
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -85,16 +86,16 @@ const RunChip: React.FC = () => {
 					type="button"
 					className="pkchat-run-chip"
 					data-state={open ? 'open' : 'closed'}
-					aria-label={CHAT_STRINGS.composer.runChipLabel}
+					aria-label={strings.composer.runChipLabel}
 				>
 					<span className="pkchat-run-chip__label">{modeLabel}</span>
 					<span className="pkchat-run-chip__sep">·</span>
 					<span className="pkchat-run-chip__mid">
-						{CHAT_STRINGS.composer.runChipModelAuto}
+						{strings.composer.runChipModelAuto}
 					</span>
 					<span className="pkchat-run-chip__sep">·</span>
 					<span className="pkchat-run-chip__ctx">
-						{ctxCount} {CHAT_STRINGS.composer.runChipCtxSuffix}
+						{ctxCount} {strings.composer.runChipCtxSuffix}
 					</span>
 					<ChevronDown />
 				</button>
@@ -103,16 +104,16 @@ const RunChip: React.FC = () => {
 				<div className="pkchat-runpop">
 					<div className="pkchat-runpop__head">
 						<span className="pkchat-runpop__title">
-							{CHAT_STRINGS.runSettings.title}
+							{strings.runSettings.title}
 						</span>
 						<span className="pkchat-runpop__sub">
-							{CHAT_STRINGS.runSettings.subtitle}
+							{strings.runSettings.subtitle}
 						</span>
 					</div>
 
 					<div>
 						<span className="pkchat-runpop__label">
-							{CHAT_STRINGS.runSettings.fieldMode}
+							{strings.runSettings.fieldMode}
 						</span>
 						<div style={{ marginTop: 6 }}>
 							<Segmented
@@ -126,7 +127,7 @@ const RunChip: React.FC = () => {
 					</div>
 
 					<div className="pkchat-runpop__hint">
-						{CHAT_STRINGS.runSettings.roleHint}
+						{strings.runSettings.roleHint}
 					</div>
 				</div>
 			</PopoverContent>
@@ -145,6 +146,7 @@ interface SendButtonProps {
 }
 
 const SendButton: React.FC<SendButtonProps> = ({ status, onCancel }) => {
+	const strings = useChatStrings();
 	const { textInput } = usePromptInputContext();
 	const hasInput = textInput.value.trim().length > 0;
 	const isStreaming = status === 'streaming';
@@ -155,7 +157,7 @@ const SendButton: React.FC<SendButtonProps> = ({ status, onCancel }) => {
 			<button
 				type="button"
 				className="pkchat-send"
-				aria-label={CHAT_STRINGS.composer.cancelLabel}
+				aria-label={strings.composer.cancelLabel}
 				onClick={async (e) => {
 					e.preventDefault();
 					e.stopPropagation();
@@ -172,7 +174,7 @@ const SendButton: React.FC<SendButtonProps> = ({ status, onCancel }) => {
 			<button
 				type="button"
 				className="pkchat-send"
-				aria-label={CHAT_STRINGS.composer.sendLabel}
+				aria-label={strings.composer.sendLabel}
 				disabled
 			>
 				<Loader2 className="pktw-animate-spin" />
@@ -183,8 +185,8 @@ const SendButton: React.FC<SendButtonProps> = ({ status, onCancel }) => {
 	if (!hasInput) {
 		return (
 			<IconButton
-				label={CHAT_STRINGS.composer.voiceLabel}
-				title={CHAT_STRINGS.composer.voiceLabel}
+				label={strings.composer.voiceLabel}
+				title={strings.composer.voiceLabel}
 				disabled
 			>
 				<Mic />
@@ -196,7 +198,7 @@ const SendButton: React.FC<SendButtonProps> = ({ status, onCancel }) => {
 		<button
 			type="submit"
 			className="pkchat-send"
-			aria-label={CHAT_STRINGS.composer.sendLabel}
+			aria-label={strings.composer.sendLabel}
 		>
 			<Send />
 		</button>
@@ -208,6 +210,7 @@ const SendButton: React.FC<SendButtonProps> = ({ status, onCancel }) => {
 // ---------------------------------------------------------------------------
 
 export const ComposerRetained: React.FC = () => {
+	const strings = useChatStrings();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 
 	const textareaRef = useRef<PromptInputEditorHandle>(null);
@@ -253,7 +256,7 @@ export const ComposerRetained: React.FC = () => {
 					<PromptInputBody
 						ref={textareaRef}
 						inputRef={inputFocusRef}
-						placeholder={placeholder ?? CHAT_STRINGS.composer.placeholder}
+						placeholder={placeholder ?? strings.composer.placeholder}
 					/>
 				</div>
 				<PromptEnhanceSuggestion />

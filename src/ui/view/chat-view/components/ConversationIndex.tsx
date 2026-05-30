@@ -14,7 +14,7 @@ import {
 import { Segmented, IconButton } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import type { ChatMessage } from '@/service/chat/types';
-import { CHAT_STRINGS } from '../chatStrings';
+import { useChatStrings } from '../chatStringsContext';
 
 /**
  * ConversationIndex — right-side navigator with 4 tabs (PR-Chat-3).
@@ -149,6 +149,7 @@ function MessageRowItem({
 }
 
 export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+	const strings = useChatStrings();
 	const messages = useChatDataStore((s) => s.messages);
 	const [tab, setTab] = useState<TabId>('topics');
 	const [query, setQuery] = useState('');
@@ -243,10 +244,10 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 	}, [messages, messageFilter, query]);
 
 	const searchPlaceholder =
-		tab === 'topics' ? CHAT_STRINGS.index.searchTopics
-		: tab === 'artifacts' ? CHAT_STRINGS.index.searchArtifacts
-		: tab === 'messages' ? CHAT_STRINGS.index.searchMessages
-		: CHAT_STRINGS.index.searchAll;
+		tab === 'topics' ? strings.index.searchTopics
+		: tab === 'artifacts' ? strings.index.searchArtifacts
+		: tab === 'messages' ? strings.index.searchMessages
+		: strings.index.searchAll;
 
 	const handleArtifactFilterChange = useCallback((next: ArtifactFilter) => setArtifactFilter(next), []);
 	const handleMessageFilterChange = useCallback((next: MessageFilter) => setMessageFilter(next), []);
@@ -254,12 +255,12 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 	return (
 		<div className="pkchat-idx">
 			<div className="pkchat-idx__head">
-				<span className="pkchat-idx__title">{CHAT_STRINGS.index.panelTitle}</span>
+				<span className="pkchat-idx__title">{strings.index.panelTitle}</span>
 				<div className="pkchat-idx__head-actions">
 					{onClose && (
 						<IconButton
-							label={CHAT_STRINGS.index.closeLabel}
-							title={CHAT_STRINGS.index.closeLabel}
+							label={strings.index.closeLabel}
+							title={strings.index.closeLabel}
 							onClick={onClose}
 						>
 							<X />
@@ -282,12 +283,12 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 				<Segmented<TabId>
 					value={tab}
 					onValueChange={setTab}
-					aria-label={CHAT_STRINGS.index.panelTitle}
+					aria-label={strings.index.panelTitle}
 					options={[
-						{ value: 'all', label: CHAT_STRINGS.index.tabAll },
-						{ value: 'topics', label: CHAT_STRINGS.index.tabTopics },
-						{ value: 'artifacts', label: CHAT_STRINGS.index.tabArtifacts },
-						{ value: 'messages', label: CHAT_STRINGS.index.tabMessages },
+						{ value: 'all', label: strings.index.tabAll },
+						{ value: 'topics', label: strings.index.tabTopics },
+						{ value: 'artifacts', label: strings.index.tabArtifacts },
+						{ value: 'messages', label: strings.index.tabMessages },
 					]}
 				/>
 			</div>
@@ -296,11 +297,11 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 				<div className="pkchat-idx__filters">
 					{(
 						[
-							['all', CHAT_STRINGS.index.artifactFilterAll],
-							['code', CHAT_STRINGS.index.artifactFilterCode],
-							['diagram', CHAT_STRINGS.index.artifactFilterDiagrams],
-							['file', CHAT_STRINGS.index.artifactFilterFiles],
-							['image', CHAT_STRINGS.index.artifactFilterImages],
+							['all', strings.index.artifactFilterAll],
+							['code', strings.index.artifactFilterCode],
+							['diagram', strings.index.artifactFilterDiagrams],
+							['file', strings.index.artifactFilterFiles],
+							['image', strings.index.artifactFilterImages],
 						] as Array<[ArtifactFilter, string]>
 					).map(([v, label]) => (
 						<button
@@ -320,10 +321,10 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 				<div className="pkchat-idx__filters">
 					{(
 						[
-							['all', CHAT_STRINGS.index.messageFilterAll],
-							['user', CHAT_STRINGS.index.messageFilterUser],
-							['assistant', CHAT_STRINGS.index.messageFilterAssistant],
-							['error', CHAT_STRINGS.index.messageFilterErrors],
+							['all', strings.index.messageFilterAll],
+							['user', strings.index.messageFilterUser],
+							['assistant', strings.index.messageFilterAssistant],
+							['error', strings.index.messageFilterErrors],
 						] as Array<[MessageFilter, string]>
 					).map(([v, label]) => (
 						<button
@@ -366,10 +367,10 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 
 			<div className="pkchat-idx__foot">
 				<span>
-					{tab === 'topics' ? CHAT_STRINGS.index.footerTopics
-						: tab === 'artifacts' ? CHAT_STRINGS.index.footerArtifacts
-						: tab === 'messages' ? CHAT_STRINGS.index.footerMessages
-						: CHAT_STRINGS.index.footerAll}
+					{tab === 'topics' ? strings.index.footerTopics
+						: tab === 'artifacts' ? strings.index.footerArtifacts
+						: tab === 'messages' ? strings.index.footerMessages
+						: strings.index.footerAll}
 				</span>
 			</div>
 		</div>
@@ -391,13 +392,14 @@ function AllTabBody({
 	messages: ChatMessage[];
 	query: string;
 }) {
+	const strings = useChatStrings();
 	const q = query.trim().toLowerCase();
 	const filteredTopics = topics.filter((t) => !q || t.name.toLowerCase().includes(q));
 	const filteredArtifacts = artifacts.filter((a) => !q || a.name.toLowerCase().includes(q));
 	const filteredMessages = messages.filter((m) => !q || (m.content || '').toLowerCase().includes(q));
 
 	if (!messages.length) {
-		return <div className="pkchat-idx__empty">{CHAT_STRINGS.index.emptyAll}</div>;
+		return <div className="pkchat-idx__empty">{strings.index.emptyAll}</div>;
 	}
 
 	return (
@@ -405,7 +407,7 @@ function AllTabBody({
 			{filteredTopics.length > 0 && (
 				<>
 					<div className="pkchat-idx__section-header">
-						{CHAT_STRINGS.index.allTopicsHeader}
+						{strings.index.allTopicsHeader}
 						<span className="pkchat-idx__count-pill">{filteredTopics.length}</span>
 					</div>
 					{filteredTopics.slice(0, 5).map((t, i) => (
@@ -420,7 +422,7 @@ function AllTabBody({
 							</span>
 							<span className="pkchat-idx-msg__body">
 								<span className="pkchat-idx-msg__text">
-									{t.name || CHAT_STRINGS.index.topicNoTopic}
+									{t.name || strings.index.topicNoTopic}
 								</span>
 								<span className="pkchat-idx-msg__meta">
 									<span>{t.messages.length} msg</span>
@@ -435,7 +437,7 @@ function AllTabBody({
 			{filteredArtifacts.length > 0 && (
 				<>
 					<div className="pkchat-idx__section-header">
-						{CHAT_STRINGS.index.allArtifactsHeader}
+						{strings.index.allArtifactsHeader}
 						<span className="pkchat-idx__count-pill">{filteredArtifacts.length}</span>
 					</div>
 					{filteredArtifacts.slice(0, 5).map((a) => (
@@ -447,7 +449,7 @@ function AllTabBody({
 			{filteredMessages.length > 0 && (
 				<>
 					<div className="pkchat-idx__section-header">
-						{CHAT_STRINGS.index.allMessagesHeader}
+						{strings.index.allMessagesHeader}
 						<span className="pkchat-idx__count-pill">{filteredMessages.length}</span>
 					</div>
 					{filteredMessages
@@ -481,11 +483,12 @@ function TopicsTabBody({
 	artifacts: Artifact[];
 	query: string;
 }) {
+	const strings = useChatStrings();
 	const q = query.trim().toLowerCase();
 	const filtered = topics.filter((t) => !q || t.name.toLowerCase().includes(q));
 
 	if (!filtered.length) {
-		return <div className="pkchat-idx__empty">{CHAT_STRINGS.index.emptyTopics}</div>;
+		return <div className="pkchat-idx__empty">{strings.index.emptyTopics}</div>;
 	}
 
 	return (
@@ -522,7 +525,7 @@ function TopicsTabBody({
 							<ChevronRight className="pkchat-idx-topic__chev" aria-hidden />
 							<MessageSquare className="pkchat-idx-topic__icon" aria-hidden />
 							<span className="pkchat-idx-topic__name">
-								{t.name || CHAT_STRINGS.index.topicNoTopic}
+								{t.name || strings.index.topicNoTopic}
 							</span>
 							<span className="pkchat-idx-topic__count">{t.messages.length}</span>
 						</summary>
@@ -530,7 +533,7 @@ function TopicsTabBody({
 							<div className="pkchat-idx-topic__sub">{sub}</div>
 
 							<div className="pkchat-idx-topic__sub" style={{ marginTop: 8 }}>
-								{CHAT_STRINGS.index.topicMessagesRange
+								{strings.index.topicMessagesRange
 									.replace('{start}', String(t.firstIndex + 1))
 									.replace('{end}', String(t.lastIndex + 1))}
 							</div>
@@ -555,7 +558,7 @@ function TopicsTabBody({
 							{attachments.length > 0 && (
 								<>
 									<div className="pkchat-idx-topic__sub" style={{ marginTop: 10 }}>
-										{CHAT_STRINGS.index.topicAttachments}
+										{strings.index.topicAttachments}
 									</div>
 									<div className="pkchat-idx-attach-row">
 										{attachments.map((att, j) => (
@@ -581,7 +584,7 @@ function TopicsTabBody({
 							{topicArtifacts.length > 0 && (
 								<>
 									<div className="pkchat-idx-topic__sub" style={{ marginTop: 10 }}>
-										{CHAT_STRINGS.index.allArtifactsHeader}
+										{strings.index.allArtifactsHeader}
 									</div>
 									{topicArtifacts.slice(0, 3).map((a) => (
 										<ArtifactCard key={a.id} artifact={a} />
@@ -590,7 +593,7 @@ function TopicsTabBody({
 							)}
 
 							<div className="pkchat-idx-topic__sub" style={{ marginTop: 10 }}>
-								{CHAT_STRINGS.index.topicKeyMessages}
+								{strings.index.topicKeyMessages}
 							</div>
 							{t.messages.slice(0, 3).map((m) => (
 								<MessageRowItem
@@ -611,8 +614,9 @@ function TopicsTabBody({
 }
 
 function ArtifactsTabBody({ artifacts }: { artifacts: Artifact[] }) {
+	const strings = useChatStrings();
 	if (!artifacts.length) {
-		return <div className="pkchat-idx__empty">{CHAT_STRINGS.index.emptyArtifacts}</div>;
+		return <div className="pkchat-idx__empty">{strings.index.emptyArtifacts}</div>;
 	}
 	return (
 		<>
@@ -624,16 +628,17 @@ function ArtifactsTabBody({ artifacts }: { artifacts: Artifact[] }) {
 }
 
 function ArtifactCard({ artifact }: { artifact: Artifact }) {
+	const strings = useChatStrings();
 	const kindLabel =
-		artifact.kind === 'code' ? CHAT_STRINGS.index.artifactKindCode
-		: artifact.kind === 'diagram' ? CHAT_STRINGS.index.artifactKindDiagram
-		: artifact.kind === 'image' ? CHAT_STRINGS.index.artifactKindImage
-		: CHAT_STRINGS.index.artifactKindFile;
+		artifact.kind === 'code' ? strings.index.artifactKindCode
+		: artifact.kind === 'diagram' ? strings.index.artifactKindDiagram
+		: artifact.kind === 'image' ? strings.index.artifactKindImage
+		: strings.index.artifactKindFile;
 	return (
 		<button
 			type="button"
 			className="pkchat-idx-art"
-			title={CHAT_STRINGS.index.artifactOpenLabel}
+			title={strings.index.artifactOpenLabel}
 			onClick={() => scrollToMessage(artifact.messageId)}
 		>
 			<span className="pkchat-idx-art__thumb" data-kind={artifact.kind}>
@@ -652,8 +657,9 @@ function ArtifactCard({ artifact }: { artifact: Artifact }) {
 }
 
 function MessagesTabBody({ entries }: { entries: Array<{ m: ChatMessage; idx: number }> }) {
+	const strings = useChatStrings();
 	if (!entries.length) {
-		return <div className="pkchat-idx__empty">{CHAT_STRINGS.index.emptyMessages}</div>;
+		return <div className="pkchat-idx__empty">{strings.index.emptyMessages}</div>;
 	}
 	return (
 		<>

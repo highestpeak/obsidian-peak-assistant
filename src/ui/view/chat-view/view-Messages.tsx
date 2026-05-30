@@ -15,6 +15,7 @@ import { useAutoScroll } from './hooks/useAutoScroll';
 import { IconButton } from '@/ui/components/primitives';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { NewConversationTypePicker } from './components/NewConversationTypePicker';
+import { ChatStringsProvider } from './chatStringsContext';
 
 /**
  * Messages view — the retained chat surface (header + body + composer).
@@ -34,7 +35,19 @@ import { NewConversationTypePicker } from './components/NewConversationTypePicke
  * Service/business logic (orchestrator, providers, streaming, context builder)
  * is intentionally NOT touched — only the UI chrome is being rebuilt here.
  */
-export const MessagesViewComponent: React.FC = () => {
+/**
+ * Wrapper that mounts ChatStringsProvider once at the chat-view root so every
+ * descendant can read template-overridable strings via `useChatStrings()`.
+ * Kept as a thin outer shell so the (busy) inner component stays focused on
+ * scroll / streaming / shell layout.
+ */
+export const MessagesViewComponent: React.FC = () => (
+	<ChatStringsProvider>
+		<MessagesViewInner />
+	</ChatStringsProvider>
+);
+
+const MessagesViewInner: React.FC = () => {
 	const { app, eventBus } = useServiceContext();
 	const pendingConversation = useChatViewStore().pendingConversation;
 	const activeConversation = useChatDataStore((state) => state.activeConversation);

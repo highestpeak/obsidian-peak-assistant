@@ -5,7 +5,7 @@ import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useChatViewStore } from '../store/chatViewStore';
-import { CHAT_STRINGS } from '../chatStrings';
+import { useChatStrings } from '../chatStringsContext';
 
 export interface HeaderRetainedProps {
 	/** When provided, renders a panel-toggle IconButton anchored before the actions group. */
@@ -29,6 +29,7 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = ({
 	indexVisible,
 	onToggleIndex,
 }) => {
+	const strings = useChatStrings();
 	const { app, manager } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 	const [isRegenerating, setIsRegenerating] = useState(false);
@@ -80,23 +81,23 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = ({
 			<div className="pkchat-header__actions">
 				{hasSource && (
 					<IconButton
-						label={CHAT_STRINGS.header.openSourceLabel}
-						title={CHAT_STRINGS.header.openSourceLabel}
+						label={strings.header.openSourceLabel}
+						title={strings.header.openSourceLabel}
 						onClick={handleOpenSource}
 					>
 						<ExternalLink />
 					</IconButton>
 				)}
 				<IconButton
-					label={CHAT_STRINGS.header.deleteConversationLabel}
-					title={CHAT_STRINGS.header.deleteConversationLabel}
+					label={strings.header.deleteConversationLabel}
+					title={strings.header.deleteConversationLabel}
 					onClick={() => setConfirmingDelete(true)}
 				>
 					<Trash2 />
 				</IconButton>
 				<IconButton
-					label={isRegenerating ? CHAT_STRINGS.header.refreshLabelBusy : CHAT_STRINGS.header.refreshLabel}
-					title={isRegenerating ? CHAT_STRINGS.header.refreshLabelBusy : CHAT_STRINGS.header.refreshLabel}
+					label={isRegenerating ? strings.header.refreshLabelBusy : strings.header.refreshLabel}
+					title={isRegenerating ? strings.header.refreshLabelBusy : strings.header.refreshLabel}
 					onClick={handleRefresh}
 					disabled={isRegenerating}
 				>
@@ -105,11 +106,11 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = ({
 				{onToggleIndex && (
 					<IconButton
 						label={indexVisible
-							? CHAT_STRINGS.index.toggleHideLabel
-							: CHAT_STRINGS.index.toggleShowLabel}
+							? strings.index.toggleHideLabel
+							: strings.index.toggleShowLabel}
 						title={indexVisible
-							? CHAT_STRINGS.index.toggleHideLabel
-							: CHAT_STRINGS.index.toggleShowLabel}
+							? strings.index.toggleHideLabel
+							: strings.index.toggleShowLabel}
 						onClick={onToggleIndex}
 					>
 						{indexVisible ? <PanelRightClose /> : <PanelRight />}
@@ -125,12 +126,12 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = ({
 			>
 				<Modal.Content width="narrow">
 					<Modal.Header>
-						<Modal.Title>{CHAT_STRINGS.header.deleteConversationConfirmTitle}</Modal.Title>
+						<Modal.Title>{strings.header.deleteConversationConfirmTitle}</Modal.Title>
 						<Modal.Close />
 					</Modal.Header>
 					<Modal.Body>
 						<span style={{ color: 'var(--pk-text-secondary)' }}>
-							{CHAT_STRINGS.header.deleteConversationConfirmBody}
+							{strings.header.deleteConversationConfirmBody}
 						</span>
 					</Modal.Body>
 					<Modal.Footer>
@@ -140,7 +141,7 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = ({
 							onClick={() => setConfirmingDelete(false)}
 							disabled={deleting}
 						>
-							{CHAT_STRINGS.header.deleteConversationConfirmCancel}
+							{strings.header.deleteConversationConfirmCancel}
 						</button>
 						<button
 							type="button"
@@ -149,7 +150,7 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = ({
 							disabled={deleting}
 							style={{ background: 'var(--pk-error)' }}
 						>
-							{deleting ? CHAT_STRINGS.header.refreshLabelBusy : CHAT_STRINGS.header.deleteConversationConfirmCta}
+							{deleting ? strings.header.refreshLabelBusy : strings.header.deleteConversationConfirmCta}
 						</button>
 					</Modal.Footer>
 				</Modal.Content>

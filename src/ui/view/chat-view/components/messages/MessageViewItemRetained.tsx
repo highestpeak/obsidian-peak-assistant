@@ -24,7 +24,10 @@ import { MessageStatusIndicator } from './MessageStatusIndicator';
 import { MessageSuggestedNext } from './MessageSuggestedNext';
 import { MessageMorePopover } from './MessageMorePopover';
 import { MessageInlineFollowup } from './MessageInlineFollowup';
-import { CHAT_STRINGS } from '../../chatStrings';
+import { useChatStrings } from '../../chatStringsContext';
+import { getMessageReceiptRenderer } from '../../integration/messageReceiptSlot';
+import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
+import { Notice, normalizePath } from 'obsidian';
 
 interface StreamingState {
 	isStreaming: boolean;
@@ -77,6 +80,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 	},
 	isLastMessage = false,
 }) => {
+	const strings = useChatStrings();
 	const { manager, app, eventBus, viewManager } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 	const activeProject = useChatDataStore((s) => s.activeProject);
@@ -84,6 +88,11 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 	const [copied, setCopied] = useState(false);
 	const [showInlineFollowup, setShowInlineFollowup] = useState(false);
 	const [showRawModal, setShowRawModal] = useState(false);
+
+	// PR-Chat-4 hook: external consumers (Usage Dashboard) can inject an inline
+	// cost/duration receipt. Read once per render — registry is module-local so
+	// no React state churn.
+	const ReceiptRenderer = getMessageReceiptRenderer();
 
 	const isUser = message.role === 'user';
 	const displayContent = message.content;
@@ -167,6 +176,61 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 		}
 	}, [activeConversation, activeProject, streamChat, manager, message.id]);
 
+	/**
+	 * Save the message body to a fresh markdown note in the vault and emit a
+	 * `vault_save` outcome event so the Usage Dashboard's MPG metric counts it
+	 * as a "useful" message.
+	 *
+	 * Target folder: `strings.message.vaultSaveDefaultFolder` (template-overridable;
+	 * defaults to "Peak Chat Saves"). The note name uses an ISO-derived timestamp
+	 * so multiple saves of the same conversation don't collide.
+	 */
+	const handleSaveToVault = useCallback(async () => {
+		if (!activeConversation) return;
+		const folderRaw = (strings.message.vaultSaveDefaultFolder || 'Peak Chat Saves').trim();
+		const folder = normalizePath(folderRaw);
+		try {
+			if (!app.vault.getAbstractFileByPath(folder)) {
+				await app.vault.createFolder(folder);
+			}
+			const titleSlug = (activeConversation.meta.title || 'chat')
+				.replace(/[\\/:*?"<>|#^[\]]/g, '')
+				.trim()
+				.slice(0, 60) || 'chat';
+			const stamp = new Date(message.createdAtTimestamp || Date.now())
+				.toISOString()
+				.replace(/[:.]/g, '-');
+			const path = normalizePath(`${folder}/${titleSlug} — ${stamp}.md`);
+			const front =
+				`---\n` +
+				`source: Peak Chat\n` +
+				`conversation_id: ${activeConversation.meta.id}\n` +
+				`message_id: ${message.id}\n` +
+				`model: ${message.model ?? ''}\n` +
+				`provider: ${message.provider ?? ''}\n` +
+				`saved_at: ${new Date().toISOString()}\n` +
+				`---\n\n`;
+			const body = String(message.content ?? '');
+			await app.vault.create(path, front + body);
+
+			// Best-effort telemetry — failure here must NOT block UX.
+			try {
+				await UsageOutcomeService.getInstance().recordVaultSave(
+					message.id,
+					activeConversation.meta.id,
+					path,
+				);
+			} catch (telemetryErr) {
+				console.warn('[MessageItemRetained] recordVaultSave failed:', telemetryErr);
+			}
+
+			new Notice(strings.message.vaultSaveSuccess);
+		} catch (err) {
+			console.error('[MessageItemRetained] Save to vault failed:', err);
+			new Notice(strings.message.vaultSaveFailed);
+		}
+	}, [activeConversation, app, message.id, message.content, message.model, message.provider, message.createdAtTimestamp, strings.message.vaultSaveDefaultFolder, strings.message.vaultSaveSuccess, strings.message.vaultSaveFailed]);
+
 	const handleBranch = useCallback(async () => {
 		if (!activeConversation) return;
 		try {
@@ -215,13 +279,13 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 		inlineHeadMeta.push(
 			`${streamingState.currentToolCalls.length} ${
 				streamingState.currentToolCalls.length === 1
-					? CHAT_STRINGS.message.toolsSingular
-					: CHAT_STRINGS.message.toolsPlural
+					? strings.message.toolsSingular
+					: strings.message.toolsPlural
 			}`
 		);
 	}
 	if (tokenCount != null && tokenCount > 0) {
-		inlineHeadMeta.push(`${tokenCount} ${CHAT_STRINGS.message.tokensSuffix}`);
+		inlineHeadMeta.push(`${tokenCount} ${strings.message.tokensSuffix}`);
 	}
 
 	const shouldShowLoader =
@@ -240,7 +304,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 			>
 				<div className="pkchat-msg__head">
 					<div className="pkchat-msg__avatar pkchat-msg__avatar--user">U</div>
-					<div className="pkchat-msg__name">{CHAT_STRINGS.message.youName}</div>
+					<div className="pkchat-msg__name">{strings.message.youName}</div>
 					{timestampText && (
 						<span className="pkchat-msg__head-meta">{timestampText}</span>
 					)}
@@ -272,7 +336,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 		>
 			<div className="pkchat-msg__head">
 				<div className="pkchat-msg__avatar">P</div>
-				<div className="pkchat-msg__name">{CHAT_STRINGS.message.assistantName}</div>
+				<div className="pkchat-msg__name">{strings.message.assistantName}</div>
 				{inlineHeadMeta.length > 0 && (
 					<span className="pkchat-msg__head-meta">
 						{inlineHeadMeta.map((bit, i) => (
@@ -327,6 +391,24 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 				) : null}
 			</div>
 
+			{/*
+			  Inline receipt slot — Usage Dashboard worktree (or any consumer)
+			  may register a renderer via `registerMessageReceiptRenderer` to
+			  attach a cost/duration/feedback strip under the message body.
+			  `usageLogId` is left `null` until the chat-side metadata-write
+			  plumbing lifts the PK through `chat_messages` (PR-Chat-4 §11.6
+			  notes this gap).
+			*/}
+			{ReceiptRenderer && activeConversation && !streamingState.isStreaming && (
+				<div className="pkchat-msg__receipt-slot">
+					{ReceiptRenderer({
+						messageId: message.id,
+						sessionId: activeConversation.meta.id,
+						usageLogId: null,
+					})}
+				</div>
+			)}
+
 			{isLastMessage && !streamingState.isStreaming && !message.isErrorMessage && (
 				<CapabilitySuggestion message={message} />
 			)}
@@ -343,20 +425,20 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 						type="button"
 						className="pkchat-msg__action"
 						onClick={handleCopy}
-						title={copied ? CHAT_STRINGS.message.copiedLabel : CHAT_STRINGS.message.copyLabel}
+						title={copied ? strings.message.copiedLabel : strings.message.copyLabel}
 					>
 						{copied ? <Check /> : <Copy />}
-						<span>{copied ? CHAT_STRINGS.message.copiedLabel : CHAT_STRINGS.message.copyLabel}</span>
+						<span>{copied ? strings.message.copiedLabel : strings.message.copyLabel}</span>
 					</button>
 
 					<button
 						type="button"
 						className="pkchat-msg__action"
 						onClick={handleRegenerate}
-						title={CHAT_STRINGS.message.regenerateLabel}
+						title={strings.message.regenerateLabel}
 					>
 						<RefreshCw />
-						<span>{CHAT_STRINGS.message.regenerateLabel}</span>
+						<span>{strings.message.regenerateLabel}</span>
 					</button>
 
 					<button
@@ -365,8 +447,8 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 						onClick={handleToggleStar}
 						title={
 							message.starred
-								? CHAT_STRINGS.message.unstarLabel
-								: CHAT_STRINGS.message.starLabel
+								? strings.message.unstarLabel
+								: strings.message.starLabel
 						}
 					>
 						<Star
@@ -374,8 +456,8 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 						/>
 						<span>
 							{message.starred
-								? CHAT_STRINGS.message.unstarLabel
-								: CHAT_STRINGS.message.starLabel}
+								? strings.message.unstarLabel
+								: strings.message.starLabel}
 						</span>
 					</button>
 
@@ -383,16 +465,17 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 						type="button"
 						className="pkchat-msg__action"
 						onClick={handleBranch}
-						title={CHAT_STRINGS.message.branchLabel}
+						title={strings.message.branchLabel}
 					>
 						<GitBranch />
-						<span>{CHAT_STRINGS.message.branchLabel}</span>
+						<span>{strings.message.branchLabel}</span>
 					</button>
 
 					<MessageMorePopover
 						onViewRaw={() => setShowRawModal(true)}
 						onCopyMarkdown={handleCopy}
 						onCopyJson={handleCopyJson}
+						onSaveToVault={handleSaveToVault}
 						onReplyInline={() => setShowInlineFollowup(true)}
 					/>
 				</div>
@@ -438,7 +521,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 							new SettingsModal(AppContext.getInstance()).open();
 						}}
 					>
-						{CHAT_STRINGS.message.openSettingsLabel}
+						{strings.message.openSettingsLabel}
 					</button>
 				)}
 
@@ -460,7 +543,7 @@ const RawMessageModal: React.FC<{ message: ChatMessage; onClose: () => void }> =
 		<Modal open onOpenChange={(open) => { if (!open) onClose(); }}>
 			<Modal.Content width="wide">
 				<Modal.Header>
-					<Modal.Title>{CHAT_STRINGS.message.viewRawTitle}</Modal.Title>
+					<Modal.Title>{strings.message.viewRawTitle}</Modal.Title>
 					<Modal.Close />
 				</Modal.Header>
 				<Modal.Body>

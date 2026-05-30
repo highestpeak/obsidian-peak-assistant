@@ -238,6 +238,32 @@ export default class MyPlugin extends Plugin {
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
 
+		// Register Chat surface capability adapter so Settings sees readiness.
+		// Chat needs an active agent profile with a primaryModel (the
+		// "Conversation" capability). Without one, sends would fail at the
+		// service-conversation.streamChat layer; surfacing the gap in Settings
+		// lets the user repair via the onboarding wizard / model picker.
+		CapabilityRegistry.getInstance().register({
+			surfaceId: 'chat',
+			surfaceLabel: 'Chat',
+			getCapabilityStatus: async () => {
+				const profileRegistry = ProfileRegistry.getInstance();
+				const profile = profileRegistry.getActiveAgentProfile();
+				const hasConvModel = !!profile?.primaryModel;
+				return [
+					{
+						capability: 'Conversation',
+						status: hasConvModel ? 'ready' : 'not-ready',
+						reason: hasConvModel ? undefined : 'No Conversation model selected',
+						repair: hasConvModel ? undefined : {
+							label: 'Choose Conversation model',
+							action: () => openSettingsModal(),
+						},
+					},
+				];
+			},
+		});
+
 		// Register Copilot surface capability adapter so Settings sees readiness.
 		// Reports: Fast Lookup (single-pass review), Research (multi-round review),
 		// Safety (inherited from harness permission mode — optional from copilot's

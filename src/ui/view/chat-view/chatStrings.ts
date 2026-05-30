@@ -1,14 +1,24 @@
 /**
- * chatStrings — typed default strings for the retained Chat UI.
+ * chatStrings — typed defaults + TemplateManager loader for the retained Chat UI.
  *
- * Source of truth: `templates/config/chat.json` (kept in sync manually for now).
- * PR-Chat-4 will replace this module with a TemplateManager-driven loader so the
- * JSON becomes runtime-editable without code changes. Until then, this module
- * provides the typed shape and the defaults that match chat.json byte-for-byte.
+ * Two-tier story (PR-Chat-4):
+ *   1. `templates/config/chat.json` is the runtime source of truth — editable
+ *      without recompiling. Loaded via TemplateManager.loadJson(ConfigTemplateId.Chat).
+ *   2. `DEFAULT_CHAT_STRINGS` (this module) ships compiled defaults, byte-for-byte
+ *      aligned with chat.json. They guarantee the UI renders even when the
+ *      template manager isn't initialized (mobile, early bootstrap, fixtures).
  *
- * Do not add ad-hoc UI strings in component files — add them here AND update
- * chat.json so the two stay aligned (PR-Chat-4 will collapse them into one).
+ * `CHAT_STRINGS` is the legacy named export — kept as an alias of
+ * `DEFAULT_CHAT_STRINGS` so existing imports don't break. New components should
+ * prefer the `useChatStrings()` hook (chatStringsContext.tsx) to pick up
+ * template overrides.
+ *
+ * Adding new strings: update BOTH `DEFAULT_CHAT_STRINGS` here AND
+ * `templates/config/chat.json` — they must stay aligned.
  */
+
+import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
+import { AppContext } from '@/app/context/AppContext';
 
 export interface ChatStrings {
 	header: {
@@ -114,16 +124,20 @@ export interface ChatStrings {
 		moreCopyMarkdown: string;
 		moreCopyJson: string;
 		moreReplyInline: string;
+		moreSaveToVault: string;
 		moreDelete: string;
 		viewRawTitle: string;
 		inlineFollowupHint: string;
 		inlineFollowupPlaceholder: string;
 		inlineFollowupCancel: string;
 		inlineFollowupSubmit: string;
+		vaultSaveDefaultFolder: string;
+		vaultSaveSuccess: string;
+		vaultSaveFailed: string;
 	};
 }
 
-export const CHAT_STRINGS: ChatStrings = {
+export const DEFAULT_CHAT_STRINGS: ChatStrings = {
 	header: {
 		openSourceLabel: 'Open source document',
 		refreshLabel: 'Refresh title',
@@ -227,11 +241,51 @@ export const CHAT_STRINGS: ChatStrings = {
 		moreCopyMarkdown: 'Copy as markdown',
 		moreCopyJson: 'Copy as JSON',
 		moreReplyInline: 'Reply inline',
+		moreSaveToVault: 'Save to vault',
 		moreDelete: 'Delete this message',
 		viewRawTitle: 'Raw message',
 		inlineFollowupHint: 'Inline reply — sent as the next message (threading lands later).',
 		inlineFollowupPlaceholder: 'Write your follow-up…',
 		inlineFollowupCancel: 'Cancel',
 		inlineFollowupSubmit: 'Send',
+		vaultSaveDefaultFolder: 'Peak Chat Saves',
+		vaultSaveSuccess: 'Saved to vault',
+		vaultSaveFailed: 'Could not save to vault',
 	},
 };
+
+/** Legacy alias — prefer `useChatStrings()` for runtime template overrides. */
+export const CHAT_STRINGS: ChatStrings = DEFAULT_CHAT_STRINGS;
+
+// ── Runtime loader ────────────────────────────────────────────────────────
+
+/**
+ * Load chat strings from the runtime config template, deep-merged onto the
+ * compiled defaults. Falls back to defaults whenever the template manager is
+ * unavailable (mobile bootstrap, early init, tests) or the load throws.
+ *
+ * Always resolves — never rejects. Safe to call from React effects.
+ */
+export async function loadChatStrings(): Promise<ChatStrings> {
+	try {
+		const tm = AppContext.getInstance().manager.getTemplateManager?.();
+		if (!tm) return DEFAULT_CHAT_STRINGS;
+		const parsed = await tm.loadJson<Partial<ChatStrings>>(ConfigTemplateId.Chat);
+		if (!parsed || typeof parsed !== 'object') return DEFAULT_CHAT_STRINGS;
+		return mergeChatStrings(DEFAULT_CHAT_STRINGS, parsed);
+	} catch {
+		return DEFAULT_CHAT_STRINGS;
+	}
+}
+
+/** Deep-merge two ChatStrings (single-level merge per nested group). */
+function mergeChatStrings(base: ChatStrings, override: Partial<ChatStrings>): ChatStrings {
+	return {
+		header: { ...base.header, ...(override.header ?? {}) },
+		composer: { ...base.composer, ...(override.composer ?? {}) },
+		runSettings: { ...base.runSettings, ...(override.runSettings ?? {}) },
+		indexSlot: { ...base.indexSlot, ...(override.indexSlot ?? {}) },
+		index: { ...base.index, ...(override.index ?? {}) },
+		message: { ...base.message, ...(override.message ?? {}) },
+	};
+}

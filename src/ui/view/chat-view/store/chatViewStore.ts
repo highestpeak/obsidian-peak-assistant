@@ -66,6 +66,14 @@ interface ChatViewState {
 	submitAction: ((text: string) => void) | null;
 	// ── Insert-to-input action (for Quote selection) ──
 	insertToInput: ((text: string) => void) | null;
+
+	// ── Continuation telemetry (PR-Chat-4 §11.4) ──
+	// Set when an assistant stream completes; consulted on the next user
+	// submit so we can record a `continuation` outcome event if the user
+	// followed up within 60s. Pair with `lastAssistantMessageId` for the
+	// outcome-event message_id field.
+	lastAssistantCompletedAt: number | null;
+	lastAssistantMessageId: string | null;
 }
 
 interface ChatViewActions {
@@ -108,6 +116,8 @@ interface ChatViewActions {
 	// ── Submit / Insert actions ──
 	setSubmitAction: (fn: ((text: string) => void) | null) => void;
 	setInsertToInput: (fn: ((text: string) => void) | null) => void;
+	markAssistantCompleted: (messageId: string, ts?: number) => void;
+	clearAssistantCompletion: () => void;
 
 	// ── Lifecycle ──
 	reset: () => void;
@@ -162,6 +172,10 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 	// ── Submit / Insert actions ──
 	submitAction: null,
 	insertToInput: null,
+
+	// ── Continuation telemetry ──
+	lastAssistantCompletedAt: null,
+	lastAssistantMessageId: null,
 
 	// ═══════════════════════════════════════════════════════════════════════
 	// Navigation actions
@@ -309,6 +323,14 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 
 	setSubmitAction: (fn) => set({ submitAction: fn }),
 	setInsertToInput: (fn) => set({ insertToInput: fn }),
+	markAssistantCompleted: (messageId, ts) => set({
+		lastAssistantCompletedAt: ts ?? Date.now(),
+		lastAssistantMessageId: messageId,
+	}),
+	clearAssistantCompletion: () => set({
+		lastAssistantCompletedAt: null,
+		lastAssistantMessageId: null,
+	}),
 
 	// ═══════════════════════════════════════════════════════════════════════
 	// Lifecycle

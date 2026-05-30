@@ -6,8 +6,8 @@ import {
 	PopoverItem,
 	IconButton,
 } from '@/ui/components/primitives';
-import { Code, Copy, FileJson, MessageSquare, MoreHorizontal, Trash2 } from 'lucide-react';
-import { CHAT_STRINGS } from '../../chatStrings';
+import { Code, Copy, FileJson, FilePlus2, MessageSquare, MoreHorizontal, Trash2 } from 'lucide-react';
+import { useChatStrings } from '../../chatStringsContext';
 
 /**
  * MessageMorePopover — overflow menu for per-message actions that don't
@@ -22,6 +22,7 @@ export interface MessageMorePopoverProps {
 	onCopyMarkdown?: () => void;
 	onCopyJson?: () => void;
 	onReplyInline?: () => void;
+	onSaveToVault?: () => void;
 	onDelete?: () => void;
 }
 
@@ -30,30 +31,38 @@ export const MessageMorePopover: React.FC<MessageMorePopoverProps> = ({
 	onCopyMarkdown,
 	onCopyJson,
 	onReplyInline,
+	onSaveToVault,
 	onDelete,
 }) => {
+	const strings = useChatStrings();
 	const items = [
 		onViewRaw && {
 			key: 'view-raw',
-			label: CHAT_STRINGS.message.moreViewRaw,
+			label: strings.message.moreViewRaw,
 			icon: <Code />,
 			onClick: onViewRaw,
 		},
 		onCopyMarkdown && {
 			key: 'copy-markdown',
-			label: CHAT_STRINGS.message.moreCopyMarkdown,
+			label: strings.message.moreCopyMarkdown,
 			icon: <Copy />,
 			onClick: onCopyMarkdown,
 		},
 		onCopyJson && {
 			key: 'copy-json',
-			label: CHAT_STRINGS.message.moreCopyJson,
+			label: strings.message.moreCopyJson,
 			icon: <FileJson />,
 			onClick: onCopyJson,
 		},
+		onSaveToVault && {
+			key: 'save-to-vault',
+			label: strings.message.moreSaveToVault,
+			icon: <FilePlus2 />,
+			onClick: onSaveToVault,
+		},
 		onReplyInline && {
 			key: 'reply-inline',
-			label: CHAT_STRINGS.message.moreReplyInline,
+			label: strings.message.moreReplyInline,
 			icon: <MessageSquare />,
 			onClick: onReplyInline,
 		},
@@ -65,8 +74,8 @@ export const MessageMorePopover: React.FC<MessageMorePopoverProps> = ({
 		<Popover>
 			<PopoverTrigger asChild>
 				<IconButton
-					label={CHAT_STRINGS.message.moreLabel}
-					title={CHAT_STRINGS.message.moreLabel}
+					label={strings.message.moreLabel}
+					title={strings.message.moreLabel}
 					className="pkchat-msg__action pkchat-msg__action--more"
 				>
 					<MoreHorizontal />
@@ -85,7 +94,7 @@ export const MessageMorePopover: React.FC<MessageMorePopoverProps> = ({
 						onClick={onDelete}
 					>
 						<Trash2 />
-						<span>{CHAT_STRINGS.message.moreDelete}</span>
+						<span>{strings.message.moreDelete}</span>
 					</PopoverItem>
 				)}
 			</PopoverContent>

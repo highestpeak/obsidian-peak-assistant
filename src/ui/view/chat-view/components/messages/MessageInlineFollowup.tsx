@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useChatViewStore } from '../../store/chatViewStore';
-import { CHAT_STRINGS } from '../../chatStrings';
+import { useChatStrings } from '../../chatStringsContext';
 
 /**
  * MessageInlineFollowup — small inline composer rendered under a message
@@ -16,6 +16,7 @@ export interface MessageInlineFollowupProps {
 }
 
 export const MessageInlineFollowup: React.FC<MessageInlineFollowupProps> = ({ onClose }) => {
+	const strings = useChatStrings();
 	const [value, setValue] = useState('');
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -48,12 +49,12 @@ export const MessageInlineFollowup: React.FC<MessageInlineFollowupProps> = ({ on
 	return (
 		<div className="pkchat-msg__inline-followup">
 			<div className="pkchat-msg__inline-followup__head">
-				<span>{CHAT_STRINGS.message.inlineFollowupHint}</span>
+				<span>{strings.message.inlineFollowupHint}</span>
 			</div>
 			<textarea
 				ref={textareaRef}
 				className="pkchat-msg__inline-followup__textarea"
-				placeholder={CHAT_STRINGS.message.inlineFollowupPlaceholder}
+				placeholder={strings.message.inlineFollowupPlaceholder}
 				value={value}
 				onChange={(e) => setValue(e.target.value)}
 				onKeyDown={handleKeyDown}
@@ -64,7 +65,7 @@ export const MessageInlineFollowup: React.FC<MessageInlineFollowupProps> = ({ on
 					className="pkchat-msg__inline-followup__cancel"
 					onClick={onClose}
 				>
-					{CHAT_STRINGS.message.inlineFollowupCancel}
+					{strings.message.inlineFollowupCancel}
 				</button>
 				<button
 					type="button"
@@ -72,7 +73,7 @@ export const MessageInlineFollowup: React.FC<MessageInlineFollowupProps> = ({ on
 					disabled={value.trim().length === 0}
 					onClick={handleSubmit}
 				>
-					{CHAT_STRINGS.message.inlineFollowupSubmit}
+					{strings.message.inlineFollowupSubmit}
 				</button>
 			</div>
 		</div>

@@ -104,11 +104,15 @@
     "moreCopyMarkdown": "Copy as markdown",
     "moreCopyJson": "Copy as JSON",
     "moreReplyInline": "Reply inline",
+    "moreSaveToVault": "Save to vault",
     "moreDelete": "Delete this message",
     "viewRawTitle": "Raw message",
     "inlineFollowupHint": "Inline reply — sent as the next message (threading lands later).",
     "inlineFollowupPlaceholder": "Write your follow-up…",
     "inlineFollowupCancel": "Cancel",
-    "inlineFollowupSubmit": "Send"
+    "inlineFollowupSubmit": "Send",
+    "vaultSaveDefaultFolder": "Peak Chat Saves",
+    "vaultSaveSuccess": "Saved to vault",
+    "vaultSaveFailed": "Could not save to vault"
   }
 }
