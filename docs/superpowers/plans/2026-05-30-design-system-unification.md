@@ -2,7 +2,14 @@
 
 **日期**：2026-05-30
 **作者**：planning session
-**状态**：✅ §5 决议已拍板；✅ PR-0 已实施 + landed on master（2026-05-30，commits a7f0578 → e28001d，7 tasks 全部 done）
+**状态**：
+- ✅ §5 决议已拍板
+- ✅ PR-0 已 landed on master（2026-05-30，commits a7f0578 → e28001d，7 tasks 全部 done）
+- ✅ Copilot skin housekeeping landed on master（commit a459578）
+- 🔄 3 worktree 并行执行中（2026-05-30 路 B：单 session 并行 dispatch 多 subagent）
+  - chat-retained: 3/4 PR done（7f608e1, 1ff9a22, 77994b6）— PR-Chat-4 pending（session limit）
+  - dashboard-redesign: 3/4 PR done（bc345d7, 6bbc480, eb16d27）— PR-Dash-4 等 PR-Chat-4 暴露 receipt/context hook
+  - onboarding-settings: 3/5 PR done（a93daa6, a068427, 8840ec1）— PR-D/PR-E pending（session limit）
 **前置 spec**：
 - `docs/superpowers/specs/2026-05-29-onboarding-design-brief.md`
 - `docs/superpowers/specs/2026-05-29-settings-interface-design.md`
