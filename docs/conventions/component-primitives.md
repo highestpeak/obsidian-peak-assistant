@@ -11,11 +11,13 @@ Tokens: `src/styles/peak-tokens.css` (see [design-tokens.md](./design-tokens.md)
 
 ## Scope discipline
 
-Every selector in `peak-components.css` is wrapped with `:where(.pktw-root, .peak-design-root)` low-specificity prefix. That means:
+Every selector in `peak-components.css` is comma-scoped as `.pktw-root X, .peak-design-root X`. That means:
 
 - The class works inside any surface mounted under `.pktw-root` (chat / settings / project views) or `.peak-design-root` (legacy modals).
 - It does NOT escape to leak into Obsidian's own UI chrome.
-- Specificity stays at 0,1,0 so per-component overrides can win without `!important`.
+- Specificity is (0,2,0) per branch — enough to win against `obsidian-reset.css` rules like `.peak-design-root button { padding:0; border:0 }` (specificity 0,1,1) so button-/input-based primitives keep their declared border/padding/background.
+
+**Do NOT use `:where(.pktw-root, .peak-design-root) X`** — that's (0,1,0) and gets blanked by the reset. The codebase used to do this; commit `7ad6d20` rewrote all primitives to the comma form after a Playwright specificity test confirmed the regression.
 
 See [obsidian-css-defense.md](./obsidian-css-defense.md) for the broader rule.
 

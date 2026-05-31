@@ -46,6 +46,22 @@ should win. But three things conspire against us:
 3. **Hover / focus / disabled states** aren't explicitly set, so they fall
    back to Obsidian's
 
+### The 2026-05-31 regression: `:where()` vs reset
+
+The Design System Unification (PR-0) scoped every `.pk-*` primitive with
+`:where(.pktw-root, .peak-design-root) .pk-foo` to "keep specificity low so
+per-component overrides could win without `!important`". That logic worked
+for component-level overrides — but it ignored that the local reset itself
+uses `.peak-design-root button { padding: 0; border: 0; border-radius: 0; ... }`
+(specificity `(0,1,1)`). `:where()` contributes 0 specificity, so the scoped
+selectors were `(0,1,0)` — LOWER than the reset. Every `<button>`/`<input>`
+based primitive (`.pk-pill`, `.pk-icon-btn`, `.pk-segmented__opt`,
+`.pkonb-radio-card`, etc.) had its border/padding/background blanked.
+
+**Fix**: use plain comma-scoping `.pktw-root .pk-foo, .peak-design-root .pk-foo`
+— `(0,2,0)` per branch, beats the reset. See commit `7ad6d20`. **Do not
+re-introduce `:where()` for primitives that share a tag with reset rules.**
+
 ### Why this is a recurring trap
 
 - Most components look fine in isolation (storybook / mock HTML opened in
