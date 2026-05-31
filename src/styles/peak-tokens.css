@@ -58,18 +58,22 @@
 	--pk-success:            #22c55e;
 	--pk-success-bg:         rgba(34, 197, 94, 0.12);
 	--pk-success-text:       #15803d;
+	--pk-success-border:     rgba(34, 197, 94, 0.25);
 
 	--pk-warning:            #f59e0b;
 	--pk-warning-bg:         rgba(245, 158, 11, 0.14);
 	--pk-warning-text:       #b45309;
+	--pk-warning-border:     rgba(245, 158, 11, 0.25);
 
 	--pk-error:              #ef4444;
 	--pk-error-bg:           rgba(239, 68, 68, 0.12);
 	--pk-error-text:         #b91c1c;
+	--pk-error-border:       rgba(239, 68, 68, 0.25);
 
 	--pk-info:               #3b82f6;
 	--pk-info-bg:            rgba(59, 130, 246, 0.12);
 	--pk-info-text:          #1d4ed8;
+	--pk-info-border:        rgba(59, 130, 246, 0.25);
 
 	--pk-indigo:             #6366f1;     /* vault review "dying" status */
 	--pk-indigo-bg:          rgba(99, 102, 241, 0.12);
@@ -187,18 +191,22 @@
 	--pk-success:            #4ade80;
 	--pk-success-bg:         rgba(74, 222, 128, 0.15);
 	--pk-success-text:       #86efac;
+	--pk-success-border:     rgba(74, 222, 128, 0.30);
 
 	--pk-warning:            #fbbf24;
 	--pk-warning-bg:         rgba(251, 191, 36, 0.16);
 	--pk-warning-text:       #fcd34d;
+	--pk-warning-border:     rgba(251, 191, 36, 0.30);
 
 	--pk-error:              #f87171;
 	--pk-error-bg:           rgba(248, 113, 113, 0.16);
 	--pk-error-text:         #fca5a5;
+	--pk-error-border:       rgba(248, 113, 113, 0.30);
 
 	--pk-info:               #60a5fa;
 	--pk-info-bg:            rgba(96, 165, 250, 0.15);
 	--pk-info-text:          #93c5fd;
+	--pk-info-border:        rgba(96, 165, 250, 0.30);
 
 	--pk-indigo:             #93b1ff;
 	--pk-indigo-bg:          rgba(147, 177, 255, 0.16);
