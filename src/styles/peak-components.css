@@ -1656,25 +1656,40 @@
 .peak-design-root .pkchat-msg-list {
   display: flex;
   flex-direction: column;
-  /* Per chat-retained-mock.html: the message column lives inside a
-     three-pane shell where the center column is ~684px wide. Now that the
-     ConversationIndex moved to Obsidian's right sidebar, the chat leaf
-     gets the full center pane — we constrain message width here so neither
-     user bubbles nor assistant document bodies stretch full-width. */
+  /* Container widens enough for side-by-side bubble layout (user right,
+     assistant left). Per-message width caps live on .pkchat-msg below. */
   width: 100%;
-  max-width: 760px;
+  max-width: 880px;
   margin: 0 auto;
   padding: var(--pk-space-4) var(--pk-space-5) var(--pk-space-6);
   gap: var(--pk-space-6);
   box-sizing: border-box;
 }
 
+/* Assistant default: left-aligned with avatar+head row, body takes the
+   available column width up to the container max. */
 .pktw-root .pkchat-msg,
 .peak-design-root .pkchat-msg {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-3);
+  align-self: flex-start;
   width: 100%;
+  max-width: 100%;
+}
+
+/* User message: right-aligned bubble, narrower max-width (iMessage style).
+   Head row is hidden — bubble alone carries identity via position+color. */
+.pktw-root .pkchat-msg--user,
+.peak-design-root .pkchat-msg--user {
+  align-self: flex-end;
+  max-width: min(70%, 520px);
+  width: auto;
+}
+
+.pktw-root .pkchat-msg--user .pkchat-msg__head,
+.peak-design-root .pkchat-msg--user .pkchat-msg__head {
+  display: none;
 }
 
 .pktw-root .pkchat-msg__head,
