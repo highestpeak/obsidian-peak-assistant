@@ -8,6 +8,7 @@ import { UsageDashboardView, USAGE_DASHBOARD_VIEW_TYPE } from '@/ui/view/usage-d
 import { VaultXRayView, VAULT_XRAY_VIEW_TYPE } from '@/ui/view/vault-lint/VaultXRayView';
 import { GapAnalysisView, GAP_ANALYSIS_VIEW_TYPE } from '@/ui/view/gap-analysis/GapAnalysisView';
 import { KnowledgeCenterView, KNOWLEDGE_CENTER_VIEW_TYPE } from '@/ui/view/knowledge-center/KnowledgeCenterView';
+import { ConversationOutlineView, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/ui/view/ConversationOutlineView';
 import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
 import { InputModal } from '@/ui/component/InputModal';
 import { App, ViewCreator } from 'obsidian';
@@ -50,6 +51,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(KNOWLEDGE_CENTER_VIEW_TYPE, (leaf) => {
 			return new KnowledgeCenterView(leaf, appContext);
+		});
+		this.viewCreators.set(CONVERSATION_OUTLINE_VIEW_TYPE, (leaf) => {
+			return new ConversationOutlineView(leaf, appContext);
 		});
 	}
 

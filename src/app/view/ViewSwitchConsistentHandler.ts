@@ -2,6 +2,7 @@ import { App, ViewState, WorkspaceLeaf } from 'obsidian';
 import {
 	AMBIENT_PUSH_VIEW_TYPE,
 	CHAT_VIEW_TYPE,
+	CONVERSATION_OUTLINE_VIEW_TYPE,
 	PROJECT_LIST_VIEW_TYPE,
 	STANDALONE_PEAK_VIEW_TYPES,
 	TRACKED_VIEW_TYPES,
@@ -73,9 +74,28 @@ export class ViewSwitchConsistentHandler {
 				await leftLeaf.setViewState({ type: PROJECT_LIST_VIEW_TYPE, state: {}, active: true });
 			}
 
-			// Right sidebar intentionally left alone — ConversationIndex panel inside chat view
-			// now subsumes the old MessageHistoryView outline. AmbientPushView remains the only
-			// peak-owned right-sidebar surface and is mounted on demand by ViewManager.
+			// Right sidebar: ensure the Conversation Outline leaf exists. Mounts the
+			// new (PR-Chat-3) 4-tab ConversationIndex UI on Obsidian's actual right
+			// sidebar instead of inside the chat shell. AmbientPushView still gets
+			// the same sidebar — if it's already there we create a sibling tab.
+			const existingOutlineLeaves =
+				this.app.workspace.getLeavesOfType?.(CONVERSATION_OUTLINE_VIEW_TYPE) ?? [];
+			let outlineLeaf: WorkspaceLeaf | null = existingOutlineLeaves[0] ?? null;
+			if (!outlineLeaf && typeof this.app.workspace.getRightLeaf === 'function') {
+				const candidate = this.app.workspace.getRightLeaf(false);
+				if (candidate && candidate.view?.getViewType() === AMBIENT_PUSH_VIEW_TYPE) {
+					outlineLeaf = this.app.workspace.getRightLeaf(true) ?? candidate;
+				} else {
+					outlineLeaf = candidate;
+				}
+			}
+			if (outlineLeaf) {
+				await outlineLeaf.setViewState({
+					type: CONVERSATION_OUTLINE_VIEW_TYPE,
+					state: {},
+					active: false,
+				});
+			}
 
 			this.app.workspace.revealLeaf(centerLeaf);
 			this.isChatLayoutActive = true;

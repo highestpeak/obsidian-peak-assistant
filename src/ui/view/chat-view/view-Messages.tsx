@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useChatViewStore } from './store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { OpenLinkEvent, ViewEventType } from '@/core/eventBus';
@@ -7,7 +7,6 @@ import { FileChangesList } from './components/messages/FileChangesList';
 import { ConvertToProjectSuggestion } from './components/ConvertToProjectSuggestion';
 import { HeaderRetained } from './components/HeaderRetained';
 import { ComposerRetained } from './components/ComposerRetained';
-import { ConversationIndex } from './components/ConversationIndex';
 
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
@@ -28,9 +27,10 @@ import { ChatStringsProvider } from './chatStringsContext';
  *          ├─ scroll-to-top/bottom affordances
  *          └─ ComposerRetained      ← input capsule + run-chip + send
  *
- * The right "Conversation Index" slot is a structural placeholder; PR-Chat-3
- * will replace .pkchat-index-empty with the real 4-tab panel. PR-Chat-2 will
- * upgrade the message rendering inside .pkchat-body.
+ * The 4-tab Conversation Index no longer lives inside this shell — it was
+ * promoted to a dedicated Obsidian right-sidebar ItemView
+ * (peak-conversation-outline-view) so it shares space and behavior with
+ * other sidebar panels. See @/ui/view/ConversationOutlineView.
  *
  * Service/business logic (orchestrator, providers, streaming, context builder)
  * is intentionally NOT touched — only the UI chrome is being rebuilt here.
@@ -62,13 +62,6 @@ const MessagesViewInner: React.FC = () => {
 			clearMessages();
 		}
 	}, [activeConversation, activeMessages, setMessages, clearMessages]);
-
-	// Right Conversation Index panel: default ON for desktop, OFF for narrow.
-	// We initialize once from window width; user toggles override afterwards.
-	const [indexVisible, setIndexVisible] = useState<boolean>(() => {
-		if (typeof window === 'undefined') return true;
-		return window.innerWidth >= 720;
-	});
 
 	// Scroll management — kept identical to pre-refactor behavior
 	const bodyScrollRef = useRef<HTMLDivElement>(null);
@@ -137,17 +130,10 @@ const MessagesViewInner: React.FC = () => {
 		);
 	}
 
-	const shellClass = indexVisible
-		? 'peak-design-root pkchat-shell pkchat-shell--with-index'
-		: 'peak-design-root pkchat-shell';
-
 	return (
-		<div className={shellClass}>
+		<div className="peak-design-root pkchat-shell">
 			<div className="pkchat-center">
-				<HeaderRetained
-					indexVisible={indexVisible}
-					onToggleIndex={() => setIndexVisible((v) => !v)}
-				/>
+				<HeaderRetained />
 
 				<div
 					ref={bodyScrollRef}
@@ -191,15 +177,11 @@ const MessagesViewInner: React.FC = () => {
 			</div>
 
 			{/*
-			  PR-Chat-3: Conversation Index right panel (4 tabs).
-			  Toggle lives on HeaderRetained — keeps the chat chrome unchanged
-			  when collapsed (chat column reclaims full width).
+			  The Conversation Outline (4-tab index) lives in Obsidian's right
+			  sidebar as a dedicated ItemView (peak-conversation-outline-view),
+			  auto-mounted by ViewSwitchConsistentHandler.activateChatView().
+			  No in-shell right slot anymore.
 			*/}
-			{indexVisible && (
-				<aside className="pkchat-right">
-					<ConversationIndex onClose={() => setIndexVisible(false)} />
-				</aside>
-			)}
 		</div>
 	);
 };

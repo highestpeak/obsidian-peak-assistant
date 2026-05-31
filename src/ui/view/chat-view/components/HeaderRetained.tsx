@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ExternalLink, RefreshCw, Trash2, PanelRight, PanelRightClose } from 'lucide-react';
+import { ExternalLink, RefreshCw, Trash2 } from 'lucide-react';
 import { IconButton, Modal } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -7,11 +7,7 @@ import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useChatStrings } from '../chatStringsContext';
 
-export interface HeaderRetainedProps {
-	/** When provided, renders a panel-toggle IconButton anchored before the actions group. */
-	indexVisible?: boolean;
-	onToggleIndex?: () => void;
-}
+export interface HeaderRetainedProps {}
 
 /**
  * HeaderRetained — minimal chat header per the 2026-05-29 retained design.
@@ -24,11 +20,13 @@ export interface HeaderRetainedProps {
  * Delete-conversation reattaches the affordance that used to live inside the
  * legacy OpenMenuButton (orphaned by PR-Chat-1). PR-Chat-2 wires it to a
  * confirm modal using the PR-0 Modal primitive.
+ *
+ * The right-panel toggle that lived here previously was removed when the
+ * Conversation Index moved out of the chat shell into a real Obsidian
+ * right-sidebar ItemView (peak-conversation-outline-view). Obsidian's own
+ * sidebar toggle is the canonical control now.
  */
-export const HeaderRetained: React.FC<HeaderRetainedProps> = ({
-	indexVisible,
-	onToggleIndex,
-}) => {
+export const HeaderRetained: React.FC<HeaderRetainedProps> = () => {
 	const strings = useChatStrings();
 	const { app, manager } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
@@ -103,19 +101,6 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = ({
 				>
 					<RefreshCw className={isRegenerating ? 'pktw-animate-spin' : undefined} />
 				</IconButton>
-				{onToggleIndex && (
-					<IconButton
-						label={indexVisible
-							? strings.index.toggleHideLabel
-							: strings.index.toggleShowLabel}
-						title={indexVisible
-							? strings.index.toggleHideLabel
-							: strings.index.toggleShowLabel}
-						onClick={onToggleIndex}
-					>
-						{indexVisible ? <PanelRightClose /> : <PanelRight />}
-					</IconButton>
-				)}
 			</div>
 
 			<Modal

@@ -667,10 +667,6 @@
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-shell--with-index {
-  grid-template-columns: minmax(0, 1fr) 320px;
-}
-
 :where(.pktw-root, .peak-design-root) .pkchat-center {
   display: flex;
   flex-direction: column;
@@ -680,9 +676,14 @@
   overflow: hidden;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-right {
-  border-left: 1px solid var(--pk-border);
-  background: var(--pk-surface);
+/* Conversation Outline sidebar view (peak-conversation-outline-view) hosts the
+   same ConversationIndex UI as the legacy in-shell right slot. The ItemView
+   inserts content into containerEl.children[1] (the content area) — give that
+   element flex layout so the inner .pkchat-idx (which is min-height: 0 flex)
+   can fill the sidebar height correctly. */
+.peak-conversation-outline-view > .view-content,
+.peak-conversation-outline-view > :nth-child(2) {
+  padding: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;

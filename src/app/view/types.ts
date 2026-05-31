@@ -6,6 +6,7 @@ export const USAGE_DASHBOARD_VIEW_TYPE = 'peak-usage-dashboard';
 export const VAULT_XRAY_VIEW_TYPE = 'peak-vault-xray-view';
 export const GAP_ANALYSIS_VIEW_TYPE = 'peak-gap-analysis';
 export const KNOWLEDGE_CENTER_VIEW_TYPE = 'peak-knowledge-center';
+export const CONVERSATION_OUTLINE_VIEW_TYPE = 'peak-conversation-outline-view';
 
 export const TRACKED_VIEW_TYPES = new Set<string>([
 	CHAT_VIEW_TYPE,
