@@ -920,7 +920,7 @@
 .pktw-root .pkchat-run-chip[data-state="open"],
 .peak-design-root .pkchat-run-chip[data-state="open"] {
   border-color: var(--pk-border-accent);
-  background: var(--pk-accent-tint);
+  background: var(--pk-accent-soft);
   color: var(--pk-accent-text);
 }
 
@@ -1005,7 +1005,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-3);
-  min-width: 280px;
+  min-width: 320px;
+  padding: 14px;
 }
 
 .pktw-root .pkchat-runpop__head,
@@ -1320,7 +1321,7 @@
 
 .pktw-root .pkchat-idx-topic__name,
 .peak-design-root .pkchat-idx-topic__name {
-  font-size: var(--pk-text-sm);
+  font-size: var(--pk-text-md);
   font-weight: 600;
   color: var(--pk-text-primary);
   flex: 1;
@@ -1600,13 +1601,12 @@
 
 .pktw-root .pkchat-idx-art__name,
 .peak-design-root .pkchat-idx-art__name {
-  font-size: var(--pk-text-sm);
+  font-size: var(--pk-text-md);
   font-weight: 600;
   color: var(--pk-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--pk-font-mono);
 }
 
 .pktw-root .pkchat-idx-art__sub,
@@ -1753,9 +1753,9 @@
 .peak-design-root .pkchat-msg--user .pkchat-msg__body {
   background: var(--pk-surface-sunken);
   border: 1px solid var(--pk-border);
-  border-radius: var(--pk-radius-md);
-  padding: var(--pk-space-3) var(--pk-space-4);
-  font-size: var(--pk-text-md);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: var(--pk-text-lg);
 }
 
 .pktw-root .pkchat-msg__meta-row,
@@ -2895,8 +2895,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-4);
-  padding: var(--pk-space-2) 0;
-  max-width: 860px;
+  padding: var(--pk-space-8) var(--pk-space-6) var(--pk-space-12);
+  max-width: 920px;
   margin: 0 auto;
 }
 
