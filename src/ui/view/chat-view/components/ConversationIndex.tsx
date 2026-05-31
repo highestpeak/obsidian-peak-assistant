@@ -15,6 +15,8 @@ import { Segmented, IconButton } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import type { ChatMessage } from '@/service/chat/types';
 import { useChatStrings } from '../chatStringsContext';
+import { AppContext } from '@/app/context/AppContext';
+import { CHAT_VIEW_TYPE } from '@/app/view/types';
 
 /**
  * ConversationIndex — right-side navigator with 4 tabs (PR-Chat-3).
@@ -96,18 +98,40 @@ function inferArtifactKindFromResource(kind: string | undefined, source: string)
 }
 
 function scrollToMessage(messageId: string) {
-	const el = document.querySelector(
-		`[data-message-id="${CSS.escape(messageId)}"]`
-	) as HTMLElement | null;
-	if (!el) return;
-	el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-	// Flash highlight: use the same accent tint briefly.
-	el.style.transition = 'background-color 0.4s ease';
-	const prev = el.style.backgroundColor;
-	el.style.backgroundColor = 'var(--pk-accent-tint)';
-	window.setTimeout(() => {
-		el.style.backgroundColor = prev;
-	}, 900);
+	// First, make sure the chat leaf is the active center pane. The outline
+	// lives in Obsidian's right sidebar; if the user is focused on a markdown
+	// document, the chat-rendered message DOM may not be visible. revealLeaf
+	// brings the chat leaf to the front without stealing focus from the
+	// outline (so the user can keep clicking outline items).
+	try {
+		const app = AppContext.getInstance().app;
+		const chatLeaf = app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0];
+		if (chatLeaf) {
+			app.workspace.revealLeaf(chatLeaf);
+		}
+	} catch {
+		// Best-effort — fall through to the scroll path even if app lookup fails.
+	}
+
+	// querySelector is global to the workspace DOM, so it finds the chat
+	// message even though the outline is in a separate Obsidian leaf.
+	const performScroll = () => {
+		const el = document.querySelector(
+			`[data-message-id="${CSS.escape(messageId)}"]`
+		) as HTMLElement | null;
+		if (!el) return;
+		el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		// Flash highlight: use the same accent tint briefly.
+		el.style.transition = 'background-color 0.4s ease';
+		const prev = el.style.backgroundColor;
+		el.style.backgroundColor = 'var(--pk-accent-tint)';
+		window.setTimeout(() => {
+			el.style.backgroundColor = prev;
+		}, 900);
+	};
+
+	// Allow one frame for revealLeaf to settle before scrolling.
+	window.requestAnimationFrame(performScroll);
 }
 
 function ArtifactIcon({ kind }: { kind: ArtifactKind }) {

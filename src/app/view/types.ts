@@ -20,4 +20,10 @@ export const STANDALONE_PEAK_VIEW_TYPES = new Set<string>([
 	VAULT_XRAY_VIEW_TYPE,
 	GAP_ANALYSIS_VIEW_TYPE,
 	KNOWLEDGE_CENTER_VIEW_TYPE,
+	// Conversation Outline lives in Obsidian's right sidebar (companion to
+	// the chat view). Marked standalone so that focusing it / clicking inside
+	// it does NOT cause ViewSwitchConsistentHandler to flip the entire
+	// layout back to document mode (which was replacing the chat leaf with
+	// a markdown file when users clicked any outline item).
+	CONVERSATION_OUTLINE_VIEW_TYPE,
 ]);

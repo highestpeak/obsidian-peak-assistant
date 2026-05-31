@@ -539,10 +539,10 @@ function CapabilitiesStep() {
     const strings = useOnboardingStrings();
     const copy = strings.steps.capabilities;
     return (
-        <div className="pkonb-section">
-            <div style={{ textAlign: 'center' }}>
-                <div className="pkonb-section__title">{copy.title}</div>
-                <div className="pkonb-section__desc">{copy.description}</div>
+        <div className="pkonb-section pkonb-section--cap">
+            <div className="pkonb-section__intro pkonb-section__intro--center">
+                <span className="pkonb-section__title">{copy.title}</span>
+                <span className="pkonb-section__desc">{copy.description}</span>
             </div>
             <div className="pkonb-cap-grid">
                 {copy.cards.map((c) => {
@@ -557,7 +557,8 @@ function CapabilitiesStep() {
                             </div>
                             <div className="pkonb-cap-card__body">{c.body}</div>
                             <div className="pkonb-cap-card__try">
-                                Try later: <code>{c.tryLater}</code>
+                                <span className="pkonb-cap-card__try-label">Try later:</span>
+                                <code>{c.tryLater}</code>
                             </div>
                         </div>
                     );

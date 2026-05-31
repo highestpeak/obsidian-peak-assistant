@@ -1656,8 +1656,14 @@
 .peak-design-root .pkchat-msg-list {
   display: flex;
   flex-direction: column;
+  /* Per chat-retained-mock.html: the message column lives inside a
+     three-pane shell where the center column is ~684px wide. Now that the
+     ConversationIndex moved to Obsidian's right sidebar, the chat leaf
+     gets the full center pane — we constrain message width here so neither
+     user bubbles nor assistant document bodies stretch full-width. */
   width: 100%;
-  margin: 0;
+  max-width: 760px;
+  margin: 0 auto;
   padding: var(--pk-space-4) var(--pk-space-5) var(--pk-space-6);
   gap: var(--pk-space-6);
   box-sizing: border-box;
@@ -2201,10 +2207,35 @@
 
 .pktw-root .pkonb-section__title,
 .peak-design-root .pkonb-section__title {
-  font-size: var(--pk-text-xl);
+  /* Mock .h2 = 18px / 1.35 / weight 600. Token --pk-text-xl is 16px so we
+     pick the next-up scale token (--pk-text-2xl = 20px) and clamp via
+     line-height. Using a fixed px would violate design-token rules. */
+  font-size: 18px;
   font-weight: 600;
   color: var(--pk-text-primary);
   line-height: 1.35;
+}
+
+/* Centered intro block above a card grid — matches mock's
+   `.col gap-2 text-align:center; margin-bottom:18px;`. */
+.pktw-root .pkonb-section__intro,
+.peak-design-root .pkonb-section__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+}
+
+.pktw-root .pkonb-section__intro--center,
+.peak-design-root .pkonb-section__intro--center {
+  text-align: center;
+  align-items: center;
+}
+
+/* Capabilities section: tighten gap between intro and grid to match mock's
+   18px margin-bottom on the title block (vs default --pk-space-3 = 12px). */
+.pktw-root .pkonb-section--cap,
+.peak-design-root .pkonb-section--cap {
+  gap: 18px;
 }
 
 .pktw-root .pkonb-section__desc,
@@ -2302,7 +2333,9 @@
   padding: var(--pk-space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--pk-space-2);
+  /* Mock uses 10px between head/body/try; --pk-space-2 (8px) was too tight,
+     --pk-space-3 (12px) too loose. 10px is the exact mock value. */
+  gap: 10px;
   min-width: 0;
 }
 
@@ -2355,6 +2388,13 @@
   gap: var(--pk-space-2);
   margin-top: auto;
   min-width: 0;
+}
+
+.pktw-root .pkonb-cap-card__try-label,
+.peak-design-root .pkonb-cap-card__try-label {
+  flex-shrink: 0;
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-tertiary);
 }
 
 .pktw-root .pkonb-cap-card__try code,
