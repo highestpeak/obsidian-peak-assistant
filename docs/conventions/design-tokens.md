@@ -146,6 +146,17 @@ Five rungs, ordered by visual weight:
 
 `sm` / `md` are pure drop-shadows (no ring). `card` / `popover` / `modal` include a 1px ring for surface definition. Pick `sm` / `md` when the surface already has a border; pick `card` when it doesn't.
 
+### Typography half-steps — `--pk-text-md-plus` (13.5px) and `--pk-text-lg-plus` (14.5px)
+
+The base scale (`xs:10 sm:11 base:12 md:13 lg:14 xl:16 2xl:20 3xl:28`) jumps by 1px between most steps, but a few surfaces in the mocks (chat message body, message name, conversation outline rows, modal titles) sit on half-pixel values that materially change visual weight when rounded to the nearest base step. Two half-step tokens cover those cases:
+
+| Token | Value | Use when |
+|---|---|---|
+| `--pk-text-md-plus` | `13.5px` | Message author name (`.pkchat-msg__name`), outline row names (`.pkchat-idx-art__name` etc.), modal choice-row titles |
+| `--pk-text-lg-plus` | `14.5px` | Chat message body (`.pkchat-msg__body`), conversation header title |
+
+These exist because the audit (`docs/superpowers/audits/2026-06-01-visual-fidelity-audit.md`) found ~6 places where rounding 14.5→14 or 13.5→13 visibly thinned content. Prefer the base scale; reach for a half-step token only when the mock genuinely calls for one and a 1px round materially changes the visual weight. One-off literals (11.5px chip, 12.5px segmented option) stay inline at the call site — don't promote them to tokens.
+
 ### Provider brand hues — `--pk-prov-*`
 
 Brand-coded accents for provider chips, sparklines, usage bars. Each provider has a `base` (hex) and `-soft` (rgba, ~0.18 light / ~0.22 dark) variant for tinted backgrounds.

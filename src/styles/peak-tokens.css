@@ -112,14 +112,16 @@
 	/* ── typography (px per Q6) ─────────────────────────────────────────── */
 	--pk-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
 	--pk-font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-	--pk-text-xs:   10px;
-	--pk-text-sm:   11px;
-	--pk-text-base: 12px;
-	--pk-text-md:   13px;
-	--pk-text-lg:   14px;
-	--pk-text-xl:   16px;
-	--pk-text-2xl:  20px;
-	--pk-text-3xl:  28px;
+	--pk-text-xs:      10px;
+	--pk-text-sm:      11px;
+	--pk-text-base:    12px;
+	--pk-text-md:      13px;
+	--pk-text-md-plus: 13.5px;  /* half-step: msg name, outline rows, choice titles */
+	--pk-text-lg:      14px;
+	--pk-text-lg-plus: 14.5px;  /* half-step: chat body, hero subtitles */
+	--pk-text-xl:      16px;
+	--pk-text-2xl:     20px;
+	--pk-text-3xl:     28px;
 
 	/* ── spacing (4px grid) ─────────────────────────────────────────────── */
 	--pk-space-1:   4px;

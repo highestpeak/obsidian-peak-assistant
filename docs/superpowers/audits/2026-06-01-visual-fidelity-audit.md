@@ -1,6 +1,6 @@
 # Visual Fidelity Audit — 2026-06-01
 
-> Status: read-only audit. No code changes here. Downstream fix PR will execute items.
+> Status: **batches 1–3 landed** (commits `96c4a36` / `3b94f15` / `<batch3>`). All 🔴 visible-at-glance items + cross-cutting findings #1/#2/#3 are closed. 🟢 sub-pixel polish (batch 4) deferred — see "Recommended fix batches" at the bottom.
 > Surface order: chat → onboarding → settings → primitives (most-visible to least).
 > Mocks at HEAD = `faaf2ce`. Production = `src/styles/peak-components.css` (3083 lines) + `src/styles/peak-tokens.css` (238 lines).
 
@@ -948,3 +948,22 @@ The Conversation Outline (`pkchat-idx-*`) family uses `--pk-text-sm` (11px) and 
 - **Batch 4 — sub-pixel polish, ~18 items**: gap/padding 2px drifts, shadow opacity tweak, radius 1-2px drifts, scrim slate-tint, segmented option box-shadow. (Diminishing returns — can wait or ship piecewise.)
 
 **Suggested commit shape**: split into 4 commits (one per batch). Batches 1 + 2 are good single-PR scope; Batch 3 + 4 can land separately to keep visual review tractable.
+
+---
+
+## Closure status (2026-06-01 execution)
+
+| Batch | Status | Commit | Items closed |
+|---|---|---|---|
+| 1 — CRITICAL 🔴 (property tweaks) | ✅ landed | `96c4a36` | run-chip hover, runpop width+padding, user bubble (3 drifts), outline topic name, outline artifact name (font-family), settings root padding+max-width |
+| 2 — Semantic borders + 11 missing primitives | ✅ landed | `3b94f15` | CC-2 chip borders (success/warning/danger/info + onb-hint warn/danger), `--pk-{success,warning,error,info}-border` tokens, `.pk-toggle`, `.pk-form-status`, `.pk-form-input[type=password]`, `.pk-form-select` chevron, `.pkonb-provider-chip__logo`, `.pkonb-spinner--sm`, `.pkonb-checklist`, `.pkonb-split`, `.pkonb-progress__tooltip`, `.pkset-readiness-panel`, `.pkset-recommended-row`, `.pkset-preset-grid` + `.pkset-preset` family, `.pkset-row-add`, `.pkset-action-strip`, `.pkset-danger-zone`, `.pkset-kv-list`, `.pkset-choice-list` + `.pkset-choice-row` family, `.pkset-choice-search` |
+| 3 — Typography rounding (CC-1) | ✅ landed | this commit | `--pk-text-md-plus: 13.5px` + `--pk-text-lg-plus: 14.5px` tokens, `.pkchat-msg__name` + `.pkchat-msg__body` via tokens, outline title 13→14, outline topic count 10→11, outline msg text 11→12.5, outline attach font 10→11.5 / height 22→24, suggest-label drop uppercase decoration + size 11→12, settings tab active color accent→accent-text + margin-bottom 12→24, runpop title 13→14, modal-shell title 14→15, onb hero title 20→22 |
+| 4 — sub-pixel polish 🟢 | ⏸ deferred | — | Remaining 🟢 entries (gap/padding 2px drifts, shadow opacity tweak, radius 1–2px drifts, slate-tinted scrim, segmented opt box-shadow alpha) — non-perceptible at-glance; can ship piecewise or roll into next design pass. |
+
+**Not closed (deferred to user follow-up)**:
+- `.pkchat-runpop` role-pill cluster + tool row-card components — require React wiring + state, not just CSS. Listed in batch 2 brief as "stub the CSS with TODO" but no React consumer exists yet; defer until the runpop role-selection UX ships.
+- `.pkchat-idx__search .kbd` (Cmd-K affordance) — kbd hotkey isn't implemented; skipping the static styling until the hotkey lands.
+- `.pk-row__icon--brand` modifier — flagged in SURFACE 10 as 🟡; not bundled into batches above. One-line additive change if needed.
+- `.pkset-stub-banner` (or shared `.pk-hint` promotion) — flagged in SURFACE 11 as 🟡; settings stub modals not currently shipping with hint, defer.
+- Composer focus ring loudness (SURFACE 2, 🟡): kept current 3px accent ring per intentional-divergence note for a11y focus visibility.
+- User bubble max-width 360/520 (SURFACE 3, 🟡): kept production 520 per "intentional divergence: longer user messages need width".

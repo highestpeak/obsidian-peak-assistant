@@ -452,7 +452,9 @@
 
 .pktw-root .pk-modal-shell__title,
 .peak-design-root .pk-modal-shell__title {
-  font-size: var(--pk-text-lg);
+  /* 15px — between --pk-text-lg (14) and --pk-text-xl (16); no exact token.
+     Modal titles deliberately read heavier than --pk-text-lg body labels. */
+  font-size: 15px;
   font-weight: 600;
   color: var(--pk-text-primary);
 }
@@ -1120,8 +1122,8 @@
 
 .pktw-root .pkchat-runpop__title,
 .peak-design-root .pkchat-runpop__title {
-  font-size: var(--pk-text-md);
-  font-weight: 600;
+  font-size: var(--pk-text-lg);
+  font-weight: 650;
   color: var(--pk-text-primary);
 }
 
@@ -1208,7 +1210,7 @@
 
 .pktw-root .pkchat-idx__title,
 .peak-design-root .pkchat-idx__title {
-  font-size: var(--pk-text-md);
+  font-size: var(--pk-text-lg);
   font-weight: 650;
   color: var(--pk-text-primary);
 }
@@ -1434,7 +1436,7 @@
 
 .pktw-root .pkchat-idx-topic__count,
 .peak-design-root .pkchat-idx-topic__count {
-  font-size: var(--pk-text-xs);
+  font-size: var(--pk-text-sm);
   color: var(--pk-text-secondary);
   background: var(--pk-surface-sunken);
   padding: 1px 7px;
@@ -1507,8 +1509,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: var(--pk-text-xs);
-  height: 22px;
+  font-size: 11.5px;
+  height: 24px;
   padding: 0 var(--pk-space-2);
   border-radius: var(--pk-radius-pill);
   background: var(--pk-surface);
@@ -1598,7 +1600,7 @@
 
 .pktw-root .pkchat-idx-msg__text,
 .peak-design-root .pkchat-idx-msg__text {
-  font-size: var(--pk-text-sm);
+  font-size: 12.5px;
   color: var(--pk-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1827,7 +1829,7 @@
 .pktw-root .pkchat-msg__name,
 .peak-design-root .pkchat-msg__name {
   font-weight: 650;
-  font-size: 13.5px;
+  font-size: var(--pk-text-md-plus);
   color: var(--pk-text-primary);
 }
 
@@ -1845,7 +1847,7 @@
 
 .pktw-root .pkchat-msg__body,
 .peak-design-root .pkchat-msg__body {
-  font-size: 14.5px;
+  font-size: var(--pk-text-lg-plus);
   line-height: 1.7;
   color: var(--pk-text-primary);
 }
@@ -1944,12 +1946,9 @@
 
 .pktw-root .pkchat-msg__suggest-label,
 .peak-design-root .pkchat-msg__suggest-label {
-  font-size: var(--pk-text-sm);
+  font-size: var(--pk-text-base);
   color: var(--pk-text-tertiary);
   margin-right: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 600;
 }
 
 .pktw-root .pkchat-msg__suggest-chip,
@@ -2409,7 +2408,9 @@
 
 .pktw-root .pkonb-hero__title,
 .peak-design-root .pkonb-hero__title {
-  font-size: var(--pk-text-2xl);
+  /* 22px — between --pk-text-2xl (20) and --pk-text-3xl (28); no exact token.
+     Welcome hero title deliberately runs heavier than 2xl section headers. */
+  font-size: 22px;
   font-weight: 600;
   color: var(--pk-text-primary);
 }
@@ -3246,7 +3247,7 @@
   align-items: center;
   gap: 24px;
   border-bottom: 1px solid var(--pk-border-soft);
-  margin-bottom: var(--pk-space-3);
+  margin-bottom: var(--pk-space-6);
 }
 
 .pktw-root .pkset-tabs__tab,
@@ -3269,7 +3270,7 @@
 
 .pktw-root .pkset-tabs__tab[data-active="true"],
 .peak-design-root .pkset-tabs__tab[data-active="true"] {
-  color: var(--pk-accent);
+  color: var(--pk-accent-text);
 }
 
 .pktw-root .pkset-tabs__tab[data-active="true"]::after,
