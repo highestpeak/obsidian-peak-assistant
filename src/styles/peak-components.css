@@ -11,9 +11,16 @@
    chat, and usage-dashboard surfaces.
 
    Scoping rule (per docs/conventions/obsidian-css-defense.md):
-     ALL selectors are wrapped in `:where(.pktw-root, .peak-design-root) &`
-     low-specificity prefix so styles don't escape plugin chrome and aren't
-     accidentally overridden by Obsidian's defaults.
+     ALL selectors are scoped via comma-separated `.pktw-root SEL,
+     .peak-design-root SEL` so styles stay inside plugin chrome.
+
+     We DELIBERATELY do NOT use `:where(.pktw-root, .peak-design-root)`
+     here — `:where()` contributes 0 specificity, and obsidian-reset.css
+     uses `.peak-design-root button { padding:0; border:0; ... }` which
+     has specificity (0,1,1). A `:where(...)`-wrapped `.pk-foo` button
+     selector would be (0,1,0) and lose the cascade, leaving every
+     button-/input-based primitive stripped. The plain comma form gives
+     (0,2,0) — enough to beat the reset cleanly without `!important`.
 
    Token discipline:
      - Production token names only (see component-primitives.md for
@@ -28,7 +35,8 @@
    Anatomy: [32px icon] [body: title + desc + meta] [right: chip + value + control]
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pk-row {
+.pktw-root .pk-row,
+.peak-design-root .pk-row {
   display: grid;
   grid-template-columns: 32px 1fr auto;
   align-items: center;
@@ -40,11 +48,13 @@
   box-shadow: var(--pk-shadow-card);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row + .pk-row {
+.pktw-root .pk-row + .pk-row,
+.peak-design-root .pk-row + .pk-row {
   margin-top: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row__icon {
+.pktw-root .pk-row__icon,
+.peak-design-root .pk-row__icon {
   width: 32px;
   height: 32px;
   border-radius: var(--pk-radius-md);
@@ -56,20 +66,24 @@
   color: var(--pk-text-secondary);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row__icon > svg,
-:where(.pktw-root, .peak-design-root) .pk-row__icon .icon {
+.pktw-root .pk-row__icon > svg,
+.peak-design-root .pk-row__icon > svg,
+.pktw-root .pk-row__icon .icon,
+.peak-design-root .pk-row__icon .icon {
   width: 16px;
   height: 16px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row__body {
+.pktw-root .pk-row__body,
+.peak-design-root .pk-row__body {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row__title {
+.pktw-root .pk-row__title,
+.peak-design-root .pk-row__title {
   font-size: var(--pk-text-md);
   font-weight: 600;
   color: var(--pk-text-primary);
@@ -78,13 +92,15 @@
   gap: 6px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row__desc {
+.pktw-root .pk-row__desc,
+.peak-design-root .pk-row__desc {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   line-height: 1.45;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row__meta {
+.pktw-root .pk-row__meta,
+.peak-design-root .pk-row__meta {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
   display: inline-flex;
@@ -94,50 +110,59 @@
   margin-top: 2px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row__right {
+.pktw-root .pk-row__right,
+.peak-design-root .pk-row__right {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row__value {
+.pktw-root .pk-row__value,
+.peak-design-root .pk-row__value {
   font-size: var(--pk-text-base);
   color: var(--pk-text-primary);
   font-family: var(--pk-font-mono);
   white-space: nowrap;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row__value--sans {
+.pktw-root .pk-row__value--sans,
+.peak-design-root .pk-row__value--sans {
   font-family: var(--pk-font-sans);
 }
 
 /* Compact variant for dense tables (Advanced, chunking) */
-:where(.pktw-root, .peak-design-root) .pk-row--compact {
+.pktw-root .pk-row--compact,
+.peak-design-root .pk-row--compact {
   padding: 10px calc(var(--pk-space-3) + 2px);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row--compact .pk-row__icon {
+.pktw-root .pk-row--compact .pk-row__icon,
+.peak-design-root .pk-row--compact .pk-row__icon {
   width: 28px;
   height: 28px;
 }
 
 /* Disclosure variant — clickable, shows ChevronRight on right edge.
    align-items: start so multi-line descriptions don't drop the chevron. */
-:where(.pktw-root, .peak-design-root) .pk-row--disclosure {
+.pktw-root .pk-row--disclosure,
+.peak-design-root .pk-row--disclosure {
   cursor: pointer;
   align-items: start;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row--disclosure .pk-row__icon {
+.pktw-root .pk-row--disclosure .pk-row__icon,
+.peak-design-root .pk-row--disclosure .pk-row__icon {
   margin-top: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row--disclosure .pk-row__right {
+.pktw-root .pk-row--disclosure .pk-row__right,
+.peak-design-root .pk-row--disclosure .pk-row__right {
   padding-top: 1px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-row--disclosure:hover {
+.pktw-root .pk-row--disclosure:hover,
+.peak-design-root .pk-row--disclosure:hover {
   background: var(--pk-surface-sunken);
 }
 
@@ -147,7 +172,8 @@
    borders are transparent (semantic color comes from bg + text alone).
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pk-chip {
+.pktw-root .pk-chip,
+.peak-design-root .pk-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -160,39 +186,47 @@
   border: 1px solid transparent;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-chip > svg,
-:where(.pktw-root, .peak-design-root) .pk-chip .icon {
+.pktw-root .pk-chip > svg,
+.peak-design-root .pk-chip > svg,
+.pktw-root .pk-chip .icon,
+.peak-design-root .pk-chip .icon {
   width: 11px;
   height: 11px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-chip--success {
+.pktw-root .pk-chip--success,
+.peak-design-root .pk-chip--success {
   background: var(--pk-success-bg);
   color: var(--pk-success);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-chip--warning {
+.pktw-root .pk-chip--warning,
+.peak-design-root .pk-chip--warning {
   background: var(--pk-warning-bg);
   color: var(--pk-warning);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-chip--danger {
+.pktw-root .pk-chip--danger,
+.peak-design-root .pk-chip--danger {
   background: var(--pk-error-bg);
   color: var(--pk-error);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-chip--neutral {
+.pktw-root .pk-chip--neutral,
+.peak-design-root .pk-chip--neutral {
   background: var(--pk-surface-sunken);
   color: var(--pk-text-secondary);
   border-color: var(--pk-border);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-chip--accent {
+.pktw-root .pk-chip--accent,
+.peak-design-root .pk-chip--accent {
   background: var(--pk-accent-soft);
   color: var(--pk-accent-text);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-chip--info {
+.pktw-root .pk-chip--info,
+.peak-design-root .pk-chip--info {
   background: var(--pk-info-bg);
   color: var(--pk-info);
 }
@@ -200,7 +234,8 @@
 /* Provider chip — color comes from per-provider data attribute, picked up by
    the .pk-brand-av selectors below. Use this class to set chip-shaped
    wrapping when you want a brand-tinted background + label combo. */
-:where(.pktw-root, .peak-design-root) .pk-chip--provider {
+.pktw-root .pk-chip--provider,
+.peak-design-root .pk-chip--provider {
   background: var(--pk-surface-sunken);
   color: var(--pk-text-secondary);
 }
@@ -210,7 +245,8 @@
    Toggleable filter pill (document-type pickers, tag filters).
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pk-pill {
+.pktw-root .pk-pill,
+.peak-design-root .pk-pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -223,13 +259,16 @@
   cursor: pointer;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-pill > svg,
-:where(.pktw-root, .peak-design-root) .pk-pill .icon {
+.pktw-root .pk-pill > svg,
+.peak-design-root .pk-pill > svg,
+.pktw-root .pk-pill .icon,
+.peak-design-root .pk-pill .icon {
   width: 11px;
   height: 11px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-pill[data-selected="true"] {
+.pktw-root .pk-pill[data-selected="true"],
+.peak-design-root .pk-pill[data-selected="true"] {
   background: var(--pk-accent-soft);
   border-color: var(--pk-accent-soft);
   color: var(--pk-accent-text);
@@ -241,7 +280,8 @@
    secondary toolbar icons.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pk-icon-btn {
+.pktw-root .pk-icon-btn,
+.peak-design-root .pk-icon-btn {
   background: transparent;
   border: 0;
   width: 28px;
@@ -255,13 +295,16 @@
   transition: background var(--pk-transition-fast), color var(--pk-transition-fast);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-icon-btn:hover {
+.pktw-root .pk-icon-btn:hover,
+.peak-design-root .pk-icon-btn:hover {
   background: var(--pk-surface-sunken);
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-icon-btn > svg,
-:where(.pktw-root, .peak-design-root) .pk-icon-btn .icon {
+.pktw-root .pk-icon-btn > svg,
+.peak-design-root .pk-icon-btn > svg,
+.pktw-root .pk-icon-btn .icon,
+.peak-design-root .pk-icon-btn .icon {
   width: 14px;
   height: 14px;
 }
@@ -271,7 +314,8 @@
    Inline segmented control (e.g. Index mode picker, view toggles).
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pk-segmented {
+.pktw-root .pk-segmented,
+.peak-design-root .pk-segmented {
   display: inline-flex;
   background: var(--pk-surface-sunken);
   border: 1px solid var(--pk-border);
@@ -280,7 +324,8 @@
   gap: 2px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-segmented__opt {
+.pktw-root .pk-segmented__opt,
+.peak-design-root .pk-segmented__opt {
   background: transparent;
   border: 0;
   padding: 6px var(--pk-space-3);
@@ -290,7 +335,8 @@
   border-radius: var(--pk-radius-sm);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-segmented__opt[data-selected="true"] {
+.pktw-root .pk-segmented__opt[data-selected="true"],
+.peak-design-root .pk-segmented__opt[data-selected="true"] {
   background: var(--pk-surface);
   color: var(--pk-text-primary);
   font-weight: 500;
@@ -304,7 +350,8 @@
    and lives outside the token system on purpose.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pk-modal-overlay {
+.pktw-root .pk-modal-overlay,
+.peak-design-root .pk-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.42);
@@ -316,11 +363,13 @@
   overflow-y: auto;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-modal-overlay[data-open="true"] {
+.pktw-root .pk-modal-overlay[data-open="true"],
+.peak-design-root .pk-modal-overlay[data-open="true"] {
   display: flex;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-modal-shell {
+.pktw-root .pk-modal-shell,
+.peak-design-root .pk-modal-shell {
   width: 560px;
   max-width: 100%;
   background: var(--pk-surface);
@@ -332,15 +381,18 @@
   flex-direction: column;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-modal-shell--wide {
+.pktw-root .pk-modal-shell--wide,
+.peak-design-root .pk-modal-shell--wide {
   width: 720px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-modal-shell--narrow {
+.pktw-root .pk-modal-shell--narrow,
+.peak-design-root .pk-modal-shell--narrow {
   width: 460px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-modal-shell__head {
+.pktw-root .pk-modal-shell__head,
+.peak-design-root .pk-modal-shell__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -349,13 +401,15 @@
   border-bottom: 1px solid var(--pk-border-soft);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-modal-shell__title {
+.pktw-root .pk-modal-shell__title,
+.peak-design-root .pk-modal-shell__title {
   font-size: var(--pk-text-lg);
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-modal-shell__sub {
+.pktw-root .pk-modal-shell__sub,
+.peak-design-root .pk-modal-shell__sub {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   margin-top: 2px;
@@ -366,13 +420,15 @@
    The previous `.pk-modal-shell__close` rule was removed in PR-0 Task 3 as
    it duplicated `.pk-icon-btn`. */
 
-:where(.pktw-root, .peak-design-root) .pk-modal-shell__body {
+.pktw-root .pk-modal-shell__body,
+.peak-design-root .pk-modal-shell__body {
   padding: 18px var(--pk-space-5);
   overflow-y: auto;
   max-height: 70vh;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-modal-shell__footer {
+.pktw-root .pk-modal-shell__footer,
+.peak-design-root .pk-modal-shell__footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -387,7 +443,8 @@
    Floating menu surface (model picker, action menus, command palettes).
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pk-popover {
+.pktw-root .pk-popover,
+.peak-design-root .pk-popover {
   background: var(--pk-surface);
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
@@ -396,7 +453,8 @@
   z-index: var(--pk-z-popover);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-pop-item {
+.pktw-root .pk-pop-item,
+.peak-design-root .pk-pop-item {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -411,12 +469,15 @@
   cursor: pointer;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-pop-item:hover {
+.pktw-root .pk-pop-item:hover,
+.peak-design-root .pk-pop-item:hover {
   background: var(--pk-surface-sunken);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-pop-item > svg,
-:where(.pktw-root, .peak-design-root) .pk-pop-item .icon {
+.pktw-root .pk-pop-item > svg,
+.peak-design-root .pk-pop-item > svg,
+.pktw-root .pk-pop-item .icon,
+.peak-design-root .pk-pop-item .icon {
   width: 14px;
   height: 14px;
   color: var(--pk-text-secondary);
@@ -429,24 +490,28 @@
    `.pk-form-input--sans` for free-text fields.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pk-form-grid {
+.pktw-root .pk-form-grid,
+.peak-design-root .pk-form-grid {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-row {
+.pktw-root .pk-form-row,
+.peak-design-root .pk-form-row {
   display: grid;
   grid-template-columns: 160px 1fr;
   gap: var(--pk-space-3);
   align-items: start;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-row--stack {
+.pktw-root .pk-form-row--stack,
+.peak-design-root .pk-form-row--stack {
   grid-template-columns: 1fr;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-label {
+.pktw-root .pk-form-label,
+.peak-design-root .pk-form-label {
   font-size: var(--pk-text-base);
   font-weight: 500;
   color: var(--pk-text-primary);
@@ -454,7 +519,8 @@
   line-height: 1.4;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-label__hint {
+.pktw-root .pk-form-label__hint,
+.peak-design-root .pk-form-label__hint {
   display: block;
   font-weight: 400;
   color: var(--pk-text-tertiary);
@@ -462,21 +528,26 @@
   margin-top: 2px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-control {
+.pktw-root .pk-form-control,
+.peak-design-root .pk-form-control {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-1);
   min-width: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-control__hint {
+.pktw-root .pk-form-control__hint,
+.peak-design-root .pk-form-control__hint {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-input,
-:where(.pktw-root, .peak-design-root) .pk-form-select,
-:where(.pktw-root, .peak-design-root) .pk-form-textarea {
+.pktw-root .pk-form-input,
+.peak-design-root .pk-form-input,
+.pktw-root .pk-form-select,
+.peak-design-root .pk-form-select,
+.pktw-root .pk-form-textarea,
+.peak-design-root .pk-form-textarea {
   width: 100%;
   border: 1px solid var(--pk-border-strong);
   background: var(--pk-surface);
@@ -487,37 +558,46 @@
   font-family: var(--pk-font-mono);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-input--sans,
-:where(.pktw-root, .peak-design-root) .pk-form-select {
+.pktw-root .pk-form-input--sans,
+.peak-design-root .pk-form-input--sans,
+.pktw-root .pk-form-select,
+.peak-design-root .pk-form-select {
   font-family: var(--pk-font-sans);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-input:focus,
-:where(.pktw-root, .peak-design-root) .pk-form-select:focus,
-:where(.pktw-root, .peak-design-root) .pk-form-textarea:focus {
+.pktw-root .pk-form-input:focus,
+.peak-design-root .pk-form-input:focus,
+.pktw-root .pk-form-select:focus,
+.peak-design-root .pk-form-select:focus,
+.pktw-root .pk-form-textarea:focus,
+.peak-design-root .pk-form-textarea:focus {
   outline: none;
   border-color: var(--pk-accent);
   box-shadow: 0 0 0 3px var(--pk-accent-soft);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-textarea {
+.pktw-root .pk-form-textarea,
+.peak-design-root .pk-form-textarea {
   min-height: 96px;
   resize: vertical;
 }
 
 /* Slider — range + right-aligned mono value readout */
-:where(.pktw-root, .peak-design-root) .pk-form-slider {
+.pktw-root .pk-form-slider,
+.peak-design-root .pk-form-slider {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-slider input[type="range"] {
+.pktw-root .pk-form-slider input[type="range"],
+.peak-design-root .pk-form-slider input[type="range"] {
   flex: 1;
   accent-color: var(--pk-accent);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-slider__value {
+.pktw-root .pk-form-slider__value,
+.peak-design-root .pk-form-slider__value {
   font-family: var(--pk-font-mono);
   font-size: var(--pk-text-base);
   width: 44px;
@@ -526,7 +606,8 @@
 }
 
 /* Number stepper — number input with right-edge unit label */
-:where(.pktw-root, .peak-design-root) .pk-form-number {
+.pktw-root .pk-form-number,
+.peak-design-root .pk-form-number {
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--pk-border-strong);
@@ -535,7 +616,8 @@
   overflow: hidden;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-number input {
+.pktw-root .pk-form-number input,
+.peak-design-root .pk-form-number input {
   width: 64px;
   padding: 6px var(--pk-space-2);
   border: 0;
@@ -547,7 +629,8 @@
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-form-number__unit {
+.pktw-root .pk-form-number__unit,
+.peak-design-root .pk-form-number__unit {
   padding: 0 var(--pk-space-2);
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
@@ -564,7 +647,8 @@
    sunken disclosure background.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pk-disclosure-body {
+.pktw-root .pk-disclosure-body,
+.peak-design-root .pk-disclosure-body {
   padding: var(--pk-space-3) calc(var(--pk-space-3) + 2px);
   border: 1px solid var(--pk-border);
   border-top: 0;
@@ -577,7 +661,8 @@
   gap: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-disclosure-body .pk-row {
+.pktw-root .pk-disclosure-body .pk-row,
+.peak-design-root .pk-disclosure-body .pk-row {
   background: var(--pk-surface);
 }
 
@@ -588,7 +673,8 @@
    driven by the --pk-prov-* tokens.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pk-brand-av {
+.pktw-root .pk-brand-av,
+.peak-design-root .pk-brand-av {
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -602,44 +688,53 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-brand-av--sm {
+.pktw-root .pk-brand-av--sm,
+.peak-design-root .pk-brand-av--sm {
   width: 20px;
   height: 20px;
 }
 
-:where(.pktw-root, .peak-design-root) .pk-brand-av > svg,
-:where(.pktw-root, .peak-design-root) .pk-brand-av .icon {
+.pktw-root .pk-brand-av > svg,
+.peak-design-root .pk-brand-av > svg,
+.pktw-root .pk-brand-av .icon,
+.peak-design-root .pk-brand-av .icon {
   width: 60%;
   height: 60%;
 }
 
 /* Provider color bindings — same six providers as --pk-prov-* in peak-tokens.css */
-:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="openai"] {
+.pktw-root .pk-brand-av[data-provider="openai"],
+.peak-design-root .pk-brand-av[data-provider="openai"] {
   background: var(--pk-prov-openai-soft);
   color: var(--pk-prov-openai);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="anthropic"] {
+.pktw-root .pk-brand-av[data-provider="anthropic"],
+.peak-design-root .pk-brand-av[data-provider="anthropic"] {
   background: var(--pk-prov-anthropic-soft);
   color: var(--pk-prov-anthropic);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="google"] {
+.pktw-root .pk-brand-av[data-provider="google"],
+.peak-design-root .pk-brand-av[data-provider="google"] {
   background: var(--pk-prov-google-soft);
   color: var(--pk-prov-google);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="openrouter"] {
+.pktw-root .pk-brand-av[data-provider="openrouter"],
+.peak-design-root .pk-brand-av[data-provider="openrouter"] {
   background: var(--pk-prov-openrouter-soft);
   color: var(--pk-prov-openrouter);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="perplexity"] {
+.pktw-root .pk-brand-av[data-provider="perplexity"],
+.peak-design-root .pk-brand-av[data-provider="perplexity"] {
   background: var(--pk-prov-perplexity-soft);
   color: var(--pk-prov-perplexity);
 }
 
-:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="ollama"] {
+.pktw-root .pk-brand-av[data-provider="ollama"],
+.peak-design-root .pk-brand-av[data-provider="ollama"] {
   background: var(--pk-prov-ollama-soft);
   color: var(--pk-prov-ollama);
 }
@@ -658,7 +753,8 @@
    hidden (default for PR-Chat-1), the chat column expands to full width.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkchat-shell {
+.pktw-root .pkchat-shell,
+.peak-design-root .pkchat-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   height: 100%;
@@ -667,7 +763,8 @@
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-center {
+.pktw-root .pkchat-center,
+.peak-design-root .pkchat-center {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -694,7 +791,8 @@
    Title + Open source + Refresh — minimal chrome per locked design.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkchat-header {
+.pktw-root .pkchat-header,
+.peak-design-root .pkchat-header {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -704,7 +802,8 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-header__title {
+.pktw-root .pkchat-header__title,
+.peak-design-root .pkchat-header__title {
   font-size: var(--pk-text-lg);
   font-weight: 600;
   color: var(--pk-text-primary);
@@ -715,11 +814,13 @@
   min-width: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-header__spacer {
+.pktw-root .pkchat-header__spacer,
+.peak-design-root .pkchat-header__spacer {
   flex: 1;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-header__actions {
+.pktw-root .pkchat-header__actions,
+.peak-design-root .pkchat-header__actions {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -732,7 +833,8 @@
    Scrollable message list area between header and composer.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkchat-body {
+.pktw-root .pkchat-body,
+.peak-design-root .pkchat-body {
   flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
@@ -744,13 +846,15 @@
    Bottom input capsule: editor + footer with single run-chip + send.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkchat-composer-wrap {
+.pktw-root .pkchat-composer-wrap,
+.peak-design-root .pkchat-composer-wrap {
   padding: var(--pk-space-3) var(--pk-space-5) var(--pk-space-5);
   flex-shrink: 0;
   background: var(--pk-surface);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-composer {
+.pktw-root .pkchat-composer,
+.peak-design-root .pkchat-composer {
   border: 1px solid var(--pk-border-accent);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-surface);
@@ -759,17 +863,20 @@
   flex-direction: column;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-composer:focus-within {
+.pktw-root .pkchat-composer:focus-within,
+.peak-design-root .pkchat-composer:focus-within {
   border-color: var(--pk-accent);
   box-shadow: 0 0 0 3px var(--pk-accent-tint);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-composer__editor {
+.pktw-root .pkchat-composer__editor,
+.peak-design-root .pkchat-composer__editor {
   padding: var(--pk-space-3) var(--pk-space-4) 0;
   min-height: 44px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-composer__foot {
+.pktw-root .pkchat-composer__foot,
+.peak-design-root .pkchat-composer__foot {
   padding: var(--pk-space-2) var(--pk-space-3);
   border-top: 1px solid var(--pk-border-soft);
   display: flex;
@@ -777,7 +884,8 @@
   gap: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-composer__foot-right {
+.pktw-root .pkchat-composer__foot-right,
+.peak-design-root .pkchat-composer__foot-right {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -789,7 +897,8 @@
    popover.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkchat-run-chip {
+.pktw-root .pkchat-run-chip,
+.peak-design-root .pkchat-run-chip {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -806,33 +915,41 @@
               color var(--pk-transition-fast);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-run-chip:hover,
-:where(.pktw-root, .peak-design-root) .pkchat-run-chip[data-state="open"] {
+.pktw-root .pkchat-run-chip:hover,
+.peak-design-root .pkchat-run-chip:hover,
+.pktw-root .pkchat-run-chip[data-state="open"],
+.peak-design-root .pkchat-run-chip[data-state="open"] {
   border-color: var(--pk-border-accent);
   background: var(--pk-accent-tint);
   color: var(--pk-accent-text);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-run-chip__label {
+.pktw-root .pkchat-run-chip__label,
+.peak-design-root .pkchat-run-chip__label {
   font-weight: 600;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-run-chip__sep {
+.pktw-root .pkchat-run-chip__sep,
+.peak-design-root .pkchat-run-chip__sep {
   color: var(--pk-text-tertiary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-run-chip__mid {
+.pktw-root .pkchat-run-chip__mid,
+.peak-design-root .pkchat-run-chip__mid {
   color: var(--pk-text-secondary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-run-chip__ctx {
+.pktw-root .pkchat-run-chip__ctx,
+.peak-design-root .pkchat-run-chip__ctx {
   font-family: var(--pk-font-mono);
   color: var(--pk-accent);
   font-size: var(--pk-text-sm);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-run-chip > svg,
-:where(.pktw-root, .peak-design-root) .pkchat-run-chip .icon {
+.pktw-root .pkchat-run-chip > svg,
+.peak-design-root .pkchat-run-chip > svg,
+.pktw-root .pkchat-run-chip .icon,
+.peak-design-root .pkchat-run-chip .icon {
   width: 12px;
   height: 12px;
   color: currentColor;
@@ -842,7 +959,8 @@
    Primary send button on the right edge of the composer footer.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkchat-send {
+.pktw-root .pkchat-send,
+.peak-design-root .pkchat-send {
   width: 32px;
   height: 32px;
   border-radius: var(--pk-radius-md);
@@ -857,18 +975,22 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-send:hover {
+.pktw-root .pkchat-send:hover,
+.peak-design-root .pkchat-send:hover {
   background: var(--pk-accent-hover);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-send:disabled {
+.pktw-root .pkchat-send:disabled,
+.peak-design-root .pkchat-send:disabled {
   background: var(--pk-surface-sunken);
   color: var(--pk-text-tertiary);
   cursor: not-allowed;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-send > svg,
-:where(.pktw-root, .peak-design-root) .pkchat-send .icon {
+.pktw-root .pkchat-send > svg,
+.peak-design-root .pkchat-send > svg,
+.pktw-root .pkchat-send .icon,
+.peak-design-root .pkchat-send .icon {
   width: 16px;
   height: 16px;
 }
@@ -878,32 +1000,37 @@
    labels, segmented mode selector) reuse PR-0 atoms where possible.
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkchat-runpop {
+.pktw-root .pkchat-runpop,
+.peak-design-root .pkchat-runpop {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-3);
   min-width: 280px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-runpop__head {
+.pktw-root .pkchat-runpop__head,
+.peak-design-root .pkchat-runpop__head {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 0 var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-runpop__title {
+.pktw-root .pkchat-runpop__title,
+.peak-design-root .pkchat-runpop__title {
   font-size: var(--pk-text-md);
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-runpop__sub {
+.pktw-root .pkchat-runpop__sub,
+.peak-design-root .pkchat-runpop__sub {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-runpop__label {
+.pktw-root .pkchat-runpop__label,
+.peak-design-root .pkchat-runpop__label {
   font-size: var(--pk-text-sm);
   font-weight: 600;
   color: var(--pk-text-secondary);
@@ -912,7 +1039,8 @@
   padding: 0 var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-runpop__hint {
+.pktw-root .pkchat-runpop__hint,
+.peak-design-root .pkchat-runpop__hint {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
   padding: 0 var(--pk-space-2);
@@ -922,7 +1050,8 @@
    Placeholder for right index slot (PR-Chat-3 will replace with full panel).
    ─────────────────────────────────────────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkchat-index-empty {
+.pktw-root .pkchat-index-empty,
+.peak-design-root .pkchat-index-empty {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -934,13 +1063,15 @@
   color: var(--pk-text-tertiary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-index-empty__title {
+.pktw-root .pkchat-index-empty__title,
+.peak-design-root .pkchat-index-empty__title {
   font-size: var(--pk-text-md);
   font-weight: 600;
   color: var(--pk-text-secondary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-index-empty__hint {
+.pktw-root .pkchat-index-empty__hint,
+.peak-design-root .pkchat-index-empty__hint {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
   line-height: 1.5;
@@ -954,7 +1085,8 @@
    pk-* primitives. All values flow through --pk-* tokens.
    ═════════════════════════════════════════════════════════════════════════════ */
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx {
+.pktw-root .pkchat-idx,
+.peak-design-root .pkchat-idx {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -962,7 +1094,8 @@
   overflow: hidden;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__head {
+.pktw-root .pkchat-idx__head,
+.peak-design-root .pkchat-idx__head {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -971,19 +1104,22 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__title {
+.pktw-root .pkchat-idx__title,
+.peak-design-root .pkchat-idx__title {
   font-size: var(--pk-text-md);
   font-weight: 650;
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__head-actions {
+.pktw-root .pkchat-idx__head-actions,
+.peak-design-root .pkchat-idx__head-actions {
   margin-left: auto;
   display: inline-flex;
   gap: 2px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__search {
+.pktw-root .pkchat-idx__search,
+.peak-design-root .pkchat-idx__search {
   margin: var(--pk-space-2) var(--pk-space-4);
   display: flex;
   align-items: center;
@@ -998,7 +1134,8 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__search input {
+.pktw-root .pkchat-idx__search input,
+.peak-design-root .pkchat-idx__search input {
   flex: 1;
   background: transparent;
   border: 0;
@@ -1009,31 +1146,36 @@
   min-width: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__search input::placeholder {
+.pktw-root .pkchat-idx__search input::placeholder,
+.peak-design-root .pkchat-idx__search input::placeholder {
   color: var(--pk-text-tertiary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__search > svg {
+.pktw-root .pkchat-idx__search > svg,
+.peak-design-root .pkchat-idx__search > svg {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__tabs {
+.pktw-root .pkchat-idx__tabs,
+.peak-design-root .pkchat-idx__tabs {
   margin: 0 var(--pk-space-4) var(--pk-space-2);
   flex-shrink: 0;
 }
 
 /* Override .pk-segmented internals when used in the index header to fit
    the 4-tab equal-width pattern from the mock. */
-:where(.pktw-root, .peak-design-root) .pkchat-idx__tabs .pk-segmented {
+.pktw-root .pkchat-idx__tabs .pk-segmented,
+.peak-design-root .pkchat-idx__tabs .pk-segmented {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 3px;
   padding: 3px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__filters {
+.pktw-root .pkchat-idx__filters,
+.peak-design-root .pkchat-idx__filters {
   display: flex;
   gap: var(--pk-space-2);
   flex-wrap: wrap;
@@ -1041,7 +1183,8 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__filter {
+.pktw-root .pkchat-idx__filter,
+.peak-design-root .pkchat-idx__filter {
   display: inline-flex;
   align-items: center;
   height: 24px;
@@ -1057,18 +1200,21 @@
               color var(--pk-transition-fast);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__filter:hover {
+.pktw-root .pkchat-idx__filter:hover,
+.peak-design-root .pkchat-idx__filter:hover {
   border-color: var(--pk-border-accent);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__filter[data-selected="true"] {
+.pktw-root .pkchat-idx__filter[data-selected="true"],
+.peak-design-root .pkchat-idx__filter[data-selected="true"] {
   background: var(--pk-accent-soft);
   border-color: var(--pk-border-accent);
   color: var(--pk-accent-hover);
   font-weight: 600;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__list {
+.pktw-root .pkchat-idx__list,
+.peak-design-root .pkchat-idx__list {
   flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1076,7 +1222,8 @@
   min-height: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__empty {
+.pktw-root .pkchat-idx__empty,
+.peak-design-root .pkchat-idx__empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1089,7 +1236,8 @@
   gap: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__section-header {
+.pktw-root .pkchat-idx__section-header,
+.peak-design-root .pkchat-idx__section-header {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -1100,11 +1248,13 @@
   text-transform: none;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__section-header:first-child {
+.pktw-root .pkchat-idx__section-header:first-child,
+.peak-design-root .pkchat-idx__section-header:first-child {
   margin-top: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__count-pill {
+.pktw-root .pkchat-idx__count-pill,
+.peak-design-root .pkchat-idx__count-pill {
   font-size: var(--pk-text-xs);
   color: var(--pk-text-secondary);
   background: var(--pk-surface-sunken);
@@ -1115,7 +1265,8 @@
 }
 
 /* Topic row — uses native <details>/<summary> for accordion. */
-:where(.pktw-root, .peak-design-root) .pkchat-idx-topic {
+.pktw-root .pkchat-idx-topic,
+.peak-design-root .pkchat-idx-topic {
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
   margin-bottom: var(--pk-space-2);
@@ -1123,12 +1274,14 @@
   overflow: hidden;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-topic[open] {
+.pktw-root .pkchat-idx-topic[open],
+.peak-design-root .pkchat-idx-topic[open] {
   border-color: var(--pk-border-accent);
   background: var(--pk-accent-tint);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__summary {
+.pktw-root .pkchat-idx-topic__summary,
+.peak-design-root .pkchat-idx-topic__summary {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -1138,11 +1291,13 @@
   user-select: none;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__summary::-webkit-details-marker {
+.pktw-root .pkchat-idx-topic__summary::-webkit-details-marker,
+.peak-design-root .pkchat-idx-topic__summary::-webkit-details-marker {
   display: none;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__chev {
+.pktw-root .pkchat-idx-topic__chev,
+.peak-design-root .pkchat-idx-topic__chev {
   width: 14px;
   height: 14px;
   color: var(--pk-text-secondary);
@@ -1150,18 +1305,21 @@
   transition: transform var(--pk-transition-fast);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-topic[open] .pkchat-idx-topic__chev {
+.pktw-root .pkchat-idx-topic[open] .pkchat-idx-topic__chev,
+.peak-design-root .pkchat-idx-topic[open] .pkchat-idx-topic__chev {
   transform: rotate(90deg);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__icon {
+.pktw-root .pkchat-idx-topic__icon,
+.peak-design-root .pkchat-idx-topic__icon {
   width: 14px;
   height: 14px;
   color: var(--pk-text-secondary);
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__name {
+.pktw-root .pkchat-idx-topic__name,
+.peak-design-root .pkchat-idx-topic__name {
   font-size: var(--pk-text-sm);
   font-weight: 600;
   color: var(--pk-text-primary);
@@ -1172,7 +1330,8 @@
   white-space: nowrap;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__count {
+.pktw-root .pkchat-idx-topic__count,
+.peak-design-root .pkchat-idx-topic__count {
   font-size: var(--pk-text-xs);
   color: var(--pk-text-secondary);
   background: var(--pk-surface-sunken);
@@ -1182,27 +1341,31 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__body {
+.pktw-root .pkchat-idx-topic__body,
+.peak-design-root .pkchat-idx-topic__body {
   padding: 0 var(--pk-space-3) var(--pk-space-3);
   border-top: 1px dashed var(--pk-border-accent);
   margin: 0 0 0 0;
   padding-top: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__sub {
+.pktw-root .pkchat-idx-topic__sub,
+.peak-design-root .pkchat-idx-topic__sub {
   font-size: var(--pk-text-xs);
   color: var(--pk-text-secondary);
   margin-top: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-posbar {
+.pktw-root .pkchat-idx-posbar,
+.peak-design-root .pkchat-idx-posbar {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
   margin-top: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-posbar__bar {
+.pktw-root .pkchat-idx-posbar__bar,
+.peak-design-root .pkchat-idx-posbar__bar {
   flex: 1;
   height: 4px;
   background: var(--pk-border-soft);
@@ -1210,14 +1373,16 @@
   position: relative;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-posbar__range {
+.pktw-root .pkchat-idx-posbar__range,
+.peak-design-root .pkchat-idx-posbar__range {
   position: absolute;
   height: 100%;
   background: var(--pk-border-accent);
   border-radius: var(--pk-radius-pill);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-posbar__dot {
+.pktw-root .pkchat-idx-posbar__dot,
+.peak-design-root .pkchat-idx-posbar__dot {
   position: absolute;
   top: 50%;
   width: 7px;
@@ -1227,14 +1392,16 @@
   transform: translate(-50%, -50%);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-attach-row {
+.pktw-root .pkchat-idx-attach-row,
+.peak-design-root .pkchat-idx-attach-row {
   display: flex;
   gap: var(--pk-space-2);
   flex-wrap: wrap;
   margin-top: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-attach {
+.pktw-root .pkchat-idx-attach,
+.peak-design-root .pkchat-idx-attach {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -1253,12 +1420,14 @@
   white-space: nowrap;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-attach:hover {
+.pktw-root .pkchat-idx-attach:hover,
+.peak-design-root .pkchat-idx-attach:hover {
   border-color: var(--pk-border-accent);
   background: var(--pk-accent-tint);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-attach > svg {
+.pktw-root .pkchat-idx-attach > svg,
+.peak-design-root .pkchat-idx-attach > svg {
   width: 12px;
   height: 12px;
   flex-shrink: 0;
@@ -1266,7 +1435,8 @@
 }
 
 /* Message row — used in Topics body, Messages tab, All tab. */
-:where(.pktw-root, .peak-design-root) .pkchat-idx-msg {
+.pktw-root .pkchat-idx-msg,
+.peak-design-root .pkchat-idx-msg {
   display: flex;
   align-items: flex-start;
   gap: var(--pk-space-2);
@@ -1284,12 +1454,14 @@
               border-color var(--pk-transition-fast);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-msg:hover {
+.pktw-root .pkchat-idx-msg:hover,
+.peak-design-root .pkchat-idx-msg:hover {
   border-color: var(--pk-border-accent);
   background: var(--pk-accent-tint);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__who {
+.pktw-root .pkchat-idx-msg__who,
+.peak-design-root .pkchat-idx-msg__who {
   font-size: 10px;
   font-weight: 700;
   height: 18px;
@@ -1304,22 +1476,26 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__who[data-role="user"] {
+.pktw-root .pkchat-idx-msg__who[data-role="user"],
+.peak-design-root .pkchat-idx-msg__who[data-role="user"] {
   background: var(--pk-info-bg);
   color: var(--pk-info);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__who[data-role="error"] {
+.pktw-root .pkchat-idx-msg__who[data-role="error"],
+.peak-design-root .pkchat-idx-msg__who[data-role="error"] {
   background: var(--pk-error-bg);
   color: var(--pk-error);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__body {
+.pktw-root .pkchat-idx-msg__body,
+.peak-design-root .pkchat-idx-msg__body {
   flex: 1;
   min-width: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__text {
+.pktw-root .pkchat-idx-msg__text,
+.peak-design-root .pkchat-idx-msg__text {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-primary);
   overflow: hidden;
@@ -1327,7 +1503,8 @@
   white-space: nowrap;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__meta {
+.pktw-root .pkchat-idx-msg__meta,
+.peak-design-root .pkchat-idx-msg__meta {
   color: var(--pk-text-tertiary);
   font-size: var(--pk-text-xs);
   margin-top: 2px;
@@ -1336,12 +1513,14 @@
   align-items: center;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-msg__ts {
+.pktw-root .pkchat-idx-msg__ts,
+.peak-design-root .pkchat-idx-msg__ts {
   font-family: var(--pk-font-mono);
 }
 
 /* Artifact card. */
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art {
+.pktw-root .pkchat-idx-art,
+.peak-design-root .pkchat-idx-art {
   display: grid;
   grid-template-columns: 44px 1fr auto;
   gap: var(--pk-space-2);
@@ -1360,12 +1539,14 @@
               border-color var(--pk-transition-fast);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art:hover {
+.pktw-root .pkchat-idx-art:hover,
+.peak-design-root .pkchat-idx-art:hover {
   border-color: var(--pk-border-accent);
   background: var(--pk-accent-tint);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb {
+.pktw-root .pkchat-idx-art__thumb,
+.peak-design-root .pkchat-idx-art__thumb {
   width: 44px;
   height: 40px;
   border-radius: var(--pk-radius-sm);
@@ -1379,39 +1560,46 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb[data-kind="code"] {
+.pktw-root .pkchat-idx-art__thumb[data-kind="code"],
+.peak-design-root .pkchat-idx-art__thumb[data-kind="code"] {
   background: var(--pk-success-bg);
   color: var(--pk-success);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb[data-kind="file"] {
+.pktw-root .pkchat-idx-art__thumb[data-kind="file"],
+.peak-design-root .pkchat-idx-art__thumb[data-kind="file"] {
   background: var(--pk-info-bg);
   color: var(--pk-info);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb[data-kind="diagram"] {
+.pktw-root .pkchat-idx-art__thumb[data-kind="diagram"],
+.peak-design-root .pkchat-idx-art__thumb[data-kind="diagram"] {
   background: var(--pk-warning-bg);
   color: var(--pk-warning);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb[data-kind="image"] {
+.pktw-root .pkchat-idx-art__thumb[data-kind="image"],
+.peak-design-root .pkchat-idx-art__thumb[data-kind="image"] {
   background: var(--pk-accent-soft);
   color: var(--pk-accent);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art__thumb > svg {
+.pktw-root .pkchat-idx-art__thumb > svg,
+.peak-design-root .pkchat-idx-art__thumb > svg {
   width: 20px;
   height: 20px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art__body {
+.pktw-root .pkchat-idx-art__body,
+.peak-design-root .pkchat-idx-art__body {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art__name {
+.pktw-root .pkchat-idx-art__name,
+.peak-design-root .pkchat-idx-art__name {
   font-size: var(--pk-text-sm);
   font-weight: 600;
   color: var(--pk-text-primary);
@@ -1421,7 +1609,8 @@
   font-family: var(--pk-font-mono);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art__sub {
+.pktw-root .pkchat-idx-art__sub,
+.peak-design-root .pkchat-idx-art__sub {
   font-size: var(--pk-text-xs);
   color: var(--pk-text-tertiary);
   display: flex;
@@ -1430,7 +1619,8 @@
   flex-wrap: wrap;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx-art__kind {
+.pktw-root .pkchat-idx-art__kind,
+.peak-design-root .pkchat-idx-art__kind {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;
@@ -1438,7 +1628,8 @@
   font-size: 10px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-idx__foot {
+.pktw-root .pkchat-idx__foot,
+.peak-design-root .pkchat-idx__foot {
   border-top: 1px solid var(--pk-border-soft);
   padding: var(--pk-space-2) var(--pk-space-4);
   display: flex;
@@ -1458,10 +1649,11 @@
        ├─ .pkchat-msg__body     (markdown content; user variant has bubble)
        ├─ .pkchat-msg__meta-row (model chip + timestamp + actions + More)
        └─ .pkchat-msg__suggest  (suggested-next chips + More)
-   All selectors scoped via :where(.pktw-root, .peak-design-root).
+   All selectors scoped via `.pktw-root SEL, .peak-design-root SEL`.
    ═════════════════════════════════════════════════════════════════════════════ */
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg-list {
+.pktw-root .pkchat-msg-list,
+.peak-design-root .pkchat-msg-list {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -1471,21 +1663,24 @@
   box-sizing: border-box;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg {
+.pktw-root .pkchat-msg,
+.peak-design-root .pkchat-msg {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-3);
   width: 100%;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__head {
+.pktw-root .pkchat-msg__head,
+.peak-design-root .pkchat-msg__head {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
   flex-wrap: wrap;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__avatar {
+.pktw-root .pkchat-msg__avatar,
+.peak-design-root .pkchat-msg__avatar {
   width: 26px;
   height: 26px;
   border-radius: 8px;
@@ -1500,35 +1695,41 @@
   border: 1px solid var(--pk-border-accent);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__avatar--user {
+.pktw-root .pkchat-msg__avatar--user,
+.peak-design-root .pkchat-msg__avatar--user {
   background: var(--pk-surface-sunken);
   color: var(--pk-text-primary);
   border-color: var(--pk-border);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__name {
+.pktw-root .pkchat-msg__name,
+.peak-design-root .pkchat-msg__name {
   font-weight: 650;
   font-size: 13.5px;
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__head-meta {
+.pktw-root .pkchat-msg__head-meta,
+.peak-design-root .pkchat-msg__head-meta {
   color: var(--pk-text-tertiary);
   font-size: var(--pk-text-sm);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__head-meta .pkchat-msg__dot {
+.pktw-root .pkchat-msg__head-meta .pkchat-msg__dot,
+.peak-design-root .pkchat-msg__head-meta .pkchat-msg__dot {
   margin: 0 var(--pk-space-1);
   opacity: 0.6;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__body {
+.pktw-root .pkchat-msg__body,
+.peak-design-root .pkchat-msg__body {
   font-size: 14.5px;
   line-height: 1.7;
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg--user .pkchat-msg__body {
+.pktw-root .pkchat-msg--user .pkchat-msg__body,
+.peak-design-root .pkchat-msg--user .pkchat-msg__body {
   background: var(--pk-surface-sunken);
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
@@ -1536,7 +1737,8 @@
   font-size: var(--pk-text-md);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__meta-row {
+.pktw-root .pkchat-msg__meta-row,
+.peak-design-root .pkchat-msg__meta-row {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -1545,7 +1747,8 @@
   flex-wrap: wrap;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__model-chip {
+.pktw-root .pkchat-msg__model-chip,
+.peak-design-root .pkchat-msg__model-chip {
   display: inline-flex;
   align-items: center;
   height: 22px;
@@ -1560,11 +1763,13 @@
   user-select: text;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__sep {
+.pktw-root .pkchat-msg__sep,
+.peak-design-root .pkchat-msg__sep {
   opacity: 0.5;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__action {
+.pktw-root .pkchat-msg__action,
+.peak-design-root .pkchat-msg__action {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-1);
@@ -1580,29 +1785,34 @@
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__action:hover {
+.pktw-root .pkchat-msg__action:hover,
+.peak-design-root .pkchat-msg__action:hover {
   background: var(--pk-surface-sunken);
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__action--danger:hover {
+.pktw-root .pkchat-msg__action--danger:hover,
+.peak-design-root .pkchat-msg__action--danger:hover {
   color: var(--pk-error);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__action > svg {
+.pktw-root .pkchat-msg__action > svg,
+.peak-design-root .pkchat-msg__action > svg {
   width: 13px;
   height: 13px;
   flex: 0 0 13px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__action--more {
+.pktw-root .pkchat-msg__action--more,
+.peak-design-root .pkchat-msg__action--more {
   margin-left: auto;
   width: 24px;
   padding: 0;
   justify-content: center;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest {
+.pktw-root .pkchat-msg__suggest,
+.peak-design-root .pkchat-msg__suggest {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -1610,7 +1820,8 @@
   margin-top: 2px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-label {
+.pktw-root .pkchat-msg__suggest-label,
+.peak-design-root .pkchat-msg__suggest-label {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
   margin-right: 2px;
@@ -1619,7 +1830,8 @@
   font-weight: 600;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-chip {
+.pktw-root .pkchat-msg__suggest-chip,
+.peak-design-root .pkchat-msg__suggest-chip {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -1635,19 +1847,22 @@
   transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-chip:hover {
+.pktw-root .pkchat-msg__suggest-chip:hover,
+.peak-design-root .pkchat-msg__suggest-chip:hover {
   background: var(--pk-surface-sunken);
   border-color: var(--pk-border-accent);
   color: var(--pk-accent-hover, var(--pk-accent));
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-chip > svg {
+.pktw-root .pkchat-msg__suggest-chip > svg,
+.peak-design-root .pkchat-msg__suggest-chip > svg {
   width: 13px;
   height: 13px;
   flex: 0 0 13px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-more {
+.pktw-root .pkchat-msg__suggest-more,
+.peak-design-root .pkchat-msg__suggest-more {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-1);
@@ -1663,13 +1878,15 @@
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-more:hover {
+.pktw-root .pkchat-msg__suggest-more:hover,
+.peak-design-root .pkchat-msg__suggest-more:hover {
   color: var(--pk-text-primary);
   background: var(--pk-surface-sunken);
 }
 
 /* Inline follow-up affordance (default OFF; toggled on via the More popover) */
-:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup {
+.pktw-root .pkchat-msg__inline-followup,
+.peak-design-root .pkchat-msg__inline-followup {
   margin-top: var(--pk-space-2);
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
@@ -1680,7 +1897,8 @@
   padding: var(--pk-space-3);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__head {
+.pktw-root .pkchat-msg__inline-followup__head,
+.peak-design-root .pkchat-msg__inline-followup__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1688,7 +1906,8 @@
   color: var(--pk-text-tertiary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__textarea {
+.pktw-root .pkchat-msg__inline-followup__textarea,
+.peak-design-root .pkchat-msg__inline-followup__textarea {
   width: 100%;
   min-height: 64px;
   resize: vertical;
@@ -1702,19 +1921,22 @@
   line-height: 1.5;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__textarea:focus {
+.pktw-root .pkchat-msg__inline-followup__textarea:focus,
+.peak-design-root .pkchat-msg__inline-followup__textarea:focus {
   outline: none;
   border-color: var(--pk-border-accent);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__actions {
+.pktw-root .pkchat-msg__inline-followup__actions,
+.peak-design-root .pkchat-msg__inline-followup__actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__submit {
+.pktw-root .pkchat-msg__inline-followup__submit,
+.peak-design-root .pkchat-msg__inline-followup__submit {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-1);
@@ -1730,12 +1952,14 @@
   cursor: pointer;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__submit:disabled {
+.pktw-root .pkchat-msg__inline-followup__submit:disabled,
+.peak-design-root .pkchat-msg__inline-followup__submit:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__cancel {
+.pktw-root .pkchat-msg__inline-followup__cancel,
+.peak-design-root .pkchat-msg__inline-followup__cancel {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-1);
@@ -1751,7 +1975,8 @@
 }
 
 /* Mode chip — small pill next to assistant name, e.g. "Agent" / "Chat" / "Plan" */
-:where(.pktw-root, .peak-design-root) .pkchat-msg__mode {
+.pktw-root .pkchat-msg__mode,
+.peak-design-root .pkchat-msg__mode {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-1);
@@ -1780,20 +2005,23 @@
 
 /* ── pkonb-modal — onboarding modal sizing ─────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-modal {
+.pktw-root .pkonb-modal,
+.peak-design-root .pkonb-modal {
   padding: 0;
   display: flex;
   flex-direction: column;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-modal__progress {
+.pktw-root .pkonb-modal__progress,
+.peak-design-root .pkonb-modal__progress {
   border-bottom: 1px solid var(--pk-border-soft);
   padding: 18px var(--pk-space-6) 14px;
   background: var(--pk-surface);
   overflow: visible;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-modal__body {
+.pktw-root .pkonb-modal__body,
+.peak-design-root .pkonb-modal__body {
   padding: var(--pk-space-6);
   overflow-y: auto;
   max-height: 70vh;
@@ -1802,7 +2030,8 @@
   gap: var(--pk-space-5);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-modal__footer {
+.pktw-root .pkonb-modal__footer,
+.peak-design-root .pkonb-modal__footer {
   border-top: 1px solid var(--pk-border-soft);
   padding: 14px var(--pk-space-6);
   display: flex;
@@ -1815,13 +2044,15 @@
 
 /* ── pkonb-progress — 7-step indicator (dots, connectors, labels) ──────────── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress {
+.pktw-root .pkonb-progress,
+.peak-design-root .pkonb-progress {
   display: flex;
   flex-direction: column;
   align-items: stretch;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__dots {
+.pktw-root .pkonb-progress__dots,
+.peak-design-root .pkonb-progress__dots {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1829,7 +2060,8 @@
   margin-bottom: 36px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__step {
+.pktw-root .pkonb-progress__step,
+.peak-design-root .pkonb-progress__step {
   position: relative;
   display: flex;
   align-items: center;
@@ -1839,11 +2071,13 @@
   flex: 0 0 auto;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="future"] {
+.pktw-root .pkonb-progress__step[data-state="future"],
+.peak-design-root .pkonb-progress__step[data-state="future"] {
   cursor: not-allowed;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__bubble {
+.pktw-root .pkonb-progress__bubble,
+.peak-design-root .pkonb-progress__bubble {
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -1857,19 +2091,22 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__bubble > svg {
+.pktw-root .pkonb-progress__bubble > svg,
+.peak-design-root .pkonb-progress__bubble > svg {
   width: 12px;
   height: 12px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="completed"] .pkonb-progress__bubble {
+.pktw-root .pkonb-progress__step[data-state="completed"] .pkonb-progress__bubble,
+.peak-design-root .pkonb-progress__step[data-state="completed"] .pkonb-progress__bubble {
   background: var(--pk-accent);
   border-color: var(--pk-accent);
   color: var(--pk-accent-fg);
 }
 
 /* Active step renders as a wide pill bar, not a circle. */
-:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble {
+.pktw-root .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble,
+.peak-design-root .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble {
   width: 56px;
   height: 8px;
   border-radius: var(--pk-radius-pill);
@@ -1878,22 +2115,26 @@
   color: transparent;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble > svg {
+.pktw-root .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble > svg,
+.peak-design-root .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble > svg {
   display: none;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble {
+.pktw-root .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble,
+.peak-design-root .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble {
   background: var(--pk-surface);
   border-color: var(--pk-border);
   color: var(--pk-border-strong);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble > svg {
+.pktw-root .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble > svg,
+.peak-design-root .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble > svg {
   width: 6px;
   height: 6px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__connector {
+.pktw-root .pkonb-progress__connector,
+.peak-design-root .pkonb-progress__connector {
   flex: 1 1 auto;
   min-width: 14px;
   height: 1.5px;
@@ -1902,13 +2143,15 @@
   margin: 0 6px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__connector[data-state="completed"] {
+.pktw-root .pkonb-progress__connector[data-state="completed"],
+.peak-design-root .pkonb-progress__connector[data-state="completed"] {
   background: var(--pk-accent);
 }
 
 /* Labels positioned absolutely below the bubble so they never affect
    the flex width of the dots row. */
-:where(.pktw-root, .peak-design-root) .pkonb-progress__label {
+.pktw-root .pkonb-progress__label,
+.peak-design-root .pkonb-progress__label {
   position: absolute;
   top: calc(100% + 6px);
   left: 50%;
@@ -1921,23 +2164,27 @@
   pointer-events: none;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="completed"] .pkonb-progress__label {
+.pktw-root .pkonb-progress__step[data-state="completed"] .pkonb-progress__label,
+.peak-design-root .pkonb-progress__step[data-state="completed"] .pkonb-progress__label {
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="active"] .pkonb-progress__label {
+.pktw-root .pkonb-progress__step[data-state="active"] .pkonb-progress__label,
+.peak-design-root .pkonb-progress__step[data-state="active"] .pkonb-progress__label {
   color: var(--pk-accent-text);
   font-weight: 500;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__title {
+.pktw-root .pkonb-progress__title,
+.peak-design-root .pkonb-progress__title {
   text-align: center;
   font-size: var(--pk-text-md);
   color: var(--pk-text-secondary);
   margin-top: 14px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-progress__title strong {
+.pktw-root .pkonb-progress__title strong,
+.peak-design-root .pkonb-progress__title strong {
   color: var(--pk-text-primary);
   font-weight: 600;
 }
@@ -1945,26 +2192,30 @@
 
 /* ── pkonb-section — primary step body section ─────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-section {
+.pktw-root .pkonb-section,
+.peak-design-root .pkonb-section {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-3);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-section__title {
+.pktw-root .pkonb-section__title,
+.peak-design-root .pkonb-section__title {
   font-size: var(--pk-text-xl);
   font-weight: 600;
   color: var(--pk-text-primary);
   line-height: 1.35;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-section__desc {
+.pktw-root .pkonb-section__desc,
+.peak-design-root .pkonb-section__desc {
   font-size: var(--pk-text-md);
   color: var(--pk-text-secondary);
   line-height: 1.5;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-section__kicker {
+.pktw-root .pkonb-section__kicker,
+.peak-design-root .pkonb-section__kicker {
   font-size: var(--pk-text-sm);
   font-weight: 500;
   color: var(--pk-text-secondary);
@@ -1975,7 +2226,8 @@
 
 /* ── pkonb-hero — welcome + done celebrations ──────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-hero {
+.pktw-root .pkonb-hero,
+.peak-design-root .pkonb-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1984,7 +2236,8 @@
   text-align: center;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-hero__mark {
+.pktw-root .pkonb-hero__mark,
+.peak-design-root .pkonb-hero__mark {
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -1995,30 +2248,35 @@
   justify-content: center;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-hero__mark > svg {
+.pktw-root .pkonb-hero__mark > svg,
+.peak-design-root .pkonb-hero__mark > svg {
   width: 28px;
   height: 28px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-hero__mark--success {
+.pktw-root .pkonb-hero__mark--success,
+.peak-design-root .pkonb-hero__mark--success {
   background: var(--pk-success-bg);
   color: var(--pk-success);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-hero__title {
+.pktw-root .pkonb-hero__title,
+.peak-design-root .pkonb-hero__title {
   font-size: var(--pk-text-2xl);
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-hero__sub {
+.pktw-root .pkonb-hero__sub,
+.peak-design-root .pkonb-hero__sub {
   font-size: var(--pk-text-md);
   color: var(--pk-text-secondary);
   max-width: 420px;
   line-height: 1.5;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-hero__actions {
+.pktw-root .pkonb-hero__actions,
+.peak-design-root .pkonb-hero__actions {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-2);
@@ -2029,13 +2287,15 @@
 
 /* ── pkonb-cap-grid — capabilities step (2x2 cards) ────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-cap-grid {
+.pktw-root .pkonb-cap-grid,
+.peak-design-root .pkonb-cap-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--pk-space-3);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-cap-card {
+.pktw-root .pkonb-cap-card,
+.peak-design-root .pkonb-cap-card {
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-surface);
@@ -2046,13 +2306,15 @@
   min-width: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-cap-card__head {
+.pktw-root .pkonb-cap-card__head,
+.peak-design-root .pkonb-cap-card__head {
   display: flex;
   align-items: center;
   gap: var(--pk-space-3);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-cap-card__icon {
+.pktw-root .pkonb-cap-card__icon,
+.peak-design-root .pkonb-cap-card__icon {
   width: 32px;
   height: 32px;
   border-radius: var(--pk-radius-md);
@@ -2064,24 +2326,28 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-cap-card__icon > svg {
+.pktw-root .pkonb-cap-card__icon > svg,
+.peak-design-root .pkonb-cap-card__icon > svg {
   width: 18px;
   height: 18px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-cap-card__title {
+.pktw-root .pkonb-cap-card__title,
+.peak-design-root .pkonb-cap-card__title {
   font-size: var(--pk-text-lg);
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-cap-card__body {
+.pktw-root .pkonb-cap-card__body,
+.peak-design-root .pkonb-cap-card__body {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   line-height: 1.5;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-cap-card__try {
+.pktw-root .pkonb-cap-card__try,
+.peak-design-root .pkonb-cap-card__try {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
   display: flex;
@@ -2091,7 +2357,8 @@
   min-width: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-cap-card__try code {
+.pktw-root .pkonb-cap-card__try code,
+.peak-design-root .pkonb-cap-card__try code {
   font-family: var(--pk-font-mono);
   background: var(--pk-surface-sunken);
   padding: 4px var(--pk-space-2);
@@ -2108,7 +2375,8 @@
 
 /* ── pkonb-radio-card — selectable card with check icon + accent border ────── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card {
+.pktw-root .pkonb-radio-card,
+.peak-design-root .pkonb-radio-card {
   position: relative;
   display: flex;
   align-items: flex-start;
@@ -2123,17 +2391,20 @@
   text-align: left;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card:hover {
+.pktw-root .pkonb-radio-card:hover,
+.peak-design-root .pkonb-radio-card:hover {
   background: var(--pk-surface-sunken);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card[data-selected="true"] {
+.pktw-root .pkonb-radio-card[data-selected="true"],
+.peak-design-root .pkonb-radio-card[data-selected="true"] {
   background: var(--pk-accent-soft);
   border-color: var(--pk-accent-soft);
   border-left-color: var(--pk-accent);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card__icon {
+.pktw-root .pkonb-radio-card__icon,
+.peak-design-root .pkonb-radio-card__icon {
   width: 32px;
   height: 32px;
   border-radius: var(--pk-radius-md);
@@ -2146,18 +2417,21 @@
   border: 1px solid var(--pk-border);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__icon {
+.pktw-root .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__icon,
+.peak-design-root .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__icon {
   background: var(--pk-surface);
   color: var(--pk-accent);
   border-color: var(--pk-accent-soft);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card__icon > svg {
+.pktw-root .pkonb-radio-card__icon > svg,
+.peak-design-root .pkonb-radio-card__icon > svg {
   width: 16px;
   height: 16px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card__body {
+.pktw-root .pkonb-radio-card__body,
+.peak-design-root .pkonb-radio-card__body {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -2165,19 +2439,22 @@
   gap: 2px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card__title {
+.pktw-root .pkonb-radio-card__title,
+.peak-design-root .pkonb-radio-card__title {
   font-size: var(--pk-text-md);
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card__hint {
+.pktw-root .pkonb-radio-card__hint,
+.peak-design-root .pkonb-radio-card__hint {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   line-height: 1.45;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card__check {
+.pktw-root .pkonb-radio-card__check,
+.peak-design-root .pkonb-radio-card__check {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -2192,17 +2469,20 @@
   transition: opacity var(--pk-transition-fast);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card__check > svg {
+.pktw-root .pkonb-radio-card__check > svg,
+.peak-design-root .pkonb-radio-card__check > svg {
   width: 12px;
   height: 12px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__check {
+.pktw-root .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__check,
+.peak-design-root .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__check {
   opacity: 1;
 }
 
 /* Compact variant — 4-up preference cards */
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card--compact {
+.pktw-root .pkonb-radio-card--compact,
+.peak-design-root .pkonb-radio-card--compact {
   flex-direction: column;
   align-items: stretch;
   padding: 14px;
@@ -2210,25 +2490,29 @@
   min-height: 108px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card--compact .pkonb-radio-card__icon {
+.pktw-root .pkonb-radio-card--compact .pkonb-radio-card__icon,
+.peak-design-root .pkonb-radio-card--compact .pkonb-radio-card__icon {
   width: 28px;
   height: 28px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-card--compact .pkonb-radio-card__check {
+.pktw-root .pkonb-radio-card--compact .pkonb-radio-card__check,
+.peak-design-root .pkonb-radio-card--compact .pkonb-radio-card__check {
   position: absolute;
   top: 10px;
   right: 10px;
   margin-top: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-grid-4 {
+.pktw-root .pkonb-radio-grid-4,
+.peak-design-root .pkonb-radio-grid-4 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-radio-list {
+.pktw-root .pkonb-radio-list,
+.peak-design-root .pkonb-radio-list {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-2);
@@ -2237,13 +2521,15 @@
 
 /* ── pkonb-provider-grid — 4-col provider chooser ──────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-provider-grid {
+.pktw-root .pkonb-provider-grid,
+.peak-design-root .pkonb-provider-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-provider-chip {
+.pktw-root .pkonb-provider-chip,
+.peak-design-root .pkonb-provider-chip {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2258,22 +2544,26 @@
   position: relative;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-provider-chip:hover {
+.pktw-root .pkonb-provider-chip:hover,
+.peak-design-root .pkonb-provider-chip:hover {
   background: var(--pk-surface-sunken);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-provider-chip[data-selected="true"] {
+.pktw-root .pkonb-provider-chip[data-selected="true"],
+.peak-design-root .pkonb-provider-chip[data-selected="true"] {
   background: var(--pk-accent-soft);
   border-color: var(--pk-accent);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-provider-chip__name {
+.pktw-root .pkonb-provider-chip__name,
+.peak-design-root .pkonb-provider-chip__name {
   font-size: var(--pk-text-base);
   color: var(--pk-text-primary);
   font-weight: 500;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-provider-chip__check {
+.pktw-root .pkonb-provider-chip__check,
+.peak-design-root .pkonb-provider-chip__check {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -2289,19 +2579,22 @@
   transition: opacity var(--pk-transition-fast);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-provider-chip__check > svg {
+.pktw-root .pkonb-provider-chip__check > svg,
+.peak-design-root .pkonb-provider-chip__check > svg {
   width: 11px;
   height: 11px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-provider-chip[data-selected="true"] .pkonb-provider-chip__check {
+.pktw-root .pkonb-provider-chip[data-selected="true"] .pkonb-provider-chip__check,
+.peak-design-root .pkonb-provider-chip[data-selected="true"] .pkonb-provider-chip__check {
   opacity: 1;
 }
 
 
 /* ── pkonb-hint — informational banner ─────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-hint {
+.pktw-root .pkonb-hint,
+.peak-design-root .pkonb-hint {
   display: flex;
   align-items: flex-start;
   gap: var(--pk-space-2);
@@ -2314,7 +2607,8 @@
   line-height: 1.5;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-hint > svg {
+.pktw-root .pkonb-hint > svg,
+.peak-design-root .pkonb-hint > svg {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
@@ -2322,23 +2616,27 @@
   color: var(--pk-text-tertiary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-hint--accent {
+.pktw-root .pkonb-hint--accent,
+.peak-design-root .pkonb-hint--accent {
   background: var(--pk-accent-soft);
   border-color: var(--pk-accent-soft);
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-hint--accent > svg {
+.pktw-root .pkonb-hint--accent > svg,
+.peak-design-root .pkonb-hint--accent > svg {
   color: var(--pk-accent);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-hint--warning {
+.pktw-root .pkonb-hint--warning,
+.peak-design-root .pkonb-hint--warning {
   background: var(--pk-warning-bg);
   border-color: var(--pk-warning-bg);
   color: var(--pk-warning-text);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-hint--danger {
+.pktw-root .pkonb-hint--danger,
+.peak-design-root .pkonb-hint--danger {
   background: var(--pk-error-bg);
   border-color: var(--pk-error-bg);
   color: var(--pk-error-text);
@@ -2347,7 +2645,8 @@
 
 /* ── pkonb-summary-row — Ready-to-Try summary table ────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-summary-row {
+.pktw-root .pkonb-summary-row,
+.peak-design-root .pkonb-summary-row {
   display: grid;
   grid-template-columns: 140px 1fr auto;
   gap: var(--pk-space-3);
@@ -2358,11 +2657,13 @@
   background: var(--pk-surface);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-summary-row + .pkonb-summary-row {
+.pktw-root .pkonb-summary-row + .pkonb-summary-row,
+.peak-design-root .pkonb-summary-row + .pkonb-summary-row {
   margin-top: 6px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-summary-row__label {
+.pktw-root .pkonb-summary-row__label,
+.peak-design-root .pkonb-summary-row__label {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   display: inline-flex;
@@ -2370,12 +2671,14 @@
   gap: 6px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-summary-row__label > svg {
+.pktw-root .pkonb-summary-row__label > svg,
+.peak-design-root .pkonb-summary-row__label > svg {
   width: 14px;
   height: 14px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-summary-row__value {
+.pktw-root .pkonb-summary-row__value,
+.peak-design-root .pkonb-summary-row__value {
   font-size: var(--pk-text-base);
   color: var(--pk-text-primary);
 }
@@ -2383,13 +2686,15 @@
 
 /* ── pkonb-action-grid — Ready-to-Try launchpad cards ──────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-grid {
+.pktw-root .pkonb-action-grid,
+.peak-design-root .pkonb-action-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--pk-space-3);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card {
+.pktw-root .pkonb-action-card,
+.peak-design-root .pkonb-action-card {
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-surface);
@@ -2402,18 +2707,21 @@
   text-align: left;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card:hover {
+.pktw-root .pkonb-action-card:hover,
+.peak-design-root .pkonb-action-card:hover {
   background: var(--pk-surface-sunken);
   border-color: var(--pk-border-strong);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card__header {
+.pktw-root .pkonb-action-card__header,
+.peak-design-root .pkonb-action-card__header {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon {
+.pktw-root .pkonb-action-card__icon,
+.peak-design-root .pkonb-action-card__icon {
   width: 28px;
   height: 28px;
   border-radius: var(--pk-radius-md);
@@ -2423,44 +2731,52 @@
   flex-shrink: 0;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon > svg {
+.pktw-root .pkonb-action-card__icon > svg,
+.peak-design-root .pkonb-action-card__icon > svg {
   width: 16px;
   height: 16px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="accent"] {
+.pktw-root .pkonb-action-card__icon[data-tone="accent"],
+.peak-design-root .pkonb-action-card__icon[data-tone="accent"] {
   background: var(--pk-accent-soft);
   color: var(--pk-accent);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="success"] {
+.pktw-root .pkonb-action-card__icon[data-tone="success"],
+.peak-design-root .pkonb-action-card__icon[data-tone="success"] {
   background: var(--pk-success-bg);
   color: var(--pk-success);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="info"] {
+.pktw-root .pkonb-action-card__icon[data-tone="info"],
+.peak-design-root .pkonb-action-card__icon[data-tone="info"] {
   background: var(--pk-info-bg);
   color: var(--pk-info);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="warning"] {
+.pktw-root .pkonb-action-card__icon[data-tone="warning"],
+.peak-design-root .pkonb-action-card__icon[data-tone="warning"] {
   background: var(--pk-warning-bg);
   color: var(--pk-warning);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card__title {
+.pktw-root .pkonb-action-card__title,
+.peak-design-root .pkonb-action-card__title {
   font-size: var(--pk-text-md);
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card__body {
+.pktw-root .pkonb-action-card__body,
+.peak-design-root .pkonb-action-card__body {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   line-height: 1.5;
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card__try {
+.pktw-root .pkonb-action-card__try,
+.peak-design-root .pkonb-action-card__try {
   margin-top: 4px;
   padding: 10px var(--pk-space-3);
   background: var(--pk-accent-soft);
@@ -2471,7 +2787,8 @@
   border: 1px solid var(--pk-accent-soft);
 }
 
-:where(.pktw-root, .peak-design-root) .pkonb-action-card__try::before {
+.pktw-root .pkonb-action-card__try::before,
+.peak-design-root .pkonb-action-card__try::before {
   content: 'Try: ';
   font-family: var(--pk-font-sans);
   color: var(--pk-text-secondary);
@@ -2480,7 +2797,8 @@
 
 /* ── pkonb-spinner — circular loader ──────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-spinner {
+.pktw-root .pkonb-spinner,
+.peak-design-root .pkonb-spinner {
   width: 36px;
   height: 36px;
   border: 3px solid var(--pk-border);
@@ -2497,7 +2815,8 @@
 
 /* ── pkonb-preset-pill-row — wrappable inline pills (RedoInput presets) ───── */
 
-:where(.pktw-root, .peak-design-root) .pkonb-preset-row {
+.pktw-root .pkonb-preset-row,
+.peak-design-root .pkonb-preset-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -2516,7 +2835,8 @@
 
 /* ── pkset-root — settings stage shell ─────────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkset-root {
+.pktw-root .pkset-root,
+.peak-design-root .pkset-root {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-4);
@@ -2528,20 +2848,23 @@
 
 /* ── pkset-head — stage title + subtitle ───────────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkset-head {
+.pktw-root .pkset-head,
+.peak-design-root .pkset-head {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding-bottom: var(--pk-space-1);
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-head__title {
+.pktw-root .pkset-head__title,
+.peak-design-root .pkset-head__title {
   font-size: 18px;
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-head__sub {
+.pktw-root .pkset-head__sub,
+.peak-design-root .pkset-head__sub {
   font-size: 12px;
   color: var(--pk-text-tertiary);
 }
@@ -2549,7 +2872,8 @@
 
 /* ── pkset-tabs — horizontal underlined tab bar ────────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkset-tabs {
+.pktw-root .pkset-tabs,
+.peak-design-root .pkset-tabs {
   display: flex;
   align-items: center;
   gap: 24px;
@@ -2557,7 +2881,8 @@
   margin-bottom: var(--pk-space-3);
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-tabs__tab {
+.pktw-root .pkset-tabs__tab,
+.peak-design-root .pkset-tabs__tab {
   position: relative;
   background: transparent;
   border: 0;
@@ -2569,15 +2894,18 @@
   transition: color var(--pk-transition-fast);
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-tabs__tab:hover {
+.pktw-root .pkset-tabs__tab:hover,
+.peak-design-root .pkset-tabs__tab:hover {
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-tabs__tab[data-active="true"] {
+.pktw-root .pkset-tabs__tab[data-active="true"],
+.peak-design-root .pkset-tabs__tab[data-active="true"] {
   color: var(--pk-accent);
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-tabs__tab[data-active="true"]::after {
+.pktw-root .pkset-tabs__tab[data-active="true"]::after,
+.peak-design-root .pkset-tabs__tab[data-active="true"]::after {
   content: '';
   position: absolute;
   left: 0;
@@ -2591,33 +2919,38 @@
 
 /* ── pkset-panel / pkset-section — panel + section grouping ────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkset-panel {
+.pktw-root .pkset-panel,
+.peak-design-root .pkset-panel {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-4);
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-section {
+.pktw-root .pkset-section,
+.peak-design-root .pkset-section {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-2);
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-section__head {
+.pktw-root .pkset-section__head,
+.peak-design-root .pkset-section__head {
   display: flex;
   flex-direction: column;
   gap: 2px;
   margin-bottom: 4px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-section__title {
+.pktw-root .pkset-section__title,
+.peak-design-root .pkset-section__title {
   font-size: 13px;
   font-weight: 600;
   color: var(--pk-text-primary);
   letter-spacing: 0.01em;
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-section__sub {
+.pktw-root .pkset-section__sub,
+.peak-design-root .pkset-section__sub {
   font-size: 12px;
   color: var(--pk-text-tertiary);
 }
@@ -2625,7 +2958,8 @@
 
 /* ── pkset-row-list — vertical stack of pk-row entries ─────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkset-row-list {
+.pktw-root .pkset-row-list,
+.peak-design-root .pkset-row-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2634,14 +2968,16 @@
 
 /* ── pkset-empty — empty-state copy for readiness panel (PR-E) ─────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkset-empty {
+.pktw-root .pkset-empty,
+.peak-design-root .pkset-empty {
   padding: var(--pk-space-4);
   border-radius: var(--pk-radius-md);
   border: 1px dashed var(--pk-border-soft);
   background: var(--pk-surface-sunken);
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-empty__text {
+.pktw-root .pkset-empty__text,
+.peak-design-root .pkset-empty__text {
   font-size: 12px;
   color: var(--pk-text-tertiary);
   line-height: 1.5;
@@ -2650,7 +2986,8 @@
 
 /* ── pkset-banner — re-run wizard advisory banner ──────────────────────────── */
 
-:where(.pktw-root, .peak-design-root) .pkset-banner {
+.pktw-root .pkset-banner,
+.peak-design-root .pkset-banner {
   display: flex;
   align-items: flex-start;
   gap: var(--pk-space-3);
@@ -2660,7 +2997,8 @@
   background: var(--pk-accent-tint);
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-banner__icon {
+.pktw-root .pkset-banner__icon,
+.peak-design-root .pkset-banner__icon {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
@@ -2668,20 +3006,23 @@
   margin-top: 2px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-banner__body {
+.pktw-root .pkset-banner__body,
+.peak-design-root .pkset-banner__body {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-banner__title {
+.pktw-root .pkset-banner__title,
+.peak-design-root .pkset-banner__title {
   font-size: 13px;
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-:where(.pktw-root, .peak-design-root) .pkset-banner__desc {
+.pktw-root .pkset-banner__desc,
+.peak-design-root .pkset-banner__desc {
   font-size: 12px;
   color: var(--pk-text-secondary);
 }
