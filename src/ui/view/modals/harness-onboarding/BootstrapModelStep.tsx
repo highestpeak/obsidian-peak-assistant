@@ -163,6 +163,7 @@ function ModelCard({
     onClick: () => void;
     strings: OnboardingStrings;
 }) {
+    const showHint = !!option.hint;
     return (
         <button
             type="button"
@@ -174,18 +175,20 @@ function ModelCard({
                 <Cpu />
             </span>
             <span className="pkonb-radio-card__body">
-                <span className="pkonb-radio-card__title" style={{ fontFamily: 'var(--pk-font-mono)' }}>
-                    {option.displayName}
-                </span>
-                <span className="pkonb-radio-card__hint">
-                    {option.recommended ? (
-                        <Chip variant="accent" style={{ marginRight: 6 }}>
+                <span className="pkonb-radio-card__title-row">
+                    <span className="pkonb-radio-card__title" style={{ fontFamily: 'var(--pk-font-mono)' }}>
+                        {option.displayName}
+                    </span>
+                    {option.recommended && (
+                        <Chip variant="accent">
                             <Sparkles />
                             <span>{strings.steps.bootstrap.recommendedChip}</span>
                         </Chip>
-                    ) : null}
-                    {option.hint ?? ''}
+                    )}
                 </span>
+                {showHint && (
+                    <span className="pkonb-radio-card__hint">{option.hint}</span>
+                )}
             </span>
             <span className="pkonb-radio-card__check">
                 <Check />

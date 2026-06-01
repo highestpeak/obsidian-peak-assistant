@@ -2930,13 +2930,17 @@
 /* ── pkonb-radio-card — selectable card with check icon + accent border ────── */
 
 /* Button-based primitive — bg/border/padding/border-radius use !important to
-   beat Obsidian's .modal-content button rule. See pk-btn note. */
+   beat Obsidian's .modal-content button rule. See pk-btn note.
+   align-items: center + explicit min-height keeps every row the same height
+   regardless of optional hint/chip content, so the list looks like a
+   uniform stack instead of a ragged accordion. */
 .pktw-root .pkonb-radio-card,
 .peak-design-root .pkonb-radio-card {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--pk-space-3);
+  min-height: 56px;
   border: 1px solid var(--pk-border) !important;
   border-left: 3px solid var(--pk-border) !important;
   background: var(--pk-surface) !important;
@@ -2993,6 +2997,14 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.pktw-root .pkonb-radio-card__title-row,
+.peak-design-root .pkonb-radio-card__title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  min-width: 0;
 }
 
 .pktw-root .pkonb-radio-card__title,
