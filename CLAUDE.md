@@ -63,6 +63,7 @@ Critical rules to keep in mind:
 
 - **Obsidian CSS defense** — any scoped UI surface (modal / panel) MUST add the `peak-design-root` class to its outermost wrapper, otherwise raw `<button>` / `<input>` / `<h1-6>` / `<a>` will get Obsidian's theme styles injected and look inconsistent with the design. Detail: [`docs/conventions/obsidian-css-defense.md`](./docs/conventions/obsidian-css-defense.md).
 - **Design tokens** — all colors / spacing / radius / typography come from `--pk-*` tokens in `src/styles/peak-tokens.css` (source of truth). No inline hex; no `var(--text-normal)` / `var(--background-primary)` etc. direct Obsidian-theme refs; no `var(--pk-X, fallback)` chains. Visual reference: `docs/mockups/_design-tokens-preview.html`. Detail: [`docs/conventions/design-tokens.md`](./docs/conventions/design-tokens.md).
+- **Primitive usage** — pick primitives by intent not shape. `<Pill>` is a toggleable filter chip, NOT a CTA button (use `<Button>`). `<Row>` is the Settings card spec (radius-lg + shadow), NOT a generic row — use a surface modifier like `pkonb-provider-row` for compact onboarding rows. Before implementing a new step/surface, produce a mock→primitive map; if any mock class has no primitive, add the primitive first, don't paper over with the closest-shaped one. Detail: [`docs/conventions/primitive-usage.md`](./docs/conventions/primitive-usage.md).
 
 ## Key External Dependencies
 

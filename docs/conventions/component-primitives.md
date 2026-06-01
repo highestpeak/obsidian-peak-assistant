@@ -246,6 +246,17 @@ Nested `.pk-row` instances are automatically flipped to `--pk-surface` backgroun
 
 **Without `data-provider`** — falls back to neutral sunken bg + secondary text.
 
+## Anti-patterns (don't do this)
+
+Picking the primitive by **shape** instead of **intent** caused five visible regressions on 2026-06-01 (`commits ec5491a`, `b91d01c`). The full rule + decision tree lives in [primitive-usage.md](./primitive-usage.md); the short version:
+
+- **`<Pill>` is a toggleable filter chip, not a CTA button.** Its `selected` color is filter-active tint, not solid accent. For Back / Continue / Save / Got it, use `<Button>` with `variant="primary" | "secondary" | "ghost"`.
+- **`<Row>` is the Settings card spec** (radius-lg + `pk-shadow-card` + 14px padding). For onboarding's flatter saved-provider list, use the surface modifier `<Row className="pkonb-provider-row">` (radius-md, no shadow, 10×12 padding). Don't inline-style `<Row>` to flatten it.
+- **No bare `<button>` inside `peak-design-root`** — `obsidian-reset.css` strips it. Use `<Button>` / `<IconButton>` / `<Pill>` based on intent.
+- **No conditional inline `style={selected ? {…} : {}}`** — flip a `data-selected="true"` attribute and let CSS handle it, so `:hover` and other states compose correctly.
+
+When the catalog below has no primitive that matches a mock element, **add the primitive** (CSS + React wrapper + this doc entry) before writing the surface. Don't reach for the closest-shaped one.
+
 ## When to use the class vs the React wrapper
 
 PR-1 ships React primitives (`<PkRow />`, `<PkChip />`, `<PkModal />`, `<PkBrandAv />`, etc.) that thin-wrap these classes with typed props and forwarded refs. Rule of thumb:
