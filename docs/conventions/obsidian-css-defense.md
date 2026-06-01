@@ -46,6 +46,52 @@ should win. But three things conspire against us:
 3. **Hover / focus / disabled states** aren't explicitly set, so they fall
    back to Obsidian's
 
+### The 2026-06-01 regression #3: `.modal-content button` beats primitive comma-scoping
+
+Obsidian's modal CSS ships a rule like
+`.modal-content button { background: var(--interactive-normal); border: 1px solid …; padding: …; border-radius: … }`.
+Specificity: `(0,2,1)`.
+
+Our primitive scoping is `.pktw-root .pk-X, .peak-design-root .pk-X` —
+`(0,2,0)` per branch. **Loses to Obsidian** for every button-based primitive
+mounted inside an Obsidian Modal (`pk-btn`, `pk-icon-btn`, `pk-pill`,
+`pkonb-radio-card`, etc.). Symptom: trash buttons render with a gray rounded
+box (Obsidian's `--interactive-normal` bg); radio cards get wrong padding
+making rows visually overlap their neighbors.
+
+`obsidian-reset.css`'s `.peak-design-root button { background: none; … }` is
+specificity `(0,1,1)` — also loses.
+
+**Fix pattern**: button-based primitives must use `!important` on the four
+properties Obsidian aggressively styles — `background`, `border` (and
+`border-color`), `padding`, `border-radius` — in both the base rule and any
+state variants (`:hover`, `[data-selected="true"]`, etc.). Example from
+`pk-icon-btn`:
+
+```css
+.pktw-root .pk-icon-btn,
+.peak-design-root .pk-icon-btn {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  border-radius: var(--pk-radius-md) !important;
+  width: 28px;
+  height: 28px;
+  …
+}
+```
+
+`!important` is required because we're fighting `(0,2,1)` with `(0,2,0)` —
+bumping a class selector or rewriting as `.peak-design-root button.pk-icon-btn`
+(tie at `(0,2,1)`, source-order dependent) is more fragile across Obsidian
+theme overrides.
+
+**Surfaces affected**: any primitive rendered as `<button>` inside an
+Obsidian `Modal` subclass. View-mode UIs (chat, dashboard) mount in a
+`WorkspaceLeaf`, not `.modal-content`, so they don't hit this — but Settings
+and onboarding do. Apply the `!important` pattern when adding a new
+button-based primitive.
+
 ### The 2026-06-01 regression #2: modalEl is outside `peak-design-root` scope
 
 Obsidian's `Modal` class renders TWO elements: `modalEl` (outer chrome —

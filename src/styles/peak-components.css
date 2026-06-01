@@ -253,20 +253,25 @@
    (.pk-icon-btn). Comma-scoped to beat obsidian-reset.css's button reset.
    ─────────────────────────────────────────────────────────────────────────── */
 
+/* IMPORTANT: bg/border/padding/border-radius use !important to beat Obsidian's
+   .modal-content button (specificity 0,2,1) which would otherwise force gray
+   bg + theme border on every <button> inside an Obsidian Modal. The reset's
+   `background: none` is specificity 0,1,1 — also loses. See
+   obsidian-css-defense.md "2026-06-01 regression #3: button base props". */
 .pktw-root .pk-btn,
 .peak-design-root .pk-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border-radius: var(--pk-radius-md);
-  border: 1px solid transparent;
-  padding: 8px 14px;
+  border-radius: var(--pk-radius-md) !important;
+  border: 1px solid transparent !important;
+  padding: 8px 14px !important;
   font-size: var(--pk-text-sm);
   font-weight: 500;
   line-height: 1;
   cursor: pointer;
-  background: transparent;
+  background: transparent !important;
   color: var(--pk-text-primary);
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
@@ -288,44 +293,44 @@
 
 .pktw-root .pk-btn--primary,
 .peak-design-root .pk-btn--primary {
-  background: var(--pk-accent);
+  background: var(--pk-accent) !important;
   color: #ffffff;
-  border-color: var(--pk-accent);
+  border-color: var(--pk-accent) !important;
 }
 
 .pktw-root .pk-btn--primary:hover:not(:disabled),
 .peak-design-root .pk-btn--primary:hover:not(:disabled) {
-  background: var(--pk-accent-hover);
-  border-color: var(--pk-accent-hover);
+  background: var(--pk-accent-hover) !important;
+  border-color: var(--pk-accent-hover) !important;
 }
 
 .pktw-root .pk-btn--secondary,
 .peak-design-root .pk-btn--secondary {
-  background: var(--pk-surface);
-  border-color: var(--pk-border);
+  background: var(--pk-surface) !important;
+  border-color: var(--pk-border) !important;
   color: var(--pk-text-primary);
 }
 
 .pktw-root .pk-btn--secondary:hover:not(:disabled),
 .peak-design-root .pk-btn--secondary:hover:not(:disabled) {
-  background: var(--pk-surface-sunken);
+  background: var(--pk-surface-sunken) !important;
 }
 
 .pktw-root .pk-btn--ghost,
 .peak-design-root .pk-btn--ghost {
-  background: transparent;
+  background: transparent !important;
   color: var(--pk-text-secondary);
 }
 
 .pktw-root .pk-btn--ghost:hover:not(:disabled),
 .peak-design-root .pk-btn--ghost:hover:not(:disabled) {
-  background: var(--pk-surface-sunken);
+  background: var(--pk-surface-sunken) !important;
   color: var(--pk-text-primary);
 }
 
 .pktw-root .pk-btn--sm,
 .peak-design-root .pk-btn--sm {
-  padding: 6px 10px;
+  padding: 6px 10px !important;
   font-size: var(--pk-text-xs);
 }
 
@@ -339,10 +344,10 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px var(--pk-space-3);
-  border: 1px solid var(--pk-border);
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-surface);
+  padding: 4px var(--pk-space-3) !important;
+  border: 1px solid var(--pk-border) !important;
+  border-radius: var(--pk-radius-pill) !important;
+  background: var(--pk-surface) !important;
   font-size: var(--pk-text-sm);
   color: var(--pk-text-secondary);
   cursor: pointer;
@@ -358,8 +363,8 @@
 
 .pktw-root .pk-pill[data-selected="true"],
 .peak-design-root .pk-pill[data-selected="true"] {
-  background: var(--pk-accent-soft);
-  border-color: var(--pk-accent-soft);
+  background: var(--pk-accent-soft) !important;
+  border-color: var(--pk-accent-soft) !important;
   color: var(--pk-accent-text);
 }
 
@@ -371,14 +376,15 @@
 
 .pktw-root .pk-icon-btn,
 .peak-design-root .pk-icon-btn {
-  background: transparent;
-  border: 0;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
   width: 28px;
   height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-md) !important;
   color: var(--pk-text-secondary);
   cursor: pointer;
   transition: background var(--pk-transition-fast), color var(--pk-transition-fast);
@@ -386,7 +392,7 @@
 
 .pktw-root .pk-icon-btn:hover,
 .peak-design-root .pk-icon-btn:hover {
-  background: var(--pk-surface-sunken);
+  background: var(--pk-surface-sunken) !important;
   color: var(--pk-text-primary);
 }
 
@@ -2923,17 +2929,19 @@
 
 /* ── pkonb-radio-card — selectable card with check icon + accent border ────── */
 
+/* Button-based primitive — bg/border/padding/border-radius use !important to
+   beat Obsidian's .modal-content button rule. See pk-btn note. */
 .pktw-root .pkonb-radio-card,
 .peak-design-root .pkonb-radio-card {
   position: relative;
   display: flex;
   align-items: flex-start;
   gap: var(--pk-space-3);
-  border: 1px solid var(--pk-border);
-  border-left: 3px solid var(--pk-border);
-  background: var(--pk-surface);
-  border-radius: var(--pk-radius-md);
-  padding: var(--pk-space-3) 14px;
+  border: 1px solid var(--pk-border) !important;
+  border-left: 3px solid var(--pk-border) !important;
+  background: var(--pk-surface) !important;
+  border-radius: var(--pk-radius-md) !important;
+  padding: var(--pk-space-3) 14px !important;
   cursor: pointer;
   transition: background var(--pk-transition-fast), border-color var(--pk-transition-fast);
   text-align: left;
@@ -2941,14 +2949,14 @@
 
 .pktw-root .pkonb-radio-card:hover,
 .peak-design-root .pkonb-radio-card:hover {
-  background: var(--pk-surface-sunken);
+  background: var(--pk-surface-sunken) !important;
 }
 
 .pktw-root .pkonb-radio-card[data-selected="true"],
 .peak-design-root .pkonb-radio-card[data-selected="true"] {
-  background: var(--pk-accent-soft);
-  border-color: var(--pk-accent-soft);
-  border-left-color: var(--pk-accent);
+  background: var(--pk-accent-soft) !important;
+  border-color: var(--pk-accent-soft) !important;
+  border-left-color: var(--pk-accent) !important;
 }
 
 .pktw-root .pkonb-radio-card__icon,
