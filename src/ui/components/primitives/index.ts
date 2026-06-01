@@ -12,6 +12,9 @@ export type { ChipVariant, ChipProps } from './Chip';
 export { IconButton } from './IconButton';
 export type { IconButtonProps } from './IconButton';
 
+export { Button } from './Button';
+export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
+
 export { Pill } from './Pill';
 export type { PillProps } from './Pill';
 

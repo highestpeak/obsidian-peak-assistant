@@ -14,7 +14,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Check, Trash2 } from 'lucide-react';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
-import { Row, Chip, Pill, IconButton } from '@/ui/components/primitives';
+import { Row, Chip, Button, IconButton } from '@/ui/components/primitives';
 import { AddProviderForm, PROVIDER_OPTIONS } from '../onboarding/ProviderForm';
 import { useOnboardingStrings, type OnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
@@ -88,10 +88,14 @@ export function ProviderStep({ selectedProfileId, onSelect, onClear }: ProviderS
             {showForm ? (
                 <AddProviderForm onAdded={handleAdded} setActiveOnFirst={false} autoAssignWebSearch={false} />
             ) : (
-                <Pill onClick={() => setShowForm(true)} style={{ alignSelf: 'flex-start' }}>
+                <Button
+                    variant="secondary"
+                    onClick={() => setShowForm(true)}
+                    style={{ alignSelf: 'flex-start' }}
+                >
                     <Plus />
                     <span>{strings.actions.addProvider}</span>
-                </Pill>
+                </Button>
             )}
         </div>
     );

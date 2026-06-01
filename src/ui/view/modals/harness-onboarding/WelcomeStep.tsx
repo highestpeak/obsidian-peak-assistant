@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { Sparkles, Wand2, ChevronRight } from 'lucide-react';
-import { Pill } from '@/ui/components/primitives';
+import { Button } from '@/ui/components/primitives';
 import { useOnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
 export interface WelcomeStepProps {
@@ -33,18 +33,14 @@ export function WelcomeStep({ isReRun, onStart, onManual }: WelcomeStepProps) {
             </span>
             <span className="pkonb-hero__sub">{copy.description}</span>
             <div className="pkonb-hero__actions">
-                <Pill
-                    selected
-                    onClick={onStart}
-                    style={{ justifyContent: 'center', padding: '8px 14px' }}
-                >
+                <Button variant="primary" onClick={onStart}>
                     <Wand2 />
                     <span>{copy.startCta}</span>
                     <ChevronRight style={{ marginLeft: 'auto' }} />
-                </Pill>
-                <Pill onClick={onManual} style={{ justifyContent: 'center' }}>
+                </Button>
+                <Button variant="ghost" onClick={onManual}>
                     {copy.manualCta}
-                </Pill>
+                </Button>
             </div>
         </div>
     );

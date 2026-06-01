@@ -62,7 +62,7 @@ import {
     useOnboardingStrings,
     type OnboardingStrings,
 } from '@/ui/view/onboarding/onboardingStrings';
-import { Row, Chip, Pill } from '@/ui/components/primitives';
+import { Row, Chip, Button } from '@/ui/components/primitives';
 import { WelcomeStep } from './harness-onboarding/WelcomeStep';
 import { ProviderStep } from './harness-onboarding/ProviderStep';
 import { BootstrapModelStep } from './harness-onboarding/BootstrapModelStep';
@@ -354,14 +354,18 @@ function StepFooter({ state, dispatch, onClose }: FooterProps) {
     if (state.step === 'ai-behavior' && state.aiBehavior.substep === 'redo-input') {
         return (
             <div className="pkonb-modal__footer">
-                <Pill onClick={handleBack}>
+                <Button variant="ghost" onClick={handleBack}>
                     <ChevronLeft />
                     <span>{strings.actions.back}</span>
-                </Pill>
-                <Pill selected onClick={handleRedoSubmit} disabled={!state.aiBehavior.redoNote.trim()}>
+                </Button>
+                <Button
+                    variant="primary"
+                    onClick={handleRedoSubmit}
+                    disabled={!state.aiBehavior.redoNote.trim()}
+                >
                     <Wand2 />
                     <span>{strings.steps.redoInput.submitCta}</span>
-                </Pill>
+                </Button>
             </div>
         );
     }
@@ -369,35 +373,40 @@ function StepFooter({ state, dispatch, onClose }: FooterProps) {
     return (
         <div className="pkonb-modal__footer">
             {canBack ? (
-                <Pill onClick={handleBack}>
+                <Button variant="ghost" onClick={handleBack}>
                     <ChevronLeft />
                     <span>{strings.actions.back}</span>
-                </Pill>
+                </Button>
             ) : (
                 <span />
             )}
             <div style={{ display: 'flex', gap: 'var(--pk-space-2)' }}>
                 {state.step === 'index-readiness' && (
-                    <Pill
+                    <Button
+                        variant="ghost"
                         onClick={() => {
                             dispatch({ type: 'select-index-action', action: 'skip' });
                             dispatch({ type: 'next' });
                         }}
                     >
                         {strings.steps.indexReadiness.skipCta}
-                    </Pill>
+                    </Button>
                 )}
                 {state.step === 'ready-to-try' && (
-                    <Pill onClick={onClose}>
+                    <Button variant="secondary" onClick={onClose}>
                         <Settings />
                         <span>{strings.steps.readyToTry.openSettingsCta}</span>
-                    </Pill>
+                    </Button>
                 )}
                 {!inCuratorTerminal && (
-                    <Pill selected onClick={handleContinue} disabled={continueDisabled}>
-                        {continueIcon()}
+                    <Button
+                        variant="primary"
+                        onClick={handleContinue}
+                        disabled={continueDisabled}
+                    >
                         <span>{continueLabel()}</span>
-                    </Pill>
+                        {continueIcon()}
+                    </Button>
                 )}
             </div>
         </div>

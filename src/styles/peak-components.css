@@ -246,6 +246,90 @@
 }
 
 
+/* ── pk-btn ─────────────────────────────────────────────────────────────────
+   CTA button — primary / ghost / secondary variants. Matches mock `.btn`.
+   Use for modal footer Back/Continue, wizard CTAs, form submits. NOT for
+   toggleable filter chips (that's .pk-pill) or square icon-only buttons
+   (.pk-icon-btn). Comma-scoped to beat obsidian-reset.css's button reset.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.pktw-root .pk-btn,
+.peak-design-root .pk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--pk-radius-md);
+  border: 1px solid transparent;
+  padding: 8px 14px;
+  font-size: var(--pk-text-sm);
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  background: transparent;
+  color: var(--pk-text-primary);
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.pktw-root .pk-btn > svg,
+.peak-design-root .pk-btn > svg,
+.pktw-root .pk-btn .icon,
+.peak-design-root .pk-btn .icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.pktw-root .pk-btn:disabled,
+.peak-design-root .pk-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pktw-root .pk-btn--primary,
+.peak-design-root .pk-btn--primary {
+  background: var(--pk-accent);
+  color: #ffffff;
+  border-color: var(--pk-accent);
+}
+
+.pktw-root .pk-btn--primary:hover:not(:disabled),
+.peak-design-root .pk-btn--primary:hover:not(:disabled) {
+  background: var(--pk-accent-hover);
+  border-color: var(--pk-accent-hover);
+}
+
+.pktw-root .pk-btn--secondary,
+.peak-design-root .pk-btn--secondary {
+  background: var(--pk-surface);
+  border-color: var(--pk-border);
+  color: var(--pk-text-primary);
+}
+
+.pktw-root .pk-btn--secondary:hover:not(:disabled),
+.peak-design-root .pk-btn--secondary:hover:not(:disabled) {
+  background: var(--pk-surface-sunken);
+}
+
+.pktw-root .pk-btn--ghost,
+.peak-design-root .pk-btn--ghost {
+  background: transparent;
+  color: var(--pk-text-secondary);
+}
+
+.pktw-root .pk-btn--ghost:hover:not(:disabled),
+.peak-design-root .pk-btn--ghost:hover:not(:disabled) {
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-primary);
+}
+
+.pktw-root .pk-btn--sm,
+.peak-design-root .pk-btn--sm {
+  padding: 6px 10px;
+  font-size: var(--pk-text-xs);
+}
+
+
 /* ── pk-pill ────────────────────────────────────────────────────────────────
    Toggleable filter pill (document-type pickers, tag filters).
    ─────────────────────────────────────────────────────────────────────────── */

@@ -17,7 +17,7 @@ import {
     type CuratorResult,
     type UserPreferences,
 } from '@/service/agents/harness/curator';
-import { Pill } from '@/ui/components/primitives';
+import { Button } from '@/ui/components/primitives';
 import type { BootstrapSelection } from './state';
 import { useOnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
@@ -103,10 +103,10 @@ export function RunningCuratorStep({
                     <span>{error}</span>
                 </div>
             )}
-            <Pill onClick={onCancel}>
+            <Button variant="ghost" onClick={onCancel}>
                 <X />
                 <span>{copy.cancelCta}</span>
-            </Pill>
+            </Button>
         </div>
     );
 }

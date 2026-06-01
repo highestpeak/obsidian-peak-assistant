@@ -23,7 +23,7 @@ import {
 import { lookupModel, type CuratorResult } from '@/service/agents/harness/curator';
 import { applyRecommendation } from './applyRecommendation';
 import type { Capability } from '@/service/agents/harness/curator';
-import { Row, Chip, Pill } from '@/ui/components/primitives';
+import { Row, Chip, Button } from '@/ui/components/primitives';
 import { useOnboardingStrings, type OnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
 
 export interface ReviewRecommendationStepProps {
@@ -138,18 +138,18 @@ export function ReviewRecommendationStep({
                     marginTop: 'var(--pk-space-2)',
                 }}
             >
-                <Pill onClick={onRedo} disabled={applying}>
+                <Button variant="ghost" onClick={onRedo} disabled={applying}>
                     <RotateCcw />
                     <span>{strings.actions.regenerate}</span>
-                </Pill>
-                <Pill onClick={onEdit} disabled={applying}>
+                </Button>
+                <Button variant="secondary" onClick={onEdit} disabled={applying}>
                     <Edit3 />
                     <span>{strings.actions.edit}</span>
-                </Pill>
-                <Pill selected onClick={handleAccept} disabled={applying}>
-                    {applying ? <Loader2 className="pkonb-spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : <Check />}
+                </Button>
+                <Button variant="primary" onClick={handleAccept} disabled={applying}>
+                    {applying ? <Loader2 className="pkonb-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : <Check />}
                     <span>{strings.actions.accept}</span>
-                </Pill>
+                </Button>
             </div>
         </div>
     );
