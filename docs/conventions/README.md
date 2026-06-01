@@ -29,13 +29,14 @@ here are fetched on demand when an agent works in a relevant area.
 | [primitive-usage.md](./primitive-usage.md) | Pick primitives by intent not shape; decision tree + anti-patterns + mock→primitive map | ✅ enforced |
 | [component-primitives.md](./component-primitives.md) | Catalog of `.pk-*` CSS primitives + React wrappers; scope discipline; mock→production token rename | ✅ enforced |
 | [jsx-mock-fidelity.md](./jsx-mock-fidelity.md) | JSX structure must match mock HTML; no `{x ?? ''}` in flex (empty span pollutes height); audits must include structural diff not just CSS | ✅ enforced |
+| [configurability.md](./configurability.md) | No inline i18n / regex / label maps / color or style configs in logic files; route through `templates/config/` or `core/constant.ts` | ✅ enforced |
 
 ## Conventions that live inline in CLAUDE.md
 
-These are short enough to keep in `CLAUDE.md` without bloating it:
-- shadcn `Button` over raw `<button>`
+These are short enough to keep inline in `CLAUDE.md`'s **Code Conventions** section (not in **Project Rules**):
 - No semantic HTML (`<h1-h6>`, `<p>`) — `<span>` + Tailwind
 - Component extraction at ~8 lines
-- Configurability via `templates/config/` or `core/constant.ts` (4 surface configs registered: `onboarding`, `settings`, `chat`, `dashboard` — PR-0 scaffold, 2026-05-30)
+- `<Button>` primitive over raw `<button>` (one-liner that points at `primitive-usage.md`)
+- The other one-liners about useCallback / arrow-code / getInstance / Templates / Agents / Streaming patterns
 
-If a convention's explanation grows past ~3 lines, move it here.
+**Hard rule:** if a convention's explanation grows past ~3 lines or starts needing code examples, move it to a file here and replace the CLAUDE.md entry with a one-line pointer (rule title + 1-sentence what it's about + link). Do NOT inline detailed rules in CLAUDE.md — it ships in every agent's context window and bloat there costs every conversation. This rule has been violated in the past (2026-06-01) and the Project Rules entries were re-shrunk back to one-liners; don't undo that.

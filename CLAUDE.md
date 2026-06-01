@@ -42,29 +42,28 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 
 ## Code Conventions
 
-- Use shadcn/ui `Button` component, never raw `<button>` elements
+- CTA buttons go through the `<Button>` primitive (see Project Rules → primitive-usage), never raw `<button>` elements
 - Avoid semantic HTML tags (`<h1-h6>`, `<p>`) — use `<span>` with Tailwind classes
 - Extract components when they exceed ~8 lines
 - Prefer simple async functions over `useCallback`; use `store.getState()` inside handlers to avoid dependency arrays
 - Eliminate arrow code: use early returns/guard clauses, max nesting depth of 2
 - No redundant `else` after `return`/`throw`
 - Centralize constants in `src/core/constant.ts`
-- **Configurability rule**: Never hardcode i18n strings, regex patterns (especially multilingual ones), label maps, color maps, or style configs directly in logic files. Two-tier extraction: (1) **`templates/config/`** (preferred) — JSON config files loaded at runtime via TemplateManager, editable without code changes; (2) **`src/core/constant.ts`** (fallback) — compiled defaults when template loading is unavailable. This applies to: tool name→label mappings, query classification patterns, dimension color schemes, mermaid style definitions, and any data that a non-engineer might need to change.
-- Avoid passing objects like AppContext as function parameters when they can be accessed via a static getInstance() method; instead, directly use AppContext.getInstance() where needed.
+- Avoid passing objects like AppContext as function parameters when they can be accessed via a static `getInstance()` method; use `AppContext.getInstance()` directly where needed.
 - Templates: register via `TemplateRegistry` / `TemplateId`, load with `TemplateManager`; prompts use `PromptId` + `PromptService`, not scattered prompt strings
 - Agents: follow `runAgentLoop` / `AgentLoop` (`service/agents/core`); reuse tool + schema patterns from existing agents; wire through `src/core/schemas/` for Zod
 - Streaming: normalize with `src/core/providers/helpers/stream-helper.ts` (`streamTransform`, etc.) and `LLMStreamEvent`; UI streaming hooks live under `ui/view/chat-view/hooks/`
 
 ## Project Rules
 
-Detailed conventions live in `docs/conventions/`. Read `docs/conventions/README.md` for the index and how to add new rules.
+Detailed conventions live in `docs/conventions/`. Read `docs/conventions/README.md` for the index and how to add new rules. Each pointer below is intentionally one line — open the linked file for the rule itself.
 
-Critical rules to keep in mind:
-
-- **Obsidian CSS defense** — any scoped UI surface (modal / panel) MUST add the `peak-design-root` class to its outermost wrapper, otherwise raw `<button>` / `<input>` / `<h1-6>` / `<a>` will get Obsidian's theme styles injected and look inconsistent with the design. Detail: [`docs/conventions/obsidian-css-defense.md`](./docs/conventions/obsidian-css-defense.md).
-- **Design tokens** — all colors / spacing / radius / typography come from `--pk-*` tokens in `src/styles/peak-tokens.css` (source of truth). No inline hex; no `var(--text-normal)` / `var(--background-primary)` etc. direct Obsidian-theme refs; no `var(--pk-X, fallback)` chains. Visual reference: `docs/mockups/_design-tokens-preview.html`. Detail: [`docs/conventions/design-tokens.md`](./docs/conventions/design-tokens.md).
-- **Primitive usage** — pick primitives by intent not shape. `<Pill>` is a toggleable filter chip, NOT a CTA button (use `<Button>`). `<Row>` is the Settings card spec (radius-lg + shadow), NOT a generic row — use a surface modifier like `pkonb-provider-row` for compact onboarding rows. Before implementing a new step/surface, produce a mock→primitive map; if any mock class has no primitive, add the primitive first, don't paper over with the closest-shaped one. Detail: [`docs/conventions/primitive-usage.md`](./docs/conventions/primitive-usage.md).
-- **JSX-mock fidelity** — visual-fidelity audits must include a JSX-vs-mock structural diff, not just CSS-vs-CSS. Never write `<span>{x ?? ''}</span>` inside flex/grid (empty span occupies line-height, breaks alignment) — use `{x && <span>{x}</span>}`. Optional decorations (Recommended chip / status badge) sit INLINE with required content (title row), not stacked in a sometimes-empty subtitle slot. Floor variable-content list cards with `min-height` so rows stay uniform. Detail: [`docs/conventions/jsx-mock-fidelity.md`](./docs/conventions/jsx-mock-fidelity.md).
+- **Obsidian CSS defense** — survive Obsidian's global bare-tag styling on `<button>` / `<input>` / `<h1-6>` / `<a>`. [`obsidian-css-defense.md`](./docs/conventions/obsidian-css-defense.md)
+- **Design tokens** — only `--pk-*` tokens from `src/styles/peak-tokens.css`; no inline hex, no direct Obsidian-theme `var(--…)`. [`design-tokens.md`](./docs/conventions/design-tokens.md)
+- **Component primitives** — the catalog of `.pk-*` CSS classes + React wrappers; scope discipline; mock→production token rename. [`component-primitives.md`](./docs/conventions/component-primitives.md)
+- **Primitive usage** — pick primitives by intent, not shape; produce a mock→primitive map before each surface. [`primitive-usage.md`](./docs/conventions/primitive-usage.md)
+- **JSX-mock fidelity** — audits include JSX structural diff, not just CSS; flex empty-span traps and inline-decoration patterns. [`jsx-mock-fidelity.md`](./docs/conventions/jsx-mock-fidelity.md)
+- **Configurability** — no inline i18n / regex / label maps / color or style configs; route through `templates/config/` or `core/constant.ts`. [`configurability.md`](./docs/conventions/configurability.md)
 
 ## Key External Dependencies
 
