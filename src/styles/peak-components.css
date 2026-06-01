@@ -2416,6 +2416,57 @@
   justify-content: space-between;
   gap: var(--pk-space-3);
   background: var(--pk-surface);
+  /* Footer should sit flush with rounded modal corners — clip its own bg. */
+  border-bottom-left-radius: var(--pk-radius-lg);
+  border-bottom-right-radius: var(--pk-radius-lg);
+}
+
+/* ── pkonb-modal-shell — neutralizes Obsidian's default modal chrome ──────────
+   Class added in HarnessOnboardingModal.onOpen via modalEl.addClass.
+   Scoped by class so we don't leak into other Obsidian modals.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.pkonb-modal-shell {
+  /* Subtle gray hairline + the design-system shadow, not the theme accent. */
+  border: 1px solid var(--pk-border) !important;
+  box-shadow: var(--pk-shadow-modal) !important;
+  border-radius: var(--pk-radius-lg) !important;
+  overflow: hidden !important;
+  background: var(--pk-surface) !important;
+}
+
+/* Thin styled scrollbar for the wizard body — accent on hover only.
+   Comma-scoped per project rule so the rule survives token namespace changes. */
+.pktw-root .pkonb-modal__body::-webkit-scrollbar,
+.peak-design-root .pkonb-modal__body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.pktw-root .pkonb-modal__body::-webkit-scrollbar-track,
+.peak-design-root .pkonb-modal__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pktw-root .pkonb-modal__body::-webkit-scrollbar-thumb,
+.peak-design-root .pkonb-modal__body::-webkit-scrollbar-thumb {
+  background: var(--pk-border);
+  border-radius: var(--pk-radius-pill);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.pktw-root .pkonb-modal__body::-webkit-scrollbar-thumb:hover,
+.peak-design-root .pkonb-modal__body::-webkit-scrollbar-thumb:hover {
+  background: var(--pk-border-strong);
+  background-clip: padding-box;
+}
+
+/* Firefox */
+.pktw-root .pkonb-modal__body,
+.peak-design-root .pkonb-modal__body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--pk-border) transparent;
 }
 
 

@@ -100,6 +100,10 @@ export class HarnessOnboardingModal extends ObsidianModal {
         contentEl.addClass('pkonb-modal');
         contentEl.style.padding = '0';
 
+        // Tag the outer Obsidian modalEl so our CSS can neutralize its default
+        // theme border / scrollbar without leaking into other modals.
+        modalEl.addClass('pkonb-modal-shell');
+
         // Mock's "modal--wide" = 680px; we use a comparable width that still
         // fits the 92vw safety. The pk-modal-shell tokens cover narrower views.
         modalEl.style.width = '720px';
@@ -121,6 +125,13 @@ export class HarnessOnboardingModal extends ObsidianModal {
     }
 
     onClose(): void {
+        // Remove the shell tag we added in onOpen so we don't leak styling onto
+        // a different modal that reuses the same DOM node.
+        try {
+            this.modalEl.removeClass('pkonb-modal-shell');
+        } catch {
+            /* best-effort */
+        }
         const r = this.reactRenderer;
         this.reactRenderer = null;
         if (r) {
