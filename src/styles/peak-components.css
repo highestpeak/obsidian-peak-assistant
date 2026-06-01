@@ -3067,6 +3067,40 @@
 }
 
 
+/* ── pkonb-provider-row — saved-provider list row ──────────────────────────────
+   Onboarding-specific modifier on top of .pk-row. The shared .pk-row is sized
+   for Settings (radius-lg + shadow + 14px padding). The onboarding mock spec
+   is a flatter card (radius-md, no shadow, 10×12 padding, sunken-bg logo box).
+   Mock source: docs/gstack/onboarding-redesign-2026-05-29/mock.css `.provider-row`
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.pktw-root .pk-row.pkonb-provider-row,
+.peak-design-root .pk-row.pkonb-provider-row {
+  border-radius: var(--pk-radius-md);
+  box-shadow: none;
+  padding: 10px 12px;
+  gap: 12px;
+}
+
+.pktw-root .pk-row.pkonb-provider-row[data-selected="true"],
+.peak-design-root .pk-row.pkonb-provider-row[data-selected="true"] {
+  border-color: var(--pk-accent);
+  background: var(--pk-accent-tint);
+}
+
+/* Provider rows are clickable; show a subtle hover so the user knows they're
+   selectable. Mock didn't define one but our rows are interactive (radio). */
+.pktw-root .pk-row.pkonb-provider-row[data-clickable="true"]:hover,
+.peak-design-root .pk-row.pkonb-provider-row[data-clickable="true"]:hover {
+  background: var(--pk-surface-sunken);
+}
+
+.pktw-root .pk-row.pkonb-provider-row[data-clickable="true"][data-selected="true"]:hover,
+.peak-design-root .pk-row.pkonb-provider-row[data-clickable="true"][data-selected="true"]:hover {
+  background: var(--pk-accent-tint);
+}
+
+
 /* ── pkonb-provider-grid — 4-col provider chooser ──────────────────────────── */
 
 .pktw-root .pkonb-provider-grid,

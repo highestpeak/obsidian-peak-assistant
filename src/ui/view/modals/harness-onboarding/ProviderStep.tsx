@@ -116,11 +116,11 @@ function SavedProviderRow({ profile, selected, onSelect, onDelete, strings }: Sa
 
     return (
         <Row
+            className="pkonb-provider-row"
+            data-clickable={hasUsableCredentials ? 'true' : undefined}
+            data-selected={selected ? 'true' : undefined}
             onClick={hasUsableCredentials ? onSelect : undefined}
-            style={{
-                cursor: hasUsableCredentials ? 'pointer' : 'default',
-                ...(selected ? { borderColor: 'var(--pk-accent)', background: 'var(--pk-accent-soft)' } : {}),
-            }}
+            style={{ cursor: hasUsableCredentials ? 'pointer' : 'default' }}
         >
             <Row.Icon>{Icon ? <Icon /> : null}</Row.Icon>
             <Row.Body>
