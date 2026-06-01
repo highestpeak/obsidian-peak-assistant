@@ -50,10 +50,26 @@ export interface ChatStrings {
 		fieldMode: string;
 		fieldRole: string;
 		fieldModel: string;
+		fieldContext: string;
+		fieldTools: string;
 		roleHint: string;
 		modelAutoTitle: string;
 		modelManualTitle: string;
 		modelManualSub: string;
+		// Role pill labels (Default / Researcher / Writer / Planner / Coder)
+		roleDefault: string;
+		roleResearcher: string;
+		roleWriter: string;
+		rolePlanner: string;
+		roleCoder: string;
+		// Context row labels
+		contextCurrentNote: string;
+		contextVaultSearch: string;
+		contextWebSearch: string;
+		// Tools row labels (advisory — render disabled if not wired)
+		toolsAttachments: string;
+		toolsPinnedSources: string;
+		comingSoonHint: string;
 	};
 	indexSlot: {
 		placeholderTitle: string;
@@ -167,10 +183,23 @@ export const DEFAULT_CHAT_STRINGS: ChatStrings = {
 		fieldMode: 'Run mode',
 		fieldRole: 'Role',
 		fieldModel: 'Model routing',
+		fieldContext: 'Context',
+		fieldTools: 'Tools',
 		roleHint: 'Role changes behavior for the next message only.',
 		modelAutoTitle: 'Auto profile model',
 		modelManualTitle: 'Choose model…',
 		modelManualSub: 'Manual override',
+		roleDefault: 'Default',
+		roleResearcher: 'Researcher',
+		roleWriter: 'Writer',
+		rolePlanner: 'Planner',
+		roleCoder: 'Coder',
+		contextCurrentNote: 'Current note',
+		contextVaultSearch: 'Vault search',
+		contextWebSearch: 'Web search',
+		toolsAttachments: 'Attachments',
+		toolsPinnedSources: 'Pinned sources',
+		comingSoonHint: 'Coming soon',
 	},
 	indexSlot: {
 		placeholderTitle: 'Conversation Index',

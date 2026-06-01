@@ -1150,6 +1150,216 @@
   padding: 0 var(--pk-space-2);
 }
 
+/* Role pills (Default / Researcher / Writer / Planner / Coder) */
+.pktw-root .pkchat-runpop__role-grid,
+.peak-design-root .pkchat-runpop__role-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.pktw-root .pkchat-runpop__role-pill,
+.peak-design-root .pkchat-runpop__role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: var(--pk-radius-pill);
+  border: 1px solid var(--pk-border);
+  font-size: var(--pk-text-xs);
+  color: var(--pk-text-primary);
+  background: var(--pk-surface);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  transition: background var(--pk-transition-fast),
+              border-color var(--pk-transition-fast),
+              color var(--pk-transition-fast);
+}
+
+.pktw-root .pkchat-runpop__role-pill:hover,
+.peak-design-root .pkchat-runpop__role-pill:hover {
+  border-color: var(--pk-border-accent);
+  background: var(--pk-accent-tint);
+}
+
+.pktw-root .pkchat-runpop__role-pill[data-selected="true"],
+.peak-design-root .pkchat-runpop__role-pill[data-selected="true"] {
+  background: var(--pk-accent-soft);
+  border-color: var(--pk-border-accent);
+  color: var(--pk-accent-hover);
+  font-weight: 600;
+}
+
+.pktw-root .pkchat-runpop__role-ico,
+.peak-design-root .pkchat-runpop__role-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pktw-root .pkchat-runpop__role-ico > svg,
+.peak-design-root .pkchat-runpop__role-ico > svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Row card — used for Model rows, Context toggles, Tools entries */
+.pktw-root .pkchat-runpop__row,
+.peak-design-root .pkchat-runpop__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  margin-top: 6px;
+  background: var(--pk-surface);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  cursor: pointer;
+  transition: background var(--pk-transition-fast),
+              border-color var(--pk-transition-fast);
+}
+
+.pktw-root .pkchat-runpop__row:hover,
+.peak-design-root .pkchat-runpop__row:hover {
+  border-color: var(--pk-border-accent);
+  background: var(--pk-accent-tint);
+}
+
+.pktw-root .pkchat-runpop__row[data-selected="true"],
+.peak-design-root .pkchat-runpop__row[data-selected="true"] {
+  border-color: var(--pk-border-accent);
+  background: var(--pk-accent-tint);
+}
+
+.pktw-root .pkchat-runpop__row[data-disabled="true"],
+.peak-design-root .pkchat-runpop__row[data-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.pktw-root .pkchat-runpop__row[data-disabled="true"]:hover,
+.peak-design-root .pkchat-runpop__row[data-disabled="true"]:hover {
+  border-color: var(--pk-border);
+  background: var(--pk-surface);
+}
+
+.pktw-root .pkchat-runpop__row-ico,
+.peak-design-root .pkchat-runpop__row-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pk-text-secondary);
+  flex-shrink: 0;
+}
+
+.pktw-root .pkchat-runpop__row-ico > svg,
+.peak-design-root .pkchat-runpop__row-ico > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pktw-root .pkchat-runpop__row-body,
+.peak-design-root .pkchat-runpop__row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pktw-root .pkchat-runpop__row-name,
+.peak-design-root .pkchat-runpop__row-name {
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pktw-root .pkchat-runpop__row-sub,
+.peak-design-root .pkchat-runpop__row-sub {
+  font-size: 11.5px;
+  color: var(--pk-text-tertiary);
+  font-family: var(--pk-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pktw-root .pkchat-runpop__row-chev,
+.peak-design-root .pkchat-runpop__row-chev {
+  width: 14px;
+  height: 14px;
+  color: var(--pk-text-tertiary);
+  flex-shrink: 0;
+}
+
+.pktw-root .pkchat-runpop__row-dot,
+.peak-design-root .pkchat-runpop__row-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pk-accent);
+  flex-shrink: 0;
+}
+
+/* Toggle switch on context rows */
+.pktw-root .pkchat-runpop__switch,
+.peak-design-root .pkchat-runpop__switch {
+  width: 30px;
+  height: 18px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-border);
+  position: relative;
+  flex-shrink: 0;
+  transition: background var(--pk-transition-fast);
+}
+
+.pktw-root .pkchat-runpop__switch::after,
+.peak-design-root .pkchat-runpop__switch::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--pk-surface);
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: left var(--pk-transition-fast);
+}
+
+.pktw-root .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch,
+.peak-design-root .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch {
+  background: var(--pk-accent);
+}
+
+.pktw-root .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch::after,
+.peak-design-root .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch::after {
+  left: 14px;
+}
+
+/* Ctx chip on Tools row */
+.pktw-root .pkchat-runpop__ctx-chip,
+.peak-design-root .pkchat-runpop__ctx-chip {
+  font-family: var(--pk-font-mono);
+  font-size: 11px;
+  background: var(--pk-accent-soft);
+  color: var(--pk-accent-hover);
+  padding: 2px 7px;
+  border-radius: var(--pk-radius-pill);
+  border: 1px solid var(--pk-border-accent);
+  flex-shrink: 0;
+}
+
 /* ── pkchat-index-empty ─────────────────────────────────────────────────────
    Placeholder for right index slot (PR-Chat-3 will replace with full panel).
    ─────────────────────────────────────────────────────────────────────────── */
