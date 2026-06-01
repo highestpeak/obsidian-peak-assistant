@@ -4,7 +4,7 @@
  * These are the React wrappers around the `.pk-*` CSS classes defined in
  * `src/styles/peak-components.css`. They are the design-system-era layer and
  * will gradually replace `src/ui/component/shared-ui/` as each UI surface is
- * refactored. See `docs/conventions/component-primitives.md`.
+ * refactored. See `docs/conventions/ui-design.md` §2 (catalog) and §3 (usage).
  */
 export { Chip } from './Chip';
 export type { ChipVariant, ChipProps } from './Chip';

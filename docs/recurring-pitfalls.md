@@ -157,7 +157,7 @@ For any streaming text accumulation:
 2. (If not reproducible standalone) Look at the component for actual layout bugs first.
 3. **Find the leak:** in Obsidian DevTools, select the broken element → Computed → search for non-`--pk-*` token references. Each one is a candidate.
 4. **Fix:** add an explicit null with `!important` to `src/styles/obsidian-reset.css` for that property on the relevant pseudo-class (`:hover`, `:focus`, `:active`, `:focus-visible`).
-5. Document the new property in `docs/conventions/obsidian-css-defense.md` "Properties the reset must null" table.
+5. Document the new property in `docs/conventions/ui-design.md` §4.9 "Properties the reset must null" table.
 
 **Critical:** plugin CSS doesn't hot-reload. After updating `styles.css`, the user must **disable + re-enable the plugin** (or fully quit Obsidian) — Cmd+R does NOT reload the plugin's bundled CSS. A "v1/v2/v3" marker in the UI is a cheap way to confirm the latest build is actually loaded before further debugging.
 

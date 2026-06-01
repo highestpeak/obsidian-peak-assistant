@@ -24,12 +24,10 @@ here are fetched on demand when an agent works in a relevant area.
 
 | Rule | Topic | Status |
 |---|---|---|
-| [obsidian-css-defense.md](./obsidian-css-defense.md) | Defending plugin CSS against Obsidian's global `<button>` / `<input>` injections | ✅ enforced |
-| [design-tokens.md](./design-tokens.md) | All colors / spacing / radius / typography come from `--pk-*` tokens; no inline hex; no Obsidian-var direct refs | ✅ enforced |
-| [primitive-usage.md](./primitive-usage.md) | Pick primitives by intent not shape; decision tree + anti-patterns + mock→primitive map | ✅ enforced |
-| [component-primitives.md](./component-primitives.md) | Catalog of `.pk-*` CSS primitives + React wrappers; scope discipline; mock→production token rename | ✅ enforced |
-| [jsx-mock-fidelity.md](./jsx-mock-fidelity.md) | JSX structure must match mock HTML; no `{x ?? ''}` in flex (empty span pollutes height); audits must include structural diff not just CSS | ✅ enforced |
+| [ui-design.md](./ui-design.md) | The single design-system reference — tokens, primitive catalog, primitive usage decisions, Obsidian CSS defense, JSX-mock fidelity. 5 sections with section anchors. | ✅ enforced |
 | [configurability.md](./configurability.md) | No inline i18n / regex / label maps / color or style configs in logic files; route through `templates/config/` or `core/constant.ts` | ✅ enforced |
+
+**On why design rules consolidated into one file (2026-06-01):** the five earlier files (`design-tokens.md`, `component-primitives.md`, `primitive-usage.md`, `obsidian-css-defense.md`, `jsx-mock-fidelity.md`) were all design-system-stack content cross-linking each other every other paragraph. Splitting them made "which file do I open?" a cognitive tax and forced contributors to chase pointers between files. Merged into `ui-design.md` with section anchors (`#1-design-tokens`, `#2-component-primitives-catalog`, etc.) so a reader can grep within one file or jump to a specific section. Each old file's full content is preserved as a section.
 
 ## Conventions that live inline in CLAUDE.md
 

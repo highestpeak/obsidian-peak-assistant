@@ -58,11 +58,7 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 
 Detailed conventions live in `docs/conventions/`. Read `docs/conventions/README.md` for the index and how to add new rules. Each pointer below is intentionally one line — open the linked file for the rule itself.
 
-- **Obsidian CSS defense** — survive Obsidian's global bare-tag styling on `<button>` / `<input>` / `<h1-6>` / `<a>`. [`obsidian-css-defense.md`](./docs/conventions/obsidian-css-defense.md)
-- **Design tokens** — only `--pk-*` tokens from `src/styles/peak-tokens.css`; no inline hex, no direct Obsidian-theme `var(--…)`. [`design-tokens.md`](./docs/conventions/design-tokens.md)
-- **Component primitives** — the catalog of `.pk-*` CSS classes + React wrappers; scope discipline; mock→production token rename. [`component-primitives.md`](./docs/conventions/component-primitives.md)
-- **Primitive usage** — pick primitives by intent, not shape; produce a mock→primitive map before each surface. [`primitive-usage.md`](./docs/conventions/primitive-usage.md)
-- **JSX-mock fidelity** — audits include JSX structural diff, not just CSS; flex empty-span traps and inline-decoration patterns. [`jsx-mock-fidelity.md`](./docs/conventions/jsx-mock-fidelity.md)
+- **UI design system** — tokens, primitive catalog, primitive usage decisions, Obsidian CSS defense, JSX-mock fidelity. One file, 5 sections, section-anchored. [`ui-design.md`](./docs/conventions/ui-design.md)
 - **Configurability** — no inline i18n / regex / label maps / color or style configs; route through `templates/config/` or `core/constant.ts`. [`configurability.md`](./docs/conventions/configurability.md)
 
 ## Key External Dependencies
