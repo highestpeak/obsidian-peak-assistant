@@ -28,6 +28,7 @@ here are fetched on demand when an agent works in a relevant area.
 | [design-tokens.md](./design-tokens.md) | All colors / spacing / radius / typography come from `--pk-*` tokens; no inline hex; no Obsidian-var direct refs | ✅ enforced |
 | [primitive-usage.md](./primitive-usage.md) | Pick primitives by intent not shape; decision tree + anti-patterns + mock→primitive map | ✅ enforced |
 | [component-primitives.md](./component-primitives.md) | Catalog of `.pk-*` CSS primitives + React wrappers; scope discipline; mock→production token rename | ✅ enforced |
+| [jsx-mock-fidelity.md](./jsx-mock-fidelity.md) | JSX structure must match mock HTML; no `{x ?? ''}` in flex (empty span pollutes height); audits must include structural diff not just CSS | ✅ enforced |
 
 ## Conventions that live inline in CLAUDE.md
 
