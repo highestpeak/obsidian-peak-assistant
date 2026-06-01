@@ -46,6 +46,43 @@ should win. But three things conspire against us:
 3. **Hover / focus / disabled states** aren't explicitly set, so they fall
    back to Obsidian's
 
+### The 2026-06-01 regression #2: modalEl is outside `peak-design-root` scope
+
+Obsidian's `Modal` class renders TWO elements: `modalEl` (outer chrome —
+border, shadow, rounded corners) and `contentEl` (inner content). Adding
+`peak-design-root` to `contentEl` only protects the inside. The outer
+`modalEl` still inherits **the theme's accent border + box-shadow**, which
+on some themes is a thick purple ring that visibly overrides the design
+system's intended subtle gray border.
+
+**Fix pattern** (per `HarnessOnboardingModal.onOpen`):
+```ts
+onOpen(): void {
+    this.modalEl.addClass('pkonb-modal-shell');  // tag the OUTER, not contentEl
+    this.contentEl.addClass('peak-design-root'); // inner protection still needed
+    ...
+}
+onClose(): void {
+    this.modalEl.removeClass('pkonb-modal-shell');
+    ...
+}
+```
+
+CSS overrides must use `!important` because they're fighting Obsidian's
+theme stylesheet (which itself uses high specificity):
+```css
+.pktw-root .pkonb-modal-shell,
+.peak-design-root .pkonb-modal-shell {
+    border: 1px solid var(--pk-border) !important;
+    box-shadow: var(--pk-shadow-modal) !important;
+    border-radius: var(--pk-radius-lg) !important;
+    background: var(--pk-surface) !important;
+}
+```
+
+**Don't forget**: each modal class needs its own outer tag. Tag both
+`modalEl` AND `contentEl` if you want the full design language.
+
 ### The 2026-05-31 regression: `:where()` vs reset
 
 The Design System Unification (PR-0) scoped every `.pk-*` primitive with
