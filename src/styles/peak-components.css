@@ -1774,6 +1774,38 @@
   background: var(--pk-accent-tint);
 }
 
+/* Flat variant — Messages tab uses unboxed rows for higher density per mock. */
+.pktw-root .pkchat-idx-msg[data-variant="flat"],
+.peak-design-root .pkchat-idx-msg[data-variant="flat"] {
+  border-color: transparent;
+  background: transparent;
+  padding: 6px var(--pk-space-2);
+  margin-top: 0;
+  border-radius: var(--pk-radius-sm);
+}
+
+.pktw-root .pkchat-idx-msg[data-variant="flat"]:hover,
+.peak-design-root .pkchat-idx-msg[data-variant="flat"]:hover {
+  background: var(--pk-accent-tint);
+  border-color: transparent;
+}
+
+/* Day divider — used between message chunks in the Messages tab. */
+.pktw-root .pkchat-idx-msg-day,
+.peak-design-root .pkchat-idx-msg-day {
+  font-size: 11px;
+  color: var(--pk-text-tertiary);
+  margin: 12px var(--pk-space-2) 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.pktw-root .pkchat-idx-msg-day:first-child,
+.peak-design-root .pkchat-idx-msg-day:first-child {
+  margin-top: 4px;
+}
+
 .pktw-root .pkchat-idx-msg__who,
 .peak-design-root .pkchat-idx-msg__who {
   font-size: 10px;
@@ -1836,10 +1868,10 @@
 .pktw-root .pkchat-idx-art,
 .peak-design-root .pkchat-idx-art {
   display: grid;
-  grid-template-columns: 44px 1fr auto;
-  gap: var(--pk-space-2);
+  grid-template-columns: 60px 1fr auto;
+  gap: var(--pk-space-3);
   align-items: center;
-  padding: var(--pk-space-2) var(--pk-space-3);
+  padding: 10px 12px;
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
   margin-bottom: var(--pk-space-2);
@@ -1861,8 +1893,8 @@
 
 .pktw-root .pkchat-idx-art__thumb,
 .peak-design-root .pkchat-idx-art__thumb {
-  width: 44px;
-  height: 40px;
+  width: 60px;
+  height: 44px;
   border-radius: var(--pk-radius-sm);
   background: var(--pk-surface-sunken);
   border: 1px solid var(--pk-border);
@@ -1900,8 +1932,22 @@
 
 .pktw-root .pkchat-idx-art__thumb > svg,
 .peak-design-root .pkchat-idx-art__thumb > svg {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
+}
+
+/* Artifact tag pill (Saved / Indexed) — used inside __sub */
+.pktw-root .pkchat-idx-art__tag,
+.peak-design-root .pkchat-idx-art__tag {
+  display: inline-block;
+  height: 16px;
+  padding: 0 5px;
+  font-size: 10px;
+  line-height: 16px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-success-bg);
+  color: var(--pk-success);
+  font-weight: 650;
 }
 
 .pktw-root .pkchat-idx-art__body,

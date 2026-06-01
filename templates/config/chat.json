@@ -94,7 +94,10 @@
     "footerTopics": "Topics are derived from message structure.",
     "footerArtifacts": "Click any artifact to jump to it in the chat.",
     "footerMessages": "Click any message to jump to it.",
-    "footerAll": "Click any entry to jump in chat."
+    "footerAll": "Click any entry to jump in chat.",
+    "artifactTagSaved": "Saved",
+    "artifactTagIndexed": "Indexed",
+    "messagesCurrentViewport": "Current viewport"
   },
   "message": {
     "assistantName": "Peak",

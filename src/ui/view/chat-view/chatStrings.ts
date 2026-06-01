@@ -118,6 +118,9 @@ export interface ChatStrings {
 		footerArtifacts: string;
 		footerMessages: string;
 		footerAll: string;
+		artifactTagSaved: string;
+		artifactTagIndexed: string;
+		messagesCurrentViewport: string;
 	};
 	message: {
 		assistantName: string;
@@ -248,6 +251,9 @@ export const DEFAULT_CHAT_STRINGS: ChatStrings = {
 		footerArtifacts: 'Click any artifact to jump to it in the chat.',
 		footerMessages: 'Click any message to jump to it.',
 		footerAll: 'Click any entry to jump in chat.',
+		artifactTagSaved: 'Saved',
+		artifactTagIndexed: 'Indexed',
+		messagesCurrentViewport: 'Current viewport',
 	},
 	message: {
 		assistantName: 'Peak',

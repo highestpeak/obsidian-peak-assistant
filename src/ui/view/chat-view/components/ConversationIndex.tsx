@@ -53,6 +53,8 @@ interface Artifact {
 	name: string;
 	language?: string;
 	createdAt: number;
+	/** True when artifact is backed by a vault resource (not an inline fenced block). */
+	isSaved?: boolean;
 }
 
 interface TopicGroup {
@@ -80,6 +82,27 @@ function formatTimestamp(ts: number): string {
 	} catch {
 		return '';
 	}
+}
+
+/**
+ * Day key for grouping messages in the Messages tab.
+ * Returns an ISO date stamp (YYYY-MM-DD) — stable across timezones for grouping,
+ * and a human label for display.
+ */
+function dayKey(ts: number): string {
+	if (!ts) return '';
+	const d = new Date(ts);
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatDayLabel(ts: number): string {
+	if (!ts) return '';
+	const d = new Date(ts);
+	return d.toLocaleDateString([], {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+	});
 }
 
 function inferArtifactKindFromLang(lang: string): ArtifactKind {
@@ -148,6 +171,7 @@ function MessageRowItem({
 	suffix,
 	onClick,
 	isError,
+	variant = 'card',
 }: {
 	role: 'user' | 'assistant' | 'system';
 	text: string;
@@ -155,11 +179,18 @@ function MessageRowItem({
 	suffix?: string;
 	onClick: () => void;
 	isError?: boolean;
+	/** `card` = bordered (Topics body, All tab); `flat` = unboxed (Messages tab) */
+	variant?: 'card' | 'flat';
 }) {
 	const whoRole = isError ? 'error' : role === 'user' ? 'user' : 'assistant';
 	const letter = isError ? '!' : role === 'user' ? 'U' : 'P';
 	return (
-		<button type="button" className="pkchat-idx-msg" onClick={onClick}>
+		<button
+			type="button"
+			className="pkchat-idx-msg"
+			data-variant={variant === 'flat' ? 'flat' : undefined}
+			onClick={onClick}
+		>
 			<span className="pkchat-idx-msg__who" data-role={whoRole}>{letter}</span>
 			<span className="pkchat-idx-msg__body">
 				<span className="pkchat-idx-msg__text">{text || ' '}</span>
@@ -195,6 +226,7 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 					kind: inferArtifactKindFromResource(r.kind as string, r.source),
 					name: trimText(baseName, 48),
 					createdAt: m.createdAtTimestamp,
+					isSaved: true,
 				});
 			});
 			if (m.role !== 'assistant' && m.role !== 'user') return;
@@ -673,6 +705,11 @@ function ArtifactCard({ artifact }: { artifact: Artifact }) {
 				<span className="pkchat-idx-art__sub">
 					<span className="pkchat-idx-art__kind">{kindLabel}</span>
 					{artifact.createdAt ? <span>{formatTimestamp(artifact.createdAt)}</span> : null}
+					{artifact.isSaved && (
+						<span className="pkchat-idx-art__tag">
+							{strings.index.artifactTagSaved}
+						</span>
+					)}
 				</span>
 			</span>
 			<ArrowUpRight aria-hidden style={{ width: 14, height: 14, color: 'var(--pk-text-tertiary)' }} />
@@ -685,18 +722,39 @@ function MessagesTabBody({ entries }: { entries: Array<{ m: ChatMessage; idx: nu
 	if (!entries.length) {
 		return <div className="pkchat-idx__empty">{strings.index.emptyMessages}</div>;
 	}
+
+	// Group consecutive entries by day. Render a `.pkchat-idx-msg-day` divider
+	// each time the day changes — matches mock `.msg-day` (e.g. "May 9, 2026").
+	// Falls back to a single "—" divider for messages with no timestamp.
+	const chunks: Array<{ key: string; label: string; rows: typeof entries }> = [];
+	let current: { key: string; label: string; rows: typeof entries } | null = null;
+	for (const e of entries) {
+		const k = dayKey(e.m.createdAtTimestamp) || 'no-date';
+		if (!current || current.key !== k) {
+			current = { key: k, label: formatDayLabel(e.m.createdAtTimestamp), rows: [] };
+			chunks.push(current);
+		}
+		current.rows.push(e);
+	}
+
 	return (
 		<>
-			{entries.map(({ m, idx }) => (
-				<MessageRowItem
-					key={m.id}
-					role={m.role === 'user' ? 'user' : 'assistant'}
-					isError={m.isErrorMessage}
-					text={trimText(m.content || '')}
-					timestamp={m.createdAtTimestamp}
-					suffix={`Msg ${idx + 1}`}
-					onClick={() => scrollToMessage(m.id)}
-				/>
+			{chunks.map((chunk) => (
+				<React.Fragment key={chunk.key}>
+					<div className="pkchat-idx-msg-day">{chunk.label || '—'}</div>
+					{chunk.rows.map(({ m, idx }) => (
+						<MessageRowItem
+							key={m.id}
+							role={m.role === 'user' ? 'user' : 'assistant'}
+							isError={m.isErrorMessage}
+							text={trimText(m.content || '')}
+							timestamp={m.createdAtTimestamp}
+							suffix={`Msg ${idx + 1}`}
+							onClick={() => scrollToMessage(m.id)}
+							variant="flat"
+						/>
+					))}
+				</React.Fragment>
 			))}
 		</>
 	);
