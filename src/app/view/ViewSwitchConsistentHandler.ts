@@ -1,6 +1,7 @@
 import { App, ViewState, WorkspaceLeaf } from 'obsidian';
 import {
 	AMBIENT_PUSH_VIEW_TYPE,
+	CHAT_STUDIO_VIEW_TYPE,
 	CHAT_VIEW_TYPE,
 	CONVERSATION_OUTLINE_VIEW_TYPE,
 	PROJECT_LIST_VIEW_TYPE,
@@ -66,6 +67,18 @@ export class ViewSwitchConsistentHandler {
 	 */
 	async activateChatView(): Promise<void> {
 		if (this.isActivating) return;
+
+		// If Chat Studio is open, it is the user's intended chat surface — any
+		// "open chat" trigger (ribbon click, openAssistant palette command,
+		// programmatic chatNavigation when starting a new conversation) should
+		// focus the Studio window rather than recreating the legacy 3-pane
+		// layout in the main editor.
+		const studioLeaves = this.app.workspace.getLeavesOfType(CHAT_STUDIO_VIEW_TYPE);
+		if (studioLeaves.length > 0) {
+			this.app.workspace.revealLeaf(studioLeaves[0]);
+			return;
+		}
+
 		const activeViewType = this.app.workspace.activeLeaf?.view?.getViewType();
 
 		/*
