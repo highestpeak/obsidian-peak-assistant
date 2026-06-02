@@ -9,9 +9,10 @@ import { VaultXRayView, VAULT_XRAY_VIEW_TYPE } from '@/ui/view/vault-lint/VaultX
 import { GapAnalysisView, GAP_ANALYSIS_VIEW_TYPE } from '@/ui/view/gap-analysis/GapAnalysisView';
 import { KnowledgeCenterView, KNOWLEDGE_CENTER_VIEW_TYPE } from '@/ui/view/knowledge-center/KnowledgeCenterView';
 import { ConversationOutlineView, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/ui/view/ConversationOutlineView';
+import { ChatStudioView, CHAT_STUDIO_VIEW_TYPE } from '@/ui/view/ChatStudioView';
 import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
 import { InputModal } from '@/ui/component/InputModal';
-import { App, ViewCreator } from 'obsidian';
+import { App, ViewCreator, WorkspaceLeaf } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 
 /**
@@ -54,6 +55,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(CONVERSATION_OUTLINE_VIEW_TYPE, (leaf) => {
 			return new ConversationOutlineView(leaf, appContext);
+		});
+		this.viewCreators.set(CHAT_STUDIO_VIEW_TYPE, (leaf) => {
+			return new ChatStudioView(leaf, appContext);
 		});
 	}
 
@@ -179,5 +183,43 @@ export class ViewManager {
 			const modal = new InputModal(this.plugin.app, message, (value) => resolve(value));
 			modal.open();
 		});
+	}
+
+	/**
+	 * Open the Chat Studio: a single ItemView in a detached macOS window
+	 * that internally renders ConversationList | ChatViewComponent |
+	 * ConversationIndex side by side.
+	 *
+	 * On first open, detaches any existing legacy chat-layout leaves so the
+	 * user's original positions disappear (matching the user-requested
+	 * "原来的位置都消失了" behavior). Re-running the command while Studio is
+	 * already open just reveals the existing leaf.
+	 */
+	async openChatStudio(): Promise<void> {
+		const { workspace } = this.plugin.app;
+
+		// Idempotence: if Studio leaf already exists, just focus it.
+		const existing = workspace.getLeavesOfType(CHAT_STUDIO_VIEW_TYPE);
+		if (existing.length > 0) {
+			workspace.revealLeaf(existing[0]);
+			return;
+		}
+
+		// Tear down the legacy chat layout so the original positions disappear.
+		const legacyTypes: string[] = [
+			CHAT_VIEW_TYPE,
+			PROJECT_LIST_VIEW_TYPE,
+			CONVERSATION_OUTLINE_VIEW_TYPE,
+		];
+		for (const type of legacyTypes) {
+			for (const leaf of workspace.getLeavesOfType(type)) {
+				leaf.detach();
+			}
+		}
+
+		// Open the Studio in a detached macOS window.
+		const studioLeaf: WorkspaceLeaf = workspace.getLeaf('window');
+		await studioLeaf.setViewState({ type: CHAT_STUDIO_VIEW_TYPE, active: true });
+		workspace.revealLeaf(studioLeaf);
 	}
 }
