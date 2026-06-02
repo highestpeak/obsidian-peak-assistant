@@ -66,6 +66,20 @@ export const ChatStudioPanel: React.FC = () => {
 	);
 };
 
+/**
+ * For HOME / ALL_PROJECTS / ALL_CONVERSATIONS / STANDALONE_CONVERSATION /
+ * null, the left list intentionally shows the standalone-conversation set
+ * (undefined projectId). That matches the user's choice of "left follows
+ * main context": when the main area is NOT inside a specific project, the
+ * left column defaults to standalone — the same default used by the regular
+ * chat shell's ALL_CONVERSATIONS view.
+ *
+ * Known trade-off: when the user navigates the middle to ALL_CONVERSATIONS,
+ * the middle and left both render a ConversationList. We accepted this
+ * because the middle is the full ChatViewComponent router (Q5-A from
+ * brainstorming) — duplicating the list in the route is the price of
+ * keeping middle-area parity with the legacy chat experience.
+ */
 function derivedProjectId(
 	viewMode: ViewMode | null,
 	overviewProjectId: string | undefined,
@@ -96,6 +110,15 @@ const StudioResizerHandle: React.FC<StudioResizerHandleProps> = ({ onResize }) =
 	useEffect(() => {
 		onResizeRef.current = onResize;
 	}, [onResize]);
+
+	useEffect(() => {
+		// If we unmount mid-drag, null the tracking ref so any lingering
+		// document-level handleMove becomes a no-op until the user releases
+		// the mouse (at which point handleUp self-removes both listeners).
+		return () => {
+			lastXRef.current = null;
+		};
+	}, []);
 
 	const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
 		e.preventDefault();
