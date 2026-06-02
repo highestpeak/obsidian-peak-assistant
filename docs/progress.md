@@ -59,6 +59,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | S6. Precompiled Knowledge | HubStalenessDetector + HubRegenService + hub_regen_queue + reranker boost | 完成 (6 tasks) |
 | AK. Agent Harness Curator Onboarding | Curator agent + 22-model catalog + zod validation + fallback + 9-step wizard（Welcome / Provider / Bootstrap / Preferences / Running / Review / Edit / Redo / Done）+ 接受写入 HarnessSettings | 完成 (3 commits, 56 tests, +3,614 lines) |
 | AL. Design System Unification | PR-0 地基（tokens + 10 共享原语 CSS + 9 React 薄壳 + telemetry/capabilities/templates 脚手架）+ Copilot skin + 3 worktree 并行（chat 4 PR / dashboard 4 PR / onboarding+settings 5 PR）+ 3 路 merge into master | 完成 (21 PR, master @ d2bdf42) |
+| AM. Onboarding Polish & Convention Refactor | Onboarding 视觉回归批量修复（Pill→Button CTA / provider-row flat / bootstrap card 等高 + inline Recommended / Obsidian button leak `!important` 防线）+ Curator rationale 去中文（fallback.ts + prompt.ts，国际化前 English-only）+ 5 条 design-rule 文件合并为单文件 `docs/conventions/ui-design.md`（§1 tokens / §2 primitives / §3 usage / §4 Obsidian defense / §5 JSX-mock）+ CLAUDE.md Project Rules 6→2 行 pointer-only | 完成 (8 commits ec5491a..504739f + Chinese fix uncommitted) |
 
 ## Next
 
@@ -215,6 +216,78 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-06-03 — Chat UI Modernization（按设计稿逐项落地 + 设计系统规则补全）
+
+按 9 张设计稿（sidebar / message head / header / suggested+more / conversation index / artifact / topics tab / run settings popover / composer）对照实现，过程 ~15 轮迭代逐图核对。
+
+**Sidebar（左栏 project list）**
+- 加 search 栏 + Today/Yesterday/This week/Earlier 时间桶分组（替代单一 CONVERSATIONS wrapper）
+- 删除 CONVERSATIONS section 折叠 wrapper，时间桶提升为顶级 section header
+- 会话行：active 状态 `pktw-bg-primary` 蓝 → `var(--pk-accent-soft)` 紫；删除每行冗余日期；每行加 MessageSquare 小气泡 icon
+- toolbar `+` 按钮改 hover-only，3 个按钮 size lg → md
+- sidebar bg：`--pk-bg`（紫调暗色）→ transparent 继承 Obsidian 主题
+- search clear `<X>` 改用 `<PkIconButton>` 防 Obsidian button 样式泄漏
+
+**Header（chat 标题栏）**
+- 删除 `__spacer`，Open / Refresh icons inline 紧贴标题左侧
+- 删除 Trash2 按钮（删会话改走 sidebar 右键菜单）
+
+**Message（assistant 消息）**
+- Head meta 持久化：原来只读 `streamingState.currentToolCalls`（流式结束后归零），改读 `message.toolCalls.length` + `message.genTimeMs` 让流式结束后 meta 仍可见
+- tokenCount 加 k-format（1234 → "1.2k"）、duration 加 `8.4s` 格式
+- 新增 `AGENT` chip（基于 toolCount>0 启发式判断）
+- model badge 从 `--pk-accent-soft`(25%) 改 `--pk-accent-tint`(10%)，less saturated
+
+**Suggested next + More popover（image 4）**
+- More popover 加 FOLLOW-UP / ACTIONS 双分组 + 分隔线
+- ACTIONS: Save to vault / Ask custom follow-up 真实 wire；其余 3 个 MIGRATION-DEFERRED 占位（不加 disabled 假按钮）
+
+**Conversation Index（右栏 outline）**
+- 全量重构 topic 卡片结构：summary 3 行（chev+icon+name+count / description / primary-attachment+mini-posbar）+ body 仅展开时显示 Sources/Attachments + Key messages
+- 删除 body 重复的 Messages X-Y 标签 + 全宽 progress bar（summary 已有 mini）
+- stripMarkdown helper 去掉 `## hello hello` raw markdown 漏出
+- Tab segmented 全宽 + 紧凑 padding；search bar 防 Obsidian input 泄漏
+- artifact thumb 60×44 → 28×28，per-kind 色彩去除统一中性灰
+- message avatar P/U/! 语义色去除统一 `--pk-surface-sunken` + secondary
+- topic 展开 bg `--pk-accent-tint` 紫 → `--pk-surface-sunken` 中性
+- Topic icon 加浅色方块（22×22 `--pk-surface-sunken` + secondary icon）
+
+**Run settings popover（image 8）**
+- 宽度 320 → 300px，padding 收紧
+- ROLE pills 3-col grid + 32px 高（防 reset 压扁需 `!important`）+ font base
+- RUN MODE segmented 改全宽（display: flex / flex: 1 per opt）
+- open 状态去掉 `--pk-accent-soft` 紫底（避免 chip 与紫色 send 视觉拥挤）
+
+**Composer（image 9）**
+- 关键 bug：`pkchat-composer__foot-right` DevTools 渲染 269.23×16px → 根因 Obsidian reset `.peak-design-root button { height: auto !important }` 把所有 button-based primitive 压成 SVG 自然高度
+  - 修：`.pk-icon-btn` / `.pkchat-run-chip` / `.pkchat-send` 全部 `width/height/min-width/min-height/padding` 加 `!important`
+  - 写入规则：`docs/conventions/ui-design.md` §4.3.1 子条款
+- RunChip 去掉 `Default` role 段，trigger 现在 3 段（mode · model · ctx）
+- Send button radius-md → radius-full（真圆形）+ 32×32
+- Mic icon 改成始终常驻（不再 mic↔send 二选一）
+- Footer-left 最终收成单一 `+` 按钮（attach 文件），删除 Paperclip/Database/LayoutGrid/旧 Plus（`[[` 已覆盖 context insertion；vault/web search 已在 run-chip popover）
+- Enhance prompt 改成内嵌 footnote（移入 editor div），不再独占一行 chrome
+- 删除 view-Messages 里冗余的 ArrowUp/ArrowDown 滚动按钮
+
+**Layout 联动**
+- `ViewSwitchConsistentHandler.handleActiveLeafChange`：CONVERSATION_OUTLINE_VIEW_TYPE 虽在 STANDALONE 但 special-case 调 activateChatView
+- 早 return guard 从只检查 `isChatLayoutActive + chat active` 扩到必须 3 个 leaf 都在
+- 左右 leaf 加 `revealLeaf` 展开折叠侧栏
+- Outline view icon `panel-right` → `list-tree`
+
+**设计系统规则补全（docs/conventions/ui-design.md）**
+- §3.2 / §3.4 / §3.5 沿用现有 primitive 决策
+- §4.3 / §4.3.1：button-based primitive 必须 `!important` 6 个属性（bg/border/padding/radius/width/height + min/max），不只 4 个
+- §4.9 reset table 加一行记录我们自己的 reset 反咬
+- §6.1 chip proliferation：7 个 chat 内 chip 类的迁移决策表（4 迁原语 + 3 保留 surface modifier）
+- §6.2 surface migration all-or-nothing
+- §6.3 "intentionally omitted" 必须带追踪句柄
+- §6.4 mock data fixture 要求
+
+**已知遗留 / 未做**
+- Image 6 ArtifactCard inline 组件 + mock conversation fixture（独立 PR 推进）
+- Topic icon 在折叠状态没有 attachment chip 时仍显示 mini-posbar（image 27 红圈位置）— 已实现，需视觉验证
 
 ### 2026-05-30 — Design System Unification 全量交付（21 PR / 单 session 并行 worktree dispatch）
 

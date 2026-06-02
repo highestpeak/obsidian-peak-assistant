@@ -11,8 +11,6 @@ import { ComposerRetained } from './components/ComposerRetained';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
 import { useAutoScroll } from './hooks/useAutoScroll';
-import { IconButton } from '@/ui/components/primitives';
-import { ArrowUp, ArrowDown } from 'lucide-react';
 import { NewConversationTypePicker } from './components/NewConversationTypePicker';
 import { ChatStringsProvider } from './chatStringsContext';
 
@@ -66,7 +64,10 @@ const MessagesViewInner: React.FC = () => {
 	// Scroll management — kept identical to pre-refactor behavior
 	const bodyScrollRef = useRef<HTMLDivElement>(null);
 
-	const { scrollToTop, scrollToBottom } = useScrollManager({
+	// Hook called for its auto-scroll-on-message-change side effect.
+	// scrollToTop / scrollToBottom returns are unused since the explicit
+	// scroll buttons were removed (see render block below).
+	useScrollManager({
 		scrollRef: bodyScrollRef,
 		containerRef: bodyScrollRef,
 		eventBus,
@@ -75,7 +76,7 @@ const MessagesViewInner: React.FC = () => {
 		autoScrollOnStreaming: false,
 	});
 
-	const { resumeAutoScroll } = useAutoScroll({
+	useAutoScroll({
 		scrollRef: bodyScrollRef,
 		enabled: true,
 		userScrollThreshold: 100,
@@ -151,27 +152,14 @@ const MessagesViewInner: React.FC = () => {
 
 				<ConvertToProjectSuggestion />
 
-				<div className="pktw-flex-shrink-0 pktw-flex pktw-justify-end pktw-items-center pktw-px-6 pktw-pt-2">
-					<div className="pktw-flex pktw-items-center pktw-gap-1">
-						<IconButton
-							label="Scroll to top"
-							title="Scroll to top"
-							onClick={() => scrollToTop(false)}
-						>
-							<ArrowUp />
-						</IconButton>
-						<IconButton
-							label="Scroll to latest"
-							title="Scroll to latest"
-							onClick={() => {
-								scrollToBottom(true);
-								resumeAutoScroll();
-							}}
-						>
-							<ArrowDown />
-						</IconButton>
-					</div>
-				</div>
+				{/*
+				  Scroll-to-top / Scroll-to-bottom IconButtons removed —
+				  not in the retained-mock spec; sat awkwardly between body
+				  and composer. Native scroll plus auto-scroll-on-stream cover
+				  the same need. If we re-add these, they belong as a floating
+				  affordance overlay on the right edge of the body, not as a
+				  full-width row that fights composer for vertical space.
+				*/}
 
 				<ComposerRetained />
 			</div>

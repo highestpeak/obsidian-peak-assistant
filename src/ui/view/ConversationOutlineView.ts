@@ -35,7 +35,12 @@ export class ConversationOutlineView extends ItemView {
 	}
 
 	getIcon(): IconName {
-		return 'panel-right';
+		// `list-tree` reads semantically as the hierarchical
+		// Topics → Artifacts → Messages index this view hosts. The previous
+		// `panel-right` was a generic chrome icon (just a right-panel toggle
+		// silhouette) and looked indistinguishable from Obsidian's own
+		// sidebar-toggle in the same header strip.
+		return 'list-tree';
 	}
 
 	async onOpen(): Promise<void> {

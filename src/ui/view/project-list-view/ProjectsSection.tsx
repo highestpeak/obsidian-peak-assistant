@@ -318,10 +318,15 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	);
 };
 
+interface ProjectsSectionProps {
+	/** Optional case-insensitive filter applied to project name. */
+	query?: string;
+}
+
 /**
  * Projects section component
  */
-export const ProjectsSection: React.FC = () => {
+export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) => {
 	const { manager, eventBus, viewManager } = useServiceContext();
 	const {
 		projects,
@@ -456,16 +461,19 @@ export const ProjectsSection: React.FC = () => {
 	};
 
 	const { projectsToShow, hasMoreProjects } = useMemo(() => {
-		const list = Array.from(projects.values()).sort((a, b) => {
-			const timeA = a.meta.createdAtTimestamp || 0;
-			const timeB = b.meta.createdAtTimestamp || 0;
-			return timeB - timeA;
-		});
+		const q = query.trim().toLowerCase();
+		const list = Array.from(projects.values())
+			.filter((p) => !q || (p.meta.name || '').toLowerCase().includes(q))
+			.sort((a, b) => {
+				const timeA = a.meta.createdAtTimestamp || 0;
+				const timeB = b.meta.createdAtTimestamp || 0;
+				return timeB - timeA;
+			});
 		return {
 			projectsToShow: list.slice(0, MAX_PROJECTS_DISPLAY),
-			hasMoreProjects: projects.size > MAX_PROJECTS_DISPLAY,
+			hasMoreProjects: list.length > MAX_PROJECTS_DISPLAY,
 		};
-	}, [projects]);
+	}, [projects, query]);
 
 	return (
 		<div className="pktw-flex pktw-flex-col">
@@ -484,14 +492,14 @@ export const ProjectsSection: React.FC = () => {
 				</div>
 				<IconButton
 					size="lg"
-					className="pktw-shrink-0 group-hover:pktw-bg-muted group-hover:pktw-shadow-sm hover:pktw-shadow-sm"
+					className="pktw-shrink-0 pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity"
 					onClick={(e) => {
 						e.stopPropagation();
 						handleCreateProject();
 					}}
 					title="New Project"
 				>
-					<Plus className="pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
+					<Plus className="pktw-text-foreground" />
 				</IconButton>
 			</div>
 

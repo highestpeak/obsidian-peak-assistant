@@ -19,6 +19,7 @@ import {
 	Globe,
 	Paperclip,
 	Star,
+	Plus,
 } from 'lucide-react';
 import {
 	PromptInput,
@@ -34,6 +35,7 @@ import {
 	PopoverTrigger,
 	Segmented,
 	IconButton,
+	Pill,
 } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '../store/chatViewStore';
@@ -123,9 +125,6 @@ const RunChip: React.FC = () => {
 		RUN_MODE_OPTIONS.find((opt) => opt.value === chatMode)?.label ??
 		strings.composer.runChipModeChat;
 
-	const roleLabel =
-		ROLE_OPTIONS.find((opt) => opt.id === role)?.label ?? strings.runSettings.roleDefault;
-
 	const modelSummary = selectedModel
 		? `${selectedModel.provider}/${selectedModel.modelId}`
 		: strings.composer.runChipModelAuto;
@@ -139,6 +138,12 @@ const RunChip: React.FC = () => {
 					data-state={open ? 'open' : 'closed'}
 					aria-label={strings.composer.runChipLabel}
 				>
+					{/*
+					  Trigger shows 3 segments per mock: mode · model · ctx.
+					  Role lives inside the popover (selecting a role doesn't
+					  need to be a glance-able trigger fact — most users keep
+					  Default).
+					*/}
 					<span className="pkchat-run-chip__label">{modeLabel}</span>
 					<span className="pkchat-run-chip__sep">·</span>
 					<span className="pkchat-run-chip__mid">
@@ -148,8 +153,6 @@ const RunChip: React.FC = () => {
 					<span className="pkchat-run-chip__ctx">
 						{ctxCount} {strings.composer.runChipCtxSuffix}
 					</span>
-					<span className="pkchat-run-chip__sep">·</span>
-					<span className="pkchat-run-chip__mid">{roleLabel}</span>
 					<ChevronDown />
 				</button>
 			</PopoverTrigger>
@@ -189,16 +192,15 @@ const RunChip: React.FC = () => {
 							{ROLE_OPTIONS.map((opt) => {
 								const isActive = opt.id === role;
 								return (
-									<button
+									<Pill
 										key={opt.id}
-										type="button"
-										className="pkchat-runpop__role-pill"
-										data-selected={isActive ? 'true' : undefined}
+										className="pkchat-role-pill"
+										selected={isActive}
 										onClick={() => setRole(opt.id)}
 									>
 										<span className="pkchat-runpop__role-ico">{opt.icon}</span>
 										<span>{opt.label}</span>
-									</button>
+									</Pill>
 								);
 							})}
 						</div>
@@ -338,8 +340,51 @@ const RunChip: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
-// SendButton — primary submit / streaming-cancel control. Falls back to mic
-// when there's nothing typed (matches retained mock).
+// ComposerFootLeft — tools cluster shown left of the run-chip / send.
+//
+// Only renders affordances backed by real handlers (per §6.3 — no placeholder
+// "coming soon" disabled icons):
+//   • Paperclip → opens file-picker via PromptInputContext.attachments.openFileDialog
+//   • Database  → toggles `enableVaultSearch` in chatViewStore (active when on)
+//
+// The mock also shows a `+` and a "context grid" icon. Those are intentionally
+// omitted until they map to concrete actions distinct from what's already
+// reachable via the run-chip popover — the popover already exposes vault
+// search + context, so duplicating them here without a unique meaning would
+// just confuse.
+// ---------------------------------------------------------------------------
+
+const ComposerFootLeft: React.FC = () => {
+	const strings = useChatStrings();
+	const { attachments } = usePromptInputContext();
+
+	/*
+	 * Footer-left simplified to a single `+` affordance opening file attach
+	 * (2026-06-03). Removed:
+	 *   • Paperclip — collapsed into `+` since both opened file dialog
+	 *   • Plus (insert @) — `[[` already opens the Obsidian link picker for
+	 *     context insertion, so a dedicated icon was redundant
+	 *   • Database (vault search) / LayoutGrid (web search) — already
+	 *     accessible via the run-chip popover's Context toggles; surfacing
+	 *     them in two places confused users on which one was canonical
+	 */
+	return (
+		<div className="pkchat-composer__foot-left">
+			<IconButton
+				label={strings.composer.attachLabel}
+				title={strings.composer.attachLabel}
+				onClick={() => attachments.openFileDialog()}
+			>
+				<Plus />
+			</IconButton>
+		</div>
+	);
+};
+
+// ---------------------------------------------------------------------------
+// SendControls — mic + primary send/cancel button. Mic is always rendered to
+// match the locked composer mock (image 28); previously these two affordances
+// swapped based on `hasInput` which made the layout feel inconsistent.
 // ---------------------------------------------------------------------------
 
 interface SendButtonProps {
@@ -354,56 +399,68 @@ const SendButton: React.FC<SendButtonProps> = ({ status, onCancel }) => {
 	const isStreaming = status === 'streaming';
 	const isSubmitting = status === 'submitted';
 
+	const micButton = (
+		<IconButton
+			label={strings.composer.voiceLabel}
+			title={strings.composer.voiceLabel}
+			disabled
+		>
+			<Mic />
+		</IconButton>
+	);
+
 	if (isStreaming) {
 		return (
-			<button
-				type="button"
-				className="pkchat-send"
-				aria-label={strings.composer.cancelLabel}
-				onClick={async (e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					if (onCancel) await onCancel();
-				}}
-			>
-				<Square />
-			</button>
+			<>
+				{micButton}
+				<button
+					type="button"
+					className="pkchat-send"
+					aria-label={strings.composer.cancelLabel}
+					onClick={async (e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						if (onCancel) await onCancel();
+					}}
+				>
+					<Square />
+				</button>
+			</>
 		);
 	}
 
 	if (isSubmitting) {
 		return (
-			<button
-				type="button"
-				className="pkchat-send"
-				aria-label={strings.composer.sendLabel}
-				disabled
-			>
-				<Loader2 className="pktw-animate-spin" />
-			</button>
+			<>
+				{micButton}
+				<button
+					type="button"
+					className="pkchat-send"
+					aria-label={strings.composer.sendLabel}
+					disabled
+				>
+					<Loader2 className="pktw-animate-spin" />
+				</button>
+			</>
 		);
 	}
 
 	if (!hasInput) {
-		return (
-			<IconButton
-				label={strings.composer.voiceLabel}
-				title={strings.composer.voiceLabel}
-				disabled
-			>
-				<Mic />
-			</IconButton>
-		);
+		// No text → only mic, send is hidden (would do nothing anyway).
+		return micButton;
 	}
 
 	return (
-		<button
-			type="submit"
-			className="pkchat-send"
-			aria-label={strings.composer.sendLabel}
-		>
-			<Send />
-		</button>
+		<>
+			{micButton}
+			<button
+				type="submit"
+				className="pkchat-send"
+				aria-label={strings.composer.sendLabel}
+			>
+				<Send />
+			</button>
+		</>
 	);
 };
 
@@ -460,15 +517,19 @@ export const ComposerRetained: React.FC = () => {
 						inputRef={inputFocusRef}
 						placeholder={placeholder ?? strings.composer.placeholder}
 					/>
+					{/*
+					  PromptEnhanceSuggestion is nested INSIDE the editor div so
+					  it acts as an inline footnote at the bottom of the editor
+					  area, not as a separate toolbar row between editor and
+					  footer. Per the locked composer mock (image 21), Enhance
+					  is a subtle hint hugging the editor — moving it out caused
+					  the composer to feel "stretched" with two rows of chrome.
+					*/}
+					<PromptEnhanceSuggestion />
 				</div>
-				<PromptEnhanceSuggestion />
 
 				<div className="pkchat-composer__foot">
-					{/*
-					  Tools cluster (attach / context / vault search / etc.) is intentionally
-					  omitted in PR-Chat-1 — the retained mock collapses these into the
-					  run-chip popover, which PR-Chat-2+ will flesh out.
-					*/}
+					<ComposerFootLeft />
 					<div className="pkchat-composer__foot-right">
 						<RunChip />
 						<SendButton status={status} onCancel={handleCancelStream} />

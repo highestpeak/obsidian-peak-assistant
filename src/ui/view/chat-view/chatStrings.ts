@@ -43,6 +43,7 @@ export interface ChatStrings {
 		runChipModePlan: string;
 		runChipModelAuto: string;
 		runChipCtxSuffix: string;
+		attachLabel: string;
 	};
 	runSettings: {
 		title: string;
@@ -145,6 +146,12 @@ export interface ChatStrings {
 		moreReplyInline: string;
 		moreSaveToVault: string;
 		moreDelete: string;
+		moreSectionFollowUp: string;
+		moreSectionActions: string;
+		moreRewriteSimply: string;
+		moreCreateChecklist: string;
+		moreOpenRelatedNotes: string;
+		moreAskCustomFollowup: string;
 		viewRawTitle: string;
 		inlineFollowupHint: string;
 		inlineFollowupPlaceholder: string;
@@ -179,6 +186,7 @@ export const DEFAULT_CHAT_STRINGS: ChatStrings = {
 		runChipModePlan: 'Plan',
 		runChipModelAuto: 'Auto model',
 		runChipCtxSuffix: 'ctx',
+		attachLabel: 'Attach file',
 	},
 	runSettings: {
 		title: 'Run settings',
@@ -278,6 +286,12 @@ export const DEFAULT_CHAT_STRINGS: ChatStrings = {
 		moreReplyInline: 'Reply inline',
 		moreSaveToVault: 'Save to vault',
 		moreDelete: 'Delete this message',
+		moreSectionFollowUp: 'FOLLOW-UP',
+		moreSectionActions: 'ACTIONS',
+		moreRewriteSimply: 'Rewrite last reply simply',
+		moreCreateChecklist: 'Create implementation checklist',
+		moreOpenRelatedNotes: 'Open related notes',
+		moreAskCustomFollowup: 'Ask custom follow-up…',
 		viewRawTitle: 'Raw message',
 		inlineFollowupHint: 'Inline reply — sent as the next message (threading lands later).',
 		inlineFollowupPlaceholder: 'Write your follow-up…',

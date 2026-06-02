@@ -42,7 +42,18 @@ export class ViewSwitchConsistentHandler {
 	 */
 	handleActiveLeafChange(leaf?: WorkspaceLeaf | null): void {
 		const viewType = leaf?.view?.getViewType();
-		if (viewType && STANDALONE_PEAK_VIEW_TYPES.has(viewType)) return;
+		if (viewType && STANDALONE_PEAK_VIEW_TYPES.has(viewType)) {
+			// Conversation Outline is the chat layout's right-panel companion,
+			// so activating it (user clicks the sidebar icon) should bring up
+			// the chat view + project list too — same as clicking either of
+			// those does. Other standalone peak views (graph, dashboard,
+			// vault X-ray, …) are full-window experiences and should NOT
+			// implicitly summon the chat layout, so they still early-return.
+			if (viewType === CONVERSATION_OUTLINE_VIEW_TYPE) {
+				void this.activateChatView();
+			}
+			return;
+		}
 		if (viewType && TRACKED_VIEW_TYPES.has(viewType)) {
 			void this.activateChatView();
 		} else if (viewType !== 'empty') {
@@ -56,7 +67,28 @@ export class ViewSwitchConsistentHandler {
 	async activateChatView(): Promise<void> {
 		if (this.isActivating) return;
 		const activeViewType = this.app.workspace.activeLeaf?.view?.getViewType();
-		if (this.isChatLayoutActive && activeViewType === CHAT_VIEW_TYPE) return;
+
+		/*
+		 * Early-return guard must verify ALL three layout leaves exist — not
+		 * just "we were last in chat layout and chat is the active leaf".
+		 * Without the outline+left checks, closing the outline (or the
+		 * project list) while keeping chat active short-circuits the next
+		 * activateChatView call and the closed leaf never gets restored.
+		 * Symptom: clicking the chat/project-list icon when outline is
+		 * closed does NOT bring outline back. Reported 2026-06-03.
+		 */
+		const hasOutline =
+			(this.app.workspace.getLeavesOfType?.(CONVERSATION_OUTLINE_VIEW_TYPE) ?? []).length > 0;
+		const hasProjectList =
+			this.app.workspace.getLeavesOfType(PROJECT_LIST_VIEW_TYPE).length > 0;
+		if (
+			this.isChatLayoutActive &&
+			activeViewType === CHAT_VIEW_TYPE &&
+			hasOutline &&
+			hasProjectList
+		) {
+			return;
+		}
 
 		this.isActivating = true;
 		try {
@@ -67,11 +99,13 @@ export class ViewSwitchConsistentHandler {
 				await centerLeaf.setViewState({ type: CHAT_VIEW_TYPE, active: true });
 			}
 
-			// Find existing file-explorer leaf or create new one
+			// Find existing project-list leaf or create new one
 			const existingProjectListLeaves = this.app.workspace.getLeavesOfType(PROJECT_LIST_VIEW_TYPE);
 			const leftLeaf = existingProjectListLeaves[0] ?? this.app.workspace.getLeftLeaf(false);
 			if (leftLeaf) {
 				await leftLeaf.setViewState({ type: PROJECT_LIST_VIEW_TYPE, state: {}, active: true });
+				// revealLeaf expands the left sidebar if collapsed.
+				this.app.workspace.revealLeaf(leftLeaf);
 			}
 
 			// Right sidebar: ensure the Conversation Outline leaf exists. Mounts the
@@ -95,6 +129,10 @@ export class ViewSwitchConsistentHandler {
 					state: {},
 					active: false,
 				});
+				// revealLeaf expands the right sidebar if collapsed AND surfaces
+				// the outline tab. Done AFTER setViewState so the leaf exists,
+				// BEFORE revealLeaf(centerLeaf) so center stays the focused leaf.
+				this.app.workspace.revealLeaf(outlineLeaf);
 			}
 
 			this.app.workspace.revealLeaf(centerLeaf);

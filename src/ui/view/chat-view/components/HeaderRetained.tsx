@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { ExternalLink, RefreshCw, Trash2 } from 'lucide-react';
-import { IconButton, Modal } from '@/ui/components/primitives';
+import { ExternalLink, RefreshCw } from 'lucide-react';
+import { IconButton } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
-import { useChatViewStore } from '../store/chatViewStore';
 import { useChatStrings } from '../chatStringsContext';
 
 export interface HeaderRetainedProps {}
@@ -31,8 +30,6 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = () => {
 	const { app, manager } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 	const [isRegenerating, setIsRegenerating] = useState(false);
-	const [confirmingDelete, setConfirmingDelete] = useState(false);
-	const [deleting, setDeleting] = useState(false);
 
 	if (!activeConversation) return null;
 
@@ -56,26 +53,19 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = () => {
 		}
 	};
 
-	const handleConfirmDelete = async () => {
-		if (deleting) return;
-		setDeleting(true);
-		const convId = activeConversation.meta.id;
-		try {
-			await manager.conv.deleteConversation(convId);
-			useChatDataStore.getState().deleteConversation(convId);
-			useChatViewStore.getState().setHome();
-			setConfirmingDelete(false);
-		} catch (err) {
-			console.error('[HeaderRetained] Delete failed:', err);
-		} finally {
-			setDeleting(false);
-		}
-	};
-
+	/*
+	 * Per the locked retained-mock spec, header is title + 2 inline action
+	 * icons (Open source + Refresh title). Delete used to live here but moved
+	 * to the sidebar's right-click context menu — deleting the *currently
+	 * open* conversation from its own header is a high-blast-radius action
+	 * better discovered through the conversation list.
+	 *
+	 * No more __spacer pushing actions to the right edge; icons hug the
+	 * truncated title for the compact look in the mock.
+	 */
 	return (
 		<div className="pkchat-header">
 			<span className="pkchat-header__title" title={title}>{title}</span>
-			<div className="pkchat-header__spacer" />
 			<div className="pkchat-header__actions">
 				{hasSource && (
 					<IconButton
@@ -87,13 +77,6 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = () => {
 					</IconButton>
 				)}
 				<IconButton
-					label={strings.header.deleteConversationLabel}
-					title={strings.header.deleteConversationLabel}
-					onClick={() => setConfirmingDelete(true)}
-				>
-					<Trash2 />
-				</IconButton>
-				<IconButton
 					label={isRegenerating ? strings.header.refreshLabelBusy : strings.header.refreshLabel}
 					title={isRegenerating ? strings.header.refreshLabelBusy : strings.header.refreshLabel}
 					onClick={handleRefresh}
@@ -102,44 +85,6 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = () => {
 					<RefreshCw className={isRegenerating ? 'pktw-animate-spin' : undefined} />
 				</IconButton>
 			</div>
-
-			<Modal
-				open={confirmingDelete}
-				onOpenChange={(open) => {
-					if (!open && !deleting) setConfirmingDelete(false);
-				}}
-			>
-				<Modal.Content width="narrow">
-					<Modal.Header>
-						<Modal.Title>{strings.header.deleteConversationConfirmTitle}</Modal.Title>
-						<Modal.Close />
-					</Modal.Header>
-					<Modal.Body>
-						<span style={{ color: 'var(--pk-text-secondary)' }}>
-							{strings.header.deleteConversationConfirmBody}
-						</span>
-					</Modal.Body>
-					<Modal.Footer>
-						<button
-							type="button"
-							className="pkchat-msg__inline-followup__cancel"
-							onClick={() => setConfirmingDelete(false)}
-							disabled={deleting}
-						>
-							{strings.header.deleteConversationConfirmCancel}
-						</button>
-						<button
-							type="button"
-							className="pkchat-msg__inline-followup__submit"
-							onClick={handleConfirmDelete}
-							disabled={deleting}
-							style={{ background: 'var(--pk-error)' }}
-						>
-							{deleting ? strings.header.refreshLabelBusy : strings.header.deleteConversationConfirmCta}
-						</button>
-					</Modal.Footer>
-				</Modal.Content>
-			</Modal>
 		</div>
 	);
 };

@@ -81,32 +81,59 @@ export const PromptEnhanceSuggestion: React.FC = () => {
 
 	if (isEnhancing) {
 		return (
-			<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1">
+			<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-pb-1">
 				<Loader2 className="pktw-w-3 pktw-h-3 pktw-animate-spin pktw-text-muted-foreground" />
 				<span className="pktw-text-[11px] pktw-text-muted-foreground">Enhancing prompt...</span>
 			</div>
 		);
 	}
 
+	/*
+	 * Render as an inline footnote-style row (not Button primitives) so the
+	 * Enhance hint hugs the editor body without claiming an extra ~32px row
+	 * of vertical space. Both affordances are accent-tinted anchor-style
+	 * text — same visual class as the editor footnotes in the locked mock.
+	 */
 	return (
-		<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-px-3 pktw-py-1">
-			<Button
-				variant="ghost"
-				size="sm"
-				className="pktw-h-6 pktw-text-[11px] pktw-text-muted-foreground hover:pktw-text-accent pktw-gap-1 pktw-px-2"
+		<div
+			className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3"
+			style={{ paddingBottom: 4, paddingTop: 2, lineHeight: 1.2 }}
+		>
+			<a
+				role="button"
+				tabIndex={0}
 				onClick={handleEnhance}
+				onKeyDown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						handleEnhance();
+					}
+				}}
+				className="pktw-cursor-pointer pktw-inline-flex pktw-items-center pktw-gap-1"
+				style={{
+					fontSize: 11,
+					color: 'var(--pk-accent-text)',
+					fontWeight: 500,
+				}}
 			>
-				<Wand2 className="pktw-w-3 pktw-h-3" />
-				Enhance prompt?
-			</Button>
-			<Button
-				variant="ghost"
-				size="sm"
-				className="pktw-h-6 pktw-text-[10px] pktw-text-muted-foreground/50 pktw-px-1"
+				<Wand2 style={{ width: 11, height: 11 }} />
+				<span>Enhance prompt?</span>
+			</a>
+			<a
+				role="button"
+				tabIndex={0}
 				onClick={handleDismiss}
+				onKeyDown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						handleDismiss();
+					}
+				}}
+				className="pktw-cursor-pointer"
+				style={{ fontSize: 11, color: 'var(--pk-text-tertiary)' }}
 			>
 				dismiss
-			</Button>
+			</a>
 		</div>
 	);
 };

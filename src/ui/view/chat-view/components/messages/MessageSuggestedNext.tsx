@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, ChevronDown } from 'lucide-react';
+import {
+	ArrowUpRight,
+	ChevronDown,
+	HelpCircle,
+	Wand2,
+	CheckSquare,
+	FolderOpen,
+	Pencil,
+} from 'lucide-react';
 import {
 	Popover,
 	PopoverContent,
@@ -26,6 +34,21 @@ export interface MessageSuggestedNextProps {
 	userContent: string;
 	assistantContent: string;
 	onSelect: (question: string) => void;
+	/**
+	 * Optional ACTIONS group handlers — shown in the "More…" popover below
+	 * the FOLLOW-UP overflow questions. Each renders only when supplied so
+	 * the caller can scope the menu progressively.
+	 *
+	 * MIGRATION-DEFERRED: real handlers for Rewrite / Checklist / Open related
+	 * notes don't exist yet — only `onAskCustom` (delegates to inline followup
+	 * composer) is wired. Other slots will light up as their service plumbing
+	 * lands. Tracked in chat surface modernization.
+	 */
+	onRewriteSimply?: () => void;
+	onCreateChecklist?: () => void;
+	onSaveToNote?: () => void;
+	onOpenRelatedNotes?: () => void;
+	onAskCustom?: () => void;
 }
 
 export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
@@ -33,6 +56,11 @@ export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
 	userContent,
 	assistantContent,
 	onSelect,
+	onRewriteSimply,
+	onCreateChecklist,
+	onSaveToNote,
+	onOpenRelatedNotes,
+	onAskCustom,
 }) => {
 	const strings = useChatStrings();
 	const { manager } = useServiceContext();
@@ -69,16 +97,57 @@ export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
 		};
 	}, [messageId, userContent, assistantContent, manager]);
 
-	if (loading || suggestions.length === 0) return null;
-
 	const inline = suggestions.slice(0, MAX_INLINE_CHIPS);
 	const overflow = suggestions.slice(MAX_INLINE_CHIPS);
 
+	const actionItems = [
+		onRewriteSimply && {
+			key: 'rewrite',
+			icon: <Wand2 />,
+			label: strings.message.moreRewriteSimply,
+			onClick: onRewriteSimply,
+		},
+		onCreateChecklist && {
+			key: 'checklist',
+			icon: <CheckSquare />,
+			label: strings.message.moreCreateChecklist,
+			onClick: onCreateChecklist,
+		},
+		onSaveToNote && {
+			key: 'save',
+			icon: <ArrowUpRight />,
+			label: strings.message.moreSaveToVault,
+			onClick: onSaveToNote,
+		},
+		onOpenRelatedNotes && {
+			key: 'related',
+			icon: <FolderOpen />,
+			label: strings.message.moreOpenRelatedNotes,
+			onClick: onOpenRelatedNotes,
+		},
+		onAskCustom && {
+			key: 'custom',
+			icon: <Pencil />,
+			label: strings.message.moreAskCustomFollowup,
+			onClick: onAskCustom,
+		},
+	].filter(Boolean) as Array<{ key: string; icon: React.ReactNode; label: string; onClick: () => void }>;
+
+	// If the LLM hasn't returned questions AND there are no actions wired,
+	// the row has nothing to show. Suppress entirely. (Loading state stays
+	// invisible — chips just appear when ready.)
+	if (loading) return null;
+	if (suggestions.length === 0 && actionItems.length === 0) return null;
+
+	const hasOverflow = overflow.length > 0 || actionItems.length > 0;
+
 	return (
 		<div className="pkchat-msg__suggest">
-			<span className="pkchat-msg__suggest-label">
-				{strings.message.suggestedNextLabel}
-			</span>
+			{suggestions.length > 0 && (
+				<span className="pkchat-msg__suggest-label">
+					{strings.message.suggestedNextLabel}
+				</span>
+			)}
 			{inline.map((q, i) => (
 				<button
 					key={i}
@@ -90,7 +159,7 @@ export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
 					<span>{q}</span>
 				</button>
 			))}
-			{overflow.length > 0 && (
+			{hasOverflow && (
 				<Popover>
 					<PopoverTrigger asChild>
 						<button type="button" className="pkchat-msg__suggest-more">
@@ -99,12 +168,33 @@ export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
 						</button>
 					</PopoverTrigger>
 					<PopoverContent align="start" sideOffset={6}>
-						{overflow.map((q, i) => (
-							<PopoverItem key={i} onClick={() => onSelect(q)}>
-								<ArrowUpRight />
-								<span>{q}</span>
-							</PopoverItem>
-						))}
+						{overflow.length > 0 && (
+							<>
+								<div className="pkchat-msg__suggest-section">
+									{strings.message.moreSectionFollowUp}
+								</div>
+								{overflow.map((q, i) => (
+									<PopoverItem key={i} onClick={() => onSelect(q)}>
+										<HelpCircle />
+										<span>{q}</span>
+									</PopoverItem>
+								))}
+							</>
+						)}
+						{actionItems.length > 0 && (
+							<>
+								{overflow.length > 0 && <div className="pkchat-msg__suggest-divider" />}
+								<div className="pkchat-msg__suggest-section">
+									{strings.message.moreSectionActions}
+								</div>
+								{actionItems.map((it) => (
+									<PopoverItem key={it.key} onClick={it.onClick}>
+										{it.icon}
+										<span>{it.label}</span>
+									</PopoverItem>
+								))}
+							</>
+						)}
 					</PopoverContent>
 				</Popover>
 			)}

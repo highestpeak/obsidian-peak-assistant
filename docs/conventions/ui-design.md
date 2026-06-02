@@ -11,6 +11,7 @@ The single source for how plugin UI gets built — from raw color values up thro
 | **§3 Primitive usage** | Pick the primitive by **intent**, not by **shape**. `<Pill>` is a filter chip, not a button; `<Row>` is the Settings card spec, not a generic row. Produce a mock→primitive map before each surface; gaps mean "add the primitive", not "use the closest one". |
 | **§4 Obsidian CSS defense** | Obsidian injects styles onto bare tags (`<button>`, `<input>`, `<h1-6>`, `<a>`). Modal-mounted surfaces MUST add `peak-design-root` to the outermost element; button-based primitives need `!important` on bg/border/padding/border-radius to beat `.modal-content button`. |
 | **§5 JSX-mock fidelity** | Audits include a JSX-vs-mock structural diff, not just CSS-vs-CSS. `{x ?? ''}` and `<span>{maybe || ''}</span>` inside flex/grid are NOT no-ops — they pollute height. Optional decorations sit inline with required content, not in sometimes-empty subtitle slots. |
+| **§6 Surface drift prevention** | Per-surface chip/pill/button classes are a smell — one Chip primitive across the plugin. Surface migrations are all-or-nothing: leaving one screen in a family on the old system reliably drifts. "Intentionally omitted" scope in a PR is a debt receipt — track it. Mock data fixtures are required for rich UI states (agent runs, artifacts) — without a fixture the UI is invisible and rots. |
 
 ## Quick navigation
 
@@ -19,7 +20,8 @@ The single source for how plugin UI gets built — from raw color values up thro
 - §3 — [Primitive usage — decision rules](#3-primitive-usage--decision-rules)
 - §4 — [Obsidian CSS defense](#4-obsidian-css-defense)
 - §5 — [JSX-mock fidelity](#5-jsx-mock-fidelity)
-- §6 — [Consolidated checklist](#6-consolidated-checklist)
+- §6 — [Surface drift prevention](#6-surface-drift-prevention)
+- §7 — [Consolidated checklist](#7-consolidated-checklist)
 
 For unrelated rules see [`configurability.md`](./configurability.md) (data layer — no inline i18n / regex / label maps).
 
@@ -364,6 +366,9 @@ When a mock spec differs from a base primitive's defaults, add a surface modifie
 | Modifier | Base primitive | What it changes |
 |---|---|---|
 | `pkonb-provider-row` | `pk-row` | Flat: radius-md, no shadow, 10×12 padding |
+| `pkchat-role-pill` | `pk-pill` | Grid-cell fill (`width: 100%`, `justify-content: center`), `xs` font, nowrap+ellipsis — for the 3×2 role grid in the run-settings popover |
+| `pkchat-msg__model-chip` | `pk-chip--accent` | Mono font + 11.5px size + right margin — `<Chip variant="accent" className="pkchat-msg__model-chip">` for the per-message model identifier |
+| `pkchat-msg__mode-badge` | `pk-chip--accent` | Smaller font (xs) + tighter padding + uppercase — `<Chip variant="accent" className="pkchat-msg__mode-badge">` for the inline Agent / Plan badge in the message head row |
 
 Add yours here when you introduce a new surface modifier.
 
@@ -553,7 +558,7 @@ Our primitive scoping is `.pktw-root .pk-X, .peak-design-root .pk-X` — `(0,2,0
 
 `obsidian-reset.css`'s `.peak-design-root button { background: none; … }` is `(0,1,1)` — also loses.
 
-**Fix pattern**: button-based primitives must use `!important` on the four properties Obsidian aggressively styles — `background`, `border` (and `border-color`), `padding`, `border-radius` — in both the base rule and any state variants (`:hover`, `[data-selected="true"]`, etc.):
+**Fix pattern**: button-based primitives must use `!important` on the properties Obsidian aggressively styles — `background`, `border` (and `border-color`), `padding`, `border-radius`, **plus `width` / `height` / `min-width` / `min-height`** — in both the base rule and any state variants (`:hover`, `[data-selected="true"]`, etc.):
 
 ```css
 .pktw-root .pk-icon-btn,
@@ -562,15 +567,33 @@ Our primitive scoping is `.pktw-root .pk-X, .peak-design-root .pk-X` — `(0,2,0
   border: 0 !important;
   padding: 0 !important;
   border-radius: var(--pk-radius-md) !important;
-  width: 28px;
-  height: 28px;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
   …
 }
 ```
 
 `!important` is required because we're fighting `(0,2,1)` with `(0,2,0)` — bumping a class selector or rewriting as `.peak-design-root button.pk-icon-btn` (tie at `(0,2,1)`, source-order dependent) is more fragile across Obsidian theme overrides.
 
-**Surfaces affected**: any primitive rendered as `<button>` inside an Obsidian `Modal` subclass. View-mode UIs (chat, dashboard) mount in `WorkspaceLeaf`, not `.modal-content`, so they don't hit this — but Settings and onboarding do. Apply the `!important` pattern when adding a new button-based primitive.
+**Surfaces affected**: any primitive rendered as `<button>` inside an Obsidian `Modal` subclass *or* a `WorkspaceLeaf`. The original framing of §4.3 (2026-06-01) only flagged Modal surfaces because `obsidian-reset.css`'s `.peak-design-root button` only acted on bg/border/padding/border-radius back then. The 2026-06-03 sub-regression below proved leaves are equally affected once you start fighting the reset on `height`/`width`.
+
+#### 4.3.1 Sub-regression: 16px collapsed button height in chat composer (2026-06-03)
+
+DevTools on `.pkchat-composer__foot-right` reported `269.23 × 16px` — the entire right cluster (run-chip + mic + send) was rendering at icon-natural height (~16px). RunChip had `height: 30px`; send had `width: 32px; height: 32px`. None had `!important`. The reset's `.peak-design-root button { height: auto !important; min-height: 0 !important; max-height: none !important }` (specificity `(0,1,1)` + `!important`) was winning against the primitives' `(0,2,0)` rules.
+
+Why this is sneaky: every other button visual property (`bg`, `border`, `padding`, `border-radius`) had `!important` because §4.3 had been around since the modal regression. But `height`/`width` had been left bare, on the assumption that "non-modal surfaces don't need defense." They do — the reset itself nulls these globally inside any `peak-design-root`, modal or not.
+
+Fix landed in commits to `peak-components.css`:
+
+- `.pk-icon-btn` — added `!important` on `width`/`height`/`min-width`/`min-height`
+- `.pkchat-run-chip` — added `!important` on `height`/`min-height`/`padding`
+- `.pkchat-send` — added `!important` on `width`/`height`/`min-width`/`min-height`/`padding`
+
+**Heuristic for future primitives**: if you set an explicit `width` or `height` (px / rem) on a `<button>` inside `peak-design-root` and the DevTools-reported size differs, the reset is winning. Add `!important` to the dimension AND to `min-*`/`max-*` (the reset clamps all three). Don't try to "diagnose" with Computed → Show All — just add the !important up front.
+
+**Detection signal**: when a new button-based primitive lands, open it in Obsidian, hover the rendered DOM in DevTools, and verify the box dimensions match the CSS values. A pixel mismatch means a leak.
 
 ### 4.4 Regression #2: modalEl is outside `peak-design-root` scope (2026-06-01)
 
@@ -685,6 +708,7 @@ Each property Obsidian touches on bare tags has to be explicitly defended. The l
 |---|---|---|
 | `background` / `border` / `padding` / `border-radius` / `box-shadow` / `outline` | Default `button` chrome | Card-style buttons get pill shape, theme colours, extra ring |
 | `height: var(--input-height)` (32px) | Obsidian wants every modal button to be touch-target-sized | Card buttons get locked to 32px even when content needs 60+px — flex layout breaks. **Required:** `height: auto !important; min-height: 0 !important; max-height: none !important` |
+| `height: auto !important; min-height: 0 !important` on `.peak-design-root button` (our own reset) | Defensive null applied so per-primitive height wins — but only if THAT primitive's height is also `!important` | Button-based primitives with bare `height: 30px` collapse to icon-natural height (~14-16px). Symptom: `pkchat-composer__foot-right` renders 269×16 instead of 269×32. **Required:** every primitive that needs an explicit size must use `!important` on `width`/`height`/`min-width`/`min-height` (see §4.3.1) |
 | `justify-content: center` | Same reason as above | Custom flex content gets centered instead of `flex-start` |
 | `transform: translateY(-1px)` on `:hover` | Theme "press" animation | Hovered row visibly shifts up 1–2px |
 | `transform: scale(1.05)` on `:focus` / `:active` | Theme focus emphasis | Clicked row visually grows |
@@ -831,7 +855,112 @@ Add new instances here when this rule rescues a regression.
 
 ---
 
-## 6. Consolidated checklist
+## 6. Surface drift prevention
+
+§1-§5 handle *building* a surface right. §6 is about what happens at the *fleet* level — multiple surfaces drifting away from the system over time. Every rule here was distilled from a real audit that found the same root cause across many components at once.
+
+### 6.1 Chip / pill / button proliferation
+
+**Symptom.** Audit finds N parallel CSS classes (`pksurfaceA-thing-chip`, `pksurfaceB-thing-pill`, `pksurfaceC-thing-tag`, …) that all do the same thing visually but drift in `border-radius`, `padding`, `font-size`, and `background` over time. Every new surface invents its own.
+
+**Real case (chat audit, 2026-06-02).** Seven independent chip-shaped classes coexisted in `peak-components.css`. Each had its own `border-radius`/`padding`/`font-size`/`background` value. Designer feedback: "胶囊样式不固定, 不一样" — the chips that look identical in the mock render visibly inconsistent in the product.
+
+Migration result (2026-06-02):
+
+| Class | Disposition | Why |
+|---|---|---|
+| `pkchat-idx__filter` | → `<Pill selected>` | Toggleable filter — exact Pill intent |
+| `pkchat-runpop__role-pill` | → `<Pill className="pkchat-role-pill">` | Toggleable role picker + grid-cell sizing as a surface modifier (§2.4) |
+| `pkchat-idx__count-pill` | → `<Chip variant="neutral">` | Count badge — exact Chip intent |
+| `pkchat-msg__model-chip` | → `<Chip variant="accent" className="pkchat-msg__model-chip">` | Accent label + mono font (surface modifier in §2.4) |
+| `pkchat-msg__suggest-chip` | Kept | CTA-shaped clickable pill with arrow icon — not a status chip, not a filter; intent gap |
+| `pkchat-idx-attach` | Kept | Truncating filename link with icon — intent gap |
+| `pkchat-run-chip` | Kept | Multi-segment composite (mode · model · ctx · role + chevron) — not a single chip |
+
+The 3 kept classes are tracked here so future audits stop counting them as drift. If/when the design system gains a primitive that matches their intent (`<ChipButton>` for CTA-pills, `<TruncatingLink>` for attachments), migrate then.
+
+**Rule.** *Before* creating a new `pk(surface)-*-chip` / `*-pill` / `*-tag` class, check the §3.2 decision tree:
+
+- **Toggleable filter / picker / role selector** → `<Pill data-selected="…">`. Don't invent a new pill class for "the role pill in this popover".
+- **Status / label / count badge** → `<Chip variant="…">`. Even a count "3" is a chip.
+- **Capsule-shaped CTA / link with arrow** → `<Button variant="ghost" className="…--capsule">` + add a `--capsule` surface modifier if the mock truly needs pill-radius on a CTA.
+
+If none fit, the answer is "add a primitive" (§3.5), **not** "add another `pksurfaceX-foo-chip`".
+
+**Detection signal.** `grep -c "border-radius: var(--pk-radius-pill)" src/styles/peak-components.css` — if the count climbs by more than one or two per major PR, you're proliferating. Also: file a quick chip inventory in the PR description for any surface touching ≥3 pill-shaped elements.
+
+### 6.2 Surface migrations are all-or-nothing
+
+**Symptom.** A design-system unification PR (or wave of PRs) covers most surfaces but skips one or two for time reasons. The skipped surfaces drift further over the next quarter because every fix lands "in the style of the old system". Eventually the skipped surface is hopelessly behind, and re-migrating it is harder than the original would have been.
+
+**Real case.** The 2026-05-30 Design System Unification (21 PRs) covered onboarding, settings, copilot, and the usage dashboard — but **not chat**. By 2026-06-02, the chat surface had ~60% design-fidelity vs the mocks, with every recent chat PR landing changes against the old token consumption (inline `style={{ ... }}` for radius, surface-local chip classes, raw `<button>` for icons). All of it was correct *given the old baseline*; none of it converged on the system.
+
+**Rule.** When kicking off a design-system migration wave, **list every surface family up front** and require either:
+
+1. **Inclusion** — surface ports in this wave; or
+2. **Explicit deferral** — surface is excluded with a tracked follow-up issue + a do-not-touch boundary so subsequent PRs don't bake more drift into it before the follow-up ships.
+
+A surface that is silently skipped, with normal PRs still landing against the unmigrated version, is the failure mode. There is no third option.
+
+**Operational check before merging a unification PR:**
+
+- [ ] Did we list every surface (Settings / Onboarding / Chat / Copilot / Dashboard / Knowledge Center / Maintenance / Skill picker / Command center / …)?
+- [ ] Is every surface either migrated or carrying a `// MIGRATION-DEFERRED: <issue-link>` marker on its root component?
+- [ ] Are deferred surfaces flagged in the design conventions doc, so the next developer touching them knows the rules they're outside of?
+
+### 6.3 "Intentionally omitted" is a debt receipt — track it
+
+**Symptom.** A component lands with comments like `// Tools cluster is intentionally omitted in PR-X — collapses into the run-chip popover, which PR-X+1 will flesh out`. Each individual PR is honest about its scope. But the cumulative effect across 10 such comments is that the production UI is missing 30% of the mock spec, and no one is tracking "all the things we said we'd add later".
+
+**Real case (chat, 2026-06-02).** Concrete debt receipts found in chat code:
+
+- `ComposerRetained.tsx:467` — footer-left tools cluster (+/attach/database/context) "intentionally omitted in PR-Chat-1"
+- `RunChip` — 5 rows marked `data-disabled="true" title="Coming soon"` (Current note, Manual override, Tools count, Pinned sources)
+- `HeaderRetained` — comment explicitly lists 4 omitted controls (model picker, mode toggle, system-prompt popover, resources popover)
+- `MessageMorePopover` — design spec calls for ACTIONS group with 5 entries; production has 0
+
+None of these were tracked in a follow-up issue or todo, and the next person reading the code has no way to know whether they were skipped on purpose or simply forgotten.
+
+**Rule.** "Intentionally omitted" comments must always include:
+
+1. **A tracking handle** — issue number, spec section, or todo file path. `// TODO(PR-Chat-2):` is acceptable only if PR-Chat-2 actually exists and lands within the same release; otherwise create an issue.
+2. **The mock element being omitted**, by exact class name or section ID — so a future audit can grep for it.
+3. **The blocker**, if any. "Out of scope" is fine; "needs backend X" is better.
+
+```tsx
+// ❌ undated, untracked, unrecoverable
+// Tools cluster is intentionally omitted in PR-Chat-1 — collapses into
+// the run-chip popover, which PR-Chat-2+ will flesh out.
+
+// ✅ tracking handle + grep-able mock element
+// MIGRATION-DEFERRED: footer-left tools cluster (mock .composer-tools-left:
+// add / attach / vault-search / context-picker). Tracked in issue #NNN;
+// blocked on tag-store refactor landing first.
+```
+
+When closing one of these out, also remove the comment — comments outliving their fix become folklore.
+
+### 6.4 Mock data fixtures for rich UI states
+
+**Symptom.** Designs show rich UI states (agent runs with tool counts + duration + cost; assistant messages with artifact cards; an inbox with starred items + read receipts). The code path exists to render them, but no real conversation in the developer's vault ever exercises the path. The UI rots silently — the next developer's audit can't even see what's supposed to be there.
+
+**Real case.** The chat mock shows assistant messages with inline artifact cards (`architecture-sketch.png`, `vault-flow.drawio`, `implementation-plan.md`, `review-proposal.diff +126/-48`) and an Agent run header with `· 3 tools · 1.2k tokens · 8.4s`. None of these renders in practice because (a) no `ArtifactCard` component exists, and (b) `tokenUsage` and tool counts are only set during streaming, not persisted on the `ChatMessage`. A developer opening any real conversation sees plain markdown only and has no clue the spec called for more.
+
+**Rule.** For any UI surface whose richness depends on data that doesn't naturally accumulate (agent artifacts, tool calls, cost receipts, dashboard high-volume states):
+
+1. **Ship a fixture conversation** in `docs/fixtures/` (or wherever the project keeps them) that exercises every variant in the mock.
+2. **Provide a "load fixture" affordance** in dev mode — a settings toggle or command that imports the fixture into the user's vault.
+3. **Tie the fixture to the audit checklist**: every visual-fidelity audit must open the fixture conversation and confirm the rich states render. Plain conversations alone are insufficient.
+
+If the data model lacks fields the mock needs (`durationMs`, `toolCount`, `artifactRefs`), that's a separate gap to close *before* the audit passes — not "the UI just doesn't show it yet".
+
+### 6.5 When this section gets a new bullet
+
+Every time an audit finds the same root cause across ≥3 surfaces or ≥3 components, add a §6.x for it. The first time it bites a surface, fix it in §1-§5. The third time, it's a drift class — promote the lesson here.
+
+---
+
+## 7. Consolidated checklist
 
 When implementing or reviewing a new UI surface, work through this list (each item links to the section that explains it):
 
@@ -864,5 +993,11 @@ When implementing or reviewing a new UI surface, work through this list (each it
 - [ ] List-item cards have a `min-height` set if their internal content can vary
 - [ ] Tested with all-fields-empty *and* all-fields-full to confirm uniform row height
 - [ ] Visual-fidelity audit includes a JSX structural diff section, not just CSS tokens
+
+**Surface drift prevention (§6)**
+- [ ] No new `pk(surface)-*-chip` / `*-pill` / `*-tag` class — use `<Chip>` or `<Pill>` (§6.1)
+- [ ] If this PR is part of a design-system migration wave, every surface family is either in scope or carries a `// MIGRATION-DEFERRED` marker with tracking handle (§6.2)
+- [ ] Every `// intentionally omitted` comment has a tracking handle + mock-element reference + blocker (§6.3)
+- [ ] If the surface relies on rich data states (agent artifacts, tool calls, cost receipts), a fixture conversation exists and is exercised by the audit (§6.4)
 
 **Test inside Obsidian, not just the mock browser** — Obsidian leaks (§4) only show in Obsidian. A mock-HTML preview will lie about the final appearance.

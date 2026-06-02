@@ -14,6 +14,7 @@ import {
 	ReasoningContent,
 	ReasoningTrigger,
 } from '@/ui/component/ai-elements';
+import { Chip } from '@/ui/components/primitives';
 import { AnimatedSparkles, StreamdownIsolated } from '@/ui/component/mine';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 import { formatTimestampLocale } from '@/core/utils/date-utils';
@@ -274,18 +275,53 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 		);
 	}, [message.tokenUsage]);
 
+	/*
+	 * Head meta — assembled from two sources so the row stays populated even
+	 * after streaming ends:
+	 *   • streamingState.currentToolCalls — live count during agent runs
+	 *   • message.toolCalls.length — persisted count read from the saved
+	 *     ChatMessage (LLM parsed it back out of the markdown on load)
+	 *   • message.tokenUsage — totalTokens persisted alongside the message
+	 *   • message.genTimeMs — generation duration in ms (assistant only)
+	 *
+	 * Previously the row was only populated from `streamingState`, so once
+	 * the stream finalised and the streamingState was reset, the row went
+	 * empty (see Image 2 in the 2026-06-02 chat audit). Reading from the
+	 * persisted message fields keeps the head consistent across reloads.
+	 */
+	const toolCount =
+		streamingState.currentToolCalls.length > 0
+			? streamingState.currentToolCalls.length
+			: (message.toolCalls?.length ?? 0);
+
+	const durationMs = message.genTimeMs ?? 0;
+
 	const inlineHeadMeta: string[] = [];
-	if (streamingState.currentToolCalls.length > 0) {
+	if (toolCount > 0) {
 		inlineHeadMeta.push(
-			`${streamingState.currentToolCalls.length} ${
-				streamingState.currentToolCalls.length === 1
+			`${toolCount} ${
+				toolCount === 1
 					? strings.message.toolsSingular
 					: strings.message.toolsPlural
 			}`
 		);
 	}
 	if (tokenCount != null && tokenCount > 0) {
-		inlineHeadMeta.push(`${tokenCount} ${strings.message.tokensSuffix}`);
+		// k-format large counts for compactness (1234 → "1.2k").
+		const tokenDisplay =
+			tokenCount >= 1000
+				? `${(tokenCount / 1000).toFixed(1).replace(/\.0$/, '')}k`
+				: String(tokenCount);
+		inlineHeadMeta.push(`${tokenDisplay} ${strings.message.tokensSuffix}`);
+	}
+	if (durationMs > 0) {
+		// Show as `8.4s` for sub-minute durations, `2m 14s` beyond.
+		const secs = durationMs / 1000;
+		const durStr =
+			secs < 60
+				? `${secs.toFixed(1)}s`
+				: `${Math.floor(secs / 60)}m ${Math.round(secs % 60)}s`;
+		inlineHeadMeta.push(durStr);
 	}
 
 	const shouldShowLoader =
@@ -337,6 +373,17 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 			<div className="pkchat-msg__head">
 				<div className="pkchat-msg__avatar">P</div>
 				<div className="pkchat-msg__name">{strings.message.assistantName}</div>
+				{/*
+				  Agent badge: shown whenever the message had tool calls (which
+				  only happens in agent runs). Heuristic — no `runMode` field is
+				  persisted on the message yet, but tool-call presence is a
+				  reliable proxy. When/if runMode lands, swap this condition.
+				*/}
+				{toolCount > 0 && (
+					<Chip variant="accent" className="pkchat-msg__mode-badge">
+						{strings.composer.runChipModeAgent}
+					</Chip>
+				)}
 				{inlineHeadMeta.length > 0 && (
 					<span className="pkchat-msg__head-meta">
 						{inlineHeadMeta.map((bit, i) => (
@@ -416,7 +463,9 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 			{!streamingState.isStreaming && (
 				<div className="pkchat-msg__meta-row">
 					{modelChipText && (
-						<span className="pkchat-msg__model-chip">{modelChipText}</span>
+						<Chip variant="accent" className="pkchat-msg__model-chip">
+							{modelChipText}
+						</Chip>
 					)}
 					{timestampText && <span>{timestampText}</span>}
 					{(modelChipText || timestampText) && <span className="pkchat-msg__sep">·</span>}
@@ -498,6 +547,18 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 						const submit = useChatViewStore.getState().submitAction;
 						if (submit) submit(q);
 					}}
+					onSaveToNote={handleSaveToVault}
+					onAskCustom={() => setShowInlineFollowup(true)}
+					/*
+					 * MIGRATION-DEFERRED: Rewrite-simply / Create-checklist /
+					 * Open-related-notes ACTIONS rows. Need a service-layer entry
+					 * point — `manager.actions.rewriteSimply(messageId)`,
+					 * `manager.actions.createChecklist(messageId)`, and a
+					 * vault-search query derived from the assistant content.
+					 * Slots in MessageSuggestedNext render only when their handler
+					 * is supplied, so omitting them here keeps the popover honest
+					 * until the wiring lands.
+					 */
 				/>
 			)}
 

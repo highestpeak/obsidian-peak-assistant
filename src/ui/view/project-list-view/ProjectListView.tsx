@@ -1,11 +1,12 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { ProjectsSection } from './ProjectsSection';
 import { ConversationsSection } from './ConversationsSection';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { ViewEventType, SelectionChangedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
 import { notifySelectionChange, hydrateProjects } from './utils';
-import { RefreshCw, Minus, Home } from 'lucide-react';
+import { RefreshCw, Minus, Home, Search, X } from 'lucide-react';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
+import { IconButton as PkIconButton } from '@/ui/components/primitives';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { showToast } from '@/ui/utils/toast';
 import { openChatHome } from '@/ui/view/chat-view/chatNavigation';
@@ -26,6 +27,11 @@ export const ProjectListViewComponent: React.FC = () => {
 		setActiveConversation,
 		clearExpandedProjects,
 	} = useChatDataStore();
+
+	// Sidebar-local search query. Filters projects + conversations in the two
+	// sub-sections. Kept local (not in chatDataStore) since it never persists
+	// across mounts and no other surface reads it.
+	const [query, setQuery] = useState('');
 
 	// Hydrate data
 	const hydrateData = useCallback(async () => {
@@ -180,42 +186,96 @@ export const ProjectListViewComponent: React.FC = () => {
 		};
 	}, [eventBus, manager]);
 
+	/*
+	 * Background is intentionally transparent so the user's Obsidian theme
+	 * (light / dark / custom) sets the sidebar bg — matches how Obsidian's
+	 * own file explorer & outline panels render. Previously this used
+	 * `pktw-bg-background` → `var(--pk-bg)` which in dark mode is
+	 * #1e1e2e (purple-tinted) and clashed with native Obsidian chrome.
+	 */
 	return (
-		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-p-0 pktw-box-border pktw-overflow-y-auto pktw-bg-background">
+		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-p-0 pktw-box-border pktw-overflow-y-auto" style={{ background: 'transparent' }}>
 			{/* Toolbar */}
-			<div className="pktw-flex pktw-flex-row pktw-items-center pktw-gap-1 pktw-border-b pktw-border-border pktw-px-2 pktw-pt-1">
+			<div className="pktw-flex pktw-flex-row pktw-items-center pktw-gap-0.5 pktw-px-2 pktw-pt-2 pktw-pb-1">
 				<IconButton
-					size="lg"
+					size="md"
 					className="pktw-shrink-0"
 					onClick={handleGoHome}
 					title="Go to home"
 				>
-					<Home className="pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
+					<Home className="pktw-text-muted-foreground hover:pktw-text-foreground pktw-transition-colors" />
 				</IconButton>
 				<IconButton
-					size="lg"
+					size="md"
 					className="pktw-shrink-0"
 					onClick={handleRefresh}
 					title="Refresh projects and conversations"
 				>
-					<RefreshCw className="pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
+					<RefreshCw className="pktw-text-muted-foreground hover:pktw-text-foreground pktw-transition-colors" />
 				</IconButton>
 				<IconButton
-					size="lg"
+					size="md"
 					className="pktw-shrink-0"
 					onClick={() => clearExpandedProjects()}
 					title="Collapse all projects"
 				>
-					<Minus className="pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
+					<Minus className="pktw-text-muted-foreground hover:pktw-text-foreground pktw-transition-colors" />
 				</IconButton>
+			</div>
+
+			{/* Search */}
+			<div className="peak-design-root pktw-px-3 pktw-pt-2 pktw-pb-1">
+				<div
+					className="pktw-flex pktw-items-center pktw-gap-2"
+					style={{
+						background: 'var(--pk-surface)',
+						border: '1px solid var(--pk-border)',
+						borderRadius: 'var(--pk-radius-md)',
+						padding: '4px 8px',
+					}}
+				>
+					<Search
+						style={{
+							width: 14,
+							height: 14,
+							flexShrink: 0,
+							color: 'var(--pk-text-tertiary)',
+						}}
+					/>
+					<input
+						type="text"
+						value={query}
+						placeholder="Find chat or project"
+						onChange={(e) => setQuery(e.target.value)}
+						className="pktw-flex-1 pktw-min-w-0"
+						style={{
+							background: 'transparent',
+							border: 0,
+							outline: 'none',
+							fontSize: 13,
+							color: 'var(--pk-text-primary)',
+							padding: 0,
+						}}
+					/>
+					{query.length > 0 && (
+						<PkIconButton
+							label="Clear search"
+							title="Clear search"
+							onClick={() => setQuery('')}
+							style={{ width: 18, height: 18 }}
+						>
+							<X style={{ width: 12, height: 12 }} />
+						</PkIconButton>
+					)}
+				</div>
 			</div>
 
 			<div className="pktw-px-3 pktw-pb-6">
 				{/* Projects Section */}
-				<ProjectsSection />
+				<ProjectsSection query={query} />
 
 				{/* Conversations Section */}
-				<ConversationsSection />
+				<ConversationsSection query={query} />
 			</div>
 		</div>
 	);

@@ -11,7 +11,7 @@ import {
 	Paperclip,
 	ArrowUpRight,
 } from 'lucide-react';
-import { Segmented, IconButton } from '@/ui/components/primitives';
+import { Segmented, IconButton, Pill, Chip } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import type { ChatMessage } from '@/service/chat/types';
 import { useChatStrings } from '../chatStringsContext';
@@ -68,8 +68,35 @@ interface TopicGroup {
 const FENCE_RE = /```(\w*)[^\n]*\n([\s\S]*?)```/g;
 const MAX_PREVIEW = 60;
 
+/**
+ * Strip common Markdown syntax so previews and topic names render as plain
+ * text in the index panel — the index is a navigation surface, not a render
+ * surface, so leaving `## hello` or `**bold**` in the label is just noise.
+ *
+ * Cheap regex pass — not a full Markdown parser. Order matters: drop fences
+ * before stripping inline syntax so we don't leave dangling backticks.
+ */
+function stripMarkdown(text: string): string {
+	if (!text) return '';
+	let out = text;
+	out = out.replace(/```[\s\S]*?```/g, ' ');             // fenced code blocks
+	out = out.replace(/`([^`]*)`/g, '$1');                  // inline code
+	out = out.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1');     // images → alt
+	out = out.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');      // links → text
+	out = out.replace(/^\s{0,3}#{1,6}\s+/gm, '');           // ATX headings
+	out = out.replace(/^\s{0,3}>\s?/gm, '');                // blockquotes
+	out = out.replace(/^\s*[-*+]\s+/gm, '');                // bullet markers
+	out = out.replace(/^\s*\d+\.\s+/gm, '');                // ordered markers
+	out = out.replace(/\*\*([^*]+)\*\*/g, '$1');            // **bold**
+	out = out.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1$2');    // *italic*
+	out = out.replace(/__([^_]+)__/g, '$1');                // __bold__
+	out = out.replace(/(^|[^_])_([^_\n]+)_/g, '$1$2');      // _italic_
+	out = out.replace(/~~([^~]+)~~/g, '$1');                // ~~strike~~
+	return out;
+}
+
 function trimText(text: string, max = MAX_PREVIEW): string {
-	const flat = text.replace(/\s+/g, ' ').trim();
+	const flat = stripMarkdown(text).replace(/\s+/g, ' ').trim();
 	if (flat.length <= max) return flat;
 	return flat.slice(0, max - 1).trimEnd() + '…';
 }
@@ -360,15 +387,13 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 							['image', strings.index.artifactFilterImages],
 						] as Array<[ArtifactFilter, string]>
 					).map(([v, label]) => (
-						<button
+						<Pill
 							key={v}
-							type="button"
-							className="pkchat-idx__filter"
-							data-selected={artifactFilter === v ? 'true' : undefined}
+							selected={artifactFilter === v}
 							onClick={() => handleArtifactFilterChange(v)}
 						>
 							{label}
-						</button>
+						</Pill>
 					))}
 				</div>
 			)}
@@ -383,15 +408,13 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 							['error', strings.index.messageFilterErrors],
 						] as Array<[MessageFilter, string]>
 					).map(([v, label]) => (
-						<button
+						<Pill
 							key={v}
-							type="button"
-							className="pkchat-idx__filter"
-							data-selected={messageFilter === v ? 'true' : undefined}
+							selected={messageFilter === v}
 							onClick={() => handleMessageFilterChange(v)}
 						>
 							{label}
-						</button>
+						</Pill>
 					))}
 				</div>
 			)}
@@ -464,29 +487,41 @@ function AllTabBody({
 				<>
 					<div className="pkchat-idx__section-header">
 						{strings.index.allTopicsHeader}
-						<span className="pkchat-idx__count-pill">{filteredTopics.length}</span>
+						<Chip variant="neutral">{filteredTopics.length}</Chip>
 					</div>
-					{filteredTopics.slice(0, 5).map((t, i) => (
-						<button
-							key={`topic-${i}-${t.name}`}
-							type="button"
-							className="pkchat-idx-msg"
-							onClick={() => scrollToMessage(t.messages[0].id)}
-						>
-							<span className="pkchat-idx-msg__who" data-role="assistant">
-								<MessageSquare aria-hidden style={{ width: 10, height: 10 }} />
-							</span>
-							<span className="pkchat-idx-msg__body">
-								<span className="pkchat-idx-msg__text">
-									{t.name || strings.index.topicNoTopic}
+					{filteredTopics.slice(0, 5).map((t, i) => {
+						const sub = trimText(t.messages.map((m) => m.content || '').join(' '), 80);
+						return (
+							<button
+								key={`topic-${i}-${t.name}`}
+								type="button"
+								className="pkchat-idx-msg"
+								onClick={() => scrollToMessage(t.messages[0].id)}
+							>
+								{/*
+								  Plain outline icon (reuses .pkchat-idx-topic__icon
+								  spec — 14px, text-secondary). Previously this used
+								  .pkchat-idx-msg__who which renders a purple-tinted
+								  letter badge meant for actual message-author
+								  letters (P/U/!), giving topic rows an out-of-place
+								  filled square that diverged from the mock.
+								*/}
+								<MessageSquare className="pkchat-idx-topic__icon" aria-hidden style={{ marginTop: 2 }} />
+								<span className="pkchat-idx-msg__body">
+									<span className="pkchat-idx-msg__text">
+										{stripMarkdown(t.name) || strings.index.topicNoTopic}
+									</span>
+									{sub && (
+										<span className="pkchat-idx-msg__desc">{sub}</span>
+									)}
+									<span className="pkchat-idx-msg__meta">
+										<span>{t.messages.length} msg</span>
+									</span>
 								</span>
-								<span className="pkchat-idx-msg__meta">
-									<span>{t.messages.length} msg</span>
-								</span>
-							</span>
-							<ArrowUpRight aria-hidden style={{ width: 14, height: 14, color: 'var(--pk-text-tertiary)', marginTop: 2 }} />
-						</button>
-					))}
+								<ArrowUpRight aria-hidden style={{ width: 14, height: 14, color: 'var(--pk-text-tertiary)', marginTop: 2 }} />
+							</button>
+						);
+					})}
 				</>
 			)}
 
@@ -494,7 +529,7 @@ function AllTabBody({
 				<>
 					<div className="pkchat-idx__section-header">
 						{strings.index.allArtifactsHeader}
-						<span className="pkchat-idx__count-pill">{filteredArtifacts.length}</span>
+						<Chip variant="neutral">{filteredArtifacts.length}</Chip>
 					</div>
 					{filteredArtifacts.slice(0, 5).map((a) => (
 						<ArtifactCard key={a.id} artifact={a} />
@@ -506,7 +541,7 @@ function AllTabBody({
 				<>
 					<div className="pkchat-idx__section-header">
 						{strings.index.allMessagesHeader}
-						<span className="pkchat-idx__count-pill">{filteredMessages.length}</span>
+						<Chip variant="neutral">{filteredMessages.length}</Chip>
 					</div>
 					{filteredMessages
 						.slice()
@@ -571,6 +606,10 @@ function TopicsTabBody({
 				);
 				const sub = trimText(t.messages.map((m) => m.content || '').join(' '), 80);
 
+				// Primary attachment preview for the summary row3 (compact peek). Pick
+				// the first non-fenced resource attached to any message in this topic.
+				const primaryAttachment = attachments[0] ?? null;
+
 				return (
 					<details
 						key={`${t.name}-${i}`}
@@ -578,39 +617,70 @@ function TopicsTabBody({
 						open={isFirst}
 					>
 						<summary className="pkchat-idx-topic__summary">
-							<ChevronRight className="pkchat-idx-topic__chev" aria-hidden />
-							<MessageSquare className="pkchat-idx-topic__icon" aria-hidden />
-							<span className="pkchat-idx-topic__name">
-								{t.name || strings.index.topicNoTopic}
-							</span>
-							<span className="pkchat-idx-topic__count">{t.messages.length}</span>
-						</summary>
-						<div className="pkchat-idx-topic__body">
-							<div className="pkchat-idx-topic__sub">{sub}</div>
-
-							<div className="pkchat-idx-topic__sub" style={{ marginTop: 8 }}>
-								{strings.index.topicMessagesRange
-									.replace('{start}', String(t.firstIndex + 1))
-									.replace('{end}', String(t.lastIndex + 1))}
+							<div className="pkchat-idx-topic__summary-row">
+								<ChevronRight className="pkchat-idx-topic__chev" aria-hidden />
+								<MessageSquare className="pkchat-idx-topic__icon" aria-hidden />
+								<span className="pkchat-idx-topic__name">
+									{stripMarkdown(t.name) || strings.index.topicNoTopic}
+								</span>
+								<span className="pkchat-idx-topic__count">{t.messages.length}</span>
 							</div>
-
-							<div className="pkchat-idx-posbar">
-								<span className="pkchat-idx-posbar__bar">
+							{sub && (
+								<div className="pkchat-idx-topic__summary-desc">{sub}</div>
+							)}
+							{/*
+							  Summary row3 — compact preview combining (a) primary
+							  attachment chip if any (b) mini position bar showing
+							  where this topic sits in the conversation timeline.
+							  Always rendered (even on collapsed cards) per design —
+							  the topic-card's collapsed state is a 3-row peek,
+							  not just title+description.
+							*/}
+							<div className="pkchat-idx-topic__summary-meta">
+								{primaryAttachment && (
 									<span
-										className="pkchat-idx-posbar__range"
-										style={{ left: `${startPct}%`, width: `${widthPct}%` }}
-									/>
-									<span
-										className="pkchat-idx-posbar__dot"
-										style={{ left: `${startPct}%` }}
-									/>
-									<span
-										className="pkchat-idx-posbar__dot"
-										style={{ left: `${endPct}%` }}
-									/>
+										className="pkchat-idx-attach pkchat-idx-attach--mini"
+										title={primaryAttachment.source}
+										onClick={(e) => {
+											e.preventDefault();
+											e.stopPropagation();
+											scrollToMessage(primaryAttachment.messageId);
+										}}
+									>
+										{primaryAttachment.kind === 'image' ? <ImageIcon aria-hidden />
+											: primaryAttachment.kind === 'diagram' ? <Network aria-hidden />
+											: <Paperclip aria-hidden />}
+										<span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+											{(primaryAttachment.source.split('/').pop() || primaryAttachment.source).slice(0, 24)}
+										</span>
+									</span>
+								)}
+								<span className="pkchat-idx-posbar pkchat-idx-posbar--mini">
+									<span className="pkchat-idx-posbar__bar">
+										<span
+											className="pkchat-idx-posbar__range"
+											style={{ left: `${startPct}%`, width: `${widthPct}%` }}
+										/>
+										<span
+											className="pkchat-idx-posbar__dot"
+											style={{ left: `${startPct}%` }}
+										/>
+										<span
+											className="pkchat-idx-posbar__dot"
+											style={{ left: `${endPct}%` }}
+										/>
+									</span>
 								</span>
 							</div>
-
+						</summary>
+						<div className="pkchat-idx-topic__body">
+							{/*
+							  "Messages X — Y" label + full progress bar removed from body
+							  (2026-06-03): the summary row3 already shows a mini progress
+							  bar with the same range info, so repeating it in the expanded
+							  body was redundant. Body now goes straight to
+							  Sources/Attachments + Key messages.
+							*/}
 							{attachments.length > 0 && (
 								<>
 									<div className="pkchat-idx-topic__sub" style={{ marginTop: 10 }}>

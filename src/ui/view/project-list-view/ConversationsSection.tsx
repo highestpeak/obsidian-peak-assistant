@@ -6,17 +6,37 @@ import { openAllConversationsInChat, openConversationInChat, openPendingConversa
 import { showContextMenu } from './utils';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { ChevronDown, ChevronRight, Plus, Pencil, FileText, Calendar } from 'lucide-react';
+import { Plus, MessageSquare } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent } from '@/core/eventBus';
 import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
 import { TYPEWRITER_EFFECT_SPEED_MS, DEFAULT_NEW_CONVERSATION_TITLE, MAX_CONVERSATIONS_DISPLAY } from '@/core/constant';
-import { formatRelativeDate } from '@/core/utils/date-utils';
 import { MoreHorizontal } from 'lucide-react';
 
 interface ConversationsSectionProps {
+	/** Optional case-insensitive filter applied to conversation title. */
+	query?: string;
 }
+
+/**
+ * Bucket label by createdAt offset from "today midnight". Returns a stable key
+ * (used for grouping + display). Buckets: Today / Yesterday / This week /
+ * Earlier — designed to be skim-friendly in a tall sidebar, not exhaustive.
+ */
+function timeBucket(ts: number, now = Date.now()): string {
+	if (!ts) return 'Earlier';
+	const start = new Date(now);
+	start.setHours(0, 0, 0, 0);
+	const startMs = start.getTime();
+	const diffDays = Math.floor((startMs - ts) / 86_400_000);
+	if (ts >= startMs) return 'Today';
+	if (diffDays < 1) return 'Yesterday';
+	if (diffDays < 7) return 'This week';
+	return 'Earlier';
+}
+
+const BUCKET_ORDER = ['Today', 'Yesterday', 'This week', 'Earlier'];
 
 
 interface ConversationTitleProps {
@@ -79,36 +99,53 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 					<div
 						key={conversation.meta.id}
 						className={cn(
-							'pktw-relative pktw-px-2 pktw-py-1.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors pktw-text-[13px] pktw-min-h-7 pktw-flex pktw-items-center pktw-justify-between pktw-gap-2 pktw-break-words',
+							'pktw-relative pktw-px-2 pktw-py-1.5 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors pktw-text-[13px] pktw-min-h-7 pktw-flex pktw-items-center pktw-gap-2 pktw-break-words',
 							showIndicator && 'pktw-pl-6 pktw-pr-2 before:pktw-content-[""] before:pktw-absolute before:pktw-left-2 before:pktw-top-1/2 before:pktw--translate-y-1/2 before:pktw-w-1 before:pktw-h-1 before:pktw-rounded-full before:pktw-transition-opacity',
 							// Default state
-							!isActive && 'pktw-bg-transparent pktw-text-muted-foreground hover:pktw-bg-muted hover:pktw-text-foreground',
-							// Active state
-							isActive && '!pktw-bg-primary !pktw-text-primary-foreground hover:!pktw-bg-primary hover:!pktw-text-primary-foreground',
+							!isActive && 'pktw-bg-transparent pktw-text-foreground/80 hover:pktw-bg-muted hover:pktw-text-foreground',
 							// Indicator styles when showIndicator is true
 							showIndicator && !isActive && 'before:pktw-bg-muted-foreground before:pktw-opacity-40 hover:before:pktw-opacity-80',
-							showIndicator && isActive && 'before:!pktw-opacity-100 before:!pktw-bg-primary-foreground'
+							showIndicator && isActive && 'before:!pktw-opacity-100'
 						)}
+						style={
+							isActive
+								? {
+										background: 'var(--pk-accent-soft)',
+										color: 'var(--pk-accent-text)',
+										fontWeight: 500,
+									}
+								: undefined
+						}
 						data-conversation-id={conversation.meta.id}
 						onClick={() => onConversationClick(conversation)}
 						onContextMenu={(e) => onContextMenu(e, conversation)}
 					>
+						<MessageSquare
+							className="pktw-shrink-0"
+							style={{
+								width: 14,
+								height: 14,
+								color: isActive
+									? 'var(--pk-accent-text)'
+									: 'var(--pk-text-tertiary)',
+							}}
+							aria-hidden
+						/>
 						<span className="pktw-flex-1 pktw-min-w-0 pktw-truncate">
-							<ConversationTitle 
-								title={conversation.meta.title} 
+							<ConversationTitle
+								title={conversation.meta.title}
 								enableTypewriter={typewriterEnabled.get(conversation.meta.id) ?? false}
 								onTypewriterComplete={() => onTypewriterComplete(conversation.meta.id)}
 							/>
 						</span>
-						{conversation.meta.createdAtTimestamp && (
-							<div className={cn(
-								'pktw-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-shrink-0',
-								isActive ? 'pktw-text-primary-foreground/70' : 'pktw-text-muted-foreground/70'
-							)}>
-								<Calendar className="pktw-w-3 pktw-h-3" />
-								{formatRelativeDate(conversation.meta.createdAtTimestamp)}
-							</div>
-						)}
+						{/*
+						  Per-row date+calendar removed (2026-06-02). With time-bucket
+						  headers (Today/Yesterday/This week/Earlier) above each group
+						  the row-level repeat was redundant and competed with the
+						  conversation title for horizontal space. If a precise
+						  timestamp is needed, surface it on hover via a tooltip
+						  rather than always-visible chrome.
+						*/}
 					</div>
 				);
 			})}
@@ -119,13 +156,11 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 /**
  * Conversations section component
  */
-export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
+export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ query = '' }) => {
 	const { app, manager, eventBus, viewManager } = useServiceContext();
 	const {
 		conversations,
 		activeConversation,
-		isConversationsCollapsed,
-		toggleConversationsCollapsed,
 		updateConversation,
 	} = useChatDataStore();
 
@@ -259,89 +294,101 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 
 	// Get root-level conversations (without projectId)
 	const conversationsWithoutProject = useMemo(() => {
-		const result = Array.from(conversations.values())
+		const q = query.trim().toLowerCase();
+		return Array.from(conversations.values())
 			.filter((c) => !c.meta.projectId)
+			.filter((c) => !q || (c.meta.title || '').toLowerCase().includes(q))
 			.sort((a, b) => {
 				const timeA = a.meta.createdAtTimestamp || 0;
 				const timeB = b.meta.createdAtTimestamp || 0;
 				return timeB - timeA;
 			});
-		console.log('[ConversationsSection] conversationsWithoutProject updated:', {
-			count: result.length,
-			ids: result.map(c => c.meta.id),
-			timestamp: Date.now()
-		});
-		return result;
-	}, [conversations]);
+	}, [conversations, query]);
 
 	const conversationsToShow = conversationsWithoutProject.slice(0, MAX_CONVERSATIONS_DISPLAY);
 	const hasMoreConversations = conversationsWithoutProject.length > MAX_CONVERSATIONS_DISPLAY;
 
+	// Group visible conversations into Today / Yesterday / This week / Earlier
+	// buckets so the sidebar reads as a timeline rather than a flat list.
+	const grouped = useMemo(() => {
+		const buckets = new Map<string, ChatConversation[]>();
+		conversationsToShow.forEach((c) => {
+			const key = timeBucket(c.meta.createdAtTimestamp || 0);
+			const arr = buckets.get(key) || [];
+			arr.push(c);
+			buckets.set(key, arr);
+		});
+		return BUCKET_ORDER
+			.filter((k) => buckets.has(k))
+			.map((k) => ({ label: k, items: buckets.get(k)! }));
+	}, [conversationsToShow]);
+
+	/*
+	 * Restructured 2026-06-02: previously this section had its own collapsible
+	 * "CONVERSATIONS" header (with chevron + plus). Per the locked design,
+	 * conversations sit directly under time-bucket section labels
+	 * (TODAY / YESTERDAY / THIS WEEK / EARLIER) at the same hierarchy as the
+	 * PROJECTS section above. The outer wrapper was redundant chrome.
+	 *
+	 * New-conversation `+` button now hovers over each bucket label, since
+	 * the bucket label IS the new section header. Top of the conversations
+	 * list also carries a low-noise "+ New conversation" affordance for
+	 * discoverability when the list is empty.
+	 */
 	return (
 		<div className="pktw-flex pktw-flex-col">
-			{/* Header */}
-			<div
-				className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2 pktw-cursor-pointer pktw-rounded pktw-transition-all hover:pktw-bg-muted hover:pktw-shadow-sm pktw-group"
-				onClick={() => toggleConversationsCollapsed()}
-			>
-				<div className="pktw-flex pktw-items-center pktw-gap-2">
-					{isConversationsCollapsed ? (
-						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
-					) : (
-						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
-					)}
-					<h3 className="pktw-flex-1 pktw-m-0 pktw-text-[13px] pktw-font-semibold pktw-text-foreground pktw-uppercase pktw-tracking-wide">Conversations</h3>
+			{conversationsToShow.length === 0 ? (
+				<div className="pktw-p-3 pktw-text-muted-foreground pktw-text-[13px] pktw-italic pktw-text-center">
+					{query.trim() ? 'No matching conversations' : 'No conversations'}
 				</div>
-				<IconButton
-					size="lg"
-					className="pktw-shrink-0 group-hover:pktw-bg-muted group-hover:pktw-shadow-sm hover:pktw-shadow-sm"
-					onClick={(e) => {
-						e.stopPropagation();
-						handleNewConversation();
+			) : (
+				grouped.map((bucket, idx) => (
+					<React.Fragment key={bucket.label}>
+						<div
+							className="pktw-group pktw-flex pktw-items-center pktw-justify-between pktw-px-2 pktw-pb-0.5 pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wide pktw-text-muted-foreground"
+							style={{ paddingTop: idx === 0 ? 8 : 12 }}
+						>
+							<span>{bucket.label}</span>
+							<IconButton
+								size="md"
+								className="pktw-shrink-0 pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity"
+								onClick={(e) => {
+									e.stopPropagation();
+									handleNewConversation();
+								}}
+								title={DEFAULT_NEW_CONVERSATION_TITLE}
+							>
+								<Plus className="pktw-text-foreground" />
+							</IconButton>
+						</div>
+						<ConversationList
+							conversations={bucket.items}
+							activeConversation={activeConversation}
+							typewriterEnabled={typewriterEnabled}
+							onConversationClick={handleConversationClick}
+							onContextMenu={handleContextMenu}
+							onTypewriterComplete={(conversationId) => {
+								setTypewriterEnabled(prev => {
+									const next = new Map(prev);
+									next.delete(conversationId);
+									return next;
+								});
+							}}
+						/>
+					</React.Fragment>
+				))
+			)}
+			{hasMoreConversations && (
+				<div
+					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-mx-2 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-xs pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
+					onClick={() => {
+						void openAllConversationsInChat({ viewManager, eventBus });
 					}}
-					title={DEFAULT_NEW_CONVERSATION_TITLE}
 				>
-					<Plus className="pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
-				</IconButton>
-			</div>
-
-			{/* Conversations List */}
-			<div className={cn(
-				'pktw-flex pktw-flex-col pktw-gap-px pktw-overflow-hidden pktw-transition-all pktw-duration-150 pktw-ease-in-out',
-				isConversationsCollapsed
-					? 'pktw-max-h-0 pktw-opacity-0'
-					: 'pktw-max-h-[5000px] pktw-opacity-100'
-			)}>
-				{conversationsToShow.length === 0 ? (
-					<div className="pktw-p-3 pktw-text-muted-foreground pktw-text-[13px] pktw-italic pktw-text-center">No conversations</div>
-				) : (
-					<ConversationList
-						conversations={conversationsToShow}
-						activeConversation={activeConversation}
-						typewriterEnabled={typewriterEnabled}
-						onConversationClick={handleConversationClick}
-						onContextMenu={handleContextMenu}
-						onTypewriterComplete={(conversationId) => {
-							setTypewriterEnabled(prev => {
-								const next = new Map(prev);
-								next.delete(conversationId);
-								return next;
-							});
-						}}
-					/>
-				)}
-				{hasMoreConversations && (
-					<div
-						className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-mx-2 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-xs pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
-						onClick={() => {
-							void openAllConversationsInChat({ viewManager, eventBus });
-						}}
-					>
-						<MoreHorizontal className="pktw-w-3.5 pktw-h-3.5" />
-						<span className="pktw-flex-1">See more</span>
-					</div>
-				)}
-			</div>
+					<MoreHorizontal className="pktw-w-3.5 pktw-h-3.5" />
+					<span className="pktw-flex-1">See more</span>
+				</div>
+			)}
 
 			{/* Modal */}
 			{inputModalConfig && (

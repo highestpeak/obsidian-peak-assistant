@@ -374,13 +374,20 @@
    secondary toolbar icons.
    ─────────────────────────────────────────────────────────────────────────── */
 
+/* !important on width/height required: Obsidian's
+   `.peak-design-root button { height: auto !important; min-height: 0 !important }`
+   reset rule beats the bare 28px values otherwise, collapsing icon buttons
+   to their svg content height (~14px). Same fix pattern as pkchat-run-chip
+   and pkchat-send. */
 .pktw-root .pk-icon-btn,
 .peak-design-root .pk-icon-btn {
   background: transparent !important;
   border: 0 !important;
   padding: 0 !important;
-  width: 28px;
-  height: 28px;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1005,12 +1012,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  flex: 0 1 auto;
 }
 
-.pktw-root .pkchat-header__spacer,
-.peak-design-root .pkchat-header__spacer {
-  flex: 1;
-}
+/* `pkchat-header__spacer` removed (2026-06-02): the mock has action icons hug
+   the truncated title, not float at the far right. Actions cluster sits right
+   next to the title via the parent flex layout. */
 
 .pktw-root .pkchat-header__actions,
 .peak-design-root .pkchat-header__actions {
@@ -1018,6 +1025,7 @@
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
+  margin-right: auto;
 }
 
 /* Reuse .pk-icon-btn for the header action buttons (no new icon-button shape). */
@@ -1064,17 +1072,34 @@
 
 .pktw-root .pkchat-composer__editor,
 .peak-design-root .pkchat-composer__editor {
-  padding: var(--pk-space-3) var(--pk-space-4) 0;
-  min-height: 44px;
+  padding: var(--pk-space-3) var(--pk-space-4) var(--pk-space-2);
+  min-height: 56px;
 }
 
 .pktw-root .pkchat-composer__foot,
 .peak-design-root .pkchat-composer__foot {
-  padding: var(--pk-space-2) var(--pk-space-3);
+  padding: 10px 12px;
   border-top: 1px solid var(--pk-border-soft);
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
+  min-height: 52px;
+}
+
+.pktw-root .pkchat-composer__foot-left,
+.peak-design-root .pkchat-composer__foot-left {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+}
+
+/* Active toggle state for IconButton inside the composer foot-left cluster
+   (e.g. vault-search Database toggle). Uses accent tint so the toggled-on
+   icon visibly differs from the resting state without becoming a CTA. */
+.pktw-root .pkchat-composer__foot-left .pk-icon-btn[data-active="true"],
+.peak-design-root .pkchat-composer__foot-left .pk-icon-btn[data-active="true"] {
+  background: var(--pk-accent-soft) !important;
+  color: var(--pk-accent-text) !important;
 }
 
 .pktw-root .pkchat-composer__foot-right,
@@ -1090,31 +1115,42 @@
    popover.
    ─────────────────────────────────────────────────────────────────────────── */
 
+/* `!important` on height/min-height/padding is required: Obsidian's
+   `.peak-design-root button { height: auto !important; min-height: 0 !important }`
+   reset rule (specificity 0,1,1 with !important) was BEATING our `height: 30px`,
+   collapsing the chip to its content-natural height (~16px). Same reason send
+   button below needs !important on its width/height. */
 .pktw-root .pkchat-run-chip,
 .peak-design-root .pkchat-run-chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--pk-space-2);
-  height: 28px;
-  padding: 0 var(--pk-space-3);
+  gap: 6px;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 12px !important;
   border-radius: var(--pk-radius-pill);
   background: var(--pk-surface);
   border: 1px solid var(--pk-border);
-  font-size: var(--pk-text-base);
+  font-size: var(--pk-text-sm);
   color: var(--pk-text-primary);
   cursor: pointer;
+  line-height: 1;
   transition: background var(--pk-transition-fast),
               border-color var(--pk-transition-fast),
               color var(--pk-transition-fast);
 }
 
+/* Hover / open state intentionally does NOT fill the chip with accent-soft —
+   adjacent to the circular purple send button, two purple blobs side-by-side
+   reads as visually crowded (image 33 feedback). Only the border deepens to
+   accent so the chip still signals interaction. */
 .pktw-root .pkchat-run-chip:hover,
 .peak-design-root .pkchat-run-chip:hover,
 .pktw-root .pkchat-run-chip[data-state="open"],
 .peak-design-root .pkchat-run-chip[data-state="open"] {
   border-color: var(--pk-border-accent);
-  background: var(--pk-accent-soft);
-  color: var(--pk-accent-text);
+  background: var(--pk-surface);
+  color: var(--pk-text-primary);
 }
 
 .pktw-root .pkchat-run-chip__label,
@@ -1154,11 +1190,13 @@
 
 .pktw-root .pkchat-send,
 .peak-design-root .pkchat-send {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--pk-radius-md);
-  background: var(--pk-accent);
-  border: 0;
+  width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  min-width: 32px !important;
+  border-radius: var(--pk-radius-full) !important;
+  background: var(--pk-accent) !important;
+  border: 0 !important;
   color: var(--pk-accent-fg);
   display: inline-flex;
   align-items: center;
@@ -1166,6 +1204,7 @@
   cursor: pointer;
   transition: background var(--pk-transition-fast);
   flex-shrink: 0;
+  padding: 0 !important;
 }
 
 .pktw-root .pkchat-send:hover,
@@ -1197,9 +1236,29 @@
 .peak-design-root .pkchat-runpop {
   display: flex;
   flex-direction: column;
-  gap: var(--pk-space-3);
-  min-width: 320px;
-  padding: 14px;
+  gap: var(--pk-space-2);
+  width: 300px;
+  max-width: 300px;
+  padding: var(--pk-space-3);
+}
+
+/* Run-settings popover overrides for the .pk-segmented primitive: stretch
+   to full popover width instead of the inline-flex default (image 53
+   reference shows RUN MODE spanning the full panel). Each opt then takes
+   1/3 width so Chat/Agent/Plan share equal slots. */
+.pktw-root .pkchat-runpop .pk-segmented,
+.peak-design-root .pkchat-runpop .pk-segmented {
+  display: flex;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.pktw-root .pkchat-runpop .pk-segmented__opt,
+.peak-design-root .pkchat-runpop .pk-segmented__opt {
+  flex: 1;
+  text-align: center;
+  padding: 6px 10px;
+  font-size: var(--pk-text-base);
 }
 
 .pktw-root .pkchat-runpop__head,
@@ -1240,47 +1299,34 @@
   padding: 0 var(--pk-space-2);
 }
 
-/* Role pills (Default / Researcher / Writer / Planner / Coder) */
+/* Role pills (Default / Researcher / Writer / Planner / Coder).
+   3-column grid so 5 roles wrap 3+2 — matches the run-settings mock.
+   Pills auto-fit their column, so the bottom row left-aligns. */
 .pktw-root .pkchat-runpop__role-grid,
 .peak-design-root .pkchat-runpop__role-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 8px;
 }
 
-.pktw-root .pkchat-runpop__role-pill,
-.peak-design-root .pkchat-runpop__role-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 26px;
-  padding: 0 9px;
-  border-radius: var(--pk-radius-pill);
-  border: 1px solid var(--pk-border);
-  font-size: var(--pk-text-xs);
-  color: var(--pk-text-primary);
-  background: var(--pk-surface);
-  cursor: pointer;
-  font: inherit;
-  font-weight: 500;
-  transition: background var(--pk-transition-fast),
-              border-color var(--pk-transition-fast),
-              color var(--pk-transition-fast);
-}
-
-.pktw-root .pkchat-runpop__role-pill:hover,
-.peak-design-root .pkchat-runpop__role-pill:hover {
-  border-color: var(--pk-border-accent);
-  background: var(--pk-accent-tint);
-}
-
-.pktw-root .pkchat-runpop__role-pill[data-selected="true"],
-.peak-design-root .pkchat-runpop__role-pill[data-selected="true"] {
-  background: var(--pk-accent-soft);
-  border-color: var(--pk-border-accent);
-  color: var(--pk-accent-hover);
-  font-weight: 600;
+/* Surface modifier for the role pills — composes <Pill> primitive with the
+   grid-cell sizing (full-width column fill, centered label) the
+   run-settings popover needs. Sized larger than the prior xs/26px so role
+   pills don't read as cramped vs Run-mode segmented + Model cards
+   (image 53 reference). */
+.pktw-root .pkchat-role-pill,
+.peak-design-root .pkchat-role-pill {
+  width: 100%;
+  height: 32px !important;
+  min-height: 32px !important;
+  justify-content: center;
+  padding: 0 10px !important;
+  font-size: var(--pk-text-base);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pktw-root .pkchat-runpop__role-ico,
@@ -1503,7 +1549,7 @@
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
-  padding: var(--pk-space-3) var(--pk-space-4);
+  padding: 10px var(--pk-space-3) 8px;
   border-bottom: 1px solid var(--pk-border-soft);
   flex-shrink: 0;
 }
@@ -1524,12 +1570,12 @@
 
 .pktw-root .pkchat-idx__search,
 .peak-design-root .pkchat-idx__search {
-  margin: var(--pk-space-2) var(--pk-space-4);
+  margin: var(--pk-space-2) var(--pk-space-3) var(--pk-space-1);
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
-  height: 32px;
-  padding: 0 var(--pk-space-3);
+  height: 30px;
+  padding: 0 var(--pk-space-2);
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
   background: var(--pk-surface);
@@ -1538,16 +1584,31 @@
   flex-shrink: 0;
 }
 
+/* Obsidian's bare-tag `input { border / background / padding / border-radius
+   / height }` aggressively leaks even inside .peak-design-root. We have to
+   !important everything that affects visual chrome — otherwise the magnifier
+   icon and input render as TWO separately-bordered boxes inside our parent
+   container (the "ugly detached search icon" symptom from image 26). */
 .pktw-root .pkchat-idx__search input,
 .peak-design-root .pkchat-idx__search input {
   flex: 1;
-  background: transparent;
-  border: 0;
-  outline: none;
+  background: transparent !important;
+  border: 0 !important;
+  outline: none !important;
   color: var(--pk-text-primary);
   font-size: var(--pk-text-sm);
-  padding: 0;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  height: auto !important;
   min-width: 0;
+}
+
+.pktw-root .pkchat-idx__search input:focus,
+.peak-design-root .pkchat-idx__search input:focus {
+  box-shadow: none !important;
+  outline: none !important;
+  border: 0 !important;
 }
 
 .pktw-root .pkchat-idx__search input::placeholder,
@@ -1564,18 +1625,25 @@
 
 .pktw-root .pkchat-idx__tabs,
 .peak-design-root .pkchat-idx__tabs {
-  margin: 0 var(--pk-space-4) var(--pk-space-2);
+  margin: 0 var(--pk-space-3) var(--pk-space-2);
   flex-shrink: 0;
 }
 
 /* Override .pk-segmented internals when used in the index header to fit
-   the 4-tab equal-width pattern from the mock. */
+   the 4-tab equal-width pattern from the mock, plus the lower visual height
+   the mock uses (~32px overall vs the base primitive's ~40px). */
 .pktw-root .pkchat-idx__tabs .pk-segmented,
 .peak-design-root .pkchat-idx__tabs .pk-segmented {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 3px;
-  padding: 3px;
+  gap: 2px;
+  padding: 2px;
+}
+
+.pktw-root .pkchat-idx__tabs .pk-segmented__opt,
+.peak-design-root .pkchat-idx__tabs .pk-segmented__opt {
+  padding: 4px var(--pk-space-2);
+  font-size: var(--pk-text-sm);
 }
 
 .pktw-root .pkchat-idx__filters,
@@ -1587,35 +1655,8 @@
   flex-shrink: 0;
 }
 
-.pktw-root .pkchat-idx__filter,
-.peak-design-root .pkchat-idx__filter {
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 var(--pk-space-3);
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-surface);
-  border: 1px solid var(--pk-border);
-  font-size: var(--pk-text-xs);
-  color: var(--pk-text-secondary);
-  cursor: pointer;
-  transition: background var(--pk-transition-fast),
-              border-color var(--pk-transition-fast),
-              color var(--pk-transition-fast);
-}
-
-.pktw-root .pkchat-idx__filter:hover,
-.peak-design-root .pkchat-idx__filter:hover {
-  border-color: var(--pk-border-accent);
-}
-
-.pktw-root .pkchat-idx__filter[data-selected="true"],
-.peak-design-root .pkchat-idx__filter[data-selected="true"] {
-  background: var(--pk-accent-soft);
-  border-color: var(--pk-border-accent);
-  color: var(--pk-accent-hover);
-  font-weight: 600;
-}
+/* `.pkchat-idx__filter` (artifact/message filter chips) migrated to <Pill>
+   primitive. Wrapper `.pkchat-idx__filters` above still controls layout. */
 
 .pktw-root .pkchat-idx__list,
 .peak-design-root .pkchat-idx__list {
@@ -1657,16 +1698,8 @@
   margin-top: 0;
 }
 
-.pktw-root .pkchat-idx__count-pill,
-.peak-design-root .pkchat-idx__count-pill {
-  font-size: var(--pk-text-xs);
-  color: var(--pk-text-secondary);
-  background: var(--pk-surface-sunken);
-  padding: 1px 7px;
-  border-radius: var(--pk-radius-pill);
-  border: 1px solid var(--pk-border);
-  font-weight: 600;
-}
+/* `.pkchat-idx__count-pill` (section count badge) migrated to
+   <Chip variant="neutral">. No surface override needed. */
 
 /* Topic row — uses native <details>/<summary> for accordion. */
 .pktw-root .pkchat-idx-topic,
@@ -1678,21 +1711,51 @@
   overflow: hidden;
 }
 
+/* Open state intentionally neutral — earlier this used --pk-accent-tint
+   (10-16% alpha purple) + --pk-border-accent, which made expanded cards
+   read as a heavy purple block out of harmony with the surrounding light
+   panel (image 38 reference). The card just sinks slightly to signal open,
+   no chroma shift. */
 .pktw-root .pkchat-idx-topic[open],
 .peak-design-root .pkchat-idx-topic[open] {
-  border-color: var(--pk-border-accent);
-  background: var(--pk-accent-tint);
+  border-color: var(--pk-border);
+  background: var(--pk-surface-sunken);
 }
 
 .pktw-root .pkchat-idx-topic__summary,
 .peak-design-root .pkchat-idx-topic__summary {
   display: flex;
-  align-items: center;
-  gap: var(--pk-space-2);
-  padding: var(--pk-space-2) var(--pk-space-3);
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
   cursor: pointer;
   list-style: none;
   user-select: none;
+  min-height: 0;
+}
+
+.pktw-root .pkchat-idx-topic__summary-row,
+.peak-design-root .pkchat-idx-topic__summary-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  width: 100%;
+  min-width: 0;
+}
+
+/* Compact description below topic name in the collapsed summary — matches
+   design (image 27): each topic shows a short subtitle even when not
+   expanded. Aligns under name (chev 14 + gap 8 + icon 14 + gap 8 = 44px). */
+.pktw-root .pkchat-idx-topic__summary-desc,
+.peak-design-root .pkchat-idx-topic__summary-desc {
+  font-size: 11px !important;
+  color: var(--pk-text-secondary);
+  margin-left: 44px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: calc(100% - 44px);
+  line-height: 1.4;
 }
 
 .pktw-root .pkchat-idx-topic__summary::-webkit-details-marker,
@@ -1714,35 +1777,49 @@
   transform: rotate(90deg);
 }
 
+/* Topic icon now sits inside a soft tinted square box (per image 41 reference) —
+   reads as a kind tag, not just an outline icon. Background uses
+   --pk-surface-sunken (neutral) instead of accent-soft (purple) so cards stay
+   chromatically calm. */
 .pktw-root .pkchat-idx-topic__icon,
 .peak-design-root .pkchat-idx-topic__icon {
-  width: 14px;
-  height: 14px;
+  width: 22px;
+  height: 22px;
+  padding: 4px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-surface-sunken);
   color: var(--pk-text-secondary);
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
+/* font-size + weight pinned with !important — Obsidian outline-view container
+   sets a baseline body font-size (~15px) that bled through and made topic
+   names render larger/heavier than the 13/600 our token scale specifies
+   (image 34 feedback). */
 .pktw-root .pkchat-idx-topic__name,
 .peak-design-root .pkchat-idx-topic__name {
-  font-size: var(--pk-text-md);
-  font-weight: 600;
+  font-size: 13px !important;
+  font-weight: 550 !important;
   color: var(--pk-text-primary);
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.4;
 }
 
 .pktw-root .pkchat-idx-topic__count,
 .peak-design-root .pkchat-idx-topic__count {
-  font-size: var(--pk-text-sm);
+  font-size: var(--pk-text-xs);
   color: var(--pk-text-secondary);
   background: var(--pk-surface-sunken);
-  padding: 1px 7px;
+  padding: 1px 6px;
   border-radius: var(--pk-radius-pill);
   border: 1px solid var(--pk-border);
   flex-shrink: 0;
+  font-weight: 600;
 }
 
 .pktw-root .pkchat-idx-topic__body,
@@ -1771,7 +1848,7 @@
 .pktw-root .pkchat-idx-posbar__bar,
 .peak-design-root .pkchat-idx-posbar__bar {
   flex: 1;
-  height: 4px;
+  height: 3px;
   background: var(--pk-border-soft);
   border-radius: var(--pk-radius-pill);
   position: relative;
@@ -1781,16 +1858,17 @@
 .peak-design-root .pkchat-idx-posbar__range {
   position: absolute;
   height: 100%;
-  background: var(--pk-border-accent);
+  background: var(--pk-accent);
   border-radius: var(--pk-radius-pill);
+  opacity: 0.75;
 }
 
 .pktw-root .pkchat-idx-posbar__dot,
 .peak-design-root .pkchat-idx-posbar__dot {
   position: absolute;
   top: 50%;
-  width: 7px;
-  height: 7px;
+  width: 5px;
+  height: 5px;
   background: var(--pk-accent);
   border-radius: 50%;
   transform: translate(-50%, -50%);
@@ -1838,17 +1916,71 @@
   color: var(--pk-text-secondary);
 }
 
+/* Mini variant — used in topic summary row3 (compact peek). Same shape as
+   .pkchat-idx-attach but lower height + smaller font + tighter padding so
+   it pairs well with the mini-posbar in the same row. */
+.pktw-root .pkchat-idx-attach--mini,
+.peak-design-root .pkchat-idx-attach--mini {
+  height: 20px;
+  padding: 0 8px;
+  font-size: 10.5px;
+  gap: 4px;
+  max-width: 50%;
+}
+
+.pktw-root .pkchat-idx-attach--mini > svg,
+.peak-design-root .pkchat-idx-attach--mini > svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* Summary row3 — compact horizontal layout for the attachment chip + mini
+   posbar that always appears in a topic card's summary (collapsed or open).
+   Aligned under the name (same 44px indent as summary-desc) so it reads as
+   the 3rd row of the card peek. */
+.pktw-root .pkchat-idx-topic__summary-meta,
+.peak-design-root .pkchat-idx-topic__summary-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 44px;
+  margin-top: 4px;
+  min-width: 0;
+  max-width: calc(100% - 44px);
+}
+
+/* Mini posbar — half-height of the full posbar, smaller dots, used inside
+   the summary row3. The full-size .pkchat-idx-posbar still renders inside
+   the expanded body. */
+.pktw-root .pkchat-idx-posbar--mini,
+.peak-design-root .pkchat-idx-posbar--mini {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+
+.pktw-root .pkchat-idx-posbar--mini .pkchat-idx-posbar__bar,
+.peak-design-root .pkchat-idx-posbar--mini .pkchat-idx-posbar__bar {
+  height: 2px;
+}
+
+.pktw-root .pkchat-idx-posbar--mini .pkchat-idx-posbar__dot,
+.peak-design-root .pkchat-idx-posbar--mini .pkchat-idx-posbar__dot {
+  width: 4px;
+  height: 4px;
+}
+
 /* Message row — used in Topics body, Messages tab, All tab. */
 .pktw-root .pkchat-idx-msg,
 .peak-design-root .pkchat-idx-msg {
   display: flex;
   align-items: flex-start;
-  gap: var(--pk-space-2);
-  padding: var(--pk-space-2) var(--pk-space-3);
+  gap: 10px;
+  padding: 6px 10px;
   border-radius: var(--pk-radius-md);
   margin-top: 4px;
   background: var(--pk-surface);
-  border: 1px solid var(--pk-border-soft);
+  border: 1px solid var(--pk-border);
   cursor: pointer;
   width: 100%;
   text-align: left;
@@ -1860,8 +1992,8 @@
 
 .pktw-root .pkchat-idx-msg:hover,
 .peak-design-root .pkchat-idx-msg:hover {
-  border-color: var(--pk-border-accent);
-  background: var(--pk-accent-tint);
+  border-color: var(--pk-border);
+  background: var(--pk-surface-sunken);
 }
 
 /* Flat variant — Messages tab uses unboxed rows for higher density per mock. */
@@ -1896,47 +2028,68 @@
   margin-top: 4px;
 }
 
+/* Message avatar — uniformly neutral per image 49 reference. Letter
+   differentiation (P/U/!) is enough to convey role; the background uses
+   --pk-surface-sunken across all roles so the conversation index reads as
+   a calm list, not a colored ticker. */
 .pktw-root .pkchat-idx-msg__who,
 .peak-design-root .pkchat-idx-msg__who {
   font-size: 10px;
   font-weight: 700;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 4px;
-  background: var(--pk-accent-soft);
-  color: var(--pk-accent-hover);
+  width: 22px;
+  height: 22px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-secondary);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   letter-spacing: 0.03em;
   margin-top: 1px;
   flex-shrink: 0;
 }
 
-.pktw-root .pkchat-idx-msg__who[data-role="user"],
-.peak-design-root .pkchat-idx-msg__who[data-role="user"] {
-  background: var(--pk-info-bg);
-  color: var(--pk-info);
-}
+/* Role-specific variants removed — see comment above. If we want a subtle
+   hint back, do it via the letter color only, never the background. */
 
-.pktw-root .pkchat-idx-msg__who[data-role="error"],
-.peak-design-root .pkchat-idx-msg__who[data-role="error"] {
-  background: var(--pk-error-bg);
-  color: var(--pk-error);
-}
-
+/* `__body` needs to be a vertical flex container so the title (`__text`) and
+   meta row (`__meta`) stack — and so the title becomes a block-level item
+   where `overflow: hidden` + `text-overflow: ellipsis` actually takes effect.
+   Without this, the title was an inline span and the ellipsis CSS was a
+   no-op, causing message titles to spill past the right edge of the panel. */
 .pktw-root .pkchat-idx-msg__body,
 .peak-design-root .pkchat-idx-msg__body {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .pktw-root .pkchat-idx-msg__text,
 .peak-design-root .pkchat-idx-msg__text {
+  display: block;
   font-size: 12.5px;
   color: var(--pk-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Optional description / preview line between title and meta. Used by the
+   "All" tab's topic cards to surface first-message preview (matches mock). */
+.pktw-root .pkchat-idx-msg__desc,
+.peak-design-root .pkchat-idx-msg__desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--pk-text-xs);
+  color: var(--pk-text-secondary);
+  margin-top: 2px;
+  line-height: 1.35;
 }
 
 .pktw-root .pkchat-idx-msg__meta,
@@ -1954,17 +2107,21 @@
   font-family: var(--pk-font-mono);
 }
 
-/* Artifact card. */
+/* Artifact card — compact list-item style (image 47 reference).
+   Previous spec used a 60×44 thumb on the left; new design wants a small
+   28×28 squared icon to match the message-row avatar scale, so all 3
+   sections (Topics / Artifacts / Messages) read as the same card shape
+   stacked vertically. */
 .pktw-root .pkchat-idx-art,
 .peak-design-root .pkchat-idx-art {
   display: grid;
-  grid-template-columns: 60px 1fr auto;
-  gap: var(--pk-space-3);
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 6px 10px;
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
-  margin-bottom: var(--pk-space-2);
+  margin-bottom: 4px;
   background: var(--pk-surface);
   cursor: pointer;
   width: 100%;
@@ -1977,17 +2134,17 @@
 
 .pktw-root .pkchat-idx-art:hover,
 .peak-design-root .pkchat-idx-art:hover {
-  border-color: var(--pk-border-accent);
-  background: var(--pk-accent-tint);
+  border-color: var(--pk-border);
+  background: var(--pk-surface-sunken);
 }
 
 .pktw-root .pkchat-idx-art__thumb,
 .peak-design-root .pkchat-idx-art__thumb {
-  width: 60px;
-  height: 44px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--pk-radius-sm);
   background: var(--pk-surface-sunken);
-  border: 1px solid var(--pk-border);
+  border: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1996,34 +2153,16 @@
   flex-shrink: 0;
 }
 
-.pktw-root .pkchat-idx-art__thumb[data-kind="code"],
-.peak-design-root .pkchat-idx-art__thumb[data-kind="code"] {
-  background: var(--pk-success-bg);
-  color: var(--pk-success);
-}
-
-.pktw-root .pkchat-idx-art__thumb[data-kind="file"],
-.peak-design-root .pkchat-idx-art__thumb[data-kind="file"] {
-  background: var(--pk-info-bg);
-  color: var(--pk-info);
-}
-
-.pktw-root .pkchat-idx-art__thumb[data-kind="diagram"],
-.peak-design-root .pkchat-idx-art__thumb[data-kind="diagram"] {
-  background: var(--pk-warning-bg);
-  color: var(--pk-warning);
-}
-
-.pktw-root .pkchat-idx-art__thumb[data-kind="image"],
-.peak-design-root .pkchat-idx-art__thumb[data-kind="image"] {
-  background: var(--pk-accent-soft);
-  color: var(--pk-accent);
-}
+/* Per-kind color variants removed (image 49 reference): all artifact
+   thumbnails render in a neutral gray, no blue/green/yellow tint by kind.
+   Kind is still distinguishable via the icon glyph (FileText / Code /
+   Network / Image). If we ever bring back kind colors, keep them very
+   subtle in the bg only, never on the icon itself. */
 
 .pktw-root .pkchat-idx-art__thumb > svg,
 .peak-design-root .pkchat-idx-art__thumb > svg {
-  width: 26px;
-  height: 26px;
+  width: 16px;
+  height: 16px;
 }
 
 /* Artifact tag pill (Saved / Indexed) — used inside __sub */
@@ -2179,6 +2318,18 @@
   color: var(--pk-text-primary);
 }
 
+/* Mode badge sitting between assistant name and head-meta — composes
+   <Chip variant="accent">. Smaller font + tighter padding than the default
+   chip so it fits inline with the head row. Registered in §2.4. */
+.pktw-root .pkchat-msg__mode-badge,
+.peak-design-root .pkchat-msg__mode-badge {
+  font-size: var(--pk-text-xs);
+  padding: 2px 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .pktw-root .pkchat-msg__head-meta,
 .peak-design-root .pkchat-msg__head-meta {
   color: var(--pk-text-tertiary);
@@ -2217,20 +2368,20 @@
   flex-wrap: wrap;
 }
 
+/* `.pkchat-msg__model-chip` composes <Chip variant="accent"> + mono font +
+   a LIGHTER background override. The base `pk-chip--accent` uses
+   --pk-accent-soft (~25% alpha) which on a light chat surface reads too
+   saturated next to dark body text (image 39 feedback). We drop to
+   --pk-accent-tint (~10% alpha) just for this chip, keeping accent-text
+   color so the model identifier still reads as branded. */
 .pktw-root .pkchat-msg__model-chip,
 .peak-design-root .pkchat-msg__model-chip {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 var(--pk-space-2);
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-accent-soft);
-  color: var(--pk-accent-hover, var(--pk-accent));
-  font-size: 11.5px;
   font-family: var(--pk-font-mono);
-  border: 1px solid var(--pk-border-accent);
+  font-size: 11.5px;
   margin-right: var(--pk-space-1);
   user-select: text;
+  background: var(--pk-accent-tint) !important;
+  border-color: transparent !important;
 }
 
 .pktw-root .pkchat-msg__sep,
@@ -2349,6 +2500,24 @@
 .peak-design-root .pkchat-msg__suggest-more:hover {
   color: var(--pk-text-primary);
   background: var(--pk-surface-sunken);
+}
+
+/* Group label inside the suggest "More…" popover (FOLLOW-UP / ACTIONS) */
+.pktw-root .pkchat-msg__suggest-section,
+.peak-design-root .pkchat-msg__suggest-section {
+  padding: var(--pk-space-2) var(--pk-space-3) 4px;
+  font-size: var(--pk-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pk-text-tertiary);
+}
+
+.pktw-root .pkchat-msg__suggest-divider,
+.peak-design-root .pkchat-msg__suggest-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--pk-border-soft);
 }
 
 /* Inline follow-up affordance (default OFF; toggled on via the More popover) */
