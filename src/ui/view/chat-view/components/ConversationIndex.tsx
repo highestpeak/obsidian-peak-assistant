@@ -16,7 +16,8 @@ import { useChatDataStore } from '@/ui/store/chatDataStore';
 import type { ChatMessage } from '@/service/chat/types';
 import { useChatStrings } from '../chatStringsContext';
 import { AppContext } from '@/app/context/AppContext';
-import { CHAT_VIEW_TYPE } from '@/app/view/types';
+import { CHAT_STUDIO_VIEW_TYPE, CHAT_VIEW_TYPE } from '@/app/view/types';
+import { usePortalContainer } from '@/ui/react/PortalContainerContext';
 
 /**
  * ConversationIndex — right-side navigator with 4 tabs (PR-Chat-3).
@@ -147,15 +148,16 @@ function inferArtifactKindFromResource(kind: string | undefined, source: string)
 	return 'file';
 }
 
-function scrollToMessage(messageId: string) {
-	// First, make sure the chat leaf is the active center pane. The outline
-	// lives in Obsidian's right sidebar; if the user is focused on a markdown
-	// document, the chat-rendered message DOM may not be visible. revealLeaf
-	// brings the chat leaf to the front without stealing focus from the
-	// outline (so the user can keep clicking outline items).
+function scrollToMessageInDoc(messageId: string, doc: Document) {
+	// First, make sure the chat surface is the active leaf. In Studio mode
+	// the surface is CHAT_STUDIO_VIEW_TYPE (outline lives inside the same
+	// leaf as chat, so this is a no-op). In legacy mode the surface is
+	// CHAT_VIEW_TYPE and outline sits in the right sidebar — revealLeaf
+	// brings chat to the front without stealing focus from the outline.
 	try {
 		const app = AppContext.getInstance().app;
-		const chatLeaf = app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0];
+		const studioLeaf = app.workspace.getLeavesOfType(CHAT_STUDIO_VIEW_TYPE)[0];
+		const chatLeaf = studioLeaf ?? app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0];
 		if (chatLeaf) {
 			app.workspace.revealLeaf(chatLeaf);
 		}
@@ -163,10 +165,13 @@ function scrollToMessage(messageId: string) {
 		// Best-effort — fall through to the scroll path even if app lookup fails.
 	}
 
-	// querySelector is global to the workspace DOM, so it finds the chat
-	// message even though the outline is in a separate Obsidian leaf.
+	// `doc` is the leaf-scoped document: in the main window it's `document`;
+	// in a popout window (Studio etc.) it's the popout's own document. Using
+	// the global `document` here misses messages rendered in a popout — they
+	// live in a different document and querySelector returns null.
+	const win = doc.defaultView ?? window;
 	const performScroll = () => {
-		const el = document.querySelector(
+		const el = doc.querySelector(
 			`[data-message-id="${CSS.escape(messageId)}"]`
 		) as HTMLElement | null;
 		if (!el) return;
@@ -175,13 +180,29 @@ function scrollToMessage(messageId: string) {
 		el.style.transition = 'background-color 0.4s ease';
 		const prev = el.style.backgroundColor;
 		el.style.backgroundColor = 'var(--pk-accent-tint)';
-		window.setTimeout(() => {
+		win.setTimeout(() => {
 			el.style.backgroundColor = prev;
 		}, 900);
 	};
 
 	// Allow one frame for revealLeaf to settle before scrolling.
-	window.requestAnimationFrame(performScroll);
+	win.requestAnimationFrame(performScroll);
+}
+
+/**
+ * Returns a `scrollToMessage(id)` callback bound to the document of the
+ * leaf this component is mounted in. Use inside any subcomponent that
+ * renders click handlers in the Conversation Index.
+ */
+function useScrollToMessage(): (messageId: string) => void {
+	const portalContainer = usePortalContainer();
+	return useCallback(
+		(messageId: string) => {
+			const doc = portalContainer?.ownerDocument ?? document;
+			scrollToMessageInDoc(messageId, doc);
+		},
+		[portalContainer],
+	);
 }
 
 function ArtifactIcon({ kind }: { kind: ArtifactKind }) {
@@ -472,6 +493,7 @@ function AllTabBody({
 	query: string;
 }) {
 	const strings = useChatStrings();
+	const scrollToMessage = useScrollToMessage();
 	const q = query.trim().toLowerCase();
 	const filteredTopics = topics.filter((t) => !q || t.name.toLowerCase().includes(q));
 	const filteredArtifacts = artifacts.filter((a) => !q || a.name.toLowerCase().includes(q));
@@ -575,6 +597,7 @@ function TopicsTabBody({
 	query: string;
 }) {
 	const strings = useChatStrings();
+	const scrollToMessage = useScrollToMessage();
 	const q = query.trim().toLowerCase();
 	const filtered = topics.filter((t) => !q || t.name.toLowerCase().includes(q));
 
@@ -755,6 +778,7 @@ function ArtifactsTabBody({ artifacts }: { artifacts: Artifact[] }) {
 
 function ArtifactCard({ artifact }: { artifact: Artifact }) {
 	const strings = useChatStrings();
+	const scrollToMessage = useScrollToMessage();
 	const kindLabel =
 		artifact.kind === 'code' ? strings.index.artifactKindCode
 		: artifact.kind === 'diagram' ? strings.index.artifactKindDiagram
@@ -789,6 +813,7 @@ function ArtifactCard({ artifact }: { artifact: Artifact }) {
 
 function MessagesTabBody({ entries }: { entries: Array<{ m: ChatMessage; idx: number }> }) {
 	const strings = useChatStrings();
+	const scrollToMessage = useScrollToMessage();
 	if (!entries.length) {
 		return <div className="pkchat-idx__empty">{strings.index.emptyMessages}</div>;
 	}
