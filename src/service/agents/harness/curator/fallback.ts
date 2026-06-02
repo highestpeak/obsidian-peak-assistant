@@ -91,15 +91,15 @@ function buildRationale(ctx: CuratorContext, bindings: CapabilityBindings): stri
     const zh = ctx.env.chineseRatio >= 0.5;
 
     const parts: string[] = [];
-    parts.push(`基于规则兜底配置（LLM 配置助手不可用）。`);
+    parts.push(`Rule-based fallback (LLM curator unavailable).`);
     if (isLocalHeavy) {
-        parts.push(`全部使用本地模型，离线可用，零成本。`);
+        parts.push(`All-local setup — offline-capable, zero cost.`);
     } else if (ctx.preferences.budget === 'zero') {
-        parts.push(`预算为 0，优先本地模型。`);
+        parts.push(`Budget is zero, so local models are preferred.`);
     } else {
-        parts.push(`按你的预算和已配 provider 综合选择。`);
+        parts.push(`Selected based on your budget and already-configured providers.`);
     }
-    if (zh) parts.push(`检测到 vault 中文为主，已偏向中文表现更好的模型。`);
-    parts.push(`稍后可在 Settings 中调整或重跑配置助手。`);
+    if (zh) parts.push(`Vault is mostly Chinese — biased toward models with stronger Chinese performance.`);
+    parts.push(`You can adjust this later in Settings or re-run the curator.`);
     return parts.join(' ');
 }
