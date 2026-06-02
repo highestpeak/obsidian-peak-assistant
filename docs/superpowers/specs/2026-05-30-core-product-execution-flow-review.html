@@ -417,6 +417,36 @@
     .manifest-card .s { color: #a7c7e7; }
     .manifest-card .c { color: #d9bd7a; }
 
+    .concept-stack {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .concept-row {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr) 250px;
+      gap: 14px;
+      align-items: start;
+      border: 1px solid var(--soft);
+      border-radius: 10px;
+      background: #fbfcfb;
+      padding: 14px;
+    }
+    .concept-row.cap { border-left: 5px solid var(--green); }
+    .concept-row.skill { border-left: 5px solid var(--blue); }
+    .concept-row.tool { border-left: 5px solid var(--amber); }
+    .concept-row.mcp { border-left: 5px solid var(--violet); }
+    .concept-row strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    .concept-row .question {
+      color: var(--muted);
+      font-size: 13px;
+      font-family: var(--mono);
+    }
+
     .matrix td:first-child,
     .matrix th:first-child { width: 190px; }
     .status-ok { color: var(--green); font-weight: 760; }
@@ -433,7 +463,7 @@
     @media (max-width: 1060px) {
       .layout { grid-template-columns: 1fr; padding: 18px; }
       .toc { position: relative; top: auto; }
-      .grid.two, .grid.three, .grid.four, .split, .stack, .capability-map, .band, .layer {
+      .grid.two, .grid.three, .grid.four, .split, .stack, .capability-map, .band, .layer, .concept-row {
         grid-template-columns: 1fr;
       }
       .layer .budget { text-align: left; }
@@ -461,11 +491,12 @@
       <a href="#chat">5. General Chat 设计</a>
       <a href="#context">6. Prompt / Context 堆叠</a>
       <a href="#manifest">7. 能力说明书</a>
-      <a href="#copilot">8. Copilot / Auto Review</a>
-      <a href="#harness">9. HermesAgent / Harness</a>
-      <a href="#layers">10. 分层与 AppContext</a>
-      <a href="#roadmap">11. 重构路线</a>
-      <a href="#evidence">12. 代码证据</a>
+      <a href="#skills">8. Skills / Tools / MCP</a>
+      <a href="#copilot">9. Copilot / Auto Review</a>
+      <a href="#harness">10. HermesAgent / Harness</a>
+      <a href="#layers">11. 分层与 AppContext</a>
+      <a href="#roadmap">12. 重构路线</a>
+      <a href="#evidence">13. 代码证据</a>
     </aside>
 
     <main>
@@ -513,7 +544,7 @@
 
         <div class="callout">
           <strong>一句话版本：</strong>
-          Peak Assistant 应该从“多个 UI 入口各自长出 agent 能力”，重构成“统一能力目录 + 统一运行会话 + 可替换 agent 后端”。Chat 是入口，不是模式；Copilot 是能力集合，不是孤岛；HermesAgent/Harness 是成本和模型自由度的核心工程投资。
+          Peak Assistant 应该从“多个 UI 入口各自长出 agent 能力”，重构成“统一能力目录 + Skill/Playbook 行为包 + 统一运行会话 + 可替换 agent 后端”。Chat 是入口，不是模式；Copilot 是能力集合，不是孤岛；Skill 是 agent 的做事手册，不应该只是一个手动打开的 workflow modal；HermesAgent/Harness 是成本和模型自由度的核心工程投资。
         </div>
       </section>
 
@@ -763,6 +794,12 @@ flowchart TB
               <td>Class diagram + 示例卡片</td>
               <td>要解释字段和约束，不是执行顺序。</td>
               <td>能力说明书</td>
+            </tr>
+            <tr>
+              <td>Capability / Skill / Tool / MCP 的区别</td>
+              <td>分层栈 + 关系矩阵</td>
+              <td>它们不是先后流程，而是产品承诺、agent 行为、原子动作、工具接入四个不同层级。</td>
+              <td>Skills / Tools / MCP</td>
             </tr>
             <tr>
               <td>Copilot Auto Review</td>
@@ -1138,9 +1175,416 @@ classDiagram
         </div>
       </section>
 
+      <section id="skills">
+        <div class="section-kicker">Skills / Tools / MCP</div>
+        <h2>8. Skill 应重构成 Agent 行为包，而不是孤立 workflow modal</h2>
+        <p>
+          这部分是本报告最容易混的概念。结论先说清楚：Peak Assistant 的 <code>Skill</code> 应该向 Claude Code / Codex 那类
+          “agent 行为包、工作手册、playbook、习惯注入”靠拢，而不是停留在当前“用户打开 Skill Picker、填表、跑一次 prompt workflow”的形态。
+          这样未来才能接公开 Skill 市场，也才能让我们自己写一批高质量知识工作 playbook 给用户安装。
+        </p>
+
+        <div class="concept-stack" aria-label="Capability Skill Tool MCP layered explanation">
+          <div class="concept-row cap">
+            <div>
+              <strong>Capability</strong>
+              <span class="question">产品承诺</span>
+            </div>
+            <div>
+              用户看得懂的产品能力：Chat 回答、Doc Review、AI Analysis、General Search、Knowledge Health、Ambient Suggestion。
+              它负责入口、权限、预算、结果形态、失败回退和 UI 承载。
+            </div>
+            <div class="muted">问的是：产品能帮我完成什么？</div>
+          </div>
+          <div class="concept-row skill">
+            <div>
+              <strong>Skill / Playbook</strong>
+              <span class="question">agent 怎么做</span>
+            </div>
+            <div>
+              给 agent 用的行为包：什么时候该用、先看什么上下文、如何调用工具、输出格式、注意事项、低成本模型怎么跑、失败后如何修复。
+              它可以来自内置、vault、本地包，也可以来自未来 marketplace。
+            </div>
+            <div class="muted">问的是：agent 做这类事有什么手册？</div>
+          </div>
+          <div class="concept-row tool">
+            <div>
+              <strong>Tool / Action</strong>
+              <span class="question">原子动作</span>
+            </div>
+            <div>
+              一次可执行调用：读当前文件、搜 vault、查 graph、提出 patch、写 artifact、web search。工具应该有 schema、权限、返回结构和错误语义。
+            </div>
+            <div class="muted">问的是：现在能调用哪个动作？</div>
+          </div>
+          <div class="concept-row mcp">
+            <div>
+              <strong>MCP</strong>
+              <span class="question">工具接入协议</span>
+            </div>
+            <div>
+              MCP 不是能力本身，而是把工具暴露给 agent 的协议。外部 MCP 可以接 GitHub、浏览器、数据库；内部 MCP 可以把 vault / graph / output tools 暴露给 Claude SDK。
+            </div>
+            <div class="muted">问的是：这些工具从哪里接进来？</div>
+          </div>
+        </div>
+
+        <div class="mermaid-wrap">
+          <pre class="mermaid small">
+classDiagram
+  class CapabilityRegistry {
+    productCapabilityCatalog
+    readiness()
+    planRun()
+  }
+  class CapabilityManifest {
+    id
+    surfaces
+    policy
+    primarySkills
+    fallbackSkills
+    outputContract
+  }
+  class SkillRegistry {
+    agentPlaybookCatalog
+    summaries()
+    loadBody()
+  }
+  class SkillPackage {
+    SKILL.md
+    references/
+    scripts/
+    assets/
+  }
+  class SkillCompiler {
+    parseFrontmatter()
+    buildAgentSkill()
+  }
+  class AgentSkill {
+    id
+    whenToUse
+    body
+    allowedTools
+    invocation
+    modelHints
+  }
+  class ToolRegistry {
+    localTools
+    mcpTools
+    scriptTools
+    obsidianCommandTools
+    permissions
+  }
+  class McpClientManager {
+    connectExternalServers()
+    discoverTools()
+  }
+  CapabilityRegistry o-- CapabilityManifest
+  CapabilityManifest --> SkillRegistry : references skills
+  SkillRegistry o-- SkillPackage
+  SkillPackage --> SkillCompiler
+  SkillCompiler --> AgentSkill
+  AgentSkill --> ToolRegistry : calls tools
+  ToolRegistry --> McpClientManager : imports external tools
+          </pre>
+        </div>
+
+        <h3>最容易混的点：Skill 不是 Capability，但 Capability 可以建立在 Skill 上</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>例子</th>
+              <th>应该归类</th>
+              <th>原因</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>doc.review</code>，给当前文档做审阅并展示可应用修改</td>
+              <td>Capability</td>
+              <td>这是用户可见的产品承诺，需要 UI、权限、结果 contract 和 apply/review 流程。</td>
+            </tr>
+            <tr>
+              <td><code>current-doc-review-playbook</code>，先读当前文档，再查相关笔记，再按结构/事实/表达/链接审阅</td>
+              <td>Skill</td>
+              <td>这是 agent 做事手册。它可以被 Doc Copilot 用，也可以被 Chat 在用户说“帮我看看这篇”时自动加载。</td>
+            </tr>
+            <tr>
+              <td><code>readCurrentFile</code> / <code>searchVault</code> / <code>proposeChange</code></td>
+              <td>Tool</td>
+              <td>这是一次调用，不应该承载完整产品语义。</td>
+            </tr>
+            <tr>
+              <td>GitHub MCP server、web search MCP server、内部 vault MCP server</td>
+              <td>MCP 接入层</td>
+              <td>它们只是把工具接进 agent runtime。是否允许调用、怎么组合，仍由 Skill 和 Capability 决定。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout blue">
+          <strong>一句话区分：</strong>
+          Tool 是手，MCP 是外接工具插座，Skill 是做事手册，Capability 是产品承诺。
+          用户主要看 Capability；agent 运行时读 Skill；Skill 调用 Tool；Tool 可以来自本地，也可以来自 MCP。
+        </div>
+
+        <h3>当前代码里的 Skill 为什么看起来没用</h3>
+        <p>
+          当前 <code>src/service/skills</code> 已经有一套可运行系统，但它的语义更偏“markdown workflow runner”：
+          built-in 只有 <code>weekly-report</code>、<code>literature-review</code>、<code>vault-health-check</code> 三个；
+          vault 侧支持 <code>_skills/</code> 目录热加载；执行器会解析输入、拼 prompt、组装 builtin/MCP tools，然后通过 <code>queryWithProfile()</code> 跑。
+          这套东西不是废物，但它没有接进 Chat / Copilot / AI Analysis 的主调度层，所以用户感知不到它在增强产品。
+        </p>
+
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>现状</th>
+              <th>问题</th>
+              <th>重构后应该变成</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Skill Picker 手动选择</td>
+              <td>像一个单独小功能，不像 agent 基础设施。</td>
+              <td>Chat / Copilot / AI Analysis 运行时按 intent 自动发现和加载 skill。</td>
+            </tr>
+            <tr>
+              <td>Skill body 一开始就是完整 prompt workflow</td>
+              <td>容易和 Capability、Prompt Template、Copilot Action 重叠。</td>
+              <td>Skill v2 分成 summary、whenToUse、body、allowedTools、outputContract、examples。</td>
+            </tr>
+            <tr>
+              <td>推荐模型写在 skill 里，但执行拿 active profile</td>
+              <td>模型策略没有真正进入 routing。</td>
+              <td>Skill 给 model hints；Capability/ExecutionPlanner 决定实际 backend。</td>
+            </tr>
+            <tr>
+              <td>Harness 只注入 skill summary</td>
+              <td>没有完整 <code>invokeSkill → load body → restrict tools → validate output</code> 闭环。</td>
+              <td>Harness 原生支持 lazy skill loading 和 skill-scoped tool policy。</td>
+            </tr>
+            <tr>
+              <td>现有 Skill 格式是自定义 frontmatter</td>
+              <td>字段比 Agent Skills 标准重，和公开 marketplace 互通性差。</td>
+              <td>保留 legacy adapter，但新增标准 <code>SKILL.md</code> parser，至少支持 <code>name</code> / <code>description</code> / markdown body。</td>
+            </tr>
+            <tr>
+              <td>CopilotActionRegistry、tools、skills 各自注册</td>
+              <td>注册表很多，但没有统一产品语义。</td>
+              <td>CapabilityRegistry 管产品入口；SkillRegistry 管 agent 行为包；ToolRegistry 管可调用动作。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>建议的新 Skill 形态：源格式用标准 SKILL.md，内部再编译</h3>
+        <p>
+          Peak 不应该发明一个让用户手写的 JSON Skill 格式。更好的做法是兼容 Agent Skills 的事实标准：
+          一个 skill 是一个目录，入口是 <code>SKILL.md</code>，可选带 <code>references/</code>、<code>scripts/</code>、<code>assets/</code>。
+          Peak 读取这个包以后，再编译成内部 <code>AgentSkill</code> 对象，用于权限、工具白名单、模型路由和输出验证。
+        </p>
+
+        <div class="split">
+          <div>
+            <h3>用户/市场写的是这个</h3>
+            <div class="manifest-card" aria-label="Portable SKILL.md source example">
+<span class="c"># current-doc-review/SKILL.md</span><br/>
+---<br/>
+<span class="k">name</span>: <span class="s">current-doc-review</span><br/>
+<span class="k">description</span>: <span class="s">Review the active Obsidian note for structure, evidence, links, and actionable edits. Use when the user asks to review, improve, fact-check, or strengthen the current document.</span><br/>
+---<br/><br/>
+<span class="c"># Current Doc Review</span><br/><br/>
+<span class="k">## Workflow</span><br/>
+1. Read the active note first.<br/>
+2. Search related vault notes only when evidence is needed.<br/>
+3. Check structure, claims, links, and actionable improvements.<br/>
+4. Propose changes. Do not edit directly unless the active capability allows it.<br/><br/>
+<span class="k">## Output</span><br/>
+- Key issues<br/>
+- Suggested improvements<br/>
+- Sources<br/>
+- Patch candidates when applicable
+            </div>
+          </div>
+          <div>
+            <h3>Peak 内部编译成这个</h3>
+            <div class="manifest-card" aria-label="Compiled AgentSkill internal model example">
+<span class="c">// compiled AgentSkill: 内部模型，不是用户源格式</span><br/>
+{<br/>
+&nbsp;&nbsp;<span class="k">id</span>: <span class="s">"current-doc-review"</span>,<br/>
+&nbsp;&nbsp;<span class="k">summary</span>: <span class="s">"Review the active Obsidian note..."</span>,<br/>
+&nbsp;&nbsp;<span class="k">sourcePath</span>: <span class="s">"_skills/current-doc-review/SKILL.md"</span>,<br/>
+&nbsp;&nbsp;<span class="k">body</span>: <span class="s">"&lt;markdown instructions&gt;"</span>,<br/>
+&nbsp;&nbsp;<span class="k">references</span>: [<span class="s">"references/checklist.md"</span>],<br/>
+&nbsp;&nbsp;<span class="k">scriptManifests</span>: [<span class="s">"scripts/extract_claims.py"</span>],<br/>
+&nbsp;&nbsp;<span class="k">allowedTools</span>: [<span class="s">"vault.read"</span>, <span class="s">"vault.search"</span>, <span class="s">"copilot.propose_change"</span>],<br/>
+&nbsp;&nbsp;<span class="k">permission</span>: <span class="s">"propose-only"</span>,<br/>
+&nbsp;&nbsp;<span class="k">outputContract</span>: [<span class="s">"insight"</span>, <span class="s">"source"</span>, <span class="s">"changeProposal"</span>]<br/>
+}
+            </div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <strong>格式决策：</strong>
+          <code>SKILL.md</code> 是 portable source of truth；<code>AgentSkill</code> 是 Peak runtime 内部对象；
+          <code>CapabilityManifest</code> 是产品能力对象。三者不要混成一个 JSON。
+        </div>
+
+        <h3>scripts 怎么办：不能把脚本当成可随便执行的工具</h3>
+        <p>
+          标准 Skill 目录里的 <code>scripts/</code> 可以放 Python、Node、Shell 等辅助脚本，但对 Peak 来说它们不能默认自动执行。
+          Obsidian 插件运行在 Electron/移动端混合环境里，直接跑外部 Python 会遇到运行时、路径、权限、移动端不可用和供应链安全问题。
+          因此 scripts 应该先作为 skill 包里的资源，被 <code>ScriptToolAdapter</code> 显式提升成 tool 后才能调用。
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>脚本类型</th>
+              <th>默认策略</th>
+              <th>什么时候允许执行</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>纯参考脚本</td>
+              <td>只作为上下文或实现参考，不执行。</td>
+              <td>agent 可以读取摘要或引用它的算法思想，但不直接运行。</td>
+            </tr>
+            <tr>
+              <td>可执行 Python / Node 脚本</td>
+              <td>默认禁用。</td>
+              <td>用户信任该 skill 包，桌面端可用，脚本声明输入输出 schema、超时、cwd、环境变量白名单后，由 <code>ScriptToolAdapter</code> 执行。</td>
+            </tr>
+            <tr>
+              <td>高风险脚本：写文件、联网、shell 命令</td>
+              <td>需要每次或首次明确确认。</td>
+              <td>必须走权限提示、运行日志、stdout/stderr capture、失败回滚说明。移动端直接不可用。</td>
+            </tr>
+            <tr>
+              <td>跨平台稳定工具</td>
+              <td>优先改成本地 TypeScript tool 或 MCP server。</td>
+              <td>如果这个脚本是核心能力，不要长期依赖外部 Python；沉淀成 <code>ToolDef</code> 或独立 MCP 更稳定。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout warning">
+          <strong>建议边界：</strong>
+          Skill 可以携带 scripts，但 scripts 不是天然 tool。Peak 应该提供一个受控 <code>ScriptToolAdapter</code>：
+          桌面端、用户信任、schema 明确、超时限制、env allowlist、cwd 沙箱、输出结构化。否则就只允许读取，不允许执行。
+        </div>
+
+        <h3>Obsidian 插件 command 可以作为本地工具接入</h3>
+        <p>
+          如果用户自己写了 Obsidian 插件，并注册了 command，Peak 理论上可以通过 Obsidian 的 command 系统发现和执行它。
+          但 command 的语义通常是“触发一个 UI/副作用动作”，没有输入 schema，也不一定有结构化返回值。因此它适合做低保真集成，不适合承载复杂 agent tool contract。
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>接入方式</th>
+              <th>适合什么</th>
+              <th>限制</th>
+              <th>建议优先级</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>ObsidianCommandToolAdapter</code></td>
+              <td>执行第三方插件已注册的 command，比如打开面板、触发同步、运行插件自己的批处理。</td>
+              <td>通常无参数、无结构化输出、副作用强，必须用户确认或白名单。</td>
+              <td>作为兼容桥，先做。</td>
+            </tr>
+            <tr>
+              <td><code>PeakToolProvider API</code></td>
+              <td>让其他 Obsidian 插件主动注册 typed tools：name、description、inputSchema、permission、execute。</td>
+              <td>需要我们定义插件间 API，但长期最干净。</td>
+              <td>作为正式生态接口，后做。</td>
+            </tr>
+            <tr>
+              <td>第三方插件自带 MCP server</td>
+              <td>跨应用、跨 agent 的外部工具生态。</td>
+              <td>配置成本更高，Obsidian 用户不一定愿意跑额外进程。</td>
+              <td>适合高级用户和外部软件。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="mermaid-wrap">
+          <pre class="mermaid small">
+flowchart LR
+  SkillPkg["Skill Package<br/>SKILL.md + references + scripts"]
+  Compiler["SkillCompiler<br/>portable source -> AgentSkill"]
+  AgentSkillNode["AgentSkill<br/>runtime playbook"]
+  ToolRegistryNode["ToolRegistry"]
+  LocalTools["Peak local tools<br/>vault/search/copilot output"]
+  ScriptAdapter["ScriptToolAdapter<br/>trusted desktop scripts"]
+  CommandAdapter["ObsidianCommandToolAdapter<br/>third-party plugin commands"]
+  McpTools["MCP tools<br/>external apps/services"]
+
+  SkillPkg --> Compiler --> AgentSkillNode
+  AgentSkillNode --> ToolRegistryNode
+  ToolRegistryNode --> LocalTools
+  ToolRegistryNode --> ScriptAdapter
+  ToolRegistryNode --> CommandAdapter
+  ToolRegistryNode --> McpTools
+          </pre>
+        </div>
+
+        <h3>Capability 如何使用 Skill</h3>
+        <p>
+          Capability 不应该把完整 prompt 和工具编排都写死。它应该声明“这个产品能力默认使用哪些 skill、产物如何展示、权限如何控制”。
+          这样同一个 skill 可以被多个能力复用，但不是每个 skill 都会变成 UI 上的能力。
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Capability</th>
+              <th>可能引用的 Skill</th>
+              <th>为什么不是同一个东西</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Doc Copilot Auto Review</td>
+              <td><code>current-doc-review-playbook</code>、<code>evidence-checking-playbook</code>、<code>link-suggestion-playbook</code></td>
+              <td>Capability 管 review surface、patch apply、history；Skill 管 agent 怎么审。</td>
+            </tr>
+            <tr>
+              <td>AI Analysis / Vault Research</td>
+              <td><code>literature-review</code>、<code>source-map</code>、<code>contradiction-finder</code></td>
+              <td>Capability 管长任务、报告、session、resume；Skill 管每种研究方法。</td>
+            </tr>
+            <tr>
+              <td>General Chat</td>
+              <td><code>search-before-answer</code>、<code>use-active-note-grounding</code>、<code>answer-with-sources</code></td>
+              <td>这些 skill 是行为习惯，不应该都变成按钮。</td>
+            </tr>
+            <tr>
+              <td>Knowledge Health</td>
+              <td><code>vault-health-check</code>、<code>orphan-note-plan</code>、<code>stale-hub-refresh</code></td>
+              <td>Capability 管 dashboard 和 action review；Skill 管诊断过程。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout warning">
+          <strong>重构判断：</strong>
+          Skill 必须重构，但不要直接删除旧系统。先保留现有 markdown workflow parser 作为 legacy adapter；
+          新增兼容 Agent Skills 的 <code>SKILL.md</code> 包解析；
+          编译出内部 <code>AgentSkill</code>；再让 <code>CapabilityManifest</code> 引用 skill；
+          最后让 Harness 支持真正的 skill lazy loading、skill-scoped tool policy、script/command adapters 和输出验证。
+        </div>
+      </section>
+
       <section id="copilot">
         <div class="section-kicker">Copilot state model</div>
-        <h2>8. Copilot / Auto Review 应画成状态机</h2>
+        <h2>9. Copilot / Auto Review 应画成状态机</h2>
         <p>
           Copilot Auto Review 不是普通流程。它会预检、跑一轮或多轮 agent、不断产生 structured artifacts、决定是否继续、保存历史、最后让用户选择是否应用。用 state machine 比 flowchart 更准确。
         </p>
@@ -1233,7 +1677,7 @@ stateDiagram-v2
 
       <section id="harness">
         <div class="section-kicker">HermesAgent / Harness</div>
-        <h2>9. HermesAgent / Harness 必须成为完整后端，不只是实验功能</h2>
+        <h2>10. HermesAgent / Harness 必须成为完整后端，不只是实验功能</h2>
         <p>
           你实现 Harness 的动机是对的：Claude Agent SDK / ChatGPT Agent SDK 太贵，长期跑 vaultFull 和 Auto Review 成本会压不住。
           自研 HermesAgent/Harness 的产品价值，就是让这些能力能跑在 DeepSeek、OpenRouter、Ollama、本地模型上。
@@ -1372,7 +1816,7 @@ stateDiagram-v2
 
       <section id="layers">
         <div class="section-kicker">Layer boundaries</div>
-        <h2>10. 分层与 AppContext：保留模式，收紧边界</h2>
+        <h2>11. 分层与 AppContext：保留模式，收紧边界</h2>
         <p>
           我同意你的判断：<code>AppContext</code> 这个设计可以保留。全局注册、static 获取、composition root 这些不是问题。问题是它现在容易变成“谁都能拿任何东西”的万能入口，导致 service、UI、core 之间互相穿透。
         </p>
@@ -1451,7 +1895,7 @@ stateDiagram-v2
 
       <section id="roadmap">
         <div class="section-kicker">Refactor roadmap</div>
-        <h2>11. 最高收益重构路线</h2>
+        <h2>12. 最高收益重构路线</h2>
         <p>
           这里按“收益最大、风险可控、能逐步验证”的顺序排。不要一上来大重写，也不要只补类型错误。
         </p>
@@ -1483,6 +1927,18 @@ stateDiagram-v2
               <td>抽最小 <code>CapabilityManifest</code>，包住现有 Copilot actions 和 chat tools。</td>
               <td><code>service/capability/**</code>、<code>service/copilot/**</code>、<code>service/chat/tools/**</code></td>
               <td>同一个能力能被 Chat 和 Copilot 查询。</td>
+            </tr>
+            <tr>
+              <td><span class="priority p0">2B</span></td>
+              <td>重构 <code>Skill</code> 语义：源格式兼容标准 <code>SKILL.md</code> 包，从“手动 workflow”升级为 agent playbook / behavior pack，并保留旧 parser 作为 adapter。</td>
+              <td><code>service/skills/**</code>、<code>service/agents/harness/skill/**</code>、<code>service/capability/**</code></td>
+              <td>Capability 能引用 primary/fallback skills；Harness 能按需加载 skill body 并限制工具。</td>
+            </tr>
+            <tr>
+              <td><span class="priority p1">2C</span></td>
+              <td>新增工具接入 adapter：<code>ScriptToolAdapter</code> 和 <code>ObsidianCommandToolAdapter</code>，让 Skill 能安全使用 scripts 和第三方插件 commands。</td>
+              <td><code>service/tools/**</code>、<code>service/skills/**</code>、<code>app/context/**</code></td>
+              <td>脚本默认不可执行；受信任桌面脚本可运行；第三方 Obsidian command 可被列出/白名单/执行。</td>
             </tr>
             <tr>
               <td><span class="priority p1">3</span></td>
@@ -1543,12 +1999,16 @@ stateDiagram-v2
             <strong>不要立刻把 vaultFull 强切 Harness</strong>
             <p class="muted">先做 tools adapter、stream adapter、HITL、validator，否则便宜模型会省钱但不可靠。</p>
           </div>
+          <div class="card">
+            <strong>不要把所有 Skill 都做成按钮</strong>
+            <p class="muted">大部分 Skill 应该是 agent 内部手册；只有能形成稳定用户结果的部分才上升为 Capability。</p>
+          </div>
         </div>
       </section>
 
       <section id="evidence">
         <div class="section-kicker">Code evidence</div>
-        <h2>12. 本报告依据的关键代码证据</h2>
+        <h2>13. 本报告依据的关键代码证据</h2>
         <ul class="evidence-list">
           <li><code>src/service/chat/service-conversation.ts</code>：Chat mode 从 UI store 读取，agent mode 只注入 chat tools。</li>
           <li><code>src/service/chat/tools/chatToolBuilder.ts</code>：当前 Chat tool 主要是 web_search。</li>
@@ -1563,6 +2023,12 @@ stateDiagram-v2
           <li><code>src/service/copilot/CopilotReviewSession.ts</code>：Doc Auto Review 是多轮 stateful session。</li>
           <li><code>src/service/copilot/CopilotOutputMcpServer.ts</code>：structured output tools 仍是 SDK MCP server 形状。</li>
           <li><code>src/service/copilot/vault/VaultReviewSession.ts</code>：Vault Review 和 Doc Review 有相似 session 结构。</li>
+          <li><code>src/service/skills/types.ts</code>：当前 Skill 是 markdown-defined reusable agent workflow，而不是完整 agent behavior pack。</li>
+          <li><code>src/service/skills/builtin/index.ts</code>：内置 Skill 只有 weekly-report、literature-review、vault-health-check 三个。</li>
+          <li><code>src/service/skills/SkillExecutor.ts</code>：Skill 执行器通过 <code>queryWithProfile()</code> 和 AgentTool/MCP adapter 跑，仍偏 SDK workflow runner。</li>
+          <li><code>src/service/agents/harness/skill/SkillRegistry.ts</code>：Harness 已能把 SkillDefinition lift 成 HarnessSkill，但还缺真正 lazy invoke 闭环。</li>
+          <li><code>src/service/mcp/MCPToolAdapter.ts</code>：外部 MCP tools 已能转换成 <code>AgentTool</code>，可以接入 ToolRegistry。</li>
+          <li><code>src/app/commands/Register.ts</code>：Peak 自己的 Obsidian commands 在 app 层注册；第三方 plugin commands 可通过新的 command adapter 作为 side-effect tools 接入。</li>
           <li><code>src/service/agents/harness/loop/AgentLoop.ts</code>：自研 loop 支持 step、tools、permission、hooks、tier、memory/context。</li>
           <li><code>src/service/agents/harness/tier/TierController.ts</code>：local-fast / local-deep / online 级联。</li>
           <li><code>src/service/agents/harness/context/ContextManager.ts</code>：Harness 侧 context compaction 还未完成 LLM summarization。</li>

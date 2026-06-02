@@ -3,157 +3,822 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Assistant Code Design & Architecture Review — 2026-05-30</title>
+  <title>Peak Assistant Architecture Atlas — 2026-05-30</title>
   <script src="../../../node_modules/mermaid/dist/mermaid.min.js"></script>
   <style>
     :root {
-      --bg: #f7f8fb;
+      --bg: #f5f7fb;
       --paper: #ffffff;
-      --ink: #17202a;
-      --muted: #5d6978;
-      --line: #d9dee7;
-      --soft: #edf1f6;
-      --accent: #2563eb;
-      --accent-2: #0f766e;
-      --risk: #b42318;
-      --warn: #b45309;
-      --ok: #15803d;
-      --code: #111827;
-      --code-bg: #f3f5f9;
+      --ink: #111827;
+      --muted: #5b6472;
+      --line: #d7dde8;
+      --soft: #eef2f7;
+      --soft-2: #f8fafc;
+      --blue: #2563eb;
+      --teal: #0f766e;
+      --green: #15803d;
+      --amber: #b45309;
+      --red: #b42318;
+      --violet: #6d28d9;
+      --code-bg: #f1f5f9;
+      --shadow: 0 16px 45px rgba(15, 23, 42, .08);
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      background: var(--bg);
+      background: radial-gradient(circle at top left, #eaf1ff 0, #f5f7fb 360px, #f5f7fb 100%);
       color: var(--ink);
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.58;
+      line-height: 1.62;
     }
 
     .shell {
-      max-width: 1180px;
+      width: min(1180px, calc(100vw - 40px));
       margin: 0 auto;
-      padding: 40px 24px 72px;
+      padding: 42px 0 70px;
     }
 
     header {
-      padding: 36px 0 26px;
+      padding: 34px 0 24px;
       border-bottom: 1px solid var(--line);
     }
 
     .eyebrow {
-      color: var(--accent-2);
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: .08em;
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
       text-transform: uppercase;
     }
 
     h1 {
+      max-width: 920px;
       margin: 10px 0 12px;
-      font-size: 40px;
-      line-height: 1.12;
+      font-size: clamp(32px, 5vw, 56px);
+      line-height: 1.04;
       letter-spacing: 0;
     }
 
     h2 {
-      margin: 44px 0 16px;
-      font-size: 25px;
-      line-height: 1.22;
-      border-top: 1px solid var(--line);
+      margin: 52px 0 16px;
       padding-top: 28px;
+      border-top: 1px solid var(--line);
+      font-size: 26px;
+      line-height: 1.2;
+      letter-spacing: 0;
     }
 
     h3 {
-      margin: 28px 0 10px;
+      margin: 26px 0 10px;
       font-size: 18px;
       line-height: 1.3;
     }
 
-    h4 {
-      margin: 20px 0 8px;
-      font-size: 15px;
+    p { margin: 9px 0; }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    code {
+      color: #111827;
+      background: var(--code-bg);
+      border: 1px solid #e2e8f0;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .91em;
+    }
+
+    .muted { color: var(--muted); }
+    .small { color: var(--muted); font-size: 13px; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.12fr .88fr;
+      gap: 18px;
+      margin: 26px 0 20px;
+    }
+
+    .hero-card,
+    .card,
+    .module-card,
+    .decision-card,
+    .evidence-card {
+      background: rgba(255, 255, 255, .92);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 22px;
+    }
+
+    .hero-card strong { color: var(--red); }
+
+    .quick-points {
+      display: grid;
+      gap: 10px;
+    }
+
+    .point {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 14px 15px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .dot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      background: #eef5ff;
+      color: var(--blue);
+      border: 1px solid #bfdbfe;
+    }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 22px 0 8px;
+    }
+
+    .toc a {
+      display: block;
+      min-height: 54px;
+      padding: 10px 12px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 9px;
+    }
+
+    .toc span {
+      display: block;
       color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      color: #334155;
+      white-space: nowrap;
+    }
+
+    .tag.red { color: var(--red); background: #fff1f1; border-color: #fecaca; }
+    .tag.amber { color: var(--amber); background: #fff7ed; border-color: #fed7aa; }
+    .tag.green { color: var(--green); background: #f0fdf4; border-color: #bbf7d0; }
+    .tag.blue { color: var(--blue); background: #eff6ff; border-color: #bfdbfe; }
+    .tag.violet { color: var(--violet); background: #f5f3ff; border-color: #ddd6fe; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0 4px;
+    }
+
+    .metric {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 13px 14px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1.08;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .section-lead {
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .arch-spine {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin: 20px 0 18px;
+    }
+
+    .spine-column {
+      min-height: 330px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      position: relative;
+    }
+
+    .spine-column::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -13px;
+      width: 14px;
+      height: 2px;
+      background: #94a3b8;
+    }
+
+    .spine-column:last-child::after { display: none; }
+
+    .spine-kicker {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: .08em;
     }
 
-    p { margin: 10px 0; }
-
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-
-    code {
-      color: var(--code);
-      background: var(--code-bg);
-      border: 1px solid #e2e7ef;
-      padding: 1px 5px;
-      border-radius: 5px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: .92em;
+    .spine-title {
+      margin: 6px 0 12px;
+      font-size: 18px;
+      font-weight: 850;
+      line-height: 1.2;
     }
 
-    pre {
-      background: #0f172a;
-      color: #e5e7eb;
-      border-radius: 8px;
-      padding: 16px;
-      overflow: auto;
-      font-size: 13px;
-      line-height: 1.55;
-    }
-
-    .summary {
+    .pill-list {
       display: grid;
-      grid-template-columns: 1.3fr .7fr;
-      gap: 18px;
-      margin-top: 24px;
+      gap: 8px;
     }
 
-    .panel {
-      background: var(--paper);
+    .pill {
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 20px;
+      padding: 8px 9px;
+      background: var(--soft-2);
+      font-size: 13px;
     }
 
-    .verdict {
-      border-left: 5px solid var(--risk);
+    .pill strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 13px;
     }
 
-    .verdict strong {
-      color: var(--risk);
+    .principles {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
     }
 
-    .grid {
+    .principle {
+      padding: 15px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .principle strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .map-row {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      gap: 14px;
+      margin: 12px 0;
+      align-items: stretch;
+    }
+
+    .map-label {
+      padding: 14px;
+      background: #111827;
+      color: #fff;
+      border-radius: 10px;
+      font-weight: 850;
+    }
+
+    .map-items {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .map-item {
+      padding: 13px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .map-item strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .decision-card {
+      padding: 16px;
+      border-left: 5px solid var(--blue);
+    }
+
+    .decision-card.bad { border-left-color: var(--red); }
+    .decision-card.good { border-left-color: var(--green); }
+    .decision-card.warn { border-left-color: var(--amber); }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .module-card {
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .module-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .module-head strong {
+      font-size: 17px;
+    }
+
+    .module-lines {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .line {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      gap: 10px;
+      padding-top: 8px;
+      border-top: 1px solid #edf2f7;
+      font-size: 14px;
+    }
+
+    .line span:first-child {
+      color: var(--muted);
+      font-weight: 750;
+    }
+
+    .diagram-panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px;
+      margin: 16px 0 26px;
+      overflow: auto;
+      box-shadow: var(--shadow);
+    }
+
+    .mermaid {
+      min-width: 760px;
+    }
+
+    .context-stack {
+      display: grid;
+      gap: 9px;
+      margin: 16px 0;
+      max-width: 860px;
+    }
+
+    .stack-row {
+      display: grid;
+      grid-template-columns: 180px 1fr 100px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .stack-row .budget {
+      justify-self: end;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .concept-stack {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .concept {
+      padding: 16px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .concept strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 17px;
+    }
+
+    .test-matrix {
+      display: grid;
+      grid-template-columns: 150px repeat(5, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--paper);
+      margin: 18px 0;
+    }
+
+    .test-matrix div {
+      min-height: 64px;
+      padding: 11px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+    }
+
+    .test-matrix div:nth-child(6n) { border-right: 0; }
+    .test-matrix div:nth-last-child(-n + 6) { border-bottom: 0; }
+
+    .matrix-head {
+      background: #111827;
+      color: #fff;
+      font-weight: 850;
+    }
+
+    .matrix-row {
+      background: var(--soft);
+      font-weight: 850;
+    }
+
+    .roadmap {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    .step {
+      padding: 15px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      position: relative;
+    }
+
+    .step::after {
+      content: "";
+      position: absolute;
+      top: 28px;
+      right: -11px;
+      width: 12px;
+      height: 2px;
+      background: #94a3b8;
+    }
+
+    .step:last-child::after { display: none; }
+
+    .step strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    details {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin: 12px 0;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 850;
+    }
+
+    .capability-board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .capability-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      min-height: 250px;
+      box-shadow: var(--shadow);
+    }
+
+    .capability-card h3 {
+      margin-top: 0;
+    }
+
+    .capability-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .capability-list div {
+      padding: 8px 9px;
+      border-radius: 8px;
+      background: var(--soft-2);
+      border: 1px solid #e2e8f0;
+      font-size: 13px;
+    }
+
+    .capability-list strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .elegance-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .elegance-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .elegance-card h3 {
+      margin-top: 0;
+    }
+
+    .before-after {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .before-after div {
+      padding: 10px;
+      border-radius: 8px;
+      background: var(--soft-2);
+      border: 1px solid var(--line);
+      font-size: 13px;
+    }
+
+    .before-after strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .lane-board {
+      display: grid;
+      gap: 12px;
+      margin: 16px 0 24px;
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: 150px repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .lane-title,
+    .lane-step {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 11px;
+      background: var(--paper);
+      font-size: 13px;
+    }
+
+    .lane-title {
+      background: #111827;
+      color: #fff;
+      font-weight: 850;
+    }
+
+    .lane-step strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 13px;
+    }
+
+    .risk-map {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr 1fr;
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .risk-map .risk-cell {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .risk-cell strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .pattern-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
       margin: 18px 0;
     }
 
-    .metric {
+    .pattern {
       background: var(--paper);
       border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 14px 16px;
+      border-radius: 10px;
+      padding: 14px;
+      min-height: 150px;
     }
 
-    .metric .num {
+    .pattern strong {
       display: block;
-      font-size: 26px;
-      font-weight: 800;
-      line-height: 1.1;
-      color: var(--ink);
+      margin: 7px 0 4px;
     }
 
-    .metric .label {
-      display: block;
-      margin-top: 5px;
+    .atlas-card {
+      margin: 22px 0 30px;
+      padding: 18px;
+      background: rgba(255, 255, 255, .94);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .atlas-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .atlas-head h3 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .atlas-head p {
+      max-width: 780px;
+      margin: 6px 0 0;
       color: var(--muted);
+      font-size: 14px;
+    }
+
+    .diagram-pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 14px 0;
+    }
+
+    .diagram-pair .diagram-panel {
+      margin: 0;
+      box-shadow: none;
+    }
+
+    .diagram-pair .mermaid {
+      min-width: 0;
+    }
+
+    .diagram-pair .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .diagram-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .atlas-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 12px 0 0;
+    }
+
+    .atlas-note {
+      padding: 12px;
+      background: var(--soft-2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    .atlas-note strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .code-block {
+      margin: 12px 0 0;
+      padding: 13px;
+      overflow: auto;
+      color: #0f172a;
+      background: #f8fafc;
+      border: 1px solid #dbe3ef;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .code-block code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font-size: inherit;
+    }
+
+    .check-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .check {
+      padding: 10px 11px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 9px;
       font-size: 13px;
+    }
+
+    .opportunity-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .opportunity {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 13px;
+    }
+
+    .opportunity strong {
+      display: block;
+      margin-bottom: 4px;
     }
 
     table {
@@ -161,7 +826,7 @@
       border-collapse: collapse;
       background: var(--paper);
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 10px;
       overflow: hidden;
       display: table;
       margin: 14px 0 22px;
@@ -177,85 +842,11 @@
 
     th {
       background: var(--soft);
+      color: #334155;
       font-size: 13px;
-      color: #394150;
     }
 
     tr:last-child td { border-bottom: 0; }
-
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      min-height: 22px;
-      padding: 1px 8px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      border: 1px solid var(--line);
-      background: var(--soft);
-      color: #334155;
-      white-space: nowrap;
-    }
-
-    .tag.p0 { color: var(--risk); background: #fff1f1; border-color: #fecaca; }
-    .tag.p1 { color: var(--warn); background: #fff7ed; border-color: #fed7aa; }
-    .tag.p2 { color: var(--accent-2); background: #ecfdf5; border-color: #bbf7d0; }
-    .tag.ok { color: var(--ok); background: #f0fdf4; border-color: #bbf7d0; }
-
-    .callout {
-      border-left: 4px solid var(--accent);
-      background: #eef5ff;
-      padding: 14px 16px;
-      border-radius: 6px;
-      margin: 16px 0;
-    }
-
-    .callout.risk {
-      border-left-color: var(--risk);
-      background: #fff1f1;
-    }
-
-    .callout.warn {
-      border-left-color: var(--warn);
-      background: #fff7ed;
-    }
-
-    .mermaid-wrap {
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 18px;
-      margin: 14px 0 24px;
-      overflow: auto;
-    }
-
-    .mermaid {
-      min-width: 720px;
-    }
-
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-    }
-
-    .small { color: var(--muted); font-size: 13px; }
-
-    .toc {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-      margin: 22px 0 8px;
-    }
-
-    .toc a {
-      display: block;
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 10px 12px;
-      color: var(--ink);
-    }
 
     .foot {
       margin-top: 52px;
@@ -265,673 +856,1808 @@
       font-size: 13px;
     }
 
-    @media (max-width: 860px) {
-      .summary, .two-col, .toc { grid-template-columns: 1fr; }
-      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      h1 { font-size: 31px; }
+    @media (max-width: 980px) {
+      .hero,
+      .two-col,
+      .module-grid,
+      .principles,
+      .concept-stack,
+      .roadmap,
+      .arch-spine,
+      .capability-board,
+      .elegance-grid,
+      .pattern-grid,
+      .diagram-pair,
+      .atlas-grid,
+      .check-list,
+      .opportunity-list,
+      .risk-map,
+      .toc {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .map-row { grid-template-columns: 1fr; }
+      .map-items { grid-template-columns: 1fr; }
+      .spine-column::after,
+      .step::after { display: none; }
+      .test-matrix { grid-template-columns: 135px repeat(5, minmax(160px, 1fr)); overflow-x: auto; }
+      .lane { grid-template-columns: 1fr; }
+      .before-after { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <div class="shell">
     <header>
-      <div class="eyebrow">Code Design Review</div>
-      <h1>Peak Assistant 全仓库代码设计与架构报告</h1>
+      <div class="eyebrow">Architecture Atlas</div>
+      <h1>Peak Assistant 现代模块化架构设计报告</h1>
       <p class="small">
-        日期：2026-05-30 · 范围：<code>src/</code>、<code>test/</code>、<code>templates/</code>、<code>scripts/</code>、关键启动/搜索/Agent/Copilot/SQLite/UI 路径 · 重点：逻辑结构、工程边界、重构优先级。
+        日期：2026-05-30 · 范围：Chat、Search、AI Analysis、Copilot、Harness、Skills、Templates、Settings、Ambient ·
+        目标：把现有能力重新组织成更现代、模块化、可测试、可演进的架构地图。
       </p>
     </header>
 
-    <section class="summary">
-      <div class="panel verdict">
-        <h3>总判断</h3>
+    <section class="hero">
+      <div class="hero-card">
+        <h3>一句话结论</h3>
         <p>
-          这个项目的产品方向和核心能力已经很强：它不是一个简单 Obsidian RAG 插件，而是一个围绕
-          <code>Chat</code>、<code>AI Analysis</code>、<code>Copilot</code>、<code>Knowledge Maintenance</code>、
-          <code>Ambient Push</code> 展开的知识工作层。
+          Peak Assistant 不是缺功能，而是缺一个<strong>统一的能力中枢</strong>。
+          现在 Chat、Copilot、AI Analysis、Search、Skills、Harness 各自长出运行逻辑；
+          更现代的架构应该让所有入口先进入 <code>Capability</code>，再由 <code>RunSession</code> 和可替换后端执行。
         </p>
         <p>
-          但代码设计已经进入<strong>需要主动治理</strong>的阶段：当前可维护风险不是“某个文件太长”这么简单，而是
-          <strong>类型守门失效、依赖方向反复穿透、服务层直接抓 UI、核心层反向依赖业务层、AppContext 成为全局服务定位器</strong>。
-          这些问题会让 AI 后续继续写代码时越来越难判断哪里才是正确落点。
+          这份报告不再把问题写成一堆审计项，而是回答：系统中间层该长什么样、每个模块边界在哪里、哪些代码应该先改、哪些测试能替代手测。
         </p>
       </div>
-      <div class="panel">
-        <h3>最优先的结论</h3>
-        <p><span class="tag p0">P0</span> 先恢复 <code>src</code> 类型检查通过，把类型系统重新变成门禁。</p>
-        <p><span class="tag p0">P0</span> 再治理跨层 import，尤其是 <code>core -> service/app/ui</code> 和 <code>service -> ui/app</code>。</p>
-        <p><span class="tag p1">P1</span> 拆 <code>IndexService</code>、<code>Copilot actions</code>、<code>BackgroundSessionManager</code> 这三处最大架构压力点。</p>
+      <div class="quick-points">
+        <div class="point"><span class="dot">1</span><span><strong>现代感</strong><br>不是堆新模式，而是入口统一、能力可组合、运行时可替换。</span></div>
+        <div class="point"><span class="dot">2</span><span><strong>模块化</strong><br>不是机械拆文件，而是 Surface、Capability、RunSession、Backend、Port 各司其职。</span></div>
+        <div class="point"><span class="dot">3</span><span><strong>优雅</strong><br>是主路径短、边界少、测试能锁住行为，AI 继续写代码也知道落点。</span></div>
       </div>
     </section>
 
     <nav class="toc">
-      <a href="#metrics">1. 代码规模与事实</a>
-      <a href="#architecture">2. 当前架构图</a>
-      <a href="#findings">3. 主要设计问题</a>
-      <a href="#flows">4. 关键流程图</a>
-      <a href="#target">5. 目标架构</a>
-      <a href="#roadmap">6. 重构路线</a>
+      <a href="#north-star">1. 架构北极星<span>先确定系统应该怎么长</span></a>
+      <a href="#capability-panorama">2. 能力全景<span>先把产品能力铺开</span></a>
+      <a href="#modern-core">3. 现代模块中枢图<span>最重要的一张图</span></a>
+      <a href="#modernity">4. 现代/优雅标准<span>什么才叫好架构</span></a>
+      <a href="#module-review">5. 模块边界 Review<span>逐模块判断问题和改法</span></a>
+      <a href="#flows">6. 执行流图谱<span>每条主链路怎么跑</span></a>
+      <a href="#skills-templates">7. Skills / Templates<span>能力、手册、工具的层次</span></a>
+      <a href="#testing">8. 自动化测试地图<span>哪些不用再手测</span></a>
+      <a href="#roadmap">9. 重构路线<span>小步但有方向</span></a>
+      <a href="#appendix">10. 证据附录<span>数字、命令、代码入口</span></a>
     </nav>
 
-    <section id="metrics">
-      <h2>1. 代码规模与事实</h2>
-      <div class="grid">
-        <div class="metric"><span class="num">125,333</span><span class="label"><code>src/**/*.ts(x)</code> 行数</span></div>
-        <div class="metric"><span class="num">765</span><span class="label"><code>src</code> TypeScript 文件数</span></div>
-        <div class="metric"><span class="num">148,331</span><span class="label"><code>src/test/templates/scripts</code> 可维护内容行数</span></div>
-        <div class="metric"><span class="num">98</span><span class="label">超过 300 行的 <code>src</code> 文件</span></div>
+    <section id="north-star">
+      <h2>1. 架构北极星：从“多个功能入口”改成“统一能力运行系统”</h2>
+      <p class="section-lead">
+        这套插件现在已经是一个完整产品：Chat、General Search、AI Analysis、Doc Copilot、Knowledge、Ambient、Settings、Onboarding、Dashboard 都存在。
+        架构问题不在于“功能散”，而在于这些功能没有共同的产品能力模型和运行模型。
+      </p>
+
+      <div class="metrics">
+        <div class="metric"><strong>125k</strong><span><code>src/**/*.ts(x)</code> 行数</span></div>
+        <div class="metric"><strong>765</strong><span><code>src</code> TypeScript 文件</span></div>
+        <div class="metric"><strong>83</strong><span>测试文件</span></div>
+        <div class="metric"><strong>142</strong><span><code>templates/</code> 资产</span></div>
+        <div class="metric"><strong>401</strong><span>最大循环依赖连通块</span></div>
+        <div class="metric"><strong>315</strong><span>可疑跨层依赖边</span></div>
       </div>
 
-      <h3>1.1 分层行数</h3>
-      <table>
-        <thead>
-          <tr><th>区域</th><th>行数</th><th>解读</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><code>src/ui</code></td><td>52,887</td><td>最大区域。UI 已经承载了很多状态、流程和数据保存逻辑，不只是视图。</td></tr>
-          <tr><td><code>src/service</code></td><td>44,101</td><td>业务层很重，Search、Agents、Copilot、Tools 是主要增长源。</td></tr>
-          <tr><td><code>src/core</code></td><td>25,730</td><td>本应最稳定，但已经出现反向依赖 <code>service/app/ui</code> 的迹象。</td></tr>
-          <tr><td><code>src/app</code></td><td>2,579</td><td>Obsidian integration 层相对小，但 <code>AppContext</code> 影响半径极大。</td></tr>
-          <tr><td><code>test</code></td><td>13,966</td><td>测试量不低，但部分测试和当前代码签名已经漂移。</td></tr>
-          <tr><td><code>templates</code></td><td>6,825</td><td>提示词和配置抽取方向是正确的，应继续强化 manifest 校验。</td></tr>
-        </tbody>
-      </table>
-
-      <h3>1.2 最大文件</h3>
-      <table>
-        <thead>
-          <tr><th>文件</th><th>行数</th><th>判断</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><code>src/service/search/index/indexService.ts</code></td><td>2,266</td><td>索引 CRUD、单文档索引、embedding、graph projection、maintenance 混在一个 singleton facade 中。</td></tr>
-          <tr><td><code>src/ui/view/copilot/vault/VaultAutoRunModal.tsx</code></td><td>1,664</td><td>Modal 级组件过大，可能混合 workflow state、render、side effects。</td></tr>
-          <tr><td><code>src/core/storage/sqlite/repositories/MobiusNodeRepo.ts</code></td><td>1,292</td><td>Repo 复杂度高，并且类型检查已暴露 schema shape drift。</td></tr>
-          <tr><td><code>src/service/search/index/helper/backbone/buildBackboneMap.ts</code></td><td>1,207</td><td>算法/数据聚合逻辑重，适合拆成 pipeline stages。</td></tr>
-          <tr><td><code>src/core/storage/sqlite/ddl.ts</code></td><td>1,114</td><td>单文件 schema 中心过大，迁移/类型生成需要更强约束。</td></tr>
-          <tr><td><code>src/service/copilot/actions/index.ts</code></td><td>1,055</td><td>action manifest、执行器、prompt 调用、panel map 混在一起。</td></tr>
-        </tbody>
-      </table>
-
-      <h3>1.3 依赖图扫描</h3>
-      <table>
-        <thead>
-          <tr><th>信号</th><th>数字</th><th>为什么重要</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><code>AppContext</code> 文本出现</td><td>461</td><td>全局定位器已经成为默认取依赖方式，测试和生命周期会变脆。</td></tr>
-          <tr><td><code>AppContext.ts</code> inbound import</td><td>150</td><td>一个文件变化可能影响大量模块。</td></tr>
-          <tr><td>可疑跨层依赖边</td><td>315</td><td>包括 type-only import，但数量足以说明边界没有被工具守住。</td></tr>
-          <tr><td>最大循环依赖连通块</td><td>401 文件</td><td>说明不是零星 cycle，而是 UI/service/core/app 混成了大团。</td></tr>
-          <tr><td><code>as any</code> / TS 逃逸候选</td><td>350</td><td>类型系统已经被大量绕开，AI 继续改动时回归风险高。</td></tr>
-          <tr><td><code>console.*</code></td><td>401</td><td>调试日志分散，缺统一 logger 和 feature flag。</td></tr>
-          <tr><td>UI 规则漂移：<code>&lt;button</code>/<code>&lt;h1-h6</code>/<code>&lt;p&gt;</code></td><td>64</td><td>项目约定要求 shadcn Button 与避免语义标签，当前已有偏离。</td></tr>
-        </tbody>
-      </table>
-
-      <div class="callout risk">
-        <strong>类型检查结果：</strong>
-        <code>npx tsc --noEmit --pretty false --skipLibCheck</code> 仍有 124 条 <code>src/</code> 报错行。
-        全量 <code>tsc</code> 输出约 493 行，除了第三方类型问题，还包括项目自身的接口漂移、schema 漂移、prompt 变量漂移和 stale test。
-      </div>
-    </section>
-
-    <section id="architecture">
-      <h2>2. 当前架构图</h2>
-
-      <h3>2.1 当前产品/系统形态</h3>
-      <div class="mermaid-wrap">
-        <div class="mermaid">
-flowchart LR
-  User["Obsidian user"]
-
-  User --> Chat["Chat\nask and continue"]
-  User --> Analysis["AI Analysis\ninvestigate and report"]
-  User --> Copilot["Copilot\nimprove current note"]
-  User --> Knowledge["Knowledge Center\nmaintain vault"]
-  User --> Ambient["Ambient Push\nproactive related notes"]
-  User --> Settings["Settings / Onboarding\noperate system"]
-
-  Chat --> ChatStore["Vault markdown chat docs\nchat.sqlite"]
-  Analysis --> SearchAgent["VaultSearchAgent / Report agents"]
-  Copilot --> CopilotAgents["Action registry / Meta agent / Artifacts"]
-  Knowledge --> IndexGraph["SQLite index + Mobius graph"]
-  Ambient --> IndexGraph
-  SearchAgent --> SearchPipeline["Multi-retriever search\nRRF + PPR + rerank"]
-  SearchPipeline --> IndexGraph
-  CopilotAgents --> Providers["Provider profiles\nVercel AI SDK / Claude Agent SDK"]
-  Chat --> Providers
-  Analysis --> Providers
+      <div class="two-col">
+        <div class="decision-card bad">
+          <h3>当前更像什么</h3>
+          <p>
+            每个入口都在自己内部决定 prompt、工具、状态、保存、后端和 UI 展示。
+            结果是 Chat 不知道 Copilot 能力，Copilot 不知道 Chat context，AI Analysis session 长在 UI hook，Harness 不能平替 SDK。
+          </p>
+        </div>
+        <div class="decision-card good">
+          <h3>目标应该像什么</h3>
+          <p>
+            所有用户意图先进入 <code>Capability Registry</code>，由 <code>Execution Planner</code> 选择能力、权限、预算和后端；
+            <code>RunSession</code> 统一承载状态、事件、artifact、取消和历史。
+          </p>
         </div>
       </div>
 
-      <p>
-        这个形态本身是好的：产品已经有差异化，不是“聊天 + 搜索”拼装。
-        设计问题在于代码边界没有跟上产品复杂度，尤其是 Agent、Search、Copilot、UI session state 同时长大后，依赖方向开始互相穿透。
+      <div class="principles">
+        <div class="principle">
+          <strong>1. Surface 很薄</strong>
+          Chat、Copilot、Search、Settings 只负责收集意图和展示结果，不拥有业务流程。
+        </div>
+        <div class="principle">
+          <strong>2. Capability 是产品承诺</strong>
+          Doc Review、Vault Search、AI Analysis、Knowledge Health 这些能力有统一 id、输入、输出、权限和后端支持。
+        </div>
+        <div class="principle">
+          <strong>3. RunSession 是运行真相</strong>
+          流式事件、步骤、取消、恢复、history、artifact 不散落在 hook、modal、service 各处。
+        </div>
+        <div class="principle">
+          <strong>4. Backend 可替换</strong>
+          Harness、Claude Agent SDK、普通 provider 都实现同一套运行接口，UI 不关心谁执行。
+        </div>
+        <div class="principle">
+          <strong>5. Ports 隔离宿主</strong>
+          Obsidian vault、SQLite、MCP、Provider、Commands 都通过 port/adapter 接入，service 不直接抓 UI 或 app。
+        </div>
+        <div class="principle">
+          <strong>6. Contract 可测试</strong>
+          核心测试不是点 UI，而是验证 capability 输入输出、event trace、artifact、permission、template render。
+        </div>
+      </div>
+    </section>
+
+    <section id="capability-panorama">
+      <h2>2. 能力全景：这不是一个 Chat 插件，而是一组知识工作能力</h2>
+      <p class="section-lead">
+        先把能力铺开，才能谈模块化。Peak Assistant 已经覆盖从提问、搜索、研究、写作、审阅、知识维护、主动发现到系统配置的完整产品链路。
+        所以架构中枢不能只服务 Chat，它必须服务整个能力面。
       </p>
 
-      <h3>2.2 当前代码依赖现实</h3>
-      <div class="mermaid-wrap">
-        <div class="mermaid">
+      <div class="capability-board" aria-label="Peak Assistant capability panorama">
+        <article class="capability-card">
+          <span class="tag blue">Conversation</span>
+          <h3>Chat / Conversation</h3>
+          <p>用户最常用的入口。应该从模式选择器变成 General Chat，让系统内部判断要不要查、分析、调用 Copilot 或追问。</p>
+          <div class="capability-list">
+            <div><strong>已存在</strong>streaming、conversation storage、context pipeline、follow-ups、topic aggregation、project/history。</div>
+            <div><strong>架构问题</strong><code>chatMode</code> 在 UI store，service 读取 UI 状态决定工具。</div>
+            <div><strong>目标</strong>Chat 只发 intent；ExecutionPlanner 选择 capability。</div>
+          </div>
+        </article>
+
+        <article class="capability-card">
+          <span class="tag green">Retrieval</span>
+          <h3>General Search</h3>
+          <p>这是产品地基，不只是一个搜索框。它给 Chat、AI Analysis、Copilot、Ambient、Knowledge Center 都提供证据。</p>
+          <div class="capability-list">
+            <div><strong>已存在</strong>query parser、5 retrievers、adaptive RRF、PPR、rerank、highlight、click history。</div>
+            <div><strong>架构问题</strong><code>IndexService</code> 汇聚写入、graph、maintenance、enrichment。</div>
+            <div><strong>目标</strong>SearchPort + thin facade + pipeline stages。</div>
+          </div>
+        </article>
+
+        <article class="capability-card">
+          <span class="tag violet">Research</span>
+          <h3>AI Analysis / Vault Research</h3>
+          <p>长任务能力：搜证据、生成计划、分段分析、保存报告、继续分析。它应该是 RunSession 的样板。</p>
+          <div class="capability-list">
+            <div><strong>已存在</strong>VaultSearchAgentSDK、ReportOrchestrator、plan review、sources、analysis markdown。</div>
+            <div><strong>架构问题</strong>session snapshot 和 persistence 仍绑定 quick-search UI store shape。</div>
+            <div><strong>目标</strong>AnalysisSession domain + RunSession event stream。</div>
+          </div>
+        </article>
+
+        <article class="capability-card">
+          <span class="tag amber">Writing</span>
+          <h3>Doc Copilot / Writing</h3>
+          <p>当前文档的 polish、review、correct、suggest links、tags、split、translate、writing plan、add evidence 等能力。</p>
+          <div class="capability-list">
+            <div><strong>已存在</strong>15+ actions、Document/Vault/Writing 三类、structured artifacts、review history。</div>
+            <div><strong>架构问题</strong>manifest、executor、prompt、ResultPanel 混在 action registry。</div>
+            <div><strong>目标</strong>ActionManifest -> CapabilityManifest -> UI panel binding。</div>
+          </div>
+        </article>
+
+        <article class="capability-card">
+          <span class="tag green">Knowledge</span>
+          <h3>Knowledge Maintenance</h3>
+          <p>这是差异化主线：Vault Lint、Structural Hole、Gap Analysis、Precompiled Knowledge、Cascade Update、Auto-tag。</p>
+          <div class="capability-list">
+            <div><strong>已存在</strong>SQLite graph、PPR、hub regen、structural metrics、lint signals、cascade worker。</div>
+            <div><strong>架构问题</strong>这些能力分散在 search/index/lint/actions/ui 中，没有统一 readiness 和 action surface。</div>
+            <div><strong>目标</strong>Knowledge capability family + maintenance jobs + review surfaces。</div>
+          </div>
+        </article>
+
+        <article class="capability-card">
+          <span class="tag blue">Ambient</span>
+          <h3>Ambient / Morning Briefing</h3>
+          <p>系统主动发现相关笔记、写作提示、每日简报。它不适合塞进 Chat，而应该成为后台信号层。</p>
+          <div class="capability-list">
+            <div><strong>已存在</strong>Ambient Push、gutter、Morning Briefing、反馈日志、graph neighbor/co-citation 信号。</div>
+            <div><strong>架构问题</strong>展示位置和能力归属不清楚，容易被看成边缘 UI。</div>
+            <div><strong>目标</strong>AmbientSignalService 输出 signals，Chat/Knowledge/Dashboard 订阅。</div>
+          </div>
+        </article>
+
+        <article class="capability-card">
+          <span class="tag violet">Runtime</span>
+          <h3>Hermes Harness / Agent Runtime</h3>
+          <p>成本和模型自由度的核心：DeepSeek、OpenRouter、Ollama、本地模型都需要它承接长任务和工具调用。</p>
+          <div class="capability-list">
+            <div><strong>已存在</strong>loop、tier、permission、hook、subagent、memory、context、skill lifting、tool registry。</div>
+            <div><strong>架构问题</strong>vaultFull 和 Auto Review 仍硬依赖 Claude SDK MCP 形状。</div>
+            <div><strong>目标</strong>AgentBackend contract + HarnessStreamAdapter + backend conformance tests。</div>
+          </div>
+        </article>
+
+        <article class="capability-card">
+          <span class="tag amber">Ecosystem</span>
+          <h3>Skills / MCP / Tools</h3>
+          <p>插件能力市场的基础。Skill 是行为包，Tool 是原子动作，MCP 是外接工具协议。</p>
+          <div class="capability-list">
+            <div><strong>已存在</strong><code>_skills/</code>、built-in skills、MCP stdio/SSE client、MCPToolAdapter。</div>
+            <div><strong>架构问题</strong>Skill 没进入 Chat/Copilot/Analysis 主调度，用户感知弱。</div>
+            <div><strong>目标</strong>兼容 <code>SKILL.md</code>，编译成 AgentSkill，被 Capability 引用。</div>
+          </div>
+        </article>
+
+        <article class="capability-card">
+          <span class="tag blue">Operations</span>
+          <h3>Settings / Onboarding / Dashboard</h3>
+          <p>这是产品支架：让用户知道系统准备好了没有、成本花在哪里、下一步该做什么。</p>
+          <div class="capability-list">
+            <div><strong>已存在</strong>provider settings、Harness onboarding、index config、usage dashboard、capability readiness registry。</div>
+            <div><strong>架构问题</strong>当前 readiness 仍偏 surface 视角，不是完整 capability 视角。</div>
+            <div><strong>目标</strong>Capability readiness：provider、index、tools、permission、budget、last successful run。</div>
+          </div>
+        </article>
+      </div>
+
+      <div class="decision-card good">
+        <h3>能力全景带来的架构结论</h3>
+        <p>
+          真正的中枢不是 <code>AIServiceManager</code>、不是 <code>AppContext</code>、也不是某个 Chat service；
+          中枢应该是 <code>Capability + RunSession + Backend + Ports</code>。
+          这样 Search 是能力，不是只属于 Quick Search；Copilot 是能力，不是只属于 Copilot 面板；Skill 是行为包，不是孤立入口。
+        </p>
+      </div>
+    </section>
+
+    <section id="modern-core">
+      <h2>3. 现代模块中枢图：系统中间应该这样长</h2>
+      <p class="section-lead">
+        这张图是下一轮重构的核心。它把产品入口、能力目录、运行会话、agent 后端和底层资源分开。
+        只要这个中枢稳定，后面新增 Copilot action、Skill、MCP 工具、Ambient 推荐、Dashboard action 都不会继续互相污染。
+      </p>
+
+      <div class="arch-spine" aria-label="Modern modular architecture center">
+        <div class="spine-column">
+          <div class="spine-kicker">Surfaces</div>
+          <div class="spine-title">用户入口</div>
+          <div class="pill-list">
+            <div class="pill"><strong>General Chat</strong>问答、继续、追问、轻量调度</div>
+            <div class="pill"><strong>Search / AI Analysis</strong>搜索和长报告入口</div>
+            <div class="pill"><strong>Copilot</strong>当前文档改进和审阅</div>
+            <div class="pill"><strong>Knowledge / Ambient</strong>维护、发现、提醒</div>
+            <div class="pill"><strong>Settings / Onboarding</strong>能力准备和配置</div>
+          </div>
+        </div>
+
+        <div class="spine-column">
+          <div class="spine-kicker">Capability</div>
+          <div class="spine-title">产品能力层</div>
+          <div class="pill-list">
+            <div class="pill"><strong>Capability Manifest</strong>id、输入、输出、权限、成本</div>
+            <div class="pill"><strong>Execution Planner</strong>从意图选择能力和后端</div>
+            <div class="pill"><strong>Policy Guard</strong>只读、写入、确认、预算</div>
+            <div class="pill"><strong>Surface Binding</strong>同一能力可出现在多个入口</div>
+          </div>
+        </div>
+
+        <div class="spine-column">
+          <div class="spine-kicker">Run</div>
+          <div class="spine-title">运行会话层</div>
+          <div class="pill-list">
+            <div class="pill"><strong>RunSession</strong>状态机、取消、恢复、历史</div>
+            <div class="pill"><strong>Event Stream</strong>统一 text、tool、reasoning、artifact</div>
+            <div class="pill"><strong>Artifact Store</strong>报告、patch、sources、trace</div>
+            <div class="pill"><strong>Context Stack</strong>slot、压缩、budget、引用</div>
+          </div>
+        </div>
+
+        <div class="spine-column">
+          <div class="spine-kicker">Runtime</div>
+          <div class="spine-title">Agent 后端层</div>
+          <div class="pill-list">
+            <div class="pill"><strong>Hermes Harness</strong>DeepSeek、OpenRouter、本地模型</div>
+            <div class="pill"><strong>Claude SDK Adapter</strong>高质量后端和复杂兜底</div>
+            <div class="pill"><strong>Provider Chat</strong>普通流式回答</div>
+            <div class="pill"><strong>Skill Runtime</strong>行为手册、lazy load、工具白名单</div>
+            <div class="pill"><strong>Tool Registry</strong>本地工具、MCP、Obsidian commands</div>
+          </div>
+        </div>
+
+        <div class="spine-column">
+          <div class="spine-kicker">Ports</div>
+          <div class="spine-title">资源与宿主层</div>
+          <div class="pill-list">
+            <div class="pill"><strong>VaultPort</strong>读写笔记和当前文件</div>
+            <div class="pill"><strong>SearchPort</strong>SQLite、FTS、PPR、Graph</div>
+            <div class="pill"><strong>TemplatePort</strong>prompt、config、Skill source</div>
+            <div class="pill"><strong>ProviderPort</strong>模型、profile、usage</div>
+            <div class="pill"><strong>CommandPort</strong>Obsidian 和第三方插件 command</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="map-row">
+        <div class="map-label">模块化判断标准</div>
+        <div class="map-items">
+          <div class="map-item"><strong>能不能换后端？</strong>同一个 Doc Review 能用 Harness 跑，也能用 Claude SDK 跑。</div>
+          <div class="map-item"><strong>能不能复用能力？</strong>Search 能力可以被 Chat、AI Analysis、Copilot 同时调用。</div>
+          <div class="map-item"><strong>能不能独立测试？</strong>Capability 输入 fixture 后能得到稳定 event trace 和 artifact。</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="modernity">
+      <h2>4. 什么叫现代、模块化、优雅：不是口号，是可执行的架构标准</h2>
+      <p class="section-lead">
+        “现代”和“优雅”不能只写成形容词。对这个项目来说，它们意味着：能力声明式、运行态统一、边界可测试、后端可替换、宿主依赖被隔离、配置资产可治理。
+      </p>
+
+      <div class="elegance-grid">
+        <article class="elegance-card">
+          <span class="tag blue">1</span>
+          <h3>声明式能力，而不是入口里手写流程</h3>
+          <p>新增能力时，先写 manifest：输入、输出、权限、成本、后端支持、默认 skill、展示 surface。</p>
+          <div class="before-after">
+            <div><strong>现在</strong>Chat tools、Copilot actions、Skill workflow、MCP tools 各自注册。</div>
+            <div><strong>目标</strong>CapabilityRegistry 管产品能力；SkillRegistry 管行为包；ToolRegistry 管动作。</div>
+          </div>
+        </article>
+
+        <article class="elegance-card">
+          <span class="tag green">2</span>
+          <h3>运行态统一，而不是每个 hook 自己存状态</h3>
+          <p>长任务都进入 <code>RunSession</code>：状态、事件、取消、恢复、history、artifact 都有统一模型。</p>
+          <div class="before-after">
+            <div><strong>现在</strong>AI Analysis session 在 UI store，Copilot review 有自己的 session，Harness 有 loop result。</div>
+            <div><strong>目标</strong>ChatRun、AnalysisRun、CopilotRun 都输出 <code>RunEvent</code>。</div>
+          </div>
+        </article>
+
+        <article class="elegance-card">
+          <span class="tag amber">3</span>
+          <h3>Ports and Adapters，而不是 service 到处拿 AppContext</h3>
+          <p><code>AppContext</code> 可以保留，但 service 不应该知道 Obsidian、React store、modal 的具体形状。</p>
+          <div class="before-after">
+            <div><strong>现在</strong>service 直接 import UI store、AppContext、Obsidian app。</div>
+            <div><strong>目标</strong>service 只依赖 <code>VaultPort</code>、<code>SearchPort</code>、<code>ProviderPort</code>、<code>CommandPort</code>。</div>
+          </div>
+        </article>
+
+        <article class="elegance-card">
+          <span class="tag violet">4</span>
+          <h3>后端中立，而不是 SDK 形状污染产品能力</h3>
+          <p>Claude SDK、Hermes Harness、普通 provider 都是 backend adapter，不应该决定 capability 的产品语义。</p>
+          <div class="before-after">
+            <div><strong>现在</strong>vaultFull 和 Auto Review 绑定 Claude SDK MCP server 和 output MCP。</div>
+            <div><strong>目标</strong>统一 <code>AgentBackend</code>，工具和输出 artifact 同时适配 SDK/Harness。</div>
+          </div>
+        </article>
+
+        <article class="elegance-card">
+          <span class="tag blue">5</span>
+          <h3>资产可治理，而不是 prompt/template 越堆越多</h3>
+          <p>142 个 template 是资产，不是负担。关键是每个资产要有 owner、schema、调用方、render smoke、废弃状态。</p>
+          <div class="before-after">
+            <div><strong>现在</strong>prompt、tool templates、config JSON、Skill markdown 混在 templates 和 service 里。</div>
+            <div><strong>目标</strong>TemplateManifest + PromptId + schema + unused/quarantine list。</div>
+          </div>
+        </article>
+
+        <article class="elegance-card">
+          <span class="tag green">6</span>
+          <h3>测试锁行为，而不是靠手感回归</h3>
+          <p>优雅架构一定容易测：输入 fixture、fake vault、fake model、fake tools，就能跑完整产品 contract。</p>
+          <div class="before-after">
+            <div><strong>现在</strong>已有 83 个测试，但 runner 卡死且部分失败不 exit 1。</div>
+            <div><strong>目标</strong>test runner 可信；核心 capability 有 scenario + conformance tests。</div>
+          </div>
+        </article>
+      </div>
+
+      <div class="pattern-grid" aria-label="Architecture pattern catalog">
+        <div class="pattern"><span class="tag blue">Pattern</span><strong>Facade</strong>保留 <code>IndexService</code>、<code>AIServiceManager</code> 这类入口，但把实现拆到小 service。</div>
+        <div class="pattern"><span class="tag green">Pattern</span><strong>Pipeline</strong>Search、Context、Indexing、Report generation 都用 stage + DTO + fixture tests。</div>
+        <div class="pattern"><span class="tag amber">Pattern</span><strong>Registry</strong>Capability、Skill、Tool、Provider、Template 各自 registry，职责不互相吞。</div>
+        <div class="pattern"><span class="tag violet">Pattern</span><strong>State Machine</strong>Copilot Review、AI Analysis、Harness loop 明确状态和转移。</div>
+        <div class="pattern"><span class="tag blue">Pattern</span><strong>Ports</strong>Vault、Search、Provider、Template、Command、MCP 都通过 port 接入。</div>
+        <div class="pattern"><span class="tag green">Pattern</span><strong>Manifest + Compiler</strong>用户/配置层写 source，运行时用 compiled object。</div>
+        <div class="pattern"><span class="tag amber">Pattern</span><strong>Contract Test</strong>每个能力有输入、事件轨迹、输出 artifact 的测试。</div>
+        <div class="pattern"><span class="tag violet">Pattern</span><strong>Resource Lifecycle</strong>初始化、热加载、dispose、reload 都集中到 lifecycle services。</div>
+      </div>
+
+      <h3>4.1 Pattern Atlas：设计模式不是名词，是读代码和改代码的地图</h3>
+      <p class="section-lead">
+        这一节不要把 Facade、Pipeline、Registry、State Machine 当成空话。每个模式都要回答四件事：
+        它解决哪个坏味道、项目里对应哪里、用什么图最容易看懂、落地后怎么测试。
+      </p>
+
+      <div class="atlas-card">
+        <div class="atlas-head">
+          <div>
+            <h3>先选图型，再讲模式</h3>
+            <p>结构关系、运行时序、状态转移、数据契约、优先级、迁移路线不是同一种问题，所以不能全部画成流程图。</p>
+          </div>
+          <span class="tag blue">Map</span>
+        </div>
+        <div class="diagram-pair">
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>概念总览</span><span>mindmap</span></div>
+            <div class="mermaid">
+mindmap
+  root((Pattern Atlas))
+    Boundary
+      Facade
+      Ports
+      AppContext
+    Runtime
+      Pipeline
+      RunSession
+      Lifecycle
+    Declaration
+      Registry
+      Manifest
+      Compiler
+    Agent
+      Capability
+      Skill
+      Tool
+      MCP
+    Quality
+      Contract Test
+      Golden Trace
+      Conformance
+            </div>
+          </div>
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>先做哪些</span><span>quadrant</span></div>
+            <div class="mermaid">
+quadrantChart
+  title Architecture refactor priority
+  x-axis Local cleanup --> Product spine
+  y-axis Low risk --> High risk
+  quadrant-1 Strategic first
+  quadrant-2 Risk control
+  quadrant-3 Opportunistic
+  quadrant-4 Split before doing
+  "Capability Manifest": [0.82, 0.52]
+  "RunSession": [0.78, 0.66]
+  "Ports": [0.66, 0.48]
+  "Index Facade": [0.48, 0.36]
+  "Template governance": [0.58, 0.28]
+  "Big rewrite": [0.86, 0.84]
+            </div>
+          </div>
+        </div>
+        <div class="atlas-grid">
+          <div class="atlas-note"><strong>读法</strong>右上角不是“不能做”，而是要拆成多个安全 PR。最危险的是一次性重写整个 service。</div>
+          <div class="atlas-note"><strong>结论</strong>先抽能力说明书、RunSession、Ports 和 contract tests，再逐步变薄已有 facade。</div>
+        </div>
+      </div>
+
+      <div class="atlas-card">
+        <div class="atlas-head">
+          <div>
+            <h3>Facade：保留稳定入口，不等于继续做上帝对象</h3>
+            <p>看这张图只抓一个点：外部调用方先不迁移；<code>IndexService</code> 从“亲自干所有事的人”变成“把请求分派给专门服务的门口”。</p>
+          </div>
+          <span class="tag blue">Boundary</span>
+        </div>
+        <div class="atlas-grid">
+          <div class="atlas-note"><strong>现在的问题</strong><code>IndexService</code> 同时像 controller、domain service、repository、job runner、UI notifier。它越大，任何改动越难测。</div>
+          <div class="atlas-note"><strong>Facade 的意思</strong>不是再造一层复杂架构，而是保留旧 API，把真实工作搬到更小、更专门、更容易测试的模块里。</div>
+        </div>
+        <div class="diagram-pair">
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>现在：一个类又当门口又干活</span><span>before</span></div>
+            <div class="mermaid">
+flowchart TD
+  subgraph Callers["调用方"]
+    UI["UI 和 hooks"]
+    Commands["命令和设置"]
+    Jobs["后台触发"]
+  end
+  subgraph God["IndexService 现在"]
+    API["对外入口方法"]
+    DB["写 SQLite"]
+    Embed["调用 embedding"]
+    Graph["维护 graph"]
+    Notice["弹 Obsidian Notice"]
+    Background["跑后台 job"]
+    Config["读模板配置"]
+  end
+  UI --> API
+  Commands --> API
+  Jobs --> API
+  API --> DB
+  API --> Embed
+  API --> Graph
+  API --> Notice
+  API --> Background
+  API --> Config
+  classDef hot fill:#fff1f1,stroke:#b42318,color:#7f1d1d
+  class API,DB,Embed,Graph,Notice,Background,Config hot
+            </div>
+          </div>
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>目标：旧入口保留，内部拆成专门服务</span><span>after</span></div>
+            <div class="mermaid">
+flowchart TD
+  subgraph SameCallers["调用方不变"]
+    UI2["UI 和 hooks"]
+    Commands2["命令和设置"]
+    Jobs2["后台触发"]
+  end
+  Facade["IndexService Facade 薄入口"]
+  UI2 --> Facade
+  Commands2 --> Facade
+  Jobs2 --> Facade
+  Facade --> Writer["DocumentIndexWriter 写索引"]
+  Facade --> Reader["IndexReadService 读状态"]
+  Facade --> GraphSvc["GraphProjectionService 做图谱投影"]
+  Facade --> Queue["IndexEnrichmentQueue 管 embedding 队列"]
+  Facade --> Maintenance["MobiusMaintenanceService 跑维护任务"]
+  Writer --> IndexRepo["IndexRepository"]
+  Reader --> IndexRepo
+  GraphSvc --> GraphRepo["GraphRepository"]
+  Queue --> ProviderPort["ProviderPort"]
+  Maintenance --> Scheduler["JobScheduler"]
+  classDef facade fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
+  class Facade facade
+            </div>
+          </div>
+        </div>
+        <pre class="code-block"><code>// 调用方仍然用 IndexService；IndexService 只做分派，不再把所有逻辑写在自己身上。
+class IndexService {
+  constructor(
+    private writer: DocumentIndexWriter,
+    private reader: IndexReadService,
+    private maintenance: MobiusMaintenanceService,
+  ) {}
+
+  async indexVault(input: IndexVaultInput): Promise&lt;IndexVaultResult&gt; {
+    return this.writer.indexVault(input);
+  }
+
+  async getStatus(): Promise&lt;IndexStatus&gt; {
+    return this.reader.getStatus();
+  }
+
+  async runMaintenance(): Promise&lt;MaintenanceResult&gt; {
+    return this.maintenance.run();
+  }
+}</code></pre>
+        <div class="check-list">
+          <div class="check">调用方不用大迁移，旧入口仍然存在。</div>
+          <div class="check">复杂逻辑搬进小 service，每个 service 单独测。</div>
+          <div class="check">Facade 只协调，不直接碰 UI store、Notice、React modal。</div>
+        </div>
+      </div>
+
+      <div class="atlas-card">
+        <div class="atlas-head">
+          <div>
+            <h3>Pipeline：长流程不是一串函数调用，而是一组可测试的阶段契约</h3>
+            <p>Chat context、General Search、AI Analysis report、Index build 都应该是 pipeline。核心不是“分文件”，而是每段有 DTO、budget、失败策略和 fixture。</p>
+          </div>
+          <span class="tag green">Runtime</span>
+        </div>
+        <div class="diagram-pair">
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>Chat context 时序</span><span>sequence</span></div>
+            <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant User
+  participant ChatUI
+  participant Submit as useChatSubmit
+  participant Pipeline as ContextPipeline
+  participant Slots as Slot collectors
+  participant Budget as Context budgeter
+  participant Model as Provider or AgentBackend
+  User->>ChatUI: Send message
+  ChatUI->>Submit: build request
+  Submit->>Pipeline: collect ContextRequest
+  Pipeline->>Slots: current note, selection, vault hits, history
+  Slots-->>Pipeline: ContextSlot[]
+  Pipeline->>Budget: compress and rank
+  Budget-->>Pipeline: ContextPacket
+  Pipeline-->>Submit: messages + metadata
+  Submit->>Model: stream request
+  Model-->>ChatUI: LLMStreamEvent
+            </div>
+          </div>
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>Stage contract</span><span>flow + fallback</span></div>
+            <div class="mermaid">
+flowchart LR
+  Input["Input DTO"] --> Parse["Parse"]
+  Parse --> Retrieve["Retrieve"]
+  Retrieve --> Merge["Merge"]
+  Merge --> Rank["Rank"]
+  Rank --> Pack["Pack"]
+  Pack --> Output["Output DTO"]
+  Retrieve -->|empty| Fallback["Fallback retriever"]
+  Rank -->|over budget| Compress["Compress"]
+  Compress --> Pack
+  Parse -. fixture .-> ParseTest["parser fixture"]
+  Retrieve -. fixture .-> RetrievalTest["retrieval fixture"]
+  Pack -. fixture .-> SnapshotTest["golden packet"]
+            </div>
+          </div>
+        </div>
+        <pre class="code-block"><code>interface PipelineStage&lt;I, O&gt; {
+  id: string;
+  run(input: I, ctx: PipelineContext): Promise&lt;StageResult&lt;O&gt;&gt;;
+  onError?: "skip" | "fallback" | "fail";
+}</code></pre>
+        <div class="check-list">
+          <div class="check">每个 stage 可以独立跑 fixture。</div>
+          <div class="check">失败策略写在 stage contract，不藏在 catch 里。</div>
+          <div class="check">UI 只看最终 packet 和 trace，不理解每个 stage 细节。</div>
+        </div>
+      </div>
+
+      <div class="atlas-card">
+        <div class="atlas-head">
+          <div>
+            <h3>Registry + Manifest：注册表管发现，说明书管语义，执行器管动作</h3>
+            <p><code>CopilotActionRegistry</code>、Chat tools、Skill registry、MCP tools 现在容易互相吞职责。目标是声明、执行、展示分开。</p>
+          </div>
+          <span class="tag amber">Declaration</span>
+        </div>
+        <div class="diagram-pair">
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>数据模型</span><span>er diagram</span></div>
+            <div class="mermaid">
+erDiagram
+  CAPABILITY_MANIFEST ||--o{ SKILL_REF : uses
+  CAPABILITY_MANIFEST ||--o{ TOOL_PERMISSION : allows
+  CAPABILITY_MANIFEST ||--o{ SURFACE_BINDING : appears_on
+  CAPABILITY_MANIFEST ||--o{ BACKEND_POLICY : supports
+  SKILL_REF }o--|| SKILL_PACKAGE : points_to
+  TOOL_PERMISSION }o--|| TOOL_DEFINITION : gates
+  SURFACE_BINDING }o--|| UI_SURFACE : renders
+
+  CAPABILITY_MANIFEST {
+    string id
+    string productIntent
+    string inputContract
+    string outputContract
+    string permissionLevel
+  }
+  SKILL_PACKAGE {
+    string id
+    string summary
+    string bodyPath
+    string version
+  }
+  TOOL_DEFINITION {
+    string name
+    string schema
+    string riskLevel
+  }
+            </div>
+          </div>
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>注册和查询时序</span><span>sequence</span></div>
+            <div class="mermaid">
+sequenceDiagram
+  participant Plugin as Plugin onload
+  participant Cap as CapabilityRegistry
+  participant Skill as SkillRegistry
+  participant Tool as ToolRegistry
+  participant UI as SurfaceRegistry
+  participant Planner as ExecutionPlanner
+  Plugin->>Skill: load skill summaries
+  Plugin->>Tool: load local and MCP tools
+  Plugin->>Cap: register capability manifests
+  Plugin->>UI: register surface bindings
+  Planner->>Cap: match intent and surface
+  Cap-->>Planner: manifest + policies
+  Planner->>Skill: lazy load referenced skill body
+  Planner->>Tool: authorize allowed tools
+            </div>
+          </div>
+        </div>
+        <pre class="code-block"><code>{
+  "id": "doc.review.current",
+  "productIntent": "Review the current Obsidian note",
+  "defaultSkill": "peak/doc-review",
+  "allowedTools": ["vault.readCurrent", "vault.search", "artifact.proposePatch"],
+  "surfaces": ["copilot", "chat"],
+  "backends": ["hermesHarness", "claudeSdk"],
+  "outputContract": "ReviewArtifact"
+}</code></pre>
+        <div class="check-list">
+          <div class="check">Registry 不保存 React panel 实例。</div>
+          <div class="check">Manifest 不直接执行 side effect。</div>
+          <div class="check">Executor 不决定自己出现在哪个 UI surface。</div>
+        </div>
+      </div>
+
+      <div class="atlas-card">
+        <div class="atlas-head">
+          <div>
+            <h3>State Machine + RunSession：长任务的真相只能有一个</h3>
+            <p>AI Analysis、Copilot Auto Review、Harness loop 都不是普通 request/response。它们需要统一的 session、event trace、取消、暂停、artifact 和恢复。</p>
+          </div>
+          <span class="tag violet">Runtime</span>
+        </div>
+        <div class="diagram-pair">
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>RunSession 状态</span><span>state diagram</span></div>
+            <div class="mermaid">
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Preparing: create run
+  Preparing --> Running: backend accepted
+  Running --> WaitingForUser: needs decision
+  WaitingForUser --> Running: user approves
+  Running --> ArtifactReady: output produced
+  ArtifactReady --> Reviewing: user opens result
+  Reviewing --> Applying: apply changes
+  Reviewing --> Completed: accept artifact only
+  Applying --> Completed
+  Running --> Failed: backend or tool error
+  Running --> Cancelled: user cancels
+  WaitingForUser --> Cancelled
+  Failed --> Idle: retry
+  Completed --> [*]
+  Cancelled --> [*]
+            </div>
+          </div>
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>事件进入 UI</span><span>sequence</span></div>
+            <div class="mermaid">
+sequenceDiagram
+  participant Backend as AgentBackend
+  participant Session as RunSessionStore
+  participant Trace as RunEventLog
+  participant UI as Chat or Copilot UI
+  Backend-->>Session: status(preparing)
+  Backend-->>Trace: tool_call.started
+  Backend-->>Trace: tool_call.result
+  Backend-->>Session: artifact.ready
+  UI->>Session: subscribe(runId)
+  Session-->>UI: status + artifact summary
+  UI->>Trace: expand details
+  Trace-->>UI: ordered events
+            </div>
+          </div>
+        </div>
+        <pre class="code-block"><code>type RunEvent =
+  | { type: "status"; runId: string; status: RunStatus }
+  | { type: "tool_call"; runId: string; tool: string; inputHash: string }
+  | { type: "artifact"; runId: string; artifact: ArtifactRef }
+  | { type: "error"; runId: string; recoverable: boolean; message: string };</code></pre>
+        <div class="check-list">
+          <div class="check">UI store 不再自己拼运行状态。</div>
+          <div class="check">每个 backend 都输出同一种 RunEvent。</div>
+          <div class="check">失败、取消、重试都有状态迁移测试。</div>
+        </div>
+      </div>
+
+      <div class="atlas-card">
+        <div class="atlas-head">
+          <div>
+            <h3>Ports and Adapters：AppContext 可以是组合根，但 service 不该依赖宿主细节</h3>
+            <p><code>AppContext</code> 不是坏东西。问题是 service 层直接认识 Obsidian app、React store、modal、Notice 后，就很难测试和替换后端。</p>
+          </div>
+          <span class="tag blue">Boundary</span>
+        </div>
+        <div class="diagram-pair">
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>允许依赖方向</span><span>layered map</span></div>
+            <div class="mermaid">
 flowchart TB
-  App["app\nObsidian integration"]
-  UI["ui\nReact views and stores"]
-  Service["service\nbusiness and agents"]
-  Core["core\nstorage, providers, docs, utils"]
-  Types["types/templates"]
-
-  App --> Service
-  App --> UI
-  App --> Core
-
-  UI --> UI
-  UI --> Service
-  UI --> Core
-  UI -. "108 edges" .-> App
-
-  Service --> Service
-  Service --> Core
-  Service -. "74 edges" .-> App
-  Service -. "55 edges" .-> UI
-
-  Core --> Core
-  Core -. "56 edges" .-> Service
-  Core -. "17 edges" .-> App
-  Core -. "5 edges" .-> UI
-
-  classDef ok fill:#ecfdf5,stroke:#0f766e,color:#0f172a;
-  classDef risk fill:#fff1f1,stroke:#b42318,color:#0f172a;
-  class App,UI,Service,Core,Types ok;
+  subgraph APP["app layer"]
+    Main["main.ts"]
+    AppContext["AppContext composition root"]
+    ObsidianAdapters["Obsidian adapters"]
+  end
+  subgraph SERVICE["service layer"]
+    CapSvc["Capability services"]
+    AgentSvc["Agent backends"]
+    SearchSvc["Search orchestration"]
+  end
+  subgraph PORTS["ports"]
+    VaultPort["VaultPort"]
+    SearchPort["SearchPort"]
+    ProviderPort["ProviderPort"]
+    ToolPort["ToolPort"]
+    CommandPort["CommandPort"]
+  end
+  subgraph CORE["core"]
+    Schemas["Schemas"]
+    DTOs["DTOs"]
+    Providers["Provider abstractions"]
+  end
+  Main --> AppContext
+  AppContext --> ObsidianAdapters
+  ObsidianAdapters --> PORTS
+  SERVICE --> PORTS
+  SERVICE --> CORE
+  APP --> SERVICE
+            </div>
+          </div>
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>禁止路径</span><span>anti-pattern</span></div>
+            <div class="mermaid">
+flowchart LR
+  Service["service/*"] --> UIStore["ui/store/*"]
+  Service --> Modal["React modal"]
+  Service --> Notice["Obsidian Notice"]
+  Service --> App["AppContext.getInstance().app"]
+  UIStore --> Service
+  classDef bad fill:#fff1f1,stroke:#b42318,color:#7f1d1d
+  class UIStore,Modal,Notice,App bad
+            </div>
+          </div>
+        </div>
+        <pre class="code-block"><code>interface VaultPort {
+  readCurrentNote(): Promise&lt;VaultNote | null&gt;;
+  readByPath(path: string): Promise&lt;VaultNote&gt;;
+  proposePatch(input: PatchProposal): Promise&lt;ArtifactRef&gt;;
+}</code></pre>
+        <div class="check-list">
+          <div class="check">Service 测试可以用 FakeVaultPort。</div>
+          <div class="check">Obsidian command 通过 CommandPort 暴露给 agent。</div>
+          <div class="check">UI 只负责展示和用户确认，不拥有业务规则。</div>
         </div>
       </div>
 
-      <p>
-        实际依赖图显示，代码并没有保持“core 最底层、service 中间、ui 外层、app 组装”的稳定方向。
-        <code>core</code> 反向 import <code>service/app/ui</code> 是最需要处理的结构性问题；<code>service</code> 直接 import UI store/modal 也会让业务逻辑难以测试和复用。
-      </p>
+      <div class="atlas-card">
+        <div class="atlas-head">
+          <div>
+            <h3>Capability / Skill / Tool / MCP：四个词必须分层，否则系统会越来越乱</h3>
+            <p>Capability 是产品能做什么；Skill 是 agent 怎么做的工作手册；Tool 是可调用动作；MCP 是接入外部工具的一种协议。</p>
+          </div>
+          <span class="tag green">Agent</span>
+        </div>
+        <div class="diagram-pair">
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>分层栈</span><span>architecture stack</span></div>
+            <div class="mermaid">
+flowchart TB
+  Surface["Surface: Chat / Copilot / Knowledge"] --> Capability["Capability: review current doc"]
+  Capability --> Skill["Skill: doc review work manual"]
+  Skill --> ToolPolicy["Allowed tool policy"]
+  ToolPolicy --> ToolA["Tool: read current note"]
+  ToolPolicy --> ToolB["Tool: search vault"]
+  ToolPolicy --> ToolC["Tool: propose patch"]
+  ToolB --> Local["Local adapter"]
+  ToolC --> Obsidian["Obsidian adapter"]
+  ToolA --> MCP["MCP adapter when external"]
+  Capability --> Backend["Backend: Hermes or Claude SDK"]
+            </div>
+          </div>
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>一次 Doc Review</span><span>journey</span></div>
+            <div class="mermaid">
+journey
+  title Doc Copilot Auto Review
+  section Product
+    User chooses Auto Review: 5: User
+    Planner selects capability: 4: Planner
+  section Agent
+    Skill body is loaded: 4: SkillRuntime
+    Tools are authorized: 4: ToolRegistry
+    Backend runs loop: 3: Hermes
+  section Result
+    Artifact is proposed: 4: Backend
+    User reviews changes: 5: User
+    Patch is applied or saved: 4: Surface
+            </div>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>概念</th><th>项目里应该负责</th><th>不应该负责</th></tr></thead>
+          <tbody>
+            <tr><td>Capability</td><td>产品入口、权限、输入输出、支持后端、surface。</td><td>写具体 prompt 长文、直接执行工具。</td></tr>
+            <tr><td>Skill</td><td>工作手册、步骤习惯、few-shot、允许工具范围。</td><td>决定 UI 面板、保存用户配置。</td></tr>
+            <tr><td>Tool</td><td>一个可调用动作，带 schema、权限和超时。</td><td>表达产品价值或用户心智。</td></tr>
+            <tr><td>MCP</td><td>外部工具协议，转成内部 ToolDef。</td><td>直接暴露给 Chat UI 当产品能力。</td></tr>
+          </tbody>
+        </table>
+      </div>
 
-      <h3>2.3 启动生命周期</h3>
-      <div class="mermaid-wrap">
-        <div class="mermaid">
-flowchart TD
-  Load["Plugin onload"]
-  Template["TemplateManager\nmodel registry\nstopwords"]
-  Profiles["ProfileRegistry\nnormalize settings"]
-  AI["AIServiceManager"]
-  Context["AppContext created early\nsearchClient temporarily null"]
-  Loaders["DocumentLoaderManager.init"]
-  Desktop{"Desktop?"}
-  SQLite["sqliteStoreManager.init"]
-  Search["IndexService + SearchClient\nSearchUpdateListener\nCascadeWorker"]
-  Usage["UsageTrackingService"]
-  Session["SessionContextService\nPatternDiscovery\nSDK warmup"]
-  Views["ViewManager\nReact views"]
-  Commands["Commands + Settings tab"]
-  MCP["MCP connections\nSkillRegistry"]
-  Ambient["AmbientPush + MorningBriefing"]
-  Ready["Ready"]
-
-  Load --> Template --> Profiles --> AI --> Context --> Loaders --> Desktop
-  Desktop -->|yes| SQLite --> Search --> Usage --> Session --> Views
-  Desktop -->|no| Views
-  Views --> Commands --> MCP --> Ambient --> Ready
+      <div class="atlas-card">
+        <div class="atlas-head">
+          <div>
+            <h3>Manifest + Compiler：用户可编辑 source，运行时只吃稳定对象</h3>
+            <p>Skills、Templates、Copilot actions 都不应该把“源码形态”和“运行时形态”混在一起。编译层负责校验、补默认值、解析引用。</p>
+          </div>
+          <span class="tag amber">Declaration</span>
+        </div>
+        <div class="diagram-pair">
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>编译链路</span><span>compile pipeline</span></div>
+            <div class="mermaid">
+flowchart LR
+  SkillSource["SKILL.md + assets"] --> SkillCompiler["SkillCompiler"]
+  TemplateSource["template JSON or prompt"] --> TemplateCompiler["TemplateCompiler"]
+  ActionSource["Copilot action manifest"] --> CapabilityCompiler["CapabilityCompiler"]
+  SkillCompiler --> AgentSkill["AgentSkill"]
+  TemplateCompiler --> PromptContract["PromptContract"]
+  CapabilityCompiler --> CapabilityManifest["CapabilityManifest"]
+  AgentSkill --> Runtime["AgentRuntime"]
+  PromptContract --> Runtime
+  CapabilityManifest --> Runtime
+            </div>
+          </div>
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>校验状态</span><span>state diagram</span></div>
+            <div class="mermaid">
+stateDiagram-v2
+  [*] --> Discovered
+  Discovered --> Parsed
+  Parsed --> Invalid: schema error
+  Parsed --> ReferencesChecked
+  ReferencesChecked --> Invalid: missing tool or template
+  ReferencesChecked --> PermissionChecked
+  PermissionChecked --> Quarantined: unsafe script
+  PermissionChecked --> Compiled
+  Compiled --> Loaded
+  Invalid --> Quarantined
+  Loaded --> [*]
+            </div>
+          </div>
+        </div>
+        <pre class="code-block"><code>type CompiledSkill = {
+  id: string;
+  summary: string;
+  body: string;
+  allowedTools: ToolName[];
+  examples: SkillExample[];
+  outputContract?: SchemaRef;
+  sourceHash: string;
+};</code></pre>
+        <div class="check-list">
+          <div class="check">用户写 source，不直接写 runtime object。</div>
+          <div class="check">编译失败进入 quarantine，不让坏 skill 进 agent。</div>
+          <div class="check">每个 compiled object 有 sourceHash，方便缓存和调试。</div>
         </div>
       </div>
 
-      <p>
-        启动顺序设计是有经验沉淀的：<code>AppContext</code> 提前创建是为了解决下游 init 期间的 singleton 访问。
-        但这也造成一个长期成本：很多模块可以绕过构造函数直接从全局拿依赖。短期方便，长期让生命周期和测试隔离变困难。
-      </p>
+      <div class="atlas-card">
+        <div class="atlas-head">
+          <div>
+            <h3>Contract Test：不要只测函数，要测产品能力的输入、事件轨迹和输出</h3>
+            <p>这个项目不能靠每次手测 Chat、Search、Copilot、AI Analysis。核心能力要能在 fake vault、fake model、fake tools 上跑完。</p>
+          </div>
+          <span class="tag violet">Quality</span>
+        </div>
+        <div class="diagram-pair">
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>测试夹具</span><span>test harness</span></div>
+            <div class="mermaid">
+flowchart LR
+  Scenario["Scenario fixture"] --> Runner["Capability runner"]
+  FakeVault["Fake VaultPort"] --> Runner
+  FakeSearch["Fake SearchPort"] --> Runner
+  FakeModel["Fake ProviderPort"] --> Runner
+  FakeTools["Fake ToolPort"] --> Runner
+  Runner --> Events["RunEvent trace"]
+  Runner --> Artifact["Artifact"]
+  Events --> Assert["Assertions"]
+  Artifact --> Assert
+            </div>
+          </div>
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>测试金字塔</span><span>coverage pyramid</span></div>
+            <div class="mermaid">
+flowchart BT
+  Unit["Unit: parser, schema, stage"] --> Contract["Contract: capability input/output"]
+  Contract --> Scenario["Scenario: Chat/Search/Copilot flow"]
+  Scenario --> Browser["Browser smoke: rendered UI"]
+  Browser --> Manual["Manual QA: visual and product feel"]
+            </div>
+          </div>
+        </div>
+        <pre class="code-block"><code>{
+  "scenario": "doc-review-current-note",
+  "input": { "path": "Projects/Peak.md", "instruction": "review risks" },
+  "expectEvents": ["status", "tool_call", "artifact"],
+  "expectArtifact": { "kind": "review", "minFindings": 2 }
+}</code></pre>
+        <div class="check-list">
+          <div class="check">Chat send 不需要真 provider 也能测 context。</div>
+          <div class="check">Copilot Auto Review 可以比较 golden trace。</div>
+          <div class="check">Harness 和 Claude SDK 用同一套 backend conformance。</div>
+        </div>
+      </div>
+
+      <div class="atlas-card">
+        <div class="atlas-head">
+          <div>
+            <h3>Resource Lifecycle：插件启动、热加载、卸载也是架构，不是杂活</h3>
+            <p>MCP、Ambient、Index listeners、Usage tracking、Profile registry、Skill registry 都有资源所有权。没有生命周期模型，就会重复注册、泄漏监听、reload 后状态漂移。</p>
+          </div>
+          <span class="tag blue">Lifecycle</span>
+        </div>
+        <div class="diagram-pair">
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>生命周期状态</span><span>state diagram</span></div>
+            <div class="mermaid">
+stateDiagram-v2
+  [*] --> Loading
+  Loading --> Composing: create AppContext
+  Composing --> Registering: ports and registries
+  Registering --> Connecting: providers and MCP
+  Connecting --> Ready
+  Ready --> Refreshing: settings changed
+  Refreshing --> Ready
+  Ready --> Suspending: workspace unload
+  Suspending --> Disposing
+  Ready --> Disposing: plugin unload
+  Disposing --> [*]
+            </div>
+          </div>
+          <div class="diagram-panel">
+            <div class="diagram-title"><span>迁移路线</span><span>timeline</span></div>
+            <div class="mermaid">
+timeline
+  title Pattern migration order
+  Phase 1 : Keep facades : Add contract fixtures : Stop new reverse imports
+  Phase 2 : Introduce RunSession : Wrap Copilot and AI Analysis runs
+  Phase 3 : Capability Manifest v2 : Skill compiler : Tool policies
+  Phase 4 : Lifecycle service : MCP refresh : Ambient jobs
+            </div>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>资源</th><th>Owner</th><th>创建时机</th><th>释放时机</th></tr></thead>
+          <tbody>
+            <tr><td>MCP clients</td><td>ToolRuntimeLifecycle</td><td>provider/tool settings ready</td><td>settings refresh or unload</td></tr>
+            <tr><td>Index listeners</td><td>IndexLifecycle</td><td>database ready</td><td>workspace unload or plugin unload</td></tr>
+            <tr><td>Ambient jobs</td><td>AmbientLifecycle</td><td>user enables ambient</td><td>toggle off, settings refresh, unload</td></tr>
+            <tr><td>Profile registry</td><td>App composition root</td><td>settings loaded</td><td>settings refresh</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="atlas-card">
+        <div class="atlas-head">
+          <div>
+            <h3>一条安全的重构甘特图：不要一口吃掉 10 万行</h3>
+            <p>架构现代化不是“大重写”。正确节奏是先加 contract 和外壳，再迁运行态，最后收敛模块边界。</p>
+          </div>
+          <span class="tag red">Migration</span>
+        </div>
+        <div class="diagram-panel">
+          <div class="diagram-title"><span>6 周重构节奏</span><span>gantt</span></div>
+          <div class="mermaid">
+gantt
+  title Architecture Atlas implementation sequence
+  dateFormat  YYYY-MM-DD
+  axisFormat  %m-%d
+  section Guardrails
+  Import boundary checks           :a1, 2026-06-01, 5d
+  Capability contract fixtures     :a2, after a1, 7d
+  section Runtime
+  RunSession core                  :b1, 2026-06-08, 7d
+  Backend conformance              :b2, after b1, 7d
+  section Declaration
+  Capability Manifest v2           :c1, 2026-06-15, 8d
+  Skill compiler v2                :c2, after c1, 8d
+  section Boundaries
+  Index facade slimming            :d1, 2026-06-22, 7d
+  Ports extraction                 :d2, after d1, 10d
+          </div>
+        </div>
+        <div class="atlas-grid">
+          <div class="atlas-note"><strong>第一优先级</strong>边界检查和 contract fixtures 先行，因为它们防止重构时越改越散。</div>
+          <div class="atlas-note"><strong>不要先做</strong>不要先把所有 service 全部重命名、搬目录、换抽象。那会产生很多 churn，却不一定提升能力。</div>
+        </div>
+      </div>
     </section>
 
-    <section id="findings">
-      <h2>3. 主要设计问题</h2>
-
-      <h3><span class="tag p0">P0</span> 类型系统没有形成有效门禁</h3>
-      <p>
-        当前 <code>tsconfig.json</code> 开了 <code>noImplicitAny</code> 与 <code>strictNullChecks</code>，这是好事；
-        但真实 <code>tsc --noEmit --skipLibCheck</code> 仍然有 124 条 <code>src/</code> 报错行。
-        这意味着类型系统不是“偶尔有噪音”，而是已经不能作为日常合并门禁。
+    <section id="module-review">
+      <h2>5. 模块边界 Review：每个核心模块该负责什么</h2>
+      <p class="section-lead">
+        下面不是按文件大小批评，而是按产品能力看边界。一个模块好不好，不看它短不短，而看它有没有清楚拥有自己的输入、输出、状态和依赖方向。
       </p>
-      <table>
-        <thead><tr><th>错误族</th><th>例子</th><th>设计含义</th></tr></thead>
-        <tbody>
-          <tr><td>全局上下文 API 漂移</td><td><code>AppContext.getPluginId()</code> 不存在；<code>ctx.pluginId</code> 不存在</td><td>服务层对 app runtime 依赖没有稳定 port。</td></tr>
-          <tr><td>schema/repo shape 漂移</td><td><code>MobiusNodeRepo</code> 缺 structural 字段；<code>UsageLogRepo</code> insert shape 不匹配</td><td>SQLite DDL、Kysely 类型、repo 返回 shape 没有单一真相源。</td></tr>
-          <tr><td>prompt/template registry 漂移</td><td><code>hub-doc-summary-system</code> registry mismatch；prompt variables 缺 key</td><td>模板系统已经需要 manifest 校验和生成型类型。</td></tr>
-          <tr><td>tool schema / zod 版本漂移</td><td>Zod v3/v4 类型互不兼容</td><td>Agent tool adapter 层缺统一 schema adapter。</td></tr>
-          <tr><td>stale tests/scripts</td><td>telemetry modules missing；hub/lint tests import 旧模块</td><td>测试资产没有被当前架构演进同步维护。</td></tr>
-        </tbody>
-      </table>
-      <div class="callout risk">
-        <strong>建议：</strong>先不要做大重构。第一步应该是新增 <code>typecheck:src</code>，让 <code>src</code> 在 <code>skipLibCheck</code> 下先绿；
-        再把 <code>test</code>/<code>scripts</code> 分到单独 tsconfig，逐步收复。否则后续重构是在没有护栏的状态下开车。
+
+      <div class="module-grid">
+        <article class="module-card">
+          <div class="module-head"><strong>Chat</strong><span class="tag red">先改</span></div>
+          <p>Chat 应该是 General Chat，不应该继续让用户选择 Chat / Agent / Plan。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span><code>ConversationService.streamChat</code> 从 UI store 读取 <code>chatMode</code>，再决定工具。</span></div>
+            <div class="line"><span>问题</span><span>service 反向依赖 UI，Chat 也不知道 Copilot / Search 能力目录。</span></div>
+            <div class="line"><span>目标</span><span><code>ChatRun</code> 交给 <code>ExecutionPlanner</code>，从 capability 中挑只读能力。</span></div>
+            <div class="line"><span>第一刀</span><span>把 mode 变成内部 execution policy，用户面只保留一个 Chat。</span></div>
+          </div>
+        </article>
+
+        <article class="module-card">
+          <div class="module-head"><strong>Search / Index</strong><span class="tag amber">拆 facade</span></div>
+          <p>Search pipeline 方向很好：parser、retriever、RRF、PPR、highlight、rerank 都有价值。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span><code>IndexService</code> 同时负责 tenant、读文件、chunk、embedding、FTS、graph、maintenance。</span></div>
+            <div class="line"><span>问题</span><span>核心能力强，但职责汇聚，任何索引变更都可能影响多条链路。</span></div>
+            <div class="line"><span>目标</span><span>保留薄 <code>IndexService</code> facade，拆成 writer、projection、enrichment、maintenance。</span></div>
+            <div class="line"><span>第一刀</span><span>先抽 <code>DocumentIndexWriter</code> 和 <code>GraphProjectionService</code>。</span></div>
+          </div>
+        </article>
+
+        <article class="module-card">
+          <div class="module-head"><strong>AI Analysis</strong><span class="tag red">解耦 UI</span></div>
+          <p>AI Analysis 是长任务，不应该长在 React hook 和 modal 状态里。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span><code>BackgroundSessionManager</code>、<code>ReportOrchestrator</code> 和 <code>analysisDocPersistence</code> 都碰到 UI store type。</span></div>
+            <div class="line"><span>问题</span><span>长任务、保存、恢复、前后台切换被 UI shape 绑定。</span></div>
+            <div class="line"><span>目标</span><span><code>AnalysisSession</code> 是 domain model，UI 只订阅 session events。</span></div>
+            <div class="line"><span>第一刀</span><span>把 <code>V2SessionSnapshot</code> 从 UI store 移到 neutral contract。</span></div>
+          </div>
+        </article>
+
+        <article class="module-card">
+          <div class="module-head"><strong>Copilot</strong><span class="tag amber">能力化</span></div>
+          <p>Copilot 不应该只是一个单独入口，它应该是一组可被 Chat 和 Command 调用的文档能力。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span><code>actions/index.ts</code> 混合 action manifest、executor、prompt、panel map。</span></div>
+            <div class="line"><span>问题</span><span>新增 action 的正确位置不清楚，UI 与执行逻辑互相靠太近。</span></div>
+            <div class="line"><span>目标</span><span>Copilot actions 先编译成 <code>CapabilityManifest</code>，panel binding 留在 UI 层。</span></div>
+            <div class="line"><span>第一刀</span><span>选 Doc Review 一类 action 做 manifest / executor / panel 三段式样板。</span></div>
+          </div>
+        </article>
+
+        <article class="module-card">
+          <div class="module-head"><strong>Hermes Harness</strong><span class="tag green">主线投资</span></div>
+          <p>Harness 不是旁支，它是低成本模型、可替换后端和长期 agent 能力的核心。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span>已有 loop、tier、permission、memory、hook、subagent、skill lifting，但 vaultFull 和 Auto Review 仍偏 SDK 路径。</span></div>
+            <div class="line"><span>问题</span><span>Vault tools、output tools、HITL、stream adapter 没有完全后端中立。</span></div>
+            <div class="line"><span>目标</span><span>Harness 和 SDK 都实现同一 <code>AgentBackend</code>，输出同一 <code>RunEvent</code>。</span></div>
+            <div class="line"><span>第一刀</span><span>适配只读 Doc Review 和 Search tools 到 Harness ToolDef。</span></div>
+          </div>
+        </article>
+
+        <article class="module-card">
+          <div class="module-head"><strong>Settings / Onboarding / Dashboard</strong><span class="tag blue">产品支架</span></div>
+          <p>这些不是边缘页面，它们是“能力准备状态”和“系统运营”的支架。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span>provider、index、MCP、Harness、usage、onboarding 各自展示局部状态。</span></div>
+            <div class="line"><span>问题</span><span>用户不知道当前哪些能力 ready、哪些只是配置了但不能跑。</span></div>
+            <div class="line"><span>目标</span><span>Settings 展示 capability readiness，而不是内部 routing tier。</span></div>
+            <div class="line"><span>第一刀</span><span>为每个 capability 生成 readiness：provider、index、tool、permission、budget。</span></div>
+          </div>
+        </article>
+
+        <article class="module-card">
+          <div class="module-head"><strong>Knowledge Graph / Maintenance</strong><span class="tag green">差异化</span></div>
+          <p>Vault Lint、Gap Analysis、Structural Hole、Hub Regen、Precompiled Knowledge 是产品护城河，不应散在搜索实现里。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span>graph、structural、hub、cascade、lint 分布在 <code>search/index</code>、<code>lint</code>、<code>actions</code>、UI view。</span></div>
+            <div class="line"><span>问题</span><span>用户看到的是零散面板，代码看到的是搜索内部细节。</span></div>
+            <div class="line"><span>目标</span><span><code>KnowledgeMaintenance</code> capability family：diagnose、repair、regen、explain、review。</span></div>
+            <div class="line"><span>第一刀</span><span>把 HubRegen / Structural / VaultLint 的结果统一成 reviewable artifact。</span></div>
+          </div>
+        </article>
+
+        <article class="module-card">
+          <div class="module-head"><strong>Ambient / Signal Layer</strong><span class="tag blue">信号层</span></div>
+          <p>Ambient 不是一个小侧栏，而是系统主动感知用户当前写作和 vault 变化的信号层。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span>Ambient Push、Morning Briefing、gutter、反馈日志已有实现。</span></div>
+            <div class="line"><span>问题</span><span>它没有被建模成可被 Chat、Knowledge、Dashboard 复用的 signal。</span></div>
+            <div class="line"><span>目标</span><span><code>AmbientSignal</code> 输出 reason、source、confidence、suggested action。</span></div>
+            <div class="line"><span>第一刀</span><span>把 Ambient 推荐产物统一到 artifact/event，而不是只推 UI。</span></div>
+          </div>
+        </article>
+
+        <article class="module-card">
+          <div class="module-head"><strong>Templates / Prompts</strong><span class="tag amber">治理资产</span></div>
+          <p>Prompt 和 config 是产品能力的一部分，不是工程附属文件。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span>97 prompts、10 tool templates、9 config、5 agents、9 indexing。</span></div>
+            <div class="line"><span>问题</span><span>文件存在不等于仍被调用；变量和 schema 会漂移。</span></div>
+            <div class="line"><span>目标</span><span>每个 template 有 id、category、schema、sample vars、caller、deprecation。</span></div>
+            <div class="line"><span>第一刀</span><span><code>template-manifest.test.ts</code>：file exists、render smoke、JSON parse、unused list。</span></div>
+          </div>
+        </article>
+
+        <article class="module-card">
+          <div class="module-head"><strong>MCP / Tools</strong><span class="tag violet">工具接入</span></div>
+          <p>MCP 是工具协议，不是产品能力。工具要经过 ToolRegistry、permission、schema adapter 后才能给 agent 用。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span><code>MCPClientManager</code> 支持 stdio/SSE，<code>MCPToolAdapter</code> 能转成 AgentTool。</span></div>
+            <div class="line"><span>问题</span><span>Zod v3/v4、JSON schema、SDK tool shape、Harness ToolDef 还没有统一适配层。</span></div>
+            <div class="line"><span>目标</span><span><code>ToolDef</code> 是内部标准；MCP、script、Obsidian command 都是 adapter。</span></div>
+            <div class="line"><span>第一刀</span><span>统一 tool envelope：name、description、inputSchema、permissionKind、execute、outputSchema。</span></div>
+          </div>
+        </article>
+
+        <article class="module-card">
+          <div class="module-head"><strong>Storage / Artifacts</strong><span class="tag green">双存储</span></div>
+          <p>Vault markdown + SQLite 是正确方向：可读 artifact 给用户，结构化索引给系统。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span>chat docs、analysis reports、copilot history、hub docs、SQLite index/graph/usage。</span></div>
+            <div class="line"><span>问题</span><span>repo shape、DDL、Kysely type、artifact schema 没有统一 contract。</span></div>
+            <div class="line"><span>目标</span><span>ArtifactStore 管 human-readable outputs；Repo 管 structured query。</span></div>
+            <div class="line"><span>第一刀</span><span>AI Analysis / Copilot artifact 定义统一 metadata：capabilityId、runId、sources、usage。</span></div>
+          </div>
+        </article>
+
+        <article class="module-card">
+          <div class="module-head"><strong>AppContext / Lifecycle</strong><span class="tag red">收紧</span></div>
+          <p>AppContext 可以保留，但不能再是任意模块拿任意实现的全局入口。</p>
+          <div class="module-lines">
+            <div class="line"><span>现状</span><span><code>AppContext</code> inbound import 多，service/workflow/prompt/skills 都直接取 manager/app/settings。</span></div>
+            <div class="line"><span>问题</span><span>测试替换难、unload 清理难、边界不可推理。</span></div>
+            <div class="line"><span>目标</span><span>AppContext 是 composition root，只暴露 stable ports 和 registry。</span></div>
+            <div class="line"><span>第一刀</span><span>禁止新代码在 <code>core</code> 引 AppContext；service 新路径先走 ports。</span></div>
+          </div>
+        </article>
       </div>
-
-      <h3><span class="tag p0">P0</span> 依赖方向已经破坏分层模型</h3>
-      <p>
-        当前最危险的不是 UI 大，而是底层模块反向依赖上层模块。
-        <code>core</code> 里出现了对 <code>service/chat/service-manager</code>、<code>service/prompt/PromptId</code>、<code>app/settings/types</code>、
-        <code>AppContext</code>、甚至 <code>ui</code> store/type 的依赖。
-      </p>
-      <table>
-        <thead><tr><th>反向依赖</th><th>数量</th><th>应对方式</th></tr></thead>
-        <tbody>
-          <tr><td><code>core -> service</code></td><td>56</td><td>把 prompt id、AI capability、search index shared types 下沉到 <code>core/contracts</code> 或 <code>service/*/contracts</code>。</td></tr>
-          <tr><td><code>core -> app</code></td><td>17</td><td>把 settings 类型拆成纯配置 contract；Obsidian runtime 访问通过 port 注入。</td></tr>
-          <tr><td><code>core -> ui</code></td><td>5</td><td>Graph/search doc 类型不要引用 UI store 类型；建立 neutral DTO。</td></tr>
-          <tr><td><code>service -> ui</code></td><td>55</td><td>业务层不要直接读 Zustand store 或打开 modal；改为事件/adapter。</td></tr>
-          <tr><td><code>service -> app</code></td><td>74</td><td>逐步把 <code>AppContext</code> 改成 ports，例如 <code>VaultPort</code>、<code>SettingsPort</code>、<code>ProviderPort</code>。</td></tr>
-        </tbody>
-      </table>
-
-      <h3><span class="tag p0">P0</span> <code>AppContext</code> 已经从 DI root 变成 service locator</h3>
-      <p>
-        <code>AppContext</code> 作为插件启动时的 DI root 是合理的；问题是现在它被服务层、core、UI、工具函数大量直接调用。
-        这导致依赖关系从构造函数和接口转移到静态全局状态，测试时很难替换，卸载时也要靠大量手动清理。
-      </p>
-      <div class="mermaid-wrap">
-        <div class="mermaid">
-flowchart LR
-  Many["150+ importing files"] --> AppContext["AppContext singleton"]
-  AppContext --> App["Obsidian App"]
-  AppContext --> Manager["AIServiceManager"]
-  AppContext --> Search["SearchClient"]
-  AppContext --> Plugin["Plugin instance"]
-  AppContext --> Settings["settings"]
-  AppContext --> EventBus["EventBus"]
-  AppContext --> Bridge["ClaudeAgentSDKBridge"]
-  AppContext --> ViewManager["ViewManager"]
-
-  Core["core helpers"] -.-> AppContext
-  Service["service agents/tools"] -.-> AppContext
-  UI["React views/stores"] -.-> AppContext
-        </div>
-      </div>
-      <p>
-        这类结构的典型后果是：一旦 <code>AppContext</code> 缺一个 accessor，比如当前 <code>getPluginId</code>，会在多条 Agent/ambient/workflow 路径同时暴露。
-      </p>
-
-      <h3><span class="tag p0">P0</span> 401 文件级循环依赖连通块</h3>
-      <p>
-        依赖扫描中最大 SCC 达到 401 文件。这里不能粗暴理解为“401 个真实 runtime cycle 都会爆”，因为里面包含 type import 和 index re-export；
-        但从设计角度看，它已经说明模块边界不可推理：改 UI type 可能牵动 service，改 service type 可能牵动 core，再回到 app。
-      </p>
-      <div class="callout warn">
-        <strong>最先断开的环：</strong>
-        <code>BackgroundSessionManager</code> 直接 import <code>QuickSearchModal</code>、<code>useSearchSessionStore</code>、<code>eventTargetRedirect</code>；
-        <code>ReportOrchestrator</code> 直接 import <code>useSearchSessionStore</code>；
-        <code>analysisDocPersistence</code> 直接 import UI callbacks/store types。先把 AI Analysis session domain 抽成 service-neutral 类型，会比全仓大迁移更有效。
-      </div>
-
-      <h3><span class="tag p1">P1</span> <code>IndexService</code> 是搜索系统的复杂度汇聚点</h3>
-      <p>
-        <code>IndexService</code> 现在承担太多职责：tenant resolution、文档读取、chunk、embedding、FTS、graph node/edge、cascade debt、global maintenance、pending enrichment。
-        这让 Search 系统虽然能力强，但任何索引变更都容易影响多个阶段。
-      </p>
-      <div class="mermaid-wrap">
-        <div class="mermaid">
-flowchart TD
-  IndexService["IndexService singleton\n2266 lines"]
-  IndexService --> Tenant["Tenant resolver"]
-  IndexService --> Crud["Document CRUD cleanup"]
-  IndexService --> Read["DocumentLoaderManager read"]
-  IndexService --> Chunk["Chunking + safe overlap"]
-  IndexService --> Embed["Embedding generation"]
-  IndexService --> FTS["FTS / stem / meta FTS"]
-  IndexService --> Graph["Mobius graph projection"]
-  IndexService --> Cascade["Cascade debt"]
-  IndexService --> Maintenance["Pagerank / semantic PR / hub stats"]
-  IndexService --> Enrich["Pending LLM/vector enrichment"]
-        </div>
-      </div>
-      <p>
-        推荐目标不是把它拆成很多同等小文件，而是保留一个薄 facade，然后把稳定阶段拆出去：
-        <code>IndexTenantResolver</code>、<code>DocumentIndexWriter</code>、<code>GraphProjectionService</code>、
-        <code>IndexEnrichmentQueue</code>、<code>MobiusMaintenanceService</code>。
-      </p>
-
-      <h3><span class="tag p1">P1</span> Copilot action registry 把 data/action/UI 三件事混在一起</h3>
-      <p>
-        <code>src/service/copilot/actions/index.ts</code> 超过 1000 行，且包含 action 定义、prompt 调用、执行器、panel placeholder、custom prompt loading。
-        这会让新增 action 的“正确写法”越来越不明显。
-      </p>
-      <table>
-        <thead><tr><th>当前混合内容</th><th>目标拆法</th></tr></thead>
-        <tbody>
-          <tr><td>Action metadata</td><td><code>actions/manifests/*.ts</code>，纯数据，可测试。</td></tr>
-          <tr><td>Action executor</td><td><code>actions/executors/*.ts</code>，只依赖 service ports。</td></tr>
-          <tr><td>React result panels</td><td><code>ui/view/copilot/panels/panelMap.tsx</code>，只在 UI 层绑定。</td></tr>
-          <tr><td>Custom prompt registry</td><td>独立 registry，输出标准 action manifest，不 import UI。</td></tr>
-        </tbody>
-      </table>
-
-      <h3><span class="tag p1">P1</span> SQLite schema 与 repo 类型需要单一真相源</h3>
-      <p>
-        <code>ddl.ts</code> 过大本身不是罪，真正的问题是 DDL、Kysely Database 类型、repo insert/select shape、测试 fixture 不同步。
-        类型检查已经暴露 <code>MobiusNodeRepo</code>、<code>UsageLogRepo</code>、hub constituent 等漂移。
-      </p>
-      <p>
-        建议把 schema 分成 migration files + generated Kysely types，或者至少把 <code>Database</code> type 从 DDL 旁边拆成可生成/可校验层。
-        每次改表结构时，必须有一个 repo-level migration test 跟着改。
-      </p>
-
-      <h3><span class="tag p1">P1</span> Prompt/template registry 已经需要 manifest 校验</h3>
-      <p>
-        当前模板抽到 <code>templates/prompts</code> 和 <code>TemplateRegistry</code> 是对的，但 <code>PromptId</code>、<code>PromptVariables</code>、
-        <code>TemplateRegistry</code>、真实模板文件之间仍会漂移。
-      </p>
-      <p>
-        推荐建立一个 <code>prompt-manifest.test.ts</code>：枚举所有 <code>PromptId</code>，确认文件存在、registry 有 metadata、variables 类型可被 render smoke test 覆盖。
-      </p>
-
-      <h3><span class="tag p2">P2</span> UI convention、日志、any 债务需要工具化</h3>
-      <p>
-        <code>as any</code>、<code>console.*</code>、raw <code>&lt;button&gt;</code>、语义标题标签这些问题不适合靠人肉 review。
-        应该用 ESLint restricted imports/rules + custom script 作为轻量门禁。
-      </p>
     </section>
 
     <section id="flows">
-      <h2>4. 关键流程图</h2>
-
-      <h3>4.1 Search / Index / Analysis 主链路</h3>
-      <div class="mermaid-wrap">
-        <div class="mermaid">
-flowchart TD
-  Query["User query"] --> Parse["parseQuery\nterms phrases filters"]
-  Parse --> Registry["RetrieverRegistry"]
-  Registry --> FTS["FTS retriever"]
-  Registry --> Stem["FTS stem retriever"]
-  Registry --> Vector["Vector retriever"]
-  Registry --> Meta["Meta retriever"]
-  Registry --> Fuzzy["Fuzzy retriever"]
-  FTS --> RRF["adaptive RRF merge"]
-  Stem --> RRF
-  Vector --> RRF
-  Meta --> RRF
-  Fuzzy --> RRF
-  RRF --> PPR["PPR graph enrichment"]
-  PPR --> Boost["ranking boosts\nrecency graph hub click"]
-  Boost --> Highlight["highlight final results"]
-  Highlight --> LLM{"LLM rerank?"}
-  LLM -->|yes| Rerank["Reranker"]
-  LLM -->|no| Results["Search results"]
-  Rerank --> Results
-  Results --> Report["AI Analysis\nVaultSearchAgent / ReportOrchestrator"]
-        </div>
-      </div>
-
-      <h3>4.2 AI Analysis background session 当前耦合</h3>
-      <div class="mermaid-wrap">
-        <div class="mermaid">
-flowchart LR
-  UIStore["Zustand searchSessionStore"] --> Snapshot["V2SessionSnapshot"]
-  Snapshot --> BG["BackgroundSessionManager"]
-  BG --> Redirect["eventTargetRedirect"]
-  BG --> Modal["QuickSearchModal"]
-  BG --> Persist["analysisDocPersistence"]
-  Persist --> UICallback["UI save callback/store types"]
-  Report["ReportOrchestrator"] --> UIStore
-  Agent["VaultSearchAgent"] --> Redirect
-
-  classDef risk fill:#fff1f1,stroke:#b42318,color:#0f172a;
-  class UIStore,BG,Modal,UICallback,Report risk;
-        </div>
-      </div>
-      <p>
-        这里应该改为：service 层只维护 <code>AnalysisSession</code> 和事件流；UI store 订阅事件并渲染；modal 打开由 app/view adapter 处理。
+      <h2>6. 执行流图谱：该用什么图，就用什么图</h2>
+      <p class="section-lead">
+        架构图不是越多越好。代码执行时序用 sequence；状态变化用 state machine；prompt/context 用堆叠图；概念层级用 layer stack；边界用模块地图。
       </p>
 
-      <h3>4.3 数据持久化地图</h3>
-      <div class="mermaid-wrap">
+      <h3>6.1 六条链路不是同一个业务流程，而是共享同一个运行外壳</h3>
+      <p class="section-lead">
+        这里的“统一”不是把 Chat、Search、AI Analysis、Copilot、Harness、Knowledge 强行改成同一条流程。
+        它们内部怎么跑可以完全不同；统一的是外层可观察协议：<code>RunSession</code>、状态、取消、事件流、trace、artifact、用户确认和历史记录。
+      </p>
+      <div class="diagram-panel">
+        <div class="diagram-title"><span>统一的是外壳，不是业务流程</span><span>run envelope</span></div>
         <div class="mermaid">
-flowchart LR
-  subgraph Vault["Vault markdown artifacts"]
-    ChatDocs["chat conversations"]
-    AnalysisDocs["AI analysis reports"]
-    CopilotHistory["copilot review snapshots"]
-    HubDocs["hub summary docs"]
-    Skills["skills markdown"]
-    PromptOverrides["prompt overrides"]
+flowchart TB
+  Trigger["用户触发 / 后台触发 / ambient signal"] --> Session["RunSession<br/>runId, status, cancel, resume"]
+
+  subgraph Engines["不同业务自己的内部引擎"]
+    ChatEngine["Chat context pipeline"]
+    SearchEngine["Search retrieval pipeline"]
+    AnalysisEngine["AI Analysis orchestrator"]
+    CopilotEngine["Copilot capability executor"]
+    HarnessEngine["Harness agent loop"]
+    KnowledgeEngine["Knowledge maintenance job"]
   end
 
-  subgraph SQLite["SQLite"]
-    Indexed["indexed_document"]
-    Chunk["doc_chunk + FTS"]
-    Embed["embedding + sqlite-vec"]
-    Graph["mobius_node / mobius_edge"]
-    Usage["usage_log / usage_daily"]
-    Ambient["ambient push log"]
-    Lint["vault lint findings"]
-    Structural["structural analysis"]
-    HubQueue["hub_regen_queue / hub_constituent"]
-  end
+  Session --> ChatEngine
+  Session --> SearchEngine
+  Session --> AnalysisEngine
+  Session --> CopilotEngine
+  Session --> HarnessEngine
+  Session --> KnowledgeEngine
 
-  Vault --> UI["User-visible surfaces"]
-  SQLite --> Search["Search / Graph / Maintenance"]
-  Search --> UI
-  HubDocs --> Graph
-  Usage --> UsageDashboard["Usage Dashboard"]
+  ChatEngine --> Events["RunEvent stream<br/>status, text, tool, source, artifact, error"]
+  SearchEngine --> Events
+  AnalysisEngine --> Events
+  CopilotEngine --> Events
+  HarnessEngine --> Events
+  KnowledgeEngine --> Events
+
+  Events --> Artifact["ArtifactStore<br/>answer, sources, report, diff, suggestion"]
+  Artifact --> Surface["Chat / Search / Analysis / Copilot / Dashboard UI"]
+        </div>
+      </div>
+      <div class="atlas-grid">
+        <div class="atlas-note"><strong>统一什么</strong>状态机、事件流、trace、artifact、取消/恢复、历史记录、权限和预算记录。</div>
+        <div class="atlas-note"><strong>不统一什么</strong>不要把 Search 写成 agent loop，也不要把 Chat、Knowledge、Copilot 的业务步骤硬塞成同一套 pipeline。</div>
+      </div>
+      <div class="lane-board" aria-label="Core execution lane atlas">
+        <div class="lane">
+          <div class="lane-title">General Chat</div>
+          <div class="lane-step"><strong>自己的输入</strong>用户消息 + 当前文件 + conversation state。</div>
+          <div class="lane-step"><strong>自己的决策</strong>普通回答、搜索、Doc Review、追问或长分析。</div>
+          <div class="lane-step"><strong>自己的执行</strong>ContextPipeline + provider chat / capability call。</div>
+          <div class="lane-step"><strong>共享外壳</strong>输出 text/source/tool/artifact 事件。</div>
+          <div class="lane-step"><strong>用户结果</strong>answer、sources、suggested actions。</div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-title">General Search</div>
+          <div class="lane-step"><strong>自己的输入</strong>query terms、phrases、filters。</div>
+          <div class="lane-step"><strong>自己的决策</strong>选 FTS、stem、vector、meta、fuzzy。</div>
+          <div class="lane-step"><strong>自己的执行</strong>retrieve + adaptive RRF + PPR + boosts。</div>
+          <div class="lane-step"><strong>共享外壳</strong>输出 sources、rank trace、result artifact。</div>
+          <div class="lane-step"><strong>用户结果</strong>highlight、related graph，被 Chat/Copilot 复用。</div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-title">AI Analysis</div>
+          <div class="lane-step"><strong>自己的输入</strong>query + scope + web/search policy。</div>
+          <div class="lane-step"><strong>自己的决策</strong>outline、research plan、source needs。</div>
+          <div class="lane-step"><strong>自己的执行</strong>多轮 search / synthesize / continue。</div>
+          <div class="lane-step"><strong>共享外壳</strong>输出 run progress、sources、report artifact。</div>
+          <div class="lane-step"><strong>用户结果</strong>analysis markdown + background resume。</div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-title">Copilot</div>
+          <div class="lane-step"><strong>自己的输入</strong>current doc、selection、links、tags。</div>
+          <div class="lane-step"><strong>自己的决策</strong>action manifest relevance + guard。</div>
+          <div class="lane-step"><strong>自己的执行</strong>review / propose / collect artifacts。</div>
+          <div class="lane-step"><strong>共享外壳</strong>输出 diff、proposal、tool trace。</div>
+          <div class="lane-step"><strong>用户结果</strong>用户确认后写 vault。</div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-title">Harness</div>
+          <div class="lane-step"><strong>自己的输入</strong>capability + backend support。</div>
+          <div class="lane-step"><strong>自己的决策</strong>tier、permission、budget、hooks。</div>
+          <div class="lane-step"><strong>自己的执行</strong>model step、tool call、memory compaction。</div>
+          <div class="lane-step"><strong>共享外壳</strong>输出标准 RunEvent / artifact。</div>
+          <div class="lane-step"><strong>用户结果</strong>作为 Chat/Copilot/Analysis 的可替换后端。</div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-title">Knowledge</div>
+          <div class="lane-step"><strong>自己的输入</strong>vault change、lint signal、graph gap。</div>
+          <div class="lane-step"><strong>自己的决策</strong>选择 PPR、hub regen、structural metrics。</div>
+          <div class="lane-step"><strong>自己的执行</strong>links、tags、bridge note、cascade update。</div>
+          <div class="lane-step"><strong>共享外壳</strong>输出 suggestion artifact + review event。</div>
+          <div class="lane-step"><strong>用户结果</strong>确认 action，feedback 写回 usage / ambient log。</div>
         </div>
       </div>
 
-      <h3>4.4 当前类型守门状态</h3>
-      <div class="mermaid-wrap">
+      <h3>6.2 General Chat 一条消息的现代执行时序</h3>
+      <div class="diagram-panel">
         <div class="mermaid">
-flowchart TD
-  Build["npm run build\nesbuild + css + bundle check"] --> Pass["Can pass without full type safety"]
-  TSC["npx tsc --noEmit"] --> Fail["Fails"]
-  Fail --> External["third-party/moduleResolution noise"]
-  Fail --> Source["124 src error lines with skipLibCheck"]
-  Source --> Drift1["AppContext/pluginId drift"]
-  Source --> Drift2["SQLite repo/schema drift"]
-  Source --> Drift3["Prompt variables drift"]
-  Source --> Drift4["Tool schema/Zod drift"]
-  Source --> Drift5["UI nullability drift"]
+sequenceDiagram
+  actor User
+  participant Surface as Chat Surface
+  participant Planner as Execution Planner
+  participant Registry as Capability Registry
+  participant Session as Run Session
+  participant Backend as Agent Backend
+  participant Tools as Tool Ports
+  participant Store as Artifact Store
+
+  User->>Surface: Ask
+  Surface->>Planner: Intent with active context
+  Planner->>Registry: Find allowed capabilities
+  Registry-->>Planner: Capability manifest
+  Planner->>Session: Start run
+  Session->>Backend: Execute with policy
+  Backend->>Tools: Read or act through ports
+  Tools-->>Backend: Tool result
+  Backend-->>Session: Events and artifacts
+  Session->>Store: Persist trace
+  Session-->>Surface: Answer and actions
+        </div>
+      </div>
+
+      <h3>6.3 Prompt / Context 应该画成堆叠图</h3>
+      <div class="context-stack" aria-label="Prompt context stack">
+        <div class="stack-row"><strong>System Contract</strong><span>产品人格、行为边界、安全策略、输出规则。</span><span class="budget">must keep</span></div>
+        <div class="stack-row"><strong>Capability Policy</strong><span>本次 run 能力、权限、可用工具、是否允许写 vault。</span><span class="budget">small</span></div>
+        <div class="stack-row"><strong>Skill Body</strong><span>被选中的 agent 行为手册，只在需要时 lazy load。</span><span class="budget">scoped</span></div>
+        <div class="stack-row"><strong>Active Context</strong><span>当前文件、选区、folder focus、conversation state。</span><span class="budget">high</span></div>
+        <div class="stack-row"><strong>Retrieved Evidence</strong><span>Search、graph、recent analysis、sources、hub summaries。</span><span class="budget">adaptive</span></div>
+        <div class="stack-row"><strong>Recent Messages</strong><span>近期对话和压缩 summary，受 token budget 管理。</span><span class="budget">compress</span></div>
+      </div>
+      <p class="small">
+        所以 Chat 重构不应该先大改 prompt 文案，而是先把每个 context slot 变成 contract：来源、预算、可压缩性、依赖哪个 port、测试 fixture。
+      </p>
+
+      <h3>6.4 Copilot / Auto Review 应该画成状态机</h3>
+      <div class="diagram-panel">
+        <div class="mermaid">
+stateDiagram-v2
+  [*] --> Prepare
+  Prepare --> Running
+  Running --> ArtifactReady
+  ArtifactReady --> NeedMoreContext
+  NeedMoreContext --> Running
+  ArtifactReady --> AwaitUserReview
+  AwaitUserReview --> ApplyChanges
+  AwaitUserReview --> SaveOnly
+  AwaitUserReview --> Reject
+  ApplyChanges --> Completed
+  SaveOnly --> Completed
+  Reject --> Completed
+  Running --> Failed
+  Prepare --> Cancelled
+  Failed --> [*]
+  Cancelled --> [*]
+  Completed --> [*]
+        </div>
+      </div>
+
+      <h3>6.5 后端中立的 Agent 运行状态</h3>
+      <div class="diagram-panel">
+        <div class="mermaid">
+stateDiagram-v2
+  [*] --> ResolveCapability
+  ResolveCapability --> SelectBackend
+  SelectBackend --> HarnessRun: Harness supports capability
+  SelectBackend --> SdkRun: SDK required
+  SelectBackend --> ProviderRun: simple chat
+  HarnessRun --> ToolPolicy
+  SdkRun --> ToolPolicy
+  ProviderRun --> EmitEvents
+  ToolPolicy --> ToolCall
+  ToolCall --> AwaitApproval: mutating
+  ToolCall --> ExecuteTool: read-only
+  AwaitApproval --> ExecuteTool: approved
+  AwaitApproval --> Cancelled: denied
+  ExecuteTool --> ValidateOutput
+  ValidateOutput --> EmitEvents
+  EmitEvents --> Completed
+  EmitEvents --> Failed
+  Completed --> [*]
+  Failed --> [*]
+  Cancelled --> [*]
         </div>
       </div>
     </section>
 
-    <section id="target">
-      <h2>5. 建议目标架构</h2>
-      <p>
-        目标不是“大重写”，而是把现在已经存在的能力按更稳定的边界重新摆放。
-        最小可行原则：保留现有产品功能和文件名认知，只先切断最伤人的反向依赖。
+    <section id="skills-templates">
+      <h2>7. Skills / Templates / Tools：不要混成一个概念</h2>
+      <p class="section-lead">
+        你前面追问的点很关键：Skill、Tool、MCP、Capability 看起来都像“能力”，但在架构里必须分层。
+        分清楚以后，templates 也不会再像一堆遗留 prompt 文件。
       </p>
 
-      <div class="mermaid-wrap">
-        <div class="mermaid">
-flowchart TB
-  subgraph AppShell["app shell"]
-    Plugin["main.ts"]
-    Views["ViewManager"]
-    Commands["commands/events"]
-    AppAdapters["Obsidian adapters"]
-  end
-
-  subgraph UI["ui"]
-    ReactViews["React views"]
-    UIStores["UI-local stores"]
-    UIPanels["Panels/modals"]
-  end
-
-  subgraph Domain["domain/service"]
-    ChatDomain["chat domain"]
-    SearchDomain["search domain"]
-    AnalysisDomain["analysis session domain"]
-    CopilotDomain["copilot domain"]
-    KnowledgeDomain["knowledge maintenance domain"]
-  end
-
-  subgraph Core["core"]
-    Contracts["contracts and DTOs"]
-    Storage["storage repos"]
-    Providers["provider adapters"]
-    Templates["template engine"]
-    Utils["pure utils"]
-  end
-
-  subgraph Ports["ports"]
-    VaultPort["VaultPort"]
-    SettingsPort["SettingsPort"]
-    ProviderPort["ProviderPort"]
-    EventPort["EventPort"]
-  end
-
-  Plugin --> AppAdapters
-  AppAdapters --> Ports
-  Views --> UI
-  Commands --> Domain
-  UI --> Domain
-  Domain --> Ports
-  Domain --> Core
-  Core --> Contracts
-  Core -. no import .-> UI
-  Core -. no import .-> AppShell
-  Domain -. no import .-> UI
+      <div class="concept-stack" aria-label="Capability Skill Tool MCP stack">
+        <div class="concept">
+          <span class="tag blue">Product</span>
+          <strong>Capability</strong>
+          用户看得见的产品承诺，例如 Doc Review、Vault Search、AI Analysis、Knowledge Health。
+        </div>
+        <div class="concept">
+          <span class="tag violet">Agent</span>
+          <strong>Skill / Playbook</strong>
+          agent 做事手册：何时使用、步骤、工具白名单、输出合同、示例。
+        </div>
+        <div class="concept">
+          <span class="tag green">Action</span>
+          <strong>Tool</strong>
+          可调用的原子动作：读文件、搜索、生成 patch、调用 Obsidian command。
+        </div>
+        <div class="concept">
+          <span class="tag amber">Protocol</span>
+          <strong>MCP</strong>
+          工具接入协议。它能把外部软件或内部 vault server 暴露给 agent。
         </div>
       </div>
 
-      <h3>5.1 新边界规则</h3>
+      <div class="two-col">
+        <div class="decision-card good">
+          <h3>Template 的正确定位</h3>
+          <p>
+            <code>templates/</code> 不是垃圾堆，它应该是可治理的配置资产：
+            prompts、tool output templates、model catalog、curator config、future capability/skill packages。
+          </p>
+          <p>
+            目标是 <code>TemplateRegistry</code> + schema + render smoke + unused/quarantine list。
+          </p>
+        </div>
+        <div class="decision-card warn">
+          <h3>Skill 的正确定位</h3>
+          <p>
+            用户/市场写 portable <code>SKILL.md</code> 包；Peak 编译成内部 <code>AgentSkill</code>；
+            <code>CapabilityManifest</code> 再引用这些 skill。
+          </p>
+          <p>
+            不要让用户手写我们自创的一大坨 JSON，也不要把 Skill 继续做成孤立 workflow modal。
+          </p>
+        </div>
+      </div>
+
+      <h3>7.1 Skill v2 应该怎么进入主系统</h3>
+      <div class="lane-board" aria-label="Skill v2 lifecycle">
+        <div class="lane">
+          <div class="lane-title">Source</div>
+          <div class="lane-step"><strong>SKILL.md</strong>portable 行为包，用户/市场可写。</div>
+          <div class="lane-step"><strong>references</strong>长文档、示例、约束、工作手册。</div>
+          <div class="lane-step"><strong>scripts</strong>默认只是资源，不能自动执行。</div>
+          <div class="lane-step"><strong>metadata</strong>whenToUse、allowedTools、outputs。</div>
+          <div class="lane-step"><strong>version</strong>author、license、compatibility。</div>
+        </div>
+        <div class="lane">
+          <div class="lane-title">Compile</div>
+          <div class="lane-step"><strong>Parser</strong>兼容标准 Skill 包和旧 markdown workflow。</div>
+          <div class="lane-step"><strong>Validator</strong>字段、工具、脚本权限、输出合同。</div>
+          <div class="lane-step"><strong>Compiler</strong>生成内部 <code>AgentSkill</code>。</div>
+          <div class="lane-step"><strong>Index</strong>summary 可被模型发现，body lazy load。</div>
+          <div class="lane-step"><strong>Test</strong>skill-package contract。</div>
+        </div>
+        <div class="lane">
+          <div class="lane-title">Runtime</div>
+          <div class="lane-step"><strong>Capability</strong>引用 primary/fallback skills。</div>
+          <div class="lane-step"><strong>Planner</strong>按 intent 选择 skill。</div>
+          <div class="lane-step"><strong>Harness</strong>加载 body，限制工具。</div>
+          <div class="lane-step"><strong>Tools</strong>本地/MCP/script/command adapters。</div>
+          <div class="lane-step"><strong>Output</strong>schema validation + repair。</div>
+        </div>
+      </div>
+
       <table>
-        <thead><tr><th>层</th><th>可以 import</th><th>不应该 import</th></tr></thead>
+        <thead><tr><th>概念</th><th>用户看到什么</th><th>工程上放哪里</th><th>不该做什么</th></tr></thead>
         <tbody>
-          <tr><td><code>core</code></td><td>纯类型、utils、storage 基础、provider 基础</td><td><code>service</code>、<code>ui</code>、<code>app/context</code></td></tr>
-          <tr><td><code>service</code></td><td><code>core</code>、domain contracts、ports</td><td>React components、Zustand stores、modals</td></tr>
-          <tr><td><code>ui</code></td><td>service public APIs、UI stores、shared components</td><td>直接写 SQLite、直接操纵 Agent internals</td></tr>
-          <tr><td><code>app</code></td><td>全部组装层依赖</td><td>业务细节膨胀到 commands 中</td></tr>
+          <tr>
+            <td>Capability</td>
+            <td>Doc Review、AI Analysis、Vault Search、Knowledge Health。</td>
+            <td><code>service/capabilities</code> 的产品能力说明书。</td>
+            <td>不要把完整 prompt、UI panel、工具实现都塞进去。</td>
+          </tr>
+          <tr>
+            <td>Skill</td>
+            <td>一般不直接看到，除非是可安装行为包。</td>
+            <td><code>service/skills</code> + <code>harness/skill</code>，源格式兼容 <code>SKILL.md</code>。</td>
+            <td>不要继续只做成手动 picker workflow。</td>
+          </tr>
+          <tr>
+            <td>Tool</td>
+            <td>通常只是运行过程里的工具调用。</td>
+            <td><code>service/tools</code> / Harness <code>ToolDef</code> / MCP adapter。</td>
+            <td>不要让 Tool 决定产品入口和用户承诺。</td>
+          </tr>
+          <tr>
+            <td>Template</td>
+            <td>用户可能只在高级设置里看到。</td>
+            <td><code>core/template</code> + <code>templates/**</code> + schema tests。</td>
+            <td>不要让 prompt 文件脱离 registry 和变量 contract。</td>
+          </tr>
         </tbody>
       </table>
+    </section>
 
-      <h3>5.2 重构时最该保留的好设计</h3>
-      <ul>
-        <li><code>TemplateManager</code> + prompt/config 外置方向正确，应继续加强。</li>
-        <li>Search pipeline 的多 retriever + RRF + PPR 方向正确，不要退回简单向量搜索。</li>
-        <li>Markdown artifact + SQLite index 的双存储策略适合 Obsidian，不要改成纯数据库产品。</li>
-        <li>Agent loop / tool schema / MCP 的方向正确，但 schema adapter 需要统一。</li>
-        <li>On unload 的资源清理意识很强，应把清理逻辑继续从 <code>main.ts</code> 抽成 lifecycle services。</li>
-      </ul>
+    <section id="testing">
+      <h2>8. 自动化测试地图：目标不是覆盖率好看，而是替代重复手测</h2>
+      <p class="section-lead">
+        当前已有 83 个测试文件，但 runner 不可信：全量测试会卡住，固定 <code>temp-test.js</code> 也不支持并行 targeted tests。
+        所以第一步是修测试基础设施，然后再补产品级 contract。
+      </p>
+
+      <div class="risk-map">
+        <div class="risk-cell">
+          <span class="tag green">已有覆盖</span>
+          <strong>不是从零开始</strong>
+          parser、retriever、RRF、PPR、highlight、harness loop/tier/permission/memory/hook/subagent、copilot artifacts、ambient、onboarding、sqlite repo 都已有测试。
+        </div>
+        <div class="risk-cell">
+          <span class="tag red">当前风险</span>
+          <strong>测试信号不可信</strong>
+          全量 <code>npm run test</code> 会卡住；固定 <code>temp-test.js</code> 让并行 targeted tests 互相覆盖；个别测试内部 failed 但 exit 0。
+        </div>
+        <div class="risk-cell">
+          <span class="tag amber">最大缺口</span>
+          <strong>产品级 scenario</strong>
+          缺 Chat send、AI Analysis round、Copilot Auto Review、Harness backend conformance 这类端到端 contract。
+        </div>
+      </div>
+
+      <div class="test-matrix" aria-label="Automation coverage matrix">
+        <div class="matrix-head">层级</div>
+        <div class="matrix-head">Chat</div>
+        <div class="matrix-head">Search</div>
+        <div class="matrix-head">AI Analysis</div>
+        <div class="matrix-head">Copilot</div>
+        <div class="matrix-head">Harness / Skills</div>
+
+        <div class="matrix-row">Unit</div>
+        <div>Context slot、budget、message model。</div>
+        <div>parser、RRF、PPR、highlight。</div>
+        <div>round model、source DTO。</div>
+        <div>artifact validators。</div>
+        <div>loop stop、permission、schema parse。</div>
+
+        <div class="matrix-row">Contract</div>
+        <div>message -> execution plan。</div>
+        <div>query -> ranked sources。</div>
+        <div>session event trace。</div>
+        <div>review -> patch artifact。</div>
+        <div>skill -> tool policy。</div>
+
+        <div class="matrix-row">Scenario</div>
+        <div>fake vault + fake provider。</div>
+        <div>fixture vault search。</div>
+        <div>plan ready -> report saved。</div>
+        <div>auto review -> user approve。</div>
+        <div>Harness backend conformance。</div>
+
+        <div class="matrix-row">Browser Smoke</div>
+        <div>input, stream, tool display。</div>
+        <div>results and inspector。</div>
+        <div>report view and sources。</div>
+        <div>panel and diff review。</div>
+        <div>settings readiness。</div>
+
+        <div class="matrix-row">Manual</div>
+        <div>Obsidian editor focus。</div>
+        <div>open file side effects。</div>
+        <div>reload and background session。</div>
+        <div>real apply to editor。</div>
+        <div>real MCP / provider smoke。</div>
+      </div>
+
+      <div class="decision-card bad">
+        <h3>必须先修测试 runner</h3>
+        <p>
+          <code>run-test.js</code> 要使用唯一临时文件、每个测试硬超时、内部 assertion failed 必须 exit 1。
+          在这个地基修好前，不要相信“npm run test 成功”这个信号。
+        </p>
+      </div>
+
+      <h3>8.1 第一批应该补的测试，不是随机补覆盖率</h3>
+      <table>
+        <thead><tr><th>测试</th><th>验证什么</th><th>为什么高收益</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>run-test-runner.test</code> / runner self-check</td>
+            <td>唯一临时文件、超时、非零退出、失败聚合。</td>
+            <td>测试地基不可信，后面所有重构都没有安全感。</td>
+          </tr>
+          <tr>
+            <td><code>capability-manifest.test.ts</code></td>
+            <td>每个 capability 有 id、surface、permission、backend support、input/output contract。</td>
+            <td>让 Chat/Copilot/Analysis 共享能力目录。</td>
+          </tr>
+          <tr>
+            <td><code>chat-general-scenario.test.ts</code></td>
+            <td>用户消息 -> execution plan -> context stack -> fake provider/harness -> response artifact。</td>
+            <td>替代大量“我手动发一条消息看看”的回归。</td>
+          </tr>
+          <tr>
+            <td><code>analysis-run-session.test.ts</code></td>
+            <td>plan ready、round event、save report、background restore。</td>
+            <td>AI Analysis 是最容易手测崩溃的长流程。</td>
+          </tr>
+          <tr>
+            <td><code>copilot-action-contract.test.ts</code></td>
+            <td>action manifest、guard、artifact、panel binding 分离。</td>
+            <td>支撑 Copilot actions 拆分。</td>
+          </tr>
+          <tr>
+            <td><code>skill-package-compiler.test.ts</code></td>
+            <td>标准 <code>SKILL.md</code> 和 legacy skill 都能编译成 <code>AgentSkill</code>。</td>
+            <td>支撑 Skill marketplace 和 Harness lazy skill。</td>
+          </tr>
+          <tr>
+            <td><code>template-manifest.test.ts</code></td>
+            <td>template 文件存在、render smoke、JSON schema、unused/quarantine。</td>
+            <td>解决“templates 很多不知道谁还在用”。</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
     <section id="roadmap">
-      <h2>6. 重构路线</h2>
+      <h2>9. 重构路线：先建中枢，再迁移能力</h2>
+      <p class="section-lead">
+        这里不建议大重写。更稳的做法是先建立中枢接口，然后把现有功能一条一条包进去。
+      </p>
 
-      <h3>6.1 推荐顺序</h3>
-      <div class="mermaid-wrap">
-        <div class="mermaid">
-flowchart TD
-  A["PR0: Typecheck split\nsrc first, skipLibCheck"] --> B["PR1: Fix current src type errors\nno behavior refactor"]
-  B --> C["PR2: Add dependency guard\nrestricted imports / dep audit"]
-  C --> D["PR3: Extract AnalysisSession domain\nbreak service -> UI loop"]
-  D --> E["PR4: Split IndexService facade\nwriter/projection/enrichment/maintenance"]
-  E --> F["PR5: Split Copilot action registry\nmanifest/executor/panel map"]
-  F --> G["PR6: Schema and prompt manifest tests"]
-  G --> H["PR7: Logger + any budget + UI convention lint"]
-        </div>
+      <div class="roadmap" aria-label="Refactor roadmap">
+        <div class="step"><span class="tag red">PR0</span><strong>测试可信</strong>unique temp、timeout、真实失败退出。</div>
+        <div class="step"><span class="tag red">PR1</span><strong>边界可见</strong><code>typecheck:src</code> 和 import audit。</div>
+        <div class="step"><span class="tag amber">PR2</span><strong>能力中枢</strong>最小 <code>CapabilityManifest</code> 包住 Chat tools 和 Copilot actions。</div>
+        <div class="step"><span class="tag amber">PR3</span><strong>RunSession</strong>承接 AI Analysis 和 Copilot Review 的事件、取消、历史。</div>
+        <div class="step"><span class="tag green">PR4</span><strong>Harness 后端</strong>只读 Doc Review / Search tools 先跑通。</div>
       </div>
 
-      <h3>6.2 具体任务表</h3>
+      <h3>9.1 最大收益重构机会地图</h3>
+      <div class="opportunity-list">
+        <div class="opportunity"><span class="tag red">P0</span><strong>测试 runner 可信化</strong>先修地基：唯一临时文件、硬超时、真实失败退出、分层 test script。</div>
+        <div class="opportunity"><span class="tag red">P0</span><strong>import boundary guard</strong><code>core -> service/ui/app</code> 和 <code>service -> ui</code> 先 report，再 fail。</div>
+        <div class="opportunity"><span class="tag red">P0</span><strong>AnalysisSession contract</strong>把 <code>V2SessionSnapshot</code> 从 UI store 移到 domain contract。</div>
+        <div class="opportunity"><span class="tag amber">P1</span><strong>Capability Manifest v2</strong>从 Copilot actions 和 Chat tools 开始，不一次性迁全仓。</div>
+        <div class="opportunity"><span class="tag amber">P1</span><strong>RunSessionManager</strong>统一 AI Analysis、Copilot Review、Harness loop 的事件、取消、历史。</div>
+        <div class="opportunity"><span class="tag amber">P1</span><strong>Harness ToolDef adapter</strong>把 vault tools、search tools、copilot output tools 适配到 Harness。</div>
+        <div class="opportunity"><span class="tag amber">P1</span><strong>Skill v2 compiler</strong>兼容 <code>SKILL.md</code>，保留 legacy parser，输出内部 <code>AgentSkill</code>。</div>
+        <div class="opportunity"><span class="tag amber">P1</span><strong>Template manifest tests</strong>把 prompts/config/tools/agents/indexing 资产纳入 schema 和 render smoke。</div>
+        <div class="opportunity"><span class="tag green">P2</span><strong>IndexService thin facade</strong>抽 writer、projection、enrichment、maintenance，但保留旧 public API。</div>
+        <div class="opportunity"><span class="tag green">P2</span><strong>Knowledge capability family</strong>把 Vault Lint、Gap、Hub Regen、Cascade、Auto-tag 变成可 review 的能力。</div>
+        <div class="opportunity"><span class="tag green">P2</span><strong>Ambient signal layer</strong>Ambient 输出 signal/artifact，Chat、Dashboard、Knowledge 可复用。</div>
+        <div class="opportunity"><span class="tag green">P2</span><strong>Settings readiness</strong>按 capability 显示 provider/index/tool/permission/budget 状态。</div>
+      </div>
+
       <table>
         <thead>
-          <tr><th>优先级</th><th>任务</th><th>验收标准</th><th>风险</th></tr>
+          <tr><th>优先级</th><th>任务</th><th>验收标准</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td><span class="tag p0">P0</span></td>
-            <td>新增 <code>tsconfig.src.json</code> 与 <code>npm run typecheck:src</code></td>
-            <td><code>src</code> 在 <code>skipLibCheck</code> 下通过；CI/本地 build 前可跑。</td>
-            <td>会暴露一批真实漂移，但这是必要成本。</td>
+            <td><span class="tag red">P0</span></td>
+            <td>修 <code>run-test.js</code></td>
+            <td>全量测试不会无限卡死；targeted tests 不互相覆盖；内部失败能让进程失败。</td>
           </tr>
           <tr>
-            <td><span class="tag p0">P0</span></td>
-            <td>修复当前 <code>src</code> 类型漂移</td>
-            <td>不通过 <code>any</code> 糊掉；把 <code>pluginId</code>、PromptVariables、repo shape、EventDispatchTarget 等修到 contract 层。</td>
-            <td>如果边修边重构，容易扩大范围；建议只做类型收敛。</td>
+            <td><span class="tag red">P0</span></td>
+            <td>收紧 <code>core/service/ui/app</code> import boundary</td>
+            <td><code>core</code> 不再 import <code>service/ui/app</code>；<code>service</code> 不再直接 import React store/modal。</td>
           </tr>
           <tr>
-            <td><span class="tag p0">P0</span></td>
-            <td>加 import boundary 检查</td>
-            <td><code>core</code> 禁 import <code>service/ui/app</code>；<code>service</code> 禁 import <code>ui</code>，少量例外白名单。</td>
-            <td>先只 warn/report，再逐步 fail。</td>
+            <td><span class="tag amber">P1</span></td>
+            <td>抽最小 <code>CapabilityRegistry</code> v2</td>
+            <td>Chat 和 Copilot 能查询同一份能力说明书；只读能力可先被 Chat 自动调用。</td>
           </tr>
           <tr>
-            <td><span class="tag p1">P1</span></td>
-            <td>抽 <code>AnalysisSession</code> domain</td>
-            <td><code>BackgroundSessionManager</code> 不再 import modal/store/hook；ReportOrchestrator 不 import UI store。</td>
-            <td>AI Analysis 流程复杂，需要保留 snapshot 兼容。</td>
+            <td><span class="tag amber">P1</span></td>
+            <td>抽 <code>AnalysisSession</code> 和 <code>RunSession</code></td>
+            <td>AI Analysis 前后台、保存、恢复、继续分析不再依赖 UI store shape。</td>
           </tr>
           <tr>
-            <td><span class="tag p1">P1</span></td>
-            <td>拆 <code>IndexService</code></td>
-            <td><code>IndexService</code> 降到 facade，核心写入/graph/maintenance/enrichment 各有测试。</td>
-            <td>搜索/索引是核心功能，必须 test-near。</td>
+            <td><span class="tag amber">P1</span></td>
+            <td>重构 Skill v2</td>
+            <td>兼容标准 <code>SKILL.md</code> 包；编译成内部 <code>AgentSkill</code>；Capability 可引用 Skill。</td>
           </tr>
           <tr>
-            <td><span class="tag p1">P1</span></td>
-            <td>拆 Copilot action system</td>
-            <td>新增 action 不需要编辑 1000 行 index；UI panel map 只在 UI 层。</td>
-            <td>涉及 15+ actions，先迁移一类 action 做样板。</td>
+            <td><span class="tag green">P2</span></td>
+            <td>拆 <code>IndexService</code> facade</td>
+            <td>writer、projection、enrichment、maintenance 可独立测试，现有 public API 保持兼容。</td>
           </tr>
-          <tr>
-            <td><span class="tag p1">P1</span></td>
-            <td>SQLite schema/prompt manifest 校验</td>
-            <td>DDL/repo/prompt/template 任何漂移能在测试中被抓到。</td>
-            <td>一开始会发现历史债，允许先建 quarantine list。</td>
-          </tr>
-          <tr>
-            <td><span class="tag p2">P2</span></td>
-            <td>日志与 <code>any</code> budget</td>
-            <td>新增 <code>logger</code>，限制新增 <code>as any</code>，把旧债做计数趋势。</td>
-            <td>不要一次性追求 0，先阻止继续增长。</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>6.3 不建议做的事</h3>
-      <ul>
-        <li>不要一次性“重写架构”。现在系统功能多，重写会丢掉已经有效的产品路径。</li>
-        <li>不要按文件长度机械拆分。拆分应该服务于依赖方向和职责边界。</li>
-        <li>不要用更多 <code>any</code> 让 typecheck 变绿。那只是把警报器静音。</li>
-        <li>不要先改 UI/产品命名。当前问题主要是工程边界，不是用户界面。</li>
-        <li>不要把 <code>AppContext</code> 一次性消灭。先禁止它继续进入 core/service 新代码，再逐步替换已有热点。</li>
-      </ul>
-
-      <h3>6.4 可执行的第一周计划</h3>
-      <table>
-        <thead><tr><th>天</th><th>目标</th><th>产物</th></tr></thead>
-        <tbody>
-          <tr><td>Day 1</td><td>建立 <code>typecheck:src</code> 和 import audit 脚本</td><td>不改业务行为，只让问题可见。</td></tr>
-          <tr><td>Day 2-3</td><td>修复 <code>src</code> 类型错误第一批</td><td><code>AppContext/pluginId</code>、settings nullability、PromptVariables、schema shape。</td></tr>
-          <tr><td>Day 4</td><td>切断 AI Analysis session 的 service/UI 环</td><td><code>AnalysisSession</code> DTO + UI adapter。</td></tr>
-          <tr><td>Day 5</td><td>给 <code>IndexService</code> 写拆分计划和第一刀 facade</td><td>保留 public API，抽 tenant resolver / writer。</td></tr>
         </tbody>
       </table>
     </section>
 
-    <section>
-      <h2>7. 证据与命令</h2>
-      <table>
-        <thead><tr><th>命令</th><th>结果</th></tr></thead>
-        <tbody>
-          <tr><td><code>git ls-files src | rg '\.(ts|tsx)$' | xargs wc -l</code></td><td><code>125333 total</code></td></tr>
-          <tr><td><code>git ls-files src | rg '\.(ts|tsx)$' | wc -l</code></td><td><code>765</code></td></tr>
-          <tr><td><code>git ls-files src test scripts templates ... | xargs wc -l</code></td><td><code>148331 total</code></td></tr>
-          <tr><td>自写 import graph scanner</td><td>315 条可疑跨层边；4 个 SCC；最大 SCC 401 文件。</td></tr>
-          <tr><td><code>npx tsc --noEmit --pretty false --skipLibCheck</code></td><td>失败；<code>src</code> 报错行计数 124。</td></tr>
-          <tr><td><code>rg -n "AppContext" src | wc -l</code></td><td><code>461</code></td></tr>
-          <tr><td><code>rg -n "\bas any\b|@ts-ignore|@ts-expect-error|eslint-disable" src | wc -l</code></td><td><code>350</code></td></tr>
-        </tbody>
-      </table>
+    <section id="appendix">
+      <h2>10. 证据附录：本报告基于哪些事实</h2>
 
-      <div class="callout">
-        <strong>注意：</strong>本报告没有修改生产代码，只做结构审计和 HTML 文档输出。
-        仓库当前已有一批未跟踪设计文档/素材目录，本报告没有触碰它们。
+      <details open>
+        <summary>关键代码入口</summary>
+        <table>
+          <thead><tr><th>区域</th><th>代码入口</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>Chat</td><td><code>src/service/chat/service-conversation.ts</code></td><td><code>streamChat</code> 当前读取 UI store 的 <code>chatMode</code>。</td></tr>
+            <tr><td>Chat context</td><td><code>src/service/chat/context/ContextPipeline.ts</code></td><td>已有 slot + budget 的好基础，应升级成稳定 contract。</td></tr>
+            <tr><td>Capability</td><td><code>src/service/capabilities/CapabilityRegistry.ts</code></td><td>已有轻量 registry，但还不是完整产品能力说明书。</td></tr>
+            <tr><td>AI Analysis</td><td><code>src/service/BackgroundSessionManager.ts</code></td><td>service 直接依赖 quick-search UI store snapshot。</td></tr>
+            <tr><td>AI Analysis</td><td><code>src/service/agents/report/ReportOrchestrator.ts</code></td><td>报告编排仍直接触达 UI store。</td></tr>
+            <tr><td>Copilot</td><td><code>src/service/copilot/actions/index.ts</code></td><td>action manifest、executor、UI panel 绑定混在一起。</td></tr>
+            <tr><td>Harness</td><td><code>src/service/agents/harness/**</code></td><td>已有 loop、tier、permission、memory、skill lifting，值得作为主线后端继续投资。</td></tr>
+            <tr><td>Skills</td><td><code>src/service/skills/**</code></td><td>当前 Skill 是 markdown workflow；需要升级成 agent playbook / behavior pack。</td></tr>
+            <tr><td>Search</td><td><code>src/service/search/index/indexService.ts</code></td><td>索引、graph、maintenance 等职责集中，是拆 facade 的核心候选。</td></tr>
+            <tr><td>MCP</td><td><code>src/service/mcp/MCPClientManager.ts</code></td><td>支持 stdio/SSE，工具发现后可通过 adapter 转成 agent tools。</td></tr>
+            <tr><td>Tools</td><td><code>src/service/mcp/MCPToolAdapter.ts</code></td><td>当前已有 MCP -> AgentTool adapter，但还需要统一到 Harness ToolDef。</td></tr>
+            <tr><td>Templates</td><td><code>src/core/template/TemplateRegistry.ts</code></td><td>已有 template registry，是治理 prompt/config 资产的基础。</td></tr>
+          </tbody>
+        </table>
+      </details>
+
+      <details>
+        <summary>模块规模粗略扫描</summary>
+        <table>
+          <thead><tr><th>区域</th><th>文件数信号</th><th>设计含义</th></tr></thead>
+          <tbody>
+            <tr><td><code>src/service/agents</code></td><td>77 个 TS 文件</td><td>Agent 已经是主业务域，需要统一 backend/session/tool contract。</td></tr>
+            <tr><td><code>src/service/search</code></td><td>56 个 TS 文件</td><td>Search 是成熟 pipeline，应保留算法优势，拆清索引职责。</td></tr>
+            <tr><td><code>src/service/chat</code></td><td>33 个 TS 文件</td><td>Chat 有 context pipeline 基础，但运行策略还依赖 UI mode。</td></tr>
+            <tr><td><code>src/service/copilot</code></td><td>26 个 TS 文件</td><td>Copilot action 已丰富，应转为 capability family。</td></tr>
+            <tr><td><code>src/ui/view/quick-search</code></td><td>55 个 TS/TSX 文件</td><td>AI Analysis 的 UI/store 很重，说明 session domain 应下沉。</td></tr>
+            <tr><td><code>src/ui/view/copilot</code></td><td>50 个 TS/TSX 文件</td><td>Copilot surface 已复杂，panel binding 应留 UI，执行逻辑下沉。</td></tr>
+            <tr><td><code>src/ui/view/chat-view</code></td><td>47 个 TS/TSX 文件</td><td>Chat UI 已完整，下一步不是 UI 重写，而是拆运行策略。</td></tr>
+          </tbody>
+        </table>
+      </details>
+
+      <details>
+        <summary>数字与验证命令</summary>
+        <table>
+          <thead><tr><th>命令</th><th>结果</th></tr></thead>
+          <tbody>
+            <tr><td><code>git ls-files src | rg '\.(ts|tsx)$' | xargs wc -l</code></td><td><code>125333 total</code></td></tr>
+            <tr><td><code>git ls-files src | rg '\.(ts|tsx)$' | wc -l</code></td><td><code>765</code></td></tr>
+            <tr><td><code>find test -name "*.test.ts" -type f | wc -l</code></td><td><code>83</code> 个测试文件。</td></tr>
+            <tr><td><code>find templates -type f | wc -l</code></td><td><code>142</code> 个模板/配置资产文件。</td></tr>
+            <tr><td>import graph scanner</td><td>315 条可疑跨层边；4 个 SCC；最大 SCC 401 文件。</td></tr>
+            <tr><td><code>npx tsc --noEmit --pretty false --skipLibCheck</code></td><td>失败；<code>src</code> 报错行计数 124。</td></tr>
+            <tr><td><code>npm run test</code></td><td>全量测试会卡住；测试 runner 需要超时和可靠失败语义。</td></tr>
+          </tbody>
+        </table>
+      </details>
+
+      <div class="decision-card good">
+        <h3>这版报告和上一版的差异</h3>
+        <p>
+          上一版是审计日志：数字、问题、图、路线混在一起。
+          这一版是架构地图：先定义现代模块中枢，再把各模块放到中枢里判断，最后给出可测试的迁移路线。
+        </p>
       </div>
     </section>
 
     <footer class="foot">
-      Report generated for <code>obsidian-peak-assistant</code>. Mermaid 使用仓库本地 <code>node_modules/mermaid/dist/mermaid.min.js</code>；
-      如果直接打开 HTML 时图没有渲染，页面仍保留原始 Mermaid 文本，可在支持 Mermaid 的环境中查看。
+      Report generated for <code>obsidian-peak-assistant</code>. Mermaid 用于 mindmap、quadrant、sequence、ER、state、journey、timeline、gantt 等图型；
+      架构中枢、context stack、concept stack、test matrix 继续使用 HTML/CSS 绘制，避免所有内容都变成单一流程图。
     </footer>
   </div>
 
@@ -943,9 +2669,9 @@ flowchart TD
         theme: "base",
         themeVariables: {
           fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-          primaryColor: "#eef5ff",
+          primaryColor: "#eff6ff",
           primaryBorderColor: "#2563eb",
-          primaryTextColor: "#17202a",
+          primaryTextColor: "#111827",
           lineColor: "#64748b",
           secondaryColor: "#f0fdf4",
           tertiaryColor: "#fff7ed"
