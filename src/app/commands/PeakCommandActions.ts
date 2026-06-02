@@ -188,12 +188,6 @@ export async function recomputeGapAnalysis(): Promise<void> {
 	}
 }
 
-export function openSkillPicker(): void {
-	void import('@/ui/view/skills/SkillPickerModal').then(({ SkillPickerModal }) => {
-		new SkillPickerModal(getContext()).open();
-	});
-}
-
 export async function runSearchFastIndex(): Promise<void> {
 	const ctx = getContext();
 	if (!ctx.plugin.searchClient) {
