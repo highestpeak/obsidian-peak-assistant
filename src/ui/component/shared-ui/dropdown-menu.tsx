@@ -2,6 +2,7 @@ import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/ui/react/lib/utils";
+import { usePortalContainer } from "@/ui/react/PortalContainerContext";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
@@ -54,19 +55,22 @@ DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayNam
 const DropdownMenuContent = React.forwardRef<
 	React.ElementRef<typeof DropdownMenuPrimitive.Content>,
 	React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-	<DropdownMenuPrimitive.Portal>
-		<DropdownMenuPrimitive.Content
-			ref={ref}
-			sideOffset={sideOffset}
-			className={cn(
-				"pktw-z-50 pktw-min-w-[8rem] pktw-overflow-hidden pktw-rounded-md pktw-border pktw-bg-popover pktw-p-1 pktw-text-popover-foreground pktw-shadow-md data-[state=open]:pktw-animate-in data-[state=closed]:pktw-animate-out data-[state=closed]:pktw-fade-out-0 data-[state=open]:pktw-fade-in-0 data-[state=closed]:pktw-zoom-out-95 data-[state=open]:pktw-zoom-in-95 data-[side=bottom]:pktw-slide-in-from-top-2 data-[side=left]:pktw-slide-in-from-right-2 data-[side=right]:pktw-slide-in-from-left-2 data-[side=top]:pktw-slide-in-from-bottom-2",
-				className
-			)}
-			{...props}
-		/>
-	</DropdownMenuPrimitive.Portal>
-));
+>(({ className, sideOffset = 4, ...props }, ref) => {
+	const contextContainer = usePortalContainer();
+	return (
+		<DropdownMenuPrimitive.Portal container={contextContainer ?? undefined}>
+			<DropdownMenuPrimitive.Content
+				ref={ref}
+				sideOffset={sideOffset}
+				className={cn(
+					"pktw-z-50 pktw-min-w-[8rem] pktw-overflow-hidden pktw-rounded-md pktw-border pktw-bg-popover pktw-p-1 pktw-text-popover-foreground pktw-shadow-md data-[state=open]:pktw-animate-in data-[state=closed]:pktw-animate-out data-[state=closed]:pktw-fade-out-0 data-[state=open]:pktw-fade-in-0 data-[state=closed]:pktw-zoom-out-95 data-[state=open]:pktw-zoom-in-95 data-[side=bottom]:pktw-slide-in-from-top-2 data-[side=left]:pktw-slide-in-from-right-2 data-[side=right]:pktw-slide-in-from-left-2 data-[side=top]:pktw-slide-in-from-bottom-2",
+					className
+				)}
+				{...props}
+			/>
+		</DropdownMenuPrimitive.Portal>
+	);
+});
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
 const DropdownMenuItem = React.forwardRef<

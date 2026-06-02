@@ -2,6 +2,7 @@ import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
+import { usePortalContainer } from '@/ui/react/PortalContainerContext';
 import { IconButton } from './IconButton';
 
 /** Modal Root — thin pass-through over Radix Dialog (isolates the `Modal.X` namespace). */
@@ -49,6 +50,8 @@ const ModalContent = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Content>,
 	ModalContentProps
 >(({ className, width = 'default', container, portalClassName, children, ...props }, ref) => {
+	const contextContainer = usePortalContainer();
+	const effectiveContainer = container ?? contextContainer ?? undefined;
 	const shell = (
 		<>
 			<ModalOverlay />
@@ -67,7 +70,7 @@ const ModalContent = React.forwardRef<
 		</>
 	);
 	return (
-		<DialogPrimitive.Portal container={container ?? undefined}>
+		<DialogPrimitive.Portal container={effectiveContainer}>
 			{portalClassName ? <div className={portalClassName}>{shell}</div> : shell}
 		</DialogPrimitive.Portal>
 	);

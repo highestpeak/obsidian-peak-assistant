@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { cn } from '@/ui/react/lib/utils';
+import { usePortalContainer } from '@/ui/react/PortalContainerContext';
 
 const Dialog = DialogPrimitive.Root;
 
@@ -28,21 +29,24 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Content>,
 	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-	<DialogPortal>
-		<DialogOverlay />
-		<DialogPrimitive.Content
-			ref={ref}
-			className={cn(
-				'pktw-fixed pktw-left-[50%] pktw-top-[50%] pktw-z-50 pktw-grid pktw-w-full pktw-max-w-lg pktw-translate-x-[-50%] pktw-translate-y-[-50%] pktw-gap-4 pktw-border pktw-bg-popover pktw-p-6 pktw-shadow-xl pktw-duration-300 pktw-transition-all data-[state=open]:pktw-animate-in data-[state=closed]:pktw-animate-out data-[state=closed]:pktw-fade-out-0 data-[state=open]:pktw-fade-in-0 data-[state=closed]:pktw-zoom-out-95 data-[state=open]:pktw-zoom-in-95 data-[state=closed]:pktw-slide-out-to-left-1/2 data-[state=closed]:pktw-slide-out-to-top-[48%] data-[state=open]:pktw-slide-in-from-left-1/2 data-[state=open]:pktw-slide-in-from-top-[48%] sm:pktw-rounded-xl',
-				className
-			)}
-			{...props}
-		>
-			{children}
-		</DialogPrimitive.Content>
-	</DialogPortal>
-));
+>(({ className, children, ...props }, ref) => {
+	const contextContainer = usePortalContainer();
+	return (
+		<DialogPrimitive.Portal container={contextContainer ?? undefined}>
+			<DialogOverlay />
+			<DialogPrimitive.Content
+				ref={ref}
+				className={cn(
+					'pktw-fixed pktw-left-[50%] pktw-top-[50%] pktw-z-50 pktw-grid pktw-w-full pktw-max-w-lg pktw-translate-x-[-50%] pktw-translate-y-[-50%] pktw-gap-4 pktw-border pktw-bg-popover pktw-p-6 pktw-shadow-xl pktw-duration-300 pktw-transition-all data-[state=open]:pktw-animate-in data-[state=closed]:pktw-animate-out data-[state=closed]:pktw-fade-out-0 data-[state=open]:pktw-fade-in-0 data-[state=closed]:pktw-zoom-out-95 data-[state=open]:pktw-zoom-in-95 data-[state=closed]:pktw-slide-out-to-left-1/2 data-[state=closed]:pktw-slide-out-to-top-[48%] data-[state=open]:pktw-slide-in-from-left-1/2 data-[state=open]:pktw-slide-in-from-top-[48%] sm:pktw-rounded-xl',
+					className
+				)}
+				{...props}
+			>
+				{children}
+			</DialogPrimitive.Content>
+		</DialogPrimitive.Portal>
+	);
+});
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({

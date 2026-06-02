@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { cn } from '@/ui/react/lib/utils';
+import { usePortalContainer } from '@/ui/react/PortalContainerContext';
 
 /** Radix Popover Root re-export. */
 export const Popover = PopoverPrimitive.Root;
@@ -28,19 +29,23 @@ export interface PopoverContentProps
 export const PopoverContent = React.forwardRef<
 	React.ElementRef<typeof PopoverPrimitive.Content>,
 	PopoverContentProps
->(({ className, align = 'start', sideOffset = 4, container, portalClassName, ...props }, ref) => (
-	<PopoverPrimitive.Portal container={container ?? undefined}>
-		<div className={cn('peak-design-root', portalClassName)}>
-			<PopoverPrimitive.Content
-				ref={ref}
-				align={align}
-				sideOffset={sideOffset}
-				className={cn('pk-popover', className)}
-				{...props}
-			/>
-		</div>
-	</PopoverPrimitive.Portal>
-));
+>(({ className, align = 'start', sideOffset = 4, container, portalClassName, ...props }, ref) => {
+	const contextContainer = usePortalContainer();
+	const effectiveContainer = container ?? contextContainer ?? undefined;
+	return (
+		<PopoverPrimitive.Portal container={effectiveContainer}>
+			<div className={cn('peak-design-root', portalClassName)}>
+				<PopoverPrimitive.Content
+					ref={ref}
+					align={align}
+					sideOffset={sideOffset}
+					className={cn('pk-popover', className)}
+					{...props}
+				/>
+			</div>
+		</PopoverPrimitive.Portal>
+	);
+});
 PopoverContent.displayName = 'PopoverContent';
 
 export interface PopoverItemProps

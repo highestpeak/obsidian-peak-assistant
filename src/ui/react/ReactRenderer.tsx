@@ -1,5 +1,6 @@
 import { createRoot, Root } from 'react-dom/client';
 import React from 'react';
+import { PortalContainerProvider } from './PortalContainerContext';
 
 /**
  * Utility for rendering React components in Obsidian views
@@ -18,10 +19,24 @@ export class ReactRenderer {
 	 * Render a React component
 	 */
 	render(element: React.ReactElement): void {
+		// Determine target container:
+		// For Obsidian Views: containerEl has structure [header, content], use children[1]
+		// For PluginSettingTab: containerEl is the direct container
+		const targetContainer = (this.container.children[1] as HTMLElement) || this.container;
+
+		// Wrap with PortalContainerProvider so Radix-based primitives mounted
+		// anywhere in this tree default to the right window's body — critical
+		// for views opened in detached Obsidian windows where the global
+		// `document.body` is the MAIN window, not this leaf's window.
+		const wrapped = React.createElement(
+			PortalContainerProvider,
+			{ container: targetContainer.ownerDocument.body, children: element },
+		);
+
 		// Check if root exists and if it's still valid
 		if (this.root) {
 			try {
-				this.root.render(element);
+				this.root.render(wrapped);
 				return;
 			} catch (error) {
 				// If render fails, the root may be invalid, so recreate it
@@ -30,11 +45,6 @@ export class ReactRenderer {
 			}
 		}
 
-		// Determine target container:
-		// For Obsidian Views: containerEl has structure [header, content], use children[1]
-		// For PluginSettingTab: containerEl is the direct container
-		const targetContainer = (this.container.children[1] as HTMLElement) || this.container;
-		
 		// Ensure the container is in the DOM
 		if (!targetContainer.isConnected) {
 			this.pendingElement = element;
@@ -51,7 +61,7 @@ export class ReactRenderer {
 
 		targetContainer.classList.add('pktw-root');
 		this.root = createRoot(targetContainer);
-		this.root.render(element);
+		this.root.render(wrapped);
 	}
 
 	/**
