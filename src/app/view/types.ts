@@ -7,6 +7,7 @@ export const VAULT_XRAY_VIEW_TYPE = 'peak-vault-xray-view';
 export const GAP_ANALYSIS_VIEW_TYPE = 'peak-gap-analysis';
 export const KNOWLEDGE_CENTER_VIEW_TYPE = 'peak-knowledge-center';
 export const CONVERSATION_OUTLINE_VIEW_TYPE = 'peak-conversation-outline-view';
+export const CHAT_STUDIO_VIEW_TYPE = 'peak-chat-studio-view';
 
 export const TRACKED_VIEW_TYPES = new Set<string>([
 	CHAT_VIEW_TYPE,
@@ -26,4 +27,8 @@ export const STANDALONE_PEAK_VIEW_TYPES = new Set<string>([
 	// layout back to document mode (which was replacing the chat leaf with
 	// a markdown file when users clicked any outline item).
 	CONVERSATION_OUTLINE_VIEW_TYPE,
+	// ChatStudioView is the all-in-one three-column chat experience opened
+	// in a detached window. Standalone so its focus events don't summon or
+	// dismiss the legacy chat layout.
+	CHAT_STUDIO_VIEW_TYPE,
 ]);
