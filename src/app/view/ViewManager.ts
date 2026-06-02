@@ -186,9 +186,22 @@ export class ViewManager {
 	}
 
 	/**
-	 * Open the Chat Studio: a single ItemView in a detached macOS window
-	 * that internally renders ConversationList | ChatViewComponent |
+	 * Open the Chat Studio: a single ItemView in the main area that
+	 * internally renders ProjectListView | ChatViewComponent |
 	 * ConversationIndex side by side.
+	 *
+	 * Opens as a tab (not a detached macOS window) because the plugin's
+	 * React 18 UI does not survive `getLeaf('window')`:
+	 *   - portals (sonner Toaster, settings modals, `[[` autocomplete) target
+	 *     `document.body` of the MAIN Obsidian window, so popups appear on
+	 *     the wrong screen and far from the click,
+	 *   - React 18's event delegation breaks across documents — inputs stop
+	 *     accepting text, button onClick stops firing, ConversationIndex
+	 *     items don't scroll-to-message.
+	 *
+	 * Users who want a separate macOS window can right-click the Studio tab
+	 * → Move to → New Window after opening — Obsidian's native popout uses a
+	 * different code path that survives these issues.
 	 *
 	 * On first open, detaches any existing legacy chat-layout leaves so the
 	 * user's original positions disappear (matching the user-requested
@@ -217,8 +230,8 @@ export class ViewManager {
 			}
 		}
 
-		// Open the Studio in a detached macOS window.
-		const studioLeaf: WorkspaceLeaf = workspace.getLeaf('window');
+		// Open the Studio as a new tab in the main area.
+		const studioLeaf: WorkspaceLeaf = workspace.getLeaf('tab');
 		await studioLeaf.setViewState({ type: CHAT_STUDIO_VIEW_TYPE, active: true });
 		workspace.revealLeaf(studioLeaf);
 	}
