@@ -257,6 +257,19 @@ export class ViewManager {
 			if (leaf !== studioLeaf) leaf.detach();
 		}
 
+		// Pop the Studio leaf out to its own window. This uses Obsidian's
+		// native popout migration (same flow as right-click tab → Move to
+		// → New Window), which routes through a different code path than
+		// `getLeaf('window')` and tends to preserve React event wiring
+		// because the leaf already exists with its event handlers attached.
+		// Throws on mobile or old Electron — fall back to leaving Studio
+		// as a tab.
+		try {
+			workspace.moveLeafToPopout(studioLeaf);
+		} catch (err) {
+			console.warn('[chat-studio] moveLeafToPopout unsupported — Studio stays as tab:', err);
+		}
+
 		workspace.revealLeaf(studioLeaf);
 	}
 }
