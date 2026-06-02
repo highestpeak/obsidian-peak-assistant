@@ -148,6 +148,10 @@ export function openKnowledgeCenter(): void {
 	void getContext().viewManager.activateKnowledgeCenterView();
 }
 
+export function openChatStudio(): void {
+	void getContext().viewManager.openChatStudio();
+}
+
 export async function openRelatedNotes(): Promise<void> {
 	await getContext().viewManager.activateAmbientPushView();
 	AmbientPushService.getInstance().triggerManual();
