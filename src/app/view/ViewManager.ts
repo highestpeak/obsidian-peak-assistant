@@ -12,7 +12,7 @@ import { ConversationOutlineView, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/ui/vi
 import { ChatStudioView, CHAT_STUDIO_VIEW_TYPE } from '@/ui/view/ChatStudioView';
 import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
 import { InputModal } from '@/ui/component/InputModal';
-import { App, ViewCreator, WorkspaceLeaf } from 'obsidian';
+import { App, Notice, ViewCreator, WorkspaceLeaf } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 
 /**
@@ -218,21 +218,45 @@ export class ViewManager {
 			return;
 		}
 
-		// Tear down the legacy chat layout so the original positions disappear.
-		const legacyTypes: string[] = [
-			CHAT_VIEW_TYPE,
+		// Reuse an existing ChatView leaf (most common path — promote it to
+		// Studio in place). Otherwise create a new tab in the current tab
+		// group; if the main area has no tab group at all (`getLeaf('tab')`
+		// throws "No tab group found"), fall back to `getLeaf(false)` which
+		// returns the currently active leaf or creates one.
+		const existingChatLeaves = workspace.getLeavesOfType(CHAT_VIEW_TYPE);
+		let studioLeaf: WorkspaceLeaf | null = existingChatLeaves[0] ?? null;
+		if (!studioLeaf) {
+			try {
+				studioLeaf = workspace.getLeaf('tab');
+			} catch {
+				studioLeaf = workspace.getLeaf(false);
+			}
+		}
+		if (!studioLeaf) {
+			new Notice('Could not open Chat Studio: no available workspace tab.', 5000);
+			return;
+		}
+
+		await studioLeaf.setViewState({ type: CHAT_STUDIO_VIEW_TYPE, active: true });
+
+		// Now tear down the remaining legacy chat-layout leaves so the
+		// original positions disappear. We deliberately do this AFTER
+		// creating Studio: if Studio is the promoted ChatView leaf, the
+		// for-loop below skips it; if Studio is a new leaf, any leftover
+		// ChatView leaves are detached too.
+		const sidebarTypes: string[] = [
 			PROJECT_LIST_VIEW_TYPE,
 			CONVERSATION_OUTLINE_VIEW_TYPE,
 		];
-		for (const type of legacyTypes) {
+		for (const type of sidebarTypes) {
 			for (const leaf of workspace.getLeavesOfType(type)) {
 				leaf.detach();
 			}
 		}
+		for (const leaf of workspace.getLeavesOfType(CHAT_VIEW_TYPE)) {
+			if (leaf !== studioLeaf) leaf.detach();
+		}
 
-		// Open the Studio as a new tab in the main area.
-		const studioLeaf: WorkspaceLeaf = workspace.getLeaf('tab');
-		await studioLeaf.setViewState({ type: CHAT_STUDIO_VIEW_TYPE, active: true });
 		workspace.revealLeaf(studioLeaf);
 	}
 }
