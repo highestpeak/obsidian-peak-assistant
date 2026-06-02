@@ -7,6 +7,7 @@ import {
 	FileSearch,
 	Layers,
 	RefreshCw,
+	Tags,
 	Zap,
 } from 'lucide-react';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
@@ -18,6 +19,7 @@ import { IndexService, type GetIndexStatusResponse } from '@/service/search/inde
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import {
 	analyzeVaultIntuition,
+	openBatchTagSuggestions,
 	openGapAnalysis,
 	openRelatedNotes,
 	openVaultXRay,
@@ -130,6 +132,7 @@ function KnowledgeCenterPanel() {
 						{ label: 'Related Notes', description: 'Open the right-side ambient suggestions panel.', icon: Zap, run: openRelatedNotes },
 						{ label: 'Vault X-Ray', description: 'Review vault health signals and repair opportunities.', icon: Activity, run: openVaultXRay },
 						{ label: 'Gap Analysis', description: 'Inspect bridge nodes and structural holes.', icon: Layers, run: openGapAnalysis },
+						{ label: 'Batch Tag Suggestions', description: 'Suggest tags for notes across a selected folder.', icon: Tags, run: openBatchTagSuggestions },
 					]}
 				/>
 

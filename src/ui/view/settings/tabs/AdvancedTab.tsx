@@ -13,12 +13,14 @@
  */
 
 import React from 'react';
-import { Wand2 } from 'lucide-react';
+import { FileText, Wand2 } from 'lucide-react';
 import { Pill } from '@/ui/components/primitives';
-import { openHarnessSetupWizard } from '@/app/commands/PeakCommandActions';
+import { Button } from '@/ui/component/shared-ui/button';
+import { openHarnessSetupWizard, openPromptTemplates } from '@/app/commands/PeakCommandActions';
 import type { MyPluginSettings } from '@/app/settings/types';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import { HarnessSettingsSection } from '../components/HarnessSettingsSection';
+import { SettingCard } from '../components/SettingCard';
 import { GeneralTab } from '../GeneralTab';
 import { MaintenanceTab } from '../MaintenanceTab';
 import { useSettingsStrings } from '../settingsStrings';
@@ -59,6 +61,22 @@ export function AdvancedTab({ settings, settingsUpdates }: AdvancedTabProps) {
                     <span className="pkset-section__title">{advCopy.general.sectionTitle}</span>
                 </div>
                 <GeneralTab settings={settings} settingsUpdates={settingsUpdates} />
+            </div>
+
+            <div className="pkset-section">
+                <div className="pkset-section__head">
+                    <span className="pkset-section__title">Prompt Templates</span>
+                    <span className="pkset-section__sub">Manage custom prompts loaded from your prompts folder.</span>
+                </div>
+                <SettingCard
+                    label="Open Prompt Templates"
+                    description="Browse, edit, and reload custom Copilot prompts."
+                >
+                    <Button variant="outline" size="sm" onClick={openPromptTemplates}>
+                        <FileText className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
+                        Open
+                    </Button>
+                </SettingCard>
             </div>
 
             <div className="pkset-section">

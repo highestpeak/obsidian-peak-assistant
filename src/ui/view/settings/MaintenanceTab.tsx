@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
 	Activity,
+	Bot,
 	Brain,
 	Database,
 	FileSearch,
@@ -17,6 +18,7 @@ import { SectionHeader } from './components/SectionHeader';
 import { SettingCard } from './components/SettingCard';
 import {
 	analyzeVaultIntuition,
+	buildUserProfileAction,
 	cancelIndexing,
 	cleanupUselessData,
 	clearUserProfileBuildRecord,
@@ -62,6 +64,7 @@ const ADVANCED_ACTIONS: MaintenanceAction[] = [
 	{ id: 'llm-pending', label: 'Run Pending LLM Enrichment', description: 'Run pending tags and summaries enrichment.', icon: Sparkles, run: runLlmEnrichmentPending },
 	{ id: 'global-maintenance', label: 'Global Maintenance', description: 'Rebuild graph aggregates and maintenance data.', icon: RefreshCw, run: runGlobalMaintenance },
 	{ id: 'ppr-compare', label: 'Compare PPR Search', description: 'Evaluate PPR results against baseline search.', icon: FileSearch, run: compareSearchResults },
+	{ id: 'build-profile', label: 'Build User Profile', description: 'Scan vault content to refresh the user profile context.', icon: Bot, run: buildUserProfileAction },
 	{ id: 'clear-profile', label: 'Clear Profile Build Record', description: 'Force the next profile build to rescan files.', icon: ShieldAlert, danger: true, run: clearUserProfileBuildRecord },
 	{ id: 'delete-index', label: 'Delete Index Data', description: 'Delete all indexed documents after confirmation.', icon: Trash2, danger: true, run: deleteIndexData },
 ];
