@@ -2,8 +2,8 @@ import { useCallback } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '../store/chatViewStore';
-import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
+import { PromptId } from '@/service/prompt/PromptId';
 import { createChatErrorMessage } from '@/service/chat/utils/chat-message-builder';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types';
@@ -263,6 +263,20 @@ export function useStreamChat() {
 						// if it lands within the 60s engagement window.
 						useChatViewStore.getState().markAssistantCompleted(assistantMessageId);
 						onComplete?.(finalMessage!, finalUsage);
+
+						// Suggested-followups: kick off a one-shot generation
+						// (fire-and-forget) and persist to sqlite when it returns.
+						// Chips show up in the UI via the store update; reloading
+						// the conversation reads them from sqlite, so we never
+						// regenerate on remount.
+						if (finalMessage && !finalMessage.isErrorMessage && finalMessage.content) {
+							void generateAndPersistSuggestedFollowups(
+								manager,
+								assistantMessageId,
+								userContent,
+								finalMessage.content,
+							);
+						}
 						break;
 					case 'source':
 					case 'on-step-finish':
@@ -308,5 +322,47 @@ export function useStreamChat() {
 		streamChat,
 		updateConv,
 	};
+}
+
+const SUGGEST_FOLLOWUPS_CONTENT_LIMIT = 500;
+const SUGGEST_FOLLOWUPS_MAX = 5;
+
+/**
+ * Fire-and-forget: generate the suggested-followup chips for a just-completed
+ * assistant message, push them to the in-memory store (so chips render
+ * immediately), and persist to sqlite (so reloads don't regenerate).
+ *
+ * Errors are swallowed — followups are a nice-to-have, never block the chat.
+ */
+async function generateAndPersistSuggestedFollowups(
+	manager: AIServiceManager,
+	assistantMessageId: string,
+	userContent: string,
+	assistantContent: string,
+): Promise<void> {
+	try {
+		const result = await manager.queryStructured<string[]>(
+			PromptId.ChatSuggestFollowups,
+			{
+				userMessage: userContent.slice(0, SUGGEST_FOLLOWUPS_CONTENT_LIMIT),
+				assistantMessage: assistantContent.slice(0, SUGGEST_FOLLOWUPS_CONTENT_LIMIT),
+			},
+		);
+		if (!Array.isArray(result)) return;
+		const followups = result
+			.filter((s): s is string => typeof s === 'string')
+			.slice(0, SUGGEST_FOLLOWUPS_MAX);
+		if (followups.length === 0) return;
+
+		useChatDataStore.getState().updateMessage(assistantMessageId, { suggestedFollowups: followups });
+
+		try {
+			await manager.conv.updateMessageSuggestedFollowups(assistantMessageId, followups);
+		} catch (persistErr) {
+			console.debug('[useStreamChat] Failed to persist suggestedFollowups:', persistErr);
+		}
+	} catch (genErr) {
+		console.debug('[useStreamChat] Failed to generate suggestedFollowups:', genErr);
+	}
 }
 

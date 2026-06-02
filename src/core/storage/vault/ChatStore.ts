@@ -449,6 +449,17 @@ export class ChatStorageService {
 	}
 
 	/**
+	 * Persist suggested-followup chips for an assistant message. Called by the
+	 * service layer after async generation completes post-stream so the next
+	 * conversation reload doesn't trigger another LLM round-trip.
+	 */
+	async updateMessageSuggestedFollowups(messageId: string, followups: string[]): Promise<void> {
+		if (!this.dbReady) return;
+		const messageRepo = sqliteStoreManager.getChatMessageRepo();
+		await messageRepo.updateSuggestedFollowups(messageId, followups);
+	}
+
+	/**
 	 * List starred messages for a project.
 	 * Returns messages with conversationId mapping for easy lookup.
 	 * Uses content preview and attachment summary from database (no markdown parsing needed).
@@ -485,6 +496,14 @@ export class ChatStorageService {
 			if (row.token_usage_json) {
 				try {
 					msg.tokenUsage = JSON.parse(row.token_usage_json);
+				} catch { }
+			}
+			if (row.suggested_followups_json) {
+				try {
+					const parsed = JSON.parse(row.suggested_followups_json);
+					if (Array.isArray(parsed)) {
+						msg.suggestedFollowups = parsed.filter((s) => typeof s === 'string');
+					}
 				} catch { }
 			}
 			// Note: We don't load full resources for starred messages list
@@ -688,6 +707,14 @@ export class ChatStorageService {
 			if (row.token_usage_json) {
 				try {
 					msg.tokenUsage = JSON.parse(row.token_usage_json);
+				} catch { }
+			}
+			if (row.suggested_followups_json) {
+				try {
+					const parsed = JSON.parse(row.suggested_followups_json);
+					if (Array.isArray(parsed)) {
+						msg.suggestedFollowups = parsed.filter((s) => typeof s === 'string');
+					}
 				} catch { }
 			}
 			const resources = resourcesMap.get(row.message_id);

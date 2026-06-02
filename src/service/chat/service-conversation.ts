@@ -503,6 +503,16 @@ export class ConversationService {
 		return this.storage.listStarredMessagesByProject(projectId);
 	}
 
+	/**
+	 * Persist generated follow-up question chips for an assistant message.
+	 * Called after the assistant stream completes and the followup generation
+	 * round-trip finishes — keeps the chips alive across conversation reloads
+	 * so MessageSuggestedNext never re-generates.
+	 */
+	async updateMessageSuggestedFollowups(messageId: string, followups: string[]): Promise<void> {
+		await this.storage.updateMessageSuggestedFollowups(messageId, followups);
+	}
+
 	async addMessage(params: {
 		conversationId: string;
 		message: ChatMessage;

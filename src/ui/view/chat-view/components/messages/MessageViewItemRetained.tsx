@@ -532,17 +532,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 
 			{isLastMessage && !streamingState.isStreaming && !message.isErrorMessage && (
 				<MessageSuggestedNext
-					messageId={message.id}
-					userContent={(() => {
-						const msgs = activeConversation?.messages;
-						if (!msgs) return '';
-						const idx = msgs.findIndex((m) => m.id === message.id);
-						for (let i = idx - 1; i >= 0; i--) {
-							if (msgs[i].role === 'user') return String(msgs[i].content || '');
-						}
-						return '';
-					})()}
-					assistantContent={String(message.content || '')}
+					suggestions={message.suggestedFollowups}
 					onSelect={(q) => {
 						const submit = useChatViewStore.getState().submitAction;
 						if (submit) submit(q);

@@ -40,6 +40,7 @@ export class ChatMessageRepo {
 		gen_time_ms: number | null;
 		token_usage_json: string | null;
 		thinking: string | null;
+		suggested_followups_json: string | null;
 	}): Promise<void> {
 		await this.db
 			.insertInto('chat_message')
@@ -50,7 +51,7 @@ export class ChatMessageRepo {
 	/**
 	 * Update existing chat message by message_id.
 	 */
-	async updateByMessageId(messageId: string, updates: Partial<Pick<DbSchema['chat_message'], 'conversation_id' | 'role' | 'content_hash' | 'created_at_ts' | 'created_at_zone' | 'model' | 'provider' | 'starred' | 'is_error' | 'is_visible' | 'gen_time_ms' | 'token_usage_json' | 'thinking'>>): Promise<void> {
+	async updateByMessageId(messageId: string, updates: Partial<Pick<DbSchema['chat_message'], 'conversation_id' | 'role' | 'content_hash' | 'created_at_ts' | 'created_at_zone' | 'model' | 'provider' | 'starred' | 'is_error' | 'is_visible' | 'gen_time_ms' | 'token_usage_json' | 'thinking' | 'suggested_followups_json'>>): Promise<void> {
 		await this.db
 			.updateTable('chat_message')
 			.set(updates)
@@ -80,6 +81,9 @@ export class ChatMessageRepo {
 				gen_time_ms: msg.genTimeMs ?? null,
 				token_usage_json: msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null,
 				thinking: msg.reasoning?.content ?? null,
+				suggested_followups_json: msg.suggestedFollowups && msg.suggestedFollowups.length > 0
+					? JSON.stringify(msg.suggestedFollowups)
+					: null,
 			};
 
 			const exists = await this.existsByMessageId(msg.id);
@@ -100,12 +104,28 @@ export class ChatMessageRepo {
 					gen_time_ms: msg.genTimeMs ?? null,
 					token_usage_json: msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null,
 					thinking: msg.reasoning?.content ?? null,
+					suggested_followups_json: msg.suggestedFollowups && msg.suggestedFollowups.length > 0
+						? JSON.stringify(msg.suggestedFollowups)
+						: null,
 				});
 			} else {
 				// Insert new message
 				await this.insert(messageData);
 			}
 		}
+	}
+
+	/**
+	 * Update the persisted suggestedFollowups for a single message.
+	 * Used after async followup generation completes post-stream.
+	 */
+	async updateSuggestedFollowups(messageId: string, followups: string[]): Promise<void> {
+		const json = followups.length > 0 ? JSON.stringify(followups) : null;
+		await this.db
+			.updateTable('chat_message')
+			.set({ suggested_followups_json: json })
+			.where('message_id', '=', messageId)
+			.execute();
 	}
 
 	/**

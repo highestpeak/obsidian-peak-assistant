@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import {
 	ArrowUpRight,
 	ChevronDown,
@@ -14,25 +14,26 @@ import {
 	PopoverTrigger,
 	PopoverItem,
 } from '@/ui/components/primitives';
-import { useServiceContext } from '@/ui/context/ServiceContext';
-import { PromptId } from '@/service/prompt/PromptId';
 import { useChatStrings } from '../../chatStringsContext';
 
-const CONTENT_LIMIT = 500;
 const MAX_INLINE_CHIPS = 2;
 
 /**
- * MessageSuggestedNext — LLM-generated follow-up question chips below the
- * last assistant message. Renders up to 2 inline chips and folds the rest
- * into a "More…" popover.
+ * MessageSuggestedNext — follow-up question chips below the last assistant
+ * message. Renders up to 2 inline chips and folds the rest into a "More…"
+ * popover.
  *
- * Behaviour mirrors the legacy SuggestedFollowups but uses retained-design
- * pkchat-msg__suggest-* styles and the PR-0 Popover primitive.
+ * Suggestions are generated ONCE when the assistant stream completes (see
+ * useStreamChat) and persisted to sqlite, so we never regenerate on remount.
+ * Older messages without persisted suggestions render only the actions row
+ * (no fallback regeneration).
  */
 export interface MessageSuggestedNextProps {
-	messageId: string;
-	userContent: string;
-	assistantContent: string;
+	/**
+	 * Persisted follow-up questions for this message. Empty / undefined →
+	 * the suggestion row is suppressed (only actions, if any, render).
+	 */
+	suggestions: string[] | undefined;
 	onSelect: (question: string) => void;
 	/**
 	 * Optional ACTIONS group handlers — shown in the "More…" popover below
@@ -52,9 +53,7 @@ export interface MessageSuggestedNextProps {
 }
 
 export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
-	messageId,
-	userContent,
-	assistantContent,
+	suggestions,
 	onSelect,
 	onRewriteSimply,
 	onCreateChecklist,
@@ -63,42 +62,9 @@ export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
 	onAskCustom,
 }) => {
 	const strings = useChatStrings();
-	const { manager } = useServiceContext();
-	const [suggestions, setSuggestions] = useState<string[]>([]);
-	const [loading, setLoading] = useState(false);
-	const generatedForRef = useRef<string | null>(null);
-
-	useEffect(() => {
-		if (!manager || !assistantContent || generatedForRef.current === messageId) return;
-		generatedForRef.current = messageId;
-
-		let cancelled = false;
-		setLoading(true);
-
-		manager
-			.queryStructured<string[]>(PromptId.ChatSuggestFollowups, {
-				userMessage: userContent.slice(0, CONTENT_LIMIT),
-				assistantMessage: assistantContent.slice(0, CONTENT_LIMIT),
-			})
-			.then((result) => {
-				if (!cancelled && Array.isArray(result)) {
-					setSuggestions(result.filter((s) => typeof s === 'string').slice(0, 5));
-				}
-			})
-			.catch((err) => {
-				console.debug('[MessageSuggestedNext] Failed:', err);
-			})
-			.finally(() => {
-				if (!cancelled) setLoading(false);
-			});
-
-		return () => {
-			cancelled = true;
-		};
-	}, [messageId, userContent, assistantContent, manager]);
-
-	const inline = suggestions.slice(0, MAX_INLINE_CHIPS);
-	const overflow = suggestions.slice(MAX_INLINE_CHIPS);
+	const resolved = suggestions ?? [];
+	const inline = resolved.slice(0, MAX_INLINE_CHIPS);
+	const overflow = resolved.slice(MAX_INLINE_CHIPS);
 
 	const actionItems = [
 		onRewriteSimply && {
@@ -133,17 +99,16 @@ export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
 		},
 	].filter(Boolean) as Array<{ key: string; icon: React.ReactNode; label: string; onClick: () => void }>;
 
-	// If the LLM hasn't returned questions AND there are no actions wired,
-	// the row has nothing to show. Suppress entirely. (Loading state stays
-	// invisible — chips just appear when ready.)
-	if (loading) return null;
-	if (suggestions.length === 0 && actionItems.length === 0) return null;
+	// If there are no persisted suggestions AND no actions wired, suppress
+	// the row entirely. (Suggestions may not exist for older messages
+	// generated before persistence landed — we intentionally don't backfill.)
+	if (resolved.length === 0 && actionItems.length === 0) return null;
 
 	const hasOverflow = overflow.length > 0 || actionItems.length > 0;
 
 	return (
 		<div className="pkchat-msg__suggest">
-			{suggestions.length > 0 && (
+			{resolved.length > 0 && (
 				<span className="pkchat-msg__suggest-label">
 					{strings.message.suggestedNextLabel}
 				</span>

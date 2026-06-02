@@ -79,6 +79,13 @@ export interface ChatMessage {
 	 */
 	genTimeMs?: number;
 	/**
+	 * Assistant-only: persisted follow-up question suggestions, generated
+	 * once when the assistant stream completes. Shown by MessageSuggestedNext
+	 * for the last message; survives conversation reloads via sqlite, so we
+	 * never regenerate on re-mount.
+	 */
+	suggestedFollowups?: string[];
+	/**
 	 * Topic name this message belongs to (from ChatConversationDoc parsing).
 	 * If undefined, the message is in NoTopic section.
 	 */

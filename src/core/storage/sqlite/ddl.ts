@@ -162,6 +162,7 @@ export interface Database {
 		content_preview: string | null;
 		attachment_summary: string | null;
 		topic: string | null;
+		suggested_followups_json: string | null;
 	};
 	chat_message_resource: {
 		id: string;
@@ -722,7 +723,8 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			token_usage_json TEXT,
 			thinking TEXT,
 			content_preview TEXT,
-			attachment_summary TEXT
+			attachment_summary TEXT,
+			suggested_followups_json TEXT
 		);
 		CREATE INDEX IF NOT EXISTS idx_chat_message_conversation_id ON chat_message(conversation_id);
 		CREATE INDEX IF NOT EXISTS idx_chat_message_created_at ON chat_message(created_at_ts);
@@ -1068,6 +1070,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 
 	// ── Schema evolution: add columns (idempotent) ──
 	try { db.exec('ALTER TABLE chat_message ADD COLUMN topic TEXT'); } catch { /* column already exists */ }
+	try { db.exec('ALTER TABLE chat_message ADD COLUMN suggested_followups_json TEXT'); } catch { /* column already exists */ }
 
 	// ── Structural analysis columns on mobius_node (idempotent) ──
 	try { db.exec('ALTER TABLE mobius_node ADD COLUMN betweenness_centrality REAL'); } catch { /* column already exists */ }
