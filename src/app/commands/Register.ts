@@ -6,6 +6,7 @@ import type { ViewManager } from '@/app/view/ViewManager';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { registerAllCopilotActions } from '@/service/copilot/actions';
 import {
+	openChatStudio,
 	openCopilotPanel,
 	openCopilotReviewHistory,
 	openHarnessSetupWizard,
@@ -61,6 +62,11 @@ export function buildCoreCommands(
 			id: 'peak-knowledge-center',
 			name: 'Open Knowledge Center',
 			callback: openKnowledgeCenter,
+		},
+		{
+			id: 'peak-open-chat-studio',
+			name: 'Open Chat Studio',
+			callback: openChatStudio,
 		},
 		{
 			id: 'peak-harness-setup-wizard',
