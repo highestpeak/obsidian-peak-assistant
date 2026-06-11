@@ -34,9 +34,19 @@ const DialogContent = React.forwardRef<
 	return (
 		<DialogPrimitive.Portal container={contextContainer ?? undefined}>
 			<DialogOverlay />
+			{/* CRITICAL: Radix portals mount this subtree at document.body —
+			    OUTSIDE the `.peak-design-root` / `.pktw-root` wrapper that
+			    scopes our --pk-* design tokens (peak-tokens.css §Light/Dark).
+			    Without these classes on the portal root, `bg-popover` and
+			    every other token-backed utility resolves to undefined and
+			    the modal renders transparent. See
+			    docs/recurring-pitfalls.md §"Portalled Radix content loses
+			    design tokens". Same fix is mirrored on popover.tsx and
+			    dropdown-menu.tsx. */}
 			<DialogPrimitive.Content
 				ref={ref}
 				className={cn(
+					'peak-design-root pktw-root',
 					'pktw-fixed pktw-left-[50%] pktw-top-[50%] pktw-z-50 pktw-grid pktw-w-full pktw-max-w-lg pktw-translate-x-[-50%] pktw-translate-y-[-50%] pktw-gap-4 pktw-border pktw-bg-popover pktw-p-6 pktw-shadow-xl pktw-duration-300 pktw-transition-all data-[state=open]:pktw-animate-in data-[state=closed]:pktw-animate-out data-[state=closed]:pktw-fade-out-0 data-[state=open]:pktw-fade-in-0 data-[state=closed]:pktw-zoom-out-95 data-[state=open]:pktw-zoom-in-95 data-[state=closed]:pktw-slide-out-to-left-1/2 data-[state=closed]:pktw-slide-out-to-top-[48%] data-[state=open]:pktw-slide-in-from-left-1/2 data-[state=open]:pktw-slide-in-from-top-[48%] sm:pktw-rounded-xl',
 					className
 				)}

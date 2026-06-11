@@ -99,18 +99,21 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 					<div
 						key={conversation.meta.id}
 						className={cn(
-							'pktw-relative pktw-px-2 pktw-py-1.5 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors pktw-text-[13px] pktw-min-h-7 pktw-flex pktw-items-center pktw-gap-2 pktw-break-words',
+							'pktw-relative pktw-px-2 pktw-py-1.5 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors pktw-text-[13px] pktw-min-h-8 pktw-flex pktw-items-center pktw-gap-2 pktw-break-words',
 							showIndicator && 'pktw-pl-6 pktw-pr-2 before:pktw-content-[""] before:pktw-absolute before:pktw-left-2 before:pktw-top-1/2 before:pktw--translate-y-1/2 before:pktw-w-1 before:pktw-h-1 before:pktw-rounded-full before:pktw-transition-opacity',
 							// Default state
 							!isActive && 'pktw-bg-transparent pktw-text-foreground/80 hover:pktw-bg-muted hover:pktw-text-foreground',
 							// Indicator styles when showIndicator is true
 							showIndicator && !isActive && 'before:pktw-bg-muted-foreground before:pktw-opacity-40 hover:before:pktw-opacity-80',
-							showIndicator && isActive && 'before:!pktw-opacity-100'
+							showIndicator && isActive && 'before:!pktw-opacity-100',
+							// Active state — pale lavender bg + 2px left violet rail (replaces solid violet pill).
+							// Rail is drawn via ::after to avoid clashing with showIndicator's ::before dot.
+							isActive && 'after:pktw-content-[""] after:pktw-absolute after:pktw-left-0 after:pktw-top-1.5 after:pktw-bottom-1.5 after:pktw-w-[2px] after:pktw-rounded-r-sm after:pktw-bg-[color:var(--pk-accent)]'
 						)}
 						style={
 							isActive
 								? {
-										background: 'var(--pk-accent-soft)',
+										background: 'var(--pk-accent-tint)',
 										color: 'var(--pk-accent-text)',
 										fontWeight: 500,
 									}
@@ -345,7 +348,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ quer
 				grouped.map((bucket, idx) => (
 					<React.Fragment key={bucket.label}>
 						<div
-							className="pktw-group pktw-flex pktw-items-center pktw-justify-between pktw-px-2 pktw-pb-0.5 pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wide pktw-text-muted-foreground"
+							className="pktw-group pktw-flex pktw-items-center pktw-justify-between pktw-px-2 pktw-pb-0.5 pktw-text-[11px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground"
 							style={{ paddingTop: idx === 0 ? 8 : 12 }}
 						>
 							<span>{bucket.label}</span>

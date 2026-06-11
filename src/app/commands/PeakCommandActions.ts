@@ -120,18 +120,6 @@ export function openCopilotReviewHistory(): void {
 	new CopilotReviewHistoryModal(getContext().app).open();
 }
 
-export function openDocumentCopilotPanel(): void {
-	new CopilotPickerModal(getContext(), { initialTab: 'document' }).open();
-}
-
-export function openVaultIntelligencePanel(): void {
-	new CopilotPickerModal(getContext(), { initialTab: 'vault' }).open();
-}
-
-export function openManageSystemPanel(): void {
-	new CopilotPickerModal(getContext(), { initialTab: 'setting' }).open();
-}
-
 export function openBatchTagSuggestions(): void {
 	new BatchTagModal(getContext()).open();
 }
@@ -142,10 +130,6 @@ export function openPromptTemplates(): void {
 
 export function openUsageDashboard(): void {
 	void getContext().viewManager.activateUsageDashboardView();
-}
-
-export function openKnowledgeCenter(): void {
-	void getContext().viewManager.activateKnowledgeCenterView();
 }
 
 export function openChatStudio(): void {

@@ -342,10 +342,65 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 			defaultPermissionMode: (rawHarness.defaultPermissionMode === 'read' || rawHarness.defaultPermissionMode === 'acceptEdits' || rawHarness.defaultPermissionMode === 'bypassPermissions')
 				? rawHarness.defaultPermissionMode
 				: d.defaultPermissionMode,
+			budget: sanitizeBudget((rawHarness as { budget?: unknown }).budget),
 		};
 	} else {
-		settings.harnessSettings = { ...DEFAULT_HARNESS_SETTINGS };
+		settings.harnessSettings = {
+			...DEFAULT_HARNESS_SETTINGS,
+			budget: {
+				...DEFAULT_HARNESS_SETTINGS.budget,
+				alertRules: DEFAULT_HARNESS_SETTINGS.budget.alertRules.map((r) => ({ ...r })),
+			},
+		};
 	}
 
 	return settings;
+}
+
+const ALERT_RULE_KINDS: ReadonlySet<string> = new Set([
+	'budget_threshold',
+	'context_compact',
+	'agent_receipt',
+	'silence_low_cost_pip',
+]);
+
+/**
+ * Sanitize the persisted budget block. Always returns a fully populated
+ * BudgetSettings — missing or malformed fields fall back to DEFAULT_BUDGET_SETTINGS
+ * so the dashboard never has to handle undefined slots at render time.
+ */
+function sanitizeBudget(raw: unknown): HarnessSettings['budget'] {
+	const def = DEFAULT_HARNESS_SETTINGS.budget;
+	const fallback = {
+		...def,
+		alertRules: def.alertRules.map((r) => ({ ...r })),
+	};
+	if (!raw || typeof raw !== 'object') return fallback;
+	const r = raw as Record<string, unknown>;
+	const monthlyUsd = typeof r.monthlyUsd === 'number' && Number.isFinite(r.monthlyUsd) && r.monthlyUsd >= 0
+		? r.monthlyUsd
+		: def.monthlyUsd;
+	const resetDayOfMonth = typeof r.resetDayOfMonth === 'number' && r.resetDayOfMonth >= 1 && r.resetDayOfMonth <= 28
+		? Math.floor(r.resetDayOfMonth)
+		: def.resetDayOfMonth;
+	const rawRules = Array.isArray(r.alertRules) ? r.alertRules : null;
+	const alertRules = rawRules
+		? def.alertRules.map((defRule) => {
+			const match = rawRules.find((x) => (x as { kind?: unknown }).kind === defRule.kind) as
+				| { enabled?: unknown; threshold?: unknown; tokenThreshold?: unknown }
+				| undefined;
+			if (!match || !ALERT_RULE_KINDS.has(defRule.kind)) return { ...defRule };
+			return {
+				kind: defRule.kind,
+				enabled: typeof match.enabled === 'boolean' ? match.enabled : defRule.enabled,
+				threshold: typeof match.threshold === 'number' && Number.isFinite(match.threshold)
+					? match.threshold
+					: defRule.threshold,
+				tokenThreshold: typeof match.tokenThreshold === 'number' && Number.isFinite(match.tokenThreshold)
+					? match.tokenThreshold
+					: defRule.tokenThreshold,
+			};
+		})
+		: def.alertRules.map((rule) => ({ ...rule }));
+	return { monthlyUsd, resetDayOfMonth, alertRules };
 }

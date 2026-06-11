@@ -30,3 +30,24 @@ export type { ExplainerEntry, ExplainerPanelProps } from './ExplainerPanel';
 
 export { NumberedPager } from './NumberedPager';
 export type { NumberedPagerProps } from './NumberedPager';
+
+export { PaceBar } from './PaceBar';
+export type { PaceBarProps } from './PaceBar';
+
+export { Sparkline } from './Sparkline';
+export type { SparklineProps } from './Sparkline';
+
+export { Toggle } from './Toggle';
+export type { ToggleProps } from './Toggle';
+
+export { Field, NumberField } from './Field';
+export type { FieldProps, NumberFieldProps } from './Field';
+
+export { RecommendationBlock } from './RecommendationBlock';
+export type { RecommendationBlockProps } from './RecommendationBlock';
+
+export { ScenarioRadio } from './ScenarioRadio';
+export type { ScenarioRadioProps } from './ScenarioRadio';
+
+export { RuleRow } from './RuleRow';
+export type { RuleRowProps } from './RuleRow';

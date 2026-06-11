@@ -29,7 +29,7 @@ const NoRecentlyAccessedState: React.FC = () => (
 	<EmptyState
 		icon={SearchX}
 		title="No recently accessed files"
-		description="Start searching or open some files to see them here. Open Knowledge Center to update the search index."
+		description="Start searching or open some files to see them here. Run “Update index” from Settings → Advanced → Maintenance if results look stale."
 	/>
 );
 

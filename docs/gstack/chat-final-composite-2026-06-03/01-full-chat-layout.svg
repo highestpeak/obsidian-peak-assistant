@@ -1,0 +1,241 @@
+<svg width="1800" height="1120" viewBox="0 0 1800 1120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="20" flood-color="#0f172a" flood-opacity="0.08"/>
+    </filter>
+    <linearGradient id="activeBg" x1="0" x2="1" y1="0" y2="0">
+      <stop stop-color="#F1E8FF"/>
+      <stop offset="1" stop-color="#F7F3FF"/>
+    </linearGradient>
+    <linearGradient id="purple" x1="0" x2="1">
+      <stop stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+    <style>
+      .h1{font:700 22px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .h2{font:650 16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .body{font:400 13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#334155}
+      .muted{font:400 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#7B8494}
+      .small{font:500 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#7B8494}
+      .label{font:700 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.12em;fill:#7B8494}
+      .icon{stroke:#64748B;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      .iconDark{stroke:#475569;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      .hair{stroke:#E6E8EE;stroke-width:1}
+    </style>
+  </defs>
+
+  <rect width="1800" height="1120" fill="#FAFBFC"/>
+  <rect x="1" y="1" width="1798" height="1118" rx="14" fill="#FCFCFD" stroke="#E5E7EB"/>
+
+  <!-- Left sidebar -->
+  <rect x="0" y="0" width="328" height="1120" fill="#FAFAFB"/>
+  <line x1="328" y1="0" x2="328" y2="1120" stroke="#E8EAEE"/>
+  <g transform="translate(44 58)">
+    <path d="M0 25 L20 0 L40 25 Z" fill="#7C3AED"/>
+    <path d="M22 25 L38 6 L54 25 Z" fill="#A78BFA"/>
+    <text x="76" y="27" class="h1">Peak Assistant</text>
+    <g transform="translate(226 2)">
+      <path class="iconDark" d="M7 24V13l10-8 10 8v11M11 24h12M15 24v-7h4v7"/>
+      <path class="iconDark" d="M54 8a14 14 0 0 1 22 5M76 3v10H66M76 24a14 14 0 0 1-22-5M54 29V19h10"/>
+      <line x1="96" y1="0" x2="96" y2="34" stroke="#E0E3E8"/>
+      <path class="iconDark" d="M126 5l-12 12 12 12M142 5v24"/>
+    </g>
+  </g>
+
+  <g transform="translate(44 132)">
+    <rect width="258" height="50" rx="10" fill="#FFFFFF" stroke="#DEE2E8"/>
+    <circle cx="25" cy="25" r="10" class="icon"/>
+    <path d="M32 32l9 9" class="icon"/>
+    <text x="55" y="31" style="font:400 17px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#8A93A3">Find chat or project</text>
+    <rect x="208" y="14" width="38" height="24" rx="7" fill="#F1F3F6"/>
+    <text x="217" y="31" class="small">⌘K</text>
+  </g>
+
+  <g transform="translate(44 242)">
+    <text class="label">PROJECTS</text>
+    <g transform="translate(0 48)">
+      <path class="iconDark" d="M7 2l8 8-8 8"/>
+      <path class="iconDark" d="M48 5h18l5 6h19v25H48z"/>
+      <text x="104" y="27" class="body" style="font-size:16px;fill:#111827">Current World Events</text>
+    </g>
+    <g transform="translate(0 104)">
+      <path class="iconDark" d="M7 2l8 8-8 8"/>
+      <path class="iconDark" d="M48 5h18l5 6h19v25H48z"/>
+      <text x="104" y="27" class="body" style="font-size:16px;fill:#111827">sadsad</text>
+    </g>
+  </g>
+
+  <g transform="translate(44 454)">
+    <text class="label">TODAY</text>
+    <rect x="-14" y="42" width="288" height="54" rx="8" fill="url(#activeBg)"/>
+    <rect x="-14" y="42" width="4" height="54" rx="2" fill="#7C3AED"/>
+    <path class="iconDark" d="M20 60h24v21H26l-6 6z"/>
+    <text x="64" y="76" class="body" style="font-size:16px;fill:#111827">AI Profile Configuration</text>
+    <text x="224" y="76" class="muted">10:25 AM</text>
+  </g>
+
+  <g transform="translate(44 610)">
+    <text class="label">EARLIER</text>
+    <g transform="translate(0 52)">
+      <path class="icon" d="M20 0h24v21H26l-6 6z"/>
+      <text x="64" y="17" class="body" style="font-size:15px;fill:#111827">AI Profile Configuration Error Duri...</text>
+      <text x="228" y="17" class="muted">May 12</text>
+    </g>
+    <g transform="translate(0 106)">
+      <path class="icon" d="M20 0h24v21H26l-6 6z"/>
+      <text x="64" y="17" class="body" style="font-size:15px;fill:#111827">New Conversation</text>
+      <text x="240" y="17" class="muted">May 8</text>
+    </g>
+    <g transform="translate(0 160)">
+      <path class="icon" d="M20 0h24v21H26l-6 6z"/>
+      <text x="64" y="17" class="body" style="font-size:15px;fill:#111827">Hello - KB5 Automation Workspace</text>
+      <text x="240" y="17" class="muted">May 5</text>
+    </g>
+    <g transform="translate(0 214)">
+      <path class="icon" d="M20 0h24v21H26l-6 6z"/>
+      <text x="64" y="17" class="body" style="font-size:15px;fill:#111827">Research</text>
+      <text x="240" y="17" class="muted">May 1</text>
+    </g>
+    <line x1="0" y1="330" x2="258" y2="330" stroke="#E5E7EB"/>
+    <circle cx="20" cy="402" r="18" fill="#7C3AED"/>
+    <text x="14" y="409" style="font:700 17px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:white">Z</text>
+    <text x="64" y="409" class="body" style="font-size:16px;fill:#111827">zhangjike</text>
+  </g>
+
+  <!-- Main chat -->
+  <rect x="328" y="0" width="1092" height="1120" fill="#FFFFFF"/>
+  <line x1="328" y1="60" x2="1420" y2="60" stroke="#E9EBF0"/>
+  <text x="370" y="38" class="h2">AI Profile Configuration Error During Greeting</text>
+  <path class="icon" d="M674 24h12v12M686 24l-18 18M670 30v18h18" />
+  <path class="icon" d="M716 24a12 12 0 0 1 18 5M734 22v8h-8M734 44a12 12 0 0 1-18-5M716 47v-8h8"/>
+
+  <g transform="translate(470 126)">
+    <text x="0" y="0" class="body" style="font-size:18px;fill:#111827">7. Debugging, perf tips, and developer tooling</text>
+    <circle cx="8" cy="56" r="3" fill="#111827"/>
+    <text x="34" y="62" class="body" style="font-size:17px;fill:#111827">Java performance tips, profilers, and GC tuning intro</text>
+    <circle cx="8" cy="104" r="3" fill="#111827"/>
+    <text x="34" y="110" class="body" style="font-size:17px;fill:#111827">React performance: memoization, lazy loading, profilers</text>
+    <circle cx="8" cy="152" r="3" fill="#111827"/>
+    <text x="34" y="158" class="body" style="font-size:17px;fill:#111827">SpreadJS performance: virtualization and render optimization</text>
+    <text x="0" y="236" class="body" style="font-size:18px;fill:#111827">How I can act</text>
+    <circle cx="8" cy="290" r="3" fill="#111827"/>
+    <text x="34" y="296" class="body" style="font-size:17px;fill:#111827">Summarize the current note and extract tasks</text>
+    <circle cx="8" cy="338" r="3" fill="#111827"/>
+    <text x="34" y="344" class="body" style="font-size:17px;fill:#111827">Reorganize this note into a project plan with milestones</text>
+    <circle cx="8" cy="386" r="3" fill="#111827"/>
+    <text x="34" y="392" class="body" style="font-size:17px;fill:#111827">Create a small implementation plan for the chat UI polish</text>
+  </g>
+
+  <!-- Composer focus state -->
+  <g transform="translate(390 852)" filter="url(#softShadow)">
+    <rect width="910" height="210" rx="14" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2"/>
+    <text x="34" y="58" style="font:400 21px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#111827">Summarize the key takeaways from the latest notes and create a short action plan.</text>
+    <line x1="0" y1="112" x2="910" y2="112" stroke="#E8EAF0"/>
+    <g transform="translate(26 135)">
+      <rect width="44" height="44" rx="10" fill="#FFFFFF" stroke="#D9DEE8"/>
+      <path class="iconDark" d="M22 11v22M11 22h22"/>
+      <path class="iconDark" d="M106 12v18a10 10 0 0 1-20 0V12a7 7 0 0 1 14 0v18a4 4 0 0 1-8 0V13"/>
+      <path class="iconDark" d="M176 14c0 6-24 6-24 0s24-6 24 0zM152 14v22c0 6 24 6 24 0V14M152 25c0 6 24 6 24 0"/>
+      <path class="iconDark" d="M244 12h26M244 22h26M244 32h26M252 8v8M262 18v8M252 28v8"/>
+      <path class="iconDark" d="M328 12l22 22M350 12l-22 22M352 8l6-6M320 40l-6 6"/>
+    </g>
+    <g transform="translate(590 134)">
+      <rect width="292" height="46" rx="16" fill="#FFFFFF" stroke="#D7DCE5"/>
+      <text x="26" y="29" class="body" style="font-weight:650;fill:#111827">Chat</text>
+      <text x="76" y="29" class="muted">·</text>
+      <text x="95" y="29" class="body" style="fill:#64748B">Auto model</text>
+      <text x="188" y="29" class="muted">·</text>
+      <text x="207" y="29" class="body" style="fill:#64748B">No context</text>
+      <path class="icon" d="M266 18l8 8 8-8"/>
+    </g>
+    <path class="iconDark" d="M860 146v18a10 10 0 0 0 20 0v-18M870 176v14M858 190h24"/>
+    <rect x="822" y="135" width="44" height="44" rx="10" fill="#7C3AED"/>
+    <path d="M836 156l22-10-10 24-4-10-8-4z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Right Conversation Index -->
+  <rect x="1420" y="0" width="380" height="1120" fill="#FCFCFD"/>
+  <line x1="1420" y1="0" x2="1420" y2="1120" stroke="#E8EAEE"/>
+  <g transform="translate(1452 48)">
+    <text class="h1">Conversation Index</text>
+    <path class="iconDark" d="M320 0h30M328 0a5 5 0 1 0 10 0M320 18h30M336 18a5 5 0 1 0 10 0" />
+
+    <rect x="0" y="64" width="320" height="42" rx="10" fill="#FFFFFF" stroke="#DFE3EA"/>
+    <circle cx="22" cy="85" r="9" class="icon"/>
+    <path d="M29 92l8 8" class="icon"/>
+    <text x="48" y="91" class="muted">Search topics, files, messages...</text>
+
+    <g transform="translate(0 146)">
+      <text x="36" y="0" class="body" style="font-size:15px;fill:#64748B">Map</text>
+      <text x="137" y="0" class="body" style="font-size:15px;fill:#64748B">Artifacts</text>
+      <text x="266" y="0" class="body" style="font-size:15px;font-weight:700;fill:#111827">Timeline</text>
+    </g>
+
+    <g transform="translate(0 202)">
+      <text class="h2">Timeline</text>
+      <rect x="76" y="-17" width="27" height="22" rx="11" fill="#F0E8FF"/>
+      <text x="85" y="-1" class="small" style="font-weight:700;fill:#7C3AED">26</text>
+      <text x="232" y="-1" class="muted">Sort: latest</text>
+      <path class="icon" d="M300 -10l8 8 8-8"/>
+    </g>
+
+    <g transform="translate(0 246)">
+      <rect x="0" y="0" width="32" height="32" rx="8" fill="#EEF4FF"/>
+      <text x="10" y="22" class="small" style="font-size:13px;font-weight:700;fill:#2563EB">U</text>
+      <text x="46" y="13" class="body" style="font-size:13px;fill:#111827">Can you summarize the latest notes?</text>
+      <text x="270" y="13" class="muted">11:04</text>
+    </g>
+
+    <g transform="translate(0 306)">
+      <path class="iconDark" d="M8 4l8 8-8 8"/>
+      <path class="iconDark" d="M42 0h22v19H48l-6 6z"/>
+      <text x="82" y="17" class="body" style="font-size:15px;font-weight:700;fill:#111827">API profile setup</text>
+      <rect x="238" y="7" width="70" height="5" rx="3" fill="#E5E7EB"/>
+      <rect x="238" y="7" width="42" height="5" rx="3" fill="url(#purple)"/>
+      <text x="314" y="15" class="body" style="font-size:14px;font-weight:700;fill:#7C3AED">12</text>
+      <text x="82" y="44" class="muted">Configuring profiles and model settings</text>
+      <line x1="54" y1="62" x2="54" y2="170" stroke="#E5E7EB"/>
+      <rect x="82" y="78" width="26" height="26" rx="7" fill="#EEF4FF"/>
+      <text x="91" y="97" class="small" style="font-weight:700;fill:#2563EB">U</text>
+      <text x="124" y="96" class="body" style="font-size:13px;fill:#334155">How do I configure a model profile?</text>
+      <text x="270" y="96" class="muted">10:28</text>
+      <path class="icon" d="M88 126h18v22H88zM92 132h10M92 138h10"/>
+      <text x="124" y="140" class="body" style="font-size:13px;fill:#334155">provider.md</text>
+      <text x="124" y="160" class="muted">docs/ai/provider.md</text>
+      <text x="270" y="140" class="muted">10:21</text>
+    </g>
+
+    <g transform="translate(0 512)">
+      <rect x="0" y="0" width="32" height="32" rx="8" fill="#F3F4F6"/>
+      <text x="10" y="22" class="small" style="font-size:13px;font-weight:700;fill:#64748B">P</text>
+      <text x="46" y="13" class="body" style="font-size:13px;fill:#111827">I found the provider config issue.</text>
+      <text x="270" y="13" class="muted">10:19</text>
+    </g>
+
+    <g transform="translate(0 574)">
+      <rect x="0" y="0" width="32" height="32" rx="8" fill="#EEF4FF"/>
+      <text x="10" y="22" class="small" style="font-size:13px;font-weight:700;fill:#2563EB">U</text>
+      <text x="46" y="13" class="body" style="font-size:13px;fill:#111827">hello</text>
+      <text x="270" y="13" class="muted">09:58</text>
+    </g>
+
+    <g transform="translate(0 636)">
+      <path class="iconDark" d="M8 4l8 8-8 8"/>
+      <path class="iconDark" d="M42 0h22v19H48l-6 6z"/>
+      <text x="82" y="17" class="body" style="font-size:15px;font-weight:700;fill:#111827">Model routing</text>
+      <rect x="238" y="7" width="70" height="5" rx="3" fill="#E5E7EB"/>
+      <rect x="238" y="7" width="36" height="5" rx="3" fill="url(#purple)"/>
+      <text x="314" y="15" class="body" style="font-size:14px;font-weight:700;fill:#7C3AED">5</text>
+      <text x="82" y="44" class="muted">Overrides and fallback rules</text>
+    </g>
+
+    <line x1="0" y1="742" x2="320" y2="742" stroke="#E9EBF0"/>
+    <g transform="translate(0 782)">
+      <path class="iconDark" d="M12 0h22v26H12zM17 7h12M17 13h12"/>
+      <text x="62" y="19" class="body" style="font-size:16px;fill:#111827">Artifacts</text>
+      <rect x="272" y="0" width="28" height="24" rx="12" fill="#F1F3F6"/>
+      <text x="282" y="17" class="small">4</text>
+      <path class="iconDark" d="M318 5l8 8-8 8"/>
+    </g>
+  </g>
+</svg>

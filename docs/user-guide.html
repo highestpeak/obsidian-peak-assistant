@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant — User Guide</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --paper: #ffffff;
+      --ink: #111827;
+      --muted: #5f6b7a;
+      --line: #d7deea;
+      --soft: #eef3f9;
+      --blue: #2563eb;
+      --green: #15803d;
+      --amber: #b45309;
+      --red: #b42318;
+      --violet: #6d28d9;
+      --teal: #0f766e;
+      --shadow: 0 18px 48px rgba(15, 23, 42, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 0, #eaf1ff 0, transparent 360px),
+        linear-gradient(180deg, #f8fbff 0, var(--bg) 260px, var(--bg) 100%);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+      line-height: 1.62;
+    }
+
+    .shell {
+      width: min(1180px, calc(100vw - 40px));
+      margin: 0 auto;
+      padding: 42px 0 74px;
+    }
+
+    header {
+      padding: 30px 0 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 10px 0 12px;
+      font-size: clamp(32px, 4.8vw, 52px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 52px 0 16px;
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+      font-size: 26px;
+      line-height: 1.2;
+    }
+
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 18px;
+      line-height: 1.3;
+    }
+
+    p { margin: 8px 0; }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    code {
+      color: #111827;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .91em;
+    }
+
+    .lead { max-width: 920px; color: var(--muted); font-size: 16px; }
+    .small { color: var(--muted); font-size: 13px; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 850;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      color: #334155;
+      white-space: nowrap;
+    }
+
+    .tag.blue   { color: var(--blue);   background: #eff6ff; border-color: #bfdbfe; }
+    .tag.green  { color: var(--green);  background: #f0fdf4; border-color: #bbf7d0; }
+    .tag.amber  { color: var(--amber);  background: #fff7ed; border-color: #fed7aa; }
+    .tag.violet { color: var(--violet); background: #f5f3ff; border-color: #ddd6fe; }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 14px 0 4px;
+    }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 24px 0 8px;
+    }
+
+    .toc a {
+      display: block;
+      min-height: 66px;
+      padding: 12px 14px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      box-shadow: var(--shadow);
+    }
+
+    .toc a strong { display: block; font-size: 14px; }
+    .toc a span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+
+    .card {
+      background: rgba(255, 255, 255, .94);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 18px 20px;
+    }
+
+    .ribbon {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0 6px;
+    }
+
+    .ribbon-step {
+      padding: 14px;
+      border-radius: 10px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      position: relative;
+    }
+
+    .ribbon-step::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -12px;
+      width: 10px;
+      height: 2px;
+      background: #94a3b8;
+    }
+
+    .ribbon-step:last-child::after { display: none; }
+
+    .ribbon-step .num {
+      display: inline-block;
+      min-width: 22px;
+      padding: 1px 7px;
+      margin-right: 6px;
+      color: #fff;
+      background: var(--ink);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .ribbon-step strong { display: block; margin: 6px 0 4px; }
+    .ribbon-step span { display: block; color: var(--muted); font-size: 13px; }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin: 14px 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    th {
+      background: var(--soft);
+      color: #334155;
+      font-weight: 850;
+      font-size: 12px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    td code { white-space: nowrap; }
+
+    .step-num {
+      display: inline-block;
+      min-width: 22px;
+      padding: 1px 7px;
+      color: #fff;
+      background: var(--ink);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 16px 0;
+    }
+
+    .callout {
+      padding: 14px 16px;
+      margin: 14px 0;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 10px;
+      color: #7c2d12;
+    }
+
+    .callout.blue  { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; }
+    .callout.green { background: #f0fdf4; border-color: #bbf7d0; color: #14532d; }
+
+    .callout strong { display: block; margin-bottom: 4px; }
+
+    pre {
+      margin: 10px 0;
+      padding: 12px 14px;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12.5px;
+      line-height: 1.55;
+      overflow-x: auto;
+    }
+
+    ul, ol { margin: 8px 0; padding-left: 22px; }
+    li { margin: 4px 0; }
+
+    footer {
+      margin-top: 60px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .toc { grid-template-columns: repeat(2, 1fr); }
+      .ribbon { grid-template-columns: 1fr; }
+      .ribbon-step::after { display: none; }
+      .two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+
+    <header>
+      <div class="eyebrow">User Guide · v1 · 2026-06-07</div>
+      <h1>Peak Assistant — Getting Started</h1>
+      <p class="lead">
+        A lightweight walkthrough for new users. Read it once, get configured in five minutes,
+        and skim the appearance section before you start writing in Chinese.
+      </p>
+      <div class="tag-row">
+        <span class="tag blue">First launch</span>
+        <span class="tag blue">Setup Wizard</span>
+        <span class="tag violet">Fonts &amp; appearance</span>
+        <span class="tag green">Daily entry points</span>
+        <span class="tag amber">Troubleshooting</span>
+      </div>
+
+      <nav class="toc" aria-label="Table of contents">
+        <a href="#first-launch"><strong>1. First Launch</strong><span>Enable plugin, open Setup Wizard.</span></a>
+        <a href="#wizard"><strong>2. Setup Wizard Flow</strong><span>Six visible steps, two detours.</span></a>
+        <a href="#fonts"><strong>3. Fonts &amp; Appearance</strong><span>Why Obsidian's default font looks off for Chinese, and how to fix it in 30 seconds.</span></a>
+        <a href="#entry-points"><strong>4. Daily Entry Points</strong><span>Command palette cheatsheet.</span></a>
+      </nav>
+    </header>
+
+    <!-- ====================================================== -->
+    <h2 id="first-launch">1. First Launch</h2>
+
+    <p>
+      Three steps from a fresh install to a working Peak Assistant. None of them touch your vault data —
+      the Setup Wizard only writes to <code>HarnessSettings</code>, your provider bindings.
+    </p>
+
+    <div class="ribbon">
+      <div class="ribbon-step">
+        <span class="num">1</span>
+        <strong>Enable the plugin</strong>
+        <span>Settings → Community plugins → toggle <em>Peak Assistant</em> on.</span>
+      </div>
+      <div class="ribbon-step">
+        <span class="num">2</span>
+        <strong>Open the command palette</strong>
+        <span><code>Cmd&nbsp;+&nbsp;P</code> (macOS) or <code>Ctrl&nbsp;+&nbsp;P</code> (Windows / Linux).</span>
+      </div>
+      <div class="ribbon-step">
+        <span class="num">3</span>
+        <strong>Run the Setup Wizard</strong>
+        <span>Search <strong>"Peak Assistant: Setup Wizard"</strong> and press Enter. The wizard walks you through provider setup and model recommendations.</span>
+      </div>
+    </div>
+
+    <div class="callout blue">
+      <strong>Re-running the wizard is safe.</strong>
+      The same command opens in <em>re-run</em> mode when bindings already exist. It will not wipe your previous configuration — only let you adjust it.
+    </div>
+
+    <!-- ====================================================== -->
+    <h2 id="wizard">2. Setup Wizard Flow</h2>
+
+    <p>
+      The wizard has six visible steps. Two more steps (<code>edit-recommendation</code> and
+      <code>redo-input</code>) appear only as detours from the review screen.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:48px">#</th>
+          <th style="width:200px">Step</th>
+          <th>What it does</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="step-num">1</span></td>
+          <td><strong>Welcome</strong></td>
+          <td>Introduces Peak Assistant and the role of the <em>Curator</em> agent. Pick "Get Started" to continue.</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">2</span></td>
+          <td><strong>Choose Provider</strong></td>
+          <td>Connect and verify one or more AI providers (Anthropic, OpenAI, Google, Ollama, OpenRouter, etc.). You can add more later from Settings.</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">3</span></td>
+          <td><strong>Choose Bootstrap Model</strong></td>
+          <td>Pick one <em>already-configured</em> model to bootstrap the Curator agent. The Curator will use it to recommend your long-term setup. A reliable frontier model (Claude Opus 4.x, GPT-5) is a good default.</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">4</span></td>
+          <td><strong>Preference Questions</strong></td>
+          <td>Answer a few natural-language questions: speed vs. quality, privacy constraints, monthly budget, the kinds of tasks you run. Curator uses these to shape its recommendation.</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">5</span></td>
+          <td><strong>Running Curator</strong></td>
+          <td>The Curator agent calls your bootstrap model, scans the 22-model catalog, and streams its reasoning live. Sit back and read along.</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">6</span></td>
+          <td><strong>Review Recommendation</strong></td>
+          <td>
+            Three exits:
+            <strong>Accept</strong> — apply as-is;
+            <strong>Edit</strong> — tweak the picks (detour: <code>edit-recommendation</code>);
+            <strong>Redo with note</strong> — add a follow-up hint and re-run (detour: <code>redo-input</code>).
+          </td>
+        </tr>
+        <tr>
+          <td>✓</td>
+          <td><strong>Done</strong></td>
+          <td>The recommendation lands in <code>HarnessSettings</code>; the <em>localFast</em>, <em>localDeep</em>, and <em>online</em> slots are now bound.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="small">
+      Source of truth: <code>src/ui/view/modals/harness-onboarding/state.ts</code> defines the step order and the reducer.
+    </p>
+
+    <!-- ====================================================== -->
+    <h2 id="fonts">3. Fonts &amp; Appearance</h2>
+
+    <p>
+      If you take away one thing from this page, take this:
+      <strong>Obsidian's default Interface and Text fonts (Inter) do not contain CJK glyphs.</strong>
+      Chinese characters fall back per-glyph to the OS — usually <em>PingFang</em> on macOS — but the baseline
+      and weight mismatch makes mixed-script text look thin and floaty.
+    </p>
+
+    <p>
+      The fix is to point Obsidian's three font stacks at the system font and add PingFang explicitly.
+      One change, applies live, no restart.
+    </p>
+
+    <h3>Where to set it</h3>
+
+    <p>
+      <strong>Obsidian Settings → Appearance → Font.</strong> You will see three stacks. Configure all three.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:170px">Field</th>
+          <th>Recommended stack</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Interface font</strong></td>
+          <td><code>-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif</code></td>
+        </tr>
+        <tr>
+          <td><strong>Text font</strong></td>
+          <td><code>-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif</code></td>
+        </tr>
+        <tr>
+          <td><strong>Monospace font</strong></td>
+          <td><code>"SF Mono", "JetBrains Mono", Menlo, Consolas, "PingFang SC", monospace</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>Prefer to edit the file directly? Open this and change the corresponding keys:</p>
+
+<pre>&lt;vault&gt;/.obsidian/appearance.json
+
+{
+  "interfaceFontFamily": "-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", \"Segoe UI\", sans-serif",
+  "textFontFamily":      "-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", \"Segoe UI\", sans-serif",
+  "monospaceFontFamily": "\"SF Mono\", \"JetBrains Mono\", Menlo, Consolas, \"PingFang SC\", monospace"
+}
+</pre>
+
+    <h3>Why we don't switch fonts by language tag</h3>
+
+    <div class="two-col">
+      <div class="card">
+        <strong>Per-glyph fallback is automatic.</strong>
+        <p class="small">
+          CSS <code>font-family</code> fallback happens at the OS text layer (CoreText on macOS, DirectWrite on Windows).
+          For every character, the OS walks the stack and uses the first font that has a glyph for it.
+          Adding <code>"PingFang SC"</code> to the stack is enough — no <code>:lang(zh)</code> selector required.
+        </p>
+      </div>
+      <div class="card">
+        <strong>This is how the big apps do it.</strong>
+        <p class="small">
+          ChatGPT, Notion, and Linear all ship one system font stack. In a DevTools "Rendered Fonts" panel you can
+          watch a single paragraph render Latin in <em>SF Pro</em> and CJK in <em>PingFang UI</em>, all from one
+          <code>font-family</code> declaration.
+        </p>
+      </div>
+    </div>
+
+    <h3>Inside the plugin</h3>
+
+    <p>
+      Peak Assistant's design tokens already use a system stack with PingFang:
+    </p>
+
+<pre>/* src/styles/peak-tokens.css */
+--pk-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+--pk-font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+</pre>
+
+    <p>
+      Most plugin UI uses these tokens directly. A few containers inherit Obsidian's
+      <code>var(--font-interface)</code> instead, which is why the Obsidian-level Appearance setting still matters
+      for the parts of the plugin that live inside Obsidian's own chrome (sidebar, command palette, settings).
+    </p>
+
+    <div class="callout green">
+      <strong>One-line summary.</strong>
+      Add <code>"PingFang SC"</code> to the start of Obsidian's Interface, Text, and Monospace font stacks.
+      The OS handles everything else.
+    </div>
+
+    <!-- ====================================================== -->
+    <h2 id="entry-points">4. Daily Entry Points</h2>
+
+    <p>
+      Open the command palette (<code>Cmd&nbsp;+&nbsp;P</code>) and type <em>Peak</em> to see every command.
+      The ones you will use most:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:42%">Command</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Peak Assistant: Open Chat Studio</code></td><td>Main chat workspace.</td></tr>
+        <tr><td><code>Peak Assistant: Quick Search</code></td><td>Vault-wide semantic search.</td></tr>
+        <tr><td><code>Peak Assistant: Open Knowledge Center</code></td><td>Projects and conversation index.</td></tr>
+        <tr><td><code>Peak Assistant: Setup Wizard</code></td><td>Re-run onboarding to add a provider or refresh recommendations.</td></tr>
+        <tr><td><code>Peak Assistant: Open Settings</code></td><td>Full settings panel.</td></tr>
+        <tr><td><code>Peak Assistant: Usage Dashboard</code></td><td>Token usage and cost tracking.</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ====================================================== -->
+    <h2 id="troubleshooting">5. Troubleshooting</h2>
+
+    <div class="two-col">
+      <div class="card">
+        <strong>Font change didn't apply</strong>
+        <p class="small">
+          Most font changes apply live. If a specific view still shows Inter, close and reopen that tab.
+          Reloading the plugin from the Community plugins settings also forces a refresh.
+        </p>
+      </div>
+      <div class="card">
+        <strong>Curator recommendation failed</strong>
+        <p class="small">
+          On the Review screen, click <em>Redo with note</em> and add a concrete hint such as
+          <em>"I write mostly Chinese notes, budget around $10 per month, privacy not critical."</em>
+          A short, specific note usually fixes a bad first run.
+        </p>
+      </div>
+      <div class="card">
+        <strong>Want to reset Setup Wizard</strong>
+        <p class="small">
+          Delete the existing provider bindings in Settings, then re-run <code>Peak Assistant: Setup Wizard</code>.
+          The wizard will treat it as a first run.
+        </p>
+      </div>
+      <div class="card">
+        <strong>Other quirks</strong>
+        <p class="small">
+          Peak Assistant maintains a developer-facing log of recurring bugs and workarounds at
+          <code>docs/recurring-pitfalls.md</code>. Several entries are useful for power users too.
+        </p>
+      </div>
+    </div>
+
+    <footer>
+      <div>Peak Assistant · User Guide v1 · last updated 2026-06-07</div>
+      <div>Source: <code>docs/user-guide.html</code> · file an issue or PR if anything here goes stale.</div>
+    </footer>
+
+  </div>
+</body>
+</html>

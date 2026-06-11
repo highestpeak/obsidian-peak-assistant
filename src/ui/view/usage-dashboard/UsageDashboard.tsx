@@ -51,13 +51,68 @@ export interface OverviewKpiStrings {
 	empty?: string;
 }
 
+export interface BudgetPaceKpiStrings {
+	label: string;
+	verb: string;
+	empty: string;
+	projectionLabel: string;
+	onTrack: string;
+	offTrack: string;
+	noBudgetCta: string;
+}
+
+export interface ContextRiskKpiStrings {
+	label: string;
+	verb: string;
+	healthy: string;
+	warn: string;
+	bad: string;
+	empty: string;
+	autoCompactAt: string;
+}
+
+export interface CostPerSavedKpiStrings {
+	label: string;
+	verb: string;
+	help: string;
+	sub: string;
+	empty: string;
+}
+
+export interface CallsKpiStrings {
+	label: string;
+	verb: string;
+	tokensSub: string;
+}
+
+export interface RecommendedActionsStrings {
+	title: string;
+	subtitle: string;
+	empty: string;
+	viewAll: string;
+	loading: string;
+	refreshed: string;
+	impactLabels: Record<'high' | 'medium' | 'low' | 'investigate', string>;
+}
+
+export interface ThisWeekStrings {
+	title: string;
+	linkLabel: string;
+	spendLabel: string;
+	tokensLabel: string;
+	costPerSavedLabel: string;
+	deltaSuffix: string;
+}
+
 export interface OverviewStrings {
 	kpi: {
-		mpg: OverviewKpiStrings;
-		totalCost: OverviewKpiStrings;
-		usefulMessages: OverviewKpiStrings;
-		totalCalls: OverviewKpiStrings;
+		budgetPace: BudgetPaceKpiStrings;
+		contextRisk: ContextRiskKpiStrings;
+		costPerSaved: CostPerSavedKpiStrings;
+		calls: CallsKpiStrings;
 	};
+	recommendedActions: RecommendedActionsStrings;
+	thisWeek: ThisWeekStrings;
 	funnel: {
 		title: string;
 		subtitle: string;
@@ -69,6 +124,112 @@ export interface OverviewStrings {
 		subtitle: string;
 		empty: string;
 		events: Record<string, string>;
+	};
+}
+
+export interface BudgetAlertsStrings {
+	reset: string;
+	monthlyBudget: {
+		title: string;
+		sub: string;
+		fieldLabel: string;
+		fieldHint: string;
+		breakdown: string;
+		save: string;
+		resetDay: string;
+		resetDayPrompt: string;
+		cycleBadge: string;
+		noBudget: string;
+	};
+	alertRules: {
+		title: string;
+		sub: string;
+		editThresholds: string;
+		testAlerts: string;
+		howDelivered: string;
+		rules: Record<
+			'budget_threshold' | 'context_compact' | 'agent_receipt' | 'silence_low_cost_pip',
+			{ title: string; sub: string; badge: string }
+		>;
+	};
+	modelDefaults: {
+		title: string;
+		sub: string;
+		manage: string;
+		tabs: { quick: string; deep: string; premium: string };
+		costSuffix: string;
+		empty: string;
+	};
+	preview: {
+		title: string;
+		sub: string;
+		customize: string;
+		items: {
+			budgetAt40: {
+				label: string;
+				value: string;
+				badge: string;
+				openOptimization: string;
+				snooze: string;
+			};
+			contextAt70: {
+				label: string;
+				headline: string;
+				badge: string;
+				body: string;
+				compactNow: string;
+				dismiss: string;
+			};
+			agentReceipt: {
+				label: string;
+				headline: string;
+				body: string;
+				openTrace: string;
+			};
+		};
+	};
+}
+
+export interface OptimizationStrings {
+	summary: {
+		templateCanCut: string;
+		noRecommendations: string;
+		refresh: string;
+		loading: string;
+		refreshing: string;
+	};
+	recommendations: {
+		title: string;
+		sub: string;
+		sourceRules: string;
+		sourceLlm: string;
+		apply: string;
+		preview: string;
+		openTraces: string;
+		estMonthlySaving: string;
+		evidenceColumns: {
+			started: string;
+			goal: string;
+			model: string;
+			cost: string;
+		};
+	};
+	savingsDial: {
+		appliedNone: string;
+		appliedSummary: string;
+		openBudget: string;
+	};
+	projection: {
+		title: string;
+		cycle: string;
+		withoutChanges: string;
+		withApplied: string;
+		savingsTemplate: string;
+		budget: string;
+	};
+	scenarios: {
+		title: string;
+		sub: string;
 	};
 }
 
@@ -149,6 +310,8 @@ export interface DashboardStrings {
 	detailPanel: DetailPanelStrings;
 	providerModel: ProviderModelStrings;
 	outcomeValue: OutcomeValueStrings;
+	budgetAlerts: BudgetAlertsStrings;
+	optimization: OptimizationStrings;
 }
 
 /**
@@ -174,17 +337,58 @@ const FALLBACK_STRINGS: DashboardStrings = {
 	},
 	overview: {
 		kpi: {
-			mpg: {
-				label: 'Cost / useful message',
-				help: 'Sum of usage cost in this range divided by the number of AI messages that produced a real outcome (vault save, copilot accept, agent file emit). Spec §11.2.',
+			budgetPace: {
+				label: 'Budget pace',
+				verb: 'Adjust budget',
+				empty: 'No budget set',
+				projectionLabel: 'Projected',
+				onTrack: 'On track',
+				offTrack: 'Pace high',
+				noBudgetCta: 'Set a monthly budget',
+			},
+			contextRisk: {
+				label: 'Context risk',
+				verb: 'Compact threshold',
+				healthy: 'Healthy',
+				warn: 'Watch',
+				bad: 'At risk',
+				empty: 'Open a chat to read context',
+				autoCompactAt: 'Auto-compact at {threshold}%',
+			},
+			costPerSaved: {
+				label: 'Cost / saved artifact',
+				verb: 'Outcome breakdown',
+				help: 'Total cost of calls that ended in something saved (vault note, copilot accept, agent file emit), divided by the count of saves. Lower = more value per dollar.',
+				sub: '{cost} across {count} saved items',
 				empty: '—',
 			},
-			totalCost: { label: 'Total cost' },
-			usefulMessages: {
-				label: 'Useful messages',
-				help: 'Distinct AI messages with ≥1 outcome event in this range.',
+			calls: {
+				label: 'Calls this week',
+				verb: 'Review high-cost calls',
+				tokensSub: '{tokens} tokens',
 			},
-			totalCalls: { label: 'AI calls' },
+		},
+		recommendedActions: {
+			title: 'Recommended actions',
+			subtitle: 'From Curator · last 30 days',
+			empty: 'No recommendations yet — Curator needs more data.',
+			viewAll: 'View all {count} actions',
+			loading: 'Loading recommendations…',
+			refreshed: 'Last refreshed {ago}',
+			impactLabels: {
+				high: 'High impact',
+				medium: 'Medium impact',
+				low: 'Low impact',
+				investigate: 'Investigate',
+			},
+		},
+		thisWeek: {
+			title: 'This week',
+			linkLabel: 'View full usage',
+			spendLabel: 'Spend',
+			tokensLabel: 'Tokens',
+			costPerSavedLabel: 'Cost / saved artifact',
+			deltaSuffix: 'wow',
 		},
 		funnel: {
 			title: 'Outcome funnel',
@@ -203,6 +407,128 @@ const FALLBACK_STRINGS: DashboardStrings = {
 				agent_file_emit: 'Agent file emit',
 				continuation: 'Continuation',
 			},
+		},
+	},
+	budgetAlerts: {
+		reset: 'Reset to recommended',
+		monthlyBudget: {
+			title: 'Monthly budget',
+			sub: 'Pace · projected spend',
+			fieldLabel: 'Budget',
+			fieldHint: 'Used when projecting and triggering alerts.',
+			breakdown: 'Used · projected · remaining',
+			save: 'Save budget',
+			resetDay: 'Reset day: {day}',
+			resetDayPrompt: 'Pick the day of month (1–28) the budget cycle restarts.',
+			cycleBadge: '{month} {year}',
+			noBudget: 'No budget set — projection and alerts disabled.',
+		},
+		alertRules: {
+			title: 'Alert rules',
+			sub: 'Threshold-triggered notifications',
+			editThresholds: 'Edit thresholds',
+			testAlerts: 'Test alerts',
+			howDelivered: 'How alerts are delivered →',
+			rules: {
+				budget_threshold: {
+					title: 'Notify at {pct}% monthly budget',
+					sub: 'Single in-app notification, then silenced until next threshold.',
+					badge: 'In-app',
+				},
+				context_compact: {
+					title: 'Suggest compact when context ≥ {pct}%',
+					sub: 'Surface inline in chat with "Compact now" verb.',
+					badge: 'Inline',
+				},
+				agent_receipt: {
+					title: 'Summarize expensive agent tasks',
+					sub: 'Post-task receipt for any task over ${cost} or {tokens} tokens.',
+					badge: 'Receipt',
+				},
+				silence_low_cost_pip: {
+					title: 'Silence low-cost receipts',
+					sub: 'Hide per-message pip when call is under ${cost}.',
+					badge: 'Pip',
+				},
+			},
+		},
+		modelDefaults: {
+			title: 'Model defaults',
+			sub: 'Pick the right model for the job.',
+			manage: 'Manage models',
+			tabs: { quick: 'Quick', deep: 'Deep research', premium: 'Premium' },
+			costSuffix: '/ call',
+			empty: 'No model bound — open the harness onboarding wizard to bind one.',
+		},
+		preview: {
+			title: 'What users will see',
+			sub: 'In-app alert preview',
+			customize: 'Customize messages',
+			items: {
+				budgetAt40: {
+					label: '1 · Spend at 40% of budget',
+					value: '{used} / {budget}',
+					badge: 'Pace high',
+					openOptimization: 'Open Optimization',
+					snooze: 'Snooze',
+				},
+				contextAt70: {
+					label: '2 · Context warning at 70%',
+					headline: 'Context at 72%',
+					badge: 'Session warning',
+					body: 'Compact now to keep answers focused and cut next-turn cost.',
+					compactNow: 'Compact now',
+					dismiss: 'Dismiss',
+				},
+				agentReceipt: {
+					label: '3 · Agent task receipt',
+					headline: 'Research run · 73k tokens · $0.21',
+					body: 'Vault saves: 2 · Trace: open',
+					openTrace: 'Open trace',
+				},
+			},
+		},
+	},
+	optimization: {
+		summary: {
+			templateCanCut: '{count} changes can cut projected spend by {pct}.',
+			noRecommendations: 'No recommendations yet — Curator needs more data.',
+			refresh: 'Refresh',
+			loading: 'Running Curator…',
+			refreshing: 'Refreshing…',
+		},
+		recommendations: {
+			title: 'Recommended changes',
+			sub: 'Ranked by impact · evaluated against last 30 days',
+			sourceRules: 'Heuristic rules (offline)',
+			sourceLlm: 'Curator (LLM)',
+			apply: 'Apply change',
+			preview: 'Preview',
+			openTraces: 'Open traces',
+			estMonthlySaving: 'Est. monthly saving',
+			evidenceColumns: {
+				started: 'Started',
+				goal: 'Goal',
+				model: 'Model',
+				cost: 'Cost',
+			},
+		},
+		savingsDial: {
+			appliedNone: 'No changes applied yet',
+			appliedSummary: '${applied} / ${potential} potential monthly savings',
+			openBudget: 'Open budget settings →',
+		},
+		projection: {
+			title: 'Projected spend',
+			cycle: '{start} → {end}',
+			withoutChanges: 'Without changes',
+			withApplied: 'With recommended changes',
+			savingsTemplate: '−${saving} ({pct})',
+			budget: '{budget} budget',
+		},
+		scenarios: {
+			title: 'Choose a scenario',
+			sub: 'Conservative · Balanced · Aggressive',
 		},
 	},
 	detailPanel: {
@@ -315,7 +641,26 @@ export function useDashboardStrings(): DashboardStrings {
 					setStrings({
 						...FALLBACK_STRINGS,
 						...loaded,
-						overview: { ...FALLBACK_STRINGS.overview, ...(loaded.overview ?? {}) },
+						overview: {
+							...FALLBACK_STRINGS.overview,
+							...(loaded.overview ?? {}),
+							kpi: {
+								...FALLBACK_STRINGS.overview.kpi,
+								...(loaded.overview?.kpi ?? {}),
+							},
+							recommendedActions: {
+								...FALLBACK_STRINGS.overview.recommendedActions,
+								...(loaded.overview?.recommendedActions ?? {}),
+								impactLabels: {
+									...FALLBACK_STRINGS.overview.recommendedActions.impactLabels,
+									...(loaded.overview?.recommendedActions?.impactLabels ?? {}),
+								},
+							},
+							thisWeek: {
+								...FALLBACK_STRINGS.overview.thisWeek,
+								...(loaded.overview?.thisWeek ?? {}),
+							},
+						},
 						detailPanel: {
 							...FALLBACK_STRINGS.detailPanel,
 							...(loaded.detailPanel ?? {}),
@@ -347,6 +692,14 @@ export function useDashboardStrings(): DashboardStrings {
 								...FALLBACK_STRINGS.outcomeValue.features,
 								...(loaded.outcomeValue?.features ?? {}),
 							},
+						},
+						budgetAlerts: {
+							...FALLBACK_STRINGS.budgetAlerts,
+							...(loaded.budgetAlerts ?? {}),
+						},
+						optimization: {
+							...FALLBACK_STRINGS.optimization,
+							...(loaded.optimization ?? {}),
 						},
 					});
 				}
@@ -422,11 +775,15 @@ export function UsageDashboard() {
 			{activeScreen === 'outcome-value' && (
 				<OutcomeValueScreen range={range} strings={strings.outcomeValue} />
 			)}
-			{activeScreen === 'budget-alerts' && <BudgetAlertsScreen range={range} />}
+			{activeScreen === 'budget-alerts' && (
+				<BudgetAlertsScreen range={range} strings={strings.budgetAlerts} />
+			)}
 			{activeScreen === 'history' && (
 				<HistoryScreen range={range} detailStrings={strings.detailPanel} />
 			)}
-			{activeScreen === 'optimization' && <OptimizationScreen range={range} />}
+			{activeScreen === 'optimization' && (
+				<OptimizationScreen range={range} strings={strings.optimization} />
+			)}
 		</div>
 	);
 }

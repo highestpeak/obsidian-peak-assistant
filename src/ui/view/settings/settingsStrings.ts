@@ -69,11 +69,29 @@ export interface SettingsStrings {
         actions: {
             sectionTitle: string;
             runSetup: string;
+            testProviders: string;
             checkIndex: string;
             tryChat: string;
         };
+        /** Read-only summary of current AI behavior bindings shown on Overview. */
+        aiBehaviorSummary: {
+            sectionTitle: string;
+            sectionSub: string;
+            conversation: { title: string; desc: string };
+            fastLookup: { title: string; desc: string; fallback: string };
+            research: { title: string; desc: string };
+            strongerModel: { title: string; desc: string; offChip: string };
+        };
     };
     aiSetup: {
+        recommendedSetup: {
+            sectionTitle: string;
+            sectionSub: string;
+            balanced: { title: string; desc: string };
+            lowestCost: { title: string; desc: string };
+            researchQuality: { title: string; desc: string };
+            localPrivate: { title: string; desc: string };
+        };
         aiBehavior: {
             sectionTitle: string;
             conversation: { title: string; desc: string };
@@ -288,13 +306,57 @@ export const DEFAULT_SETTINGS_STRINGS: SettingsStrings = {
             },
         },
         actions: {
-            sectionTitle: 'Shortcuts',
-            runSetup: 'Re-run setup wizard',
-            checkIndex: 'Check Knowledge Index',
-            tryChat: 'Try a chat',
+            sectionTitle: 'Actions',
+            runSetup: 'Run setup',
+            testProviders: 'Test providers',
+            checkIndex: 'Check index',
+            tryChat: 'Try Chat',
+        },
+        aiBehaviorSummary: {
+            sectionTitle: 'AI behavior',
+            sectionSub: 'Read-only summary. Change bindings in AI Setup.',
+            conversation: {
+                title: 'Conversation',
+                desc: 'Chat and daily writing.',
+            },
+            fastLookup: {
+                title: 'Fast Lookup',
+                desc: 'Short answers and simple note actions.',
+                fallback: 'Falls back to Conversation',
+            },
+            research: {
+                title: 'Research',
+                desc: 'Vault synthesis, AI Analysis, and multi-step agent work.',
+            },
+            strongerModel: {
+                title: 'Use stronger model when needed',
+                desc: 'Let longer runs switch to a stronger model when confidence is low.',
+                offChip: 'Off',
+            },
         },
     },
     aiSetup: {
+        recommendedSetup: {
+            sectionTitle: 'Recommended setup',
+            sectionSub:
+                'Quick presets that adjust your AI bindings. You can still change individual roles below.',
+            balanced: {
+                title: 'Balanced',
+                desc: 'Best of both quality and everyday cost.',
+            },
+            lowestCost: {
+                title: 'Lowest cost',
+                desc: 'Prefer cheaper or local models for everyday use.',
+            },
+            researchQuality: {
+                title: 'Research quality',
+                desc: 'Prefer deeper synthesis for vault work.',
+            },
+            localPrivate: {
+                title: 'Local / private',
+                desc: 'Keep routine work on your machine when possible.',
+            },
+        },
         aiBehavior: {
             sectionTitle: 'AI behavior',
             conversation: {
@@ -560,8 +622,8 @@ export const DEFAULT_SETTINGS_STRINGS: SettingsStrings = {
         description:
             'Connect external tool servers to extend agent capabilities with additional commands.',
         emptyHint: 'No external tools configured. Add one to get started.',
-        addCta: 'Add tool server',
-        defaultServerName: 'New tool server',
+        addCta: 'Add external tool',
+        defaultServerName: 'New external tool',
     },
 };
 

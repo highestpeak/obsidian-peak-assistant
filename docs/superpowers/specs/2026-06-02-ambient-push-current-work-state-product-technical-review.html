@@ -1,0 +1,1185 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ambient Push 产品与技术重构说明 — Current Work State</title>
+  <script src="../../../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --paper: #ffffff;
+      --ink: #111827;
+      --muted: #5f6b7a;
+      --line: #d7deea;
+      --soft: #eef3f9;
+      --blue: #2563eb;
+      --green: #15803d;
+      --amber: #b45309;
+      --red: #b42318;
+      --violet: #6d28d9;
+      --teal: #0f766e;
+      --shadow: 0 18px 48px rgba(15, 23, 42, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 0, #eaf1ff 0, transparent 360px),
+        linear-gradient(180deg, #f8fbff 0, var(--bg) 260px, var(--bg) 100%);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.62;
+    }
+
+    .shell {
+      width: min(1180px, calc(100vw - 40px));
+      margin: 0 auto;
+      padding: 42px 0 74px;
+    }
+
+    header {
+      padding: 30px 0 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 10px 0 12px;
+      font-size: clamp(32px, 4.8vw, 52px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 52px 0 16px;
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+      font-size: 26px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 18px;
+      line-height: 1.3;
+    }
+
+    p { margin: 8px 0; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    code {
+      color: #111827;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .91em;
+    }
+
+    .lead { max-width: 930px; color: var(--muted); font-size: 15px; }
+    .small { color: var(--muted); font-size: 13px; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 16px;
+      margin: 24px 0 18px;
+    }
+
+    .card,
+    .hero-card,
+    .diagram-panel,
+    .evidence-card,
+    .decision-card,
+    .surface-card,
+    .trace-card {
+      background: rgba(255, 255, 255, .94);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card,
+    .evidence-card,
+    .decision-card,
+    .surface-card,
+    .trace-card { padding: 16px; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 850;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      color: #334155;
+      white-space: nowrap;
+    }
+
+    .tag.blue { color: var(--blue); background: #eff6ff; border-color: #bfdbfe; }
+    .tag.green { color: var(--green); background: #f0fdf4; border-color: #bbf7d0; }
+    .tag.amber { color: var(--amber); background: #fff7ed; border-color: #fed7aa; }
+    .tag.red { color: var(--red); background: #fff1f1; border-color: #fecaca; }
+    .tag.violet { color: var(--violet); background: #f5f3ff; border-color: #ddd6fe; }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 22px 0 8px;
+    }
+
+    .toc a {
+      display: block;
+      min-height: 54px;
+      padding: 10px 12px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 9px;
+    }
+
+    .toc span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .callout {
+      margin: 16px 0;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--blue);
+      border-radius: 10px;
+      background: #eff6ff;
+    }
+
+    .callout.red { border-left-color: var(--red); background: #fff7f7; }
+    .callout.green { border-left-color: var(--green); background: #f0fdf4; }
+    .callout.amber { border-left-color: var(--amber); background: #fff7ed; }
+
+    .section-contract,
+    .source-grid,
+    .evidence-grid,
+    .decision-grid,
+    .surface-grid,
+    .trace-grid,
+    .task-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .section-contract div,
+    .source-grid div,
+    .task-card {
+      padding: 12px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .section-contract strong,
+    .source-grid strong,
+    .task-card strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .evidence-grid,
+    .decision-grid,
+    .surface-grid,
+    .trace-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .diagram-panel {
+      padding: 18px;
+      margin: 16px 0 26px;
+      overflow: auto;
+    }
+
+    .diagram-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .mermaid {
+      min-width: 720px;
+      padding: 8px;
+      background: #fff;
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      margin: 16px 0 22px;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      color: #334155;
+      background: #f8fafc;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .mock-wrap {
+      margin: 18px 0 26px;
+      padding: 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .mock-wrap img {
+      display: block;
+      width: 100%;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+
+    .mock-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0 26px;
+    }
+
+    .mock-card {
+      padding: 12px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .mock-card img {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+
+    .quick-stack {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .stack-row {
+      display: grid;
+      grid-template-columns: 190px 1fr 150px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .badge {
+      display: inline-flex;
+      justify-content: center;
+      padding: 3px 8px;
+      color: var(--blue);
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .foot {
+      margin-top: 50px;
+      padding-top: 22px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .shell { width: min(100vw - 24px, 1180px); }
+      .hero,
+      .toc,
+      .section-contract,
+      .source-grid,
+      .evidence-grid,
+      .decision-grid,
+      .surface-grid,
+      .trace-grid,
+      .task-grid,
+      .mock-grid { grid-template-columns: 1fr; }
+      .stack-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="eyebrow">Peak Assistant · Ambient Push · Product + Technical Review</div>
+      <h1>Ambient Push 应该从 Related Notes 升级为 Current Work State</h1>
+      <p class="lead">
+        本文单独整理 Ambient Push 的产品需求、现有技术实现、已沉淀需求文档和下一轮重构方向。
+        它与主架构手册互相引用，但不把 Ambient 的细节塞进系统总览里。
+        实施顺序上，Ambient Push 应该等待主架构中的 <code>Capability + RunSession + Backend + Ports</code> 地基完成后再进入实现。
+      </p>
+      <p class="small">
+        Backlink:
+        <a href="2026-06-01-peak-system-architecture-modernization-handbook.html#capability-panorama">Peak 系统架构理解手册 · 能力全景</a>
+      </p>
+
+      <div class="hero">
+        <div class="hero-card">
+          <span class="tag red">Core judgment</span>
+          <h3>Ambient Push 的核心不是“推相关笔记”，而是“在写作现场指出下一步缺口”。</h3>
+          <p>
+            旧实现已经能在写作暂停、切换文档或手动刷新时推送相关 notes，并记录反馈。
+            但产品语义仍停在 <code>Related Notes</code>，用户会觉得它只是另一个推荐侧栏。
+            目标形态应该是：当前段落旁边出现一个小提示，说明这段缺什么；右侧 <code>Current Work State</code>
+            解释系统现在以为什么作为上下文，并允许用户展开最近工作轨迹、纠正判断和启动深度检查。
+            这不是沿着旧 <code>AmbientPushService</code> 继续加功能，而是新架构完成后的 Ambient capability 落地。
+          </p>
+        </div>
+        <div class="hero-card">
+          <span class="tag blue">Reader output</span>
+          <h3>读完后应该能做什么</h3>
+          <p>
+            能区分现有 Ambient pipeline 和目标产品模型；能知道哪些代码要保留、哪些 UI 语义要重写；
+            能把第一批实现任务拆成可测试的小包，而不是再泛泛地“优化推荐”。
+          </p>
+        </div>
+      </div>
+
+      <nav class="toc" aria-label="Table of contents">
+        <a href="#sources">0. 证据来源<span>旧 spec、plan、代码和这轮设计</span></a>
+        <a href="#product">1. 产品定义<span>从 Related Notes 到 missing move</span></a>
+        <a href="#current">2. 当前实现<span>已有 pipeline 和真实差距</span></a>
+        <a href="#target">3. 目标体验<span>Current Work State + Thought Trace</span></a>
+        <a href="#architecture">4. 技术架构<span>状态、思考、动作和证据</span></a>
+        <a href="#requirements">5. 产品需求<span>用户动作、触发、边界</span></a>
+        <a href="#roadmap">6. 任务拆分<span>先改语义，再扩能力</span></a>
+        <a href="#tests">7. 测试策略<span>减少手测和误触发</span></a>
+      </nav>
+    </header>
+
+    <section id="sources">
+      <h2>0. 证据来源：这不是重新发明 Ambient，而是收拢已有方向</h2>
+      <p class="lead">
+        Ambient Push 已经经历 Phase 1-4。新文档的工作不是推翻旧设计，而是把旧设计里的“主动激活知识”重新翻译成更清晰的产品心智。
+      </p>
+
+      <div class="section-contract">
+        <div><strong>回答问题</strong>本文依据什么，不把 ImageGen mock 当代码事实。</div>
+        <div><strong>呈现方式</strong>先列来源，再给判断，避免凭聊天灵感写需求。</div>
+        <div><strong>用来行动</strong>后续实现时知道哪些旧能力能复用。</div>
+      </div>
+
+      <div class="source-grid">
+        <div>
+          <strong>原始设计</strong>
+          <a href="2026-05-01-ambient-push-design.md">2026-05-01 Ambient Push Technical Design Spec</a>
+          定义了写作时主动推送、解释原因、glanceable、suggestion-only 等原则。
+        </div>
+        <div>
+          <strong>实施计划</strong>
+          Phase 1-4 plans 定义了 FTS pipeline、graph intelligence、serendipity gutter、Morning Briefing。
+        </div>
+        <div>
+          <strong>当前代码</strong>
+          <code>src/service/ambient/**</code>、<code>src/ui/view/ambient-push/**</code>、
+          <code>src/service/context/**</code> 已有不少可复用地基。
+        </div>
+        <div>
+          <strong>系统架构手册</strong>
+          <a href="2026-06-01-peak-system-architecture-modernization-handbook.html#capability-panorama">能力全景</a>
+          已把 Ambient 放入长期 work state 和主动知识工作空间。
+        </div>
+        <div>
+          <strong>相关需求</strong>
+          Vault Auto Review、Cascade Update、Auto-tag、Settings mental model 都提到 Ambient 作为消费者或侧栏基础设施。
+        </div>
+        <div>
+          <strong>本轮产品讨论</strong>
+          结论是：右侧不是 Thread/Reminders；应收敛为 <code>Current Work State</code>，其中 <code>Recent Work Trace</code> 可展开审计。
+        </div>
+      </div>
+
+      <div class="callout amber">
+        <strong>架构前置条件：</strong>
+        本需求不应该在旧架构上直接开工。正确顺序是先完成
+        <a href="2026-06-01-peak-system-architecture-modernization-handbook.html#decision">主架构手册第 3 节</a>
+        和
+        <a href="2026-06-01-peak-system-architecture-modernization-handbook.html#modern-core">第 4 节</a>
+        定义的地基：Capability Contract、Run Envelope、Ports、Artifact Store、Surface Binding。
+        现有 <code>src/service/ambient/**</code> 只能作为迁移证据和临时 adapter，不是目标架构。
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>主架构决策</th><th>对 Ambient 的含义</th><th>不能再怎么做</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Capability Contract</td>
+            <td>Ambient 应声明为产品能力：输入、输出、权限、成本、默认 surfaces、可用后端。</td>
+            <td>不要只在 <code>AmbientPushPanel</code> 或 command 里手写流程。</td>
+          </tr>
+          <tr>
+            <td>Run Envelope</td>
+            <td><code>Deep organize</code>、<code>Check section gaps</code> 这类动作要输出 <code>RunEvent</code> 和 <code>ArtifactRef</code>。</td>
+            <td>不要让 React store 拥有长任务状态真相。</td>
+          </tr>
+          <tr>
+            <td>Ports</td>
+            <td>Ambient 引擎通过 <code>VaultPort</code>、<code>SearchPort</code>、<code>ProviderPort</code> 读取 vault、搜索和调用模型。</td>
+            <td>不要让新 service 继续直接拿 Obsidian app、SQLite repo 或 UI store。</td>
+          </tr>
+          <tr>
+            <td>Artifact Store</td>
+            <td>比较段、缺口报告、outline placement、parked ideas 都应该是可审阅 artifact。</td>
+            <td>不要直接把生成结果写进正文或只存在弹窗里。</td>
+          </tr>
+          <tr>
+            <td>Surface Binding</td>
+            <td>同一个 Ambient capability 可以绑定到 editor marker、right leaf、Chat、Knowledge Dashboard。</td>
+            <td>不要把能力语义绑定死在 Ambient 右侧栏。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead>
+          <tr><th>来源</th><th>保留什么</th><th>需要改写什么</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><a href="2026-05-01-ambient-push-design.md">Ambient Push spec</a></td>
+            <td>主动检索、写作上下文、非打断、解释原因、用户确认。</td>
+            <td>从“相关笔记解释”升级成“当前段落缺口解释”。</td>
+          </tr>
+          <tr>
+            <td>Phase 1-4 plans</td>
+            <td>trigger、context extractor、FTS、feedback log、gutter、briefing。</td>
+            <td>把 <code>?</code> gutter 和 <code>Related Notes</code> 侧栏改成明确的 missing move / current state。</td>
+          </tr>
+          <tr>
+            <td><a href="2026-05-20-vault-auto-review-design.md#13.3">Vault Auto Review</a></td>
+            <td>review 落盘后可被 Ambient 再激活，形成 feedback loop。</td>
+            <td>Ambient 不只是推 review 报告，而是把报告转成当前写作动作。</td>
+          </tr>
+          <tr>
+            <td><a href="2026-05-01-cascade-update-design.md#8.1">Cascade Update</a></td>
+            <td>图谱和语义边更新是 Ambient freshness 的数据地基。</td>
+            <td>目标侧需要显式标注信息是否新鲜、是否来自 graph bridge。</td>
+          </tr>
+          <tr>
+            <td><a href="2026-05-29-settings-interface-design.md">Settings</a></td>
+            <td><code>ambientPush</code> 已有开关、冷却、LLM 解释、gutter、briefing 配置。</td>
+            <td>配置命名仍是 suggestions 语义，后续要对应 Current Work State 和 deep check。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="product">
+      <h2>1. 产品定义：Ambient 是“写作下一步提示”，不是“相关推荐侧栏”</h2>
+      <p class="lead">
+        用户写作时最大的痛点不是“有没有更多相关 note”，而是“不知道自己当前这段还缺哪一步，也不知道 vault 里是否已有能支撑这一步的材料”。
+        所以 Ambient 的第一屏必须围绕当前段落，而不是围绕推荐列表。
+      </p>
+
+      <div class="callout red">
+        <strong>产品判断：</strong>
+        <code>Related Notes</code> 是现有实现形态，不应该继续作为产品主语。
+        新主语应该是 <code>Current Work State</code> 和 <code>Open Writing Moves</code>：
+        系统先说自己以为用户在做什么，再指出当前段落可推进的下一步。
+      </div>
+
+      <div class="callout green">
+        <strong>新增判断：</strong>
+        Ambient 还应该整理本次 writing session 里散落的想法，但不要把它做成 todo list。
+        用户在多个文件里写下的临时段落、反方观点、补证据念头和“还不知道放哪”的句子，应该被组织成
+        <code>Session Thought Trace</code>：它帮助用户安放思考，而不是替用户思考。
+      </div>
+
+      <div class="diagram-panel">
+        <div class="diagram-title"><span>产品心智转移</span><span>concept map</span></div>
+        <div class="mermaid">
+flowchart LR
+  Old["Old mental model<br/>Related Notes"] --> Problem["User sees a list<br/>but still decides what to do"]
+  Problem --> New["New mental model<br/>Current Work State"]
+  New --> Missing["Paragraph prompt<br/>what is missing here"]
+  New --> Trace["Recent Work Trace<br/>why the system thinks this"]
+  New --> Thought["Session Thought Trace<br/>loose thoughts from this session"]
+  New --> Action["Safe actions<br/>preview, find evidence, check gaps, correct"]
+  Thought --> Action
+  Action --> Feedback["Feedback updates work state<br/>not just push history"]
+        </div>
+      </div>
+
+      <div class="decision-grid">
+        <div class="decision-card">
+          <span class="tag blue">User question</span>
+          <strong>“你为什么现在提醒我？”</strong>
+          <p>答案不能是三类信号名，而要能展开为 recent files、repeated themes、recent actions。</p>
+        </div>
+        <div class="decision-card">
+          <span class="tag green">User question</span>
+          <strong>“我点了会发生什么？”</strong>
+          <p>动作必须 preview-first：不会直接写入正文，先给比较段、证据列表或缺口报告。</p>
+        </div>
+        <div class="decision-card">
+          <span class="tag amber">User question</span>
+          <strong>“它是不是理解错我了？”</strong>
+          <p>右侧必须允许用户纠正 focus，例如 Architecture、Monetization、Not this。</p>
+        </div>
+        <div class="decision-card">
+          <span class="tag violet">User question</span>
+          <strong>“什么时候该跑 Agent？”</strong>
+          <p>Deep check 不是实时推荐；它读当前 section、recent notes、nearby sources，返回 gaps、counterarguments、outline。</p>
+        </div>
+        <div class="decision-card">
+          <span class="tag blue">User question</span>
+          <strong>“我刚才那些散落想法去哪了？”</strong>
+          <p>Ambient 应该能把本次 session 里的 loose thoughts 聚成主题，并建议它们可能属于哪一节，但不能把它们粗暴变成 todo。</p>
+        </div>
+        <div class="decision-card">
+          <span class="tag green">User question</span>
+          <strong>“我应该继续怎么写？”</strong>
+          <p>系统不替用户决定结论，而是给可撤销的下一步：放进 outline、生成 bridge paragraph、找证据、park for later。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="current">
+      <h2>2. 当前实现：已有好地基，但产品语义还停在 Related Notes</h2>
+      <p class="lead">
+        当前实现已经足够证明 Ambient 的基础可行：trigger、context、search、serendipity、feedback、briefing 都存在。
+        但它们的输出仍是 <code>AmbientPushItem</code> 和 note cards，而不是用户可理解的 work state / writing move。
+      </p>
+
+      <div class="diagram-panel">
+        <div class="diagram-title"><span>当前运行链路</span><span>confirmed from code</span></div>
+        <div class="mermaid">
+flowchart LR
+  Edit["Obsidian editor<br/>editor-change / file-open / manual"] --> Trigger["AmbientTrigger<br/>pause, cooldown, minCharDelta"]
+  Trigger --> Extract["ContextExtractor<br/>paragraph, section, tags, outlinks"]
+  Extract --> Search["AmbientSearcher<br/>SearchClient FTS + dedup"]
+  Search --> Serendipity["SerendipitySearcher<br/>2-hop graph + embedding distance"]
+  Search --> Explain["RelevanceExplainer<br/>template or LLM micro explanation"]
+  Serendipity --> Store["ambientPushStore<br/>items + serendipityItem"]
+  Explain --> Store
+  Store --> Panel["AmbientPushPanel<br/>Related Notes cards"]
+  Store --> Gutter["SerendipityGutterPlugin<br/>currently '?' style hint"]
+  Store --> Log["AmbientPushRepo<br/>push/action feedback log"]
+        </div>
+      </div>
+
+      <div class="evidence-grid">
+        <div class="evidence-card">
+          <span class="tag green">Confirmed from code</span>
+          <strong>Trigger 能力已存在</strong>
+          <p><a href="../../../src/service/ambient/AmbientTrigger.ts"><code>AmbientTrigger.ts</code></a> 监听 editor change、file-open 和 manual trigger，使用 pause、cooldown、minCharDelta 降低打扰。</p>
+        </div>
+        <div class="evidence-card">
+          <span class="tag green">Confirmed from code</span>
+          <strong>段落上下文已能提取</strong>
+          <p><a href="../../../src/service/ambient/ContextExtractor.ts"><code>ContextExtractor.ts</code></a> 能提取当前 paragraph、heading path、tags、outlinks、file metadata。</p>
+        </div>
+        <div class="evidence-card">
+          <span class="tag amber">Confirmed from code</span>
+          <strong>搜索主线仍偏 text_overlap</strong>
+          <p><a href="../../../src/service/ambient/AmbientSearcher.ts"><code>AmbientSearcher.ts</code></a> 有 shared_tag / graph / co-citation helper，但主循环当前主要构造 text_overlap；2-hop serendipity 以补位方式注入。</p>
+        </div>
+        <div class="evidence-card">
+          <span class="tag green">Confirmed from code</span>
+          <strong>Serendipity 已有算法雏形</strong>
+          <p><a href="../../../src/service/ambient/SerendipitySearcher.ts"><code>SerendipitySearcher.ts</code></a> 找 2-hop graph neighbor，并用 embedding distance 排序，适合做“意外但有桥”的候选。</p>
+        </div>
+        <div class="evidence-card">
+          <span class="tag red">Confirmed from code</span>
+          <strong>当前 UI 主语不对</strong>
+          <p><a href="../../../src/ui/view/ambient-push/AmbientPushPanel.tsx"><code>AmbientPushPanel.tsx</code></a> 标题仍是 <code>Related Notes</code>；<a href="../../../src/ui/view/ambient-push/PushCard.tsx"><code>PushCard.tsx</code></a> 动作是 insert/open/dismiss。</p>
+        </div>
+        <div class="evidence-card">
+          <span class="tag blue">Confirmed from code</span>
+          <strong>Session work state 已有基础</strong>
+          <p><a href="../../../src/service/context/SessionContextService.ts"><code>SessionContextService.ts</code></a> 记录 recent activities；<a href="../../../src/service/context/WorkingThemeInferrer.ts"><code>WorkingThemeInferrer.ts</code></a> 已能按活动推断 working theme。</p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>现有对象</th><th>现在表达什么</th><th>目标表达什么</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>AmbientPushItem</code></td>
+            <td>一条被推送的 note：title、excerpt、score、explanation、signals。</td>
+            <td>应成为 writing move 的 evidence/source，而不是 UI 的唯一主角。</td>
+          </tr>
+          <tr>
+            <td><code>serendipityItem</code></td>
+            <td>用于 gutter tooltip 的 2-hop graph_neighbor item。</td>
+            <td>应转成段落旁边的 compact marker：例如 <code>1 missing move</code>。</td>
+          </tr>
+          <tr>
+            <td><code>MorningBriefingService</code></td>
+            <td>启动时展示 unresolved / changed hubs / decaying notes。</td>
+            <td>保留为 session-start / maintenance 模式，不混进当前段落写作提示。</td>
+          </tr>
+          <tr>
+            <td><code>WorkingContext</code></td>
+            <td>active file、recent activities、rule-based/LLM inferred theme。</td>
+            <td>升级成右侧 <code>Current Work State</code> 的可审计数据源。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="target">
+      <h2>3. 目标体验：Current Work State + Session Thought Trace + Paragraph Prompt</h2>
+      <p class="lead">
+        目标界面不应该要求用户理解内部信号名。用户看到的是：系统现在以为什么作为上下文、为什么这么判断、当前段落缺哪一步、
+        本次 session 里有哪些散落想法还没有安放，以及点一下能安全地得到什么。
+      </p>
+
+      <div class="mock-grid">
+        <div class="mock-card">
+          <span class="tag blue">Layer 1</span>
+          <strong>当前段落缺口</strong>
+          <p class="small">这张图保留原来的核心：当前段落旁边出现 missing move，右侧解释系统当前工作状态。</p>
+          <img src="../../gstack/ambient-current-work-state-2026-06-02/ambient-current-work-state-v1.png" alt="Ambient Current Work State UI mock">
+        </div>
+        <div class="mock-card">
+          <span class="tag violet">Layer 2</span>
+          <strong>本次 session 的散落思考</strong>
+          <p class="small">这张图补充新的核心：用户在多个文档里写下的 loose thoughts，被整理成可安放的写作方向。</p>
+          <img src="../../gstack/ambient-current-work-state-2026-06-02/ambient-session-thought-trace-v1.png" alt="Ambient Session Thought Trace UI mock">
+        </div>
+      </div>
+      <p class="small">
+        说明：两张图都来自本轮产品探索，用于表达目标 UI 和信息架构；它们不是当前代码截图。
+      </p>
+
+      <div class="surface-grid">
+        <div class="surface-card">
+          <span class="tag blue">Editor marker</span>
+          <strong><code>1 missing move</code> / <code>2 loose thoughts</code></strong>
+          <p>放在当前段落旁边。它不应该是问号；它表示“这里有一个可行动缺口”或“有散落想法可能属于这里”。</p>
+        </div>
+        <div class="surface-card">
+          <span class="tag green">Paragraph popover</span>
+          <strong>当前段落缺什么</strong>
+          <p>第一句直接说缺口或可安放的想法：例如“需要补反方比较”或“这两个 loose thoughts 可能属于这里”。动作必须 preview-first。</p>
+        </div>
+        <div class="surface-card">
+          <span class="tag amber">Right leaf</span>
+          <strong>Current Work State</strong>
+          <p>右侧不是 Thread 或 Reminders，而是系统当前上下文判断。它让用户确认或纠正系统正在用什么 state 做推断。</p>
+        </div>
+        <div class="surface-card">
+          <span class="tag violet">Trace drawer</span>
+          <strong>Recent Work Trace + Session Thought Trace</strong>
+          <p>Recent Work Trace 解释系统判断依据；Session Thought Trace 整理散落想法和可能归属，不把它变成 todo list。</p>
+        </div>
+      </div>
+
+      <div class="diagram-panel">
+        <div class="diagram-title"><span>目标 UI 的信息责任</span><span>screen responsibility map</span></div>
+        <div class="mermaid">
+flowchart TB
+  State["Current Work State<br/>I think you are doing X"] --> Why["Why I think this<br/>Recent Work Trace"]
+  State --> Thoughts["Session Thought Trace<br/>loose thoughts and unplaced ideas"]
+  State --> Moves["Open Writing Moves<br/>actionable gaps"]
+  Thoughts --> Moves
+  Moves --> Marker["Editor marker<br/>1 missing move"]
+  Moves --> Marker2["Editor marker<br/>2 loose thoughts"]
+  Marker --> Popover["Paragraph popover<br/>why now + safe actions"]
+  Marker2 --> Popover2["Thought popover<br/>place, bridge, park"]
+  Popover --> Preview["Preview artifact<br/>comparison / evidence / gap report"]
+  Popover2 --> Preview2["Preview artifact<br/>outline placement / bridge paragraph"]
+  Popover --> Correct["Correction<br/>not this / focus change"]
+  Popover2 --> Correct
+  Correct --> State
+  Why --> Correct
+  Thoughts --> Correct
+        </div>
+      </div>
+
+      <div class="trace-grid">
+        <div class="trace-card">
+          <span class="tag green">Default collapsed</span>
+          <strong>为什么不能一上来铺满日志</strong>
+          <p>Ambient 不能变成 activity log 面板。默认只展示“recent files · 4 / themes · 5 / actions · 7”，用户怀疑时再展开。</p>
+        </div>
+        <div class="trace-card">
+          <span class="tag blue">Expanded audit</span>
+          <strong>展开后看什么</strong>
+          <p>最近打开/编辑的文件、反复出现的主题、搜索和 Copilot 动作。它们证明“系统为什么以为我在做 X”。</p>
+        </div>
+        <div class="trace-card">
+          <span class="tag violet">Thought trace</span>
+          <strong>散落想法不是 todo</strong>
+          <p>它们是用户 session 中尚未安放的思考残留：反方观点、补证据念头、桥接段落、临时句子。Ambient 只建议归属和下一步。</p>
+        </div>
+        <div class="trace-card">
+          <span class="tag amber">User agency</span>
+          <strong>帮助捋清，不替代思考</strong>
+          <p>系统可以建议“放进 Differentiation section”或“park for later”，但不能自动把想法定性成任务，也不能静默改正文。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2>4. 技术架构：把 note push 拆成 Work State、Thought Trace、Writing Move、Evidence Source</h2>
+      <p class="lead">
+        当前 <code>AmbientPushItem</code> 适合表示 note suggestion，但不适合表示“当前段落缺哪一步”。
+        目标架构应引入四个层次：当前工作状态、session 思考痕迹、写作动作、证据来源。这样 UI 才不会被 note card 形状绑住。
+      </p>
+
+      <div class="callout red">
+        <strong>实施边界：</strong>
+        下面的数据层次是新架构里的 Ambient capability domain，不是要求在旧 <code>AmbientPushService</code> 里继续塞字段。
+        旧 trigger/search/store 可以迁移为 adapter；新的能力入口应由 Capability Contract 声明，由 Run Envelope 承接动作，由 Ports 读取 vault/search/provider，由 Artifact Store 保存 preview。
+      </div>
+
+      <div class="diagram-panel">
+        <div class="diagram-title"><span>目标数据层次</span><span>domain model</span></div>
+        <div class="mermaid">
+classDiagram
+  class CurrentWorkState {
+    +summary
+    +confidence
+    +focusOptions
+    +recentTrace
+    +updatedAt
+  }
+  class RecentWorkTrace {
+    +recentFiles
+    +repeatedThemes
+    +recentActions
+  }
+  class SessionThoughtTrace {
+    +thoughtClusters
+    +unplacedIdeas
+    +inferredFrom
+  }
+  class ThoughtCluster {
+    +label
+    +themeChips
+    +sourceActivityIds
+  }
+  class UnplacedIdea {
+    +text
+    +suggestedDestination
+    +confidence
+  }
+  class WritingMove {
+    +id
+    +kind
+    +paragraphRange
+    +headline
+    +whyNow
+    +safeActions
+  }
+  class EvidenceSource {
+    +kind
+    +title
+    +path
+    +reason
+    +freshness
+  }
+  class DeepCheckRun {
+    +scope
+    +inputs
+    +costPolicy
+    +resultArtifact
+  }
+  CurrentWorkState "1" --> "1" RecentWorkTrace
+  CurrentWorkState "1" --> "1" SessionThoughtTrace
+  SessionThoughtTrace "1" --> "*" ThoughtCluster
+  SessionThoughtTrace "1" --> "*" UnplacedIdea
+  CurrentWorkState "1" --> "*" WritingMove
+  WritingMove "*" --> "*" UnplacedIdea
+  WritingMove "*" --> "*" EvidenceSource
+  WritingMove "0..1" --> "1" DeepCheckRun
+        </div>
+      </div>
+
+      <div class="quick-stack">
+        <div class="stack-row">
+          <strong>Cheap live layer</strong>
+          <span>editor pause、paragraph、FTS、graph neighbors、session activity、dedup、feedback。</span>
+          <span class="badge">always cheap</span>
+        </div>
+        <div class="stack-row">
+          <strong>Theme layer</strong>
+          <span>从 recent activities 推断当前工作状态：recent files、folders、keywords、LLM inferred summary。</span>
+          <span class="badge">debounced</span>
+        </div>
+        <div class="stack-row">
+          <strong>Thought trace layer</strong>
+          <span>从本次 session 的编辑、搜索、打开文件和临时句子中归纳 loose thoughts、thought clusters、unplaced ideas。</span>
+          <span class="badge">organizing layer</span>
+        </div>
+        <div class="stack-row">
+          <strong>Deep check layer</strong>
+          <span>只在用户点击或长停顿时让 agent 读取当前章节、最近笔记和附近来源。</span>
+          <span class="badge">controlled cost</span>
+        </div>
+        <div class="stack-row">
+          <strong>Review layer</strong>
+          <span>自动输出不直接写入正文，只给 preview artifact；用户确认后才插入、链接或保存。</span>
+          <span class="badge">preview first</span>
+        </div>
+      </div>
+
+      <h3>4.1 触发策略：不要让实时 agent 成为成本黑洞</h3>
+      <table>
+        <thead>
+          <tr><th>触发</th><th>默认动作</th><th>是否调用模型</th><th>用户感受</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>写作暂停 3-5 秒 + 文本变化</td>
+            <td>cheap layer 计算 paragraph-level candidate。</td>
+            <td>默认不调用。</td>
+            <td>只出现小 marker，不弹 modal。</td>
+          </tr>
+          <tr>
+            <td>当前工作状态变化</td>
+            <td>更新右侧 Current Work State 和 Recent Work Trace。</td>
+            <td>达到活动阈值后 debounce 推断。</td>
+            <td>用户能看到系统理解的上下文。</td>
+          </tr>
+          <tr>
+            <td>同一 session 内多处编辑同一主题</td>
+            <td>归纳 Session Thought Trace 和 Unplaced Ideas。</td>
+            <td>可先规则聚类，必要时低频调用模型。</td>
+            <td>用户看到“这些想法可能属于哪一节”，不是 todo list。</td>
+          </tr>
+          <tr>
+            <td>用户点 Preview comparison</td>
+            <td>生成短 preview artifact。</td>
+            <td>可以调用便宜模型。</td>
+            <td>先预览，不写入正文。</td>
+          </tr>
+          <tr>
+            <td>用户点 Deep check / 长停顿后确认</td>
+            <td>Agent 读 section + recent notes + nearby sources。</td>
+            <td>调用模型，但有明确 scope 和成本策略。</td>
+            <td>得到 gaps、counterarguments、insertable outline。</td>
+          </tr>
+          <tr>
+            <td>Obsidian 启动</td>
+            <td>Morning Briefing 维护型提醒。</td>
+            <td>默认数据查询，不混入当前段落模式。</td>
+            <td>这是 session-start，不是 writing-time prompt。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>4.2 需要保留和需要新增的技术接口</h3>
+      <table>
+        <thead>
+          <tr><th>接口 / 模块</th><th>保留方式</th><th>新增责任</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>AmbientTrigger</code></td>
+            <td>继续作为 editor/file/manual trigger gateway。</td>
+            <td>增加 paragraph marker 的 trigger reason 和 suppression policy。</td>
+          </tr>
+          <tr>
+            <td><code>ContextExtractor</code></td>
+            <td>继续负责 active editor context。</td>
+            <td>需要输出 paragraph range / cursor anchor，供 popover 定位和 preview 插入。</td>
+          </tr>
+          <tr>
+            <td><code>SessionContextService</code></td>
+            <td>作为 Current Work State 的数据地基。</td>
+            <td>输出用户可读的 recent work trace 和 session thought trace，而不是仅给 prompt context。</td>
+          </tr>
+          <tr>
+            <td><code>WorkingThemeInferrer</code></td>
+            <td>保留 LLM inferred summary 的能力。</td>
+            <td>需要加 confidence、source trace 和用户纠正后的 override。</td>
+          </tr>
+          <tr>
+            <td><code>AmbientSearcher</code></td>
+            <td>保留 FTS / graph / serendipity candidate。</td>
+            <td>从返回 note items 改为支撑 writing move 的 evidence source。</td>
+          </tr>
+          <tr>
+            <td><code>AmbientPushPanel</code></td>
+            <td>保留 Obsidian right leaf view。</td>
+            <td>重命名为 Ambient panel，主页面改为 Current Work State。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="requirements">
+      <h2>5. 产品需求：每一个动作都必须有明确用户意图</h2>
+      <p class="lead">
+        这部分不是 UI 文案清单，而是交互合同。后续代码实现应围绕这些动作写测试：触发什么、展示什么、是否写入 vault、如何记录反馈。
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>用户看到的动作</th><th>用户意图</th><th>系统执行</th><th>写入策略</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Preview comparison</td>
+            <td>我想看看这段反方比较怎么写。</td>
+            <td>基于当前段落、work state 和 evidence sources 生成短段落。</td>
+            <td>不自动写入；确认后插入。</td>
+          </tr>
+          <tr>
+            <td>Find supporting notes</td>
+            <td>我不想 AI 写，只想找能支撑这段的材料。</td>
+            <td>返回 note list，但每条必须带 reason 和可打开来源。</td>
+            <td>可插 link；用户确认。</td>
+          </tr>
+          <tr>
+            <td>Check section gaps</td>
+            <td>我想知道这一节还缺什么。</td>
+            <td>读取当前 section、recent notes、nearby sources，生成 gap report。</td>
+            <td>生成 artifact，不直接改正文。</td>
+          </tr>
+          <tr>
+            <td>Place in outline</td>
+            <td>我想知道这些 loose thoughts 应该放到文章哪一节。</td>
+            <td>把 unplaced ideas 映射到现有 headings，输出 placement preview。</td>
+            <td>只展示建议位置；确认后才移动或插入。</td>
+          </tr>
+          <tr>
+            <td>Draft a bridge paragraph</td>
+            <td>这些散落想法之间有关系，但我还没写出连接段。</td>
+            <td>基于 thought cluster 生成一段 bridge paragraph preview。</td>
+            <td>预览优先；用户确认后插入当前段落附近。</td>
+          </tr>
+          <tr>
+            <td>Park for later</td>
+            <td>这个想法现在不适合写进正文，但我不想丢。</td>
+            <td>把 idea 放进 session parking area 或稍后提醒列表。</td>
+            <td>不污染当前文档；可写入用户确认的 scratch / inbox 区。</td>
+          </tr>
+          <tr>
+            <td>Not what I mean</td>
+            <td>系统理解错当前工作状态。</td>
+            <td>记录 negative feedback，展示 focus correction。</td>
+            <td>只更新 state/feedback，不改 vault。</td>
+          </tr>
+          <tr>
+            <td>Focus correction</td>
+            <td>我不是在写产品价值，我是在写架构或商业化。</td>
+            <td>覆盖当前 work state focus，并影响后续提醒。</td>
+            <td>保存 session override，可选持久化 preference。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout amber">
+        <strong>反目标：</strong>
+        不做实时大模型持续扫描；不把 Morning Briefing 塞进当前段落旁边；不把右侧做成所有 related notes 的大列表；
+        不让系统静默写入正文；不要求用户理解 trust、lens、evidence stack、thread 这些内部词。
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <h2>6. 任务拆分：先把产品语义改对，再扩算法能力</h2>
+      <p class="lead">
+        这不是按周排期，而是按依赖拆任务。第一批任务的目标是让 UI mental model 站住；算法增强要服务 writing move，而不是继续堆更多 note candidate。
+        但这些任务必须排在主架构地基之后：先有 Capability Contract、Run Envelope、Ports 和 Artifact Store，再实现 Ambient 的具体 capability。
+      </p>
+
+      <div class="diagram-panel">
+        <div class="diagram-title"><span>依赖 DAG</span><span>implementation order</span></div>
+        <div class="mermaid">
+flowchart LR
+  A0["A0 Main architecture foundation<br/>Capability + RunEnvelope + Ports + ArtifactStore"] --> T1["T1 Ambient capability contract<br/>WorkState, ThoughtTrace, WritingMove"]
+  T1 --> T2["T2 Current Work State panel<br/>replace Related Notes shell"]
+  T1 --> T3["T3 Paragraph marker anchor<br/>range + popover position"]
+  T2 --> T4["T4 Recent Work Trace<br/>expandable audit rows"]
+  T4 --> T5["T5 Session Thought Trace<br/>clusters + unplaced ideas"]
+  T3 --> T6["T6 Safe action preview<br/>comparison/evidence/gaps/place"]
+  T5 --> T6
+  T5 --> T7["T7 Deep check run<br/>bounded agent scope"]
+  T6 --> T8["T8 Feedback + correction<br/>Not this, focus override, park"]
+  T7 --> T9["T9 Tests and manual QA<br/>golden traces"]
+  T8 --> T9
+        </div>
+      </div>
+
+      <div class="task-grid">
+        <div class="task-card">
+          <strong>A0. 主架构地基先完成</strong>
+          完成 Capability Contract、Run Envelope、Ports、Artifact Store、Surface Binding 后，再进入 Ambient 需求实现。
+        </div>
+        <div class="task-card">
+          <strong>T1. Ambient capability contract</strong>
+          在新架构里定义 Ambient 能力合同，以及 <code>CurrentWorkState</code>、<code>RecentWorkTrace</code>、<code>SessionThoughtTrace</code>、<code>WritingMove</code>、<code>EvidenceSource</code>。
+        </div>
+        <div class="task-card">
+          <strong>T2. Right panel rewrite</strong>
+          <code>Related Notes</code> 改成 <code>Ambient / Current Work State</code>，保留 right leaf view，但通过 Surface Binding 消费 capability artifact。
+        </div>
+        <div class="task-card">
+          <strong>T3. Editor marker</strong>
+          把 <code>?</code> 改成 <code>1 missing move</code> 类型 marker；需要 paragraph range 和定位。
+        </div>
+        <div class="task-card">
+          <strong>T4. Recent Work Trace</strong>
+          从 <code>SessionContextService</code> 输出 recent files / repeated themes / recent actions，默认折叠。
+        </div>
+        <div class="task-card">
+          <strong>T5. Session Thought Trace</strong>
+          从 recent activities 和当前编辑内容里归纳 thought clusters、unplaced ideas、suggested destinations；默认不显示为 todo。
+        </div>
+        <div class="task-card">
+          <strong>T6. Safe actions</strong>
+          Preview comparison、Find supporting notes、Check section gaps、Place in outline、Draft bridge paragraph、Park for later 都产出明确 artifact 或 feedback。
+        </div>
+        <div class="task-card">
+          <strong>T7. Deep organize / Deep check</strong>
+          用 bounded agent run，输入只包含当前 section、recent notes、nearby sources，输出 gap/counterargument/outline。
+        </div>
+      </div>
+    </section>
+
+    <section id="tests">
+      <h2>7. 测试策略：Ambient 必须测“少打扰”和“可解释”，不只测函数返回</h2>
+      <p class="lead">
+        Ambient 的风险不只是 bug，而是误触发、乱打扰、文案不明、成本失控和误写正文。
+        测试要覆盖 trigger、state inference、popover contract、feedback 和 deep check boundary。
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>测试层</th><th>测试什么</th><th>建议样例</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Architecture conformance</td>
+            <td>Ambient capability 是否通过新架构合同：manifest、ports、RunEvent、ArtifactRef、surface binding。</td>
+            <td>用 fake ports 跑一次 <code>ambient.deep_organize</code>，UI 只订阅 artifact，不直接拥有运行状态。</td>
+          </tr>
+          <tr>
+            <td>Unit</td>
+            <td>paragraph extraction、outlink dedup、trace aggregation、theme inference fallback。</td>
+            <td>用 fixture lines 测 marker 是否只在非空段落出现。</td>
+          </tr>
+          <tr>
+            <td>Contract</td>
+            <td><code>WritingMove</code> 是否有 headline、whyNow、safeActions、evidence source。</td>
+            <td>空 evidence 不能生成 “Find supporting notes” 结果；必须提示 no source。</td>
+          </tr>
+          <tr>
+            <td>Thought trace</td>
+            <td><code>SessionThoughtTrace</code> 是否只归纳 loose thoughts、unplaced ideas 和 suggested destination，不生成任务清单。</td>
+            <td>fixture 中含有临时想法和 TODO 文本时，系统能区分“待安放想法”和“真实任务”。</td>
+          </tr>
+          <tr>
+            <td>Store</td>
+            <td>feedback、dismiss、focus override、recent trace 展开状态。</td>
+            <td>点 Not this 后下一次同段落不应立刻重复同一 move。</td>
+          </tr>
+          <tr>
+            <td>Integration</td>
+            <td>writing pause → marker → popover → preview artifact。</td>
+            <td>fake vault + fake search + fake provider，确保不写入正文。</td>
+          </tr>
+          <tr>
+            <td>Manual QA</td>
+            <td>Obsidian editor scroll、切文件、阅读模式、右侧 leaf 宽度、移动端。</td>
+            <td>marker 不遮挡正文，popover 不被右侧面板截断。</td>
+          </tr>
+          <tr>
+            <td>Cost guard</td>
+            <td>实时层不调用模型，deep check 有明确触发和 scope。</td>
+            <td>模拟 10 分钟写作，LLM 调用次数符合上限。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout green">
+        <strong>验收判断：</strong>
+        用户看到 Ambient 时，应该能在 5 秒内说出三件事：
+        系统以为我在做什么、这一段缺什么、点按钮会发生什么。
+        如果还需要解释 Thread、Lens、Trust、Evidence Stack 这些词，说明产品语义还没改对。
+      </div>
+    </section>
+
+    <footer class="foot">
+      Evidence: current repo files, existing Ambient Push specs/plans, architecture handbook, and UI design exploration on 2026-06-02.
+      Linked from and back to the Peak system architecture modernization handbook.
+    </footer>
+  </div>
+
+  <script>
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: true,
+        securityLevel: "loose",
+        theme: "base",
+        themeVariables: {
+          fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          primaryColor: "#eff6ff",
+          primaryBorderColor: "#2563eb",
+          primaryTextColor: "#111827",
+          lineColor: "#64748b",
+          secondaryColor: "#f0fdf4",
+          tertiaryColor: "#fff7ed"
+        }
+      });
+    }
+  </script>
+</body>
+</html>

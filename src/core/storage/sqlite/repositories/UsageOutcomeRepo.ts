@@ -132,4 +132,24 @@ export class UsageOutcomeRepo {
 
 		return Number(result.rows[0]?.n ?? 0);
 	}
+
+	/**
+	 * Per-day count of distinct strong-outcome message_ids — used by the
+	 * dashboard "This week" sparkline trio to compute cost-per-saved per day.
+	 * Dates are 'YYYY-MM-DD' in local time, matching usage_log's daily aggregates.
+	 */
+	async adoptedCountByDay(startMs: number, endMs: number): Promise<Array<{ date: string; count: number }>> {
+		const rows = await sql<{ date: string; n: number }>`
+			SELECT
+				date(occurred_at / 1000, 'unixepoch', 'localtime') AS date,
+				COUNT(DISTINCT message_id) AS n
+			FROM usage_outcome
+			WHERE occurred_at >= ${startMs} AND occurred_at <= ${endMs}
+			  AND event_type IN ('vault_save', 'copilot_accept', 'agent_file_emit')
+			GROUP BY date
+			ORDER BY date ASC
+		`.execute(this.db);
+
+		return rows.rows.map((r) => ({ date: r.date, count: Number(r.n) }));
+	}
 }

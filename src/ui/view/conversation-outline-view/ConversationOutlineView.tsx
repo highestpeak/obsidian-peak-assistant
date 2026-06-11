@@ -15,6 +15,6 @@ import { ChatStringsProvider } from '@/ui/view/chat-view/chatStringsContext';
  */
 export const ConversationOutlinePanel: React.FC = () => (
 	<ChatStringsProvider>
-		<ConversationIndex />
+		<ConversationIndex compact />
 	</ChatStringsProvider>
 );

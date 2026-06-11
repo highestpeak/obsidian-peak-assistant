@@ -196,6 +196,14 @@ export class UsageOutcomeService {
 		return this.getRepo().adoptedMessageIds(range);
 	}
 
+	/**
+	 * Per-day strong-outcome message count for sparkline trio (cost-per-saved
+	 * series in the dashboard's "This week" card).
+	 */
+	async adoptedCountByDay(startMs: number, endMs: number): Promise<Array<{ date: string; count: number }>> {
+		return this.getRepo().adoptedCountByDay(startMs, endMs);
+	}
+
 	// ── Private ─────────────────────────────────────────────
 
 	private getRepo(): UsageOutcomeRepo {

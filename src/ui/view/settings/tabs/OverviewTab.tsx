@@ -1,212 +1,499 @@
 /**
- * Overview tab (PR-E, live CapabilityRegistry consumption).
+ * Overview tab — 5-row Peak readiness + AI behavior summary + Actions strip.
  *
- * PR-D used a hardcoded `getReadinessFromHarnessSettings(...)` stub.
- * PR-E swaps it for `useSurfaceReadiness()` which polls
- * `CapabilityRegistry.getInstance().getAll()` — surfaces self-report their
- * own capability statuses and self-supply repair actions.
+ * Mirrors docs/gstack/settings-redesign-2026-05-29/index.html#overview.
+ * Replaces the PR-D/PR-E surface-adapter-driven render, which left the tab
+ * almost empty in practice (only surfaces that had registered an adapter
+ * showed up — typically just Chat + Copilot). The new behavior renders 5
+ * explicit triage rows whose readiness is derived from live config:
+ *   - Providers           — ProfileRegistry.getAllProfiles()
+ *   - AI behavior         — harnessSettings tier bindings
+ *   - Knowledge Index     — IndexService.getIndexStatus() coverage
+ *   - Web Access          — static "Optional" (no field today)
+ *   - Safety              — harnessSettings.defaultPermissionMode
  *
- * Row model:
- *   - One row per registered surface (chat / vault-search / ai-analysis /
- *     copilot / web-chat).
- *   - Surface-level chip = worst-of(capability statuses) so users see at
- *     a glance whether ANY part of that surface needs attention.
- *   - When the worst-status capability has a `repair` action, render it as
- *     a Pill CTA on the right. Multiple repair affordances per row are
- *     collapsed to the first; users drill into the corresponding tab for
- *     fine-grained fixes.
- *
- * Option A (chosen): surfaces that have not registered an adapter simply do
- * not appear. With master today this means Copilot is the only row; after
- * the chat-retained worktree merges, Chat joins it; vault-search /
- * ai-analysis / web-chat appear once their owning surfaces adopt the
- * adapter contract. The empty-state copy below clarifies this so users
- * don't mistake "no rows" for "something is broken".
+ * Row CTAs jump to the right tab via the `onSwitchTab` prop. The readiness
+ * row never opens an inline modal — it always navigates the user to where
+ * the binding lives.
  */
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     AlertTriangle,
-    Bot,
     Check,
+    ChevronRight,
     Database,
     Globe,
     MessageSquare,
+    Microscope,
+    Plug,
     Search,
+    Shield,
     Sparkles,
+    TrendingUp,
+    Wrench,
+    Zap,
 } from 'lucide-react';
-import { Row, Chip, Pill } from '@/ui/components/primitives';
-import type { ChipVariant } from '@/ui/components/primitives/Chip';
-import type {
-    CapabilityStatus,
-    ReadinessStatus,
-    SurfaceId,
-} from '@/service/capabilities';
-import { useSurfaceReadiness, type SurfaceReadinessRow } from '../hooks/useSurfaceReadiness';
-import { useSettingsStrings, type SettingsStrings } from '../settingsStrings';
+import { Row, Chip, Pill, Button } from '@/ui/components/primitives';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { AppContext } from '@/app/context/AppContext';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import {
+    openHarnessSetupWizard,
+    openAssistant,
+} from '@/app/commands/PeakCommandActions';
+import type { MyPluginSettings, HarnessSettings } from '@/app/settings/types';
+import { useSettingsStrings } from '../settingsStrings';
+import type { TabId } from '../types';
 
-const ICON_FOR_SURFACE: Record<SurfaceId, React.ElementType> = {
-    chat: MessageSquare,
-    'vault-search': Search,
-    'ai-analysis': Sparkles,
-    copilot: Bot,
-    'web-chat': Globe,
-};
+interface OverviewTabProps {
+    settings: MyPluginSettings;
+    onSwitchTab: (tab: TabId) => void;
+}
 
-/** Severity ordering — higher index wins when aggregating per surface. */
-const STATUS_SEVERITY: Record<ReadinessStatus, number> = {
-    ready: 0,
-    optional: 1,
-    'needs-attention': 2,
-    'not-ready': 3,
-};
-
-export function OverviewTab() {
+export function OverviewTab({ settings, onSwitchTab }: OverviewTabProps) {
     const strings = useSettingsStrings();
-    const overviewCopy = strings.overview.readiness;
-    const rows = useSurfaceReadiness();
+    const readinessCopy = strings.overview.readiness;
+    const summaryCopy = strings.overview.aiBehaviorSummary;
+    const actionsCopy = strings.overview.actions;
+
+    const indexCoverage = useIndexCoverage();
+    const providers = useProvidersReadiness();
+    const aiBehavior = useAIBehaviorReadiness(settings.harnessSettings);
+    const safety = settings.harnessSettings?.defaultPermissionMode ?? 'acceptEdits';
 
     return (
         <div className="pkset-panel">
+            {/* ── Peak readiness ────────────────────────────────────── */}
             <div className="pkset-section">
                 <div className="pkset-section__head">
-                    <span className="pkset-section__title">{overviewCopy.sectionTitle}</span>
-                    <span className="pkset-section__sub">{overviewCopy.sectionSub}</span>
+                    <span className="pkset-section__title">{readinessCopy.sectionTitle}</span>
+                    <span className="pkset-section__sub">{readinessCopy.sectionSub}</span>
                 </div>
-                {rows.length === 0 ? (
-                    <EmptyState message={overviewCopy.empty} />
-                ) : (
-                    <div className="pkset-row-list">
-                        {rows.map((row) => (
-                            <SurfaceRow
-                                key={row.surfaceId}
-                                row={row}
-                                statusLabels={overviewCopy.statusLabels}
-                            />
-                        ))}
-                    </div>
-                )}
+                <div className="pkset-row-list">
+                    <ProvidersRow
+                        count={providers.count}
+                        ready={providers.ready}
+                        labels={readinessCopy}
+                        onManage={() => onSwitchTab('aiSetup')}
+                    />
+                    <AIBehaviorRow
+                        state={aiBehavior}
+                        labels={readinessCopy}
+                        onFix={() => onSwitchTab('aiSetup')}
+                    />
+                    <KnowledgeIndexRow
+                        coverage={indexCoverage}
+                        labels={readinessCopy}
+                        onCheck={() => onSwitchTab('knowledgeIndex')}
+                    />
+                    <WebAccessRow
+                        labels={readinessCopy}
+                        onSetup={() => onSwitchTab('tools')}
+                    />
+                    <SafetyRow
+                        mode={safety}
+                        labels={readinessCopy}
+                        onReview={() => onSwitchTab('aiSetup')}
+                    />
+                </div>
+            </div>
+
+            {/* ── AI behavior summary (read-only) ───────────────────── */}
+            <div className="pkset-section">
+                <div className="pkset-section__head">
+                    <span className="pkset-section__title">{summaryCopy.sectionTitle}</span>
+                    <span className="pkset-section__sub">{summaryCopy.sectionSub}</span>
+                </div>
+                <div className="pkset-row-list">
+                    <SummaryRow
+                        icon={MessageSquare}
+                        title={summaryCopy.conversation.title}
+                        desc={summaryCopy.conversation.desc}
+                        value={formatBinding(settings.harnessSettings?.localFastConfig ?? null)}
+                        onClick={() => onSwitchTab('aiSetup')}
+                    />
+                    <SummaryRow
+                        icon={Zap}
+                        title={summaryCopy.fastLookup.title}
+                        desc={summaryCopy.fastLookup.desc}
+                        value={
+                            formatBinding(settings.harnessSettings?.localFastConfig ?? null) ??
+                            summaryCopy.fastLookup.fallback
+                        }
+                        muted={!settings.harnessSettings?.localFastConfig}
+                        onClick={() => onSwitchTab('aiSetup')}
+                    />
+                    <SummaryRow
+                        icon={Microscope}
+                        title={summaryCopy.research.title}
+                        desc={summaryCopy.research.desc}
+                        value={formatBinding(settings.harnessSettings?.localDeepConfig ?? null)}
+                        onClick={() => onSwitchTab('aiSetup')}
+                    />
+                    <SummaryRow
+                        icon={TrendingUp}
+                        title={summaryCopy.strongerModel.title}
+                        desc={summaryCopy.strongerModel.desc}
+                        value={
+                            formatBinding(settings.harnessSettings?.onlineConfig ?? null) ??
+                            summaryCopy.strongerModel.offChip
+                        }
+                        muted={!settings.harnessSettings?.onlineConfig}
+                        onClick={() => onSwitchTab('aiSetup')}
+                    />
+                </div>
+            </div>
+
+            {/* ── Actions ───────────────────────────────────────────── */}
+            <div className="pkset-section">
+                <div className="pkset-section__head">
+                    <span className="pkset-section__title">{actionsCopy.sectionTitle}</span>
+                </div>
+                <div className="pkset-action-strip">
+                    <Button variant="outline" size="sm" onClick={openHarnessSetupWizard}>
+                        <Wrench className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
+                        {actionsCopy.runSetup}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onSwitchTab('aiSetup')}
+                    >
+                        <Plug className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
+                        {actionsCopy.testProviders}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onSwitchTab('knowledgeIndex')}
+                    >
+                        <Database className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
+                        {actionsCopy.checkIndex}
+                    </Button>
+                    <Button size="sm" onClick={openAssistant}>
+                        <MessageSquare className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
+                        {actionsCopy.tryChat}
+                    </Button>
+                </div>
             </div>
         </div>
     );
 }
 
-function EmptyState({ message }: { message: string }) {
-    return (
-        <div className="pkset-empty">
-            <span className="pkset-empty__text">{message}</span>
-        </div>
-    );
-}
+/* ─────────────────────────────────────────────────────────────────────────
+ * Rows
+ * ───────────────────────────────────────────────────────────────────────── */
 
-type StatusLabels = SettingsStrings['overview']['readiness']['statusLabels'];
+type ReadinessCopy = ReturnType<typeof useSettingsStrings>['overview']['readiness'];
 
-function SurfaceRow({
-    row,
-    statusLabels,
+function ProvidersRow({
+    count,
+    ready,
+    labels,
+    onManage,
 }: {
-    row: SurfaceReadinessRow;
-    statusLabels: StatusLabels;
+    count: number;
+    ready: boolean;
+    labels: ReadinessCopy;
+    onManage: () => void;
 }) {
-    const Icon = ICON_FOR_SURFACE[row.surfaceId] ?? Database;
-    const aggregate = aggregateStatus(row.capabilities);
-    const variant = statusToChipVariant(aggregate);
-    const showChipIcon = aggregate === 'ready' || aggregate === 'needs-attention';
-
-    // Surface-level description: list capability names so the user
-    // understands what this surface needs to be ready.
-    const desc = row.capabilities
-        .map((c) => c.capability)
-        .filter((name, idx, arr) => arr.indexOf(name) === idx)
-        .join(' · ');
-
-    // Pick the most severe capability that has a repair action — that is
-    // what the row-level CTA fixes when clicked. If nothing needs repair,
-    // omit the CTA entirely.
-    const repairTarget = pickRepairTarget(row.capabilities);
-
-    // Meta line: when not fully ready, surface the first reason for
-    // diagnostic transparency.
-    const reason = row.capabilities.find(
-        (c) => c.status !== 'ready' && c.status !== 'optional' && c.reason,
-    )?.reason;
-
     return (
         <Row>
             <Row.Icon>
-                <Icon size={16} />
+                <Plug size={16} />
             </Row.Icon>
             <Row.Body>
-                <Row.Title>{row.surfaceLabel}</Row.Title>
-                <Row.Desc>{desc || row.surfaceLabel}</Row.Desc>
+                <Row.Title>{labels.providers.title}</Row.Title>
+                <Row.Desc>{labels.providers.desc}</Row.Desc>
             </Row.Body>
             <Row.Right>
-                <Chip variant={variant}>
-                    {showChipIcon && aggregate === 'ready' && (
+                {ready ? (
+                    <Chip variant="success">
                         <Check size={11} style={{ marginRight: 4 }} />
-                    )}
-                    {showChipIcon && aggregate === 'needs-attention' && (
+                        {labels.statusLabels.ready}
+                    </Chip>
+                ) : (
+                    <Chip variant="warning">
                         <AlertTriangle size={11} style={{ marginRight: 4 }} />
-                    )}
-                    {labelForStatus(aggregate, statusLabels)}
-                </Chip>
-                {reason && <Row.Meta>{reason}</Row.Meta>}
-                {repairTarget?.repair && (
-                    <Pill onClick={() => void repairTarget.repair!.action()}>
-                        {repairTarget.repair.label}
-                    </Pill>
+                        {labels.statusLabels.needsAttention}
+                    </Chip>
                 )}
+                <Row.Meta>{count === 1 ? '1 connected' : `${count} connected`}</Row.Meta>
+                <Pill onClick={onManage}>{labels.providers.manage}</Pill>
             </Row.Right>
         </Row>
     );
 }
 
-/** Worst-of aggregation — surface chip reflects the most-broken capability. */
-function aggregateStatus(capabilities: CapabilityStatus[]): ReadinessStatus {
-    if (capabilities.length === 0) return 'optional';
-    let worst: ReadinessStatus = 'ready';
-    for (const cap of capabilities) {
-        if (STATUS_SEVERITY[cap.status] > STATUS_SEVERITY[worst]) {
-            worst = cap.status;
+function AIBehaviorRow({
+    state,
+    labels,
+    onFix,
+}: {
+    state: AIBehaviorState;
+    labels: ReadinessCopy;
+    onFix: () => void;
+}) {
+    return (
+        <Row>
+            <Row.Icon>
+                <Sparkles size={16} />
+            </Row.Icon>
+            <Row.Body>
+                <Row.Title>{labels.aiBehavior.title}</Row.Title>
+                <Row.Desc>{labels.aiBehavior.desc}</Row.Desc>
+            </Row.Body>
+            <Row.Right>
+                {state.status === 'ready' ? (
+                    <Chip variant="success">
+                        <Check size={11} style={{ marginRight: 4 }} />
+                        {labels.statusLabels.ready}
+                    </Chip>
+                ) : (
+                    <Chip variant="warning">
+                        <AlertTriangle size={11} style={{ marginRight: 4 }} />
+                        {labels.statusLabels.needsAttention}
+                    </Chip>
+                )}
+                <Row.Meta>{state.reason}</Row.Meta>
+                <Pill onClick={onFix}>{labels.aiBehavior.manage}</Pill>
+            </Row.Right>
+        </Row>
+    );
+}
+
+function KnowledgeIndexRow({
+    coverage,
+    labels,
+    onCheck,
+}: {
+    coverage: IndexCoverage;
+    labels: ReadinessCopy;
+    onCheck: () => void;
+}) {
+    const ready = coverage.kind === 'ready' && coverage.pct >= 80;
+    const isOptional = coverage.kind === 'empty';
+    return (
+        <Row>
+            <Row.Icon>
+                <Database size={16} />
+            </Row.Icon>
+            <Row.Body>
+                <Row.Title>{labels.knowledgeIndex.title}</Row.Title>
+                <Row.Desc>{labels.knowledgeIndex.desc}</Row.Desc>
+            </Row.Body>
+            <Row.Right>
+                {isOptional ? (
+                    <Chip variant="neutral">{labels.statusLabels.optional}</Chip>
+                ) : ready ? (
+                    <Chip variant="success">
+                        <Check size={11} style={{ marginRight: 4 }} />
+                        {labels.statusLabels.ready}
+                    </Chip>
+                ) : (
+                    <Chip variant="warning">
+                        <AlertTriangle size={11} style={{ marginRight: 4 }} />
+                        {labels.statusLabels.needsAttention}
+                    </Chip>
+                )}
+                <Row.Meta>{formatCoverage(coverage)}</Row.Meta>
+                <Pill onClick={onCheck}>{labels.knowledgeIndex.check}</Pill>
+            </Row.Right>
+        </Row>
+    );
+}
+
+function WebAccessRow({
+    labels,
+    onSetup,
+}: {
+    labels: ReadinessCopy;
+    onSetup: () => void;
+}) {
+    return (
+        <Row>
+            <Row.Icon>
+                <Globe size={16} />
+            </Row.Icon>
+            <Row.Body>
+                <Row.Title>{labels.webAccess.title}</Row.Title>
+                <Row.Desc>{labels.webAccess.desc}</Row.Desc>
+            </Row.Body>
+            <Row.Right>
+                <Chip variant="neutral">{labels.webAccess.optional}</Chip>
+                <Row.Meta>Not configured</Row.Meta>
+                <Pill onClick={onSetup}>{labels.webAccess.setup}</Pill>
+            </Row.Right>
+        </Row>
+    );
+}
+
+const SAFETY_LABEL: Record<HarnessSettings['defaultPermissionMode'], string> = {
+    read: 'Read only',
+    acceptEdits: 'Ask before risky writes',
+    bypassPermissions: 'Bypass permissions',
+};
+
+function SafetyRow({
+    mode,
+    labels,
+    onReview,
+}: {
+    mode: HarnessSettings['defaultPermissionMode'];
+    labels: ReadinessCopy;
+    onReview: () => void;
+}) {
+    return (
+        <Row>
+            <Row.Icon>
+                <Shield size={16} />
+            </Row.Icon>
+            <Row.Body>
+                <Row.Title>{labels.safety.title}</Row.Title>
+                <Row.Desc>{labels.safety.desc}</Row.Desc>
+            </Row.Body>
+            <Row.Right>
+                <Chip variant="success">
+                    <Check size={11} style={{ marginRight: 4 }} />
+                    {labels.statusLabels.ready}
+                </Chip>
+                <Row.Meta>{SAFETY_LABEL[mode]}</Row.Meta>
+                <Pill onClick={onReview}>{labels.safety.review}</Pill>
+            </Row.Right>
+        </Row>
+    );
+}
+
+function SummaryRow({
+    icon: Icon,
+    title,
+    desc,
+    value,
+    muted,
+    onClick,
+}: {
+    icon: React.ElementType;
+    title: string;
+    desc: string;
+    value: string | null;
+    muted?: boolean;
+    onClick: () => void;
+}) {
+    return (
+        <Row onClick={onClick} data-clickable="true">
+            <Row.Icon>
+                <Icon size={16} />
+            </Row.Icon>
+            <Row.Body>
+                <Row.Title>{title}</Row.Title>
+                <Row.Desc>{desc}</Row.Desc>
+            </Row.Body>
+            <Row.Right>
+                {value ? (
+                    muted ? (
+                        <Row.Meta>{value}</Row.Meta>
+                    ) : (
+                        <Row.Value>{value}</Row.Value>
+                    )
+                ) : (
+                    <Row.Meta>—</Row.Meta>
+                )}
+                <ChevronRight
+                    size={14}
+                    style={{ color: 'var(--pk-text-tertiary)' }}
+                />
+            </Row.Right>
+        </Row>
+    );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Derived state
+ * ───────────────────────────────────────────────────────────────────────── */
+
+function useProvidersReadiness(): { count: number; ready: boolean } {
+    const [tick, setTick] = useState(0);
+    void tick;
+    useEffect(() => {
+        // Re-evaluate when the SettingsView re-renders. Cheap; nothing async.
+        setTick((t) => t + 1);
+    }, []);
+    const profiles = ProfileRegistry.getInstance().getAllProfiles();
+    const enabled = profiles.filter((p) => p.enabled).length;
+    return { count: enabled, ready: enabled > 0 };
+}
+
+interface AIBehaviorState {
+    status: 'ready' | 'needs-attention';
+    reason: string;
+}
+
+function useAIBehaviorReadiness(harness: HarnessSettings | undefined): AIBehaviorState {
+    return useMemo(() => {
+        const hasFast = !!harness?.localFastConfig;
+        const hasDeep = !!harness?.localDeepConfig;
+        if (hasFast && hasDeep) {
+            return { status: 'ready', reason: 'All tiers bound' };
         }
-    }
-    return worst;
+        if (!hasFast && !hasDeep) {
+            return { status: 'needs-attention', reason: 'No models bound' };
+        }
+        if (!hasFast) {
+            return { status: 'needs-attention', reason: 'Fast Lookup falls back to Conversation' };
+        }
+        return { status: 'needs-attention', reason: 'Research not bound' };
+    }, [harness]);
 }
 
-/** Highest-severity capability that exposes a repair action, or undefined
- * if every broken capability is repair-less (in which case we render the
- * chip but no CTA — adapters should always supply repair for not-ready). */
-function pickRepairTarget(
-    capabilities: CapabilityStatus[],
-): CapabilityStatus | undefined {
-    const candidates = capabilities
-        .filter((c) => c.repair && c.status !== 'ready' && c.status !== 'optional')
-        .sort((a, b) => STATUS_SEVERITY[b.status] - STATUS_SEVERITY[a.status]);
-    return candidates[0];
+type IndexCoverage =
+    | { kind: 'loading' }
+    | { kind: 'empty' }
+    | { kind: 'ready'; indexed: number; total: number; pct: number };
+
+function useIndexCoverage(): IndexCoverage {
+    const [state, setState] = useState<IndexCoverage>({ kind: 'loading' });
+    useEffect(() => {
+        if (!sqliteStoreManager.isInitialized()) {
+            setState({ kind: 'empty' });
+            return;
+        }
+        let cancelled = false;
+        void (async () => {
+            try {
+                const { IndexService } = await import('@/service/search/index/indexService');
+                const status = await IndexService.getInstance().getIndexStatus();
+                if (cancelled) return;
+                const total = AppContext.getInstance().app.vault.getMarkdownFiles().length;
+                const indexed = status.indexedDocs ?? 0;
+                if (indexed === 0) {
+                    setState({ kind: 'empty' });
+                    return;
+                }
+                const pct = total > 0 ? Math.min(100, Math.round((indexed / total) * 100)) : 0;
+                setState({ kind: 'ready', indexed, total, pct });
+            } catch {
+                if (!cancelled) setState({ kind: 'empty' });
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+    return state;
 }
 
-function statusToChipVariant(status: ReadinessStatus): ChipVariant {
-    switch (status) {
-        case 'ready':
-            return 'success';
-        case 'needs-attention':
-            return 'warning';
-        case 'not-ready':
-            return 'danger';
-        case 'optional':
-            return 'neutral';
-    }
+function formatCoverage(c: IndexCoverage): string {
+    if (c.kind === 'loading') return '…';
+    if (c.kind === 'empty') return 'Not indexed';
+    return `${c.pct}% indexed`;
 }
 
-function labelForStatus(status: ReadinessStatus, labels: StatusLabels): string {
-    switch (status) {
-        case 'ready':
-            return labels.ready;
-        case 'needs-attention':
-            return labels.needsAttention;
-        case 'not-ready':
-            return labels.notReady;
-        case 'optional':
-            return labels.optional;
-    }
+function formatBinding(cfg: { profileId: string; modelId: string } | null): string | null {
+    if (!cfg) return null;
+    const profile = ProfileRegistry.getInstance()
+        .getAllProfiles()
+        .find((p) => p.id === cfg.profileId);
+    if (!profile) return cfg.modelId;
+    return `${profile.name} · ${cfg.modelId}`;
 }

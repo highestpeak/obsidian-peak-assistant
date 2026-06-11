@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mock 03 — Composer States (matches current control set)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { createIcons, icons } from 'https://cdn.jsdelivr.net/npm/lucide@latest/dist/esm/lucide.js';
+    window.addEventListener('DOMContentLoaded', () => createIcons({ icons, attrs: { 'stroke-width': 1.6 } }));
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --border: #e3e3e8;
+      --border-focus: #a48fff;
+      --text: #1a1a1d;
+      --text-muted: #74747e;
+      --text-faint: #9b9ba6;
+      --accent: #7c5cff;
+      --accent-soft: #ece6ff;
+      --stop: #1f1d24;
+    }
+    html, body { background: #f4f4f6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: var(--text); }
+
+    .state-row { display: grid; grid-template-columns: 140px 1fr; gap: 24px; align-items: start; }
+    .state-label { font-size: 13px; font-weight: 600; }
+    .state-desc { font-size: 12px; color: var(--text-faint); margin-top: 4px; line-height: 1.4; }
+
+    .composer {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      position: relative;
+    }
+    .composer.focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.10);
+    }
+    .composer.sending { border-color: var(--accent-soft); }
+    .progress-bar {
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--accent-soft); overflow: hidden;
+    }
+    .progress-bar::after {
+      content: ""; position: absolute; top: 0; bottom: 0; width: 40%;
+      background: var(--accent); border-radius: 999px;
+      animation: slide 1.6s ease-in-out infinite;
+    }
+    @keyframes slide { 0% { left: -40%; } 100% { left: 100%; } }
+
+    .composer-body { padding: 14px 16px 10px; min-height: 52px; }
+    .placeholder { font-size: 14px; color: var(--text-faint); }
+    .typed { font-size: 14px; color: var(--text); }
+    .sending-line { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+    .spinner {
+      width: 12px; height: 12px;
+      border: 1.5px solid var(--accent-soft);
+      border-top-color: var(--accent);
+      border-radius: 999px;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px;
+      border-top: 1px solid #f0f0f3;
+    }
+    .toolbar-group { display: flex; align-items: center; gap: 2px; }
+    .icon-btn {
+      width: 28px; height: 28px; border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+    }
+    .icon-btn:hover { background: #f3f3f6; color: var(--text); }
+    .run-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 26px; padding: 0 8px 0 10px;
+      border-radius: 999px;
+      background: #f5f5f8; color: var(--text-muted);
+      font-size: 12px; white-space: nowrap;
+    }
+    .run-chip .dot { color: var(--text-faint); }
+    .run-chip .model { color: var(--text); font-weight: 500; }
+    .send-btn {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #f0f0f3; color: var(--text-faint);
+    }
+    .send-btn.active { background: var(--accent); color: white; }
+    .send-btn.stop   { background: #f0f0f3; color: var(--text); }
+    .send-btn.stop .square-mark {
+      width: 9px; height: 9px; border-radius: 1.5px; background: var(--stop);
+      display: inline-block;
+    }
+    .send-btn.loading { background: var(--accent); color: white; }
+    .ref-caption { font-size: 11px; color: var(--text-faint); }
+  </style>
+</head>
+<body class="p-10">
+  <div class="max-w-[860px] mx-auto space-y-10">
+    <div class="ref-caption">Mock 03 v2 · Composer states — Idle / Focus / Sending · matches current chat composer control set</div>
+
+    <!-- IDLE -->
+    <div class="state-row">
+      <div>
+        <div class="state-label">Idle</div>
+        <div class="state-desc">Default — neutral border, placeholder text, send disabled.</div>
+      </div>
+      <div class="composer">
+        <div class="composer-body">
+          <span class="placeholder">What would you like to know?</span>
+        </div>
+        <div class="toolbar">
+          <div class="toolbar-group">
+            <button class="icon-btn" title="Attach"><i data-lucide="plus" class="w-4 h-4"></i></button>
+          </div>
+          <div class="toolbar-group gap-2">
+            <span class="run-chip">
+              Chat <span class="dot">·</span> <span class="model">Auto</span> <span class="dot">·</span> No context
+              <i data-lucide="chevron-down" class="w-3 h-3"></i>
+            </span>
+            <button class="icon-btn" title="Mic"><i data-lucide="mic" class="w-4 h-4"></i></button>
+            <button class="send-btn" title="Send" disabled><i data-lucide="send" class="w-3.5 h-3.5"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOCUS -->
+    <div class="state-row">
+      <div>
+        <div class="state-label">Focus</div>
+        <div class="state-desc">Typed text — violet hairline ring, send turns violet.</div>
+      </div>
+      <div class="composer focus">
+        <div class="composer-body">
+          <span class="typed">Summarize the key takeaways from the latest notes and create a short action plan.</span><span style="display:inline-block;width:1.5px;height:14px;background:var(--accent);vertical-align:middle;margin-left:1px;animation:blink 1s steps(2) infinite;"></span>
+        </div>
+        <div class="toolbar">
+          <div class="toolbar-group">
+            <button class="icon-btn" title="Attach"><i data-lucide="plus" class="w-4 h-4"></i></button>
+          </div>
+          <div class="toolbar-group gap-2">
+            <span class="run-chip">
+              Chat <span class="dot">·</span> <span class="model">Auto</span> <span class="dot">·</span> No context
+              <i data-lucide="chevron-down" class="w-3 h-3"></i>
+            </span>
+            <button class="icon-btn" title="Mic"><i data-lucide="mic" class="w-4 h-4"></i></button>
+            <button class="send-btn active" title="Send"><i data-lucide="send" class="w-3.5 h-3.5"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SENDING -->
+    <div class="state-row">
+      <div>
+        <div class="state-label">Sending</div>
+        <div class="state-desc">Active stream — top progress bar, status line, neutral stop button with dark square.</div>
+      </div>
+      <div class="composer sending">
+        <div class="progress-bar"></div>
+        <div class="composer-body">
+          <div class="sending-line"><span class="spinner"></span> Planning and writing…</div>
+        </div>
+        <div class="toolbar">
+          <div class="toolbar-group">
+            <button class="icon-btn" title="Attach"><i data-lucide="plus" class="w-4 h-4"></i></button>
+          </div>
+          <div class="toolbar-group gap-2">
+            <span class="run-chip">
+              Chat <span class="dot">·</span> <span class="model">Auto</span> <span class="dot">·</span> No context
+              <i data-lucide="chevron-down" class="w-3 h-3"></i>
+            </span>
+            <button class="icon-btn" title="Mic"><i data-lucide="mic" class="w-4 h-4"></i></button>
+            <button class="send-btn stop" title="Stop"><span class="square-mark"></span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ref-caption leading-relaxed">
+      <div><b>left toolbar</b> ONLY 1 icon: <code>Plus</code> attach. Tools / Search live inside the run-chip popover, not in the toolbar.</div>
+      <div><b>right cluster</b> ONE compound run chip (Chat · Auto · No context · ▼) + <code>Mic</code> + send/stop. Not 3 separate pills.</div>
+      <div><b>placeholder</b> "What would you like to know?" (current source text — do not change to "Ask anything…")</div>
+      <div><b>send-btn</b> idle gray empty · focus violet fill <code>#7c5cff</code> + white Send · sending neutral <code>#f0f0f3</code> with small dark 9×9 filled square <code>#1f1d24</code> (NOT solid-dark button)</div>
+      <div><b>radius</b> composer 14 · chip 999 · send 8</div>
+    </div>
+  </div>
+</body>
+</html>

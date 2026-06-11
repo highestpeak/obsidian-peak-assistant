@@ -1,5 +1,5 @@
 {
-	"_doc": "User-facing strings for Usage Dashboard. PR-Dash-1 seeds title + screen labels + time-range labels. PR-Dash-2 adds Overview KPI labels, funnel stage labels, outcome event labels, and empty-state copy. PR-Dash-3 adds providerModel + outcomeValue screen copy and the 'What was this about' detail-panel per-feature labels. PR-Dash-4 adds inlineReceipt + contextRing + curatorPush strings for the three new carriers (A/B/C).",
+	"_doc": "User-facing strings for Usage Dashboard. PR-Dash-1/2/3/4 seeded screen nav + KPI + funnel + outcome breakdown. PR-Dash-5 (2026-06-11) replaces the Overview KPI block to match the mock's verb-carrying 4-card layout, adds recommendedActions + thisWeek sections, fully fleshes out the Budget & Alerts surface, and adds Optimization screen strings.",
 	"_owner": "design-system-unification-2026-05-30",
 	"title": "Token Usage",
 	"detailPanel": {
@@ -87,10 +87,58 @@
 	},
 	"overview": {
 		"kpi": {
-			"mpg": { "label": "Cost / useful message", "help": "Sum of usage cost in this range divided by the number of AI messages that produced a real outcome (vault save, copilot accept, agent file emit). Spec §11.2.", "empty": "—" },
-			"totalCost": { "label": "Total cost" },
-			"usefulMessages": { "label": "Useful messages", "help": "Distinct AI messages with ≥1 outcome event in this range." },
-			"totalCalls": { "label": "AI calls" }
+			"budgetPace": {
+				"label": "Budget pace",
+				"verb": "Adjust budget",
+				"empty": "No budget set",
+				"projectionLabel": "Projected",
+				"onTrack": "On track",
+				"offTrack": "Pace high",
+				"noBudgetCta": "Set a monthly budget"
+			},
+			"contextRisk": {
+				"label": "Context risk",
+				"verb": "Compact threshold",
+				"healthy": "Healthy",
+				"warn": "Watch",
+				"bad": "At risk",
+				"empty": "Open a chat to read context",
+				"autoCompactAt": "Auto-compact at {threshold}%"
+			},
+			"costPerSaved": {
+				"label": "Cost / saved artifact",
+				"verb": "Outcome breakdown",
+				"help": "Total cost of calls that ended in something saved (vault note, copilot accept, agent file emit), divided by the count of saves. Lower = more value per dollar.",
+				"sub": "{cost} across {count} saved items",
+				"empty": "—"
+			},
+			"calls": {
+				"label": "Calls this week",
+				"verb": "Review high-cost calls",
+				"tokensSub": "{tokens} tokens"
+			}
+		},
+		"recommendedActions": {
+			"title": "Recommended actions",
+			"subtitle": "From Curator · last 30 days",
+			"empty": "No recommendations yet — Curator needs more data.",
+			"viewAll": "View all {count} actions",
+			"loading": "Loading recommendations…",
+			"refreshed": "Last refreshed {ago}",
+			"impactLabels": {
+				"high": "High impact",
+				"medium": "Medium impact",
+				"low": "Low impact",
+				"investigate": "Investigate"
+			}
+		},
+		"thisWeek": {
+			"title": "This week",
+			"linkLabel": "View full usage",
+			"spendLabel": "Spend",
+			"tokensLabel": "Tokens",
+			"costPerSavedLabel": "Cost / saved artifact",
+			"deltaSuffix": "wow"
 		},
 		"funnel": {
 			"title": "Outcome funnel",
@@ -113,6 +161,132 @@
 				"agent_file_emit": "Agent file emit",
 				"continuation": "Continuation"
 			}
+		}
+	},
+	"budgetAlerts": {
+		"reset": "Reset to recommended",
+		"monthlyBudget": {
+			"title": "Monthly budget",
+			"sub": "Pace · projected spend",
+			"fieldLabel": "Budget",
+			"fieldHint": "Used when projecting and triggering alerts.",
+			"breakdown": "Used · projected · remaining",
+			"save": "Save budget",
+			"resetDay": "Reset day: {day}",
+			"resetDayPrompt": "Pick the day of month (1–28) the budget cycle restarts.",
+			"cycleBadge": "{month} {year}",
+			"noBudget": "No budget set — projection and alerts disabled."
+		},
+		"alertRules": {
+			"title": "Alert rules",
+			"sub": "Threshold-triggered notifications",
+			"editThresholds": "Edit thresholds",
+			"testAlerts": "Test alerts",
+			"howDelivered": "How alerts are delivered →",
+			"rules": {
+				"budget_threshold": {
+					"title": "Notify at {pct}% monthly budget",
+					"sub": "Single in-app notification, then silenced until next threshold.",
+					"badge": "In-app"
+				},
+				"context_compact": {
+					"title": "Suggest compact when context ≥ {pct}%",
+					"sub": "Surface inline in chat with \"Compact now\" verb.",
+					"badge": "Inline"
+				},
+				"agent_receipt": {
+					"title": "Summarize expensive agent tasks",
+					"sub": "Post-task receipt for any task over ${cost} or {tokens} tokens.",
+					"badge": "Receipt"
+				},
+				"silence_low_cost_pip": {
+					"title": "Silence low-cost receipts",
+					"sub": "Hide per-message pip when call is under ${cost}.",
+					"badge": "Pip"
+				}
+			}
+		},
+		"modelDefaults": {
+			"title": "Model defaults",
+			"sub": "Pick the right model for the job.",
+			"manage": "Manage models",
+			"tabs": {
+				"quick": "Quick",
+				"deep": "Deep research",
+				"premium": "Premium"
+			},
+			"costSuffix": "/ call",
+			"empty": "No model bound — open the harness onboarding wizard to bind one."
+		},
+		"preview": {
+			"title": "What users will see",
+			"sub": "In-app alert preview",
+			"customize": "Customize messages",
+			"items": {
+				"budgetAt40": {
+					"label": "1 · Spend at 40% of budget",
+					"value": "{used} / {budget}",
+					"badge": "Pace high",
+					"openOptimization": "Open Optimization",
+					"snooze": "Snooze"
+				},
+				"contextAt70": {
+					"label": "2 · Context warning at 70%",
+					"headline": "Context at 72%",
+					"badge": "Session warning",
+					"body": "Compact now to keep answers focused and cut next-turn cost.",
+					"compactNow": "Compact now",
+					"dismiss": "Dismiss"
+				},
+				"agentReceipt": {
+					"label": "3 · Agent task receipt",
+					"headline": "Research run · 73k tokens · $0.21",
+					"body": "Vault saves: 2 · Trace: open",
+					"openTrace": "Open trace"
+				}
+			}
+		}
+	},
+	"optimization": {
+		"summary": {
+			"templateCanCut": "{count} changes can cut projected spend by {pct}.",
+			"noRecommendations": "No recommendations yet — Curator needs more data.",
+			"refresh": "Refresh",
+			"loading": "Running Curator…",
+			"refreshing": "Refreshing…"
+		},
+		"recommendations": {
+			"title": "Recommended changes",
+			"sub": "Ranked by impact · evaluated against last 30 days",
+			"sourceRules": "Heuristic rules (offline)",
+			"sourceLlm": "Curator (LLM)",
+			"apply": "Apply change",
+			"preview": "Preview",
+			"openTraces": "Open traces",
+			"estMonthlySaving": "Est. monthly saving",
+			"evidenceColumns": {
+				"started": "Started",
+				"goal": "Goal",
+				"model": "Model",
+				"cost": "Cost"
+			}
+		},
+		"savingsDial": {
+			"appliedNone": "No changes applied yet",
+			"appliedSummary": "${applied} / ${potential} potential monthly savings",
+			"openBudget": "Open budget settings →"
+		},
+		"projection": {
+			"title": "Projected spend",
+			"cycle": "{start} → {end}",
+			"withoutChanges": "Without changes",
+			"withApplied": "With recommended changes",
+			"savingsTemplate": "−${saving} ({pct})",
+			"budget": "{budget} budget"
+		},
+		"scenarios": {
+			"title": "Choose a scenario",
+			"sub": "Conservative · Balanced · Aggressive"
 		}
 	},
 	"timeRange": {

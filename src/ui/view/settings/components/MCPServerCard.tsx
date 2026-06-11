@@ -16,7 +16,7 @@ export interface MCPServerCardProps {
 	onDelete: (id: string) => void;
 }
 
-const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent/60 pktw-transition-colors';
+const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
 	return (
@@ -100,7 +100,7 @@ export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps
 		<div className="pktw-border pktw-border-pk-border pktw-rounded-lg pktw-overflow-hidden">
 			{/* Header */}
 			<div
-				className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-3 pktw-cursor-pointer hover:pktw-bg-pk-accent/5 pktw-transition-colors"
+				className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-3 pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-transition-colors"
 				onClick={() => setExpanded(v => !v)}
 			>
 				<ChevronRight

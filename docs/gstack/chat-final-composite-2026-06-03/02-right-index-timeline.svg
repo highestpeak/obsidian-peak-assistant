@@ -1,0 +1,120 @@
+<svg width="760" height="1280" viewBox="0 0 760 1280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="purple" x1="0" x2="1">
+      <stop stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+    <style>
+      .title{font:700 34px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .h2{font:700 25px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .tab{font:500 24px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#667085}
+      .tabActive{font:700 24px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .body{font:400 20px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#334155}
+      .strong{font:700 22px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .muted{font:400 18px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#7B8494}
+      .small{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#7B8494}
+      .icon{stroke:#64748B;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+      .iconDark{stroke:#475569;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}
+    </style>
+  </defs>
+  <rect width="760" height="1280" rx="22" fill="#FCFCFD" stroke="#E1E4EA"/>
+  <g transform="translate(52 58)">
+    <text class="title">Conversation Index</text>
+    <path class="iconDark" d="M620 0h42M632 0a7 7 0 1 0 14 0M620 26h42M642 26a7 7 0 1 0 14 0"/>
+
+    <rect x="0" y="82" width="656" height="70" rx="15" fill="#FFFFFF" stroke="#DDE2EA"/>
+    <circle cx="38" cy="117" r="17" class="icon"/>
+    <path d="M51 130l15 15" class="icon"/>
+    <text x="86" y="126" class="body" style="font-size:24px;fill:#8A93A3">Search topics, files, messages...</text>
+    <rect x="586" y="99" width="48" height="36" rx="10" fill="#F1F3F6"/>
+    <text x="599" y="124" class="small" style="font-size:18px;fill:#475569">⌘K</text>
+
+    <g transform="translate(0 230)">
+      <text x="68" y="0" class="tab">Map</text>
+      <text x="264" y="0" class="tab">Artifacts</text>
+      <text x="532" y="0" class="tabActive">Timeline</text>
+    </g>
+
+    <g transform="translate(0 310)">
+      <text class="h2">Timeline</text>
+      <rect x="106" y="-24" width="38" height="30" rx="15" fill="#F0E8FF"/>
+      <text x="119" y="-3" class="small" style="font-weight:700;fill:#7C3AED">26</text>
+      <text x="478" y="-3" class="muted">Sort: latest</text>
+      <path class="icon" d="M622 -18l13 13 13-13"/>
+    </g>
+
+    <!-- Standalone ungrouped message, no No topic section -->
+    <g transform="translate(0 380)">
+      <rect x="0" y="0" width="46" height="46" rx="12" fill="#EEF4FF"/>
+      <text x="16" y="31" class="small" style="font-size:20px;font-weight:700;fill:#2563EB">U</text>
+      <text x="70" y="20" class="body">Can you summarize the latest notes?</text>
+      <text x="570" y="20" class="muted">11:04 AM</text>
+    </g>
+
+    <!-- Topic block -->
+    <g transform="translate(0 466)">
+      <path class="iconDark" d="M8 8l12 12-12 12"/>
+      <path class="iconDark" d="M62 0h34v29H72l-10 10z"/>
+      <text x="126" y="24" class="strong">API profile setup</text>
+      <rect x="502" y="16" width="100" height="7" rx="4" fill="#E6E8EF"/>
+      <rect x="502" y="16" width="58" height="7" rx="4" fill="url(#purple)"/>
+      <text x="626" y="25" class="strong" style="fill:#7C3AED">12</text>
+      <text x="126" y="62" class="muted">Configuring profiles, providers and model settings</text>
+      <g transform="translate(126 104)">
+        <path class="icon" d="M2 10c0-8 8-14 18-14s18 6 18 14-8 14-18 14c-4 0-8-1-11-3l-9 3 3-8c-1-2-1-4-1-6z"/>
+        <text x="54" y="18" class="muted">12 messages</text>
+        <path class="icon" d="M212 -2h26v34h-26zM218 7h14M218 16h14"/>
+        <text x="254" y="18" class="muted">2 artifacts</text>
+      </g>
+      <line x1="72" y1="108" x2="72" y2="252" stroke="#E5E7EB"/>
+      <g transform="translate(126 166)">
+        <rect x="0" y="0" width="42" height="42" rx="11" fill="#EEF4FF"/>
+        <text x="15" y="29" class="small" style="font-size:20px;font-weight:700;fill:#2563EB">U</text>
+        <text x="62" y="27" class="body">How do I configure a model profile?</text>
+        <text x="512" y="27" class="muted">10:28 AM</text>
+      </g>
+      <g transform="translate(126 238)">
+        <path class="iconDark" d="M0 0h34v42H0zM8 12h18M8 22h18"/>
+        <text x="62" y="20" class="body">provider.md</text>
+        <text x="62" y="48" class="muted">docs/ai/provider.md</text>
+        <text x="512" y="20" class="muted">10:21 AM</text>
+      </g>
+    </g>
+
+    <!-- Standalone message -->
+    <g transform="translate(0 790)">
+      <rect x="0" y="0" width="46" height="46" rx="12" fill="#F3F4F6"/>
+      <text x="17" y="31" class="small" style="font-size:20px;font-weight:700;fill:#64748B">P</text>
+      <text x="70" y="20" class="body">I found the provider config issue.</text>
+      <text x="570" y="20" class="muted">10:19 AM</text>
+    </g>
+
+    <g transform="translate(0 872)">
+      <rect x="0" y="0" width="46" height="46" rx="12" fill="#EEF4FF"/>
+      <text x="16" y="31" class="small" style="font-size:20px;font-weight:700;fill:#2563EB">U</text>
+      <text x="70" y="20" class="body">hello</text>
+      <text x="570" y="20" class="muted">09:58 AM</text>
+    </g>
+
+    <!-- Collapsed topic rows -->
+    <g transform="translate(0 966)">
+      <path class="iconDark" d="M8 8l12 12-12 12"/>
+      <path class="iconDark" d="M62 0h34v29H72l-10 10z"/>
+      <text x="126" y="24" class="strong">Model routing</text>
+      <rect x="502" y="16" width="100" height="7" rx="4" fill="#E6E8EF"/>
+      <rect x="502" y="16" width="52" height="7" rx="4" fill="url(#purple)"/>
+      <text x="626" y="25" class="strong" style="fill:#7C3AED">5</text>
+      <text x="126" y="62" class="muted">Model selection, overrides and fallback rules</text>
+    </g>
+
+    <g transform="translate(0 1082)">
+      <path class="iconDark" d="M8 8l12 12-12 12"/>
+      <path class="iconDark" d="M62 0h34v29H72l-10 10z"/>
+      <text x="126" y="24" class="strong">Profile summary</text>
+      <rect x="502" y="16" width="100" height="7" rx="4" fill="#E6E8EF"/>
+      <rect x="502" y="16" width="36" height="7" rx="4" fill="url(#purple)"/>
+      <text x="626" y="25" class="strong" style="fill:#7C3AED">3</text>
+      <text x="126" y="62" class="muted">Summary refinements and follow-up edits</text>
+    </g>
+  </g>
+</svg>

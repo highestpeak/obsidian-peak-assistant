@@ -1,130 +1,220 @@
+/**
+ * Maintenance — restructured for PR-5 (2026-06-07) to match mock IA at
+ * docs/gstack/settings-redesign-2026-05-29/index.html#advanced.
+ *
+ * 3 groups rendered as horizontal action-strips:
+ *   - Index            (7 actions)
+ *   - Knowledge graph  (3 actions)
+ *   - Verification & cleanup (2 actions)
+ *
+ * Plus a collapsed Danger zone `<details>` for irreversible operations.
+ * `Compare PPR search` moved to Knowledge Index → Advanced rebuild disclosure
+ * (PR-3); not here.
+ */
+
 import React, { useState } from 'react';
 import {
-	Activity,
-	Bot,
-	Brain,
-	Database,
-	FileSearch,
-	Layers,
-	RefreshCw,
-	ShieldAlert,
-	Sparkles,
-	Trash2,
-	Wrench,
-	Zap,
+    Activity,
+    Bot,
+    Brain,
+    ChevronDown,
+    Database,
+    FileSearch,
+    Layers,
+    RefreshCw,
+    ShieldAlert,
+    Sparkles,
+    Trash2,
+    Wrench,
+    Zap,
 } from 'lucide-react';
-import { Button } from '@/ui/component/shared-ui/button';
-import { SectionHeader } from './components/SectionHeader';
-import { SettingCard } from './components/SettingCard';
+import { Row, Button } from '@/ui/components/primitives';
 import {
-	analyzeVaultIntuition,
-	buildUserProfileAction,
-	cancelIndexing,
-	cleanupUselessData,
-	clearUserProfileBuildRecord,
-	compareSearchResults,
-	deleteIndexData,
-	recomputeGapAnalysis,
-	refreshHubSummaries,
-	refreshRelatedNotes,
-	runFullIndexPipeline,
-	runGlobalMaintenance,
-	runLlmEnrichmentPending,
-	runSearchFastIndex,
-	runVectorEnrichmentPending,
-	verifyDatabaseHealthAction,
+    analyzeVaultIntuition,
+    buildUserProfileAction,
+    cancelIndexing,
+    cleanupUselessData,
+    clearUserProfileBuildRecord,
+    deleteIndexData,
+    recomputeGapAnalysis,
+    refreshHubSummaries,
+    refreshRelatedNotes,
+    runFullIndexPipeline,
+    runGlobalMaintenance,
+    runLlmEnrichmentPending,
+    runSearchFastIndex,
+    runVectorEnrichmentPending,
+    verifyDatabaseHealthAction,
 } from '@/app/commands/PeakCommandActions';
 
 interface MaintenanceAction {
-	id: string;
-	label: string;
-	description: string;
-	icon: React.ElementType;
-	danger?: boolean;
-	run: () => void | Promise<void>;
+    id: string;
+    label: string;
+    icon: React.ElementType;
+    run: () => void | Promise<void>;
 }
 
-const INDEX_ACTIONS: MaintenanceAction[] = [
-	{ id: 'update-index', label: 'Update Index', description: 'Run the normal fast index update.', icon: Database, run: runSearchFastIndex },
-	{ id: 'full-pipeline', label: 'Full Pipeline', description: 'Run the configured full indexing pipeline.', icon: RefreshCw, run: runFullIndexPipeline },
-	{ id: 'cancel-indexing', label: 'Cancel Indexing', description: 'Stop the current indexing operation.', icon: ShieldAlert, run: cancelIndexing },
+interface DangerAction extends MaintenanceAction {
+    description: string;
+}
+
+const INDEX_GROUP: MaintenanceAction[] = [
+    { id: 'update-index', label: 'Update index', icon: Database, run: runSearchFastIndex },
+    { id: 'full-pipeline', label: 'Full pipeline', icon: RefreshCw, run: runFullIndexPipeline },
+    { id: 'cancel-indexing', label: 'Cancel indexing', icon: ShieldAlert, run: cancelIndexing },
+    { id: 'related-refresh', label: 'Refresh related notes', icon: Zap, run: refreshRelatedNotes },
+    { id: 'hub-refresh', label: 'Refresh hub summaries', icon: FileSearch, run: refreshHubSummaries },
+    { id: 'gap-recompute', label: 'Recompute gap analysis', icon: Layers, run: recomputeGapAnalysis },
+    { id: 'vault-intuition', label: 'Analyze vault intuition', icon: Brain, run: analyzeVaultIntuition },
 ];
 
-const KNOWLEDGE_ACTIONS: MaintenanceAction[] = [
-	{ id: 'related-refresh', label: 'Refresh Related Notes', description: 'Trigger ambient related-note refresh.', icon: Zap, run: refreshRelatedNotes },
-	{ id: 'hub-refresh', label: 'Refresh Hub Summaries', description: 'Regenerate queued hub summaries.', icon: FileSearch, run: refreshHubSummaries },
-	{ id: 'gap-recompute', label: 'Recompute Gap Analysis', description: 'Force structural-hole analysis to run again.', icon: Layers, run: recomputeGapAnalysis },
-	{ id: 'vault-intuition', label: 'Analyze Vault Intuition', description: 'Regenerate the high-level vault intuition map.', icon: Brain, run: analyzeVaultIntuition },
+const KNOWLEDGE_GRAPH_GROUP: MaintenanceAction[] = [
+    { id: 'vector-pending', label: 'Build pending vectors', icon: Database, run: runVectorEnrichmentPending },
+    { id: 'llm-pending', label: 'Run pending LLM enrichment', icon: Sparkles, run: runLlmEnrichmentPending },
+    { id: 'global-maintenance', label: 'Global maintenance', icon: RefreshCw, run: runGlobalMaintenance },
 ];
 
-const ADVANCED_ACTIONS: MaintenanceAction[] = [
-	{ id: 'db-health', label: 'Verify Database Health', description: 'Run SQLite integrity checks.', icon: Activity, run: verifyDatabaseHealthAction },
-	{ id: 'cleanup', label: 'Cleanup Useless Data', description: 'Remove orphaned index and chat records.', icon: Wrench, run: cleanupUselessData },
-	{ id: 'vector-pending', label: 'Build Pending Vectors', description: 'Run vector enrichment for pending documents.', icon: Database, run: runVectorEnrichmentPending },
-	{ id: 'llm-pending', label: 'Run Pending LLM Enrichment', description: 'Run pending tags and summaries enrichment.', icon: Sparkles, run: runLlmEnrichmentPending },
-	{ id: 'global-maintenance', label: 'Global Maintenance', description: 'Rebuild graph aggregates and maintenance data.', icon: RefreshCw, run: runGlobalMaintenance },
-	{ id: 'ppr-compare', label: 'Compare PPR Search', description: 'Evaluate PPR results against baseline search.', icon: FileSearch, run: compareSearchResults },
-	{ id: 'build-profile', label: 'Build User Profile', description: 'Scan vault content to refresh the user profile context.', icon: Bot, run: buildUserProfileAction },
-	{ id: 'clear-profile', label: 'Clear Profile Build Record', description: 'Force the next profile build to rescan files.', icon: ShieldAlert, danger: true, run: clearUserProfileBuildRecord },
-	{ id: 'delete-index', label: 'Delete Index Data', description: 'Delete all indexed documents after confirmation.', icon: Trash2, danger: true, run: deleteIndexData },
+const VERIFICATION_GROUP: MaintenanceAction[] = [
+    { id: 'db-health', label: 'Verify database', icon: Activity, run: verifyDatabaseHealthAction },
+    { id: 'cleanup', label: 'Cleanup useless data', icon: Wrench, run: cleanupUselessData },
+    { id: 'build-profile', label: 'Build user profile', icon: Bot, run: buildUserProfileAction },
+];
+
+const DANGER_ACTIONS: DangerAction[] = [
+    {
+        id: 'clear-profile',
+        label: 'Clear profile build record',
+        description: 'Force the next profile build to rescan files.',
+        icon: ShieldAlert,
+        run: clearUserProfileBuildRecord,
+    },
+    {
+        id: 'delete-index',
+        label: 'Delete index data',
+        description: 'Delete all indexed documents after confirmation.',
+        icon: Trash2,
+        run: deleteIndexData,
+    },
 ];
 
 export function MaintenanceTab() {
-	return (
-		<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-mt-4">
-			<MaintenanceSection icon={Database} title="Index" actions={INDEX_ACTIONS} />
-			<div className="pktw-border-t pktw-border-border pktw-my-1" />
-			<MaintenanceSection icon={Brain} title="Knowledge Graph" actions={KNOWLEDGE_ACTIONS} />
-			<div className="pktw-border-t pktw-border-border pktw-my-1" />
-			<MaintenanceSection icon={Wrench} title="Advanced" actions={ADVANCED_ACTIONS} />
-		</div>
-	);
+    return (
+        <div className="pktw-flex pktw-flex-col pktw-gap-5">
+            <MaintenanceGroup title="Index" actions={INDEX_GROUP} />
+            <MaintenanceGroup title="Knowledge graph" actions={KNOWLEDGE_GRAPH_GROUP} />
+            <MaintenanceGroup title="Verification & cleanup" actions={VERIFICATION_GROUP} />
+            <DangerZone actions={DANGER_ACTIONS} />
+        </div>
+    );
 }
 
-function MaintenanceSection({
-	icon,
-	title,
-	actions,
+function MaintenanceGroup({
+    title,
+    actions,
 }: {
-	icon: React.ElementType;
-	title: string;
-	actions: MaintenanceAction[];
+    title: string;
+    actions: MaintenanceAction[];
 }) {
-	return (
-		<>
-			<SectionHeader icon={icon} title={title} />
-			{actions.map(action => (
-				<MaintenanceRow key={action.id} action={action} />
-			))}
-		</>
-	);
+    return (
+        <div>
+            <span
+                className="pktw-text-[11px] pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint"
+                style={{ display: 'block', marginBottom: 8 }}
+            >
+                {title}
+            </span>
+            <div className="pkset-action-strip">
+                {actions.map((action) => (
+                    <ActionButton key={action.id} action={action} />
+                ))}
+            </div>
+        </div>
+    );
 }
 
-function MaintenanceRow({ action }: { action: MaintenanceAction }) {
-	const [running, setRunning] = useState(false);
-	const Icon = action.icon;
+function ActionButton({ action }: { action: MaintenanceAction }) {
+    const [running, setRunning] = useState(false);
+    const Icon = action.icon;
 
-	const handleRun = async () => {
-		if (running) return;
-		setRunning(true);
-		try {
-			await action.run();
-		} finally {
-			setRunning(false);
-		}
-	};
+    const handleRun = async () => {
+        if (running) return;
+        setRunning(true);
+        try {
+            await action.run();
+        } finally {
+            setRunning(false);
+        }
+    };
 
-	return (
-		<SettingCard label={action.label} description={action.description}>
-			<Button
-				variant={action.danger ? 'destructive' : 'outline'}
-				size="sm"
-				disabled={running}
-				onClick={handleRun}
-			>
-				<Icon className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
-				{running ? 'Running...' : 'Run'}
-			</Button>
-		</SettingCard>
-	);
+    return (
+        <Button variant="outline" size="sm" onClick={handleRun} disabled={running}>
+            <Icon className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
+            {running ? 'Running…' : action.label}
+        </Button>
+    );
+}
+
+function DangerZone({ actions }: { actions: DangerAction[] }) {
+    return (
+        <details>
+            <summary>
+                <Row disclosure>
+                    <Row.Icon>
+                        <ShieldAlert size={16} style={{ color: 'var(--pk-error-text)' }} />
+                    </Row.Icon>
+                    <Row.Body>
+                        <Row.Title>Danger zone</Row.Title>
+                        <Row.Desc>Irreversible operations. Peak asks for confirmation.</Row.Desc>
+                    </Row.Body>
+                    <Row.Right>
+                        <Row.Meta>{actions.length} actions</Row.Meta>
+                        <ChevronDown size={14} style={{ color: 'var(--pk-text-tertiary)' }} />
+                    </Row.Right>
+                </Row>
+            </summary>
+            <div className="pk-disclosure-body">
+                <div className="pkset-row-list">
+                    {actions.map((action) => (
+                        <DangerRow key={action.id} action={action} />
+                    ))}
+                </div>
+            </div>
+        </details>
+    );
+}
+
+function DangerRow({ action }: { action: DangerAction }) {
+    const [running, setRunning] = useState(false);
+    const Icon = action.icon;
+    const handleRun = async () => {
+        if (running) return;
+        setRunning(true);
+        try {
+            await action.run();
+        } finally {
+            setRunning(false);
+        }
+    };
+    return (
+        <Row>
+            <Row.Icon>
+                <Icon size={16} />
+            </Row.Icon>
+            <Row.Body>
+                <Row.Title>{action.label}</Row.Title>
+                <Row.Desc>{action.description}</Row.Desc>
+            </Row.Body>
+            <Row.Right>
+                <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleRun}
+                    disabled={running}
+                >
+                    <Icon className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
+                    {running ? 'Running…' : 'Run'}
+                </Button>
+            </Row.Right>
+        </Row>
+    );
 }

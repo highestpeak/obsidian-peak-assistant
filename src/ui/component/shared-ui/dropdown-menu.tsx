@@ -59,10 +59,14 @@ const DropdownMenuContent = React.forwardRef<
 	const contextContainer = usePortalContainer();
 	return (
 		<DropdownMenuPrimitive.Portal container={contextContainer ?? undefined}>
+			{/* `peak-design-root pktw-root` required so --pk-* tokens resolve
+			    after Radix portals this subtree out of `.pktw-root`. See
+			    dialog.tsx for the full note. */}
 			<DropdownMenuPrimitive.Content
 				ref={ref}
 				sideOffset={sideOffset}
 				className={cn(
+					"peak-design-root pktw-root",
 					"pktw-z-50 pktw-min-w-[8rem] pktw-overflow-hidden pktw-rounded-md pktw-border pktw-bg-popover pktw-p-1 pktw-text-popover-foreground pktw-shadow-md data-[state=open]:pktw-animate-in data-[state=closed]:pktw-animate-out data-[state=closed]:pktw-fade-out-0 data-[state=open]:pktw-fade-in-0 data-[state=closed]:pktw-zoom-out-95 data-[state=open]:pktw-zoom-in-95 data-[side=bottom]:pktw-slide-in-from-top-2 data-[side=left]:pktw-slide-in-from-right-2 data-[side=right]:pktw-slide-in-from-left-2 data-[side=top]:pktw-slide-in-from-bottom-2",
 					className
 				)}

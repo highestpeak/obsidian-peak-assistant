@@ -56,6 +56,7 @@ import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
 import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
+import { UsageOptimizationService } from '@/service/usage/optimization';
 import { CuratorRuntimePushService } from '@/service/usage/CuratorRuntimePushService';
 import { mountCuratorPushRoot } from '@/ui/view/usage-dashboard/runtime/mountCuratorPushRoot';
 import { ModelRegistry } from '@/core/providers/model-registry';
@@ -409,6 +410,9 @@ export default class MyPlugin extends Plugin {
 				UsageOutcomeService.getInstance().init(
 					sqliteStoreManager.getIndexContext('chat'),
 				);
+				UsageOptimizationService.getInstance().init(
+					sqliteStoreManager.getIndexContext('chat'),
+				);
 				await this.initializeSearchService();
 				if (this.appContext) {
 					this.appContext.searchClient = this.searchClient!;
@@ -615,6 +619,7 @@ export default class MyPlugin extends Plugin {
 		CuratorRuntimePushService.getInstance().destroy();
 		UsageTrackingService.getInstance().destroy();
 		UsageOutcomeService.getInstance().destroy();
+		UsageOptimizationService.getInstance().destroy();
 		AppContext.clearForUnload();
 		SessionContextService.destroyInstance();
 		EventBus.destroyInstance();

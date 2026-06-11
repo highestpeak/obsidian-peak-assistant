@@ -163,6 +163,45 @@ For any streaming text accumulation:
 
 ---
 
+## 4. Radix portal subtree loses `--pk-*` design tokens
+
+### Symptom
+- A modal / popover / dropdown menu renders **transparent or with wrong colors** (you can see the page through the modal background).
+- Buttons inside the modal show no background fill; text contrast looks broken; the modal "feels grayed out and unwritable" (user words).
+- Same UI is fine inside the normal view tree (sidebar, chat shell, etc.). The breakage only happens for things that **portal** themselves out of the view tree.
+- DevTools Computed Styles on the modal background shows `background: var(--pk-surface-overlay)` with **value: `<no value>`** — the variable is undefined.
+
+### Mechanism
+1. `peak-tokens.css` scopes every `--pk-*` design token to `.pktw-root` / `.peak-design-root` (and their `.theme-light` / `.theme-dark` variants). Per `docs/conventions/obsidian-css-defense.md`, this scoping is deliberate — we do **not** pollute `:root`, otherwise our tokens would leak into Obsidian's own UI.
+2. Our React tree mounts inside a container that carries `.peak-design-root` (set by `ChatView.onOpen()`, `ProjectListView.onOpen()`, etc.). All descendant components inherit the tokens via cascade.
+3. Radix UI primitives (`@radix-ui/react-dialog`, `react-popover`, `react-dropdown-menu`, `react-tooltip`) **portal their `Content` element to `document.body`** by default. This is correct for stacking-context / overflow reasons, but it moves the content **out of the `.peak-design-root` subtree**.
+4. The portal subtree now has only Obsidian's `body.theme-dark` / `body.theme-light` ancestors. None of the `--pk-*` rules match — every token-backed Tailwind utility (`bg-popover`, `text-foreground`, `border-border`, etc.) resolves to `var(<undefined>)` → no background → see-through modal.
+5. `usePortalContainer()` can redirect the portal target (used for popout window support, see `e5189af`), but that only changes which **document** the portal lives in — the subtree is still a direct child of body, never a descendant of `.peak-design-root`.
+
+### Instances
+
+| Date | Component | Symptom | Fix |
+|---|---|---|---|
+| 2026-06-04 | `InputModal` (Create Project, Rename Project, Rename Conversation) | Modal background transparent, X button bleeds into title, button bg invisible, every text element low-contrast | Added `peak-design-root pktw-root` to className of `DialogContent`, `PopoverContent`, `DropdownMenuContent` in `src/ui/component/shared-ui/{dialog,popover,dropdown-menu}.tsx` |
+| _(add next instance here)_ | | | |
+
+### Detection signals
+- "Modal / popup looks gray / faded / transparent / unstyled" — almost always this.
+- Background appears to be just the page-dim overlay (semi-transparent black) with no opaque modal panel on top.
+- DevTools: select the broken `[role="dialog"]` / `[role="menu"]` element → look up the DOM tree → it's a child of `body`, **not** a descendant of any `.peak-design-root`.
+- Token-backed CSS variables show `<no value>` / `<invalid>` in Computed view.
+
+### Prevention checklist
+**Any new component that uses a Radix Portal** (`Dialog`, `Popover`, `DropdownMenu`, `Tooltip`, `HoverCard`, `ContextMenu`, …):
+1. Find the `Content` element (the one inside `*.Portal`).
+2. Add `'peak-design-root pktw-root'` to its `className`. Same selector strings as the view-mount wrappers — anywhere these classes go, the tokens follow.
+3. If you build a new shared-ui primitive that wraps a Radix portal, **bake the classes into the primitive** so consumers can't forget. Don't rely on per-call sites to remember.
+4. Verify with `bg-popover` rendering opaque, and DevTools showing `--pk-surface-overlay: #2a2a3c` (dark) / `#ffffff` (light) resolved on the portal root.
+
+**Do NOT** "fix" this by promoting tokens to `:root` in `peak-tokens.css`. That re-introduces the Obsidian-pollution problem and undoes the scoping rule documented in `obsidian-css-defense.md`.
+
+---
+
 ## How to consult this doc
 
 - Bug feels familiar? `grep` this file for the symptom phrase before re-deriving the root cause.

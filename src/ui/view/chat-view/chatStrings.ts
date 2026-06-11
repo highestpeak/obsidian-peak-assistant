@@ -44,6 +44,7 @@ export interface ChatStrings {
 		runChipModelAuto: string;
 		runChipCtxSuffix: string;
 		attachLabel: string;
+		streamingStatus: string;
 	};
 	runSettings: {
 		title: string;
@@ -87,8 +88,15 @@ export interface ChatStrings {
 		searchMessages: string;
 		tabAll: string;
 		tabTopics: string;
+		tabOverview: string;
 		tabArtifacts: string;
 		tabMessages: string;
+		searchOverview: string;
+		artifactKindHeaderImages: string;
+		artifactKindHeaderDiagrams: string;
+		artifactKindHeaderFiles: string;
+		artifactKindHeaderCode: string;
+		footerOverview: string;
 		allTopicsHeader: string;
 		allArtifactsHeader: string;
 		allMessagesHeader: string;
@@ -187,6 +195,7 @@ export const DEFAULT_CHAT_STRINGS: ChatStrings = {
 		runChipModelAuto: 'Auto model',
 		runChipCtxSuffix: 'ctx',
 		attachLabel: 'Attach file',
+		streamingStatus: 'Planning and writing…',
 	},
 	runSettings: {
 		title: 'Run settings',
@@ -227,8 +236,15 @@ export const DEFAULT_CHAT_STRINGS: ChatStrings = {
 		searchMessages: 'Search messages…',
 		tabAll: 'All',
 		tabTopics: 'Topics',
+		tabOverview: 'Overview',
 		tabArtifacts: 'Artifacts',
 		tabMessages: 'Messages',
+		searchOverview: 'Search conversation…',
+		artifactKindHeaderImages: 'Images',
+		artifactKindHeaderDiagrams: 'Diagrams',
+		artifactKindHeaderFiles: 'Files',
+		artifactKindHeaderCode: 'Code',
+		footerOverview: 'Click any entry to jump in chat.',
 		allTopicsHeader: 'Topics',
 		allArtifactsHeader: 'Artifacts',
 		allMessagesHeader: 'Messages',

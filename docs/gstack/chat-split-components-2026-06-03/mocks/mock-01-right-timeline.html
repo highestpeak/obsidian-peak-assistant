@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mock 01 — Conversation Index (3 tabs)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { createIcons, icons } from 'https://cdn.jsdelivr.net/npm/lucide@latest/dist/esm/lucide.js';
+    window.addEventListener('DOMContentLoaded', () => {
+      createIcons({ icons, attrs: { 'stroke-width': 1.5 } });
+
+      // Topic expand / collapse
+      document.querySelectorAll('.topic-row').forEach(row => {
+        row.addEventListener('click', (e) => {
+          const v = row.closest('.vguide');
+          if (v) v.classList.toggle('collapsed');
+          e.stopPropagation();
+        });
+      });
+    });
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #fafafa;
+      --border: #ececec;
+      --border-faint: #f3f3f5;
+      --text: #1a1a1d;
+      --text-muted: #74747e;
+      --text-faint: #9b9ba6;
+      --accent: #7c5cff;
+      --accent-strong: #6a47f0;
+      --accent-tint: #f1edff;
+      --avatar-u: #ece6ff;
+      --avatar-u-text: #6a47f0;
+      --avatar-p: #f1f1f4;
+      --avatar-p-text: #4a4a55;
+      --rail: #e8e3f9;
+    }
+    html, body { background: #f4f4f6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: var(--text); }
+
+    .panel { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 1px 2px rgba(15,15,25,.03); padding: 18px 4px 12px; }
+
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 14px; }
+    .header-title { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+
+    .search { margin: 0 12px 16px; display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 40px; border: 1px solid var(--border); border-radius: 10px; background: #fbfbfd; }
+    .search-text { flex: 1; font-size: 13px; color: var(--text-faint); }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; color: var(--text-faint); padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; background: #fff; }
+
+    .tabs { display: flex; gap: 0; padding: 0 16px; border-bottom: 1px solid var(--border-faint); margin-bottom: 6px; }
+    .tab { flex: 1; text-align: center; padding: 10px 0; font-size: 14px; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab.active { color: var(--text); font-weight: 600; border-bottom-color: var(--text); }
+
+    .timeline { padding: 4px 12px 4px; }
+
+    .row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 8px; border-radius: 8px; }
+    .row:hover { background: #f7f6fb; }
+    .row-time { font-size: 12px; color: var(--text-faint); flex-shrink: 0; padding-top: 2px; }
+    .row-body { flex: 1; min-width: 0; }
+    .row-title { font-size: 14px; color: var(--text); line-height: 1.4; }
+    .row-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .avatar { width: 26px; height: 26px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    .avatar-u { background: var(--avatar-u); color: var(--avatar-u-text); }
+    .avatar-p { background: var(--avatar-p); color: var(--avatar-p-text); }
+
+    /* 16px gutter at the very left of every row, holds a chev (topic) or empty (others). Keeps icon column at consistent X across all row types. */
+    .chev { width: 16px; height: 26px; flex-shrink: 0; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; }
+    .topic-icon { width: 26px; height: 26px; border-radius: 7px; background: transparent; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .topic-title { font-size: 14px; font-weight: 500; color: var(--text); }
+    .topic-sub { font-size: 12px; color: var(--text-faint); margin-top: 1px; }
+
+    .progress-track { width: 64px; height: 5px; background: #efeefa; border-radius: 999px; overflow: hidden; flex-shrink: 0; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; }
+    .progress-fill.light { background: #cdc4f3; }
+
+    .vguide { position: relative; }
+    .vguide::before { content: ""; position: absolute; left: 16px; top: 46px; bottom: 12px; width: 1.5px; background: var(--rail); border-radius: 2px; }
+    .nested { padding-left: 28px; overflow: hidden; }
+
+    /* expand/collapse */
+    .topic-row { cursor: pointer; user-select: none; }
+    .chev-icon { transition: transform 0.18s ease; }
+    .vguide.collapsed .chev-icon { transform: rotate(-90deg); }
+    .vguide.collapsed .nested { display: none; }
+    .vguide.collapsed::before { display: none; }
+
+    /* artifact card — same 26x26 icon footprint as messages, with subtle bg to distinguish kind */
+    .artifact-row { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 8px; }
+    .artifact-row:hover { background: #f7f6fb; }
+    .artifact-thumb { width: 26px; height: 26px; border-radius: 7px; background: #f5f3fb; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; color: var(--accent-strong); }
+    .artifact-thumb svg.brand { width: 15px; height: 15px; }
+    .artifact-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .artifact-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+    .meta-chip { color: var(--accent-strong); }
+    .ext-icon { color: var(--text-faint); flex-shrink: 0; }
+
+    .ref-caption { font-size: 11px; color: var(--text-faint); margin-bottom: 10px; }
+    .col-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; padding-left: 4px; }
+  </style>
+</head>
+<body class="p-8">
+
+  <div class="max-w-[1480px] mx-auto">
+    <div class="ref-caption">Mock 01 v3 · Conversation Index · 3 tabs (Overview / Artifacts / Messages) · light theme</div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+      <!-- ============================= -->
+      <!-- TAB 1: OVERVIEW (mixed)       -->
+      <!-- ============================= -->
+      <div>
+        <div class="col-label">Tab · Overview (mixed timeline)</div>
+        <div class="panel">
+
+          <div class="header">
+            <span class="header-title">Conversation Index</span>
+            <i data-lucide="sliders-horizontal" class="w-4 h-4" style="color: var(--text-muted);"></i>
+          </div>
+
+          <div class="search">
+            <i data-lucide="search" class="w-4 h-4" style="color: var(--text-faint);"></i>
+            <span class="search-text">Search conversation...</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="tabs">
+            <div class="tab active">Overview</div>
+            <div class="tab">Artifacts</div>
+            <div class="tab">Messages</div>
+          </div>
+
+          <div class="timeline">
+
+            <!-- standalone msg -->
+            <div class="row">
+              <span class="chev"></span>
+              <span class="avatar avatar-u">U</span>
+              <div class="row-body">
+                <div class="row-title">Can you summarize the latest notes?</div>
+              </div>
+              <span class="row-time">11:04 AM</span>
+            </div>
+
+            <!-- topic: API profile setup (default expanded) -->
+            <div class="vguide">
+              <div class="row topic-row">
+                <span class="chev"><i data-lucide="chevron-down" class="w-4 h-4 chev-icon"></i></span>
+                <span class="topic-icon"><i data-lucide="message-square" class="w-4 h-4"></i></span>
+                <div class="row-body">
+                  <div class="topic-title">API profile setup</div>
+                  <div class="topic-sub">Profiles, providers, model settings</div>
+                </div>
+                <div class="progress-track"><div class="progress-fill" style="width: 75%"></div></div>
+              </div>
+
+              <div class="nested">
+                <div class="row">
+                  <span class="avatar avatar-u">U</span>
+                  <div class="row-body"><div class="row-title">How do I configure a model profile?</div></div>
+                  <span class="row-time">10:28 AM</span>
+                </div>
+                <div class="row">
+                  <span class="topic-icon"><i data-lucide="file-text" class="w-5 h-5"></i></span>
+                  <div class="row-body">
+                    <div class="row-title">provider.md</div>
+                    <div class="row-sub">docs/ai/provider.md</div>
+                  </div>
+                  <span class="row-time">10:21 AM</span>
+                </div>
+                <div class="row">
+                  <span class="avatar avatar-p">P</span>
+                  <div class="row-body"><div class="row-title">Provider profile loaded successfully</div></div>
+                  <span class="row-time">10:18 AM</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- standalone artifact: image -->
+            <div class="artifact-row">
+              <span class="chev"></span>
+              <span class="artifact-thumb">
+                <svg class="brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-4-4-8 8"/></svg>
+              </span>
+              <div class="row-body">
+                <div class="row-title">architecture-sketch.png</div>
+                <div class="artifact-meta">
+                  Image <span>·</span> <span class="meta-chip">API profile setup</span>
+                </div>
+              </div>
+              <span class="row-time">10:31 AM</span>
+            </div>
+
+            <!-- standalone msg -->
+            <div class="row">
+              <span class="chev"></span>
+              <span class="avatar avatar-p">P</span>
+              <div class="row-body"><div class="row-title">I found the provider config issue.</div></div>
+              <span class="row-time">10:19 AM</span>
+            </div>
+
+            <!-- topic: Model routing (default collapsed) -->
+            <div class="vguide collapsed">
+              <div class="row topic-row">
+                <span class="chev"><i data-lucide="chevron-down" class="w-4 h-4 chev-icon"></i></span>
+                <span class="topic-icon"><i data-lucide="message-square" class="w-4 h-4"></i></span>
+                <div class="row-body">
+                  <div class="topic-title">Model routing</div>
+                  <div class="topic-sub">Overrides and fallback rules</div>
+                </div>
+                <div class="progress-track"><div class="progress-fill" style="width: 55%"></div></div>
+              </div>
+              <div class="nested">
+                <div class="row">
+                  <span class="avatar avatar-u">U</span>
+                  <div class="row-body"><div class="row-title">Can you also add the fallback rules so we never hit a stale provider?</div></div>
+                  <span class="row-time">10:15 AM</span>
+                </div>
+                <div class="row">
+                  <span class="avatar avatar-p">P</span>
+                  <div class="row-body"><div class="row-title">Model routing now supports tier-based fallback.</div></div>
+                  <span class="row-time">10:12 AM</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- standalone artifact: markdown -->
+            <div class="artifact-row">
+              <span class="chev"></span>
+              <span class="artifact-thumb">
+                <svg viewBox="0 0 24 24" class="brand" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <rect x="4" y="3" width="16" height="18" rx="2"/>
+                  <path d="M8 8 L8 16 M8 8 L10 12 L12 8 L12 16 M15 11 L15 16 M13 14 L15 16 L17 14"/>
+                </svg>
+              </span>
+              <div class="row-body">
+                <div class="row-title">implementation-plan.md</div>
+                <div class="artifact-meta">
+                  Markdown <span>·</span> <span class="meta-chip">Profile summary</span>
+                </div>
+              </div>
+              <span class="row-time">10:25 AM</span>
+            </div>
+
+            <!-- topic: Profile summary (default collapsed) -->
+            <div class="vguide collapsed">
+              <div class="row topic-row">
+                <span class="chev"><i data-lucide="chevron-down" class="w-4 h-4 chev-icon"></i></span>
+                <span class="topic-icon"><i data-lucide="message-square" class="w-4 h-4"></i></span>
+                <div class="row-body">
+                  <div class="topic-title">Profile summary</div>
+                  <div class="topic-sub">Summary refinements and follow-up edits</div>
+                </div>
+                <div class="progress-track"><div class="progress-fill light" style="width: 30%"></div></div>
+              </div>
+              <div class="nested">
+                <div class="row">
+                  <span class="avatar avatar-u">U</span>
+                  <div class="row-body"><div class="row-title">What is the latest profile summary?</div></div>
+                  <span class="row-time">10:05 AM</span>
+                </div>
+                <div class="row">
+                  <span class="avatar avatar-p">P</span>
+                  <div class="row-body"><div class="row-title">Profile summary updated with three new entries.</div></div>
+                  <span class="row-time">10:01 AM</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- standalone artifact: code -->
+            <div class="artifact-row">
+              <span class="chev"></span>
+              <span class="artifact-thumb">
+                <svg viewBox="0 0 24 24" class="brand" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <rect x="4" y="3" width="16" height="18" rx="2"/>
+                  <path d="M9 10 L7 13 L9 16 M15 10 L17 13 L15 16 M13 9 L11 17"/>
+                </svg>
+              </span>
+              <div class="row-body">
+                <div class="row-title">@RestController.java</div>
+                <div class="artifact-meta">
+                  File <span>·</span> <span class="meta-chip">Profile summary</span>
+                </div>
+              </div>
+              <span class="row-time">17:09</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ============================= -->
+      <!-- TAB 2: ARTIFACTS              -->
+      <!-- ============================= -->
+      <div>
+        <div class="col-label">Tab · Artifacts (grouped by kind)</div>
+        <div class="panel">
+
+          <div class="header">
+            <span class="header-title">Conversation Index</span>
+            <i data-lucide="sliders-horizontal" class="w-4 h-4" style="color: var(--text-muted);"></i>
+          </div>
+
+          <div class="search">
+            <i data-lucide="search" class="w-4 h-4" style="color: var(--text-faint);"></i>
+            <span class="search-text">Search artifacts...</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="tabs">
+            <div class="tab">Overview</div>
+            <div class="tab active">Artifacts</div>
+            <div class="tab">Messages</div>
+          </div>
+
+          <div class="timeline">
+
+            <div class="col-label" style="margin: 14px 8px 4px; font-size: 11px;">Images · 2</div>
+
+            <div class="artifact-row">
+              <span class="chev"></span>
+              <span class="artifact-thumb">
+                <svg class="brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-4-4-8 8"/></svg>
+              </span>
+              <div class="row-body">
+                <div class="row-title">architecture-sketch.png</div>
+                <div class="artifact-meta">Image <span>·</span> <span class="meta-chip">API profile setup</span></div>
+              </div>
+              <span class="row-time">10:31 AM</span>
+            </div>
+
+            <div class="artifact-row">
+              <span class="chev"></span>
+              <span class="artifact-thumb">
+                <svg class="brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-4-4-8 8"/></svg>
+              </span>
+              <div class="row-body">
+                <div class="row-title">flow-overview.png</div>
+                <div class="artifact-meta">Image <span>·</span> <span class="meta-chip">Model routing</span></div>
+              </div>
+              <span class="row-time">Yesterday</span>
+            </div>
+
+            <div class="col-label" style="margin: 16px 8px 4px; font-size: 11px;">Documents · 3</div>
+
+            <div class="artifact-row">
+              <span class="chev"></span>
+              <span class="artifact-thumb">
+                <svg viewBox="0 0 24 24" class="brand" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8 L8 16 M8 8 L10 12 L12 8 L12 16 M15 11 L15 16 M13 14 L15 16 L17 14"/></svg>
+              </span>
+              <div class="row-body">
+                <div class="row-title">implementation-plan.md</div>
+                <div class="artifact-meta">Markdown <span>·</span> <span class="meta-chip">Profile summary</span></div>
+              </div>
+              <span class="row-time">10:25 AM</span>
+            </div>
+
+            <div class="artifact-row">
+              <span class="chev"></span>
+              <span class="artifact-thumb">
+                <svg viewBox="0 0 24 24" class="brand" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 3 H7 a2 2 0 0 0-2 2 v14 a2 2 0 0 0 2 2 h10 a2 2 0 0 0 2-2 V8 L14 3 z M14 3 V8 H19"/></svg>
+              </span>
+              <div class="row-body">
+                <div class="row-title">provider.md</div>
+                <div class="artifact-meta">Markdown <span>·</span> <span class="meta-chip">API profile setup</span></div>
+              </div>
+              <span class="row-time">10:21 AM</span>
+            </div>
+
+            <div class="artifact-row">
+              <span class="chev"></span>
+              <span class="artifact-thumb">
+                <svg viewBox="0 0 24 24" class="brand" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 3 H7 a2 2 0 0 0-2 2 v14 a2 2 0 0 0 2 2 h10 a2 2 0 0 0 2-2 V8 L14 3 z M14 3 V8 H19 M9 14 H15 M9 17 H13"/></svg>
+              </span>
+              <div class="row-body">
+                <div class="row-title">design-spec.pdf</div>
+                <div class="artifact-meta">PDF <span>·</span> <span class="meta-chip">Model routing</span></div>
+              </div>
+              <span class="row-time">Yesterday</span>
+            </div>
+
+            <div class="col-label" style="margin: 16px 8px 4px; font-size: 11px;">Code · 3</div>
+
+            <div class="artifact-row">
+              <span class="chev"></span>
+              <span class="artifact-thumb">
+                <svg viewBox="0 0 24 24" class="brand" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 10 L7 13 L9 16 M15 10 L17 13 L15 16 M13 9 L11 17"/></svg>
+              </span>
+              <div class="row-body">
+                <div class="row-title">@RestController.java</div>
+                <div class="artifact-meta">File <span>·</span> <span class="meta-chip">Profile summary</span></div>
+              </div>
+              <span class="row-time">17:09</span>
+            </div>
+
+            <div class="artifact-row">
+              <span class="chev"></span>
+              <span class="artifact-thumb">
+                <svg viewBox="0 0 24 24" class="brand" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 10 L7 13 L9 16 M15 10 L17 13 L15 16 M13 9 L11 17"/></svg>
+              </span>
+              <div class="row-body">
+                <div class="row-title">routing-config.ts</div>
+                <div class="artifact-meta">File <span>·</span> <span class="meta-chip">Model routing</span></div>
+              </div>
+              <span class="row-time">Yesterday</span>
+            </div>
+
+            <div class="artifact-row">
+              <span class="chev"></span>
+              <span class="artifact-thumb">
+                <svg viewBox="0 0 24 24" class="brand" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 10 L7 13 L9 16 M15 10 L17 13 L15 16 M13 9 L11 17"/></svg>
+              </span>
+              <div class="row-body">
+                <div class="row-title">profile-loader.py</div>
+                <div class="artifact-meta">File <span>·</span> <span class="meta-chip">API profile setup</span></div>
+              </div>
+              <span class="row-time">2d ago</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ============================= -->
+      <!-- TAB 3: MESSAGES               -->
+      <!-- ============================= -->
+      <div>
+        <div class="col-label">Tab · Messages (flat transcript)</div>
+        <div class="panel">
+
+          <div class="header">
+            <span class="header-title">Conversation Index</span>
+            <i data-lucide="sliders-horizontal" class="w-4 h-4" style="color: var(--text-muted);"></i>
+          </div>
+
+          <div class="search">
+            <i data-lucide="search" class="w-4 h-4" style="color: var(--text-faint);"></i>
+            <span class="search-text">Search messages...</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="tabs">
+            <div class="tab">Overview</div>
+            <div class="tab">Artifacts</div>
+            <div class="tab active">Messages</div>
+          </div>
+
+          <div class="timeline">
+
+            <!-- standalone msg (no topic) -->
+            <div class="row">
+              <span class="chev"></span>
+              <span class="avatar avatar-u">U</span>
+              <div class="row-body"><div class="row-title">Can you summarize the latest notes?</div></div>
+              <span class="row-time">11:04 AM</span>
+            </div>
+
+            <!-- topic: API profile setup (default expanded) -->
+            <div class="vguide">
+              <div class="row topic-row">
+                <span class="chev"><i data-lucide="chevron-down" class="w-4 h-4 chev-icon"></i></span>
+                <span class="topic-icon"><i data-lucide="message-square" class="w-4 h-4"></i></span>
+                <div class="row-body">
+                  <div class="topic-title">API profile setup</div>
+                  <div class="topic-sub">Profiles, providers, model settings</div>
+                </div>
+                <div class="progress-track"><div class="progress-fill" style="width: 75%"></div></div>
+              </div>
+
+              <div class="nested">
+                <div class="row">
+                  <span class="avatar avatar-u">U</span>
+                  <div class="row-body"><div class="row-title">How do I configure a model profile?</div></div>
+                  <span class="row-time">10:28 AM</span>
+                </div>
+                <div class="row">
+                  <span class="avatar avatar-p">P</span>
+                  <div class="row-body"><div class="row-title">Provider profile loaded successfully</div></div>
+                  <span class="row-time">10:18 AM</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- standalone msg (no topic) -->
+            <div class="row">
+              <span class="chev"></span>
+              <span class="avatar avatar-p">P</span>
+              <div class="row-body"><div class="row-title">I found the provider config issue.</div></div>
+              <span class="row-time">10:19 AM</span>
+            </div>
+
+            <!-- topic: Model routing (default expanded) -->
+            <div class="vguide">
+              <div class="row topic-row">
+                <span class="chev"><i data-lucide="chevron-down" class="w-4 h-4 chev-icon"></i></span>
+                <span class="topic-icon"><i data-lucide="message-square" class="w-4 h-4"></i></span>
+                <div class="row-body">
+                  <div class="topic-title">Model routing</div>
+                  <div class="topic-sub">Overrides and fallback rules</div>
+                </div>
+                <div class="progress-track"><div class="progress-fill" style="width: 55%"></div></div>
+              </div>
+
+              <div class="nested">
+                <div class="row">
+                  <span class="avatar avatar-u">U</span>
+                  <div class="row-body"><div class="row-title">Can you also add the fallback rules so we never hit a stale provider?</div></div>
+                  <span class="row-time">10:15 AM</span>
+                </div>
+                <div class="row">
+                  <span class="avatar avatar-p">P</span>
+                  <div class="row-body"><div class="row-title">Model routing now supports tier-based fallback with timeout windows.</div></div>
+                  <span class="row-time">10:12 AM</span>
+                </div>
+                <div class="row">
+                  <span class="avatar avatar-u">U</span>
+                  <div class="row-body"><div class="row-title">Run the indexer over the new corpus and tell me when chunks are ready.</div></div>
+                  <span class="row-time">Yesterday</span>
+                </div>
+                <div class="row">
+                  <span class="avatar avatar-p">P</span>
+                  <div class="row-body"><div class="row-title">Indexer finished. 1,284 chunks embedded, 12 hubs detected.</div></div>
+                  <span class="row-time">Yesterday</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- topic: Profile summary (default collapsed) -->
+            <div class="vguide collapsed">
+              <div class="row topic-row">
+                <span class="chev"><i data-lucide="chevron-down" class="w-4 h-4 chev-icon"></i></span>
+                <span class="topic-icon"><i data-lucide="message-square" class="w-4 h-4"></i></span>
+                <div class="row-body">
+                  <div class="topic-title">Profile summary</div>
+                  <div class="topic-sub">Summary refinements and follow-up edits</div>
+                </div>
+                <div class="progress-track"><div class="progress-fill light" style="width: 30%"></div></div>
+              </div>
+              <div class="nested">
+                <div class="row">
+                  <span class="avatar avatar-u">U</span>
+                  <div class="row-body"><div class="row-title">What is the latest profile summary?</div></div>
+                  <span class="row-time">10:05 AM</span>
+                </div>
+                <div class="row">
+                  <span class="avatar avatar-p">P</span>
+                  <div class="row-body"><div class="row-title">Profile summary updated with three new entries.</div></div>
+                  <span class="row-time">10:01 AM</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- standalone msg (no topic) -->
+            <div class="row">
+              <span class="chev"></span>
+              <span class="avatar avatar-u">U</span>
+              <div class="row-body"><div class="row-title">hello</div></div>
+              <span class="row-time">09:58 AM</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="ref-caption mt-8 leading-relaxed max-w-3xl">
+      <div><b>tabs</b> Overview · Artifacts · Messages — flex-1 evenly distributed, active = bold + 2px dark underline (not violet)</div>
+      <div><b>avatar</b> 26×26 rounded-md (7px), U = lavender tint, P = neutral gray, font 11/600</div>
+      <div><b>topic block</b> chevron + msg icon + title (14/500) + sub (12/faint) + progress-track (64×5) — NO count number anymore</div>
+      <div><b>row alignment</b> every top-level row has a 16px chev gutter as 1st child (chev for topics, empty span for others). Main icon column is always 26×26 starting at X=36. Result: avatars, topic-icons, artifact-thumbs all share the same left edge.</div>
+      <div><b>artifact thumb</b> 26×26 lavender-tinted square with brand icon (image / md / pdf / code). Same footprint as avatar — no longer 56×44 to keep the icon column clean.</div>
+      <div><b>artifact card</b> thumb + filename + meta line (type · topic chip) + time. NO open / external-link icon — single click jumps to message, right-click opens.</div>
+      <div><b>topic chip in artifact meta</b> violet text only, no bg</div>
+      <div><b>messages tab</b> same mixed structure as Overview (topic blocks + standalone messages), just NO artifacts. Topic membership shown by nesting under the topic block — never via per-row chip.</div>
+      <div><b>vguide</b> 1.5px lavender, only under expanded topic</div>
+      <div><b>panel</b> 14px radius, padding 18px top, no inner card borders on rows — pure spacing</div>
+      <div class="mt-2"><b>interactive:</b> click any topic-row to toggle expand / collapse. Chevron rotates -90° smoothly. vguide line + nested children hide when collapsed.</div>
+    </div>
+  </div>
+</body>
+</html>

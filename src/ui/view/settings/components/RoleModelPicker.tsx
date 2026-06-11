@@ -181,7 +181,7 @@ export function RoleModelPicker({ role, activeConfig, profiles, onSelect, onClea
                                     onClick={() => guardedSelect({ profileId: item.profileId, modelId: item.modelId })}
                                     className={cn(
                                         'pktw-w-full pktw-text-left pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors pktw-cursor-pointer',
-                                        idx === highlightIdx && 'pktw-bg-pk-accent/10',
+                                        idx === highlightIdx && 'pktw-bg-pk-accent-tint',
                                         selected && 'pktw-font-semibold',
                                     )}
                                 >
@@ -215,7 +215,7 @@ export function RoleModelPicker({ role, activeConfig, profiles, onSelect, onClea
                     <div className="pktw-border-t pktw-border-pk-border" />
                     <button
                         type="button"
-                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-2 pktw-text-xs pktw-text-pk-muted-foreground pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none hover:pktw-bg-pk-accent/5 pktw-transition-colors pktw-cursor-pointer"
+                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-2 pktw-text-xs pktw-text-pk-muted-foreground pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none hover:pktw-bg-pk-accent-tint pktw-transition-colors pktw-cursor-pointer"
                         onClick={onClear}
                     >
                         Clear selection

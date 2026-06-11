@@ -5,14 +5,12 @@ import { Plus, ChevronRight } from 'lucide-react';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createPresetProfile } from '@/core/profiles/presets';
 import type { ProfileKind, Profile } from '@/core/profiles/types';
-import type { MyPluginSettings } from '@/app/settings/types';
+import { DEFAULT_HARNESS_SETTINGS, type MyPluginSettings, type HarnessSettings } from '@/app/settings/types';
 import type { LLMOutputControlSettings } from '@/core/providers/types';
-import type { SdkSettings } from '@/core/profiles/types';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
 import { StatusBar } from './components/StatusBar';
 import { ProfileCard } from './components/ProfileCard';
 import { AddProfileGrid } from './components/AddProfileGrid';
-import { CustomEndpointSection } from './components/CustomEndpointSection';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 
@@ -20,7 +18,7 @@ import { Button } from '@/ui/component/shared-ui/button';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent/60 pktw-transition-colors';
+const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -102,23 +100,17 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }
     // --- Advanced section data ---
 
     const outputControl = settings.ai?.defaultOutputControl ?? {};
-    const sdkSettings = registry.getSdkSettings();
 
     const updateOutputControl = (field: string, value: unknown) => {
         const current = settings.ai?.defaultOutputControl ?? {};
         settingsUpdates.updateAI('defaultOutputControl', { ...current, [field]: value } as LLMOutputControlSettings);
     };
 
-    const updateSdk = (field: keyof SdkSettings, value: unknown) => {
-        // SDK settings live in ProfileRegistry, but persisted through ProfileSettings
-        // We update via the registry's internal mechanism by reading + updating
-        const current = registry.getSdkSettings();
-        const updated = { ...current, [field]: value };
-        // ProfileRegistry doesn't expose setSdkSettings directly, so we go through settings
-        settingsUpdates.update('profileSettings', {
-            ...settings.profileSettings!,
-            sdkSettings: updated,
-        });
+    // Escalation policy moved here from Advanced tab's Agent runtime — it
+    // configures *when* the "Use stronger model when needed" tier kicks in.
+    const harness: HarnessSettings = settings.harnessSettings ?? DEFAULT_HARNESS_SETTINGS;
+    const updateHarness = (patch: Partial<HarnessSettings>) => {
+        settingsUpdates.update('harnessSettings', { ...harness, ...patch });
     };
 
     return (
@@ -145,7 +137,7 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }
                 ))}
             </div>
 
-            {/* Add profile */}
+            {/* Add provider */}
             {showAddGrid ? (
                 <AddProfileGrid
                     onSelect={handleAdd}
@@ -159,38 +151,48 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }
                     onClick={() => setShowAddGrid(true)}
                 >
                     <Plus size={16} />
-                    Add Profile
+                    Add Provider
                 </Button>
             )}
 
-            {/* Custom Endpoints */}
-            <CustomEndpointSection
-                endpoints={registry.getCustomEndpoints()}
-                onUpdate={bump}
-            />
+            {/* Custom endpoints folded into Add Provider — picking "LiteLLM"
+                or "Custom" in the AddProfileGrid creates an OpenAI-compatible
+                profile with the same Connection form fields. Existing
+                customEndpoints data in settings is preserved for the chat
+                service-manager runtime; only the dedicated UI block is gone. */}
 
-            {/* Advanced section */}
+            {/* Advanced model controls disclosure */}
             <div className="pktw-border pktw-border-pk-border pktw-rounded-lg pktw-overflow-hidden">
                 <div
-                    className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-4 pktw-py-3 pktw-cursor-pointer hover:pktw-bg-pk-accent/5 pktw-transition-colors"
+                    className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-3 pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-transition-colors"
                     onClick={() => setAdvancedOpen((v) => !v)}
                 >
                     <ChevronRight
                         size={14}
                         className={cn(
-                            'pktw-text-pk-muted-foreground pktw-transition-transform pktw-duration-200',
+                            'pktw-text-pk-muted-foreground pktw-transition-transform pktw-duration-200 pktw-shrink-0',
                             advancedOpen && 'pktw-rotate-90',
                         )}
                     />
-                    <span className="pktw-text-sm pktw-font-medium">Advanced</span>
+                    <div className="pktw-flex pktw-flex-col pktw-gap-0.5">
+                        <span className="pktw-text-sm pktw-font-semibold pktw-text-pk-foreground">
+                            Advanced model controls
+                        </span>
+                        <span className="pktw-text-[11px] pktw-text-pk-foreground-faint">
+                            Temperature, top-p, reasoning effort, timeouts.
+                        </span>
+                    </div>
+                    <span className="pktw-ml-auto pktw-text-[11px] pktw-text-pk-foreground-faint">
+                        6 fields
+                    </span>
                 </div>
 
                 {advancedOpen && (
-                    <div className="pktw-px-4 pktw-pb-4 pktw-border-t pktw-border-pk-border pktw-space-y-5">
+                    <div className="pktw-px-4 pktw-pb-4 pktw-border-t pktw-border-pk-border pktw-space-y-4">
                         {/* LLM Output Control */}
                         <div className="pktw-mt-4">
-                            <span className="pktw-text-[11px] pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint">
-                                LLM Output Control
+                            <span className="pktw-text-xs pktw-font-semibold pktw-text-pk-foreground">
+                                LLM output control
                             </span>
                             <div className="pktw-space-y-2.5 pktw-mt-2.5">
                                 <FieldRow label="Temperature">
@@ -264,41 +266,59 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }
                             </div>
                         </div>
 
-                        {/* SDK Settings */}
+                        {/* Escalation policy — moved from Advanced tab. Drives
+                            when the "Use stronger model when needed" tier kicks
+                            in during long-running agent loops. */}
                         <div>
-                            <span className="pktw-text-[11px] pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint">
-                                SDK Settings
+                            <span className="pktw-text-xs pktw-font-semibold pktw-text-pk-foreground">
+                                Escalation policy
                             </span>
                             <div className="pktw-space-y-2.5 pktw-mt-2.5">
-                                <FieldRow label="CLI Path Override">
-                                    <input
-                                        className={INPUT_CLS}
-                                        defaultValue={sdkSettings.cliPathOverride ?? ''}
-                                        placeholder="Leave empty for default"
-                                        onBlur={(e) => updateSdk('cliPathOverride', e.target.value || null)}
-                                    />
-                                </FieldRow>
-                                <FieldRow label="Pool Size">
-                                    <input
-                                        type="number" min="1" max="10"
-                                        className={INPUT_CLS}
-                                        value={sdkSettings.subprocessPoolSize}
-                                        onChange={(e) => updateSdk('subprocessPoolSize', parseInt(e.target.value, 10) || 1)}
-                                    />
-                                </FieldRow>
-                                <FieldRow label="Warmup on Load">
+                                <FieldRow label="Allow escalation">
                                     <label className="pktw-flex pktw-items-center pktw-gap-2 pktw-cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            checked={sdkSettings.warmupOnLoad}
-                                            onChange={(e) => updateSdk('warmupOnLoad', e.target.checked)}
+                                            checked={harness.allowEscalation}
+                                            onChange={(e) => updateHarness({ allowEscalation: e.target.checked })}
                                             className="pktw-rounded pktw-border-pk-border"
                                         />
-                                        <span className="pktw-text-xs pktw-text-pk-foreground-faint">Pre-warm subprocess on plugin load</span>
+                                        <span className="pktw-text-xs pktw-text-pk-foreground-faint">
+                                            Auto-upgrade to the next tier on low confidence
+                                        </span>
                                     </label>
+                                </FieldRow>
+                                <FieldRow label="Max escalations / loop">
+                                    <input
+                                        type="number" min="1" max="3"
+                                        disabled={!harness.allowEscalation}
+                                        className={cn(INPUT_CLS, !harness.allowEscalation && 'pktw-opacity-40 pktw-cursor-not-allowed')}
+                                        value={harness.maxEscalationsPerLoop}
+                                        onChange={(e) => {
+                                            const v = Math.max(1, Math.min(3, parseInt(e.target.value, 10) || 1));
+                                            updateHarness({ maxEscalationsPerLoop: v });
+                                        }}
+                                    />
+                                </FieldRow>
+                                <FieldRow label="Auto-escalate threshold">
+                                    <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-w-full">
+                                        <input
+                                            type="range" step="0.05" min="0" max="1"
+                                            disabled={!harness.allowEscalation}
+                                            className={cn('pktw-flex-1 pktw-h-1.5 pktw-accent-[var(--pk-accent)]', !harness.allowEscalation && 'pktw-opacity-40 pktw-cursor-not-allowed')}
+                                            value={harness.autoEscalateScoreBelow}
+                                            onChange={(e) => updateHarness({ autoEscalateScoreBelow: parseFloat(e.target.value) })}
+                                        />
+                                        <span className="pktw-text-xs pktw-text-pk-foreground-muted pktw-w-10 pktw-text-right pktw-font-mono">
+                                            {harness.autoEscalateScoreBelow.toFixed(2)}
+                                        </span>
+                                    </div>
                                 </FieldRow>
                             </div>
                         </div>
+
+                        {/* SDK Settings moved to Advanced tab → Developer
+                            disclosure (PR-5). Keeping the persistence layer
+                            wired in case any power user is editing JSON. */}
                     </div>
                 )}
             </div>

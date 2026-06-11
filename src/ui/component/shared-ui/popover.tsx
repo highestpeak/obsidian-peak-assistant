@@ -14,11 +14,14 @@ const PopoverContent = React.forwardRef<
 	const contextContainer = usePortalContainer();
 	return (
 		<PopoverPrimitive.Portal container={contextContainer ?? undefined}>
+			{/* `peak-design-root pktw-root` is required on every Radix portal
+			    root so --pk-* tokens resolve. See dialog.tsx for full note. */}
 			<PopoverPrimitive.Content
 				ref={ref}
 				align={align}
 				sideOffset={sideOffset}
 				className={cn(
+					"peak-design-root pktw-root",
 					"pktw-z-50 pktw-w-72 pktw-rounded-md pktw-border pktw-bg-popover pktw-p-4 pktw-text-popover-foreground pktw-shadow-md pktw-outline-none data-[state=open]:pktw-animate-in data-[state=closed]:pktw-animate-out data-[state=closed]:pktw-fade-out-0 data-[state=open]:pktw-fade-in-0 data-[state=closed]:pktw-zoom-out-95 data-[state=open]:pktw-zoom-in-95 data-[side=bottom]:pktw-slide-in-from-top-2 data-[side=left]:pktw-slide-in-from-right-2 data-[side=right]:pktw-slide-in-from-left-2 data-[side=top]:pktw-slide-in-from-bottom-2",
 					className
 				)}

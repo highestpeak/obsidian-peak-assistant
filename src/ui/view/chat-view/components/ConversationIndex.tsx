@@ -2,16 +2,14 @@ import React, { useMemo, useState, useCallback } from 'react';
 import {
 	Search,
 	X,
-	ChevronRight,
 	MessageSquare,
+	MessagesSquare,
 	FileText,
 	Code,
 	Network,
 	Image as ImageIcon,
-	Paperclip,
-	ArrowUpRight,
 } from 'lucide-react';
-import { Segmented, IconButton, Pill, Chip } from '@/ui/components/primitives';
+import { IconButton } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import type { ChatMessage } from '@/service/chat/types';
 import { useChatStrings } from '../chatStringsContext';
@@ -20,31 +18,36 @@ import { CHAT_STUDIO_VIEW_TYPE, CHAT_VIEW_TYPE } from '@/app/view/types';
 import { usePortalContainer } from '@/ui/react/PortalContainerContext';
 
 /**
- * ConversationIndex — right-side navigator with 4 tabs (PR-Chat-3).
+ * ConversationIndex — right-side navigator with 2 tabs.
  *
  * Tabs:
- *   - All        : flat newest-first list (topics + artifacts + messages)
- *   - Topics     : accordion of topic groups with position bar + attachments
- *   - Artifacts  : first-class card grid (code/file/diagram/image)
- *   - Messages   : flat scrollable list with role filters and quick jump
+ *   - Overview  : mixed timeline — topic blocks + standalone messages + artifacts
+ *   - Artifacts : grouped by kind (Images / Diagrams / Files / Code)
+ *
+ * (A separate "Messages" tab was dropped — Overview already shows every
+ *  message, and the only difference would be hiding artifacts, which is
+ *  rarely the user's actual goal. If the need re-emerges, add an Overview
+ *  filter chip instead of a third tab.)
+ *
+ * Row alignment (all rows share the same anchor grid):
+ *   [8 padding] [16 chev gutter] [12 gap] [26 main icon] [12 gap] [body] [meta]
+ *
+ * The chev gutter holds the expand chevron for topic rows and is an empty
+ * placeholder for standalone-message + artifact rows. This keeps all main
+ * icons (avatar / topic-icon / artifact-icon) on the same X across mixed
+ * row types — without it, the panel reads as ragged at the left edge.
  *
  * Data sources:
- *   - `message.topic`   (string, optional)  → topic grouping
- *   - `message.resources` (ChatResourceRef[]) → attachment chips
- *   - assistant message ```fenced``` code blocks → code/diagram artifacts
+ *   - `message.topic`         → topic grouping
+ *   - `message.resources`     → attachment artifacts
+ *   - ```fenced``` code blocks in assistant/user content → code/diagram artifacts
  *
- * Click any row/card → scrolls to the matching `[data-message-id]` element
- * in the chat body (rendered by MessageViewItemRetained).
- *
- * Strings live in `chatStrings.ts` + `templates/config/chat.json`. PR-Chat-4
- * will migrate to the TemplateManager runtime loader. Service layer is NOT
- * touched — this is a pure UI consumer of the message store.
+ * Click any row → scrolls the chat body to `[data-message-id]` in the
+ * leaf's own document (popout-safe via usePortalContainer).
  */
 
-type TabId = 'all' | 'topics' | 'artifacts' | 'messages';
+type TabId = 'overview' | 'artifacts';
 type ArtifactKind = 'code' | 'file' | 'diagram' | 'image';
-type ArtifactFilter = 'all' | ArtifactKind;
-type MessageFilter = 'all' | 'user' | 'assistant' | 'error';
 
 interface Artifact {
 	id: string;
@@ -52,18 +55,15 @@ interface Artifact {
 	messageIndex: number;
 	kind: ArtifactKind;
 	name: string;
+	/** Full path of the source resource — `docs/ai/provider.md` style. Empty for
+	 *  inline fenced code blocks (which have no on-disk source). Used as the
+	 *  subtitle line of nested artifact rows so the file's vault location is
+	 *  visible without expanding the row. */
+	source?: string;
 	language?: string;
 	createdAt: number;
 	/** True when artifact is backed by a vault resource (not an inline fenced block). */
 	isSaved?: boolean;
-}
-
-interface TopicGroup {
-	name: string;        // canonical name, '' = no-topic bucket
-	messages: ChatMessage[];
-	indices: number[];   // positions in the full message array (0-based)
-	firstIndex: number;
-	lastIndex: number;
 }
 
 const FENCE_RE = /```(\w*)[^\n]*\n([\s\S]*?)```/g;
@@ -73,9 +73,6 @@ const MAX_PREVIEW = 60;
  * Strip common Markdown syntax so previews and topic names render as plain
  * text in the index panel — the index is a navigation surface, not a render
  * surface, so leaving `## hello` or `**bold**` in the label is just noise.
- *
- * Cheap regex pass — not a full Markdown parser. Order matters: drop fences
- * before stripping inline syntax so we don't leave dangling backticks.
  */
 function stripMarkdown(text: string): string {
 	if (!text) return '';
@@ -112,27 +109,6 @@ function formatTimestamp(ts: number): string {
 	}
 }
 
-/**
- * Day key for grouping messages in the Messages tab.
- * Returns an ISO date stamp (YYYY-MM-DD) — stable across timezones for grouping,
- * and a human label for display.
- */
-function dayKey(ts: number): string {
-	if (!ts) return '';
-	const d = new Date(ts);
-	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function formatDayLabel(ts: number): string {
-	if (!ts) return '';
-	const d = new Date(ts);
-	return d.toLocaleDateString([], {
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric',
-	});
-}
-
 function inferArtifactKindFromLang(lang: string): ArtifactKind {
 	const l = lang.toLowerCase();
 	if (l === 'mermaid' || l === 'plantuml' || l === 'dot') return 'diagram';
@@ -149,11 +125,11 @@ function inferArtifactKindFromResource(kind: string | undefined, source: string)
 }
 
 function scrollToMessageInDoc(messageId: string, doc: Document) {
-	// First, make sure the chat surface is the active leaf. In Studio mode
-	// the surface is CHAT_STUDIO_VIEW_TYPE (outline lives inside the same
-	// leaf as chat, so this is a no-op). In legacy mode the surface is
-	// CHAT_VIEW_TYPE and outline sits in the right sidebar — revealLeaf
-	// brings chat to the front without stealing focus from the outline.
+	// First, make sure the chat surface is the active leaf. In Studio mode the
+	// surface is CHAT_STUDIO_VIEW_TYPE (outline lives inside the same leaf as
+	// chat, so this is a no-op). In legacy mode the surface is CHAT_VIEW_TYPE
+	// and the outline sits in the right sidebar — revealLeaf brings chat to the
+	// front without stealing focus from the outline.
 	try {
 		const app = AppContext.getInstance().app;
 		const studioLeaf = app.workspace.getLeavesOfType(CHAT_STUDIO_VIEW_TYPE)[0];
@@ -165,10 +141,10 @@ function scrollToMessageInDoc(messageId: string, doc: Document) {
 		// Best-effort — fall through to the scroll path even if app lookup fails.
 	}
 
-	// `doc` is the leaf-scoped document: in the main window it's `document`;
-	// in a popout window (Studio etc.) it's the popout's own document. Using
-	// the global `document` here misses messages rendered in a popout — they
-	// live in a different document and querySelector returns null.
+	// `doc` is the leaf-scoped document: in the main window it's `document`; in
+	// a popout window (Studio etc.) it's the popout's own document. Using the
+	// global `document` here misses messages rendered in a popout — they live
+	// in a different document and querySelector returns null.
 	const win = doc.defaultView ?? window;
 	const performScroll = () => {
 		const el = doc.querySelector(
@@ -176,7 +152,6 @@ function scrollToMessageInDoc(messageId: string, doc: Document) {
 		) as HTMLElement | null;
 		if (!el) return;
 		el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-		// Flash highlight: use the same accent tint briefly.
 		el.style.transition = 'background-color 0.4s ease';
 		const prev = el.style.backgroundColor;
 		el.style.backgroundColor = 'var(--pk-accent-tint)';
@@ -185,15 +160,9 @@ function scrollToMessageInDoc(messageId: string, doc: Document) {
 		}, 900);
 	};
 
-	// Allow one frame for revealLeaf to settle before scrolling.
 	win.requestAnimationFrame(performScroll);
 }
 
-/**
- * Returns a `scrollToMessage(id)` callback bound to the document of the
- * leaf this component is mounted in. Use inside any subcomponent that
- * renders click handlers in the Conversation Index.
- */
 function useScrollToMessage(): (messageId: string) => void {
 	const portalContainer = usePortalContainer();
 	return useCallback(
@@ -212,56 +181,230 @@ function ArtifactIcon({ kind }: { kind: ArtifactKind }) {
 	return <FileText aria-hidden />;
 }
 
-function MessageRowItem({
-	role,
-	text,
-	timestamp,
-	suffix,
-	onClick,
-	isError,
-	variant = 'card',
-}: {
-	role: 'user' | 'assistant' | 'system';
-	text: string;
-	timestamp: number;
-	suffix?: string;
+/**
+ * TimelineItem — building block for the mixed Overview / Messages tabs.
+ *
+ * The store gives us a flat ChatMessage[] with `message.topic` as the
+ * grouping key. We walk that array once and produce a sequence of items
+ * where consecutive same-topic messages collapse into a single `topic`
+ * item and no-topic messages remain as `standalone-msg` items. This
+ * preserves chronological order across topic boundaries, which a naive
+ * `groupBy(topic)` would lose (it would place all no-topic messages at
+ * the first occurrence and bunch all same-topic messages together even
+ * if they were interleaved).
+ */
+type TimelineItem =
+	| { kind: 'standalone-msg'; message: ChatMessage; index: number }
+	| { kind: 'topic'; name: string; messages: ChatMessage[]; indices: number[] };
+
+function buildMixedTimeline(messages: ChatMessage[]): TimelineItem[] {
+	const out: TimelineItem[] = [];
+	let i = 0;
+	while (i < messages.length) {
+		const m = messages[i];
+		const topic = (m.topic || '').trim();
+		if (!topic) {
+			out.push({ kind: 'standalone-msg', message: m, index: i });
+			i += 1;
+			continue;
+		}
+		const start = i;
+		while (i < messages.length && (messages[i].topic || '').trim() === topic) {
+			i += 1;
+		}
+		const indices = Array.from({ length: i - start }, (_, k) => start + k);
+		out.push({
+			kind: 'topic',
+			name: topic,
+			messages: messages.slice(start, i),
+			indices,
+		});
+	}
+	return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Row primitives — share `.pkchat-idx-row` so every row sits on the same
+// [chev | icon | body | time] grid. See file header for the alignment rule.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface MessageRowProps {
+	message: ChatMessage;
+	nested?: boolean;
 	onClick: () => void;
-	isError?: boolean;
-	/** `card` = bordered (Topics body, All tab); `flat` = unboxed (Messages tab) */
-	variant?: 'card' | 'flat';
-}) {
-	const whoRole = isError ? 'error' : role === 'user' ? 'user' : 'assistant';
-	const letter = isError ? '!' : role === 'user' ? 'U' : 'P';
+}
+
+function MessageRow({ message, nested, onClick }: MessageRowProps) {
+	const isError = message.isErrorMessage;
+	const role = isError ? 'error' : message.role === 'user' ? 'user' : 'assistant';
+	const letter = isError ? '!' : message.role === 'user' ? 'U' : 'P';
 	return (
 		<button
 			type="button"
-			className="pkchat-idx-msg"
-			data-variant={variant === 'flat' ? 'flat' : undefined}
+			className={`pkchat-idx-row${nested ? ' pkchat-idx-row--nested' : ''}`}
 			onClick={onClick}
 		>
-			<span className="pkchat-idx-msg__who" data-role={whoRole}>{letter}</span>
-			<span className="pkchat-idx-msg__body">
-				<span className="pkchat-idx-msg__text">{text || ' '}</span>
-				<span className="pkchat-idx-msg__meta">
-					{timestamp ? <span className="pkchat-idx-msg__ts">{formatTimestamp(timestamp)}</span> : null}
-					{suffix ? <span>{suffix}</span> : null}
+			<span className="pkchat-idx-row__avatar" data-role={role}>{letter}</span>
+			<span className="pkchat-idx-row__body">
+				<span className="pkchat-idx-row__title">
+					{trimText(message.content || ' ')}
 				</span>
 			</span>
+			{message.createdAtTimestamp ? (
+				<span className="pkchat-idx-row__time">{formatTimestamp(message.createdAtTimestamp)}</span>
+			) : null}
 		</button>
 	);
 }
 
-export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+interface TopicBlockProps {
+	name: string;
+	preview: string;
+	totalMessages: number;
+	firstIndex: number;
+	lastIndex: number;
+	defaultExpanded?: boolean;
+	/** Pre-assembled nested rows (messages + artifacts interleaved by index).
+	 *  TopicBlock stays presentational — the caller decides what mix to put
+	 *  inside, so the same component serves Overview (messages + artifacts)
+	 *  and Messages (messages only). */
+	nested: React.ReactNode;
+}
+
+/**
+ * Collapsible topic block. Click the header row to toggle.
+ * When collapsed, the nested rows + the vertical guide line both hide.
+ * The chevron rotates -90° via CSS.
+ */
+function TopicBlock({
+	name,
+	preview,
+	totalMessages,
+	firstIndex,
+	lastIndex,
+	defaultExpanded = false,
+	nested,
+}: TopicBlockProps) {
+	const [expanded, setExpanded] = useState(defaultExpanded);
+	const strings = useChatStrings();
+	const widthPct = totalMessages > 0
+		? Math.max(4, Math.min(100, ((lastIndex - firstIndex + 1) / totalMessages) * 100))
+		: 0;
+	return (
+		<div className={`pkchat-idx-topic${expanded ? '' : ' pkchat-idx-topic--collapsed'}`}>
+			<button
+				type="button"
+				className="pkchat-idx-row pkchat-idx-topic__head"
+				onClick={() => setExpanded((v) => !v)}
+				aria-expanded={expanded}
+			>
+				{/* Icon doubles as the expand toggle — single bubble = collapsed,
+				    stacked bubbles = expanded. Replaces the prior chev+icon pair
+				    so the topic row reads with the same visual rhythm as the
+				    left-rail Project rows (Folder ⇄ FolderOpen as the toggle). */}
+				<span className="pkchat-idx-row__icon pkchat-idx-topic__toggle">
+					{expanded ? <MessagesSquare aria-hidden /> : <MessageSquare aria-hidden />}
+				</span>
+				<span className="pkchat-idx-row__body">
+					<span className="pkchat-idx-row__title">
+						{stripMarkdown(name) || strings.index.topicNoTopic}
+					</span>
+					{preview && <span className="pkchat-idx-row__desc">{preview}</span>}
+				</span>
+				<span className="pkchat-idx-topic__progress" aria-hidden>
+					<span
+						className="pkchat-idx-topic__progress-fill"
+						style={{ width: `${widthPct}%` }}
+					/>
+				</span>
+			</button>
+			{expanded && (
+				<div className="pkchat-idx-topic__nested">{nested}</div>
+			)}
+		</div>
+	);
+}
+
+interface ArtifactRowProps {
+	artifact: Artifact;
+	/** When true, the row renders in the compact "inside a topic" form:
+	 *    title + path subtitle, plain outline icon, no lavender thumb,
+	 *    no kind chip, no topic chip — the surrounding topic supplies
+	 *    that context implicitly. Mock 01: `provider.md` row inside
+	 *    "API profile setup". */
+	nested?: boolean;
+	/** Name of the parent topic, used for the `Kind · <topic>` meta line
+	 *  on top-level artifact rows. Omitted (or empty) on nested rows. */
+	topicName?: string;
+	onClick: () => void;
+}
+
+function ArtifactRow({ artifact, nested, topicName, onClick }: ArtifactRowProps) {
+	const strings = useChatStrings();
+	const kindLabel =
+		artifact.kind === 'code' ? strings.index.artifactKindCode
+		: artifact.kind === 'diagram' ? strings.index.artifactKindDiagram
+		: artifact.kind === 'image' ? strings.index.artifactKindImage
+		: strings.index.artifactKindFile;
+	const rowClass = nested
+		? 'pkchat-idx-row pkchat-idx-row--nested pkchat-idx-row--artifact-nested'
+		: 'pkchat-idx-row pkchat-idx-row--artifact';
+	const iconClass = nested
+		? 'pkchat-idx-row__icon'
+		: 'pkchat-idx-row__icon pkchat-idx-row__icon--artifact';
+	return (
+		<button type="button" className={rowClass} onClick={onClick}>
+			<span className={iconClass} data-kind={artifact.kind}>
+				<ArtifactIcon kind={artifact.kind} />
+			</span>
+			<span className="pkchat-idx-row__body">
+				<span className="pkchat-idx-row__title">{artifact.name}</span>
+				{nested
+					? artifact.source && (
+						<span className="pkchat-idx-row__desc">{artifact.source}</span>
+					)
+					: (
+						<span className="pkchat-idx-row__sub">
+							<span className="pkchat-idx-row__kind">{kindLabel}</span>
+							{topicName && (
+								<>
+									<span className="pkchat-idx-row__sub-sep" aria-hidden>·</span>
+									<span className="pkchat-idx-row__meta-chip">{topicName}</span>
+								</>
+							)}
+						</span>
+					)
+				}
+			</span>
+			{artifact.createdAt ? (
+				<span className="pkchat-idx-row__time">{formatTimestamp(artifact.createdAt)}</span>
+			) : null}
+		</button>
+	);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ConversationIndexProps {
+	onClose?: () => void;
+	/** Compact layout for the narrow Obsidian right-sidebar leaf:
+	 *  - hides the "Conversation Index" header title (keeps the bar)
+	 *  - centers the Overview / Artifacts tabs
+	 *  Studio's wider right column omits this prop and keeps the legacy
+	 *  title + left-aligned tabs layout. */
+	compact?: boolean;
+}
+
+export const ConversationIndex: React.FC<ConversationIndexProps> = ({ onClose, compact = false }) => {
 	const strings = useChatStrings();
 	const messages = useChatDataStore((s) => s.messages);
-	const [tab, setTab] = useState<TabId>('topics');
+	const [tab, setTab] = useState<TabId>('overview');
 	const [query, setQuery] = useState('');
-	const [artifactFilter, setArtifactFilter] = useState<ArtifactFilter>('all');
-	const [messageFilter, setMessageFilter] = useState<MessageFilter>('all');
 
 	const totalMessages = messages.length;
 
-	// Derive artifacts from message resources + fenced code blocks.
 	const artifacts = useMemo<Artifact[]>(() => {
 		const out: Artifact[] = [];
 		messages.forEach((m, idx) => {
@@ -273,6 +416,10 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 					messageIndex: idx,
 					kind: inferArtifactKindFromResource(r.kind as string, r.source),
 					name: trimText(baseName, 48),
+					// Only carry the full path when it differs from the basename — a
+					// bare filename like "notes.md" would render an identical
+					// duplicate subtitle line otherwise.
+					source: r.source !== baseName ? r.source : undefined,
 					createdAt: m.createdAtTimestamp,
 					isSaved: true,
 				});
@@ -289,9 +436,7 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 				count += 1;
 				const kind = inferArtifactKindFromLang(lang);
 				const firstLine = body.split('\n')[0].slice(0, 40);
-				const label = lang
-					? `${lang} · ${firstLine || `block ${count}`}`
-					: firstLine || `block ${count}`;
+				const label = lang ? `${lang} · ${firstLine || `block ${count}`}` : firstLine || `block ${count}`;
 				out.push({
 					id: `${m.id}::code::${count}`,
 					messageId: m.id,
@@ -306,72 +451,56 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 		return out;
 	}, [messages]);
 
-	// Derive topic groups in order of first occurrence.
-	const topics = useMemo<TopicGroup[]>(() => {
-		const groupMap = new Map<string, TopicGroup>();
-		const order: string[] = [];
-		messages.forEach((m, idx) => {
-			const key = (m.topic || '').trim();
-			let g = groupMap.get(key);
-			if (!g) {
-				g = { name: key, messages: [], indices: [], firstIndex: idx, lastIndex: idx };
-				groupMap.set(key, g);
-				order.push(key);
-			}
-			g.messages.push(m);
-			g.indices.push(idx);
-			g.lastIndex = idx;
+	const timeline = useMemo(() => buildMixedTimeline(messages), [messages]);
+
+	const topicByMessageIndex = useMemo(() => {
+		const map = new Map<number, string>();
+		messages.forEach((m, i) => {
+			const t = (m.topic || '').trim();
+			if (t) map.set(i, t);
 		});
-		return order.map((k) => groupMap.get(k)!);
+		return map;
 	}, [messages]);
 
-	const filteredArtifacts = useMemo(() => {
-		const q = query.trim().toLowerCase();
-		return artifacts.filter((a) => {
-			if (artifactFilter !== 'all' && a.kind !== artifactFilter) return false;
-			if (q && !a.name.toLowerCase().includes(q)) return false;
-			return true;
+	const q = query.trim().toLowerCase();
+	const filteredTimeline = useMemo(() => {
+		if (!q) return timeline;
+		return timeline.filter((item) => {
+			if (item.kind === 'standalone-msg') {
+				return (item.message.content || '').toLowerCase().includes(q);
+			}
+			return item.name.toLowerCase().includes(q)
+				|| item.messages.some((m) => (m.content || '').toLowerCase().includes(q));
 		});
-	}, [artifacts, artifactFilter, query]);
+	}, [timeline, q]);
 
-	const filteredMessages = useMemo(() => {
-		const q = query.trim().toLowerCase();
-		return messages
-			.map((m, idx) => ({ m, idx }))
-			.filter(({ m }) => {
-				if (messageFilter === 'user' && m.role !== 'user') return false;
-				if (messageFilter === 'assistant' && m.role !== 'assistant') return false;
-				if (messageFilter === 'error' && !m.isErrorMessage) return false;
-				if (q && !(m.content || '').toLowerCase().includes(q)) return false;
-				return true;
-			});
-	}, [messages, messageFilter, query]);
+	const filteredArtifacts = useMemo(() => {
+		if (!q) return artifacts;
+		return artifacts.filter((a) => a.name.toLowerCase().includes(q));
+	}, [artifacts, q]);
 
 	const searchPlaceholder =
-		tab === 'topics' ? strings.index.searchTopics
-		: tab === 'artifacts' ? strings.index.searchArtifacts
-		: tab === 'messages' ? strings.index.searchMessages
-		: strings.index.searchAll;
-
-	const handleArtifactFilterChange = useCallback((next: ArtifactFilter) => setArtifactFilter(next), []);
-	const handleMessageFilterChange = useCallback((next: MessageFilter) => setMessageFilter(next), []);
+		tab === 'artifacts' ? strings.index.searchArtifacts
+		: strings.index.searchOverview;
 
 	return (
 		<div className="pkchat-idx">
-			<div className="pkchat-idx__head">
-				<span className="pkchat-idx__title">{strings.index.panelTitle}</span>
-				<div className="pkchat-idx__head-actions">
-					{onClose && (
-						<IconButton
-							label={strings.index.closeLabel}
-							title={strings.index.closeLabel}
-							onClick={onClose}
-						>
-							<X />
-						</IconButton>
-					)}
+			{(!compact || onClose) && (
+				<div className="pkchat-idx__head">
+					{!compact && <span className="pkchat-idx__title">{strings.index.panelTitle}</span>}
+					<div className="pkchat-idx__head-actions">
+						{onClose && (
+							<IconButton
+								label={strings.index.closeLabel}
+								title={strings.index.closeLabel}
+								onClick={onClose}
+							>
+								<X />
+							</IconButton>
+						)}
+					</div>
 				</div>
-			</div>
+			)}
 
 			<div className="pkchat-idx__search">
 				<Search aria-hidden />
@@ -381,96 +510,58 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 					placeholder={searchPlaceholder}
 					onChange={(e) => setQuery(e.target.value)}
 				/>
+				{query.length === 0 && <span className="pkchat-idx__kbd" aria-hidden>⌘K</span>}
 			</div>
 
-			<div className="pkchat-idx__tabs">
-				<Segmented<TabId>
-					value={tab}
-					onValueChange={setTab}
-					aria-label={strings.index.panelTitle}
-					options={[
-						{ value: 'all', label: strings.index.tabAll },
-						{ value: 'topics', label: strings.index.tabTopics },
-						{ value: 'artifacts', label: strings.index.tabArtifacts },
-						{ value: 'messages', label: strings.index.tabMessages },
-					]}
-				/>
+			{/* Tabs — bespoke underline-style tabs rather than the Segmented
+				pill primitive: the locked design (Mock 01) calls for flat
+				labels with a 2px dark underline on the active tab, which the
+				Segmented control's filled-pill aesthetic actively fights. */}
+			<div
+				className={`pkchat-idx__tabs${compact ? ' pkchat-idx__tabs--centered' : ''}`}
+				role="tablist"
+				aria-label={strings.index.panelTitle}
+			>
+				{(
+					[
+						['overview', strings.index.tabOverview],
+						['artifacts', strings.index.tabArtifacts],
+					] as Array<[TabId, string]>
+				).map(([value, label]) => (
+					<button
+						key={value}
+						type="button"
+						role="tab"
+						aria-selected={tab === value}
+						className={`pkchat-idx__tab${tab === value ? ' pkchat-idx__tab--active' : ''}`}
+						onClick={() => setTab(value)}
+					>
+						{/* Inner span so the active-tab underline only spans the label
+						   width, not the full grid-column the button occupies. */}
+						<span className="pkchat-idx__tab-label">{label}</span>
+					</button>
+				))}
 			</div>
-
-			{tab === 'artifacts' && (
-				<div className="pkchat-idx__filters">
-					{(
-						[
-							['all', strings.index.artifactFilterAll],
-							['code', strings.index.artifactFilterCode],
-							['diagram', strings.index.artifactFilterDiagrams],
-							['file', strings.index.artifactFilterFiles],
-							['image', strings.index.artifactFilterImages],
-						] as Array<[ArtifactFilter, string]>
-					).map(([v, label]) => (
-						<Pill
-							key={v}
-							selected={artifactFilter === v}
-							onClick={() => handleArtifactFilterChange(v)}
-						>
-							{label}
-						</Pill>
-					))}
-				</div>
-			)}
-
-			{tab === 'messages' && (
-				<div className="pkchat-idx__filters">
-					{(
-						[
-							['all', strings.index.messageFilterAll],
-							['user', strings.index.messageFilterUser],
-							['assistant', strings.index.messageFilterAssistant],
-							['error', strings.index.messageFilterErrors],
-						] as Array<[MessageFilter, string]>
-					).map(([v, label]) => (
-						<Pill
-							key={v}
-							selected={messageFilter === v}
-							onClick={() => handleMessageFilterChange(v)}
-						>
-							{label}
-						</Pill>
-					))}
-				</div>
-			)}
 
 			<div className="pkchat-idx__list">
-				{tab === 'all' && (
-					<AllTabBody
-						topics={topics}
+				{tab === 'overview' && (
+					<OverviewTabBody
+						timeline={filteredTimeline}
 						artifacts={artifacts}
-						messages={messages}
-						query={query}
-					/>
-				)}
-				{tab === 'topics' && (
-					<TopicsTabBody
-						topics={topics}
 						totalMessages={totalMessages}
-						artifacts={artifacts}
-						query={query}
 					/>
 				)}
 				{tab === 'artifacts' && (
-					<ArtifactsTabBody artifacts={filteredArtifacts} />
-				)}
-				{tab === 'messages' && (
-					<MessagesTabBody entries={filteredMessages} />
+					<ArtifactsTabBody
+						artifacts={filteredArtifacts}
+						topicByMessageIndex={topicByMessageIndex}
+					/>
 				)}
 			</div>
 
 			<div className="pkchat-idx__foot">
 				<span>
-					{tab === 'topics' ? strings.index.footerTopics
-						: tab === 'artifacts' ? strings.index.footerArtifacts
-						: tab === 'messages' ? strings.index.footerMessages
-						: strings.index.footerAll}
+					{tab === 'artifacts' ? strings.index.footerArtifacts : strings.index.footerOverview}
 				</span>
 			</div>
 		</div>
@@ -478,379 +569,173 @@ export const ConversationIndex: React.FC<{ onClose?: () => void }> = ({ onClose 
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tab bodies (kept inside this file — small, single-purpose, share helpers)
+// Tab bodies
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AllTabBody({
-	topics,
-	artifacts,
-	messages,
-	query,
-}: {
-	topics: TopicGroup[];
-	artifacts: Artifact[];
-	messages: ChatMessage[];
-	query: string;
-}) {
-	const strings = useChatStrings();
-	const scrollToMessage = useScrollToMessage();
-	const q = query.trim().toLowerCase();
-	const filteredTopics = topics.filter((t) => !q || t.name.toLowerCase().includes(q));
-	const filteredArtifacts = artifacts.filter((a) => !q || a.name.toLowerCase().includes(q));
-	const filteredMessages = messages.filter((m) => !q || (m.content || '').toLowerCase().includes(q));
+/**
+ * Build a nested-row sequence that interleaves messages and artifacts in
+ * chronological order. Used by both Overview (mixed) and — with empty
+ * artifacts — Messages (msg-only). Each entry's `idx` is the position in
+ * the full message array, which gives us a stable sort key across types.
+ */
+type NestedEntry =
+	| { type: 'message'; idx: number; message: ChatMessage }
+	| { type: 'artifact'; idx: number; artifact: Artifact };
 
-	if (!messages.length) {
-		return <div className="pkchat-idx__empty">{strings.index.emptyAll}</div>;
-	}
-
-	return (
-		<>
-			{filteredTopics.length > 0 && (
-				<>
-					<div className="pkchat-idx__section-header">
-						{strings.index.allTopicsHeader}
-						<Chip variant="neutral">{filteredTopics.length}</Chip>
-					</div>
-					{filteredTopics.slice(0, 5).map((t, i) => {
-						const sub = trimText(t.messages.map((m) => m.content || '').join(' '), 80);
-						return (
-							<button
-								key={`topic-${i}-${t.name}`}
-								type="button"
-								className="pkchat-idx-msg"
-								onClick={() => scrollToMessage(t.messages[0].id)}
-							>
-								{/*
-								  Plain outline icon (reuses .pkchat-idx-topic__icon
-								  spec — 14px, text-secondary). Previously this used
-								  .pkchat-idx-msg__who which renders a purple-tinted
-								  letter badge meant for actual message-author
-								  letters (P/U/!), giving topic rows an out-of-place
-								  filled square that diverged from the mock.
-								*/}
-								<MessageSquare className="pkchat-idx-topic__icon" aria-hidden style={{ marginTop: 2 }} />
-								<span className="pkchat-idx-msg__body">
-									<span className="pkchat-idx-msg__text">
-										{stripMarkdown(t.name) || strings.index.topicNoTopic}
-									</span>
-									{sub && (
-										<span className="pkchat-idx-msg__desc">{sub}</span>
-									)}
-									<span className="pkchat-idx-msg__meta">
-										<span>{t.messages.length} msg</span>
-									</span>
-								</span>
-								<ArrowUpRight aria-hidden style={{ width: 14, height: 14, color: 'var(--pk-text-tertiary)', marginTop: 2 }} />
-							</button>
-						);
-					})}
-				</>
-			)}
-
-			{filteredArtifacts.length > 0 && (
-				<>
-					<div className="pkchat-idx__section-header">
-						{strings.index.allArtifactsHeader}
-						<Chip variant="neutral">{filteredArtifacts.length}</Chip>
-					</div>
-					{filteredArtifacts.slice(0, 5).map((a) => (
-						<ArtifactCard key={a.id} artifact={a} />
-					))}
-				</>
-			)}
-
-			{filteredMessages.length > 0 && (
-				<>
-					<div className="pkchat-idx__section-header">
-						{strings.index.allMessagesHeader}
-						<Chip variant="neutral">{filteredMessages.length}</Chip>
-					</div>
-					{filteredMessages
-						.slice()
-						.reverse()
-						.slice(0, 8)
-						.map((m) => (
-							<MessageRowItem
-								key={m.id}
-								role={m.role === 'user' ? 'user' : 'assistant'}
-								isError={m.isErrorMessage}
-								text={trimText(m.content || '')}
-								timestamp={m.createdAtTimestamp}
-								onClick={() => scrollToMessage(m.id)}
-							/>
-						))}
-				</>
-			)}
-		</>
-	);
+function interleaveNested(
+	messages: ChatMessage[],
+	indices: number[],
+	artifacts: Artifact[],
+): NestedEntry[] {
+	const items: NestedEntry[] = [];
+	messages.forEach((m, i) => items.push({ type: 'message', idx: indices[i], message: m }));
+	artifacts.forEach((a) => items.push({ type: 'artifact', idx: a.messageIndex, artifact: a }));
+	items.sort((a, b) => a.idx - b.idx);
+	return items;
 }
 
-function TopicsTabBody({
-	topics,
-	totalMessages,
-	artifacts,
-	query,
-}: {
-	topics: TopicGroup[];
-	totalMessages: number;
+function renderNested(
+	entries: NestedEntry[],
+	onMessageClick: (m: ChatMessage) => void,
+	onArtifactClick: (a: Artifact) => void,
+) {
+	return entries.map((entry) => {
+		if (entry.type === 'message') {
+			return (
+				<MessageRow
+					key={`m-${entry.message.id}`}
+					message={entry.message}
+					nested
+					onClick={() => onMessageClick(entry.message)}
+				/>
+			);
+		}
+		return (
+			<ArtifactRow
+				key={`a-${entry.artifact.id}`}
+				artifact={entry.artifact}
+				nested
+				onClick={() => onArtifactClick(entry.artifact)}
+			/>
+		);
+	});
+}
+
+interface OverviewTabBodyProps {
+	timeline: TimelineItem[];
 	artifacts: Artifact[];
-	query: string;
-}) {
+	totalMessages: number;
+}
+
+function OverviewTabBody({ timeline, artifacts, totalMessages }: OverviewTabBodyProps) {
 	const strings = useChatStrings();
 	const scrollToMessage = useScrollToMessage();
-	const q = query.trim().toLowerCase();
-	const filtered = topics.filter((t) => !q || t.name.toLowerCase().includes(q));
-
-	if (!filtered.length) {
-		return <div className="pkchat-idx__empty">{strings.index.emptyTopics}</div>;
+	if (!timeline.length) {
+		return <div className="pkchat-idx__empty">{strings.index.emptyAll}</div>;
 	}
-
 	return (
 		<>
-			{filtered.map((t, i) => {
-				const isFirst = i === 0;
-				const startPct = totalMessages > 0
-					? Math.max(0, Math.min(100, (t.firstIndex / Math.max(1, totalMessages - 1)) * 100))
-					: 0;
-				const endPct = totalMessages > 0
-					? Math.max(startPct, Math.min(100, (t.lastIndex / Math.max(1, totalMessages - 1)) * 100))
-					: 0;
-				const widthPct = Math.max(2, endPct - startPct);
-				// Collect attachments + first artifact mention from messages within the topic.
-				const attachments = t.messages
-					.flatMap((m) => (m.resources || []).map((r) => ({
-						source: r.source,
-						messageId: m.id,
-						kind: inferArtifactKindFromResource(r.kind as string, r.source),
-					})))
-					.slice(0, 4);
-				const topicArtifacts = artifacts.filter((a) =>
-					t.indices.includes(a.messageIndex)
-				);
-				const sub = trimText(t.messages.map((m) => m.content || '').join(' '), 80);
-
-				// Primary attachment preview for the summary row3 (compact peek). Pick
-				// the first non-fenced resource attached to any message in this topic.
-				const primaryAttachment = attachments[0] ?? null;
-
-				return (
-					<details
-						key={`${t.name}-${i}`}
-						className="pkchat-idx-topic"
-						open={isFirst}
-					>
-						<summary className="pkchat-idx-topic__summary">
-							<div className="pkchat-idx-topic__summary-row">
-								<ChevronRight className="pkchat-idx-topic__chev" aria-hidden />
-								<MessageSquare className="pkchat-idx-topic__icon" aria-hidden />
-								<span className="pkchat-idx-topic__name">
-									{stripMarkdown(t.name) || strings.index.topicNoTopic}
-								</span>
-								<span className="pkchat-idx-topic__count">{t.messages.length}</span>
-							</div>
-							{sub && (
-								<div className="pkchat-idx-topic__summary-desc">{sub}</div>
-							)}
-							{/*
-							  Summary row3 — compact preview combining (a) primary
-							  attachment chip if any (b) mini position bar showing
-							  where this topic sits in the conversation timeline.
-							  Always rendered (even on collapsed cards) per design —
-							  the topic-card's collapsed state is a 3-row peek,
-							  not just title+description.
-							*/}
-							<div className="pkchat-idx-topic__summary-meta">
-								{primaryAttachment && (
-									<span
-										className="pkchat-idx-attach pkchat-idx-attach--mini"
-										title={primaryAttachment.source}
-										onClick={(e) => {
-											e.preventDefault();
-											e.stopPropagation();
-											scrollToMessage(primaryAttachment.messageId);
-										}}
-									>
-										{primaryAttachment.kind === 'image' ? <ImageIcon aria-hidden />
-											: primaryAttachment.kind === 'diagram' ? <Network aria-hidden />
-											: <Paperclip aria-hidden />}
-										<span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-											{(primaryAttachment.source.split('/').pop() || primaryAttachment.source).slice(0, 24)}
-										</span>
-									</span>
-								)}
-								<span className="pkchat-idx-posbar pkchat-idx-posbar--mini">
-									<span className="pkchat-idx-posbar__bar">
-										<span
-											className="pkchat-idx-posbar__range"
-											style={{ left: `${startPct}%`, width: `${widthPct}%` }}
-										/>
-										<span
-											className="pkchat-idx-posbar__dot"
-											style={{ left: `${startPct}%` }}
-										/>
-										<span
-											className="pkchat-idx-posbar__dot"
-											style={{ left: `${endPct}%` }}
-										/>
-									</span>
-								</span>
-							</div>
-						</summary>
-						<div className="pkchat-idx-topic__body">
-							{/*
-							  "Messages X — Y" label + full progress bar removed from body
-							  (2026-06-03): the summary row3 already shows a mini progress
-							  bar with the same range info, so repeating it in the expanded
-							  body was redundant. Body now goes straight to
-							  Sources/Attachments + Key messages.
-							*/}
-							{attachments.length > 0 && (
-								<>
-									<div className="pkchat-idx-topic__sub" style={{ marginTop: 10 }}>
-										{strings.index.topicAttachments}
-									</div>
-									<div className="pkchat-idx-attach-row">
-										{attachments.map((att, j) => (
-											<button
-												key={`${att.source}-${j}`}
-												type="button"
-												className="pkchat-idx-attach"
-												title={att.source}
-												onClick={() => scrollToMessage(att.messageId)}
-											>
-												{att.kind === 'image' ? <ImageIcon aria-hidden />
-													: att.kind === 'diagram' ? <Network aria-hidden />
-													: <Paperclip aria-hidden />}
-												<span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-													{(att.source.split('/').pop() || att.source).slice(0, 28)}
-												</span>
-											</button>
-										))}
-									</div>
-								</>
-							)}
-
-							{topicArtifacts.length > 0 && (
-								<>
-									<div className="pkchat-idx-topic__sub" style={{ marginTop: 10 }}>
-										{strings.index.allArtifactsHeader}
-									</div>
-									{topicArtifacts.slice(0, 3).map((a) => (
-										<ArtifactCard key={a.id} artifact={a} />
-									))}
-								</>
-							)}
-
-							<div className="pkchat-idx-topic__sub" style={{ marginTop: 10 }}>
-								{strings.index.topicKeyMessages}
-							</div>
-							{t.messages.slice(0, 3).map((m) => (
-								<MessageRowItem
-									key={m.id}
-									role={m.role === 'user' ? 'user' : 'assistant'}
-									isError={m.isErrorMessage}
-									text={trimText(m.content || '')}
-									timestamp={m.createdAtTimestamp}
-									onClick={() => scrollToMessage(m.id)}
+			{timeline.map((item, i) => {
+				if (item.kind === 'standalone-msg') {
+					// Render the standalone message followed by any artifacts produced
+					// at that exact message position, so "the prompt → its outputs"
+					// reads as a single beat in the timeline.
+					const msgArtifacts = artifacts.filter((a) => a.messageIndex === item.index);
+					return (
+						<React.Fragment key={`m-${item.message.id}`}>
+							<MessageRow
+								message={item.message}
+								onClick={() => scrollToMessage(item.message.id)}
+							/>
+							{msgArtifacts.map((a) => (
+								<ArtifactRow
+									key={a.id}
+									artifact={a}
+									topicName={undefined}
+									onClick={() => scrollToMessage(a.messageId)}
 								/>
 							))}
-						</div>
-					</details>
+						</React.Fragment>
+					);
+				}
+				// Topic — interleave its messages + artifacts in chronological order
+				// inside the nested body. Mock 01 places `provider.md` between the
+				// user prompt and the assistant reply inside the same topic, not as
+				// a stray row after the topic block.
+				const topicArtifacts = artifacts.filter((a) => item.indices.includes(a.messageIndex));
+				const nested = renderNested(
+					interleaveNested(item.messages, item.indices, topicArtifacts),
+					(m) => scrollToMessage(m.id),
+					(a) => scrollToMessage(a.messageId),
+				);
+				const preview = trimText(item.messages.map((m) => m.content || '').join(' '), 80);
+				return (
+					<TopicBlock
+						key={`t-${i}-${item.name}`}
+						name={item.name}
+						preview={preview}
+						totalMessages={totalMessages}
+						firstIndex={item.indices[0]}
+						lastIndex={item.indices[item.indices.length - 1]}
+						defaultExpanded={i === 0}
+						nested={nested}
+					/>
 				);
 			})}
 		</>
 	);
 }
 
-function ArtifactsTabBody({ artifacts }: { artifacts: Artifact[] }) {
+interface ArtifactsTabBodyProps {
+	artifacts: Artifact[];
+	/** Map from messageIndex → topic name. Lets each artifact row surface
+	 *  its parent topic ("Image · API profile setup") without re-walking
+	 *  the message list. */
+	topicByMessageIndex: Map<number, string>;
+}
+
+const ARTIFACT_KIND_ORDER: ArtifactKind[] = ['image', 'diagram', 'file', 'code'];
+
+function ArtifactsTabBody({ artifacts, topicByMessageIndex }: ArtifactsTabBodyProps) {
 	const strings = useChatStrings();
+	const scrollToMessage = useScrollToMessage();
 	if (!artifacts.length) {
 		return <div className="pkchat-idx__empty">{strings.index.emptyArtifacts}</div>;
 	}
+	const groups = new Map<ArtifactKind, Artifact[]>();
+	for (const k of ARTIFACT_KIND_ORDER) groups.set(k, []);
+	for (const a of artifacts) {
+		const arr = groups.get(a.kind);
+		if (arr) arr.push(a);
+	}
+	const kindHeader = (k: ArtifactKind) =>
+		k === 'image' ? strings.index.artifactKindHeaderImages
+		: k === 'diagram' ? strings.index.artifactKindHeaderDiagrams
+		: k === 'file' ? strings.index.artifactKindHeaderFiles
+		: strings.index.artifactKindHeaderCode;
 	return (
 		<>
-			{artifacts.map((a) => (
-				<ArtifactCard key={a.id} artifact={a} />
-			))}
-		</>
-	);
-}
-
-function ArtifactCard({ artifact }: { artifact: Artifact }) {
-	const strings = useChatStrings();
-	const scrollToMessage = useScrollToMessage();
-	const kindLabel =
-		artifact.kind === 'code' ? strings.index.artifactKindCode
-		: artifact.kind === 'diagram' ? strings.index.artifactKindDiagram
-		: artifact.kind === 'image' ? strings.index.artifactKindImage
-		: strings.index.artifactKindFile;
-	return (
-		<button
-			type="button"
-			className="pkchat-idx-art"
-			title={strings.index.artifactOpenLabel}
-			onClick={() => scrollToMessage(artifact.messageId)}
-		>
-			<span className="pkchat-idx-art__thumb" data-kind={artifact.kind}>
-				<ArtifactIcon kind={artifact.kind} />
-			</span>
-			<span className="pkchat-idx-art__body">
-				<span className="pkchat-idx-art__name">{artifact.name}</span>
-				<span className="pkchat-idx-art__sub">
-					<span className="pkchat-idx-art__kind">{kindLabel}</span>
-					{artifact.createdAt ? <span>{formatTimestamp(artifact.createdAt)}</span> : null}
-					{artifact.isSaved && (
-						<span className="pkchat-idx-art__tag">
-							{strings.index.artifactTagSaved}
-						</span>
-					)}
-				</span>
-			</span>
-			<ArrowUpRight aria-hidden style={{ width: 14, height: 14, color: 'var(--pk-text-tertiary)' }} />
-		</button>
-	);
-}
-
-function MessagesTabBody({ entries }: { entries: Array<{ m: ChatMessage; idx: number }> }) {
-	const strings = useChatStrings();
-	const scrollToMessage = useScrollToMessage();
-	if (!entries.length) {
-		return <div className="pkchat-idx__empty">{strings.index.emptyMessages}</div>;
-	}
-
-	// Group consecutive entries by day. Render a `.pkchat-idx-msg-day` divider
-	// each time the day changes — matches mock `.msg-day` (e.g. "May 9, 2026").
-	// Falls back to a single "—" divider for messages with no timestamp.
-	const chunks: Array<{ key: string; label: string; rows: typeof entries }> = [];
-	let current: { key: string; label: string; rows: typeof entries } | null = null;
-	for (const e of entries) {
-		const k = dayKey(e.m.createdAtTimestamp) || 'no-date';
-		if (!current || current.key !== k) {
-			current = { key: k, label: formatDayLabel(e.m.createdAtTimestamp), rows: [] };
-			chunks.push(current);
-		}
-		current.rows.push(e);
-	}
-
-	return (
-		<>
-			{chunks.map((chunk) => (
-				<React.Fragment key={chunk.key}>
-					<div className="pkchat-idx-msg-day">{chunk.label || '—'}</div>
-					{chunk.rows.map(({ m, idx }) => (
-						<MessageRowItem
-							key={m.id}
-							role={m.role === 'user' ? 'user' : 'assistant'}
-							isError={m.isErrorMessage}
-							text={trimText(m.content || '')}
-							timestamp={m.createdAtTimestamp}
-							suffix={`Msg ${idx + 1}`}
-							onClick={() => scrollToMessage(m.id)}
-							variant="flat"
-						/>
-					))}
-				</React.Fragment>
-			))}
+			{ARTIFACT_KIND_ORDER
+				.filter((k) => (groups.get(k) ?? []).length > 0)
+				.map((k) => {
+					const items = groups.get(k) ?? [];
+					return (
+						<React.Fragment key={k}>
+							<div className="pkchat-idx-group-header">
+								{kindHeader(k)}
+								<span className="pkchat-idx-group-header__count">· {items.length}</span>
+							</div>
+							{items.map((a) => (
+								<ArtifactRow
+									key={a.id}
+									artifact={a}
+									topicName={topicByMessageIndex.get(a.messageIndex)}
+									onClick={() => scrollToMessage(a.messageId)}
+								/>
+							))}
+						</React.Fragment>
+					);
+				})}
 		</>
 	);
 }

@@ -29,8 +29,7 @@ import { AISetupTab } from './settings/tabs/AISetupTab';
 import { KnowledgeIndexTab } from './settings/tabs/KnowledgeIndexTab';
 import { ToolsTab } from './settings/tabs/ToolsTab';
 import { AdvancedTab } from './settings/tabs/AdvancedTab';
-
-type TabId = 'overview' | 'aiSetup' | 'knowledgeIndex' | 'tools' | 'advanced';
+import type { TabId } from './settings/types';
 
 export function SettingsRoot() {
     const { eventBus, plugin } = useServiceContext();
@@ -98,7 +97,9 @@ export function SettingsRoot() {
                     </div>
 
                     {/* Tab content */}
-                    {activeTab === 'overview' && <OverviewTab />}
+                    {activeTab === 'overview' && (
+                        <OverviewTab settings={settings} onSwitchTab={setActiveTab} />
+                    )}
                     {activeTab === 'aiSetup' && (
                         <AISetupTab settings={settings} settingsUpdates={settingsUpdates} />
                     )}

@@ -100,31 +100,45 @@ const MessagesViewInner: React.FC = () => {
 		scrollToBottomUtil(bodyScrollRef, true);
 	}, [activeConversation?.meta.id]);
 
-	// Pre-conversation placeholders (pending picker / empty hero) preserve
-	// the existing UX while we're not yet wiring the retained chrome to those
-	// states. Once a conversation exists, we render the full retained shell.
-	if (!activeConversation || pendingConversation) {
+	// Pending state: picker + composer in a single centered stack so the eye
+	// reads "pick mode → type message" as one block. Composer is NOT pinned
+	// to the bottom in this state (that left ~half a screen of empty space
+	// between picker and composer — picker and composer read as two
+	// unrelated UI islands). Once a real conversation exists the composer
+	// snaps back to its bottom-docked position via the active-conversation
+	// branch below.
+	if (pendingConversation) {
 		return (
 			<div className="peak-design-root pkchat-shell">
 				<div className="pkchat-center">
-					<div
-						className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]"
-					>
-						{pendingConversation ? (
-							<NewConversationTypePicker
-								selectedKind={pendingConversation.conversationType?.kind ?? 'chat'}
-								onSelectType={(type) => {
-									useChatViewStore.getState().setPendingConversation({
-										...pendingConversation,
-										conversationType: type,
-									});
-								}}
-							/>
-						) : (
-							<span className="pktw-text-2xl pktw-font-light pktw-text-muted-foreground pktw-text-center">
-								Ready when you are.
-							</span>
-						)}
+					<div className="pkchat-body pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-gap-3">
+						<NewConversationTypePicker
+							selectedKind={pendingConversation.conversationType?.kind ?? 'chat'}
+							onSelectType={(type) => {
+								useChatViewStore.getState().setPendingConversation({
+									...pendingConversation,
+									conversationType: type,
+								});
+							}}
+						/>
+						<div className="pktw-w-full pktw-max-w-[760px]">
+							<ComposerRetained />
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// No active and no pending conversation — empty hero.
+	if (!activeConversation) {
+		return (
+			<div className="peak-design-root pkchat-shell">
+				<div className="pkchat-center">
+					<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]">
+						<span className="pktw-text-2xl pktw-font-light pktw-text-muted-foreground pktw-text-center">
+							Ready when you are.
+						</span>
 					</div>
 				</div>
 			</div>

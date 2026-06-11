@@ -213,6 +213,44 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
  */
 export type AgentBackend = 'auto' | 'harness' | 'claude-agent-sdk';
 
+/**
+ * Closed enum of alert rule kinds shipped in the mock Budget & Alerts surface.
+ * Each kind maps to a distinct carrier (notification / inline chat / receipt /
+ * per-message pip), with `threshold` interpreted per kind.
+ */
+export type BudgetAlertRuleKind =
+	| 'budget_threshold'      // notify when monthly spend ≥ threshold (% of budget)
+	| 'context_compact'        // suggest compact when context ratio ≥ threshold (0..1)
+	| 'agent_receipt'          // post-task receipt when call cost ≥ threshold (USD) or tokens ≥ tokenThreshold
+	| 'silence_low_cost_pip';  // hide per-message pip when call cost < threshold (USD)
+
+export interface BudgetAlertRule {
+	kind: BudgetAlertRuleKind;
+	enabled: boolean;
+	threshold: number;
+	tokenThreshold?: number;
+}
+
+export interface BudgetSettings {
+	/** Monthly spending target in USD. 0 = no budget (pace bar hidden). Default 40. */
+	monthlyUsd: number;
+	/** Day-of-month the budget cycle resets. 1..28. Default 1. */
+	resetDayOfMonth: number;
+	/** Alert rules surfaced in the dashboard "What users will see" preview. */
+	alertRules: BudgetAlertRule[];
+}
+
+export const DEFAULT_BUDGET_SETTINGS: BudgetSettings = {
+	monthlyUsd: 40,
+	resetDayOfMonth: 1,
+	alertRules: [
+		{ kind: 'budget_threshold', enabled: true, threshold: 0.4 },
+		{ kind: 'context_compact', enabled: true, threshold: 0.7 },
+		{ kind: 'agent_receipt', enabled: true, threshold: 0.15, tokenThreshold: 50_000 },
+		{ kind: 'silence_low_cost_pip', enabled: false, threshold: 0.0005 },
+	],
+};
+
 export interface HarnessSettings {
 	/** Which backend runs agent loops. Default 'auto'. */
 	agentBackend: AgentBackend;
@@ -232,6 +270,8 @@ export interface HarnessSettings {
 	hooksEnabled: boolean;
 	/** Default permission mode for agent actions. Default 'acceptEdits'. */
 	defaultPermissionMode: 'read' | 'acceptEdits' | 'bypassPermissions';
+	/** Monthly budget + alert rule guardrails driving the Budget & Alerts dashboard surface. */
+	budget: BudgetSettings;
 }
 
 export const DEFAULT_HARNESS_SETTINGS: HarnessSettings = {
@@ -244,6 +284,7 @@ export const DEFAULT_HARNESS_SETTINGS: HarnessSettings = {
 	autoEscalateScoreBelow: 0.4,
 	hooksEnabled: false,
 	defaultPermissionMode: 'acceptEdits',
+	budget: { ...DEFAULT_BUDGET_SETTINGS, alertRules: DEFAULT_BUDGET_SETTINGS.alertRules.map((r) => ({ ...r })) },
 };
 
 export interface MyPluginSettings {

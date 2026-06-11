@@ -415,7 +415,7 @@ const SendButton: React.FC<SendButtonProps> = ({ status, onCancel }) => {
 				{micButton}
 				<button
 					type="button"
-					className="pkchat-send"
+					className="pkchat-send pkchat-send--stop"
 					aria-label={strings.composer.cancelLabel}
 					onClick={async (e) => {
 						e.preventDefault();
@@ -423,7 +423,11 @@ const SendButton: React.FC<SendButtonProps> = ({ status, onCancel }) => {
 						if (onCancel) await onCancel();
 					}}
 				>
-					<Square />
+					{/* Stop mark: a 9×9 filled square (per locked composer mock).
+					   Lucide <Square /> renders as a stroked outline which read as
+					   "outlined box" rather than "stop". Inline span gives a solid
+					   filled square that matches the locked design. */}
+					<span className="pkchat-send__stop-mark" aria-hidden />
 				</button>
 			</>
 		);
@@ -496,7 +500,7 @@ export const ComposerRetained: React.FC = () => {
 	return (
 		<div className="pkchat-composer-wrap">
 			<PromptInput
-				className={cn('pkchat-composer')}
+				className={cn('pkchat-composer', `pkchat-composer--${status}`)}
 				globalDrop
 				multiple
 				inputFocusRef={inputFocusRef}
@@ -511,6 +515,12 @@ export const ComposerRetained: React.FC = () => {
 				<InputClearHandler isSending={isSending} />
 				<InsertToInputHandler />
 				<PromptInputAttachments />
+				{status === 'streaming' && (
+					<div className="pkchat-composer__status" role="status" aria-live="polite">
+						<Loader2 className="pkchat-composer__status-spinner" />
+						<span>{strings.composer.streamingStatus}</span>
+					</div>
+				)}
 				<div className="pkchat-composer__editor">
 					<PromptInputBody
 						ref={textareaRef}

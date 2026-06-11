@@ -60,8 +60,33 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | AK. Agent Harness Curator Onboarding | Curator agent + 22-model catalog + zod validation + fallback + 9-step wizard（Welcome / Provider / Bootstrap / Preferences / Running / Review / Edit / Redo / Done）+ 接受写入 HarnessSettings | 完成 (3 commits, 56 tests, +3,614 lines) |
 | AL. Design System Unification | PR-0 地基（tokens + 10 共享原语 CSS + 9 React 薄壳 + telemetry/capabilities/templates 脚手架）+ Copilot skin + 3 worktree 并行（chat 4 PR / dashboard 4 PR / onboarding+settings 5 PR）+ 3 路 merge into master | 完成 (21 PR, master @ d2bdf42) |
 | AM. Onboarding Polish & Convention Refactor | Onboarding 视觉回归批量修复（Pill→Button CTA / provider-row flat / bootstrap card 等高 + inline Recommended / Obsidian button leak `!important` 防线）+ Curator rationale 去中文（fallback.ts + prompt.ts，国际化前 English-only）+ 5 条 design-rule 文件合并为单文件 `docs/conventions/ui-design.md`（§1 tokens / §2 primitives / §3 usage / §4 Obsidian defense / §5 JSX-mock）+ CLAUDE.md Project Rules 6→2 行 pointer-only | 完成 (8 commits ec5491a..504739f + Chinese fix uncommitted) |
+| AO. Knowledge Center 退役 + Palette 收口 (2026-06-11) | KnowledgeCenterView 的 11 项杂物分流完毕：(1) 运维 → Settings → Advanced → Maintenance（已搬，PR-5/2026-06-07）；(2) AI 洞察 → Copilot Vault tab capabilities（Smart Connections / Knowledge Gaps / Vault Health 等）；(3) 独立画布 view → palette 命令。彻底删除：`src/ui/view/knowledge-center/` 目录、ViewManager 中 viewCreator + `activateKnowledgeCenterView`、`types.ts` 中 `KNOWLEDGE_CENTER_VIEW_TYPE` 常量 + STANDALONE 数组项、两条墓碑注释。修正误导文案：`indexInitializer.ts` 两条 Notice + `tab-VaultSearch.tsx` EmptyState 全部指向 Settings → Advanced → Maintenance。**Palette 加 4 个独立 view 入口**：`peak-vault-xray` / `peak-gap-analysis` / `peak-related-notes` / `peak-batch-tag`（之前对应的 `open*()` 函数自 KC 删除后是孤儿，无 UI 入口）。删孤儿 `openDocumentCopilotPanel` / `openVaultIntelligencePanel` / `openManageSystemPanel`。**架构原则确立**：Palette = 真正入口；Copilot Vault tab = agent stream capability（保持范式纯粹，不混"打开 view"快捷方式）；不再加"聚合 view"。Build 通过，main.js 验证 KC 残留全清、新命令进 bundle。 | 完成（未 commit） |
+| AN. Chat Studio UI Polish (2026-06-03) | 三块区域基于 mock 重做：(1) 左侧 sidebar — `ProjectListView` 加 Peak Assistant brand bar + ⌘K kbd badge；`ProjectsSection`/`ConversationsSection` heading 统一 11px/600/wider/muted；active row 从实色 `--pk-accent-soft` 改 lavender `--pk-accent-tint` + 2px 左竖条 via `::after`。(2) Composer 三态 — `ComposerRetained` data-status attribute；sending 状态 inline 渲染 progress bar (`::before`/`::after` 紫色 slide 动画) + spinner + "Planning and writing…" 状态行；stop 按钮 `pkchat-send--stop` 浅灰 `--pk-surface-sunken` bg + 10×10 实心方块（不再红 destructive）；新加 `streamingStatus` 字符串到 `chatStrings.ts`。(3) `ConversationIndex` 重写 (857→780 行) — 4 tabs → 2 tabs (Overview / Artifacts)，drop Topics + Messages；`Segmented` pill → 自制 underline 风格 tab（label 内 span，下划线只覆盖文字宽）；新建 `pkchat-idx-row` 通用对齐 grid `[8 pad][16 chev gutter][12 gap][26 main icon][12 gap][body][time]`；`TopicBlock` 可折叠 + vguide 1.5px lavender + progress capsule 64×5；`buildMixedTimeline` + `interleaveNested` helpers，artifact 按 messageIndex 嵌入 topic nested；artifact meta line `Kind · {topic chip}`；`ArtifactsTabBody` 按 kind 分组（Images/Diagrams/Files/Code）；旧 pkchat-idx-topic/msg/art CSS 死代码（515 行）删除。(4) `MessageAttachmentsList` 完全重写 — 14 种 file kind 配色（PDF/CSV/XLSX/DOCX/PPTX/JSON/MD/TXT/ZIP/HTML/XML/EXC/CNV/DIR）；图片网格 1/2/3/4/5+(hero+thumbs)/8+(+N overlay)；文件 ≤4 卡片堆叠 / >4 chip cluster；URL host-specific OG thumb（github → opengraph.githubassets.com，其他 → DuckDuckGo favicon，失败 → 渐变+Globe 兜底）；`pk-attach-card`/`pk-attach-chip`/`pk-attach-url` CSS class（base + hover 一起定义）；URL hover 禁用，inline 卡片承担信息。(5) `DebugCommandActions.ts` 新临时 command `[Debug] Load mock conversation for index preview` — 22+ 条 mock messages 推 in-memory store，新增 "Resource layout showcase" topic 含 21 个 layout 变体（L1–L21）+ Mock 04 HTML permutation catalog (35 variants in `docs/gstack/chat-split-components-2026-06-03/mocks/`)。 | 完成（未 commit，9 files modified + 1 new + 4 HTML mocks） |
+| AP. Usage Dashboard 复刻 mock 全量收尾 (2026-06-11) | PR-Dash-1/2/3/4 留下的 3 个 surface gap 一次性补完（mocks 在 `docs/gstack/usage-dashboard-mockups-2026-05-29/`，决策 spec §11 在 `docs/superpowers/specs/2026-05-29-usage-dashboard-insights.md`）。**数据层**：`HarnessSettings.budget = { monthlyUsd, resetDayOfMonth, alertRules[] }` 接入 + `PluginSettingsLoader.sanitizeBudget()` 兼容 legacy；`UsageTrackingService` 加 `getMonthlyPace`（按 resetDay 算 cycle，线性 projection）/ `getCostPerSavedArtifact`（cost / strong-outcome 数 + 期内对比 delta）/ `getThisWeekTrio`（spend/tokens/cost-per-saved sparkline 三联）；`UsageOutcomeService` + `UsageOutcomeRepo` 加 `adoptedCountByDay`（per-day saves 喂 sparkline）。**Curator**：新 `src/service/usage/optimization/`（10 文件）— types / zod schema / `rules.ts` 4 条确定性规则（quick→cheap model swap / compact threshold ↓ / no-outcome high-cost review / silence low-cost pip）/ prompt（system + signals dump）/ `UsageOptimizationService.ts` 总调度（LLM + retry → fallback rule engine，返回 Recommendation[] + ProjectionSnapshot + 3 个 Scenario）；main.ts boot/destroy 接入。**原语**：`components/charts/` 加 7 个 — `PaceBar`（pace 条 + projection mark + legend）/ `Sparkline`（200×H SVG，currentColor 着色）/ `Toggle`（aria-pressed 双轨）/ `Field`+`NumberField`（loose-while-focused 数字框 + ± 步进）/ `RecommendationBlock`（num + title + impact 徽 + detail dl + evidence 表 + Apply/Preview 侧栏）/ `ScenarioRadio`（Conservative/Balanced/Aggressive 单选）/ `RuleRow`（leading/main/trailing 三栏通用）；`dashboard-charts.css` 加 600+ 行配套规则（含 pk-badge / pk-btn / pk-rec-block / pk-scenario / pk-trio / pk-row-3 / pk-row-opt / pk-preview-card / pk-ring-large 等）。**屏幕**：(1) Overview 替换原 MPG+Funnel+Outcome breakdown 三段 → mock 的 4 KPI（Budget pace w/ pace 条 + Context risk ring + Cost/saved w/ delta + Calls w/ spark）+ 底部 1.6:1 split（Recommended actions feed from Curator + This week sparkline trio）；新建 `useOverviewSnapshot` 聚合所有 async 输入；(2) BudgetAlerts 4 sections 全实现 — Monthly budget（NumberField + PaceBar + 周期标 + reset day prompt）/ Alert rules（4 Toggle + edit thresholds + test）/ Model defaults（Quick/Deep/Premium 行）/ "What users will see" 3 张预览（Budget@40% / Context@70% warn / Agent receipt）；全部 writeback `plugin.saveSettings`；(3) Optimization 2 列布局 — 左侧 ranked RecommendationBlock list + SavingsDial footer（apply%/$）+ source 标签（LLM vs rules）；右侧 Projection 卡（without/with delta + budget pace 条）+ ScenarioCard。**Strings**：`templates/config/dashboard.json` + FALLBACK_STRINGS 加 budgetPace/contextRisk/costPerSaved/calls/recommendedActions/thisWeek + budgetAlerts.* + optimization.* 完整 i18n 字段。**顺手修**：`AISetupTab.tsx` 3 处 + `ProfilesTab.tsx` 1 处 inline HarnessSettings literal（缺 budget 编译报错）统一 `?? DEFAULT_HARNESS_SETTINGS`。Build 通过；`tsc --noEmit` 新代码 0 错误，剩下都是 master 上 TemplateManager.getInstance 等 pre-existing 噪音。 | 完成（未 commit，9 modified + 15 new + 2 settings-tab 顺手修） |
 
 ## Next
+
+### 0. Pending — Phase AN 收尾
+
+- [ ] AN 阶段所有改动 commit（9 files modified + DebugCommandActions.ts 新文件 + 4 HTML mocks）
+- [ ] 真机验证 dark theme 下 sidebar active row + composer focus ring + attachment card 配色（变量 `--pk-surface-raised` / `--pk-border` 在 dark 已经准备好，但需要肉眼确认）
+- [ ] 验证 Phase AN 各项设计落地后再删除临时命令 `[Debug] Load mock conversation for index preview` 和 `src/app/commands/DebugCommandActions.ts`（顶部注释已说明删除时机）
+- [ ] OG image 真实抓取（目前只 hardcode github，arxiv/其他靠 favicon）— 可选优化，引入 microlink.io 或 vault-side 抓取均可
+
+### 0. Pending — Phase AP 收尾
+
+- [ ] AP 阶段所有改动 commit（9 modified + 15 new + 2 settings-tab 顺手修；建议拆 3-4 个独立 commit：data layer / optimization service / dashboard primitives + screens / settings 顺手修）
+- [ ] 真机肉眼验证：(1) Overview KPI 4 卡在 narrow leaf 宽度下不挤；(2) Budget 卡 NumberField 在 dark theme 下输入态；(3) Optimization rec block 在无 evidence 时排版；(4) Alert Toggle pressed 态的 success-tone 在 light/dark 两套都过得去
+- [ ] 没有真实 usage 数据时跑一遍每屏 — empty state 文案是否合理（Curator 显示 "no recommendations yet"，Cost/saved 显示 "—"，Budget pace 显示 "No budget set"）
+- [ ] LLM curator 路径首次跑 — 看 prompt 喂的 signals 是否够、JSON 是否容易解析失败（容易失败就 fallback rules，不阻断）
+- [ ] memory 里 `project_usage_dashboard_on_hold.md` 标记 outdated（实施 unblocked + 已完成），更新为 "AP 落地后的待跟进项"
+
+### 0. Pending — Phase AO 收尾
+
+- [ ] AO 阶段改动 commit（Register.ts / PeakCommandActions.ts / ViewManager.ts / types.ts / indexInitializer.ts / tab-VaultSearch.tsx + 删 `src/ui/view/knowledge-center/KnowledgeCenterView.tsx`）
+- [ ] Obsidian reload plugin 后验证 palette 4 个新命令实际生效：`Open Vault X-Ray` / `Open Gap Analysis` / `Open Related Notes` / `Batch Tag Suggestions`
+- [ ] `openPromptTemplates` 也是孤儿函数（KC 删后无调用方），但未在本次清理中处理 — 待用户决定是否给 Prompt Templates 加 palette 命令，再决定保留/删除
+- [ ] `GraphFullscreenView` 没有任何入口（ViewManager 注册了但无 `activate*` 调用方）— 用户表态"暂时不需要"，未动；后续要么加入口要么删 view
 
 ### 0. 已知 Bug — 全部已修复
 
@@ -216,6 +241,59 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-06-04 — Chat View 微设计修复（sidebar 精简 + project/topic 统一 + composer 居中 + 透明 modal 根因）
+
+围绕 chat-view 在 Obsidian sidebar 模式下的视觉一致性和几个反复出现的细节问题逐项推进。
+
+**Sidebar compact 模式（非 Chat Studio 时的 `peak-project-list-view`）**
+- 加 `compact?: boolean` prop 给 `ProjectListViewComponent`；`ProjectListView.ts` 传 `compact: true`，Chat Studio panel 不传 → 保持原 brand-row + 双行布局。
+- compact 模式下：去掉 "Peak Assistant" 品牌行，搜索框塞进 toolbar 同一行 `[Search ......] [Home] [Refresh] [-]`。
+- `ConversationIndex` 同样加 `compact` prop；sidebar 版隐藏 "Conversation Index" 头条 + Overview/Artifacts tab 居中（新 `.pkchat-idx__tabs--centered`）。Studio 版保持左对齐有标题。
+
+**Project 行 + Topic 头统一视觉语言（设计方向：去冗余 chevron，icon 自身就是 toggle）**
+- Projects：去掉 `ChevronDown`/`ChevronRight`，`Folder` ⇄ `FolderOpen` 单图标即 toggle；project 名 `pktw-truncate` 单行 + `title` 悬停看全名。
+- 子项缩进：原 `pktw-ml-7` 外层 + 内嵌 `pktw-ml-7` 共 56px → 单层 `.pkproj-children { padding-left: 16px }`。
+- Conversation Index topic 头：去掉 chev gutter，`MessageSquare`（收起）⇄ `MessagesSquare`（展开）作为整 toggle；nested message/artifact 行同步去掉 `__chev` placeholder 整体左移；nested 缩进 28px → 14px。
+- 引导线 vguide：先加后去——原 `::before` 1.5px accent-tint 紫，user 反馈 narrow rail 里像列里多塞了一根针；改 1px border-soft 灰仍然丑；最终两个面板都拿掉引导线，纯缩进表达层级。
+
+**点击 project 折叠失效（根因 + 修）**
+- 根因：`ProjectListView.ts:163` 的 `SELECTION_CHANGED` 监听器在 project 未展开时会自动展开它（为支持"点 conversation 自动展开它所在的 project"）；但 `handleProjectHeaderClick` 折叠后会派发 `dispatchSelectionChanged(projectId)`，监听器把刚折叠的 project 又强行展开。
+- 修：`ProjectsSection.tsx` 加 `wasExpanded` capture，仅在 *展开* 时调 `openProjectOverviewInChat`（它内部派发 selection-changed）。折叠时只 `toggleProjectExpanded` + `setActiveProject`，不派发，没反弹。
+
+**Modal 透明（反复出现的 bug，写入 recurring-pitfalls 第 4 节）**
+- 根因：`peak-tokens.css` 把所有 `--pk-*` token 严格作用域到 `.pktw-root` / `.peak-design-root`（合规于 `obsidian-css-defense.md`——不能污染 `:root`）。Radix `Dialog`/`Popover`/`DropdownMenu` 用 Portal 把 Content 挂到 `document.body`，**整段子树离开了 `.peak-design-root` 的祖先链**，`bg-popover` 解析的 `var(--pk-surface-overlay)` = `undefined` → 透视。
+- 修：`src/ui/component/shared-ui/{dialog,popover,dropdown-menu}.tsx` 三个 primitive 的 Content className 加 `peak-design-root pktw-root`——portal 挂哪 token 就跟到哪。
+- 写入 `docs/recurring-pitfalls.md §4`，含 mechanism / instances / detection / prevention checklist。明确："不要回过头去把 token 升到 `:root` 来'修'它"——会重新引入 Obsidian 污染问题。
+
+**Start-new-conversation 布局**
+- 找到设计稿 `docs/gstack/chat-ui-home-newconv-redesign-2026-06-02/02-new-conversation-no-index.png`。
+- Picker `grid-cols-2 max-w-[360px]` → `grid-cols-3 max-w-[520px]`，Plan 不再独占一行。
+- Pending 状态下 picker + composer 在 body 里垂直居中堆叠（`flex-col items-center justify-center gap-3`，composer 包 `max-w-[760px]`），不再把 composer 钉在底部留半屏空白。
+- Composer 在 activeConversation 分支保持原样钉底，只有 pending 状态改了。
+
+**Hover 高亮失效（Tailwind 斜杠透明度根因）**
+- 根因：`pktw-bg-accent/5` 依赖 Tailwind 把 `--pk-accent` 拆通道三元组再合 alpha。但我们 `--pk-accent: #7c3aed` 是 hex 字符串，不是通道值，`/N` 透明度静默失效 → 看不到 hover 背景。
+- 修：抽 `.pkchat-type-card--idle` / `--selected` CSS 类，hover/selected 直接用 `--pk-accent-tint`（已是 10% 紫色），border 跳 `--pk-accent`。
+
+**Layout magnet 诊断（user-reported "切其他 tab 总被拉回 chat"）**
+- 在 `ViewSwitchConsistentHandler.ts` 加诊断日志（`active-leaf-change` 分支 + `activateChatView`/`activeDocumentView` 入口 + studioCount + trace）。
+- 分析了 4 条可能路径：CONVERSATION_OUTLINE_VIEW_TYPE 例外分支 / TRACKED_VIEW_TYPES 召回 / chat-studio popout 磁铁 / activeDocumentView 内 setViewState 二次触发。待用户复现并贴 console 日志后确认是哪条。
+
+**ChatView pending 状态死锁修复（早些时候）**
+- `view-Messages.tsx` 的 `pendingConversation` 分支原本只渲染 picker，没渲染 Composer——用户点 Chat/Agent/Plan 只是 set kind，但页面没输入框，无法提交首条消息触发 `useChatSubmit.ensureConversation` 创建真实会话，整个流程死锁。
+- 修：pending 分支同时渲染 picker + composer。
+
+**Commits（按时间顺序）**
+- 修复 pending state 无 composer 死锁
+- 加 layout-diag 诊断日志（active-leaf-change 路径）
+- Sidebar compact mode：搜索移入 toolbar、隐藏 Conversation Index 标题、tabs 居中
+- Projects / Topic 双图标 toggle + 缩进精简
+- 去掉两个面板的 vguide 引导线
+- 折叠失效根因修复（wasExpanded guard）
+- Radix portal token 损失根因 + 修 + 写入 recurring-pitfalls §4
+- Picker 3 列 + 居中 + composer 上移
+- Hover 高亮根因（Tailwind /N 不兼容 hex var）+ CSS 类替代
 
 ### 2026-06-03 — Chat UI Modernization（按设计稿逐项落地 + 设计系统规则补全）
 
@@ -1229,3 +1307,62 @@ onboarding-settings → merged at 56a842b（5 PR）:
 - Done: useV2 feature flag 删除，V2 Agent SDK 为唯一搜索路径
 - Done: 5 轮死代码审计全部清零，代码库无残留死代码
 - Next: iOS 真机测试 → Provider v2 → Agent Trace
+
+### 2026-06-07
+- Done: Settings 5-tab IA 与 mock 对齐 — `docs/gstack/settings-redesign-2026-05-29/IMPLEMENTATION-GAP-2026-06-04.md` 列出全部差距 + 源码映射 + PR 切分
+- Done: PR-1 Overview 重写 — Peak readiness 5 行（Providers/AI behavior/KI/Web/Safety）从真实配置算 ready，AI behavior 读权摘要 4 行，Actions strip 4 按钮；row CTA 跳转其它 tab via onSwitchTab
+- Done: PR-2 AI Setup 重排 — Recommended setup → AI behavior → Providers；新 RecommendedSetupGrid 4-up 预设；Add Profile→Add Provider；Custom Endpoint 按钮顺序 + 文案对齐 mock；剥离 SDK Settings（迁回 Advanced PR-5）；删 Safety section
+- Done: PR-3 Knowledge Index 视觉重写 — bordered Index readiness panel + 推荐操作 accent row；Segmented Index mode；修 Document types pills（canonical 12 项，删 Conv/Dataloom/Unknown）；新增 Refresh interval；Search quality + Inspector links disclosure；AI Analysis + Exclude saved analyses + Summary lengths disclosure；Advanced chunking 折叠（6 字段）；Advanced rebuild 折叠（4 actions）
+- Done: PR-4 Tools 重排 — External tools → Web Access → Skills → Capture destinations；新增 Skills/Capture 两个 section（绑既有 skillsFolder/inboxFolder/customPromptsFolder）；Add tool server→Add external tool
+- Done: PR-5 Advanced 重构 — 去重 Re-run wizard banner（删 AdvancedTab 的顶部副本，留 HarnessSettingsSection 自己的）；删 Open Prompt Templates section；Maintenance 重排为 3 个 action-strip group（Index / Knowledge graph / Verification & cleanup）；Danger zone 收进折叠 details；新增 Developer section + SDK process disclosure（SDK 字段从 Tab 2 迁回）
+- Done: 死代码清理 — 删 4 个旧文件（SearchTab.tsx / SearchIndexSection.tsx / components/SectionHeader.tsx / components/DocTypePills.tsx）
+- Known limitations: Proactive suggestions / Usage and retention / Developer Graph viz + Legacy compatibility disclosures 未实现（需新增 backing fields）；External tool row 仍是 expanded form 而非 disclosure summary；Index readiness panel 的 "missing or changed" 用 total-indexed 估算，无精确 staleness 检测
+- Next: 真机走查 5 个 tab + 视觉对照 mock；视情决定是否做 PR-6 补齐 Proactive/Usage/Graph viz/Legacy compatibility
+
+### 2026-06-10
+真机走查 5 个 tab 之后的反复迭代。用户提示 → 我修 → 再贴图 → 继续修，共 ~10 轮，每轮至少 1 个 issue：
+
+**视觉/布局修复**
+- Done: Recommended setup 预设卡描述横向溢出 — 加 `min-width:0` + `display:block` + `overflow-wrap:anywhere`；JSX span 默认 inline 时 `width:100%` 不生效，必须显式 block 化
+- Done: Document types 行 body 被 12 个 pill 挤成单字 — 改用自定义 grid (`32px 1fr` + grid-row:2) 让 pill cluster 在 body 下方 wrap-flex，而不是塞进 Row 的 auto 右列
+- Done: `<details><summary>` 的原生 ▶ marker 在 Inspector 行上方独立漂浮 — 全局加 `summary { list-style:none } + ::-webkit-details-marker { display:none }`
+- Done: Tier model bindings 行拥挤、右侧浪费 — `HarnessSettingsSection.FieldRow` 列宽 180px → 240px + 右列 `justify-end`；section header 从 ALL-CAPS muted 降级为 `text-sm font-semibold`
+- Done: Harness 输入框 `pktw-w-full` 撑满 → 收紧到 `pktw-w-44`
+- Done: ProfilesTab Advanced disclosure 头改为双行（标题+sub+右侧"6 fields"），LLM Output Control 子标题降级
+- Done: Custom Endpoints subsection 老 ALL-CAPS + 横线分隔 → `pkset-section__title` 风格 + 虚线 empty state
+
+**Hover 失效根因**
+- Done: 全局 `hover:pktw-bg-pk-accent/5`/`/10` 不编译 — 因为 `pk-accent` 是 CSS 变量映射，Tailwind v3 `<alpha-value>` 替换对非 hsl/rgba CSS 变量无效；替换为 `hover:pktw-bg-pk-accent-tint`（token `--pk-accent-tint`，真有 CSS 输出）。涉及 Hooks (advanced) / ProfilesTab Advanced / ProfileCard / MCPServerCard / RoleModelPicker 项 / Preset 弹层项
+- Done: 同因 `border-pk-accent/N` / `focus:border-pk-accent/60` 全部替换为实色 token，AddProvider 弹窗、focus ring、Setup wizard banner 等边色稳定可见
+- Done: Button primitive 之前只认 primary/secondary/ghost，传 outline 静默 fallback 成无边框 — 这是 Overview action strip 和 Maintenance 按钮看着「悬浮无边」的根因；扩 outline (→ secondary 样式) + destructive (→ 新加 `pk-btn--danger` CSS：surface 底 + error border，hover error-bg + error border)
+- Done: `.pk-row--disclosure:hover` 从 `--pk-surface-sunken`（太浅）改为 `--pk-accent-tint` + `--pk-border-accent`；加 `details > summary:hover .pk-row--disclosure` 选择器覆盖 `<summary>` 包住的场景
+- Done: OverviewTab AI behavior 摘要行加 `data-clickable="true"` + 新 `.pk-row[data-clickable="true"]:hover` CSS 规则
+
+**结构性 IA 调整**（用户多次决策，反复挪段）
+- Done: Advanced → Tier model bindings 整段删除（与 AI Setup → AI behavior 行重复，违反 single-source；删 TierPicker / 子组件 / 死 import）
+- Done: Advanced → Escalation policy 整段挪到 AI Setup → Advanced model controls 折叠里（同 LLM Output Control 同一 disclosure body）
+- Done: Advanced → Agent runtime (Runtime 引擎选择) 挪到 AI Setup 顶部新 Runtime section（Recommended setup 之前）
+- Done: Advanced → Hooks (advanced) 挪到 Tools tab 末尾（hooks 是 pre/post tool-use 规则）
+- Done: Advanced → Safety 段先用 Row + Segmented 重做（替代裸 select 文本），后整段挪到 AI Setup（Runtime 之后、Recommended setup 之前）
+- Done: Advanced → GeneralTab (Data Storage / Chat Root / Attachment Handling / DevTools) 拆解：Folder 配置集中到新 StorageSection（Advanced 顶部，2 主字段 + 9-path Derived folders 折叠）；Attachment Handling + DevTools Graph Inspector 挪到 Developer disclosure
+- Done: Storage 集中所有 folder 配置 — 主字段：Data storage folder + Chat root folder；Derived 折叠里 5 个 read-only 派生路径（Prompts/Attachments/Resources summary cache/Hub summaries/User profile，从 AI_PATH_SUBFOLDERS 拼）+ 4 个可覆写字段（AI Analysis output / Skills / Inbox / Custom prompts）
+- Done: 同步从其它 tab 删 folder 字段 — Tools 删 Skills folder 行（Skills section 只剩 Inventory placeholder）+ 整个 Capture destinations 段；KnowledgeIndex 删 AI Analysis Save folder 行
+- Done: AI Setup → Custom Endpoints 段（独立卡片 + Add custom endpoint + Add from preset 按钮）整段删除，并删 CustomEndpointSection.tsx / CustomEndpointCard.tsx 两个组件文件；增/编辑路径统一走 Add Provider → AddProfileGrid（kind=litellm/custom 已覆盖）；customEndpoints 数据层保留 service-manager 消费链未动
+- Done: HarnessSettingsSection.tsx 整文件删除（内容拆完一干二净），相关 import / docstring 同步清理
+
+**交互/确认行为**
+- Done: AI Setup → AI behavior 5 行 Change pill 全部直接弹 RoleModelPicker（不再走 setup wizard）— Conversation 接 `ProfileRegistry.setActiveChatConfig`，Fast Lookup/Research/Stronger 接 harnessSettings 各 tier，Knowledge Index 接 `setActiveEmbeddingConfig` + `modelFilter` 只列嵌入模型
+- Done: RecommendedSetupGrid 加第 5 个 **Manual** card，父级检测到 `harnessSettings` 任一 tier 已配置即 `manual=true` 自动选中
+- Done: Knowledge Index → Index mode Segmented 不再立即执行 — 引入 `pendingLevel` 本地态 + accent 边框确认横条（"Switch to X?" + Cancel/Confirm），Confirm 才 `updateSearch` + 启动 staged indexing
+
+**Bug 修复**
+- Done: All reviews 路由 bug — Vault tab 点 All reviews 打到 Document Reviews，根因 `onOpenAllHistory` 用 `this.options.initialTab`（弹窗打开时的 tab）而非 active tab；改成 `(scope: IntentTabId) => void`，子组件传 `activeTab`
+- Done: 命令面板 `Open Knowledge Center` 删除（Vault Copilot 已统一接管能力）；`openKnowledgeCenter` 函数定义也删，View 类 + ViewManager 注册暂留向后兼容
+
+**模板同步**
+- Done: `templates/config/settings.json` 覆盖了 TS 默认导致旧串顽固 — 同步 Actions(Actions/Test providers/Try Chat) + aiBehaviorSummary + recommendedSetup + Add external tool 全部子树
+
+总收尾态：5 个 tab 视觉/IA 与 mock 基本对齐；Settings 文件改动落定 ~25 处；新增/删除文件 ~10 个；hover/border/Button variant 三类全局 CSS 系统性 bug 修完。
+
+- Known limitations: Proactive suggestions / Usage and retention / Graph viz / Legacy compatibility 仍未实施；KnowledgeCenterView 类 + 注册保留只为兼容；customEndpoints 数据层仍存但无管理 UI
+- Next: 真机再走一遍 5 tab 看是否还有遗漏；视情下个周期收尾 PR-6（Proactive/Usage/Graph viz）

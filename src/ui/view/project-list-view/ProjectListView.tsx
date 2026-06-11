@@ -11,10 +11,20 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { showToast } from '@/ui/utils/toast';
 import { openChatHome } from '@/ui/view/chat-view/chatNavigation';
 
+interface ProjectListViewComponentProps {
+	/** Compact layout for the narrow Obsidian sidebar leaf:
+	 *  - drops the "Peak Assistant" brand row entirely
+	 *  - moves the search input inline with Home / Refresh / Collapse buttons
+	 *  Studio's wider left column omits this prop and keeps the legacy
+	 *  brand-row + dedicated-search-row layout.
+	 */
+	compact?: boolean;
+}
+
 /**
  * Main React component for ProjectListView
  */
-export const ProjectListViewComponent: React.FC = () => {
+export const ProjectListViewComponent: React.FC<ProjectListViewComponentProps> = ({ compact = false }) => {
 	const { app, manager, eventBus, viewManager } = useServiceContext();
 	const {
 		setProjects,
@@ -193,82 +203,135 @@ export const ProjectListViewComponent: React.FC = () => {
 	 * `pktw-bg-background` → `var(--pk-bg)` which in dark mode is
 	 * #1e1e2e (purple-tinted) and clashed with native Obsidian chrome.
 	 */
-	return (
-		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-p-0 pktw-box-border pktw-overflow-y-auto" style={{ background: 'transparent' }}>
-			{/* Toolbar */}
-			<div className="pktw-flex pktw-flex-row pktw-items-center pktw-gap-0.5 pktw-px-2 pktw-pt-2 pktw-pb-1">
-				<IconButton
-					size="md"
-					className="pktw-shrink-0"
-					onClick={handleGoHome}
-					title="Go to home"
+	const searchBox = (
+		<div
+			className="pktw-flex pktw-items-center pktw-gap-2 pktw-flex-1 pktw-min-w-0"
+			style={{
+				background: 'var(--pk-surface)',
+				border: '1px solid var(--pk-border)',
+				borderRadius: 'var(--pk-radius-md)',
+				padding: '4px 8px',
+			}}
+		>
+			<Search
+				style={{
+					width: 14,
+					height: 14,
+					flexShrink: 0,
+					color: 'var(--pk-text-tertiary)',
+				}}
+			/>
+			<input
+				type="text"
+				value={query}
+				placeholder="Find chat or project"
+				onChange={(e) => setQuery(e.target.value)}
+				className="pktw-flex-1 pktw-min-w-0"
+				style={{
+					background: 'transparent',
+					border: 0,
+					outline: 'none',
+					fontSize: 13,
+					color: 'var(--pk-text-primary)',
+					padding: 0,
+				}}
+			/>
+			{query.length > 0 ? (
+				<PkIconButton
+					label="Clear search"
+					title="Clear search"
+					onClick={() => setQuery('')}
+					style={{ width: 18, height: 18 }}
 				>
-					<Home className="pktw-text-muted-foreground hover:pktw-text-foreground pktw-transition-colors" />
-				</IconButton>
-				<IconButton
-					size="md"
-					className="pktw-shrink-0"
-					onClick={handleRefresh}
-					title="Refresh projects and conversations"
-				>
-					<RefreshCw className="pktw-text-muted-foreground hover:pktw-text-foreground pktw-transition-colors" />
-				</IconButton>
-				<IconButton
-					size="md"
-					className="pktw-shrink-0"
-					onClick={() => clearExpandedProjects()}
-					title="Collapse all projects"
-				>
-					<Minus className="pktw-text-muted-foreground hover:pktw-text-foreground pktw-transition-colors" />
-				</IconButton>
-			</div>
-
-			{/* Search */}
-			<div className="peak-design-root pktw-px-3 pktw-pt-2 pktw-pb-1">
-				<div
-					className="pktw-flex pktw-items-center pktw-gap-2"
+					<X style={{ width: 12, height: 12 }} />
+				</PkIconButton>
+			) : (
+				<span
+					aria-hidden
 					style={{
-						background: 'var(--pk-surface)',
+						fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+						fontSize: 10,
+						color: 'var(--pk-text-tertiary)',
+						padding: '1px 5px',
 						border: '1px solid var(--pk-border)',
-						borderRadius: 'var(--pk-radius-md)',
-						padding: '4px 8px',
+						borderRadius: 4,
+						lineHeight: 1.2,
 					}}
 				>
-					<Search
-						style={{
-							width: 14,
-							height: 14,
-							flexShrink: 0,
-							color: 'var(--pk-text-tertiary)',
-						}}
-					/>
-					<input
-						type="text"
-						value={query}
-						placeholder="Find chat or project"
-						onChange={(e) => setQuery(e.target.value)}
-						className="pktw-flex-1 pktw-min-w-0"
-						style={{
-							background: 'transparent',
-							border: 0,
-							outline: 'none',
-							fontSize: 13,
-							color: 'var(--pk-text-primary)',
-							padding: 0,
-						}}
-					/>
-					{query.length > 0 && (
-						<PkIconButton
-							label="Clear search"
-							title="Clear search"
-							onClick={() => setQuery('')}
-							style={{ width: 18, height: 18 }}
-						>
-							<X style={{ width: 12, height: 12 }} />
-						</PkIconButton>
-					)}
+					⌘K
+				</span>
+			)}
+		</div>
+	);
+
+	const toolbarButtons = (
+		<>
+			<IconButton
+				size="md"
+				className="pktw-shrink-0"
+				onClick={handleGoHome}
+				title="Go to home"
+			>
+				<Home className="pktw-text-muted-foreground hover:pktw-text-foreground pktw-transition-colors" />
+			</IconButton>
+			<IconButton
+				size="md"
+				className="pktw-shrink-0"
+				onClick={handleRefresh}
+				title="Refresh projects and conversations"
+			>
+				<RefreshCw className="pktw-text-muted-foreground hover:pktw-text-foreground pktw-transition-colors" />
+			</IconButton>
+			<IconButton
+				size="md"
+				className="pktw-shrink-0"
+				onClick={() => clearExpandedProjects()}
+				title="Collapse all projects"
+			>
+				<Minus className="pktw-text-muted-foreground hover:pktw-text-foreground pktw-transition-colors" />
+			</IconButton>
+		</>
+	);
+
+	return (
+		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-p-0 pktw-box-border pktw-overflow-y-auto" style={{ background: 'transparent' }}>
+			{compact ? (
+				/* Compact (sidebar leaf): search inline with toolbar buttons, no brand row. */
+				<div className="peak-design-root pktw-flex pktw-flex-row pktw-items-center pktw-gap-2 pktw-px-3 pktw-pt-3 pktw-pb-1">
+					{searchBox}
+					{toolbarButtons}
 				</div>
-			</div>
+			) : (
+				<>
+					{/* Brand bar + toolbar */}
+					<div className="pktw-flex pktw-flex-row pktw-items-center pktw-gap-2 pktw-px-3 pktw-pt-3 pktw-pb-1">
+						<span
+							className="pktw-inline-flex pktw-items-center pktw-justify-center pktw-shrink-0"
+							style={{
+								width: 22,
+								height: 22,
+								borderRadius: 6,
+								background: 'linear-gradient(180deg, var(--pk-accent) 0%, var(--pk-accent-hover) 100%)',
+								color: '#ffffff',
+							}}
+							aria-hidden
+						>
+							<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round">
+								<path d="M3 20 L9 8 L13 14 L17 6 L21 20 Z" />
+							</svg>
+						</span>
+						<span className="pktw-text-[13px] pktw-font-semibold pktw-text-foreground pktw-flex-1 pktw-min-w-0 pktw-truncate">
+							Peak Assistant
+						</span>
+						{toolbarButtons}
+					</div>
+
+					{/* Search */}
+					<div className="peak-design-root pktw-px-3 pktw-pt-2 pktw-pb-1">
+						{searchBox}
+					</div>
+				</>
+			)}
 
 			<div className="pktw-px-3 pktw-pb-6">
 				{/* Projects Section */}

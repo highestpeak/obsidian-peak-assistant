@@ -173,7 +173,7 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 						'pktw-flex pktw-items-center pktw-w-full pktw-gap-2 pktw-px-3 pktw-py-2',
 						'pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background',
 						'pktw-text-sm pktw-text-left pktw-cursor-pointer',
-						'hover:pktw-border-pk-accent/50 pktw-transition-colors',
+						'hover:pktw-border-pk-accent pktw-transition-colors',
 					)}
 				>
 					<span className={cn('pktw-flex-1 pktw-truncate pktw-font-mono pktw-text-xs', !value && 'pktw-text-pk-muted-foreground')}>
@@ -231,7 +231,7 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 											className={cn(
 												'pktw-flex pktw-items-center pktw-w-full pktw-gap-2 pktw-px-3 pktw-py-1.5',
 												'pktw-text-left pktw-text-sm pktw-cursor-pointer pktw-transition-colors',
-												idx === highlightIdx && 'pktw-bg-pk-accent/10',
+												idx === highlightIdx && 'pktw-bg-pk-accent-tint',
 												item.id === value && 'pktw-font-semibold',
 											)}
 										>

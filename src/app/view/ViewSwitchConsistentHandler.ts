@@ -43,21 +43,28 @@ export class ViewSwitchConsistentHandler {
 	 */
 	handleActiveLeafChange(leaf?: WorkspaceLeaf | null): void {
 		const viewType = leaf?.view?.getViewType();
+		// DIAG-2026-06-03: trace which branch fires + studio leaf count to
+		// confirm root cause of "switching tabs pulls focus back to chat".
+		const studioCount = this.app.workspace.getLeavesOfType(CHAT_STUDIO_VIEW_TYPE).length;
+		// eslint-disable-next-line no-console
+		console.log('[layout-diag] active-leaf-change', { viewType, studioCount, isChatLayoutActive: this.isChatLayoutActive, isActivating: this.isActivating, isActivatingDocument: this.isActivatingDocument });
 		if (viewType && STANDALONE_PEAK_VIEW_TYPES.has(viewType)) {
-			// Conversation Outline is the chat layout's right-panel companion,
-			// so activating it (user clicks the sidebar icon) should bring up
-			// the chat view + project list too — same as clicking either of
-			// those does. Other standalone peak views (graph, dashboard,
-			// vault X-ray, …) are full-window experiences and should NOT
-			// implicitly summon the chat layout, so they still early-return.
 			if (viewType === CONVERSATION_OUTLINE_VIEW_TYPE) {
+				// eslint-disable-next-line no-console
+				console.log('[layout-diag] → activateChatView (CONVERSATION_OUTLINE branch)');
+				console.trace('[layout-diag] trace');
 				void this.activateChatView();
 			}
 			return;
 		}
 		if (viewType && TRACKED_VIEW_TYPES.has(viewType)) {
+			// eslint-disable-next-line no-console
+			console.log('[layout-diag] → activateChatView (TRACKED branch)', viewType);
+			console.trace('[layout-diag] trace');
 			void this.activateChatView();
 		} else if (viewType !== 'empty') {
+			// eslint-disable-next-line no-console
+			console.log('[layout-diag] → activeDocumentView', viewType);
 			void this.activeDocumentView();
 		}
 	}
@@ -66,15 +73,14 @@ export class ViewSwitchConsistentHandler {
 	 * Ensures chat layout views are active and focused.
 	 */
 	async activateChatView(): Promise<void> {
+		// eslint-disable-next-line no-console
+		console.log('[layout-diag] activateChatView ENTER', { isActivating: this.isActivating, isChatLayoutActive: this.isChatLayoutActive });
 		if (this.isActivating) return;
 
-		// If Chat Studio is open, it is the user's intended chat surface — any
-		// "open chat" trigger (ribbon click, openAssistant palette command,
-		// programmatic chatNavigation when starting a new conversation) should
-		// focus the Studio window rather than recreating the legacy 3-pane
-		// layout in the main editor.
 		const studioLeaves = this.app.workspace.getLeavesOfType(CHAT_STUDIO_VIEW_TYPE);
 		if (studioLeaves.length > 0) {
+			// eslint-disable-next-line no-console
+			console.log('[layout-diag] activateChatView → revealing CHAT_STUDIO leaf (popout magnet)', studioLeaves.length);
 			this.app.workspace.revealLeaf(studioLeaves[0]);
 			return;
 		}
@@ -148,6 +154,8 @@ export class ViewSwitchConsistentHandler {
 				this.app.workspace.revealLeaf(outlineLeaf);
 			}
 
+			// eslint-disable-next-line no-console
+			console.log('[layout-diag] activateChatView → revealLeaf(centerLeaf=chat-view)');
 			this.app.workspace.revealLeaf(centerLeaf);
 			this.isChatLayoutActive = true;
 		} finally {
@@ -159,6 +167,8 @@ export class ViewSwitchConsistentHandler {
 	 * Returns to the regular document layout, restoring cached states.
 	 */
 	async activeDocumentView(): Promise<void> {
+		// eslint-disable-next-line no-console
+		console.log('[layout-diag] activeDocumentView ENTER', { isChatLayoutActive: this.isChatLayoutActive, isActivatingDocument: this.isActivatingDocument });
 		if (!this.isChatLayoutActive || this.isActivatingDocument) return;
 
 		this.isActivatingDocument = true;

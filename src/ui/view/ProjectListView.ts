@@ -49,7 +49,7 @@ export class ProjectListView extends ItemView {
 		this.reactRenderer.render(
 			createReactElementWithServices(
 				ProjectListViewComponent,
-				{},
+				{ compact: true },
 				this.appContext
 			)
 		);

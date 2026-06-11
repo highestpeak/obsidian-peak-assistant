@@ -1,248 +1,546 @@
 import React, { useCallback, useMemo } from 'react';
 import { App } from 'obsidian';
-import { ChatMessage } from '@/service/chat/types';
+import { ChatMessage, ChatResourceRef } from '@/service/chat/types';
+import { ResourceKind } from '@/core/document/types';
 import { cn } from '@/ui/react/lib/utils';
-import { FileText, PaperclipIcon, XIcon } from 'lucide-react';
-import { Button } from '@/ui/component/shared-ui/button';
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from '@/ui/component/shared-ui/tooltip';
+import { Globe } from 'lucide-react';
 import { ResourcePreviewHover } from '@/ui/component/mine';
-import { isUrl, getExtensionFromSource, getImageMimeType } from '@/core/document/helper/FileTypeUtils';
+import { isUrl, getExtensionFromSource } from '@/core/document/helper/FileTypeUtils';
+import { openFile } from '@/core/utils/obsidian-utils';
 
-/** File attachment UI part (standalone definition, formerly from 'ai' package). */
-interface FileUIPart { type: 'file'; filename?: string; mediaType: string; url: string; }
+/**
+ * MessageAttachmentsList — renders the resource cluster attached to a chat
+ * message. Layout strategy comes from mock 04 (permutation catalog):
+ *
+ *   Images:
+ *     1                → single tile, sized to subject
+ *     2                → 50/50 grid
+ *     3                → equal-width strip
+ *     4                → 2×2 contact sheet
+ *     5–7              → hero on top + 4-up thumb row
+ *     8+               → 4 tiles, last one carries "+N" overlay
+ *
+ *   Files (everything that isn't an image or a URL):
+ *     1                → full card (36px badge)
+ *     2–4              → compact stacked cards (30px badge)
+ *     5+               → chip cluster — color dot replaces badge
+ *
+ *   URLs:
+ *     1                → rich preview card (host + title + URL)
+ *     2+               → chip cluster
+ *
+ * The whole cluster is capped at 520px width and right-aligned so its right
+ * edge matches the bubble's right edge — keeps the attachment + bubble
+ * reading as a single user turn.
+ */
 
-type MessageAttachmentProps = React.HTMLAttributes<HTMLDivElement> & {
-	data: FileUIPart;
-	className?: string;
-	onRemove?: () => void;
-};
+interface ResourceGroups {
+	images: ChatResourceRef[];
+	urls: ChatResourceRef[];
+	files: ChatResourceRef[];
+}
 
-function MessageAttachment({
-	data,
-	className,
-	onRemove,
-	...props
-}: MessageAttachmentProps) {
-	const filename = data.filename || '';
-	const mediaType =
-		data.mediaType?.startsWith('image/') && data.url ? 'image' : 'file';
-	const isImage = mediaType === 'image';
-	const attachmentLabel = filename || (isImage ? 'Image' : 'Attachment');
+function classify(resources: ChatResourceRef[]): ResourceGroups {
+	const out: ResourceGroups = { images: [], urls: [], files: [] };
+	for (const r of resources) {
+		if (r.kind === 'image') {
+			out.images.push(r);
+		} else if (r.kind === 'url') {
+			out.urls.push(r);
+		} else if (isUrl(r.source)) {
+			// Defensive: kind defaulted to something else but source is clearly a URL.
+			// Treat as URL so it renders as a link card, not a "0.0 KB file".
+			out.urls.push(r);
+		} else {
+			out.files.push(r);
+		}
+	}
+	return out;
+}
+
+interface BadgeStyle {
+	/** Solid hex used as the badge background AND as the chip color-dot. */
+	bg: string;
+	/** 2–5 char display token shown inside the badge (e.g. "PDF", "XLSX"). */
+	label: string;
+}
+
+/**
+ * Resolve the badge color + label for a non-image, non-url resource.
+ *
+ * The function prefers the explicit `kind` from the data model, then falls
+ * back to the file extension. Extensions handle the case where a generic
+ * "unknown" kind still carries a recognizable suffix (e.g. someone attached
+ * an .xlsx via drag-drop and the document loader hasn't classified it yet).
+ */
+function badgeStyleForKind(kind: ResourceKind, source: string): BadgeStyle {
+	const ext = getExtensionFromSource(source).toLowerCase();
+	if (kind === 'pdf' || ext === 'pdf') return { bg: '#e0464b', label: 'PDF' };
+	if (kind === 'csv' || ext === 'csv') return { bg: '#1f8a4c', label: 'CSV' };
+	if (kind === 'xlsx' || ext === 'xlsx' || ext === 'xls') return { bg: '#0f7c3a', label: 'XLSX' };
+	if (kind === 'docx' || ext === 'docx' || ext === 'doc') return { bg: '#2a64c9', label: 'DOCX' };
+	if (kind === 'pptx' || ext === 'pptx' || ext === 'ppt') return { bg: '#d8651e', label: 'PPTX' };
+	if (kind === 'json' || ext === 'json') return { bg: '#c87f00', label: 'JSON' };
+	if (kind === 'markdown' || ext === 'md' || ext === 'markdown') return { bg: '#7c5cff', label: 'MD' };
+	if (kind === 'txt' || ext === 'txt') return { bg: '#6b7280', label: 'TXT' };
+	if (ext === 'zip') return { bg: '#7c3aed', label: 'ZIP' };
+	if (kind === 'html' || ext === 'html' || ext === 'htm') return { bg: '#e8732b', label: 'HTML' };
+	if (kind === 'xml' || ext === 'xml') return { bg: '#9333ea', label: 'XML' };
+	if (kind === 'excalidraw' || ext === 'excalidraw') return { bg: '#7c5cff', label: 'EXC' };
+	if (kind === 'canvas') return { bg: '#7c5cff', label: 'CNV' };
+	if (kind === 'folder') return { bg: '#6b7280', label: 'DIR' };
+	// Fallback: short uppercase extension or generic.
+	const fallbackLabel = (ext || 'file').slice(0, 4).toUpperCase();
+	return { bg: '#6b7280', label: fallbackLabel };
+}
+
+interface OpenHandler {
+	(resource: ChatResourceRef): void | Promise<void>;
+}
+
+export const MessageAttachmentsList: React.FC<{ message: ChatMessage; app: App }> = ({ message, app }) => {
+	const resources = message.resources ?? [];
+	const groups = useMemo(() => classify(resources), [resources]);
+
+	const handleOpen = useCallback<OpenHandler>(async (resource) => {
+		const src = resource.source;
+		if (isUrl(src)) {
+			window.open(src, '_blank', 'noopener,noreferrer');
+			return;
+		}
+		await openFile(src, false, app);
+	}, [app]);
+
+	if (resources.length === 0) return null;
 
 	return (
 		<div
 			className={cn(
-				'group pktw-relative pktw-size-24 pktw-overflow-hidden pktw-rounded-lg',
-				className,
+				// Right-aligned cluster (matches bubble right edge). gap 8.
+				'pktw-flex pktw-flex-col pktw-gap-2 pktw-items-end pktw-w-full pktw-min-w-0 pktw-ml-auto',
 			)}
-			{...props}
+			style={{ maxWidth: 520 }}
 		>
-			{isImage ? (
-				<>
-					<img
-						alt={filename || 'attachment'}
-						className="pktw-size-full pktw-object-cover"
-						height={100}
-						src={data.url}
-						width={100}
-					/>
-					{onRemove && (
-						<Button
-							aria-label="Remove attachment"
-							className="pktw-absolute pktw-top-2 pktw-right-2 pktw-size-6 pktw-rounded-full pktw-bg-background/80 pktw-p-0 pktw-opacity-0 pktw-backdrop-blur-sm pktw-transition-opacity pktw-hover:bg-background pktw-group-hover:opacity-100 pktw-[&>svg]:size-3"
-							onClick={(e) => {
-								e.stopPropagation();
-								onRemove();
-							}}
-							type="button"
-							variant="ghost"
-						>
-							<XIcon />
-							<span className="pktw-sr-only">Remove</span>
-						</Button>
-					)}
-				</>
-			) : (
-				<>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<div className="pktw-flex pktw-size-full pktw-shrink-0 pktw-items-center pktw-justify-center pktw-rounded-lg pktw-bg-muted pktw-text-muted-foreground">
-								<PaperclipIcon className="pktw-size-4" />
-							</div>
-						</TooltipTrigger>
-						<TooltipContent>
-							<p>{attachmentLabel}</p>
-						</TooltipContent>
-					</Tooltip>
-					{onRemove && (
-						<Button
-							aria-label="Remove attachment"
-							className="pktw-size-6 pktw-shrink-0 pktw-rounded-full pktw-p-0 pktw-opacity-0 pktw-transition-opacity pktw-hover:bg-accent pktw-group-hover:opacity-100 pktw-[&>svg]:size-3"
-							onClick={(e) => {
-								e.stopPropagation();
-								onRemove();
-							}}
-							type="button"
-							variant="ghost"
-						>
-							<XIcon />
-							<span className="pktw-sr-only">Remove</span>
-						</Button>
-					)}
-				</>
+			{groups.images.length > 0 && (
+				<ImageGroup images={groups.images} onOpen={handleOpen} app={app} />
 			)}
-		</div>
-	);
-}
-import { ChatResourceRef } from '@/service/chat/types';
-import { ResourceKind } from '@/core/document/types';
-import { openFile } from '@/core/utils/obsidian-utils';
-
-/**
- * UI representation of a resource attachment
- */
-interface ResourceUIAttachment extends FileUIPart {
-	resource: ChatResourceRef;
-	fileType: ResourceKind;
-}
-
-/**
- * Component for rendering message attachments
- */
-export const MessageAttachmentsList: React.FC<{
-	message: ChatMessage;
-	app: App;
-}> = ({ message, app }) => {
-	const fileAttachments = useMemo(() => {
-		if (!message.resources || message.resources.length === 0) {
-			return [];
-		}
-
-		return message.resources.map((resource) => {
-			const source = resource.source;
-			const extension = getExtensionFromSource(source);
-
-			let mediaType: string;
-			if (resource.kind === 'image') {
-				mediaType = getImageMimeType(extension);
-			} else if (resource.kind === 'pdf') {
-				mediaType = 'application/pdf';
-			} else {
-				mediaType = 'application/octet-stream';
-			}
-
-			return {
-				type: 'file' as const,
-				url: source,
-				filename: source.split('/').pop() || source,
-				mediaType: mediaType,
-				resource: resource,
-				fileType: resource.kind,
-			};
-		});
-	}, [message.resources, app]);
-
-	/**
-	 * Handle opening a resource based on its type
-	 */
-	const handleOpenResource = useCallback(async (attachment: ResourceUIAttachment) => {
-		const url = attachment.url;
-		if (!url) return;
-
-		// Handle URL resources - open in new tab
-		if (isUrl(url)) {
-			window.open(url, '_blank', 'noopener,noreferrer');
-			return;
-		}
-
-		// Handle file resources
-		await openFile(url, false, app);
-	}, [app]);
-
-	if (fileAttachments.length === 0) {
-		return null;
-	}
-
-	/**
-	 * Render a single attachment with preview hover
-	 */
-	const renderAttachment = (attachment: ResourceUIAttachment, index: number, isImage: boolean) => {
-		const isPdf = attachment.fileType === 'pdf';
-
-		const handleClick = async (e: React.MouseEvent) => {
-			e.stopPropagation();
-			await handleOpenResource(attachment);
-		};
-
-		const wrappedContent = (
-			<ResourcePreviewHover
-				resource={attachment.resource}
-				app={app}
-				previewClassName="pktw-z-[100]"
-			>
-				<div
-					className={cn(
-						"pktw-cursor-pointer pktw-transition-opacity hover:pktw-opacity-90",
-						isPdf || !isImage ? "pktw-w-full" : "pktw-flex-shrink-0"
-					)}
-					onClick={handleClick}
-				>
-					{isPdf ? (
-						<div className="pktw-flex pktw-flex-row pktw-w-full pktw-shrink-0 pktw-items-center pktw-rounded-lg pktw-border-1 pktw-border-solid pktw-border-gray-200 dark:pktw-border-gray-600 pktw-bg-pk-background pktw-px-1.5 pktw-py-1.5 pktw-gap-3 pktw-min-h-[48px]">
-							<div className="pktw-flex-shrink-0 pktw-w-8 pktw-h-8 pktw-bg-red-500 pktw-rounded pktw-flex pktw-items-center pktw-justify-center">
-								<FileText className="pktw-size-4 pktw-text-white" />
-							</div>
-							<div className="pktw-flex-1 pktw-flex pktw-flex-col pktw-gap-1 pktw-min-w-0">
-								<span className="pktw-text-sm pktw-font-medium pktw-text-foreground pktw-truncate">
-									{attachment.filename}
-								</span>
-								<span className="pktw-text-xs pktw-text-muted-foreground pktw-uppercase pktw-font-medium">
-									PDF
-								</span>
-							</div>
-						</div>
-					) : (
-						<MessageAttachment data={attachment} onClick={handleClick} />
-					)}
-				</div>
-			</ResourcePreviewHover>
-		);
-
-		// Only wrap with TooltipProvider for non-PDF files
-		if (isPdf) {
-			return <React.Fragment key={`attachment-${index}`}>{wrappedContent}</React.Fragment>;
-		}
-
-		return (
-			<TooltipProvider key={`attachment-${index}`}>
-				{wrappedContent}
-			</TooltipProvider>
-		);
-	};
-
-	// Group attachments by type for layout
-	const imageAttachments = fileAttachments.filter(att => att.fileType === 'image');
-	const otherAttachments = fileAttachments.filter(att => att.fileType !== 'image');
-
-	return (
-		<div className="pktw-flex pktw-flex-col pktw-gap-2 pktw-w-full pktw-max-w-full pktw-min-w-0">
-			{/* Images: horizontal layout with wrapping */}
-			{imageAttachments.length > 0 && (
-				<div className="pktw-flex pktw-flex-wrap pktw-gap-2 pktw-w-full pktw-max-w-full pktw-min-w-0">
-					{imageAttachments.map((attachment, index) => renderAttachment(attachment, index, true))}
-				</div>
+			{groups.urls.length > 0 && (
+				<UrlGroup urls={groups.urls} onOpen={handleOpen} app={app} />
 			)}
-			{/* Other attachments (PDFs, etc.): vertical layout, full width */}
-			{otherAttachments.length > 0 && (
-				<div className="pktw-flex pktw-flex-col pktw-gap-2 pktw-w-full pktw-max-w-full pktw-min-w-0">
-					{otherAttachments.map((attachment, index) => renderAttachment(attachment, index, false))}
-				</div>
+			{groups.files.length > 0 && (
+				<FileGroup files={groups.files} onOpen={handleOpen} app={app} />
 			)}
 		</div>
 	);
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IMAGE GROUP
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ImageGroupProps {
+	images: ChatResourceRef[];
+	onOpen: OpenHandler;
+	app: App;
+}
+
+function ImageGroup({ images, onOpen, app }: ImageGroupProps) {
+	const n = images.length;
+
+	if (n === 1) {
+		return (
+			<div style={{ width: 240 }}>
+				<ImageTile image={images[0]} onOpen={onOpen} app={app} height={160} />
+			</div>
+		);
+	}
+
+	if (n === 2) {
+		return (
+			<div className="pktw-grid pktw-grid-cols-2 pktw-gap-2 pktw-w-full">
+				{images.map((img) => (
+					<ImageTile key={img.id} image={img} onOpen={onOpen} app={app} height={180} />
+				))}
+			</div>
+		);
+	}
+
+	if (n === 3) {
+		return (
+			<div className="pktw-grid pktw-grid-cols-3 pktw-gap-2 pktw-w-full">
+				{images.map((img) => (
+					<ImageTile key={img.id} image={img} onOpen={onOpen} app={app} height={120} />
+				))}
+			</div>
+		);
+	}
+
+	if (n === 4) {
+		return (
+			<div className="pktw-grid pktw-grid-cols-2 pktw-gap-2 pktw-w-full">
+				{images.map((img) => (
+					<ImageTile key={img.id} image={img} onOpen={onOpen} app={app} height={130} />
+				))}
+			</div>
+		);
+	}
+
+	if (n <= 7) {
+		// hero (full width) + remaining 4-up thumb row
+		const [hero, ...rest] = images;
+		const thumbs = rest.slice(0, 4);
+		return (
+			<div className="pktw-flex pktw-flex-col pktw-gap-2 pktw-w-full">
+				<ImageTile image={hero} onOpen={onOpen} app={app} height={220} fullWidth />
+				<div className="pktw-grid pktw-grid-cols-4 pktw-gap-2">
+					{thumbs.map((img) => (
+						<ImageTile key={img.id} image={img} onOpen={onOpen} app={app} height={84} />
+					))}
+				</div>
+			</div>
+		);
+	}
+
+	// 8+ : 4 tiles, last with "+N" overlay
+	const visible = images.slice(0, 4);
+	const remaining = images.length - 4;
+	return (
+		<div className="pktw-grid pktw-grid-cols-2 pktw-gap-2 pktw-w-full">
+			{visible.map((img, idx) => (
+				<ImageTile
+					key={img.id}
+					image={img}
+					onOpen={onOpen}
+					app={app}
+					height={130}
+					overlayText={idx === 3 ? `+${remaining}` : undefined}
+				/>
+			))}
+		</div>
+	);
+}
+
+interface ImageTileProps {
+	image: ChatResourceRef;
+	onOpen: OpenHandler;
+	app: App;
+	height: number;
+	fullWidth?: boolean;
+	overlayText?: string;
+}
+
+function ImageTile({ image, onOpen, app, height, fullWidth, overlayText }: ImageTileProps) {
+	const alt = image.source.split('/').pop() || 'image';
+	return (
+		<ResourcePreviewHover resource={image} app={app} previewClassName="pktw-z-[100]">
+			<button
+				type="button"
+				className="pktw-relative pktw-overflow-hidden pktw-cursor-pointer pktw-border-0 pktw-p-0 pktw-bg-muted hover:pktw-opacity-90 pktw-transition-opacity"
+				style={{ height, width: fullWidth ? '100%' : undefined, borderRadius: 10 }}
+				onClick={(e) => {
+					e.stopPropagation();
+					void onOpen(image);
+				}}
+				aria-label={alt}
+			>
+				<img
+					src={image.source}
+					alt={alt}
+					className="pktw-w-full pktw-h-full pktw-object-cover pktw-block"
+				/>
+				{overlayText && (
+					<span
+						className="pktw-absolute pktw-inset-0 pktw-flex pktw-items-center pktw-justify-center pktw-text-white pktw-text-2xl pktw-font-semibold"
+						style={{ background: 'rgba(20, 20, 25, 0.55)' }}
+					>
+						{overlayText}
+					</span>
+				)}
+			</button>
+		</ResourcePreviewHover>
+	);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILE GROUP
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface FileGroupProps {
+	files: ChatResourceRef[];
+	onOpen: OpenHandler;
+	app: App;
+}
+
+function FileGroup({ files, onOpen, app }: FileGroupProps) {
+	// Chip threshold: > 4 files. Below that, stacked cards are still readable
+	// and let the eye land on filename quickly; beyond 4 the stack becomes a
+	// wall of badges and chips read faster.
+	if (files.length > 4) {
+		return (
+			<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-justify-end pktw-w-full">
+				{files.map((f) => (
+					<FileChip key={f.id} resource={f} onOpen={onOpen} app={app} />
+				))}
+			</div>
+		);
+	}
+
+	// Compact card variant kicks in at 2+ so multi-file clusters don't
+	// dominate the bubble's vertical space.
+	const compact = files.length >= 2;
+	return (
+		<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-w-full">
+			{files.map((f) => (
+				<FileCard key={f.id} resource={f} onOpen={onOpen} app={app} compact={compact} />
+			))}
+		</div>
+	);
+}
+
+interface FileCardProps {
+	resource: ChatResourceRef;
+	onOpen: OpenHandler;
+	app: App;
+	compact?: boolean;
+}
+
+function FileCard({ resource, onOpen, app, compact }: FileCardProps) {
+	const filename = resource.source.split('/').pop() || resource.source;
+	const badge = badgeStyleForKind(resource.kind, resource.source);
+	const badgePx = compact ? 30 : 36;
+	return (
+		<ResourcePreviewHover resource={resource} app={app} previewClassName="pktw-z-[100]">
+			<button
+				type="button"
+				className={cn(
+					'pk-attach-card',
+					'pktw-flex pktw-items-center pktw-gap-2.5 pktw-w-full pktw-text-left pktw-cursor-pointer',
+					compact ? 'pktw-px-2.5 pktw-py-2' : 'pktw-px-3 pktw-py-2.5',
+				)}
+				onClick={(e) => {
+					e.stopPropagation();
+					void onOpen(resource);
+				}}
+			>
+				<span
+					className="pktw-inline-flex pktw-items-center pktw-justify-center pktw-text-white pktw-font-bold pktw-shrink-0"
+					style={{
+						width: badgePx,
+						height: badgePx,
+						background: badge.bg,
+						fontSize: compact ? 10 : 11,
+						letterSpacing: '0.02em',
+						borderRadius: 8,
+					}}
+				>
+					{badge.label}
+				</span>
+				<div className="pktw-flex-1 pktw-min-w-0">
+					<div className="pktw-text-[13px] pktw-font-medium pktw-text-foreground pktw-truncate">
+						{filename}
+					</div>
+					<div className="pktw-text-[11px] pktw-text-muted-foreground pktw-truncate">
+						{resource.source}
+					</div>
+				</div>
+			</button>
+		</ResourcePreviewHover>
+	);
+}
+
+interface FileChipProps {
+	resource: ChatResourceRef;
+	onOpen: OpenHandler;
+	app: App;
+}
+
+function FileChip({ resource, onOpen, app }: FileChipProps) {
+	const filename = resource.source.split('/').pop() || resource.source;
+	const badge = badgeStyleForKind(resource.kind, resource.source);
+	return (
+		<ResourcePreviewHover resource={resource} app={app} previewClassName="pktw-z-[100]">
+			<button
+				type="button"
+				className="pk-attach-chip pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-text-[12px] pktw-text-foreground pktw-cursor-pointer"
+				style={{ height: 26, maxWidth: 210 }}
+				onClick={(e) => {
+					e.stopPropagation();
+					void onOpen(resource);
+				}}
+				title={filename}
+			>
+				<span
+					className="pktw-shrink-0"
+					style={{ width: 6, height: 6, borderRadius: 999, background: badge.bg }}
+				/>
+				<span className="pktw-truncate">{filename}</span>
+			</button>
+		</ResourcePreviewHover>
+	);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// URL GROUP
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface UrlGroupProps {
+	urls: ChatResourceRef[];
+	onOpen: OpenHandler;
+	app: App;
+}
+
+function UrlGroup({ urls, onOpen, app }: UrlGroupProps) {
+	if (urls.length > 1) {
+		return (
+			<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-justify-end pktw-w-full">
+				{urls.map((u) => (
+					<UrlChip key={u.id} resource={u} onOpen={onOpen} app={app} />
+				))}
+			</div>
+		);
+	}
+	return <UrlCard resource={urls[0]} onOpen={onOpen} app={app} />;
+}
+
+interface UrlParts {
+	host: string;
+	pathDisplay: string;
+	title: string;
+	/** Best-effort preview image URL (host-specific OG or a favicon).
+	 *  null → render the gradient fallback instead. */
+	thumb: string | null;
+}
+
+/**
+ * Best-effort thumbnail URL for a link. We can't do a CORS-restricted OG fetch
+ * from the browser, so we map known hosts to their published OG endpoints
+ * (GitHub has a stable one) and fall back to the favicon for everything else.
+ * For URLs we can't classify we return null and the renderer shows a gradient
+ * plate with a Globe glyph.
+ */
+function deriveThumbUrl(u: URL): string | null {
+	const host = u.host.replace(/^www\./, '');
+	// GitHub publishes a stable OG endpoint: any first-segment value is treated
+	// as a cache buster, so `1/{owner}/{repo}` works for repos.
+	if (host === 'github.com') {
+		const parts = u.pathname.split('/').filter(Boolean);
+		if (parts.length >= 2) {
+			const [owner, repo] = parts;
+			return `https://opengraph.githubassets.com/1/${owner}/${repo}`;
+		}
+	}
+	// Generic fallback — favicon as a tiny preview. DuckDuckGo serves higher-res
+	// site icons than browsers' built-in favicon paths.
+	return `https://icons.duckduckgo.com/ip3/${host}.ico`;
+}
+
+function parseUrl(src: string): UrlParts {
+	try {
+		const u = new URL(src);
+		const host = u.host.replace(/^www\./, '');
+		const path = u.pathname && u.pathname !== '/' ? u.pathname : '';
+		return {
+			host,
+			pathDisplay: host + path,
+			title: host + path,
+			thumb: deriveThumbUrl(u),
+		};
+	} catch {
+		return { host: src, pathDisplay: src, title: src, thumb: null };
+	}
+}
+
+function UrlCard({ resource, onOpen, app }: { resource: ChatResourceRef; onOpen: OpenHandler; app: App }) {
+	const { host, title, thumb } = parseUrl(resource.source);
+	// Two flavors of thumb:
+	//   - "og" (e.g. opengraph.githubassets.com) → big preview; cover the whole
+	//     thumb cell as an inline <img>. If it 404s, hide the img and the
+	//     gradient backdrop from the CSS class shows through.
+	//   - "favicon" → 36×36 site mark centered on the gradient.
+	const isFavicon = thumb?.includes('icons.duckduckgo.com') || thumb?.endsWith('.ico');
+	// Skip the hover preview for URL cards. The inline card already shows host
+	// + title + URL + OG image — the hover just duplicates that, with worse
+	// formatting (a small text tooltip showing the filename).
+	return (
+		<ResourcePreviewHover resource={resource} app={app} enabled={false} previewClassName="pktw-z-[100]">
+			<button
+				type="button"
+				className="pk-attach-card pk-attach-url pktw-w-full pktw-text-left pktw-cursor-pointer"
+				onClick={(e) => {
+					e.stopPropagation();
+					void onOpen(resource);
+				}}
+			>
+				<span className="pk-attach-url__thumb">
+					{thumb && !isFavicon && (
+						<img
+							className="pk-attach-url__og"
+							src={thumb}
+							alt=""
+							onError={(e) => {
+								(e.currentTarget as HTMLImageElement).style.display = 'none';
+							}}
+						/>
+					)}
+					{thumb && isFavicon && (
+						<img
+							className="pk-attach-url__favicon"
+							src={thumb}
+							alt=""
+							onError={(e) => {
+								(e.currentTarget as HTMLImageElement).style.display = 'none';
+							}}
+						/>
+					)}
+					{!thumb && <Globe style={{ width: 28, height: 28 }} />}
+				</span>
+				<div className="pktw-p-3 pktw-min-w-0 pktw-flex-1">
+					<div className="pktw-text-[11px] pktw-text-muted-foreground pktw-flex pktw-items-center pktw-gap-1 pktw-mb-0.5">
+						<Globe className="pktw-w-3 pktw-h-3" />
+						<span className="pktw-truncate">{host}</span>
+					</div>
+					<div
+						className="pktw-text-[13px] pktw-font-medium pktw-text-foreground pktw-mb-0.5"
+						style={{
+							display: '-webkit-box',
+							WebkitLineClamp: 2,
+							WebkitBoxOrient: 'vertical',
+							overflow: 'hidden',
+						}}
+					>
+						{title}
+					</div>
+					<div className="pktw-text-[11px] pktw-text-muted-foreground pktw-truncate">
+						{resource.source}
+					</div>
+				</div>
+			</button>
+		</ResourcePreviewHover>
+	);
+}
+
+function UrlChip({ resource, onOpen, app }: { resource: ChatResourceRef; onOpen: OpenHandler; app: App }) {
+	const { pathDisplay } = parseUrl(resource.source);
+	// Same reasoning as UrlCard — chip already shows the full URL on its tooltip
+	// (`title={resource.source}`), so a HoverCard would be redundant.
+	return (
+		<ResourcePreviewHover resource={resource} app={app} enabled={false} previewClassName="pktw-z-[100]">
+			<button
+				type="button"
+				className="pk-attach-chip pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-text-[12px] pktw-text-foreground pktw-cursor-pointer"
+				style={{ height: 26, maxWidth: 210 }}
+				onClick={(e) => {
+					e.stopPropagation();
+					void onOpen(resource);
+				}}
+				title={resource.source}
+			>
+				<span
+					className="pktw-shrink-0"
+					style={{ width: 6, height: 6, borderRadius: 999, background: '#0d9488' }}
+				/>
+				<span className="pktw-truncate">{pathDisplay}</span>
+			</button>
+		</ResourcePreviewHover>
+	);
+}

@@ -1,7 +1,14 @@
 import * as React from 'react';
 import { cn } from '@/ui/react/lib/utils';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+export type ButtonVariant =
+    | 'primary'
+    | 'secondary'
+    | 'ghost'
+    /** Visual alias of `secondary` — kept for call-site readability when the
+     *  intent is "bordered button on a card background". */
+    | 'outline'
+    | 'destructive';
 export type ButtonSize = 'default' | 'sm';
 
 export interface ButtonProps
@@ -27,8 +34,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 			className={cn(
 				'pk-btn',
 				variant === 'primary' && 'pk-btn--primary',
-				variant === 'secondary' && 'pk-btn--secondary',
+				(variant === 'secondary' || variant === 'outline') &&
+					'pk-btn--secondary',
 				variant === 'ghost' && 'pk-btn--ghost',
+				variant === 'destructive' && 'pk-btn--danger',
 				size === 'sm' && 'pk-btn--sm',
 				className
 			)}

@@ -61,7 +61,13 @@ const CopilotPickerContent: React.FC<{
 	onSelect: (action: CopilotAction) => void;
 	onAuto: (tab: IntentTabId, mode: 'fast' | 'complete') => void;
 	onOpenHistoryRecord: (record: CopilotReviewHistoryRecord) => void;
-	onOpenAllHistory: () => void;
+	/**
+	 * Routes the user from the "All reviews" link in the Recent column.
+	 * The `scope` matches the tab the user is currently on, NOT the tab the
+	 * modal was opened with — without this, switching to Vault and clicking
+	 * "All reviews" would land in Document Reviews. See image #65 regression.
+	 */
+	onOpenAllHistory: (scope: IntentTabId) => void;
 	onOpenVaultRecord: (record: VaultReviewHistoryRecord) => void;
 	ctx: DocumentContext | null;
 	initialTab: IntentTabId;
@@ -182,7 +188,7 @@ const CopilotPickerContent: React.FC<{
 							title={recentTitle(activeTab)}
 							link={activeTab === 'setting'
 								? undefined  // no real diagnostics history yet — Phase D
-								: { label: recentLinkLabel(activeTab), onClick: onOpenAllHistory }}
+								: { label: recentLinkLabel(activeTab), onClick: () => onOpenAllHistory(activeTab) }}
 							badge={activeTab === 'setting' ? 'preview' : undefined}
 						/>
 						<div className="pktw-flex-1 pktw-flex pktw-flex-col">
@@ -617,20 +623,21 @@ export class CopilotPickerModal extends Modal {
 							initialInsightChats: chats,
 						}).open();
 					},
-					onOpenAllHistory: () => {
-						const tabAtOpen = this.options.initialTab;
+					onOpenAllHistory: (scopeTab: IntentTabId) => {
 						const ctxAppContext = this.appContext;
-						// Scope inherits from current tab: Vault tab → vault auto-reviews;
-						// Document tab → per-note Copilot reviews (with this-note/all-notes toggle);
-						// Setting tab → fall back to document scope (it has no history of its own).
-						const scope: 'document' | 'vault' = tabAtOpen === 'vault' ? 'vault' : 'document';
+						// Scope follows the tab the user is on RIGHT NOW. Using
+						// `this.options.initialTab` ignores in-modal tab switches
+						// and is the cause of image #65: a click on "All reviews"
+						// from the Vault tab opens Document Reviews.
+						const scope: 'document' | 'vault' =
+							scopeTab === 'vault' ? 'vault' : 'document';
 						const currentNotePath = ctx?.file.path ?? null;
 						this.close();
 						new CopilotReviewHistoryModal(app, {
 							scope,
 							currentNotePath,
 							onBackToPicker: () => {
-								new CopilotPickerModal(ctxAppContext, { initialTab: tabAtOpen }).open();
+								new CopilotPickerModal(ctxAppContext, { initialTab: scopeTab }).open();
 							},
 						}).open();
 					},

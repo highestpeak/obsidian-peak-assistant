@@ -24,19 +24,28 @@ interface Props {
 export const NewConversationTypePicker: React.FC<Props> = ({ selectedKind, onSelectType }) => (
   <div className="pktw-flex pktw-flex-col pktw-items-center pktw-gap-4 pktw-py-8">
     <span className="pktw-text-sm pktw-text-muted-foreground">Start a new conversation</span>
-    <div className="pktw-grid pktw-grid-cols-2 pktw-gap-3 pktw-w-full pktw-max-w-[360px]">
+    {/* Single row of three cards per locked mock 02-new-conversation-no-index
+        — previous grid-cols-2 wrapped Plan onto its own row, which read as
+        a stranded fourth option. Width widened to 520px to host three cards
+        comfortably at typical sidebar / studio center widths. */}
+    <div className="pktw-grid pktw-grid-cols-3 pktw-gap-3 pktw-w-full pktw-max-w-[520px]">
       {TYPE_OPTIONS.map(opt => {
         const isSelected = opt.type.kind === selectedKind;
         return (
           <div
             key={opt.type.kind}
             className={cn(
-              "pktw-flex pktw-flex-col pktw-items-center pktw-gap-1.5 pktw-p-4 pktw-rounded-lg pktw-border pktw-cursor-pointer pktw-transition-all pktw-relative",
+              // Hover/selected colors use --pk-accent-tint directly. The
+              // earlier `bg-accent/5` form depended on Tailwind splitting an
+              // alpha channel off `--pk-accent`, but --pk-accent is a hex
+              // string (`#7c3aed`), not a space-separated channel triple, so
+              // the `/N` opacity modifier silently produces no background.
+              "pkchat-type-card pktw-flex pktw-flex-col pktw-items-center pktw-gap-1.5 pktw-p-4 pktw-rounded-lg pktw-border pktw-cursor-pointer pktw-transition-all pktw-relative",
               opt.disabled
                 ? "pktw-opacity-50 pktw-cursor-not-allowed pktw-border-border"
                 : isSelected
-                  ? "pktw-border-[var(--pk-accent)] pktw-bg-accent/5"
-                  : "pktw-border-border hover:pktw-border-[var(--pk-accent)] hover:pktw-bg-accent/5"
+                  ? "pkchat-type-card--selected"
+                  : "pkchat-type-card--idle"
             )}
             onClick={() => !opt.disabled && onSelectType(opt.type)}
           >

@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mock 04 — User message + resources permutation catalog</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { createIcons, icons } from 'https://cdn.jsdelivr.net/npm/lucide@latest/dist/esm/lucide.js';
+    window.addEventListener('DOMContentLoaded', () => createIcons({ icons, attrs: { 'stroke-width': 1.5 } }));
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #fafafa;
+      --border: #ececec;
+      --border-faint: #f1f1f3;
+      --text: #1a1a1d;
+      --text-muted: #74747e;
+      --text-faint: #9b9ba6;
+      --accent: #7c5cff;
+      --accent-strong: #6a47f0;
+      --accent-tint: #f1edff;
+      --pdf-red: #e0464b;
+      --csv-green: #1f8a4c;
+      --xlsx-green: #0f7c3a;
+      --pptx-orange: #d8651e;
+      --docx-blue: #2a64c9;
+      --txt-gray: #6b7280;
+      --json-amber: #c87f00;
+      --md-violet: #7c5cff;
+      --zip-purple: #7c3aed;
+      --audio-rose: #e11d72;
+      --video-indigo: #4338ca;
+      --code-dark: #2b2733;
+      --url-teal: #0d9488;
+    }
+    html, body { background: #f4f4f6; color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+
+    .doc { max-width: 880px; margin: 0 auto; padding: 40px 24px 80px; }
+    .doc-caption { font-size: 11px; color: var(--text-faint); margin-bottom: 28px; }
+    .toc {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 36px;
+    }
+    .toc h2 { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 8px; }
+    .toc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 24px; }
+    .toc a { font-size: 12px; color: var(--text); text-decoration: none; padding: 2px 0; }
+    .toc a:hover { color: var(--accent-strong); }
+    .toc-key { display: inline-block; width: 28px; color: var(--text-faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+
+    .group-label { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-strong); margin: 48px 0 4px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .section-label { font-size: 12px; font-weight: 600; letter-spacing: 0.03em; color: var(--text); margin: 28px 0 6px; }
+    .section-label .id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--text-faint); margin-right: 8px; }
+    .desc { font-size: 12px; color: var(--text-muted); margin: 0 0 10px; line-height: 1.45; }
+
+    /* User bubble — right-aligned, neutral fill (matches chat surface convention) */
+    .msg-row { display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 14px; }
+    .bubble {
+      background: #f6f5fa;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.55;
+      padding: 10px 14px;
+      border-radius: 12px;
+      max-width: 520px;
+      word-wrap: break-word;
+    }
+    .bubble.empty { display: none; }  /* used to suppress in attachment-only variants */
+    .bubble-tiny { font-size: 13px; padding: 6px 10px; }
+
+    .res-cluster {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 520px;
+      width: 100%;
+      align-items: flex-end;
+      margin-bottom: 6px;
+    }
+    .res-cluster.tall { gap: 6px; }
+
+    /* IMAGE TILES */
+    .img-tile { border-radius: 10px; overflow: hidden; background: #f0eef9; display: block; flex-shrink: 0; position: relative; }
+    .img-tile img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .img-tile .badge-overlay {
+      position: absolute; right: 6px; bottom: 6px;
+      background: rgba(20, 20, 25, 0.78);
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      backdrop-filter: blur(4px);
+    }
+    .img-tile .more-overlay {
+      position: absolute; inset: 0;
+      background: rgba(20, 20, 25, 0.55);
+      color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 600;
+    }
+
+    /* FILE CARDS — color-coded by kind */
+    .file-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+      background: #fff; border: 1px solid var(--border); border-radius: 10px;
+      width: 100%; max-width: 520px;
+    }
+    .file-card.compact { padding: 8px 10px; }
+    .file-badge {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      color: white;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+    }
+    .file-card.compact .file-badge { width: 30px; height: 30px; font-size: 10px; }
+    .file-badge.pdf  { background: var(--pdf-red); }
+    .file-badge.csv  { background: var(--csv-green); }
+    .file-badge.xlsx { background: var(--xlsx-green); }
+    .file-badge.docx { background: var(--docx-blue); }
+    .file-badge.pptx { background: var(--pptx-orange); }
+    .file-badge.txt  { background: var(--txt-gray); }
+    .file-badge.json { background: var(--json-amber); }
+    .file-badge.md   { background: var(--md-violet); }
+    .file-badge.zip  { background: var(--zip-purple); }
+    .file-badge.code { background: var(--code-dark); }
+    .file-meta { flex: 1; min-width: 0; }
+    .file-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-sub { font-size: 11px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-side { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; color: var(--text-faint); }
+
+    /* CHIPS — compact */
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 26px; padding: 0 10px;
+      background: #fff; border: 1px solid var(--border); border-radius: 999px;
+      font-size: 12px; color: var(--text);
+      max-width: 210px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .chip-dot { width: 6px; height: 6px; border-radius: 999px; flex-shrink: 0; }
+    .chip-dot.pdf  { background: var(--pdf-red); }
+    .chip-dot.csv  { background: var(--csv-green); }
+    .chip-dot.xlsx { background: var(--xlsx-green); }
+    .chip-dot.docx { background: var(--docx-blue); }
+    .chip-dot.pptx { background: var(--pptx-orange); }
+    .chip-dot.txt  { background: var(--txt-gray); }
+    .chip-dot.json { background: var(--json-amber); }
+    .chip-dot.md   { background: var(--md-violet); }
+    .chip-dot.zip  { background: var(--zip-purple); }
+    .chip-dot.audio{ background: var(--audio-rose); }
+    .chip-dot.video{ background: var(--video-indigo); }
+    .chip-dot.url  { background: var(--url-teal); }
+    .chip-count { color: var(--text-muted); font-weight: 500; }
+
+    /* CODE BLOCKS */
+    .code-block {
+      width: 100%; max-width: 520px;
+      background: #faf9fd; border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden;
+    }
+    .code-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 12px; font-size: 11px; color: var(--text-faint);
+      border-bottom: 1px solid var(--border-faint); background: #f5f3fb;
+    }
+    .code-body { padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--text); white-space: pre; overflow-x: auto; }
+    .code-body .kw { color: #b91c8c; }
+    .code-body .str { color: #18794e; }
+    .code-body .com { color: var(--text-faint); }
+
+    /* URL PREVIEW CARD */
+    .url-card {
+      width: 100%; max-width: 520px;
+      background: #fff; border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden;
+      display: grid; grid-template-columns: 120px 1fr;
+    }
+    .url-card .thumb { background: linear-gradient(135deg, #cdc4f3 0%, #8676d8 100%); }
+    .url-card .body { padding: 10px 12px; min-width: 0; }
+    .url-card .site { font-size: 11px; color: var(--text-faint); display: inline-flex; align-items: center; gap: 4px; margin-bottom: 2px; }
+    .url-card .title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .url-card .url { font-size: 11px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* AUDIO / VIDEO */
+    .audio-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+      background: #fff; border: 1px solid var(--border); border-radius: 10px;
+      width: 100%; max-width: 520px;
+    }
+    .audio-play {
+      width: 36px; height: 36px; border-radius: 999px;
+      background: var(--audio-rose); color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .waveform {
+      flex: 1; min-width: 0;
+      height: 22px;
+      background-image: repeating-linear-gradient(90deg, rgba(225,29,114,0.42) 0 2px, transparent 2px 5px);
+      mask-image: linear-gradient(0deg, transparent 0%, #000 30%, #000 70%, transparent 100%);
+    }
+    .video-tile {
+      position: relative; border-radius: 10px; overflow: hidden;
+      width: 280px; height: 158px; background: #1a1a25;
+      flex-shrink: 0;
+    }
+    .video-tile img { width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
+    .video-tile .play {
+      position: absolute; inset: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: #fff;
+    }
+    .video-tile .duration {
+      position: absolute; right: 6px; bottom: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px; color: #fff;
+      background: rgba(20, 20, 25, 0.78);
+      padding: 2px 6px; border-radius: 4px;
+    }
+
+    /* LAYOUT HELPERS */
+    .res-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+    .res-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+    .res-grid-4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
+    .res-grid-hero {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-auto-rows: 64px;
+      gap: 6px; width: 100%;
+    }
+    .res-grid-hero .img-tile.hero { grid-column: span 4; grid-row: span 3; }
+    .row-inline-files { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+    .row-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; width: 100%; }
+    .row-side { display: flex; gap: 8px; width: 100%; align-items: flex-start; }
+
+    .ref-caption { font-size: 11px; color: var(--text-faint); margin-top: 8px; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 720px) { .pair { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="doc">
+
+    <div class="doc-caption">Mock 04 · User message + resources — permutation catalog (35 variants)</div>
+
+    <!-- ============ TOC ============ -->
+    <div class="toc">
+      <h2>Catalog</h2>
+      <div class="toc-grid">
+        <a href="#A"><span class="toc-key">A1</span>Single image (square)</a>
+        <a href="#A2"><span class="toc-key">A2</span>Single image (landscape)</a>
+        <a href="#A3"><span class="toc-key">A3</span>Single image (portrait)</a>
+        <a href="#B1"><span class="toc-key">B1</span>2 images (50/50)</a>
+        <a href="#B2"><span class="toc-key">B2</span>3 images (strip)</a>
+        <a href="#B3"><span class="toc-key">B3</span>4 images (2×2)</a>
+        <a href="#B4"><span class="toc-key">B4</span>5+ images (hero + grid)</a>
+        <a href="#B5"><span class="toc-key">B5</span>9 images (gallery +N)</a>
+        <a href="#C1"><span class="toc-key">C1</span>1 PDF</a>
+        <a href="#C2"><span class="toc-key">C2</span>1 CSV / 1 XLSX</a>
+        <a href="#C3"><span class="toc-key">C3</span>1 DOCX / 1 PPTX</a>
+        <a href="#C4"><span class="toc-key">C4</span>1 JSON / 1 MD</a>
+        <a href="#C5"><span class="toc-key">C5</span>1 ZIP / 1 TXT</a>
+        <a href="#D1"><span class="toc-key">D1</span>2 files different kinds</a>
+        <a href="#D2"><span class="toc-key">D2</span>3 files mixed kinds</a>
+        <a href="#D3"><span class="toc-key">D3</span>5+ files chip cluster</a>
+        <a href="#E1"><span class="toc-key">E1</span>1 image + 1 PDF</a>
+        <a href="#E2"><span class="toc-key">E2</span>1 image + 2 files</a>
+        <a href="#E3"><span class="toc-key">E3</span>2 images + 1 PDF</a>
+        <a href="#E4"><span class="toc-key">E4</span>3 images + 2 files</a>
+        <a href="#E5"><span class="toc-key">E5</span>1 image + 4 files</a>
+        <a href="#F1"><span class="toc-key">F1</span>1 code fence (short)</a>
+        <a href="#F2"><span class="toc-key">F2</span>1 code fence (long, scroll)</a>
+        <a href="#F3"><span class="toc-key">F3</span>2 code fences</a>
+        <a href="#F4"><span class="toc-key">F4</span>Code + image</a>
+        <a href="#F5"><span class="toc-key">F5</span>Code + file</a>
+        <a href="#F6"><span class="toc-key">F6</span>Code + image + file</a>
+        <a href="#G1"><span class="toc-key">G1</span>1 URL rich preview</a>
+        <a href="#G2"><span class="toc-key">G2</span>3 URLs (chip list)</a>
+        <a href="#G3"><span class="toc-key">G3</span>URL + file</a>
+        <a href="#H1"><span class="toc-key">H1</span>Audio file</a>
+        <a href="#H2"><span class="toc-key">H2</span>Video file</a>
+        <a href="#H3"><span class="toc-key">H3</span>Video + transcript</a>
+        <a href="#I1"><span class="toc-key">I1</span>Heavy mix (everything)</a>
+        <a href="#I2"><span class="toc-key">I2</span>Attachment only (no text)</a>
+      </div>
+    </div>
+
+
+    <!-- ============ A. IMAGES ONLY ============ -->
+    <div class="group-label">A · Image — single</div>
+
+    <div id="A" class="section-label"><span class="id">A1</span>Single square image, short text</div>
+    <p class="desc">Default for "user attached one photo". 200×200 thumb. Image leads, text follows.</p>
+    <div class="msg-row">
+      <div class="res-cluster"><span class="img-tile" style="width: 200px; height: 200px;"><img src="https://picsum.photos/seed/a1/400/400.jpg" alt=""/></span></div>
+      <div class="bubble">Take a look at the dependency graph</div>
+    </div>
+
+    <div id="A2" class="section-label"><span class="id">A2</span>Single landscape image, long caption</div>
+    <p class="desc">Wider thumb (300×170). Long text wraps inside the same 520 max.</p>
+    <div class="msg-row">
+      <div class="res-cluster"><span class="img-tile" style="width: 300px; height: 170px;"><img src="https://picsum.photos/seed/a2/600/340.jpg" alt=""/></span></div>
+      <div class="bubble">Pulled this from the architecture deck. Note how the routing layer doesn't have a feedback loop into the providers — that's the gap we discussed yesterday and probably the reason for the stale-cache issue I keep hitting in production.</div>
+    </div>
+
+    <div id="A3" class="section-label"><span class="id">A3</span>Single portrait image, no text</div>
+    <p class="desc">Tall thumb (140×200). Bubble omitted — image stands alone.</p>
+    <div class="msg-row">
+      <div class="res-cluster"><span class="img-tile" style="width: 140px; height: 200px;"><img src="https://picsum.photos/seed/a3/280/400.jpg" alt=""/></span></div>
+    </div>
+
+
+    <div class="group-label">B · Image — multi</div>
+
+    <div id="B1" class="section-label"><span class="id">B1</span>2 images, 50/50 grid</div>
+    <p class="desc">Symmetric pair — used for compare/contrast prompts.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="res-grid-2">
+          <span class="img-tile" style="height: 180px;"><img src="https://picsum.photos/seed/b1a/400/360.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 180px;"><img src="https://picsum.photos/seed/b1b/400/360.jpg" alt=""/></span>
+        </div>
+      </div>
+      <div class="bubble">Compare these two storyboards</div>
+    </div>
+
+    <div id="B2" class="section-label"><span class="id">B2</span>3 images, strip</div>
+    <p class="desc">Horizontal strip — each thumb 120px tall, equal width.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="res-grid-3">
+          <span class="img-tile" style="height: 120px;"><img src="https://picsum.photos/seed/b2a/300/300.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 120px;"><img src="https://picsum.photos/seed/b2b/300/300.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 120px;"><img src="https://picsum.photos/seed/b2c/300/300.jpg" alt=""/></span>
+        </div>
+      </div>
+      <div class="bubble">Three drafts from the team session</div>
+    </div>
+
+    <div id="B3" class="section-label"><span class="id">B3</span>4 images, 2×2 contact sheet</div>
+    <p class="desc">Square grid reads as one block instead of a long row.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="res-grid-4">
+          <span class="img-tile" style="height: 130px;"><img src="https://picsum.photos/seed/b3a/280/280.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 130px;"><img src="https://picsum.photos/seed/b3b/280/280.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 130px;"><img src="https://picsum.photos/seed/b3c/280/280.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 130px;"><img src="https://picsum.photos/seed/b3d/280/280.jpg" alt=""/></span>
+        </div>
+      </div>
+      <div class="bubble">Vote on your top pick (1–4)</div>
+    </div>
+
+    <div id="B4" class="section-label"><span class="id">B4</span>5 images, hero + thumbnail row</div>
+    <p class="desc">First image becomes the hero (spans full width), rest are 4-up thumb strip below — gives users a "pick one" visual cue.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <span class="img-tile hero" style="width: 100%; height: 220px;"><img src="https://picsum.photos/seed/b4hero/640/360.jpg" alt=""/></span>
+        <div class="res-grid-3" style="grid-template-columns: repeat(4, 1fr);">
+          <span class="img-tile" style="height: 84px;"><img src="https://picsum.photos/seed/b4a/200/200.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 84px;"><img src="https://picsum.photos/seed/b4b/200/200.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 84px;"><img src="https://picsum.photos/seed/b4c/200/200.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 84px;"><img src="https://picsum.photos/seed/b4d/200/200.jpg" alt=""/></span>
+        </div>
+      </div>
+      <div class="bubble">Pick the hero shot for the launch</div>
+    </div>
+
+    <div id="B5" class="section-label"><span class="id">B5</span>9 images, gallery with "+N more"</div>
+    <p class="desc">Cap at 4 visible thumbs · last tile overlays "+5" — clicking opens the full gallery (not shown).</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="res-grid-4">
+          <span class="img-tile" style="height: 130px;"><img src="https://picsum.photos/seed/b5a/280/280.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 130px;"><img src="https://picsum.photos/seed/b5b/280/280.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 130px;"><img src="https://picsum.photos/seed/b5c/280/280.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 130px;"><img src="https://picsum.photos/seed/b5d/280/280.jpg" alt=""/><span class="more-overlay">+5</span></span>
+        </div>
+      </div>
+      <div class="bubble">Full set from the offsite</div>
+    </div>
+
+
+    <!-- ============ C. SINGLE FILE KINDS ============ -->
+    <div class="group-label">C · File — by kind</div>
+
+    <div id="C1" class="section-label"><span class="id">C1</span>1 PDF — single attachment</div>
+    <p class="desc">Most common file attachment. Page count + size in sub-line.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="file-card">
+          <span class="file-badge pdf">PDF</span>
+          <div class="file-meta">
+            <div class="file-name">2026-search-architecture.pdf</div>
+            <div class="file-sub">specs/2026-search-architecture.pdf · 14 pages · 1.8 MB</div>
+          </div>
+          <i data-lucide="download" class="w-4 h-4 file-side"></i>
+        </div>
+      </div>
+      <div class="bubble">Review before our sync tomorrow</div>
+    </div>
+
+    <div id="C2" class="section-label"><span class="id">C2</span>1 CSV + 1 XLSX side-by-side (spreadsheet family)</div>
+    <p class="desc">Same shape, different colors — green family = tabular data.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="row-inline-files">
+          <div class="file-card"><span class="file-badge csv">CSV</span><div class="file-meta"><div class="file-name">usage-metrics-2026Q2.csv</div><div class="file-sub">12,408 rows</div></div></div>
+          <div class="file-card"><span class="file-badge xlsx">XLSX</span><div class="file-meta"><div class="file-name">risk-register.xlsx</div><div class="file-sub">4 sheets · 2.1 MB</div></div></div>
+        </div>
+      </div>
+      <div class="bubble">Q2 metrics + risk register</div>
+    </div>
+
+    <div id="C3" class="section-label"><span class="id">C3</span>1 DOCX + 1 PPTX (office family)</div>
+    <p class="desc">Blue / orange family signals Word & PowerPoint at a glance.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="row-inline-files">
+          <div class="file-card"><span class="file-badge docx">DOCX</span><div class="file-meta"><div class="file-name">2026-product-brief.docx</div><div class="file-sub">8 pages · 740 KB</div></div></div>
+          <div class="file-card"><span class="file-badge pptx">PPTX</span><div class="file-meta"><div class="file-name">launch-deck-final.pptx</div><div class="file-sub">42 slides · 18 MB</div></div></div>
+        </div>
+      </div>
+      <div class="bubble">Both the brief and the deck</div>
+    </div>
+
+    <div id="C4" class="section-label"><span class="id">C4</span>1 JSON + 1 MD (developer family)</div>
+    <p class="desc">Amber / violet — structured data + markdown doc.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="row-inline-files">
+          <div class="file-card"><span class="file-badge json">JSON</span><div class="file-meta"><div class="file-name">conversation-archive.json</div><div class="file-sub">exports/ · 2.4 MB</div></div></div>
+          <div class="file-card"><span class="file-badge md">MD</span><div class="file-meta"><div class="file-name">implementation-plan.md</div><div class="file-sub">plans/implementation-plan.md</div></div></div>
+        </div>
+      </div>
+      <div class="bubble">Raw export and the plan</div>
+    </div>
+
+    <div id="C5" class="section-label"><span class="id">C5</span>1 ZIP + 1 TXT (misc family)</div>
+    <p class="desc">Archive + plain text. Used for "everything bundled" cases.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="row-inline-files">
+          <div class="file-card"><span class="file-badge zip">ZIP</span><div class="file-meta"><div class="file-name">2026-archive.zip</div><div class="file-sub">412 files · 34 MB</div></div></div>
+          <div class="file-card"><span class="file-badge txt">TXT</span><div class="file-meta"><div class="file-name">migration-notes.txt</div><div class="file-sub">8.2 KB</div></div></div>
+        </div>
+      </div>
+      <div class="bubble">Bundle + the notes</div>
+    </div>
+
+
+    <!-- ============ D. MULTI-FILE ============ -->
+    <div class="group-label">D · Files — multi-kind cluster</div>
+
+    <div id="D1" class="section-label"><span class="id">D1</span>2 files different kinds (compact)</div>
+    <p class="desc">Compact card variant (smaller badge) when there are 2+ files to give breathing room.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="row-inline-files">
+          <div class="file-card compact"><span class="file-badge pdf">PDF</span><div class="file-meta"><div class="file-name">spec.pdf</div><div class="file-sub">14 pages</div></div></div>
+          <div class="file-card compact"><span class="file-badge md">MD</span><div class="file-meta"><div class="file-name">notes.md</div><div class="file-sub">docs/</div></div></div>
+        </div>
+      </div>
+      <div class="bubble">Spec + notes</div>
+    </div>
+
+    <div id="D2" class="section-label"><span class="id">D2</span>3 files, 3 different kinds</div>
+    <p class="desc">Stacked. Each row shows kind via the colored badge — kinds visually balanced.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="row-inline-files">
+          <div class="file-card compact"><span class="file-badge pdf">PDF</span><div class="file-meta"><div class="file-name">architecture-spec.pdf</div><div class="file-sub">14 pages</div></div></div>
+          <div class="file-card compact"><span class="file-badge xlsx">XLSX</span><div class="file-meta"><div class="file-name">risk-register.xlsx</div><div class="file-sub">4 sheets</div></div></div>
+          <div class="file-card compact"><span class="file-badge json">JSON</span><div class="file-meta"><div class="file-name">conversation-archive.json</div><div class="file-sub">2.4 MB</div></div></div>
+        </div>
+      </div>
+      <div class="bubble">All three deliverables</div>
+    </div>
+
+    <div id="D3" class="section-label"><span class="id">D3</span>7 files — collapse to chip cluster</div>
+    <p class="desc">Threshold rule: > 4 files → switch from cards to chips. Color dot = kind. Last chip shows "+N" only if truncated by row width.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="row-chips">
+          <span class="chip"><span class="chip-dot pdf"></span>spec.pdf</span>
+          <span class="chip"><span class="chip-dot xlsx"></span>risk-register.xlsx</span>
+          <span class="chip"><span class="chip-dot csv"></span>usage-metrics.csv</span>
+          <span class="chip"><span class="chip-dot json"></span>conversation-archive.json</span>
+          <span class="chip"><span class="chip-dot md"></span>provider.md</span>
+          <span class="chip"><span class="chip-dot docx"></span>brief.docx</span>
+          <span class="chip"><span class="chip-dot pptx"></span>deck.pptx</span>
+        </div>
+      </div>
+      <div class="bubble">Full release package</div>
+    </div>
+
+
+    <!-- ============ E. IMAGE + FILE MIX ============ -->
+    <div class="group-label">E · Image + file mix</div>
+
+    <div id="E1" class="section-label"><span class="id">E1</span>1 image + 1 PDF</div>
+    <p class="desc">Visual leads. PDF card sits below at full cluster width.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <span class="img-tile" style="width: 240px; height: 160px;"><img src="https://picsum.photos/seed/e1/480/320.jpg" alt=""/></span>
+        <div class="file-card"><span class="file-badge pdf">PDF</span><div class="file-meta"><div class="file-name">2026-search-architecture.pdf</div><div class="file-sub">14 pages</div></div></div>
+      </div>
+      <div class="bubble">Repro + spec</div>
+    </div>
+
+    <div id="E2" class="section-label"><span class="id">E2</span>1 image + 2 files</div>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <span class="img-tile" style="width: 240px; height: 150px;"><img src="https://picsum.photos/seed/e2/480/300.jpg" alt=""/></span>
+        <div class="row-inline-files">
+          <div class="file-card compact"><span class="file-badge xlsx">XLSX</span><div class="file-meta"><div class="file-name">risk-register.xlsx</div><div class="file-sub">4 sheets</div></div></div>
+          <div class="file-card compact"><span class="file-badge md">MD</span><div class="file-meta"><div class="file-name">implementation-plan.md</div><div class="file-sub">plans/</div></div></div>
+        </div>
+      </div>
+      <div class="bubble">Show me the flow, the risk register, and the plan</div>
+    </div>
+
+    <div id="E3" class="section-label"><span class="id">E3</span>2 images + 1 PDF</div>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="res-grid-2">
+          <span class="img-tile" style="height: 140px;"><img src="https://picsum.photos/seed/e3a/300/280.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 140px;"><img src="https://picsum.photos/seed/e3b/300/280.jpg" alt=""/></span>
+        </div>
+        <div class="file-card"><span class="file-badge pdf">PDF</span><div class="file-meta"><div class="file-name">design-review.pdf</div><div class="file-sub">6 pages</div></div></div>
+      </div>
+      <div class="bubble">Before/after + the review doc</div>
+    </div>
+
+    <div id="E4" class="section-label"><span class="id">E4</span>3 images + 2 files</div>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="res-grid-3">
+          <span class="img-tile" style="height: 100px;"><img src="https://picsum.photos/seed/e4a/240/240.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 100px;"><img src="https://picsum.photos/seed/e4b/240/240.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 100px;"><img src="https://picsum.photos/seed/e4c/240/240.jpg" alt=""/></span>
+        </div>
+        <div class="row-inline-files">
+          <div class="file-card compact"><span class="file-badge pdf">PDF</span><div class="file-meta"><div class="file-name">storyboard-review.pdf</div><div class="file-sub">12 pages</div></div></div>
+          <div class="file-card compact"><span class="file-badge md">MD</span><div class="file-meta"><div class="file-name">feedback-notes.md</div><div class="file-sub">docs/</div></div></div>
+        </div>
+      </div>
+      <div class="bubble">Three storyboards + the review + my notes</div>
+    </div>
+
+    <div id="E5" class="section-label"><span class="id">E5</span>1 image + 4 files (chip switch for files)</div>
+    <p class="desc">Mixed threshold: image kept full size (visual anchor), files switch to chips since count > 3.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <span class="img-tile" style="width: 240px; height: 150px;"><img src="https://picsum.photos/seed/e5/480/300.jpg" alt=""/></span>
+        <div class="row-chips">
+          <span class="chip"><span class="chip-dot pdf"></span>spec.pdf</span>
+          <span class="chip"><span class="chip-dot xlsx"></span>budget.xlsx</span>
+          <span class="chip"><span class="chip-dot md"></span>plan.md</span>
+          <span class="chip"><span class="chip-dot json"></span>config.json</span>
+        </div>
+      </div>
+      <div class="bubble">Lead with the diagram, everything else is reference</div>
+    </div>
+
+
+    <!-- ============ F. CODE FENCES ============ -->
+    <div class="group-label">F · Code fences</div>
+
+    <div id="F1" class="section-label"><span class="id">F1</span>1 short code fence</div>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="code-block">
+          <div class="code-head"><span>typescript</span><span>4 lines</span></div>
+          <pre class="code-body"><span class="kw">function</span> route(model: Model): Provider {
+  <span class="kw">return</span> providers[model.tier] ?? providers.<span class="str">"default"</span>;
+}</pre>
+        </div>
+      </div>
+      <div class="bubble">Found the fallback gap</div>
+    </div>
+
+    <div id="F2" class="section-label"><span class="id">F2</span>1 long code fence (horizontal scroll)</div>
+    <p class="desc">Long lines do NOT wrap — horizontal scroll inside the block.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="code-block">
+          <div class="code-head"><span>python</span><span>9 lines</span></div>
+          <pre class="code-body"><span class="com"># Concurrent failover benchmark — runs N attempts in parallel and tracks fail-rate by provider tier</span>
+<span class="kw">async def</span> benchmark(providers: list[Provider], attempts: int = 1000, concurrency: int = 32) -&gt; FailoverReport:
+    sem = asyncio.Semaphore(concurrency)
+    <span class="kw">async def</span> probe(_):
+        <span class="kw">async with</span> sem:
+            <span class="kw">return</span> await call_any_provider(providers, timeout=<span class="str">5.0</span>)
+    results = await asyncio.gather(*(probe(i) <span class="kw">for</span> i <span class="kw">in</span> range(attempts)), return_exceptions=<span class="kw">True</span>)
+    failed = sum(<span class="kw">1 for</span> r <span class="kw">in</span> results <span class="kw">if isinstance</span>(r, Exception))
+    <span class="kw">return</span> FailoverReport(attempts=attempts, failed=failed, rate=failed / attempts)</pre>
+        </div>
+      </div>
+      <div class="bubble">The concurrent failover benchmark — long lines, expect to scroll</div>
+    </div>
+
+    <div id="F3" class="section-label"><span class="id">F3</span>2 code fences, different languages</div>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="code-block">
+          <div class="code-head"><span>typescript</span><span>3 lines</span></div>
+          <pre class="code-body"><span class="kw">type</span> Provider = { id: string; tier: <span class="str">"primary"</span> | <span class="str">"fallback"</span> };
+<span class="kw">const</span> registry: Provider[] = [];</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-head"><span>mermaid</span><span>5 lines</span></div>
+          <pre class="code-body">graph LR
+  User --&gt; Chat
+  Chat --&gt; Router
+  Router --&gt; Providers
+  Providers --&gt; Vault</pre>
+        </div>
+      </div>
+      <div class="bubble">Types and the routing path</div>
+    </div>
+
+    <div id="F4" class="section-label"><span class="id">F4</span>Code fence + 1 image</div>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <span class="img-tile" style="width: 280px; height: 170px;"><img src="https://picsum.photos/seed/f4/560/340.jpg" alt=""/></span>
+        <div class="code-block">
+          <div class="code-head"><span>typescript</span><span>4 lines</span></div>
+          <pre class="code-body"><span class="kw">function</span> route(model: Model): Provider {
+  <span class="kw">return</span> providers[model.tier] ?? providers.<span class="str">"default"</span>;
+}</pre>
+        </div>
+      </div>
+      <div class="bubble">Flow diagram + the routing function</div>
+    </div>
+
+    <div id="F5" class="section-label"><span class="id">F5</span>Code fence + 1 file</div>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="code-block">
+          <div class="code-head"><span>yaml</span><span>5 lines</span></div>
+          <pre class="code-body">providers:
+  - id: claude
+    tier: primary
+  - id: gpt
+    tier: fallback</pre>
+        </div>
+        <div class="file-card"><span class="file-badge md">MD</span><div class="file-meta"><div class="file-name">provider-config-spec.md</div><div class="file-sub">specs/provider-config-spec.md</div></div></div>
+      </div>
+      <div class="bubble">Config snippet + the spec doc</div>
+    </div>
+
+    <div id="F6" class="section-label"><span class="id">F6</span>Code + image + file (3 kinds)</div>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <span class="img-tile" style="width: 280px; height: 170px;"><img src="https://picsum.photos/seed/f6/560/340.jpg" alt=""/></span>
+        <div class="code-block">
+          <div class="code-head"><span>typescript</span><span>4 lines</span></div>
+          <pre class="code-body"><span class="kw">function</span> route(model: Model): Provider {
+  <span class="kw">return</span> providers[model.tier];
+}</pre>
+        </div>
+        <div class="file-card"><span class="file-badge md">MD</span><div class="file-meta"><div class="file-name">provider.md</div><div class="file-sub">docs/ai/provider.md</div></div></div>
+      </div>
+      <div class="bubble">Graph, function, source — all three line up</div>
+    </div>
+
+
+    <!-- ============ G. URLS ============ -->
+    <div class="group-label">G · URLs / links</div>
+
+    <div id="G1" class="section-label"><span class="id">G1</span>1 URL — rich preview card</div>
+    <p class="desc">Site name + page title + URL. Thumbnail is the OG image (or a gradient fallback).</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="url-card">
+          <div class="thumb"></div>
+          <div class="body">
+            <div class="site"><i data-lucide="globe" style="width: 11px; height: 11px;"></i> github.com</div>
+            <div class="title">openai/cookbook — Examples and guides for using the OpenAI API</div>
+            <div class="url">github.com/openai/openai-cookbook</div>
+          </div>
+        </div>
+      </div>
+      <div class="bubble">Check this for the streaming examples</div>
+    </div>
+
+    <div id="G2" class="section-label"><span class="id">G2</span>3 URLs — chip list</div>
+    <p class="desc">More than one link → compact chip with favicon dot + truncated URL.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="row-chips">
+          <span class="chip"><span class="chip-dot url"></span>github.com/openai/openai-cookbook</span>
+          <span class="chip"><span class="chip-dot url"></span>anthropic.com/news/claude-3-5</span>
+          <span class="chip"><span class="chip-dot url"></span>vercel.com/docs/ai-sdk</span>
+        </div>
+      </div>
+      <div class="bubble">Three references — all relevant to the streaming question</div>
+    </div>
+
+    <div id="G3" class="section-label"><span class="id">G3</span>URL + file</div>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="url-card">
+          <div class="thumb"></div>
+          <div class="body">
+            <div class="site"><i data-lucide="globe" style="width: 11px; height: 11px;"></i> arxiv.org</div>
+            <div class="title">Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks</div>
+            <div class="url">arxiv.org/abs/2005.11401</div>
+          </div>
+        </div>
+        <div class="file-card"><span class="file-badge pdf">PDF</span><div class="file-meta"><div class="file-name">2005.11401-rag.pdf</div><div class="file-sub">19 pages</div></div></div>
+      </div>
+      <div class="bubble">Paper page + a local copy</div>
+    </div>
+
+
+    <!-- ============ H. AUDIO / VIDEO ============ -->
+    <div class="group-label">H · Audio / video</div>
+
+    <div id="H1" class="section-label"><span class="id">H1</span>Audio file — waveform card</div>
+    <p class="desc">Rose play button + waveform pattern + duration. Click plays inline.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="audio-card">
+          <span class="audio-play"><i data-lucide="play" style="width: 16px; height: 16px; fill: currentColor;"></i></span>
+          <div class="waveform"></div>
+          <span class="file-sub" style="flex-shrink: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">2:34</span>
+        </div>
+      </div>
+      <div class="bubble">Recording from the standup</div>
+    </div>
+
+    <div id="H2" class="section-label"><span class="id">H2</span>Video file — thumbnail + play overlay</div>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <span class="video-tile">
+          <img src="https://picsum.photos/seed/h2/560/320.jpg" alt=""/>
+          <span class="play"><i data-lucide="play" style="width: 36px; height: 36px; fill: currentColor;"></i></span>
+          <span class="duration">3:42</span>
+        </span>
+      </div>
+      <div class="bubble">Demo walkthrough — 3 min</div>
+    </div>
+
+    <div id="H3" class="section-label"><span class="id">H3</span>Video + transcript file</div>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <span class="video-tile">
+          <img src="https://picsum.photos/seed/h3/560/320.jpg" alt=""/>
+          <span class="play"><i data-lucide="play" style="width: 36px; height: 36px; fill: currentColor;"></i></span>
+          <span class="duration">12:08</span>
+        </span>
+        <div class="file-card"><span class="file-badge txt">TXT</span><div class="file-meta"><div class="file-name">demo-transcript.txt</div><div class="file-sub">12 min · auto-generated</div></div></div>
+      </div>
+      <div class="bubble">Video + the transcript if you'd rather skim</div>
+    </div>
+
+
+    <!-- ============ I. HEAVY MIX / EDGE CASES ============ -->
+    <div class="group-label">I · Edge cases &amp; heavy mix</div>
+
+    <div id="I1" class="section-label"><span class="id">I1</span>Heavy mix — image gallery + chip files + code + URL (everything)</div>
+    <p class="desc">Stress test: what happens when a user dumps ~10 resources at once. Each group gets its own compact layout; nothing tries to be "hero".</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="res-grid-4">
+          <span class="img-tile" style="height: 100px;"><img src="https://picsum.photos/seed/i1a/240/240.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 100px;"><img src="https://picsum.photos/seed/i1b/240/240.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 100px;"><img src="https://picsum.photos/seed/i1c/240/240.jpg" alt=""/></span>
+          <span class="img-tile" style="height: 100px;"><img src="https://picsum.photos/seed/i1d/240/240.jpg" alt=""/><span class="more-overlay">+2</span></span>
+        </div>
+        <div class="code-block">
+          <div class="code-head"><span>typescript</span><span>3 lines</span></div>
+          <pre class="code-body"><span class="kw">const</span> routes = providers.map(p =&gt; ({ id: p.id, tier: p.tier }));
+<span class="kw">const</span> primaries = routes.filter(r =&gt; r.tier === <span class="str">"primary"</span>);</pre>
+        </div>
+        <div class="row-chips">
+          <span class="chip"><span class="chip-dot pdf"></span>spec.pdf</span>
+          <span class="chip"><span class="chip-dot xlsx"></span>register.xlsx</span>
+          <span class="chip"><span class="chip-dot md"></span>plan.md</span>
+          <span class="chip"><span class="chip-dot url"></span>github.com/.../routing</span>
+        </div>
+      </div>
+      <div class="bubble">Everything from this week — images, code, the docs you asked for, and the github reference</div>
+    </div>
+
+    <div id="I2" class="section-label"><span class="id">I2</span>Attachment only — no text bubble</div>
+    <p class="desc">User attaches a file but writes nothing. Bubble suppressed; attachment stands alone.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <div class="file-card"><span class="file-badge pdf">PDF</span><div class="file-meta"><div class="file-name">2026-search-architecture.pdf</div><div class="file-sub">14 pages · 1.8 MB</div></div></div>
+      </div>
+    </div>
+
+    <div id="I3" class="section-label"><span class="id">I3</span>Tiny image + very long text</div>
+    <p class="desc">Asymmetric: a small visual marker plus a long question. Image stays compact so bubble dominates.</p>
+    <div class="msg-row">
+      <div class="res-cluster">
+        <span class="img-tile" style="width: 100px; height: 100px;"><img src="https://picsum.photos/seed/i3/200/200.jpg" alt=""/></span>
+      </div>
+      <div class="bubble">I keep seeing this exact icon flash on the loading screen for ~200ms before the real UI paints. Is this a placeholder image baked into the bundle? If so we should either remove it or set a default opacity transition so it doesn't pop visually. Can you trace where it's referenced?</div>
+    </div>
+
+
+    <!-- ============ FOOTER ============ -->
+    <div class="group-label">Token cheatsheet</div>
+    <div class="ref-caption leading-relaxed" style="font-size: 12px;">
+      <div><b>cluster max-width</b> 520px — same as bubble. Resources right-edge aligns with bubble right-edge.</div>
+      <div><b>image grid thresholds</b> 1: solo sized to subject · 2: 50/50 · 3: equal strip · 4: 2×2 · 5+: hero + thumb row · 8+: gallery with +N overlay on tile 4</div>
+      <div><b>file card</b> 36×36 badge default; compact 30×30 when ≥ 2 files</div>
+      <div><b>chip threshold</b> &gt; 4 files (or any URL count &gt; 1) → chips. 6×6 color dot = kind, max-width 210 per chip with ellipsis</div>
+      <div><b>file badge colors</b> PDF #e0464b · CSV #1f8a4c · XLSX #0f7c3a · DOCX #2a64c9 · PPTX #d8651e · JSON #c87f00 · MD/violet #7c5cff · TXT #6b7280 · ZIP #7c3aed · audio #e11d72 · video #4338ca · URL #0d9488</div>
+      <div><b>code block</b> bg #faf9fd · radius 10 · monospace 12.5px · header shows language + line count · horizontal scroll for long lines</div>
+      <div><b>video tile</b> 280×158 default · play icon centered · duration pill bottom-right · OG thumbnail at 0.85 opacity</div>
+      <div><b>audio card</b> 36px rose play button + striped waveform mask + monospace duration</div>
+      <div><b>URL card</b> 120px gradient/OG thumb + body (site / title 2-line clamp / URL truncated)</div>
+      <div><b>order convention</b> visual anchor → reasoning artifact → reference doc — top-to-bottom in the cluster matches reading priority</div>
+    </div>
+
+  </div>
+</body>
+</html>

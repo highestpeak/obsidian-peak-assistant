@@ -8,6 +8,10 @@ import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { Button } from '@/ui/component/shared-ui/button';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, MoreHorizontal } from 'lucide-react';
+// Note: Project row uses Folder/FolderOpen as the SOLE expand toggle —
+// the redundant chevron was dropped 2026-06-04 per design unification with
+// the right-rail Conversation Index. ChevronDown/ChevronRight remain in
+// scope for the section header collapse (PROJECTS uppercase row).
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent } from '@/core/eventBus';
@@ -65,9 +69,18 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 
 	// Handlers
 	const handleProjectHeaderClick = async () => {
+		// Capture state BEFORE toggling — we use it to decide whether the click
+		// is an "expand" (open the project overview as well) or a "collapse"
+		// (just flip the state). Without this guard, the collapse path would
+		// fire SELECTION_CHANGED via openProjectOverviewInChat, which
+		// ProjectListView's listener interprets as "expand this project if not
+		// already expanded" — instantly re-expanding what we just collapsed.
+		const wasExpanded = isExpanded;
 		toggleProjectExpanded(project.meta.id);
 		setActiveProject(project);
-		await openProjectOverviewInChat(project, { viewManager, eventBus });
+		if (!wasExpanded) {
+			await openProjectOverviewInChat(project, { viewManager, eventBus });
+		}
 	};
 
 	const handleConversationClick = async (conversation: ChatConversation) => {
@@ -223,31 +236,32 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				onContextMenu={(e) => handleContextMenu(e, 'project', project)}
 			>
 				{isExpanded ? (
-					<>
-						<ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
-						<FolderOpen className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
-					</>
+					<FolderOpen className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground pktw-transition-colors" />
 				) : (
-					<>
-						<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
-						<Folder className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
-					</>
+					<Folder className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground pktw-transition-colors" />
 				)}
-				<span className="pktw-flex-1 pktw-text-sm pktw-text-foreground pktw-break-words pktw-leading-snug">
+				<span
+					className="pktw-flex-1 pktw-min-w-0 pktw-text-sm pktw-text-foreground pktw-truncate"
+					title={project.meta.name}
+				>
 					{project.meta.name}
 				</span>
 			</div>
 
-			{/* Conversations */}
+			{/* Conversations — single level of indent (16px) anchored by a
+			    1px guide line dropping from beneath the folder icon. This
+			    replaces the previous ml-7 outer + ml-7 inner stacking that
+			    pushed conversation rows ~56px in from the panel edge. */}
 			<div className={cn(
-				'pktw-flex pktw-flex-col pktw-gap-px pktw-ml-7 pktw-overflow-hidden pktw-transition-all pktw-duration-150 pktw-ease-in-out',
+				'pktw-flex pktw-flex-col pktw-gap-px pktw-overflow-hidden pktw-transition-all pktw-duration-150 pktw-ease-in-out',
+				'pkproj-children',
 				isExpanded
 					? 'pktw-max-h-[5000px] pktw-opacity-100 pktw-mt-0.5 pointer-events-auto'
 					: 'pktw-max-h-0 pktw-opacity-0 pktw-mt-0 pointer-events-none'
 			)}>
 				{/* New conversation button */}
 				<div
-					className="pktw-w-full pktw-px-2 pktw-py-1.5 pktw-rounded pktw-text-[13px] pktw-min-h-7 pktw-mb-0.5 pktw-bg-transparent pktw-text-muted-foreground hover:pktw-bg-muted hover:pktw-text-foreground pktw-transition-colors pktw-cursor-pointer pktw-flex pktw-items-center pktw-justify-center"
+					className="pktw-w-full pktw-px-2 pktw-py-1.5 pktw-rounded pktw-text-[13px] pktw-min-h-7 pktw-mb-0.5 pktw-bg-transparent pktw-text-muted-foreground hover:pktw-bg-muted hover:pktw-text-foreground pktw-transition-colors pktw-cursor-pointer pktw-flex pktw-items-center"
 					onClick={(e) => {
 						e.stopPropagation();
 						handleNewConversation();
@@ -265,27 +279,26 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 					+ New conversation
 				</div>
 
-				{/* Render conversations */}
-				<div className="pktw-ml-7">
-					<ConversationList
-						conversations={conversationsToShow}
-						activeConversation={activeConversation}
-						typewriterEnabled={typewriterEnabled}
-						onConversationClick={(conv) => {
-							handleConversationClick(conv);
-						}}
-						onContextMenu={(e, conv) => {
-							e.stopPropagation();
-							handleContextMenu(e, 'conversation', conv);
-						}}
-						onTypewriterComplete={(conversationId) => onTypewriterComplete(conversationId)}
-						showIndicator={true}
-					/>
-				</div>
+				{/* Render conversations — no extra wrapper indent; the
+				    .pkproj-children left padding + guide handles nesting. */}
+				<ConversationList
+					conversations={conversationsToShow}
+					activeConversation={activeConversation}
+					typewriterEnabled={typewriterEnabled}
+					onConversationClick={(conv) => {
+						handleConversationClick(conv);
+					}}
+					onContextMenu={(e, conv) => {
+						e.stopPropagation();
+						handleContextMenu(e, 'conversation', conv);
+					}}
+					onTypewriterComplete={(conversationId) => onTypewriterComplete(conversationId)}
+					showIndicator={true}
+				/>
 
 				{hasMoreConversations && (
 					<div
-						className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-mx-6 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-xs pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
+						className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-xs pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
 						onClick={(e) => {
 							e.stopPropagation();
 							// Show all conversations for this project in list view
@@ -488,7 +501,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) 
 					) : (
 						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
 					)}
-					<h3 className="pktw-flex-1 pktw-m-0 pktw-text-[13px] pktw-font-semibold pktw-text-foreground pktw-uppercase pktw-tracking-wide">Projects</h3>
+					<h3 className="pktw-flex-1 pktw-m-0 pktw-text-[11px] pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-tracking-wider">Projects</h3>
 				</div>
 				<IconButton
 					size="lg"
