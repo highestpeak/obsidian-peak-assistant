@@ -9,6 +9,7 @@
 # They should be uploaded to GitHub releases instead.
 # bun - no use anymore
 # local MCP config (machine-specific paths)
+# Generated visual design assets are archived externally.
 # npm
 # obsidian
 # vscode
@@ -26,6 +27,14 @@
 bun.lock
 data.json
 data/traces/
+docs/gstack/**/*.gif
+docs/gstack/**/*.jpeg
+docs/gstack/**/*.jpg
+docs/gstack/**/*.mov
+docs/gstack/**/*.mp4
+docs/gstack/**/*.pdf
+docs/gstack/**/*.png
+docs/gstack/**/*.webp
 dist-desktop/
 fonts/
 main.css
