@@ -1,35 +1,44 @@
-import { Notice } from 'obsidian';
+import {
+	getDefaultProgressReporter,
+	type ProgressHandle,
+	type ProgressReporterPort,
+} from '@/service/ports/ProgressReporterPort';
 
 /** Progress tracker for indexing operations with periodic updates and final statistics. */
 export class IndexProgressTracker {
-	private notice: Notice | null = null;
+	private handle: ProgressHandle | null = null;
+	private readonly reporter: ProgressReporterPort;
 	private readonly totalFiles: number | null;
 	private startTime: number | null = null;
 	private cancelled = false;
 
-	constructor(totalFiles?: number) {
+	constructor(totalFiles?: number, reporter?: ProgressReporterPort) {
 		this.totalFiles = totalFiles ?? null;
+		this.reporter = reporter ?? getDefaultProgressReporter();
 	}
 
 	showStart(customMessage?: string): void {
-		this.notice = new Notice(customMessage || 'Building search index...', 0);
+		this.handle = this.reporter.show(customMessage || 'Building search index...', 0);
 		this.startTime = Date.now();
 		this.cancelled = false;
 	}
 
 	cancel(): void {
 		this.cancelled = true;
-		if (this.notice) { this.notice.hide(); this.notice = new Notice('Indexing cancelled', 3000); }
+		if (this.handle) {
+			this.handle.hide();
+			this.handle = this.reporter.show('Indexing cancelled', 3000);
+		}
 	}
 
 	isCancelled(): boolean { return this.cancelled; }
 
 	dismiss(): void {
-		if (this.notice) { this.notice.hide(); this.notice = null; }
+		if (this.handle) { this.handle.hide(); this.handle = null; }
 	}
 
 	updateProgress(currentCount: number): void {
-		if (!this.notice) return;
+		if (!this.handle) return;
 		const elapsedMs = this.startTime ? Date.now() - this.startTime : 0;
 		const elapsed = this.formatDuration(elapsedMs);
 
@@ -44,12 +53,11 @@ export class IndexProgressTracker {
 		} else {
 			message = `Indexing: ${currentCount} files processed... - ${elapsed} elapsed`;
 		}
-		this.notice.hide();
-		this.notice = new Notice(message, 0);
+		this.handle.setMessage(message);
 	}
 
 	showComplete(stats: Record<string, any>): void {
-		this.notice?.hide();
+		this.handle?.hide();
 		const finalStats = { ...stats };
 		if (finalStats.duration === undefined && this.startTime !== null) finalStats.duration = Date.now() - this.startTime;
 
@@ -63,12 +71,12 @@ export class IndexProgressTracker {
 		const lines = Object.entries(finalStats)
 			.filter(([, v]) => v != null)
 			.map(([k, v]) => `${labels[k] ?? k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()}: ${formatters[k] ? formatters[k](v) : String(v)}`);
-		this.notice = new Notice(`Indexing complete!\n${lines.join('\n')}`, 8000);
+		this.handle = this.reporter.show(`Indexing complete!\n${lines.join('\n')}`, 8000);
 	}
 
 	showError(errorMessage: string): void {
-		this.notice?.hide();
-		this.notice = new Notice(`Indexing failed: ${errorMessage}`, 5000);
+		this.handle?.hide();
+		this.handle = this.reporter.show(`Indexing failed: ${errorMessage}`, 5000);
 	}
 
 	private formatDuration(ms: number): string {

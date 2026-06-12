@@ -66,6 +66,11 @@ import { DEFAULT_SKILLS_FOLDER } from '@/core/constant';
 import { SkillRegistry } from '@/service/skills/SkillRegistry';
 import { CapabilityRegistry } from '@/service/capabilities';
 import { openSettingsModal } from '@/app/commands/PeakCommandActions';
+import {
+	clearDefaultProgressReporter,
+	setDefaultProgressReporter,
+} from '@/service/ports/ProgressReporterPort';
+import { ObsidianProgressReporter } from '@/app/adapters/ObsidianProgressReporter';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -106,6 +111,13 @@ export default class MyPlugin extends Plugin {
 	 * Bootstraps services, views, commands, and layout handling.
 	 */
 	async onload() {
+		// Register the process-level ProgressReporterPort default before any
+		// service code can construct an IndexProgressTracker. The tracker's
+		// constructor calls getDefaultProgressReporter() when no reporter is
+		// passed; a missing registration throws, which makes a forgotten
+		// wiring step fail loudly rather than silently dropping notifications.
+		setDefaultProgressReporter(new ObsidianProgressReporter());
+
 		registerTemplateEngineHelpers();
 
 		this.uninstallHoverMenuGlobals = installHoverMenuGlobals();
@@ -622,6 +634,9 @@ export default class MyPlugin extends Plugin {
 		UsageOptimizationService.getInstance().destroy();
 		AppContext.clearForUnload();
 		SessionContextService.destroyInstance();
+		// Drop the ProgressReporterPort default so a hot-reloaded plugin
+		// bundle does not see a stale Notice closure from the previous load.
+		clearDefaultProgressReporter();
 		EventBus.destroyInstance();
 		IndexService.clearInstance();
 		DocumentLoaderManager.clearInstance();
