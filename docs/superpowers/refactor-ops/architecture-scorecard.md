@@ -118,6 +118,7 @@ Use the ledger for checkpoints. Detailed per-dimension scores belong in the Owne
 | 2026-06-12 | T1 Vault Lint Contract Seed | `3626c48` | 58 | 31 | 33 | 21 | 36 | Accepted. Small clarity gain; no runtime rewrite, no ports, no deletion. |
 | 2026-06-12 | T2A ProgressReporterPort first slice | `f9cf49f` | 51 | 46 | 42 | 44 | 46 | Accepted. One service-side Obsidian `Notice` path moved behind a fakeable port; narrow slice, no RunEnvelope yet. |
 | 2026-06-12 | T2B IndexInitializer ProgressReporterPort follow-up | `fbf8a56` + `79478b0` | 58 | 55 | 45 | 55 | 54 | Accepted. Same port reused by second search indexing adopter; `IndexInitializer` direct `Notice` path and private helper removed. |
+| 2026-06-12 | T2C AnalysisDocPersistence Notice cleanup | `2e97eac` | 60 | 58 | 46 | 60 | 56 | Accepted. Same port reused by third search adopter; `analysisDocPersistence` direct `Notice` path removed, no new mutable default introduced. |
 
 ## Evidence Rules
 

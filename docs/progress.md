@@ -80,7 +80,8 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T2B IndexInitializer ProgressReporterPort follow-up handoff ready：`docs/superpowers/refactor-ops/t2b-index-initializer-progress-reporter-handoff.md`
 - [x] T2B implementation 完成并接受：`fbf8a56` + review fix `79478b0` + Owner Review `docs/superpowers/audits/2026-06-12-t2b-owner-review-packet.md`
 - [x] T2C AnalysisDocPersistence Notice cleanup handoff ready：`docs/superpowers/refactor-ops/t2c-analysis-doc-persistence-notice-cleanup-handoff.md`
-- [ ] 用户决定是否把 T2C handoff 发给 Claude Code；如果跳过 T2C，则进入 T3 RunEnvelope Core
+- [x] T2C implementation 完成并接受：`2e97eac` + Owner Review `docs/superpowers/audits/2026-06-12-t2c-owner-review-packet.md`
+- [ ] 下一步：准备 T3 RunEnvelope Core handoff；不要继续批量扫其它 `Notice`
 - [ ] 不要提前做 Chat、Ambient Push、Command Gateway；Ambient 仍是 post-foundation，Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾
