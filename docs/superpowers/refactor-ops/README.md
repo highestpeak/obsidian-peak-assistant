@@ -91,15 +91,23 @@ Ambient starts only after the foundation is in place. Command Gateway starts onl
 
 ## First Implementation Task
 
-Use [`t0-boundary-baseline-handoff.md`](./t0-boundary-baseline-handoff.md) as the first Claude Code handoff.
+T0 is complete and accepted. The first completed Claude Code handoff was [`t0-boundary-baseline-handoff.md`](./t0-boundary-baseline-handoff.md).
 
-That handoff is intentionally conservative. T0 is a baseline and guard task, not a business rewrite.
+Next handoff to send:
+
+- [`t1-vault-lint-contract-seed-handoff.md`](./t1-vault-lint-contract-seed-handoff.md)
+
+Draft for after T1 acceptance:
+
+- [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md)
 
 ## Supporting Files
 
 - [`claude-code-handoff-template.md`](./claude-code-handoff-template.md): reusable Claude Code prompt shape.
 - [`owner-review-packet-template.md`](./owner-review-packet-template.md): Codex review packet shape after Claude Code commits.
 - [`architecture-scorecard.md`](./architecture-scorecard.md): scoring rubric and progress ledger.
+- [`t1-vault-lint-contract-seed-handoff.md`](./t1-vault-lint-contract-seed-handoff.md): next implementation handoff.
+- [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md): draft port extraction handoff for after T1.
 
 ## Do Not Do
 
