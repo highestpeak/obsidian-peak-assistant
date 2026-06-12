@@ -21,6 +21,15 @@ Current operating rules:
 - User manually authorizes each handoff.
 ```
 
+## Review Entry Points
+
+When Codex creates a handoff from this template, its chat closeout must include clickable absolute file links to:
+
+- the handoff the user should review/send to Claude Code;
+- the previous Owner Review Packet or audit that justifies the task;
+- any companion draft that should not be sent yet;
+- the current status: final, draft, or waiting for user approval.
+
 ## Task
 
 ```md

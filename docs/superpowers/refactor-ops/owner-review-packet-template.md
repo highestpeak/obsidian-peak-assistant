@@ -19,6 +19,18 @@ Verdict:
 - Accepted / Needs changes / Blocked
 ```
 
+## 0. Review Entry Points
+
+List the documents the user should open first. When Codex reports this packet in chat, it must also provide clickable absolute file links for these entries.
+
+| Review item | Status | Why open it |
+| --- | --- | --- |
+| This Owner Review Packet | Final / Draft | Main review surface for this task. |
+| Claude Code implementation note | Source evidence | Shows what Claude claims it changed and verified. |
+| Relevant handoff | Source contract | Shows what Claude was allowed to do. |
+| Companion audit / baseline | Evidence | Shows before/after or diagnostic evidence. |
+| Next handoff / draft | Pending approval | Shows the proposed next action, if any. |
+
 ## 1. One-Sentence Outcome
 
 What changed in plain language?

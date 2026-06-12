@@ -54,6 +54,24 @@ flowchart TD
 
 Manual handoff is intentional. It is the owner authorization point.
 
+## Review Access Rule
+
+Any document that requires user review must be easy to open from the Codex conversation where it is mentioned.
+
+Codex must do both:
+
+1. In the final chat response, list review artifacts with clickable absolute file links.
+2. In the document itself, include clear review entry points near the top when the document depends on companion reports, handoffs, source-of-truth docs, or next-step docs.
+
+Do not make the user hunt through git status, file trees, relative paths, or prior chat messages to find what needs review.
+
+For every review cycle, the user-facing closeout should include:
+
+- primary artifact to review;
+- companion evidence or previous packet, if relevant;
+- next handoff or next draft, if relevant;
+- whether the document is final, draft, or waiting for user approval.
+
 ## Non-Negotiable Gates
 
 Every implementation task must answer these before it is considered accepted:
