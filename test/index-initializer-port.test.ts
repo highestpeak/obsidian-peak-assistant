@@ -1,0 +1,130 @@
+import assert from 'assert';
+import fs from 'fs';
+import path from 'path';
+
+// Source-scan guard for T2B. This test does NOT exercise indexing logic at
+// runtime (that would require faking IndexService, SqliteStoreManager,
+// DocumentLoaderManager, and Obsidian's App, which is intentionally out of
+// T2B scope per docs/superpowers/refactor-ops/t2b-index-initializer-progress-reporter-handoff.md).
+// Its job is to prove the import boundary stays clean as T2B intended.
+
+const INDEX_INITIALIZER_PATH = path.resolve(
+	process.cwd(),
+	'src/service/search/index/indexInitializer.ts',
+);
+
+function readSource(): string {
+	return fs.readFileSync(INDEX_INITIALIZER_PATH, 'utf8');
+}
+
+function testFileDoesNotImportConcreteNoticeFromObsidian(): void {
+	const source = readSource();
+	// Reject any `import { ... Notice ... } from 'obsidian'` regardless of
+	// the `type` keyword, multi-line braces, or other co-imported symbols.
+	const re = /import\s+(?:type\s+)?\{[^}]*\bNotice\b[^}]*\}\s+from\s+['"]obsidian['"]/m;
+	assert.ok(
+		!re.test(source),
+		'indexInitializer.ts must not import `Notice` from obsidian (T2B contract)',
+	);
+	console.log('PASS: fileDoesNotImportConcreteNoticeFromObsidian');
+}
+
+function testFileDoesNotConstructNoticeDirectly(): void {
+	const source = readSource();
+	const re = /\bnew\s+Notice\b/;
+	assert.ok(
+		!re.test(source),
+		'indexInitializer.ts must not call `new Notice(...)` (T2B contract)',
+	);
+	console.log('PASS: fileDoesNotConstructNoticeDirectly');
+}
+
+function testTypeOnlyAppImportFromObsidianIsStillAllowed(): void {
+	const source = readSource();
+	// Per T2B explicit correction: a type-only `App` import from obsidian
+	// is allowed because it is a typing dependency, not a side-effect one.
+	// This positive assertion documents that intent.
+	const re = /import\s+type\s+\{[^}]*\bApp\b[^}]*\}\s+from\s+['"]obsidian['"]/m;
+	assert.ok(
+		re.test(source),
+		'indexInitializer.ts is expected to keep its type-only App import (constructor parameter typing)',
+	);
+	console.log('PASS: typeOnlyAppImportFromObsidianIsStillAllowed');
+}
+
+function testFileImportsProgressReporterPort(): void {
+	const source = readSource();
+	const re = /from\s+['"]@\/service\/ports\/ProgressReporterPort['"]/;
+	assert.ok(
+		re.test(source),
+		'indexInitializer.ts must import ProgressReporterPort (T2B reuse contract)',
+	);
+	console.log('PASS: fileImportsProgressReporterPort');
+}
+
+function testFileDoesNotImportObsidianAdapterDirectly(): void {
+	const source = readSource();
+	// Service code is forbidden from importing app-layer adapters; the
+	// reporter must always come through the port (constructor arg or the
+	// module-level default).
+	const re = /ObsidianProgressReporter/;
+	assert.ok(
+		!re.test(source),
+		'indexInitializer.ts must not reference ObsidianProgressReporter; the port is the only allowed boundary',
+	);
+	console.log('PASS: fileDoesNotImportObsidianAdapterDirectly');
+}
+
+function testPrivateOpenPipelineNoticeHelperIsRemoved(): void {
+	const source = readSource();
+	// The legacy private helper folded its native-setMessage heuristic into
+	// ObsidianProgressReporter.setMessage in T2B. The helper itself must no
+	// longer exist in this file.
+	assert.ok(
+		!/\bopenPipelineNotice\b/.test(source),
+		'indexInitializer.ts must no longer declare or call openPipelineNotice (T2B helper deletion)',
+	);
+	console.log('PASS: privateOpenPipelineNoticeHelperIsRemoved');
+}
+
+function testReporterShowReplacedAllNoticeCallSites(): void {
+	const source = readSource();
+	const showCount = (source.match(/this\.reporter\.show\(/g) ?? []).length;
+	// 17 one-shot replacements + 3 long-running pipeline replacements
+	// (Mobius maintenance, Step 2/4 vector pipeline, Step 2/2 fast-path
+	// graph maintenance) = 20 reporter.show calls. The exact count is the
+	// closest cheap proxy for "all sites were ported and none were missed".
+	assert.strictEqual(
+		showCount,
+		20,
+		`expected 20 this.reporter.show(...) calls in indexInitializer.ts after T2B, found ${showCount}`,
+	);
+	console.log('PASS: reporterShowReplacedAllNoticeCallSites');
+}
+
+function testConstructorAcceptsOptionalProgressReporterPort(): void {
+	const source = readSource();
+	// The optional 4th constructor parameter is the wiring point that lets
+	// existing 3-arg IndexInitializer construction sites stay untouched.
+	const re = /constructor\([^)]*reporter\?:\s*ProgressReporterPort\s*,?\s*\)\s*\{/s;
+	assert.ok(
+		re.test(source),
+		'IndexInitializer constructor must accept an optional ProgressReporterPort (T2B reuse-not-replace wiring)',
+	);
+	console.log('PASS: constructorAcceptsOptionalProgressReporterPort');
+}
+
+try {
+	testFileDoesNotImportConcreteNoticeFromObsidian();
+	testFileDoesNotConstructNoticeDirectly();
+	testTypeOnlyAppImportFromObsidianIsStillAllowed();
+	testFileImportsProgressReporterPort();
+	testFileDoesNotImportObsidianAdapterDirectly();
+	testPrivateOpenPipelineNoticeHelperIsRemoved();
+	testReporterShowReplacedAllNoticeCallSites();
+	testConstructorAcceptsOptionalProgressReporterPort();
+	process.exit(0);
+} catch (err) {
+	console.error(err);
+	process.exit(1);
+}

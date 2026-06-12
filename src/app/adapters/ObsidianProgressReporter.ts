@@ -14,11 +14,20 @@ export class ObsidianProgressReporter implements ProgressReporterPort {
 		const originalTimeoutMs = timeoutMs;
 		return {
 			setMessage(next: string): void {
-				// Match the legacy IndexProgressTracker behavior: destroy and
-				// recreate the Notice on every message change so the position,
-				// fade animation, and timeout reset are identical to what
-				// users saw before T2A.
-				notice?.hide();
+				// Prefer Obsidian's native Notice.setMessage when the running
+				// version supports it (flicker-free in-place update). This
+				// matches the pre-T2A heuristic used by the legacy
+				// IndexInitializer.openPipelineNotice helper, which T2B
+				// folds into this adapter so the port can serve pipeline
+				// callers without changing user-visible behavior.
+				if (notice) {
+					const native = notice as Notice & { setMessage?: (text: string) => void };
+					if (typeof native.setMessage === 'function') {
+						native.setMessage(next);
+						return;
+					}
+					notice.hide();
+				}
 				notice = new Notice(next, originalTimeoutMs);
 			},
 			hide(): void {

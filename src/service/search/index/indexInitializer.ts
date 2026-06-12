@@ -1,9 +1,12 @@
-import { Notice } from 'obsidian';
 import type { App } from 'obsidian';
 import type { SearchSettings } from '@/app/settings/types';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { DocumentType } from '@/core/document/types';
 import { IndexProgressTracker } from '../support/progress-tracker';
+import {
+	getDefaultProgressReporter,
+	type ProgressReporterPort,
+} from '@/service/ports/ProgressReporterPort';
 import {
 	defaultIndexDocumentOptions,
 	IndexService,
@@ -35,27 +38,31 @@ function maintenanceProgressMsg(prefix: string, ev: { phase: string; tenant: str
 }
 
 export class IndexInitializer {
+	private readonly reporter: ProgressReporterPort;
 
 	constructor(
 		private readonly app: App,
 		private readonly settings: SearchSettings,
 		private readonly storageFolder: string,
-	) {}
+		reporter?: ProgressReporterPort,
+	) {
+		this.reporter = reporter ?? getDefaultProgressReporter();
+	}
 
 	private async runMobiusMaintenanceIfDue(): Promise<void> {
 		if (!sqliteStoreManager.isInitialized()) return;
 		if (!(await IndexService.getInstance().isMobiusMaintenanceRecommended())) return;
-		const ui = this.openPipelineNotice('Mobius: running graph maintenance…');
+		const ui = this.reporter.show('Mobius: running graph maintenance…', 0);
 		try {
 			await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
 				onProgress: (ev) => ui.setMessage(maintenanceProgressMsg('Mobius', ev)),
 			});
 			ui.hide();
-			new Notice('Mobius graph maintenance completed.', 4000);
+			this.reporter.show('Mobius graph maintenance completed.', 4000);
 		} catch (e) {
 			ui.hide();
 			console.error('[IndexInitializer] Mobius maintenance failed:', e);
-			new Notice('Mobius graph maintenance failed. See console.', 5000);
+			this.reporter.show('Mobius graph maintenance failed. See console.', 5000);
 		}
 	}
 
@@ -69,12 +76,12 @@ export class IndexInitializer {
 				// No index exists - need initial indexing
 				if (this.settings.autoIndex) {
 					// Auto index enabled: show notification and index automatically
-					new Notice('Building search index...', 3000);
+					this.reporter.show('Building search index...', 3000);
 					await this.performFullIndexing(true);
 				} else {
 					// Auto index disabled: notify user they can enable it or run a manual build
 					// from Settings → Advanced → Maintenance → Index.
-					new Notice(
+					this.reporter.show(
 						'Search index not found. Enable "Auto Index" in settings, or run "Update index" from Settings → Advanced → Maintenance.',
 						6000,
 					);
@@ -83,15 +90,15 @@ export class IndexInitializer {
 			}
 
 			// Index exists - check for changes
-			new Notice('Scanning for index changes...', 5000);
+			this.reporter.show('Scanning for index changes...', 5000);
 			const { filesToIndex } = await this.scanForIndexChanges();
-			new Notice(`Scanning for index changes completed. files to index: ${filesToIndex.length}`, 3000);
+			this.reporter.show(`Scanning for index changes completed. files to index: ${filesToIndex.length}`, 3000);
 
 			if (filesToIndex.length > 0) {
 				if (this.settings.autoIndex) {
 					// Auto index enabled: show notification and index automatically
 					const fileCount = filesToIndex.length;
-					new Notice(
+					this.reporter.show(
 						`Updating search index: ${fileCount} file${fileCount === 1 ? '' : 's'} changed.`,
 						3000,
 					);
@@ -99,7 +106,7 @@ export class IndexInitializer {
 				} else {
 					// Auto index disabled: notify user to manually trigger indexing
 					const fileCount = filesToIndex.length;
-					new Notice(
+					this.reporter.show(
 						`Search index has ${fileCount} file${fileCount === 1 ? '' : 's'} to update. Run "Update index" from Settings → Advanced → Maintenance, or enable "Auto Index" in settings.`,
 						8000,
 					);
@@ -144,23 +151,6 @@ export class IndexInitializer {
 		return filesToIndex;
 	}
 
-	private openPipelineNotice(initial: string): { setMessage: (text: string) => void; hide: () => void } {
-		let n = new Notice(initial, 0);
-		const setMessage = (text: string) => {
-			const nn = n as Notice & { setMessage?: (m: string) => void };
-			if (typeof nn.setMessage === 'function') {
-				nn.setMessage(text);
-			} else {
-				n.hide();
-				n = new Notice(text, 0);
-			}
-		};
-		return {
-			setMessage,
-			hide: () => n.hide(),
-		};
-	}
-
 	/** Full pipeline: FTS → vector embeddings → LLM tags/summaries → Mobius maintenance. */
 	async performStagedFullIndexing(
 		showNotification: boolean = true,
@@ -168,7 +158,7 @@ export class IndexInitializer {
 		onError?: IndexErrorHandler,
 	): Promise<void> {
 		if (!sqliteStoreManager.isInitialized()) {
-			new Notice('Search index is not ready. Open the vault and wait for the plugin to load.', 6000);
+			this.reporter.show('Search index is not ready. Open the vault and wait for the plugin to load.', 6000);
 			return;
 		}
 
@@ -203,7 +193,7 @@ export class IndexInitializer {
 		} catch (e) {
 			progressTracker.dismiss();
 			console.error('[IndexInitializer] Staged pipeline failed at FTS step:', e);
-			new Notice(`Peak: Step 1/4 failed — ${(e as Error).message}`, 8000);
+			this.reporter.show(`Peak: Step 1/4 failed — ${(e as Error).message}`, 8000);
 			return;
 		}
 
@@ -215,11 +205,11 @@ export class IndexInitializer {
 		progressTracker.dismiss();
 		if (showNotification) {
 			const mb = storageSize > 0 ? (storageSize / 1024 / 1024).toFixed(2) : '0';
-			new Notice(`Peak: Step 1/4 done — FTS indexed ${indexedCount} file(s). DB ~${mb} MB.`, 5000);
+			this.reporter.show(`Peak: Step 1/4 done — FTS indexed ${indexedCount} file(s). DB ~${mb} MB.`, 5000);
 		}
 
 		if (level === 'semantic' || level === 'full') {
-			const pipelineUi = this.openPipelineNotice('Peak: Step 2/4 — Vector embeddings…');
+			const pipelineUi = this.reporter.show('Peak: Step 2/4 — Vector embeddings…', 0);
 			try {
 				await IndexService.runPendingVectorIndexEnrichment(this.settings, {
 					onProgress: ({ processed, total, path }) => {
@@ -251,7 +241,7 @@ export class IndexInitializer {
 				} else {
 					pipelineUi.hide();
 					console.error('[IndexInitializer] Step 2 failed:', e);
-					new Notice(`Peak: Step 2/4 failed — ${(e as Error).message}`, 8000);
+					this.reporter.show(`Peak: Step 2/4 failed — ${(e as Error).message}`, 8000);
 				}
 			}
 
@@ -304,14 +294,14 @@ export class IndexInitializer {
 			}
 			pipelineUi.hide();
 			if (showNotification) {
-				new Notice(
+				this.reporter.show(
 					'Peak: Full pipeline finished (FTS → vector → LLM → maintenance).',
 					8000,
 				);
 			}
 		} else {
 			// level === 'fast': only FTS done, run maintenance step
-			const pipelineUi = this.openPipelineNotice('Peak: Step 2/2 — Graph maintenance…');
+			const pipelineUi = this.reporter.show('Peak: Step 2/2 — Graph maintenance…', 0);
 			try {
 				await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
 					onProgress: (ev) => pipelineUi.setMessage(maintenanceProgressMsg('Peak: Step 2/2', ev)),
@@ -321,7 +311,7 @@ export class IndexInitializer {
 			}
 			pipelineUi.hide();
 			if (showNotification) {
-				new Notice('Peak: Fast indexing finished (FTS + graph maintenance).', 5000);
+				this.reporter.show('Peak: Fast indexing finished (FTS + graph maintenance).', 5000);
 			}
 		}
 	}
@@ -353,7 +343,7 @@ export class IndexInitializer {
 	/** Full vault pass: core FTS + chunks only (`listener_fast`). Defers vectors and LLM via pending flags. */
 	async performFastCoreFullIndexing(_showNotification: boolean): Promise<void> {
 		if (!sqliteStoreManager.isInitialized()) {
-			new Notice('Search index is not ready. Open the vault and wait for the plugin to load.', 6000);
+			this.reporter.show('Search index is not ready. Open the vault and wait for the plugin to load.', 6000);
 			return;
 		}
 		IndexService.resetCancellation();
@@ -378,9 +368,9 @@ export class IndexInitializer {
 	/** If paths not provided, scan vault and show progress notices. */
 	private async resolveFilesToIndex(paths?: string[]): Promise<string[]> {
 		if (paths) return paths;
-		new Notice('Scanning for index changes...', 5000);
+		this.reporter.show('Scanning for index changes...', 5000);
 		const { filesToIndex } = await this.scanForIndexChanges();
-		new Notice(`Scanning for index changes completed. files to index: ${filesToIndex.length}`, 3000);
+		this.reporter.show(`Scanning for index changes completed. files to index: ${filesToIndex.length}`, 3000);
 		return filesToIndex;
 	}
 
