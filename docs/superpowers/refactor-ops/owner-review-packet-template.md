@@ -2,6 +2,13 @@
 
 Codex writes this after Claude Code completes one implementation task and commits. The goal is not only to review code. The goal is to help the user understand whether the project became more elegant, modular, and controllable.
 
+Owner-facing language rule:
+
+- Write the packet in Chinese first.
+- Keep code symbols, file names, commands, test names, interface names, and commit messages in English.
+- Explain architecture terms the first time they matter, especially `Inventory`, `Port`, `Adapter`, `Capability Contract`, and `RunEnvelope`.
+- Put the user decision near the top, before detailed evidence.
+
 ## Packet Header
 
 ```md
@@ -17,6 +24,12 @@ Source-of-truth docs checked:
 
 Verdict:
 - Accepted / Needs changes / Blocked
+
+Owner decision:
+- <用户现在要决定什么>
+
+Global position:
+- <这一轮在 T0-T12 里的位置，以及为什么不是在做产品功能本身>
 ```
 
 ## 0. Review Entry Points
@@ -38,6 +51,12 @@ What changed in plain language?
 ```md
 This task <introduced / measured / replaced / deleted / projected> <boundary or capability> so that <control benefit>.
 ```
+
+中文说明:
+
+- 这一轮做了什么:
+- 为什么这让项目更可控:
+- 它没有做什么:
 
 ## 2. Before Runtime Path
 

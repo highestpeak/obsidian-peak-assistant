@@ -72,6 +72,25 @@ For every review cycle, the user-facing closeout should include:
 - next handoff or next draft, if relevant;
 - whether the document is final, draft, or waiting for user approval.
 
+## Owner-Facing Language Rule
+
+Owner-facing refactor artifacts must optimize for user understanding, not English practice.
+
+Use Chinese first for:
+
+- Owner Review Packets;
+- scorecard explanations and progress summaries;
+- "why this task", "what changed", "what remains old", and "what to do next";
+- chat closeouts that ask the user to review, approve, or send a handoff.
+
+Keep English for code-facing names and precision:
+
+- commit messages;
+- file names, symbols, interface names, test names, and command names;
+- architecture terms that appear directly in code, such as `Capability Contract`, `RunEnvelope`, `ProgressReporterPort`, `ToolDef`, `Port`, `Adapter`, and `Inventory`.
+
+When Claude Code returns an implementation note, Codex must translate and normalize it into a Chinese owner-facing summary before asking the user to decide. English technical detail may remain below the Chinese summary, but the user should be able to understand the task status without reading a long English report.
+
 ## Non-Negotiable Gates
 
 Every implementation task must answer these before it is considered accepted:
@@ -107,25 +126,26 @@ T5 and T6 can proceed when T2/T4 establish enough tool boundary evidence, but th
 
 Ambient starts only after the foundation is in place. Command Gateway starts only after T10.
 
-## First Implementation Task
+## Current Implementation Status
 
-T0 is complete and accepted. The first completed Claude Code handoff was [`t0-boundary-baseline-handoff.md`](./t0-boundary-baseline-handoff.md).
+Completed and accepted:
 
-Next handoff to send:
+- T0 Boundary Baseline: [`t0-boundary-baseline-handoff.md`](./t0-boundary-baseline-handoff.md) + [`2026-06-12-t0-owner-review-packet.md`](../audits/2026-06-12-t0-owner-review-packet.md)
+- T1 Vault Lint Contract Seed: [`t1-vault-lint-contract-seed-handoff.md`](./t1-vault-lint-contract-seed-handoff.md) + [`2026-06-12-t1-owner-review-packet.md`](../audits/2026-06-12-t1-owner-review-packet.md)
+- T2A ProgressReporterPort first slice: [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md) + [`2026-06-12-t2a-owner-review-packet.md`](../audits/2026-06-12-t2a-owner-review-packet.md)
 
-- [`t1-vault-lint-contract-seed-handoff.md`](./t1-vault-lint-contract-seed-handoff.md)
+Next owner decision:
 
-Draft for after T1 acceptance:
-
-- [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md)
+- choose `T2B` narrow port follow-up, or `T3` RunEnvelope Core;
+- do not start Chat, Ambient Push, or Command Gateway yet.
 
 ## Supporting Files
 
 - [`claude-code-handoff-template.md`](./claude-code-handoff-template.md): reusable Claude Code prompt shape.
 - [`owner-review-packet-template.md`](./owner-review-packet-template.md): Codex review packet shape after Claude Code commits.
 - [`architecture-scorecard.md`](./architecture-scorecard.md): scoring rubric and progress ledger.
-- [`t1-vault-lint-contract-seed-handoff.md`](./t1-vault-lint-contract-seed-handoff.md): next implementation handoff.
-- [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md): draft port extraction handoff for after T1.
+- [`t1-vault-lint-contract-seed-handoff.md`](./t1-vault-lint-contract-seed-handoff.md): T1 implementation handoff.
+- [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md): T2A port extraction handoff source.
 
 ## Do Not Do
 

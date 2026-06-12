@@ -19,6 +19,7 @@ Current operating rules:
 - Codex owns architecture reports, diagrams, task design, and review packets.
 - Claude Code owns implementation only.
 - User manually authorizes each handoff.
+- Owner-facing explanations should be Chinese-first. Keep code symbols, commands, test names, and commit messages in English.
 ```
 
 ## Review Entry Points
@@ -29,6 +30,18 @@ When Codex creates a handoff from this template, its chat closeout must include 
 - the previous Owner Review Packet or audit that justifies the task;
 - any companion draft that should not be sent yet;
 - the current status: final, draft, or waiting for user approval.
+
+## Language And Readability
+
+Handoffs may use English for exact implementation constraints, but every handoff must include a short Chinese owner summary that answers:
+
+- 这一步在全局架构里的位置是什么？
+- 为什么现在做它？
+- 它允许 Claude Code 改什么？
+- 它明确不允许 Claude Code 改什么？
+- 做完后用户应该看什么来判断是否接受？
+
+Implementation notes from Claude Code must not be pure long-form English. They should start with Chinese-readable sections, then include technical evidence.
 
 ## Task
 
@@ -135,6 +148,14 @@ After implementation and commit, Claude Code should report:
 
 ```md
 ## Implementation note
+
+中文摘要:
+- 本轮在全局架构里的位置:
+- 为什么做这个:
+- 用户可见行为是否变化:
+- 最重要的边界变化:
+- 还没有解决的旧路径:
+- 下一步建议:
 
 Commit:
 - <hash and message>
