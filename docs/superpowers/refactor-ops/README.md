@@ -156,11 +156,11 @@ Completed and accepted:
 - T0 Boundary Baseline: [`t0-boundary-baseline-handoff.md`](./t0-boundary-baseline-handoff.md) + [`2026-06-12-t0-owner-review-packet.md`](../audits/2026-06-12-t0-owner-review-packet.md)
 - T1 Vault Lint Contract Seed: [`t1-vault-lint-contract-seed-handoff.md`](./t1-vault-lint-contract-seed-handoff.md) + [`2026-06-12-t1-owner-review-packet.md`](../audits/2026-06-12-t1-owner-review-packet.md)
 - T2A ProgressReporterPort first slice: [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md) + [`2026-06-12-t2a-owner-review-packet.md`](../audits/2026-06-12-t2a-owner-review-packet.md)
+- T2B IndexInitializer ProgressReporterPort follow-up: [`t2b-index-initializer-progress-reporter-handoff.md`](./t2b-index-initializer-progress-reporter-handoff.md) + [`2026-06-12-t2b-owner-review-packet.md`](../audits/2026-06-12-t2b-owner-review-packet.md)
 
 Next owner decision:
 
-- send [`t2b-index-initializer-progress-reporter-handoff.md`](./t2b-index-initializer-progress-reporter-handoff.md) to Claude Code for read-only investigation;
-- review the T2B investigation before approving implementation;
+- choose `T2C` search-area Notice cleanup, or `T3` RunEnvelope Core;
 - do not start Chat, Ambient Push, or Command Gateway yet.
 
 ## Supporting Files
@@ -170,7 +170,7 @@ Next owner decision:
 - [`architecture-scorecard.md`](./architecture-scorecard.md): scoring rubric and progress ledger.
 - [`t1-vault-lint-contract-seed-handoff.md`](./t1-vault-lint-contract-seed-handoff.md): T1 implementation handoff.
 - [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md): T2A port extraction handoff source.
-- [`t2b-index-initializer-progress-reporter-handoff.md`](./t2b-index-initializer-progress-reporter-handoff.md): T2B read-only investigation handoff.
+- [`t2b-index-initializer-progress-reporter-handoff.md`](./t2b-index-initializer-progress-reporter-handoff.md): T2B implementation handoff.
 
 ## Do Not Do
 
