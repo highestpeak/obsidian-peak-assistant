@@ -127,15 +127,41 @@ If old and new paths both still own behavior, the task is not accepted.
 
 Use the rubric in [`architecture-scorecard.md`](./architecture-scorecard.md).
 
-| Dimension | Before | After | Delta | Reason |
+| Dimension | Code | Before | After | Delta | Confidence | Reason / evidence |
+| --- | --- | ---: | ---: | ---: | --- | --- |
+| Architecture clarity | AC |  |  |  |  |  |
+| Capability semantics | CS |  |  |  |  |  |
+| Dependency direction | DD |  |  |  |  |  |
+| Modularity / cohesion | MC |  |  |  |  |  |
+| Side-effect isolation | SI |  |  |  |  |  |
+| Single runtime path | SR |  |  |  |  |  |
+| State ownership clarity | SO |  |  |  |  |  |
+| Observability / trace | OT |  |  |  |  |  |
+| Testability / fake-port readiness | TF |  |  |  |  |  |
+| Old-path deletion | OD |  |  |  |  |  |
+| Change radius | CR |  |  |  |  |  |
+| Owner comprehension | OC |  |  |  |  |  |
+| Overall elegance | Overall |  |  |  |  |  |
+
+Grouped indices:
+
+| Group | Before | After | Delta | Reason |
 | --- | ---: | ---: | ---: | --- |
-| Architecture clarity |  |  |  |  |
-| Modularity |  |  |  |  |
-| Single runtime path |  |  |  |  |
-| State ownership clarity |  |  |  |  |
-| Testability / fake-port readiness |  |  |  |  |
-| Old-path deletion |  |  |  |  |
-| Overall elegance |  |  |  |  |
+| Control Index |  |  |  | AC + OT + OC |
+| Boundary Index |  |  |  | DD + MC + SI + CR |
+| Runtime Truth Index |  |  |  | SR + SO + CS |
+| Verification Index |  |  |  | TF + OD |
+
+Optional task dimensions, if relevant:
+
+| Optional dimension | Code | Score | Evidence |
+| --- | --- | ---: | --- |
+| UI surface stability | UX |  |  |
+| Backward compatibility / migration safety | BC |  |  |
+| Performance / cost containment | PC |  |  |
+| Security / permission boundary | SC |  |  |
+| Developer experience | DX |  |  |
+| Documentation / handoff quality | DOC |  |  |
 
 ## 10. What The User Should Understand
 
@@ -143,9 +169,12 @@ After reading this packet, the user should be able to answer:
 
 1. What is the new runtime path?
 2. Where is the state truth?
-3. Which old path was removed or downgraded?
-4. If this breaks, which file should I inspect first?
-5. What does this unlock next?
+3. Which side effects are behind ports or adapters?
+4. Which old path was removed or downgraded?
+5. If this breaks, which file should I inspect first?
+6. How would I inspect or replay this run?
+7. What does this unlock next?
+8. What should not be touched in the next task?
 
 ## 11. Next Task
 
