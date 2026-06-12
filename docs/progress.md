@@ -75,7 +75,9 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T2 First Port Sketches draft ready：`docs/superpowers/refactor-ops/t2-first-port-sketches-draft.md`
 - [x] T2A ProgressReporterPort first slice 完成并接受：`f9cf49f` + Owner Review `docs/superpowers/audits/2026-06-12-t2a-owner-review-packet.md`
 - [x] Owner-facing refactor docs 改为中文优先：解释层中文，代码名/commit/test/接口名英文
-- [ ] 用户 review T2A Owner Review Packet，决定下一步走 T2B narrow port follow-up 还是 T3 RunEnvelope Core
+- [x] T2B IndexInitializer ProgressReporterPort follow-up handoff ready：`docs/superpowers/refactor-ops/t2b-index-initializer-progress-reporter-handoff.md`
+- [ ] 用户发送 T2B handoff 给 Claude Code，先拿 read-only investigation，不要直接实现
+- [ ] 用户 review T2B read-only investigation，确认是否批准实现
 - [ ] 不要提前做 Chat、Ambient Push、Command Gateway；Ambient 仍是 post-foundation，Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾

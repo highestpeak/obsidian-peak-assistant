@@ -136,7 +136,8 @@ Completed and accepted:
 
 Next owner decision:
 
-- choose `T2B` narrow port follow-up, or `T3` RunEnvelope Core;
+- send [`t2b-index-initializer-progress-reporter-handoff.md`](./t2b-index-initializer-progress-reporter-handoff.md) to Claude Code for read-only investigation;
+- review the T2B investigation before approving implementation;
 - do not start Chat, Ambient Push, or Command Gateway yet.
 
 ## Supporting Files
@@ -146,6 +147,7 @@ Next owner decision:
 - [`architecture-scorecard.md`](./architecture-scorecard.md): scoring rubric and progress ledger.
 - [`t1-vault-lint-contract-seed-handoff.md`](./t1-vault-lint-contract-seed-handoff.md): T1 implementation handoff.
 - [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md): T2A port extraction handoff source.
+- [`t2b-index-initializer-progress-reporter-handoff.md`](./t2b-index-initializer-progress-reporter-handoff.md): T2B read-only investigation handoff.
 
 ## Do Not Do
 
