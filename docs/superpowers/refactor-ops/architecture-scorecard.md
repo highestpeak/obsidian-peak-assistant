@@ -114,6 +114,7 @@ Use the ledger for checkpoints. Detailed per-dimension scores belong in the Owne
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | 2026-06-12 | Pre-refactor checkpoint | `4fa5bd2` | baseline | baseline | baseline | baseline | baseline | Tagged as `pre-large-refactor-2026-06-11`. No score yet; scoring starts with T0. |
 | 2026-06-12 | Refactor ops playbook | `1e4d952` | N/A | N/A | N/A | N/A | N/A | Operating docs only. Scorecard applies to implementation tasks starting at T0. |
+| 2026-06-12 | T0 Boundary Baseline | `9850eef` | 85 diagnostic | 85 diagnostic | baseline only | 90 diagnostic | 85 diagnostic | Diagnostic quality score, not code elegance improvement. Current code elegance baseline is about 32/100 in the Owner Review Packet. |
 
 ## Evidence Rules
 
