@@ -7,8 +7,11 @@
  * This module has NO React dependencies — it reads from V2SessionSnapshot directly.
  */
 
-import { Notice } from 'obsidian';
 import { SLICE_CAPS } from '@/core/constant';
+import {
+	getDefaultProgressReporter,
+	type ProgressReporterPort,
+} from '@/service/ports/ProgressReporterPort';
 import { AppContext } from '@/app/context/AppContext';
 import { AIAnalysisCompleteEvent } from '@/core/eventBus';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
@@ -41,7 +44,11 @@ export interface PersistSessionResult {
  */
 export async function persistSessionToVault(
 	snapshot: V2SessionSnapshot,
-	options?: { existingPath?: string | null; graphJson?: string | null },
+	options?: {
+		existingPath?: string | null;
+		graphJson?: string | null;
+		progressReporter?: ProgressReporterPort;
+	},
 ): Promise<PersistSessionResult | null> {
 	if (!snapshot.v2Active) return null;
 
@@ -114,7 +121,16 @@ export async function persistSessionToVault(
 					snapshot: completedSnapshot,
 					webEnabled,
 				});
-				new Notice('Auto-save: saved to vault root (configured folder failed).', 5000);
+				// Notification surface is optional. The vault-root save above
+				// has already succeeded, so a missing default reporter (e.g.
+				// in tests) or a reporter that throws must NOT degrade this
+				// path into a failed persistence result. Log and continue.
+				try {
+					const reporter = options?.progressReporter ?? getDefaultProgressReporter();
+					reporter.show('Auto-save: saved to vault root (configured folder failed).', 5000);
+				} catch (e) {
+					console.warn('[analysisDocPersistence] fallback notice skipped:', e);
+				}
 			} catch {
 				console.warn('[analysisDocPersistence] auto-save failed (including vault root fallback)');
 				return null;

@@ -2,16 +2,26 @@
 //
 // This file must stay dependency-light. It must not import obsidian,
 // AppContext, any zustand store, any UI module, any storage adapter, or any
-// other runtime singleton. The only intended consumer is
-// `src/service/search/support/progress-tracker.ts`, which uses
-// `getDefaultProgressReporter()` to find the adapter registered by the app
-// layer at plugin startup.
+// other runtime singleton.
 //
-// The default reporter is module-level on purpose: it lets the single
-// service-side adopter run without passing a reporter through every call
-// site, and lets tests inject a fake without touching app code. A missing
-// registration is fail-loud (throws) so a forgotten wiring step cannot
-// silently disable user-visible progress notifications.
+// Current service-side consumers (kept up-to-date as adopters land):
+//   - src/service/search/support/progress-tracker.ts (T2A)
+//   - src/service/search/index/indexInitializer.ts   (T2B)
+//   - src/service/search/analysisDocPersistence.ts   (T2C)
+// Each resolves the reporter via constructor injection or an options field
+// when possible; otherwise it falls back to `getDefaultProgressReporter()`,
+// which finds the adapter registered by the app layer at plugin startup.
+//
+// The module-level `defaultReporter` is a deliberate T2 transitional
+// compromise. It lets adopters land without threading a reporter through
+// every call site, and lets tests inject a fake without touching app code.
+// A missing registration is fail-loud (throws) so a forgotten wiring step
+// cannot silently disable user-visible progress notifications.
+//
+// This default is expected to be retired when T3 RunEnvelope provides a
+// more explicit dependency assembly point. No NEW module-level mutable
+// defaults should be added for other side-effect kinds — see the
+// modernization handbook's "no scattered global defaults" rule.
 
 export interface ProgressHandle {
 	/**
