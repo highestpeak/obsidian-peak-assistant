@@ -79,7 +79,8 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] Mutable Global State 规则加入 refactor-ops：禁止 `let defaultX = null` 这类可变全局默认值散落在 service/core/port 文件；T2 的 `defaultReporter` 只作为临时妥协
 - [x] T2B IndexInitializer ProgressReporterPort follow-up handoff ready：`docs/superpowers/refactor-ops/t2b-index-initializer-progress-reporter-handoff.md`
 - [x] T2B implementation 完成并接受：`fbf8a56` + review fix `79478b0` + Owner Review `docs/superpowers/audits/2026-06-12-t2b-owner-review-packet.md`
-- [ ] 用户决定下一步：T2C search-area Notice cleanup，或 T3 RunEnvelope Core
+- [x] T2C AnalysisDocPersistence Notice cleanup handoff ready：`docs/superpowers/refactor-ops/t2c-analysis-doc-persistence-notice-cleanup-handoff.md`
+- [ ] 用户决定是否把 T2C handoff 发给 Claude Code；如果跳过 T2C，则进入 T3 RunEnvelope Core
 - [ ] 不要提前做 Chat、Ambient Push、Command Gateway；Ambient 仍是 post-foundation，Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾

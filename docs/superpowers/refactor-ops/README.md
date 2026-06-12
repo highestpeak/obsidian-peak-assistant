@@ -187,9 +187,13 @@ Completed and accepted:
 - T2A ProgressReporterPort first slice: [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md) + [`2026-06-12-t2a-owner-review-packet.md`](../audits/2026-06-12-t2a-owner-review-packet.md)
 - T2B IndexInitializer ProgressReporterPort follow-up: [`t2b-index-initializer-progress-reporter-handoff.md`](./t2b-index-initializer-progress-reporter-handoff.md) + [`2026-06-12-t2b-owner-review-packet.md`](../audits/2026-06-12-t2b-owner-review-packet.md)
 
+Ready for owner approval:
+
+- T2C AnalysisDocPersistence Notice cleanup: [`t2c-analysis-doc-persistence-notice-cleanup-handoff.md`](./t2c-analysis-doc-persistence-notice-cleanup-handoff.md)
+
 Next owner decision:
 
-- choose `T2C` search-area Notice cleanup, or `T3` RunEnvelope Core;
+- send `T2C` to Claude Code for read-only investigation, or skip to `T3` RunEnvelope Core;
 - do not start Chat, Ambient Push, or Command Gateway yet.
 
 ## Supporting Files
@@ -200,6 +204,7 @@ Next owner decision:
 - [`t1-vault-lint-contract-seed-handoff.md`](./t1-vault-lint-contract-seed-handoff.md): T1 implementation handoff.
 - [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md): T2A port extraction handoff source.
 - [`t2b-index-initializer-progress-reporter-handoff.md`](./t2b-index-initializer-progress-reporter-handoff.md): T2B implementation handoff.
+- [`t2c-analysis-doc-persistence-notice-cleanup-handoff.md`](./t2c-analysis-doc-persistence-notice-cleanup-handoff.md): T2C implementation handoff.
 
 ## Do Not Do
 
