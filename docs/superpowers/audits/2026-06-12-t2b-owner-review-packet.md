@@ -155,6 +155,17 @@ Accepted, with these caveats:
 - `RunEnvelope` does not exist yet.
 - State ownership is unchanged.
 
+## 6.5 Mutable Global State Check
+
+| Item | File | Status | Accepted? | Retirement path |
+| --- | --- | --- | --- | --- |
+| `defaultReporter` | `src/service/ports/ProgressReporterPort.ts` | Preserved from T2A | Temporary only | T3/T4 should replace this with explicit runtime/composition wiring. |
+
+Decision:
+- Do not copy the `let defaultReporter = null` pattern into new ports.
+- If a future task needs a default adapter, it must either use explicit constructor/runtime wiring or a centralized app-level composition registry.
+- `AppContext` may be used as a transitional centralization point only if the alternative is more scattered module globals; it should not become the default answer for every service dependency.
+
 ## 7. Scorecard
 
 Task-level score, not whole-project score.

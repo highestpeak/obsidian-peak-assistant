@@ -113,6 +113,34 @@ Codex Owner Review Packets must include:
 
 Do not accept a code-changing task if the owner cannot answer: "which code files changed, why, and in what order should I read them?"
 
+## Mutable Global State Rule
+
+New mutable globals must not be scattered across random service, core, or port files.
+
+Avoid patterns like:
+
+```ts
+let defaultSomething: Something | null = null;
+export function setDefaultSomething(...) { ... }
+export function getDefaultSomething() { ... }
+```
+
+These are hidden service locators. They make the runtime harder to understand because dependencies are no longer visible from a constructor, capability contract, run envelope, or app composition point.
+
+Preferred order for new work:
+
+1. Pass dependencies explicitly through a constructor, capability runtime, or `RunEnvelope` once that exists.
+2. Put long-lived app-owned adapters in one app composition location, such as `main.ts` or a future app-level runtime registry.
+3. Use `AppContext` only as a transitional centralization point when the alternative would scatter multiple module-level globals. Do not expand service-side `AppContext.getInstance()` usage as the default solution.
+4. If a module-level mutable default is unavoidable for a narrow T2 slice, it must be:
+   - explicitly named as temporary in comments and the Owner Review Packet;
+   - fail-loud when missing;
+   - cleared on plugin unload if it captures app/runtime objects;
+   - covered by tests or source-scan guards;
+   - listed as a retirement target for T3/T4.
+
+`ProgressReporterPort`'s `defaultReporter` is accepted only as a T2 transitional compromise. Do not copy this pattern into new ports. T3/T4 should replace it with an explicit runtime/composition mechanism.
+
 ## Non-Negotiable Gates
 
 Every implementation task must answer these before it is considered accepted:
@@ -125,6 +153,7 @@ Every implementation task must answer these before it is considered accepted:
 6. What remains intentionally old, and why?
 7. What should the user read to debug this later?
 8. Which changed code files should the user read, in what order, and what should they look for?
+9. Did this introduce or preserve mutable global state? If yes, where is it centralized, why is it temporary, and what retires it?
 
 If the answer is "new and old implementations both continue to own behavior", the task is not accepted.
 

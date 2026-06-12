@@ -152,6 +152,7 @@ Low-confidence high scores are not acceptable. A score of 85 with low confidence
 - Observability score improves because logs were added, but no artifact/trace is reviewable.
 - Owner comprehension score improves because docs got longer, but the debug path is still unclear.
 - Overall score improves despite a larger blast radius and no deletion.
+- Boundary score improves while new module-level mutable defaults or hidden service locators are scattered across service/core/port files.
 
 ## Owner Control Questions
 

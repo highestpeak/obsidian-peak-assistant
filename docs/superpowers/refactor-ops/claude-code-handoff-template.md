@@ -70,6 +70,7 @@ This task should improve:
 - Fake-port / fixture testability:
 - Old-path deletion:
 - Lower change radius:
+- Mutable global state:
 ```
 
 ## Required First Response From Claude Code
@@ -173,6 +174,12 @@ Code reading guide:
 - Optional / only if debugging:
 - Main symbols to inspect:
 - Files intentionally not changed:
+
+Mutable global state:
+- New module-level mutable defaults introduced:
+- Existing module-level mutable defaults preserved:
+- Why any preserved global is temporary:
+- What future task should retire it:
 
 Verification:
 - ...

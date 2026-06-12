@@ -76,6 +76,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T2A ProgressReporterPort first slice 完成并接受：`f9cf49f` + Owner Review `docs/superpowers/audits/2026-06-12-t2a-owner-review-packet.md`
 - [x] Owner-facing refactor docs 改为中文优先：解释层中文，代码名/commit/test/接口名英文
 - [x] Code Reading Guide 规则加入 refactor-ops：每轮代码改动必须列 changed code files、阅读顺序、关键符号、debug 入口
+- [x] Mutable Global State 规则加入 refactor-ops：禁止 `let defaultX = null` 这类可变全局默认值散落在 service/core/port 文件；T2 的 `defaultReporter` 只作为临时妥协
 - [x] T2B IndexInitializer ProgressReporterPort follow-up handoff ready：`docs/superpowers/refactor-ops/t2b-index-initializer-progress-reporter-handoff.md`
 - [x] T2B implementation 完成并接受：`fbf8a56` + review fix `79478b0` + Owner Review `docs/superpowers/audits/2026-06-12-t2b-owner-review-packet.md`
 - [ ] 用户决定下一步：T2C search-area Notice cleanup，或 T3 RunEnvelope Core

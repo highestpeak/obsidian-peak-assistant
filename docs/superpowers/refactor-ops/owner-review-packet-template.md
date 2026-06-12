@@ -128,6 +128,22 @@ Mark each state source:
 | --- | --- | --- | --- |
 |  |  |  |  |
 
+## 4.5 Mutable Global State Check
+
+List module-level mutable defaults, singleton registries, or hidden service-locator state touched by this task.
+
+| Item | File | Introduced / Preserved / Removed | Accepted? | Retirement path |
+| --- | --- | --- | --- | --- |
+| `defaultX` | `<file>` | Introduced / Preserved / Removed | Yes / No / Temporary | `<future task or target architecture>` |
+
+Questions:
+
+- Did this task introduce a new `let defaultX = null` style mutable global?
+- If yes, why was constructor injection / RunEnvelope / app composition not enough?
+- Is it centralized in an app-level composition place or scattered in a service/core/port module?
+- Is it fail-loud and cleared on unload if needed?
+- What future task should remove or replace it?
+
 ## 5. Module Boundary Map
 
 ```mermaid
