@@ -166,7 +166,7 @@ export class IndexInitializer {
 
 		const filesToIndex = await this.collectAllIndexableFilePaths();
 
-		const progressTracker = new IndexProgressTracker(filesToIndex.length);
+		const progressTracker = new IndexProgressTracker(filesToIndex.length, this.reporter);
 		let indexedCount = 0;
 		try {
 			progressTracker.showStart('Peak: Step 1/4 — Full-text (FTS), no embeddings…');
@@ -411,7 +411,7 @@ export class IndexInitializer {
 			return;
 		}
 
-		const progressTracker = new IndexProgressTracker(filesToIndexPaths.length);
+		const progressTracker = new IndexProgressTracker(filesToIndexPaths.length, this.reporter);
 		progressTracker.showStart(progressStartLabel);
 
 		let indexedCount = 0;

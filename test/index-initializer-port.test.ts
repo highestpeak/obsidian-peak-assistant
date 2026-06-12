@@ -102,6 +102,23 @@ function testReporterShowReplacedAllNoticeCallSites(): void {
 	console.log('PASS: reporterShowReplacedAllNoticeCallSites');
 }
 
+function testIndexProgressTrackerConstructionAlwaysPassesReporter(): void {
+	const source = readSource();
+	const trackerCtorRe = /new\s+IndexProgressTracker\s*\([^)]*\)/g;
+	const ctorCalls = source.match(trackerCtorRe) ?? [];
+	assert.ok(
+		ctorCalls.length > 0,
+		'IndexInitializer is expected to construct IndexProgressTracker at least once',
+	);
+	for (const call of ctorCalls) {
+		assert.ok(
+			/,\s*this\.reporter\s*\)/.test(call),
+			`IndexProgressTracker construction must pass this.reporter as the reporter argument; found: ${call}`,
+		);
+	}
+	console.log(`PASS: indexProgressTrackerConstructionAlwaysPassesReporter (${ctorCalls.length} construction site(s) checked)`);
+}
+
 function testConstructorAcceptsOptionalProgressReporterPort(): void {
 	const source = readSource();
 	// The optional 4th constructor parameter is the wiring point that lets
@@ -122,6 +139,7 @@ try {
 	testFileDoesNotImportObsidianAdapterDirectly();
 	testPrivateOpenPipelineNoticeHelperIsRemoved();
 	testReporterShowReplacedAllNoticeCallSites();
+	testIndexProgressTrackerConstructionAlwaysPassesReporter();
 	testConstructorAcceptsOptionalProgressReporterPort();
 	process.exit(0);
 } catch (err) {
