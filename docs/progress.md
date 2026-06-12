@@ -81,7 +81,8 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T2B implementation 完成并接受：`fbf8a56` + review fix `79478b0` + Owner Review `docs/superpowers/audits/2026-06-12-t2b-owner-review-packet.md`
 - [x] T2C AnalysisDocPersistence Notice cleanup handoff ready：`docs/superpowers/refactor-ops/t2c-analysis-doc-persistence-notice-cleanup-handoff.md`
 - [x] T2C implementation 完成并接受：`2e97eac` + Owner Review `docs/superpowers/audits/2026-06-12-t2c-owner-review-packet.md`
-- [ ] 下一步：准备 T3 RunEnvelope Core handoff；不要继续批量扫其它 `Notice`
+- [x] T3A RunEnvelope Core handoff ready：`docs/superpowers/refactor-ops/t3-run-envelope-core-handoff.md`
+- [ ] 用户决定是否把 T3A handoff 发给 Claude Code 做 read-only investigation
 - [ ] 不要提前做 Chat、Ambient Push、Command Gateway；Ambient 仍是 post-foundation，Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾
