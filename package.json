@@ -15,6 +15,7 @@
 		"build:streamdown": "npx tailwindcss -i src/styles/streamdown.css -o styles.streamdown.css --config tailwind.streamdown.config.js --minify",
 		"build:css": "npm run build:tailwind && npm run build:streamdown && node scripts/concat-css.mjs",
 		"check:bundle": "node --check main.js",
+		"audit:boundary": "node scripts/audit/boundary-baseline.mjs",
 		"copy-sdk": "node scripts/copy-agent-sdk.mjs",
 		"build": "npm run build:css && node esbuild.config.mjs production && npm run check:bundle && npm run copy-sdk",
 		"build:desktop": "vite build",
