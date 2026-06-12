@@ -167,6 +167,13 @@ Changed files grouped by purpose:
 - Tests:
 - Deleted or reduced old path:
 
+Code reading guide:
+- Read first:
+- Then read:
+- Optional / only if debugging:
+- Main symbols to inspect:
+- Files intentionally not changed:
+
 Verification:
 - ...
 

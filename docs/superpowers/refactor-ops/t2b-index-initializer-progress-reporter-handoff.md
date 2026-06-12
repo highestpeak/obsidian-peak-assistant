@@ -188,6 +188,13 @@ Changed files grouped by purpose:
 - Tests:
 - Docs:
 
+Code reading guide:
+- Read first:
+- Then read:
+- Optional / only if debugging:
+- Main symbols to inspect:
+- Files intentionally not changed:
+
 Old path reduced:
 - ...
 

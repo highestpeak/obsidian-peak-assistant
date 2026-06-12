@@ -44,6 +44,24 @@ List the documents the user should open first. When Codex reports this packet in
 | Companion audit / baseline | Evidence | Shows before/after or diagnostic evidence. |
 | Next handoff / draft | Pending approval | Shows the proposed next action, if any. |
 
+## 0.5 Code Reading Guide
+
+List changed code files in the order the owner should read them. This section is required for every code-changing task.
+
+| Order | File | What to inspect | Why it matters |
+| ---: | --- | --- | --- |
+| 1 | `<file>` | `<function / class / type>` | `<main boundary or behavior change>` |
+| 2 | `<file>` | `<function / class / type>` | `<supporting wiring or adapter>` |
+| 3 | `<test file>` | `<test names / source scan>` | `<proof that the change is guarded>` |
+
+Reading notes:
+
+- Read first:
+- Then read:
+- Optional / only if debugging:
+- Files intentionally not changed:
+- If this breaks later, open this file first:
+
 ## 1. One-Sentence Outcome
 
 What changed in plain language?

@@ -91,6 +91,28 @@ Keep English for code-facing names and precision:
 
 When Claude Code returns an implementation note, Codex must translate and normalize it into a Chinese owner-facing summary before asking the user to decide. English technical detail may remain below the Chinese summary, but the user should be able to understand the task status without reading a long English report.
 
+## Code Reading Guide Rule
+
+Every code-changing task must include a code reading guide for the owner.
+
+Claude Code implementation notes must include:
+
+- changed code files grouped by purpose;
+- a recommended reading order;
+- the key symbols/functions/classes to inspect in each file;
+- what changed in each file, in plain Chinese;
+- what did not change and should not be reviewed for this task;
+- tests or source-scan guards that prove the change.
+
+Codex Owner Review Packets must include:
+
+- clickable file links in the chat closeout for the main changed code files;
+- a "read in this order" section near the top of the packet;
+- short guidance for each file: "look for this function / boundary / deleted old path";
+- the first debug file to open if the behavior breaks later.
+
+Do not accept a code-changing task if the owner cannot answer: "which code files changed, why, and in what order should I read them?"
+
 ## Non-Negotiable Gates
 
 Every implementation task must answer these before it is considered accepted:
@@ -102,6 +124,7 @@ Every implementation task must answer these before it is considered accepted:
 5. Which fake port, fixture, or contract test proves the boundary?
 6. What remains intentionally old, and why?
 7. What should the user read to debug this later?
+8. Which changed code files should the user read, in what order, and what should they look for?
 
 If the answer is "new and old implementations both continue to own behavior", the task is not accepted.
 
