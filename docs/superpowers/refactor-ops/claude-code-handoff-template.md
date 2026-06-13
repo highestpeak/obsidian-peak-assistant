@@ -60,6 +60,8 @@ Not allowed:
 - Do not implement Command Gateway unless this is T12.
 - Do not introduce a second runtime path.
 - Do not leave old and new business logic owning the same behavior.
+- Do not add service-layer module runtime singletons such as `let currentRuntime = null` + `set/getRuntime`.
+- Do not place large product/domain config defaults inside service engine files.
 - Do not do opportunistic UI polish or unrelated cleanup.
 
 ## Architecture intent
@@ -71,6 +73,8 @@ This task should improve:
 - Old-path deletion:
 - Lower change radius:
 - Mutable global state:
+- Runtime ownership:
+- Config defaults ownership:
 ```
 
 ## Required First Response From Claude Code
@@ -98,6 +102,17 @@ flowchart LR
 Current modularity problem:
 - ...
 
+Runtime ownership check:
+- Current runtime owner:
+- Existing module-level mutable runtime bindings:
+- Whether runtime ownership is app-level or service-level:
+
+Config defaults check:
+- Editable config source, if any:
+- Compiled fallback, if any:
+- Inline defaults inside service/engine files:
+- Drift guard test, if any:
+
 Proposed change boundary:
 - ...
 
@@ -120,6 +135,10 @@ The user may then approve implementation.
 - If adding an abstraction, state what real boundary it protects.
 - If preserving an old public entry, make it thin forwarding only.
 - If tests are impossible in this slice, explain why and add the nearest guard or fixture.
+- Keep long-lived capability runtimes owned by app-level composition (`main.ts`, `AppContext`, or an app-owned runtime registry).
+- Pass runtime/dependencies explicitly through constructors, ports, context, or `RunEnvelope`; do not add service-side `AppContext.getInstance()` shortcuts.
+- Put product/domain defaults in `templates/config/` plus a documented domain fallback when needed; do not bury them in service engines.
+- Add source-scan or shape-compatibility guards when touching runtime ownership or config defaults.
 ```
 
 ## Verification
@@ -134,6 +153,8 @@ Also run, when relevant:
 - npm run test
 - npm run test -- <specific test>
 - rg checks for old path references
+- rg checks for service-layer runtime singletons / hidden service locators
+- rg checks for inline `DEFAULT_*_CONFIG`, thresholds, weights, or timing knobs in service engines
 - bundle or generated artifact checks if the task touches build/runtime output
 
 Report:
@@ -180,6 +201,19 @@ Mutable global state:
 - Existing module-level mutable defaults preserved:
 - Why any preserved global is temporary:
 - What future task should retire it:
+
+Runtime ownership:
+- Runtime owner before:
+- Runtime owner after:
+- App-level composition point:
+- Any service-layer runtime singleton introduced or preserved:
+
+Config defaults:
+- Editable config source:
+- Compiled fallback:
+- Service files that import the fallback:
+- Drift guard / shape test:
+- Any inline service-engine defaults introduced or preserved:
 
 Verification:
 - ...

@@ -92,6 +92,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] 用户指出 T6 review fix：`VaultLintRuntime.currentRuntime` 不应长期留在 service 层；`DEFAULT_VAULT_LINT_CONFIG` 不应放在 engine 文件
 - [x] Config Defaults Governance doc ready：`docs/superpowers/refactor-ops/config-defaults-governance.md`
 - [x] T6R Runtime Ownership + Config Defaults handoff ready：`docs/superpowers/refactor-ops/t6-review-fix-runtime-ownership-config-defaults-handoff.md`
+- [x] Runtime Ownership / Config Defaults 两条规则写入 `AGENTS.md`、`CLAUDE.md`、`docs/conventions/configurability.md`、handoff template、owner review template
 - [x] T7 Vault Lint Detector Context Closure handoff ready：`docs/superpowers/refactor-ops/t7-vault-lint-detector-context-closure-handoff.md`
 - [ ] 下一步：先把 T6R handoff 发给 Claude Code；T6R 完成后再继续 T7 detector closure
 - [ ] 不要提前做 Chat、Ambient Push、Command Gateway；Ambient 仍是 post-foundation，Command Gateway 仍是 T12 capstone

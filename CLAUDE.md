@@ -48,8 +48,8 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 - Prefer simple async functions over `useCallback`; use `store.getState()` inside handlers to avoid dependency arrays
 - Eliminate arrow code: use early returns/guard clauses, max nesting depth of 2
 - No redundant `else` after `return`/`throw`
-- Centralize constants in `src/core/constant.ts`
-- Avoid passing objects like AppContext as function parameters when they can be accessed via a static `getInstance()` method; use `AppContext.getInstance()` directly where needed.
+- Centralize small cross-cutting constants in `src/core/constant.ts`; do not dump large domain config tables there.
+- Runtime ownership: capability runtimes must be composed and owned at the app layer (`main.ts`, `AppContext`, or an app-owned runtime registry). Do not add service-layer module singletons such as `let currentRuntime = null` + `set/getRuntime`. Do not expand service-side `AppContext.getInstance()` usage as a dependency shortcut; pass runtime/dependencies through app composition, constructors, ports, or RunEnvelope boundaries.
 - Templates: register via `TemplateRegistry` / `TemplateId`, load with `TemplateManager`; prompts use `PromptId` + `PromptService`, not scattered prompt strings
 - Agents: follow `runAgentLoop` / `AgentLoop` (`service/agents/core`); reuse tool + schema patterns from existing agents; wire through `src/core/schemas/` for Zod
 - Streaming: normalize with `src/core/providers/helpers/stream-helper.ts` (`streamTransform`, etc.) and `LLMStreamEvent`; UI streaming hooks live under `ui/view/chat-view/hooks/`
@@ -59,7 +59,7 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 Detailed conventions live in `docs/conventions/`. Read `docs/conventions/README.md` for the index and how to add new rules. Each pointer below is intentionally one line — open the linked file for the rule itself.
 
 - **UI design system** — tokens, primitive catalog, primitive usage decisions, Obsidian CSS defense, JSX-mock fidelity. One file, 5 sections, section-anchored. [`ui-design.md`](./docs/conventions/ui-design.md)
-- **Configurability** — no inline i18n / regex / label maps / color or style configs; route through `templates/config/` or `core/constant.ts`. [`configurability.md`](./docs/conventions/configurability.md)
+- **Configurability** — no inline i18n / regex / label maps / color, thresholds, weights, timing knobs, or style configs; route through `templates/config/` plus a documented domain fallback when needed. [`configurability.md`](./docs/conventions/configurability.md)
 
 ## Key External Dependencies
 

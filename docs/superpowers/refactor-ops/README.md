@@ -217,6 +217,8 @@ Every implementation task must answer these before it is considered accepted:
 7. What should the user read to debug this later?
 8. Which changed code files should the user read, in what order, and what should they look for?
 9. Did this introduce or preserve mutable global state? If yes, where is it centralized, why is it temporary, and what retires it?
+10. Who owns long-lived runtime composition: app-level composition or a hidden service-layer singleton?
+11. Where do product/domain config defaults live: editable template, documented fallback, or incorrectly inside engine logic?
 
 If the answer is "new and old implementations both continue to own behavior", the task is not accepted.
 

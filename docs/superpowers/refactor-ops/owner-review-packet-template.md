@@ -144,6 +144,38 @@ Questions:
 - Is it fail-loud and cleared on unload if needed?
 - What future task should remove or replace it?
 
+## 4.6 Runtime Ownership Check
+
+List where capability runtimes are composed, stored, and passed.
+
+| Runtime | Owner before | Owner after | App-level composition point | Service-layer singleton? | Accepted? |
+| --- | --- | --- | --- | --- | --- |
+| `<runtime>` |  |  |  | Yes / No | Yes / No / Needs fix |
+
+Questions:
+
+- Did this task add or preserve `let currentRuntime = null` + `set/getRuntime` in a service-layer file?
+- If a runtime is long-lived, is it owned by `main.ts`, `AppContext`, or an app-owned registry?
+- Do service-layer files import `AppContext` to find runtime dependencies?
+- Are runtime dependencies visible from constructors, ports, UI context, or `RunEnvelope` options?
+- Is unload / teardown ownership clear?
+
+## 4.7 Config Defaults Ownership Check
+
+List product/domain config defaults touched by this task.
+
+| Config | Editable source | Compiled fallback | Loader / adapter | Inline in service engine? | Drift guard |
+| --- | --- | --- | --- | --- | --- |
+| `<config>` | `templates/config/...` | `<defaults file>` | `<adapter>` | Yes / No | `<test / rg check>` |
+
+Questions:
+
+- Did this task add or preserve a large `DEFAULT_*_CONFIG` object inside a service engine?
+- Are thresholds, weights, labels, regexes, colors, and timing knobs discoverable without reading engine logic?
+- Does the fallback file document which `templates/config/*.json` it mirrors?
+- Is there a test or source-scan guard preventing template/fallback drift?
+- If no template exists, is that explicitly justified?
+
 ## 5. Module Boundary Map
 
 ```mermaid
@@ -240,6 +272,8 @@ After reading this packet, the user should be able to answer:
 6. How would I inspect or replay this run?
 7. What does this unlock next?
 8. What should not be touched in the next task?
+9. Who owns runtime composition?
+10. Where do product/domain defaults live?
 
 ## 11. Next Task
 
