@@ -1,8 +1,15 @@
+// T7: structural detectors no longer reach `AppContext`,
+// `sqliteStoreManager`, or the graph inspector helper. All graph and
+// metadata access goes through `context.detectorContext` (the
+// `VaultLintDetectorContextPort`).
+//
+// The narrow port projects raw Obsidian `metadataCache.unresolvedLinks`,
+// sqlite `MobiusEdgeRepo.getHardOrphans` / `MobiusNodeRepo.getByIds`,
+// `getSemanticNeighbors`, and `isIndexedNoteNodeType` into plain shapes
+// detectors can fake. The orphan/broken-link algorithms are
+// behaviorally identical to T6R; only the dependency surface changed.
+
 import { createHash } from 'crypto';
-import { AppContext } from '@/app/context/AppContext';
-import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { getSemanticNeighbors } from '@/service/tools/search-graph-inspector/common';
-import { isIndexedNoteNodeType } from '@/core/po/graph.po';
 import type { LintSignalDetector, LintScanContext, LintFinding, OrphanMetadata, BrokenLinkMetadata } from '../types';
 import { ORPHAN_FETCH_LIMIT } from '@/core/constant';
 
@@ -69,13 +76,12 @@ export const orphanDetector: LintSignalDetector = {
 	requiresLlm: false,
 
 	async detect(context: LintScanContext): Promise<LintFinding[]> {
-		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
-		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+		const dc = context.detectorContext;
 
-		const orphanIds = await mobiusEdgeRepo.getHardOrphans(ORPHAN_FETCH_LIMIT);
+		const orphanIds = await dc.getHardOrphans(ORPHAN_FETCH_LIMIT);
 		if (orphanIds.length === 0) return [];
 
-		const nodeMap = await mobiusNodeRepo.getByIds(orphanIds);
+		const nodeMap = await dc.getNodesByIds(orphanIds);
 		const orphanIdSet = new Set(orphanIds);
 
 		const findings: LintFinding[] = [];
@@ -91,9 +97,9 @@ export const orphanDetector: LintSignalDetector = {
 			if (context.dismissals.has(dismissalKey)) continue;
 
 			let revivalSuggestion: OrphanMetadata['revivalSuggestion'] | undefined;
-			if (isIndexedNoteNodeType(node.type)) {
+			if (dc.isIndexedNoteNodeType(node.type)) {
 				try {
-					const neighbors = await getSemanticNeighbors(nodeId, 5, orphanIdSet);
+					const neighbors = await dc.getSemanticNeighbors(nodeId, 5, orphanIdSet);
 					const best = neighbors.sort((a, b) => parseFloat(b.similarity) - parseFloat(a.similarity))[0];
 					if (best) {
 						const bestAttrs = best.attributes ? JSON.parse(best.attributes) : {};
@@ -136,8 +142,7 @@ export const brokenLinkDetector: LintSignalDetector = {
 	requiresLlm: false,
 
 	async detect(context: LintScanContext): Promise<LintFinding[]> {
-		const app = AppContext.getInstance().app;
-		const unresolvedLinks = app.metadataCache.unresolvedLinks;
+		const unresolvedLinks = context.detectorContext.getUnresolvedLinks();
 		return buildBrokenLinkFindings(unresolvedLinks, context.dismissals);
 	},
 };

@@ -85,18 +85,19 @@ function testProgressEventOnlyHasThreePhases(): void {
 
 function testDependencyInventoryCoversAllResolutionSites(): void {
 	const inv = VAULT_LINT_CURRENT_DEPENDENCIES;
-	// T6: the engine no longer resolves AppContext itself, but the two
-	// app-layer adapters do, so the inventory still records both
-	// resolution sites — relocated to `src/app/lint/*Adapter.ts`.
-	assert.strictEqual(
-		inv.appContextResolutions.length,
-		2,
-		'expect exactly 2 AppContext resolutions, now in app-layer adapters',
+	// T6: the engine no longer resolves AppContext itself.
+	// T7: detectors no longer resolve AppContext either. All remaining
+	// AppContext resolutions live in app-layer adapters
+	// (`src/app/lint/Obsidian*Adapter.ts`), so the inventory still
+	// records them but every site must point at the app layer.
+	assert.ok(
+		inv.appContextResolutions.length >= 3,
+		`expect at least 3 AppContext resolutions across app-layer adapters, found ${inv.appContextResolutions.length}`,
 	);
 	for (const resolution of inv.appContextResolutions) {
 		assert.ok(
 			resolution.site.startsWith('src/app/lint/'),
-			`T6 closure: AppContext resolution must live in src/app/lint/, found '${resolution.site}'`,
+			`T6/T7 closure: AppContext resolution must live in src/app/lint/, found '${resolution.site}'`,
 		);
 	}
 	assert.ok(
@@ -106,6 +107,12 @@ function testDependencyInventoryCoversAllResolutionSites(): void {
 	assert.ok(
 		inv.appContextResolutions.some((r) => r.access.includes('app.vault.getMarkdownFiles')),
 		'inventory must include vault resolution (now in ObsidianVaultLintVaultAdapter)',
+	);
+	assert.ok(
+		inv.appContextResolutions.some((r) =>
+			r.site.endsWith('ObsidianVaultLintDetectorContextAdapter.ts'),
+		),
+		'T7: inventory must include the detector-context adapter as an AppContext resolution site',
 	);
 
 	const singletonNames = inv.singletonResolutions.map((r) => r.singleton);

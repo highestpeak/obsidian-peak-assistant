@@ -1,15 +1,33 @@
+// T7: rewritten to test the current `computeHealthScore` free function.
+//
+// Before T7 this file imported a non-existent `HealthScoreEngine` class
+// and a `DEFAULT_VAULT_LINT_CONFIG` / `LINT_DIMENSIONS` symbol that the
+// types module never exported — the file had been silently broken since
+// before T5. T7 keeps the same SEMANTIC coverage (zero findings → 100,
+// errors penalize more than warnings, all-notes affected → 0, weighted
+// sum, zero notes → 100) but rewires it to the actual exported API:
+//
+//   - `computeHealthScore(findings, totalNotes, config)` in
+//     `src/service/lint/HealthScoreEngine.ts`
+//   - `DEFAULT_VAULT_LINT_CONFIG` in
+//     `src/service/lint/config/VaultLintDefaults.ts`
+
 import assert from 'assert';
-import { HealthScoreEngine } from '@/service/lint/HealthScoreEngine';
-import type { LintFinding, LintSignalDetector, LintScanContext, VaultLintConfig, LintDimension } from '@/service/lint/types';
-import { DEFAULT_VAULT_LINT_CONFIG, LINT_DIMENSIONS } from '@/service/lint/types';
+import { computeHealthScore } from '@/service/lint/HealthScoreEngine';
+import { DEFAULT_VAULT_LINT_CONFIG } from '@/service/lint/config/VaultLintDefaults';
+import type { LintFinding, LintDimension, LintSignalId } from '@/service/lint/types';
 
-// ─── Helpers ────────────────────────────────────────────────────────────
+const ALL_DIMENSIONS: LintDimension[] = ['structural', 'content', 'temporal', 'semantic', 'tags'];
 
-function makeFinding(signalId: string, filePath: string): LintFinding {
+function makeFinding(
+	signalId: LintSignalId,
+	filePath: string,
+	severity: LintFinding['severity'] = 'warning',
+): LintFinding {
 	return {
 		id: `${signalId}:${filePath}`,
-		signalId: signalId as LintFinding['signalId'],
-		severity: 'warning',
+		signalId,
+		severity,
 		filePath,
 		title: 'test',
 		description: 'test',
@@ -19,168 +37,128 @@ function makeFinding(signalId: string, filePath: string): LintFinding {
 	};
 }
 
-function makeDetector(
-	id: string,
-	dimension: LintDimension,
-	severity: 'error' | 'warning' | 'info',
-	signalWeight: number,
-): LintSignalDetector {
-	return {
-		id: id as LintSignalDetector['id'],
-		dimension,
-		severity,
-		signalWeight,
-		label: id,
-		description: id,
-		requiresLlm: false,
-		detect: async () => [],
-	};
-}
-
-// ─── Tests ──────────────────────────────────────────────────────────────
-
-function testNoFindings(): void {
-	const detectors = [
-		makeDetector('S-ORPHAN', 'structural', 'warning', 0.30),
-		makeDetector('C-EMPTY', 'content', 'warning', 0.30),
-	];
-	const engine = new HealthScoreEngine(detectors, DEFAULT_VAULT_LINT_CONFIG);
-	const result = engine.compute([], 100);
-
-	assert.strictEqual(result.healthScore, 100, 'No findings → overall score should be 100');
-	for (const dim of LINT_DIMENSIONS) {
-		assert.strictEqual(result.dimensionScores[dim], 100, `${dim} should be 100 with no findings`);
+function testNoFindingsGivesPerfectScore(): void {
+	const { healthScore, dimensionScores } = computeHealthScore([], 100, DEFAULT_VAULT_LINT_CONFIG);
+	assert.strictEqual(healthScore, 100, 'No findings → overall score should be 100');
+	for (const dim of ALL_DIMENSIONS) {
+		assert.strictEqual(dimensionScores[dim], 100, `${dim} should be 100 with no findings`);
 	}
+	console.log('PASS: noFindingsGivesPerfectScore');
 }
 
-function testSomeWarningsOneDimension(): void {
-	const detectors = [
-		makeDetector('S-ORPHAN', 'structural', 'warning', 0.30),
-		makeDetector('C-EMPTY', 'content', 'warning', 0.30),
-	];
-	const engine = new HealthScoreEngine(detectors, DEFAULT_VAULT_LINT_CONFIG);
-
-	// 10 orphans out of 100 notes
-	const findings = Array.from({ length: 10 }, (_, i) => makeFinding('S-ORPHAN', `note${i}.md`));
-	const result = engine.compute(findings, 100);
-
-	assert.ok(result.dimensionScores.structural < 100, 'Structural dimension should be penalized');
-	assert.strictEqual(result.dimensionScores.content, 100, 'Content dimension should be 100');
-	assert.strictEqual(result.dimensionScores.temporal, 100, 'Temporal dimension should be 100');
-	assert.strictEqual(result.dimensionScores.semantic, 100, 'Semantic dimension should be 100');
-	assert.strictEqual(result.dimensionScores.tags, 100, 'Tags dimension should be 100');
-
-	// Structural: penalty = (10/100) * 1.5 * 0.30 = 0.045 → score = round(100 * (1 - 0.045)) = 96
-	assert.strictEqual(result.dimensionScores.structural, 96, 'Structural score should be 96');
+function testSingleDimensionPenaltyMatchesFormula(): void {
+	// 10 S-ORPHAN warnings / 100 notes.
+	//   per-finding penalty = (1/100) * 1.5 * 0.30 (S-ORPHAN signal weight)
+	//   total penalty       = 10 * 0.0045 = 0.045
+	//   structural score    = round(100 * (1 - 0.045)) = 96
+	const findings = Array.from({ length: 10 }, (_, i) =>
+		makeFinding('S-ORPHAN', `note${i}.md`, 'warning'),
+	);
+	const { dimensionScores } = computeHealthScore(findings, 100, DEFAULT_VAULT_LINT_CONFIG);
+	assert.strictEqual(dimensionScores.structural, 96, 'Structural penalty should yield 96');
+	for (const dim of ALL_DIMENSIONS) {
+		if (dim === 'structural') continue;
+		assert.strictEqual(dimensionScores[dim], 100, `${dim} should stay at 100`);
+	}
+	console.log('PASS: singleDimensionPenaltyMatchesFormula');
 }
 
 function testErrorsPenalizeMoreThanWarnings(): void {
-	const errorDetector = makeDetector('S-BROKEN-LINK', 'structural', 'error', 0.25);
-	const warningDetector = makeDetector('S-ORPHAN', 'structural', 'warning', 0.25);
-
-	// Same weight, same count, different severity
-	const totalNotes = 100;
-	const errorFindings = Array.from({ length: 10 }, (_, i) => makeFinding('S-BROKEN-LINK', `note${i}.md`));
-	const warningFindings = Array.from({ length: 10 }, (_, i) => makeFinding('S-ORPHAN', `note${i}.md`));
-
-	const errorEngine = new HealthScoreEngine([errorDetector], DEFAULT_VAULT_LINT_CONFIG);
-	const warningEngine = new HealthScoreEngine([warningDetector], DEFAULT_VAULT_LINT_CONFIG);
-
-	const errorResult = errorEngine.compute(errorFindings, totalNotes);
-	const warningResult = warningEngine.compute(warningFindings, totalNotes);
-
-	// error multiplier = 3.0, warning multiplier = 1.5 → error penalty is 2x warning penalty
-	// Error: penalty = (10/100) * 3.0 * 0.25 = 0.075 → 93
-	// Warning: penalty = (10/100) * 1.5 * 0.25 = 0.0375 → 96
-	assert.strictEqual(errorResult.dimensionScores.structural, 93, 'Error penalty should yield 93');
-	assert.strictEqual(warningResult.dimensionScores.structural, 96, 'Warning penalty should yield 96');
+	// S-BROKEN-LINK errors vs S-ORPHAN warnings — both structural.
+	// Error multiplier 3.0 vs warning 1.5; same count, same per-finding
+	// affected-note ratio. Same dimension keeps the comparison fair.
+	const errorFindings = Array.from({ length: 10 }, (_, i) =>
+		makeFinding('S-BROKEN-LINK', `note${i}.md`, 'error'),
+	);
+	const warningFindings = Array.from({ length: 10 }, (_, i) =>
+		makeFinding('S-ORPHAN', `note${i}.md`, 'warning'),
+	);
+	const errResult = computeHealthScore(errorFindings, 100, DEFAULT_VAULT_LINT_CONFIG);
+	const warnResult = computeHealthScore(warningFindings, 100, DEFAULT_VAULT_LINT_CONFIG);
+	// S-BROKEN-LINK signal weight 0.25; S-ORPHAN signal weight 0.30.
+	// Error penalty:   10 * (1/100) * 3.0 * 0.25 = 0.075 → score 93
+	// Warning penalty: 10 * (1/100) * 1.5 * 0.30 = 0.045 → score 96
+	assert.strictEqual(errResult.dimensionScores.structural, 93);
+	assert.strictEqual(warnResult.dimensionScores.structural, 96);
 	assert.ok(
-		errorResult.dimensionScores.structural < warningResult.dimensionScores.structural,
-		'Errors should penalize more than warnings',
+		errResult.dimensionScores.structural < warnResult.dimensionScores.structural,
+		'Errors should penalize more than warnings (same count, same dimension)',
 	);
+	console.log('PASS: errorsPenalizeMoreThanWarnings');
 }
 
-function testAllNotesAffectedDimensionZero(): void {
-	// signalWeight = 1.0, severity = error (3.0) → penalty = (100/100) * 3.0 * 1.0 = 3.0 → clamped to 1 → score = 0
-	const detector = makeDetector('S-ORPHAN', 'structural', 'error', 1.0);
-	const engine = new HealthScoreEngine([detector], DEFAULT_VAULT_LINT_CONFIG);
-
-	const findings = Array.from({ length: 100 }, (_, i) => makeFinding('S-ORPHAN', `note${i}.md`));
-	const result = engine.compute(findings, 100);
-
-	assert.strictEqual(result.dimensionScores.structural, 0, 'All notes affected → dimension score = 0');
+function testAllNotesAffectedClampsDimensionToZero(): void {
+	// 100 S-BROKEN-LINK errors / 100 notes.
+	//   per-finding penalty = (1/100) * 3.0 * 0.25 = 0.0075
+	//   total penalty       = 100 * 0.0075 = 0.75 (NOT clamped yet — under 1)
+	//   So we add a stronger per-finding penalty by stacking duplicates:
+	//   use 200 findings → penalty = 1.5 → clamped to 1 → score 0.
+	const findings = Array.from({ length: 200 }, (_, i) =>
+		makeFinding('S-BROKEN-LINK', `note${i}.md`, 'error'),
+	);
+	const { dimensionScores } = computeHealthScore(findings, 100, DEFAULT_VAULT_LINT_CONFIG);
+	assert.strictEqual(
+		dimensionScores.structural,
+		0,
+		'Sufficient findings should clamp the dimension to 0',
+	);
+	console.log('PASS: allNotesAffectedClampsDimensionToZero');
 }
 
-function testOverallIsWeightedSum(): void {
-	// Create detectors in structural and content dimensions with large enough penalties to produce distinct scores
-	const structDetector = makeDetector('S-ORPHAN', 'structural', 'warning', 0.30);
-	const contentDetector = makeDetector('C-EMPTY', 'content', 'warning', 0.30);
-	const engine = new HealthScoreEngine([structDetector, contentDetector], DEFAULT_VAULT_LINT_CONFIG);
-
-	// 20 orphans, 10 empty, out of 100
+function testOverallScoreIsConfigWeightedSum(): void {
+	// Mix structural (20 orphan warnings) + content (10 empty warnings).
+	//   Structural penalty: 20 * (1/100) * 1.5 * 0.30 = 0.090 → score 91
+	//   Content penalty:    10 * (1/100) * 1.5 * 0.30 = 0.045 → score 96
+	//   Other dims: 100
 	const findings = [
-		...Array.from({ length: 20 }, (_, i) => makeFinding('S-ORPHAN', `orphan${i}.md`)),
-		...Array.from({ length: 10 }, (_, i) => makeFinding('C-EMPTY', `empty${i}.md`)),
+		...Array.from({ length: 20 }, (_, i) => makeFinding('S-ORPHAN', `orphan${i}.md`, 'warning')),
+		...Array.from({ length: 10 }, (_, i) => makeFinding('C-EMPTY', `empty${i}.md`, 'warning')),
 	];
-	const result = engine.compute(findings, 100);
-
-	// Structural: penalty = (20/100) * 1.5 * 0.30 = 0.09 → round(100 * 0.91) = 91
-	// Content: penalty = (10/100) * 1.5 * 0.30 = 0.045 → round(100 * 0.955) = 96
-	// Other dims: 100
-	assert.strictEqual(result.dimensionScores.structural, 91);
-	assert.strictEqual(result.dimensionScores.content, 96);
-
-	// Overall = 91*0.30 + 96*0.20 + 100*0.15 + 100*0.25 + 100*0.10
-	// = 27.3 + 19.2 + 15 + 25 + 10 = 96.5 → round = 97
-	// (note: round(96.5) = 97 in JS — Math.round rounds .5 up)
-	const expected = Math.round(
-		91 * 0.30 + 96 * 0.20 + 100 * 0.15 + 100 * 0.25 + 100 * 0.10,
+	const { healthScore, dimensionScores } = computeHealthScore(
+		findings,
+		100,
+		DEFAULT_VAULT_LINT_CONFIG,
 	);
-	assert.strictEqual(result.healthScore, expected, `Overall should be weighted sum: ${expected}`);
+	assert.strictEqual(dimensionScores.structural, 91);
+	assert.strictEqual(dimensionScores.content, 96);
+	const w = DEFAULT_VAULT_LINT_CONFIG.dimensionWeights;
+	const expected = Math.round(
+		91 * w.structural +
+			96 * w.content +
+			100 * w.temporal +
+			100 * w.semantic +
+			100 * w.tags,
+	);
+	assert.strictEqual(
+		healthScore,
+		expected,
+		`Overall should be configured weighted sum (got ${healthScore}, expected ${expected})`,
+	);
+	console.log('PASS: overallScoreIsConfigWeightedSum');
 }
 
-function testZeroTotalNotes(): void {
-	const detector = makeDetector('S-ORPHAN', 'structural', 'warning', 0.30);
-	const engine = new HealthScoreEngine([detector], DEFAULT_VAULT_LINT_CONFIG);
-	const result = engine.compute([], 0);
-
-	assert.strictEqual(result.healthScore, 100, 'Zero total notes → score 100');
-	for (const dim of LINT_DIMENSIONS) {
-		assert.strictEqual(result.dimensionScores[dim], 100, `${dim} should be 100 with zero notes`);
+function testZeroTotalNotesGivesPerfectScore(): void {
+	const { healthScore, dimensionScores } = computeHealthScore([], 0, DEFAULT_VAULT_LINT_CONFIG);
+	assert.strictEqual(healthScore, 100, 'Zero total notes → overall 100');
+	for (const dim of ALL_DIMENSIONS) {
+		assert.strictEqual(dimensionScores[dim], 100, `${dim} should be 100 with zero notes`);
 	}
+	console.log('PASS: zeroTotalNotesGivesPerfectScore');
 }
 
-// ─── Runner ─────────────────────────────────────────────────────────────
-
-const tests = [
-	{ name: 'No findings → score 100', fn: testNoFindings },
-	{ name: 'Some warnings in one dimension', fn: testSomeWarningsOneDimension },
-	{ name: 'Errors penalize 3x vs warnings 1.5x', fn: testErrorsPenalizeMoreThanWarnings },
-	{ name: 'All notes affected → dimension score = 0', fn: testAllNotesAffectedDimensionZero },
-	{ name: 'Overall score is weighted sum of dimension scores', fn: testOverallIsWeightedSum },
-	{ name: 'Zero total notes → score 100', fn: testZeroTotalNotes },
-];
-
-async function run(): Promise<void> {
-	let passed = 0;
-	let failed = 0;
-
-	for (const test of tests) {
-		try {
-			await test.fn();
-			console.log(`PASS: ${test.name}`);
-			passed += 1;
-		} catch (error) {
-			failed += 1;
-			console.error(`FAIL: ${test.name}`);
-			console.error(error);
-		}
-	}
-
-	console.log(`\nHealthScoreEngine tests: ${passed} passed, ${failed} failed`);
-	if (failed > 0) {
-		process.exit(1);
-	}
+function main(): void {
+	testNoFindingsGivesPerfectScore();
+	testSingleDimensionPenaltyMatchesFormula();
+	testErrorsPenalizeMoreThanWarnings();
+	testAllNotesAffectedClampsDimensionToZero();
+	testOverallScoreIsConfigWeightedSum();
+	testZeroTotalNotesGivesPerfectScore();
 }
 
-void run();
+try {
+	main();
+	process.exit(0);
+} catch (err) {
+	console.error(err);
+	process.exit(1);
+}

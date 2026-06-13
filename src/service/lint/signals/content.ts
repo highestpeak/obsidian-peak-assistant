@@ -1,5 +1,11 @@
+// T7: content detectors now read the vault exclusively through
+// `context.detectorContext` (the `VaultLintDetectorContextPort`).
+// They have zero awareness of Obsidian, `AppContext`, or sqlite. A
+// fake context with `listMarkdownFiles` + `readMarkdownFile` is
+// enough to exercise the full detector logic; see
+// `test/vault-lint-detectors.test.ts`.
+
 import { createHash } from 'crypto';
-import { AppContext } from '@/app/context/AppContext';
 import type { LintSignalDetector, LintScanContext, LintFinding, VaultLintConfig } from '../types';
 
 function findingId(signalId: string, filePath: string): string {
@@ -7,7 +13,7 @@ function findingId(signalId: string, filePath: string): string {
 }
 
 /** Strip YAML frontmatter + headings + whitespace; returns remaining prose length. */
-function strippedLength(content: string): number {
+export function strippedLength(content: string): number {
 	return content
 		.replace(/^---[\s\S]*?---\n?/, '')   // strip frontmatter
 		.replace(/^#{1,6}\s+.*/gm, '')        // strip headings
@@ -27,14 +33,14 @@ export const emptyDetector: LintSignalDetector = {
 	requiresLlm: false,
 
 	async detect(context: LintScanContext): Promise<LintFinding[]> {
-		const app = AppContext.getInstance().app;
-		const files = app.vault.getMarkdownFiles();
+		const dc = context.detectorContext;
+		const files = dc.listMarkdownFiles();
 		const findings: LintFinding[] = [];
 
 		for (const file of files) {
 			if (context.dismissals.has(`C-EMPTY:${file.path}`)) continue;
 
-			const content = await app.vault.cachedRead(file);
+			const content = await dc.readMarkdownFile(file.path);
 			if (strippedLength(content) === 0) {
 				findings.push({
 					id: findingId('C-EMPTY', file.path),
@@ -63,14 +69,14 @@ function buildStubDetector(stubMaxChars: number): LintSignalDetector {
 		requiresLlm: false,
 
 		async detect(context: LintScanContext): Promise<LintFinding[]> {
-			const app = AppContext.getInstance().app;
-			const files = app.vault.getMarkdownFiles();
+			const dc = context.detectorContext;
+			const files = dc.listMarkdownFiles();
 			const findings: LintFinding[] = [];
 
 			for (const file of files) {
 				if (context.dismissals.has(`C-STUB:${file.path}`)) continue;
 
-				const content = await app.vault.cachedRead(file);
+				const content = await dc.readMarkdownFile(file.path);
 				const len = strippedLength(content);
 				if (len > 0 && len < stubMaxChars) {
 					findings.push({

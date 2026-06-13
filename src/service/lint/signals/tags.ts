@@ -1,5 +1,10 @@
+// T7: tag detectors now read tag classification through
+// `context.detectorContext.getTags(path)` instead of resolving
+// `app.metadataCache.getFileCache(file)` themselves. The adapter
+// normalizes frontmatter `tags` (string | string[] | undefined) into a
+// uniform `string[]`; detectors only see two arrays.
+
 import { createHash } from 'crypto';
-import { AppContext } from '@/app/context/AppContext';
 import type { LintSignalDetector, LintScanContext, LintFinding } from '../types';
 
 function findingId(signalId: string, filePath: string): string {
@@ -14,18 +19,16 @@ export const untaggedDetector: LintSignalDetector = {
 	requiresLlm: false,
 
 	async detect(context: LintScanContext): Promise<LintFinding[]> {
-		const app = AppContext.getInstance().app;
-		const files = app.vault.getMarkdownFiles();
+		const dc = context.detectorContext;
+		const files = dc.listMarkdownFiles();
 		const findings: LintFinding[] = [];
 
 		for (const file of files) {
 			if (context.dismissals.has(`G-UNTAGGED:${file.path}`)) continue;
 
-			const cache = app.metadataCache.getFileCache(file);
-			const inlineTags = cache?.tags ?? [];
-			const fmTags: string[] = (cache?.frontmatter?.tags as string[] | undefined) ?? [];
+			const { inlineTags, frontmatterTags } = dc.getTags(file.path);
 
-			if (inlineTags.length === 0 && fmTags.length === 0) {
+			if (inlineTags.length === 0 && frontmatterTags.length === 0) {
 				findings.push({
 					id: findingId('G-UNTAGGED', file.path),
 					signalId: 'G-UNTAGGED',
