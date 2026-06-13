@@ -113,12 +113,14 @@ export class InMemoryRunRecorder {
 	/**
 	 * Record an artifact reference. The recorder mints `artifactId`,
 	 * stamps `runId` and `createdAt`, so callers can never produce a
-	 * non-deterministic ArtifactRef.
+	 * non-deterministic ArtifactRef. The artifact stored on the internal
+	 * event and the artifact returned to the caller are separate object
+	 * instances, so neither side can mutate the other's view.
 	 */
 	recordArtifact(input: ArtifactRefInput): ArtifactRef {
 		const session = this.requireSession('recordArtifact');
 		const createdAt = this.clock.now();
-		const artifact: ArtifactRef = {
+		const canonical: ArtifactRef = {
 			artifactId: this.idFactory.next(),
 			runId: session.runId,
 			kind: input.kind,
@@ -130,10 +132,10 @@ export class InMemoryRunRecorder {
 		this.events.push({
 			type: 'artifact',
 			runId: session.runId,
-			artifact,
+			artifact: this.snapshotArtifact(canonical),
 			ts: createdAt,
 		});
-		return artifact;
+		return this.snapshotArtifact(canonical);
 	}
 
 	recordError(message: string, recoverable: boolean): void {
@@ -188,9 +190,15 @@ export class InMemoryRunRecorder {
 		return this.snapshotSession();
 	}
 
-	/** Read-only view of all recorded events, in emission order. */
+	/**
+	 * Read-only snapshot of all recorded events, in emission order. Each
+	 * event in the returned array is a fresh clone, and for `artifact`
+	 * events the nested `ArtifactRef` is cloned too, so a caller that
+	 * mutates the returned structure cannot reach back into the
+	 * recorder's internal trace.
+	 */
 	getEvents(): readonly RunEvent[] {
-		return this.events.slice();
+		return this.events.map((e) => this.snapshotEvent(e));
 	}
 
 	private requireSession(caller: string): RunSession {
@@ -212,5 +220,28 @@ export class InMemoryRunRecorder {
 			startedAt: s.startedAt,
 			...(s.endedAt !== undefined ? { endedAt: s.endedAt } : {}),
 		};
+	}
+
+	private snapshotArtifact(a: ArtifactRef): ArtifactRef {
+		return {
+			artifactId: a.artifactId,
+			runId: a.runId,
+			kind: a.kind,
+			...(a.title !== undefined ? { title: a.title } : {}),
+			...(a.uri !== undefined ? { uri: a.uri } : {}),
+			...(a.contentType !== undefined ? { contentType: a.contentType } : {}),
+			createdAt: a.createdAt,
+		};
+	}
+
+	private snapshotEvent(e: RunEvent): RunEvent {
+		// The nested ArtifactRef on `artifact` events is the only
+		// non-primitive field that survives a shallow clone, so it gets
+		// its own snapshot pass. All other variants are plain primitive
+		// records and a shallow spread suffices.
+		if (e.type === 'artifact') {
+			return { ...e, artifact: this.snapshotArtifact(e.artifact) };
+		}
+		return { ...e };
 	}
 }

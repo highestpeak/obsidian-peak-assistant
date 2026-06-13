@@ -373,6 +373,68 @@ function testRunEventUnionIsExhaustive(): void {
 	console.log('PASS: runEventUnionIsExhaustive');
 }
 
+function testMutatingRecordArtifactReturnDoesNotPolluteEventTrace(): void {
+	const r = newRecorder();
+	r.start({ capabilityId: 'c', trigger: 'test' });
+	const returned = r.recordArtifact({ kind: 'result', title: 'orig' });
+	(returned as { title: string }).title = 'tampered';
+	const events = r.getEvents();
+	const artEv = events.find((e) => e.type === 'artifact') as { artifact: ArtifactRef };
+	assert.strictEqual(
+		artEv.artifact.title,
+		'orig',
+		'mutating recordArtifact() return must not change the event-stored artifact',
+	);
+	console.log('PASS: mutatingRecordArtifactReturnDoesNotPolluteEventTrace');
+}
+
+function testMutatingGetEventsResultDoesNotPolluteInternalEvents(): void {
+	const r = newRecorder();
+	r.start({ capabilityId: 'c', trigger: 'test' });
+	r.recordLog('info', 'orig');
+	const e1 = r.getEvents();
+	const logEv = e1.find((e) => e.type === 'log') as { message: string };
+	logEv.message = 'tampered';
+	const e2 = r.getEvents();
+	const logEv2 = e2.find((e) => e.type === 'log') as { message: string };
+	assert.strictEqual(
+		logEv2.message,
+		'orig',
+		'mutating an event from getEvents() must not affect the recorder',
+	);
+	console.log('PASS: mutatingGetEventsResultDoesNotPolluteInternalEvents');
+}
+
+function testMutatingNestedArtifactInGetEventsDoesNotPolluteRecorder(): void {
+	const r = newRecorder();
+	r.start({ capabilityId: 'c', trigger: 'test' });
+	r.recordArtifact({ kind: 'result', title: 'orig', uri: 'peak://a' });
+	const e1 = r.getEvents();
+	const art1 = (e1.find((e) => e.type === 'artifact') as { artifact: ArtifactRef }).artifact;
+	(art1 as { title: string }).title = 'tampered';
+	(art1 as { uri: string }).uri = 'peak://tampered';
+	const e2 = r.getEvents();
+	const art2 = (e2.find((e) => e.type === 'artifact') as { artifact: ArtifactRef }).artifact;
+	assert.strictEqual(art2.title, 'orig', 'nested artifact title must survive external mutation');
+	assert.strictEqual(art2.uri, 'peak://a', 'nested artifact uri must survive external mutation');
+	console.log('PASS: mutatingNestedArtifactInGetEventsDoesNotPolluteRecorder');
+}
+
+function testRecordArtifactReturnAndEventArtifactAreSeparateInstances(): void {
+	const r = newRecorder();
+	r.start({ capabilityId: 'c', trigger: 'test' });
+	const returned = r.recordArtifact({ kind: 'result', title: 'X' });
+	const events = r.getEvents();
+	const eventArt = (events.find((e) => e.type === 'artifact') as { artifact: ArtifactRef }).artifact;
+	assert.notStrictEqual(
+		returned,
+		eventArt,
+		'recordArtifact return value must not share identity with the artifact stored on the event',
+	);
+	assert.deepStrictEqual(returned, eventArt, 'but the two must be structurally equal at recording time');
+	console.log('PASS: recordArtifactReturnAndEventArtifactAreSeparateInstances');
+}
+
 function testRecorderHasNoSubscribeApi(): void {
 	const r = newRecorder() as unknown as Record<string, unknown>;
 	for (const forbidden of ['on', 'emit', 'subscribe', 'addListener', 'off']) {
@@ -419,6 +481,10 @@ try {
 	testGetSessionReturnsSnapshotNotLiveReference();
 	testGetEventsReturnsIndependentArray();
 	testRunEventUnionIsExhaustive();
+	testMutatingRecordArtifactReturnDoesNotPolluteEventTrace();
+	testMutatingGetEventsResultDoesNotPolluteInternalEvents();
+	testMutatingNestedArtifactInGetEventsDoesNotPolluteRecorder();
+	testRecordArtifactReturnAndEventArtifactAreSeparateInstances();
 	testRecorderHasNoSubscribeApi();
 	testRecorderHasNoPortsField();
 	process.exit(0);
