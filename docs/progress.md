@@ -92,10 +92,11 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] 用户指出 T6 review fix：`VaultLintRuntime.currentRuntime` 不应长期留在 service 层；`DEFAULT_VAULT_LINT_CONFIG` 不应放在 engine 文件
 - [x] Config Defaults Governance doc ready：`docs/superpowers/refactor-ops/config-defaults-governance.md`
 - [x] T6R Runtime Ownership + Config Defaults handoff ready：`docs/superpowers/refactor-ops/t6-review-fix-runtime-ownership-config-defaults-handoff.md`
+- [x] T6R implementation 完成并接受：`abb968d9` + Owner Review `docs/superpowers/audits/2026-06-13-t6r-owner-review-packet.md`
 - [x] Runtime Ownership / Config Defaults 两条规则写入 `AGENTS.md`、`CLAUDE.md`、`docs/conventions/configurability.md`、handoff template、owner review template
 - [x] T7 Vault Lint Detector Context Closure handoff ready：`docs/superpowers/refactor-ops/t7-vault-lint-detector-context-closure-handoff.md`
 - [x] T6R+T7 combined closure-wave draft captured but paused：`docs/superpowers/refactor-ops/t6r-t7-vault-lint-foundation-closure-handoff.md`（不是当前 handoff）
-- [ ] 下一步：继续/完成 T6R；T6R owner review 后再设计更大粒度的下一轮 closure wave
+- [ ] 下一步：基于 T6R owner review 重写更大粒度的下一轮 Vault Lint closure wave；不要直接发送旧 T7 小包
 - [ ] 不要提前做 Chat、Ambient Push、Command Gateway；Ambient 仍是 post-foundation，Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾

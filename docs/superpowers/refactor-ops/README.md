@@ -266,15 +266,16 @@ Completed and accepted:
 - T4 Vault Lint RunEnvelope Vertical Slice: [`t4-vault-lint-run-envelope-vertical-slice-handoff.md`](./t4-vault-lint-run-envelope-vertical-slice-handoff.md) + [`2026-06-13-t4-owner-review-packet.md`](../audits/2026-06-13-t4-owner-review-packet.md)
 - T5 Vault Lint Runtime Closure Wave: [`t5-vault-lint-runtime-closure-wave-handoff.md`](./t5-vault-lint-runtime-closure-wave-handoff.md) + [`2026-06-13-t5-owner-review-packet.md`](../audits/2026-06-13-t5-owner-review-packet.md)
 - T6 Vault Lint Ports Extraction + Service-as-Plain-Class: [`t6-vault-lint-ports-service-plain-class-handoff.md`](./t6-vault-lint-ports-service-plain-class-handoff.md) + [`2026-06-13-t6-owner-review-packet.md`](../audits/2026-06-13-t6-owner-review-packet.md)
+- T6R Runtime Ownership + Config Defaults Governance: [`t6-review-fix-runtime-ownership-config-defaults-handoff.md`](./t6-review-fix-runtime-ownership-config-defaults-handoff.md) + [`2026-06-13-t6r-owner-review-packet.md`](../audits/2026-06-13-t6r-owner-review-packet.md)
 
 Ready for owner approval:
 
-- T6R Runtime Ownership + Config Defaults Governance: [`t6-review-fix-runtime-ownership-config-defaults-handoff.md`](./t6-review-fix-runtime-ownership-config-defaults-handoff.md)
+- No implementation handoff is ready to send as-is.
+- The existing T7 handoff is too small for the owner preference and should be rewritten before sending.
 
 Next owner decision:
 
-- continue/finish `T6R` first;
-- after T6R owner review, Codex should design the next closure wave with a larger default scope than the earlier T6R+T7 draft;
+- Codex should design the next Vault Lint closure wave with a larger default scope than the earlier T7 draft;
 - do not start Chat, Ambient Push, or Command Gateway yet.
 
 ## Supporting Files
