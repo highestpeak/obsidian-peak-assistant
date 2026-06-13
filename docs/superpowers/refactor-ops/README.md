@@ -1,6 +1,6 @@
 # Peak Assistant Refactor Ops
 
-Last updated: 2026-06-12
+Last updated: 2026-06-13
 
 This folder is the operating layer for the large architecture modernization. It does not replace the architecture reports. It turns them into a repeatable loop where Codex produces understanding, review packets, diagrams, scorecards, and Claude Code handoffs, while Claude Code only performs implementation work.
 
@@ -53,6 +53,34 @@ flowchart TD
 ```
 
 Manual handoff is intentional. It is the owner authorization point.
+
+## Task Size Policy
+
+T0-T4 used small slices to establish evidence, contracts, ports, and the first `RunEnvelope` adopter. From T5 onward, default tasks should be closure waves, not adapter-only micro-slices.
+
+A normal closure wave may touch:
+
+- 6-15 related production files;
+- 4-10 related tests/docs files;
+- one capability or one tightly bounded runtime surface;
+- both new-path wiring and old-path deletion in the same task.
+
+A task is too small if it only:
+
+- adds a wrapper, hook, adapter, or type;
+- leaves the old runtime truth owning behavior;
+- reports no old-path deletion;
+- produces no boundary, state ownership, or change-radius improvement;
+- forces the user to paste many tiny deltas back and forth without giving a coherent code-reading unit.
+
+A task is too large if it:
+
+- crosses into unrelated capabilities;
+- touches Chat, Ambient, Command Gateway, and Vault Lint in the same implementation package;
+- changes persisted data or UI redesign scope without an explicit handoff;
+- cannot be reviewed with a single code reading guide.
+
+From T5 onward, each implementation handoff must name the old path that will be deleted, emptied, or retired. If there is no old-path closure target, Codex should either merge it into a larger package or explain why the task must remain diagnostic.
 
 ## Review Access Rule
 
@@ -188,14 +216,15 @@ Completed and accepted:
 - T2B IndexInitializer ProgressReporterPort follow-up: [`t2b-index-initializer-progress-reporter-handoff.md`](./t2b-index-initializer-progress-reporter-handoff.md) + [`2026-06-12-t2b-owner-review-packet.md`](../audits/2026-06-12-t2b-owner-review-packet.md)
 - T2C AnalysisDocPersistence Notice cleanup: [`t2c-analysis-doc-persistence-notice-cleanup-handoff.md`](./t2c-analysis-doc-persistence-notice-cleanup-handoff.md) + [`2026-06-12-t2c-owner-review-packet.md`](../audits/2026-06-12-t2c-owner-review-packet.md)
 - T3A RunEnvelope Core: [`t3-run-envelope-core-handoff.md`](./t3-run-envelope-core-handoff.md) + [`2026-06-13-t3a-owner-review-packet.md`](../audits/2026-06-13-t3a-owner-review-packet.md)
+- T4 Vault Lint RunEnvelope Vertical Slice: [`t4-vault-lint-run-envelope-vertical-slice-handoff.md`](./t4-vault-lint-run-envelope-vertical-slice-handoff.md) + [`2026-06-13-t4-owner-review-packet.md`](../audits/2026-06-13-t4-owner-review-packet.md)
 
 Ready for owner approval:
 
-- T4 Vault Lint RunEnvelope Vertical Slice: [`t4-vault-lint-run-envelope-vertical-slice-handoff.md`](./t4-vault-lint-run-envelope-vertical-slice-handoff.md)
+- T5 Vault Lint Runtime Closure Wave: [`t5-vault-lint-runtime-closure-wave-handoff.md`](./t5-vault-lint-runtime-closure-wave-handoff.md)
 
 Next owner decision:
 
-- send `T4` to Claude Code for a medium-size capability vertical slice;
+- send `T5` to Claude Code for a larger closure wave;
 - do not start Chat, Ambient Push, or Command Gateway yet.
 
 ## Supporting Files
@@ -209,6 +238,7 @@ Next owner decision:
 - [`t2c-analysis-doc-persistence-notice-cleanup-handoff.md`](./t2c-analysis-doc-persistence-notice-cleanup-handoff.md): T2C implementation handoff.
 - [`t3-run-envelope-core-handoff.md`](./t3-run-envelope-core-handoff.md): T3A implementation handoff.
 - [`t4-vault-lint-run-envelope-vertical-slice-handoff.md`](./t4-vault-lint-run-envelope-vertical-slice-handoff.md): T4 implementation handoff.
+- [`t5-vault-lint-runtime-closure-wave-handoff.md`](./t5-vault-lint-runtime-closure-wave-handoff.md): T5 larger closure-wave handoff.
 
 ## Do Not Do
 
