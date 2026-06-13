@@ -61,14 +61,23 @@ export interface VaultLintRunResult {
 }
 
 /**
- * Options accepted by `runVaultLintManualScan`. All fields are optional;
- * production callers pass nothing and the runner uses real clock/id/scan.
- * Tests inject deterministic fakes via `clock`, `idFactory`, and `scan`.
+ * Options accepted by `runVaultLintManualScan`.
  *
- * `recorder` is the rare escape hatch: a caller that already constructed
- * a recorder (e.g. a wrapping orchestrator in T5+) can pass it in. When
- * both `recorder` and `clock`/`idFactory` are supplied the recorder wins
- * — the recorder owns those decisions.
+ * Either `runtime` (production) or `scan` (tests) must be supplied —
+ * the runner refuses to run otherwise. T6R deleted the older
+ * service-locator fallback that resolved the runtime via
+ * `getVaultLintRuntime()`; the caller is now responsible for
+ * threading the app-owned runtime in (UI hook reads it from
+ * `ServiceContext.vaultLintRuntime`; service consumers read it from
+ * `AppContext.getVaultLintRuntime()`).
+ *
+ * `clock` / `idFactory` are optional fakes for tests; production
+ * uses real `Date.now()` and a process-unique scan id.
+ *
+ * `recorder` is the rare escape hatch: a caller that already
+ * constructed a recorder (e.g. a wrapping orchestrator in T5+) can
+ * pass it in. When `recorder` is supplied, `onEvent` is ignored — the
+ * caller is expected to have wired its own sink into that recorder.
  */
 export interface VaultLintRunOptions {
 	recorder?: InMemoryRunRecorder;

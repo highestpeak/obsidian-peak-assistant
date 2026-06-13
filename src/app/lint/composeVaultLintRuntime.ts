@@ -1,14 +1,19 @@
-// T6 Vault Lint Ports — runtime composition.
+// T6/T7 Vault Lint Ports — runtime composition.
 //
-// This file is the ONE place that wires app-shell singletons (AppContext,
-// sqliteStoreManager) into the engine's ports. It runs from
-// `main.onload` after sqlite is initialized. Everything below this line
-// is allowed to reach `AppContext` or `sqliteStoreManager`; everything
-// above it (the engine, the runner, the contract) is not.
+// This file is the ONE place that wires app-shell singletons
+// (`AppContext`, `sqliteStoreManager`) and Obsidian-bound helpers
+// (semantic neighbor search, graph repos) into the engine's ports. It
+// runs from `main.onload` after sqlite is initialized. Everything
+// below this line is allowed to reach `AppContext`, `sqliteStoreManager`
+// or `getSemanticNeighbors`; everything above it (the engine, the
+// runner, the detectors, the contract) is not.
 //
-// The function returns a fully-constructed `VaultLintRuntime`. The
-// caller stores it via `setVaultLintRuntime`; consumers reach it via
-// `getVaultLintRuntime`.
+// T6R returns a fully-constructed `VaultLintRuntime` that `main.ts`
+// stores via `AppContext.setVaultLintRuntime(...)` on the app-owned
+// `AppRuntimeRegistry`. Consumers read it via
+// `AppContext.getVaultLintRuntime()` or React `ServiceContext`.
+// T7 adds the detector context adapter alongside the existing
+// vault/config/persistence adapters.
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { VaultLintService } from '@/service/lint/VaultLintService';
@@ -20,6 +25,7 @@ import { DefaultVaultLintIdFactory } from '@/service/lint/runtime/defaultIdFacto
 import { DefaultVaultLintClock } from '@/service/lint/runtime/defaultClock';
 import { ObsidianVaultLintConfigAdapter } from './ObsidianVaultLintConfigAdapter';
 import { ObsidianVaultLintVaultAdapter } from './ObsidianVaultLintVaultAdapter';
+import { ObsidianVaultLintDetectorContextAdapter } from './ObsidianVaultLintDetectorContextAdapter';
 import { SqliteVaultLintPersistenceAdapter } from './SqliteVaultLintPersistenceAdapter';
 
 export function composeVaultLintRuntime(): VaultLintRuntime {
@@ -38,6 +44,7 @@ export function composeVaultLintRuntime(): VaultLintRuntime {
 			sqliteStoreManager.getVaultLintRepo(),
 		),
 		detectorRegistry,
+		detectorContext: new ObsidianVaultLintDetectorContextAdapter(),
 		idFactory: new DefaultVaultLintIdFactory(),
 		clock: new DefaultVaultLintClock(),
 	};

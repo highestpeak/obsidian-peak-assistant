@@ -41,6 +41,14 @@ export interface LintScanContext {
   allNodeIds: string[];
   lastScanTimestamp: number | null;
   dismissals: Map<string, LintDismissal>;  // key: `${signalId}:${filePath}`
+  /**
+   * T7: narrow surface detectors use to read the vault, metadata
+   * cache, graph nodes, and semantic neighbors. The runtime
+   * composition wires an Obsidian/sqlite-backed adapter at boot; tests
+   * inject a fake implementation. See
+   * `src/service/lint/ports/VaultLintPorts.ts`.
+   */
+  detectorContext: import('./ports/VaultLintPorts').VaultLintDetectorContextPort;
 }
 
 export interface LintSignalDetector {

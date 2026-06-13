@@ -55,11 +55,16 @@ export class VaultLintService implements VaultLintRuntime {
 		const dismissals = new Map(dismissalList.map((d) => [`${d.signalId}:${d.filePath}`, d]));
 
 		const lastScanTimestamp = await persistence.getLastFullScanTimestamp();
+		// T7: detectorContext is the single surface signals/*.ts use
+		// to read the vault, metadata cache, graph nodes, and semantic
+		// neighbors. Composition wires the Obsidian/sqlite adapter at
+		// boot; tests inject a fake.
 		const context: LintScanContext = {
 			totalNotes,
 			allNodeIds: [],
 			lastScanTimestamp,
 			dismissals,
+			detectorContext: this.ports.detectorContext,
 		};
 
 		const detectors = detectorRegistry.getNonLlm();

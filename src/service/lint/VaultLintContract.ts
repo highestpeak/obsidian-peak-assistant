@@ -131,12 +131,14 @@ export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 	// `AppContext.getVaultLintRuntime()` (services) or `ServiceContext`
 	// (UI). Persistence still lives in `VaultLintRepo` (sqlite).
 	stateOwner: 'VaultLintRepo (persistence) + AppRuntimeRegistry (runtime binding, app-owned)',
-	// T6 retired: the engine no longer resolves AppContext. The two
-	// remaining resolutions live in app-layer adapters
-	// (`ObsidianVaultLintConfigAdapter`, `ObsidianVaultLintVaultAdapter`).
-	// They are listed here so the contract still describes WHERE
-	// AppContext is reached, even though it is no longer inside the
-	// engine itself.
+	// T6 retired: the engine no longer resolves AppContext. T7 retired
+	// detector-side AppContext usage too — all remaining resolutions
+	// live in app-layer adapters
+	// (`ObsidianVaultLintConfigAdapter`, `ObsidianVaultLintVaultAdapter`,
+	// and the new `ObsidianVaultLintDetectorContextAdapter`). They are
+	// listed here so the contract still describes WHERE AppContext is
+	// reached, even though it is no longer inside the engine or the
+	// detectors themselves.
 	appContextResolutions: [
 		{
 			site: 'src/app/lint/ObsidianVaultLintConfigAdapter.ts',
@@ -148,6 +150,12 @@ export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 			site: 'src/app/lint/ObsidianVaultLintVaultAdapter.ts',
 			access: 'AppContext.getInstance().app.vault.getMarkdownFiles().length',
 			purpose: 'expose markdown file count to the engine via VaultLintVaultPort',
+			optional: false,
+		},
+		{
+			site: 'src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts',
+			access: 'AppContext.getInstance().app.{vault,metadataCache}',
+			purpose: 'expose listMarkdownFiles / readMarkdownFile / getTags / getUnresolvedLinks to detectors via VaultLintDetectorContextPort (T7)',
 			optional: false,
 		},
 	],
@@ -170,6 +178,16 @@ export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 			singleton: 'sqliteStoreManager.getVaultLintRepo()',
 			purpose: 'one-shot at boot: hand the sqlite repo to the persistence adapter',
 		},
+		{
+			site: 'src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts',
+			singleton: 'sqliteStoreManager.getMobiusEdgeRepo() / getMobiusNodeRepo()',
+			purpose: 'T7 retired: detectors no longer reach sqlite directly; the adapter exposes hard-orphan / node lookup behind VaultLintDetectorContextPort',
+		},
+		{
+			site: 'src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts',
+			singleton: 'getSemanticNeighbors() (service/tools/search-graph-inspector/common.ts)',
+			purpose: 'T7 retired: detectors no longer reach the graph inspector tool directly; the adapter projects neighbors into VaultLintDetectorSemanticNeighbor',
+		},
 	],
 	sideEffects: [
 		{ kind: 'vault.read', site: 'ObsidianVaultLintVaultAdapter.getMarkdownFileCount', target: 'app.vault.getMarkdownFiles().length' },
@@ -180,6 +198,14 @@ export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 		{ kind: 'sqlite.write', site: 'SqliteVaultLintPersistenceAdapter.saveScanResult', target: 'VaultLintRepo.saveScanResult' },
 		{ kind: 'log.warn', site: 'VaultLintService.runFullScan', target: 'console.warn (detector failure)' },
 		{ kind: 'crypto.random', site: 'DefaultVaultLintIdFactory.nextScanId', target: 'crypto.randomUUID (scanId)' },
+		// T7 detector context surface
+		{ kind: 'vault.read', site: 'ObsidianVaultLintDetectorContextAdapter.listMarkdownFiles', target: 'app.vault.getMarkdownFiles()' },
+		{ kind: 'vault.read', site: 'ObsidianVaultLintDetectorContextAdapter.readMarkdownFile', target: 'app.vault.cachedRead(file)' },
+		{ kind: 'vault.read', site: 'ObsidianVaultLintDetectorContextAdapter.getTags', target: 'app.metadataCache.getFileCache(file)' },
+		{ kind: 'vault.read', site: 'ObsidianVaultLintDetectorContextAdapter.getUnresolvedLinks', target: 'app.metadataCache.unresolvedLinks' },
+		{ kind: 'sqlite.read', site: 'ObsidianVaultLintDetectorContextAdapter.getHardOrphans', target: 'MobiusEdgeRepo.getHardOrphans' },
+		{ kind: 'sqlite.read', site: 'ObsidianVaultLintDetectorContextAdapter.getNodesByIds', target: 'MobiusNodeRepo.getByIds' },
+		{ kind: 'sqlite.read', site: 'ObsidianVaultLintDetectorContextAdapter.getSemanticNeighbors', target: 'getSemanticNeighbors (embedding search)' },
 	],
 	consumers: [
 		{ site: 'src/app/commands/PeakCommandActions.ts:openVaultXRay', mode: 'runManualScan' },
