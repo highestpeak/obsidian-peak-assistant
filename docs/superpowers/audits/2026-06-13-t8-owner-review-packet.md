@@ -368,6 +368,155 @@ test/ambient-runtime-ports.test.ts
 
 This is why T8 is accepted: it deletes old owners and adds guards around the new owner.
 
+## Modularity Dependency Atlas
+
+这一节专门解释 modularity。先看模块关系，再看文件列表。
+
+### 1. 四种角色
+
+```mermaid
+flowchart TB
+  UI["UI surfaces"]
+  App["App adapters"]
+  Service["Service runtime"]
+  Infra["Infrastructure"]
+
+  UI --> App
+  App --> Service
+  Service --> App
+  App --> Infra
+```
+
+这张图不是严格的 import 方向图，而是职责图：
+
+| Role | In T8 | Job |
+| --- | --- | --- |
+| UI surfaces | `AmbientPushPanel`, `PushCard`, stores | 展示当前状态，接收用户点击。 |
+| App adapters | `src/app/ambient/*` | 把 runtime 需要的 port 接到真实 Obsidian / SQLite / UI store / LLM。 |
+| Service runtime | `AmbientPushRuntime`, `AmbientSearcher` | 决定 Ambient 怎么跑，不知道具体 UI / SQLite。 |
+| Infrastructure | Obsidian, SQLite, SearchClient, LLM, Zustand stores | 真实外部世界。 |
+
+关键规则：
+
+```text
+service runtime 不直接 import infrastructure
+service runtime 只调用 port
+app adapter 可以知道两边，因为它就是桥
+```
+
+### 2. T8 前：UI store 和 SQLite 缠在一起
+
+```mermaid
+flowchart LR
+  OldService["Old service"]
+  Store["UI store"]
+  SQLite["SQLite"]
+  UI["UI"]
+
+  OldService --> Store
+  OldService --> SQLite
+  Store --> SQLite
+  Store --> UI
+```
+
+这里最不好控制的是 `Store -> SQLite`：
+
+- UI store 不只是“显示状态”；
+- 它还写 `ambient_push_log`；
+- 所以 UI 层和持久化层混在一起；
+- service 也同时知道 store 和 SQLite。
+
+这就是 T8 要拆掉的耦合。
+
+### 3. T8 后：projection 和 persistence 分开
+
+```mermaid
+flowchart LR
+  Runtime["Runtime"]
+  ProjectionPort["Projection port"]
+  PersistencePort["Persistence port"]
+  UIAdapter["UI adapter"]
+  SqliteAdapter["SQLite adapter"]
+  Store["UI store"]
+  SQLite["SQLite"]
+
+  Runtime --> ProjectionPort
+  Runtime --> PersistencePort
+  ProjectionPort --> UIAdapter
+  PersistencePort --> SqliteAdapter
+  UIAdapter --> Store
+  SqliteAdapter --> SQLite
+```
+
+这张图是理解 T8 的核心：
+
+| Concern | T8 file | Writes what |
+| --- | --- | --- |
+| Screen state | `AmbientUiProjectionAdapter.ts` | writes `useAmbientPushStore` / `useMorningBriefingStore` |
+| Durable state | `SqliteAmbientPersistenceAdapter.ts` | writes `ambient_push_log` |
+| Briefing state | `SqliteAmbientBriefingAdapter.ts` | writes `index_state` |
+| Business decision | `AmbientPushRuntime.ts` | calls ports, owns orchestration |
+
+现在没有这条边：
+
+```mermaid
+flowchart LR
+  Store["UI store"]
+  SQLite["SQLite"]
+  Store -. "removed" .-> SQLite
+```
+
+这就是“UI store 和 SQLite 解耦”的意思。
+
+### 4. 为什么 app 可以 import UI store
+
+```mermaid
+flowchart TB
+  Service["service layer"]
+  Port["port interface"]
+  AppAdapter["app adapter"]
+  Store["UI store"]
+
+  Service --> Port
+  Port --> AppAdapter
+  AppAdapter --> Store
+```
+
+`app adapter` 是外层胶水层。它的工作就是把内层 runtime 的抽象 port 接到真实实现。
+
+所以：
+
+- `service -> ui/store` 不允许；
+- `service -> port` 允许；
+- `app adapter -> ui/store` 允许；
+- `app adapter` 里不要长业务逻辑，只做薄转发。
+
+如果以后 `AmbientUiProjectionAdapter.ts` 变复杂，那就说明 UI projection 开始重新长业务逻辑，要再拆。
+
+### 5. T8 后你该怎么读模块
+
+```mermaid
+flowchart LR
+  Contract["Contract"]
+  Runtime["Runtime"]
+  Ports["Ports"]
+  Adapters["Adapters"]
+  Tests["Guards"]
+
+  Contract --> Runtime
+  Runtime --> Ports
+  Ports --> Adapters
+  Tests --> Runtime
+  Tests --> Ports
+```
+
+阅读顺序：
+
+1. 先看 `AmbientRuntime.ts` 和 `AmbientPorts.ts`：知道边界形状。
+2. 再看 `AmbientPushRuntime.ts`：知道业务流程。
+3. 再看 `src/app/ambient/*Adapter.ts`：知道真实依赖在哪里接入。
+4. 最后看 `test/ambient-source-guard.test.ts`：知道哪些坏依赖被禁止。
+
 ## Code Reading Guide
 
 Read in this order:

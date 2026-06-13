@@ -146,6 +146,7 @@ Codex Owner Review Packets must include:
 
 - clickable file links in the chat closeout for the main changed code files;
 - visual dependency maps near the top: runtime ownership, main sequence, state ownership, old-path deletion / guards;
+- a modularity dependency atlas that explains layer roles and before/after coupling, especially UI projection versus durable persistence;
 - small readable Mermaid diagrams rather than one giant all-in-one graph; ASCII arrow diagrams may supplement but should not replace rendered diagrams;
 - no `\n` inside Mermaid node labels; keep node labels short and explain details below the diagram;
 - a "read in this order" section near the top of the packet;

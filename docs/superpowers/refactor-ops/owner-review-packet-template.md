@@ -96,6 +96,12 @@ Required maps for implementation tasks:
    - new accepted path;
    - tests / source guards / boundary audit that prevent regression.
 
+5. Modularity dependency atlas:
+   - layer roles, not just file names;
+   - before/after coupling diagram;
+   - UI projection vs durable persistence;
+   - why any app-layer adapter is allowed to import concrete UI/store/infra modules.
+
 Use Mermaid by default. Keep labels short and owner-facing:
 
 ```mermaid
