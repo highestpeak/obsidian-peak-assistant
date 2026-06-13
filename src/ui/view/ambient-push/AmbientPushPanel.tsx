@@ -2,7 +2,7 @@ import React from 'react';
 import { Zap, RefreshCw } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
-import { AmbientPushService } from '@/service/ambient/AmbientPushService';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { PushCard } from './PushCard';
 
 function formatElapsed(ts: number): string {
@@ -16,6 +16,9 @@ export const AmbientPushPanel: React.FC = () => {
 	const items = useAmbientPushStore((s) => s.items);
 	const sourceFilePath = useAmbientPushStore((s) => s.sourceFilePath);
 	const lastUpdateTs = useAmbientPushStore((s) => s.lastUpdateTs);
+	// T8: refresh routes through the app-owned Ambient runtime instead
+	// of the retired `AmbientPushService.getInstance()` singleton.
+	const ambientRuntime = useServiceContext().ambientRuntime;
 
 	// Re-render elapsed time periodically
 	const [, setTick] = React.useState(0);
@@ -26,7 +29,7 @@ export const AmbientPushPanel: React.FC = () => {
 	}, [lastUpdateTs]);
 
 	function handleRefresh() {
-		AmbientPushService.getInstance().triggerManual();
+		ambientRuntime?.triggerManual();
 	}
 
 	return (

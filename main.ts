@@ -47,11 +47,10 @@ import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useGraphAnimationStore } from '@/ui/store/graphAnimationStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
-import { AmbientPushService } from '@/service/ambient/AmbientPushService';
+import { composeAmbientRuntime } from '@/app/ambient/composeAmbientRuntime';
 import { markAmbientPushPanelAutoOpened, shouldAutoOpenAmbientPushPanel } from '@/service/ambient/ambientPanelStartup';
-import { MorningBriefingService } from '@/service/ambient/MorningBriefingService';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
-import { serendipityGutterExtension } from '@/service/ambient/SerendipityGutterPlugin';
+import { serendipityGutterExtension } from '@/app/ambient/SerendipityGutterPlugin';
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
@@ -341,10 +340,15 @@ export default class MyPlugin extends Plugin {
 		});
 
 		// Ambient Push — proactive related-note suggestions
+		// T8: Ambient runtime is composed at the app layer and bound on
+		// the app-owned `AppRuntimeRegistry`. Production callers reach
+		// it via `AppContext.{get,tryGet}AmbientRuntime()`; the previous
+		// `AmbientPushService.getInstance()` singleton is retired.
 		const ambientPushSettings = this.settings.ambientPush;
 		if (!ambientPushSettings || ambientPushSettings.enabled !== false) {
-			const ambientService = AmbientPushService.getInstance();
-			ambientService.start(this.app);
+			const ambientRuntime = composeAmbientRuntime(this.app);
+			AppContext.setAmbientRuntime(ambientRuntime);
+			ambientRuntime.start();
 
 			// Status bar indicator
 			if (!ambientPushSettings || ambientPushSettings.showStatusBar !== false) {
@@ -452,10 +456,15 @@ export default class MyPlugin extends Plugin {
 				}
 				console.log('[Peak Assistant] SQLite and search services initialized');
 
-				// Morning Briefing — show proactive recommendations on session start (Phase 4)
+				// Morning Briefing — show proactive recommendations on session start (Phase 4).
+				// T8: the briefing path now flows through the app-owned
+				// Ambient runtime instead of the retired `MorningBriefingService`
+				// singleton. `tryGetAmbientRuntime()` returns null if the
+				// runtime was not bound (e.g. Ambient disabled in settings).
 				setTimeout(async () => {
 					try {
-						const shouldShow = await MorningBriefingService.getInstance().tryShow();
+						const runtime = AppContext.tryGetAmbientRuntime();
+						const shouldShow = (await runtime?.tryShowMorningBriefing()) ?? false;
 						if (shouldShow) {
 							const { MorningBriefingModal } = await import('@/ui/view/morning-briefing/MorningBriefingModal');
 							const modal = new MorningBriefingModal(this.app);
@@ -542,11 +551,13 @@ export default class MyPlugin extends Plugin {
 			}
 		} catch (_) { /* ignore */ }
 
-		// Clean up Ambient Push
+		// Clean up Ambient Push.
+		// T8: dispose flows through the runtime registry; the old
+		// duplicate `AmbientPushService.getInstance().dispose()` call
+		// near the bottom of this method is also retired.
 		this.ambientStoreUnsub?.();
 		this.ambientStoreUnsub = null;
-		AmbientPushService.getInstance().dispose();
-		MorningBriefingService.getInstance().dispose();
+		try { AppContext.clearAmbientRuntime(); } catch { /* not bound — ignore */ }
 
 		// Disconnect MCP servers
 		MCPClientManager.getInstance().dispose().catch(() => { /* ignore */ });
@@ -626,8 +637,9 @@ export default class MyPlugin extends Plugin {
 		// Abort all background analysis sessions
 		BackgroundSessionManager.clearInstance();
 
-		// Dispose ambient push service
-		AmbientPushService.getInstance().dispose();
+		// T8: Ambient runtime already released above via
+		// `AppContext.clearAmbientRuntime()`; the duplicate dispose call
+		// against the retired `AmbientPushService` singleton is gone.
 
 		// Shutdown SDK agent pool (clear cached node info so reload re-probes)
 		shutdownPool();

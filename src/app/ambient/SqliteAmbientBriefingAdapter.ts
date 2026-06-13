@@ -1,31 +1,59 @@
+// T8: briefing adapter. Owns the three kysely queries against
+// `mobius_node` (formerly `service/ambient/briefing-queries.ts`) and
+// the `index_state` reads/writes for briefing/session timestamps
+// (formerly inlined in `MorningBriefingService`). Each method satisfies
+// the `AmbientBriefingPort` contract; the runtime never sees sqlite.
+
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { GRAPH_DOCUMENT_LIKE_NODE_TYPES } from '@/core/po/graph.po';
-import type { BriefingItem } from './types';
+import type { AmbientBriefingPort } from '@/service/ambient/ports/AmbientPorts';
+import type { BriefingItem } from '@/service/ambient/types';
 
-/**
- * Briefing threshold constants.
- * Centralized per configurability rule (constant.ts fallback tier).
- */
+const INDEX_STATE_KEY_LAST_BRIEFING = 'ambient_last_briefing_ts';
+const INDEX_STATE_KEY_LAST_SESSION = 'ambient_last_session_ts';
+
 const BRIEFING_DECAY_DAYS = 14;
 const BRIEFING_MAX_ITEMS_PER_CATEGORY = 5;
 
-/** Minimum gap between briefings to avoid showing on quick restarts. */
-export const BRIEFING_MIN_SESSION_GAP_MS = 4 * 60 * 60 * 1000; // 4 hours
+export class SqliteAmbientBriefingAdapter implements AmbientBriefingPort {
+	isReady(): boolean {
+		return sqliteStoreManager.isInitialized();
+	}
 
-/**
- * Find notes edited in the last session that have potential unresolved connections.
- *
- * "Unresolved connections" = recently-modified document nodes where
- * doc_outgoing_cnt < doc_incoming_cnt * 0.5 — they are linked TO by many notes
- * but don't link OUT to related material (knowledge sinks).
- */
-export async function getUnresolvedConnectionNotes(
+	async getLastBriefingTimestamp(): Promise<number> {
+		const repo = sqliteStoreManager.getIndexStateRepo('vault');
+		const raw = await repo.get(INDEX_STATE_KEY_LAST_BRIEFING);
+		return raw ? Number(raw) : 0;
+	}
+
+	async getLastSessionTimestamp(fallback: number): Promise<number> {
+		const repo = sqliteStoreManager.getIndexStateRepo('vault');
+		const raw = await repo.get(INDEX_STATE_KEY_LAST_SESSION);
+		return raw ? Number(raw) : fallback;
+	}
+
+	async recordSessionTimestamps(now: number): Promise<void> {
+		const repo = sqliteStoreManager.getIndexStateRepo('vault');
+		await repo.set(INDEX_STATE_KEY_LAST_BRIEFING, String(now));
+		await repo.set(INDEX_STATE_KEY_LAST_SESSION, String(now));
+	}
+
+	async loadBriefingItems(lastSessionTs: number): Promise<BriefingItem[]> {
+		const [unresolved, changedHubs, decaying] = await Promise.all([
+			getUnresolvedConnectionNotes(lastSessionTs),
+			getChangedHubs(lastSessionTs),
+			getDecayingEngagementNotes(),
+		]);
+		return [...unresolved, ...changedHubs, ...decaying];
+	}
+}
+
+async function getUnresolvedConnectionNotes(
 	lastSessionStartTs: number,
 	limit: number = BRIEFING_MAX_ITEMS_PER_CATEGORY,
 ): Promise<BriefingItem[]> {
 	try {
 		const db = sqliteStoreManager.getIndexContext('vault');
-
 		const rows = await db
 			.selectFrom('mobius_node')
 			.select(['node_id', 'path', 'label', 'mtime', 'doc_incoming_cnt', 'doc_outgoing_cnt', 'pagerank'])
@@ -33,7 +61,7 @@ export async function getUnresolvedConnectionNotes(
 			.where('mtime', '>=', lastSessionStartTs)
 			.where('path', 'is not', null)
 			.orderBy('mtime', 'desc')
-			.limit(limit * 3) // Over-fetch to filter by heuristic
+			.limit(limit * 3)
 			.execute();
 
 		const items: BriefingItem[] = [];
@@ -42,7 +70,6 @@ export async function getUnresolvedConnectionNotes(
 			const incoming = Number(row.doc_incoming_cnt ?? 0);
 			const outgoing = Number(row.doc_outgoing_cnt ?? 0);
 
-			// "Unresolved" heuristic: incoming suggests importance, low outgoing means under-linked
 			if (incoming >= 2 && outgoing < incoming * 0.5) {
 				const title = String(row.label ?? row.path ?? '').replace(/\.md$/, '');
 				items.push({
@@ -64,19 +91,12 @@ export async function getUnresolvedConnectionNotes(
 	}
 }
 
-/**
- * Find hub summaries that were updated since the user's last session.
- *
- * These represent knowledge clusters that evolved — the user should review
- * what changed in their knowledge landscape.
- */
-export async function getChangedHubs(
+async function getChangedHubs(
 	lastVisitTs: number,
 	limit: number = BRIEFING_MAX_ITEMS_PER_CATEGORY,
 ): Promise<BriefingItem[]> {
 	try {
 		const db = sqliteStoreManager.getIndexContext('vault');
-
 		const rows = await db
 			.selectFrom('mobius_node')
 			.select(['node_id', 'path', 'label', 'updated_at', 'mtime'])
@@ -102,14 +122,7 @@ export async function getChangedHubs(
 	}
 }
 
-/**
- * Find notes with high PageRank that haven't been opened in 14+ days.
- *
- * These represent "decaying engagement" — important knowledge the user
- * is neglecting. Ordered by pagerank DESC so the most important notes
- * surface first.
- */
-export async function getDecayingEngagementNotes(
+async function getDecayingEngagementNotes(
 	limit: number = BRIEFING_MAX_ITEMS_PER_CATEGORY,
 ): Promise<BriefingItem[]> {
 	try {

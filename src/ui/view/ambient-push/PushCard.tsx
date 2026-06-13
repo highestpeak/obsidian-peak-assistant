@@ -2,7 +2,7 @@ import React from 'react';
 import { MarkdownView } from 'obsidian';
 import { FileText, Link, ExternalLink, X, Sparkles } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import type { AmbientPushItem } from '@/service/ambient/types';
 
@@ -12,30 +12,31 @@ interface PushCardProps {
 }
 
 export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
+	// T8: persistence (recordAction) flows through the app-owned
+	// Ambient runtime; the Zustand store no longer writes SQLite. Both
+	// `app` and `ambientRuntime` come from ServiceContext.
+	const { app, ambientRuntime } = useServiceContext();
 	const title = item.title?.trim() || item.filePath.replace(/^.*\//, '').replace(/\.md$/, '');
 	const excerpt = item.excerpt?.trim() || title;
 	const explanation = item.explanation?.trim() || 'Related content';
 
 	async function handleOpen() {
-		const app = AppContext.getApp();
 		await app.workspace.openLinkText(item.filePath, '', true);
-		useAmbientPushStore.getState().recordAction(sourceFilePath, item.filePath, 'opened');
+		void ambientRuntime?.recordAction(sourceFilePath, item.filePath, 'opened');
 	}
 
 	function handleInsertLink() {
-		const app = AppContext.getApp();
 		const mdView = app.workspace.getActiveViewOfType(MarkdownView);
 		if (!mdView) return;
 		const editor = mdView.editor;
 		const cursor = editor.getCursor();
 		editor.replaceRange(`[[${title}]]`, cursor);
-		useAmbientPushStore.getState().recordAction(sourceFilePath, item.filePath, 'linked');
+		void ambientRuntime?.recordAction(sourceFilePath, item.filePath, 'linked');
 	}
 
 	function handleDismiss() {
-		const store = useAmbientPushStore.getState();
-		store.dismissItem(item.filePath);
-		store.recordAction(sourceFilePath, item.filePath, 'dismissed');
+		useAmbientPushStore.getState().dismissItem(item.filePath);
+		void ambientRuntime?.recordAction(sourceFilePath, item.filePath, 'dismissed');
 	}
 
 	return (

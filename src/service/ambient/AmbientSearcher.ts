@@ -1,9 +1,19 @@
+// T8: pure ambient-search orchestrator. The pipeline that previously
+// reached `AppContext.getSearchClient()`, `getLearnedPatterns()`
+// (sqlite-backed module cache), and `serendipitySearch(...)`
+// (sqlite-backed graph traversal) now consumes those through an
+// `AmbientSearchDeps` parameter. The runtime composition
+// (`src/app/ambient/composeAmbientRuntime`) builds the deps from
+// adapters; this file owns NO infrastructure.
+//
+// Signal-detection helpers are still exported because
+// `test/ambient-push.test.ts` covers them directly.
+
 import type { SearchQuery, SearchResultItem } from '@/service/search/types';
 import type { AmbientContext, AmbientPushItem, AmbientPushSettings, AmbientSignal } from './types';
 import { generateExplanation } from './RelevanceExplainer';
-import { AppContext } from '@/app/context/AppContext';
-import { serendipitySearch } from './SerendipitySearcher';
-import { getLearnedPatterns, getPatternBoost, type LearnedPattern } from './PatternLearner';
+import { getPatternBoost, type LearnedPattern } from './PatternLearner';
+import type { AmbientSearchDeps } from './ports/AmbientPorts';
 
 const DEDUP_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -114,18 +124,18 @@ function getResultExcerpt(result: SearchResultItem, highlightText: string, title
 /**
  * Run an ambient search against the vault and return filtered, scored push items.
  *
+ * @param deps    - Infrastructure surface (vault search, learned patterns, serendipity)
  * @param context - Current ambient context extracted from the editor
  * @param maxItems - Maximum number of items to return
  * @param pushHistory - Map of filePath → last push timestamp for dedup
  */
 export async function ambientSearch(
+	deps: AmbientSearchDeps,
 	context: AmbientContext,
 	maxItems: number,
-	pushHistory: Map<string, number>,
+	pushHistory: ReadonlyMap<string, number>,
 	settings?: AmbientPushSettings,
 ): Promise<AmbientPushItem[]> {
-	const searchClient = AppContext.getSearchClient();
-
 	const query: SearchQuery = {
 		text: context.currentParagraph,
 		scopeMode: 'vault',
@@ -136,7 +146,7 @@ export async function ambientSearch(
 		indexTenant: 'vault',
 	};
 
-	const response = await searchClient.search(query);
+	const response = await deps.searchVault(query);
 
 	const now = Date.now();
 	const existingOutlinksLower = new Set(
@@ -147,7 +157,7 @@ export async function ambientSearch(
 	let learnedPatterns: LearnedPattern[] = [];
 	if (settings?.feedbackLearning !== false) {
 		try {
-			learnedPatterns = await getLearnedPatterns();
+			learnedPatterns = await deps.getLearnedPatterns();
 		} catch {
 			// Pattern learning is non-critical
 		}
@@ -213,7 +223,7 @@ export async function ambientSearch(
 	const serendipitySlots = Math.max(0, Math.min(1, maxItems - items.length));
 	if (serendipitySlots > 0) {
 		try {
-			const serendipityItems = await serendipitySearch(
+			const serendipityItems = await deps.searchSerendipity(
 				context,
 				existingOutlinksLower,
 				serendipitySlots,

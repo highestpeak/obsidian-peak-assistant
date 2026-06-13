@@ -25,7 +25,6 @@ import { IndexingProgressModal } from '@/ui/view/modals/IndexingProgressModal';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
-import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { KnowledgeIntuitionAgent } from '@/service/agents/KnowledgeIntuitionAgent';
 import { computeEvalMetrics, formatEvalReport } from '@/service/search/query/pprEvaluator';
 import { runStructuralAnalysis } from '@/service/search/index/helper/structural/orchestrator';
@@ -138,11 +137,15 @@ export function openChatStudio(): void {
 
 export async function openRelatedNotes(): Promise<void> {
 	await getContext().viewManager.activateAmbientPushView();
-	AmbientPushService.getInstance().triggerManual();
+	// T8: the Ambient runtime is bound at plugin boot
+	// (`main.onload` -> `composeAmbientRuntime` -> `setAmbientRuntime`).
+	// `tryGetAmbientRuntime()` returns null if Ambient is disabled in
+	// settings, in which case the panel still opens.
+	AppContext.tryGetAmbientRuntime()?.triggerManual();
 }
 
 export function refreshRelatedNotes(): void {
-	AmbientPushService.getInstance().triggerManual();
+	AppContext.tryGetAmbientRuntime()?.triggerManual();
 }
 
 export async function openVaultXRay(): Promise<void> {

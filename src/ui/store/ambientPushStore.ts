@@ -1,6 +1,11 @@
+// T8: Ambient projection store. Pre-T8 this store imported
+// `sqliteStoreManager` and wrote to `ambient_push_log` from
+// `recordAction`. T8 removes that write — persistence flows through
+// `AmbientPushRuntime.recordAction(...)` via the app-owned runtime.
+// The store now only projects UI state.
+
 import { create } from 'zustand';
-import type { AmbientPushItem, UserAction } from '@/service/ambient/types';
-import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import type { AmbientPushItem } from '@/service/ambient/types';
 
 interface AmbientPushStoreState {
 	items: AmbientPushItem[];
@@ -13,7 +18,6 @@ interface AmbientPushStoreState {
 	clearItems: () => void;
 	dismissItem: (filePath: string) => void;
 	recordPush: (filePath: string, timestamp: number) => void;
-	recordAction: (sourceFilePath: string, pushedFilePath: string, action: UserAction) => void;
 	updateLlmExplanation: (filePath: string, explanation: string) => void;
 }
 
@@ -45,24 +49,6 @@ export const useAmbientPushStore = create<AmbientPushStoreState>((set, get) => (
 	recordPush: (filePath: string, timestamp: number) => {
 		// Mutate Map directly — Zustand does not diff Map internals
 		get().pushHistory.set(filePath, timestamp);
-	},
-
-	recordAction: (sourceFilePath: string, pushedFilePath: string, action: UserAction) => {
-		try {
-			sqliteStoreManager
-				.getAmbientPushRepo()
-				.recordAction({
-					sourceFilePath,
-					pushedFilePath,
-					action,
-					actionTs: Date.now(),
-				})
-				.catch(() => {
-					/* SQLite may not be ready — fail silently */
-				});
-		} catch {
-			/* sqliteStoreManager not initialized — fail silently */
-		}
 	},
 
 	updateLlmExplanation: (filePath: string, explanation: string) =>

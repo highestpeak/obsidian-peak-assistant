@@ -1,5 +1,10 @@
-import { App, MarkdownView } from 'obsidian';
-import type { AmbientContext } from './types';
+// T8: pure context-extraction helpers. The previous
+// `extractContext(app, fileOpenedAt, filePath?)` overload reached the
+// Obsidian `App` and `MarkdownView` directly; that path moved to
+// `src/app/ambient/ObsidianAmbientEditorContextAdapter.ts` where it
+// belongs (it owns the Obsidian dependency). The helpers below stay
+// service-layer because they are byte-pure text utilities and are
+// imported by `test/ambient-push.test.ts`.
 
 /**
  * Extract the paragraph block containing the given line.
@@ -100,58 +105,4 @@ export function getCursorSection(lines: string[], lineIndex: number): string {
 	}
 
 	return stack.map((h) => h.text).join(' > ');
-}
-
-/**
- * Build full AmbientContext from the active Obsidian editor.
- * Returns null if no active MarkdownView.
- */
-export function extractContext(app: App, fileOpenedAt: number, filePath?: string): AmbientContext | null {
-	const mdView = getMarkdownView(app, filePath);
-	if (!mdView || !mdView.file) return null;
-
-	const editor = mdView.editor;
-	const cursor = editor.getCursor();
-	const fullText = editor.getValue();
-	const lines = fullText.split('\n');
-	const file = mdView.file;
-
-	const currentParagraph = extractParagraphAtLine(lines, cursor.line);
-	const cursorSection = getCursorSection(lines, cursor.line);
-	const existingOutlinks = extractOutlinks(fullText);
-	const documentHeadings = extractHeadings(lines);
-
-	const cache = app.metadataCache.getFileCache(file);
-	const documentTags = (cache?.frontmatter?.tags as string[] | undefined) ?? [];
-
-	return {
-		currentParagraph: currentParagraph.slice(0, 500),
-		cursorSection,
-		documentTitle: file.basename,
-		documentTags,
-		documentHeadings,
-		existingOutlinks,
-		recentEditDelta: '',
-		editSessionDuration: (Date.now() - fileOpenedAt) / 1000,
-		filePath: file.path,
-		lastModified: file.stat.mtime,
-	};
-}
-
-function getMarkdownView(app: App, filePath?: string): MarkdownView | null {
-	if (filePath) {
-		const leaf = app.workspace
-			.getLeavesOfType('markdown')
-			.find((candidate) => {
-				const view = candidate.view as MarkdownView | undefined;
-				return view?.file?.path === filePath;
-			});
-		if (leaf) return leaf.view as MarkdownView;
-	}
-
-	const activeView = app.workspace.getActiveViewOfType(MarkdownView);
-	if (!filePath) return activeView;
-	if (activeView?.file?.path === filePath) return activeView;
-
-	return activeView;
 }

@@ -1,3 +1,14 @@
+// T8: Serendipity gutter extension. Moved out of `src/service/ambient/`
+// because the extension owns Obsidian + CodeMirror surfaces (and used
+// to reach `(window as any).app` directly). The widget now resolves
+// the Ambient runtime through `AppContext.tryGetAmbientRuntime()` and
+// opens notes through `AppContext.getApp().workspace.openLinkText`,
+// so it never relies on the global `window.app` injection.
+//
+// The Zustand subscription remains here because the widget reads the
+// projected `serendipityItem` directly off the UI store; this is the
+// store's read side, not its write side.
+
 import {
 	Decoration,
 	DecorationSet,
@@ -8,12 +19,9 @@ import {
 } from '@codemirror/view';
 import { RangeSetBuilder, type Extension } from '@codemirror/state';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
-import type { AmbientPushItem } from './types';
+import { AppContext } from '@/app/context/AppContext';
+import type { AmbientPushItem } from '@/service/ambient/types';
 
-/**
- * Widget that renders a "?" hint icon at the end of the cursor line.
- * On hover, shows a tooltip with the top-1 serendipitous push item.
- */
 class SerendipityHintWidget extends WidgetType {
 	constructor(private readonly item: AmbientPushItem) {
 		super();
@@ -23,9 +31,8 @@ class SerendipityHintWidget extends WidgetType {
 		const wrapper = document.createElement('span');
 		wrapper.className = 'peak-serendipity-hint';
 		wrapper.textContent = '?';
-		wrapper.title = ''; // Disable native tooltip; we use custom
+		wrapper.title = '';
 
-		// Custom tooltip on hover
 		const tooltip = document.createElement('div');
 		tooltip.className = 'peak-serendipity-tooltip';
 		tooltip.style.display = 'none';
@@ -59,18 +66,12 @@ class SerendipityHintWidget extends WidgetType {
 			tooltip.style.display = 'none';
 		});
 
-		// Click opens the note
 		wrapper.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			// Use Obsidian's workspace API via global app reference
-			const app = (window as any).app;
-			if (app?.workspace) {
-				app.workspace.openLinkText(this.item.filePath, '', true);
-				useAmbientPushStore
-					.getState()
-					.recordAction('', this.item.filePath, 'opened');
-			}
+			const app = AppContext.getApp();
+			app.workspace.openLinkText(this.item.filePath, '', true);
+			AppContext.tryGetAmbientRuntime()?.recordAction('', this.item.filePath, 'opened');
 		});
 
 		return wrapper;
@@ -81,14 +82,10 @@ class SerendipityHintWidget extends WidgetType {
 	}
 
 	ignoreEvent(): boolean {
-		return false; // Allow click events through
+		return false;
 	}
 }
 
-/**
- * CM6 ViewPlugin that places a `?` serendipity hint widget
- * at the end of the cursor line when a serendipity item is available.
- */
 const serendipityPlugin = ViewPlugin.fromClass(
 	class {
 		decorations: DecorationSet;
@@ -99,13 +96,11 @@ const serendipityPlugin = ViewPlugin.fromClass(
 			this.currentItem = useAmbientPushStore.getState().serendipityItem;
 			this.decorations = this.buildDecorations();
 
-			// Subscribe to store changes
 			this.storeUnsub = useAmbientPushStore.subscribe((state) => {
 				const newItem = state.serendipityItem;
 				if (newItem !== this.currentItem) {
 					this.currentItem = newItem;
 					this.decorations = this.buildDecorations();
-					// Force CM to re-read decorations
 					this.view.dispatch({ effects: [] });
 				}
 			});
@@ -124,13 +119,12 @@ const serendipityPlugin = ViewPlugin.fromClass(
 			const cursor = this.view.state.selection.main.head;
 			const line = this.view.state.doc.lineAt(cursor);
 
-			// Place widget at end of cursor line
 			builder.add(
 				line.to,
 				line.to,
 				Decoration.widget({
 					widget: new SerendipityHintWidget(this.currentItem),
-					side: 1, // After the text
+					side: 1,
 				}),
 			);
 
@@ -147,14 +141,9 @@ const serendipityPlugin = ViewPlugin.fromClass(
 	},
 );
 
-/**
- * Create the CM6 extension for serendipity gutter hints.
- * Register via `plugin.registerEditorExtension(serendipityGutterExtension())`.
- */
 export function serendipityGutterExtension(): Extension {
 	return [
 		serendipityPlugin,
-		// Base styles for the hint widget and tooltip
 		EditorView.baseTheme({
 			'.peak-serendipity-hint': {
 				display: 'inline-flex',
