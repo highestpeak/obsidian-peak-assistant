@@ -102,7 +102,9 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T8 Ambient Foundation Runtime Boundary Wave handoff ready：`docs/superpowers/refactor-ops/t8-ambient-foundation-runtime-boundary-wave-handoff.md`
 - [x] T8 implementation 完成并接受：`a1789056` + `e20bbce7` + `85f20917` + Owner Review `docs/superpowers/audits/2026-06-13-t8-owner-review-packet.md`
 - [x] T8 结论：Ambient foundation runtime boundary 完成；`AmbientPushService` / `MorningBriefingService` 旧 singleton 退役；不要继续做 Ambient 微小 polish，除非有 bug
-- [ ] 下一步：选择 T9 target。推荐中等粒度 Copilot Vault Digest / Review runtime boundary wave；若想加大步伐，可选 Quick Search foundation boundary wave
+- [x] T9 target 已选择：Copilot Vault Digest / Review runtime boundary wave
+- [x] T9 Copilot Vault Review Runtime Boundary Wave handoff ready：`docs/superpowers/refactor-ops/t9-copilot-vault-review-runtime-boundary-wave-handoff.md`
+- [ ] 下一步：把 T9 handoff 发给 Claude Code 执行；完成后由 Codex 写 T9 Owner Review Packet
 - [ ] 不要提前做 Current Work State、Chat 或 Command Gateway；Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾
