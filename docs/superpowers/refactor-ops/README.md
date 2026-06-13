@@ -187,14 +187,15 @@ Completed and accepted:
 - T2A ProgressReporterPort first slice: [`t2-first-port-sketches-draft.md`](./t2-first-port-sketches-draft.md) + [`2026-06-12-t2a-owner-review-packet.md`](../audits/2026-06-12-t2a-owner-review-packet.md)
 - T2B IndexInitializer ProgressReporterPort follow-up: [`t2b-index-initializer-progress-reporter-handoff.md`](./t2b-index-initializer-progress-reporter-handoff.md) + [`2026-06-12-t2b-owner-review-packet.md`](../audits/2026-06-12-t2b-owner-review-packet.md)
 - T2C AnalysisDocPersistence Notice cleanup: [`t2c-analysis-doc-persistence-notice-cleanup-handoff.md`](./t2c-analysis-doc-persistence-notice-cleanup-handoff.md) + [`2026-06-12-t2c-owner-review-packet.md`](../audits/2026-06-12-t2c-owner-review-packet.md)
+- T3A RunEnvelope Core: [`t3-run-envelope-core-handoff.md`](./t3-run-envelope-core-handoff.md) + [`2026-06-13-t3a-owner-review-packet.md`](../audits/2026-06-13-t3a-owner-review-packet.md)
 
 Ready for owner approval:
 
-- T3A RunEnvelope Core: [`t3-run-envelope-core-handoff.md`](./t3-run-envelope-core-handoff.md)
+- T4 Vault Lint RunEnvelope Vertical Slice: [`t4-vault-lint-run-envelope-vertical-slice-handoff.md`](./t4-vault-lint-run-envelope-vertical-slice-handoff.md)
 
 Next owner decision:
 
-- send `T3A` to Claude Code for read-only investigation;
+- send `T4` to Claude Code for a medium-size capability vertical slice;
 - do not start Chat, Ambient Push, or Command Gateway yet.
 
 ## Supporting Files
@@ -207,6 +208,7 @@ Next owner decision:
 - [`t2b-index-initializer-progress-reporter-handoff.md`](./t2b-index-initializer-progress-reporter-handoff.md): T2B implementation handoff.
 - [`t2c-analysis-doc-persistence-notice-cleanup-handoff.md`](./t2c-analysis-doc-persistence-notice-cleanup-handoff.md): T2C implementation handoff.
 - [`t3-run-envelope-core-handoff.md`](./t3-run-envelope-core-handoff.md): T3A implementation handoff.
+- [`t4-vault-lint-run-envelope-vertical-slice-handoff.md`](./t4-vault-lint-run-envelope-vertical-slice-handoff.md): T4 implementation handoff.
 
 ## Do Not Do
 

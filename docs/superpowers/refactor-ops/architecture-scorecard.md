@@ -119,6 +119,7 @@ Use the ledger for checkpoints. Detailed per-dimension scores belong in the Owne
 | 2026-06-12 | T2A ProgressReporterPort first slice | `f9cf49f` | 51 | 46 | 42 | 44 | 46 | Accepted. One service-side Obsidian `Notice` path moved behind a fakeable port; narrow slice, no RunEnvelope yet. |
 | 2026-06-12 | T2B IndexInitializer ProgressReporterPort follow-up | `fbf8a56` + `79478b0` | 58 | 55 | 45 | 55 | 54 | Accepted. Same port reused by second search indexing adopter; `IndexInitializer` direct `Notice` path and private helper removed. |
 | 2026-06-12 | T2C AnalysisDocPersistence Notice cleanup | `2e97eac` | 60 | 58 | 46 | 60 | 56 | Accepted. Same port reused by third search adopter; `analysisDocPersistence` direct `Notice` path removed, no new mutable default introduced. |
+| 2026-06-13 | T3A RunEnvelope Core | `3626e29` + `bf42673` | 66 | 60 | 54 | 68 | 61 | Accepted. Dependency-light `RunSession` / `RunEvent` / `ArtifactRef` foundation with deterministic recorder and snapshot guards; no real capability uses it yet. |
 
 ## Evidence Rules
 
