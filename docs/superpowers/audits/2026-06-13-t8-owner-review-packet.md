@@ -138,6 +138,207 @@ src/service/ambient/AmbientPushRuntime.ts
 src/service/ambient/AmbientSearcher.ts
 ```
 
+## Visual Dependency Maps
+
+### 1. T8 dependency ownership map
+
+```mermaid
+flowchart TB
+  subgraph Entry["Entry surfaces"]
+    Main["main.ts boot / startup"]
+    Commands["PeakCommandActions"]
+    Panel["AmbientPushPanel"]
+    Card["PushCard"]
+    Gutter["SerendipityGutterPlugin"]
+  end
+
+  subgraph AppOwner["App-owned runtime ownership"]
+    Compose["src/app/ambient/composeAmbientRuntime.ts"]
+    Registry["AppRuntimeRegistry.ambientRuntime"]
+    AppContextDelegators["AppContext set/get/tryGet/clearAmbientRuntime"]
+    ServiceContext["React ServiceContext.ambientRuntime"]
+  end
+
+  subgraph ServiceRuntime["service/ambient runtime and pure logic"]
+    Runtime["AmbientPushRuntime"]
+    RuntimeInterface["AmbientRuntime interface"]
+    Ports["AmbientPorts"]
+    Searcher["AmbientSearcher"]
+    PureHelpers["ContextExtractor / PatternLearner / RelevanceExplainer helpers"]
+  end
+
+  subgraph AppAdapters["src/app/ambient adapters"]
+    SettingsAdapter["ObsidianAmbientSettingsAdapter"]
+    EditorAdapter["ObsidianAmbientEditorContextAdapter"]
+    SearchAdapter["SearchAmbientSearchAdapter"]
+    ProjectionAdapter["AmbientUiProjectionAdapter"]
+    PersistenceAdapter["SqliteAmbientPersistenceAdapter"]
+    BriefingAdapter["SqliteAmbientBriefingAdapter"]
+    LlmAdapter["LlmAmbientExplanationAdapter"]
+    ClockAdapter["DefaultAmbientClock"]
+  end
+
+  subgraph SideEffects["External side effects"]
+    Obsidian["Obsidian workspace / editor / metadata"]
+    SQLite["sqliteStoreManager / repos"]
+    UIStores["Zustand stores"]
+    SearchClient["SearchClient"]
+    LLM["ProfileRegistry / queryWithProfile"]
+    Clock["Date.now"]
+  end
+
+  Main --> Compose
+  Compose --> Registry
+  Registry --> AppContextDelegators
+  AppContextDelegators --> Runtime
+  Commands --> AppContextDelegators
+  Panel --> ServiceContext
+  Card --> ServiceContext
+  ServiceContext --> Runtime
+  Gutter --> AppContextDelegators
+
+  Runtime -. implements .-> RuntimeInterface
+  Runtime --> Ports
+  Runtime --> Searcher
+  Searcher --> PureHelpers
+  Ports --> SettingsAdapter
+  Ports --> EditorAdapter
+  Ports --> SearchAdapter
+  Ports --> ProjectionAdapter
+  Ports --> PersistenceAdapter
+  Ports --> BriefingAdapter
+  Ports --> LlmAdapter
+  Ports --> ClockAdapter
+
+  SettingsAdapter --> AppContextDelegators
+  EditorAdapter --> Obsidian
+  SearchAdapter --> SearchClient
+  SearchAdapter --> SQLite
+  ProjectionAdapter --> UIStores
+  PersistenceAdapter --> SQLite
+  BriefingAdapter --> SQLite
+  LlmAdapter --> LLM
+  ClockAdapter --> Clock
+```
+
+How to read this:
+
+- 左边是入口。
+- 中间是 app-owned runtime ownership。
+- `service/ambient` 现在只在图中间，不直接连到最右边 side effects。
+- 最右边所有脏依赖都只能通过 `src/app/ambient/*` adapter 触达。
+
+### 2. Manual refresh sequence
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant UI as "Command / AmbientPushPanel"
+  participant AppContext as "AppContext.tryGetAmbientRuntime"
+  participant Runtime as "AmbientPushRuntime"
+  participant Editor as "AmbientEditorContextPort"
+  participant Search as "AmbientSearchPort"
+  participant Projection as "AmbientUiProjectionPort"
+  participant Persistence as "AmbientPersistencePort"
+
+  User->>UI: refresh Related Notes
+  UI->>AppContext: get runtime
+  AppContext-->>UI: AmbientRuntime
+  UI->>Runtime: triggerManual()
+  Runtime->>Editor: triggerManual()
+  Editor-->>Runtime: onTrigger(filePath, "manual")
+  Runtime->>Editor: extractContext(filePath)
+  Runtime->>Search: search(context, maxItems, pushHistory, settings)
+  Search-->>Runtime: AmbientPushItem[]
+  alt no items
+    Runtime->>Projection: clearItems()
+  else items found
+    Runtime->>Projection: setItems(items, sourceFilePath)
+    Runtime->>Projection: recordPush(filePath, now)
+    Runtime->>Persistence: logPushes(context, items, triggerType)
+  end
+```
+
+This is the concrete runtime path you should keep in your head.
+
+### 3. State ownership map
+
+```mermaid
+flowchart LR
+  Runtime["AmbientPushRuntime\norchestrates behavior"]
+  Registry["AppRuntimeRegistry\nowns runtime binding"]
+  PushLog["ambient_push_log\npersistent history/actions"]
+  IndexState["index_state\nbriefing timestamps"]
+  PushStore["useAmbientPushStore\nUI projection only"]
+  BriefingStore["useMorningBriefingStore\nUI projection only"]
+  Views["Related Notes / Morning Briefing UI"]
+
+  Registry --> Runtime
+  Runtime --> PushLog
+  Runtime --> IndexState
+  Runtime --> PushStore
+  Runtime --> BriefingStore
+  PushStore --> Views
+  BriefingStore --> Views
+
+  PushStore -. "no sqlite writes after T8" .-> PushLog
+```
+
+State truth after T8:
+
+| State | Owner | Consumer | T8 status |
+| --- | --- | --- | --- |
+| Runtime binding | `AppRuntimeRegistry` | `AppContext`, `ServiceContext`, commands/UI | centralized |
+| Push action history | `ambient_push_log` through `SqliteAmbientPersistenceAdapter` | learning / analytics | no longer written by UI store |
+| Briefing timestamps | `index_state` through `SqliteAmbientBriefingAdapter` | startup briefing gate | app adapter owns it |
+| Related Notes visible items | `useAmbientPushStore` | panel / gutter | projection only |
+| Morning Briefing visible items | `useMorningBriefingStore` | modal / panel | projection only |
+
+### 4. Old path deletion and guards
+
+```mermaid
+flowchart TB
+  subgraph Deleted["Deleted or moved old paths"]
+    OldPush["AmbientPushService.ts deleted"]
+    OldBriefing["MorningBriefingService.ts deleted"]
+    OldTrigger["AmbientTrigger.ts deleted"]
+    OldGutter["SerendipityGutterPlugin moved service -> app"]
+    OldStoreWrite["ambientPushStore.recordAction sqlite write removed"]
+  end
+
+  subgraph NewPath["New accepted path"]
+    Runtime["AmbientPushRuntime"]
+    Ports["AmbientPorts"]
+    Adapters["src/app/ambient adapters"]
+    Registry["AppRuntimeRegistry.ambientRuntime"]
+  end
+
+  subgraph Guards["Regression guards"]
+    FakePorts["test/ambient-runtime-ports.test.ts"]
+    SourceGuard["test/ambient-source-guard.test.ts"]
+    RegistryTest["test/app-runtime-registry.test.ts"]
+    BoundaryAudit["boundary-baseline: 415 -> 404"]
+  end
+
+  OldPush --> Runtime
+  OldBriefing --> Runtime
+  OldTrigger --> Adapters
+  OldGutter --> Adapters
+  OldStoreWrite --> Runtime
+
+  Runtime --> Ports
+  Ports --> Adapters
+  Registry --> Runtime
+
+  FakePorts --> Runtime
+  SourceGuard --> Ports
+  SourceGuard --> Adapters
+  RegistryTest --> Registry
+  BoundaryAudit --> NewPath
+```
+
+This is why T8 is accepted: it deletes old owners and adds guards around the new owner.
+
 ## Code Reading Guide
 
 Read in this order:

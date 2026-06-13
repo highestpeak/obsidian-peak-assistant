@@ -62,6 +62,49 @@ Reading notes:
 - Files intentionally not changed:
 - If this breaks later, open this file first:
 
+## 0.6 Visual Dependency Maps
+
+Every code-changing Owner Review Packet must include visual maps. The owner should be able to understand the runtime shape before reading the file list.
+
+Required maps for implementation tasks:
+
+1. Runtime / dependency ownership map:
+   - entry surfaces;
+   - app-level composition and runtime owner;
+   - service runtime / ports;
+   - app adapters;
+   - external side effects.
+
+2. Main sequence map:
+   - one representative user or system trigger;
+   - runtime call path;
+   - port calls;
+   - projection / persistence outcome.
+
+3. State ownership map:
+   - durable state;
+   - runtime state;
+   - UI projection;
+   - old state owner removed or preserved.
+
+4. Old-path deletion / guard map:
+   - deleted or moved old paths;
+   - new accepted path;
+   - tests / source guards / boundary audit that prevent regression.
+
+Use Mermaid by default:
+
+```mermaid
+flowchart TB
+  Entry["Entry surface"] --> RuntimeOwner["App-owned runtime"]
+  RuntimeOwner --> Runtime["Service runtime"]
+  Runtime --> Ports["Ports"]
+  Ports --> Adapters["App adapters"]
+  Adapters --> SideEffects["Obsidian / SQLite / UI / LLM"]
+```
+
+Do not replace diagrams with long prose tables unless the task is pure documentation or diagnostic-only.
+
 ## 1. One-Sentence Outcome
 
 What changed in plain language?
