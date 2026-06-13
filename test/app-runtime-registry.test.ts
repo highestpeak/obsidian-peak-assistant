@@ -14,6 +14,7 @@ import { AppRuntimeRegistry } from '@/app/runtime/AppRuntimeRegistry';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { LintScanResult } from '@/service/lint/types';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
+import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 
 function fakeRuntime(stamp: string): VaultLintRuntime {
 	return {
@@ -317,6 +318,208 @@ function testAppContextDeclaresAmbientDelegators(): void {
 	console.log('PASS: appContextDeclaresAmbientDelegators');
 }
 
+// ─── T9: Vault Review runtime binding tests ────────────────────────────
+
+interface VaultReviewStubState {
+	disposed: boolean;
+	runCalls: number;
+	saveCalls: number;
+	listCalls: number;
+	loadCalls: number;
+	deleteCalls: number;
+	clusterCalls: number;
+	fingerprintCalls: number;
+}
+
+function newVaultReviewState(): VaultReviewStubState {
+	return {
+		disposed: false,
+		runCalls: 0,
+		saveCalls: 0,
+		listCalls: 0,
+		loadCalls: 0,
+		deleteCalls: 0,
+		clusterCalls: 0,
+		fingerprintCalls: 0,
+	};
+}
+
+function fakeVaultReviewRuntime(state: VaultReviewStubState): VaultReviewRuntime {
+	return {
+		async *run() {
+			state.runCalls += 1;
+			// Yield zero snapshots — the registry test only cares about
+			// dispatch, not the multi-round loop.
+			return undefined as never;
+		},
+		async saveReport(_snap, _existing) {
+			state.saveCalls += 1;
+			return {
+				id: 'fake-id',
+				storagePath: 'peak-system/vault-reviews/fake.md',
+				mode: 'complete',
+				startedAt: 0,
+				completedAt: 0,
+				status: 'completed',
+				noteCount: 0,
+				wordCount: 0,
+				clusterCount: 0,
+				insightCount: 0,
+				gapCount: 0,
+				actionCount: 0,
+				sourceCount: 0,
+				roundCount: 0,
+				turnCount: 0,
+				fingerprint: '',
+			};
+		},
+		async listReports() {
+			state.listCalls += 1;
+			return [];
+		},
+		async loadReport() {
+			state.loadCalls += 1;
+			return null;
+		},
+		async deleteReport() {
+			state.deleteCalls += 1;
+		},
+		async listClusterMembers() {
+			state.clusterCalls += 1;
+			return [];
+		},
+		async getVaultFingerprint() {
+			state.fingerprintCalls += 1;
+			return null;
+		},
+		dispose() {
+			state.disposed = true;
+		},
+	};
+}
+
+function testGetVaultReviewRuntimeFailsLoudBeforeSet(): void {
+	const registry = new AppRuntimeRegistry();
+	assert.throws(
+		() => registry.getVaultReviewRuntime(),
+		/no runtime is bound/,
+		'getVaultReviewRuntime must fail-loud before composition runs',
+	);
+	console.log('PASS: getVaultReviewRuntimeFailsLoudBeforeSet');
+}
+
+function testTryGetVaultReviewRuntimeReturnsNullBeforeSet(): void {
+	const registry = new AppRuntimeRegistry();
+	assert.strictEqual(
+		registry.tryGetVaultReviewRuntime(),
+		null,
+		'tryGetVaultReviewRuntime must return null before composition runs',
+	);
+	console.log('PASS: tryGetVaultReviewRuntimeReturnsNullBeforeSet');
+}
+
+async function testSetVaultReviewRuntimeStoresInstanceAndAllowsCalls(): Promise<void> {
+	const registry = new AppRuntimeRegistry();
+	const state = newVaultReviewState();
+	const runtime = fakeVaultReviewRuntime(state);
+	registry.setVaultReviewRuntime(runtime);
+
+	assert.strictEqual(
+		registry.getVaultReviewRuntime(),
+		runtime,
+		'registry must return the exact instance that was set',
+	);
+	assert.strictEqual(
+		registry.tryGetVaultReviewRuntime(),
+		runtime,
+		'tryGet must agree with get when bound',
+	);
+	await registry.getVaultReviewRuntime().listReports();
+	await registry.getVaultReviewRuntime().getVaultFingerprint?.(true);
+	await registry.getVaultReviewRuntime().listClusterMembers('community-1');
+	assert.strictEqual(state.listCalls, 1);
+	assert.strictEqual(state.fingerprintCalls, 1);
+	assert.strictEqual(state.clusterCalls, 1);
+	console.log('PASS: setVaultReviewRuntimeStoresInstanceAndAllowsCalls');
+}
+
+function testSetVaultReviewRuntimeRejectsDoubleBindWithoutClear(): void {
+	const registry = new AppRuntimeRegistry();
+	registry.setVaultReviewRuntime(fakeVaultReviewRuntime(newVaultReviewState()));
+	assert.throws(
+		() => registry.setVaultReviewRuntime(fakeVaultReviewRuntime(newVaultReviewState())),
+		/already bound/,
+		'setVaultReviewRuntime must reject a second bind without an intervening clear',
+	);
+	console.log('PASS: setVaultReviewRuntimeRejectsDoubleBindWithoutClear');
+}
+
+function testClearVaultReviewRuntimeDisposesAndAllowsRebind(): void {
+	const registry = new AppRuntimeRegistry();
+	const state = newVaultReviewState();
+	registry.setVaultReviewRuntime(fakeVaultReviewRuntime(state));
+	registry.clearVaultReviewRuntime();
+	assert.strictEqual(state.disposed, true, 'clearVaultReviewRuntime must dispose the bound runtime');
+	assert.throws(() => registry.getVaultReviewRuntime(), /no runtime is bound/);
+	// Idempotent second clear.
+	registry.clearVaultReviewRuntime();
+	// Can re-bind a fresh runtime.
+	const second = newVaultReviewState();
+	registry.setVaultReviewRuntime(fakeVaultReviewRuntime(second));
+	assert.ok(registry.tryGetVaultReviewRuntime() !== null);
+	console.log('PASS: clearVaultReviewRuntimeDisposesAndAllowsRebind');
+}
+
+function testAppContextDeclaresVaultReviewDelegators(): void {
+	const acPath = path.resolve(process.cwd(), 'src/app/context/AppContext.ts');
+	const source = fs.readFileSync(acPath, 'utf8');
+	for (const symbol of [
+		'public static setVaultReviewRuntime',
+		'public static getVaultReviewRuntime',
+		'public static tryGetVaultReviewRuntime',
+		'public static clearVaultReviewRuntime',
+	]) {
+		assert.ok(
+			source.includes(symbol),
+			`AppContext.ts must declare '${symbol}'`,
+		);
+	}
+	assert.ok(
+		/runtimeRegistry\.setVaultReviewRuntime/.test(source),
+		'AppContext.setVaultReviewRuntime must delegate to runtimeRegistry',
+	);
+	assert.ok(
+		/runtimeRegistry\.tryGetVaultReviewRuntime/.test(source),
+		'AppContext.tryGetVaultReviewRuntime must delegate to runtimeRegistry',
+	);
+	assert.ok(
+		/clearVaultReviewRuntime/.test(source),
+		'AppContext.clearForUnload must release the Vault Review runtime',
+	);
+	console.log('PASS: appContextDeclaresVaultReviewDelegators');
+}
+
+function testAllThreeRuntimeBindingsAreIndependent(): void {
+	const registry = new AppRuntimeRegistry();
+	const ambientState = newAmbientState();
+	const vaultReviewState = newVaultReviewState();
+	registry.setVaultLintRuntime(fakeRuntime('three-way'));
+	registry.setAmbientRuntime(fakeAmbientRuntime(ambientState));
+	registry.setVaultReviewRuntime(fakeVaultReviewRuntime(vaultReviewState));
+	// Clear vault lint — ambient + vault review must remain bound.
+	registry.clearVaultLintRuntime();
+	assert.strictEqual(registry.tryGetAmbientRuntime() !== null, true);
+	assert.strictEqual(registry.tryGetVaultReviewRuntime() !== null, true);
+	// Clear vault review — ambient must remain bound, ambient state untouched.
+	registry.clearVaultReviewRuntime();
+	assert.strictEqual(vaultReviewState.disposed, true);
+	assert.strictEqual(ambientState.disposed, false);
+	assert.strictEqual(registry.tryGetAmbientRuntime() !== null, true);
+	registry.clearAmbientRuntime();
+	assert.strictEqual(ambientState.disposed, true);
+	console.log('PASS: allThreeRuntimeBindingsAreIndependent');
+}
+
 function testVaultLintAndAmbientBindingsAreIndependent(): void {
 	const registry = new AppRuntimeRegistry();
 	const ambientState = newAmbientState();
@@ -345,6 +548,13 @@ async function main(): Promise<void> {
 	testClearAmbientRuntimeDisposesAndAllowsRebind();
 	testAppContextDeclaresAmbientDelegators();
 	testVaultLintAndAmbientBindingsAreIndependent();
+	testGetVaultReviewRuntimeFailsLoudBeforeSet();
+	testTryGetVaultReviewRuntimeReturnsNullBeforeSet();
+	await testSetVaultReviewRuntimeStoresInstanceAndAllowsCalls();
+	testSetVaultReviewRuntimeRejectsDoubleBindWithoutClear();
+	testClearVaultReviewRuntimeDisposesAndAllowsRebind();
+	testAppContextDeclaresVaultReviewDelegators();
+	testAllThreeRuntimeBindingsAreIndependent();
 }
 
 main()
