@@ -99,7 +99,8 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T7 Vault Lint Foundation Completion Wave handoff ready：`docs/superpowers/refactor-ops/t7-vault-lint-foundation-completion-wave-handoff.md`
 - [x] T7 implementation 完成并接受：`32fde24b` + `216dd431` + Owner Review `docs/superpowers/audits/2026-06-13-t7-owner-review-packet.md`
 - [x] T7 结论：Vault Lint foundation closure 完成；不要继续做 Vault Lint 微小 polish，除非有 bug
-- [ ] 下一步：Codex 准备 T8 第二 capability 大波 handoff；推荐 Ambient Push foundation readiness/runtime boundary wave
+- [x] T8 Ambient Foundation Runtime Boundary Wave handoff ready：`docs/superpowers/refactor-ops/t8-ambient-foundation-runtime-boundary-wave-handoff.md`
+- [ ] 下一步：用户 review T8 handoff，然后发给 Claude Code；这次允许 3-5 个小 commit / 25-60 个相关文件
 - [ ] 不要提前做 Chat 或 Command Gateway；Ambient 下一轮只做 foundation cleanup，不做新产品功能；Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾

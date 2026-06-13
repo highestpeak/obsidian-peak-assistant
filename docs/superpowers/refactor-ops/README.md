@@ -269,12 +269,16 @@ Completed and accepted:
 - T6R Runtime Ownership + Config Defaults Governance: [`t6-review-fix-runtime-ownership-config-defaults-handoff.md`](./t6-review-fix-runtime-ownership-config-defaults-handoff.md) + [`2026-06-13-t6r-owner-review-packet.md`](../audits/2026-06-13-t6r-owner-review-packet.md)
 - T7 Vault Lint Foundation Completion Wave: [`t7-vault-lint-foundation-completion-wave-handoff.md`](./t7-vault-lint-foundation-completion-wave-handoff.md) + [`2026-06-13-t7-owner-review-packet.md`](../audits/2026-06-13-t7-owner-review-packet.md)
 
+Ready for owner approval:
+
+- T8 Ambient Foundation Runtime Boundary Wave: [`t8-ambient-foundation-runtime-boundary-wave-handoff.md`](./t8-ambient-foundation-runtime-boundary-wave-handoff.md)
+
 Next owner decision:
 
-- prepare a larger T8 second-capability handoff instead of continuing Vault Lint micro-polish;
-- recommended target: Ambient Push foundation readiness / runtime boundary wave;
+- review the T8 Ambient handoff and send it to Claude Code if acceptable;
+- allow a larger implementation wave: roughly 25-60 related files and 3-5 small commits inside one Claude session;
 - do not start Chat or Command Gateway yet;
-- do not add new Ambient features in T8; foundation cleanup first.
+- do not add new Ambient product features in T8; foundation cleanup first.
 
 ## Supporting Files
 
@@ -294,6 +298,7 @@ Next owner decision:
 - [`config-defaults-governance.md`](./config-defaults-governance.md): configuration defaults governance.
 - [`t7-vault-lint-detector-context-closure-handoff.md`](./t7-vault-lint-detector-context-closure-handoff.md): superseded small T7 detector handoff.
 - [`t7-vault-lint-foundation-completion-wave-handoff.md`](./t7-vault-lint-foundation-completion-wave-handoff.md): accepted T7 Vault Lint completion handoff.
+- [`t8-ambient-foundation-runtime-boundary-wave-handoff.md`](./t8-ambient-foundation-runtime-boundary-wave-handoff.md): current larger second-capability handoff for Ambient foundation cleanup.
 
 ## Do Not Do
 
