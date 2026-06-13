@@ -94,7 +94,8 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T6R Runtime Ownership + Config Defaults handoff ready：`docs/superpowers/refactor-ops/t6-review-fix-runtime-ownership-config-defaults-handoff.md`
 - [x] Runtime Ownership / Config Defaults 两条规则写入 `AGENTS.md`、`CLAUDE.md`、`docs/conventions/configurability.md`、handoff template、owner review template
 - [x] T7 Vault Lint Detector Context Closure handoff ready：`docs/superpowers/refactor-ops/t7-vault-lint-detector-context-closure-handoff.md`
-- [ ] 下一步：先把 T6R handoff 发给 Claude Code；T6R 完成后再继续 T7 detector closure
+- [x] T6R+T7 combined closure-wave handoff ready：`docs/superpowers/refactor-ops/t6r-t7-vault-lint-foundation-closure-handoff.md`
+- [ ] 下一步：把 T6R+T7 combined handoff 发给 Claude Code，一次性关闭 Vault Lint runtime/config/detector context 旧路径
 - [ ] 不要提前做 Chat、Ambient Push、Command Gateway；Ambient 仍是 post-foundation，Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾
