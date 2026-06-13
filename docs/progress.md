@@ -105,7 +105,9 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T9 target 已选择：Copilot Vault Digest / Review runtime boundary wave
 - [x] T9 Copilot Vault Review Runtime Boundary Wave handoff ready：`docs/superpowers/refactor-ops/t9-copilot-vault-review-runtime-boundary-wave-handoff.md`
 - [x] T9 implementation 完成并接受：`d606005b` + `bbbdb95d` + `9f53d970` + Owner Review `docs/superpowers/audits/2026-06-13-t9-owner-review-packet.md`
-- [ ] 下一步：选择 T10 target。推荐 Quick Search / Background Session foundation boundary wave；备选 Copilot Action Registry boundary wave
+- [x] T10 target 已选择：Quick Search Background Session Runtime Boundary Wave
+- [x] T10 Quick Search Background Session Runtime Boundary Wave handoff ready：`docs/superpowers/refactor-ops/t10-quick-search-background-session-runtime-boundary-wave-handoff.md`
+- [ ] 下一步：把 T10 handoff 发给 Claude Code 执行；Codex 等 implementation note 后写 Owner Review Packet
 - [ ] 不要提前做 Current Work State、Chat 或 Command Gateway；Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾
