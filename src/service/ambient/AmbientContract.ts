@@ -258,7 +258,7 @@ export const AMBIENT_CURRENT_DEPENDENCIES: AmbientDependencyInventory = {
 		},
 		{
 			site: 'src/app/commands/PeakCommandActions.ts:refreshRelatedNotes',
-			purpose: 'Manual trigger from command palette',
+			purpose: 'Manual trigger used by Settings -> Maintenance',
 		},
 		{
 			site: 'src/ui/view/ambient-push/AmbientPushPanel.tsx',

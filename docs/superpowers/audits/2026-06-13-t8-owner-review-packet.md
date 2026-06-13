@@ -236,14 +236,22 @@ flowchart LR
 - `AmbientPorts` 管“runtime 能向外请求什么能力”。
 - `src/app/ambient/* adapters` 管“真实世界怎么接进来”。
 
-### 3. Related Notes 刷新路径
+### 3. Related Notes 的真实入口
 
-这是你点 refresh 或 command 时发生的事：
+这里说的入口不是一个新功能，而是现有 Related Notes / Maintenance 入口：
+
+| Entry | Where | What it does |
+| --- | --- | --- |
+| `Open Related Notes` command | Obsidian command palette, id `peak-related-notes` | 打开右侧 Related Notes 面板，然后触发一次 `triggerManual()`。 |
+| Refresh icon | Related Notes 面板右上角刷新按钮 | 对当前 active file 触发一次 `triggerManual()`。 |
+| `Refresh related notes` action | Settings -> Advanced -> Maintenance | 直接调用 `refreshRelatedNotes()`，触发一次 `triggerManual()`。 |
+
+这三个入口最后都会走同一个 runtime 方法：
 
 ```mermaid
 sequenceDiagram
   participant User as 用户
-  participant UI as Panel / Command
+  participant UI as Panel / Command / Maintenance
   participant Runtime as AmbientPushRuntime
   participant Editor as EditorContextPort
   participant Search as SearchPort
@@ -260,8 +268,8 @@ sequenceDiagram
 ```
 
 ```text
-用户点击刷新
-  -> AmbientPushPanel / command
+用户触发 Related Notes 入口
+  -> panel refresh / open command / maintenance action
       -> ambientRuntime.triggerManual()
           -> editorContext.extractContext()
           -> search.search()
@@ -423,7 +431,7 @@ Read in this order:
 Debug first file:
 
 - Related Notes 不刷新：先看 `src/service/ambient/AmbientPushRuntime.ts` 的 `handleTrigger`。
-- 手动 refresh 没反应：先看 `src/app/commands/PeakCommandActions.ts:openRelatedNotes/refreshRelatedNotes` 和 `AmbientPushPanel.tsx`。
+- Related Notes 手动触发没反应：先看 `AmbientPushPanel.tsx` 的刷新按钮、`PeakCommandActions.ts:openRelatedNotes`、`PeakCommandActions.ts:refreshRelatedNotes`。
 - Obsidian 当前段落抽取不对：先看 `src/app/ambient/ObsidianAmbientEditorContextAdapter.ts`。
 - 搜索/serendipity 不对：先看 `src/app/ambient/SearchAmbientSearchAdapter.ts`。
 - 持久化/action log 不对：先看 `src/app/ambient/SqliteAmbientPersistenceAdapter.ts`。
