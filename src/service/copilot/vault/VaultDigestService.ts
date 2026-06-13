@@ -15,7 +15,7 @@
  */
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { getVaultLintRuntime } from '@/service/lint/VaultLintRuntime';
+import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { LintScanResult, LintDimension } from '@/service/lint/types';
 import { getVaultFingerprint, type VaultFingerprint } from './VaultFingerprintService';
 
@@ -150,7 +150,20 @@ const STALE_HUB_DAYS = 180;
 const RECENT_DAYS = 30;
 const DORMANT_DAYS = 90;
 
-export async function buildVaultDigest(): Promise<VaultDigest | null> {
+/**
+ * Options for `buildVaultDigest`. `vaultLintRuntime` is required —
+ * callers (e.g. `VaultReviewSession`) read it from the app-owned
+ * `AppRuntimeRegistry` (`AppContext.getVaultLintRuntime()`) so this
+ * service file does not import AppContext or the lint runtime
+ * registry directly.
+ */
+export interface BuildVaultDigestOptions {
+	vaultLintRuntime: VaultLintRuntime;
+}
+
+export async function buildVaultDigest(
+	options: BuildVaultDigestOptions,
+): Promise<VaultDigest | null> {
 	const fingerprint = await getVaultFingerprint();
 	if (!fingerprint) return null;
 
@@ -295,14 +308,16 @@ export async function buildVaultDigest(): Promise<VaultDigest | null> {
 	}
 
 	// ─── Lint health snapshot (read latest scan, don't trigger new one) ───
-	// T6: reach the Vault Lint engine through the central runtime
-	// binding. Detector registry init happens in
-	// `composeVaultLintRuntime` at plugin boot, so this code path no
-	// longer initializes anything — it just reads the latest scan
-	// through the runtime's `loadLatestScan` port.
+	// T6R: the Vault Lint runtime arrives as an explicit dependency
+	// rather than being looked up via a service-layer singleton. The
+	// caller (`VaultReviewSession`) reads it from the app-owned
+	// `AppRuntimeRegistry`. Detector registry init happens in
+	// `composeVaultLintRuntime` at plugin boot, so this code path
+	// only reads the latest scan through the runtime's
+	// `loadLatestScan` port.
 	let health: VaultDigest['health'] = null;
 	try {
-		const latest: LintScanResult | null = await getVaultLintRuntime().loadLatestScan();
+		const latest: LintScanResult | null = await options.vaultLintRuntime.loadLatestScan();
 		if (latest) {
 			health = {
 				score: latest.healthScore,

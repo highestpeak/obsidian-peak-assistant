@@ -429,15 +429,15 @@ export default class MyPlugin extends Plugin {
 				if (this.appContext) {
 					this.appContext.searchClient = this.searchClient!;
 				}
-				// T6: bind the Vault Lint runtime once sqlite is ready.
-				// Consumers (runVaultLintManualScan, openVaultXRay,
-				// VaultDigestService) reach the engine through
-				// getVaultLintRuntime() — they no longer touch
-				// VaultLintService directly.
+				// T6R: bind the Vault Lint runtime once sqlite is ready.
+				// Ownership lives on `AppContext` (delegating to the
+				// app-owned `AppRuntimeRegistry`). Consumers reach the
+				// engine through `AppContext.getVaultLintRuntime()` or
+				// via the React `ServiceContext`; the service layer no
+				// longer owns the binding.
 				{
 					const { composeVaultLintRuntime } = await import('@/app/lint/composeVaultLintRuntime');
-					const { setVaultLintRuntime } = await import('@/service/lint/VaultLintRuntime');
-					setVaultLintRuntime(composeVaultLintRuntime());
+					AppContext.setVaultLintRuntime(composeVaultLintRuntime());
 				}
 				const sessionContext = SessionContextService.getInstance(this.app, EventBus.getInstance(this.app));
 				await sessionContext.init();
@@ -642,18 +642,16 @@ export default class MyPlugin extends Plugin {
 		UsageTrackingService.getInstance().destroy();
 		UsageOutcomeService.getInstance().destroy();
 		UsageOptimizationService.getInstance().destroy();
+		// T6R: drop the Vault Lint runtime BEFORE clearing AppContext.
+		// `AppContext.clearForUnload()` also calls clearVaultLintRuntime
+		// internally, but invoking it here makes the ordering explicit
+		// and keeps the unload sequence symmetrical with the boot path.
+		try { AppContext.clearVaultLintRuntime(); } catch { /* not bound — ignore */ }
 		AppContext.clearForUnload();
 		SessionContextService.destroyInstance();
 		// Drop the ProgressReporterPort default so a hot-reloaded plugin
 		// bundle does not see a stale Notice closure from the previous load.
 		clearDefaultProgressReporter();
-		// T6: drop the Vault Lint runtime so a hot-reloaded plugin does
-		// not keep references to the closed sqlite repo or unloaded
-		// AppContext.
-		{
-			const { clearVaultLintRuntimeForTests } = require('@/service/lint/VaultLintRuntime') as typeof import('@/service/lint/VaultLintRuntime');
-			clearVaultLintRuntimeForTests();
-		}
 		EventBus.destroyInstance();
 		IndexService.clearInstance();
 		DocumentLoaderManager.clearInstance();

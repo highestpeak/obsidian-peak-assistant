@@ -16,6 +16,8 @@ import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import { getVaultPersona } from '@/service/tools/system-info';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
+import { AppRuntimeRegistry } from '@/app/runtime/AppRuntimeRegistry';
+import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 
 /**
  * Application context containing all global dependencies.
@@ -26,6 +28,12 @@ export class AppContext {
 	public readonly eventBus: EventBus;
 	/** Bridge instance shared across the plugin lifetime. */
 	public readonly _bridge: ClaudeAgentSDKBridge;
+	/**
+	 * App-owned runtime registry. T6R moves Vault Lint runtime ownership
+	 * from a service-layer module singleton into this registry; future
+	 * capability runtimes plug in here too.
+	 */
+	public readonly runtimeRegistry: AppRuntimeRegistry;
 
 	private static instance: AppContext | null = null;
 
@@ -90,6 +98,39 @@ export class AppContext {
 	}
 
 	/**
+	 * Bind the Vault Lint runtime at plugin boot. Delegates to the
+	 * app-owned `AppRuntimeRegistry`. Fail-loud on double-bind.
+	 */
+	public static setVaultLintRuntime(runtime: VaultLintRuntime): void {
+		AppContext.getInstance().runtimeRegistry.setVaultLintRuntime(runtime);
+	}
+
+	/**
+	 * Read the bound Vault Lint runtime. Fail-loud if boot has not run
+	 * yet. Service-side consumers (e.g. `VaultReviewSession`) use this.
+	 */
+	public static getVaultLintRuntime(): VaultLintRuntime {
+		return AppContext.getInstance().runtimeRegistry.getVaultLintRuntime();
+	}
+
+	/**
+	 * Soft accessor — returns `null` if boot has not bound the runtime
+	 * yet. UI providers use this so an early panel mount does not throw
+	 * inside React rendering; the consumer handles the null case.
+	 */
+	public static tryGetVaultLintRuntime(): VaultLintRuntime | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetVaultLintRuntime();
+	}
+
+	/**
+	 * Release the bound runtime — called from `main.onunload` so hot
+	 * reload does not keep a reference to the closed sqlite repo.
+	 */
+	public static clearVaultLintRuntime(): void {
+		AppContext.getInstance().runtimeRegistry.clearVaultLintRuntime();
+	}
+
+	/**
 	 * Clear singleton and unsubscribe from workspace events.
 	 * Must be called from plugin onunload to break reference chains and allow GC.
 	 */
@@ -98,6 +139,9 @@ export class AppContext {
 			AppContext.instance.unsubscribeSettingsUpdated?.();
 			// Explicitly clean up window globals to break closure-based memory leaks
 			AppContext.instance.handleDevToolsSettingChange(false);
+			// Release any per-capability runtime so a hot-reloaded plugin
+			// bundle does not retain references to the closed sqlite repo.
+			AppContext.instance.runtimeRegistry.clearVaultLintRuntime();
 			AppContext.instance = null;
 		}
 	}
@@ -124,6 +168,7 @@ export class AppContext {
 		this.viewManager = null as any;
 		this.eventBus = EventBus.getInstance(app);
 		this._bridge = new ClaudeAgentSDKBridge();
+		this.runtimeRegistry = new AppRuntimeRegistry();
 		AppContext.instance = this;
 
 		this.handleDevToolsSettingChange(this.settings.enableDevTools ?? false);

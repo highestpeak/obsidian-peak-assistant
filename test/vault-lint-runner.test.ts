@@ -481,6 +481,56 @@ async function testRunnerOnEventSinkReceivesEveryEventWithSnapshot(): Promise<vo
 	console.log('PASS: runnerOnEventSinkReceivesEveryEventWithSnapshot');
 }
 
+async function testRunnerRejectsCallWithNeitherRuntimeNorScan(): Promise<void> {
+	// T6R: the runner no longer has a fallback that looks the
+	// runtime up via `getVaultLintRuntime()` — that function has
+	// been deleted along with the service-layer runtime binding.
+	// Callers MUST pass `runtime` (production) or `scan` (tests).
+	let thrown: unknown;
+	try {
+		await runVaultLintManualScan({
+			clock: makeFakeClock(),
+			idFactory: makeFakeIdFactory('no-deps'),
+		});
+	} catch (e) {
+		thrown = e;
+	}
+	assert.ok(thrown instanceof Error, 'runner must reject calls with no runtime and no scan');
+	assert.ok(
+		/options\.runtime or options\.scan/.test((thrown as Error).message),
+		`runner error must explain the missing argument, got '${(thrown as Error).message}'`,
+	);
+	console.log('PASS: runnerRejectsCallWithNeitherRuntimeNorScan');
+}
+
+async function testRunnerInvokesInjectedRuntimeRunFullScan(): Promise<void> {
+	// T6R: passing `runtime` is how the production UI hook drives
+	// scans. Asserts the runner forwards callbacks to runtime.runFullScan.
+	let runtimeCalls = 0;
+	let receivedCallbacks = false;
+	const fakeRuntime = {
+		async runFullScan(callbacks?: VaultLintRunCallbacks) {
+			runtimeCalls += 1;
+			if (callbacks?.onProgress) receivedCallbacks = true;
+			callbacks?.onProgress?.({ phase: 'init' });
+			callbacks?.onProgress?.({ phase: 'cleared' });
+			return fakeScanResult({ id: 'from-injected-runtime' });
+		},
+		async loadLatestScan() {
+			return null;
+		},
+	};
+	const out = await runVaultLintManualScan({
+		clock: makeFakeClock(),
+		idFactory: makeFakeIdFactory('inj'),
+		runtime: fakeRuntime,
+	});
+	assert.strictEqual(runtimeCalls, 1);
+	assert.ok(receivedCallbacks, 'runner must forward its callbacks object to the runtime');
+	assert.strictEqual(out.result.id, 'from-injected-runtime');
+	console.log('PASS: runnerInvokesInjectedRuntimeRunFullScan');
+}
+
 async function testRunnerOnEventSinkSeesFailureEvents(): Promise<void> {
 	const captured: string[] = [];
 	const boom = new Error('detector crash');
@@ -603,6 +653,8 @@ async function main(): Promise<void> {
 	await testDetectorWarningCallbackBecomesWarnLogEvent();
 	await testEachInvocationConstructsItsOwnRecorderWhenNoneProvided();
 	await testRunnerOnEventSinkReceivesEveryEventWithSnapshot();
+	await testRunnerRejectsCallWithNeitherRuntimeNorScan();
+	await testRunnerInvokesInjectedRuntimeRunFullScan();
 	await testRunnerOnEventSinkSeesFailureEvents();
 	await testTwoConcurrentRunsHaveIsolatedSinks();
 	testRunnerImportsAreBoundaryClean();

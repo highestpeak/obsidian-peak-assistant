@@ -125,8 +125,13 @@ export async function* runVaultReview(
 	yield snap();
 
 	// Build digest before any round so the UI can show pre-flight stats early.
+	// T6R: the Vault Lint runtime is resolved here (app-side caller)
+	// and passed explicitly so `VaultDigestService` does not need to
+	// import the runtime registry itself.
 	try {
-		session.digest = await buildVaultDigest();
+		session.digest = await buildVaultDigest({
+			vaultLintRuntime: AppContext.getVaultLintRuntime(),
+		});
 	} catch (err) {
 		session.status = 'error';
 		session.error = (err as Error).message ?? 'failed to build vault digest';

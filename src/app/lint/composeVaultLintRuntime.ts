@@ -11,10 +11,8 @@
 // `getVaultLintRuntime`.
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import {
-	DEFAULT_VAULT_LINT_CONFIG,
-	VaultLintService,
-} from '@/service/lint/VaultLintService';
+import { VaultLintService } from '@/service/lint/VaultLintService';
+import { DEFAULT_VAULT_LINT_CONFIG } from '@/service/lint/config/VaultLintDefaults';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { VaultLintPorts } from '@/service/lint/ports/VaultLintPorts';
 import { InMemoryDetectorRegistry } from '@/service/lint/runtime/InMemoryDetectorRegistry';

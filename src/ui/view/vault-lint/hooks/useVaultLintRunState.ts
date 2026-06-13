@@ -1,4 +1,4 @@
-// T5 Vault Lint Runtime Closure Wave — UI projection hook.
+// T5/T6R Vault Lint Runtime Closure Wave — UI projection hook.
 //
 // This hook is the new single source of truth for Vault X-Ray runtime
 // state. Before T5 the UI read `currentScan` / `isScanning` / progress
@@ -6,18 +6,20 @@
 // in reverse direction. After T5 the runtime state is projected from
 // the `RunEnvelope` event trace the runner produces.
 //
+// T6R: the Vault Lint runtime is read from `ServiceContext`, which
+// reads it from the app-owned `AppRuntimeRegistry`. The hook never
+// touches a service-layer singleton or calls `getVaultLintRuntime()`
+// (that function no longer exists). The runner is invoked with the
+// runtime as an explicit option.
+//
 // Per-mount state (`useState`) is intentional: the trace belongs to the
 // current scan attempt only. When the panel unmounts the trace is
 // discarded; persistence still lives in `VaultLintRepo` (last scan
 // result, dismissals) — that path is unaffected.
-//
-// No zustand store, no module-level mutable default, no global event
-// bus. The `onEvent` sink is captured by the recorder the runner
-// constructs and is garbage-collected together with that recorder when
-// the scan finishes.
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { runVaultLintManualScan } from '@/service/lint/VaultLintRun';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import type {
 	RunEvent,
 	RunStatus,
@@ -80,6 +82,7 @@ function deriveLatestProgress(events: readonly RunEvent[]): VaultLintProgressVie
  * first invocation is ignored.
  */
 export function useVaultLintRunState(): VaultLintRunState {
+	const { vaultLintRuntime } = useServiceContext();
 	const [events, setEvents] = useState<readonly RunEvent[]>([]);
 	const [currentScan, setCurrentScan] = useState<LintScanResult | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -90,8 +93,15 @@ export function useVaultLintRunState(): VaultLintRunState {
 		setEvents([]);
 		setCurrentScan(null);
 		setError(null);
+		if (!vaultLintRuntime) {
+			setError(
+				'Vault Lint runtime is not ready yet — wait for plugin initialization to finish and try again.',
+			);
+			return;
+		}
 		try {
 			const out = await runVaultLintManualScan({
+				runtime: vaultLintRuntime,
 				onEvent: (_event, snapshot) => {
 					if (token !== scanTokenRef.current) return;
 					setEvents(snapshot);
@@ -103,7 +113,7 @@ export function useVaultLintRunState(): VaultLintRunState {
 			if (token !== scanTokenRef.current) return;
 			setError(e instanceof Error ? e.message : String(e));
 		}
-	}, []);
+	}, [vaultLintRuntime]);
 
 	const latestStatus = useMemo(() => deriveLatestStatus(events), [events]);
 	const isScanning = latestStatus === 'queued' || latestStatus === 'running';

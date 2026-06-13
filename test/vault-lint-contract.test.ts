@@ -121,10 +121,20 @@ function testDependencyInventoryCoversAllResolutionSites(): void {
 			`T6 closure: inventory must no longer list singleton '${retired}'`,
 		);
 	}
+	// T6R closure proof: the previous service-layer runtime binding
+	// (`getVaultLintRuntime` / `setVaultLintRuntime` exported from
+	// `src/service/lint/VaultLintRuntime.ts`) must not be inventoried
+	// any more — the binding moved to `AppRuntimeRegistry`.
+	for (const resolution of inv.singletonResolutions) {
+		assert.ok(
+			!resolution.site.startsWith('src/service/lint/VaultLintRuntime'),
+			`T6R closure: inventory must not list bindings sited in service-layer VaultLintRuntime.ts (found '${resolution.site}')`,
+		);
+	}
 	// `sqliteStoreManager.getVaultLintRepo()` is still listed but its
 	// site moved to `composeVaultLintRuntime` (one-shot at boot, not a
-	// per-scan resolution). The new central runtime binding is listed
-	// as well.
+	// per-scan resolution). The new app-owned runtime binding is also
+	// listed.
 	assert.ok(
 		singletonNames.includes('sqliteStoreManager.getVaultLintRepo()'),
 		'inventory must still list the one-shot sqlite repo handoff in composeVaultLintRuntime',
@@ -137,9 +147,11 @@ function testDependencyInventoryCoversAllResolutionSites(): void {
 	);
 	assert.ok(
 		inv.singletonResolutions.some(
-			(r) => r.singleton.includes('getVaultLintRuntime') && r.site.includes('VaultLintRuntime'),
+			(r) =>
+				r.site === 'src/app/runtime/AppRuntimeRegistry.ts' &&
+				/AppRuntimeRegistry/.test(r.singleton),
 		),
-		'T6: the central runtime binding must be inventoried',
+		'T6R: the app-owned runtime registry binding must be inventoried',
 	);
 
 	const sideEffectKinds = new Set(inv.sideEffects.map((s) => s.kind));

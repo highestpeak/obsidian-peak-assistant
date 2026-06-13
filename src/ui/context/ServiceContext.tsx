@@ -5,10 +5,17 @@ import { EventBus } from '@/core/eventBus';
 import { SearchClient } from '@/service/search/SearchClient';
 import { ViewManager } from '@/app/view/ViewManager';
 import { AppContext } from '@/app/context/AppContext';
+import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type MyPlugin from 'main';
 
 /**
  * Service context value containing all global services.
+ *
+ * T6R: `vaultLintRuntime` is exposed here so UI consumers (the Vault
+ * X-Ray hook, future scheduled-scan dashboards) can drive scans
+ * without reaching into a service-layer singleton. The value is
+ * `null` until plugin boot binds the runtime; consumers handle that
+ * case explicitly.
  */
 interface ServiceContextValue {
 	app: App;
@@ -17,6 +24,7 @@ interface ServiceContextValue {
 	searchClient: SearchClient | null;
 	viewManager: ViewManager;
 	plugin: MyPlugin;
+	vaultLintRuntime: VaultLintRuntime | null;
 }
 
 const ServiceContext = createContext<ServiceContextValue | null>(null);
@@ -32,7 +40,8 @@ export const ServiceProvider: React.FC<{
 	searchClient?: SearchClient | null;
 	viewManager?: ViewManager;
 	plugin?: MyPlugin;
-}> = ({ children, app, manager, eventBus, searchClient, viewManager, plugin }) => {
+	vaultLintRuntime?: VaultLintRuntime | null;
+}> = ({ children, app, manager, eventBus, searchClient, viewManager, plugin, vaultLintRuntime }) => {
 	const value = useMemo<ServiceContextValue>(() => {
 		return {
 			app: app ?? AppContext.getApp(),
@@ -41,8 +50,9 @@ export const ServiceProvider: React.FC<{
 			searchClient: searchClient ?? AppContext.getSearchClient() ?? null,
 			viewManager: viewManager ?? AppContext.getViewManager(),
 			plugin: plugin ?? AppContext.getPlugin(),
+			vaultLintRuntime: vaultLintRuntime ?? AppContext.tryGetVaultLintRuntime(),
 		};
-	}, [app, eventBus, manager, plugin, searchClient, viewManager]);
+	}, [app, eventBus, manager, plugin, searchClient, viewManager, vaultLintRuntime]);
 
 	return <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>;
 };

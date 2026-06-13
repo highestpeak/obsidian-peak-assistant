@@ -1,19 +1,19 @@
-// T4-T6 Vault Lint RunEnvelope runner.
+// T4-T6R Vault Lint RunEnvelope runner.
 //
 // The runner is the first real adopter of `RunEnvelope` and after T5
-// the sole driver of UI state through its `onEvent` sink. T6 changes
-// only the production scan target: instead of a dynamic
-// `VaultLintService.getInstance()`, the runner now reaches the engine
-// through `getVaultLintRuntime()` — a single, fail-loud, boot-bound
-// runtime binding. Tests still inject `options.scan` and never touch
-// the binding.
+// the sole driver of UI state through its `onEvent` sink. T6R drops
+// the dynamic `getVaultLintRuntime()` lookup the runner used in T6;
+// the caller now passes either an explicit `runtime` (production UI
+// path) or an explicit `scan` function (tests). The runner has zero
+// awareness of how the runtime is composed or stored — that is the
+// app layer's job.
 //
 // Boundary discipline:
-//   - The runner does NOT statically import `VaultLintService`,
-//     `AppContext`, `sqliteStoreManager`, or any zustand store. The
-//     companion test enforces that by source-string scan.
+//   - The runner does NOT import `VaultLintService`, `AppContext`,
+//     `sqliteStoreManager`, the runtime registry, or any zustand
+//     store. The companion test enforces that by source-string scan.
 //   - It introduces no module-level mutable state, no singleton, no
-//     registry.
+//     registry. Each `runVaultLintManualScan` call is self-contained.
 
 import {
 	InMemoryRunRecorder,
@@ -29,6 +29,7 @@ import {
 	type VaultLintProgressEvent,
 } from './VaultLintContract';
 import type { LintScanResult } from './types';
+import type { VaultLintRuntime } from './VaultLintRuntime';
 
 /**
  * Callbacks the runner passes into `VaultLintService.runFullScan`. The
@@ -73,6 +74,18 @@ export interface VaultLintRunOptions {
 	recorder?: InMemoryRunRecorder;
 	clock?: RunClock;
 	idFactory?: RunIdFactory;
+	/**
+	 * Vault Lint engine the runner should drive. Production callers
+	 * (UI hook, future scheduled-scan command) pass the app-owned
+	 * runtime read from `AppContext.getVaultLintRuntime()` / the
+	 * `AppRuntimeRegistry`. The runner intentionally does NOT look
+	 * the runtime up itself — that responsibility lives in the app
+	 * layer.
+	 *
+	 * Either `runtime` or `scan` must be supplied. Tests typically
+	 * inject `scan` and omit `runtime`.
+	 */
+	runtime?: VaultLintRuntime;
 	scan?: (callbacks: VaultLintRunCallbacks) => Promise<LintScanResult>;
 	/**
 	 * Optional per-run event sink. Invoked synchronously after each
@@ -108,18 +121,6 @@ function defaultIdFactory(prefix: string): RunIdFactory {
 			return `${prefix}-${Date.now().toString(36)}-${seq}`;
 		},
 	};
-}
-
-async function defaultScan(
-	callbacks: VaultLintRunCallbacks,
-): Promise<LintScanResult> {
-	// T6: production reaches the engine through the central
-	// `getVaultLintRuntime()` binding (set by the app-layer composition
-	// at plugin boot). The runner does NOT touch `VaultLintService` or
-	// the service-locator pattern any more. Tests inject `options.scan`
-	// and never reach this branch.
-	const { getVaultLintRuntime } = await import('./VaultLintRuntime');
-	return getVaultLintRuntime().runFullScan(callbacks);
 }
 
 function buildArtifactTitle(result: LintScanResult): string {
@@ -172,7 +173,19 @@ export async function runVaultLintManualScan(
 				: {}),
 		});
 	recorderRef = recorder;
-	const scan = options?.scan ?? defaultScan;
+	// T6R: the runner has no fallback runtime lookup. Either an
+	// explicit `scan` function (tests) or an explicit `runtime`
+	// (production callers) must be supplied. This is the boundary
+	// that keeps the runner free of AppContext / registry imports.
+	const explicitScan = options?.scan;
+	const runtime = options?.runtime;
+	if (explicitScan === undefined && runtime === undefined) {
+		throw new Error(
+			'runVaultLintManualScan: either options.runtime or options.scan must be provided. The runner does not resolve the runtime itself; pass the app-owned Vault Lint runtime in.',
+		);
+	}
+	const scan: (callbacks: VaultLintRunCallbacks) => Promise<LintScanResult> =
+		explicitScan ?? ((cb) => runtime!.runFullScan(cb));
 
 	recorder.start({
 		capabilityId: VAULT_LINT_CAPABILITY_ID,

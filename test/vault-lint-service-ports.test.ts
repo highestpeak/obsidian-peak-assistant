@@ -1,4 +1,4 @@
-// T6 Vault Lint Ports Extraction — fake-port engine tests.
+// T6 Vault Lint Ports Extraction — fake-port engine tests (T6R updated).
 //
 // These tests prove the T6 closure: `VaultLintService` is a plain class
 // that can be constructed with fake ports and exercised end-to-end
@@ -9,14 +9,20 @@
 //
 // The tests also add source-scan guards that prove the engine file and
 // the runtime binding file have no service-locator imports.
+//
+// T6R updates:
+//   - `DEFAULT_VAULT_LINT_CONFIG` no longer lives in VaultLintService;
+//     it is imported from `@/service/lint/config/VaultLintDefaults`.
+//   - Runtime binding fail-loud tests moved to
+//     `test/app-runtime-registry.test.ts` (binding now lives on
+//     `AppRuntimeRegistry`); this file only retains guards that the
+//     service-layer runtime file is a pure interface module.
 
 import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
-import {
-	DEFAULT_VAULT_LINT_CONFIG,
-	VaultLintService,
-} from '@/service/lint/VaultLintService';
+import { VaultLintService } from '@/service/lint/VaultLintService';
+import { DEFAULT_VAULT_LINT_CONFIG } from '@/service/lint/config/VaultLintDefaults';
 import type { VaultLintPorts } from '@/service/lint/ports/VaultLintPorts';
 import type {
 	LintDismissal,
@@ -24,11 +30,6 @@ import type {
 	LintSignalDetector,
 	VaultLintConfig,
 } from '@/service/lint/types';
-import {
-	clearVaultLintRuntimeForTests,
-	getVaultLintRuntime,
-	setVaultLintRuntime,
-} from '@/service/lint/VaultLintRuntime';
 
 // ---------------------------------------------------------------------------
 // Fake adapters
@@ -230,49 +231,6 @@ async function testServiceLoadLatestScanDelegatesToPersistencePort(): Promise<vo
 }
 
 // ---------------------------------------------------------------------------
-// Runtime binding tests
-// ---------------------------------------------------------------------------
-
-function testRuntimeBindingIsFailLoudBeforeSet(): void {
-	clearVaultLintRuntimeForTests();
-	assert.throws(
-		() => getVaultLintRuntime(),
-		/no runtime is bound/,
-		'getVaultLintRuntime() must fail loud before composition runs',
-	);
-	console.log('PASS: runtimeBindingIsFailLoudBeforeSet');
-}
-
-async function testRuntimeBindingWiresFakeServiceForConsumers(): Promise<void> {
-	clearVaultLintRuntimeForTests();
-	const { ports } = fakePorts({ scanIds: ['scan-from-binding'] });
-	const service = new VaultLintService(ports);
-	setVaultLintRuntime(service);
-
-	const runtime = getVaultLintRuntime();
-	assert.strictEqual(runtime, service, 'binding must return the exact instance that was set');
-	const result = await runtime.runFullScan();
-	assert.strictEqual(result.id, 'scan-from-binding');
-
-	clearVaultLintRuntimeForTests();
-	console.log('PASS: runtimeBindingWiresFakeServiceForConsumers');
-}
-
-function testRuntimeBindingRejectsDoubleSet(): void {
-	clearVaultLintRuntimeForTests();
-	const { ports: p1 } = fakePorts();
-	const { ports: p2 } = fakePorts();
-	setVaultLintRuntime(new VaultLintService(p1));
-	assert.throws(
-		() => setVaultLintRuntime(new VaultLintService(p2)),
-		/already bound/,
-		'setVaultLintRuntime must reject a second bind without an intervening clear',
-	);
-	clearVaultLintRuntimeForTests();
-	console.log('PASS: runtimeBindingRejectsDoubleSet');
-}
-
-// ---------------------------------------------------------------------------
 // Source-scan guards
 // ---------------------------------------------------------------------------
 
@@ -326,6 +284,15 @@ function testServiceHasNoServiceLocatorOrAppShellCoupling(): void {
 		!/getInstance\s*\(/.test(code),
 		'T6 closure: VaultLintService.ts must not call any getInstance()',
 	);
+	// T6R: the engine must not own the typed config defaults table.
+	assert.ok(
+		!/export\s+const\s+DEFAULT_VAULT_LINT_CONFIG\b/.test(code),
+		'T6R closure: VaultLintService.ts must not declare DEFAULT_VAULT_LINT_CONFIG (moved to ./config/VaultLintDefaults.ts)',
+	);
+	assert.ok(
+		!/dimensionWeights\s*:\s*\{\s*structural/.test(code),
+		'T6R closure: VaultLintService.ts must not contain an inline dimensionWeights default object',
+	);
 	for (const spec of specifiers) {
 		assert.ok(
 			!/^@\/app\//.test(spec),
@@ -376,6 +343,35 @@ function testRuntimeBindingFileHasNoAppOrSqliteImports(): void {
 	console.log('PASS: runtimeBindingFileHasNoAppOrSqliteImports');
 }
 
+function testServiceLayerRuntimeFileIsPureInterface(): void {
+	// T6R closure: `src/service/lint/VaultLintRuntime.ts` must no
+	// longer host any module-level mutable state, factory function,
+	// or binding accessor. The runtime binding lives in
+	// `src/app/runtime/AppRuntimeRegistry.ts` (app layer); this file
+	// is a pure interface module.
+	const source = fs.readFileSync(RUNTIME_PATH, 'utf8');
+	const code = stripComments(source);
+	for (const forbidden of [
+		'let currentRuntime',
+		'setVaultLintRuntime',
+		'getVaultLintRuntime',
+		'clearVaultLintRuntimeForTests',
+	]) {
+		assert.ok(
+			!code.includes(forbidden),
+			`T6R closure: VaultLintRuntime.ts must not contain '${forbidden}' (moved to AppRuntimeRegistry)`,
+		);
+	}
+	// No top-level `let` (module-level mutable state).
+	for (const line of code.split(/\r?\n/)) {
+		assert.ok(
+			!/^let\b/.test(line.trimStart()),
+			`T6R closure: VaultLintRuntime.ts must not declare top-level 'let' bindings (found: ${line})`,
+		);
+	}
+	console.log('PASS: serviceLayerRuntimeFileIsPureInterface');
+}
+
 function testCompositionFileLivesInAppLayerAndIsTheSoleWirePoint(): void {
 	assert.ok(
 		fs.existsSync(COMPOSITION_PATH),
@@ -424,12 +420,10 @@ async function main(): Promise<void> {
 	await testServiceTolersConfigPortFailureAndFallsBackToDefaults();
 	await testServiceMergesPartialConfigOnTopOfDefaults();
 	await testServiceLoadLatestScanDelegatesToPersistencePort();
-	testRuntimeBindingIsFailLoudBeforeSet();
-	await testRuntimeBindingWiresFakeServiceForConsumers();
-	testRuntimeBindingRejectsDoubleSet();
 	testServiceHasNoServiceLocatorOrAppShellCoupling();
 	testPortsFileImportsOnlyTypes();
 	testRuntimeBindingFileHasNoAppOrSqliteImports();
+	testServiceLayerRuntimeFileIsPureInterface();
 	testCompositionFileLivesInAppLayerAndIsTheSoleWirePoint();
 	testSignalRegistryFileIsDeleted();
 }

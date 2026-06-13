@@ -122,13 +122,15 @@ export interface VaultLintDependencyInventory {
 
 export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 	capabilityId: VAULT_LINT_CAPABILITY_ID,
-	// T6 closure: the engine no longer resolves its own dependencies.
-	// `VaultLintService` is a plain class that receives `VaultLintPorts`
-	// through its constructor; the app-layer `composeVaultLintRuntime`
-	// wires real adapters at boot and `setVaultLintRuntime` binds the
-	// instance for consumers. Persistence still lives in `VaultLintRepo`
-	// (sqlite); the central runtime binding replaces the old singleton.
-	stateOwner: 'VaultLintRepo (persistence) + central VaultLintRuntime binding',
+	// T6R closure: the engine no longer resolves its own dependencies,
+	// and the runtime binding has moved out of the service layer.
+	// `VaultLintService` is a plain class wired with `VaultLintPorts`
+	// via constructor injection. `composeVaultLintRuntime` builds the
+	// instance and `AppContext.setVaultLintRuntime` stores it in the
+	// app-owned `AppRuntimeRegistry`. Consumers reach it via
+	// `AppContext.getVaultLintRuntime()` (services) or `ServiceContext`
+	// (UI). Persistence still lives in `VaultLintRepo` (sqlite).
+	stateOwner: 'VaultLintRepo (persistence) + AppRuntimeRegistry (runtime binding, app-owned)',
 	// T6 retired: the engine no longer resolves AppContext. The two
 	// remaining resolutions live in app-layer adapters
 	// (`ObsidianVaultLintConfigAdapter`, `ObsidianVaultLintVaultAdapter`).
@@ -139,7 +141,7 @@ export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 		{
 			site: 'src/app/lint/ObsidianVaultLintConfigAdapter.ts',
 			access: 'AppContext.getInstance().manager.getTemplateManager()',
-			purpose: 'load optional config-vault-lint template; falls back to DEFAULT_CONFIG',
+			purpose: 'load optional config-vault-lint template; falls back to DEFAULT_VAULT_LINT_CONFIG',
 			optional: true,
 		},
 		{
@@ -150,16 +152,18 @@ export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 		},
 	],
 	singletonResolutions: [
-		// T6 retired: `VaultLintService.getInstance()` no longer exists;
-		// the engine is constructed once by `composeVaultLintRuntime`
-		// and stored behind `getVaultLintRuntime()`.
+		// T6 retired: `VaultLintService.getInstance()` no longer exists.
 		// T6 retired: `SignalRegistry.getInstance()` no longer exists;
 		// detectors live in a per-runtime `InMemoryDetectorRegistry`
 		// instance constructed at boot.
+		// T6R retired: the previous `getVaultLintRuntime` /
+		// `setVaultLintRuntime` service-layer module singleton has
+		// been replaced by `AppContext.{get,set,clear}VaultLintRuntime`
+		// delegating to `AppRuntimeRegistry`.
 		{
-			site: 'src/service/lint/VaultLintRuntime.ts',
-			singleton: 'getVaultLintRuntime() / setVaultLintRuntime()',
-			purpose: 'central, fail-loud Vault Lint runtime binding (transitional, single point of contact)',
+			site: 'src/app/runtime/AppRuntimeRegistry.ts',
+			singleton: 'AppRuntimeRegistry.{set,get,tryGet,clear}VaultLintRuntime',
+			purpose: 'app-owned Vault Lint runtime binding (single instance held on AppContext)',
 		},
 		{
 			site: 'src/app/lint/composeVaultLintRuntime.ts',

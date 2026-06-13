@@ -1,4 +1,4 @@
-// T6 Vault Lint engine — plain class, ports DI, no service locator.
+// T6/T6R Vault Lint engine — plain class, ports DI, no service locator.
 //
 // Before T6 the engine was a singleton (`VaultLintService.getInstance()`)
 // that resolved its own dependencies through `AppContext.getInstance()`,
@@ -10,44 +10,23 @@
 // wires real adapters into the ports; tests construct fake ports
 // directly.
 //
-// Implements `VaultLintRuntime` so the central `getVaultLintRuntime()`
-// binding can return this instance directly.
+// T6R moves the typed config defaults out of this file. The engine
+// imports the compiled fallback from `./config/VaultLintDefaults`; the
+// service is responsible for behavior only.
+//
+// Implements `VaultLintRuntime` so the app-owned `AppRuntimeRegistry`
+// can store this instance and consumers can reach it via the registry.
 
 import { computeHealthScore } from './HealthScoreEngine';
 import type {
 	LintFinding,
 	LintScanContext,
 	LintScanResult,
-	VaultLintConfig,
 } from './types';
+import { mergeVaultLintConfig } from './config/VaultLintDefaults';
 import type { VaultLintPorts } from './ports/VaultLintPorts';
 import type { VaultLintRuntime } from './VaultLintRuntime';
 import type { VaultLintRunCallbacks } from './VaultLintRun';
-
-export const DEFAULT_VAULT_LINT_CONFIG: VaultLintConfig = {
-	dimensionWeights: { structural: 0.30, content: 0.20, temporal: 0.15, semantic: 0.25, tags: 0.10 },
-	thresholds: {
-		stubMaxChars: 100, oversizedMinWords: 5000, duplicateMinSimilarity: 0.92,
-		staleHubDays: 180, staleHubMinPageRankPercentile: 75,
-		softOrphanMaxDegree: 2, phantomNodeMinReferences: 3,
-		islandClusterMaxSize: 5,
-	},
-	scan: { incrementalDebounceMs: 30000, fullScanIntervalHours: 168 },
-};
-
-function mergeConfig(partial: Partial<VaultLintConfig> | null): VaultLintConfig {
-	if (partial === null) return DEFAULT_VAULT_LINT_CONFIG;
-	return {
-		...DEFAULT_VAULT_LINT_CONFIG,
-		...partial,
-		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, ...(partial.thresholds ?? {}) },
-		scan: { ...DEFAULT_VAULT_LINT_CONFIG.scan, ...(partial.scan ?? {}) },
-		dimensionWeights: {
-			...DEFAULT_VAULT_LINT_CONFIG.dimensionWeights,
-			...(partial.dimensionWeights ?? {}),
-		},
-	};
-}
 
 export class VaultLintService implements VaultLintRuntime {
 	constructor(private readonly ports: VaultLintPorts) {}
@@ -63,7 +42,7 @@ export class VaultLintService implements VaultLintRuntime {
 		callbacks?.onProgress?.({ phase: 'init' });
 
 		const loaded = await config.loadConfig().catch(() => null);
-		const activeConfig = mergeConfig(loaded);
+		const activeConfig = mergeVaultLintConfig(loaded);
 
 		// Defense in depth: composition already initialized the registry
 		// at boot, but a test that constructs the service with a bare
