@@ -122,6 +122,7 @@ Use the ledger for checkpoints. Detailed per-dimension scores belong in the Owne
 | 2026-06-13 | T3A RunEnvelope Core | `3626e29` + `bf42673` | 66 | 60 | 54 | 68 | 61 | Accepted. Dependency-light `RunSession` / `RunEvent` / `ArtifactRef` foundation with deterministic recorder and snapshot guards; no real capability uses it yet. |
 | 2026-06-13 | T4 Vault Lint RunEnvelope Vertical Slice | `4d68724` | 70 | 60 | 60 | 72 | 64 | Accepted with caveat. First real capability now emits RunEnvelope trace, but `VaultLintService -> useVaultLintStore` remains and boundary audit stays at 420. T5 must be a larger closure wave. |
 | 2026-06-13 | T5 Vault Lint Runtime Closure Wave | `eb45195` | 76 | 63 | 72 | 78 | 71 | Accepted. Deleted `vaultLintStore`, moved Vault X-Ray runtime truth to RunEnvelope projection, and reduced service->ui by 1. Remaining blocker is service-locator dependencies inside `VaultLintService`. |
+| 2026-06-13 | T6 Vault Lint Ports + Plain Service | `89e0406` | 82 | 68 | 78 | 82 | 77 | Accepted. `VaultLintService` is now constructor-injected with ports, `SignalRegistry` is deleted, and service->app drops by 1. Remaining blocker is detector-level AppContext/sqlite access in `signals/*`. |
 
 ## Evidence Rules
 

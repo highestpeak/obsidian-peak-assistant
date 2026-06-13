@@ -67,7 +67,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ## Next
 
-### 0. Active — Architecture Modernization T1-T6
+### 0. Active — Architecture Modernization T1-T7
 
 - [x] T0 Boundary Baseline 完成：`9850eef` + Owner Review `667bfdd`
 - [x] T1 Vault Lint Contract Seed handoff ready：`docs/superpowers/refactor-ops/t1-vault-lint-contract-seed-handoff.md`
@@ -88,7 +88,9 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T5 Vault Lint Runtime Closure Wave handoff ready：`docs/superpowers/refactor-ops/t5-vault-lint-runtime-closure-wave-handoff.md`
 - [x] T5 implementation 完成并接受：`eb45195` + Owner Review `docs/superpowers/audits/2026-06-13-t5-owner-review-packet.md`
 - [x] T6 Vault Lint Ports + Plain Service handoff ready：`docs/superpowers/refactor-ops/t6-vault-lint-ports-service-plain-class-handoff.md`
-- [ ] 下一步：把 T6 handoff 发给 Claude Code；本轮继续更大粒度 closure wave，移除 service-locator 依赖
+- [x] T6 implementation 完成并接受：`89e0406` + Owner Review `docs/superpowers/audits/2026-06-13-t6-owner-review-packet.md`
+- [x] T7 Vault Lint Detector Context Closure handoff ready：`docs/superpowers/refactor-ops/t7-vault-lint-detector-context-closure-handoff.md`
+- [ ] 下一步：把 T7 handoff 发给 Claude Code；本轮清 detector 层 AppContext/sqlite 依赖
 - [ ] 不要提前做 Chat、Ambient Push、Command Gateway；Ambient 仍是 post-foundation，Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾

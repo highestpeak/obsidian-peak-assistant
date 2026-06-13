@@ -218,14 +218,15 @@ Completed and accepted:
 - T3A RunEnvelope Core: [`t3-run-envelope-core-handoff.md`](./t3-run-envelope-core-handoff.md) + [`2026-06-13-t3a-owner-review-packet.md`](../audits/2026-06-13-t3a-owner-review-packet.md)
 - T4 Vault Lint RunEnvelope Vertical Slice: [`t4-vault-lint-run-envelope-vertical-slice-handoff.md`](./t4-vault-lint-run-envelope-vertical-slice-handoff.md) + [`2026-06-13-t4-owner-review-packet.md`](../audits/2026-06-13-t4-owner-review-packet.md)
 - T5 Vault Lint Runtime Closure Wave: [`t5-vault-lint-runtime-closure-wave-handoff.md`](./t5-vault-lint-runtime-closure-wave-handoff.md) + [`2026-06-13-t5-owner-review-packet.md`](../audits/2026-06-13-t5-owner-review-packet.md)
+- T6 Vault Lint Ports Extraction + Service-as-Plain-Class: [`t6-vault-lint-ports-service-plain-class-handoff.md`](./t6-vault-lint-ports-service-plain-class-handoff.md) + [`2026-06-13-t6-owner-review-packet.md`](../audits/2026-06-13-t6-owner-review-packet.md)
 
 Ready for owner approval:
 
-- T6 Vault Lint Ports Extraction + Service-as-Plain-Class: [`t6-vault-lint-ports-service-plain-class-handoff.md`](./t6-vault-lint-ports-service-plain-class-handoff.md)
+- T7 Vault Lint Detector Context Closure: [`t7-vault-lint-detector-context-closure-handoff.md`](./t7-vault-lint-detector-context-closure-handoff.md)
 
 Next owner decision:
 
-- send `T6` to Claude Code for a larger backend closure wave;
+- send `T7` to Claude Code for detector context closure;
 - do not start Chat, Ambient Push, or Command Gateway yet.
 
 ## Supporting Files
@@ -241,6 +242,7 @@ Next owner decision:
 - [`t4-vault-lint-run-envelope-vertical-slice-handoff.md`](./t4-vault-lint-run-envelope-vertical-slice-handoff.md): T4 implementation handoff.
 - [`t5-vault-lint-runtime-closure-wave-handoff.md`](./t5-vault-lint-runtime-closure-wave-handoff.md): T5 larger closure-wave handoff.
 - [`t6-vault-lint-ports-service-plain-class-handoff.md`](./t6-vault-lint-ports-service-plain-class-handoff.md): T6 backend closure-wave handoff.
+- [`t7-vault-lint-detector-context-closure-handoff.md`](./t7-vault-lint-detector-context-closure-handoff.md): T7 detector closure-wave handoff.
 
 ## Do Not Do
 
