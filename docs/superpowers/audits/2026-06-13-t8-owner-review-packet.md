@@ -154,6 +154,18 @@ src/app/ambient/AmbientUiProjectionAdapter.ts
 
 这不是 `service -> ui`，而是 `app adapter -> ui projection`。
 
+```mermaid
+flowchart LR
+  Runtime["service/ambient\nAmbientPushRuntime"]
+  Port["AmbientUiProjectionPort"]
+  Adapter["app/ambient\nAmbientUiProjectionAdapter"]
+  Store["ui/store\nZustand stores"]
+
+  Runtime --> Port
+  Port --> Adapter
+  Adapter --> Store
+```
+
 ```text
 T8 后允许的路径
 
@@ -172,6 +184,13 @@ service/ambient/AmbientPushRuntime
   -> ui/store/useMorningBriefingStore 不允许
 ```
 
+```mermaid
+flowchart LR
+  BadRuntime["service/ambient\nAmbientPushRuntime"]
+  BadStore["ui/store\nZustand stores"]
+  BadRuntime -. "forbidden" .-> BadStore
+```
+
 核心区别：
 
 | Path | 是否接受 | 为什么 |
@@ -184,6 +203,22 @@ service/ambient/AmbientPushRuntime
 ### 2. T8 最小依赖图
 
 只记这条主线：
+
+```mermaid
+flowchart LR
+  Entry["入口"]
+  Registry["AppRuntimeRegistry\nambientRuntime"]
+  Runtime["AmbientPushRuntime"]
+  Ports["AmbientPorts"]
+  Adapters["app/ambient\nadapters"]
+  Effects["Obsidian / SQLite\nUI stores / LLM"]
+
+  Entry --> Registry
+  Registry --> Runtime
+  Runtime --> Ports
+  Ports --> Adapters
+  Adapters --> Effects
+```
 
 ```text
 入口
@@ -205,6 +240,25 @@ service/ambient/AmbientPushRuntime
 
 这是你点 refresh 或 command 时发生的事：
 
+```mermaid
+sequenceDiagram
+  participant User as 用户
+  participant UI as Panel / Command
+  participant Runtime as AmbientPushRuntime
+  participant Editor as EditorContextPort
+  participant Search as SearchPort
+  participant Projection as ProjectionPort
+  participant Persistence as PersistencePort
+
+  User->>UI: refresh Related Notes
+  UI->>Runtime: triggerManual()
+  Runtime->>Editor: extractContext()
+  Runtime->>Search: search()
+  Search-->>Runtime: items
+  Runtime->>Projection: setItems()
+  Runtime->>Persistence: logPushes()
+```
+
 ```text
 用户点击刷新
   -> AmbientPushPanel / command
@@ -222,6 +276,20 @@ service/ambient/AmbientPushRuntime
 - 真实的 `setItems()` 由 `AmbientUiProjectionAdapter` 转发到 Zustand store。
 
 ### 4. UI store 现在是什么角色
+
+```mermaid
+flowchart TB
+  Registry["AppRuntimeRegistry\nruntime truth"]
+  Runtime["AmbientPushRuntime"]
+  DB["SQLite\nambient_push_log / index_state"]
+  Store["Zustand stores\nprojection only"]
+  UI["Related Notes\nMorning Briefing UI"]
+
+  Registry --> Runtime
+  Runtime --> DB
+  Runtime --> Store
+  Store --> UI
+```
 
 ```text
 ambient_push_log / index_state
@@ -244,6 +312,16 @@ UI store 仍然存在
 ```
 
 ### 5. 旧路径到底删了什么
+
+```mermaid
+flowchart LR
+  Old["旧 owners\nAmbientPushService\nMorningBriefingService\nAmbientTrigger"]
+  New["新 owner\nAmbientPushRuntime"]
+  Guards["guards\nfake-port tests\nsource guards"]
+
+  Old -- "deleted / moved" --> New
+  Guards --> New
+```
 
 ```text
 删除:
