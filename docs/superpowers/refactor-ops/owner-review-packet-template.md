@@ -68,6 +68,8 @@ Every code-changing Owner Review Packet must include visual maps. The owner shou
 
 Keep diagrams small. One diagram should answer one question. Prefer several 4-8 node Mermaid diagrams over one huge all-in-one graph. ASCII arrow diagrams may be used as an explanation under the rendered diagram, but they are not a substitute for visual maps.
 
+Do not put `\n` inside Mermaid node labels. Some Markdown previewers render it literally. Use short labels in the diagram and put file paths / details below the diagram.
+
 Required maps for implementation tasks:
 
 1. Runtime / dependency ownership map:

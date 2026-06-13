@@ -156,10 +156,10 @@ src/app/ambient/AmbientUiProjectionAdapter.ts
 
 ```mermaid
 flowchart LR
-  Runtime["service/ambient\nAmbientPushRuntime"]
+  Runtime["Service runtime"]
   Port["AmbientUiProjectionPort"]
-  Adapter["app/ambient\nAmbientUiProjectionAdapter"]
-  Store["ui/store\nZustand stores"]
+  Adapter["Projection adapter"]
+  Store["UI stores"]
 
   Runtime --> Port
   Port --> Adapter
@@ -186,8 +186,8 @@ service/ambient/AmbientPushRuntime
 
 ```mermaid
 flowchart LR
-  BadRuntime["service/ambient\nAmbientPushRuntime"]
-  BadStore["ui/store\nZustand stores"]
+  BadRuntime["Service runtime"]
+  BadStore["UI stores"]
   BadRuntime -. "forbidden" .-> BadStore
 ```
 
@@ -207,11 +207,11 @@ flowchart LR
 ```mermaid
 flowchart LR
   Entry["入口"]
-  Registry["AppRuntimeRegistry\nambientRuntime"]
+  Registry["Runtime registry"]
   Runtime["AmbientPushRuntime"]
   Ports["AmbientPorts"]
-  Adapters["app/ambient\nadapters"]
-  Effects["Obsidian / SQLite\nUI stores / LLM"]
+  Adapters["App adapters"]
+  Effects["Side effects"]
 
   Entry --> Registry
   Registry --> Runtime
@@ -279,11 +279,11 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-  Registry["AppRuntimeRegistry\nruntime truth"]
+  Registry["Runtime registry"]
   Runtime["AmbientPushRuntime"]
-  DB["SQLite\nambient_push_log / index_state"]
-  Store["Zustand stores\nprojection only"]
-  UI["Related Notes\nMorning Briefing UI"]
+  DB["SQLite state"]
+  Store["UI projection"]
+  UI["Visible UI"]
 
   Registry --> Runtime
   Runtime --> DB
@@ -315,9 +315,9 @@ UI store 仍然存在
 
 ```mermaid
 flowchart LR
-  Old["旧 owners\nAmbientPushService\nMorningBriefingService\nAmbientTrigger"]
-  New["新 owner\nAmbientPushRuntime"]
-  Guards["guards\nfake-port tests\nsource guards"]
+  Old["Old owners"]
+  New["New owner"]
+  Guards["Guards"]
 
   Old -- "deleted / moved" --> New
   Guards --> New
