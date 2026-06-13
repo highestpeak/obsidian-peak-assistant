@@ -121,6 +121,7 @@ Use the ledger for checkpoints. Detailed per-dimension scores belong in the Owne
 | 2026-06-12 | T2C AnalysisDocPersistence Notice cleanup | `2e97eac` | 60 | 58 | 46 | 60 | 56 | Accepted. Same port reused by third search adopter; `analysisDocPersistence` direct `Notice` path removed, no new mutable default introduced. |
 | 2026-06-13 | T3A RunEnvelope Core | `3626e29` + `bf42673` | 66 | 60 | 54 | 68 | 61 | Accepted. Dependency-light `RunSession` / `RunEvent` / `ArtifactRef` foundation with deterministic recorder and snapshot guards; no real capability uses it yet. |
 | 2026-06-13 | T4 Vault Lint RunEnvelope Vertical Slice | `4d68724` | 70 | 60 | 60 | 72 | 64 | Accepted with caveat. First real capability now emits RunEnvelope trace, but `VaultLintService -> useVaultLintStore` remains and boundary audit stays at 420. T5 must be a larger closure wave. |
+| 2026-06-13 | T5 Vault Lint Runtime Closure Wave | `eb45195` | 76 | 63 | 72 | 78 | 71 | Accepted. Deleted `vaultLintStore`, moved Vault X-Ray runtime truth to RunEnvelope projection, and reduced service->ui by 1. Remaining blocker is service-locator dependencies inside `VaultLintService`. |
 
 ## Evidence Rules
 
