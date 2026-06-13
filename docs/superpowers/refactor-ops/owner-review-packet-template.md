@@ -66,6 +66,8 @@ Reading notes:
 
 Every code-changing Owner Review Packet must include visual maps. The owner should be able to understand the runtime shape before reading the file list.
 
+Keep diagrams small. One diagram should answer one question. Prefer several 4-8 node diagrams over one huge all-in-one graph. If a Mermaid diagram becomes wide enough that labels are tiny in the Markdown preview, replace it with smaller Mermaid diagrams or ASCII arrow diagrams.
+
 Required maps for implementation tasks:
 
 1. Runtime / dependency ownership map:
@@ -92,7 +94,7 @@ Required maps for implementation tasks:
    - new accepted path;
    - tests / source guards / boundary audit that prevent regression.
 
-Use Mermaid by default:
+Use Mermaid or ASCII diagrams. Keep labels short and owner-facing:
 
 ```mermaid
 flowchart TB
@@ -104,6 +106,22 @@ flowchart TB
 ```
 
 Do not replace diagrams with long prose tables unless the task is pure documentation or diagnostic-only.
+
+Avoid:
+
+```mermaid
+flowchart LR
+  A["Dozens of nodes"] --> B["Too many adapters"] --> C["Too many side effects"] --> D["Tiny unreadable preview"]
+```
+
+Prefer:
+
+```text
+service runtime
+  -> port
+    -> app adapter
+      -> side effect
+```
 
 ## 1. One-Sentence Outcome
 

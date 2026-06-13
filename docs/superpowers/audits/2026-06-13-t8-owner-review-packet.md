@@ -140,201 +140,144 @@ src/service/ambient/AmbientSearcher.ts
 
 ## Visual Dependency Maps
 
-### 1. T8 dependency ownership map
+这节重写成小图。每张图只回答一个问题，不再用一张大图把所有文件塞进去。
 
-```mermaid
-flowchart TB
-  subgraph Entry["Entry surfaces"]
-    Main["main.ts boot / startup"]
-    Commands["PeakCommandActions"]
-    Panel["AmbientPushPanel"]
-    Card["PushCard"]
-    Gutter["SerendipityGutterPlugin"]
-  end
+### 1. 先回答截图里的问题
 
-  subgraph AppOwner["App-owned runtime ownership"]
-    Compose["src/app/ambient/composeAmbientRuntime.ts"]
-    Registry["AppRuntimeRegistry.ambientRuntime"]
-    AppContextDelegators["AppContext set/get/tryGet/clearAmbientRuntime"]
-    ServiceContext["React ServiceContext.ambientRuntime"]
-  end
+你圈出来的是：
 
-  subgraph ServiceRuntime["service/ambient runtime and pure logic"]
-    Runtime["AmbientPushRuntime"]
-    RuntimeInterface["AmbientRuntime interface"]
-    Ports["AmbientPorts"]
-    Searcher["AmbientSearcher"]
-    PureHelpers["ContextExtractor / PatternLearner / RelevanceExplainer helpers"]
-  end
-
-  subgraph AppAdapters["src/app/ambient adapters"]
-    SettingsAdapter["ObsidianAmbientSettingsAdapter"]
-    EditorAdapter["ObsidianAmbientEditorContextAdapter"]
-    SearchAdapter["SearchAmbientSearchAdapter"]
-    ProjectionAdapter["AmbientUiProjectionAdapter"]
-    PersistenceAdapter["SqliteAmbientPersistenceAdapter"]
-    BriefingAdapter["SqliteAmbientBriefingAdapter"]
-    LlmAdapter["LlmAmbientExplanationAdapter"]
-    ClockAdapter["DefaultAmbientClock"]
-  end
-
-  subgraph SideEffects["External side effects"]
-    Obsidian["Obsidian workspace / editor / metadata"]
-    SQLite["sqliteStoreManager / repos"]
-    UIStores["Zustand stores"]
-    SearchClient["SearchClient"]
-    LLM["ProfileRegistry / queryWithProfile"]
-    Clock["Date.now"]
-  end
-
-  Main --> Compose
-  Compose --> Registry
-  Registry --> AppContextDelegators
-  AppContextDelegators --> Runtime
-  Commands --> AppContextDelegators
-  Panel --> ServiceContext
-  Card --> ServiceContext
-  ServiceContext --> Runtime
-  Gutter --> AppContextDelegators
-
-  Runtime -. implements .-> RuntimeInterface
-  Runtime --> Ports
-  Runtime --> Searcher
-  Searcher --> PureHelpers
-  Ports --> SettingsAdapter
-  Ports --> EditorAdapter
-  Ports --> SearchAdapter
-  Ports --> ProjectionAdapter
-  Ports --> PersistenceAdapter
-  Ports --> BriefingAdapter
-  Ports --> LlmAdapter
-  Ports --> ClockAdapter
-
-  SettingsAdapter --> AppContextDelegators
-  EditorAdapter --> Obsidian
-  SearchAdapter --> SearchClient
-  SearchAdapter --> SQLite
-  ProjectionAdapter --> UIStores
-  PersistenceAdapter --> SQLite
-  BriefingAdapter --> SQLite
-  LlmAdapter --> LLM
-  ClockAdapter --> Clock
+```text
+src/app/ambient/AmbientUiProjectionAdapter.ts
+  -> import useAmbientPushStore
+  -> import useMorningBriefingStore
 ```
 
-How to read this:
+这不是 `service -> ui`，而是 `app adapter -> ui projection`。
 
-- 左边是入口。
-- 中间是 app-owned runtime ownership。
-- `service/ambient` 现在只在图中间，不直接连到最右边 side effects。
-- 最右边所有脏依赖都只能通过 `src/app/ambient/*` adapter 触达。
+```text
+T8 后允许的路径
 
-### 2. Manual refresh sequence
-
-```mermaid
-sequenceDiagram
-  participant User
-  participant UI as "Command / AmbientPushPanel"
-  participant AppContext as "AppContext.tryGetAmbientRuntime"
-  participant Runtime as "AmbientPushRuntime"
-  participant Editor as "AmbientEditorContextPort"
-  participant Search as "AmbientSearchPort"
-  participant Projection as "AmbientUiProjectionPort"
-  participant Persistence as "AmbientPersistencePort"
-
-  User->>UI: refresh Related Notes
-  UI->>AppContext: get runtime
-  AppContext-->>UI: AmbientRuntime
-  UI->>Runtime: triggerManual()
-  Runtime->>Editor: triggerManual()
-  Editor-->>Runtime: onTrigger(filePath, "manual")
-  Runtime->>Editor: extractContext(filePath)
-  Runtime->>Search: search(context, maxItems, pushHistory, settings)
-  Search-->>Runtime: AmbientPushItem[]
-  alt no items
-    Runtime->>Projection: clearItems()
-  else items found
-    Runtime->>Projection: setItems(items, sourceFilePath)
-    Runtime->>Projection: recordPush(filePath, now)
-    Runtime->>Persistence: logPushes(context, items, triggerType)
-  end
+service/ambient/AmbientPushRuntime
+  -> AmbientUiProjectionPort
+      -> app/ambient/AmbientUiProjectionAdapter
+          -> ui/store/useAmbientPushStore
+          -> ui/store/useMorningBriefingStore
 ```
 
-This is the concrete runtime path you should keep in your head.
+```text
+T8 后禁止的路径
 
-### 3. State ownership map
-
-```mermaid
-flowchart LR
-  Runtime["AmbientPushRuntime\norchestrates behavior"]
-  Registry["AppRuntimeRegistry\nowns runtime binding"]
-  PushLog["ambient_push_log\npersistent history/actions"]
-  IndexState["index_state\nbriefing timestamps"]
-  PushStore["useAmbientPushStore\nUI projection only"]
-  BriefingStore["useMorningBriefingStore\nUI projection only"]
-  Views["Related Notes / Morning Briefing UI"]
-
-  Registry --> Runtime
-  Runtime --> PushLog
-  Runtime --> IndexState
-  Runtime --> PushStore
-  Runtime --> BriefingStore
-  PushStore --> Views
-  BriefingStore --> Views
-
-  PushStore -. "no sqlite writes after T8" .-> PushLog
+service/ambient/AmbientPushRuntime
+  -> ui/store/useAmbientPushStore     不允许
+  -> ui/store/useMorningBriefingStore 不允许
 ```
 
-State truth after T8:
+核心区别：
 
-| State | Owner | Consumer | T8 status |
-| --- | --- | --- | --- |
-| Runtime binding | `AppRuntimeRegistry` | `AppContext`, `ServiceContext`, commands/UI | centralized |
-| Push action history | `ambient_push_log` through `SqliteAmbientPersistenceAdapter` | learning / analytics | no longer written by UI store |
-| Briefing timestamps | `index_state` through `SqliteAmbientBriefingAdapter` | startup briefing gate | app adapter owns it |
-| Related Notes visible items | `useAmbientPushStore` | panel / gutter | projection only |
-| Morning Briefing visible items | `useMorningBriefingStore` | modal / panel | projection only |
+| Path | 是否接受 | 为什么 |
+| --- | --- | --- |
+| `service/ambient -> ui/store` | No | service 直接知道 UI，业务逻辑和界面状态绑死。 |
+| `service/ambient -> port -> app/ambient adapter -> ui/store` | Yes | service 只知道 port；UI store 是一个可替换的投影实现。 |
 
-### 4. Old path deletion and guards
+所以 `AmbientUiProjectionAdapter` 不是“service 依赖 UI 的残留”，它是“把 runtime 输出投到 UI store 的桥”。
 
-```mermaid
-flowchart TB
-  subgraph Deleted["Deleted or moved old paths"]
-    OldPush["AmbientPushService.ts deleted"]
-    OldBriefing["MorningBriefingService.ts deleted"]
-    OldTrigger["AmbientTrigger.ts deleted"]
-    OldGutter["SerendipityGutterPlugin moved service -> app"]
-    OldStoreWrite["ambientPushStore.recordAction sqlite write removed"]
-  end
+### 2. T8 最小依赖图
 
-  subgraph NewPath["New accepted path"]
-    Runtime["AmbientPushRuntime"]
-    Ports["AmbientPorts"]
-    Adapters["src/app/ambient adapters"]
-    Registry["AppRuntimeRegistry.ambientRuntime"]
-  end
+只记这条主线：
 
-  subgraph Guards["Regression guards"]
-    FakePorts["test/ambient-runtime-ports.test.ts"]
-    SourceGuard["test/ambient-source-guard.test.ts"]
-    RegistryTest["test/app-runtime-registry.test.ts"]
-    BoundaryAudit["boundary-baseline: 415 -> 404"]
-  end
+```text
+入口
+  -> AppRuntimeRegistry.ambientRuntime
+      -> AmbientPushRuntime
+          -> AmbientPorts
+              -> src/app/ambient/* adapters
+                  -> Obsidian / SQLite / UI stores / LLM
+```
 
-  OldPush --> Runtime
-  OldBriefing --> Runtime
-  OldTrigger --> Adapters
-  OldGutter --> Adapters
-  OldStoreWrite --> Runtime
+翻译成人话：
 
-  Runtime --> Ports
-  Ports --> Adapters
-  Registry --> Runtime
+- `AppRuntimeRegistry` 管“这个 runtime 活着没有”。
+- `AmbientPushRuntime` 管“Ambient 该怎么跑”。
+- `AmbientPorts` 管“runtime 能向外请求什么能力”。
+- `src/app/ambient/* adapters` 管“真实世界怎么接进来”。
 
-  FakePorts --> Runtime
-  SourceGuard --> Ports
-  SourceGuard --> Adapters
-  RegistryTest --> Registry
-  BoundaryAudit --> NewPath
+### 3. Related Notes 刷新路径
+
+这是你点 refresh 或 command 时发生的事：
+
+```text
+用户点击刷新
+  -> AmbientPushPanel / command
+      -> ambientRuntime.triggerManual()
+          -> editorContext.extractContext()
+          -> search.search()
+          -> projection.setItems()
+          -> persistence.logPushes()
+```
+
+重点：
+
+- `AmbientPushRuntime` 不知道 `useAmbientPushStore`。
+- 它只调用 `projection.setItems()`。
+- 真实的 `setItems()` 由 `AmbientUiProjectionAdapter` 转发到 Zustand store。
+
+### 4. UI store 现在是什么角色
+
+```text
+ambient_push_log / index_state
+  = 持久化 truth
+
+AppRuntimeRegistry.ambientRuntime
+  = runtime truth
+
+useAmbientPushStore / useMorningBriefingStore
+  = 当前屏幕要显示什么
+  = projection only
+```
+
+这就是为什么 T8 接受 `app/ambient/AmbientUiProjectionAdapter.ts` import store：
+
+```text
+UI store 仍然存在
+但它不再写 SQLite
+也不再被 service 直接 import
+```
+
+### 5. 旧路径到底删了什么
+
+```text
+删除:
+  AmbientPushService.ts
+  MorningBriefingService.ts
+  AmbientTrigger.ts
+
+移动:
+  SerendipityGutterPlugin.ts
+    service/ambient -> app/ambient
+
+移除:
+  ambientPushStore.recordAction -> sqlite write
+```
+
+对应的新路径：
+
+```text
+AmbientPushRuntime
+  -> ports
+  -> app adapters
+```
+
+对应的防回退测试：
+
+```text
+test/ambient-source-guard.test.ts
+  - service/ambient 不能 import app/ui/sqlite
+  - ambientPushStore 不能 import sqlite
+  - 不能重新调用 AmbientPushService.getInstance()
+  - 不能重新调用 MorningBriefingService.getInstance()
+
+test/ambient-runtime-ports.test.ts
+  - 用 fake ports 跑 AmbientPushRuntime
 ```
 
 This is why T8 is accepted: it deletes old owners and adds guards around the new owner.
