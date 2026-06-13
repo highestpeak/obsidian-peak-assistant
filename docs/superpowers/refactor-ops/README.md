@@ -169,6 +169,41 @@ Preferred order for new work:
 
 `ProgressReporterPort`'s `defaultReporter` is accepted only as a T2 transitional compromise. Do not copy this pattern into new ports. T3/T4 should replace it with an explicit runtime/composition mechanism.
 
+## Runtime Ownership Rule
+
+Capability runtimes must be owned by app-level composition, not by per-capability service-layer module singletons.
+
+Do not create this pattern in service files:
+
+```ts
+let currentRuntime: SomeRuntime | null = null;
+export function setSomeRuntime(runtime: SomeRuntime) { ... }
+export function getSomeRuntime(): SomeRuntime { ... }
+```
+
+This is still a hidden service locator. It is better than scattering direct `AppContext` / sqlite / registry calls, but it should not become the new house style.
+
+Preferred ownership:
+
+1. Compose runtime in `src/app/**` after infrastructure is ready.
+2. Store long-lived runtime in `AppContext` or a single app-owned runtime registry.
+3. Pass runtime explicitly into service/runner functions from app or UI context.
+4. Keep service-layer runtime files type-only or dependency-only; they should not own mutable process state.
+
+T6's `VaultLintRuntime.currentRuntime` was accepted only as a reviewable transitional binding. T6R must move it to app-level ownership before T7 continues.
+
+## Config Defaults Rule
+
+Domain/product configuration defaults must be discoverable and documented.
+
+Do not bury large config tables inside service engine files. Use:
+
+- `templates/config/*.json` for editable runtime configuration;
+- one domain-specific compiled fallback file when code needs defaults without template loading;
+- `src/core/constant.ts` only for small cross-cutting constants that are not product-tunable tables.
+
+See [`config-defaults-governance.md`](./config-defaults-governance.md).
+
 ## Non-Negotiable Gates
 
 Every implementation task must answer these before it is considered accepted:
@@ -222,11 +257,11 @@ Completed and accepted:
 
 Ready for owner approval:
 
-- T7 Vault Lint Detector Context Closure: [`t7-vault-lint-detector-context-closure-handoff.md`](./t7-vault-lint-detector-context-closure-handoff.md)
+- T6R Runtime Ownership + Config Defaults Governance: [`t6-review-fix-runtime-ownership-config-defaults-handoff.md`](./t6-review-fix-runtime-ownership-config-defaults-handoff.md)
 
 Next owner decision:
 
-- send `T7` to Claude Code for detector context closure;
+- send `T6R` to Claude Code before T7;
 - do not start Chat, Ambient Push, or Command Gateway yet.
 
 ## Supporting Files
@@ -242,6 +277,8 @@ Next owner decision:
 - [`t4-vault-lint-run-envelope-vertical-slice-handoff.md`](./t4-vault-lint-run-envelope-vertical-slice-handoff.md): T4 implementation handoff.
 - [`t5-vault-lint-runtime-closure-wave-handoff.md`](./t5-vault-lint-runtime-closure-wave-handoff.md): T5 larger closure-wave handoff.
 - [`t6-vault-lint-ports-service-plain-class-handoff.md`](./t6-vault-lint-ports-service-plain-class-handoff.md): T6 backend closure-wave handoff.
+- [`t6-review-fix-runtime-ownership-config-defaults-handoff.md`](./t6-review-fix-runtime-ownership-config-defaults-handoff.md): T6 owner-review fix handoff.
+- [`config-defaults-governance.md`](./config-defaults-governance.md): configuration defaults governance.
 - [`t7-vault-lint-detector-context-closure-handoff.md`](./t7-vault-lint-detector-context-closure-handoff.md): T7 detector closure-wave handoff.
 
 ## Do Not Do
