@@ -100,18 +100,37 @@ function testDependencyInventoryCoversAllResolutionSites(): void {
 		'VaultLintService.getInstance()',
 		'SignalRegistry.getInstance()',
 		'sqliteStoreManager.getVaultLintRepo()',
-		'useVaultLintStore.getState()',
 	]) {
 		assert.ok(
 			singletonNames.includes(expected),
 			`inventory must list singleton '${expected}'`,
 		);
 	}
+	// T5 closure proof: the UI store was deleted; the service must not
+	// claim it as a runtime dependency any more.
+	assert.ok(
+		!singletonNames.includes('useVaultLintStore.getState()'),
+		'T5 closure: inventory must no longer list useVaultLintStore.getState()',
+	);
 
 	const sideEffectKinds = new Set(inv.sideEffects.map((s) => s.kind));
-	for (const kind of ['vault.read', 'sqlite.write', 'ui.store.write', 'crypto.random'] as const) {
+	for (const kind of ['vault.read', 'sqlite.write', 'crypto.random'] as const) {
 		assert.ok(sideEffectKinds.has(kind), `inventory must record side effect '${kind}'`);
 	}
+	assert.ok(
+		!sideEffectKinds.has('ui.store.write'),
+		'T5 closure: inventory must no longer record ui.store.write side effects',
+	);
+	// `loadTrendHistory` was removed when the trend display was retired.
+	assert.ok(
+		!inv.sideEffects.some((s) => s.target.includes('loadTrendHistory')),
+		'T5 closure: inventory must no longer reference VaultLintRepo.loadTrendHistory',
+	);
+	// stateOwner string must reflect the post-T5 single-truth layout.
+	assert.ok(
+		!inv.stateOwner.includes('useVaultLintStore'),
+		'T5 closure: stateOwner must not mention useVaultLintStore any more',
+	);
 
 	const consumerSites = inv.consumers.map((c) => c.site);
 	for (const expected of [

@@ -437,14 +437,112 @@ function testRecordArtifactReturnAndEventArtifactAreSeparateInstances(): void {
 
 function testRecorderHasNoSubscribeApi(): void {
 	const r = newRecorder() as unknown as Record<string, unknown>;
+	// T5 update: `onEvent` is a CONSTRUCTOR option, not a runtime method
+	// — there is still no public subscribe/emit method on the instance,
+	// which keeps the recorder per-run and prevents accidental global
+	// bus shapes.
 	for (const forbidden of ['on', 'emit', 'subscribe', 'addListener', 'off']) {
 		assert.strictEqual(
 			typeof r[forbidden],
 			'undefined',
-			`InMemoryRunRecorder must not expose '${forbidden}' (T3A is pull-mode only; subscription is T7)`,
+			`InMemoryRunRecorder must not expose '${forbidden}' (use the onEvent constructor option, not a runtime subscribe API)`,
 		);
 	}
 	console.log('PASS: recorderHasNoSubscribeApi');
+}
+
+function testRecorderOnEventSinkInvokedSynchronouslyPerEvent(): void {
+	const seen: string[] = [];
+	const r = new InMemoryRunRecorder({
+		clock: makeFakeClock(),
+		idFactory: makeFakeIdFactory(),
+		onEvent: (event) => seen.push(event.type),
+	});
+	r.start({ capabilityId: 'c', trigger: 'test' });
+	r.recordStatus('running');
+	r.recordProgress({ phase: 'p' });
+	r.recordArtifact({ kind: 'result', title: 't' });
+	r.recordLog('info', 'm');
+	r.finish('completed');
+	assert.deepStrictEqual(seen, [
+		'status',
+		'status',
+		'progress',
+		'artifact',
+		'log',
+		'status',
+	], 'onEvent sink must observe every event in emission order');
+	console.log('PASS: recorderOnEventSinkInvokedSynchronouslyPerEvent');
+}
+
+function testRecorderOnEventSinkReceivesDefensivelyClonedEvents(): void {
+	const seenArtifacts: ArtifactRef[] = [];
+	const r = new InMemoryRunRecorder({
+		clock: makeFakeClock(),
+		idFactory: makeFakeIdFactory(),
+		onEvent: (event) => {
+			if (event.type === 'artifact') seenArtifacts.push(event.artifact);
+		},
+	});
+	r.start({ capabilityId: 'c', trigger: 'test' });
+	r.recordArtifact({ kind: 'result', title: 'original' });
+
+	// Mutate the artifact the sink received.
+	(seenArtifacts[0] as { title?: string }).title = 'tampered';
+
+	// The recorder's own trace must be unaffected.
+	const events = r.getEvents();
+	const eventArt = (events.find((e) => e.type === 'artifact') as { artifact: ArtifactRef }).artifact;
+	assert.strictEqual(eventArt.title, 'original', 'recorder trace must not be mutated by sink reads');
+	console.log('PASS: recorderOnEventSinkReceivesDefensivelyClonedEvents');
+}
+
+function testRecorderOnEventListenerThrowDoesNotBreakRecording(): void {
+	const consoleSpy: unknown[] = [];
+	const realWarn = console.warn;
+	console.warn = (...args: unknown[]) => { consoleSpy.push(args); };
+	try {
+		const r = new InMemoryRunRecorder({
+			clock: makeFakeClock(),
+			idFactory: makeFakeIdFactory(),
+			onEvent: () => { throw new Error('listener exploded'); },
+		});
+		// A throwing listener must not propagate; subsequent records must
+		// still work and the internal trace must still include every
+		// event.
+		r.start({ capabilityId: 'c', trigger: 'test' });
+		r.recordStatus('running');
+		r.finish('completed');
+		assert.strictEqual(r.getEvents().length, 3);
+	} finally {
+		console.warn = realWarn;
+	}
+	assert.ok(consoleSpy.length >= 3, 'each listener throw must produce a console.warn');
+	console.log('PASS: recorderOnEventListenerThrowDoesNotBreakRecording');
+}
+
+function testTwoRecordersHaveIndependentOnEventSinks(): void {
+	const a: string[] = [];
+	const b: string[] = [];
+	const rA = new InMemoryRunRecorder({
+		clock: makeFakeClock(),
+		idFactory: makeFakeIdFactory('a'),
+		onEvent: (e) => a.push(`${e.type}@a`),
+	});
+	const rB = new InMemoryRunRecorder({
+		clock: makeFakeClock(),
+		idFactory: makeFakeIdFactory('b'),
+		onEvent: (e) => b.push(`${e.type}@b`),
+	});
+	rA.start({ capabilityId: 'c', trigger: 'test' });
+	rB.start({ capabilityId: 'c', trigger: 'test' });
+	rA.recordLog('info', 'in A');
+	rB.recordLog('warn', 'in B');
+	assert.ok(a.every((t) => t.endsWith('@a')), 'sink A must not see sink B events');
+	assert.ok(b.every((t) => t.endsWith('@b')), 'sink B must not see sink A events');
+	assert.strictEqual(a.length, 2);
+	assert.strictEqual(b.length, 2);
+	console.log('PASS: twoRecordersHaveIndependentOnEventSinks');
 }
 
 function testRecorderHasNoPortsField(): void {
@@ -486,6 +584,10 @@ try {
 	testMutatingNestedArtifactInGetEventsDoesNotPolluteRecorder();
 	testRecordArtifactReturnAndEventArtifactAreSeparateInstances();
 	testRecorderHasNoSubscribeApi();
+	testRecorderOnEventSinkInvokedSynchronouslyPerEvent();
+	testRecorderOnEventSinkReceivesDefensivelyClonedEvents();
+	testRecorderOnEventListenerThrowDoesNotBreakRecording();
+	testTwoRecordersHaveIndependentOnEventSinks();
 	testRecorderHasNoPortsField();
 	process.exit(0);
 } catch (err) {

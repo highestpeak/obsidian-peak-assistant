@@ -8,7 +8,6 @@ import { orphanDetector, brokenLinkDetector } from './signals/structural';
 import { emptyDetector, buildContentDetectors } from './signals/content';
 import { untaggedDetector } from './signals/tags';
 import type { VaultLintConfig, LintScanResult, LintFinding, LintScanContext } from './types';
-import { useVaultLintStore } from '@/ui/store/vaultLintStore';
 import type { VaultLintRunCallbacks } from './VaultLintRun';
 
 const DEFAULT_CONFIG: VaultLintConfig = {
@@ -72,16 +71,21 @@ export class VaultLintService {
 	/**
 	 * Run a full scan: all non-LLM detectors in parallel.
 	 *
-	 * T4: this method now accepts optional callbacks so a `RunEnvelope`
-	 * runner (`runVaultLintManualScan`) can observe progress and detector
-	 * failures without reading from `useVaultLintStore`. The store writes
-	 * remain in place because the existing UI panel still binds to the
-	 * store; T7 will replace the panel binding with a projection of the
-	 * envelope's event trace and these store writes will move out.
+	 * T5: this method no longer writes the UI store. All runtime state
+	 * (progress / current scan / scanning indicator / failure) is
+	 * projected by `useVaultLintRunState` from the `RunEnvelope` trace
+	 * the runner builds around this call. The service only:
+	 *   1. emits progress callbacks (the runner translates these to
+	 *      `RunEvent.progress`);
+	 *   2. forwards detector failures via `onDetectorWarning` (the runner
+	 *      translates these to `RunEvent.log(warn)`);
+	 *   3. persists the scan result via `VaultLintRepo.saveScanResult`.
+	 *
+	 * The previous reverse-direction `useVaultLintStore` writes and the
+	 * `loadTrendHistory` read have been deleted; the trend history table
+	 * had no surviving UI consumer.
 	 */
 	async runFullScan(callbacks?: VaultLintRunCallbacks): Promise<LintScanResult> {
-		const store = useVaultLintStore.getState();
-		store.setScanProgress({ detector: 'init', processed: 0, total: 0 });
 		callbacks?.onProgress?.({ phase: 'init' });
 
 		await this.loadConfig();
@@ -106,7 +110,6 @@ export class VaultLintService {
 		const detectors = SignalRegistry.getInstance().getNonLlm();
 		const startedAt = Date.now();
 
-		store.setScanProgress({ detector: 'scanning', processed: 0, total: detectors.length });
 		callbacks?.onProgress?.({
 			phase: 'scanning',
 			detector: 'non-llm',
@@ -149,9 +152,6 @@ export class VaultLintService {
 
 		await lintRepo.saveScanResult(result);
 
-		const trend = await lintRepo.loadTrendHistory(30);
-		store.setScanResult(result, trend);
-		store.setScanProgress(null);
 		callbacks?.onProgress?.({ phase: 'cleared' });
 
 		return result;

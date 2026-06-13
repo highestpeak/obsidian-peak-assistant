@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertCircle, AlertTriangle, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { useVaultLintStore } from '@/ui/store/vaultLintStore';
 import type { LintFinding } from '@/service/lint/types';
 
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
@@ -17,7 +16,12 @@ interface PriorityActionsListProps {
 }
 
 export const PriorityActionsList: React.FC<PriorityActionsListProps> = ({ findings }) => {
-	const { showInfoFindings, setShowInfoFindings } = useVaultLintStore();
+	// T5: `showInfoFindings` is local UI state. The previous shared
+	// `useVaultLintStore` slot was the only field unrelated to scan
+	// runtime truth; collapsing it into local state lets us delete the
+	// store entirely without introducing a UI-only preference store
+	// just for this one boolean.
+	const [showInfoFindings, setShowInfoFindings] = useState(false);
 
 	const sorted = [...findings].sort((a, b) => {
 		return SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];

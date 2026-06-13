@@ -108,7 +108,11 @@ export interface VaultLintConsumer {
 
 export interface VaultLintDependencyInventory {
 	readonly capabilityId: VaultLintCapabilityId;
-	readonly stateOwner: 'useVaultLintStore + VaultLintRepo (split)';
+	// Free-form: the post-T5 layout has no UI store; older milestones used
+	// 'useVaultLintStore + VaultLintRepo (split)'. Keeping this as `string`
+	// avoids freezing the literal so future closure waves can update the
+	// description without a contract type change.
+	readonly stateOwner: string;
 	readonly appContextResolutions: ReadonlyArray<AppContextResolution>;
 	readonly singletonResolutions: ReadonlyArray<SingletonResolution>;
 	readonly sideEffects: ReadonlyArray<VaultLintSideEffect>;
@@ -118,7 +122,11 @@ export interface VaultLintDependencyInventory {
 
 export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 	capabilityId: VAULT_LINT_CAPABILITY_ID,
-	stateOwner: 'useVaultLintStore + VaultLintRepo (split)',
+	// T5 closure: `useVaultLintStore` was deleted; the only persistent
+	// state owner is `VaultLintRepo`. UI runtime state is projected from
+	// the `RunEnvelope` event trace inside `useVaultLintRunState`, which
+	// is per-mount React state and not a long-lived store.
+	stateOwner: 'VaultLintRepo (persistence) + per-run RunEnvelope trace',
 	appContextResolutions: [
 		{
 			site: 'VaultLintService.loadConfig',
@@ -149,21 +157,17 @@ export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 			singleton: 'sqliteStoreManager.getVaultLintRepo()',
 			purpose: 'persistence and history of scan results / dismissals',
 		},
-		{
-			site: 'VaultLintService.runFullScan',
-			singleton: 'useVaultLintStore.getState()',
-			purpose: 'reverse-direction UI store writes (progress + result + trend)',
-		},
+		// T5 retired: `useVaultLintStore.getState()` is no longer touched
+		// by the service. The store file was deleted entirely.
 	],
 	sideEffects: [
 		{ kind: 'vault.read', site: 'VaultLintService.runFullScan', target: 'app.vault.getMarkdownFiles' },
 		{ kind: 'template.read', site: 'VaultLintService.loadConfig', target: 'ConfigTemplateId.VaultLintConfig' },
 		{ kind: 'sqlite.read', site: 'VaultLintService.runFullScan', target: 'VaultLintRepo.loadActiveDismissals' },
 		{ kind: 'sqlite.read', site: 'VaultLintService.runFullScan', target: 'VaultLintRepo.getLastFullScanTimestamp' },
-		{ kind: 'sqlite.read', site: 'VaultLintService.runFullScan', target: 'VaultLintRepo.loadTrendHistory' },
 		{ kind: 'sqlite.write', site: 'VaultLintService.runFullScan', target: 'VaultLintRepo.saveScanResult' },
-		{ kind: 'ui.store.write', site: 'VaultLintService.runFullScan', target: 'useVaultLintStore.setScanProgress' },
-		{ kind: 'ui.store.write', site: 'VaultLintService.runFullScan', target: 'useVaultLintStore.setScanResult' },
+		// T5 retired: `loadTrendHistory` read + `ui.store.write` x2 were
+		// removed when the UI store was deleted.
 		{ kind: 'log.warn', site: 'VaultLintService.runFullScan', target: 'console.warn (detector failure)' },
 		{ kind: 'crypto.random', site: 'VaultLintService.runFullScan', target: 'crypto.randomUUID (scanId)' },
 	],

@@ -1,8 +1,7 @@
 import React from 'react';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { useVaultLintStore } from '@/ui/store/vaultLintStore';
-import { runVaultLintManualScan } from '@/service/lint/VaultLintRun';
+import { useVaultLintRunState } from './hooks/useVaultLintRunState';
 import { buildVaultHealthInsights } from '@/service/lint/insights';
 import { ScoreRing } from './components/ScoreRing';
 import { DimensionBars } from './components/DimensionBars';
@@ -18,16 +17,12 @@ function relativeTime(ts: number): string {
 }
 
 export const VaultXRayPanel: React.FC = () => {
-	const { currentScan, isScanning } = useVaultLintStore();
+	// T5: runtime state (isScanning / currentScan / progress / error) is
+	// projected from the RunEnvelope trace of the most recent scan in
+	// this mount. There is no UI store anymore; the projection lives in
+	// `useVaultLintRunState`.
+	const { currentScan, isScanning, error, startScan } = useVaultLintRunState();
 	const insights = currentScan ? buildVaultHealthInsights(currentScan.findings) : [];
-
-	const startScan = async () => {
-		// T4: the UI entry now goes through the Vault Lint RunEnvelope
-		// runner. `useVaultLintStore` is still the visible source of truth
-		// for `isScanning` / `currentScan` / `trendHistory`; the runner
-		// produces an event trace that T7 will project into the UI.
-		await runVaultLintManualScan();
-	};
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-overflow-y-auto">
@@ -46,7 +41,18 @@ export const VaultXRayPanel: React.FC = () => {
 
 			{/* Body */}
 			<div className="pktw-flex pktw-flex-col pktw-gap-5 pktw-p-5">
-				{!currentScan && !isScanning && (
+				{error && !isScanning && (
+					<div className="pktw-rounded-lg pktw-border pktw-border-red-500/40 pktw-bg-red-500/10
+						pktw-px-4 pktw-py-3">
+						<span className="pktw-block pktw-text-[11px] pktw-font-semibold pktw-uppercase
+							pktw-tracking-wider pktw-text-red-500 pktw-mb-1">Scan failed</span>
+						<span className="pktw-block pktw-text-[12px] pktw-text-foreground pktw-break-words">
+							{error}
+						</span>
+					</div>
+				)}
+
+				{!currentScan && !isScanning && !error && (
 					<div className="pktw-text-center pktw-py-12 pktw-text-muted-foreground pktw-text-sm">
 						<span className="pktw-block">No scan data yet.</span>
 						<span className="pktw-block pktw-text-[11px] pktw-mt-1">Click Scan Now to analyze your vault.</span>

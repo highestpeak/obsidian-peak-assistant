@@ -88,6 +88,21 @@ export interface VaultLintRunOptions {
 	clock?: RunClock;
 	idFactory?: RunIdFactory;
 	scan?: (callbacks: VaultLintRunCallbacks) => Promise<LintScanResult>;
+	/**
+	 * Optional per-run event sink. Invoked synchronously after each
+	 * `RunEvent` is appended to the recorder's trace. The `snapshot`
+	 * argument is the full, defensively cloned event trace up to and
+	 * including the just-emitted event — i.e. the same shape the UI
+	 * projection (`useVaultLintRunState`) feeds React state with. T5 uses
+	 * this to drive live progress without a global event bus.
+	 *
+	 * Per-run: the sink is captured by the recorder this invocation
+	 * constructs and never escapes. Two concurrent calls to
+	 * `runVaultLintManualScan` have isolated sinks. When the caller
+	 * supplies its own `recorder`, `onEvent` is ignored — the caller is
+	 * expected to have wired its own sink into the recorder it built.
+	 */
+	onEvent?: (event: RunEvent, snapshot: readonly RunEvent[]) => void;
 }
 
 const ARTIFACT_CONTENT_TYPE = 'application/vnd.peak.vault-lint-scan+json';
@@ -148,12 +163,27 @@ function buildArtifactUri(result: LintScanResult): string {
 export async function runVaultLintManualScan(
 	options?: VaultLintRunOptions,
 ): Promise<VaultLintRunResult> {
+	// `recorderRef` is a forward reference into the closure so the
+	// per-event sink can call `recorderRef.getEvents()` to obtain the
+	// post-mutation snapshot. We assign it immediately after constructing
+	// the recorder and before any event is recorded.
+	let recorderRef: InMemoryRunRecorder | null = null;
+	const userOnEvent = options?.onEvent;
 	const recorder =
 		options?.recorder ??
 		new InMemoryRunRecorder({
 			clock: options?.clock ?? defaultClock(),
 			idFactory: options?.idFactory ?? defaultIdFactory('vault-lint'),
+			...(userOnEvent !== undefined
+				? {
+						onEvent: (event) => {
+							const snapshot = recorderRef?.getEvents() ?? [];
+							userOnEvent(event, snapshot);
+						},
+					}
+				: {}),
 		});
+	recorderRef = recorder;
 	const scan = options?.scan ?? defaultScan;
 
 	recorder.start({

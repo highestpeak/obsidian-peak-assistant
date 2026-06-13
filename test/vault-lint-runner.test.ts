@@ -266,6 +266,10 @@ const SERVICE_PATH = path.resolve(
 	process.cwd(),
 	'src/service/lint/VaultLintService.ts',
 );
+const PRIORITY_PATH = path.resolve(
+	process.cwd(),
+	'src/ui/view/vault-lint/components/PriorityActionsList.tsx',
+);
 
 function extractImportSpecifiers(source: string): string[] {
 	const out: string[] = [];
@@ -345,26 +349,28 @@ function testPanelNoLongerImportsVaultLintServiceDirectly(): void {
 
 	assert.ok(
 		!specifiers.includes('@/service/lint/VaultLintService'),
-		'VaultXRayPanel.tsx must not import VaultLintService directly (use the runner)',
-	);
-	assert.ok(
-		specifiers.includes('@/service/lint/VaultLintRun'),
-		'VaultXRayPanel.tsx must import the Vault Lint runner',
+		'VaultXRayPanel.tsx must not import VaultLintService directly',
 	);
 	assert.ok(
 		!/VaultLintService\.getInstance\(\)/.test(source),
-		'VaultXRayPanel.tsx must not call VaultLintService.getInstance() any more',
+		'VaultXRayPanel.tsx must not call VaultLintService.getInstance()',
 	);
+	// T5: the panel now goes through the projection hook, not the runner
+	// import directly. Either entry is acceptable proof the panel reaches
+	// the envelope-backed scan path.
+	const usesHook = specifiers.some((s) => /useVaultLintRunState$/.test(s));
+	const usesRunnerDirect = specifiers.includes('@/service/lint/VaultLintRun');
 	assert.ok(
-		/runVaultLintManualScan\(/.test(source),
-		'VaultXRayPanel.tsx must call runVaultLintManualScan()',
+		usesHook || usesRunnerDirect,
+		'VaultXRayPanel.tsx must reach the runner (directly or via the projection hook)',
 	);
 
 	console.log('PASS: panelNoLongerImportsVaultLintServiceDirectly');
 }
 
-function testServiceStillAcceptsCallbacksAndKeepsStoreWritesForNow(): void {
+function testServiceAcceptsCallbacksAndHasNoUiStoreCoupling(): void {
 	const source = fs.readFileSync(SERVICE_PATH, 'utf8');
+	const specifiers = extractImportSpecifiers(source);
 
 	assert.ok(
 		/runFullScan\s*\(\s*callbacks\?\s*:\s*VaultLintRunCallbacks\s*\)/.test(source),
@@ -387,32 +393,199 @@ function testServiceStillAcceptsCallbacksAndKeepsStoreWritesForNow(): void {
 		'service must forward detector failures to onDetectorWarning',
 	);
 
-	// UI store writes intentionally remain for now (T7 will move them out).
+	// T5 closure proof: the service must no longer touch the UI store.
+	// Strip comments before scanning so historical references in JSDoc
+	// (e.g. "T5: this method no longer writes useVaultLintStore") do not
+	// count as live couplings.
+	const code = source
+		.replace(/\/\*[\s\S]*?\*\//g, '')
+		.replace(/\/\/[^\n]*/g, '');
+	for (const spec of specifiers) {
+		assert.ok(
+			!/^@\/ui\//.test(spec),
+			`T5 closure: VaultLintService.ts must not import from '@/ui/', found '${spec}'`,
+		);
+	}
 	assert.ok(
-		/store\.setScanProgress\(/.test(source),
-		'service should still write progress to the UI store until T7',
+		!/useVaultLintStore/.test(code),
+		'T5 closure: VaultLintService.ts must not reference useVaultLintStore in code',
 	);
 	assert.ok(
-		/store\.setScanResult\(/.test(source),
-		'service should still write result to the UI store until T7',
+		!/setScanProgress|setScanResult/.test(code),
+		'T5 closure: VaultLintService.ts must not call setScanProgress / setScanResult',
 	);
 
-	console.log('PASS: serviceStillAcceptsCallbacksAndKeepsStoreWritesForNow');
+	console.log('PASS: serviceAcceptsCallbacksAndHasNoUiStoreCoupling');
+}
+
+async function testRunnerOnEventSinkReceivesEveryEventWithSnapshot(): Promise<void> {
+	const captured: Array<{ type: string; snapshotLength: number }> = [];
+	const out = await runVaultLintManualScan({
+		clock: makeFakeClock(),
+		idFactory: makeFakeIdFactory('obs'),
+		onEvent: (event, snapshot) => {
+			captured.push({ type: event.type, snapshotLength: snapshot.length });
+		},
+		scan: async (callbacks) => {
+			callbacks.onProgress?.({ phase: 'init' });
+			callbacks.onProgress?.({ phase: 'scanning', total: 2 });
+			callbacks.onProgress?.({ phase: 'cleared' });
+			return fakeScanResult({ id: 'sink-test' });
+		},
+	});
+
+	const types = captured.map((c) => c.type);
+	assert.deepStrictEqual(types, [
+		'status',     // queued
+		'status',     // running
+		'progress',   // init
+		'progress',   // scanning
+		'progress',   // cleared
+		'artifact',
+		'status',     // completed
+	], 'onEvent sink must observe every event in emission order');
+
+	// Snapshot length should grow by exactly 1 per event, matching the
+	// internal trace as it is built.
+	const lengths = captured.map((c) => c.snapshotLength);
+	assert.deepStrictEqual(lengths, [1, 2, 3, 4, 5, 6, 7]);
+
+	// Final out.events must match the final snapshot length.
+	assert.strictEqual(out.events.length, 7);
+	console.log('PASS: runnerOnEventSinkReceivesEveryEventWithSnapshot');
+}
+
+async function testRunnerOnEventSinkSeesFailureEvents(): Promise<void> {
+	const captured: string[] = [];
+	const boom = new Error('detector crash');
+	try {
+		await runVaultLintManualScan({
+			clock: makeFakeClock(),
+			idFactory: makeFakeIdFactory('obs-fail'),
+			onEvent: (event) => captured.push(event.type),
+			scan: async (callbacks) => {
+				callbacks.onProgress?.({ phase: 'init' });
+				throw boom;
+			},
+		});
+		assert.fail('runner should rethrow scan failure');
+	} catch (e) {
+		assert.strictEqual(e, boom);
+	}
+
+	assert.deepStrictEqual(captured, [
+		'status',     // queued
+		'status',     // running
+		'progress',   // init
+		'error',
+		'status',     // failed
+	], 'onEvent sink must observe the error + failed sequence on failure path');
+	console.log('PASS: runnerOnEventSinkSeesFailureEvents');
+}
+
+async function testTwoConcurrentRunsHaveIsolatedSinks(): Promise<void> {
+	const a: string[] = [];
+	const b: string[] = [];
+	const [outA, outB] = await Promise.all([
+		runVaultLintManualScan({
+			clock: makeFakeClock(),
+			idFactory: makeFakeIdFactory('a'),
+			onEvent: (event) => a.push(`${event.type}@a`),
+			scan: async () => fakeScanResult({ id: 'concurrent-a' }),
+		}),
+		runVaultLintManualScan({
+			clock: makeFakeClock(),
+			idFactory: makeFakeIdFactory('b'),
+			onEvent: (event) => b.push(`${event.type}@b`),
+			scan: async () => fakeScanResult({ id: 'concurrent-b' }),
+		}),
+	]);
+	assert.notStrictEqual(outA.session.runId, outB.session.runId);
+	assert.ok(a.length > 0 && a.every((t) => t.endsWith('@a')), "sink A must only receive run A's events");
+	assert.ok(b.length > 0 && b.every((t) => t.endsWith('@b')), "sink B must only receive run B's events");
+	console.log('PASS: twoConcurrentRunsHaveIsolatedSinks');
 }
 
 // ---------------------------------------------------------------------------
 // Test driver
 // ---------------------------------------------------------------------------
 
+function testPanelAndComponentsHaveNoUiStoreImport(): void {
+	const panel = fs.readFileSync(PANEL_PATH, 'utf8');
+	const priority = fs.readFileSync(PRIORITY_PATH, 'utf8');
+	for (const [label, source] of [
+		['VaultXRayPanel.tsx', panel],
+		['PriorityActionsList.tsx', priority],
+	] as const) {
+		const code = source
+			.replace(/\/\*[\s\S]*?\*\//g, '')
+			.replace(/\/\/[^\n]*/g, '');
+		assert.ok(
+			!/useVaultLintStore/.test(code),
+			`T5 closure: ${label} must not reference useVaultLintStore in code`,
+		);
+		assert.ok(
+			!/from\s+['"]@\/ui\/store\/vaultLintStore['"]/.test(code),
+			`T5 closure: ${label} must not import from @/ui/store/vaultLintStore`,
+		);
+	}
+	console.log('PASS: panelAndComponentsHaveNoUiStoreImport');
+}
+
+function testUiStoreFileIsDeleted(): void {
+	const storePath = path.resolve(process.cwd(), 'src/ui/store/vaultLintStore.ts');
+	assert.ok(
+		!fs.existsSync(storePath),
+		'T5 closure: src/ui/store/vaultLintStore.ts must be deleted',
+	);
+	console.log('PASS: uiStoreFileIsDeleted');
+}
+
+function testRunStateHookProjectsFromEventsOnly(): void {
+	const hookPath = path.resolve(
+		process.cwd(),
+		'src/ui/view/vault-lint/hooks/useVaultLintRunState.ts',
+	);
+	const source = fs.readFileSync(hookPath, 'utf8');
+	const specifiers = extractImportSpecifiers(source);
+	const code = source
+		.replace(/\/\*[\s\S]*?\*\//g, '')
+		.replace(/\/\/[^\n]*/g, '');
+
+	assert.ok(
+		!specifiers.some((s) => /vaultLintStore/.test(s)),
+		'projection hook must not import the deleted UI store',
+	);
+	assert.ok(
+		!specifiers.includes('zustand'),
+		'projection hook must not import zustand',
+	);
+	assert.ok(
+		/runVaultLintManualScan/.test(code),
+		'projection hook must drive scans through the runner',
+	);
+	assert.ok(
+		/onEvent/.test(code),
+		'projection hook must subscribe via the runner onEvent sink',
+	);
+	console.log('PASS: runStateHookProjectsFromEventsOnly');
+}
+
 async function main(): Promise<void> {
 	await testHappyPathProducesDeterministicEventTrace();
 	await testFailurePathRecordsErrorAndFailedStatusThenRethrows();
 	await testDetectorWarningCallbackBecomesWarnLogEvent();
 	await testEachInvocationConstructsItsOwnRecorderWhenNoneProvided();
+	await testRunnerOnEventSinkReceivesEveryEventWithSnapshot();
+	await testRunnerOnEventSinkSeesFailureEvents();
+	await testTwoConcurrentRunsHaveIsolatedSinks();
 	testRunnerImportsAreBoundaryClean();
 	testRunnerHasNoModuleLevelMutableDefaults();
 	testPanelNoLongerImportsVaultLintServiceDirectly();
-	testServiceStillAcceptsCallbacksAndKeepsStoreWritesForNow();
+	testServiceAcceptsCallbacksAndHasNoUiStoreCoupling();
+	testPanelAndComponentsHaveNoUiStoreImport();
+	testUiStoreFileIsDeleted();
+	testRunStateHookProjectsFromEventsOnly();
 }
 
 main()

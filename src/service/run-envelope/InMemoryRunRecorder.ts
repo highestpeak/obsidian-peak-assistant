@@ -25,17 +25,48 @@ import type {
 export interface InMemoryRunRecorderOptions {
 	readonly clock: RunClock;
 	readonly idFactory: RunIdFactory;
+	/**
+	 * Optional per-instance event sink. Invoked synchronously after each
+	 * `RunEvent` is appended to the recorder's internal trace. The event
+	 * passed to the sink is a fresh snapshot, so the sink can store or
+	 * forward it without risking pollution of the recorder's internal
+	 * state. T5 introduces this to feed live UI projection
+	 * (`useVaultLintRunState`) without a global event bus or a subscribe
+	 * API on the recorder — the sink is bound at construction and lives
+	 * exactly as long as the recorder instance does.
+	 */
+	readonly onEvent?: (event: RunEvent) => void;
 }
 
 export class InMemoryRunRecorder {
 	private readonly clock: RunClock;
 	private readonly idFactory: RunIdFactory;
+	private readonly onEvent: ((event: RunEvent) => void) | undefined;
 	private session: RunSession | null = null;
 	private readonly events: RunEvent[] = [];
 
 	constructor(options: InMemoryRunRecorderOptions) {
 		this.clock = options.clock;
 		this.idFactory = options.idFactory;
+		this.onEvent = options.onEvent;
+	}
+
+	/**
+	 * Internal: append an event AND notify the per-instance sink with a
+	 * snapshot copy. All `recordXxx` methods funnel through this so the
+	 * sink is never bypassed.
+	 */
+	private appendAndEmit(event: RunEvent): void {
+		this.events.push(event);
+		if (this.onEvent === undefined) return;
+		// Try/catch isolates the sink so a buggy listener cannot corrupt
+		// the run trace or break the next record call. The internal trace
+		// has already been updated by the time we get here.
+		try {
+			this.onEvent(this.snapshotEvent(event));
+		} catch (e) {
+			console.warn('[InMemoryRunRecorder] onEvent listener threw:', e);
+		}
 	}
 
 	/**
@@ -61,7 +92,7 @@ export class InMemoryRunRecorder {
 			trigger: input.trigger,
 			startedAt,
 		};
-		this.events.push({
+		this.appendAndEmit({
 			type: 'status',
 			runId,
 			status: 'queued',
@@ -83,7 +114,7 @@ export class InMemoryRunRecorder {
 			);
 		}
 		session.status = status;
-		this.events.push({
+		this.appendAndEmit({
 			type: 'status',
 			runId: session.runId,
 			status,
@@ -99,7 +130,7 @@ export class InMemoryRunRecorder {
 		total?: number;
 	}): void {
 		const session = this.requireSession('recordProgress');
-		this.events.push({
+		this.appendAndEmit({
 			type: 'progress',
 			runId: session.runId,
 			phase: progress.phase,
@@ -129,7 +160,7 @@ export class InMemoryRunRecorder {
 			...(input.contentType !== undefined ? { contentType: input.contentType } : {}),
 			createdAt,
 		};
-		this.events.push({
+		this.appendAndEmit({
 			type: 'artifact',
 			runId: session.runId,
 			artifact: this.snapshotArtifact(canonical),
@@ -140,7 +171,7 @@ export class InMemoryRunRecorder {
 
 	recordError(message: string, recoverable: boolean): void {
 		const session = this.requireSession('recordError');
-		this.events.push({
+		this.appendAndEmit({
 			type: 'error',
 			runId: session.runId,
 			message,
@@ -151,7 +182,7 @@ export class InMemoryRunRecorder {
 
 	recordLog(level: 'debug' | 'info' | 'warn', message: string): void {
 		const session = this.requireSession('recordLog');
-		this.events.push({
+		this.appendAndEmit({
 			type: 'log',
 			runId: session.runId,
 			level,
@@ -175,7 +206,7 @@ export class InMemoryRunRecorder {
 		const endedAt = this.clock.now();
 		session.status = final;
 		session.endedAt = endedAt;
-		this.events.push({
+		this.appendAndEmit({
 			type: 'status',
 			runId: session.runId,
 			status: final,
