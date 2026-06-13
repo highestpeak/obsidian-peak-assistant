@@ -18,10 +18,12 @@
 
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
+import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 
 export class AppRuntimeRegistry {
 	private vaultLintRuntime: VaultLintRuntime | null = null;
 	private ambientRuntime: AmbientRuntime | null = null;
+	private vaultReviewRuntime: VaultReviewRuntime | null = null;
 
 	/**
 	 * Bind the Vault Lint runtime. Called exactly once at plugin boot
@@ -121,5 +123,54 @@ export class AppRuntimeRegistry {
 		const runtime = this.ambientRuntime;
 		this.ambientRuntime = null;
 		runtime?.dispose();
+	}
+
+	/**
+	 * T9: Bind the Vault Review runtime. Called exactly once at plugin
+	 * boot from `composeVaultReviewRuntime`. A second bind without an
+	 * intervening `clearVaultReviewRuntime` throws — typically a
+	 * hot-reload artifact or duplicate onload path.
+	 */
+	setVaultReviewRuntime(runtime: VaultReviewRuntime): void {
+		if (this.vaultReviewRuntime !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setVaultReviewRuntime: a runtime is already bound. Call clearVaultReviewRuntime first if this is intentional.',
+			);
+		}
+		this.vaultReviewRuntime = runtime;
+	}
+
+	/**
+	 * Read the active Vault Review runtime. Fail-loud if no runtime
+	 * is bound — that is a boot-order bug.
+	 */
+	getVaultReviewRuntime(): VaultReviewRuntime {
+		if (this.vaultReviewRuntime === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getVaultReviewRuntime: no runtime is bound. Plugin boot must call setVaultReviewRuntime() before consumers reach the runtime.',
+			);
+		}
+		return this.vaultReviewRuntime;
+	}
+
+	/**
+	 * Soft accessor returning `null` when the runtime is not yet
+	 * bound. Used by UI components (the Copilot picker, the auto-run
+	 * modal, the history modal) that can mount before vault review
+	 * boot resolves.
+	 */
+	tryGetVaultReviewRuntime(): VaultReviewRuntime | null {
+		return this.vaultReviewRuntime;
+	}
+
+	/**
+	 * Dispose + drop the Vault Review runtime. Used by `main.onunload`
+	 * so a hot-reloaded plugin bundle does not retain references to
+	 * closed sqlite repos or stale fingerprint caches. Idempotent.
+	 */
+	clearVaultReviewRuntime(): void {
+		const runtime = this.vaultReviewRuntime;
+		this.vaultReviewRuntime = null;
+		runtime?.dispose?.();
 	}
 }

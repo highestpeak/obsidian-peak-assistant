@@ -19,6 +19,7 @@ import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgen
 import { AppRuntimeRegistry } from '@/app/runtime/AppRuntimeRegistry';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
+import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 
 /**
  * Application context containing all global dependencies.
@@ -167,6 +168,43 @@ export class AppContext {
 	}
 
 	/**
+	 * T9: Bind the Vault Review runtime at plugin boot. Delegates to
+	 * the app-owned `AppRuntimeRegistry`. Fail-loud on double-bind.
+	 */
+	public static setVaultReviewRuntime(runtime: VaultReviewRuntime): void {
+		AppContext.getInstance().runtimeRegistry.setVaultReviewRuntime(runtime);
+	}
+
+	/**
+	 * T9: Read the bound Vault Review runtime. Fail-loud if boot has
+	 * not run yet. Used by callers that should only run after boot
+	 * (rare — most UI uses `tryGetVaultReviewRuntime`).
+	 */
+	public static getVaultReviewRuntime(): VaultReviewRuntime {
+		return AppContext.getInstance().runtimeRegistry.getVaultReviewRuntime();
+	}
+
+	/**
+	 * T9: Soft accessor — returns `null` if boot has not bound the
+	 * runtime yet. Used by the Vault Auto Run modal, the picker, and
+	 * the history modal so an early mount does not throw inside React
+	 * rendering; the consumer handles the null case (graceful empty
+	 * state).
+	 */
+	public static tryGetVaultReviewRuntime(): VaultReviewRuntime | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetVaultReviewRuntime();
+	}
+
+	/**
+	 * T9: Dispose + drop the Vault Review runtime — called from
+	 * `main.onunload` so the hot-reloaded bundle does not retain
+	 * references to the closed sqlite repo or the fingerprint cache.
+	 */
+	public static clearVaultReviewRuntime(): void {
+		AppContext.getInstance().runtimeRegistry.clearVaultReviewRuntime();
+	}
+
+	/**
 	 * Clear singleton and unsubscribe from workspace events.
 	 * Must be called from plugin onunload to break reference chains and allow GC.
 	 */
@@ -180,6 +218,7 @@ export class AppContext {
 			// or the editor event subscriptions.
 			AppContext.instance.runtimeRegistry.clearVaultLintRuntime();
 			AppContext.instance.runtimeRegistry.clearAmbientRuntime();
+			AppContext.instance.runtimeRegistry.clearVaultReviewRuntime();
 			AppContext.instance = null;
 		}
 	}
