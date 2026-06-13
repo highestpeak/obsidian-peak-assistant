@@ -443,6 +443,14 @@ export default class MyPlugin extends Plugin {
 					const { composeVaultLintRuntime } = await import('@/app/lint/composeVaultLintRuntime');
 					AppContext.setVaultLintRuntime(composeVaultLintRuntime());
 				}
+				// T9: bind the Vault Review runtime once Vault Lint is bound
+				// (the digest adapter reads the lint runtime at compose
+				// time). UI (`VaultAutoRunModal`, picker, history modal)
+				// reaches the runtime via `AppContext.tryGetVaultReviewRuntime()`.
+				{
+					const { composeVaultReviewRuntime } = await import('@/app/copilot/vault/composeVaultReviewRuntime');
+					AppContext.setVaultReviewRuntime(composeVaultReviewRuntime(this.app));
+				}
 				const sessionContext = SessionContextService.getInstance(this.app, EventBus.getInstance(this.app));
 				await sessionContext.init();
 				// Only start background AI services if an active profile is configured
@@ -558,6 +566,10 @@ export default class MyPlugin extends Plugin {
 		this.ambientStoreUnsub?.();
 		this.ambientStoreUnsub = null;
 		try { AppContext.clearAmbientRuntime(); } catch { /* not bound — ignore */ }
+		// T9: release the Vault Review runtime so the digest adapter's
+		// fingerprint cache + agent SDK bindings drop with the
+		// hot-reloaded bundle.
+		try { AppContext.clearVaultReviewRuntime(); } catch { /* not bound — ignore */ }
 
 		// Disconnect MCP servers
 		MCPClientManager.getInstance().dispose().catch(() => { /* ignore */ });

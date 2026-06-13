@@ -35,10 +35,8 @@ import {
 	VaultReviewHistoryList,
 	useVaultTabState,
 } from '@/ui/view/copilot/vault/VaultPickerSections';
-import {
-	getVaultReviewReportService,
-	type VaultReviewHistoryRecord,
-} from '@/service/copilot/vault/VaultReviewReportService';
+import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
+import { AppContext } from '@/app/context/AppContext';
 import { VaultAutoRunModal, openVaultReviewHistoryRecord } from '@/ui/view/copilot/vault/VaultAutoRunModal';
 import { PickerReadinessCard, SuggestedIntentRow } from './PickerReadinessCard';
 import {
@@ -82,9 +80,15 @@ const CopilotPickerContent: React.FC<{
 
 	useEffect(() => {
 		if (activeTab !== 'vault') return;
+		const runtime = AppContext.tryGetVaultReviewRuntime();
+		if (!runtime) {
+			setVaultRecords([]);
+			setVaultRecordsLoading(false);
+			return;
+		}
 		let cancelled = false;
 		setVaultRecordsLoading(true);
-		getVaultReviewReportService().listAll(8).then(list => {
+		runtime.listReports(8).then(list => {
 			if (!cancelled) {
 				setVaultRecords(list);
 				setVaultRecordsLoading(false);

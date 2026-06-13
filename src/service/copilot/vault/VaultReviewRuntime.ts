@@ -19,6 +19,7 @@ import type {
 	VaultReviewHistoryRecord,
 } from './VaultReviewReportService';
 import type { ClusterMember } from './VaultDigestService';
+import type { VaultFingerprint } from './VaultFingerprintService';
 
 export interface RunVaultReviewRuntimeOptions {
 	mode: VaultReviewMode;
@@ -70,6 +71,13 @@ export interface VaultReviewRuntime {
 	 * Used by the Clusters tab drill-down.
 	 */
 	listClusterMembers(communityId: string, limit?: number): Promise<ClusterMember[]>;
+
+	/**
+	 * Current vault fingerprint. Used by the picker readiness card to
+	 * compute freshness vs. the last persisted review. Returns `null`
+	 * when the sqlite index is not yet ready.
+	 */
+	getVaultFingerprint(force?: boolean): Promise<VaultFingerprint | null>;
 
 	/**
 	 * Release any cached state (e.g. fingerprint cache, lazy services)

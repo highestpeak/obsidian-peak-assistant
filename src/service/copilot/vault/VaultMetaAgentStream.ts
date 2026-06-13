@@ -12,11 +12,12 @@
  * Multi-round orchestration is identical and lives in `VaultReviewSession`.
  */
 
+import type { App } from 'obsidian';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import type { Profile } from '@/core/profiles/types';
-import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import type { SearchClient } from '@/service/search/SearchClient';
 import { warmupPool, queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { buildVaultMcpServer, type GrepHit } from '@/service/agents/vault-sdk/vaultMcpServer';
 import { translateSdkMessage } from '@/service/agents/core/sdkMessageAdapter';
@@ -218,11 +219,25 @@ export function buildVaultMetaAgentUserPrompt(digest: VaultDigest): string {
 	].join('\n');
 }
 
-export async function* buildVaultMetaAgentStream(options: VaultMetaAgentOptions): AsyncGenerator<LLMStreamEvent> {
+/**
+ * Concrete Obsidian / app-shell deps the vault meta-agent needs. Pre-T9
+ * this came from `AppContext.getInstance()`; T9 routes it through an
+ * explicit param so this service file no longer reaches the app
+ * shell. The composition (`composeVaultReviewRuntime`) supplies these
+ * via `AppVaultReviewAgentAdapter`.
+ */
+export interface VaultMetaAgentRunDeps {
+	app: App;
+	pluginId: string;
+	searchClient: SearchClient;
+}
+
+export async function* buildVaultMetaAgentStream(
+	deps: VaultMetaAgentRunDeps,
+	options: VaultMetaAgentOptions,
+): AsyncGenerator<LLMStreamEvent> {
 	const triggerName = StreamTriggerName.COPILOT;
-	const appContext = AppContext.getInstance();
-	const app = appContext.app;
-	const pluginId = appContext.plugin.manifest.id;
+	const { app, pluginId } = deps;
 
 	try {
 		await warmupPool();
@@ -242,7 +257,7 @@ export async function* buildVaultMetaAgentStream(options: VaultMetaAgentOptions)
 	}
 	const { profile, modelOverride } = resolved;
 
-	const searchClient = appContext.searchClient;
+	const { searchClient } = deps;
 	const searchFn = async (q: string, limit: number): Promise<GrepHit[]> => {
 		const res = await searchClient.search({
 			text: q,

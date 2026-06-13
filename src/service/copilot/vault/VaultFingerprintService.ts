@@ -1,14 +1,16 @@
 /**
- * VaultFingerprintService — vault-level fingerprint for incremental Vault Review.
+ * VaultFingerprintService — pure fingerprint types + diff helpers.
  *
- * Computes a stable hash over `(path, content_hash)` pairs for all indexed notes.
- * Used to decide whether a Vault Auto Review needs to re-run.
+ * Pre-T9 this file also computed the fingerprint by reaching
+ * `sqliteStoreManager.getIndexContext('vault')` directly and cached
+ * the result in a module-level `_cached` global. T9 moves the
+ * fingerprint computation + cache into
+ * `SqliteVaultReviewDigestAdapter` (where it lives behind the
+ * `VaultReviewDigestDataPort`). This file now owns only types and the
+ * pure delta / freshness helpers that the picker readiness card uses.
  *
  * See docs/superpowers/specs/2026-05-20-vault-auto-review-design.md §10.
  */
-
-import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { hashSHA256 } from '@/core/utils/hash-utils';
 
 export interface VaultFingerprint {
 	/** Hash of sorted `${path}:${contentHash}` lines. Identical iff vault content is identical. */
@@ -25,55 +27,6 @@ export interface VaultFingerprintDelta {
 	wordDeltaPct: number;
 	currentFileCount: number;
 	previousFileCount: number;
-}
-
-const CACHE_TTL_MS = 30_000; // 30s — vault doesn't change often; this cap absorbs rapid re-entries.
-
-let _cached: VaultFingerprint | null = null;
-
-/**
- * Compute the current vault fingerprint. Cached for {@link CACHE_TTL_MS}.
- * Returns null when the index is unavailable (e.g., during startup).
- */
-export async function getVaultFingerprint(force = false): Promise<VaultFingerprint | null> {
-	if (!force && _cached && Date.now() - _cached.computedAt < CACHE_TTL_MS) {
-		return _cached;
-	}
-	try {
-		const db = sqliteStoreManager.getIndexContext('vault');
-		const rows = await db
-			.selectFrom('mobius_node')
-			.select(['path', 'content_hash', 'word_count', 'mtime'])
-			.where('path', 'is not', null)
-			.execute();
-		const lines: string[] = [];
-		let totalWords = 0;
-		let lastMtime = 0;
-		for (const row of rows) {
-			if (!row.path || !row.content_hash) continue;
-			lines.push(`${row.path}:${row.content_hash}`);
-			totalWords += row.word_count ?? 0;
-			if (row.mtime && row.mtime > lastMtime) lastMtime = row.mtime;
-		}
-		lines.sort();
-		const fingerprint: VaultFingerprint = {
-			fingerprint: hashSHA256(lines.join('\n')),
-			fileCount: lines.length,
-			totalWordCount: totalWords,
-			lastMaxMtime: lastMtime,
-			computedAt: Date.now(),
-		};
-		_cached = fingerprint;
-		return fingerprint;
-	} catch (err) {
-		console.warn('[VaultFingerprintService] failed to compute fingerprint', err);
-		return null;
-	}
-}
-
-/** Forces the next call to {@link getVaultFingerprint} to recompute. */
-export function invalidateVaultFingerprint(): void {
-	_cached = null;
 }
 
 /**

@@ -57,21 +57,14 @@ import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { StreamdownIsolated } from '@/ui/component/mine';
-import {
-	runVaultReview,
-	type VaultReviewSessionSnapshot,
-} from '@/service/copilot/vault/VaultReviewSession';
+import type { VaultReviewSessionSnapshot } from '@/service/copilot/vault/VaultReviewSession';
 import type { VaultReviewMode } from '@/service/copilot/vault/VaultMetaAgentStream';
-import {
-	getVaultReviewReportService,
-	type VaultReviewHistoryRecord,
-} from '@/service/copilot/vault/VaultReviewReportService';
+import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
 import { buildVaultTrace } from '@/service/copilot/vault/VaultReviewArtifactBuilder';
 import type { TraceArtifact } from '@/service/copilot/CopilotRunArtifacts';
-import {
-	listClusterMembers,
-	type ClusterMember,
-	type VaultClusterDigest,
+import type {
+	ClusterMember,
+	VaultClusterDigest,
 } from '@/service/copilot/vault/VaultDigestService';
 import { Tabs, TabsList, TabsTrigger } from '@/ui/component/shared-ui/tabs';
 import { Pill } from '@/ui/component/shared-ui/pill';
@@ -178,17 +171,22 @@ const VaultAutoRunContent: React.FC<{
 	// Live-run lifecycle
 	useEffect(() => {
 		if (readOnly) return;
+		const runtime = AppContext.tryGetVaultReviewRuntime();
+		if (!runtime) {
+			console.warn('[VaultAutoRunModal] vault review runtime not bound');
+			return;
+		}
 		const controller = new AbortController();
 		controllerRef.current = controller;
 		let mounted = true;
 		(async () => {
 			try {
-				for await (const next of runVaultReview({ mode, signal: controller.signal })) {
+				for await (const next of runtime.run({ mode, signal: controller.signal })) {
 					if (!mounted) return;
 					setSnapshot(next);
 				}
 			} catch (err) {
-				console.error('[VaultAutoRunModal] runVaultReview failed', err);
+				console.error('[VaultAutoRunModal] runtime.run failed', err);
 			}
 		})();
 		return () => { mounted = false; controller.abort(); };
@@ -196,10 +194,12 @@ const VaultAutoRunContent: React.FC<{
 
 	// Load previous review (for "since last review" deltas)
 	useEffect(() => {
+		const runtime = AppContext.tryGetVaultReviewRuntime();
+		if (!runtime) return;
 		let cancelled = false;
 		(async () => {
 			try {
-				const records = await getVaultReviewReportService().listAll(5);
+				const records = await runtime.listReports(5);
 				if (cancelled) return;
 				const ownFingerprint = snapshot?.digest?.fingerprint.fingerprint;
 				const ownId = persistedRecordRef.current?.id;
@@ -215,6 +215,8 @@ const VaultAutoRunContent: React.FC<{
 	// Progressive checkpoint
 	useEffect(() => {
 		if (readOnly || !snapshot) return;
+		const runtime = AppContext.tryGetVaultReviewRuntime();
+		if (!runtime) return;
 		const cs = snapshot.collectorSnapshot;
 		const hasOutput =
 			cs.insights.length > 0 ||
@@ -231,8 +233,8 @@ const VaultAutoRunContent: React.FC<{
 		].join(':');
 		if (sig === lastSavedSigRef.current) return;
 		lastSavedSigRef.current = sig;
-		getVaultReviewReportService()
-			.save(snapshot, persistedRecordRef.current ?? undefined)
+		runtime
+			.saveReport(snapshot, persistedRecordRef.current ?? undefined)
 			.then(rec => {
 				persistedRecordRef.current = { id: rec.id, storagePath: rec.storagePath };
 				setReportPath(rec.storagePath);
@@ -780,9 +782,11 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 
 	useEffect(() => {
 		if (!selectedId) { setMembers([]); return; }
+		const runtime = AppContext.tryGetVaultReviewRuntime();
+		if (!runtime) { setMembers([]); return; }
 		let cancelled = false;
 		setMembersLoading(true);
-		listClusterMembers(selectedId, 30).then(rows => {
+		runtime.listClusterMembers(selectedId, 30).then(rows => {
 			if (!cancelled) { setMembers(rows); setMembersLoading(false); }
 		}).catch(() => {
 			if (!cancelled) { setMembers([]); setMembersLoading(false); }
@@ -1654,7 +1658,12 @@ export class VaultAutoRunModal extends Modal {
 }
 
 export function openVaultReviewHistoryRecord(app: App, record: VaultReviewHistoryRecord): void {
-	void getVaultReviewReportService().load(record).then(snapshot => {
+	const runtime = AppContext.tryGetVaultReviewRuntime();
+	if (!runtime) {
+		new Notice('Vault Review runtime is still initialising. Try again in a moment.');
+		return;
+	}
+	void runtime.loadReport(record).then(snapshot => {
 		if (!snapshot) {
 			new Notice('Could not load this vault review record.');
 			return;

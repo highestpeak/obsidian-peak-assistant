@@ -2,21 +2,25 @@
  * Vault-scope multi-round orchestrator.
  *
  * Sister to `CopilotReviewSession` (doc scope). Drives 1..N rounds of
- * `buildVaultMetaAgentStream`, compacting between rounds.
+ * the vault meta-agent, compacting between rounds.
  *
  * Yields `VaultReviewSessionSnapshot` on every change so the React UI can
  * re-render progressively.
+ *
+ * T9: AppContext / sqliteStoreManager access is gone. The session
+ * receives a `VaultReviewSessionDeps` port bag (profile + digest data +
+ * agent + lint runtime) supplied by the app-owned
+ * `VaultReviewRuntime`.
  */
 
 import type { LLMStreamEvent } from '@/core/providers/types';
-import { AppContext } from '@/app/context/AppContext';
 import { CopilotOutputCollector, type ReviewSubmission } from '../CopilotOutputCollector';
-import { buildVaultDigest, type VaultDigest } from './VaultDigestService';
-import {
-	buildVaultMetaAgentStream,
-	type VaultReviewMode,
-	type VaultPreviousRoundSummary,
+import type { VaultDigest } from './VaultDigestService';
+import type {
+	VaultReviewMode,
+	VaultPreviousRoundSummary,
 } from './VaultMetaAgentStream';
+import type { VaultReviewSessionDeps } from './ports/VaultReviewPorts';
 
 export type VaultReviewSessionStatus =
 	| 'idle'
@@ -70,28 +74,17 @@ function previousRoundSummary(
 	};
 }
 
-async function loadUserProfileText(): Promise<string | undefined> {
-	try {
-		const profileService = AppContext.getInstance().manager.getProfileService();
-		if (!profileService) return undefined;
-		const text = await profileService.getProfileAsMarkdown();
-		return text.trim() || undefined;
-	} catch (err) {
-		console.warn('[VaultReviewSession] failed to load user profile', err);
-		return undefined;
-	}
-}
-
 export interface RunVaultReviewOptions {
 	mode: VaultReviewMode;
 	signal: AbortSignal;
 }
 
 export async function* runVaultReview(
+	deps: VaultReviewSessionDeps,
 	options: RunVaultReviewOptions,
 ): AsyncGenerator<VaultReviewSessionSnapshot, VaultReviewSessionSnapshot, void> {
 	const collector = new CopilotOutputCollector();
-	const userProfileText = await loadUserProfileText();
+	const userProfileText = await deps.profile.loadUserProfileText();
 	const maxTurnsPerRound = UNCAPPED_MAX_TURNS;
 	const fastSingleRound = options.mode === 'fast';
 
@@ -125,12 +118,10 @@ export async function* runVaultReview(
 	yield snap();
 
 	// Build digest before any round so the UI can show pre-flight stats early.
-	// T6R: the Vault Lint runtime is resolved here (app-side caller)
-	// and passed explicitly so `VaultDigestService` does not need to
-	// import the runtime registry itself.
+	// T9: digest construction is owned by the app-side digest adapter.
 	try {
-		session.digest = await buildVaultDigest({
-			vaultLintRuntime: AppContext.getVaultLintRuntime(),
+		session.digest = await deps.digestData.buildDigest({
+			vaultLintRuntime: deps.vaultLintRuntime,
 		});
 	} catch (err) {
 		session.status = 'error';
@@ -177,7 +168,7 @@ export async function* runVaultReview(
 				.map(r => previousRoundSummary(r, collector.getSnapshot()))
 				.filter((s): s is VaultPreviousRoundSummary => s !== null);
 
-			const stream = buildVaultMetaAgentStream({
+			const stream = deps.agent.runRound({
 				mode: options.mode,
 				digest: session.digest,
 				userProfileText,

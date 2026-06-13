@@ -15,17 +15,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { ChevronRight, History } from 'lucide-react';
+import { AppContext } from '@/app/context/AppContext';
 import {
-	getVaultFingerprint,
 	diffVaultFingerprint,
 	freshnessFromDelta,
 	type VaultFingerprint,
 	type VaultReviewFreshness,
 } from '@/service/copilot/vault/VaultFingerprintService';
-import {
-	getVaultReviewReportService,
-	type VaultReviewHistoryRecord,
-} from '@/service/copilot/vault/VaultReviewReportService';
+import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
 import { MODE_LABELS } from '@/service/copilot/CopilotMetaAgentStream';
 
 const STALENESS_DAYS = 30;
@@ -157,12 +154,17 @@ export function useVaultTabState(refreshToken: number): VaultTabState {
 	});
 
 	useEffect(() => {
+		const runtime = AppContext.tryGetVaultReviewRuntime();
+		if (!runtime) {
+			setState(s => ({ ...s, loading: false }));
+			return;
+		}
 		let cancelled = false;
 		(async () => {
 			try {
 				const [fingerprint, records] = await Promise.all([
-					getVaultFingerprint(true),
-					getVaultReviewReportService().listAll(1),
+					runtime.getVaultFingerprint(true),
+					runtime.listReports(1),
 				]);
 				if (cancelled) return;
 				const lastRecord = records[0] ?? null;

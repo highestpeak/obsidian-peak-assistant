@@ -11,10 +11,8 @@ import {
 	getCopilotReviewHistoryService,
 	type CopilotReviewHistoryRecord,
 } from '@/service/copilot/CopilotReviewHistoryService';
-import {
-	getVaultReviewReportService,
-	type VaultReviewHistoryRecord,
-} from '@/service/copilot/vault/VaultReviewReportService';
+import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
+import { AppContext } from '@/app/context/AppContext';
 import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';
 import { CopilotAutoRunModal } from './CopilotAutoRunModal';
 import { VaultAutoRunModal, openVaultReviewHistoryRecord } from './vault/VaultAutoRunModal';
@@ -131,8 +129,11 @@ const CopilotReviewHistoryContent: React.FC<ContentProps> = ({ scope, currentNot
 	useEffect(() => {
 		let cancelled = false;
 		setLoading(true);
+		const vaultRuntime = AppContext.tryGetVaultReviewRuntime();
 		const fetcher = scope === 'vault'
-			? getVaultReviewReportService().listAll(500).then(list => list.map(normalizeVault))
+			? (vaultRuntime
+				? vaultRuntime.listReports(500).then(list => list.map(normalizeVault))
+				: Promise.resolve([] as NormalizedRecord[]))
 			: (effectiveDocFilter === 'this-note' && currentNotePath
 				? getCopilotReviewHistoryService().listForSubject(currentNotePath, 500, 'document').then(list => list.map(normalizeDoc))
 				: getCopilotReviewHistoryService().listAll(500, 'document').then(list => list.map(normalizeDoc))
@@ -168,7 +169,12 @@ const CopilotReviewHistoryContent: React.FC<ContentProps> = ({ scope, currentNot
 
 	const handleDelete = async (record: NormalizedRecord) => {
 		if (record.scope === 'vault') {
-			await getVaultReviewReportService().delete(record.raw as VaultReviewHistoryRecord);
+			const runtime = AppContext.tryGetVaultReviewRuntime();
+			if (!runtime) {
+				new Notice('Vault Review runtime not ready');
+				return;
+			}
+			await runtime.deleteReport(record.raw as VaultReviewHistoryRecord);
 		} else {
 			await getCopilotReviewHistoryService().delete(record.raw as CopilotReviewHistoryRecord);
 		}
