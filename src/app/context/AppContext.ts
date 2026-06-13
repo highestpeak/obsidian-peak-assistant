@@ -18,6 +18,7 @@ import { SessionContextService } from '@/service/context/SessionContextService';
 import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
 import { AppRuntimeRegistry } from '@/app/runtime/AppRuntimeRegistry';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
+import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 
 /**
  * Application context containing all global dependencies.
@@ -131,6 +132,41 @@ export class AppContext {
 	}
 
 	/**
+	 * T8: Bind the Ambient runtime at plugin boot. Delegates to the
+	 * app-owned `AppRuntimeRegistry`. Fail-loud on double-bind.
+	 */
+	public static setAmbientRuntime(runtime: AmbientRuntime): void {
+		AppContext.getInstance().runtimeRegistry.setAmbientRuntime(runtime);
+	}
+
+	/**
+	 * T8: Read the bound Ambient runtime. Fail-loud if boot has not
+	 * run yet. Command actions (`openRelatedNotes` /
+	 * `refreshRelatedNotes`) use this.
+	 */
+	public static getAmbientRuntime(): AmbientRuntime {
+		return AppContext.getInstance().runtimeRegistry.getAmbientRuntime();
+	}
+
+	/**
+	 * T8: Soft accessor — returns `null` if boot has not bound the
+	 * runtime yet. UI providers (Related Notes panel, gutter widget)
+	 * use this so an early mount does not throw inside React rendering.
+	 */
+	public static tryGetAmbientRuntime(): AmbientRuntime | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetAmbientRuntime();
+	}
+
+	/**
+	 * T8: Dispose + drop the Ambient runtime — called from
+	 * `main.onunload` so the editor event subscriptions release and
+	 * the hot-reloaded bundle does not keep them alive.
+	 */
+	public static clearAmbientRuntime(): void {
+		AppContext.getInstance().runtimeRegistry.clearAmbientRuntime();
+	}
+
+	/**
 	 * Clear singleton and unsubscribe from workspace events.
 	 * Must be called from plugin onunload to break reference chains and allow GC.
 	 */
@@ -140,8 +176,10 @@ export class AppContext {
 			// Explicitly clean up window globals to break closure-based memory leaks
 			AppContext.instance.handleDevToolsSettingChange(false);
 			// Release any per-capability runtime so a hot-reloaded plugin
-			// bundle does not retain references to the closed sqlite repo.
+			// bundle does not retain references to the closed sqlite repo
+			// or the editor event subscriptions.
 			AppContext.instance.runtimeRegistry.clearVaultLintRuntime();
+			AppContext.instance.runtimeRegistry.clearAmbientRuntime();
 			AppContext.instance = null;
 		}
 	}

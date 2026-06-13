@@ -1,10 +1,11 @@
-// T6R: App-owned runtime registry.
+// T6R / T8: App-owned runtime registry.
 //
 // T6 introduced a module-level `currentRuntime` binding inside
-// `src/service/lint/VaultLintRuntime.ts`. That was an acceptable
-// transitional state but the rule "no service-layer module singletons"
-// applies once any second capability needs the same shape — so we relocate
-// the binding to app-level ownership before T7.
+// `src/service/lint/VaultLintRuntime.ts`. T6R relocated it to this
+// app-level registry; T7 added detector-context wiring; T8 adds the
+// second capability (Ambient Push / Morning Briefing) to the same
+// pattern. Each capability gets the same fail-loud / double-bind /
+// clear semantics.
 //
 // This registry is owned by `AppContext` (one instance per plugin load).
 // It is unit-testable because it does not pull any Obsidian / sqlite /
@@ -16,9 +17,11 @@
 // live; `AppContext` only exposes thin static delegators.
 
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
+import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 
 export class AppRuntimeRegistry {
 	private vaultLintRuntime: VaultLintRuntime | null = null;
+	private ambientRuntime: AmbientRuntime | null = null;
 
 	/**
 	 * Bind the Vault Lint runtime. Called exactly once at plugin boot
@@ -68,5 +71,55 @@ export class AppRuntimeRegistry {
 	 */
 	clearVaultLintRuntime(): void {
 		this.vaultLintRuntime = null;
+	}
+
+	/**
+	 * Bind the Ambient runtime. Called exactly once at plugin boot
+	 * from `composeAmbientRuntime`. A second bind without an
+	 * intervening `clearAmbientRuntime` throws — typically a hot-reload
+	 * artifact or duplicate onload path.
+	 */
+	setAmbientRuntime(runtime: AmbientRuntime): void {
+		if (this.ambientRuntime !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setAmbientRuntime: a runtime is already bound. Call clearAmbientRuntime first if this is intentional.',
+			);
+		}
+		this.ambientRuntime = runtime;
+	}
+
+	/**
+	 * Read the active Ambient runtime. Fail-loud if no runtime is
+	 * bound — that is a boot-order bug. Command actions
+	 * (`openRelatedNotes` / `refreshRelatedNotes`) use this form.
+	 */
+	getAmbientRuntime(): AmbientRuntime {
+		if (this.ambientRuntime === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getAmbientRuntime: no runtime is bound. Plugin boot must call setAmbientRuntime() before consumers reach the runtime.',
+			);
+		}
+		return this.ambientRuntime;
+	}
+
+	/**
+	 * Soft accessor returning `null` when the runtime is not yet
+	 * bound. Used by UI providers (the Related Notes panel + the
+	 * serendipity gutter widget) that may mount during early boot,
+	 * before the Ambient bootstrap path runs.
+	 */
+	tryGetAmbientRuntime(): AmbientRuntime | null {
+		return this.ambientRuntime;
+	}
+
+	/**
+	 * Dispose + drop the Ambient runtime. Used by `main.onunload` so
+	 * a hot-reloaded plugin bundle does not hold an open editor event
+	 * subscription. Idempotent.
+	 */
+	clearAmbientRuntime(): void {
+		const runtime = this.ambientRuntime;
+		this.ambientRuntime = null;
+		runtime?.dispose();
 	}
 }
