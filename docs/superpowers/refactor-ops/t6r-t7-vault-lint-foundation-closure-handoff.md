@@ -1,8 +1,20 @@
 # Peak Assistant Modernization Handoff: T6R+T7 Vault Lint Foundation Closure
 
+Status:
+- Paused future scale draft.
+- Do not send while T6R is already in flight.
+- Current active handoff is [`t6-review-fix-runtime-ownership-config-defaults-handoff.md`](./t6-review-fix-runtime-ownership-config-defaults-handoff.md).
+- After T6R owner review, rewrite the next closure wave with a larger scope than this draft if the evidence supports it.
+
 ## 中文摘要
 
-这一步把原本拆开的 T6R 和 T7 合并成一个更大粒度的 closure wave。
+这是一份未来大粒度任务草稿，不是当前要发送给 Claude Code 的 handoff。
+
+它原本把 T6R 和 T7 合并成一个 closure wave；但当前 T6R 已经在进行中，所以不应临时改任务边界。先完成 T6R，再根据 T6R owner review 设计下一轮更大粒度的 closure wave。
+
+Draft idea:
+
+把原本拆开的 T6R 和 T7 合并成一个更大粒度的 closure wave。
 
 为什么合并：
 
@@ -16,10 +28,11 @@
 2. `DEFAULT_VAULT_LINT_CONFIG` 退出 `VaultLintService.ts`。
 3. `signals/*` detector 退出 `AppContext` / `sqliteStoreManager` service-locator。
 
-本轮粒度：
+未来重写时的粒度方向：
 
-- 允许改 18-45 个相关文件。
-- 允许 production files 约 15-30 个，tests/docs 约 6-15 个。
+- 这份草稿原来的 18-45 个文件范围偏保守。
+- T6R 之后如果要做真正的大粒度 closure wave，目标应接近 30-80 个相关文件。
+- 可以允许 production files 约 20-50 个，tests/docs 约 8-25 个，只要仍然有一个清晰的 code reading guide。
 - 允许碰 AppContext / ServiceContext / app lint composition / Vault Lint runtime / detectors / ports / tests / docs。
 - 不允许碰 Chat、Quick Search、Ambient Push、Command Gateway、SQLite schema、Vault X-Ray 视觉重做。
 
@@ -34,6 +47,8 @@
 | [`2026-06-13-t6-review-fix-owner-note.md`](../audits/2026-06-13-t6-review-fix-owner-note.md) | Owner note | 为什么 T6 后必须先修这两类治理问题。 |
 
 ## Send To Claude Code
+
+Do not send this block as-is while T6R is in flight. If this draft is reused after T6R, rewrite the file list and scope using the latest T6R owner review, and use the larger 30-80 file closure-wave target when justified.
 
 ````md
 # Peak Assistant Modernization: T6R+T7 Vault Lint Foundation Closure
@@ -70,8 +85,8 @@ Do a read-only checkpoint first, then continue implementation in the same Claude
 
 - no stop condition appears;
 - proposed changed files stay inside Vault Lint/app lint/tests/docs;
-- production file count is roughly 15-30;
-- total changed file count is roughly 18-45.
+- production file count is roughly 20-50;
+- total changed file count is roughly 30-80.
 
 Do not stop merely because this is bigger than previous slices. This task is supposed to be a coherent closure wave.
 

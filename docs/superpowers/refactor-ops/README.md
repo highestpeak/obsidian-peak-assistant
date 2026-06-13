@@ -65,12 +65,15 @@ A normal closure wave may touch:
 - one capability or one tightly bounded runtime surface;
 - both new-path wiring and old-path deletion in the same task.
 
-A larger foundation closure wave may touch roughly 18-45 total files when all of these are true:
+A larger foundation closure wave may touch roughly 30-80 total files when all of these are true:
 
 - the work stays inside one capability;
 - the sub-tasks share the same runtime path;
 - splitting the work would force the owner to shuttle multiple tiny deltas back and forth;
 - the handoff still has one code reading guide and one acceptance story.
+- the handoff can be implemented as multiple small commits inside one Claude session if that improves reviewability.
+
+Do not merge extra tasks into an implementation that is already in flight. If Claude Code is already executing a handoff, finish that handoff first, review it, then decide the next larger package.
 
 A task is too small if it only:
 
@@ -266,11 +269,12 @@ Completed and accepted:
 
 Ready for owner approval:
 
-- T6R+T7 Vault Lint Foundation Closure: [`t6r-t7-vault-lint-foundation-closure-handoff.md`](./t6r-t7-vault-lint-foundation-closure-handoff.md)
+- T6R Runtime Ownership + Config Defaults Governance: [`t6-review-fix-runtime-ownership-config-defaults-handoff.md`](./t6-review-fix-runtime-ownership-config-defaults-handoff.md)
 
 Next owner decision:
 
-- send `T6R+T7` to Claude Code as one larger closure wave;
+- continue/finish `T6R` first;
+- after T6R owner review, Codex should design the next closure wave with a larger default scope than the earlier T6R+T7 draft;
 - do not start Chat, Ambient Push, or Command Gateway yet.
 
 ## Supporting Files
@@ -287,7 +291,7 @@ Next owner decision:
 - [`t5-vault-lint-runtime-closure-wave-handoff.md`](./t5-vault-lint-runtime-closure-wave-handoff.md): T5 larger closure-wave handoff.
 - [`t6-vault-lint-ports-service-plain-class-handoff.md`](./t6-vault-lint-ports-service-plain-class-handoff.md): T6 backend closure-wave handoff.
 - [`t6-review-fix-runtime-ownership-config-defaults-handoff.md`](./t6-review-fix-runtime-ownership-config-defaults-handoff.md): T6 owner-review fix handoff.
-- [`t6r-t7-vault-lint-foundation-closure-handoff.md`](./t6r-t7-vault-lint-foundation-closure-handoff.md): combined T6R+T7 larger closure-wave handoff.
+- [`t6r-t7-vault-lint-foundation-closure-handoff.md`](./t6r-t7-vault-lint-foundation-closure-handoff.md): paused future scale draft, not the current handoff.
 - [`config-defaults-governance.md`](./config-defaults-governance.md): configuration defaults governance.
 - [`t7-vault-lint-detector-context-closure-handoff.md`](./t7-vault-lint-detector-context-closure-handoff.md): T7 detector closure-wave handoff.
 
