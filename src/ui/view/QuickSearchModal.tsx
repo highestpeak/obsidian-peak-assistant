@@ -4,9 +4,6 @@ import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { QuickSearchModalContent } from './quick-search/SearchModal';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
-import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
-import { sessionRefs } from './quick-search/hooks/useSearchSession';
-import { useSearchSessionStore } from './quick-search/store/searchSessionStore';
 
 /**
  * Obsidian modal wrapper for quick search React UI.
@@ -40,23 +37,22 @@ export class QuickSearchModal extends Modal {
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 		this.reactRenderer.render(
 			createReactElementWithServices(
-				QuickSearchModalContent, 
-				{ onClose: () => this.close() }, 
+				QuickSearchModalContent,
+				{ onClose: () => this.close() },
 				this.appContext
 			)
 		);
 	}
 
 	onClose(): void {
-		// Detach active session to background before unmounting React
-		const store = useSearchSessionStore.getState();
-		const isActive = store.status === 'streaming' || store.status === 'starting';
-		const hasPlan = store.v2PlanSections.length > 0 && !store.v2PlanApproved;
-		if (isActive || hasPlan) {
-			BackgroundSessionManager.getInstance().detachForeground({
-				agentRef: sessionRefs.agentRef,
-				abortController: sessionRefs.abortController,
-			});
+		// T10: detach an active foreground session to the background through
+		// the app-owned runtime. The foreground-session port inside the
+		// runtime reads the Zustand store + sessionRefs directly, so this
+		// site no longer reaches into either.
+		try {
+			AppContext.tryGetQuickSearchBackgroundRuntime()?.detachForeground();
+		} catch (e) {
+			console.warn('[QuickSearchModal] detachForeground failed:', e);
 		}
 
 		// Existing close logic unchanged

@@ -26,11 +26,11 @@ import { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
 
 import { consumeStream } from './streamConsumer';
 import type { StreamConsumerContext } from './streamConsumer';
-import { useEventRouter, eventTargetRedirect } from './useEventRouter';
+import { useEventRouter } from './useEventRouter';
 import { useContinueAnalysis } from './useContinueAnalysis';
-import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { persistSessionToVault } from '@/service/search/analysisDocPersistence';
 import { snapshotFromState } from '../store/sessionSnapshot';
+import type { V2SessionSnapshot } from '../store/sessionSnapshot';
 
 // ---------------------------------------------------------------------------
 // Module-level ref holder — survives React unmount so QuickSearchModal.onClose
@@ -367,43 +367,33 @@ export function useSearchSession() {
 	// -----------------------------------------------------------------------
 
 	const restoreFromBackground = useCallback((sessionId: string) => {
-		const manager = BackgroundSessionManager.getInstance();
+		const runtime = AppContext.tryGetQuickSearchBackgroundRuntime();
+		if (!runtime) return;
 
-		// If current foreground is active, detach it first
-		const currentStore = store.getState();
-		const isActive = currentStore.status === 'streaming' || currentStore.status === 'starting';
-		const hasPlan = currentStore.v2PlanSections.length > 0 && !currentStore.v2PlanApproved;
-		if (isActive || hasPlan) {
-			manager.detachForeground({
-				agentRef: sessionRefs.agentRef,
-				abortController: sessionRefs.abortController,
-			});
+		// T10: if the foreground is still alive, the runtime's
+		// `detachForeground()` consults the foreground-session port to
+		// snapshot + reset + park it before we restore the requested id.
+		runtime.detachForeground();
+
+		const result = runtime.restoreToForeground(sessionId);
+		if (!result) return;
+
+		// Restore snapshot to foreground store.
+		store.getState().restoreFromSnapshot(result.snapshot as V2SessionSnapshot);
+
+		// Re-bind agent refs (the runtime cleared its redirect inside restoreToForeground).
+		const handle = result.agentHandle;
+		const restoredAgent = (handle?.agentRef as VaultSearchAgent | null) ?? null;
+		if (handle) {
+			vaultAgentRef.current = restoredAgent;
+			abortControllerRef.current = handle.abortController;
+			sessionRefs.agentRef = restoredAgent;
+			sessionRefs.abortController = handle.abortController;
 		}
-
-		// Get agent refs before restoring (removes session from manager)
-		const refs = manager.getAgentRefs(sessionId);
-		const snapshot = manager.restoreToForeground(sessionId);
-		if (!snapshot) return;
-
-		// Restore snapshot to foreground store
-		store.getState().restoreFromSnapshot(snapshot);
-
-		// Re-bind agent refs
-		if (refs) {
-			vaultAgentRef.current = refs.agentRef;
-			abortControllerRef.current = refs.abortController;
-			sessionRefs.agentRef = refs.agentRef;
-			sessionRefs.abortController = refs.abortController;
-		}
-
-		// Deactivate event redirect (events now go back to foreground store)
-		eventTargetRedirect.active = false;
-		eventTargetRedirect.target = null;
-		eventTargetRedirect.summaryBuffer = null;
-		eventTargetRedirect.uiStepRef = null;
 
 		// Re-register HITL callback if plan-ready (so user can approve and continue)
-		if (snapshot.v2PlanSections.length > 0 && !snapshot.v2PlanApproved && refs?.agentRef) {
+		const snapshot = result.snapshot as V2SessionSnapshot;
+		if (snapshot.v2PlanSections.length > 0 && !snapshot.v2PlanApproved && restoredAgent) {
 			const hitlCallback = async (feedback: UserFeedback) => {
 				const agent = vaultAgentRef.current;
 				if (!agent) return;

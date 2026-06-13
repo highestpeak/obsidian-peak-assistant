@@ -14,7 +14,6 @@ import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
 import { useSearchSession } from './hooks/useSearchSession';
 import { Notice, TFile } from 'obsidian';
-import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { AppContext } from '@/app/context/AppContext';
 import { SearchQueryEvent } from '@/core/eventBus';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
@@ -93,13 +92,14 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	const setAnalysisMode = useSearchSessionStore((s) => s.setAnalysisMode);
 	const { performAnalysis, cancel, restoreFromBackground } = useSearchSession();
 
-	// Check for pending background session restore on mount
+	// Check for pending background session restore on mount.
+	// T10: the runtime exposes a single-shot `consumePendingRestore()`
+	// in place of the retired `BackgroundSessionManager.pendingRestore`
+	// static field; the modal-opener adapter writes the id before the
+	// new modal mounts.
 	useEffect(() => {
-		const pendingId = BackgroundSessionManager.pendingRestore;
-		if (pendingId) {
-			BackgroundSessionManager.pendingRestore = null;
-			restoreFromBackground(pendingId);
-		}
+		const pendingId = AppContext.tryGetQuickSearchBackgroundRuntime()?.consumePendingRestore();
+		if (pendingId) restoreFromBackground(pendingId);
 	}, [restoreFromBackground]);
 
 	const isAnalyzing = sessionStatus === 'starting' || sessionStatus === 'streaming';
@@ -377,7 +377,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					/>
 					<ActiveSessionsList
 						onRestore={(sessionId) => {
-							BackgroundSessionManager.pendingRestore = sessionId;
+							AppContext.tryGetQuickSearchBackgroundRuntime()?.requestRestore(sessionId);
 						}}
 					/>
 					<RecentAnalysisList

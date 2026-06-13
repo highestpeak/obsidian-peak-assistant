@@ -24,7 +24,6 @@ import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { registerTemplateEngineHelpers } from '@/core/template-engine-helper';
 import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
-import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { warmupPool, shutdownPool } from '@/service/agents/core/sdkAgentPool';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { initPatternSystem } from '@/service/context/PatternDiscoveryTrigger';
@@ -206,6 +205,19 @@ export default class MyPlugin extends Plugin {
 			aiAnalysisHistoryService,
 			(aiServiceManager: AIServiceManager) => new DocSimpleAgent(aiServiceManager),
 		);
+
+		// T10: bind the Quick Search background-session runtime as
+		// soon as AppContext exists. The runtime is in-memory only —
+		// no sqlite dependency — so it can be ready before the
+		// CascadeWorker (which dependency-injects it) constructs in
+		// `initializeSearchService`. Production callers reach it via
+		// `AppContext.tryGetQuickSearchBackgroundRuntime()`; the
+		// previous `BackgroundSessionManager.getInstance()` singleton
+		// is retired.
+		{
+			const { composeQuickSearchBackgroundRuntime } = await import('@/app/quick-search/background/composeQuickSearchBackgroundRuntime');
+			AppContext.setQuickSearchBackgroundRuntime(composeQuickSearchBackgroundRuntime(this.app));
+		}
 
 		// Initialize global DocumentLoaderManager singleton
 		// Pass aiServiceManager for loaders that need AI capabilities (e.g., image description)
@@ -506,7 +518,10 @@ export default class MyPlugin extends Plugin {
 		this.searchUpdateQueue = new SearchUpdateListener(this.app, this, this.settings.search, this.settings.search.indexRefreshInterval);
 		this.searchUpdateQueue.start();
 
-		this.cascadeWorker = new CascadeWorker(this.app);
+		// T10: inject the Quick Search background runtime so the
+		// worker can defer drain while user-facing analyses run,
+		// without reaching the retired BackgroundSessionManager.
+		this.cascadeWorker = new CascadeWorker(this.app, AppContext.getQuickSearchBackgroundRuntime());
 		this.cascadeWorker.start();
 
 		// Check index status and perform incremental indexing if needed
@@ -646,8 +661,13 @@ export default class MyPlugin extends Plugin {
 		// Close global SQLite store (sync; already imported at top)
 		sqliteStoreManager.close();
 
-		// Abort all background analysis sessions
-		BackgroundSessionManager.clearInstance();
+		// T10: abort all Quick Search background analysis sessions
+		// through the app-owned runtime registry. The retired
+		// `BackgroundSessionManager.clearInstance()` singleton tear-down
+		// has been replaced by `AppContext.clearQuickSearchBackgroundRuntime`,
+		// which itself calls `dispose()` on the runtime (aborts every
+		// session + drops listeners + clears the redirect).
+		try { AppContext.clearQuickSearchBackgroundRuntime(); } catch { /* not bound — ignore */ }
 
 		// T8: Ambient runtime already released above via
 		// `AppContext.clearAmbientRuntime()`; the duplicate dispose call

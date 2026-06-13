@@ -1,7 +1,7 @@
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { MobiusNodeRepo } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 import { SemanticRelatedEdgesRebuildService } from '../helper/semanticRelatedEdges';
-import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
+import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import type { CascadeDebtRecord } from './types';
 import { CASCADE_IDLE_DELAY_MS, CASCADE_MAX_ITEMS_PER_WINDOW, CASCADE_DEBT_HUB_REGEN_PRIORITY } from '@/core/constant';
@@ -19,7 +19,16 @@ export class CascadeWorker {
 
     static getInstance(): CascadeWorker | null { return CascadeWorker.instance; }
 
-    constructor(private readonly app: App) {
+    constructor(
+        private readonly app: App,
+        /**
+         * T10: dependency-injected at boot from `main.ts` so the cascade
+         * worker can defer drain work while Quick Search background
+         * analyses are running, without reaching into the retired
+         * `BackgroundSessionManager` singleton.
+         */
+        private readonly quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime,
+    ) {
         this.scheduler = new CascadeScheduler({
             idleDelayMs: CASCADE_IDLE_DELAY_MS,
             onIdle: () => void this.drainDebt(),
@@ -39,8 +48,7 @@ export class CascadeWorker {
 
     private async drainDebt(): Promise<void> {
         if (this.processing) return;
-        const bgm = BackgroundSessionManager.getInstance();
-        if (bgm && bgm.getActiveCount() > 0) {
+        if (this.quickSearchBackgroundRuntime.getActiveCount() > 0) {
             this.scheduler.notifyActivity(); // retry later
             return;
         }

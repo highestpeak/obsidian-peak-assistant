@@ -1,11 +1,11 @@
 import React, { useSyncExternalStore } from 'react';
 import { Loader2, CheckCircle, Clock, AlertCircle, X } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
-import {
-    BackgroundSessionManager,
-    type BackgroundSession,
-    type BackgroundSessionStatus,
-} from '@/service/BackgroundSessionManager';
+import { AppContext } from '@/app/context/AppContext';
+import type {
+	QuickSearchBackgroundSessionStatus,
+	QuickSearchBackgroundSessionSummary,
+} from '@/service/search/background/QuickSearchBackgroundTypes';
 import { formatDuration } from '@/core/utils/format-utils';
 
 // ---------------------------------------------------------------------------
@@ -19,7 +19,7 @@ interface StatusConfig {
     spin?: boolean;
 }
 
-const STATUS_CONFIG: Record<BackgroundSessionStatus, StatusConfig> = {
+const STATUS_CONFIG: Record<QuickSearchBackgroundSessionStatus, StatusConfig> = {
     streaming: { Icon: Loader2, color: 'var(--pk-accent)', label: 'Analyzing...', spin: true },
     'plan-ready': { Icon: CheckCircle, color: 'var(--pk-info-text)', label: 'Plan Ready' },
     queued: { Icon: Clock, color: 'var(--pk-text-secondary)', label: 'Queued' },
@@ -32,7 +32,7 @@ const STATUS_CONFIG: Record<BackgroundSessionStatus, StatusConfig> = {
 // ---------------------------------------------------------------------------
 
 const SessionCard: React.FC<{
-	session: BackgroundSession;
+	session: QuickSearchBackgroundSessionSummary;
 	onRestore: (id: string) => void;
 	onCancel: (id: string) => void;
 }> = ({ session, onRestore, onCancel }) => {
@@ -110,10 +110,15 @@ export interface ActiveSessionsListProps {
     onRestore: (sessionId: string) => void;
 }
 
+const EMPTY_SESSIONS: QuickSearchBackgroundSessionSummary[] = [];
+
 export const ActiveSessionsList: React.FC<ActiveSessionsListProps> = ({ onRestore }) => {
+    // T10: subscribe via the app-owned background runtime. The runtime
+    // may not be bound yet during early modal mount (rare) — fall back
+    // to an empty list rather than throwing.
     const sessions = useSyncExternalStore(
-        (cb) => BackgroundSessionManager.getInstance().subscribe(cb),
-        () => BackgroundSessionManager.getInstance().getSessions(),
+        (cb) => AppContext.tryGetQuickSearchBackgroundRuntime()?.subscribe(cb) ?? (() => {}),
+        () => AppContext.tryGetQuickSearchBackgroundRuntime()?.getSessions() ?? EMPTY_SESSIONS,
     );
 
     const active = sessions.filter((s) => s.status !== 'completed');
@@ -121,7 +126,7 @@ export const ActiveSessionsList: React.FC<ActiveSessionsListProps> = ({ onRestor
     if (active.length === 0) return null;
 
     const handleCancel = (id: string) => {
-        BackgroundSessionManager.getInstance().cancelSession(id);
+        AppContext.tryGetQuickSearchBackgroundRuntime()?.cancelSession(id);
     };
 
     return (

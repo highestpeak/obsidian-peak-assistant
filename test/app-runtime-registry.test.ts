@@ -15,6 +15,7 @@ import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { LintScanResult } from '@/service/lint/types';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
+import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 
 function fakeRuntime(stamp: string): VaultLintRuntime {
 	return {
@@ -520,6 +521,210 @@ function testAllThreeRuntimeBindingsAreIndependent(): void {
 	console.log('PASS: allThreeRuntimeBindingsAreIndependent');
 }
 
+// ─── T10: Quick Search Background runtime binding tests ──────────────────
+
+interface QuickSearchBackgroundStubState {
+	disposed: boolean;
+	subscribeCalls: number;
+	getSessionsCalls: number;
+	detachCalls: number;
+	restoreCalls: number;
+	requestRestoreCalls: number;
+	consumePendingCalls: number;
+	openAndRestoreCalls: number;
+	cancelCalls: number;
+	abortAllCalls: number;
+}
+
+function newQuickSearchState(): QuickSearchBackgroundStubState {
+	return {
+		disposed: false,
+		subscribeCalls: 0,
+		getSessionsCalls: 0,
+		detachCalls: 0,
+		restoreCalls: 0,
+		requestRestoreCalls: 0,
+		consumePendingCalls: 0,
+		openAndRestoreCalls: 0,
+		cancelCalls: 0,
+		abortAllCalls: 0,
+	};
+}
+
+function fakeQuickSearchBackgroundRuntime(state: QuickSearchBackgroundStubState): QuickSearchBackgroundRuntime {
+	return {
+		subscribe(_listener) {
+			state.subscribeCalls += 1;
+			return () => {};
+		},
+		getSessions() {
+			state.getSessionsCalls += 1;
+			return [];
+		},
+		getActiveCount() {
+			return 0;
+		},
+		detachForeground() {
+			state.detachCalls += 1;
+			return null;
+		},
+		restoreToForeground(_sessionId) {
+			state.restoreCalls += 1;
+			return null;
+		},
+		requestRestore(_sessionId) {
+			state.requestRestoreCalls += 1;
+		},
+		consumePendingRestore() {
+			state.consumePendingCalls += 1;
+			return null;
+		},
+		openAndRestore(_sessionId) {
+			state.openAndRestoreCalls += 1;
+		},
+		cancelSession(_sessionId) {
+			state.cancelCalls += 1;
+		},
+		abortAll() {
+			state.abortAllCalls += 1;
+		},
+		dispose() {
+			state.disposed = true;
+		},
+	};
+}
+
+function testGetQuickSearchBackgroundRuntimeFailsLoudBeforeSet(): void {
+	const registry = new AppRuntimeRegistry();
+	assert.throws(
+		() => registry.getQuickSearchBackgroundRuntime(),
+		/no runtime is bound/,
+		'getQuickSearchBackgroundRuntime must fail-loud before composition runs',
+	);
+	console.log('PASS: getQuickSearchBackgroundRuntimeFailsLoudBeforeSet');
+}
+
+function testTryGetQuickSearchBackgroundRuntimeReturnsNullBeforeSet(): void {
+	const registry = new AppRuntimeRegistry();
+	assert.strictEqual(
+		registry.tryGetQuickSearchBackgroundRuntime(),
+		null,
+		'tryGetQuickSearchBackgroundRuntime must return null before composition runs',
+	);
+	console.log('PASS: tryGetQuickSearchBackgroundRuntimeReturnsNullBeforeSet');
+}
+
+function testSetQuickSearchBackgroundRuntimeStoresInstanceAndAllowsCalls(): void {
+	const registry = new AppRuntimeRegistry();
+	const state = newQuickSearchState();
+	const runtime = fakeQuickSearchBackgroundRuntime(state);
+	registry.setQuickSearchBackgroundRuntime(runtime);
+
+	assert.strictEqual(
+		registry.getQuickSearchBackgroundRuntime(),
+		runtime,
+		'registry must return the exact instance that was set',
+	);
+	assert.strictEqual(
+		registry.tryGetQuickSearchBackgroundRuntime(),
+		runtime,
+		'tryGet must agree with get when bound',
+	);
+	registry.getQuickSearchBackgroundRuntime().detachForeground();
+	registry.getQuickSearchBackgroundRuntime().requestRestore('bg-1');
+	registry.getQuickSearchBackgroundRuntime().consumePendingRestore();
+	registry.getQuickSearchBackgroundRuntime().cancelSession('bg-1');
+	assert.strictEqual(state.detachCalls, 1);
+	assert.strictEqual(state.requestRestoreCalls, 1);
+	assert.strictEqual(state.consumePendingCalls, 1);
+	assert.strictEqual(state.cancelCalls, 1);
+	console.log('PASS: setQuickSearchBackgroundRuntimeStoresInstanceAndAllowsCalls');
+}
+
+function testSetQuickSearchBackgroundRuntimeRejectsDoubleBindWithoutClear(): void {
+	const registry = new AppRuntimeRegistry();
+	registry.setQuickSearchBackgroundRuntime(fakeQuickSearchBackgroundRuntime(newQuickSearchState()));
+	assert.throws(
+		() => registry.setQuickSearchBackgroundRuntime(fakeQuickSearchBackgroundRuntime(newQuickSearchState())),
+		/already bound/,
+		'setQuickSearchBackgroundRuntime must reject a second bind without an intervening clear',
+	);
+	console.log('PASS: setQuickSearchBackgroundRuntimeRejectsDoubleBindWithoutClear');
+}
+
+function testClearQuickSearchBackgroundRuntimeDisposesAndAllowsRebind(): void {
+	const registry = new AppRuntimeRegistry();
+	const state = newQuickSearchState();
+	registry.setQuickSearchBackgroundRuntime(fakeQuickSearchBackgroundRuntime(state));
+	registry.clearQuickSearchBackgroundRuntime();
+	assert.strictEqual(state.disposed, true, 'clearQuickSearchBackgroundRuntime must dispose the bound runtime');
+	assert.throws(() => registry.getQuickSearchBackgroundRuntime(), /no runtime is bound/);
+	// Idempotent second clear.
+	registry.clearQuickSearchBackgroundRuntime();
+	// Can re-bind a fresh runtime.
+	const second = newQuickSearchState();
+	registry.setQuickSearchBackgroundRuntime(fakeQuickSearchBackgroundRuntime(second));
+	assert.ok(registry.tryGetQuickSearchBackgroundRuntime() !== null);
+	console.log('PASS: clearQuickSearchBackgroundRuntimeDisposesAndAllowsRebind');
+}
+
+function testAppContextDeclaresQuickSearchBackgroundDelegators(): void {
+	const acPath = path.resolve(process.cwd(), 'src/app/context/AppContext.ts');
+	const source = fs.readFileSync(acPath, 'utf8');
+	for (const symbol of [
+		'public static setQuickSearchBackgroundRuntime',
+		'public static getQuickSearchBackgroundRuntime',
+		'public static tryGetQuickSearchBackgroundRuntime',
+		'public static clearQuickSearchBackgroundRuntime',
+	]) {
+		assert.ok(
+			source.includes(symbol),
+			`AppContext.ts must declare '${symbol}'`,
+		);
+	}
+	assert.ok(
+		/runtimeRegistry\.setQuickSearchBackgroundRuntime/.test(source),
+		'AppContext.setQuickSearchBackgroundRuntime must delegate to runtimeRegistry',
+	);
+	assert.ok(
+		/runtimeRegistry\.tryGetQuickSearchBackgroundRuntime/.test(source),
+		'AppContext.tryGetQuickSearchBackgroundRuntime must delegate to runtimeRegistry',
+	);
+	assert.ok(
+		/clearQuickSearchBackgroundRuntime/.test(source),
+		'AppContext.clearForUnload must release the Quick Search background runtime',
+	);
+	console.log('PASS: appContextDeclaresQuickSearchBackgroundDelegators');
+}
+
+function testAllFourRuntimeBindingsAreIndependent(): void {
+	const registry = new AppRuntimeRegistry();
+	const ambientState = newAmbientState();
+	const vaultReviewState = newVaultReviewState();
+	const quickSearchState = newQuickSearchState();
+	registry.setVaultLintRuntime(fakeRuntime('four-way'));
+	registry.setAmbientRuntime(fakeAmbientRuntime(ambientState));
+	registry.setVaultReviewRuntime(fakeVaultReviewRuntime(vaultReviewState));
+	registry.setQuickSearchBackgroundRuntime(fakeQuickSearchBackgroundRuntime(quickSearchState));
+
+	// Clear quick search — other three must remain bound + undisposed.
+	registry.clearQuickSearchBackgroundRuntime();
+	assert.strictEqual(quickSearchState.disposed, true);
+	assert.strictEqual(ambientState.disposed, false);
+	assert.strictEqual(vaultReviewState.disposed, false);
+	assert.strictEqual(registry.tryGetAmbientRuntime() !== null, true);
+	assert.strictEqual(registry.tryGetVaultReviewRuntime() !== null, true);
+	assert.strictEqual(registry.tryGetVaultLintRuntime() !== null, true);
+
+	// Sweep the remaining three.
+	registry.clearVaultLintRuntime();
+	registry.clearAmbientRuntime();
+	registry.clearVaultReviewRuntime();
+	assert.strictEqual(ambientState.disposed, true);
+	assert.strictEqual(vaultReviewState.disposed, true);
+	console.log('PASS: allFourRuntimeBindingsAreIndependent');
+}
+
 function testVaultLintAndAmbientBindingsAreIndependent(): void {
 	const registry = new AppRuntimeRegistry();
 	const ambientState = newAmbientState();
@@ -555,6 +760,13 @@ async function main(): Promise<void> {
 	testClearVaultReviewRuntimeDisposesAndAllowsRebind();
 	testAppContextDeclaresVaultReviewDelegators();
 	testAllThreeRuntimeBindingsAreIndependent();
+	testGetQuickSearchBackgroundRuntimeFailsLoudBeforeSet();
+	testTryGetQuickSearchBackgroundRuntimeReturnsNullBeforeSet();
+	testSetQuickSearchBackgroundRuntimeStoresInstanceAndAllowsCalls();
+	testSetQuickSearchBackgroundRuntimeRejectsDoubleBindWithoutClear();
+	testClearQuickSearchBackgroundRuntimeDisposesAndAllowsRebind();
+	testAppContextDeclaresQuickSearchBackgroundDelegators();
+	testAllFourRuntimeBindingsAreIndependent();
 }
 
 main()

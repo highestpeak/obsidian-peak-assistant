@@ -12,8 +12,7 @@ import { parse as parseAiSearchAnalysisDoc, toCompletedAnalysisSnapshot } from '
 import { useSharedStore } from '../../store/sharedStore';
 import { useSearchSessionStore } from '../../store/searchSessionStore';
 import { cn } from '@/ui/react/lib/utils';
-import { BackgroundSessionManager, type BackgroundSession } from '@/service/BackgroundSessionManager';
-import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
+import type { QuickSearchBackgroundSessionSummary } from '@/service/search/background/QuickSearchBackgroundTypes';
 
 /** Mode icon for history list; matches SearchModal preset icons. */
 function PresetIcon({ mode, className }: { mode: AnalysisMode | null | undefined, className?: string }) {
@@ -34,7 +33,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 const ActiveSessionCard: React.FC<{
-    session: BackgroundSession;
+    session: QuickSearchBackgroundSessionSummary;
     onRestore: (id: string) => void;
     onCancel: (id: string) => void;
 }> = ({ session, onRestore, onCancel }) => {
@@ -79,29 +78,31 @@ const ActiveSessionCard: React.FC<{
 // RecentAIAnalysis
 // ---------------------------------------------------------------------------
 
+const EMPTY_SESSIONS: QuickSearchBackgroundSessionSummary[] = [];
+
 export const RecentAIAnalysis: React.FC<{
     onClose?: () => void;
 }> = ({ onClose }) => {
 
-    // Background sessions subscription
+    // T10: subscribe + restore + cancel all flow through the app-owned
+    // runtime. The runtime + modal-opener adapter own the static
+    // pending-restore state that used to live on `BackgroundSessionManager`.
     const bgSessions = useSyncExternalStore(
-        (cb) => BackgroundSessionManager.getInstance().subscribe(cb),
-        () => BackgroundSessionManager.getInstance().getSessions(),
+        (cb) => AppContext.tryGetQuickSearchBackgroundRuntime()?.subscribe(cb) ?? (() => {}),
+        () => AppContext.tryGetQuickSearchBackgroundRuntime()?.getSessions() ?? EMPTY_SESSIONS,
     );
 
     const handleRestore = useCallback((sessionId: string) => {
-        BackgroundSessionManager.pendingRestore = sessionId;
+        const runtime = AppContext.tryGetQuickSearchBackgroundRuntime();
+        if (!runtime) return;
         onClose?.();
-        // Open a new modal after a tick so the pending restore is picked up on mount
-        setTimeout(() => {
-            const ctx = AppContext.getInstance();
-            const modal = new QuickSearchModal(ctx);
-            modal.open();
-        }, 100);
+        // Open a new modal after a tick so the pending restore lands in
+        // `consumePendingRestore()` on the new mount.
+        setTimeout(() => runtime.openAndRestore(sessionId), 100);
     }, [onClose]);
 
     const handleCancelBg = useCallback((sessionId: string) => {
-        BackgroundSessionManager.getInstance().cancelSession(sessionId);
+        AppContext.tryGetQuickSearchBackgroundRuntime()?.cancelSession(sessionId);
     }, []);
 
     const [recentRecords, setRecentRecords] = useState<AIAnalysisHistoryRecord[]>([]);
