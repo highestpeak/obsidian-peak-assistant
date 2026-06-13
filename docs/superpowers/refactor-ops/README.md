@@ -270,12 +270,11 @@ Completed and accepted:
 
 Ready for owner approval:
 
-- No implementation handoff is ready to send as-is.
-- The existing T7 handoff is too small for the owner preference and should be rewritten before sending.
+- T7 Vault Lint Foundation Completion Wave: [`t7-vault-lint-foundation-completion-wave-handoff.md`](./t7-vault-lint-foundation-completion-wave-handoff.md)
 
 Next owner decision:
 
-- Codex should design the next Vault Lint closure wave with a larger default scope than the earlier T7 draft;
+- send the new `T7 Vault Lint Foundation Completion Wave` to Claude Code;
 - do not start Chat, Ambient Push, or Command Gateway yet.
 
 ## Supporting Files
@@ -294,7 +293,8 @@ Next owner decision:
 - [`t6-review-fix-runtime-ownership-config-defaults-handoff.md`](./t6-review-fix-runtime-ownership-config-defaults-handoff.md): T6 owner-review fix handoff.
 - [`t6r-t7-vault-lint-foundation-closure-handoff.md`](./t6r-t7-vault-lint-foundation-closure-handoff.md): paused future scale draft, not the current handoff.
 - [`config-defaults-governance.md`](./config-defaults-governance.md): configuration defaults governance.
-- [`t7-vault-lint-detector-context-closure-handoff.md`](./t7-vault-lint-detector-context-closure-handoff.md): T7 detector closure-wave handoff.
+- [`t7-vault-lint-detector-context-closure-handoff.md`](./t7-vault-lint-detector-context-closure-handoff.md): superseded small T7 detector handoff.
+- [`t7-vault-lint-foundation-completion-wave-handoff.md`](./t7-vault-lint-foundation-completion-wave-handoff.md): current large T7 Vault Lint completion handoff.
 
 ## Do Not Do
 

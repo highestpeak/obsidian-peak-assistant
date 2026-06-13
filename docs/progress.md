@@ -94,9 +94,10 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T6R Runtime Ownership + Config Defaults handoff ready：`docs/superpowers/refactor-ops/t6-review-fix-runtime-ownership-config-defaults-handoff.md`
 - [x] T6R implementation 完成并接受：`abb968d9` + Owner Review `docs/superpowers/audits/2026-06-13-t6r-owner-review-packet.md`
 - [x] Runtime Ownership / Config Defaults 两条规则写入 `AGENTS.md`、`CLAUDE.md`、`docs/conventions/configurability.md`、handoff template、owner review template
-- [x] T7 Vault Lint Detector Context Closure handoff ready：`docs/superpowers/refactor-ops/t7-vault-lint-detector-context-closure-handoff.md`
+- [x] T7 Vault Lint Detector Context Closure handoff ready but superseded：`docs/superpowers/refactor-ops/t7-vault-lint-detector-context-closure-handoff.md`
 - [x] T6R+T7 combined closure-wave draft captured but paused：`docs/superpowers/refactor-ops/t6r-t7-vault-lint-foundation-closure-handoff.md`（不是当前 handoff）
-- [ ] 下一步：基于 T6R owner review 重写更大粒度的下一轮 Vault Lint closure wave；不要直接发送旧 T7 小包
+- [x] T7 Vault Lint Foundation Completion Wave handoff ready：`docs/superpowers/refactor-ops/t7-vault-lint-foundation-completion-wave-handoff.md`
+- [ ] 下一步：把新的 T7 Foundation Completion Wave handoff 发给 Claude Code；不要发送旧 T7 小包
 - [ ] 不要提前做 Chat、Ambient Push、Command Gateway；Ambient 仍是 post-foundation，Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾

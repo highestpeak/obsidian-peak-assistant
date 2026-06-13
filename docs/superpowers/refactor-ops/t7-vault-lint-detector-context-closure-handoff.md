@@ -1,5 +1,15 @@
 # Peak Assistant Modernization Handoff: T7 Vault Lint Detector Context Closure
 
+Status:
+- Superseded.
+- Do not send this smaller T7 handoff as-is.
+- Use [`t7-vault-lint-foundation-completion-wave-handoff.md`](./t7-vault-lint-foundation-completion-wave-handoff.md) instead.
+
+Why superseded:
+- T6R has now landed and been accepted.
+- The owner wants larger, more coherent closure waves.
+- The replacement handoff includes detector context closure, stale comments, known broken Vault Lint tests, source guard sweep, and dependency inventory updates.
+
 ## 中文摘要
 
 这一步在全局架构里的位置：
