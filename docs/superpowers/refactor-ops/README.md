@@ -267,15 +267,14 @@ Completed and accepted:
 - T5 Vault Lint Runtime Closure Wave: [`t5-vault-lint-runtime-closure-wave-handoff.md`](./t5-vault-lint-runtime-closure-wave-handoff.md) + [`2026-06-13-t5-owner-review-packet.md`](../audits/2026-06-13-t5-owner-review-packet.md)
 - T6 Vault Lint Ports Extraction + Service-as-Plain-Class: [`t6-vault-lint-ports-service-plain-class-handoff.md`](./t6-vault-lint-ports-service-plain-class-handoff.md) + [`2026-06-13-t6-owner-review-packet.md`](../audits/2026-06-13-t6-owner-review-packet.md)
 - T6R Runtime Ownership + Config Defaults Governance: [`t6-review-fix-runtime-ownership-config-defaults-handoff.md`](./t6-review-fix-runtime-ownership-config-defaults-handoff.md) + [`2026-06-13-t6r-owner-review-packet.md`](../audits/2026-06-13-t6r-owner-review-packet.md)
-
-Ready for owner approval:
-
-- T7 Vault Lint Foundation Completion Wave: [`t7-vault-lint-foundation-completion-wave-handoff.md`](./t7-vault-lint-foundation-completion-wave-handoff.md)
+- T7 Vault Lint Foundation Completion Wave: [`t7-vault-lint-foundation-completion-wave-handoff.md`](./t7-vault-lint-foundation-completion-wave-handoff.md) + [`2026-06-13-t7-owner-review-packet.md`](../audits/2026-06-13-t7-owner-review-packet.md)
 
 Next owner decision:
 
-- send the new `T7 Vault Lint Foundation Completion Wave` to Claude Code;
-- do not start Chat, Ambient Push, or Command Gateway yet.
+- prepare a larger T8 second-capability handoff instead of continuing Vault Lint micro-polish;
+- recommended target: Ambient Push foundation readiness / runtime boundary wave;
+- do not start Chat or Command Gateway yet;
+- do not add new Ambient features in T8; foundation cleanup first.
 
 ## Supporting Files
 
@@ -294,7 +293,7 @@ Next owner decision:
 - [`t6r-t7-vault-lint-foundation-closure-handoff.md`](./t6r-t7-vault-lint-foundation-closure-handoff.md): paused future scale draft, not the current handoff.
 - [`config-defaults-governance.md`](./config-defaults-governance.md): configuration defaults governance.
 - [`t7-vault-lint-detector-context-closure-handoff.md`](./t7-vault-lint-detector-context-closure-handoff.md): superseded small T7 detector handoff.
-- [`t7-vault-lint-foundation-completion-wave-handoff.md`](./t7-vault-lint-foundation-completion-wave-handoff.md): current large T7 Vault Lint completion handoff.
+- [`t7-vault-lint-foundation-completion-wave-handoff.md`](./t7-vault-lint-foundation-completion-wave-handoff.md): accepted T7 Vault Lint completion handoff.
 
 ## Do Not Do
 

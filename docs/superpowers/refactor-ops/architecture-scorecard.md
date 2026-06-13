@@ -124,6 +124,7 @@ Use the ledger for checkpoints. Detailed per-dimension scores belong in the Owne
 | 2026-06-13 | T5 Vault Lint Runtime Closure Wave | `eb45195` | 76 | 63 | 72 | 78 | 71 | Accepted. Deleted `vaultLintStore`, moved Vault X-Ray runtime truth to RunEnvelope projection, and reduced service->ui by 1. Remaining blocker is service-locator dependencies inside `VaultLintService`. |
 | 2026-06-13 | T6 Vault Lint Ports + Plain Service | `89e0406` | 82 | 68 | 78 | 82 | 77 | Accepted. `VaultLintService` is now constructor-injected with ports, `SignalRegistry` is deleted, and service->app drops by 1. Remaining blocker is detector-level AppContext/sqlite access in `signals/*`. |
 | 2026-06-13 | T6R Runtime Ownership + Config Defaults | `abb968d9` | 80 | 73 | 83 | 84 | 79 | Accepted. `currentRuntime` moved from service-layer module state to app-owned `AppRuntimeRegistry`; `DEFAULT_VAULT_LINT_CONFIG` moved to `VaultLintDefaults.ts` with template drift guards. Boundary audit stays flat at 418; detector AppContext access remains for the next closure wave. |
+| 2026-06-13 | T7 Vault Lint Foundation Completion Wave | `32fde24b` + `216dd431` | 84 | 79 | 85 | 89 | 84 | Accepted. Detector-side Obsidian/sqlite/search-graph reads moved behind `VaultLintDetectorContextPort`; `signals/*` now run with fake context tests and source guards. Boundary audit drops 418 -> 415. This should close Vault Lint foundation work and move the next wave to a second capability. |
 
 ## Evidence Rules
 

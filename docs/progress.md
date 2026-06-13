@@ -67,7 +67,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ## Next
 
-### 0. Active — Architecture Modernization T1-T7
+### 0. Active — Architecture Modernization T1-T8
 
 - [x] T0 Boundary Baseline 完成：`9850eef` + Owner Review `667bfdd`
 - [x] T1 Vault Lint Contract Seed handoff ready：`docs/superpowers/refactor-ops/t1-vault-lint-contract-seed-handoff.md`
@@ -97,8 +97,10 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T7 Vault Lint Detector Context Closure handoff ready but superseded：`docs/superpowers/refactor-ops/t7-vault-lint-detector-context-closure-handoff.md`
 - [x] T6R+T7 combined closure-wave draft captured but paused：`docs/superpowers/refactor-ops/t6r-t7-vault-lint-foundation-closure-handoff.md`（不是当前 handoff）
 - [x] T7 Vault Lint Foundation Completion Wave handoff ready：`docs/superpowers/refactor-ops/t7-vault-lint-foundation-completion-wave-handoff.md`
-- [ ] 下一步：把新的 T7 Foundation Completion Wave handoff 发给 Claude Code；不要发送旧 T7 小包
-- [ ] 不要提前做 Chat、Ambient Push、Command Gateway；Ambient 仍是 post-foundation，Command Gateway 仍是 T12 capstone
+- [x] T7 implementation 完成并接受：`32fde24b` + `216dd431` + Owner Review `docs/superpowers/audits/2026-06-13-t7-owner-review-packet.md`
+- [x] T7 结论：Vault Lint foundation closure 完成；不要继续做 Vault Lint 微小 polish，除非有 bug
+- [ ] 下一步：Codex 准备 T8 第二 capability 大波 handoff；推荐 Ambient Push foundation readiness/runtime boundary wave
+- [ ] 不要提前做 Chat 或 Command Gateway；Ambient 下一轮只做 foundation cleanup，不做新产品功能；Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾
 
