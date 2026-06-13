@@ -146,9 +146,10 @@ export function refreshRelatedNotes(): void {
 }
 
 export async function openVaultXRay(): Promise<void> {
-	const { VaultLintService } = await import('@/service/lint/VaultLintService');
-	const lintService = VaultLintService.getInstance();
-	lintService.initRegistry();
+	// T6: the Vault Lint runtime is bound at plugin boot
+	// (`main.onload` -> `composeVaultLintRuntime` -> `setVaultLintRuntime`)
+	// and the detector registry is already initialized there. The view
+	// itself only needs to be activated.
 	await getContext().viewManager.activateVaultXRayView();
 }
 

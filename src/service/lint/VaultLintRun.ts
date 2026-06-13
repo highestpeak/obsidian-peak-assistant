@@ -1,31 +1,17 @@
-// T4 Vault Lint RunEnvelope vertical slice — manual-scan runner.
+// T4-T6 Vault Lint RunEnvelope runner.
 //
-// This file is the first real adopter of `RunEnvelope`. Before T4 the UI
-// panel called `VaultLintService.getInstance().runFullScan()` directly and
-// the only observability was reverse-direction writes into
-// `useVaultLintStore`. After T4 the UI panel calls
-// `runVaultLintManualScan()`, which:
-//
-//   1. constructs its OWN `InMemoryRunRecorder` (no singleton, no registry);
-//   2. starts a run keyed by `VAULT_LINT_CAPABILITY_ID` (T1 contract);
-//   3. drives `VaultLintService.runFullScan(callbacks)` with progress and
-//      detector-warning callbacks that translate into `RunEvent`s;
-//   4. records the scan result as an `ArtifactRef` of kind `'result'`;
-//   5. finishes the run with `'completed'` or, on throw, `'failed'`.
-//
-// The service still writes to `useVaultLintStore` for now — that store is
-// the UI's current source of truth and T7 will replace it with an explicit
-// projection of the envelope's event trace. T4 is deliberately a vertical
-// slice, not a UI rewrite.
+// The runner is the first real adopter of `RunEnvelope` and after T5
+// the sole driver of UI state through its `onEvent` sink. T6 changes
+// only the production scan target: instead of a dynamic
+// `VaultLintService.getInstance()`, the runner now reaches the engine
+// through `getVaultLintRuntime()` — a single, fail-loud, boot-bound
+// runtime binding. Tests still inject `options.scan` and never touch
+// the binding.
 //
 // Boundary discipline:
-//   - This runner does NOT import obsidian, AppContext, sqliteStoreManager,
-//     or any zustand store. The companion test
-//     `test/vault-lint-runner.test.ts` enforces that by source-string scan.
-//   - It does import `VaultLintService` (same layer) because driving the
-//     real scan engine is the runner's whole job in production. Tests
-//     never go through `VaultLintService.getInstance()`; they inject a
-//     fake `scan` function instead.
+//   - The runner does NOT statically import `VaultLintService`,
+//     `AppContext`, `sqliteStoreManager`, or any zustand store. The
+//     companion test enforces that by source-string scan.
 //   - It introduces no module-level mutable state, no singleton, no
 //     registry.
 
@@ -127,11 +113,13 @@ function defaultIdFactory(prefix: string): RunIdFactory {
 async function defaultScan(
 	callbacks: VaultLintRunCallbacks,
 ): Promise<LintScanResult> {
-	// Lazy import so production code path resolves the singleton at call
-	// time, not at module load. Tests never reach this branch because they
-	// pass `options.scan`.
-	const { VaultLintService } = await import('./VaultLintService');
-	return VaultLintService.getInstance().runFullScan(callbacks);
+	// T6: production reaches the engine through the central
+	// `getVaultLintRuntime()` binding (set by the app-layer composition
+	// at plugin boot). The runner does NOT touch `VaultLintService` or
+	// the service-locator pattern any more. Tests inject `options.scan`
+	// and never reach this branch.
+	const { getVaultLintRuntime } = await import('./VaultLintRuntime');
+	return getVaultLintRuntime().runFullScan(callbacks);
 }
 
 function buildArtifactTitle(result: LintScanResult): string {

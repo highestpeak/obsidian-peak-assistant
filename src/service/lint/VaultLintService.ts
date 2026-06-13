@@ -1,16 +1,30 @@
-import { randomUUID } from 'crypto';
-import { AppContext } from '@/app/context/AppContext';
-import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
-import { SignalRegistry } from './SignalRegistry';
+// T6 Vault Lint engine — plain class, ports DI, no service locator.
+//
+// Before T6 the engine was a singleton (`VaultLintService.getInstance()`)
+// that resolved its own dependencies through `AppContext.getInstance()`,
+// `sqliteStoreManager`, and `SignalRegistry.getInstance()`. After T6
+// every dependency arrives through the constructor as a port; the
+// engine itself never touches the Obsidian, sqlite, or detector
+// singletons. The runtime composition
+// (`src/app/lint/composeVaultLintRuntime.ts`) is the ONE place that
+// wires real adapters into the ports; tests construct fake ports
+// directly.
+//
+// Implements `VaultLintRuntime` so the central `getVaultLintRuntime()`
+// binding can return this instance directly.
+
 import { computeHealthScore } from './HealthScoreEngine';
-import { orphanDetector, brokenLinkDetector } from './signals/structural';
-import { emptyDetector, buildContentDetectors } from './signals/content';
-import { untaggedDetector } from './signals/tags';
-import type { VaultLintConfig, LintScanResult, LintFinding, LintScanContext } from './types';
+import type {
+	LintFinding,
+	LintScanContext,
+	LintScanResult,
+	VaultLintConfig,
+} from './types';
+import type { VaultLintPorts } from './ports/VaultLintPorts';
+import type { VaultLintRuntime } from './VaultLintRuntime';
 import type { VaultLintRunCallbacks } from './VaultLintRun';
 
-const DEFAULT_CONFIG: VaultLintConfig = {
+export const DEFAULT_VAULT_LINT_CONFIG: VaultLintConfig = {
 	dimensionWeights: { structural: 0.30, content: 0.20, temporal: 0.15, semantic: 0.25, tags: 0.10 },
 	thresholds: {
 		stubMaxChars: 100, oversizedMinWords: 5000, duplicateMinSimilarity: 0.92,
@@ -21,85 +35,47 @@ const DEFAULT_CONFIG: VaultLintConfig = {
 	scan: { incrementalDebounceMs: 30000, fullScanIntervalHours: 168 },
 };
 
-export class VaultLintService {
-	private static instance: VaultLintService | null = null;
-	private config: VaultLintConfig = DEFAULT_CONFIG;
-	private registryInitialized = false;
+function mergeConfig(partial: Partial<VaultLintConfig> | null): VaultLintConfig {
+	if (partial === null) return DEFAULT_VAULT_LINT_CONFIG;
+	return {
+		...DEFAULT_VAULT_LINT_CONFIG,
+		...partial,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, ...(partial.thresholds ?? {}) },
+		scan: { ...DEFAULT_VAULT_LINT_CONFIG.scan, ...(partial.scan ?? {}) },
+		dimensionWeights: {
+			...DEFAULT_VAULT_LINT_CONFIG.dimensionWeights,
+			...(partial.dimensionWeights ?? {}),
+		},
+	};
+}
 
-	static getInstance(): VaultLintService {
-		if (!VaultLintService.instance) VaultLintService.instance = new VaultLintService();
-		return VaultLintService.instance;
-	}
-
-	/** Register all built-in detectors. Call once at plugin startup. */
-	initRegistry(): void {
-		if (this.registryInitialized) return;
-		const registry = SignalRegistry.getInstance();
-		// Phase 1 detectors
-		registry.register(orphanDetector);
-		registry.register(brokenLinkDetector);
-		registry.register(emptyDetector);
-		// buildContentDetectors returns stub detector — register it
-		for (const d of buildContentDetectors(this.config)) {
-			if (d.id !== 'C-EMPTY') registry.register(d); // C-EMPTY already registered above
-		}
-		registry.register(untaggedDetector);
-		this.registryInitialized = true;
-	}
-
-	/** Load config from template file, fall back to DEFAULT_CONFIG. */
-	async loadConfig(): Promise<void> {
-		try {
-			const tm = AppContext.getInstance().manager.getTemplateManager?.();
-			if (tm) {
-				const parsed = await tm.loadJson<Partial<VaultLintConfig>>(ConfigTemplateId.VaultLintConfig);
-				if (parsed) {
-					this.config = {
-						...DEFAULT_CONFIG,
-						...parsed,
-						thresholds: { ...DEFAULT_CONFIG.thresholds, ...(parsed.thresholds ?? {}) },
-						scan: { ...DEFAULT_CONFIG.scan, ...(parsed.scan ?? {}) },
-						dimensionWeights: { ...DEFAULT_CONFIG.dimensionWeights, ...(parsed.dimensionWeights ?? {}) },
-					};
-				}
-			}
-		} catch {
-			// Template not found — use defaults
-		}
-	}
+export class VaultLintService implements VaultLintRuntime {
+	constructor(private readonly ports: VaultLintPorts) {}
 
 	/**
-	 * Run a full scan: all non-LLM detectors in parallel.
-	 *
-	 * T5: this method no longer writes the UI store. All runtime state
-	 * (progress / current scan / scanning indicator / failure) is
-	 * projected by `useVaultLintRunState` from the `RunEnvelope` trace
-	 * the runner builds around this call. The service only:
-	 *   1. emits progress callbacks (the runner translates these to
-	 *      `RunEvent.progress`);
-	 *   2. forwards detector failures via `onDetectorWarning` (the runner
-	 *      translates these to `RunEvent.log(warn)`);
-	 *   3. persists the scan result via `VaultLintRepo.saveScanResult`.
-	 *
-	 * The previous reverse-direction `useVaultLintStore` writes and the
-	 * `loadTrendHistory` read have been deleted; the trend history table
-	 * had no surviving UI consumer.
+	 * Run a full scan: all non-LLM detectors in parallel. Pure dependency
+	 * flow through the constructor ports — no `getInstance()` anywhere
+	 * in this method.
 	 */
 	async runFullScan(callbacks?: VaultLintRunCallbacks): Promise<LintScanResult> {
+		const { config, vault, persistence, detectorRegistry, idFactory, clock } = this.ports;
+
 		callbacks?.onProgress?.({ phase: 'init' });
 
-		await this.loadConfig();
+		const loaded = await config.loadConfig().catch(() => null);
+		const activeConfig = mergeConfig(loaded);
 
-		const lintRepo = sqliteStoreManager.getVaultLintRepo();
-		const app = AppContext.getInstance().app;
-		const files = app.vault.getMarkdownFiles();
-		const totalNotes = files.length;
+		// Defense in depth: composition already initialized the registry
+		// at boot, but a test that constructs the service with a bare
+		// registry can rely on this call to populate it.
+		detectorRegistry.ensureInitialized(activeConfig);
 
-		// Load dismissals
-		const dismissalList = await lintRepo.loadActiveDismissals();
-		const dismissals = new Map(dismissalList.map(d => [`${d.signalId}:${d.filePath}`, d]));
+		const totalNotes = vault.getMarkdownFileCount();
 
-		const lastScanTimestamp = await lintRepo.getLastFullScanTimestamp();
+		const dismissalList = await persistence.loadActiveDismissals();
+		const dismissals = new Map(dismissalList.map((d) => [`${d.signalId}:${d.filePath}`, d]));
+
+		const lastScanTimestamp = await persistence.getLastFullScanTimestamp();
 		const context: LintScanContext = {
 			totalNotes,
 			allNodeIds: [],
@@ -107,8 +83,8 @@ export class VaultLintService {
 			dismissals,
 		};
 
-		const detectors = SignalRegistry.getInstance().getNonLlm();
-		const startedAt = Date.now();
+		const detectors = detectorRegistry.getNonLlm();
+		const startedAt = clock.now();
 
 		callbacks?.onProgress?.({
 			phase: 'scanning',
@@ -117,28 +93,32 @@ export class VaultLintService {
 			total: detectors.length,
 		});
 
-		// Run all non-LLM detectors in parallel
 		const findingArrays = await Promise.all(
-			detectors.map(d => d.detect(context).catch(err => {
-				console.warn(`[VaultLintService] detector ${d.id} failed:`, err);
-				callbacks?.onDetectorWarning?.(d.id, err);
-				return [] as LintFinding[];
-			}))
+			detectors.map((detector) =>
+				detector.detect(context).catch((err) => {
+					console.warn(`[VaultLintService] detector ${detector.id} failed:`, err);
+					callbacks?.onDetectorWarning?.(detector.id, err);
+					return [] as LintFinding[];
+				}),
+			),
 		);
 
 		const findings = findingArrays.flat();
-		const completedAt = Date.now();
+		const completedAt = clock.now();
 
-		const { healthScore, dimensionScores } = computeHealthScore(findings, totalNotes, this.config);
+		const { healthScore, dimensionScores } = computeHealthScore(
+			findings,
+			totalNotes,
+			activeConfig,
+		);
 
-		// Build signal counts
 		const signalCounts: LintScanResult['signalCounts'] = {};
 		for (const f of findings) {
 			signalCounts[f.signalId] = (signalCounts[f.signalId] ?? 0) + 1;
 		}
 
 		const result: LintScanResult = {
-			id: randomUUID(),
+			id: idFactory.nextScanId(),
 			scanType: 'full',
 			startedAt,
 			completedAt,
@@ -150,10 +130,14 @@ export class VaultLintService {
 			signalCounts,
 		};
 
-		await lintRepo.saveScanResult(result);
+		await persistence.saveScanResult(result);
 
 		callbacks?.onProgress?.({ phase: 'cleared' });
 
 		return result;
+	}
+
+	loadLatestScan(): Promise<LintScanResult | null> {
+		return this.ports.persistence.loadLatestScan();
 	}
 }

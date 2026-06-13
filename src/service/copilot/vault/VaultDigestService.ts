@@ -15,7 +15,7 @@
  */
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { VaultLintService } from '@/service/lint/VaultLintService';
+import { getVaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { LintScanResult, LintDimension } from '@/service/lint/types';
 import { getVaultFingerprint, type VaultFingerprint } from './VaultFingerprintService';
 
@@ -295,12 +295,14 @@ export async function buildVaultDigest(): Promise<VaultDigest | null> {
 	}
 
 	// ─── Lint health snapshot (read latest scan, don't trigger new one) ───
+	// T6: reach the Vault Lint engine through the central runtime
+	// binding. Detector registry init happens in
+	// `composeVaultLintRuntime` at plugin boot, so this code path no
+	// longer initializes anything — it just reads the latest scan
+	// through the runtime's `loadLatestScan` port.
 	let health: VaultDigest['health'] = null;
 	try {
-		// Initialize registry so the cached scan can be deserialized correctly
-		VaultLintService.getInstance().initRegistry();
-		const lintRepo = sqliteStoreManager.getVaultLintRepo();
-		const latest: LintScanResult | null = await lintRepo.loadLatestScan();
+		const latest: LintScanResult | null = await getVaultLintRuntime().loadLatestScan();
 		if (latest) {
 			health = {
 				score: latest.healthScore,

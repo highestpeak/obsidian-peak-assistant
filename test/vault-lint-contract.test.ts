@@ -85,32 +85,61 @@ function testProgressEventOnlyHasThreePhases(): void {
 
 function testDependencyInventoryCoversAllResolutionSites(): void {
 	const inv = VAULT_LINT_CURRENT_DEPENDENCIES;
-	assert.strictEqual(inv.appContextResolutions.length, 2, 'expect exactly 2 AppContext resolutions in VaultLintService');
+	// T6: the engine no longer resolves AppContext itself, but the two
+	// app-layer adapters do, so the inventory still records both
+	// resolution sites — relocated to `src/app/lint/*Adapter.ts`.
+	assert.strictEqual(
+		inv.appContextResolutions.length,
+		2,
+		'expect exactly 2 AppContext resolutions, now in app-layer adapters',
+	);
+	for (const resolution of inv.appContextResolutions) {
+		assert.ok(
+			resolution.site.startsWith('src/app/lint/'),
+			`T6 closure: AppContext resolution must live in src/app/lint/, found '${resolution.site}'`,
+		);
+	}
 	assert.ok(
 		inv.appContextResolutions.some((r) => r.access.includes('getTemplateManager')),
-		'inventory must include loadConfig TemplateManager resolution',
+		'inventory must include TemplateManager resolution (now in ObsidianVaultLintConfigAdapter)',
 	);
 	assert.ok(
 		inv.appContextResolutions.some((r) => r.access.includes('app.vault.getMarkdownFiles')),
-		'inventory must include runFullScan vault resolution',
+		'inventory must include vault resolution (now in ObsidianVaultLintVaultAdapter)',
 	);
 
 	const singletonNames = inv.singletonResolutions.map((r) => r.singleton);
-	for (const expected of [
+	// T6 closure proof: the engine's old service-locator exits are
+	// gone from the inventory. Nothing should still list them.
+	for (const retired of [
 		'VaultLintService.getInstance()',
 		'SignalRegistry.getInstance()',
-		'sqliteStoreManager.getVaultLintRepo()',
+		'useVaultLintStore.getState()',
 	]) {
 		assert.ok(
-			singletonNames.includes(expected),
-			`inventory must list singleton '${expected}'`,
+			!singletonNames.includes(retired),
+			`T6 closure: inventory must no longer list singleton '${retired}'`,
 		);
 	}
-	// T5 closure proof: the UI store was deleted; the service must not
-	// claim it as a runtime dependency any more.
+	// `sqliteStoreManager.getVaultLintRepo()` is still listed but its
+	// site moved to `composeVaultLintRuntime` (one-shot at boot, not a
+	// per-scan resolution). The new central runtime binding is listed
+	// as well.
 	assert.ok(
-		!singletonNames.includes('useVaultLintStore.getState()'),
-		'T5 closure: inventory must no longer list useVaultLintStore.getState()',
+		singletonNames.includes('sqliteStoreManager.getVaultLintRepo()'),
+		'inventory must still list the one-shot sqlite repo handoff in composeVaultLintRuntime',
+	);
+	assert.ok(
+		inv.singletonResolutions.some(
+			(r) => r.singleton === 'sqliteStoreManager.getVaultLintRepo()' && r.site.includes('composeVaultLintRuntime'),
+		),
+		'T6 closure: the sqlite repo resolution must live in composeVaultLintRuntime, not the engine',
+	);
+	assert.ok(
+		inv.singletonResolutions.some(
+			(r) => r.singleton.includes('getVaultLintRuntime') && r.site.includes('VaultLintRuntime'),
+		),
+		'T6: the central runtime binding must be inventoried',
 	);
 
 	const sideEffectKinds = new Set(inv.sideEffects.map((s) => s.kind));
@@ -121,16 +150,25 @@ function testDependencyInventoryCoversAllResolutionSites(): void {
 		!sideEffectKinds.has('ui.store.write'),
 		'T5 closure: inventory must no longer record ui.store.write side effects',
 	);
-	// `loadTrendHistory` was removed when the trend display was retired.
 	assert.ok(
 		!inv.sideEffects.some((s) => s.target.includes('loadTrendHistory')),
 		'T5 closure: inventory must no longer reference VaultLintRepo.loadTrendHistory',
 	);
-	// stateOwner string must reflect the post-T5 single-truth layout.
 	assert.ok(
 		!inv.stateOwner.includes('useVaultLintStore'),
 		'T5 closure: stateOwner must not mention useVaultLintStore any more',
 	);
+	// T6 closure: every side effect site must point at the adapter or
+	// the engine, NOT a top-level VaultLintService call (which would
+	// imply the engine still owns the side effect).
+	for (const sideEffect of inv.sideEffects) {
+		assert.ok(
+			!/VaultLintService\.runFullScan: app\.|VaultLintService\.runFullScan: VaultLintRepo|VaultLintService\.loadConfig/.test(
+				`${sideEffect.site}: ${sideEffect.target}`,
+			),
+			`T6 closure: side effect '${sideEffect.target}' should be attributed to its adapter, not the engine`,
+		);
+	}
 
 	const consumerSites = inv.consumers.map((c) => c.site);
 	for (const expected of [

@@ -96,7 +96,7 @@ export interface VaultLintSideEffect {
 
 export interface VaultLintConsumer {
 	readonly site: string;
-	readonly mode: 'runFullScan' | 'initRegistry' | 'runManualScan';
+	readonly mode: 'runFullScan' | 'initRegistry' | 'runManualScan' | 'loadLatestScan';
 }
 
 // `runManualScan` is the T4 mode: the consumer drives a manual scan
@@ -122,59 +122,65 @@ export interface VaultLintDependencyInventory {
 
 export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 	capabilityId: VAULT_LINT_CAPABILITY_ID,
-	// T5 closure: `useVaultLintStore` was deleted; the only persistent
-	// state owner is `VaultLintRepo`. UI runtime state is projected from
-	// the `RunEnvelope` event trace inside `useVaultLintRunState`, which
-	// is per-mount React state and not a long-lived store.
-	stateOwner: 'VaultLintRepo (persistence) + per-run RunEnvelope trace',
+	// T6 closure: the engine no longer resolves its own dependencies.
+	// `VaultLintService` is a plain class that receives `VaultLintPorts`
+	// through its constructor; the app-layer `composeVaultLintRuntime`
+	// wires real adapters at boot and `setVaultLintRuntime` binds the
+	// instance for consumers. Persistence still lives in `VaultLintRepo`
+	// (sqlite); the central runtime binding replaces the old singleton.
+	stateOwner: 'VaultLintRepo (persistence) + central VaultLintRuntime binding',
+	// T6 retired: the engine no longer resolves AppContext. The two
+	// remaining resolutions live in app-layer adapters
+	// (`ObsidianVaultLintConfigAdapter`, `ObsidianVaultLintVaultAdapter`).
+	// They are listed here so the contract still describes WHERE
+	// AppContext is reached, even though it is no longer inside the
+	// engine itself.
 	appContextResolutions: [
 		{
-			site: 'VaultLintService.loadConfig',
+			site: 'src/app/lint/ObsidianVaultLintConfigAdapter.ts',
 			access: 'AppContext.getInstance().manager.getTemplateManager()',
 			purpose: 'load optional config-vault-lint template; falls back to DEFAULT_CONFIG',
 			optional: true,
 		},
 		{
-			site: 'VaultLintService.runFullScan',
-			access: 'AppContext.getInstance().app.vault.getMarkdownFiles()',
-			purpose: 'enumerate vault markdown files',
+			site: 'src/app/lint/ObsidianVaultLintVaultAdapter.ts',
+			access: 'AppContext.getInstance().app.vault.getMarkdownFiles().length',
+			purpose: 'expose markdown file count to the engine via VaultLintVaultPort',
 			optional: false,
 		},
 	],
 	singletonResolutions: [
+		// T6 retired: `VaultLintService.getInstance()` no longer exists;
+		// the engine is constructed once by `composeVaultLintRuntime`
+		// and stored behind `getVaultLintRuntime()`.
+		// T6 retired: `SignalRegistry.getInstance()` no longer exists;
+		// detectors live in a per-runtime `InMemoryDetectorRegistry`
+		// instance constructed at boot.
 		{
-			site: 'VaultLintService (file)',
-			singleton: 'VaultLintService.getInstance()',
-			purpose: 'process-level scan orchestrator',
+			site: 'src/service/lint/VaultLintRuntime.ts',
+			singleton: 'getVaultLintRuntime() / setVaultLintRuntime()',
+			purpose: 'central, fail-loud Vault Lint runtime binding (transitional, single point of contact)',
 		},
 		{
-			site: 'VaultLintService.initRegistry / runFullScan',
-			singleton: 'SignalRegistry.getInstance()',
-			purpose: 'global detector registry shared across initializations',
-		},
-		{
-			site: 'VaultLintService.runFullScan',
+			site: 'src/app/lint/composeVaultLintRuntime.ts',
 			singleton: 'sqliteStoreManager.getVaultLintRepo()',
-			purpose: 'persistence and history of scan results / dismissals',
+			purpose: 'one-shot at boot: hand the sqlite repo to the persistence adapter',
 		},
-		// T5 retired: `useVaultLintStore.getState()` is no longer touched
-		// by the service. The store file was deleted entirely.
 	],
 	sideEffects: [
-		{ kind: 'vault.read', site: 'VaultLintService.runFullScan', target: 'app.vault.getMarkdownFiles' },
-		{ kind: 'template.read', site: 'VaultLintService.loadConfig', target: 'ConfigTemplateId.VaultLintConfig' },
-		{ kind: 'sqlite.read', site: 'VaultLintService.runFullScan', target: 'VaultLintRepo.loadActiveDismissals' },
-		{ kind: 'sqlite.read', site: 'VaultLintService.runFullScan', target: 'VaultLintRepo.getLastFullScanTimestamp' },
-		{ kind: 'sqlite.write', site: 'VaultLintService.runFullScan', target: 'VaultLintRepo.saveScanResult' },
-		// T5 retired: `loadTrendHistory` read + `ui.store.write` x2 were
-		// removed when the UI store was deleted.
+		{ kind: 'vault.read', site: 'ObsidianVaultLintVaultAdapter.getMarkdownFileCount', target: 'app.vault.getMarkdownFiles().length' },
+		{ kind: 'template.read', site: 'ObsidianVaultLintConfigAdapter.loadConfig', target: 'ConfigTemplateId.VaultLintConfig' },
+		{ kind: 'sqlite.read', site: 'SqliteVaultLintPersistenceAdapter.loadActiveDismissals', target: 'VaultLintRepo.loadActiveDismissals' },
+		{ kind: 'sqlite.read', site: 'SqliteVaultLintPersistenceAdapter.getLastFullScanTimestamp', target: 'VaultLintRepo.getLastFullScanTimestamp' },
+		{ kind: 'sqlite.read', site: 'SqliteVaultLintPersistenceAdapter.loadLatestScan', target: 'VaultLintRepo.loadLatestScan' },
+		{ kind: 'sqlite.write', site: 'SqliteVaultLintPersistenceAdapter.saveScanResult', target: 'VaultLintRepo.saveScanResult' },
 		{ kind: 'log.warn', site: 'VaultLintService.runFullScan', target: 'console.warn (detector failure)' },
-		{ kind: 'crypto.random', site: 'VaultLintService.runFullScan', target: 'crypto.randomUUID (scanId)' },
+		{ kind: 'crypto.random', site: 'DefaultVaultLintIdFactory.nextScanId', target: 'crypto.randomUUID (scanId)' },
 	],
 	consumers: [
-		{ site: 'src/app/commands/PeakCommandActions.ts:openVaultXRay', mode: 'initRegistry' },
+		{ site: 'src/app/commands/PeakCommandActions.ts:openVaultXRay', mode: 'runManualScan' },
 		{ site: 'src/ui/view/vault-lint/VaultXRayPanel.tsx', mode: 'runManualScan' },
-		{ site: 'src/service/copilot/vault/VaultDigestService.ts', mode: 'initRegistry' },
+		{ site: 'src/service/copilot/vault/VaultDigestService.ts', mode: 'loadLatestScan' },
 	],
 	knownDimensions: ['structural', 'content', 'temporal', 'semantic', 'tags'],
 } as const;

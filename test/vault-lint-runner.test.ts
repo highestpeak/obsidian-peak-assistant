@@ -389,7 +389,7 @@ function testServiceAcceptsCallbacksAndHasNoUiStoreCoupling(): void {
 		"service must emit onProgress({ phase: 'cleared' })",
 	);
 	assert.ok(
-		/callbacks\?\.onDetectorWarning\?\.\(\s*d\.id\s*,\s*err\s*\)/.test(source),
+		/callbacks\?\.onDetectorWarning\?\.\(\s*\w+\.id\s*,\s*err\s*\)/.test(source),
 		'service must forward detector failures to onDetectorWarning',
 	);
 
@@ -414,6 +414,32 @@ function testServiceAcceptsCallbacksAndHasNoUiStoreCoupling(): void {
 		!/setScanProgress|setScanResult/.test(code),
 		'T5 closure: VaultLintService.ts must not call setScanProgress / setScanResult',
 	);
+
+	// T6 closure proof: the service must no longer reach service
+	// locators. All dependencies must come through the constructor
+	// ports.
+	for (const forbidden of [
+		'AppContext.getInstance',
+		'sqliteStoreManager',
+		'SignalRegistry.getInstance',
+		'static instance',
+		'getInstance(',
+	]) {
+		assert.ok(
+			!code.includes(forbidden),
+			`T6 closure: VaultLintService.ts must not contain '${forbidden}'`,
+		);
+	}
+	for (const spec of specifiers) {
+		assert.ok(
+			!/^@\/app\//.test(spec),
+			`T6 closure: VaultLintService.ts must not import from '@/app/', found '${spec}'`,
+		);
+		assert.ok(
+			spec !== '@/core/storage/sqlite/SqliteStoreManager',
+			'T6 closure: VaultLintService.ts must not import SqliteStoreManager',
+		);
+	}
 
 	console.log('PASS: serviceAcceptsCallbacksAndHasNoUiStoreCoupling');
 }
