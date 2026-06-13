@@ -1,217 +1,163 @@
-# T7 Owner Review Packet — Vault Lint Foundation Completion Wave
+# Owner Review Packet: T7 Vault Lint Foundation Completion Wave
 
-Date: 2026-06-13  
-Status: Accepted by Codex review  
-Implementation commits:
+Claude Code commits:
 
-- `32fde24b` — `refactor(lint): add VaultLintDetectorContextPort and wire Obsidian/sqlite adapter (T7 part 1)`
-- `216dd431` — `refactor(lint): rewrite detectors against VaultLintDetectorContextPort, restore health-score test, add source guards (T7 part 2)`
+- `32fde24b refactor(lint): add VaultLintDetectorContextPort and wire Obsidian/sqlite adapter (T7 part 1)`
+- `216dd431 refactor(lint): rewrite detectors against VaultLintDetectorContextPort, restore health-score test, add source guards (T7 part 2)`
+
+Codex verdict:
+
+- Accepted
+
+Owner decision:
+
+- 接受 T7。Vault Lint 的 foundation closure 到这里可以封顶。
+- 不要继续在 Vault Lint 上做小粒度 polish，除非发现 bug。
+- 下一步应该切到第二个 capability，做更大粒度的 T8。推荐目标：Ambient Push foundation readiness / runtime boundary wave。
 
 ## Review Entry Points
 
-Read this packet first, then read the changed code in the order below.
+| Review item | Status | Why open it |
+| --- | --- | --- |
+| This Owner Review Packet | Final / rewritten for readability | T7 的验收记录、代码阅读入口、粒度判断、下一步建议。 |
+| [`t7-vault-lint-foundation-completion-wave-handoff.md`](../refactor-ops/t7-vault-lint-foundation-completion-wave-handoff.md) | Previous handoff | Claude Code 执行 T7 时拿到的任务边界和验收标准。 |
+| [`architecture-scorecard.md`](../refactor-ops/architecture-scorecard.md) | Updated | T7 分数已经加入 ledger：Overall `79 -> 84`。 |
+| [`README.md`](../refactor-ops/README.md) | Updated | 当前 refactor loop 状态已经从 T7 推进到 T8。 |
+| [`../../progress.md`](../../progress.md) | Updated | 项目进度里已记录 T7 接受和下一步 T8 方向。 |
 
-Companion files:
+## 中文摘要
 
-- Handoff: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/refactor-ops/t7-vault-lint-foundation-completion-wave-handoff.md`
-- Scorecard: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/refactor-ops/architecture-scorecard.md`
-- Progress tracker: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/progress.md`
+T7 做到了：
 
-## Short Answer: Was This Too Small?
+- 新增 `VaultLintDetectorContextPort`，专门给 detector 读取 vault / metadata / graph / semantic neighbors。
+- 新增 `src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts`，把 Obsidian、sqlite、graph inspector 这些真实环境依赖集中到 app 层。
+- `VaultLintService.runFullScan()` 把 `detectorContext` 放进 `LintScanContext`。
+- 三个 detector 文件改成只读 `context.detectorContext`：
+  - `signals/content.ts`
+  - `signals/tags.ts`
+  - `signals/structural.ts`
+- detector 层不再直接调用：
+  - `AppContext.getInstance()`
+  - `sqliteStoreManager`
+  - `getSemanticNeighbors`
+  - `isIndexedNoteNodeType`
+  - Obsidian `metadataCache` / `vault`
+- 新增 fake-port detector tests，可以不启动 Obsidian、不连 sqlite，直接测 detector 行为。
+- 新增 source guard，防止以后又把 `@/app`、`@/ui`、sqlite、Obsidian import 偷偷带回 `src/service/lint`。
+- 边界扫描从 `418 -> 415`，主要下降来自 Vault Lint detector 旧依赖被拔掉。
 
-This was a medium closure wave, not the large wave the owner ultimately wants.
+一句话：
 
-The two implementation commits changed 14 files and about 1.1k lines. That is materially larger than the early T1-T4 micro-slices, but still below the 30-80 file "larger foundation wave" size that the refactor ops policy allows.
+> T7 不是功能开发，也不是 UI 改造；它是把 Vault Lint detector 从“自己到处找环境”改成“只通过一个可 fake 的上下文读环境”。
 
-The important part is not raw line count. T7 closes the first capability's remaining detector-side boundary:
+## 代码路径图
 
-- `signals/content.ts` no longer reaches `AppContext`.
-- `signals/tags.ts` no longer reaches Obsidian metadata directly.
-- `signals/structural.ts` no longer reaches `AppContext`, `sqliteStoreManager`, `getSemanticNeighbors`, or `isIndexedNoteNodeType` directly.
-- All those reads now go through one fakeable `VaultLintDetectorContextPort`.
-
-So this task is worth accepting, but it should be treated as the end of the Vault Lint foundation sequence. The next implementation package should not be another tiny Vault Lint polish. It should move to a second capability with a larger, coherent closure wave.
-
-## Owner Summary
-
-T7 makes Vault Lint's service-side algorithm much easier to understand:
+T7 前，detector 自己越界：
 
 ```text
-UI / command
-  -> AppContext.getVaultLintRuntime()
-  -> runVaultLintManualScan(...)
-  -> VaultLintService.runFullScan(...)
-  -> detectors read only LintScanContext.detectorContext
-  -> app adapter owns Obsidian/sqlite/search-graph side effects
+VaultLintService
+  -> signals/content.ts      -> AppContext.app.vault
+  -> signals/tags.ts         -> AppContext.app.metadataCache
+  -> signals/structural.ts   -> AppContext + sqliteStoreManager + getSemanticNeighbors
 ```
 
-Before T7, the detectors looked simple but secretly reached out to the app shell and sqlite layer themselves. After T7, the detector files are closer to pure algorithms: they receive a small context object and ask it for exactly the data they need.
+T7 后，detector 只看一个 port：
 
-This is the first point where Vault Lint has a reasonably clean backend foundation:
+```text
+main.ts
+  -> composeVaultLintRuntime()
+  -> new ObsidianVaultLintDetectorContextAdapter()
+  -> new VaultLintService({ detectorContext, ...otherPorts })
+  -> runFullScan()
+  -> LintScanContext.detectorContext
+  -> signals/*.ts
+```
 
-- contract seed exists;
-- manual scan goes through `RunEnvelope`;
-- UI store is no longer long-running runtime truth;
-- service is a plain constructor-injected class;
-- runtime binding is app-owned;
-- config defaults are governed;
-- detector side effects are behind an adapter.
+真正接触 Obsidian/sqlite 的地方变成：
+
+```text
+src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts
+```
+
+这就是 T7 的核心。
 
 ## Code Reading Guide
 
-Read in this order.
+Read in this order:
 
-### 1. Port shape
+1. `src/service/lint/ports/VaultLintPorts.ts`
+   - 看 `VaultLintDetectorContextPort`。
+   - 这是 detector 现在允许读取外部世界的唯一形状。
+   - 你只需要确认这些方法名是不是业务语义：`listMarkdownFiles`、`readMarkdownFile`、`getTags`、`getHardOrphans`、`getSemanticNeighbors`。
 
-File: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/src/service/lint/ports/VaultLintPorts.ts`
+2. `src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts`
+   - 看这个 adapter 如何实现上面的 port。
+   - 重点看它如何把 Obsidian `TFile`、metadata cache、sqlite node、semantic neighbor 转成普通对象。
+   - 这是唯一允许碰真实 app/sqlite/search helper 的新增文件。
 
-Look for:
+3. `src/app/lint/composeVaultLintRuntime.ts`
+   - 看 `detectorContext: new ObsidianVaultLintDetectorContextAdapter()`。
+   - 这里回答：“真实 runtime 到底在哪里组装？”
 
-- `VaultLintDetectorContextPort`
-- `VaultLintDetectorFileRef`
-- `VaultLintDetectorTagInfo`
-- `VaultLintDetectorGraphNode`
-- `VaultLintDetectorSemanticNeighbor`
+4. `src/service/lint/VaultLintService.ts`
+   - 看 `detectorContext: this.ports.detectorContext`。
+   - 这里回答：“service 有没有自己摸 AppContext/sqlite？”
+   - 结论：没有。它只把 port 放进 `LintScanContext`。
 
-What to understand:
+5. `src/service/lint/signals/content.ts`
+   - 看 `const dc = context.detectorContext`。
+   - 看 `dc.listMarkdownFiles()` 和 `dc.readMarkdownFile(...)`。
+   - 这说明 content detector 不再知道 Obsidian vault。
 
-This is the new boundary. Detectors can ask for markdown files, content, tags, unresolved links, hard orphans, graph nodes, semantic neighbors, and node-type classification. They do not see Obsidian `TFile`, sqlite repos, `AppContext`, or the graph inspector helper.
+6. `src/service/lint/signals/tags.ts`
+   - 看 `dc.getTags(file.path)`。
+   - 这说明 tags detector 不再知道 Obsidian metadata cache。
 
-### 2. App adapter
+7. `src/service/lint/signals/structural.ts`
+   - 看 `dc.getUnresolvedLinks()`、`dc.getHardOrphans(...)`、`dc.getNodesByIds(...)`、`dc.getSemanticNeighbors(...)`。
+   - 这说明 structural detector 不再知道 sqlite repo 和 graph inspector helper。
 
-File: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts`
+8. `test/vault-lint-detectors.test.ts`
+   - 看 `makeFakeContext()`。
+   - 这是最重要的测试阅读点：它证明 detector 现在可以用 fake context 独立运行。
 
-Look for:
+9. `test/vault-lint-source-guard.test.ts`
+   - 看 `noAppOrUiOrSqliteImportsAnywhere` 和 `noServiceLocatorUsageInLiveCode`。
+   - 这是防回退护栏：以后有人把 `AppContext` 或 sqlite 重新 import 回 service/lint，会直接测试失败。
 
-- `listMarkdownFiles`
-- `readMarkdownFile`
-- `getTags`
-- `getUnresolvedLinks`
-- `getHardOrphans`
-- `getNodesByIds`
-- `isIndexedNoteNodeType`
-- `getSemanticNeighbors`
-- `normalizeFrontmatterTags`
+Debug first file:
 
-What to understand:
+- detector 结果不对：先看 `src/service/lint/signals/*.ts`。
+- 真实 Obsidian 读取不对：先看 `src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts`。
+- runtime 没把 adapter 接进去：先看 `src/app/lint/composeVaultLintRuntime.ts`。
+- 以后边界退化：先看 `test/vault-lint-source-guard.test.ts`。
 
-This is the only new place that is allowed to know about Obsidian vault APIs, metadata cache, sqlite repos, and graph semantic neighbor lookup for Vault Lint detectors.
+## Size Judgment
 
-### 3. Runtime composition
+你的感觉是对的：T7 仍然不是特别大的重构波。
 
-File: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/src/app/lint/composeVaultLintRuntime.ts`
+真实实现规模：
 
-Look for:
+| Scope | Size |
+| --- | ---: |
+| Implementation commits | 2 |
+| Production/test files touched | 14 |
+| Approx implementation delta | about 1.1k lines |
+| Boundary findings | `418 -> 415` |
 
-- `detectorContext: new ObsidianVaultLintDetectorContextAdapter()`
+所以它不是 T1-T4 那种很小的 adapter slice，但也不是你期望的 30-80 文件级大任务。
 
-What to understand:
+为什么仍然接受：
 
-The app layer wires the real adapter once. `VaultLintService` receives it as part of `VaultLintPorts`.
+- 它关掉的是 Vault Lint foundation 的最后一块关键旧路径。
+- 它不是只加新抽象，而是把 detector 旧依赖实际拔掉。
+- 它加了 fake tests 和 source guards，不只是文档承诺。
 
-### 4. Service threading
+为什么下一步要变大：
 
-File: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/src/service/lint/VaultLintService.ts`
-
-Look for:
-
-- `detectorContext: this.ports.detectorContext`
-
-What to understand:
-
-The service does not call the adapter methods itself. It threads the port into `LintScanContext`, and detectors consume it.
-
-### 5. Detector rewrites
-
-Files:
-
-- `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/src/service/lint/signals/content.ts`
-- `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/src/service/lint/signals/tags.ts`
-- `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/src/service/lint/signals/structural.ts`
-
-Look for:
-
-- `const dc = context.detectorContext`
-- no `AppContext`
-- no `sqliteStoreManager`
-- no direct `getSemanticNeighbors` import
-
-What to understand:
-
-These files now read like algorithm files. That is the architectural win.
-
-### 6. Tests and guards
-
-Files:
-
-- `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/test/vault-lint-detectors.test.ts`
-- `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/test/vault-lint-source-guard.test.ts`
-- `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/test/lint-health-score.test.ts`
-
-Look for:
-
-- `makeFakeContext`
-- `noAppOrUiOrSqliteImportsAnywhere`
-- `noServiceLocatorUsageInLiveCode`
-- health-score tests against the current `computeHealthScore` API
-
-What to understand:
-
-`vault-lint-detectors.test.ts` proves the detectors can run with a fake port. `vault-lint-source-guard.test.ts` proves future edits cannot silently reintroduce direct app/sqlite dependencies under `src/service/lint`.
-
-## Boundary Evidence
-
-Codex reran the boundary scanner:
-
-```text
-node scripts/audit/boundary-baseline.mjs --out /tmp/t7-codex-boundary-baseline.md
-```
-
-Result:
-
-```text
-Files scanned: 837 under src/
-Total flagged cross-layer / side-effect edges: 415
-service -> app shell: 70
-service -> ui: 55
-core -> upstream: 78
-service/core -> Obsidian side-effect surface: 20
-service AppContext.getInstance references: 87
-```
-
-Delta from T6R owner review:
-
-```text
-Total flagged edges: 418 -> 415 (-3)
-service -> app shell: 73 -> 70 (-3)
-service AppContext.getInstance references: 90 -> 87 (-3)
-service -> ui: 55 -> 55 (unchanged)
-service/core -> Obsidian side-effect surface: 20 -> 20 (unchanged)
-```
-
-Note: Claude's implementation note reported `Files scanned: 841`; Codex's local rerun reports `837`. The main architectural counts match the expected result: total flagged edges are 415, and Vault Lint's detector-side service-to-app leaks are gone. Treat the file-count difference as scan-context noise, not as acceptance evidence.
-
-## Source Search Evidence
-
-Codex reran these checks:
-
-```text
-rg -n "from ['\"]@/app/|from ['\"]@/ui/" src/service/lint
-```
-
-Result: no matches.
-
-```text
-rg -n "search-graph-inspector|from ['\"]obsidian|from ['\"]@/core/storage" src/service/lint/signals
-```
-
-Result: no matches.
-
-```text
-rg -n "AppContext\s*\.\s*getInstance\s*\(|sqliteStoreManager\s*\." src/service/lint --glob '*.ts'
-```
-
-Result: only comments and `VaultLintContract.ts` inventory strings. No live detector/service runtime calls.
+- Vault Lint 现在继续做只会变成局部 polish。
+- 真正的大收益在第二个 capability，把同一套纪律推广出去。
+- 下一轮 handoff 应该一次给 Claude 更大的 coherent package，减少你来回粘贴小 delta。
 
 ## Verification
 
@@ -219,13 +165,6 @@ Codex reran:
 
 ```text
 npm run build
-```
-
-Passed. Tailwind printed the existing browserslist warning only.
-
-Codex reran these tests sequentially:
-
-```text
 npm run test -- test/vault-lint-detectors.test.ts
 npm run test -- test/vault-lint-source-guard.test.ts
 npm run test -- test/lint-health-score.test.ts
@@ -237,102 +176,149 @@ npm run test -- test/vault-lint-repo.test.ts
 npm run test -- test/vault-lint-defaults.test.ts
 npm run test -- test/app-runtime-registry.test.ts
 npm run test -- test/run-envelope-core.test.ts
-```
-
-All passed.
-
-Codex also ran:
-
-```text
+node scripts/audit/boundary-baseline.mjs --out /tmp/t7-codex-boundary-baseline.md
 npx tsc --noEmit 2>&1 | rg -n "src/(service/lint|app/lint)" || true
 ```
 
-Result: no `src/service/lint` or `src/app/lint` TypeScript errors.
+Results:
 
-## What Changed
+| Check | Result |
+| --- | --- |
+| Build | Pass |
+| Vault Lint detector tests | 15/15 pass |
+| Vault Lint source guards | 5/5 pass |
+| Health score tests | 6/6 pass |
+| Vault Lint service/ports tests | 11/11 pass |
+| Vault Lint runner tests | 16/16 pass |
+| Vault Lint contract tests | 5/5 pass |
+| Vault Lint structural tests | 2/2 pass |
+| Vault Lint repo tests | 3/3 pass |
+| Vault Lint defaults tests | 9/9 pass |
+| App runtime registry tests | 7/7 pass |
+| RunEnvelope core tests | 27/27 pass |
+| Boundary audit | 415 findings |
+| T7 files in `tsc` output | no `src/service/lint` or `src/app/lint` errors |
 
-Accepted changes:
+Additional source checks:
 
-- Added `VaultLintDetectorContextPort` and narrow detector-side data shapes.
-- Added `ObsidianVaultLintDetectorContextAdapter` in the app layer.
-- Wired the adapter through `composeVaultLintRuntime`.
-- Added `detectorContext` to `LintScanContext`.
-- Rewrote content, tags, and structural detectors to consume `context.detectorContext`.
-- Restored health-score tests against the current free-function API.
-- Added fake-port detector tests.
-- Added source-scan boundary guards for `src/service/lint`.
-- Updated the Vault Lint dependency inventory to describe the post-T7 reality.
+```text
+rg -n "from ['\"]@/app/|from ['\"]@/ui/" src/service/lint
+rg -n "search-graph-inspector|from ['\"]obsidian|from ['\"]@/core/storage" src/service/lint/signals
+rg -n "AppContext\s*\.\s*getInstance\s*\(|sqliteStoreManager\s*\." src/service/lint --glob '*.ts'
+```
 
-## What Did Not Change
+Result:
 
-Intentionally unchanged:
+- no app/ui imports under `src/service/lint`;
+- no Obsidian/sqlite/graph-inspector imports under `src/service/lint/signals`;
+- remaining `AppContext` / `sqliteStoreManager` hits are comments or `VaultLintContract.ts` inventory strings, not live runtime calls.
 
-- No UI redesign.
-- No SQLite schema migration.
-- No new Ambient Push work.
-- No Command Gateway work.
-- No Chat runtime work.
-- No changes to the underlying `getSemanticNeighbors` algorithm.
-- No new RunEnvelope persistence/subscription layer.
-- No attempt to rename "Vault Lint" in code.
+## Boundary Delta
 
-## Architecture Score
+Codex boundary scan:
 
-T7 raises Vault Lint from an almost-clean runtime to a cleaner foundation slice.
+```text
+Files scanned: 837 under src/
+Total flagged cross-layer / side-effect edges: 415
+```
 
-| Group | T6R | T7 | Why |
-| --- | ---: | ---: | --- |
-| Control | 80 | 84 | Reading path is clearer: runtime -> service -> detector context -> app adapter. |
-| Boundary | 73 | 79 | Detector-side app/sqlite/tool imports were removed; source guards now enforce the boundary. |
-| Runtime truth | 83 | 85 | Single Vault Lint runtime path remains; detector side effects no longer bypass the runtime ports. |
-| Verification | 84 | 89 | Fake detector context tests and source-scan guards materially improve proof. |
-| Overall | 79 | 84 | Accepted as the Vault Lint foundation completion point. |
+Delta against T6R owner review:
 
-Confidence: high. Backed by code inspection, build, focused tests, source searches, and boundary scan.
+| Metric | T6R | T7 | Delta |
+| --- | ---: | ---: | ---: |
+| Total flagged edges | 418 | 415 | -3 |
+| service -> app shell | 73 | 70 | -3 |
+| service AppContext references | 90 | 87 | -3 |
+| service -> ui | 55 | 55 | 0 |
+| service/core -> Obsidian side-effect surface | 20 | 20 | 0 |
 
-## Remaining Old Architecture
+Note:
 
-Vault Lint is no longer the right place for more micro-polish unless a bug appears.
+- Claude note reported `Files scanned: 841`; Codex rerun reported `837`.
+- The meaningful acceptance metric is not that file-count number. The meaningful metric is that total findings are `415` and Vault Lint detector-side service-to-app leaks are gone.
+
+## Caveats
+
+T7 intentionally does not change:
+
+- UI behavior.
+- SQLite schema.
+- Ambient Push.
+- Chat.
+- Command Gateway.
+- The underlying `getSemanticNeighbors` algorithm.
+- RunEnvelope persistence / subscription.
+- The product name `Vault Lint`.
 
 Remaining old architecture is mostly outside Vault Lint:
 
-- `service -> ui` remains 55 flagged edges, especially Quick Search, Ambient, Copilot, and chat stores.
-- `service -> app shell` remains 70 flagged edges outside this capability.
-- `core -> service/app/ui` remains 78 flagged edges.
-- Several major capabilities still do not run through the new contract/RunEnvelope/ports pattern.
+- `service -> ui` still has 55 flagged edges, especially Quick Search, Ambient, Copilot, and chat stores.
+- `service -> app shell` still has 70 flagged edges outside this capability.
+- `core -> service/app/ui` still has 78 flagged edges.
+- Other major capabilities still have not gone through the `Contract -> RunEnvelope -> Ports -> Adapter -> Trace` pattern.
 
-## Next Recommendation
+## Architecture Score
 
-Stop expanding Vault Lint for now.
+| Group | T6R | T7 | Why |
+| --- | ---: | ---: | --- |
+| Control | 80 | 84 | The read path is now runtime -> service -> detector context -> app adapter. |
+| Boundary | 73 | 79 | Detector-side app/sqlite/tool imports were removed and guarded. |
+| Runtime truth | 83 | 85 | One Vault Lint runtime path remains; detector side effects no longer bypass runtime ports. |
+| Verification | 84 | 89 | Fake detector context tests and source guards prove the boundary. |
+| Overall | 79 | 84 | Accepted as Vault Lint foundation completion. |
 
-Next implementation should be a larger second-capability closure wave. Recommended target:
+Confidence:
+
+- High. Backed by code inspection, build, focused tests, source searches, and boundary scan.
+
+## Verdict
+
+T7 should be accepted.
+
+It earns acceptance because:
+
+- detector files no longer reach into app/sqlite/tool helpers directly;
+- Obsidian/sqlite/search side effects are centralized in one app adapter;
+- fake-port tests prove detector behavior without Obsidian/sqlite;
+- source guards prevent future boundary regression;
+- Vault Lint now has a complete enough foundation path to stop polishing it.
+
+## Next
+
+Move to:
 
 ```text
 T8 Ambient Push Foundation Readiness / Runtime Boundary Wave
 ```
 
-Why Ambient:
+T8 should be larger than T7.
 
-- It is one of the product's three core pillars.
-- It still has visible `service -> ui` store coupling in the boundary report.
-- It has final architecture/product docs already.
-- It is easier to reason about than Chat and less broad than Quick Search.
+Suggested T8 shape:
 
-But the handoff must be bigger than earlier micro-slices:
+- audit Ambient Push current runtime and store ownership;
+- identify old entry points and state truth;
+- create/update capability contract and dependency inventory;
+- extract first meaningful ports/adapters;
+- close at least one old service -> ui store write/read path;
+- add fake tests and source guards;
+- allow multiple small commits inside one Claude session;
+- include a Chinese implementation note and code reading guide.
 
-- target roughly 25-60 total files if the investigation confirms a coherent closure package;
-- include contract/inventory, runtime ownership, store truth audit, first ports/adapters, and old-path closure in one Claude session;
-- allow multiple small commits inside the one session;
-- include a code reading guide and Chinese implementation note.
+T8 should not:
 
-Do not start Command Gateway. Do not start Chat. Do not add new Ambient features. The next goal is foundation cleanup, not product expansion.
+- add new Ambient product features;
+- redesign Ambient UI;
+- touch Chat;
+- touch Command Gateway;
+- create a second Ambient runtime path.
 
 ## Owner Teach-Back
 
-The owner should be able to say:
+After reading T7, you should be able to say:
 
-1. Vault Lint detectors no longer directly access Obsidian or sqlite.
-2. The app adapter is the only new file that owns detector-side Obsidian/sqlite/search-graph reads.
-3. Tests can run the detectors with a fake `VaultLintDetectorContextPort`.
-4. Source guards prevent future service/lint code from importing app/ui/sqlite directly.
-5. This closes Vault Lint's foundation phase; the next big value is moving the same discipline to a second capability.
+1. Vault Lint detectors now read through `VaultLintDetectorContextPort`.
+2. `ObsidianVaultLintDetectorContextAdapter` is the only new file that owns detector-side Obsidian/sqlite/search reads.
+3. `VaultLintService` only threads `detectorContext` into `LintScanContext`; it does not call app/sqlite itself.
+4. `test/vault-lint-detectors.test.ts` proves detector behavior with a fake context.
+5. `test/vault-lint-source-guard.test.ts` prevents direct app/ui/sqlite imports from coming back.
+6. T7 closes Vault Lint foundation work; the next real value is a larger wave on a second capability.
