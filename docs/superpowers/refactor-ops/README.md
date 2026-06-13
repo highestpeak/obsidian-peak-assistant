@@ -232,6 +232,15 @@ Every implementation task must answer these before it is considered accepted:
 
 If the answer is "new and old implementations both continue to own behavior", the task is not accepted.
 
+## Verification Caveat
+
+`run-test.js` writes a fixed `temp-test.js` file. Do not run multiple `npm run test -- <file>` commands in parallel, because parallel test processes can overwrite each other's compiled output and produce misleading pass logs.
+
+Correct patterns:
+
+- `npm run test -- test/a.test.ts test/b.test.ts` so the runner executes files sequentially inside one process;
+- or run one `npm run test -- <file>` command at a time.
+
 ## Task Order
 
 Start here:
@@ -242,8 +251,10 @@ T0 Boundary Baseline
 -> T2 Port Sketches
 -> T3 RunEnvelope Core
 -> T4 Capability Replacement
--> T7 UI RunEvent Projection
--> T9 Pilot Capability
+-> T5/T6 First Capability Runtime Closure
+-> T7 First Capability Foundation Completion
+-> T8 Second Capability Runtime Boundary Wave
+-> T9 Third Capability Boundary Wave
 -> T10 Conformance + Golden Trace
 -> T11 Expand to next capability
 -> T12 Command Gateway Capstone
@@ -268,17 +279,15 @@ Completed and accepted:
 - T6 Vault Lint Ports Extraction + Service-as-Plain-Class: [`t6-vault-lint-ports-service-plain-class-handoff.md`](./t6-vault-lint-ports-service-plain-class-handoff.md) + [`2026-06-13-t6-owner-review-packet.md`](../audits/2026-06-13-t6-owner-review-packet.md)
 - T6R Runtime Ownership + Config Defaults Governance: [`t6-review-fix-runtime-ownership-config-defaults-handoff.md`](./t6-review-fix-runtime-ownership-config-defaults-handoff.md) + [`2026-06-13-t6r-owner-review-packet.md`](../audits/2026-06-13-t6r-owner-review-packet.md)
 - T7 Vault Lint Foundation Completion Wave: [`t7-vault-lint-foundation-completion-wave-handoff.md`](./t7-vault-lint-foundation-completion-wave-handoff.md) + [`2026-06-13-t7-owner-review-packet.md`](../audits/2026-06-13-t7-owner-review-packet.md)
-
-Ready for owner approval:
-
-- T8 Ambient Foundation Runtime Boundary Wave: [`t8-ambient-foundation-runtime-boundary-wave-handoff.md`](./t8-ambient-foundation-runtime-boundary-wave-handoff.md)
+- T8 Ambient Foundation Runtime Boundary Wave: [`t8-ambient-foundation-runtime-boundary-wave-handoff.md`](./t8-ambient-foundation-runtime-boundary-wave-handoff.md) + [`2026-06-13-t8-owner-review-packet.md`](../audits/2026-06-13-t8-owner-review-packet.md)
 
 Next owner decision:
 
-- review the T8 Ambient handoff and send it to Claude Code if acceptable;
-- allow a larger implementation wave: roughly 25-60 related files and 3-5 small commits inside one Claude session;
-- do not start Chat or Command Gateway yet;
-- do not add new Ambient product features in T8; foundation cleanup first.
+- choose the T9 target;
+- recommended medium wave: Copilot Vault Digest / Review runtime boundary cleanup;
+- recommended large wave: Quick Search foundation boundary cleanup;
+- do not start Current Work State, Chat, or Command Gateway yet;
+- keep T9 as one coherent capability package with multiple small commits inside one Claude session if needed.
 
 ## Supporting Files
 
@@ -298,7 +307,7 @@ Next owner decision:
 - [`config-defaults-governance.md`](./config-defaults-governance.md): configuration defaults governance.
 - [`t7-vault-lint-detector-context-closure-handoff.md`](./t7-vault-lint-detector-context-closure-handoff.md): superseded small T7 detector handoff.
 - [`t7-vault-lint-foundation-completion-wave-handoff.md`](./t7-vault-lint-foundation-completion-wave-handoff.md): accepted T7 Vault Lint completion handoff.
-- [`t8-ambient-foundation-runtime-boundary-wave-handoff.md`](./t8-ambient-foundation-runtime-boundary-wave-handoff.md): current larger second-capability handoff for Ambient foundation cleanup.
+- [`t8-ambient-foundation-runtime-boundary-wave-handoff.md`](./t8-ambient-foundation-runtime-boundary-wave-handoff.md): accepted larger second-capability handoff for Ambient foundation cleanup.
 
 ## Do Not Do
 

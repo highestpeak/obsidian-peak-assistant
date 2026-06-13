@@ -67,7 +67,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ## Next
 
-### 0. Active — Architecture Modernization T1-T8
+### 0. Active — Architecture Modernization T1-T9
 
 - [x] T0 Boundary Baseline 完成：`9850eef` + Owner Review `667bfdd`
 - [x] T1 Vault Lint Contract Seed handoff ready：`docs/superpowers/refactor-ops/t1-vault-lint-contract-seed-handoff.md`
@@ -100,8 +100,10 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T7 implementation 完成并接受：`32fde24b` + `216dd431` + Owner Review `docs/superpowers/audits/2026-06-13-t7-owner-review-packet.md`
 - [x] T7 结论：Vault Lint foundation closure 完成；不要继续做 Vault Lint 微小 polish，除非有 bug
 - [x] T8 Ambient Foundation Runtime Boundary Wave handoff ready：`docs/superpowers/refactor-ops/t8-ambient-foundation-runtime-boundary-wave-handoff.md`
-- [ ] 下一步：用户 review T8 handoff，然后发给 Claude Code；这次允许 3-5 个小 commit / 25-60 个相关文件
-- [ ] 不要提前做 Chat 或 Command Gateway；Ambient 下一轮只做 foundation cleanup，不做新产品功能；Command Gateway 仍是 T12 capstone
+- [x] T8 implementation 完成并接受：`a1789056` + `e20bbce7` + `85f20917` + Owner Review `docs/superpowers/audits/2026-06-13-t8-owner-review-packet.md`
+- [x] T8 结论：Ambient foundation runtime boundary 完成；`AmbientPushService` / `MorningBriefingService` 旧 singleton 退役；不要继续做 Ambient 微小 polish，除非有 bug
+- [ ] 下一步：选择 T9 target。推荐中等粒度 Copilot Vault Digest / Review runtime boundary wave；若想加大步伐，可选 Quick Search foundation boundary wave
+- [ ] 不要提前做 Current Work State、Chat 或 Command Gateway；Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾
 
