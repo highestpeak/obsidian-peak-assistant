@@ -19,11 +19,13 @@
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
+import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 
 export class AppRuntimeRegistry {
 	private vaultLintRuntime: VaultLintRuntime | null = null;
 	private ambientRuntime: AmbientRuntime | null = null;
 	private vaultReviewRuntime: VaultReviewRuntime | null = null;
+	private quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime | null = null;
 
 	/**
 	 * Bind the Vault Lint runtime. Called exactly once at plugin boot
@@ -172,5 +174,53 @@ export class AppRuntimeRegistry {
 		const runtime = this.vaultReviewRuntime;
 		this.vaultReviewRuntime = null;
 		runtime?.dispose?.();
+	}
+
+	/**
+	 * T10: Bind the Quick Search background-session runtime. Called
+	 * exactly once at plugin boot from
+	 * `composeQuickSearchBackgroundRuntime`. Double-bind without an
+	 * intervening clear throws — typically a hot-reload artifact.
+	 */
+	setQuickSearchBackgroundRuntime(runtime: QuickSearchBackgroundRuntime): void {
+		if (this.quickSearchBackgroundRuntime !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setQuickSearchBackgroundRuntime: a runtime is already bound. Call clearQuickSearchBackgroundRuntime first if this is intentional.',
+			);
+		}
+		this.quickSearchBackgroundRuntime = runtime;
+	}
+
+	/**
+	 * Read the active Quick Search background runtime. Fail-loud if no
+	 * runtime is bound — that is a boot-order bug.
+	 */
+	getQuickSearchBackgroundRuntime(): QuickSearchBackgroundRuntime {
+		if (this.quickSearchBackgroundRuntime === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getQuickSearchBackgroundRuntime: no runtime is bound. Plugin boot must call setQuickSearchBackgroundRuntime() before consumers reach the runtime.',
+			);
+		}
+		return this.quickSearchBackgroundRuntime;
+	}
+
+	/**
+	 * Soft accessor returning `null` when the runtime is not yet bound.
+	 * Used by UI components (Quick Search modal, Active Sessions list,
+	 * Recent AI Analysis card) that can mount before boot resolves.
+	 */
+	tryGetQuickSearchBackgroundRuntime(): QuickSearchBackgroundRuntime | null {
+		return this.quickSearchBackgroundRuntime;
+	}
+
+	/**
+	 * Dispose + drop the runtime. Aborts every in-flight session so a
+	 * hot-reloaded plugin bundle doesn't hold agent / abort-controller
+	 * references. Idempotent.
+	 */
+	clearQuickSearchBackgroundRuntime(): void {
+		const runtime = this.quickSearchBackgroundRuntime;
+		this.quickSearchBackgroundRuntime = null;
+		runtime?.dispose();
 	}
 }

@@ -20,6 +20,7 @@ import { AppRuntimeRegistry } from '@/app/runtime/AppRuntimeRegistry';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
+import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 
 /**
  * Application context containing all global dependencies.
@@ -205,6 +206,44 @@ export class AppContext {
 	}
 
 	/**
+	 * T10: Bind the Quick Search background-session runtime at plugin
+	 * boot. Delegates to the app-owned `AppRuntimeRegistry`. Fail-loud
+	 * on double-bind.
+	 */
+	public static setQuickSearchBackgroundRuntime(runtime: QuickSearchBackgroundRuntime): void {
+		AppContext.getInstance().runtimeRegistry.setQuickSearchBackgroundRuntime(runtime);
+	}
+
+	/**
+	 * T10: Read the bound Quick Search background runtime. Fail-loud
+	 * if boot has not run yet. Used by service-side callers that only
+	 * run post-boot (e.g. `CascadeWorker.drainDebt`).
+	 */
+	public static getQuickSearchBackgroundRuntime(): QuickSearchBackgroundRuntime {
+		return AppContext.getInstance().runtimeRegistry.getQuickSearchBackgroundRuntime();
+	}
+
+	/**
+	 * T10: Soft accessor — returns `null` if boot has not bound the
+	 * runtime yet. UI hooks (`useSearchSession`, the modal onClose
+	 * effect, `ActiveSessionsList`, `RecentAIAnalysis`) use this so an
+	 * early mount does not throw inside React rendering.
+	 */
+	public static tryGetQuickSearchBackgroundRuntime(): QuickSearchBackgroundRuntime | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetQuickSearchBackgroundRuntime();
+	}
+
+	/**
+	 * T10: Dispose + drop the runtime — called from `main.onunload`
+	 * so a hot-reloaded plugin bundle does not keep abort controllers
+	 * + agent references for sessions that the new bundle would never
+	 * be able to restore.
+	 */
+	public static clearQuickSearchBackgroundRuntime(): void {
+		AppContext.getInstance().runtimeRegistry.clearQuickSearchBackgroundRuntime();
+	}
+
+	/**
 	 * Clear singleton and unsubscribe from workspace events.
 	 * Must be called from plugin onunload to break reference chains and allow GC.
 	 */
@@ -219,6 +258,7 @@ export class AppContext {
 			AppContext.instance.runtimeRegistry.clearVaultLintRuntime();
 			AppContext.instance.runtimeRegistry.clearAmbientRuntime();
 			AppContext.instance.runtimeRegistry.clearVaultReviewRuntime();
+			AppContext.instance.runtimeRegistry.clearQuickSearchBackgroundRuntime();
 			AppContext.instance = null;
 		}
 	}
