@@ -96,8 +96,15 @@ export interface VaultLintSideEffect {
 
 export interface VaultLintConsumer {
 	readonly site: string;
-	readonly mode: 'runFullScan' | 'initRegistry';
+	readonly mode: 'runFullScan' | 'initRegistry' | 'runManualScan';
 }
+
+// `runManualScan` is the T4 mode: the consumer drives a manual scan
+// through `runVaultLintManualScan` (Vault Lint RunEnvelope runner) rather
+// than calling `VaultLintService.getInstance().runFullScan()` directly.
+// The underlying service method is still the one that does work; the
+// mode just records WHICH entry point a consumer is wired to so the
+// contract does not silently lie about the post-T4 runtime.
 
 export interface VaultLintDependencyInventory {
 	readonly capabilityId: VaultLintCapabilityId;
@@ -162,7 +169,7 @@ export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 	],
 	consumers: [
 		{ site: 'src/app/commands/PeakCommandActions.ts:openVaultXRay', mode: 'initRegistry' },
-		{ site: 'src/ui/view/vault-lint/VaultXRayPanel.tsx', mode: 'runFullScan' },
+		{ site: 'src/ui/view/vault-lint/VaultXRayPanel.tsx', mode: 'runManualScan' },
 		{ site: 'src/service/copilot/vault/VaultDigestService.ts', mode: 'initRegistry' },
 	],
 	knownDimensions: ['structural', 'content', 'temporal', 'semantic', 'tags'],

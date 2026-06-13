@@ -2,7 +2,7 @@ import React from 'react';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useVaultLintStore } from '@/ui/store/vaultLintStore';
-import { VaultLintService } from '@/service/lint/VaultLintService';
+import { runVaultLintManualScan } from '@/service/lint/VaultLintRun';
 import { buildVaultHealthInsights } from '@/service/lint/insights';
 import { ScoreRing } from './components/ScoreRing';
 import { DimensionBars } from './components/DimensionBars';
@@ -22,7 +22,11 @@ export const VaultXRayPanel: React.FC = () => {
 	const insights = currentScan ? buildVaultHealthInsights(currentScan.findings) : [];
 
 	const startScan = async () => {
-		await VaultLintService.getInstance().runFullScan();
+		// T4: the UI entry now goes through the Vault Lint RunEnvelope
+		// runner. `useVaultLintStore` is still the visible source of truth
+		// for `isScanning` / `currentScan` / `trendHistory`; the runner
+		// produces an event trace that T7 will project into the UI.
+		await runVaultLintManualScan();
 	};
 
 	return (
