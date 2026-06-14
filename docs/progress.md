@@ -107,7 +107,8 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T9 implementation 完成并接受：`d606005b` + `bbbdb95d` + `9f53d970` + Owner Review `docs/superpowers/audits/2026-06-13-t9-owner-review-packet.md`
 - [x] T10 target 已选择：Quick Search Background Session Runtime Boundary Wave
 - [x] T10 Quick Search Background Session Runtime Boundary Wave handoff ready：`docs/superpowers/refactor-ops/t10-quick-search-background-session-runtime-boundary-wave-handoff.md`
-- [ ] 下一步：把 T10 handoff 发给 Claude Code 执行；Codex 等 implementation note 后写 Owner Review Packet
+- [x] T10 implementation received：`5a21111b` + `c2c153cb` + `2daa8b3f`
+- [ ] T10R review fix required：restore entrypoints（Notice click + Active Sessions click）`docs/superpowers/refactor-ops/t10-review-fix-restore-entrypoints-handoff.md`
 - [ ] 不要提前做 Current Work State、Chat 或 Command Gateway；Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾
