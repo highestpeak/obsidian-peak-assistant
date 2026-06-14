@@ -1,6 +1,11 @@
 // T11B: Concrete tag-suggestion port. Owns:
 //   - construction of the TagSuggestionEngine + its data port;
 //   - persistence of the suggestion batch into the TagSuggestionRepo.
+//
+// T11B-R (2026-06-14): every SQLite call is wrapped so the action
+// catalog stays usable on mobile and during the SQLite-deferred window.
+// Missing data returns empty lists; persistence becomes a no-op rather
+// than throwing inside the action.
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { GraphNodeType } from '@/core/po/graph.po';
@@ -12,40 +17,59 @@ import {
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { CopilotActionTagsPort } from '@/service/copilot/actions/CopilotActionPorts';
 
+async function safe<T>(label: string, fallback: T, fn: () => Promise<T>): Promise<T> {
+	try {
+		return await fn();
+	} catch (e) {
+		console.warn(`[SqliteCopilotActionTagsAdapter] ${label} failed (sqlite likely not ready):`, e);
+		return fallback;
+	}
+}
+
 /** Compose a {@link TagSuggestionDataPort} from sqliteStoreManager. */
 export function createSqliteTagSuggestionDataPort(): TagSuggestionDataPort {
 	return {
-		async getDocumentTagsJsonByPath(path: string): Promise<string | null> {
-			const nodeRepo = sqliteStoreManager.getMobiusNodeRepo();
-			const doc = await nodeRepo.getByPath(path);
-			return doc?.tags_json ?? null;
+		getDocumentTagsJsonByPath(path) {
+			return safe('getDocumentTagsJsonByPath', null, async () => {
+				const nodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+				const doc = await nodeRepo.getByPath(path);
+				return doc?.tags_json ?? null;
+			});
 		},
 
-		async getMobiusNodeIdByPath(path: string): Promise<string | null> {
-			const nodeRepo = sqliteStoreManager.getMobiusNodeRepo();
-			const doc = await nodeRepo.getByPath(path);
-			return doc?.node_id ?? null;
+		getMobiusNodeIdByPath(path) {
+			return safe('getMobiusNodeIdByPath', null, async () => {
+				const nodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+				const doc = await nodeRepo.getByPath(path);
+				return doc?.node_id ?? null;
+			});
 		},
 
-		async getNeighborIds(nodeId: string): Promise<string[]> {
-			const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
-			const map = await edgeRepo.getNeighborIdsMap([nodeId]);
-			return map.get(nodeId) ?? [];
+		getNeighborIds(nodeId) {
+			return safe('getNeighborIds', [] as string[], async () => {
+				const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
+				const map = await edgeRepo.getNeighborIdsMap([nodeId]);
+				return map.get(nodeId) ?? [];
+			});
 		},
 
-		async getMobiusNodeTagsJsonById(nodeId: string): Promise<string | null> {
-			const nodeRepo = sqliteStoreManager.getMobiusNodeRepo();
-			const node = await nodeRepo.getByNodeId(nodeId);
-			return node?.tags_json ?? null;
+		getMobiusNodeTagsJsonById(nodeId) {
+			return safe('getMobiusNodeTagsJsonById', null, async () => {
+				const nodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+				const node = await nodeRepo.getByNodeId(nodeId);
+				return node?.tags_json ?? null;
+			});
 		},
 
-		async listDocumentTagsJsonUnderFolderPrefix(folderPath: string, limit: number): Promise<string[]> {
-			const nodeRepo = sqliteStoreManager.getMobiusNodeRepo();
-			return nodeRepo.listDocumentTagsJsonUnderFolderPrefix(folderPath, limit);
+		listDocumentTagsJsonUnderFolderPrefix(folderPath, limit) {
+			return safe('listDocumentTagsJsonUnderFolderPrefix', [] as string[], async () => {
+				const nodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+				return nodeRepo.listDocumentTagsJsonUnderFolderPrefix(folderPath, limit);
+			});
 		},
 
-		async getVaultTopTagLabels(limit: number): Promise<string[]> {
-			try {
+		getVaultTopTagLabels(limit) {
+			return safe('getVaultTopTagLabels', [] as string[], async () => {
 				const db = sqliteStoreManager.getIndexContext('vault');
 				const rows = await db
 					.selectFrom('mobius_node')
@@ -55,9 +79,7 @@ export function createSqliteTagSuggestionDataPort(): TagSuggestionDataPort {
 					.limit(limit)
 					.execute();
 				return rows.map(r => r.title ?? r.path).filter((v): v is string => v != null);
-			} catch {
-				return [];
-			}
+			});
 		},
 	};
 }
@@ -88,7 +110,14 @@ export class SqliteCopilotActionTagsAdapter implements CopilotActionTagsPort {
 			isExisting: boolean;
 		}>;
 	}): Promise<void> {
-		const repo = sqliteStoreManager.getTagSuggestionRepo();
-		await repo.insertBatch(input);
+		// T11B-R: persistence is best-effort. If sqlite isn't ready the
+		// suggestions still surface to the user; we simply lose the
+		// feedback-tracking batch row for this call.
+		try {
+			const repo = sqliteStoreManager.getTagSuggestionRepo();
+			await repo.insertBatch(input);
+		} catch (e) {
+			console.warn('[SqliteCopilotActionTagsAdapter] persistSuggestionBatch failed (sqlite likely not ready):', e);
+		}
 	}
 }

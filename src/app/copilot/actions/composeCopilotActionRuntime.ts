@@ -11,6 +11,7 @@
 
 import type { App } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
+import type { SearchClient } from '@/service/search/SearchClient';
 import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
 import { CopilotActionRuntimeImpl } from '@/service/copilot/actions/CopilotActionRuntimeImpl';
 import type { CopilotActionPorts } from '@/service/copilot/actions/CopilotActionPorts';
@@ -36,19 +37,17 @@ export function composeCopilotActionRuntime(app: App): CopilotActionRuntime {
 	const ports: CopilotActionPorts = {
 		ai: new AppCopilotActionAiAdapter(appContext.manager),
 		vault: new ObsidianCopilotActionVaultAdapter(app),
-		search: new AppCopilotActionSearchAdapter(() => AppContext.getSearchClient()),
+		// T11B-R: search / semantic / tags adapters tolerate a null
+		// SearchClient or unavailable SQLite — they return empty results
+		// instead of crashing the catalog. The runtime stays usable on
+		// mobile and during the SQLite-deferred window.
+		search: new AppCopilotActionSearchAdapter(() => safeGetSearchClient()),
 		semanticGraph: new SqliteCopilotActionSemanticGraphAdapter(),
 		tags: new SqliteCopilotActionTagsAdapter(appContext.manager),
 		agent: createAppCopilotActionAgentAdapter({
 			app,
 			pluginId,
-			resolveSearchClient: () => {
-				try {
-					return AppContext.getSearchClient();
-				} catch {
-					return null;
-				}
-			},
+			resolveSearchClient: () => safeGetSearchClient(),
 		}),
 		customPrompts: new ObsidianCustomPromptSourceAdapter({
 			app,
@@ -57,4 +56,20 @@ export function composeCopilotActionRuntime(app: App): CopilotActionRuntime {
 	};
 
 	return new CopilotActionRuntimeImpl(ports);
+}
+
+/**
+ * Read the active `SearchClient` if one is bound, otherwise `null`.
+ * `AppContext.searchClient` is typed non-null but initialized to a null
+ * placeholder until `initializeSearchService()` completes. On mobile or
+ * during the SQLite-deferred window the placeholder stays — so we
+ * normalize to `null` and let the adapter degrade.
+ */
+function safeGetSearchClient(): SearchClient | null {
+	try {
+		const client = AppContext.getSearchClient();
+		return client ?? null;
+	} catch {
+		return null;
+	}
 }

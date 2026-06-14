@@ -165,6 +165,36 @@ function testAppRuntimeRegistryOwnsCopilotActionRuntime(): void {
 	console.log('PASS: appRuntimeRegistryOwnsCopilotActionRuntime');
 }
 
+function testMainBindsCopilotRuntimeBeforeInitSqlite(): void {
+	// T11B-R closure: the Copilot manual-action catalog must be
+	// available even when initSqlite() defers or fails (mobile, native
+	// module download pending, ABI mismatch). The guard scans main.ts
+	// and asserts that `setCopilotActionRuntime(...)` appears at an
+	// offset before the first `initSqlite(` call site — i.e. the bind
+	// is NOT nested inside the SQLite success path.
+	const mainPath = path.resolve(process.cwd(), 'main.ts');
+	const source = stripComments(fs.readFileSync(mainPath, 'utf8'));
+	const setIdx = source.indexOf('setCopilotActionRuntime(');
+	const initIdx = source.indexOf('initSqlite(');
+	if (setIdx < 0) {
+		assert.fail('T11B-R closure violated: main.ts does not call setCopilotActionRuntime.');
+	}
+	if (initIdx < 0) {
+		assert.fail('T11B-R guard pre-req missing: main.ts does not call initSqlite — guard cannot verify boot order.');
+	}
+	if (setIdx > initIdx) {
+		assert.fail('T11B-R closure violated: setCopilotActionRuntime must appear before the first initSqlite() call site in main.ts onload — the catalog must bind before SQLite init runs.');
+	}
+	// Belt-and-braces: ensure the call is not still nested in the
+	// `if (this.sqliteInitPromise)` / `initSqlite` inner block by
+	// requiring at least one occurrence outside that block. The
+	// simplest check: there must be exactly one `setCopilotActionRuntime`
+	// call site.
+	const occurrences = source.split('setCopilotActionRuntime(').length - 1;
+	assert.strictEqual(occurrences, 1, `T11B-R closure violated: expected exactly one setCopilotActionRuntime() call in main.ts, found ${occurrences}.`);
+	console.log('PASS: mainBindsCopilotRuntimeBeforeInitSqlite');
+}
+
 function testNoNewServiceLayerRuntimeSingleton(): void {
 	// Sweep src/service/copilot for module-level mutable runtime bindings
 	// that would reintroduce the pattern T11B is closing.
@@ -195,6 +225,7 @@ function main(): void {
 	testUiPickerModalUsesRuntime();
 	testCommandsRegisterDoesNotBootstrapActions();
 	testAppRuntimeRegistryOwnsCopilotActionRuntime();
+	testMainBindsCopilotRuntimeBeforeInitSqlite();
 	testNoNewServiceLayerRuntimeSingleton();
 }
 

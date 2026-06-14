@@ -25,6 +25,9 @@ export function createAppCopilotActionAgentAdapter(
 ): CopilotActionAgentPort {
 	const searchFn: CopilotAgentSearchFn = async (q, limit) => {
 		const client = opts.resolveSearchClient();
+		// T11B-R: agent can run AI/vault tools even when SearchClient
+		// isn't ready yet — grep-style helpers degrade to an empty list
+		// so the agent loop never throws on boot-order edge cases.
 		if (!client) return [];
 		const res = await client.search({
 			text: q,

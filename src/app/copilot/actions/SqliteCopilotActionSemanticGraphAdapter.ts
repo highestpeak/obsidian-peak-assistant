@@ -3,6 +3,12 @@
 // (`suggest-semantic-links` + `smart-connections`). Service code now
 // asks for "unlinked semantic neighbors" — the adapter handles every
 // sqlite call.
+//
+// T11B-R (2026-06-14): every entry point catches "sqlite not ready"
+// and returns `{ indexed: false }` so the action runtime is usable on
+// mobile and during the SQLite-deferred window. The action body then
+// surfaces a "Document not indexed yet. Run indexing first." panel
+// instead of crashing the picker / result modal.
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { GraphEdgeType } from '@/core/po/graph.po';
@@ -15,6 +21,18 @@ import type {
 
 export class SqliteCopilotActionSemanticGraphAdapter implements CopilotActionSemanticGraphPort {
 	async findSemanticLinkNeighbors(
+		filePath: string,
+		existingLinkPaths: Set<string>,
+	): Promise<{ suggestions: SemanticLinkNeighbor[]; totalNeighbors: number; indexed: boolean }> {
+		try {
+			return await this.runSemanticLinkLookup(filePath, existingLinkPaths);
+		} catch (e) {
+			console.warn('[SqliteCopilotActionSemanticGraphAdapter] semantic link lookup failed; reporting not-indexed:', e);
+			return { suggestions: [], totalNeighbors: 0, indexed: false };
+		}
+	}
+
+	private async runSemanticLinkLookup(
 		filePath: string,
 		existingLinkPaths: Set<string>,
 	): Promise<{ suggestions: SemanticLinkNeighbor[]; totalNeighbors: number; indexed: boolean }> {
@@ -76,6 +94,18 @@ export class SqliteCopilotActionSemanticGraphAdapter implements CopilotActionSem
 	}
 
 	async findSmartConnections(
+		filePath: string,
+		existingLinkPaths: Set<string>,
+	): Promise<{ connections: SmartConnection[]; indexed: boolean }> {
+		try {
+			return await this.runSmartConnectionsLookup(filePath, existingLinkPaths);
+		} catch (e) {
+			console.warn('[SqliteCopilotActionSemanticGraphAdapter] smart connections lookup failed; reporting not-indexed:', e);
+			return { connections: [], indexed: false };
+		}
+	}
+
+	private async runSmartConnectionsLookup(
 		filePath: string,
 		existingLinkPaths: Set<string>,
 	): Promise<{ connections: SmartConnection[]; indexed: boolean }> {
