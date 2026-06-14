@@ -418,6 +418,41 @@ function testMarkErrorHookSetsStatusAndNotifies(): void {
 	console.log('PASS: markErrorHookSetsStatusAndNotifies');
 }
 
+function testNotificationOnRestoreTriggersOpenAndRestore(): void {
+	// T10R: clicking a session Notice must (a) ask the modal-opener port
+	// to surface the modal AND (b) set the runtime's pending-restore
+	// intent so the freshly mounted SearchModal knows which session to
+	// restore. The runtime wires `onRestore` to its own `openAndRestore`
+	// — the adapter must invoke it instead of bypassing to the modal
+	// opener directly.
+	const state = newFakeState();
+	state.foregroundIntent = { isActive: false, hasPlanPending: true };
+	const runtime = newRuntime(state);
+
+	const session = runtime.detachForeground();
+	assert.ok(session !== null);
+	assert.strictEqual(state.notifyReadyCalls.length, 1, 'plan-ready detach fires the ready notice');
+
+	const captured = state.notifyReadyCalls[0]!;
+	assert.strictEqual(captured.sessionId, session!.id, 'notification carries the session id');
+	assert.strictEqual(typeof captured.onRestore, 'function', 'notification carries an onRestore callback');
+
+	// Simulate the Notice click.
+	captured.onRestore();
+
+	assert.deepStrictEqual(
+		state.modalOpenAndRestoreCalls,
+		[session!.id],
+		'onRestore must invoke modalOpener.openAndRestore for the same session',
+	);
+	assert.strictEqual(
+		runtime.consumePendingRestore(),
+		session!.id,
+		'onRestore must set the pending-restore intent before the modal mounts',
+	);
+	console.log('PASS: notificationOnRestoreTriggersOpenAndRestore');
+}
+
 function testDisposeAbortsAndClearsListeners(): void {
 	const state = newFakeState();
 	state.foregroundIntent = { isActive: true, hasPlanPending: false };
@@ -451,6 +486,7 @@ async function main(): Promise<void> {
 	await testMarkCompletedHookPersistsAndNotifiesAndStartsQueued();
 	await testMarkPlanReadyHookPersistsWhenNoSavedPath();
 	testMarkErrorHookSetsStatusAndNotifies();
+	testNotificationOnRestoreTriggersOpenAndRestore();
 	testDisposeAbortsAndClearsListeners();
 }
 

@@ -245,6 +245,7 @@ export class QuickSearchBackgroundRuntimeImpl implements QuickSearchBackgroundRu
 			sessionId: session.id,
 			title: session.title,
 			query: session.query,
+			onRestore: () => this.openAndRestore(session.id),
 		};
 		if (kind === 'plan-ready') this.deps.notification.showSessionReady(payload);
 		else if (kind === 'completed') this.deps.notification.showSessionComplete(payload);

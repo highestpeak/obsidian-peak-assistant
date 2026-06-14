@@ -375,11 +375,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 							})();
 						}}
 					/>
-					<ActiveSessionsList
-						onRestore={(sessionId) => {
-							AppContext.tryGetQuickSearchBackgroundRuntime()?.requestRestore(sessionId);
-						}}
-					/>
+					<ActiveSessionsList onRestore={restoreFromBackground} />
 					<RecentAnalysisList
 						filterQuery={searchQuery}
 						onSelectQuery={(query) => {

@@ -101,11 +101,19 @@ export interface QuickSearchBackgroundRestoreResult {
  * Identifying payload supplied to the notification port — keeps the
  * service free of Obsidian `Notice` access. The notification adapter
  * formats this into a clickable Notice fragment.
+ *
+ * `onRestore` is wired by the runtime so the click handler invokes
+ * `runtime.openAndRestore(sessionId)`, which sets the pending-restore
+ * intent before asking the modal-opener port to surface the modal.
+ * Calling the modal opener directly would only open the modal without
+ * the pending intent, so the freshly mounted `SearchModal` would not
+ * know which session to restore.
  */
 export interface QuickSearchSessionNotification {
 	sessionId: string;
 	title: string | null;
 	query: string;
+	onRestore: () => void;
 }
 
 /**

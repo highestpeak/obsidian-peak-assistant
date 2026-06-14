@@ -241,6 +241,32 @@ function testUiDoesNotImportRetiredEntryPoint(): void {
 	console.log('PASS: uiDoesNotImportRetiredEntryPoint');
 }
 
+function testSearchModalActiveSessionsListUsesRestoreFromBackground(): void {
+	// T10R: the ActiveSessionsList restore handler inside the mounted
+	// modal must call `restoreFromBackground(sessionId)` directly.
+	// Calling only `requestRestore(sessionId)` writes a pending intent
+	// that nobody consumes — `consumePendingRestore` runs in the mount
+	// effect of a *fresh* modal, so an already-mounted modal would silently
+	// swallow the click.
+	const searchModalPath = path.resolve(
+		process.cwd(),
+		'src/ui/view/quick-search/SearchModal.tsx',
+	);
+	assert.ok(
+		fs.existsSync(searchModalPath),
+		'SearchModal.tsx must exist for this guard',
+	);
+	const code = stripComments(fs.readFileSync(searchModalPath, 'utf8'));
+	const literal = /<ActiveSessionsList\s+onRestore=\{restoreFromBackground\}\s*\/>/;
+	if (!literal.test(code)) {
+		assert.fail(
+			"T10R: SearchModal.tsx must render `<ActiveSessionsList onRestore={restoreFromBackground} />`. " +
+			"Wrapping the handler so it only calls `requestRestore(sessionId)` breaks in-modal restore.",
+		);
+	}
+	console.log('PASS: searchModalActiveSessionsListUsesRestoreFromBackground');
+}
+
 function testEventTargetRedirectMutationsOnlyFromAdapter(): void {
 	// `eventTargetRedirect` is a hook-module global. T10 confines all
 	// .active/.target/.summaryBuffer/.uiStepRef writes to the
@@ -279,6 +305,7 @@ function main(): void {
 	testNoRetiredSingletonReferencesInLiveCode();
 	testRetiredFileIsGone();
 	testUiDoesNotImportRetiredEntryPoint();
+	testSearchModalActiveSessionsListUsesRestoreFromBackground();
 	testEventTargetRedirectMutationsOnlyFromAdapter();
 }
 
