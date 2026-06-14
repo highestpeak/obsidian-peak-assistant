@@ -118,7 +118,9 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T11B implementation received：`661a3dc1` + `13a425c9` + `7dd3f6d9` + `68a2c176`
 - [ ] T11B owner review: Needs Review Fix — CopilotActionRuntime 不能只在 `initSqlite()` 成功后绑定；见 `docs/superpowers/audits/2026-06-14-t11b-owner-review-packet.md`
 - [x] T11B-R Copilot runtime boot availability fix handoff ready：`docs/superpowers/refactor-ops/t11b-review-fix-copilot-runtime-boot-availability-handoff.md`
-- [ ] 等待 T11B-R implementation note；不要直接跳 Command Gateway
+- [x] T11B-R implementation 完成并接受：`04d8c2c1` + Owner Review `docs/superpowers/audits/2026-06-15-t11b-review-fix-owner-review-packet.md`
+- [x] T11B implementation 完成并接受 after review fix；结论：不要继续 Copilot manual action runtime 小修，除非有真实 bug
+- [ ] 下一步建议：Code Volume Audit / Deletion Map（UI/service/core 可退役路径地图）；不要直接跳 Command Gateway
 - [ ] 不要提前做 Current Work State、Chat 或 Command Gateway；Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾
