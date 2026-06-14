@@ -9,6 +9,7 @@ import { Loader2, AlertTriangle, Settings2, ArrowLeft, X, Ban } from 'lucide-rea
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { CopilotAction, DocumentContext, ActionUsage, ActionResult } from '@/service/copilot/CopilotActionRegistry';
+import { getCopilotResultPanel } from '@/ui/view/copilot/copilot-action-surfaces';
 import { actionResultToArtifacts } from '@/service/copilot/CopilotArtifactAdapter';
 import { applyCopilotArtifactsToContext } from '@/service/copilot/CopilotArtifactApply';
 import {
@@ -446,7 +447,7 @@ const CopilotResultContent: React.FC<{
 		);
 	}
 
-	const Panel = action.ResultPanel;
+	const Panel = getCopilotResultPanel(action.id);
 	return (
 		<div className="pktw-relative pktw-flex pktw-flex-col">
 			{backButton}

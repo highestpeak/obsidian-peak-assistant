@@ -29,12 +29,11 @@ function action(
 		id,
 		label: id,
 		description: id,
-		icon: (() => null) as any,
+		iconId: 'sparkles',
 		category,
 		relevance: () => score,
 		guard,
 		execute: (async function* () { return { type: 'structured' as const, data: {} }; }) as any,
-		ResultPanel: (() => null) as any,
 	};
 }
 

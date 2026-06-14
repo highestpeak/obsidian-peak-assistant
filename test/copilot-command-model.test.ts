@@ -33,14 +33,13 @@ function action(params: {
 		id: params.id,
 		label: params.label,
 		description: params.description ?? `${params.label} description`,
-		icon: (() => null) as any,
+		iconId: 'sparkles',
 		category: params.category,
 		intentTab: params.intentTab,
 		requiresDocument: params.requiresDocument,
 		relevance: () => params.score,
 		guard: params.guard,
 		execute: (async function* () { return { type: 'structured' as const, data: {} }; }) as any,
-		ResultPanel: (() => null) as any,
 	};
 }
 

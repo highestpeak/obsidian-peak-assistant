@@ -16,6 +16,7 @@ import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { CopilotActionRegistry, type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
+import { getCopilotActionIcon } from '@/ui/view/copilot/copilot-action-surfaces';
 import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';
 import { CopilotResultModal } from '@/ui/view/copilot/CopilotResultModal';
 import { CopilotAutoRunModal } from '@/ui/view/copilot/CopilotAutoRunModal';
@@ -494,7 +495,7 @@ function SuggestedIntents({
 			{top.map((item, i) => (
 				<SuggestedIntentRow
 					key={item.action.id}
-					icon={item.action.icon}
+					icon={getCopilotActionIcon(item.action.iconId)}
 					title={item.action.label}
 					subtitle={item.action.description}
 					pill={item.recommended ? { label: 'recommended', variant: 'accent' } : undefined}
@@ -537,7 +538,7 @@ function CapabilityButton({
 	item: CopilotActionListItem;
 	onSelect: (action: CopilotAction) => void;
 }) {
-	const Icon = item.action.icon;
+	const Icon = getCopilotActionIcon(item.action.iconId);
 	return (
 		<Button
 			variant="ghost"
