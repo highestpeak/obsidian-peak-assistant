@@ -15,7 +15,7 @@ import {
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
-import { CopilotActionRegistry, type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
+import { type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { getCopilotActionIcon } from '@/ui/view/copilot/copilot-action-surfaces';
 import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';
 import { CopilotResultModal } from '@/ui/view/copilot/CopilotResultModal';
@@ -71,7 +71,11 @@ const CopilotPickerContent: React.FC<{
 	ctx: DocumentContext | null;
 	initialTab: IntentTabId;
 }> = ({ onSelect, onAuto, onOpenHistoryRecord, onOpenAllHistory, onOpenVaultRecord, ctx, initialTab }) => {
-	const registry = CopilotActionRegistry.getInstance();
+	// T11B: action catalog comes from the app-owned runtime; mounting
+	// before the runtime is bound renders an empty list rather than
+	// throwing inside React.
+	const runtime = AppContext.tryGetCopilotActionRuntime();
+	const allActions: CopilotAction[] = useMemo(() => runtime?.getAll() ?? [], [runtime]);
 	const [activeTab, setActiveTab] = useState<IntentTabId>(initialTab);
 	const [query, setQuery] = useState('');
 	const [showAllByTab, setShowAllByTab] = useState<Partial<Record<IntentTabId, boolean>>>({});
@@ -108,8 +112,8 @@ const CopilotPickerContent: React.FC<{
 		ctx,
 		activeTab,
 		query,
-		actions: registry.getAll(),
-	}), [ctx, activeTab, query, registry]);
+		actions: allActions,
+	}), [ctx, activeTab, query, allActions]);
 
 	const isMobile = Platform.isMobile;
 	const tabMeta = SCOPE_TABS.find(t => t.id === activeTab) ?? SCOPE_TABS[0];

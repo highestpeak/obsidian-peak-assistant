@@ -4,6 +4,7 @@ import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { TagSuggestionEngine } from '@/service/copilot/TagSuggestionEngine';
+import { createSqliteTagSuggestionDataPort } from '@/app/copilot/actions/SqliteCopilotActionTagsAdapter';
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { AdaptiveConcurrencyPool } from '@/core/utils/adaptive-concurrency';
 import { BatchTagPanel } from './panels/BatchTagPanel';
@@ -110,7 +111,10 @@ export class BatchTagModal extends Modal {
 		}
 
 		const notice = openProgressNotice(`Batch Tag: preparing ${candidates.length} documents...`);
-		const engine = new TagSuggestionEngine(this.appContext.manager);
+		const engine = new TagSuggestionEngine({
+			aiManager: this.appContext.manager,
+			data: createSqliteTagSuggestionDataPort(),
+		});
 		const pool = new AdaptiveConcurrencyPool({
 			initial: 3,
 			min: 1,

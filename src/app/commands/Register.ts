@@ -4,7 +4,6 @@ import type { SearchClient } from '@/service/search/SearchClient';
 import type { IndexInitializer } from '@/service/search/index/indexInitializer';
 import type { ViewManager } from '@/app/view/ViewManager';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { registerAllCopilotActions } from '@/service/copilot/actions';
 import {
 	openBatchTagSuggestions,
 	openChatStudio,
@@ -45,7 +44,11 @@ export function buildCoreCommands(
 	void searchSettings;
 	void storageFolder;
 
-	registerAllCopilotActions();
+	// T11B (2026-06-14): Copilot manual-action catalog is now owned by
+	// the app-level `CopilotActionRuntime` (composed in `main.ts` after
+	// sqlite + AIServiceManager are ready). `buildCoreCommands` no
+	// longer registers actions as a boot side effect — UI reaches the
+	// runtime via `AppContext.tryGetCopilotActionRuntime()`.
 
 	return [
 		{
