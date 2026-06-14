@@ -21,6 +21,7 @@ import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
+import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
 
 /**
  * Application context containing all global dependencies.
@@ -244,6 +245,44 @@ export class AppContext {
 	}
 
 	/**
+	 * T11B: Bind the Copilot manual-action runtime at plugin boot.
+	 * Delegates to the app-owned `AppRuntimeRegistry`. Fail-loud on
+	 * double-bind.
+	 */
+	public static setCopilotActionRuntime(runtime: CopilotActionRuntime): void {
+		AppContext.getInstance().runtimeRegistry.setCopilotActionRuntime(runtime);
+	}
+
+	/**
+	 * T11B: Read the bound Copilot action runtime. Fail-loud if boot
+	 * has not run yet. Used by command actions that should only run
+	 * post-boot (e.g. the registered command palette entries that open
+	 * a specific Copilot action by id).
+	 */
+	public static getCopilotActionRuntime(): CopilotActionRuntime {
+		return AppContext.getInstance().runtimeRegistry.getCopilotActionRuntime();
+	}
+
+	/**
+	 * T11B: Soft accessor — returns `null` if boot has not bound the
+	 * runtime yet. UI components (Copilot picker, result modal, auto
+	 * planner) use this so an early mount renders an empty/loading
+	 * state instead of throwing inside React.
+	 */
+	public static tryGetCopilotActionRuntime(): CopilotActionRuntime | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetCopilotActionRuntime();
+	}
+
+	/**
+	 * T11B: Dispose + drop the Copilot action runtime — called from
+	 * `main.onunload` so a hot-reloaded plugin bundle does not retain
+	 * references to closed sqlite repos / abort controllers.
+	 */
+	public static clearCopilotActionRuntime(): void {
+		AppContext.getInstance().runtimeRegistry.clearCopilotActionRuntime();
+	}
+
+	/**
 	 * Clear singleton and unsubscribe from workspace events.
 	 * Must be called from plugin onunload to break reference chains and allow GC.
 	 */
@@ -259,6 +298,7 @@ export class AppContext {
 			AppContext.instance.runtimeRegistry.clearAmbientRuntime();
 			AppContext.instance.runtimeRegistry.clearVaultReviewRuntime();
 			AppContext.instance.runtimeRegistry.clearQuickSearchBackgroundRuntime();
+			AppContext.instance.runtimeRegistry.clearCopilotActionRuntime();
 			AppContext.instance = null;
 		}
 	}

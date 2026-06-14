@@ -463,6 +463,25 @@ export default class MyPlugin extends Plugin {
 					const { composeVaultReviewRuntime } = await import('@/app/copilot/vault/composeVaultReviewRuntime');
 					AppContext.setVaultReviewRuntime(composeVaultReviewRuntime(this.app));
 				}
+				// T11B: bind the Copilot manual-action runtime now that
+				// sqlite + AIServiceManager are ready. Composition wires
+				// every concrete dependency (AppContext, sqliteStoreManager,
+				// SearchClient, ProfileRegistry, Agent SDK, custom prompt
+				// vault folder) into the `CopilotActionPorts` bag. UI
+				// (`CopilotPickerModal`, `CopilotResultModal`, auto planner)
+				// reaches the runtime via `AppContext.tryGetCopilotActionRuntime()`.
+				{
+					const { composeCopilotActionRuntime } = await import('@/app/copilot/actions/composeCopilotActionRuntime');
+					const copilotActionRuntime = composeCopilotActionRuntime(this.app);
+					AppContext.setCopilotActionRuntime(copilotActionRuntime);
+					// Custom prompt loading is async (vault folder scan)
+					// and non-blocking so a slow vault read does not stall
+					// boot. The picker uses an empty custom list until the
+					// promise settles.
+					copilotActionRuntime
+						.refreshCustomPrompts()
+						.catch(e => console.warn('[Peak Assistant] Failed to load custom prompts:', e));
+				}
 				const sessionContext = SessionContextService.getInstance(this.app, EventBus.getInstance(this.app));
 				await sessionContext.init();
 				// Only start background AI services if an active profile is configured

@@ -1,0 +1,60 @@
+// T11B (2026-06-14): Single composition point for the Copilot manual
+// action runtime.
+//
+// One place wires every concrete dependency (Obsidian `App`,
+// AIServiceManager, SearchClient, sqliteStoreManager, ProfileRegistry,
+// custom prompt vault folder, Agent SDK) into the
+// {@link CopilotActionPorts} bag and constructs the runtime
+// implementation. Called from `main.ts` at plugin boot.
+//
+// Service-layer code stays pure orchestration over the port bag.
+
+import type { App } from 'obsidian';
+import { AppContext } from '@/app/context/AppContext';
+import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
+import { CopilotActionRuntimeImpl } from '@/service/copilot/actions/CopilotActionRuntimeImpl';
+import type { CopilotActionPorts } from '@/service/copilot/actions/CopilotActionPorts';
+import { AppCopilotActionAiAdapter } from './AppCopilotActionAiAdapter';
+import { ObsidianCopilotActionVaultAdapter } from './ObsidianCopilotActionVaultAdapter';
+import { AppCopilotActionSearchAdapter } from './AppCopilotActionSearchAdapter';
+import { SqliteCopilotActionSemanticGraphAdapter } from './SqliteCopilotActionSemanticGraphAdapter';
+import { SqliteCopilotActionTagsAdapter } from './SqliteCopilotActionTagsAdapter';
+import { createAppCopilotActionAgentAdapter } from './AppCopilotActionAgentAdapter';
+import { ObsidianCustomPromptSourceAdapter } from './ObsidianCustomPromptSourceAdapter';
+
+/**
+ * Compose the manual Copilot action runtime. The caller hands the
+ * Obsidian `App`; everything else (AI manager, plugin id, search
+ * client, settings) is resolved through the always-present `AppContext`
+ * static accessors so the composition file stays a single readable
+ * page.
+ */
+export function composeCopilotActionRuntime(app: App): CopilotActionRuntime {
+	const appContext = AppContext.getInstance();
+	const pluginId = appContext.plugin.manifest.id;
+
+	const ports: CopilotActionPorts = {
+		ai: new AppCopilotActionAiAdapter(appContext.manager),
+		vault: new ObsidianCopilotActionVaultAdapter(app),
+		search: new AppCopilotActionSearchAdapter(() => AppContext.getSearchClient()),
+		semanticGraph: new SqliteCopilotActionSemanticGraphAdapter(),
+		tags: new SqliteCopilotActionTagsAdapter(appContext.manager),
+		agent: createAppCopilotActionAgentAdapter({
+			app,
+			pluginId,
+			resolveSearchClient: () => {
+				try {
+					return AppContext.getSearchClient();
+				} catch {
+					return null;
+				}
+			},
+		}),
+		customPrompts: new ObsidianCustomPromptSourceAdapter({
+			app,
+			resolveFolder: () => AppContext.getSettings().customPromptsFolder ?? '_prompts',
+		}),
+	};
+
+	return new CopilotActionRuntimeImpl(ports);
+}

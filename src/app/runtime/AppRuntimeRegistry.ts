@@ -20,12 +20,14 @@ import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
+import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
 
 export class AppRuntimeRegistry {
 	private vaultLintRuntime: VaultLintRuntime | null = null;
 	private ambientRuntime: AmbientRuntime | null = null;
 	private vaultReviewRuntime: VaultReviewRuntime | null = null;
 	private quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime | null = null;
+	private copilotActionRuntime: CopilotActionRuntime | null = null;
 
 	/**
 	 * Bind the Vault Lint runtime. Called exactly once at plugin boot
@@ -222,5 +224,53 @@ export class AppRuntimeRegistry {
 		const runtime = this.quickSearchBackgroundRuntime;
 		this.quickSearchBackgroundRuntime = null;
 		runtime?.dispose();
+	}
+
+	/**
+	 * T11B: Bind the Copilot manual-action runtime. Called exactly once
+	 * at plugin boot from `composeCopilotActionRuntime`. Double-bind
+	 * without an intervening clear throws — typically a hot-reload
+	 * artifact or duplicate onload path.
+	 */
+	setCopilotActionRuntime(runtime: CopilotActionRuntime): void {
+		if (this.copilotActionRuntime !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setCopilotActionRuntime: a runtime is already bound. Call clearCopilotActionRuntime first if this is intentional.',
+			);
+		}
+		this.copilotActionRuntime = runtime;
+	}
+
+	/**
+	 * Read the active Copilot action runtime. Fail-loud if no runtime
+	 * is bound — that is a boot-order bug.
+	 */
+	getCopilotActionRuntime(): CopilotActionRuntime {
+		if (this.copilotActionRuntime === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getCopilotActionRuntime: no runtime is bound. Plugin boot must call setCopilotActionRuntime() before consumers reach the runtime.',
+			);
+		}
+		return this.copilotActionRuntime;
+	}
+
+	/**
+	 * Soft accessor returning `null` when the runtime is not yet bound.
+	 * Used by the Copilot picker, the result modal, and the auto-planner
+	 * — they can mount before boot finishes loading custom prompts.
+	 */
+	tryGetCopilotActionRuntime(): CopilotActionRuntime | null {
+		return this.copilotActionRuntime;
+	}
+
+	/**
+	 * Dispose + drop the runtime. Used by `main.onunload` so the
+	 * hot-reloaded bundle does not retain references to closed sqlite
+	 * repos or the AI service manager. Idempotent.
+	 */
+	clearCopilotActionRuntime(): void {
+		const runtime = this.copilotActionRuntime;
+		this.copilotActionRuntime = null;
+		runtime?.dispose?.();
 	}
 }
