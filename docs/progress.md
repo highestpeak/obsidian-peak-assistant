@@ -108,7 +108,9 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T10 target 已选择：Quick Search Background Session Runtime Boundary Wave
 - [x] T10 Quick Search Background Session Runtime Boundary Wave handoff ready：`docs/superpowers/refactor-ops/t10-quick-search-background-session-runtime-boundary-wave-handoff.md`
 - [x] T10 implementation received：`5a21111b` + `c2c153cb` + `2daa8b3f`
-- [ ] T10R review fix required：restore entrypoints（Notice click + Active Sessions click）`docs/superpowers/refactor-ops/t10-review-fix-restore-entrypoints-handoff.md`
+- [x] T10R review fix 完成：`20bbd79f` restore entrypoints（Notice click + Active Sessions click）
+- [x] T10 implementation 完成并接受：Owner Review `docs/superpowers/audits/2026-06-14-t10-owner-review-packet.md`
+- [ ] 下一步：选择 T11 target。推荐 Copilot Action Registry Boundary Wave；备选 T11/T12 Conformance + Golden Trace
 - [ ] 不要提前做 Current Work State、Chat 或 Command Gateway；Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾
