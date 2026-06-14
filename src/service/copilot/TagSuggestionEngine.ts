@@ -1,8 +1,12 @@
+// T11B (2026-06-14): TagSuggestionEngine takes an injected
+// {@link TagSuggestionDataPort} instead of grabbing
+// `SqliteStoreManager.getInstance()` from inside its signal methods.
+// The app composition layer is the only place that wires concrete
+// SQLite repos into the port.
+
 import { PromptId } from '@/service/prompt/PromptId';
 import { tagSuggestionsSchema, type TagSuggestions } from './copilot-schemas';
 import { decodeIndexedTagsBlob } from '@/core/document/helper/TagService';
-import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { GraphNodeType } from '@/core/po/graph.po';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 
 /** Weights for combining the three tag suggestion signals. */
@@ -26,39 +30,63 @@ export interface RankedTagSuggestion {
 	sources: Array<'content' | 'graph' | 'history'>;
 }
 
-export class TagSuggestionEngine {
-	constructor(private readonly aiManager: AIServiceManager) {}
+/**
+ * SQLite-backed data lookups the engine needs. App composition wires
+ * `sqliteStoreManager.{getMobiusNodeRepo,getMobiusEdgeRepo,getIndexContext}`
+ * behind this port.
+ */
+export interface TagSuggestionDataPort {
+	/** `tags_json` blob for the document at the given path, or null. */
+	getDocumentTagsJsonByPath(path: string): Promise<string | null>;
+	/** Resolve a path to its mobius node id (or null if not indexed). */
+	getMobiusNodeIdByPath(path: string): Promise<string | null>;
+	/** One-hop graph neighbor ids of a mobius node. */
+	getNeighborIds(nodeId: string): Promise<string[]>;
+	/** `tags_json` blob for a mobius node id. */
+	getMobiusNodeTagsJsonById(nodeId: string): Promise<string | null>;
+	/** List `tags_json` blobs for documents whose path starts with the folder prefix. */
+	listDocumentTagsJsonUnderFolderPrefix(folderPath: string, limit: number): Promise<string[]>;
+	/** Vault-wide top tag labels ordered by document count. */
+	getVaultTopTagLabels(limit: number): Promise<string[]>;
+}
 
-	/**
-	 * Main entry: returns merged, ranked tag suggestions for a document.
-	 */
+export interface TagSuggestionEngineDeps {
+	aiManager: AIServiceManager;
+	data: TagSuggestionDataPort;
+}
+
+export class TagSuggestionEngine {
+	private readonly aiManager: AIServiceManager;
+	private readonly data: TagSuggestionDataPort;
+
+	constructor(deps: TagSuggestionEngineDeps) {
+		this.aiManager = deps.aiManager;
+		this.data = deps.data;
+	}
+
 	async suggestTags(docPath: string, content: string, title: string): Promise<RankedTagSuggestion[]> {
 		const existingTags = await this.getExistingTags(docPath);
-		const vaultTopTags = await this.getVaultTopTags(50);
+		const vaultTopTags = await this.data.getVaultTopTagLabels(50);
 
-		// Run all three signals in parallel
 		const [contentCandidates, graphCandidates, historyCandidates] = await Promise.all([
 			this.contentSignal(content, title, existingTags, vaultTopTags),
 			this.graphSignal(docPath),
 			this.historySignal(docPath),
 		]);
 
-		const merged = this.mergeAndRank(contentCandidates, graphCandidates, historyCandidates, existingTags);
-		return merged;
+		return this.mergeAndRank(contentCandidates, graphCandidates, historyCandidates, existingTags);
 	}
-
-	// --- Signal A: LLM content analysis ---
 
 	private async contentSignal(
 		content: string, title: string, existingTags: string[], vaultTopTags: string[],
 	): Promise<TagCandidate[]> {
 		try {
-			const neighborTags = ''; // Neighbor info is in Signal B
+			const neighborTags = '';
 			const { zodToJsonSchema } = await import('zod-to-json-schema');
 			const result = await this.aiManager.queryStructured(
 				PromptId.DocSuggestTags,
 				{
-					content: content.slice(0, 8000), // Limit content length for token efficiency
+					content: content.slice(0, 8000),
 					title,
 					existingTags: JSON.stringify(existingTags),
 					vaultTopTags: vaultTopTags.join(', '),
@@ -80,29 +108,20 @@ export class TagSuggestionEngine {
 		}
 	}
 
-	// --- Signal B: neighbor tag propagation ---
-
 	private async graphSignal(docPath: string): Promise<TagCandidate[]> {
 		try {
-			const storeManager = SqliteStoreManager.getInstance();
-			const nodeRepo = storeManager.getMobiusNodeRepo();
-			const edgeRepo = storeManager.getMobiusEdgeRepo();
+			const docNodeId = await this.data.getMobiusNodeIdByPath(docPath);
+			if (!docNodeId) return [];
 
-			const docNode = await nodeRepo.getByPath(docPath);
-			if (!docNode) return [];
-
-			// Get 1-hop neighbor IDs
-			const neighborMap = await edgeRepo.getNeighborIdsMap([docNode.node_id]);
-			const neighborIds = neighborMap.get(docNode.node_id) ?? [];
+			const neighborIds = await this.data.getNeighborIds(docNodeId);
 			if (neighborIds.length === 0) return [];
 
-			// Read neighbor tags
 			const tagCounts = new Map<string, { count: number; category: 'topic' | 'keyword' | 'functional' }>();
 
-			for (const nid of neighborIds.slice(0, 20)) { // Cap at 20 neighbors
-				const neighbor = await nodeRepo.getByNodeId(nid);
-				if (!neighbor?.tags_json) continue;
-				const blob = decodeIndexedTagsBlob(neighbor.tags_json);
+			for (const nid of neighborIds.slice(0, 20)) {
+				const tagsJson = await this.data.getMobiusNodeTagsJsonById(nid);
+				if (!tagsJson) continue;
+				const blob = decodeIndexedTagsBlob(tagsJson);
 
 				for (const t of blob.topicTags ?? []) {
 					const key = t.toLowerCase();
@@ -120,32 +139,27 @@ export class TagSuggestionEngine {
 			return Array.from(tagCounts.entries())
 				.map(([tag, { count, category }]) => ({
 					tag,
-					confidence: count / totalNeighbors, // Fraction of neighbors that have this tag
+					confidence: count / totalNeighbors,
 					reason: `${count} of ${totalNeighbors} linked notes use this tag`,
 					category,
 					source: 'graph' as const,
 				}))
-				.filter(c => c.confidence >= 0.2); // At least 20% of neighbors must share the tag
+				.filter(c => c.confidence >= 0.2);
 		} catch (e) {
 			console.warn('[TagSuggestionEngine] Graph signal failed:', e);
 			return [];
 		}
 	}
 
-	// --- Signal C: historical folder affinity ---
-
 	private async historySignal(docPath: string): Promise<TagCandidate[]> {
 		try {
 			const folderPath = docPath.split('/').slice(0, -1).join('/');
 			if (!folderPath) return [];
 
-			const storeManager = SqliteStoreManager.getInstance();
-			const nodeRepo = storeManager.getMobiusNodeRepo();
-
 			const folderTagCounts = new Map<string, { count: number; category: 'topic' | 'keyword' | 'functional' }>();
 			let docCount = 0;
 
-			const tagsJsonList = await nodeRepo.listDocumentTagsJsonUnderFolderPrefix(folderPath, 50);
+			const tagsJsonList = await this.data.listDocumentTagsJsonUnderFolderPrefix(folderPath, 50);
 			if (tagsJsonList.length === 0) return [];
 
 			for (const raw of tagsJsonList) {
@@ -168,14 +182,12 @@ export class TagSuggestionEngine {
 					category,
 					source: 'history' as const,
 				}))
-				.filter(c => c.confidence >= 0.3); // At least 30% folder coverage
+				.filter(c => c.confidence >= 0.3);
 		} catch (e) {
 			console.warn('[TagSuggestionEngine] History signal failed:', e);
 			return [];
 		}
 	}
-
-	// --- Merge & Rank ---
 
 	private mergeAndRank(
 		contentCandidates: TagCandidate[],
@@ -185,7 +197,6 @@ export class TagSuggestionEngine {
 	): RankedTagSuggestion[] {
 		const existingNormalized = new Set(existingTags.map(t => t.toLowerCase().replace(/^#/, '')));
 
-		// Group all candidates by normalized tag name
 		const tagMap = new Map<string, {
 			candidates: TagCandidate[];
 			bestCategory: 'topic' | 'keyword' | 'functional';
@@ -194,15 +205,12 @@ export class TagSuggestionEngine {
 
 		for (const c of [...contentCandidates, ...graphCandidates, ...historyCandidates]) {
 			const key = c.tag.toLowerCase().replace(/^#/, '');
-			// Skip tags the doc already has
 			if (existingNormalized.has(key)) continue;
-			// Skip noise tags
 			if (this.isNoiseTag(key)) continue;
 
 			const existing = tagMap.get(key);
 			if (existing) {
 				existing.candidates.push(c);
-				// Prefer content signal's category and reason
 				if (c.source === 'content') {
 					existing.bestCategory = c.category;
 					existing.bestReason = c.reason;
@@ -216,7 +224,6 @@ export class TagSuggestionEngine {
 			}
 		}
 
-		// Score each tag using weighted combination
 		const ranked: RankedTagSuggestion[] = [];
 		for (const [tag, { candidates, bestCategory, bestReason }] of tagMap) {
 			let score = 0;
@@ -228,11 +235,9 @@ export class TagSuggestionEngine {
 				sources.add(c.source);
 			}
 
-			// Boost tags that appear in multiple signals
 			if (sources.size >= 2) score *= 1.2;
 			if (sources.size >= 3) score *= 1.3;
 
-			// Clamp to [0, 1]
 			score = Math.min(1, Math.max(0, score));
 
 			if (score >= MIN_CONFIDENCE) {
@@ -246,39 +251,16 @@ export class TagSuggestionEngine {
 			}
 		}
 
-		// Sort by confidence descending, take top-K
 		ranked.sort((a, b) => b.confidence - a.confidence);
 		return ranked.slice(0, MAX_SUGGESTIONS);
 	}
 
-	// --- Helpers ---
-
 	private async getExistingTags(docPath: string): Promise<string[]> {
 		try {
-			const storeManager = SqliteStoreManager.getInstance();
-			const nodeRepo = storeManager.getMobiusNodeRepo();
-			const doc = await nodeRepo.getByPath(docPath);
-			if (!doc?.tags_json) return [];
-			const blob = decodeIndexedTagsBlob(doc.tags_json);
+			const tagsJson = await this.data.getDocumentTagsJsonByPath(docPath);
+			if (!tagsJson) return [];
+			const blob = decodeIndexedTagsBlob(tagsJson);
 			return [...(blob.topicTags ?? []), ...(blob.keywordTags ?? [])];
-		} catch {
-			return [];
-		}
-	}
-
-	private async getVaultTopTags(limit: number): Promise<string[]> {
-		try {
-			const storeManager = SqliteStoreManager.getInstance();
-			const db = storeManager.getIndexContext('vault');
-			// Query topic_tag nodes ordered by doc count
-			const rows = await db
-				.selectFrom('mobius_node')
-				.select(['title', 'path'])
-				.where('type', '=', GraphNodeType.TopicTag)
-				.orderBy('tag_doc_count', 'desc')
-				.limit(limit)
-				.execute();
-			return rows.map(r => r.title ?? r.path).filter((v): v is string => v != null);
 		} catch {
 			return [];
 		}

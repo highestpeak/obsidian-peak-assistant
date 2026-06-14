@@ -91,34 +91,9 @@ export interface CopilotAction {
 	execute(ctx: DocumentContext, signal?: AbortSignal): AsyncGenerator<LLMStreamEvent, ActionResult | void>;
 }
 
-export class CopilotActionRegistry {
-	private static instance: CopilotActionRegistry;
-	private actions = new Map<string, CopilotAction>();
-
-	static getInstance(): CopilotActionRegistry {
-		if (!this.instance) this.instance = new CopilotActionRegistry();
-		return this.instance;
-	}
-
-	register(action: CopilotAction): void {
-		this.actions.set(action.id, action);
-	}
-
-	get(id: string): CopilotAction | undefined {
-		return this.actions.get(id);
-	}
-
-	getAll(): CopilotAction[] {
-		return Array.from(this.actions.values());
-	}
-
-	getByCategory(cat: 'document' | 'vault' | 'writing'): CopilotAction[] {
-		return this.getAll().filter(a => a.category === cat);
-	}
-
-	rank(ctx: DocumentContext): Array<{ action: CopilotAction; score: number }> {
-		return this.getAll()
-			.map(action => ({ action, score: action.relevance(ctx) }))
-			.sort((a, b) => b.score - a.score);
-	}
-}
+// T11B (2026-06-14): the static `CopilotActionRegistry` singleton is
+// gone. Catalog ownership moved to {@link CopilotActionRuntime} (under
+// `src/service/copilot/actions/`) and is bound on the app-owned
+// `AppRuntimeRegistry`. The types above (`CopilotAction`,
+// `DocumentContext`, `ActionResult`, `ActionUsage`, `CopilotActionIconId`)
+// remain the service-side contract.
