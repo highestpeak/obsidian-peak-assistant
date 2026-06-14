@@ -112,7 +112,8 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] T10 implementation 完成并接受：Owner Review `docs/superpowers/audits/2026-06-14-t10-owner-review-packet.md`
 - [x] T11 target 已选择：Copilot Action Registry Boundary Wave
 - [x] T11 Copilot Action Registry Boundary Wave handoff ready：`docs/superpowers/refactor-ops/t11-copilot-action-registry-boundary-wave-handoff.md`
-- [ ] 等待 Claude Code implementation note；T11 重点是拆开 service action definition 与 UI result surface
+- [x] T11 implementation 完成并接受：`c1d02ae4` + `cbd14a68` + `0037b074` + Owner Review `docs/superpowers/audits/2026-06-14-t11-owner-review-packet.md`
+- [ ] 下一步：推荐 Copilot Execution Ports / Registry Ownership Wave；不要直接跳 Command Gateway
 - [ ] 不要提前做 Current Work State、Chat 或 Command Gateway；Command Gateway 仍是 T12 capstone
 
 ### 0. Pending — Phase AN 收尾
