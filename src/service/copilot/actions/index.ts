@@ -1,10 +1,3 @@
-import {
-	Sparkles, Tag, MessageSquareText, Link2, GitFork, Lightbulb, AlignLeft,
-	Languages, Search, HelpCircle, Layers, Activity, ChevronRight, PenLine, BookOpen,
-	WrapText, Share2, ShieldCheck, Calendar, CheckSquare, ClipboardList, Workflow,
-	FileText, Inbox, ListChecks, ClipboardCheck, Fingerprint, CircleHelp, Zap,
-} from 'lucide-react';
-
 import { PromptId } from '@/service/prompt/PromptId';
 import { AppContext } from '@/app/context/AppContext';
 import { TagSuggestionEngine } from '../TagSuggestionEngine';
@@ -78,23 +71,21 @@ function hasCJKMajority(text: string): boolean {
 
 export const polishDocumentAction: CopilotAction = {
 	id: 'polish', label: 'Polish Document', description: 'Improve clarity and style',
-	icon: Sparkles, category: 'document',
+	iconId: 'sparkles', category: 'document',
 	relevance: (ctx) => ctx.selection ? 0.8 : ctx.wordCount > 200 ? 0.5 : 0.2,
 	execute: (ctx, signal) => streamAction(PromptId.DocPolish, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope }, signal),
-	ResultPanel: null as any,
 };
 
 export const formatDocumentAction: CopilotAction = {
 	id: 'format-polish', label: 'Format Polish', description: 'Fix heading hierarchy, list consistency, whitespace, and broken links',
-	icon: WrapText, category: 'document',
+	iconId: 'wrap-text', category: 'document',
 	relevance: (ctx) => ctx.selection ? 0.6 : ctx.wordCount > 200 ? 0.5 : 0.2,
 	execute: (ctx, signal) => streamAction(PromptId.DocFormatPolish, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope }, signal),
-	ResultPanel: null as any,
 };
 
 export const correctContentAction: CopilotAction = {
 	id: 'correct-content', label: 'Correct Content', description: 'Find factual errors, logical inconsistencies, broken references, and typos',
-	icon: ShieldCheck, category: 'document',
+	iconId: 'shield-check', category: 'document',
 	guard: (ctx) => ctx.wordCount < 50 ? 'Document is too short to check for errors (minimum 50 words).' : null,
 	relevance: (ctx) => ctx.selection ? 0.7 : ctx.wordCount > 300 ? 0.6 : 0.3,
 	async *execute(ctx, signal) {
@@ -106,12 +97,11 @@ export const correctContentAction: CopilotAction = {
 		);
 		return { type: 'structured', data: result, usage };
 	},
-	ResultPanel: null as any,
 };
 
 export const reviewArticleAction: CopilotAction = {
 	id: 'review', label: 'Review Article', description: 'Get structural and content feedback',
-	icon: MessageSquareText, category: 'document',
+	iconId: 'message-square-text', category: 'document',
 	relevance: (ctx) => ctx.wordCount > 500 ? 0.7 : ctx.wordCount > 300 ? 0.5 : 0.2,
 	async *execute(ctx, signal) {
 		let usage: ActionUsage | undefined;
@@ -122,12 +112,11 @@ export const reviewArticleAction: CopilotAction = {
 		);
 		return { type: 'structured', data: result, usage };
 	},
-	ResultPanel: null as any,
 };
 
 export const suggestLinksAction: CopilotAction = {
 	id: 'suggest-links', label: 'Suggest Links', description: 'Find potential wiki-link connections',
-	icon: Link2, category: 'document',
+	iconId: 'link-2', category: 'document',
 	relevance: (ctx) => ctx.isOrphan ? 0.8 : ctx.links.length < 3 ? 0.5 : 0.2,
 	async *execute(ctx, signal) {
 		const app = AppContext.getInstance().app;
@@ -148,12 +137,11 @@ export const suggestLinksAction: CopilotAction = {
 
 		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
-	ResultPanel: null as any,
 };
 
 export const suggestSemanticLinksAction: CopilotAction = {
 	id: 'suggest-semantic-links', label: 'Suggest Links (Graph)', description: 'Find unlinked semantic neighbors from the knowledge graph',
-	icon: Share2, category: 'document',
+	iconId: 'share-2', category: 'document',
 	relevance: (ctx) => ctx.isOrphan ? 0.9 : ctx.links.length < 3 ? 0.6 : 0.3,
 	async *execute(ctx, _signal) {
 		const storeManager = SqliteStoreManager.getInstance();
@@ -241,12 +229,11 @@ export const suggestSemanticLinksAction: CopilotAction = {
 			},
 		};
 	},
-	ResultPanel: null as any,
 };
 
 export const suggestSplitAction: CopilotAction = {
 	id: 'suggest-split', label: 'Suggest Split', description: 'Propose how to split a long document',
-	icon: GitFork, category: 'document',
+	iconId: 'git-fork', category: 'document',
 	relevance: (ctx) => ctx.wordCount > 2000 ? 0.8 : ctx.wordCount > 1000 ? 0.5 : 0.2,
 	guard: (ctx) => ctx.wordCount < 500 ? 'Document is too short to split (< 500 words)' : null,
 	async *execute(ctx, signal) {
@@ -258,12 +245,11 @@ export const suggestSplitAction: CopilotAction = {
 		);
 		return { type: 'structured', data: result, usage };
 	},
-	ResultPanel: null as any,
 };
 
 export const suggestTagsAction: CopilotAction = {
 	id: 'suggest-tags', label: 'Suggest Tags', description: 'Analyze content and suggest relevant tags',
-	icon: Tag, category: 'document',
+	iconId: 'tag', category: 'document',
 	relevance: (ctx) => ctx.tags.length === 0 ? 0.9 : ctx.tags.length < 2 ? 0.6 : 0.2,
 	async *execute(ctx, _signal) {
 		const engine = new TagSuggestionEngine(AppContext.getInstance().manager);
@@ -302,21 +288,19 @@ export const suggestTagsAction: CopilotAction = {
 			},
 		};
 	},
-	ResultPanel: null as any,
 };
 
 export const summarizeAction: CopilotAction = {
 	id: 'summarize', label: 'Summarize', description: 'Generate a concise summary of the document',
-	icon: AlignLeft, category: 'document',
+	iconId: 'align-left', category: 'document',
 	guard: (ctx) => ctx.wordCount < 100 ? 'Document is too short to summarize (minimum 100 words).' : null,
 	relevance: (ctx) => ctx.wordCount > 1500 ? 0.8 : ctx.wordCount > 800 ? 0.5 : 0.2,
 	execute: (ctx, signal) => streamAction(PromptId.DocSummarize, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope, length: 'short' }, signal),
-	ResultPanel: null as any,
 };
 
 export const extractConceptsAction: CopilotAction = {
 	id: 'extract-concepts', label: 'Extract Concepts', description: 'Identify key concepts and definitions',
-	icon: Lightbulb, category: 'document',
+	iconId: 'lightbulb', category: 'document',
 	guard: (ctx) => ctx.wordCount < 100 ? 'Document is too short to extract concepts from (minimum 100 words).' : null,
 	relevance: (ctx) => ctx.wordCount > 1000 && ctx.tags.length < 2 ? 0.7 : ctx.wordCount > 500 ? 0.5 : 0.2,
 	async *execute(ctx, signal) {
@@ -328,12 +312,11 @@ export const extractConceptsAction: CopilotAction = {
 		);
 		return { type: 'structured', data: result, usage };
 	},
-	ResultPanel: null as any,
 };
 
 export const translateAction: CopilotAction = {
 	id: 'translate', label: 'Translate', description: 'Translate document content to another language',
-	icon: Languages, category: 'document',
+	iconId: 'languages', category: 'document',
 	relevance(ctx) {
 		const content = ctx.scope === 'selection' ? ctx.selection ?? ctx.content : ctx.content;
 		return hasCJKMajority(content) ? 0.6 : 0.3;
@@ -343,12 +326,11 @@ export const translateAction: CopilotAction = {
 		const targetLanguage = hasCJKMajority(content) ? 'English' : '中文';
 		return streamAction(PromptId.DocTranslate, { content, title: ctx.title, scope: ctx.scope, targetLanguage }, signal);
 	},
-	ResultPanel: null as any,
 };
 
 export const findRelatedAction: CopilotAction = {
 	id: 'find-related', label: 'Find Related', description: 'Find semantically related notes in your vault',
-	icon: Search, category: 'vault',
+	iconId: 'search', category: 'vault',
 	relevance: (ctx) => ctx.isOrphan ? 0.8 : ctx.links.length < 3 ? 0.5 : 0.3,
 	async *execute(ctx, _signal) {
 		const response = await AppContext.getInstance().searchClient.vectorSearch({
@@ -364,12 +346,11 @@ export const findRelatedAction: CopilotAction = {
 			}));
 		return { type: 'structured', data: { items } as FindRelatedResult };
 	},
-	ResultPanel: null as any,
 };
 
 export const knowledgeGapsAction: CopilotAction = {
 	id: 'knowledge-gaps', label: 'Knowledge Gaps', description: 'Identify missing topics and knowledge gaps',
-	icon: HelpCircle, category: 'vault',
+	iconId: 'help-circle', category: 'vault',
 	relevance: (ctx) => ctx.headingCount > 5 ? 0.7 : ctx.headingCount > 3 ? 0.5 : 0.2,
 	async *execute(ctx, signal) {
 		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
@@ -386,12 +367,11 @@ export const knowledgeGapsAction: CopilotAction = {
 
 		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
-	ResultPanel: null as any,
 };
 
 export const synthesizeTopicAction: CopilotAction = {
 	id: 'synthesize-topic', label: 'Synthesize Topic', description: 'Synthesize a topic overview from related notes',
-	icon: Layers, category: 'vault',
+	iconId: 'layers', category: 'vault',
 	relevance(ctx) {
 		const t = ctx.title.toLowerCase();
 		return /moc|overview|summary|index/.test(t) ? 0.8 : ctx.tags.length > 0 ? 0.4 : 0.2;
@@ -410,12 +390,11 @@ export const synthesizeTopicAction: CopilotAction = {
 
 		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
-	ResultPanel: null as any,
 };
 
 export const vaultHealthAction: CopilotAction = {
 	id: 'vault-health', label: 'Vault Health', description: 'Analyze vault structure for orphans, duplicates, and stale notes',
-	icon: Activity, category: 'vault',
+	iconId: 'activity', category: 'vault',
 	relevance: () => 0.5,
 	async *execute(_ctx, signal) {
 		const aiManager = AppContext.getInstance().manager;
@@ -456,12 +435,11 @@ export const vaultHealthAction: CopilotAction = {
 		);
 		return { type: 'structured', data: result, usage };
 	},
-	ResultPanel: null as any,
 };
 
 export const vaultSummaryAction: CopilotAction = {
 	id: 'vault-summary', label: 'Vault Summary', description: 'Summarize recent vault activity over a time period',
-	icon: Calendar, category: 'vault',
+	iconId: 'calendar', category: 'vault',
 	relevance: () => 0.5,
 	async *execute(_ctx, signal) {
 		const app = AppContext.getInstance().app;
@@ -500,30 +478,27 @@ export const vaultSummaryAction: CopilotAction = {
 		);
 		return { type: 'structured', data: result, usage };
 	},
-	ResultPanel: null as any,
 };
 
 export const continueWritingAction: CopilotAction = {
 	id: 'continue-writing', label: 'Continue Writing', description: 'Continue writing from where you left off',
-	icon: ChevronRight, category: 'writing',
+	iconId: 'chevron-right', category: 'writing',
 	guard: (ctx) => ctx.wordCount === 0 ? 'Document is empty — write something first' : null,
 	relevance: (ctx) => ctx.wordCount >= 50 && ctx.wordCount <= 2000 ? 0.6 : ctx.wordCount > 0 ? 0.4 : 0.1,
 	execute: (ctx, signal) => streamAction(PromptId.WritingContinue, { content: ctx.content, title: ctx.title }, signal),
-	ResultPanel: null as any,
 };
 
 export const rewriteSelectionAction: CopilotAction = {
 	id: 'rewrite-selection', label: 'Rewrite Selection', description: 'Rewrite selected text for clarity and style',
-	icon: PenLine, category: 'writing',
+	iconId: 'pen-line', category: 'writing',
 	guard: (ctx) => ctx.selection ? null : 'Select text to rewrite',
 	relevance: (ctx) => ctx.selection ? 0.8 : 0.1,
 	execute: (ctx, signal) => streamAction(PromptId.WritingRewrite, { selection: ctx.selection!, content: ctx.content, title: ctx.title, style: 'concise' }, signal),
-	ResultPanel: null as any,
 };
 
 export const addEvidenceAction: CopilotAction = {
 	id: 'add-evidence', label: 'Add Evidence', description: 'Find supporting evidence from your vault',
-	icon: BookOpen, category: 'writing',
+	iconId: 'book-open', category: 'writing',
 	guard: (ctx) => ctx.wordCount < 50 ? 'Write at least 50 words before searching for evidence' : null,
 	relevance: (ctx) => ctx.wordCount > 500 ? 0.5 : 0.2,
 	async *execute(ctx, signal) {
@@ -540,12 +515,11 @@ export const addEvidenceAction: CopilotAction = {
 
 		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
-	ResultPanel: null as any,
 };
 
 export const extractTodosAction: CopilotAction = {
 	id: 'extract-todos', label: 'Extract Todos', description: 'Find all unchecked todos across the vault',
-	icon: CheckSquare, category: 'vault',
+	iconId: 'check-square', category: 'vault',
 	relevance: () => 0.6,
 	async *execute(_ctx, _signal) {
 		const app = AppContext.getInstance().app;
@@ -581,12 +555,11 @@ export const extractTodosAction: CopilotAction = {
 			},
 		};
 	},
-	ResultPanel: null as any,
 };
 
 export const writingPlanAction: CopilotAction = {
 	id: 'writing-plan', label: 'Writing Plan', description: 'Create a structured writing plan for a topic, grounded in vault notes',
-	icon: ClipboardList, category: 'writing',
+	iconId: 'clipboard-list', category: 'writing',
 	relevance: () => 0.4,
 	async *execute(ctx, signal) {
 		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
@@ -605,12 +578,11 @@ export const writingPlanAction: CopilotAction = {
 
 		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
-	ResultPanel: null as any,
 };
 
 export const runWorkflowAction: CopilotAction = {
 	id: 'run-workflow', label: 'Run Workflow', description: 'Execute a multi-step workflow (find → summarize → report)',
-	icon: Workflow, category: 'vault',
+	iconId: 'workflow', category: 'vault',
 	relevance: () => 0.3,
 	async *execute(ctx, signal) {
 		const { runWorkflow } = await import('@/service/workflow/WorkflowAgent');
@@ -620,14 +592,13 @@ export const runWorkflowAction: CopilotAction = {
 		const result = await runWorkflow(description, signal);
 		return { type: 'structured', data: result };
 	},
-	ResultPanel: null as any,
 };
 
 // ── Write Article (#32) ───────────────────────────────────────────────
 
 export const writeArticleAction: CopilotAction = {
 	id: 'write-article', label: 'Write Article', description: 'Find vault notes on a topic and synthesize an article with [[citations]]',
-	icon: FileText, category: 'writing',
+	iconId: 'file-text', category: 'writing',
 	relevance: (ctx) => ctx.wordCount < 100 ? 0.6 : 0.3,
 	async *execute(ctx, signal) {
 		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
@@ -643,14 +614,13 @@ export const writeArticleAction: CopilotAction = {
 
 		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
-	ResultPanel: null as any,
 };
 
 // ── Detect & File (#34) ───────────────────────────────────────────────
 
 export const detectAndFileAction: CopilotAction = {
 	id: 'detect-and-file', label: 'Detect & File', description: 'Analyze text and suggest which note to append it to',
-	icon: Inbox, category: 'vault',
+	iconId: 'inbox', category: 'vault',
 	guard: (ctx) => !ctx.selection ? 'Select text to detect and file' : null,
 	relevance: (ctx) => ctx.selection ? 0.7 : 0.1,
 	async *execute(ctx, signal) {
@@ -668,14 +638,13 @@ export const detectAndFileAction: CopilotAction = {
 
 		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
-	ResultPanel: null as any,
 };
 
 // ── Check Task List (#43) ─────────────────────────────────────────────
 
 export const checkTaskListAction: CopilotAction = {
 	id: 'check-task-list', label: 'Check Task List', description: 'Analyze tasks for priority, overdue items, blockers, and staleness',
-	icon: ListChecks, category: 'document',
+	iconId: 'list-checks', category: 'document',
 	guard: (ctx) => {
 		const hasTasks = /- \[[ x]\]/.test(ctx.content);
 		return hasTasks ? null : 'No task items found in document (need - [ ] or - [x])';
@@ -694,14 +663,13 @@ export const checkTaskListAction: CopilotAction = {
 
 		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
-	ResultPanel: null as any,
 };
 
 // ── Prompt Audit (#29) ────────────────────────────────────────────────
 
 export const promptAuditAction: CopilotAction = {
 	id: 'prompt-audit', label: 'Prompt Audit', description: 'Evaluate prompt templates for quality and suggest improvements',
-	icon: ClipboardCheck, category: 'vault',
+	iconId: 'clipboard-check', category: 'vault',
 	relevance: () => 0.3,
 	async *execute(_ctx, signal) {
 		const systemPrompt = await AppContext.getInstance().manager.renderPrompt(
@@ -721,14 +689,13 @@ export const promptAuditAction: CopilotAction = {
 
 		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
-	ResultPanel: null as any,
 };
 
 // ── Deduplicate Scan (#20) ───────────────────────────────────────────
 
 export const deduplicateScanAction: CopilotAction = {
 	id: 'deduplicate-scan', label: 'Deduplicate Scan', description: 'Find files with identical content by MD5 hash',
-	icon: Fingerprint, category: 'vault',
+	iconId: 'fingerprint', category: 'vault',
 	relevance: () => 0.4,
 	async *execute(_ctx, _signal) {
 		const app = AppContext.getInstance().app;
@@ -770,14 +737,13 @@ export const deduplicateScanAction: CopilotAction = {
 			},
 		};
 	},
-	ResultPanel: null as any,
 };
 
 // ── Find & Solve Tasks (#44) ─────────────────────────────────────────
 
 export const findAndSolveTasksAction: CopilotAction = {
 	id: 'find-solve-tasks', label: 'Find & Solve Tasks', description: 'Find open tasks with questions and suggest answers from vault notes',
-	icon: CircleHelp, category: 'vault',
+	iconId: 'circle-help', category: 'vault',
 	relevance: () => 0.5,
 	async *execute(_ctx, signal) {
 		const systemPrompt = `You are a task resolution assistant. You search a knowledge vault to find answers to open tasks that contain questions or research items.
@@ -848,14 +814,13 @@ Search the vault for answers to these tasks. Use vault_grep and vault_read_note 
 
 		yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 	},
-	ResultPanel: null as any,
 };
 
 // ── Smart Connections (#89) ──────────────────────────────────────────
 
 export const smartConnectionsAction: CopilotAction = {
 	id: 'smart-connections', label: 'Smart Connections', description: 'Find semantically similar unlinked notes via graph inspector',
-	icon: Zap, category: 'vault',
+	iconId: 'zap', category: 'vault',
 	relevance: (ctx) => ctx.isOrphan ? 0.9 : ctx.links.length < 5 ? 0.6 : 0.3,
 	async *execute(ctx, _signal) {
 		const { getSemanticNeighbors } = await import('@/service/tools/search-graph-inspector/common');
@@ -940,74 +905,9 @@ export const smartConnectionsAction: CopilotAction = {
 			},
 		};
 	},
-	ResultPanel: null as any,
 };
-
-// ── Panel imports (static so esbuild resolves @/ aliases) ─────────────
-
-import { PolishPanel } from '@/ui/view/copilot/panels/PolishPanel';
-import { FormatPolishPanel } from '@/ui/view/copilot/panels/FormatPolishPanel';
-import { ReviewPanel } from '@/ui/view/copilot/panels/ReviewPanel';
-import { LinkSuggestPanel } from '@/ui/view/copilot/panels/LinkSuggestPanel';
-import { SemanticLinkSuggestPanel } from '@/ui/view/copilot/panels/SemanticLinkSuggestPanel';
-import { SplitPanel } from '@/ui/view/copilot/panels/SplitPanel';
-import { TagSuggestionPanel } from '@/ui/view/copilot/panels/TagSuggestionPanel';
-import { SummarizePanel } from '@/ui/view/copilot/panels/SummarizePanel';
-import { ExtractConceptsPanel } from '@/ui/view/copilot/panels/ExtractConceptsPanel';
-import { TranslatePanel } from '@/ui/view/copilot/panels/TranslatePanel';
-import { FindRelatedPanel } from '@/ui/view/copilot/panels/FindRelatedPanel';
-import { KnowledgeGapsPanel } from '@/ui/view/copilot/panels/KnowledgeGapsPanel';
-import { SynthesizePanel } from '@/ui/view/copilot/panels/SynthesizePanel';
-import { VaultHealthPanel } from '@/ui/view/copilot/panels/VaultHealthPanel';
-import { CorrectContentPanel } from '@/ui/view/copilot/panels/CorrectContentPanel';
-import { VaultSummaryPanel } from '@/ui/view/copilot/panels/VaultSummaryPanel';
-import { ContinueWritingPanel } from '@/ui/view/copilot/panels/ContinueWritingPanel';
-import { RewriteSelectionPanel } from '@/ui/view/copilot/panels/RewriteSelectionPanel';
-import { AddEvidencePanel } from '@/ui/view/copilot/panels/AddEvidencePanel';
-import { ExtractTodosPanel } from '@/ui/view/copilot/panels/ExtractTodosPanel';
-import { WritingPlanPanel } from '@/ui/view/copilot/panels/WritingPlanPanel';
-import { WorkflowPanel } from '@/ui/view/copilot/panels/WorkflowPanel';
-import { WriteArticlePanel } from '@/ui/view/copilot/panels/WriteArticlePanel';
-import { DetectAndFilePanel } from '@/ui/view/copilot/panels/DetectAndFilePanel';
-import { CheckTaskListPanel } from '@/ui/view/copilot/panels/CheckTaskListPanel';
-import { PromptAuditPanel } from '@/ui/view/copilot/panels/PromptAuditPanel';
-import { DeduplicateScanPanel } from '@/ui/view/copilot/panels/DeduplicateScanPanel';
-import { FindAndSolveTasksPanel } from '@/ui/view/copilot/panels/FindAndSolveTasksPanel';
-import { SmartConnectionsPanel } from '@/ui/view/copilot/panels/SmartConnectionsPanel';
 
 // ── Registration ───────────────────────────────────────────────────────
-
-const PANEL_MAP: Record<string, React.FC<any>> = {
-	'polish': PolishPanel,
-	'format-polish': FormatPolishPanel,
-	'review': ReviewPanel,
-	'suggest-links': LinkSuggestPanel,
-	'suggest-semantic-links': SemanticLinkSuggestPanel,
-	'suggest-split': SplitPanel,
-	'suggest-tags': TagSuggestionPanel,
-	'summarize': SummarizePanel,
-	'extract-concepts': ExtractConceptsPanel,
-	'translate': TranslatePanel,
-	'find-related': FindRelatedPanel,
-	'knowledge-gaps': KnowledgeGapsPanel,
-	'synthesize-topic': SynthesizePanel,
-	'vault-health': VaultHealthPanel,
-	'correct-content': CorrectContentPanel,
-	'vault-summary': VaultSummaryPanel,
-	'continue-writing': ContinueWritingPanel,
-	'rewrite-selection': RewriteSelectionPanel,
-	'add-evidence': AddEvidencePanel,
-	'extract-todos': ExtractTodosPanel,
-	'writing-plan': WritingPlanPanel,
-	'run-workflow': WorkflowPanel,
-	'write-article': WriteArticlePanel,
-	'detect-and-file': DetectAndFilePanel,
-	'check-task-list': CheckTaskListPanel,
-	'prompt-audit': PromptAuditPanel,
-	'deduplicate-scan': DeduplicateScanPanel,
-	'find-solve-tasks': FindAndSolveTasksPanel,
-	'smart-connections': SmartConnectionsPanel,
-};
 
 /** All actions in display order: document → vault → writing. */
 const ALL_ACTIONS: CopilotAction[] = [
@@ -1023,21 +923,28 @@ const ALL_ACTIONS: CopilotAction[] = [
 	continueWritingAction, rewriteSelectionAction, addEvidenceAction, writingPlanAction, writeArticleAction,
 ];
 
+/**
+ * Register built-in service-side action definitions only.
+ *
+ * T11 (2026-06-14): UI panel binding moved to
+ * `src/ui/view/copilot/copilot-action-surfaces.tsx`. This function no
+ * longer mutates actions with React components. Custom prompts load
+ * via {@link loadCustomPromptActions} from the app boot path so this
+ * module stays free of `@/ui/view/copilot/panels/*` imports.
+ */
 export function registerAllCopilotActions(): void {
 	const registry = CopilotActionRegistry.getInstance();
 	for (const action of ALL_ACTIONS) {
-		const panel = PANEL_MAP[action.id];
-		if (panel) action.ResultPanel = panel;
 		registry.register(action);
 	}
 
-	// Load custom prompts from vault (async, non-blocking)
-	loadCustomPrompts().catch(e => console.warn('[Copilot] Failed to load custom prompts:', e));
+	// Load custom prompts from vault (async, non-blocking). Panel binding
+	// for `custom-*` ids is provided by the UI surface registry default.
+	loadCustomPromptActions().catch(e => console.warn('[Copilot] Failed to load custom prompts:', e));
 }
 
-async function loadCustomPrompts(): Promise<void> {
+async function loadCustomPromptActions(): Promise<void> {
 	const { CustomPromptRegistry } = await import('../CustomPromptRegistry');
-	const { WritingPlanPanel } = await import('@/ui/view/copilot/panels/WritingPlanPanel');
 	const appContext = AppContext.getInstance();
 	const settings = AppContext.getSettings();
 	const folder = settings.customPromptsFolder ?? '_prompts';
@@ -1047,9 +954,6 @@ async function loadCustomPrompts(): Promise<void> {
 
 	const registry = CopilotActionRegistry.getInstance();
 	for (const def of customRegistry.getAll()) {
-		const action = customRegistry.buildAction(def);
-		// Custom prompts reuse WritingPlanPanel (agent stream → text result)
-		action.ResultPanel = WritingPlanPanel;
-		registry.register(action);
+		registry.register(customRegistry.buildAction(def));
 	}
 }

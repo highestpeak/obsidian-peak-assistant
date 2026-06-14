@@ -28,7 +28,6 @@ import type { CopilotAction, DocumentContext, ActionResult } from './CopilotActi
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { AppContext } from '@/app/context/AppContext';
 import { buildCopilotAgentStream } from './actions/agent-actions';
-import { FileText } from 'lucide-react';
 
 export interface CustomPromptDef {
 	id: string;
@@ -127,7 +126,7 @@ export class CustomPromptRegistry {
 			id: `custom-${def.id}`,
 			label: def.label,
 			description: def.description,
-			icon: FileText,
+			iconId: 'file-text',
 			category: def.category,
 			relevance: (ctx: DocumentContext) => {
 				// If the note has a `prompts:` frontmatter field, show high relevance
@@ -157,7 +156,6 @@ export class CustomPromptRegistry {
 
 				yield* buildCopilotAgentStream({ systemPrompt, userPrompt, signal });
 			},
-			ResultPanel: null as any,
 		};
 	}
 }
