@@ -21,6 +21,7 @@ import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
+import type { CuratorPushRuntime } from '@/service/usage/curator/CuratorPushRuntime';
 
 export class AppRuntimeRegistry {
 	private vaultLintRuntime: VaultLintRuntime | null = null;
@@ -28,6 +29,7 @@ export class AppRuntimeRegistry {
 	private vaultReviewRuntime: VaultReviewRuntime | null = null;
 	private quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime | null = null;
 	private copilotActionRuntime: CopilotActionRuntime | null = null;
+	private curatorPushRuntime: CuratorPushRuntime | null = null;
 
 	/**
 	 * Bind the Vault Lint runtime. Called exactly once at plugin boot
@@ -271,6 +273,51 @@ export class AppRuntimeRegistry {
 	clearCopilotActionRuntime(): void {
 		const runtime = this.copilotActionRuntime;
 		this.copilotActionRuntime = null;
+		runtime?.dispose?.();
+	}
+
+	/**
+	 * T11E: Bind the Curator Push runtime. Called exactly once at plugin
+	 * boot from `composeCuratorPushRuntime`. Double-bind without an
+	 * intervening clear throws — typically a hot-reload artifact.
+	 */
+	setCuratorPushRuntime(runtime: CuratorPushRuntime): void {
+		if (this.curatorPushRuntime !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setCuratorPushRuntime: a runtime is already bound. Call clearCuratorPushRuntime first if this is intentional.',
+			);
+		}
+		this.curatorPushRuntime = runtime;
+	}
+
+	/**
+	 * Read the active Curator Push runtime. Fail-loud when no runtime is
+	 * bound — that is a boot-order bug.
+	 */
+	getCuratorPushRuntime(): CuratorPushRuntime {
+		if (this.curatorPushRuntime === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getCuratorPushRuntime: no runtime is bound. Plugin boot must call setCuratorPushRuntime() before consumers reach the runtime.',
+			);
+		}
+		return this.curatorPushRuntime;
+	}
+
+	/**
+	 * Soft accessor returning `null` when the runtime is not yet bound.
+	 */
+	tryGetCuratorPushRuntime(): CuratorPushRuntime | null {
+		return this.curatorPushRuntime;
+	}
+
+	/**
+	 * Dispose + drop the Curator Push runtime. Used by `main.onunload`
+	 * so the hot-reloaded bundle does not retain the EventBus
+	 * subscription or the Zustand store reset closure. Idempotent.
+	 */
+	clearCuratorPushRuntime(): void {
+		const runtime = this.curatorPushRuntime;
+		this.curatorPushRuntime = null;
 		runtime?.dispose?.();
 	}
 }

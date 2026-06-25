@@ -327,16 +327,6 @@ export interface MyPluginSettings {
 	/** Self-hosted agent harness configuration. */
 	harnessSettings?: HarnessSettings;
 
-	vaultSearch?: {
-		sdkProfile?: {
-			kind?: 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom';
-			baseUrl?: string;
-			apiKey?: string | null;
-			primaryModel?: string;
-			fastModel?: string;
-			customHeaders?: Record<string, string>;
-		};
-	};
 }
 
 export const DEFAULT_SETTINGS: MyPluginSettings = {
@@ -356,12 +346,4 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	usageTrackingEnabled: true,
 	usageDetailRetentionDays: 30,
 	usagePreviewEnabled: true,
-	vaultSearch: {
-		sdkProfile: {
-			kind: 'anthropic',
-			baseUrl: 'https://api.anthropic.com',
-			primaryModel: 'claude-sonnet-4-6',
-			fastModel: 'claude-haiku-4-5',
-		},
-	},
 };

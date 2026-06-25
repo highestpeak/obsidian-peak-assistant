@@ -55,7 +55,7 @@ import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
 import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 import { UsageOptimizationService } from '@/service/usage/optimization';
-import { CuratorRuntimePushService } from '@/service/usage/CuratorRuntimePushService';
+import { composeCuratorPushRuntime } from '@/app/usage/composeCuratorPushRuntime';
 import { mountCuratorPushRoot } from '@/ui/view/usage-dashboard/runtime/mountCuratorPushRoot';
 import { ModelRegistry } from '@/core/providers/model-registry';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
@@ -407,12 +407,20 @@ export default class MyPlugin extends Plugin {
 			}
 		}
 
-		// Dashboard carrier B/A/C — mount Curator runtime push modal + register
-		// chat-bridge slots (inline receipt, context ring). The hidden React
-		// root is GC-safe; unload tears it down via `unmountCuratorPushRoot`.
-		CuratorRuntimePushService.getInstance().init(this.app, {
-			usagePreviewEnabled: this.settings.usagePreviewEnabled ?? true,
+		// Dashboard carrier B/A/C — compose and bind the Curator Push
+		// runtime (T11E), then mount the hidden React root that hosts the
+		// modal + registers chat-bridge slots (inline receipt, context
+		// ring). The runtime is app-owned via AppRuntimeRegistry; unload
+		// tears it down via `AppContext.clearCuratorPushRuntime()` and
+		// drops the React root via `unmountCuratorPushRoot`.
+		const curatorPushRuntime = composeCuratorPushRuntime({
+			app: this.app,
+			getSettings: () => ({
+				usagePreviewEnabled: this.settings.usagePreviewEnabled ?? true,
+			}),
 		});
+		curatorPushRuntime.start();
+		AppContext.setCuratorPushRuntime(curatorPushRuntime);
 		this.unmountCuratorPushRoot = mountCuratorPushRoot();
 
 		// Auto-open onboarding wizard on first run (no profiles configured)
@@ -703,7 +711,9 @@ export default class MyPlugin extends Plugin {
 		// Break singletons so old bundle can be GC'd
 		try { this.unmountCuratorPushRoot?.(); } catch { /* ignore */ }
 		this.unmountCuratorPushRoot = undefined;
-		CuratorRuntimePushService.getInstance().destroy();
+		// T11E: release the app-owned Curator Push runtime (drops the
+		// EventBus subscription and resets the Zustand projection).
+		try { AppContext.clearCuratorPushRuntime(); } catch { /* not bound — ignore */ }
 		UsageTrackingService.getInstance().destroy();
 		UsageOutcomeService.getInstance().destroy();
 		UsageOptimizationService.getInstance().destroy();

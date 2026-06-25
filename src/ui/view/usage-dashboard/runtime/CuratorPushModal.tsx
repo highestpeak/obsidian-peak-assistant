@@ -9,7 +9,7 @@ import type { DashboardStrings } from '../UsageDashboard';
  * Mounted once at plugin init via a hidden React root. Reads
  * `useCuratorPushStore.current` and renders the Modal when set.
  *
- * The actual triggers live in `CuratorRuntimePushService`; this is the
+ * The actual triggers live in `CuratorPushRuntime`; this is the
  * presentation layer. Three buttons:
  *
  *   - Apply       — runs `payload.apply()` then dismisses

@@ -70,9 +70,9 @@ export function getComposerSlotRenderer(): ComposerSlotRenderer | null {
 
 // ── Context utilization (Dashboard carrier C — context ring) ────────────────
 //
-// Stub: dashboard reads via React hook; chat side provides the real
-// implementation. When chat lands on master, replace this with a re-export
-// from chat's hook (`@/ui/view/chat-view/integration/useCurrentContextUtilization`).
+// Dashboard owns the registry; chat-side code pushes updates via
+// `setCurrentContextUtilization()` when a turn lands. The previous chat-view
+// hook re-export wire-up plan was retired in T11E.
 
 export interface ContextUtilization {
 	used: number;

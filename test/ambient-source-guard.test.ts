@@ -6,9 +6,8 @@
 //      `@/core/storage/sqlite/SqliteStoreManager`, or calling
 //      `AppContext.getInstance` / `sqliteStoreManager.*` in live code.
 //   2. `src/ui/store/ambientPushStore.ts` no longer imports sqlite.
-//   3. Production code (anywhere except this test file and the
-//      `AmbientContract.ts` inventory) must not reach the retired
-//      `AmbientPushService.getInstance` /
+//   3. Production code (anywhere except this test file) must not reach
+//      the retired `AmbientPushService.getInstance` /
 //      `MorningBriefingService.getInstance` singleton sites.
 //   4. No `(window as any).app` anywhere under `src/service/ambient`,
 //      `src/app/ambient`, or `src/ui/{store,view}` Ambient code.
@@ -116,10 +115,7 @@ function testServiceAmbientHasNoAppOrUiOrSqliteImports(): void {
 function testServiceAmbientHasNoServiceLocatorUsageInLiveCode(): void {
 	const files = readFiles(SERVICE_AMBIENT_ROOT);
 	const violations: string[] = [];
-	// `AmbientContract.ts` documents historical resolution sites as
-	// string literals; it is exempt from these scans by name.
 	for (const file of files) {
-		if (file.relPath.endsWith('AmbientContract.ts')) continue;
 		if (/AppContext\s*\.\s*getInstance\s*\(/.test(file.code)) {
 			violations.push(`${file.relPath}: still calls AppContext.getInstance() in live code`);
 		}
@@ -183,9 +179,6 @@ function testNoRetiredSingletonReferencesInLiveCode(): void {
 
 	const violations: string[] = [];
 	for (const file of files) {
-		// Exempt the contract inventory — it lives in src/service/ambient
-		// and documents history.
-		if (file.relPath.endsWith('AmbientContract.ts')) continue;
 		if (/AmbientPushService\s*\.\s*getInstance\s*\(/.test(file.code)) {
 			violations.push(`${file.relPath}: live call to AmbientPushService.getInstance()`);
 		}

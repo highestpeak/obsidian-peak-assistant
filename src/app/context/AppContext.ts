@@ -22,6 +22,7 @@ import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
+import type { CuratorPushRuntime } from '@/service/usage/curator/CuratorPushRuntime';
 
 /**
  * Application context containing all global dependencies.
@@ -283,6 +284,39 @@ export class AppContext {
 	}
 
 	/**
+	 * T11E: Bind the Curator Push runtime at plugin boot. Delegates to
+	 * the app-owned `AppRuntimeRegistry`. Fail-loud on double-bind.
+	 */
+	public static setCuratorPushRuntime(runtime: CuratorPushRuntime): void {
+		AppContext.getInstance().runtimeRegistry.setCuratorPushRuntime(runtime);
+	}
+
+	/**
+	 * T11E: Read the bound Curator Push runtime. Fail-loud if boot has
+	 * not run yet.
+	 */
+	public static getCuratorPushRuntime(): CuratorPushRuntime {
+		return AppContext.getInstance().runtimeRegistry.getCuratorPushRuntime();
+	}
+
+	/**
+	 * T11E: Soft accessor — returns `null` if boot has not bound the
+	 * runtime yet.
+	 */
+	public static tryGetCuratorPushRuntime(): CuratorPushRuntime | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetCuratorPushRuntime();
+	}
+
+	/**
+	 * T11E: Dispose + drop the Curator Push runtime — called from
+	 * `main.onunload` so the EventBus subscription and the Zustand
+	 * projection reset closure release together.
+	 */
+	public static clearCuratorPushRuntime(): void {
+		AppContext.getInstance().runtimeRegistry.clearCuratorPushRuntime();
+	}
+
+	/**
 	 * Clear singleton and unsubscribe from workspace events.
 	 * Must be called from plugin onunload to break reference chains and allow GC.
 	 */
@@ -299,6 +333,7 @@ export class AppContext {
 			AppContext.instance.runtimeRegistry.clearVaultReviewRuntime();
 			AppContext.instance.runtimeRegistry.clearQuickSearchBackgroundRuntime();
 			AppContext.instance.runtimeRegistry.clearCopilotActionRuntime();
+			AppContext.instance.runtimeRegistry.clearCuratorPushRuntime();
 			AppContext.instance = null;
 		}
 	}

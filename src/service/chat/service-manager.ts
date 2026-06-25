@@ -69,7 +69,7 @@ export class AIServiceManager {
 		return this._conversationService;
 	}
 
-	/** Public accessor for PromptService (needed by PromptTemplateList UI). */
+	/** Public accessor for PromptService. */
 	get prompt(): PromptService {
 		return this.promptService;
 	}

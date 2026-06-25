@@ -10,7 +10,6 @@ import { SettingsModal } from '@/ui/view/SettingsModal';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { CopilotReviewHistoryModal } from '@/ui/view/copilot/CopilotReviewHistoryModal';
 import { BatchTagModal } from '@/ui/view/copilot/BatchTagModal';
-import { PromptTemplateModal } from '@/ui/view/prompt-template/PromptTemplateModal';
 import { BuildUserProfileProgressModal } from '@/ui/view/BuildUserProfileProgressModal';
 import { ConfirmModal } from '@/ui/view/ConfirmModal';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
@@ -121,10 +120,6 @@ export function openCopilotReviewHistory(): void {
 
 export function openBatchTagSuggestions(): void {
 	new BatchTagModal(getContext()).open();
-}
-
-export function openPromptTemplates(): void {
-	new PromptTemplateModal(getContext()).open();
 }
 
 export function openUsageDashboard(): void {

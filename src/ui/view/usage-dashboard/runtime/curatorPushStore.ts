@@ -1,24 +1,12 @@
 import { create } from 'zustand';
+import type { CuratorPushPayload, CuratorPushReason } from '@/service/usage/curator/types';
 
-export type CuratorPushReason =
-	| 'context-near-limit'
-	| 'high-spend'
-	| 'low-mpg'
-	| 'model-recommendation';
-
-export interface CuratorPushPayload {
-	reason: CuratorPushReason;
-	title: string;
-	body: string;
-	/** When provided, applying the recommendation runs this callback. */
-	apply?: () => void | Promise<void>;
-	/** Persistent across "Don't show this session" dismissal. */
-	dismissKey?: string;
-}
+// Re-export so existing UI imports (e.g. CuratorPushModal) keep working.
+export type { CuratorPushPayload, CuratorPushReason };
 
 interface CuratorPushState {
 	current: CuratorPushPayload | null;
-	/** Session-scoped suppression set — cleared when service restarts. */
+	/** Session-scoped suppression set — cleared when runtime restarts. */
 	dismissedKeys: Set<string>;
 	pushedThisSession: boolean;
 
@@ -27,13 +15,14 @@ interface CuratorPushState {
 }
 
 /**
- * Zustand store for the single Curator runtime push modal. The service writes
- * via `show()`; the React root reads via `current`.
+ * Zustand store for the single Curator runtime push modal. The
+ * CuratorPushRuntime writes via the projection adapter that wraps
+ * `show()`; the React root reads via `current`.
  *
- * Session scoping: `pushedThisSession` flips true on the first call to `show()`
- * and the service uses it to throttle (max 1 push per session). The store is
- * also reset on service `destroy()` so a fresh load (e.g. plugin reload) gets
- * a clean slate.
+ * Session scoping: `pushedThisSession` flips true on the first call to
+ * `show()` and the runtime checks it through the projection port to
+ * throttle (max 1 push per session). The store is reset on runtime
+ * `dispose()` so a fresh load (e.g. plugin reload) gets a clean slate.
  */
 export const useCuratorPushStore = create<CuratorPushState>((set) => ({
 	current: null,
