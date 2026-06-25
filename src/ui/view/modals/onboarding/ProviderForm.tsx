@@ -1,9 +1,7 @@
 /**
- * Shared provider configuration components — used by the general OnboardingModal
- * (full plugin setup) and the HarnessOnboardingModal (capability-binding wizard).
- *
- * Extracted from OnboardingModal.tsx to avoid duplication. Behaviour is unchanged
- * for existing callers.
+ * Shared provider configuration components used by HarnessOnboardingModal
+ * (the capability-binding wizard, which is the only onboarding surface
+ * post-T11F).
  */
 
 import React, { useState, useCallback } from 'react';

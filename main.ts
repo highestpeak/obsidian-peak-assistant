@@ -423,13 +423,15 @@ export default class MyPlugin extends Plugin {
 		AppContext.setCuratorPushRuntime(curatorPushRuntime);
 		this.unmountCuratorPushRoot = mountCuratorPushRoot();
 
-		// Auto-open onboarding wizard on first run (no profiles configured)
+		// Auto-open the Harness onboarding wizard on first run (no profiles
+		// configured). T11F retired the older general OnboardingModal — the
+		// capability-binding wizard is now the single onboarding surface.
 		const profiles = ProfileRegistry.getInstance().getAllProfiles();
 		if (profiles.length === 0) {
 			// Slight delay so the workspace is fully rendered before opening the modal
 			setTimeout(() => {
-				const { OnboardingModal } = require('@/ui/view/modals/OnboardingModal');
-				new OnboardingModal(appContext).open();
+				const { HarnessOnboardingModal } = require('@/ui/view/modals/HarnessOnboardingModal');
+				new HarnessOnboardingModal(appContext, { isReRun: false }).open();
 			}, 500);
 		}
 	}

@@ -18,7 +18,7 @@ import {
 	CircleHelp, ClipboardCheck, ClipboardList, Fingerprint, FileText,
 	GitFork, HelpCircle, Inbox, Languages, Layers, Lightbulb, Link2,
 	ListChecks, MessageSquareText, PenLine, Search, Share2, ShieldCheck,
-	Sparkles, Tag, Workflow, WrapText, Zap,
+	Sparkles, Tag, WrapText, Zap,
 } from 'lucide-react';
 import React from 'react';
 import type { ComponentType } from 'react';
@@ -45,7 +45,6 @@ import { RewriteSelectionPanel } from '@/ui/view/copilot/panels/RewriteSelection
 import { AddEvidencePanel } from '@/ui/view/copilot/panels/AddEvidencePanel';
 import { ExtractTodosPanel } from '@/ui/view/copilot/panels/ExtractTodosPanel';
 import { WritingPlanPanel } from '@/ui/view/copilot/panels/WritingPlanPanel';
-import { WorkflowPanel } from '@/ui/view/copilot/panels/WorkflowPanel';
 import { WriteArticlePanel } from '@/ui/view/copilot/panels/WriteArticlePanel';
 import { DetectAndFilePanel } from '@/ui/view/copilot/panels/DetectAndFilePanel';
 import { CheckTaskListPanel } from '@/ui/view/copilot/panels/CheckTaskListPanel';
@@ -88,7 +87,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
 	'calendar': Calendar,
 	'check-square': CheckSquare,
 	'clipboard-list': ClipboardList,
-	'workflow': Workflow,
 	'file-text': FileText,
 	'inbox': Inbox,
 	'list-checks': ListChecks,
@@ -120,7 +118,6 @@ const PANEL_MAP: Record<string, CopilotResultPanel> = {
 	'add-evidence': AddEvidencePanel,
 	'extract-todos': ExtractTodosPanel,
 	'writing-plan': WritingPlanPanel,
-	'run-workflow': WorkflowPanel,
 	'write-article': WriteArticlePanel,
 	'detect-and-file': DetectAndFilePanel,
 	'check-task-list': CheckTaskListPanel,

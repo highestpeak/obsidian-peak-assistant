@@ -41,7 +41,6 @@ export const COPILOT_INTENT_TABS: IntentTabDefinition[] = [
 
 const SETTING_ACTION_IDS = new Set([
 	'prompt-audit',
-	'run-workflow',
 ]);
 
 const DOCUMENT_ACTION_IDS = new Set([

@@ -266,11 +266,6 @@ const SERVICE_PATH = path.resolve(
 	process.cwd(),
 	'src/service/lint/VaultLintService.ts',
 );
-const PRIORITY_PATH = path.resolve(
-	process.cwd(),
-	'src/ui/view/vault-lint/components/PriorityActionsList.tsx',
-);
-
 function extractImportSpecifiers(source: string): string[] {
 	const out: string[] = [];
 	const re = /import\b[\s\S]*?from\s*['"]([^'"]+)['"]/g;
@@ -588,10 +583,8 @@ async function testTwoConcurrentRunsHaveIsolatedSinks(): Promise<void> {
 
 function testPanelAndComponentsHaveNoUiStoreImport(): void {
 	const panel = fs.readFileSync(PANEL_PATH, 'utf8');
-	const priority = fs.readFileSync(PRIORITY_PATH, 'utf8');
 	for (const [label, source] of [
 		['VaultXRayPanel.tsx', panel],
-		['PriorityActionsList.tsx', priority],
 	] as const) {
 		const code = source
 			.replace(/\/\*[\s\S]*?\*\//g, '')

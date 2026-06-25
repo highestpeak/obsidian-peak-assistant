@@ -536,20 +536,6 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 		},
 	};
 
-	const runWorkflowAction: CopilotAction = {
-		id: 'run-workflow', label: 'Run Workflow', description: 'Execute a multi-step workflow (find → summarize → report)',
-		iconId: 'workflow', category: 'vault',
-		relevance: () => 0.3,
-		async *execute(ctx, signal) {
-			const { runWorkflow } = await import('@/service/workflow/WorkflowAgent');
-			const description = ctx.selection
-				? ctx.selection
-				: `Find notes related to "${ctx.title}" and create a summary report`;
-			const result = await runWorkflow(description, signal);
-			return { type: 'structured', data: result };
-		},
-	};
-
 	const writeArticleAction: CopilotAction = {
 		id: 'write-article', label: 'Write Article', description: 'Find vault notes on a topic and synthesize an article with [[citations]]',
 		iconId: 'file-text', category: 'writing',
@@ -792,7 +778,7 @@ Search the vault for answers to these tasks. Use vault_grep and vault_read_note 
 		// Vault
 		findRelatedAction, knowledgeGapsAction, synthesizeTopicAction, vaultHealthAction, vaultSummaryAction, extractTodosAction,
 		deduplicateScanAction, findAndSolveTasksAction, smartConnectionsAction,
-		detectAndFileAction, promptAuditAction, runWorkflowAction,
+		detectAndFileAction, promptAuditAction,
 		// Writing
 		continueWritingAction, rewriteSelectionAction, addEvidenceAction, writingPlanAction, writeArticleAction,
 	];

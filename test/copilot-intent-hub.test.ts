@@ -63,7 +63,6 @@ assert.equal(getActionIntentTab(action('writing-plan', 'vault')), 'document');
 assert.equal(getActionIntentTab(action('write-article', 'vault')), 'document');
 assert.equal(getActionIntentTab(action('vault-health', 'vault')), 'vault');
 assert.equal(getActionIntentTab(action('prompt-audit', 'vault')), 'setting');
-assert.equal(getActionIntentTab(action('run-workflow', 'vault')), 'setting');
 assert.equal(getActionIntentTab(action('custom-setting-action', 'document', 'setting')), 'setting');
 
 assert.strictEqual(getIntentTabDefinition('vault').id, 'vault');
