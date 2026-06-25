@@ -17,7 +17,6 @@ import {
 	openUsageDashboard,
 	openVaultXRay,
 } from '@/app/commands/PeakCommandActions';
-import { loadMockConversationForIndexPreview } from '@/app/commands/DebugCommandActions';
 
 /**
  * Registers the small set of top-level commands exposed through Obsidian's command palette.
@@ -105,13 +104,6 @@ export function buildCoreCommands(
 			id: 'peak-open-settings',
 			name: 'Settings',
 			callback: openSettingsModal,
-		},
-		// TEMPORARY — remove together with DebugCommandActions.ts once the
-		// Conversation Index design work is signed off.
-		{
-			id: 'peak-debug-load-mock-conversation',
-			name: '[Debug] Load mock conversation for index preview',
-			callback: loadMockConversationForIndexPreview,
 		},
 	];
 }

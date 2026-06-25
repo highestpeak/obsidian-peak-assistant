@@ -24,7 +24,7 @@ export const V2ContinueAnalysisInput: React.FC<V2ContinueAnalysisInputProps> = (
     const handleSubmit = useCallback((question?: string) => {
         const q = (question || input).trim();
         if (!q) return;
-        // Fire UIEvent — tab-AISearch's InlineFollowupChat handles the actual LLM call
+        // Fire UIEvent — tab-AISearch listeners handle the actual LLM call
         useUIEventStore.getState().publish('continue-analysis', { text: q });
         onClose();
     }, [input, onClose]);
