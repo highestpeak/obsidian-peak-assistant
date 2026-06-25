@@ -14,7 +14,7 @@ async function run(): Promise<void> {
         const p = createPresetProfile('anthropic');
         assert.strictEqual(p.kind, 'anthropic');
         assert.strictEqual(p.baseUrl, 'https://api.anthropic.com');
-        assert.strictEqual(p.primaryModel, 'claude-opus-4-6');
+        assert.strictEqual(p.primaryModel, 'claude-sonnet-4-6');
         assert.strictEqual(p.fastModel, 'claude-haiku-4-5');
         assert.strictEqual(p.enabled, true);
         assert.ok(p.id.startsWith('profile_'));
@@ -27,7 +27,7 @@ async function run(): Promise<void> {
         const p = createPresetProfile('openrouter');
         assert.strictEqual(p.kind, 'openrouter');
         assert.strictEqual(p.baseUrl, 'https://openrouter.ai/api/v1');
-        assert.strictEqual(p.primaryModel, 'anthropic/claude-opus-4-6');
+        assert.strictEqual(p.primaryModel, 'anthropic/claude-sonnet-4-6');
       },
     },
     {
