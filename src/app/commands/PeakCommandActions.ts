@@ -5,7 +5,7 @@ import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import type { ChatProjectMeta } from '@/service/chat/types';
 import { openPendingConversationInChat } from '@/ui/view/chat-view/chatNavigation';
 import { QuickSearchModal } from '@/app/modals/QuickSearchModal';
-import { HarnessOnboardingModal } from '@/ui/view/modals/HarnessOnboardingModal';
+import { HarnessOnboardingModal } from '@/app/modals/HarnessOnboardingModal';
 import { SettingsModal } from '@/app/modals/SettingsModal';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { CopilotReviewHistoryModal } from '@/ui/view/copilot/CopilotReviewHistoryModal';
@@ -18,8 +18,8 @@ import {
 	type MobiusGlobalMaintenanceProgress,
 } from '@/service/search/index/indexService';
 import { BulkOperationCostEstimator } from '@/service/search/support/cost-estimator';
-import { CostEstimationModal } from '@/ui/view/modals/CostEstimationModal';
-import { IndexingProgressModal } from '@/ui/view/modals/IndexingProgressModal';
+import { CostEstimationModal } from '@/app/modals/CostEstimationModal';
+import { IndexingProgressModal } from '@/app/modals/IndexingProgressModal';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';

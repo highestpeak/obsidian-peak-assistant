@@ -1,8 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Modal } from 'obsidian';
-import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
-import { AppContext } from '@/app/context/AppContext';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { PendingLlmEnrichmentProgress } from '@/service/search/support/llm-enrichment-progress-tracker';
 import {
@@ -11,9 +7,9 @@ import {
 	formatUsdEstimate,
 } from '@/service/search/support/llm-progress-format';
 
-type ProgressSubscriber = (ev: PendingLlmEnrichmentProgress) => void;
+export type ProgressSubscriber = (ev: PendingLlmEnrichmentProgress) => void;
 
-type IndexingProgressContentProps = {
+export type IndexingProgressContentProps = {
 	onCancel: () => void;
 	subscribe: (cb: ProgressSubscriber) => () => void;
 };
@@ -44,7 +40,7 @@ function truncatePath(path: string, maxLen = 52): string {
 	return `…${path.slice(-(maxLen - 1))}`;
 }
 
-function IndexingProgressContent({ onCancel, subscribe }: IndexingProgressContentProps) {
+export function IndexingProgressContent({ onCancel, subscribe }: IndexingProgressContentProps) {
 	const [ev, setEv] = useState<PendingLlmEnrichmentProgress | null>(null);
 
 	useEffect(() => {
@@ -120,72 +116,4 @@ function IndexingProgressContent({ onCancel, subscribe }: IndexingProgressConten
 			</div>
 		</div>
 	);
-}
-
-export class IndexingProgressModal extends Modal {
-	private reactRenderer: ReactRenderer | null = null;
-	private subscribers = new Set<ProgressSubscriber>();
-	private cancelled = false;
-
-	constructor(
-		private readonly appContext: AppContext,
-		private readonly onCancel: () => void,
-	) {
-		super(appContext.app);
-	}
-
-	updateProgress(ev: PendingLlmEnrichmentProgress): void {
-		for (const cb of this.subscribers) {
-			cb(ev);
-		}
-	}
-
-	isCancelled(): boolean {
-		return this.cancelled;
-	}
-
-	onOpen(): void {
-		const { contentEl, modalEl } = this;
-		contentEl.empty();
-		contentEl.addClass('peak-indexing-progress-modal');
-		contentEl.style.padding = '0';
-
-		modalEl.style.width = '400px';
-		modalEl.style.maxWidth = '90vw';
-		modalEl.style.padding = '0';
-
-		const subscribe = (cb: ProgressSubscriber) => {
-			this.subscribers.add(cb);
-			return () => this.subscribers.delete(cb);
-		};
-
-		const handleCancel = () => {
-			this.cancelled = true;
-			this.close();
-			this.onCancel();
-		};
-
-		this.reactRenderer = new ReactRenderer(this.containerEl);
-		this.reactRenderer.render(
-			createReactElementWithServices(
-				IndexingProgressContent,
-				{ onCancel: handleCancel, subscribe },
-				this.appContext,
-			),
-		);
-	}
-
-	onClose(): void {
-		this.subscribers.clear();
-		const r = this.reactRenderer;
-		this.reactRenderer = null;
-		if (r) {
-			setTimeout(() => {
-				r.unmount();
-				this.contentEl.empty();
-			}, 0);
-		} else {
-			this.contentEl.empty();
-		}
-	}
 }

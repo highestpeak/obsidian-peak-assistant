@@ -495,7 +495,7 @@ export default class MyPlugin extends Plugin {
 		if (profiles.length === 0) {
 			// Slight delay so the workspace is fully rendered before opening the modal
 			setTimeout(() => {
-				const { HarnessOnboardingModal } = require('@/ui/view/modals/HarnessOnboardingModal');
+				const { HarnessOnboardingModal } = require('@/app/modals/HarnessOnboardingModal');
 				new HarnessOnboardingModal(appContext, { isReRun: false }).open();
 			}, 500);
 		}
