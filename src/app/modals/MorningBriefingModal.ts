@@ -25,7 +25,7 @@ export class MorningBriefingModal extends Modal {
 		this.modalEl.style.width = '90vw';
 
 		// Dynamic import to avoid circular dependencies
-		const { MorningBriefingPanel } = await import('./MorningBriefingPanel');
+		const { MorningBriefingPanel } = await import('@/ui/view/morning-briefing/MorningBriefingPanel');
 
 		this.root = createRoot(contentEl);
 		this.root.render(

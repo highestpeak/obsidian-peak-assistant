@@ -8,7 +8,7 @@ import { VaultXRayView, VAULT_XRAY_VIEW_TYPE } from '@/app/view/VaultXRayView';
 import { ConversationOutlineView, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/app/view/ConversationOutlineView';
 import { ChatStudioView, CHAT_STUDIO_VIEW_TYPE } from '@/app/view/ChatStudioView';
 import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
-import { InputModal } from '@/ui/component/InputModal';
+import { InputModal } from '@/app/modals/InputModal';
 import { App, Notice, ViewCreator, WorkspaceLeaf } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 
