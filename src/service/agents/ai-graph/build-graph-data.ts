@@ -1,6 +1,6 @@
 import { buildSourcesGraphWithDiscoveredEdges } from '@/service/tools/search-graph-inspector/build-sources-graph';
 import type { SearchResultItem } from '@/service/search/types';
-import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
+import type { LensGraphData } from '@/core/graph/lensGraphTypes';
 import { enrichWithCrossDomain } from '@/service/agents/ai-graph/infer-cross-domain';
 import { inferThinkingTree } from './infer-thinking-tree';
 import { AppContext } from '@/app/context/AppContext';

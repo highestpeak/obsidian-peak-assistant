@@ -13,7 +13,7 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { AppContext } from '@/app/context/AppContext';
 import { buildLensGraphFromSources, enrichWithThinkingTree } from './ai-graph/build-graph-data';
-import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
+import type { LensGraphData } from '@/core/graph/lensGraphTypes';
 import type { SearchResultItem } from '@/service/search/types';
 
 export type AIGraphEvent = LLMStreamEvent;

@@ -1,4 +1,4 @@
-import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
+import type { LensGraphData } from '@/core/graph/lensGraphTypes';
 
 export function enrichWithCrossDomain(data: LensGraphData): LensGraphData {
 	const getTopFolder = (path: string): string => {

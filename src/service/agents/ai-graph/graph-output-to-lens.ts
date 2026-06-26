@@ -1,5 +1,5 @@
 import type { GraphOutput } from './graph-output-types';
-import type { LensGraphData, LensNodeData, LensType } from '@/ui/component/mine/multi-lens-graph/types';
+import type { LensGraphData, LensNodeData, LensType } from '@/core/graph/lensGraphTypes';
 
 /**
  * Build a path resolver that maps LLM-generated paths to real vault-relative paths.

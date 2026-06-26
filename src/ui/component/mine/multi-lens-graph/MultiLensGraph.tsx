@@ -7,7 +7,7 @@ import { TimelineAxisNode } from './nodes/TimelineAxisNode';
 import { LensEdgeComponent } from './edges/LensEdgeComponent';
 import { useLensLayout } from './hooks/useLensLayout';
 import { Button } from '@/ui/component/shared-ui/button';
-import { Network, GitBranch, Waypoints, Clock, Layers, CheckCircle2, Loader2, Maximize2, Save } from 'lucide-react';
+import { Network, GitBranch, Waypoints, Clock, Layers, CheckCircle2, Loader2, Save } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 
 const nodeTypes = { lensNode: LensNodeComponent, swimlane: SwimlaneNode, timelineAxis: TimelineAxisNode };
@@ -55,8 +55,6 @@ interface MultiLensGraphProps {
 	loadingSteps?: Array<{ id: string; label: string; status: 'pending' | 'running' | 'done'; detail?: string }>;
 	/** Callback to trigger AI graph generation */
 	onRequestGenerate?: () => void;
-	/** Callback to open graph in fullscreen pane */
-	onExpand?: () => void;
 	/** Callback to save graph data to vault as markdown */
 	onSaveToVault?: () => void;
 }
@@ -72,7 +70,6 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	loading = false,
 	loadingSteps,
 	onRequestGenerate,
-	onExpand,
 	onSaveToVault,
 }) => {
 	const [activeLens, setActiveLens] = useState<LensType>(defaultLens);
@@ -188,19 +185,12 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 					</Button>
 				)
 			)}
-			{(onSaveToVault || onExpand) && (
+			{onSaveToVault && (
 				<>
 					<div className="pktw-flex-1" />
-					{onSaveToVault && (
-						<Button variant="ghost" size="sm" onClick={onSaveToVault} title="Save graph to vault" style={{ cursor: 'pointer' }}>
-							<Save className="pktw-w-3.5 pktw-h-3.5" />
-						</Button>
-					)}
-					{onExpand && (
-						<Button variant="ghost" size="sm" onClick={onExpand} title="View fullscreen in new window" style={{ cursor: 'pointer' }}>
-							<Maximize2 className="pktw-w-3.5 pktw-h-3.5" />
-						</Button>
-					)}
+					<Button variant="ghost" size="sm" onClick={onSaveToVault} title="Save graph to vault" style={{ cursor: 'pointer' }}>
+						<Save className="pktw-w-3.5 pktw-h-3.5" />
+					</Button>
 				</>
 			)}
 		</div>
