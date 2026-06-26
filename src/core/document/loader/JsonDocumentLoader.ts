@@ -1,12 +1,10 @@
-import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/core/search/indexTypes';
 import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
@@ -16,10 +14,6 @@ import { BaseDocumentLoader } from './BaseDocumentLoader';
  * Otherwise, the entire structure is one chunk, then split by size/overlap.
  */
 export class JsonDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: IDocSummarizer) {
-		super(app, aiServiceManager);
-	}
-
 	getDocumentType(): DocumentType {
 		return 'json';
 	}
@@ -93,9 +87,9 @@ export class JsonDocumentLoader extends BaseDocumentLoader {
 		return assembleIndexedChunks(doc, chunks, settings);
 	}
 
-	protected async readFile(file: TFile): Promise<Document | null> {
+	protected async readFile(file: VaultFileRef): Promise<Document | null> {
 		try {
-			const content = await this.app.vault.cachedRead(file);
+			const content = await this.vault.readText(file);
 			const contentHash = hashString(content, 8);
 
 			return {

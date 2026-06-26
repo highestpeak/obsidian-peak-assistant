@@ -1,9 +1,7 @@
-import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
 /**
@@ -11,10 +9,6 @@ import { BaseDocumentLoader } from './BaseDocumentLoader';
  * Uses size and overlap settings for chunking.
  */
 export class TextDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: IDocSummarizer) {
-		super(app, aiServiceManager);
-	}
-
 	getDocumentType(): DocumentType {
 		return 'txt';
 	}
@@ -23,9 +17,9 @@ export class TextDocumentLoader extends BaseDocumentLoader {
 		return ['txt'];
 	}
 
-	protected async readFile(file: TFile): Promise<Document | null> {
+	protected async readFile(file: VaultFileRef): Promise<Document | null> {
 		try {
-			const content = await this.app.vault.cachedRead(file);
+			const content = await this.vault.readText(file);
 			const contentHash = hashString(content, 8);
 
 			return {

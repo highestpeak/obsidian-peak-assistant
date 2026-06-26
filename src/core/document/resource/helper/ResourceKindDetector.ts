@@ -1,12 +1,14 @@
-import type { App } from 'obsidian';
-import { TFolder } from 'obsidian';
 import type { ResourceKind } from '@/core/document/types';
+import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
 
 /**
- * Helper class for detecting resource kind from source string
+ * Helper class for detecting resource kind from source string.
+ *
+ * T11K: depends on {@link DocumentVaultReaderPort} for the folder probe
+ * instead of `app.vault` + `instanceof TFolder`.
  */
 export class ResourceKindDetector {
-	constructor(private readonly app: App) {}
+	constructor(private readonly vault: DocumentVaultReaderPort) {}
 
 	/**
 	 * Detect resource kind from source string
@@ -19,26 +21,24 @@ export class ResourceKindDetector {
 		if (source.startsWith('#')) {
 			return 'tag';
 		}
-		
+
 		// Check if it looks like a folder path (wikilink or path without extension)
 		if (source.includes('[[')) {
 			const normalizedPath = source.replace(/^\[\[|\]\]$/g, '');
-			const file = this.app.vault.getAbstractFileByPath(normalizedPath);
-			if (file instanceof TFolder) {
+			if (this.vault.getFolder(normalizedPath)) {
 				return 'folder';
 			}
 			// Otherwise assume it's a markdown note
 			return 'markdown';
 		}
-		
+
 		// Check if it's a folder path (no extension)
 		if (source.includes('/')) {
-			const folder = this.app.vault.getAbstractFileByPath(source);
-			if (folder instanceof TFolder) {
+			if (this.vault.getFolder(source)) {
 				return 'folder';
 			}
 		}
-		
+
 		// Detect by extension
 		const ext = source.split('.').pop()?.toLowerCase();
 		if (ext === 'pdf') return 'pdf';
@@ -60,4 +60,3 @@ export class ResourceKindDetector {
 		return 'unknown';
 	}
 }
-

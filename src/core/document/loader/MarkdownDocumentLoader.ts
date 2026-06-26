@@ -1,5 +1,3 @@
-import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { parseMarkdownWithRemark } from '@/core/utils/markdown-utils';
@@ -10,7 +8,14 @@ import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { emptyUsage, mergeTokenUsage } from '@/core/providers/types';
-import { getDefaultDocumentSummary, type ResourceSummaryWithLlmMeta } from './helper/DocumentLoaderHelpers';
+import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
+import type { VaultMetadataResolverPort } from '@/core/ports/VaultMetadataResolverPort';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
+import {
+	getDefaultDocumentSummary,
+	type ResourceSummaryWithLlmMeta,
+	type DocumentSummaryConfig,
+} from './helper/DocumentLoaderHelpers';
 import { preprocessMarkdownForChunking } from '@/core/utils/markdown-utils';
 import { extractTopicAndFunctionalTags, type DocLlmTagResult } from '@/core/document/helper/TagService';
 import { computeKeywordTagBundles, extractTextRankFeatures, stripForTextRank } from '@/core/document/loader/helper/textRank';
@@ -24,12 +29,18 @@ export { assembleIndexedChunks, type TextrankSentenceStructured };
 /**
  * Markdown document loader.
  *
- * This runs on the main thread because it uses Obsidian APIs.
- * Worker code must never import this module.
+ * Runs on the main thread because it depends on the vault metadata
+ * resolver port (Obsidian's metadataCache, behind the port). Worker
+ * code must never import this module.
  */
 export class MarkdownDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: IDocSummarizer) {
-		super(app, aiServiceManager);
+	constructor(
+		vault: DocumentVaultReaderPort,
+		private readonly metadata: VaultMetadataResolverPort,
+		summaryConfig: DocumentSummaryConfig,
+		aiServiceManager?: IDocSummarizer,
+	) {
+		super(vault, summaryConfig, aiServiceManager);
 	}
 
 	getDocumentType(): DocumentType {
@@ -98,7 +109,7 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 	 * TextRank always runs. LLM tag/summary runs only when {@link DocumentLoaderReadOptions} allows (default: on).
 	 */
 	protected async readFile(
-		file: TFile,
+		file: VaultFileRef,
 		_genCacheContent?: boolean,
 		readOptions?: DocumentLoaderReadOptions,
 	): Promise<Document | null> {
@@ -112,19 +123,18 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 	}
 
 	private async readMarkdownFile(
-		file: TFile,
+		file: VaultFileRef,
 		readOptions: DocumentLoaderReadOptions & { includeLlmTags: boolean; includeLlmSummary: boolean },
 	): Promise<Document | null> {
 		const tRead = Date.now();
 		try {
-			const content = await this.app.vault.cachedRead(file);
+			const content = await this.vault.readText(file);
 			const contentHash = hashString(content, 8);
 
 			// Parse markdown using remark; resolve wiki link targets to full vault paths
 			const parseResult = await parseMarkdownWithRemark(content, {
 				resolveWikiLinkToPath: (linkText: string) => {
-					const dest = this.app.metadataCache.getFirstLinkpathDest(linkText, file.path);
-					return dest?.path ?? null;
+					return this.metadata.resolveLinkPath(linkText, file.path);
 				},
 			});
 
@@ -227,7 +237,7 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 						})
 					: Promise.resolve(skippedTag),
 				runSummaryLlm
-					? getDefaultDocumentSummary(summaryDocStub, this.aiServiceManager!)
+					? getDefaultDocumentSummary(summaryDocStub, this.summaryConfig, this.aiServiceManager!)
 					: Promise.resolve<ResourceSummaryWithLlmMeta>({
 							shortSummary: '',
 							fullSummary: undefined,
@@ -342,6 +352,6 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 		provider?: string,
 		modelId?: string
 	): Promise<ResourceSummary> {
-		return getDefaultDocumentSummary(source, this.aiServiceManager, provider, modelId);
+		return getDefaultDocumentSummary(source, this.summaryConfig, this.aiServiceManager, provider, modelId);
 	}
 }

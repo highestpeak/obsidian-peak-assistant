@@ -1,11 +1,12 @@
-import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { binaryContentHash } from '@/core/utils/hash-utils';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { PromptId } from '@/core/prompt/PromptId';
+import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
+import type { DocumentSummaryConfig } from './helper/DocumentLoaderHelpers';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
 /**
@@ -14,11 +15,12 @@ import { BaseDocumentLoader } from './BaseDocumentLoader';
  */
 export class ImageDocumentLoader extends BaseDocumentLoader {
 	constructor(
-		app: App,
+		vault: DocumentVaultReaderPort,
+		summaryConfig: DocumentSummaryConfig,
 		private readonly settings: SearchSettings,
 		aiServiceManager?: IDocSummarizer,
 	) {
-		super(app, aiServiceManager);
+		super(vault, summaryConfig, aiServiceManager);
 	}
 
 	getDocumentType(): DocumentType {
@@ -60,12 +62,12 @@ export class ImageDocumentLoader extends BaseDocumentLoader {
 		return { shortSummary, fullSummary: shortSummary };
 	}
 
-	protected async readFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
+	protected async readFile(file: VaultFileRef, genCacheContent?: boolean): Promise<Document | null> {
 		try {
 			if (genCacheContent) {
 				console.debug('[ImageDocumentLoader] reading image file:', file.path, 'genCacheContent:', genCacheContent);
 			}
-			const realContent = await this.app.vault.readBinary(file);
+			const realContent = await this.vault.readBinary(file);
 			const realContentHash = binaryContentHash(realContent);
 
 			const cacheContent = genCacheContent ? await this.generateImageDescription(file) : '';
@@ -112,7 +114,7 @@ export class ImageDocumentLoader extends BaseDocumentLoader {
 	/**
 	 * Generate image description using AI service or return placeholder.
 	 */
-	private async generateImageDescription(file: TFile): Promise<string> {
+	private async generateImageDescription(file: VaultFileRef): Promise<string> {
 		if (!this.aiServiceManager) {
 			// No AI service available, use placeholder
 			return `[Image: ${file.basename}]`;

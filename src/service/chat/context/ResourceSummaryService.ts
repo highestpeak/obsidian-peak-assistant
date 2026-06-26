@@ -6,6 +6,7 @@ import type { ResourceKind } from '@/core/document/types';
 import { parseFrontmatter } from '@/core/utils/markdown-utils';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import { ResourceKindDetector } from '@/core/document/resource/helper/ResourceKindDetector';
+import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { hashString } from '@/core/utils/hash-utils';
 
 /**
@@ -23,14 +24,14 @@ export class ResourceSummaryService {
 		resourcesSummaryFolderName: string
 	) {
 		this.resourcesFolder = normalizePath(`${resourcesSummaryFolderName}`);
-		this.kindDetector = new ResourceKindDetector(app);
+		this.kindDetector = new ResourceKindDetector(DocumentLoaderManager.getInstance().getVaultReader());
 	}
 
 	/**
 	 * Initialize resources folder
 	 */
 	async init(): Promise<void> {
-		await ensureFolder(this.resourcesFolder);
+		await ensureFolder(this.resourcesFolder, this.app);
 	}
 
 	/**

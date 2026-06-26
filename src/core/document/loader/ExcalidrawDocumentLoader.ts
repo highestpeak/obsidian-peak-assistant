@@ -1,9 +1,7 @@
-import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
 /**
@@ -12,10 +10,6 @@ import { BaseDocumentLoader } from './BaseDocumentLoader';
  * For .excalidraw files: reads as plain text.
  */
 export class ExcalidrawDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: IDocSummarizer) {
-		super(app, aiServiceManager);
-	}
-
 	getDocumentType(): DocumentType {
 		return 'excalidraw';
 	}
@@ -40,9 +34,9 @@ export class ExcalidrawDocumentLoader extends BaseDocumentLoader {
 		return false;
 	}
 
-	protected async readFile(file: TFile): Promise<Document | null> {
+	protected async readFile(file: VaultFileRef): Promise<Document | null> {
 		try {
-			let content = await this.app.vault.cachedRead(file);
+			let content = await this.vault.readText(file);
 
 			// For .excalidraw.md files, check if it's an excalidraw plugin file
 			if (file.path.endsWith('.excalidraw.md')) {

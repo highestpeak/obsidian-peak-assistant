@@ -1,7 +1,36 @@
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { toEmbeddingConfig } from '@/core/profiles/materialize';
-import { AppContext } from '@/app/context/AppContext';
-import { UsageRecordedViewEvent } from '@/core/eventBus';
+
+/**
+ * Narrow port for reporting one embedding-call's usage to a sink (e.g. the
+ * app-shell event bus). T11K B3: replaces the previous direct
+ * `AppContext.getInstance().eventBus.dispatch(...)` reach so core has no
+ * upward dependency on the app shell.
+ */
+export interface EmbeddingUsageReporter {
+	report(usage: {
+		feature: 'indexing';
+		action: 'embed';
+		provider: string;
+		model: string;
+		inputTokens: number;
+		durationMs: number;
+	}): void;
+}
+
+let reporter: EmbeddingUsageReporter | null = null;
+
+/**
+ * Bind the usage reporter at app boot. App-shell wiring is in `main.ts`.
+ *
+ * Module-level state is acceptable here as a single-writer **registration
+ * sink** (set once at boot, read at runtime) — not a mutable default or a
+ * cross-feature singleton. The reporter is optional so embeds still work
+ * before binding or in tests.
+ */
+export function setEmbeddingUsageReporter(r: EmbeddingUsageReporter | null): void {
+	reporter = r;
+}
 
 /**
  * Embed multiple texts using the active embedding profile.
@@ -44,25 +73,18 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
     (item) => item.embedding,
   );
 
-  if (promptTokens > 0) {
+  if (promptTokens > 0 && reporter) {
     try {
-      const durationMs = Date.now() - startMs;
-      AppContext.getInstance().eventBus.dispatch(new UsageRecordedViewEvent({
-        sessionId: crypto.randomUUID(),
+      reporter.report({
         feature: 'indexing',
         action: 'embed',
         provider: profile.kind,
         model: config.model,
         inputTokens: promptTokens,
-        outputTokens: 0,
-        cachedTokens: 0,
-        reasoningTokens: 0,
-        costUsd: 0,
-        durationMs,
-        isStreaming: false,
-      }));
+        durationMs: Date.now() - startMs,
+      });
     } catch {
-      // AppContext not yet initialized — skip emit silently
+      // Reporter sink errors must not surface to the caller.
     }
   }
 

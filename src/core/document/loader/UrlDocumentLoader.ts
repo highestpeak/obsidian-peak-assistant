@@ -1,12 +1,10 @@
-import type { App } from 'obsidian';
 import type { DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import { PlaywrightWebBaseLoader } from '@langchain/community/document_loaders/web/playwright';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
-import { TFile } from 'obsidian';
 
 /**
  * URL document loader using PlaywrightWebBaseLoader.
@@ -23,10 +21,6 @@ export class UrlDocumentLoader extends BaseDocumentLoader {
 			waitUntil: 'domcontentloaded' as const,
 		},
 	};
-
-	constructor(app: App, aiServiceManager?: IDocSummarizer) {
-		super(app, aiServiceManager);
-	}
 
 	getDocumentType(): DocumentType {
 		return 'url';
@@ -62,7 +56,7 @@ export class UrlDocumentLoader extends BaseDocumentLoader {
 	}
 
 	/** Not used — readByPath is overridden. */
-	protected async readFile(_file: TFile): Promise<Document | null> {
+	protected async readFile(_file: VaultFileRef): Promise<Document | null> {
 		return null;
 	}
 

@@ -1,6 +1,6 @@
-import type { App } from 'obsidian';
 import type { ResourceLoader, ResourceKind, SpecialResourceType, DocumentType, Summarizable } from '@/core/document/types';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { TagResourceLoader } from '../TagResourceLoader';
 import { FolderResourceLoader } from '../FolderResourceLoader';
@@ -9,6 +9,8 @@ import { FolderResourceLoader } from '../FolderResourceLoader';
  * Manager for resource loaders.
  * Handles both special resource types (tag, folder, category) and document types.
  * For document types, delegates to DocumentLoaderManager.
+ *
+ * T11K: takes a {@link DocumentVaultReaderPort} instead of Obsidian `App`.
  */
 export class ResourceLoaderManager {
     private readonly loaderMap = new Map<SpecialResourceType, ResourceLoader>();
@@ -16,14 +18,18 @@ export class ResourceLoaderManager {
     private readonly aiServiceManager: IDocSummarizer;
     private readonly specialTypes: Set<SpecialResourceType> = new Set(['tag', 'folder']);
 
-    constructor(app: App, aiServiceManager: IDocSummarizer, documentLoaderManager?: DocumentLoaderManager) {
+    constructor(
+        vault: DocumentVaultReaderPort,
+        aiServiceManager: IDocSummarizer,
+        documentLoaderManager?: DocumentLoaderManager,
+    ) {
         // Use provided DocumentLoaderManager or get singleton instance
         this.documentLoaderManager = documentLoaderManager || DocumentLoaderManager.getInstance();
         this.aiServiceManager = aiServiceManager;
 
         // Register resource loaders for special resource types
         this.registerLoader(new TagResourceLoader());
-        this.registerLoader(new FolderResourceLoader(app));
+        this.registerLoader(new FolderResourceLoader(vault));
     }
 
     /**
@@ -92,4 +98,3 @@ export class ResourceLoaderManager {
         return summary;
     }
 }
-

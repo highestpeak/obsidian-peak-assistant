@@ -67,7 +67,7 @@ import { toString } from 'mdast-util-to-string';
 import { compileTemplate } from '../template-engine-helper';
 import type { TemplateManager } from '../template/TemplateManager';
 import { IndexingTemplateId } from '../template/TemplateRegistry';
-import type { ChunkingSettings } from '../../app/settings/types';
+import type { ChunkingSettings } from '@/core/config/settingsTypes';
 
 /**
  * Parsed frontmatter result

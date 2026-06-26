@@ -128,7 +128,7 @@ export class SearchUpdateListener {
 	private enqueueUpsert(file: TAbstractFile): void {
 		if (!(file instanceof TFile)) return;
 		// Check if we have a loader for this file type
-		if (!this.loaderManager.getLoaderForFile(file)) return;
+		if (!this.loaderManager.getLoaderForPath(file.path)) return;
 		if (this.shouldSkipListenerIndexing(file.path)) return;
 		this.upsertPaths.add(file.path);
 		this.schedule();
@@ -145,7 +145,7 @@ export class SearchUpdateListener {
 
 	private enqueueRename(file: TAbstractFile, oldPath: string): void {
 		if (!(file instanceof TFile)) return;
-		if (!this.loaderManager.getLoaderForFile(file)) return;
+		if (!this.loaderManager.getLoaderForPath(file.path)) return;
 		if (oldPath) {
 			this.pendingRenames.push({ oldPath, newPath: file.path });
 			this.deletePaths.delete(oldPath);

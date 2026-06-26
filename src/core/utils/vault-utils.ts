@@ -1,26 +1,27 @@
-import { AppContext } from '@/app/context/AppContext';
 import { App, normalizePath, TFile, TFolder } from 'obsidian';
+import { joinPath, getAbsolutePath, getRelativePath, normalizeVaultPath } from './path-utils';
 
-function resolveApp(app?: App): App {
-	return app ?? AppContext.getApp();
-}
+// T11K: re-export the pure path helpers so existing import paths keep working
+// without dragging callers into Obsidian-backed runtime code.
+export { joinPath, getAbsolutePath, getRelativePath, normalizeVaultPath };
 
 /**
  * Ensures that a folder exists at the specified path.
  * If the folder does not exist, it is created recursively.
+ *
+ * T11K: `app` is required — no AppContext fallback.
  */
-export async function ensureFolder(folderPath: string, app?: App): Promise<TFolder> {
-	const targetApp = resolveApp(app);
+export async function ensureFolder(folderPath: string, app: App): Promise<TFolder> {
 	const normalized = normalizePath(folderPath.trim());
 	if (!normalized) {
 		throw new Error('Invalid folder path');
 	}
-	await ensureFolderRecursive(normalized, targetApp);
+	await ensureFolderRecursive(normalized, app);
 	// Mock vault (e.g. desktop dev) does not persist; skip strict check so save flow can return path from params/settings
-	if ((targetApp as any).isMock) {
+	if ((app as any).isMock) {
 		return null as unknown as TFolder;
 	}
-	const folder = targetApp.vault.getAbstractFileByPath(normalized);
+	const folder = app.vault.getAbstractFileByPath(normalized);
 	if (folder instanceof TFolder) {
 		return folder;
 	}
@@ -30,23 +31,22 @@ export async function ensureFolder(folderPath: string, app?: App): Promise<TFold
 /**
  * Recursively create folder and all parent folders.
  */
-export async function ensureFolderRecursive(folderPath: string, app?: App): Promise<void> {
-	const targetApp = resolveApp(app);
+export async function ensureFolderRecursive(folderPath: string, app: App): Promise<void> {
 	const parts = folderPath.split('/').filter((p) => p.length > 0);
 	let currentPath = '';
 
 	for (const part of parts) {
 		currentPath = currentPath ? `${currentPath}/${part}` : part;
-		let existing = targetApp.vault.getAbstractFileByPath(currentPath);
+		let existing = app.vault.getAbstractFileByPath(currentPath);
 
 		// If folder doesn't exist, try to create it
 		if (!existing) {
 			try {
-				await targetApp.vault.createFolder(currentPath);
+				await app.vault.createFolder(currentPath);
 				console.log(`[vault-utils] Created folder: ${currentPath}`);
 			} catch (error) {
 				// Re-check if folder exists after error (might have been created by another process)
-				existing = targetApp.vault.getAbstractFileByPath(currentPath);
+				existing = app.vault.getAbstractFileByPath(currentPath);
 				if (existing instanceof TFolder) {
 					continue;
 				}
@@ -57,7 +57,7 @@ export async function ensureFolderRecursive(folderPath: string, app?: App): Prom
 
 				if (isAlreadyExistsError) {
 					// Double-check the folder exists
-					existing = targetApp.vault.getAbstractFileByPath(currentPath);
+					existing = app.vault.getAbstractFileByPath(currentPath);
 					if (existing instanceof TFolder) {
 						console.log(`[vault-utils] Folder already exists (caught error): ${currentPath}`);
 						continue;
@@ -84,13 +84,12 @@ export async function ensureFolderRecursive(folderPath: string, app?: App): Prom
 export async function uploadFileToVault(
 	file: File,
 	uploadFolder: string,
-	app?: App,
+	app: App,
 ): Promise<string | null> {
-	const targetApp = resolveApp(app);
 	try {
 		const normalizedFolder = uploadFolder.startsWith('/') ? uploadFolder.slice(1) : uploadFolder;
 
-		await ensureFolderRecursive(normalizedFolder, targetApp);
+		await ensureFolderRecursive(normalizedFolder, app);
 
 		const timestamp = Date.now();
 		const sanitizedName = file.name.replace(/[<>:"/\\|?*]/g, '_');
@@ -98,9 +97,9 @@ export async function uploadFileToVault(
 		const filePath = `${normalizedFolder}/${fileName}`;
 
 		const arrayBuffer = await file.arrayBuffer();
-		await targetApp.vault.createBinary(filePath, arrayBuffer);
+		await app.vault.createBinary(filePath, arrayBuffer);
 
-		const savedFile = targetApp.vault.getAbstractFileByPath(filePath);
+		const savedFile = app.vault.getAbstractFileByPath(filePath);
 		if (savedFile && savedFile instanceof TFile) {
 			return filePath;
 		}
@@ -117,19 +116,18 @@ export async function uploadFileToVault(
 export async function uploadFilesToVault(
 	files: File[],
 	uploadFolder: string,
-	app?: App,
+	app: App,
 ): Promise<string[]> {
-	const targetApp = resolveApp(app);
 	if (files.length === 0) {
 		return [];
 	}
 
 	const normalizedFolder = uploadFolder.startsWith('/') ? uploadFolder.slice(1) : uploadFolder;
-	await ensureFolderRecursive(normalizedFolder, targetApp);
+	await ensureFolderRecursive(normalizedFolder, app);
 
 	const uploadedPaths: string[] = [];
 	for (const file of files) {
-		const path = await uploadFileToVault(file, normalizedFolder, targetApp);
+		const path = await uploadFileToVault(file, normalizedFolder, app);
 		if (path) {
 			uploadedPaths.push(path);
 		}
@@ -139,71 +137,42 @@ export async function uploadFilesToVault(
 }
 
 /**
- * Join path parts and normalize the result.
- */
-export function joinPath(...parts: string[]): string {
-	return normalizePath(parts.join('/'));
-}
-
-/**
  * Write content to a file, creating it if it doesn't exist, or modifying it if it does.
  */
 export async function writeFile(
 	file: TFile | null,
 	path: string,
 	content: string,
-	app?: App,
+	app: App,
 ): Promise<TFile> {
-	const targetApp = resolveApp(app);
 	if (file) {
-		await targetApp.vault.modify(file, content);
+		await app.vault.modify(file, content);
 		return file;
 	}
-	return await targetApp.vault.create(path, content);
-}
-
-/**
- * Get absolute path from root folder and relative path.
- */
-export function getAbsolutePath(rootFolder: string, relativePath: string): string {
-	return joinPath(rootFolder, relativePath);
-}
-
-/**
- * Get relative path from absolute path and root folder.
- */
-export function getRelativePath(rootFolder: string, absolutePath: string): string {
-	const normalized = normalizePath(absolutePath);
-	const rootNormalized = normalizePath(rootFolder);
-	if (normalized.startsWith(rootNormalized)) {
-		return normalized.substring(rootNormalized.length).replace(/^\//, '');
-	}
-	return normalized;
+	return await app.vault.create(path, content);
 }
 
 /**
  * Open an attachment link in Obsidian workspace.
  */
-export function openAttachment(path: string, app?: App): void {
+export function openAttachment(path: string, app: App): void {
 	if (!path) return;
-	const targetApp = resolveApp(app);
 	const cleaned = path.replace(/^\[\[|\]\]$/g, '');
 	const normalized = cleaned.startsWith('/') ? cleaned.slice(1) : cleaned;
-	void targetApp.workspace.openLinkText(normalized, '', true);
+	void app.workspace.openLinkText(normalized, '', true);
 }
 
 /**
  * Read plaintext from a vault file with truncation. Returns null for missing paths, non-files, or read errors.
  * Skips synthetic paths such as `__hub_cluster__/...` used for cluster hub candidates.
  */
-export async function readVaultTextSnippet(vaultPath: string, maxChars: number, app?: App): Promise<string | null> {
-	const targetApp = resolveApp(app);
+export async function readVaultTextSnippet(vaultPath: string, maxChars: number, app: App): Promise<string | null> {
 	const p = normalizePath(vaultPath);
 	if (!p || p.startsWith('__hub_cluster__')) return null;
-	const f = targetApp.vault.getAbstractFileByPath(p);
+	const f = app.vault.getAbstractFileByPath(p);
 	if (!(f instanceof TFile)) return null;
 	try {
-		const raw = await targetApp.vault.cachedRead(f);
+		const raw = await app.vault.cachedRead(f);
 		return raw.length <= maxChars ? raw : `${raw.slice(0, maxChars)}\n\n[truncated]`;
 	} catch {
 		return null;

@@ -1,11 +1,9 @@
-import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import type { Chunk } from '@/core/search/indexTypes';
 import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
@@ -14,10 +12,6 @@ import { BaseDocumentLoader } from './BaseDocumentLoader';
  * Each row becomes a chunk. If a row is too long, it's truncated with overlap.
  */
 export class TableDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: IDocSummarizer) {
-		super(app, aiServiceManager);
-	}
-
 	getDocumentType(): DocumentType {
 		return 'csv';
 	}
@@ -72,13 +66,13 @@ export class TableDocumentLoader extends BaseDocumentLoader {
 		return assembleIndexedChunks(doc, chunks, settings);
 	}
 
-	protected async readFile(file: TFile): Promise<Document | null> {
+	protected async readFile(file: VaultFileRef): Promise<Document | null> {
 		try {
 			let content = '';
 			const ext = file.extension.toLowerCase();
 
 			if (ext === 'csv') {
-				content = await this.app.vault.cachedRead(file);
+				content = await this.vault.readText(file);
 			} else if (ext === 'xlsx') {
 				console.warn('XLSX parsing not supported: no xlsx library available');
 				return null;

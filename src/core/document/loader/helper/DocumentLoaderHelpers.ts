@@ -1,14 +1,21 @@
-import { AppContext } from '@/app/context/AppContext';
-import { emptyUsage, mergeTokenUsage, type LLMUsage } from '@/core/providers/types';
+import { emptyUsage, type LLMUsage } from '@/core/providers/types';
 import type { Document, ResourceSummary } from '@/core/document/types';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { PromptId } from '@/core/prompt/PromptId';
 import type { TextRankTerm } from '@/core/document/loader/helper/textRank';
 import type { TextrankSentenceStructured } from '@/core/document/loader/helper/assembleIndexedChunks';
 
+/** Caller-supplied summary-length config. Loaders thread this in from {@link DocumentLoaderManager} so this helper stays decoupled from `AppContext`. */
+export interface DocumentSummaryConfig {
+	/** Short summary target length (words). */
+	shortSummaryLength: number;
+	/** Full summary target length when generated. Also used as the body-length threshold above which the full summary is produced. */
+	fullSummaryLength: number;
+}
+
 /** Options for index-time tiered summaries (hub vs secondary). */
 export type DocumentSummaryOptions = {
-	/** Short summary target length (words), defaults to search.shortSummaryLength. */
+	/** Short summary target length (words), defaults to {@link DocumentSummaryConfig.shortSummaryLength}. */
 	shortWordCount?: number;
 	/** Full summary target length when generated. */
 	fullWordCount?: number;
@@ -74,9 +81,13 @@ function resolveTextrankContext(
 /**
  * Default implementation of getSummary for document loaders.
  * Uses {@link PromptId.DocSummaryShort} and optionally {@link PromptId.DocSummaryFull} with TextRank context when present.
+ *
+ * T11K: callers must pass `summaryConfig` explicitly so this helper has no
+ * dependency on `AppContext` / app-shell settings.
  */
 export async function getDefaultDocumentSummary(
 	doc: Document | string,
+	summaryConfig: DocumentSummaryConfig,
 	aiServiceManager?: IDocSummarizer,
 	provider?: string,
 	modelId?: string,
@@ -110,9 +121,8 @@ export async function getDefaultDocumentSummary(
 	const title = document.metadata.title || document.sourceFileInfo.name;
 	const path = document.sourceFileInfo.path;
 
-	const search = AppContext.getInstance().settings.search;
-	const shortW = options?.shortWordCount ?? search.shortSummaryLength;
-	const fullW = options?.fullWordCount ?? search.fullSummaryLength;
+	const shortW = options?.shortWordCount ?? summaryConfig.shortSummaryLength;
+	const fullW = options?.fullWordCount ?? summaryConfig.fullSummaryLength;
 	const mode = options?.mode ?? 'short_then_full_if_long';
 	const { textrankKeywords, textrankSentences } = resolveTextrankContext(document, options);
 
@@ -135,7 +145,7 @@ export async function getDefaultDocumentSummary(
 	};
 
 	const needFull =
-		mode === 'short_then_full_if_long' && content.length > search.fullSummaryLength;
+		mode === 'short_then_full_if_long' && content.length > summaryConfig.fullSummaryLength;
 
 	const tSum = Date.now();
 	console.info('[MarkdownDocumentLoader] document summary LLM start', {

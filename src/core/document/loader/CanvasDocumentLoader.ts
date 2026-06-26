@@ -1,9 +1,7 @@
-import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
 /**
@@ -11,10 +9,6 @@ import { BaseDocumentLoader } from './BaseDocumentLoader';
  * Extracts text from canvas JSON structure (nodes and edges).
  */
 export class CanvasDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: IDocSummarizer) {
-		super(app, aiServiceManager);
-	}
-
 	getDocumentType(): DocumentType {
 		return 'canvas';
 	}
@@ -27,9 +21,9 @@ export class CanvasDocumentLoader extends BaseDocumentLoader {
 		return this.getSupportedExtensions().some(ext => path.endsWith('.' + ext));
 	}
 
-	protected async readFile(file: TFile): Promise<Document | null> {
+	protected async readFile(file: VaultFileRef): Promise<Document | null> {
 		try {
-			const fileContents = await this.app.vault.cachedRead(file);
+			const fileContents = await this.vault.readText(file);
 			const canvas: CanvasData = fileContents ? JSON.parse(fileContents) : {};
 
 			const texts: string[] = [];

@@ -66,7 +66,7 @@ async function performInFileSearch(text: string, filePath: string): Promise<{ re
 	const startTime = Date.now();
 
 	try {
-		const fileContent = await readFileAsText(filePath);
+		const fileContent = await readFileAsText(filePath, AppContext.getInstance().app);
 		if (!fileContent) {
 			return { results: [], duration: Date.now() - startTime };
 		}
@@ -132,7 +132,7 @@ async function performGoToLine(lineNumber: number, filePath: string): Promise<{ 
 		}
 
 		// Read file content to get the target line
-		const fileContent = await readFileAsText(filePath);
+		const fileContent = await readFileAsText(filePath, AppContext.getInstance().app);
 		if (!fileContent) {
 			throw new Error(`Could not read file: ${filePath}`);
 		}

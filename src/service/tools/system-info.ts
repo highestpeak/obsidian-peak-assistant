@@ -13,7 +13,7 @@ function getVaultStatistics() {
 
 async function getVaultDescription(): Promise<string | undefined> {
     try {
-        const content = await readFileAsText(`${getAIPromptFolder(AppContext.getInstance().settings.ai.rootFolder)}/${VAULT_DESCRIPTION_FILENAME}`);
+        const content = await readFileAsText(`${getAIPromptFolder(AppContext.getInstance().settings.ai.rootFolder)}/${VAULT_DESCRIPTION_FILENAME}`, AppContext.getInstance().app);
         return content?.trim() || undefined;
     } catch { return undefined; }
 }

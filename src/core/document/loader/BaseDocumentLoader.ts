@@ -1,5 +1,3 @@
-import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
@@ -7,28 +5,24 @@ import type { Chunk } from '@/core/search/indexTypes';
 import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
-import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
+import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
+import {
+	getDefaultDocumentSummary,
+	type DocumentSummaryConfig,
+} from './helper/DocumentLoaderHelpers';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 
 /**
  * Base class for document loaders that share common boilerplate.
  *
- * Provides default implementations for:
- * - {@link scanDocuments} — vault file scanning with extension filtering
- * - {@link getSummary} — delegates to {@link getDefaultDocumentSummary}
- * - {@link chunkContent} — RecursiveCharacterTextSplitter-based splitting
- * - {@link readByPath} — file resolution + extension check + delegation to {@link readFile}
- *
- * Subclasses must implement:
- * - {@link getDocumentType} / {@link getSupportedExtensions} (identity)
- * - {@link readFile} (file → Document conversion)
- *
- * Subclasses may override any default method when custom logic is needed
- * (e.g. JSON array chunking, HTML tag-aware splitting).
+ * T11K: loaders depend on the narrow {@link DocumentVaultReaderPort} and
+ * neutral {@link VaultFileRef} shapes. They never see Obsidian `TFile`.
  */
 export abstract class BaseDocumentLoader implements DocumentLoader {
 	constructor(
-		protected readonly app: App,
+		protected readonly vault: DocumentVaultReaderPort,
+		protected readonly summaryConfig: DocumentSummaryConfig,
 		protected readonly aiServiceManager?: IDocSummarizer,
 	) {}
 
@@ -44,7 +38,7 @@ export abstract class BaseDocumentLoader implements DocumentLoader {
 	 * This is the only reading method subclasses must implement.
 	 */
 	protected abstract readFile(
-		file: TFile,
+		file: VaultFileRef,
 		genCacheContent?: boolean,
 		readOptions?: DocumentLoaderReadOptions,
 	): Promise<Document | null>;
@@ -63,8 +57,8 @@ export abstract class BaseDocumentLoader implements DocumentLoader {
 		genCacheContent?: boolean,
 		readOptions?: DocumentLoaderReadOptions,
 	): Promise<Document | null> {
-		const file = this.app.vault.getAbstractFileByPath(path);
-		if (!file || !(file instanceof TFile)) return null;
+		const file = this.vault.getFile(path);
+		if (!file) return null;
 		if (!this.matchesPath(path)) return null;
 		return this.readFile(file, genCacheContent, readOptions);
 	}
@@ -121,9 +115,9 @@ export abstract class BaseDocumentLoader implements DocumentLoader {
 		const batchSize = params?.batchSize ?? 100;
 		const docType = this.getDocumentType();
 
-		const files = this.app.vault
-			.getFiles()
-			.filter(f => this.matchesPath(f.path))
+		const files = this.vault
+			.listFiles()
+			.filter((f) => this.matchesPath(f.path))
 			.slice(0, limit);
 
 		let batch: Array<{ path: string; mtime: number; type: DocumentType }> = [];
@@ -154,6 +148,6 @@ export abstract class BaseDocumentLoader implements DocumentLoader {
 				`${this.constructor.name}.getSummary requires a Document, not a string`,
 			);
 		}
-		return getDefaultDocumentSummary(source, this.aiServiceManager, provider, modelId);
+		return getDefaultDocumentSummary(source, this.summaryConfig, this.aiServiceManager, provider, modelId);
 	}
 }

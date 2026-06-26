@@ -12,6 +12,7 @@ import { SearchUpdateListener } from '@/service/search/index/indexUpdater';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
+import { AppVaultReaderAdapter } from '@/app/vault/AppVaultReaderAdapter';
 import { IndexService } from '@/service/search/index/indexService';
 import { IgnoreService } from '@/service/search/IgnoreService';
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
@@ -19,7 +20,8 @@ import { BetterSqliteStore } from '@/core/storage/sqlite/better-sqlite3-adapter/
 import { NativeModuleManager } from '@/core/storage/sqlite/NativeModuleManager';
 import { VAULT_DB_FILENAME } from '@/core/constant';
 import { AppContext } from '@/app/context/AppContext';
-import { EventBus } from '@/core/eventBus';
+import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
+import { setEmbeddingUsageReporter } from '@/core/embeddings/embedClient';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { registerTemplateEngineHelpers } from '@/core/template-engine-helper';
 import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
@@ -234,7 +236,31 @@ export default class MyPlugin extends Plugin {
 
 		// Initialize global DocumentLoaderManager singleton
 		// Pass aiServiceManager for loaders that need AI capabilities (e.g., image description)
-		DocumentLoaderManager.init(this.app, this.settings.search, this.aiServiceManager);
+		// T11K: loaders depend on a narrow vault port; this adapter is the
+		// only place that holds Obsidian `App` / `TFile` / `TFolder`.
+		const vaultReader = new AppVaultReaderAdapter(this.app);
+		DocumentLoaderManager.init(vaultReader, vaultReader, this.settings.search, this.aiServiceManager);
+
+		// T11K B3: bind the embedding usage reporter so `embedClient`
+		// surfaces usage events without reaching `AppContext` from core.
+		setEmbeddingUsageReporter({
+			report: (u) => {
+				appContext.eventBus.dispatch(new UsageRecordedViewEvent({
+					sessionId: crypto.randomUUID(),
+					feature: u.feature,
+					action: u.action,
+					provider: u.provider,
+					model: u.model,
+					inputTokens: u.inputTokens,
+					outputTokens: 0,
+					cachedTokens: 0,
+					reasoningTokens: 0,
+					costUsd: 0,
+					durationMs: u.durationMs,
+					isStreaming: false,
+				}));
+			},
+		});
 		await this.aiServiceManager.init();
 
 		// T11B-R (2026-06-14): bind the Copilot manual-action runtime
@@ -258,7 +284,7 @@ export default class MyPlugin extends Plugin {
 		if (isDesktop()) {
 			// Set up NativeModuleManager so it can auto-download the correct
 			// better-sqlite3 binary if the current one is missing or ABI-incompatible.
-			NativeModuleManager.getInstance().setPluginDir(getPluginDirAbsolute());
+			NativeModuleManager.getInstance().setPluginDir(getPluginDirAbsolute(undefined, this.app));
 
 			// Attempt eager init — if native module is already compatible, this is
 			// transparent to the user. If it fails (e.g. first install, ABI mismatch

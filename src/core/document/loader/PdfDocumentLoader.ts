@@ -1,9 +1,7 @@
-import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { binaryContentHash } from '@/core/utils/hash-utils';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
 /** CDN base for pdfjs-dist worker; avoids bundling the heavy worker. */
@@ -73,10 +71,6 @@ async function extractTextFromPdfBuffer(arrayBuffer: ArrayBuffer): Promise<strin
  * Worker loaded from CDN; no static import of pdfjs or worker to keep bundle small.
  */
 export class PdfDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: IDocSummarizer) {
-		super(app, aiServiceManager);
-	}
-
 	getDocumentType(): DocumentType {
 		return 'pdf';
 	}
@@ -89,9 +83,9 @@ export class PdfDocumentLoader extends BaseDocumentLoader {
 		return doc.cacheFileInfo.content;
 	}
 
-	protected async readFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
+	protected async readFile(file: VaultFileRef, genCacheContent?: boolean): Promise<Document | null> {
 		try {
-			const arrayBuffer = await this.app.vault.readBinary(file);
+			const arrayBuffer = await this.vault.readBinary(file);
 			const sourceContentHash = binaryContentHash(arrayBuffer);
 
 			let cacheContent = '';

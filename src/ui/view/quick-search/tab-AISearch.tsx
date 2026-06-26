@@ -154,7 +154,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		});
 
 		try {
-			await ensureFolder(saveFolder);
+			await ensureFolder(saveFolder, app);
 			await app.vault.create(filePath, content);
 			new Notice(`Graph saved: ${fileName}.md`);
 		} catch (e) {

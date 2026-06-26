@@ -429,7 +429,7 @@ function shouldIncludeItem<T>(item: T, filters?: any, itemFiledGetter?: ItemFile
 
     // Type filter
     if (filters.type && filters.type !== 'all' && path !== undefined) {
-        const itemType = getFileTypeByPath(path);
+        const itemType = getFileTypeByPath(path, AppContext.getInstance().app);
 
         if (filters.type === 'note' && itemType !== 'note') return false;
         if (filters.type === 'file' && itemType !== 'file') return false;

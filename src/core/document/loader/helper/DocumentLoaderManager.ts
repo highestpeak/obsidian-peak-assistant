@@ -1,10 +1,11 @@
-import type { App, TAbstractFile } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentLoader, DocumentLoaderReadOptions } from '../types';
 import type { DocumentType } from '@/core/document/types';
 import type { Document as CoreDocument } from '@/core/document/types';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
+import type { VaultMetadataResolverPort } from '@/core/ports/VaultMetadataResolverPort';
+import type { DocumentSummaryConfig } from './DocumentLoaderHelpers';
 import { IgnoreService } from '@/service/search/IgnoreService';
 import { MarkdownDocumentLoader } from '../MarkdownDocumentLoader';
 import { TextDocumentLoader } from '../TextDocumentLoader';
@@ -22,6 +23,9 @@ import { UrlDocumentLoader } from '../UrlDocumentLoader';
 /**
  * Global singleton manager for document loaders.
  * Manages multiple document loaders for different file types using strategy pattern.
+ *
+ * T11K: depends on the narrow {@link DocumentVaultReaderPort} +
+ * {@link VaultMetadataResolverPort} ports — no Obsidian `App` / `TFile`.
  */
 export class DocumentLoaderManager {
 	private static instance: DocumentLoaderManager | null = null;
@@ -29,7 +33,8 @@ export class DocumentLoaderManager {
 	private readonly loaderMap = new Map<DocumentType, DocumentLoader>();
 	private readonly extensionToLoaderMap = new Map<string, DocumentLoader>();
 	private settings: SearchSettings;
-	private readonly app: App;
+	private readonly vault: DocumentVaultReaderPort;
+	private readonly metadata: VaultMetadataResolverPort;
 	private aiServiceManager?: IDocSummarizer;
 
 	/**
@@ -54,18 +59,32 @@ export class DocumentLoaderManager {
 	/**
 	 * Initialize the global singleton instance.
 	 * Should be called once during plugin initialization.
+	 * @param vault Read-only document vault port (T11K).
+	 * @param metadata Vault metadata resolver port (for markdown link resolution).
+	 * @param settings Current search settings (drives `summaryConfig` defaults).
 	 * @param aiServiceManager Optional AI service manager for loaders that need AI capabilities (e.g., image description).
 	 */
-	static init(app: App, settings: SearchSettings, aiServiceManager?: IDocSummarizer): DocumentLoaderManager {
+	static init(
+		vault: DocumentVaultReaderPort,
+		metadata: VaultMetadataResolverPort,
+		settings: SearchSettings,
+		aiServiceManager?: IDocSummarizer,
+	): DocumentLoaderManager {
 		if (DocumentLoaderManager.instance) {
 			console.warn('DocumentLoaderManager already initialized. Reinitializing with new settings.');
 		}
-		DocumentLoaderManager.instance = new DocumentLoaderManager(app, settings, aiServiceManager);
+		DocumentLoaderManager.instance = new DocumentLoaderManager(vault, metadata, settings, aiServiceManager);
 		return DocumentLoaderManager.instance;
 	}
 
-	private constructor(app: App, settings: SearchSettings, aiServiceManager?: IDocSummarizer) {
-		this.app = app;
+	private constructor(
+		vault: DocumentVaultReaderPort,
+		metadata: VaultMetadataResolverPort,
+		settings: SearchSettings,
+		aiServiceManager?: IDocSummarizer,
+	) {
+		this.vault = vault;
+		this.metadata = metadata;
 		this.settings = settings;
 		this.aiServiceManager = aiServiceManager;
 		// Initialize ignore service with current settings
@@ -73,23 +92,32 @@ export class DocumentLoaderManager {
 		this.registerAllLoaders();
 	}
 
+	private get summaryConfig(): DocumentSummaryConfig {
+		return {
+			shortSummaryLength: this.settings.shortSummaryLength,
+			fullSummaryLength: this.settings.fullSummaryLength,
+		};
+	}
+
 	/**
 	 * Register all document loaders.
 	 */
 	private registerAllLoaders(): void {
-		// Register all document loaders
-		this.registerLoader(new MarkdownDocumentLoader(this.app, this.aiServiceManager));
-		this.registerLoader(new TextDocumentLoader(this.app, this.aiServiceManager));
-		this.registerLoader(new TableDocumentLoader(this.app, this.aiServiceManager));
-		this.registerLoader(new JsonDocumentLoader(this.app, this.aiServiceManager));
-		this.registerLoader(new HtmlXmlDocumentLoader(this.app, this.aiServiceManager));
-		this.registerLoader(new PdfDocumentLoader(this.app, this.aiServiceManager));
-		this.registerLoader(new ImageDocumentLoader(this.app, this.settings, this.aiServiceManager));
-		this.registerLoader(new DocxDocumentLoader(this.app, this.aiServiceManager));
-		this.registerLoader(new PptxDocumentLoader(this.app, this.aiServiceManager));
-		this.registerLoader(new ExcalidrawDocumentLoader(this.app, this.aiServiceManager));
-		this.registerLoader(new CanvasDocumentLoader(this.app, this.aiServiceManager));
-		this.registerLoader(new UrlDocumentLoader(this.app, this.aiServiceManager));
+		const sc = this.summaryConfig;
+		const v = this.vault;
+		const ai = this.aiServiceManager;
+		this.registerLoader(new MarkdownDocumentLoader(v, this.metadata, sc, ai));
+		this.registerLoader(new TextDocumentLoader(v, sc, ai));
+		this.registerLoader(new TableDocumentLoader(v, sc, ai));
+		this.registerLoader(new JsonDocumentLoader(v, sc, ai));
+		this.registerLoader(new HtmlXmlDocumentLoader(v, sc, ai));
+		this.registerLoader(new PdfDocumentLoader(v, sc, ai));
+		this.registerLoader(new ImageDocumentLoader(v, sc, this.settings, ai));
+		this.registerLoader(new DocxDocumentLoader(v, sc, ai));
+		this.registerLoader(new PptxDocumentLoader(v, sc, ai));
+		this.registerLoader(new ExcalidrawDocumentLoader(v, sc, ai));
+		this.registerLoader(new CanvasDocumentLoader(v, sc, ai));
+		this.registerLoader(new UrlDocumentLoader(v, sc, ai));
 	}
 
 	/**
@@ -134,11 +162,25 @@ export class DocumentLoaderManager {
 	}
 
 	/**
-	 * Get the appropriate loader for a file.
+	 * Expose the underlying vault reader port. Used by resource-side helpers
+	 * (`ResourceLoaderManager`, `ResourceKindDetector`) so they don't have to
+	 * cross the service→app boundary just to reach an Obsidian-backed adapter.
 	 */
-	getLoaderForFile(file: TAbstractFile): DocumentLoader | null {
-		if (!(file instanceof TFile)) return null;
-		const extension = file.extension.toLowerCase();
+	getVaultReader(): DocumentVaultReaderPort {
+		return this.vault;
+	}
+
+	/**
+	 * Get the appropriate loader for a vault path.
+	 *
+	 * T11K: replaces the previous `getLoaderForFile(file: TAbstractFile)` so
+	 * callers do not need to hold Obsidian file handles. Callers (e.g. the
+	 * indexer's vault event handlers) discriminate file-vs-folder themselves
+	 * and pass `file.path` here.
+	 */
+	getLoaderForPath(path: string): DocumentLoader | null {
+		const extension = path.split('.').pop();
+		if (!extension) return null;
 		return this.getLoaderForExtension(extension);
 	}
 
@@ -268,4 +310,3 @@ export class DocumentLoaderManager {
 		}
 	}
 }
-

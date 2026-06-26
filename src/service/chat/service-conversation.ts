@@ -68,7 +68,8 @@ export class ConversationService {
 		private readonly pluginId: string,
 		private readonly profileService?: UserProfileService,
 	) {
-		this.resourceLoaderManager = new ResourceLoaderManager(this.app, this.aiServiceManager, DocumentLoaderManager.getInstance());
+		const loaderMgr = DocumentLoaderManager.getInstance();
+		this.resourceLoaderManager = new ResourceLoaderManager(loaderMgr.getVaultReader(), this.aiServiceManager, loaderMgr);
 		// Initialize context builder
 		this.contextBuilder = new ContextBuilder(
 			this.promptService,
@@ -132,7 +133,7 @@ export class ConversationService {
 		const uploadFolder = getAIUploadFolder(this.settings.rootFolder);
 
 		// Upload files to vault
-		const uploadedPaths = await uploadFilesToVault(files, uploadFolder);
+		const uploadedPaths = await uploadFilesToVault(files, uploadFolder, this.app);
 
 		// Create resource references for uploaded files
 		const resources: ChatResourceRef[] = uploadedPaths.map((filePath) => {

@@ -40,7 +40,7 @@ export class AppAnalysisDocVaultWriterAdapter implements AnalysisDocVaultWriterP
 		const targetPath = fullFolderPath ? `${fullFolderPath}/${fileName}.md` : `${fileName}.md`;
 
 		if (fullFolderPath) {
-			await ensureFolder(fullFolderPath);
+			await ensureFolder(fullFolderPath, app);
 		}
 
 		const existing = app.vault.getAbstractFileByPath(targetPath);

@@ -1,11 +1,12 @@
-import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import type { Chunk } from '@/core/search/indexTypes';
 import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
+import type { DocumentSummaryConfig } from './helper/DocumentLoaderHelpers';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
@@ -17,8 +18,12 @@ export class HtmlXmlDocumentLoader extends BaseDocumentLoader {
 	private static readonly MEANINGFUL_TAGS = ['div', 'section', 'article', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'td', 'th'];
 	private readonly tagPattern: RegExp;
 
-	constructor(app: App, aiServiceManager?: IDocSummarizer) {
-		super(app, aiServiceManager);
+	constructor(
+		vault: DocumentVaultReaderPort,
+		summaryConfig: DocumentSummaryConfig,
+		aiServiceManager?: IDocSummarizer,
+	) {
+		super(vault, summaryConfig, aiServiceManager);
 		// Initialize regex pattern once in constructor
 		const tagsPattern = HtmlXmlDocumentLoader.MEANINGFUL_TAGS.join('|');
 		this.tagPattern = new RegExp(`(<(?:${tagsPattern})[^>]*>)([\\s\\S]*?)(</(?:${tagsPattern})>)`, 'gi');
@@ -168,9 +173,9 @@ export class HtmlXmlDocumentLoader extends BaseDocumentLoader {
 		return assembleIndexedChunks(doc, chunks, settings);
 	}
 
-	protected async readFile(file: TFile): Promise<Document | null> {
+	protected async readFile(file: VaultFileRef): Promise<Document | null> {
 		try {
-			const content = await this.app.vault.cachedRead(file);
+			const content = await this.vault.readText(file);
 			const contentHash = hashString(content, 8);
 
 			return {

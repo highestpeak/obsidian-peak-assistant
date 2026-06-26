@@ -45,7 +45,7 @@ export class PromptService {
 	}
 
 	async init(): Promise<void> {
-		await ensureFolder(this.promptFolder);
+		await ensureFolder(this.promptFolder, this.app);
 	}
 
 	setPromptFolder(folder: string): void {
@@ -200,7 +200,7 @@ export class PromptService {
 
 		const fileContent = `${metaBlock}\n\n${defaultContent}`;
 
-		await ensureFolder(this.promptFolder);
+		await ensureFolder(this.promptFolder, this.app);
 		await this.app.vault.create(filePath, fileContent);
 		return filePath;
 	}

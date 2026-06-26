@@ -53,7 +53,7 @@ export async function saveAiAnalyzeResultToMarkdown(params: SaveAnalysisResultPa
 	const filePath = fullFolderPath ? `${fullFolderPath}/${fileName}.md` : `${fileName}.md`;
 
 	if (fullFolderPath) {
-		await ensureFolder(fullFolderPath);
+		await ensureFolder(fullFolderPath, app);
 	}
 
 	const buildOptions: BuildMarkdownOptions = {
@@ -134,7 +134,7 @@ export async function saveAiGraphToMarkdown(params: {
 	const filePath = fullFolderPath ? `${fullFolderPath}/${fileName}.md` : `${fileName}.md`;
 
 	if (fullFolderPath) {
-		await ensureFolder(fullFolderPath);
+		await ensureFolder(fullFolderPath, app);
 	}
 
 	const content = buildAiGraphMarkdown({

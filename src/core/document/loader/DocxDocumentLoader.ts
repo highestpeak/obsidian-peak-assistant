@@ -1,9 +1,7 @@
-import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { binaryContentHash } from '@/core/utils/hash-utils';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 import mammoth from 'mammoth';
 
@@ -12,10 +10,6 @@ import mammoth from 'mammoth';
  * Parses DOCX directly from buffer without temporary files.
  */
 export class DocxDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: IDocSummarizer) {
-		super(app, aiServiceManager);
-	}
-
 	getDocumentType(): DocumentType {
 		return 'docx';
 	}
@@ -28,10 +22,10 @@ export class DocxDocumentLoader extends BaseDocumentLoader {
 		return doc.cacheFileInfo.content;
 	}
 
-	protected async readFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
+	protected async readFile(file: VaultFileRef, genCacheContent?: boolean): Promise<Document | null> {
 		try {
 			// Read DOCX as binary
-			const arrayBuffer = await this.app.vault.readBinary(file);
+			const arrayBuffer = await this.vault.readBinary(file);
 			const buffer = Buffer.from(arrayBuffer);
 			const sourceContentHash = binaryContentHash(arrayBuffer);
 
