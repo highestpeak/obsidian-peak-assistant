@@ -1,7 +1,7 @@
 import { Modal } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
-import { SettingsRoot } from './SettingsView';
+import { SettingsRoot } from '@/ui/view/SettingsView';
 import { AppContext } from '@/app/context/AppContext';
 
 export class SettingsModal extends Modal {

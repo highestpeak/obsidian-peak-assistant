@@ -4,13 +4,13 @@ import { AIServiceManager } from '@/service/chat/service-manager';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import type { ChatProjectMeta } from '@/service/chat/types';
 import { openPendingConversationInChat } from '@/ui/view/chat-view/chatNavigation';
-import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
+import { QuickSearchModal } from '@/app/modals/QuickSearchModal';
 import { HarnessOnboardingModal } from '@/ui/view/modals/HarnessOnboardingModal';
-import { SettingsModal } from '@/ui/view/SettingsModal';
+import { SettingsModal } from '@/app/modals/SettingsModal';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { CopilotReviewHistoryModal } from '@/ui/view/copilot/CopilotReviewHistoryModal';
-import { BuildUserProfileProgressModal } from '@/ui/view/BuildUserProfileProgressModal';
-import { ConfirmModal } from '@/ui/view/ConfirmModal';
+import { BuildUserProfileProgressModal } from '@/app/modals/BuildUserProfileProgressModal';
+import { ConfirmModal } from '@/app/modals/ConfirmModal';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
 import {
 	IndexService,
