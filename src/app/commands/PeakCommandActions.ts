@@ -7,8 +7,8 @@ import { openPendingConversationInChat } from '@/ui/view/chat-view/chatNavigatio
 import { QuickSearchModal } from '@/app/modals/QuickSearchModal';
 import { HarnessOnboardingModal } from '@/app/modals/HarnessOnboardingModal';
 import { SettingsModal } from '@/app/modals/SettingsModal';
-import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
-import { CopilotReviewHistoryModal } from '@/ui/view/copilot/CopilotReviewHistoryModal';
+import { CopilotPickerModal } from '@/app/copilot/modals/CopilotPickerModal';
+import { CopilotReviewHistoryModal } from '@/app/copilot/modals/CopilotReviewHistoryModal';
 import { BuildUserProfileProgressModal } from '@/app/modals/BuildUserProfileProgressModal';
 import { ConfirmModal } from '@/app/modals/ConfirmModal';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';

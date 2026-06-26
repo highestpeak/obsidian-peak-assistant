@@ -8,7 +8,7 @@
  * required anymore.
  */
 
-import { Modal, Notice, TFile, type App } from 'obsidian';
+import { Notice, TFile } from 'obsidian';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
 	ShieldCheck,
@@ -53,8 +53,6 @@ import {
 	Target,
 	type LucideIcon,
 } from 'lucide-react';
-import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { StreamdownIsolated } from '@/ui/component/mine';
@@ -72,7 +70,7 @@ import { Pill } from '@/ui/component/shared-ui/pill';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 
-interface VaultAutoRunModalProps {
+interface VaultAutoRunContentProps {
 	mode?: VaultReviewMode;
 	initialSnapshot?: VaultReviewSessionSnapshot;
 }
@@ -145,7 +143,7 @@ function confidenceOf(weight: number): 'high' | 'medium' | 'low' {
 
 // ─── Main content component ────────────────────────────────────────────
 
-const VaultAutoRunContent: React.FC<{
+export const VaultAutoRunContent: React.FC<{
 	mode: VaultReviewMode;
 	initialSnapshot?: VaultReviewSessionSnapshot;
 	onClose: () => void;
@@ -1607,63 +1605,3 @@ function TraceLegend({ Icon, tone, children }: { Icon: LucideIcon; tone: 'succes
 	);
 }
 
-// ─── Modal class wrapper ────────────────────────────────────────────────
-
-export class VaultAutoRunModal extends Modal {
-	private reactRenderer: ReactRenderer | null = null;
-	private appContext = AppContext.getInstance();
-
-	constructor(app: App, private readonly options: VaultAutoRunModalProps = {}) {
-		super(app);
-	}
-
-	async onOpen(): Promise<void> {
-		this.modalEl.addClass('peak-vault-auto-run-modal');
-		this.modalEl.addClass('peak-design-root');
-		this.modalEl.style.width = 'min(1280px, 96vw)';
-		this.modalEl.style.height = 'min(820px, 92vh)';
-		this.modalEl.style.maxHeight = '92vh';
-		this.contentEl.style.padding = '0';
-		this.contentEl.style.height = '100%';
-		this.contentEl.style.overflow = 'hidden';
-		this.contentEl.addClass('pktw-root');
-
-		const closeBtn = this.modalEl.querySelector<HTMLElement>('.modal-close-button');
-		if (closeBtn) closeBtn.style.display = 'none';
-
-		this.reactRenderer = new ReactRenderer(this.contentEl);
-		this.reactRenderer.render(
-			createReactElementWithServices(
-				VaultAutoRunContent,
-				{
-					mode: this.options.mode ?? 'complete',
-					initialSnapshot: this.options.initialSnapshot,
-					onClose: () => this.close(),
-				},
-				this.appContext,
-			),
-		);
-	}
-
-	onClose(): void {
-		const r = this.reactRenderer;
-		this.reactRenderer = null;
-		if (r) setTimeout(() => { r.unmount(); this.contentEl.empty(); }, 0);
-		else this.contentEl.empty();
-	}
-}
-
-export function openVaultReviewHistoryRecord(app: App, record: VaultReviewHistoryRecord): void {
-	const runtime = AppContext.tryGetVaultReviewRuntime();
-	if (!runtime) {
-		new Notice('Vault Review runtime is still initialising. Try again in a moment.');
-		return;
-	}
-	void runtime.loadReport(record).then(snapshot => {
-		if (!snapshot) {
-			new Notice('Could not load this vault review record.');
-			return;
-		}
-		new VaultAutoRunModal(app, { mode: record.mode, initialSnapshot: snapshot }).open();
-	});
-}

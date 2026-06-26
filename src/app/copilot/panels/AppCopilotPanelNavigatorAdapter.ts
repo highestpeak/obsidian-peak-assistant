@@ -9,7 +9,7 @@ import type { AppContext } from '@/app/context/AppContext';
 import type { CopilotPanelNavigator } from '@/service/copilot/panels/CopilotPanelPorts';
 import type { IntentTabId } from '@/service/copilot/intent-hub';
 import { SettingsModal } from '@/app/modals/SettingsModal';
-import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
+import { CopilotPickerModal } from '@/app/copilot/modals/CopilotPickerModal';
 
 export class AppCopilotPanelNavigatorAdapter implements CopilotPanelNavigator {
 	constructor(private readonly appContext: AppContext) {}

@@ -1,4 +1,4 @@
-import { Modal, Platform } from 'obsidian';
+import { Platform } from 'obsidian';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
 	ChevronRight,
@@ -9,19 +9,10 @@ import {
 	HelpCircle,
 } from 'lucide-react';
 import {
-	getCopilotReviewHistoryService,
 	type CopilotReviewHistoryRecord,
 } from '@/service/copilot/CopilotReviewHistoryService';
-import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
-import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPanelVault';
 import { type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { getCopilotActionIcon } from '@/ui/view/copilot/copilot-action-surfaces';
-import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';
-import { CopilotResultModal } from '@/ui/view/copilot/CopilotResultModal';
-import { CopilotAutoRunModal } from '@/ui/view/copilot/CopilotAutoRunModal';
-import { CopilotReviewHistoryModal } from '@/ui/view/copilot/CopilotReviewHistoryModal';
-import { getSelectedTextFromActiveEditor } from '@/core/utils/obsidian-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import { Input } from '@/ui/component/shared-ui/input';
@@ -37,8 +28,6 @@ import {
 	useVaultTabState,
 } from '@/ui/view/copilot/vault/VaultPickerSections';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
-import { AppContext } from '@/app/context/AppContext';
-import { VaultAutoRunModal, openVaultReviewHistoryRecord } from '@/ui/view/copilot/vault/VaultAutoRunModal';
 import { PickerReadinessCard, SuggestedIntentRow } from './PickerReadinessCard';
 import {
 	documentReadiness,
@@ -46,17 +35,13 @@ import {
 	settingReadiness,
 } from './PickerReadinessAdapters';
 
-interface CopilotPickerOptions {
-	initialTab?: IntentTabId;
-}
-
 const SCOPE_TABS: Array<{ id: IntentTabId; title: string; subtitle: string; placeholder: string }> = [
 	{ id: 'document', title: 'Document', subtitle: '= Copilot', placeholder: 'Search or ask in current document... (# heading, @ note, ? help)' },
 	{ id: 'vault',    title: 'Vault',    subtitle: '= Vault Intelligence', placeholder: 'Search or ask across vault... (# in-file, @ folder, ? help)' },
 	{ id: 'setting',  title: 'Setting',  subtitle: '= System', placeholder: 'Search settings, index, models, skills, prompts...' },
 ];
 
-const CopilotPickerContent: React.FC<{
+export const CopilotPickerContent: React.FC<{
 	onSelect: (action: CopilotAction) => void;
 	onAuto: (tab: IntentTabId, mode: 'fast' | 'complete') => void;
 	onOpenHistoryRecord: (record: CopilotReviewHistoryRecord) => void;
@@ -564,112 +549,3 @@ function CapabilityButton({
 	);
 }
 
-export class CopilotPickerModal extends Modal {
-	private reactRenderer: ReactRenderer | null = null;
-	private openToken = 0;
-	private closed = true;
-
-	constructor(private appContext: AppContext, private options: CopilotPickerOptions = {}) {
-		super(appContext.app);
-	}
-
-	async onOpen(): Promise<void> {
-		const token = ++this.openToken;
-		this.closed = false;
-		this.contentEl.empty();
-		this.modalEl.addClass('peak-copilot-picker-modal');
-		this.modalEl.addClass('peak-design-root');
-		this.contentEl.addClass('pktw-root');
-		this.modalEl.style.width = '1080px';
-		this.modalEl.style.maxWidth = '96vw';
-		this.modalEl.style.height = 'min(820px, calc(100vh - 64px))';
-		this.modalEl.style.padding = '0';
-		this.contentEl.style.padding = '0';
-
-		const app = this.appContext.app;
-		const file = app.workspace.getActiveFile();
-		let ctx: DocumentContext | null = null;
-		if (file) {
-			// T11N: route the document-context vault read through the
-			// same `CopilotPanelVaultPort` adapter the result panels use.
-			// Composer is cheap (constructs an adapter that closes over
-			// `app`); no React hook here because we are inside Modal.onOpen.
-			const content = await composeCopilotPanelVault(this.appContext).vault.readFileContent(file);
-			if (this.closed || token !== this.openToken) return;
-			const selected = getSelectedTextFromActiveEditor(app) ?? undefined;
-			ctx = DocumentContextBuilder.build(app, file, content, selected);
-		}
-		if (this.closed || token !== this.openToken) return;
-
-		this.reactRenderer = new ReactRenderer(this.containerEl);
-		this.reactRenderer.render(
-			createReactElementWithServices(
-				CopilotPickerContent,
-				{
-					ctx,
-					initialTab: this.options.initialTab ?? 'document',
-					onSelect: (action: CopilotAction) => {
-						if (!ctx) return;
-						this.close();
-						new CopilotResultModal(app, { action, ctx }).open();
-					},
-					onAuto: (tab: IntentTabId, mode: 'fast' | 'complete') => {
-						this.close();
-						if (tab === 'vault') {
-							new VaultAutoRunModal(app, { mode }).open();
-							return;
-						}
-						if (!ctx) return;
-						new CopilotAutoRunModal(app, { tab, ctx, mode }).open();
-					},
-					onOpenHistoryRecord: async (record: CopilotReviewHistoryRecord) => {
-						if (!ctx) return;
-						this.close();
-						const svc = getCopilotReviewHistoryService();
-						const { snapshot, chats } = await svc.loadWithChats(record);
-						if (!snapshot) return;
-						new CopilotAutoRunModal(app, {
-							tab: this.options.initialTab ?? 'document',
-							ctx,
-							mode: record.mode,
-							initialSnapshot: snapshot,
-							initialInsightChats: chats,
-						}).open();
-					},
-					onOpenAllHistory: (scopeTab: IntentTabId) => {
-						const ctxAppContext = this.appContext;
-						// Scope follows the tab the user is on RIGHT NOW. Using
-						// `this.options.initialTab` ignores in-modal tab switches
-						// and is the cause of image #65: a click on "All reviews"
-						// from the Vault tab opens Document Reviews.
-						const scope: 'document' | 'vault' =
-							scopeTab === 'vault' ? 'vault' : 'document';
-						const currentNotePath = ctx?.file.path ?? null;
-						this.close();
-						new CopilotReviewHistoryModal(app, {
-							scope,
-							currentNotePath,
-							onBackToPicker: () => {
-								new CopilotPickerModal(ctxAppContext, { initialTab: scopeTab }).open();
-							},
-						}).open();
-					},
-					onOpenVaultRecord: (record: VaultReviewHistoryRecord) => {
-						this.close();
-						openVaultReviewHistoryRecord(app, record);
-					},
-				},
-				this.appContext,
-			),
-		);
-	}
-
-	onClose(): void {
-		this.closed = true;
-		this.openToken++;
-		const r = this.reactRenderer;
-		this.reactRenderer = null;
-		if (r) setTimeout(() => { r.unmount(); this.contentEl.empty(); }, 0);
-		else this.contentEl.empty();
-	}
-}

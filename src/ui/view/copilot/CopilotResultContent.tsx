@@ -1,12 +1,12 @@
-// src/ui/view/copilot/CopilotResultModal.tsx
-import { Modal, Notice, type App } from 'obsidian';
+// src/ui/view/copilot/CopilotResultContent.tsx — React content for the
+// Copilot Result modal. The Obsidian Modal shell lives at
+// @/app/copilot/modals/CopilotResultModal and registers itself with the
+// `_currentSetPhase` slot exposed via getCurrentSetPhase/setCurrentSetPhase
+// so non-React lifecycle callers can drive UI phase transitions.
+import { Notice } from 'obsidian';
 import React, { useState, useEffect } from 'react';
-import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
-import { AppContext } from '@/app/context/AppContext';
 import { AuthenticationError } from '@/core/errors/llm-errors';
 import { Loader2, AlertTriangle, Settings2, ArrowLeft, X, Ban } from 'lucide-react';
-import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { CopilotAction, DocumentContext, ActionUsage, ActionResult } from '@/service/copilot/CopilotActionRegistry';
 import { getCopilotResultPanel } from '@/ui/view/copilot/copilot-action-surfaces';
@@ -23,14 +23,7 @@ import { v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '@/ui/view/qui
 import { CopilotStepTimeline } from './components/CopilotStepTimeline';
 import { CopilotReviewShell } from './review/CopilotReviewShell';
 
-interface CopilotResultModalProps {
-	action: CopilotAction;
-	ctx: DocumentContext;
-	initialResult?: ActionResult;
-	completedSteps?: V2ToolStep[];
-}
-
-type ModalPhase =
+export type ModalPhase =
 	| { phase: 'loading'; startTime: number }
 	| { phase: 'streaming'; steps: V2ToolStep[]; progressText: string; startTime: number }
 	| { phase: 'result'; data: any; usage?: ActionUsage; completedSteps?: V2ToolStep[]; resultType?: 'structured' | 'stream' }
@@ -58,7 +51,7 @@ function normalizeToolName(toolName: unknown): string | undefined {
 		: undefined;
 }
 
-function actionResultData(result: ActionResult): any {
+export function actionResultData(result: ActionResult): any {
 	if (result.type === 'structured') return result.data;
 	if (result.type === 'stream') return result.text;
 	return result;
@@ -113,7 +106,7 @@ function shouldUseArtifactReview(actionId: string, artifacts: CopilotRunArtifact
 	].includes(actionId);
 }
 
-async function consumeCopilotStream(
+export async function consumeCopilotStream(
 	generator: AsyncGenerator<LLMStreamEvent, ActionResult | void>,
 	setPhase: (phase: ModalPhase) => void,
 	startTime: number,
@@ -346,7 +339,15 @@ const UsageFooter: React.FC<{ usage: ActionUsage }> = ({ usage }) => (
 
 let _currentSetPhase: ((phase: ModalPhase) => void) | null = null;
 
-const CopilotResultContent: React.FC<{
+export function getCurrentSetPhase(): ((phase: ModalPhase) => void) | null {
+	return _currentSetPhase;
+}
+
+export function setCurrentSetPhase(fn: ((phase: ModalPhase) => void) | null): void {
+	_currentSetPhase = fn;
+}
+
+export const CopilotResultContent: React.FC<{
 	action: CopilotAction;
 	ctx: DocumentContext;
 	initialPhase: ModalPhase;
@@ -468,121 +469,3 @@ const CopilotResultContent: React.FC<{
 	);
 };
 
-export class CopilotResultModal extends Modal {
-	private reactRenderer: ReactRenderer | null = null;
-	private abortController: AbortController | null = null;
-
-	constructor(app: App, private props: CopilotResultModalProps) {
-		super(app);
-	}
-
-	onOpen(): void {
-		this.contentEl.empty();
-		this.modalEl.addClass('peak-copilot-modal');
-		this.contentEl.addClass('pktw-root');
-		this.modalEl.style.width = '1120px';
-		this.modalEl.style.maxWidth = '92vw';
-		this.modalEl.style.padding = '0';
-		this.contentEl.style.padding = '0';
-
-		this.abortController = new AbortController();
-		const initialPhase: ModalPhase = this.props.initialResult
-			? this.props.initialResult.type === 'error'
-				? { phase: 'error', error: new Error(this.props.initialResult.message) }
-			: {
-				phase: 'result',
-				data: actionResultData(this.props.initialResult),
-				usage: this.props.initialResult.usage,
-				completedSteps: this.props.completedSteps,
-				resultType: this.props.initialResult.type,
-			}
-			: { phase: 'loading', startTime: Date.now() };
-		const appContext = AppContext.getInstance();
-
-		this.reactRenderer = new ReactRenderer(this.containerEl);
-		this.reactRenderer.render(
-			createReactElementWithServices(
-				CopilotResultContent,
-				{
-					action: this.props.action,
-					ctx: this.props.ctx,
-					initialPhase,
-					onClose: () => this.close(),
-					onBack: () => {
-						this.abortController?.abort();
-						this.close();
-						// Modal-class ctor pattern (legitimate exception per T11M rules):
-						// CopilotPickerModal ctor takes AppContext — keep as-is here.
-						new CopilotPickerModal(appContext).open();
-					},
-					onCancel: () => {
-						this.abortController?.abort();
-						_currentSetPhase?.({ phase: 'cancelled' });
-					},
-				},
-				appContext,
-			),
-		);
-
-		if (this.props.initialResult) return;
-
-		// Execute the action and wire results into the modal
-		const { action, ctx } = this.props;
-		const guard = action.guard?.(ctx);
-		if (guard) {
-			this.setError(new Error(guard));
-			return;
-		}
-		const signal = this.abortController.signal;
-		const startTime = Date.now();
-
-		(async () => {
-			try {
-				const generator = action.execute(ctx, signal);
-				let lastSteps: V2ToolStep[] = [];
-				const result = await consumeCopilotStream(generator, (p) => {
-					_currentSetPhase?.(p);
-					if (p.phase === 'streaming') lastSteps = p.steps;
-				}, startTime, signal);
-				if (signal.aborted) return;
-				if (result) {
-					if (result.type === 'error') {
-						this.setError(new Error(result.message));
-						return;
-					}
-					_currentSetPhase?.({
-						phase: 'result',
-						data: actionResultData(result),
-						usage: result.usage,
-						completedSteps: lastSteps.length > 0 ? lastSteps : undefined,
-						resultType: result.type,
-					});
-				}
-			} catch (err) {
-				if (signal.aborted) {
-					_currentSetPhase?.({ phase: 'cancelled' });
-					return;
-				}
-				this.setError(err instanceof Error ? err : new Error(String(err)));
-			}
-		})();
-	}
-
-	setResult(data: any, usage?: ActionUsage): void {
-		_currentSetPhase?.({ phase: 'result', data, usage, resultType: 'structured' });
-	}
-
-	setError(error: Error): void {
-		_currentSetPhase?.({ phase: 'error', error });
-	}
-
-	onClose(): void {
-		this.abortController?.abort();
-		this.abortController = null;
-		_currentSetPhase = null;
-		const r = this.reactRenderer;
-		this.reactRenderer = null;
-		if (r) setTimeout(() => { r.unmount(); this.contentEl.empty(); }, 0);
-		else this.contentEl.empty();
-	}
-}
