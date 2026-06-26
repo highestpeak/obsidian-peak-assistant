@@ -36,6 +36,7 @@ import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
 import { createChatMessage } from './utils/chat-message-builder';
 import type { UsageFeature } from '@/service/usage/types';
 import type { TemplateManager } from '@/core/template/TemplateManager';
+import type { ChatRuntimeStatePort } from '@/service/chat/ChatRuntimeStatePort';
 import { AgentTemplateId, getTemplateMetadata } from '@/core/template/TemplateRegistry';
 import { estimateTokens as estimateTokensFn } from './token-estimation';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
@@ -77,6 +78,7 @@ export class AIServiceManager {
 	constructor(
 		private readonly app: App,
 		private settings: AIServiceSettings,
+		private readonly chatRuntimeState: ChatRuntimeStatePort,
 		private readonly templateManager?: TemplateManager,
 	) {
 		// === Settings initialization ===
@@ -143,12 +145,13 @@ export class AIServiceManager {
 			this.resourceSummaryService,
 			this,
 			this.settings,
+			this.chatRuntimeState,
 			this.profileService,
 		);
 
 		// Wire ContextPipeline into ConversationService
 		const contextPipeline = new ContextPipeline([
-			new SystemPromptSlot(this.promptService),
+			new SystemPromptSlot(this.promptService, this.chatRuntimeState),
 			new UserProfileSlot(this.promptService, this.profileService),
 			new ConvSummarySlot(this.promptService),
 			new RecentMessagesSlot(this.promptService, this.resourceSummaryService),
@@ -240,12 +243,13 @@ export class AIServiceManager {
 			this.resourceSummaryService,
 			this,
 			this.settings,
+			this.chatRuntimeState,
 			this.profileService,
 		);
 
 		// Wire ContextPipeline into refreshed ConversationService
 		const refreshedPipeline = new ContextPipeline([
-			new SystemPromptSlot(this.promptService),
+			new SystemPromptSlot(this.promptService, this.chatRuntimeState),
 			new UserProfileSlot(this.promptService, this.profileService),
 			new ConvSummarySlot(this.promptService),
 			new RecentMessagesSlot(this.promptService, this.resourceSummaryService),

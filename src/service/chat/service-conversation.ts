@@ -35,7 +35,7 @@ import { uploadFilesToVault } from '@/core/utils/vault-utils';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { AppContext } from '@/app/context/AppContext';
 import { buildChatTools } from '@/service/chat/tools/chatToolBuilder';
-import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
+import type { ChatRuntimeStatePort } from '@/service/chat/ChatRuntimeStatePort';
 
 interface ChatPreparationResult {
 	modelId: string;
@@ -63,6 +63,7 @@ export class ConversationService {
 		private readonly resourceSummaryService: ResourceSummaryService,
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly settings: AIServiceSettings,
+		private readonly chatState: ChatRuntimeStatePort,
 		private readonly profileService?: UserProfileService,
 	) {
 		this.resourceLoaderManager = new ResourceLoaderManager(this.app, this.aiServiceManager, DocumentLoaderManager.getInstance());
@@ -176,8 +177,9 @@ export class ConversationService {
 				throw new Error(`No active profile found for provider "${convProvider}". Please configure it in Settings → Profiles.`);
 			}
 
-			// Resolve conversation mode from UI store (runtime mode) or conversation metadata
-			const runtimeMode = useChatViewStore.getState().chatMode;
+			// Resolve conversation mode via the chat runtime port (which wraps
+			// the UI toggle store) or conversation metadata.
+			const runtimeMode = self.chatState.getChatMode();
 			const convTypeKind = params.conversation.meta.conversationType?.kind;
 			const effectiveMode = runtimeMode ?? convTypeKind ?? 'chat';
 
@@ -189,7 +191,7 @@ export class ConversationService {
 			let maxSteps = 1;
 
 			if (effectiveMode === 'agent') {
-				const { enableWebSearch } = useChatViewStore.getState();
+				const enableWebSearch = self.chatState.isWebSearchEnabled();
 				const ctx = AppContext.getInstance();
 				const built = buildChatTools(
 					{ app: ctx.app, pluginId: ctx.plugin.manifest.id, enableWebSearch },

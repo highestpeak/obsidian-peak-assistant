@@ -1,0 +1,21 @@
+/**
+ * T11I (2026-06-26): port for chat runtime UI toggles read by the
+ * service layer (system prompt builder + conversation streamer).
+ *
+ * The previous design called `useChatViewStore.getState()` from
+ * `SystemPromptSlot` and `ConversationService`, which made service
+ * files import the UI Zustand store. The app-layer adapter
+ * (`src/app/chat/ChatRuntimeStateAdapter.ts`) wraps that store; the
+ * service files only see this interface.
+ *
+ * All three reads are pull-style. No actions / setters: the service
+ * layer does not write UI toggle state.
+ */
+
+export type ChatRuntimeMode = 'chat' | 'agent' | 'plan';
+
+export interface ChatRuntimeStatePort {
+	getChatMode(): ChatRuntimeMode;
+	isWebSearchEnabled(): boolean;
+	isVaultSearchEnabled(): boolean;
+}

@@ -1,8 +1,8 @@
 import { AppContext } from '@/app/context/AppContext';
 import { PromptId } from '@/service/prompt/PromptId';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessionStore';
-import type { V2Section } from '@/ui/view/quick-search/store/searchSessionStore';
+import type { V2Section } from '@/core/search/v2SessionTypes';
+import type { ReportSessionPort } from './ReportSessionPort';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
 import { queryWithProfile, type SDKMessage } from '@/service/agents/core/sdkAgentPool';
@@ -11,6 +11,10 @@ import { streamWithRepetitionGuard, detectRepetition } from './stream-utils';
 
 /**
  * Multi-agent report orchestrator.
+ *
+ * T11I (2026-06-26): no longer reads `useSearchSessionStore` directly.
+ * Section/summary state goes through `ReportSessionPort`, supplied by
+ * the caller (the UI hook constructs `SearchSessionReportAdapter`).
  *
  * Per section (parallel):
  *   1. Content Agent — queryWithProfile → section markdown
@@ -24,13 +28,11 @@ import { streamWithRepetitionGuard, detectRepetition } from './stream-utils';
  */
 export class ReportOrchestrator {
     private readonly mgr: AIServiceManager;
+    private readonly session: ReportSessionPort;
 
-    constructor(aiServiceManager: AIServiceManager) {
+    constructor(aiServiceManager: AIServiceManager, session: ReportSessionPort) {
         this.mgr = aiServiceManager;
-    }
-
-    private get store() {
-        return useSearchSessionStore;
+        this.session = session;
     }
 
     // -----------------------------------------------------------------------
@@ -133,7 +135,7 @@ export class ReportOrchestrator {
     private extractRelevantSection(content: string, brief: string, maxLen: number): string | null {
         const keywords = brief
             .toLowerCase()
-            .split(/[\s,;.!?，。；！？]+/)
+            .split(/[\s,;.!?,。;!?]+/)
             .filter((w) => w.length > 1);
         if (keywords.length === 0) return null;
 
@@ -183,16 +185,16 @@ export class ReportOrchestrator {
         userQuery: string,
     ): Promise<void> {
         // Pass 0: assign user insights to sections (if any)
-        const insights = this.store.getState().v2UserInsights;
+        const insights = this.session.getUserInsights();
         if (insights.length > 0) {
             await this.assignInsightsToSections(insights, sections, userQuery);
             // Re-read sections (may have new ones added)
-            sections = this.store.getState().v2PlanSections;
+            sections = this.session.getPlanSections();
         }
 
         // Mark all sections as generating
         for (const sec of sections) {
-            this.store.getState().updatePlanSection(sec.id, (s) => ({ ...s, status: 'generating' }));
+            this.session.updatePlanSection(sec.id, (s) => ({ ...s, status: 'generating' }));
         }
 
         // Pre-prepare ALL section params (evidence + prompts) BEFORE firing any queries.
@@ -217,7 +219,7 @@ export class ReportOrchestrator {
                     evidenceContent,
                     userPrompt: '',
                     missionRole: sec.missionRole ?? 'synthesis',
-                    userNotes: this.store.getState().v2UserInsights.join('\n') || '',
+                    userNotes: this.session.getUserInsights().join('\n') || '',
                 }),
             ]);
             return { sec, systemPrompt, userMessage };
@@ -239,7 +241,7 @@ export class ReportOrchestrator {
                 let lastCheckLen = 0;
                 for await (const chunk of this.sdkTextStream(messages)) {
                     fullText += chunk;
-                    this.store.getState().appendSectionChunk(sec.id, chunk);
+                    this.session.appendSectionChunk(sec.id, chunk);
                     if (fullText.length - lastCheckLen > 200) {
                         lastCheckLen = fullText.length;
                         const truncAt = detectRepetition(fullText);
@@ -250,12 +252,12 @@ export class ReportOrchestrator {
                     }
                 }
                 if (fullText) {
-                    this.store.getState().completeSectionContent(sec.id, fullText);
+                    this.session.completeSectionContent(sec.id, fullText);
                 } else {
-                    this.store.getState().failSection(sec.id, 'No content generated');
+                    this.session.failSection(sec.id, 'No content generated');
                 }
             } catch (err: any) {
-                this.store.getState().failSection(sec.id, err?.message ?? 'Content generation failed');
+                this.session.failSection(sec.id, err?.message ?? 'Content generation failed');
             }
         });
 
@@ -272,8 +274,8 @@ export class ReportOrchestrator {
         userQuery: string,
         userPrompt?: string,
     ): Promise<void> {
-        this.store.getState().startSectionRegenerate(sectionId);
-        const section = this.store.getState().v2PlanSections.find((s) => s.id === sectionId);
+        this.session.startSectionRegenerate(sectionId);
+        const section = this.session.getPlanSections().find((s) => s.id === sectionId);
         if (!section) return;
         await this.runContentAgent(section, allSections, overview, userQuery, userPrompt);
     }
@@ -341,8 +343,8 @@ Output ONLY the JSON array, no other text.`;
                 if (a.section_id === 'NEW' && a.new_title) {
                     // Create new section
                     const newId = `s_user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-                    const currentSections = this.store.getState().v2PlanSections;
-                    this.store.getState().setPlanSections([
+                    const currentSections = this.session.getPlanSections();
+                    this.session.setPlanSections([
                         ...currentSections,
                         {
                             id: newId,
@@ -361,7 +363,7 @@ Output ONLY the JSON array, no other text.`;
                     ]);
                 } else {
                     // Append insight to existing section's brief
-                    this.store.getState().updatePlanSection(a.section_id, (s) => ({
+                    this.session.updatePlanSection(a.section_id, (s) => ({
                         ...s,
                         brief: s.brief + '\n\nUser insight: ' + insightText,
                     }));
@@ -403,7 +405,7 @@ Output ONLY the JSON array, no other text.`;
                     evidenceContent,
                     userPrompt: userPrompt ?? '',
                     missionRole: section.missionRole ?? 'synthesis',
-                    userNotes: this.store.getState().v2UserInsights.join('\n') || '',
+                    userNotes: this.session.getUserInsights().join('\n') || '',
                 }),
             ]);
 
@@ -420,12 +422,12 @@ Output ONLY the JSON array, no other text.`;
             const { fullText } = await streamWithRepetitionGuard(
                 this.sdkTextStream(messages),
                 controller,
-                (chunk) => this.store.getState().appendSectionChunk(section.id, chunk),
+                (chunk) => this.session.appendSectionChunk(section.id, chunk),
             );
 
-            this.store.getState().completeSectionContent(section.id, fullText);
+            this.session.completeSectionContent(section.id, fullText);
         } catch (err: any) {
-            this.store.getState().failSection(section.id, err?.message ?? 'Content generation failed');
+            this.session.failSection(section.id, err?.message ?? 'Content generation failed');
         }
     }
 
@@ -439,10 +441,10 @@ Output ONLY the JSON array, no other text.`;
         overview: string,
         userQuery: string,
     ): Promise<void> {
-        this.store.getState().setSummaryStreaming(true);
+        this.session.setSummaryStreaming(true);
 
         try {
-            const currentSections = this.store.getState().v2PlanSections;
+            const currentSections = this.session.getPlanSections();
             const evidenceList = allEvidencePaths
                 .map((p) => `- [[${p.replace(/\.md$/, '')}]]`)
                 .join('\n');
@@ -469,7 +471,7 @@ Output ONLY the JSON array, no other text.`;
 
             let accumulated = '';
             let summaryRaf: number | null = null;
-            const storeRef = this.store;
+            const sessionRef = this.session;
             const { fullText } = await streamWithRepetitionGuard(
                 this.sdkTextStream(messages),
                 controller,
@@ -478,18 +480,18 @@ Output ONLY the JSON array, no other text.`;
                     if (summaryRaf === null) {
                         summaryRaf = requestAnimationFrame(() => {
                             summaryRaf = null;
-                            storeRef.getState().setSummary(accumulated);
+                            sessionRef.setSummary(accumulated);
                         });
                     }
                 },
             );
             if (summaryRaf !== null) cancelAnimationFrame(summaryRaf);
-            this.store.getState().setSummary(fullText);
+            this.session.setSummary(fullText);
         } catch {
             // Summary failure is non-fatal
         }
 
-        this.store.getState().setSummaryStreaming(false);
+        this.session.setSummaryStreaming(false);
     }
 
     // -----------------------------------------------------------------------

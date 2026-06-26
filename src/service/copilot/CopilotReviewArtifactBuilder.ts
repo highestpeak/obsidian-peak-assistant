@@ -21,7 +21,7 @@ import type {
 import { createEmptyCopilotRunArtifacts, mergeCapabilityArtifact } from './CopilotRunArtifacts';
 import { proposalsToArtifacts } from './CopilotArtifactAdapter';
 import type { LLMStreamEvent } from '@/core/providers/types';
-import { v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '@/ui/view/quick-search/types/search-steps';
+import { v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '@/service/search/v2ToolDisplay';
 import { describeReport } from './CopilotSignalReport';
 
 type AnyEvent = LLMStreamEvent & {

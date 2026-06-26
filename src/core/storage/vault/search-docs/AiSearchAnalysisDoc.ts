@@ -23,8 +23,9 @@ import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock, Evid
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { SearchResultItem } from '@/service/search/types';
 import type { LLMUsage } from '@/core/providers/types';
-import type { AnalysisMode, UIStepRecord, CompletedAnalysisSnapshot, SectionAnalyzeResult } from '@/ui/view/quick-search/store/aiAnalysisStore';
-import { getSnapshotSummary } from '@/ui/view/quick-search/store/aiAnalysisStore';
+import type { AnalysisMode } from '@/service/agents/shared-types';
+import type { UIStepRecord, CompletedAnalysisSnapshot, SectionAnalyzeResult } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
+import { getSnapshotSummary } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 // Re-export parse and buildMarkdown so existing imports continue to work.
 export { parse } from './analysis-markdown-parser';
 export { buildMarkdown } from './analysis-markdown-builder';

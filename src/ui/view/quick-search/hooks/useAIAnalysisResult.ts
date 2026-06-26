@@ -29,8 +29,9 @@ export function useAIAnalysisResult() {
         const store = useSearchSessionStore.getState();
         const { snapshotFromState } = await import('../store/sessionSnapshot');
         const { persistSessionToVault } = await import('@/service/search/analysisDocPersistence');
+        const { AppAnalysisDocVaultWriterAdapter } = await import('@/app/quick-search/AppAnalysisDocVaultWriterAdapter');
         const snapshot = snapshotFromState(store);
-        const result = await persistSessionToVault(snapshot);
+        const result = await persistSessionToVault(snapshot, { vaultWriter: new AppAnalysisDocVaultWriterAdapter() });
         if (result) {
             setAutoSaveState({ lastRunId: analysisRunId, lastSavedPath: result.path });
             useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });

@@ -1,6 +1,6 @@
 import { AppContext } from '@/app/context/AppContext';
 import { PromptId } from '@/service/prompt/PromptId';
-import type { Round } from '@/ui/view/quick-search/store/searchSessionStore';
+import type { Round } from '@/core/search/v2SessionTypes';
 
 export interface SynthesizeResult {
 	summary: string;

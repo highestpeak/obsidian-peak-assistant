@@ -4,7 +4,12 @@
  * Provides milestone-based saves that work independently of React component lifecycle.
  * Two save points: plan-ready (early) and fully-complete (final).
  *
- * This module has NO React dependencies — it reads from V2SessionSnapshot directly.
+ * T11I (2026-06-26): this module no longer imports `@/ui/*`. Snapshot
+ * types come from `@/core/search/**`; the vault-write step goes through
+ * an explicit `AnalysisDocVaultWriterPort` the caller must supply. The
+ * remaining `AppContext.getInstance()` accesses (settings + history
+ * service + EventBus) are tracked as the next cleanup pass — they are
+ * pre-existing service-side conveniences, not new shortcuts.
  */
 
 import { SLICE_CAPS } from '@/core/constant';
@@ -12,6 +17,7 @@ import {
 	getDefaultProgressReporter,
 	type ProgressReporterPort,
 } from '@/service/ports/ProgressReporterPort';
+import type { AnalysisDocVaultWriterPort } from '@/service/search/ports/AnalysisDocVaultWriterPort';
 import { AppContext } from '@/app/context/AppContext';
 import { AIAnalysisCompleteEvent } from '@/core/eventBus';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
@@ -20,10 +26,9 @@ import {
 	fromCompletedAnalysisSnapshot,
 	type BuildMarkdownOptions,
 } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
-import { saveAiAnalyzeResultToMarkdown, persistAnalysisDocToPath } from '@/ui/view/quick-search/callbacks/save-ai-analyze-to-md';
-import { buildV2AnalysisSnapshotFromData } from '@/ui/view/quick-search/store/v2SessionTypes';
-import type { V2SessionSnapshot } from '@/ui/view/quick-search/store/sessionSnapshot';
-import type { CompletedAnalysisSnapshot } from '@/ui/view/quick-search/store/aiAnalysisStore';
+import { buildV2AnalysisSnapshotFromData } from '@/core/search/v2SessionTypes';
+import type { V2SessionSnapshot } from '@/core/search/sessionSnapshot';
+import type { CompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 
 // ---------------------------------------------------------------------------
@@ -41,10 +46,15 @@ export interface PersistSessionResult {
  * - Otherwise creates a new file in the configured auto-save folder.
  *
  * Returns the saved path, or null if auto-save is disabled / nothing to save.
+ *
+ * `vaultWriter` is required: callers (UI hook, background runtime, app
+ * adapter) construct an `AppAnalysisDocVaultWriterAdapter` and pass it
+ * in. There is intentionally no module-level default writer.
  */
 export async function persistSessionToVault(
 	snapshot: V2SessionSnapshot,
-	options?: {
+	options: {
+		vaultWriter: AnalysisDocVaultWriterPort;
 		existingPath?: string | null;
 		graphJson?: string | null;
 		progressReporter?: ProgressReporterPort;
@@ -61,7 +71,7 @@ export async function persistSessionToVault(
 	if (!v2Data) return null;
 
 	// Override graph JSON if caller provides it (foreground has access to graph stores)
-	if (options?.graphJson) {
+	if (options.graphJson) {
 		v2Data.v2GraphJson = options.graphJson;
 	}
 
@@ -76,13 +86,14 @@ export async function persistSessionToVault(
 		includeSteps: AppContext.getInstance().settings?.enableDevTools === true,
 	};
 
+	const docModel = fromCompletedAnalysisSnapshot(completedSnapshot, query, webEnabled);
+	docModel.created = docModel.created || new Date().toISOString();
+	const content = buildAiSearchAnalysisMarkdown(docModel, buildOptions);
+
 	// Overwrite existing file
-	if (options?.existingPath) {
+	if (options.existingPath) {
 		try {
-			const docModel = fromCompletedAnalysisSnapshot(completedSnapshot, query, webEnabled);
-			docModel.created = docModel.created || new Date().toISOString();
-			const content = buildAiSearchAnalysisMarkdown(docModel, buildOptions);
-			await persistAnalysisDocToPath(options.existingPath, content);
+			await options.vaultWriter.overwriteDoc(options.existingPath, content);
 			return { path: options.existingPath };
 		} catch (e) {
 			console.warn('[analysisDocPersistence] overwrite failed:', e);
@@ -101,32 +112,20 @@ export async function persistSessionToVault(
 
 	let saved: { path: string };
 	try {
-		saved = await saveAiAnalyzeResultToMarkdown({
-			folderPath,
-			fileName,
-			query,
-			snapshot: completedSnapshot,
-			webEnabled,
-		});
+		saved = await options.vaultWriter.createDoc({ folderPath, fileName, content });
 	} catch (firstErr) {
 		const msg = firstErr instanceof Error ? firstErr.message : String(firstErr);
 		const isPathRelated = /folder|path|directory|create|write/i.test(msg);
 		if (isPathRelated && folderPath !== '') {
 			folderPath = '';
 			try {
-				saved = await saveAiAnalyzeResultToMarkdown({
-					folderPath,
-					fileName,
-					query,
-					snapshot: completedSnapshot,
-					webEnabled,
-				});
+				saved = await options.vaultWriter.createDoc({ folderPath, fileName, content });
 				// Notification surface is optional. The vault-root save above
 				// has already succeeded, so a missing default reporter (e.g.
 				// in tests) or a reporter that throws must NOT degrade this
 				// path into a failed persistence result. Log and continue.
 				try {
-					const reporter = options?.progressReporter ?? getDefaultProgressReporter();
+					const reporter = options.progressReporter ?? getDefaultProgressReporter();
 					reporter.show('Auto-save: saved to vault root (configured folder failed).', 5000);
 				} catch (e) {
 					console.warn('[analysisDocPersistence] fallback notice skipped:', e);

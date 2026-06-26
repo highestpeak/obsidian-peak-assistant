@@ -23,12 +23,14 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import type { UserFeedback } from '@/service/agents/core/types';
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
+import { SearchSessionReportAdapter } from '@/app/quick-search/SearchSessionReportAdapter';
 
 import { consumeStream } from './streamConsumer';
 import type { StreamConsumerContext } from './streamConsumer';
 import { useEventRouter } from './useEventRouter';
 import { useContinueAnalysis } from './useContinueAnalysis';
 import { persistSessionToVault } from '@/service/search/analysisDocPersistence';
+import { AppAnalysisDocVaultWriterAdapter } from '@/app/quick-search/AppAnalysisDocVaultWriterAdapter';
 import { snapshotFromState } from '../store/sessionSnapshot';
 import type { V2SessionSnapshot } from '../store/sessionSnapshot';
 
@@ -77,7 +79,11 @@ export function persistForegroundSession(existingPath?: string | null): void {
 		}
 	} catch { /* graph stores not available */ }
 
-	void persistSessionToVault(snapshot, { existingPath: resolvedExistingPath, graphJson }).then((result) => {
+	void persistSessionToVault(snapshot, {
+		vaultWriter: new AppAnalysisDocVaultWriterAdapter(),
+		existingPath: resolvedExistingPath,
+		graphJson,
+	}).then((result) => {
 		if (result) {
 			useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });
 		}
@@ -302,7 +308,13 @@ export function useSearchSession() {
 	// handleApprovePlan — start report generation from approved plan
 	// -----------------------------------------------------------------------
 
-	const reportOrchestrator = useMemo(() => new ReportOrchestrator(AppContext.getInstance().plugin.aiServiceManager), []);
+	const reportOrchestrator = useMemo(
+		() => new ReportOrchestrator(
+			AppContext.getInstance().plugin.aiServiceManager,
+			new SearchSessionReportAdapter(),
+		),
+		[],
+	);
 
 	const handleApprovePlan = useCallback(async () => {
 		const state = store.getState();

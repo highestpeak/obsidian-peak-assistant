@@ -1,80 +1,43 @@
 /**
  * Serializable snapshot of a search session state.
- * Used to detach/restore between foreground Zustand store and background plain-object sessions.
  *
- * This module must NOT import from any Zustand store — only types and pure functions.
+ * T11I (2026-06-26): the neutral subset (no `hitlState`) lives in
+ * @/core/search/sessionSnapshot. This UI module re-exports a richer
+ * V2SessionSnapshot that **extends** the neutral type with the UI-only
+ * `hitlState` field, and keeps `snapshotFromState` (which knows how to
+ * deep-clone HitlState) here.
+ *
+ * This module still does NOT import from any Zustand store — only types
+ * and pure functions.
  */
 
-import type { LLMUsage } from '@/core/providers/types';
-import type { AnalysisMode } from '@/service/agents/shared-types';
-import type { V2ToolStep, V2TimelineItem, V2Source } from '../types/search-steps';
-import type { V2Section, Round } from './v2SessionTypes';
-import type { SessionStatus, HitlState, AutoSaveState } from './searchSessionStore';
+import type { V2ToolStep, V2TimelineItem, V2Source } from '@/core/search/v2ToolTypes';
+import type { V2Section, Round } from '@/core/search/v2SessionTypes';
+import type { V2SessionSnapshot as NeutralV2SessionSnapshot } from '@/core/search/sessionSnapshot';
+import type { HitlState } from './searchSessionStore';
 
-// ---------------------------------------------------------------------------
-// Snapshot type — serializable subset of SearchSessionState
-// ---------------------------------------------------------------------------
-
-export interface V2SessionSnapshot {
-	// Session identity
-	id: string | null;
-	query: string;
-	title: string | null;
-	status: SessionStatus;
-	startedAt: number | null;
-
-	// V2 state
-	v2Active: boolean;
-	v2View: 'process' | 'report' | 'sources';
-	v2Steps: V2ToolStep[];
-	v2ReportChunks: string[];
-	v2ReportComplete: boolean;
-	v2ToolCallIndex: Map<string, string>;
-	v2Timeline: V2TimelineItem[];
-	v2FinalReportStartIndex: number;
-	v2Sources: V2Source[];
-	v2FollowUpQuestions: string[];
-	v2ProposedOutline: string | null;
-	v2PlanSections: V2Section[];
-	v2PlanApproved: boolean;
-	v2UserInsights: string[];
-	v2Summary: string;
-	v2SummaryStreaming: boolean;
-	rounds: Round[];
-	currentRoundIndex: number;
-	continueMode: boolean;
-
-	// Metadata
-	duration: number | null;
-	usage: LLMUsage | null;
-	phaseUsages: Array<{ phase: string; modelId: string; inputTokens: number; outputTokens: number }>;
-	agentDebugLog: Array<{ ts: number; type: string; taskIndex?: number; data: Record<string, unknown> }>;
-	error: string | null;
-	analysisMode: AnalysisMode;
-	runAnalysisMode: AnalysisMode | null;
-	webEnabled: boolean;
-	hasStartedStreaming: boolean;
-	hasAnalyzed: boolean;
+/**
+ * UI-facing V2SessionSnapshot: the neutral snapshot plus `hitlState`.
+ * Service code consumes the neutral type from
+ * @/core/search/sessionSnapshot; only the UI session uses this richer
+ * version.
+ */
+export interface V2SessionSnapshot extends NeutralV2SessionSnapshot {
 	hitlState: HitlState | null;
-	autoSaveState: AutoSaveState;
-	dashboardUpdatedLine: string;
 }
 
 // ---------------------------------------------------------------------------
 // State → Snapshot (deep-copy)
 // ---------------------------------------------------------------------------
 
-/** The state object must have at least all the fields listed in V2SessionSnapshot. */
 type SnapshotSource = {
 	[K in keyof V2SessionSnapshot]: V2SessionSnapshot[K];
 };
 
-/** Deep-copy a V2ToolStep */
 function cloneStep(step: V2ToolStep): V2ToolStep {
 	return { ...step, input: { ...step.input } };
 }
 
-/** Deep-copy a V2TimelineItem */
 function cloneTimelineItem(item: V2TimelineItem): V2TimelineItem {
 	if (item.kind === 'text') {
 		return { kind: 'text', id: item.id, text: item.text, complete: item.complete };
@@ -82,7 +45,6 @@ function cloneTimelineItem(item: V2TimelineItem): V2TimelineItem {
 	return { kind: 'tool', step: cloneStep(item.step) };
 }
 
-/** Deep-copy a V2Section */
 function cloneSection(sec: V2Section): V2Section {
 	return {
 		...sec,
@@ -92,7 +54,6 @@ function cloneSection(sec: V2Section): V2Section {
 	};
 }
 
-/** Deep-copy a Round */
 function cloneRound(round: Round): Round {
 	return {
 		...round,
@@ -112,14 +73,12 @@ function cloneRound(round: Round): Round {
  */
 export function snapshotFromState(state: SnapshotSource): V2SessionSnapshot {
 	return {
-		// Session identity
 		id: state.id,
 		query: state.query,
 		title: state.title,
 		status: state.status,
 		startedAt: state.startedAt,
 
-		// V2 state
 		v2Active: state.v2Active,
 		v2View: state.v2View,
 		v2Steps: state.v2Steps.map(cloneStep),
@@ -140,7 +99,6 @@ export function snapshotFromState(state: SnapshotSource): V2SessionSnapshot {
 		currentRoundIndex: state.currentRoundIndex,
 		continueMode: state.continueMode,
 
-		// Metadata
 		duration: state.duration,
 		usage: state.usage ? { ...state.usage } : null,
 		phaseUsages: state.phaseUsages.map((p) => ({ ...p })),

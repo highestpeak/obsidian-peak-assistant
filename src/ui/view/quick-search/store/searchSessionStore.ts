@@ -14,15 +14,16 @@ import type { AnalysisMode } from '@/service/agents/shared-types';
 import type { PlanSnapshot } from '@/service/agents/vault/types';
 import type { UserFeedback } from '@/service/agents/core/types';
 import type { V2ToolStep, V2TimelineItem, V2Source } from '../types/search-steps';
-import {
-	V2_INITIAL_STATE,
-} from './v2SessionTypes';
-import type { V2Section, Annotation, Round, V2SessionState } from './v2SessionTypes';
+import { V2_INITIAL_STATE } from '@/core/search/v2SessionTypes';
+import type { V2Section, Annotation, Round, V2SessionState } from '@/core/search/v2SessionTypes';
+import type { SessionStatus as NeutralSessionStatus, AutoSaveState as NeutralAutoSaveState } from '@/core/search/sessionTypes';
 import type { V2SessionSnapshot } from './sessionSnapshot';
 import { snapshotFromState } from './sessionSnapshot';
 
-// Re-export V2 types for backward compatibility
+// Re-export V2 + neutral session types for backward compatibility
 export type { V2Section, Annotation, Round };
+export type SessionStatus = NeutralSessionStatus;
+export type AutoSaveState = NeutralAutoSaveState;
 
 // ---------------------------------------------------------------------------
 // Streaming buffers — accumulate text outside Zustand to avoid O(n²) copies.
@@ -90,13 +91,8 @@ function _resetSectionBuffers() {
 }
 
 // ---------------------------------------------------------------------------
-// Session status
-// ---------------------------------------------------------------------------
-
-export type SessionStatus = 'idle' | 'starting' | 'streaming' | 'plan_ready' | 'completed' | 'error' | 'canceled';
-
-// ---------------------------------------------------------------------------
-// HITL state
+// HITL state — UI-only because PlanSnapshot is a service-layer type and the
+// pause data is only consumed by the live UI session.
 // ---------------------------------------------------------------------------
 
 export interface HitlState {
@@ -104,16 +100,6 @@ export interface HitlState {
 	pauseId: string;
 	phase: string;
 	snapshot: PlanSnapshot;
-}
-
-// ---------------------------------------------------------------------------
-// Auto-save state
-// ---------------------------------------------------------------------------
-
-export interface AutoSaveState {
-	lastRunId: string | null;
-	lastSavedSummaryHash: string | null;
-	lastSavedPath: string | null;
 }
 
 // ---------------------------------------------------------------------------

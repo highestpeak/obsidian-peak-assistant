@@ -189,7 +189,16 @@ export default class MyPlugin extends Plugin {
 		}
 
 		// Create AIServiceManager (ConversationService and ProjectService will be initialized in init())
-		this.aiServiceManager = new AIServiceManager(this.app, this.settings.ai, this.templateManager ?? undefined);
+		// T11I (2026-06-26): chat runtime UI toggles reach the service layer via
+		// an explicit port so SystemPromptSlot / ConversationService stop
+		// importing `useChatViewStore`.
+		const { ChatRuntimeStateAdapter } = await import('@/app/chat/ChatRuntimeStateAdapter');
+		this.aiServiceManager = new AIServiceManager(
+			this.app,
+			this.settings.ai,
+			new ChatRuntimeStateAdapter(),
+			this.templateManager ?? undefined,
+		);
 
 		// Create AppContext EARLY — before any service init runs, so obsidian-utils and
 		// vault-utils resolveApp() helpers can find the singleton during downstream init

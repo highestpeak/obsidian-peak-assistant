@@ -4,31 +4,37 @@ import type { LLMRequestMessage } from '@/core/providers/types';
 import type { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/service/prompt/PromptId';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
+import type { ChatRuntimeStatePort } from '@/service/chat/ChatRuntimeStatePort';
 
 /**
  * Build the dynamic capabilities object for the conversation system prompt.
- * Reads current session toggles from chatViewStore and provider availability
- * from ProfileRegistry.
+ * Reads current session toggles via the injected port and provider
+ * availability from ProfileRegistry.
+ *
+ * T11I (2026-06-26): toggles now flow through ChatRuntimeStatePort
+ * instead of `useChatViewStore.getState()` so this file is free of
+ * `@/ui/*` imports.
  */
-function buildCapabilities() {
-  const { enableWebSearch, enableVaultSearch } = useChatViewStore.getState();
+function buildCapabilities(chatState: ChatRuntimeStatePort) {
   return {
     webSearchAvailable: !!ProfileRegistry.getInstance().getActiveWebSearchProfile(),
-    webSearchEnabled: enableWebSearch,
+    webSearchEnabled: chatState.isWebSearchEnabled(),
     vaultSearchAvailable: true,
-    vaultSearchEnabled: enableVaultSearch,
+    vaultSearchEnabled: chatState.isVaultSearchEnabled(),
   };
 }
 
 export class SystemPromptSlot implements ContextSlot {
   id = 'system-prompt';
 
-  constructor(private readonly promptService: PromptService) {}
+  constructor(
+    private readonly promptService: PromptService,
+    private readonly chatState: ChatRuntimeStatePort,
+  ) {}
 
   async build(ctx: SlotBuildContext): Promise<SlotContent> {
     const promptId = (ctx.systemPromptId as PromptId) ?? PromptId.ConversationSystem;
-    const capabilities = buildCapabilities();
+    const capabilities = buildCapabilities(this.chatState);
     const vars = { ...(ctx.systemPromptVars ?? {}), capabilities };
     let text = await this.promptService.render(promptId, vars);
 
