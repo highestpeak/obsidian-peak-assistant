@@ -3,9 +3,9 @@ import { TFile } from 'obsidian';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { binaryContentHash } from '@/core/utils/hash-utils';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { SearchSettings } from '@/app/settings/types';
-import type { AIServiceManager } from '@/service/chat/service-manager';
-import { PromptId } from '@/service/prompt/PromptId';
+import type { SearchSettings } from '@/core/config/settingsTypes';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import { PromptId } from '@/core/prompt/PromptId';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
 /**
@@ -16,7 +16,7 @@ export class ImageDocumentLoader extends BaseDocumentLoader {
 	constructor(
 		app: App,
 		private readonly settings: SearchSettings,
-		aiServiceManager?: AIServiceManager,
+		aiServiceManager?: IDocSummarizer,
 	) {
 		super(app, aiServiceManager);
 	}
@@ -42,7 +42,7 @@ export class ImageDocumentLoader extends BaseDocumentLoader {
 		modelId?: string,
 	): Promise<ResourceSummary> {
 		if (!this.aiServiceManager) {
-			throw new Error('ImageDocumentLoader requires AIServiceManager to generate summaries');
+			throw new Error('ImageDocumentLoader requires IDocSummarizer to generate summaries');
 		}
 		if (typeof source === 'string') {
 			throw new Error('ImageDocumentLoader.getSummary requires a Document, not a string');

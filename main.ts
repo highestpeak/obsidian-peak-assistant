@@ -6,7 +6,7 @@ import { normalizePluginSettings } from 'src/app/settings/PluginSettingsLoader';
 import { ViewManager } from 'src/app/view/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
 import { registerCoreEvents, removeAllChatViewButtons, clearPendingConversationTimeouts } from 'src/app/events/Register';
-import { MyPluginSettings } from '@/app/settings/types';
+import { MyPluginSettings, DEFAULT_HARNESS_SETTINGS } from '@/app/settings/types';
 import { SearchClient } from '@/service/search/SearchClient';
 import { SearchUpdateListener } from '@/service/search/index/indexUpdater';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
@@ -193,10 +193,14 @@ export default class MyPlugin extends Plugin {
 		// an explicit port so SystemPromptSlot / ConversationService stop
 		// importing `useChatViewStore`.
 		const { ChatRuntimeStateAdapter } = await import('@/app/chat/ChatRuntimeStateAdapter');
+		// T11J B3: explicit pluginId + harness-settings provider so the
+		// manager no longer reaches `AppContext.getInstance()` for them.
 		this.aiServiceManager = new AIServiceManager(
 			this.app,
 			this.settings.ai,
 			new ChatRuntimeStateAdapter(),
+			this.manifest.id,
+			() => this.settings.harnessSettings ?? DEFAULT_HARNESS_SETTINGS,
 			this.templateManager ?? undefined,
 		);
 
@@ -561,7 +565,7 @@ export default class MyPlugin extends Plugin {
 		// T10: inject the Quick Search background runtime so the
 		// worker can defer drain while user-facing analyses run,
 		// without reaching the retired BackgroundSessionManager.
-		this.cascadeWorker = new CascadeWorker(this.app, AppContext.getQuickSearchBackgroundRuntime());
+		this.cascadeWorker = new CascadeWorker(this.app, AppContext.getQuickSearchBackgroundRuntime(), this.settings.ai.rootFolder);
 		this.cascadeWorker.start();
 
 		// Check index status and perform incremental indexing if needed

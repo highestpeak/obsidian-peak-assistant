@@ -13,10 +13,12 @@ import { ConversationService } from './service-conversation';
 import {
 	AIServiceSettings,
 	DEFAULT_AI_SERVICE_SETTINGS,
+} from '@/core/config/settingsTypes';
+import {
 	getAIProfileFilePath,
 	getAIPromptFolder,
 	getAIResourcesSummaryFolder,
-} from '@/app/settings/types';
+} from '@/core/config/folderPaths';
 import { ResourceSummaryService } from './context/ResourceSummaryService';
 import { IndexService } from '@/service/search/index/indexService';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
@@ -43,15 +45,19 @@ import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { collectText, collectJson, translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
-// NOTE: AppContext is imported in service/ files already (see VaultSearchAgent, IndexService etc).
-// The circular reference (AppContext → AIServiceManager → AppContext) is safe because
-// the actual getInstance() call happens inside method bodies, not at module evaluation time.
-import { AppContext } from '@/app/context/AppContext';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { IDocTagClassifier } from '@/core/llm/IDocTagClassifier';
+import type { HarnessSettings } from '@/core/config/settingsTypes';
 
 /**
  * Manage AI conversations, storage, and model interactions.
+ *
+ * T11J A3: explicitly implements the narrow `IDocSummarizer` and
+ * `IDocTagClassifier` ports so `src/core/**` consumers (document loaders,
+ * rerank, TagService) can type their dependencies against the port
+ * instead of importing this class.
  */
-export class AIServiceManager {
+export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 	private storage: ChatStorageService;
 	private promptService: PromptService;
 	private _projectService?: ProjectService;
@@ -79,6 +85,14 @@ export class AIServiceManager {
 		private readonly app: App,
 		private settings: AIServiceSettings,
 		private readonly chatRuntimeState: ChatRuntimeStatePort,
+		/**
+		 * T11J B3: explicit deps so the manager no longer reaches
+		 * `AppContext.getInstance()` for pluginId / harness-settings reads.
+		 * `harnessSettingsProvider` is a getter callback because the user
+		 * can edit harness settings at runtime.
+		 */
+		private readonly pluginId: string,
+		private readonly harnessSettingsProvider: () => HarnessSettings,
 		private readonly templateManager?: TemplateManager,
 	) {
 		// === Settings initialization ===
@@ -100,6 +114,9 @@ export class AIServiceManager {
 
 		// === Service construction ===
 		this.promptService = new PromptService(this.app, this.settings, undefined, this.templateManager);
+		// T11J B3: wire the prompter port so PromptService chat helpers no
+		// longer reach `AppContext.getInstance().manager`.
+		this.promptService.setPrompter(this);
 
 		// Initialize context service if profile is enabled
 		if (this.settings.profileEnabled) {
@@ -146,6 +163,7 @@ export class AIServiceManager {
 			this,
 			this.settings,
 			this.chatRuntimeState,
+			this.pluginId,
 			this.profileService,
 		);
 
@@ -244,6 +262,7 @@ export class AIServiceManager {
 			this,
 			this.settings,
 			this.chatRuntimeState,
+			this.pluginId,
 			this.profileService,
 		);
 
@@ -487,17 +506,30 @@ ${sourcesList}${topicsList}
 	// using the active agent Profile for credentials.
 	// ═══════════════════════════════════════════════════════════════════════════
 
-	/** Resolve pluginId lazily from AppContext singleton. */
+	/** T11J B3: pluginId is injected at construction; no AppContext lookup. */
 	private getPluginId(): string {
-		return AppContext.getInstance().plugin.manifest.id;
+		return this.pluginId;
+	}
+
+	/**
+	 * T11J B1: Expose the live `app` + `pluginId` so service-side agents can
+	 * obtain them via the prompter port chain rather than reaching
+	 * `AppContext.getInstance()`. Read-only accessors — no setters.
+	 */
+	public getApp(): App {
+		return this.app;
+	}
+
+	public getPluginIdPublic(): string {
+		return this.pluginId;
 	}
 
 	/**
 	 * Return the current harness settings so agents can read tier config and
 	 * escalation policy without importing AppContext directly.
 	 */
-	getHarnessSettings() {
-		return AppContext.getHarnessSettings();
+	getHarnessSettings(): HarnessSettings {
+		return this.harnessSettingsProvider();
 	}
 
 	private isAgentSdkProfile(profile: Profile): boolean {

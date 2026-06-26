@@ -1,6 +1,6 @@
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
-import type { CascadeDebtRecord, CascadeDebtType } from '@/service/search/index/cascade/types';
+import type { CascadeDebtRecord, CascadeDebtType } from '@/core/search/cascadeTypes';
 
 /**
  * Repository for cascade debt records: side-effect work enqueued after document index changes.

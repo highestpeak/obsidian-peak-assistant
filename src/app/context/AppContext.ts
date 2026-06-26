@@ -383,12 +383,14 @@ export class AppContext {
 
 	/** Create a VaultSearchAgent (routes to VaultSearchAgentSDK on desktop). */
 	public static vaultSearchAgent(): VaultSearchAgent {
-		return new VaultSearchAgent(AppContext.getInstance().manager);
+		const ctx = AppContext.getInstance();
+		return new VaultSearchAgent(ctx.app, ctx.plugin.manifest.id, ctx.searchClient, ctx.manager);
 	}
 
 	/** Create an AIGraphAgent for building multi-lens knowledge graphs. */
 	public static aiGraphAgent(): AIGraphAgent {
-		return new AIGraphAgent(AppContext.getInstance().manager);
+		const ctx = AppContext.getInstance();
+		return new AIGraphAgent(ctx.app, ctx.searchClient, ctx.manager);
 	}
 
 	/**

@@ -1,7 +1,8 @@
 import { App } from 'obsidian';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { LLMUsage, LLMOutputControlSettings, LLMStreamEvent, ToolEvent } from '@/core/providers/types';
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, getAIUploadFolder } from '@/app/settings/types';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
+import { getAIUploadFolder } from '@/core/config/folderPaths';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { DEFAULT_SUMMARY, PLAN_MODE_SYSTEM_PROMPT } from '@/core/constant';
 import { EventBus, MessageSentEvent, ConversationCreatedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
@@ -33,7 +34,6 @@ import { resolveModelCapabilities, type ModelCapabilities } from '@/core/provide
 import { detectTimezone } from '@/core/utils/date-utils';
 import { uploadFilesToVault } from '@/core/utils/vault-utils';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { AppContext } from '@/app/context/AppContext';
 import { buildChatTools } from '@/service/chat/tools/chatToolBuilder';
 import type { ChatRuntimeStatePort } from '@/service/chat/ChatRuntimeStatePort';
 
@@ -64,6 +64,8 @@ export class ConversationService {
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly settings: AIServiceSettings,
 		private readonly chatState: ChatRuntimeStatePort,
+		/** T11J B3: pluginId injected so we don't reach AppContext. */
+		private readonly pluginId: string,
 		private readonly profileService?: UserProfileService,
 	) {
 		this.resourceLoaderManager = new ResourceLoaderManager(this.app, this.aiServiceManager, DocumentLoaderManager.getInstance());
@@ -127,7 +129,7 @@ export class ConversationService {
 			return [];
 		}
 
-		const uploadFolder = getAIUploadFolder();
+		const uploadFolder = getAIUploadFolder(this.settings.rootFolder);
 
 		// Upload files to vault
 		const uploadedPaths = await uploadFilesToVault(files, uploadFolder);
@@ -192,9 +194,8 @@ export class ConversationService {
 
 			if (effectiveMode === 'agent') {
 				const enableWebSearch = self.chatState.isWebSearchEnabled();
-				const ctx = AppContext.getInstance();
 				const built = buildChatTools(
-					{ app: ctx.app, pluginId: ctx.plugin.manifest.id, enableWebSearch },
+					{ app: self.app, pluginId: self.pluginId, enableWebSearch },
 					prepared.modelCapabilities,
 				);
 				tools = built.tools;

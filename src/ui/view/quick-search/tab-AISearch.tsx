@@ -173,7 +173,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 		useSearchSessionStore.setState({ status: 'starting' });
 		try {
-			const agent = new SynthesizeAgent();
+			const agent = new SynthesizeAgent(AppContext.getInstance().manager);
 			const result = await agent.synthesize(useSearchSessionStore.getState().rounds);
 			useSearchSessionStore.getState().replaceSynthesized(result.summary, result.sections);
 			useSearchSessionStore.getState().markCompleted();

@@ -4,7 +4,6 @@ import { getCompiledBounded } from '@/core/template-engine-helper';
 import { LLMStreamEvent, StreamTriggerName } from "@/core/providers/types";
 import { ToolTemplateId, type ToolTemplateId as ToolTemplateIdType } from "@/core/template/TemplateRegistry";
 import type { TemplateManager } from "@/core/template/TemplateManager";
-import { AppContext } from "@/app/context/AppContext";
 
 const TOOL_TEMPLATE_IDS = new Set<string>(Object.values(ToolTemplateId));
 
@@ -111,7 +110,9 @@ export async function buildResponse(
     if (templateOrId !== undefined) {
         const useTemplateManager = typeof templateOrId === 'string' ? isToolTemplateId(templateOrId) : true;
         if (useTemplateManager) {
-            const tm = options?.templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+            // T11J B2: drop the AppContext fallback. Callers that want template-driven
+            // rendering must pass `templateManager` explicitly via options.
+            const tm = options?.templateManager;
             if (tm) {
                 rendered = await tm.render(templateOrId as ToolTemplateIdType, result);
             }

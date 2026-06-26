@@ -1,6 +1,6 @@
 import { sql, type Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
-import type { TriggerType, UserAction } from '@/service/ambient/types';
+import type { TriggerType, UserAction } from '@/core/types/ambient';
 
 /**
  * Repository for ambient_push_log table (vault.sqlite).

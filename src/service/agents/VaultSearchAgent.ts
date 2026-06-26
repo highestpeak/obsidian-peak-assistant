@@ -5,16 +5,22 @@
  * All queries go through the Claude Agent SDK path (VaultSearchAgentSDK).
  */
 
+import type { App } from 'obsidian';
 import type { AIServiceManager } from '@/service/chat/service-manager';
+import type { SearchClient } from '@/service/search/SearchClient';
 import type { VaultSearchEvent } from './vault/types';
 import { VaultSearchAgentSDK } from './VaultSearchAgentSDK';
-import { AppContext } from '@/app/context/AppContext';
 
 /**
  * Harness tier: local-deep (delegates to VaultSearchAgentSDK for the online SDK path).
+ *
+ * T11J B1: explicit app/pluginId/searchClient deps instead of AppContext lookups.
  */
 export class VaultSearchAgent {
 	constructor(
+		private readonly app: App,
+		private readonly pluginId: string,
+		private readonly searchClient: SearchClient,
 		private readonly aiServiceManager: AIServiceManager,
 	) {}
 
@@ -23,12 +29,10 @@ export class VaultSearchAgent {
 	 * Always delegates to VaultSearchAgentSDK (Claude Agent SDK).
 	 */
 	async *startSession(userQuery: string): AsyncGenerator<VaultSearchEvent> {
-		const ctx = AppContext.getInstance();
-
 		const v2 = new VaultSearchAgentSDK({
-			app: ctx.app,
-			pluginId: ctx.plugin.manifest.id,
-			searchClient: ctx.searchClient,
+			app: this.app,
+			pluginId: this.pluginId,
+			searchClient: this.searchClient,
 			aiServiceManager: this.aiServiceManager,
 		});
 		// Non-blocking warmup — errors are logged, not propagated

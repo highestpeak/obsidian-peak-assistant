@@ -1,15 +1,15 @@
 import { App, normalizePath, TFile } from 'obsidian';
 import { PromptId, type PromptVariables, PromptInfo } from './PromptId';
 import { ensureFolder } from '@/core/utils/vault-utils';
-import type { AIServiceSettings } from '@/app/settings/types';
-import { getAIPromptFolder } from '@/app/settings/types';
+import type { AIServiceSettings } from '@/core/config/settingsTypes';
+import { getAIPromptFolder } from '@/core/config/folderPaths';
 import type { CompiledTemplate } from '@/core/template-engine-helper';
 import { compileTemplate } from '@/core/template-engine-helper';
 import { LLMStreamEvent, LLMUsage, emptyUsage, MessagePart } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { getTemplateMetadata, type TemplateId } from '@/core/template/TemplateRegistry';
-import { AppContext } from '@/app/context/AppContext';
+import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 
 /**
  * Unified prompt service: templates loaded on demand via TemplateManager, with optional vault overrides.
@@ -22,6 +22,7 @@ export class PromptService {
 	private readonly overrideCache = new Map<string, string>();
 	private readonly overrideCompiledCache = new Map<string, CompiledTemplate>();
 	private settings?: AIServiceSettings;
+	private prompter?: IAgentPrompter;
 
 	constructor(
 		private readonly app: App,
@@ -31,6 +32,16 @@ export class PromptService {
 	) {
 		this.promptFolder = getAIPromptFolder(settings.rootFolder);
 		this.settings = settings;
+	}
+
+	/**
+	 * T11J B3: AIServiceManager calls this once both it and PromptService are
+	 * fully constructed, so PromptService can route chat helpers through the
+	 * manager without reaching `AppContext.getInstance()`. Circular ctor
+	 * issue means we use a setter rather than a ctor arg.
+	 */
+	setPrompter(prompter: IAgentPrompter): void {
+		this.prompter = prompter;
 	}
 
 	async init(): Promise<void> {
@@ -58,7 +69,8 @@ export class PromptService {
 		_model?: string,
 		_extraParts?: MessagePart[],
 	): Promise<string> {
-		return AppContext.getInstance().manager.queryText(promptId, variables as any);
+		if (!this.prompter) throw new Error('PromptService: prompter not wired (call setPrompter from AIServiceManager init)');
+		return this.prompter.queryText(promptId, variables as any);
 	}
 
 	async chatWithPromptWithUsage<T extends PromptId>(
@@ -68,7 +80,8 @@ export class PromptService {
 		_model?: string,
 		_extraParts?: MessagePart[],
 	): Promise<{ text: string; usage: LLMUsage; provider: string; model: string }> {
-		const text = await AppContext.getInstance().manager.queryText(promptId, variables as any);
+		if (!this.prompter) throw new Error('PromptService: prompter not wired (call setPrompter from AIServiceManager init)');
+		const text = await this.prompter.queryText(promptId, variables as any);
 		return { text, usage: emptyUsage(), provider: 'agent-sdk', model: 'profile-active' };
 	}
 
@@ -84,7 +97,8 @@ export class PromptService {
 		const contentChunks: string[] = [];
 		const startTime = Date.now();
 		try {
-			const stream = AppContext.getInstance().manager.queryStream(promptId, variables as any);
+			if (!this.prompter) throw new Error('PromptService: prompter not wired (call setPrompter from AIServiceManager init)');
+			const stream = this.prompter.queryStream(promptId, variables as any);
 			for await (const event of stream) {
 				if (event.type === 'text-delta') {
 					contentChunks.push(event.text);

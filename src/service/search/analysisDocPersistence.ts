@@ -18,8 +18,10 @@ import {
 	type ProgressReporterPort,
 } from '@/service/ports/ProgressReporterPort';
 import type { AnalysisDocVaultWriterPort } from '@/service/search/ports/AnalysisDocVaultWriterPort';
-import { AppContext } from '@/app/context/AppContext';
+import type { SearchSettings, MyPluginSettings } from '@/core/config/settingsTypes';
+import type { EventBus } from '@/core/eventBus';
 import { AIAnalysisCompleteEvent } from '@/core/eventBus';
+import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
 import {
 	buildMarkdown as buildAiSearchAnalysisMarkdown,
@@ -58,11 +60,19 @@ export async function persistSessionToVault(
 		existingPath?: string | null;
 		graphJson?: string | null;
 		progressReporter?: ProgressReporterPort;
+		/** T11J B3: caller injects search settings (was AppContext.getInstance().settings.search). */
+		searchSettings: SearchSettings;
+		/** T11J B3: top-level dev-tools flag (was AppContext.getInstance().settings.enableDevTools). */
+		enableDevTools: boolean;
+		/** T11J B3: history service for record persistence (was AppContext.getInstance().aiAnalysisHistoryService). */
+		historyService: AIAnalysisHistoryService;
+		/** T11J B3: event bus for AI_ANALYSIS_COMPLETE dispatch (was AppContext.getEventBus()). */
+		eventBus: EventBus;
 	},
 ): Promise<PersistSessionResult | null> {
 	if (!snapshot.v2Active) return null;
 
-	const settings = AppContext.getInstance().settings.search;
+	const settings = options.searchSettings;
 	const autoSaveEnabled = settings.aiAnalysisAutoSaveEnabled ?? true;
 	if (!autoSaveEnabled) return null;
 
@@ -83,7 +93,7 @@ export async function persistSessionToVault(
 
 	const buildOptions: BuildMarkdownOptions = {
 		runAnalysisMode: snapshot.runAnalysisMode ?? undefined,
-		includeSteps: AppContext.getInstance().settings?.enableDevTools === true,
+		includeSteps: options.enableDevTools === true,
 	};
 
 	const docModel = fromCompletedAnalysisSnapshot(completedSnapshot, query, webEnabled);
@@ -157,14 +167,14 @@ export async function persistSessionToVault(
 			duration: snapshot.duration ?? null,
 			analysis_preset: snapshot.analysisMode ?? null,
 		};
-		await AppContext.getInstance().aiAnalysisHistoryService.insertOrIgnore(record as any);
+		await options.historyService.insertOrIgnore(record as any);
 	} catch (e) {
 		console.warn('[analysisDocPersistence] history record insert failed:', e);
 	}
 
 	// Emit AI_ANALYSIS_COMPLETE for SessionContextService tracking
 	try {
-		AppContext.getEventBus().dispatch(new AIAnalysisCompleteEvent({
+		options.eventBus.dispatch(new AIAnalysisCompleteEvent({
 			query: query || null,
 			title: snapshot.title?.trim() || null,
 			sourcesCount: snapshot.v2Sources.length,

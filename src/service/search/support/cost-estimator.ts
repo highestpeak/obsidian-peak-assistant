@@ -1,7 +1,6 @@
-import { TFile } from 'obsidian';
-import type { SearchSettings } from '@/app/settings/types';
+import { TFile, type App } from 'obsidian';
+import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { AppContext } from '@/app/context/AppContext';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { getIndexTenantForPath } from '@/service/search/index/indexService';
 import { LlmEnrichmentProgressTracker } from '@/service/search/support/llm-enrichment-progress-tracker';
@@ -23,6 +22,8 @@ export class BulkOperationCostEstimator {
 	constructor(
 		private readonly settings: SearchSettings,
 		private readonly ai: AIServiceManager,
+		/** T11J B1: explicit app dep instead of AppContext.getApp(). */
+		private readonly app: App,
 	) {}
 
 	async estimatePendingLlmCost(): Promise<BulkCostEstimate> {
@@ -50,7 +51,7 @@ export class BulkOperationCostEstimator {
 
 		const tracker = new LlmEnrichmentProgressTracker(this.settings, this.ai);
 		const loaderMgr = DocumentLoaderManager.getInstance();
-		const app = AppContext.getApp();
+		const { app } = this;
 
 		let totalInputTokens = 0;
 		let totalOutputTokens = 0;

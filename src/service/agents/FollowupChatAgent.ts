@@ -81,12 +81,15 @@ export class FollowupChatAgent {
 
         const loopId = `followup-${generateUuidWithoutHyphens()}`;
         const tierController = new TierController({
-            bindings: defaultTierBindings(),
+            bindings: defaultTierBindings(this.aiServiceManager.getHarnessSettings()),
             policy: { preferred: TIER },
             loopId,
         });
 
         const result = await getAgentBridge().run({
+            app: this.aiServiceManager.getApp(),
+            pluginId: this.aiServiceManager.getPluginIdPublic(),
+            harnessSettings: this.aiServiceManager.getHarnessSettings(),
             loopId,
             systemPrompt: system,
             initialMessages: [{ role: 'user', content: prompt }],

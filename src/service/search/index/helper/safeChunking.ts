@@ -1,4 +1,4 @@
-import type { ChunkingSettings } from '@/app/settings/types';
+import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { Chunk } from '@/service/search/index/types';
 

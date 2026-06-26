@@ -20,7 +20,6 @@ import type { Profile } from '@/core/profiles/types';
 import { PromptId } from '@/service/prompt/PromptId';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { warmupPool, queryWithProfile } from './core/sdkAgentPool';
-import { AppContext } from '@/app/context/AppContext';
 import {
     buildVaultMcpServer,
     type GrepHit,
@@ -81,7 +80,8 @@ export class VaultSearchAgentSDK {
         const startTs = Date.now();
 
         // 0. Backend gate — vault MCP tools aren't yet adapted to harness.
-        const backend = AppContext.getHarnessSettings().agentBackend;
+        // T11J B1: pull harness settings via the manager port instead of AppContext.
+        const backend = aiServiceManager.getHarnessSettings().agentBackend;
         if (backend === 'harness') {
             yield {
                 type: 'error',

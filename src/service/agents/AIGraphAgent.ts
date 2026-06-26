@@ -9,40 +9,43 @@
  * via a 'ui-signal' on the 'ai-graph-data' channel.
  */
 
+import type { App } from 'obsidian';
 import type { LLMStreamEvent } from '@/core/providers/types';
-import type { AIServiceManager } from '@/service/chat/service-manager';
-import { AppContext } from '@/app/context/AppContext';
+import type { SearchClient } from '@/service/search/SearchClient';
+import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 import { buildLensGraphFromSources, enrichWithThinkingTree } from './ai-graph/build-graph-data';
 import type { LensGraphData } from '@/core/graph/lensGraphTypes';
-import type { SearchResultItem } from '@/service/search/types';
+import type { SearchResultItem } from '@/core/search/searchTypes';
 
 export type AIGraphEvent = LLMStreamEvent;
 
 /**
  * Harness tier: local-deep (graph build is compute-heavy; no LLM loop by default).
+ *
+ * T11J B1: takes explicit `app`, `searchClient`, `prompter` deps instead of
+ * reaching `AppContext.getInstance()`.
  */
 export class AIGraphAgent {
-	constructor(private readonly aiServiceManager: AIServiceManager) {}
+	constructor(
+		private readonly app: App,
+		private readonly searchClient: SearchClient,
+		private readonly prompter: IAgentPrompter,
+	) {}
 
 	/**
 	 * Search the vault for the given query and build a topology graph from results.
 	 */
 	async *startSession(userQuery: string): AsyncGenerator<AIGraphEvent> {
-		const ctx = AppContext.getInstance();
-
 		yield { type: 'ui-signal', channel: 'search-stage', data: { stage: 'searching' } } as any;
 
-		// Search vault for relevant sources
-		const searchClient = ctx.searchClient;
-		const results = await searchClient.search(
+		const results = await this.searchClient.search(
 			{ text: userQuery, scopeMode: 'vault', topK: 30, searchMode: 'hybrid' },
 			false,
 		);
 
 		yield { type: 'ui-signal', channel: 'search-stage', data: { stage: 'building-graph' } } as any;
 
-		// Build graph from search results
-		const graphData = await buildLensGraphFromSources(results.items);
+		const graphData = await buildLensGraphFromSources(results.items, this.app);
 
 		yield {
 			type: 'ui-signal',
@@ -70,7 +73,7 @@ export class AIGraphAgent {
 			highlight: null,
 		}));
 
-		const graphData = await buildLensGraphFromSources(sources);
+		const graphData = await buildLensGraphFromSources(sources, this.app);
 
 		yield {
 			type: 'ui-signal',
@@ -83,9 +86,8 @@ export class AIGraphAgent {
 
 	/**
 	 * Enrich existing graph data with an AI-inferred thinking tree layer.
-	 * Placeholder until Task 7 implements the actual enrichment.
 	 */
 	async enrichThinkingTree(currentData: LensGraphData): Promise<LensGraphData> {
-		return enrichWithThinkingTree(currentData);
+		return enrichWithThinkingTree(currentData, this.app, this.prompter);
 	}
 }

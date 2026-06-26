@@ -1,5 +1,5 @@
-import { AppContext } from '@/app/context/AppContext';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
+import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 import {
 	CONTEXT_VARIABLE_NAMES,
 	CONDITION_NAMES,
@@ -26,17 +26,20 @@ let isRunning = false;
  *
  * Fire-and-forget — returns `null` when skipped (already running) or on error.
  * Harness tier: local-fast (single-turn, no tools).
+ *
+ * T11J B1: caller injects the prompter so the agent no longer reaches
+ * `AppContext.getInstance().manager`.
  */
-export async function runPatternDiscovery(input: PatternDiscoveryInput): Promise<PatternDiscoveryOutput | null> {
+export async function runPatternDiscovery(
+	input: PatternDiscoveryInput,
+	prompter: IAgentPrompter,
+): Promise<PatternDiscoveryOutput | null> {
 	if (isRunning) return null;
 	isRunning = true;
 
 	try {
-		const ctx = AppContext.getInstance();
-		const mgr = ctx.manager;
-
 		// 1. Call LLM via Agent SDK (Pattern B: single-turn, no tools)
-		const text = await mgr.queryText(
+		const text = await prompter.queryText(
 			PromptId.PatternDiscovery,
 			{
 				availableVariables: CONTEXT_VARIABLE_NAMES.join(', '),

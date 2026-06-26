@@ -1,6 +1,6 @@
 import { SLICE_CAPS } from '@/core/constant';
 import type { GraphPreview } from '@/core/storage/graph/types';
-import type { AnalysisMode } from '@/service/agents/shared-types';
+import type { AnalysisMode } from '@/core/types/agents-shared';
 import type { SectionAnalyzeResult } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 import type { AiSearchAnalysisDocModel, BuildMarkdownOptions } from './AiSearchAnalysisDoc';
 import { rebaseHeadings } from '@/core/storage/vault/framework/MarkdownDocEngine';

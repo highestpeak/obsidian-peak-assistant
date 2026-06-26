@@ -4,7 +4,7 @@ import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import { PlaywrightWebBaseLoader } from '@langchain/community/document_loaders/web/playwright';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { AIServiceManager } from '@/service/chat/service-manager';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 import { TFile } from 'obsidian';
 
@@ -24,7 +24,7 @@ export class UrlDocumentLoader extends BaseDocumentLoader {
 		},
 	};
 
-	constructor(app: App, aiServiceManager?: AIServiceManager) {
+	constructor(app: App, aiServiceManager?: IDocSummarizer) {
 		super(app, aiServiceManager);
 	}
 

@@ -1,5 +1,5 @@
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import type { SearchSettings } from '@/app/settings/types';
+import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { SearchResultItem, SearchScopeValue } from '../types';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';

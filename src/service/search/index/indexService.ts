@@ -20,7 +20,8 @@ import { MobiusEdgeRepo } from '@/core/storage/sqlite/repositories/MobiusEdgeRep
 import { normalizeUsageTokens } from '@/service/search/support/llm-cost-utils';
 import { normalizeTextForFts } from '../support/segmenter';
 import { stemText } from '@/service/search/support/porter-stemmer';
-import { getAIHubSummaryFolder, type SearchSettings } from '@/app/settings/types';
+import type { SearchSettings } from '@/core/config/settingsTypes';
+import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import type { Document, DocumentReference } from '@/core/document/types';
 import {
 	INDEX_FRONTMATTER_KEYS,
@@ -115,7 +116,7 @@ type PathIndexedDocInfo = { id: string; title: string | null };
  */
 export function getIndexTenantForPath(path: string): IndexTenant {
 	const ctx = AppContext.getInstance();
-	const hubFolder = getAIHubSummaryFolder();
+	const hubFolder = getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder);
 	if (hubFolder && isVaultPathUnderPrefix(path, hubFolder)) {
 		return 'vault';
 	}
@@ -1115,7 +1116,7 @@ export class IndexService {
 	 * (including auto `Hub-*.md` and user `Manual/*.md`).
 	 */
 	private resolveMobiusGraphNodeTypeForPath(path: string): GraphNodeType {
-		const hub = getAIHubSummaryFolder();
+		const hub = getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder);
 		if (hub && isVaultPathUnderPrefix(path, hub)) return GraphNodeType.HubDoc;
 		return GraphNodeType.Document;
 	}
@@ -1303,7 +1304,7 @@ export class IndexService {
 
 			const targetGraphType = indexed
 				? this.resolveMobiusGraphNodeTypeForPath(ref.fullPath)
-				: graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, docType);
+				: graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, docType, getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder));
 
 			// Placeholder until the target file is indexed (full row from IndexedDocumentRepo).
 			await mobiusNodeRepo.upsert({
@@ -1477,7 +1478,7 @@ export class IndexService {
 			const dt = loaderMgr.getTypeForPath(ref.fullPath);
 			if (indexed) {
 				docIdsForIncoming.add(targetId);
-			} else if (graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, dt) !== GraphNodeType.Resource) {
+			} else if (graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, dt, getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder)) !== GraphNodeType.Resource) {
 				docIdsForIncoming.add(targetId);
 			}
 		}
@@ -1873,7 +1874,7 @@ export class IndexService {
 		const now = Date.now();
 		await mobiusNodeRepo.clearFolderHubMaterializedStatsColumns(now);
 
-		const hubFolder = getAIHubSummaryFolder();
+		const hubFolder = getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder);
 		type Agg = {
 			count: number;
 			sumPr: number;

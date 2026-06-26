@@ -11,7 +11,6 @@
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import type { Profile } from '@/core/profiles/types';
-import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { warmupPool, queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { buildVaultMcpServer, type GrepHit } from '@/service/agents/vault-sdk/vaultMcpServer';
@@ -66,6 +65,9 @@ export interface MetaAgentOptions {
 	onTurnIncrement?: () => void;
 	/** User profile (built from chat extractor) — injected into system prompt so the agent honours stated preferences. */
 	userProfileText?: string;
+	/** T11J B2: caller passes app + pluginId so this module no longer reaches AppContext. */
+	app: import('obsidian').App;
+	pluginId: string;
 }
 
 const SYSTEM_PROMPT_BASE = `You are the Peak Assistant Auto Review agent.
@@ -285,9 +287,7 @@ export async function* buildCopilotMetaAgentStream(
 	options: MetaAgentOptions,
 ): AsyncGenerator<LLMStreamEvent, void> {
 	const triggerName = StreamTriggerName.COPILOT;
-	const appContext = AppContext.getInstance();
-	const { app } = appContext;
-	const pluginId = appContext.plugin.manifest.id;
+	const { app, pluginId } = options;
 
 	try {
 		await warmupPool();

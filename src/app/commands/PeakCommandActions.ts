@@ -240,7 +240,7 @@ export async function runLlmEnrichmentPending(): Promise<void> {
 		new Notice('Search settings are not available. Please restart the plugin.', 5000);
 		return;
 	}
-	const estimator = new BulkOperationCostEstimator(searchSettings, getAIManager());
+	const estimator = new BulkOperationCostEstimator(searchSettings, getAIManager(), AppContext.getApp());
 	const estimatePromise = estimator.estimatePendingLlmCost();
 
 	const costModal = new CostEstimationModal(ctx, async (choice) => {

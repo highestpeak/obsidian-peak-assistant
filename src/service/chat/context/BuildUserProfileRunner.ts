@@ -6,7 +6,7 @@ import { USER_PROFILE_MIN_CONFIDENCE_THRESHOLD } from '@/core/constant';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { UserProfileProcessedHashRepo } from '@/core/storage/sqlite/repositories/UserProfileProcessedHashRepo';
 import { hashSHA256 } from '@/core/utils/hash-utils';
-import type { AIServiceSettings } from '@/app/settings/types';
+import type { AIServiceSettings } from '@/core/config/settingsTypes';
 import type { ModelTokenLimits } from '@/core/providers/types';
 
 const DEFAULT_BATCH_SIZE = 8;

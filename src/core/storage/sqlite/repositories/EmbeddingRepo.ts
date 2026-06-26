@@ -2,11 +2,11 @@ import type { Kysely } from 'kysely';
 import { GRAPH_INDEXED_NOTE_NODE_TYPES } from '@/core/po/graph.po';
 import type { Database as DbSchema } from '../ddl';
 import type { SqliteDatabase } from '../types';
-import type { SearchScopeMode, SearchScopeValue } from '@/service/search/types';
+import type { SearchScopeMode, SearchScopeValue } from '@/core/search/searchTypes';
 import { BusinessError, ErrorCode } from '@/core/errors';
 import { IndexedDocumentRepo } from './IndexedDocumentRepo';
-import { SEMANTIC_CHUNK_TYPE_ORDER } from '@/service/search/index/chunkTypes';
-import type { ChunkType } from '@/service/search/index/chunkTypes';
+import { SEMANTIC_CHUNK_TYPE_ORDER } from '@/core/search/chunkTypes';
+import type { ChunkType } from '@/core/search/chunkTypes';
 
 /**
  * CRUD repository for `embedding` table.

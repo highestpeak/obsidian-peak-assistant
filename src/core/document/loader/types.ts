@@ -1,6 +1,6 @@
 import type { DocumentType, Document, ResourceSummary, Summarizable } from '@/core/document/types';
-import type { Chunk, LlmIndexingCompleteEvent } from '@/service/search/index/types';
-import type { ChunkingSettings } from '@/app/settings/types';
+import type { Chunk, LlmIndexingCompleteEvent } from '@/core/search/indexTypes';
+import type { ChunkingSettings } from '@/core/config/settingsTypes';
 
 /**
  * Controls expensive LLM work during {@link DocumentLoader.readByPath}.

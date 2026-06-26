@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import type { ResourceLoader, ResourceKind, SpecialResourceType, DocumentType, Summarizable } from '@/core/document/types';
-import type { AIServiceManager } from '@/service/chat/service-manager';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { TagResourceLoader } from '../TagResourceLoader';
 import { FolderResourceLoader } from '../FolderResourceLoader';
@@ -13,10 +13,10 @@ import { FolderResourceLoader } from '../FolderResourceLoader';
 export class ResourceLoaderManager {
     private readonly loaderMap = new Map<SpecialResourceType, ResourceLoader>();
     private readonly documentLoaderManager: DocumentLoaderManager;
-    private readonly aiServiceManager: AIServiceManager;
+    private readonly aiServiceManager: IDocSummarizer;
     private readonly specialTypes: Set<SpecialResourceType> = new Set(['tag', 'folder']);
 
-    constructor(app: App, aiServiceManager: AIServiceManager, documentLoaderManager?: DocumentLoaderManager) {
+    constructor(app: App, aiServiceManager: IDocSummarizer, documentLoaderManager?: DocumentLoaderManager) {
         // Use provided DocumentLoaderManager or get singleton instance
         this.documentLoaderManager = documentLoaderManager || DocumentLoaderManager.getInstance();
         this.aiServiceManager = aiServiceManager;

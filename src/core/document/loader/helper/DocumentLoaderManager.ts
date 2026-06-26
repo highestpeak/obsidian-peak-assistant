@@ -3,8 +3,8 @@ import { TFile } from 'obsidian';
 import type { DocumentLoader, DocumentLoaderReadOptions } from '../types';
 import type { DocumentType } from '@/core/document/types';
 import type { Document as CoreDocument } from '@/core/document/types';
-import type { SearchSettings } from '@/app/settings/types';
-import type { AIServiceManager } from '@/service/chat/service-manager';
+import type { SearchSettings } from '@/core/config/settingsTypes';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { IgnoreService } from '@/service/search/IgnoreService';
 import { MarkdownDocumentLoader } from '../MarkdownDocumentLoader';
 import { TextDocumentLoader } from '../TextDocumentLoader';
@@ -30,7 +30,7 @@ export class DocumentLoaderManager {
 	private readonly extensionToLoaderMap = new Map<string, DocumentLoader>();
 	private settings: SearchSettings;
 	private readonly app: App;
-	private aiServiceManager?: AIServiceManager;
+	private aiServiceManager?: IDocSummarizer;
 
 	/**
 	 * Get the global singleton instance.
@@ -56,7 +56,7 @@ export class DocumentLoaderManager {
 	 * Should be called once during plugin initialization.
 	 * @param aiServiceManager Optional AI service manager for loaders that need AI capabilities (e.g., image description).
 	 */
-	static init(app: App, settings: SearchSettings, aiServiceManager?: AIServiceManager): DocumentLoaderManager {
+	static init(app: App, settings: SearchSettings, aiServiceManager?: IDocSummarizer): DocumentLoaderManager {
 		if (DocumentLoaderManager.instance) {
 			console.warn('DocumentLoaderManager already initialized. Reinitializing with new settings.');
 		}
@@ -64,7 +64,7 @@ export class DocumentLoaderManager {
 		return DocumentLoaderManager.instance;
 	}
 
-	private constructor(app: App, settings: SearchSettings, aiServiceManager?: AIServiceManager) {
+	private constructor(app: App, settings: SearchSettings, aiServiceManager?: IDocSummarizer) {
 		this.app = app;
 		this.settings = settings;
 		this.aiServiceManager = aiServiceManager;

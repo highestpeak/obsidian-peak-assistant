@@ -1,14 +1,9 @@
 // src/service/chat/conversation-types.ts
+// T11J A1: ConversationType discriminator moved into `@/core/types/chat`;
+// label/badge helpers remain here because they are UI-adjacent.
 
-export type ConversationType =
-  | { kind: 'chat' }
-  | { kind: 'agent' }
-  | { kind: 'plan' }
-  | { kind: 'canvas' }
-  | { kind: 'template'; templateId: string; templateName: string }
-  | { kind: 'custom'; label: string };
-
-export const DEFAULT_CONVERSATION_TYPE: ConversationType = { kind: 'chat' };
+export { type ConversationType, DEFAULT_CONVERSATION_TYPE } from '@/core/types/chat';
+import type { ConversationType } from '@/core/types/chat';
 
 export function getConversationTypeLabel(type: ConversationType): string | null {
   switch (type.kind) {

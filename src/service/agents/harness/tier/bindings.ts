@@ -12,7 +12,7 @@
 import type { LanguageModel } from 'ai';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createLanguageModel } from '@/core/providers/vercel/provider-factory';
-import { AppContext } from '@/app/context/AppContext';
+import type { HarnessSettings } from '@/core/config/settingsTypes';
 import type { RoleConfig } from '@/core/profiles/types';
 import type { ModelTier, TierBinding, TierBindings, TierCapabilities } from './types';
 import { DEFAULT_TIER_CAPABILITIES } from './types';
@@ -69,9 +69,8 @@ function resolveTierConfig(cfg: RoleConfig | null): { profile: { id: string; kin
  * source bound are absent from the result; TierController handles missing
  * tiers by falling forward to the next bound one.
  */
-export function defaultTierBindings(): TierBindings {
+export function defaultTierBindings(harness: HarnessSettings): TierBindings {
     const reg = ProfileRegistry.getInstance();
-    const harness = AppContext.getHarnessSettings();
     return {
         'local-fast': bindingFromRole(
             'local-fast',

@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import type { SearchSettings } from '@/app/settings/types';
+import type { SearchSettings } from '@/core/config/settingsTypes';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { DocumentType } from '@/core/document/types';
 import { IndexProgressTracker } from '../support/progress-tracker';

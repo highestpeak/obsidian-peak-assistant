@@ -1,4 +1,4 @@
-import type { PromptId } from '@/service/prompt/PromptId';
+import type { PromptId } from '@/core/prompt/PromptId';
 
 /**
  * Category of template. Determines base path under plugin directory.

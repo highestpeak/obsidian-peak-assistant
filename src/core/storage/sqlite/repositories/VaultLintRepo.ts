@@ -1,6 +1,6 @@
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
-import type { LintScanResult, LintFinding, LintDismissal, LintTrendPoint, LintSignalId } from '@/service/lint/types';
+import type { LintScanResult, LintFinding, LintDismissal, LintTrendPoint, LintSignalId } from '@/core/types/lint';
 
 const FINDING_INSERT_BATCH_SIZE = 80;
 

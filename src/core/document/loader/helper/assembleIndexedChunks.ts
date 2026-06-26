@@ -2,9 +2,9 @@ import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { SLICE_CAPS } from '@/core/constant';
 import type { Document } from '@/core/document/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
-import type { Chunk } from '@/service/search/index/types';
-import type { ChunkType } from '@/service/search/index/chunkTypes';
-import type { ChunkingSettings } from '@/app/settings/types';
+import type { Chunk } from '@/core/search/indexTypes';
+import type { ChunkType } from '@/core/search/chunkTypes';
+import type { ChunkingSettings } from '@/core/config/settingsTypes';
 
 /** Structured TextRank sentences stored on {@link Document} metadata when indexed from markdown. */
 export type TextrankSentenceStructured = { text: string; score: number; index: number };

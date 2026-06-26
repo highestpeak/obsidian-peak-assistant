@@ -8,9 +8,10 @@
  * 4. Settings agentBackend = 'auto' (default)    → harness (with SDK reserved for hard-coded callers like VaultSearchAgentSDK)
  */
 
+import type { App } from 'obsidian';
 import type { AgentLoopConfig, AgentLoopResult } from '@/service/agents/harness/loop/types';
 import { runAgentLoop } from '@/service/agents/harness';
-import { AppContext } from '@/app/context/AppContext';
+import type { HarnessSettings } from '@/core/config/settingsTypes';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
@@ -29,6 +30,11 @@ export interface BridgeRunConfig extends AgentLoopConfig {
     sdkAllowedTools?: string[];
     /** SDK-specific: MCP servers for the SDK agent. */
     sdkMcpServers?: Record<string, unknown>;
+    /** T11J B1: explicit app + pluginId so the bridge doesn't reach AppContext. */
+    app: App;
+    pluginId: string;
+    /** T11J B1: caller passes current harness settings (used for backend gating). */
+    harnessSettings: HarnessSettings;
 }
 
 export class ClaudeAgentSDKBridge {
@@ -42,13 +48,11 @@ export class ClaudeAgentSDKBridge {
     /** Resolve which backend to use, honoring caller override then settings. */
     private shouldUseSDK(cfg: BridgeRunConfig): boolean {
         if (typeof cfg.useSDK === 'boolean') return cfg.useSDK;
-        const backend = AppContext.getHarnessSettings().agentBackend;
-        return backend === 'claude-agent-sdk';
+        return cfg.harnessSettings.agentBackend === 'claude-agent-sdk';
     }
 
     private async runViaSDK(cfg: BridgeRunConfig): Promise<AgentLoopResult> {
         const startedAt = Date.now();
-        const ctx = AppContext.getInstance();
         const profile = ProfileRegistry.getInstance().getActiveAgentProfile()!;
 
         // Extract user-facing prompt from initialMessages
@@ -64,7 +68,7 @@ export class ClaudeAgentSDKBridge {
                         .join('\n')
                   : '');
 
-        const messages = queryWithProfile(ctx.app, ctx.pluginId, profile, {
+        const messages = queryWithProfile(cfg.app, cfg.pluginId, profile, {
             prompt,
             systemPrompt: cfg.systemPrompt,
             maxTurns: cfg.sdkMaxTurns ?? 10,

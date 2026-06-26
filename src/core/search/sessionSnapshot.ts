@@ -14,7 +14,7 @@
  */
 
 import type { LLMUsage } from '@/core/providers/types';
-import type { AnalysisMode } from '@/service/agents/shared-types';
+import type { AnalysisMode } from '@/core/types/agents-shared';
 import type { V2ToolStep, V2TimelineItem, V2Source } from '@/core/search/v2ToolTypes';
 import type { V2Section, Round } from '@/core/search/v2SessionTypes';
 import type { SessionStatus, AutoSaveState } from '@/core/search/sessionTypes';

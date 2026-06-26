@@ -3,8 +3,8 @@
  */
 
 import { TFolder } from 'obsidian';
-import { AppContext } from '@/app/context/AppContext';
-import { getAIHubSummaryFolder } from '@/app/settings/types';
+import type { Vault } from 'obsidian';
+import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { IndexingTemplateId } from '@/core/template/TemplateRegistry';
 import type { TemplateManager } from '@/core/template/TemplateManager';
@@ -125,8 +125,7 @@ async function chunkPages(
 	return pages;
 }
 
-async function buildWorldMetrics(nodes: FolderTreeNodeDigest[]): Promise<WorldMetricsDigest> {
-	const vault = AppContext.getInstance().app.vault;
+async function buildWorldMetrics(nodes: FolderTreeNodeDigest[], vault: Vault): Promise<WorldMetricsDigest> {
 	const root = vault.getRoot();
 	const topLevelBranchCount = root.children.filter((c): c is TFolder => c instanceof TFolder).length;
 	let totalIndexedDocuments = 0;
@@ -155,14 +154,15 @@ export async function buildHubWorldSnapshot(
 		maxFolders: number;
 		maxNodesPerPage: number;
 		extraExcludePathPrefixes?: string[];
+		vault: Vault;
+		rootFolder: string;
 	},
 	templateManager: TemplateManager,
 ): Promise<HubWorldSnapshot> {
-	const { maxDepth, maxFolders, maxNodesPerPage, extraExcludePathPrefixes = [] } = options;
+	const { maxDepth, maxFolders, maxNodesPerPage, extraExcludePathPrefixes = [], vault, rootFolder } = options;
 	if (!sqliteStoreManager.isInitialized()) {
 		return { pages: [], metrics: { totalIndexedDocuments: 0, totalFoldersScanned: 0, topLevelBranchCount: 0, orphanHardSampleCount: 0, orphanRiskHint: 'low', topOutgoingFolders: [] }, nodes: [] };
 	}
-	const vault = AppContext.getInstance().app.vault;
 	const root = vault.getRoot();
 	const excluded = [...getExploreFolderExcludedPrefixes(), ...extraExcludePathPrefixes.map((p) => normalizeVaultFolderPath(p))];
 	const { rows, subtreeStats: subtreeStatsMap } = scanFolderTree(root, maxDepth, maxFolders, excluded);
@@ -230,7 +230,7 @@ export async function buildHubWorldSnapshot(
 			subfolderNameTokenSample,
 		});
 	}
-	const hubFolder = getAIHubSummaryFolder();
+	const hubFolder = getAIHubSummaryFolder(rootFolder);
 	let folderRows: MobiusNodeFolderHubDiscoveryRow[] = [];
 	try {
 		folderRows = await mobiusRepo.listFolderHubDiscoveryRowsByPaths(paths, hubFolder, { relaxMinDocs: true });
@@ -243,14 +243,14 @@ export async function buildHubWorldSnapshot(
 		const fr = folderRowByPath.get(np);
 		if (fr && typeof fr.hub_graph_score === 'number') n.hubGraphScore = fr.hub_graph_score;
 	}
-	const metrics = await buildWorldMetrics(nodes);
+	const metrics = await buildWorldMetrics(nodes, vault);
 	const pages = await chunkPages(nodes, maxNodesPerPage, templateManager);
 	return { pages, metrics, nodes };
 }
 
-export async function buildDocumentHubShortlist(limit: number): Promise<DocumentHubShortlistRow[]> {
+export async function buildDocumentHubShortlist(limit: number, rootFolder: string): Promise<DocumentHubShortlistRow[]> {
 	if (!sqliteStoreManager.isInitialized()) return [];
-	const hubFolder = getAIHubSummaryFolder();
+	const hubFolder = getAIHubSummaryFolder(rootFolder);
 	const rows = await sqliteStoreManager
 		.getMobiusNodeRepo()
 		.listTopDocumentNodesForHubDiscovery(Math.max(1, limit), hubFolder);
@@ -455,8 +455,11 @@ export async function prepareIntuitionContext(options: {
 	vaultName: string;
 	currentDateLabel: string;
 	tm: TemplateManager;
+	/** T11J B1: caller injects vault + rootFolder so intuitionPrep no longer reaches AppContext. */
+	vault: Vault;
+	rootFolder: string;
 }): Promise<IntuitionPrepContext> {
-	const { userGoal, vaultName, currentDateLabel, tm } = options;
+	const { userGoal, vaultName, currentDateLabel, tm, vault, rootFolder } = options;
 
 	const documentNodeCount = sqliteStoreManager.isInitialized()
 		? await sqliteStoreManager.getMobiusNodeRepo().countAllDocumentStatisticsRows()
@@ -477,6 +480,8 @@ export async function prepareIntuitionContext(options: {
 			maxFolders: maxFoldersInSnapshot,
 			maxNodesPerPage,
 			extraExcludePathPrefixes: [],
+			vault,
+			rootFolder,
 		},
 		tm,
 	);
@@ -489,7 +494,7 @@ export async function prepareIntuitionContext(options: {
 		extraExcludePathPrefixes: [],
 	});
 
-	const documentShortlist = await buildDocumentHubShortlist(docShortlistLimit);
+	const documentShortlist = await buildDocumentHubShortlist(docShortlistLimit, rootFolder);
 
 	const folderDigestMarkdown = buildFolderDigestMarkdown(world.nodes, PLAN_FOLDER_DIGEST_MAX);
 	const deepFolderDigestMarkdown = buildDeepFolderDigestMarkdown(world.nodes, PLAN_DEEP_FOLDER_DIGEST_MAX);

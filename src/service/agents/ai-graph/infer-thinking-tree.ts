@@ -1,4 +1,4 @@
-import { AppContext } from '@/app/context/AppContext';
+import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 
 interface TreeInferenceInput {
 	files: Array<{ path: string; title: string; firstLines: string }>;
@@ -37,17 +37,18 @@ Output format:
 
 /**
  * Call the default LLM provider to infer a thinking-tree hierarchy from document metadata.
+ *
+ * T11J B1: caller injects `prompter` so the agent no longer reaches
+ * `AppContext.getInstance().manager`.
  */
-export async function inferThinkingTree(input: TreeInferenceInput): Promise<TreeInferenceResult> {
+export async function inferThinkingTree(input: TreeInferenceInput, prompter: IAgentPrompter): Promise<TreeInferenceResult> {
 	const filesText = input.files
 		.map((f) => `### ${f.path}\nTitle: ${f.title}\n${f.firstLines}`)
 		.join('\n\n');
 
 	const prompt = USER_PROMPT_TEMPLATE.replace('{{FILES}}', filesText);
 
-	const manager = AppContext.getInstance().manager;
-
-	const text = await manager.queryText(prompt, undefined, {
+	const text = await prompter.queryText(prompt, undefined, {
 		systemPrompt: SYSTEM_PROMPT,
 	});
 

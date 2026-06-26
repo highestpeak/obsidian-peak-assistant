@@ -8,7 +8,7 @@
 
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
-import type { CommunityInfo, StructuralHole } from '@/service/search/index/helper/structural/types';
+import type { CommunityInfo, StructuralHole } from '@/core/search/structuralTypes';
 
 export class StructuralAnalysisRepo {
 	constructor(private readonly kdb: Kysely<DbSchema>) {}

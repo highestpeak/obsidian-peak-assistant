@@ -1,8 +1,8 @@
 import { AppContext } from '@/app/context/AppContext';
 import { emptyUsage, mergeTokenUsage, type LLMUsage } from '@/core/providers/types';
 import type { Document, ResourceSummary } from '@/core/document/types';
-import { AIServiceManager } from '@/service/chat/service-manager';
-import { PromptId } from '@/service/prompt/PromptId';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import { PromptId } from '@/core/prompt/PromptId';
 import type { TextRankTerm } from '@/core/document/loader/helper/textRank';
 import type { TextrankSentenceStructured } from '@/core/document/loader/helper/assembleIndexedChunks';
 
@@ -77,13 +77,13 @@ function resolveTextrankContext(
  */
 export async function getDefaultDocumentSummary(
 	doc: Document | string,
-	aiServiceManager?: AIServiceManager,
+	aiServiceManager?: IDocSummarizer,
 	provider?: string,
 	modelId?: string,
 	options?: DocumentSummaryOptions,
 ): Promise<ResourceSummaryWithLlmMeta> {
 	if (!aiServiceManager) {
-		throw new Error('getDefaultDocumentSummary requires AIServiceManager to generate summaries');
+		throw new Error('getDefaultDocumentSummary requires IDocSummarizer to generate summaries');
 	}
 
 	let document: Document;

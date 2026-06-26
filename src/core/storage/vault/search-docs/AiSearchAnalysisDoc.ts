@@ -19,11 +19,11 @@
  */
 
 import { getMermaidInner } from '@/core/utils/mermaid-utils';
-import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock, EvidenceIndex } from '@/service/agents/shared-types';
+import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock, EvidenceIndex } from '@/core/types/agents-shared';
 import type { GraphPreview } from '@/core/storage/graph/types';
-import type { SearchResultItem } from '@/service/search/types';
+import type { SearchResultItem } from '@/core/search/searchTypes';
 import type { LLMUsage } from '@/core/providers/types';
-import type { AnalysisMode } from '@/service/agents/shared-types';
+import type { AnalysisMode } from '@/core/types/agents-shared';
 import type { UIStepRecord, CompletedAnalysisSnapshot, SectionAnalyzeResult } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 import { getSnapshotSummary } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 // Re-export parse and buildMarkdown so existing imports continue to work.

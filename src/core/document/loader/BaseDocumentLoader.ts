@@ -3,10 +3,10 @@ import { TFile } from 'obsidian';
 import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import type { Chunk } from '@/service/search/index/types';
-import type { ChunkingSettings } from '@/app/settings/types';
+import type { Chunk } from '@/core/search/indexTypes';
+import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
-import type { AIServiceManager } from '@/service/chat/service-manager';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 
@@ -29,7 +29,7 @@ import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 export abstract class BaseDocumentLoader implements DocumentLoader {
 	constructor(
 		protected readonly app: App,
-		protected readonly aiServiceManager?: AIServiceManager,
+		protected readonly aiServiceManager?: IDocSummarizer,
 	) {}
 
 	// ── Identity (subclass must implement) ──────────────────────────
@@ -146,7 +146,7 @@ export abstract class BaseDocumentLoader implements DocumentLoader {
 	): Promise<ResourceSummary> {
 		if (!this.aiServiceManager) {
 			throw new Error(
-				`${this.constructor.name} requires AIServiceManager to generate summaries`,
+				`${this.constructor.name} requires IDocSummarizer to generate summaries`,
 			);
 		}
 		if (typeof source === 'string') {

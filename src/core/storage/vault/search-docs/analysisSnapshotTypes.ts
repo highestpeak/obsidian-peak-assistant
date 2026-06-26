@@ -10,8 +10,8 @@
  */
 
 import type { LLMUsage } from '@/core/providers/types';
-import type { AnalysisMode, AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock, EvidenceIndex } from '@/service/agents/shared-types';
-import type { SearchResultItem } from '@/service/search/types';
+import type { AnalysisMode, AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock, EvidenceIndex } from '@/core/types/agents-shared';
+import type { SearchResultItem } from '@/core/search/searchTypes';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { SnapshotChatMessage, V2PersistedSection } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 

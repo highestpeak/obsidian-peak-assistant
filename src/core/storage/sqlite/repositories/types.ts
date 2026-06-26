@@ -1,5 +1,5 @@
 import type { Database as DbSchema } from '../ddl';
-import type { ChunkType } from '@/service/search/index/chunkTypes';
+import type { ChunkType } from '@/core/search/chunkTypes';
 
 /**
  * Chunk data for upsert operations.

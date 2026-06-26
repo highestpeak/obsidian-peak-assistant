@@ -159,7 +159,7 @@ const CopilotAutoRunContent: React.FC<{
 	};
 
 	const applyArtifacts = async () => {
-		const result = await applyCopilotArtifactsToContext({ ctx, artifacts, selectedOnly: true });
+		const result = await applyCopilotArtifactsToContext({ ctx, artifacts, selectedOnly: true, app: AppContext.getInstance().app });
 		if (result.appliedBlocks === 0) {
 			new Notice('No matching changes were applied.');
 			return;

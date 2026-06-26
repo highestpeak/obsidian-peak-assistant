@@ -2,10 +2,10 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
-import type { Chunk } from '@/service/search/index/types';
-import type { ChunkingSettings } from '@/app/settings/types';
+import type { Chunk } from '@/core/search/indexTypes';
+import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { AIServiceManager } from '@/service/chat/service-manager';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
@@ -14,7 +14,7 @@ import { BaseDocumentLoader } from './BaseDocumentLoader';
  * Each row becomes a chunk. If a row is too long, it's truncated with overlap.
  */
 export class TableDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: AIServiceManager) {
+	constructor(app: App, aiServiceManager?: IDocSummarizer) {
 		super(app, aiServiceManager);
 	}
 

@@ -5,7 +5,7 @@ import type { QuickSearchBackgroundRuntime } from '@/service/search/background/Q
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import type { CascadeDebtRecord } from './types';
 import { CASCADE_IDLE_DELAY_MS, CASCADE_MAX_ITEMS_PER_WINDOW, CASCADE_DEBT_HUB_REGEN_PRIORITY } from '@/core/constant';
-import { getAIHubSummaryFolder } from '@/app/settings/types';
+import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { CascadeScheduler } from './CascadeScheduler';
 import type { App } from 'obsidian';
 
@@ -28,6 +28,11 @@ export class CascadeWorker {
          * `BackgroundSessionManager` singleton.
          */
         private readonly quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime,
+        /**
+         * T11J B3: rootFolder is injected at boot so the worker can resolve
+         * the hub-summary folder without reaching `AppContext.getInstance()`.
+         */
+        private readonly rootFolder: string,
     ) {
         this.scheduler = new CascadeScheduler({
             idleDelayMs: CASCADE_IDLE_DELAY_MS,
@@ -142,7 +147,7 @@ export class CascadeWorker {
                 const docRow = await mobiusNodeRepo.getByNodeId(item.targetId);
                 if (!docRow?.path) break;
 
-                const hubSummaryFolder = getAIHubSummaryFolder();
+                const hubSummaryFolder = getAIHubSummaryFolder(this.rootFolder);
                 const docPath = docRow.path;
                 const ancestorFolders: string[] = [];
 

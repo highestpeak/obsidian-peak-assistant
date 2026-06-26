@@ -1,14 +1,15 @@
-import type { TFile } from 'obsidian';
-import { AppContext } from '@/app/context/AppContext';
+import type { TFile, App } from 'obsidian';
 
 /**
  * Write accepted tags into a document's YAML frontmatter.
  * Uses Obsidian's atomic processFrontMatter API.
+ *
+ * T11J B2: caller passes the live `app` so the helper no longer reaches
+ * `AppContext.getInstance().app`.
  */
-export async function writeTagsToFrontmatter(file: TFile, tagsToAdd: string[]): Promise<void> {
+export async function writeTagsToFrontmatter(file: TFile, tagsToAdd: string[], app: App): Promise<void> {
 	if (tagsToAdd.length === 0) return;
 
-	const app = AppContext.getInstance().app;
 	await app.fileManager.processFrontMatter(file, (fm) => {
 		const existing = Array.isArray(fm.tags)
 			? fm.tags as string[]

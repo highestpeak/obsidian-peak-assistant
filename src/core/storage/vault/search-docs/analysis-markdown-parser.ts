@@ -6,12 +6,12 @@ import {
 	extractCalloutBlock,
 	parseCalloutListItems,
 } from '@/core/storage/vault/framework/MarkdownDocEngine';
-import type { AISearchTopic, AISearchSource, DashboardBlock, EvidenceIndex } from '@/service/agents/shared-types';
+import type { AISearchTopic, AISearchSource, DashboardBlock, EvidenceIndex } from '@/core/types/agents-shared';
 import { getMermaidInner } from '@/core/utils/mermaid-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
-import type { SearchResultItem } from '@/service/search/types';
+import type { SearchResultItem } from '@/core/search/searchTypes';
 import type { LLMUsage } from '@/core/providers/types';
-import type { AnalysisMode } from '@/service/agents/shared-types';
+import type { AnalysisMode } from '@/core/types/agents-shared';
 import type { UIStepRecord, SectionAnalyzeResult } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 import { GraphNodeType } from '@/core/po/graph.po';
 import type { AiSearchAnalysisDocModel, SnapshotChatMessage } from './AiSearchAnalysisDoc';

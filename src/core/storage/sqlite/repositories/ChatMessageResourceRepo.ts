@@ -1,6 +1,6 @@
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
-import type { ChatResourceRef } from '@/service/chat/types';
+import type { ChatResourceRef } from '@/core/types/chat';
 
 /**
  * Repository for chat_message_resource table.

@@ -1,6 +1,6 @@
-import { AppContext } from '@/app/context/AppContext';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import type { Round } from '@/core/search/v2SessionTypes';
+import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 
 export interface SynthesizeResult {
 	summary: string;
@@ -10,17 +10,14 @@ export interface SynthesizeResult {
 /**
  * Merges all analysis rounds into a single unified report.
  *
- * Simple text-in/text-out agent (no vault tools). Sends all rounds
- * to the LLM with instructions to merge, gets back a unified JSON report.
- *
- * Harness tier: local-fast (single-turn, no tools).
+ * T11J B1: the caller injects an `IAgentPrompter` so the agent no longer
+ * reaches `AppContext.getInstance().manager`.
  */
 export class SynthesizeAgent {
-	async synthesize(rounds: Round[]): Promise<SynthesizeResult> {
-		const ctx = AppContext.getInstance();
-		const mgr = ctx.manager;
+	constructor(private readonly prompter: IAgentPrompter) {}
 
-		const fullText = await mgr.queryText(
+	async synthesize(rounds: Round[]): Promise<SynthesizeResult> {
+		const fullText = await this.prompter.queryText(
 			PromptId.AiAnalysisSynthesize,
 			{
 				rounds: rounds.map((r) => ({
@@ -35,7 +32,7 @@ export class SynthesizeAgent {
 				})),
 			},
 			{
-				systemPrompt: await mgr.renderPrompt(PromptId.AiAnalysisSynthesizeSystem, {}),
+				systemPrompt: await this.prompter.renderPrompt(PromptId.AiAnalysisSynthesizeSystem, {}),
 			},
 		);
 

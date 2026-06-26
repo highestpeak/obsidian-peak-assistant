@@ -1,15 +1,19 @@
+import type { App } from 'obsidian';
 import { buildSourcesGraphWithDiscoveredEdges } from '@/service/tools/search-graph-inspector/build-sources-graph';
-import type { SearchResultItem } from '@/service/search/types';
+import type { SearchResultItem } from '@/core/search/searchTypes';
 import type { LensGraphData } from '@/core/graph/lensGraphTypes';
 import { enrichWithCrossDomain } from '@/service/agents/ai-graph/infer-cross-domain';
 import { inferThinkingTree } from './infer-thinking-tree';
-import { AppContext } from '@/app/context/AppContext';
+import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 
 /**
  * Convert SearchResultItems into LensGraphData by discovering physical + semantic edges
  * via the SourcesGraph builder, then mapping to the multi-lens-graph format.
+ *
+ * T11J B1: caller passes the live `app` so the helper no longer reaches
+ * `AppContext.getInstance().app`.
  */
-export async function buildLensGraphFromSources(sources: SearchResultItem[]): Promise<LensGraphData> {
+export async function buildLensGraphFromSources(sources: SearchResultItem[], app: App): Promise<LensGraphData> {
 	const sg = await buildSourcesGraphWithDiscoveredEdges(sources);
 
 	if (!sg) {
@@ -29,8 +33,6 @@ export async function buildLensGraphFromSources(sources: SearchResultItem[]): Pr
 		kind: (e.kind === 'semantic' ? 'semantic' : 'link') as 'semantic' | 'link',
 	}));
 
-	const ctx = AppContext.getInstance();
-	const app = ctx.app;
 	const nodesWithTime = await Promise.all(baseNodes.map(async (n) => {
 		const file = app.vault.getAbstractFileByPath(n.path);
 		if (file && 'stat' in file) {
@@ -53,11 +55,14 @@ export async function buildLensGraphFromSources(sources: SearchResultItem[]): Pr
  * Enrich a LensGraphData with an AI-inferred thinking-tree layer.
  * Reads the first 500 chars of each file, sends to LLM to infer parent-child hierarchy,
  * then merges tree metadata (level, parentId, role, summary) and 'derives' edges back in.
+ *
+ * T11J B1: explicit `app` + `prompter` injections.
  */
-export async function enrichWithThinkingTree(currentData: LensGraphData): Promise<LensGraphData> {
-	const ctx = AppContext.getInstance();
-	const app = ctx.app;
-
+export async function enrichWithThinkingTree(
+	currentData: LensGraphData,
+	app: App,
+	prompter: IAgentPrompter,
+): Promise<LensGraphData> {
 	const files = await Promise.all(
 		currentData.nodes.map(async (n) => {
 			const file = app.vault.getAbstractFileByPath(n.path);
@@ -67,7 +72,7 @@ export async function enrichWithThinkingTree(currentData: LensGraphData): Promis
 		}),
 	);
 
-	const tree = await inferThinkingTree({ files });
+	const tree = await inferThinkingTree({ files }, prompter);
 	if (tree.nodes.length === 0) return currentData;
 
 	const treeMap = new Map(tree.nodes.map((n) => [n.path, n]));

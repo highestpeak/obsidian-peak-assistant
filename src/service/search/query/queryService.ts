@@ -3,7 +3,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { Reranker } from './reranker';
 import { DEFAULT_SEARCH_TOP_K } from '@/core/constant';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import type { SearchSettings } from '@/app/settings/types';
+import type { SearchSettings } from '@/core/config/settingsTypes';
 import {
 	RRF_K,
 	PPR_SEED_K,

@@ -3,10 +3,10 @@ import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import type { Chunk } from '@/service/search/index/types';
-import type { ChunkingSettings } from '@/app/settings/types';
+import type { Chunk } from '@/core/search/indexTypes';
+import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { AIServiceManager } from '@/service/chat/service-manager';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
@@ -16,7 +16,7 @@ import { BaseDocumentLoader } from './BaseDocumentLoader';
  * Otherwise, the entire structure is one chunk, then split by size/overlap.
  */
 export class JsonDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: AIServiceManager) {
+	constructor(app: App, aiServiceManager?: IDocSummarizer) {
 		super(app, aiServiceManager);
 	}
 

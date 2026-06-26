@@ -3,6 +3,7 @@ import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
 import { writeTagsToFrontmatter } from '@/service/copilot/frontmatterTagWriter';
+import { AppContext } from '@/app/context/AppContext';
 import type { TagSuggestions } from '@/service/copilot/copilot-schemas';
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { Check, X, Pencil, Tag } from 'lucide-react';
@@ -66,7 +67,7 @@ export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
 
   const handleApply = async () => {
     try {
-      await writeTagsToFrontmatter(file, acceptedTags);
+      await writeTagsToFrontmatter(file, acceptedTags, AppContext.getInstance().app);
       new Notice(`Added ${acceptedTags.length} tag${acceptedTags.length > 1 ? 's' : ''} to frontmatter.`);
       // Record feedback to tag_suggestion table
       if (result.batchId) {

@@ -1,7 +1,7 @@
 import { z } from 'zod/v3';
 import type { LLMUsage } from '@/core/providers/types';
-import type { AIServiceManager } from '@/service/chat/service-manager';
-import { PromptId } from '@/service/prompt/PromptId';
+import type { IDocTagClassifier } from '@/core/llm/IDocTagClassifier';
+import { PromptId } from '@/core/prompt/PromptId';
 import { parseInferCreatedAtStringToMs, parseLooseTimestampToMs } from '@/core/utils/date-utils';
 import {
 	FUNCTIONAL_TAG_IDS,
@@ -440,7 +440,7 @@ function buildDimensionFunctionalHintsTable(): string {
  */
 export async function extractTopicAndFunctionalTags(
 	text: string,
-	ai: AIServiceManager,
+	ai: IDocTagClassifier,
 	options?: {
 		title?: string;
 		existingTopicTags?: string[];

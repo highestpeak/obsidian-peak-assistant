@@ -1,4 +1,4 @@
-import type { SearchSettings } from '@/app/settings/types';
+import type { SearchSettings } from '@/core/config/settingsTypes';
 
 /**
  * Hub doc services: materialization, constituent persistence, regeneration.

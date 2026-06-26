@@ -1,5 +1,4 @@
 import type { DocumentType } from '@/core/document/types';
-import { getAIHubSummaryFolder } from '@/app/settings/types';
 import { isVaultPathUnderPrefix } from '@/core/utils/hub-path-utils';
 import { GraphNodeType } from '@/core/po/graph.po';
 
@@ -31,9 +30,9 @@ export function countsAsDocOutgoingTarget(docType: DocumentType | null | undefin
 export function graphNodeTypeForPlaceholderReferenceTarget(
 	fullPath: string,
 	docType: DocumentType | null,
+	hubSummaryFolder: string | null,
 ): GraphNodeType {
-	const hub = getAIHubSummaryFolder();
-	if (hub && isVaultPathUnderPrefix(fullPath, hub) && countsAsDocOutgoingTarget(docType)) {
+	if (hubSummaryFolder && isVaultPathUnderPrefix(fullPath, hubSummaryFolder) && countsAsDocOutgoingTarget(docType)) {
 		return GraphNodeType.HubDoc;
 	}
 	if (countsAsDocOutgoingTarget(docType)) return GraphNodeType.Document;

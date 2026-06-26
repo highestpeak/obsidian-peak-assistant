@@ -79,10 +79,15 @@ export function persistForegroundSession(existingPath?: string | null): void {
 		}
 	} catch { /* graph stores not available */ }
 
+	const ctx = AppContext.getInstance();
 	void persistSessionToVault(snapshot, {
 		vaultWriter: new AppAnalysisDocVaultWriterAdapter(),
 		existingPath: resolvedExistingPath,
 		graphJson,
+		searchSettings: ctx.settings.search,
+		enableDevTools: ctx.settings.enableDevTools === true,
+		historyService: ctx.aiAnalysisHistoryService,
+		eventBus: AppContext.getEventBus(),
 	}).then((result) => {
 		if (result) {
 			useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });
@@ -234,7 +239,7 @@ export function useSearchSession() {
 				const { useAIGraphStore } = await import('../store/aiGraphStore');
 				const { AIGraphAgent } = await import('@/service/agents/AIGraphAgent');
 
-				const agent = new AIGraphAgent(AppContext.getInstance().manager);
+				const agent = new AIGraphAgent(AppContext.getInstance().app, AppContext.getInstance().searchClient, AppContext.getInstance().manager);
 				useAIGraphStore.getState().setLoading(true);
 				useAIGraphStore.getState().setQuery(searchQuery);
 
@@ -309,10 +314,15 @@ export function useSearchSession() {
 	// -----------------------------------------------------------------------
 
 	const reportOrchestrator = useMemo(
-		() => new ReportOrchestrator(
-			AppContext.getInstance().plugin.aiServiceManager,
-			new SearchSessionReportAdapter(),
-		),
+		() => {
+			const ctx = AppContext.getInstance();
+			return new ReportOrchestrator(
+				ctx.plugin.aiServiceManager,
+				new SearchSessionReportAdapter(),
+				ctx.app,
+				ctx.plugin.manifest.id,
+			);
+		},
 		[],
 	);
 

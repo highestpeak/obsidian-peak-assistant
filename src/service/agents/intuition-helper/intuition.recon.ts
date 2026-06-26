@@ -30,7 +30,6 @@ function effectiveReconMaxIterations(budgetDerived: number, debug?: ReconLoopDeb
 import { mergeIntuitionSubmitIntoMemory, buildInitialIntuitionMemory } from './intuition.memory';
 import type { IntuitionMemory, IntuitionPrepContext } from './types';
 import { exploreFolderTool, findPathTool, graphTraversalTool, grepFileTreeTool, inspectNoteContextTool, localSearchWholeVaultTool } from '@/service/tools/search-graph-inspector';
-import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
@@ -72,8 +71,11 @@ export async function* runKnowledgeIntuitionLoop(options: {
 	aiServiceManager: AIServiceManager;
 	onComplete: IntuitionReconCompleteCallback;
 	debug?: ReconLoopDebugOptions;
+	/** T11J B1: caller passes app + pluginId so this module no longer reaches AppContext. */
+	app: import('obsidian').App;
+	pluginId: string;
 }): AsyncGenerator<LLMStreamEvent, void> {
-	const { ctx, stepId, aiServiceManager, onComplete, debug } = options;
+	const { ctx, stepId, aiServiceManager, onComplete, debug, app, pluginId } = options;
 	const stopwatch = new Stopwatch('Knowledge intuition recon');
 	const tools = {
 		explore_folder: exploreFolderTool(ctx.tm, { forceFormat: 'markdown' }),
@@ -111,8 +113,7 @@ export async function* runKnowledgeIntuitionLoop(options: {
 	const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, allTools);
 	const allowedTools = mcpToolNames(MCP_SERVER_NAME, allTools);
 
-	// Get app + profile for SDK calls
-	const appCtx = AppContext.getInstance();
+	// Profile for SDK calls (app/pluginId injected via options)
 	const profile = ProfileRegistry.getInstance().getActiveAgentProfile()!;
 
 	for (let iter = 0; iter < maxIter; iter++) {
@@ -150,7 +151,7 @@ export async function* runKnowledgeIntuitionLoop(options: {
 		));
 
 		// Call Agent SDK for the plan step
-		const planMessages = queryWithProfile(appCtx.app, appCtx.pluginId, profile, {
+		const planMessages = queryWithProfile(app, pluginId, profile, {
 			prompt: iterPrompt,
 			systemPrompt: planSystem,
 			maxTurns: 2, // one LLM turn with tool calls + one final response

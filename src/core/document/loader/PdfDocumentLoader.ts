@@ -3,7 +3,7 @@ import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { binaryContentHash } from '@/core/utils/hash-utils';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { AIServiceManager } from '@/service/chat/service-manager';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
 /** CDN base for pdfjs-dist worker; avoids bundling the heavy worker. */
@@ -73,7 +73,7 @@ async function extractTextFromPdfBuffer(arrayBuffer: ArrayBuffer): Promise<strin
  * Worker loaded from CDN; no static import of pdfjs or worker to keep bundle small.
  */
 export class PdfDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: AIServiceManager) {
+	constructor(app: App, aiServiceManager?: IDocSummarizer) {
 		super(app, aiServiceManager);
 	}
 

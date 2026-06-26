@@ -82,11 +82,14 @@ export class KnowledgeIntuitionAgent {
 		}
 		const vaultName = options.vaultName?.trim() || 'Vault';
 		const currentDateLabel = options.currentDateLabel?.trim() || new Date().toISOString().slice(0, 10);
+		const appCtx = AppContext.getInstance();
 		return prepareIntuitionContext({
 			userGoal,
 			vaultName,
 			currentDateLabel,
 			tm,
+			vault: appCtx.app.vault,
+			rootFolder: appCtx.settings.ai.rootFolder,
 		});
 	}
 
@@ -129,6 +132,7 @@ export class KnowledgeIntuitionAgent {
 		}
 
 		let memory: IntuitionMemory | undefined;
+		const loopCtx = AppContext.getInstance();
 		yield* runKnowledgeIntuitionLoop({
 			ctx,
 			stepId,
@@ -138,6 +142,8 @@ export class KnowledgeIntuitionAgent {
 				memory = m;
 				this.intuitionMemory = m;
 			},
+			app: loopCtx.app,
+			pluginId: loopCtx.plugin.manifest.id,
 		});
 		if (!memory) {
 			throw new Error('KnowledgeIntuitionAgent: recon finished without memory (onComplete not invoked).');

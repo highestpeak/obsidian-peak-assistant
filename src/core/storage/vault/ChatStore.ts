@@ -7,17 +7,17 @@ import {
 	ChatProjectContext,
 	ChatProjectMeta,
 	ChatFilePaths,
-	ChatConversation,
 	ChatProject,
-} from '@/service/chat/types';
+} from '@/core/types/chat';
+import type { ChatConversation } from '@/service/chat/types';
 import { ensureFolder, joinPath, writeFile, getAbsolutePath, getRelativePath } from '@/core/utils/vault-utils';
 import { ChatDocName } from './chat-docs/ChatDocName';
 import { ChatConversationDoc, ChatConversationDocModel } from './chat-docs/ChatConversationDoc';
 import { ChatProjectSummaryDoc } from './chat-docs/ChatProjectSummaryDoc';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
-import type { ChatResourceRef } from '@/service/chat/types';
-import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
+import type { ChatResourceRef } from '@/core/types/chat';
+import { DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
 import { buildTimestampedName } from '@/core/utils/id-utils';
 import { ResourceKind } from '@/core/document/types';
 

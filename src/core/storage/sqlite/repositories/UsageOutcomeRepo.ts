@@ -1,7 +1,7 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import type { Database as DbSchema, UsageOutcomeRow } from '../ddl';
-import type { UsageOutcomeEventType } from '@/service/usage/types';
+import type { UsageOutcomeEventType } from '@/core/types/usage';
 
 /**
  * Repository for the `usage_outcome` table — outcome events that follow a

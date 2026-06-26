@@ -1,5 +1,5 @@
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import type { SearchSettings } from '@/app/settings/types';
+import type { SearchSettings } from '@/core/config/settingsTypes';
 
 const HUB_REGEN_DEBOUNCE_MS = 30_000; // 30s after last stale detection
 const HUB_REGEN_BATCH_SIZE = 10;       // max hubs per sweep

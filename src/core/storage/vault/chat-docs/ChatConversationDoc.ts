@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatResourceRef } from '@/service/chat/types';
+import type { ChatMessage, ChatResourceRef } from '@/core/types/chat';
 import { hashMD5 } from '@/core/utils/hash-utils';
 import {
 	normalizeLine,

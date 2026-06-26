@@ -1,5 +1,6 @@
 import { App } from 'obsidian';
-import { ChatConversation, ChatProject } from '@/service/chat/types';
+import type { ChatProject } from '@/core/types/chat';
+import type { ChatConversation } from '@/service/chat/types';
 
 /**
  * Custom events for view communication

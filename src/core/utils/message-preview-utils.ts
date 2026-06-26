@@ -1,4 +1,4 @@
-import type { ChatResourceRef } from '@/service/chat/types';
+import type { ChatResourceRef } from '@/core/types/chat';
 import type { ResourceKind } from '@/core/document/types';
 
 /**

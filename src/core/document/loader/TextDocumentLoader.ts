@@ -3,7 +3,7 @@ import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { AIServiceManager } from '@/service/chat/service-manager';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
 /**
@@ -11,7 +11,7 @@ import { BaseDocumentLoader } from './BaseDocumentLoader';
  * Uses size and overlap settings for chunking.
  */
 export class TextDocumentLoader extends BaseDocumentLoader {
-	constructor(app: App, aiServiceManager?: AIServiceManager) {
+	constructor(app: App, aiServiceManager?: IDocSummarizer) {
 		super(app, aiServiceManager);
 	}
 

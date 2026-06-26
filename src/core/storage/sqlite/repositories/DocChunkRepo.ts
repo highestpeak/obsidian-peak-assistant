@@ -3,7 +3,7 @@ import { GraphNodeType, GRAPH_INDEXED_NOTE_NODE_TYPES } from '@/core/po/graph.po
 import type { Database as DbSchema } from '../ddl';
 import type { SqliteDatabase } from '../types';
 import type { DocChunkInput, DocChunkOutput, FtsInsertParams, FtsMetaInsertParams, FtsSearchResult } from './types';
-import type { SearchScopeMode, SearchScopeValue } from '@/service/search/types';
+import type { SearchScopeMode, SearchScopeValue } from '@/core/search/searchTypes';
 
 /**
  * CRUD repository for `doc_chunk` table and FTS5 virtual table.

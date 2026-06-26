@@ -2,10 +2,10 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
-import type { Chunk } from '@/service/search/index/types';
-import type { ChunkingSettings } from '@/app/settings/types';
+import type { Chunk } from '@/core/search/indexTypes';
+import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
-import type { AIServiceManager } from '@/service/chat/service-manager';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
 
@@ -17,7 +17,7 @@ export class HtmlXmlDocumentLoader extends BaseDocumentLoader {
 	private static readonly MEANINGFUL_TAGS = ['div', 'section', 'article', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'td', 'th'];
 	private readonly tagPattern: RegExp;
 
-	constructor(app: App, aiServiceManager?: AIServiceManager) {
+	constructor(app: App, aiServiceManager?: IDocSummarizer) {
 		super(app, aiServiceManager);
 		// Initialize regex pattern once in constructor
 		const tagsPattern = HtmlXmlDocumentLoader.MEANINGFUL_TAGS.join('|');

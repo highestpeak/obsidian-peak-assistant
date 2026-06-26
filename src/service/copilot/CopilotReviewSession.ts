@@ -173,6 +173,7 @@ export async function* runCopilotReview(
 				.map(r => previousRoundSummary(r, collector.getSnapshot()))
 				.filter((s): s is PreviousRoundSummary => s !== null);
 
+			const sessionCtx = AppContext.getInstance();
 			const stream = buildCopilotMetaAgentStream({
 				mode: options.mode,
 				signalReport,
@@ -185,6 +186,8 @@ export async function* runCopilotReview(
 				collector,
 				maxTurns: maxTurnsPerRound,
 				signal: options.signal,
+				app: sessionCtx.app,
+				pluginId: sessionCtx.plugin.manifest.id,
 				onTurnIncrement: () => {
 					round.turnCount += 1;
 				},

@@ -422,7 +422,7 @@ const CopilotResultContent: React.FC<{
 	const artifacts = buildManualReviewArtifacts({ action, ctx, phase });
 	if (shouldUseArtifactReview(action.id, artifacts)) {
 		const applyArtifacts = async (selectedOnly: boolean) => {
-			const result = await applyCopilotArtifactsToContext({ ctx, artifacts, selectedOnly });
+			const result = await applyCopilotArtifactsToContext({ ctx, artifacts, selectedOnly, app: AppContext.getInstance().app });
 			if (result.appliedBlocks === 0) {
 				new Notice('No matching changes were applied.');
 				return;

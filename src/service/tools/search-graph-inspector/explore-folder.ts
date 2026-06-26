@@ -1,7 +1,7 @@
 import { EXPLORE_FOLDER_DEFAULT_LIMIT, SLICE_CAPS } from '@/core/constant';
 import { GRAPH_WIKI_REFERENCE_EDGE_TYPES } from '@/core/po/graph.po';
 import { AppContext } from "@/app/context/AppContext";
-import { getAIHubSummaryFolder } from '@/app/settings/types';
+import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { humanReadableTime } from "@/core/utils/date-utils";
 import { compactPathsForPrompt, compactPathsWithSuffix } from "@/core/utils/pathTreeCompact";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
@@ -555,7 +555,7 @@ function isPathExcluded(path: string, excludedPathPrefixes: string[]): boolean {
     const p = normalizeVaultFolderPath(path);
     if (p === "") return false;
     /** Hub summaries live under chat root but must remain explorable. */
-    const hub = normalizeVaultFolderPath(getAIHubSummaryFolder());
+    const hub = normalizeVaultFolderPath(getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder));
     if (hub && (p === hub || p.startsWith(hub + "/"))) {
         return false;
     }

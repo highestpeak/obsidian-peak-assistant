@@ -1,4 +1,4 @@
-import { AppContext } from '@/app/context/AppContext';
+import type { App } from 'obsidian';
 import { PromptId } from '@/service/prompt/PromptId';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { V2Section } from '@/core/search/v2SessionTypes';
@@ -29,20 +29,29 @@ import { streamWithRepetitionGuard, detectRepetition } from './stream-utils';
 export class ReportOrchestrator {
     private readonly mgr: AIServiceManager;
     private readonly session: ReportSessionPort;
+    private readonly app: App;
+    private readonly pluginId: string;
 
-    constructor(aiServiceManager: AIServiceManager, session: ReportSessionPort) {
+    constructor(
+        aiServiceManager: AIServiceManager,
+        session: ReportSessionPort,
+        /** T11J B1: explicit app + pluginId so orchestrator no longer reaches AppContext. */
+        app: App,
+        pluginId: string,
+    ) {
         this.mgr = aiServiceManager;
         this.session = session;
+        this.app = app;
+        this.pluginId = pluginId;
     }
 
     // -----------------------------------------------------------------------
     // SDK helpers
     // -----------------------------------------------------------------------
 
-    /** Resolve app + pluginId from AppContext singleton. */
+    /** T11J B1: returns the injected app + pluginId (no AppContext lookup). */
     private get appCtx() {
-        const ctx = AppContext.getInstance();
-        return { app: ctx.app, pluginId: ctx.plugin.manifest.id };
+        return { app: this.app, pluginId: this.pluginId };
     }
 
     /** Resolve the active agent profile. Throws if none configured. */
@@ -98,7 +107,7 @@ export class ReportOrchestrator {
     // -----------------------------------------------------------------------
 
     private async readEvidence(paths: string[], sectionBrief?: string): Promise<string> {
-        const vault = AppContext.getInstance().app.vault;
+        const vault = this.app.vault;
         const PER_FILE_LIMIT = 6000;
         const chunks: string[] = [];
 

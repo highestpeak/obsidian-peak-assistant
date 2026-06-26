@@ -1,22 +1,22 @@
 import type { RerankProvider, RerankRequest, RerankResponse, RerankResult } from './types';
-import type { AIServiceManager } from '@/service/chat/service-manager';
-import { PromptId } from '@/service/prompt/PromptId';
+import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import { PromptId } from '@/core/prompt/PromptId';
 
 interface LLMRerankOptions {
 	modelId: string;
 	provider: string;
-	aiServiceManager: AIServiceManager;
+	aiServiceManager: IDocSummarizer;
 }
 
 /**
  * LLM-based rerank provider (RankGPT/RankLLM style).
  * Uses existing LLM to rerank documents via prompt.
- * Uses AIServiceManager.queryText to call the LLM, so no need for baseUrl/apiKey.
+ * Uses IDocSummarizer.queryText to call the LLM, so no need for baseUrl/apiKey.
  */
 export class LLMRerankProvider implements RerankProvider {
 	private readonly modelId: string;
 	private readonly provider: string;
-	private readonly aiServiceManager: AIServiceManager;
+	private readonly aiServiceManager: IDocSummarizer;
 
 	constructor(options: LLMRerankOptions) {
 		this.modelId = options.modelId;
@@ -36,7 +36,7 @@ export class LLMRerankProvider implements RerankProvider {
 			boostInfo: doc.metadata?.boostInfo,
 		}));
 
-		// Render prompt and call LLM via AIServiceManager
+		// Render prompt and call LLM via IDocSummarizer
 		const content = await this.aiServiceManager.queryText(
 			PromptId.SearchRerankRankGpt,
 			{

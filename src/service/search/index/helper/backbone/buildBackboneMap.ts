@@ -10,7 +10,7 @@
 import ignore from 'ignore';
 import { TFolder } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
-import { getAIHubSummaryFolder } from '@/app/settings/types';
+import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { basenameFromPath } from '@/core/utils/file-utils';
 import { normalizeVaultPath, parentDirPath } from '@/core/utils/vault-path-utils';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
@@ -238,7 +238,7 @@ export function isPathExcludedByPrefixes(path: string, excludedPathPrefixes: str
 	if (!excludedPathPrefixes.length) return false;
 	const p = normalizeVaultFolderPath(path);
 	if (p === '') return false;
-	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder());
+	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder));
 	if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
 	for (const raw of excludedPathPrefixes) {
 		const prefix = normalizeVaultFolderPath(raw);
@@ -251,7 +251,7 @@ export function isPathExcludedByPrefixes(path: string, excludedPathPrefixes: str
 
 export function shouldIgnoreFolderForBackbone(path: string): boolean {
 	const p = normalizeVaultFolderPath(path);
-	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder());
+	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder));
 	if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
 	try {
 		return IgnoreService.getInstance().shouldIgnore(path);

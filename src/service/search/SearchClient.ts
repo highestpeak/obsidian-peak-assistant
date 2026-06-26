@@ -7,7 +7,7 @@ import type { StorageType } from '@/service/search/index/indexService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { QueryService } from './query/queryService';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import type { SearchSettings } from '@/app/settings/types';
+import type { SearchSettings } from '@/core/config/settingsTypes';
 
 /**
  * SearchClient (main thread, Desktop-only).

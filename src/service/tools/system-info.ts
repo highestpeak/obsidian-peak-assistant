@@ -1,5 +1,5 @@
 import { AppContext } from "@/app/context/AppContext";
-import { getAIPromptFolder } from "@/app/settings/types";
+import { getAIPromptFolder } from "@/core/config/folderPaths";
 import { readFileAsText } from "@/core/utils/obsidian-utils";
 import { GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT, VAULT_DESCRIPTION_FILENAME } from "@/core/constant";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
@@ -13,7 +13,7 @@ function getVaultStatistics() {
 
 async function getVaultDescription(): Promise<string | undefined> {
     try {
-        const content = await readFileAsText(`${getAIPromptFolder()}/${VAULT_DESCRIPTION_FILENAME}`);
+        const content = await readFileAsText(`${getAIPromptFolder(AppContext.getInstance().settings.ai.rootFolder)}/${VAULT_DESCRIPTION_FILENAME}`);
         return content?.trim() || undefined;
     } catch { return undefined; }
 }

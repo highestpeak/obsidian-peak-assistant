@@ -1,7 +1,7 @@
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 import { sql } from 'kysely';
-import type { ChatMessage } from '@/service/chat/types';
+import type { ChatMessage } from '@/core/types/chat';
 import { hashMD5 } from '@/core/utils/hash-utils';
 
 /**
