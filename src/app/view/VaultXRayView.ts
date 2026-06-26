@@ -2,8 +2,9 @@ import { type IconName, ItemView, type WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import type { AppContext } from '@/app/context/AppContext';
+import { VAULT_XRAY_VIEW_TYPE } from '@/app/view/types';
 
-export const VAULT_XRAY_VIEW_TYPE = 'peak-vault-xray-view';
+export { VAULT_XRAY_VIEW_TYPE };
 
 export class VaultXRayView extends ItemView {
 	private reactRenderer: ReactRenderer | null = null;
@@ -29,7 +30,7 @@ export class VaultXRayView extends ItemView {
 
 	private render(): void {
 		if (!this.reactRenderer) return;
-		import('./VaultXRayPanel').then(({ VaultXRayPanel }) => {
+		import('@/ui/view/vault-lint/VaultXRayPanel').then(({ VaultXRayPanel }) => {
 			this.reactRenderer?.render(
 				createReactElementWithServices(VaultXRayPanel, {}, this.appContext),
 			);

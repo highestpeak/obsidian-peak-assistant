@@ -2,8 +2,9 @@ import { type IconName, ItemView, type WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import type { AppContext } from '@/app/context/AppContext';
+import { AMBIENT_PUSH_VIEW_TYPE } from '@/app/view/types';
 
-export const AMBIENT_PUSH_VIEW_TYPE = 'peak-ambient-push-view';
+export { AMBIENT_PUSH_VIEW_TYPE };
 
 /**
  * Right sidebar view displaying ambient push related-note suggestions.
@@ -45,7 +46,7 @@ export class AmbientPushView extends ItemView {
 	private render(): void {
 		if (!this.reactRenderer) return;
 
-		import('./ambient-push/AmbientPushPanel').then(({ AmbientPushPanel }) => {
+		import('@/ui/view/ambient-push/AmbientPushPanel').then(({ AmbientPushPanel }) => {
 			this.reactRenderer?.render(
 				createReactElementWithServices(AmbientPushPanel, {}, this.appContext),
 			);

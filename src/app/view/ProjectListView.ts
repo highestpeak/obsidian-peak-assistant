@@ -1,13 +1,16 @@
-import { IconName, ItemView, TFolder, WorkspaceLeaf } from 'obsidian';
-import { useChatViewStore } from './chat-view/store/chatViewStore';
+import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { ChatViewComponent } from './chat-view/ChatViewComponent';
+import { ProjectListViewComponent } from '@/ui/view/project-list-view/ProjectListView';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
+import { PROJECT_LIST_VIEW_TYPE } from '@/app/view/types';
 
-export const CHAT_VIEW_TYPE = 'peak-chat-view';
+export { PROJECT_LIST_VIEW_TYPE };
 
-export class ChatView extends ItemView {
+/**
+ * Left sidebar view displaying projects and conversations list
+ */
+export class ProjectListView extends ItemView {
 	private reactRenderer: ReactRenderer | null = null;
 	private openRafId: number | null = null;
 
@@ -16,15 +19,14 @@ export class ChatView extends ItemView {
 		private readonly appContext: AppContext
 	) {
 		super(leaf);
-		// Note: messagesViewWrapperRef will be set when React component mounts
 	}
 
 	getViewType(): string {
-		return CHAT_VIEW_TYPE;
+		return PROJECT_LIST_VIEW_TYPE;
 	}
 
 	getDisplayText(): string {
-		return 'Peak Chat';
+		return 'Projects & Conversations';
 	}
 
 	getIcon(): IconName {
@@ -33,18 +35,25 @@ export class ChatView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		this.containerEl.empty();
-		this.containerEl.addClass('peak-chat-view');
-		this.containerEl.addClass('peak-design-root');
 		this.containerEl.addClass('pktw-root');
 
-		// Create React renderer
 		this.reactRenderer = new ReactRenderer(this.containerEl);
-
-		// Initial render - delay to ensure container is in DOM
 		this.openRafId = requestAnimationFrame(() => {
 			this.openRafId = null;
 			this.render();
 		});
+	}
+
+	private render(): void {
+		if (!this.reactRenderer) return;
+
+		this.reactRenderer.render(
+			createReactElementWithServices(
+				ProjectListViewComponent,
+				{ compact: true },
+				this.appContext
+			)
+		);
 	}
 
 	async onClose(): Promise<void> {
@@ -56,22 +65,17 @@ export class ChatView extends ItemView {
 			this.reactRenderer.unmount();
 			this.reactRenderer = null;
 		}
-
 		this.containerEl.empty();
 	}
 
-	private render(): void {
-		if (!this.reactRenderer) return;
 
-		// Use unified React component for all views with service context
-		this.reactRenderer.render(
-			createReactElementWithServices(
-				ChatViewComponent,
-				{ },
-				this.appContext
-			)
-		);
+	/**
+	 * Update view when data changes externally
+	 * Preserves expanded state and active selections
+	 */
+	async updateView(): Promise<void> {
+		// Just re-render React component, data loading is handled by React component
+		this.render();
 	}
-
 
 }

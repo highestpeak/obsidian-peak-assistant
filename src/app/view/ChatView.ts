@@ -1,49 +1,50 @@
 import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
+import { ChatViewComponent } from '@/ui/view/chat-view/ChatViewComponent';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
+import { CHAT_VIEW_TYPE } from '@/app/view/types';
 
-export const USAGE_DASHBOARD_VIEW_TYPE = 'peak-usage-dashboard';
+export { CHAT_VIEW_TYPE };
 
-export class UsageDashboardView extends ItemView {
+export class ChatView extends ItemView {
 	private reactRenderer: ReactRenderer | null = null;
 	private openRafId: number | null = null;
 
-	constructor(leaf: WorkspaceLeaf, private readonly appContext: AppContext) {
+	constructor(
+		leaf: WorkspaceLeaf,
+		private readonly appContext: AppContext
+	) {
 		super(leaf);
+		// Note: messagesViewWrapperRef will be set when React component mounts
 	}
 
 	getViewType(): string {
-		return USAGE_DASHBOARD_VIEW_TYPE;
+		return CHAT_VIEW_TYPE;
 	}
 
 	getDisplayText(): string {
-		return 'Token Usage';
+		return 'Peak Chat';
 	}
 
 	getIcon(): IconName {
-		return 'bar-chart-3';
+		return 'message-circle';
 	}
 
 	async onOpen(): Promise<void> {
 		this.containerEl.empty();
-		// `peak-design-root` scopes shared PR-0 primitives; `usage-dashboard`
-		// scopes dashboard-local chart primitives (dashboard-charts.css).
+		this.containerEl.addClass('peak-chat-view');
 		this.containerEl.addClass('peak-design-root');
-		this.containerEl.addClass('usage-dashboard');
-		this.containerEl.addClass('peak-usage-dashboard');
+		this.containerEl.addClass('pktw-root');
+
+		// Create React renderer
 		this.reactRenderer = new ReactRenderer(this.containerEl);
+
+		// Initial render - delay to ensure container is in DOM
 		this.openRafId = requestAnimationFrame(() => {
 			this.openRafId = null;
 			this.render();
 		});
-	}
-
-	private render(): void {
-		if (!this.reactRenderer) return;
-		const { UsageDashboard } = require('./UsageDashboard');
-		const element = createReactElementWithServices(UsageDashboard, {}, this.appContext);
-		this.reactRenderer.render(element);
 	}
 
 	async onClose(): Promise<void> {
@@ -55,6 +56,22 @@ export class UsageDashboardView extends ItemView {
 			this.reactRenderer.unmount();
 			this.reactRenderer = null;
 		}
+
 		this.containerEl.empty();
 	}
+
+	private render(): void {
+		if (!this.reactRenderer) return;
+
+		// Use unified React component for all views with service context
+		this.reactRenderer.render(
+			createReactElementWithServices(
+				ChatViewComponent,
+				{ },
+				this.appContext
+			)
+		);
+	}
+
+
 }

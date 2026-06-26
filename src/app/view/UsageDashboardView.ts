@@ -1,41 +1,38 @@
 import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { ProjectListViewComponent } from './project-list-view/ProjectListView';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
+import { USAGE_DASHBOARD_VIEW_TYPE } from '@/app/view/types';
 
-export const PROJECT_LIST_VIEW_TYPE = 'peak-project-list-view';
+export { USAGE_DASHBOARD_VIEW_TYPE };
 
-/**
- * Left sidebar view displaying projects and conversations list
- */
-export class ProjectListView extends ItemView {
+export class UsageDashboardView extends ItemView {
 	private reactRenderer: ReactRenderer | null = null;
 	private openRafId: number | null = null;
 
-	constructor(
-		leaf: WorkspaceLeaf,
-		private readonly appContext: AppContext
-	) {
+	constructor(leaf: WorkspaceLeaf, private readonly appContext: AppContext) {
 		super(leaf);
 	}
 
 	getViewType(): string {
-		return PROJECT_LIST_VIEW_TYPE;
+		return USAGE_DASHBOARD_VIEW_TYPE;
 	}
 
 	getDisplayText(): string {
-		return 'Projects & Conversations';
+		return 'Token Usage';
 	}
 
 	getIcon(): IconName {
-		return 'message-circle';
+		return 'bar-chart-3';
 	}
 
 	async onOpen(): Promise<void> {
 		this.containerEl.empty();
-		this.containerEl.addClass('pktw-root');
-
+		// `peak-design-root` scopes shared PR-0 primitives; `usage-dashboard`
+		// scopes dashboard-local chart primitives (dashboard-charts.css).
+		this.containerEl.addClass('peak-design-root');
+		this.containerEl.addClass('usage-dashboard');
+		this.containerEl.addClass('peak-usage-dashboard');
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 		this.openRafId = requestAnimationFrame(() => {
 			this.openRafId = null;
@@ -45,14 +42,9 @@ export class ProjectListView extends ItemView {
 
 	private render(): void {
 		if (!this.reactRenderer) return;
-
-		this.reactRenderer.render(
-			createReactElementWithServices(
-				ProjectListViewComponent,
-				{ compact: true },
-				this.appContext
-			)
-		);
+		const { UsageDashboard } = require('@/ui/view/usage-dashboard/UsageDashboard');
+		const element = createReactElementWithServices(UsageDashboard, {}, this.appContext);
+		this.reactRenderer.render(element);
 	}
 
 	async onClose(): Promise<void> {
@@ -66,15 +58,4 @@ export class ProjectListView extends ItemView {
 		}
 		this.containerEl.empty();
 	}
-
-
-	/**
-	 * Update view when data changes externally
-	 * Preserves expanded state and active selections
-	 */
-	async updateView(): Promise<void> {
-		// Just re-render React component, data loading is handled by React component
-		this.render();
-	}
-
 }
