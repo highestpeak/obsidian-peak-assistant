@@ -15,7 +15,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ChevronRight, History } from 'lucide-react';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import {
 	diffVaultFingerprint,
 	freshnessFromDelta,
@@ -144,6 +144,7 @@ export const VaultReviewHistoryList: React.FC<{
 
 /** Hook that computes the vault tab state on mount + on refresh trigger. */
 export function useVaultTabState(refreshToken: number): VaultTabState {
+	const { vaultReviewRuntime } = useServiceContext();
 	const [state, setState] = useState<VaultTabState>({
 		fingerprint: null,
 		lastRecord: null,
@@ -154,7 +155,7 @@ export function useVaultTabState(refreshToken: number): VaultTabState {
 	});
 
 	useEffect(() => {
-		const runtime = AppContext.tryGetVaultReviewRuntime();
+		const runtime = vaultReviewRuntime;
 		if (!runtime) {
 			setState(s => ({ ...s, loading: false }));
 			return;
@@ -177,7 +178,7 @@ export function useVaultTabState(refreshToken: number): VaultTabState {
 			}
 		})();
 		return () => { cancelled = true; };
-	}, [refreshToken]);
+	}, [refreshToken, vaultReviewRuntime]);
 
 	return state;
 }

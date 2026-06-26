@@ -9,6 +9,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { Notice } from 'obsidian';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import {
     AlertTriangle,
     ArrowDownToLine,
@@ -44,10 +45,11 @@ export function ReviewRecommendationStep({
     const copy = strings.steps.review;
     const { recommendation, fromLLM } = result;
     const [applying, setApplying] = useState(false);
+    const { settings, plugin } = useServiceContext();
 
     const handleAccept = useCallback(async () => {
         setApplying(true);
-        const res = await applyRecommendation(recommendation);
+        const res = await applyRecommendation(recommendation, settings, () => plugin.saveSettings());
         setApplying(false);
         if (!res.success) {
             new Notice(copy.applyAllFailedNotice);
@@ -63,7 +65,7 @@ export function ReviewRecommendationStep({
             new Notice(copy.applySuccessNotice);
         }
         onAccepted();
-    }, [recommendation, onAccepted, copy]);
+    }, [recommendation, onAccepted, copy, settings, plugin]);
 
     return (
         <div className="pkonb-section">

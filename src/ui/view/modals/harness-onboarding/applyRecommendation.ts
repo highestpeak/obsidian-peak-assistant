@@ -11,10 +11,9 @@
  * a follow-up once the capability terminology is established.
  */
 
-import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { lookupModel, type Recommendation } from '@/service/agents/harness/curator';
-import { DEFAULT_HARNESS_SETTINGS, type HarnessSettings } from '@/core/config/settingsTypes';
+import { DEFAULT_HARNESS_SETTINGS, type HarnessSettings, type MyPluginSettings } from '@/core/config/settingsTypes';
 import type { RoleConfig } from '@/core/profiles/types';
 
 export interface ApplyResult {
@@ -27,12 +26,16 @@ export interface ApplyResult {
  * Persist the recommendation into the active plugin settings. Bindings whose
  * provider has no configured profile are skipped (returned in `skippedCapabilities`)
  * so the user can be informed without aborting the whole apply.
+ *
+ * The caller threads `settings` + `saveSettings` from `useServiceContext()`
+ * (T11O Track 6) so this helper does not reach `AppContext.getInstance()`.
  */
-export async function applyRecommendation(rec: Recommendation): Promise<ApplyResult> {
-    // TODO T11M: route through port — caller (ReviewRecommendationStep) is out of Track B
-    // scope; refactor signature when that file is migrated.
-    const ctx = AppContext.getInstance();
-    const current = ctx.settings?.harnessSettings ?? { ...DEFAULT_HARNESS_SETTINGS };
+export async function applyRecommendation(
+    rec: Recommendation,
+    settings: MyPluginSettings | undefined,
+    saveSettings: () => Promise<void>,
+): Promise<ApplyResult> {
+    const current = settings?.harnessSettings ?? { ...DEFAULT_HARNESS_SETTINGS };
     const registry = ProfileRegistry.getInstance();
 
     const skipped: string[] = [];
@@ -63,9 +66,9 @@ export async function applyRecommendation(rec: Recommendation): Promise<ApplyRes
     // bindings are identical, which the user can edit later.
     next.allowEscalation = rec.cascadeEnabled;
 
-    if (ctx.settings) {
-        ctx.settings.harnessSettings = next;
-        await ctx.plugin.saveSettings();
+    if (settings) {
+        settings.harnessSettings = next;
+        await saveSettings();
     }
 
     return { success: applied.length > 0, appliedCapabilities: applied, skippedCapabilities: skipped };

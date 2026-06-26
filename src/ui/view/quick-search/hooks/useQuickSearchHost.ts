@@ -15,14 +15,14 @@
 import { useMemo } from 'react';
 import type { TFile } from 'obsidian';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { AppContext } from '@/app/context/AppContext';
+import type { AIServiceManager } from '@/service/chat/service-manager';
 import { ContextProvider } from '@/service/context/ContextProvider';
 import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
 import { ContinueAnalysisAgent } from '@/service/agents/ContinueAnalysisAgent';
-import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
+import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 import {
 	saveAiAnalyzeResultToMarkdown,
@@ -80,20 +80,30 @@ export interface QuickSearchHost {
 	buildAnalysisMarkdownFromSnapshot(snapshot: CompletedAnalysisSnapshot, query: string, webEnabled: boolean): string;
 
 	// Chat <-> Analysis interop
-	createConvFromAnalysis(payload: Parameters<ReturnType<typeof AppContext.getManager>['createConvFromSearchAIAnalysis']>[0]): Promise<unknown>;
+	createConvFromAnalysis(payload: Parameters<AIServiceManager['createConvFromSearchAIAnalysis']>[0]): Promise<unknown>;
 
 	// History replay duck-type accessor
 	getAnalysisMarkdownForReplay(path: string): Promise<string | null>;
 }
 
 export function useQuickSearchHost(): QuickSearchHost {
-	const { app, manager, plugin, settings, searchClient } = useServiceContext();
+	const {
+		app,
+		manager,
+		plugin,
+		settings,
+		searchClient,
+		aiAnalysisHistoryService,
+		quickSearchBackgroundRuntime,
+		isMockEnv,
+		searchAgent,
+	} = useServiceContext();
 
 	return useMemo<QuickSearchHost>(() => {
 		const enableDevTools = settings.enableDevTools === true;
 		const search = settings.search;
-		const aiAnalysisHistory = AppContext.getAIAnalysisHistoryService();
-		const quickSearchRuntime = AppContext.tryGetQuickSearchBackgroundRuntime();
+		const aiAnalysisHistory = aiAnalysisHistoryService;
+		const quickSearchRuntime = quickSearchBackgroundRuntime;
 
 		return {
 			openVaultPath: async (path, opts) => {
@@ -118,7 +128,7 @@ export function useQuickSearchHost(): QuickSearchHost {
 			getActiveFilePath: () => app.workspace.getActiveFile()?.path ?? null,
 
 			enableDevTools,
-			isMockEnv: AppContext.getInstance().isMockEnv,
+			isMockEnv,
 			autoSaveEnabled: search.aiAnalysisAutoSaveEnabled ?? true,
 			autoSaveFolder: search.aiAnalysisAutoSaveFolder?.trim() || 'ChatFolder/AI-Analysis',
 			analysisHistoryPageSize: search.aiAnalysisHistoryLimit ?? 20,
@@ -139,7 +149,7 @@ export function useQuickSearchHost(): QuickSearchHost {
 			createSynthesizeAgent: () => new SynthesizeAgent(manager),
 			createAIGraphAgent: () => new AIGraphAgent(app, searchClient!, manager),
 			createVaultSearchAgent: () => new VaultSearchAgent(app, plugin.manifest.id, searchClient!, manager),
-			createDocSimpleAgent: () => AppContext.searchAgent(),
+			createDocSimpleAgent: () => searchAgent(),
 			createContinueAnalysisAgent: (rounds) => new ContinueAnalysisAgent({
 				app,
 				pluginId: plugin.manifest.id,
@@ -167,5 +177,5 @@ export function useQuickSearchHost(): QuickSearchHost {
 				return null;
 			},
 		};
-	}, [app, manager, plugin, settings, searchClient]);
+	}, [app, manager, plugin, settings, searchClient, aiAnalysisHistoryService, quickSearchBackgroundRuntime, isMockEnv, searchAgent]);
 }

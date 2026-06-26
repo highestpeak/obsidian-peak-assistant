@@ -3,7 +3,7 @@ import type { UsageLogRow } from '@/core/storage/sqlite/ddl';
 import { Chip } from '@/ui/components/primitives';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
 import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 import { WhatWasThisAbout } from './WhatWasThisAbout';
@@ -102,13 +102,8 @@ export function InlineReceipt(props: MessageReceiptSlotProps) {
 		return () => { cancelled = true; };
 	}, [messageId]);
 
-	const previewEnabled = React.useMemo(() => {
-		try {
-			return AppContext.getSettings().usagePreviewEnabled ?? true;
-		} catch {
-			return true;
-		}
-	}, []);
+	const { settings } = useServiceContext();
+	const previewEnabled = settings.usagePreviewEnabled ?? true;
 
 	if (!row) return null;
 	if (!previewEnabled && row.input_tokens === 0 && row.output_tokens === 0) return null;

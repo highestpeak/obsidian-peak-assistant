@@ -2,6 +2,9 @@ import React from 'react';
 import { ServiceProvider } from '@/ui/context/ServiceContext';
 import { AppContext } from '@/app/context/AppContext';
 import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPanelVault';
+import { SettingsModal } from '@/app/modals/SettingsModal';
+import { AppAnalysisDocVaultWriterAdapter } from '@/app/quick-search/AppAnalysisDocVaultWriterAdapter';
+import { SearchSessionReportAdapter } from '@/app/quick-search/SearchSessionReportAdapter';
 
 /**
  * Factory function to create React elements wrapped with ServiceProvider.
@@ -38,6 +41,16 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			settings: appContext.settings,
 			vaultLintRuntime: appContext.runtimeRegistry.tryGetVaultLintRuntime(),
 			ambientRuntime: appContext.runtimeRegistry.tryGetAmbientRuntime(),
+			vaultReviewRuntime: appContext.runtimeRegistry.tryGetVaultReviewRuntime(),
+			quickSearchBackgroundRuntime: appContext.runtimeRegistry.tryGetQuickSearchBackgroundRuntime(),
+			aiAnalysisHistoryService: appContext.aiAnalysisHistoryService,
+			isMockEnv: appContext.isMockEnv,
+			searchAgent: () => appContext.searchAgentFactory(appContext.manager),
+			settingsActions: {
+				openSettings: () => new SettingsModal(appContext).open(),
+			},
+			analysisDocVaultWriter: new AppAnalysisDocVaultWriterAdapter(),
+			reportSessionPort: new SearchSessionReportAdapter(),
 			copilotPanelVault: composeCopilotPanelVault(appContext),
 			vaultPreview: appContext.vaultPreview,
 			vaultNavigation: appContext.vaultNavigation,

@@ -5,7 +5,6 @@ import { ChatMessage, ChatConversation } from '@/service/chat/types';
 import { useChatViewStore } from '../../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { AppContext } from '@/app/context/AppContext';
 import { useStreamChat } from '../../hooks/useStreamChat';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
 import { openConversationInChat } from '@/ui/view/chat-view/chatNavigation';
@@ -82,7 +81,8 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 	isLastMessage = false,
 }) => {
 	const strings = useChatStrings();
-	const { manager, app, eventBus, viewManager, chatVaultWriter } = useServiceContext();
+	const { manager, app, eventBus, viewManager, chatVaultWriter, settingsActions } = useServiceContext();
+	const openSettings = settingsActions.openSettings;
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 	const activeProject = useChatDataStore((s) => s.activeProject);
 
@@ -564,11 +564,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 						type="button"
 						className="pkchat-msg__action"
 						onClick={() => {
-							// TODO T11O Track 6/7: route through a narrow SettingsActionsPort —
-							// SettingsModal ctor requires AppContext, which is why this site still
-							// reaches for the singleton. Move to ServiceContext-published action.
-							const { SettingsModal } = require('@/app/modals/SettingsModal');
-							new SettingsModal(AppContext.getInstance()).open();
+							openSettings();
 						}}
 					>
 						{strings.message.openSettingsLabel}

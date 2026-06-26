@@ -6,11 +6,28 @@ import { SearchClient } from '@/service/search/SearchClient';
 import type { ViewManager } from '@/app/view/ViewManager';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
+import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
+import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
+import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
+import type { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
+import type { AnalysisDocVaultWriterPort } from '@/service/search/ports/AnalysisDocVaultWriterPort';
+import type { ReportSessionPort } from '@/service/agents/report/ReportSessionPort';
 import type { CopilotPanelHostBundle } from '@/app/copilot/panels/composeCopilotPanelVault';
 import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import type { VaultPreviewPort } from '@/service/preview/VaultPreviewPort';
 import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
 import type { EditorCommandsPort } from '@/service/editor/EditorCommandsPort';
+
+/**
+ * Narrow named-action surface so UI components do not import
+ * `@/app/commands/PeakCommandActions` directly. The app layer composes a
+ * concrete `SettingsActions` and threads it through `ReactElementFactory`.
+ * Track 7 may grow this with the settings-tab actions; today it covers the
+ * single in-message "Open settings" affordance.
+ */
+export interface SettingsActions {
+	openSettings(): void;
+}
 import type { ChatVaultWriterPort } from '@/service/chat/ports/ChatVaultWriterPort';
 import type MyPlugin from 'main';
 
@@ -55,7 +72,15 @@ interface ServiceContextValue {
 	plugin: MyPlugin;
 	vaultLintRuntime: VaultLintRuntime | null;
 	ambientRuntime: AmbientRuntime | null;
+	vaultReviewRuntime: VaultReviewRuntime | null;
+	quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime | null;
+	aiAnalysisHistoryService: AIAnalysisHistoryService;
+	isMockEnv: boolean;
+	searchAgent: () => DocSimpleAgent;
 	settings: MyPluginSettings;
+	settingsActions: SettingsActions;
+	analysisDocVaultWriter: AnalysisDocVaultWriterPort;
+	reportSessionPort: ReportSessionPort;
 	copilotPanelVault: CopilotPanelHostBundle;
 	vaultPreview: VaultPreviewPort;
 	vaultNavigation: VaultNavigationPort;
@@ -82,13 +107,21 @@ export const ServiceProvider: React.FC<{
 	plugin: MyPlugin;
 	vaultLintRuntime: VaultLintRuntime | null;
 	ambientRuntime: AmbientRuntime | null;
+	vaultReviewRuntime: VaultReviewRuntime | null;
+	quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime | null;
+	aiAnalysisHistoryService: AIAnalysisHistoryService;
+	isMockEnv: boolean;
+	searchAgent: () => DocSimpleAgent;
 	settings: MyPluginSettings;
+	settingsActions: SettingsActions;
+	analysisDocVaultWriter: AnalysisDocVaultWriterPort;
+	reportSessionPort: ReportSessionPort;
 	copilotPanelVault: CopilotPanelHostBundle;
 	vaultPreview: VaultPreviewPort;
 	vaultNavigation: VaultNavigationPort;
 	editorCommands: EditorCommandsPort;
 	chatVaultWriter: ChatVaultWriterPort;
-}> = ({ children, app, manager, eventBus, searchClient, viewManager, plugin, vaultLintRuntime, ambientRuntime, settings, copilotPanelVault, vaultPreview, vaultNavigation, editorCommands, chatVaultWriter }) => {
+}> = ({ children, app, manager, eventBus, searchClient, viewManager, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, editorCommands, chatVaultWriter }) => {
 	const value = useMemo<ServiceContextValue>(() => ({
 		app,
 		manager,
@@ -98,13 +131,21 @@ export const ServiceProvider: React.FC<{
 		plugin,
 		vaultLintRuntime,
 		ambientRuntime,
+		vaultReviewRuntime,
+		quickSearchBackgroundRuntime,
+		aiAnalysisHistoryService,
+		isMockEnv,
+		searchAgent,
 		settings,
+		settingsActions,
+		analysisDocVaultWriter,
+		reportSessionPort,
 		copilotPanelVault,
 		vaultPreview,
 		vaultNavigation,
 		editorCommands,
 		chatVaultWriter,
-	}), [app, eventBus, manager, plugin, searchClient, viewManager, vaultLintRuntime, ambientRuntime, settings, copilotPanelVault, vaultPreview, vaultNavigation, editorCommands, chatVaultWriter]);
+	}), [app, eventBus, manager, plugin, searchClient, viewManager, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, editorCommands, chatVaultWriter]);
 
 	return <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>;
 };

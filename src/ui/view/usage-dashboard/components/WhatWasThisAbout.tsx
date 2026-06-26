@@ -4,7 +4,7 @@ import { BrandAvatar } from '../components/charts';
 import type { UsageLogRow } from '@/core/storage/sqlite/ddl';
 import type { ProviderId } from '@/ui/components/primitives/types';
 import type { DetailPanelStrings } from '../UsageDashboard';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 export interface WhatWasThisAboutProps {
 	open: boolean;
@@ -37,15 +37,10 @@ export function WhatWasThisAbout({
 	strings,
 	previewEnabled,
 }: WhatWasThisAboutProps) {
-	const previewFlag = React.useMemo(() => {
-		if (previewEnabled !== undefined) return previewEnabled;
-		try {
-			return AppContext.getSettings().usagePreviewEnabled ?? true;
-		} catch {
-			// AppContext may not be initialized in some test paths.
-			return true;
-		}
-	}, [previewEnabled]);
+	const { settings } = useServiceContext();
+	const previewFlag = previewEnabled !== undefined
+		? previewEnabled
+		: (settings.usagePreviewEnabled ?? true);
 
 	if (!row) return null;
 

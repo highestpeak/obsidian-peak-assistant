@@ -1,18 +1,20 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
 import { useGraphAgentStore, type GraphAgentStep } from '../store/graphAgentStore';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { useQuickSearchHost } from './useQuickSearchHost';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import type { PersistForegroundSessionDeps } from './useSearchSession';
 
 // Persist the foreground session after graph generation so the markdown
 // captures the graph. Only fires when the session is in 'completed' status —
 // avoids spamming saves during analysis. Dynamic import to dodge the
 // hook → session → store cycle.
-function persistAfterGraphReady(): void {
+function persistAfterGraphReady(deps: PersistForegroundSessionDeps): void {
 	const sessionStatus = useSearchSessionStore.getState().status;
 	if (sessionStatus !== 'completed') return;
 	void import('./useSearchSession').then(({ persistForegroundSession }) => {
-		persistForegroundSession();
+		persistForegroundSession(deps);
 	}).catch((e) => console.warn('[useGraphAgent] persist after graph failed:', e));
 }
 
@@ -37,6 +39,13 @@ export function useGraphAgent(
 	const host = useQuickSearchHost();
 	const store = useGraphAgentStore();
 	const abortRef = useRef<AbortController | null>(null);
+	const { settings, eventBus, aiAnalysisHistoryService, analysisDocVaultWriter } = useServiceContext();
+	const persistDeps = useMemo<PersistForegroundSessionDeps>(() => ({
+		settings,
+		historyService: aiAnalysisHistoryService,
+		eventBus,
+		vaultWriter: analysisDocVaultWriter,
+	}), [settings, aiAnalysisHistoryService, eventBus, analysisDocVaultWriter]);
 
 	// Check if we already have cached data for these sources
 	const key = sources.map(s => s.path).sort().join('|');
@@ -102,18 +111,18 @@ export function useGraphAgent(
 					const { graphOutputToLensData } = await import('@/service/agents/ai-graph/graph-output-to-lens');
 					const sourcePaths = sources.map(s => s.path);
 					useGraphAgentStore.getState().setGraphData(graphOutputToLensData(result, sourcePaths));
-					persistAfterGraphReady();
+					persistAfterGraphReady(persistDeps);
 				} else {
 					console.warn('[useGraphAgent] agent returned null, falling back');
 					useGraphAgentStore.getState().addStep({ id: 'fallback', label: 'AI analysis returned no result, using physical links...', status: 'running' });
-					await fallbackToPhysicalGraph(sources);
+					await fallbackToPhysicalGraph(sources, persistDeps);
 					useGraphAgentStore.getState().updateStep('fallback', { status: 'done' });
 				}
 			} catch (err) {
 				if (!controller.signal.aborted) {
 					console.error('[useGraphAgent] error, falling back', err);
 					useGraphAgentStore.getState().addStep({ id: 'fallback', label: 'Error occurred, using physical link data...', status: 'running' });
-					await fallbackToPhysicalGraph(sources);
+					await fallbackToPhysicalGraph(sources, persistDeps);
 					useGraphAgentStore.getState().updateStep('fallback', { status: 'done' });
 				}
 			} finally {
@@ -122,7 +131,7 @@ export function useGraphAgent(
 				}
 			}
 		})();
-	}, [sources, searchQuery, key]);
+	}, [sources, searchQuery, key, persistDeps]);
 
 	return {
 		graphData: isCached ? store.graphData : store.cacheKey === key ? store.graphData : null,
@@ -133,7 +142,7 @@ export function useGraphAgent(
 	};
 }
 
-async function fallbackToPhysicalGraph(sources: SourceItem[]) {
+async function fallbackToPhysicalGraph(sources: SourceItem[], persistDeps: PersistForegroundSessionDeps) {
 	try {
 		const { buildSourcesGraphWithDiscoveredEdges } = await import(
 			'@/service/tools/search-graph-inspector/build-sources-graph'
@@ -158,7 +167,7 @@ async function fallbackToPhysicalGraph(sources: SourceItem[]) {
 			let data: LensGraphData = { nodes, edges, availableLenses: ['topology'] };
 			data = enrichWithCrossDomain(data);
 			useGraphAgentStore.getState().setGraphData(data);
-			persistAfterGraphReady();
+			persistAfterGraphReady(persistDeps);
 		}
 	} catch (err) {
 		console.error('[useGraphAgent] fallback also failed', err);

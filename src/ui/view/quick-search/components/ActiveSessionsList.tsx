@@ -1,7 +1,7 @@
 import React, { useSyncExternalStore } from 'react';
 import { Loader2, CheckCircle, Clock, AlertCircle, X } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import type {
 	QuickSearchBackgroundSessionStatus,
 	QuickSearchBackgroundSessionSummary,
@@ -113,12 +113,13 @@ export interface ActiveSessionsListProps {
 const EMPTY_SESSIONS: QuickSearchBackgroundSessionSummary[] = [];
 
 export const ActiveSessionsList: React.FC<ActiveSessionsListProps> = ({ onRestore }) => {
-    // T10: subscribe via the app-owned background runtime. The runtime
-    // may not be bound yet during early modal mount (rare) — fall back
-    // to an empty list rather than throwing.
+    const { quickSearchBackgroundRuntime } = useServiceContext();
+    // Subscribe via the app-owned background runtime. The runtime may not
+    // be bound yet during early modal mount (rare) — fall back to an empty
+    // list rather than throwing.
     const sessions = useSyncExternalStore(
-        (cb) => AppContext.tryGetQuickSearchBackgroundRuntime()?.subscribe(cb) ?? (() => {}),
-        () => AppContext.tryGetQuickSearchBackgroundRuntime()?.getSessions() ?? EMPTY_SESSIONS,
+        (cb) => quickSearchBackgroundRuntime?.subscribe(cb) ?? (() => {}),
+        () => quickSearchBackgroundRuntime?.getSessions() ?? EMPTY_SESSIONS,
     );
 
     const active = sessions.filter((s) => s.status !== 'completed');
@@ -126,7 +127,7 @@ export const ActiveSessionsList: React.FC<ActiveSessionsListProps> = ({ onRestor
     if (active.length === 0) return null;
 
     const handleCancel = (id: string) => {
-        AppContext.tryGetQuickSearchBackgroundRuntime()?.cancelSession(id);
+        quickSearchBackgroundRuntime?.cancelSession(id);
     };
 
     return (

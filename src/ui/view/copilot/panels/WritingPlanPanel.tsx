@@ -1,7 +1,7 @@
 import React from 'react';
 import { Notice, normalizePath } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { FileText, AlertTriangle, Copy, Save, ExternalLink } from 'lucide-react';
@@ -49,6 +49,7 @@ export const WritingPlanPanel: React.FC<WritingPlanPanelProps> = ({
 	result, ctx, onClose,
 }) => {
 	const { vault } = useCopilotPanelVault();
+	const { settings } = useServiceContext();
 
 	const openNote = (path: string): Promise<void> =>
 		vault.openNote(path, { newLeaf: false });
@@ -87,7 +88,6 @@ export const WritingPlanPanel: React.FC<WritingPlanPanelProps> = ({
 	};
 
 	const handleSaveAsNote = async () => {
-		const settings = AppContext.getInstance().settings;
 		const inboxFolder = (settings as any).inboxFolder ?? '_inbox';
 		const safeName = result.title.replace(/[\\/:*?"<>|]/g, '-');
 

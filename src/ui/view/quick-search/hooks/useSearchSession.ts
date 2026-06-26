@@ -18,21 +18,22 @@ import { useSharedStore } from '../store';
 import { setLastAnalysisHistorySearch, invalidateFollowupContextCache } from '../followupContextRuntime';
 import { useStepDisplayReplayStore } from '../store/stepDisplayReplayStore';
 
-import { AppContext } from '@/app/context/AppContext';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useQuickSearchHost } from './useQuickSearchHost';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import type { UserFeedback } from '@/service/agents/core/types';
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
-import { SearchSessionReportAdapter } from '@/app/quick-search/SearchSessionReportAdapter';
 
 import { consumeStream } from './streamConsumer';
 import type { StreamConsumerContext } from './streamConsumer';
 import { useEventRouter } from './useEventRouter';
 import { useContinueAnalysis } from './useContinueAnalysis';
 import { persistSessionToVault } from '@/service/search/analysisDocPersistence';
-import { AppAnalysisDocVaultWriterAdapter } from '@/app/quick-search/AppAnalysisDocVaultWriterAdapter';
+import type { AnalysisDocVaultWriterPort } from '@/service/search/ports/AnalysisDocVaultWriterPort';
+import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
+import type { EventBus } from '@/core/eventBus';
+import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import { snapshotFromState } from '../store/sessionSnapshot';
 import type { V2SessionSnapshot } from '../store/sessionSnapshot';
 
@@ -46,6 +47,13 @@ export const sessionRefs = {
 	abortController: null as AbortController | null,
 };
 
+export interface PersistForegroundSessionDeps {
+	settings: MyPluginSettings;
+	historyService: AIAnalysisHistoryService;
+	eventBus: EventBus;
+	vaultWriter: AnalysisDocVaultWriterPort;
+}
+
 /**
  * Persist the current foreground session to vault.
  * Called at completion milestones (plan ready / fully complete) and after
@@ -55,17 +63,22 @@ export const sessionRefs = {
  * If existingPath is not supplied, falls back to autoSaveState.lastSavedPath
  * then restoredFromVaultPath, so re-saves after restoring from history
  * overwrite the original markdown instead of creating a new file.
+ *
+ * T11O Track 6: caller threads `settings` / `historyService` / `eventBus` /
+ * `vaultWriter` from `useServiceContext()` so this helper no longer reaches
+ * `AppContext.getInstance()`.
  */
-export function persistForegroundSession(existingPath?: string | null): void {
+export function persistForegroundSession(
+	deps: PersistForegroundSessionDeps,
+	existingPath?: string | null,
+): void {
 	const store = useSearchSessionStore.getState();
 	const snapshot = snapshotFromState(store);
 	const resolvedExistingPath =
 		existingPath ?? store.autoSaveState?.lastSavedPath ?? store.restoredFromVaultPath ?? null;
 
-	// Capture graph JSON from foreground-only stores (not in V2SessionSnapshot)
 	let graphJson: string | null = null;
 	try {
-		// Dynamic import to avoid circular deps — these are UI stores
 		const { exportGraphJson } = require('../store/aiGraphStore');
 		const { useGraphAgentStore } = require('../store/graphAgentStore');
 		graphJson = exportGraphJson() ?? null;
@@ -81,18 +94,14 @@ export function persistForegroundSession(existingPath?: string | null): void {
 		}
 	} catch { /* graph stores not available */ }
 
-	// Module-level lifecycle helper — called from QuickSearchModal.onClose
-	// where no React tree is available, so AppContext.getInstance() is the
-	// correct boundary (cannot use hooks). Documented exception per T11M.
-	const ctx = AppContext.getInstance();
 	void persistSessionToVault(snapshot, {
-		vaultWriter: new AppAnalysisDocVaultWriterAdapter(),
+		vaultWriter: deps.vaultWriter,
 		existingPath: resolvedExistingPath,
 		graphJson,
-		searchSettings: ctx.settings.search,
-		enableDevTools: ctx.settings.enableDevTools === true,
-		historyService: ctx.aiAnalysisHistoryService,
-		eventBus: ctx.eventBus,
+		searchSettings: deps.settings.search,
+		enableDevTools: deps.settings.enableDevTools === true,
+		historyService: deps.historyService,
+		eventBus: deps.eventBus,
 	}).then((result) => {
 		if (result) {
 			useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });
@@ -107,8 +116,23 @@ export function persistForegroundSession(existingPath?: string | null): void {
 export function useSearchSession() {
 	const { searchQuery } = useSharedStore();
 	const store = useSearchSessionStore;
-	const { app, manager, plugin } = useServiceContext();
+	const {
+		app,
+		manager,
+		plugin,
+		settings,
+		eventBus,
+		aiAnalysisHistoryService,
+		analysisDocVaultWriter,
+		reportSessionPort,
+	} = useServiceContext();
 	const host = useQuickSearchHost();
+	const persistDeps = useMemo<PersistForegroundSessionDeps>(() => ({
+		settings,
+		historyService: aiAnalysisHistoryService,
+		eventBus,
+		vaultWriter: analysisDocVaultWriter,
+	}), [settings, aiAnalysisHistoryService, eventBus, analysisDocVaultWriter]);
 
 	const webEnabled = store((s) => s.webEnabled);
 	const analysisMode = store((s) => s.analysisMode);
@@ -260,7 +284,7 @@ export function useSearchSession() {
 				useAIGraphStore.getState().setLoading(false);
 				store.getState().markCompleted();
 				// Persist graph to markdown — aiGraph mode produces the graph as its primary result
-				persistForegroundSession();
+				persistForegroundSession(persistDeps);
 				return;
 			}
 
@@ -324,7 +348,7 @@ export function useSearchSession() {
 		() => {
 			return new ReportOrchestrator(
 				plugin.aiServiceManager,
-				new SearchSessionReportAdapter(),
+				reportSessionPort,
 				app,
 				plugin.manifest.id,
 			);
@@ -348,7 +372,7 @@ export function useSearchSession() {
 				state.query,
 			);
 			// Milestone: report fully generated — persist to vault
-			persistForegroundSession(store.getState().autoSaveState.lastSavedPath);
+			persistForegroundSession(persistDeps, store.getState().autoSaveState.lastSavedPath);
 		} catch (err: any) {
 			store.getState().recordError(err?.message ?? 'Report generation failed');
 		}
@@ -369,7 +393,7 @@ export function useSearchSession() {
 				userPrompt,
 			);
 			// Persist updated section to vault
-			persistForegroundSession(store.getState().autoSaveState.lastSavedPath);
+			persistForegroundSession(persistDeps, store.getState().autoSaveState.lastSavedPath);
 		} catch (err: any) {
 			store.getState().failSection(sectionId, err?.message ?? 'Regeneration failed');
 		}

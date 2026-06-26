@@ -53,7 +53,6 @@ import {
 	Target,
 	type LucideIcon,
 } from 'lucide-react';
-import { AppContext } from '@/app/context/AppContext';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import type { VaultReviewSessionSnapshot } from '@/service/copilot/vault/VaultReviewSession';
@@ -148,7 +147,7 @@ export const VaultAutoRunContent: React.FC<{
 	initialSnapshot?: VaultReviewSessionSnapshot;
 	onClose: () => void;
 }> = ({ mode, initialSnapshot, onClose }) => {
-	const { vaultNavigation } = useServiceContext();
+	const { vaultNavigation, vaultReviewRuntime } = useServiceContext();
 	const readOnly = Boolean(initialSnapshot);
 	const controllerRef = useRef<AbortController | null>(null);
 	const [snapshot, setSnapshot] = useState<VaultReviewSessionSnapshot | null>(initialSnapshot ?? null);
@@ -161,7 +160,7 @@ export const VaultAutoRunContent: React.FC<{
 	// Live-run lifecycle
 	useEffect(() => {
 		if (readOnly) return;
-		const runtime = AppContext.tryGetVaultReviewRuntime();
+		const runtime = vaultReviewRuntime;
 		if (!runtime) {
 			console.warn('[VaultAutoRunModal] vault review runtime not bound');
 			return;
@@ -184,7 +183,7 @@ export const VaultAutoRunContent: React.FC<{
 
 	// Load previous review (for "since last review" deltas)
 	useEffect(() => {
-		const runtime = AppContext.tryGetVaultReviewRuntime();
+		const runtime = vaultReviewRuntime;
 		if (!runtime) return;
 		let cancelled = false;
 		(async () => {
@@ -205,7 +204,7 @@ export const VaultAutoRunContent: React.FC<{
 	// Progressive checkpoint
 	useEffect(() => {
 		if (readOnly || !snapshot) return;
-		const runtime = AppContext.tryGetVaultReviewRuntime();
+		const runtime = vaultReviewRuntime;
 		if (!runtime) return;
 		const cs = snapshot.collectorSnapshot;
 		const hasOutput =
@@ -754,7 +753,7 @@ function Empty({ label }: { label: string }) {
 // ─── Clusters panel ─────────────────────────────────────────────────────
 
 const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = ({ snapshot }) => {
-	const { vaultNavigation } = useServiceContext();
+	const { vaultNavigation, vaultReviewRuntime } = useServiceContext();
 	const openNote = (path: string) => vaultNavigation.openLink(path, { newLeaf: 'tab' });
 	const observations = snapshot?.collectorSnapshot.clusterObservations ?? [];
 	const digestClusters = snapshot?.digest?.clusters ?? [];
@@ -770,7 +769,7 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 
 	useEffect(() => {
 		if (!selectedId) { setMembers([]); return; }
-		const runtime = AppContext.tryGetVaultReviewRuntime();
+		const runtime = vaultReviewRuntime;
 		if (!runtime) { setMembers([]); return; }
 		let cancelled = false;
 		setMembersLoading(true);
@@ -780,7 +779,7 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 			if (!cancelled) { setMembers([]); setMembersLoading(false); }
 		});
 		return () => { cancelled = true; };
-	}, [selectedId]);
+	}, [selectedId, vaultReviewRuntime]);
 
 	if (digestClusters.length === 0) {
 		return <Empty label="No cluster data available. Vault community detection may still be initialising." />;
