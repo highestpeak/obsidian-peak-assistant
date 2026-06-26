@@ -6,7 +6,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import {
     detectEnvironment,
@@ -40,6 +40,7 @@ export function RunningCuratorStep({
     onError,
     onCancel,
 }: RunningCuratorStepProps) {
+    const { app } = useServiceContext();
     const strings = useOnboardingStrings();
     const copy = strings.steps.running;
     const onSuccessRef = useRef(onSuccess);
@@ -61,7 +62,6 @@ export function RunningCuratorStep({
 
         async function run(bs: BootstrapSelection): Promise<void> {
             try {
-                const app = AppContext.getInstance().app;
                 const env = await detectEnvironment({ app });
                 const ctx: CuratorContext = { env, preferences };
                 if (!isCatalogLoaded()) {

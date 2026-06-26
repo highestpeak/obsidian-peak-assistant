@@ -3,7 +3,7 @@ import React from 'react';
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import { Check, X } from 'lucide-react';
 
 interface ContinueWritingPanelProps {
@@ -15,12 +15,11 @@ interface ContinueWritingPanelProps {
 export const ContinueWritingPanel: React.FC<ContinueWritingPanelProps> = ({
 	result, file, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
+
 	const handleInsert = async () => {
-		const app = AppContext.getInstance().app;
 		try {
-			const current = await app.vault.read(file);
-			const separator = current.endsWith('\n') ? '' : '\n';
-			await app.vault.modify(file, current + separator + result);
+			await vault.appendToFile(file, result);
 			new Notice('Continuation appended to document.');
 			onClose();
 		} catch (e) {

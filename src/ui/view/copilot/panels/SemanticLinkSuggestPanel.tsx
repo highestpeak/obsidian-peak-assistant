@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import { Share2, Check } from 'lucide-react';
 
 interface SemanticLinkSuggestion {
@@ -27,6 +27,7 @@ interface SemanticLinkSuggestPanelProps {
 export const SemanticLinkSuggestPanel: React.FC<SemanticLinkSuggestPanelProps> = ({
   result, file, originalContent, onClose,
 }) => {
+  const { vault } = useCopilotPanelVault();
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
 
   const toggle = (i: number) => {
@@ -40,14 +41,13 @@ export const SemanticLinkSuggestPanel: React.FC<SemanticLinkSuggestPanelProps> =
   const selectedItems = result.suggestions.filter((_, i) => selected.has(i));
 
   const handleInsert = async () => {
-    const app = AppContext.getInstance().app;
     try {
-      let content = await app.vault.read(file);
+      let content = await vault.readFileContent(file);
       // Append links section at the end of the document
       const linkLines = selectedItems.map(s => `- [[${s.path.replace(/\.md$/, '')}|${s.title}]]`);
       const linkSection = `\n\n## Related Notes\n\n${linkLines.join('\n')}\n`;
       content += linkSection;
-      await app.vault.modify(file, content);
+      await vault.replaceFileContent(file, content);
       new Notice(`Inserted ${selectedItems.length} link${selectedItems.length !== 1 ? 's' : ''}.`);
       onClose();
     } catch (e) {

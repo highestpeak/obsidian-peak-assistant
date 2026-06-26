@@ -14,7 +14,7 @@
 import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { lookupModel, type Recommendation } from '@/service/agents/harness/curator';
-import { DEFAULT_HARNESS_SETTINGS, type HarnessSettings } from '@/app/settings/types';
+import { DEFAULT_HARNESS_SETTINGS, type HarnessSettings } from '@/core/config/settingsTypes';
 import type { RoleConfig } from '@/core/profiles/types';
 
 export interface ApplyResult {
@@ -29,6 +29,8 @@ export interface ApplyResult {
  * so the user can be informed without aborting the whole apply.
  */
 export async function applyRecommendation(rec: Recommendation): Promise<ApplyResult> {
+    // TODO T11M: route through port — caller (ReviewRecommendationStep) is out of Track B
+    // scope; refactor signature when that file is migrated.
     const ctx = AppContext.getInstance();
     const current = ctx.settings?.harnessSettings ?? { ...DEFAULT_HARNESS_SETTINGS };
     const registry = ProfileRegistry.getInstance();

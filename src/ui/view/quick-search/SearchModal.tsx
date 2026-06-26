@@ -14,13 +14,12 @@ import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
 import { useSearchSession } from './hooks/useSearchSession';
 import { Notice, TFile } from 'obsidian';
-import { AppContext } from '@/app/context/AppContext';
+import { useQuickSearchHost } from './hooks/useQuickSearchHost';
 import { SearchQueryEvent } from '@/core/eventBus';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { formatDuration } from '@/core/utils/format-utils';
 import { InspectorSidePanel } from './components/inspector/InspectorSidePanel';
 import { isMobile } from '@/core/platform';
-import { ContextProvider } from '@/service/context/ContextProvider';
 import { matchPatterns, type MatchedSuggestion } from '@/service/context/PatternMatcher';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SuggestionGrid } from './components/SuggestionGrid';
@@ -80,7 +79,8 @@ export const PRESET_LABELS: Record<AnalysisMode, { short: string; full: string; 
 
 const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActiveTab }) => {
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
-	const { app } = useServiceContext();
+	const { app, eventBus } = useServiceContext();
+	const host = useQuickSearchHost();
 	const { searchQuery, setSearchQuery, recentQueries, clearRecentQueries } = useSharedStore();
 	const webEnabled = useSearchSessionStore((s) => s.webEnabled);
 	const toggleWeb = useSearchSessionStore((s) => s.toggleWeb);
@@ -98,9 +98,9 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	// static field; the modal-opener adapter writes the id before the
 	// new modal mounts.
 	useEffect(() => {
-		const pendingId = AppContext.tryGetQuickSearchBackgroundRuntime()?.consumePendingRestore();
+		const pendingId = host.quickSearchRuntime?.consumePendingRestore();
 		if (pendingId) restoreFromBackground(pendingId);
-	}, [restoreFromBackground]);
+	}, [restoreFromBackground, host.quickSearchRuntime]);
 
 	const isAnalyzing = sessionStatus === 'starting' || sessionStatus === 'streaming';
 	const analysisCompleted = sessionStatus === 'completed';
@@ -109,7 +109,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 		if (!searchQuery.trim()) return;
 		useSharedStore.getState().addRecentQuery(searchQuery.trim());
 		try {
-			AppContext.getEventBus().dispatch(new SearchQueryEvent({ query: searchQuery.trim() }));
+			eventBus.dispatch(new SearchQueryEvent({ query: searchQuery.trim() }));
 		} catch { /* EventBus may not be initialized */ }
 		performAnalysis(undefined, undefined);
 	};
@@ -190,13 +190,13 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					conditions: typeof r.conditions === 'string' ? JSON.parse(r.conditions) : r.conditions,
 					discovered_at: typeof r.discovered_at === 'number' ? new Date(r.discovered_at).toISOString() : r.discovered_at,
 				}));
-				const ctxProvider = new ContextProvider(AppContext.getInstance().app);
+				const ctxProvider = host.createContextProvider();
 				const ctx = ctxProvider.collect();
 				setSuggestions(matchPatterns(patterns, ctx, 6));
 			} catch { setSuggestions([]); }
 		})();
 
-		AppContext.getInstance().aiAnalysisHistoryService.count()
+		host.aiAnalysisHistory.count()
 			.then(setTotalAnalysisCount).catch(() => {});
 	}, []);
 
@@ -394,12 +394,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 									md = await app.vault.read(file);
 								}
 								if (!md) {
-									const svc = AppContext.getInstance().aiAnalysisHistoryService as {
-										getMarkdownForReplay?: (p: string) => Promise<string | null>;
-									};
-									if (typeof svc.getMarkdownForReplay === 'function') {
-										md = await svc.getMarkdownForReplay(path);
-									}
+									md = await host.getAnalysisMarkdownForReplay(path);
 								}
 								if (!md) {
 									new Notice('Analysis file not found in vault.');

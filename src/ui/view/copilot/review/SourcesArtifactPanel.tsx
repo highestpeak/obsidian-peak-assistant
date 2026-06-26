@@ -1,25 +1,17 @@
 import React from 'react';
-import { TFile } from 'obsidian';
 import { BookOpen, ExternalLink, FileSearch } from 'lucide-react';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { SourceArtifact } from '@/service/copilot/CopilotRunArtifacts';
-
-const openNote = async (path: string): Promise<void> => {
-	const app = AppContext.getInstance().app;
-	const file = app.vault.getAbstractFileByPath(path);
-	if (file instanceof TFile) {
-		// 'tab' opens in a new tab, leaving the current note (and this modal's
-		// context) intact. Matches what a user expects when clicking a citation.
-		await app.workspace.getLeaf('tab').openFile(file);
-		return;
-	}
-	// Fall back to openLinkText with newLeaf=true for the same reason.
-	app.workspace.openLinkText(path, '', true);
-};
 
 export const SourcesArtifactPanel: React.FC<{
 	sources: SourceArtifact[];
 }> = ({ sources }) => {
+	const { vault } = useCopilotPanelVault();
+
+	const openNote = (path: string): Promise<void> =>
+		// 'tab' opens in a new tab, leaving the current note intact.
+		vault.openNote(path, { newLeaf: 'tab' });
+
 	if (sources.length === 0) {
 		return (
 			<div className="pktw-flex pktw-h-full pktw-items-center pktw-justify-center pktw-text-sm pktw-text-muted-foreground">

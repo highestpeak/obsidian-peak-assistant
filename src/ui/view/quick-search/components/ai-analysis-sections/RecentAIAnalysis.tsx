@@ -2,11 +2,10 @@ import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore }
 import { History, Blend, Brain, Loader2, FileText, Clock, X } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
-import { AppContext } from '@/app/context/AppContext';
+import { useQuickSearchHost } from '../../hooks/useQuickSearchHost';
 import { CompletedAnalysisSnapshot, loadCompletedAnalysisSnapshot } from '../../store/aiAnalysisStore';
 import type { AnalysisMode } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
-import { TFile } from 'obsidian';
 import { humanReadableTime } from '@/core/utils/date-utils';
 import { parse as parseAiSearchAnalysisDoc, toCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 import { useSharedStore } from '../../store/sharedStore';
@@ -83,35 +82,37 @@ const EMPTY_SESSIONS: QuickSearchBackgroundSessionSummary[] = [];
 export const RecentAIAnalysis: React.FC<{
     onClose?: () => void;
 }> = ({ onClose }) => {
+    const host = useQuickSearchHost();
+    const quickSearchRuntime = host.quickSearchRuntime;
 
     // T10: subscribe + restore + cancel all flow through the app-owned
-    // runtime. The runtime + modal-opener adapter own the static
-    // pending-restore state that used to live on `BackgroundSessionManager`.
+    // runtime exposed by `useQuickSearchHost()`. The runtime + modal-opener
+    // adapter own the static pending-restore state that used to live on
+    // `BackgroundSessionManager`.
     const bgSessions = useSyncExternalStore(
-        (cb) => AppContext.tryGetQuickSearchBackgroundRuntime()?.subscribe(cb) ?? (() => {}),
-        () => AppContext.tryGetQuickSearchBackgroundRuntime()?.getSessions() ?? EMPTY_SESSIONS,
+        (cb) => quickSearchRuntime?.subscribe(cb) ?? (() => {}),
+        () => quickSearchRuntime?.getSessions() ?? EMPTY_SESSIONS,
     );
 
     const handleRestore = useCallback((sessionId: string) => {
-        const runtime = AppContext.tryGetQuickSearchBackgroundRuntime();
-        if (!runtime) return;
+        if (!quickSearchRuntime) return;
         onClose?.();
         // Open a new modal after a tick so the pending restore lands in
         // `consumePendingRestore()` on the new mount.
-        setTimeout(() => runtime.openAndRestore(sessionId), 100);
-    }, [onClose]);
+        setTimeout(() => quickSearchRuntime.openAndRestore(sessionId), 100);
+    }, [onClose, quickSearchRuntime]);
 
     const handleCancelBg = useCallback((sessionId: string) => {
-        AppContext.tryGetQuickSearchBackgroundRuntime()?.cancelSession(sessionId);
-    }, []);
+        quickSearchRuntime?.cancelSession(sessionId);
+    }, [quickSearchRuntime]);
 
     const [recentRecords, setRecentRecords] = useState<AIAnalysisHistoryRecord[]>([]);
     const [recentOffset, setRecentOffset] = useState(0);
     const [recentHasMore, setRecentHasMore] = useState(true);
     const [recentTotal, setRecentTotal] = useState<number | null>(null);
-    const historyPageSize = AppContext.getInstance().settings.search.aiAnalysisHistoryLimit!;
-    const autoSaveEnabled = AppContext.getInstance().settings.search.aiAnalysisAutoSaveEnabled!;
-    const aiAnalysisHistoryService = AppContext.getInstance().aiAnalysisHistoryService;
+    const historyPageSize = host.analysisHistoryPageSize;
+    const autoSaveEnabled = host.autoSaveEnabled;
+    const aiAnalysisHistoryService = host.aiAnalysisHistory;
     const recentListRef = useRef<HTMLDivElement>(null);
     const recentSentinelRef = useRef<HTMLDivElement>(null);
 
@@ -120,16 +121,9 @@ export const RecentAIAnalysis: React.FC<{
         createdAtTs?: number
     ): Promise<{ snapshot: CompletedAnalysisSnapshot; query: string } | null> => {
         try {
-            let md: string | null = null;
-            const file = AppContext.getInstance().app.vault.getAbstractFileByPath(vaultRelPath);
-            if (file && file instanceof TFile) {
-                md = await AppContext.getInstance().app.vault.read(file);
-            }
+            let md = await host.readVaultFileText(vaultRelPath);
             if (!md) {
-                const svc = aiAnalysisHistoryService as { getMarkdownForReplay?: (path: string) => Promise<string | null> };
-                if (typeof svc.getMarkdownForReplay === 'function') {
-                    md = await svc.getMarkdownForReplay(vaultRelPath);
-                }
+                md = await host.getAnalysisMarkdownForReplay(vaultRelPath);
             }
             if (!md) return null;
             const docModel = parseAiSearchAnalysisDoc(md);
@@ -252,7 +246,7 @@ export const RecentAIAnalysis: React.FC<{
         }
     };
 
-    const saveFolder = AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder?.trim() || 'ChatFolder/AI-Analysis';
+    const saveFolder = host.autoSaveFolder;
 
     return (
         <div className="pktw-bg-pk-background pktw-rounded-lg pktw-p-4 pktw-border pktw-border-pk-border">

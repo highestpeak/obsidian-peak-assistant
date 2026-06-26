@@ -17,11 +17,34 @@ export interface TemplateContentProvider {
 /**
  * On-demand template loader with caching and Handlebars rendering.
  * Use clear() on plugin unload to release memory.
+ *
+ * T11M: a process-wide singleton accessor (`getInstance` / `setInstance`)
+ * lets UI string loaders fetch the manager without reaching through
+ * `AppContext.getInstance().manager.getTemplateManager()`. The singleton
+ * is bound from `main.ts` after construction and cleared on `onunload`.
  */
 export class TemplateManager {
 	private readonly contentCache = new Map<TemplateId, string>();
 	private readonly compiledCache = new Map<TemplateId, CompiledTemplate>();
 	private customOverrides: Partial<Record<TemplateId, string>> = {};
+
+	private static instance: TemplateManager | null = null;
+
+	/** Bind the process-wide instance — called once from plugin boot. */
+	static setInstance(tm: TemplateManager | null): void {
+		TemplateManager.instance = tm;
+	}
+
+	/**
+	 * Read the bound instance. UI string loaders (chatStrings, settingsStrings,
+	 * onboardingStrings, InlineReceipt, ContextRing, UsageDashboard,
+	 * CuratorPushModal) call this so they do not need to reach into
+	 * `AppContext`. Returns `null` if boot has not bound yet — callers handle
+	 * the null case (fall back to compiled defaults).
+	 */
+	static getInstance(): TemplateManager | null {
+		return TemplateManager.instance;
+	}
 
 	constructor(
 		private readonly provider: TemplateContentProvider,

@@ -51,12 +51,12 @@ import {
 import { Switch } from '@/ui/component/shared-ui/switch';
 import { Input } from '@/ui/component/shared-ui/input';
 import { NumberInputWithConfirm } from '@/ui/component/shared-ui/number-input';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { IndexLevel } from '@/service/search/index/types';
 import type { DocumentType } from '@/core/document/types';
-import type { MyPluginSettings, HarnessSettings } from '@/app/settings/types';
+import type { MyPluginSettings, HarnessSettings } from '@/core/config/settingsTypes';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 
 interface KnowledgeIndexTabProps {
@@ -91,6 +91,7 @@ interface ReadinessSnapshot {
 }
 
 function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
+    const { app, plugin } = useServiceContext();
     const snap = useReadinessSnapshot(settings.search.indexLevel);
     const coveragePct =
         snap.indexedDocs != null && snap.totalDocs > 0
@@ -214,7 +215,7 @@ function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
                             <Row.Desc>Update changed notes</Row.Desc>
                         </Row.Body>
                         <Row.Right>
-                            <Button size="sm" onClick={triggerFastIndex}>
+                            <Button size="sm" onClick={() => triggerFastIndex(app, plugin)}>
                                 <RefreshCw className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
                                 Update now
                             </Button>
@@ -227,6 +228,7 @@ function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
 }
 
 function useReadinessSnapshot(currentLevel: IndexLevel): ReadinessSnapshot {
+    const { app } = useServiceContext();
     const [snap, setSnap] = useState<ReadinessSnapshot>({
         storeReady: false,
         indexedDocs: null,
@@ -240,7 +242,7 @@ function useReadinessSnapshot(currentLevel: IndexLevel): ReadinessSnapshot {
         let cancelled = false;
         void (async () => {
             const storeReady = sqliteStoreManager.isInitialized();
-            const totalDocs = AppContext.getInstance().app.vault.getMarkdownFiles().length;
+            const totalDocs = app.vault.getMarkdownFiles().length;
             const semanticReady =
                 ProfileRegistry.getInstance().getActiveEmbeddingProfile() !== null;
 
@@ -276,16 +278,15 @@ function useReadinessSnapshot(currentLevel: IndexLevel): ReadinessSnapshot {
     return snap;
 }
 
-function triggerFastIndex() {
+function triggerFastIndex(app: import('obsidian').App, plugin: import('main').default) {
     void (async () => {
         try {
             const { IndexInitializer } = await import('@/service/search/index/indexInitializer');
-            const ctx = AppContext.getInstance();
-            const level: IndexLevel = ctx.plugin.settings.search.indexLevel ?? 'fast';
+            const level: IndexLevel = plugin.settings.search.indexLevel ?? 'fast';
             const initializer = new IndexInitializer(
-                ctx.app,
-                ctx.plugin.settings.search,
-                ctx.plugin.settings.dataStorageFolder ?? '',
+                app,
+                plugin.settings.search,
+                plugin.settings.dataStorageFolder ?? '',
             );
             await initializer.performStagedFullIndexing(true, level);
         } catch (e) {
@@ -387,6 +388,7 @@ function IndexBehaviorSection({
     settings: MyPluginSettings;
     settingsUpdates: SettingsUpdates;
 }) {
+    const { app, plugin } = useServiceContext();
     const { updateSearch, updateDocumentType } = settingsUpdates;
     const [editingPatterns, setEditingPatterns] = useState(false);
     const [patternsText, setPatternsText] = useState('');
@@ -423,11 +425,10 @@ function IndexBehaviorSection({
                     const { IndexInitializer } = await import(
                         '@/service/search/index/indexInitializer'
                     );
-                    const ctx = AppContext.getInstance();
                     const initializer = new IndexInitializer(
-                        ctx.app,
-                        ctx.plugin.settings.search,
-                        ctx.plugin.settings.dataStorageFolder ?? '',
+                        app,
+                        plugin.settings.search,
+                        plugin.settings.dataStorageFolder ?? '',
                     );
                     initializer.performStagedFullIndexing(true, level);
                 } catch (e) {
@@ -435,7 +436,7 @@ function IndexBehaviorSection({
                 }
             })();
         },
-        [updateSearch],
+        [updateSearch, app, plugin],
     );
 
     const handleLevelPick = useCallback(
@@ -1174,6 +1175,7 @@ function AdvancedChunkingDisclosure({
  * ───────────────────────────────────────────────────────────────────────── */
 
 function AdvancedRebuildDisclosure() {
+    const { app, plugin } = useServiceContext();
     return (
         <div className="pkset-section">
             <details>
@@ -1199,7 +1201,7 @@ function AdvancedRebuildDisclosure() {
                 </summary>
                 <div className="pk-disclosure-body">
                     <div className="pkset-action-strip">
-                        <Button variant="outline" size="sm" onClick={triggerFastIndex}>
+                        <Button variant="outline" size="sm" onClick={() => triggerFastIndex(app, plugin)}>
                             <RefreshCw className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
                             Full re-index
                         </Button>

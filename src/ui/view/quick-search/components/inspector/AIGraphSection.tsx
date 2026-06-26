@@ -3,10 +3,10 @@ import { ExternalLink, Network } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import { humanReadableTime } from '@/core/utils/date-utils';
-import { AppContext } from '@/app/context/AppContext';
 import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 import { useSharedStore } from '../../store';
 import { useSearchSessionStore } from '../../store/searchSessionStore';
+import { useQuickSearchHost } from '../../hooks/useQuickSearchHost';
 
 export interface AIGraphSectionProps {
 	currentPath: string;
@@ -17,6 +17,7 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 	currentPath,
 	searchQuery,
 }) => {
+	const host = useQuickSearchHost();
 	const [pastResult, setPastResult] = useState<AIAnalysisHistoryRecord | null>(null);
 	const [loading, setLoading] = useState(true);
 
@@ -27,7 +28,7 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 		let cancelled = false;
 		setLoading(true);
 
-		const svc = AppContext.getAIAnalysisHistoryService();
+		const svc = host.aiAnalysisHistory;
 		svc.findRelatedAIGraph(searchQuery)
 			.then((result) => {
 				if (!cancelled) {
@@ -47,7 +48,7 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 
 	const handleOpenPastResult = () => {
 		if (!pastResult?.vault_rel_path) return;
-		AppContext.getInstance().app.workspace.openLinkText(pastResult.vault_rel_path, '', 'window' as any);
+		host.openVaultPath(pastResult.vault_rel_path, { newLeaf: 'window' });
 	};
 
 	const handleGenerate = () => {

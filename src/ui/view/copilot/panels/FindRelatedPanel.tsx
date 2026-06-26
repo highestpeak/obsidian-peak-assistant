@@ -1,7 +1,7 @@
 // src/ui/view/copilot/panels/FindRelatedPanel.tsx
 import React from 'react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { FindRelatedResult } from '@/service/copilot/actions';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { Search, ExternalLink } from 'lucide-react';
@@ -15,13 +15,9 @@ interface FindRelatedPanelProps {
 export const FindRelatedPanel: React.FC<FindRelatedPanelProps> = ({
 	result, ctx, onClose,
 }) => {
-	const openNote = async (path: string) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file && 'extension' in file) {
-			await app.workspace.getLeaf(false).openFile(file as any);
-		}
-	};
+	const { vault } = useCopilotPanelVault();
+	const openNote = (path: string): Promise<void> =>
+		vault.openNote(path, { newLeaf: false });
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full">

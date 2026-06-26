@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, X } from 'lucide-react';
-import { AppContext } from '@/app/context/AppContext';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
 
 export function SearchUpgradePrompt() {
+	const host = useQuickSearchHost();
 	const [visible, setVisible] = useState(false);
 
 	useEffect(() => {
 		try {
-			const ctx = AppContext.getInstance();
-			const settings = ctx.settings;
-			if (!settings) return;
-			if (settings.search.indexLevel !== 'fast') return;
+			if (host.indexLevel !== 'fast') return;
 
-			const dismissedAt = settings.search.searchUpgradePromptDismissedAt;
+			const dismissedAt = host.searchUpgradePromptDismissedAt;
 			if (dismissedAt && Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000) return;
 
 			const db = sqliteStoreManager.getDatabase('vault');
@@ -30,20 +28,11 @@ export function SearchUpgradePrompt() {
 
 	const handleDismiss = () => {
 		setVisible(false);
-		try {
-			const ctx = AppContext.getInstance();
-			if (ctx.settings) {
-				ctx.settings.search.searchUpgradePromptDismissedAt = Date.now();
-				ctx.plugin.saveSettings();
-			}
-		} catch {}
+		void host.setSearchUpgradePromptDismissed();
 	};
 
 	const handleOpenSettings = () => {
-		try {
-			const ctx = AppContext.getInstance();
-			(ctx.app as any).setting?.open?.();
-		} catch {}
+		host.openObsidianSettings();
 	};
 
 	if (!visible) return null;

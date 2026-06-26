@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { AddEvidence } from '@/service/copilot/copilot-schemas';
 import { Check, ExternalLink, BookOpen } from 'lucide-react';
 
@@ -15,6 +15,7 @@ interface AddEvidencePanelProps {
 export const AddEvidencePanel: React.FC<AddEvidencePanelProps> = ({
 	result, ctx, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const [selected, setSelected] = useState<Set<number>>(() => new Set());
 
 	const toggle = (i: number) => {
@@ -28,19 +29,14 @@ export const AddEvidencePanel: React.FC<AddEvidencePanelProps> = ({
 	const selectedCount = selected.size;
 
 	const handleOpenNote = (path: string) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file) {
-			app.workspace.openLinkText(path, '', false);
-		} else {
+		vault.openNote(path, { newLeaf: false }).catch(() => {
 			new Notice(`File not found: ${path}`);
-		}
+		});
 	};
 
 	const handleInsert = () => {
-		const app = AppContext.getInstance().app;
 		try {
-			const editor = app.workspace.activeEditor?.editor;
+			const editor = (window as any).app?.workspace?.activeEditor?.editor;
 			if (!editor) {
 				new Notice('No active editor found.');
 				return;

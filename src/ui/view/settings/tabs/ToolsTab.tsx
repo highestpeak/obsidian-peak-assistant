@@ -11,7 +11,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, Globe, Sparkles, User } from 'lucide-react';
 import { Row, Chip, Pill } from '@/ui/components/primitives';
-import type { MyPluginSettings } from '@/app/settings/types';
+import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import { MCPServerSection } from '../components/MCPServerSection';
 import { useSettingsStrings } from '../settingsStrings';

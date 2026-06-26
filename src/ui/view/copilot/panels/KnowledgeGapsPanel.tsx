@@ -2,7 +2,7 @@
 import React from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { KnowledgeGaps } from '@/service/copilot/copilot-schemas';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { HelpCircle, AlertTriangle, AlertCircle, Info, FilePlus, type LucideIcon } from 'lucide-react';
@@ -22,6 +22,8 @@ interface KnowledgeGapsPanelProps {
 export const KnowledgeGapsPanel: React.FC<KnowledgeGapsPanelProps> = ({
 	result, ctx, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
+
 	const sortedGaps = [...result.gaps].sort((a, b) => {
 		const orderA = PRIORITY_CONFIG[a.priority]?.order ?? 3;
 		const orderB = PRIORITY_CONFIG[b.priority]?.order ?? 3;
@@ -29,12 +31,10 @@ export const KnowledgeGapsPanel: React.FC<KnowledgeGapsPanelProps> = ({
 	});
 
 	const handleCreate = async (suggestedTitle: string, description: string) => {
-		const app = AppContext.getInstance().app;
 		try {
 			const parentFolder = ctx.file.parent?.path ?? '';
-			const path = parentFolder ? `${parentFolder}/${suggestedTitle}.md` : `${suggestedTitle}.md`;
 			const content = `# ${suggestedTitle}\n\n${description}\n\n---\nIdentified as a knowledge gap from [[${ctx.title}]].\n`;
-			await app.vault.create(path, content);
+			await vault.createNoteInFolder(parentFolder, suggestedTitle, content);
 			new Notice(`Created note: ${suggestedTitle}`);
 		} catch (e) {
 			new Notice(`Failed to create note: ${(e as Error).message}`);

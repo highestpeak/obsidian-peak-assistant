@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { PromptId } from '@/service/prompt/PromptId';
 import type { ReviewResult } from '@/service/copilot/copilot-schemas';
 import { PolishPanel } from './PolishPanel';
@@ -27,6 +27,7 @@ interface ReviewPanelProps {
 export const ReviewPanel: React.FC<ReviewPanelProps> = ({
   result, file, scope, originalContent, selectedText, onClose,
 }) => {
+  const { manager } = useServiceContext();
   const [fixedIndices, setFixedIndices] = useState<Set<number>>(new Set());
   const [fixingIndex, setFixingIndex] = useState<number | null>(null);
   const [fixResult, setFixResult] = useState<string | null>(null);
@@ -37,7 +38,6 @@ export const ReviewPanel: React.FC<ReviewPanelProps> = ({
     setFixingIndex(index);
     setIsFixLoading(true);
     try {
-      const manager = AppContext.getInstance().manager;
       const content = scope === 'selection' && selectedText ? selectedText : originalContent;
       const fixed = await manager.queryText(PromptId.DocPolish, {
         content,

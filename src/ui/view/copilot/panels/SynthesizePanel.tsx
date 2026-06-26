@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { SynthesizeResult } from '@/service/copilot/actions';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { Layers, ChevronDown, ChevronRight, ExternalLink, FilePlus } from 'lucide-react';
@@ -16,27 +16,20 @@ interface SynthesizePanelProps {
 export const SynthesizePanel: React.FC<SynthesizePanelProps> = ({
 	result, ctx, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const [sourcesOpen, setSourcesOpen] = useState(false);
 
-	const openNote = async (path: string) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file && 'extension' in file) {
-			await app.workspace.getLeaf(false).openFile(file as any);
-		}
-	};
+	const openNote = (path: string): Promise<void> =>
+		vault.openNote(path, { newLeaf: false });
 
 	const handleCreateNote = async () => {
-		const app = AppContext.getInstance().app;
 		try {
 			const title = `${ctx.title} - Synthesis`;
 			const parentFolder = ctx.file.parent?.path ?? '';
-			const path = parentFolder ? `${parentFolder}/${title}.md` : `${title}.md`;
-
 			const sourceLinks = result.sources.map(s => `- [[${s.title}]]`).join('\n');
 			const content = `# ${title}\n\n${result.text}\n\n---\n## Sources\n${sourceLinks}\n`;
 
-			await app.vault.create(path, content);
+			await vault.createNoteInFolder(parentFolder, title, content);
 			new Notice(`Created synthesis note: ${title}`);
 		} catch (e) {
 			new Notice(`Failed to create note: ${(e as Error).message}`);

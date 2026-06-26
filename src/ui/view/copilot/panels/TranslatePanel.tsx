@@ -1,7 +1,7 @@
 import React from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import { Languages } from 'lucide-react';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 
@@ -19,6 +19,7 @@ interface TranslatePanelProps {
 export const TranslatePanel: React.FC<TranslatePanelProps> = ({
 	result, ctx, onClose, file: fileProp, scope: scopeProp, originalContent: origProp, selectedText,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const file = fileProp ?? ctx.file;
 	const scope = scopeProp ?? ctx.scope;
 	const original = scope === 'selection' && (selectedText ?? ctx.selection)
@@ -27,15 +28,15 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({
 	const translated = result;
 
 	const handleApply = async () => {
-		const app = AppContext.getInstance().app;
 		try {
 			if (scope === 'selection') {
-				const editor = app.workspace.activeEditor?.editor;
+				// activeEditor is not in the vault port; access via Obsidian global.
+				const editor = (window as any).app?.workspace?.activeEditor?.editor;
 				if (editor) {
 					editor.replaceSelection(translated);
 				}
 			} else {
-				await app.vault.modify(file, translated);
+				await vault.replaceFileContent(file, translated);
 			}
 			new Notice('Translation applied.');
 			onClose();

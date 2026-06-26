@@ -4,7 +4,7 @@ import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
-import { applyCopilotArtifactsToContext } from '@/service/copilot/CopilotArtifactApply';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { IntentTabId } from '@/service/copilot/intent-hub';
 import { runCopilotReview, type ReviewSessionSnapshot } from '@/service/copilot/CopilotReviewSession';
 import { buildReviewArtifacts, reviewSubtitle } from '@/service/copilot/CopilotReviewArtifactBuilder';
@@ -36,6 +36,7 @@ const CopilotAutoRunContent: React.FC<{
 	initialInsightChats?: InsightChatHistories;
 	onClose: () => void;
 }> = ({ tab, ctx, mode, initialSnapshot, initialInsightChats, onClose }) => {
+	const { vault } = useCopilotPanelVault();
 	const readOnly = Boolean(initialSnapshot);
 	const controllerRef = useRef<AbortController | null>(null);
 	const [snapshot, setSnapshot] = useState<ReviewSessionSnapshot | null>(initialSnapshot ?? null);
@@ -159,7 +160,7 @@ const CopilotAutoRunContent: React.FC<{
 	};
 
 	const applyArtifacts = async () => {
-		const result = await applyCopilotArtifactsToContext({ ctx, artifacts, selectedOnly: true, app: AppContext.getInstance().app });
+		const result = await vault.applyArtifacts({ ctx, artifacts, selectedOnly: true });
 		if (result.appliedBlocks === 0) {
 			new Notice('No matching changes were applied.');
 			return;

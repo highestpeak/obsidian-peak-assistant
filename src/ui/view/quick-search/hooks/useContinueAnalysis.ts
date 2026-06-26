@@ -8,10 +8,10 @@ import { useCallback } from 'react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { useStepDisplayReplayStore } from '../store/stepDisplayReplayStore';
 
-import { AppContext } from '@/app/context/AppContext';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { ContinueAnalysisAgent } from '@/service/agents/ContinueAnalysisAgent';
 import type { ContinueContext } from '@/service/agents/ContinueAnalysisAgent';
+import { useQuickSearchHost } from './useQuickSearchHost';
 
 import { pushTimelineEvent } from './search-session-types';
 
@@ -35,6 +35,7 @@ export interface ContinueAnalysisDeps {
 // ---------------------------------------------------------------------------
 
 export function useContinueAnalysis(deps: ContinueAnalysisDeps) {
+	const host = useQuickSearchHost();
 	const store = useSearchSessionStore;
 
 	const runContinueAnalysis = useCallback(async (
@@ -109,13 +110,7 @@ export function useContinueAnalysis(deps: ContinueAnalysisDeps) {
 		};
 
 		try {
-			const appCtx = AppContext.getInstance();
-			const continueAgent = new ContinueAnalysisAgent({
-				app: appCtx.app,
-				pluginId: appCtx.plugin.manifest.id,
-				searchClient: appCtx.searchClient,
-				aiServiceManager: appCtx.manager,
-			});
+			const continueAgent = host.createContinueAnalysisAgent(ctx);
 			await consumeContinueStream(continueAgent.startSession(ctx));
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : 'Continue analysis failed.';

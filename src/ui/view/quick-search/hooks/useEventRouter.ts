@@ -10,8 +10,8 @@ import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { UIStepRecord } from '../store/aiAnalysisStore';
 
 import type { SearchAgentResult } from '@/service/agents/shared-types';
-import { AppContext } from '@/app/context/AppContext';
 import type { LLMStreamEvent } from '@/core/providers/types';
+import { useQuickSearchHost } from './useQuickSearchHost';
 
 import { SUMMARY_FLUSH_MS } from './search-session-types';
 import type { UiStepAccum } from './search-session-types';
@@ -58,6 +58,7 @@ export const eventTargetRedirect: {
 // ---------------------------------------------------------------------------
 
 export function useEventRouter() {
+	const host = useQuickSearchHost();
 	const store = useSearchSessionStore;
 
 	// Summary delta buffer (120 ms debounce)
@@ -94,7 +95,7 @@ export function useEventRouter() {
 	// -------------------------------------------------------------------
 
 	const buildTarget = (): EventDispatchTarget => ({
-			enableDevTools: () => AppContext.getInstance().plugin.settings?.enableDevTools === true,
+			enableDevTools: () => host.enableDevTools,
 			getV2Active: () => store.getState().v2Active,
 			getV2ProposedOutline: () => store.getState().v2ProposedOutline,
 			getStartedAt: () => store.getState().startedAt,

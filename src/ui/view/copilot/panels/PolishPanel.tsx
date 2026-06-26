@@ -3,7 +3,7 @@ import React from 'react';
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import { Sparkles, Lightbulb } from 'lucide-react';
 import { DiffView } from '@/ui/component/diff/DiffView';
 
@@ -22,19 +22,20 @@ interface PolishPanelProps {
 export const PolishPanel: React.FC<PolishPanelProps> = ({
   result, file, scope, originalContent, selectedText, onClose, breadcrumb, onBack,
 }) => {
+  const { vault } = useCopilotPanelVault();
   const original = scope === 'selection' && selectedText ? selectedText : originalContent;
   const polished = result;
 
   const handleApply = async () => {
-    const app = AppContext.getInstance().app;
     try {
       if (scope === 'selection') {
-        const editor = app.workspace.activeEditor?.editor;
+        // activeEditor is not in the vault port; access via Obsidian global.
+        const editor = (window as any).app?.workspace?.activeEditor?.editor;
         if (editor) {
           editor.replaceSelection(polished);
         }
       } else {
-        await app.vault.modify(file, polished);
+        await vault.replaceFileContent(file, polished);
       }
       new Notice('Changes applied.');
       onClose();

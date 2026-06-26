@@ -6,7 +6,7 @@ import type {
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 export interface UseOptimizationState {
 	result: OptimizationResult | null;
@@ -20,6 +20,7 @@ export interface UseOptimizationState {
  * configured). Cycles auto-refresh on mount.
  */
 export function useOptimization(): UseOptimizationState {
+	const { settings } = useServiceContext();
 	const [result, setResult] = useState<OptimizationResult | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [nonce, setNonce] = useState(0);
@@ -31,7 +32,7 @@ export function useOptimization(): UseOptimizationState {
 		(async () => {
 			try {
 				const svc = UsageOptimizationService.getInstance();
-				const budget = readBudget();
+				const budget = readBudget(settings);
 				const pace = budget.monthlyUsd > 0
 					? await UsageTrackingService.getInstance().getMonthlyPace(
 						budget.monthlyUsd,
@@ -70,9 +71,9 @@ export function useOptimization(): UseOptimizationState {
 	return { result, loading, refresh };
 }
 
-function readBudget(): { monthlyUsd: number; resetDayOfMonth: number } {
+function readBudget(settings: import('@/core/config/settingsTypes').MyPluginSettings): { monthlyUsd: number; resetDayOfMonth: number } {
 	try {
-		const b = AppContext.getInstance().settings.harnessSettings?.budget;
+		const b = settings.harnessSettings?.budget;
 		if (b) {
 			return {
 				monthlyUsd: Number(b.monthlyUsd) || 0,

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ChatRole } from '@/core/providers/types';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
+import { DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
 import { DateSeparator } from '../DateSeparator';
 import { useModels } from '@/ui/hooks/useModels';
 import {

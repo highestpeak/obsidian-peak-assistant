@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type MyPlugin from 'main';
-import type { MyPluginSettings, InspectorLinksSettings } from '@/app/settings/types';
-import { DEFAULT_INSPECTOR_LINKS_SETTINGS } from '@/app/settings/types';
+import type { MyPluginSettings, InspectorLinksSettings } from '@/core/config/settingsTypes';
+import { DEFAULT_INSPECTOR_LINKS_SETTINGS } from '@/core/config/settingsTypes';
 import { EventBus, SettingsUpdatedEvent } from '@/core/eventBus';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 

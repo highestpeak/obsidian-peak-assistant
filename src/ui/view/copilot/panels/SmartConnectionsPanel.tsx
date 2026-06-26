@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { Zap, Check, ExternalLink } from 'lucide-react';
 
@@ -27,6 +27,7 @@ interface SmartConnectionsPanelProps {
 export const SmartConnectionsPanel: React.FC<SmartConnectionsPanelProps> = ({
 	result, ctx, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const [selected, setSelected] = useState<Set<number>>(() => new Set());
 	const [insertedPaths, setInsertedPaths] = useState<Set<string>>(() => new Set());
 
@@ -38,27 +39,21 @@ export const SmartConnectionsPanel: React.FC<SmartConnectionsPanelProps> = ({
 		});
 	};
 
-	const openNote = async (path: string) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file && 'extension' in file) {
-			await app.workspace.getLeaf(false).openFile(file as any);
-		}
-	};
+	const openNote = (path: string): Promise<void> =>
+		vault.openNote(path, { newLeaf: false });
 
 	const insertLinks = async () => {
-		const app = AppContext.getInstance().app;
 		const selectedConnections = result.connections.filter((_, i) => selected.has(i));
 		if (selectedConnections.length === 0) return;
 
 		try {
-			const content = await app.vault.read(ctx.file);
+			const content = await vault.readFileContent(ctx.file);
 			const linkLines = selectedConnections.map(c => {
 				const linkTarget = c.path.replace(/\.md$/, '');
 				return `- [[${linkTarget}|${c.suggestedLinkText}]]`;
 			});
 			const linkSection = `\n\n## Smart Connections\n\n${linkLines.join('\n')}\n`;
-			await app.vault.modify(ctx.file, content + linkSection);
+			await vault.replaceFileContent(ctx.file, content + linkSection);
 
 			const paths = new Set(selectedConnections.map(c => c.path));
 			setInsertedPaths(prev => new Set([...prev, ...paths]));

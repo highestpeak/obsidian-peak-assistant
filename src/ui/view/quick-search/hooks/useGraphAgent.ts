@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
 import { useGraphAgentStore, type GraphAgentStep } from '../store/graphAgentStore';
 import { useSearchSessionStore } from '../store/searchSessionStore';
+import { useQuickSearchHost } from './useQuickSearchHost';
 
 // Persist the foreground session after graph generation so the markdown
 // captures the graph. Only fires when the session is in 'completed' status —
@@ -33,6 +34,7 @@ export function useGraphAgent(
 	sources: SourceItem[],
 	searchQuery: string,
 ): UseGraphAgentResult {
+	const host = useQuickSearchHost();
 	const store = useGraphAgentStore();
 	const abortRef = useRef<AbortController | null>(null);
 
@@ -57,8 +59,9 @@ export function useGraphAgent(
 		(async () => {
 			try {
 				const { GraphAgent } = await import('@/service/agents/ai-graph/GraphAgent');
+				// GraphAgent requires raw app + pluginId — use AppContext via dynamic import since we're in an async IIFE outside React render
 				const { AppContext } = await import('@/app/context/AppContext');
-				const ctx = AppContext.getInstance();
+				const ctx = AppContext.getInstance(); // justified: async IIFE inside useCallback, host snapshot from closure is stale
 
 				useGraphAgentStore.getState().updateStep('init', { status: 'done', label: 'Graph Agent ready' });
 				useGraphAgentStore.getState().addStep({ id: 'analyze', label: 'Analyzing document relations, clusters, and evolution chains...', status: 'running' });

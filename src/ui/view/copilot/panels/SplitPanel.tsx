@@ -3,7 +3,7 @@ import React from 'react';
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { SplitPlan } from '@/service/copilot/copilot-schemas';
 import { Scissors, Ruler } from 'lucide-react';
 
@@ -19,10 +19,10 @@ const SPLIT_COLORS = ['pktw-bg-accent', 'pktw-bg-[var(--pk-info)]', 'pktw-bg-[va
 export const SplitPanel: React.FC<SplitPanelProps> = ({
   result, file, originalContent, onClose,
 }) => {
+  const { vault } = useCopilotPanelVault();
   const lines = originalContent.split('\n');
 
   const handleSplit = async () => {
-    const app = AppContext.getInstance().app;
     const parentFolder = file.parent?.path ?? '';
 
     try {
@@ -33,9 +33,8 @@ export const SplitPanel: React.FC<SplitPanelProps> = ({
         const [start, end] = split.lineRange;
         const extractedLines = lines.slice(start - 1, end); // 1-indexed to 0-indexed
         const content = extractedLines.join('\n');
-        const newPath = parentFolder ? `${parentFolder}/${split.newTitle}.md` : `${split.newTitle}.md`;
 
-        await app.vault.create(newPath, content);
+        await vault.createNoteInFolder(parentFolder, split.newTitle, content);
 
         // Replace extracted content with a link in the original
         const linkLine = `→ [[${split.newTitle}]]`;
@@ -43,7 +42,7 @@ export const SplitPanel: React.FC<SplitPanelProps> = ({
       }
 
       // Save modified original
-      await app.vault.modify(file, lines.join('\n'));
+      await vault.replaceFileContent(file, lines.join('\n'));
 
       const titles = result.splits.map(s => s.newTitle).join(', ');
       new Notice(`Split into ${result.splits.length} notes: ${titles}`);

@@ -4,6 +4,7 @@ import { V2TableOfContents } from './V2TableOfContents';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { exportGraphJson, useAIGraphStore } from '../store/aiGraphStore';
+import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
 
 type CopyTarget = 'process' | 'report' | 'graph';
 
@@ -47,6 +48,7 @@ export const V2Footer: React.FC<{
 	onSaveGraph?: () => void;
 	onOpenInChat: () => void;
 }> = ({ onContinue, onSynthesize, showContinueAnalysis, onSave, onSaveGraph, onOpenInChat }) => {
+	const host = useQuickSearchHost();
 	const v2View = useSearchSessionStore((s) => s.v2View);
 	const usage = useSearchSessionStore((s) => s.usage);
 	const duration = useSearchSessionStore((s) => s.duration);
@@ -245,11 +247,8 @@ export const V2Footer: React.FC<{
 				)}
 				{lastSavedPath && (
 					<div
-						onClick={async () => {
-							const { AppContext } = await import('@/app/context/AppContext');
-							const { openFile } = await import('@/core/utils/obsidian-utils');
-							const app = AppContext.getInstance().app;
-							await openFile(lastSavedPath, false, app);
+						onClick={() => {
+							host.openVaultPath(lastSavedPath, { newLeaf: false });
 						}}
 						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
 						title="Open saved analysis note"

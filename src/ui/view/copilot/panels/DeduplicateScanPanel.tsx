@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { Copy, Trash2, FileText, Merge } from 'lucide-react';
 
@@ -30,26 +30,21 @@ interface DeduplicateScanPanelProps {
 export const DeduplicateScanPanel: React.FC<DeduplicateScanPanelProps> = ({
 	result, ctx, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const [removedPaths, setRemovedPaths] = useState<Set<string>>(() => new Set());
 
-	const openNote = async (path: string) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file && 'extension' in file) {
-			await app.workspace.getLeaf(false).openFile(file as any);
-		}
-	};
+	const openNote = (path: string): Promise<void> =>
+		vault.openNote(path, { newLeaf: false });
 
 	const keepNewest = async (group: DuplicateGroup) => {
-		const app = AppContext.getInstance().app;
 		const sorted = [...group.files].sort((a, b) => b.modified - a.modified);
 		const toDelete = sorted.slice(1);
 		let deleted = 0;
 		for (const f of toDelete) {
-			const file = app.vault.getAbstractFileByPath(f.path);
+			const file = vault.findFileByPath(f.path);
 			if (file) {
 				try {
-					await app.vault.trash(file, true);
+					await vault.trashFile(file);
 					deleted++;
 					setRemovedPaths(prev => new Set([...prev, f.path]));
 				} catch (e) {
@@ -61,24 +56,26 @@ export const DeduplicateScanPanel: React.FC<DeduplicateScanPanelProps> = ({
 	};
 
 	const mergeIntoOne = async (group: DuplicateGroup) => {
-		const app = AppContext.getInstance().app;
 		const sorted = [...group.files].sort((a, b) => b.modified - a.modified);
-		const keepFile = app.vault.getAbstractFileByPath(sorted[0].path);
-		if (!keepFile || !('extension' in keepFile)) return;
+		const keepPath = sorted[0].path;
+		const keepFile = vault.findFileByPath(keepPath);
+		if (!keepFile) {
+			new Notice(`File not found: ${keepPath}`);
+			return;
+		}
 
-		// Add references to merged files at the bottom of the kept file
-		const content = await app.vault.read(keepFile as any);
+		// Append merge references to the kept file
+		const content = await vault.readFileContent(keepFile);
 		const mergedRefs = sorted.slice(1).map(f => `- Merged from: [[${f.path.replace(/\.md$/, '')}]]`);
 		const updated = content + '\n\n## Merged Duplicates\n\n' + mergedRefs.join('\n') + '\n';
-		await app.vault.modify(keepFile as any, updated);
+		await vault.replaceFileContent(keepFile, updated);
 
-		// Delete the others
 		let deleted = 0;
 		for (const f of sorted.slice(1)) {
-			const file = app.vault.getAbstractFileByPath(f.path);
+			const file = vault.findFileByPath(f.path);
 			if (file) {
 				try {
-					await app.vault.trash(file, true);
+					await vault.trashFile(file);
 					deleted++;
 					setRemovedPaths(prev => new Set([...prev, f.path]));
 				} catch (e) {
@@ -86,7 +83,7 @@ export const DeduplicateScanPanel: React.FC<DeduplicateScanPanelProps> = ({
 				}
 			}
 		}
-		new Notice(`Merged ${deleted + 1} files into "${sorted[0].path}".`);
+		new Notice(`Merged ${deleted + 1} files into "${keepPath}".`);
 	};
 
 	const formatSize = (bytes: number) => {

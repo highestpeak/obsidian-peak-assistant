@@ -5,7 +5,7 @@ import { Plus, ChevronRight } from 'lucide-react';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createPresetProfile } from '@/core/profiles/presets';
 import type { ProfileKind, Profile } from '@/core/profiles/types';
-import { DEFAULT_HARNESS_SETTINGS, type MyPluginSettings, type HarnessSettings } from '@/app/settings/types';
+import { DEFAULT_HARNESS_SETTINGS, type MyPluginSettings, type HarnessSettings } from '@/core/config/settingsTypes';
 import type { LLMOutputControlSettings } from '@/core/providers/types';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
 import { StatusBar } from './components/StatusBar';

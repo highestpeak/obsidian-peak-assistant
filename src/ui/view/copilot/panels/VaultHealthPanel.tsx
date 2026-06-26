@@ -1,7 +1,7 @@
 // src/ui/view/copilot/panels/VaultHealthPanel.tsx
 import React, { useState } from 'react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { VaultHealth } from '@/service/copilot/copilot-schemas';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { Activity, FileQuestion, Copy, Clock, Tags } from 'lucide-react';
@@ -24,15 +24,11 @@ interface VaultHealthPanelProps {
 export const VaultHealthPanel: React.FC<VaultHealthPanelProps> = ({
 	result, ctx, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const [activeTab, setActiveTab] = useState<TabId>('orphans');
 
-	const openNote = async (path: string) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file && 'extension' in file) {
-			await app.workspace.getLeaf(false).openFile(file as any);
-		}
-	};
+	const openNote = (path: string): Promise<void> =>
+		vault.openNote(path, { newLeaf: false });
 
 	const counts: Record<TabId, number> = {
 		orphans: result.orphans.length,

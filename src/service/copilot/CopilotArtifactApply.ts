@@ -1,4 +1,3 @@
-import { AppContext } from '@/app/context/AppContext';
 import type { DocumentContext } from './CopilotActionRegistry';
 import type { ChangeBlockArtifact, CopilotRunArtifacts } from './CopilotRunArtifacts';
 
@@ -11,7 +10,12 @@ function selectedChangeBlocks(artifacts: CopilotRunArtifacts, selectedOnly: bool
 		.filter(block => !selectedOnly || block.selected !== false);
 }
 
-function applyBlocksToText(text: string, blocks: ChangeBlockArtifact[]): { text: string; appliedBlocks: number } {
+/**
+ * Pure text transform — apply Copilot change-blocks to `text`. Append-only
+ * blocks (no `before`) get appended with a separating newline; replacement
+ * blocks substitute `before` with `after`. Exposed for unit tests.
+ */
+export function applyCopilotBlocksPure(text: string, blocks: ChangeBlockArtifact[]): { text: string; appliedBlocks: number } {
 	let next = text;
 	let appliedBlocks = 0;
 
@@ -31,28 +35,48 @@ function applyBlocksToText(text: string, blocks: ChangeBlockArtifact[]): { text:
 	return { text: next, appliedBlocks };
 }
 
+/**
+ * IO primitives the orchestrator needs. The app adapter
+ * (`src/app/copilot/panels/AppCopilotPanelVaultAdapter.ts`) supplies these
+ * by closing over `app.vault` / `app.workspace.activeEditor`. Service code
+ * no longer reaches `AppContext.getInstance().app`.
+ *
+ * T11M: replaces the old `app: App` parameter so this helper has zero
+ * Obsidian concrete dependency at the type level.
+ */
+export interface ApplyCopilotArtifactsOps {
+	readFile(file: DocumentContext['file']): Promise<string>;
+	writeFile(file: DocumentContext['file'], text: string): Promise<void>;
+	getEditorSelection(): string | null;
+	replaceEditorSelection(text: string): void;
+}
+
+/**
+ * Orchestrate change-block application for either `scope: 'selection'` or
+ * `scope: 'file'`. Pure helper for the `CopilotPanelVaultPort.applyArtifacts`
+ * adapter — callers do not invoke this directly anymore.
+ */
 export async function applyCopilotArtifactsToContext(params: {
 	ctx: DocumentContext;
 	artifacts: CopilotRunArtifacts;
 	selectedOnly?: boolean;
+	ops: ApplyCopilotArtifactsOps;
 }): Promise<ApplyCopilotArtifactsResult> {
 	const blocks = selectedChangeBlocks(params.artifacts, params.selectedOnly ?? false);
 	if (blocks.length === 0) return { appliedBlocks: 0 };
 
-	const app = AppContext.getInstance().app;
+	const { ops } = params;
 	if (params.ctx.scope === 'selection') {
-		const editor = app.workspace.activeEditor?.editor;
-		if (!editor) return { appliedBlocks: 0 };
-		const currentSelection = editor.getSelection() || params.ctx.selection || '';
-		const result = applyBlocksToText(currentSelection, blocks);
-		if (result.appliedBlocks > 0) editor.replaceSelection(result.text);
+		const live = ops.getEditorSelection();
+		if (live === null) return { appliedBlocks: 0 };
+		const currentSelection = live || params.ctx.selection || '';
+		const result = applyCopilotBlocksPure(currentSelection, blocks);
+		if (result.appliedBlocks > 0) ops.replaceEditorSelection(result.text);
 		return { appliedBlocks: result.appliedBlocks };
 	}
 
-	const current = await app.vault.read(params.ctx.file);
-	const result = applyBlocksToText(current, blocks);
-	if (result.appliedBlocks > 0) {
-		await app.vault.modify(params.ctx.file, result.text);
-	}
+	const current = await ops.readFile(params.ctx.file);
+	const result = applyCopilotBlocksPure(current, blocks);
+	if (result.appliedBlocks > 0) await ops.writeFile(params.ctx.file, result.text);
 	return { appliedBlocks: result.appliedBlocks };
 }

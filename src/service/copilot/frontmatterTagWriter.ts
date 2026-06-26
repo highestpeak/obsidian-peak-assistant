@@ -1,16 +1,30 @@
-import type { TFile, App } from 'obsidian';
+import type { TFile } from 'obsidian';
 
 /**
- * Write accepted tags into a document's YAML frontmatter.
- * Uses Obsidian's atomic processFrontMatter API.
+ * IO primitive the writer needs. The app adapter supplies a closure over
+ * `app.fileManager.processFrontMatter(file, mutator)` so service code has no
+ * concrete Obsidian dependency.
  *
- * T11J B2: caller passes the live `app` so the helper no longer reaches
- * `AppContext.getInstance().app`.
+ * T11M: replaces the old `app: App` parameter — every concrete file/editor
+ * dependency lives in the app adapter now.
  */
-export async function writeTagsToFrontmatter(file: TFile, tagsToAdd: string[], app: App): Promise<void> {
+export interface ProcessFrontMatterOp {
+	(file: TFile, mutator: (fm: Record<string, unknown>) => void): Promise<void>;
+}
+
+/**
+ * Merge `tagsToAdd` into a document's YAML frontmatter `tags` field. Existing
+ * tags are preserved (case-insensitive de-dup); the leading `#` is stripped on
+ * write since Obsidian's frontmatter convention is bare tag names.
+ */
+export async function writeTagsToFrontmatter(
+	file: TFile,
+	tagsToAdd: string[],
+	processFrontMatter: ProcessFrontMatterOp,
+): Promise<void> {
 	if (tagsToAdd.length === 0) return;
 
-	await app.fileManager.processFrontMatter(file, (fm) => {
+	await processFrontMatter(file, (fm) => {
 		const existing = Array.isArray(fm.tags)
 			? fm.tags as string[]
 			: typeof fm.tags === 'string'

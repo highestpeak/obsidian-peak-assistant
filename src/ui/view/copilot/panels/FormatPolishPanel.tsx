@@ -3,7 +3,7 @@ import React from 'react';
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import { WrapText } from 'lucide-react';
 import { DiffView } from '@/ui/component/diff/DiffView';
 
@@ -19,19 +19,20 @@ interface FormatPolishPanelProps {
 export const FormatPolishPanel: React.FC<FormatPolishPanelProps> = ({
   result, file, scope, originalContent, selectedText, onClose,
 }) => {
+  const { vault } = useCopilotPanelVault();
   const original = scope === 'selection' && selectedText ? selectedText : originalContent;
   const formatted = result;
 
   const handleApply = async () => {
-    const app = AppContext.getInstance().app;
     try {
       if (scope === 'selection') {
-        const editor = app.workspace.activeEditor?.editor;
+        // activeEditor is not in the vault port; access via Obsidian global.
+        const editor = (window as any).app?.workspace?.activeEditor?.editor;
         if (editor) {
           editor.replaceSelection(formatted);
         }
       } else {
-        await app.vault.modify(file, formatted);
+        await vault.replaceFileContent(file, formatted);
       }
       new Notice('Formatting fixes applied.');
       onClose();

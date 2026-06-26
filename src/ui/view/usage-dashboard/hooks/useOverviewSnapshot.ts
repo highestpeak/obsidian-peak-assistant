@@ -7,7 +7,7 @@ import {
 	type ThisWeekTrio,
 } from '@/service/usage/UsageTrackingService';
 import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 export interface OverviewSnapshot {
 	pace: MonthlyPaceSnapshot | null;
@@ -36,7 +36,8 @@ const EMPTY: OverviewSnapshot = {
  * immediately when the user navigates back to Overview.
  */
 export function useOverviewSnapshot(range: TimeRange): OverviewSnapshot {
-	const budget = readBudget();
+	const { settings } = useServiceContext();
+	const budget = readBudget(settings);
 	const [snapshot, setSnapshot] = useState<OverviewSnapshot>(EMPTY);
 
 	useEffect(() => {
@@ -81,9 +82,8 @@ export function useOverviewSnapshot(range: TimeRange): OverviewSnapshot {
 	return snapshot;
 }
 
-function readBudget(): { monthlyUsd: number; resetDayOfMonth: number } {
+function readBudget(settings: import('@/core/config/settingsTypes').MyPluginSettings): { monthlyUsd: number; resetDayOfMonth: number } {
 	try {
-		const settings = AppContext.getInstance().settings;
 		const b = settings.harnessSettings?.budget;
 		if (b) {
 			return {

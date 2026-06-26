@@ -27,7 +27,7 @@
  */
 
 import React, { createContext, useContext } from 'react';
-import { AppContext } from '@/app/context/AppContext';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 
 // ─── Shape ─────────────────────────────────────────────────────────────
@@ -622,7 +622,7 @@ export function useOnboardingStrings(): OnboardingStrings {
  */
 export async function loadOnboardingStrings(): Promise<OnboardingStrings> {
     try {
-        const tm = AppContext.getInstance().manager.getTemplateManager?.();
+        const tm = TemplateManager.getInstance();
         if (!tm) return DEFAULT_ONBOARDING_STRINGS;
         const parsed = await tm.loadJson<Partial<OnboardingStrings> & { _doc?: string }>(
             ConfigTemplateId.Onboarding,

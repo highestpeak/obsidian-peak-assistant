@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { CorrectContentResult } from '@/service/copilot/copilot-schemas';
 import { ShieldCheck, Check, X, AlertCircle, AlertTriangle, Info, type LucideIcon } from 'lucide-react';
 
@@ -32,23 +32,24 @@ interface CorrectContentPanelProps {
 export const CorrectContentPanel: React.FC<CorrectContentPanelProps> = ({
 	result, file, scope, originalContent, selectedText, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const [decisions, setDecisions] = useState<Map<number, 'accepted' | 'rejected'>>(new Map());
 
 	const handleAccept = async (index: number) => {
 		const correction = result.corrections[index];
-		const app = AppContext.getInstance().app;
 		try {
 			if (scope === 'selection') {
-				const editor = app.workspace.activeEditor?.editor;
+				// activeEditor is not in the vault port; access via Obsidian global.
+				const editor = (window as any).app?.workspace?.activeEditor?.editor;
 				if (editor) {
 					const currentSelection = editor.getSelection();
 					const updated = currentSelection.replace(correction.original, correction.corrected);
 					editor.replaceSelection(updated);
 				}
 			} else {
-				const current = await app.vault.read(file);
+				const current = await vault.readFileContent(file);
 				const updated = current.replace(correction.original, correction.corrected);
-				await app.vault.modify(file, updated);
+				await vault.replaceFileContent(file, updated);
 			}
 			setDecisions(prev => new Map(prev).set(index, 'accepted'));
 			new Notice('Correction applied.');
@@ -62,19 +63,18 @@ export const CorrectContentPanel: React.FC<CorrectContentPanelProps> = ({
 	};
 
 	const handleAcceptAll = async () => {
-		const app = AppContext.getInstance().app;
 		try {
-			let content = scope === 'selection' && selectedText ? selectedText : await app.vault.read(file);
+			let content = scope === 'selection' && selectedText ? selectedText : await vault.readFileContent(file);
 			for (let i = result.corrections.length - 1; i >= 0; i--) {
 				if (decisions.get(i) === 'rejected') continue;
 				const c = result.corrections[i];
 				content = content.replace(c.original, c.corrected);
 			}
 			if (scope === 'selection') {
-				const editor = app.workspace.activeEditor?.editor;
+				const editor = (window as any).app?.workspace?.activeEditor?.editor;
 				if (editor) editor.replaceSelection(content);
 			} else {
-				await app.vault.modify(file, content);
+				await vault.replaceFileContent(file, content);
 			}
 			new Notice(`Applied ${result.corrections.length - [...decisions.values()].filter(v => v === 'rejected').length} corrections.`);
 			onClose();

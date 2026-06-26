@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { writeTagsToFrontmatter } from '@/service/copilot/frontmatterTagWriter';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { TagSuggestions } from '@/service/copilot/copilot-schemas';
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { Check, X, Pencil, Tag } from 'lucide-react';
@@ -25,6 +24,7 @@ const CONFIDENCE_TIERS = [
 export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
   result, file, onClose,
 }) => {
+  const { vault } = useCopilotPanelVault();
   const [statuses, setStatuses] = useState<Record<string, TagStatus>>(() => {
     const init: Record<string, TagStatus> = {};
     for (const s of result.suggestions) init[s.tag] = 'pending';
@@ -67,7 +67,7 @@ export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
 
   const handleApply = async () => {
     try {
-      await writeTagsToFrontmatter(file, acceptedTags, AppContext.getInstance().app);
+      await vault.writeFrontmatterTags(file, acceptedTags);
       new Notice(`Added ${acceptedTags.length} tag${acceptedTags.length > 1 ? 's' : ''} to frontmatter.`);
       // Record feedback to tag_suggestion table
       if (result.batchId) {

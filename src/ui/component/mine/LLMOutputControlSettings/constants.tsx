@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sparkles, Brain, FileText, Repeat, Cpu, Layers, Clock } from 'lucide-react';
 import type { LLMOutputControlSettings } from '@/core/providers/types';
-import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
+import { DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
 
 export type ControlType = 'slider' | 'select';
 

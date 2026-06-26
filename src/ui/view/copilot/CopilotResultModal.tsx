@@ -11,7 +11,7 @@ import { Button } from '@/ui/component/shared-ui/button';
 import type { CopilotAction, DocumentContext, ActionUsage, ActionResult } from '@/service/copilot/CopilotActionRegistry';
 import { getCopilotResultPanel } from '@/ui/view/copilot/copilot-action-surfaces';
 import { actionResultToArtifacts } from '@/service/copilot/CopilotArtifactAdapter';
-import { applyCopilotArtifactsToContext } from '@/service/copilot/CopilotArtifactApply';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import {
 	createEmptyCopilotRunArtifacts,
 	mergeCapabilityArtifact,
@@ -304,7 +304,7 @@ const StreamingView: React.FC<{
 	);
 };
 
-const ErrorView: React.FC<{ error: Error; onClose: () => void }> = ({ error, onClose }) => {
+const ErrorView: React.FC<{ error: Error; onClose: () => void; onOpenSettings: () => void }> = ({ error, onClose, onOpenSettings }) => {
 	const isAuth = error instanceof AuthenticationError;
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-items-center pktw-gap-4 pktw-py-12">
@@ -313,10 +313,7 @@ const ErrorView: React.FC<{ error: Error; onClose: () => void }> = ({ error, onC
 			<span className="pktw-text-xs pktw-text-muted-foreground pktw-text-center pktw-max-w-md">{error.message}</span>
 			<div className="pktw-flex pktw-gap-2 pktw-mt-2">
 				{isAuth && (
-					<Button variant="outline" size="sm" onClick={() => {
-						const { SettingsModal } = require('@/ui/view/SettingsModal');
-						new SettingsModal(AppContext.getInstance()).open();
-					}}>
+					<Button variant="outline" size="sm" onClick={onOpenSettings}>
 						<Settings2 className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1.5" />
 						Open Settings
 					</Button>
@@ -357,6 +354,7 @@ const CopilotResultContent: React.FC<{
 	onBack: () => void;
 	onCancel: () => void;
 }> = ({ action, ctx, initialPhase, onClose, onBack, onCancel }) => {
+	const { vault, navigator } = useCopilotPanelVault();
 	const [phase, setPhase] = useState<ModalPhase>(initialPhase);
 
 	useEffect(() => {
@@ -414,7 +412,7 @@ const CopilotResultContent: React.FC<{
 		return (
 			<div className="pktw-relative">
 				{backButton}
-				<ErrorView error={phase.error} onClose={onClose} />
+				<ErrorView error={phase.error} onClose={onClose} onOpenSettings={() => navigator.openSettings()} />
 			</div>
 		);
 	}
@@ -422,7 +420,7 @@ const CopilotResultContent: React.FC<{
 	const artifacts = buildManualReviewArtifacts({ action, ctx, phase });
 	if (shouldUseArtifactReview(action.id, artifacts)) {
 		const applyArtifacts = async (selectedOnly: boolean) => {
-			const result = await applyCopilotArtifactsToContext({ ctx, artifacts, selectedOnly, app: AppContext.getInstance().app });
+			const result = await vault.applyArtifacts({ ctx, artifacts, selectedOnly });
 			if (result.appliedBlocks === 0) {
 				new Notice('No matching changes were applied.');
 				return;
@@ -513,6 +511,8 @@ export class CopilotResultModal extends Modal {
 					onBack: () => {
 						this.abortController?.abort();
 						this.close();
+						// Modal-class ctor pattern (legitimate exception per T11M rules):
+						// CopilotPickerModal ctor takes AppContext — keep as-is here.
 						new CopilotPickerModal(appContext).open();
 					},
 					onCancel: () => {

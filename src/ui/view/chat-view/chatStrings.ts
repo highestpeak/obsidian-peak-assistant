@@ -18,7 +18,7 @@
  */
 
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
-import { AppContext } from '@/app/context/AppContext';
+import { TemplateManager } from '@/core/template/TemplateManager';
 
 export interface ChatStrings {
 	header: {
@@ -333,7 +333,7 @@ export const CHAT_STRINGS: ChatStrings = DEFAULT_CHAT_STRINGS;
  */
 export async function loadChatStrings(): Promise<ChatStrings> {
 	try {
-		const tm = AppContext.getInstance().manager.getTemplateManager?.();
+		const tm = TemplateManager.getInstance();
 		if (!tm) return DEFAULT_CHAT_STRINGS;
 		const parsed = await tm.loadJson<Partial<ChatStrings>>(ConfigTemplateId.Chat);
 		if (!parsed || typeof parsed !== 'object') return DEFAULT_CHAT_STRINGS;

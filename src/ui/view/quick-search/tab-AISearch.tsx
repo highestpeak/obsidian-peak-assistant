@@ -6,14 +6,12 @@ import { useSearchSessionStore } from './store/searchSessionStore';
 import { useSearchSession } from './hooks/useSearchSession';
 import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
 import { useAIAnalysisResult } from './hooks/useAIAnalysisResult';
-import { AppContext } from '@/app/context/AppContext';
 import { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
+import { useQuickSearchHost } from './hooks/useQuickSearchHost';
 import { SearchResultView } from './components/SearchResultView';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { V2Footer } from './components/V2Footer';
 import { useAIGraphStore } from './store/aiGraphStore';
-import { buildAiGraphMarkdown } from '@/core/storage/vault/search-docs/AiGraphDoc';
-import { ensureFolder } from '@/core/utils/vault-utils';
 import { Notice } from 'obsidian';
 
 interface AISearchTabProps {
@@ -26,6 +24,7 @@ interface AISearchTabProps {
  * AI search tab, showing analysis summary, sources, and insights.
  */
 export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) => {
+	const host = useQuickSearchHost();
 	// --- Session store reads ---
 	const sessionStatus = useSearchSessionStore((s) => s.status);
 	const sessionId = useSearchSessionStore((s) => s.id);
@@ -122,8 +121,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		if (!v2HasPlan) return;
 		if (restoredFromHistory) return;
 		if (autoSaveState?.lastSavedPath) return;    // already saved
-		const autoSaveEnabled = AppContext.getInstance().settings.search.aiAnalysisAutoSaveEnabled ?? true;
-		if (!autoSaveEnabled) return;
+		if (!host.autoSaveEnabled) return;
 		if (error) return;
 		if (!sessionId) return;
 
@@ -136,31 +134,26 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 			new Notice('No graph data to save');
 			return;
 		}
-		const ctx = AppContext.getInstance();
-		const app = ctx.app;
-		const saveFolder = ctx.settings.search.aiAnalysisAutoSaveFolder?.trim() || 'AI-Analysis';
+		const saveFolder = host.autoSaveFolder || 'AI-Analysis';
 		const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 		const querySlug = (searchQuery || graphQuery || 'graph').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 40);
 		const fileName = `Graph-${querySlug}-${timestamp}`;
-		const filePath = `${saveFolder}/${fileName}.md`;
-
 		const summary = graphData.nodes.length + ' nodes, ' + graphData.edges.length + ' edges';
-		const content = buildAiGraphMarkdown({
-			query: searchQuery || graphQuery || '',
-			created: new Date().toISOString(),
-			summary,
-			graphData,
-			lensHint: activeLens,
-		});
 
 		try {
-			await ensureFolder(saveFolder, app);
-			await app.vault.create(filePath, content);
+			await host.saveGraphToVault({
+				folderPath: saveFolder,
+				fileName,
+				query: searchQuery || graphQuery || '',
+				summary,
+				graphData,
+				lensHint: activeLens,
+			});
 			new Notice(`Graph saved: ${fileName}.md`);
 		} catch (e) {
 			new Notice(`Failed to save graph: ${e instanceof Error ? e.message : String(e)}`);
 		}
-	}, [searchQuery]);
+	}, [searchQuery, host]);
 
 	const handleSynthesize = useCallback(async () => {
 		const store = useSearchSessionStore.getState();
@@ -173,7 +166,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 		useSearchSessionStore.setState({ status: 'starting' });
 		try {
-			const agent = new SynthesizeAgent(AppContext.getInstance().manager);
+			const agent = new SynthesizeAgent();
 			const result = await agent.synthesize(useSearchSessionStore.getState().rounds);
 			useSearchSessionStore.getState().replaceSynthesized(result.summary, result.sections);
 			useSearchSessionStore.getState().markCompleted();

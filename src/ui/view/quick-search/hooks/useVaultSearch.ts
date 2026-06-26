@@ -3,9 +3,9 @@ import { DEFAULT_RECENT_SEARCH_RESULTS_COUNT } from '@/core/constant';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { DEFAULT_SEARCH_QUERY, GoToLine, InFileSearch, useVaultSearchStore } from '../store/vaultSearchStore';
 import { SearchQuery } from '@/service/search/types';
-import { AppContext } from '@/app/context/AppContext';
 import { readFileAsText, openFileAtLine } from '@/core/utils/obsidian-utils';
 import type { SearchResultItem, SearchSnippet } from '@/service/search/types';
+import type { App } from 'obsidian';
 
 export const useSearchQuery = (): InFileSearch | GoToLine | SearchQuery => {
 	const { quickSearchMode, inFileSearch, goToLine, parsedQuery } = useVaultSearchStore();
@@ -66,7 +66,7 @@ async function performInFileSearch(text: string, filePath: string): Promise<{ re
 	const startTime = Date.now();
 
 	try {
-		const fileContent = await readFileAsText(filePath, AppContext.getInstance().app);
+		const fileContent = await readFileAsText(filePath);
 		if (!fileContent) {
 			return { results: [], duration: Date.now() - startTime };
 		}
@@ -122,7 +122,7 @@ async function performInFileSearch(text: string, filePath: string): Promise<{ re
 /**
  * Perform go-to-line operation by opening file and navigating to line
  */
-async function performGoToLine(lineNumber: number, filePath: string): Promise<{ results: SearchResultItem[]; duration: number }> {
+async function performGoToLine(lineNumber: number, filePath: string, app: App): Promise<{ results: SearchResultItem[]; duration: number }> {
 	const startTime = Date.now();
 
 	try {
@@ -132,7 +132,7 @@ async function performGoToLine(lineNumber: number, filePath: string): Promise<{ 
 		}
 
 		// Read file content to get the target line
-		const fileContent = await readFileAsText(filePath, AppContext.getInstance().app);
+		const fileContent = await readFileAsText(filePath);
 		if (!fileContent) {
 			throw new Error(`Could not read file: ${filePath}`);
 		}
@@ -175,7 +175,6 @@ async function performGoToLine(lineNumber: number, filePath: string): Promise<{ 
 
 		// Convert to 0-indexed line number and open file at line
 		const zeroIndexedLine = Math.max(0, lineNumber - 1);
-		const app = AppContext.getInstance().app;
 
 		// Open file and scroll to line
 		openFileAtLine(filePath, zeroIndexedLine, false, app);
@@ -197,7 +196,7 @@ async function performGoToLine(lineNumber: number, filePath: string): Promise<{ 
  * Special handling for in-file search and go-to-line operations.
  */
 export const useVaultSearch = () => {
-	const { searchClient } = useServiceContext();
+	const { searchClient, app } = useServiceContext();
 	const { quickSearchMode, inFileSearch, goToLine, parsedQuery, setLastSearchData, setIsSearching } = useVaultSearchStore();
 	const hasSearchQuery = useHasSearchQuery();
 
@@ -272,7 +271,7 @@ export const useVaultSearch = () => {
 
 					(async () => {
 						try {
-							const result = await performGoToLine(goToLine.line, goToLine.path);
+							const result = await performGoToLine(goToLine.line, goToLine.path, app);
 							if (currentSearchId.current === searchId) {
 								setLastSearchData(result);
 								setIsSearching(false);

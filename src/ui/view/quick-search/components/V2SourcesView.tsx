@@ -4,9 +4,8 @@ import { motion } from 'framer-motion';
 import { FileText, List, Network, ChevronRight, Folder, Loader2 } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
-import { saveAiGraphToMarkdown } from '../callbacks/save-ai-analyze-to-md';
 import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
-import { AppContext } from '@/app/context/AppContext';
+import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
 import type { V2Source } from '../types/search-steps';
 import { useGraphAgent } from '../hooks/useGraphAgent';
 
@@ -18,6 +17,7 @@ interface V2SourcesViewProps {
 
 const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => void }> = ({ sources, onOpen }) => {
     const searchQuery = useSearchSessionStore(s => s.query);
+    const host = useQuickSearchHost();
     const sourceItems = useMemo(
         () => sources.map(s => ({ path: s.path, title: s.title, score: sources.length - sources.indexOf(s) })),
         [sources],
@@ -30,13 +30,12 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
             return;
         }
         try {
-            const ctx = AppContext.getInstance();
-            const saveFolder = ctx.settings.search?.aiAnalysisAutoSaveFolder?.trim() || 'AI-Analysis';
+            const saveFolder = host.autoSaveFolder || 'AI-Analysis';
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
             const querySlug = (searchQuery || 'graph').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 40);
             const fileName = `Graph-${querySlug}-${timestamp}`;
             const summary = `${graphData.nodes.length} nodes, ${graphData.edges.length} edges`;
-            const { path } = await saveAiGraphToMarkdown({
+            const { path } = await host.saveGraphToVault({
                 folderPath: saveFolder,
                 fileName,
                 query: searchQuery || '',
@@ -48,7 +47,7 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
         } catch (e) {
             new Notice(`Failed to save graph: ${e instanceof Error ? e.message : String(e)}`);
         }
-    }, [graphData, searchQuery]);
+    }, [graphData, searchQuery, host]);
 
     return (
         <div className="pktw-h-[500px] pktw-w-full pktw-border pktw-border-[--background-modifier-border] pktw-rounded-lg pktw-overflow-hidden">

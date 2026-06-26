@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Notice } from 'obsidian';
 import type { TimeRange } from '@/service/usage/types';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import {
 	DEFAULT_BUDGET_SETTINGS,
 	DEFAULT_HARNESS_SETTINGS,
@@ -9,7 +9,7 @@ import {
 	type BudgetAlertRuleKind,
 	type BudgetSettings,
 	type HarnessSettings,
-} from '@/app/settings/types';
+} from '@/core/config/settingsTypes';
 import {
 	UsageTrackingService,
 	type MonthlyPaceSnapshot,
@@ -457,19 +457,11 @@ interface HarnessBudgetState {
  * `plugin.saveSettings()` and the user sees a Notice on success.
  */
 function useHarnessBudget(): HarnessBudgetState {
+	const { settings, plugin } = useServiceContext();
 	const [tick, setTick] = React.useState(0);
 
-	const ctx = (() => {
-		try {
-			return AppContext.getInstance();
-		} catch {
-			return null;
-		}
-	})();
-
 	const harness: HarnessSettings = (() => {
-		if (!ctx) return { ...DEFAULT_HARNESS_SETTINGS };
-		const persisted = ctx.settings.harnessSettings;
+		const persisted = settings.harnessSettings;
 		if (persisted) return persisted;
 		return { ...DEFAULT_HARNESS_SETTINGS };
 	})();
@@ -478,9 +470,8 @@ function useHarnessBudget(): HarnessBudgetState {
 
 	const save = React.useCallback(
 		(next: HarnessSettings) => {
-			if (!ctx) return;
-			ctx.settings.harnessSettings = next;
-			ctx.plugin
+			settings.harnessSettings = next;
+			plugin
 				.saveSettings()
 				.then(() => {
 					setTick((t) => t + 1);
@@ -490,11 +481,11 @@ function useHarnessBudget(): HarnessBudgetState {
 					new Notice('Failed to save budget — see console.');
 				});
 		},
-		[ctx],
+		[settings, plugin],
 	);
 
 	// tick is intentionally not in the deps of `save` — we use it to re-render
-	// after a save, but the closure binds to the same ctx instance every time.
+	// after a save, but the closure binds to the same settings/plugin instances every time.
 	void tick;
 	return { harness, budget, save };
 }

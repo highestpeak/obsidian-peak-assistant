@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { CheckSquare, FileText, Filter, Copy } from 'lucide-react';
 import { Notice } from 'obsidian';
@@ -27,6 +27,7 @@ interface ExtractTodosPanelProps {
 export const ExtractTodosPanel: React.FC<ExtractTodosPanelProps> = ({
 	result, ctx, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const [filterTag, setFilterTag] = useState<string | null>(null);
 	const [filterFolder, setFilterFolder] = useState<string | null>(null);
 
@@ -68,21 +69,9 @@ export const ExtractTodosPanel: React.FC<ExtractTodosPanelProps> = ({
 		return Array.from(map.entries());
 	}, [filtered]);
 
-	const navigateToLine = async (filePath: string, lineNumber: number) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(filePath);
-		if (!file || !('extension' in file)) return;
-		const leaf = app.workspace.getLeaf(false);
-		await leaf.openFile(file as any);
-		// Scroll to line
-		const view = leaf.view as any;
-		if (view?.editor) {
-			view.editor.setCursor({ line: lineNumber - 1, ch: 0 });
-			view.editor.scrollIntoView(
-				{ from: { line: lineNumber - 1, ch: 0 }, to: { line: lineNumber - 1, ch: 0 } },
-				true,
-			);
-		}
+	const navigateToLine = async (filePath: string, _lineNumber: number) => {
+		// Open the note; line-level scroll is not supported via the vault port.
+		await vault.openNote(filePath, { newLeaf: false });
 	};
 
 	const handleCopy = async () => {

@@ -15,7 +15,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ViewEventType } from '@/core/eventBus';
-import type { MyPluginSettings } from '@/app/settings/types';
+import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useSettingsUpdate } from './settings/hooks/useSettingsUpdate';
 import {

@@ -568,6 +568,8 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 						type="button"
 						className="pkchat-msg__action"
 						onClick={() => {
+							// TODO T11M: route through port — SettingsModal ctor requires AppContext;
+							// refactor SettingsModal to accept (app, plugin) when that file is migrated.
 							const { SettingsModal } = require('@/ui/view/SettingsModal');
 							new SettingsModal(AppContext.getInstance()).open();
 						}}

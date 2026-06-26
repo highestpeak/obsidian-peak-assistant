@@ -2,6 +2,7 @@ import React from 'react';
 import { Notice, normalizePath } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
 import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { FileText, AlertTriangle, Copy, Save, ExternalLink } from 'lucide-react';
 
@@ -47,13 +48,10 @@ const PRIORITY_STYLES: Record<string, string> = {
 export const WritingPlanPanel: React.FC<WritingPlanPanelProps> = ({
 	result, ctx, onClose,
 }) => {
-	const openNote = async (path: string) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file && 'extension' in file) {
-			await app.workspace.getLeaf(false).openFile(file as any);
-		}
-	};
+	const { vault } = useCopilotPanelVault();
+
+	const openNote = (path: string): Promise<void> =>
+		vault.openNote(path, { newLeaf: false });
 
 	const totalWords = result.outline.reduce((sum, s) => sum + s.estimatedWords, 0);
 
@@ -89,11 +87,9 @@ export const WritingPlanPanel: React.FC<WritingPlanPanelProps> = ({
 	};
 
 	const handleSaveAsNote = async () => {
-		const app = AppContext.getInstance().app;
 		const settings = AppContext.getInstance().settings;
 		const inboxFolder = (settings as any).inboxFolder ?? '_inbox';
 		const safeName = result.title.replace(/[\\/:*?"<>|]/g, '-');
-		const filePath = normalizePath(`${inboxFolder}/${safeName}.md`);
 
 		const lines: string[] = [
 			`# ${result.title}`,
@@ -125,11 +121,7 @@ export const WritingPlanPanel: React.FC<WritingPlanPanelProps> = ({
 		}
 
 		try {
-			const folderPath = normalizePath(inboxFolder);
-			if (!(await app.vault.adapter.exists(folderPath))) {
-				await app.vault.createFolder(folderPath);
-			}
-			await app.vault.create(filePath, lines.join('\n'));
+			const filePath = await vault.createNoteInFolder(normalizePath(inboxFolder), safeName, lines.join('\n'));
 			new Notice(`Writing plan saved to ${filePath}`);
 		} catch (e) {
 			new Notice(`Failed to save: ${(e as Error).message}`);

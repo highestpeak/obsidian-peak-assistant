@@ -36,13 +36,13 @@ import {
 } from 'lucide-react';
 import { Row, Chip, Pill, Button } from '@/ui/components/primitives';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import {
     openHarnessSetupWizard,
     openAssistant,
 } from '@/app/commands/PeakCommandActions';
-import type { MyPluginSettings, HarnessSettings } from '@/app/settings/types';
+import type { MyPluginSettings, HarnessSettings } from '@/core/config/settingsTypes';
 import { useSettingsStrings } from '../settingsStrings';
 import type { TabId } from '../types';
 
@@ -452,6 +452,7 @@ type IndexCoverage =
     | { kind: 'ready'; indexed: number; total: number; pct: number };
 
 function useIndexCoverage(): IndexCoverage {
+    const { app } = useServiceContext();
     const [state, setState] = useState<IndexCoverage>({ kind: 'loading' });
     useEffect(() => {
         if (!sqliteStoreManager.isInitialized()) {
@@ -464,7 +465,7 @@ function useIndexCoverage(): IndexCoverage {
                 const { IndexService } = await import('@/service/search/index/indexService');
                 const status = await IndexService.getInstance().getIndexStatus();
                 if (cancelled) return;
-                const total = AppContext.getInstance().app.vault.getMarkdownFiles().length;
+                const total = app.vault.getMarkdownFiles().length;
                 const indexed = status.indexedDocs ?? 0;
                 if (indexed === 0) {
                     setState({ kind: 'empty' });

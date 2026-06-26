@@ -9,11 +9,12 @@ import {
 	Network,
 	Image as ImageIcon,
 } from 'lucide-react';
+import type { App } from 'obsidian';
 import { IconButton } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import type { ChatMessage } from '@/service/chat/types';
 import { useChatStrings } from '../chatStringsContext';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { CHAT_STUDIO_VIEW_TYPE, CHAT_VIEW_TYPE } from '@/app/view/types';
 import { usePortalContainer } from '@/ui/react/PortalContainerContext';
 
@@ -124,18 +125,19 @@ function inferArtifactKindFromResource(kind: string | undefined, source: string)
 	return 'file';
 }
 
-function scrollToMessageInDoc(messageId: string, doc: Document) {
+function scrollToMessageInDoc(messageId: string, doc: Document, app: App | null) {
 	// First, make sure the chat surface is the active leaf. In Studio mode the
 	// surface is CHAT_STUDIO_VIEW_TYPE (outline lives inside the same leaf as
 	// chat, so this is a no-op). In legacy mode the surface is CHAT_VIEW_TYPE
 	// and the outline sits in the right sidebar — revealLeaf brings chat to the
 	// front without stealing focus from the outline.
 	try {
-		const app = AppContext.getInstance().app;
-		const studioLeaf = app.workspace.getLeavesOfType(CHAT_STUDIO_VIEW_TYPE)[0];
-		const chatLeaf = studioLeaf ?? app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0];
-		if (chatLeaf) {
-			app.workspace.revealLeaf(chatLeaf);
+		if (app) {
+			const studioLeaf = app.workspace.getLeavesOfType(CHAT_STUDIO_VIEW_TYPE)[0];
+			const chatLeaf = studioLeaf ?? app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0];
+			if (chatLeaf) {
+				app.workspace.revealLeaf(chatLeaf);
+			}
 		}
 	} catch {
 		// Best-effort — fall through to the scroll path even if app lookup fails.
@@ -164,13 +166,14 @@ function scrollToMessageInDoc(messageId: string, doc: Document) {
 }
 
 function useScrollToMessage(): (messageId: string) => void {
+	const { app } = useServiceContext();
 	const portalContainer = usePortalContainer();
 	return useCallback(
 		(messageId: string) => {
 			const doc = portalContainer?.ownerDocument ?? document;
-			scrollToMessageInDoc(messageId, doc);
+			scrollToMessageInDoc(messageId, doc, app);
 		},
-		[portalContainer],
+		[portalContainer, app],
 	);
 }
 

@@ -14,7 +14,6 @@ import {
 } from '@/service/copilot/CopilotReviewHistoryService';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
-import { AppContext } from '@/app/context/AppContext';
 import { type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { getCopilotActionIcon } from '@/ui/view/copilot/copilot-action-surfaces';
 import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';

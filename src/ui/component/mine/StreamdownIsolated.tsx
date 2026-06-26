@@ -7,7 +7,7 @@ import {
 	defaultRemarkPlugins,
 } from 'streamdown';
 import type { PluggableList } from 'unified';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { STREAMDOWN_ISOLATED_CSS } from '@/styles/streamdown-isolated-css';
 import { remarkWikilink } from './streamdown';
 import { extractWikilinkPath, openWikilinkPath } from '@/ui/view/quick-search/callbacks/useStreamdownWikilinkClick';
@@ -182,6 +182,7 @@ const HOVER_CLOSE_DELAY_MS = 100;
 type HoverState = { path: string; rect: DOMRect; preview: PreviewResult | null; loading: boolean };
 
 export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => {
+	const { app } = useServiceContext();
 	const { children: rawChildren, isAnimating = false, className, onClick } = props;
 	// Strip inline $...$ (not $$...$$) to prevent KaTeX from rendering product names as math
 	const children = rawChildren.replace(/(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/g, '$1');
@@ -269,7 +270,6 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 			};
 			shadow.addEventListener('click', clickHandler, true);
 
-			const app = AppContext.getInstance().app;
 			const mouseoverHandler = (e: MouseEvent) => {
 				const link = findLinkInPath(e.composedPath?.() ?? []);
 				if (!link) return;
@@ -369,7 +369,6 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 		if (!hoverState?.path || useFallback) return;
 		const path = hoverState.path;
 		let cancelled = false;
-		const app = AppContext.getInstance().app;
 		loadWikilinkPreview(path, app).then((preview) => {
 			if (!cancelled)
 				setHoverState((prev) => (prev && prev.path === path ? { ...prev, preview, loading: false } : prev));

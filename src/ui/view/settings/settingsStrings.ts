@@ -31,7 +31,7 @@
  */
 
 import React, { createContext, useContext } from 'react';
-import { AppContext } from '@/app/context/AppContext';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 
 // ─── Shape ─────────────────────────────────────────────────────────────
@@ -648,7 +648,7 @@ export function useSettingsStrings(): SettingsStrings {
 
 export async function loadSettingsStrings(): Promise<SettingsStrings> {
     try {
-        const tm = AppContext.getInstance().manager.getTemplateManager?.();
+        const tm = TemplateManager.getInstance();
         if (!tm) return DEFAULT_SETTINGS_STRINGS;
         const parsed = await tm.loadJson<Partial<SettingsStrings> & { _doc?: string }>(
             ConfigTemplateId.Settings,

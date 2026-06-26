@@ -7,7 +7,6 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { FileIcon, getFileTypeByName } from '@/ui/view/shared/file-utils';
 import { ResourceAttachmentEntry, useProjectLoad, useConversationLoad, StarredEntry } from './hooks';
 import { openAttachment } from '@/core/utils/vault-utils';
-import { AppContext } from '@/app/context/AppContext';
 import { useChatViewStore } from './store/chatViewStore';
 import { ProjectSummary } from './components/project-summary';
 import { ConversationList } from './components/conversation-list';
@@ -22,6 +21,7 @@ type TabType = 'conversations' | 'starred' | 'resources';
  * Project overview view component
  */
 export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = () => {
+	const { app } = useServiceContext();
 	const store = useChatViewStore();
 
 	const projectId = store.projectForOverview?.meta.id;
@@ -288,7 +288,7 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources }) => {
 							'pktw-cursor-pointer pktw-transition-all',
 							'hover:pktw-shadow-md hover:pktw-border-border-hover hover:pktw-bg-accent/50'
 						)}
-						onClick={() => openAttachment(entry.resource, AppContext.getInstance().app)}
+						onClick={() => openAttachment(entry.resource, app)}
 					>
 						<div className="pktw-p-2 pktw-rounded-md pktw-bg-muted pktw-shrink-0">
 							<FileIcon type={fileType} className="pktw-text-muted-foreground" size={20} />

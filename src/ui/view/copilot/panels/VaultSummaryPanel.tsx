@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { VaultSummaryResult } from '@/service/copilot/copilot-schemas';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { Calendar, FolderOpen, FileText, Copy } from 'lucide-react';
@@ -16,15 +16,11 @@ interface VaultSummaryPanelProps {
 export const VaultSummaryPanel: React.FC<VaultSummaryPanelProps> = ({
 	result, ctx, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const [expandedGroup, setExpandedGroup] = useState<number | null>(null);
 
-	const openNote = async (path: string) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file && 'extension' in file) {
-			await app.workspace.getLeaf(false).openFile(file as any);
-		}
-	};
+	const openNote = (path: string): Promise<void> =>
+		vault.openNote(path, { newLeaf: false });
 
 	const handleCopy = async () => {
 		const md = [
@@ -45,9 +41,8 @@ export const VaultSummaryPanel: React.FC<VaultSummaryPanelProps> = ({
 	};
 
 	const handleInsertAsNote = async () => {
-		const app = AppContext.getInstance().app;
 		const date = new Date().toISOString().slice(0, 10);
-		const filename = `Vault Summary ${date}.md`;
+		const title = `Vault Summary ${date}`;
 		const md = [
 			'---',
 			`date: ${date}`,
@@ -70,8 +65,8 @@ export const VaultSummaryPanel: React.FC<VaultSummaryPanelProps> = ({
 		].join('\n');
 
 		try {
-			await app.vault.create(filename, md);
-			new Notice(`Created ${filename}`);
+			await vault.createNoteInFolder('', title, md);
+			new Notice(`Created ${title}.md`);
 			onClose();
 		} catch (e) {
 			new Notice(`Failed to create note: ${(e as Error).message}`);

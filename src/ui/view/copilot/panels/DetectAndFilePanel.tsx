@@ -1,7 +1,7 @@
 import React from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import type { DetectAndFileResult } from '@/service/copilot/copilot-schemas';
 import { Inbox, ExternalLink, FilePlus, Check } from 'lucide-react';
@@ -25,40 +25,25 @@ interface DetectAndFilePanelProps {
 export const DetectAndFilePanel: React.FC<DetectAndFilePanelProps> = ({
 	result, ctx, onClose,
 }) => {
-	const openNote = async (path: string) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file && 'extension' in file) {
-			await app.workspace.getLeaf(false).openFile(file as any);
-		}
-	};
+	const { vault } = useCopilotPanelVault();
+
+	const openNote = (path: string): Promise<void> =>
+		vault.openNote(path, { newLeaf: false });
 
 	const handleAppend = async (path: string, formattedText: string) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(path);
-		if (!file || !('extension' in file)) {
+		const appended = await vault.appendToFileAtPath(path, formattedText);
+		if (!appended) {
 			new Notice(`File not found: ${path}`);
 			return;
 		}
-		try {
-			const content = await app.vault.read(file as any);
-			const newContent = content.trimEnd() + '\n\n' + formattedText + '\n';
-			await app.vault.modify(file as any, newContent);
-			new Notice(`Appended to: ${path}`);
-		} catch (e) {
-			new Notice(`Failed: ${(e as Error).message}`);
-		}
+		new Notice(`Appended to: ${path}`);
 	};
 
 	const handleCreateNew = async () => {
 		if (!result.fallbackAction) return;
-		const app = AppContext.getInstance().app;
 		const { suggestedTitle, suggestedFolder, formattedText } = result.fallbackAction;
 		try {
-			const folder = app.vault.getAbstractFileByPath(suggestedFolder);
-			if (!folder) await app.vault.createFolder(suggestedFolder);
-			const path = `${suggestedFolder}/${suggestedTitle}.md`;
-			await app.vault.create(path, formattedText);
+			const path = await vault.createNoteInFolder(suggestedFolder, suggestedTitle, formattedText);
 			new Notice(`Created: ${path}`);
 		} catch (e) {
 			new Notice(`Failed: ${(e as Error).message}`);

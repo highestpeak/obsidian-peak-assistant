@@ -5,8 +5,8 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { Input } from '@/ui/component/shared-ui/input';
 import { useAIAnalysisResult } from '../../hooks/useAIAnalysisResult';
-import { AppContext } from '@/app/context/AppContext';
 import { useSharedStore } from '../../store/sharedStore';
+import { useQuickSearchHost } from '../../hooks/useQuickSearchHost';
 import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
 import { TYPEWRITER_EFFECT_SPEED_MS } from '@/core/constant';
 import { useGenerateResultSaveField } from '../../hooks/useAIAnalysisPostAIInteractions';
@@ -126,11 +126,10 @@ const AIGenerateInputField: React.FC<AIGenerateInputFieldProps> = ({
  * Use "Analyze" buttons to AI-generate suggestions.
  */
 export const SaveDialog: React.FC<ResultSaveDialogProps> = ({ onClose }) => {
+	const host = useQuickSearchHost();
 	const [saved, setSaved] = useState(false);
 	const [fileName, setFileName] = useState<string>(useSharedStore().searchQuery.trim() || 'Query');
-	const [folderPath, setFolderPath] = useState(
-		AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder!
-	);
+	const [folderPath, setFolderPath] = useState(host.autoSaveFolder);
 	const [fileTypewriterActive, setFileTypewriterActive] = useState(false);
 	const [folderTypewriterActive, setFolderTypewriterActive] = useState(false);
 

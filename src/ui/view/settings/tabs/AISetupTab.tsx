@@ -16,7 +16,7 @@ import { Row, Chip, Segmented } from '@/ui/components/primitives';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { openHarnessSetupWizard } from '@/app/commands/PeakCommandActions';
 import { RoleModelPicker } from '../components/RoleModelPicker';
-import { DEFAULT_HARNESS_SETTINGS, type MyPluginSettings, type HarnessSettings } from '@/app/settings/types';
+import { DEFAULT_HARNESS_SETTINGS, type MyPluginSettings, type HarnessSettings } from '@/core/config/settingsTypes';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import type { Profile, RoleConfig } from '@/core/profiles/types';
 import { ProfilesTab } from '../ProfilesTab';

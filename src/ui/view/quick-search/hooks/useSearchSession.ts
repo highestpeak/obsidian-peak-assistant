@@ -19,6 +19,8 @@ import { setLastAnalysisHistorySearch, invalidateFollowupContextCache } from '..
 import { useStepDisplayReplayStore } from '../store/stepDisplayReplayStore';
 
 import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import { useQuickSearchHost } from './useQuickSearchHost';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import type { UserFeedback } from '@/service/agents/core/types';
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
@@ -79,6 +81,9 @@ export function persistForegroundSession(existingPath?: string | null): void {
 		}
 	} catch { /* graph stores not available */ }
 
+	// Module-level lifecycle helper — called from QuickSearchModal.onClose
+	// where no React tree is available, so AppContext.getInstance() is the
+	// correct boundary (cannot use hooks). Documented exception per T11M.
 	const ctx = AppContext.getInstance();
 	void persistSessionToVault(snapshot, {
 		vaultWriter: new AppAnalysisDocVaultWriterAdapter(),
@@ -87,7 +92,7 @@ export function persistForegroundSession(existingPath?: string | null): void {
 		searchSettings: ctx.settings.search,
 		enableDevTools: ctx.settings.enableDevTools === true,
 		historyService: ctx.aiAnalysisHistoryService,
-		eventBus: AppContext.getEventBus(),
+		eventBus: ctx.eventBus,
 	}).then((result) => {
 		if (result) {
 			useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });
@@ -102,6 +107,8 @@ export function persistForegroundSession(existingPath?: string | null): void {
 export function useSearchSession() {
 	const { searchQuery } = useSharedStore();
 	const store = useSearchSessionStore;
+	const { app, manager, plugin } = useServiceContext();
+	const host = useQuickSearchHost();
 
 	const webEnabled = store((s) => s.webEnabled);
 	const analysisMode = store((s) => s.analysisMode);
@@ -116,7 +123,7 @@ export function useSearchSession() {
 	const noticeSentRef = useRef<boolean>(false);
 
 	// DocSimpleAgent (memoized, stateless)
-	const aiSearchAgent = useMemo(() => AppContext.searchAgent(), []);
+	const aiSearchAgent = useMemo(() => host.createDocSimpleAgent(), [host]);
 
 	// VaultSearchAgent (created per session)
 	const vaultAgentRef = useRef<VaultSearchAgent | null>(null);
@@ -209,7 +216,7 @@ export function useSearchSession() {
 			const isVaultMode = analysisMode === 'vaultFull';
 
 			if (isVaultMode) {
-				vaultAgentRef.current = AppContext.vaultSearchAgent();
+				vaultAgentRef.current = host.createVaultSearchAgent();
 				sessionRefs.agentRef = vaultAgentRef.current;
 
 				// Register HITL feedback callback
@@ -239,7 +246,7 @@ export function useSearchSession() {
 				const { useAIGraphStore } = await import('../store/aiGraphStore');
 				const { AIGraphAgent } = await import('@/service/agents/AIGraphAgent');
 
-				const agent = new AIGraphAgent(AppContext.getInstance().app, AppContext.getInstance().searchClient, AppContext.getInstance().manager);
+				const agent = host.createAIGraphAgent();
 				useAIGraphStore.getState().setLoading(true);
 				useAIGraphStore.getState().setQuery(searchQuery);
 
@@ -315,12 +322,11 @@ export function useSearchSession() {
 
 	const reportOrchestrator = useMemo(
 		() => {
-			const ctx = AppContext.getInstance();
 			return new ReportOrchestrator(
-				ctx.plugin.aiServiceManager,
+				plugin.aiServiceManager,
 				new SearchSessionReportAdapter(),
-				ctx.app,
-				ctx.plugin.manifest.id,
+				app,
+				plugin.manifest.id,
 			);
 		},
 		[],
@@ -389,7 +395,7 @@ export function useSearchSession() {
 	// -----------------------------------------------------------------------
 
 	const restoreFromBackground = useCallback((sessionId: string) => {
-		const runtime = AppContext.tryGetQuickSearchBackgroundRuntime();
+		const runtime = host.quickSearchRuntime;
 		if (!runtime) return;
 
 		// T10: if the foreground is still alive, the runtime's

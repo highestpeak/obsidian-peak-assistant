@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { LinkSuggestions } from '@/service/copilot/copilot-schemas';
 import { Link2, Check } from 'lucide-react';
 
@@ -17,6 +17,7 @@ interface LinkSuggestPanelProps {
 export const LinkSuggestPanel: React.FC<LinkSuggestPanelProps> = ({
   result, file, originalContent, onClose,
 }) => {
+  const { vault } = useCopilotPanelVault();
   const [selected, setSelected] = useState<Set<number>>(() => {
     // Pre-select outgoing links
     const s = new Set<number>();
@@ -37,9 +38,8 @@ export const LinkSuggestPanel: React.FC<LinkSuggestPanelProps> = ({
   const selectedOutgoing = result.links.filter((l, i) => l.type === 'outgoing' && selected.has(i));
 
   const handleInsert = async () => {
-    const app = AppContext.getInstance().app;
     try {
-      let content = await app.vault.read(file);
+      let content = await vault.readFileContent(file);
       for (const link of selectedOutgoing) {
         // Insert [[target]] near the context phrase
         const contextIdx = content.indexOf(link.context);
@@ -49,7 +49,7 @@ export const LinkSuggestPanel: React.FC<LinkSuggestPanelProps> = ({
           content = content.slice(0, insertPos) + ` [[${link.target}]]` + content.slice(insertPos);
         }
       }
-      await app.vault.modify(file, content);
+      await vault.replaceFileContent(file, content);
       new Notice(`Inserted ${selectedOutgoing.length} links.`);
       onClose();
     } catch (e) {

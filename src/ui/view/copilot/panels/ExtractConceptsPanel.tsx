@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import { Lightbulb, Check, FilePlus } from 'lucide-react';
 import type { ExtractConcepts } from '@/service/copilot/copilot-schemas';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
@@ -15,6 +15,7 @@ interface ExtractConceptsPanelProps {
 export const ExtractConceptsPanel: React.FC<ExtractConceptsPanelProps> = ({
 	result, ctx, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const [selected, setSelected] = useState<Set<number>>(() => new Set(result.concepts.map((_, i) => i)));
 
 	const toggle = (index: number) => {
@@ -35,7 +36,6 @@ export const ExtractConceptsPanel: React.FC<ExtractConceptsPanelProps> = ({
 	};
 
 	const handleCreateNotes = async () => {
-		const app = AppContext.getInstance().app;
 		const sourceFile = ctx.file;
 		const folder = sourceFile.parent?.path ?? '';
 		let created = 0;
@@ -43,10 +43,9 @@ export const ExtractConceptsPanel: React.FC<ExtractConceptsPanelProps> = ({
 		for (const idx of selected) {
 			const concept = result.concepts[idx];
 			const fileName = concept.term.replace(/[/\\:*?"<>|]/g, '-');
-			const filePath = folder ? `${folder}/${fileName}.md` : `${fileName}.md`;
 
 			// Skip if file already exists
-			if (app.vault.getAbstractFileByPath(filePath)) {
+			if (vault.findFileByPath(folder ? `${folder}/${fileName}.md` : `${fileName}.md`)) {
 				new Notice(`Skipped "${concept.term}" — file already exists.`);
 				continue;
 			}
@@ -61,7 +60,7 @@ export const ExtractConceptsPanel: React.FC<ExtractConceptsPanelProps> = ({
 			].join('\n');
 
 			try {
-				await app.vault.create(filePath, content);
+				await vault.createNoteInFolder(folder, fileName, content);
 				created++;
 			} catch (e) {
 				new Notice(`Failed to create "${concept.term}": ${(e as Error).message}`);

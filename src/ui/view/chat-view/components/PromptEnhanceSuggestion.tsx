@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Wand2, Loader2 } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { usePromptInputContext } from '@/ui/component/prompt-input';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { PromptId } from '@/service/prompt/PromptId';
 
 const VAGUE_THRESHOLD = 20;
@@ -13,6 +13,7 @@ const VAGUE_THRESHOLD = 20;
  * template and replaces the input text.
  */
 export const PromptEnhanceSuggestion: React.FC = () => {
+	const { manager } = useServiceContext();
 	const { textInput, focusInput } = usePromptInputContext();
 	const [visible, setVisible] = useState(false);
 	const [isEnhancing, setIsEnhancing] = useState(false);
@@ -56,7 +57,6 @@ export const PromptEnhanceSuggestion: React.FC = () => {
 		setVisible(false);
 
 		try {
-			const manager = AppContext.getInstance().manager;
 			const enhanced = await manager.queryText(
 				PromptId.PromptEnhance,
 				{ userPrompt: originalText },

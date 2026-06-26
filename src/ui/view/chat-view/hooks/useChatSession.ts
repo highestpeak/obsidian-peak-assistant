@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
+import { DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
 import { getLLMOutputControlSettingKeys } from '@/core/providers/types';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 

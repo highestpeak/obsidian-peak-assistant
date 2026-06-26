@@ -1,4 +1,5 @@
 import React from 'react';
+import { App } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 
 /**
@@ -24,10 +25,11 @@ export function looksLikePath(s: string): boolean {
 /**
  * Resolve link text (e.g. "Note Title") to vault file path via metadataCache.
  * Returns resolved path or original if not found.
+ * Pass `appInstance` to avoid AppContext.getInstance(); falls back when not provided.
  */
-export function resolveWikilinkToPath(linkText: string): string {
+export function resolveWikilinkToPath(linkText: string, appInstance?: App): string {
 	try {
-		const app = AppContext.getInstance().app;
+		const app = appInstance ?? AppContext.getInstance().app;
 		const dest = app.metadataCache.getFirstLinkpathDest(linkText, '');
 		if (dest && 'path' in dest) return dest.path;
 	} catch {
@@ -74,10 +76,11 @@ export function extractWikilinkPath(href: string): string | null {
  * Open a vault file path via Obsidian workspace.
  * Closes the Quick Search modal so the opened file is visible.
  * When newTab is true, opens in a new tab instead of replacing the current one.
+ * Pass `appInstance` to avoid AppContext.getInstance(); falls back when not provided.
  */
-export function openWikilinkPath(path: string, newTab: boolean = false): void {
+export function openWikilinkPath(path: string, newTab: boolean = false, appInstance?: App): void {
 	try {
-		const app = AppContext.getInstance().app;
+		const app = appInstance ?? AppContext.getInstance().app;
 		// Close the Quick Search modal first so the opened file is visible
 		const modalEl = document.querySelector('.peak-quick-search-modal')?.closest('.modal-container');
 		if (modalEl) {

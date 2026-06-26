@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Brain, Network } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
-import { AppContext } from '@/app/context/AppContext';
 import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 import { humanReadableTime } from '@/core/utils/date-utils';
+import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
 
 // ---------------------------------------------------------------------------
 // AnalysisRow
@@ -62,6 +62,7 @@ export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 	limit = 20,
 	filterQuery,
 }) => {
+	const host = useQuickSearchHost();
 	const [records, setRecords] = useState<AIAnalysisHistoryRecord[]>([]);
 	const [totalCount, setTotalCount] = useState(0);
 	const [loading, setLoading] = useState(false);
@@ -73,7 +74,7 @@ export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 		if (loading || doneRef.current) return;
 		setLoading(true);
 		try {
-			const svc = AppContext.getInstance().aiAnalysisHistoryService;
+			const svc = host.aiAnalysisHistory;
 			const hasFilter = !!filterQuery?.trim();
 			const [rows, count] = await Promise.all([
 				hasFilter

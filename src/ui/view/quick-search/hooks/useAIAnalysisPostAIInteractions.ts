@@ -9,10 +9,10 @@ import { PromptId } from '@/service/prompt/PromptId';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { useSharedStore } from '../store/sharedStore';
 import { getLastAnalysisHistorySearch, searchCurrentResult } from '../followupContextRuntime';
-import { AppContext } from '@/app/context/AppContext';
 import { FollowupChatAgent } from '@/service/agents/FollowupChatAgent';
 import type { LLMStreamEvent, LLMUsage } from '@/core/providers/types';
 import { AIServiceManager } from '@/service/chat/service-manager';
+import { useQuickSearchHost } from './useQuickSearchHost';
 
 /** Sanitize AI-generated filename: remove invalid filesystem chars. */
 function sanitizeFilename(s: string): string {
@@ -51,14 +51,16 @@ const CANDIDATE_FOLDERS_MAX = 12;
 /**
  * Stream follow-up response via FollowupChatAgent (search_chat_history + search_current_result + vault tools).
  * Falls back to chatWithPromptStream when agent is unavailable (e.g. mock env).
+ * Pass `isMockEnv` explicitly to avoid AppContext.getInstance() at call site.
  */
 export async function* streamSearchFollowup(
     manager: AIServiceManager,
     promptId: PromptId,
-    variables: Record<string, unknown>
+    variables: Record<string, unknown>,
+    isMockEnv: boolean = false
 ): AsyncGenerator<LLMStreamEvent> {
     try {
-        if (AppContext.getInstance().isMockEnv) {
+        if (isMockEnv) {
             yield* manager.queryStream(promptId, variables as any);
             return;
         }
@@ -156,6 +158,7 @@ async function getCandidateFoldersFromSearch(
  * Calls chatWithPrompt with the given promptId and processes the result.
  */
 export function useGenerateResultSaveField() {
+    const host = useQuickSearchHost();
     const { manager, searchClient } = useServiceContext();
     const { searchQuery } = useSharedStore();
     const title = useSearchSessionStore((s) => s.title ?? '');
@@ -198,7 +201,7 @@ export function useGenerateResultSaveField() {
         const candidateFoldersFromSearch = candidateFolders.length
             ? candidateFolders.map((f) => `- ${f}`).join('\n')
             : undefined;
-        const defaultSaveFolder = AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder?.trim() || undefined;
+        const defaultSaveFolder = host.autoSaveFolder || undefined;
         const result = await manager.queryText(PromptId.AiAnalysisSaveFolder, {
             query: searchQuery,
             summary: summary ? summary.slice(0, SLICE_CAPS.ui.analysisSummary) : undefined,

@@ -1,9 +1,8 @@
 import { SLICE_CAPS } from '@/core/constant';
-import { TFile } from 'obsidian';
+import { App, TFile } from 'obsidian';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { GraphNodeType } from '@/core/po/graph.po';
-import { AppContext } from '@/app/context/AppContext';
 import type { AISearchGraph, AISearchSource } from '@/service/agents/shared-types';
 import type { DashboardBlock } from '@/service/agents/shared-types';
 import type { SearchResultItem } from '@/service/search/types';
@@ -11,6 +10,17 @@ import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSn
 import type { CompletedAnalysisSnapshot } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { buildAiGraphMarkdown } from '@/core/storage/vault/search-docs/AiGraphDoc';
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
+
+/**
+ * T11M: explicit deps so this module no longer reaches for
+ * `AppContext.getInstance()`. UI callers obtain `{ app, enableDevTools }`
+ * via `useQuickSearchHost()` and pass them in — `useQuickSearchHost`
+ * already exposes bound versions (`host.saveAnalysisToVault`,
+ * `host.persistAnalysisDoc`, `host.saveGraphToVault`,
+ * `host.buildAnalysisMarkdownFromSnapshot`).
+ */
+export type SaveDeps = { app: App; enableDevTools: boolean };
+export type AppDeps = { app: App };
 
 /** Source shape for export/save; compatible with AISearchSource (path, title, score.average, reasoning). */
 export type ExportSource = { path: string; title: string; score?: number; content?: string };
@@ -43,10 +53,11 @@ export type SaveAnalysisResultParams = {
 /**
  * Save AI analysis result to a markdown file in the vault.
  * Uses AiSearchAnalysisDoc when snapshot is provided; otherwise builds from result.
+ * Accepts explicit deps (app, enableDevTools) so Quick Search callers don't need AppContext.getInstance().
+ * Falls back to AppContext singleton when deps not provided (for legacy callers outside Quick Search scope).
  */
-export async function saveAiAnalyzeResultToMarkdown(params: SaveAnalysisResultParams): Promise<{ path: string }> {
-	const ctx = AppContext.getInstance();
-	const app = ctx.app;
+export async function saveAiAnalyzeResultToMarkdown(params: SaveAnalysisResultParams, deps: SaveDeps): Promise<{ path: string }> {
+	const { app, enableDevTools } = deps;
 	const folder = params.folderPath.replace(/^\/+/, '').replace(/\/+$/, '');
 	const fileName = sanitizeFileName(params.fileName || 'AI Search Results');
 	const fullFolderPath = folder.length ? folder : '';
@@ -58,7 +69,7 @@ export async function saveAiAnalyzeResultToMarkdown(params: SaveAnalysisResultPa
 
 	const buildOptions: BuildMarkdownOptions = {
 		runAnalysisMode: params.snapshot?.runAnalysisMode,
-		includeSteps: ctx.settings?.enableDevTools === true,
+		includeSteps: enableDevTools === true,
 	};
 
 	let content: string;
@@ -110,8 +121,8 @@ export async function saveAiAnalyzeResultToMarkdown(params: SaveAnalysisResultPa
  * Overwrite an existing AI analysis document at path with new content.
  * Use after follow-up content or usage changes to keep the saved file in sync.
  */
-export async function persistAnalysisDocToPath(path: string, content: string): Promise<void> {
-	const app = AppContext.getInstance().app;
+export async function persistAnalysisDocToPath(path: string, content: string, deps: AppDeps): Promise<void> {
+	const { app } = deps;
 	const file = app.vault.getAbstractFileByPath(path);
 	if (file && file instanceof TFile) {
 		await app.vault.modify(file, content);
@@ -125,9 +136,8 @@ export async function saveAiGraphToMarkdown(params: {
 	summary: string;
 	graphData: LensGraphData;
 	lensHint?: string;
-}): Promise<{ path: string }> {
-	const ctx = AppContext.getInstance();
-	const app = ctx.app;
+}, deps: AppDeps): Promise<{ path: string }> {
+	const { app } = deps;
 	const folder = params.folderPath.replace(/^\/+/, '').replace(/\/+$/, '');
 	const fileName = sanitizeFileName(params.fileName || 'AI Graph');
 	const fullFolderPath = folder.length ? folder : '';
@@ -165,18 +175,19 @@ function sanitizeFileName(name: string): string {
 
 /**
  * Build markdown from snapshot (for copy, etc). Uses AiSearchAnalysisDoc format.
- * Uses runAnalysisMode from snapshot and enableDevTools from app settings for section filtering.
+ * Accepts explicit deps so callers don't need AppContext.getInstance().
  */
 export function buildAiAnalyzeMarkdownFromSnapshot(
 	snapshot: CompletedAnalysisSnapshot,
 	query: string,
-	webEnabled: boolean
+	webEnabled: boolean,
+	deps: { enableDevTools: boolean }
 ): string {
 	const docModel = fromCompletedAnalysisSnapshot(snapshot, query, webEnabled);
 	docModel.created = new Date().toISOString();
 	const options: BuildMarkdownOptions = {
 		runAnalysisMode: snapshot.runAnalysisMode,
-		includeSteps: AppContext.getInstance().settings?.enableDevTools === true,
+		includeSteps: deps.enableDevTools === true,
 	};
 	return buildAiSearchAnalysisMarkdown(docModel, options);
 }

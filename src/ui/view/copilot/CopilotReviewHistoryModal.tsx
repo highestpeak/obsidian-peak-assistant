@@ -12,7 +12,6 @@ import {
 	type CopilotReviewHistoryRecord,
 } from '@/service/copilot/CopilotReviewHistoryService';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
-import { AppContext } from '@/app/context/AppContext';
 import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';
 import { CopilotAutoRunModal } from './CopilotAutoRunModal';
 import { VaultAutoRunModal, openVaultReviewHistoryRecord } from './vault/VaultAutoRunModal';

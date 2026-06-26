@@ -1,7 +1,7 @@
 import React from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import { AlignLeft, Copy, FileInput } from 'lucide-react';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 
@@ -19,6 +19,7 @@ interface SummarizePanelProps {
 export const SummarizePanel: React.FC<SummarizePanelProps> = ({
 	result, ctx, onClose, file: fileProp,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const file = fileProp ?? ctx.file;
 	const summary = result;
 
@@ -28,9 +29,8 @@ export const SummarizePanel: React.FC<SummarizePanelProps> = ({
 	};
 
 	const handleInsertAtTop = async () => {
-		const app = AppContext.getInstance().app;
 		try {
-			const current = await app.vault.read(file);
+			const current = await vault.readFileContent(file);
 			const callout = `> [!summary]\n> ${summary.split('\n').join('\n> ')}\n\n`;
 
 			// Insert after frontmatter if present
@@ -43,7 +43,7 @@ export const SummarizePanel: React.FC<SummarizePanelProps> = ({
 				updated = callout + current;
 			}
 
-			await app.vault.modify(file, updated);
+			await vault.replaceFileContent(file, updated);
 			new Notice('Summary inserted at top of document.');
 			onClose();
 		} catch (e) {

@@ -2,7 +2,6 @@
 import React from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { PenLine } from 'lucide-react';
 
@@ -22,9 +21,9 @@ export const RewriteSelectionPanel: React.FC<RewriteSelectionPanelProps> = ({
 	const rewrittenWords = rewritten.split(/(\s+)/);
 
 	const handleApply = () => {
-		const app = AppContext.getInstance().app;
 		try {
-			const editor = app.workspace.activeEditor?.editor;
+			// activeEditor is not in the vault port; access via Obsidian global.
+			const editor = (window as any).app?.workspace?.activeEditor?.editor;
 			if (editor) {
 				editor.replaceSelection(rewritten);
 				new Notice('Selection replaced.');

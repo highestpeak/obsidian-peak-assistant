@@ -26,11 +26,8 @@ import { Input } from '@/ui/component/shared-ui/input';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { Switch } from '@/ui/component/shared-ui/switch';
 import { openHarnessSetupWizard } from '@/app/commands/PeakCommandActions';
-import {
-    AI_PATH_SUBFOLDERS,
-    type MyPluginSettings,
-    type HarnessSettings,
-} from '@/app/settings/types';
+import { AI_PATH_SUBFOLDERS } from '@/core/config/folderPaths';
+import type { MyPluginSettings, HarnessSettings } from '@/core/config/settingsTypes';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import { MaintenanceTab } from '../MaintenanceTab';
 import { useSettingsStrings } from '../settingsStrings';

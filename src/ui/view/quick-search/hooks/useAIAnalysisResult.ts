@@ -1,11 +1,11 @@
 import { useCallback } from "react";
-import { AppContext } from "@/app/context/AppContext";
 import { useSearchSessionStore } from "../store/searchSessionStore";
 import { useSharedStore } from "../store/sharedStore";
-import { saveAiAnalyzeResultToMarkdown } from "../callbacks/save-ai-analyze-to-md";
 import { openConversationInChat } from '@/ui/view/chat-view/chatNavigation';
+import { useQuickSearchHost } from './useQuickSearchHost';
 
 export function useAIAnalysisResult() {
+    const host = useQuickSearchHost();
     const { searchQuery } = useSharedStore();
 
     const webEnabled = useSearchSessionStore((s) => s.webEnabled);
@@ -29,16 +29,8 @@ export function useAIAnalysisResult() {
         const store = useSearchSessionStore.getState();
         const { snapshotFromState } = await import('../store/sessionSnapshot');
         const { persistSessionToVault } = await import('@/service/search/analysisDocPersistence');
-        const { AppAnalysisDocVaultWriterAdapter } = await import('@/app/quick-search/AppAnalysisDocVaultWriterAdapter');
         const snapshot = snapshotFromState(store);
-        const ctx = AppContext.getInstance();
-        const result = await persistSessionToVault(snapshot, {
-            vaultWriter: new AppAnalysisDocVaultWriterAdapter(),
-            searchSettings: ctx.settings.search,
-            enableDevTools: ctx.settings.enableDevTools === true,
-            historyService: ctx.aiAnalysisHistoryService,
-            eventBus: AppContext.getEventBus(),
-        });
+        const result = await persistSessionToVault(snapshot);
         if (result) {
             setAutoSaveState({ lastRunId: analysisRunId, lastSavedPath: result.path });
             useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });
@@ -57,7 +49,7 @@ export function useAIAnalysisResult() {
     }, []);
 
     const handleSaveToFile = useCallback(async (folderPath: string, fileName: string) => {
-        const root = AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder?.trim() || '';
+        const root = host.autoSaveFolder;
         const normalizedFolder = root
             ? (() => {
                 const base = root.replace(/^\/+|\/+$/g, '').trim();
@@ -73,7 +65,7 @@ export function useAIAnalysisResult() {
         const store = useSearchSessionStore.getState();
         const snapshot = snapshotFromState(store);
         // Override the auto-save folder path for manual save-to-file
-        await saveAiAnalyzeResultToMarkdown({
+        await host.saveAnalysisToVault({
             folderPath: normalizedFolder,
             fileName: fileName,
             query: searchQuery,
@@ -93,7 +85,7 @@ export function useAIAnalysisResult() {
                 content: s.reasoning,
             }));
 
-            const conversation = await AppContext.getInstance().manager.createConvFromSearchAIAnalysis({
+            const conversation = await host.createConvFromAnalysis({
                 query: searchQuery,
                 summary: summary,
                 sources: mappedSources,

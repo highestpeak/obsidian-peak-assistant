@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
-import type { MyPluginSettings } from '@/app/settings/types';
+import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import type { MCPServerConfig } from '@/service/mcp/types';
 import { MCPServerCard } from './MCPServerCard';

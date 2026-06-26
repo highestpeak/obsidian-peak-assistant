@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { CheckCircle2, FileText, Lightbulb, ExternalLink } from 'lucide-react';
 
@@ -30,26 +30,20 @@ interface FindAndSolveTasksPanelProps {
 export const FindAndSolveTasksPanel: React.FC<FindAndSolveTasksPanelProps> = ({
 	result, ctx, onClose,
 }) => {
+	const { vault } = useCopilotPanelVault();
 	const [completedTasks, setCompletedTasks] = useState<Set<number>>(() => new Set());
 
-	const openNote = async (path: string) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file && 'extension' in file) {
-			await app.workspace.getLeaf(false).openFile(file as any);
-		}
-	};
+	const openNote = (path: string): Promise<void> =>
+		vault.openNote(path, { newLeaf: false });
 
 	const markAsDone = async (task: SolvedTask, index: number) => {
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(task.filePath);
-		if (!file || !('extension' in file)) {
+		const file = vault.findFileByPath(task.filePath);
+		if (!file) {
 			new Notice(`File not found: ${task.filePath}`);
 			return;
 		}
-
 		try {
-			const content = await app.vault.read(file as any);
+			const content = await vault.readFileContent(file);
 			const lines = content.split('\n');
 			const lineIdx = task.lineNumber - 1;
 
@@ -61,7 +55,7 @@ export const FindAndSolveTasksPanel: React.FC<FindAndSolveTasksPanelProps> = ({
 					'$1- [x]'
 				) + ` (Answer: ${task.suggestedAnswer} — via [[${task.sourceNotePath.replace(/\.md$/, '')}]])`;
 				lines[lineIdx] = updatedLine;
-				await app.vault.modify(file as any, lines.join('\n'));
+				await vault.replaceFileContent(file, lines.join('\n'));
 				setCompletedTasks(prev => new Set([...prev, index]));
 				new Notice('Task marked as done with answer appended.');
 			}

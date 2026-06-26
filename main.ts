@@ -156,6 +156,11 @@ export default class MyPlugin extends Plugin {
 			console.warn('[Peak Assistant] PluginDirContentProvider not available, using vault adapter fallback.', e);
 			this.templateManager = new TemplateManager(createVaultContentProvider(this.app, this.manifest.id));
 		}
+		// T11M: bind the process-wide singleton so UI string loaders
+		// (chatStrings, settingsStrings, onboardingStrings, InlineReceipt,
+		// ContextRing, UsageDashboard, CuratorPushModal) can fetch the
+		// manager directly without reaching through AppContext.
+		TemplateManager.setInstance(this.templateManager);
 		if (this.templateManager) {
 			try {
 				await hydrateCodeStopwordsFromTemplateManager(this.templateManager);
@@ -687,6 +692,7 @@ export default class MyPlugin extends Plugin {
 			this.templateManager.clear();
 			this.templateManager = null;
 		}
+		TemplateManager.setInstance(null);
 		clearTemplateEngineForUnload();
 
 		// Bluebird/Error cleanup before closing DB so Error refs are cleared while plugin refs still exist
