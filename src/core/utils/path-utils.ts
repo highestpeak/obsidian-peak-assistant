@@ -42,3 +42,24 @@ export function getRelativePath(rootFolder: string, absolutePath: string): strin
 	}
 	return normalized;
 }
+
+/**
+ * Pure file-type classification from a vault-relative path.
+ *
+ * T11L: replaces call sites that previously needed `app.vault.getAbstractFileByPath`
+ * just to discriminate note vs file vs folder. Pure heuristic:
+ * `.md` → `note`, any other extension → `file`, no extension → `folder`.
+ *
+ * The "no extension == folder" heuristic is good enough for search-result
+ * filtering (where folders are not in the result set anyway). For full
+ * vault-tree semantics that need to distinguish a TFile from a TFolder,
+ * the caller should still resolve via the vault adapter.
+ */
+export function getFileTypeByExtension(path: string): 'note' | 'file' | 'folder' {
+	const lastSlash = path.lastIndexOf('/');
+	const basename = lastSlash === -1 ? path : path.slice(lastSlash + 1);
+	const dot = basename.lastIndexOf('.');
+	if (dot <= 0) return 'folder';
+	const ext = basename.slice(dot + 1).toLowerCase();
+	return ext === 'md' ? 'note' : 'file';
+}

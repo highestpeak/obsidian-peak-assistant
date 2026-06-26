@@ -1,6 +1,7 @@
 import { AgentTool, safeAgentTool } from "./types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import type { ZodType } from "@/core/schemas";
+import type { SearchClient } from "@/service/search/SearchClient";
 import {
 	exploreFolderInputSchema,
 	findKeyNodesInputSchema,
@@ -80,16 +81,22 @@ export function findPathTool(tm?: TemplateManager): AgentTool {
     );
 }
 
-export function findKeyNodesTool(tm?: TemplateManager): AgentTool {
-    return makeTool(
-        `Vault-wide influential note discovery using RRF on out-degree, in-degree, and optional semantic filter. ` +
-        `Node types: hub (many outgoing), authority (many incoming), bridge (cross-category), balanced.\n\n` +
-        `When to use:\n` +
-        `- Orientation at the start of recon when you need to find the most important notes in a topic area\n\n` +
-        `Avoid when:\n` +
-        `- You already have a starting note — start with inspect_note_context or graph_traversal instead`,
-        findKeyNodesInputSchema, 'find_key_nodes', findKeyNodes, tm,
-    );
+export function findKeyNodesTool(tm: TemplateManager | undefined, getSearchClient: () => SearchClient | null): AgentTool {
+    return safeAgentTool({
+        description:
+            `Vault-wide influential note discovery using RRF on out-degree, in-degree, and optional semantic filter. ` +
+            `Node types: hub (many outgoing), authority (many incoming), bridge (cross-category), balanced.\n\n` +
+            `When to use:\n` +
+            `- Orientation at the start of recon when you need to find the most important notes in a topic area\n\n` +
+            `Avoid when:\n` +
+            `- You already have a starting note — start with inspect_note_context or graph_traversal instead`,
+        inputSchema: findKeyNodesInputSchema,
+        execute: async (p) => {
+            const sc = getSearchClient();
+            if (!sc) throw new Error('find_key_nodes: SearchClient not ready');
+            return findKeyNodes({ ...p, mode: 'find_key_nodes' }, sc, tm);
+        },
+    });
 }
 
 export function findOrphansTool(tm?: TemplateManager): AgentTool {
@@ -102,15 +109,21 @@ export function findOrphansTool(tm?: TemplateManager): AgentTool {
     );
 }
 
-export function searchByDimensionsTool(tm?: TemplateManager): AgentTool {
-    return makeTool(
-        `Boolean-expression filter over tag/functional dimensions (e.g. tag:javascript AND functional:programming). ` +
-        `Rules: only tag:value and functional:value prefixes; values must be single words (no spaces, no special characters). ` +
-        `Error output: when no results found, returns diagnosis with unknown_tags and known_tags — use these to self-correct.\n\n` +
-        `Avoid when:\n` +
-        `- Searching by content keywords — use local_search_whole_vault`,
-        searchByDimensionsInputSchema, 'search_by_dimensions', searchByDimensions, tm,
-    );
+export function searchByDimensionsTool(tm: TemplateManager | undefined, getSearchClient: () => SearchClient | null): AgentTool {
+    return safeAgentTool({
+        description:
+            `Boolean-expression filter over tag/functional dimensions (e.g. tag:javascript AND functional:programming). ` +
+            `Rules: only tag:value and functional:value prefixes; values must be single words (no spaces, no special characters). ` +
+            `Error output: when no results found, returns diagnosis with unknown_tags and known_tags — use these to self-correct.\n\n` +
+            `Avoid when:\n` +
+            `- Searching by content keywords — use local_search_whole_vault`,
+        inputSchema: searchByDimensionsInputSchema,
+        execute: async (p) => {
+            const sc = getSearchClient();
+            if (!sc) throw new Error('search_by_dimensions: SearchClient not ready');
+            return searchByDimensions({ ...p, mode: 'search_by_dimensions' }, sc, tm);
+        },
+    });
 }
 
 export function exploreFolderTool(tm?: TemplateManager, opts?: { forceFormat?: 'markdown' | 'structured' }): AgentTool {
@@ -137,18 +150,24 @@ export function grepFileTreeTool(): AgentTool {
     });
 }
 
-export function recentChangesWholeVaultTool(tm?: TemplateManager): AgentTool {
-    return makeTool(
-        `Recently modified notes, sorted by mtime.\n\n` +
-        `When to use:\n` +
-        `- Establishing user's current focus at the start of recon; gives temporal context before running targeted searches\n\n` +
-        `Avoid when:\n` +
-        `- You need precise search results — this is orientation, not discovery`,
-        recentChangesWholeVaultInputSchema, 'recent_changes_whole_vault', getRecentChanges, tm,
-    );
+export function recentChangesWholeVaultTool(tm: TemplateManager | undefined, getSearchClient: () => SearchClient | null): AgentTool {
+    return safeAgentTool({
+        description:
+            `Recently modified notes, sorted by mtime.\n\n` +
+            `When to use:\n` +
+            `- Establishing user's current focus at the start of recon; gives temporal context before running targeted searches\n\n` +
+            `Avoid when:\n` +
+            `- You need precise search results — this is orientation, not discovery`,
+        inputSchema: recentChangesWholeVaultInputSchema,
+        execute: async (params) => {
+            const sc = getSearchClient();
+            if (!sc) throw new Error('recent_changes_whole_vault: SearchClient not ready');
+            return getRecentChanges({ ...params, mode: 'recent_changes_whole_vault' }, sc, tm);
+        },
+    });
 }
 
-export function localSearchWholeVaultTool(tm?: TemplateManager): AgentTool {
+export function localSearchWholeVaultTool(tm: TemplateManager | undefined, getSearchClient: () => SearchClient | null): AgentTool {
     return safeAgentTool({
         description:
             `Full-text, vector, or hybrid search across vault content.\n\n` +
@@ -158,13 +177,15 @@ export function localSearchWholeVaultTool(tm?: TemplateManager): AgentTool {
             `- You already know the tag/category structure — use search_by_dimensions instead`,
         inputSchema: localSearchWholeVaultInputSchema,
         execute: async (params) => {
+            const sc = getSearchClient();
+            if (!sc) throw new Error('local_search_whole_vault: SearchClient not ready');
             const rawFolder = params.folder_path;
             const folderPath = rawFolder != null && String(rawFolder).trim() !== ''
                 ? String(rawFolder).trim().replace(/\/+$/, '') : undefined;
             return localSearch({
                 ...params, mode: 'local_search_whole_vault',
                 scopeValue: { currentFilePath: params.current_file_path, folderPath, limitIdsSet: params.limit_ids_set },
-            }, tm);
+            }, sc, tm);
         }
     });
 }

@@ -14,7 +14,6 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { AppVaultReaderAdapter } from '@/app/vault/AppVaultReaderAdapter';
 import { IndexService } from '@/service/search/index/indexService';
-import { IgnoreService } from '@/service/search/IgnoreService';
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { BetterSqliteStore } from '@/core/storage/sqlite/better-sqlite3-adapter/BetterSqliteStore';
 import { NativeModuleManager } from '@/core/storage/sqlite/NativeModuleManager';
@@ -195,6 +194,11 @@ export default class MyPlugin extends Plugin {
 		// an explicit port so SystemPromptSlot / ConversationService stop
 		// importing `useChatViewStore`.
 		const { ChatRuntimeStateAdapter } = await import('@/app/chat/ChatRuntimeStateAdapter');
+		// T11L: construct AIAnalysisHistoryService FIRST so the manager (and the
+		// PrevAnalysisSlot it owns) can take a narrow AnalysisHistoryPort by
+		// constructor injection instead of reaching `AppContext` at slot-build
+		// time.
+		const aiAnalysisHistoryService = new AIAnalysisHistoryService();
 		// T11J B3: explicit pluginId + harness-settings provider so the
 		// manager no longer reaches `AppContext.getInstance()` for them.
 		this.aiServiceManager = new AIServiceManager(
@@ -203,6 +207,12 @@ export default class MyPlugin extends Plugin {
 			new ChatRuntimeStateAdapter(),
 			this.manifest.id,
 			() => this.settings.harnessSettings ?? DEFAULT_HARNESS_SETTINGS,
+			aiAnalysisHistoryService,
+			// T11L: providers resolve the SearchClient (set after sqlite init)
+			// and the live search-settings snapshot. Tool factories consume
+			// them via narrow getters instead of reaching `AppContext`.
+			() => this.appContext?.searchClient ?? null,
+			() => this.settings.search,
 			this.templateManager ?? undefined,
 		);
 
@@ -210,7 +220,6 @@ export default class MyPlugin extends Plugin {
 		// vault-utils resolveApp() helpers can find the singleton during downstream init
 		// chains. searchClient is null-cast now; back-filled after initializeSearchService
 		// below. This replaces an earlier bug where AppContext was created too late.
-		const aiAnalysisHistoryService = new AIAnalysisHistoryService();
 		const appContext = new AppContext(
 			this.app,
 			this.aiServiceManager,
@@ -261,6 +270,18 @@ export default class MyPlugin extends Plugin {
 				}));
 			},
 		});
+
+		// T11L: bind the "peak-system folder created" notifier from app/
+		// so `CopilotReviewHistoryService` (service tier) no longer imports
+		// Obsidian's `Notice`. Without this binding the README is still
+		// written but no banner is shown (e.g. headless tests).
+		{
+			const { getCopilotReviewHistoryService } = await import('@/service/copilot/CopilotReviewHistoryService');
+			const { Notice } = await import('obsidian');
+			getCopilotReviewHistoryService().setFolderCreatedNotifier((message, durationMs) => {
+				new Notice(message, durationMs);
+			});
+		}
 		await this.aiServiceManager.init();
 
 		// T11B-R (2026-06-14): bind the Copilot manual-action runtime
@@ -771,7 +792,6 @@ export default class MyPlugin extends Plugin {
 		EventBus.destroyInstance();
 		IndexService.clearInstance();
 		DocumentLoaderManager.clearInstance();
-		IgnoreService.clearInstance();
 		SqliteStoreManager.clearInstance();
 		BetterSqliteStore.clearInstance();
 		NativeModuleManager.clearInstance();

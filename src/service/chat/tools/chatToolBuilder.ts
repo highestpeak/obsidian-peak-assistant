@@ -1,7 +1,7 @@
 // src/service/chat/tools/chatToolBuilder.ts
 import { tool, type ToolSet } from 'ai';
 import { z } from 'zod';
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type { ModelCapabilities } from '@/core/providers/types';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
@@ -12,7 +12,7 @@ const WEB_SEARCH_SYSTEM_PROMPT =
     'Focus on factual, up-to-date information. If the query is about a specific topic, provide relevant context and details.';
 
 export interface ChatToolDeps {
-    app: App;
+    app: AppHandle;
     pluginId: string;
     enableWebSearch: boolean;
 }
@@ -45,7 +45,7 @@ export function buildChatTools(
                 }),
                 execute: async ({ query }) => {
                     try {
-                        const messages = queryWithProfile(deps.app, deps.pluginId, webProfile, {
+                        const messages = queryWithProfile(deps.app as any, deps.pluginId, webProfile, {
                             prompt: query,
                             systemPrompt: WEB_SEARCH_SYSTEM_PROMPT,
                             maxTurns: 1,

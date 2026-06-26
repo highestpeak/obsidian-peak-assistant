@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile, TFolder } from 'obsidian';
+import { App, TFile, TFolder } from 'obsidian';
 import { CHAT_PROJECT_SUMMARY_FILENAME, DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import {
 	ChatContextWindow,
@@ -10,7 +10,7 @@ import {
 	ChatProject,
 } from '@/core/types/chat';
 import type { ChatConversation } from '@/service/chat/types';
-import { ensureFolder, joinPath, writeFile, getAbsolutePath, getRelativePath } from '@/core/utils/vault-utils';
+import { ensureFolder, joinPath, writeFile, getAbsolutePath, getRelativePath, normalizeVaultPath } from '@/core/utils/vault-utils';
 import { ChatDocName } from './chat-docs/ChatDocName';
 import { ChatConversationDoc, ChatConversationDocModel } from './chat-docs/ChatConversationDoc';
 import { ChatProjectSummaryDoc } from './chat-docs/ChatProjectSummaryDoc';
@@ -25,7 +25,7 @@ export class ChatStorageService {
 	private readonly rootFolder: string;
 
 	constructor(private readonly app: App, paths: ChatFilePaths) {
-		this.rootFolder = normalizePath(paths.rootFolder);
+		this.rootFolder = normalizeVaultPath(paths.rootFolder);
 	}
 
 	/** True when SQLite is ready and repo getters will not throw. */
@@ -817,7 +817,7 @@ export class ChatStorageService {
 	 */
 	buildProjectFolderRelPath(name: string, timestamp: number, projectId: string, customFolderPath?: string): string {
 		if (customFolderPath?.trim()) {
-			return getRelativePath(this.rootFolder, normalizePath(customFolderPath));
+			return getRelativePath(this.rootFolder, normalizeVaultPath(customFolderPath));
 		}
 		const folderName = buildTimestampedName('Project', name, timestamp, projectId);
 		return getRelativePath(this.rootFolder, joinPath(this.rootFolder, folderName));
@@ -840,7 +840,7 @@ export class ChatStorageService {
 		const timestamp = Date.now();
 		const newFolderName = buildTimestampedName('Project', newName, timestamp, projectId);
 		const parentPath = folder.parent?.path ?? this.rootFolder;
-		const newFolderPath = normalizePath(`${parentPath}/${newFolderName}`);
+		const newFolderPath = normalizeVaultPath(`${parentPath}/${newFolderName}`);
 
 		// Rename the folder
 		await this.app.vault.rename(folder, newFolderName);
@@ -870,7 +870,7 @@ export class ChatStorageService {
 			this.app.vault,
 			folder?.path
 		);
-		const newPath = normalizePath(
+		const newPath = normalizeVaultPath(
 			folder?.path?.trim()
 				? `${folder.path}/${newFileName}.md`
 				: `${newFileName}.md`

@@ -188,6 +188,7 @@ export async function* runCopilotReview(
 				signal: options.signal,
 				app: sessionCtx.app,
 				pluginId: sessionCtx.plugin.manifest.id,
+				analysisHistory: sessionCtx.aiAnalysisHistoryService,
 				onTurnIncrement: () => {
 					round.turnCount += 1;
 				},

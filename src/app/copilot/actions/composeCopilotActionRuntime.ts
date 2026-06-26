@@ -48,6 +48,7 @@ export function composeCopilotActionRuntime(app: App): CopilotActionRuntime {
 			app,
 			pluginId,
 			resolveSearchClient: () => safeGetSearchClient(),
+			analysisHistory: appContext.aiAnalysisHistoryService,
 		}),
 		customPrompts: new ObsidianCustomPromptSourceAdapter({
 			app,

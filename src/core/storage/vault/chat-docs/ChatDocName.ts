@@ -1,4 +1,5 @@
-import { Vault, normalizePath, TFile, TFolder } from 'obsidian';
+import { Vault, TFile, TFolder } from 'obsidian';
+import { normalizeVaultPath } from '@/core/utils/path-utils';
 
 /**
  * Utility for building chat document names with timestamp and conflict resolution.
@@ -90,14 +91,14 @@ export class ChatDocName {
 		folder: string,
 		baseName: string
 	): Promise<string> {
-		const normalizedFolder = normalizePath(folder);
+		const normalizedFolder = normalizeVaultPath(folder);
 		const folderObj = vault.getAbstractFileByPath(normalizedFolder);
 		if (!(folderObj instanceof TFolder)) {
 			return baseName;
 		}
 
 		// Check if base name exists
-		const basePath = normalizePath(`${normalizedFolder}/${baseName}`);
+		const basePath = normalizeVaultPath(`${normalizedFolder}/${baseName}`);
 		const existing = vault.getAbstractFileByPath(basePath);
 		if (!existing) {
 			return baseName;
@@ -108,7 +109,7 @@ export class ChatDocName {
 		let candidateName: string;
 		do {
 			candidateName = `${baseName}-${index}`;
-			const candidatePath = normalizePath(`${normalizedFolder}/${candidateName}`);
+			const candidatePath = normalizeVaultPath(`${normalizedFolder}/${candidateName}`);
 			const candidate = vault.getAbstractFileByPath(candidatePath);
 			if (!candidate) {
 				return candidateName;

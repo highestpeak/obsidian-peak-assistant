@@ -5,10 +5,10 @@ import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { EMPTY_SET, emptyMap } from "@/core/utils/collection-utils";
 import { DocStatistics } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { GRAPH_RRF_WEIGHTS, RRF_K, PHYSICAL_CONNECTION_BONUS } from "@/core/constant";
-import { AppContext } from "@/app/context/AppContext";
 import { SearchScopeMode, SearchScopeValue } from "@/service/search/types";
-import { getFileTypeByPath } from "@/core/utils/obsidian-utils";
+import { getFileTypeByExtension } from "@/core/utils/path-utils";
 import { getCachedBooleanExpression, getCachedRegex } from "@/core/utils/format-utils";
+import type { SearchClient } from "@/service/search/SearchClient";
 import { parseSemanticDateRange } from "@/core/utils/date-utils";
 import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
 import type { FunctionalTagId } from '@/core/schemas/agents/search-agent-schemas';
@@ -273,6 +273,7 @@ function calculateDocumentRRF(
  * @returns Array of semantic search results with document IDs and scores
  */
 export async function getSemanticSearchResults(
+    searchClient: SearchClient,
     semanticFilter?: { query: string; topK: number },
     scopeMode: SearchScopeMode = 'vault',
     scopeValue?: SearchScopeValue,
@@ -283,8 +284,6 @@ export async function getSemanticSearchResults(
     const { query, topK } = semanticFilter;
 
     try {
-        // Get search client and use its query service for vector search
-        const searchClient = AppContext.getInstance().searchClient;
         const vectorResults = await searchClient.vectorSearch({
             text: query,
             topK: Math.min(topK, 100),
@@ -429,7 +428,10 @@ function shouldIncludeItem<T>(item: T, filters?: any, itemFiledGetter?: ItemFile
 
     // Type filter
     if (filters.type && filters.type !== 'all' && path !== undefined) {
-        const itemType = getFileTypeByPath(path, AppContext.getInstance().app);
+        // T11L: pure extension heuristic — search results are vault files,
+        // so the "folder" branch is effectively a no-match (folders aren't
+        // returned by the search index).
+        const itemType = getFileTypeByExtension(path);
 
         if (filters.type === 'note' && itemType !== 'note') return false;
         if (filters.type === 'file' && itemType !== 'file') return false;

@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
 import { Notice } from 'obsidian';
 import path from 'path';
 import { BetterSqliteStore } from './better-sqlite3-adapter/BetterSqliteStore';

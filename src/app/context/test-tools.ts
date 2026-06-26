@@ -33,16 +33,17 @@ export class GraphInspectorTestTools {
     private tools: any;
 
     constructor() {
+        const getSearchClient = () => AppContext.getInstance().searchClient;
         this.tools = {
             inspect_note_context: inspectNoteContextTool(),
             graph_traversal: graphTraversalTool(),
             find_path: findPathTool(),
-            find_key_nodes: findKeyNodesTool(),
+            find_key_nodes: findKeyNodesTool(undefined, getSearchClient),
             find_orphans: findOrphansTool(),
-            search_by_dimensions: searchByDimensionsTool(),
+            search_by_dimensions: searchByDimensionsTool(undefined, getSearchClient),
             explore_folder: exploreFolderTool(),
-            recent_changes_whole_vault: recentChangesWholeVaultTool(),
-            local_search_whole_vault: localSearchWholeVaultTool(),
+            recent_changes_whole_vault: recentChangesWholeVaultTool(undefined, getSearchClient),
+            local_search_whole_vault: localSearchWholeVaultTool(undefined, getSearchClient),
         };
     }
 

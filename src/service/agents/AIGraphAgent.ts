@@ -9,7 +9,7 @@
  * via a 'ui-signal' on the 'ai-graph-data' channel.
  */
 
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
@@ -27,7 +27,7 @@ export type AIGraphEvent = LLMStreamEvent;
  */
 export class AIGraphAgent {
 	constructor(
-		private readonly app: App,
+		private readonly app: AppHandle,
 		private readonly searchClient: SearchClient,
 		private readonly prompter: IAgentPrompter,
 	) {}

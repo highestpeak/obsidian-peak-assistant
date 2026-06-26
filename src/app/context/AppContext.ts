@@ -13,7 +13,7 @@ import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
-import { getVaultPersona } from '@/service/tools/system-info';
+import { getVaultPersona } from '@/app/debug/system-info';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
 import { AppRuntimeRegistry } from '@/app/runtime/AppRuntimeRegistry';

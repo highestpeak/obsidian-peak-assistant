@@ -1,9 +1,14 @@
-import { AppContext } from "@/app/context/AppContext";
 import { makeContentReaderInputSchema } from "@/core/schemas/tools/contentReader";
 import { AgentTool, safeAgentTool } from "./types";
 import { DocumentLoaderManager } from "@/core/document/loader/helper/DocumentLoaderManager";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { getIndexTenantForPath } from "@/service/search/index/indexService";
+
+/** T11L: narrow config snapshot the content-reader tool needs at construction time. */
+export interface ContentReaderSummaryConfig {
+    shortSummaryLength: number;
+    fullSummaryLength: number;
+}
 
 function escapeRegExpLiteral(input: string): string {
     return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -18,11 +23,10 @@ function buildAutoRegex(query: string, caseSensitive: boolean): { regex: RegExp;
     }
 }
 
-export function contentReaderTool(): AgentTool {
-    const settings = AppContext.getInstance().settings.search;
+export function contentReaderTool(config: ContentReaderSummaryConfig): AgentTool {
     const inputSchema = makeContentReaderInputSchema({
-        shortSummaryLength: settings.shortSummaryLength,
-        fullSummaryLength: settings.fullSummaryLength,
+        shortSummaryLength: config.shortSummaryLength,
+        fullSummaryLength: config.fullSummaryLength,
     });
     return safeAgentTool({
         description: "Read the content of a specific file (note) by its path.",

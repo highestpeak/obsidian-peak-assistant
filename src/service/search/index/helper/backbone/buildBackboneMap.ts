@@ -14,7 +14,7 @@ import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { basenameFromPath } from '@/core/utils/file-utils';
 import { normalizeVaultPath, parentDirPath } from '@/core/utils/vault-path-utils';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { IgnoreService } from '@/service/search/IgnoreService';
+import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type {
 	BackboneEdge,
 	BackboneFolderNode,
@@ -254,7 +254,7 @@ export function shouldIgnoreFolderForBackbone(path: string): boolean {
 	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder));
 	if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
 	try {
-		return IgnoreService.getInstance().shouldIgnore(path);
+		return DocumentLoaderManager.getInstance().getIgnoreMatcher().shouldIgnore(path);
 	} catch {
 		const patterns = AppContext.getInstance().settings.search.ignorePatterns ?? [];
 		if (!patterns.length) return false;

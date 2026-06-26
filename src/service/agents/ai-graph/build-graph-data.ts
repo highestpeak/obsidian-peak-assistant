@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import { buildSourcesGraphWithDiscoveredEdges } from '@/service/tools/search-graph-inspector/build-sources-graph';
 import type { SearchResultItem } from '@/core/search/searchTypes';
 import type { LensGraphData } from '@/core/graph/lensGraphTypes';
@@ -13,7 +13,7 @@ import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
  * T11J B1: caller passes the live `app` so the helper no longer reaches
  * `AppContext.getInstance().app`.
  */
-export async function buildLensGraphFromSources(sources: SearchResultItem[], app: App): Promise<LensGraphData> {
+export async function buildLensGraphFromSources(sources: SearchResultItem[], app: AppHandle): Promise<LensGraphData> {
 	const sg = await buildSourcesGraphWithDiscoveredEdges(sources);
 
 	if (!sg) {
@@ -60,7 +60,7 @@ export async function buildLensGraphFromSources(sources: SearchResultItem[], app
  */
 export async function enrichWithThinkingTree(
 	currentData: LensGraphData,
-	app: App,
+	app: AppHandle,
 	prompter: IAgentPrompter,
 ): Promise<LensGraphData> {
 	const files = await Promise.all(

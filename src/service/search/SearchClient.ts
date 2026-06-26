@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type {
 	SearchQuery,
 	SearchResponse,
@@ -18,7 +18,7 @@ import type { SearchSettings } from '@/core/config/settingsTypes';
 export class SearchClient {
 	private queryService: QueryService | null = null;
 	constructor(
-		private readonly app: App,
+		private readonly app: AppHandle,
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly searchSettings: SearchSettings,
 	) { }

@@ -1,6 +1,7 @@
 import path from 'path';
 import type { App } from 'obsidian';
-import { normalizePath, TFile } from 'obsidian';
+import { TFile } from 'obsidian';
+import { normalizeVaultPath } from './path-utils';
 
 const DEFAULT_PLUGIN_ID = 'obsidian-peak-assistant';
 
@@ -98,7 +99,7 @@ export async function openFile(filePath: string, newTab: boolean = false, app: A
  */
 export async function readFileAsBase64(resourceSource: string, app: App): Promise<string | null> {
 	try {
-		const normalizedPath = normalizePath(resourceSource.startsWith('/') ? resourceSource.slice(1) : resourceSource);
+		const normalizedPath = normalizeVaultPath(resourceSource.startsWith('/') ? resourceSource.slice(1) : resourceSource);
 		const file = app.vault.getAbstractFileByPath(normalizedPath);
 		if (file && file instanceof TFile) {
 			const arrayBuffer = await app.vault.readBinary(file as TFile);
@@ -214,7 +215,7 @@ export function getSelectedTextFromActiveEditor(app: App): string | null {
 
 export async function readFileAsText(filePath: string, app: App): Promise<string | null> {
 	try {
-		const normalizedPath = normalizePath(filePath.startsWith('/') ? filePath.slice(1) : filePath);
+		const normalizedPath = normalizeVaultPath(filePath.startsWith('/') ? filePath.slice(1) : filePath);
 		const file = app.vault.getAbstractFileByPath(normalizedPath);
 		if (file && file instanceof TFile) {
 			return await app.vault.read(file);

@@ -6,7 +6,7 @@ import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
 import type { VaultMetadataResolverPort } from '@/core/ports/VaultMetadataResolverPort';
 import type { DocumentSummaryConfig } from './DocumentLoaderHelpers';
-import { IgnoreService } from '@/service/search/IgnoreService';
+import { createIgnoreMatcher, type IgnoreMatcher } from '@/core/utils/IgnoreMatcher';
 import { MarkdownDocumentLoader } from '../MarkdownDocumentLoader';
 import { TextDocumentLoader } from '../TextDocumentLoader';
 import { TableDocumentLoader } from '../TableDocumentLoader';
@@ -36,6 +36,7 @@ export class DocumentLoaderManager {
 	private readonly vault: DocumentVaultReaderPort;
 	private readonly metadata: VaultMetadataResolverPort;
 	private aiServiceManager?: IDocSummarizer;
+	private readonly ignoreMatcher: IgnoreMatcher;
 
 	/**
 	 * Get the global singleton instance.
@@ -87,8 +88,7 @@ export class DocumentLoaderManager {
 		this.metadata = metadata;
 		this.settings = settings;
 		this.aiServiceManager = aiServiceManager;
-		// Initialize ignore service with current settings
-		IgnoreService.init(settings.ignorePatterns);
+		this.ignoreMatcher = createIgnoreMatcher(settings.ignorePatterns);
 		this.registerAllLoaders();
 	}
 
@@ -126,10 +126,17 @@ export class DocumentLoaderManager {
 	 */
 	updateSettings(settings: SearchSettings): void {
 		this.settings = settings;
-		// Update ignore service with new patterns
-		IgnoreService.getInstance().updateSettings(settings.ignorePatterns);
-		// Re-register all loaders with updated settings
+		this.ignoreMatcher.updatePatterns(settings.ignorePatterns);
 		this.registerAllLoaders();
+	}
+
+	/**
+	 * Expose the owned ignore matcher so other loader-cluster callers (e.g.
+	 * `buildBackboneMap`) can reuse it without spinning up a parallel
+	 * matcher or reaching through a module-level singleton.
+	 */
+	getIgnoreMatcher(): IgnoreMatcher {
+		return this.ignoreMatcher;
 	}
 
 	/**
@@ -236,8 +243,7 @@ export class DocumentLoaderManager {
 
 		// Then check if path is ignored (skip if sourceFileInfo is not available)
 		if (doc.sourceFileInfo?.path) {
-			const ignoreService = IgnoreService.getInstance();
-			return !ignoreService.shouldIgnore(doc.sourceFileInfo.path);
+			return !this.ignoreMatcher.shouldIgnore(doc.sourceFileInfo.path);
 		}
 
 		// If sourceFileInfo is not available, assume it should be indexed (ignore pattern check deferred)

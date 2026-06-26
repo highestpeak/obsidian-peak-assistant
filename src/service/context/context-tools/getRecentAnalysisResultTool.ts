@@ -1,11 +1,15 @@
 import { getRecentAnalysisResultInputSchema } from '@/core/schemas/tools/contextDiscovery';
 import { AgentTool, safeAgentTool } from '@/service/tools/types';
-import { AppContext } from '@/app/context/AppContext';
+import type { AnalysisHistoryPort } from '@/core/ports/AnalysisHistoryPort';
 
 /**
  * Tool to retrieve recent AI analysis results, optionally filtered by a search query.
+ *
+ * T11L: takes a narrow {@link AnalysisHistoryPort} instead of reaching
+ * `AppContext.getAIAnalysisHistoryService()` directly; the agent that wires
+ * this tool is responsible for handing in the runtime port.
  */
-export function getRecentAnalysisResultTool(): AgentTool {
+export function getRecentAnalysisResultTool(history: AnalysisHistoryPort): AgentTool {
     return safeAgentTool({
         description:
             'Retrieve recent AI analysis results from the analysis history. ' +
@@ -15,9 +19,8 @@ export function getRecentAnalysisResultTool(): AgentTool {
         execute: async (input) => {
             const { query, limit } = input;
 
-            const service = AppContext.getAIAnalysisHistoryService();
             const fetchLimit = Math.max(limit * 5, 20); // fetch extra for filtering
-            const records = await service.list({ limit: fetchLimit, offset: 0 });
+            const records = await history.list({ limit: fetchLimit, offset: 0 });
 
             if (records.length === 0) {
                 return { analyses: [], total: 0, message: 'No analysis history found.' };

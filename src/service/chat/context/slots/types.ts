@@ -1,7 +1,7 @@
 import type { LLMRequestMessage, ModelCapabilities } from '@/core/providers/types';
 import type { ChatConversation, ChatProject, ChatMessage } from '../../types';
 import type { SessionContextService } from '@/service/context/SessionContextService';
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 
 export interface SlotBuildContext {
   sessionContext: SessionContextService;
@@ -10,7 +10,7 @@ export interface SlotBuildContext {
   messages?: ChatMessage[];
   activeFilePath?: string;
   modelCapabilities?: ModelCapabilities;
-  app: App;
+  app: AppHandle;
   [key: string]: unknown; // buildParams from profile
 }
 

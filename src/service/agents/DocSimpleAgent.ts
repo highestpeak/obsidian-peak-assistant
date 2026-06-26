@@ -52,20 +52,25 @@ export class DocSimpleAgent {
 
 	constructor(private readonly aiServiceManager: AIServiceManager) {
 		const tm = this.aiServiceManager.getTemplateManager?.();
+		const getSearchClient = () => this.aiServiceManager.getSearchClient();
+		const searchSettings = this.aiServiceManager.getSearchSettings();
 		this.tools = {
-			content_reader: contentReaderTool(),
+			content_reader: contentReaderTool({
+				shortSummaryLength: searchSettings.shortSummaryLength,
+				fullSummaryLength: searchSettings.fullSummaryLength,
+			}),
 			submit_final_answer: submitFinalAnswerTool(),
 			inspect_note_context: inspectNoteContextTool(tm),
 			graph_traversal: graphTraversalTool(tm),
 			find_path: findPathTool(tm),
-			find_key_nodes: findKeyNodesTool(tm),
+			find_key_nodes: findKeyNodesTool(tm, getSearchClient),
 			find_orphans: findOrphansTool(tm),
-			search_by_dimensions: searchByDimensionsTool(tm),
+			search_by_dimensions: searchByDimensionsTool(tm, getSearchClient),
 			explore_folder: exploreFolderTool(tm),
-			recent_changes_whole_vault: recentChangesWholeVaultTool(tm),
-			local_search_whole_vault: localSearchWholeVaultTool(tm),
+			recent_changes_whole_vault: recentChangesWholeVaultTool(tm, getSearchClient),
+			local_search_whole_vault: localSearchWholeVaultTool(tm, getSearchClient),
 			get_activity_detail: getActivityDetailTool(),
-			get_recent_analysis: getRecentAnalysisResultTool(),
+			get_recent_analysis: getRecentAnalysisResultTool(this.aiServiceManager.getAnalysisHistory()),
 			get_working_theme: getWorkingThemeTool(),
 		};
 	}

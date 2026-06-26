@@ -9,7 +9,7 @@
  * producing the same event stream as the initial analysis.
  */
 
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { AIServiceManager } from '@/service/chat/service-manager';
@@ -37,7 +37,7 @@ export interface ContinueContext {
 }
 
 export interface ContinueAnalysisAgentOptions {
-    app: App;
+    app: AppHandle;
     pluginId: string;
     searchClient: SearchClient;
     aiServiceManager: AIServiceManager;

@@ -11,10 +11,18 @@
  * Restored sessions are read-only — the agent loop is not re-run.
  */
 
-import { Notice, TFile, type App, type TFolder } from 'obsidian';
+import { TFile, type App, type TFolder } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { ensureFolder, joinPath } from '@/core/utils/vault-utils';
 import type { ReviewSessionSnapshot } from './CopilotReviewSession';
+
+/**
+ * Hook invoked once, the first time the `peak-system/` folder is
+ * materialized in a vault. App-layer wires this so the user sees a Notice
+ * when the folder appears; the service tier itself does not import
+ * `Notice` or any Obsidian UI surface.
+ */
+export type CopilotReviewFolderCreatedNotifier = (message: string, durationMs: number) => void;
 
 // Non-dotfolder so the regular Obsidian vault API works (dotfolders aren't indexed).
 export const REVIEW_HISTORY_FOLDER = 'peak-system/auto-review';
@@ -278,8 +286,19 @@ function parseChatsFromMarkdown(markdown: string): InsightChatHistories {
 }
 
 export class CopilotReviewHistoryService {
+	private folderCreatedNotifier: CopilotReviewFolderCreatedNotifier | null = null;
+
 	private get app(): App {
 		return AppContext.getInstance().app;
+	}
+
+	/**
+	 * Wire the "peak-system folder first created" notifier from the app
+	 * layer. Without it, the README is still written but no UI banner is
+	 * shown — keeps the service tier free of Obsidian's `Notice`.
+	 */
+	setFolderCreatedNotifier(fn: CopilotReviewFolderCreatedNotifier | null): void {
+		this.folderCreatedNotifier = fn;
 	}
 
 	/**
@@ -407,7 +426,7 @@ export class CopilotReviewHistoryService {
 		try {
 			if (typeof window !== 'undefined' && !window.localStorage.getItem(FOLDER_NOTICE_FLAG)) {
 				window.localStorage.setItem(FOLDER_NOTICE_FLAG, '1');
-				new Notice(
+				this.folderCreatedNotifier?.(
 					'Peak Assistant created a "peak-system" folder for Auto Review history. ' +
 					'You can hide it via Settings → Files & Links → Excluded files.',
 					8000,

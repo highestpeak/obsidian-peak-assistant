@@ -80,7 +80,7 @@ export async function* runKnowledgeIntuitionLoop(options: {
 	const tools = {
 		explore_folder: exploreFolderTool(ctx.tm, { forceFormat: 'markdown' }),
 		grep_file_tree: grepFileTreeTool(),
-		local_search_whole_vault: localSearchWholeVaultTool(ctx.tm),
+		local_search_whole_vault: localSearchWholeVaultTool(ctx.tm, () => aiServiceManager.getSearchClient()),
 		inspect_note_context: inspectNoteContextTool(ctx.tm, { forceFormat: 'markdown' }),
 		graph_traversal: graphTraversalTool(ctx.tm, { forceFormat: 'markdown' }),
 		find_path: findPathTool(ctx.tm),

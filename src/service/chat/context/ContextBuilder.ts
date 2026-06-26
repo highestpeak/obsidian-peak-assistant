@@ -5,7 +5,7 @@ import type { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/service/prompt/PromptId';
 import type { UserProfileService } from '@/service/chat/context/UserProfileService';
 import type { ModelCapabilities } from '@/core/providers/types';
-import type { App } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle'; // T11L: opaque to keep file out of obsidian import surface
 import { getImageMimeType, getFileMimeType } from '@/core/document/helper/FileTypeUtils';
 import { readFileAsBase64 } from '@/core/utils/obsidian-utils';
 

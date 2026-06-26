@@ -1,5 +1,5 @@
 import type { QueryPlan } from '@/service/search/query/query-parser';
-import { porterStem } from '@/service/search/support/porter-stemmer';
+import { porterStem } from '@/core/utils/porter-stemmer';
 
 export type HighlightSpan = { start: number; end: number; type: 'exact' | 'stem' | 'fuzzy' };
 export type HighlightResult = { text: string; spans: HighlightSpan[] };

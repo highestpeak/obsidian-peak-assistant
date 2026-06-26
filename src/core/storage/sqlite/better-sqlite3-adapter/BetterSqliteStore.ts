@@ -13,7 +13,8 @@
 import { migrateSqliteSchema } from '@/core/storage/sqlite/ddl';
 import { Kysely, SqliteIntrospector, SqliteQueryCompiler, SqliteAdapter, type CompiledQuery } from 'kysely';
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
+type App = AppHandle;
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SqliteDatabase, SqliteStoreType } from '../types';

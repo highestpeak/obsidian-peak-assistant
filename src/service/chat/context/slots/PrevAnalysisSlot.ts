@@ -1,15 +1,15 @@
 import type { ContextSlot, SlotBuildContext, SlotContent } from './types';
 import { estimateTokensFromText } from './types';
 import type { LLMRequestMessage } from '@/core/providers/types';
-import { AppContext } from '@/app/context/AppContext';
-import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
+import type { AnalysisHistoryPort, AnalysisHistoryRecord } from '@/core/ports/AnalysisHistoryPort';
 
 export class PrevAnalysisSlot implements ContextSlot {
   id = 'prev-analysis';
 
+  constructor(private readonly history: AnalysisHistoryPort) {}
+
   async build(_ctx: SlotBuildContext): Promise<SlotContent> {
-    const historyService = AppContext.getAIAnalysisHistoryService();
-    const records = await historyService.list({ limit: 3, offset: 0 });
+    const records = await this.history.list({ limit: 3, offset: 0 });
 
     if (records.length === 0) {
       return { data: null, tokens: 0, compressionLevel: 0 };
@@ -25,7 +25,7 @@ export class PrevAnalysisSlot implements ContextSlot {
 
   async compress(content: SlotContent, level: 1 | 2 | 3): Promise<SlotContent> {
     if (!content.data) return content;
-    const { records } = content.data as { text: string; records: AIAnalysisHistoryRecord[] };
+    const { records } = content.data as { text: string; records: AnalysisHistoryRecord[] };
 
     if (level >= 1) {
       const r = records[0];

@@ -1,6 +1,6 @@
 import type { SearchRetriever, RetrieverResult } from './types';
 import type { QueryPlan } from '@/service/search/query/query-parser';
-import { normalizeTextForFts } from '@/service/search/support/segmenter';
+import { normalizeTextForFts } from '@/core/utils/segmenter';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { DEFAULT_SEARCH_TOP_K, SEARCH_SCORING_DIVERSITY_BOOST_CONTENT } from '@/core/constant';
 

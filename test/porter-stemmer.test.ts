@@ -1,4 +1,4 @@
-import { porterStem, stemText } from '@/service/search/support/porter-stemmer';
+import { porterStem, stemText } from '@/core/utils/porter-stemmer';
 
 function runTests() {
     let passed = 0;

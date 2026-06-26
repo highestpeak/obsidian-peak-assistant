@@ -6,7 +6,7 @@
  * The search-capable LLM returns a natural language summary with sources.
  */
 
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
@@ -18,7 +18,7 @@ const WEB_SEARCH_SYSTEM_PROMPT =
     'Focus on factual, up-to-date information. If the query is about a specific topic, provide relevant context and details.';
 
 export interface WebSearchMcpServerDeps {
-    app: App;
+    app: AppHandle;
     pluginId: string;
 }
 
@@ -45,7 +45,7 @@ export function buildWebSearchMcpServer(deps: WebSearchMcpServerDeps) {
             }
 
             try {
-                const messages = queryWithProfile(app, pluginId, profile, {
+                const messages = queryWithProfile(app as any, pluginId, profile, {
                     prompt: input.query,
                     systemPrompt: WEB_SEARCH_SYSTEM_PROMPT,
                     maxTurns: 1,

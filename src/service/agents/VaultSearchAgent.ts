@@ -5,7 +5,7 @@
  * All queries go through the Claude Agent SDK path (VaultSearchAgentSDK).
  */
 
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { VaultSearchEvent } from './vault/types';
@@ -18,7 +18,7 @@ import { VaultSearchAgentSDK } from './VaultSearchAgentSDK';
  */
 export class VaultSearchAgent {
 	constructor(
-		private readonly app: App,
+		private readonly app: AppHandle,
 		private readonly pluginId: string,
 		private readonly searchClient: SearchClient,
 		private readonly aiServiceManager: AIServiceManager,

@@ -12,7 +12,8 @@
  * Multi-round orchestration is identical and lives in `VaultReviewSession`.
  */
 
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
+import type { AnalysisHistoryPort } from '@/core/ports/AnalysisHistoryPort';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import type { Profile } from '@/core/profiles/types';
@@ -227,9 +228,11 @@ export function buildVaultMetaAgentUserPrompt(digest: VaultDigest): string {
  * via `AppVaultReviewAgentAdapter`.
  */
 export interface VaultMetaAgentRunDeps {
-	app: App;
+	app: AppHandle;
 	pluginId: string;
 	searchClient: SearchClient;
+	/** T11L: narrow port the vault MCP server passes to `get_recent_analysis`. */
+	analysisHistory: AnalysisHistoryPort;
 }
 
 export async function* buildVaultMetaAgentStream(
@@ -281,6 +284,7 @@ export async function* buildVaultMetaAgentStream(
 			adjustedPaths: plan.selected_paths,
 			adjustedOutline: plan.proposed_outline,
 		}),
+		analysisHistory: deps.analysisHistory,
 	});
 
 	const copilotMcpServer = buildCopilotOutputMcpServer({

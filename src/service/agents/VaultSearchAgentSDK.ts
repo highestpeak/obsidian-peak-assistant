@@ -11,7 +11,7 @@
  * Provider v2 Task 2: now delegates warmup + env materialization to shared sdkAgentPool.
  */
 
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import type { SearchClient } from '@/service/search/SearchClient';
@@ -32,7 +32,7 @@ import { translateSdkMessage } from './core/sdkMessageAdapter';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 export interface VaultSearchAgentSdkOptions {
-    app: App;
+    app: AppHandle;
     pluginId: string;
     searchClient: SearchClient;
     aiServiceManager: AIServiceManager;
@@ -232,9 +232,10 @@ export class VaultSearchAgentSDK {
         };
 
         const vaultMcpServer = buildVaultMcpServer({
-            app,
+            app: app as any,
             searchFn,
             onSubmitPlan,
+            analysisHistory: aiServiceManager.getAnalysisHistory(),
         });
 
         // 4b. Conditionally build web search MCP server

@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import { PromptId } from '@/service/prompt/PromptId';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { V2Section } from '@/core/search/v2SessionTypes';
@@ -29,14 +29,14 @@ import { streamWithRepetitionGuard, detectRepetition } from './stream-utils';
 export class ReportOrchestrator {
     private readonly mgr: AIServiceManager;
     private readonly session: ReportSessionPort;
-    private readonly app: App;
+    private readonly app: AppHandle;
     private readonly pluginId: string;
 
     constructor(
         aiServiceManager: AIServiceManager,
         session: ReportSessionPort,
         /** T11J B1: explicit app + pluginId so orchestrator no longer reaches AppContext. */
-        app: App,
+        app: AppHandle,
         pluginId: string,
     ) {
         this.mgr = aiServiceManager;
@@ -51,7 +51,10 @@ export class ReportOrchestrator {
 
     /** T11J B1: returns the injected app + pluginId (no AppContext lookup). */
     private get appCtx() {
-        return { app: this.app, pluginId: this.pluginId };
+        // T11L: cast at the SDK boundary so the file's typed surface stays
+        // AppHandle (no obsidian import); queryWithProfile + vault helpers
+        // here are the only consumers that need the real `App` shape.
+        return { app: this.app as any, pluginId: this.pluginId };
     }
 
     /** Resolve the active agent profile. Throws if none configured. */

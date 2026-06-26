@@ -44,6 +44,8 @@ export class FollowupChatAgent {
         private readonly historySearchFn: HistorySearchFn,
         private readonly resultSearchFn: HistorySearchFn
     ) {
+        const searchSettings = this.aiServiceManager.getSearchSettings();
+        const getSearchClient = () => this.aiServiceManager.getSearchClient();
         const tools: Record<string, AgentTool> = {
             search_chat_history: searchMemoryStoreTool(historySearchFn, {
                 description: 'Search the analysis session chat history (reasoning, tool calls, evidence). Use when you need to cite how the analysis was done or what was discovered during the run.',
@@ -51,7 +53,10 @@ export class FollowupChatAgent {
             search_current_result: searchMemoryStoreTool(resultSearchFn, {
                 description: 'Search the current analysis result (summary, topics, sources, blocks, graph, steps, follow-ups). Use when you need to cite the final outputs of the analysis.',
             }),
-            content_reader: contentReaderTool(),
+            content_reader: contentReaderTool({
+                shortSummaryLength: searchSettings.shortSummaryLength,
+                fullSummaryLength: searchSettings.fullSummaryLength,
+            }),
             submit_final_answer: submitFinalAnswerTool(),
         };
         if (this.options.enableLocalSearch) {
@@ -59,12 +64,12 @@ export class FollowupChatAgent {
             tools.inspect_note_context = inspectNoteContextTool(tm);
             tools.graph_traversal = graphTraversalTool(tm);
             tools.find_path = findPathTool(tm);
-            tools.find_key_nodes = findKeyNodesTool(tm);
+            tools.find_key_nodes = findKeyNodesTool(tm, getSearchClient);
             tools.find_orphans = findOrphansTool(tm);
-            tools.search_by_dimensions = searchByDimensionsTool(tm);
+            tools.search_by_dimensions = searchByDimensionsTool(tm, getSearchClient);
             tools.explore_folder = exploreFolderTool(tm);
-            tools.recent_changes_whole_vault = recentChangesWholeVaultTool(tm);
-            tools.local_search_whole_vault = localSearchWholeVaultTool(tm);
+            tools.recent_changes_whole_vault = recentChangesWholeVaultTool(tm, getSearchClient);
+            tools.local_search_whole_vault = localSearchWholeVaultTool(tm, getSearchClient);
         }
         this.tools = tools;
     }

@@ -1,5 +1,5 @@
 import { SLICE_CAPS } from '@/core/constant';
-import { BooleanExpressionParser } from "@/service/tools/search-graph-inspector/boolean-expression-parser";
+import { BooleanExpressionParser } from "@/core/utils/boolean-expression-parser";
 import { parseSemanticDateRange } from "./date-utils";
 
 /**

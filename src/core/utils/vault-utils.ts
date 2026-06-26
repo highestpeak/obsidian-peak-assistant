@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile, TFolder } from 'obsidian';
+import { App, TFile, TFolder } from 'obsidian';
 import { joinPath, getAbsolutePath, getRelativePath, normalizeVaultPath } from './path-utils';
 
 // T11K: re-export the pure path helpers so existing import paths keep working
@@ -12,7 +12,7 @@ export { joinPath, getAbsolutePath, getRelativePath, normalizeVaultPath };
  * T11K: `app` is required — no AppContext fallback.
  */
 export async function ensureFolder(folderPath: string, app: App): Promise<TFolder> {
-	const normalized = normalizePath(folderPath.trim());
+	const normalized = normalizeVaultPath(folderPath.trim());
 	if (!normalized) {
 		throw new Error('Invalid folder path');
 	}
@@ -167,7 +167,7 @@ export function openAttachment(path: string, app: App): void {
  * Skips synthetic paths such as `__hub_cluster__/...` used for cluster hub candidates.
  */
 export async function readVaultTextSnippet(vaultPath: string, maxChars: number, app: App): Promise<string | null> {
-	const p = normalizePath(vaultPath);
+	const p = normalizeVaultPath(vaultPath);
 	if (!p || p.startsWith('__hub_cluster__')) return null;
 	const f = app.vault.getAbstractFileByPath(p);
 	if (!(f instanceof TFile)) return null;

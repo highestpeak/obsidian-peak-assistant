@@ -28,7 +28,9 @@ async function getNodeCategoryConnections(nodeIds: string[]): Promise<Map<string
     return categoryCountMap;
 }
 
-export async function findKeyNodes(params: FindKeyNodesParams, templateManager?: TemplateManager) {
+import type { SearchClient } from "@/service/search/SearchClient";
+
+export async function findKeyNodes(params: FindKeyNodesParams, searchClient: SearchClient, templateManager?: TemplateManager) {
     const { limit, semantic_filter, response_format, filters, sorter } = params;
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
     const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
@@ -39,7 +41,7 @@ export async function findKeyNodes(params: FindKeyNodesParams, templateManager?:
 
     // Apply semantic filter to the node pool for RRF calculation
     const semanticResults = await getSemanticSearchResults(
-        semantic_filter, 'limitIdsSet',
+        searchClient, semantic_filter, 'limitIdsSet',
         {
             limitIdsSet: new Set([
                 ...allOutDegreeStats.map(stat => stat.nodeId),

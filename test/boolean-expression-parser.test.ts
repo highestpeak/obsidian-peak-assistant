@@ -1,6 +1,6 @@
 import { GraphEdgeType } from '@/core/po/graph.po';
 import { stableFunctionalTagNodeId } from '@/core/utils/id-utils';
-import { BooleanExpressionParser } from '@/service/tools/search-graph-inspector/boolean-expression-parser';
+import { BooleanExpressionParser } from '@/core/utils/boolean-expression-parser';
 
 /**
  * Test cases for the BooleanExpressionParser

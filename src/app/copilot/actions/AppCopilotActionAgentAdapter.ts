@@ -12,12 +12,15 @@ import {
 	type CopilotAgentSearchFn,
 } from '@/service/copilot/actions/agent-actions';
 import type { CopilotActionAgentPort } from '@/service/copilot/actions/CopilotActionPorts';
+import type { AnalysisHistoryPort } from '@/core/ports/AnalysisHistoryPort';
 
 export interface AppCopilotActionAgentAdapterOptions {
 	app: App;
 	pluginId: string;
 	/** Lazy because the SearchClient is only created after sqlite init. */
 	resolveSearchClient: () => SearchClient | null | undefined;
+	/** T11L: narrow port handed to the vault MCP server's recent-analysis tool. */
+	analysisHistory: AnalysisHistoryPort;
 }
 
 export function createAppCopilotActionAgentAdapter(
@@ -48,5 +51,6 @@ export function createAppCopilotActionAgentAdapter(
 		pluginId: opts.pluginId,
 		resolveActiveProfile: () => ProfileRegistry.getInstance().getActiveAgentProfile(),
 		search: searchFn,
+		analysisHistory: opts.analysisHistory,
 	});
 }

@@ -15,7 +15,7 @@
  *   ...template text...
  */
 
-import { parseYaml } from 'obsidian';
+import { parse as parseYaml } from 'yaml';
 import type { SkillDefinition, SkillInput, SkillPhase } from './types';
 
 const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---/;

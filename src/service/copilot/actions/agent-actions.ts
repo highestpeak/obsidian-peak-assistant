@@ -12,7 +12,8 @@
  * runtime hands to action closures.
  */
 
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
+import type { AnalysisHistoryPort } from '@/core/ports/AnalysisHistoryPort';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import type { Profile } from '@/core/profiles/types';
@@ -31,12 +32,14 @@ export type CopilotAgentSearchFn = (q: string, limit: number) => Promise<GrepHit
 
 /** Deps the app composition layer hands to the agent port factory. */
 export interface CopilotAgentPortDeps {
-	app: App;
+	app: AppHandle;
 	pluginId: string;
 	/** Return the active agent profile, or null if the user has none yet. */
 	resolveActiveProfile(): Profile | null;
 	/** Vault-grep search callback (typically wraps SearchClient). */
 	search: CopilotAgentSearchFn;
+	/** T11L: narrow port the embedded `get_recent_analysis` tool needs. */
+	analysisHistory: AnalysisHistoryPort;
 }
 
 /**
@@ -63,7 +66,7 @@ function buildSubmitResultMcpServer(onSubmit: (result: string) => void) {
  * agent body itself never reaches a singleton.
  */
 export function createCopilotAgentPort(deps: CopilotAgentPortDeps): CopilotActionAgentPort {
-	const { app, pluginId, resolveActiveProfile, search } = deps;
+	const { app, pluginId, resolveActiveProfile, search, analysisHistory } = deps;
 
 	return {
 		async *runAgentStream(options): AsyncGenerator<LLMStreamEvent, ActionResult | void> {
@@ -96,6 +99,7 @@ export function createCopilotAgentPort(deps: CopilotAgentPortDeps): CopilotActio
 					adjustedPaths: plan.selected_paths,
 					adjustedOutline: plan.proposed_outline,
 				}),
+				analysisHistory,
 			});
 
 			let capturedResult: string | null = null;

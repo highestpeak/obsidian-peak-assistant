@@ -8,13 +8,13 @@
  * Follows the same tool() + createSdkMcpServer() pattern as vaultMcpServer.ts.
  */
 
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { GraphOutputSchema, type GraphOutput } from './graph-output-types';
 
 export interface GraphMcpServerOptions {
-    app: App;
+    app: AppHandle;
     onSubmitGraph: (graph: GraphOutput) => Promise<void>;
 }
 

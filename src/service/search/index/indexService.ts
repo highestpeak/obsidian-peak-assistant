@@ -1,4 +1,5 @@
-import { normalizePath, TFile } from 'obsidian';
+import { TFile } from 'obsidian';
+import { normalizeVaultPath } from '@/core/utils/path-utils';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { emptyUsage, type LLMUsage } from '@/core/providers/types';
 import {
@@ -18,8 +19,8 @@ import type { IndexedDocumentRecord } from '@/core/storage/sqlite/ddl';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { MobiusEdgeRepo } from '@/core/storage/sqlite/repositories/MobiusEdgeRepo';
 import { normalizeUsageTokens } from '@/service/search/support/llm-cost-utils';
-import { normalizeTextForFts } from '../support/segmenter';
-import { stemText } from '@/service/search/support/porter-stemmer';
+import { normalizeTextForFts } from '@/core/utils/segmenter';
+import { stemText } from '@/core/utils/porter-stemmer';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import type { Document, DocumentReference } from '@/core/document/types';
@@ -564,8 +565,8 @@ export class IndexService {
 			const preload = preloadedDocument;
 			let rawDoc: Document | null = null;
 			if (preload) {
-				const want = normalizePath(docPath);
-				const got = normalizePath(preload.sourceFileInfo?.path ?? '');
+				const want = normalizeVaultPath(docPath);
+				const got = normalizeVaultPath(preload.sourceFileInfo?.path ?? '');
 				if (want !== got) {
 					console.warn(
 						`[IndexService] preloadedDocument path mismatch (expected ${want}, got ${got}); reloading from vault.`,

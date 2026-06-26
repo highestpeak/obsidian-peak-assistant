@@ -1,5 +1,5 @@
 import { Notice } from 'obsidian';
-import type { App } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
 import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import { sqliteStoreManager } from './SqliteStoreManager';
 import type { SqliteDatabase } from './types';

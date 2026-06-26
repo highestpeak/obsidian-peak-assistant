@@ -1,9 +1,12 @@
-import type { App, TFile } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 
 import type { DocumentContext } from './CopilotActionRegistry';
 
+/** Local opaque file handle for builder calls; downstream casts to TFile. */
+type FileHandle = { path: string; basename: string; [key: string]: any };
+
 export class DocumentContextBuilder {
-	static build(app: App, file: TFile, content: string, selection?: string): DocumentContext {
+	static build(app: AppHandle, file: FileHandle, content: string, selection?: string): DocumentContext {
 		const cache = app.metadataCache.getFileCache(file);
 		const tags = (cache?.frontmatter?.tags as string[] ?? [])
 			.concat((cache?.tags ?? []).map(t => t.tag.replace(/^#/, '')));
@@ -15,7 +18,7 @@ export class DocumentContextBuilder {
 		const wordCount = content.split(/\s+/).filter(Boolean).length;
 
 		return {
-			file,
+			file: file as any,
 			title: file.basename,
 			content,
 			selection: selection || undefined,

@@ -39,6 +39,9 @@ import { createChatMessage } from './utils/chat-message-builder';
 import type { UsageFeature } from '@/service/usage/types';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import type { ChatRuntimeStatePort } from '@/service/chat/ChatRuntimeStatePort';
+import type { AnalysisHistoryPort } from '@/core/ports/AnalysisHistoryPort';
+import type { SearchClient } from '@/service/search/SearchClient';
+import type { SearchSettings } from '@/core/config/settingsTypes';
 import { AgentTemplateId, getTemplateMetadata } from '@/core/template/TemplateRegistry';
 import { estimateTokens as estimateTokensFn } from './token-estimation';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
@@ -93,6 +96,24 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 		 */
 		private readonly pluginId: string,
 		private readonly harnessSettingsProvider: () => HarnessSettings,
+		/**
+		 * T11L: narrow analysis-history read port so {@link PrevAnalysisSlot}
+		 * and recent-analysis agent tools no longer reach `AppContext` for
+		 * the live `AIAnalysisHistoryService`.
+		 */
+		private readonly analysisHistory: AnalysisHistoryPort,
+		/**
+		 * T11L: lazy SearchClient resolver. Boot order means the SearchClient
+		 * doesn't exist when this manager is constructed; the caller hands a
+		 * getter that resolves to the live instance once it's wired (and
+		 * `null` while sqlite is still initializing).
+		 */
+		private readonly searchClientProvider: () => SearchClient | null,
+		/**
+		 * T11L: search-settings getter so tool factories that need a config
+		 * snapshot can stay narrow without reaching `AppContext`.
+		 */
+		private readonly searchSettingsProvider: () => SearchSettings,
 		private readonly templateManager?: TemplateManager,
 	) {
 		// === Settings initialization ===
@@ -137,6 +158,31 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 	}
 
 	/**
+	 * Expose the narrow analysis-history read port for sub-agents and tools
+	 * that need it (e.g. `DocSimpleAgent.get_recent_analysis`). Lets the
+	 * caller use the port without reaching `AppContext`.
+	 */
+	getAnalysisHistory(): AnalysisHistoryPort {
+		return this.analysisHistory;
+	}
+
+	/**
+	 * Lazy SearchClient resolver. Returns `null` until the SearchClient is
+	 * wired (typically post `initializeSearchService`).
+	 */
+	getSearchClient(): SearchClient | null {
+		return this.searchClientProvider();
+	}
+
+	/**
+	 * Current top-level search-settings snapshot — used by tool factories
+	 * (e.g. `content_reader`) that need to size summary buffers.
+	 */
+	getSearchSettings(): SearchSettings {
+		return this.searchSettingsProvider();
+	}
+
+	/**
 	 * Initialize storage resources and services that depend on DocumentLoaderManager.
 	 */
 	async init(): Promise<void> {
@@ -175,7 +221,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 			new RecentMessagesSlot(this.promptService, this.resourceSummaryService),
 			new WorkingContextSlot(this.promptService),
 			new ActivityIndexSlot(this.promptService),
-			new PrevAnalysisSlot(),
+			new PrevAnalysisSlot(this.analysisHistory),
 			new ResourceIndexSlot(),
 			new VaultIntuitionSlot(),
 			new CurrentFileSlot(),
@@ -274,7 +320,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 			new RecentMessagesSlot(this.promptService, this.resourceSummaryService),
 			new WorkingContextSlot(this.promptService),
 			new ActivityIndexSlot(this.promptService),
-			new PrevAnalysisSlot(),
+			new PrevAnalysisSlot(this.analysisHistory),
 			new ResourceIndexSlot(),
 			new VaultIntuitionSlot(),
 			new CurrentFileSlot(),

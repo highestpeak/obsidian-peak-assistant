@@ -12,7 +12,7 @@
  * Provider v2 Task 2: now delegates warmup + env materialization to shared sdkAgentPool.
  */
 
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type { Profile } from '@/core/profiles/types';
 import type { GraphOutput } from './graph-output-types';
 import { buildGraphMcpServer } from './graphMcpServer';
@@ -35,7 +35,7 @@ export type GraphAgentStepCallback = (event: {
 export class GraphAgent {
 
     constructor(
-        private readonly app: App,
+        private readonly app: AppHandle,
         private readonly pluginId: string,
     ) {}
 

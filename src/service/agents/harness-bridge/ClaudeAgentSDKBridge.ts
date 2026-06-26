@@ -8,7 +8,7 @@
  * 4. Settings agentBackend = 'auto' (default)    → harness (with SDK reserved for hard-coded callers like VaultSearchAgentSDK)
  */
 
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type { AgentLoopConfig, AgentLoopResult } from '@/service/agents/harness/loop/types';
 import { runAgentLoop } from '@/service/agents/harness';
 import type { HarnessSettings } from '@/core/config/settingsTypes';
@@ -31,7 +31,7 @@ export interface BridgeRunConfig extends AgentLoopConfig {
     /** SDK-specific: MCP servers for the SDK agent. */
     sdkMcpServers?: Record<string, unknown>;
     /** T11J B1: explicit app + pluginId so the bridge doesn't reach AppContext. */
-    app: App;
+    app: AppHandle;
     pluginId: string;
     /** T11J B1: caller passes current harness settings (used for backend gating). */
     harnessSettings: HarnessSettings;
@@ -68,7 +68,7 @@ export class ClaudeAgentSDKBridge {
                         .join('\n')
                   : '');
 
-        const messages = queryWithProfile(cfg.app, cfg.pluginId, profile, {
+        const messages = queryWithProfile(cfg.app as any, cfg.pluginId, profile, {
             prompt,
             systemPrompt: cfg.systemPrompt,
             maxTurns: cfg.sdkMaxTurns ?? 10,

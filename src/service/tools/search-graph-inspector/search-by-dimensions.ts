@@ -1,7 +1,7 @@
 import { z } from "zod/v3";
 import { GraphNodeType } from '@/core/po/graph.po';
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
-import { BooleanExpressionParser } from "./boolean-expression-parser";
+import { BooleanExpressionParser } from "@/core/utils/boolean-expression-parser";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { buildResponse } from "../types";
@@ -11,7 +11,9 @@ import { searchByDimensionsInputSchema } from "@/core/schemas/tools/searchGraphI
 
 type SearchByDimensionsParams = z.infer<typeof searchByDimensionsInputSchema> & { mode: string };
 
-export async function searchByDimensions(params: SearchByDimensionsParams, templateManager?: TemplateManager) {
+import type { SearchClient } from "@/service/search/SearchClient";
+
+export async function searchByDimensions(params: SearchByDimensionsParams, searchClient: SearchClient, templateManager?: TemplateManager) {
     const { boolean_expression, semantic_filter, filters, sorter, limit, response_format } = params;
     const expr = typeof boolean_expression === 'string' ? boolean_expression.trim() : '';
     if (!expr) {
@@ -52,7 +54,7 @@ export async function searchByDimensions(params: SearchByDimensionsParams, templ
     // do semantic filter to matchingExpressionDocNodes
     if (semantic_filter) {
         const semanticSearchResults = await getSemanticSearchResults(
-            semantic_filter, 'limitIdsSet',
+            searchClient, semantic_filter, 'limitIdsSet',
             { limitIdsSet: new Set(Array.from(matchingExpressionDocNodes.values()).map(document => document.id)) }
         );
         if (semanticSearchResults && semanticSearchResults.length > 0) {

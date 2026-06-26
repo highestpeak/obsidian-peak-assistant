@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
 import { EventBus, ViewEventType } from '@/core/eventBus';
@@ -107,7 +107,7 @@ export class UsageTrackingService {
 	/**
 	 * Initialize the service: create repo, subscribe to events, run compaction, start timer.
 	 */
-	init(db: Kysely<DbSchema>, app: App, settings: UsageSettings): void {
+	init(db: Kysely<DbSchema>, app: AppHandle, settings: UsageSettings): void {
 		this.repo = new UsageLogRepo(db);
 		this.settings = { ...settings };
 

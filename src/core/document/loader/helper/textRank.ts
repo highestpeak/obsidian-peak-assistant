@@ -1,4 +1,4 @@
-import { normalizeForSearch, segmentToWhitespace } from '@/service/search/support/segmenter';
+import { normalizeForSearch, segmentToWhitespace } from '@/core/utils/segmenter';
 import { getTextStopwordsForLocale } from '@/core/utils/stopword-utils';
 /**
  * Unsupervised TextRank: word co-occurrence graph + sentence similarity graph (Jaccard), PageRank scoring.

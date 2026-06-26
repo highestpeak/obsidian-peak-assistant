@@ -1,7 +1,7 @@
 import { z } from "zod/v3";
-import { AppContext } from "@/app/context/AppContext";
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
+import type { SearchClient } from "@/service/search/SearchClient";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
 import { applyFiltersAndSorters } from "./common";
@@ -133,9 +133,9 @@ async function getSearchResultItemFieldGetter(items: SearchResultItem[], filters
     });
 }
 
-export async function localSearch(params: LocalSearchParams, templateManager?: TemplateManager) {
+export async function localSearch(params: LocalSearchParams, searchClient: SearchClient, templateManager?: TemplateManager) {
     const { query, searchMode, scopeMode, scopeValue, limit, response_format, filters, sorter } = params;
-    const { items: rawItems, duration } = await AppContext.getInstance().searchClient.search({
+    const { items: rawItems, duration } = await searchClient.search({
         text: query,
         searchMode: searchMode,
         scopeMode: scopeMode,

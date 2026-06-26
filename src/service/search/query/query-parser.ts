@@ -1,5 +1,5 @@
-import { porterStem } from '@/service/search/support/porter-stemmer';
-import { normalizeForSearch } from '@/service/search/support/segmenter';
+import { porterStem } from '@/core/utils/porter-stemmer';
+import { normalizeForSearch } from '@/core/utils/segmenter';
 
 export type QueryTerm = {
     text: string;

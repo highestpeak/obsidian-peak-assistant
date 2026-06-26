@@ -1,10 +1,10 @@
-import { App, normalizePath, TFile, TFolder } from 'obsidian';
+import { App, TFile, TFolder } from 'obsidian';
+import { stringify as stringifyYaml } from 'yaml';
 import { buildFrontmatter, codeBlock } from '@/core/utils/markdown-utils';
-import { stringifyYaml } from 'obsidian';
 import type { ChatResourceRef, ResourceSummaryMeta, ParsedResourceSummaryFile } from '../types';
 import type { ResourceKind } from '@/core/document/types';
 import { parseFrontmatter } from '@/core/utils/markdown-utils';
-import { ensureFolder } from '@/core/utils/vault-utils';
+import { ensureFolder, normalizeVaultPath } from '@/core/utils/vault-utils';
 import { ResourceKindDetector } from '@/core/document/resource/helper/ResourceKindDetector';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { hashString } from '@/core/utils/hash-utils';
@@ -23,7 +23,7 @@ export class ResourceSummaryService {
 		rootFolder: string,
 		resourcesSummaryFolderName: string
 	) {
-		this.resourcesFolder = normalizePath(`${resourcesSummaryFolderName}`);
+		this.resourcesFolder = normalizeVaultPath(`${resourcesSummaryFolderName}`);
 		this.kindDetector = new ResourceKindDetector(DocumentLoaderManager.getInstance().getVaultReader());
 	}
 
@@ -52,7 +52,7 @@ export class ResourceSummaryService {
 	 * Get resource summary note file path
 	 */
 	getResourceSummaryPath(resourceId: string): string {
-		return normalizePath(`${this.resourcesFolder}/Resource-${resourceId}.md`);
+		return normalizeVaultPath(`${this.resourcesFolder}/Resource-${resourceId}.md`);
 	}
 
 	/**

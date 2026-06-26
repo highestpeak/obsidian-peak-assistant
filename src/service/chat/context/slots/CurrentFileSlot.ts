@@ -1,7 +1,9 @@
 import type { ContextSlot, SlotBuildContext, SlotContent } from './types';
 import { estimateTokensFromText } from './types';
 import type { LLMRequestMessage } from '@/core/providers/types';
-import type { TFile } from 'obsidian';
+
+/** Local file-handle alias; ctx.app exposes the runtime vault adapter as AppHandle. */
+type FileHandle = { path: string; basename?: string; extension?: string; [key: string]: any };
 
 export class CurrentFileSlot implements ContextSlot {
   id = 'current-file';
@@ -14,7 +16,7 @@ export class CurrentFileSlot implements ContextSlot {
     const file = app.vault.getAbstractFileByPath(filePath);
     if (!file || !('extension' in file)) return { data: null, tokens: 0, compressionLevel: 0 };
 
-    const tfile = file as TFile;
+    const tfile = file as FileHandle;
     const metadataOnly = ctx.metadataOnly as boolean | undefined;
     const cache = app.metadataCache.getFileCache(tfile);
 

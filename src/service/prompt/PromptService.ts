@@ -1,6 +1,6 @@
-import { App, normalizePath, TFile } from 'obsidian';
+import { App, TFile } from 'obsidian';
 import { PromptId, type PromptVariables, PromptInfo } from './PromptId';
-import { ensureFolder } from '@/core/utils/vault-utils';
+import { ensureFolder, normalizeVaultPath } from '@/core/utils/vault-utils';
 import type { AIServiceSettings } from '@/core/config/settingsTypes';
 import { getAIPromptFolder } from '@/core/config/folderPaths';
 import type { CompiledTemplate } from '@/core/template-engine-helper';
@@ -49,7 +49,7 @@ export class PromptService {
 	}
 
 	setPromptFolder(folder: string): void {
-		this.promptFolder = normalizePath(folder);
+		this.promptFolder = normalizeVaultPath(folder);
 		this.overrideCache.clear();
 	}
 
@@ -157,7 +157,7 @@ export class PromptService {
 
 	/** Check if an override file exists for the given template id. */
 	checkOverrideExists(id: TemplateId): boolean {
-		const filePath = normalizePath(`${this.promptFolder}/${id}.prompt.md`);
+		const filePath = normalizeVaultPath(`${this.promptFolder}/${id}.prompt.md`);
 		return this.app.vault.getAbstractFileByPath(filePath) instanceof TFile;
 	}
 
@@ -177,7 +177,7 @@ export class PromptService {
 
 	/** Create an override file in the vault with the default template content + prompt-meta header. */
 	async createOverrideFile(id: TemplateId): Promise<string> {
-		const filePath = normalizePath(`${this.promptFolder}/${id}.prompt.md`);
+		const filePath = normalizeVaultPath(`${this.promptFolder}/${id}.prompt.md`);
 
 		if (this.app.vault.getAbstractFileByPath(filePath) instanceof TFile) {
 			return filePath;
@@ -207,7 +207,7 @@ export class PromptService {
 
 	/** Delete an override file and clear its cache entry. */
 	async deleteOverride(id: TemplateId): Promise<void> {
-		const filePath = normalizePath(`${this.promptFolder}/${id}.prompt.md`);
+		const filePath = normalizeVaultPath(`${this.promptFolder}/${id}.prompt.md`);
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (file instanceof TFile) {
 			await this.app.vault.delete(file);
@@ -223,7 +223,7 @@ export class PromptService {
 		}
 
 		const fileName = `${id}.prompt.md`;
-		const filePath = normalizePath(`${this.promptFolder}/${fileName}`);
+		const filePath = normalizeVaultPath(`${this.promptFolder}/${fileName}`);
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 
 		if (!(file instanceof TFile)) {

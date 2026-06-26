@@ -22,6 +22,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { getActivityDetailTool } from '@/service/context/context-tools/getActivityDetailTool';
 import { getRecentAnalysisResultTool } from '@/service/context/context-tools/getRecentAnalysisResultTool';
 import { getWorkingThemeTool } from '@/service/context/context-tools/getWorkingThemeTool';
+import type { AnalysisHistoryPort } from '@/core/ports/AnalysisHistoryPort';
 
 // ─── vault_list_folders ──────────────────────────────────────────────────────
 
@@ -318,6 +319,11 @@ export interface VaultMcpServerDeps {
     searchFn: GrepSearchFn;
     /** Invoked when the LLM calls submit_plan. Returns user feedback. */
     onSubmitPlan: (plan: SubmitPlanInput) => Promise<SubmitPlanFeedback>;
+    /**
+     * Narrow analysis-history read port — supplied by callers so the
+     * embedded `get_recent_analysis` tool doesn't reach `AppContext`.
+     */
+    analysisHistory: AnalysisHistoryPort;
 }
 
 /**
@@ -331,7 +337,7 @@ export interface VaultMcpServerDeps {
  * we execute the pure impl against `deps.app.vault` / `deps.app.metadataCache`.
  */
 export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
-    const { app, searchFn, onSubmitPlan } = deps;
+    const { app, searchFn, onSubmitPlan, analysisHistory } = deps;
 
     const listFolders = tool(
         'vault_list_folders',
@@ -487,7 +493,7 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
     }
 
     const getActivityDetail = wrapAgentTool(getActivityDetailTool, 'get_activity_detail');
-    const getRecentAnalysis = wrapAgentTool(getRecentAnalysisResultTool, 'get_recent_analysis');
+    const getRecentAnalysis = wrapAgentTool(() => getRecentAnalysisResultTool(analysisHistory), 'get_recent_analysis');
     const getWorkingTheme = wrapAgentTool(getWorkingThemeTool, 'get_working_theme');
 
     // ─── structural analysis MCP tools ──────────────────────────────────────

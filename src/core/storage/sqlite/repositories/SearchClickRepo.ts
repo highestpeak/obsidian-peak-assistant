@@ -1,5 +1,5 @@
 import type { Database } from 'better-sqlite3';
-import { porterStem } from '@/service/search/support/porter-stemmer';
+import { porterStem } from '@/core/utils/porter-stemmer';
 
 export class SearchClickRepo {
 	constructor(private db: Database) {}

@@ -68,6 +68,8 @@ export interface MetaAgentOptions {
 	/** T11J B2: caller passes app + pluginId so this module no longer reaches AppContext. */
 	app: import('obsidian').App;
 	pluginId: string;
+	/** T11L: narrow port the embedded `get_recent_analysis` tool needs. */
+	analysisHistory: import('@/core/ports/AnalysisHistoryPort').AnalysisHistoryPort;
 }
 
 const SYSTEM_PROMPT_BASE = `You are the Peak Assistant Auto Review agent.
@@ -331,6 +333,7 @@ export async function* buildCopilotMetaAgentStream(
 			adjustedPaths: plan.selected_paths,
 			adjustedOutline: plan.proposed_outline,
 		}),
+		analysisHistory: options.analysisHistory,
 	});
 
 	const copilotMcpServer = buildCopilotOutputMcpServer({
