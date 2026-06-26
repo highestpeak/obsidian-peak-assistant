@@ -1,6 +1,6 @@
 import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { USAGE_DASHBOARD_VIEW_TYPE } from '@/app/view/types';
 

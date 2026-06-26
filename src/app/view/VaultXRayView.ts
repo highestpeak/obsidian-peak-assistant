@@ -1,6 +1,6 @@
 import { type IconName, ItemView, type WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
 import type { AppContext } from '@/app/context/AppContext';
 import { VAULT_XRAY_VIEW_TYPE } from '@/app/view/types';
 

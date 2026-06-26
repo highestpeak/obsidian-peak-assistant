@@ -1,7 +1,7 @@
 import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { ProjectListViewComponent } from '@/ui/view/project-list-view/ProjectListView';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { PROJECT_LIST_VIEW_TYPE } from '@/app/view/types';
 

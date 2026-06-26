@@ -1,7 +1,7 @@
 import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { ChatViewComponent } from '@/ui/view/chat-view/ChatViewComponent';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { CHAT_VIEW_TYPE } from '@/app/view/types';
 

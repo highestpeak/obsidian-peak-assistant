@@ -1,6 +1,6 @@
 import { type IconName, ItemView, type WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
 import { ConversationOutlinePanel } from '@/ui/view/conversation-outline-view/ConversationOutlineView';
 import type { AppContext } from '@/app/context/AppContext';
 import { CHAT_VIEW_TYPE, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/app/view/types';

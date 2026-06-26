@@ -9,7 +9,7 @@
 
 import { Modal as ObsidianModal } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import type { PrimaryStep } from '@/ui/view/onboarding/OnboardingStateMachine';
 import { HarnessOnboardingWizard } from '@/ui/view/onboarding/HarnessOnboardingWizard';

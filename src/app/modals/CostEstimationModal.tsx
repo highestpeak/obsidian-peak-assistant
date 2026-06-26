@@ -1,6 +1,6 @@
 import { Modal } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import type { BulkCostEstimate } from '@/service/search/support/cost-estimator';
 import { CostEstimationContent } from '@/ui/view/modals/CostEstimationContent';

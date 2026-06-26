@@ -3,7 +3,7 @@ import type MyPlugin from 'main';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { SettingsRoot } from '@/ui/view/SettingsView';
 import { AppContext } from '@/app/context/AppContext';
-import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
 
 /**
  * Renders plugin settings UI with multiple tabs.
