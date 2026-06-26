@@ -3,6 +3,7 @@ import { History, Blend, Brain, Loader2, FileText, Clock, X } from 'lucide-react
 import { Button } from '@/ui/component/shared-ui/button';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
 import { useQuickSearchHost } from '../../hooks/useQuickSearchHost';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { CompletedAnalysisSnapshot, loadCompletedAnalysisSnapshot } from '../../store/aiAnalysisStore';
 import type { AnalysisMode } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
@@ -82,6 +83,7 @@ const EMPTY_SESSIONS: QuickSearchBackgroundSessionSummary[] = [];
 export const RecentAIAnalysis: React.FC<{
     onClose?: () => void;
 }> = ({ onClose }) => {
+    const { app } = useServiceContext();
     const host = useQuickSearchHost();
     const quickSearchRuntime = host.quickSearchRuntime;
 
@@ -142,7 +144,7 @@ export const RecentAIAnalysis: React.FC<{
         if (!path) return;
 
         if (allowDirectOpen) {
-            await createOpenSourceCallback(onClose)(path);
+            await createOpenSourceCallback(onClose, true, app)(path);
             return;
         }
 
@@ -161,7 +163,7 @@ export const RecentAIAnalysis: React.FC<{
             return;
         }
 
-        await createOpenSourceCallback(onClose)(path);
+        await createOpenSourceCallback(onClose, true, app)(path);
     };
 
     const loadRecentPage = async (offset: number) => {

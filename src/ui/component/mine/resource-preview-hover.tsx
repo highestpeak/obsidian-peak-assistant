@@ -1,11 +1,11 @@
 import { SLICE_CAPS } from '@/core/constant';
 import React, { useState, useEffect, useRef } from 'react';
-import { App, TFile } from 'obsidian';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../shared-ui/hover-card';
 import { cn } from '@/ui/react/lib/utils';
 import { isUrl, detectPreviewFileType, getFileDisplayName } from '@/core/document/helper/FileTypeUtils';
 import { ChatResourceRef } from '@/service/chat/types';
 import { ResourceKind } from '@/core/document/types';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 export interface ResourcePreviewHoverProps {
 	/**
@@ -20,10 +20,6 @@ export interface ResourcePreviewHoverProps {
 	 * File type for determining preview strategy (only used with filePath)
 	 */
 	fileType?: 'image' | 'markdown' | 'pdf' | 'file';
-	/**
-	 * App instance
-	 */
-	app: App;
 	/**
 	 * Children to wrap with hover trigger
 	 */
@@ -42,16 +38,20 @@ export interface ResourcePreviewHoverProps {
  * Universal resource preview hover component
  * Supports preview for all resource kinds (images, markdown, PDF, URLs, etc.)
  * Can accept either a ChatResourceRef or a filePath for backward compatibility
+ *
+ * T11N: vault reads route through `vaultPreview` from ServiceContext (no
+ * `app` prop and no `app.vault.{readBinary,read,getResourcePath}` here);
+ * blob URL lifecycle is preserved.
  */
 export const ResourcePreviewHover: React.FC<ResourcePreviewHoverProps> = ({
 	resource,
 	filePath,
 	fileType,
-	app,
 	children,
 	previewClassName,
 	enabled = true,
 }) => {
+	const { vaultPreview } = useServiceContext();
 	const [previewContent, setPreviewContent] = useState<string | null>(null);
 	const [isImagePreview, setIsImagePreview] = useState(false);
 	const [isPdfPreview, setIsPdfPreview] = useState(false);
@@ -130,19 +130,19 @@ export const ResourcePreviewHover: React.FC<ResourcePreviewHoverProps> = ({
 
 				// Handle file path resources
 				const normalizedPath = source.startsWith('/') ? source.slice(1) : source;
-				const file = app.vault.getAbstractFileByPath(normalizedPath);
-				if (!(file instanceof TFile)) {
-					setPreviewContent(null);
-					setIsImagePreview(false);
-					setIsPdfPreview(false);
-					return;
-				}
 
 				if (shouldShowImagePreview()) {
 					// For images, create a blob URL for preview
-					const imageData = await app.vault.readBinary(file);
+					const imageData = await vaultPreview.readBinary(normalizedPath);
+					if (!imageData) {
+						setPreviewContent(null);
+						setIsImagePreview(false);
+						setIsPdfPreview(false);
+						return;
+					}
+					const ext = normalizedPath.split('.').pop()?.toLowerCase();
 					const blob = new Blob([imageData], {
-						type: file.extension === 'svg' ? 'image/svg+xml' : undefined
+						type: ext === 'svg' ? 'image/svg+xml' : undefined
 					});
 					const url = URL.createObjectURL(blob);
 					blobUrlRef.current = url;
@@ -151,24 +151,29 @@ export const ResourcePreviewHover: React.FC<ResourcePreviewHoverProps> = ({
 					setIsPdfPreview(false);
 				} else if (shouldShowPdfPreview()) {
 					// For PDFs, use Obsidian's resource path for preview
-					const resourcePath = app.vault.getResourcePath(file);
+					const resourcePath = vaultPreview.getResourcePath(normalizedPath);
+					if (!resourcePath) {
+						setPreviewContent(null);
+						setIsImagePreview(false);
+						setIsPdfPreview(false);
+						return;
+					}
 					setPreviewContent(resourcePath);
 					setIsImagePreview(false);
 					setIsPdfPreview(true);
 				} else {
 					// For all other files, try to read as text or show file name
-					try {
-						const content = await app.vault.read(file);
-						const lines = content.split('\n').slice(0, SLICE_CAPS.ui.resourcePreviewLines).join('\n');
-						setPreviewContent(lines || '(Empty file)');
+					const content = await vaultPreview.readText(normalizedPath);
+					if (content === null) {
+						setPreviewContent(getFileDisplayName(normalizedPath));
 						setIsImagePreview(false);
 						setIsPdfPreview(false);
-					} catch (readError) {
-						// If reading as text fails, show file name
-						setPreviewContent(getFileDisplayName(file.name));
-						setIsImagePreview(false);
-						setIsPdfPreview(false);
+						return;
 					}
+					const lines = content.split('\n').slice(0, SLICE_CAPS.ui.resourcePreviewLines).join('\n');
+					setPreviewContent(lines || '(Empty file)');
+					setIsImagePreview(false);
+					setIsPdfPreview(false);
 				}
 			} catch (error) {
 				setPreviewContent(null);
@@ -186,15 +191,15 @@ export const ResourcePreviewHover: React.FC<ResourcePreviewHoverProps> = ({
 				blobUrlRef.current = null;
 			}
 		};
-	}, [source, resourceKind, isUrlResource, app, enabled, isHovered, detectedFileType]);
+	}, [source, resourceKind, isUrlResource, vaultPreview, enabled, isHovered, detectedFileType]);
 
 	if (!enabled || !source) {
 		return <>{children}</>;
 	}
 
 	return (
-		<HoverCard 
-			openDelay={300} 
+		<HoverCard
+			openDelay={300}
 			closeDelay={200}
 			onOpenChange={(open) => setIsHovered(open)}
 		>

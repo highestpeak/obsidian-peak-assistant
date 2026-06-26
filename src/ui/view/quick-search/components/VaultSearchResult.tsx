@@ -6,6 +6,7 @@ import { humanReadableTime } from '@/core/utils/date-utils';
 import type { SearchResultItem, SearchSnippet } from '@/service/search/types';
 import type { HighlightResult } from '@/service/search/query/highlight-engine';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickRepo';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
@@ -98,11 +99,12 @@ export const SearchResultRow: React.FC<{
 	onClose?: () => void;
 	newTab?: boolean;
 }> = ({ currentQuery, result, index, isSelected, onSelect, itemRef, onClose, newTab }) => {
+	const { app } = useServiceContext();
 	const handleClick = (e: React.MouseEvent) => {
 		onSelect(index);
 		recordSearchClick(currentQuery, result.path, index);
 		const openInNewTab = newTab ?? (e.metaKey || e.ctrlKey);
-		createOpenSourceCallback(onClose, openInNewTab)(result);
+		createOpenSourceCallback(onClose, openInNewTab, app)(result);
 	};
 
 	return (
@@ -165,7 +167,7 @@ export const SearchResultRow: React.FC<{
 					onClick={(e) => {
 						e.stopPropagation();
 						recordSearchClick(currentQuery, result.path, index);
-						createOpenSourceCallback(onClose, true)(result);
+						createOpenSourceCallback(onClose, true, app)(result);
 					}}
 				>
 					<ExternalLink className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-text-tertiary" />

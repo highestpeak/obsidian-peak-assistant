@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { FileText, List, Network, ChevronRight, Folder, Loader2 } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
 import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
 import type { V2Source } from '../types/search-steps';
@@ -93,6 +94,7 @@ function SourceItem({ source, onClick }: { source: V2Source; onClick: (e: React.
 }
 
 export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
+    const { app } = useServiceContext();
     const sources = useSearchSessionStore((s) => s.v2Sources);
     const storeViewMode = useSearchSessionStore((s) => s.sourcesViewMode);
     const setStoreViewMode = useSearchSessionStore((s) => s.setSourcesViewMode);
@@ -100,8 +102,8 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
     const setViewMode = useCallback((m: SourceViewMode) => { if (m === 'list' || m === 'graph') setStoreViewMode(m); }, [setStoreViewMode]);
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
     const handleOpen = useCallback((pathOrResult: string, newTab?: boolean) => {
-        createOpenSourceCallback(onClose, newTab ?? true)(pathOrResult);
-    }, [onClose]);
+        createOpenSourceCallback(onClose, newTab ?? true, app)(pathOrResult);
+    }, [onClose, app]);
 
     const toggleGroup = (prefix: string) => {
         setCollapsedGroups(prev => {

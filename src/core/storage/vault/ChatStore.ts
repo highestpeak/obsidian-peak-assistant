@@ -9,7 +9,7 @@ import {
 	ChatFilePaths,
 	ChatProject,
 } from '@/core/types/chat';
-import type { ChatConversation } from '@/service/chat/types';
+import type { ChatConversation } from '@/core/types/chat-vault';
 import { ensureFolder, joinPath, writeFile, getAbsolutePath, getRelativePath, normalizeVaultPath } from '@/core/utils/vault-utils';
 import { ChatDocName } from './chat-docs/ChatDocName';
 import { ChatConversationDoc, ChatConversationDocModel } from './chat-docs/ChatConversationDoc';

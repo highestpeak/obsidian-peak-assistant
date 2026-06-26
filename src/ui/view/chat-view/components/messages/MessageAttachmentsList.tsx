@@ -232,7 +232,7 @@ interface ImageTileProps {
 function ImageTile({ image, onOpen, app, height, fullWidth, overlayText }: ImageTileProps) {
 	const alt = image.source.split('/').pop() || 'image';
 	return (
-		<ResourcePreviewHover resource={image} app={app} previewClassName="pktw-z-[100]">
+		<ResourcePreviewHover resource={image} previewClassName="pktw-z-[100]">
 			<button
 				type="button"
 				className="pktw-relative pktw-overflow-hidden pktw-cursor-pointer pktw-border-0 pktw-p-0 pktw-bg-muted hover:pktw-opacity-90 pktw-transition-opacity"
@@ -309,7 +309,7 @@ function FileCard({ resource, onOpen, app, compact }: FileCardProps) {
 	const badge = badgeStyleForKind(resource.kind, resource.source);
 	const badgePx = compact ? 30 : 36;
 	return (
-		<ResourcePreviewHover resource={resource} app={app} previewClassName="pktw-z-[100]">
+		<ResourcePreviewHover resource={resource} previewClassName="pktw-z-[100]">
 			<button
 				type="button"
 				className={cn(
@@ -358,7 +358,7 @@ function FileChip({ resource, onOpen, app }: FileChipProps) {
 	const filename = resource.source.split('/').pop() || resource.source;
 	const badge = badgeStyleForKind(resource.kind, resource.source);
 	return (
-		<ResourcePreviewHover resource={resource} app={app} previewClassName="pktw-z-[100]">
+		<ResourcePreviewHover resource={resource} previewClassName="pktw-z-[100]">
 			<button
 				type="button"
 				className="pk-attach-chip pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-text-[12px] pktw-text-foreground pktw-cursor-pointer"
@@ -462,7 +462,7 @@ function UrlCard({ resource, onOpen, app }: { resource: ChatResourceRef; onOpen:
 	// + title + URL + OG image — the hover just duplicates that, with worse
 	// formatting (a small text tooltip showing the filename).
 	return (
-		<ResourcePreviewHover resource={resource} app={app} enabled={false} previewClassName="pktw-z-[100]">
+		<ResourcePreviewHover resource={resource} enabled={false} previewClassName="pktw-z-[100]">
 			<button
 				type="button"
 				className="pk-attach-card pk-attach-url pktw-w-full pktw-text-left pktw-cursor-pointer"
@@ -524,7 +524,7 @@ function UrlChip({ resource, onOpen, app }: { resource: ChatResourceRef; onOpen:
 	// Same reasoning as UrlCard — chip already shows the full URL on its tooltip
 	// (`title={resource.source}`), so a HoverCard would be redundant.
 	return (
-		<ResourcePreviewHover resource={resource} app={app} enabled={false} previewClassName="pktw-z-[100]">
+		<ResourcePreviewHover resource={resource} enabled={false} previewClassName="pktw-z-[100]">
 			<button
 				type="button"
 				className="pk-attach-chip pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-text-[12px] pktw-text-foreground pktw-cursor-pointer"

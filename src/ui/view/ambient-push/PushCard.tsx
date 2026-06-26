@@ -1,5 +1,4 @@
 import React from 'react';
-import { MarkdownView } from 'obsidian';
 import { FileText, Link, ExternalLink, X, Sparkles } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -12,25 +11,23 @@ interface PushCardProps {
 }
 
 export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
-	// T8: persistence (recordAction) flows through the app-owned
-	// Ambient runtime; the Zustand store no longer writes SQLite. Both
-	// `app` and `ambientRuntime` come from ServiceContext.
-	const { app, ambientRuntime } = useServiceContext();
+	// T8: persistence (recordAction) flows through the app-owned Ambient
+	// runtime. T11N: open + editor-insert flow through the new
+	// `vaultNavigation` / `editorCommands` ports instead of raw
+	// `app.workspace.{openLinkText,getActiveViewOfType}` calls.
+	const { vaultNavigation, editorCommands, ambientRuntime } = useServiceContext();
 	const title = item.title?.trim() || item.filePath.replace(/^.*\//, '').replace(/\.md$/, '');
 	const excerpt = item.excerpt?.trim() || title;
 	const explanation = item.explanation?.trim() || 'Related content';
 
 	async function handleOpen() {
-		await app.workspace.openLinkText(item.filePath, '', true);
+		await vaultNavigation.openLink(item.filePath, { newLeaf: true });
 		void ambientRuntime?.recordAction(sourceFilePath, item.filePath, 'opened');
 	}
 
 	function handleInsertLink() {
-		const mdView = app.workspace.getActiveViewOfType(MarkdownView);
-		if (!mdView) return;
-		const editor = mdView.editor;
-		const cursor = editor.getCursor();
-		editor.replaceRange(`[[${title}]]`, cursor);
+		const inserted = editorCommands.insertWikilinkAtCursor(title);
+		if (!inserted) return;
 		void ambientRuntime?.recordAction(sourceFilePath, item.filePath, 'linked');
 	}
 

@@ -28,7 +28,7 @@ import { MessageInlineFollowup } from './MessageInlineFollowup';
 import { useChatStrings } from '../../chatStringsContext';
 import { getMessageReceiptRenderer } from '../../integration/messageReceiptSlot';
 import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
-import { Notice, normalizePath } from 'obsidian';
+import { Notice } from 'obsidian';
 
 interface StreamingState {
 	isStreaming: boolean;
@@ -82,7 +82,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 	isLastMessage = false,
 }) => {
 	const strings = useChatStrings();
-	const { manager, app, eventBus, viewManager } = useServiceContext();
+	const { manager, app, eventBus, viewManager, chatVaultWriter } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 	const activeProject = useChatDataStore((s) => s.activeProject);
 
@@ -189,30 +189,26 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 	const handleSaveToVault = useCallback(async () => {
 		if (!activeConversation) return;
 		const folderRaw = (strings.message.vaultSaveDefaultFolder || 'Peak Chat Saves').trim();
-		const folder = normalizePath(folderRaw);
+		const titleSlug = (activeConversation.meta.title || 'chat')
+			.replace(/[\\/:*?"<>|#^[\]]/g, '')
+			.trim()
+			.slice(0, 60) || 'chat';
+		const stamp = new Date(message.createdAtTimestamp || Date.now())
+			.toISOString()
+			.replace(/[:.]/g, '-');
+		const fileNameWithExt = `${titleSlug} — ${stamp}.md`;
+		const front =
+			`---\n` +
+			`source: Peak Chat\n` +
+			`conversation_id: ${activeConversation.meta.id}\n` +
+			`message_id: ${message.id}\n` +
+			`model: ${message.model ?? ''}\n` +
+			`provider: ${message.provider ?? ''}\n` +
+			`saved_at: ${new Date().toISOString()}\n` +
+			`---\n\n`;
+		const body = String(message.content ?? '');
 		try {
-			if (!app.vault.getAbstractFileByPath(folder)) {
-				await app.vault.createFolder(folder);
-			}
-			const titleSlug = (activeConversation.meta.title || 'chat')
-				.replace(/[\\/:*?"<>|#^[\]]/g, '')
-				.trim()
-				.slice(0, 60) || 'chat';
-			const stamp = new Date(message.createdAtTimestamp || Date.now())
-				.toISOString()
-				.replace(/[:.]/g, '-');
-			const path = normalizePath(`${folder}/${titleSlug} — ${stamp}.md`);
-			const front =
-				`---\n` +
-				`source: Peak Chat\n` +
-				`conversation_id: ${activeConversation.meta.id}\n` +
-				`message_id: ${message.id}\n` +
-				`model: ${message.model ?? ''}\n` +
-				`provider: ${message.provider ?? ''}\n` +
-				`saved_at: ${new Date().toISOString()}\n` +
-				`---\n\n`;
-			const body = String(message.content ?? '');
-			await app.vault.create(path, front + body);
+			const path = await chatVaultWriter.saveChatMessageToFolder(folderRaw, fileNameWithExt, front + body);
 
 			// Best-effort telemetry — failure here must NOT block UX.
 			try {
@@ -230,7 +226,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 			console.error('[MessageItemRetained] Save to vault failed:', err);
 			new Notice(strings.message.vaultSaveFailed);
 		}
-	}, [activeConversation, app, message.id, message.content, message.model, message.provider, message.createdAtTimestamp, strings.message.vaultSaveDefaultFolder, strings.message.vaultSaveSuccess, strings.message.vaultSaveFailed]);
+	}, [activeConversation, chatVaultWriter, message.id, message.content, message.model, message.provider, message.createdAtTimestamp, strings.message.vaultSaveDefaultFolder, strings.message.vaultSaveSuccess, strings.message.vaultSaveFailed]);
 
 	const handleBranch = useCallback(async () => {
 		if (!activeConversation) return;

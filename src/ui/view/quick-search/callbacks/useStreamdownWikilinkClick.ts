@@ -1,6 +1,5 @@
 import React from 'react';
 import { App } from 'obsidian';
-import { AppContext } from '@/app/context/AppContext';
 
 /**
  * Strip #heading or #^block-id from wikilink target so we open the file, not the anchor.
@@ -25,11 +24,13 @@ export function looksLikePath(s: string): boolean {
 /**
  * Resolve link text (e.g. "Note Title") to vault file path via metadataCache.
  * Returns resolved path or original if not found.
- * Pass `appInstance` to avoid AppContext.getInstance(); falls back when not provided.
+ *
+ * T11N: `app` is mandatory. The previous `AppContext.getInstance()` fallback
+ * hid a UI -> app-shell leak from the boundary audit; the only caller
+ * (`extractWikilinkPath` below) now threads `app` explicitly.
  */
-export function resolveWikilinkToPath(linkText: string, appInstance?: App): string {
+export function resolveWikilinkToPath(linkText: string, app: App): string {
 	try {
-		const app = appInstance ?? AppContext.getInstance().app;
 		const dest = app.metadataCache.getFirstLinkpathDest(linkText, '');
 		if (dest && 'path' in dest) return dest.path;
 	} catch {
@@ -41,8 +42,10 @@ export function resolveWikilinkToPath(linkText: string, appInstance?: App): stri
 /**
  * Extract the vault path from a wikilink href (#peak-wikilink=, peak://wikilink/, obsidian://open).
  * Returns null for non-wikilink hrefs or block anchors.
+ *
+ * T11N: `app` is mandatory (passes through to `resolveWikilinkToPath`).
  */
-export function extractWikilinkPath(href: string): string | null {
+export function extractWikilinkPath(href: string, app: App): string | null {
 	if (!href) return null;
 	const isBlockAnchor = /^#block-[a-zA-Z0-9_-]+$/.test(href.trim());
 	if (isBlockAnchor) return null;
@@ -69,18 +72,20 @@ export function extractWikilinkPath(href: string): string | null {
 	if (!rawTarget || rawTarget.startsWith('#')) return null;
 	const filePart = stripWikilinkAnchor(rawTarget);
 	if (!filePart) return null;
-	return looksLikePath(filePart) ? filePart : resolveWikilinkToPath(filePart);
+	return looksLikePath(filePart) ? filePart : resolveWikilinkToPath(filePart, app);
 }
 
 /**
  * Open a vault file path via Obsidian workspace.
  * Closes the Quick Search modal so the opened file is visible.
  * When newTab is true, opens in a new tab instead of replacing the current one.
- * Pass `appInstance` to avoid AppContext.getInstance(); falls back when not provided.
+ *
+ * T11N: `app` is mandatory. Callers (StreamdownIsolated, the unused-but-kept
+ * `useStreamdownWikilinkClick` hook below) read `app` from
+ * `useServiceContext()`.
  */
-export function openWikilinkPath(path: string, newTab: boolean = false, appInstance?: App): void {
+export function openWikilinkPath(path: string, newTab: boolean, app: App): void {
 	try {
-		const app = appInstance ?? AppContext.getInstance().app;
 		// Close the Quick Search modal first so the opened file is visible
 		const modalEl = document.querySelector('.peak-quick-search-modal')?.closest('.modal-container');
 		if (modalEl) {
@@ -100,9 +105,14 @@ export function openWikilinkPath(path: string, newTab: boolean = false, appInsta
  * Returns a click handler for StreamdownIsolated that opens Obsidian wikilinks
  * when the user clicks [[...]] links (rendered as <a> or button[data-streamdown="link"]).
  * Strips #anchor, resolves title-only links to vault path via metadataCache, then opens.
+ *
+ * Note: currently unused — `StreamdownIsolated` runs its own shadow-DOM event
+ * handler that calls the underlying helpers. Kept exported so a future
+ * non-shadow consumer can reuse the same click semantics.
  */
 export function useStreamdownWikilinkClick(
-	onOpenWikilink: ((path: string) => void | Promise<void>) | undefined
+	onOpenWikilink: ((path: string) => void | Promise<void>) | undefined,
+	app: App,
 ): React.MouseEventHandler<HTMLDivElement> {
 	return React.useCallback(
 		async (evt: React.MouseEvent<HTMLDivElement>) => {
@@ -132,17 +142,17 @@ export function useStreamdownWikilinkClick(
 				document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 				return;
 			}
-			const pathToOpen = extractWikilinkPath(href);
+			const pathToOpen = extractWikilinkPath(href, app);
 			if (!pathToOpen) return;
 			evt.preventDefault();
 			evt.stopPropagation();
 			// Ctrl/Cmd+click opens in new tab
 			if (evt.metaKey || evt.ctrlKey) {
-				openWikilinkPath(pathToOpen, true);
+				openWikilinkPath(pathToOpen, true, app);
 				return;
 			}
 			await onOpenWikilink(pathToOpen);
 		},
-		[onOpenWikilink]
+		[onOpenWikilink, app]
 	);
 }

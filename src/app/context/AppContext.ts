@@ -23,6 +23,13 @@ import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRunt
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
 import type { CuratorPushRuntime } from '@/service/usage/curator/CuratorPushRuntime';
+import type { VaultPreviewPort } from '@/service/preview/VaultPreviewPort';
+import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
+import type { EditorCommandsPort } from '@/service/editor/EditorCommandsPort';
+import type { ChatVaultWriterPort } from '@/service/chat/ports/ChatVaultWriterPort';
+import { composeVaultPreview } from '@/app/preview/composeVaultPreview';
+import { composeVaultNavigation, composeEditorCommands } from '@/app/navigation/composeNavigation';
+import { composeChatVaultWriter } from '@/app/chat/composeChatVaultWriter';
 
 /**
  * Application context containing all global dependencies.
@@ -39,6 +46,19 @@ export class AppContext {
 	 * capability runtimes plug in here too.
 	 */
 	public readonly runtimeRegistry: AppRuntimeRegistry;
+
+	/**
+	 * T11N: app-composed ports for the streamdown/chat-attachment preview
+	 * surface, the cross-cutting "open vault link" affordance, the
+	 * "insert wikilink at cursor" editor command, and the chat
+	 * save-to-vault writer. Constructed once here so React consumers
+	 * receive them via `ReactElementFactory` and never instantiate the
+	 * concrete adapters themselves.
+	 */
+	public readonly vaultPreview: VaultPreviewPort;
+	public readonly vaultNavigation: VaultNavigationPort;
+	public readonly editorCommands: EditorCommandsPort;
+	public readonly chatVaultWriter: ChatVaultWriterPort;
 
 	private static instance: AppContext | null = null;
 
@@ -361,6 +381,10 @@ export class AppContext {
 		this.eventBus = EventBus.getInstance(app);
 		this._bridge = new ClaudeAgentSDKBridge();
 		this.runtimeRegistry = new AppRuntimeRegistry();
+		this.vaultPreview = composeVaultPreview(app);
+		this.vaultNavigation = composeVaultNavigation(app);
+		this.editorCommands = composeEditorCommands(app);
+		this.chatVaultWriter = composeChatVaultWriter(app);
 		AppContext.instance = this;
 
 		this.handleDevToolsSettingChange(this.settings.enableDevTools ?? false);

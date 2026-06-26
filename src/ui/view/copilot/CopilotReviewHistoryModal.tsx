@@ -4,6 +4,7 @@ import { ArrowLeft, History, RefreshCw, Search, ShieldCheck, Trash2 } from 'luci
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
+import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPanelVault';
 import { Button } from '@/ui/component/shared-ui/button';
 import { Input } from '@/ui/component/shared-ui/input';
 import { cn } from '@/ui/react/lib/utils';
@@ -476,10 +477,16 @@ export class CopilotReviewHistoryModal extends Modal {
 							new Notice('Could not load this review record.');
 							return;
 						}
-						const file = this.app.vault.getAbstractFileByPath(doc.subjectPath);
+						// T11N: replay-time vault read goes through the same
+						// `CopilotPanelVaultPort` adapter the panels use, so
+						// this modal doesn't re-implement vault IO. Modal.onOpen
+						// is outside any React tree → call the composer directly
+						// instead of `useCopilotPanelVault()`.
+						const panelVault = composeCopilotPanelVault(AppContext.getInstance()).vault;
+						const file = panelVault.findFileByPath(doc.subjectPath);
 						let ctx;
-						if (file instanceof TFile) {
-							const content = await this.app.vault.cachedRead(file);
+						if (file) {
+							const content = await panelVault.readFileContent(file);
 							ctx = DocumentContextBuilder.build(this.app, file, content, undefined);
 						} else {
 							// Subject file no longer exists. Build a minimal stub ctx.

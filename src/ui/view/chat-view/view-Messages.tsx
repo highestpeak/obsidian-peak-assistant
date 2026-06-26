@@ -46,7 +46,7 @@ export const MessagesViewComponent: React.FC = () => (
 );
 
 const MessagesViewInner: React.FC = () => {
-	const { app, eventBus } = useServiceContext();
+	const { eventBus, vaultNavigation } = useServiceContext();
 	const pendingConversation = useChatViewStore().pendingConversation;
 	const activeConversation = useChatDataStore((state) => state.activeConversation);
 
@@ -87,13 +87,13 @@ const MessagesViewInner: React.FC = () => {
 		const unsubscribeOpenLink = eventBus.on<OpenLinkEvent>(
 			ViewEventType.OPEN_LINK,
 			async (event) => {
-				await app.workspace.openLinkText(event.path, '', true);
+				await vaultNavigation.openLink(event.path, { newLeaf: true });
 			}
 		);
 		return () => {
 			unsubscribeOpenLink();
 		};
-	}, [eventBus, app]);
+	}, [eventBus, vaultNavigation]);
 
 	useEffect(() => {
 		if (!activeConversation) return;

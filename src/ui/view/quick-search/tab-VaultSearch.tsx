@@ -8,6 +8,7 @@ import { useVaultSearchStore } from './store';
 import { useSharedStore } from './store';
 import { useVaultSearch, useSearchQuery } from './hooks/useVaultSearch';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useHasSearchQuery } from './hooks/useVaultSearch';
 import { ModeHelpList, MODE_COUNT } from './components/ModeHelpList';
 import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickRepo';
@@ -57,6 +58,7 @@ interface VaultSearchTabProps {
  * Quick search tab for regular vault search results.
  */
 export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelectForInspector, navigateToPath }) => {
+	const { app } = useServiceContext();
 	const { quickSearchMode, isSearching, lastSearchResults: displayedResults, fuzzyCorrection, parsedQuery } = useVaultSearchStore();
 	const inspectorOpen = useVaultSearchStore((s) => s.inspectorOpen);
 	const hasSearchQuery = useHasSearchQuery();
@@ -160,7 +162,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 						} catch { /* non-critical */ }
 						const defaultNewTab = currentMode !== 'goToLine' && currentMode !== 'inFile';
 						const openInNewTab = (e.metaKey || e.ctrlKey) || defaultNewTab;
-						await createOpenSourceCallback(onClose, openInNewTab)(selectedResult);
+						await createOpenSourceCallback(onClose, openInNewTab, app)(selectedResult);
 					}
 					break;
 				}

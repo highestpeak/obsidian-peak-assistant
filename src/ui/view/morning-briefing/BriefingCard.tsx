@@ -1,7 +1,7 @@
 import React from 'react';
 import { FileText, ExternalLink, X, Link2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useMorningBriefingStore } from '@/ui/store/morningBriefingStore';
 import type { BriefingItem } from '@/service/ambient/types';
 
@@ -16,11 +16,11 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
 };
 
 export const BriefingCard: React.FC<BriefingCardProps> = ({ item }) => {
+	const { vaultNavigation } = useServiceContext();
 	const Icon = CATEGORY_ICONS[item.category] ?? FileText;
 
 	async function handleOpen() {
-		const app = AppContext.getApp();
-		await app.workspace.openLinkText(item.filePath, '', true);
+		await vaultNavigation.openLink(item.filePath, { newLeaf: true });
 	}
 
 	function handleDismiss() {

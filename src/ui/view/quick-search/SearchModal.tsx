@@ -13,7 +13,7 @@ import { useSearchSessionStore } from './store/searchSessionStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
 import { useSearchSession } from './hooks/useSearchSession';
-import { Notice, TFile } from 'obsidian';
+import { Notice } from 'obsidian';
 import { useQuickSearchHost } from './hooks/useQuickSearchHost';
 import { SearchQueryEvent } from '@/core/eventBus';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
@@ -388,11 +388,13 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 							const path = String(record.vault_rel_path ?? '').trim();
 							if (!path) return;
 							try {
-								let md: string | null = null;
-								const file = app.vault.getAbstractFileByPath(path);
-								if (file instanceof TFile) {
-									md = await app.vault.read(file);
-								}
+								// T11N: vault read goes through the host's named
+								// `readVaultFileText` op so this modal no longer
+								// performs raw `app.vault.{getAbstractFileByPath,read}`.
+								// The host returns `null` for missing/non-file
+								// paths, matching the previous TFile-check fall
+								// through to `getAnalysisMarkdownForReplay`.
+								let md: string | null = await host.readVaultFileText(path);
 								if (!md) {
 									md = await host.getAnalysisMarkdownForReplay(path);
 								}

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { App } from 'obsidian';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import {
@@ -67,15 +68,22 @@ function findLinkInPath(composedPath: EventTarget[]): HTMLElement | undefined {
 	});
 }
 
-/** Handle wikilink click: extract path from link element, navigate if wikilink. Returns true if handled. */
-function handleWikilinkClick(linkEl: HTMLElement, e: { preventDefault: () => void; stopPropagation: () => void }): boolean {
+/**
+ * Handle wikilink click: extract path from link element, navigate if wikilink.
+ * Returns true if handled. T11N: `app` threaded explicitly — no AppContext fallback.
+ */
+function handleWikilinkClick(
+	linkEl: HTMLElement,
+	e: { preventDefault: () => void; stopPropagation: () => void },
+	app: App,
+): boolean {
 	const href = getWikilinkHref(linkEl);
 	if (!href) return false;
-	const wikilinkPath = extractWikilinkPath(href);
+	const wikilinkPath = extractWikilinkPath(href, app);
 	if (!wikilinkPath) return false;
 	e.preventDefault();
 	e.stopPropagation();
-	openWikilinkPath(wikilinkPath);
+	openWikilinkPath(wikilinkPath, false, app);
 	return true;
 }
 
@@ -127,14 +135,15 @@ function FallbackStreamdown({
 	className,
 	onClick,
 }: StreamdownIsolatedProps) {
+	const { app } = useServiceContext();
 	const handleClickCapture = React.useCallback(
 		(evt: React.MouseEvent<HTMLDivElement>) => {
 			const composedPath = evt.nativeEvent.composedPath?.() ?? [];
 			const linkEl = findLinkInPath(composedPath);
-			if (linkEl && handleWikilinkClick(linkEl, evt)) return;
+			if (linkEl && handleWikilinkClick(linkEl, evt, app)) return;
 			onClick?.(evt);
 		},
-		[onClick]
+		[onClick, app]
 	);
 	return (
 		<div
@@ -182,7 +191,7 @@ const HOVER_CLOSE_DELAY_MS = 100;
 type HoverState = { path: string; rect: DOMRect; preview: PreviewResult | null; loading: boolean };
 
 export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => {
-	const { app } = useServiceContext();
+	const { app, vaultPreview } = useServiceContext();
 	const { children: rawChildren, isAnimating = false, className, onClick } = props;
 	// Strip inline $...$ (not $$...$$) to prevent KaTeX from rendering product names as math
 	const children = rawChildren.replace(/(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/g, '$1');
@@ -255,7 +264,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 			const clickHandler = (e: MouseEvent) => {
 				const composedPath = e.composedPath?.() ?? [];
 				const linkEl = findLinkInPath(composedPath);
-				if (linkEl && handleWikilinkClick(linkEl, e)) return;
+				if (linkEl && handleWikilinkClick(linkEl, e, app)) return;
 				// Delegate to optional onClick prop passed by caller.
 				const cb = onClickRef.current;
 				if (!cb || !host) return;
@@ -369,14 +378,14 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 		if (!hoverState?.path || useFallback) return;
 		const path = hoverState.path;
 		let cancelled = false;
-		loadWikilinkPreview(path, app).then((preview) => {
+		loadWikilinkPreview(path, vaultPreview).then((preview) => {
 			if (!cancelled)
 				setHoverState((prev) => (prev && prev.path === path ? { ...prev, preview, loading: false } : prev));
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, [hoverState?.path, useFallback]);
+	}, [hoverState?.path, useFallback, vaultPreview]);
 
 	const handleHoverClose = useCallback(() => {
 		if (closeDelayRef.current) clearTimeout(closeDelayRef.current);

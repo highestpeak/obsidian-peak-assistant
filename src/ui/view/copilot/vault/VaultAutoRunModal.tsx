@@ -56,6 +56,7 @@ import {
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import type { VaultReviewSessionSnapshot } from '@/service/copilot/vault/VaultReviewSession';
 import type { VaultReviewMode } from '@/service/copilot/vault/VaultMetaAgentStream';
@@ -112,16 +113,6 @@ function clusterDisplayName(c: VaultClusterDigest, observationLabel?: string): s
 	return raw || 'Cluster';
 }
 
-async function openNote(path: string): Promise<void> {
-	const app = AppContext.getInstance().app;
-	const file = app.vault.getAbstractFileByPath(path);
-	if (file instanceof TFile) {
-		await app.workspace.getLeaf('tab').openFile(file);
-		return;
-	}
-	app.workspace.openLinkText(path, '', true);
-}
-
 function splitHeadline(summary: string): { title: string; body: string } {
 	const trimmed = summary.trim();
 	const match = /^([^.。!?！？\n]+[.。!?！？])([\s\S]*)$/.exec(trimmed);
@@ -159,6 +150,7 @@ const VaultAutoRunContent: React.FC<{
 	initialSnapshot?: VaultReviewSessionSnapshot;
 	onClose: () => void;
 }> = ({ mode, initialSnapshot, onClose }) => {
+	const { vaultNavigation } = useServiceContext();
 	const readOnly = Boolean(initialSnapshot);
 	const controllerRef = useRef<AbortController | null>(null);
 	const [snapshot, setSnapshot] = useState<VaultReviewSessionSnapshot | null>(initialSnapshot ?? null);
@@ -265,12 +257,8 @@ const VaultAutoRunContent: React.FC<{
 
 	const openReport = async () => {
 		if (!reportPath) return;
-		const app = AppContext.getInstance().app;
-		const file = app.vault.getAbstractFileByPath(reportPath);
-		if (file instanceof TFile) {
-			await app.workspace.getLeaf('tab').openFile(file);
-			onClose();
-		}
+		await vaultNavigation.openLink(reportPath, { newLeaf: 'tab' });
+		onClose();
 	};
 
 	const exportSummary = async () => {
@@ -768,6 +756,8 @@ function Empty({ label }: { label: string }) {
 // ─── Clusters panel ─────────────────────────────────────────────────────
 
 const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = ({ snapshot }) => {
+	const { vaultNavigation } = useServiceContext();
+	const openNote = (path: string) => vaultNavigation.openLink(path, { newLeaf: 'tab' });
 	const observations = snapshot?.collectorSnapshot.clusterObservations ?? [];
 	const digestClusters = snapshot?.digest?.clusters ?? [];
 	const obsById = useMemo(() => new Map(observations.map(o => [o.clusterId, o])), [observations]);
@@ -984,6 +974,8 @@ function DetailLabel({ children }: { children: React.ReactNode }) {
 // ─── Gaps panel ─────────────────────────────────────────────────────────
 
 const GapsPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = ({ snapshot }) => {
+	const { vaultNavigation } = useServiceContext();
+	const openNote = (path: string) => vaultNavigation.openLink(path, { newLeaf: 'tab' });
 	const gaps = snapshot?.collectorSnapshot.gaps ?? [];
 	if (gaps.length === 0) return <Empty label="No gaps reported yet." />;
 
@@ -1193,6 +1185,8 @@ function GenericGapCard({ gap, title, Icon }: {
 // ─── Actions panel ──────────────────────────────────────────────────────
 
 const ActionsPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = ({ snapshot }) => {
+	const { vaultNavigation } = useServiceContext();
+	const openNote = (path: string) => vaultNavigation.openLink(path, { newLeaf: 'tab' });
 	const actions = snapshot?.collectorSnapshot.actions ?? [];
 	const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
 
@@ -1338,6 +1332,8 @@ function ActionCard({ action, rank }: {
 // ─── Sources panel ──────────────────────────────────────────────────────
 
 const SourcesPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = ({ snapshot }) => {
+	const { vaultNavigation } = useServiceContext();
+	const openNote = (path: string) => vaultNavigation.openLink(path, { newLeaf: 'tab' });
 	const sources = snapshot?.collectorSnapshot.sources ?? [];
 	const [selectedId, setSelectedId] = useState<string | null>(sources[0]?.id ?? null);
 	const [conf, setConf] = useState<Record<'high' | 'medium' | 'low', boolean>>({ high: true, medium: true, low: true });

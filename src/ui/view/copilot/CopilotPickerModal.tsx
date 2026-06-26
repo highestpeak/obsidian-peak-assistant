@@ -14,6 +14,7 @@ import {
 } from '@/service/copilot/CopilotReviewHistoryService';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPanelVault';
 import { type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { getCopilotActionIcon } from '@/ui/view/copilot/copilot-action-surfaces';
 import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';
@@ -589,7 +590,11 @@ export class CopilotPickerModal extends Modal {
 		const file = app.workspace.getActiveFile();
 		let ctx: DocumentContext | null = null;
 		if (file) {
-			const content = await app.vault.cachedRead(file);
+			// T11N: route the document-context vault read through the
+			// same `CopilotPanelVaultPort` adapter the result panels use.
+			// Composer is cheap (constructs an adapter that closes over
+			// `app`); no React hook here because we are inside Modal.onOpen.
+			const content = await composeCopilotPanelVault(this.appContext).vault.readFileContent(file);
 			if (this.closed || token !== this.openToken) return;
 			const selected = getSelectedTextFromActiveEditor(app) ?? undefined;
 			ctx = DocumentContextBuilder.build(app, file, content, selected);

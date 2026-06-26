@@ -5,9 +5,9 @@
 
 import React, { useRef } from 'react';
 import type { App } from 'obsidian';
-import { TFile } from 'obsidian';
 import { getExtensionFromSource } from '@/core/document/helper/FileTypeUtils';
 import { IMAGE_EXTENSIONS } from '@/core/document/helper/FileTypeUtils';
+import type { VaultPreviewPort } from '@/service/preview/VaultPreviewPort';
 
 const PREVIEW_TEXT_LINES = 15;
 const PREVIEW_CACHE_MAX = 50;
@@ -79,6 +79,12 @@ function looksLikePath(s: string): boolean {
 
 /**
  * Resolve raw wikilink target (display name or path) to vault file path via metadataCache.
+ *
+ * Note: `metadataCache.getFirstLinkpathDest` is the only Obsidian primitive
+ * exposed here and it is not a vault read/write — it is a name → path
+ * index lookup. Keeping it on the `app` accessor avoids adding a one-call
+ * port; if more metadata-cache reads accumulate later, consider a
+ * `LinkResolverPort`.
  */
 export function resolveWikilinkTargetToPath(rawTarget: string, app: App): string | null {
 	const t = (rawTarget ?? '').trim();
@@ -91,9 +97,15 @@ export function resolveWikilinkTargetToPath(rawTarget: string, app: App): string
 }
 
 /**
- * Load preview for a vault path. Uses in-memory cache with TTL. Returns type and content (text snippet, image blob URL, or pdf resource path).
+ * Load preview for a vault path. Uses in-memory cache with TTL. Returns type
+ * and content (text snippet, image blob URL, or pdf resource path).
+ *
+ * T11N: takes a `VaultPreviewPort` instead of raw `App`. The port
+ * abstraction makes the function unit-testable with a fake and removes
+ * the last raw `app.vault.{readBinary,read,getResourcePath}` calls from
+ * the streamdown surface. Blob URL caching / TTL behaviour is unchanged.
  */
-export async function loadWikilinkPreview(path: string, app: App): Promise<PreviewResult | null> {
+export async function loadWikilinkPreview(path: string, preview: VaultPreviewPort): Promise<PreviewResult | null> {
 	const normalized = (path ?? '').trim();
 	if (!normalized) return null;
 	const filePart = stripAnchor(normalized);
@@ -102,14 +114,13 @@ export async function loadWikilinkPreview(path: string, app: App): Promise<Previ
 	pruneCache();
 
 	try {
-		const file = app.vault.getAbstractFileByPath(filePart);
-		if (!(file instanceof TFile)) return null;
 		const ext = getExtensionFromSource(filePart).toLowerCase();
 		const isImage = IMAGE_EXTENSIONS.includes(ext as typeof IMAGE_EXTENSIONS[number]);
 		if (isImage) {
 			const existing = previewCache.get(filePart);
 			revokeIfImage(existing);
-			const data = await app.vault.readBinary(file);
+			const data = await preview.readBinary(filePart);
+			if (!data) return null;
 			const blob = new Blob([data], { type: ext === 'svg' ? 'image/svg+xml' : undefined });
 			const url = URL.createObjectURL(blob);
 			const result: PreviewResult = { type: 'image', content: url };
@@ -117,12 +128,14 @@ export async function loadWikilinkPreview(path: string, app: App): Promise<Previ
 			return result;
 		}
 		if (ext === 'pdf') {
-			const resourcePath = app.vault.getResourcePath(file);
+			const resourcePath = preview.getResourcePath(filePart);
+			if (!resourcePath) return null;
 			const result: PreviewResult = { type: 'pdf', content: resourcePath };
 			previewCache.set(filePart, { result, ts: Date.now() });
 			return result;
 		}
-		const text = await app.vault.read(file);
+		const text = await preview.readText(filePart);
+		if (text === null) return null;
 		const lines = text.split(/\r?\n/).slice(0, PREVIEW_TEXT_LINES);
 		const content = lines.join('\n') + (lines.length >= PREVIEW_TEXT_LINES ? '\n…' : '');
 		const result: PreviewResult = { type: 'text', content };
