@@ -5,11 +5,9 @@ import type { IndexInitializer } from '@/service/search/index/indexInitializer';
 import type { ViewManager } from '@/app/view/ViewManager';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import {
-	openBatchTagSuggestions,
 	openChatStudio,
 	openCopilotPanel,
 	openCopilotReviewHistory,
-	openGapAnalysis,
 	openHarnessSetupWizard,
 	openQuickSearch,
 	openRelatedNotes,
@@ -81,19 +79,9 @@ export function buildCoreCommands(
 			callback: openVaultXRay,
 		},
 		{
-			id: 'peak-gap-analysis',
-			name: 'Open Gap Analysis',
-			callback: openGapAnalysis,
-		},
-		{
 			id: 'peak-related-notes',
 			name: 'Open Related Notes',
 			callback: openRelatedNotes,
-		},
-		{
-			id: 'peak-batch-tag',
-			name: 'Batch Tag Suggestions',
-			callback: openBatchTagSuggestions,
 		},
 		{
 			id: 'peak-harness-setup-wizard',

@@ -9,7 +9,6 @@ import { HarnessOnboardingModal } from '@/ui/view/modals/HarnessOnboardingModal'
 import { SettingsModal } from '@/ui/view/SettingsModal';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { CopilotReviewHistoryModal } from '@/ui/view/copilot/CopilotReviewHistoryModal';
-import { BatchTagModal } from '@/ui/view/copilot/BatchTagModal';
 import { BuildUserProfileProgressModal } from '@/ui/view/BuildUserProfileProgressModal';
 import { ConfirmModal } from '@/ui/view/ConfirmModal';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
@@ -118,10 +117,6 @@ export function openCopilotReviewHistory(): void {
 	new CopilotReviewHistoryModal(getContext().app).open();
 }
 
-export function openBatchTagSuggestions(): void {
-	new BatchTagModal(getContext()).open();
-}
-
 export function openUsageDashboard(): void {
 	void getContext().viewManager.activateUsageDashboardView();
 }
@@ -149,10 +144,6 @@ export async function openVaultXRay(): Promise<void> {
 	// and the detector registry is already initialized there. The view
 	// itself only needs to be activated.
 	await getContext().viewManager.activateVaultXRayView();
-}
-
-export function openGapAnalysis(): void {
-	void getContext().viewManager.activateGapAnalysisView();
 }
 
 export async function refreshHubSummaries(): Promise<void> {

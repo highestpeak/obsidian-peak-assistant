@@ -1,10 +1,10 @@
 import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
 import {
 	CHAT_VIEW_TYPE,
-	GAP_ANALYSIS_VIEW_TYPE,
-	KNOWLEDGE_CENTER_VIEW_TYPE,
 	PROJECT_LIST_VIEW_TYPE,
 	STANDALONE_PEAK_VIEW_TYPES,
+	USAGE_DASHBOARD_VIEW_TYPE,
+	VAULT_XRAY_VIEW_TYPE,
 } from '@/app/view/types';
 
 function assert(condition: boolean, message: string): void {
@@ -33,7 +33,13 @@ function mockWorkspaceLeaf(viewType: string) {
 }
 
 function createHandler() {
-	const handler = new ViewSwitchConsistentHandler({} as any);
+	// Minimal stub so `handleActiveLeafChange`'s internal diagnostic
+	// `app.workspace.getLeavesOfType(...)` call doesn't throw. The real
+	// handler depends on this for ChatStudio coexistence logic; tests
+	// here only need it to not blow up.
+	const handler = new ViewSwitchConsistentHandler({
+		workspace: { getLeavesOfType: () => [] },
+	} as any);
 	let chatActivations = 0;
 	let documentActivations = 0;
 
@@ -51,16 +57,20 @@ function createHandler() {
 	};
 }
 
+// T11G (2026-06-26): GAP_ANALYSIS_VIEW_TYPE retired; assert standalone
+// behavior against a still-live standalone view (Vault X-Ray). Standalone
+// Peak views should never flip layout to chat or document mode just
+// because focus moves onto them.
 {
 	assert(
-		STANDALONE_PEAK_VIEW_TYPES.has(GAP_ANALYSIS_VIEW_TYPE),
-		'Gap Analysis must be treated as a standalone Peak view',
+		STANDALONE_PEAK_VIEW_TYPES.has(VAULT_XRAY_VIEW_TYPE),
+		'Vault X-Ray must be treated as a standalone Peak view',
 	);
 
 	const harness = createHandler();
-	harness.handler.handleActiveLeafChange(mockLeaf(GAP_ANALYSIS_VIEW_TYPE));
-	assert(harness.getChatActivations() === 0, 'Gap Analysis should not activate chat layout');
-	assert(harness.getDocumentActivations() === 0, 'Gap Analysis should not restore document layout');
+	harness.handler.handleActiveLeafChange(mockLeaf(VAULT_XRAY_VIEW_TYPE));
+	assert(harness.getChatActivations() === 0, 'Standalone view should not activate chat layout');
+	assert(harness.getDocumentActivations() === 0, 'Standalone view should not restore document layout');
 }
 
 {
@@ -78,7 +88,10 @@ function createHandler() {
 }
 
 async function testActivateChatViewRevealsChatFromStandaloneView(): Promise<void> {
-	const activeStandaloneLeaf = mockWorkspaceLeaf(KNOWLEDGE_CENTER_VIEW_TYPE);
+	// Use a real standalone view type — `USAGE_DASHBOARD_VIEW_TYPE` —
+	// instead of the never-exported KNOWLEDGE_CENTER_VIEW_TYPE that this
+	// test imported before T11G (pre-existing broken import).
+	const activeStandaloneLeaf = mockWorkspaceLeaf(USAGE_DASHBOARD_VIEW_TYPE);
 	const chatLeaf = mockWorkspaceLeaf(CHAT_VIEW_TYPE);
 	const projectLeaf = mockWorkspaceLeaf(PROJECT_LIST_VIEW_TYPE);
 	let revealedLeaf: any = null;

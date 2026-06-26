@@ -24,14 +24,6 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
     );
     const { graphData, loading, steps, start } = useGraphAgent(sourceItems, searchQuery);
 
-    const handleExpand = useCallback(async () => {
-        const { AppContext } = await import('@/app/context/AppContext');
-        const { GRAPH_FULLSCREEN_VIEW_TYPE } = await import('@/ui/view/graph-fullscreen/GraphFullscreenView');
-        const app = AppContext.getInstance().app;
-        const leaf = app.workspace.openPopoutLeaf();
-        await leaf.setViewState({ type: GRAPH_FULLSCREEN_VIEW_TYPE, active: true });
-    }, []);
-
     const handleSaveToVault = useCallback(async () => {
         if (!graphData) {
             new Notice('No graph data to save');
@@ -69,7 +61,6 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
                 loading={loading}
                 loadingSteps={steps}
                 onRequestGenerate={start}
-                onExpand={handleExpand}
                 onSaveToVault={handleSaveToVault}
             />
         </div>

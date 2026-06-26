@@ -2,11 +2,9 @@ import type MyPlugin from 'main';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { CHAT_VIEW_TYPE, ChatView } from '@/ui/view/ChatView';
 import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from '@/ui/view/ProjectListView';
-import { GRAPH_FULLSCREEN_VIEW_TYPE, GraphFullscreenView } from '@/ui/view/graph-fullscreen/GraphFullscreenView';
 import { AmbientPushView, AMBIENT_PUSH_VIEW_TYPE } from '@/ui/view/AmbientPushView';
 import { UsageDashboardView, USAGE_DASHBOARD_VIEW_TYPE } from '@/ui/view/usage-dashboard/UsageDashboardView';
 import { VaultXRayView, VAULT_XRAY_VIEW_TYPE } from '@/ui/view/vault-lint/VaultXRayView';
-import { GapAnalysisView, GAP_ANALYSIS_VIEW_TYPE } from '@/ui/view/gap-analysis/GapAnalysisView';
 import { ConversationOutlineView, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/ui/view/ConversationOutlineView';
 import { ChatStudioView, CHAT_STUDIO_VIEW_TYPE } from '@/ui/view/ChatStudioView';
 import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
@@ -34,9 +32,6 @@ export class ViewManager {
 		this.viewCreators.set(PROJECT_LIST_VIEW_TYPE, (leaf) => {
 			return new ProjectListView(leaf, appContext);
 		});
-		this.viewCreators.set(GRAPH_FULLSCREEN_VIEW_TYPE, (leaf) => {
-			return new GraphFullscreenView(leaf);
-		});
 		this.viewCreators.set(AMBIENT_PUSH_VIEW_TYPE, (leaf) => {
 			return new AmbientPushView(leaf, appContext);
 		});
@@ -45,9 +40,6 @@ export class ViewManager {
 		});
 		this.viewCreators.set(VAULT_XRAY_VIEW_TYPE, (leaf) => {
 			return new VaultXRayView(leaf, appContext);
-		});
-		this.viewCreators.set(GAP_ANALYSIS_VIEW_TYPE, (leaf) => {
-			return new GapAnalysisView(leaf);
 		});
 		this.viewCreators.set(CONVERSATION_OUTLINE_VIEW_TYPE, (leaf) => {
 			return new ConversationOutlineView(leaf, appContext);
@@ -144,18 +136,6 @@ export class ViewManager {
 		}
 		const leaf = workspace.getLeaf('tab');
 		await leaf.setViewState({ type: VAULT_XRAY_VIEW_TYPE, active: true });
-		workspace.revealLeaf(leaf);
-	}
-
-	async activateGapAnalysisView(): Promise<void> {
-		const { workspace } = this.plugin.app;
-		const existing = workspace.getLeavesOfType(GAP_ANALYSIS_VIEW_TYPE);
-		if (existing.length > 0) {
-			workspace.revealLeaf(existing[0]);
-			return;
-		}
-		const leaf = workspace.getLeaf('tab');
-		await leaf.setViewState({ type: GAP_ANALYSIS_VIEW_TYPE, active: true });
 		workspace.revealLeaf(leaf);
 	}
 
