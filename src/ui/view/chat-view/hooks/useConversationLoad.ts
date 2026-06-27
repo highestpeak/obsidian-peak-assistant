@@ -1,33 +1,32 @@
 import { useCallback } from 'react';
-import { useServiceContext } from '@/ui/context/ServiceContext';
-import { openConversationByIdInChat, openConversationMessageInChat } from '@/ui/view/chat-view/chatNavigation';
+import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 
 /**
  * Hook for loading full conversation data and updating the store
  */
 export function useConversationLoad() {
-	const { manager, eventBus, viewManager } = useServiceContext();
+	const chatNavigation = useChatNavigation();
 
 	const loadConversation = useCallback(async (
-		conversationId: string,		
+		conversationId: string,
 	) => {
 		try {
-			await openConversationByIdInChat(conversationId, { manager, eventBus, viewManager });
+			await chatNavigation.openConversationByIdInChat(conversationId);
 		} catch (error) {
 			console.error('Failed to load conversation:', error);
 		}
-	}, [manager, eventBus, viewManager]);
+	}, [chatNavigation]);
 
 	const openConvAndScroll2Msg = useCallback(async (
 		conversationId: string,
 		messageId: string
 	) => {
 		try {
-			await openConversationMessageInChat(conversationId, messageId, { manager, eventBus, viewManager });
+			await chatNavigation.openConversationMessageInChat(conversationId, messageId);
 		} catch (error) {
 			console.error('Failed to load conversation:', error);
 		}
-	}, [manager, eventBus, viewManager]);
+	}, [chatNavigation]);
 
 	return {
 		loadConversation,

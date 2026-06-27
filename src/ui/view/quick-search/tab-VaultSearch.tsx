@@ -58,7 +58,7 @@ interface VaultSearchTabProps {
  * Quick search tab for regular vault search results.
  */
 export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelectForInspector, navigateToPath }) => {
-	const { app } = useServiceContext();
+	const { vaultNavigation } = useServiceContext();
 	const { quickSearchMode, isSearching, lastSearchResults: displayedResults, fuzzyCorrection, parsedQuery } = useVaultSearchStore();
 	const inspectorOpen = useVaultSearchStore((s) => s.inspectorOpen);
 	const hasSearchQuery = useHasSearchQuery();
@@ -162,7 +162,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 						} catch { /* non-critical */ }
 						const defaultNewTab = currentMode !== 'goToLine' && currentMode !== 'inFile';
 						const openInNewTab = (e.metaKey || e.ctrlKey) || defaultNewTab;
-						await createOpenSourceCallback(onClose, openInNewTab, app)(selectedResult);
+						await createOpenSourceCallback(onClose, openInNewTab, vaultNavigation)(selectedResult);
 					}
 					break;
 				}

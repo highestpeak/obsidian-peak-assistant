@@ -1,12 +1,11 @@
 import React, { useCallback, useMemo } from 'react';
-import { App } from 'obsidian';
 import { ChatMessage, ChatResourceRef } from '@/service/chat/types';
 import { ResourceKind } from '@/core/document/types';
 import { cn } from '@/ui/react/lib/utils';
 import { Globe } from 'lucide-react';
 import { ResourcePreviewHover } from '@/ui/component/mine';
 import { isUrl, getExtensionFromSource } from '@/core/document/helper/FileTypeUtils';
-import { openFile } from '@/core/utils/obsidian-utils';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 /**
  * MessageAttachmentsList — renders the resource cluster attached to a chat
@@ -32,6 +31,16 @@ import { openFile } from '@/core/utils/obsidian-utils';
  * The whole cluster is capped at 520px width and right-aligned so its right
  * edge matches the bubble's right edge — keeps the attachment + bubble
  * reading as a single user turn.
+ *
+ * T11P (Track G): the previous prop drill of `app: App` through eight nested
+ * helpers was retired. Only the top-level component consumes
+ * `vaultNavigation` from context now — child layout helpers just receive an
+ * already-bound `onOpen` callback. URL opening still uses
+ * `window.open(_, 'noopener,noreferrer')` (now via
+ * `vaultNavigation.openExternalUrl`); vault-file opening still goes through
+ * the app-owned navigation adapter (`vaultNavigation.openVaultPath` →
+ * `openLinkText` fallback). Layout, hover preview, image grid, URL card,
+ * and badges are unchanged.
  */
 
 interface ResourceGroups {
@@ -98,18 +107,19 @@ interface OpenHandler {
 	(resource: ChatResourceRef): void | Promise<void>;
 }
 
-export const MessageAttachmentsList: React.FC<{ message: ChatMessage; app: App }> = ({ message, app }) => {
+export const MessageAttachmentsList: React.FC<{ message: ChatMessage }> = ({ message }) => {
+	const { vaultNavigation } = useServiceContext();
 	const resources = message.resources ?? [];
 	const groups = useMemo(() => classify(resources), [resources]);
 
 	const handleOpen = useCallback<OpenHandler>(async (resource) => {
 		const src = resource.source;
 		if (isUrl(src)) {
-			window.open(src, '_blank', 'noopener,noreferrer');
+			vaultNavigation.openExternalUrl(src);
 			return;
 		}
-		await openFile(src, false, app);
-	}, [app]);
+		await vaultNavigation.openVaultPath(src);
+	}, [vaultNavigation]);
 
 	if (resources.length === 0) return null;
 
@@ -122,13 +132,13 @@ export const MessageAttachmentsList: React.FC<{ message: ChatMessage; app: App }
 			style={{ maxWidth: 520 }}
 		>
 			{groups.images.length > 0 && (
-				<ImageGroup images={groups.images} onOpen={handleOpen} app={app} />
+				<ImageGroup images={groups.images} onOpen={handleOpen} />
 			)}
 			{groups.urls.length > 0 && (
-				<UrlGroup urls={groups.urls} onOpen={handleOpen} app={app} />
+				<UrlGroup urls={groups.urls} onOpen={handleOpen} />
 			)}
 			{groups.files.length > 0 && (
-				<FileGroup files={groups.files} onOpen={handleOpen} app={app} />
+				<FileGroup files={groups.files} onOpen={handleOpen} />
 			)}
 		</div>
 	);
@@ -141,16 +151,15 @@ export const MessageAttachmentsList: React.FC<{ message: ChatMessage; app: App }
 interface ImageGroupProps {
 	images: ChatResourceRef[];
 	onOpen: OpenHandler;
-	app: App;
 }
 
-function ImageGroup({ images, onOpen, app }: ImageGroupProps) {
+function ImageGroup({ images, onOpen }: ImageGroupProps) {
 	const n = images.length;
 
 	if (n === 1) {
 		return (
 			<div style={{ width: 240 }}>
-				<ImageTile image={images[0]} onOpen={onOpen} app={app} height={160} />
+				<ImageTile image={images[0]} onOpen={onOpen} height={160} />
 			</div>
 		);
 	}
@@ -159,7 +168,7 @@ function ImageGroup({ images, onOpen, app }: ImageGroupProps) {
 		return (
 			<div className="pktw-grid pktw-grid-cols-2 pktw-gap-2 pktw-w-full">
 				{images.map((img) => (
-					<ImageTile key={img.id} image={img} onOpen={onOpen} app={app} height={180} />
+					<ImageTile key={img.id} image={img} onOpen={onOpen} height={180} />
 				))}
 			</div>
 		);
@@ -169,7 +178,7 @@ function ImageGroup({ images, onOpen, app }: ImageGroupProps) {
 		return (
 			<div className="pktw-grid pktw-grid-cols-3 pktw-gap-2 pktw-w-full">
 				{images.map((img) => (
-					<ImageTile key={img.id} image={img} onOpen={onOpen} app={app} height={120} />
+					<ImageTile key={img.id} image={img} onOpen={onOpen} height={120} />
 				))}
 			</div>
 		);
@@ -179,7 +188,7 @@ function ImageGroup({ images, onOpen, app }: ImageGroupProps) {
 		return (
 			<div className="pktw-grid pktw-grid-cols-2 pktw-gap-2 pktw-w-full">
 				{images.map((img) => (
-					<ImageTile key={img.id} image={img} onOpen={onOpen} app={app} height={130} />
+					<ImageTile key={img.id} image={img} onOpen={onOpen} height={130} />
 				))}
 			</div>
 		);
@@ -191,10 +200,10 @@ function ImageGroup({ images, onOpen, app }: ImageGroupProps) {
 		const thumbs = rest.slice(0, 4);
 		return (
 			<div className="pktw-flex pktw-flex-col pktw-gap-2 pktw-w-full">
-				<ImageTile image={hero} onOpen={onOpen} app={app} height={220} fullWidth />
+				<ImageTile image={hero} onOpen={onOpen} height={220} fullWidth />
 				<div className="pktw-grid pktw-grid-cols-4 pktw-gap-2">
 					{thumbs.map((img) => (
-						<ImageTile key={img.id} image={img} onOpen={onOpen} app={app} height={84} />
+						<ImageTile key={img.id} image={img} onOpen={onOpen} height={84} />
 					))}
 				</div>
 			</div>
@@ -211,7 +220,6 @@ function ImageGroup({ images, onOpen, app }: ImageGroupProps) {
 					key={img.id}
 					image={img}
 					onOpen={onOpen}
-					app={app}
 					height={130}
 					overlayText={idx === 3 ? `+${remaining}` : undefined}
 				/>
@@ -223,13 +231,12 @@ function ImageGroup({ images, onOpen, app }: ImageGroupProps) {
 interface ImageTileProps {
 	image: ChatResourceRef;
 	onOpen: OpenHandler;
-	app: App;
 	height: number;
 	fullWidth?: boolean;
 	overlayText?: string;
 }
 
-function ImageTile({ image, onOpen, app, height, fullWidth, overlayText }: ImageTileProps) {
+function ImageTile({ image, onOpen, height, fullWidth, overlayText }: ImageTileProps) {
 	const alt = image.source.split('/').pop() || 'image';
 	return (
 		<ResourcePreviewHover resource={image} previewClassName="pktw-z-[100]">
@@ -268,10 +275,9 @@ function ImageTile({ image, onOpen, app, height, fullWidth, overlayText }: Image
 interface FileGroupProps {
 	files: ChatResourceRef[];
 	onOpen: OpenHandler;
-	app: App;
 }
 
-function FileGroup({ files, onOpen, app }: FileGroupProps) {
+function FileGroup({ files, onOpen }: FileGroupProps) {
 	// Chip threshold: > 4 files. Below that, stacked cards are still readable
 	// and let the eye land on filename quickly; beyond 4 the stack becomes a
 	// wall of badges and chips read faster.
@@ -279,7 +285,7 @@ function FileGroup({ files, onOpen, app }: FileGroupProps) {
 		return (
 			<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-justify-end pktw-w-full">
 				{files.map((f) => (
-					<FileChip key={f.id} resource={f} onOpen={onOpen} app={app} />
+					<FileChip key={f.id} resource={f} onOpen={onOpen} />
 				))}
 			</div>
 		);
@@ -291,7 +297,7 @@ function FileGroup({ files, onOpen, app }: FileGroupProps) {
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-w-full">
 			{files.map((f) => (
-				<FileCard key={f.id} resource={f} onOpen={onOpen} app={app} compact={compact} />
+				<FileCard key={f.id} resource={f} onOpen={onOpen} compact={compact} />
 			))}
 		</div>
 	);
@@ -300,11 +306,10 @@ function FileGroup({ files, onOpen, app }: FileGroupProps) {
 interface FileCardProps {
 	resource: ChatResourceRef;
 	onOpen: OpenHandler;
-	app: App;
 	compact?: boolean;
 }
 
-function FileCard({ resource, onOpen, app, compact }: FileCardProps) {
+function FileCard({ resource, onOpen, compact }: FileCardProps) {
 	const filename = resource.source.split('/').pop() || resource.source;
 	const badge = badgeStyleForKind(resource.kind, resource.source);
 	const badgePx = compact ? 30 : 36;
@@ -351,10 +356,9 @@ function FileCard({ resource, onOpen, app, compact }: FileCardProps) {
 interface FileChipProps {
 	resource: ChatResourceRef;
 	onOpen: OpenHandler;
-	app: App;
 }
 
-function FileChip({ resource, onOpen, app }: FileChipProps) {
+function FileChip({ resource, onOpen }: FileChipProps) {
 	const filename = resource.source.split('/').pop() || resource.source;
 	const badge = badgeStyleForKind(resource.kind, resource.source);
 	return (
@@ -386,20 +390,19 @@ function FileChip({ resource, onOpen, app }: FileChipProps) {
 interface UrlGroupProps {
 	urls: ChatResourceRef[];
 	onOpen: OpenHandler;
-	app: App;
 }
 
-function UrlGroup({ urls, onOpen, app }: UrlGroupProps) {
+function UrlGroup({ urls, onOpen }: UrlGroupProps) {
 	if (urls.length > 1) {
 		return (
 			<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-justify-end pktw-w-full">
 				{urls.map((u) => (
-					<UrlChip key={u.id} resource={u} onOpen={onOpen} app={app} />
+					<UrlChip key={u.id} resource={u} onOpen={onOpen} />
 				))}
 			</div>
 		);
 	}
-	return <UrlCard resource={urls[0]} onOpen={onOpen} app={app} />;
+	return <UrlCard resource={urls[0]} onOpen={onOpen} />;
 }
 
 interface UrlParts {
@@ -450,7 +453,7 @@ function parseUrl(src: string): UrlParts {
 	}
 }
 
-function UrlCard({ resource, onOpen, app }: { resource: ChatResourceRef; onOpen: OpenHandler; app: App }) {
+function UrlCard({ resource, onOpen }: { resource: ChatResourceRef; onOpen: OpenHandler }) {
 	const { host, title, thumb } = parseUrl(resource.source);
 	// Two flavors of thumb:
 	//   - "og" (e.g. opengraph.githubassets.com) → big preview; cover the whole
@@ -519,7 +522,7 @@ function UrlCard({ resource, onOpen, app }: { resource: ChatResourceRef; onOpen:
 	);
 }
 
-function UrlChip({ resource, onOpen, app }: { resource: ChatResourceRef; onOpen: OpenHandler; app: App }) {
+function UrlChip({ resource, onOpen }: { resource: ChatResourceRef; onOpen: OpenHandler }) {
 	const { pathDisplay } = parseUrl(resource.source);
 	// Same reasoning as UrlCard — chip already shows the full URL on its tooltip
 	// (`title={resource.source}`), so a HoverCard would be redundant.

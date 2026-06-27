@@ -1,11 +1,12 @@
 import React from 'react';
 import { AlertCircle, AlertTriangle, Bot, Clipboard, ExternalLink, Info, SearchCheck, Wrench } from 'lucide-react';
 import { Notice } from 'obsidian';
-import type { App } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { openPendingConversationInChat } from '@/ui/view/chat-view/chatNavigation';
+import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
+import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
+import type { ChatNavigationPort } from '@/service/chat/navigation/ChatNavigationPort';
 import type { HealthInsight, HealthInsightAction, HealthInsightSeverity } from '@/service/lint/insights';
 
 const SEVERITY_STYLE: Record<HealthInsightSeverity, { icon: React.ElementType; className: string; label: string }> = {
@@ -24,22 +25,24 @@ async function copyPrompt(prompt: string | undefined): Promise<void> {
 	new Notice('Repair prompt copied.');
 }
 
-async function openFile(path: string | null, app: App): Promise<void> {
+async function openFile(path: string | null, vaultNavigation: VaultNavigationPort): Promise<void> {
 	if (!path) return;
-	const file = app.vault.getAbstractFileByPath(path);
-	if (!file || !('extension' in file)) {
+	const opened = await vaultNavigation.openVaultPath(path);
+	if (!opened) {
 		new Notice(`File not found: ${path}`);
-		return;
 	}
-	await app.workspace.getLeaf(false).openFile(file as any);
 }
 
-async function askAi(insight: HealthInsight, action: HealthInsightAction): Promise<void> {
+async function askAi(
+	insight: HealthInsight,
+	action: HealthInsightAction,
+	chatNavigation: ChatNavigationPort,
+): Promise<void> {
 	if (!action.prompt) return;
 
 	useChatViewStore.getState().setChatMode('agent');
 	useChatViewStore.getState().setEnableVaultSearch(true);
-	await openPendingConversationInChat({
+	await chatNavigation.openPendingConversationInChat({
 		title: insight.title,
 		project: null,
 	});
@@ -57,11 +60,16 @@ async function askAi(insight: HealthInsight, action: HealthInsightAction): Promi
 	});
 }
 
-const ActionButton: React.FC<{ insight: HealthInsight; action: HealthInsightAction; app: App }> = ({ insight, action, app }) => {
+const ActionButton: React.FC<{
+	insight: HealthInsight;
+	action: HealthInsightAction;
+	vaultNavigation: VaultNavigationPort;
+	chatNavigation: ChatNavigationPort;
+}> = ({ insight, action, vaultNavigation, chatNavigation }) => {
 	if (action.mode === 'ai') {
 		return (
 			<Button variant="default" size="sm" className="pktw-h-7 pktw-gap-1.5 pktw-text-[11px]"
-				onClick={() => void askAi(insight, action)}>
+				onClick={() => void askAi(insight, action, chatNavigation)}>
 				<Bot className="pktw-w-3.5 pktw-h-3.5" />
 				{action.label}
 			</Button>
@@ -70,7 +78,7 @@ const ActionButton: React.FC<{ insight: HealthInsight; action: HealthInsightActi
 
 	return (
 		<Button variant="outline" size="sm" className="pktw-h-7 pktw-gap-1.5 pktw-text-[11px]"
-			onClick={() => void openFile(insight.evidence[0]?.filePath ?? null, app)}>
+			onClick={() => void openFile(insight.evidence[0]?.filePath ?? null, vaultNavigation)}>
 			<Wrench className="pktw-w-3.5 pktw-h-3.5" />
 			{action.label}
 		</Button>
@@ -78,7 +86,8 @@ const ActionButton: React.FC<{ insight: HealthInsight; action: HealthInsightActi
 };
 
 export const HealthInsightsPanel: React.FC<HealthInsightsPanelProps> = ({ insights }) => {
-	const { app } = useServiceContext();
+	const { vaultNavigation } = useServiceContext();
+	const chatNavigation = useChatNavigation();
 	if (insights.length === 0) {
 		return (
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-rounded-lg pktw-border pktw-border-border pktw-p-4">
@@ -125,7 +134,13 @@ export const HealthInsightsPanel: React.FC<HealthInsightsPanelProps> = ({ insigh
 
 						<div className="pktw-mt-3 pktw-flex pktw-flex-wrap pktw-gap-2">
 							{insight.recommendedActions.map(action => (
-								<ActionButton key={action.id} insight={insight} action={action} app={app} />
+								<ActionButton
+									key={action.id}
+									insight={insight}
+									action={action}
+									vaultNavigation={vaultNavigation}
+									chatNavigation={chatNavigation}
+								/>
 							))}
 							{aiAction?.prompt && (
 								<Button variant="ghost" size="sm" className="pktw-h-7 pktw-gap-1.5 pktw-text-[11px]"
@@ -145,7 +160,7 @@ export const HealthInsightsPanel: React.FC<HealthInsightsPanelProps> = ({ insigh
 									{insight.evidence.slice(0, 4).map(finding => (
 										<Button key={finding.id} variant="ghost" size="sm"
 											className="pktw-h-auto pktw-justify-start pktw-gap-2 pktw-px-2 pktw-py-1.5 pktw-text-left"
-											onClick={() => void openFile(finding.filePath, app)}>
+											onClick={() => void openFile(finding.filePath, vaultNavigation)}>
 											<ExternalLink className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-muted-foreground" />
 											<span className="pktw-min-w-0 pktw-truncate pktw-text-[11px] pktw-text-muted-foreground">
 												{finding.filePath ?? finding.title}

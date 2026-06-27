@@ -3,9 +3,9 @@ import { DEFAULT_RECENT_SEARCH_RESULTS_COUNT } from '@/core/constant';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { DEFAULT_SEARCH_QUERY, GoToLine, InFileSearch, useVaultSearchStore } from '../store/vaultSearchStore';
 import { SearchQuery } from '@/service/search/types';
-import { readFileAsText, openFileAtLine } from '@/core/utils/obsidian-utils';
 import type { SearchResultItem, SearchSnippet } from '@/service/search/types';
-import type { App } from 'obsidian';
+import type { VaultPreviewPort } from '@/service/preview/VaultPreviewPort';
+import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
 
 export const useSearchQuery = (): InFileSearch | GoToLine | SearchQuery => {
 	const { quickSearchMode, inFileSearch, goToLine, parsedQuery } = useVaultSearchStore();
@@ -62,11 +62,15 @@ function findRecentHeadingTitle(lines: string[], currentIndex: number): string |
 /**
  * Perform in-file search by reading file content and using string matching
  */
-async function performInFileSearch(text: string, filePath: string): Promise<{ results: SearchResultItem[]; duration: number }> {
+async function performInFileSearch(
+	text: string,
+	filePath: string,
+	vaultPreview: VaultPreviewPort,
+): Promise<{ results: SearchResultItem[]; duration: number }> {
 	const startTime = Date.now();
 
 	try {
-		const fileContent = await readFileAsText(filePath);
+		const fileContent = await vaultPreview.readText(filePath);
 		if (!fileContent) {
 			return { results: [], duration: Date.now() - startTime };
 		}
@@ -122,7 +126,12 @@ async function performInFileSearch(text: string, filePath: string): Promise<{ re
 /**
  * Perform go-to-line operation by opening file and navigating to line
  */
-async function performGoToLine(lineNumber: number, filePath: string, app: App): Promise<{ results: SearchResultItem[]; duration: number }> {
+async function performGoToLine(
+	lineNumber: number,
+	filePath: string,
+	vaultPreview: VaultPreviewPort,
+	vaultNavigation: VaultNavigationPort,
+): Promise<{ results: SearchResultItem[]; duration: number }> {
 	const startTime = Date.now();
 
 	try {
@@ -132,7 +141,7 @@ async function performGoToLine(lineNumber: number, filePath: string, app: App): 
 		}
 
 		// Read file content to get the target line
-		const fileContent = await readFileAsText(filePath);
+		const fileContent = await vaultPreview.readText(filePath);
 		if (!fileContent) {
 			throw new Error(`Could not read file: ${filePath}`);
 		}
@@ -177,7 +186,7 @@ async function performGoToLine(lineNumber: number, filePath: string, app: App): 
 		const zeroIndexedLine = Math.max(0, lineNumber - 1);
 
 		// Open file and scroll to line
-		openFileAtLine(filePath, zeroIndexedLine, false, app);
+		void vaultNavigation.openVaultPathAtLine(filePath, { line: zeroIndexedLine });
 
 		return {
 			results: [result],
@@ -196,7 +205,7 @@ async function performGoToLine(lineNumber: number, filePath: string, app: App): 
  * Special handling for in-file search and go-to-line operations.
  */
 export const useVaultSearch = () => {
-	const { searchClient, app } = useServiceContext();
+	const { searchClient, vaultPreview, vaultNavigation } = useServiceContext();
 	const { quickSearchMode, inFileSearch, goToLine, parsedQuery, setLastSearchData, setIsSearching } = useVaultSearchStore();
 	const hasSearchQuery = useHasSearchQuery();
 
@@ -239,7 +248,7 @@ export const useVaultSearch = () => {
 				let cancelled = false;
 				const timeoutId = setTimeout(async () => {
 					try {
-						const res = await performInFileSearch(inFileSearch.text, inFileSearch.path);
+						const res = await performInFileSearch(inFileSearch.text, inFileSearch.path, vaultPreview);
 						if (!cancelled && currentSearchId.current === searchId) {
 							setLastSearchData({ results: res.results, duration: res.duration });
 							setIsSearching(false);
@@ -271,7 +280,7 @@ export const useVaultSearch = () => {
 
 					(async () => {
 						try {
-							const result = await performGoToLine(goToLine.line, goToLine.path, app);
+							const result = await performGoToLine(goToLine.line, goToLine.path, vaultPreview, vaultNavigation);
 							if (currentSearchId.current === searchId) {
 								setLastSearchData(result);
 								setIsSearching(false);

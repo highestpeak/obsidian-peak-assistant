@@ -1,4 +1,3 @@
-import { App } from 'obsidian';
 import { EventBus, ShowToastEvent } from '@/core/eventBus';
 
 /**
@@ -18,27 +17,31 @@ export interface ToastOptions {
  * Toast utility for cross-React-instance toast display
  * Use this when you need to show toast from a component that's not in ChatView
  * The toast will be displayed in ChatView's toast container
- * 
+ *
+ * T11P (Track F): API takes `eventBus` directly — previously it asked
+ * callers to pass `{ app }` so it could call `EventBus.getInstance(app)`,
+ * which forced UI files to destructure `app` off `ServiceContext`. The
+ * `eventBus` is already published on the context, so callers thread it.
+ *
  * @example
  * ```tsx
  * import { showToast } from '@/ui/utils/toast';
  * import { useServiceContext } from '@/ui/context/ServiceContext';
- * 
+ *
  * function MyComponent() {
- *   const { app } = useServiceContext();
- *   
+ *   const { eventBus } = useServiceContext();
+ *
  *   const handleClick = () => {
- *     showToast.success('Operation completed!', { app });
+ *     showToast.success('Operation completed!', { eventBus });
  *   };
  * }
  * ```
  */
 export function showToast(
 	message: string | React.ReactNode,
-	options: ToastOptions & { app: App }
+	options: ToastOptions & { eventBus: EventBus }
 ): void {
-	const eventBus = EventBus.getInstance(options.app);
-	eventBus.dispatch(
+	options.eventBus.dispatch(
 		new ShowToastEvent({
 			message,
 			type: options.type || 'default',
@@ -54,7 +57,7 @@ export function showToast(
  */
 showToast.success = function(
 	message: string | React.ReactNode,
-	options: Omit<ToastOptions, 'type'> & { app: App }
+	options: Omit<ToastOptions, 'type'> & { eventBus: EventBus }
 ): void {
 	showToast(message, { ...options, type: 'success' });
 };
@@ -64,7 +67,7 @@ showToast.success = function(
  */
 showToast.error = function(
 	message: string | React.ReactNode,
-	options: Omit<ToastOptions, 'type'> & { app: App }
+	options: Omit<ToastOptions, 'type'> & { eventBus: EventBus }
 ): void {
 	showToast(message, { ...options, type: 'error' });
 };
@@ -74,7 +77,7 @@ showToast.error = function(
  */
 showToast.warning = function(
 	message: string | React.ReactNode,
-	options: Omit<ToastOptions, 'type'> & { app: App }
+	options: Omit<ToastOptions, 'type'> & { eventBus: EventBus }
 ): void {
 	showToast(message, { ...options, type: 'warning' });
 };
@@ -84,8 +87,7 @@ showToast.warning = function(
  */
 showToast.info = function(
 	message: string | React.ReactNode,
-	options: Omit<ToastOptions, 'type'> & { app: App }
+	options: Omit<ToastOptions, 'type'> & { eventBus: EventBus }
 ): void {
 	showToast(message, { ...options, type: 'info' });
 };
-

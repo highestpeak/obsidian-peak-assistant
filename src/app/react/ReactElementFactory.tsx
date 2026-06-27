@@ -2,9 +2,11 @@ import React from 'react';
 import { ServiceProvider } from '@/ui/context/ServiceContext';
 import { AppContext } from '@/app/context/AppContext';
 import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPanelVault';
-import { SettingsModal } from '@/app/modals/SettingsModal';
 import { AppAnalysisDocVaultWriterAdapter } from '@/app/quick-search/AppAnalysisDocVaultWriterAdapter';
 import { SearchSessionReportAdapter } from '@/app/quick-search/SearchSessionReportAdapter';
+import { composeSettingsActions } from '@/app/commands/composeSettingsActions';
+import { createChatNavigation } from '@/ui/view/chat-view/chatNavigation';
+import { composeQuickSearchHost } from '@/app/quick-search/composeQuickSearchHost';
 
 /**
  * Factory function to create React elements wrapped with ServiceProvider.
@@ -14,10 +16,10 @@ import { SearchSessionReportAdapter } from '@/app/quick-search/SearchSessionRepo
  * threads them into the React tree so UI components consume injected
  * adapters via `useServiceContext()` instead of static accessors.
  *
- * Provides every published `ServiceContext` field explicitly so the
- * provider has nothing to fall back on. The old `AppContext.getInstance()`
- * fallback chain inside `ServiceProvider` was the last UI -> app static
- * leak inside the React render path.
+ * T11P: ServiceContext no longer publishes raw `app` or `viewManager`.
+ * Everything UI used to take off `app` is now a named port (chatNavigation,
+ * settingsActions, vaultNavigation, wikilink, vaultStats…). The factory
+ * composes each port from `AppContext` once at boot.
  *
  * Runtime ports (vault lint, ambient, copilot panel vault, vault preview,
  * vault navigation, editor commands, chat vault writer) are passed even
@@ -29,14 +31,19 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 	props: Omit<T, 'app' | 'manager' | 'searchClient' | 'viewManager'>,
 	appContext: AppContext
 ): React.ReactElement {
+	const chatNavigation = createChatNavigation({
+		manager: appContext.manager,
+		viewManager: appContext.viewManager,
+		eventBus: appContext.eventBus,
+	});
+	const reportSessionPort = new SearchSessionReportAdapter();
+
 	return React.createElement(
 		ServiceProvider,
 		{
-			app: appContext.app,
 			manager: appContext.manager,
 			eventBus: appContext.eventBus,
 			searchClient: appContext.searchClient,
-			viewManager: appContext.viewManager,
 			plugin: appContext.plugin!,
 			settings: appContext.settings,
 			vaultLintRuntime: appContext.runtimeRegistry.tryGetVaultLintRuntime(),
@@ -46,16 +53,18 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			aiAnalysisHistoryService: appContext.aiAnalysisHistoryService,
 			isMockEnv: appContext.isMockEnv,
 			searchAgent: () => appContext.searchAgentFactory(appContext.manager),
-			settingsActions: {
-				openSettings: () => new SettingsModal(appContext).open(),
-			},
+			settingsActions: composeSettingsActions(appContext),
 			analysisDocVaultWriter: new AppAnalysisDocVaultWriterAdapter(),
-			reportSessionPort: new SearchSessionReportAdapter(),
+			reportSessionPort: reportSessionPort,
 			copilotPanelVault: composeCopilotPanelVault(appContext),
 			vaultPreview: appContext.vaultPreview,
 			vaultNavigation: appContext.vaultNavigation,
+			wikilink: appContext.wikilink,
 			editorCommands: appContext.editorCommands,
 			chatVaultWriter: appContext.chatVaultWriter,
+			chatNavigation,
+			vaultStats: appContext.vaultStats,
+			quickSearchHost: composeQuickSearchHost(appContext, reportSessionPort),
 			children: React.createElement(Component, props as T)
 		}
 	);

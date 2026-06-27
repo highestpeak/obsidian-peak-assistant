@@ -1,4 +1,4 @@
-import { App, Menu } from 'obsidian';
+import { Menu } from 'obsidian';
 import { ChatConversation, ChatProject } from '@/service/chat/types';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
@@ -15,7 +15,7 @@ interface MenuItem {
  * Notify that the selection has changed and dispatch event to update chat view
  */
 export async function notifySelectionChange(
-	app: App,
+	eventBus: EventBus,
 	conversation?: ChatConversation | null
 ): Promise<void> {
 	const { setActiveConversation, setActiveProject, projects } = useChatDataStore.getState();
@@ -47,7 +47,6 @@ export async function notifySelectionChange(
 	const { activeProject, activeConversation } = useChatDataStore.getState();
 
 	// Dispatch selection changed event
-	const eventBus = EventBus.getInstance(app);
 	eventBus.dispatch(new SelectionChangedEvent({
 		conversationId: activeConversation?.meta.id ?? null,
 		projectId: activeProject?.meta.id ?? null,

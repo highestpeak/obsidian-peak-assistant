@@ -5,7 +5,7 @@ import { ViewManager } from '@/app/view/ViewManager';
 import { EventBus } from '@/core/eventBus';
 import { createElement, icons } from 'lucide';
 import { CHAT_PROJECT_SUMMARY_FILENAME } from '@/core/constant';
-import { openConversationInChat } from '@/ui/view/chat-view/chatNavigation';
+import { createChatNavigation } from '@/ui/view/chat-view/chatNavigation';
 
 /**
  * Register workspace-level reactive events. Uses plugin.registerEvent so listeners are auto-removed on unload.
@@ -157,12 +157,12 @@ function addChatViewButton(
 		}
 		const conversation = await aiManager.readConversation(conversationId, true);
 		if (conversation) {
-			await openConversationInChat(conversation, {
+			const navigation = createChatNavigation({
 				manager: aiManager,
 				viewManager,
 				eventBus,
-				loadMessages: false,
 			});
+			await navigation.openConversationInChat(conversation, { loadMessages: false });
 		}
 	});
 }

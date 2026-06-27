@@ -79,7 +79,7 @@ export const PRESET_LABELS: Record<AnalysisMode, { short: string; full: string; 
 
 const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActiveTab }) => {
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
-	const { app, eventBus } = useServiceContext();
+	const { eventBus } = useServiceContext();
 	const host = useQuickSearchHost();
 	const { searchQuery, setSearchQuery, recentQueries, clearRecentQueries } = useSharedStore();
 	const webEnabled = useSearchSessionStore((s) => s.webEnabled);
@@ -472,7 +472,7 @@ function transformQueryForMode(raw: string, toMode: QuickSearchMode): string {
  */
 const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, setActiveTab }) => {
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
-	const { app } = useServiceContext();
+	const { vaultStats } = useServiceContext();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
 	const { updateParsedQuery, isSearching, quickSearchMode, inspectorOpen, lastSearchDuration, lastSearchResults } = useVaultSearchStore();
 	const hasSearchQuery = !!vaultSearchQuery.trim();
@@ -535,8 +535,8 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	};
 
 	useEffect(() => {
-		updateParsedQuery(app, vaultSearchQuery);
-	}, [app, vaultSearchQuery, updateParsedQuery]);
+		updateParsedQuery(vaultStats.activeFilePath(), vaultSearchQuery);
+	}, [vaultStats, vaultSearchQuery, updateParsedQuery]);
 
 	useEffect(() => {
 		if (inputRef.current) inputRef.current.focus();

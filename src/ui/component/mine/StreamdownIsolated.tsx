@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { App } from 'obsidian';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import {
@@ -8,14 +7,14 @@ import {
 	defaultRemarkPlugins,
 } from 'streamdown';
 import type { PluggableList } from 'unified';
+import type { WikilinkPort } from '@/service/navigation/WikilinkPort';
+import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { STREAMDOWN_ISOLATED_CSS } from '@/styles/streamdown-isolated-css';
 import { remarkWikilink } from './streamdown';
-import { extractWikilinkPath, openWikilinkPath } from '@/ui/view/quick-search/callbacks/useStreamdownWikilinkClick';
 import {
 	loadWikilinkPreview,
 	parseWikilinkHrefToPath,
-	resolveWikilinkTargetToPath,
 	WikilinkHoverCard,
 	type PreviewResult,
 } from './streamdown/WikilinkHoverPreview';
@@ -70,20 +69,31 @@ function findLinkInPath(composedPath: EventTarget[]): HTMLElement | undefined {
 
 /**
  * Handle wikilink click: extract path from link element, navigate if wikilink.
- * Returns true if handled. T11N: `app` threaded explicitly — no AppContext fallback.
+ * Returns true if handled. T11P (Track I): `app` replaced by narrow
+ * `WikilinkPort` + `VaultNavigationPort` — resolution and opening go through
+ * named ports, never `app.workspace.openLinkText` directly.
  */
 function handleWikilinkClick(
 	linkEl: HTMLElement,
 	e: { preventDefault: () => void; stopPropagation: () => void },
-	app: App,
+	wikilink: WikilinkPort,
+	vaultNavigation: VaultNavigationPort,
 ): boolean {
 	const href = getWikilinkHref(linkEl);
 	if (!href) return false;
-	const wikilinkPath = extractWikilinkPath(href, app);
+	const wikilinkPath = wikilink.resolveHref(href);
 	if (!wikilinkPath) return false;
 	e.preventDefault();
 	e.stopPropagation();
-	openWikilinkPath(wikilinkPath, false, app);
+	// Close the Quick Search modal first so the opened file is visible. Same
+	// DOM trick as the legacy `openWikilinkPath` helper — kept UI-side because
+	// it is hygiene specific to the streamdown host context, not a vault
+	// navigation concern.
+	const modalEl = document.querySelector('.peak-quick-search-modal')?.closest('.modal-container');
+	if (modalEl) {
+		(modalEl.querySelector('.modal-close-button') as HTMLElement)?.click();
+	}
+	void vaultNavigation.openLink(wikilinkPath, { newLeaf: false });
 	return true;
 }
 
@@ -135,15 +145,15 @@ function FallbackStreamdown({
 	className,
 	onClick,
 }: StreamdownIsolatedProps) {
-	const { app } = useServiceContext();
+	const { wikilink, vaultNavigation } = useServiceContext();
 	const handleClickCapture = React.useCallback(
 		(evt: React.MouseEvent<HTMLDivElement>) => {
 			const composedPath = evt.nativeEvent.composedPath?.() ?? [];
 			const linkEl = findLinkInPath(composedPath);
-			if (linkEl && handleWikilinkClick(linkEl, evt, app)) return;
+			if (linkEl && handleWikilinkClick(linkEl, evt, wikilink, vaultNavigation)) return;
 			onClick?.(evt);
 		},
-		[onClick, app]
+		[onClick, wikilink, vaultNavigation]
 	);
 	return (
 		<div
@@ -191,7 +201,7 @@ const HOVER_CLOSE_DELAY_MS = 100;
 type HoverState = { path: string; rect: DOMRect; preview: PreviewResult | null; loading: boolean };
 
 export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => {
-	const { app, vaultPreview } = useServiceContext();
+	const { vaultPreview, wikilink, vaultNavigation } = useServiceContext();
 	const { children: rawChildren, isAnimating = false, className, onClick } = props;
 	// Strip inline $...$ (not $$...$$) to prevent KaTeX from rendering product names as math
 	const children = rawChildren.replace(/(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/g, '$1');
@@ -264,7 +274,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 			const clickHandler = (e: MouseEvent) => {
 				const composedPath = e.composedPath?.() ?? [];
 				const linkEl = findLinkInPath(composedPath);
-				if (linkEl && handleWikilinkClick(linkEl, e, app)) return;
+				if (linkEl && handleWikilinkClick(linkEl, e, wikilink, vaultNavigation)) return;
 				// Delegate to optional onClick prop passed by caller.
 				const cb = onClickRef.current;
 				if (!cb || !host) return;
@@ -286,7 +296,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 				if (!href) return;
 				const raw = parseWikilinkHrefToPath(href);
 				if (!raw || raw.startsWith('#')) return;
-				const resolved = resolveWikilinkTargetToPath(raw, app);
+				const resolved = wikilink.resolveTarget(raw);
 				if (!resolved) return;
 				if (hoverDebounceRef.current) clearTimeout(hoverDebounceRef.current);
 				if (closeDelayRef.current) clearTimeout(closeDelayRef.current);
@@ -331,7 +341,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 				}, 0);
 			}
 		};
-	}, [useFallback]);
+	}, [useFallback, wikilink, vaultNavigation]);
 
 	useLayoutEffect(() => {
 		if (useFallback) return;

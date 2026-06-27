@@ -7,17 +7,11 @@
 // adapter and the boundary scanner stays clean.
 
 import type { AppContext } from '@/app/context/AppContext';
-import type {
-	CopilotPanelNavigator,
-	CopilotPanelVaultPort,
-} from '@/service/copilot/panels/CopilotPanelPorts';
+import type { CopilotPanelHostBundle } from '@/service/copilot/panels/CopilotPanelPorts';
 import { AppCopilotPanelVaultAdapter } from './AppCopilotPanelVaultAdapter';
 import { AppCopilotPanelNavigatorAdapter } from './AppCopilotPanelNavigatorAdapter';
 
-export interface CopilotPanelHostBundle {
-	vault: CopilotPanelVaultPort;
-	navigator: CopilotPanelNavigator;
-}
+export type { CopilotPanelHostBundle };
 
 export function composeCopilotPanelVault(appContext: AppContext): CopilotPanelHostBundle {
 	return {

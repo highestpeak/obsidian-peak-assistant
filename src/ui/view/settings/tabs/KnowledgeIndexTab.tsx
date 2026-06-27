@@ -91,7 +91,7 @@ interface ReadinessSnapshot {
 }
 
 function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
-    const { app, plugin } = useServiceContext();
+    const { settingsActions } = useServiceContext();
     const snap = useReadinessSnapshot(settings.search.indexLevel);
     const coveragePct =
         snap.indexedDocs != null && snap.totalDocs > 0
@@ -215,7 +215,7 @@ function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
                             <Row.Desc>Update changed notes</Row.Desc>
                         </Row.Body>
                         <Row.Right>
-                            <Button size="sm" onClick={() => triggerFastIndex(app, plugin)}>
+                            <Button size="sm" onClick={() => void settingsActions.knowledgeIndex.startStagedFullIndexing()}>
                                 <RefreshCw className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
                                 Update now
                             </Button>
@@ -228,7 +228,7 @@ function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
 }
 
 function useReadinessSnapshot(currentLevel: IndexLevel): ReadinessSnapshot {
-    const { app } = useServiceContext();
+    const { vaultStats } = useServiceContext();
     const [snap, setSnap] = useState<ReadinessSnapshot>({
         storeReady: false,
         indexedDocs: null,
@@ -242,7 +242,7 @@ function useReadinessSnapshot(currentLevel: IndexLevel): ReadinessSnapshot {
         let cancelled = false;
         void (async () => {
             const storeReady = sqliteStoreManager.isInitialized();
-            const totalDocs = app.vault.getMarkdownFiles().length;
+            const totalDocs = vaultStats.markdownCount();
             const semanticReady =
                 ProfileRegistry.getInstance().getActiveEmbeddingProfile() !== null;
 
@@ -273,26 +273,9 @@ function useReadinessSnapshot(currentLevel: IndexLevel): ReadinessSnapshot {
         return () => {
             cancelled = true;
         };
-    }, [currentLevel]);
+    }, [currentLevel, vaultStats]);
 
     return snap;
-}
-
-function triggerFastIndex(app: import('obsidian').App, plugin: import('main').default) {
-    void (async () => {
-        try {
-            const { IndexInitializer } = await import('@/service/search/index/indexInitializer');
-            const level: IndexLevel = plugin.settings.search.indexLevel ?? 'fast';
-            const initializer = new IndexInitializer(
-                app,
-                plugin.settings.search,
-                plugin.settings.dataStorageFolder ?? '',
-            );
-            await initializer.performStagedFullIndexing(true, level);
-        } catch (e) {
-            console.error('[KnowledgeIndexTab] Fast index failed:', e);
-        }
-    })();
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -388,7 +371,7 @@ function IndexBehaviorSection({
     settings: MyPluginSettings;
     settingsUpdates: SettingsUpdates;
 }) {
-    const { app, plugin } = useServiceContext();
+    const { settingsActions } = useServiceContext();
     const { updateSearch, updateDocumentType } = settingsUpdates;
     const [editingPatterns, setEditingPatterns] = useState(false);
     const [patternsText, setPatternsText] = useState('');
@@ -420,23 +403,11 @@ function IndexBehaviorSection({
     const applyLevelChange = useCallback(
         (level: IndexLevel) => {
             void updateSearch('indexLevel', level);
-            void (async () => {
-                try {
-                    const { IndexInitializer } = await import(
-                        '@/service/search/index/indexInitializer'
-                    );
-                    const initializer = new IndexInitializer(
-                        app,
-                        plugin.settings.search,
-                        plugin.settings.dataStorageFolder ?? '',
-                    );
-                    initializer.performStagedFullIndexing(true, level);
-                } catch (e) {
-                    console.error('[KnowledgeIndexTab] Staged index after mode change failed:', e);
-                }
-            })();
+            void settingsActions.knowledgeIndex.startStagedFullIndexing({ level }).catch((e) => {
+                console.error('[KnowledgeIndexTab] Staged index after mode change failed:', e);
+            });
         },
-        [updateSearch, app, plugin],
+        [updateSearch, settingsActions],
     );
 
     const handleLevelPick = useCallback(
@@ -1175,7 +1146,8 @@ function AdvancedChunkingDisclosure({
  * ───────────────────────────────────────────────────────────────────────── */
 
 function AdvancedRebuildDisclosure() {
-    const { app, plugin } = useServiceContext();
+    const { settingsActions } = useServiceContext();
+    const knowledgeIndex = settingsActions.knowledgeIndex;
     return (
         <div className="pkset-section">
             <details>
@@ -1201,19 +1173,19 @@ function AdvancedRebuildDisclosure() {
                 </summary>
                 <div className="pk-disclosure-body">
                     <div className="pkset-action-strip">
-                        <Button variant="outline" size="sm" onClick={() => triggerFastIndex(app, plugin)}>
+                        <Button variant="outline" size="sm" onClick={() => void knowledgeIndex.startStagedFullIndexing()}>
                             <RefreshCw className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
                             Full re-index
                         </Button>
-                        <Button variant="outline" size="sm" onClick={triggerRebuildVectors}>
+                        <Button variant="outline" size="sm" onClick={() => void knowledgeIndex.runVectorEnrichmentPending()}>
                             <Database className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
                             Rebuild vectors
                         </Button>
-                        <Button variant="outline" size="sm" onClick={triggerLlmEnrichment}>
+                        <Button variant="outline" size="sm" onClick={() => void knowledgeIndex.runLlmEnrichmentPending()}>
                             <Sparkles className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
                             Run LLM enrichment
                         </Button>
-                        <Button variant="outline" size="sm" onClick={triggerCompareSearch}>
+                        <Button variant="outline" size="sm" onClick={() => void knowledgeIndex.compareSearchResults()}>
                             <BarChart3 className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
                             Compare PPR search
                         </Button>
@@ -1222,20 +1194,6 @@ function AdvancedRebuildDisclosure() {
             </details>
         </div>
     );
-}
-
-function triggerRebuildVectors() {
-    void import('@/app/commands/PeakCommandActions').then((m) =>
-        m.runVectorEnrichmentPending(),
-    );
-}
-
-function triggerLlmEnrichment() {
-    void import('@/app/commands/PeakCommandActions').then((m) => m.runLlmEnrichmentPending());
-}
-
-function triggerCompareSearch() {
-    void import('@/app/commands/PeakCommandActions').then((m) => m.compareSearchResults());
 }
 
 /* Re-exported types kept so adjacent modules importing this file's old

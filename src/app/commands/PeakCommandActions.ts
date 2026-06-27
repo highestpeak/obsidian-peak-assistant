@@ -3,7 +3,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import type { ChatProjectMeta } from '@/service/chat/types';
-import { openPendingConversationInChat } from '@/ui/view/chat-view/chatNavigation';
+import { createChatNavigation } from '@/ui/view/chat-view/chatNavigation';
 import { QuickSearchModal } from '@/app/modals/QuickSearchModal';
 import { HarnessOnboardingModal } from '@/app/modals/HarnessOnboardingModal';
 import { SettingsModal } from '@/app/modals/SettingsModal';
@@ -62,6 +62,15 @@ function getAIManager(): AIServiceManager {
 	return getContext().manager;
 }
 
+function navigation() {
+	const ctx = getContext();
+	return createChatNavigation({
+		manager: ctx.manager,
+		viewManager: ctx.viewManager,
+		eventBus: ctx.eventBus,
+	});
+}
+
 function getIndexInitializer(): IndexInitializer {
 	const ctx = getContext();
 	if (ctx.plugin.indexInitializer) return ctx.plugin.indexInitializer;
@@ -92,7 +101,7 @@ export async function createChatProject(): Promise<void> {
 }
 
 export function createChatConversation(): void {
-	void openPendingConversationInChat({
+	void navigation().openPendingConversationInChat({
 		title: DEFAULT_NEW_CONVERSATION_TITLE,
 		project: null,
 	});

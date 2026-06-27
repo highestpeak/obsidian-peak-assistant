@@ -13,13 +13,7 @@ import {
 	DEFAULT_CONVERSATION_TYPE,
 } from '@/service/chat/conversation-types';
 import { ConversationTypeIcon } from '@/ui/component/mine/ConversationTypeIcon';
-import {
-	openAllConversationsInChat,
-	openAllProjectsInChat,
-	openConversationInChat,
-	openPendingConversationInChat,
-	openProjectOverviewInChat,
-} from '@/ui/view/chat-view/chatNavigation';
+import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 
 const RECENT_CONVERSATIONS_LIMIT = 5;
 const RECENT_PROJECTS_LIMIT = 5;
@@ -42,7 +36,8 @@ interface SuggestionCard {
  * Home view component showing greeting, suggestion cards, recent conversations and projects
  */
 export const HomeViewComponent: React.FC = () => {
-	const { manager, eventBus, viewManager } = useServiceContext();
+	const { manager } = useServiceContext();
+	const chatNavigation = useChatNavigation();
 	const chatViewStore = useChatViewStore();
 	const { projects, conversations } = useChatDataStore();
 
@@ -78,19 +73,19 @@ export const HomeViewComponent: React.FC = () => {
 	// ── Handlers ──
 
 	const handleConversationClick = useCallback(async (conversation: ChatConversation) => {
-		await openConversationInChat(conversation, { manager, eventBus, viewManager });
-	}, [manager, eventBus, viewManager]);
+		await chatNavigation.openConversationInChat(conversation);
+	}, [chatNavigation]);
 
 	const handleProjectClick = useCallback((project: ChatProject) => {
-		void openProjectOverviewInChat(project, { eventBus, viewManager });
-	}, [eventBus, viewManager]);
+		void chatNavigation.openProjectOverviewInChat(project);
+	}, [chatNavigation]);
 
 	const handleCreateConversation = useCallback(async () => {
-		await openPendingConversationInChat({
+		await chatNavigation.openPendingConversationInChat({
 			title: DEFAULT_NEW_CONVERSATION_TITLE,
 			project: null,
-		}, { eventBus, viewManager });
-	}, [eventBus, viewManager]);
+		});
+	}, [chatNavigation]);
 
 	const handleCreateProject = useCallback(() => {
 		setInputModalConfig({
@@ -117,7 +112,7 @@ export const HomeViewComponent: React.FC = () => {
 			action: () => {
 				const latest = allConversations[0];
 				if (latest) {
-					void openConversationInChat(latest, { manager, eventBus, viewManager });
+					void chatNavigation.openConversationInChat(latest);
 				} else {
 					handleCreateConversation();
 				}
@@ -128,7 +123,7 @@ export const HomeViewComponent: React.FC = () => {
 			label: 'Summarize recent notes',
 			description: 'Get a digest of what changed',
 			action: () => {
-				void openPendingConversationInChat({ title: 'Summarize recent notes', project: null }, { eventBus, viewManager });
+				void chatNavigation.openPendingConversationInChat({ title: 'Summarize recent notes', project: null });
 				chatViewStore.setChatMode('chat');
 			},
 		},
@@ -137,7 +132,7 @@ export const HomeViewComponent: React.FC = () => {
 			label: 'Research a topic',
 			description: 'Deep-dive with an AI agent',
 			action: () => {
-				void openPendingConversationInChat({ title: 'Research', project: null }, { eventBus, viewManager });
+				void chatNavigation.openPendingConversationInChat({ title: 'Research', project: null });
 				chatViewStore.setChatMode('agent');
 			},
 		},
@@ -186,7 +181,7 @@ export const HomeViewComponent: React.FC = () => {
 							</span>
 							<Button
 								variant="ghost"
-								onClick={() => void openAllConversationsInChat({ eventBus, viewManager })}
+								onClick={() => void chatNavigation.openAllConversationsInChat()}
 								className="pktw-text-xs pktw-font-medium pktw-h-auto pktw-py-0.5 pktw-px-1.5"
 							>
 								View all →
@@ -222,7 +217,7 @@ export const HomeViewComponent: React.FC = () => {
 							</span>
 							<Button
 								variant="ghost"
-								onClick={() => void openAllProjectsInChat({ eventBus, viewManager })}
+								onClick={() => void chatNavigation.openAllProjectsInChat()}
 								className="pktw-text-xs pktw-font-medium pktw-h-auto pktw-py-0.5 pktw-px-1.5"
 							>
 								View all →

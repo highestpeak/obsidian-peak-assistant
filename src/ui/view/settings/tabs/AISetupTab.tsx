@@ -14,7 +14,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Cpu, Database, MessageSquare, Search as SearchIcon, Shield, Sparkle, Zap } from 'lucide-react';
 import { Row, Chip, Segmented } from '@/ui/components/primitives';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { openHarnessSetupWizard } from '@/app/commands/PeakCommandActions';
 import { RoleModelPicker } from '../components/RoleModelPicker';
 import { DEFAULT_HARNESS_SETTINGS, type MyPluginSettings, type HarnessSettings } from '@/core/config/settingsTypes';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';

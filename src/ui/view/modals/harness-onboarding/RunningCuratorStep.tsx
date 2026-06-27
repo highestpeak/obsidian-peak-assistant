@@ -9,7 +9,6 @@ import { X } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import {
-    detectEnvironment,
     isCatalogLoaded,
     runCurator,
     buildFallbackRecommendation,
@@ -40,7 +39,7 @@ export function RunningCuratorStep({
     onError,
     onCancel,
 }: RunningCuratorStepProps) {
-    const { app } = useServiceContext();
+    const { settingsActions } = useServiceContext();
     const strings = useOnboardingStrings();
     const copy = strings.steps.running;
     const onSuccessRef = useRef(onSuccess);
@@ -62,7 +61,7 @@ export function RunningCuratorStep({
 
         async function run(bs: BootstrapSelection): Promise<void> {
             try {
-                const env = await detectEnvironment({ app });
+                const env = await settingsActions.setup.detectHarnessEnvironment();
                 const ctx: CuratorContext = { env, preferences };
                 if (!isCatalogLoaded()) {
                     onErrorRef.current(stringsRef.current.steps.running.catalogUnavailableError);

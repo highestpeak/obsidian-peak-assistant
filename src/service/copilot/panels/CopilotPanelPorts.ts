@@ -107,3 +107,14 @@ export interface CopilotPanelNavigator {
 	/** Open the Copilot picker modal, optionally with a pre-selected tab. */
 	openCopilotPicker(opts?: { initialTab?: IntentTabId }): void;
 }
+
+/**
+ * T11P (Track C): The bundle struct UI consumes through `useServiceContext()
+ * .copilotPanelVault`. Previously lived in
+ * `src/app/copilot/panels/composeCopilotPanelVault.ts`, which forced
+ * `ServiceContext.tsx` to import from `@/app/**` purely for a type.
+ */
+export interface CopilotPanelHostBundle {
+	vault: CopilotPanelVaultPort;
+	navigator: CopilotPanelNavigator;
+}

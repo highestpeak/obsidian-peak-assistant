@@ -9,28 +9,24 @@
 // That keeps the dependency reduction real instead of cosmetic — UI never
 // sees Obsidian primitives, the adapter does.
 //
-// Quick-search-specific accessors live HERE, not on `useServiceContext()`,
-// so the shared context does not bloat into a god-bag.
+// T11P (Track D): the host bundle is now composed in the app layer
+// (`src/app/quick-search/composeQuickSearchHost.ts`) and published on
+// `ServiceContext.quickSearchHost`. UI calls this hook to read the bundle;
+// the hook itself no longer captures `app`/`plugin` or builds the host.
 
-import { useMemo } from 'react';
 import type { TFile } from 'obsidian';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { ContextProvider } from '@/service/context/ContextProvider';
-import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
-import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
-import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
-import { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
-import { ContinueAnalysisAgent } from '@/service/agents/ContinueAnalysisAgent';
+import type { ContextProvider } from '@/service/context/ContextProvider';
+import type { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
+import type { AIGraphAgent } from '@/service/agents/AIGraphAgent';
+import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
+import type { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
+import type { ContinueAnalysisAgent } from '@/service/agents/ContinueAnalysisAgent';
+import type { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
 import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
-import {
-	saveAiAnalyzeResultToMarkdown,
-	persistAnalysisDocToPath,
-	saveAiGraphToMarkdown,
-	buildAiAnalyzeMarkdownFromSnapshot,
-	type SaveAnalysisResultParams,
-} from '../callbacks/save-ai-analyze-to-md';
+import type { SaveAnalysisResultParams } from '../callbacks/save-ai-analyze-to-md';
 import type { CompletedAnalysisSnapshot } from '../store/aiAnalysisStore';
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
 
@@ -65,6 +61,8 @@ export interface QuickSearchHost {
 	createDocSimpleAgent(): DocSimpleAgent;
 	createContinueAnalysisAgent(rounds: unknown[]): ContinueAnalysisAgent;
 	createContextProvider(): ContextProvider;
+	/** T11P: report orchestrator factory, replacing inline `new ReportOrchestrator(plugin.aiServiceManager, _, app, _)` in `useSearchSession`. */
+	createReportOrchestrator(): ReportOrchestrator;
 
 	// Markdown save / persist
 	saveAnalysisToVault(params: SaveAnalysisResultParams): Promise<{ path: string }>;
@@ -87,95 +85,5 @@ export interface QuickSearchHost {
 }
 
 export function useQuickSearchHost(): QuickSearchHost {
-	const {
-		app,
-		manager,
-		plugin,
-		settings,
-		searchClient,
-		aiAnalysisHistoryService,
-		quickSearchBackgroundRuntime,
-		isMockEnv,
-		searchAgent,
-	} = useServiceContext();
-
-	return useMemo<QuickSearchHost>(() => {
-		const enableDevTools = settings.enableDevTools === true;
-		const search = settings.search;
-		const aiAnalysisHistory = aiAnalysisHistoryService;
-		const quickSearchRuntime = quickSearchBackgroundRuntime;
-
-		return {
-			openVaultPath: async (path, opts) => {
-				const leaf = opts?.newLeaf ?? 'tab';
-				const f = app.vault.getAbstractFileByPath(path);
-				if (f && 'extension' in (f as Record<string, unknown>)) {
-					await app.workspace.getLeaf(leaf as any).openFile(f as TFile);
-					return;
-				}
-				const sourcePath = app.workspace.getActiveFile()?.path ?? '';
-				await app.workspace.openLinkText(path, sourcePath, leaf as any);
-			},
-			readVaultFileText: async (path) => {
-				const f = app.vault.getAbstractFileByPath(path);
-				if (!f || !('extension' in (f as Record<string, unknown>))) return null;
-				return app.vault.read(f as TFile);
-			},
-			findFileByPath: (path) => {
-				const f = app.vault.getAbstractFileByPath(path);
-				return f && 'extension' in (f as Record<string, unknown>) ? (f as TFile) : null;
-			},
-			getActiveFilePath: () => app.workspace.getActiveFile()?.path ?? null,
-
-			enableDevTools,
-			isMockEnv,
-			autoSaveEnabled: search.aiAnalysisAutoSaveEnabled ?? true,
-			autoSaveFolder: search.aiAnalysisAutoSaveFolder?.trim() || 'ChatFolder/AI-Analysis',
-			analysisHistoryPageSize: search.aiAnalysisHistoryLimit ?? 20,
-			indexLevel: search.indexLevel,
-			searchUpgradePromptDismissedAt: search.searchUpgradePromptDismissedAt,
-
-			setSearchUpgradePromptDismissed: async () => {
-				search.searchUpgradePromptDismissedAt = Date.now();
-				await plugin.saveSettings();
-			},
-			openObsidianSettings: () => {
-				(app as any).setting?.open?.();
-			},
-
-			aiAnalysisHistory,
-			quickSearchRuntime,
-
-			createSynthesizeAgent: () => new SynthesizeAgent(manager),
-			createAIGraphAgent: () => new AIGraphAgent(app, searchClient!, manager),
-			createVaultSearchAgent: () => new VaultSearchAgent(app, plugin.manifest.id, searchClient!, manager),
-			createDocSimpleAgent: () => searchAgent(),
-			createContinueAnalysisAgent: (rounds) => new ContinueAnalysisAgent({
-				app,
-				pluginId: plugin.manifest.id,
-				searchClient: searchClient!,
-				aiServiceManager: manager,
-				rounds: rounds as never,
-			}),
-			createContextProvider: () => new ContextProvider(app),
-
-			saveAnalysisToVault: (params) => saveAiAnalyzeResultToMarkdown(params, { app, enableDevTools }),
-			persistAnalysisDoc: (path, content) => persistAnalysisDocToPath(path, content, { app }),
-			saveGraphToVault: (params) => saveAiGraphToMarkdown(params, { app }),
-			buildAnalysisMarkdownFromSnapshot: (snapshot, query, webEnabled) =>
-				buildAiAnalyzeMarkdownFromSnapshot(snapshot, query, webEnabled, { enableDevTools }),
-
-			createConvFromAnalysis: (payload) => manager.createConvFromSearchAIAnalysis(payload),
-
-			getAnalysisMarkdownForReplay: async (path) => {
-				const svc = aiAnalysisHistory as unknown as {
-					getMarkdownForReplay?: (p: string) => Promise<string | null>;
-				};
-				if (typeof svc.getMarkdownForReplay === 'function') {
-					return svc.getMarkdownForReplay(path);
-				}
-				return null;
-			},
-		};
-	}, [app, manager, plugin, settings, searchClient, aiAnalysisHistoryService, quickSearchBackgroundRuntime, isMockEnv, searchAgent]);
+	return useServiceContext().quickSearchHost;
 }

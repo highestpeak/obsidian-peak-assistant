@@ -94,7 +94,7 @@ function SourceItem({ source, onClick }: { source: V2Source; onClick: (e: React.
 }
 
 export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
-    const { app } = useServiceContext();
+    const { vaultNavigation } = useServiceContext();
     const sources = useSearchSessionStore((s) => s.v2Sources);
     const storeViewMode = useSearchSessionStore((s) => s.sourcesViewMode);
     const setStoreViewMode = useSearchSessionStore((s) => s.setSourcesViewMode);
@@ -102,8 +102,8 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
     const setViewMode = useCallback((m: SourceViewMode) => { if (m === 'list' || m === 'graph') setStoreViewMode(m); }, [setStoreViewMode]);
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
     const handleOpen = useCallback((pathOrResult: string, newTab?: boolean) => {
-        createOpenSourceCallback(onClose, newTab ?? true, app)(pathOrResult);
-    }, [onClose, app]);
+        createOpenSourceCallback(onClose, newTab ?? true, vaultNavigation)(pathOrResult);
+    }, [onClose, vaultNavigation]);
 
     const toggleGroup = (prefix: string) => {
         setCollapsedGroups(prev => {

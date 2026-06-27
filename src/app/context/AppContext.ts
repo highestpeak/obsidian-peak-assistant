@@ -25,11 +25,14 @@ import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActi
 import type { CuratorPushRuntime } from '@/service/usage/curator/CuratorPushRuntime';
 import type { VaultPreviewPort } from '@/service/preview/VaultPreviewPort';
 import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
+import type { WikilinkPort } from '@/service/navigation/WikilinkPort';
 import type { EditorCommandsPort } from '@/service/editor/EditorCommandsPort';
 import type { ChatVaultWriterPort } from '@/service/chat/ports/ChatVaultWriterPort';
+import type { VaultStatsPort } from '@/service/stats/VaultStatsPort';
 import { composeVaultPreview } from '@/app/preview/composeVaultPreview';
-import { composeVaultNavigation, composeEditorCommands } from '@/app/navigation/composeNavigation';
+import { composeVaultNavigation, composeEditorCommands, composeWikilink } from '@/app/navigation/composeNavigation';
 import { composeChatVaultWriter } from '@/app/chat/composeChatVaultWriter';
+import { AppVaultStatsAdapter } from '@/app/stats/AppVaultStatsAdapter';
 
 /**
  * Application context containing all global dependencies.
@@ -57,8 +60,10 @@ export class AppContext {
 	 */
 	public readonly vaultPreview: VaultPreviewPort;
 	public readonly vaultNavigation: VaultNavigationPort;
+	public readonly wikilink: WikilinkPort;
 	public readonly editorCommands: EditorCommandsPort;
 	public readonly chatVaultWriter: ChatVaultWriterPort;
+	public readonly vaultStats: VaultStatsPort;
 
 	private static instance: AppContext | null = null;
 
@@ -383,8 +388,10 @@ export class AppContext {
 		this.runtimeRegistry = new AppRuntimeRegistry();
 		this.vaultPreview = composeVaultPreview(app);
 		this.vaultNavigation = composeVaultNavigation(app);
+		this.wikilink = composeWikilink(app);
 		this.editorCommands = composeEditorCommands(app);
 		this.chatVaultWriter = composeChatVaultWriter(app);
+		this.vaultStats = new AppVaultStatsAdapter(app);
 		AppContext.instance = this;
 
 		this.handleDevToolsSettingChange(this.settings.enableDevTools ?? false);

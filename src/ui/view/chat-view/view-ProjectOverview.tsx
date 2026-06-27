@@ -6,11 +6,10 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { Button } from '@/ui/component/shared-ui/button';
 import { FileIcon, getFileTypeByName } from '@/ui/view/shared/file-utils';
 import { ResourceAttachmentEntry, useProjectLoad, useConversationLoad, StarredEntry } from './hooks';
-import { openAttachment } from '@/core/utils/vault-utils';
 import { useChatViewStore } from './store/chatViewStore';
 import { ProjectSummary } from './components/project-summary';
 import { ConversationList } from './components/conversation-list';
-import { openPendingConversationInChat } from '@/ui/view/chat-view/chatNavigation';
+import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 
 interface ProjectOverviewViewProps {
 }
@@ -21,7 +20,7 @@ type TabType = 'conversations' | 'starred' | 'resources';
  * Project overview view component
  */
 export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = () => {
-	const { app } = useServiceContext();
+	const { vaultNavigation } = useServiceContext();
 	const store = useChatViewStore();
 
 	const projectId = store.projectForOverview?.meta.id;
@@ -169,15 +168,15 @@ const ConversationsTab: React.FC<ConversationsTabProps> = ({
 	conversationCount,
 }) => {
 
-	const { eventBus, viewManager } = useServiceContext();
+	const chatNavigation = useChatNavigation();
 
 	const [summaryExpanded, setSummaryExpanded] = useState<boolean>(summaryText ? true : false);
 
 	const handleNewConversation = () => {
-		void openPendingConversationInChat({
+		void chatNavigation.openPendingConversationInChat({
 			title: 'New Conversation',
 			project,
-		}, { eventBus, viewManager });
+		});
 	};
 
 	if (conversationCount === 0) {
@@ -267,6 +266,7 @@ interface ResourcesTabProps {
 }
 
 const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources }) => {
+	const { vaultNavigation } = useServiceContext();
 	if (resources.length === 0) {
 		return (
 			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-12">
@@ -288,7 +288,7 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources }) => {
 							'pktw-cursor-pointer pktw-transition-all',
 							'hover:pktw-shadow-md hover:pktw-border-border-hover hover:pktw-bg-accent/50'
 						)}
-						onClick={() => openAttachment(entry.resource, app)}
+						onClick={() => vaultNavigation.openAttachmentSource(entry.resource)}
 					>
 						<div className="pktw-p-2 pktw-rounded-md pktw-bg-muted pktw-shrink-0">
 							<FileIcon type={fileType} className="pktw-text-muted-foreground" size={20} />

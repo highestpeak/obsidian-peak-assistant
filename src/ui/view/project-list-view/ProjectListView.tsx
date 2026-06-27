@@ -9,7 +9,7 @@ import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { IconButton as PkIconButton } from '@/ui/components/primitives';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { showToast } from '@/ui/utils/toast';
-import { openChatHome } from '@/ui/view/chat-view/chatNavigation';
+import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 
 interface ProjectListViewComponentProps {
 	/** Compact layout for the narrow Obsidian sidebar leaf:
@@ -25,7 +25,8 @@ interface ProjectListViewComponentProps {
  * Main React component for ProjectListView
  */
 export const ProjectListViewComponent: React.FC<ProjectListViewComponentProps> = ({ compact = false }) => {
-	const { app, manager, eventBus, viewManager } = useServiceContext();
+	const { manager, eventBus } = useServiceContext();
+	const chatNavigation = useChatNavigation();
 	const {
 		setProjects,
 		setConversations,
@@ -106,7 +107,7 @@ export const ProjectListViewComponent: React.FC<ProjectListViewComponentProps> =
 
 	// Navigate to home view
 	const handleGoHome = () => {
-		void openChatHome({ viewManager, eventBus });
+		void chatNavigation.openChatHome();
 	};
 
 	// Refresh projects and conversations
@@ -115,13 +116,13 @@ export const ProjectListViewComponent: React.FC<ProjectListViewComponentProps> =
 			clearExpandedProjects();
 			await hydrateData();
 			// Dispatch selection changed event
-			await notifySelectionChange(app);
+			await notifySelectionChange(eventBus);
 			// Show success toast (will be displayed in ChatView)
-			showToast.success('Projects and conversations refreshed', { app });
+			showToast.success('Projects and conversations refreshed', { eventBus });
 		} catch (error) {
 			// Show error toast
 			showToast.error('Failed to refresh data', {
-				app,
+				eventBus,
 				description: error instanceof Error ? error.message : 'Unknown error'
 			});
 		}

@@ -23,7 +23,6 @@ import { useQuickSearchHost } from './useQuickSearchHost';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import type { UserFeedback } from '@/service/agents/core/types';
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
-import { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
 
 import { consumeStream } from './streamConsumer';
 import type { StreamConsumerContext } from './streamConsumer';
@@ -117,7 +116,6 @@ export function useSearchSession() {
 	const { searchQuery } = useSharedStore();
 	const store = useSearchSessionStore;
 	const {
-		app,
 		manager,
 		plugin,
 		settings,
@@ -345,15 +343,8 @@ export function useSearchSession() {
 	// -----------------------------------------------------------------------
 
 	const reportOrchestrator = useMemo(
-		() => {
-			return new ReportOrchestrator(
-				plugin.aiServiceManager,
-				reportSessionPort,
-				app,
-				plugin.manifest.id,
-			);
-		},
-		[],
+		() => host.createReportOrchestrator(),
+		[host],
 	);
 
 	const handleApprovePlan = useCallback(async () => {

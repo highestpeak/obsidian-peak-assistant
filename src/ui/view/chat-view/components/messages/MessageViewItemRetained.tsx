@@ -7,7 +7,7 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useStreamChat } from '../../hooks/useStreamChat';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
-import { openConversationInChat } from '@/ui/view/chat-view/chatNavigation';
+import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 import {
 	Reasoning,
 	ReasoningContent,
@@ -81,7 +81,8 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 	isLastMessage = false,
 }) => {
 	const strings = useChatStrings();
-	const { manager, app, eventBus, viewManager, chatVaultWriter, settingsActions } = useServiceContext();
+	const { manager, eventBus, chatVaultWriter, settingsActions } = useServiceContext();
+	const chatNavigation = useChatNavigation();
 	const openSettings = settingsActions.openSettings;
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 	const activeProject = useChatDataStore((s) => s.activeProject);
@@ -236,16 +237,13 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 				messageId: message.id,
 				project: activeProject?.meta ?? null,
 			});
-			await openConversationInChat(branchedConv, {
-				manager,
-				eventBus,
-				viewManager,
+			await chatNavigation.openConversationInChat(branchedConv, {
 				loadMessages: false,
 			});
 		} catch (err) {
 			console.error('[MessageItemRetained] Branch failed:', err);
 		}
-	}, [activeConversation, activeProject, manager, eventBus, viewManager, message.id]);
+	}, [activeConversation, activeProject, manager, eventBus, chatNavigation, message.id]);
 
 	// ── Meta row derived bits ────────────────────────────────────────────
 	const modelChipText = useMemo(() => {
@@ -342,7 +340,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 					)}
 				</div>
 				{message.resources && message.resources.length > 0 && (
-					<MessageAttachmentsList message={message} app={app} />
+					<MessageAttachmentsList message={message} />
 				)}
 				<div className="pkchat-msg__body">
 					{displayContent ? (

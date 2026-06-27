@@ -3,7 +3,7 @@ import { ChatProject } from '@/service/chat/types';
 import { cn } from '@/ui/react/lib/utils';
 import { Folder } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { openProjectOverviewInChat } from '@/ui/view/chat-view/chatNavigation';
+import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 
 interface AllProjectsViewProps {
 }
@@ -15,14 +15,15 @@ const PROJECTS_PAGE_SIZE = 20;
  */
 export const AllProjectsViewComponent: React.FC<AllProjectsViewProps> = ({
 }) => {
-	const { manager, eventBus, viewManager } = useServiceContext();
+	const { manager } = useServiceContext();
+	const chatNavigation = useChatNavigation();
 	const [projects, setProjects] = useState<ChatProject[]>([]);
 	const [projectsPage, setProjectsPage] = useState(0);
 	const [loading, setLoading] = useState(true);
 
 	const onProjectClick = useCallback((project: ChatProject) => {
-		void openProjectOverviewInChat(project, { eventBus, viewManager });
-	}, [eventBus, viewManager]);
+		void chatNavigation.openProjectOverviewInChat(project);
+	}, [chatNavigation]);
 
 	// Load projects
 	useEffect(() => {

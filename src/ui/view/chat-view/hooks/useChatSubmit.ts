@@ -26,7 +26,7 @@ export interface ChatSubmitOptions {
  * Handles conversation creation, file upload, and message streaming.
  */
 export function useChatSubmit() {
-	const { app, manager } = useServiceContext();
+	const { manager } = useServiceContext();
 	const { streamChat, updateConv } = useStreamChat();
 	const { addMessage: addMessageToStore, commitStreamingMessage } = useChatDataStore();
 

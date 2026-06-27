@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChatConversation } from '@/service/chat/types';
-import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { openAllConversationsInChat, openConversationInChat, openPendingConversationInChat } from '@/ui/view/chat-view/chatNavigation';
+import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 import { showContextMenu } from './utils';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
@@ -160,7 +159,8 @@ export const ConversationList: React.FC<ConversationListProps> = ({
  * Conversations section component
  */
 export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ query = '' }) => {
-	const { app, manager, eventBus, viewManager } = useServiceContext();
+	const { manager, eventBus, vaultNavigation } = useServiceContext();
+	const chatNavigation = useChatNavigation();
 	const {
 		conversations,
 		activeConversation,
@@ -181,14 +181,14 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ quer
 	const [typewriterEnabled, setTypewriterEnabled] = useState<Map<string, boolean>>(new Map());
 
 	const handleNewConversation = async () => {
-		await openPendingConversationInChat({
+		await chatNavigation.openPendingConversationInChat({
 			title: DEFAULT_NEW_CONVERSATION_TITLE,
 			project: null,
-		}, { viewManager, eventBus });
+		});
 	};
 
 	const handleConversationClick = async (conversation: ChatConversation) => {
-		await openConversationInChat(conversation, { manager, viewManager, eventBus });
+		await chatNavigation.openConversationInChat(conversation);
 	};
 
 	const handleEditConversationTitle = useCallback((conversation: ChatConversation) => {
@@ -225,7 +225,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ quer
 			title: 'Open source file',
 			icon: 'file-text',
 			onClick: async () => {
-				await openSourceFile(app, conversation.file);
+				await vaultNavigation.openSourceFile(conversation.file);
 			},
 		},
 		{
@@ -241,7 +241,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ quer
 				}
 			},
 		},
-	], [app, manager, handleEditConversationTitle]);
+	], [vaultNavigation, manager, handleEditConversationTitle]);
 
 	const handleContextMenu = (e: React.MouseEvent, conversation: ChatConversation) => {
 		const menuItems = conversationMenuItems(conversation);
@@ -385,7 +385,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ quer
 				<div
 					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-mx-2 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-xs pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
 					onClick={() => {
-						void openAllConversationsInChat({ viewManager, eventBus });
+						void chatNavigation.openAllConversationsInChat();
 					}}
 				>
 					<MoreHorizontal className="pktw-w-3.5 pktw-h-3.5" />

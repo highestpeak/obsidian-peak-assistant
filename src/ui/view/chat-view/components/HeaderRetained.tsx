@@ -3,7 +3,6 @@ import { ExternalLink, RefreshCw } from 'lucide-react';
 import { IconButton } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useChatStrings } from '../chatStringsContext';
 
 export interface HeaderRetainedProps {}
@@ -27,7 +26,7 @@ export interface HeaderRetainedProps {}
  */
 export const HeaderRetained: React.FC<HeaderRetainedProps> = () => {
 	const strings = useChatStrings();
-	const { app, manager } = useServiceContext();
+	const { manager, vaultNavigation } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 	const [isRegenerating, setIsRegenerating] = useState(false);
 
@@ -38,7 +37,7 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = () => {
 
 	const handleOpenSource = async () => {
 		if (!activeConversation.file) return;
-		await openSourceFile(app, activeConversation.file);
+		await vaultNavigation.openSourceFile(activeConversation.file);
 	};
 
 	const handleRefresh = async () => {

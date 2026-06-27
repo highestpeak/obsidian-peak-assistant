@@ -83,7 +83,7 @@ const EMPTY_SESSIONS: QuickSearchBackgroundSessionSummary[] = [];
 export const RecentAIAnalysis: React.FC<{
     onClose?: () => void;
 }> = ({ onClose }) => {
-    const { app } = useServiceContext();
+    const { vaultNavigation } = useServiceContext();
     const host = useQuickSearchHost();
     const quickSearchRuntime = host.quickSearchRuntime;
 
@@ -144,7 +144,7 @@ export const RecentAIAnalysis: React.FC<{
         if (!path) return;
 
         if (allowDirectOpen) {
-            await createOpenSourceCallback(onClose, true, app)(path);
+            await createOpenSourceCallback(onClose, true, vaultNavigation)(path);
             return;
         }
 
@@ -163,7 +163,7 @@ export const RecentAIAnalysis: React.FC<{
             return;
         }
 
-        await createOpenSourceCallback(onClose, true, app)(path);
+        await createOpenSourceCallback(onClose, true, vaultNavigation)(path);
     };
 
     const loadRecentPage = async (offset: number) => {

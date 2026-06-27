@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
-import { App } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { EventBus } from '@/core/eventBus';
 import { SearchClient } from '@/service/search/SearchClient';
-import type { ViewManager } from '@/app/view/ViewManager';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
@@ -12,63 +10,39 @@ import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryServic
 import type { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import type { AnalysisDocVaultWriterPort } from '@/service/search/ports/AnalysisDocVaultWriterPort';
 import type { ReportSessionPort } from '@/service/agents/report/ReportSessionPort';
-import type { CopilotPanelHostBundle } from '@/app/copilot/panels/composeCopilotPanelVault';
+import type { CopilotPanelHostBundle } from '@/service/copilot/panels/CopilotPanelPorts';
 import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import type { VaultPreviewPort } from '@/service/preview/VaultPreviewPort';
 import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
+import type { WikilinkPort } from '@/service/navigation/WikilinkPort';
 import type { EditorCommandsPort } from '@/service/editor/EditorCommandsPort';
-
-/**
- * Narrow named-action surface so UI components do not import
- * `@/app/commands/PeakCommandActions` directly. The app layer composes a
- * concrete `SettingsActions` and threads it through `ReactElementFactory`.
- * Track 7 may grow this with the settings-tab actions; today it covers the
- * single in-message "Open settings" affordance.
- */
-export interface SettingsActions {
-	openSettings(): void;
-}
 import type { ChatVaultWriterPort } from '@/service/chat/ports/ChatVaultWriterPort';
+import type { ChatNavigationPort } from '@/service/chat/navigation/ChatNavigationPort';
+import type { VaultStatsPort } from '@/service/stats/VaultStatsPort';
+import type { SettingsActions } from '@/service/settings/SettingsActionsPort';
+import type { QuickSearchHost } from '@/ui/view/quick-search/hooks/useQuickSearchHost';
 import type MyPlugin from 'main';
 
 /**
- * Service context value containing all global services.
+ * T11P (Tracks A–J): Service context now publishes only narrow ports —
+ * `app` and `viewManager` are gone. Every UI surface consumes a named
+ * action / accessor (`vaultNavigation`, `wikilink`, `vaultStats`,
+ * `chatNavigation`, `settingsActions`, …); the app composes them once at
+ * boot inside `ReactElementFactory`. UI components do not import from
+ * `@/app/**` anywhere.
  *
- * T6R: `vaultLintRuntime` is exposed here so UI consumers (the Vault
- * X-Ray hook, future scheduled-scan dashboards) can drive scans
- * without reaching into a service-layer singleton.
- *
- * T8: `ambientRuntime` joins the same pattern — the Related Notes
- * panel refresh button and `PushCard` action handlers read the
- * runtime through this context so they never touch a service-layer
- * singleton. Both values are `null` until plugin boot binds them;
- * consumers handle the null case explicitly.
- *
- * T11M: `settings` and `copilotPanelVault` get the same treatment.
- * `settings` is cross-cutting (read by ~15 React components today);
- * `copilotPanelVault` is the named-operation port that Copilot result
- * panels consume via `useCopilotPanelVault()` so they never reach for
- * `AppContext.getInstance().app.vault.*`. Quick-Search-specific
- * accessors stay OUT of this shared context — they live on
- * `useQuickSearchHost()` to avoid bloating the shared surface.
- *
- * T11N: `vaultPreview` / `vaultNavigation` / `editorCommands` /
- * `chatVaultWriter` are grouped narrow ports — each one consolidates
- * exactly one category of vault/editor operation that was previously
- * spread across hover-preview, ambient-card, briefing, chat-message,
- * and history-helper code. Per Codex's correction the ServiceContext
- * **publishes** these ports rather than constructing them — the
- * adapters are built once at boot inside `AppContext` and threaded
- * through `ReactElementFactory`. The legacy `copilotPanelVault`
- * fallback is kept for the rare direct-`<ServiceProvider>` mount
- * (T11M behaviour).
+ * T11N — historic note kept for context: `vaultLintRuntime`,
+ * `ambientRuntime`, `settings`, `copilotPanelVault`, `vaultPreview`,
+ * `vaultNavigation`, `editorCommands`, `chatVaultWriter` were grouped
+ * narrow ports introduced earlier. They keep the same shape; what changed
+ * in T11P is that ServiceContext no longer publishes raw `app` and the
+ * `CopilotPanelHostBundle` type now lives in
+ * `service/copilot/panels/CopilotPanelPorts.ts`.
  */
 interface ServiceContextValue {
-	app: App;
 	manager: AIServiceManager;
 	eventBus: EventBus;
 	searchClient: SearchClient | null;
-	viewManager: ViewManager;
 	plugin: MyPlugin;
 	vaultLintRuntime: VaultLintRuntime | null;
 	ambientRuntime: AmbientRuntime | null;
@@ -84,8 +58,12 @@ interface ServiceContextValue {
 	copilotPanelVault: CopilotPanelHostBundle;
 	vaultPreview: VaultPreviewPort;
 	vaultNavigation: VaultNavigationPort;
+	wikilink: WikilinkPort;
 	editorCommands: EditorCommandsPort;
 	chatVaultWriter: ChatVaultWriterPort;
+	chatNavigation: ChatNavigationPort;
+	vaultStats: VaultStatsPort;
+	quickSearchHost: QuickSearchHost;
 }
 
 const ServiceContext = createContext<ServiceContextValue | null>(null);
@@ -93,17 +71,16 @@ const ServiceContext = createContext<ServiceContextValue | null>(null);
 /**
  * Provider component that publishes the service context. Every value must
  * be supplied by the caller — there is no longer a `AppContext.getInstance()`
- * fallback chain (T11O Track 5). The single composition point is
+ * fallback chain (T11O Track 5) and no raw `app` field (T11P). The single
+ * composition point is
  * `@/app/react/ReactElementFactory#createReactElementWithServices`, which
  * threads every port off the app-owned `AppContext`.
  */
 export const ServiceProvider: React.FC<{
 	children: React.ReactNode;
-	app: App;
 	manager: AIServiceManager;
 	eventBus: EventBus;
 	searchClient: SearchClient | null;
-	viewManager: ViewManager;
 	plugin: MyPlugin;
 	vaultLintRuntime: VaultLintRuntime | null;
 	ambientRuntime: AmbientRuntime | null;
@@ -119,15 +96,17 @@ export const ServiceProvider: React.FC<{
 	copilotPanelVault: CopilotPanelHostBundle;
 	vaultPreview: VaultPreviewPort;
 	vaultNavigation: VaultNavigationPort;
+	wikilink: WikilinkPort;
 	editorCommands: EditorCommandsPort;
 	chatVaultWriter: ChatVaultWriterPort;
-}> = ({ children, app, manager, eventBus, searchClient, viewManager, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, editorCommands, chatVaultWriter }) => {
+	chatNavigation: ChatNavigationPort;
+	vaultStats: VaultStatsPort;
+	quickSearchHost: QuickSearchHost;
+}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost }) => {
 	const value = useMemo<ServiceContextValue>(() => ({
-		app,
 		manager,
 		eventBus,
 		searchClient,
-		viewManager,
 		plugin,
 		vaultLintRuntime,
 		ambientRuntime,
@@ -143,9 +122,13 @@ export const ServiceProvider: React.FC<{
 		copilotPanelVault,
 		vaultPreview,
 		vaultNavigation,
+		wikilink,
 		editorCommands,
 		chatVaultWriter,
-	}), [app, eventBus, manager, plugin, searchClient, viewManager, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, editorCommands, chatVaultWriter]);
+		chatNavigation,
+		vaultStats,
+		quickSearchHost,
+	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost]);
 
 	return <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>;
 };

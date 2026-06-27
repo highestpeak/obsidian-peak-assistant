@@ -9,13 +9,11 @@ import {
 	Network,
 	Image as ImageIcon,
 } from 'lucide-react';
-import type { App } from 'obsidian';
 import { IconButton } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import type { ChatMessage } from '@/service/chat/types';
 import { useChatStrings } from '../chatStringsContext';
-import { useServiceContext } from '@/ui/context/ServiceContext';
-import { CHAT_STUDIO_VIEW_TYPE, CHAT_VIEW_TYPE } from '@/app/view/types';
+import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 import { usePortalContainer } from '@/ui/react/PortalContainerContext';
 
 /**
@@ -125,24 +123,7 @@ function inferArtifactKindFromResource(kind: string | undefined, source: string)
 	return 'file';
 }
 
-function scrollToMessageInDoc(messageId: string, doc: Document, app: App | null) {
-	// First, make sure the chat surface is the active leaf. In Studio mode the
-	// surface is CHAT_STUDIO_VIEW_TYPE (outline lives inside the same leaf as
-	// chat, so this is a no-op). In legacy mode the surface is CHAT_VIEW_TYPE
-	// and the outline sits in the right sidebar — revealLeaf brings chat to the
-	// front without stealing focus from the outline.
-	try {
-		if (app) {
-			const studioLeaf = app.workspace.getLeavesOfType(CHAT_STUDIO_VIEW_TYPE)[0];
-			const chatLeaf = studioLeaf ?? app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0];
-			if (chatLeaf) {
-				app.workspace.revealLeaf(chatLeaf);
-			}
-		}
-	} catch {
-		// Best-effort — fall through to the scroll path even if app lookup fails.
-	}
-
+function scrollToMessageInDoc(messageId: string, doc: Document) {
 	// `doc` is the leaf-scoped document: in the main window it's `document`; in
 	// a popout window (Studio etc.) it's the popout's own document. Using the
 	// global `document` here misses messages rendered in a popout — they live
@@ -166,14 +147,20 @@ function scrollToMessageInDoc(messageId: string, doc: Document, app: App | null)
 }
 
 function useScrollToMessage(): (messageId: string) => void {
-	const { app } = useServiceContext();
+	const chatNavigation = useChatNavigation();
 	const portalContainer = usePortalContainer();
 	return useCallback(
 		(messageId: string) => {
+			// First, bring the chat surface to the front. In Studio mode chat +
+			// outline share a leaf so this is a no-op; in legacy mode the outline
+			// sits in the right sidebar and we reveal the chat leaf without
+			// stealing focus. Reveal goes through the chat-navigation port so we
+			// don't import view-type constants from `@/app/view/types`.
+			void chatNavigation.revealChatView();
 			const doc = portalContainer?.ownerDocument ?? document;
-			scrollToMessageInDoc(messageId, doc, app);
+			scrollToMessageInDoc(messageId, doc);
 		},
-		[portalContainer, app],
+		[portalContainer, chatNavigation],
 	);
 }
 

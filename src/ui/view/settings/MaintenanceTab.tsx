@@ -10,6 +10,11 @@
  * Plus a collapsed Danger zone `<details>` for irreversible operations.
  * `Compare PPR search` moved to Knowledge Index → Advanced rebuild disclosure
  * (PR-3); not here.
+ *
+ * T11P (Track B): Each row pulls its run callback from
+ * `settingsActions.maintenance.{index,graph,verification,danger}` so the UI
+ * keeps the labels / icons / layout, and the app provides the named
+ * operations.
  */
 
 import React, { useState } from 'react';
@@ -29,23 +34,8 @@ import {
     Zap,
 } from 'lucide-react';
 import { Row, Button } from '@/ui/components/primitives';
-import {
-    analyzeVaultIntuition,
-    buildUserProfileAction,
-    cancelIndexing,
-    cleanupUselessData,
-    clearUserProfileBuildRecord,
-    deleteIndexData,
-    recomputeGapAnalysis,
-    refreshHubSummaries,
-    refreshRelatedNotes,
-    runFullIndexPipeline,
-    runGlobalMaintenance,
-    runLlmEnrichmentPending,
-    runSearchFastIndex,
-    runVectorEnrichmentPending,
-    verifyDatabaseHealthAction,
-} from '@/app/commands/PeakCommandActions';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import type { SettingsActions } from '@/service/settings/SettingsActionsPort';
 
 interface MaintenanceAction {
     id: string;
@@ -58,52 +48,70 @@ interface DangerAction extends MaintenanceAction {
     description: string;
 }
 
-const INDEX_GROUP: MaintenanceAction[] = [
-    { id: 'update-index', label: 'Update index', icon: Database, run: runSearchFastIndex },
-    { id: 'full-pipeline', label: 'Full pipeline', icon: RefreshCw, run: runFullIndexPipeline },
-    { id: 'cancel-indexing', label: 'Cancel indexing', icon: ShieldAlert, run: cancelIndexing },
-    { id: 'related-refresh', label: 'Refresh related notes', icon: Zap, run: refreshRelatedNotes },
-    { id: 'hub-refresh', label: 'Refresh hub summaries', icon: FileSearch, run: refreshHubSummaries },
-    { id: 'gap-recompute', label: 'Recompute gap analysis', icon: Layers, run: recomputeGapAnalysis },
-    { id: 'vault-intuition', label: 'Analyze vault intuition', icon: Brain, run: analyzeVaultIntuition },
-];
+function buildIndexGroup(actions: SettingsActions): MaintenanceAction[] {
+    const { maintenance } = actions;
+    return [
+        { id: 'update-index', label: 'Update index', icon: Database, run: maintenance.index.updateIndex },
+        { id: 'full-pipeline', label: 'Full pipeline', icon: RefreshCw, run: maintenance.index.runFullPipeline },
+        { id: 'cancel-indexing', label: 'Cancel indexing', icon: ShieldAlert, run: maintenance.index.cancelIndexing },
+        { id: 'related-refresh', label: 'Refresh related notes', icon: Zap, run: maintenance.index.refreshRelatedNotes },
+        { id: 'hub-refresh', label: 'Refresh hub summaries', icon: FileSearch, run: maintenance.index.refreshHubSummaries },
+        { id: 'gap-recompute', label: 'Recompute gap analysis', icon: Layers, run: maintenance.index.recomputeGapAnalysis },
+        { id: 'vault-intuition', label: 'Analyze vault intuition', icon: Brain, run: maintenance.index.analyzeVaultIntuition },
+    ];
+}
 
-const KNOWLEDGE_GRAPH_GROUP: MaintenanceAction[] = [
-    { id: 'vector-pending', label: 'Build pending vectors', icon: Database, run: runVectorEnrichmentPending },
-    { id: 'llm-pending', label: 'Run pending LLM enrichment', icon: Sparkles, run: runLlmEnrichmentPending },
-    { id: 'global-maintenance', label: 'Global maintenance', icon: RefreshCw, run: runGlobalMaintenance },
-];
+function buildKnowledgeGraphGroup(actions: SettingsActions): MaintenanceAction[] {
+    const { maintenance } = actions;
+    return [
+        { id: 'vector-pending', label: 'Build pending vectors', icon: Database, run: maintenance.graph.runVectorEnrichmentPending },
+        { id: 'llm-pending', label: 'Run pending LLM enrichment', icon: Sparkles, run: maintenance.graph.runLlmEnrichmentPending },
+        { id: 'global-maintenance', label: 'Global maintenance', icon: RefreshCw, run: maintenance.graph.runGlobalMaintenance },
+    ];
+}
 
-const VERIFICATION_GROUP: MaintenanceAction[] = [
-    { id: 'db-health', label: 'Verify database', icon: Activity, run: verifyDatabaseHealthAction },
-    { id: 'cleanup', label: 'Cleanup useless data', icon: Wrench, run: cleanupUselessData },
-    { id: 'build-profile', label: 'Build user profile', icon: Bot, run: buildUserProfileAction },
-];
+function buildVerificationGroup(actions: SettingsActions): MaintenanceAction[] {
+    const { maintenance } = actions;
+    return [
+        { id: 'db-health', label: 'Verify database', icon: Activity, run: maintenance.verification.verifyDatabaseHealth },
+        { id: 'cleanup', label: 'Cleanup useless data', icon: Wrench, run: maintenance.verification.cleanupUselessData },
+        { id: 'build-profile', label: 'Build user profile', icon: Bot, run: maintenance.verification.buildUserProfile },
+    ];
+}
 
-const DANGER_ACTIONS: DangerAction[] = [
-    {
-        id: 'clear-profile',
-        label: 'Clear profile build record',
-        description: 'Force the next profile build to rescan files.',
-        icon: ShieldAlert,
-        run: clearUserProfileBuildRecord,
-    },
-    {
-        id: 'delete-index',
-        label: 'Delete index data',
-        description: 'Delete all indexed documents after confirmation.',
-        icon: Trash2,
-        run: deleteIndexData,
-    },
-];
+function buildDangerActions(actions: SettingsActions): DangerAction[] {
+    const { maintenance } = actions;
+    return [
+        {
+            id: 'clear-profile',
+            label: 'Clear profile build record',
+            description: 'Force the next profile build to rescan files.',
+            icon: ShieldAlert,
+            run: maintenance.danger.clearUserProfileBuildRecord,
+        },
+        {
+            id: 'delete-index',
+            label: 'Delete index data',
+            description: 'Delete all indexed documents after confirmation.',
+            icon: Trash2,
+            run: maintenance.danger.deleteIndexData,
+        },
+    ];
+}
 
 export function MaintenanceTab() {
+    const { settingsActions } = useServiceContext();
+    const indexGroup = buildIndexGroup(settingsActions);
+    const graphGroup = buildKnowledgeGraphGroup(settingsActions);
+    const verificationGroup = buildVerificationGroup(settingsActions);
+    const dangerActions = buildDangerActions(settingsActions);
+
     return (
         <div className="pktw-flex pktw-flex-col pktw-gap-5">
-            <MaintenanceGroup title="Index" actions={INDEX_GROUP} />
-            <MaintenanceGroup title="Knowledge graph" actions={KNOWLEDGE_GRAPH_GROUP} />
-            <MaintenanceGroup title="Verification & cleanup" actions={VERIFICATION_GROUP} />
-            <DangerZone actions={DANGER_ACTIONS} />
+            <MaintenanceGroup title="Index" actions={indexGroup} />
+            <MaintenanceGroup title="Knowledge graph" actions={graphGroup} />
+            <MaintenanceGroup title="Verification & cleanup" actions={verificationGroup} />
+            <DangerZone actions={dangerActions} />
         </div>
     );
 }

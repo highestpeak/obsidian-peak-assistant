@@ -1,7 +1,5 @@
 import { create } from 'zustand';
 import type { SearchQuery, SearchResultItem, SearchScopeValue } from '@/service/search/types';
-import type { App } from 'obsidian';
-import { getActiveNoteDetail } from '@/core/utils/obsidian-utils';
 
 export interface InFileSearch {
 	text: string;
@@ -34,7 +32,12 @@ interface VaultSearchStore {
 	toggleInspector: () => void;
 
 	// Actions
-	updateParsedQuery: (app: App, searchQuery: string) => void;
+	/**
+	 * T11P (Track D/H): caller passes `currentFilePath` from
+	 * `useServiceContext().vaultStats.activeFilePath()` so the store does
+	 * not require an Obsidian `App` reference.
+	 */
+	updateParsedQuery: (currentFilePath: string | null, searchQuery: string) => void;
 	setLastSearchData: (data: { results: SearchResultItem[]; duration: number | null; fuzzyCorrection?: string | null }) => void;
 	setIsSearching: (isSearching: boolean) => void;
 	reset: () => void;
@@ -57,9 +60,9 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 	toggleInspector: () => set((s) => ({ inspectorOpen: !s.inspectorOpen })),
 
 	// Actions
-	updateParsedQuery: (app, searchQuery) => {
+	updateParsedQuery: (currentFilePath, searchQuery) => {
 		const { mode, text, scope } = parseQuickSearchInput({
-			app,
+			currentFilePath,
 			rawInput: searchQuery,
 		});
 		// Validate and parse line number for goToLine mode
@@ -106,10 +109,10 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
  * - Default: vault-wide search
  */
 function parseQuickSearchInput(params: {
-	app: App;
+	currentFilePath: string | null;
 	rawInput: string;
 }): { mode: QuickSearchMode; text: string; scope?: SearchScopeValue; } {
-	const { app, rawInput } = params;
+	const { currentFilePath, rawInput } = params;
 	const input = rawInput ?? '';
 	const trimmed = input.trimStart();
 
@@ -130,8 +133,6 @@ function parseQuickSearchInput(params: {
 		text = trimmed.slice(1).trimStart();
 	}
 
-	const activeNoteDetail = getActiveNoteDetail(app);
-	const currentFilePath = activeNoteDetail.activeFile?.path ?? null;
 	const folderPath = currentFilePath ? currentFilePath.slice(0, currentFilePath.lastIndexOf('/')) : null;
 	const scope = { currentFilePath, folderPath };
 	if (mode === 'inFolder' && !scope.folderPath) {

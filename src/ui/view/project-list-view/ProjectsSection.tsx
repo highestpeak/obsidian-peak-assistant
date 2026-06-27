@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChatConversation, ChatProject } from '@/service/chat/types';
-import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { openAllProjectsInChat, openConversationInChat, openPendingConversationInChat, openProjectConversationsListInChat, openProjectOverviewInChat } from '@/ui/view/chat-view/chatNavigation';
+import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 import { hydrateProjects as hydrateProjectsFromManager, showContextMenu } from './utils';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -35,7 +34,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	onTypewriterComplete,
 	onDeleteConversation,
 }) => {
-	const { app, manager, eventBus, viewManager } = useServiceContext();
+	const { manager, vaultNavigation } = useServiceContext();
+	const chatNavigation = useChatNavigation();
 	// Directly access store in component
 	const {
 		projects,
@@ -79,20 +79,20 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		toggleProjectExpanded(project.meta.id);
 		setActiveProject(project);
 		if (!wasExpanded) {
-			await openProjectOverviewInChat(project, { viewManager, eventBus });
+			await chatNavigation.openProjectOverviewInChat(project);
 		}
 	};
 
 	const handleConversationClick = async (conversation: ChatConversation) => {
-		await openConversationInChat(conversation, { manager, viewManager, eventBus });
+		await chatNavigation.openConversationInChat(conversation);
 	};
 
 	const handleNewConversation = async () => {
 		setActiveProject(project);
-		await openPendingConversationInChat({
+		await chatNavigation.openPendingConversationInChat({
 			title: DEFAULT_NEW_CONVERSATION_TITLE,
 			project: project,
-		}, { viewManager, eventBus });
+		});
 	};
 
 	const handleEditProjectName = useCallback((projectItem: ChatProject) => {
@@ -178,7 +178,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				}
 			},
 		},
-	], [app, manager, handleEditProjectName]);
+	], [manager, handleEditProjectName]);
 
 	const conversationMenuItems = useCallback((conversation: ChatConversation) => {
 		const projectItem = conversation.meta.projectId ? projects.get(conversation.meta.projectId) || null : null;
@@ -192,7 +192,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				title: 'Open source file',
 				icon: 'file-text',
 				onClick: async () => {
-					await openSourceFile(app, conversation.file);
+					await vaultNavigation.openSourceFile(conversation.file);
 				},
 			},
 			{
@@ -211,7 +211,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				},
 			},
 		];
-	}, [app, manager, projects, handleEditConversationTitle, onDeleteConversation]);
+	}, [vaultNavigation, manager, projects, handleEditConversationTitle, onDeleteConversation]);
 
 	const handleContextMenu = (
 		e: React.MouseEvent,
@@ -302,10 +302,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 						onClick={(e) => {
 							e.stopPropagation();
 							// Show all conversations for this project in list view
-							void openProjectConversationsListInChat(project, {
-								viewManager,
-								eventBus,
-							});
+							void chatNavigation.openProjectConversationsListInChat(project);
 						}}
 					>
 						<MoreHorizontal className="pktw-w-3.5 pktw-h-3.5" />
@@ -340,7 +337,8 @@ interface ProjectsSectionProps {
  * Projects section component
  */
 export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) => {
-	const { manager, eventBus, viewManager } = useServiceContext();
+	const { manager, eventBus } = useServiceContext();
+	const chatNavigation = useChatNavigation();
 	const {
 		projects,
 		expandedProjects,
@@ -539,7 +537,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) 
 					<div
 						className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-[13px] pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
 						onClick={() => {
-							void openAllProjectsInChat({ viewManager, eventBus });
+							void chatNavigation.openAllProjectsInChat();
 						}}
 					>
 						<MoreHorizontal className="pktw-w-4 pktw-h-4" />

@@ -1,11 +1,12 @@
 import { useCallback } from "react";
 import { useSearchSessionStore } from "../store/searchSessionStore";
 import { useSharedStore } from "../store/sharedStore";
-import { openConversationInChat } from '@/ui/view/chat-view/chatNavigation';
+import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 import { useQuickSearchHost } from './useQuickSearchHost';
 
 export function useAIAnalysisResult() {
     const host = useQuickSearchHost();
+    const chatNavigation = useChatNavigation();
     const { searchQuery } = useSharedStore();
 
     const webEnabled = useSearchSessionStore((s) => s.webEnabled);
@@ -90,7 +91,7 @@ export function useAIAnalysisResult() {
                 summary: summary,
                 sources: mappedSources,
             });
-            await openConversationInChat(conversation);
+            await chatNavigation.openConversationInChat(conversation);
             await new Promise(resolve => setTimeout(resolve, 100));
 
             onClose?.();
@@ -98,7 +99,7 @@ export function useAIAnalysisResult() {
             console.error('[AISearchTab] Open in chat failed:', e);
             recordError(e instanceof Error ? e.message : 'Failed to open in chat');
         }
-    }, [searchQuery, summary, sources]);
+    }, [searchQuery, summary, sources, chatNavigation, host, recordError]);
 
     return {
         handleAutoSave,

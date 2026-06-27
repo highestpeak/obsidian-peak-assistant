@@ -38,10 +38,6 @@ import { Row, Chip, Pill, Button } from '@/ui/components/primitives';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import {
-    openHarnessSetupWizard,
-    openAssistant,
-} from '@/app/commands/PeakCommandActions';
 import type { MyPluginSettings, HarnessSettings } from '@/core/config/settingsTypes';
 import { useSettingsStrings } from '../settingsStrings';
 import type { TabId } from '../types';
@@ -56,6 +52,7 @@ export function OverviewTab({ settings, onSwitchTab }: OverviewTabProps) {
     const readinessCopy = strings.overview.readiness;
     const summaryCopy = strings.overview.aiBehaviorSummary;
     const actionsCopy = strings.overview.actions;
+    const { settingsActions } = useServiceContext();
 
     const indexCoverage = useIndexCoverage();
     const providers = useProvidersReadiness();
@@ -151,7 +148,7 @@ export function OverviewTab({ settings, onSwitchTab }: OverviewTabProps) {
                     <span className="pkset-section__title">{actionsCopy.sectionTitle}</span>
                 </div>
                 <div className="pkset-action-strip">
-                    <Button variant="outline" size="sm" onClick={openHarnessSetupWizard}>
+                    <Button variant="outline" size="sm" onClick={settingsActions.setup.openHarnessWizard}>
                         <Wrench className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
                         {actionsCopy.runSetup}
                     </Button>
@@ -171,7 +168,7 @@ export function OverviewTab({ settings, onSwitchTab }: OverviewTabProps) {
                         <Database className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
                         {actionsCopy.checkIndex}
                     </Button>
-                    <Button size="sm" onClick={openAssistant}>
+                    <Button size="sm" onClick={settingsActions.openAssistant}>
                         <MessageSquare className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
                         {actionsCopy.tryChat}
                     </Button>
@@ -452,7 +449,7 @@ type IndexCoverage =
     | { kind: 'ready'; indexed: number; total: number; pct: number };
 
 function useIndexCoverage(): IndexCoverage {
-    const { app } = useServiceContext();
+    const { vaultStats } = useServiceContext();
     const [state, setState] = useState<IndexCoverage>({ kind: 'loading' });
     useEffect(() => {
         if (!sqliteStoreManager.isInitialized()) {
@@ -465,7 +462,7 @@ function useIndexCoverage(): IndexCoverage {
                 const { IndexService } = await import('@/service/search/index/indexService');
                 const status = await IndexService.getInstance().getIndexStatus();
                 if (cancelled) return;
-                const total = app.vault.getMarkdownFiles().length;
+                const total = vaultStats.markdownCount();
                 const indexed = status.indexedDocs ?? 0;
                 if (indexed === 0) {
                     setState({ kind: 'empty' });
@@ -475,12 +472,13 @@ function useIndexCoverage(): IndexCoverage {
                 setState({ kind: 'ready', indexed, total, pct });
             } catch {
                 if (!cancelled) setState({ kind: 'empty' });
+                return;
             }
         })();
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [vaultStats]);
     return state;
 }
 

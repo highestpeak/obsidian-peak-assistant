@@ -25,7 +25,7 @@ import { Row, FormRow, FormGrid, Button } from '@/ui/components/primitives';
 import { Input } from '@/ui/component/shared-ui/input';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { Switch } from '@/ui/component/shared-ui/switch';
-import { openHarnessSetupWizard } from '@/app/commands/PeakCommandActions';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { AI_PATH_SUBFOLDERS } from '@/core/config/folderPaths';
 import type { MyPluginSettings, HarnessSettings } from '@/core/config/settingsTypes';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
@@ -40,6 +40,7 @@ interface AdvancedTabProps {
 export function AdvancedTab({ settings, settingsUpdates }: AdvancedTabProps) {
     const strings = useSettingsStrings();
     const advCopy = strings.advanced;
+    const { settingsActions } = useServiceContext();
 
     return (
         <div className="pkset-panel">
@@ -56,7 +57,7 @@ export function AdvancedTab({ settings, settingsUpdates }: AdvancedTabProps) {
                             environment.
                         </span>
                     </div>
-                    <Button size="sm" onClick={openHarnessSetupWizard}>
+                    <Button size="sm" onClick={settingsActions.setup.openHarnessWizard}>
                         Run
                     </Button>
                 </div>
