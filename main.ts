@@ -276,17 +276,10 @@ export default class MyPlugin extends Plugin {
 			},
 		});
 
-		// T11L: bind the "peak-system folder created" notifier from app/
-		// so `CopilotReviewHistoryService` (service tier) no longer imports
-		// Obsidian's `Notice`. Without this binding the README is still
-		// written but no banner is shown (e.g. headless tests).
-		{
-			const { getCopilotReviewHistoryService } = await import('@/service/copilot/CopilotReviewHistoryService');
-			const { Notice } = await import('obsidian');
-			getCopilotReviewHistoryService().setFolderCreatedNotifier((message, durationMs) => {
-				new Notice(message, durationMs);
-			});
-		}
+		// T11Q (Track B): `CopilotReviewHistoryService` is now composed in
+		// the app layer (`AppContext.copilotReviewHistory`) with its
+		// folder-created notifier injected at construction time — no late
+		// setter, no service-side singleton.
 		await this.aiServiceManager.init();
 
 		// T11B-R (2026-06-14): bind the Copilot manual-action runtime
@@ -517,6 +510,12 @@ export default class MyPlugin extends Plugin {
 					storageFolder: this.settings.dataStorageFolder,
 					filename: VAULT_DB_FILENAME,
 					settings: { sqliteBackend: this.settings.sqliteBackend },
+					// T11Q: app-layer Notice for "backend unavailable" — core no
+					// longer imports Obsidian's `Notice` directly.
+					unavailableReporter: (message, durationMs) => {
+						const { Notice } = require('obsidian') as typeof import('obsidian');
+						new Notice(message, durationMs);
+					},
 				});
 				UsageTrackingService.getInstance().init(
 					sqliteStoreManager.getIndexContext('chat'),
@@ -559,7 +558,13 @@ export default class MyPlugin extends Plugin {
 				// `initSqlite()` no longer touches it. The catalog stays
 				// available even when initSqlite is deferred or skipped
 				// (mobile).
-				const sessionContext = SessionContextService.getInstance(this.app, EventBus.getInstance(this.app));
+				const sessionContext = SessionContextService.getInstance(
+					this.app,
+					EventBus.getInstance(this.app),
+					// T11Q (Track A): inject the working-theme LLM query so
+					// WorkingThemeInferrer no longer reaches into AppContext.
+					(promptId, vars) => this.aiServiceManager.queryText(promptId as any, vars as any),
+				);
 				await sessionContext.init();
 				// Only start background AI services if an active profile is configured
 				// (invalid/missing API key causes unrecoverable subprocess crashes)
@@ -605,7 +610,16 @@ export default class MyPlugin extends Plugin {
 	 */
 	private async initializeSearchService(): Promise<void> {
 		// Initialize IndexService with AIServiceManager for embedding generation
-		IndexService.getInstance().init(this.aiServiceManager);
+		// T11Q (Track G): also bind the app-supplied env (chat root + live `App`)
+		// so the singleton + the free `getIndexTenantForPath` helper never
+		// reach back into `AppContext`.
+		IndexService.getInstance().init({
+			aiServiceManager: this.aiServiceManager,
+			env: {
+				app: this.app,
+				rootFolder: this.settings.ai.rootFolder,
+			},
+		});
 
 		this.searchClient = new SearchClient(this.app, this.aiServiceManager, this.settings.search);
 		await this.searchClient.init();

@@ -10,6 +10,7 @@ export {
 export type { FolderScanRow, TagGlobalStats, TagRankCategory } from './buildBackboneMap';
 export type {
 	BackboneEdge,
+	BackboneEnv,
 	BackboneFolderNode,
 	BackboneMapResult,
 	BackboneMetrics,

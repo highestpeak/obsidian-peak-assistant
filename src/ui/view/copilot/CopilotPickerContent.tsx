@@ -11,6 +11,7 @@ import {
 import {
 	type CopilotReviewHistoryRecord,
 } from '@/service/copilot/CopilotReviewHistoryService';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { getCopilotActionIcon } from '@/ui/view/copilot/copilot-action-surfaces';
 import { cn } from '@/ui/react/lib/utils';
@@ -368,13 +369,13 @@ function DocumentReviewHistory({
 }) {
 	const [records, setRecords] = useState<CopilotReviewHistoryRecord[]>([]);
 	const [loading, setLoading] = useState(true);
+	const { copilotReviewHistory } = useServiceContext();
 
 	useEffect(() => {
 		let cancelled = false;
 		setLoading(true);
-		const svc = getCopilotReviewHistoryService();
 		const promise = subjectPath
-			? svc.listForSubject(subjectPath, 8, 'document')
+			? copilotReviewHistory.listForSubject(subjectPath, 8, 'document')
 			: Promise.resolve([] as CopilotReviewHistoryRecord[]);
 		promise.then(list => {
 			if (!cancelled) {
@@ -389,7 +390,7 @@ function DocumentReviewHistory({
 			}
 		});
 		return () => { cancelled = true; };
-	}, [subjectPath]);
+	}, [subjectPath, copilotReviewHistory]);
 
 	if (loading) {
 		return <span className="pktw-block pktw-text-xs pktw-italic pktw-text-pk-foreground-muted">Loading history…</span>;

@@ -2,7 +2,7 @@
  * Knowledge intuition agent: deterministic prep (backbone + folder digest) → manual recon loop → rendered skeleton.
  */
 
-import { AppContext } from '@/app/context/AppContext';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { IndexingTemplateId } from '@/core/template/TemplateRegistry';
 import type { TemplateManager } from '@/core/template/TemplateManager';
@@ -33,6 +33,26 @@ export class KnowledgeIntuitionPrepAbortError extends Error {
 export type { KnowledgeIntuitionAgentOptions, KnowledgeIntuitionAgentResult };
 
 /**
+ * T11Q (Track D): caller-injected deps so the agent never reaches into
+ * `AppContext`. The owner (PeakCommandActions / test-tools) constructs
+ * one of these from its `AppContext` and threads it in. Preserves all
+ * prior behavior (mock skip, recon loop wiring).
+ *
+ * `backboneEnv` is the small settings snapshot the backbone helpers
+ * consult; the agent forwards it to `intuitionPrep` so neither layer
+ * reads global settings during a stream.
+ */
+export interface KnowledgeIntuitionAgentDeps {
+	app: AppHandle;
+	/** Same handle as `app.vault` — kept explicit for readability + to avoid `(app as any).vault` chains downstream. */
+	vault: AppHandle['vault'];
+	pluginId: string;
+	isMockEnv: boolean;
+	rootFolder: string;
+	backboneEnv: import('@/service/search/index/helper/backbone').BackboneEnv;
+}
+
+/**
  * Orchestrates prep, tool-assisted recon, and fixed-layout markdown + JSON output.
  * Harness tier: local-deep (multi-turn recon loop; delegates to runKnowledgeIntuitionLoop).
  */
@@ -40,7 +60,10 @@ export class KnowledgeIntuitionAgent {
 	/** Last merged intuition memory after a full or partial recon run. */
 	intuitionMemory: IntuitionMemory | undefined;
 
-	constructor(private readonly aiServiceManager: AIServiceManager) {}
+	constructor(
+		private readonly aiServiceManager: AIServiceManager,
+		private readonly deps: KnowledgeIntuitionAgentDeps,
+	) {}
 
 	private resetSession(): void {
 		this.intuitionMemory = undefined;
@@ -82,14 +105,14 @@ export class KnowledgeIntuitionAgent {
 		}
 		const vaultName = options.vaultName?.trim() || 'Vault';
 		const currentDateLabel = options.currentDateLabel?.trim() || new Date().toISOString().slice(0, 10);
-		const appCtx = AppContext.getInstance();
 		return prepareIntuitionContext({
 			userGoal,
 			vaultName,
 			currentDateLabel,
 			tm,
-			vault: appCtx.app.vault,
-			rootFolder: appCtx.settings.ai.rootFolder,
+			vault: this.deps.vault,
+			rootFolder: this.deps.rootFolder,
+			env: this.deps.backboneEnv,
 		});
 	}
 
@@ -132,7 +155,6 @@ export class KnowledgeIntuitionAgent {
 		}
 
 		let memory: IntuitionMemory | undefined;
-		const loopCtx = AppContext.getInstance();
 		yield* runKnowledgeIntuitionLoop({
 			ctx,
 			stepId,
@@ -142,8 +164,8 @@ export class KnowledgeIntuitionAgent {
 				memory = m;
 				this.intuitionMemory = m;
 			},
-			app: loopCtx.app,
-			pluginId: loopCtx.plugin.manifest.id,
+			app: this.deps.app,
+			pluginId: this.deps.pluginId,
 		});
 		if (!memory) {
 			throw new Error('KnowledgeIntuitionAgent: recon finished without memory (onComplete not invoked).');
@@ -155,8 +177,7 @@ export class KnowledgeIntuitionAgent {
 		options: KnowledgeIntuitionAgentOptions = {},
 		onFinish?: (result: KnowledgeIntuitionAgentResult) => void,
 	): AsyncGenerator<LLMStreamEvent> {
-		const ctx = AppContext.getInstance();
-		if (ctx.isMockEnv) {
+		if (this.deps.isMockEnv) {
 			yield {
 				type: 'pk-debug',
 				debugName: 'KnowledgeIntuitionAgent skipped (mock env)',

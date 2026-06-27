@@ -12,6 +12,7 @@ import {
 	recentChangesWholeVaultTool,
 	localSearchWholeVaultTool,
 } from "@/service/tools/search-graph-inspector";
+import { exploreFolderEnvFromManager } from "@/service/tools/exploreFolderEnv";
 import { LLMStreamEvent, StreamTriggerName, UIStepType } from "@/core/providers/types";
 import { PromptId } from "@/service/prompt/PromptId";
 import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
@@ -66,7 +67,7 @@ export class DocSimpleAgent {
 			find_key_nodes: findKeyNodesTool(tm, getSearchClient),
 			find_orphans: findOrphansTool(tm),
 			search_by_dimensions: searchByDimensionsTool(tm, getSearchClient),
-			explore_folder: exploreFolderTool(tm),
+			explore_folder: exploreFolderTool(tm, undefined, () => exploreFolderEnvFromManager(this.aiServiceManager)),
 			recent_changes_whole_vault: recentChangesWholeVaultTool(tm, getSearchClient),
 			local_search_whole_vault: localSearchWholeVaultTool(tm, getSearchClient),
 			get_activity_detail: getActivityDetailTool(),

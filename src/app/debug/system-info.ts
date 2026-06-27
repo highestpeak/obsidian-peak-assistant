@@ -38,8 +38,19 @@ export interface VaultPersona {
 export async function getVaultPersona(): Promise<VaultPersona> {
     const [description, topTags] = await Promise.all([getVaultDescription(), getTagCloud()]);
     const stats = getVaultStatistics();
-    const tm = AppContext.getInstance().manager.getTemplateManager?.();
-    const structure = await exploreFolder({ folderPath: "/", recursive: true, max_depth: 2, limit: 100, response_format: "markdown" }, tm);
+    const ctx = AppContext.getInstance();
+    const tm = ctx.manager.getTemplateManager?.();
+    const structure = await exploreFolder(
+        { folderPath: "/", recursive: true, max_depth: 2, limit: 100, response_format: "markdown" },
+        {
+            vault: ctx.app.vault,
+            rootFolder: ctx.settings.ai.rootFolder,
+            autoSaveFolder: ctx.settings.search.aiAnalysisAutoSaveFolder,
+            excludeAutoSaveFolder: ctx.settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch,
+            templateManagerFallback: () => tm,
+        },
+        tm,
+    );
     return {
         description, domain: [], structure, topTags: topTags || '(none)',
         capabilities: `${stats.markdownFiles} markdown, ${stats.otherFiles} other files` + (stats.totalFiles < 20 ? `; small vault, consider external search` : ``),

@@ -21,7 +21,7 @@ import { findPath } from "./search-graph-inspector/find-path";
 import { findKeyNodes } from "./search-graph-inspector/find-key-nodes";
 import { findOrphanNotes } from "./search-graph-inspector/find-orphans";
 import { searchByDimensions } from "./search-graph-inspector/search-by-dimensions";
-import { exploreFolder } from "./search-graph-inspector/explore-folder";
+import { exploreFolder, type ExploreFolderEnv } from "./search-graph-inspector/explore-folder";
 import { grepFileTree } from "./search-graph-inspector/grep-file-tree";
 import { getRecentChanges } from "./search-graph-inspector/recent-change-whole-vault";
 import { localSearch } from "./search-graph-inspector/local-search";
@@ -126,18 +126,28 @@ export function searchByDimensionsTool(tm: TemplateManager | undefined, getSearc
     });
 }
 
-export function exploreFolderTool(tm?: TemplateManager, opts?: { forceFormat?: 'markdown' | 'structured' }): AgentTool {
-    return makeTool(
-        `Vault folder structure inspection with per-folder item caps and extension summaries.\n\n` +
-        `When to use:\n` +
-        `- After grep_file_tree finds a folder anchor, to see its contents and structure; max_depth: 1 for quick browse, 2 standard, 3 for deep structure mapping\n\n` +
-        `Avoid when:\n` +
-        `- You just need to check if a path exists — use grep_file_tree`,
-        exploreFolderInputSchema, 'explore_folder', exploreFolder, tm, opts,
-    );
+export function exploreFolderTool(
+    tm: TemplateManager | undefined,
+    opts: { forceFormat?: 'markdown' | 'structured' } | undefined,
+    getEnv: () => ExploreFolderEnv,
+): AgentTool {
+    return safeAgentTool({
+        description:
+            `Vault folder structure inspection with per-folder item caps and extension summaries.\n\n` +
+            `When to use:\n` +
+            `- After grep_file_tree finds a folder anchor, to see its contents and structure; max_depth: 1 for quick browse, 2 standard, 3 for deep structure mapping\n\n` +
+            `Avoid when:\n` +
+            `- You just need to check if a path exists — use grep_file_tree`,
+        inputSchema: exploreFolderInputSchema,
+        execute: (p) => exploreFolder({
+            ...p,
+            mode: 'explore_folder',
+            ...(opts?.forceFormat ? { response_format: opts.forceFormat } : {}),
+        }, getEnv(), tm),
+    });
 }
 
-export function grepFileTreeTool(): AgentTool {
+export function grepFileTreeTool(getEnv: () => ExploreFolderEnv): AgentTool {
     return safeAgentTool({
         description:
             `Pattern-match against all vault file paths (regex or substring). Returns paths only.\n\n` +
@@ -146,7 +156,7 @@ export function grepFileTreeTool(): AgentTool {
             `Avoid when:\n` +
             `- You need file content or structure — use explore_folder after finding anchor paths`,
         inputSchema: grepFileTreeInputSchema,
-        execute: (params) => grepFileTree(params),
+        execute: (params) => grepFileTree(params, getEnv()),
     });
 }
 

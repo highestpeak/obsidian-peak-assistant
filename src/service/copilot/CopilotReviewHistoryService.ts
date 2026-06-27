@@ -12,7 +12,6 @@
  */
 
 import { TFile, type App, type TFolder } from 'obsidian';
-import { AppContext } from '@/app/context/AppContext';
 import { ensureFolder, joinPath } from '@/core/utils/vault-utils';
 import type { ReviewSessionSnapshot } from './CopilotReviewSession';
 
@@ -286,20 +285,16 @@ function parseChatsFromMarkdown(markdown: string): InsightChatHistories {
 }
 
 export class CopilotReviewHistoryService {
-	private folderCreatedNotifier: CopilotReviewFolderCreatedNotifier | null = null;
-
-	private get app(): App {
-		return AppContext.getInstance().app;
-	}
-
 	/**
-	 * Wire the "peak-system folder first created" notifier from the app
-	 * layer. Without it, the README is still written but no UI banner is
-	 * shown — keeps the service tier free of Obsidian's `Notice`.
+	 * T11Q (Track B): app composes one instance via
+	 * `composeCopilotReviewHistory(appContext)` and threads it through
+	 * `AppContext.copilotReviewHistory` + `ServiceContext.copilotReviewHistory`.
+	 * The service no longer hides an `AppContext.getInstance()` lookup.
 	 */
-	setFolderCreatedNotifier(fn: CopilotReviewFolderCreatedNotifier | null): void {
-		this.folderCreatedNotifier = fn;
-	}
+	constructor(
+		private readonly app: App,
+		private readonly folderCreatedNotifier: CopilotReviewFolderCreatedNotifier | null = null,
+	) {}
 
 	/**
 	 * Save (create-or-update) a review session.
@@ -470,8 +465,3 @@ export class CopilotReviewHistoryService {
 	}
 }
 
-let _singleton: CopilotReviewHistoryService | null = null;
-export function getCopilotReviewHistoryService(): CopilotReviewHistoryService {
-	if (!_singleton) _singleton = new CopilotReviewHistoryService();
-	return _singleton;
-}

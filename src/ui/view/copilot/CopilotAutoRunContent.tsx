@@ -6,7 +6,8 @@ import type { IntentTabId } from '@/service/copilot/intent-hub';
 import { runCopilotReview, type ReviewSessionSnapshot } from '@/service/copilot/CopilotReviewSession';
 import { buildReviewArtifacts, reviewSubtitle } from '@/service/copilot/CopilotReviewArtifactBuilder';
 import { MODE_LABELS, type ReviewMode } from '@/service/copilot/CopilotMetaAgentStream';
-import { getCopilotReviewHistoryService, type InsightChatHistories } from '@/service/copilot/CopilotReviewHistoryService';
+import type { InsightChatHistories } from '@/service/copilot/CopilotReviewHistoryService';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { ChatTurn } from './review/InsightInlineChat';
 import { CopilotReviewShell } from './review/CopilotReviewShell';
 
@@ -19,6 +20,7 @@ export const CopilotAutoRunContent: React.FC<{
 	onClose: () => void;
 }> = ({ tab, ctx, mode, initialSnapshot, initialInsightChats, onClose }) => {
 	const { vault } = useCopilotPanelVault();
+	const { copilotReviewHistory: historyService, copilotReviewDeps } = useServiceContext();
 	const readOnly = Boolean(initialSnapshot);
 	const controllerRef = useRef<AbortController | null>(null);
 	const [snapshot, setSnapshot] = useState<ReviewSessionSnapshot | null>(initialSnapshot ?? null);
@@ -48,7 +50,9 @@ export const CopilotAutoRunContent: React.FC<{
 
 		(async () => {
 			try {
-				const generator = runCopilotReview({ ctx, mode, signal: controller.signal });
+				const deps = await copilotReviewDeps();
+				if (!mounted) return;
+				const generator = runCopilotReview({ ctx, mode, signal: controller.signal, deps });
 				for await (const next of generator) {
 					if (!mounted) return;
 					setSnapshot(next);
@@ -65,7 +69,7 @@ export const CopilotAutoRunContent: React.FC<{
 			controller.abort();
 			controllerRef.current = null;
 		};
-	}, [ctx, mode, readOnly]);
+	}, [ctx, mode, readOnly, copilotReviewDeps]);
 
 	// Persist progressively: every time the snapshot or insight chats gain new
 	// content, upsert the same history file. No debounce — each propose triggers
@@ -102,16 +106,15 @@ export const CopilotAutoRunContent: React.FC<{
 		if (sig === lastSavedSignatureRef.current) return;
 
 		lastSavedSignatureRef.current = sig;
-		const service = getCopilotReviewHistoryService();
 		const originScope = tab === 'vault' ? 'vault' : 'document';
-		service.save(ctx.file.path, snapshot, persistedRecordRef.current ?? undefined, insightChats, originScope)
+		historyService.save(ctx.file.path, snapshot, persistedRecordRef.current ?? undefined, insightChats, originScope)
 			.then(rec => {
 				persistedRecordRef.current = { id: rec.id, storagePath: rec.storagePath };
 			})
 			.catch(err => {
 				console.warn('[CopilotAutoRunModal] failed to save review checkpoint', err);
 			});
-	}, [snapshot, readOnly, ctx.file.path, insightChats, tab]);
+	}, [snapshot, readOnly, ctx.file.path, insightChats, tab, historyService]);
 
 	const artifacts = useMemo(() => {
 		if (!snapshot) {

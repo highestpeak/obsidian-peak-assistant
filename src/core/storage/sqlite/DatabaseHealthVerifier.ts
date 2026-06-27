@@ -1,10 +1,17 @@
-import { Notice } from 'obsidian';
-import type { AppHandle as App } from '@/core/ports/AppHandle';
-import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import { sqliteStoreManager } from './SqliteStoreManager';
 import type { SqliteDatabase } from './types';
 
 const KEY_TABLES = ['mobius_node', 'mobius_edge', 'embedding', 'doc_chunk'] as const;
+
+/**
+ * T11Q: pure result. The app layer reports the outcome (e.g. via Notice +
+ * console). Core no longer imports Obsidian `Notice`.
+ */
+export type DatabaseHealthReport = {
+	initialized: boolean;
+	ok: boolean;
+	lines: string[];
+};
 
 function checkDb(label: string, db: SqliteDatabase | null): string[] {
 	if (!db) return [`${label}: not initialized`];
@@ -24,19 +31,16 @@ function checkDb(label: string, db: SqliteDatabase | null): string[] {
 	return lines;
 }
 
-export async function verifyDatabaseHealth(_app: App, _settings: MyPluginSettings): Promise<void> {
+export function verifyDatabaseHealth(): DatabaseHealthReport {
 	const mgr = sqliteStoreManager;
 	if (!mgr.isInitialized()) {
-		new Notice('Database not initialized', 3000);
-		return;
+		return { initialized: false, ok: false, lines: ['Database not initialized'] };
 	}
 
 	const lines = [
 		...checkDb('search', mgr.getSearchStore()),
 		...checkDb('meta', mgr.getMetaStore()),
 	];
-
 	const ok = lines.every((l) => !l.includes('integrity:') || l.includes('ok'));
-	new Notice(ok ? 'Database healthy' : 'Database issues found — see console', 3000);
-	console.log('[DatabaseHealth]\n' + lines.join('\n'));
+	return { initialized: true, ok, lines };
 }

@@ -7,6 +7,7 @@ import { SearchSessionReportAdapter } from '@/app/quick-search/SearchSessionRepo
 import { composeSettingsActions } from '@/app/commands/composeSettingsActions';
 import { createChatNavigation } from '@/ui/view/chat-view/chatNavigation';
 import { composeQuickSearchHost } from '@/app/quick-search/composeQuickSearchHost';
+import { composeCopilotReviewDeps } from '@/app/copilot/composeCopilotReviewDeps';
 
 /**
  * Factory function to create React elements wrapped with ServiceProvider.
@@ -65,6 +66,8 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			chatNavigation,
 			vaultStats: appContext.vaultStats,
 			quickSearchHost: composeQuickSearchHost(appContext, reportSessionPort),
+			copilotReviewHistory: appContext.copilotReviewHistory,
+			copilotReviewDeps: composeCopilotReviewDeps(appContext),
 			children: React.createElement(Component, props as T)
 		}
 	);

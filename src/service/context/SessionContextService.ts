@@ -11,6 +11,14 @@ import type {
 	WorkingTheme,
 } from './types';
 import { WorkingThemeInferrer } from './WorkingThemeInferrer';
+import type { PromptId } from '@/service/prompt/PromptId';
+
+/**
+ * T11Q (Track A): caller-injected dep for the working-theme LLM query
+ * (was `AppContext.getManager().queryText`). Defined here so the constructor
+ * signature stays tight and discoverable.
+ */
+export type ThemeQueryText = (promptId: PromptId, vars: Record<string, unknown>) => Promise<string>;
 
 const DECAY_WINDOW_MS = 30 * 60 * 1000;
 const CONTINUOUS_GROUP_THRESHOLD_MS = 3000;
@@ -68,7 +76,7 @@ export class SessionContextService {
 
 	private readonly app: App;
 	private readonly eventBus: EventBus;
-	private readonly themeInferrer = new WorkingThemeInferrer();
+	private readonly themeInferrer: WorkingThemeInferrer;
 
 	private context: WorkingContext;
 	private unsubscribers: Array<() => void> = [];
@@ -76,7 +84,7 @@ export class SessionContextService {
 
 	private lastOpByType: Map<string, { ts: number; groupId: string }> = new Map();
 
-	private constructor(app: App, eventBus: EventBus) {
+	private constructor(app: App, eventBus: EventBus, themeQueryText: ThemeQueryText) {
 		this.app = app;
 		this.eventBus = eventBus;
 		this.context = {
@@ -88,14 +96,21 @@ export class SessionContextService {
 			},
 			updatedAt: Date.now(),
 		};
+		// T11Q (Track A): wire the inferrer's deps from this owner so it no
+		// longer reaches into AppContext for its working-context or LLM call.
+		this.themeInferrer = new WorkingThemeInferrer({
+			getRecentActivities: () => this.context.recentActivities,
+			setLlmInferredTheme: (theme) => this.setLlmInferredTheme(theme),
+			queryText: themeQueryText,
+		});
 	}
 
-	static getInstance(app?: App, eventBus?: EventBus): SessionContextService {
+	static getInstance(app?: App, eventBus?: EventBus, themeQueryText?: ThemeQueryText): SessionContextService {
 		if (!SessionContextService.instance) {
-			if (!app || !eventBus) {
-				throw new Error('SessionContextService.getInstance requires app and eventBus on first call');
+			if (!app || !eventBus || !themeQueryText) {
+				throw new Error('SessionContextService.getInstance requires app, eventBus, and themeQueryText on first call');
 			}
-			SessionContextService.instance = new SessionContextService(app, eventBus);
+			SessionContextService.instance = new SessionContextService(app, eventBus, themeQueryText);
 		}
 		return SessionContextService.instance;
 	}

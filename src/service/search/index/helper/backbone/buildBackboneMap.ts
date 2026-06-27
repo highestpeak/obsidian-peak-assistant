@@ -9,7 +9,6 @@
 
 import ignore from 'ignore';
 import { TFolder } from 'obsidian';
-import { AppContext } from '@/app/context/AppContext';
 import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { basenameFromPath } from '@/core/utils/file-utils';
 import { normalizeVaultPath, parentDirPath } from '@/core/utils/vault-path-utils';
@@ -17,6 +16,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type {
 	BackboneEdge,
+	BackboneEnv,
 	BackboneFolderNode,
 	BackboneMapResult,
 	BackbonePage,
@@ -225,20 +225,19 @@ export function normalizeVaultFolderPath(folderPath: unknown): string {
 	return raw.replace(/^\/+|\/+$/g, '');
 }
 
-export function getBackboneExcludedPrefixes(): string[] {
-	const settings = AppContext.getInstance().settings;
-	const enabled = settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch ?? true;
+export function getBackboneExcludedPrefixes(env: BackboneEnv): string[] {
+	const enabled = env.excludeAutoSaveFolder ?? true;
 	if (!enabled) return [];
-	const rootFolder = normalizeVaultFolderPath(settings.ai.rootFolder);
-	const autoSaveFolder = normalizeVaultFolderPath(settings.search.aiAnalysisAutoSaveFolder);
+	const rootFolder = normalizeVaultFolderPath(env.rootFolder);
+	const autoSaveFolder = normalizeVaultFolderPath(env.autoSaveFolder ?? '');
 	return [...new Set([rootFolder, autoSaveFolder].filter(Boolean))];
 }
 
-export function isPathExcludedByPrefixes(path: string, excludedPathPrefixes: string[]): boolean {
+export function isPathExcludedByPrefixes(path: string, excludedPathPrefixes: string[], env: BackboneEnv): boolean {
 	if (!excludedPathPrefixes.length) return false;
 	const p = normalizeVaultFolderPath(path);
 	if (p === '') return false;
-	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder));
+	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder(env.rootFolder));
 	if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
 	for (const raw of excludedPathPrefixes) {
 		const prefix = normalizeVaultFolderPath(raw);
@@ -249,14 +248,14 @@ export function isPathExcludedByPrefixes(path: string, excludedPathPrefixes: str
 	return false;
 }
 
-export function shouldIgnoreFolderForBackbone(path: string): boolean {
+export function shouldIgnoreFolderForBackbone(path: string, env: BackboneEnv): boolean {
 	const p = normalizeVaultFolderPath(path);
-	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder));
+	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder(env.rootFolder));
 	if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
 	try {
 		return DocumentLoaderManager.getInstance().getIgnoreMatcher().shouldIgnore(path);
 	} catch {
-		const patterns = AppContext.getInstance().settings.search.ignorePatterns ?? [];
+		const patterns = env.ignorePatterns ?? [];
 		if (!patterns.length) return false;
 		const ig = ignore();
 		ig.add(patterns);
@@ -265,13 +264,13 @@ export function shouldIgnoreFolderForBackbone(path: string): boolean {
 	}
 }
 
-export function visibleChildFolders(folder: TFolder, excludedPathPrefixes: string[]): TFolder[] {
+export function visibleChildFolders(folder: TFolder, excludedPathPrefixes: string[], env: BackboneEnv): TFolder[] {
 	const subs = folder.children
 		.filter((c): c is TFolder => c instanceof TFolder)
 		.sort((a, b) => a.path.localeCompare(b.path));
 	return subs.filter(
 		(s) =>
-			!isPathExcludedByPrefixes(s.path, excludedPathPrefixes) && !shouldIgnoreFolderForBackbone(s.path),
+			!isPathExcludedByPrefixes(s.path, excludedPathPrefixes, env) && !shouldIgnoreFolderForBackbone(s.path, env),
 	);
 }
 
@@ -289,12 +288,13 @@ export function scanFolderTree(
 	maxDepth: number,
 	maxFolders: number,
 	excludedPathPrefixes: string[],
+	env: BackboneEnv,
 ): FolderScanResult {
 	const rows: FolderScanRow[] = [];
 	const subtreeStats = new Map<string, { subtreeMaxDepth: number; subtreeAvgDepth: number }>();
 
 	function dfs(folder: TFolder, depth: number, collectRows: boolean): { sumDepths: number; count: number; maxDepth: number } {
-		const visibleSubs = visibleChildFolders(folder, excludedPathPrefixes);
+		const visibleSubs = visibleChildFolders(folder, excludedPathPrefixes, env);
 		if (collectRows && rows.length < maxFolders) {
 			rows.push({ path: folder.path, depth, childFolderCount: visibleSubs.length });
 		}
@@ -317,7 +317,7 @@ export function scanFolderTree(
 		.filter((c): c is TFolder => c instanceof TFolder)
 		.sort((a, b) => a.path.localeCompare(b.path));
 	for (const ch of top) {
-		if (isPathExcludedByPrefixes(ch.path, excludedPathPrefixes) || shouldIgnoreFolderForBackbone(ch.path)) continue;
+		if (isPathExcludedByPrefixes(ch.path, excludedPathPrefixes, env) || shouldIgnoreFolderForBackbone(ch.path, env)) continue;
 		dfs(ch, 1, true);
 	}
 	return { rows, subtreeStats };
@@ -428,6 +428,7 @@ async function loadBackboneFolderNodes(
 	rows: FolderScanRow[],
 	excludedPathPrefixes: string[],
 	subtreeStatsMap: Map<string, { subtreeMaxDepth: number; subtreeAvgDepth: number }>,
+	env: BackboneEnv,
 ): Promise<LoadedFolderDigests> {
 	if (!sqliteStoreManager.isInitialized() || rows.length === 0) {
 		return { folderNodes: [], recursiveMapsByFolder: new Map(), tagGlobalStats: { folderCount: 0, rootBucketCount: 1, tagFolderDf: new Map(), tagRootDf: new Map() } };
@@ -440,7 +441,7 @@ async function loadBackboneFolderNodes(
 	const paths = rows.map((r) => r.path);
 	const degreeMap = await mobiusRepo.listFolderDocDegreesByVaultPaths(paths);
 
-	const vault = AppContext.getInstance().app.vault;
+	const vault = env.vault;
 	const recursiveMapsByFolder = new Map<string, Array<{ id: string; path: string }>>();
 
 	type RawRow = {
@@ -508,7 +509,7 @@ async function loadBackboneFolderNodes(
 			const af = vault.getAbstractFileByPath(row.path);
 			if (af instanceof TFolder) {
 				subfolderNameTokenSample = topTokensFromBasenames(
-					visibleChildFolders(af, excludedPathPrefixes).map((f) => basenameFromPath(f.path)), NAME_TOKEN_TOP);
+					visibleChildFolders(af, excludedPathPrefixes, env).map((f) => basenameFromPath(f.path)), NAME_TOKEN_TOP);
 			}
 		}
 		const st = subtreeStatsMap.get(np);
@@ -1059,14 +1060,15 @@ function markCities(
 /**
  * Builds the full backbone map from the vault index (SQLite + graph edges).
  */
-export async function buildBackboneMap(options?: BuildBackboneMapOptions): Promise<BackboneMapResult> {
-	const maxDepth = options?.maxDepth ?? 10;
-	const maxFolders = options?.maxFolders ?? 8000;
-	const maxNodesPerPage = options?.maxNodesPerPage ?? 120;
-	const topBackboneEdges = options?.topBackboneEdges ?? 32;
-	const cityPercentile = options?.cityPercentile ?? 0.05;
-	const enableVirtualFolders = options?.enableVirtualFolders ?? true;
-	const extraExclude = (options?.extraExcludePathPrefixes ?? []).map((p) => normalizeVaultPath(String(p)));
+export async function buildBackboneMap(options: BuildBackboneMapOptions): Promise<BackboneMapResult> {
+	const env = options.env;
+	const maxDepth = options.maxDepth ?? 10;
+	const maxFolders = options.maxFolders ?? 8000;
+	const maxNodesPerPage = options.maxNodesPerPage ?? 120;
+	const topBackboneEdges = options.topBackboneEdges ?? 32;
+	const cityPercentile = options.cityPercentile ?? 0.05;
+	const enableVirtualFolders = options.enableVirtualFolders ?? true;
+	const extraExclude = (options.extraExcludePathPrefixes ?? []).map((p) => normalizeVaultPath(String(p)));
 
 	const empty: BackboneMapResult = {
 		folderNodes: [],
@@ -1089,15 +1091,16 @@ export async function buildBackboneMap(options?: BuildBackboneMapOptions): Promi
 		return empty;
 	}
 
-	const vault = AppContext.getInstance().app.vault;
+	const vault = env.vault;
 	const root = vault.getRoot();
-	const excluded = [...getBackboneExcludedPrefixes(), ...extraExclude.filter(Boolean)];
-	const { rows, subtreeStats } = scanFolderTree(root, maxDepth, maxFolders, excluded);
+	const excluded = [...getBackboneExcludedPrefixes(env), ...extraExclude.filter(Boolean)];
+	const { rows, subtreeStats } = scanFolderTree(root, maxDepth, maxFolders, excluded, env);
 
 	const { folderNodes, recursiveMapsByFolder, tagGlobalStats } = await loadBackboneFolderNodes(
 		rows,
 		excluded,
 		subtreeStats,
+		env,
 	);
 
 	const allDocIds = new Set<string>();

@@ -7,7 +7,7 @@ import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder
 import { getSelectedTextFromActiveEditor } from '@/core/utils/obsidian-utils';
 import type { IntentTabId } from '@/service/copilot/intent-hub';
 import { AppContext } from '@/app/context/AppContext';
-import { getCopilotReviewHistoryService, type CopilotReviewHistoryRecord } from '@/service/copilot/CopilotReviewHistoryService';
+import { type CopilotReviewHistoryRecord } from '@/service/copilot/CopilotReviewHistoryService';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
 import { CopilotPickerContent } from '@/ui/view/copilot/CopilotPickerContent';
 import { CopilotResultModal } from '@/app/copilot/modals/CopilotResultModal';
@@ -79,8 +79,7 @@ export class CopilotPickerModal extends Modal {
 					onOpenHistoryRecord: async (record: CopilotReviewHistoryRecord) => {
 						if (!ctx) return;
 						this.close();
-						const svc = getCopilotReviewHistoryService();
-						const { snapshot, chats } = await svc.loadWithChats(record);
+						const { snapshot, chats } = await this.appContext.copilotReviewHistory.loadWithChats(record);
 						if (!snapshot) return;
 						new CopilotAutoRunModal(app, {
 							tab: this.options.initialTab ?? 'document',

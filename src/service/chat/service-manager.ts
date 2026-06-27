@@ -339,8 +339,14 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 			this.proj,
 		);
 
-		// Update IndexService with updated AIServiceManager instance
-		IndexService.getInstance().init(this);
+		// Update IndexService with updated AIServiceManager instance.
+		// T11Q (Track G): env is supplied at the original boot point; here
+		// we only need to refresh the manager reference, so we re-init with
+		// the existing env.
+		IndexService.getInstance().init({
+			aiServiceManager: this,
+			env: { app: this.app, rootFolder: this.settings.rootFolder },
+		});
 	}
 
 	setPromptFolder(folder: string): void {
@@ -568,6 +574,16 @@ ${sourcesList}${topicsList}
 
 	public getPluginIdPublic(): string {
 		return this.pluginId;
+	}
+
+	/**
+	 * T11Q (Track F): expose the AI/chat root folder so service-tier agents
+	 * can build the explore-folder env from manager deps alone (no
+	 * `AppContext` reach). This is the same path used to root prompts /
+	 * profiles, so callers do not need a second settings handle.
+	 */
+	public getChatRootFolder(): string {
+		return this.settings.rootFolder;
 	}
 
 	/**

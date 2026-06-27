@@ -12,6 +12,7 @@ import {
     localSearchWholeVaultTool,
 } from '@/service/tools/search-graph-inspector';
 import { contentReaderTool } from '@/service/tools/content-reader';
+import { exploreFolderEnvFromManager } from '@/service/tools/exploreFolderEnv';
 import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import { PromptId, type PromptVariables } from '@/service/prompt/PromptId';
@@ -67,7 +68,7 @@ export class FollowupChatAgent {
             tools.find_key_nodes = findKeyNodesTool(tm, getSearchClient);
             tools.find_orphans = findOrphansTool(tm);
             tools.search_by_dimensions = searchByDimensionsTool(tm, getSearchClient);
-            tools.explore_folder = exploreFolderTool(tm);
+            tools.explore_folder = exploreFolderTool(tm, undefined, () => exploreFolderEnvFromManager(this.aiServiceManager));
             tools.recent_changes_whole_vault = recentChangesWholeVaultTool(tm, getSearchClient);
             tools.local_search_whole_vault = localSearchWholeVaultTool(tm, getSearchClient);
         }

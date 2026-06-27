@@ -84,7 +84,24 @@ export type BackbonePage = {
 	markdown: string;
 };
 
+/**
+ * T11Q (Track E): runtime deps so backbone builders no longer read
+ * `AppContext`. Owner (app composer / `intuitionPrep`) supplies the vault
+ * tree handle plus the small settings snapshot the helpers consult.
+ */
+export type BackboneEnv = {
+	vault: import('obsidian').Vault;
+	rootFolder: string;
+	autoSaveFolder?: string;
+	/** When false, no auto-save folder is excluded from backbone scans. */
+	excludeAutoSaveFolder?: boolean;
+	/** Vault-relative ignore patterns (gitignore-style). */
+	ignorePatterns?: string[];
+};
+
 export type BuildBackboneMapOptions = {
+	/** Caller-supplied runtime deps (vault + settings snapshot). */
+	env: BackboneEnv;
 	/** Max folder depth from vault root children. Default 10. */
 	maxDepth?: number;
 	/** Max folders scanned. Default 8000. */

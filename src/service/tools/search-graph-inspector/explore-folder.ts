@@ -1,13 +1,30 @@
 import { EXPLORE_FOLDER_DEFAULT_LIMIT, SLICE_CAPS } from '@/core/constant';
 import { GRAPH_WIKI_REFERENCE_EDGE_TYPES } from '@/core/po/graph.po';
-import { AppContext } from "@/app/context/AppContext";
 import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { humanReadableTime } from "@/core/utils/date-utils";
 import { compactPathsForPrompt, compactPathsWithSuffix } from "@/core/utils/pathTreeCompact";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
-import { TFile, TFolder } from "obsidian";
+import { TFile, TFolder, type Vault } from "obsidian";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
+
+/**
+ * T11Q (Track F): owner-injected env so `exploreFolder` and its helpers
+ * never reach into `AppContext`. Same shape as `BackboneEnv` but kept
+ * separate to avoid coupling search/index/backbone to the inspector tool.
+ *
+ * `templateManagerFallback` is consulted only when the per-call
+ * `templateManager` is missing; the app composes it once and threads it
+ * through `exploreFolderTool` so the service tier never reads
+ * `manager.getTemplateManager()` via `AppContext`.
+ */
+export type ExploreFolderEnv = {
+    vault: Vault;
+    rootFolder: string;
+    autoSaveFolder?: string;
+    excludeAutoSaveFolder?: boolean;
+    templateManagerFallback?: () => TemplateManager | undefined;
+};
 
 /** Omitted summary when a folder has more items than limit. */
 export type OmittedSummary = {
@@ -47,14 +64,14 @@ import { exploreFolderInputSchema } from "@/core/schemas/tools/searchGraphInspec
 
 type ExploreFolderParams = z.infer<typeof exploreFolderInputSchema> & { mode: string };
 
-export async function exploreFolder(params: ExploreFolderParams, templateManager?: TemplateManager) {
+export async function exploreFolder(params: ExploreFolderParams, env: ExploreFolderEnv, templateManager?: TemplateManager) {
     const { folderPath, recursive, max_depth, limit, response_format } = params;
     const perFolderLimit = Math.max(1, Number(limit) ?? EXPLORE_FOLDER_DEFAULT_LIMIT);
 
-    const vault = AppContext.getInstance().app.vault;
+    const vault = env.vault;
     const normalizedPath = normalizeVaultFolderPath(folderPath);
-    const exclusions = getExploreFolderExclusions();
-    if (exclusions.enabled && isPathExcluded(normalizedPath, exclusions.excludedPathPrefixes)) {
+    const exclusions = getExploreFolderExclusions(env);
+    if (exclusions.enabled && isPathExcluded(normalizedPath, exclusions.excludedPathPrefixes, env)) {
         return renderExploreFolderExcludedMarkdown(folderPath, exclusions.excludedPathPrefixes);
     }
     const targetFolder = normalizedPath === ""
@@ -91,6 +108,7 @@ export async function exploreFolder(params: ExploreFolderParams, templateManager
 
     const sameGroupCountByPath = buildSameGroupCountByPath(finalFileTree);
     const compactFileTree = compactPathsForPrompt(visibleFilePaths, 80, 6000);
+    const effectiveTemplateManager = templateManager ?? env.templateManagerFallback?.();
     const compactRecentEdited = docStats.topRecentEdited.items.length > 0
         ? compactPathsWithSuffix(
             docStats.topRecentEdited.items.map((i) => ({
@@ -135,7 +153,7 @@ export async function exploreFolder(params: ExploreFolderParams, templateManager
         categoryDesc,
         docStats,
     };
-    return buildExploreFolderResponse(response_format, data, templateManager);
+    return buildExploreFolderResponse(response_format, data, effectiveTemplateManager);
 }
 
 /**
@@ -550,12 +568,12 @@ function normalizeVaultFolderPath(folderPath: unknown): string {
  * True when `path` is exactly an excluded prefix, or is under it (prefix + "/...").
  * `path` and prefixes are vault-relative (no leading slash), but may be "" (root).
  */
-function isPathExcluded(path: string, excludedPathPrefixes: string[]): boolean {
+function isPathExcluded(path: string, excludedPathPrefixes: string[], env: ExploreFolderEnv): boolean {
     if (!excludedPathPrefixes.length) return false;
     const p = normalizeVaultFolderPath(path);
     if (p === "") return false;
     /** Hub summaries live under chat root but must remain explorable. */
-    const hub = normalizeVaultFolderPath(getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder));
+    const hub = normalizeVaultFolderPath(getAIHubSummaryFolder(env.rootFolder));
     if (hub && (p === hub || p.startsWith(hub + "/"))) {
         return false;
     }
@@ -574,22 +592,21 @@ function isPathExcluded(path: string, excludedPathPrefixes: string[]): boolean {
  * - exclude `ai.rootFolder` (default: ChatFolder)
  * - exclude `search.aiAnalysisAutoSaveFolder` (default: ChatFolder/AI-Analysis)
  */
-function getExploreFolderExclusions(): { enabled: boolean; excludedPathPrefixes: string[] } {
-    const settings = AppContext.getInstance().settings;
-    const enabled = settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch ?? true;
+function getExploreFolderExclusions(env: ExploreFolderEnv): { enabled: boolean; excludedPathPrefixes: string[] } {
+    const enabled = env.excludeAutoSaveFolder ?? true;
     if (!enabled) return { enabled: false, excludedPathPrefixes: [] };
 
-    const rootFolder = normalizeVaultFolderPath(settings.ai.rootFolder);
-    const autoSaveFolder = normalizeVaultFolderPath(settings.search.aiAnalysisAutoSaveFolder);
+    const rootFolder = normalizeVaultFolderPath(env.rootFolder);
+    const autoSaveFolder = normalizeVaultFolderPath(env.autoSaveFolder ?? '');
     const excludedPathPrefixes = Array.from(new Set([rootFolder, autoSaveFolder].filter(Boolean)));
     return { enabled: excludedPathPrefixes.length > 0, excludedPathPrefixes };
 }
 
 /** Returns all vault file paths (respecting explore_folder exclusions) for use by grep_file_tree. */
-export function getFullVaultFilePathsForGrep(): string[] {
-    const vault = AppContext.getInstance().app.vault;
+export function getFullVaultFilePathsForGrep(env: ExploreFolderEnv): string[] {
+    const vault = env.vault;
     const root = vault.getRoot();
-    const exclusions = getExploreFolderExclusions();
+    const exclusions = getExploreFolderExclusions(env);
     const tree = getFolderStructure(
         root,
         true,
@@ -637,7 +654,7 @@ async function buildExploreFolderResponse(
  * Render Markdown for explore_folder. Uses template when available, falls back to a minimal tree.
  */
 async function renderExploreFolderMarkdown(data: any, templateManager?: TemplateManager): Promise<string> {
-    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+    const tm = templateManager;
     if (tm) {
         try {
             const rendered = await tm.render(ToolTemplateId.ExploreFolder, data);

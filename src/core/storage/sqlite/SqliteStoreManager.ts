@@ -1,5 +1,4 @@
 import type { AppHandle as App } from '@/core/ports/AppHandle';
-import { Notice } from 'obsidian';
 import path from 'path';
 import { BetterSqliteStore } from './better-sqlite3-adapter/BetterSqliteStore';
 import type { Kysely } from 'kysely';
@@ -112,10 +111,17 @@ export class SqliteStoreManager {
 		return result.store;
 	}
 
+	/**
+	 * T11Q: app-level reporter for the "SQLite backend unavailable" path. The
+	 * app composes this and passes it through `init({ unavailableReporter })`
+	 * so core never imports Obsidian `Notice` directly.
+	 */
+	private unavailableReporter: ((message: string, durationMs: number) => void) | null = null;
+
 	private async selectBackend(userSetting?: 'auto' | 'better-sqlite3'): Promise<void> {
 		const available = await BetterSqliteStore.checkAvailable(this.app ?? undefined);
 		if (!available) {
-			new Notice(
+			this.unavailableReporter?.(
 				'Peak Assistant: SQLite component failed to load. ' +
 				'Search and indexing features are unavailable. ' +
 				'Please restart Obsidian or reinstall the plugin.',
@@ -165,6 +171,8 @@ export class SqliteStoreManager {
 		storageFolder?: string;
 		filename?: string;
 		settings?: { sqliteBackend?: 'auto' | 'better-sqlite3' };
+		/** T11Q: app passes a reporter so core can surface "backend unavailable" without importing `Notice`. */
+		unavailableReporter?: (message: string, durationMs: number) => void;
 	}): Promise<void> {
 		if (this.searchStore || this.metaStore) {
 			console.warn('SqliteStoreManager already initialized, closing existing connections');
@@ -172,6 +180,7 @@ export class SqliteStoreManager {
 		}
 
 		this.app = params.app;
+		this.unavailableReporter = params.unavailableReporter ?? null;
 
 		// Create search database connection
 		const searchDbPath = await this.buildDatabasePath(params.app, params.storageFolder, VAULT_DB_FILENAME);

@@ -1,4 +1,5 @@
 import { TFile } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import { normalizeVaultPath } from '@/core/utils/path-utils';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { emptyUsage, type LLMUsage } from '@/core/providers/types';
@@ -13,7 +14,6 @@ import {
 	type LlmIndexingCompleteEvent,
 } from './types';
 import type { DocumentLoaderReadOptions } from '@/core/document/loader/types';
-import { AppContext } from '@/app/context/AppContext';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
 import type { IndexedDocumentRecord } from '@/core/storage/sqlite/ddl';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
@@ -105,6 +105,26 @@ import {
 } from '@/core/constant';
 export type StorageType = 'sqlite' | 'graph';
 
+/**
+ * T11Q (Track G): app-supplied env for IndexService + the free
+ * `getIndexTenantForPath` helper. Bound once at boot via
+ * `IndexService.getInstance().init({ aiServiceManager, env })` so neither
+ * the singleton nor the helper reaches into `AppContext`.
+ *
+ * Field semantics:
+ *   - `rootFolder` is the chat / AI root folder (same value as
+ *     `settings.ai.rootFolder`); used to derive tenant + hub folder paths.
+ *   - `app` is needed for the `pending_llm_enrich` path that reads raw
+ *     markdown size from the vault.
+ *   - `aiServiceManager` powers embedding generation. Pre-T11Q it was the
+ *     only arg of `init`; we keep it required to preserve current callers.
+ */
+export interface IndexServiceEnv {
+	rootFolder: string;
+	app: AppHandle;
+}
+
+
 export type { IndexDocumentOptions, IndexDocumentReason } from './types';
 export { defaultIndexDocumentOptions } from './types';
 
@@ -114,14 +134,17 @@ type PathIndexedDocInfo = { id: string; title: string | null };
 /**
  * Resolve index tenant from path.
  * Hub summary subtree is indexed in vault DB even when physically under chat rootFolder.
+ *
+ * T11Q (Track G): reads the chat-root folder from the env IndexService was
+ * initialised with — no `AppContext.getInstance()` lookup.
  */
 export function getIndexTenantForPath(path: string): IndexTenant {
-	const ctx = AppContext.getInstance();
-	const hubFolder = getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder);
+	const env = IndexService.getEnv();
+	const hubFolder = getAIHubSummaryFolder(env.rootFolder);
 	if (hubFolder && isVaultPathUnderPrefix(path, hubFolder)) {
 		return 'vault';
 	}
-	const rootFolder = ctx.settings.ai.rootFolder.trim();
+	const rootFolder = env.rootFolder.trim();
 	const normalized = path.replace(/^\/+/, '');
 	const prefix = rootFolder.endsWith('/') ? rootFolder.replace(/\/+$/, '') : rootFolder;
 	return (normalized === prefix || normalized.startsWith(prefix + '/')) ? 'chat' : 'vault';
@@ -243,6 +266,12 @@ export type { PendingLlmEnrichmentProgress } from '@/service/search/support/llm-
 export class IndexService {
 	private static instance: IndexService | null = null;
 	private static isIndexingCancelled = false;
+	/**
+	 * T11Q (Track G): app-supplied env (chat root + live `App`) so neither
+	 * the singleton nor the free `getIndexTenantForPath` helper reaches
+	 * into `AppContext`. Bound once via `init` at boot.
+	 */
+	private static env: IndexServiceEnv | null = null;
 	private aiServiceManager: AIServiceManager | undefined;
 
 	private constructor() {
@@ -262,15 +291,34 @@ export class IndexService {
 	 */
 	static clearInstance(): void {
 		IndexService.instance = null;
+		IndexService.env = null;
+	}
+
+	/** T11Q (Track G): typed accessor used by `getIndexTenantForPath` + internal callsites. */
+	static getEnv(): IndexServiceEnv {
+		if (!IndexService.env) {
+			throw new Error('IndexService env not initialised — call IndexService.getInstance().init({ aiServiceManager, env }) at boot.');
+		}
+		return IndexService.env;
 	}
 
 	/**
-	 * Initialize IndexService with AIServiceManager for embedding generation.
+	 * Initialize IndexService with AIServiceManager for embedding generation
+	 * and the app-supplied env (chat root folder + live `App`).
 	 * This should be called once during plugin initialization in main.ts.
 	 * Can also be called when settings are updated to refresh the service instance.
 	 */
-	init(aiServiceManager: AIServiceManager): void {
-		this.aiServiceManager = aiServiceManager;
+	init(params: { aiServiceManager: AIServiceManager; env: IndexServiceEnv }): void {
+		this.aiServiceManager = params.aiServiceManager;
+		IndexService.env = params.env;
+	}
+
+	/** T11Q (Track G): typed accessor for static enrichment methods. */
+	getAiServiceManager(): AIServiceManager {
+		if (!this.aiServiceManager) {
+			throw new Error('IndexService.aiServiceManager not initialised — call init({ aiServiceManager, env }) at boot.');
+		}
+		return this.aiServiceManager;
 	}
 
 	/** Cancel ongoing indexing operations. */
@@ -1117,7 +1165,7 @@ export class IndexService {
 	 * (including auto `Hub-*.md` and user `Manual/*.md`).
 	 */
 	private resolveMobiusGraphNodeTypeForPath(path: string): GraphNodeType {
-		const hub = getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder);
+		const hub = getAIHubSummaryFolder(IndexService.getEnv().rootFolder);
 		if (hub && isVaultPathUnderPrefix(path, hub)) return GraphNodeType.HubDoc;
 		return GraphNodeType.Document;
 	}
@@ -1305,7 +1353,7 @@ export class IndexService {
 
 			const targetGraphType = indexed
 				? this.resolveMobiusGraphNodeTypeForPath(ref.fullPath)
-				: graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, docType, getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder));
+				: graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, docType, getAIHubSummaryFolder(IndexService.getEnv().rootFolder));
 
 			// Placeholder until the target file is indexed (full row from IndexedDocumentRepo).
 			await mobiusNodeRepo.upsert({
@@ -1479,7 +1527,7 @@ export class IndexService {
 			const dt = loaderMgr.getTypeForPath(ref.fullPath);
 			if (indexed) {
 				docIdsForIncoming.add(targetId);
-			} else if (graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, dt, getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder)) !== GraphNodeType.Resource) {
+			} else if (graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, dt, getAIHubSummaryFolder(IndexService.getEnv().rootFolder)) !== GraphNodeType.Resource) {
 				docIdsForIncoming.add(targetId);
 			}
 		}
@@ -1875,7 +1923,7 @@ export class IndexService {
 		const now = Date.now();
 		await mobiusNodeRepo.clearFolderHubMaterializedStatsColumns(now);
 
-		const hubFolder = getAIHubSummaryFolder(AppContext.getInstance().settings.ai.rootFolder);
+		const hubFolder = getAIHubSummaryFolder(IndexService.getEnv().rootFolder);
 		type Agg = {
 			count: number;
 			sumPr: number;
@@ -2048,12 +2096,13 @@ export class IndexService {
 		const total = pendingPaths.length;
 		let done = 0;
 		const batchStartMs = Date.now();
-		const ai = AppContext.getInstance().manager;
+		const ai = indexSvc.getAiServiceManager();
 		const tracker = new LlmEnrichmentProgressTracker(settings, ai);
 		const loaderMgr = DocumentLoaderManager.getInstance();
+		const indexApp = IndexService.getEnv().app;
 
 		const readMarkdownContentChars = async (path: string): Promise<number> => {
-			const app = AppContext.getApp();
+			const app = indexApp;
 			const f = app.vault.getAbstractFileByPath(path);
 			if (!f || !(f instanceof TFile)) return 0;
 			const ext = f.extension.toLowerCase();

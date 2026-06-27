@@ -4,7 +4,6 @@ import { createReactElementWithServices } from '@/app/react/ReactElementFactory'
 import { AppContext } from '@/app/context/AppContext';
 import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPanelVault';
 import {
-	getCopilotReviewHistoryService,
 	type CopilotReviewHistoryRecord,
 } from '@/service/copilot/CopilotReviewHistoryService';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
@@ -57,7 +56,7 @@ export class CopilotReviewHistoryModal extends Modal {
 							return;
 						}
 						const doc = record.raw as CopilotReviewHistoryRecord;
-						const { snapshot, chats } = await getCopilotReviewHistoryService().loadWithChats(doc);
+						const { snapshot, chats } = await AppContext.getInstance().copilotReviewHistory.loadWithChats(doc);
 						if (!snapshot) {
 							new Notice('Could not load this review record.');
 							return;

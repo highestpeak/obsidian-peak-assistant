@@ -21,6 +21,8 @@ import type { ChatNavigationPort } from '@/service/chat/navigation/ChatNavigatio
 import type { VaultStatsPort } from '@/service/stats/VaultStatsPort';
 import type { SettingsActions } from '@/service/settings/SettingsActionsPort';
 import type { QuickSearchHost } from '@/ui/view/quick-search/hooks/useQuickSearchHost';
+import type { CopilotReviewHistoryService } from '@/service/copilot/CopilotReviewHistoryService';
+import type { CopilotReviewDeps } from '@/service/copilot/CopilotReviewSession';
 import type MyPlugin from 'main';
 
 /**
@@ -64,6 +66,15 @@ interface ServiceContextValue {
 	chatNavigation: ChatNavigationPort;
 	vaultStats: VaultStatsPort;
 	quickSearchHost: QuickSearchHost;
+	/** T11Q (Track B): app-owned Auto Review history service. */
+	copilotReviewHistory: CopilotReviewHistoryService;
+	/**
+	 * T11Q (Track C): factory the auto-review modal uses to gather the
+	 * live deps (`app`, `pluginId`, `analysisHistory`, `userProfileText`)
+	 * for `runCopilotReview`. Composed in the app layer so the session
+	 * module no longer imports `AppContext`.
+	 */
+	copilotReviewDeps: () => Promise<CopilotReviewDeps>;
 }
 
 const ServiceContext = createContext<ServiceContextValue | null>(null);
@@ -102,7 +113,9 @@ export const ServiceProvider: React.FC<{
 	chatNavigation: ChatNavigationPort;
 	vaultStats: VaultStatsPort;
 	quickSearchHost: QuickSearchHost;
-}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost }) => {
+	copilotReviewHistory: CopilotReviewHistoryService;
+	copilotReviewDeps: () => Promise<CopilotReviewDeps>;
+}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps }) => {
 	const value = useMemo<ServiceContextValue>(() => ({
 		manager,
 		eventBus,
@@ -128,7 +141,9 @@ export const ServiceProvider: React.FC<{
 		chatNavigation,
 		vaultStats,
 		quickSearchHost,
-	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost]);
+		copilotReviewHistory,
+		copilotReviewDeps,
+	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps]);
 
 	return <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>;
 };

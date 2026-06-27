@@ -24,7 +24,7 @@ import {
 	scanFolderTree,
 	getBackboneExcludedPrefixes,
 } from '@/service/search/index/helper/backbone';
-import type { BackboneMapResult } from '@/service/search/index/helper/backbone';
+import type { BackboneEnv, BackboneMapResult } from '@/service/search/index/helper/backbone';
 import type {
 	DocumentHubShortlistRow,
 	FolderTreeNodeDigest,
@@ -59,6 +59,8 @@ function computeHubDiscoverBudgets(documentNodeCount: number): VaultExploreBudge
 
 // Re-export for callers that imported from here
 export const getExploreFolderExcludedPrefixes = getBackboneExcludedPrefixes;
+
+export type { BackboneEnv } from '@/service/search/index/helper/backbone';
 
 function sanitizeDigestCell(text: string): string {
 	return text.replace(/\|/g, ' ');
@@ -156,16 +158,17 @@ export async function buildHubWorldSnapshot(
 		extraExcludePathPrefixes?: string[];
 		vault: Vault;
 		rootFolder: string;
+		env: BackboneEnv;
 	},
 	templateManager: TemplateManager,
 ): Promise<HubWorldSnapshot> {
-	const { maxDepth, maxFolders, maxNodesPerPage, extraExcludePathPrefixes = [], vault, rootFolder } = options;
+	const { maxDepth, maxFolders, maxNodesPerPage, extraExcludePathPrefixes = [], vault, rootFolder, env } = options;
 	if (!sqliteStoreManager.isInitialized()) {
 		return { pages: [], metrics: { totalIndexedDocuments: 0, totalFoldersScanned: 0, topLevelBranchCount: 0, orphanHardSampleCount: 0, orphanRiskHint: 'low', topOutgoingFolders: [] }, nodes: [] };
 	}
 	const root = vault.getRoot();
-	const excluded = [...getExploreFolderExcludedPrefixes(), ...extraExcludePathPrefixes.map((p) => normalizeVaultFolderPath(p))];
-	const { rows, subtreeStats: subtreeStatsMap } = scanFolderTree(root, maxDepth, maxFolders, excluded);
+	const excluded = [...getExploreFolderExcludedPrefixes(env), ...extraExcludePathPrefixes.map((p) => normalizeVaultFolderPath(p))];
+	const { rows, subtreeStats: subtreeStatsMap } = scanFolderTree(root, maxDepth, maxFolders, excluded, env);
 	const paths = rows.map((r) => r.path);
 	const degreeMap = await sqliteStoreManager.getMobiusNodeRepo().listFolderDocDegreesByVaultPaths(paths);
 	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
@@ -207,7 +210,7 @@ export async function buildHubWorldSnapshot(
 		if (row.childFolderCount > 0) {
 			const af = vault.getAbstractFileByPath(row.path);
 			if (af instanceof TFolder) {
-				const childNames = visibleChildFolders(af, excluded).map((f) => basenameFromPath(f.path));
+				const childNames = visibleChildFolders(af, excluded, env).map((f) => basenameFromPath(f.path));
 				subfolderNameTokenSample = topTokensFromBasenames(childNames, HUB_DIGEST_NAME_TOKEN_TOP);
 			}
 		}
@@ -458,8 +461,10 @@ export async function prepareIntuitionContext(options: {
 	/** T11J B1: caller injects vault + rootFolder so intuitionPrep no longer reaches AppContext. */
 	vault: Vault;
 	rootFolder: string;
+	/** T11Q (Track E): owner-supplied backbone env so settings reads stay app-side. */
+	env: BackboneEnv;
 }): Promise<IntuitionPrepContext> {
-	const { userGoal, vaultName, currentDateLabel, tm, vault, rootFolder } = options;
+	const { userGoal, vaultName, currentDateLabel, tm, vault, rootFolder, env } = options;
 
 	const documentNodeCount = sqliteStoreManager.isInitialized()
 		? await sqliteStoreManager.getMobiusNodeRepo().countAllDocumentStatisticsRows()
@@ -472,7 +477,7 @@ export async function prepareIntuitionContext(options: {
 	const maxNodesPerPage = Math.min(2000, Math.max(320, Math.floor(limitTotal * 7)));
 	const docShortlistLimit = Math.min(500, Math.max(50, Math.floor(documentFetchLimit * 2)));
 
-	const baselineExcludedPrefixes = getExploreFolderExcludedPrefixes();
+	const baselineExcludedPrefixes = getExploreFolderExcludedPrefixes(env);
 
 	const world = await buildHubWorldSnapshot(
 		{
@@ -482,11 +487,13 @@ export async function prepareIntuitionContext(options: {
 			extraExcludePathPrefixes: [],
 			vault,
 			rootFolder,
+			env,
 		},
 		tm,
 	);
 
 	const backbone = await buildBackboneMap({
+		env,
 		maxDepth: globalTreeMaxDepth,
 		maxFolders: maxFoldersInSnapshot,
 		maxNodesPerPage,

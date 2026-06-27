@@ -4,12 +4,13 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { Input } from '@/ui/component/shared-ui/input';
 import { cn } from '@/ui/react/lib/utils';
 import {
-	getCopilotReviewHistoryService,
 	type CopilotReviewHistoryRecord,
 } from '@/service/copilot/CopilotReviewHistoryService';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
 import { ReviewStatusBadge } from './review/ReviewStatusBadge';
 import { MODE_LABELS, type ReviewMode } from '@/service/copilot/CopilotMetaAgentStream';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import { Notice } from 'obsidian';
 
 export type Scope = 'document' | 'vault';
 type DocSubFilter = 'this-note' | 'all-notes';
@@ -107,6 +108,7 @@ interface ContentProps {
 }
 
 export const CopilotReviewHistoryContent: React.FC<ContentProps> = ({ scope, currentNotePath, onOpenRecord, onBackToPicker }) => {
+	const { copilotReviewHistory, vaultReviewRuntime } = useServiceContext();
 	const [records, setRecords] = useState<NormalizedRecord[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [query, setQuery] = useState('');
@@ -121,14 +123,13 @@ export const CopilotReviewHistoryContent: React.FC<ContentProps> = ({ scope, cur
 	useEffect(() => {
 		let cancelled = false;
 		setLoading(true);
-		const vaultRuntime = AppContext.tryGetVaultReviewRuntime();
 		const fetcher = scope === 'vault'
-			? (vaultRuntime
-				? vaultRuntime.listReports(500).then(list => list.map(normalizeVault))
+			? (vaultReviewRuntime
+				? vaultReviewRuntime.listReports(500).then(list => list.map(normalizeVault))
 				: Promise.resolve([] as NormalizedRecord[]))
 			: (effectiveDocFilter === 'this-note' && currentNotePath
-				? getCopilotReviewHistoryService().listForSubject(currentNotePath, 500, 'document').then(list => list.map(normalizeDoc))
-				: getCopilotReviewHistoryService().listAll(500, 'document').then(list => list.map(normalizeDoc))
+				? copilotReviewHistory.listForSubject(currentNotePath, 500, 'document').then(list => list.map(normalizeDoc))
+				: copilotReviewHistory.listAll(500, 'document').then(list => list.map(normalizeDoc))
 			);
 		fetcher
 			.then(list => {
@@ -145,7 +146,7 @@ export const CopilotReviewHistoryContent: React.FC<ContentProps> = ({ scope, cur
 				}
 			});
 		return () => { cancelled = true; };
-	}, [scope, effectiveDocFilter, currentNotePath, refreshTick]);
+	}, [scope, effectiveDocFilter, currentNotePath, refreshTick, copilotReviewHistory, vaultReviewRuntime]);
 
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase();
@@ -161,14 +162,13 @@ export const CopilotReviewHistoryContent: React.FC<ContentProps> = ({ scope, cur
 
 	const handleDelete = async (record: NormalizedRecord) => {
 		if (record.scope === 'vault') {
-			const runtime = AppContext.tryGetVaultReviewRuntime();
-			if (!runtime) {
+			if (!vaultReviewRuntime) {
 				new Notice('Vault Review runtime not ready');
 				return;
 			}
-			await runtime.deleteReport(record.raw as VaultReviewHistoryRecord);
+			await vaultReviewRuntime.deleteReport(record.raw as VaultReviewHistoryRecord);
 		} else {
-			await getCopilotReviewHistoryService().delete(record.raw as CopilotReviewHistoryRecord);
+			await copilotReviewHistory.delete(record.raw as CopilotReviewHistoryRecord);
 		}
 		new Notice('Review deleted');
 		setRefreshTick(t => t + 1);

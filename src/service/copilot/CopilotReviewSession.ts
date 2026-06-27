@@ -11,8 +11,9 @@
  * fresh SDK query.
  */
 
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type { LLMStreamEvent } from '@/core/providers/types';
-import { AppContext } from '@/app/context/AppContext';
+import type { AnalysisHistoryPort } from '@/core/ports/AnalysisHistoryPort';
 import type { DocumentContext } from './CopilotActionRegistry';
 import { buildSignalReport, type DocumentSignalReport } from './CopilotSignalReport';
 import { CopilotOutputCollector, type ReviewSubmission } from './CopilotOutputCollector';
@@ -21,22 +22,6 @@ import {
 	type ReviewMode,
 	type PreviousRoundSummary,
 } from './CopilotMetaAgentStream';
-
-/**
- * Load the user profile markdown if the profile service is available.
- * Errors fall back to empty — profile is best-effort context, not required.
- */
-async function loadUserProfileText(): Promise<string | undefined> {
-	try {
-		const profileService = AppContext.getInstance().manager.getProfileService();
-		if (!profileService) return undefined;
-		const text = await profileService.getProfileAsMarkdown();
-		return text.trim() || undefined;
-	} catch (err) {
-		console.warn('[CopilotReviewSession] failed to load user profile', err);
-		return undefined;
-	}
-}
 
 export type ReviewSessionStatus =
 	| 'idle'
@@ -97,10 +82,24 @@ function previousRoundSummary(
 	};
 }
 
+/**
+ * T11Q (Track C): caller-injected meta-agent dependencies. Owner supplies
+ * the live Obsidian handles plus user-profile text so this session never
+ * reaches into `AppContext`. `analysisHistory` and `userProfileText` are
+ * optional because both are best-effort context.
+ */
+export interface CopilotReviewDeps {
+	app: AppHandle;
+	pluginId: string;
+	analysisHistory: AnalysisHistoryPort;
+	userProfileText?: string;
+}
+
 export interface RunReviewOptions {
 	ctx: DocumentContext;
 	mode: ReviewMode;
 	signal: AbortSignal;
+	deps: CopilotReviewDeps;
 }
 
 /**
@@ -113,7 +112,7 @@ export async function* runCopilotReview(
 ): AsyncGenerator<ReviewSessionSnapshot, ReviewSessionSnapshot, void> {
 	const signalReport = buildSignalReport(options.ctx);
 	const collector = new CopilotOutputCollector();
-	const userProfileText = await loadUserProfileText();
+	const userProfileText = options.deps.userProfileText;
 	const maxTurnsPerRound = UNCAPPED_MAX_TURNS;
 	// Fast mode caps at 1 round by design; Complete is open-ended (agent decides).
 	const fastSingleRound = options.mode === 'fast';
@@ -173,7 +172,6 @@ export async function* runCopilotReview(
 				.map(r => previousRoundSummary(r, collector.getSnapshot()))
 				.filter((s): s is PreviousRoundSummary => s !== null);
 
-			const sessionCtx = AppContext.getInstance();
 			const stream = buildCopilotMetaAgentStream({
 				mode: options.mode,
 				signalReport,
@@ -186,9 +184,9 @@ export async function* runCopilotReview(
 				collector,
 				maxTurns: maxTurnsPerRound,
 				signal: options.signal,
-				app: sessionCtx.app,
-				pluginId: sessionCtx.plugin.manifest.id,
-				analysisHistory: sessionCtx.aiAnalysisHistoryService,
+				app: options.deps.app,
+				pluginId: options.deps.pluginId,
+				analysisHistory: options.deps.analysisHistory,
 				onTurnIncrement: () => {
 					round.turnCount += 1;
 				},

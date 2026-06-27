@@ -33,6 +33,8 @@ import { composeVaultPreview } from '@/app/preview/composeVaultPreview';
 import { composeVaultNavigation, composeEditorCommands, composeWikilink } from '@/app/navigation/composeNavigation';
 import { composeChatVaultWriter } from '@/app/chat/composeChatVaultWriter';
 import { AppVaultStatsAdapter } from '@/app/stats/AppVaultStatsAdapter';
+import { composeCopilotReviewHistory } from '@/app/copilot/composeCopilotReviewHistory';
+import type { CopilotReviewHistoryService } from '@/service/copilot/CopilotReviewHistoryService';
 
 /**
  * Application context containing all global dependencies.
@@ -64,6 +66,12 @@ export class AppContext {
 	public readonly editorCommands: EditorCommandsPort;
 	public readonly chatVaultWriter: ChatVaultWriterPort;
 	public readonly vaultStats: VaultStatsPort;
+	/**
+	 * T11Q (Track B): app-owned Copilot Auto Review history service.
+	 * Composed here so the service tier no longer hides an
+	 * `AppContext.getInstance()` lookup behind a singleton getter.
+	 */
+	public readonly copilotReviewHistory: CopilotReviewHistoryService;
 
 	private static instance: AppContext | null = null;
 
@@ -392,6 +400,7 @@ export class AppContext {
 		this.editorCommands = composeEditorCommands(app);
 		this.chatVaultWriter = composeChatVaultWriter(app);
 		this.vaultStats = new AppVaultStatsAdapter(app);
+		this.copilotReviewHistory = composeCopilotReviewHistory(app);
 		AppContext.instance = this;
 
 		this.handleDevToolsSettingChange(this.settings.enableDevTools ?? false);

@@ -30,6 +30,7 @@ function effectiveReconMaxIterations(budgetDerived: number, debug?: ReconLoopDeb
 import { mergeIntuitionSubmitIntoMemory, buildInitialIntuitionMemory } from './intuition.memory';
 import type { IntuitionMemory, IntuitionPrepContext } from './types';
 import { exploreFolderTool, findPathTool, graphTraversalTool, grepFileTreeTool, inspectNoteContextTool, localSearchWholeVaultTool } from '@/service/tools/search-graph-inspector';
+import { exploreFolderEnvFromManager } from '@/service/tools/exploreFolderEnv';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
@@ -77,9 +78,10 @@ export async function* runKnowledgeIntuitionLoop(options: {
 }): AsyncGenerator<LLMStreamEvent, void> {
 	const { ctx, stepId, aiServiceManager, onComplete, debug, app, pluginId } = options;
 	const stopwatch = new Stopwatch('Knowledge intuition recon');
+	const getEnv = () => exploreFolderEnvFromManager(aiServiceManager);
 	const tools = {
-		explore_folder: exploreFolderTool(ctx.tm, { forceFormat: 'markdown' }),
-		grep_file_tree: grepFileTreeTool(),
+		explore_folder: exploreFolderTool(ctx.tm, { forceFormat: 'markdown' }, getEnv),
+		grep_file_tree: grepFileTreeTool(getEnv),
 		local_search_whole_vault: localSearchWholeVaultTool(ctx.tm, () => aiServiceManager.getSearchClient()),
 		inspect_note_context: inspectNoteContextTool(ctx.tm, { forceFormat: 'markdown' }),
 		graph_traversal: graphTraversalTool(ctx.tm, { forceFormat: 'markdown' }),

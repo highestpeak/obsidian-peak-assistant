@@ -23,6 +23,7 @@ import {
 	type BackboneMapResult,
 	type BuildBackboneMapOptions,
 } from '@/service/search/index/helper/backbone';
+import { composeBackboneEnv } from '@/app/search/composeBackboneEnv';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 /**
@@ -41,7 +42,16 @@ export class GraphInspectorTestTools {
             find_key_nodes: findKeyNodesTool(undefined, getSearchClient),
             find_orphans: findOrphansTool(),
             search_by_dimensions: searchByDimensionsTool(undefined, getSearchClient),
-            explore_folder: exploreFolderTool(),
+            explore_folder: exploreFolderTool(undefined, undefined, () => {
+                const c = AppContext.getInstance();
+                return {
+                    vault: c.app.vault,
+                    rootFolder: c.settings.ai.rootFolder,
+                    autoSaveFolder: c.settings.search.aiAnalysisAutoSaveFolder,
+                    excludeAutoSaveFolder: c.settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch,
+                    templateManagerFallback: () => c.manager.getTemplateManager?.(),
+                };
+            }),
             recent_changes_whole_vault: recentChangesWholeVaultTool(undefined, getSearchClient),
             local_search_whole_vault: localSearchWholeVaultTool(undefined, getSearchClient),
         };
@@ -218,7 +228,14 @@ export class AISearchAgentTestTools {
     ): Promise<{ result: KnowledgeIntuitionAgentResult | null; duration: number; eventCount: number }> {
         const start = Date.now();
         const ctx = AppContext.getInstance();
-        const agent = new KnowledgeIntuitionAgent(ctx.manager);
+        const agent = new KnowledgeIntuitionAgent(ctx.manager, {
+            app: ctx.app,
+            vault: ctx.app.vault,
+            pluginId: ctx.plugin.manifest.id,
+            isMockEnv: ctx.isMockEnv,
+            rootFolder: ctx.settings.ai.rootFolder,
+            backboneEnv: composeBackboneEnv(ctx),
+        });
         let result: KnowledgeIntuitionAgentResult | null = null;
         let eventCount = 0;
         for await (const _ev of streamWithStreamLog(
@@ -253,12 +270,12 @@ export class AISearchAgentTestTools {
      * await window.testAISearchTools.testBackboneMap({ maxDepth: 8, topBackboneEdges: 24 });
      * ```
      */
-    async testBackboneMap(options?: BuildBackboneMapOptions): Promise<BackboneMapResult | null> {
+    async testBackboneMap(options?: Omit<BuildBackboneMapOptions, 'env'>): Promise<BackboneMapResult | null> {
         const ctx = AppContext.getInstance();
         if (ctx.isMockEnv) {
             return null;
         }
-        const result = await buildBackboneMap(options);
+        const result = await buildBackboneMap({ ...(options ?? {}), env: composeBackboneEnv(ctx) });
         return result;
     }
 

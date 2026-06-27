@@ -24,6 +24,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
 import { KnowledgeIntuitionAgent } from '@/service/agents/KnowledgeIntuitionAgent';
+import { composeBackboneEnv } from '@/app/search/composeBackboneEnv';
 import { computeEvalMetrics, formatEvalReport } from '@/service/search/query/pprEvaluator';
 import { runStructuralAnalysis } from '@/service/search/index/helper/structural/orchestrator';
 
@@ -342,7 +343,14 @@ export async function analyzeVaultIntuition(): Promise<void> {
 	const ctx = getContext();
 	const ui = openProgressNotice('Search: analyzing vault knowledge intuition...');
 	try {
-		const agent = new KnowledgeIntuitionAgent(getAIManager());
+		const agent = new KnowledgeIntuitionAgent(getAIManager(), {
+			app: ctx.app,
+			vault: ctx.app.vault,
+			pluginId: ctx.plugin.manifest.id,
+			isMockEnv: ctx.isMockEnv,
+			rootFolder: ctx.plugin.settings.ai.rootFolder,
+			backboneEnv: composeBackboneEnv(ctx),
+		});
 		for await (const _ev of agent.streamRun({}, async (result) => {
 			const stateRepo = sqliteStoreManager.getIndexStateRepo();
 			await stateRepo.set('knowledge_intuition_json', JSON.stringify(result.json));
@@ -408,8 +416,13 @@ export async function deleteIndexData(): Promise<void> {
 }
 
 export async function verifyDatabaseHealthAction(): Promise<void> {
-	const ctx = getContext();
-	await verifyDatabaseHealth(ctx.app, ctx.plugin.settings);
+	const report = verifyDatabaseHealth();
+	if (!report.initialized) {
+		new Notice('Database not initialized', 3000);
+		return;
+	}
+	new Notice(report.ok ? 'Database healthy' : 'Database issues found — see console', 3000);
+	console.log('[DatabaseHealth]\n' + report.lines.join('\n'));
 }
 
 export async function buildUserProfileAction(): Promise<void> {

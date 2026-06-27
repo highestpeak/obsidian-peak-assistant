@@ -1,14 +1,32 @@
-import { AppContext } from '@/app/context/AppContext';
 import { PromptId } from '@/service/prompt/PromptId';
-import type { ActivityEntry, WorkingContext } from './types';
+import type { ActivityEntry, WorkingTheme } from './types';
 
 const INFERENCE_THRESHOLD = 10;
 const INFERENCE_DEBOUNCE_MS = 30000;
+
+/**
+ * T11Q (Track A): owner-injected deps so the inferrer never reaches into
+ * `AppContext`. SessionContextService passes through:
+ *   - `getRecentActivities` so the debounced timer can re-read its working
+ *     context (it does NOT touch app/sqlite directly).
+ *   - `setLlmInferredTheme` to commit the parsed LLM theme back into the
+ *     same working-context owner.
+ *   - `queryText` to call the LLM (provided as `manager.queryText(...)`).
+ *
+ * Debounce + threshold behavior is unchanged.
+ */
+export interface WorkingThemeDeps {
+	getRecentActivities(): ActivityEntry[];
+	setLlmInferredTheme(theme: WorkingTheme['llmInferred']): void;
+	queryText(promptId: PromptId, vars: Record<string, unknown>): Promise<string>;
+}
 
 export class WorkingThemeInferrer {
 	private activitiesSinceLastInference = 0;
 	private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	private isRunning = false;
+
+	constructor(private readonly deps: WorkingThemeDeps) {}
 
 	onActivity(): void {
 		this.activitiesSinceLastInference++;
@@ -25,8 +43,8 @@ export class WorkingThemeInferrer {
 	private scheduleInference(): void {
 		if (this.debounceTimer) clearTimeout(this.debounceTimer);
 		this.debounceTimer = setTimeout(async () => {
-			const ctx = AppContext.getSessionContext().getWorkingContext();
-			await this.runInference(ctx.recentActivities);
+			const recent = this.deps.getRecentActivities();
+			await this.runInference(recent);
 		}, INFERENCE_DEBOUNCE_MS);
 	}
 
@@ -35,20 +53,19 @@ export class WorkingThemeInferrer {
 		this.isRunning = true;
 
 		try {
-			const manager = AppContext.getManager();
 			const activitiesInput = activities.slice(0, 20).map(a => ({
 				type: a.type,
 				summary: a.summary,
 				timestamp: a.timestamp,
 			}));
 
-			const response = await manager.queryText(PromptId.WorkingThemeInference, {
+			const response = await this.deps.queryText(PromptId.WorkingThemeInference, {
 				activities: activitiesInput,
 			});
 
 			const parsed = JSON.parse(response.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
 
-			AppContext.getSessionContext().setLlmInferredTheme({
+			this.deps.setLlmInferredTheme({
 				summary: parsed.summary ?? '',
 				relatedFiles: parsed.relatedFiles ?? [],
 				updatedAt: Date.now(),
