@@ -23,6 +23,7 @@ import type { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import type { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
 import type { ContinueAnalysisAgent } from '@/service/agents/ContinueAnalysisAgent';
+import type { GraphAgent } from '@/service/agents/ai-graph/GraphAgent';
 import type { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
 import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
@@ -60,6 +61,8 @@ export interface QuickSearchHost {
 	createVaultSearchAgent(): VaultSearchAgent;
 	createDocSimpleAgent(): DocSimpleAgent;
 	createContinueAnalysisAgent(rounds: unknown[]): ContinueAnalysisAgent;
+	/** T11P review-fix: SDK-style GraphAgent factory, replacing the dynamic AppContext import previously used in `useGraphAgent`. */
+	createGraphAgent(): GraphAgent;
 	createContextProvider(): ContextProvider;
 	/** T11P: report orchestrator factory, replacing inline `new ReportOrchestrator(plugin.aiServiceManager, _, app, _)` in `useSearchSession`. */
 	createReportOrchestrator(): ReportOrchestrator;

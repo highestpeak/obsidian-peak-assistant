@@ -67,16 +67,14 @@ export function useGraphAgent(
 
 		(async () => {
 			try {
-				const { GraphAgent } = await import('@/service/agents/ai-graph/GraphAgent');
-				// GraphAgent requires raw app + pluginId — use AppContext via dynamic import since we're in an async IIFE outside React render
-				const { AppContext } = await import('@/app/context/AppContext');
-				const ctx = AppContext.getInstance(); // justified: async IIFE inside useCallback, host snapshot from closure is stale
-
 				useGraphAgentStore.getState().updateStep('init', { status: 'done', label: 'Graph Agent ready' });
 				useGraphAgentStore.getState().addStep({ id: 'analyze', label: 'Analyzing document relations, clusters, and evolution chains...', status: 'running' });
 				useGraphAgentStore.getState().addStep({ id: 'read-sources', label: `Reading ${sources.length} source files...`, status: 'running' });
 
-				const agent = new GraphAgent(ctx.app, ctx.plugin.manifest.id);
+				// T11P review-fix: GraphAgent (raw app + pluginId) is constructed by the
+				// app-layer host (composeQuickSearchHost), so this hook no longer needs
+				// to dynamically import AppContext to escape its render-time closure.
+				const agent = host.createGraphAgent();
 
 				const result = await agent.generateGraph(
 					{ searchQuery, sources },
@@ -131,7 +129,7 @@ export function useGraphAgent(
 				}
 			}
 		})();
-	}, [sources, searchQuery, key, persistDeps]);
+	}, [sources, searchQuery, key, persistDeps, host]);
 
 	return {
 		graphData: isCached ? store.graphData : store.cacheKey === key ? store.graphData : null,

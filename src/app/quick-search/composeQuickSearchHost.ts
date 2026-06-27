@@ -11,6 +11,7 @@ import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
 import { ContinueAnalysisAgent } from '@/service/agents/ContinueAnalysisAgent';
+import { GraphAgent } from '@/service/agents/ai-graph/GraphAgent';
 import { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
 import type { ReportSessionPort } from '@/service/agents/report/ReportSessionPort';
 import type { QuickSearchHost } from '@/ui/view/quick-search/hooks/useQuickSearchHost';
@@ -82,6 +83,7 @@ export function composeQuickSearchHost(
 			aiServiceManager: manager,
 			rounds: rounds as never,
 		}),
+		createGraphAgent: () => new GraphAgent(app, plugin.manifest.id),
 		createContextProvider: () => new ContextProvider(app),
 		createReportOrchestrator: () => new ReportOrchestrator(
 			manager,

@@ -279,6 +279,22 @@ async function testBoundaryScriptUnmodified(): Promise<void> {
 	console.log('PASS: boundaryScriptUnmodified');
 }
 
+function testUiHasNoAppImportsStaticOrDynamic(): void {
+	// T11P review-fix: the original guard only checked selected files. Codex found
+	// `src/ui/view/quick-search/hooks/useGraphAgent.ts` still hiding a dynamic
+	// `await import('@/app/context/AppContext')`. Lock the entire `src/ui/**`
+	// tree against *any* form of `@/app/**` import — static OR dynamic.
+	const pattern = String.raw`from\s+['"]@/app/|import\(\s*['"]@/app/`;
+	const out = rg(pattern, path.join(SRC, 'ui'));
+	const lines = out.split('\n').filter((l) => l.trim().length > 0);
+	if (lines.length > 0) {
+		throw new Error(
+			`T11P review-fix tripped: src/ui/** still imports from @/app/** (static or dynamic):\n  ${lines.slice(0, 20).join('\n  ')}\nRoute the dependency through a narrow named port composed in the app layer.`,
+		);
+	}
+	console.log('PASS: uiHasNoAppImportsStaticOrDynamic (0 src/ui/** -> @/app/** imports)');
+}
+
 function testNoNewGodPort(): void {
 	const out = rg(
 		String.raw`\b(UiHostPort|AppPort|UIHostGod|AppShellEverything|EverythingPort|UiPluginPort)\b`,
@@ -329,6 +345,7 @@ async function main(): Promise<void> {
 	await testNewPortFilesExist();
 	testVaultNavigationPortHasNoRawObsidianPrimitives();
 	await testBoundaryScriptUnmodified();
+	testUiHasNoAppImportsStaticOrDynamic();
 	testNoNewGodPort();
 }
 
