@@ -131,6 +131,18 @@ export class DocumentLoaderManager {
 	}
 
 	/**
+	 * Late-bind the AI summarizer used by loaders that need AI capabilities
+	 * (image description, markdown/text summarization). The manager must be
+	 * `init()`-ed before `AIServiceManager` because the latter constructs
+	 * `ResourceSummaryService` which calls `getInstance()` synchronously —
+	 * so the AI dep is wired in after the cycle is broken.
+	 */
+	setAiServiceManager(aiServiceManager: IDocSummarizer): void {
+		this.aiServiceManager = aiServiceManager;
+		this.registerAllLoaders();
+	}
+
+	/**
 	 * Expose the owned ignore matcher so other loader-cluster callers (e.g.
 	 * `buildBackboneMap`) can reuse it without spinning up a parallel
 	 * matcher or reaching through a module-level singleton.

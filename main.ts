@@ -195,6 +195,17 @@ export default class MyPlugin extends Plugin {
 			}
 		}
 
+		// Initialize global DocumentLoaderManager singleton BEFORE constructing
+		// AIServiceManager. The manager's constructor builds ResourceSummaryService,
+		// whose ctor calls `DocumentLoaderManager.getInstance()` synchronously to
+		// wire a ResourceKindDetector. The AI summarizer dep is late-bound below
+		// (after AIServiceManager exists) via `setAiServiceManager()` — that
+		// breaks the construction-time cycle that crashed plugin re-enable.
+		// T11K: loaders depend on a narrow vault port; this adapter is the only
+		// place that holds Obsidian `App` / `TFile` / `TFolder`.
+		const vaultReader = new AppVaultReaderAdapter(this.app);
+		DocumentLoaderManager.init(vaultReader, vaultReader, this.settings.search);
+
 		// Create AIServiceManager (ConversationService and ProjectService will be initialized in init())
 		// T11I (2026-06-26): chat runtime UI toggles reach the service layer via
 		// an explicit port so SystemPromptSlot / ConversationService stop
@@ -249,12 +260,11 @@ export default class MyPlugin extends Plugin {
 			AppContext.setQuickSearchBackgroundRuntime(composeQuickSearchBackgroundRuntime(this.app));
 		}
 
-		// Initialize global DocumentLoaderManager singleton
-		// Pass aiServiceManager for loaders that need AI capabilities (e.g., image description)
-		// T11K: loaders depend on a narrow vault port; this adapter is the
-		// only place that holds Obsidian `App` / `TFile` / `TFolder`.
-		const vaultReader = new AppVaultReaderAdapter(this.app);
-		DocumentLoaderManager.init(vaultReader, vaultReader, this.settings.search, this.aiServiceManager);
+		// Late-bind the AI summarizer onto the already-initialized
+		// DocumentLoaderManager. Loaders that need AI capabilities (image
+		// description, markdown/text summarization) pick it up via the
+		// re-registration in `setAiServiceManager`.
+		DocumentLoaderManager.getInstance().setAiServiceManager(this.aiServiceManager);
 
 		// T11K B3: bind the embedding usage reporter so `embedClient`
 		// surfaces usage events without reaching `AppContext` from core.
