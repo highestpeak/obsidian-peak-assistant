@@ -233,6 +233,12 @@ export default class MyPlugin extends Plugin {
 			this.templateManager ?? undefined,
 		);
 
+		// Wire the prompter so `onAnalysisComplete` can hand the live
+		// AIServiceManager to PatternDiscoveryTrigger without the trigger
+		// reaching back into the app layer. Resolver is lazy because the
+		// history service was constructed before the manager existed.
+		aiAnalysisHistoryService.setPrompterProvider(() => this.aiServiceManager ?? null);
+
 		// Create AppContext EARLY — before any service init runs, so obsidian-utils and
 		// vault-utils resolveApp() helpers can find the singleton during downstream init
 		// chains. searchClient is null-cast now; back-filled after initializeSearchService
@@ -585,7 +591,7 @@ export default class MyPlugin extends Plugin {
 				// (invalid/missing API key causes unrecoverable subprocess crashes)
 				const hasActiveProfile = !!ProfileRegistry.getInstance().getActiveAgentProfile();
 				if (hasActiveProfile) {
-					initPatternSystem().catch((e) => console.error('[PatternDiscovery] Init failed:', e));
+					initPatternSystem(this.aiServiceManager).catch((e) => console.error('[PatternDiscovery] Init failed:', e));
 					warmupPool().catch((e) => console.warn('[sdkAgentPool] warmup failed:', e));
 				} else {
 					console.log('[Peak Assistant] No active profile — skipping PatternDiscovery and agent pool warmup');

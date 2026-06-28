@@ -4,6 +4,7 @@ import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { buildSeedRecords } from '@/service/context/seed-patterns';
 import { runPatternDiscovery } from '@/service/agents/PatternDiscoveryAgent';
 import { mergeDiscoveredPatterns } from '@/service/PatternMergeService';
+import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ function getQueryPatternRepo(): QueryPatternRepo | null {
 	return new QueryPatternRepo(metaKdb);
 }
 
-async function triggerDiscovery(): Promise<void> {
+async function triggerDiscovery(prompter: IAgentPrompter): Promise<void> {
 	if (!sqliteStoreManager.isInitialized()) return;
 	if (!ProfileRegistry.getInstance().getActiveAgentProfile()) return;
 
@@ -72,11 +73,14 @@ async function triggerDiscovery(): Promise<void> {
 		};
 
 		// Run discovery agent
-		const output = await runPatternDiscovery({
-			newQueries,
-			existingPatterns: patternInput,
-			vaultStructure,
-		});
+		const output = await runPatternDiscovery(
+			{
+				newQueries,
+				existingPatterns: patternInput,
+				vaultStructure,
+			},
+			prompter,
+		);
 
 		if (output) {
 			const stats = await mergeDiscoveredPatterns(patternRepo, output);
@@ -94,8 +98,11 @@ async function triggerDiscovery(): Promise<void> {
 /**
  * Called on plugin load. Seeds initial patterns if the table is empty, then
  * runs an initial discovery pass if enough analyses already exist.
+ *
+ * The caller injects the {@link IAgentPrompter} (AIServiceManager) so this
+ * service-layer trigger doesn't need to reach back into the app layer.
  */
-export async function initPatternSystem(): Promise<void> {
+export async function initPatternSystem(prompter: IAgentPrompter): Promise<void> {
 	if (!sqliteStoreManager.isInitialized()) return;
 
 	const patternRepo = getQueryPatternRepo();
@@ -119,7 +126,7 @@ export async function initPatternSystem(): Promise<void> {
 		const analysisRepo = sqliteStoreManager.getAIAnalysisRepo();
 		const count = await analysisRepo.count();
 		if (count >= DISCOVERY_THRESHOLD) {
-			triggerDiscovery().catch((e) =>
+			triggerDiscovery(prompter).catch((e) =>
 				console.error('[PatternDiscovery] Initial discovery error:', e),
 			);
 		}
@@ -131,14 +138,19 @@ export async function initPatternSystem(): Promise<void> {
 /**
  * Called after each AI analysis completes.
  * Increments the counter and fires discovery when the threshold is reached.
+ *
+ * `prompter` is supplied by the caller (resolved lazily via
+ * {@link AIAnalysisHistoryService}'s `prompterProvider`) — `null` means the
+ * AI service isn't wired yet, so we skip discovery this round.
  */
-export function onAnalysisComplete(): void {
+export function onAnalysisComplete(prompter: IAgentPrompter | null): void {
 	if (!sqliteStoreManager.isInitialized()) return;
 	if (!ProfileRegistry.getInstance().getActiveAgentProfile()) return;
 	queryCounter++;
 	if (queryCounter >= DISCOVERY_THRESHOLD) {
 		queryCounter = 0;
-		triggerDiscovery().catch((e) =>
+		if (!prompter) return;
+		triggerDiscovery(prompter).catch((e) =>
 			console.error('[PatternDiscovery] triggerDiscovery error:', e),
 		);
 	}

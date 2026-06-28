@@ -1,12 +1,26 @@
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { onAnalysisComplete } from '@/service/context/PatternDiscoveryTrigger';
+import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 
 /** Record shape for AI analysis history list (matches ai_analysis_record). */
 export type AIAnalysisHistoryRecord = DbSchema['ai_analysis_record'];
 
 /** Sqlite-backed AI analysis history service. Instance is provided via AppContext. */
 export class AIAnalysisHistoryService {
+	/**
+	 * Lazy prompter resolver — boot order means the AIServiceManager doesn't
+	 * exist when this service is constructed (it's wired before the manager
+	 * so the manager can take a narrow `AnalysisHistoryPort`). The caller
+	 * sets a getter once the manager exists; `null` means the manager isn't
+	 * wired yet (skips pattern discovery for that round).
+	 */
+	private prompterProvider: () => IAgentPrompter | null = () => null;
+
+	setPrompterProvider(provider: () => IAgentPrompter | null): void {
+		this.prompterProvider = provider;
+	}
+
 	private get dbReady(): boolean {
 		return sqliteStoreManager.isInitialized();
 	}
@@ -39,7 +53,7 @@ export class AIAnalysisHistoryService {
 		if (!this.dbReady) return;
 		const repo = sqliteStoreManager.getAIAnalysisRepo();
 		await repo.insertOrIgnore(record as any);
-		onAnalysisComplete();
+		onAnalysisComplete(this.prompterProvider());
 		try {
 			await sqliteStoreManager.getMobiusOperationRepo().insertAiAnalysisOperation({
 				recordId: record.id,
