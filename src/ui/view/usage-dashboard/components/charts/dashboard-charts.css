@@ -1359,37 +1359,6 @@
 	opacity: 0.6;
 }
 
-/* ── context ring (Dashboard carrier C) ────────────────────────────────── */
-.peak-design-root .pk-context-ring {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--pk-space-1, 3px);
-	font-size: var(--pk-text-xs, 11px);
-	font-variant-numeric: tabular-nums;
-	color: var(--pk-text-tertiary);
-}
-.peak-design-root .pk-context-ring__track {
-	stroke: var(--pk-surface-sunken, rgba(0, 0, 0, 0.08));
-	stroke-width: 3;
-}
-.peak-design-root .pk-context-ring__fill {
-	stroke: var(--pk-success);
-	stroke-width: 3;
-	stroke-linecap: round;
-	transition: stroke-dasharray var(--pk-motion-base, 240ms) ease,
-	            stroke var(--pk-motion-base, 240ms) ease;
-}
-.peak-design-root .pk-context-ring[data-band="warn"] .pk-context-ring__fill {
-	stroke: var(--pk-warning);
-}
-.peak-design-root .pk-context-ring[data-band="danger"] .pk-context-ring__fill {
-	stroke: var(--pk-error);
-}
-.peak-design-root .pk-context-ring__label {
-	min-width: 28px;
-	text-align: right;
-}
-
 /* ── Curator runtime push modal (Dashboard carrier B) ──────────────────── */
 .peak-design-root .pk-curator-push__head {
 	display: flex;

@@ -35,8 +35,7 @@
    Anatomy: [32px icon] [body: title + desc + meta] [right: chip + value + control]
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pk-row,
-.peak-design-root .pk-row {
+:where(.pktw-root, .peak-design-root) .pk-row {
   display: grid;
   grid-template-columns: 32px 1fr auto;
   align-items: center;
@@ -48,13 +47,11 @@
   box-shadow: var(--pk-shadow-card);
 }
 
-.pktw-root .pk-row + .pk-row,
-.peak-design-root .pk-row + .pk-row {
+:where(.pktw-root, .peak-design-root) .pk-row + .pk-row {
   margin-top: var(--pk-space-2);
 }
 
-.pktw-root .pk-row__icon,
-.peak-design-root .pk-row__icon {
+:where(.pktw-root, .peak-design-root) .pk-row__icon {
   width: 32px;
   height: 32px;
   border-radius: var(--pk-radius-md);
@@ -68,22 +65,19 @@
 
 .pktw-root .pk-row__icon > svg,
 .peak-design-root .pk-row__icon > svg,
-.pktw-root .pk-row__icon .icon,
-.peak-design-root .pk-row__icon .icon {
+:where(.pktw-root, .peak-design-root) .pk-row__icon .icon {
   width: 16px;
   height: 16px;
 }
 
-.pktw-root .pk-row__body,
-.peak-design-root .pk-row__body {
+:where(.pktw-root, .peak-design-root) .pk-row__body {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.pktw-root .pk-row__title,
-.peak-design-root .pk-row__title {
+:where(.pktw-root, .peak-design-root) .pk-row__title {
   font-size: var(--pk-text-md);
   font-weight: 600;
   color: var(--pk-text-primary);
@@ -92,15 +86,13 @@
   gap: 6px;
 }
 
-.pktw-root .pk-row__desc,
-.peak-design-root .pk-row__desc {
+:where(.pktw-root, .peak-design-root) .pk-row__desc {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   line-height: 1.45;
 }
 
-.pktw-root .pk-row__meta,
-.peak-design-root .pk-row__meta {
+:where(.pktw-root, .peak-design-root) .pk-row__meta {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
   display: inline-flex;
@@ -110,61 +102,52 @@
   margin-top: 2px;
 }
 
-.pktw-root .pk-row__right,
-.peak-design-root .pk-row__right {
+:where(.pktw-root, .peak-design-root) .pk-row__right {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
   flex-shrink: 0;
 }
 
-.pktw-root .pk-row__value,
-.peak-design-root .pk-row__value {
+:where(.pktw-root, .peak-design-root) .pk-row__value {
   font-size: var(--pk-text-base);
   color: var(--pk-text-primary);
   font-family: var(--pk-font-mono);
   white-space: nowrap;
 }
 
-.pktw-root .pk-row__value--sans,
-.peak-design-root .pk-row__value--sans {
+:where(.pktw-root, .peak-design-root) .pk-row__value--sans {
   font-family: var(--pk-font-sans);
 }
 
 /* Compact variant for dense tables (Advanced, chunking) */
-.pktw-root .pk-row--compact,
-.peak-design-root .pk-row--compact {
+:where(.pktw-root, .peak-design-root) .pk-row--compact {
   padding: 10px calc(var(--pk-space-3) + 2px);
 }
 
-.pktw-root .pk-row--compact .pk-row__icon,
-.peak-design-root .pk-row--compact .pk-row__icon {
+:where(.pktw-root, .peak-design-root) .pk-row--compact .pk-row__icon {
   width: 28px;
   height: 28px;
 }
 
 /* Disclosure variant — clickable, shows ChevronRight on right edge.
    align-items: start so multi-line descriptions don't drop the chevron. */
-.pktw-root .pk-row--disclosure,
-.peak-design-root .pk-row--disclosure {
+:where(.pktw-root, .peak-design-root) .pk-row--disclosure {
   cursor: pointer;
   align-items: start;
 }
 
-.pktw-root .pk-row--disclosure .pk-row__icon,
-.peak-design-root .pk-row--disclosure .pk-row__icon {
+:where(.pktw-root, .peak-design-root) .pk-row--disclosure .pk-row__icon {
   margin-top: 0;
 }
 
-.pktw-root .pk-row--disclosure .pk-row__right,
-.peak-design-root .pk-row--disclosure .pk-row__right {
+:where(.pktw-root, .peak-design-root) .pk-row--disclosure .pk-row__right {
   padding-top: 1px;
 }
 
 .pktw-root .pk-row--disclosure:hover,
 .peak-design-root .pk-row--disclosure:hover,
-.pktw-root details > summary:hover .pk-row--disclosure,
-.peak-design-root details > summary:hover .pk-row--disclosure {
+:where(.pktw-root, .peak-design-root) details > summary:hover .pk-row--disclosure {
   background: var(--pk-accent-tint);
   border-color: var(--pk-border-accent);
 }
@@ -172,8 +155,7 @@
 /* Native `<summary>` wrapping a `<Row disclosure>` still needs the pointer
    cursor on the entire row (summary itself gets cursor:pointer earlier but
    inner Row was overriding via its own cursor declaration). */
-.pktw-root details > summary .pk-row--disclosure,
-.peak-design-root details > summary .pk-row--disclosure {
+:where(.pktw-root, .peak-design-root) details > summary .pk-row--disclosure {
   transition: background var(--pk-transition-fast), border-color var(--pk-transition-fast);
 }
 
@@ -183,8 +165,7 @@
    borders are transparent (semantic color comes from bg + text alone).
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pk-chip,
-.peak-design-root .pk-chip {
+:where(.pktw-root, .peak-design-root) .pk-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -199,49 +180,42 @@
 
 .pktw-root .pk-chip > svg,
 .peak-design-root .pk-chip > svg,
-.pktw-root .pk-chip .icon,
-.peak-design-root .pk-chip .icon {
+:where(.pktw-root, .peak-design-root) .pk-chip .icon {
   width: 11px;
   height: 11px;
 }
 
-.pktw-root .pk-chip--success,
-.peak-design-root .pk-chip--success {
+:where(.pktw-root, .peak-design-root) .pk-chip--success {
   background: var(--pk-success-bg);
   color: var(--pk-success);
   border-color: var(--pk-success-border);
 }
 
-.pktw-root .pk-chip--warning,
-.peak-design-root .pk-chip--warning {
+:where(.pktw-root, .peak-design-root) .pk-chip--warning {
   background: var(--pk-warning-bg);
   color: var(--pk-warning);
   border-color: var(--pk-warning-border);
 }
 
-.pktw-root .pk-chip--danger,
-.peak-design-root .pk-chip--danger {
+:where(.pktw-root, .peak-design-root) .pk-chip--danger {
   background: var(--pk-error-bg);
   color: var(--pk-error);
   border-color: var(--pk-error-border);
 }
 
-.pktw-root .pk-chip--neutral,
-.peak-design-root .pk-chip--neutral {
+:where(.pktw-root, .peak-design-root) .pk-chip--neutral {
   background: var(--pk-surface-sunken);
   color: var(--pk-text-secondary);
   border-color: var(--pk-border);
 }
 
-.pktw-root .pk-chip--accent,
-.peak-design-root .pk-chip--accent {
+:where(.pktw-root, .peak-design-root) .pk-chip--accent {
   background: var(--pk-accent-soft);
   color: var(--pk-accent-text);
   border-color: var(--pk-accent-soft);
 }
 
-.pktw-root .pk-chip--info,
-.peak-design-root .pk-chip--info {
+:where(.pktw-root, .peak-design-root) .pk-chip--info {
   background: var(--pk-info-bg);
   color: var(--pk-info);
   border-color: var(--pk-info-border);
@@ -250,8 +224,7 @@
 /* Provider chip — color comes from per-provider data attribute, picked up by
    the .pk-brand-av selectors below. Use this class to set chip-shaped
    wrapping when you want a brand-tinted background + label combo. */
-.pktw-root .pk-chip--provider,
-.peak-design-root .pk-chip--provider {
+:where(.pktw-root, .peak-design-root) .pk-chip--provider {
   background: var(--pk-surface-sunken);
   color: var(--pk-text-secondary);
 }
@@ -269,8 +242,7 @@
    bg + theme border on every <button> inside an Obsidian Modal. The reset's
    `background: none` is specificity 0,1,1 — also loses. See
    obsidian-css-defense.md "2026-06-01 regression #3: button base props". */
-.pktw-root .pk-btn,
-.peak-design-root .pk-btn {
+:where(.pktw-root, .peak-design-root) .pk-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -289,72 +261,61 @@
 
 .pktw-root .pk-btn > svg,
 .peak-design-root .pk-btn > svg,
-.pktw-root .pk-btn .icon,
-.peak-design-root .pk-btn .icon {
+:where(.pktw-root, .peak-design-root) .pk-btn .icon {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
 }
 
-.pktw-root .pk-btn:disabled,
-.peak-design-root .pk-btn:disabled {
+:where(.pktw-root, .peak-design-root) .pk-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.pktw-root .pk-btn--primary,
-.peak-design-root .pk-btn--primary {
+:where(.pktw-root, .peak-design-root) .pk-btn--primary {
   background: var(--pk-accent) !important;
   color: #ffffff;
   border-color: var(--pk-accent) !important;
 }
 
-.pktw-root .pk-btn--primary:hover:not(:disabled),
-.peak-design-root .pk-btn--primary:hover:not(:disabled) {
+:where(.pktw-root, .peak-design-root) .pk-btn--primary:hover:not(:disabled) {
   background: var(--pk-accent-hover) !important;
   border-color: var(--pk-accent-hover) !important;
 }
 
-.pktw-root .pk-btn--secondary,
-.peak-design-root .pk-btn--secondary {
+:where(.pktw-root, .peak-design-root) .pk-btn--secondary {
   background: var(--pk-surface) !important;
   border-color: var(--pk-border) !important;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pk-btn--secondary:hover:not(:disabled),
-.peak-design-root .pk-btn--secondary:hover:not(:disabled) {
+:where(.pktw-root, .peak-design-root) .pk-btn--secondary:hover:not(:disabled) {
   background: var(--pk-surface-sunken) !important;
 }
 
-.pktw-root .pk-btn--ghost,
-.peak-design-root .pk-btn--ghost {
+:where(.pktw-root, .peak-design-root) .pk-btn--ghost {
   background: transparent !important;
   color: var(--pk-text-secondary);
 }
 
-.pktw-root .pk-btn--ghost:hover:not(:disabled),
-.peak-design-root .pk-btn--ghost:hover:not(:disabled) {
+:where(.pktw-root, .peak-design-root) .pk-btn--ghost:hover:not(:disabled) {
   background: var(--pk-surface-sunken) !important;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pk-btn--danger,
-.peak-design-root .pk-btn--danger {
+:where(.pktw-root, .peak-design-root) .pk-btn--danger {
   background: var(--pk-surface) !important;
   border-color: var(--pk-error-border, var(--pk-border)) !important;
   color: var(--pk-error-text);
 }
 
-.pktw-root .pk-btn--danger:hover:not(:disabled),
-.peak-design-root .pk-btn--danger:hover:not(:disabled) {
+:where(.pktw-root, .peak-design-root) .pk-btn--danger:hover:not(:disabled) {
   background: var(--pk-error-bg) !important;
   border-color: var(--pk-error) !important;
   color: var(--pk-error-text);
 }
 
-.pktw-root .pk-btn--sm,
-.peak-design-root .pk-btn--sm {
+:where(.pktw-root, .peak-design-root) .pk-btn--sm {
   padding: 6px 10px !important;
   font-size: var(--pk-text-xs);
 }
@@ -364,8 +325,7 @@
    Toggleable filter pill (document-type pickers, tag filters).
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pk-pill,
-.peak-design-root .pk-pill {
+:where(.pktw-root, .peak-design-root) .pk-pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -380,14 +340,12 @@
 
 .pktw-root .pk-pill > svg,
 .peak-design-root .pk-pill > svg,
-.pktw-root .pk-pill .icon,
-.peak-design-root .pk-pill .icon {
+:where(.pktw-root, .peak-design-root) .pk-pill .icon {
   width: 11px;
   height: 11px;
 }
 
-.pktw-root .pk-pill[data-selected="true"],
-.peak-design-root .pk-pill[data-selected="true"] {
+:where(.pktw-root, .peak-design-root) .pk-pill[data-selected="true"] {
   background: var(--pk-accent-soft) !important;
   border-color: var(--pk-accent-soft) !important;
   color: var(--pk-accent-text);
@@ -404,8 +362,7 @@
    reset rule beats the bare 28px values otherwise, collapsing icon buttons
    to their svg content height (~14px). Same fix pattern as pkchat-run-chip
    and pkchat-send. */
-.pktw-root .pk-icon-btn,
-.peak-design-root .pk-icon-btn {
+:where(.pktw-root, .peak-design-root) .pk-icon-btn {
   background: transparent !important;
   border: 0 !important;
   padding: 0 !important;
@@ -422,16 +379,14 @@
   transition: background var(--pk-transition-fast), color var(--pk-transition-fast);
 }
 
-.pktw-root .pk-icon-btn:hover,
-.peak-design-root .pk-icon-btn:hover {
+:where(.pktw-root, .peak-design-root) .pk-icon-btn:hover {
   background: var(--pk-surface-sunken) !important;
   color: var(--pk-text-primary);
 }
 
 .pktw-root .pk-icon-btn > svg,
 .peak-design-root .pk-icon-btn > svg,
-.pktw-root .pk-icon-btn .icon,
-.peak-design-root .pk-icon-btn .icon {
+:where(.pktw-root, .peak-design-root) .pk-icon-btn .icon {
   width: 14px;
   height: 14px;
 }
@@ -441,8 +396,7 @@
    Inline segmented control (e.g. Index mode picker, view toggles).
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pk-segmented,
-.peak-design-root .pk-segmented {
+:where(.pktw-root, .peak-design-root) .pk-segmented {
   display: inline-flex;
   background: var(--pk-surface-sunken);
   border: 1px solid var(--pk-border);
@@ -451,8 +405,7 @@
   gap: 2px;
 }
 
-.pktw-root .pk-segmented__opt,
-.peak-design-root .pk-segmented__opt {
+:where(.pktw-root, .peak-design-root) .pk-segmented__opt {
   background: transparent;
   border: 0;
   padding: 6px var(--pk-space-3);
@@ -462,8 +415,7 @@
   border-radius: var(--pk-radius-sm);
 }
 
-.pktw-root .pk-segmented__opt[data-selected="true"],
-.peak-design-root .pk-segmented__opt[data-selected="true"] {
+:where(.pktw-root, .peak-design-root) .pk-segmented__opt[data-selected="true"] {
   background: var(--pk-surface);
   color: var(--pk-text-primary);
   font-weight: 500;
@@ -476,8 +428,7 @@
    and onboarding for boolean preferences. Drive state via [data-on="true"].
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pk-toggle,
-.peak-design-root .pk-toggle {
+:where(.pktw-root, .peak-design-root) .pk-toggle {
   position: relative;
   width: 36px;
   height: 20px;
@@ -490,8 +441,7 @@
   transition: background var(--pk-transition-fast);
 }
 
-.pktw-root .pk-toggle::after,
-.peak-design-root .pk-toggle::after {
+:where(.pktw-root, .peak-design-root) .pk-toggle::after {
   content: '';
   position: absolute;
   top: 2px;
@@ -504,13 +454,11 @@
   transition: transform var(--pk-transition-fast);
 }
 
-.pktw-root .pk-toggle[data-on="true"],
-.peak-design-root .pk-toggle[data-on="true"] {
+:where(.pktw-root, .peak-design-root) .pk-toggle[data-on="true"] {
   background: var(--pk-accent);
 }
 
-.pktw-root .pk-toggle[data-on="true"]::after,
-.peak-design-root .pk-toggle[data-on="true"]::after {
+:where(.pktw-root, .peak-design-root) .pk-toggle[data-on="true"]::after {
   transform: translateX(16px);
 }
 
@@ -521,8 +469,7 @@
    and lives outside the token system on purpose.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pk-modal-overlay,
-.peak-design-root .pk-modal-overlay {
+:where(.pktw-root, .peak-design-root) .pk-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.42);
@@ -534,13 +481,11 @@
   overflow-y: auto;
 }
 
-.pktw-root .pk-modal-overlay[data-open="true"],
-.peak-design-root .pk-modal-overlay[data-open="true"] {
+:where(.pktw-root, .peak-design-root) .pk-modal-overlay[data-open="true"] {
   display: flex;
 }
 
-.pktw-root .pk-modal-shell,
-.peak-design-root .pk-modal-shell {
+:where(.pktw-root, .peak-design-root) .pk-modal-shell {
   width: 560px;
   max-width: 100%;
   background: var(--pk-surface);
@@ -552,18 +497,15 @@
   flex-direction: column;
 }
 
-.pktw-root .pk-modal-shell--wide,
-.peak-design-root .pk-modal-shell--wide {
+:where(.pktw-root, .peak-design-root) .pk-modal-shell--wide {
   width: 720px;
 }
 
-.pktw-root .pk-modal-shell--narrow,
-.peak-design-root .pk-modal-shell--narrow {
+:where(.pktw-root, .peak-design-root) .pk-modal-shell--narrow {
   width: 460px;
 }
 
-.pktw-root .pk-modal-shell__head,
-.peak-design-root .pk-modal-shell__head {
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -572,8 +514,7 @@
   border-bottom: 1px solid var(--pk-border-soft);
 }
 
-.pktw-root .pk-modal-shell__title,
-.peak-design-root .pk-modal-shell__title {
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__title {
   /* 15px — between --pk-text-lg (14) and --pk-text-xl (16); no exact token.
      Modal titles deliberately read heavier than --pk-text-lg body labels. */
   font-size: 15px;
@@ -581,8 +522,7 @@
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pk-modal-shell__sub,
-.peak-design-root .pk-modal-shell__sub {
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__sub {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   margin-top: 2px;
@@ -593,15 +533,13 @@
    The previous `.pk-modal-shell__close` rule was removed in PR-0 Task 3 as
    it duplicated `.pk-icon-btn`. */
 
-.pktw-root .pk-modal-shell__body,
-.peak-design-root .pk-modal-shell__body {
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__body {
   padding: 18px var(--pk-space-5);
   overflow-y: auto;
   max-height: 70vh;
 }
 
-.pktw-root .pk-modal-shell__footer,
-.peak-design-root .pk-modal-shell__footer {
+:where(.pktw-root, .peak-design-root) .pk-modal-shell__footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -616,8 +554,7 @@
    Floating menu surface (model picker, action menus, command palettes).
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pk-popover,
-.peak-design-root .pk-popover {
+:where(.pktw-root, .peak-design-root) .pk-popover {
   background: var(--pk-surface);
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
@@ -626,8 +563,7 @@
   z-index: var(--pk-z-popover);
 }
 
-.pktw-root .pk-pop-item,
-.peak-design-root .pk-pop-item {
+:where(.pktw-root, .peak-design-root) .pk-pop-item {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -642,15 +578,13 @@
   cursor: pointer;
 }
 
-.pktw-root .pk-pop-item:hover,
-.peak-design-root .pk-pop-item:hover {
+:where(.pktw-root, .peak-design-root) .pk-pop-item:hover {
   background: var(--pk-surface-sunken);
 }
 
 .pktw-root .pk-pop-item > svg,
 .peak-design-root .pk-pop-item > svg,
-.pktw-root .pk-pop-item .icon,
-.peak-design-root .pk-pop-item .icon {
+:where(.pktw-root, .peak-design-root) .pk-pop-item .icon {
   width: 14px;
   height: 14px;
   color: var(--pk-text-secondary);
@@ -663,28 +597,24 @@
    `.pk-form-input--sans` for free-text fields.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pk-form-grid,
-.peak-design-root .pk-form-grid {
+:where(.pktw-root, .peak-design-root) .pk-form-grid {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.pktw-root .pk-form-row,
-.peak-design-root .pk-form-row {
+:where(.pktw-root, .peak-design-root) .pk-form-row {
   display: grid;
   grid-template-columns: 160px 1fr;
   gap: var(--pk-space-3);
   align-items: start;
 }
 
-.pktw-root .pk-form-row--stack,
-.peak-design-root .pk-form-row--stack {
+:where(.pktw-root, .peak-design-root) .pk-form-row--stack {
   grid-template-columns: 1fr;
 }
 
-.pktw-root .pk-form-label,
-.peak-design-root .pk-form-label {
+:where(.pktw-root, .peak-design-root) .pk-form-label {
   font-size: var(--pk-text-base);
   font-weight: 500;
   color: var(--pk-text-primary);
@@ -692,8 +622,7 @@
   line-height: 1.4;
 }
 
-.pktw-root .pk-form-label__hint,
-.peak-design-root .pk-form-label__hint {
+:where(.pktw-root, .peak-design-root) .pk-form-label__hint {
   display: block;
   font-weight: 400;
   color: var(--pk-text-tertiary);
@@ -701,16 +630,14 @@
   margin-top: 2px;
 }
 
-.pktw-root .pk-form-control,
-.peak-design-root .pk-form-control {
+:where(.pktw-root, .peak-design-root) .pk-form-control {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-1);
   min-width: 0;
 }
 
-.pktw-root .pk-form-control__hint,
-.peak-design-root .pk-form-control__hint {
+:where(.pktw-root, .peak-design-root) .pk-form-control__hint {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
 }
@@ -719,8 +646,7 @@
 .peak-design-root .pk-form-input,
 .pktw-root .pk-form-select,
 .peak-design-root .pk-form-select,
-.pktw-root .pk-form-textarea,
-.peak-design-root .pk-form-textarea {
+:where(.pktw-root, .peak-design-root) .pk-form-textarea {
   width: 100%;
   border: 1px solid var(--pk-border-strong);
   background: var(--pk-surface);
@@ -733,15 +659,13 @@
 
 .pktw-root .pk-form-input--sans,
 .peak-design-root .pk-form-input--sans,
-.pktw-root .pk-form-select,
-.peak-design-root .pk-form-select {
+:where(.pktw-root, .peak-design-root) .pk-form-select {
   font-family: var(--pk-font-sans);
 }
 
 /* Password inputs render dots; use sans + wide letter-spacing so dots
    don't crowd at mono's narrow advance width. */
-.pktw-root .pk-form-input[type="password"],
-.peak-design-root .pk-form-input[type="password"] {
+:where(.pktw-root, .peak-design-root) .pk-form-input[type="password"] {
   font-family: var(--pk-font-sans);
   letter-spacing: 0.18em;
 }
@@ -749,8 +673,7 @@
 /* Custom chevron on <select> elements. Native macOS chevron is a thick blue
    triangle that clashes with the soft-purple accent; this matches mock's
    double-linear-gradient arrow. */
-.pktw-root .pk-form-select,
-.peak-design-root .pk-form-select {
+:where(.pktw-root, .peak-design-root) .pk-form-select {
   appearance: none;
   -webkit-appearance: none;
   padding-right: 28px;
@@ -766,22 +689,19 @@
 .peak-design-root .pk-form-input:focus,
 .pktw-root .pk-form-select:focus,
 .peak-design-root .pk-form-select:focus,
-.pktw-root .pk-form-textarea:focus,
-.peak-design-root .pk-form-textarea:focus {
+:where(.pktw-root, .peak-design-root) .pk-form-textarea:focus {
   outline: none;
   border-color: var(--pk-accent);
   box-shadow: 0 0 0 3px var(--pk-accent-soft);
 }
 
-.pktw-root .pk-form-textarea,
-.peak-design-root .pk-form-textarea {
+:where(.pktw-root, .peak-design-root) .pk-form-textarea {
   min-height: 96px;
   resize: vertical;
 }
 
 /* Inline below-field status text. Variants colour the icon + text together. */
-.pktw-root .pk-form-status,
-.peak-design-root .pk-form-status {
+:where(.pktw-root, .peak-design-root) .pk-form-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -791,38 +711,32 @@
 
 .pktw-root .pk-form-status > svg,
 .peak-design-root .pk-form-status > svg,
-.pktw-root .pk-form-status .icon,
-.peak-design-root .pk-form-status .icon {
+:where(.pktw-root, .peak-design-root) .pk-form-status .icon {
   width: 11px;
   height: 11px;
 }
 
-.pktw-root .pk-form-status--success,
-.peak-design-root .pk-form-status--success {
+:where(.pktw-root, .peak-design-root) .pk-form-status--success {
   color: var(--pk-success);
 }
 
-.pktw-root .pk-form-status--error,
-.peak-design-root .pk-form-status--error {
+:where(.pktw-root, .peak-design-root) .pk-form-status--error {
   color: var(--pk-error);
 }
 
 /* Slider — range + right-aligned mono value readout */
-.pktw-root .pk-form-slider,
-.peak-design-root .pk-form-slider {
+:where(.pktw-root, .peak-design-root) .pk-form-slider {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
 }
 
-.pktw-root .pk-form-slider input[type="range"],
-.peak-design-root .pk-form-slider input[type="range"] {
+:where(.pktw-root, .peak-design-root) .pk-form-slider input[type="range"] {
   flex: 1;
   accent-color: var(--pk-accent);
 }
 
-.pktw-root .pk-form-slider__value,
-.peak-design-root .pk-form-slider__value {
+:where(.pktw-root, .peak-design-root) .pk-form-slider__value {
   font-family: var(--pk-font-mono);
   font-size: var(--pk-text-base);
   width: 44px;
@@ -831,8 +745,7 @@
 }
 
 /* Number stepper — number input with right-edge unit label */
-.pktw-root .pk-form-number,
-.peak-design-root .pk-form-number {
+:where(.pktw-root, .peak-design-root) .pk-form-number {
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--pk-border-strong);
@@ -841,8 +754,7 @@
   overflow: hidden;
 }
 
-.pktw-root .pk-form-number input,
-.peak-design-root .pk-form-number input {
+:where(.pktw-root, .peak-design-root) .pk-form-number input {
   width: 64px;
   padding: 6px var(--pk-space-2);
   border: 0;
@@ -854,8 +766,7 @@
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pk-form-number__unit,
-.peak-design-root .pk-form-number__unit {
+:where(.pktw-root, .peak-design-root) .pk-form-number__unit {
   padding: 0 var(--pk-space-2);
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
@@ -872,8 +783,7 @@
    sunken disclosure background.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pk-disclosure-body,
-.peak-design-root .pk-disclosure-body {
+:where(.pktw-root, .peak-design-root) .pk-disclosure-body {
   padding: var(--pk-space-3) calc(var(--pk-space-3) + 2px);
   border: 1px solid var(--pk-border);
   border-top: 0;
@@ -886,8 +796,7 @@
   gap: var(--pk-space-2);
 }
 
-.pktw-root .pk-disclosure-body .pk-row,
-.peak-design-root .pk-disclosure-body .pk-row {
+:where(.pktw-root, .peak-design-root) .pk-disclosure-body .pk-row {
   background: var(--pk-surface);
 }
 
@@ -898,8 +807,7 @@
    driven by the --pk-prov-* tokens.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pk-brand-av,
-.peak-design-root .pk-brand-av {
+:where(.pktw-root, .peak-design-root) .pk-brand-av {
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -913,53 +821,45 @@
   flex-shrink: 0;
 }
 
-.pktw-root .pk-brand-av--sm,
-.peak-design-root .pk-brand-av--sm {
+:where(.pktw-root, .peak-design-root) .pk-brand-av--sm {
   width: 20px;
   height: 20px;
 }
 
 .pktw-root .pk-brand-av > svg,
 .peak-design-root .pk-brand-av > svg,
-.pktw-root .pk-brand-av .icon,
-.peak-design-root .pk-brand-av .icon {
+:where(.pktw-root, .peak-design-root) .pk-brand-av .icon {
   width: 60%;
   height: 60%;
 }
 
 /* Provider color bindings — same six providers as --pk-prov-* in peak-tokens.css */
-.pktw-root .pk-brand-av[data-provider="openai"],
-.peak-design-root .pk-brand-av[data-provider="openai"] {
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="openai"] {
   background: var(--pk-prov-openai-soft);
   color: var(--pk-prov-openai);
 }
 
-.pktw-root .pk-brand-av[data-provider="anthropic"],
-.peak-design-root .pk-brand-av[data-provider="anthropic"] {
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="anthropic"] {
   background: var(--pk-prov-anthropic-soft);
   color: var(--pk-prov-anthropic);
 }
 
-.pktw-root .pk-brand-av[data-provider="google"],
-.peak-design-root .pk-brand-av[data-provider="google"] {
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="google"] {
   background: var(--pk-prov-google-soft);
   color: var(--pk-prov-google);
 }
 
-.pktw-root .pk-brand-av[data-provider="openrouter"],
-.peak-design-root .pk-brand-av[data-provider="openrouter"] {
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="openrouter"] {
   background: var(--pk-prov-openrouter-soft);
   color: var(--pk-prov-openrouter);
 }
 
-.pktw-root .pk-brand-av[data-provider="perplexity"],
-.peak-design-root .pk-brand-av[data-provider="perplexity"] {
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="perplexity"] {
   background: var(--pk-prov-perplexity-soft);
   color: var(--pk-prov-perplexity);
 }
 
-.pktw-root .pk-brand-av[data-provider="ollama"],
-.peak-design-root .pk-brand-av[data-provider="ollama"] {
+:where(.pktw-root, .peak-design-root) .pk-brand-av[data-provider="ollama"] {
   background: var(--pk-prov-ollama-soft);
   color: var(--pk-prov-ollama);
 }
@@ -978,8 +878,7 @@
    the parent-child relationship — the earlier 1px guide line crowded the
    row icons in a narrow sidebar and added visual noise without payoff.
    ─────────────────────────────────────────────────────────────────────────── */
-.pktw-root .pkproj-children,
-.peak-design-root .pkproj-children {
+:where(.pktw-root, .peak-design-root) .pkproj-children {
   padding-left: 16px;
 }
 
@@ -989,18 +888,15 @@
    than via `bg-accent/5` because --pk-accent is a hex string and Tailwind's
    `/N` alpha modifier needs channel-triple variables to work.
    ─────────────────────────────────────────────────────────────────────────── */
-.pktw-root .pkchat-type-card--idle,
-.peak-design-root .pkchat-type-card--idle {
+:where(.pktw-root, .peak-design-root) .pkchat-type-card--idle {
   border-color: var(--pk-border);
   background: transparent;
 }
-.pktw-root .pkchat-type-card--idle:hover,
-.peak-design-root .pkchat-type-card--idle:hover {
+:where(.pktw-root, .peak-design-root) .pkchat-type-card--idle:hover {
   border-color: var(--pk-accent);
   background: var(--pk-accent-tint);
 }
-.pktw-root .pkchat-type-card--selected,
-.peak-design-root .pkchat-type-card--selected {
+:where(.pktw-root, .peak-design-root) .pkchat-type-card--selected {
   border-color: var(--pk-accent);
   background: var(--pk-accent-tint);
 }
@@ -1010,8 +906,7 @@
    hidden (default for PR-Chat-1), the chat column expands to full width.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkchat-shell,
-.peak-design-root .pkchat-shell {
+:where(.pktw-root, .peak-design-root) .pkchat-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   height: 100%;
@@ -1020,8 +915,7 @@
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkchat-center,
-.peak-design-root .pkchat-center {
+:where(.pktw-root, .peak-design-root) .pkchat-center {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1048,8 +942,7 @@
    Title + Open source + Refresh — minimal chrome per locked design.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkchat-header,
-.peak-design-root .pkchat-header {
+:where(.pktw-root, .peak-design-root) .pkchat-header {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -1059,8 +952,7 @@
   flex-shrink: 0;
 }
 
-.pktw-root .pkchat-header__title,
-.peak-design-root .pkchat-header__title {
+:where(.pktw-root, .peak-design-root) .pkchat-header__title {
   font-size: var(--pk-text-lg);
   font-weight: 600;
   color: var(--pk-text-primary);
@@ -1076,8 +968,7 @@
    the truncated title, not float at the far right. Actions cluster sits right
    next to the title via the parent flex layout. */
 
-.pktw-root .pkchat-header__actions,
-.peak-design-root .pkchat-header__actions {
+:where(.pktw-root, .peak-design-root) .pkchat-header__actions {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -1091,8 +982,7 @@
    Scrollable message list area between header and composer.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkchat-body,
-.peak-design-root .pkchat-body {
+:where(.pktw-root, .peak-design-root) .pkchat-body {
   flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1104,15 +994,13 @@
    Bottom input capsule: editor + footer with single run-chip + send.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkchat-composer-wrap,
-.peak-design-root .pkchat-composer-wrap {
+:where(.pktw-root, .peak-design-root) .pkchat-composer-wrap {
   padding: var(--pk-space-3) var(--pk-space-5) var(--pk-space-5);
   flex-shrink: 0;
   background: var(--pk-surface);
 }
 
-.pktw-root .pkchat-composer,
-.peak-design-root .pkchat-composer {
+:where(.pktw-root, .peak-design-root) .pkchat-composer {
   border: 1px solid var(--pk-border-accent);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-surface);
@@ -1121,20 +1009,17 @@
   flex-direction: column;
 }
 
-.pktw-root .pkchat-composer:focus-within,
-.peak-design-root .pkchat-composer:focus-within {
+:where(.pktw-root, .peak-design-root) .pkchat-composer:focus-within {
   border-color: var(--pk-accent);
   box-shadow: 0 0 0 3px var(--pk-accent-tint);
 }
 
-.pktw-root .pkchat-composer__editor,
-.peak-design-root .pkchat-composer__editor {
+:where(.pktw-root, .peak-design-root) .pkchat-composer__editor {
   padding: var(--pk-space-3) var(--pk-space-4) var(--pk-space-2);
   min-height: 56px;
 }
 
-.pktw-root .pkchat-composer__foot,
-.peak-design-root .pkchat-composer__foot {
+:where(.pktw-root, .peak-design-root) .pkchat-composer__foot {
   padding: 10px 12px;
   border-top: 1px solid var(--pk-border-soft);
   display: flex;
@@ -1143,8 +1028,7 @@
   min-height: 52px;
 }
 
-.pktw-root .pkchat-composer__foot-left,
-.peak-design-root .pkchat-composer__foot-left {
+:where(.pktw-root, .peak-design-root) .pkchat-composer__foot-left {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-1);
@@ -1153,14 +1037,12 @@
 /* Active toggle state for IconButton inside the composer foot-left cluster
    (e.g. vault-search Database toggle). Uses accent tint so the toggled-on
    icon visibly differs from the resting state without becoming a CTA. */
-.pktw-root .pkchat-composer__foot-left .pk-icon-btn[data-active="true"],
-.peak-design-root .pkchat-composer__foot-left .pk-icon-btn[data-active="true"] {
+:where(.pktw-root, .peak-design-root) .pkchat-composer__foot-left .pk-icon-btn[data-active="true"] {
   background: var(--pk-accent-soft) !important;
   color: var(--pk-accent-text) !important;
 }
 
-.pktw-root .pkchat-composer__foot-right,
-.peak-design-root .pkchat-composer__foot-right {
+:where(.pktw-root, .peak-design-root) .pkchat-composer__foot-right {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -1177,8 +1059,7 @@
    reset rule (specificity 0,1,1 with !important) was BEATING our `height: 30px`,
    collapsing the chip to its content-natural height (~16px). Same reason send
    button below needs !important on its width/height. */
-.pktw-root .pkchat-run-chip,
-.peak-design-root .pkchat-run-chip {
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1203,30 +1084,25 @@
    accent so the chip still signals interaction. */
 .pktw-root .pkchat-run-chip:hover,
 .peak-design-root .pkchat-run-chip:hover,
-.pktw-root .pkchat-run-chip[data-state="open"],
-.peak-design-root .pkchat-run-chip[data-state="open"] {
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip[data-state="open"] {
   border-color: var(--pk-border-accent);
   background: var(--pk-surface);
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkchat-run-chip__label,
-.peak-design-root .pkchat-run-chip__label {
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip__label {
   font-weight: 600;
 }
 
-.pktw-root .pkchat-run-chip__sep,
-.peak-design-root .pkchat-run-chip__sep {
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip__sep {
   color: var(--pk-text-tertiary);
 }
 
-.pktw-root .pkchat-run-chip__mid,
-.peak-design-root .pkchat-run-chip__mid {
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip__mid {
   color: var(--pk-text-secondary);
 }
 
-.pktw-root .pkchat-run-chip__ctx,
-.peak-design-root .pkchat-run-chip__ctx {
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip__ctx {
   font-family: var(--pk-font-mono);
   color: var(--pk-accent);
   font-size: var(--pk-text-sm);
@@ -1234,8 +1110,7 @@
 
 .pktw-root .pkchat-run-chip > svg,
 .peak-design-root .pkchat-run-chip > svg,
-.pktw-root .pkchat-run-chip .icon,
-.peak-design-root .pkchat-run-chip .icon {
+:where(.pktw-root, .peak-design-root) .pkchat-run-chip .icon {
   width: 12px;
   height: 12px;
   color: currentColor;
@@ -1245,8 +1120,7 @@
    Primary send button on the right edge of the composer footer.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkchat-send,
-.peak-design-root .pkchat-send {
+:where(.pktw-root, .peak-design-root) .pkchat-send {
   width: 32px !important;
   height: 32px !important;
   min-height: 32px !important;
@@ -1264,13 +1138,11 @@
   padding: 0 !important;
 }
 
-.pktw-root .pkchat-send:hover,
-.peak-design-root .pkchat-send:hover {
+:where(.pktw-root, .peak-design-root) .pkchat-send:hover {
   background: var(--pk-accent-hover);
 }
 
-.pktw-root .pkchat-send:disabled,
-.peak-design-root .pkchat-send:disabled {
+:where(.pktw-root, .peak-design-root) .pkchat-send:disabled {
   background: var(--pk-surface-sunken);
   color: var(--pk-text-tertiary);
   cursor: not-allowed;
@@ -1278,8 +1150,7 @@
 
 .pktw-root .pkchat-send > svg,
 .peak-design-root .pkchat-send > svg,
-.pktw-root .pkchat-send .icon,
-.peak-design-root .pkchat-send .icon {
+:where(.pktw-root, .peak-design-root) .pkchat-send .icon {
   width: 16px;
   height: 16px;
 }
@@ -1289,17 +1160,14 @@
    not solid dark either — neutral light-gray button with a small dark filled
    square inside. Communicates "stop" without competing for visual weight with
    the violet send state. */
-.pktw-root .pkchat-send--stop,
-.peak-design-root .pkchat-send--stop {
+:where(.pktw-root, .peak-design-root) .pkchat-send--stop {
   background: var(--pk-surface-sunken) !important;
   color: var(--pk-text-primary) !important;
 }
-.pktw-root .pkchat-send--stop:hover,
-.peak-design-root .pkchat-send--stop:hover {
+:where(.pktw-root, .peak-design-root) .pkchat-send--stop:hover {
   background: var(--pk-border-soft) !important;
 }
-.pktw-root .pkchat-send__stop-mark,
-.peak-design-root .pkchat-send__stop-mark {
+:where(.pktw-root, .peak-design-root) .pkchat-send__stop-mark {
   width: 10px;
   height: 10px;
   border-radius: 2px;
@@ -1312,16 +1180,14 @@
    disabling the editor (user can still queue their next prompt while the
    current one streams). */
 
-.pktw-root .pkchat-composer--streaming,
-.peak-design-root .pkchat-composer--streaming {
+:where(.pktw-root, .peak-design-root) .pkchat-composer--streaming {
   position: relative;
   /* keep the focus-within ring suppressed while streaming — the progress
      bar already signals attention; doubling it competes for the eye. */
   border-color: var(--pk-border) !important;
   box-shadow: var(--pk-shadow-card) !important;
 }
-.pktw-root .pkchat-composer--streaming::before,
-.peak-design-root .pkchat-composer--streaming::before {
+:where(.pktw-root, .peak-design-root) .pkchat-composer--streaming::before {
   content: "";
   position: absolute;
   top: 0;
@@ -1333,8 +1199,7 @@
   border-top-right-radius: var(--pk-radius-lg);
   overflow: hidden;
 }
-.pktw-root .pkchat-composer--streaming::after,
-.peak-design-root .pkchat-composer--streaming::after {
+:where(.pktw-root, .peak-design-root) .pkchat-composer--streaming::after {
   content: "";
   position: absolute;
   top: 0;
@@ -1350,8 +1215,7 @@
   100% { left: 100%;  }
 }
 
-.pktw-root .pkchat-composer__status,
-.peak-design-root .pkchat-composer__status {
+:where(.pktw-root, .peak-design-root) .pkchat-composer__status {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -1359,8 +1223,7 @@
   font-size: var(--pk-text-sm);
   color: var(--pk-text-secondary);
 }
-.pktw-root .pkchat-composer__status-spinner,
-.peak-design-root .pkchat-composer__status-spinner {
+:where(.pktw-root, .peak-design-root) .pkchat-composer__status-spinner {
   width: 12px;
   height: 12px;
   color: var(--pk-accent);
@@ -1376,8 +1239,7 @@
    labels, segmented mode selector) reuse PR-0 atoms where possible.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkchat-runpop,
-.peak-design-root .pkchat-runpop {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-2);
@@ -1390,44 +1252,38 @@
    to full popover width instead of the inline-flex default (image 53
    reference shows RUN MODE spanning the full panel). Each opt then takes
    1/3 width so Chat/Agent/Plan share equal slots. */
-.pktw-root .pkchat-runpop .pk-segmented,
-.peak-design-root .pkchat-runpop .pk-segmented {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop .pk-segmented {
   display: flex;
   width: 100%;
   margin-top: 6px;
 }
 
-.pktw-root .pkchat-runpop .pk-segmented__opt,
-.peak-design-root .pkchat-runpop .pk-segmented__opt {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop .pk-segmented__opt {
   flex: 1;
   text-align: center;
   padding: 6px 10px;
   font-size: var(--pk-text-base);
 }
 
-.pktw-root .pkchat-runpop__head,
-.peak-design-root .pkchat-runpop__head {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__head {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 0 var(--pk-space-2);
 }
 
-.pktw-root .pkchat-runpop__title,
-.peak-design-root .pkchat-runpop__title {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__title {
   font-size: var(--pk-text-lg);
   font-weight: 650;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkchat-runpop__sub,
-.peak-design-root .pkchat-runpop__sub {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__sub {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
 }
 
-.pktw-root .pkchat-runpop__label,
-.peak-design-root .pkchat-runpop__label {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__label {
   font-size: var(--pk-text-sm);
   font-weight: 600;
   color: var(--pk-text-secondary);
@@ -1436,8 +1292,7 @@
   padding: 0 var(--pk-space-2);
 }
 
-.pktw-root .pkchat-runpop__hint,
-.peak-design-root .pkchat-runpop__hint {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__hint {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
   padding: 0 var(--pk-space-2);
@@ -1446,8 +1301,7 @@
 /* Role pills (Default / Researcher / Writer / Planner / Coder).
    3-column grid so 5 roles wrap 3+2 — matches the run-settings mock.
    Pills auto-fit their column, so the bottom row left-aligns. */
-.pktw-root .pkchat-runpop__role-grid,
-.peak-design-root .pkchat-runpop__role-grid {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__role-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
@@ -1459,8 +1313,7 @@
    run-settings popover needs. Sized larger than the prior xs/26px so role
    pills don't read as cramped vs Run-mode segmented + Model cards
    (image 53 reference). */
-.pktw-root .pkchat-role-pill,
-.peak-design-root .pkchat-role-pill {
+:where(.pktw-root, .peak-design-root) .pkchat-role-pill {
   width: 100%;
   height: 32px !important;
   min-height: 32px !important;
@@ -1473,22 +1326,19 @@
   text-overflow: ellipsis;
 }
 
-.pktw-root .pkchat-runpop__role-ico,
-.peak-design-root .pkchat-runpop__role-ico {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__role-ico {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.pktw-root .pkchat-runpop__role-ico > svg,
-.peak-design-root .pkchat-runpop__role-ico > svg {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__role-ico > svg {
   width: 12px;
   height: 12px;
 }
 
 /* Row card — used for Model rows, Context toggles, Tools entries */
-.pktw-root .pkchat-runpop__row,
-.peak-design-root .pkchat-runpop__row {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1506,32 +1356,27 @@
               border-color var(--pk-transition-fast);
 }
 
-.pktw-root .pkchat-runpop__row:hover,
-.peak-design-root .pkchat-runpop__row:hover {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row:hover {
   border-color: var(--pk-border-accent);
   background: var(--pk-accent-tint);
 }
 
-.pktw-root .pkchat-runpop__row[data-selected="true"],
-.peak-design-root .pkchat-runpop__row[data-selected="true"] {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row[data-selected="true"] {
   border-color: var(--pk-border-accent);
   background: var(--pk-accent-tint);
 }
 
-.pktw-root .pkchat-runpop__row[data-disabled="true"],
-.peak-design-root .pkchat-runpop__row[data-disabled="true"] {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row[data-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.62;
 }
 
-.pktw-root .pkchat-runpop__row[data-disabled="true"]:hover,
-.peak-design-root .pkchat-runpop__row[data-disabled="true"]:hover {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row[data-disabled="true"]:hover {
   border-color: var(--pk-border);
   background: var(--pk-surface);
 }
 
-.pktw-root .pkchat-runpop__row-ico,
-.peak-design-root .pkchat-runpop__row-ico {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row-ico {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1539,14 +1384,12 @@
   flex-shrink: 0;
 }
 
-.pktw-root .pkchat-runpop__row-ico > svg,
-.peak-design-root .pkchat-runpop__row-ico > svg {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row-ico > svg {
   width: 14px;
   height: 14px;
 }
 
-.pktw-root .pkchat-runpop__row-body,
-.peak-design-root .pkchat-runpop__row-body {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row-body {
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -1554,8 +1397,7 @@
   min-width: 0;
 }
 
-.pktw-root .pkchat-runpop__row-name,
-.peak-design-root .pkchat-runpop__row-name {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row-name {
   font-size: var(--pk-text-sm);
   font-weight: 600;
   color: var(--pk-text-primary);
@@ -1564,8 +1406,7 @@
   white-space: nowrap;
 }
 
-.pktw-root .pkchat-runpop__row-sub,
-.peak-design-root .pkchat-runpop__row-sub {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row-sub {
   font-size: 11.5px;
   color: var(--pk-text-tertiary);
   font-family: var(--pk-font-mono);
@@ -1574,16 +1415,14 @@
   white-space: nowrap;
 }
 
-.pktw-root .pkchat-runpop__row-chev,
-.peak-design-root .pkchat-runpop__row-chev {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row-chev {
   width: 14px;
   height: 14px;
   color: var(--pk-text-tertiary);
   flex-shrink: 0;
 }
 
-.pktw-root .pkchat-runpop__row-dot,
-.peak-design-root .pkchat-runpop__row-dot {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -1592,8 +1431,7 @@
 }
 
 /* Toggle switch on context rows */
-.pktw-root .pkchat-runpop__switch,
-.peak-design-root .pkchat-runpop__switch {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__switch {
   width: 30px;
   height: 18px;
   border-radius: var(--pk-radius-pill);
@@ -1603,8 +1441,7 @@
   transition: background var(--pk-transition-fast);
 }
 
-.pktw-root .pkchat-runpop__switch::after,
-.peak-design-root .pkchat-runpop__switch::after {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__switch::after {
   content: "";
   width: 14px;
   height: 14px;
@@ -1617,19 +1454,16 @@
   transition: left var(--pk-transition-fast);
 }
 
-.pktw-root .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch,
-.peak-design-root .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch {
   background: var(--pk-accent);
 }
 
-.pktw-root .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch::after,
-.peak-design-root .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch::after {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch::after {
   left: 14px;
 }
 
 /* Ctx chip on Tools row */
-.pktw-root .pkchat-runpop__ctx-chip,
-.peak-design-root .pkchat-runpop__ctx-chip {
+:where(.pktw-root, .peak-design-root) .pkchat-runpop__ctx-chip {
   font-family: var(--pk-font-mono);
   font-size: 11px;
   background: var(--pk-accent-soft);
@@ -1644,8 +1478,7 @@
    Placeholder for right index slot (PR-Chat-3 will replace with full panel).
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkchat-index-empty,
-.peak-design-root .pkchat-index-empty {
+:where(.pktw-root, .peak-design-root) .pkchat-index-empty {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1657,15 +1490,13 @@
   color: var(--pk-text-tertiary);
 }
 
-.pktw-root .pkchat-index-empty__title,
-.peak-design-root .pkchat-index-empty__title {
+:where(.pktw-root, .peak-design-root) .pkchat-index-empty__title {
   font-size: var(--pk-text-md);
   font-weight: 600;
   color: var(--pk-text-secondary);
 }
 
-.pktw-root .pkchat-index-empty__hint,
-.peak-design-root .pkchat-index-empty__hint {
+:where(.pktw-root, .peak-design-root) .pkchat-index-empty__hint {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
   line-height: 1.5;
@@ -1679,8 +1510,7 @@
    pk-* primitives. All values flow through --pk-* tokens.
    ═════════════════════════════════════════════════════════════════════════════ */
 
-.pktw-root .pkchat-idx,
-.peak-design-root .pkchat-idx {
+:where(.pktw-root, .peak-design-root) .pkchat-idx {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -1688,8 +1518,7 @@
   overflow: hidden;
 }
 
-.pktw-root .pkchat-idx__head,
-.peak-design-root .pkchat-idx__head {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__head {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -1698,22 +1527,19 @@
   flex-shrink: 0;
 }
 
-.pktw-root .pkchat-idx__title,
-.peak-design-root .pkchat-idx__title {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__title {
   font-size: var(--pk-text-lg);
   font-weight: 650;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkchat-idx__head-actions,
-.peak-design-root .pkchat-idx__head-actions {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__head-actions {
   margin-left: auto;
   display: inline-flex;
   gap: 2px;
 }
 
-.pktw-root .pkchat-idx__search,
-.peak-design-root .pkchat-idx__search {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__search {
   margin: var(--pk-space-2) var(--pk-space-3) var(--pk-space-1);
   display: flex;
   align-items: center;
@@ -1733,8 +1559,7 @@
    !important everything that affects visual chrome — otherwise the magnifier
    icon and input render as TWO separately-bordered boxes inside our parent
    container (the "ugly detached search icon" symptom from image 26). */
-.pktw-root .pkchat-idx__search input,
-.peak-design-root .pkchat-idx__search input {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__search input {
   flex: 1;
   background: transparent !important;
   border: 0 !important;
@@ -1748,20 +1573,17 @@
   min-width: 0;
 }
 
-.pktw-root .pkchat-idx__search input:focus,
-.peak-design-root .pkchat-idx__search input:focus {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__search input:focus {
   box-shadow: none !important;
   outline: none !important;
   border: 0 !important;
 }
 
-.pktw-root .pkchat-idx__search input::placeholder,
-.peak-design-root .pkchat-idx__search input::placeholder {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__search input::placeholder {
   color: var(--pk-text-tertiary);
 }
 
-.pktw-root .pkchat-idx__search > svg,
-.peak-design-root .pkchat-idx__search > svg {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__search > svg {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
@@ -1775,8 +1597,7 @@
    navigation tab. Switching to flex + gap packs the tabs at the left where
    they read as a header nav, and the active underline aligns flush with the
    label width. */
-.pktw-root .pkchat-idx__tabs,
-.peak-design-root .pkchat-idx__tabs {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__tabs {
   margin: 0 var(--pk-space-3) var(--pk-space-2);
   flex-shrink: 0;
   display: flex;
@@ -1787,13 +1608,11 @@
 /* Compact (sidebar leaf) variant centers the tabs since the bar no longer
    carries a "Conversation Index" title and the left-aligned defaults look
    visually orphaned without that anchor. */
-.pktw-root .pkchat-idx__tabs--centered,
-.peak-design-root .pkchat-idx__tabs--centered {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__tabs--centered {
   justify-content: center;
 }
 
-.pktw-root .pkchat-idx__tab,
-.peak-design-root .pkchat-idx__tab {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__tab {
   padding: 0;
   font-size: var(--pk-text-sm);
   color: var(--pk-text-secondary);
@@ -1804,16 +1623,14 @@
   transition: color var(--pk-transition-fast);
 }
 
-.pktw-root .pkchat-idx__tab:hover,
-.peak-design-root .pkchat-idx__tab:hover {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__tab:hover {
   color: var(--pk-text-primary);
 }
 
 /* Inner label span — the active-tab underline matches the label width
    exactly (text + 2px tail) so it reads as the underline of a word, not
    a chip border. */
-.pktw-root .pkchat-idx__tab-label,
-.peak-design-root .pkchat-idx__tab-label {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__tab-label {
   display: inline-block;
   padding: 10px 0;
   border-bottom: 2px solid transparent;
@@ -1821,20 +1638,17 @@
   transition: border-color var(--pk-transition-fast);
 }
 
-.pktw-root .pkchat-idx__tab--active,
-.peak-design-root .pkchat-idx__tab--active {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__tab--active {
   color: var(--pk-text-primary);
   font-weight: 600;
 }
-.pktw-root .pkchat-idx__tab--active .pkchat-idx__tab-label,
-.peak-design-root .pkchat-idx__tab--active .pkchat-idx__tab-label {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__tab--active .pkchat-idx__tab-label {
   border-bottom-color: var(--pk-text-primary);
 }
 
 /* ⌘K keyboard hint in the search box. Matches the sidebar's badge so the
    two surfaces read as the same "find" affordance. */
-.pktw-root .pkchat-idx__kbd,
-.peak-design-root .pkchat-idx__kbd {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__kbd {
   display: inline-flex;
   align-items: center;
   font-family: var(--pk-font-mono);
@@ -1848,8 +1662,7 @@
   flex-shrink: 0;
 }
 
-.pktw-root .pkchat-idx__filters,
-.peak-design-root .pkchat-idx__filters {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__filters {
   display: flex;
   gap: var(--pk-space-2);
   flex-wrap: wrap;
@@ -1860,8 +1673,7 @@
 /* `.pkchat-idx__filter` (artifact/message filter chips) migrated to <Pill>
    primitive. Wrapper `.pkchat-idx__filters` above still controls layout. */
 
-.pktw-root .pkchat-idx__list,
-.peak-design-root .pkchat-idx__list {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__list {
   flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1869,8 +1681,7 @@
   min-height: 0;
 }
 
-.pktw-root .pkchat-idx__empty,
-.peak-design-root .pkchat-idx__empty {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1883,8 +1694,7 @@
   gap: var(--pk-space-2);
 }
 
-.pktw-root .pkchat-idx__section-header,
-.peak-design-root .pkchat-idx__section-header {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__section-header {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -1895,8 +1705,7 @@
   text-transform: none;
 }
 
-.pktw-root .pkchat-idx__section-header:first-child,
-.peak-design-root .pkchat-idx__section-header:first-child {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__section-header:first-child {
   margin-top: 0;
 }
 
@@ -1905,8 +1714,7 @@
 
 /* dead block 1791-2304 removed during 2026-06-03 redesign */
 
-.pktw-root .pkchat-idx__foot,
-.peak-design-root .pkchat-idx__foot {
+:where(.pktw-root, .peak-design-root) .pkchat-idx__foot {
   border-top: 1px solid var(--pk-border-soft);
   padding: var(--pk-space-2) var(--pk-space-4);
   display: flex;
@@ -1929,8 +1737,7 @@
    All selectors scoped via `.pktw-root SEL, .peak-design-root SEL`.
    ═════════════════════════════════════════════════════════════════════════════ */
 
-.pktw-root .pkchat-msg-list,
-.peak-design-root .pkchat-msg-list {
+:where(.pktw-root, .peak-design-root) .pkchat-msg-list {
   display: flex;
   flex-direction: column;
   /* Container widens enough for side-by-side bubble layout (user right,
@@ -1945,8 +1752,7 @@
 
 /* Assistant default: left-aligned with avatar+head row, body takes the
    available column width up to the container max. */
-.pktw-root .pkchat-msg,
-.peak-design-root .pkchat-msg {
+:where(.pktw-root, .peak-design-root) .pkchat-msg {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-3);
@@ -1957,28 +1763,24 @@
 
 /* User message: right-aligned bubble, narrower max-width (iMessage style).
    Head row is hidden — bubble alone carries identity via position+color. */
-.pktw-root .pkchat-msg--user,
-.peak-design-root .pkchat-msg--user {
+:where(.pktw-root, .peak-design-root) .pkchat-msg--user {
   align-self: flex-end;
   max-width: min(70%, 520px);
   width: auto;
 }
 
-.pktw-root .pkchat-msg--user .pkchat-msg__head,
-.peak-design-root .pkchat-msg--user .pkchat-msg__head {
+:where(.pktw-root, .peak-design-root) .pkchat-msg--user .pkchat-msg__head {
   display: none;
 }
 
-.pktw-root .pkchat-msg__head,
-.peak-design-root .pkchat-msg__head {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__head {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
   flex-wrap: wrap;
 }
 
-.pktw-root .pkchat-msg__avatar,
-.peak-design-root .pkchat-msg__avatar {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__avatar {
   width: 26px;
   height: 26px;
   border-radius: 8px;
@@ -1993,15 +1795,13 @@
   border: 1px solid var(--pk-border-accent);
 }
 
-.pktw-root .pkchat-msg__avatar--user,
-.peak-design-root .pkchat-msg__avatar--user {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__avatar--user {
   background: var(--pk-surface-sunken);
   color: var(--pk-text-primary);
   border-color: var(--pk-border);
 }
 
-.pktw-root .pkchat-msg__name,
-.peak-design-root .pkchat-msg__name {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__name {
   font-weight: 650;
   font-size: var(--pk-text-md-plus);
   color: var(--pk-text-primary);
@@ -2010,8 +1810,7 @@
 /* Mode badge sitting between assistant name and head-meta — composes
    <Chip variant="accent">. Smaller font + tighter padding than the default
    chip so it fits inline with the head row. Registered in §2.4. */
-.pktw-root .pkchat-msg__mode-badge,
-.peak-design-root .pkchat-msg__mode-badge {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__mode-badge {
   font-size: var(--pk-text-xs);
   padding: 2px 6px;
   font-weight: 600;
@@ -2019,27 +1818,23 @@
   letter-spacing: 0.03em;
 }
 
-.pktw-root .pkchat-msg__head-meta,
-.peak-design-root .pkchat-msg__head-meta {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__head-meta {
   color: var(--pk-text-tertiary);
   font-size: var(--pk-text-sm);
 }
 
-.pktw-root .pkchat-msg__head-meta .pkchat-msg__dot,
-.peak-design-root .pkchat-msg__head-meta .pkchat-msg__dot {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__head-meta .pkchat-msg__dot {
   margin: 0 var(--pk-space-1);
   opacity: 0.6;
 }
 
-.pktw-root .pkchat-msg__body,
-.peak-design-root .pkchat-msg__body {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__body {
   font-size: var(--pk-text-lg-plus);
   line-height: 1.7;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkchat-msg--user .pkchat-msg__body,
-.peak-design-root .pkchat-msg--user .pkchat-msg__body {
+:where(.pktw-root, .peak-design-root) .pkchat-msg--user .pkchat-msg__body {
   background: var(--pk-surface-sunken);
   border: 1px solid var(--pk-border);
   border-radius: 10px;
@@ -2047,8 +1842,7 @@
   font-size: var(--pk-text-lg);
 }
 
-.pktw-root .pkchat-msg__meta-row,
-.peak-design-root .pkchat-msg__meta-row {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__meta-row {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -2063,8 +1857,7 @@
    saturated next to dark body text (image 39 feedback). We drop to
    --pk-accent-tint (~10% alpha) just for this chip, keeping accent-text
    color so the model identifier still reads as branded. */
-.pktw-root .pkchat-msg__model-chip,
-.peak-design-root .pkchat-msg__model-chip {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__model-chip {
   font-family: var(--pk-font-mono);
   font-size: 11.5px;
   margin-right: var(--pk-space-1);
@@ -2073,13 +1866,11 @@
   border-color: transparent !important;
 }
 
-.pktw-root .pkchat-msg__sep,
-.peak-design-root .pkchat-msg__sep {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__sep {
   opacity: 0.5;
 }
 
-.pktw-root .pkchat-msg__action,
-.peak-design-root .pkchat-msg__action {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__action {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-1);
@@ -2095,34 +1886,29 @@
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-.pktw-root .pkchat-msg__action:hover,
-.peak-design-root .pkchat-msg__action:hover {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__action:hover {
   background: var(--pk-surface-sunken);
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkchat-msg__action--danger:hover,
-.peak-design-root .pkchat-msg__action--danger:hover {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__action--danger:hover {
   color: var(--pk-error);
 }
 
-.pktw-root .pkchat-msg__action > svg,
-.peak-design-root .pkchat-msg__action > svg {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__action > svg {
   width: 13px;
   height: 13px;
   flex: 0 0 13px;
 }
 
-.pktw-root .pkchat-msg__action--more,
-.peak-design-root .pkchat-msg__action--more {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__action--more {
   margin-left: auto;
   width: 24px;
   padding: 0;
   justify-content: center;
 }
 
-.pktw-root .pkchat-msg__suggest,
-.peak-design-root .pkchat-msg__suggest {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -2130,15 +1916,13 @@
   margin-top: 2px;
 }
 
-.pktw-root .pkchat-msg__suggest-label,
-.peak-design-root .pkchat-msg__suggest-label {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-label {
   font-size: var(--pk-text-base);
   color: var(--pk-text-tertiary);
   margin-right: 2px;
 }
 
-.pktw-root .pkchat-msg__suggest-chip,
-.peak-design-root .pkchat-msg__suggest-chip {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-chip {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -2154,22 +1938,19 @@
   transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
-.pktw-root .pkchat-msg__suggest-chip:hover,
-.peak-design-root .pkchat-msg__suggest-chip:hover {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-chip:hover {
   background: var(--pk-surface-sunken);
   border-color: var(--pk-border-accent);
   color: var(--pk-accent-hover, var(--pk-accent));
 }
 
-.pktw-root .pkchat-msg__suggest-chip > svg,
-.peak-design-root .pkchat-msg__suggest-chip > svg {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-chip > svg {
   width: 13px;
   height: 13px;
   flex: 0 0 13px;
 }
 
-.pktw-root .pkchat-msg__suggest-more,
-.peak-design-root .pkchat-msg__suggest-more {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-more {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-1);
@@ -2185,15 +1966,13 @@
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-.pktw-root .pkchat-msg__suggest-more:hover,
-.peak-design-root .pkchat-msg__suggest-more:hover {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-more:hover {
   color: var(--pk-text-primary);
   background: var(--pk-surface-sunken);
 }
 
 /* Group label inside the suggest "More…" popover (FOLLOW-UP / ACTIONS) */
-.pktw-root .pkchat-msg__suggest-section,
-.peak-design-root .pkchat-msg__suggest-section {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-section {
   padding: var(--pk-space-2) var(--pk-space-3) 4px;
   font-size: var(--pk-text-xs);
   font-weight: 600;
@@ -2202,16 +1981,14 @@
   color: var(--pk-text-tertiary);
 }
 
-.pktw-root .pkchat-msg__suggest-divider,
-.peak-design-root .pkchat-msg__suggest-divider {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__suggest-divider {
   height: 1px;
   margin: 4px 0;
   background: var(--pk-border-soft);
 }
 
 /* Inline follow-up affordance (default OFF; toggled on via the More popover) */
-.pktw-root .pkchat-msg__inline-followup,
-.peak-design-root .pkchat-msg__inline-followup {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup {
   margin-top: var(--pk-space-2);
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
@@ -2222,8 +1999,7 @@
   padding: var(--pk-space-3);
 }
 
-.pktw-root .pkchat-msg__inline-followup__head,
-.peak-design-root .pkchat-msg__inline-followup__head {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2231,8 +2007,7 @@
   color: var(--pk-text-tertiary);
 }
 
-.pktw-root .pkchat-msg__inline-followup__textarea,
-.peak-design-root .pkchat-msg__inline-followup__textarea {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__textarea {
   width: 100%;
   min-height: 64px;
   resize: vertical;
@@ -2246,22 +2021,19 @@
   line-height: 1.5;
 }
 
-.pktw-root .pkchat-msg__inline-followup__textarea:focus,
-.peak-design-root .pkchat-msg__inline-followup__textarea:focus {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__textarea:focus {
   outline: none;
   border-color: var(--pk-border-accent);
 }
 
-.pktw-root .pkchat-msg__inline-followup__actions,
-.peak-design-root .pkchat-msg__inline-followup__actions {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--pk-space-2);
 }
 
-.pktw-root .pkchat-msg__inline-followup__submit,
-.peak-design-root .pkchat-msg__inline-followup__submit {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__submit {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-1);
@@ -2277,14 +2049,12 @@
   cursor: pointer;
 }
 
-.pktw-root .pkchat-msg__inline-followup__submit:disabled,
-.peak-design-root .pkchat-msg__inline-followup__submit:disabled {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__submit:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.pktw-root .pkchat-msg__inline-followup__cancel,
-.peak-design-root .pkchat-msg__inline-followup__cancel {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__inline-followup__cancel {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-1);
@@ -2300,8 +2070,7 @@
 }
 
 /* Mode chip — small pill next to assistant name, e.g. "Agent" / "Chat" / "Plan" */
-.pktw-root .pkchat-msg__mode,
-.peak-design-root .pkchat-msg__mode {
+:where(.pktw-root, .peak-design-root) .pkchat-msg__mode {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-1);
@@ -2330,23 +2099,20 @@
 
 /* ── pkonb-modal — onboarding modal sizing ─────────────────────────────────── */
 
-.pktw-root .pkonb-modal,
-.peak-design-root .pkonb-modal {
+:where(.pktw-root, .peak-design-root) .pkonb-modal {
   padding: 0;
   display: flex;
   flex-direction: column;
 }
 
-.pktw-root .pkonb-modal__progress,
-.peak-design-root .pkonb-modal__progress {
+:where(.pktw-root, .peak-design-root) .pkonb-modal__progress {
   border-bottom: 1px solid var(--pk-border-soft);
   padding: 18px var(--pk-space-6) 14px;
   background: var(--pk-surface);
   overflow: visible;
 }
 
-.pktw-root .pkonb-modal__body,
-.peak-design-root .pkonb-modal__body {
+:where(.pktw-root, .peak-design-root) .pkonb-modal__body {
   padding: var(--pk-space-6);
   overflow-y: auto;
   max-height: 70vh;
@@ -2355,8 +2121,7 @@
   gap: var(--pk-space-5);
 }
 
-.pktw-root .pkonb-modal__footer,
-.peak-design-root .pkonb-modal__footer {
+:where(.pktw-root, .peak-design-root) .pkonb-modal__footer {
   border-top: 1px solid var(--pk-border-soft);
   padding: 14px var(--pk-space-6);
   display: flex;
@@ -2385,34 +2150,29 @@
 
 /* Thin styled scrollbar for the wizard body — accent on hover only.
    Comma-scoped per project rule so the rule survives token namespace changes. */
-.pktw-root .pkonb-modal__body::-webkit-scrollbar,
-.peak-design-root .pkonb-modal__body::-webkit-scrollbar {
+:where(.pktw-root, .peak-design-root) .pkonb-modal__body::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.pktw-root .pkonb-modal__body::-webkit-scrollbar-track,
-.peak-design-root .pkonb-modal__body::-webkit-scrollbar-track {
+:where(.pktw-root, .peak-design-root) .pkonb-modal__body::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.pktw-root .pkonb-modal__body::-webkit-scrollbar-thumb,
-.peak-design-root .pkonb-modal__body::-webkit-scrollbar-thumb {
+:where(.pktw-root, .peak-design-root) .pkonb-modal__body::-webkit-scrollbar-thumb {
   background: var(--pk-border);
   border-radius: var(--pk-radius-pill);
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
-.pktw-root .pkonb-modal__body::-webkit-scrollbar-thumb:hover,
-.peak-design-root .pkonb-modal__body::-webkit-scrollbar-thumb:hover {
+:where(.pktw-root, .peak-design-root) .pkonb-modal__body::-webkit-scrollbar-thumb:hover {
   background: var(--pk-border-strong);
   background-clip: padding-box;
 }
 
 /* Firefox */
-.pktw-root .pkonb-modal__body,
-.peak-design-root .pkonb-modal__body {
+:where(.pktw-root, .peak-design-root) .pkonb-modal__body {
   scrollbar-width: thin;
   scrollbar-color: var(--pk-border) transparent;
 }
@@ -2420,15 +2180,13 @@
 
 /* ── pkonb-progress — 7-step indicator (dots, connectors, labels) ──────────── */
 
-.pktw-root .pkonb-progress,
-.peak-design-root .pkonb-progress {
+:where(.pktw-root, .peak-design-root) .pkonb-progress {
   display: flex;
   flex-direction: column;
   align-items: stretch;
 }
 
-.pktw-root .pkonb-progress__dots,
-.peak-design-root .pkonb-progress__dots {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__dots {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2436,8 +2194,7 @@
   margin-bottom: 36px;
 }
 
-.pktw-root .pkonb-progress__step,
-.peak-design-root .pkonb-progress__step {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step {
   position: relative;
   display: flex;
   align-items: center;
@@ -2447,13 +2204,11 @@
   flex: 0 0 auto;
 }
 
-.pktw-root .pkonb-progress__step[data-state="future"],
-.peak-design-root .pkonb-progress__step[data-state="future"] {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="future"] {
   cursor: not-allowed;
 }
 
-.pktw-root .pkonb-progress__bubble,
-.peak-design-root .pkonb-progress__bubble {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__bubble {
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -2467,22 +2222,19 @@
   flex-shrink: 0;
 }
 
-.pktw-root .pkonb-progress__bubble > svg,
-.peak-design-root .pkonb-progress__bubble > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__bubble > svg {
   width: 12px;
   height: 12px;
 }
 
-.pktw-root .pkonb-progress__step[data-state="completed"] .pkonb-progress__bubble,
-.peak-design-root .pkonb-progress__step[data-state="completed"] .pkonb-progress__bubble {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="completed"] .pkonb-progress__bubble {
   background: var(--pk-accent);
   border-color: var(--pk-accent);
   color: var(--pk-accent-fg);
 }
 
 /* Active step renders as a wide pill bar, not a circle. */
-.pktw-root .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble,
-.peak-design-root .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble {
   width: 56px;
   height: 8px;
   border-radius: var(--pk-radius-pill);
@@ -2491,26 +2243,22 @@
   color: transparent;
 }
 
-.pktw-root .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble > svg,
-.peak-design-root .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="active"] .pkonb-progress__bubble > svg {
   display: none;
 }
 
-.pktw-root .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble,
-.peak-design-root .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble {
   background: var(--pk-surface);
   border-color: var(--pk-border);
   color: var(--pk-border-strong);
 }
 
-.pktw-root .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble > svg,
-.peak-design-root .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="future"] .pkonb-progress__bubble > svg {
   width: 6px;
   height: 6px;
 }
 
-.pktw-root .pkonb-progress__connector,
-.peak-design-root .pkonb-progress__connector {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__connector {
   flex: 1 1 auto;
   min-width: 14px;
   height: 1.5px;
@@ -2519,15 +2267,13 @@
   margin: 0 6px;
 }
 
-.pktw-root .pkonb-progress__connector[data-state="completed"],
-.peak-design-root .pkonb-progress__connector[data-state="completed"] {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__connector[data-state="completed"] {
   background: var(--pk-accent);
 }
 
 /* Labels positioned absolutely below the bubble so they never affect
    the flex width of the dots row. */
-.pktw-root .pkonb-progress__label,
-.peak-design-root .pkonb-progress__label {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__label {
   position: absolute;
   top: calc(100% + 6px);
   left: 50%;
@@ -2540,27 +2286,23 @@
   pointer-events: none;
 }
 
-.pktw-root .pkonb-progress__step[data-state="completed"] .pkonb-progress__label,
-.peak-design-root .pkonb-progress__step[data-state="completed"] .pkonb-progress__label {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="completed"] .pkonb-progress__label {
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkonb-progress__step[data-state="active"] .pkonb-progress__label,
-.peak-design-root .pkonb-progress__step[data-state="active"] .pkonb-progress__label {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step[data-state="active"] .pkonb-progress__label {
   color: var(--pk-accent-text);
   font-weight: 500;
 }
 
-.pktw-root .pkonb-progress__title,
-.peak-design-root .pkonb-progress__title {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__title {
   text-align: center;
   font-size: var(--pk-text-md);
   color: var(--pk-text-secondary);
   margin-top: 14px;
 }
 
-.pktw-root .pkonb-progress__title strong,
-.peak-design-root .pkonb-progress__title strong {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__title strong {
   color: var(--pk-text-primary);
   font-weight: 600;
 }
@@ -2568,15 +2310,13 @@
 
 /* ── pkonb-section — primary step body section ─────────────────────────────── */
 
-.pktw-root .pkonb-section,
-.peak-design-root .pkonb-section {
+:where(.pktw-root, .peak-design-root) .pkonb-section {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-3);
 }
 
-.pktw-root .pkonb-section__title,
-.peak-design-root .pkonb-section__title {
+:where(.pktw-root, .peak-design-root) .pkonb-section__title {
   /* Mock .h2 = 18px / 1.35 / weight 600. Token --pk-text-xl is 16px so we
      pick the next-up scale token (--pk-text-2xl = 20px) and clamp via
      line-height. Using a fixed px would violate design-token rules. */
@@ -2588,35 +2328,30 @@
 
 /* Centered intro block above a card grid — matches mock's
    `.col gap-2 text-align:center; margin-bottom:18px;`. */
-.pktw-root .pkonb-section__intro,
-.peak-design-root .pkonb-section__intro {
+:where(.pktw-root, .peak-design-root) .pkonb-section__intro {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-2);
 }
 
-.pktw-root .pkonb-section__intro--center,
-.peak-design-root .pkonb-section__intro--center {
+:where(.pktw-root, .peak-design-root) .pkonb-section__intro--center {
   text-align: center;
   align-items: center;
 }
 
 /* Capabilities section: tighten gap between intro and grid to match mock's
    18px margin-bottom on the title block (vs default --pk-space-3 = 12px). */
-.pktw-root .pkonb-section--cap,
-.peak-design-root .pkonb-section--cap {
+:where(.pktw-root, .peak-design-root) .pkonb-section--cap {
   gap: 18px;
 }
 
-.pktw-root .pkonb-section__desc,
-.peak-design-root .pkonb-section__desc {
+:where(.pktw-root, .peak-design-root) .pkonb-section__desc {
   font-size: var(--pk-text-md);
   color: var(--pk-text-secondary);
   line-height: 1.5;
 }
 
-.pktw-root .pkonb-section__kicker,
-.peak-design-root .pkonb-section__kicker {
+:where(.pktw-root, .peak-design-root) .pkonb-section__kicker {
   font-size: var(--pk-text-sm);
   font-weight: 500;
   color: var(--pk-text-secondary);
@@ -2627,8 +2362,7 @@
 
 /* ── pkonb-hero — welcome + done celebrations ──────────────────────────────── */
 
-.pktw-root .pkonb-hero,
-.peak-design-root .pkonb-hero {
+:where(.pktw-root, .peak-design-root) .pkonb-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2637,8 +2371,7 @@
   text-align: center;
 }
 
-.pktw-root .pkonb-hero__mark,
-.peak-design-root .pkonb-hero__mark {
+:where(.pktw-root, .peak-design-root) .pkonb-hero__mark {
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -2649,20 +2382,17 @@
   justify-content: center;
 }
 
-.pktw-root .pkonb-hero__mark > svg,
-.peak-design-root .pkonb-hero__mark > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-hero__mark > svg {
   width: 28px;
   height: 28px;
 }
 
-.pktw-root .pkonb-hero__mark--success,
-.peak-design-root .pkonb-hero__mark--success {
+:where(.pktw-root, .peak-design-root) .pkonb-hero__mark--success {
   background: var(--pk-success-bg);
   color: var(--pk-success);
 }
 
-.pktw-root .pkonb-hero__title,
-.peak-design-root .pkonb-hero__title {
+:where(.pktw-root, .peak-design-root) .pkonb-hero__title {
   /* 22px — between --pk-text-2xl (20) and --pk-text-3xl (28); no exact token.
      Welcome hero title deliberately runs heavier than 2xl section headers. */
   font-size: 22px;
@@ -2670,16 +2400,14 @@
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkonb-hero__sub,
-.peak-design-root .pkonb-hero__sub {
+:where(.pktw-root, .peak-design-root) .pkonb-hero__sub {
   font-size: var(--pk-text-md);
   color: var(--pk-text-secondary);
   max-width: 420px;
   line-height: 1.5;
 }
 
-.pktw-root .pkonb-hero__actions,
-.peak-design-root .pkonb-hero__actions {
+:where(.pktw-root, .peak-design-root) .pkonb-hero__actions {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-2);
@@ -2690,15 +2418,13 @@
 
 /* ── pkonb-cap-grid — capabilities step (2x2 cards) ────────────────────────── */
 
-.pktw-root .pkonb-cap-grid,
-.peak-design-root .pkonb-cap-grid {
+:where(.pktw-root, .peak-design-root) .pkonb-cap-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--pk-space-3);
 }
 
-.pktw-root .pkonb-cap-card,
-.peak-design-root .pkonb-cap-card {
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card {
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-surface);
@@ -2711,15 +2437,13 @@
   min-width: 0;
 }
 
-.pktw-root .pkonb-cap-card__head,
-.peak-design-root .pkonb-cap-card__head {
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__head {
   display: flex;
   align-items: center;
   gap: var(--pk-space-3);
 }
 
-.pktw-root .pkonb-cap-card__icon,
-.peak-design-root .pkonb-cap-card__icon {
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__icon {
   width: 32px;
   height: 32px;
   border-radius: var(--pk-radius-md);
@@ -2731,28 +2455,24 @@
   flex-shrink: 0;
 }
 
-.pktw-root .pkonb-cap-card__icon > svg,
-.peak-design-root .pkonb-cap-card__icon > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__icon > svg {
   width: 18px;
   height: 18px;
 }
 
-.pktw-root .pkonb-cap-card__title,
-.peak-design-root .pkonb-cap-card__title {
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__title {
   font-size: var(--pk-text-lg);
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkonb-cap-card__body,
-.peak-design-root .pkonb-cap-card__body {
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__body {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   line-height: 1.5;
 }
 
-.pktw-root .pkonb-cap-card__try,
-.peak-design-root .pkonb-cap-card__try {
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__try {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
   display: flex;
@@ -2762,15 +2482,13 @@
   min-width: 0;
 }
 
-.pktw-root .pkonb-cap-card__try-label,
-.peak-design-root .pkonb-cap-card__try-label {
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__try-label {
   flex-shrink: 0;
   font-size: var(--pk-text-sm);
   color: var(--pk-text-tertiary);
 }
 
-.pktw-root .pkonb-cap-card__try code,
-.peak-design-root .pkonb-cap-card__try code {
+:where(.pktw-root, .peak-design-root) .pkonb-cap-card__try code {
   font-family: var(--pk-font-mono);
   background: var(--pk-surface-sunken);
   padding: 4px var(--pk-space-2);
@@ -2792,8 +2510,7 @@
    align-items: center + explicit min-height keeps every row the same height
    regardless of optional hint/chip content, so the list looks like a
    uniform stack instead of a ragged accordion. */
-.pktw-root .pkonb-radio-card,
-.peak-design-root .pkonb-radio-card {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card {
   position: relative;
   display: flex;
   align-items: center;
@@ -2809,20 +2526,17 @@
   text-align: left;
 }
 
-.pktw-root .pkonb-radio-card:hover,
-.peak-design-root .pkonb-radio-card:hover {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card:hover {
   background: var(--pk-surface-sunken) !important;
 }
 
-.pktw-root .pkonb-radio-card[data-selected="true"],
-.peak-design-root .pkonb-radio-card[data-selected="true"] {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card[data-selected="true"] {
   background: var(--pk-accent-soft) !important;
   border-color: var(--pk-accent-soft) !important;
   border-left-color: var(--pk-accent) !important;
 }
 
-.pktw-root .pkonb-radio-card__icon,
-.peak-design-root .pkonb-radio-card__icon {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__icon {
   width: 32px;
   height: 32px;
   border-radius: var(--pk-radius-md);
@@ -2835,21 +2549,18 @@
   border: 1px solid var(--pk-border);
 }
 
-.pktw-root .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__icon,
-.peak-design-root .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__icon {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__icon {
   background: var(--pk-surface);
   color: var(--pk-accent);
   border-color: var(--pk-accent-soft);
 }
 
-.pktw-root .pkonb-radio-card__icon > svg,
-.peak-design-root .pkonb-radio-card__icon > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__icon > svg {
   width: 16px;
   height: 16px;
 }
 
-.pktw-root .pkonb-radio-card__body,
-.peak-design-root .pkonb-radio-card__body {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__body {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -2857,30 +2568,26 @@
   gap: 2px;
 }
 
-.pktw-root .pkonb-radio-card__title-row,
-.peak-design-root .pkonb-radio-card__title-row {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__title-row {
   display: inline-flex;
   align-items: center;
   gap: var(--pk-space-2);
   min-width: 0;
 }
 
-.pktw-root .pkonb-radio-card__title,
-.peak-design-root .pkonb-radio-card__title {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__title {
   font-size: var(--pk-text-md);
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkonb-radio-card__hint,
-.peak-design-root .pkonb-radio-card__hint {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__hint {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   line-height: 1.45;
 }
 
-.pktw-root .pkonb-radio-card__check,
-.peak-design-root .pkonb-radio-card__check {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__check {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -2895,20 +2602,17 @@
   transition: opacity var(--pk-transition-fast);
 }
 
-.pktw-root .pkonb-radio-card__check > svg,
-.peak-design-root .pkonb-radio-card__check > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card__check > svg {
   width: 12px;
   height: 12px;
 }
 
-.pktw-root .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__check,
-.peak-design-root .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__check {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card[data-selected="true"] .pkonb-radio-card__check {
   opacity: 1;
 }
 
 /* Compact variant — 4-up preference cards */
-.pktw-root .pkonb-radio-card--compact,
-.peak-design-root .pkonb-radio-card--compact {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card--compact {
   flex-direction: column;
   align-items: stretch;
   padding: 14px;
@@ -2916,29 +2620,25 @@
   min-height: 108px;
 }
 
-.pktw-root .pkonb-radio-card--compact .pkonb-radio-card__icon,
-.peak-design-root .pkonb-radio-card--compact .pkonb-radio-card__icon {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card--compact .pkonb-radio-card__icon {
   width: 28px;
   height: 28px;
 }
 
-.pktw-root .pkonb-radio-card--compact .pkonb-radio-card__check,
-.peak-design-root .pkonb-radio-card--compact .pkonb-radio-card__check {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-card--compact .pkonb-radio-card__check {
   position: absolute;
   top: 10px;
   right: 10px;
   margin-top: 0;
 }
 
-.pktw-root .pkonb-radio-grid-4,
-.peak-design-root .pkonb-radio-grid-4 {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-grid-4 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--pk-space-2);
 }
 
-.pktw-root .pkonb-radio-list,
-.peak-design-root .pkonb-radio-list {
+:where(.pktw-root, .peak-design-root) .pkonb-radio-list {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-2);
@@ -2952,44 +2652,38 @@
    Mock source: docs/gstack/onboarding-redesign-2026-05-29/mock.css `.provider-row`
    ──────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pk-row.pkonb-provider-row,
-.peak-design-root .pk-row.pkonb-provider-row {
+:where(.pktw-root, .peak-design-root) .pk-row.pkonb-provider-row {
   border-radius: var(--pk-radius-md);
   box-shadow: none;
   padding: 10px 12px;
   gap: 12px;
 }
 
-.pktw-root .pk-row.pkonb-provider-row[data-selected="true"],
-.peak-design-root .pk-row.pkonb-provider-row[data-selected="true"] {
+:where(.pktw-root, .peak-design-root) .pk-row.pkonb-provider-row[data-selected="true"] {
   border-color: var(--pk-accent);
   background: var(--pk-accent-tint);
 }
 
 /* Provider rows are clickable; show a subtle hover so the user knows they're
    selectable. Mock didn't define one but our rows are interactive (radio). */
-.pktw-root .pk-row.pkonb-provider-row[data-clickable="true"]:hover,
-.peak-design-root .pk-row.pkonb-provider-row[data-clickable="true"]:hover {
+:where(.pktw-root, .peak-design-root) .pk-row.pkonb-provider-row[data-clickable="true"]:hover {
   background: var(--pk-surface-sunken);
 }
 
-.pktw-root .pk-row.pkonb-provider-row[data-clickable="true"][data-selected="true"]:hover,
-.peak-design-root .pk-row.pkonb-provider-row[data-clickable="true"][data-selected="true"]:hover {
+:where(.pktw-root, .peak-design-root) .pk-row.pkonb-provider-row[data-clickable="true"][data-selected="true"]:hover {
   background: var(--pk-accent-tint);
 }
 
 
 /* ── pkonb-provider-grid — 4-col provider chooser ──────────────────────────── */
 
-.pktw-root .pkonb-provider-grid,
-.peak-design-root .pkonb-provider-grid {
+:where(.pktw-root, .peak-design-root) .pkonb-provider-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--pk-space-2);
 }
 
-.pktw-root .pkonb-provider-chip,
-.peak-design-root .pkonb-provider-chip {
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3004,19 +2698,16 @@
   position: relative;
 }
 
-.pktw-root .pkonb-provider-chip:hover,
-.peak-design-root .pkonb-provider-chip:hover {
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip:hover {
   background: var(--pk-surface-sunken);
 }
 
-.pktw-root .pkonb-provider-chip[data-selected="true"],
-.peak-design-root .pkonb-provider-chip[data-selected="true"] {
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip[data-selected="true"] {
   background: var(--pk-accent-soft);
   border-color: var(--pk-accent);
 }
 
-.pktw-root .pkonb-provider-chip__logo,
-.peak-design-root .pkonb-provider-chip__logo {
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip__logo {
   width: 28px;
   height: 28px;
   display: flex;
@@ -3030,21 +2721,18 @@
 .peak-design-root .pkonb-provider-chip__logo > svg,
 .pktw-root .pkonb-provider-chip__logo .icon,
 .peak-design-root .pkonb-provider-chip__logo .icon,
-.pktw-root .pkonb-provider-chip__logo img,
-.peak-design-root .pkonb-provider-chip__logo img {
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip__logo img {
   width: 22px;
   height: 22px;
 }
 
-.pktw-root .pkonb-provider-chip__name,
-.peak-design-root .pkonb-provider-chip__name {
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip__name {
   font-size: var(--pk-text-base);
   color: var(--pk-text-primary);
   font-weight: 500;
 }
 
-.pktw-root .pkonb-provider-chip__check,
-.peak-design-root .pkonb-provider-chip__check {
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip__check {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -3060,22 +2748,19 @@
   transition: opacity var(--pk-transition-fast);
 }
 
-.pktw-root .pkonb-provider-chip__check > svg,
-.peak-design-root .pkonb-provider-chip__check > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip__check > svg {
   width: 11px;
   height: 11px;
 }
 
-.pktw-root .pkonb-provider-chip[data-selected="true"] .pkonb-provider-chip__check,
-.peak-design-root .pkonb-provider-chip[data-selected="true"] .pkonb-provider-chip__check {
+:where(.pktw-root, .peak-design-root) .pkonb-provider-chip[data-selected="true"] .pkonb-provider-chip__check {
   opacity: 1;
 }
 
 
 /* ── pkonb-hint — informational banner ─────────────────────────────────────── */
 
-.pktw-root .pkonb-hint,
-.peak-design-root .pkonb-hint {
+:where(.pktw-root, .peak-design-root) .pkonb-hint {
   display: flex;
   align-items: flex-start;
   gap: var(--pk-space-2);
@@ -3088,8 +2773,7 @@
   line-height: 1.5;
 }
 
-.pktw-root .pkonb-hint > svg,
-.peak-design-root .pkonb-hint > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-hint > svg {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
@@ -3097,27 +2781,23 @@
   color: var(--pk-text-tertiary);
 }
 
-.pktw-root .pkonb-hint--accent,
-.peak-design-root .pkonb-hint--accent {
+:where(.pktw-root, .peak-design-root) .pkonb-hint--accent {
   background: var(--pk-accent-soft);
   border-color: var(--pk-accent-soft);
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkonb-hint--accent > svg,
-.peak-design-root .pkonb-hint--accent > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-hint--accent > svg {
   color: var(--pk-accent);
 }
 
-.pktw-root .pkonb-hint--warning,
-.peak-design-root .pkonb-hint--warning {
+:where(.pktw-root, .peak-design-root) .pkonb-hint--warning {
   background: var(--pk-warning-bg);
   border-color: var(--pk-warning-border);
   color: var(--pk-warning-text);
 }
 
-.pktw-root .pkonb-hint--danger,
-.peak-design-root .pkonb-hint--danger {
+:where(.pktw-root, .peak-design-root) .pkonb-hint--danger {
   background: var(--pk-error-bg);
   border-color: var(--pk-error-border);
   color: var(--pk-error-text);
@@ -3126,8 +2806,7 @@
 
 /* ── pkonb-summary-row — Ready-to-Try summary table ────────────────────────── */
 
-.pktw-root .pkonb-summary-row,
-.peak-design-root .pkonb-summary-row {
+:where(.pktw-root, .peak-design-root) .pkonb-summary-row {
   display: grid;
   grid-template-columns: 140px 1fr auto;
   gap: var(--pk-space-3);
@@ -3138,13 +2817,11 @@
   background: var(--pk-surface);
 }
 
-.pktw-root .pkonb-summary-row + .pkonb-summary-row,
-.peak-design-root .pkonb-summary-row + .pkonb-summary-row {
+:where(.pktw-root, .peak-design-root) .pkonb-summary-row + .pkonb-summary-row {
   margin-top: 6px;
 }
 
-.pktw-root .pkonb-summary-row__label,
-.peak-design-root .pkonb-summary-row__label {
+:where(.pktw-root, .peak-design-root) .pkonb-summary-row__label {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   display: inline-flex;
@@ -3152,14 +2829,12 @@
   gap: 6px;
 }
 
-.pktw-root .pkonb-summary-row__label > svg,
-.peak-design-root .pkonb-summary-row__label > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-summary-row__label > svg {
   width: 14px;
   height: 14px;
 }
 
-.pktw-root .pkonb-summary-row__value,
-.peak-design-root .pkonb-summary-row__value {
+:where(.pktw-root, .peak-design-root) .pkonb-summary-row__value {
   font-size: var(--pk-text-base);
   color: var(--pk-text-primary);
 }
@@ -3167,15 +2842,13 @@
 
 /* ── pkonb-action-grid — Ready-to-Try launchpad cards ──────────────────────── */
 
-.pktw-root .pkonb-action-grid,
-.peak-design-root .pkonb-action-grid {
+:where(.pktw-root, .peak-design-root) .pkonb-action-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--pk-space-3);
 }
 
-.pktw-root .pkonb-action-card,
-.peak-design-root .pkonb-action-card {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card {
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-surface);
@@ -3188,21 +2861,18 @@
   text-align: left;
 }
 
-.pktw-root .pkonb-action-card:hover,
-.peak-design-root .pkonb-action-card:hover {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card:hover {
   background: var(--pk-surface-sunken);
   border-color: var(--pk-border-strong);
 }
 
-.pktw-root .pkonb-action-card__header,
-.peak-design-root .pkonb-action-card__header {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__header {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
 }
 
-.pktw-root .pkonb-action-card__icon,
-.peak-design-root .pkonb-action-card__icon {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon {
   width: 28px;
   height: 28px;
   border-radius: var(--pk-radius-md);
@@ -3212,52 +2882,44 @@
   flex-shrink: 0;
 }
 
-.pktw-root .pkonb-action-card__icon > svg,
-.peak-design-root .pkonb-action-card__icon > svg {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon > svg {
   width: 16px;
   height: 16px;
 }
 
-.pktw-root .pkonb-action-card__icon[data-tone="accent"],
-.peak-design-root .pkonb-action-card__icon[data-tone="accent"] {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="accent"] {
   background: var(--pk-accent-soft);
   color: var(--pk-accent);
 }
 
-.pktw-root .pkonb-action-card__icon[data-tone="success"],
-.peak-design-root .pkonb-action-card__icon[data-tone="success"] {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="success"] {
   background: var(--pk-success-bg);
   color: var(--pk-success);
 }
 
-.pktw-root .pkonb-action-card__icon[data-tone="info"],
-.peak-design-root .pkonb-action-card__icon[data-tone="info"] {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="info"] {
   background: var(--pk-info-bg);
   color: var(--pk-info);
 }
 
-.pktw-root .pkonb-action-card__icon[data-tone="warning"],
-.peak-design-root .pkonb-action-card__icon[data-tone="warning"] {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__icon[data-tone="warning"] {
   background: var(--pk-warning-bg);
   color: var(--pk-warning);
 }
 
-.pktw-root .pkonb-action-card__title,
-.peak-design-root .pkonb-action-card__title {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__title {
   font-size: var(--pk-text-md);
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkonb-action-card__body,
-.peak-design-root .pkonb-action-card__body {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__body {
   font-size: var(--pk-text-base);
   color: var(--pk-text-secondary);
   line-height: 1.5;
 }
 
-.pktw-root .pkonb-action-card__try,
-.peak-design-root .pkonb-action-card__try {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__try {
   margin-top: 4px;
   padding: 10px var(--pk-space-3);
   background: var(--pk-accent-soft);
@@ -3268,8 +2930,7 @@
   border: 1px solid var(--pk-accent-soft);
 }
 
-.pktw-root .pkonb-action-card__try::before,
-.peak-design-root .pkonb-action-card__try::before {
+:where(.pktw-root, .peak-design-root) .pkonb-action-card__try::before {
   content: 'Try: ';
   font-family: var(--pk-font-sans);
   color: var(--pk-text-secondary);
@@ -3278,8 +2939,7 @@
 
 /* ── pkonb-spinner — circular loader ──────────────────────────────────────── */
 
-.pktw-root .pkonb-spinner,
-.peak-design-root .pkonb-spinner {
+:where(.pktw-root, .peak-design-root) .pkonb-spinner {
   width: 36px;
   height: 36px;
   border: 3px solid var(--pk-border);
@@ -3290,8 +2950,7 @@
 }
 
 /* Small variant for inline checklist usage (per mock) */
-.pktw-root .pkonb-spinner--sm,
-.peak-design-root .pkonb-spinner--sm {
+:where(.pktw-root, .peak-design-root) .pkonb-spinner--sm {
   width: 20px;
   height: 20px;
   border-width: 2px;
@@ -3307,15 +2966,13 @@
    per-task state. Drive each item via [data-state="done|active|pending"].
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkonb-checklist,
-.peak-design-root .pkonb-checklist {
+:where(.pktw-root, .peak-design-root) .pkonb-checklist {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.pktw-root .pkonb-checklist__item,
-.peak-design-root .pkonb-checklist__item {
+:where(.pktw-root, .peak-design-root) .pkonb-checklist__item {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -3325,24 +2982,20 @@
   color: var(--pk-text-secondary);
 }
 
-.pktw-root .pkonb-checklist__item[data-state="done"],
-.peak-design-root .pkonb-checklist__item[data-state="done"] {
+:where(.pktw-root, .peak-design-root) .pkonb-checklist__item[data-state="done"] {
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkonb-checklist__item[data-state="active"],
-.peak-design-root .pkonb-checklist__item[data-state="active"] {
+:where(.pktw-root, .peak-design-root) .pkonb-checklist__item[data-state="active"] {
   color: var(--pk-text-primary);
   background: var(--pk-accent-soft);
 }
 
-.pktw-root .pkonb-checklist__item[data-state="pending"],
-.peak-design-root .pkonb-checklist__item[data-state="pending"] {
+:where(.pktw-root, .peak-design-root) .pkonb-checklist__item[data-state="pending"] {
   color: var(--pk-text-tertiary);
 }
 
-.pktw-root .pkonb-checklist__bullet,
-.peak-design-root .pkonb-checklist__bullet {
+:where(.pktw-root, .peak-design-root) .pkonb-checklist__bullet {
   width: 16px;
   height: 16px;
   display: flex;
@@ -3353,24 +3006,20 @@
 
 .pktw-root .pkonb-checklist__bullet > svg,
 .peak-design-root .pkonb-checklist__bullet > svg,
-.pktw-root .pkonb-checklist__bullet .icon,
-.peak-design-root .pkonb-checklist__bullet .icon {
+:where(.pktw-root, .peak-design-root) .pkonb-checklist__bullet .icon {
   width: 14px;
   height: 14px;
 }
 
-.pktw-root .pkonb-checklist__item[data-state="done"] .pkonb-checklist__bullet,
-.peak-design-root .pkonb-checklist__item[data-state="done"] .pkonb-checklist__bullet {
+:where(.pktw-root, .peak-design-root) .pkonb-checklist__item[data-state="done"] .pkonb-checklist__bullet {
   color: var(--pk-success);
 }
 
-.pktw-root .pkonb-checklist__item[data-state="active"] .pkonb-checklist__bullet,
-.peak-design-root .pkonb-checklist__item[data-state="active"] .pkonb-checklist__bullet {
+:where(.pktw-root, .peak-design-root) .pkonb-checklist__item[data-state="active"] .pkonb-checklist__bullet {
   color: var(--pk-accent);
 }
 
-.pktw-root .pkonb-checklist__item[data-state="pending"] .pkonb-checklist__bullet,
-.peak-design-root .pkonb-checklist__item[data-state="pending"] .pkonb-checklist__bullet {
+:where(.pktw-root, .peak-design-root) .pkonb-checklist__item[data-state="pending"] .pkonb-checklist__bullet {
   color: var(--pk-text-tertiary);
 }
 
@@ -3379,8 +3028,7 @@
    Used by Running step to pair a large spinner with the progressive checklist.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkonb-split,
-.peak-design-root .pkonb-split {
+:where(.pktw-root, .peak-design-root) .pkonb-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
   gap: var(--pk-space-5);
@@ -3390,8 +3038,7 @@
   background: var(--pk-surface);
 }
 
-.pktw-root .pkonb-split__left,
-.peak-design-root .pkonb-split__left {
+:where(.pktw-root, .peak-design-root) .pkonb-split__left {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3402,8 +3049,7 @@
   border-radius: var(--pk-radius-md);
 }
 
-.pktw-root .pkonb-split__right,
-.peak-design-root .pkonb-split__right {
+:where(.pktw-root, .peak-design-root) .pkonb-split__right {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-3);
@@ -3417,8 +3063,7 @@
    Show on parent .pkonb-progress__step :hover/:focus-within.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkonb-progress__tooltip,
-.peak-design-root .pkonb-progress__tooltip {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__tooltip {
   position: absolute;
   top: calc(100% + 56px);
   left: 50%;
@@ -3438,8 +3083,7 @@
   z-index: var(--pk-z-modal);
 }
 
-.pktw-root .pkonb-progress__tooltip::before,
-.peak-design-root .pkonb-progress__tooltip::before {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__tooltip::before {
   content: '';
   position: absolute;
   bottom: 100%;
@@ -3449,8 +3093,7 @@
   border-bottom-color: var(--pk-border);
 }
 
-.pktw-root .pkonb-progress__tooltip::after,
-.peak-design-root .pkonb-progress__tooltip::after {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__tooltip::after {
   content: '';
   position: absolute;
   bottom: 100%;
@@ -3462,23 +3105,20 @@
 
 .pktw-root .pkonb-progress__step:hover .pkonb-progress__tooltip,
 .peak-design-root .pkonb-progress__step:hover .pkonb-progress__tooltip,
-.pktw-root .pkonb-progress__step:focus-within .pkonb-progress__tooltip,
-.peak-design-root .pkonb-progress__step:focus-within .pkonb-progress__tooltip {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__step:focus-within .pkonb-progress__tooltip {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, 0);
 }
 
-.pktw-root .pkonb-progress__tooltip strong,
-.peak-design-root .pkonb-progress__tooltip strong {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__tooltip strong {
   display: block;
   font-weight: 600;
   margin-bottom: 2px;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkonb-progress__tooltip span,
-.peak-design-root .pkonb-progress__tooltip span {
+:where(.pktw-root, .peak-design-root) .pkonb-progress__tooltip span {
   color: var(--pk-text-secondary);
   display: block;
   line-height: 1.4;
@@ -3487,8 +3127,7 @@
 
 /* ── pkonb-preset-pill-row — wrappable inline pills (RedoInput presets) ───── */
 
-.pktw-root .pkonb-preset-row,
-.peak-design-root .pkonb-preset-row {
+:where(.pktw-root, .peak-design-root) .pkonb-preset-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -3507,8 +3146,7 @@
 
 /* ── pkset-root — settings stage shell ─────────────────────────────────────── */
 
-.pktw-root .pkset-root,
-.peak-design-root .pkset-root {
+:where(.pktw-root, .peak-design-root) .pkset-root {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-4);
@@ -3520,23 +3158,20 @@
 
 /* ── pkset-head — stage title + subtitle ───────────────────────────────────── */
 
-.pktw-root .pkset-head,
-.peak-design-root .pkset-head {
+:where(.pktw-root, .peak-design-root) .pkset-head {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding-bottom: var(--pk-space-1);
 }
 
-.pktw-root .pkset-head__title,
-.peak-design-root .pkset-head__title {
+:where(.pktw-root, .peak-design-root) .pkset-head__title {
   font-size: 18px;
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkset-head__sub,
-.peak-design-root .pkset-head__sub {
+:where(.pktw-root, .peak-design-root) .pkset-head__sub {
   font-size: 12px;
   color: var(--pk-text-tertiary);
 }
@@ -3544,8 +3179,7 @@
 
 /* ── pkset-tabs — horizontal underlined tab bar ────────────────────────────── */
 
-.pktw-root .pkset-tabs,
-.peak-design-root .pkset-tabs {
+:where(.pktw-root, .peak-design-root) .pkset-tabs {
   display: flex;
   align-items: center;
   gap: 24px;
@@ -3553,8 +3187,7 @@
   margin-bottom: var(--pk-space-6);
 }
 
-.pktw-root .pkset-tabs__tab,
-.peak-design-root .pkset-tabs__tab {
+:where(.pktw-root, .peak-design-root) .pkset-tabs__tab {
   position: relative;
   background: transparent;
   border: 0;
@@ -3566,18 +3199,15 @@
   transition: color var(--pk-transition-fast);
 }
 
-.pktw-root .pkset-tabs__tab:hover,
-.peak-design-root .pkset-tabs__tab:hover {
+:where(.pktw-root, .peak-design-root) .pkset-tabs__tab:hover {
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkset-tabs__tab[data-active="true"],
-.peak-design-root .pkset-tabs__tab[data-active="true"] {
+:where(.pktw-root, .peak-design-root) .pkset-tabs__tab[data-active="true"] {
   color: var(--pk-accent-text);
 }
 
-.pktw-root .pkset-tabs__tab[data-active="true"]::after,
-.peak-design-root .pkset-tabs__tab[data-active="true"]::after {
+:where(.pktw-root, .peak-design-root) .pkset-tabs__tab[data-active="true"]::after {
   content: '';
   position: absolute;
   left: 0;
@@ -3591,38 +3221,33 @@
 
 /* ── pkset-panel / pkset-section — panel + section grouping ────────────────── */
 
-.pktw-root .pkset-panel,
-.peak-design-root .pkset-panel {
+:where(.pktw-root, .peak-design-root) .pkset-panel {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-4);
 }
 
-.pktw-root .pkset-section,
-.peak-design-root .pkset-section {
+:where(.pktw-root, .peak-design-root) .pkset-section {
   display: flex;
   flex-direction: column;
   gap: var(--pk-space-2);
 }
 
-.pktw-root .pkset-section__head,
-.peak-design-root .pkset-section__head {
+:where(.pktw-root, .peak-design-root) .pkset-section__head {
   display: flex;
   flex-direction: column;
   gap: 2px;
   margin-bottom: 4px;
 }
 
-.pktw-root .pkset-section__title,
-.peak-design-root .pkset-section__title {
+:where(.pktw-root, .peak-design-root) .pkset-section__title {
   font-size: 13px;
   font-weight: 600;
   color: var(--pk-text-primary);
   letter-spacing: 0.01em;
 }
 
-.pktw-root .pkset-section__sub,
-.peak-design-root .pkset-section__sub {
+:where(.pktw-root, .peak-design-root) .pkset-section__sub {
   font-size: 12px;
   color: var(--pk-text-tertiary);
 }
@@ -3630,8 +3255,7 @@
 
 /* ── pkset-row-list — vertical stack of pk-row entries ─────────────────────── */
 
-.pktw-root .pkset-row-list,
-.peak-design-root .pkset-row-list {
+:where(.pktw-root, .peak-design-root) .pkset-row-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -3640,16 +3264,14 @@
 
 /* ── pkset-empty — empty-state copy for readiness panel (PR-E) ─────────────── */
 
-.pktw-root .pkset-empty,
-.peak-design-root .pkset-empty {
+:where(.pktw-root, .peak-design-root) .pkset-empty {
   padding: var(--pk-space-4);
   border-radius: var(--pk-radius-md);
   border: 1px dashed var(--pk-border-soft);
   background: var(--pk-surface-sunken);
 }
 
-.pktw-root .pkset-empty__text,
-.peak-design-root .pkset-empty__text {
+:where(.pktw-root, .peak-design-root) .pkset-empty__text {
   font-size: 12px;
   color: var(--pk-text-tertiary);
   line-height: 1.5;
@@ -3658,8 +3280,7 @@
 
 /* ── pkset-banner — re-run wizard advisory banner ──────────────────────────── */
 
-.pktw-root .pkset-banner,
-.peak-design-root .pkset-banner {
+:where(.pktw-root, .peak-design-root) .pkset-banner {
   display: flex;
   align-items: flex-start;
   gap: var(--pk-space-3);
@@ -3669,8 +3290,7 @@
   background: var(--pk-accent-tint);
 }
 
-.pktw-root .pkset-banner__icon,
-.peak-design-root .pkset-banner__icon {
+:where(.pktw-root, .peak-design-root) .pkset-banner__icon {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
@@ -3678,23 +3298,20 @@
   margin-top: 2px;
 }
 
-.pktw-root .pkset-banner__body,
-.peak-design-root .pkset-banner__body {
+:where(.pktw-root, .peak-design-root) .pkset-banner__body {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.pktw-root .pkset-banner__title,
-.peak-design-root .pkset-banner__title {
+:where(.pktw-root, .peak-design-root) .pkset-banner__title {
   font-size: 13px;
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkset-banner__desc,
-.peak-design-root .pkset-banner__desc {
+:where(.pktw-root, .peak-design-root) .pkset-banner__desc {
   font-size: 12px;
   color: var(--pk-text-secondary);
 }
@@ -3705,8 +3322,7 @@
    shadows and share one rounded outer frame separated by hairline dividers.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkset-readiness-panel,
-.peak-design-root .pkset-readiness-panel {
+:where(.pktw-root, .peak-design-root) .pkset-readiness-panel {
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-surface);
@@ -3714,8 +3330,7 @@
   overflow: hidden;
 }
 
-.pktw-root .pkset-readiness-panel .pk-row,
-.peak-design-root .pkset-readiness-panel .pk-row {
+:where(.pktw-root, .peak-design-root) .pkset-readiness-panel .pk-row {
   border: 0;
   border-radius: 0;
   border-bottom: 1px solid var(--pk-border-soft);
@@ -3723,16 +3338,14 @@
   margin-top: 0;
 }
 
-.pktw-root .pkset-readiness-panel .pk-row:last-child,
-.peak-design-root .pkset-readiness-panel .pk-row:last-child {
+:where(.pktw-root, .peak-design-root) .pkset-readiness-panel .pk-row:last-child {
   border-bottom: 0;
 }
 
 
 /* ── pkset-recommended-row — accent-filled CTA row inside readiness panel ── */
 
-.pktw-root .pkset-recommended-row,
-.peak-design-root .pkset-recommended-row {
+:where(.pktw-root, .peak-design-root) .pkset-recommended-row {
   display: grid;
   grid-template-columns: 32px 1fr auto;
   align-items: center;
@@ -3742,15 +3355,13 @@
   border-top: 1px solid var(--pk-accent-soft);
 }
 
-.pktw-root .pkset-recommended-row .pk-row__icon,
-.peak-design-root .pkset-recommended-row .pk-row__icon {
+:where(.pktw-root, .peak-design-root) .pkset-recommended-row .pk-row__icon {
   background: var(--pk-surface);
   border-color: var(--pk-accent-soft);
   color: var(--pk-accent);
 }
 
-.pktw-root .pkset-recommended-row__title,
-.peak-design-root .pkset-recommended-row__title {
+:where(.pktw-root, .peak-design-root) .pkset-recommended-row__title {
   font-size: 12px;
   color: var(--pk-text-secondary);
   letter-spacing: 0.04em;
@@ -3758,8 +3369,7 @@
   font-weight: 600;
 }
 
-.pktw-root .pkset-recommended-row__desc,
-.peak-design-root .pkset-recommended-row__desc {
+:where(.pktw-root, .peak-design-root) .pkset-recommended-row__desc {
   font-size: 13px;
   color: var(--pk-text-primary);
   font-weight: 600;
@@ -3769,15 +3379,13 @@
 
 /* ── pkset-preset-grid / pkset-preset — Recommended setup preset cards ───── */
 
-.pktw-root .pkset-preset-grid,
-.peak-design-root .pkset-preset-grid {
+:where(.pktw-root, .peak-design-root) .pkset-preset-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
-.pktw-root .pkset-preset,
-.peak-design-root .pkset-preset {
+:where(.pktw-root, .peak-design-root) .pkset-preset {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -3795,25 +3403,21 @@
   color: inherit;
 }
 
-.pktw-root .pkset-preset:hover,
-.peak-design-root .pkset-preset:hover {
+:where(.pktw-root, .peak-design-root) .pkset-preset:hover {
   background: var(--pk-surface-sunken);
 }
 
-.pktw-root .pkset-preset[data-selected="true"],
-.peak-design-root .pkset-preset[data-selected="true"] {
+:where(.pktw-root, .peak-design-root) .pkset-preset[data-selected="true"] {
   background: var(--pk-accent-soft);
   border-color: var(--pk-accent-soft);
   border-left-color: var(--pk-accent);
 }
 
-.pktw-root .pkset-preset[data-selected="true"] .pkset-preset__check,
-.peak-design-root .pkset-preset[data-selected="true"] .pkset-preset__check {
+:where(.pktw-root, .peak-design-root) .pkset-preset[data-selected="true"] .pkset-preset__check {
   opacity: 1;
 }
 
-.pktw-root .pkset-preset__icon,
-.peak-design-root .pkset-preset__icon {
+:where(.pktw-root, .peak-design-root) .pkset-preset__icon {
   width: 28px;
   height: 28px;
   border-radius: var(--pk-radius-md);
@@ -3825,8 +3429,7 @@
   color: var(--pk-text-secondary);
 }
 
-.pktw-root .pkset-preset[data-selected="true"] .pkset-preset__icon,
-.peak-design-root .pkset-preset[data-selected="true"] .pkset-preset__icon {
+:where(.pktw-root, .peak-design-root) .pkset-preset[data-selected="true"] .pkset-preset__icon {
   background: var(--pk-surface);
   color: var(--pk-accent);
   border-color: var(--pk-accent-soft);
@@ -3834,21 +3437,18 @@
 
 .pktw-root .pkset-preset__icon > svg,
 .peak-design-root .pkset-preset__icon > svg,
-.pktw-root .pkset-preset__icon .icon,
-.peak-design-root .pkset-preset__icon .icon {
+:where(.pktw-root, .peak-design-root) .pkset-preset__icon .icon {
   width: 16px;
   height: 16px;
 }
 
-.pktw-root .pkset-preset__title,
-.peak-design-root .pkset-preset__title {
+:where(.pktw-root, .peak-design-root) .pkset-preset__title {
   font-size: 13px;
   font-weight: 600;
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkset-preset__desc,
-.peak-design-root .pkset-preset__desc {
+:where(.pktw-root, .peak-design-root) .pkset-preset__desc {
   font-size: 11px;
   color: var(--pk-text-secondary);
   line-height: 1.45;
@@ -3859,8 +3459,7 @@
   white-space: normal;
 }
 
-.pktw-root .pkset-preset__title,
-.peak-design-root .pkset-preset__title {
+:where(.pktw-root, .peak-design-root) .pkset-preset__title {
   display: block;
   width: 100%;
   overflow-wrap: anywhere;
@@ -3870,14 +3469,12 @@
 
 /* Allow flex children to shrink below their max-content width inside the
    4-column grid (otherwise long descriptions overflow card bounds). */
-.pktw-root .pkset-preset,
-.peak-design-root .pkset-preset {
+:where(.pktw-root, .peak-design-root) .pkset-preset {
   min-width: 0;
   overflow: hidden;
 }
 
-.pktw-root .pkset-preset__check,
-.peak-design-root .pkset-preset__check {
+:where(.pktw-root, .peak-design-root) .pkset-preset__check {
   position: absolute;
   top: 10px;
   right: 10px;
@@ -3894,8 +3491,7 @@
 
 .pktw-root .pkset-preset__check > svg,
 .peak-design-root .pkset-preset__check > svg,
-.pktw-root .pkset-preset__check .icon,
-.peak-design-root .pkset-preset__check .icon {
+:where(.pktw-root, .peak-design-root) .pkset-preset__check .icon {
   width: 12px;
   height: 12px;
 }
@@ -3903,8 +3499,7 @@
 
 /* ── pkset-row-add — dashed "+ Add …" CTA below row lists ──────────────── */
 
-.pktw-root .pkset-row-add,
-.peak-design-root .pkset-row-add {
+:where(.pktw-root, .peak-design-root) .pkset-row-add {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3921,8 +3516,7 @@
   width: 100%;
 }
 
-.pktw-root .pkset-row-add:hover,
-.peak-design-root .pkset-row-add:hover {
+:where(.pktw-root, .peak-design-root) .pkset-row-add:hover {
   background: var(--pk-surface-sunken);
   border-color: var(--pk-accent);
   color: var(--pk-accent);
@@ -3930,8 +3524,7 @@
 
 .pktw-root .pkset-row-add > svg,
 .peak-design-root .pkset-row-add > svg,
-.pktw-root .pkset-row-add .icon,
-.peak-design-root .pkset-row-add .icon {
+:where(.pktw-root, .peak-design-root) .pkset-row-add .icon {
   width: 14px;
   height: 14px;
 }
@@ -3940,41 +3533,35 @@
 /* ── details/summary — hide the native UA ▶ marker so wrapped Row content
    inside <summary> doesn't show a stray triangle above it. */
 
-.pktw-root details > summary,
-.peak-design-root details > summary {
+:where(.pktw-root, .peak-design-root) details > summary {
   list-style: none;
   cursor: pointer;
 }
 
-.pktw-root details > summary::-webkit-details-marker,
-.peak-design-root details > summary::-webkit-details-marker {
+:where(.pktw-root, .peak-design-root) details > summary::-webkit-details-marker {
   display: none;
 }
 
-.pktw-root details > summary::marker,
-.peak-design-root details > summary::marker {
+:where(.pktw-root, .peak-design-root) details > summary::marker {
   display: none;
 }
 
 /* ── pk-row clickable affordance — used by Overview AI behavior summary rows
    and any other row with onClick. The component sets data-clickable="true". */
 
-.pktw-root .pk-row[data-clickable="true"],
-.peak-design-root .pk-row[data-clickable="true"] {
+:where(.pktw-root, .peak-design-root) .pk-row[data-clickable="true"] {
   cursor: pointer;
   transition: background var(--pk-transition-fast), border-color var(--pk-transition-fast);
 }
 
-.pktw-root .pk-row[data-clickable="true"]:hover,
-.peak-design-root .pk-row[data-clickable="true"]:hover {
+:where(.pktw-root, .peak-design-root) .pk-row[data-clickable="true"]:hover {
   background: var(--pk-surface-sunken);
   border-color: var(--pk-border-strong);
 }
 
 /* ── pkset-action-strip — wrap-flex button cluster for Actions / Maintenance */
 
-.pktw-root .pkset-action-strip,
-.peak-design-root .pkset-action-strip {
+:where(.pktw-root, .peak-design-root) .pkset-action-strip {
   display: flex;
   flex-wrap: wrap;
   gap: var(--pk-space-2);
@@ -3987,16 +3574,14 @@
 
 /* ── pkset-danger-zone — red-bordered destructive-actions block ─────────── */
 
-.pktw-root .pkset-danger-zone,
-.peak-design-root .pkset-danger-zone {
+:where(.pktw-root, .peak-design-root) .pkset-danger-zone {
   border: 1px solid var(--pk-error-border);
   border-radius: var(--pk-radius-lg);
   padding: 14px;
   background: var(--pk-error-bg);
 }
 
-.pktw-root .pkset-danger-zone__head,
-.peak-design-root .pkset-danger-zone__head {
+:where(.pktw-root, .peak-design-root) .pkset-danger-zone__head {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
@@ -4007,8 +3592,7 @@
 
 .pktw-root .pkset-danger-zone__head > svg,
 .peak-design-root .pkset-danger-zone__head > svg,
-.pktw-root .pkset-danger-zone__head .icon,
-.peak-design-root .pkset-danger-zone__head .icon {
+:where(.pktw-root, .peak-design-root) .pkset-danger-zone__head .icon {
   width: 14px;
   height: 14px;
 }
@@ -4016,8 +3600,7 @@
 
 /* ── pkset-kv-list — key=value summary list for read-only modal summaries ── */
 
-.pktw-root .pkset-kv-list,
-.peak-design-root .pkset-kv-list {
+:where(.pktw-root, .peak-design-root) .pkset-kv-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -4026,8 +3609,7 @@
   list-style: none;
 }
 
-.pktw-root .pkset-kv-list li,
-.peak-design-root .pkset-kv-list li {
+:where(.pktw-root, .peak-design-root) .pkset-kv-list li {
   display: grid;
   grid-template-columns: 180px 1fr;
   gap: var(--pk-space-2);
@@ -4035,22 +3617,19 @@
   align-items: center;
 }
 
-.pktw-root .pkset-kv-list li > span:first-child,
-.peak-design-root .pkset-kv-list li > span:first-child {
+:where(.pktw-root, .peak-design-root) .pkset-kv-list li > span:first-child {
   color: var(--pk-text-secondary);
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.pktw-root .pkset-kv-list li > span:last-child,
-.peak-design-root .pkset-kv-list li > span:last-child {
+:where(.pktw-root, .peak-design-root) .pkset-kv-list li > span:last-child {
   font-family: var(--pk-font-mono);
   color: var(--pk-text-primary);
 }
 
-.pktw-root .pkset-kv-list li .icon,
-.peak-design-root .pkset-kv-list li .icon {
+:where(.pktw-root, .peak-design-root) .pkset-kv-list li .icon {
   width: 12px;
   height: 12px;
   flex-shrink: 0;
@@ -4062,15 +3641,13 @@
    because these live in modal context, not floating popovers.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.pktw-root .pkset-choice-list,
-.peak-design-root .pkset-choice-list {
+:where(.pktw-root, .peak-design-root) .pkset-choice-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.pktw-root .pkset-choice-row,
-.peak-design-root .pkset-choice-row {
+:where(.pktw-root, .peak-design-root) .pkset-choice-row {
   display: grid;
   grid-template-columns: 24px 1fr auto;
   gap: 10px;
@@ -4085,19 +3662,16 @@
   color: inherit;
 }
 
-.pktw-root .pkset-choice-row:hover,
-.peak-design-root .pkset-choice-row:hover {
+:where(.pktw-root, .peak-design-root) .pkset-choice-row:hover {
   background: var(--pk-surface-sunken);
 }
 
-.pktw-root .pkset-choice-row[data-selected="true"],
-.peak-design-root .pkset-choice-row[data-selected="true"] {
+:where(.pktw-root, .peak-design-root) .pkset-choice-row[data-selected="true"] {
   background: var(--pk-accent-soft);
   border-color: var(--pk-accent);
 }
 
-.pktw-root .pkset-choice-row__check,
-.peak-design-root .pkset-choice-row__check {
+:where(.pktw-root, .peak-design-root) .pkset-choice-row__check {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -4108,8 +3682,7 @@
   color: transparent;
 }
 
-.pktw-root .pkset-choice-row[data-selected="true"] .pkset-choice-row__check,
-.peak-design-root .pkset-choice-row[data-selected="true"] .pkset-choice-row__check {
+:where(.pktw-root, .peak-design-root) .pkset-choice-row[data-selected="true"] .pkset-choice-row__check {
   background: var(--pk-accent);
   border-color: var(--pk-accent);
   color: var(--pk-accent-fg);
@@ -4117,19 +3690,16 @@
 
 .pktw-root .pkset-choice-row__check > svg,
 .peak-design-root .pkset-choice-row__check > svg,
-.pktw-root .pkset-choice-row__check .icon,
-.peak-design-root .pkset-choice-row__check .icon {
+:where(.pktw-root, .peak-design-root) .pkset-choice-row__check .icon {
   width: 11px;
   height: 11px;
 }
 
-.pktw-root .pkset-choice-row__body,
-.peak-design-root .pkset-choice-row__body {
+:where(.pktw-root, .peak-design-root) .pkset-choice-row__body {
   min-width: 0;
 }
 
-.pktw-root .pkset-choice-row__title,
-.peak-design-root .pkset-choice-row__title {
+:where(.pktw-root, .peak-design-root) .pkset-choice-row__title {
   font-size: 13px;
   font-weight: 600;
   color: var(--pk-text-primary);
@@ -4138,15 +3708,13 @@
   gap: 6px;
 }
 
-.pktw-root .pkset-choice-row__desc,
-.peak-design-root .pkset-choice-row__desc {
+:where(.pktw-root, .peak-design-root) .pkset-choice-row__desc {
   font-size: 11px;
   color: var(--pk-text-secondary);
   margin-top: 2px;
 }
 
-.pktw-root .pkset-choice-row__provider,
-.peak-design-root .pkset-choice-row__provider {
+:where(.pktw-root, .peak-design-root) .pkset-choice-row__provider {
   font-size: 11px;
   color: var(--pk-text-tertiary);
 }
@@ -4154,16 +3722,14 @@
 
 /* ── pkset-choice-search — inline search input with left icon (modals) ───── */
 
-.pktw-root .pkset-choice-search,
-.peak-design-root .pkset-choice-search {
+:where(.pktw-root, .peak-design-root) .pkset-choice-search {
   position: relative;
   margin-bottom: var(--pk-space-3);
 }
 
 .pktw-root .pkset-choice-search > svg,
 .peak-design-root .pkset-choice-search > svg,
-.pktw-root .pkset-choice-search .icon,
-.peak-design-root .pkset-choice-search .icon {
+:where(.pktw-root, .peak-design-root) .pkset-choice-search .icon {
   position: absolute;
   top: 50%;
   left: 10px;
@@ -4173,8 +3739,7 @@
   color: var(--pk-text-tertiary);
 }
 
-.pktw-root .pkset-choice-search input,
-.peak-design-root .pkset-choice-search input {
+:where(.pktw-root, .peak-design-root) .pkset-choice-search input {
   width: 100%;
   border: 1px solid var(--pk-border-strong);
   border-radius: var(--pk-radius-md);
@@ -4184,8 +3749,7 @@
   outline: none;
 }
 
-.pktw-root .pkset-choice-search input:focus,
-.peak-design-root .pkset-choice-search input:focus {
+:where(.pktw-root, .peak-design-root) .pkset-choice-search input:focus {
   border-color: var(--pk-accent);
   box-shadow: 0 0 0 3px var(--pk-accent-soft);
 }
@@ -4197,41 +3761,35 @@
    defeats Tailwind's `hover:pktw-bg-*` specificity. Move base + hover into
    dedicated classes here so MessageAttachmentsList stays declarative.
    ═════════════════════════════════════════════════════════════════════════════ */
-.pktw-root .pk-attach-card,
-.peak-design-root .pk-attach-card {
+:where(.pktw-root, .peak-design-root) .pk-attach-card {
   background: var(--pk-surface-raised);
   border: 1px solid var(--pk-border);
   border-radius: 10px;
   transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
-.pktw-root .pk-attach-card:hover,
-.peak-design-root .pk-attach-card:hover {
+:where(.pktw-root, .peak-design-root) .pk-attach-card:hover {
   background: var(--pk-surface-sunken);
   border-color: var(--pk-border-strong);
 }
-.pktw-root .pk-attach-chip,
-.peak-design-root .pk-attach-chip {
+:where(.pktw-root, .peak-design-root) .pk-attach-chip {
   background: var(--pk-surface-raised);
   border: 1px solid var(--pk-border);
   border-radius: 999px;
   transition: background 150ms ease, border-color 150ms ease;
 }
-.pktw-root .pk-attach-chip:hover,
-.peak-design-root .pk-attach-chip:hover {
+:where(.pktw-root, .peak-design-root) .pk-attach-chip:hover {
   background: var(--pk-surface-sunken);
   border-color: var(--pk-border-strong);
 }
 /* URL card uses the same card shell but with a definite thumb-bearing
    first column. Flex (not grid) so empty gradient cells still render at
    the explicit `width: 120` — grid auto-rows can collapse an empty cell. */
-.pktw-root .pk-attach-url,
-.peak-design-root .pk-attach-url {
+:where(.pktw-root, .peak-design-root) .pk-attach-url {
   display: flex;
   overflow: hidden;
   min-height: 92px;
 }
-.pktw-root .pk-attach-url__thumb,
-.peak-design-root .pk-attach-url__thumb {
+:where(.pktw-root, .peak-design-root) .pk-attach-url__thumb {
   width: 120px;
   flex-shrink: 0;
   position: relative;
@@ -4246,16 +3804,14 @@
 /* OG image fills the entire thumb cell (object-fit:cover). If the request
    404s, the `<img>` is hidden via the onError handler and the gradient
    background underneath shows through. */
-.pktw-root .pk-attach-url__og,
-.peak-design-root .pk-attach-url__og {
+:where(.pktw-root, .peak-design-root) .pk-attach-url__og {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 /* Favicon — small centered "site mark" on top of the gradient. */
-.pktw-root .pk-attach-url__favicon,
-.peak-design-root .pk-attach-url__favicon {
+:where(.pktw-root, .peak-design-root) .pk-attach-url__favicon {
   width: 36px;
   height: 36px;
   border-radius: 6px;
@@ -4274,8 +3830,7 @@
    visual unification with the left-rail Project rows (Folder ⇄ FolderOpen).
    ═════════════════════════════════════════════════════════════════════════════ */
 
-.pktw-root .pkchat-idx-row,
-.peak-design-root .pkchat-idx-row {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row {
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -4289,28 +3844,24 @@
   color: var(--pk-text-primary);
   transition: background var(--pk-transition-fast);
 }
-.pktw-root .pkchat-idx-row:hover,
-.peak-design-root .pkchat-idx-row:hover {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row:hover {
   background: var(--pk-accent-tint);
 }
 
 /* Topic-head icon is now the toggle; the row no longer carries a chev
    gutter. Cursor + subtle color shift mark it as interactive. */
-.pktw-root .pkchat-idx-topic__toggle,
-.peak-design-root .pkchat-idx-topic__toggle {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__toggle {
   cursor: pointer;
   color: var(--pk-text-secondary);
   transition: color var(--pk-transition-fast);
 }
-.pktw-root .pkchat-idx-topic__head:hover .pkchat-idx-topic__toggle,
-.peak-design-root .pkchat-idx-topic__head:hover .pkchat-idx-topic__toggle {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__head:hover .pkchat-idx-topic__toggle {
   color: var(--pk-accent-text);
 }
 
 /* 26x26 avatar square (U / P / !) — replaces the old purple-tinted letter
    badge with a softer rounded square per the locked design. */
-.pktw-root .pkchat-idx-row__avatar,
-.peak-design-root .pkchat-idx-row__avatar {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__avatar {
   width: 26px;
   height: 26px;
   flex-shrink: 0;
@@ -4323,21 +3874,18 @@
   background: var(--pk-surface-sunken);
   color: var(--pk-text-secondary);
 }
-.pktw-root .pkchat-idx-row__avatar[data-role="user"],
-.peak-design-root .pkchat-idx-row__avatar[data-role="user"] {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__avatar[data-role="user"] {
   background: var(--pk-accent-tint);
   color: var(--pk-accent-text);
 }
-.pktw-root .pkchat-idx-row__avatar[data-role="error"],
-.peak-design-root .pkchat-idx-row__avatar[data-role="error"] {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__avatar[data-role="error"] {
   background: rgba(220, 38, 38, 0.12);
   color: #b91c1c;
 }
 
 /* 26x26 main icon container — used by topic rows (chat bubble) and
    artifact rows (file-type icon). The icon SVG inside renders ~15px. */
-.pktw-root .pkchat-idx-row__icon,
-.peak-design-root .pkchat-idx-row__icon {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__icon {
   width: 26px;
   height: 26px;
   flex-shrink: 0;
@@ -4347,20 +3895,17 @@
   justify-content: center;
   color: var(--pk-text-secondary);
 }
-.pktw-root .pkchat-idx-row__icon > svg,
-.peak-design-root .pkchat-idx-row__icon > svg {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__icon > svg {
   width: 15px;
   height: 15px;
 }
 
-.pktw-root .pkchat-idx-row__icon--artifact,
-.peak-design-root .pkchat-idx-row__icon--artifact {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__icon--artifact {
   background: var(--pk-accent-tint);
   color: var(--pk-accent-text);
 }
 
-.pktw-root .pkchat-idx-row__body,
-.peak-design-root .pkchat-idx-row__body {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__body {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -4368,8 +3913,7 @@
   gap: 2px;
   padding-top: 2px;
 }
-.pktw-root .pkchat-idx-row__title,
-.peak-design-root .pkchat-idx-row__title {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__title {
   font-size: var(--pk-text-sm);
   color: var(--pk-text-primary);
   line-height: 1.4;
@@ -4379,40 +3923,34 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
-.pktw-root .pkchat-idx-row__desc,
-.peak-design-root .pkchat-idx-row__desc {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__desc {
   font-size: var(--pk-text-xs);
   color: var(--pk-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.pktw-root .pkchat-idx-row__sub,
-.peak-design-root .pkchat-idx-row__sub {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__sub {
   font-size: var(--pk-text-xs);
   color: var(--pk-text-tertiary);
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
-.pktw-root .pkchat-idx-row__kind,
-.peak-design-root .pkchat-idx-row__kind {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__kind {
   color: var(--pk-text-tertiary);
 }
-.pktw-root .pkchat-idx-row__sub-sep,
-.peak-design-root .pkchat-idx-row__sub-sep {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__sub-sep {
   color: var(--pk-text-tertiary);
 }
 /* Topic chip in artifact meta line — violet text only, no background fill.
    Reads as a clickable association ("this file belongs to that topic")
    without competing visually with the active-row lavender bg. */
-.pktw-root .pkchat-idx-row__meta-chip,
-.peak-design-root .pkchat-idx-row__meta-chip {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__meta-chip {
   color: var(--pk-accent-text);
   font-weight: 500;
 }
-.pktw-root .pkchat-idx-row__time,
-.peak-design-root .pkchat-idx-row__time {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-row__time {
   font-size: var(--pk-text-xs);
   color: var(--pk-text-tertiary);
   flex-shrink: 0;
@@ -4422,16 +3960,14 @@
 
 /* Topic block — collapsible group. Indent alone carries the parent-child
    relationship; the earlier vguide line read as noise in a narrow rail. */
-.pktw-root .pkchat-idx-topic,
-.peak-design-root .pkchat-idx-topic {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic {
   position: relative;
 }
 
 /* Progress capsule on the right of the topic header. Shows the topic's
    relative position in the conversation timeline (its message span as a
    fraction of total messages). 64×5 to match Mock 01. */
-.pktw-root .pkchat-idx-topic__progress,
-.peak-design-root .pkchat-idx-topic__progress {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__progress {
   width: 64px;
   height: 5px;
   flex-shrink: 0;
@@ -4440,8 +3976,7 @@
   overflow: hidden;
   margin-top: 10px;
 }
-.pktw-root .pkchat-idx-topic__progress-fill,
-.peak-design-root .pkchat-idx-topic__progress-fill {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__progress-fill {
   height: 100%;
   background: var(--pk-accent);
   border-radius: 999px;
@@ -4452,14 +3987,12 @@
    column, signalling containment without burning the 28px the original
    layout used. The 1px vguide at x=21 falls just outside the nested
    icon (which starts at x=8+14=22) — reads as a left rail. */
-.pktw-root .pkchat-idx-topic__nested,
-.peak-design-root .pkchat-idx-topic__nested {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-topic__nested {
   padding-left: 14px;
 }
 
 /* Section header used in the Artifacts tab (kind groups). */
-.pktw-root .pkchat-idx-group-header,
-.peak-design-root .pkchat-idx-group-header {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-group-header {
   display: flex;
   align-items: baseline;
   gap: 6px;
@@ -4470,12 +4003,10 @@
   text-transform: uppercase;
   color: var(--pk-text-tertiary);
 }
-.pktw-root .pkchat-idx-group-header:first-child,
-.peak-design-root .pkchat-idx-group-header:first-child {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-group-header:first-child {
   padding-top: 4px;
 }
-.pktw-root .pkchat-idx-group-header__count,
-.peak-design-root .pkchat-idx-group-header__count {
+:where(.pktw-root, .peak-design-root) .pkchat-idx-group-header__count {
   color: var(--pk-text-tertiary);
   font-weight: 500;
   letter-spacing: 0;
