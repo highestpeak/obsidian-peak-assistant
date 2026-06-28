@@ -54,7 +54,7 @@ import { NumberInputWithConfirm } from '@/ui/component/shared-ui/number-input';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import type { IndexLevel } from '@/service/search/index/types';
+import type { IndexLevel } from '@/core/search/indexTypes';
 import type { DocumentType } from '@/core/document/types';
 import type { MyPluginSettings, HarnessSettings } from '@/core/config/settingsTypes';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';

@@ -158,11 +158,6 @@ function testNoNewMutableRuntimeSingletonInServiceCore(): void {
 
 function testT11rInfraFilesExist(): void {
 	const required = [
-		'src/app/adapters/VaultPortAdapter.ts',
-		'src/app/adapters/VaultEventAdapter.ts',
-		'src/app/adapters/HostMetadataAdapter.ts',
-		'src/app/adapters/WorkspaceObserverAdapter.ts',
-		'src/app/adapters/WorkspaceBusAdapter.ts',
 		'src/app/adapters/HttpClientAdapter.ts',
 		'src/app/adapters/NoticeNotifier.ts',
 		'src/app/vault/vault-helpers.ts',
@@ -170,11 +165,7 @@ function testT11rInfraFilesExist(): void {
 		'src/app/template/VaultContentProvider.ts',
 		'src/core/storage/vault/vault-ops.ts',
 		'src/core/ports/VaultWriterPort.ts',
-		'src/core/ports/VaultLookupPort.ts',
-		'src/core/ports/VaultEventPort.ts',
 		'src/core/ports/HostMetadataPort.ts',
-		'src/core/ports/WorkspaceObserverPort.ts',
-		'src/core/ports/WorkspaceBusPort.ts',
 		'src/core/ports/HttpClientPort.ts',
 		'src/core/ports/NotifierPort.ts',
 		'src/core/ports/PlatformPort.ts',
@@ -190,6 +181,15 @@ function testRelocatedFilesAreGone(): void {
 	const retired = [
 		'src/core/utils/obsidian-utils.ts',
 		'src/core/template/VaultContentProvider.ts',
+		// T11T: diff primitives moved from legacy `ui/component/diff/*` to
+		// `ui/components/shared/diff/*` to drain the legacy bucket.
+		'src/ui/component/diff/DiffView.tsx',
+		'src/ui/component/diff/lineDiff.ts',
+		'src/ui/component/diff/wordDiff.ts',
+		// T11T: bridge singleton retired (callers construct directly).
+		// The class itself stays; only the `getAgentBridge()`/`_instance`
+		// surface is forbidden. Module global removal validated by the
+		// no-mutable-runtime-singleton scan above.
 	];
 	for (const p of retired) {
 		try {

@@ -1,4 +1,4 @@
-import type { CascadeChangeInfo, PreIndexSnapshot } from './types';
+import type { CascadeChangeInfo, PreIndexSnapshot } from '@/core/search/cascadeTypes';
 
 export function computeChangeMagnitude(
     oldVec: number[] | null,

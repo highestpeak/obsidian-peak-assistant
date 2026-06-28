@@ -8,7 +8,7 @@ import { TemplateManager } from '@/core/template/TemplateManager';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 import { WhatWasThisAbout } from './WhatWasThisAbout';
 import type { DetailPanelStrings, DashboardStrings } from '../UsageDashboard';
-import type { MessageReceiptSlotProps } from '../integration/chatBridge';
+import type { MessageReceiptSlotProps } from '@/ui/view/chat-view/integration/messageReceiptSlot';
 
 /**
  * Inline message receipt (Dashboard carrier A — spec §6.1).

@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronDown, ChevronRight, ExternalLink, AlertTriangle } from 'lucide-react';
-import { Button } from '@/ui/component/shared-ui/button';
+import { CopilotPanelShell, type CopilotPanelAction } from './CopilotPanelShell';
 
 export interface TextStreamSection {
 	key: string;
 	label: string;
 	count: number;
-	/** When true, renders a small warning icon next to the section label. */
 	warn?: boolean;
 	items: Array<{
 		title: string;
@@ -29,7 +28,6 @@ export interface TextStreamPanelProps {
 	badge?: string;
 	subtitle?: string;
 	body: string;
-	/** Visual treatment for the body text block. */
 	bodyStyle?: 'callout' | 'left-bordered' | 'plain';
 	sections?: TextStreamSection[];
 	footerSummary?: string;
@@ -38,14 +36,24 @@ export interface TextStreamPanelProps {
 	showWordCount?: boolean;
 }
 
+const bodyClassFor = (bodyStyle: 'callout' | 'left-bordered' | 'plain'): string => {
+	if (bodyStyle === 'callout') {
+		return 'pktw-p-4 pktw-bg-secondary pktw-rounded-lg pktw-border-l-3 pktw-border-l-accent pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap';
+	}
+	if (bodyStyle === 'left-bordered') {
+		return 'pktw-border-l-3 pktw-border-l-accent pktw-pl-4 pktw-py-2 pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap';
+	}
+	return 'pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap pktw-mb-4';
+};
+
 /**
- * Shared "stream a long-form text result with optional collapsible
- * sources/gaps" panel body used by the Copilot text-stream actions
- * (Summarize / Synthesize / ContinueWriting / WriteArticle). Per-action
- * data shapes and side-effects stay in their thin wrappers.
+ * Long-form text result panel (Summarize / Synthesize / ContinueWriting /
+ * WriteArticle). Reuses the shared CopilotPanelShell for chrome and adds
+ * the streaming-body + collapsible-sources/gaps body parts unique to this
+ * family.
  */
 export const TextStreamPanel: React.FC<TextStreamPanelProps> = ({
-	icon: Icon,
+	icon,
 	title,
 	badge,
 	subtitle,
@@ -58,70 +66,36 @@ export const TextStreamPanel: React.FC<TextStreamPanelProps> = ({
 	showWordCount,
 }) => {
 	const wordCount = showWordCount ? body.split(/\s+/).filter(Boolean).length : null;
-
-	const bodyClass = (() => {
-		switch (bodyStyle) {
-			case 'callout':
-				return 'pktw-p-4 pktw-bg-secondary pktw-rounded-lg pktw-border-l-3 pktw-border-l-accent pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap';
-			case 'left-bordered':
-				return 'pktw-border-l-3 pktw-border-l-accent pktw-pl-4 pktw-py-2 pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap';
-			case 'plain':
-			default:
-				return 'pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap pktw-mb-4';
-		}
-	})();
+	const shellActions: CopilotPanelAction[] = actions.map((a) => ({
+		label: a.label,
+		variant: a.variant === 'ghost' ? 'ghost' : 'primary',
+		icon: a.icon,
+		onClick: a.onClick,
+	}));
 
 	return (
-		<div className="pktw-flex pktw-flex-col pktw-h-full">
-			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-py-3 pktw-border-b pktw-border-border">
-				<div className="pktw-flex pktw-items-center pktw-gap-2">
-					{Icon && <Icon className="pktw-w-4 pktw-h-4" />}
-					<span className="pktw-text-sm pktw-font-semibold">{title}</span>
-					{badge && (
-						<span className="pktw-text-[9px] pktw-font-semibold pktw-px-2 pktw-py-0.5 pktw-rounded pktw-bg-accent/10 pktw-text-accent pktw-uppercase pktw-tracking-wider">
-							{badge}
-						</span>
-					)}
-				</div>
-				{subtitle && <span className="pktw-text-[11px] pktw-text-muted-foreground">{subtitle}</span>}
-			</div>
-
-			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-p-5">
-				<div className={bodyClass}>{body}</div>
-				{wordCount !== null && (
-					<div className="pktw-mt-2 pktw-text-[10px] pktw-text-muted-foreground">{wordCount} words</div>
-				)}
-				{sections.map((section, sIdx) => (
-					<CollapsibleSection
-						key={section.key}
-						section={section}
-						defaultOpen={false}
-						isLast={sIdx === sections.length - 1}
-					/>
-				))}
-			</div>
-
-			<div className="pktw-flex pktw-items-center pktw-justify-end pktw-gap-2 pktw-px-5 pktw-py-3 pktw-border-t pktw-border-border pktw-bg-secondary">
-				{footerSummary && (
-					<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-mr-auto">{footerSummary}</span>
-				)}
-				<Button variant="ghost" onClick={onClose}>Dismiss</Button>
-				{actions.map((action, i) => {
-					const { label, variant = 'primary', icon: ActionIcon, onClick } = action;
-					return (
-						<Button
-							key={`${label}-${i}`}
-							variant={variant === 'primary' ? undefined : 'ghost'}
-							onClick={onClick}
-							className={ActionIcon ? 'pktw-gap-1' : undefined}
-						>
-							{ActionIcon && <ActionIcon className="pktw-w-3.5 pktw-h-3.5" />}
-							{label}
-						</Button>
-					);
-				})}
-			</div>
-		</div>
+		<CopilotPanelShell
+			icon={icon}
+			title={title}
+			badge={badge}
+			subtitle={subtitle}
+			footerSummary={footerSummary}
+			onClose={onClose}
+			actions={shellActions}
+		>
+			<div className={bodyClassFor(bodyStyle)}>{body}</div>
+			{wordCount !== null && (
+				<div className="pktw-mt-2 pktw-text-[10px] pktw-text-muted-foreground">{wordCount} words</div>
+			)}
+			{sections.map((section, sIdx) => (
+				<CollapsibleSection
+					key={section.key}
+					section={section}
+					defaultOpen={false}
+					isLast={sIdx === sections.length - 1}
+				/>
+			))}
+		</CopilotPanelShell>
 	);
 };
 

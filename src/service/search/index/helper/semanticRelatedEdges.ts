@@ -11,7 +11,7 @@ import { getFileNameFromPath } from '@/core/utils/file-utils';
 import { getPathFromNode } from '@/service/tools/search-graph-inspector/common';
 import type { Document } from '@/core/document/types';
 import { SLICE_CAPS } from '@/core/constant';
-import { SEMANTIC_EDGE_CHUNK_TYPE_WEIGHT, type ChunkType } from '@/service/search/index/chunkTypes';
+import { SEMANTIC_EDGE_CHUNK_TYPE_WEIGHT, type ChunkType } from '@/core/search/chunkTypes';
 
 export const SEMANTIC_EDGE_RULE_VERSION = 4;
 

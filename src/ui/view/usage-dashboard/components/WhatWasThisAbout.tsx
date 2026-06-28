@@ -77,19 +77,6 @@ export function WhatWasThisAbout({
 						previewEnabled={previewFlag}
 					/>
 				</Modal.Body>
-				<Modal.Footer>
-					<VerbButton
-						feature={row.feature}
-						strings={strings}
-						onAction={(verb) => {
-							// PR-Dash-3 stub: log + close. Per-surface worktrees
-							// (chat / search / agent / copilot / embed) will wire
-							// real navigation in their respective handoffs.
-							console.info('[WhatWasThisAbout] verb', verb, 'row.id', row.id);
-							onClose();
-						}}
-					/>
-				</Modal.Footer>
 			</Modal.Content>
 		</Modal>
 	);
@@ -423,47 +410,6 @@ function QuoteBlock({
 			<div className="pk-detail-quote__text">{text}</div>
 		</div>
 	);
-}
-
-function VerbButton({
-	feature,
-	strings,
-	onAction,
-}: {
-	feature: string;
-	strings: DetailPanelStrings;
-	onAction(verb: string): void;
-}) {
-	const verb = pickVerb(feature, strings.verbs);
-	return (
-		<button
-			type="button"
-			className="pk-detail-verb"
-			onClick={() => onAction(verb)}
-		>
-			{verb}
-		</button>
-	);
-}
-
-function pickVerb(feature: string, verbs: DetailPanelStrings['verbs']): string {
-	switch (feature) {
-		case 'chat':
-			return verbs.openChat;
-		case 'search_analysis':
-		case 'search':
-			return verbs.openSearch;
-		case 'agent':
-		case 'skill':
-			return verbs.openTrace;
-		case 'copilot':
-			return verbs.openEditor;
-		case 'embed':
-		case 'indexing':
-			return verbs.openDocument;
-		default:
-			return verbs.openChat;
-	}
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────

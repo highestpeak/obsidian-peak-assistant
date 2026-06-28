@@ -121,9 +121,3 @@ export class ClaudeAgentSDKBridge {
     }
 }
 
-/** Singleton instance for convenience. */
-let _instance: ClaudeAgentSDKBridge | null = null;
-export function getAgentBridge(): ClaudeAgentSDKBridge {
-    if (!_instance) _instance = new ClaudeAgentSDKBridge();
-    return _instance;
-}

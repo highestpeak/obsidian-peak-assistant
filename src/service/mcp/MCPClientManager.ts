@@ -8,7 +8,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import type { MCPServerConfig, MCPConnectionStatus, MCPConnectionInfo } from './types';
+import type { MCPServerConfig, MCPConnectionStatus, MCPConnectionInfo } from '@/core/types/mcp';
 
 interface MCPToolDef {
 	name: string;

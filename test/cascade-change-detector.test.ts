@@ -1,5 +1,5 @@
 import { computeChangeMagnitude, detectChanges } from '@/service/search/index/cascade/CascadeChangeDetector';
-import type { PreIndexSnapshot } from '@/service/search/index/cascade/types';
+import type { PreIndexSnapshot } from '@/core/search/cascadeTypes';
 
 function assert(condition: boolean, message: string): void {
     if (!condition) {

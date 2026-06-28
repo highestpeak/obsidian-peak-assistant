@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
-import type { MCPServerConfig } from '@/service/mcp/types';
+import type { MCPServerConfig } from '@/core/types/mcp';
 import { MCPServerCard } from './MCPServerCard';
 import { DEFAULT_SETTINGS_STRINGS, loadSettingsStrings, type SettingsStrings } from '../settingsStrings';
 

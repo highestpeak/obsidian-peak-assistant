@@ -1,4 +1,4 @@
-import type { ChunkType } from '@/service/search/index/chunkTypes';
+import type { ChunkType } from '@/core/search/chunkTypes';
 import type { QueryPlan } from '@/service/search/query/query-parser';
 
 export type MatchType = 'exact' | 'stem' | 'semantic' | 'fuzzy' | 'meta';

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Server, Plug, PlugZap, Trash2, ChevronRight, Power, PowerOff } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
-import type { MCPServerConfig, MCPConnectionStatus } from '@/service/mcp/types';
+import type { MCPServerConfig, MCPConnectionStatus } from '@/core/types/mcp';
 import { MCPClientManager } from '@/service/mcp/MCPClientManager';
 
 // ---------------------------------------------------------------------------

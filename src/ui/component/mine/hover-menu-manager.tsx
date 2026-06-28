@@ -155,29 +155,3 @@ export function useHoverMenu(config: HoverMenuConfig): HoverMenuResult {
 	};
 }
 
-/**
- * Higher-order component that wraps children with hover menu functionality
- */
-export interface HoverMenuWrapperProps extends HoverMenuConfig {
-	children: (menuState: HoverMenuResult) => React.ReactNode;
-	className?: string;
-}
-
-export const HoverMenuWrapper: React.FC<HoverMenuWrapperProps> = ({
-	children,
-	className,
-	...config
-}) => {
-	const menuState = useHoverMenu(config);
-
-	return (
-		<div
-			ref={menuState.containerRef}
-			className={className}
-			onMouseEnter={menuState.handleMouseEnter}
-			onMouseLeave={menuState.handleMouseLeave}
-		>
-			{children(menuState)}
-		</div>
-	);
-};

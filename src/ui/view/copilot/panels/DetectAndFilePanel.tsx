@@ -5,6 +5,8 @@ import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVau
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import type { DetectAndFileResult } from '@/service/copilot/copilot-schemas';
 import { Inbox, ExternalLink, FilePlus, Check } from 'lucide-react';
+import { CopilotPanelShell } from '@/ui/view/copilot/components/CopilotPanelShell';
+import { PanelEmptyState } from '@/ui/view/copilot/components/FindingsBodyParts';
 
 const CONTENT_TYPE_LABELS: Record<string, string> = {
 	'todo': 'Todo',
@@ -27,9 +29,6 @@ export const DetectAndFilePanel: React.FC<DetectAndFilePanelProps> = ({
 }) => {
 	const { vault } = useCopilotPanelVault();
 
-	const openNote = (path: string): Promise<void> =>
-		vault.openNote(path, { newLeaf: false });
-
 	const handleAppend = async (path: string, formattedText: string) => {
 		const appended = await vault.appendToFileAtPath(path, formattedText);
 		if (!appended) {
@@ -50,106 +49,78 @@ export const DetectAndFilePanel: React.FC<DetectAndFilePanelProps> = ({
 		}
 	};
 
+	const badge = `${CONTENT_TYPE_LABELS[result.contentType] ?? result.contentType} · ${Math.round(result.confidence * 100)}%`;
+
 	return (
-		<div className="pktw-flex pktw-flex-col pktw-h-full">
-			{/* Header */}
-			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-py-3 pktw-border-b pktw-border-border">
-				<div className="pktw-flex pktw-items-center pktw-gap-2">
-					<Inbox className="pktw-w-4 pktw-h-4" />
-					<span className="pktw-text-sm pktw-font-semibold">Detect & File</span>
-					<span className="pktw-text-[9px] pktw-font-semibold pktw-px-2 pktw-py-0.5 pktw-rounded pktw-bg-accent/10 pktw-text-accent pktw-uppercase pktw-tracking-wider">
-						{CONTENT_TYPE_LABELS[result.contentType] ?? result.contentType}
-					</span>
-					<span className="pktw-text-[9px] pktw-text-muted-foreground">
-						{Math.round(result.confidence * 100)}% confidence
-					</span>
-				</div>
-			</div>
-
-			{/* Summary */}
-			<div className="pktw-px-5 pktw-py-2.5 pktw-border-b pktw-border-border pktw-bg-secondary/50">
-				<span className="pktw-text-[12px] pktw-text-muted-foreground">{result.summary}</span>
-			</div>
-
-			{/* Suggestions */}
-			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-p-5">
-				{result.suggestions.length === 0 ? (
-					<div className="pktw-text-center pktw-text-muted-foreground pktw-py-8 pktw-text-sm">
-						No suitable existing notes found.
-					</div>
-				) : (
-					result.suggestions.map((suggestion, i) => (
-						<div
-							key={suggestion.path}
-							className="pktw-border pktw-border-border pktw-rounded-lg pktw-mb-2.5 pktw-overflow-hidden"
-						>
-							<div className="pktw-flex pktw-items-center pktw-gap-2.5 pktw-px-3.5 pktw-py-2.5 pktw-bg-secondary pktw-border-b pktw-border-border">
-								<div className="pktw-w-[22px] pktw-h-[22px] pktw-rounded-full pktw-bg-accent/10 pktw-text-accent pktw-flex pktw-items-center pktw-justify-center pktw-text-[11px] pktw-font-bold pktw-flex-shrink-0">
-									{i + 1}
-								</div>
-								<span
-									className="pktw-text-[13px] pktw-font-semibold pktw-text-accent pktw-truncate pktw-cursor-pointer hover:pktw-underline"
-									onClick={() => openNote(suggestion.path)}
-								>
-									{suggestion.title}
-								</span>
-								<ExternalLink className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground pktw-flex-shrink-0" />
-								<span className="pktw-text-[8px] pktw-font-bold pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-accent/10 pktw-text-accent pktw-flex-shrink-0 pktw-ml-auto">
-									{Math.round(suggestion.score * 100)}%
-								</span>
+		<CopilotPanelShell
+			icon={Inbox}
+			title="Detect & File"
+			badge={badge}
+			subtitle={result.summary}
+			footerSummary={`${result.suggestions.length} destination${result.suggestions.length !== 1 ? 's' : ''} suggested`}
+			onClose={onClose}
+		>
+			{result.suggestions.length === 0 ? (
+				<PanelEmptyState message="No suitable existing notes found." />
+			) : (
+				result.suggestions.map((suggestion, i) => (
+					<div
+						key={suggestion.path}
+						className="pktw-border pktw-border-border pktw-rounded-lg pktw-mb-2.5 pktw-overflow-hidden"
+					>
+						<div className="pktw-flex pktw-items-center pktw-gap-2.5 pktw-px-3.5 pktw-py-2.5 pktw-bg-secondary pktw-border-b pktw-border-border">
+							<div className="pktw-w-[22px] pktw-h-[22px] pktw-rounded-full pktw-bg-accent/10 pktw-text-accent pktw-flex pktw-items-center pktw-justify-center pktw-text-[11px] pktw-font-bold pktw-flex-shrink-0">
+								{i + 1}
 							</div>
-							<div className="pktw-px-3.5 pktw-py-2.5">
-								<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-block pktw-mb-2">
-									{suggestion.reason}
-								</span>
-								<div className="pktw-p-2 pktw-bg-muted pktw-rounded pktw-text-[11px] pktw-font-mono pktw-whitespace-pre-wrap pktw-max-h-[100px] pktw-overflow-y-auto pktw-mb-2">
-									{suggestion.formattedText.slice(0, 300)}
-								</div>
-								<Button
-									size="sm"
-									className="pktw-h-7 pktw-text-[11px] pktw-gap-1"
-									onClick={() => handleAppend(suggestion.path, suggestion.formattedText)}
-								>
-									<Check className="pktw-w-3 pktw-h-3" />
-									Append Here
-								</Button>
-							</div>
-						</div>
-					))
-				)}
-
-				{/* Fallback */}
-				{result.fallbackAction && (
-					<div className="pktw-mt-4 pktw-pt-4 pktw-border-t pktw-border-border">
-						<span className="pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-muted-foreground pktw-block pktw-mb-2">
-							Or create a new note
-						</span>
-						<div className="pktw-flex pktw-items-center pktw-gap-2">
-							<span className="pktw-text-[12px]">{result.fallbackAction.suggestedTitle}</span>
-							<span className="pktw-text-[10px] pktw-text-muted-foreground">
-								in {result.fallbackAction.suggestedFolder}/
-							</span>
-							<Button
-								variant="outline"
-								size="sm"
-								className="pktw-h-7 pktw-text-[11px] pktw-gap-1 pktw-ml-auto"
-								onClick={handleCreateNew}
+							<span
+								className="pktw-text-[13px] pktw-font-semibold pktw-text-accent pktw-truncate pktw-cursor-pointer hover:pktw-underline"
+								onClick={() => { void vault.openNote(suggestion.path, { newLeaf: false }); }}
 							>
-								<FilePlus className="pktw-w-3 pktw-h-3" />
-								Create
+								{suggestion.title}
+							</span>
+							<ExternalLink className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground pktw-flex-shrink-0" />
+							<span className="pktw-text-[8px] pktw-font-bold pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-accent/10 pktw-text-accent pktw-flex-shrink-0 pktw-ml-auto">
+								{Math.round(suggestion.score * 100)}%
+							</span>
+						</div>
+						<div className="pktw-px-3.5 pktw-py-2.5">
+							<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-block pktw-mb-2">{suggestion.reason}</span>
+							<div className="pktw-p-2 pktw-bg-muted pktw-rounded pktw-text-[11px] pktw-font-mono pktw-whitespace-pre-wrap pktw-max-h-[100px] pktw-overflow-y-auto pktw-mb-2">
+								{suggestion.formattedText.slice(0, 300)}
+							</div>
+							<Button
+								size="sm"
+								className="pktw-h-7 pktw-text-[11px] pktw-gap-1"
+								onClick={() => handleAppend(suggestion.path, suggestion.formattedText)}
+							>
+								<Check className="pktw-w-3 pktw-h-3" />
+								Append Here
 							</Button>
 						</div>
 					</div>
-				)}
-			</div>
+				))
+			)}
 
-			{/* Footer */}
-			<div className="pktw-flex pktw-items-center pktw-justify-end pktw-gap-2 pktw-px-5 pktw-py-3 pktw-border-t pktw-border-border pktw-bg-secondary">
-				<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-mr-auto">
-					{result.suggestions.length} destination{result.suggestions.length !== 1 ? 's' : ''} suggested
-				</span>
-				<Button variant="ghost" onClick={onClose}>Dismiss</Button>
-			</div>
-		</div>
+			{result.fallbackAction && (
+				<div className="pktw-mt-4 pktw-pt-4 pktw-border-t pktw-border-border">
+					<span className="pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-muted-foreground pktw-block pktw-mb-2">
+						Or create a new note
+					</span>
+					<div className="pktw-flex pktw-items-center pktw-gap-2">
+						<span className="pktw-text-[12px]">{result.fallbackAction.suggestedTitle}</span>
+						<span className="pktw-text-[10px] pktw-text-muted-foreground">in {result.fallbackAction.suggestedFolder}/</span>
+						<Button
+							variant="outline"
+							size="sm"
+							className="pktw-h-7 pktw-text-[11px] pktw-gap-1 pktw-ml-auto"
+							onClick={handleCreateNew}
+						>
+							<FilePlus className="pktw-w-3 pktw-h-3" />
+							Create
+						</Button>
+					</div>
+				</div>
+			)}
+		</CopilotPanelShell>
 	);
 };

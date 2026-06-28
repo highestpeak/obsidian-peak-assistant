@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
-import { diffLines, type LineOp } from '@/ui/component/diff/lineDiff';
+import { diffLines, type LineOp } from '@/ui/components/shared/diff/lineDiff';
 import type { ChangeArtifact, ChangeBlockArtifact } from '@/service/copilot/CopilotRunArtifacts';
 
 interface ChangesPanelProps {

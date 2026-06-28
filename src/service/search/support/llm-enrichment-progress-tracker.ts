@@ -4,7 +4,7 @@ import { PromptId } from '@/core/prompt/PromptId';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { computeUsdFromUsage, normalizeUsageTokens } from '@/service/search/support/llm-cost-utils';
 
-export type { LlmIndexingCompleteEvent } from '@/service/search/index/types';
+export type { LlmIndexingCompleteEvent } from '@/core/search/indexTypes';
 
 export type LlmEnrichmentDocPlan = {
 	contentChars: number;

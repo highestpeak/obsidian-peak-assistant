@@ -12,7 +12,7 @@ import {
 	defaultIndexDocumentOptions,
 	type IndexDocumentOptions,
 	type LlmIndexingCompleteEvent,
-} from './types';
+} from '@/core/search/indexTypes';
 import type { DocumentLoaderReadOptions } from '@/core/document/loader/types';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
 import type { IndexedDocumentRecord } from '@/core/storage/sqlite/ddl';
@@ -125,8 +125,8 @@ export interface IndexServiceEnv {
 }
 
 
-export type { IndexDocumentOptions, IndexDocumentReason } from './types';
-export { defaultIndexDocumentOptions } from './types';
+export type { IndexDocumentOptions, IndexDocumentReason } from '@/core/search/indexTypes';
+export { defaultIndexDocumentOptions } from '@/core/search/indexTypes';
 
 /** Batch-loaded path → indexed id + title for outgoing refs that omit `docId`. */
 type PathIndexedDocInfo = { id: string; title: string | null };

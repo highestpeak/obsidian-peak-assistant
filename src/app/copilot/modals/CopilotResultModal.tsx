@@ -12,10 +12,9 @@ import type { V2ToolStep } from '@/ui/view/quick-search/types/search-steps';
 import {
 	CopilotResultContent,
 	type ModalPhase,
+	type CopilotPhaseController,
 	actionResultData,
 	consumeCopilotStream,
-	setCurrentSetPhase,
-	getCurrentSetPhase,
 } from '@/ui/view/copilot/CopilotResultContent';
 import { CopilotPickerModal } from '@/app/copilot/modals/CopilotPickerModal';
 
@@ -29,6 +28,7 @@ export interface CopilotResultModalProps {
 export class CopilotResultModal extends Modal {
 	private reactRenderer: ReactRenderer | null = null;
 	private abortController: AbortController | null = null;
+	private phaseController: CopilotPhaseController = { current: null };
 
 	constructor(app: App, private props: CopilotResultModalProps) {
 		super(app);
@@ -65,6 +65,7 @@ export class CopilotResultModal extends Modal {
 					action: this.props.action,
 					ctx: this.props.ctx,
 					initialPhase,
+					phaseControllerRef: this.phaseController,
 					onClose: () => this.close(),
 					onBack: () => {
 						this.abortController?.abort();
@@ -74,7 +75,7 @@ export class CopilotResultModal extends Modal {
 					},
 					onCancel: () => {
 						this.abortController?.abort();
-						getCurrentSetPhase()?.({ phase: 'cancelled' });
+						this.phaseController.current?.({ phase: 'cancelled' });
 					},
 				},
 				appContext,
@@ -97,7 +98,7 @@ export class CopilotResultModal extends Modal {
 				const generator = action.execute(ctx, signal);
 				let lastSteps: V2ToolStep[] = [];
 				const result = await consumeCopilotStream(generator, (p) => {
-					getCurrentSetPhase()?.(p);
+					this.phaseController.current?.(p);
 					if (p.phase === 'streaming') lastSteps = p.steps;
 				}, startTime, signal);
 				if (signal.aborted) return;
@@ -106,7 +107,7 @@ export class CopilotResultModal extends Modal {
 						this.setError(new Error(result.message));
 						return;
 					}
-					getCurrentSetPhase()?.({
+					this.phaseController.current?.({
 						phase: 'result',
 						data: actionResultData(result),
 						usage: result.usage,
@@ -116,7 +117,7 @@ export class CopilotResultModal extends Modal {
 				}
 			} catch (err) {
 				if (signal.aborted) {
-					getCurrentSetPhase()?.({ phase: 'cancelled' });
+					this.phaseController.current?.({ phase: 'cancelled' });
 					return;
 				}
 				this.setError(err instanceof Error ? err : new Error(String(err)));
@@ -125,17 +126,17 @@ export class CopilotResultModal extends Modal {
 	}
 
 	setResult(data: any, usage?: ActionUsage): void {
-		getCurrentSetPhase()?.({ phase: 'result', data, usage, resultType: 'structured' });
+		this.phaseController.current?.({ phase: 'result', data, usage, resultType: 'structured' });
 	}
 
 	setError(error: Error): void {
-		getCurrentSetPhase()?.({ phase: 'error', error });
+		this.phaseController.current?.({ phase: 'error', error });
 	}
 
 	onClose(): void {
 		this.abortController?.abort();
 		this.abortController = null;
-		setCurrentSetPhase(null);
+		this.phaseController.current = null;
 		const r = this.reactRenderer;
 		this.reactRenderer = null;
 		if (r) setTimeout(() => { r.unmount(); this.contentEl.empty(); }, 0);

@@ -1,8 +1,8 @@
 // src/ui/view/copilot/CopilotResultContent.tsx — React content for the
 // Copilot Result modal. The Obsidian Modal shell lives at
-// @/app/copilot/modals/CopilotResultModal and registers itself with the
-// `_currentSetPhase` slot exposed via getCurrentSetPhase/setCurrentSetPhase
-// so non-React lifecycle callers can drive UI phase transitions.
+// @/app/copilot/modals/CopilotResultModal and passes a `phaseControllerRef`
+// prop so non-React lifecycle callers can drive UI phase transitions via a
+// modal-scoped ref (no module global).
 import { Notice } from 'obsidian';
 import React, { useState, useEffect } from 'react';
 import { AuthenticationError } from '@/core/errors/llm-errors';
@@ -337,31 +337,27 @@ const UsageFooter: React.FC<{ usage: ActionUsage }> = ({ usage }) => (
 	</div>
 );
 
-let _currentSetPhase: ((phase: ModalPhase) => void) | null = null;
-
-export function getCurrentSetPhase(): ((phase: ModalPhase) => void) | null {
-	return _currentSetPhase;
-}
-
-export function setCurrentSetPhase(fn: ((phase: ModalPhase) => void) | null): void {
-	_currentSetPhase = fn;
+export interface CopilotPhaseController {
+	current: ((phase: ModalPhase) => void) | null;
 }
 
 export const CopilotResultContent: React.FC<{
 	action: CopilotAction;
 	ctx: DocumentContext;
 	initialPhase: ModalPhase;
+	phaseControllerRef?: CopilotPhaseController;
 	onClose: () => void;
 	onBack: () => void;
 	onCancel: () => void;
-}> = ({ action, ctx, initialPhase, onClose, onBack, onCancel }) => {
+}> = ({ action, ctx, initialPhase, phaseControllerRef, onClose, onBack, onCancel }) => {
 	const { vault, navigator } = useCopilotPanelVault();
 	const [phase, setPhase] = useState<ModalPhase>(initialPhase);
 
 	useEffect(() => {
-		_currentSetPhase = setPhase;
-		return () => { _currentSetPhase = null; };
-	}, []);
+		if (!phaseControllerRef) return;
+		phaseControllerRef.current = setPhase;
+		return () => { phaseControllerRef.current = null; };
+	}, [phaseControllerRef]);
 
 	const backButton = (
 		<Button

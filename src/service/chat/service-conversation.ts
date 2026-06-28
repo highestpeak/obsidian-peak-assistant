@@ -21,7 +21,6 @@ import { PromptService } from '@/service/prompt/PromptService';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
 import { PromptId } from '@/core/prompt/PromptId';
 import { ResourceSummaryService } from './context/ResourceSummaryService';
-import { ContextBuilder } from './context/ContextBuilder';
 import { ContextPipeline } from './context/ContextPipeline';
 import { ChatProfile } from './context/profiles/ChatProfile';
 import { SessionContextService } from '@/service/context/SessionContextService';
@@ -51,7 +50,6 @@ interface ChatPreparationResult {
  * Expects {@link AIServiceSettings} with a non-empty {@link AIServiceSettings.rootFolder} (same as {@link AIServiceManager}).
  */
 export class ConversationService {
-	private readonly contextBuilder: ContextBuilder;
 	private contextPipeline: ContextPipeline | null = null;
 	private readonly resourceLoaderManager: ResourceLoaderManager;
 
@@ -70,12 +68,6 @@ export class ConversationService {
 	) {
 		const loaderMgr = DocumentLoaderManager.getInstance();
 		this.resourceLoaderManager = new ResourceLoaderManager(loaderMgr.getVaultReader(), this.aiServiceManager, loaderMgr);
-		// Initialize context builder
-		this.contextBuilder = new ContextBuilder(
-			this.promptService,
-			this.resourceSummaryService,
-			this.profileService,
-		);
 	}
 
 	setContextPipeline(pipeline: ContextPipeline): void {
@@ -287,16 +279,10 @@ export class ConversationService {
 			modelCapabilities,
 			attachmentHandlingMode,
 		};
-		const contextGenerator = this.contextPipeline
-			? this.contextPipeline.assemble(ChatProfile, buildCtx, modelCapabilities)
-			: this.contextBuilder.buildContextMessages({
-				conversation,
-				project,
-				messages: historyMessage,
-				modelCapabilities,
-				attachmentHandlingMode,
-				app: this.app,
-			});
+		if (!this.contextPipeline) {
+			throw new Error('ConversationService.contextPipeline not wired. AIServiceManager must call setContextPipeline() before prepareChat().');
+		}
+		const contextGenerator = this.contextPipeline.assemble(ChatProfile, buildCtx, modelCapabilities);
 		// Consume progress events
 		let result: IteratorResult<LLMStreamEvent, LLMRequestMessage[]>;
 		while (!(result = await contextGenerator.next()).done) {

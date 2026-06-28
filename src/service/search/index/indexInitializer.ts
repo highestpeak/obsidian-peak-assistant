@@ -29,8 +29,8 @@ async function readFileSize(app: { vault: { adapter: { stat?: (p: string) => Pro
 		return 0;
 	}
 }
-import type { IndexLevel } from './types';
-import { defaultIndexDocumentOptionsForLevel } from './types';
+import type { IndexLevel } from '@/core/search/indexTypes';
+import { defaultIndexDocumentOptionsForLevel } from '@/core/search/indexTypes';
 
 export type IndexErrorAction = 'continue' | 'retry' | 'cancel';
 export type IndexErrorHandler = (error: {

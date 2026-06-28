@@ -19,7 +19,7 @@ import { PromptId, type PromptVariables } from '@/core/prompt/PromptId';
 import { mergeTokenUsage, type LLMStreamEvent, type LLMUsage } from '@/core/providers/types';
 import { TierController } from '@/service/agents/harness/tier/TierController';
 import { defaultTierBindings } from '@/service/agents/harness/tier/bindings';
-import { getAgentBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
+import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
 import { adaptAgentTools } from '@/service/agents/harness-bridge/agentToolAdapter';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 
@@ -92,7 +92,7 @@ export class FollowupChatAgent {
             loopId,
         });
 
-        const result = await getAgentBridge().run({
+        const result = await new ClaudeAgentSDKBridge().run({
             app: this.aiServiceManager.getApp(),
             pluginId: this.aiServiceManager.getPluginIdPublic(),
             harnessSettings: this.aiServiceManager.getHarnessSettings(),

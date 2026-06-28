@@ -1,6 +1,6 @@
 import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
-import type { Chunk } from '@/service/search/index/types';
+import type { Chunk } from '@/core/search/indexTypes';
 
 /**
  * Applies a final chunk length guard after loader chunking.

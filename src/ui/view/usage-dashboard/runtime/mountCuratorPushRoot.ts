@@ -1,27 +1,20 @@
 import * as React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { CuratorPushModal } from './CuratorPushModal';
-import { registerMessageReceiptRenderer } from '../integration/chatBridge';
-import { registerComposerSlotRenderer } from '../integration/chatBridge';
+import { registerMessageReceiptRenderer } from '@/ui/view/chat-view/integration/messageReceiptSlot';
 import { InlineReceipt } from '../components/InlineReceipt';
-import { ContextRing } from '../components/ContextRing';
 
 /**
- * Mounts a hidden React root at plugin init that hosts:
- *
- *   - `<CuratorPushModal>` — listens to the curator-push Zustand store,
- *     renders the recommendation Modal when triggered.
- *
- * Also registers the dashboard's contributions to the chat integration slots:
- *
- *   - `registerMessageReceiptRenderer(<InlineReceipt>)` — carrier A.
- *   - `registerComposerSlotRenderer(<ContextRing>)` — carrier C.
- *
- * Returns an unmount function for the unload path.
+ * Mounts a hidden React root at plugin init that hosts the curator-push
+ * Modal and registers the dashboard's contribution to the chat message
+ * receipt slot (carrier A). The composer slot (carrier C / ContextRing)
+ * is intentionally not registered: chat-side never pushed context
+ * utilization updates, so the slot stayed empty in production. The
+ * Overview screen reads `useCurrentContextUtilization` directly when
+ * data is available.
  */
 export function mountCuratorPushRoot(): () => void {
 	registerMessageReceiptRenderer((props) => React.createElement(InlineReceipt, props));
-	registerComposerSlotRenderer(() => React.createElement(ContextRing));
 
 	let root: Root | null = null;
 	let host: HTMLElement | null = null;
@@ -29,7 +22,6 @@ export function mountCuratorPushRoot(): () => void {
 	try {
 		host = document.createElement('div');
 		host.classList.add('peak-design-root', 'usage-dashboard', 'peak-curator-push-root');
-		// Keep the host inert visually; the Modal portal handles its own overlay.
 		host.style.position = 'fixed';
 		host.style.zIndex = '0';
 		host.style.width = '0';
