@@ -254,21 +254,11 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ quer
 			ViewEventType.CONVERSATION_UPDATED,
 			async (event) => {
 				const conversation = event.conversation;
-				console.log('[ConversationsSection] CONVERSATION_UPDATED event:', {
-					conversationId: conversation.meta.id,
-					title: conversation.meta.title,
-					timestamp: Date.now()
-				});
-				// Enable typewriter effect first, then update conversation in store
-				// This ensures ConversationTitle receives enableTypewriter=true before the title prop changes
 				setTypewriterEnabled(prev => {
 					const next = new Map(prev);
 					next.set(conversation.meta.id, true);
-					console.log('[ConversationsSection] Enabling typewriter for conversation:', conversation.meta.id, 'title:', conversation.meta.title);
 					return next;
 				});
-				// Update conversation in store - this will trigger ConversationTitle to re-render
-				// with the new title prop, and useTypewriterEffect will detect the text change
 				updateConversation(conversation);
 			}
 		);
@@ -276,11 +266,6 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ quer
 		const unsubscribeCreated = eventBus.on<ConversationCreatedEvent>(
 			ViewEventType.CONVERSATION_CREATED,
 			(event) => {
-				console.log('[ConversationsSection] CONVERSATION_CREATED event:', {
-					conversationId: event.conversationId,
-					timestamp: Date.now()
-				});
-				// Enable typewriter effect for new conversation
 				setTypewriterEnabled(prev => {
 					const next = new Map(prev);
 					next.set(event.conversationId, true);

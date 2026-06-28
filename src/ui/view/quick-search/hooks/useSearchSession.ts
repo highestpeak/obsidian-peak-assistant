@@ -392,7 +392,6 @@ export function useSearchSession() {
 
 	const cancel = useCallback(() => {
 		if (abortControllerRef.current) {
-			console.log('[useSearchSession] Canceling analysis');
 			didCancelRef.current = true;
 			abortControllerRef.current.abort();
 			abortControllerRef.current = null;

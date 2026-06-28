@@ -13,15 +13,9 @@ import {
 } from './screens';
 
 /**
- * Usage Dashboard root — 6-screen carrier surface (spec §6.1 F).
- *
- * PR-Dash-1 lays down the navigation skeleton: a Segmented tab strip across
- * the top (Overview / Provider & Model / Outcome Value / Budget & Alerts /
- * History / Optimization) plus a Time-range Segmented (Today / 7d / 30d /
- * All). Each screen renders a placeholder section list.
- *
- * Data wiring lives in PR-Dash-2 — UsageOutcomeService + UsageLogRepo are
- * untouched here.
+ * Usage Dashboard root — 6-screen carrier surface.
+ * Tab strip + time-range strip; per-screen rendering is delegated to
+ * `./screens/*`.
  */
 
 type ScreenId =

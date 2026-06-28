@@ -1,38 +1,13 @@
 /**
  * Overview tab — 5-row Peak readiness + AI behavior summary + Actions strip.
- *
- * Mirrors docs/gstack/settings-redesign-2026-05-29/index.html#overview.
- * Replaces the PR-D/PR-E surface-adapter-driven render, which left the tab
- * almost empty in practice (only surfaces that had registered an adapter
- * showed up — typically just Chat + Copilot). The new behavior renders 5
- * explicit triage rows whose readiness is derived from live config:
- *   - Providers           — ProfileRegistry.getAllProfiles()
- *   - AI behavior         — harnessSettings tier bindings
- *   - Knowledge Index     — IndexService.getIndexStatus() coverage
- *   - Web Access          — static "Optional" (no field today)
- *   - Safety              — harnessSettings.defaultPermissionMode
- *
- * Row CTAs jump to the right tab via the `onSwitchTab` prop. The readiness
- * row never opens an inline modal — it always navigates the user to where
- * the binding lives.
+ * Row CTAs jump to the right tab via `onSwitchTab`.
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    AlertTriangle,
-    Check,
-    ChevronRight,
-    Database,
-    Globe,
-    MessageSquare,
-    Microscope,
-    Plug,
-    Search,
-    Shield,
-    Sparkles,
-    TrendingUp,
-    Wrench,
-    Zap,
+    AlertTriangle, Check, ChevronRight, Database, Globe,
+    MessageSquare, Microscope, Plug, Shield, Sparkles, TrendingUp,
+    Wrench, Zap, type LucideIcon,
 } from 'lucide-react';
 import { Row, Chip, Pill, Button } from '@/ui/components/primitives';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
@@ -40,11 +15,31 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { MyPluginSettings, HarnessSettings } from '@/core/config/settingsTypes';
 import { useSettingsStrings } from '../settingsStrings';
+import { SettingsRow, SettingsSection } from '../components/SettingsRow';
 import type { TabId } from '../types';
 
 interface OverviewTabProps {
     settings: MyPluginSettings;
     onSwitchTab: (tab: TabId) => void;
+}
+
+type Status = 'ready' | 'needs-attention' | 'optional';
+type ReadinessCopy = ReturnType<typeof useSettingsStrings>['overview']['readiness'];
+
+function statusChip(status: Status, labels: ReadinessCopy): React.ReactNode {
+    if (status === 'optional') return <Chip variant="neutral">{labels.statusLabels.optional}</Chip>;
+    if (status === 'ready') return (
+        <Chip variant="success">
+            <Check size={11} style={{ marginRight: 4 }} />
+            {labels.statusLabels.ready}
+        </Chip>
+    );
+    return (
+        <Chip variant="warning">
+            <AlertTriangle size={11} style={{ marginRight: 4 }} />
+            {labels.statusLabels.needsAttention}
+        </Chip>
+    );
 }
 
 export function OverviewTab({ settings, onSwitchTab }: OverviewTabProps) {
@@ -59,270 +54,102 @@ export function OverviewTab({ settings, onSwitchTab }: OverviewTabProps) {
     const aiBehavior = useAIBehaviorReadiness(settings.harnessSettings);
     const safety = settings.harnessSettings?.defaultPermissionMode ?? 'acceptEdits';
 
+    const indexStatus: Status = indexCoverage.kind === 'empty'
+        ? 'optional'
+        : (indexCoverage.kind === 'ready' && indexCoverage.pct >= 80 ? 'ready' : 'needs-attention');
+
+    const readinessRows: Array<{ icon: LucideIcon; title: string; desc: string; status: Status; meta: string; pill: string; onPill: () => void }> = [
+        {
+            icon: Plug, title: readinessCopy.providers.title, desc: readinessCopy.providers.desc,
+            status: providers.ready ? 'ready' : 'needs-attention',
+            meta: providers.count === 1 ? '1 connected' : `${providers.count} connected`,
+            pill: readinessCopy.providers.manage, onPill: () => onSwitchTab('aiSetup'),
+        },
+        {
+            icon: Sparkles, title: readinessCopy.aiBehavior.title, desc: readinessCopy.aiBehavior.desc,
+            status: aiBehavior.status, meta: aiBehavior.reason,
+            pill: readinessCopy.aiBehavior.manage, onPill: () => onSwitchTab('aiSetup'),
+        },
+        {
+            icon: Database, title: readinessCopy.knowledgeIndex.title, desc: readinessCopy.knowledgeIndex.desc,
+            status: indexStatus, meta: formatCoverage(indexCoverage),
+            pill: readinessCopy.knowledgeIndex.check, onPill: () => onSwitchTab('knowledgeIndex'),
+        },
+        {
+            icon: Globe, title: readinessCopy.webAccess.title, desc: readinessCopy.webAccess.desc,
+            status: 'optional', meta: 'Not configured',
+            pill: readinessCopy.webAccess.setup, onPill: () => onSwitchTab('tools'),
+        },
+        {
+            icon: Shield, title: readinessCopy.safety.title, desc: readinessCopy.safety.desc,
+            status: 'ready', meta: SAFETY_LABEL[safety],
+            pill: readinessCopy.safety.review, onPill: () => onSwitchTab('aiSetup'),
+        },
+    ];
+
+    const summaryRows: Array<{ icon: LucideIcon; title: string; desc: string; value: string | null; muted?: boolean }> = [
+        { icon: MessageSquare, title: summaryCopy.conversation.title, desc: summaryCopy.conversation.desc, value: formatBinding(settings.harnessSettings?.localFastConfig ?? null) },
+        { icon: Zap, title: summaryCopy.fastLookup.title, desc: summaryCopy.fastLookup.desc, value: formatBinding(settings.harnessSettings?.localFastConfig ?? null) ?? summaryCopy.fastLookup.fallback, muted: !settings.harnessSettings?.localFastConfig },
+        { icon: Microscope, title: summaryCopy.research.title, desc: summaryCopy.research.desc, value: formatBinding(settings.harnessSettings?.localDeepConfig ?? null) },
+        { icon: TrendingUp, title: summaryCopy.strongerModel.title, desc: summaryCopy.strongerModel.desc, value: formatBinding(settings.harnessSettings?.onlineConfig ?? null) ?? summaryCopy.strongerModel.offChip, muted: !settings.harnessSettings?.onlineConfig },
+    ];
+
+    const actionButtons: Array<{ icon: LucideIcon; label: string; onClick: () => void; primary?: boolean }> = [
+        { icon: Wrench, label: actionsCopy.runSetup, onClick: settingsActions.setup.openHarnessWizard },
+        { icon: Plug, label: actionsCopy.testProviders, onClick: () => onSwitchTab('aiSetup') },
+        { icon: Database, label: actionsCopy.checkIndex, onClick: () => onSwitchTab('knowledgeIndex') },
+        { icon: MessageSquare, label: actionsCopy.tryChat, onClick: settingsActions.openAssistant, primary: true },
+    ];
+
     return (
         <div className="pkset-panel">
-            {/* ── Peak readiness ────────────────────────────────────── */}
-            <div className="pkset-section">
-                <div className="pkset-section__head">
-                    <span className="pkset-section__title">{readinessCopy.sectionTitle}</span>
-                    <span className="pkset-section__sub">{readinessCopy.sectionSub}</span>
-                </div>
+            <SettingsSection title={readinessCopy.sectionTitle} sub={readinessCopy.sectionSub}>
                 <div className="pkset-row-list">
-                    <ProvidersRow
-                        count={providers.count}
-                        ready={providers.ready}
-                        labels={readinessCopy}
-                        onManage={() => onSwitchTab('aiSetup')}
-                    />
-                    <AIBehaviorRow
-                        state={aiBehavior}
-                        labels={readinessCopy}
-                        onFix={() => onSwitchTab('aiSetup')}
-                    />
-                    <KnowledgeIndexRow
-                        coverage={indexCoverage}
-                        labels={readinessCopy}
-                        onCheck={() => onSwitchTab('knowledgeIndex')}
-                    />
-                    <WebAccessRow
-                        labels={readinessCopy}
-                        onSetup={() => onSwitchTab('tools')}
-                    />
-                    <SafetyRow
-                        mode={safety}
-                        labels={readinessCopy}
-                        onReview={() => onSwitchTab('aiSetup')}
-                    />
+                    {readinessRows.map((r) => (
+                        <SettingsRow
+                            key={r.title}
+                            icon={r.icon} title={r.title} desc={r.desc}
+                            right={<>
+                                {statusChip(r.status, readinessCopy)}
+                                <Row.Meta>{r.meta}</Row.Meta>
+                                <Pill onClick={r.onPill}>{r.pill}</Pill>
+                            </>}
+                        />
+                    ))}
                 </div>
-            </div>
+            </SettingsSection>
 
-            {/* ── AI behavior summary (read-only) ───────────────────── */}
-            <div className="pkset-section">
-                <div className="pkset-section__head">
-                    <span className="pkset-section__title">{summaryCopy.sectionTitle}</span>
-                    <span className="pkset-section__sub">{summaryCopy.sectionSub}</span>
-                </div>
+            <SettingsSection title={summaryCopy.sectionTitle} sub={summaryCopy.sectionSub}>
                 <div className="pkset-row-list">
-                    <SummaryRow
-                        icon={MessageSquare}
-                        title={summaryCopy.conversation.title}
-                        desc={summaryCopy.conversation.desc}
-                        value={formatBinding(settings.harnessSettings?.localFastConfig ?? null)}
-                        onClick={() => onSwitchTab('aiSetup')}
-                    />
-                    <SummaryRow
-                        icon={Zap}
-                        title={summaryCopy.fastLookup.title}
-                        desc={summaryCopy.fastLookup.desc}
-                        value={
-                            formatBinding(settings.harnessSettings?.localFastConfig ?? null) ??
-                            summaryCopy.fastLookup.fallback
-                        }
-                        muted={!settings.harnessSettings?.localFastConfig}
-                        onClick={() => onSwitchTab('aiSetup')}
-                    />
-                    <SummaryRow
-                        icon={Microscope}
-                        title={summaryCopy.research.title}
-                        desc={summaryCopy.research.desc}
-                        value={formatBinding(settings.harnessSettings?.localDeepConfig ?? null)}
-                        onClick={() => onSwitchTab('aiSetup')}
-                    />
-                    <SummaryRow
-                        icon={TrendingUp}
-                        title={summaryCopy.strongerModel.title}
-                        desc={summaryCopy.strongerModel.desc}
-                        value={
-                            formatBinding(settings.harnessSettings?.onlineConfig ?? null) ??
-                            summaryCopy.strongerModel.offChip
-                        }
-                        muted={!settings.harnessSettings?.onlineConfig}
-                        onClick={() => onSwitchTab('aiSetup')}
-                    />
+                    {summaryRows.map((r) => (
+                        <Row key={r.title} onClick={() => onSwitchTab('aiSetup')} data-clickable="true">
+                            <Row.Icon><r.icon size={16} /></Row.Icon>
+                            <Row.Body>
+                                <Row.Title>{r.title}</Row.Title>
+                                <Row.Desc>{r.desc}</Row.Desc>
+                            </Row.Body>
+                            <Row.Right>
+                                {r.value ? (
+                                    r.muted ? <Row.Meta>{r.value}</Row.Meta> : <Row.Value>{r.value}</Row.Value>
+                                ) : <Row.Meta>—</Row.Meta>}
+                                <ChevronRight size={14} style={{ color: 'var(--pk-text-tertiary)' }} />
+                            </Row.Right>
+                        </Row>
+                    ))}
                 </div>
-            </div>
+            </SettingsSection>
 
-            {/* ── Actions ───────────────────────────────────────────── */}
-            <div className="pkset-section">
-                <div className="pkset-section__head">
-                    <span className="pkset-section__title">{actionsCopy.sectionTitle}</span>
-                </div>
+            <SettingsSection title={actionsCopy.sectionTitle}>
                 <div className="pkset-action-strip">
-                    <Button variant="outline" size="sm" onClick={settingsActions.setup.openHarnessWizard}>
-                        <Wrench className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
-                        {actionsCopy.runSetup}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onSwitchTab('aiSetup')}
-                    >
-                        <Plug className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
-                        {actionsCopy.testProviders}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onSwitchTab('knowledgeIndex')}
-                    >
-                        <Database className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
-                        {actionsCopy.checkIndex}
-                    </Button>
-                    <Button size="sm" onClick={settingsActions.openAssistant}>
-                        <MessageSquare className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
-                        {actionsCopy.tryChat}
-                    </Button>
+                    {actionButtons.map((b) => (
+                        <Button key={b.label} variant={b.primary ? undefined : 'outline'} size="sm" onClick={b.onClick}>
+                            <b.icon className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
+                            {b.label}
+                        </Button>
+                    ))}
                 </div>
-            </div>
+            </SettingsSection>
         </div>
-    );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
- * Rows
- * ───────────────────────────────────────────────────────────────────────── */
-
-type ReadinessCopy = ReturnType<typeof useSettingsStrings>['overview']['readiness'];
-
-function ProvidersRow({
-    count,
-    ready,
-    labels,
-    onManage,
-}: {
-    count: number;
-    ready: boolean;
-    labels: ReadinessCopy;
-    onManage: () => void;
-}) {
-    return (
-        <Row>
-            <Row.Icon>
-                <Plug size={16} />
-            </Row.Icon>
-            <Row.Body>
-                <Row.Title>{labels.providers.title}</Row.Title>
-                <Row.Desc>{labels.providers.desc}</Row.Desc>
-            </Row.Body>
-            <Row.Right>
-                {ready ? (
-                    <Chip variant="success">
-                        <Check size={11} style={{ marginRight: 4 }} />
-                        {labels.statusLabels.ready}
-                    </Chip>
-                ) : (
-                    <Chip variant="warning">
-                        <AlertTriangle size={11} style={{ marginRight: 4 }} />
-                        {labels.statusLabels.needsAttention}
-                    </Chip>
-                )}
-                <Row.Meta>{count === 1 ? '1 connected' : `${count} connected`}</Row.Meta>
-                <Pill onClick={onManage}>{labels.providers.manage}</Pill>
-            </Row.Right>
-        </Row>
-    );
-}
-
-function AIBehaviorRow({
-    state,
-    labels,
-    onFix,
-}: {
-    state: AIBehaviorState;
-    labels: ReadinessCopy;
-    onFix: () => void;
-}) {
-    return (
-        <Row>
-            <Row.Icon>
-                <Sparkles size={16} />
-            </Row.Icon>
-            <Row.Body>
-                <Row.Title>{labels.aiBehavior.title}</Row.Title>
-                <Row.Desc>{labels.aiBehavior.desc}</Row.Desc>
-            </Row.Body>
-            <Row.Right>
-                {state.status === 'ready' ? (
-                    <Chip variant="success">
-                        <Check size={11} style={{ marginRight: 4 }} />
-                        {labels.statusLabels.ready}
-                    </Chip>
-                ) : (
-                    <Chip variant="warning">
-                        <AlertTriangle size={11} style={{ marginRight: 4 }} />
-                        {labels.statusLabels.needsAttention}
-                    </Chip>
-                )}
-                <Row.Meta>{state.reason}</Row.Meta>
-                <Pill onClick={onFix}>{labels.aiBehavior.manage}</Pill>
-            </Row.Right>
-        </Row>
-    );
-}
-
-function KnowledgeIndexRow({
-    coverage,
-    labels,
-    onCheck,
-}: {
-    coverage: IndexCoverage;
-    labels: ReadinessCopy;
-    onCheck: () => void;
-}) {
-    const ready = coverage.kind === 'ready' && coverage.pct >= 80;
-    const isOptional = coverage.kind === 'empty';
-    return (
-        <Row>
-            <Row.Icon>
-                <Database size={16} />
-            </Row.Icon>
-            <Row.Body>
-                <Row.Title>{labels.knowledgeIndex.title}</Row.Title>
-                <Row.Desc>{labels.knowledgeIndex.desc}</Row.Desc>
-            </Row.Body>
-            <Row.Right>
-                {isOptional ? (
-                    <Chip variant="neutral">{labels.statusLabels.optional}</Chip>
-                ) : ready ? (
-                    <Chip variant="success">
-                        <Check size={11} style={{ marginRight: 4 }} />
-                        {labels.statusLabels.ready}
-                    </Chip>
-                ) : (
-                    <Chip variant="warning">
-                        <AlertTriangle size={11} style={{ marginRight: 4 }} />
-                        {labels.statusLabels.needsAttention}
-                    </Chip>
-                )}
-                <Row.Meta>{formatCoverage(coverage)}</Row.Meta>
-                <Pill onClick={onCheck}>{labels.knowledgeIndex.check}</Pill>
-            </Row.Right>
-        </Row>
-    );
-}
-
-function WebAccessRow({
-    labels,
-    onSetup,
-}: {
-    labels: ReadinessCopy;
-    onSetup: () => void;
-}) {
-    return (
-        <Row>
-            <Row.Icon>
-                <Globe size={16} />
-            </Row.Icon>
-            <Row.Body>
-                <Row.Title>{labels.webAccess.title}</Row.Title>
-                <Row.Desc>{labels.webAccess.desc}</Row.Desc>
-            </Row.Body>
-            <Row.Right>
-                <Chip variant="neutral">{labels.webAccess.optional}</Chip>
-                <Row.Meta>Not configured</Row.Meta>
-                <Pill onClick={onSetup}>{labels.webAccess.setup}</Pill>
-            </Row.Right>
-        </Row>
     );
 }
 
@@ -332,90 +159,12 @@ const SAFETY_LABEL: Record<HarnessSettings['defaultPermissionMode'], string> = {
     bypassPermissions: 'Bypass permissions',
 };
 
-function SafetyRow({
-    mode,
-    labels,
-    onReview,
-}: {
-    mode: HarnessSettings['defaultPermissionMode'];
-    labels: ReadinessCopy;
-    onReview: () => void;
-}) {
-    return (
-        <Row>
-            <Row.Icon>
-                <Shield size={16} />
-            </Row.Icon>
-            <Row.Body>
-                <Row.Title>{labels.safety.title}</Row.Title>
-                <Row.Desc>{labels.safety.desc}</Row.Desc>
-            </Row.Body>
-            <Row.Right>
-                <Chip variant="success">
-                    <Check size={11} style={{ marginRight: 4 }} />
-                    {labels.statusLabels.ready}
-                </Chip>
-                <Row.Meta>{SAFETY_LABEL[mode]}</Row.Meta>
-                <Pill onClick={onReview}>{labels.safety.review}</Pill>
-            </Row.Right>
-        </Row>
-    );
-}
-
-function SummaryRow({
-    icon: Icon,
-    title,
-    desc,
-    value,
-    muted,
-    onClick,
-}: {
-    icon: React.ElementType;
-    title: string;
-    desc: string;
-    value: string | null;
-    muted?: boolean;
-    onClick: () => void;
-}) {
-    return (
-        <Row onClick={onClick} data-clickable="true">
-            <Row.Icon>
-                <Icon size={16} />
-            </Row.Icon>
-            <Row.Body>
-                <Row.Title>{title}</Row.Title>
-                <Row.Desc>{desc}</Row.Desc>
-            </Row.Body>
-            <Row.Right>
-                {value ? (
-                    muted ? (
-                        <Row.Meta>{value}</Row.Meta>
-                    ) : (
-                        <Row.Value>{value}</Row.Value>
-                    )
-                ) : (
-                    <Row.Meta>—</Row.Meta>
-                )}
-                <ChevronRight
-                    size={14}
-                    style={{ color: 'var(--pk-text-tertiary)' }}
-                />
-            </Row.Right>
-        </Row>
-    );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
- * Derived state
- * ───────────────────────────────────────────────────────────────────────── */
+/* ─── Derived state ─────────────────────────────────────────────────────── */
 
 function useProvidersReadiness(): { count: number; ready: boolean } {
     const [tick, setTick] = useState(0);
     void tick;
-    useEffect(() => {
-        // Re-evaluate when the SettingsView re-renders. Cheap; nothing async.
-        setTick((t) => t + 1);
-    }, []);
+    useEffect(() => { setTick((t) => t + 1); }, []);
     const profiles = ProfileRegistry.getInstance().getAllProfiles();
     const enabled = profiles.filter((p) => p.enabled).length;
     return { count: enabled, ready: enabled > 0 };
@@ -430,15 +179,9 @@ function useAIBehaviorReadiness(harness: HarnessSettings | undefined): AIBehavio
     return useMemo(() => {
         const hasFast = !!harness?.localFastConfig;
         const hasDeep = !!harness?.localDeepConfig;
-        if (hasFast && hasDeep) {
-            return { status: 'ready', reason: 'All tiers bound' };
-        }
-        if (!hasFast && !hasDeep) {
-            return { status: 'needs-attention', reason: 'No models bound' };
-        }
-        if (!hasFast) {
-            return { status: 'needs-attention', reason: 'Fast Lookup falls back to Conversation' };
-        }
+        if (hasFast && hasDeep) return { status: 'ready', reason: 'All tiers bound' };
+        if (!hasFast && !hasDeep) return { status: 'needs-attention', reason: 'No models bound' };
+        if (!hasFast) return { status: 'needs-attention', reason: 'Fast Lookup falls back to Conversation' };
         return { status: 'needs-attention', reason: 'Research not bound' };
     }, [harness]);
 }
@@ -472,12 +215,9 @@ function useIndexCoverage(): IndexCoverage {
                 setState({ kind: 'ready', indexed, total, pct });
             } catch {
                 if (!cancelled) setState({ kind: 'empty' });
-                return;
             }
         })();
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [vaultStats]);
     return state;
 }

@@ -1,24 +1,17 @@
 import React, { useRef, useState } from 'react';
 import {
 	ChevronDown,
-	ChevronRight,
 	Send,
-	Square,
 	Mic,
 	Loader2,
-	X,
 	HelpCircle,
 	Microscope,
 	Pen,
 	CheckSquare,
 	Code,
 	Sparkles,
-	Wrench,
-	FileText,
 	Database,
 	Globe,
-	Paperclip,
-	Star,
 	Plus,
 } from 'lucide-react';
 import {
@@ -79,12 +72,9 @@ const InsertToInputHandler: React.FC = () => {
 
 // ---------------------------------------------------------------------------
 // Run-chip popover — single affordance for mode/model/role/context.
-// Mirrors `.run-pop` in chat-retained-mock.html: Mode → Role → Model → Context
-// → Tools, with optional dividers between major sections. Sections backed by
-// real state are wired (chatMode, enableVaultSearch, enableWebSearch);
-// sections without backing yet (Role, Model picker detail, Pinned sources)
-// render in a disabled "Coming soon" state — they appear in the UI so users
-// see the full surface without false promise.
+// Only renders sections backed by real state (chatMode, role local selection,
+// model auto-routing, vault/web search toggles). Coming-soon stub rows were
+// removed in T11U to avoid false affordances.
 // ---------------------------------------------------------------------------
 
 type RunRole = 'default' | 'researcher' | 'writer' | 'planner' | 'coder';
@@ -231,22 +221,6 @@ const RunChip: React.FC = () => {
 								<span className="pkchat-runpop__row-dot" aria-hidden />
 							)}
 						</div>
-						<div
-							className="pkchat-runpop__row"
-							data-disabled="true"
-							title={strings.runSettings.comingSoonHint}
-						>
-							<span className="pkchat-runpop__row-ico"><Wrench /></span>
-							<span className="pkchat-runpop__row-body">
-								<span className="pkchat-runpop__row-name">
-									{strings.runSettings.modelManualTitle}
-								</span>
-								<span className="pkchat-runpop__row-sub">
-									{strings.runSettings.modelManualSub}
-								</span>
-							</span>
-							<ChevronRight className="pkchat-runpop__row-chev" />
-						</div>
 					</div>
 
 					{/* Context ──────────────────────────────────── */}
@@ -254,21 +228,6 @@ const RunChip: React.FC = () => {
 						<span className="pkchat-runpop__label">
 							{strings.runSettings.fieldContext}
 						</span>
-						<button
-							type="button"
-							className="pkchat-runpop__row pkchat-runpop__row--toggle"
-							data-on={enableVaultSearch ? 'true' : undefined}
-							data-disabled="true"
-							title={strings.runSettings.comingSoonHint}
-						>
-							<span className="pkchat-runpop__row-ico"><FileText /></span>
-							<span className="pkchat-runpop__row-body">
-								<span className="pkchat-runpop__row-name">
-									{strings.runSettings.contextCurrentNote}
-								</span>
-							</span>
-							<span className="pkchat-runpop__switch" aria-hidden />
-						</button>
 						<button
 							type="button"
 							className="pkchat-runpop__row pkchat-runpop__row--toggle"
@@ -297,41 +256,6 @@ const RunChip: React.FC = () => {
 							</span>
 							<span className="pkchat-runpop__switch" aria-hidden />
 						</button>
-					</div>
-
-					{/* Tools ────────────────────────────────────── */}
-					<div>
-						<span className="pkchat-runpop__label">
-							{strings.runSettings.fieldTools}
-						</span>
-						<div
-							className="pkchat-runpop__row"
-							data-disabled="true"
-							title={strings.runSettings.comingSoonHint}
-						>
-							<span className="pkchat-runpop__row-ico"><Paperclip /></span>
-							<span className="pkchat-runpop__row-body">
-								<span className="pkchat-runpop__row-name">
-									{ctxCount} {strings.composer.runChipCtxSuffix}
-								</span>
-							</span>
-							<span className="pkchat-runpop__ctx-chip">
-								{ctxCount} {strings.composer.runChipCtxSuffix}
-							</span>
-						</div>
-						<div
-							className="pkchat-runpop__row"
-							data-disabled="true"
-							title={strings.runSettings.comingSoonHint}
-						>
-							<span className="pkchat-runpop__row-ico"><Star /></span>
-							<span className="pkchat-runpop__row-body">
-								<span className="pkchat-runpop__row-name">
-									{strings.runSettings.toolsPinnedSources}
-								</span>
-							</span>
-							<ChevronDown className="pkchat-runpop__row-chev" />
-						</div>
 					</div>
 				</div>
 			</PopoverContent>

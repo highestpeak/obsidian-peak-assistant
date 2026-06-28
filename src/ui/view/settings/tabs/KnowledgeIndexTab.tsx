@@ -51,6 +51,7 @@ import {
 import { Switch } from '@/ui/component/shared-ui/switch';
 import { Input } from '@/ui/component/shared-ui/input';
 import { NumberInputWithConfirm } from '@/ui/component/shared-ui/number-input';
+import { SettingsRow, SettingsDisclosure, SettingsSection } from '../components/SettingsRow';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
@@ -99,117 +100,75 @@ function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
             : null;
 
     return (
-        <div className="pkset-section">
-            <div className="pkset-section__head">
-                <span className="pkset-section__title">Index readiness</span>
-                <span className="pkset-section__sub">
-                    Detected from your current vault and index state. Peak does not auto-rebuild.
-                </span>
-            </div>
-
+        <SettingsSection
+            title="Index readiness"
+            sub="Detected from your current vault and index state. Peak does not auto-rebuild."
+        >
             <div className="pkset-readiness-panel">
-                <Row>
-                    <Row.Icon>
-                        <HardDrive size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>SQLite store</Row.Title>
-                        <Row.Desc>On-disk index database.</Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
-                        {snap.storeReady ? (
-                            <Chip variant="success">
-                                <Check size={11} style={{ marginRight: 4 }} />
-                                Ready
-                            </Chip>
-                        ) : (
-                            <Chip variant="warning">
-                                <AlertTriangle size={11} style={{ marginRight: 4 }} />
-                                Not initialized
-                            </Chip>
-                        )}
-                    </Row.Right>
-                </Row>
-
-                <Row>
-                    <Row.Icon>
-                        <FileText size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Current index</Row.Title>
-                        <Row.Desc>Notes already indexed for search.</Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
-                        <Row.Value>
-                            {snap.indexedDocs?.toLocaleString() ?? '—'} files
-                        </Row.Value>
-                        {coveragePct !== null && (
-                            <Row.Meta>{coveragePct}% coverage</Row.Meta>
-                        )}
-                    </Row.Right>
-                </Row>
-
-                <Row>
-                    <Row.Icon>
-                        <AlertTriangle size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Missing or changed notes</Row.Title>
-                        <Row.Desc>Files that need an update to reflect current content.</Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
-                        {snap.missingChanged > 0 ? (
-                            <Chip variant="warning">
-                                <AlertTriangle size={11} style={{ marginRight: 4 }} />
-                                {snap.missingChanged} to update
-                            </Chip>
-                        ) : (
-                            <Chip variant="success">
-                                <Check size={11} style={{ marginRight: 4 }} />
-                                Up to date
-                            </Chip>
-                        )}
-                    </Row.Right>
-                </Row>
-
-                <Row>
-                    <Row.Icon>
-                        <Sparkles size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Semantic readiness</Row.Title>
-                        <Row.Desc>Whether meaning-based search can run.</Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
-                        {snap.semanticReady ? (
-                            <Chip variant="success">
-                                <Check size={11} style={{ marginRight: 4 }} />
-                                Provider connected
-                            </Chip>
-                        ) : (
-                            <Chip variant="neutral">No embedding provider</Chip>
-                        )}
-                    </Row.Right>
-                </Row>
-
-                <Row>
-                    <Row.Icon>
-                        <LayoutDashboard size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Current mode</Row.Title>
-                        <Row.Desc>What kind of index Peak maintains right now.</Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
-                        <Row.Value>{formatIndexLevel(snap.mode)}</Row.Value>
-                    </Row.Right>
-                </Row>
+                <SettingsRow
+                    icon={HardDrive}
+                    title="SQLite store"
+                    desc="On-disk index database."
+                    right={snap.storeReady ? (
+                        <Chip variant="success">
+                            <Check size={11} style={{ marginRight: 4 }} />
+                            Ready
+                        </Chip>
+                    ) : (
+                        <Chip variant="warning">
+                            <AlertTriangle size={11} style={{ marginRight: 4 }} />
+                            Not initialized
+                        </Chip>
+                    )}
+                />
+                <SettingsRow
+                    icon={FileText}
+                    title="Current index"
+                    desc="Notes already indexed for search."
+                    right={<>
+                        <Row.Value>{snap.indexedDocs?.toLocaleString() ?? '—'} files</Row.Value>
+                        {coveragePct !== null && <Row.Meta>{coveragePct}% coverage</Row.Meta>}
+                    </>}
+                />
+                <SettingsRow
+                    icon={AlertTriangle}
+                    title="Missing or changed notes"
+                    desc="Files that need an update to reflect current content."
+                    right={snap.missingChanged > 0 ? (
+                        <Chip variant="warning">
+                            <AlertTriangle size={11} style={{ marginRight: 4 }} />
+                            {snap.missingChanged} to update
+                        </Chip>
+                    ) : (
+                        <Chip variant="success">
+                            <Check size={11} style={{ marginRight: 4 }} />
+                            Up to date
+                        </Chip>
+                    )}
+                />
+                <SettingsRow
+                    icon={Sparkles}
+                    title="Semantic readiness"
+                    desc="Whether meaning-based search can run."
+                    right={snap.semanticReady ? (
+                        <Chip variant="success">
+                            <Check size={11} style={{ marginRight: 4 }} />
+                            Provider connected
+                        </Chip>
+                    ) : (
+                        <Chip variant="neutral">No embedding provider</Chip>
+                    )}
+                />
+                <SettingsRow
+                    icon={LayoutDashboard}
+                    title="Current mode"
+                    desc="What kind of index Peak maintains right now."
+                    right={<Row.Value>{formatIndexLevel(snap.mode)}</Row.Value>}
+                />
 
                 {snap.missingChanged > 0 && (
                     <div className="pkset-recommended-row">
-                        <Row.Icon>
-                            <RefreshCw size={16} />
-                        </Row.Icon>
+                        <Row.Icon><RefreshCw size={16} /></Row.Icon>
                         <Row.Body>
                             <Row.Title>Recommended action</Row.Title>
                             <Row.Desc>Update changed notes</Row.Desc>
@@ -223,7 +182,7 @@ function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
                     </div>
                 )}
             </div>
-        </div>
+        </SettingsSection>
     );
 }
 
@@ -423,43 +382,25 @@ function IndexBehaviorSection({
     );
 
     return (
-        <div className="pkset-section">
-            <div className="pkset-section__head">
-                <span className="pkset-section__title">Index behavior</span>
-            </div>
+        <SettingsSection title="Index behavior">
             <div className="pkset-row-list">
-                <Row>
-                    <Row.Icon>
-                        <LayoutDashboard size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Index mode</Row.Title>
-                        <Row.Desc>
-                            Fast Index is local-only. Semantic and Full add meaning-based search
-                            and LLM tags.
-                        </Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
+                <SettingsRow
+                    icon={LayoutDashboard}
+                    title="Index mode"
+                    desc="Fast Index is local-only. Semantic and Full add meaning-based search and LLM tags."
+                    right={
                         <Segmented<IndexLevel>
                             value={pendingLevel ?? currentLevel}
                             onValueChange={handleLevelPick}
                             options={[
                                 { value: 'fast', label: 'Fast Index' },
-                                {
-                                    value: 'semantic',
-                                    label: 'Semantic Index',
-                                    disabled: !embeddingReady,
-                                },
-                                {
-                                    value: 'full',
-                                    label: 'Full Knowledge Index',
-                                    disabled: !embeddingReady,
-                                },
+                                { value: 'semantic', label: 'Semantic Index', disabled: !embeddingReady },
+                                { value: 'full', label: 'Full Knowledge Index', disabled: !embeddingReady },
                             ]}
                             aria-label="Index mode"
                         />
-                    </Row.Right>
-                </Row>
+                    }
+                />
 
                 {pendingLevel && (
                     <IndexLevelConfirmBanner
@@ -474,33 +415,17 @@ function IndexBehaviorSection({
                     />
                 )}
 
-                <Row>
-                    <Row.Icon>
-                        <RefreshCw size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Auto-index on startup</Row.Title>
-                        <Row.Desc>Check for changed files when Obsidian launches.</Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
-                        <Switch
-                            checked={settings.search.autoIndex}
-                            onChange={(v) => updateSearch('autoIndex', v)}
-                        />
-                    </Row.Right>
-                </Row>
-
-                <Row>
-                    <Row.Icon>
-                        <RefreshCw size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Refresh interval</Row.Title>
-                        <Row.Desc>
-                            How often Peak rechecks for changed files in the background.
-                        </Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
+                <SettingsRow
+                    icon={RefreshCw}
+                    title="Auto-index on startup"
+                    desc="Check for changed files when Obsidian launches."
+                    right={<Switch checked={settings.search.autoIndex} onChange={(v) => updateSearch('autoIndex', v)} />}
+                />
+                <SettingsRow
+                    icon={RefreshCw}
+                    title="Refresh interval"
+                    desc="How often Peak rechecks for changed files in the background."
+                    right={
                         <FormRow.Number
                             value={Math.round((settings.search.indexRefreshInterval ?? 5000) / 1000)}
                             unit="sec"
@@ -510,20 +435,14 @@ function IndexBehaviorSection({
                                 void updateSearch('indexRefreshInterval', sec * 1000);
                             }}
                         />
-                    </Row.Right>
-                </Row>
+                    }
+                />
 
                 <div
                     className="pk-row"
-                    style={{
-                        gridTemplateColumns: '32px 1fr',
-                        alignItems: 'start',
-                        rowGap: 12,
-                    }}
+                    style={{ gridTemplateColumns: '32px 1fr', alignItems: 'start', rowGap: 12 }}
                 >
-                    <Row.Icon>
-                        <FileText size={16} />
-                    </Row.Icon>
+                    <Row.Icon><FileText size={16} /></Row.Icon>
                     <Row.Body>
                         <Row.Title>Document types</Row.Title>
                         <Row.Desc>Which file types Peak will read and index.</Row.Desc>
@@ -536,23 +455,17 @@ function IndexBehaviorSection({
                     </div>
                 </div>
 
-                <Row>
-                    <Row.Icon>
-                        <X size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Ignore patterns</Row.Title>
-                        <Row.Desc>Glob patterns for files Peak should not index.</Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
-                        <Row.Meta>
-                            {settings.search.ignorePatterns?.length ?? 0} patterns
-                        </Row.Meta>
+                <SettingsRow
+                    icon={X}
+                    title="Ignore patterns"
+                    desc="Glob patterns for files Peak should not index."
+                    right={<>
+                        <Row.Meta>{settings.search.ignorePatterns?.length ?? 0} patterns</Row.Meta>
                         <Pill onClick={() => setEditingPatterns((v) => !v)}>
                             {editingPatterns ? 'Close' : 'Edit'}
                         </Pill>
-                    </Row.Right>
-                </Row>
+                    </>}
+                />
             </div>
 
             {editingPatterns && (
@@ -563,12 +476,10 @@ function IndexBehaviorSection({
                         placeholder={'.git/\nnode_modules/\n*.tmp'}
                         className="pktw-w-full pktw-h-28 pktw-px-3 pktw-py-2 pktw-border pktw-border-border pktw-rounded-md pktw-text-xs pktw-font-mono pktw-resize-vertical focus:pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-ring"
                     />
-                    <Button size="sm" onClick={saveIgnorePatterns}>
-                        Save
-                    </Button>
+                    <Button size="sm" onClick={saveIgnorePatterns}>Save</Button>
                 </div>
             )}
-        </div>
+        </SettingsSection>
     );
 }
 
@@ -622,166 +533,61 @@ function SearchQualitySection({
         inspector.folderGroupingEnabled ? 'on' : 'off'
     }`;
 
-    return (
-        <div className="pkset-section">
-            <div className="pkset-section__head">
-                <span className="pkset-section__title">Search quality</span>
-            </div>
-            <div className="pkset-row-list">
-                <Row>
-                    <Row.Icon>
-                        <BarChart3 size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Personalized PageRank</Row.Title>
-                        <Row.Desc>
-                            Rerank results using per-query graph walks. Surfaces related notes
-                            that keyword and vector search miss.
-                        </Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
-                        <Switch
-                            checked={settings.search.enablePPR ?? true}
-                            onChange={(v) => updateSearch('enablePPR', v)}
-                        />
-                    </Row.Right>
-                </Row>
+    const numHandler = (key: 'keywordTopN' | 'tagTopN' | 'folderGroupMinCount' | 'folderGroupMaxDepth', min: number) =>
+        (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateInspectorLinks(key, Math.max(min, parseInt(e.target.value, 10) || min));
 
-                <details>
-                    <summary>
-                        <Row disclosure>
-                            <Row.Icon>
-                                <Cog size={16} />
-                            </Row.Icon>
-                            <Row.Body>
-                                <Row.Title>Inspector links</Row.Title>
-                                <Row.Desc>
-                                    Side-panel suggestions for related notes around a query.
-                                </Row.Desc>
-                            </Row.Body>
-                            <Row.Right>
-                                <Row.Meta>{summary}</Row.Meta>
-                                <ChevronDown
-                                    size={14}
-                                    style={{ color: 'var(--pk-text-tertiary)' }}
-                                />
-                            </Row.Right>
-                        </Row>
-                    </summary>
-                    <div className="pk-disclosure-body">
-                        <div className="pkset-row-list">
-                            <Row compact>
-                                <Row.Icon>
-                                    <Search size={16} />
-                                </Row.Icon>
-                                <Row.Body>
-                                    <Row.Title>Keyword link count</Row.Title>
-                                    <Row.Desc>
-                                        How many keyword-based related notes to show.
-                                    </Row.Desc>
-                                </Row.Body>
-                                <Row.Right>
-                                    <FormRow.Number
-                                        value={inspector.keywordTopN}
-                                        min={0}
-                                        onChange={(e) =>
-                                            updateInspectorLinks(
-                                                'keywordTopN',
-                                                Math.max(0, parseInt(e.target.value, 10) || 0),
-                                            )
-                                        }
-                                    />
-                                </Row.Right>
-                            </Row>
-                            <Row compact>
-                                <Row.Icon>
-                                    <Search size={16} />
-                                </Row.Icon>
-                                <Row.Body>
-                                    <Row.Title>Tag link count</Row.Title>
-                                    <Row.Desc>How many tag-based related notes to show.</Row.Desc>
-                                </Row.Body>
-                                <Row.Right>
-                                    <FormRow.Number
-                                        value={inspector.tagTopN}
-                                        min={0}
-                                        onChange={(e) =>
-                                            updateInspectorLinks(
-                                                'tagTopN',
-                                                Math.max(0, parseInt(e.target.value, 10) || 0),
-                                            )
-                                        }
-                                    />
-                                </Row.Right>
-                            </Row>
-                            <Row compact>
-                                <Row.Icon>
-                                    <Folder size={16} />
-                                </Row.Icon>
-                                <Row.Body>
-                                    <Row.Title>Folder grouping</Row.Title>
-                                    <Row.Desc>
-                                        Group related notes by their containing folder.
-                                    </Row.Desc>
-                                </Row.Body>
-                                <Row.Right>
-                                    <Switch
-                                        checked={inspector.folderGroupingEnabled}
-                                        onChange={(v) =>
-                                            updateInspectorLinks('folderGroupingEnabled', v)
-                                        }
-                                    />
-                                </Row.Right>
-                            </Row>
-                            <Row compact>
-                                <Row.Icon>
-                                    <Folder size={16} />
-                                </Row.Icon>
-                                <Row.Body>
-                                    <Row.Title>Folder group minimum count</Row.Title>
-                                    <Row.Desc>
-                                        Only form a group if a folder has at least this many notes.
-                                    </Row.Desc>
-                                </Row.Body>
-                                <Row.Right>
-                                    <FormRow.Number
-                                        value={inspector.folderGroupMinCount}
-                                        min={1}
-                                        onChange={(e) =>
-                                            updateInspectorLinks(
-                                                'folderGroupMinCount',
-                                                Math.max(1, parseInt(e.target.value, 10) || 1),
-                                            )
-                                        }
-                                    />
-                                </Row.Right>
-                            </Row>
-                            <Row compact>
-                                <Row.Icon>
-                                    <Folder size={16} />
-                                </Row.Icon>
-                                <Row.Body>
-                                    <Row.Title>Folder group max depth</Row.Title>
-                                    <Row.Desc>Max folder depth Peak will group by.</Row.Desc>
-                                </Row.Body>
-                                <Row.Right>
-                                    <FormRow.Number
-                                        value={inspector.folderGroupMaxDepth}
-                                        min={1}
-                                        onChange={(e) =>
-                                            updateInspectorLinks(
-                                                'folderGroupMaxDepth',
-                                                Math.max(1, parseInt(e.target.value, 10) || 1),
-                                            )
-                                        }
-                                    />
-                                </Row.Right>
-                            </Row>
-                        </div>
+    return (
+        <SettingsSection title="Search quality">
+            <div className="pkset-row-list">
+                <SettingsRow
+                    icon={BarChart3}
+                    title="Personalized PageRank"
+                    desc="Rerank results using per-query graph walks. Surfaces related notes that keyword and vector search miss."
+                    right={<Switch checked={settings.search.enablePPR ?? true} onChange={(v) => updateSearch('enablePPR', v)} />}
+                />
+
+                <SettingsDisclosure
+                    icon={Cog}
+                    title="Inspector links"
+                    desc="Side-panel suggestions for related notes around a query."
+                    meta={summary}
+                >
+                    <div className="pkset-row-list">
+                        <SettingsRow
+                            compact icon={Search}
+                            title="Keyword link count"
+                            desc="How many keyword-based related notes to show."
+                            right={<FormRow.Number value={inspector.keywordTopN} min={0} onChange={numHandler('keywordTopN', 0)} />}
+                        />
+                        <SettingsRow
+                            compact icon={Search}
+                            title="Tag link count"
+                            desc="How many tag-based related notes to show."
+                            right={<FormRow.Number value={inspector.tagTopN} min={0} onChange={numHandler('tagTopN', 0)} />}
+                        />
+                        <SettingsRow
+                            compact icon={Folder}
+                            title="Folder grouping"
+                            desc="Group related notes by their containing folder."
+                            right={<Switch checked={inspector.folderGroupingEnabled} onChange={(v) => updateInspectorLinks('folderGroupingEnabled', v)} />}
+                        />
+                        <SettingsRow
+                            compact icon={Folder}
+                            title="Folder group minimum count"
+                            desc="Only form a group if a folder has at least this many notes."
+                            right={<FormRow.Number value={inspector.folderGroupMinCount} min={1} onChange={numHandler('folderGroupMinCount', 1)} />}
+                        />
+                        <SettingsRow
+                            compact icon={Folder}
+                            title="Folder group max depth"
+                            desc="Max folder depth Peak will group by."
+                            right={<FormRow.Number value={inspector.folderGroupMaxDepth} min={1} onChange={numHandler('folderGroupMaxDepth', 1)} />}
+                        />
                     </div>
-                </details>
+                </SettingsDisclosure>
             </div>
-        </div>
+        </SettingsSection>
     );
 }
 
@@ -802,166 +608,86 @@ function AIAnalysisSection({
     const full = settings.search.fullSummaryLength ?? 2000;
     const summary = `Session ${session} · Short ${short} · Full ${full}`;
 
+    const updateNum = (key: 'aiAnalysisSessionSummaryWordCount' | 'shortSummaryLength' | 'fullSummaryLength') =>
+        (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateSearch(key, Math.max(1, parseInt(e.target.value, 10) || 1));
+
     return (
-        <div className="pkset-section">
-            <div className="pkset-section__head">
-                <span className="pkset-section__title">AI Analysis output</span>
-            </div>
+        <SettingsSection title="AI Analysis output">
             <div className="pkset-row-list">
-                <Row>
-                    <Row.Icon>
-                        <Microscope size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Auto-save results</Row.Title>
-                        <Row.Desc>Save AI Analysis outputs to a folder in your vault.</Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
-                        <Switch
-                            checked={settings.search.aiAnalysisAutoSaveEnabled ?? true}
-                            onChange={(v) => updateSearch('aiAnalysisAutoSaveEnabled', v)}
-                        />
-                    </Row.Right>
-                </Row>
-                {/* Save folder moved to Advanced > Storage > Derived folders
-                    (consolidated folder config). */}
-                <Row>
-                    <Row.Icon>
-                        <FileText size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Recent history</Row.Title>
-                        <Row.Desc>
-                            How many recent AI Analysis runs to keep in the panel.
-                        </Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
+                <SettingsRow
+                    icon={Microscope}
+                    title="Auto-save results"
+                    desc="Save AI Analysis outputs to a folder in your vault."
+                    right={<Switch
+                        checked={settings.search.aiAnalysisAutoSaveEnabled ?? true}
+                        onChange={(v) => updateSearch('aiAnalysisAutoSaveEnabled', v)}
+                    />}
+                />
+                <SettingsRow
+                    icon={FileText}
+                    title="Recent history"
+                    desc="How many recent AI Analysis runs to keep in the panel."
+                    right={
                         <div className="pktw-w-24">
                             <NumberInputWithConfirm
                                 value={settings.search.aiAnalysisHistoryLimit ?? 5}
-                                onConfirm={(v) =>
-                                    void updateSearch('aiAnalysisHistoryLimit', v)
-                                }
+                                onConfirm={(v) => void updateSearch('aiAnalysisHistoryLimit', v)}
                                 min={1}
                                 max={50}
                                 placeholder="5"
                             />
                         </div>
-                    </Row.Right>
-                </Row>
-                <Row>
-                    <Row.Icon>
-                        <X size={16} />
-                    </Row.Icon>
-                    <Row.Body>
-                        <Row.Title>Exclude saved analyses from search</Row.Title>
-                        <Row.Desc>
-                            Prevent prior AI Analysis output from polluting future search results.
-                        </Row.Desc>
-                    </Row.Body>
-                    <Row.Right>
-                        <Switch
-                            checked={
-                                settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch ?? true
-                            }
-                            onChange={(v) =>
-                                updateSearch('aiAnalysisExcludeAutoSaveFolderFromSearch', v)
-                            }
-                        />
-                    </Row.Right>
-                </Row>
+                    }
+                />
+                <SettingsRow
+                    icon={X}
+                    title="Exclude saved analyses from search"
+                    desc="Prevent prior AI Analysis output from polluting future search results."
+                    right={<Switch
+                        checked={settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch ?? true}
+                        onChange={(v) => updateSearch('aiAnalysisExcludeAutoSaveFolderFromSearch', v)}
+                    />}
+                />
 
-                <details>
-                    <summary>
-                        <Row disclosure>
-                            <Row.Icon>
-                                <Cog size={16} />
-                            </Row.Icon>
-                            <Row.Body>
-                                <Row.Title>Summary lengths (advanced)</Row.Title>
-                                <Row.Desc>
-                                    Word counts Peak targets when generating summaries.
-                                </Row.Desc>
-                            </Row.Body>
-                            <Row.Right>
-                                <Row.Meta>{summary}</Row.Meta>
-                                <ChevronDown
-                                    size={14}
-                                    style={{ color: 'var(--pk-text-tertiary)' }}
-                                />
-                            </Row.Right>
-                        </Row>
-                    </summary>
-                    <div className="pk-disclosure-body">
-                        <FormGrid style={{ padding: 4 }}>
-                            <FormRow>
-                                <FormRow.Label>
-                                    Session summary word count
-                                    <FormRow.LabelHint>
-                                        Target length when summarizing one analysis session.
-                                    </FormRow.LabelHint>
-                                </FormRow.Label>
-                                <FormRow.Control>
-                                    <FormRow.Number
-                                        value={session}
-                                        unit="words"
-                                        min={1}
-                                        onChange={(e) =>
-                                            updateSearch(
-                                                'aiAnalysisSessionSummaryWordCount',
-                                                Math.max(1, parseInt(e.target.value, 10) || 1),
-                                            )
-                                        }
-                                    />
-                                </FormRow.Control>
-                            </FormRow>
-                            <FormRow>
-                                <FormRow.Label>
-                                    Short summary length
-                                    <FormRow.LabelHint>
-                                        Target length for inline short summaries.
-                                    </FormRow.LabelHint>
-                                </FormRow.Label>
-                                <FormRow.Control>
-                                    <FormRow.Number
-                                        value={short}
-                                        unit="words"
-                                        min={1}
-                                        onChange={(e) =>
-                                            updateSearch(
-                                                'shortSummaryLength',
-                                                Math.max(1, parseInt(e.target.value, 10) || 1),
-                                            )
-                                        }
-                                    />
-                                </FormRow.Control>
-                            </FormRow>
-                            <FormRow>
-                                <FormRow.Label>
-                                    Full summary length
-                                    <FormRow.LabelHint>
-                                        Target length for detailed summaries.
-                                    </FormRow.LabelHint>
-                                </FormRow.Label>
-                                <FormRow.Control>
-                                    <FormRow.Number
-                                        value={full}
-                                        unit="words"
-                                        min={1}
-                                        onChange={(e) =>
-                                            updateSearch(
-                                                'fullSummaryLength',
-                                                Math.max(1, parseInt(e.target.value, 10) || 1),
-                                            )
-                                        }
-                                    />
-                                </FormRow.Control>
-                            </FormRow>
-                        </FormGrid>
-                    </div>
-                </details>
+                <SettingsDisclosure
+                    icon={Cog}
+                    title="Summary lengths (advanced)"
+                    desc="Word counts Peak targets when generating summaries."
+                    meta={summary}
+                >
+                    <FormGrid style={{ padding: 4 }}>
+                        <FormRow>
+                            <FormRow.Label>
+                                Session summary word count
+                                <FormRow.LabelHint>Target length when summarizing one analysis session.</FormRow.LabelHint>
+                            </FormRow.Label>
+                            <FormRow.Control>
+                                <FormRow.Number value={session} unit="words" min={1} onChange={updateNum('aiAnalysisSessionSummaryWordCount')} />
+                            </FormRow.Control>
+                        </FormRow>
+                        <FormRow>
+                            <FormRow.Label>
+                                Short summary length
+                                <FormRow.LabelHint>Target length for inline short summaries.</FormRow.LabelHint>
+                            </FormRow.Label>
+                            <FormRow.Control>
+                                <FormRow.Number value={short} unit="words" min={1} onChange={updateNum('shortSummaryLength')} />
+                            </FormRow.Control>
+                        </FormRow>
+                        <FormRow>
+                            <FormRow.Label>
+                                Full summary length
+                                <FormRow.LabelHint>Target length for detailed summaries.</FormRow.LabelHint>
+                            </FormRow.Label>
+                            <FormRow.Control>
+                                <FormRow.Number value={full} unit="words" min={1} onChange={updateNum('fullSummaryLength')} />
+                            </FormRow.Control>
+                        </FormRow>
+                    </FormGrid>
+                </SettingsDisclosure>
             </div>
-        </div>
+        </SettingsSection>
     );
 }
 
@@ -979,165 +705,54 @@ function AdvancedChunkingDisclosure({
     const { updateChunking } = settingsUpdates;
     const chunking = settings.search.chunking;
 
+    const updateNum = (key: 'maxChunkSize' | 'chunkOverlap' | 'minDocSizeToChunk' | 'maxCodeChunkChars', fallback: number) =>
+        (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateChunking(key, Math.max(key === 'maxChunkSize' ? 1 : 0, parseInt(e.target.value, 10) || fallback));
+
     return (
-        <div className="pkset-section">
-            <details>
-                <summary>
-                    <Row disclosure>
-                        <Row.Icon>
-                            <Cog size={16} />
-                        </Row.Icon>
-                        <Row.Body>
-                            <Row.Title>Advanced chunking</Row.Title>
-                            <Row.Desc>
-                                Chunk size, overlap, and code-block handling for embedding.
-                            </Row.Desc>
-                        </Row.Body>
-                        <Row.Right>
-                            <Row.Meta>6 fields</Row.Meta>
-                            <ChevronDown
-                                size={14}
-                                style={{ color: 'var(--pk-text-tertiary)' }}
-                            />
-                        </Row.Right>
-                    </Row>
-                </summary>
-                <div className="pk-disclosure-body">
-                    <div className="pkset-row-list">
-                        <Row compact>
-                            <Row.Icon>
-                                <Cog size={16} />
-                            </Row.Icon>
-                            <Row.Body>
-                                <Row.Title>Max chunk size</Row.Title>
-                                <Row.Desc>Characters per chunk before splitting.</Row.Desc>
-                            </Row.Body>
-                            <Row.Right>
-                                <FormRow.Number
-                                    value={chunking.maxChunkSize ?? 1000}
-                                    unit="chars"
-                                    min={1}
-                                    onChange={(e) =>
-                                        updateChunking(
-                                            'maxChunkSize',
-                                            Math.max(1, parseInt(e.target.value, 10) || 1000),
-                                        )
-                                    }
+        <SettingsSection>
+            <SettingsDisclosure
+                icon={Cog}
+                title="Advanced chunking"
+                desc="Chunk size, overlap, and code-block handling for embedding."
+                meta="6 fields"
+            >
+                <div className="pkset-row-list">
+                    <SettingsRow
+                        compact icon={Cog} title="Max chunk size" desc="Characters per chunk before splitting."
+                        right={<FormRow.Number value={chunking.maxChunkSize ?? 1000} unit="chars" min={1} onChange={updateNum('maxChunkSize', 1000)} />}
+                    />
+                    <SettingsRow
+                        compact icon={Cog} title="Chunk overlap" desc="Characters shared between adjacent chunks."
+                        right={<FormRow.Number value={chunking.chunkOverlap ?? 200} unit="chars" min={0} onChange={updateNum('chunkOverlap', 200)} />}
+                    />
+                    <SettingsRow
+                        compact icon={FileText} title="Minimum document size for chunking" desc="Smaller docs are embedded whole, not split."
+                        right={<FormRow.Number value={chunking.minDocSizeToChunk ?? 0} unit="chars" min={0} onChange={updateNum('minDocSizeToChunk', 0)} />}
+                    />
+                    <SettingsRow
+                        compact icon={Code} title="Skip code blocks when chunking" desc="Replace code blocks with a placeholder instead of embedding them."
+                        right={<Switch checked={chunking.skipCodeBlocksInChunking ?? false} onChange={(v) => updateChunking('skipCodeBlocksInChunking', v)} />}
+                    />
+                    <SettingsRow
+                        compact icon={Code} title="Code block placeholder" desc="String used when a code block is skipped."
+                        right={
+                            <div className="pktw-w-40">
+                                <Input
+                                    value={chunking.codeBlockPlaceholder ?? '[code omitted]'}
+                                    onChange={(e) => updateChunking('codeBlockPlaceholder', e.target.value)}
+                                    placeholder="[code omitted]"
                                 />
-                            </Row.Right>
-                        </Row>
-                        <Row compact>
-                            <Row.Icon>
-                                <Cog size={16} />
-                            </Row.Icon>
-                            <Row.Body>
-                                <Row.Title>Chunk overlap</Row.Title>
-                                <Row.Desc>Characters shared between adjacent chunks.</Row.Desc>
-                            </Row.Body>
-                            <Row.Right>
-                                <FormRow.Number
-                                    value={chunking.chunkOverlap ?? 200}
-                                    unit="chars"
-                                    min={0}
-                                    onChange={(e) =>
-                                        updateChunking(
-                                            'chunkOverlap',
-                                            Math.max(0, parseInt(e.target.value, 10) || 200),
-                                        )
-                                    }
-                                />
-                            </Row.Right>
-                        </Row>
-                        <Row compact>
-                            <Row.Icon>
-                                <FileText size={16} />
-                            </Row.Icon>
-                            <Row.Body>
-                                <Row.Title>Minimum document size for chunking</Row.Title>
-                                <Row.Desc>Smaller docs are embedded whole, not split.</Row.Desc>
-                            </Row.Body>
-                            <Row.Right>
-                                <FormRow.Number
-                                    value={chunking.minDocSizeToChunk ?? 0}
-                                    unit="chars"
-                                    min={0}
-                                    onChange={(e) =>
-                                        updateChunking(
-                                            'minDocSizeToChunk',
-                                            Math.max(0, parseInt(e.target.value, 10) || 0),
-                                        )
-                                    }
-                                />
-                            </Row.Right>
-                        </Row>
-                        <Row compact>
-                            <Row.Icon>
-                                <Code size={16} />
-                            </Row.Icon>
-                            <Row.Body>
-                                <Row.Title>Skip code blocks when chunking</Row.Title>
-                                <Row.Desc>
-                                    Replace code blocks with a placeholder instead of embedding
-                                    them.
-                                </Row.Desc>
-                            </Row.Body>
-                            <Row.Right>
-                                <Switch
-                                    checked={chunking.skipCodeBlocksInChunking ?? false}
-                                    onChange={(v) =>
-                                        updateChunking('skipCodeBlocksInChunking', v)
-                                    }
-                                />
-                            </Row.Right>
-                        </Row>
-                        <Row compact>
-                            <Row.Icon>
-                                <Code size={16} />
-                            </Row.Icon>
-                            <Row.Body>
-                                <Row.Title>Code block placeholder</Row.Title>
-                                <Row.Desc>String used when a code block is skipped.</Row.Desc>
-                            </Row.Body>
-                            <Row.Right>
-                                <div className="pktw-w-40">
-                                    <Input
-                                        value={chunking.codeBlockPlaceholder ?? '[code omitted]'}
-                                        onChange={(e) =>
-                                            updateChunking('codeBlockPlaceholder', e.target.value)
-                                        }
-                                        placeholder="[code omitted]"
-                                    />
-                                </div>
-                            </Row.Right>
-                        </Row>
-                        <Row compact>
-                            <Row.Icon>
-                                <Code size={16} />
-                            </Row.Icon>
-                            <Row.Body>
-                                <Row.Title>Max code block chars</Row.Title>
-                                <Row.Desc>
-                                    Max characters of code embedded inline when not skipped.
-                                </Row.Desc>
-                            </Row.Body>
-                            <Row.Right>
-                                <FormRow.Number
-                                    value={chunking.maxCodeChunkChars ?? 0}
-                                    unit="chars"
-                                    min={0}
-                                    onChange={(e) =>
-                                        updateChunking(
-                                            'maxCodeChunkChars',
-                                            Math.max(0, parseInt(e.target.value, 10) || 0),
-                                        )
-                                    }
-                                />
-                            </Row.Right>
-                        </Row>
-                    </div>
+                            </div>
+                        }
+                    />
+                    <SettingsRow
+                        compact icon={Code} title="Max code block chars" desc="Max characters of code embedded inline when not skipped."
+                        right={<FormRow.Number value={chunking.maxCodeChunkChars ?? 0} unit="chars" min={0} onChange={updateNum('maxCodeChunkChars', 0)} />}
+                    />
                 </div>
-            </details>
-        </div>
+            </SettingsDisclosure>
+        </SettingsSection>
     );
 }
 
@@ -1148,51 +763,30 @@ function AdvancedChunkingDisclosure({
 function AdvancedRebuildDisclosure() {
     const { settingsActions } = useServiceContext();
     const knowledgeIndex = settingsActions.knowledgeIndex;
+    const actions: Array<{ icon: typeof RefreshCw; label: string; onClick: () => void }> = [
+        { icon: RefreshCw, label: 'Full re-index', onClick: () => void knowledgeIndex.startStagedFullIndexing() },
+        { icon: Database, label: 'Rebuild vectors', onClick: () => void knowledgeIndex.runVectorEnrichmentPending() },
+        { icon: Sparkles, label: 'Run LLM enrichment', onClick: () => void knowledgeIndex.runLlmEnrichmentPending() },
+        { icon: BarChart3, label: 'Compare PPR search', onClick: () => void knowledgeIndex.compareSearchResults() },
+    ];
     return (
-        <div className="pkset-section">
-            <details>
-                <summary>
-                    <Row disclosure>
-                        <Row.Icon>
-                            <RefreshCw size={16} />
-                        </Row.Icon>
-                        <Row.Body>
-                            <Row.Title>Advanced rebuild</Row.Title>
-                            <Row.Desc>
-                                Heavier operations. Peak does not run these automatically.
-                            </Row.Desc>
-                        </Row.Body>
-                        <Row.Right>
-                            <Row.Meta>4 actions</Row.Meta>
-                            <ChevronDown
-                                size={14}
-                                style={{ color: 'var(--pk-text-tertiary)' }}
-                            />
-                        </Row.Right>
-                    </Row>
-                </summary>
-                <div className="pk-disclosure-body">
-                    <div className="pkset-action-strip">
-                        <Button variant="outline" size="sm" onClick={() => void knowledgeIndex.startStagedFullIndexing()}>
-                            <RefreshCw className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
-                            Full re-index
+        <SettingsSection>
+            <SettingsDisclosure
+                icon={RefreshCw}
+                title="Advanced rebuild"
+                desc="Heavier operations. Peak does not run these automatically."
+                meta="4 actions"
+            >
+                <div className="pkset-action-strip">
+                    {actions.map(({ icon: Icon, label, onClick }) => (
+                        <Button key={label} variant="outline" size="sm" onClick={onClick}>
+                            <Icon className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
+                            {label}
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => void knowledgeIndex.runVectorEnrichmentPending()}>
-                            <Database className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
-                            Rebuild vectors
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => void knowledgeIndex.runLlmEnrichmentPending()}>
-                            <Sparkles className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
-                            Run LLM enrichment
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => void knowledgeIndex.compareSearchResults()}>
-                            <BarChart3 className="pktw-mr-1.5 pktw-h-3.5 pktw-w-3.5" />
-                            Compare PPR search
-                        </Button>
-                    </div>
+                    ))}
                 </div>
-            </details>
-        </div>
+            </SettingsDisclosure>
+        </SettingsSection>
     );
 }
 

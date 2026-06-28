@@ -20,15 +20,10 @@ export interface WhatWasThisAboutProps {
 }
 
 /**
- * History → "What was this about" detail modal (spec §11.5).
- *
- * Renders feature-specific context BEFORE token / cost data, so the audit
- * trail answers "what was I doing" before "what did it cost". The per-feature
- * switch lives in `<FeatureBody>` below.
- *
- * Layout: chrome modal with `width='wide'`. Header carries the breadcrumb /
- * verbs; body carries the per-feature context; footer carries Open-in-X verb
- * (stubbed — full surface wire-up is per-surface worktree work).
+ * History → "What was this about" detail modal — renders per-feature
+ * context before token / cost data, so the audit trail answers
+ * "what was I doing" before "what did it cost". The per-feature switch
+ * lives in `<FeatureBody>` below.
  */
 export function WhatWasThisAbout({
 	open,

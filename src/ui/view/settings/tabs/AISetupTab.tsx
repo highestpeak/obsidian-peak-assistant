@@ -21,6 +21,7 @@ import type { Profile, RoleConfig } from '@/core/profiles/types';
 import { ProfilesTab } from '../ProfilesTab';
 import { RecommendedSetupGrid } from '../components/RecommendedSetupGrid';
 import { useSettingsStrings } from '../settingsStrings';
+import { SettingsRow, SettingsSection } from '../components/SettingsRow';
 
 interface AISetupTabProps {
     settings: MyPluginSettings;
@@ -77,78 +78,55 @@ export function AISetupTab({ settings, settingsUpdates }: AISetupTabProps) {
         ? { profileId: embeddingActive.profile.id, modelId: embeddingActive.modelId }
         : null;
 
+    const baseHarness = (): HarnessSettings => settings.harnessSettings ?? DEFAULT_HARNESS_SETTINGS;
+
+    const behaviorRows: BehaviorPickerRowProps[] = [
+        { icon: MessageSquare, title: aiSetupCopy.aiBehavior.conversation.title, desc: aiSetupCopy.aiBehavior.conversation.desc, bound: chatBound, fallbackText: null, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...cloudProfiles, ...localProfiles], onWrite: writeConversation },
+        { icon: Zap, title: aiSetupCopy.aiBehavior.fastLookup.title, desc: aiSetupCopy.aiBehavior.fastLookup.desc, bound: harness?.localFastConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.fallsBack, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...localProfiles, ...cloudProfiles], onWrite: (cfg) => writeTier('fastLookup', cfg) },
+        { icon: SearchIcon, title: aiSetupCopy.aiBehavior.research.title, desc: aiSetupCopy.aiBehavior.research.desc, bound: harness?.localDeepConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.fallsBack, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...localProfiles, ...cloudProfiles], onWrite: (cfg) => writeTier('research', cfg) },
+        { icon: Sparkle, title: aiSetupCopy.aiBehavior.strongerModel.title, desc: aiSetupCopy.aiBehavior.strongerModel.desc, bound: harness?.onlineConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.strongerModel.offChip, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: cloudProfiles, onWrite: (cfg) => writeTier('strongerModel', cfg) },
+        { icon: Database, title: aiSetupCopy.aiBehavior.knowledgeIndex.title, desc: aiSetupCopy.aiBehavior.knowledgeIndex.desc, bound: embeddingBound, fallbackText: null, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: allProfiles, onWrite: writeEmbedding, modelFilter: isEmbeddingModel },
+    ];
+
     return (
         <div className="pkset-panel">
-            {/* ── Runtime (moved from Advanced > Agent runtime) ────── */}
-            <div className="pkset-section">
-                <div className="pkset-section__head">
-                    <span className="pkset-section__title">Runtime</span>
-                    <span className="pkset-section__sub">
-                        Which loop engine runs agents. Auto picks the in-process Vercel AI SDK
-                        runtime when supported and falls back to the Claude Agent SDK for
-                        Anthropic-only workflows like Vault Search.
-                    </span>
-                </div>
+            <SettingsSection
+                title="Runtime"
+                sub="Which loop engine runs agents. Auto picks the in-process Vercel AI SDK runtime when supported and falls back to the Claude Agent SDK for Anthropic-only workflows like Vault Search."
+            >
                 <div className="pkset-row-list">
-                    <Row>
-                        <Row.Icon><Cpu size={16} /></Row.Icon>
-                        <Row.Body>
-                            <Row.Title>Agent runtime</Row.Title>
-                            <Row.Desc>
-                                Auto in-process where supported, Claude Agent SDK for the rest.
-                            </Row.Desc>
-                        </Row.Body>
-                        <Row.Right>
+                    <SettingsRow
+                        icon={Cpu}
+                        title="Agent runtime"
+                        desc="Auto in-process where supported, Claude Agent SDK for the rest."
+                        right={
                             <select
                                 className="pktw-text-sm pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5"
                                 value={settings.harnessSettings?.agentBackend ?? 'auto'}
-                                onChange={(e) => {
-                                    const base: HarnessSettings = settings.harnessSettings ?? DEFAULT_HARNESS_SETTINGS;
-                                    settingsUpdates.update('harnessSettings', {
-                                        ...base,
-                                        agentBackend: e.target.value as HarnessSettings['agentBackend'],
-                                    });
-                                }}
+                                onChange={(e) => settingsUpdates.update('harnessSettings', {
+                                    ...baseHarness(),
+                                    agentBackend: e.target.value as HarnessSettings['agentBackend'],
+                                })}
                             >
                                 <option value="auto">Auto</option>
                                 <option value="harness">In-process (Vercel AI SDK)</option>
                                 <option value="claude-agent-sdk">Claude Agent SDK</option>
                             </select>
-                        </Row.Right>
-                    </Row>
+                        }
+                    />
                 </div>
-            </div>
+            </SettingsSection>
 
-            {/* ── Safety (moved from Advanced) ──────────────────────── */}
-            <div className="pkset-section">
-                <div className="pkset-section__head">
-                    <span className="pkset-section__title">Safety</span>
-                    <span className="pkset-section__sub">
-                        Write-permission gate for the whole agent surface.
-                    </span>
-                </div>
+            <SettingsSection title="Safety" sub="Write-permission gate for the whole agent surface.">
                 <div className="pkset-row-list">
-                    <Row>
-                        <Row.Icon><Shield size={16} /></Row.Icon>
-                        <Row.Body>
-                            <Row.Title>Default safety mode</Row.Title>
-                            <Row.Desc>
-                                Controls how agents handle write operations to your vault.
-                            </Row.Desc>
-                        </Row.Body>
-                        <Row.Right>
+                    <SettingsRow
+                        icon={Shield}
+                        title="Default safety mode"
+                        desc="Controls how agents handle write operations to your vault."
+                        right={
                             <Segmented<HarnessSettings['defaultPermissionMode']>
-                                value={
-                                    settings.harnessSettings?.defaultPermissionMode ??
-                                    'acceptEdits'
-                                }
-                                onValueChange={(next) => {
-                                    const base: HarnessSettings = settings.harnessSettings ?? DEFAULT_HARNESS_SETTINGS;
-                                    settingsUpdates.update('harnessSettings', {
-                                        ...base,
-                                        defaultPermissionMode: next,
-                                    });
-                                }}
+                                value={settings.harnessSettings?.defaultPermissionMode ?? 'acceptEdits'}
+                                onValueChange={(next) => settingsUpdates.update('harnessSettings', { ...baseHarness(), defaultPermissionMode: next })}
                                 options={[
                                     { value: 'read', label: 'Read only' },
                                     { value: 'acceptEdits', label: 'Ask' },
@@ -156,97 +134,32 @@ export function AISetupTab({ settings, settingsUpdates }: AISetupTabProps) {
                                 ]}
                                 aria-label="Default safety mode"
                             />
-                        </Row.Right>
-                    </Row>
+                        }
+                    />
                 </div>
-            </div>
+            </SettingsSection>
 
-            {/* ── Recommended setup ─────────────────────────────────── */}
-            <div className="pkset-section">
-                <div className="pkset-section__head">
-                    <span className="pkset-section__title">
-                        {aiSetupCopy.recommendedSetup.sectionTitle}
-                    </span>
-                    <span className="pkset-section__sub">
-                        {aiSetupCopy.recommendedSetup.sectionSub}
-                    </span>
-                </div>
+            <SettingsSection
+                title={aiSetupCopy.recommendedSetup.sectionTitle}
+                sub={aiSetupCopy.recommendedSetup.sectionSub}
+            >
                 <RecommendedSetupGrid manual={hasManualBindings(harness)} />
-            </div>
+            </SettingsSection>
 
-            {/* ── AI Behavior ───────────────────────────────────────── */}
-            <div className="pkset-section">
-                <div className="pkset-section__head">
-                    <span className="pkset-section__title">{aiSetupCopy.aiBehavior.sectionTitle}</span>
-                </div>
+            <SettingsSection title={aiSetupCopy.aiBehavior.sectionTitle}>
                 <div className="pkset-row-list">
-                    <BehaviorPickerRow
-                        icon={MessageSquare}
-                        title={aiSetupCopy.aiBehavior.conversation.title}
-                        desc={aiSetupCopy.aiBehavior.conversation.desc}
-                        bound={chatBound}
-                        fallbackText={null}
-                        changeLabel={aiSetupCopy.aiBehavior.change}
-                        setupLabel={aiSetupCopy.aiBehavior.setup}
-                        profiles={[...cloudProfiles, ...localProfiles]}
-                        onWrite={writeConversation}
-                    />
-                    <BehaviorPickerRow
-                        icon={Zap}
-                        title={aiSetupCopy.aiBehavior.fastLookup.title}
-                        desc={aiSetupCopy.aiBehavior.fastLookup.desc}
-                        bound={harness?.localFastConfig ?? null}
-                        fallbackText={aiSetupCopy.aiBehavior.fallsBack}
-                        changeLabel={aiSetupCopy.aiBehavior.change}
-                        setupLabel={aiSetupCopy.aiBehavior.setup}
-                        profiles={[...localProfiles, ...cloudProfiles]}
-                        onWrite={(cfg) => writeTier('fastLookup', cfg)}
-                    />
-                    <BehaviorPickerRow
-                        icon={SearchIcon}
-                        title={aiSetupCopy.aiBehavior.research.title}
-                        desc={aiSetupCopy.aiBehavior.research.desc}
-                        bound={harness?.localDeepConfig ?? null}
-                        fallbackText={aiSetupCopy.aiBehavior.fallsBack}
-                        changeLabel={aiSetupCopy.aiBehavior.change}
-                        setupLabel={aiSetupCopy.aiBehavior.setup}
-                        profiles={[...localProfiles, ...cloudProfiles]}
-                        onWrite={(cfg) => writeTier('research', cfg)}
-                    />
-                    <BehaviorPickerRow
-                        icon={Sparkle}
-                        title={aiSetupCopy.aiBehavior.strongerModel.title}
-                        desc={aiSetupCopy.aiBehavior.strongerModel.desc}
-                        bound={harness?.onlineConfig ?? null}
-                        fallbackText={aiSetupCopy.aiBehavior.strongerModel.offChip}
-                        changeLabel={aiSetupCopy.aiBehavior.change}
-                        setupLabel={aiSetupCopy.aiBehavior.setup}
-                        profiles={cloudProfiles}
-                        onWrite={(cfg) => writeTier('strongerModel', cfg)}
-                    />
-                    <BehaviorPickerRow
-                        icon={Database}
-                        title={aiSetupCopy.aiBehavior.knowledgeIndex.title}
-                        desc={aiSetupCopy.aiBehavior.knowledgeIndex.desc}
-                        bound={embeddingBound}
-                        fallbackText={null}
-                        changeLabel={aiSetupCopy.aiBehavior.change}
-                        setupLabel={aiSetupCopy.aiBehavior.setup}
-                        profiles={allProfiles}
-                        onWrite={writeEmbedding}
-                        modelFilter={isEmbeddingModel}
-                    />
+                    {behaviorRows.map((row, i) => (
+                        <BehaviorPickerRow key={i} {...row} />
+                    ))}
                 </div>
-            </div>
+            </SettingsSection>
 
-            {/* ── Providers ─────────────────────────────────────────── */}
-            <div className="pkset-section">
-                <div className="pkset-section__head">
-                    <span className="pkset-section__title">{aiSetupCopy.providers.sectionTitle}</span>
-                    <span className="pkset-section__sub">{aiSetupCopy.providers.sectionSub}</span>
-                </div>
+            <SettingsSection
+                title={aiSetupCopy.providers.sectionTitle}
+                sub={aiSetupCopy.providers.sectionSub}
+            >
                 <ProfilesTab settings={settings} settingsUpdates={settingsUpdates} hideStatusBar />
-            </div>
+            </SettingsSection>
         </div>
     );
 }

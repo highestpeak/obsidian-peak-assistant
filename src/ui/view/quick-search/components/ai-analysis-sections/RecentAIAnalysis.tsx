@@ -172,7 +172,6 @@ export const RecentAIAnalysis: React.FC<{
     };
 
     useEffect(() => {
-        console.log('refreshRecent');
         void refreshRecent();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

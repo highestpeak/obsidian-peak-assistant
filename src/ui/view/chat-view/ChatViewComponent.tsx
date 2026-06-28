@@ -64,8 +64,6 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = () => {
 				if (!event.conversationId) {
 					return;
 				}
-				console.log('[ChatView] Selection changed to conversation:', event.conversationId);
-				// Just load the conversation by id using aiServiceManager
 				const conversation = await manager.readConversation(event.conversationId);
 				if (conversation) {
 					useChatViewStore.getState().setConversation(conversation);

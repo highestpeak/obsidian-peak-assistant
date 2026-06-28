@@ -86,7 +86,6 @@ export function useChatSubmit() {
 
 		let conversation = latestActiveConversation || null;
 		if (!conversation && latestPendingConversation) {
-			console.log('[useChatSubmit] creating conversation', latestPendingConversation, modelForNewConversation);
 			conversation = await manager.conv.createConversation({
 				title: latestPendingConversation.title,
 				project: latestPendingConversation.project?.meta ?? null,
@@ -124,7 +123,6 @@ export function useChatSubmit() {
 	 */
 	const cancelStream = useCallback(async (): Promise<void> => {
 		if (abortControllerRef.current) {
-			console.log('[useChatSubmit] Canceling stream');
 			abortControllerRef.current.abort('cancelled');
 			abortControllerRef.current = null;
 		}
