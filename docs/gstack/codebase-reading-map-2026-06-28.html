@@ -1,0 +1,1599 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant Codebase Reading Map - 2026-06-28</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --panel-2: #f0f4f8;
+      --ink: #17202a;
+      --muted: #5f6f83;
+      --line: #d8e0ea;
+      --line-strong: #aebccc;
+      --blue: #2563eb;
+      --green: #0f766e;
+      --amber: #b45309;
+      --red: #b42318;
+      --violet: #6d28d9;
+      --shadow: 0 14px 40px rgba(19, 32, 48, 0.08);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      padding: 1px 5px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #f8fafc;
+      color: #0f172a;
+      font-size: 0.92em;
+      overflow-wrap: anywhere;
+    }
+    .shell {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      padding: 24px 20px;
+      border-right: 1px solid var(--line);
+      background: #ffffff;
+    }
+    nav .label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    nav strong {
+      display: block;
+      margin-bottom: 18px;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+    nav a {
+      display: block;
+      padding: 7px 0;
+      color: #314155;
+      font-size: 14px;
+    }
+    main {
+      min-width: 0;
+      padding: 32px;
+      overflow-wrap: anywhere;
+    }
+    header {
+      margin-bottom: 22px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 34px 0 14px;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+    p { margin: 0 0 12px; }
+    .lead {
+      max-width: 920px;
+      color: #3b4a5e;
+      font-size: 17px;
+    }
+    .section {
+      margin-bottom: 20px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .band {
+      margin: 16px 0;
+      padding: 16px;
+      border-left: 4px solid var(--blue);
+      background: #eef5ff;
+      border-radius: 6px;
+    }
+    .band strong { display: block; margin-bottom: 4px; }
+    .audit-note {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 16px 0;
+    }
+    .audit-note div {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .audit-note b {
+      display: block;
+      margin-bottom: 4px;
+      color: #0f172a;
+      font-size: 13px;
+    }
+    .entry-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .entry-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .entry-card h3 {
+      margin-top: 0;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .entry-card h3 em {
+      color: var(--muted);
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .entry-card ol,
+    .entry-card ul,
+    .guide ol,
+    .guide ul {
+      padding-left: 20px;
+    }
+    .flow-panel {
+      margin: 18px 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .flow-panel h3 {
+      margin-top: 0;
+    }
+    .flow-panel .read-label {
+      display: block;
+      margin-top: 10px;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .flow-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .flow-list {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .flow-list li + li {
+      margin-top: 5px;
+    }
+    .evidence-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 12px 0 0;
+    }
+    .evidence-strip div {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #ffffff;
+      font-size: 13px;
+    }
+    .evidence-strip b {
+      display: block;
+      margin-bottom: 3px;
+      color: #334155;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .reading-lanes {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      counter-reset: lane;
+    }
+    .lane {
+      position: relative;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .lane::before {
+      counter-increment: lane;
+      content: counter(lane);
+      display: inline-grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      margin-bottom: 8px;
+      border-radius: 50%;
+      background: #e0ecff;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .lane b {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .mini-table {
+      margin-top: 12px;
+    }
+    .mini-table td,
+    .mini-table th {
+      font-size: 13px;
+    }
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .metric {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .metric .num {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .metric .caption {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      margin: 0 6px 6px 0;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .tag.green { border-color: #99d7ce; background: #ecfdf9; color: var(--green); }
+    .tag.amber { border-color: #f6cf9d; background: #fff7ed; color: var(--amber); }
+    .tag.blue { border-color: #bcd3ff; background: #eff6ff; color: var(--blue); }
+    .tag.violet { border-color: #d9c8ff; background: #f5f0ff; color: var(--violet); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: #334155;
+      background: #f8fafc;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .small { color: var(--muted); font-size: 13px; }
+    .callout {
+      padding: 14px 16px;
+      border: 1px solid #f0c37d;
+      border-radius: var(--radius);
+      background: #fffbeb;
+      color: #52340b;
+    }
+    .flow {
+      display: grid;
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .flow.cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .flow.cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .node {
+      position: relative;
+      min-height: 96px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .node:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      top: 50%;
+      right: -11px;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: #475569;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      z-index: 2;
+    }
+    .node b {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .node span {
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+    .atlas {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .module {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .module h3 {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+    .module h3 em {
+      color: var(--muted);
+      font-style: normal;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .module ul, .section ul, .section ol {
+      margin: 8px 0 0 18px;
+      padding: 0;
+    }
+    .module li, .section li {
+      margin: 5px 0;
+    }
+    .path-list {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0;
+    }
+    .path {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #f8fafc;
+    }
+    .path strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 13px;
+    }
+    .mono-block {
+      overflow: auto;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #0f172a;
+      color: #dbeafe;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      white-space: pre;
+    }
+    .visual-pair {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.75fr);
+      gap: 16px;
+      align-items: stretch;
+      margin: 16px 0 22px;
+    }
+    .chart-box {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .chart-box h3 { margin-top: 0; }
+    .split-summary {
+      display: grid;
+      grid-template-columns: 1.22fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .split-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .split-card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 18px;
+    }
+    .split-card.user-facing {
+      border-color: rgba(37,99,235,0.3);
+      background: #eff6ff;
+    }
+    .split-card.platform {
+      border-color: rgba(15,118,110,0.28);
+      background: #ecfdf5;
+    }
+    .split-card .big {
+      display: block;
+      margin-top: 8px;
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .mermaid-box {
+      margin: 16px 0;
+    }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      min-height: 240px;
+      padding: 12px;
+      overflow: auto;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+    }
+    .guide-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .guide-group-title {
+      margin: 22px 0 10px;
+      padding-top: 4px;
+      border-top: 1px solid var(--line);
+    }
+    .guide {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .guide.user-facing {
+      border-color: rgba(37,99,235,0.26);
+      background: #f8fbff;
+    }
+    .guide.platform {
+      border-color: rgba(15,118,110,0.24);
+      background: #fbfffc;
+    }
+    .guide h3 {
+      margin-top: 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .guide h3 em {
+      color: var(--muted);
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .guide .read-label {
+      display: block;
+      margin-top: 10px;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .ok { color: var(--green); font-weight: 800; }
+    .warn { color: var(--amber); font-weight: 800; }
+    .danger { color: var(--red); font-weight: 800; }
+    @media (max-width: 960px) {
+      .shell { grid-template-columns: 1fr; }
+      nav {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      main { padding: 18px; }
+      table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+      }
+      .mono-block {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .path, .module, .node, .metric, td, th {
+        overflow-wrap: anywhere;
+      }
+      .visual-pair, .guide-grid, .split-summary, .audit-note, .entry-grid, .flow-grid, .evidence-strip, .reading-lanes {
+        grid-template-columns: 1fr;
+      }
+      .grid.cols-2, .grid.cols-3, .grid.cols-4, .atlas, .flow.cols-5, .flow.cols-6 {
+        grid-template-columns: 1fr;
+      }
+      .node:not(:last-child)::after {
+        top: auto;
+        right: 50%;
+        bottom: -11px;
+        transform: translateX(50%) rotate(90deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav>
+      <span class="label">Code Reading Report</span>
+      <strong>Peak Assistant 当前工作树阅读地图</strong>
+      <a href="#purpose">读者与目标</a>
+      <a href="#how-to-use">怎么使用这份报告</a>
+      <a href="#current-state">当前状态</a>
+      <a href="#mental-model">总心智模型</a>
+      <a href="#entry-map">关键入口地图</a>
+      <a href="#runtime-map">全局运行图</a>
+      <a href="#boot-path">代码加载路径</a>
+      <a href="#module-atlas">模块分类</a>
+      <a href="#critical-paths">关键路径</a>
+      <a href="#patterns">设计模式</a>
+      <a href="#deps">第三方组件</a>
+      <a href="#volume">代码量</a>
+      <a href="#island-guides">功能与支撑阅读指南</a>
+      <a href="#review-guide">阅读与 Review 方法</a>
+      <a href="#watchpoints">审阅提醒</a>
+      <a href="#verification">验证记录</a>
+    </nav>
+
+    <main>
+      <header>
+        <span class="tag blue">2026-06-28</span>
+        <span class="tag green">当前工作树</span>
+        <span class="tag violet">Owner-facing</span>
+        <h1>Peak Assistant Codebase Reading Map</h1>
+        <p class="lead">这份报告不是为了把每个文件解释一遍，而是帮你建立一张可追踪的代码地图：从 Obsidian 插件如何加载，到 app/service/core/ui 怎么分层，到每个能力从入口、runtime、port、adapter、UI projection 怎么跑起来。</p>
+      </header>
+
+      <section id="purpose" class="section">
+        <h2>读者与目标</h2>
+        <div class="grid cols-3">
+          <div class="metric">
+            <span class="num">你</span>
+            <span class="caption">代码 owner，需要能读懂重构后的模块，而不是只看 agent 结论。</span>
+          </div>
+          <div class="metric">
+            <span class="num">Review</span>
+            <span class="caption">目标是追踪代码、判断边界是否清楚、知道先读哪些文件。</span>
+          </div>
+          <div class="metric">
+            <span class="num">不做</span>
+            <span class="caption">不做逐行 code review；不替代功能测试；不把未验证行为写成确定事实。</span>
+          </div>
+        </div>
+        <div class="band">
+          <strong>最重要的结论</strong>
+          当前代码已经从“边界重构中”进入“边界扫描闭合”的状态：`npm run audit:boundary` 显示 `0 findings`。现在阅读难点不再是 service/core 到处摸 Obsidian，而是功能岛很多、runtime/port/adapter 层次多，需要按能力路径读。
+        </div>
+        <div class="audit-note">
+          <div><b>文档类型</b>系统理解手册 + 架构阅读地图 + review 路线图。</div>
+          <div><b>读者问题</b>我从哪里进？怎么追一个功能？状态和副作用归谁？</div>
+          <div><b>旧版缺口</b>有模块清单，但入口、流程、状态真相不够。</div>
+          <div><b>本版修正</b>把 Mermaid 流程图和入口表放到主线位置。</div>
+        </div>
+      </section>
+
+      <section id="how-to-use" class="section">
+        <h2>怎么使用这份报告</h2>
+        <p>不要从目录树开始读。这个代码库已经重构成 app composition、service runtime、core substrate、ui projection 四层；正确读法是先找用户入口，再沿 runtime 和 ports 往下追。</p>
+        <div class="reading-lanes">
+          <div class="lane">
+            <b>先看入口</b>
+            <p>从命令、view、modal、setting tab 找用户如何触发能力。入口不等于业务逻辑。</p>
+          </div>
+          <div class="lane">
+            <b>再看 composition</b>
+            <p>`compose*.ts` 和 `ReactElementFactory` 通常是一页版依赖图，说明谁把 concrete 变成 port。</p>
+          </div>
+          <div class="lane">
+            <b>然后看 runtime</b>
+            <p>runtime/manager/service 回答“状态真相在哪里、流程怎么跑、并发如何处理”。</p>
+          </div>
+          <div class="lane">
+            <b>最后看 UI projection</b>
+            <p>Zustand、React hooks、panel 负责展示和交互，不应该反向拥有业务 truth。</p>
+          </div>
+        </div>
+        <div class="band">
+          <strong>3 分钟读法</strong>
+          如果你只想快速找方向：先读“关键入口地图”，再读“全局运行图”，然后跳到对应用户功能的流程图。不要先读代码量表；代码量表只用于判断认知负担，不决定阅读顺序。
+        </div>
+      </section>
+
+      <section id="current-state" class="section">
+        <h2>当前状态</h2>
+        <div class="grid cols-4">
+          <div class="metric"><span class="num">145,395</span><span class="caption">`cloc` 统计代码行，范围：`main.ts src test scripts templates`。</span></div>
+          <div class="metric"><span class="num ok">0</span><span class="caption">Boundary baseline flagged cross-layer / side-effect edges。</span></div>
+          <div class="metric"><span class="num ok">PASS</span><span class="caption">`npm run build` 当前工作树通过。</span></div>
+          <div class="metric"><span class="num">918</span><span class="caption">boundary scanner 扫描的 `src/` 文件数。</span></div>
+        </div>
+        <h3>当前 dirty tree 的含义</h3>
+        <p>根仓库和插件仓库都有未提交变更。插件里大量改动集中在 `docs/superpowers/refactor-ops`、`src/ui/view`、`src/service/chat`、`src/service/ambient`、`src/app/ambient`。所以本文按“当前工作树”写，不假装这是某个干净 commit 的状态。</p>
+        <table>
+          <thead><tr><th>变更密集区</th><th class="num">文件数</th><th>怎么理解</th></tr></thead>
+          <tbody>
+            <tr><td>`docs/superpowers/refactor-ops`</td><td class="num">33</td><td>T11Q/T11R 这轮 handoff、implementation note、deletion map。</td></tr>
+            <tr><td>`src/ui/view`</td><td class="num">23</td><td>UI projection 和 view surface 是当前阅读量最大的区域。</td></tr>
+            <tr><td>`src/service/chat`</td><td class="num">16</td><td>Chat storage / context / prompt 仍是复杂核心路径。</td></tr>
+            <tr><td>`docs/superpowers/audits`</td><td class="num">15</td><td>owner review packet 是理解每轮重构意图的旁路证据。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="mental-model" class="section">
+        <h2>总心智模型</h2>
+        <div class="callout">
+          不要把这里理解成传统 “UI 调 service，service 调 core” 的单向小项目。Peak Assistant 现在更像一个 Obsidian host 上的 capability platform：`app/` 是 composition shell，负责接 Obsidian；`service/` 是能力 runtime 和业务编排；`core/` 是可复用底座、类型、存储、provider；`ui/` 是 React projection 和用户操作面。
+        </div>
+        <div class="flow cols-5">
+          <div class="node"><b>Obsidian Host</b><span>加载 `main.js`，提供 `App`、workspace、vault、views、commands。</span></div>
+          <div class="node"><b>`main.ts`</b><span>插件入口和 boot sequence，创建 app context、services、runtimes。</span></div>
+          <div class="node"><b>`src/app/**`</b><span>唯一允许直接组合 Obsidian concrete APIs 的 shell。</span></div>
+          <div class="node"><b>`src/service/**`</b><span>能力逻辑：chat/search/copilot/ambient/lint/usage/agents。</span></div>
+          <div class="node"><b>`src/ui/**`</b><span>React views、stores、hooks；应消费 narrow ports，不再进口 `@/app/**`。</span></div>
+        </div>
+
+        <h3>现代化主线</h3>
+        <p>T11 系列的核心目标是把“隐藏依赖”和“host 类型泄漏”赶回 app shell。当前 T11R 已经把 scanner 看到的 `service/core -> Obsidian`、`service -> app`、`ui -> app`、`service -> ui` 清到 0。</p>
+        <div class="flow cols-6">
+          <div class="node"><b>Capability</b><span>按用户能力命名，而不是按老服务残留命名。</span></div>
+          <div class="node"><b>Runtime</b><span>单一执行路径，放进 `AppRuntimeRegistry`。</span></div>
+          <div class="node"><b>Ports</b><span>service/core 只看接口，不看 Obsidian concrete。</span></div>
+          <div class="node"><b>Adapters</b><span>app 层把 Obsidian/SQLite/Notice/Workspace 接进来。</span></div>
+          <div class="node"><b>Projection</b><span>UI store/hook 只投影运行状态，不做长期 truth owner。</span></div>
+          <div class="node"><b>Guards</b><span>source scan / regression test 锁边界。</span></div>
+        </div>
+      </section>
+
+      <section id="entry-map" class="section">
+        <h2>关键入口地图</h2>
+        <p>读这个代码库时，入口分三类：插件生命周期入口、用户触发入口、React 服务注入入口。不要从 feature 目录里随机打开文件；先用下面这张表定位“用户怎么进来”。</p>
+        <div class="entry-grid">
+          <div class="entry-card">
+            <h3>插件启动入口 <em>boot</em></h3>
+            <ol>
+              <li><a href="../../main.ts">`main.ts`</a>：从 `onload()` 开始，看 settings、template、manager、AppContext、runtimes、views、commands 的顺序。</li>
+              <li><a href="../../main.ts">`main.ts`</a>：跳到 `initSqlite()`，看 SQLite、SearchClient、Usage、VaultLint、VaultReview 的初始化。</li>
+              <li><a href="../../main.ts">`main.ts`</a>：最后看 `onunload()`，确认 runtime、store、sqlite、manager 如何被清理。</li>
+            </ol>
+          </div>
+          <div class="entry-card">
+            <h3>用户命令入口 <em>palette</em></h3>
+            <ol>
+              <li><a href="../../src/app/commands/Register.ts">`src/app/commands/Register.ts`</a>：9 个 top-level command。</li>
+              <li><a href="../../src/app/commands/PeakCommandActions.ts">`PeakCommandActions.ts`</a>：命令如何打开 view/modal 或触发 runtime。</li>
+              <li>看到 command 后不要停在 action：继续追 view/modal 的 React mount 和 ServiceContext。</li>
+            </ol>
+          </div>
+          <div class="entry-card">
+            <h3>View / Modal 入口 <em>screen shell</em></h3>
+            <ol>
+              <li><a href="../../src/app/view/ViewManager.ts">`ViewManager.ts`</a>：注册 Chat、Ambient、Usage、Vault X-Ray、Chat Studio 等 Obsidian views。</li>
+              <li><a href="../../src/app/modals/QuickSearchModal.tsx">`QuickSearchModal.tsx`</a>、<a href="../../src/app/modals/HarnessOnboardingModal.tsx">`HarnessOnboardingModal.tsx`</a>：modal shell。</li>
+              <li>这些 shell 的职责是挂 React，不应该承载业务 runtime。</li>
+            </ol>
+          </div>
+          <div class="entry-card">
+            <h3>React 注入入口 <em>ports into UI</em></h3>
+            <ol>
+              <li><a href="../../src/app/react/ReactElementFactory.tsx">`ReactElementFactory.tsx`</a>：唯一把 app-owned ports 送进 React 的地方。</li>
+              <li><a href="../../src/ui/context/ServiceContext.tsx">`ServiceContext.tsx`</a>：UI 能拿到哪些 manager/runtime/ports。</li>
+              <li>如果 UI 还要直接 import `@/app/**`，优先怀疑边界回退。</li>
+            </ol>
+          </div>
+        </div>
+
+        <table class="mini-table">
+          <thead><tr><th>用户能力</th><th>第一入口</th><th>第二入口</th><th>真正要追的 runtime / manager</th></tr></thead>
+          <tbody>
+            <tr><td>Quick Search</td><td>`peak-quick-search` command</td><td>`QuickSearchModal.tsx` + `useSearchSession.ts`</td><td>`SearchClient`、`QueryService`、`QuickSearchBackgroundRuntimeImpl`</td></tr>
+            <tr><td>Chat</td><td>ribbon / `peak-open-chat-studio`</td><td>`ChatView.ts` / `ChatStudioView.ts`</td><td>`AIServiceManager`、`ConversationService`、context slots</td></tr>
+            <tr><td>Copilot</td><td>`peak-copilot-open`</td><td>Copilot picker / result modal</td><td>`CopilotActionRuntimeImpl`、built-in action catalog、panel binding</td></tr>
+            <tr><td>Usage Dashboard</td><td>`peak-usage-dashboard`</td><td>`UsageDashboardView.ts`</td><td>`UsageTrackingService`、`UsageOutcomeService`、`UsageOptimizationService`、`CuratorPushRuntime`</td></tr>
+            <tr><td>Settings / Onboarding</td><td>Setting tab / setup wizard command</td><td>`MySetting.ts` / `HarnessOnboardingModal.tsx`</td><td>`PluginSettingsLoader`、settings actions、profile/model registries</td></tr>
+            <tr><td>Ambient / Morning</td><td>startup + Related Notes command/view</td><td>`composeAmbientRuntime.ts`</td><td>`AmbientPushRuntime`、`AmbientPorts`</td></tr>
+            <tr><td>Vault X-Ray</td><td>`peak-vault-xray`</td><td>`VaultXRayView.ts`</td><td>`VaultLintService`、`VaultLintRun`、`RunEnvelope`</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="runtime-map" class="section">
+        <h2>全局运行图</h2>
+        <p>这张图不是模块目录，而是“一个用户动作如何穿过系统”的通用路径。后面每个功能的图都是这张图的具体化。</p>
+        <div class="chart-box mermaid-box">
+          <pre class="mermaid">flowchart LR
+  host["Obsidian host&lt;br/&gt;commands / views / modals"]
+  app["app shell&lt;br/&gt;composition root"]
+  factory["ReactElementFactory&lt;br/&gt;compose UI ports"]
+  ctx["ServiceContext&lt;br/&gt;UI reads narrow ports"]
+  ui["React view / hook&lt;br/&gt;projection + user actions"]
+  runtime["service runtime / manager&lt;br/&gt;state truth + orchestration"]
+  ports["ports&lt;br/&gt;capability-shaped contracts"]
+  adapters["app adapters&lt;br/&gt;Obsidian / SQLite / Notice"]
+  core["core substrate&lt;br/&gt;storage / provider / types"]
+  tests["guards&lt;br/&gt;boundary audit + regression tests"]
+
+  host --> app --> factory --> ctx --> ui --> runtime
+  runtime --> ports --> adapters --> core
+  adapters -. "owned by app shell" .-> app
+  runtime -. "must not import app/ui" .-> tests
+  ui -. "must not import app" .-> tests
+
+  classDef hostNode fill:#fff7ed,stroke:#b45309,color:#0f172a;
+  classDef appNode fill:#eff6ff,stroke:#2563eb,color:#0f172a;
+  classDef serviceNode fill:#ecfdf5,stroke:#0f766e,color:#0f172a;
+  classDef coreNode fill:#f8fafc,stroke:#64748b,color:#0f172a;
+  class host hostNode;
+  class app,factory,adapters appNode;
+  class ctx,ui,runtime,ports serviceNode;
+  class core,tests coreNode;</pre>
+        </div>
+
+        <div class="flow-grid">
+          <div>
+            <h3>阅读时问这 5 个问题</h3>
+            <ol class="flow-list">
+              <li><strong>入口：</strong>用户从 command、view、modal、setting tab 还是 startup 进来？</li>
+              <li><strong>composition：</strong>哪个 `compose*.ts` 或 factory 把 concrete dependency 包成 port？</li>
+              <li><strong>state truth：</strong>状态是真在 runtime/manager，还是只是 UI projection？</li>
+              <li><strong>side effect：</strong>vault、workspace、Notice、SQLite、LLM 调用通过哪个 adapter 出去？</li>
+              <li><strong>验证：</strong>有 build、boundary audit、regression test，还是只有人工判断？</li>
+            </ol>
+          </div>
+          <div class="band">
+            <strong>最容易读错的地方</strong>
+            `src/ui/**` 很多文件看起来像业务逻辑，因为有 hooks 和 stores；但现代化后的规则是 UI 只做 projection 和 orchestration。真正的长期 truth 要回到 service runtime、AppRuntimeRegistry、storage repo 或 RunEnvelope。
+          </div>
+        </div>
+      </section>
+
+      <section id="boot-path" class="section">
+        <h2>代码加载路径</h2>
+        <p>第一次读时先沿 boot path 走一遍。`main.ts` 很长，但它不是业务逻辑大杂烩，它是 composition root。</p>
+        <div class="flow cols-6">
+          <div class="node"><b>1. plugin load</b><span><a href="../../main.ts">`main.ts`</a> `MyPlugin.onload()`。</span></div>
+          <div class="node"><b>2. settings/templates</b><span>`normalizePluginSettings`、`TemplateManager`、model registry。</span></div>
+          <div class="node"><b>3. AI manager</b><span><a href="../../src/service/chat/service-manager.ts">`AIServiceManager`</a> 组合 chat storage、prompt、context slots。</span></div>
+          <div class="node"><b>4. AppContext</b><span><a href="../../src/app/context/AppContext.ts">`AppContext`</a> 持有 app-owned ports 与 runtime registry。</span></div>
+          <div class="node"><b>5. SQLite/search</b><span>`initSqlite()` 创建 search/index/usage/lint review runtimes。</span></div>
+          <div class="node"><b>6. views/commands</b><span><a href="../../src/app/view/ViewManager.ts">`ViewManager`</a> + <a href="../../src/app/commands/Register.ts">command palette</a>。</span></div>
+        </div>
+        <h3>启动里最值得看的文件</h3>
+        <div class="path-list">
+          <div class="path"><strong><a href="../../main.ts">`main.ts`</a></strong>先看 `onload()` 的 composition 顺序，再看 `initSqlite()`，最后看 `onunload()` 清理顺序。</div>
+          <div class="path"><strong><a href="../../src/app/context/AppContext.ts">`src/app/context/AppContext.ts`</a></strong>看哪些东西是 app-owned：runtime registry、vault/navigation/preview/editor/chat/stats ports、copilot review history。</div>
+          <div class="path"><strong><a href="../../src/app/runtime/AppRuntimeRegistry.ts">`src/app/runtime/AppRuntimeRegistry.ts`</a></strong>看 runtime bind/read/try/clear 的统一语义。</div>
+          <div class="path"><strong><a href="../../src/app/react/ReactElementFactory.tsx">`src/app/react/ReactElementFactory.tsx`</a></strong>看 React UI 如何拿到 services/ports，而不是自己 import app shell。</div>
+          <div class="path"><strong><a href="../../src/ui/context/ServiceContext.tsx">`src/ui/context/ServiceContext.tsx`</a></strong>看 UI 可用的能力 surface。这里没有 raw `app` 和 `viewManager` 是 T11P 后的重要成果。</div>
+        </div>
+      </section>
+
+      <section id="module-atlas" class="section">
+        <h2>模块分类</h2>
+        <div class="atlas">
+          <div class="module">
+            <h3>App Shell <em>composition</em></h3>
+            <p>`src/app/**` 是 Obsidian concrete 的合法区域。读这里不要问“为什么 import Obsidian”，要问“它有没有把 Obsidian 包到 port/adapter/runtime 里”。</p>
+            <span class="tag blue">views</span><span class="tag blue">commands</span><span class="tag blue">adapters</span><span class="tag blue">runtime wiring</span>
+            <ul>
+              <li><a href="../../src/app/view/ViewManager.ts">`ViewManager`</a> 注册 Obsidian ItemView。</li>
+              <li><a href="../../src/app/adapters/VaultPortAdapter.ts">`VaultPortAdapter`</a> 等 app adapters 是 host 边界。</li>
+              <li><a href="../../src/app/ambient/composeAmbientRuntime.ts">`composeAmbientRuntime`</a> 这类文件是单能力 composition page。</li>
+            </ul>
+          </div>
+          <div class="module">
+            <h3>Service <em>capabilities</em></h3>
+            <p>`src/service/**` 是业务能力和 runtime。当前应避免 import `@/app/**`、`obsidian`、`@/ui/**`。</p>
+            <span class="tag green">chat</span><span class="tag green">search</span><span class="tag green">copilot</span><span class="tag green">ambient</span><span class="tag green">lint</span>
+            <ul>
+              <li>读某个功能时，从 runtime/manager 进，不要从组件进。</li>
+              <li>看到 `Port` 类型，顺着 app adapter 找 concrete 行为。</li>
+              <li>看到 singleton，要确认是不是历史兼容还是明确 owner。</li>
+            </ul>
+          </div>
+          <div class="module">
+            <h3>Core <em>substrate</em></h3>
+            <p>`src/core/**` 是底座：SQLite repo、document loader、provider/profile、ports、types、utils。现代化后 core 不应该依赖 service/app/ui。</p>
+            <span class="tag violet">storage</span><span class="tag violet">providers</span><span class="tag violet">ports</span><span class="tag violet">types</span>
+            <ul>
+              <li><a href="../../src/core/ports/AppHandle.ts">`AppHandle`</a> 是当前 neutral escape hatch。</li>
+              <li><a href="../../src/core/storage/vault/vault-ops.ts">`vault-ops`</a> 是 T11R 后 service/core 的 duck-typed vault helper。</li>
+              <li>长期更优方向是从 `AppHandle` 再收窄成更强类型 ports。</li>
+            </ul>
+          </div>
+          <div class="module">
+            <h3>UI <em>projection</em></h3>
+            <p>`src/ui/**` 是 React views、hooks、Zustand stores 和 shared components。它可以 import service/core types/runtime ports，但不应该 import `@/app/**`。</p>
+            <span class="tag amber">React</span><span class="tag amber">stores</span><span class="tag amber">views</span><span class="tag amber">CSS</span>
+            <ul>
+              <li>读 UI 时先找 `useServiceContext()`，再找 port/runtime。</li>
+              <li>Zustand store 是 projection，不应成为长任务 truth。</li>
+              <li>共享 UI/CSS 是当前最大阅读噪音之一。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="critical-paths" class="section">
+        <h2>用户功能流程图</h2>
+        <p>这里按“用户动作怎么穿过代码”来读，不按目录读。每张图下面都有入口、状态真相、副作用出口、验证点。</p>
+
+        <div class="flow-panel">
+          <h3>Quick Search：从 palette 到 AI 分析、后台 session、保存结果</h3>
+          <div class="chart-box mermaid-box">
+            <pre class="mermaid">flowchart LR
+  cmd["peak-quick-search&lt;br/&gt;Register.ts"]
+  modal["QuickSearchModal&lt;br/&gt;Obsidian modal shell"]
+  factory["ReactElementFactory&lt;br/&gt;inject ServiceContext"]
+  host["composeQuickSearchHost&lt;br/&gt;app-owned facade"]
+  hook["useSearchSession&lt;br/&gt;foreground orchestration"]
+  search["SearchClient / QueryService&lt;br/&gt;parser + retrievers + RRF + PPR"]
+  agents["DocSimple / VaultSearch / Graph / Report agents"]
+  bg["QuickSearchBackgroundRuntimeImpl&lt;br/&gt;sessions + queue + restore"]
+  persist["AnalysisDocVaultWriter&lt;br/&gt;persist markdown/history"]
+  ui["quick-search stores&lt;br/&gt;UI projection"]
+
+  cmd --> modal --> factory --> host --> hook
+  hook --> search --> agents --> ui
+  hook --> persist
+  modal -- "close while running" --> bg
+  bg --> ui
+  bg --> persist
+  host -. "vault/workspace/chat interop" .-> persist</pre>
+          </div>
+          <div class="evidence-strip">
+            <div><b>入口</b><a href="../../src/app/commands/Register.ts">`Register.ts`</a> → <a href="../../src/app/modals/QuickSearchModal.tsx">`QuickSearchModal.tsx`</a> → <a href="../../src/ui/view/quick-search/hooks/useSearchSession.ts">`useSearchSession.ts`</a></div>
+            <div><b>状态真相</b>foreground 在 search session store；关闭 modal 后由 <a href="../../src/service/search/background/QuickSearchBackgroundRuntimeImpl.ts">`QuickSearchBackgroundRuntimeImpl`</a> 接管。</div>
+            <div><b>副作用出口</b><a href="../../src/app/quick-search/composeQuickSearchHost.ts">`composeQuickSearchHost`</a> owns vault/workspace/chat interop；service 层不直接摸 Obsidian。</div>
+          </div>
+        </div>
+
+        <div class="flow-panel">
+          <h3>Search / Index：检索结果从哪里来</h3>
+          <div class="chart-box mermaid-box">
+            <pre class="mermaid">flowchart LR
+  boot["main.ts initSqlite"]
+  store["sqliteStoreManager&lt;br/&gt;db + repos"]
+  init["initializeSearchService"]
+  index["IndexService&lt;br/&gt;chunk + embed + graph"]
+  listener["SearchUpdateListener&lt;br/&gt;vault changes"]
+  client["SearchClient"]
+  query["QueryService"]
+  parser["parseQuery"]
+  retrievers["RetrieverRegistry&lt;br/&gt;FTS / stem / vector / meta / fuzzy"]
+  merge["RRF merge + PPR + boosts + highlight"]
+  results["SearchResponse items"]
+
+  boot --> store --> init
+  init --> index
+  init --> listener
+  init --> client --> query
+  query --> parser --> retrievers --> merge --> results</pre>
+          </div>
+          <div class="evidence-strip">
+            <div><b>入口</b><a href="../../main.ts">`main.ts`</a> `initSqlite()` / `initializeSearchService()`。</div>
+            <div><b>状态真相</b>indexed docs、mobius graph、usage/lint tables 在 SQLite repos。</div>
+            <div><b>阅读重点</b><a href="../../src/service/search/query/queryService.ts">`QueryService`</a> 的 6 步 pipeline 是检索阅读核心。</div>
+          </div>
+        </div>
+
+        <div class="flow-panel">
+          <h3>Chat：从 view 到 context stack 再到 streaming</h3>
+          <div class="chart-box mermaid-box">
+            <pre class="mermaid">flowchart LR
+  view["ChatView / ChatStudioView&lt;br/&gt;registered by ViewManager"]
+  factory["ReactElementFactory"]
+  ctx["ServiceContext.manager"]
+  manager["AIServiceManager&lt;br/&gt;storage + prompt + profile"]
+  pipeline["ContextPipeline&lt;br/&gt;slots"]
+  conv["ConversationService.streamChat"]
+  profile["ProfileRegistry&lt;br/&gt;active chat config"]
+  tools["buildChatTools&lt;br/&gt;agent mode only"]
+  provider["provider SDK / model"]
+  storage["ChatStorageService&lt;br/&gt;vault persistence"]
+  ui["chat stores/components&lt;br/&gt;projection"]
+
+  view --> factory --> ctx --> manager
+  manager --> pipeline --> conv
+  conv --> profile --> provider
+  conv --> tools --> provider
+  conv --> storage --> ui
+  pipeline -. "System / Profile / Summary / Recent / Working / PrevAnalysis" .-> conv</pre>
+          </div>
+          <div class="evidence-strip">
+            <div><b>入口</b><a href="../../src/app/view/ViewManager.ts">`ViewManager`</a> → Chat views → <a href="../../src/app/react/ReactElementFactory.tsx">`ReactElementFactory`</a>。</div>
+            <div><b>状态真相</b><a href="../../src/service/chat/service-manager.ts">`AIServiceManager`</a> owns storage/prompt/context services; <a href="../../src/service/chat/service-conversation.ts">`ConversationService`</a> owns streaming path。</div>
+            <div><b>风险点</b>改 Chat 时先问是否改变 context slot 顺序，尤其 `PrevAnalysisSlot`、`WorkingContextSlot`、`CurrentFileSlot`。</div>
+          </div>
+        </div>
+
+        <div class="flow-panel">
+          <h3>Copilot：动作 catalog、执行 ports、结果面板</h3>
+          <div class="chart-box mermaid-box">
+            <pre class="mermaid">flowchart LR
+  boot["main.ts onload&lt;br/&gt;before sqlite required"]
+  compose["composeCopilotActionRuntime"]
+  ports["CopilotActionPorts&lt;br/&gt;ai / vault / search / graph / tags / agent / customPrompts"]
+  runtime["CopilotActionRuntimeImpl&lt;br/&gt;builtIns + custom prompts + rank"]
+  picker["Copilot picker / command"]
+  action["CopilotAction.execute"]
+  panels["copilot-action-surfaces&lt;br/&gt;action id -> result panel"]
+  review["VaultReviewRuntime&lt;br/&gt;auto review path"]
+
+  boot --> compose --> ports --> runtime
+  picker --> runtime --> action --> panels
+  action --> review
+  ports -. "SQLite/search unavailable degrades through adapters" .-> runtime</pre>
+          </div>
+          <div class="evidence-strip">
+            <div><b>入口</b><a href="../../src/app/copilot/actions/composeCopilotActionRuntime.ts">`composeCopilotActionRuntime`</a> is the app composition page。</div>
+            <div><b>状态真相</b><a href="../../src/service/copilot/actions/CopilotActionRuntimeImpl.ts">`CopilotActionRuntimeImpl`</a> owns built-in/custom prompt catalog and ranking。</div>
+            <div><b>UI 绑定</b><a href="../../src/ui/view/copilot/copilot-action-surfaces.tsx">`copilot-action-surfaces.tsx`</a> maps `action.id` to panel; blank result starts here。</div>
+          </div>
+        </div>
+
+        <div class="flow-panel">
+          <h3>Usage Dashboard：usage event、SQLite、推荐、curator push</h3>
+          <div class="chart-box mermaid-box">
+            <pre class="mermaid">flowchart LR
+  events["UsageRecordedViewEvent"]
+  tracking["UsageTrackingService&lt;br/&gt;subscribe + persist + query"]
+  outcome["UsageOutcomeService&lt;br/&gt;saved/adopted outcomes"]
+  repo["SQLite usage repos"]
+  dashboard["UsageDashboardView / screens"]
+  optimization["UsageOptimizationService&lt;br/&gt;signals + LLM + rules fallback"]
+  curator["composeCuratorPushRuntime&lt;br/&gt;event bus + projection"]
+  ui["dashboard / curator push UI"]
+
+  events --> tracking --> repo --> dashboard
+  outcome --> repo
+  repo --> optimization --> dashboard
+  events --> curator --> ui
+  dashboard --> ui</pre>
+          </div>
+          <div class="evidence-strip">
+            <div><b>入口</b><a href="../../src/app/view/UsageDashboardView.ts">`UsageDashboardView`</a> for screen; usage events are emitted across AI paths。</div>
+            <div><b>状态真相</b><a href="../../src/service/usage/UsageTrackingService.ts">`UsageTrackingService`</a> + SQLite usage repos。</div>
+            <div><b>推荐路径</b><a href="../../src/service/usage/optimization/UsageOptimizationService.ts">`UsageOptimizationService`</a> returns LLM-or-rules recommendations; curator push is app-composed。</div>
+          </div>
+        </div>
+
+        <div class="flow-panel">
+          <h3>Settings / Onboarding：配置修复路径</h3>
+          <div class="chart-box mermaid-box">
+            <pre class="mermaid">flowchart LR
+  load["loadData"]
+  normalize["PluginSettingsLoader&lt;br/&gt;normalize + defaults"]
+  registry["ProfileRegistry / ModelRegistry / TemplateManager"]
+  tab["MySettings&lt;br/&gt;PluginSettingTab"]
+  wizard["HarnessOnboardingModal&lt;br/&gt;wizard shell"]
+  factory["ReactElementFactory&lt;br/&gt;settingsActions port"]
+  ui["SettingsRoot / HarnessOnboardingWizard"]
+  save["plugin.saveSettings"]
+  capabilities["CapabilityRegistry&lt;br/&gt;readiness status"]
+
+  load --> normalize --> registry
+  tab --> factory --> ui --> save
+  wizard --> factory
+  ui --> capabilities
+  save --> normalize</pre>
+          </div>
+          <div class="evidence-strip">
+            <div><b>入口</b><a href="../../src/app/settings/MySetting.ts">`MySetting.ts`</a> and <a href="../../src/app/modals/HarnessOnboardingModal.tsx">`HarnessOnboardingModal.tsx`</a> mount React through the same factory。</div>
+            <div><b>状态真相</b><a href="../../src/app/settings/PluginSettingsLoader.ts">`PluginSettingsLoader`</a> normalizes persisted settings; registries load after settings。</div>
+            <div><b>Review 点</b>新增 setting 必须有 default、normalize/sanitize、save path，不要只加 UI input。</div>
+          </div>
+        </div>
+
+        <div class="flow-panel">
+          <h3>Ambient / Morning：proactive assistance runtime</h3>
+          <div class="chart-box mermaid-box">
+            <pre class="mermaid">flowchart LR
+  boot["main.ts onload"]
+  compose["composeAmbientRuntime"]
+  ports["AmbientPorts&lt;br/&gt;settings / editor / search / projection / persistence / briefing / explanation"]
+  runtime["AmbientPushRuntime"]
+  editor["editor trigger&lt;br/&gt;writing pause / doc switch / manual"]
+  search["ambientSearch&lt;br/&gt;vault + graph + learned patterns"]
+  projection["AmbientUiProjectionAdapter&lt;br/&gt;Related Notes panel"]
+  briefing["tryShowMorningBriefing&lt;br/&gt;startup modal path"]
+  sqlite["Ambient SQLite repos"]
+
+  boot --> compose --> ports --> runtime
+  runtime --> editor --> search --> projection
+  runtime --> briefing --> projection
+  search --> sqlite
+  runtime --> sqlite</pre>
+          </div>
+          <div class="evidence-strip">
+            <div><b>入口</b><a href="../../src/app/ambient/composeAmbientRuntime.ts">`composeAmbientRuntime`</a> binds app adapters to <a href="../../src/service/ambient/ports/AmbientPorts.ts">`AmbientPorts`</a>。</div>
+            <div><b>状态真相</b><a href="../../src/service/ambient/AmbientPushRuntime.ts">`AmbientPushRuntime`</a> owns trigger orchestration and aborts stale searches。</div>
+            <div><b>Projection</b>UI store writes happen through `AmbientUiProjectionAdapter`; runtime does not import UI。</div>
+          </div>
+        </div>
+
+        <div class="flow-panel">
+          <h3>Vault X-Ray / Lint：RunEnvelope 读法</h3>
+          <div class="chart-box mermaid-box">
+            <pre class="mermaid">flowchart LR
+  view["VaultXRayView"]
+  ctx["ServiceContext.vaultLintRuntime"]
+  hook["useVaultLintRunState"]
+  runner["runVaultLintManualScan&lt;br/&gt;RunEnvelope runner"]
+  runtime["VaultLintService&lt;br/&gt;implements runtime"]
+  ports["VaultLintPorts&lt;br/&gt;config / vault / persistence / detectorContext"]
+  detectors["detector registry + signals"]
+  trace["RunEvent trace&lt;br/&gt;status / progress / artifact"]
+  ui["Vault X-Ray UI projection"]
+  repo["VaultLintRepo"]
+
+  view --> ctx --> hook --> runner --> runtime --> ports --> detectors
+  runner --> trace --> ui
+  ports --> repo</pre>
+          </div>
+          <div class="evidence-strip">
+            <div><b>入口</b><a href="../../src/app/lint/composeVaultLintRuntime.ts">`composeVaultLintRuntime`</a> creates the app-owned runtime after SQLite is ready。</div>
+            <div><b>状态真相</b><a href="../../src/service/lint/VaultLintRun.ts">`VaultLintRun`</a> owns per-run events; <a href="../../src/ui/view/vault-lint/hooks/useVaultLintRunState.ts">`useVaultLintRunState`</a> only projects them。</div>
+            <div><b>模式价值</b>This is the clearest sample for future long-running capabilities: runner + event trace + artifact ref。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="patterns" class="section">
+        <h2>设计模式速查</h2>
+        <table>
+          <thead><tr><th>模式</th><th>看哪里</th><th>怎么判断对不对</th></tr></thead>
+          <tbody>
+            <tr><td>Composition Root</td><td>`main.ts`、`src/app/context/AppContext.ts`、`src/app/**/compose*.ts`</td><td>concrete dependency 是否只在 app 层被装配。</td></tr>
+            <tr><td>Port / Adapter</td><td>`src/core/ports/*`、`src/service/**/ports/*`、`src/app/adapters/*`</td><td>service/core 是否只依赖接口；adapter 是否拥有 Obsidian/SQLite/Notice 细节。</td></tr>
+            <tr><td>Runtime Registry</td><td>`src/app/runtime/AppRuntimeRegistry.ts`</td><td>runtime 是否 fail-loud double bind、soft accessor、clear on unload。</td></tr>
+            <tr><td>RunEnvelope</td><td>`src/service/run-envelope/*`、`src/service/lint/VaultLintRun.ts`</td><td>run 是否有 session、events、artifact ref；UI 是否从 trace 投影。</td></tr>
+            <tr><td>Registry / Catalog</td><td>`RetrieverRegistry`、`CopilotActionRuntimeImpl`、`SkillRegistry`、`ProfileRegistry`</td><td>新增类型是否注册一次，调用方是否只看统一 catalog。</td></tr>
+            <tr><td>Pipeline / Slots</td><td>`ContextPipeline`、`QueryService`</td><td>每个阶段是否小而可替换，阶段顺序是否清楚。</td></tr>
+            <tr><td>Template / Config externalization</td><td>`TemplateManager`、`TemplateRegistry`、`templates/config/*`</td><td>大文案、模型、阈值、规则是否不要散在逻辑文件。</td></tr>
+            <tr><td>Projection Store</td><td>`src/ui/store/*`、feature store</td><td>store 是否只是 UI 状态投影，不拥有长期业务 truth。</td></tr>
+            <tr><td>Duck-typed transitional bridge</td><td>`src/core/storage/vault/vault-ops.ts`、`AppHandle`</td><td>这是 T11R 的 containment，不是终局；未来可继续收窄成 typed ports。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deps" class="section">
+        <h2>第三方组件</h2>
+        <div class="grid cols-2">
+          <div class="module">
+            <h3>AI / Agents <em>10 deps</em></h3>
+            <p>`@ai-sdk/*`、`ai`、`ai-elements`、`@anthropic-ai/claude-agent-sdk`、`@openrouter/ai-sdk-provider`、`ollama-ai-provider-v2`、`@modelcontextprotocol/sdk`。</p>
+            <p class="small">阅读入口：`src/core/providers/*`、`src/service/agents/*`、`src/service/mcp/*`。</p>
+          </div>
+          <div class="module">
+            <h3>UI / Interaction <em>25 deps</em></h3>
+            <p>React 18、Radix primitives、CodeMirror、XYFlow、lucide、framer-motion/motion、sonner、recharts、tailwind-merge。</p>
+            <p class="small">阅读入口：`src/ui/component*`、`src/ui/view/*`、`src/styles/*`。</p>
+          </div>
+          <div class="module">
+            <h3>Data / Storage <em>7 deps</em></h3>
+            <p>`better-sqlite3`、`sqlite-vec`、`kysely`、`gray-matter`、`ignore`、`uuid`、`yaml`。</p>
+            <p class="small">阅读入口：`src/core/storage/sqlite/*`、`src/core/storage/vault/*`。</p>
+          </div>
+          <div class="module">
+            <h3>Docs / Markdown <em>16 deps</em></h3>
+            <p>`streamdown`、`@streamdown/*`、`remark*`、`mermaid`、`handlebars`、`pdfjs-dist`、`mammoth`、`officeparser`。</p>
+            <p class="small">阅读入口：document loaders、rendering components、template/prompt system。</p>
+          </div>
+          <div class="module">
+            <h3>Graph / Search <em>8 deps</em></h3>
+            <p>`@dagrejs/dagre`、`d3-*`、`@langchain/*` textsplitters/core/community。</p>
+            <p class="small">阅读入口：`src/service/search/index/helper/*`、graph UI、retrievers。</p>
+          </div>
+          <div class="module">
+            <h3>Build / Dev</h3>
+            <p>TypeScript、esbuild、Vite、Tailwind、PostCSS、Obsidian typings、test runner。</p>
+            <p class="small">阅读入口：`package.json` scripts、`esbuild.config.mjs`、`run-test.js`。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="volume" class="section">
+        <h2>代码量地图</h2>
+        <p>这里改成两层口径：只有直接面向用户工作流的才叫“用户功能岛”；Shared UI、Core storage、Agents harness、MCP/tools、Boot/App shell、cross-cutting glue 合并理解为一个“技术支撑层”。图和表都用 raw line count，包含空行和注释，用于判断阅读优先级，不用于评价代码质量。</p>
+
+        <div class="split-summary">
+          <div class="split-card user-facing">
+            <strong>用户功能岛</strong>
+            <span>Quick Search、Copilot、Chat、Usage Dashboard、Settings/Onboarding、Ambient/Morning、Vault Lint/X-Ray。</span>
+            <span class="big">76,659 lines · 55.1%</span>
+          </div>
+          <div class="split-card platform">
+            <strong>技术支撑层</strong>
+            <span>Shared UI/CSS、Core storage、Agents harness、MCP/Skills/Tools、Boot/App shell、Other/cross-cutting。</span>
+            <span class="big">62,562 lines · 44.9%</span>
+          </div>
+        </div>
+
+        <div class="chart-box mermaid-box">
+          <h3>Mermaid：功能口径图</h3>
+          <pre class="mermaid">flowchart LR
+  codebase["Peak Assistant&lt;br/&gt;139,221 raw lines"]
+  user["用户功能岛&lt;br/&gt;76,659 lines / 55.1%"]
+  platform["技术支撑层&lt;br/&gt;62,562 lines / 44.9%"]
+  codebase -- "用户能直接感知" --> user
+  codebase -- "支撑所有能力" --> platform
+
+  user --> quick["Quick Search + Search"]
+  user --> copilot["Copilot"]
+  user --> chat["Chat"]
+  user --> usage["Usage Dashboard"]
+  user --> settings["Settings + Onboarding"]
+  user --> lint["Vault Lint / X-Ray"]
+  user --> ambient["Ambient + Morning"]
+
+  platform --> shared["Shared UI + CSS"]
+  platform --> storage["Core storage"]
+  platform --> other["Other / cross-cutting"]
+  platform --> agents["Agents + Harness"]
+  platform --> tools["MCP + Skills + Tools"]
+  platform --> boot["Boot/App shell"]
+
+  classDef rootNode fill:#ffffff,stroke:#94a3b8,color:#0f172a,stroke-width:1px;
+  classDef userNode fill:#eff6ff,stroke:#2563eb,color:#0f172a,stroke-width:1px;
+  classDef platformNode fill:#ecfdf5,stroke:#0f766e,color:#0f172a,stroke-width:1px;
+  class codebase rootNode;
+  class user,quick,copilot,chat,usage,settings,lint,ambient userNode;
+  class platform,shared,storage,other,agents,tools,boot platformNode;</pre>
+          <p class="small">这张图只解释“用户功能岛”和“技术支撑层”的分类口径；下面的 Mermaid treemap 才用面积表达代码量。</p>
+        </div>
+
+        <div class="visual-pair">
+          <div class="chart-box mermaid-box">
+            <h3>Mermaid 矩形树图：按 raw line count 看面积</h3>
+            <pre class="mermaid">treemap
+"Peak Assistant codebase"
+  "用户功能岛"
+    "Quick Search + Search": 21368
+    "Copilot": 19213
+    "Chat": 14128
+    "Usage Dashboard": 8635
+    "Settings + Onboarding": 8346
+    "Vault Lint / X-Ray": 2494
+    "Ambient + Morning": 2475
+  "技术支撑层"
+    "Shared UI + CSS": 16564
+    "Other / cross-cutting": 13878
+    "Core storage": 13210
+    "Agents + Harness": 9071
+    "MCP + Skills + Tools": 5888
+    "Boot/App shell": 3951</pre>
+          </div>
+          <div class="chart-box">
+            <h3>Mermaid 饼图：两层占比</h3>
+            <pre class="mermaid">pie showData
+  title 用户功能岛 vs 技术支撑层
+  "用户功能岛" : 76659
+  "技术支撑层" : 62562</pre>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>类型</th><th>功能 / 支撑组件</th><th class="num">文件</th><th class="num">行数</th><th>阅读建议</th></tr></thead>
+          <tbody>
+            <tr><td>用户功能岛</td><td>Quick Search + Search</td><td class="num">125</td><td class="num">21,368</td><td>最大运行时路径；先读 `SearchClient` / `QueryService` / quick-search host。</td></tr>
+            <tr><td>用户功能岛</td><td>Copilot</td><td class="num">106</td><td class="num">19,213</td><td>动作和面板很多；按 runtime + catalog + panel renderer 读。</td></tr>
+            <tr><td>用户功能岛</td><td>Chat</td><td class="num">83</td><td class="num">14,128</td><td>业务核心；先读 `AIServiceManager` 和 context slots。</td></tr>
+            <tr><td>用户功能岛</td><td>Usage Dashboard</td><td class="num">49</td><td class="num">8,635</td><td>产品保护面；可以瘦内部重复，不默认退役。</td></tr>
+            <tr><td>用户功能岛</td><td>Settings + Onboarding</td><td class="num">28</td><td class="num">8,346</td><td>很多配置/字符串；读 `PluginSettingsLoader` 和 settings tabs。</td></tr>
+            <tr><td>用户功能岛</td><td>Vault Lint / X-Ray</td><td class="num">25</td><td class="num">2,494</td><td>RunEnvelope 首个真实 adopter，是理解 trace/projection 的样本。</td></tr>
+            <tr><td>用户功能岛</td><td>Ambient + Morning</td><td class="num">25</td><td class="num">2,475</td><td>runtime/ports 模式很清楚，是读 ports/adapters 的好样本。</td></tr>
+            <tr><td>技术支撑层</td><td>Shared UI + CSS</td><td class="num">109</td><td class="num">16,564</td><td>阅读噪音大；适合后续 consolidation。</td></tr>
+            <tr><td>技术支撑层</td><td>Other / cross-cutting</td><td class="num">121</td><td class="num">13,878</td><td>常量、事件、types、零散工具、跨功能 glue；不要一开始读，遇到引用再回看。</td></tr>
+            <tr><td>技术支撑层</td><td>Core storage</td><td class="num">46</td><td class="num">13,210</td><td>底座，不建议为了瘦身硬删。</td></tr>
+            <tr><td>技术支撑层</td><td>Agents + Harness</td><td class="num">76</td><td class="num">9,071</td><td>按 agent type 读；不要和 Copilot action runtime 混在一起。</td></tr>
+            <tr><td>技术支撑层</td><td>MCP + Skills + Tools</td><td class="num">29</td><td class="num">5,888</td><td>工具系统；先看 registry/adapter，再看具体 tool。</td></tr>
+            <tr><td>技术支撑层</td><td>Boot/App shell</td><td class="num">19</td><td class="num">3,951</td><td>虽然行数不最大，但理解收益最高。</td></tr>
+          </tbody>
+        </table>
+
+        <h3>`cloc` 语言分布</h3>
+        <table>
+          <thead><tr><th>语言</th><th class="num">文件</th><th class="num">代码行</th></tr></thead>
+          <tbody>
+            <tr><td>TypeScript</td><td class="num">1,039</td><td class="num">130,525</td></tr>
+            <tr><td>CSS</td><td class="num">10</td><td class="num">6,002</td></tr>
+            <tr><td>Markdown</td><td class="num">158</td><td class="num">5,355</td></tr>
+            <tr><td>JSON</td><td class="num">15</td><td class="num">2,597</td></tr>
+            <tr><td>JavaScript</td><td class="num">5</td><td class="num">858</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="island-guides" class="section">
+        <h2>用户功能岛与技术支撑层阅读指南</h2>
+        <p>下面不是“目录说明”，而是两层阅读路线。先读用户功能岛，理解产品能力怎样跑起来；再读技术支撑层，理解这些能力共同依赖的 UI、storage、agents、tools、app shell 和 cross-cutting glue。</p>
+        <div class="audit-note">
+          <strong>每张功能卡都按同一个问题集阅读。</strong>
+          先找用户入口，再找 app composition，再找 runtime/state truth，再找 side effect 通过哪个 port/adapter 出去，最后才看 UI 组件和样式。这样读的好处是：你不是在目录树里迷路，而是在追一条能解释行为的调用链。
+        </div>
+
+        <h3 class="guide-group-title">用户功能岛：从用户入口追到 runtime</h3>
+        <div class="guide-grid">
+          <div class="guide user-facing">
+            <h3>Quick Search + Search <em>21,368 lines</em></h3>
+            <p>这是最大功能岛，包含即时检索、AI 分析、图谱生成、后台 session、保存分析结果。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../src/app/commands/Register.ts">`Register.ts`</a> 里看 `peak-quick-search` 命令。</li>
+              <li><a href="../../src/app/modals/QuickSearchModal.tsx">`app/modals/QuickSearchModal.tsx`</a> 了解 Obsidian modal shell。</li>
+              <li><a href="../../src/app/quick-search/composeQuickSearchHost.ts">`composeQuickSearchHost.ts`</a> 看 app-owned facade 暴露了哪些操作。</li>
+              <li><a href="../../src/ui/view/quick-search/hooks/useSearchSession.ts">`useSearchSession.ts`</a> 看一次搜索/AI 分析的 UI orchestration。</li>
+              <li><a href="../../src/service/search/SearchClient.ts">`SearchClient.ts`</a> 和 <a href="../../src/service/search/query/queryService.ts">`QueryService.ts`</a> 看 parser、retrievers、RRF、PPR、rerank。</li>
+              <li><a href="../../src/service/search/background/QuickSearchBackgroundRuntimeImpl.ts">`QuickSearchBackgroundRuntimeImpl.ts`</a> 看关闭 modal 后后台继续跑的 runtime。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>`composeQuickSearchHost` 比较宽，它把 raw Obsidian app 操作留在 app 层。service/search 负责检索逻辑，UI stores 只投影 session 状态。Review 时重点看有没有新 `src/ui/** -> @/app/**` 或 service 直接摸 UI。</p>
+          </div>
+
+          <div class="guide user-facing">
+            <h3>Copilot <em>19,213 lines</em></h3>
+            <p>Copilot 是动作 catalog + runtime + result panels 的组合，不要从某个 panel 开始读，否则会被 20 多个 action 淹没。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../src/app/copilot/actions/composeCopilotActionRuntime.ts">`composeCopilotActionRuntime.ts`</a> 看 app 层如何组装 action ports。</li>
+              <li><a href="../../src/service/copilot/actions/CopilotActionRuntimeImpl.ts">`CopilotActionRuntimeImpl.ts`</a> 看 built-in/custom prompt catalog、rank、lookup。</li>
+              <li><a href="../../src/service/copilot/actions/index.ts">`actions/index.ts`</a> 看 built-in actions 怎么创建。</li>
+              <li><a href="../../src/ui/view/copilot/copilot-action-surfaces.tsx">`copilot-action-surfaces.tsx`</a> 看 action 到 UI panel 的绑定。</li>
+              <li><a href="../../src/service/copilot/CopilotReviewSession.ts">`CopilotReviewSession.ts`</a> 看 Auto Review 这种长路径如何接 deps。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>现在动作执行的 dependency 都应该通过 `CopilotActionPorts`。阅读时把 action body 和 result panel 分开：前者回答“做什么”，后者回答“怎么展示”。后续瘦身最好从 generic panel/action factory 收敛重复形态，而不是删功能。</p>
+          </div>
+
+          <div class="guide user-facing">
+            <h3>Chat <em>14,128 lines</em></h3>
+            <p>Chat 是产品主路径之一，也是 context assembly 最复杂的地方。读它时要从 manager 和 pipeline 进，不要从单个 message component 进。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../src/app/view/ChatStudioView.ts">`ChatStudioView.ts`</a> / <a href="../../src/app/view/ChatView.ts">`ChatView.ts`</a> 看 Obsidian view shell。</li>
+              <li><a href="../../src/service/chat/service-manager.ts">`AIServiceManager`</a> 看 storage、prompt、profile、context services 怎么被组装。</li>
+              <li>`src/service/chat/context/slots/*` 逐个看上下文片段：system prompt、profile、summary、working context、previous analysis。</li>
+              <li><a href="../../src/service/chat/service-conversation.ts">`ConversationService`</a> 看发送、streaming、usage event、storage 写入。</li>
+              <li><a href="../../src/core/storage/vault/ChatStore.ts">`ChatStorageService`</a> 看 chat data 如何落到 vault。</li>
+              <li>`src/ui/view/chat-view/*` 最后读，理解 UI 如何消费 manager 和 stores。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>Chat 的关键不是某个组件，而是 context pipeline。任何改动都要问：会不会改变 prompt/context 顺序？会不会让 UI store 变成业务 truth？会不会绕开 `ChatVaultWriterPort` / app-owned composition？</p>
+          </div>
+
+          <div class="guide user-facing">
+            <h3>Usage Dashboard <em>8,635 lines</em></h3>
+            <p>Usage 是用户可见的成本与效果保护面：它连接 usage tracking、outcome、optimization、dashboard UI、curator push。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../src/app/view/UsageDashboardView.ts">`UsageDashboardView.ts`</a> 看 view shell。</li>
+              <li><a href="../../src/service/usage/UsageTrackingService.ts">`UsageTrackingService.ts`</a> 看 AI 调用记录。</li>
+              <li><a href="../../src/service/usage/UsageOutcomeService.ts">`UsageOutcomeService.ts`</a> 看 saved/adopted outcome。</li>
+              <li>`src/service/usage/optimization/*` 看 recommendation/rules/prompt/schema。</li>
+              <li><a href="../../src/app/usage/composeCuratorPushRuntime.ts">`composeCuratorPushRuntime.ts`</a> 和 `CuratorPushRuntime.ts` 看 usage nudges。</li>
+              <li>`src/ui/view/usage-dashboard/*` 最后读 UI screens。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>这里不要默认删 dashboard。可优化方向是 chart primitive 和 CSS 重复、fallback string 组织、recommendation renderer 复用。</p>
+          </div>
+
+          <div class="guide user-facing">
+            <h3>Settings + Onboarding <em>8,346 lines</em></h3>
+            <p>这是用户修复 capability readiness 的入口，覆盖模型/profile/MCP/skills/search/usage/harness setup。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../src/app/settings/PluginSettingsLoader.ts">`PluginSettingsLoader.ts`</a> 看 settings normalize/sanitize/migration。</li>
+              <li><a href="../../src/app/settings/types.ts">`settings/types.ts`</a> 看 persisted shape。</li>
+              <li><a href="../../src/app/settings/MySetting.ts">`MySetting.ts`</a> 看 Obsidian setting tab shell。</li>
+              <li>`src/ui/view/settings/*` 看分 tab UI。</li>
+              <li><a href="../../src/app/modals/HarnessOnboardingModal.tsx">`HarnessOnboardingModal.tsx`</a> 和 `src/ui/view/onboarding/*` 看初次配置。</li>
+              <li>`templates/config/*` 看外置 strings/config。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>这里的风险是把大配置表和文案写回 TS。Review 时看新增设置是否有 migration/default/sanitize，是否通过 template/config 外置。</p>
+          </div>
+
+          <div class="guide user-facing">
+            <h3>Vault Lint / X-Ray <em>2,494 lines</em></h3>
+            <p>体量小，但这是用户可见的 vault inspection 能力，同时也是 RunEnvelope 首个真实 adopter。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../src/app/lint/composeVaultLintRuntime.ts">`composeVaultLintRuntime.ts`</a> 看 lint ports/adapters。</li>
+              <li><a href="../../src/service/lint/VaultLintContract.ts">`VaultLintContract.ts`</a> 看 capability contract。</li>
+              <li><a href="../../src/service/lint/VaultLintRun.ts">`VaultLintRun.ts`</a> 看 RunEnvelope session/events/artifact。</li>
+              <li><a href="../../src/service/lint/VaultLintService.ts">`VaultLintService.ts`</a> 看 detector execution。</li>
+              <li><a href="../../src/ui/view/vault-lint/hooks/useVaultLintRunState.ts">`useVaultLintRunState.ts`</a> 看 UI 如何从 event trace 投影。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>这是读 `RunEnvelope` 的最佳样本。任何新 long-running capability 都应该参考它的 runner、event trace、artifact ref、UI projection 边界。</p>
+          </div>
+
+          <div class="guide user-facing">
+            <h3>Ambient + Morning <em>2,475 lines</em></h3>
+            <p>这是用户可感知的 proactive assistance 能力，也是 ports/adapters 模式的清爽样本。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../src/app/ambient/composeAmbientRuntime.ts">`composeAmbientRuntime.ts`</a> 看 ports 如何被 app adapters 填充。</li>
+              <li><a href="../../src/service/ambient/ports/AmbientPorts.ts">`AmbientPorts.ts`</a> 看 runtime 需要什么。</li>
+              <li><a href="../../src/service/ambient/AmbientPushRuntime.ts">`AmbientPushRuntime.ts`</a> 看 trigger/search/projection/briefing 的主流程。</li>
+              <li>`src/app/ambient/*Adapter.ts` 看具体 Obsidian/SQLite/UI store 接入。</li>
+              <li>`src/ui/view/ambient-push/*` 和 `src/ui/view/morning-briefing/*` 看呈现层。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>它是理解“service runtime 不摸 host”的好入口。未来 Current Work State 不应该和旧 Ambient 平行双系统并存。</p>
+          </div>
+        </div>
+
+        <h3 class="guide-group-title">技术支撑层：作为一个大底座读，内部再按责任拆</h3>
+        <div class="flow-panel">
+          <h3>技术支撑层不是用户功能岛：它是所有能力共用的运行底座</h3>
+          <div class="chart-box mermaid-box">
+            <pre class="mermaid">flowchart LR
+  boot["Boot / App shell&lt;br/&gt;main.ts · AppContext · RuntimeRegistry"]
+  react["React service injection&lt;br/&gt;ReactElementFactory · ServiceContext"]
+  ui["Shared UI + CSS&lt;br/&gt;primitive · component · token"]
+  storage["Core storage&lt;br/&gt;SQLite repos · DDL · vault stores"]
+  agents["Agents + Harness&lt;br/&gt;AgentLoop · tools · permissions"]
+  mcp["MCP + Skills + Tools&lt;br/&gt;external tools · skill registry"]
+  glue["Other / cross-cutting&lt;br/&gt;types · eventBus · constants · utils"]
+
+  boot --> react --> ui
+  boot --> storage
+  boot --> agents
+  agents --> mcp
+  storage --> ui
+  glue -. "only read when referenced" .-> boot
+  glue -. "domain types / events" .-> storage
+  glue -. "shared contracts" .-> agents</pre>
+          </div>
+          <div class="evidence-strip">
+            <span>读支撑层时不要按行数排序，先读 Boot/App shell</span>
+            <span>Shared UI/CSS 主要是复用与命名问题，不是 runtime truth</span>
+            <span>Core storage 的 review 重点是 schema、migration、repo contract</span>
+            <span>Other/cross-cutting 只在调用链需要时回看</span>
+          </div>
+        </div>
+        <div class="guide-grid">
+          <div class="guide platform">
+            <h3>Shared UI + CSS <em>16,564 lines</em></h3>
+            <p>这是技术支撑层的一部分，不是独立用户功能。它支撑所有用户功能的视觉 primitive、shared component、layout 和 CSS token。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../docs/conventions/ui-design.md">`docs/conventions/ui-design.md`</a> 先读设计系统约束。</li>
+              <li>`src/ui/components/primitives/*` 看真正跨功能 primitive。</li>
+              <li>`src/ui/component/*` 看旧 shared component 和 feature-ish component。</li>
+              <li><a href="../../src/styles/peak-components.css">`peak-components.css`</a> 看 CSS primitive/token 的实际承载。</li>
+              <li>再回到各 feature view，看它们是否重复实现 Button、Pill、Card、Modal、Row。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>这里要按“谁能复用”分类：primitive、shared composite、feature-local。Review 时不要只看行数，重点看同一种 UI 语义是不是有两套实现。</p>
+          </div>
+
+          <div class="guide platform">
+            <h3>Core storage <em>13,210 lines</em></h3>
+            <p>这是 SQLite、vault chat storage、repo、DDL、native module 的底座。它不是用户功能，但所有高价值能力都依赖它。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../src/core/storage/sqlite/SqliteStoreManager.ts">`SqliteStoreManager.ts`</a> 看 DB 初始化、backend selection、repo access。</li>
+              <li>`src/core/storage/sqlite/ddl.ts` 看数据表语义。</li>
+              <li>`src/core/storage/sqlite/repositories/*` 按 feature 找 repo。</li>
+              <li><a href="../../src/core/storage/vault/ChatStore.ts">`ChatStore.ts`</a> 看 vault-side chat persistence。</li>
+              <li><a href="../../src/core/storage/vault/vault-ops.ts">`vault-ops.ts`</a> 看 T11R 后 service/core 如何避免 import Obsidian。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>storage 是多能力共享底座。Review 时优先看 schema/migration/backward compatibility，不要用“这个文件大”作为删除理由。</p>
+          </div>
+
+          <div class="guide platform">
+            <h3>Agents + Harness <em>9,071 lines</em></h3>
+            <p>这是 agent 基础设施层，承载 VaultSearchAgent、GraphAgent、DocSimpleAgent、report orchestrator、agent loop、tool/hook/memory/permission。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../src/service/agents/harness/loop/AgentLoop.ts">`AgentLoop.ts`</a> 看通用 agent loop。</li>
+              <li>`src/service/agents/harness/tool/*` 看 tool registry / adapter。</li>
+              <li>`src/service/agents/core/*` 看 Agent SDK bridge、message adapter、pool。</li>
+              <li><a href="../../src/service/agents/DocSimpleAgent.ts">`DocSimpleAgent.ts`</a>、`VaultSearchAgent*`、`GraphAgent.ts` 按具体 agent 看。</li>
+              <li><a href="../../src/service/agents/report/ReportOrchestrator.ts">`ReportOrchestrator.ts`</a> 看报告生成 session。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>先分清“agent framework”与“具体 agent”。具体 agent 不应该重新定义 runtime ownership；它应该复用 tool/schema/loop/port 体系。</p>
+          </div>
+
+          <div class="guide platform">
+            <h3>MCP + Skills + Tools <em>5,888 lines</em></h3>
+            <p>这是外部工具与 skill 系统：MCP client、tool adapter、skill parser/registry、search graph inspector tools。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../src/service/mcp/MCPClientManager.ts">`MCPClientManager.ts`</a> 看 stdio/SSE server 连接管理。</li>
+              <li><a href="../../src/service/mcp/MCPToolAdapter.ts">`MCPToolAdapter.ts`</a> 看 MCP tool 怎么变成 agent tool。</li>
+              <li><a href="../../src/service/skills/SkillRegistry.ts">`SkillRegistry.ts`</a> 和 <a href="../../src/service/skills/SkillParser.ts">`SkillParser.ts`</a> 看 vault skill 加载。</li>
+              <li>`src/service/tools/*` 看内置工具，尤其 content reader、search memory、search graph inspector。</li>
+              <li>`templates/tools/*` 看工具提示词/输出模板。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>这类代码要重点看权限、输入 schema、错误降级、tool result 是否适合给 agent 消费。不要让 tool 直接跨层拿 UI 或 app concrete。</p>
+          </div>
+
+          <div class="guide platform">
+            <h3>Boot/App shell <em>3,951 lines</em></h3>
+            <p>虽然行数不大，但它决定全系统怎么被装起来。任何“我看不懂模块怎么连”的问题，先回这里。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li><a href="../../main.ts">`main.ts`</a>：`onload()`、`initSqlite()`、`initializeSearchService()`、`onunload()`。</li>
+              <li><a href="../../src/app/context/AppContext.ts">`AppContext.ts`</a>：app-owned services、ports、runtime registry。</li>
+              <li><a href="../../src/app/runtime/AppRuntimeRegistry.ts">`AppRuntimeRegistry.ts`</a>：所有 runtime bind/read/clear 语义。</li>
+              <li><a href="../../src/app/view/ViewManager.ts">`ViewManager.ts`</a>：view registration 和 activation。</li>
+              <li><a href="../../src/app/react/ReactElementFactory.tsx">`ReactElementFactory.tsx`</a>：UI service context 的唯一注入点。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>`app/` 可以知道 Obsidian；它的职责是把 concrete 变成 ports/adapters/runtime。Review 时看是否出现第二个 composition root 或 service-side runtime owner。</p>
+          </div>
+
+          <div class="guide platform">
+            <h3>Other / cross-cutting <em>13,878 lines</em></h3>
+            <p>这里不是一个功能，而是常量、事件、types、utils、small services、cross-feature glue。不要从这里开始读。</p>
+            <span class="read-label">阅读顺序</span>
+            <ol>
+              <li>先从某个功能岛遇到引用时再回来。</li>
+              <li><a href="../../src/core/constant.ts">`core/constant.ts`</a> 只看 cross-cutting constants，不要往里继续塞大配置。</li>
+              <li><a href="../../src/core/eventBus.ts">`eventBus.ts`</a> 看 view event/usage event 的横向通信。</li>
+              <li>`src/core/types/*` / `src/core/search/*` 看 neutral domain types。</li>
+              <li>`src/core/utils/*` 只按调用链读，不要全量硬啃。</li>
+            </ol>
+            <span class="read-label">理解重点</span>
+            <p>这个岛的 review 原则是“避免变成垃圾桶”。新增跨功能东西时，要问它到底是 port、type、config、utility，还是应该留在 feature 内部。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="review-guide" class="section">
+        <h2>你应该怎么读和 Review</h2>
+        <ol>
+          <li><strong>先定能力，不要先定目录。</strong>例如你要看 Quick Search，就从 command/modal/host/runtime 开始，不要直接冲进 `src/ui/view/quick-search`。</li>
+          <li><strong>每条路径都问三个问题。</strong>入口在哪里？runtime/state truth 在哪里？side effect 通过哪个 port/adapter 出去？</li>
+          <li><strong>读 app composition，再读 service runtime。</strong>`compose*.ts` 往往是一页版依赖图，能帮你避开在 service 内迷路。</li>
+          <li><strong>看到 `AppHandle` 要标记为 transitional bridge。</strong>这不是失败，是 T11R 后的 containment；未来优化方向是把它缩成更窄的 ports。</li>
+          <li><strong>看到 Zustand store，不要默认它是业务真相。</strong>检查是否只是 projection；长任务真相应该在 runtime / envelope / persistence。</li>
+          <li><strong>用扫描命令代替直觉。</strong>边界类判断先跑 `npm run audit:boundary`，再用 `rg` 查 `@/app`、`obsidian`、`AppContext`。</li>
+        </ol>
+
+        <h3>每次看一个能力的固定模板</h3>
+        <div class="mono-block">1. Command / view entry
+2. app compose file
+3. runtime or manager
+4. ports interface
+5. app adapter implementation
+6. UI hook/store projection
+7. tests / regression guard
+8. old path deletion evidence</div>
+
+        <h3>最有用的命令</h3>
+        <div class="mono-block">npm run build
+npm run audit:boundary
+npm run test -- test/t11r-zero-obsidian-boundary-regression.test.ts
+rg -n "from ['\"]@/app|import\\(['\"]@/app" src/ui src/service src/core
+rg -n "from ['\"]obsidian['\"]|import\\(['\"]obsidian['\"]" src/service src/core
+rg -n "AppContext\\.getInstance|AppContext\\.getApp|AppContext\\.getManager" src/service src/core src/ui</div>
+      </section>
+
+      <section id="watchpoints" class="section">
+        <h2>审阅提醒</h2>
+        <table>
+          <thead><tr><th>提醒</th><th>位置</th><th>为什么值得看</th></tr></thead>
+          <tbody>
+            <tr><td>`AppHandle` 仍是过渡桥</td><td>`src/core/ports/AppHandle.ts`、`src/core/storage/vault/vault-ops.ts`</td><td>T11R 把 Obsidian import 清到 0，但一些 service/core 仍通过 duck-typed app handle 访问 vault。下一步若继续优雅化，应把这些缩成更窄的 typed ports。</td></tr>
+            <tr><td>Quick Search host 仍比较宽</td><td>`src/app/quick-search/composeQuickSearchHost.ts`</td><td>它把文件操作、agent factory、markdown persistence、chat interop 都打包给 UI。边界合法，但阅读时要把它当作一个 app-owned facade。</td></tr>
+            <tr><td>Shared UI/CSS 是阅读噪音大头</td><td>`src/ui/component*`、`src/ui/components/*`、`src/styles/*`</td><td>它不是边界问题，而是命名、重复 primitive、feature/shared 混放带来的 owner cognition cost。</td></tr>
+            <tr><td>有小清洁点但不阻断构建</td><td>`src/service/chat/service-manager.ts`</td><td>当前文件里 `ProfileRegistry` 被重复 import；`npm run build` 通过，但后续整理 import 时可以顺手清掉。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="verification" class="section">
+        <h2>验证记录</h2>
+        <table>
+          <thead><tr><th>命令</th><th>结果</th><th>备注</th></tr></thead>
+          <tbody>
+            <tr><td>`cloc main.ts src test scripts templates --exclude-dir=node_modules --quiet`</td><td class="ok">PASS</td><td>用于代码量统计。</td></tr>
+            <tr><td>`npm run audit:boundary`</td><td class="ok">PASS</td><td>`Total flagged cross-layer / side-effect edges: 0`。</td></tr>
+            <tr><td>`npm run build`</td><td class="ok">PASS</td><td>CSS build、esbuild production、`node --check main.js`、SDK copy 均完成。</td></tr>
+            <tr><td>`Playwright file:// HTML QA`</td><td class="ok">PASS</td><td>Desktop 1440px + mobile 390px：导航锚点完整、Mermaid SVG=13、Mermaid treemap 已渲染、8 个用户功能流程图、入口卡=4、无横向溢出、13 个阅读指南分为 7 个用户功能与 6 个技术支撑。</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          本报告的定位是阅读地图和架构审阅，不是完整功能 QA。没有跑全量 `npm run test`；T11R note 记录过部分历史测试失败属于 pre-existing，但本报告没有独立复验所有测试。
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="../../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: true,
+        securityLevel: "loose",
+        theme: "base",
+        themeVariables: {
+          fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          primaryColor: "#eff6ff",
+          primaryBorderColor: "#2563eb",
+          primaryTextColor: "#0f172a",
+          lineColor: "#94a3b8",
+          pie1: "#2563eb",
+          pie2: "#0f766e"
+        }
+      });
+    }
+  </script>
+</body>
+</html>

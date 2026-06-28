@@ -682,16 +682,15 @@ npm run trace -- vault-search --fixture small "my custom query"
 
 ### 20.1 Gap Analysis View
 
-- [ ] Cmd+P → "Peak: Open Gap Analysis" → dedicated leaf opens
-- [ ] Community Map (ReactFlow) shows colored community clusters
-- [ ] Gap details sidebar shows gaps with score + type badge
-- [ ] Bridge node list shows potential bridge notes
+- [x] T11G retired the standalone `Peak: Open Gap Analysis` view/command
+- [ ] Settings → Advanced → Maintenance → recompute gap analysis still runs structural analysis
+- [ ] Structural MCP / graph inspector tools can still read structural analysis results
 
 ### 20.2 Gap Actions
 
-- [ ] "Add Link" button → inserts `[[link]]` in Related section of source note
-- [ ] "Create Bridge Note" → creates new note from template
-- [ ] Refresh button → recomputes structural analysis
+- [x] T11G retired standalone Gap Analysis view buttons ("Add Link", "Create Bridge Note", "Refresh")
+- [ ] Confirm retained structural recommendations surface through current graph/search/Copilot tooling, not the retired standalone Gap view
+- [ ] Confirm manual recompute remains available through Settings → Advanced → Maintenance
 
 ### 20.3 MultiLensGraph Integration
 
@@ -743,11 +742,9 @@ npm run trace -- vault-search --fixture small "my custom query"
 
 ### 23.2 Batch Mode
 
-- [ ] Cmd+P → "Copilot: Batch Tag Suggestions"
-- [ ] Folder picker appears → select a folder
-- [ ] Progress notice shows scan progress
-- [ ] Batch panel shows per-document tag suggestions
-- [ ] Bulk apply works across documents
+- [x] T11G retired the standalone `Copilot: Batch Tag Suggestions` modal/command
+- [ ] Confirm Copilot → "Suggest Tags" still opens the single-document tag suggestion panel
+- [ ] Confirm Vault Lint tag-related findings still point to the retained `suggest-tags` action
 
 ---
 

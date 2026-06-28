@@ -55,6 +55,17 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 - Agents: follow `runAgentLoop` / `AgentLoop` (`service/agents/core`); reuse tool + schema patterns from existing agents; wire through `src/core/schemas/` for Zod
 - Streaming: normalize with `src/core/providers/helpers/stream-helper.ts` (`streamTransform`, etc.) and `LLMStreamEvent`; UI streaming hooks live under `ui/view/chat-view/hooks/`
 
+## Codex Collaboration Rules
+
+- For major architecture/refactor guidance, do not make the user shuttle many tiny prompts between Codex and another coding agent. Default to one larger, copyable prompt with an internal execution DAG, independent tracks, dependency order, skip rules, protected scopes, verification, and one final implementation note.
+- For large modernization waves, prefer scan-first bulk prompts over preselecting only 2-3 tiny candidates. The prompt should make the coding agent scan multiple candidate pools, build a candidate matrix, execute all safe/medium-safe items in one session, and explain skipped high-risk items with evidence.
+- Scan-first is not enough by itself. Any task called a "major wave" must include an Impact Contract before implementation: primary metric target, required tracks, optional tracks, forbidden scope, skip budget, minimum acceptable delta, and stop/commit rule. If the result misses the contract, Codex must label it as minor cleanup or partial progress, not as an accepted major wave.
+- Major waves should default to a two-stage audit gate: Claude Code first performs read-only investigation and returns candidate matrix, DAG, risks, exact file plan, and expected metric delta; Codex/user audit that plan; only then should Claude Code implement. Skip this gate only when the handoff explicitly says implementation may start immediately.
+- For boundary-retirement waves, at least one high-impact metric must move materially, such as `service -> ui` edges, `service -> app` leaks, old runtime owners, source LOC from truly retired paths, or module-level mutable runtime bindings. Build/test pass alone is not enough to claim a large modernization step.
+- For code-volume reduction waves, preserve user-facing functionality by default. Do not remove a major feature merely to hit a LOC target. Reduce size through duplicate-code removal, modularity, shared abstractions, reusable UI primitives, design-pattern consolidation, compatibility-path retirement, debug-code extraction, and duplicate entry/surface consolidation. Feature deletion requires explicit owner approval and must be called out as a product decision, not a refactor.
+- Use micro-prompts only when the change is genuinely high-risk, blocked on a user decision, or the user explicitly asks for small steps. Otherwise, make the coding agent analyze dependencies and complete all safe work from one prompt.
+- Codex should still preserve owner control: explain the big wave in Chinese, include diagrams/code-reading guidance, and make skipped tracks explicit. The goal is fewer user round trips without returning to vibe coding.
+
 ## Design Documentation & UX Flow Reports
 
 - When creating UX flow reports, product evolution reports, or flow diagrams for this project, prefer image-first visual flows over text-heavy tables.
