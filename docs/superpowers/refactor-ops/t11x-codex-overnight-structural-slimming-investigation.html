@@ -1,0 +1,2856 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T11X Overnight Structural Slimming Investigation</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #fff;
+      --ink: #172033;
+      --muted: #647086;
+      --line: #dfe5ee;
+      --soft: #eef2f7;
+      --blue: #245fe6;
+      --green: #0f8a5f;
+      --amber: #b7791f;
+      --red: #c2413a;
+      --violet: #6b4fd8;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.58;
+    }
+    main {
+      width: min(1220px, calc(100vw - 40px));
+      margin: 0 auto;
+      padding: 38px 0 74px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 32px;
+      line-height: 1.14;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 38px 0 14px;
+      font-size: 22px;
+      line-height: 1.24;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 10px;
+      font-size: 16px;
+      line-height: 1.28;
+      letter-spacing: 0;
+    }
+    p { margin: 0 0 12px; }
+    code, pre {
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    pre {
+      margin: 10px 0 0;
+      padding: 12px;
+      color: #edf2f7;
+      background: #111827;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    .hero {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 26px;
+      box-shadow: 0 20px 55px rgba(20, 30, 50, .08);
+    }
+    .eyebrow {
+      color: var(--violet);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 8px;
+    }
+    .lead {
+      max-width: 920px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+    .kpi { display: flex; flex-direction: column; gap: 4px; }
+    .kpi strong { font-size: 24px; line-height: 1; }
+    .kpi span { color: var(--muted); font-size: 12px; }
+    .callout {
+      border-left: 5px solid var(--blue);
+      background: #eef4ff;
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin: 10px 0 16px;
+    }
+    .warn {
+      border-left: 5px solid var(--amber);
+      background: #fff8eb;
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin: 10px 0 16px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--soft);
+      color: var(--muted);
+      margin-right: 6px;
+      white-space: nowrap;
+    }
+    .tag.green { background: #e7f7ef; color: var(--green); }
+    .tag.blue { background: #e8efff; color: var(--blue); }
+    .tag.amber { background: #fff2d7; color: var(--amber); }
+    .tag.red { background: #fde8e8; color: var(--red); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 10px 11px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      background: #f1f4f8;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .num {
+      text-align: right;
+      font-family: var(--mono);
+      white-space: nowrap;
+    }
+    .mono-path {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--soft);
+      border-radius: 6px;
+      padding: 2px 5px;
+      word-break: break-all;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 230px 1fr 80px;
+      gap: 10px;
+      align-items: center;
+      margin: 9px 0;
+      font-size: 13px;
+    }
+    .bar-bg {
+      height: 11px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #e8edf5;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #245fe6, #6b4fd8);
+    }
+    .track {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin: 14px 0;
+    }
+    .idx {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      margin-right: 8px;
+      border-radius: 999px;
+      background: #e8efff;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .pattern {
+      display: grid;
+      grid-template-columns: 1fr 42px 1fr;
+      gap: 12px;
+      align-items: stretch;
+      margin-top: 10px;
+    }
+    .box {
+      border: 1px solid var(--line);
+      background: #fbfcfe;
+      border-radius: 10px;
+      padding: 12px;
+      min-height: 110px;
+    }
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue);
+      font-weight: 900;
+      font-size: 24px;
+    }
+    .mini-list {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+    .mini-list li { margin: 4px 0; }
+    @media (max-width: 840px) {
+      main { width: min(100vw - 24px, 1220px); }
+      .span-3, .span-4, .span-6, .span-8 { grid-column: span 12; }
+      .pattern { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); }
+      .bar-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="eyebrow">Codex overnight investigation · T11X</div>
+    <h1>T11W 之后继续找：更深一层的结构性瘦身池</h1>
+    <p class="lead">
+      本文从 T11W 报告之后继续，不覆盖旧文档。T11W 保留为备份；这里记录继续深挖出来的新候选。
+      原则不变：不删用户功能，不牺牲 Chat 三栏、Usage Dashboard、Quick Search、Copilot、Settings、Onboarding；
+      只找重复 grammar、重复 helper、迁移兼容残留、长文本/生成资产 containment、以及能净减少的结构收敛。
+    </p>
+  </section>
+
+  <h2>0. 恢复锚点</h2>
+  <div class="grid">
+    <div class="card span-3 kpi">
+      <strong>ce380273</strong>
+      <span>调查基线 HEAD</span>
+    </div>
+    <div class="card span-3 kpi">
+      <strong>904</strong>
+      <span>src/styles scanned TS/TSX/CSS files</span>
+    </div>
+    <div class="card span-3 kpi">
+      <strong>0</strong>
+      <span>boundary audit 当前目标保持值</span>
+    </div>
+    <div class="card span-3 kpi">
+      <strong>T11W backup</strong>
+      <span>旧报告保留，不继续覆盖</span>
+    </div>
+  </div>
+
+  <div class="warn">
+    <p>
+      已创建线程 heartbeat：<code>t11x-slimming-scan-heartbeat</code>，每 60 分钟回到本线程继续。
+      如果上下文或用量中断，下一次从本文继续扫，不从 T11W 旧文档重来。
+    </p>
+  </div>
+
+  <h2>1. 新增总判断</h2>
+  <div class="callout">
+    <p>
+      T11W 的 A-K 仍是主池；继续深挖后，我又确认了几类更隐藏的池子：
+      <strong>Meta-agent 双路径重复</strong>、<strong>DocumentLoader skeleton 重复</strong>、
+      <strong>Onboarding 旧状态机残留</strong>、<strong>ItemView/Modal shell 重复</strong>、
+      <strong>Settings model picker 重复</strong>、<strong>内置 skill 文本硬编码</strong>、
+      <strong>Streamdown 1.4MB 生成 CSS 内嵌</strong>、
+      <strong>Usage Dashboard 小语法重复</strong>、
+      <strong>Chat 附件/资源预览重复</strong>、
+      <strong>Search retriever / find-path 模板重复</strong>、
+      <strong>SQLite repo/query helper 重复</strong>、
+      <strong>Quick Search V2 surface grammar</strong>、
+      <strong>Copilot remaining panel families</strong>、
+      <strong>UI component 双根整理</strong>、
+      <strong>Settings/config normalize grammar</strong>、
+      <strong>Agent harness run grammar</strong>、
+      <strong>Rerank/Web-search provider adapter 重复</strong>、
+      <strong>Document/file type catalog 重复</strong>、
+      <strong>Index maintenance loop template 重复</strong>、
+      <strong>Vault Review report surface grammar</strong>、
+      <strong>Report/SDK generation orchestration 重复</strong>、
+      <strong>Project/Conversation/Recent list grammar 重复</strong>、
+      <strong>Onboarding/Profile setup-step grammar</strong>、
+      <strong>Folder intelligence substrate 重复</strong>、
+      <strong>Chat manager/query/slot ceremony 重复</strong>、
+      <strong>MultiLensGraph layout assembly 重复</strong>、
+      <strong>core constants / duplicate import / residue sweep</strong>、
+      <strong>Copilot action recipe factory</strong>、
+      <strong>Markdown/JSON persistence grammar</strong>、
+      <strong>MCP/tool server wrapper grammar</strong>、
+      <strong>Quick Search session-store transition grammar</strong>、
+      <strong>Test/regression harness helper consolidation</strong>、
+      <strong>Native SQLite module loader/probe grammar</strong>、
+      <strong>Provider/Model/Profile catalog 真相源收敛</strong>、
+      <strong>PromptId/TemplateRegistry 元数据重复</strong>、
+      <strong>App runtime registry ceremony</strong>、
+      <strong>Command/Notice maintenance grammar</strong>、
+      <strong>Workspace leaf/layout helper</strong>、
+      <strong>RAF streaming buffer grammar</strong>、
+      <strong>compatibility shim retirement sweep</strong>、
+      <strong>Chat vault/sqlite persistence grammar</strong>、
+      <strong>Tag/taxonomy serialization + suggestion grammar</strong>、
+      <strong>File/Attachment taxonomy</strong>、
+      <strong>App port adapter / composer boilerplate</strong>、
+      <strong>App React shell wrapper</strong>、
+      <strong>UI async/subscription hook grammar</strong>。
+    </p>
+    <p>
+      这些加起来不是单波全部吃掉的安全包，但它们说明：项目确实还有可减空间。
+      下一轮 Claude 不应该只执行 T11W A/B/C/F/G/H/I，还应该从本文 L-BA 中挑选安全 track 一并处理。
+      只看 T11X 新增池，现实净减少约 <strong>26k</strong>，乐观约 <strong>62k</strong>；
+      其中约 <strong>1k-3k</strong> 是 test-only 瘦身，不能拿来冒充产品源码瘦身。
+      但我会把它拆成风险层，而不是让 Claude 一口气乱动所有核心路径。
+    </p>
+  </div>
+
+  <h2>1.1 阅读地图：不要从字母顺序读</h2>
+  <div class="grid">
+    <div class="card span-4">
+      <h3>第一优先：能形成共享 grammar / primitives</h3>
+      <p>
+        先看 <strong>S/W/AP/X/AE/AG/AH/11.14/11.17</strong>。这些主要是 UI/report/list/setup/state transition/file-display/async hook grammar：
+        不删 Usage Dashboard、Quick Search、Copilot、Chat 三栏，只把重复的卡片、列表、按钮、状态、row、footer 抽掉。
+      </p>
+    </div>
+    <div class="card span-4">
+      <h3>第二优先：能形成共享 substrate</h3>
+      <p>
+        再看 <strong>M/AI/Z/AC/V/AB/AM/AO/11.15/11.16</strong>。这些是 loader skeleton、folder intelligence、settings/config、
+        repo/json、provider/action recipe、MCP/tool wrapper、app shell wrapper、app adapter composer。它们能减少“同一能力散落多处”的维护成本。
+      </p>
+    </div>
+    <div class="card span-4">
+      <h3>后置：核心运行时 / 文件格式 / 搜索算法</h3>
+      <p>
+        最后看 <strong>L/AJ/U/AD/AN/R/Y/AK/AR/AS/AT/AU/AV/AW/AX/AY/AZ/BA/11.13/AQ</strong>。它们能减，但更容易影响 Chat、search、历史 markdown、bundle、布局、SQLite native 启动、模型选择、provider catalog、tag/taxonomy 或测试守卫形态。
+        AQ 是 test-only，必须保持断言覆盖，不计入产品源码目标。
+      </p>
+    </div>
+  </div>
+
+  <h2>1.2 执行地图：产品源码先，test-only 后</h2>
+  <div class="pattern">
+    <div class="box">
+      <strong>Wave 1：先减重复 surface/state</strong>
+      <ul class="mini-list">
+        <li><code>S/W/AP/X/AE/AG/AH/11.14/11.17</code> 是 UI、report、list、setup、Quick Search state、file-display、async hook grammar。</li>
+        <li>目标不是删功能，而是让同类 card / row / transition 不再每个 screen 手写。</li>
+        <li>建议 hard target：约 <strong>-9k</strong>。</li>
+      </ul>
+    </div>
+    <div class="arrow">→</div>
+    <div class="box">
+      <strong>Wave 2：再减 runtime / tool / generation ceremony</strong>
+      <ul class="mini-list">
+        <li><code>L/O/P/V/AJ/AA/AF/AL/AM/AO/11.15/11.16</code> 更接近 runtime、repo、tool、agent、app shell、app adapter composer。</li>
+        <li>这里要守住 contract，不把 MCP/tool、Copilot action、Chat query 抽成黑盒。</li>
+        <li>建议 hard target：约 <strong>-5.5k</strong>。</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pattern">
+    <div class="box">
+      <strong>Wave 3：高风险可选池</strong>
+      <ul class="mini-list">
+        <li><code>U/AD/R/Y/AK/AN/AR/AS/AT/AU/AV/AW/AX/AY/AZ/BA/11.13</code> 涉及 search/index、文件格式、组件根、bundle bytes、native sqlite、模型目录、Provider/Model catalog、Prompt/Template registry、app weave、store streaming、chat persistence、tag taxonomy。</li>
+        <li>要独立验收，不能混在第一波里用来凑数字。</li>
+      </ul>
+    </div>
+    <div class="arrow">→</div>
+    <div class="box">
+      <strong>Wave 4：test-only 瘦身</strong>
+      <ul class="mini-list">
+        <li><code>AQ</code> 只收敛测试 guard/fake builder/source scan helper。</li>
+        <li>它能让 repo 总行数下降，但不能计入产品源码瘦身成绩。</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>2. 大盘分布</h2>
+  <div class="bar-row"><span><code>src/ui/view</code></span><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><strong>44,776</strong></div>
+  <div class="bar-row"><span><code>src/core/storage</code></span><div class="bar-bg"><div class="bar-fill" style="width:29%"></div></div><strong>13,210</strong></div>
+  <div class="bar-row"><span><code>src/service/search</code></span><div class="bar-bg"><div class="bar-fill" style="width:25%"></div></div><strong>11,252</strong></div>
+  <div class="bar-row"><span><code>src/service/agents</code></span><div class="bar-bg"><div class="bar-fill" style="width:20%"></div></div><strong>9,065</strong></div>
+  <div class="bar-row"><span><code>src/ui/component</code></span><div class="bar-bg"><div class="bar-fill" style="width:15%"></div></div><strong>6,942</strong></div>
+  <div class="bar-row"><span><code>src/service/copilot</code></span><div class="bar-bg"><div class="bar-fill" style="width:15%"></div></div><strong>6,658</strong></div>
+  <div class="bar-row"><span><code>src/service/tools</code></span><div class="bar-bg"><div class="bar-fill" style="width:11%"></div></div><strong>4,878</strong></div>
+
+  <h2>3. 新候选矩阵</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Track</th>
+        <th>候选池</th>
+        <th>证据</th>
+        <th>收敛方式</th>
+        <th class="num">现实净减少</th>
+        <th class="num">乐观净减少</th>
+        <th>风险</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>L</strong></td>
+        <td>Copilot doc/vault meta-agent 双路径</td>
+        <td><code>CopilotMetaAgentStream.ts</code> 411 行，<code>VaultMetaAgentStream.ts</code> 358 行，相似度约 0.50；session 文件也成对重复。</td>
+        <td>抽 shared meta-agent stream kit：profile resolution、previous-round block、user preference block、query loop；doc/vault 只保留 prompt/tool/output差异。</td>
+        <td class="num">-0.8k</td>
+        <td class="num">-1.8k</td>
+        <td><span class="tag amber">中高</span> 不能把 doc review 和 vault review 语义合成 god-agent。</td>
+      </tr>
+      <tr>
+        <td><strong>M</strong></td>
+        <td>DocumentLoader skeleton factory</td>
+        <td>12 个 loader，总 1,811 行；多数重复构造 <code>Document</code> skeleton：source/cache info、metadata、references、hash、timestamp。</td>
+        <td>在 loader helper 中提供 <code>createTextDocument</code> / <code>createBinaryExtractedDocument</code> / chunk helpers，loader 保留解析逻辑。</td>
+        <td class="num">-0.6k</td>
+        <td class="num">-1.2k</td>
+        <td><span class="tag amber">中</span> 不能破坏 Markdown 特殊 metadata/tag/summary 逻辑。</td>
+      </tr>
+      <tr>
+        <td><strong>N</strong></td>
+        <td>Onboarding legacy state residue</td>
+        <td>当前 modal 用 <code>HarnessOnboardingWizard</code> + <code>OnboardingStateMachine</code>；旧 <code>modals/harness-onboarding/state.ts</code> 主要被旧测试和一个 type import 引用。</td>
+        <td>迁移旧 type import，删除旧 state 和旧 reducer test；不要删除 step components，因为新 wizard 仍复用它们。</td>
+        <td class="num">-0.25k</td>
+        <td class="num">-0.45k</td>
+        <td><span class="tag green">低中</span> 小但干净；不能误删 step UI。</td>
+      </tr>
+      <tr>
+        <td><strong>O</strong></td>
+        <td>App ItemView / Modal React host shell</td>
+        <td><code>src/app/view</code> + <code>src/app/modals</code> + <code>app/copilot/modals</code> 约 2,145 行；多个 view/modal 都重复 ReactRenderer mount/unmount/class/style。</td>
+        <td>抽 <code>ReactItemViewHost</code> / <code>renderModalContent</code> 小 helper；保留每个 view 的 display text/icon/classes/props。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-0.9k</td>
+        <td><span class="tag amber">中</span> 这些是合法 app weave 点，不能为了少代码隐藏生命周期。</td>
+      </tr>
+      <tr>
+        <td><strong>P</strong></td>
+        <td>Settings model picker grammar</td>
+        <td><code>ModelCombobox.tsx</code> 261 行，<code>RoleModelPicker.tsx</code> 228 行，相似度约 0.53；都在写 query/filter/group/keyboard/highlight/list row。</td>
+        <td>抽 model picker list engine + keyboard/listbox shell；两个组件只保留 catalog source、row renderer、selection semantics。</td>
+        <td class="num">-0.25k</td>
+        <td class="num">-0.65k</td>
+        <td><span class="tag amber">中</span> 设置 UI 容易视觉回归，需要手动 smoke。</td>
+      </tr>
+      <tr>
+        <td><strong>Q</strong></td>
+        <td>Skill system externalization + bridge audit</td>
+        <td><code>src/service/skills/builtin/index.ts</code> 210 行嵌三份 skill markdown；<code>HarnessSkillRegistry</code> 目前只被 barrel export，未发现运行时 consumer。</td>
+        <td>先把 built-in skill markdown 外置；再让 owner 决定 harness skill bridge 是接入 Skill Compiler 还是退休未接线桥。不要删 <code>SkillRegistry</code> 本体。</td>
+        <td class="num">-0.25k</td>
+        <td class="num">-0.8k</td>
+        <td><span class="tag amber">中</span> Skill/Command Gateway 是未来地基，未接线不等于可随手删除。</td>
+      </tr>
+      <tr>
+        <td><strong>R</strong></td>
+        <td>Streamdown generated CSS byte containment</td>
+        <td><code>src/styles/streamdown-isolated-css.ts</code> 约 1.4MB，一个模板字符串占绝大多数；LOC 只有约 261。</td>
+        <td>不要算 LOC reduction；把生成 CSS 作为 external generated asset / build artifact 管理，TS 只加载字符串。</td>
+        <td class="num">0 LOC</td>
+        <td class="num">-1.4MB bytes</td>
+        <td><span class="tag red">中高</span> 需要确认 Obsidian 插件加载策略和 bundle packaging。</td>
+      </tr>
+      <tr>
+        <td><strong>S</strong></td>
+        <td>Usage Dashboard data/formatter grammar</td>
+        <td><code>useUsageData</code>, <code>OutcomeValue</code>, <code>useOverviewSnapshot</code>, <code>useOptimization</code>, <code>History</code>, <code>ProviderModel</code>, <code>BudgetAlerts</code> 重复时间窗、预算、provider、USD/token formatter。</td>
+        <td>抽 <code>usageTimeRange</code> / <code>usageBudget</code> / <code>usageDashboardFormat</code>；Usage UI 保留所有 screen，只减少每屏自带 helper。</td>
+        <td class="num">-0.6k</td>
+        <td class="num">-1.4k</td>
+        <td><span class="tag green">低中</span> 功能保留型；不要把 screen 合成难读巨组件。</td>
+      </tr>
+      <tr>
+        <td><strong>T</strong></td>
+        <td>Chat attachment / resource preview grammar</td>
+        <td><code>PromptInputAttachments</code>, <code>MessageAttachmentsList</code>, <code>ResourcePreviewHover</code>, <code>ProjectOverview ResourcesTab</code>, <code>ConversationIndex</code> 都在各自处理文件名、badge、URL、resource preview。</td>
+        <td>抽 <code>ResourceAttachmentUI</code>：badge resolver、URL parser/thumb、file chip/card shell、preview loader hook。保留 Chat 三栏和所有资源入口。</td>
+        <td class="num">-0.5k</td>
+        <td class="num">-1.2k</td>
+        <td><span class="tag amber">中</span> 视觉细节多，必须 smoke chat composer、message bubble、project resources。</td>
+      </tr>
+      <tr>
+        <td><strong>U</strong></td>
+        <td>Search retriever / graph find-path template</td>
+        <td><code>fts</code>, <code>meta</code>, <code>fuzzy</code> retriever 重复 topK/BM25/row map；<code>reliable</code> 与 <code>brainstorm</code> 重复 bidirectional BFS frontier。</td>
+        <td>抽 FTS query/row mapper helper + BFS frontier engine；算法策略只保留差异参数和 insight 文案。</td>
+        <td class="num">-0.7k</td>
+        <td class="num">-1.8k</td>
+        <td><span class="tag amber">中高</span> 搜索相关必须有行为回归测试；<code>indexService</code> 暂不做纯搬文件。</td>
+      </tr>
+      <tr>
+        <td><strong>V</strong></td>
+        <td>SQLite repo/query helper</td>
+        <td><code>repositories/</code> 约 7,382 行；Usage SQL 重复 date range / json_extract / row map；ChatConversationRepo 与 ChatProjectRepo 相似度约 0.46。</td>
+        <td>抽安全小 helper：JSON parse/stringify、metadata id predicates、date-bucket SQL fragment、chat entity upsert helper。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-1.0k</td>
+        <td><span class="tag amber">中</span> 大 repo 不等于重复；Embedding/Mobius 算法复杂处不要硬抽。</td>
+      </tr>
+      <tr>
+        <td><strong>W</strong></td>
+        <td>Quick Search V2 surface grammar</td>
+        <td><code>V2ReportView</code>, <code>V2InlinePlanReview</code>, <code>V2Footer</code>, <code>V2SourcesView</code>, <code>V2RoundBlock</code> 重复 section card、icon action、collapsible、loading row。</td>
+        <td>抽 V2 UI primitives：<code>V2IconAction</code>, <code>V2CollapsibleCard</code>, <code>V2StatusDot</code>, <code>V2SourceRow</code>。</td>
+        <td class="num">-0.8k</td>
+        <td class="num">-2.0k</td>
+        <td><span class="tag amber">中</span> Quick Search V2 是核心 surface，只抽 grammar，不删模式。</td>
+      </tr>
+      <tr>
+        <td><strong>X</strong></td>
+        <td>Copilot remaining panel families</td>
+        <td><code>src/ui/view/copilot</code> 约 9,762 行；panel/review/vault 子池约 6,975 行；<code>PanelEmptyState</code> 14 处、<code>new Notice</code> 25 处、<code>Copy</code> 10 处、rounded/card/text action grammar 大量重复。</td>
+        <td>按 family 做 selectable suggestion、diff apply、findings/task、text summary、vault report action 四类收敛；保留每个 action 语义和 registry。</td>
+        <td class="num">-1.5k</td>
+        <td class="num">-3.6k</td>
+        <td><span class="tag amber">中</span> 不能把 28 个 action 合成一个黑盒；按 family 验收。</td>
+      </tr>
+      <tr>
+        <td><strong>Y</strong></td>
+        <td><code>src/ui/component</code> vs <code>src/ui/components</code> 双根整理</td>
+        <td><code>component</code> 63 文件约 6.5k；<code>components</code> 15 文件约 1.3k；两套 Button/Input/IconButton/Pill/Popover/Tabs 并存。<code>shared-ui/dropdown-menu.tsx</code> 204 行 0 引用，<code>input-with-confirm</code> 与 <code>number-input</code> 相似度约 0.62。</td>
+        <td>定目标根：Peak primitives 为新根，shared-ui 只保留仍需要的 shadcn 兼容件；迁移低风险调用并删除低引用旧件。</td>
+        <td class="num">-0.6k</td>
+        <td class="num">-1.6k</td>
+        <td><span class="tag amber">中</span> 这是组织治理，不要用 import count 误删 barrel 间接使用。</td>
+      </tr>
+      <tr>
+        <td><strong>Z</strong></td>
+        <td>Settings/config normalize + display grammar</td>
+        <td><code>PluginSettingsLoader.ts</code> 406 行、<code>KnowledgeIndexTab.tsx</code> 795 行、<code>AISetupTab.tsx</code> 292 行、<code>OverviewTab.tsx</code> 238 行；重复默认值读取、model binding label、doc type label、row/action grammar。</td>
+        <td>抽 <code>settingsNormalize</code> 小 helper、<code>settingsDisplayModel</code>、<code>ModelBindingRow</code>、doc type catalog；配置默认值仍以 core/template 为 source of truth。</td>
+        <td class="num">-0.7k</td>
+        <td class="num">-1.8k</td>
+        <td><span class="tag amber">中</span> 设置持久化不能回归；需要读旧 settings JSON 的 focused tests。</td>
+      </tr>
+      <tr>
+        <td><strong>AA</strong></td>
+        <td>Agent harness run grammar</td>
+        <td><code>DocSimpleAgent.ts</code> 与 <code>FollowupChatAgent.ts</code> 重复 tool set compose、TierController、ClaudeAgentSDKBridge.run、usage/final text 处理；service/agents 总量约 9,065 行。</td>
+        <td>抽窄的 <code>runHarnessAgentOnce</code> / <code>buildVaultSearchToolSet</code>，只收敛 run ceremony，不合并 agent prompt、budget、输出事件。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-1.2k</td>
+        <td><span class="tag amber">中高</span> 不能抽成万能 AgentRunner；必须保留每个 agent 的 stream event contract。</td>
+      </tr>
+      <tr>
+        <td><strong>AB</strong></td>
+        <td>Provider/tool adapter micro-duplication</td>
+        <td><code>cohere.ts</code> 与 <code>jina.ts</code> 相似度约 0.82；<code>buildWebSearchMcpServer</code> 与 <code>buildChatTools</code> 共享同一 web-search prompt/queryWithProfile/collectText 语法。</td>
+        <td>抽 <code>createHttpRerankProvider</code> 与 <code>runConfiguredWebSearch</code>；两边 adapters 只保留 SDK wrapper 形态差异。</td>
+        <td class="num">-0.2k</td>
+        <td class="num">-0.6k</td>
+        <td><span class="tag green">低中</span> 小收益，但很适合并入大波次的 safe track。</td>
+      </tr>
+      <tr>
+        <td><strong>AC</strong></td>
+        <td>Document/file type catalog single source</td>
+        <td><code>FileTypeUtils.ts</code>、<code>KnowledgeIndexTab.tsx</code>、schema/tag service 中重复 image/document/doc role/type arrays 和 label/mime/type 判断。</td>
+        <td>抽 <code>documentTypeCatalog</code> / <code>fileExtensionCatalog</code>，同时服务 loader、settings chips、resource badge、schema enum。</td>
+        <td class="num">-0.3k</td>
+        <td class="num">-0.8k</td>
+        <td><span class="tag amber">中</span> 类型真相源改变要避免破坏 LLM schema 和 loader 支持矩阵。</td>
+      </tr>
+      <tr>
+        <td><strong>AD</strong></td>
+        <td>Index maintenance loop template</td>
+        <td><code>indexService.ts</code> 2,317 行；PageRank/semantic PageRank persist loop、pending LLM/vector enrichment、progress batch suffix 有模板重复。</td>
+        <td>只抽 <code>persistPageRankScores</code>、<code>collectPendingPaths</code>、<code>reportBatchProgress</code> 这类小函数；不做纯搬文件。</td>
+        <td class="num">-0.3k</td>
+        <td class="num">-0.9k</td>
+        <td><span class="tag red">高</span> 搜索/索引质量敏感；必须以 focused tests 和 audit guard 收尾。</td>
+      </tr>
+      <tr>
+        <td><strong>AE</strong></td>
+        <td>Vault Review report surface grammar</td>
+        <td><code>VaultAutoRunContent.tsx</code> 单文件 1,606 行，内部有 6 tab、snapshot cards、changed chips、table rows、trace rail、footer actions、empty states。</td>
+        <td>抽 report-dashboard primitives：<code>ReportHero</code>、<code>KpiGrid</code>、<code>TraceRail</code>、<code>DataTableShell</code>、<code>FooterActionBar</code>；与 Copilot/Quick Search report surfaces 共享。</td>
+        <td class="num">-1.0k</td>
+        <td class="num">-2.5k</td>
+        <td><span class="tag amber">中高</span> UI 大面，需要 screenshot smoke；不删 Vault Review 功能。</td>
+      </tr>
+      <tr>
+        <td><strong>AF</strong></td>
+        <td>Report/SDK generation orchestration</td>
+        <td><code>ReportOrchestrator.ts</code> 537 行；section/regen/summary/mermaid 都重复 profile resolve、queryWithProfile、stream collect、repetition guard、session update。</td>
+        <td>抽 <code>runSdkTextGeneration</code> / <code>runStreamingSectionGeneration</code>，prompt/render/session callbacks 作为参数；保留每个 agent 的 prompt id 与 failure semantics。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-0.9k</td>
+        <td><span class="tag amber">中</span> 不能让 summary failure 和 section failure 语义混在一起。</td>
+      </tr>
+      <tr>
+        <td><strong>AG</strong></td>
+        <td>Project/Conversation/Recent list grammar</td>
+        <td><code>ProjectsSection</code> 564 行、<code>ConversationsSection</code> 396 行、<code>ConversationIndex</code> 731 行、Quick Search recent lists 约 300 行；都重复 section header、row icon/body/meta、active state、empty/loading、context action。</td>
+        <td>抽 <code>SurfaceList</code> / <code>SurfaceRow</code> / <code>GroupedTimelineList</code>，业务层只传 icon、title、meta、active、actions、onOpen。</td>
+        <td class="num">-0.6k</td>
+        <td class="num">-1.5k</td>
+        <td><span class="tag amber">中</span> Chat 三栏/项目/outline 都保留；只合并 row grammar。</td>
+      </tr>
+      <tr>
+        <td><strong>AH</strong></td>
+        <td>Onboarding/Profile setup-step grammar</td>
+        <td>Onboarding/Profile setup 相关文件约 3,271 行；<code>HarnessOnboardingWizard</code>、<code>ProviderForm</code>、<code>ProfileCard</code>、<code>BootstrapModelStep</code> 重复 provider test/save、API key state、radio-card、step footer/status grammar。</td>
+        <td>抽 <code>SetupStepShell</code>、<code>ProviderCredentialForm</code>、<code>SetupRadioCard</code>、<code>StepFooter</code>；保留 Onboarding 流程和 Settings Profile 入口。</td>
+        <td class="num">-0.5k</td>
+        <td class="num">-1.4k</td>
+        <td><span class="tag amber">中</span> 初始化体验敏感；需要 provider test/save focused smoke。</td>
+      </tr>
+      <tr>
+        <td><strong>AI</strong></td>
+        <td>Folder intelligence substrate</td>
+        <td><code>explore-folder.ts</code> 869 行、<code>buildBackboneMap.ts</code> 1,211 行、<code>common.ts</code> 557 行；folder path normalize / exclusion / tree walk / doc stats top lists 在 explore/backbone/grep 之间重复。</td>
+        <td>抽 <code>VaultFolderExplorer</code>、<code>FolderExclusionRules</code>、<code>DocStatsSlice</code>；<code>explore_folder</code>、<code>grep_file_tree</code>、backbone 只保留各自 output 语义。</td>
+        <td class="num">-1.2k</td>
+        <td class="num">-2.8k</td>
+        <td><span class="tag amber">中高</span> search/intelligence 路径；先抽 exclusion/stats，再考虑 tree-walk 合并。</td>
+      </tr>
+      <tr>
+        <td><strong>AJ</strong></td>
+        <td>Chat manager/query/context slot ceremony</td>
+        <td><code>service-manager.ts</code> 998 行、<code>service-conversation.ts</code> 607 行、context slots 约 550+ 行；queryText/queryStream/queryStructured 重复 profile/prompt/message/usage ceremony，slots 重复 empty result/render/tokens。</td>
+        <td>抽 <code>runChatModelCall</code>、<code>refreshChatServices</code>、<code>createEmptySlotResult</code>、<code>renderSystemTextSlot</code>；不改变 Chat 三栏和上下文拼装顺序。</td>
+        <td class="num">-0.8k</td>
+        <td class="num">-2.0k</td>
+        <td><span class="tag red">高</span> Chat 核心路径；必须小 helper 先行，不能抽万能 ChatRunner。</td>
+      </tr>
+      <tr>
+        <td><strong>AK</strong></td>
+        <td>MultiLensGraph layout assembly</td>
+        <td><code>MultiLensGraph</code> 相关约 1,325 行；各 layout 重复 positions map、edge assembly、cluster/group labels、handle pair、overlap/axis assembly。</td>
+        <td>抽 <code>GraphLayoutBuilder</code> / <code>edgeFactory</code> / <code>groupNodeFactory</code> 小工具；算法 layout 仍独立。</td>
+        <td class="num">-0.2k</td>
+        <td class="num">-0.7k</td>
+        <td><span class="tag amber">中</span> 图布局视觉容易回归；这不是第一优先级。</td>
+      </tr>
+      <tr>
+        <td><strong>AL</strong></td>
+        <td>Core constants governance + residue sweep</td>
+        <td><code>src/core/constant.ts</code> 651 行混合 DB/search/chat/graph/UI/prompt/roles；还发现 duplicate import modules 约 120 组，其中 <code>service-manager.ts</code> 有清晰重复 import。</td>
+        <td>把 domain constants 分流到 domain defaults/catalog；清掉显然 duplicate imports/debug residue；UI label/color 不继续堆进 core constants。</td>
+        <td class="num">-0.3k</td>
+        <td class="num">-1.0k</td>
+        <td><span class="tag green">低中</span> 主要是可维护性；不要为了 LOC 把配置随意挪成不可加载 JSON。</td>
+      </tr>
+      <tr>
+        <td><strong>AM</strong></td>
+        <td>Copilot action recipe factory</td>
+        <td><code>service/copilot/actions/index.ts</code> 785 行，28 个 action 里有固定 recipe：streamAction 6 处、queryStructured 6 处、renderPrompt + runAgentStream 10+ 处。</td>
+        <td>抽 <code>createStreamPromptAction</code>、<code>createStructuredPromptAction</code>、<code>createAgentPromptAction</code>；复杂 vault scan actions 保留手写。</td>
+        <td class="num">-0.6k</td>
+        <td class="num">-1.5k</td>
+        <td><span class="tag amber">中</span> 不合并 action 语义；只减少定义 ceremony。</td>
+      </tr>
+      <tr>
+        <td><strong>AN</strong></td>
+        <td>Markdown/JSON persistence grammar</td>
+        <td>chat-docs/search-docs/vault review history 相关约 2,124 行；都在做 frontmatter、section split/build、JSON fence、safe parse、snapshot convert。</td>
+        <td>抽 <code>JsonFenceSection</code>、<code>safeJsonCodec</code>、<code>MarkdownSectionDoc</code> 小 helper；不改变现有 markdown 格式。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-1.2k</td>
+        <td><span class="tag red">高</span> 文件格式兼容敏感；只能加 golden tests 后做。</td>
+      </tr>
+      <tr>
+        <td><strong>AO</strong></td>
+        <td>MCP/tool server wrapper grammar</td>
+        <td><code>vaultMcpServer.ts</code> 562 行、<code>CopilotOutputMcpServer.ts</code> 320 行；多处重复 <code>tool(...)</code> + Zod schema + JSON/text response wrapper。<code>wrapAgentTool</code> 已在同文件里证明小 helper 方向成立。</td>
+        <td>抽 <code>textResult</code> / <code>jsonResult</code> / <code>defineJsonTool</code> / <code>defineAckTool</code>；只 table-drive 简单 vault/output ack tools，复杂描述和 collector 语义保留手写。</td>
+        <td class="num">-0.5k</td>
+        <td class="num">-1.4k</td>
+        <td><span class="tag amber">中</span> MCP/tool 名称、schema、返回格式必须稳定；不能把工具语义抽黑盒。</td>
+      </tr>
+      <tr>
+        <td><strong>AP</strong></td>
+        <td>Quick Search session-store transition grammar</td>
+        <td><code>searchSessionStore.ts</code> 约 773 行，约 53 个 <code>set(...)</code>；RAF streaming buffer、complete running steps、timeline/tool update、plan section reorder/regenerate 都是重复状态转移。</td>
+        <td>抽 <code>sessionTransitions.ts</code> 和窄的 <code>createRafTextBuffer</code>/<code>createRafMapBuffer</code>；保留单一 Zustand store，只减少内部 mutation ceremony。</td>
+        <td class="num">-0.6k</td>
+        <td class="num">-1.6k</td>
+        <td><span class="tag amber">中高</span> Quick Search V2 核心路径；必须覆盖 process/report/sources、background restore、streaming flush。</td>
+      </tr>
+      <tr>
+        <td><strong>AQ</strong></td>
+        <td>Test/regression harness helper consolidation</td>
+        <td><code>test/</code> 约 24k 行；<code>app-runtime-registry.test.ts</code> 777 行，多个 T11 guard/source scan/fake-port builder 重复同一类断言 ceremony。</td>
+        <td>抽 <code>assertNoForbiddenImports</code>、runtime registry table test helper、fake port builders。只重构测试表达方式，不删除覆盖。</td>
+        <td class="num">-1.0k test-only</td>
+        <td class="num">-3.0k test-only</td>
+        <td><span class="tag amber">中</span> 只能后置；不能为了 cloc 删除架构 guard 或把断言变宽。</td>
+      </tr>
+      <tr>
+        <td><strong>AR</strong></td>
+        <td>Native SQLite module loader/probe grammar</td>
+        <td><code>BetterSqliteStore.ts</code> 654 行、<code>NativeModuleManager.ts</code> 533 行；两边都在做 better-sqlite3 require/default normalize、<code>:memory:</code> probe、fallback path/managed path 判断。</td>
+        <td>抽窄的 <code>SqliteNativeProbe</code> / <code>NativeSqliteModuleResolver</code>；NativeModuleManager 仍管下载，BetterSqliteStore 仍管 DB open/migration/sqlite-vec。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-1.1k</td>
+        <td><span class="tag red">高</span> 插件启动命门；必须保留自动下载、managed path、sqlite-vec fallback。</td>
+      </tr>
+      <tr>
+        <td><strong>AS</strong></td>
+        <td>Model catalog / Profile preset 真相源收敛</td>
+        <td><code>data/model-catalog.json</code> + <code>templates/config/models/*.json</code> + <code>curator-catalog.json</code> + <code>presets.ts</code> + registry/profile 约 3,240 行；模型 id、capabilities、baseUrl、默认模型多处重复。</td>
+        <td>选择一个模型目录 source of truth；Profile preset 默认值从目录派生，curator-specific ranking 另保留。避免继续手写同一 provider/model metadata。</td>
+        <td class="num">-0.8k</td>
+        <td class="num">-2.2k</td>
+        <td><span class="tag red">高</span> 会影响模型选择、onboarding/settings、profile tests；不能顺手改模型默认值。</td>
+      </tr>
+      <tr>
+        <td><strong>AT</strong></td>
+        <td>PromptId / TemplateRegistry metadata co-generation</td>
+        <td><code>PromptId.ts</code> 539 行、<code>TemplateRegistry.ts</code> 408 行；Prompt enum、configurable prompt groups、variables、template metadata/path/group/systemPromptId 分散在两套 registry。</td>
+        <td>保留 PromptId 类型安全，改成 typed descriptor table 派生 group lists / metadata；或先只收敛重复 group list/tag，不动 PromptVariables。</td>
+        <td class="num">-0.3k</td>
+        <td class="num">-0.9k</td>
+        <td><span class="tag amber">中高</span> Prompt 配置是核心扩展点；必须跑 prompt/template registry focused tests。</td>
+      </tr>
+      <tr>
+        <td><strong>AU</strong></td>
+        <td>App runtime registry ceremony</td>
+        <td><code>AppRuntimeRegistry.ts</code> 323 行、<code>AppContext.ts</code> 553 行、<code>test-tools.ts</code> 282 行；每个 runtime 都重复 set/get/try/clear + error message + AppContext static delegator。</td>
+        <td>抽 typed runtime slot helper，但保留 named methods；AppContext 可以用小 delegate helper 减少重复，不移除 app-owned runtime ownership。</td>
+        <td class="num">-0.35k</td>
+        <td class="num">-0.9k</td>
+        <td><span class="tag amber">中</span> 这是 app weave 可读性边界；不能抽成字符串 key 的黑盒 registry。</td>
+      </tr>
+      <tr>
+        <td><strong>AV</strong></td>
+        <td>Command/Notice maintenance grammar</td>
+        <td><code>PeakCommandActions.ts</code> 586 行；大量 <code>new Notice</code>、dependency guard、maintenance command、progress notice、catch notice boilerplate。</td>
+        <td>抽 <code>withProgressNotice</code>、<code>requireSearchDeps</code>、<code>runMaintenanceCommand</code> 小 helper；保留每个 palette command 和文案语义。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-1.1k</td>
+        <td><span class="tag amber">中</span> 用户可见命令路径；不能删除 palette 命令或吞掉错误提示。</td>
+      </tr>
+      <tr>
+        <td><strong>AW</strong></td>
+        <td>Workspace leaf/layout helper</td>
+        <td><code>ViewManager</code>、<code>ViewSwitchConsistentHandler</code>、<code>AppVaultNavigationAdapter</code>、<code>obsidian-utils</code> 等约 1,005 行；重复 get/reveal/open leaf、left/right sidebar、markdown/file-explorer/outline fallback。</td>
+        <td>抽 <code>WorkspaceLeafOps</code>：ensureViewLeaf、ensureSidebarLeaf、openFileInLeaf、revealExistingOrCreate。Chat 三栏规则仍在 app 层显式写出。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-1.2k</td>
+        <td><span class="tag red">高</span> Obsidian workspace 行为脆；必须保留 Chat 三栏和 open-in-new-tab 语义。</td>
+      </tr>
+      <tr>
+        <td><strong>AX</strong></td>
+        <td>RAF streaming buffer grammar</td>
+        <td><code>chatDataStore.ts</code> 与 <code>searchSessionStore.ts</code> 都有 module-level RAF text buffers；<code>useEventRouter</code> 还有 summary buffer flush。</td>
+        <td>抽 <code>createRafTextBuffer</code> / <code>createKeyedRafTextBuffer</code>；store 仍拥有状态，helper 只负责 accumulate/flush/cancel。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-1.0k</td>
+        <td><span class="tag amber">中</span> streaming 体验敏感；必须验证 Chat streaming、reasoning、Quick Search report/section stream。</td>
+      </tr>
+      <tr>
+        <td><strong>AY</strong></td>
+        <td>Compatibility shim retirement sweep</td>
+        <td>仍有 <code>service/chat/types.ts</code>、<code>service/usage/types.ts</code>、<code>ui/view/quick-search/store/v2SessionTypes.ts</code>、<code>core/utils/vault-utils.ts</code> 等 legacy/re-export shim。</td>
+        <td>迁移真实 callers 到新路径，再删除薄 shim；不删除保存格式兼容、settings migration、历史 vault 文档读取兼容。</td>
+        <td class="num">-0.3k</td>
+        <td class="num">-0.8k</td>
+        <td><span class="tag green">低中</span> 适合并入大波次扫尾；不要碰用户数据兼容层。</td>
+      </tr>
+      <tr>
+        <td><strong>AZ</strong></td>
+        <td>Chat vault/sqlite persistence grammar</td>
+        <td><code>ChatStore.ts</code> 774 行，仍被 service-manager/project/conversation 使用；同时维护 vault markdown、SQLite conversation/message/resource repos、ChatConversationDoc append/parse。</td>
+        <td>抽双写 helper、conversation meta/resource upsert helper、markdown append/dedup helper；保留 Vault markdown 作为用户资产，不退役 Chat 三栏。</td>
+        <td class="num">-0.8k</td>
+        <td class="num">-2.0k</td>
+        <td><span class="tag red">高</span> 用户历史数据路径；必须用 ChatConversationDoc golden tests 和 SQLite repo tests 兜底。</td>
+      </tr>
+      <tr>
+        <td><strong>BA</strong></td>
+        <td>Tag/taxonomy serialization + suggestion grammar</td>
+        <td><code>TagService.ts</code> 573 行，TagSuggestionEngine/Panel/Repo/Tag edges 合计约 1,800 行；topic/functional tag decode、legacy tag blob、suggest/apply/status 语法分散。</td>
+        <td>抽 tag blob codec、tag entry normalize/catalog、suggestion status mapper；TagService 仍保留 LLM classification boundary。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-1.2k</td>
+        <td><span class="tag red">高</span> 会影响索引图谱/tag search；不能改 tags_json 兼容语义。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4. Track L 深挖：Copilot Meta-Agent 双路径</h2>
+  <div class="track">
+    <h3><span class="idx">L</span>为什么它是真重复，不只是“两个功能像”</h3>
+    <div class="pattern">
+      <div class="box">
+        <strong>现在</strong>
+        <ul class="mini-list">
+          <li><code>CopilotMetaAgentStream.ts</code> 自己实现 profile resolution。</li>
+          <li><code>VaultMetaAgentStream.ts</code> 再实现一遍 profile resolution。</li>
+          <li>previous-round block、user-preferences block、mode suffix、tool stream query loop 都成对出现。</li>
+          <li><code>CopilotReviewSession.ts</code> / <code>VaultReviewSession.ts</code> 也有相同 orchestration shape。</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="box">
+        <strong>目标</strong>
+        <ul class="mini-list">
+          <li>抽 <code>MetaAgentStreamKit</code>：profile、previous rounds、preferences、query loop。</li>
+          <li>Doc/Vault 分别提供 prompt builder、tool names、collector semantics。</li>
+          <li>不合并成一个大 agent；只合并运行框架。</li>
+        </ul>
+      </div>
+    </div>
+    <p>
+      估算：stream + session + report/history helper 一起做，现实净减少约 <strong>-0.8k</strong>，乐观 <strong>-1.8k</strong>。
+      如果只抽一个小 util，收益会很小，不应算 major。
+    </p>
+  </div>
+
+  <h2>5. Track M 深挖：DocumentLoader skeleton</h2>
+  <div class="track">
+    <h3><span class="idx">M</span>重复不是 loader 类型，而是 Document 构造模板</h3>
+    <p>
+      <code>BaseDocumentLoader</code> 已经抽了 chunking 和 scan，但每个 loader 的 <code>readFile()</code> 仍重复写：
+      <code>id</code>、<code>sourceFileInfo</code>、<code>cacheFileInfo</code>、默认 metadata、空 references、<code>lastProcessedAt</code>。
+      这类 helper 很适合做，因为它降低阅读成本，同时不改变每种文件的解析策略。
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>文件组</th>
+          <th>现状</th>
+          <th>建议</th>
+          <th class="num">净减少</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Text-like loaders</td>
+          <td><code>Text</code>, <code>Json</code>, <code>Table</code>, <code>Canvas</code>, <code>Excalidraw</code>, <code>HtmlXml</code> 重复 text document skeleton。</td>
+          <td><code>createTextDocument(file, type, content, hash)</code>。</td>
+          <td class="num">-350<br />to -650</td>
+        </tr>
+        <tr>
+          <td>Binary-extracted loaders</td>
+          <td><code>Docx</code>, <code>Pptx</code>, <code>Pdf</code>, <code>Image</code> 重复 binary source + extracted cache skeleton。</td>
+          <td><code>createBinaryExtractedDocument(file, type, contentHash, extractedText)</code>。</td>
+          <td class="num">-250<br />to -500</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>6. Track S/T/U 深挖：Usage / Chat / Search</h2>
+  <div class="track">
+    <h3><span class="idx">S</span>Usage Dashboard：不是删功能，是收敛每屏自带的小语法</h3>
+    <div class="pattern">
+      <div class="box">
+        <strong>现在散落</strong>
+        <ul class="mini-list">
+          <li><code>timeRangeToMs</code> 在 hook 和 screen 中重复。</li>
+          <li><code>readBudget</code> 在 Overview / Optimization hook 中重复。</li>
+          <li><code>normalizeProvider</code> 在 History / ProviderModel / detail modal 中重复。</li>
+          <li><code>formatUsd</code>、<code>formatTokens</code>、loading/empty/table 语法每屏各写一套。</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="box">
+        <strong>目标形态</strong>
+        <ul class="mini-list">
+          <li><code>usageTimeRange.ts</code>：统一 range → ms / date helpers。</li>
+          <li><code>usageBudget.ts</code>：统一从 settings 读 budget。</li>
+          <li><code>usageDashboardFormat.ts</code>：USD/token/provider/time format。</li>
+          <li>screen 仍然分开，Dashboard 产品形态不退役。</li>
+        </ul>
+      </div>
+    </div>
+    <p>现实净减少约 <strong>-0.6k</strong>，乐观 <strong>-1.4k</strong>。这块价值主要是可维护性，不是最大 LOC 主战场。</p>
+  </div>
+
+  <div class="track">
+    <h3><span class="idx">T</span>Chat 附件：把资源展示语法抽出来，不动三栏 Chat</h3>
+    <div class="pattern">
+      <div class="box">
+        <strong>现在散落</strong>
+        <ul class="mini-list">
+          <li><code>PromptInputAttachments</code> 定义上传附件 chip + 图片 preview。</li>
+          <li><code>MessageAttachmentsList</code> 定义 image/file/url group、badge、card、chip。</li>
+          <li><code>ResourcePreviewHover</code> 单独定义 hover preview loading。</li>
+          <li><code>ProjectOverview ResourcesTab</code> 另一套 resource row + file icon。</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="box">
+        <strong>目标形态</strong>
+        <ul class="mini-list">
+          <li><code>resourceAttachment/badge.ts</code>：统一 kind/ext → label/color/icon。</li>
+          <li><code>resourceAttachment/url.ts</code>：统一 URL parse/thumb。</li>
+          <li><code>ResourceChip</code> / <code>ResourceCard</code> / <code>ResourcePreviewTrigger</code>。</li>
+          <li>Chat message bubble、composer、project resources 只选择 variant。</li>
+        </ul>
+      </div>
+    </div>
+    <p>现实净减少约 <strong>-0.5k</strong>，乐观 <strong>-1.2k</strong>。这里的验收重点是视觉不回归，而不是追求极限删除。</p>
+  </div>
+
+  <div class="track">
+    <h3><span class="idx">U</span>Search：只做净减少的共享机制，不做“拆大文件凑数”</h3>
+    <p>
+      <code>FtsRetriever</code> / <code>MetaRetriever</code> / <code>FuzzyRetriever</code> 的重复比较适合抽 helper：
+      FTS query 片段、topK/searchLimit、BM25 normalize、row → <code>RetrieverResult</code>。
+      <code>reliable</code> / <code>brainstorm</code> 的 bidirectional BFS frontier 也有明显重复，但它会影响搜索路径质量，所以必须加 focused tests。
+    </p>
+    <div class="warn">
+      <p>
+        <code>indexService.ts</code> 仍然很大，但下一轮不要为了“看起来瘦”纯搬文件。
+        只有当拆分同时删除重复 phase/state/progress 代码，并让总 LOC 净减少，才允许动它。
+      </p>
+    </div>
+  </div>
+
+  <h2>7. Track V/W/X/Y 深挖：Repo / Quick Search / Copilot / UI 根</h2>
+  <div class="track">
+    <h3><span class="idx">V</span>SQLite repo：只抽重复 helper，不碰复杂算法仓库</h3>
+    <p>
+      <code>repositories/</code> 总量约 <strong>7,382</strong> 行，但相似度扫描只找到一个明确 pair：
+      <code>ChatConversationRepo</code> 与 <code>ChatProjectRepo</code>。这说明大部分 repo 不是无脑复制，而是各表领域复杂。
+      真正可收敛的是横切 helper：JSON column parse/stringify、<code>created_at</code> range predicate、daily bucket SQL、metadata message id predicate、chat entity upsert 模板。
+    </p>
+    <div class="warn">
+      <p>
+        <code>EmbeddingRepo</code>、<code>MobiusNodeRepo</code>、<code>MobiusEdgeRepo</code> 很大，但里面有 sqlite-vec、PageRank、hub scoring、graph projection 等领域逻辑。
+        下一波不要把它们作为“代码太长所以拆”的对象；只在发现重复 row mapping / JSON merge 时动。
+      </p>
+    </div>
+  </div>
+
+  <div class="track">
+    <h3><span class="idx">W</span>Quick Search V2：抽 UI grammar，不删 V2 能力</h3>
+    <div class="pattern">
+      <div class="box">
+        <strong>重复语法</strong>
+        <ul class="mini-list">
+          <li><code>V2ReportView</code> 有 section status icon、copy/regenerate icon action、skeleton、annotation toolbar。</li>
+          <li><code>V2InlinePlanReview</code> 有 collapsible header、section card、role group、sticky footer。</li>
+          <li><code>V2Footer</code> 有 segmented view tabs、icon action、copy menu。</li>
+          <li><code>V2SourcesView</code> 有 folder group、source row、view mode switch。</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="box">
+        <strong>可抽 primitives</strong>
+        <ul class="mini-list">
+          <li><code>V2IconAction</code>：复制、保存、打开、TOC 等小 icon 操作。</li>
+          <li><code>V2CollapsibleCard</code>：round、outline、TOC、source group。</li>
+          <li><code>V2StatusIcon</code> / <code>V2LoadingRow</code>。</li>
+          <li><code>V2SourceRow</code> / <code>V2GroupedList</code>。</li>
+        </ul>
+      </div>
+    </div>
+    <p>现实净减少约 <strong>-0.8k</strong>，乐观 <strong>-2.0k</strong>。验收要跑 Quick Search V2 process/report/sources 三个 view。</p>
+  </div>
+
+  <div class="track">
+    <h3><span class="idx">X</span>Copilot panels：继续按 family 收敛</h3>
+    <p>
+      <code>src/ui/view/copilot</code> 约 <strong>9,762</strong> 行，panel pair 相似度非常明确：
+      <code>Synthesize</code> / <code>WriteArticle</code> 约 0.67，
+      <code>LinkSuggest</code> / <code>SemanticLinkSuggest</code> 约 0.62，
+      <code>FormatPolish</code> / <code>Translate</code> 约 0.58，
+      <code>DeduplicateScan</code> / <code>FindAndSolveTasks</code> 约 0.42。
+      已有 <code>CopilotPanelShell</code>、<code>TextStreamPanel</code>、<code>FindingsBodyParts</code>、<code>SuggestionBodyParts</code>，说明继续抽象是顺势的。
+      后续 className 扫描也确认了同一批 panel/card/empty/action 语法在多处重复：<code>PanelEmptyState</code>、
+      icon action、rounded border card、small muted meta row 都不是单点偶然。
+    </p>
+    <p>
+      目标不是把 28 个 action 合成一个万能面板，而是四个 family：
+      <strong>text stream</strong>、<strong>selectable suggestion</strong>、<strong>diff/apply</strong>、<strong>finding/task cards</strong>。
+      现实净减少约 <strong>-1.5k</strong>，乐观 <strong>-3.6k</strong>。
+    </p>
+  </div>
+
+  <div class="track">
+    <h3><span class="idx">Y</span>UI component 双根：先定方向，再迁移低风险件</h3>
+    <p>
+      你指出的 <code>src/ui/component</code> 和 <code>src/ui/components</code> 并存确实是维护性问题。
+      现状不是“一边全没用”：<code>shared-ui/button</code> 和 <code>primitives/Button</code> 都有大量调用。
+      所以下一步应该定规则：<strong>Peak primitives 是新根</strong>；<code>shared-ui</code> 只作为旧 shadcn 兼容层，逐步迁移低风险 Button/Input/IconButton/Pill/Popover/Tabs 调用。
+    </p>
+    <p>
+      新增证据：<code>shared-ui/dropdown-menu.tsx</code> 当前未发现实际调用，单文件约 204 行；
+      <code>input-with-confirm</code> 与 <code>number-input</code> 的相似度约 0.62，可以合成一个更明确的 confirm-input primitive。
+      净减少估算上调到 <strong>-0.6k</strong> 到 <strong>-1.6k</strong>，但它的主要收益仍是“以后不用再猜该 import 哪个根”。
+      无引用候选要二次确认 barrel/动态使用，不能靠一次 grep 直接删除。
+    </p>
+  </div>
+
+  <h2>8. Track Z/AA/AB/AC/AD 深挖：Settings / Agents / Provider / Index</h2>
+  <div class="track">
+    <h3><span class="idx">Z</span>Settings/config：不是删设置页，而是把“设置语法”统一</h3>
+    <p>
+      这一池子约 <strong>7,914</strong> 行。真正重复的不是某个 tab 可以删除，而是三类语法：
+      <code>PluginSettingsLoader</code> 里的类型读取和 clamp；
+      <code>AISetupTab</code> / <code>OverviewTab</code> 里的 model binding display；
+      <code>KnowledgeIndexTab</code> 里的 doc type labels、index mode labels、number row / action strip。
+    </p>
+    <div class="pattern">
+      <div class="box">
+        <strong>现在散落</strong>
+        <ul class="mini-list">
+          <li><code>getString</code> / <code>getBoolean</code> / number clamp / enum guard 只在 loader 内局部存在。</li>
+          <li><code>formatRoleConfig</code> / <code>renderBoundLabel</code> / safety label 各 tab 自己写。</li>
+          <li><code>DOC_TYPES</code> label map 写在 UI 文件里，和配置/DocumentType source 分离。</li>
+          <li>高级 action strip、segmented confirm banner、number row 在多个 setting section 中重复。</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="box">
+        <strong>目标形态</strong>
+        <ul class="mini-list">
+          <li><code>settingsNormalize.ts</code>：readString/readBoolean/readNumber/readEnum/readModelConfig。</li>
+          <li><code>settingsDisplayModel.ts</code>：role config label、safety label、index level label。</li>
+          <li><code>documentTypeCatalog.ts</code>：DocumentType → label/support tier。</li>
+          <li><code>SettingsActionStrip</code> / <code>ModelBindingSummaryRow</code>。</li>
+        </ul>
+      </div>
+    </div>
+    <p>现实净减少约 <strong>-0.7k</strong>，乐观 <strong>-1.8k</strong>。这一块应配 focused tests：旧 settings JSON normalize、profile binding display、Knowledge Index doc type toggle。</p>
+  </div>
+
+  <div class="track">
+    <h3><span class="idx">AA</span>Agent harness：只抽 run ceremony，不抽 agent 大脑</h3>
+    <p>
+      <code>DocSimpleAgent</code> 和 <code>FollowupChatAgent</code> 都在做同一套 ceremony：
+      组 vault/search/content tools、建 <code>TierController</code>、调用 <code>ClaudeAgentSDKBridge.run</code>、把 final text 和 usage 转回 stream event。
+      但它们的 prompt、budget、triggerName、输出事件不同，所以不能合并成一个万能 Agent。
+    </p>
+    <div class="warn">
+      <p>
+        安全做法是抽 <code>runHarnessAgentOnce</code> 这种窄 helper，以及 <code>buildVaultSearchToolSet</code>。
+        Agent class 仍然拥有自己的 prompt、budget、stream contract。现实减少 <strong>-0.4k</strong>，乐观 <strong>-1.2k</strong>。
+      </p>
+    </div>
+  </div>
+
+  <div class="track">
+    <h3><span class="idx">AB</span>Provider/tool adapter：小但确定的重复</h3>
+    <p>
+      <code>CohereRerankProvider</code> 与 <code>JinaRerankProvider</code> 除 base URL、model、错误前缀外几乎同构。
+      <code>buildWebSearchMcpServer</code> 和 <code>buildChatTools</code> 也共享同一个 web-search profile 查询过程。
+      这类 track 不会带来大 LOC，但可作为大波次 safe cleanup 一起做。
+    </p>
+  </div>
+
+  <div class="track">
+    <h3><span class="idx">AC</span>Document/file type catalog：把“支持什么文件”变成一个真相源</h3>
+    <p>
+      重复块扫描显示 image extensions、mime mapping、DocumentType label、doc role enum 分散在
+      <code>FileTypeUtils</code>、settings tab、schema、tag service 里。它不一定能减很多 LOC，
+      但它直接影响“我到底支持哪些文件、UI 怎么显示、LLM schema 怎么约束”的可理解性。
+    </p>
+    <p>
+      推荐把它并入 Track Z：同一波建立 <code>documentTypeCatalog</code> 和 <code>fileExtensionCatalog</code>，
+      Settings chips、resource badge、loader selection、schema enum 从 catalog 派生。现实减少 <strong>-0.3k</strong>，乐观 <strong>-0.8k</strong>。
+    </p>
+  </div>
+
+  <div class="track">
+    <h3><span class="idx">AD</span>Index maintenance：只抽可测循环，不做“拆大类”</h3>
+    <p>
+      <code>indexService.ts</code> 仍然是大文件，但它承担索引、PageRank、semantic edge、pending enrichment 的真实编排。
+      可瘦的不是把它切成十个文件，而是抽重复循环：
+      PageRank 与 semantic PageRank 的 persist chunk/progress；
+      pending LLM/vector enrichment 的 collect pending paths；
+      batch progress suffix 的格式化。
+    </p>
+    <div class="warn">
+      <p>
+        这是高风险 track。它只能进入下一波的 optional/high-risk bucket：
+        如果 focused tests 不足，宁可跳过，也不要为了 LOC 动索引质量。
+      </p>
+    </div>
+  </div>
+
+  <h2>9. Track AE/AF/AG 深挖：Vault Review / Report / List surfaces</h2>
+  <div class="track">
+    <h3><span class="idx">AE</span>Vault Review：一个 report surface，不该由一个 1600 行组件全包</h3>
+    <p>
+      <code>VaultAutoRunContent.tsx</code> 不是死代码，Vault Review 功能应保留。
+      但它内部把 data formatting、tab router、KPI cards、changed chips、trace rail、cluster table、gaps/actions/sources panels、footer actions 都塞在一个文件里。
+      这和 Quick Search V2、Copilot review、Usage Dashboard 的报告型 UI 有大量相似语法。
+    </p>
+    <div class="pattern">
+      <div class="box">
+        <strong>现在</strong>
+        <ul class="mini-list">
+          <li>单文件 1,606 行。</li>
+          <li>本地定义 <code>IconButton</code>、<code>SnapshotCard</code>、<code>ChangedChip</code>、<code>Empty</code>、trace rail。</li>
+          <li>cluster/gap/action/source/table row 形态难以复用。</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="box">
+        <strong>目标</strong>
+        <ul class="mini-list">
+          <li><code>report-surface/KpiCard</code>、<code>TraceRail</code>、<code>DataTableShell</code>、<code>FooterActionBar</code>。</li>
+          <li>Vault Review 只保留 snapshot mapping 和 tab composition。</li>
+          <li>Quick Search / Copilot report surfaces 可以后续复用同一 grammar。</li>
+        </ul>
+      </div>
+    </div>
+    <p>现实净减少约 <strong>-1.0k</strong>，乐观 <strong>-2.5k</strong>。这块需要视觉 smoke，但比继续挤零散 helper 更有体感。</p>
+  </div>
+
+  <div class="track">
+    <h3><span class="idx">AF</span>ReportOrchestrator：抽 SDK 文本生成 ceremony</h3>
+    <p>
+      <code>ReportOrchestrator</code> 的几条路径各自重复 profile resolve、prompt render、<code>queryWithProfile</code>、stream text、repetition guard、session update。
+      这些不是业务语义，而是 SDK generation ceremony。适合抽一个窄 helper，但要保留 section failure、summary non-fatal、mermaid fix nullable 的差异。
+    </p>
+  </div>
+
+  <div class="track">
+    <h3><span class="idx">AG</span>Project/Conversation/Recent list：保留入口，合并 row grammar</h3>
+    <p>
+      Chat 三栏是保留功能：ChatView、ProjectListView、ConversationOutlineView 都需要继续注册。
+      但它们内部的列表语法在重复：section header、active row、icon+title+meta、context menu、empty/loading/recent row。
+      这类重复和“是否保留三栏”不是同一个问题。
+    </p>
+    <p>
+      推荐抽 <code>SurfaceList</code> / <code>SurfaceRow</code> / <code>GroupedTimelineList</code>，让 Projects、Conversations、ConversationIndex、Quick Search recent lists 共享基础 row grammar。
+      现实净减少约 <strong>-0.6k</strong>，乐观 <strong>-1.5k</strong>。
+    </p>
+  </div>
+
+  <h2>10. Track N/O/P/Q/R 摘要判断</h2>
+  <div class="grid">
+    <div class="card span-6">
+      <h3>N. Onboarding legacy state</h3>
+      <p>这是小而干净的退休：删旧 <code>state.ts</code>，迁移唯一 type import，删旧 reducer test。不要删 <code>harness-onboarding</code> step components，因为当前 wizard 仍用它们。</p>
+    </div>
+    <div class="card span-6">
+      <h3>O. React host shell</h3>
+      <p>这是 app 层合法 weave 点的瘦身。能减少 boilerplate，但不要把 Obsidian lifecycle 隐藏到看不见的魔法里。</p>
+    </div>
+    <div class="card span-6">
+      <h3>P. Settings model picker</h3>
+      <p>重复很明确，但视觉风险存在。适合和 Settings/Onboarding grammar track 合并实施。</p>
+    </div>
+    <div class="card span-6">
+      <h3>Q/R. 内容与生成资产 containment</h3>
+      <p>
+        Q 分两层：built-in skill markdown 外置是安全小收益；<code>HarnessSkillRegistry</code> 未接线桥需要 owner 决策，
+        不能因为现在 consumer 少就误删未来 Skill Compiler 地基。R 是大字节，不应纳入 LOC target，但应该纳入 repo health / bundle-size target。
+      </p>
+    </div>
+  </div>
+
+  <h2>11. 继续深扫新增池：AH-BA</h2>
+  <div class="callout">
+    <p>
+      这轮新增 AH-BA 不是为了凑字母，而是回答用户的核心问题：
+      “是不是还有大量重复代码，只是之前没扫到？”
+      答案是：有，但不是每一处都适合第一波直接硬切。真正优先的是能形成共享 substrate 的地方；
+      只能减少一点点 ceremony 的地方，要跟更大的 track 合并，不要单独开一轮。
+      AR-BA 属于更深的 infra/config/app-weave/data-compat 债：收益真实，但必须后置、单独验收。
+    </p>
+  </div>
+
+  <div class="grid">
+    <div class="card span-6">
+      <h3>AH. Onboarding/Profile setup-step grammar</h3>
+      <p>
+        这是用户可见但可控的 UI 收敛。证据不是“Onboarding 文件多”，而是 provider credential、test/save、radio card、
+        step footer/status 在 Onboarding 与 Settings Profile 之间重复出现。它适合并入 Settings/Onboarding grammar 波次。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.5k</strong>；乐观：约 <strong>-1.4k</strong>。</li>
+        <li>不要做：删除 Onboarding 流程、删除 provider setup、把 Profile 设置塞回旧 modal。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AI. Folder intelligence substrate</h3>
+      <p>
+        这是新增池里最值得优先看的结构性候选。<code>explore-folder</code>、<code>buildBackboneMap</code>、
+        <code>grep-file-tree</code> 都需要 folder path normalize、exclusion rule、folder DFS、doc stats top-list。
+        现在这些能力散在多个文件里，导致同一个“文件夹智能”概念被多次重写。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-1.2k</strong>；乐观：约 <strong>-2.8k</strong>。</li>
+        <li>第一刀只抽 exclusion + stats；第二刀再合并 tree walk。这样能避免 search 行为一次性漂移。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AJ. Chat manager/query/context slot ceremony</h3>
+      <p>
+        Chat 不是删除目标。三栏 Chat、Project list、Conversation outline 都是保留功能。
+        这里能减的是 manager 里的 query ceremony、service refresh ceremony，以及 slot 的 empty/render/tokens 小模板。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.8k</strong>；乐观：约 <strong>-2.0k</strong>。</li>
+        <li>风险：很高。只能抽小 helper，不允许出现万能 <code>ChatRunner</code> 或改变 context slot 顺序。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AK / AL. 小收益但能改善长期形状</h3>
+      <p>
+        <code>MultiLensGraph</code> 和 <code>core/constant.ts</code> 都有可整理点，但它们不是最快 LOC 池。
+        AK 更像布局 assembly 去重；AL 更像治理：不要继续把 UI label/color/prompt/defaults 全堆进 core 常量。
+      </p>
+      <ul class="mini-list">
+        <li>AK 现实约 <strong>-0.2k</strong>，乐观 <strong>-0.7k</strong>。</li>
+        <li>AL 现实约 <strong>-0.3k</strong>，乐观 <strong>-1.0k</strong>，但部分是 TS → domain catalog/config 的迁移，不要虚报总 cloc。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AM. Copilot action recipe factory</h3>
+      <p>
+        <code>service/copilot/actions/index.ts</code> 不是 dead code，它定义了用户真正会用的 Copilot action。
+        但 28 个 action 里有多种重复执行模板：纯 stream prompt、structured prompt、agent prompt。
+        这适合把“如何跑”抽成 recipe，把“这个 action 是什么”留在声明表。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.6k</strong>；乐观：约 <strong>-1.5k</strong>。</li>
+        <li>不要做：把 28 个 action 合成一个 switch 黑盒，或改 action registry / UI binding contract。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AN. Markdown/JSON persistence grammar</h3>
+      <p>
+        Chat conversation、AI Search analysis、Vault Review history 都是 “markdown document + JSON payload” 体系。
+        它们不应该合成同一个格式，但可以共享 JSON fence、safe parse、frontmatter raw、section builder 小工具。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.4k</strong>；乐观：约 <strong>-1.2k</strong>。</li>
+        <li>风险：高。必须先加 golden markdown round-trip tests，不能改变用户已有 vault 文档格式。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AO. MCP/tool server wrapper grammar</h3>
+      <p>
+        这里不是要改 agent 能力，而是收敛工具定义外壳。<code>vaultMcpServer.ts</code>、<code>CopilotOutputMcpServer.ts</code>、
+        <code>graphMcpServer.ts</code>、web-search tool 都反复写 schema、handler、<code>content: [{ type: 'text', text: ... }]</code>
+        或 JSON stringify。这个重复很适合抽薄 helper。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.5k</strong>；乐观：约 <strong>-1.4k</strong>。</li>
+        <li>不要做：改工具名、改 input schema、改返回 payload 形状、把长 description 塞进不可读 table。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AP. Quick Search session-store transition grammar</h3>
+      <p>
+        Quick Search V2 不是只重复 UI surface；它的 session store 也有一层重复状态机语法：
+        streaming buffer、timeline item update、tool complete、plan section reorder/regenerate、mark completed。
+        这类代码继续长下去会让 Quick Search 难以维护。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.6k</strong>；乐观：约 <strong>-1.6k</strong>。</li>
+        <li>策略：保留一个 Zustand store，不拆成多个互相同步的 store；只把重复 transition helper 纯函数化。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AQ. Test/regression harness helper consolidation</h3>
+      <p>
+        这是最后做的 test-only 池。T11 系列留下大量非常有价值的 boundary guard，但很多 guard 在重复
+        read file、scan forbidden import、assert metric floor、fake runtime/port builder。它们可以表驱动，不应该删覆盖。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-1.0k</strong>；乐观：约 <strong>-3.0k</strong>，但全部是 test-only。</li>
+        <li>不要做：删除失败用例、放宽 guard、把 source scan 从“精确禁止”改成宽泛 smoke。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AR. Native SQLite module loader/probe grammar</h3>
+      <p>
+        这不是普通 helper 重复，而是启动路径重复。<code>BetterSqliteStore</code> 和 <code>NativeModuleManager</code>
+        都知道如何加载 better-sqlite3、如何探测 <code>:memory:</code>、如何处理 managed/native path。
+        现在这套知识分散在两个文件里，阅读时很难判断“到底谁负责下载，谁负责加载，谁负责验证”。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.4k</strong>；乐观：约 <strong>-1.1k</strong>。</li>
+        <li>正确方向：抽 <code>SqliteNativeProbe</code> 这种非常窄的 helper；下载 lifecycle 仍归 <code>NativeModuleManager</code>。</li>
+        <li>不要做：删自动下载、删 managed path fallback、把 sqlite-vec extension loading 混进 native module probe。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AS. Model catalog / Profile preset 真相源收敛</h3>
+      <p>
+        这是新增池里最有长期价值、也最容易误伤的一块。当前模型信息分布在
+        <code>data/model-catalog.json</code>、<code>templates/config/models/*.json</code>、
+        <code>templates/config/curator-catalog.json</code>、<code>presets.ts</code>、
+        <code>model-registry.ts</code>、<code>ProfileRegistry.ts</code>。
+        总量约 <strong>3,240</strong> 行，而且存在 provider/model/capability/default model 多处声明。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.8k</strong>；乐观：约 <strong>-2.2k</strong>。</li>
+        <li>正确方向：先决定一个模型目录 source of truth，再让 preset defaults / registry merge 从它派生。</li>
+        <li>不要做：借 refactor 顺手改默认模型、删 curator catalog 的 ranking 语义、把用户 profile migration 简化掉。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AT. PromptId / TemplateRegistry metadata co-generation</h3>
+      <p>
+        <code>PromptId.ts</code> 负责 enum、configurable groups、变量类型；
+        <code>TemplateRegistry.ts</code> 负责 metadata、路径、group、systemPromptId。
+        两者都很重要，但现在新增一个 prompt 需要在多个列表/metadata 中同步，容易漏。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.3k</strong>；乐观：约 <strong>-0.9k</strong>。</li>
+        <li>正确方向：用 typed descriptor table 派生 group lists / template metadata，保留 <code>PromptVariables</code> 类型安全。</li>
+        <li>不要做：把所有 prompt 类型改成裸 string，或让 TemplateManager 失去可配置 prompt 的清晰边界。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AU. App runtime registry ceremony</h3>
+      <p>
+        这块和你之前强调的规则直接相关：runtime 必须由 app 层集中拥有。
+        现在方向是对的，但表达很啰嗦：<code>AppRuntimeRegistry</code> 对每个 runtime 重复
+        set/get/try/clear 和错误文案，<code>AppContext</code> 又重复一层 static delegator。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.35k</strong>；乐观：约 <strong>-0.9k</strong>。</li>
+        <li>正确方向：抽 typed slot helper，保留 <code>getVaultLintRuntime()</code> 这种可读 named API。</li>
+        <li>不要做：把 runtime registry 变成字符串 key map，或重新引入 service-layer singleton。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AV. Command/Notice maintenance grammar</h3>
+      <p>
+        <code>PeakCommandActions.ts</code> 现在主要是 palette command 的 glue code。
+        它不该被删除，但里面的 dependency guard、progress notice、maintenance command、catch notice
+        是明显重复语法。把这些抽掉，会让命令文件更像 command map，而不是 Notice 文案堆。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.4k</strong>；乐观：约 <strong>-1.1k</strong>。</li>
+        <li>正确方向：抽 <code>withProgressNotice</code>、<code>requireSearchDeps</code>、maintenance runner。</li>
+        <li>不要做：删命令、改 command id/name、吞错误、把用户可见文案合成难追踪的巨大表。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AW. Workspace leaf/layout helper</h3>
+      <p>
+        这是可减但必须非常谨慎的一块。<code>ViewManager</code>、<code>ViewSwitchConsistentHandler</code>、
+        <code>AppVaultNavigationAdapter</code>、<code>obsidian-utils</code> 都在处理 leaf、sidebar、open/reveal、
+        markdown/file-explorer/outline fallback。重复是真的，但 Obsidian workspace 很脆。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.4k</strong>；乐观：约 <strong>-1.2k</strong>。</li>
+        <li>正确方向：抽小的 <code>WorkspaceLeafOps</code>，只收敛 get/reveal/open/fallback primitives。</li>
+        <li>不要做：破坏 Chat 三栏、删除 ProjectList/ConversationOutline view、把布局策略藏进不可读 helper。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AX. RAF streaming buffer grammar</h3>
+      <p>
+        Chat streaming 和 Quick Search streaming 都为了性能做了 RAF buffer，这是好事；
+        但现在 buffer 写法在 <code>chatDataStore.ts</code>、<code>searchSessionStore.ts</code>、
+        <code>useEventRouter.ts</code> 里重复。这里能减代码，也能减少未来 O(n²)/flush bug 的概率。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.4k</strong>；乐观：约 <strong>-1.0k</strong>。</li>
+        <li>正确方向：抽 <code>createRafTextBuffer</code> / <code>createKeyedRafTextBuffer</code>。</li>
+        <li>不要做：让 buffer helper 直接知道 Zustand shape，或改变 streaming 节奏/flush 时机。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AY. Compatibility shim retirement sweep</h3>
+      <p>
+        这符合你的产品阶段判断：还没上线，不需要长期背很多 legacy import surface。
+        但要分清两类兼容：import shim 可以迁移后删除；用户数据格式、settings migration、旧 vault markdown 读取兼容不能随便删。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.3k</strong>；乐观：约 <strong>-0.8k</strong>。</li>
+        <li>候选：<code>service/chat/types.ts</code>、<code>service/usage/types.ts</code>、<code>quick-search/store/v2SessionTypes.ts</code>、<code>core/utils/vault-utils.ts</code>。</li>
+        <li>不要做：删除用户历史数据兼容、删除 settings legacy migration、删除 Markdown parser fallback。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>AZ. Chat vault/sqlite persistence grammar</h3>
+      <p>
+        <code>ChatStore.ts</code> 不是旧垃圾，它仍是 service-manager / service-project / service-conversation 的真实依赖。
+        但它同时负责 Vault markdown、SQLite conversation/message/resource repos、conversation doc parse/append、
+        project summary、message dedup 和 fallback load。这里可以收敛“持久化语法”，不能退役 Chat 功能。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.8k</strong>；乐观：约 <strong>-2.0k</strong>。</li>
+        <li>正确方向：抽 dual-write helper、conversation meta upsert helper、markdown append/dedup helper。</li>
+        <li>不要做：删除 Vault markdown chat 资产、删除 SQLite metadata、改变 ChatConversationDoc 现有格式。</li>
+      </ul>
+    </div>
+
+    <div class="card span-6">
+      <h3>BA. Tag/taxonomy serialization + suggestion grammar</h3>
+      <p>
+        tag 体系也不是死代码：它连接索引、graph node、Copilot suggest-tags、lint insight、boolean expression parser。
+        但 <code>TagService</code> 同时做 tags_json codec、legacy tag blob、LLM output normalize、functional/topic entry validation；
+        suggestion engine/panel/repo 又各自处理 suggestion/status/apply 语法。
+      </p>
+      <ul class="mini-list">
+        <li>现实减少：约 <strong>-0.4k</strong>；乐观：约 <strong>-1.2k</strong>。</li>
+        <li>正确方向：抽 <code>tagBlobCodec</code>、<code>tagEntryCatalog</code>、suggestion status mapper。</li>
+        <li>不要做：改 <code>tags_json</code> 兼容、删 legacy decode、改变 functional/topic tag graph node id。</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>11.1 继续扫到但不单独计数的二级池</h2>
+  <div class="callout">
+    <p>
+      继续深扫后，确实还能看到新的重复代码池。但这里我不把 headline 的 23k / 57k 再往上加，
+      因为这些池子与已有 tracks 高度重叠。正确做法是：把它们写进 Claude 的执行 prompt 作为
+      <strong>同一波次里的子任务</strong>，而不是新开一堆字母、重复计算收益。
+    </p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>二级池</th>
+        <th>证据</th>
+        <th>并入哪里</th>
+        <th>为什么不单独开 track</th>
+        <th class="num">额外潜力</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Markdown / frontmatter / JSON fence utility convergence</strong></td>
+        <td>
+          <code>markdown-utils.ts</code>、<code>MarkdownDocEngine</code>、<code>MarkdownDocBuilder</code>、
+          search-docs、chat-docs、<code>template-engine-helper</code> 合计约 <strong>2,828</strong> 行；
+          多处重复 frontmatter、section、JSON block、safe parse、codeBlock helper。
+        </td>
+        <td>AN + AZ</td>
+        <td>
+          这是同一类“Vault markdown 兼容格式”问题。单独做会让 golden round-trip 测试分散；
+          应该在 AN/AZ 里统一加测试，再抽小工具。
+        </td>
+        <td class="num">-0.4k / -1.3k</td>
+      </tr>
+      <tr>
+        <td><strong>Search scoring / node-attribute codec</strong></td>
+        <td>
+          Search + graph inspector + sqlite 相关文件约 <strong>25,621</strong> 行；
+          <code>find-path/scorer.ts</code> 850 行，<code>explore-folder.ts</code> 869 行，
+          <code>indexService.ts</code> 2,317 行；多处 <code>JSON.parse(node.attributes)</code>、
+          score/rank/weight normalize、path label extraction。
+        </td>
+        <td>U + AI + BA + V</td>
+        <td>
+          Search 行为是高风险区。这里不是“删算法”，而是收敛 attributes codec、score helpers、label helpers；
+          必须跟 search/index/folder/tag 波次一起验收，不能单独硬切。
+        </td>
+        <td class="num">-0.5k / -1.5k</td>
+      </tr>
+      <tr>
+        <td><strong>LLM structured-output / usage normalization codec</strong></td>
+        <td>
+          <code>core/providers/types.ts</code> 594 行、<code>service-manager.ts</code> 998 行、
+          <code>sdkMessageAdapter.ts</code> 与多处 agent 都在处理 JSON extraction、schema parse、
+          SDK usage → <code>LLMUsage</code>、<code>LLMStreamEvent</code> 转换。
+        </td>
+        <td>AA + AF + AJ + AT</td>
+        <td>
+          prompt 输出契约很多，不能用一个万能 parser 吞掉差异。
+          适合抽 <code>extractJsonCandidate</code>、<code>normalizeSdkUsage</code>、<code>emitUsageSafe</code> 这类窄 helper。
+        </td>
+        <td class="num">-0.3k / -1.0k</td>
+      </tr>
+      <tr>
+        <td><strong>SQLite row/json codec mini-framework</strong></td>
+        <td>
+          <code>ddl.ts</code> 1,145 行，repo + adapter 抽样约 <strong>9,181</strong> 行；
+          <code>metadata_json</code>、<code>tags_json</code>、<code>rowTo*</code>、
+          <code>rows.map</code>、JSON serialize/parse 在 Usage、VaultLint、Structural、Mobius、Chat repos 中重复。
+        </td>
+        <td>V + BA + AZ</td>
+        <td>
+          repo 大不是罪，很多 SQL 是真实业务。能减的是 row codec / json column helper / paged rows mapper，
+          不能把不同 repo 的业务查询合成一个不可读的 generic repo。
+        </td>
+        <td class="num">-0.6k / -1.8k</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="warn">
+    <p>
+      <strong>执行含义：</strong>
+      这些二级池应该进入下一份 Claude prompt 的 “scan while implementing” 条款：
+      如果正在做 AN/AZ/V/U/AI/BA/AA/AF/AJ/AT，就必须顺手检查对应二级池；
+      但不能为了这些二级池单独开一个小 wave。
+    </p>
+  </div>
+
+  <h2>11.2 大文件覆盖审计：最大的池子没有漏掉</h2>
+  <div class="callout">
+    <p>
+      我额外按 TS/TSX 文件行数扫了一轮：当前 <code>src</code> 里约有 <strong>81</strong> 个
+      350 行以上文件。结论不是“所有大文件都该拆”，而是：最大的重复/收敛池基本已经映射到本文 tracks；
+      真正没纳入的是少数单一复杂组件或真实算法，它们不能为了 LOC 盲目切。
+    </p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>大文件/大区域</th>
+        <th class="num">规模线索</th>
+        <th>归属 track</th>
+        <th>处理判断</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>indexService.ts</code> / Search index helpers</td>
+        <td class="num">2,317 + helpers</td>
+        <td>AD / U / AI / V</td>
+        <td>只允许净减少的结构拆分；单纯搬文件不算瘦身。</td>
+      </tr>
+      <tr>
+        <td><code>VaultAutoRunContent.tsx</code> / Vault Review UI</td>
+        <td class="num">1,606</td>
+        <td>AE</td>
+        <td>最适合做 report-surface grammar，但要保留 Usage Dashboard 和 Vault Review 功能。</td>
+      </tr>
+      <tr>
+        <td>SQLite repos + <code>ddl.ts</code></td>
+        <td class="num">9k+ sample</td>
+        <td>V / BA / AZ / 二级 SQLite codec</td>
+        <td>抽 row/json codec，不抽万能 repo。</td>
+      </tr>
+      <tr>
+        <td><code>buildBackboneMap</code> / <code>explore-folder</code> / <code>find-path/scorer</code></td>
+        <td class="num">1,211 / 869 / 850</td>
+        <td>AI / U / 二级 Search scoring</td>
+        <td>先抽 folder stats、exclusion、attribute codec；Search ranking 算法要单独验收。</td>
+      </tr>
+      <tr>
+        <td>Chat manager / ChatStore / service-conversation</td>
+        <td class="num">998 / 774 / 607</td>
+        <td>AJ / AZ</td>
+        <td>保留 Chat 三栏与双持久化资产；收敛 query、dual-write、append/dedup ceremony。</td>
+      </tr>
+      <tr>
+        <td>Quick Search modal/store/hooks/report</td>
+        <td class="num">723 / 772 / 459 / 422</td>
+        <td>W / AP / AX</td>
+        <td>合并 surface grammar、session transition、RAF buffer；不砍 V2 能力。</td>
+      </tr>
+      <tr>
+        <td>Chat UI lists/messages/attachments/composer</td>
+        <td class="num">731 / 614 / 549 / 475</td>
+        <td>AG / T / AX</td>
+        <td>保留三栏；抽 row/list/resource/streaming grammar。</td>
+      </tr>
+      <tr>
+        <td>Settings / Onboarding / Profile setup</td>
+        <td class="num">795 / 715 / 571</td>
+        <td>Z / AH / P / AS</td>
+        <td>合并 setup-step、model picker、catalog display；不删除 onboarding。</td>
+      </tr>
+      <tr>
+        <td>Copilot action registry + panels</td>
+        <td class="num">785 + 28 panels</td>
+        <td>X / AM / AE</td>
+        <td>action 语义保留；只收敛 recipe factory 和 panel family。</td>
+      </tr>
+      <tr>
+        <td><code>core/constant.ts</code> / PromptId / TemplateRegistry / model registry</td>
+        <td class="num">651 / 539 / 408 / 422</td>
+        <td>AL / AT / AS</td>
+        <td>治理 source of truth，不把默认值和 catalog 继续堆进 core 常量。</td>
+      </tr>
+      <tr>
+        <td><code>PromptInputBody.tsx</code></td>
+        <td class="num">500</td>
+        <td>暂不计数</td>
+        <td>目前像单一复杂组件；除非找到第二个同类 autocomplete/menu engine，否则只拆文件不算瘦身。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>11.3 本轮新增确认：必须进下一份 prompt 的热点</h2>
+  <div class="callout">
+    <p>
+      这一轮专门扫了 types / stores / strings / primitives / compatibility 注释。
+      结论是：还有几处不是“新功能代码多”，而是<strong>迁移期双轨和 UI 原语双栈</strong>留下的维护面。
+      它们不能靠删功能解决，但应该跟下一波结构瘦身一起处理。
+    </p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>热点</th>
+        <th>证据</th>
+        <th>并入哪里</th>
+        <th>执行规则</th>
+        <th class="num">潜力</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Onboarding 双状态机 / legacy harness reducer</strong></td>
+        <td>
+          <code>src/ui/view/onboarding</code> + <code>modals/harness-onboarding</code> 合计约
+          <strong>3,007</strong> 行；新 <code>OnboardingStateMachine.ts</code> 571 行，
+          legacy <code>modals/harness-onboarding/state.ts</code> 267 行，且仍有
+          <code>test/harness-onboarding-state.test.ts</code> 291 行旧 reducer 测试。
+        </td>
+        <td>N + AH</td>
+        <td>
+          保留 onboarding 体验和 Curator step components；迁移 <code>RunningCuratorStep</code> 等少数 legacy type import，
+          删除旧 reducer 与旧 reducer tests，或把旧测试并入新 7-step state-machine coverage。
+        </td>
+        <td class="num">-0.5k / -1.3k</td>
+      </tr>
+      <tr>
+        <td><strong>UI primitive 双栈：shared-ui vs primitives vs dashboard charts</strong></td>
+        <td>
+          <code>shared-ui</code>、<code>components/primitives</code>、dashboard charts wrappers 抽样约
+          <strong>3,024</strong> 行。按钮就有 <code>shared-ui/button.tsx</code> 与
+          <code>components/primitives/Button.tsx</code> 两套；Button imports 仍大量分散在两边。
+        </td>
+        <td>Y + S + AH + P + AE</td>
+        <td>
+          不做视觉重设计，不删 Usage Dashboard。先选 canonical primitive root，
+          对 Button / Modal / Row / Form / NumberField 做 adapter 或迁移 plan，再按 surface 批量改 call site。
+          每个 surface 需要 screenshot smoke。
+        </td>
+        <td class="num">-1.0k / -2.8k</td>
+      </tr>
+      <tr>
+        <td><strong>Legacy type/import shim sweep</strong></td>
+        <td>
+          明确 shim 包括 <code>service/chat/types.ts</code>、<code>service/usage/types.ts</code>、
+          <code>quick-search/store/v2SessionTypes.ts</code>、<code>multi-lens-graph/types.ts</code>、
+          <code>service/lint/types.ts</code>、<code>core/utils/vault-utils.ts</code> 等。
+          其中 chat shim 仍被 Chat UI / service 多处导入。
+        </td>
+        <td>AY + AG + AP</td>
+        <td>
+          只迁移 import surface，不删除用户数据兼容。目标是让新代码直连 <code>@/core/*</code> 或 canonical UI type，
+          然后删除薄 shim；不允许放宽 boundary guard。
+        </td>
+        <td class="num">-0.3k / -1.0k</td>
+      </tr>
+      <tr>
+        <td><strong>Zustand transition helper / store ceremony</strong></td>
+        <td>
+          store 抽样约 <strong>4,197</strong> 行；<code>searchSessionStore.ts</code> 772 行、
+          <code>chatDataStore.ts</code> 342 行、<code>chatViewStore.ts</code> 355 行。
+          重复形态包括 reset/clear、loading/error、RAF buffer、array item update、status transition。
+        </td>
+        <td>AP + AX + AG + AJ</td>
+        <td>
+          不拆成多个互相同步的 store。只抽纯 transition helper / RAF buffer / update-by-id helper；
+          store ownership 仍保持现有单 store 边界。
+        </td>
+        <td class="num">-0.7k / -1.8k</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>11.4 低引用审计：少量可删 residue，但不是大池</h2>
+  <div class="callout">
+    <p>
+      我又跑了一轮静态 import 图。结果很克制：<code>src</code> 里 893 个 TS/TSX 文件中，
+      真正 “0 static incoming” 的只有 8 个，而且其中一半是入口误报或声明文件。
+      所以这里不能虚报成几千行大收益，但可以作为下一波的顺手清理项。
+    </p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>低引用项</th>
+        <th>判断</th>
+        <th>原因</th>
+        <th class="num">潜力</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>src/ui/component/shared-ui/dropdown-menu.tsx</code></td>
+        <td><strong>可疑 unused shared-ui 组件</strong></td>
+        <td>
+          静态搜索只命中自身和 <code>PortalContainerContext</code> 注释，没有实际 caller。
+          如果 build + source scan 确认无人引用，可直接删除；如果未来需要 dropdown，应从 canonical primitives 重建。
+        </td>
+        <td class="num">-0.2k</td>
+      </tr>
+      <tr>
+        <td><code>src/ui/view/quick-search/store/v2SessionTypes.ts</code></td>
+        <td><strong>unused re-export shim</strong></td>
+        <td>
+          当前 runtime callers 已直连 <code>@/core/search/v2SessionTypes</code>；
+          这个 shim 主要是 T11I 迁移期兼容面，静态入边为 0。
+        </td>
+        <td class="num">-0.02k</td>
+      </tr>
+      <tr>
+        <td><code>src/core/utils/vault-utils.ts</code></td>
+        <td><strong>path-only shim，待 guard 更新后删除</strong></td>
+        <td>
+          runtime 入边基本清空，但 <code>t11r-zero-obsidian-boundary-regression</code> 仍显式要求它存在并 re-export path-utils。
+          删除前要把 guard 从 “must exist” 改成 “old imports absent”。
+        </td>
+        <td class="num">-0.01k</td>
+      </tr>
+      <tr>
+        <td><code>src/app/commands/Register.ts</code> / <code>src/app/events/Register.ts</code> / <code>src/app/settings/MySetting.ts</code></td>
+        <td><strong>不是 unused，是 import resolver 误报</strong></td>
+        <td>
+          <code>main.ts</code> 用 <code>src/...</code> 绝对路径导入，快速脚本只解析了 <code>@/</code> 和相对路径。
+          它们是 boot wiring / command registration / settings tab 活入口，不能删。
+        </td>
+        <td class="num">0</td>
+      </tr>
+      <tr>
+        <td><code>src/types/*.d.ts</code></td>
+        <td><strong>声明文件，不按普通入边判断</strong></td>
+        <td>
+          <code>better-sqlite3</code>、<code>pdfjs-dist</code> 声明用于 TS 编译环境；
+          只有在确认已有 upstream types 或 tsconfig 不再需要时才可删。
+        </td>
+        <td class="num">0 / tiny</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <p>
+      <strong>不要用低引用项冒充大瘦身：</strong>
+      这类 residue 适合并入 AY / UI primitive cleanup 的尾声，不能作为下一波 hard target。
+      它的主要价值是减少迷惑性旧入口，而不是显著降低总 LOC。
+    </p>
+  </div>
+
+  <h2>11.5 文档体量备注：不计入产品源码瘦身</h2>
+  <div class="callout">
+    <p>
+      <code>docs/superpowers/refactor-ops/t11*</code> 本身已经接近 <strong>19,871</strong> 行，
+      其中 T11X 报告和 T11W 备份是大头。这能解释“仓库行数看起来还很大”的一部分，
+      但这些是 owner review / handoff / evidence artifacts，不是产品运行时代码。
+    </p>
+    <p>
+      如果之后要压仓库体量，可以做 docs archival：保留最终正稿 + 当前执行 handoff，把历史探索稿压缩到 appendix 或 archive。
+      但这不应该算作产品代码瘦身，也不应该在 Claude 实现 wave 里和源码重构混在一起。
+    </p>
+  </div>
+
+  <h2>11.6 依赖与包体积审计：不算 LOC，但会让项目显得笨重</h2>
+  <div class="callout">
+    <p>
+      这轮换了一个角度：扫描 <code>package.json</code> 的 <strong>70</strong> 个 dependencies
+      和 <strong>22</strong> 个 devDependencies，再反查 <code>src/test/scripts/main.ts</code> 的 import。
+      结论是：这里有一批可以进入“包体积治理”的候选，但它们不是主要 LOC 池。
+    </p>
+    <p>
+      也就是说：删掉这些包可以让安装、bundle、维护面更轻；但不能拿它们去冒充 “-10k 源码行”。
+      这应该作为 T11X 的并行支线，而不是替代 Copilot / Quick Search / Usage Dashboard / Repo helper 的结构瘦身。
+    </p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>候选</th>
+        <th>证据</th>
+        <th>怎么处理</th>
+        <th class="num">LOC</th>
+        <th class="num">包/体积收益</th>
+        <th>风险</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>recharts</code></td>
+        <td>依赖存在，但源码 import 扫描为 0；Usage Dashboard 当前大量使用自写 SVG/chart primitives。</td>
+        <td>确认没有动态 import / docs-only 用法后，从 package.json 移除。</td>
+        <td class="num">0</td>
+        <td class="num">中</td>
+        <td>低；但要真机看 Usage Dashboard 图表没有依赖 Recharts runtime。</td>
+      </tr>
+      <tr>
+        <td><code>ai-elements</code></td>
+        <td>依赖存在，但源码 import 扫描为 0；实际代码使用的是本地 <code>src/ui/component/ai-elements/*</code>。</td>
+        <td>确认没有计划从包导入后删除 dependency；本地 ai-elements 文件另按 UI primitive wave 收敛。</td>
+        <td class="num">0</td>
+        <td class="num">小/中</td>
+        <td>低；名称相似，review 时必须区分 npm 包和本地目录。</td>
+      </tr>
+      <tr>
+        <td><code>mermaid</code> package</td>
+        <td>直接 <code>mermaid</code> import 为 0；但 <code>@streamdown/mermaid</code> 有 1 个 live import。</td>
+        <td>先查 <code>@streamdown/mermaid</code> 是否把 <code>mermaid</code> 作为 peer/dependency；若只是重复 direct dependency，可删 direct package。</td>
+        <td class="num">0</td>
+        <td class="num">大（node_modules 中约 69MB）</td>
+        <td>中；聊天里的 Mermaid 渲染必须保留，不能误删 transitive 需要的包。</td>
+      </tr>
+      <tr>
+        <td><code>playwright</code></td>
+        <td>源码/test/scripts import 扫描为 0；但历史 docs/gstack/browser QA 可能曾使用。</td>
+        <td>如果当前 repo 脚本不再直接跑 Playwright，可移到外部工具链或 docs-only，不放产品 plugin package。</td>
+        <td class="num">0</td>
+        <td class="num">中/大</td>
+        <td>中；需要确认没有隐藏 QA script 使用它。</td>
+      </tr>
+      <tr>
+        <td><code>lucide</code> + <code>lucide-react</code> 双栈</td>
+        <td><code>lucide-react</code> 142 个文件；裸 <code>lucide</code> 只有 <code>src/app/events/Register.ts</code> 1 个文件。</td>
+        <td>把那一个 DOM icon call 改成更轻的 app utility 或直接静态 SVG/文本，再删 <code>lucide</code> direct dependency。</td>
+        <td class="num">tiny</td>
+        <td class="num">中（lucide 约 27MB）</td>
+        <td>低/中；Register 是 app 事件入口，改动后要 smoke 状态栏/按钮图标。</td>
+      </tr>
+      <tr>
+        <td><code>motion</code> + <code>framer-motion</code> 双栈</td>
+        <td><code>framer-motion</code> 10 个 live import；<code>motion/react</code> 只有 <code>src/ui/component/ai-elements/shimmer.tsx</code> 1 个。</td>
+        <td>把 shimmer 迁到 CSS animation 或 framer-motion；删除 <code>motion</code> direct dependency。</td>
+        <td class="num">tiny</td>
+        <td class="num">小/中</td>
+        <td>低；只影响 shimmer 视觉细节。</td>
+      </tr>
+      <tr>
+        <td><code>@radix-ui/react-dropdown-menu</code></td>
+        <td>唯一 import 在 <code>src/ui/component/shared-ui/dropdown-menu.tsx</code>，而该 wrapper 在低引用审计中已是 0 caller 候选。</td>
+        <td>把 unused dropdown wrapper 和 package 同步删；如果未来需要 dropdown，再用已统一的 primitive 方向重新引入。</td>
+        <td class="num">-0.2k</td>
+        <td class="num">小</td>
+        <td>低；需要 source scan 守住 0 caller。</td>
+      </tr>
+      <tr>
+        <td>D3 direct packages</td>
+        <td><code>d3-drag</code> / <code>d3-force</code> / <code>d3-selection</code> / <code>d3-zoom</code> import 扫描为 0。</td>
+        <td>确认 graph 使用的是 <code>@xyflow/react</code> / Dagre，而不是裸 D3 后删除 direct deps。</td>
+        <td class="num">0</td>
+        <td class="num">小/中</td>
+        <td>低/中；要跑 graph surface smoke。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <p>
+      <strong>依赖治理的验收指标应该换一套：</strong>
+      这里用 “removed packages / installed size / bundle size / no visual regression” 作为指标，
+      不要塞进源码 LOC hard target。下一份 Claude prompt 可以把它列为 <strong>Package Diet track</strong>，
+      但必须和 product-code slimming 分开汇报。
+    </p>
+  </div>
+
+  <h2>11.7 仓库磁盘体量审计：很多“很大”不是 src</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>路径</th>
+        <th class="num">磁盘体量</th>
+        <th>判断</th>
+        <th>处理建议</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>.claude/worktrees</code></td>
+        <td class="num">约 1.0GB</td>
+        <td>临时 agent worktree / node_modules 复制，是目录体积最大来源。</td>
+        <td>作为本地工作区卫生清理；不计入产品源码瘦身，不交给 Claude 改代码。</td>
+      </tr>
+      <tr>
+        <td><code>node_modules</code></td>
+        <td class="num">约 817MB</td>
+        <td>依赖安装体积，受 package diet 影响。</td>
+        <td>先删零引用/单引用可替代包，再重新安装验证 lockfile。</td>
+      </tr>
+      <tr>
+        <td><code>docs/gstack</code></td>
+        <td class="num">约 85MB</td>
+        <td>设计图、mock、历史视觉资产；是重要资产，不应当为 LOC 目标删除。</td>
+        <td>未来可做 external asset sync / archive policy；不是 T11X 源码瘦身。</td>
+      </tr>
+      <tr>
+        <td><code>sdk/vendor/ripgrep</code></td>
+        <td class="num">约 32MB</td>
+        <td>SDK vendor binary；属于工具/runtime 分发问题。</td>
+        <td>除非产品决定不再内置 SDK vendor，否则不要在结构重构里碰。</td>
+      </tr>
+      <tr>
+        <td><code>src</code></td>
+        <td class="num">约 8.2MB</td>
+        <td>真正的产品源码；T11X 主目标仍然在这里。</td>
+        <td>继续按 UI/service/core/app 子域做结构瘦身。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <p>
+      这解释了一个容易混淆的感受：你看到“项目很大”是对的，但 “src 很胖” 和
+      “工作区/依赖/设计资产很胖” 是三件不同的事。T11X 只能解决第一件；package diet 解决第二件的一部分；
+      图片/设计资产要走另一个同步和归档策略。
+    </p>
+  </div>
+
+  <h2>11.8 Barrel / debug / legacy 标记审计：小收益，但能减少噪音</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>池子</th>
+        <th>证据</th>
+        <th>判断</th>
+        <th class="num">预估净减少</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Barrel/index surface</td>
+        <td>所有 <code>index.ts</code> 合计约 1,673 LOC；最大的是 <code>src/service/copilot/actions/index.ts</code> 785 LOC，但它是 action registry，不是普通 barrel。</td>
+        <td>只适合做 API surface 收口；不要把 registry 文件误删。真正可瘦的是 harness/primitive/charts 小 barrel 的导出面。</td>
+        <td class="num">-0.2k 到 -0.6k</td>
+      </tr>
+      <tr>
+        <td>Noisy console/debug</td>
+        <td><code>src</code> 中 149 个文件含 console；其中 <code>console.log/debug/info</code> 共 76 处，warn/error 共 306 处。</td>
+        <td>不能粗暴删 warn/error；可把 debug/log/info 统一进 debug logger 或 feature flag。</td>
+        <td class="num">-0.1k 到 -0.4k</td>
+      </tr>
+      <tr>
+        <td>legacy/compat/stub 标记</td>
+        <td>搜索到大量命中，但大部分是测试 mock、真实 backward compatibility、tag deprecated 字段或产品文案 placeholder。</td>
+        <td>只能逐项跟已有 AY / shim sweep 合并；不能按关键词批量删。</td>
+        <td class="num">折入 AY</td>
+      </tr>
+      <tr>
+        <td>重复文件名</td>
+        <td>项目存在 <code>types.ts</code>、<code>index.ts</code>、<code>Register.ts</code> 等大量同名文件。</td>
+        <td>这主要是导航/命名可读性问题，不等于 dead code；适合后续做 folder convention，不算 LOC 大池。</td>
+        <td class="num">0</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <p>
+      <strong>小池子的正确用法：</strong>
+      把它们放进大 wave 的扫尾阶段，作为 “cleanup bonus”。不要让 Claude 单独开一个
+      “debug/barrel cleanup major wave”，那会再次回到小步低收益。
+    </p>
+  </div>
+
+  <h2>11.9 UI 语法重复审计：不是删屏幕，是收敛 screen grammar</h2>
+  <div class="callout">
+    <p>
+      继续追问 “还能不能删” 后，最明确的新证据来自 TSX className / surface density。
+      这不是要删 Chat、Usage Dashboard 或 Copilot 功能，而是说明这些 surface 在反复手写同一种行、标题、空态、状态徽章、panel chrome。
+    </p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>证据</th>
+        <th>数字</th>
+        <th>说明</th>
+        <th class="num">可转化收益</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>重复 className 字符串</td>
+        <td><strong>271</strong> 个重复字符串；理论重复字符约 <strong>33,316</strong>；跨文件重复 <strong>152</strong> 个，约 <strong>21,094</strong> 字符。</td>
+        <td>不能机械改成 class 常量，因为那只省字符不省设计复杂度；真正要抽的是 <code>Row</code> / <code>PanelHeader</code> / <code>EmptyState</code> / <code>StatusPill</code> / <code>IconText</code> 这类语法。</td>
+        <td class="num">-1k 到 -3k LOC</td>
+      </tr>
+      <tr>
+        <td>Copilot surface 密度</td>
+        <td><code>src/ui/view/copilot</code>: 54 files / 10,115 LOC / 1,118 个 className / 50 个 Button。</td>
+        <td>这是 UI 瘦身第一优先级。尤其 <code>VaultAutoRunContent.tsx</code> 1,606 行，是 screen grammar 和业务状态混在一起的最大单点。</td>
+        <td class="num">并入 X / AE / AG</td>
+      </tr>
+      <tr>
+        <td>Quick Search surface 密度</td>
+        <td><code>src/ui/view/quick-search</code>: 55 files / 9,443 LOC / 572 个 className。</td>
+        <td>V2 report/process/source/footer/timeline 已经出现重复 timeline icon、muted text、card header、scroll action grammar。</td>
+        <td class="num">并入 W / AX</td>
+      </tr>
+      <tr>
+        <td>Chat retained surface</td>
+        <td><code>src/ui/view/chat-view</code>: 43 files / 7,841 LOC / 385 个 className。</td>
+        <td>Chat 三栏 view 是必要产品能力，不能删；但 attachment、message chrome、empty/list rows 可以和共享 visual grammar 对齐。</td>
+        <td class="num">并入 S / T</td>
+      </tr>
+      <tr>
+        <td>Usage Dashboard</td>
+        <td><code>src/ui/view/usage-dashboard</code>: 34 files / 4,911 LOC / 348 个 className。</td>
+        <td>功能保留；瘦身点是 KPI/card/sparkline/recommendation screen grammar，不是删除 Dashboard。</td>
+        <td class="num">并入 AP</td>
+      </tr>
+      <tr>
+        <td>Settings/Profile descriptors</td>
+        <td><code>settingsStrings.ts</code>、<code>OverviewTab</code>、<code>AdvancedTab</code>、<code>ProfileCard</code>、<code>MCPServerCard</code> 都有 title/desc/icon/label descriptor 重复。</td>
+        <td>这说明 Settings 也需要 descriptor-driven row grammar，但不要把所有 settings 变成一个难懂的 mega schema。</td>
+        <td class="num">并入 Z / AC</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <p>
+      <strong>这里的正确 prompt 方向：</strong>
+      不要让 Claude “把 className 提成常量”。那会让代码更难读。
+      要让它先定义 5-8 个真实 UI grammar primitives，再迁移多个 callers，最后删除重复局部 JSX。
+      这才会同时减少行数、降低 UI 心智负担，并保持功能不变。
+    </p>
+  </div>
+
+  <h2>11.10 Template / Prompt / Config source-of-truth 重复</h2>
+  <div class="callout">
+    <p>
+      这一块是本轮最像“真正结构瘦身”的新增池：大量行数不是 prompt 内容本身，
+      而是 prompt/config 的 ID、路径、label、description、group、systemPrompt 关系在多个 TS 文件里重复登记。
+    </p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>文件/区域</th>
+        <th>证据</th>
+        <th>可瘦方向</th>
+        <th class="num">预估净减少</th>
+        <th>风险</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>src/core/template/TemplateRegistry.ts</code></td>
+        <td>409 LOC；扫描到约 395 个长字符串 literal、98 个对象 key；核心是 <code>TEMPLATE_METADATA</code> 重复登记每个 template 的 path/category/label/description/group。</td>
+        <td>把 metadata 拆成 machine-readable manifest，或从 <code>templates/**</code> 文件命名 + manifest 派生；TS 只保留类型和 loader。</td>
+        <td class="num">-0.5k 到 -1.2k</td>
+        <td>高；Prompt Settings UI、TemplateManager、PromptModelMap 都依赖 metadata。</td>
+      </tr>
+      <tr>
+        <td><code>src/core/prompt/PromptId.ts</code></td>
+        <td>540 LOC；Prompt enum、prompt group arrays、变量接口、注释解释和 <code>TemplateRegistry</code> 高度同域。</td>
+        <td>保留 typed IDs，但把 group/list/label/description 从 registry/manifest 派生，避免 PromptId 和 TemplateRegistry 两地维护。</td>
+        <td class="num">-0.3k 到 -0.8k</td>
+        <td>中/高；typed enum 是很多调用点的编译期保护，不能直接换成 string。</td>
+      </tr>
+      <tr>
+        <td><code>templates/config/*.json</code> + TS fallback</td>
+        <td><code>settingsStrings.ts</code> 320 LOC、<code>onboardingStrings.ts</code> 336 LOC、<code>UsageDashboard.tsx</code> 494 LOC；同时 templates/config 下有 settings/onboarding/dashboard JSON。</td>
+        <td>让 TS fallback 更薄：只保留 schema/default loader；大段 copy 从 JSON 读入并通过 typed accessor 使用。</td>
+        <td class="num">-0.8k 到 -1.8k</td>
+        <td>中；要保证无 template 文件时仍能启动，且中文/英文 copy 不丢。</td>
+      </tr>
+      <tr>
+        <td><code>src/service/copilot/actions/index.ts</code> + schemas</td>
+        <td>action registry 786 LOC，<code>copilot-schemas.ts</code> 239 LOC 且 zod-heavy；同一 action 同时有 label/description/schema/prompt/action wiring。</td>
+        <td>抽 action descriptor builder，统一 title/description/schema/promptId/panel binding；不能合并 action 语义。</td>
+        <td class="num">并入 AM / X</td>
+        <td>中；28 个 action 的 behavior 必须由现有 regression guard 覆盖。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <p>
+      <strong>关键边界：</strong>
+      不要删除 prompt 文件本身，也不要把 typed <code>PromptId</code> 全部退化成裸字符串。
+      真正的目标是“单一事实源 + typed accessor”，不是降低类型安全。
+    </p>
+  </div>
+
+  <h2>11.11 Schema / type duplication：有候选，但不能按名字硬合并</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>候选</th>
+        <th>证据</th>
+        <th>判断</th>
+        <th class="num">预估净减少</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>Recommendation</code></td>
+        <td><code>service/usage/optimization/*</code> 和 <code>service/agents/harness/curator/*</code> 都有 <code>Recommendation</code> / <code>RecommendationSchema</code>，但语义不同：一个是 usage cost optimization，一个是 model curator binding。</td>
+        <td>不能直接合并；应该先改名或 namespace，避免 owner/debug 时误读。可共享 Zod helper，不共享业务类型。</td>
+        <td class="num">-0.1k 到 -0.3k</td>
+      </tr>
+      <tr>
+        <td>Provider / Model descriptors</td>
+        <td><code>core/providers/types.ts</code>、settings model combobox、Usage Dashboard provider model screen、onboarding provider state 都有 provider/model row 形态。</td>
+        <td>适合抽 display descriptor / provider metadata accessor，降低 UI duplicate copy；不改 provider runtime contract。</td>
+        <td class="num">-0.4k 到 -1.0k</td>
+      </tr>
+      <tr>
+        <td>V2Session / Search session snapshots</td>
+        <td><code>core/search/sessionSnapshot.ts</code>、<code>core/search/v2SessionTypes.ts</code>、<code>ui/view/quick-search/store/sessionSnapshot.ts</code> 分布在三处。</td>
+        <td>适合并入 Quick Search V2 surface wave；先确认 store shape 和 background runtime snapshot 是否能共享 codec。</td>
+        <td class="num">并入 W / AX</td>
+      </tr>
+      <tr>
+        <td>FileType / attachment display types</td>
+        <td><code>FileTypeUtils</code>、PromptInput attachment、shared file-utils、Chat attachment renderer 都有文件类型/图标/颜色判断。</td>
+        <td>适合和 Chat attachment / shared UI grammar 一起做，保留所有 file kinds，不删展示能力。</td>
+        <td class="num">-0.3k 到 -0.8k</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>11.12 App weave / DevTools escape hatch：中风险，可瘦但不能拆断织合点</h2>
+  <div class="callout">
+    <p>
+      T11R 之后各层边界已经清零，真正把 app/service/core/ui 织起来的是 app 层。
+      因此这一块的目标不是“没有 weave”，而是减少 AppContext 和 runtime registry 的样板，让 weave 更可读。
+    </p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>区域</th>
+        <th>证据</th>
+        <th>可瘦方向</th>
+        <th class="num">预估净减少</th>
+        <th>风险</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>AppRuntimeRegistry.ts</code></td>
+        <td>324 LOC；每个 runtime 都重复 <code>set/get/tryGet/clear</code>、double-bind error、dispose semantics。</td>
+        <td>抽 typed slot helper，但保留 named methods 作为公开 API；不要回到 service-layer mutable singleton。</td>
+        <td class="num">-0.3k 到 -0.8k</td>
+        <td>中；boot/unload/hot reload 必须回归。</td>
+      </tr>
+      <tr>
+        <td><code>AppContext.ts</code> DevTools globals</td>
+        <td>553 LOC；escape hatch 扫描中 AppContext 有 22 处，主要来自 <code>window.testGraphTools</code>、<code>dumpV2State</code>、<code>captureV2Debug</code> 等 devtools wiring。</td>
+        <td>搬到 <code>src/app/debug/DevToolsBridge.ts</code> 或类似 app-owned 模块；AppContext 只调用 install/uninstall。</td>
+        <td class="num">净 LOC 小，AppContext -80 到 -140</td>
+        <td>低/中；DevTools 是调试能力，不能静默失效。</td>
+      </tr>
+      <tr>
+        <td><code>hover-menu-manager.tsx</code> window globals</td>
+        <td>158 LOC；用 <code>window as any</code> 注册 close/register/unregister menu coordination。</td>
+        <td>改成 module-local coordinator 或 React context；与 UI grammar wave 合并。</td>
+        <td class="num">-0.1k 到 -0.3k</td>
+        <td>中；hover menu 交互容易有隐性回归。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <p>
+      <strong>不要把这一块放到第一波硬目标里：</strong>
+      它更像“架构可读性修正”，净 LOC 不一定大。只有 runtime slot helper 和 DevTools extraction
+      都能保持 named API / unload 行为时才值得做。
+    </p>
+  </div>
+
+  <h2>11.13 Provider / Model catalog：多源重复很明显，但要先决定唯一真相源</h2>
+  <div class="callout">
+    <p>
+      这一轮继续扫模型、provider、tier/capability 相关代码，结论是：这里确实有重复，而且不只是代码行重复，
+      更是“同一件产品知识散在 JSON、profile preset、settings UI、onboarding UI、usage rules、curator catalog”。
+      这类重复会造成模型默认值漂移、UI label 不一致、以及“到底哪个 catalog 才是真的”的维护成本。
+    </p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>证据池</th>
+        <th>规模 / 命中</th>
+        <th>重复内容</th>
+        <th>建议方向</th>
+        <th class="num">预估净减少</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>data/model-catalog.json</code></td>
+        <td>677 LOC；provider/model token 命中 93 次。</td>
+        <td>provider、model、tier、display、能力标签。</td>
+        <td>如果它是最终 catalog，就让 settings/onboarding/profile 从这里派生 display metadata。</td>
+        <td class="num" rowspan="5">-1.0k 到 -2.5k</td>
+      </tr>
+      <tr>
+        <td><code>templates/config/models/*.json</code></td>
+        <td>openai 365、claude 225、gemini 166、ollama-families 148、perplexity 105 LOC。</td>
+        <td>模型分组、默认模型、provider family、capability 字段。</td>
+        <td>保留作为 user-configurable catalog 或编译源，但不要再和 TS presets 手写同一套默认。</td>
+      </tr>
+      <tr>
+        <td><code>templates/config/curator-catalog.json</code></td>
+        <td>386 LOC；provider/model token 命中 53 次；quick/deep/premium/fast/online token 命中 70 次。</td>
+        <td>curator tier、模型能力、在线/本地/快慢层级。</td>
+        <td>把 curator-specific 字段和 generic provider/model 字段拆开，generic 部分复用统一 catalog。</td>
+      </tr>
+      <tr>
+        <td>TS profile / provider layer</td>
+        <td><code>presets.ts</code> 38 次 provider token；<code>ProfileRegistry.ts</code> 19；<code>provider-factory.ts</code> 18；<code>types.ts</code> 16。</td>
+        <td>默认 profile、provider kind union、model registry、connection test 映射。</td>
+        <td>runtime factory 仍保留代码；display/default/capability descriptor 改由 catalog selector 提供。</td>
+      </tr>
+      <tr>
+        <td>UI descriptor layer</td>
+        <td><code>ProviderIcon.tsx</code> 33、<code>ProviderForm.tsx</code> 31、<code>BootstrapModelStep.tsx</code> 17、<code>ModelCombobox.tsx</code> 15、<code>ProfileCard.tsx</code> 12。</td>
+        <td>provider label/icon/color、model label、tier copy、推荐卡片。</td>
+        <td>抽 <code>ProviderModelDescriptor</code> selectors；UI 只消费 descriptor，不再手写 provider 字典。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <p>
+      <strong>风险边界：</strong>
+      不要把所有模型配置硬塞进一个“万能 JSON”。正确做法是分三层：
+      <code>runtime provider factory</code> 仍是代码，<code>provider/model descriptor</code> 做唯一展示/能力源，
+      <code>curator/profile/onboarding</code> 只保留它们自己的产品决策字段。
+      这一块要先做 source-of-truth 决策和 current model audit，不能让 Claude 边删边猜。
+    </p>
+  </div>
+
+  <h2>11.14 File / Document / Attachment taxonomy：同一文件类型映射在四处重复</h2>
+  <div class="callout">
+    <p>
+      文件类型相关重复比预期更明显：索引、hover preview、PromptInput 附件、Chat attachment badge、Knowledge Index 文档类型过滤，
+      都在维护 extension、kind、label、icon、颜色、preview 能力。这里适合做“功能保留型瘦身”：不删任何文件类型，
+      只让判断和展示规则从一个 catalog 派生。
+    </p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>文件 / 区域</th>
+        <th>规模</th>
+        <th>重复模式</th>
+        <th>建议收敛方式</th>
+        <th class="num">预估净减少</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>src/core/document/helper/FileTypeUtils.ts</code></td>
+        <td>193 LOC；file-kind token 命中 65。</td>
+        <td>extension 判断、image/pdf/canvas/excalidraw 等类别。</td>
+        <td rowspan="5">建立 <code>FileKindCatalog</code> / <code>ResourceKindCatalog</code>：extension -&gt; kind、kind -&gt; label/icon/color/badge/preview 能力。loader 行为和 UI 展示分层派生。</td>
+        <td class="num" rowspan="5">-0.8k 到 -2.0k</td>
+      </tr>
+      <tr>
+        <td><code>src/ui/view/shared/file-utils.tsx</code></td>
+        <td>192 LOC；file-kind token 命中 66。</td>
+        <td>UI 侧 icon/color/label 和 core helper 局部重复。</td>
+      </tr>
+      <tr>
+        <td><code>MessageAttachmentsList.tsx</code></td>
+        <td>549 LOC；file-kind token 命中 58。</td>
+        <td>本地 <code>badgeStyleForKind</code> 覆盖 PDF/CSV/XLSX/DOCX/PPTX/JSON/MD/TXT/ZIP/HTML/XML/异常/会话。</td>
+      </tr>
+      <tr>
+        <td><code>PromptInputAttachments.tsx</code> / <code>PromptInput.tsx</code></td>
+        <td>145 LOC + local getFileType。</td>
+        <td>附件分类、accept/display、image/pdf/file fallback。</td>
+      </tr>
+      <tr>
+        <td><code>KnowledgeIndexTab.tsx</code> / hover preview</td>
+        <td>KnowledgeIndexTab 795 LOC；document type options 另有本地列表。</td>
+        <td>PDF、Excalidraw、CSV、DOCX、XLSX、PPTX、Canvas 等类型列表和 preview 能力重复。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <p>
+      <strong>不要犯的错：</strong>
+      “document loader 支持什么”和“UI badge 怎么展示”不是同一层语义。
+      可以共享 extension/kind catalog，但不能把 loader routing、preview availability、attachment badge style 全混成一个大口袋。
+      建议先做 UI-display 子集，等测试稳定后再纳入 Knowledge Index filter。
+    </p>
+  </div>
+
+  <h2>11.15 App React shell wrappers：T11O 迁移正确，但壳层现在可以收敛</h2>
+  <div class="callout">
+    <p>
+      T11O/T11P 把 Obsidian <code>Modal</code> / <code>ItemView</code> 从 ui 层迁到 app 层是正确方向，
+      但迁移后留下了大量相似 shell：<code>contentEl.empty()</code>、<code>addClass(...)</code>、
+      <code>new ReactRenderer(...)</code>、<code>createReactElementWithServices(...)</code>、<code>unmount + empty</code>。
+      这不是边界问题，而是 app shell boilerplate 问题。
+    </p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>区域</th>
+        <th>规模</th>
+        <th>重复证据</th>
+        <th>收敛方式</th>
+        <th class="num">预估净减少</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>src/app/view/*View.ts</code></td>
+        <td>约 9 个 view shell；<code>ViewManager.ts</code> 239 LOC，<code>ViewSwitchConsistentHandler.ts</code> 221 LOC。</td>
+        <td>Chat / ProjectList / ConversationOutline / ChatStudio / UsageDashboard / AmbientPush 等都重复 mount/unmount/render service-wrapped React。</td>
+        <td>抽 app-owned <code>ReactItemViewShell</code> 或 helper 函数，保留每个 view 的 type/title/icon/placement 语义。</td>
+        <td class="num" rowspan="3">-0.7k 到 -1.8k</td>
+      </tr>
+      <tr>
+        <td><code>src/app/modals/*Modal.tsx</code></td>
+        <td>Settings、QuickSearch、HarnessOnboarding、IndexingProgress、CostEstimation、Confirm、MorningBriefing 等约 800+ LOC。</td>
+        <td>每个 modal 都手写 content class、padding、ReactRenderer、close cleanup；部分还重复 setTimeout unmount workaround。</td>
+        <td>抽 <code>mountReactModalContent</code> / <code>ReactModalShell</code>，允许传 modal sizing/style hooks 和 onClose side-effect。</td>
+      </tr>
+      <tr>
+        <td><code>src/app/copilot/modals/*Modal.tsx</code></td>
+        <td>CopilotResult 145、Picker 125、ReviewHistory 117、AutoRun 65、VaultAutoRun 56 LOC。</td>
+        <td>Copilot modal family 共享 pktw-root、padding 0、React service wrapper、modal-to-modal opening pattern。</td>
+        <td>和 Copilot panel family 收敛同波做；先抽 shell，再看 picker/result/review content grammar。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <p>
+      <strong>边界：</strong>
+      不要把 Obsidian <code>Modal</code> / <code>ItemView</code> 重新放回 ui 层。
+      helper 必须在 <code>src/app/react/</code> 或 <code>src/app/shell/</code>，因为这是 app-owned weave。
+      Chat 三栏 view、Usage Dashboard、Quick Search modal 都要保留，只减少壳层重复。
+    </p>
+  </div>
+
+  <h2>11.16 App port adapter / composer boilerplate：边界干净后出现的新重复</h2>
+  <div class="callout">
+    <p>
+      T11R 之后 service/core 不再碰 Obsidian，代价是 app 层新增了很多 adapter、compose 函数和小 port 实现。
+      这是正确的架构方向，但现在可以开始收敛“机械样板”：一行 compose、只转调 AppContext 的 adapter、以及每个 bounded context 都重复的
+      <code>new XAdapter(...)</code> 装配。
+    </p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>证据</th>
+        <th>规模</th>
+        <th>可瘦方向</th>
+        <th>禁止事项</th>
+        <th class="num">预估净减少</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>*Adapter</code> / <code>compose*</code> 文件池</td>
+        <td>app/service 下相关文件合计约 <strong>4,628 LOC</strong>。</td>
+        <td>把单行 compose 函数并入 app composition；把只做 method forwarding 的 adapter 改成 typed object factory。</td>
+        <td rowspan="4">不能回退到 service import app；不能创建 <code>EverythingPort</code> / <code>RuntimeBag</code>；不能把明确有业务缓存/副作用的 adapter 和纯 forwarding adapter 混合。</td>
+        <td class="num" rowspan="4">-0.7k 到 -2.0k</td>
+      </tr>
+      <tr>
+        <td>小文件密度</td>
+        <td>扫描到 21 个 <=120 LOC 的 adapter/port/compose 文件；多数是 <code>return new XAdapter(...)</code> 或固定 deps object。</td>
+        <td>建立 <code>composePorts</code> / <code>createForwardingAdapter</code> 这类 app-owned helper，但保留清晰的 port 名称。</td>
+      </tr>
+      <tr>
+        <td>高重复装配点</td>
+        <td><code>composeQuickSearchHost</code> 113 LOC、<code>composeSettingsActions</code> 101、<code>composeCopilotActionRuntime</code> 76、<code>composeAmbientRuntime</code> 54。</td>
+        <td>按 bounded context 抽小型 adapter bundle，减少重复 import / constructor glue。</td>
+      </tr>
+      <tr>
+        <td>薄 adapter 示例</td>
+        <td><code>composeVaultPreview</code> 11、<code>composeChatVaultWriter</code> 12、<code>AppVaultStatsAdapter</code> 16、<code>AppEditorCommandsAdapter</code> 19。</td>
+        <td>这些适合先作为安全样本；有 SQLite/cache/async orchestration 的大 adapter 暂不碰。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>11.17 UI async/subscription hook grammar：小而多，适合作为 Wave 1 辅助</h2>
+  <div class="callout">
+    <p>
+      UI hook 总量不算最大，但“加载、刷新、错误、订阅、定时器、AbortController、recent list pagination”到处出现。
+      这里不能抽一个万能 hook；更稳的是抽 2-3 个很窄的 lifecycle helper，让页面仍然保留自己的业务语义。
+    </p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>区域</th>
+        <th>证据</th>
+        <th>建议 helper</th>
+        <th>风险</th>
+        <th class="num">预估净减少</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>hook 文件池</td>
+        <td><code>src/ui</code> / <code>src/app</code> 下 <code>use*</code> hook 合计约 <strong>4,504 LOC</strong>；最大包括 <code>useSearchSession</code> 459、<code>useStreamChat</code> 368、<code>useVaultSearch</code> 337、<code>useUsageData</code> 297。</td>
+        <td><code>useAsyncResource</code> / <code>useMountedAsync</code>：统一 cancelled flag、loading/error/finally。</td>
+        <td rowspan="4">Chat streaming、Quick Search session、Project load 都有隐性时序；只抽 lifecycle，不抽业务流程。</td>
+        <td class="num" rowspan="4">-0.5k 到 -1.5k</td>
+      </tr>
+      <tr>
+        <td>Usage Dashboard screens</td>
+        <td><code>ProviderModel</code>、<code>History</code>、<code>useUsageData</code>、<code>useOptimization</code> 都有 loading/error/refresh。</td>
+        <td><code>useRefreshableQuery</code>：给 dashboard/report screen 统一刷新语法。</td>
+      </tr>
+      <tr>
+        <td>Quick Search inspector</td>
+        <td><code>ConnectedSection</code>、<code>DiscoveredSection</code>、<code>AIGraphSection</code> 都是 expanded + loading + async load 的局部重复。</td>
+        <td><code>useExpandableAsyncSection</code>：只服务 inspector/report section，不污染全局。</td>
+      </tr>
+      <tr>
+        <td>subscription / timer cleanup</td>
+        <td><code>useModels</code>、<code>RecentAIAnalysis</code>、<code>V2ScrollButtons</code>、<code>StreamdownIsolated</code>、<code>useVaultSearch</code> 各有 subscribe/timer cleanup。</td>
+        <td><code>useStableSubscription</code> / <code>useTimeoutRef</code>：减少重复 cleanup 样板。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>12. 建议执行分层：下一次不要小步</h2>
+  <div class="callout">
+    <p>
+      如果把 L-BA 直接全部塞给 Claude，风险会太散。更好的方式是一个大 prompt，内部按 DAG 执行：
+      先建立共享 primitives / helpers，再迁移多个 surface，最后删除旧局部实现。
+      这样还是“一次输入”，但不是乱切。
+    </p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>层级</th>
+        <th>适合合并的 tracks</th>
+        <th>为什么放一起</th>
+        <th class="num">建议 hard target</th>
+        <th class="num">stretch</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Wave 1: surface grammar + safe helpers</strong></td>
+        <td>M, S, W, AP, X(3-4 families), Z+AC, AE, AG, AH+N, AI(stats/exclusion subset), AB, UI primitive 双栈首批，11.9 UI grammar primitives，11.14 FileKind UI-display 子集，11.17 narrow lifecycle hooks，<code>@radix dropdown</code> unused residue</td>
+        <td>都偏 UI/helper/substrate 收敛，功能保留，能明显减少阅读面。先抽 shared primitives，再迁移多个 callers；Onboarding 双状态机和 Button/Row/Form 首批迁移必须同波处理。11.9 证明 row/header/empty/status/panel grammar 应该成为同波主线；11.14 的附件 badge/icon/color 也适合跟 Chat/PromptInput UI grammar 同波收敛；11.17 只抽 loading/subscription lifecycle，不碰业务流程。</td>
+        <td class="num">-9k</td>
+        <td class="num">-15k</td>
+      </tr>
+      <tr>
+        <td><strong>Wave 2: runtime/generation consolidation</strong></td>
+        <td>L, O, P, V, AJ(small helpers only), AA, AF, AL, AM, AO, AU, AV, AX, AY, 11.15 app React shell helper, 11.16 app adapter/composer boilerplate, legacy type shim sweep, low-reference residue sweep, Zustand transition helpers，debug/logger sweep</td>
+        <td>会碰 agent/session/app shell/repo/runtime/store，边界更敏感；适合在 Wave 1 稳住后做。这里必须顺手迁移 thin shim import surface，并清掉确认 unused 的低引用 residue，避免兼容层永久化。debug/log/info 只能在有统一 logger 后收敛。11.15/11.16 不改变功能入口，只减少 T11O/T11R 迁移后留下的 app shell 和 adapter boilerplate。</td>
+        <td class="num">-7k</td>
+        <td class="num">-15k</td>
+      </tr>
+      <tr>
+        <td><strong>Wave 3: high-risk optional</strong></td>
+        <td>U, AD, R, Y, AK, AN, AR, AS, AT, AW, AZ, BA, AI(full tree-walk merge), 11.10 template/prompt/config source-of-truth，11.13 provider/model source-of-truth，11.14 document filter full pass</td>
+        <td>Search/index、generated asset、component 根治理、graph layout、native sqlite、model catalog、prompt registry、workspace layout、chat persistence、tag taxonomy 都可能影响大。11.10/11.13 可以贡献真实 LOC，但会影响 Prompt Settings / TemplateManager / ProfileRegistry / config fallback，因此需要独立验收，不该用来硬凑 LOC。</td>
+        <td class="num">-4k LOC + bytes</td>
+        <td class="num">-10k LOC + 1.4MB</td>
+      </tr>
+      <tr>
+        <td><strong>Wave 3B: package diet side track</strong></td>
+        <td>recharts, ai-elements package, direct mermaid, playwright, lucide raw package, motion, D3 direct packages</td>
+        <td>这是依赖/安装体积治理，不是源码 LOC 主线。只有在 import scan + build + visual smoke 都证明安全时删除；每个 package 必须解释是否 direct dependency、peer dependency、transitive dependency。</td>
+        <td class="num">0 到 -0.5k LOC</td>
+        <td class="num">数十 MB node_modules</td>
+      </tr>
+      <tr>
+        <td><strong>Wave 3D: app weave readability side track</strong></td>
+        <td>11.12 AppRuntimeRegistry slot helper, AppContext DevToolsBridge extraction, hover menu coordinator cleanup, 11.15 shell helper 如果未放入 Wave 2</td>
+        <td>这是 app 层织合点的可读性修正，不是主要 LOC 池。必须保留 named runtime methods、double-bind semantics、unload cleanup、DevTools 能力和所有 Obsidian view/modal entry。</td>
+        <td class="num">-0.3k 到 -1.0k</td>
+        <td class="num">更清晰 AppContext / weave</td>
+      </tr>
+      <tr>
+        <td><strong>Wave 3C: repo hygiene side track</strong></td>
+        <td>.claude/worktrees, old generated mock/image artifacts, historical report archive policy</td>
+        <td>解决“项目目录很大”的感受，但不是产品源码。需要 owner 决策和外部资产同步策略，不能混入 Claude 代码实现 wave。</td>
+        <td class="num">0 LOC</td>
+        <td class="num">百 MB 到 GB 级本地空间</td>
+      </tr>
+      <tr>
+        <td><strong>Wave 4: test-only cleanup</strong></td>
+        <td>AQ</td>
+        <td>只重构测试 harness / source guard 表达方式；不删除覆盖，不计入产品源码目标。适合产品源码波次稳定后做。</td>
+        <td class="num">-1k test-only</td>
+        <td class="num">-3k test-only</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="warn">
+    <p>
+      <strong>不计入 major-wave 目标：</strong>
+      <code>PromptInputBody</code> 这类单一复杂组件如果只是拆文件，不能算瘦身；
+      <code>indexService.ts</code> 如果只是搬到多个文件，也不能算瘦身；
+      <code>streamdown-isolated-css.ts</code> 是 bytes health，不算 LOC target。
+    </p>
+  </div>
+
+  <h2>13. 下一轮继续扫什么</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>顺序</th>
+        <th>继续调查池</th>
+        <th>为什么还值得看</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="num">1</td>
+        <td>SQLite repo/query helper</td>
+        <td>Usage 已确认一部分；下一步要看更底层的 row mapping、metadata json、Kysely/raw SQL helper 是否能跨 repo 收敛。</td>
+      </tr>
+      <tr>
+        <td class="num">2</td>
+        <td>Quick Search V2 surface / session store</td>
+        <td>Search surface 体量很大；继续确认 V2 report/process/sources/table-of-contents 是否能抽 view grammar。</td>
+      </tr>
+      <tr>
+        <td class="num">3</td>
+        <td>Copilot remaining panel family</td>
+        <td>继续按 family 收敛，不合并 action 语义；重点看 diff/findings/suggestion/task panels。</td>
+      </tr>
+      <tr>
+        <td class="num">4</td>
+        <td>Agent/tool harness deeper scan</td>
+        <td>已确认 DocSimple/Followup/WebSearch/Rerank；新增 AO 说明 MCP/tool wrapper 也有收敛空间。下一步看 ReportOrchestrator、VaultSearchAgentSDK、Curator harness 是否还有 run ceremony 重复。</td>
+      </tr>
+      <tr>
+        <td class="num">5</td>
+        <td>Report-type UI surfaces</td>
+        <td>Vault Review 已确认；继续看 Quick Search Report / Copilot Review / Usage Dashboard 是否能共享 report-surface primitives。</td>
+      </tr>
+      <tr>
+        <td class="num">6</td>
+        <td>PromptInput complex component</td>
+        <td><code>PromptInputBody</code> 500 行，但目前更像单一复杂组件。只有发现第二个相同 autocomplete/menu engine consumer 时才纳入 LOC target。</td>
+      </tr>
+      <tr>
+        <td class="num">7</td>
+        <td>Settings/Profile visual grammar</td>
+        <td>继续看 ProfileCard、MCPServerCard、ModelCombobox、RoleModelPicker 是否能抽 shared listbox/card grammar。</td>
+      </tr>
+      <tr>
+        <td class="num">8</td>
+        <td>Tests / regression guards duplication</td>
+        <td>已形成 AQ test-only 候选。只在产品代码池扫完后执行，且必须保持同等或更强断言覆盖。</td>
+      </tr>
+      <tr>
+        <td class="num">9</td>
+        <td>Folder intelligence second pass</td>
+        <td>已确认 AI track；下一步要把 <code>explore_folder</code>、backbone、grep 的输出 contract 对齐，决定 tree-walk 合并是否值得做。</td>
+      </tr>
+      <tr>
+        <td class="num">10</td>
+        <td>Chat slot focused pass</td>
+        <td>AJ 只能抽小 helper。下一步要列每个 slot 的 input/output/render contract，避免 helper 抽象改变上下文优先级。</td>
+      </tr>
+      <tr>
+        <td class="num">11</td>
+        <td>App runtime registry / AppContext static delegators</td>
+        <td>已经看到重复 set/get/try/clear ceremony，但这里也是 app weave 可读性边界。只做 residue sweep，不作为第一波硬抽象。</td>
+      </tr>
+      <tr>
+        <td class="num">12</td>
+        <td>Native SQLite loader/probe</td>
+        <td>新增 AR 已确认 require/probe/path fallback 重复；下一步要列清 <code>NativeModuleManager</code> 与 <code>BetterSqliteStore</code> 的责任边界，避免启动回归。</td>
+      </tr>
+      <tr>
+        <td class="num">13</td>
+        <td>Model catalog / profile preset source of truth</td>
+        <td>新增 AS 已确认模型目录多源并存；下一步要先做 source-of-truth 决策，不要边实现边猜哪个 catalog 该保留。</td>
+      </tr>
+      <tr>
+        <td class="num">14</td>
+        <td>PromptId / TemplateRegistry descriptor</td>
+        <td>新增 AT 已确认 registry metadata 重复；下一步只先收敛 group/metadata 派生，PromptVariables 类型安全先不动。</td>
+      </tr>
+      <tr>
+        <td class="num">15</td>
+        <td>App runtime registry ceremony</td>
+        <td>新增 AU 已确认 set/get/try/clear 重复；下一步要设计 typed slot helper，同时保留 named methods。</td>
+      </tr>
+      <tr>
+        <td class="num">16</td>
+        <td>Command/Notice maintenance grammar</td>
+        <td>新增 AV 已确认 palette command glue 里 Notice/guard/maintenance boilerplate 多；下一步要按 command family 分组，不动 command ids。</td>
+      </tr>
+      <tr>
+        <td class="num">17</td>
+        <td>Workspace leaf/layout helper</td>
+        <td>新增 AW 已确认 leaf/sidebar/open/reveal 重复；但 Chat 三栏和 Obsidian workspace 行为高风险，必须单独 smoke。</td>
+      </tr>
+      <tr>
+        <td class="num">18</td>
+        <td>RAF buffer + compat shim sweep</td>
+        <td>新增 AX/AY 可作为大波次扫尾：一个收敛 streaming buffer helper，一个迁移 import shim；都不应删除用户数据兼容。</td>
+      </tr>
+      <tr>
+        <td class="num">19</td>
+        <td>Chat vault/sqlite persistence</td>
+        <td>新增 AZ 已确认 ChatStore 是活路径但承担太多双写/append/dedup 责任；下一步要先加 golden markdown + SQLite repo 回归。</td>
+      </tr>
+      <tr>
+        <td class="num">20</td>
+        <td>Tag/taxonomy codec</td>
+        <td>新增 BA 已确认 tags_json/functional/topic/suggestion 状态分散；下一步只抽 codec/catalog，不改 tag graph id 和 legacy decode。</td>
+      </tr>
+      <tr>
+        <td class="num">21</td>
+        <td>Package diet / dependency surface</td>
+        <td>新增 11.6 已确认零引用或单引用可替代依赖；下一步要按 package 逐个确认 direct / peer / transitive，再执行 package.json + lockfile + build + visual smoke。</td>
+      </tr>
+      <tr>
+        <td class="num">22</td>
+        <td>Repo disk hygiene</td>
+        <td>新增 11.7 已确认 `.claude/worktrees`、`docs/gstack`、`sdk/vendor` 是目录体量来源；这需要本地清理/归档策略，不应交给 Claude 当源码重构。</td>
+      </tr>
+      <tr>
+        <td class="num">23</td>
+        <td>Barrel/debug residue</td>
+        <td>新增 11.8 已确认它是小池；只适合作为大 wave 扫尾，不再单独开低收益 major wave。</td>
+      </tr>
+      <tr>
+        <td class="num">24</td>
+        <td>UI grammar primitives</td>
+        <td>新增 11.9 已确认跨 Copilot / Quick Search / Chat / Usage / Settings 的 className 和 row/card/header grammar 重复；下一步要先定义 shared grammar primitives，再迁移 callers。</td>
+      </tr>
+      <tr>
+        <td class="num">25</td>
+        <td>Template / Prompt / Config source-of-truth</td>
+        <td>新增 11.10 已确认 TemplateRegistry / PromptId / JSON config / TS fallback 重复登记；下一步要画出 Prompt Settings、TemplateManager、PromptModelMap 调用图后再动。</td>
+      </tr>
+      <tr>
+        <td class="num">26</td>
+        <td>Schema / type semantic duplicate</td>
+        <td>新增 11.11 已确认一些同名类型不是同语义；下一步只收敛 helper/descriptor，禁止按名称硬合并业务类型。</td>
+      </tr>
+      <tr>
+        <td class="num">27</td>
+        <td>App weave / DevTools extraction</td>
+        <td>新增 11.12 已确认 AppRuntimeRegistry ceremony 和 AppContext devtools globals；下一步只做 app-owned readability side track，不作为 LOC 主目标。</td>
+      </tr>
+      <tr>
+        <td class="num">28</td>
+        <td>Provider / Model catalog source-of-truth</td>
+        <td>新增 11.13 已确认 model/provider/tier/capability metadata 散在 JSON、TS presets、settings UI、onboarding UI 和 curator catalog；下一步先做唯一真相源决策，再实现 selector 派生。</td>
+      </tr>
+      <tr>
+        <td class="num">29</td>
+        <td>File / Document / Attachment taxonomy</td>
+        <td>新增 11.14 已确认 core helper、shared file-utils、Chat attachments、PromptInput attachments、Knowledge Index filter 重复维护文件类型；下一步先收敛 UI display 子集，再决定是否纳入 loader/filter。</td>
+      </tr>
+      <tr>
+        <td class="num">30</td>
+        <td>App React shell wrappers</td>
+        <td>新增 11.15 已确认 T11O/T11P 迁移后的 app view/modal shell 有重复 mount/unmount/service-wrapper ceremony；下一步可抽 app-owned shell helper，保留所有 view/modal 功能入口。</td>
+      </tr>
+      <tr>
+        <td class="num">31</td>
+        <td>App port adapter / composer boilerplate</td>
+        <td>新增 11.16 已确认 T11R 后 app 层出现大量小 adapter 和 compose 样板；下一步只收敛 forwarding/one-line composition，不碰有缓存/SQLite/业务 orchestration 的 adapter。</td>
+      </tr>
+      <tr>
+        <td class="num">32</td>
+        <td>UI async/subscription hook grammar</td>
+        <td>新增 11.17 已确认 hook loading/error/refresh/subscription/timer cleanup 重复；下一步只抽窄 lifecycle helper，不抽 Chat/Quick Search 业务流程。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>14. Evidence Commands</h2>
+  <pre>cloc src styles.css --quiet --json --timeout 120
+node scripts/audit/boundary-baseline.mjs
+find src/ui/view/copilot src/ui/view/quick-search src/ui/view/usage-dashboard -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l
+rg -n "CopilotMetaAgentStream|VaultMetaAgentStream|OnboardingStateMachine|harness-onboarding/state|STREAMDOWN_ISOLATED_CSS" src test
+wc -c src/styles/streamdown-isolated-css.ts src/styles/*.css
+find src/core/document/loader -maxdepth 1 -type f \( -name '*DocumentLoader.ts' -o -name 'BaseDocumentLoader.ts' \) -print0 | xargs -0 wc -l
+rg -n "function (formatUsd|formatTokens|normalizeProvider|timeRangeToMs|readBudget)|const DAY_MS" src/ui/view/usage-dashboard src/service/usage
+rg -n "Attachment|ResourcePreview|badgeStyleForKind|deriveThumbUrl|parseUrl" src/ui/component src/ui/view/chat-view
+find src/service/search src/service/tools/search-graph-inspector -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l
+find src/core/storage/sqlite/repositories -type f -name '*.ts' -print0 | xargs -0 wc -l
+find src/ui/view/quick-search -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l
+find src/ui/view/copilot -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l
+find src/ui/component src/ui/components -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l
+find src/app/settings src/ui/view/settings src/core/config templates/config -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.json' \) -print | sort | xargs wc -l | sort -nr | head -80
+find src/service/agents src/service/chat/tools src/service/tools src/core/providers/rerank -type f \( -name '*.ts' -o -name '*.tsx' \) -print | sort | xargs wc -l | sort -nr | head -120
+rg -n "WEB_SEARCH_SYSTEM_PROMPT|queryWithProfile|collectText|ClaudeAgentSDKBridge|TierController|formatRoleConfig|DOC_TYPES|getString\\(|getBoolean\\(" src/app src/core src/service src/ui
+rg -n "IMAGE_EXTENSIONS|DocumentType|DOC_TYPES|DOC_TYPE_LLM|mime|pdf|docx|xlsx|pptx|excalidraw|canvas" src/core src/service src/ui/view/settings templates/config
+rg -n "pagerank_persist|semantic_pagerank_persist|pendingPaths|listPathsWithPending|progressTextSuffix|yieldForLargePass" src/service/search/index/indexService.ts
+rg -n "dropdown-menu|DropdownMenu|shared-ui/dropdown|input-with-confirm|InputWithConfirm|NumberInputWithConfirm" src test -g '*.ts' -g '*.tsx'
+find src/service/skills src/service/agents/harness/skill -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l | sort -nr
+rg -n "SkillRegistry\\.getInstance\\(\\)|HarnessSkillRegistry|defaultLifter|importFromSource|buildSummaryBlock|SkillSummary|HarnessSkill" src test main.ts -g '*.ts' -g '*.tsx'
+find src/service/agents/report src/service/agents/intuition-helper src/service/ambient src/ui/view/morning-briefing src/ui/view/ambient-push src/ui/view/copilot/vault src/app/copilot/vault -type f \( -name '*.ts' -o -name '*.tsx' \) -print | sort | xargs wc -l | sort -nr | head -120
+rg -n "function |const |export |interface |type |return \\(|className|useState|useMemo|useCallback|<button|<Button|section|Panel|Card|Step|render" src/ui/view/copilot/vault/VaultAutoRunContent.tsx
+rg -n "queryWithProfile|streamWithRepetitionGuard|collectText|completeSectionContent|failSection|setSummaryStreaming|runMermaidFixAgent" src/service/agents/report/ReportOrchestrator.ts
+find src/ui/view/onboarding src/ui/view/modals/harness-onboarding src/ui/view/modals/onboarding src/ui/view/settings/components -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l | sort -nr
+rg -n "pkonb-radio-card|testProviderConnection|apiKey|setActiveOnFirst|ProviderCredential|StepFooter" src/ui/view/onboarding src/ui/view/modals src/ui/view/settings/components
+rg -n "normalizeVaultFolderPath|isPathExcluded|getExploreFolderExclusions|getDocStatisticsBy|topRecentEdited|topWordCount|topLinksIn|topLinksOut" src/service/tools/search-graph-inspector src/service/search/index/helper/backbone
+find src/service/chat src/service/chat/context/slots -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l | sort -nr | head -80
+rg -n "queryText\\(|queryTextStream\\(|queryStructured\\(|createContextPipeline|return \\{ data: null, tokens: 0, compressionLevel: 0 \\}|render\\(content\\)" src/service/chat src/service/chat/context/slots
+find src/ui/component/mine/multi-lens-graph -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l | sort -nr
+rg -n "positions|edge|cluster|group|resolveOverlaps|computeHandlePair|timelineAxis|communityGroups" src/ui/component/mine/multi-lens-graph
+node -e "/* duplicate import module scan, see report note */"
+rg -n "streamAction\\(|queryStructured\\(|renderPrompt\\(|runAgentStream\\(|toJsonSchema\\(" src/service/copilot/actions/index.ts
+find src/core/storage/vault src/service/copilot src/service/search -path '*chat-docs*' -o -path '*search-docs*' -o -name '*ReviewHistoryService.ts' -o -name '*ReviewReportService.ts' | sort | xargs wc -l
+rg -n "frontmatterRaw|splitSections|extractJsonBlock|JSON\\.parse|JSON\\.stringify|buildMarkdown|parse\\(raw|codeBlock\\('json'" src/core/storage/vault src/service/copilot src/service/search -g '*.ts'
+find src/service/agents src/service/tools src/service/copilot -type f \( -name '*McpServer.ts' -o -name '*Tool.ts' -o -name '*Adapter.ts' \) -print | sort | xargs wc -l | sort -nr | head -80
+rg -n "create\\(|tool\\(|server\\.tool|inputSchema|z\\.object|return \\{ content: \\[\\{ type: 'text'|JSON\\.stringify\\(|content: \\[\\{ type" src/service/agents src/service/copilot -g '*.ts'
+nl -ba src/service/agents/vault-sdk/vaultMcpServer.ts | sed -n '340,545p'
+nl -ba src/service/copilot/CopilotOutputMcpServer.ts | sed -n '20,300p'
+find src/ui/view/quick-search/store src/ui/store -type f \( -name '*.ts' -o -name '*.tsx' \) -print | sort | xargs wc -l | sort -nr | head -60
+rg -n "requestAnimationFrame|set\\(\\(s\\)|markCompleted|updateV2TimelineTool|completeV2TimelineText|reorderPlanSections|startSectionRegenerate" src/ui/view/quick-search/store src/ui/store -g '*.ts'
+nl -ba src/ui/view/quick-search/store/searchSessionStore.ts | sed -n '318,392p'
+find test -type f -name '*.test.ts' -print0 | xargs -0 wc -l | sort -nr | head -100
+rg -n "readFileSync|forbidden|source guard|boundary|assert|runtimeRegistry|fake.*port|createFake|guard" test -g '*.test.ts'
+wc -l data/model-catalog.json templates/config/models/*.json templates/config/curator-catalog.json src/core/profiles/presets.ts src/core/providers/model-registry.ts src/core/profiles/ProfileRegistry.ts src/core/providers/testProviderConnection.ts
+rg -n "native module|better-sqlite3|ensureCompatible|tryLoad|download|fallback|probe|require\\(|sqliteVec|NativeModuleManager|BetterSqliteStore|:memory:" src/core/storage/sqlite -g '*.ts'
+rg -n "PromptId|TemplateId|TemplateRegistry|CONFIGURABLE_PROMPT_IDS|SEARCH_AI_ANALYSIS_PROMPT_IDS|INDEXING_AND_HUB_PROMPT_IDS|PromptVariables|TEMPLATE_METADATA|promptIds|variables" src/core/prompt src/core/template -g '*.ts'
+wc -l src/app/runtime/AppRuntimeRegistry.ts src/app/context/AppContext.ts src/app/context/test-tools.ts
+rg -n "set[A-Z].*Runtime|get[A-Z].*Runtime|tryGet[A-Z].*Runtime|clear[A-Z].*Runtime|runtimeRegistry\\." src/app/runtime/AppRuntimeRegistry.ts src/app/context/AppContext.ts src/app/context/test-tools.ts
+wc -l src/app/commands/PeakCommandActions.ts src/app/commands/Register.ts src/app/commands/composeSettingsActions.ts
+rg -n "new Notice|showProgressNotice|activeNotice|run.*maintenance|async function|export async function|registerCommand|addCommand|id:|name:" src/app/commands src/app/view/ViewManager.ts
+wc -l src/app/view/ViewManager.ts src/app/view/ViewSwitchConsistentHandler.ts src/app/navigation/AppVaultNavigationAdapter.ts src/app/vault/obsidian-utils.ts src/app/vault/vault-helpers.ts
+rg -n "getLeavesOfType|getLeftLeaf|getRightLeaf|getLeaf|setViewState|revealLeaf|openFile|openLinkText|file-explorer|outline|markdown|CHAT_VIEW_TYPE|PROJECT_LIST_VIEW_TYPE|CONVERSATION_OUTLINE_VIEW_TYPE" src/app/view src/app/navigation src/app/vault -g '*.ts'
+rg -n "requestAnimationFrame|cancelAnimationFrame|_.*Buf|buffer.*Delta|append.*Delta|flush|raf|createRaf" src/ui/store src/ui/view/quick-search src/ui/view/chat-view -g '*.ts' -g '*.tsx'
+rg -n "re-export shim|legacy import surface|backward compatibility|compatibility shim|thin re-export|re-export.*compat" src/core src/service src/ui -g '*.ts' -g '*.tsx'
+rg -n "ChatStore|new ChatStore|chatStore\\.|getChatStore|saveConversation|loadConversation|ChatConversationDoc|ChatProjectRepo|ChatConversationRepo" src test main.ts -g '*.ts' -g '*.tsx'
+wc -l src/core/storage/vault/ChatStore.ts src/core/storage/vault/chat-docs/*.ts src/core/storage/sqlite/repositories/Chat*Repo.ts src/service/chat/*.ts
+find src -type f \( -name '*Tag*.ts' -o -name '*tag*.ts' -o -name '*Tag*.tsx' -o -name '*tag*.tsx' \) -print | sort | xargs wc -l | sort -nr | head -80
+rg -n "topicTags|functionalTags|tag suggestion|suggest.*tag|normalize.*tag|tags_json|functionalSet|TopicTag|FunctionalTag|DocSuggestTags|auto.*tag|TagService" src/core src/service src/ui -g '*.ts' -g '*.tsx'
+node - <<'NODE'
+// Dependency import census: package.json deps/devDeps vs src/test/scripts/main.ts imports.
+NODE
+rg -n "from ['\"](lucide|lucide-react|motion|framer-motion|recharts|react-hook-form|sonner|mermaid|@uiw/react-codemirror|ai-elements|@streamdown/|streamdown)['\"]" src main.ts test scripts
+node - <<'NODE'
+// Package-focused import scan for ai-elements, mermaid, playwright, recharts,
+// react-is, use-stick-to-bottom, radix scroll/dropdown, d3*, motion/framer,
+// lucide/lucide-react, streamdown packages.
+NODE
+find . -path './node_modules' -prune -o -path './.git' -prune -o -path './.claude/worktrees' -prune -o -type d -maxdepth 3 -print | xargs du -sh 2>/dev/null | sort -hr | head -80
+find src -type d -maxdepth 5 -print | xargs du -sh 2>/dev/null | sort -hr | head -80
+node - <<'NODE'
+// Console census: counts console.log/debug/info separately from warn/error.
+NODE
+find src -type f -name index.ts -print0 | xargs -0 wc -l | sort -nr | head -80
+rg -n "\\b(todo|fixme|hack|temporary|legacy|compat|deprecated|retained|stub|placeholder|mock)\\b" src test scripts --glob '*.{ts,tsx,mjs,js}'
+node - <<'NODE'
+// TSX className repetition scan: repeated strings, cross-file repeats,
+// and theoretical duplicated characters. Used to justify UI grammar primitives.
+NODE
+node - <<'NODE'
+// UI surface density scan: per-domain files, lines, className assignments,
+// Button tags, and card/panel/pill/badge mentions.
+NODE
+find src/ui/view/copilot src/ui/view/quick-search src/ui/view/usage-dashboard src/ui/view/chat-view src/ui/view/settings -type f \( -name '*.tsx' -o -name '*.ts' \) -print0 | xargs -0 wc -l | sort -nr | head -60
+node - <<'NODE'
+// Descriptor/config density scan: DEFAULT/FALLBACK/title/desc/label/icon/prompt/templateId/zod
+// across src and templates/config. Used for 11.10.
+NODE
+node - <<'NODE'
+// Type/schema base-name scan: groups FooConfig/FooResult/FooSchema/FooState
+// to find possible semantic duplicates. Used for 11.11.
+NODE
+node - <<'NODE'
+// App/service weave ceremony scan: compose/Adapter/Port/Runtime/register/deps density.
+// Used for 11.12.
+NODE
+rg -n "window as any|testGraphTools|testAISearchTools|dumpV2State|captureV2Debug|enableDevTools|DebugCommand|\\[Debug\\]|console\\.(log|debug|info)" src/app src/ui src/service src/core -g '*.{ts,tsx}'
+wc -l data/model-catalog.json templates/config/models/*.json templates/config/curator-catalog.json src/core/profiles/presets.ts src/core/providers/model-registry.ts src/core/profiles/ProfileRegistry.ts src/core/providers/testProviderConnection.ts
+rg -n "anthropic|openai|google|gemini|perplexity|ollama|openrouter|quick|deep|premium|fast|online" data templates/config src/core/profiles src/core/providers src/ui/view/settings src/ui/view/modals -g '*.{ts,tsx,json}'
+find src/core/document src/ui/view/chat-view src/ui/component/prompt-input src/ui/view/shared src/ui/view/settings -type f \( -name '*.ts' -o -name '*.tsx' \) -print | sort | xargs wc -l | sort -nr | head -80
+rg -n "FileTypeUtils|FILE_TYPE_CONFIG|badgeStyleForKind|getFileType|IMAGE_EXTENSIONS|DocumentType|DOC_TYPES|pdf|docx|xlsx|pptx|csv|excalidraw|canvas" src/core/document src/ui/view/chat-view src/ui/component/prompt-input src/ui/view/shared src/ui/view/settings -g '*.{ts,tsx}'
+find src/app/modals src/app/copilot/modals src/app/view src/app/react -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l | sort -nr | head -100
+rg -n "extends Modal|extends ItemView|ReactRenderer|createReactElementWithServices|contentEl\\.empty|containerEl\\.empty|addClass\\(|unmount\\(|root\\.render|setTimeout\\(\\(\\) => \\{ r\\.unmount" src/app/modals src/app/copilot/modals src/app/view src/app/react -g '*.{ts,tsx}'
+find src/app src/service -type f \( -name '*Adapter.ts' -o -name '*Adapter.tsx' -o -name 'compose*.ts' -o -name 'compose*.tsx' \) -print | sort | xargs wc -l | sort -nr | head -120
+rg -n "class .*Adapter implements|export function compose|implements .*Port|constructor\\(.*AppContext|new .*Adapter\\(" src/app src/service -g '*.{ts,tsx}'
+find src/ui src/app -type f \( -name 'use*.ts' -o -name 'use*.tsx' -o -name '*Hook*.ts' -o -name '*Hook*.tsx' \) -print | sort | xargs wc -l | sort -nr | head -120
+rg -n "useEffect\\(|useState\\(|setLoading|isLoading|setError|refresh|reload|subscribe|unsubscribe|setInterval|clearInterval|setTimeout|clearTimeout|AbortController" src/ui src/app -g '*.{ts,tsx}'
+find templates -type f \( -name '*.json' -o -name '*.md' -o -name '*.txt' \) -print0 | xargs -0 wc -l | sort -nr | head -120
+find src -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l | sort -nr | head -120
+find src -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l | awk '$1 >= 350 {print}' | sort -nr
+find src -type f \( -name '*types.ts' -o -name '*Types.ts' -o -name 'types.ts' \) -print | sort | xargs wc -l | sort -nr | head -100
+find src -type f \( -name '*Store.ts' -o -name '*store.ts' -o -name '*Store.tsx' -o -name '*store.tsx' \) -print | sort | xargs wc -l | sort -nr | head -100
+find src/ui/view/modals/harness-onboarding src/ui/view/onboarding -type f \( -name '*.ts' -o -name '*.tsx' \) -print | sort | xargs wc -l | sort -nr
+find test -type f -name '*onboarding*.test.ts' -print | sort | xargs wc -l | sort -nr
+rg -n "OnboardingStateMachine|harness-onboarding/state|WizardState|StepId|from './state'" src/ui src/app test -g '*.ts' -g '*.tsx'
+find src/ui/view/usage-dashboard/components/charts src/ui/components/primitives src/ui/component/shared-ui -type f \( -name '*.tsx' -o -name '*.ts' \) -print | sort | xargs wc -l | sort -nr
+rg -n "@/ui/component/shared-ui/button|@/ui/components/primitives.*Button|from '@/ui/components/primitives'|from '@/ui/component/shared-ui'" src/ui src/app src/service -g '*.tsx' -g '*.ts'
+rg -n "service/chat/types|service/usage/types|quick-search/store/v2SessionTypes|multi-lens-graph/types|re-export shim|legacy import surface|backward compatibility" src test -g '*.ts' -g '*.tsx'
+node - <<'NODE'
+// Static incoming-edge scan for src/**/*.ts(x). Resolves @/ and relative imports.
+// Used only as a clue; main.ts currently has some src/... absolute imports that
+// this quick scanner intentionally treats as possible false positives.
+NODE
+find src -type f \( -name '*.ts' -o -name '*.tsx' \) -print | sed 's#.*/##' | sort | uniq -d
+rg -n "Register|registerCommands|registerEvents|dropdown-menu|v2SessionTypes|vault-utils|MySetting|better-sqlite3|pdfjs-dist" main.ts src test -g '*.ts' -g '*.tsx' -g '*.d.ts'
+rg -n "@/ui/component/shared-ui/dropdown-menu|shared-ui/dropdown-menu|DropdownMenu|DropdownMenuTrigger|DropdownMenuContent|DropdownMenuItem|DropdownMenuCheckboxItem|DropdownMenuRadioItem|DropdownMenuSeparator|DropdownMenuShortcut" src test -g '*.ts' -g '*.tsx'
+find docs/superpowers/refactor-ops -maxdepth 1 -type f \( -name 't11*.md' -o -name 't11*.html' \) -print | sort | xargs wc -l | sort -nr | head -80
+wc -l src/core/utils/markdown-utils.ts src/core/storage/vault/framework/*.ts src/core/storage/vault/search-docs/*.ts src/core/storage/vault/chat-docs/*.ts src/core/template-engine-helper.ts
+rg -n "splitSections|extractJsonBlock|rebaseHeadings|fixUnclosedCodeBlocks|MarkdownDocBuilder|frontmatter|JSON\\.parse|JSON\\.stringify|codeBlock" src/core src/service src/app
+find src/service/tools/search-graph-inspector src/service/search src/core/storage/sqlite -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l | sort -nr | head -45
+rg -n "JSON\\.parse|JSON\\.stringify|metadata_json|tags_json|json_extract|rows\\.map|rowTo|score|rank|weight|normalize" src/service/tools/search-graph-inspector src/service/search src/core/storage/sqlite
+wc -l src/core/providers/types.ts src/core/providers/model-registry.ts src/core/providers/rerank/*.ts src/core/providers/vercel-adapter.ts src/service/chat/service-manager.ts src/service/agents/sdkMessageAdapter.ts
+rg -n "JSON\\.parse|JSON\\.stringify|extractJson|queryStructured|schema\\.parse|safeParse|usage|finishReason|LLMStreamEvent|fenced" src/core/providers src/service
+wc -l src/core/storage/sqlite/ddl.ts src/core/storage/sqlite/repositories/*.ts src/core/storage/sqlite/better-sqlite3-adapter/*.ts
+rg -n "metadata_json|tags_json|JSON\\.parse|JSON\\.stringify|json_extract|rowTo|rows\\.map|parse.*Json|safe.*Json|serialize" src/core/storage/sqlite/repositories src/core/storage/sqlite/ddl.ts
+node - <<'NODE'
+// Lightweight similarity scan used as clue only; not source of truth.
+// Compare same-area TS/TSX files between 80 and 900 LOC after stripping imports/comments.
+NODE</pre>
+</main>
+</body>
+</html>

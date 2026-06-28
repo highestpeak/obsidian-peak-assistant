@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T11W Codex Structural Slimming Investigation</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --ink: #18202f;
+      --muted: #657083;
+      --line: #dfe4ec;
+      --soft: #eef2f7;
+      --blue: #2463eb;
+      --green: #0f8a5f;
+      --amber: #b7791f;
+      --red: #c2413a;
+      --violet: #6d4bd7;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.58;
+    }
+    main {
+      width: min(1180px, calc(100vw - 40px));
+      margin: 0 auto;
+      padding: 38px 0 72px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 32px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 22px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 20px 0 10px;
+      font-size: 16px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+    p { margin: 0 0 12px; }
+    a { color: var(--blue); text-decoration: none; }
+    code, pre {
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    pre {
+      margin: 10px 0 0;
+      padding: 12px;
+      background: #111827;
+      color: #edf2f7;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .hero {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 26px;
+      box-shadow: 0 20px 55px rgba(20, 30, 50, 0.08);
+    }
+    .eyebrow {
+      color: var(--violet);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 8px;
+    }
+    .lead {
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 900px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-6 { grid-column: span 6; }
+    .span-7 { grid-column: span 7; }
+    .span-12 { grid-column: span 12; }
+    .kpi {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .kpi strong {
+      font-size: 24px;
+      line-height: 1;
+    }
+    .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .verdict {
+      border-left: 5px solid var(--amber);
+      background: #fff8eb;
+    }
+    .verdict.good {
+      border-left-color: var(--green);
+      background: #edfdf6;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--soft);
+      color: var(--muted);
+      margin-right: 6px;
+      white-space: nowrap;
+    }
+    .tag.green { background: #e7f7ef; color: var(--green); }
+    .tag.blue { background: #e8efff; color: var(--blue); }
+    .tag.amber { background: #fff2d7; color: var(--amber); }
+    .tag.red { background: #fde8e8; color: var(--red); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 10px 11px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      background: #f1f4f8;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .num { text-align: right; font-family: var(--mono); white-space: nowrap; }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 190px 1fr 80px;
+      gap: 10px;
+      align-items: center;
+      margin: 8px 0;
+      font-size: 13px;
+    }
+    .bar-bg {
+      height: 11px;
+      background: #e8edf5;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2463eb, #6d4bd7);
+      border-radius: 999px;
+    }
+    .pattern {
+      display: grid;
+      grid-template-columns: 1fr 42px 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+    .box {
+      border: 1px solid var(--line);
+      background: #fbfcfe;
+      border-radius: 10px;
+      padding: 12px;
+      min-height: 110px;
+    }
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue);
+      font-weight: 900;
+      font-size: 24px;
+    }
+    .mini-list {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+    .mini-list li { margin: 4px 0; }
+    .mono-path {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--soft);
+      border-radius: 6px;
+      padding: 2px 5px;
+      word-break: break-all;
+    }
+    details {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      margin: 10px 0;
+      padding: 10px 12px;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .callout {
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: #eef5ff;
+      border: 1px solid #cfe0ff;
+    }
+    .danger {
+      background: #fff1f1;
+      border-color: #ffcaca;
+    }
+    .ok {
+      background: #effaf4;
+      border-color: #c7efd8;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 12px 0;
+    }
+    .flow-node {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfcfe;
+      padding: 13px;
+      min-height: 126px;
+    }
+    .flow-node strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .flow-node span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .flow-node .gain {
+      color: var(--green);
+      font-family: var(--mono);
+      font-weight: 800;
+      margin-top: 8px;
+    }
+    .deep-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin: 14px 0;
+    }
+    .deep-card h3 {
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .deep-card h3 .idx {
+      display: inline-flex;
+      width: 24px;
+      height: 24px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: #e8efff;
+      color: var(--blue);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .evidence-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 10px 0 12px;
+    }
+    .evidence-pill {
+      background: #f5f7fb;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .evidence-pill strong {
+      display: block;
+      font-family: var(--mono);
+      font-size: 16px;
+      line-height: 1.1;
+    }
+    .evidence-pill span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .risk-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #ffe0a8;
+      background: #fff8eb;
+      color: #6f4b00;
+      font-size: 13px;
+    }
+    @media (max-width: 820px) {
+      main { width: min(100vw - 24px, 1180px); padding-top: 20px; }
+      .span-3, .span-4, .span-5, .span-6, .span-7, .span-12 { grid-column: span 12; }
+      .pattern { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); }
+      .bar-row { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr; }
+      .evidence-grid { grid-template-columns: 1fr; }
+      table { font-size: 12px; }
+      th, td { padding: 8px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="eyebrow">Codex read-only investigation · T11W</div>
+    <h1>结构性代码瘦身：真正能变快的地方在哪里</h1>
+    <p class="lead">
+      结论先说：边界债已经清到 0，继续做 CSS / strings / dead-file 只能得到几百到一两千行。
+      下一步必须从“删几个文件”切换为“消灭重复形态”：把一批长得很像的 UI panel / screen / repo query 写法，收敛成少量 renderer、helper 和配置。
+    </p>
+  </section>
+
+  <h2>1. 当前判断</h2>
+  <div class="grid">
+    <div class="card span-3 kpi">
+      <strong>110,143</strong>
+      <span>当前产品代码 LOC（src + styles.css，HEAD ce380273）</span>
+    </div>
+    <div class="card span-3 kpi">
+      <strong>0</strong>
+      <span>boundary audit findings</span>
+    </div>
+    <div class="card span-3 kpi">
+      <strong>37,575</strong>
+      <span>src/ui/view，是最大代码池</span>
+    </div>
+    <div class="card span-3 kpi">
+      <strong>8k-15k</strong>
+      <span>扩展候选总潜力：主池 + 第二圈池（估算）</span>
+    </div>
+    <div class="card span-12 verdict">
+      <h3>核心判断</h3>
+      <p>
+        <strong>8k 级别 reduction 是可能的，但不是靠继续找死代码。</strong>
+        需要一次性动 UI 重复形态和 SQLite repo 模板；如果只让 Claude “继续删”，它大概率又会交出几百行的小清理。
+      </p>
+      <p>
+        <span class="tag green">建议执行</span>
+        Copilot panels、Quick Search V2、Usage Dashboard、SQLite repo helper。
+        <span class="tag amber">机会性执行</span>
+        shared UI root、Chat retained 命名/小收敛。
+        <span class="tag red">不要作为主收益</span>
+        Search/index 纯拆文件。
+      </p>
+    </div>
+  </div>
+
+  <h2>2. 代码体积分布</h2>
+  <div class="card">
+    <div class="bar-row">
+      <span><code>src/ui/view</code></span>
+      <div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div>
+      <span class="num">37,575</span>
+    </div>
+    <div class="bar-row">
+      <span><code>src/service</code></span>
+      <div class="bar-bg"><div class="bar-fill" style="width:86.5%"></div></div>
+      <span class="num">32,525</span>
+    </div>
+    <div class="bar-row">
+      <span><code>src/core</code></span>
+      <div class="bar-bg"><div class="bar-fill" style="width:56.5%"></div></div>
+      <span class="num">21,236</span>
+    </div>
+    <div class="bar-row">
+      <span><code>src/app</code></span>
+      <div class="bar-bg"><div class="bar-fill" style="width:18.7%"></div></div>
+      <span class="num">7,048</span>
+    </div>
+    <div class="bar-row">
+      <span><code>CSS files</code></span>
+      <div class="bar-bg"><div class="bar-fill" style="width:11.7%"></div></div>
+      <span class="num">5,528</span>
+    </div>
+  </div>
+
+  <h2>3. “收敛”到底是什么</h2>
+  <div class="pattern">
+    <div class="box">
+      <h3>现在</h3>
+      <p>每个功能自己写一遍标题、卡片、空状态、按钮、列表、保存逻辑。</p>
+      <pre>PanelA.tsx 160 行
+PanelB.tsx 140 行
+PanelC.tsx 130 行
+...</pre>
+    </div>
+    <div class="arrow">→</div>
+    <div class="box">
+      <h3>收敛后</h3>
+      <p>保留一个通用 renderer，每个功能只描述自己的差异。</p>
+      <pre>PanelRenderer.tsx
+panelDefinitions.ts
+tiny wrappers where needed</pre>
+    </div>
+  </div>
+  <p class="callout">
+    这不是删除功能，而是删除“重复的手写 UI/SQL 语法”。功能还在，但每个功能不再拥有一整套重复骨架。
+  </p>
+
+  <h2>4. 候选池矩阵</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>池子</th>
+        <th class="num">当前规模</th>
+        <th>证据</th>
+        <th>怎么收敛</th>
+        <th class="num">现实收益</th>
+        <th class="num">乐观收益</th>
+        <th>风险</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Copilot panel family</strong></td>
+        <td class="num">3,094 LOC panels<br />5,222 with review surfaces</td>
+        <td>28 个 panel；13 个 selectable，21 个 copy/save，17 个 finding/list 信号，4 个 diff apply panel。</td>
+        <td>抽 <code>PanelRenderer</code>、<code>SelectableListPanel</code>、<code>DiffApplyPanel</code>、<code>GroupedFileListPanel</code>。</td>
+        <td class="num">-1.6k<br />to -2.4k</td>
+        <td class="num">-3.0k</td>
+        <td><span class="tag amber">中</span> 需要保护 28 action binding。</td>
+      </tr>
+      <tr>
+        <td><strong>Quick Search V2 surface</strong></td>
+        <td class="num">9,443 LOC<br />V2 surface 4,585</td>
+        <td>V2 report/process/sources/footer/inline plan 都有 section shell、loading、actions、store selectors；session plumbing 也重复。</td>
+        <td>抽 <code>V2SectionShell</code>、统一 status/empty/loading、复用 expandable list 和 save helpers。</td>
+        <td class="num">-1.0k<br />to -1.8k</td>
+        <td class="num">-2.6k</td>
+        <td><span class="tag amber">中</span> UI 流程复杂，需 focused tests。</td>
+      </tr>
+      <tr>
+        <td><strong>Usage Dashboard screens</strong></td>
+        <td class="num">4,911 LOC</td>
+        <td>7 个 screen 1,907 行；charts 1,009 行；重复 card header、KPI、empty/loading、provider normalize、budget reader。</td>
+        <td>抽 <code>DashboardCard</code>、<code>ScreenHeader</code>、<code>MetricTile</code>、provider/time/budget helpers。</td>
+        <td class="num">-0.8k<br />to -1.5k</td>
+        <td class="num">-2.1k</td>
+        <td><span class="tag amber">中</span> 必须保留 Usage Dashboard。</td>
+      </tr>
+      <tr>
+        <td><strong>SQLite repositories</strong></td>
+        <td class="num">7,409 physical lines</td>
+        <td>27 个 repo；302 个方法；123 个 <code>selectFrom</code>；84 个 in-list 条件；JSON parse/stringify 共 41 处。</td>
+        <td>抽 JSON column helpers、deleteByIds、scope path filter、patch builder、小型 pagination helper。</td>
+        <td class="num">-1.0k<br />to -1.8k</td>
+        <td class="num">-2.7k</td>
+        <td><span class="tag amber">中</span> 不能做 god repo，必须保持 Kysely 类型。</td>
+      </tr>
+      <tr>
+        <td><strong>Shared UI roots</strong></td>
+        <td class="num">6,436 code LOC</td>
+        <td><code>src/ui/component</code> 和 <code>src/ui/components</code> 并存；Button/Pill/Popover 有重复 basename。</td>
+        <td>定 canonical root，删除真正重复 primitive，只随 A/B/C 迁移。</td>
+        <td class="num">-0.6k</td>
+        <td class="num">-1.2k</td>
+        <td><span class="tag amber">中高</span> 视觉回归风险。</td>
+      </tr>
+      <tr>
+        <td><strong>Chat retained residue</strong></td>
+        <td class="num">6,183 LOC</td>
+        <td><code>ComposerRetained</code>、<code>HeaderRetained</code>、<code>MessageViewItemRetained</code> 是当前主路径，不是可直接删除的旧文件。</td>
+        <td>先去兼容命名，再抽 message actions / date grouping / attachment row helpers。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-1.0k</td>
+        <td><span class="tag blue">低中</span> 收益不够做主线。</td>
+      </tr>
+      <tr>
+        <td><strong>Search/index service</strong></td>
+        <td class="num">6,916 physical lines</td>
+        <td><code>indexService.ts</code> 很大，但很多是实算法，不是显性重复。</td>
+        <td>只抽真正重复 phase/progress/batch/repo bundle；不做纯拆文件。</td>
+        <td class="num">-0.5k</td>
+        <td class="num">-1.2k</td>
+        <td><span class="tag red">高</span> 容易越拆越多。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4.1 四个主池深挖：到底该怎么收敛</h2>
+  <p class="callout">
+    这四个池子不是同一种问题。Copilot 和 Usage Dashboard 是 <strong>UI grammar 重复</strong>，
+    Quick Search 是 <strong>V2 surface + session plumbing 重复</strong>，
+    SQLite 是 <strong>repo query helper 重复</strong>。下一波如果把它们都塞进一个“大抽象”，会变差；正确做法是四个窄收敛单元并行。
+  </p>
+
+  <div class="flow">
+    <div class="flow-node">
+      <strong>Copilot panel family</strong>
+      <span>把 28 个 panel 的 shell / selection / copy-save / finding list 写法收敛成 panel grammar。</span>
+      <span class="gain">target -1.6k 至 -3.0k</span>
+    </div>
+    <div class="flow-node">
+      <strong>SQLite repo helper</strong>
+      <span>保留每个 repo 的语义，抽 JSON、delete ids、scope filter、patch set 这些小工具。</span>
+      <span class="gain">target -1.0k 至 -2.7k</span>
+    </div>
+    <div class="flow-node">
+      <strong>Quick Search V2 surface</strong>
+      <span>抽 V2 section/status/action/list/save helpers，不动搜索产品流程。</span>
+      <span class="gain">target -1.0k 至 -2.6k</span>
+    </div>
+    <div class="flow-node">
+      <strong>Usage Dashboard grammar</strong>
+      <span>保留 Usage Dashboard，把 screen/card/KPI/empty/settings grammar 收敛。</span>
+      <span class="gain">target -0.8k 至 -2.1k</span>
+    </div>
+  </div>
+
+  <div class="deep-card">
+    <h3><span class="idx">A</span> Copilot panel family 收敛</h3>
+    <div class="evidence-grid">
+      <div class="evidence-pill"><strong>28</strong><span>panel files under <code>src/ui/view/copilot/panels</code></span></div>
+      <div class="evidence-pill"><strong>3,094</strong><span>panel LOC，不含 review / vault auto-run surface</span></div>
+      <div class="evidence-pill"><strong>21</strong><span>copy/save/open-note family 命中</span></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>重复形态</th>
+          <th>代表文件</th>
+          <th>建议抽象</th>
+          <th class="num">预估净减少</th>
+          <th>保护边界</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Diff apply panel：取原文、展示 diff、apply、Notice、close。</td>
+          <td><code>PolishPanel.tsx</code>, <code>FormatPolishPanel.tsx</code>, <code>TranslatePanel.tsx</code>, <code>RewriteSelectionPanel.tsx</code></td>
+          <td><code>DiffApplyResultPanel</code> + 每个 action 的 tiny props wrapper。</td>
+          <td class="num">-120<br />to -220</td>
+          <td>保留每个 action 的标题、文案、scope、apply 语义。</td>
+        </tr>
+        <tr>
+          <td>Selectable list panel：<code>useState&lt;Set&gt;</code>、toggle、selected count、Insert/Create action。</td>
+          <td><code>LinkSuggestPanel.tsx</code>, <code>SemanticLinkSuggestPanel.tsx</code>, <code>AddEvidencePanel.tsx</code>, <code>SmartConnectionsPanel.tsx</code>, <code>ExtractConceptsPanel.tsx</code></td>
+          <td><code>SelectableItemsPanel</code> + <code>useSelectedSet</code> + item renderer slot。</td>
+          <td class="num">-450<br />to -850</td>
+          <td>不能把 vault mutations 合成一个高权限 god action；每类 mutation 保持显式函数。</td>
+        </tr>
+        <tr>
+          <td>Copy/save/create note panel：clipboard、create note、replace content、Notice 文案重复。</td>
+          <td><code>WritingPlanPanel.tsx</code>, <code>VaultSummaryPanel.tsx</code>, <code>SynthesizePanel.tsx</code>, <code>SummarizePanel.tsx</code>, <code>WriteArticlePanel.tsx</code></td>
+          <td><code>CopySaveActions</code> + <code>saveMarkdownArtifact</code> helper。</td>
+          <td class="num">-350<br />to -700</td>
+          <td>保留当前 vault host port，不重新引入 Obsidian/AppContext import。</td>
+        </tr>
+        <tr>
+          <td>Finding/filter/list panel：empty state、severity、filter chip、summary box 重复。</td>
+          <td><code>CorrectContentPanel.tsx</code>, <code>PromptAuditPanel.tsx</code>, <code>KnowledgeGapsPanel.tsx</code>, <code>TagSuggestionPanel.tsx</code></td>
+          <td><code>FindingListPanel</code> / <code>FilteredFindingPanel</code>，复用 <code>FindingsBodyParts</code>。</td>
+          <td class="num">-450<br />to -850</td>
+          <td><code>copilot-action-surfaces.tsx</code> 的 28 action binding 必须 1:1 通过测试守住。</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="risk-note">
+      不建议做一个“万能 PanelRenderer”。正确粒度是 3-5 个 panel family renderer，每个 renderer 只吃一种 UI 语法。否则 LOC 可能下降，但可读性会下降。
+    </p>
+  </div>
+
+  <div class="deep-card">
+    <h3><span class="idx">F</span> SQLite repo helper 收敛</h3>
+    <div class="evidence-grid">
+      <div class="evidence-pill"><strong>27</strong><span>repository files</span></div>
+      <div class="evidence-pill"><strong>7,409</strong><span>physical lines</span></div>
+      <div class="evidence-pill"><strong>302</strong><span>repo methods, many small templates</span></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>重复形态</th>
+          <th>证据</th>
+          <th>建议 helper</th>
+          <th class="num">预估净减少</th>
+          <th>风险控制</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>JSON columns：parse/stringify + fallback + null handling。</td>
+          <td>JSON parse/stringify 共 41 处；<code>VaultLintRepo</code>, <code>StructuralAnalysisRepo</code>, <code>ChatMessageRepo</code> 都命中。</td>
+          <td><code>readJsonColumn</code>, <code>writeJsonColumn</code>, <code>nullableJson</code>。</td>
+          <td class="num">-250<br />to -500</td>
+          <td>helper 必须保留 invalid JSON fallback 行为；不要吞掉需要 console.warn 的路径。</td>
+        </tr>
+        <tr>
+          <td>Delete-by-ids / in-list guard。</td>
+          <td>84 个 in-list 条件；多个 repo 有 <code>if (ids.length === 0) return</code>。</td>
+          <td><code>deleteWhereIn</code>, <code>selectWhereIn</code>，仅用于简单主键/外键场景。</td>
+          <td class="num">-200<br />to -450</td>
+          <td>不要把复杂 graph query 也塞进去；Kysely 类型要比 LOC 更重要。</td>
+        </tr>
+        <tr>
+          <td>Patch builder：大量 updateTable set object 手写。</td>
+          <td>48 个 update；<code>ChatConversationRepo</code> / <code>ChatMessageRepo</code> / <code>IndexedDocumentRepo</code> 重复 optional/null 转换。</td>
+          <td><code>definedPatch</code> / <code>booleanInt</code> / <code>nullable</code> 小函数。</td>
+          <td class="num">-250<br />to -600</td>
+          <td>区分 “undefined 不更新” 与 “null 写入 null”；这是最大行为风险。</td>
+        </tr>
+        <tr>
+          <td>FTS/scope path filter。</td>
+          <td><code>DocChunkRepo.ts</code> 有多处 raw FTS + scopeMode/current-file/folder/exclude folder 组合。</td>
+          <td><code>buildScopePathFilter</code> 返回 SQL fragment + params。</td>
+          <td class="num">-250<br />to -500</td>
+          <td>必须用现有 search/index tests 覆盖 current file/folder/exclusion。</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="risk-note">
+      SQLite 这里绝对不要做 <code>BaseRepo</code> 继承体系。我们要的是 5-7 个小 helper，把重复模板拿掉，不改变 repo ownership。
+    </p>
+  </div>
+
+  <div class="deep-card">
+    <h3><span class="idx">B</span> Quick Search V2 surface 收敛</h3>
+    <div class="evidence-grid">
+      <div class="evidence-pill"><strong>55</strong><span>quick-search TS/TSX files</span></div>
+      <div class="evidence-pill"><strong>9,443</strong><span>total LOC in quick-search</span></div>
+      <div class="evidence-pill"><strong>4,585</strong><span>V2 surface / session display cluster</span></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>重复形态</th>
+          <th>代表文件</th>
+          <th>建议抽象</th>
+          <th class="num">预估净减少</th>
+          <th>保护边界</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>V2 report section block：header/status/copy/regenerate/annotation/skeleton。</td>
+          <td><code>V2ReportView.tsx</code>, <code>V2InlinePlanReview.tsx</code>, <code>V2RoundBlock.tsx</code></td>
+          <td><code>V2SectionBlock</code>, <code>V2IconAction</code>, <code>V2StatusBadge</code>。</td>
+          <td class="num">-400<br />to -850</td>
+          <td>Annotation selection 行为不能丢；V2 streaming 不可回退到 V1 形态。</td>
+        </tr>
+        <tr>
+          <td>Sources / grouped list / expandable folders。</td>
+          <td><code>V2SourcesView.tsx</code>, <code>ConnectedSection.tsx</code>, <code>DiscoveredSection.tsx</code></td>
+          <td><code>ExpandableSourceGroupList</code> + folder prefix grouping helper。</td>
+          <td class="num">-250<br />to -550</td>
+          <td>open source / graph save 仍走 QuickSearchHost ports。</td>
+        </tr>
+        <tr>
+          <td>Foreground session persistence deps。</td>
+          <td><code>useSearchSession.ts</code> 和 <code>useGraphAgent.ts</code> 重复 <code>PersistForegroundSessionDeps</code> 装配。</td>
+          <td><code>usePersistForegroundSessionDeps</code> 或 pure <code>createPersistForegroundSessionDeps</code>。</td>
+          <td class="num">-150<br />to -350</td>
+          <td>不要把 raw app/plugin 放回 UI；T11P guard 必须继续过。</td>
+        </tr>
+        <tr>
+          <td>Save-to-markdown / unique path / QueryPatternRepo lazy load。</td>
+          <td><code>save-ai-analyze-to-md.ts</code>, <code>SearchModal.tsx</code> 两处 QueryPatternRepo fallback。</td>
+          <td><code>createUniqueMarkdownPath</code>, <code>getQueryPatternRepoFromHost</code>。</td>
+          <td class="num">-200<br />to -450</td>
+          <td>不能绕过现有 app-owned host/port；不能重新引入 dynamic <code>@/app/**</code> import。</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="risk-note">
+      Quick Search 的最大风险是“抽成框架后 V2 流程看不懂”。所以只抽 surface primitives 和 host helpers，store 状态机不要在本波重写。
+    </p>
+  </div>
+
+  <div class="deep-card">
+    <h3><span class="idx">C</span> Usage Dashboard screen grammar 收敛</h3>
+    <div class="evidence-grid">
+      <div class="evidence-pill"><strong>34</strong><span>usage-dashboard TS/TSX files</span></div>
+      <div class="evidence-pill"><strong>4,911</strong><span>current LOC; keep the feature</span></div>
+      <div class="evidence-pill"><strong>1,907</strong><span>screen files; 1,009 chart primitive lines</span></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>重复形态</th>
+          <th>代表文件</th>
+          <th>建议抽象</th>
+          <th class="num">预估净减少</th>
+          <th>保护边界</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Screen / section shell：标题、副标题、loading、empty、two-column card。</td>
+          <td><code>Overview.tsx</code>, <code>BudgetAlerts.tsx</code>, <code>Optimization.tsx</code>, <code>ProviderModel.tsx</code>, <code>History.tsx</code></td>
+          <td><code>DashboardSection</code>, <code>DashboardEmptyState</code>, <code>DashboardSplit</code>。</td>
+          <td class="num">-300<br />to -650</td>
+          <td>视觉 smoke 必须看 Overview / Budget / Optimization / History。</td>
+        </tr>
+        <tr>
+          <td>KPI / metric grammar：value row、badge、delta、sparkline、help tooltip。</td>
+          <td><code>Overview.tsx</code>, <code>KpiActionCard.tsx</code>, <code>PaceBar.tsx</code>, <code>Sparkline.tsx</code></td>
+          <td><code>MetricTile</code> / <code>KpiMetricRow</code>，只收敛布局，不合并业务计算。</td>
+          <td class="num">-200<br />to -450</td>
+          <td>不要把 usage/business metric 计算塞进 UI primitive。</td>
+        </tr>
+        <tr>
+          <td>Provider/time/budget helpers。</td>
+          <td><code>normalizeProvider</code> 在 3 处；<code>timeRangeToMs</code> 在 2 处；<code>readBudget</code> 在 2 处。</td>
+          <td><code>dashboard-formatters.ts</code>, <code>dashboard-time.ts</code>, <code>dashboard-budget.ts</code>。</td>
+          <td class="num">-150<br />to -350</td>
+          <td>这里是低风险先手，但不能冒充大收益。</td>
+        </tr>
+        <tr>
+          <td>Settings writeback / Notice / optimistic UI。</td>
+          <td><code>BudgetAlerts.tsx</code>, <code>Optimization.tsx</code>, <code>InlineReceipt.tsx</code></td>
+          <td><code>useDashboardSettingsWriter</code> + narrow action callbacks。</td>
+          <td class="num">-150<br />to -400</td>
+          <td>Usage Dashboard 是明确保留功能；不能通过删 Budget/Optimization 达成 LOC。</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="risk-note">
+      Usage Dashboard 适合跟 Quick Search 同波或后一波，因为二者都需要视觉 smoke；但它不应该被删除，也不应该缩水成历史表格。
+    </p>
+  </div>
+
+  <h2>4.2 第二圈新增候选：还有哪些可能继续瘦</h2>
+  <p class="callout">
+    继续扫下来，我认为你的直觉是对的：还有代码可以减。区别是，第二圈不太像“明显重复文件”，而更像
+    <strong>巨大 UI surface 的重复表达</strong>、<strong>setup/settings grammar 重复</strong>、
+    <strong>chat/project 列表语法重复</strong>、<strong>工具输出格式重复</strong>。
+    它们不应该靠删功能来减，而应该靠更清楚的 grammar 和 helper 替换重复 body。
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>第二圈池子</th>
+        <th>当前体量证据</th>
+        <th>为什么可能减</th>
+        <th class="num">现实净减少</th>
+        <th class="num">乐观净减少</th>
+        <th>风险</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>G. Copilot Vault Review / AutoRun surface</strong></td>
+        <td><code>src/ui/view/copilot/review</code> + <code>vault</code> 约 3,909 physical lines；<code>VaultAutoRunContent.tsx</code> 单文件 1,607 行。</td>
+        <td>不是业务算法，而是 overview、cluster、source、trace、action card、gap card 多种卡片/面板 grammar 堆在一个 surface。</td>
+        <td class="num">-0.8k</td>
+        <td class="num">-1.8k</td>
+        <td><span class="tag amber">中高</span> 视觉与交互风险，需要 screenshot smoke。</td>
+      </tr>
+      <tr>
+        <td><strong>H. Settings + Onboarding setup grammar</strong></td>
+        <td><code>KnowledgeIndexTab.tsx</code> 796 行；<code>HarnessOnboardingWizard.tsx</code> 716 行；<code>OnboardingStateMachine.ts</code> 572 行。</td>
+        <td>大量 section、row、progress、choice card、readiness step 语法重复。这里可以统一 setup/wizard grammar，但不能删除 onboarding 能力。</td>
+        <td class="num">-0.9k</td>
+        <td class="num">-2.0k</td>
+        <td><span class="tag amber">中</span> 需要确认是否存在重复 wizard 路径，不能误删当前入口。</td>
+      </tr>
+      <tr>
+        <td><strong>I. Chat / Project list view grammar</strong></td>
+        <td><code>ConversationIndex.tsx</code> 732 行；<code>MessageViewItemRetained.tsx</code> 615 行；<code>MessageAttachmentsList.tsx</code> 550 行；<code>ProjectsSection.tsx</code> 565 行。</td>
+        <td>Chat 三栏必须保留，但 timeline row、artifact row、attachment gallery、project list section、时间格式 helpers 有明显重复。</td>
+        <td class="num">-0.8k</td>
+        <td class="num">-1.8k</td>
+        <td><span class="tag amber">中</span> Chat 是核心路径；只做 grammar 收敛，不改变三栏 IA。</td>
+      </tr>
+      <tr>
+        <td><strong>J. Search Graph Inspector / Index output helpers</strong></td>
+        <td><code>src/service/tools/search-graph-inspector</code> 约 4,314 行；<code>src/service/search/index</code> 约 6,893 行。</td>
+        <td>算法本身不能乱动，但 result builder、scoring explain、markdown/table output、path normalization、phase runner 有可收敛空间。</td>
+        <td class="num">-0.7k</td>
+        <td class="num">-1.8k</td>
+        <td><span class="tag red">高</span> 只能做“净减少 helper”，不能纯搬大文件。</td>
+      </tr>
+      <tr>
+        <td><strong>K. Shared UI roots + raw button cleanup</strong></td>
+        <td><code>src/ui/component</code> + <code>src/ui/components</code> 约 7,856 行；仍有约 100 个 raw <code>&lt;button&gt;</code> 命中。</td>
+        <td>两个组件根目录造成心智负担；BrandAvatar、Button/IconButton、Pill、Popover、file-utils 等存在重复或兼容残留。</td>
+        <td class="num">-0.4k</td>
+        <td class="num">-1.2k</td>
+        <td><span class="tag amber">中</span> 目录整理价值高，但单独做 LOC 收益一般，适合跟随迁移。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="grid">
+    <div class="card span-6 ok">
+      <h3>扩展总盘子怎么理解</h3>
+      <p>第一圈 A/B/C/F 的现实空间大约 <strong>-4.4k 到 -7.5k</strong>。第二圈 G/H/I/J/K 的现实空间大约 <strong>-3.6k 到 -6.6k</strong>，但不应该全部无脑并行。</p>
+      <p>所以全图不是只有 5k-10k；更诚实的总潜力是 <strong>8k-15k</strong>，只是其中一部分需要视觉 smoke 和更严格的 owner review。</p>
+    </div>
+    <div class="card span-6 warning">
+      <h3>为什么不能只看“文件大”</h3>
+      <p><code>indexService.ts</code> 和 <code>ddl.ts</code> 大，但很多是算法或类型契约；强拆会增加 LOC。真正要盯的是“同一种 UI/SQL/输出语法被写很多遍”的地方。</p>
+      <p>大文件是线索，不是罪名。重复 grammar 才是这轮瘦身的目标。</p>
+    </div>
+  </div>
+
+  <div class="deep-card">
+    <h3><span class="idx">G</span> Copilot Vault Review / AutoRun surface 收敛</h3>
+    <div class="evidence-grid">
+      <div class="evidence-pill"><strong>1,607</strong><span><code>VaultAutoRunContent.tsx</code> single file lines</span></div>
+      <div class="evidence-pill"><strong>312</strong><span><code>className</code> occurrences inside that file</span></div>
+      <div class="evidence-pill"><strong>15</strong><span>raw <code>&lt;button&gt;</code> sites in one surface</span></div>
+    </div>
+    <div class="pattern">
+      <div class="box">
+        <strong>现在</strong>
+        <ul class="mini-list">
+          <li>Overview / clusters / sources / trace / actions 都写在一个巨大 TSX。</li>
+          <li>每个小卡片手写 header、badge、empty、copy/open action。</li>
+          <li>局部 helper 很多，但还没有形成 surface grammar。</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="box">
+        <strong>应该变成</strong>
+        <ul class="mini-list">
+          <li><code>VaultReviewScreenFrame</code>：统一 surface shell。</li>
+          <li><code>ReviewMetricCard</code> / <code>GapCard</code> / <code>SourceExplorer</code> / <code>TraceRail</code>。</li>
+          <li>原业务数据保持不动，只替换重复 JSX body。</li>
+        </ul>
+      </div>
+    </div>
+    <p class="risk-note">
+      这块可以减，但要把它当 UI surface 重构，不是“把一个大文件拆成十个小文件”。通过条件必须包含 Copilot Vault Review 真实打开 smoke。
+    </p>
+  </div>
+
+  <div class="deep-card">
+    <h3><span class="idx">H</span> Settings + Onboarding setup grammar 收敛</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>文件</th>
+          <th class="num">体量</th>
+          <th>可收敛点</th>
+          <th class="num">预估净减少</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>src/ui/view/settings/tabs/KnowledgeIndexTab.tsx</code></td>
+          <td class="num">796 lines</td>
+          <td><code>IndexBehaviorSection</code>, <code>AIAnalysisSection</code>, <code>IndexReadinessSection</code>, <code>SearchQualitySection</code> 都在手写 row/choice/status grammar。</td>
+          <td class="num">-300<br />to -700</td>
+        </tr>
+        <tr>
+          <td><code>src/ui/view/onboarding/HarnessOnboardingWizard.tsx</code></td>
+          <td class="num">716 lines</td>
+          <td>Step footer、progress、readiness、AI behavior、ready-to-try 这些 wizard grammar 可以抽成可复用 setup step。</td>
+          <td class="num">-300<br />to -700</td>
+        </tr>
+        <tr>
+          <td><code>src/ui/view/onboarding/OnboardingStateMachine.ts</code></td>
+          <td class="num">572 lines</td>
+          <td>先检查它是不是仍然承担真实 product state；如果只是历史兼容状态机，可小心退休或改为数据表。</td>
+          <td class="num">-200<br />to -600</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="risk-note">
+      这一池的关键 owner 问题：到底现在有几个 onboarding/setup 入口？如果有重复入口，先合并入口；如果没有重复入口，只抽 setup grammar。
+    </p>
+  </div>
+
+  <div class="deep-card">
+    <h3><span class="idx">I</span> Chat / Project list grammar 收敛</h3>
+    <p>
+      Chat 这里不要再把 <code>Retained</code> 当成“旧路径”。目前它们基本就是当前主路径。可做的是把三栏必须保留的产品能力，内部表达得更薄。
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>重复形态</th>
+          <th>代表文件</th>
+          <th>建议抽象</th>
+          <th class="num">预估净减少</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Timeline / artifact / topic row。</td>
+          <td><code>ConversationIndex.tsx</code>, <code>MessageViewItemRetained.tsx</code></td>
+          <td><code>TimelineRow</code>, <code>ArtifactRow</code>, shared date grouping。</td>
+          <td class="num">-250<br />to -550</td>
+        </tr>
+        <tr>
+          <td>Attachment preview / file chip / action menu。</td>
+          <td><code>MessageAttachmentsList.tsx</code>, <code>PromptInputBody.tsx</code>, resource preview components。</td>
+          <td><code>AttachmentGallery</code>, <code>FileChip</code>, shared open/copy actions。</td>
+          <td class="num">-250<br />to -650</td>
+        </tr>
+        <tr>
+          <td>Project list / conversation list section。</td>
+          <td><code>ProjectsSection.tsx</code>, <code>ConversationsSection.tsx</code>, <code>ChatHistoryList.tsx</code></td>
+          <td><code>ListSection</code>, <code>ConversationListItem</code>, <code>ProjectListItem</code>。</td>
+          <td class="num">-250<br />to -600</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="risk-note">
+      通过条件：三栏 view 注册和主聊天流不变；不允许把 Chat Studio only 当成唯一入口。
+    </p>
+  </div>
+
+  <div class="deep-card">
+    <h3><span class="idx">J/K</span> 工具输出 helper 与 shared UI root 跟随收敛</h3>
+    <div class="grid">
+      <div class="card span-6">
+        <h3>J. Search Graph Inspector / Index</h3>
+        <p>这块不能作为第一主战场，但可以在大波次里做“净减少限定”的 helper：markdown/table output、score explanation、path normalization、phase runner。</p>
+        <p><strong>预估：</strong>-0.7k 到 -1.8k。只要改后 LOC 没降，就不提交这一 track。</p>
+      </div>
+      <div class="card span-6">
+        <h3>K. Shared UI roots</h3>
+        <p><code>src/ui/component</code> 和 <code>src/ui/components</code> 两套根目录确实不舒服。建议随 A/C/G/H/I 迁移时逐步确定 canonical root。</p>
+        <p><strong>预估：</strong>-0.4k 到 -1.2k。它更像可维护性收益，不是单独的 LOC 主收益。</p>
+      </div>
+    </div>
+  </div>
+
+  <h2>5. 推荐执行组合</h2>
+  <div class="grid">
+    <div class="card span-6 ok">
+      <h3>主执行包：A + B + C + F + G + H/I</h3>
+      <p>这是下一次真正应该给 Claude 的大包：Copilot panels、Quick Search V2、Usage Dashboard、SQLite repo helpers，再加 Copilot Vault Review 和 Settings/Onboarding 或 Chat grammar 至少一个第二圈池。</p>
+      <p><strong>现实预估：</strong>-7k 到 -11k。<br /><strong>乐观预估：</strong>-12k 到 -15k。</p>
+      <p>如果要达成 -8k hard floor，必须不是“新增 helper 后保留旧 body”，而是让 helper 真正替换掉重复 body。否则又会变成 partial。</p>
+    </div>
+    <div class="card span-6">
+      <h3>跟随包：J + K</h3>
+      <p>Search Graph Inspector / Index output helpers、Shared UI root 整理适合作为跟随 track。它们能改善结构，但不应该为了 LOC 强拆算法或强行统一视觉系统。</p>
+      <p>规则很简单：J 必须净减少；K 必须跟随真实迁移，不做只有路径变化的目录体操。</p>
+    </div>
+    <div class="card span-12 danger">
+      <h3>不要把所有“大文件”都当成可删代码</h3>
+      <p>
+        <code>indexService.ts</code>、<code>ddl.ts</code> 这类文件很大，但大不等于重复。这里很多是 indexing、PageRank、semantic edge、Kysely type contract。
+        如果纯拆文件，最可能发生的是文件变多、LOC 变多、风险变高。下一波只接受“重复 body 被 helper 替换”的净减少。
+      </p>
+    </div>
+  </div>
+
+  <h2>6. 重点 track 怎么读</h2>
+  <details open>
+    <summary>Copilot panels：应该看什么</summary>
+    <ul class="mini-list">
+      <li><span class="mono-path">src/ui/view/copilot/panels/*</span>：看每个 panel 是否重复 shell、summary、empty、copy/save/open-note。</li>
+      <li><span class="mono-path">src/ui/view/copilot/components/CopilotPanelShell.tsx</span>：已经有 shell，但 body 还没有被数据驱动。</li>
+      <li><span class="mono-path">src/ui/view/copilot/components/FindingsBodyParts.tsx</span>：已有 severity/card/section primitives，可继续扩成 panel grammar。</li>
+      <li><span class="mono-path">src/ui/view/copilot/copilot-action-surfaces.tsx</span>：这是 28 个 action 到 panel 的 binding，必须守住。</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Quick Search V2：应该看什么</summary>
+    <ul class="mini-list">
+      <li><span class="mono-path">V2ReportView.tsx</span>：section block、annotation、copy/regenerate 是一整套局部 framework。</li>
+      <li><span class="mono-path">V2SourcesView.tsx</span>：list/graph mode、folder grouping、open/save graph 逻辑。</li>
+      <li><span class="mono-path">V2ProcessView.tsx</span>：streaming status、round block、plan review、section progress。</li>
+      <li>这三个不能强行合一，但可以共享 status row、section shell、icon action、expandable list。</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Usage Dashboard：应该看什么</summary>
+    <ul class="mini-list">
+      <li><span class="mono-path">screens/Overview.tsx</span>、<span class="mono-path">BudgetAlerts.tsx</span>、<span class="mono-path">Optimization.tsx</span> 是最大三块。</li>
+      <li>已有 <span class="mono-path">components/charts/*</span>，但 screen 仍在手写大量 card/section grammar。</li>
+      <li>重复 helper：provider normalize、timeRangeToMs、readBudget。</li>
+    </ul>
+  </details>
+  <details>
+    <summary>SQLite repos：应该看什么</summary>
+    <ul class="mini-list">
+      <li><span class="mono-path">MobiusNodeRepo.ts</span>、<span class="mono-path">EmbeddingRepo.ts</span>、<span class="mono-path">MobiusEdgeRepo.ts</span>、<span class="mono-path">IndexedDocumentRepo.ts</span> 是大头。</li>
+      <li>重复不是完全复制，而是同类模板：JSON parse/stringify、patch set、deleteByIds、scope filter、keyset pagination。</li>
+      <li>适合抽小 helper，不适合抽 BaseRepo 继承体系。</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Copilot Vault Review / AutoRun：应该看什么</summary>
+    <ul class="mini-list">
+      <li><span class="mono-path">src/ui/view/copilot/vault/VaultAutoRunContent.tsx</span>：先看 overview、clusters、sources、trace、actions 是不是都在手写同一种 card/section/action grammar。</li>
+      <li><span class="mono-path">src/ui/view/copilot/review/*</span>：看 review shell、artifact panels、inline chat 是否能复用同一套 surface frame。</li>
+      <li>目标不是拆文件，而是让 repeated JSX body 变成 <code>ReviewMetricCard</code>、<code>TraceRail</code>、<code>SourceExplorer</code>、<code>GapCard</code>。</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Settings / Onboarding：应该看什么</summary>
+    <ul class="mini-list">
+      <li><span class="mono-path">src/ui/view/settings/tabs/KnowledgeIndexTab.tsx</span>：看 section、choice、status row、advanced disclosure 是否能复用 settings grammar。</li>
+      <li><span class="mono-path">src/ui/view/onboarding/HarnessOnboardingWizard.tsx</span>：看 step frame、progress、footer、readiness rows 是否能复用 setup wizard grammar。</li>
+      <li><span class="mono-path">src/ui/view/onboarding/OnboardingStateMachine.ts</span>：先确认是否仍是当前入口依赖；如果只是历史状态机，再考虑退休。</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Chat / Project：应该看什么</summary>
+    <ul class="mini-list">
+      <li><span class="mono-path">src/ui/view/chat-view/components/ConversationIndex.tsx</span>：看 timeline、topic、artifact rows。</li>
+      <li><span class="mono-path">src/ui/view/chat-view/components/messages/MessageViewItemRetained.tsx</span> 和 <span class="mono-path">MessageAttachmentsList.tsx</span>：看 attachment、message actions、date grouping。</li>
+      <li><span class="mono-path">src/ui/view/project-list-view/ProjectsSection.tsx</span>：看 project/conversation list item grammar。</li>
+      <li>注意：Chat 三栏能力要保留，<code>Retained</code> 命名不等于旧代码可删。</li>
+    </ul>
+  </details>
+
+  <h2>7. 修正后的 T11W 接受标准</h2>
+  <div class="callout">
+    <p><strong>我建议 T11W 仍然保留 -8k hard floor，同时增加 -12k stretch。</strong> 这不是为了好看，而是为了逼实现真正替换重复 body，而不是只加 helper。</p>
+    <ul class="mini-list">
+      <li><strong>-12k 以上：</strong>接受为 T11W stretch wave，说明主池和第二圈至少吃掉了 5 个以上真实重复池。</li>
+      <li><strong>-8k 到 -12k：</strong>接受为 T11W major wave。</li>
+      <li><strong>-5k 到 -8k：</strong>只能接受为 structural progress，不算 major wave 完整达成；必须写清楚哪些池子没有推进。</li>
+      <li><strong>-5k 以下：</strong>说明没有吃到主重复池，不能再包装成大波次。</li>
+    </ul>
+  </div>
+
+  <h2>8. 下一步建议</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>顺序</th>
+        <th>动作</th>
+        <th>为什么</th>
+        <th>通过条件</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="num">1</td>
+        <td>让 Claude 先做 1 次 read-only matrix，而不是直接动代码。</td>
+        <td>确认 A/B/C/F/G/H/I/J/K 每个 track 的 exact files、expected reduction、skip reason、test plan。</td>
+        <td>预估可安全执行总额 ≥ -8k；否则不要实施。</td>
+      </tr>
+      <tr>
+        <td class="num">2</td>
+        <td>一次性实施主包 A/B/C/F/G，并从 H/I 中至少选一个安全池。</td>
+        <td>这才是足够大的波次；Copilot panels + Vault Review、SQLite、Quick Search、Usage Dashboard 能同时吃到 UI 与 repo 重复。</td>
+        <td>产品 LOC ≥ -8k；boundary audit 仍为 0；核心 guards 全绿。</td>
+      </tr>
+      <tr>
+        <td class="num">3</td>
+        <td>K 只做跟随迁移，不单独开目录整理。</td>
+        <td>shared UI root 很重要，但应该随着真实 consumer 迁移自然收敛，避免只有文件移动没有净减少。</td>
+        <td>不能新增 duplicate component root；raw button 数量下降。</td>
+      </tr>
+      <tr>
+        <td class="num">4</td>
+        <td>J / Search-index 只做净减少 helper。</td>
+        <td>纯拆大文件会让代码更多。</td>
+        <td>改前改后 LOC 必须下降，相关 index/search tests 通过。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>9. Evidence Commands</h2>
+  <pre>cloc src styles.css --quiet --json --timeout 120
+npm run audit:boundary
+find src/ui/view/copilot/panels -type f -name '*.tsx' -print0 | xargs -0 wc -l
+find src/ui/view/quick-search -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l
+find src/core/storage/sqlite/repositories -type f -name '*.ts' -print0 | xargs -0 wc -l
+find src/ui/view/copilot/review src/ui/view/copilot/vault -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 wc -l
+wc -l src/ui/view/copilot/vault/VaultAutoRunContent.tsx src/ui/view/settings/tabs/KnowledgeIndexTab.tsx src/ui/view/onboarding/HarnessOnboardingWizard.tsx
+rg -n "&lt;button|useState&lt;Set|formatTime|relative|empty state|className" src/ui/view src/ui/component src/ui/components</pre>
+
+  <h2>10. Bottom Line</h2>
+  <div class="card verdict good">
+    <p>
+      真正可做的下一步不是“再找几个可删文件”，而是执行一次 <strong>structural convergence wave</strong>：
+      主池吃 Copilot panel family、SQLite repo helper、Quick Search V2、Usage Dashboard screen grammar；
+      第二圈继续吃 Copilot Vault Review、Settings/Onboarding 或 Chat/Project grammar。
+    </p>
+    <p>
+      这条路能让速度上来，但也要求我们接受更大规模的内部重写。功能保留，外观要做 smoke，边界必须继续是 0。
+      下一次不能再做几百行小修；低于 -5k 就不要叫大波次，-8k 以上才算 T11W major，-12k 以上才算 stretch。
+    </p>
+  </div>
+</main>
+</body>
+</html>

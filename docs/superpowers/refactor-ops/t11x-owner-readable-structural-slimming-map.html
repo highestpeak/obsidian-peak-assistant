@@ -1,0 +1,937 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T11X 可读版：结构性代码瘦身执行地图</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fb;
+      --paper: #ffffff;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d9dfeb;
+      --soft: #eef2f8;
+      --soft-2: #f5f7fb;
+      --blue: #2563eb;
+      --green: #16835f;
+      --amber: #b7791f;
+      --red: #c2410c;
+      --violet: #7c3aed;
+      --teal: #0f766e;
+      --shadow: 0 18px 48px rgba(23, 32, 51, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.62;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      padding: 0.12rem 0.34rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--soft-2);
+      color: #29344d;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .page {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 36px 24px 72px;
+    }
+
+    .hero {
+      padding: 34px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0 14px;
+      font-size: 36px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 42px 0 14px;
+      font-size: 24px;
+      line-height: 1.28;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      line-height: 1.32;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 880px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+    }
+
+    .toc a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft-2);
+      color: #344054;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .card {
+      grid-column: span 4;
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+      box-shadow: 0 10px 28px rgba(23, 32, 51, 0.04);
+    }
+
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-6 { grid-column: span 6; }
+    .span-7 { grid-column: span 7; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    .kpi strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 27px;
+      line-height: 1.1;
+    }
+
+    .kpi span { color: var(--muted); font-size: 13px; }
+
+    .note, .warn, .good {
+      margin: 14px 0;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    .note { border-left: 4px solid var(--blue); }
+    .warn { border-left: 4px solid var(--amber); }
+    .good { border-left: 4px solid var(--green); }
+
+    .note p, .warn p, .good p { margin: 0; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 750;
+      background: var(--soft);
+      color: #344054;
+      white-space: nowrap;
+    }
+
+    .tag.blue { background: #dbeafe; color: #1d4ed8; }
+    .tag.green { background: #dcfce7; color: #166534; }
+    .tag.amber { background: #fef3c7; color: #92400e; }
+    .tag.red { background: #fee2e2; color: #991b1b; }
+    .tag.violet { background: #ede9fe; color: #6d28d9; }
+    .tag.teal { background: #ccfbf1; color: #0f766e; }
+
+    .mindmap {
+      display: grid;
+      grid-template-columns: 1.2fr 2fr;
+      gap: 18px;
+      align-items: stretch;
+      margin-top: 16px;
+    }
+
+    .center-node {
+      display: flex;
+      min-height: 360px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #162033;
+      color: #fff;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: var(--shadow);
+    }
+
+    .center-node strong {
+      margin-bottom: 10px;
+      font-size: 30px;
+      line-height: 1.15;
+    }
+
+    .center-node span { color: #cbd5e1; }
+
+    .branch-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .branch {
+      min-width: 0;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+    }
+
+    .branch strong { display: block; margin-bottom: 4px; }
+    .branch p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .before-after {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .before-after .side {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+    }
+
+    .side.before { border-top: 5px solid var(--red); }
+    .side.after { border-top: 5px solid var(--green); }
+
+    .arrowline {
+      display: grid;
+      grid-template-columns: 1fr 38px 1fr 38px 1fr;
+      gap: 10px;
+      align-items: stretch;
+      margin-top: 14px;
+    }
+
+    .step {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+    }
+
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    table {
+      width: 100%;
+      max-width: 100%;
+      margin-top: 14px;
+      table-layout: fixed;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+      box-shadow: 0 8px 22px rgba(23, 32, 51, 0.04);
+    }
+
+    th, td {
+      padding: 12px 13px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    th {
+      background: var(--soft);
+      color: #344054;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 220px 1fr 90px;
+      gap: 12px;
+      align-items: center;
+      margin: 10px 0;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+    }
+
+    .bar-bg {
+      height: 11px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e7ecf5;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--blue), var(--teal));
+    }
+
+    .mini-list {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    .mini-list li { margin: 5px 0; }
+
+    .file-list {
+      margin: 8px 0 0;
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .file-list li { margin: 6px 0; }
+
+    .folder-tree {
+      padding: 16px;
+      max-width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #101827;
+      color: #dbeafe;
+      overflow: auto;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .small { color: var(--muted); font-size: 13px; }
+
+    @media (max-width: 820px) {
+      .page { padding: 18px 14px 48px; }
+      .hero { padding: 22px; }
+      h1 { font-size: 28px; }
+      .card, .span-3, .span-4, .span-5, .span-6, .span-7, .span-8, .span-12 { grid-column: span 12; }
+      .mindmap, .before-after { grid-template-columns: 1fr; }
+      .branch-grid { grid-template-columns: 1fr; }
+      .arrowline { grid-template-columns: 1fr; }
+      .arrow { min-height: 20px; transform: rotate(90deg); }
+      .bar-row { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="eyebrow">T11X owner-readable review · 不覆盖原 T11X</div>
+      <h1>结构性代码瘦身执行地图</h1>
+      <p class="lead">
+        这份文档不是新的证据堆叠，而是把
+        <a href="./t11x-codex-overnight-structural-slimming-investigation.html">T11X 原始深扫报告</a>
+        重组为可读的决策地图：你应该先改哪里，为什么这些地方会胖，改完后代码会长什么样，
+        哪些功能必须保留，以及下一次给 Claude 的大波次应该怎样分组。
+      </p>
+      <div class="toc">
+        <a href="#answer">一页答案</a>
+        <a href="#map">逻辑地图</a>
+        <a href="#current">当前体量</a>
+        <a href="#battlefields">六大战场</a>
+        <a href="#after">改后形态</a>
+        <a href="#waves">执行波次</a>
+        <a href="#read">阅读代码</a>
+        <a href="#guardrails">护栏</a>
+      </div>
+    </section>
+
+    <section id="answer">
+      <h2>1. 一页答案：不是删功能，是把重复形态收成“语法层”</h2>
+      <div class="grid">
+        <div class="card span-3 kpi">
+          <strong>约 26k</strong>
+          <span>T11X 新增池的现实产品源码减量上限，不能承诺单波全吃</span>
+        </div>
+        <div class="card span-3 kpi">
+          <strong>约 62k</strong>
+          <span>乐观上限，包含高风险、生成资产、测试-only 和依赖治理</span>
+        </div>
+        <div class="card span-3 kpi">
+          <strong>0</strong>
+          <span>当前 boundary audit 目标值要继续守住，不能为了瘦身打破边界</span>
+        </div>
+        <div class="card span-3 kpi">
+          <strong>6 个</strong>
+          <span>真正应该按模块理解的收敛战场，而不是 L-BA 字母清单</span>
+        </div>
+      </div>
+
+      <div class="before-after">
+        <div class="side before">
+          <h3>现在的问题</h3>
+          <ul class="mini-list">
+            <li>很多屏幕都在手写同一种 card、row、header、empty state、status pill、action footer。</li>
+            <li>文件类型、provider/model、prompt/template、settings descriptor 在多个地方重复登记。</li>
+            <li>T11O/T11R 后边界变干净了，但 app 层留下了大量合法但重复的 shell、adapter、compose 样板。</li>
+            <li>Chat、Quick Search、Usage、Copilot 都是活功能，所以不能用“删屏幕”换行数。</li>
+          </ul>
+        </div>
+        <div class="side after">
+          <h3>改完应该长这样</h3>
+          <ul class="mini-list">
+            <li>UI 页面只写业务差异，重复的 screen grammar 由共享 primitives 承担。</li>
+            <li>文件类型、模型目录、prompt/template metadata 有明确 source of truth 和 typed accessor。</li>
+            <li>app 层仍然是 weave 点，但 modal/view/adapter 样板被小 helper 收敛。</li>
+            <li>功能入口不减少：Usage Dashboard、Chat 三栏、Quick Search、Copilot、Settings、Onboarding 都保留。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="warn">
+        <p>
+          这份可读版的判断是：下一轮不要再做“小文件删除型瘦身”。真正有用的是
+          <strong>Surface Grammar Wave</strong> 加 <strong>Catalog/Taxonomy Wave</strong> 加
+          <strong>App Weave Boilerplate Wave</strong>。先抽共同形态，再批量迁移 callers，最后删除旧局部实现。
+        </p>
+      </div>
+    </section>
+
+    <section id="map">
+      <h2>2. 逻辑地图：从“哪里胖”到“怎么瘦”</h2>
+      <div class="mindmap">
+        <div class="center-node">
+          <strong>代码为什么还有 11 万行级别？</strong>
+          <span>
+            主要不是一个功能太大，而是同一种形态在多个产品面重复出现。
+            所以下一阶段目标不是删产品，而是把重复形态变成可复用语法。
+          </span>
+        </div>
+        <div class="branch-grid">
+          <div class="branch">
+            <strong>UI Surface Grammar</strong>
+            <p>Copilot、Quick Search、Usage、Chat、Settings 都重复写 row/card/panel/status。</p>
+          </div>
+          <div class="branch">
+            <strong>Catalog / Taxonomy</strong>
+            <p>文件类型、provider/model、prompt/template、settings copy 多源重复。</p>
+          </div>
+          <div class="branch">
+            <strong>App Shell / Adapter</strong>
+            <p>边界清零后，app 层合法承担 weave，但 shell/compose/adapter 有机械重复。</p>
+          </div>
+          <div class="branch">
+            <strong>Runtime Ceremony</strong>
+            <p>agent、tool、MCP、command、notice、generation 都有 run/wrap/result 样板。</p>
+          </div>
+          <div class="branch">
+            <strong>Data / Persistence Codec</strong>
+            <p>SQLite row map、Markdown/JSON section、tag blob、chat double-write 可收窄 helper。</p>
+          </div>
+          <div class="branch">
+            <strong>Repo / Dependency Hygiene</strong>
+            <p>包体积、worktrees、generated assets 影响“笨重感”，但不算产品源码 LOC。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrowline">
+        <div class="step">
+          <h3>第一步：识别重复形态</h3>
+          <p>不要从文件名入手，先看重复模式：row、card、catalog、adapter、codec、runner。</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <h3>第二步：抽共享语法</h3>
+          <p>抽小而明确的 primitives/helper，不抽万能大口袋。</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <h3>第三步：批量迁移 callers</h3>
+          <p>一次 prompt 内部按 DAG 执行，最后删除旧局部实现和 thin compatibility shim。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="current">
+      <h2>3. 当前体量：最大的不一定都能删，但要知道重心在哪</h2>
+      <div class="note">
+        <p>
+          以下数字来自本轮只读扫描。因为统计了 TS/TSX/CSS，和不同 cloc 命令可能略有差异；
+          用途是判断热区，不是作为最终验收数字。当前工作树有不少未提交 docs，不影响产品代码扫描。
+        </p>
+      </div>
+      <div class="bar-row"><span><code>src/ui/view</code></span><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><strong>44,776</strong></div>
+      <div class="bar-row"><span><code>src/core/storage</code></span><div class="bar-bg"><div class="bar-fill" style="width:29%"></div></div><strong>13,210</strong></div>
+      <div class="bar-row"><span><code>src/service/search</code></span><div class="bar-bg"><div class="bar-fill" style="width:25%"></div></div><strong>11,252</strong></div>
+      <div class="bar-row"><span><code>src/service/agents</code></span><div class="bar-bg"><div class="bar-fill" style="width:20%"></div></div><strong>9,065</strong></div>
+      <div class="bar-row"><span><code>src/ui/component</code></span><div class="bar-bg"><div class="bar-fill" style="width:16%"></div></div><strong>6,942</strong></div>
+      <div class="bar-row"><span><code>src/service/copilot</code></span><div class="bar-bg"><div class="bar-fill" style="width:15%"></div></div><strong>6,658</strong></div>
+      <div class="bar-row"><span><code>src/app</code></span><div class="bar-bg"><div class="bar-fill" style="width:21%"></div></div><strong>9,452</strong></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>热区</th>
+            <th class="num">文件</th>
+            <th class="num">LOC</th>
+            <th class="num">className</th>
+            <th class="num">Button</th>
+            <th>读法</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Copilot UI</td>
+            <td class="num">54</td>
+            <td class="num">10,115</td>
+            <td class="num">1,118</td>
+            <td class="num">50</td>
+            <td>第一 UI 瘦身主战场，重点是 panel/report/action surface grammar。</td>
+          </tr>
+          <tr>
+            <td>Quick Search UI</td>
+            <td class="num">55</td>
+            <td class="num">9,443</td>
+            <td class="num">571</td>
+            <td class="num">24</td>
+            <td>V2 report、source、footer、timeline 和 session store 可以分两层收敛。</td>
+          </tr>
+          <tr>
+            <td>Usage Dashboard</td>
+            <td class="num">35</td>
+            <td class="num">6,319</td>
+            <td class="num">348</td>
+            <td class="num">0</td>
+            <td>功能必须保留；抽 KPI/card/sparkline/recommendation grammar。</td>
+          </tr>
+          <tr>
+            <td>Chat View</td>
+            <td class="num">43</td>
+            <td class="num">7,841</td>
+            <td class="num">385</td>
+            <td class="num">17</td>
+            <td>三栏 view 保留；附件、资源预览、列表 row 可收敛。</td>
+          </tr>
+          <tr>
+            <td>App Shell</td>
+            <td class="num">101</td>
+            <td class="num">9,452</td>
+            <td class="num">0</td>
+            <td class="num">0</td>
+            <td>这是合法 weave 层；可以收 shell/adapter/notice 样板，不应打破边界。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="battlefields">
+      <h2>4. 六大战场：你应该按这六块理解，不要按 L-BA 字母读</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>战场</th>
+            <th>要改哪里</th>
+            <th>改法</th>
+            <th class="num">现实收益</th>
+            <th>风险级别</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>A. UI Surface Grammar</strong></td>
+            <td>Copilot、Quick Search、Usage Dashboard、Chat、Settings、Onboarding、Project/Conversation lists</td>
+            <td>建立 5-8 个真实 primitives：SurfacePanel、SurfaceList、SurfaceRow、StatusPill、ActionFooter、ReportHero、KpiGrid、EmptyState。</td>
+            <td class="num">-8k 到 -15k</td>
+            <td><span class="tag amber">中</span> 需要视觉 smoke，但功能风险可控。</td>
+          </tr>
+          <tr>
+            <td><strong>B. Catalog / Taxonomy</strong></td>
+            <td>file kind、attachment display、provider/model catalog、PromptId、TemplateRegistry、settings strings</td>
+            <td>建立 typed source-of-truth 和 selectors；UI/loader/settings 从 selector 派生，不再各自手写映射。</td>
+            <td class="num">-3k 到 -7k</td>
+            <td><span class="tag red">高</span> 涉及配置、模型默认值、loader 支持矩阵。</td>
+          </tr>
+          <tr>
+            <td><strong>C. App Weave Boilerplate</strong></td>
+            <td>app view/modal shell、ReactRenderer mount/unmount、compose*、thin adapters、AppRuntimeRegistry、DevToolsBridge</td>
+            <td>保留 app 层所有入口和 named API，抽 app-owned shell/helper，不回退到 service singleton。</td>
+            <td class="num">-1.5k 到 -4k</td>
+            <td><span class="tag amber">中</span> Obsidian lifecycle 要验。</td>
+          </tr>
+          <tr>
+            <td><strong>D. Runtime / Tool Ceremony</strong></td>
+            <td>Copilot action registry、MCP tool wrapper、agent run ceremony、ReportOrchestrator、command notice</td>
+            <td>抽 action recipe factory、tool result wrapper、small run helper、withProgressNotice；不合并业务语义。</td>
+            <td class="num">-3k 到 -7k</td>
+            <td><span class="tag amber">中高</span> 必须守住现有 action/tool id 和输出格式。</td>
+          </tr>
+          <tr>
+            <td><strong>E. Data / Persistence Codec</strong></td>
+            <td>SQLite repo row map、Usage date SQL、ChatStore 双写、Markdown/JSON section、Tag blob</td>
+            <td>抽 codec、row mapper、date bucket、JSON fence、tag blob parser；不改历史数据格式。</td>
+            <td class="num">-2k 到 -5k</td>
+            <td><span class="tag red">高</span> 需要 golden tests 和 repo tests。</td>
+          </tr>
+          <tr>
+            <td><strong>F. Package / Repo Hygiene</strong></td>
+            <td>recharts、ai-elements、mermaid、playwright、lucide/motion、.claude/worktrees、docs/gstack、generated CSS</td>
+            <td>作为 side track 做包体积和本地磁盘治理，不拿来冒充产品 LOC 瘦身。</td>
+            <td class="num">0 到 -0.5k LOC</td>
+            <td><span class="tag green">低中</span> 对源码少，对安装体积/目录感受大。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="good">
+        <p>
+          最稳的大波次顺序是：先 A，再 C+D 的安全子集，再 B/E 的高风险子集。
+          这样每一步都能真实减少代码，同时不会把 Usage Dashboard、Chat 三栏、Quick Search 或 Copilot 误删。
+        </p>
+      </div>
+    </section>
+
+    <section id="after">
+      <h2>5. 改之后代码应该长什么样</h2>
+      <div class="folder-tree">
+src/ui/components/surface/
+  SurfacePanel.tsx
+  SurfaceList.tsx
+  SurfaceRow.tsx
+  StatusPill.tsx
+  ActionFooter.tsx
+  EmptyState.tsx
+  ReportHero.tsx
+  KpiGrid.tsx
+
+src/ui/components/primitives/
+  Button.tsx
+  IconButton.tsx
+  Row.tsx
+  FormRow.tsx
+  Pill.tsx
+  ...
+
+src/core/catalog/
+  file-kind-catalog.ts
+  provider-model-catalog.ts
+  prompt-template-descriptors.ts
+
+src/app/shell/
+  ReactItemViewShell.ts
+  ReactModalShell.ts
+  mountReactWithServices.ts
+
+src/app/compose/
+  forwarding-adapter.ts
+  runtime-slot.ts
+  notice-command-helpers.ts
+
+src/core/storage/codecs/
+  json-fence.ts
+  markdown-section-doc.ts
+  tag-blob-codec.ts
+  row-map-helpers.ts
+      </div>
+
+      <div class="warn">
+        <p>
+          <strong>目录修正：</strong>
+          不新增 <code>src/ui/primitives</code> 第三套 UI 根目录。
+          当前已有 <code>src/ui/components/primitives</code>，新的 surface grammar 应该放在
+          <code>src/ui/components/surface</code>：它和 <code>primitives</code> 平级，
+          表示比 Button/Row 这类 primitive 高一层的跨 screen 组合语法。旧 <code>src/ui/component</code>
+          里的可复用件要逐步迁移或退役，避免 <code>component</code> / <code>components</code>
+          两套根长期并存。
+        </p>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>现在</th>
+            <th>改后</th>
+            <th>你读代码时会更容易在哪里</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>每个 screen 自己写 card/header/row/status/footer。</td>
+            <td>screen 只选择业务数据和 action；视觉结构由 surface primitives 提供。</td>
+            <td>读一个新 screen 时不用重新理解布局语法，只看数据和行为。</td>
+          </tr>
+          <tr>
+            <td>文件类型在 loader、Chat 附件、PromptInput、KnowledgeIndex 各处判断。</td>
+            <td>FileKindCatalog 提供 extension、kind、label、icon、color、preview ability。</td>
+            <td>新增一种文件类型时知道只从 catalog 和必要 loader 入手。</td>
+          </tr>
+          <tr>
+            <td>每个 Modal/ItemView 重复 ReactRenderer mount/unmount。</td>
+            <td>app shell helper 承担生命周期；具体 view/modal 只声明 type、title、component、props。</td>
+            <td>Obsidian weave 更显式，不再被样板淹没。</td>
+          </tr>
+          <tr>
+            <td>Copilot action 和 MCP tool 到处重复 schema/result/run wrapper。</td>
+            <td>recipe factory 生成固定 ceremony；复杂 action 保留手写。</td>
+            <td>28 个 action 的差异会更突出，review 时更容易找行为变化。</td>
+          </tr>
+          <tr>
+            <td>Markdown/JSON/SQLite row map 各自 safe parse、upsert、date bucket。</td>
+            <td>codec/helper 统一低层 ceremony，业务 repo 保留实体语义。</td>
+            <td>数据兼容风险集中在 codec tests，不散在几十个 repo 方法里。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="waves">
+      <h2>6. 下一次大波次怎么做：一次输入，但内部有 DAG</h2>
+      <div class="arrowline">
+        <div class="step">
+          <h3>Wave 1：Surface Grammar</h3>
+          <p>Copilot、Quick Search、Usage、Chat 附件、Settings/Onboarding、Project/Conversation list。</p>
+          <p><span class="tag green">hard -8k</span> <span class="tag teal">stretch -15k</span></p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <h3>Wave 2：App + Runtime Ceremony</h3>
+          <p>app shell、compose/adapters、Copilot actions、MCP tools、command notice、thin shims。</p>
+          <p><span class="tag green">hard -5k</span> <span class="tag teal">stretch -10k</span></p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <h3>Wave 3：Catalog + Persistence</h3>
+          <p>file kind、provider/model、Prompt/Template、SQLite row map、Markdown/JSON/tag codec。</p>
+          <p><span class="tag amber">需要先读计划</span> <span class="tag red">高风险</span></p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>波次</th>
+            <th>执行范围</th>
+            <th>必须先做</th>
+            <th>跳过规则</th>
+            <th>验收</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Wave 1</td>
+            <td>A 的大部分，加 B 的 FileKind UI-display 子集，加 hooks lifecycle 小 helper。</td>
+            <td>先定义 primitives API，再迁移 3 个以上不同 surface，最后删旧 helper。</td>
+            <td>如果只能迁移一个页面，停止，不算 major wave。</td>
+            <td>LOC 净减、build、boundary 0、Copilot/Quick Search/Usage/Chat focused smoke。</td>
+          </tr>
+          <tr>
+            <td>Wave 2</td>
+            <td>C 与 D 的安全子集，thin adapter/compose/shell/action recipe/tool wrapper。</td>
+            <td>列出哪些 adapter 只是 forwarding，哪些有缓存/SQLite/业务 orchestration。</td>
+            <td>发现需要 EverythingPort/RuntimeBag 时停止。</td>
+            <td>boundary 0、T11R guard、action registry tests、MCP/tool focused tests。</td>
+          </tr>
+          <tr>
+            <td>Wave 3</td>
+            <td>B/E 高风险池：model catalog、prompt/template、SQLite repo、chat markdown、tag taxonomy。</td>
+            <td>先写 source-of-truth decision 和 golden tests。</td>
+            <td>没有测试覆盖历史数据格式时只能调查，不能实现。</td>
+            <td>golden fixtures、settings migration、profile registry、document loader、chat persistence tests。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="read">
+      <h2>7. 你怎么读代码：按“收敛战场”读，不按目录随机读</h2>
+      <div class="grid">
+        <div class="card span-6">
+          <h3>读 UI Surface Grammar</h3>
+          <ul class="file-list">
+            <li><code>src/ui/view/copilot/vault/VaultAutoRunContent.tsx</code>：最大 report surface，先看重复 card/tab/table/trace。</li>
+            <li><code>src/ui/view/quick-search/SearchModal.tsx</code> 与 <code>src/ui/view/quick-search/store/searchSessionStore.ts</code>：看 V2 surface 和状态转移。</li>
+            <li><code>src/ui/view/usage-dashboard/UsageDashboard.tsx</code>、<code>screens/Overview.tsx</code>、<code>screens/BudgetAlerts.tsx</code>：看 dashboard grammar。</li>
+            <li><code>src/ui/view/chat-view/components/messages/MessageAttachmentsList.tsx</code>：看 attachment/file kind 展示重复。</li>
+          </ul>
+        </div>
+        <div class="card span-6">
+          <h3>读 App Weave / Runtime Ceremony</h3>
+          <ul class="file-list">
+            <li><code>src/app/context/AppContext.ts</code>、<code>src/app/runtime/AppRuntimeRegistry.ts</code>：看 app 层 weave 与 runtime ownership。</li>
+            <li><code>src/app/view/*</code>、<code>src/app/modals/*</code>：看 Modal/ItemView shell 样板。</li>
+            <li><code>src/app/**/compose*.ts</code> 与 <code>src/app/**/*Adapter.ts</code>：区分 thin forwarding 和真实 adapter。</li>
+            <li><code>src/service/copilot/actions/index.ts</code>：看 action recipe 是否能抽。</li>
+          </ul>
+        </div>
+        <div class="card span-6">
+          <h3>读 Catalog / Taxonomy</h3>
+          <ul class="file-list">
+            <li><code>src/core/document/helper/FileTypeUtils.ts</code> 和 <code>src/ui/view/shared/file-utils.tsx</code>：看 file kind 重复。</li>
+            <li><code>data/model-catalog.json</code>、<code>templates/config/models/*.json</code>、<code>src/core/profiles/presets.ts</code>：看 model/provider 多源。</li>
+            <li><code>src/core/template/TemplateRegistry.ts</code>、<code>src/core/prompt/PromptId.ts</code>：看 prompt/template metadata 重复。</li>
+          </ul>
+        </div>
+        <div class="card span-6">
+          <h3>读 Data / Persistence</h3>
+          <ul class="file-list">
+            <li><code>src/core/storage/sqlite/repositories/*Repo.ts</code>：看 row map、JSON parse、date bucket。</li>
+            <li><code>src/core/storage/vault/ChatStore.ts</code> 与 <code>src/core/storage/vault/chat-docs/ChatConversationDoc.ts</code>：看 chat vault/sqlite 双写。</li>
+            <li><code>src/core/document/helper/TagService.ts</code>：看 tag blob、legacy decode、suggestion 状态。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="guardrails">
+      <h2>8. 护栏：这些不能为了减少行数牺牲</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>护栏</th>
+            <th>为什么</th>
+            <th>执行时怎么检查</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>不删 Usage Dashboard</td>
+            <td>用户明确要保留；瘦身只能来自 screen grammar 和 data helper。</td>
+            <td>Usage Dashboard view、palette/setting entry、核心 screens 仍存在。</td>
+          </tr>
+          <tr>
+            <td>不删 Chat 三栏</td>
+            <td>三栏是产品必要形态，不是重复入口。</td>
+            <td>ChatView、ProjectListView、ConversationOutlineView 注册与打开行为保持。</td>
+          </tr>
+          <tr>
+            <td>不破坏 boundary 0</td>
+            <td>T11R 的核心成果是 service/core 不再碰 Obsidian，UI 不再 import app。</td>
+            <td><code>npm run audit:boundary</code> 继续 0 flagged。</td>
+          </tr>
+          <tr>
+            <td>不创建 god-port / runtime bag</td>
+            <td>这会把刚清掉的隐式依赖换个名字带回来。</td>
+            <td>新增 port/helper 必须窄命名、窄职责、有真实 consumer。</td>
+          </tr>
+          <tr>
+            <td>不改历史数据格式</td>
+            <td>Chat markdown、SQLite、tags_json 是用户资产。</td>
+            <td>先 golden tests，再动 codec；没有测试只能调查。</td>
+          </tr>
+          <tr>
+            <td>不把高风险池塞进低风险波次</td>
+            <td>Search/index、model catalog、prompt/template、native sqlite 会造成隐性回归。</td>
+            <td>Wave 3 必须独立 owner review，不用来凑 Wave 1 数字。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>9. 新代码依赖治理：瘦身不能把旧边界问题带回来</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>新代码位置</th>
+            <th>允许依赖</th>
+            <th>禁止依赖</th>
+            <th>原因</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>src/ui/components/surface/*</code></td>
+            <td>React、Lucide、<code>@/ui/components/primitives</code>、纯展示 utils、type-only domain shapes。</td>
+            <td><code>@/app/**</code>、<code>@/service/**</code>、<code>obsidian</code>、<code>AppContext</code>、Zustand store 写入、<code>new Notice</code>。</td>
+            <td>surface 组件只能是展示语法。数据读取、命令执行、vault/editor 操作都留在 view hook 或 app port。</td>
+          </tr>
+          <tr>
+            <td><code>src/core/catalog/*</code></td>
+            <td>纯数据、纯函数、core types、JSON-derived descriptors。</td>
+            <td>React、UI components、app/service、Obsidian types、runtime singleton、TemplateManager 实例。</td>
+            <td>catalog 是事实源，不是运行时装配点；它必须能被 service/ui/app 安全读取。</td>
+          </tr>
+          <tr>
+            <td><code>src/app/shell/*</code></td>
+            <td>Obsidian API、ReactRenderer、ServiceProvider、app-owned ports。</td>
+            <td>把 shell helper 下放到 UI；把 service runtime singleton 或 mutable global 放回来。</td>
+            <td>Obsidian Modal/ItemView 生命周期属于 app weave，不能重新污染 UI 层。</td>
+          </tr>
+          <tr>
+            <td><code>src/app/compose/*</code></td>
+            <td>AppContext、app adapters、port implementation、runtime binding。</td>
+            <td>EverythingPort、RuntimeBag、把 raw app/plugin 透传给 UI/service。</td>
+            <td>compose 是集成点，但必须窄端口、命名清楚、依赖显式。</td>
+          </tr>
+          <tr>
+            <td><code>src/core/storage/codecs/*</code></td>
+            <td>纯 parser/serializer、schema、golden-testable helpers。</td>
+            <td>SQLite connection、vault IO、Notice、UI state、AppContext。</td>
+            <td>codec 可以被 repo 和 tests 复用，但不能隐藏真实 IO。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        <p>
+          这份文档的定位：给你读懂“要改哪里、为什么、改后形态”的 owner-facing 地图。
+          原 T11X 仍然是细节证据库；下一份如果要交给 Claude，应基于本文生成单大 prompt，
+          但还要附 Impact Contract、候选矩阵、skip rule、verification command。
+        </p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

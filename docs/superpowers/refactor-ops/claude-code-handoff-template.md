@@ -43,6 +43,64 @@ Handoffs may use English for exact implementation constraints, but every handoff
 
 Implementation notes from Claude Code must not be pure long-form English. They should start with Chinese-readable sections, then include technical evidence.
 
+## Impact Contract For Major Waves
+
+If this handoff is called a major wave, bulk wave, closure wave, deletion wave, or boundary wave, Codex must fill this section before the user sends it to Claude Code.
+
+```md
+## Impact Contract
+
+This task counts as a major wave only if the contract below is met.
+
+Primary metric target:
+- <example: service -> ui edges 10 -> <=2, or src net -3000 LOC from retired paths>
+
+Required tracks:
+- <track A: must be attempted>
+- <track B: must be attempted>
+- <track C: must be attempted>
+
+Optional tracks:
+- <safe extra work if it shares the same boundary>
+
+Forbidden scope:
+- <what must not be touched>
+
+Skip budget:
+- Claude Code may skip at most <N> required track(s), and only with concrete evidence.
+- If more than <N> required track(s) are unsafe, stop before commit and return a blocker report.
+
+Minimum acceptable delta:
+- <the smallest before/after movement that can still be committed>
+
+Stop / commit rule:
+- If the minimum acceptable delta is met, commit and write an implementation note.
+- If the implementation is correct but below the major-wave target, label it "minor cleanup" in the implementation note.
+- If the required tracks are mostly skipped, do not call it a major wave.
+```
+
+Build/test success proves safety, not impact. The implementation note must compare actual results against the Impact Contract.
+
+For code-volume reduction waves, the Impact Contract must preserve user-facing functionality by default. LOC reduction should come from duplicate-code removal, modularity, shared abstractions, reusable UI primitives, design-pattern consolidation, compatibility-path retirement, debug-code extraction, and duplicate entry/surface consolidation. Feature deletion requires explicit owner approval and must be reported as a product decision, not a refactor.
+
+## Investigation Gate For Major Waves
+
+For major/bulk/closure/deletion/boundary waves, Claude Code's first response must be read-only unless the handoff explicitly says implementation may start immediately.
+
+Claude Code must not edit files, run formatters, stage files, or commit before returning:
+
+- files inspected;
+- current dependency/runtime/state path;
+- candidate matrix grouped as required / optional / forbidden;
+- dependency DAG and proposed execution order;
+- expected before/after metric delta;
+- exact files likely to change;
+- risks and stop conditions;
+- verification plan;
+- whether the Impact Contract looks achievable.
+
+Codex/user audits this first response. Implementation starts only after approval.
+
 ## Task
 
 ```md
@@ -134,6 +192,7 @@ The user may then approve implementation.
 - Prefer contract seeds, ports, fixtures, and guards before large service moves.
 - If adding an abstraction, state what real boundary it protects.
 - If preserving an old public entry, make it thin forwarding only.
+- If reducing code volume, include a preserved feature coverage table and do not delete user-facing functionality merely to hit a LOC target.
 - If tests are impossible in this slice, explain why and add the nearest guard or fixture.
 - Keep long-lived capability runtimes owned by app-level composition (`main.ts`, `AppContext`, or an app-owned runtime registry).
 - Pass runtime/dependencies explicitly through constructors, ports, context, or `RunEnvelope`; do not add service-side `AppContext.getInstance()` shortcuts.
@@ -195,6 +254,14 @@ Code reading guide:
 - Optional / only if debugging:
 - Main symbols to inspect:
 - Files intentionally not changed:
+
+Impact Contract result, if this was a major wave:
+- Primary metric target:
+- Actual metric result:
+- Required tracks completed:
+- Required tracks skipped:
+- Minimum acceptable delta met:
+- Classification: major wave / partial / minor cleanup:
 
 Mutable global state:
 - New module-level mutable defaults introduced:

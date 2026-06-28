@@ -1,6 +1,6 @@
 # Peak Assistant Refactor Ops
 
-Last updated: 2026-06-13
+Last updated: 2026-06-26
 
 This folder is the operating layer for the large architecture modernization. It does not replace the architecture reports. It turns them into a repeatable loop where Codex produces understanding, review packets, diagrams, scorecards, and Claude Code handoffs, while Claude Code only performs implementation work.
 
@@ -91,6 +91,52 @@ A task is too large if it:
 - cannot be reviewed with a single code reading guide.
 
 From T5 onward, each implementation handoff must name the old path that will be deleted, emptied, or retired. If there is no old-path closure target, Codex should either merge it into a larger package or explain why the task must remain diagnostic.
+
+## Impact Contract For Major Waves
+
+From T11 onward, a task may only be called a major wave when it starts with an explicit Impact Contract.
+
+The Impact Contract must name:
+
+- primary metric target, such as `service -> ui: 10 -> <=2`, `service -> app: -20`, or source LOC deleted from truly retired paths;
+- required tracks that must be attempted and cannot all be skipped;
+- optional tracks that may be taken if they stay inside the same boundary;
+- forbidden scope, especially Chat wholesale rewrites, Ambient post-foundation work, Command Gateway, persisted schema changes, or UI redesign unless explicitly approved;
+- skip budget, meaning how many required tracks may be skipped before the task stops being a major wave;
+- minimum acceptable delta for commit/acceptance;
+- stop/commit rule when the target is not reachable.
+
+Scan-first candidate discovery is useful, but it is not an acceptance criterion. A scan-first task that only lands a tiny cleanup must be labeled as minor cleanup or partial progress, even when build and tests pass.
+
+Owner Review Packets must classify every implementation as one of:
+
+- **Accepted as major wave** — Impact Contract met or materially exceeded.
+- **Accepted as minor cleanup** — safe and useful, but too small to count as a modernization wave.
+- **Partial, not counted as wave** — some work landed but required tracks or primary metric missed.
+- **Needs stronger follow-up** — the result leaves the intended boundary essentially unchanged or violates the handoff.
+
+Do not inflate the architecture score for a minor cleanup just because it was implemented cleanly. Quality and impact are separate: a small cleanup can be good code and still fail the "large step" requirement.
+
+## Investigation Gate For Major Waves
+
+Major waves are not direct-to-implementation tasks by default.
+
+The normal sequence is:
+
+1. Codex writes a handoff with an Impact Contract.
+2. Claude Code performs **read-only investigation only**.
+3. Claude Code returns a candidate matrix, dependency DAG, risk/skip analysis, exact file plan, expected metric delta, and proposed verification.
+4. Codex audits that investigation for architecture fit, missing risks, oversized scope, and whether the expected delta is large enough.
+5. The user approves implementation.
+6. Claude Code implements the audited plan in the same task package.
+
+This keeps the user's desired large-grain workflow without returning to blind vibe coding. It should still avoid many tiny prompts: the first Claude response is an auditable plan, and the second response should implement the whole approved DAG.
+
+Codex may skip this investigation gate only when:
+
+- the handoff explicitly says implementation may start immediately;
+- the task is a narrow review fix with known files and known behavior;
+- the user explicitly asks to execute without an investigation stop.
 
 ## Review Access Rule
 

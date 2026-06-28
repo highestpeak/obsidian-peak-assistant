@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T11S-R 代码瘦身详细证据附录</title>
+  <style>
+    :root {
+      --bg: #f6f5f1;
+      --panel: #fff;
+      --ink: #20242b;
+      --muted: #66707d;
+      --line: #d8dde5;
+      --soft: #eef1f5;
+      --blue: #4056d6;
+      --green: #0f7a61;
+      --amber: #a86200;
+      --red: #b3261e;
+      --shadow: 0 8px 24px rgba(32, 36, 43, .08);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.55; }
+    .shell { max-width: 1220px; margin: 0 auto; padding: 28px 22px 72px; }
+    header, section { background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); }
+    header { padding: 28px; display: grid; gap: 10px; }
+    section { padding: 24px; margin-top: 18px; }
+    h1, h2, h3 { margin: 0; line-height: 1.2; }
+    h1 { font-size: 30px; }
+    h2 { font-size: 22px; margin-bottom: 12px; }
+    h3 { font-size: 15px; margin-bottom: 8px; }
+    p { margin: 0 0 10px; }
+    a { color: var(--blue); text-decoration: none; }
+    code { background: var(--soft); padding: 2px 6px; border-radius: 5px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .92em; overflow-wrap: anywhere; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 22px; }
+    nav a { display: inline-flex; min-height: 32px; align-items: center; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); font-size: 13px; font-weight: 650; }
+    .lead { max-width: 860px; color: #38414d; }
+    .callout { border-left: 4px solid var(--blue); background: #f7f8ff; padding: 12px 14px; margin: 14px 0; }
+    .callout.warn { border-left-color: var(--amber); background: #fff8ea; }
+    .callout.red { border-left-color: var(--red); background: #fff3f1; }
+    .grid { display: grid; gap: 14px; }
+    .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { border: 1px solid var(--line); border-radius: 9px; padding: 14px; background: #fff; }
+    .tagrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .tag { display: inline-flex; min-height: 22px; align-items: center; padding: 2px 7px; border-radius: 999px; background: var(--soft); font-size: 12px; font-weight: 700; }
+    .tag.good { background: #e5f5ef; color: var(--green); }
+    .tag.warn { background: #fff0d1; color: var(--amber); }
+    .tag.bad { background: #ffe4df; color: var(--red); }
+    .tag.blue { background: #e9ecff; color: var(--blue); }
+    table { display: block; width: 100%; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+    th, td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+    th { color: var(--muted); font-size: 12px; font-weight: 800; background: #fafbfc; white-space: nowrap; }
+    ul { margin: 8px 0 0 20px; padding: 0; }
+    li { margin: 5px 0; }
+    @media (max-width: 900px) {
+      .shell { padding: 16px 12px 48px; }
+      header, section { padding: 18px; }
+      .three { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <h1>T11S-R 代码瘦身详细证据附录</h1>
+      <p class="lead">
+        这是详细底稿，不是首读材料。首读请打开
+        <a href="t11s-r-codex-code-consolidation-investigation.html">T11S-R 代码瘦身地图</a>。
+        本附录保留之前调查出来的候选、具体文件、风险和命令证据，防止“可读版”把有用细节吞掉。
+      </p>
+      <div class="tagrow">
+        <span class="tag blue">detail/archive</span>
+        <span class="tag">保留旧调查内容</span>
+        <span class="tag warn">不建议从头顺读</span>
+      </div>
+    </header>
+
+    <nav>
+      <a href="#how-to-use">怎么用</a>
+      <a href="#deletion">可直接删除</a>
+      <a href="#ui">UI 合并</a>
+      <a href="#service-core">Service/Core</a>
+      <a href="#runtime">Runtime 尾巴</a>
+      <a href="#stub">Stub 半接线</a>
+      <a href="#package">Test/Package/Docs</a>
+      <a href="#protected">保护清单</a>
+      <a href="#commands">命令证据</a>
+    </nav>
+
+    <section id="how-to-use">
+      <h2>1. 怎么用这个附录</h2>
+      <div class="grid three">
+        <div class="card">
+          <h3>地图版回答“为什么和多少”</h3>
+          <p>用来做 owner 决策：是否继续、下一波多大、目标是多少。</p>
+        </div>
+        <div class="card">
+          <h3>附录回答“具体在哪”</h3>
+          <p>用来写 Claude prompt：哪些文件、哪些候选、哪些必须保护。</p>
+        </div>
+        <div class="card">
+          <h3>不要直接照单全删</h3>
+          <p>每个候选都有不同处理方式：删除、合并、接线、隐藏、延后。</p>
+        </div>
+      </div>
+      <div class="callout warn">
+        <strong>补救说明：</strong>
+        我之前把详细报告直接覆盖成可读版，这不符合“可读版和证据底稿分层”的要求。
+        这个附录就是把有用的旧调查内容重新归档。
+      </div>
+    </section>
+
+    <section id="deletion">
+      <h2>2. 可直接删除 / 低风险清理候选</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>候选</th>
+            <th>证据 / 文件</th>
+            <th>处理方式</th>
+            <th>预估收益</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Dead UI families</strong></td>
+            <td>
+              <code>src/ui/component/mine/ModelSelector.tsx</code>、
+              <code>LLMOutputControlSettings/*</code>、
+              <code>NavigableMenu.tsx</code> JSX、
+              <code>HoverMenuWrapper</code> 一类旧公共 API。
+            </td>
+            <td>按真实 importer 复核后删除，保留确实被用的 type/helper。</td>
+            <td><code>300 ~ 900</code> LOC</td>
+            <td>被 barrel export 不等于活功能。</td>
+          </tr>
+          <tr>
+            <td><strong>ai-elements unused exports</strong></td>
+            <td>
+              <code>src/ui/component/ai-elements/index.ts</code> 暴露多个组件；
+              当前高信号活用主要是 <code>reasoning.tsx</code> / <code>shimmer.tsx</code>。
+            </td>
+            <td>删除无 caller exports；把 Reasoning 搬到 chat/shared，评估 <code>motion</code> tail。</td>
+            <td><code>200 ~ 700</code> LOC + package delta</td>
+            <td>不能误删 chat message 的 reasoning 展示。</td>
+          </tr>
+          <tr>
+            <td><strong>Usage Dashboard chart dead export</strong></td>
+            <td>
+              <code>components/charts/ExplainerPanel.tsx</code> 只被 barrel export；
+              <code>BrandAvatar</code> 是 primitive alias wrapper。
+            </td>
+            <td>删除 dead export / alias wrapper，真实 charts 保留。</td>
+            <td><code>50 ~ 180</code> LOC</td>
+            <td>Usage Dashboard 功能不退役。</td>
+          </tr>
+          <tr>
+            <td><strong>T11R unused adapter/port set</strong></td>
+            <td>
+              <code>src/app/adapters/VaultPortAdapter.ts</code>、
+              <code>VaultEventAdapter.ts</code>、
+              <code>HostMetadataAdapter.ts</code>、
+              <code>WorkspaceObserverAdapter.ts</code>、
+              <code>WorkspaceBusAdapter.ts</code>；
+              配套 <code>VaultLookupPort</code>、<code>VaultEventPort</code>、<code>WorkspaceObserverPort</code>、<code>WorkspaceBusPort</code>。
+            </td>
+            <td>要么真实接入，要么删除；不保留装饰性 infra。</td>
+            <td><code>300 ~ 800</code> LOC</td>
+            <td>需要确认 T11R zero-boundary guard 是否只检查形态。</td>
+          </tr>
+          <tr>
+            <td><strong>Low-risk type shims</strong></td>
+            <td>
+              <code>@/service/search/index/cascade/types</code>、
+              <code>@/service/search/index/chunkTypes</code>、
+              <code>@/service/search/index/types</code>、
+              <code>@/service/mcp/types</code>。
+            </td>
+            <td>迁 caller 到 <code>@/core/*</code> 后删除 shim，加 guard 禁止老路径。</td>
+            <td><code>80 ~ 250</code> LOC</td>
+            <td><code>@/service/chat/types</code> 暂缓，需要逐 caller 拆 chat vs chat-vault。</td>
+          </tr>
+          <tr>
+            <td><strong>graphAnimationStore no-op compatibility</strong></td>
+            <td><code>persistPatchToStore</code> 是 no-op compatibility。</td>
+            <td>找 caller 后删除 API 或改成显式 test seam。</td>
+            <td><code>10 ~ 40</code> LOC</td>
+            <td>适合作为大波次附带项。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="ui">
+      <h2>3. UI 合并候选：最大的一类产品源码瘦身</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>模块</th>
+            <th>文件 / 证据</th>
+            <th>重构方向</th>
+            <th>预估收益</th>
+            <th>风险</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Copilot shell + panels</strong></td>
+            <td>
+              <code>src/ui/view/copilot/vault/VaultAutoRunContent.tsx</code>；
+              panels 下 Diff / Findings / Suggestions / TextStream / Task family。
+            </td>
+            <td>
+              抽 <code>CopilotPanelShell</code>，迁 <code>TextStreamPanel</code>，
+              再合并 Diff / Findings / Suggestions 三族。
+            </td>
+            <td><code>1.5k ~ 3.0k</code> LOC</td>
+            <td>不要抽成 god panel；每类 action 的 UI 语义要保留。</td>
+          </tr>
+          <tr>
+            <td><strong>Settings section shell</strong></td>
+            <td>
+              <code>KnowledgeIndexTab.tsx</code> 约 1,201 LOC；
+              <code>pkset-section</code> 大量重复；
+              <code>settingsStrings.ts</code> 有 PR-D legacy stub copy。
+            </td>
+            <td>抽 <code>SettingsSection</code> / row / action strip；删除不再使用的 per-surface stub copy。</td>
+            <td><code>600 ~ 1,200</code> LOC</td>
+            <td>不要重做设置 IA；先小 tab，后 KnowledgeIndex。</td>
+          </tr>
+          <tr>
+            <td><strong>Usage Dashboard shell</strong></td>
+            <td>
+              <code>UsageDashboard.tsx</code>、
+              <code>BudgetAlerts.tsx</code>、
+              <code>WhatWasThisAbout.tsx</code>、
+              <code>dashboard-charts.css</code>。
+            </td>
+            <td>
+              抽 <code>DashboardCard</code>、<code>DashboardSection</code>、formatters、
+              detail body renderer；保留全部 screens。
+            </td>
+            <td><code>800 ~ 1,500</code> LOC</td>
+            <td>用户明确要 Usage Dashboard，不可退役。</td>
+          </tr>
+          <tr>
+            <td><strong>Chat retained cleanup</strong></td>
+            <td>
+              <code>ComposerRetained.tsx</code>、<code>MessageViewItemRetained.tsx</code>、
+              <code>ConversationIndex.tsx</code>、<code>MessageAttachmentsList.tsx</code>。
+            </td>
+            <td>清 Retained 命名债、资源展示重复、message row shell、fake controls。</td>
+            <td><code>800 ~ 1,800</code> LOC</td>
+            <td>Chat 三栏必须保留，不改成 Chat Studio only。</td>
+          </tr>
+          <tr>
+            <td><strong>Quick Search V2 shell</strong></td>
+            <td>
+              <code>SearchModal.tsx</code>、<code>V2ProcessView.tsx</code>、
+              <code>V2RoundBlock.tsx</code>、<code>timeline-helpers.tsx</code>、
+              <code>searchSessionStore.ts</code>。
+            </td>
+            <td>抽 V2 block shell、timeline/status pill、清 stale state。</td>
+            <td><code>800 ~ 1,800</code> LOC</td>
+            <td>不要删 AI Graph / Vault Analysis 主路径。</td>
+          </tr>
+          <tr>
+            <td><strong>Shared UI 目录归属</strong></td>
+            <td>
+              <code>src/ui/component</code> 与 <code>src/ui/components</code> 并存；
+              <code>shared-ui/button</code> 与 <code>primitives/Button</code> 是两套视觉系统。
+            </td>
+            <td>
+              建立目录语义：<code>components/primitives</code>、
+              <code>components/shared</code>、<code>view/&lt;feature&gt;/components</code>、
+              legacy <code>component</code> 逐步清空。
+            </td>
+            <td><code>300 ~ 1,500</code> LOC 长期</td>
+            <td>不要机械切 button，否则视觉回归。</td>
+          </tr>
+          <tr>
+            <td><strong>Project list / conversation rows</strong></td>
+            <td>
+              <code>ProjectsSection.tsx</code>、<code>ConversationsSection.tsx</code>、
+              <code>conversation-list.tsx</code>、<code>conversation-item.tsx</code>。
+            </td>
+            <td>抽 <code>SidebarSection</code>、<code>EntityRow</code>、<code>GroupedList</code>。</td>
+            <td><code>400 ~ 1,000</code> LOC</td>
+            <td>属于后续波次，不塞进第一波。</td>
+          </tr>
+          <tr>
+            <td><strong>Onboarding / wizard shell</strong></td>
+            <td>
+              <code>HarnessOnboardingWizard.tsx</code>、<code>OnboardingStateMachine.ts</code>、
+              <code>onboardingStrings.ts</code>、<code>view/modals/harness-onboarding/*</code>。
+            </td>
+            <td>Step shell、progress metadata、shared footer/action rules、data-driven step registry。</td>
+            <td><code>700 ~ 2,000</code> LOC</td>
+            <td>不要牺牲 onboarding product flow。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="service-core">
+      <h2>4. Service / Core 合并候选：收益大，但需要测试护栏</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>区域</th>
+            <th>证据 / 文件</th>
+            <th>重构方向</th>
+            <th>预估收益</th>
+            <th>前置条件</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Search Graph Inspector</strong></td>
+            <td><code>explore-folder.ts</code> 约 869 LOC；<code>find-path/scorer.ts</code> 约 850 LOC。</td>
+            <td>抽 folder tree compressor、markdown renderer、path scoring sections、strategy skeleton。</td>
+            <td><code>500 ~ 1,400</code> LOC</td>
+            <td>工具 fixture / output snapshot。</td>
+          </tr>
+          <tr>
+            <td><strong>Search retriever/query pipeline</strong></td>
+            <td><code>service/search/retriever/*.ts</code> + <code>queryService.ts</code>。</td>
+            <td>统一 <code>shouldActivate</code>、topK、score normalize、result mapping。</td>
+            <td><code>350 ~ 1,200</code> LOC</td>
+            <td>搜索结果排序回归测试。</td>
+          </tr>
+          <tr>
+            <td><strong>SQLite repositories</strong></td>
+            <td>
+              <code>MobiusNodeRepo.ts</code>、<code>EmbeddingRepo.ts</code>、
+              <code>MobiusEdgeRepo.ts</code>、<code>IndexedDocumentRepo.ts</code>。
+            </td>
+            <td>抽 Kysely CRUD/where/execute helper/base pattern；拆 domain schema。</td>
+            <td><code>1,500 ~ 3,000</code> LOC</td>
+            <td>SQLite fixture 和 schema snapshot，不能裸改。</td>
+          </tr>
+          <tr>
+            <td><strong>Markdown document model</strong></td>
+            <td>
+              <code>ChatStore.ts</code>、<code>ChatConversationDoc.ts</code>、
+              <code>analysis-markdown-parser.ts</code>、<code>analysis-markdown-builder.ts</code>。
+            </td>
+            <td>抽 reusable doc-model framework：frontmatter schema、section schema、parse/build roundtrip。</td>
+            <td><code>600 ~ 2,000</code> LOC</td>
+            <td>Markdown snapshot tests。</td>
+          </tr>
+          <tr>
+            <td><strong>Document loaders</strong></td>
+            <td>PDF/DOCX/PPTX/Image/Text/URL loaders 共享 read/cache/metadata/summary pattern。</td>
+            <td>抽 loader factories/helpers；保留各格式差异。</td>
+            <td><code>250 ~ 900</code> LOC</td>
+            <td>各格式 smoke fixture。</td>
+          </tr>
+          <tr>
+            <td><strong>Prompt / Template / Profile registry</strong></td>
+            <td>
+              <code>PromptId.ts</code>、<code>TemplateRegistry.ts</code>、
+              <code>ProfileRegistry.ts</code>、<code>model-registry.ts</code>、<code>presets.ts</code>。
+            </td>
+            <td>把 metadata/table 迁到 JSON/generated typed module；统一 provider/profile/model resolver。</td>
+            <td><code>1,000 ~ 2,800</code> LOC</td>
+            <td>保持 typed ids，不牺牲类型安全。</td>
+          </tr>
+          <tr>
+            <td><strong>App command runner</strong></td>
+            <td><code>PeakCommandActions.ts</code>、<code>Register.ts</code>、<code>composeSettingsActions.ts</code>。</td>
+            <td>抽 app-layer command runner：deps、progress notice、success/failure、console label。</td>
+            <td><code>250 ~ 700</code> LOC</td>
+            <td>不能把命令语义藏进 magic DSL。</td>
+          </tr>
+          <tr>
+            <td><strong>Chat / prompt invocation</strong></td>
+            <td><code>service-manager.ts</code>、<code>service-conversation.ts</code>、<code>PromptService.ts</code>、<code>ReportOrchestrator.ts</code>。</td>
+            <td><code>PromptInvocationPipeline</code> / <code>ChatGenerationRunner</code>。</td>
+            <td><code>500 ~ 1,500</code> LOC</td>
+            <td>stream event / usage tracking tests。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="runtime">
+      <h2>5. Runtime ownership 尾巴：LOC 不一定大，但优雅性很关键</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>尾巴</th>
+            <th>证据</th>
+            <th>处理</th>
+            <th>收益</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>ContextBuilder fallback</strong></td>
+            <td><code>ContextBuilder.ts</code> 自带 <code>@deprecated Use ContextPipeline instead</code>；<code>service-conversation.ts</code> 仍保留 fallback。</td>
+            <td>让 <code>ConversationService</code> 构造时必须接收 <code>ContextPipeline</code> 或 fail-loud，删除旧 builder。</td>
+            <td><code>250 ~ 340</code> LOC，消除 Chat context 双路径。</td>
+          </tr>
+          <tr>
+            <td><strong>ProgressReporter defaultReporter</strong></td>
+            <td><code>ProgressReporterPort.ts</code> 有 <code>let defaultReporter</code>；<code>run-envelope/types.ts</code> 写了退休计划。</td>
+            <td>等 RunEnvelope / app-owned deps 承载 <code>ports.progress</code> 后显式注入。</td>
+            <td>LOC 小，但符合“不要散落全局单例”。</td>
+          </tr>
+          <tr>
+            <td><strong>ClaudeAgentSDKBridge singleton</strong></td>
+            <td><code>let _instance</code> + <code>getAgentBridge()</code>；<code>FollowupChatAgent</code> / <code>DocSimpleAgent</code> 调用。</td>
+            <td>改为 app-owned bridge / AgentRunnerPort 注入。</td>
+            <td><code>10 ~ 50</code> LOC，主要是边界收益。</td>
+          </tr>
+          <tr>
+            <td><strong>Copilot modal phase global</strong></td>
+            <td><code>CopilotResultContent._currentSetPhase</code>；modal 用 getter 跨 React tree 改 state。</td>
+            <td>改成 modal-owned controller/ref 或 prop callback。</td>
+            <td><code>20 ~ 80</code> LOC，减少 hot reload / 多 modal 风险。</td>
+          </tr>
+          <tr>
+            <td><strong>TextRank legacy string fallback</strong></td>
+            <td><code>DocumentLoaderHelpers.ts</code> 同时支持 deprecated string 和 structured fields。</td>
+            <td>确认历史索引兼容需求；无需求则删除 legacy branch。</td>
+            <td><code>20 ~ 70</code> LOC。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="stub">
+      <h2>6. Stub / 半接线：要么接线，要么隐藏，不要继续假装完成</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>候选</th>
+            <th>状态</th>
+            <th>处理方式</th>
+            <th>注意</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Usage Dashboard chat bridge</strong></td>
+            <td>
+              <code>usage-dashboard/integration/chatBridge.ts</code> 和
+              <code>chat-view/integration/messageReceiptSlot.ts</code> 两套 registry；
+              Chat 消息区读取 chat-side slot。
+            </td>
+            <td>合并为 canonical registry；Dashboard 提供 renderer，Chat 提供 host position，app composition 一次注册。</td>
+            <td>不是删除 Usage Dashboard。</td>
+          </tr>
+          <tr>
+            <td><strong>ContextRing</strong></td>
+            <td><code>ContextRing.tsx</code> 等待 <code>setCurrentContextUtilization</code>，但 chat side 未完整推送。</td>
+            <td>要么接线到 chat token usage/context window，要么先隐藏 composer slot。</td>
+            <td>不要展示假指标。</td>
+          </tr>
+          <tr>
+            <td><strong>WhatWasThisAbout footer verb</strong></td>
+            <td><code>Open-in-X</code> 目前只是 <code>console.info</code> + <code>onClose()</code>。</td>
+            <td>接入 navigation ports，或隐藏 footer verb。</td>
+            <td>这是体验债，不是视觉小事。</td>
+          </tr>
+          <tr>
+            <td><strong>Chat RunChip coming-soon rows</strong></td>
+            <td><code>ComposerRetained.tsx</code> 注释写 Role、Model picker detail、Pinned sources 没有 backing。</td>
+            <td>本波接线或隐藏；不要继续 disabled coming-soon 堆 UI。</td>
+            <td>Chat 三栏保留，但假控制不保留。</td>
+          </tr>
+          <tr>
+            <td><strong>Chat suggestion tag no-op</strong></td>
+            <td><code>useChatSession.ts</code> 有 tag/file change action TODO / console-only 行为。</td>
+            <td>有 backend 的接线；没有 owner 决策的隐藏。</td>
+            <td>避免用户误以为功能完成。</td>
+          </tr>
+          <tr>
+            <td><strong>Settings PR-D legacy stub copy</strong></td>
+            <td><code>settingsStrings.ts</code> 注释写 Safe to remove once all surfaces have adapters。</td>
+            <td>验证 OverviewTab 不再读取后，删除 TS shape + JSON 字段。</td>
+            <td>需同步 <code>templates/config/settings.json</code>。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="package">
+      <h2>7. Test / Package / Docs 外圈：有用，但要单独计分</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>候选</th>
+            <th>证据</th>
+            <th>处理方式</th>
+            <th>口径</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>T11 boundary guards consolidation</strong></td>
+            <td>T11K/L/M/N/O/P/Q/R 多层 guard 堆叠，旧报告估算约 <code>2,210 LOC</code>。</td>
+            <td>合并已被更强 final guard 覆盖的旧 floor tests。</td>
+            <td>test LOC，不算产品源码。</td>
+          </tr>
+          <tr>
+            <td><strong>Package pruning</strong></td>
+            <td>
+              候选：<code>d3-*</code>、<code>recharts</code>、<code>react-is</code>、
+              <code>use-stick-to-bottom</code>、<code>ai-elements</code>、<code>motion</code> tail。
+            </td>
+            <td>用 depcheck + build + runtime smoke 验证；<code>framer-motion</code> 当前不能删。</td>
+            <td>减少安装/维护面，不减少 src LOC。</td>
+          </tr>
+          <tr>
+            <td><strong>Docs / mock / artifact hygiene</strong></td>
+            <td><code>docs/</code> 有大量历史 plans/specs/mockups/image assets。</td>
+            <td>正稿保留，历史探索稿归档；图片资产按用户移动硬盘同步策略处理。</td>
+            <td>仓库可读性，不算产品源码。</td>
+          </tr>
+          <tr>
+            <td><strong>CSS dead namespace</strong></td>
+            <td><code>peak-components.css</code>、<code>dashboard-charts.css</code>；高信号 namespace 包括 <code>pkonb-*</code>、<code>pkset-*</code>、<code>pkchat-index-empty*</code>。</td>
+            <td>等组件合并后按 namespace 清理，并做截图 QA。</td>
+            <td>产品 CSS LOC，但必须视觉验证。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="protected">
+      <h2>8. 保护清单：这些不是删除候选</h2>
+      <ul>
+        <li><strong>Usage Dashboard：</strong>用户明确需要。只能内部合并，不退役。</li>
+        <li><strong>Chat 三栏 views：</strong><code>ChatView</code>、<code>ProjectListView</code>、<code>ConversationOutlineView</code> 必须保留。</li>
+        <li><strong>Vault X-Ray：</strong>默认保留，除非 owner 明确说退役。</li>
+        <li><strong>Harness / Command Gateway 地基：</strong>先审计 overlap，不直接删。</li>
+        <li><strong>SQLite schema / search ranking：</strong>必须有 fixture/snapshot 保护。</li>
+        <li><strong>当前正稿 docs：</strong>主架构手册、Ambient 专项、Command Gateway 专项、当前 owner reports 保留。</li>
+      </ul>
+    </section>
+
+    <section id="commands">
+      <h2>9. 命令证据记录</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>命令 / 扫描</th>
+            <th>用途</th>
+            <th>结论</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>cloc src styles.css --quiet --json --timeout 120</code></td>
+            <td>产品源码基线</td>
+            <td><code>115,538</code> code LOC；物理行 <code>147,943</code>。</td>
+          </tr>
+          <tr>
+            <td><code>cloc src/ui src/service src/core src/app src/styles</code></td>
+            <td>按层分布</td>
+            <td>UI <code>49,390</code>、Service <code>32,760</code>、Core <code>21,262</code>、App <code>7,234</code>、CSS <code>6,026</code> code LOC。</td>
+          </tr>
+          <tr>
+            <td><code>find src ... wc -l</code> / per-module cloc</td>
+            <td>模块体量</td>
+            <td>Copilot、Quick Search、Chat、Usage Dashboard、Settings、search、agents、storage 是主要大块。</td>
+          </tr>
+          <tr>
+            <td><code>rg legacy/compat/deprecated/TODO/stub/fallback/no-op</code></td>
+            <td>找迁移尾巴和半接线</td>
+            <td>命中 ContextBuilder、Dashboard bridge、Settings PR-D copy、Chat coming-soon、graph no-op 等。</td>
+          </tr>
+          <tr>
+            <td><code>rg ContextBuilder / ContextPipeline / messageReceiptSlot / getAgentBridge</code></td>
+            <td>复核 runtime candidates 是否 live</td>
+            <td>ConversationService 仍保留 fallback；Chat/Dashboard 有双 registry；Followup/DocSimple 仍用 service singleton bridge。</td>
+          </tr>
+          <tr>
+            <td><code>rg package dependency names</code></td>
+            <td>找 package pruning 候选</td>
+            <td>d3/recharts/react-is/use-stick-to-bottom/ai-elements 有 pruning 信号；framer-motion 仍被 Quick Search V2 使用。</td>
+          </tr>
+          <tr>
+            <td><code>zero-incoming / export surface scan</code></td>
+            <td>区分 dead files 与 barrel 假活</td>
+            <td>高信号集中在 dead UI family、ai-elements exports、T11R unused adapter/port、low-risk shims。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

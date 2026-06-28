@@ -32,6 +32,40 @@ Global position:
 - <这一轮在 T0-T12 里的位置，以及为什么不是在做产品功能本身>
 ```
 
+## 0. Wave Verdict
+
+Use this section for every implementation. Put it before detailed evidence so the user does not have to infer whether a task really moved the architecture.
+
+```md
+Wave classification:
+- Accepted as major wave / Accepted as minor cleanup / Partial, not counted as wave / Needs stronger follow-up
+
+Does this count as a major modernization wave?
+- Yes / No
+
+Impact Contract:
+- Primary metric target:
+- Required tracks:
+- Skip budget:
+- Minimum acceptable delta:
+
+Actual outcome:
+- Primary metric actual:
+- Required tracks completed:
+- Required tracks skipped:
+- Why skipped tracks were accepted or not accepted:
+
+Owner decision:
+- <accept as major / accept as minor / ask for follow-up / reject>
+```
+
+Rules:
+
+- A clean build and passing tests are necessary evidence, but they do not prove impact.
+- If the primary metric barely moved, classify the task as minor cleanup even when the code is safe.
+- If most required tracks were skipped, do not call the task accepted as a major wave.
+- If the handoff had no Impact Contract, say that explicitly and avoid retroactively inventing one.
+
 ## 0. Review Entry Points
 
 List the documents the user should open first. When Codex reports this packet in chat, it must also provide clickable absolute file links for these entries.
