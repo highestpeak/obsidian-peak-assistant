@@ -1,4 +1,6 @@
-import type { App } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
+// T11R Phase 2: type-only obsidian import removed; AppHandle covers the
+// duck-typed `app.vault.adapter` / `app.metadataCache` access points.
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { DocumentType } from '@/core/document/types';
@@ -16,7 +18,17 @@ import {
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { INDEX_CHECK_BATCH_SIZE, VAULT_DB_FILENAME } from '@/core/constant';
 import { formatLlmEnrichmentProgressLine } from '@/service/search/support/llm-progress-format';
-import { getFileSize } from '@/core/utils/obsidian-utils';
+// T11R Phase 2: inline file-size lookup via the vault adapter (duck-typed)
+// so this module no longer imports `getFileSize` from the relocated
+// `obsidian-utils` helper.
+async function readFileSize(app: { vault: { adapter: { stat?: (p: string) => Promise<{ size?: number } | null> } } }, filePath: string): Promise<number> {
+	try {
+		const stat = await app.vault.adapter.stat?.(filePath);
+		return stat?.size ?? 0;
+	} catch {
+		return 0;
+	}
+}
 import type { IndexLevel } from './types';
 import { defaultIndexDocumentOptionsForLevel } from './types';
 
@@ -200,7 +212,7 @@ export class IndexInitializer {
 		const dbFilePath = this.storageFolder
 			? `${this.storageFolder.trim().replace(/^\/+/, '').replace(/\/+$/, '')}/${VAULT_DB_FILENAME}`
 			: VAULT_DB_FILENAME;
-		const storageSize = await getFileSize(dbFilePath, this.app);
+		const storageSize = await readFileSize(this.app, dbFilePath);
 
 		progressTracker.dismiss();
 		if (showNotification) {
@@ -436,7 +448,7 @@ export class IndexInitializer {
 		const dbFilePath = this.storageFolder
 			? `${this.storageFolder.trim().replace(/^\/+/, '').replace(/\/+$/, '')}/${VAULT_DB_FILENAME}`
 			: VAULT_DB_FILENAME;
-		const storageSize = await getFileSize(dbFilePath, this.app);
+		const storageSize = await readFileSize(this.app, dbFilePath);
 
 		progressTracker.showComplete({
 			totalIndexed: indexedCount,

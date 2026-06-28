@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
 import { existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { query } from '@anthropic-ai/claude-agent-sdk';

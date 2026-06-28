@@ -1,5 +1,11 @@
-import type { App, EventRef, TAbstractFile } from 'obsidian';
-import { TFile } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
+import type { VaultFileRef, VaultFolderRef } from '@/core/ports/VaultFileRef';
+import { isFile } from '@/core/storage/vault/vault-ops';
+type EventRef = unknown;
+type TAbstractFile = VaultFileRef | VaultFolderRef;
+type TFile = VaultFileRef;
+// Local instance guard so existing `instanceof TFile` checks continue to work.
+const TFile = { [Symbol.hasInstance]: (x: unknown) => isFile(x) } as unknown as { new (): VaultFileRef };
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';

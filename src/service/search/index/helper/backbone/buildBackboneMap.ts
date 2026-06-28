@@ -8,7 +8,8 @@
  */
 
 import ignore from 'ignore';
-import { TFolder } from 'obsidian';
+import type { VaultFolderRef as TFolder } from '@/core/ports/VaultFileRef';
+import { isFolder } from '@/core/storage/vault/vault-ops';
 import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { basenameFromPath } from '@/core/utils/file-utils';
 import { normalizeVaultPath, parentDirPath } from '@/core/utils/vault-path-utils';
@@ -266,7 +267,7 @@ export function shouldIgnoreFolderForBackbone(path: string, env: BackboneEnv): b
 
 export function visibleChildFolders(folder: TFolder, excludedPathPrefixes: string[], env: BackboneEnv): TFolder[] {
 	const subs = folder.children
-		.filter((c): c is TFolder => c instanceof TFolder)
+		.filter((c): c is TFolder => isFolder(c))
 		.sort((a, b) => a.path.localeCompare(b.path));
 	return subs.filter(
 		(s) =>
@@ -314,7 +315,7 @@ export function scanFolderTree(
 	}
 
 	const top = root.children
-		.filter((c): c is TFolder => c instanceof TFolder)
+		.filter((c): c is TFolder => isFolder(c))
 		.sort((a, b) => a.path.localeCompare(b.path));
 	for (const ch of top) {
 		if (isPathExcludedByPrefixes(ch.path, excludedPathPrefixes, env) || shouldIgnoreFolderForBackbone(ch.path, env)) continue;
@@ -507,7 +508,7 @@ async function loadBackboneFolderNodes(
 		let subfolderNameTokenSample: string[] = [];
 		if (row.childFolderCount > 0) {
 			const af = vault.getAbstractFileByPath(row.path);
-			if (af instanceof TFolder) {
+			if (isFolder(af)) {
 				subfolderNameTokenSample = topTokensFromBasenames(
 					visibleChildFolders(af, excludedPathPrefixes, env).map((f) => basenameFromPath(f.path)), NAME_TOKEN_TOP);
 			}

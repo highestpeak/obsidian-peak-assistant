@@ -1,25 +1,29 @@
-import { App, TFile, TFolder } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
+import type { VaultFileRef, VaultFolderRef } from '@/core/ports/VaultFileRef';
 import { stringify as stringifyYaml } from 'yaml';
 import { buildFrontmatter, codeBlock } from '@/core/utils/markdown-utils';
 import type { ChatResourceRef, ResourceSummaryMeta, ParsedResourceSummaryFile } from '../types';
 import type { ResourceKind } from '@/core/document/types';
 import { parseFrontmatter } from '@/core/utils/markdown-utils';
-import { ensureFolder, normalizeVaultPath } from '@/core/utils/vault-utils';
+import { normalizeVaultPath } from '@/core/utils/path-utils';
+import { ensureFolderRecursive, getFileRef, getFolderRef, isFile, writeVaultFile } from '@/core/storage/vault/vault-ops';
 import { ResourceKindDetector } from '@/core/document/resource/helper/ResourceKindDetector';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { hashString } from '@/core/utils/hash-utils';
 
 /**
  * Service for managing resource summary notes.
- * Creates and updates markdown files that summarize resources (files, URLs, etc.)
- * and maintain bidirectional links between resources and conversations/projects.
+ *
+ * T11R Phase 2: `app` typed as {@link AppHandle} (neutral); vault ops via
+ * the service-internal duck-typed helpers in `@/service/internal/vault-ops`
+ * so this module no longer imports from `obsidian`.
  */
 export class ResourceSummaryService {
 	private readonly resourcesFolder: string;
 	private readonly kindDetector: ResourceKindDetector;
 
 	constructor(
-		private readonly app: App,
+		private readonly app: AppHandle,
 		rootFolder: string,
 		resourcesSummaryFolderName: string
 	) {
@@ -31,12 +35,9 @@ export class ResourceSummaryService {
 	 * Initialize resources folder
 	 */
 	async init(): Promise<void> {
-		await ensureFolder(this.resourcesFolder, this.app);
+		await ensureFolderRecursive(this.resourcesFolder, this.app);
 	}
 
-	/**
-	 * Create or get resource reference from source
-	 */
 	createResourceRef(source: string, summaryNotePath?: string): ChatResourceRef {
 		const id = this.generateResourceId(source);
 		const kind = this.kindDetector.detectResourceKind(source);
@@ -48,16 +49,10 @@ export class ResourceSummaryService {
 		};
 	}
 
-	/**
-	 * Get resource summary note file path
-	 */
 	getResourceSummaryPath(resourceId: string): string {
 		return normalizeVaultPath(`${this.resourcesFolder}/Resource-${resourceId}.md`);
 	}
 
-	/**
-	 * Create or update resource summary note
-	 */
 	async saveResourceSummary(params: {
 		resourceId: string;
 		source: string;
@@ -68,9 +63,9 @@ export class ResourceSummaryService {
 		mentionedInConversations?: string[];
 		mentionedInProjects?: string[];
 		mentionedInFiles?: string[];
-	}): Promise<TFile> {
+	}): Promise<VaultFileRef> {
 		const path = this.getResourceSummaryPath(params.resourceId);
-		const existingFile = this.app.vault.getAbstractFileByPath(path) as TFile | null;
+		const existingFile = getFileRef(path, this.app);
 
 		const meta: ResourceSummaryMeta = {
 			id: params.resourceId,
@@ -86,24 +81,17 @@ export class ResourceSummaryService {
 		};
 
 		const markdown = this.buildResourceSummaryMarkdown(meta);
-		return this.writeFile(existingFile, path, markdown);
+		return writeVaultFile(existingFile, path, markdown, this.app);
 	}
 
-	/**
-	 * Read resource summary note
-	 */
 	async readResourceSummary(resourceId: string): Promise<ParsedResourceSummaryFile | null> {
 		const path = this.getResourceSummaryPath(resourceId);
-		const file = this.app.vault.getAbstractFileByPath(path);
-		if (!(file instanceof TFile)) {
-			return null;
-		}
+		const file = getFileRef(path, this.app);
+		if (!file) return null;
 
 		const raw = await this.app.vault.read(file);
 		const frontmatter = parseFrontmatter<Record<string, unknown>>(raw);
-		if (!frontmatter) {
-			return null;
-		}
+		if (!frontmatter) return null;
 
 		const meta: ResourceSummaryMeta = {
 			id: String(frontmatter.data.id ?? resourceId),
@@ -131,58 +119,44 @@ export class ResourceSummaryService {
 		};
 	}
 
-	/**
-	 * Get all resource summaries
-	 */
 	async listResourceSummaries(): Promise<ParsedResourceSummaryFile[]> {
-		const folder = this.app.vault.getAbstractFileByPath(this.resourcesFolder);
-		if (!(folder instanceof TFolder)) {
-			return [];
-		}
+		const folder = getFolderRef(this.resourcesFolder, this.app);
+		if (!folder) return [];
 
 		const results: ParsedResourceSummaryFile[] = [];
-		for (const child of folder.children) {
-			if (child instanceof TFile && child.name.startsWith('Resource-') && child.extension === 'md') {
-				const resourceId = child.basename.replace(/^Resource-/, '');
-				const parsed = await this.readResourceSummary(resourceId);
-				if (parsed) {
-					results.push(parsed);
+		const children = (folder as VaultFolderRef & { children?: ReadonlyArray<unknown> }).children ?? [];
+		for (const child of children) {
+			if (isFile(child)) {
+				const f = child as VaultFileRef;
+				if (f.name.startsWith('Resource-') && f.extension === 'md') {
+					const resourceId = f.basename.replace(/^Resource-/, '');
+					const parsed = await this.readResourceSummary(resourceId);
+					if (parsed) results.push(parsed);
 				}
 			}
 		}
 		return results;
 	}
 
-	/**
-	 * Generate a stable resource ID from source string
-	 */
 	private generateResourceId(source: string): string {
-		// Use hash utility for stable ID generation
 		return hashString(source, 8);
 	}
 
-	/**
-	 * Build markdown content for resource summary note
-	 */
 	private buildResourceSummaryMarkdown(meta: ResourceSummaryMeta): string {
 		const frontmatter = buildFrontmatter(meta);
 		const sections: string[] = [];
 
-		// Original resource reference section
 		sections.push('# Original Resource');
 		sections.push('## Resource Link');
 
-		// Reference the original resource based on kind
 		if (meta.kind === 'url') {
 			sections.push(`[${meta.source}](${meta.source})`);
 		} else if (meta.kind === 'tag') {
 			sections.push(`Tag: ${meta.source}`);
 		} else if (meta.kind === 'folder' || meta.kind === 'markdown') {
-			// Use wikilink for vault files
 			const normalizedPath = meta.source.replace(/^\[\[|\]\]$/g, '');
 			sections.push(`[[${normalizedPath}]]`);
 		} else {
-			// For other types, try to use wikilink if it looks like a path
 			if (meta.source.includes('/') && !meta.source.includes('://')) {
 				sections.push(`[[${meta.source}]]`);
 			} else {
@@ -190,7 +164,6 @@ export class ResourceSummaryService {
 			}
 		}
 
-		// Summary section
 		sections.push('# Summary');
 		sections.push('## meta');
 		sections.push(
@@ -207,20 +180,9 @@ export class ResourceSummaryService {
 			sections.push(meta.fullSummary);
 		}
 
-		// References section - links to conversations and projects that use this resource
-		const convLinks = (meta.mentionedInConversations || []).map(id => {
-			// We don't know the exact file path here, so we'll use a placeholder
-			// In practice, this should be resolved by the caller or during migration
-			return `- Conversation: ${id}`;
-		});
-		const projLinks = (meta.mentionedInProjects || []).map(id => {
-			return `- Project: ${id}`;
-		});
-
-		// File references
-		const fileLinks = (meta.mentionedInFiles || []).map(path => {
-			return `- [[${path}]]`;
-		});
+		const convLinks = (meta.mentionedInConversations || []).map(id => `- Conversation: ${id}`);
+		const projLinks = (meta.mentionedInProjects || []).map(id => `- Project: ${id}`);
+		const fileLinks = (meta.mentionedInFiles || []).map(path => `- [[${path}]]`);
 
 		if (convLinks.length > 0 || projLinks.length > 0 || fileLinks.length > 0) {
 			sections.push('# Referenced In');
@@ -240,16 +202,4 @@ export class ResourceSummaryService {
 
 		return `${frontmatter}${sections.join('\n\n')}\n`;
 	}
-
-	/**
-	 * Write file to vault
-	 */
-	private async writeFile(file: TFile | null, path: string, content: string): Promise<TFile> {
-		if (file) {
-			await this.app.vault.modify(file, content);
-			return file;
-		}
-		return this.app.vault.create(path, content);
-	}
-
 }

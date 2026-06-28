@@ -7,7 +7,7 @@ import type { CascadeDebtRecord } from './types';
 import { CASCADE_IDLE_DELAY_MS, CASCADE_MAX_ITEMS_PER_WINDOW, CASCADE_DEBT_HUB_REGEN_PRIORITY } from '@/core/constant';
 import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { CascadeScheduler } from './CascadeScheduler';
-import type { App } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
 
 export { CascadeScheduler } from './CascadeScheduler';
 

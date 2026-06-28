@@ -4,7 +4,12 @@ import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { humanReadableTime } from "@/core/utils/date-utils";
 import { compactPathsForPrompt, compactPathsWithSuffix } from "@/core/utils/pathTreeCompact";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
-import { TFile, TFolder, type Vault } from "obsidian";
+import type { VaultFileRef as TFile, VaultFolderRef as TFolder } from "@/core/ports/VaultFileRef";
+import { isFile, isFolder } from "@/core/storage/vault/vault-ops";
+type Vault = {
+    getAbstractFileByPath(path: string): TFile | TFolder | null;
+    getRoot(): TFolder;
+};
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 
@@ -77,7 +82,7 @@ export async function exploreFolder(params: ExploreFolderParams, env: ExploreFol
     const targetFolder = normalizedPath === ""
         ? vault.getRoot()
         : vault.getAbstractFileByPath(normalizedPath) as TFolder;
-    if (!targetFolder || !(targetFolder instanceof TFolder)) {
+    if (!targetFolder || !isFolder(targetFolder)) {
         return `Folder not found: ${folderPath}`;
     }
 
@@ -174,7 +179,7 @@ function getFolderStructure(
         const mtime = (child as TFile & TFolder).stat?.mtime ?? 0;
         const name = child.path.split("/").pop() ?? child.path;
         const base: Partial<IterFile> = { path: child.path, name, mtime };
-        if (child instanceof TFolder) {
+        if (isFolder(child)) {
             const folderItem: IterFile = {
                 ...base,
                 type: "folder",
@@ -185,7 +190,7 @@ function getFolderStructure(
                 folderItem.children = getFolderStructure(child, recursive, maxDepth, currentDepth + 1, excludedPathPrefixes);
             }
             result.push(folderItem);
-        } else if (child instanceof TFile) {
+        } else if (isFile(child)) {
             result.push({
                 ...base,
                 type: "file",

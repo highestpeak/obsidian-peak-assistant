@@ -90,7 +90,7 @@ export type BackbonePage = {
  * tree handle plus the small settings snapshot the helpers consult.
  */
 export type BackboneEnv = {
-	vault: import('obsidian').Vault;
+	vault: import('@/core/ports/AppHandle').AppHandle['vault'];
 	rootFolder: string;
 	autoSaveFolder?: string;
 	/** When false, no auto-save folder is excluded from backbone scans. */

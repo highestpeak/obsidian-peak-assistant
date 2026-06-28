@@ -11,8 +11,10 @@
  * Restored sessions are read-only — the agent loop is not re-run.
  */
 
-import { TFile, type App, type TFolder } from 'obsidian';
-import { ensureFolder, joinPath } from '@/core/utils/vault-utils';
+import type { AppHandle } from '@/core/ports/AppHandle';
+import type { VaultFileRef, VaultFolderRef } from '@/core/ports/VaultFileRef';
+import { joinPath } from '@/core/utils/path-utils';
+import { ensureFolderRecursive, getFileRef, getFolderRef, isFile } from '@/core/storage/vault/vault-ops';
 import type { ReviewSessionSnapshot } from './CopilotReviewSession';
 
 /**
@@ -292,7 +294,7 @@ export class CopilotReviewHistoryService {
 	 * The service no longer hides an `AppContext.getInstance()` lookup.
 	 */
 	constructor(
-		private readonly app: App,
+		private readonly app: AppHandle,
 		private readonly folderCreatedNotifier: CopilotReviewFolderCreatedNotifier | null = null,
 	) {}
 
@@ -332,7 +334,7 @@ export class CopilotReviewHistoryService {
 			originScope: existingRecord?.originScope ?? originScope,
 		};
 
-		await ensureFolder(REVIEW_HISTORY_FOLDER, this.app);
+		await ensureFolderRecursive(REVIEW_HISTORY_FOLDER, this.app);
 		await this.ensureFolderReadme();
 		if (!record.storagePath) {
 			const safeName = sanitizeForFileName(snapshot.signalReport.basename) || 'untitled';
@@ -342,8 +344,8 @@ export class CopilotReviewHistoryService {
 		}
 
 		const body = buildMarkdown(record, snapshot, chats);
-		const existing = this.app.vault.getAbstractFileByPath(record.storagePath);
-		if (existing instanceof TFile) {
+		const existing = getFileRef(record.storagePath, this.app);
+		if (existing) {
 			await this.app.vault.modify(existing, body);
 		} else {
 			await this.app.vault.create(record.storagePath, body);
@@ -353,12 +355,15 @@ export class CopilotReviewHistoryService {
 	}
 
 	async listAll(limit = 100, scope?: ReviewOriginScope): Promise<CopilotReviewHistoryRecord[]> {
-		const folder = this.app.vault.getAbstractFileByPath(REVIEW_HISTORY_FOLDER);
-		if (!folder || !('children' in folder)) return [];
+		const folder = getFolderRef(REVIEW_HISTORY_FOLDER, this.app);
+		if (!folder) return [];
 		const records: CopilotReviewHistoryRecord[] = [];
-		for (const child of (folder as TFolder).children) {
-			if (!(child instanceof TFile) || child.extension !== 'md') continue;
-			const rec = await this.readMetadata(child);
+		const children = (folder as VaultFolderRef & { children?: ReadonlyArray<unknown> }).children ?? [];
+		for (const child of children) {
+			if (!isFile(child)) continue;
+			const f = child as VaultFileRef;
+			if (f.extension !== 'md') continue;
+			const rec = await this.readMetadata(f);
 			if (!rec) continue;
 			if (scope && rec.originScope !== scope) continue;
 			records.push(rec);
@@ -373,8 +378,8 @@ export class CopilotReviewHistoryService {
 	}
 
 	async load(record: CopilotReviewHistoryRecord): Promise<ReviewSessionSnapshot | null> {
-		const file = this.app.vault.getAbstractFileByPath(record.storagePath);
-		if (!(file instanceof TFile)) return null;
+		const file = getFileRef(record.storagePath, this.app);
+		if (!file) return null;
 		const content = await this.app.vault.read(file);
 		return parseSnapshotFromMarkdown(content);
 	}
@@ -384,8 +389,8 @@ export class CopilotReviewHistoryService {
 		snapshot: ReviewSessionSnapshot | null;
 		chats: InsightChatHistories;
 	}> {
-		const file = this.app.vault.getAbstractFileByPath(record.storagePath);
-		if (!(file instanceof TFile)) return { snapshot: null, chats: {} };
+		const file = getFileRef(record.storagePath, this.app);
+		if (!file) return { snapshot: null, chats: {} };
 		const content = await this.app.vault.read(file);
 		return {
 			snapshot: parseSnapshotFromMarkdown(content),
@@ -394,8 +399,8 @@ export class CopilotReviewHistoryService {
 	}
 
 	async delete(record: CopilotReviewHistoryRecord): Promise<void> {
-		const file = this.app.vault.getAbstractFileByPath(record.storagePath);
-		if (file instanceof TFile) {
+		const file = getFileRef(record.storagePath, this.app);
+		if (file) {
 			await this.app.fileManager.trashFile(file);
 		}
 	}
@@ -407,8 +412,8 @@ export class CopilotReviewHistoryService {
 	 * folder rather than being surprised by it.
 	 */
 	private async ensureFolderReadme(): Promise<void> {
-		const existing = this.app.vault.getAbstractFileByPath(README_FILE);
-		if (existing instanceof TFile) return;
+		const existing = getFileRef(README_FILE, this.app);
+		if (existing) return;
 		try {
 			await this.app.vault.create(README_FILE, README_BODY);
 		} catch (err) {
@@ -432,7 +437,7 @@ export class CopilotReviewHistoryService {
 		}
 	}
 
-	private async readMetadata(file: TFile): Promise<CopilotReviewHistoryRecord | null> {
+	private async readMetadata(file: VaultFileRef): Promise<CopilotReviewHistoryRecord | null> {
 		const cache = this.app.metadataCache.getFileCache(file);
 		const fm = cache?.frontmatter as Record<string, unknown> | undefined;
 		if (!fm || fm.type !== 'copilot-auto-review') return null;

@@ -9,7 +9,9 @@
  * folder trigger automatic re-parsing of the affected skill.
  */
 
-import type { App, TFile, TAbstractFile } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
+import type { VaultFileRef as TFile, VaultFolderRef } from '@/core/ports/VaultFileRef';
+type TAbstractFile = TFile | VaultFolderRef;
 import type { SkillDefinition } from './types';
 import { parseSkillMarkdown, validateSkillDefinition } from './SkillParser';
 import { BUILTIN_SKILLS } from './builtin';

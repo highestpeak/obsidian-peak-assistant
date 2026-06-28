@@ -1,4 +1,5 @@
-import { App, TFile, TFolder } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
+import type { VaultFileRef, VaultFolderRef } from '@/core/ports/VaultFileRef';
 import { CHAT_PROJECT_SUMMARY_FILENAME, DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import {
 	ChatContextWindow,
@@ -10,7 +11,14 @@ import {
 	ChatProject,
 } from '@/core/types/chat';
 import type { ChatConversation } from '@/core/types/chat-vault';
-import { ensureFolder, joinPath, writeFile, getAbsolutePath, getRelativePath, normalizeVaultPath } from '@/core/utils/vault-utils';
+import { joinPath, getAbsolutePath, getRelativePath, normalizeVaultPath } from '@/core/utils/path-utils';
+import {
+	ensureFolderRecursive,
+	getFileRef,
+	getFolderRef,
+	isFile,
+	writeVaultFile,
+} from '@/core/storage/vault/vault-ops';
 import { ChatDocName } from './chat-docs/ChatDocName';
 import { ChatConversationDoc, ChatConversationDocModel } from './chat-docs/ChatConversationDoc';
 import { ChatProjectSummaryDoc } from './chat-docs/ChatProjectSummaryDoc';
@@ -24,33 +32,30 @@ import { ResourceKind } from '@/core/document/types';
 export class ChatStorageService {
 	private readonly rootFolder: string;
 
-	constructor(private readonly app: App, paths: ChatFilePaths) {
+	constructor(private readonly app: AppHandle, paths: ChatFilePaths) {
 		this.rootFolder = normalizeVaultPath(paths.rootFolder);
 	}
 
-	/** True when SQLite is ready and repo getters will not throw. */
 	private get dbReady(): boolean {
 		return sqliteStoreManager.isInitialized();
 	}
 
 	async init(): Promise<void> {
-		await ensureFolder(this.rootFolder, this.app);
+		await ensureFolderRecursive(this.rootFolder, this.app);
 	}
 
 	async saveProject(project: ChatProjectMeta, context?: ChatProjectContext): Promise<ChatProject> {
 		await this.ensureProjectFolder(project);
 		const projectFolder = await this.getProjectFolderPath(project);
 
-		// Save summary file
 		const summaryFilePath = joinPath(projectFolder, CHAT_PROJECT_SUMMARY_FILENAME);
-		const initSummaryFile = this.app.vault.getAbstractFileByPath(summaryFilePath) as TFile | null;
+		const initSummaryFile = getFileRef(summaryFilePath, this.app);
 		const summaryContent = ChatProjectSummaryDoc.buildMarkdown({
 			shortSummary: context?.shortSummary ?? '',
 			fullSummary: context?.fullSummary ?? '',
 		});
-		await writeFile(initSummaryFile, summaryFilePath, summaryContent, this.app);
+		await writeVaultFile(initSummaryFile, summaryFilePath, summaryContent, this.app);
 
-		// Save meta to sqlite (skip if DB not ready — file is still saved above)
 		if (!this.dbReady) {
 			console.warn('[ChatStore] SQLite not ready, skipping project DB write');
 			return { meta: project, context };
@@ -64,15 +69,9 @@ export class ChatStorageService {
 			updatedAtTs: Date.now(),
 		});
 
-		return {
-			meta: project,
-			context: context,
-		};
+		return { meta: project, context };
 	}
 
-	/**
-	 * @param project if it's a project conversation, provide the project meta
-	 */
 	async saveConversation(
 		project: ChatProjectMeta | null,
 		conversation: ChatConversationMeta,
@@ -80,28 +79,19 @@ export class ChatStorageService {
 		messages?: ChatMessage[]
 	): Promise<ChatConversation> {
 		const folder = project ? await this.getProjectFolderPath(project) : this.rootFolder;
-		await ensureFolder(folder, this.app);
+		await ensureFolderRecursive(folder, this.app);
 
-		// Get or build conversation file path
 		const { file, path } = await this.getConvFile(conversation, folder);
 
-		// IMPORTANT: First upsert conversation meta to ensure it exists in SQLite
-		// This must happen before saveNewMessage, because saveNewMessage calls readConversation
-		// which requires the meta to exist in SQLite (specifically fileRelPath must be set)
 		await this.upsertConversationMeta(conversation.id, {
 			...conversation,
 			fileRelPath: getRelativePath(this.rootFolder, path),
 		});
 
-		// If messages are provided, save them using saveMessage
-		// Now that meta is persisted, saveNewMessage can successfully read the conversation
 		if (messages && messages.length > 0) {
-			// console.log('[ChatStore] saveConversation saving messages', messages);
-			// Save messages using saveMessage (saveMessage will load conversation and ensure file exists)
 			await this.saveNewMessage(conversation.id, messages);
 		}
 
-		// Load final conversation
 		const finalConv = await this.readConversation(conversation.id, true);
 		if (!finalConv) {
 			throw new Error(`Conversation not found after save: ${conversation.id}`);
@@ -123,10 +113,6 @@ export class ChatStorageService {
 		};
 	}
 
-	/**
-	 * Update conversation metadata only (without saving messages or context).
-	 * This is a lightweight operation for updating meta fields like activeModel, activeProvider, tokenUsageTotal, etc.
-	 */
 	async upsertConversationMeta(
 		conversationId: string,
 		updates: Partial<ChatConversationMeta>
@@ -134,7 +120,6 @@ export class ChatStorageService {
 		let updatedMeta: ChatConversationMeta | null = null;
 		const now = Date.now();
 
-		// Read current meta
 		const currentMeta = await this.readConversationMeta(conversationId);
 		if (!currentMeta || !currentMeta.fileRelPath) {
 			updatedMeta = {
@@ -152,12 +137,10 @@ export class ChatStorageService {
 				...currentMeta,
 				...updates,
 				updatedAtTimestamp: now,
-			}
+			};
 		}
 
-		// Update in sqlite
 		if (this.dbReady) {
-			// Build extensible meta_json for fields not in dedicated columns
 			const metaExtras: Record<string, unknown> = {};
 			if (updatedMeta.customSystemPrompt) metaExtras.customSystemPrompt = updatedMeta.customSystemPrompt;
 			const metaJson = Object.keys(metaExtras).length > 0 ? JSON.stringify(metaExtras) : null;
@@ -185,43 +168,27 @@ export class ChatStorageService {
 		return updatedMeta;
 	}
 
-	/**
-	 * Save messages to an existing conversation (low-level operation).
-	 * Directly updates the database and markdown file.
-	 */
 	async saveNewMessage(
 		conversationId: string,
 		messages: ChatMessage | ChatMessage[]
 	): Promise<void> {
-		// Load conversation
 		const conversation = await this.readConversation(conversationId, true);
 		if (!conversation) {
 			throw new Error(`Conversation not found: ${conversationId}`);
 		}
 
-		// Ensure file exists, create if needed
 		const contentFile = conversation.file ?? (await this.ensureConversationFile(conversation));
 
-		// Normalize to array
 		const messagesArray = Array.isArray(messages) ? messages : [messages];
 
-		// Update conversation messages array
 		const existingMessageIds = new Set(conversation.messages.map(m => m.id));
 		const newMessages = messagesArray.filter(m => !existingMessageIds.has(m.id));
-		// console.log('[ChatStore] saveNewMessage newMessages', conversationId, 'original messages', conversation.messages, 'new messages', newMessages);
-		if (newMessages.length === 0) {
-			// No new messages to save, return
-			return;
-		}
+		if (newMessages.length === 0) return;
 
-		// Save messages and resources to sqlite (skip if DB not ready — markdown save below still works)
 		if (this.dbReady) {
 			await sqliteStoreManager
 				.getChatMessageRepo()
-				.upsertMessages(
-					conversationId,
-					[...conversation.messages, ...newMessages]
-				);
+				.upsertMessages(conversationId, [...conversation.messages, ...newMessages]);
 
 			const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
 			for (const message of newMessages) {
@@ -231,35 +198,21 @@ export class ChatStorageService {
 			}
 		}
 
-		// Append all messages to markdown file at once
 		if (newMessages.length > 0) {
 			const currentContent = await this.app.vault.read(contentFile);
 			const newContent = ChatConversationDoc.appendMessagesToContent(currentContent, {
 				messages: newMessages,
 			});
-			// console.log('[ChatStore] saveNewMessage newContent', conversationId, 'newContent', newContent);
 			await this.app.vault.modify(contentFile, newContent);
 		}
 	}
 
-	/**
-	 * Read a conversation by id.
-	 * Loads file path from sqlite, then parses markdown for content/title/summary.
-	 * @param loadMessages If false, only loads metadata and context, not messages (faster for listing).
-	 */
 	async readConversation(conversationId: string, loadMessages: boolean = true): Promise<ChatConversation | null> {
 		const meta = await this.readConversationMeta(conversationId);
-		if (!meta || !meta.fileRelPath) {
-			// console.log('[ChatStore] readConversation meta not found', conversationId);
-			return null;
-		}
+		if (!meta || !meta.fileRelPath) return null;
 
-		// read conversation file (although loadMessages is false, we still need to read the file to get the context)
 		const convDoc = await this.getConvDoc(meta.fileRelPath);
-		if (!convDoc) {
-			// console.log('[ChatStore] readConversation convDoc not found', conversationId);
-			return null;
-		}
+		if (!convDoc) return null;
 		const { file, docModel, raw } = convDoc;
 
 		const context: ChatContextWindow = {
@@ -269,28 +222,20 @@ export class ChatStorageService {
 			fullSummary: docModel.fullSummary || undefined,
 		};
 
-		// Only load messages if requested
 		if (!loadMessages) {
 			return { meta, context, messages: [], content: raw, file };
 		}
 
-		// Load messages from sqlite and merge with markdown
 		const messages = await this.loadConversationMessages(conversationId, docModel);
 		return { meta, context, messages, content: raw, file };
 	}
 
-	/**
-	 * Read conversation meta from sqlite.
-	 */
 	async readConversationMeta(conversationId: string): Promise<ChatConversationMeta | null> {
 		if (!this.dbReady) return null;
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
 		const convRow = await convRepo.getById(conversationId);
-		if (!convRow) {
-			return null;
-		}
+		if (!convRow) return null;
 
-		// Parse extensible meta_json for fields not in dedicated columns
 		let metaExtras: Record<string, unknown> = {};
 		if (convRow.meta_json) {
 			try { metaExtras = JSON.parse(convRow.meta_json); } catch { /* ignore parse errors */ }
@@ -314,27 +259,13 @@ export class ChatStorageService {
 		};
 	}
 
-	/**
-	 * Read a project by id.
-	 * Loads folder path from sqlite, then parses markdown for summary/notes.
-	 */
 	async readProject(projectId: string): Promise<ChatProject | null> {
 		const projectMeta = await this.readProjectMeta(projectId);
-		if (!projectMeta) {
-			return null;
-		}
-
+		if (!projectMeta) return null;
 		const context = await this.readProjectContext(projectId);
-
-		return {
-			meta: projectMeta,
-			context: context ?? undefined,
-		};
+		return { meta: projectMeta, context: context ?? undefined };
 	}
 
-	/**
-	 * Get project meta by id (helper method).
-	 */
 	async readProjectMeta(projectId: string): Promise<ChatProjectMeta | null> {
 		if (!this.dbReady) return null;
 		try {
@@ -357,14 +288,9 @@ export class ChatStorageService {
 		}
 	}
 
-	/**
-	 * Read project context from summary file.
-	 */
 	async readProjectContext(projectId: string): Promise<ChatProjectContext | null> {
 		const projectMeta = await this.readProjectMeta(projectId);
-		if (!projectMeta) {
-			return null;
-		}
+		if (!projectMeta) return null;
 
 		if (!projectMeta.folderPath) {
 			console.warn(`[ChatStore] Project folder path is not set for project: ${projectMeta.id}`);
@@ -372,8 +298,8 @@ export class ChatStorageService {
 		}
 		const folderPath = getAbsolutePath(this.rootFolder, projectMeta.folderPath);
 		const summaryPath = joinPath(folderPath, CHAT_PROJECT_SUMMARY_FILENAME);
-		const summaryFile = this.app.vault.getAbstractFileByPath(summaryPath);
-		if (!(summaryFile instanceof TFile)) {
+		const summaryFile = getFileRef(summaryPath, this.app);
+		if (!summaryFile) {
 			throw new Error(`Project summary file not found: ${summaryPath}`);
 		}
 		const summaryRaw = await this.app.vault.read(summaryFile);
@@ -388,15 +314,12 @@ export class ChatStorageService {
 	async listProjects(): Promise<ChatProject[]> {
 		if (!this.dbReady) return [];
 		const projectRepo = sqliteStoreManager.getChatProjectRepo();
-		const projects = await projectRepo.listProjects(false); // Exclude archived
-
+		const projects = await projectRepo.listProjects(false);
 		const result: ChatProject[] = [];
 		for (const projectRow of projects) {
 			try {
 				const project = await this.readProject(projectRow.project_id);
-				if (project) {
-					result.push(project);
-				}
+				if (project) result.push(project);
 			} catch (error) {
 				console.error(`Failed to read project: ${projectRow.project_id}`, error);
 			}
@@ -407,16 +330,12 @@ export class ChatStorageService {
 	async listConversations(projectId: string | null, limit?: number, offset?: number): Promise<ChatConversation[]> {
 		if (!this.dbReady) return [];
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
-		const conversations = await convRepo.listByProject(projectId, false, limit, offset); // Exclude archived
-
+		const conversations = await convRepo.listByProject(projectId, false, limit, offset);
 		const result: ChatConversation[] = [];
 		for (const convRow of conversations) {
 			try {
-				// Don't load messages for listing (only metadata and context)
 				const conv = await this.readConversation(convRow.conversation_id, false);
-				if (conv) {
-					result.push(conv);
-				}
+				if (conv) result.push(conv);
 			} catch (error) {
 				console.error(`Failed to read conversation: ${convRow.conversation_id}`, error);
 			}
@@ -424,19 +343,12 @@ export class ChatStorageService {
 		return result;
 	}
 
-	/**
-	 * Count conversations, optionally filtered by project.
-	 */
 	async countConversations(projectId: string | null): Promise<number> {
 		if (!this.dbReady) return 0;
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
-		return convRepo.countByProject(projectId, false); // Exclude archived
+		return convRepo.countByProject(projectId, false);
 	}
 
-	/**
-	 * Update starred status for a message.
-	 * Optionally accepts content preview and attachment summary to store when starring.
-	 */
 	async updateMessageStarred(
 		messageId: string,
 		starred: boolean,
@@ -448,22 +360,12 @@ export class ChatStorageService {
 		await messageRepo.updateStarred(messageId, starred, contentPreview, attachmentSummary);
 	}
 
-	/**
-	 * Persist suggested-followup chips for an assistant message. Called by the
-	 * service layer after async generation completes post-stream so the next
-	 * conversation reload doesn't trigger another LLM round-trip.
-	 */
 	async updateMessageSuggestedFollowups(messageId: string, followups: string[]): Promise<void> {
 		if (!this.dbReady) return;
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		await messageRepo.updateSuggestedFollowups(messageId, followups);
 	}
 
-	/**
-	 * List starred messages for a project.
-	 * Returns messages with conversationId mapping for easy lookup.
-	 * Uses content preview and attachment summary from database (no markdown parsing needed).
-	 */
 	async listStarredMessagesByProject(projectId: string): Promise<{
 		messages: ChatMessage[];
 		messageToConversationId: Map<string, string>;
@@ -474,14 +376,11 @@ export class ChatStorageService {
 		const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
 		const messageIds = messageRows.map((m) => m.message_id);
 		const resourcesMap = messageIds.length > 0 ? await resourceRepo.getByMessageIds(messageIds) : new Map();
-		
-		// Convert SQLite rows to ChatMessage objects
-		// Use content_preview from database instead of parsing markdown
+
 		const messages = messageRows.map((row) => {
 			const msg: ChatMessage = {
 				id: row.message_id,
 				role: row.role as ChatMessage['role'],
-				// Use preview content from database (or empty string if not available)
 				content: row.content_preview || '',
 				createdAtTimestamp: row.created_at_ts,
 				createdAtZone: row.created_at_zone ?? 'UTC',
@@ -494,9 +393,7 @@ export class ChatStorageService {
 			if (row.gen_time_ms !== null) msg.genTimeMs = row.gen_time_ms;
 			if (row.thinking) msg.reasoning = { content: row.thinking };
 			if (row.token_usage_json) {
-				try {
-					msg.tokenUsage = JSON.parse(row.token_usage_json);
-				} catch { }
+				try { msg.tokenUsage = JSON.parse(row.token_usage_json); } catch { /* ignore */ }
 			}
 			if (row.suggested_followups_json) {
 				try {
@@ -504,71 +401,59 @@ export class ChatStorageService {
 					if (Array.isArray(parsed)) {
 						msg.suggestedFollowups = parsed.filter((s) => typeof s === 'string');
 					}
-				} catch { }
+				} catch { /* ignore */ }
 			}
-			// Note: We don't load full resources for starred messages list
-			// The attachment_summary field provides a summary instead
-			// If attachment_summary is available, we could add it as a metadata field
-			// For now, we'll just use the preview content
 			return msg;
 		});
-		
-		// Create mapping from message ID to conversation ID
+
 		const messageToConversationId = new Map<string, string>();
 		for (const row of messageRows) {
 			messageToConversationId.set(row.message_id, row.conversation_id);
 		}
-		
+
 		return { messages, messageToConversationId };
 	}
 
 	// file and path operations =================================================
 
-	/**
-	 * Get or build conversation file path and file.
-	 * Returns the file if it exists, or null if it needs to be created.
-	 */
 	private async getConvFile(
 		conversation: ChatConversationMeta,
 		folder: string
-	): Promise<{ file: TFile | null; path: string }> {
-		let file: TFile | null = null;
+	): Promise<{ file: VaultFileRef | null; path: string }> {
+		let file: VaultFileRef | null = null;
 		let path: string | undefined = undefined;
 
-		// 1. Try to get path/file from conversation meta (highest priority, for renamed files)
 		if (conversation.fileRelPath) {
 			path = getAbsolutePath(this.rootFolder, conversation.fileRelPath);
-			file = this.app.vault.getAbstractFileByPath(path) as TFile | null;
+			file = getFileRef(path, this.app);
 		}
 
-		// 2. If not found, try to get from database
 		if (!path || !file) {
 			try {
 				const convRepo = sqliteStoreManager.getChatConversationRepo();
 				const convRow = await convRepo.getById(conversation.id);
-
 				if (convRow && convRow.file_rel_path) {
 					path = getAbsolutePath(this.rootFolder, convRow.file_rel_path);
-					file = this.app.vault.getAbstractFileByPath(path) as TFile | null;
+					file = getFileRef(path, this.app);
 				}
-			} catch (error) {
-				// Ignore errors, will build new path below
+			} catch {
+				// ignore — fall through to build new path
 			}
 		}
 
-		// 3. If still not found, build and create file
 		if (!path || !file) {
 			const fileName = await ChatDocName.buildConvFileName(
 				conversation.createdAtTimestamp,
 				conversation.title,
-				this.app.vault,
+				this.app,
 				folder
 			);
 			path = joinPath(folder, `${fileName}.md`);
-			file = this.app.vault.getAbstractFileByPath(path) as TFile | null;
+			file = getFileRef(path, this.app);
 			if (!file) {
-				await ensureFolder(folder, this.app);
-				file = await this.app.vault.create(path, '');
+				await ensureFolderRecursive(folder, this.app);
+				const created = await this.app.vault.create(path, '');
+				file = created as VaultFileRef;
 			}
 		}
 
@@ -579,39 +464,32 @@ export class ChatStorageService {
 		if (project.folderPath && project.folderPath.trim()) {
 			return getAbsolutePath(this.rootFolder, project.folderPath);
 		}
-		// Use new naming rule - build name without conflict resolution for existing projects
 		const baseName = await ChatDocName.buildProjectFolderName(project.createdAtTimestamp, project.name);
 		return joinPath(this.rootFolder, baseName);
 	}
 
 	private async ensureProjectFolder(project: ChatProjectMeta): Promise<void> {
-		await ensureFolder(this.rootFolder, this.app);
+		await ensureFolderRecursive(this.rootFolder, this.app);
 		const projectFolder = await this.getProjectFolderPath(project);
-		await ensureFolder(projectFolder, this.app);
+		await ensureFolderRecursive(projectFolder, this.app);
 	}
 
-	/**
-	 * Ensure conversation file exists, create if needed.
-	 */
-	private async ensureConversationFile(conversation: ChatConversation): Promise<TFile> {
-		// Get project meta to determine folder
+	private async ensureConversationFile(conversation: ChatConversation): Promise<VaultFileRef> {
 		const projectMeta = conversation.meta.projectId
 			? await this.readProjectMeta(conversation.meta.projectId)
 			: null;
 		const folder = projectMeta ? await this.getProjectFolderPath(projectMeta) : this.rootFolder;
-		await ensureFolder(folder, this.app);
+		await ensureFolderRecursive(folder, this.app);
 
-		// Build filename
 		const fileName = await ChatDocName.buildConvFileName(
 			conversation.meta.createdAtTimestamp,
 			conversation.meta.title,
-			this.app.vault,
+			this.app,
 			folder
 		);
 		const path = joinPath(folder, `${fileName}.md`);
 
-		// Check if conversation file exists before creating
-		const existingFile = this.app.vault.getAbstractFileByPath(path);
+		const existingFile = getFileRef(path, this.app);
 		if (!existingFile) {
 			const emptyMarkdown = ChatConversationDoc.buildMarkdown({
 				docModel: {
@@ -622,29 +500,20 @@ export class ChatStorageService {
 					messages: [],
 				},
 			});
-			return await writeFile(null, path, emptyMarkdown, this.app);
-		} else {
-			return existingFile as TFile;
+			return writeVaultFile(null, path, emptyMarkdown, this.app);
 		}
+		return existingFile;
 	}
 
-	/**
-	 * Read conversation file and parse markdown document.
-	 */
-	private async getConvDoc(fileRelPath: string): Promise<{ file: TFile; docModel: ChatConversationDocModel; raw: string } | null> {
+	private async getConvDoc(fileRelPath: string): Promise<{ file: VaultFileRef; docModel: ChatConversationDocModel; raw: string } | null> {
 		const filePath = getAbsolutePath(this.rootFolder, fileRelPath);
-		const file = this.app.vault.getAbstractFileByPath(filePath);
-		if (!(file instanceof TFile)) {
-			return null;
-		}
+		const file = getFileRef(filePath, this.app);
+		if (!file) return null;
 		const raw = await this.app.vault.read(file);
 		const docModel = ChatConversationDoc.parse(raw);
 		return { file, docModel, raw };
 	}
 
-	/**
-	 * Load conversation messages from sqlite and merge with markdown content.
-	 */
 	private async loadConversationMessages(
 		conversationId: string,
 		docModel?: ChatConversationDocModel
@@ -660,7 +529,6 @@ export class ChatStorageService {
 			}
 		}
 
-		// Load messages from sqlite
 		if (!this.dbReady) return [];
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		const messageRows = await messageRepo.listByConversation(conversationId);
@@ -671,7 +539,6 @@ export class ChatStorageService {
 		const allMarkdownMessages = ChatStorageService.collectAllMarkdownMessages(docModel);
 		this.mergeMarkdownContentIntoMessages(messages, allMarkdownMessages);
 
-		// Warn if message counts don't match
 		const totalMarkdownMessages = allMarkdownMessages.length;
 		const totalTopicMessages = docModel.topics.reduce((sum, t) => sum + t.messages.length, 0);
 		if (messages.length !== totalMarkdownMessages) {
@@ -681,9 +548,6 @@ export class ChatStorageService {
 		return messages;
 	}
 
-	/**
-	 * Convert SQLite message rows to ChatMessage array.
-	 */
 	private convertSqliteRowsToMessages(
 		messageRows: DbSchema['chat_message'][],
 		resourcesMap: Map<string, DbSchema['chat_message_resource'][]>
@@ -692,7 +556,7 @@ export class ChatStorageService {
 			const msg: ChatMessage = {
 				id: row.message_id,
 				role: row.role as ChatMessage['role'],
-				content: '', // Filled from markdown
+				content: '',
 				createdAtTimestamp: row.created_at_ts,
 				createdAtZone: row.created_at_zone ?? 'UTC',
 				starred: row.starred === 1,
@@ -705,9 +569,7 @@ export class ChatStorageService {
 			if (row.gen_time_ms !== null) msg.genTimeMs = row.gen_time_ms;
 			if (row.thinking) msg.reasoning = { content: row.thinking };
 			if (row.token_usage_json) {
-				try {
-					msg.tokenUsage = JSON.parse(row.token_usage_json);
-				} catch { }
+				try { msg.tokenUsage = JSON.parse(row.token_usage_json); } catch { /* ignore */ }
 			}
 			if (row.suggested_followups_json) {
 				try {
@@ -715,7 +577,7 @@ export class ChatStorageService {
 					if (Array.isArray(parsed)) {
 						msg.suggestedFollowups = parsed.filter((s) => typeof s === 'string');
 					}
-				} catch { }
+				} catch { /* ignore */ }
 			}
 			const resources = resourcesMap.get(row.message_id);
 			if (resources && resources.length > 0) {
@@ -730,9 +592,6 @@ export class ChatStorageService {
 		});
 	}
 
-	/**
-	 * Collect all messages from docModel (topics + NoTopic) in chronological order.
-	 */
 	private static collectAllMarkdownMessages(docModel: ChatConversationDocModel): Array<{
 		content: string;
 		title?: string;
@@ -746,7 +605,6 @@ export class ChatStorageService {
 			topic?: string;
 		}> = [];
 
-		// Add messages from topics (in topic order, message order within each topic)
 		for (const topic of docModel.topics) {
 			for (const topicMsg of topic.messages) {
 				allMessages.push({
@@ -758,22 +616,18 @@ export class ChatStorageService {
 			}
 		}
 
-		// Add messages from NoTopic section
 		for (const noTopicMsg of docModel.messages) {
 			allMessages.push({
 				content: noTopicMsg.content,
 				title: noTopicMsg.title,
 				role: noTopicMsg.role,
-				topic: undefined, // NoTopic messages have no topic
+				topic: undefined,
 			});
 		}
 
 		return allMessages;
 	}
 
-	/**
-	 * Merge markdown content (content, title, role, topic) into SQLite messages.
-	 */
 	private mergeMarkdownContentIntoMessages(
 		messages: ChatMessage[],
 		allMarkdownMessages: Array<{
@@ -783,38 +637,25 @@ export class ChatStorageService {
 			topic?: string;
 		}>
 	): void {
-		// Index-based merge: assumes chronological order matches between sqlite and markdown.
 		const minLength = Math.min(messages.length, allMarkdownMessages.length);
 		for (let i = 0; i < minLength; i++) {
 			const docData = allMarkdownMessages[i];
 			messages[i].content = docData.content;
 			messages[i].title = docData.title;
 			messages[i].role = docData.role;
-			if (docData.topic) {
-				messages[i].topic = docData.topic;
-			}
+			if (docData.topic) messages[i].topic = docData.topic;
 		}
 	}
-
 
 	// Project folder operations =================================================
 
-	/**
-	 * Get project folder by project id.
-	 */
-	async getProjectFolder(projectId: string): Promise<TFolder | null> {
+	async getProjectFolder(projectId: string): Promise<VaultFolderRef | null> {
 		const projectMeta = await this.readProjectMeta(projectId);
-		if (!projectMeta || !projectMeta.folderPath) {
-			return null;
-		}
+		if (!projectMeta || !projectMeta.folderPath) return null;
 		const folderPath = getAbsolutePath(this.rootFolder, projectMeta.folderPath);
-		const folder = this.app.vault.getAbstractFileByPath(folderPath);
-		return folder instanceof TFolder ? folder : null;
+		return getFolderRef(folderPath, this.app);
 	}
 
-	/**
-	 * Build project folder relative path.
-	 */
 	buildProjectFolderRelPath(name: string, timestamp: number, projectId: string, customFolderPath?: string): string {
 		if (customFolderPath?.trim()) {
 			return getRelativePath(this.rootFolder, normalizeVaultPath(customFolderPath));
@@ -823,9 +664,6 @@ export class ChatStorageService {
 		return getRelativePath(this.rootFolder, joinPath(this.rootFolder, folderName));
 	}
 
-	/**
-	 * Rename project folder and return new relative path.
-	 */
 	async renameProjectFolder(projectId: string, newName: string): Promise<string> {
 		const folder = await this.getProjectFolder(projectId);
 		if (!folder) {
@@ -842,32 +680,26 @@ export class ChatStorageService {
 		const parentPath = folder.parent?.path ?? this.rootFolder;
 		const newFolderPath = normalizeVaultPath(`${parentPath}/${newFolderName}`);
 
-		// Rename the folder
 		await this.app.vault.rename(folder, newFolderName);
 
-		// Return new relative path
 		return getRelativePath(this.rootFolder, newFolderPath);
 	}
 
 	// Conversation file operations =================================================
 
-	/**
-	 * Rename conversation file and return new relative path.
-	 */
 	async renameConversationFile(conversationId: string, title: string): Promise<string> {
 		const conversation = await this.readConversation(conversationId, false);
 		if (!conversation || !conversation.file) {
 			throw new Error('Conversation not found');
 		}
 
-		const folder = conversation.file.parent;
-		const fileToRename = this.findConversationFile(folder, conversation) ?? conversation.file;
+		const folder = conversation.file.parent ?? null;
+		const fileToRename = this.findConversationFile(folder ?? null, conversation) ?? conversation.file;
 
-		// Build new filename with the updated title
 		const newFileName = await ChatDocName.buildConvFileName(
 			conversation.meta.createdAtTimestamp,
 			title,
-			this.app.vault,
+			this.app,
 			folder?.path
 		);
 		const newPath = normalizeVaultPath(
@@ -876,46 +708,35 @@ export class ChatStorageService {
 				: `${newFileName}.md`
 		);
 
-		// Rename the file
 		await this.app.vault.rename(fileToRename, newPath);
 
-		// Return new relative path
 		return getRelativePath(this.rootFolder, newPath);
 	}
 
-	/**
-	 * Locate the conversation file under the provided folder by matching the id suffix.
-	 */
-	private findConversationFile(folder: TFolder | null | undefined, conversation: ChatConversation): TFile | null {
-		if (!folder) {
-			return null;
-		}
+	private findConversationFile(folder: VaultFolderRef | null | undefined, conversation: ChatConversation): VaultFileRef | null {
+		if (!folder) return null;
 
 		const suffix = `-${conversation.meta.id}`;
-		for (const child of folder.children) {
-			if (!(child instanceof TFile) || child.extension !== 'md') {
-				continue;
+		const children = (folder as VaultFolderRef & { children?: ReadonlyArray<unknown> }).children ?? [];
+		for (const child of children) {
+			if (!isFile(child)) continue;
+			const f = child as VaultFileRef;
+			if (f.extension !== 'md') continue;
+			if (f.basename === conversation.file.basename) {
+				return f;
 			}
-			if (child.basename === conversation.file.basename) {
-				return child;
-			}
-			if (child.basename.startsWith('Conv-') && child.basename.endsWith(suffix)) {
-				return child;
+			if (f.basename.startsWith('Conv-') && f.basename.endsWith(suffix)) {
+				return f;
 			}
 		}
 
 		return null;
 	}
 
-	/**
-	 * Delete a project: trash the vault folder and remove all related DB records
-	 * (project, conversations, messages, resources, stars).
-	 */
 	async deleteProject(projectId: string): Promise<void> {
 		if (!this.dbReady) return;
-		// 1. Find and delete all conversations belonging to this project
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
-		const convRows = await convRepo.listByProject(projectId, true); // include archived
+		const convRows = await convRepo.listByProject(projectId, true);
 		const conversationIds = convRows.map(r => r.conversation_id);
 
 		if (conversationIds.length > 0) {
@@ -924,20 +745,15 @@ export class ChatStorageService {
 			await convRepo.deleteByConversationIds(conversationIds);
 		}
 
-		// 2. Trash the project folder in the vault (moves to system trash)
 		const folder = await this.getProjectFolder(projectId);
 		if (folder) {
 			await this.app.vault.trash(folder, true);
 		}
 
-		// 3. Delete the project row from SQLite
 		const projectRepo = sqliteStoreManager.getChatProjectRepo();
 		await projectRepo.deleteByProjectId(projectId);
 	}
 
-	/**
-	 * Delete a conversation: trash the vault file and remove DB records.
-	 */
 	async deleteConversation(conversationId: string): Promise<void> {
 		if (!this.dbReady) return;
 		const conversation = await this.readConversation(conversationId, false);
@@ -950,9 +766,6 @@ export class ChatStorageService {
 		await convRepo.deleteByConversationIds([conversationId]);
 	}
 
-	/**
-	 * Count messages for a conversation (lightweight operation).
-	 */
 	async countMessages(conversationId: string): Promise<number> {
 		if (!this.dbReady) return 0;
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();

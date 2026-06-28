@@ -2,8 +2,15 @@
  * Builds deterministic prep context: backbone map, hub world snapshot, folder digests, doc shortlist.
  */
 
-import { TFolder } from 'obsidian';
-import type { Vault } from 'obsidian';
+import type { VaultFileRef, VaultFolderRef } from '@/core/ports/VaultFileRef';
+import { isFolder } from '@/core/storage/vault/vault-ops';
+// Local alias for the duck-typed vault handle used by buildBackboneMap/world-snapshot helpers.
+type Vault = {
+	getRoot(): VaultFolderRef;
+	getAbstractFileByPath(path: string): VaultFileRef | VaultFolderRef | null;
+};
+// Local alias kept as VaultFolderRef so existing references compile unchanged.
+type TFolder = VaultFolderRef;
 import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { IndexingTemplateId } from '@/core/template/TemplateRegistry';
@@ -129,7 +136,7 @@ async function chunkPages(
 
 async function buildWorldMetrics(nodes: FolderTreeNodeDigest[], vault: Vault): Promise<WorldMetricsDigest> {
 	const root = vault.getRoot();
-	const topLevelBranchCount = root.children.filter((c): c is TFolder => c instanceof TFolder).length;
+	const topLevelBranchCount = root.children.filter((c): c is TFolder => isFolder(c)).length;
 	let totalIndexedDocuments = 0;
 	let orphanHardSampleCount = 0;
 	if (sqliteStoreManager.isInitialized()) {
@@ -209,7 +216,7 @@ export async function buildHubWorldSnapshot(
 		let subfolderNameTokenSample: string[] = [];
 		if (row.childFolderCount > 0) {
 			const af = vault.getAbstractFileByPath(row.path);
-			if (af instanceof TFolder) {
+			if (isFolder(af)) {
 				const childNames = visibleChildFolders(af, excluded, env).map((f) => basenameFromPath(f.path));
 				subfolderNameTokenSample = topTokensFromBasenames(childNames, HUB_DIGEST_NAME_TOKEN_TOP);
 			}

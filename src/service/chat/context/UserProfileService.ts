@@ -1,7 +1,7 @@
-import { App, TFile } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/service/prompt/PromptId';
-import { ensureFolder } from '@/core/utils/vault-utils';
+import { ensureFolderRecursive, getFileRef } from '@/core/storage/vault/vault-ops';
 import { USER_PROFILE_MIN_CONFIDENCE_THRESHOLD } from '@/core/constant';
 
 /**
@@ -23,7 +23,7 @@ export interface UserProfileItem {
  */
 export class UserProfileService {
 	constructor(
-		private readonly app: App,
+		private readonly app: AppHandle,
 		private readonly promptService: PromptService,
 		private readonly contextFilePath: string,
 	) {}
@@ -34,10 +34,10 @@ export class UserProfileService {
 	async init(): Promise<void> {
 		const folderPath = this.contextFilePath.substring(0, this.contextFilePath.lastIndexOf('/'));
 		if (folderPath) {
-			await ensureFolder(folderPath, this.app);
+			await ensureFolderRecursive(folderPath, this.app);
 		}
-		const file = this.app.vault.getAbstractFileByPath(this.contextFilePath);
-		if (!(file instanceof TFile)) {
+		const file = getFileRef(this.contextFilePath, this.app);
+		if (!file) {
 			await this.app.vault.create(this.contextFilePath, '# User Profile\n\n');
 		}
 	}
@@ -211,8 +211,8 @@ export class UserProfileService {
 	 * Load existing context items from file. Markdown only: ## heading = category, - line = item.
 	 */
 	private async loadContextItems(): Promise<UserProfileItem[]> {
-		const file = this.app.vault.getAbstractFileByPath(this.contextFilePath);
-		if (!(file instanceof TFile)) return [];
+		const file = getFileRef(this.contextFilePath, this.app);
+		if (!file) return [];
 		try {
 			const content = await this.app.vault.read(file);
 			return this.parseMarkdownProfile(content);
@@ -285,8 +285,8 @@ export class UserProfileService {
 			}
 		}
 		const content = parts.join('\n').trimEnd() + '\n';
-		const file = this.app.vault.getAbstractFileByPath(this.contextFilePath);
-		if (file instanceof TFile) {
+		const file = getFileRef(this.contextFilePath, this.app);
+		if (file) {
 			await this.app.vault.modify(file, content);
 		} else {
 			await this.app.vault.create(this.contextFilePath, content);

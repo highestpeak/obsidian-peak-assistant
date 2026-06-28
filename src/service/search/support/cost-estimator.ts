@@ -1,4 +1,5 @@
-import { TFile, type App } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
+import { isFile } from '@/core/storage/vault/vault-ops';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
@@ -60,7 +61,7 @@ export class BulkOperationCostEstimator {
 
 		const readContentChars = async (path: string): Promise<number> => {
 			const f = app.vault.getAbstractFileByPath(path);
-			if (f && f instanceof TFile) {
+			if (f && isFile(f)) {
 				const content = await app.vault.cachedRead(f);
 				return content.length;
 			}

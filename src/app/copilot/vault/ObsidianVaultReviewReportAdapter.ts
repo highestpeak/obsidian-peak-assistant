@@ -8,7 +8,7 @@
 // build/parse helpers + the `VaultReviewHistoryRecord` type.
 
 import { Notice, TFile, type App, type TFolder } from 'obsidian';
-import { ensureFolder, joinPath } from '@/core/utils/vault-utils';
+import { ensureFolder, joinPath } from '@/app/vault/vault-helpers';
 import type { VaultReviewReportPort } from '@/service/copilot/vault/ports/VaultReviewPorts';
 import type { VaultReviewSessionSnapshot } from '@/service/copilot/vault/VaultReviewSession';
 import {

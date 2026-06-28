@@ -1,6 +1,6 @@
 import { SLICE_CAPS } from '@/core/constant';
 import { App, TFile } from 'obsidian';
-import { ensureFolder } from '@/core/utils/vault-utils';
+import { ensureFolderRecursive as ensureFolder } from '@/core/storage/vault/vault-ops';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { GraphNodeType } from '@/core/po/graph.po';
 import type { AISearchGraph, AISearchSource } from '@/service/agents/shared-types';

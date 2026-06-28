@@ -31,10 +31,10 @@ import { warmupPool, shutdownPool } from '@/service/agents/core/sdkAgentPool';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { initPatternSystem } from '@/service/context/PatternDiscoveryTrigger';
 import { createPluginDirContentProvider } from '@/core/template/PluginDirContentProvider';
-import { createVaultContentProvider } from '@/core/template/VaultContentProvider';
+import { createVaultContentProvider } from '@/app/template/VaultContentProvider';
 import { clearTemplateEngineForUnload } from '@/core/template-engine-helper';
 import { clearFormatUtilsCaches } from '@/core/utils/format-utils';
-import { getPluginDirAbsolute } from '@/core/utils/obsidian-utils';
+import { getPluginDirAbsolute } from '@/app/vault/obsidian-utils';
 import {
 	hydrateCodeStopwordsFromTemplateManager,
 } from '@/core/utils/markdown-utils';

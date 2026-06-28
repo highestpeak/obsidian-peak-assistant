@@ -1,10 +1,10 @@
 import type { AppHandle as App } from '@/core/ports/AppHandle';
 import path from 'path';
+import fs from 'fs';
 import { BetterSqliteStore } from './better-sqlite3-adapter/BetterSqliteStore';
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from './ddl';
 import type { IndexTenant, SqliteStoreType, SqliteDatabase } from './types';
-import { ensureFolderRecursive } from '@/core/utils/vault-utils';
 import { IndexedDocumentRepo } from './repositories/IndexedDocumentRepo';
 import { DocChunkRepo } from './repositories/DocChunkRepo';
 import { EmbeddingRepo } from './repositories/EmbeddingRepo';
@@ -149,15 +149,24 @@ export class SqliteStoreManager {
 		const basePath = (app.vault.adapter as any)?.basePath ?? '';
 		const normalizedStorageFolder = (storageFolder ?? '').trim().replace(/^\/+/, '');
 
-		if (normalizedStorageFolder) {
-			// Ensure the vault folder exists before opening a file-backed database.
-			await ensureFolderRecursive(normalizedStorageFolder, app);
-		}
-
 		// Calculate the database path
 		const dbPath = basePath
 			? (normalizedStorageFolder ? path.join(basePath, normalizedStorageFolder, dbFilename) : path.join(basePath, dbFilename))
 			: null;
+
+		// Ensure the storage folder exists before opening a file-backed database.
+		// T11R Phase 2: use Node fs directly (SqliteStoreManager is desktop-only,
+		// always runs with full Node fs access) instead of routing through the
+		// vault helpers, which would re-introduce an `obsidian` import in core.
+		if (basePath && normalizedStorageFolder) {
+			const absFolder = path.join(basePath, normalizedStorageFolder);
+			try {
+				fs.mkdirSync(absFolder, { recursive: true });
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err);
+				if (!msg.includes('EEXIST')) throw err;
+			}
+		}
 
 		if (!dbPath) {
 			throw new Error(`SqliteStoreManager init failed: ${dbFilename} database path is missing and vault basePath is unavailable`);

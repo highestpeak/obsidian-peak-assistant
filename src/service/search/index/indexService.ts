@@ -1,5 +1,5 @@
-import { TFile } from 'obsidian';
 import type { AppHandle } from '@/core/ports/AppHandle';
+import { isFile } from '@/core/storage/vault/vault-ops';
 import { normalizeVaultPath } from '@/core/utils/path-utils';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { emptyUsage, type LLMUsage } from '@/core/providers/types';
@@ -2104,7 +2104,7 @@ export class IndexService {
 		const readMarkdownContentChars = async (path: string): Promise<number> => {
 			const app = indexApp;
 			const f = app.vault.getAbstractFileByPath(path);
-			if (!f || !(f instanceof TFile)) return 0;
+			if (!f || !isFile(f)) return 0;
 			const ext = f.extension.toLowerCase();
 			if (ext !== 'md' && ext !== 'markdown') return 0;
 			const content = await app.vault.cachedRead(f);

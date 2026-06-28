@@ -1,4 +1,4 @@
-import { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { ChatProject, ChatProjectMeta } from './types';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
@@ -11,7 +11,7 @@ import { PromptId } from '@/service/prompt/PromptId';
  */
 export class ProjectService {
 	constructor(
-		private readonly app: App,
+		private readonly app: AppHandle,
 		private readonly storage: ChatStorageService,
 		private readonly rootFolder: string,
 		private readonly promptService?: PromptService,

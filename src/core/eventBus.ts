@@ -1,4 +1,4 @@
-import { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import type { ChatProject } from '@/core/types/chat';
 import type { ChatConversation } from '@/core/types/chat-vault';
 
@@ -36,9 +36,6 @@ export abstract class ViewEvent {
 	}
 }
 
-/**
- * Selection changed event
- */
 export class SelectionChangedEvent extends ViewEvent {
 	conversationId?: string | null;
 	projectId?: string | null;
@@ -50,9 +47,6 @@ export class SelectionChangedEvent extends ViewEvent {
 	}
 }
 
-/**
- * Conversation updated event
- */
 export class ConversationUpdatedEvent extends ViewEvent {
 	conversation: ChatConversation;
 
@@ -62,9 +56,6 @@ export class ConversationUpdatedEvent extends ViewEvent {
 	}
 }
 
-/**
- * Project updated event
- */
 export class ProjectUpdatedEvent extends ViewEvent {
 	project: ChatProject;
 
@@ -74,9 +65,6 @@ export class ProjectUpdatedEvent extends ViewEvent {
 	}
 }
 
-/**
- * Scroll to message event
- */
 export class ScrollToMessageEvent extends ViewEvent {
 	messageId: string;
 
@@ -86,9 +74,6 @@ export class ScrollToMessageEvent extends ViewEvent {
 	}
 }
 
-/**
- * Open link event
- */
 export class OpenLinkEvent extends ViewEvent {
 	path: string;
 
@@ -98,18 +83,12 @@ export class OpenLinkEvent extends ViewEvent {
 	}
 }
 
-/**
- * Settings updated event
- */
 export class SettingsUpdatedEvent extends ViewEvent {
 	constructor() {
 		super(ViewEventType.SETTINGS_UPDATED);
 	}
 }
 
-/**
- * Message sent event
- */
 export class MessageSentEvent extends ViewEvent {
 	conversationId: string;
 	projectId?: string | null;
@@ -121,9 +100,6 @@ export class MessageSentEvent extends ViewEvent {
 	}
 }
 
-/**
- * Conversation created event
- */
 export class ConversationCreatedEvent extends ViewEvent {
 	conversationId: string;
 	projectId?: string | null;
@@ -135,9 +111,6 @@ export class ConversationCreatedEvent extends ViewEvent {
 	}
 }
 
-/**
- * Toast event for cross-instance toast display
- */
 export class ShowToastEvent extends ViewEvent {
 	message: string | React.ReactNode;
 	toastType: 'default' | 'success' | 'error' | 'warning' | 'info';
@@ -167,9 +140,6 @@ export class ShowToastEvent extends ViewEvent {
 	}
 }
 
-/**
- * Copilot action event (polish / review / suggest-links / split)
- */
 export class CopilotActionEvent extends ViewEvent {
 	action: string;
 	path: string;
@@ -183,9 +153,6 @@ export class CopilotActionEvent extends ViewEvent {
 	}
 }
 
-/**
- * Search query submitted event
- */
 export class SearchQueryEvent extends ViewEvent {
 	query: string;
 
@@ -195,18 +162,12 @@ export class SearchQueryEvent extends ViewEvent {
 	}
 }
 
-/**
- * Usage recorded event — emitted after each AI call is persisted
- */
 export class UsageRecordedViewEvent extends ViewEvent {
 	constructor(public readonly payload: import('@/service/usage/types').UsageRecordPayload) {
 		super(ViewEventType.USAGE_RECORDED);
 	}
 }
 
-/**
- * AI analysis persisted to vault event
- */
 export class AIAnalysisCompleteEvent extends ViewEvent {
 	query: string | null;
 	summary: string;
@@ -221,33 +182,27 @@ export class AIAnalysisCompleteEvent extends ViewEvent {
 type EventListener<T extends ViewEvent = ViewEvent> = (event: T) => void;
 
 /**
- * Simple event bus using Obsidian's workspace events
+ * T11R Phase 2: EventBus runtime uses {@link AppHandle} (duck-typed access
+ * to `app.workspace.trigger / on / offref`) instead of importing `App`
+ * from `obsidian`. Behavior unchanged.
  */
 export class EventBus {
 	private static instance: EventBus | null = null;
-	private app: App;
+	private app: AppHandle;
 
-	/** All active unsubscribe fns; cleared and invoked in offAll() so workspace refs are released. */
 	private readonly subscribers: Array<() => void> = [];
 
-	private constructor(app: App) {
+	private constructor(app: AppHandle) {
 		this.app = app;
 	}
 
-	/**
-	 * Get singleton instance
-	 */
-	static getInstance(app: App): EventBus {
+	static getInstance(app: AppHandle): EventBus {
 		if (!EventBus.instance) {
 			EventBus.instance = new EventBus(app);
 		}
 		return EventBus.instance;
 	}
 
-	/**
-	 * Remove all subscriptions from workspace, then clear singleton.
-	 * Call from plugin onunload so old refs are released and next load gets a fresh instance.
-	 */
 	static destroyInstance(): void {
 		if (EventBus.instance) {
 			EventBus.instance.offAll();
@@ -255,7 +210,6 @@ export class EventBus {
 		}
 	}
 
-	/** Unregister every subscription so workspace no longer holds refs to plugin closures. */
 	private offAll(): void {
 		const list = this.subscribers;
 		this.subscribers.length = 0;
@@ -268,17 +222,10 @@ export class EventBus {
 		}
 	}
 
-	/**
-	 * Dispatch an event
-	 */
 	dispatch<T extends ViewEvent>(event: T): void {
 		this.app.workspace.trigger(event.type as any, event);
 	}
 
-	/**
-	 * Subscribe to an event (custom view events or workspace events)
-	 * @returns Unsubscribe function
-	 */
 	on<T extends ViewEvent>(eventType: ViewEventType, callback: EventListener<T>): () => void;
 	on(eventType: string, callback: (...args: any[]) => void): () => void;
 	on(eventType: ViewEventType | string, callback: any): () => void {
@@ -292,4 +239,3 @@ export class EventBus {
 		};
 	}
 }
-

@@ -1,5 +1,5 @@
 import { SLICE_CAPS } from '@/core/constant';
-import { App } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
 import { ModelInfoForSwitch, LLMUsage, LLMStreamEvent, LLMRequestMessage, ModelTokenLimits } from '@/core/providers/types';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
 import { modelRegistry } from '@/core/providers/model-registry';

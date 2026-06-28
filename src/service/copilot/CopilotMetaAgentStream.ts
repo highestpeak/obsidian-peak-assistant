@@ -66,7 +66,7 @@ export interface MetaAgentOptions {
 	/** User profile (built from chat extractor) — injected into system prompt so the agent honours stated preferences. */
 	userProfileText?: string;
 	/** T11J B2: caller passes app + pluginId so this module no longer reaches AppContext. */
-	app: import('obsidian').App;
+	app: import('@/core/ports/AppHandle').AppHandle;
 	pluginId: string;
 	/** T11L: narrow port the embedded `get_recent_analysis` tool needs. */
 	analysisHistory: import('@/core/ports/AnalysisHistoryPort').AnalysisHistoryPort;

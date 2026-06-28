@@ -14,7 +14,11 @@
  *   Task 8:  submit_plan + buildVaultMcpServer wrapper
  */
 
-import type { Vault, MetadataCache, CachedMetadata, TFile, App } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
+import type { VaultFileRef as TFile } from '@/core/ports/VaultFileRef';
+import type { CachedMetadataSnapshot as CachedMetadata } from '@/core/ports/HostMetadataPort';
+type Vault = App['vault'];
+type MetadataCache = App['metadataCache'];
 import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import type { ZodObject, ZodRawShape } from 'zod/v3';

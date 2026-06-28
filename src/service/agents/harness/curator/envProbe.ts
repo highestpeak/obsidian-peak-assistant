@@ -5,7 +5,8 @@
  * See spec §5.3.
  */
 
-import { App, TFile } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
+import type { VaultFileRef as TFile } from '@/core/ports/VaultFileRef';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { fetchOllamaModels } from '@/core/providers/ollama/fetchOllamaModels';
 import { isMobile } from '@/core/platform';

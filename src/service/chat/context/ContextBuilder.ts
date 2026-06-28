@@ -7,7 +7,21 @@ import type { UserProfileService } from '@/service/chat/context/UserProfileServi
 import type { ModelCapabilities } from '@/core/providers/types';
 import type { AppHandle as App } from '@/core/ports/AppHandle'; // T11L: opaque to keep file out of obsidian import surface
 import { getImageMimeType, getFileMimeType } from '@/core/document/helper/FileTypeUtils';
-import { readFileAsBase64 } from '@/core/utils/obsidian-utils';
+// T11R Phase 2: inline base64 read via the AppHandle duck-type so this
+// module no longer imports the obsidian-utils helper (which now lives
+// under @/app/**, off-limits for service code).
+async function readFileAsBase64(source: string, app: { vault: { getAbstractFileByPath(p: string): unknown; readBinary(f: unknown): Promise<ArrayBuffer> } } | undefined): Promise<string | null> {
+	if (!app) return null;
+	try {
+		const path = source.startsWith('/') ? source.slice(1) : source;
+		const file = app.vault.getAbstractFileByPath(path);
+		if (!file) return null;
+		const ab = await app.vault.readBinary(file);
+		return Buffer.from(ab).toString('base64');
+	} catch {
+		return null;
+	}
+}
 
 /**
  * Context building options

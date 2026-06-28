@@ -1,4 +1,6 @@
-import type { App, TFile, CachedMetadata } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
+import type { VaultFileRef as TFile } from '@/core/ports/VaultFileRef';
+import type { CachedMetadataSnapshot as CachedMetadata } from '@/core/ports/HostMetadataPort';
 
 export interface VaultContext {
 	activeDocumentTitle: string | null;

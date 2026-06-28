@@ -1,4 +1,4 @@
-import { App } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { LLMUsage, LLMOutputControlSettings, LLMStreamEvent, ToolEvent } from '@/core/providers/types';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
@@ -32,7 +32,7 @@ import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { generateContentPreview, generateAttachmentSummary } from '@/core/utils/message-preview-utils';
 import { resolveModelCapabilities, type ModelCapabilities } from '@/core/providers/types';
 import { detectTimezone } from '@/core/utils/date-utils';
-import { uploadFilesToVault } from '@/core/utils/vault-utils';
+import { uploadFilesToVault } from '@/core/storage/vault/vault-ops';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { buildChatTools } from '@/service/chat/tools/chatToolBuilder';
 import type { ChatRuntimeStatePort } from '@/service/chat/ChatRuntimeStatePort';
@@ -56,7 +56,7 @@ export class ConversationService {
 	private readonly resourceLoaderManager: ResourceLoaderManager;
 
 	constructor(
-		private readonly app: App,
+		private readonly app: AppHandle,
 		private readonly storage: ChatStorageService,
 		private readonly promptService: PromptService,
 		private readonly defaultModel: { provider: string; modelId: string },

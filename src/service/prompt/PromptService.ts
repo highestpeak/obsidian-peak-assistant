@@ -1,6 +1,7 @@
-import { App, TFile } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import { PromptId, type PromptVariables, PromptInfo } from './PromptId';
-import { ensureFolder, normalizeVaultPath } from '@/core/utils/vault-utils';
+import { normalizeVaultPath } from '@/core/utils/path-utils';
+import { ensureFolderRecursive, getFileRef, getFolderRef, isFile } from '@/core/storage/vault/vault-ops';
 import type { AIServiceSettings } from '@/core/config/settingsTypes';
 import { getAIPromptFolder } from '@/core/config/folderPaths';
 import type { CompiledTemplate } from '@/core/template-engine-helper';
@@ -25,7 +26,7 @@ export class PromptService {
 	private prompter?: IAgentPrompter;
 
 	constructor(
-		private readonly app: App,
+		private readonly app: AppHandle,
 		settings: AIServiceSettings,
 		_chat?: unknown, // Legacy parameter — no longer used (was MultiProviderChatService)
 		private readonly templateManager?: TemplateManager,
@@ -45,7 +46,7 @@ export class PromptService {
 	}
 
 	async init(): Promise<void> {
-		await ensureFolder(this.promptFolder, this.app);
+		await ensureFolderRecursive(this.promptFolder, this.app);
 	}
 
 	setPromptFolder(folder: string): void {
@@ -158,18 +159,22 @@ export class PromptService {
 	/** Check if an override file exists for the given template id. */
 	checkOverrideExists(id: TemplateId): boolean {
 		const filePath = normalizeVaultPath(`${this.promptFolder}/${id}.prompt.md`);
-		return this.app.vault.getAbstractFileByPath(filePath) instanceof TFile;
+		return getFileRef(filePath, this.app) != null;
 	}
 
 	/** Scan the prompts folder and return a set of template ids that have override files. */
 	scanOverrides(): Set<string> {
-		const folder = this.app.vault.getAbstractFileByPath(this.promptFolder);
+		const folder = getFolderRef(this.promptFolder, this.app);
 		const result = new Set<string>();
-		if (!folder || !('children' in folder)) return result;
-		for (const child of (folder as any).children) {
-			if (child instanceof TFile && child.extension === 'md' && child.name.endsWith('.prompt.md')) {
-				const id = child.name.replace(/\.prompt\.md$/, '');
-				result.add(id);
+		if (!folder) return result;
+		const children = (folder as { children?: ReadonlyArray<unknown> }).children ?? [];
+		for (const child of children) {
+			if (isFile(child)) {
+				const f = child as { name: string; extension: string };
+				if (f.extension === 'md' && f.name.endsWith('.prompt.md')) {
+					const id = f.name.replace(/\.prompt\.md$/, '');
+					result.add(id);
+				}
 			}
 		}
 		return result;
@@ -179,9 +184,7 @@ export class PromptService {
 	async createOverrideFile(id: TemplateId): Promise<string> {
 		const filePath = normalizeVaultPath(`${this.promptFolder}/${id}.prompt.md`);
 
-		if (this.app.vault.getAbstractFileByPath(filePath) instanceof TFile) {
-			return filePath;
-		}
+		if (getFileRef(filePath, this.app)) return filePath;
 
 		const defaultContent = this.templateManager
 			? await this.templateManager.getTemplate(id)
@@ -200,7 +203,7 @@ export class PromptService {
 
 		const fileContent = `${metaBlock}\n\n${defaultContent}`;
 
-		await ensureFolder(this.promptFolder, this.app);
+		await ensureFolderRecursive(this.promptFolder, this.app);
 		await this.app.vault.create(filePath, fileContent);
 		return filePath;
 	}
@@ -208,8 +211,8 @@ export class PromptService {
 	/** Delete an override file and clear its cache entry. */
 	async deleteOverride(id: TemplateId): Promise<void> {
 		const filePath = normalizeVaultPath(`${this.promptFolder}/${id}.prompt.md`);
-		const file = this.app.vault.getAbstractFileByPath(filePath);
-		if (file instanceof TFile) {
+		const file = getFileRef(filePath, this.app);
+		if (file) {
 			await this.app.vault.delete(file);
 		}
 		this.overrideCache.delete(`override:${id}`);
@@ -224,11 +227,9 @@ export class PromptService {
 
 		const fileName = `${id}.prompt.md`;
 		const filePath = normalizeVaultPath(`${this.promptFolder}/${fileName}`);
-		const file = this.app.vault.getAbstractFileByPath(filePath);
+		const file = getFileRef(filePath, this.app);
 
-		if (!(file instanceof TFile)) {
-			return undefined;
-		}
+		if (!file) return undefined;
 
 		try {
 			const raw = (await this.app.vault.read(file)).trim();

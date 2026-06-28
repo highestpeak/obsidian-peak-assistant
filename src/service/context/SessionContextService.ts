@@ -1,4 +1,6 @@
-import type { App, TFile, EventRef } from 'obsidian';
+import type { AppHandle as App } from '@/core/ports/AppHandle';
+import type { VaultFileRef as TFile } from '@/core/ports/VaultFileRef';
+type EventRef = unknown;
 import type { EventBus } from '@/core/eventBus';
 import { ViewEventType } from '@/core/eventBus';
 import type { MobiusOperationRow } from '@/core/storage/sqlite/repositories/MobiusOperationRepo';

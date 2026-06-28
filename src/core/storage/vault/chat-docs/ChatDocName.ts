@@ -1,48 +1,43 @@
-import { Vault, TFile, TFolder } from 'obsidian';
+import type { AppHandle } from '@/core/ports/AppHandle';
 import { normalizeVaultPath } from '@/core/utils/path-utils';
+import { getFileRef, getFolderRef } from '@/core/storage/vault/vault-ops';
 
 /**
  * Utility for building chat document names with timestamp and conflict resolution.
+ *
+ * T11R Phase 2: parameter previously typed as Obsidian `Vault` is now an
+ * {@link AppHandle} (`{ vault: ... }`) so this module no longer imports
+ * from `obsidian`. Conflict detection uses the vault-ops helper duck-typing
+ * instead of `instanceof TFile / TFolder`.
  */
 export class ChatDocName {
 
-	/**
-	 * Build project folder name with conflict resolution: Project-mmddhhmmss-<name>
-	 * If vault and folder are not provided, returns base name without conflict resolution.
-	 */
 	static async buildProjectFolderName(
 		timestamp: number,
 		name: string,
-		vault?: Vault,
+		app?: AppHandle,
 		folder?: string
 	): Promise<string> {
 		const baseName = this.buildName('Project', timestamp, name);
-		if (vault && folder) {
-			return this.resolveNonConflictingPath(vault, folder, baseName);
+		if (app && folder) {
+			return this.resolveNonConflictingPath(app, folder, baseName);
 		}
 		return baseName;
 	}
 
-	/**
-	 * Build conversation file name with conflict resolution: Conv-mmddhhmmss-<title>
-	 * If vault and folder are not provided, returns base name without conflict resolution.
-	 */
 	static async buildConvFileName(
 		timestamp: number,
 		title: string,
-		vault?: Vault,
+		app?: AppHandle,
 		folder?: string
 	): Promise<string> {
 		const baseName = this.buildName('Conv', timestamp, title);
-		if (vault && folder) {
-			return this.resolveNonConflictingPath(vault, folder, baseName);
+		if (app && folder) {
+			return this.resolveNonConflictingPath(app, folder, baseName);
 		}
 		return baseName;
 	}
 
-	/**
-	 * Build base name: <prefix>-mmddhhmmss-<summarytitle>
-	 */
 	private static buildName(prefix: string, timestamp: number, summaryTitle: string): string {
 		const date = new Date(timestamp);
 		const mm = this.pad(date.getMonth() + 1);
@@ -55,9 +50,6 @@ export class ChatDocName {
 		return `${prefix}-${timeStr}-${sanitized}`;
 	}
 
-	/**
-	 * Sanitize summary title for use in filename.
-	 */
 	private static sanitizeSummaryTitle(title: string, maxLength: number = 60): string {
 		const sanitized = this.slugify(title);
 		if (sanitized.length > maxLength) {
@@ -66,13 +58,6 @@ export class ChatDocName {
 		return sanitized || 'untitled';
 	}
 
-	/**
-	 * Convert a string into a "slug" — a simplified, URL- and filename-safe version of the text,
-	 * containing only lowercase letters, numbers, and hyphens. Slugs are often used in URLs or as filenames
-	 * to avoid spaces and special characters.
-	 * 
-	 * Example: "Hello World!" => "hello-world"
-	 */
 	private static slugify(text: string): string {
 		return text
 			.toLowerCase()
@@ -82,42 +67,33 @@ export class ChatDocName {
 			.replace(/^-+|-+$/g, '');
 	}
 
-	/**
-	 * Resolve non-conflicting path by checking for same-second collisions.
-	 * Only adds index suffix if collision detected.
-	 */
 	private static async resolveNonConflictingPath(
-		vault: Vault,
+		app: AppHandle,
 		folder: string,
 		baseName: string
 	): Promise<string> {
 		const normalizedFolder = normalizeVaultPath(folder);
-		const folderObj = vault.getAbstractFileByPath(normalizedFolder);
-		if (!(folderObj instanceof TFolder)) {
+		const folderRef = getFolderRef(normalizedFolder, app);
+		if (!folderRef) {
 			return baseName;
 		}
 
-		// Check if base name exists
 		const basePath = normalizeVaultPath(`${normalizedFolder}/${baseName}`);
-		const existing = vault.getAbstractFileByPath(basePath);
-		if (!existing) {
+		if (!getFileRef(basePath, app) && !getFolderRef(basePath, app)) {
 			return baseName;
 		}
 
-		// Collision detected - add index suffix
 		let index = 1;
 		let candidateName: string;
 		do {
 			candidateName = `${baseName}-${index}`;
 			const candidatePath = normalizeVaultPath(`${normalizedFolder}/${candidateName}`);
-			const candidate = vault.getAbstractFileByPath(candidatePath);
-			if (!candidate) {
+			if (!getFileRef(candidatePath, app) && !getFolderRef(candidatePath, app)) {
 				return candidateName;
 			}
 			index++;
-		} while (index < 1000); // Safety limit
+		} while (index < 1000);
 
-		// Fallback: append timestamp if still colliding
 		return `${baseName}-${Date.now()}`;
 	}
 

@@ -73,7 +73,7 @@ export async function* runKnowledgeIntuitionLoop(options: {
 	onComplete: IntuitionReconCompleteCallback;
 	debug?: ReconLoopDebugOptions;
 	/** T11J B1: caller passes app + pluginId so this module no longer reaches AppContext. */
-	app: import('obsidian').App;
+	app: import('@/core/ports/AppHandle').AppHandle;
 	pluginId: string;
 }): AsyncGenerator<LLMStreamEvent, void> {
 	const { ctx, stepId, aiServiceManager, onComplete, debug, app, pluginId } = options;
