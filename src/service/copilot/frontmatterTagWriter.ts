@@ -1,4 +1,4 @@
-import type { TFile } from 'obsidian';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 
 /**
  * IO primitive the writer needs. The app adapter supplies a closure over
@@ -9,7 +9,7 @@ import type { TFile } from 'obsidian';
  * dependency lives in the app adapter now.
  */
 export interface ProcessFrontMatterOp {
-	(file: TFile, mutator: (fm: Record<string, unknown>) => void): Promise<void>;
+	(file: VaultFileRef, mutator: (fm: Record<string, unknown>) => void): Promise<void>;
 }
 
 /**
@@ -18,7 +18,7 @@ export interface ProcessFrontMatterOp {
  * write since Obsidian's frontmatter convention is bare tag names.
  */
 export async function writeTagsToFrontmatter(
-	file: TFile,
+	file: VaultFileRef,
 	tagsToAdd: string[],
 	processFrontMatter: ProcessFrontMatterOp,
 ): Promise<void> {

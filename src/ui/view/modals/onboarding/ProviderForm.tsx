@@ -10,6 +10,7 @@ import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createPresetProfile } from '@/core/profiles/presets';
 import type { ProfileKind } from '@/core/profiles/types';
 import { testProviderConnection } from '@/core/providers/testProviderConnection';
+import { uiHttpClient } from '@/ui/util/uiHttpClient';
 import { Button } from '@/ui/component/shared-ui/button';
 import {
     Shield,
@@ -74,7 +75,7 @@ export function AddProviderForm({
     const handleTest = useCallback(async () => {
         setTesting(true);
         setTestResult(null);
-        const ok = await testProviderConnection(selectedKind, apiKey);
+        const ok = await testProviderConnection(uiHttpClient, selectedKind, apiKey);
         setTestResult(ok ? 'success' : 'fail');
         setTesting(false);
     }, [apiKey, selectedKind]);
@@ -194,7 +195,7 @@ export function SavedProfileRow({ profile, onDelete, onChange }: SavedProfileRow
         if (!apiKey.trim()) return;
         setTesting(true);
         setTestResult(null);
-        const ok = await testProviderConnection(profile.kind, apiKey);
+        const ok = await testProviderConnection(uiHttpClient, profile.kind, apiKey);
         setTestResult(ok ? 'success' : 'fail');
         setTesting(false);
     }, [apiKey, profile.kind]);

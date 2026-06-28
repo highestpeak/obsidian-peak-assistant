@@ -7,6 +7,7 @@ import type { Profile, ProfileKind } from '@/core/profiles/types';
 import { ProviderIcon, PROVIDER_LABELS } from './ProviderIcon';
 import { ModelCombobox } from './ModelCombobox';
 import { testProviderConnection } from '@/core/providers/testProviderConnection';
+import { uiHttpClient } from '@/ui/util/uiHttpClient';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -126,7 +127,7 @@ export function ProfileCard({
         e.stopPropagation();
         setTesting(true);
         setTestResult(null);
-        const ok = await testProviderConnection(profile);
+        const ok = await testProviderConnection(uiHttpClient, profile);
         setTestResult(ok ? 'success' : 'fail');
         setTesting(false);
     };

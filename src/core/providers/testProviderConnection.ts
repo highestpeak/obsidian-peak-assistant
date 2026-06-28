@@ -1,15 +1,20 @@
-import { requestUrl } from 'obsidian';
 import type { Profile, ProfileKind } from '@/core/profiles/types';
 import { createPresetProfile } from '@/core/profiles/presets';
+import type { HttpClientPort } from '@/core/ports/HttpClientPort';
 
 /**
  * Test connectivity for a provider profile.
  * Uses a lightweight API call (list models or minimal message) to verify
  * both reachability AND authentication (401/403 = bad key → false).
+ *
+ * T11R: HTTP transport is injected as {@link HttpClientPort} (the app
+ * composes one backed by Obsidian's `requestUrl`) so this module no
+ * longer imports `obsidian` directly.
  */
-export async function testProviderConnection(profile: Profile): Promise<boolean>;
-export async function testProviderConnection(kind: ProfileKind, apiKey: string): Promise<boolean>;
+export async function testProviderConnection(http: HttpClientPort, profile: Profile): Promise<boolean>;
+export async function testProviderConnection(http: HttpClientPort, kind: ProfileKind, apiKey: string): Promise<boolean>;
 export async function testProviderConnection(
+	http: HttpClientPort,
 	kindOrProfile: ProfileKind | Profile,
 	apiKey?: string,
 ): Promise<boolean> {
@@ -26,7 +31,7 @@ export async function testProviderConnection(
 		if (kind === 'anthropic') {
 			headers['x-api-key'] = key;
 			headers['anthropic-version'] = '2023-06-01';
-			const res = await requestUrl({
+			const res = await http.request({
 				url: `${baseUrl}/v1/messages`,
 				method: 'POST',
 				headers,
@@ -35,23 +40,23 @@ export async function testProviderConnection(
 					max_tokens: 1,
 					messages: [{ role: 'user', content: 'hi' }],
 				}),
-				throw: false,
+				throwOnError: false,
 			});
 			return res.status >= 200 && res.status < 400;
 		} else if (kind === 'ollama') {
-			const res = await requestUrl({
+			const res = await http.request({
 				url: `${baseUrl}/api/tags`,
 				method: 'GET',
-				throw: false,
+				throwOnError: false,
 			});
 			return res.status < 500;
 		} else {
 			headers['Authorization'] = `Bearer ${key}`;
-			const res = await requestUrl({
+			const res = await http.request({
 				url: `${baseUrl}/v1/models`,
 				method: 'GET',
 				headers,
-				throw: false,
+				throwOnError: false,
 			});
 			return res.status >= 200 && res.status < 400;
 		}

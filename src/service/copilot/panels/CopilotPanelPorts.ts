@@ -16,7 +16,7 @@
 // expose `app` / `vault` / `workspace` / `fileManager` accessors — that
 // would only hide the dependency from the scanner without removing it.
 
-import type { TFile } from 'obsidian';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import type { DocumentContext } from '../CopilotActionRegistry';
 import type { CopilotRunArtifacts } from '../CopilotRunArtifacts';
 import type { IntentTabId } from '../intent-hub';
@@ -28,23 +28,23 @@ import type { IntentTabId } from '../intent-hub';
  */
 export interface CopilotPanelVaultPort {
 	/** Look up an Obsidian file by vault-relative path. Returns null if missing. */
-	findFileByPath(path: string): TFile | null;
+	findFileByPath(path: string): VaultFileRef | null;
 
 	/** Currently active markdown file in the workspace, or null. */
-	getActiveFile(): TFile | null;
+	getActiveFile(): VaultFileRef | null;
 
 	/** Cached vault read. */
-	readFileContent(file: TFile): Promise<string>;
+	readFileContent(file: VaultFileRef): Promise<string>;
 
 	/** Atomic vault rewrite. */
-	replaceFileContent(file: TFile, content: string): Promise<void>;
+	replaceFileContent(file: VaultFileRef, content: string): Promise<void>;
 
 	/**
 	 * Append `text` to the end of `file` separated from existing content by a
 	 * newline (single newline if the file already ends with `\n`, double
 	 * newline otherwise).
 	 */
-	appendToFile(file: TFile, text: string): Promise<void>;
+	appendToFile(file: VaultFileRef, text: string): Promise<void>;
 
 	/**
 	 * Same as `appendToFile` but resolves the file by path first. Returns
@@ -79,17 +79,17 @@ export interface CopilotPanelVaultPort {
 	 * Add the given tags to `file`'s frontmatter via Obsidian's atomic
 	 * `processFrontMatter` API. Wraps the old `writeTagsToFrontmatter` helper.
 	 */
-	writeFrontmatterTags(file: TFile, tags: string[]): Promise<void>;
+	writeFrontmatterTags(file: VaultFileRef, tags: string[]): Promise<void>;
 
 	/**
 	 * Open a vault file by path in a new leaf. Falls back to `openLinkText`
 	 * (which Obsidian uses for `[[wikilinks]]`) when the path does not point
-	 * to an existing TFile.
+	 * to an existing VaultFileRef.
 	 */
 	openNote(path: string, opts?: { newLeaf?: boolean | 'tab' | 'window' }): Promise<void>;
 
 	/** Move `file` to the system/Obsidian trash. Used by the dedupe panel. */
-	trashFile(file: TFile): Promise<void>;
+	trashFile(file: VaultFileRef): Promise<void>;
 }
 
 /**

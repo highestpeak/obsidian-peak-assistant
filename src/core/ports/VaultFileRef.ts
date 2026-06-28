@@ -25,6 +25,11 @@ export interface VaultFileRef {
 	/** Lower-case extension without leading dot, e.g. `md`. */
 	extension: string;
 	stat: VaultFileStat;
+	/**
+	 * Parent folder ref, mirroring Obsidian's `TFile.parent`. Optional so
+	 * fakes can omit it; null for root-of-vault files.
+	 */
+	parent?: VaultFolderRef | null;
 }
 
 export interface VaultFolderRef {
@@ -32,4 +37,11 @@ export interface VaultFolderRef {
 	path: string;
 	/** Folder name (last segment). */
 	name: string;
+	/**
+	 * Children mirror Obsidian's `TFolder.children`. Optional so light fakes
+	 * can omit; concrete adapters provide the live list. Each child is
+	 * either a file ref or a folder ref.
+	 */
+	children?: ReadonlyArray<VaultFileRef | VaultFolderRef>;
+	parent?: VaultFolderRef | null;
 }

@@ -21,7 +21,7 @@
 
 import type { PromptId, PromptVariables } from '@/service/prompt/PromptId';
 import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
-import type { TFile } from 'obsidian';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import type { ActionResult } from '../CopilotActionRegistry';
 import type { CustomPromptDef } from '../CustomPromptRegistry';
 import type { RankedTagSuggestion } from '../TagSuggestionEngine';
@@ -57,16 +57,16 @@ export interface CopilotActionAiPort {
  * snapshot, and linkpath resolution. No write surface.
  */
 export interface CopilotActionVaultPort {
-	getMarkdownFiles(): TFile[];
-	cachedRead(file: TFile): Promise<string>;
-	getFileCache(file: TFile): {
+	getMarkdownFiles(): VaultFileRef[];
+	cachedRead(file: VaultFileRef): Promise<string>;
+	getFileCache(file: VaultFileRef): {
 		links?: Array<{ link: string }>;
 		embeds?: Array<{ link: string }>;
 		tags?: Array<{ tag: string }>;
 		frontmatter?: { tags?: string[]; [k: string]: unknown };
 	} | null;
 	getResolvedLinks(): Record<string, Record<string, number>>;
-	getFirstLinkpathDest(linkpath: string, sourcePath: string): TFile | null;
+	getFirstLinkpathDest(linkpath: string, sourcePath: string): VaultFileRef | null;
 }
 
 /**
@@ -161,7 +161,7 @@ export interface CopilotActionAgentPort {
  * `src/app/copilot/actions/ObsidianCustomPromptSourceAdapter.ts`).
  *
  * Service-side runtime only sees parsed defs — it does not know about
- * Obsidian `TFile` / `TFolder`.
+ * Obsidian `VaultFileRef` / `TFolder`.
  */
 export interface CopilotCustomPromptPort {
 	loadAll(): Promise<CustomPromptDef[]>;

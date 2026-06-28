@@ -12,10 +12,11 @@
  *      and the JS wrapper from the npm registry, then install into {pluginDir}/native/
  *   4. Expose the managed path so BetterSqliteStore can require() from it
  */
-import { requestUrl, Notice } from 'obsidian';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
+import type { HttpClientPort } from '@/core/ports/HttpClientPort';
+import type { NoticeHandle, NotifierPort } from '@/core/ports/NotifierPort';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,6 +79,10 @@ export class NativeModuleManager {
 	/** Absolute path to the plugin directory */
 	private pluginDir = '';
 
+	/** T11R: injected from the app layer at boot. */
+	private http: HttpClientPort | null = null;
+	private notifier: NotifierPort | null = null;
+
 	static getInstance(): NativeModuleManager {
 		if (!NativeModuleManager.instance) {
 			NativeModuleManager.instance = new NativeModuleManager();
@@ -91,6 +96,16 @@ export class NativeModuleManager {
 
 	setPluginDir(pluginDir: string): void {
 		this.pluginDir = pluginDir;
+	}
+
+	/**
+	 * T11R: wire the HTTP / notifier ports. Required before `ensureCompatible`
+	 * is called (main.ts does this immediately after constructing the
+	 * singleton).
+	 */
+	configure(deps: { http: HttpClientPort; notifier: NotifierPort }): void {
+		this.http = deps.http;
+		this.notifier = deps.notifier;
 	}
 
 	// -- Paths --
@@ -186,22 +201,21 @@ export class NativeModuleManager {
 			`Will download better-sqlite3@${version} prebuilt.`,
 		);
 
-		const notice = new Notice(
-			`Peak Assistant: downloading SQLite component...`,
-			0, // persistent until dismissed
-		);
+		const notice: NoticeHandle | null = this.notifier
+			? this.notifier.notify(`Peak Assistant: downloading SQLite component...`, 0)
+			: null;
 
 		try {
 			await this.setupBetterSqlite3(version, runtime);
 
-			notice.setMessage('Peak Assistant: SQLite component ready');
-			setTimeout(() => notice.hide(), 3000);
+			notice?.setMessage('Peak Assistant: SQLite component ready');
+			setTimeout(() => notice?.hide(), 3000);
 		} catch (error) {
-			notice.hide();
+			notice?.hide();
 			const msg = error instanceof Error ? error.message : String(error);
 			console.error('[NativeModuleManager] Failed to set up better-sqlite3:', msg);
 
-			new Notice(
+			this.notifier?.notify(
 				`Peak Assistant: SQLite component download failed.\n` +
 				`Please check your network and restart Obsidian.\n` +
 				`Or manually run: cd "${this.pluginDir}" && npm install better-sqlite3`,
@@ -340,13 +354,17 @@ export class NativeModuleManager {
 
 	/**
 	 * Download a URL and return the raw ArrayBuffer.
-	 * Uses Obsidian's requestUrl which respects system proxy settings.
+	 * Uses the injected HTTP client (app composes a `requestUrl`-backed
+	 * adapter so system proxy settings are still respected).
 	 */
 	private async downloadBuffer(url: string): Promise<ArrayBuffer> {
-		const response = await requestUrl({
+		if (!this.http) {
+			throw new Error('[NativeModuleManager] HTTP client not configured — call configure() first');
+		}
+		const response = await this.http.request({
 			url,
 			method: 'GET',
-			throw: true, // throw on non-2xx
+			throwOnError: true,
 		});
 		return response.arrayBuffer;
 	}

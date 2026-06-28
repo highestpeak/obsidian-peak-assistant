@@ -1,8 +1,8 @@
-import type { TFile } from 'obsidian';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import type { LLMStreamEvent } from '@/core/providers/types';
 
 export interface DocumentContext {
-	file: TFile;
+	file: VaultFileRef;
 	title: string;
 	content: string;
 	selection?: string;

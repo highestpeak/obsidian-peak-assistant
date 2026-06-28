@@ -17,6 +17,8 @@ import { IndexService } from '@/service/search/index/indexService';
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { BetterSqliteStore } from '@/core/storage/sqlite/better-sqlite3-adapter/BetterSqliteStore';
 import { NativeModuleManager } from '@/core/storage/sqlite/NativeModuleManager';
+import { obsidianHttpClient } from '@/app/adapters/HttpClientAdapter';
+import { obsidianNotifier } from '@/app/adapters/NoticeNotifier';
 import { VAULT_DB_FILENAME } from '@/core/constant';
 import { AppContext } from '@/app/context/AppContext';
 import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
@@ -304,6 +306,10 @@ export default class MyPlugin extends Plugin {
 			// Set up NativeModuleManager so it can auto-download the correct
 			// better-sqlite3 binary if the current one is missing or ABI-incompatible.
 			NativeModuleManager.getInstance().setPluginDir(getPluginDirAbsolute(undefined, this.app));
+			NativeModuleManager.getInstance().configure({
+				http: obsidianHttpClient,
+				notifier: obsidianNotifier,
+			});
 
 			// Attempt eager init — if native module is already compatible, this is
 			// transparent to the user. If it fails (e.g. first install, ABI mismatch
