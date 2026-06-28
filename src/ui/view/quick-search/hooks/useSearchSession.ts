@@ -10,10 +10,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Notice } from 'obsidian';
 
 import { useSearchSessionStore } from '../store/searchSessionStore';
-import {
-	getCleanQuery,
-	resetAIAnalysisAll,
-} from '../store/aiAnalysisStore';
+import { getCleanQuery } from '../store/aiAnalysisStore';
 import { useSharedStore } from '../store';
 import { setLastAnalysisHistorySearch, invalidateFollowupContextCache } from '../followupContextRuntime';
 import { useStepDisplayReplayStore } from '../store/stepDisplayReplayStore';
@@ -207,7 +204,6 @@ export function useSearchSession() {
 
 			// Reset everything
 			store.getState().resetAll();
-			resetAIAnalysisAll();
 			useStepDisplayReplayStore.getState().reset();
 			invalidateFollowupContextCache();
 

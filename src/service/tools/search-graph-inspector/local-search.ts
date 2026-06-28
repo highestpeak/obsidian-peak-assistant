@@ -5,7 +5,7 @@ import type { SearchClient } from "@/service/search/SearchClient";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
 import { applyFiltersAndSorters } from "./common";
-import { SearchResultItem, SearchSnippet, SearchScopeValue } from "@/service/search/types";
+import { SearchResultItem, SearchSnippet, SearchScopeValue } from "@/core/search/searchTypes";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { localSearchWholeVaultInputSchema } from "@/core/schemas/tools/searchGraphInspector";
 

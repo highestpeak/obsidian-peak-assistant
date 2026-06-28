@@ -2,7 +2,7 @@ import type { ContextSlot, SlotBuildContext, SlotContent } from './types';
 import { estimateTokensFromText, formatTimeAgo } from './types';
 import type { LLMRequestMessage } from '@/core/providers/types';
 import type { PromptService } from '@/service/prompt/PromptService';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 
 export class WorkingContextSlot implements ContextSlot {
   id = 'working-context';

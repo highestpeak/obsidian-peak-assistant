@@ -7,7 +7,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type {
 	AmbientPersistencePort,
 } from '@/service/ambient/ports/AmbientPorts';
-import type { AmbientContext, AmbientPushItem, TriggerType, UserAction } from '@/service/ambient/types';
+import type { AmbientContext, AmbientPushItem, TriggerType, UserAction } from '@/core/types/ambient';
 import type { LearnedPattern } from '@/service/ambient/PatternLearner';
 
 const PATTERN_REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes

@@ -2,7 +2,7 @@ import type { AppHandle } from '@/core/ports/AppHandle';
 import type {
 	SearchQuery,
 	SearchResponse,
-} from '@/service/search/types';
+} from '@/core/search/searchTypes';
 import type { StorageType } from '@/service/search/index/indexService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { QueryService } from './query/queryService';

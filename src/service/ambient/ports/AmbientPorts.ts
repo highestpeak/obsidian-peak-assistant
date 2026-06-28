@@ -12,12 +12,12 @@
 //   - Ports must not pass `AppContext` itself. Each port describes the
 //     ONE capability the runtime actually needs.
 //   - This file may import only types from `../types` and from
-//     `@/service/search/types`. No runtime singleton, no app-shell
+//     `@/core/search/searchTypes`. No runtime singleton, no app-shell
 //     import, no UI import. `test/ambient-source-guard.test.ts`
 //     enforces this by source scan.
 //   - Adapter implementations live in `src/app/ambient/*`.
 
-import type { SearchQuery, SearchResponse } from '@/service/search/types';
+import type { SearchQuery, SearchResponse } from '@/core/search/searchTypes';
 import type {
 	AmbientContext,
 	AmbientPushItem,

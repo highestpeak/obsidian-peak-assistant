@@ -4,7 +4,7 @@ import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import type { ReviewResult } from '@/service/copilot/copilot-schemas';
 import { PolishPanel } from './PolishPanel';
 import { AlertCircle, AlertTriangle, Info, FileCheck, Wrench, Lightbulb, Check, type LucideIcon } from 'lucide-react';

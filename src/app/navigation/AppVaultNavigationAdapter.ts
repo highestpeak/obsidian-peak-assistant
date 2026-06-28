@@ -15,7 +15,7 @@ import type {
 	VaultNavigationOpenOptions,
 	VaultNavigationPort,
 } from '@/service/navigation/VaultNavigationPort';
-import type { SearchResultItem } from '@/service/search/types';
+import type { SearchResultItem } from '@/core/search/searchTypes';
 
 function isFile(f: unknown): f is TFile {
 	return !!f && typeof f === 'object' && 'extension' in (f as Record<string, unknown>);

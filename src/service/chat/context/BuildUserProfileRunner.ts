@@ -2,7 +2,7 @@ import type { AppHandle } from '@/core/ports/AppHandle';
 
 /** Local opaque file shape; consumers cast to TFile at vault read boundary. */
 type FileHandle = { path: string; basename?: string; extension?: string; stat?: any; [key: string]: any };
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import type { UserProfileService } from '@/service/chat/context/UserProfileService';
 import type { UserProfileItem } from '@/service/chat/context/UserProfileService';
 import { USER_PROFILE_MIN_CONFIDENCE_THRESHOLD } from '@/core/constant';

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { BriefingItem, BriefingCategory } from '@/service/ambient/types';
+import type { BriefingItem, BriefingCategory } from '@/core/types/ambient';
 
 interface MorningBriefingStoreState {
 	items: BriefingItem[];

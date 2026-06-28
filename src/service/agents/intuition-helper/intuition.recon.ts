@@ -10,7 +10,7 @@ import { knowledgeIntuitionSubmitSchema } from '@/core/schemas';
 import { buildPromptTraceDebugEvent, StreamTriggerName, type LLMStreamEvent } from '@/core/providers/types';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 export type ReconLoopDebugOptions = {
 	/** Overrides budget-derived iteration cap (clamped to 1..6). */
 	maxIterations?: number;

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { getFileIcon } from '@/ui/view/shared/file-utils';
 import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
-import type { SearchResultItem } from '@/service/search/types';
+import type { SearchResultItem } from '@/core/search/searchTypes';
 
 const RECENT_FILES_COUNT = 3;
 const SEARCH_RESULTS_TOP_K = 20;

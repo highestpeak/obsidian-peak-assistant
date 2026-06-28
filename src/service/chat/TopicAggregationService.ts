@@ -1,6 +1,6 @@
 import type { ChatConversation, ChatMessage } from './types';
 import type { AIServiceManager } from './service-manager';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 const MIN_UNGROUPED_MESSAGES = 6; // 3 rounds of conversation

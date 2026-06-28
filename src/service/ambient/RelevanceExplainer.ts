@@ -7,7 +7,7 @@
 // in service code. The remaining helper here is byte-pure and is
 // covered by `test/ambient-push.test.ts`.
 
-import type { AmbientSignal } from './types';
+import type { AmbientSignal } from '@/core/types/ambient';
 
 const SIGNAL_PRIORITY: AmbientSignal['type'][] = [
 	'graph_neighbor',

@@ -7,7 +7,7 @@
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { GRAPH_DOCUMENT_LIKE_NODE_TYPES } from '@/core/po/graph.po';
 import type { AmbientBriefingPort } from '@/service/ambient/ports/AmbientPorts';
-import type { BriefingItem } from '@/service/ambient/types';
+import type { BriefingItem } from '@/core/types/ambient';
 
 const INDEX_STATE_KEY_LAST_BRIEFING = 'ambient_last_briefing_ts';
 const INDEX_STATE_KEY_LAST_SESSION = 'ambient_last_session_ts';

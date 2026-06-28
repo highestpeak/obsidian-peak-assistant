@@ -5,7 +5,7 @@ import {
 	FileVideo, Presentation, Hash, BookOpen,
 } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
-import type { SearchResultSource } from '@/service/search/types';
+import type { SearchResultSource } from '@/core/search/searchTypes';
 
 /**
  * File type utilities

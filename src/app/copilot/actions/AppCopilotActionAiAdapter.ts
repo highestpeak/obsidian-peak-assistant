@@ -5,7 +5,7 @@
 
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { CopilotActionAiPort } from '@/service/copilot/actions/CopilotActionPorts';
-import type { PromptId, PromptVariables } from '@/service/prompt/PromptId';
+import type { PromptId, PromptVariables } from '@/core/prompt/PromptId';
 
 export class AppCopilotActionAiAdapter implements CopilotActionAiPort {
 	constructor(private readonly manager: AIServiceManager) {}

@@ -8,7 +8,7 @@
 // satisfies `AmbientSearchDeps.searchSerendipity`. Detectors and the
 // orchestrator never see sqlite again.
 
-import type { AmbientPushItem } from './types';
+import type { AmbientPushItem } from '@/core/types/ambient';
 
 /**
  * A serendipity candidate: a note that is 2-hops away in the graph

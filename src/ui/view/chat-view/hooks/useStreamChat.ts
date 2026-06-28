@@ -3,7 +3,7 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '../store/chatViewStore';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import { createChatErrorMessage } from '@/service/chat/utils/chat-message-builder';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types';

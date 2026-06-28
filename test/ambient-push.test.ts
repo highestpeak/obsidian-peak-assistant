@@ -8,7 +8,7 @@ import {
 import { generateExplanation } from '@/service/ambient/RelevanceExplainer';
 import { cosineDistance } from '@/service/ambient/SerendipitySearcher';
 import { getPatternBoost } from '@/service/ambient/PatternLearner';
-import type { AmbientSignal } from '@/service/ambient/types';
+import type { AmbientSignal } from '@/core/types/ambient';
 
 // --- extractParagraphAtLine ---
 {
@@ -445,7 +445,7 @@ console.log('All Phase 2 signal detection tests passed');
 }
 
 // --- Phase 4: Morning Briefing ---
-import type { BriefingItem, BriefingCategory } from '@/service/ambient/types';
+import type { BriefingItem, BriefingCategory } from '@/core/types/ambient';
 
 // Test BriefingItem type structure
 {

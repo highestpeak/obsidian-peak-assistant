@@ -18,7 +18,7 @@
 // Composition: `src/app/navigation/composeNavigation.ts` (used by
 // `AppContext`).
 
-import type { SearchResultItem } from '@/service/search/types';
+import type { SearchResultItem } from '@/core/search/searchTypes';
 
 export interface VaultNavigationOpenOptions {
 	/**

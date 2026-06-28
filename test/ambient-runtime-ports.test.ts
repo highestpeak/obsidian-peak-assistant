@@ -30,7 +30,7 @@ import {
 	type BriefingItem,
 	type TriggerType,
 	type UserAction,
-} from '@/service/ambient/types';
+} from '@/core/types/ambient';
 import type { LearnedPattern } from '@/service/ambient/PatternLearner';
 
 // ---------------------------------------------------------------------------

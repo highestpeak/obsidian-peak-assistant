@@ -13,7 +13,7 @@ import type { AppHandle } from '@/core/ports/AppHandle';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import { VaultSearchAgentSDK } from './VaultSearchAgentSDK';
 
 /**

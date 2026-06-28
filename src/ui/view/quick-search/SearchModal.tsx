@@ -8,7 +8,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { GlobeOff } from '@/ui/component/icon';
 import { useSharedStore, useVaultSearchStore } from './store';
-import { resetAIAnalysisAll, loadCompletedAnalysisSnapshot } from './store/aiAnalysisStore';
+import { loadCompletedAnalysisSnapshot } from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
@@ -293,7 +293,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					<div className="pktw-flex pktw-items-center pktw-gap-2">
 						{!isAnalyzing && hasResult && (
 							<Button
-								onClick={() => { useSearchSessionStore.getState().resetAll(); resetAIAnalysisAll(); useSharedStore.getState().setSearchQuery(''); }}
+								onClick={() => { useSearchSessionStore.getState().resetAll(); useSharedStore.getState().setSearchQuery(''); }}
 								style={{ cursor: 'pointer' }}
 								variant="outline"
 								className="pktw-shadow-none pktw-px-4 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-border-pk-border pktw-bg-pk-background pktw-text-pk-text-secondary"
@@ -348,7 +348,6 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 							onSelect={(query) => {
 								setSearchQuery(query);
 								useSearchSessionStore.getState().resetAll();
-								resetAIAnalysisAll();
 								useSearchSessionStore.getState().incrementTriggerAnalysis();
 							}}
 							onClear={clearRecentQueries}

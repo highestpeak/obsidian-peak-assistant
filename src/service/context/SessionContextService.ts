@@ -13,7 +13,7 @@ import type {
 	WorkingTheme,
 } from './types';
 import { WorkingThemeInferrer } from './WorkingThemeInferrer';
-import type { PromptId } from '@/service/prompt/PromptId';
+import type { PromptId } from '@/core/prompt/PromptId';
 
 /**
  * T11Q (Track A): caller-injected dep for the working-theme LLM query

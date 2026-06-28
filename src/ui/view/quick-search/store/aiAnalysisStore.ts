@@ -1,4 +1,4 @@
-import type { AnalysisMode } from '@/service/agents/shared-types';
+import type { AnalysisMode } from '@/core/types/agents-shared';
 export type { AnalysisMode };
 import { useSearchSessionStore } from './searchSessionStore';
 import { useAIGraphStore } from './aiGraphStore';
@@ -13,16 +13,6 @@ export type {
 export { getSnapshotSummary } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 import { getSnapshotSummary } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 import type { CompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
-
-// ---------------------------------------------------------------------------
-// Orchestration
-// ---------------------------------------------------------------------------
-
-/** Reset legacy analysis state (no-op now that V1 topic/interaction stores are removed). */
-export function resetAIAnalysisAll(): void {
-	// V1 topic/interaction stores have been retired.
-	// searchSessionStore.resetAll() handles all V2 state.
-}
 
 /** Load snapshot into searchSessionStore (and graph stores for replay). */
 export function loadCompletedAnalysisSnapshot(snapshot: CompletedAnalysisSnapshot, sourceVaultPath?: string): void {

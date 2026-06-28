@@ -3,7 +3,7 @@ import { FileText, ExternalLink, X, Link2, AlertCircle, RefreshCw } from 'lucide
 import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useMorningBriefingStore } from '@/ui/store/morningBriefingStore';
-import type { BriefingItem } from '@/service/ambient/types';
+import type { BriefingItem } from '@/core/types/ambient';
 
 interface BriefingCardProps {
 	item: BriefingItem;

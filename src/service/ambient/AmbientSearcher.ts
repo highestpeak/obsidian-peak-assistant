@@ -9,8 +9,8 @@
 // Signal-detection helpers are still exported because
 // `test/ambient-push.test.ts` covers them directly.
 
-import type { SearchQuery, SearchResultItem } from '@/service/search/types';
-import type { AmbientContext, AmbientPushItem, AmbientPushSettings, AmbientSignal } from './types';
+import type { SearchQuery, SearchResultItem } from '@/core/search/searchTypes';
+import type { AmbientContext, AmbientPushItem, AmbientPushSettings, AmbientSignal } from '@/core/types/ambient';
 import { generateExplanation } from './RelevanceExplainer';
 import { getPatternBoost, type LearnedPattern } from './PatternLearner';
 import type { AmbientSearchDeps } from './ports/AmbientPorts';

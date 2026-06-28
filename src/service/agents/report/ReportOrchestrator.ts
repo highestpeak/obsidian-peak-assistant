@@ -1,5 +1,5 @@
 import type { AppHandle } from '@/core/ports/AppHandle';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { V2Section } from '@/core/search/v2SessionTypes';
 import type { ReportSessionPort } from './ReportSessionPort';

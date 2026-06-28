@@ -17,7 +17,7 @@ import { StreamTriggerName } from '@/core/providers/types';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { Profile } from '@/core/profiles/types';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { warmupPool, queryWithProfile } from './core/sdkAgentPool';
 import {

@@ -1,7 +1,7 @@
 import {
 	DEFAULT_AMBIENT_PUSH_SETTINGS,
 	type AmbientPushSettings,
-} from '@/service/ambient/types';
+} from '@/core/types/ambient';
 
 export function shouldAutoOpenAmbientPushPanel(settings?: AmbientPushSettings): boolean {
 	if (settings?.enabled === false) return false;

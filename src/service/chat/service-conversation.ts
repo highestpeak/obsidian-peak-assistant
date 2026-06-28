@@ -19,7 +19,7 @@ import {
 import type { ConversationType } from './conversation-types';
 import { PromptService } from '@/service/prompt/PromptService';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import { ResourceSummaryService } from './context/ResourceSummaryService';
 import { ContextBuilder } from './context/ContextBuilder';
 import { ContextPipeline } from './context/ContextPipeline';

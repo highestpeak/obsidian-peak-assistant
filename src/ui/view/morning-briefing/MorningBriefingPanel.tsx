@@ -2,7 +2,7 @@ import React from 'react';
 import { Sun, Link2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useMorningBriefingStore } from '@/ui/store/morningBriefingStore';
 import { BriefingCard } from './BriefingCard';
-import type { BriefingCategory } from '@/service/ambient/types';
+import type { BriefingCategory } from '@/core/types/ambient';
 
 const CATEGORY_META: Record<
 	BriefingCategory,

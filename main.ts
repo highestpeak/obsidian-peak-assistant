@@ -40,7 +40,6 @@ import {
 } from '@/core/utils/markdown-utils';
 import { hydrateTextStopwordsFromTemplateManager } from '@/core/utils/stopword-utils';
 import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
-import { resetAIAnalysisAll } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { useVaultSearchStore } from '@/ui/view/quick-search/store/vaultSearchStore';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
@@ -593,7 +592,7 @@ export default class MyPlugin extends Plugin {
 						const runtime = AppContext.tryGetAmbientRuntime();
 						const shouldShow = (await runtime?.tryShowMorningBriefing()) ?? false;
 						if (shouldShow) {
-							const { MorningBriefingModal } = await import('@/ui/view/morning-briefing/MorningBriefingModal');
+							const { MorningBriefingModal } = await import('@/app/modals/MorningBriefingModal');
 							const modal = new MorningBriefingModal(this.app);
 							modal.open();
 						}
@@ -764,7 +763,6 @@ export default class MyPlugin extends Plugin {
 			useChatDataStore.getState().reset();
 			useGraphAnimationStore.getState().reset();
 			useChatViewStore.getState().reset();
-			resetAIAnalysisAll();
 		} catch (e) {
 			console.warn('[Peak Assistant] Store reset on unload:', e);
 		}

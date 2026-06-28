@@ -14,13 +14,13 @@
 import { AppContext } from '@/app/context/AppContext';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { GRAPH_DOCUMENT_LIKE_NODE_TYPES } from '@/core/po/graph.po';
-import type { SearchQuery, SearchResponse } from '@/service/search/types';
+import type { SearchQuery, SearchResponse } from '@/core/search/searchTypes';
 import type {
 	AmbientContext,
 	AmbientPushItem,
 	AmbientPushSettings,
 	AmbientSignal,
-} from '@/service/ambient/types';
+} from '@/core/types/ambient';
 import type {
 	AmbientPersistencePort,
 	AmbientSearchDeps,

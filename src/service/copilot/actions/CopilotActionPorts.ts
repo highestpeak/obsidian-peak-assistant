@@ -19,7 +19,7 @@
 // capability (talk to AI, read the vault, search semantically, suggest
 // tags, run a copilot agent, list custom prompts) — not a single method.
 
-import type { PromptId, PromptVariables } from '@/service/prompt/PromptId';
+import type { PromptId, PromptVariables } from '@/core/prompt/PromptId';
 import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import type { ActionResult } from '../CopilotActionRegistry';

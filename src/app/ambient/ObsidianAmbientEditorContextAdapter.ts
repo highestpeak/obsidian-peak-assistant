@@ -11,7 +11,7 @@ import type {
 	AmbientSettingsPort,
 	AmbientTriggerCallback,
 } from '@/service/ambient/ports/AmbientPorts';
-import type { AmbientContext } from '@/service/ambient/types';
+import type { AmbientContext } from '@/core/types/ambient';
 import {
 	extractHeadings,
 	extractOutlinks,
@@ -101,7 +101,7 @@ class AmbientEditorTrigger {
 
 	constructor(
 		private readonly app: App,
-		private readonly getSettings: () => import('@/service/ambient/types').AmbientPushSettings,
+		private readonly getSettings: () => import('@/core/types/ambient').AmbientPushSettings,
 		private readonly onTrigger: AmbientTriggerCallback,
 	) {}
 

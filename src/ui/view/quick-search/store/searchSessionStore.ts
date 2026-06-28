@@ -10,7 +10,7 @@
 import { create } from 'zustand';
 import type { LLMUsage } from '@/core/providers/types';
 import { mergeTokenUsage } from '@/core/providers/types';
-import type { AnalysisMode } from '@/service/agents/shared-types';
+import type { AnalysisMode } from '@/core/types/agents-shared';
 import type { PlanSnapshot } from '@/service/agents/vault/types';
 import type { UserFeedback } from '@/service/agents/core/types';
 import type { V2ToolStep, V2TimelineItem, V2Source } from '../types/search-steps';

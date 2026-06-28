@@ -17,7 +17,6 @@ export const ToolTemplateId = {
 	ExploreFolder: 'explore-folder',
 	OrphanNotes: 'orphan-notes',
 	FindKeyNodes: 'find-key-nodes',
-	FindStructuralHoles: 'find-structural-holes',
 	GraphTraversal: 'graph-traversal',
 } as const;
 
@@ -337,7 +336,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ToolTemplateId.ExploreFolder]: meta('tools', 'explore-folder'),
 	[ToolTemplateId.OrphanNotes]: meta('tools', 'orphan-notes'),
 	[ToolTemplateId.FindKeyNodes]: meta('tools', 'find-key-nodes'),
-	[ToolTemplateId.FindStructuralHoles]: meta('tools', 'structural-holes'),
 	[ToolTemplateId.GraphTraversal]: meta('tools', 'graph-traversal'),
 
 	// --- Agents ---

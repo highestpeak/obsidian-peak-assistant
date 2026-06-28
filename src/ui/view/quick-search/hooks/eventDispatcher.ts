@@ -12,7 +12,7 @@ import { v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '../types/sear
 import type { V2ToolStep, V2Source } from '../types/search-steps';
 import type { V2Section } from '../store/searchSessionStore';
 import type { UIStepRecord } from '../store/aiAnalysisStore';
-import type { SearchAgentResult } from '@/service/agents/shared-types';
+import type { SearchAgentResult } from '@/core/types/agents-shared';
 import type { PlanSnapshot } from '@/service/agents/vault/types';
 
 import { useUIEventStore } from '@/ui/store/uiEventStore';

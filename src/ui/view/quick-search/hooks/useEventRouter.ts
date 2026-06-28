@@ -9,7 +9,7 @@ import { useCallback, useRef } from 'react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { UIStepRecord } from '../store/aiAnalysisStore';
 
-import type { SearchAgentResult } from '@/service/agents/shared-types';
+import type { SearchAgentResult } from '@/core/types/agents-shared';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { useQuickSearchHost } from './useQuickSearchHost';
 

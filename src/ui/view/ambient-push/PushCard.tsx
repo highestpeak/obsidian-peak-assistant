@@ -3,7 +3,7 @@ import { FileText, Link, ExternalLink, X, Sparkles } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
-import type { AmbientPushItem } from '@/service/ambient/types';
+import type { AmbientPushItem } from '@/core/types/ambient';
 
 interface PushCardProps {
 	item: AmbientPushItem;

@@ -5,7 +5,7 @@
 // The store now only projects UI state.
 
 import { create } from 'zustand';
-import type { AmbientPushItem } from '@/service/ambient/types';
+import type { AmbientPushItem } from '@/core/types/ambient';
 
 interface AmbientPushStoreState {
 	items: AmbientPushItem[];

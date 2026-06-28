@@ -3,7 +3,7 @@ import {
 	markAmbientPushPanelAutoOpened,
 	shouldAutoOpenAmbientPushPanel,
 } from '@/service/ambient/ambientPanelStartup';
-import { DEFAULT_AMBIENT_PUSH_SETTINGS } from '@/service/ambient/types';
+import { DEFAULT_AMBIENT_PUSH_SETTINGS } from '@/core/types/ambient';
 
 assert.strictEqual(
 	shouldAutoOpenAmbientPushPanel(undefined),

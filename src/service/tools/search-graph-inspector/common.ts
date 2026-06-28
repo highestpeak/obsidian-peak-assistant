@@ -5,7 +5,7 @@ import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { EMPTY_SET, emptyMap } from "@/core/utils/collection-utils";
 import { DocStatistics } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { GRAPH_RRF_WEIGHTS, RRF_K, PHYSICAL_CONNECTION_BONUS } from "@/core/constant";
-import { SearchScopeMode, SearchScopeValue } from "@/service/search/types";
+import { SearchScopeMode, SearchScopeValue } from "@/core/search/searchTypes";
 import { getFileTypeByExtension } from "@/core/utils/path-utils";
 import { getCachedBooleanExpression, getCachedRegex } from "@/core/utils/format-utils";
 import type { SearchClient } from "@/service/search/SearchClient";

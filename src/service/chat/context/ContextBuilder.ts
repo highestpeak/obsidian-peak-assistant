@@ -2,7 +2,7 @@ import { ToolEvent, type LLMRequestMessage, type LLMStreamEvent, type MessagePar
 import type { ChatConversation, ChatProject, ChatMessage, ChatResourceRef } from '../types';
 import type { ResourceSummaryService } from './ResourceSummaryService';
 import type { PromptService } from '@/service/prompt/PromptService';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import type { UserProfileService } from '@/service/chat/context/UserProfileService';
 import type { ModelCapabilities } from '@/core/providers/types';
 import type { AppHandle as App } from '@/core/ports/AppHandle'; // T11L: opaque to keep file out of obsidian import surface

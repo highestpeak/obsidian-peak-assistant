@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import { DEFAULT_RECENT_SEARCH_RESULTS_COUNT } from '@/core/constant';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { DEFAULT_SEARCH_QUERY, GoToLine, InFileSearch, useVaultSearchStore } from '../store/vaultSearchStore';
-import { SearchQuery } from '@/service/search/types';
-import type { SearchResultItem, SearchSnippet } from '@/service/search/types';
+import { SearchQuery } from '@/core/search/searchTypes';
+import type { SearchResultItem, SearchSnippet } from '@/core/search/searchTypes';
 import type { VaultPreviewPort } from '@/service/preview/VaultPreviewPort';
 import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
 

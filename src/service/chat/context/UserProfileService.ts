@@ -1,6 +1,6 @@
 import type { AppHandle } from '@/core/ports/AppHandle';
 import { PromptService } from '@/service/prompt/PromptService';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import { ensureFolderRecursive, getFileRef } from '@/core/storage/vault/vault-ops';
 import { USER_PROFILE_MIN_CONFIDENCE_THRESHOLD } from '@/core/constant';
 

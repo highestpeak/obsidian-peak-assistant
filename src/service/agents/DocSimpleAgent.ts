@@ -14,7 +14,7 @@ import {
 } from "@/service/tools/search-graph-inspector";
 import { exploreFolderEnvFromManager } from "@/service/tools/exploreFolderEnv";
 import { LLMStreamEvent, StreamTriggerName, UIStepType } from "@/core/providers/types";
-import { PromptId } from "@/service/prompt/PromptId";
+import { PromptId } from "@/core/prompt/PromptId";
 import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
 import { DocumentLoaderManager } from "@/core/document/loader/helper/DocumentLoaderManager";
 import { submitFinalAnswerTool } from "@/service/tools/submit-final-answer";

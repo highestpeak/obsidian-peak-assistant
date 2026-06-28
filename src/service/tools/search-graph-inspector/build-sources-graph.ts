@@ -1,7 +1,7 @@
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { getSemanticNeighbors } from "./common";
 import { getPathFromNode } from "./common";
-import type { SearchResultItem } from "@/service/search/types";
+import type { SearchResultItem } from "@/core/search/searchTypes";
 import { normalizeFilePath } from "@/core/utils/file-utils";
 
 export type SourcesGraph = {

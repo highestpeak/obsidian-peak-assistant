@@ -9,7 +9,7 @@
 // T11 (2026-06-14) split icon/panel binding to the UI surface registry.
 // T11B keeps that split intact and adds the execution-side split.
 
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 import {
 	reviewResultSchema,
 	splitPlanSchema,

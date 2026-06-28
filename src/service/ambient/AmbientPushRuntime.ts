@@ -14,8 +14,8 @@
 //   - push log is fire-and-forget against the persistence port;
 //   - briefing checks the 4h gap, sorts by score desc, projects items.
 
-import type { AmbientPushSettings, AmbientPushItem, TriggerType, UserAction } from './types';
-import { DEFAULT_AMBIENT_PUSH_SETTINGS } from './types';
+import type { AmbientPushSettings, AmbientPushItem, TriggerType, UserAction } from '@/core/types/ambient';
+import { DEFAULT_AMBIENT_PUSH_SETTINGS } from '@/core/types/ambient';
 import type { AmbientPorts } from './ports/AmbientPorts';
 import type { AmbientRuntime } from './AmbientRuntime';
 import { ambientSearch } from './AmbientSearcher';

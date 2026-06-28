@@ -11,7 +11,7 @@
 // The runtime is single-instance-per-plugin-load; binding semantics live
 // in `AppRuntimeRegistry`.
 
-import type { UserAction } from './types';
+import type { UserAction } from '@/core/types/ambient';
 
 export interface AmbientRuntime {
 	/**

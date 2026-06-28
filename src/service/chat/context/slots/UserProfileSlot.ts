@@ -3,7 +3,7 @@ import { estimateTokensFromText } from './types';
 import type { LLMRequestMessage } from '@/core/providers/types';
 import type { PromptService } from '@/service/prompt/PromptService';
 import type { UserProfileService } from '@/service/chat/context/UserProfileService';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId } from '@/core/prompt/PromptId';
 
 export class UserProfileSlot implements ContextSlot {
   id = 'user-profile';

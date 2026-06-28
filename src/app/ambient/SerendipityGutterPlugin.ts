@@ -20,7 +20,7 @@ import {
 import { RangeSetBuilder, type Extension } from '@codemirror/state';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { AppContext } from '@/app/context/AppContext';
-import type { AmbientPushItem } from '@/service/ambient/types';
+import type { AmbientPushItem } from '@/core/types/ambient';
 
 class SerendipityHintWidget extends WidgetType {
 	constructor(private readonly item: AmbientPushItem) {

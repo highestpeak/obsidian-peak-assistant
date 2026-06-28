@@ -6,8 +6,8 @@
 
 import { AppContext } from '@/app/context/AppContext';
 import type { AmbientSettingsPort } from '@/service/ambient/ports/AmbientPorts';
-import type { AmbientPushSettings } from '@/service/ambient/types';
-import { DEFAULT_AMBIENT_PUSH_SETTINGS } from '@/service/ambient/types';
+import type { AmbientPushSettings } from '@/core/types/ambient';
+import { DEFAULT_AMBIENT_PUSH_SETTINGS } from '@/core/types/ambient';
 import { markAmbientPushPanelAutoOpened } from '@/service/ambient/ambientPanelStartup';
 
 export class ObsidianAmbientSettingsAdapter implements AmbientSettingsPort {

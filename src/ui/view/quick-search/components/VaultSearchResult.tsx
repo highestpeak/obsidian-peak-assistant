@@ -3,7 +3,7 @@ import { ChevronRight, ExternalLink } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { getFileIcon } from '@/ui/view/shared/file-utils';
 import { humanReadableTime } from '@/core/utils/date-utils';
-import type { SearchResultItem, SearchSnippet } from '@/service/search/types';
+import type { SearchResultItem, SearchSnippet } from '@/core/search/searchTypes';
 import type { HighlightResult } from '@/service/search/query/highlight-engine';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
 import { useServiceContext } from '@/ui/context/ServiceContext';

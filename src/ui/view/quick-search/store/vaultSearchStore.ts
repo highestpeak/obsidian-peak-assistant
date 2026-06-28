@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { SearchQuery, SearchResultItem, SearchScopeValue } from '@/service/search/types';
+import type { SearchQuery, SearchResultItem, SearchScopeValue } from '@/core/search/searchTypes';
 
 export interface InFileSearch {
 	text: string;
