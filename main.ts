@@ -609,7 +609,8 @@ export default class MyPlugin extends Plugin {
 						const shouldShow = (await runtime?.tryShowMorningBriefing()) ?? false;
 						if (shouldShow) {
 							const { MorningBriefingModal } = await import('@/app/modals/MorningBriefingModal');
-							const modal = new MorningBriefingModal(this.app);
+							if (!this.appContext) return;
+							const modal = new MorningBriefingModal(this.app, this.appContext);
 							modal.open();
 						}
 					} catch {

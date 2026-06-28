@@ -1,16 +1,22 @@
 import { App, Modal } from 'obsidian';
-import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { useMorningBriefingStore } from '@/ui/store/morningBriefingStore';
+import { AppContext } from '@/app/context/AppContext';
+import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
 
 /**
  * Obsidian Modal that renders the Morning Briefing React panel.
  * Displayed once on startup when briefing items are available.
+ *
+ * Must wrap the panel via `createReactElementWithServices` because
+ * `BriefingCard` consumes `useServiceContext()` for `vaultNavigation`;
+ * rendering a raw `<MorningBriefingPanel>` would crash with
+ * "useServiceContext must be used within ServiceProvider".
  */
 export class MorningBriefingModal extends Modal {
 	private root: Root | null = null;
 
-	constructor(app: App) {
+	constructor(app: App, private readonly appContext: AppContext) {
 		super(app);
 	}
 
@@ -29,9 +35,11 @@ export class MorningBriefingModal extends Modal {
 
 		this.root = createRoot(contentEl);
 		this.root.render(
-			React.createElement(MorningBriefingPanel, {
-				onDismiss: () => this.close(),
-			}),
+			createReactElementWithServices(
+				MorningBriefingPanel,
+				{ onDismiss: () => this.close() },
+				this.appContext,
+			),
 		);
 	}
 
