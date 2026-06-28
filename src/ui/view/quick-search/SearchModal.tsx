@@ -358,7 +358,6 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 						onSelect={(s) => {
 							useSharedStore.getState().setSearchQuery(s.filledTemplate);
 							useSearchSessionStore.getState().resetAll();
-							resetAIAnalysisAll();
 							useSearchSessionStore.getState().incrementTriggerAnalysis();
 							// Increment usage count in background
 							(async () => {
@@ -380,7 +379,6 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 						onSelectQuery={(query) => {
 							useSharedStore.getState().setSearchQuery(query);
 							useSearchSessionStore.getState().resetAll();
-							resetAIAnalysisAll();
 							useSearchSessionStore.getState().incrementTriggerAnalysis();
 						}}
 						onSelectRecord={async (record) => {

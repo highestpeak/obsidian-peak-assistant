@@ -12,6 +12,7 @@ import {
 	type CopilotReviewHistoryRecord,
 } from '@/service/copilot/CopilotReviewHistoryService';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { AppContext } from '@/app/context/AppContext';
 import { type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { getCopilotActionIcon } from '@/ui/view/copilot/copilot-action-surfaces';
 import { cn } from '@/ui/react/lib/utils';
