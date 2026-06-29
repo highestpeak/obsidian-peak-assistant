@@ -393,10 +393,10 @@ const SendButton: React.FC<SendButtonProps> = ({ status, onCancel }) => {
 };
 
 // ---------------------------------------------------------------------------
-// ComposerRetained — root composer for the retained chat surface.
+// Composer — root composer for the retained chat surface.
 // ---------------------------------------------------------------------------
 
-export const ComposerRetained: React.FC = () => {
+export const Composer: React.FC = () => {
 	const strings = useChatStrings();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 

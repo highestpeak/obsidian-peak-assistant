@@ -5,10 +5,10 @@ import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatStrings } from '../chatStringsContext';
 
-export interface HeaderRetainedProps {}
+export interface HeaderProps {}
 
 /**
- * HeaderRetained — minimal chat header per the 2026-05-29 retained design.
+ * Header — minimal chat header per the 2026-05-29 retained design.
  *
  * Anatomy: [conversation title] [spacer] [Open source] [Delete] [Refresh title].
  * Deliberately omits model picker, mode toggle, system-prompt and resources
@@ -24,7 +24,7 @@ export interface HeaderRetainedProps {}
  * right-sidebar ItemView (peak-conversation-outline-view). Obsidian's own
  * sidebar toggle is the canonical control now.
  */
-export const HeaderRetained: React.FC<HeaderRetainedProps> = () => {
+export const Header: React.FC<HeaderProps> = () => {
 	const strings = useChatStrings();
 	const { manager, vaultNavigation } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
@@ -46,7 +46,7 @@ export const HeaderRetained: React.FC<HeaderRetainedProps> = () => {
 		try {
 			await manager.regenerateConversationTitle(activeConversation.meta.id);
 		} catch (err) {
-			console.error('[HeaderRetained] Regenerate title failed:', err);
+			console.error('[Header] Regenerate title failed:', err);
 		} finally {
 			setIsRegenerating(false);
 		}

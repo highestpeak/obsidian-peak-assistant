@@ -2,10 +2,10 @@
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import {
-  Collapsible,
+  Root as Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/ui/component/shared-ui/collapsible";
+} from "@radix-ui/react-collapsible";
 import { cn } from "@/ui/react/lib/utils";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";

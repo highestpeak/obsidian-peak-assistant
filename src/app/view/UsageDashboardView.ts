@@ -1,61 +1,24 @@
-import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
-import { ReactRenderer } from '@/ui/react/ReactRenderer';
+import { IconName } from 'obsidian';
+import { ReactItemViewHost } from '@/app/shell/ReactItemViewHost';
 import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
-import { AppContext } from '@/app/context/AppContext';
 import { USAGE_DASHBOARD_VIEW_TYPE } from '@/app/view/types';
 
 export { USAGE_DASHBOARD_VIEW_TYPE };
 
-export class UsageDashboardView extends ItemView {
-	private reactRenderer: ReactRenderer | null = null;
-	private openRafId: number | null = null;
+export class UsageDashboardView extends ReactItemViewHost {
+	protected readonly viewType = USAGE_DASHBOARD_VIEW_TYPE;
+	protected readonly displayText = 'Token Usage';
+	protected readonly icon: IconName = 'bar-chart-3';
+	// `peak-design-root` scopes shared PR-0 primitives; `usage-dashboard`
+	// scopes dashboard-local chart primitives (dashboard-charts.css).
+	protected readonly rootClasses = [
+		'peak-design-root',
+		'usage-dashboard',
+		'peak-usage-dashboard',
+	] as const;
 
-	constructor(leaf: WorkspaceLeaf, private readonly appContext: AppContext) {
-		super(leaf);
-	}
-
-	getViewType(): string {
-		return USAGE_DASHBOARD_VIEW_TYPE;
-	}
-
-	getDisplayText(): string {
-		return 'Token Usage';
-	}
-
-	getIcon(): IconName {
-		return 'bar-chart-3';
-	}
-
-	async onOpen(): Promise<void> {
-		this.containerEl.empty();
-		// `peak-design-root` scopes shared PR-0 primitives; `usage-dashboard`
-		// scopes dashboard-local chart primitives (dashboard-charts.css).
-		this.containerEl.addClass('peak-design-root');
-		this.containerEl.addClass('usage-dashboard');
-		this.containerEl.addClass('peak-usage-dashboard');
-		this.reactRenderer = new ReactRenderer(this.containerEl);
-		this.openRafId = requestAnimationFrame(() => {
-			this.openRafId = null;
-			this.render();
-		});
-	}
-
-	private render(): void {
-		if (!this.reactRenderer) return;
+	protected renderElement(): React.ReactElement {
 		const { UsageDashboard } = require('@/ui/view/usage-dashboard/UsageDashboard');
-		const element = createReactElementWithServices(UsageDashboard, {}, this.appContext);
-		this.reactRenderer.render(element);
-	}
-
-	async onClose(): Promise<void> {
-		if (this.openRafId != null) {
-			cancelAnimationFrame(this.openRafId);
-			this.openRafId = null;
-		}
-		if (this.reactRenderer) {
-			this.reactRenderer.unmount();
-			this.reactRenderer = null;
-		}
-		this.containerEl.empty();
+		return createReactElementWithServices(UsageDashboard, {}, this.appContext);
 	}
 }

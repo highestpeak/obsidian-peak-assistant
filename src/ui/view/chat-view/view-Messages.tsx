@@ -2,11 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import { useChatViewStore } from './store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { OpenLinkEvent, ViewEventType } from '@/core/eventBus';
-import { MessageListRendererRetained } from './components/messages/MessageListRendererRetained';
+import { MessageListRenderer } from './components/messages/MessageListRenderer';
 import { FileChangesList } from './components/messages/FileChangesList';
 import { ConvertToProjectSuggestion } from './components/ConvertToProjectSuggestion';
-import { HeaderRetained } from './components/HeaderRetained';
-import { ComposerRetained } from './components/ComposerRetained';
+import { Header } from './components/Header';
+import { Composer } from './components/Composer';
 
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
@@ -20,10 +20,10 @@ import { ChatStringsProvider } from './chatStringsContext';
  * Shell layout per the 2026-05-29 retained mock:
  *   .pkchat-shell  (peak-design-root scoped)
  *     └─ .pkchat-center
- *          ├─ HeaderRetained        ← title + Open source + Refresh
+ *          ├─ Header        ← title + Open source + Refresh
  *          ├─ .pkchat-body          ← scrollable message list (existing renderer)
  *          ├─ scroll-to-top/bottom affordances
- *          └─ ComposerRetained      ← input capsule + run-chip + send
+ *          └─ Composer      ← input capsule + run-chip + send
  *
  * The 4-tab Conversation Index no longer lives inside this shell — it was
  * promoted to a dedicated Obsidian right-sidebar ItemView
@@ -122,7 +122,7 @@ const MessagesViewInner: React.FC = () => {
 							}}
 						/>
 						<div className="pktw-w-full pktw-max-w-[760px]">
-							<ComposerRetained />
+							<Composer />
 						</div>
 					</div>
 				</div>
@@ -148,7 +148,7 @@ const MessagesViewInner: React.FC = () => {
 	return (
 		<div className="peak-design-root pkchat-shell">
 			<div className="pkchat-center">
-				<HeaderRetained />
+				<Header />
 
 				<div
 					ref={bodyScrollRef}
@@ -157,10 +157,10 @@ const MessagesViewInner: React.FC = () => {
 				>
 					{/*
 					  PR-Chat-2: document-style message rendering lives inside
-					  <MessageListRendererRetained />. It supersedes the legacy
+					  <MessageListRenderer />. It supersedes the legacy
 					  MessageListRenderer + MessageViewItem pair (now removed).
 					*/}
-					<MessageListRendererRetained />
+					<MessageListRenderer />
 					<FileChangesList />
 				</div>
 
@@ -175,7 +175,7 @@ const MessagesViewInner: React.FC = () => {
 				  full-width row that fights composer for vertical space.
 				*/}
 
-				<ComposerRetained />
+				<Composer />
 			</div>
 
 			{/*

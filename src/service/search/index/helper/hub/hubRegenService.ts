@@ -16,7 +16,7 @@ const HUB_REGEN_MAX_RETRIES = 3;       // max attempts before giving up
  * Each regeneration re-runs materializeHubDocFromCandidate(), which:
  *   1. Re-discovers the hub's local graph assembly
  *   2. Re-generates hub markdown skeleton
- *   3. LLM fills the skeleton (PromptId.HubDocSummary)
+ *   3. LLM fills the skeleton
  *   4. Re-indexes with embeddings (hub_maintenance options)
  *   5. Replaces hub_constituent rows
  *   6. Clears hub_stale_since on mobius_node

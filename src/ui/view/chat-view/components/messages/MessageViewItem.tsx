@@ -43,7 +43,7 @@ interface StreamingState {
 	isToolSequenceActive: boolean;
 }
 
-export interface MessageItemRetainedProps {
+export interface MessageItemProps {
 	message: ChatMessage;
 	streamingState?: StreamingState;
 	isLastMessage?: boolean;
@@ -54,7 +54,7 @@ export interface MessageItemRetainedProps {
 const MetaDot: React.FC = () => <span className="pkchat-msg__dot">·</span>;
 
 /**
- * MessageViewItemRetained — document-style message rendering for the 2026-05-29
+ * MessageViewItem — document-style message rendering for the 2026-05-29
  * retained chat design.
  *
  * Anatomy (assistant):
@@ -68,7 +68,7 @@ const MetaDot: React.FC = () => <span className="pkchat-msg__dot">·</span>;
  * is omitted by design — user actions are surfaced via right-click + the
  * shared composer.
  */
-export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
+export const MessageViewItem: React.FC<MessageItemProps> = ({
 	message,
 	streamingState = {
 		isStreaming: false,
@@ -105,7 +105,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
 		} catch (err) {
-			console.error('[MessageItemRetained] Copy failed:', err);
+			console.error('[MessageItem] Copy failed:', err);
 		}
 	}, [message.content]);
 
@@ -115,7 +115,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
 		} catch (err) {
-			console.error('[MessageItemRetained] Copy JSON failed:', err);
+			console.error('[MessageItem] Copy JSON failed:', err);
 		}
 	}, [message]);
 
@@ -174,7 +174,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 				});
 			}
 		} catch (err) {
-			console.error('[MessageItemRetained] Regenerate failed:', err);
+			console.error('[MessageItem] Regenerate failed:', err);
 		}
 	}, [activeConversation, activeProject, streamChat, manager, message.id]);
 
@@ -219,12 +219,12 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 					path,
 				);
 			} catch (telemetryErr) {
-				console.warn('[MessageItemRetained] recordVaultSave failed:', telemetryErr);
+				console.warn('[MessageItem] recordVaultSave failed:', telemetryErr);
 			}
 
 			new Notice(strings.message.vaultSaveSuccess);
 		} catch (err) {
-			console.error('[MessageItemRetained] Save to vault failed:', err);
+			console.error('[MessageItem] Save to vault failed:', err);
 			new Notice(strings.message.vaultSaveFailed);
 		}
 	}, [activeConversation, chatVaultWriter, message.id, message.content, message.model, message.provider, message.createdAtTimestamp, strings.message.vaultSaveDefaultFolder, strings.message.vaultSaveSuccess, strings.message.vaultSaveFailed]);
@@ -241,7 +241,7 @@ export const MessageViewItemRetained: React.FC<MessageItemRetainedProps> = ({
 				loadMessages: false,
 			});
 		} catch (err) {
-			console.error('[MessageItemRetained] Branch failed:', err);
+			console.error('[MessageItem] Branch failed:', err);
 		}
 	}, [activeConversation, activeProject, manager, eventBus, chatNavigation, message.id]);
 

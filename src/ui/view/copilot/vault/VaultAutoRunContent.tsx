@@ -54,6 +54,7 @@ import {
 	type LucideIcon,
 } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { EmptyState } from '@/ui/components/surface';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import type { VaultReviewSessionSnapshot } from '@/service/copilot/vault/VaultReviewSession';
 import type { VaultReviewMode } from '@/service/copilot/vault/VaultMetaAgentStream';
@@ -557,7 +558,7 @@ const OverviewPanel: React.FC<{
 	prevRecord: VaultReviewHistoryRecord | null;
 	onJumpTab: (tab: VaultTabId) => void;
 }> = ({ snapshot, prevRecord, onJumpTab }) => {
-	if (!snapshot) return <Empty label="Building pre-flight vault digest…" />;
+	if (!snapshot) return <EmptyState label="Building pre-flight vault digest…" />;
 
 	const cs = snapshot.collectorSnapshot;
 	const lastSub = cs.submissions[cs.submissions.length - 1];
@@ -653,7 +654,7 @@ const OverviewPanel: React.FC<{
 			)}
 
 			{!headlineTitle && !topAction && snapshot.status === 'running' && (
-				<Empty label="Agent is exploring the vault. Findings appear here as they arrive." />
+				<EmptyState label="Agent is exploring the vault. Findings appear here as they arrive." />
 			)}
 		</>
 	);
@@ -742,13 +743,7 @@ function ChangedBadge({ badge }: { badge: 'touched' | 'new' | 'deleted' | 'trend
 	return <span className="pktw-w-[26px] pktw-h-[26px] pktw-rounded-full pktw-bg-pk-success-bg pktw-text-pk-success pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"><TrendingUp className="pktw-w-3 pktw-h-3" strokeWidth={2.5} /></span>;
 }
 
-function Empty({ label }: { label: string }) {
-	return (
-		<div className="pktw-px-6 pktw-py-12 pktw-text-center pktw-text-pk-foreground-muted pktw-bg-pk-background-secondary pktw-border pktw-border-dashed pktw-border-pk-border pktw-rounded-2xl">
-			{label}
-		</div>
-	);
-}
+// Empty helper replaced by <EmptyState> from src/ui/components/surface (T11X-B).
 
 // ─── Clusters panel ─────────────────────────────────────────────────────
 
@@ -782,7 +777,7 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 	}, [selectedId, vaultReviewRuntime]);
 
 	if (digestClusters.length === 0) {
-		return <Empty label="No cluster data available. Vault community detection may still be initialising." />;
+		return <EmptyState label="No cluster data available. Vault community detection may still be initialising." />;
 	}
 
 	const dormantSet = new Set(snapshot?.digest?.recentActivity.dormantClusters ?? []);
@@ -974,7 +969,7 @@ const GapsPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = ({ 
 	const { vaultNavigation } = useServiceContext();
 	const openNote = (path: string) => vaultNavigation.openLink(path, { newLeaf: 'tab' });
 	const gaps = snapshot?.collectorSnapshot.gaps ?? [];
-	if (gaps.length === 0) return <Empty label="No gaps reported yet." />;
+	if (gaps.length === 0) return <EmptyState label="No gaps reported yet." />;
 
 	const byKind = useMemo(() => {
 		const m = new Map<string, typeof gaps>();
@@ -1187,7 +1182,7 @@ const ActionsPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = 
 	const actions = snapshot?.collectorSnapshot.actions ?? [];
 	const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
 
-	if (actions.length === 0) return <Empty label="No actions proposed yet." />;
+	if (actions.length === 0) return <EmptyState label="No actions proposed yet." />;
 
 	const order = { high: 0, medium: 1, low: 2 };
 	const filtered = filter === 'all'
@@ -1227,7 +1222,7 @@ const ActionsPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = 
 			</div>
 
 			{filtered.length === 0 ? (
-				<Empty label={`No ${filter} priority actions.`} />
+				<EmptyState label={`No ${filter} priority actions.`} />
 			) : (
 				filtered.map((a, idx) => <ActionCard key={a.id} action={a} rank={idx + 1} />)
 			)}
@@ -1340,7 +1335,7 @@ const SourcesPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = 
 		if (!selectedId || !sources.find(s => s.id === selectedId)) setSelectedId(sources[0].id);
 	}, [sources, selectedId]);
 
-	if (sources.length === 0) return <Empty label="No sources cited yet." />;
+	if (sources.length === 0) return <EmptyState label="No sources cited yet." />;
 
 	const visible = sources.filter(s => conf[confidenceOf(s.weight)]);
 	const selected = visible.find(s => s.id === selectedId) ?? visible[0] ?? sources[0];
@@ -1471,7 +1466,7 @@ const TracePanel: React.FC<{
 	traceSummary?: { totalMs: number; roundCount: number; turnCount: number; finished: boolean };
 }> = ({ snapshot, trace, traceSummary }) => {
 	const [selectedIdx, setSelectedIdx] = useState<number>(0);
-	if (trace.length === 0) return <Empty label="Trace will appear once the agent starts running." />;
+	if (trace.length === 0) return <EmptyState label="Trace will appear once the agent starts running." />;
 
 	const selected = trace[selectedIdx] ?? trace[0];
 	const totalDur = traceSummary?.totalMs ?? 0;

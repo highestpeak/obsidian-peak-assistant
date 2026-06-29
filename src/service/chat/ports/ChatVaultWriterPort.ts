@@ -1,5 +1,5 @@
 // T11N: Narrow port for "save a chat message body to a fresh markdown
-// note" used by `MessageViewItemRetained.handleSaveToVault`. Before T11N
+// note" used by `MessageViewItem.handleSaveToVault`. Before T11N
 // the React message item reached `app.vault.createFolder` +
 // `app.vault.create` directly.
 //

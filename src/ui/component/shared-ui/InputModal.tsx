@@ -1,17 +1,9 @@
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogFooter,
-	DialogClose,
-} from './dialog';
-import { Button } from './button';
+import { Lightbulb } from 'lucide-react';
+import { Modal } from '@/ui/components/primitives/Modal';
+import { Button } from '@/ui/components/primitives/Button';
 import { Input } from './input';
-import { IconButton } from './icon-button';
-import { X, Lightbulb } from 'lucide-react';
 
 interface InputModalProps {
 	open: boolean;
@@ -29,7 +21,8 @@ interface FormData {
 }
 
 /**
- * Lightweight modal for collecting single-line user text input
+ * Lightweight modal for collecting single-line user text input.
+ * Migrated to use the Modal primitive (was @radix-ui Dialog wrapper).
  */
 export const InputModal: React.FC<InputModalProps> = ({
 	open,
@@ -46,84 +39,53 @@ export const InputModal: React.FC<InputModalProps> = ({
 		handleSubmit,
 		reset,
 		formState: { errors },
-	} = useForm<FormData>({
-		defaultValues: {
-			value: initialValue,
-		},
-	});
+	} = useForm<FormData>({ defaultValues: { value: initialValue } });
 
 	useEffect(() => {
-		if (open) {
-			reset({ value: initialValue });
-		}
+		if (open) reset({ value: initialValue });
 	}, [open, initialValue, reset]);
 
 	const onSubmitForm = (data: FormData) => {
-		const value = data.value.trim() || null;
-		onSubmit(value);
+		onSubmit(data.value.trim() || null);
 		onOpenChange(false);
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="pktw-bg-popover pktw-border pktw-border-border pktw-p-4 pktw-shadow-lg pktw-rounded-xl pktw-max-w-md pktw-w-full">
-				<div className="pktw-flex pktw-items-start pktw-justify-between">
-					<DialogHeader className="pktw-p-0 pktw-m-0">
-						<DialogTitle className="pktw-text-lg pktw-font-medium pktw-text-foreground pktw-leading-tight pktw-m-0">
-							{message}
-						</DialogTitle>
-					</DialogHeader>
-					<DialogClose asChild>
-						<IconButton
-							onClick={() => onOpenChange(false)}
-							className="pktw-text-muted-foreground hover:pktw-text-foreground hover:pktw-bg-muted pktw-transition-colors pktw-rounded-md"
-							size="lg"
-						>
-							<X />
-						</IconButton>
-					</DialogClose>
-				</div>
+		<Modal open={open} onOpenChange={onOpenChange}>
+			<Modal.Content width="narrow" portalClassName="peak-design-root">
+				<Modal.Header>
+					<Modal.Title>{message}</Modal.Title>
+					<Modal.Close />
+				</Modal.Header>
 				<form onSubmit={handleSubmit(onSubmitForm)}>
-					<div className="pktw-space-y-2">
-						<div className="pktw-flex pktw-justify-center">
-							<Input
-								{...register('value', {
-									required: 'This field is required',
-								})}
-								placeholder={placeholderText || message}
-								autoFocus
-								className="pktw-bg-background pktw-h-9 pktw-text-sm pktw-text-foreground pktw-border pktw-border-input pktw-border-solid focus:pktw-border-pk-accent pktw-transition-all pktw-rounded-xl"
-								onKeyDown={(e) => {
-									if (e.key === 'Escape') {
-										onOpenChange(false);
-									}
-								}}
-							/>
-						</div>
+					<Modal.Body>
+						<Input
+							{...register('value', { required: 'This field is required' })}
+							placeholder={placeholderText || message}
+							autoFocus
+							onKeyDown={(e) => {
+								if (e.key === 'Escape') onOpenChange(false);
+							}}
+						/>
 						{errors.value && (
-							<p className="pktw-text-xs pktw-text-red-500 pktw-mt-0.5">
+							<p className="pktw-text-xs pktw-text-red-500 pktw-mt-1">
 								{errors.value.message}
 							</p>
 						)}
 						{hintText && (
-							<div className="pktw-flex pktw-items-center pktw-justify-start pktw-gap-2 pktw-mt-2">
-								<Lightbulb className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground pktw-flex-shrink-0" />
-								<p className="pktw-text-xs pktw-text-muted-foreground pktw-leading-relaxed">
-									{hintText}
-								</p>
+							<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mt-2">
+								<Lightbulb className="pktw-w-4 pktw-h-4 pktw-text-pk-text-muted pktw-shrink-0" />
+								<p className="pktw-text-xs pktw-text-pk-text-muted">{hintText}</p>
 							</div>
 						)}
-					</div>
-					<DialogFooter className="pktw-pt-3 pktw-pb-0 pktw-mt-0">
-						<Button
-							type="submit"
-							className="pktw-bg-primary hover:pktw-bg-primary/90 pktw-text-primary-foreground pktw-h-9 pktw-px-4 pktw-text-sm pktw-font-medium pktw-rounded-xl pktw-w-full sm:pktw-w-auto"
-						>
+					</Modal.Body>
+					<Modal.Footer>
+						<Button type="submit" variant="primary">
 							{submitButtonText}
 						</Button>
-					</DialogFooter>
+					</Modal.Footer>
 				</form>
-			</DialogContent>
-		</Dialog>
+			</Modal.Content>
+		</Modal>
 	);
 };

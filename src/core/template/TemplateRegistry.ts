@@ -208,26 +208,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 		description: 'Generates topic, functional, and context tags for a document.',
 		group: 'indexing',
 	}),
-	'hub-doc-summary-system': meta('prompts', 'hub-doc-summary-system', { label: 'Hub Doc Summary (System)', description: 'System prompt for hub document summarization.', group: 'indexing' }),
-	'hub-doc-summary': meta('prompts', 'hub-doc-summary', {
-		expectsJson: true,
-		jsonConstraint:
-			'Return exactly one JSON object with keys shortSummary, fullSummary, coreFacts, queryAnchors, tagTopicDistribution, timeDimension, keyPatterns. No markdown fences.',
-		systemPromptId: 'hub-doc-summary-system' as PromptId,
-		label: 'Hub Doc Summary',
-		description: 'Structured summary for hub discovery.',
-		group: 'indexing',
-	}),
-	'hub-semantic-merge-system': meta('prompts', 'hub-semantic-merge-system', { label: 'Hub Semantic Merge (System)', description: 'System prompt for merging similar hub nodes.', group: 'indexing' }),
-	'hub-semantic-merge': meta('prompts', 'hub-semantic-merge', {
-		expectsJson: true,
-		jsonConstraint:
-			'Return only JSON: mergeGroups (array of objects with representativeStableKey, memberStableKeys, reason, confidence 0-1, mergeKind duplicate|alias|same_topic, optional risks array). No markdown fences.',
-		systemPromptId: 'hub-semantic-merge-system' as PromptId,
-		label: 'Hub Semantic Merge',
-		description: 'Identifies and merges duplicate/alias hub entries.',
-		group: 'indexing',
-	}),
 	'knowledge-intuition-plan-system': meta('prompts', 'knowledge-intuition-plan-system', { label: 'Knowledge Intuition Plan (System)', description: 'System prompt for knowledge intuition planning step.', group: 'indexing' }),
 	'knowledge-intuition-plan': meta('prompts', 'knowledge-intuition-plan', {
 		systemPromptId: 'knowledge-intuition-plan-system' as PromptId,
@@ -239,7 +219,10 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 		expectsJson: true,
 		jsonConstraint:
 			'Return only one JSON object: findingsSummary, optional theme, partitions (max 6, entryPaths max 2 each), coreEntities (max 8, whyItMatters each), topology (max 8), evolution, entryPoints (max 24; count N from Vault scale in user prompt; intent, startPaths max 2, rich whatYouWillFind), optional openQuestions (max 6), should_stop.',
-		systemPromptId: 'knowledge-intuition-submit-system' as PromptId,
+		// systemPromptId removed: previously referenced
+		// `knowledge-intuition-submit-system` which has no metadata entry and no
+		// template file on disk. Golden test t11x-b/prompt-template-registry
+		// caught the orphan binding.
 		label: 'Knowledge Intuition Submit',
 		description: 'Submits intuition results with findings, entities, and topology.',
 		group: 'indexing',
@@ -322,7 +305,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'working-theme-inference': meta('prompts', 'working-theme-inference', { expectsJson: true, jsonConstraint: 'Return only the JSON object with summary and relatedFiles, nothing else.', label: 'Working Theme Inference', description: 'Infers the current working theme from recent activity.', group: 'ambientContext' }),
 	'working-context-render': meta('prompts', 'working-context-render', { label: 'Working Context Render', description: 'Renders working context into conversation context.', group: 'ambientContext' }),
 	'activity-index-render': meta('prompts', 'activity-index-render', { label: 'Activity Index Render', description: 'Renders recent vault activity into conversation context.', group: 'ambientContext' }),
-	'message-chunk-summarize': meta('prompts', 'message-chunk-summarize', { label: 'Message Chunk Summarize', description: 'Summarizes a chunk of messages for context compression.', group: 'ambientContext' }),
 
 	// Prompt enhancement
 	'prompt-enhance': meta('prompts', 'prompt-enhance', { label: 'Prompt Enhance', description: 'Rewrites vague prompts into clear, specific ones.', group: 'chat' }),

@@ -5,9 +5,9 @@ import { DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
 import { DateSeparator } from '../DateSeparator';
 import { useModels } from '@/ui/hooks/useModels';
 import {
-	MessageViewItemRetained,
-	MessageItemRetainedProps,
-} from './MessageViewItemRetained';
+	MessageViewItem,
+	MessageItemProps,
+} from './MessageViewItem';
 import { useChatStrings } from '../../chatStringsContext';
 
 /** Get date-only string for comparison */
@@ -18,11 +18,11 @@ function getDateOnly(ts: number | undefined): string {
 }
 
 /**
- * MessageListRendererRetained — message list using the 2026-05-29 retained
+ * MessageListRenderer — message list using the 2026-05-29 retained
  * document-style message rendering. Replaces the legacy MessageListRenderer
  * + MessageViewItem path. Streaming and dataflow behavior unchanged.
  */
-export const MessageListRendererRetained: React.FC = () => {
+export const MessageListRenderer: React.FC = () => {
 	const strings = useChatStrings();
 	const {
 		messages,
@@ -35,8 +35,8 @@ export const MessageListRendererRetained: React.FC = () => {
 	} = useChatDataStore();
 	const { models } = useModels();
 
-	const savedMessagesToRender: Array<MessageItemRetainedProps> = useMemo(() => {
-		const result: Array<MessageItemRetainedProps> = [];
+	const savedMessagesToRender: Array<MessageItemProps> = useMemo(() => {
+		const result: Array<MessageItemProps> = [];
 		messages.forEach((message) => {
 			result.push({
 				message,
@@ -57,7 +57,7 @@ export const MessageListRendererRetained: React.FC = () => {
 		return result;
 	}, [messages]);
 
-	const streamingMessageToRender: MessageItemRetainedProps | null = useMemo(() => {
+	const streamingMessageToRender: MessageItemProps | null = useMemo(() => {
 		if (!streamingMessageId) return null;
 		return {
 			message: {
@@ -112,12 +112,12 @@ export const MessageListRendererRetained: React.FC = () => {
 						{showDateSeparator && (
 							<DateSeparator date={new Date(item.message.createdAtTimestamp)} />
 						)}
-						<MessageViewItemRetained {...item} models={models} />
+						<MessageViewItem {...item} models={models} />
 					</React.Fragment>
 				);
 			})}
 			{streamingMessageToRender && (
-				<MessageViewItemRetained {...streamingMessageToRender} models={models} />
+				<MessageViewItem {...streamingMessageToRender} models={models} />
 			)}
 		</div>
 	);
