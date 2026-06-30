@@ -22,7 +22,7 @@ import { obsidianNotifier } from '@/app/platform/NoticeNotifier';
 import { VAULT_DB_FILENAME } from '@/core/constant';
 import { AppContext } from '@/app/context/AppContext';
 import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
-import { setEmbeddingUsageReporter } from '@/core/embeddings/embedClient';
+import { setEmbeddingUsageReporter } from '@/service/search/embeddings/embedClient';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { registerTemplateEngineHelpers } from '@/core/template-engine-helper';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
