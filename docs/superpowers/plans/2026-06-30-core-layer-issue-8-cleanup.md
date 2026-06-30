@@ -316,10 +316,18 @@ Expected: `OK`.
 Run: `npm run test`
 Expected: same pass count as baseline.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Commit (stage by name; never `git add -A`)**
 
 ```bash
-git add -A
+# Stage the merge target, the deleted file, and the rewritten imports — by name only.
+git add src/core/errors.ts \
+        src/core/errors/llm-errors.ts \
+        src/ui/view/copilot/CopilotResultContent.tsx \
+        src/service/agents/core/sdkMessageAdapter.ts
+
+# Sanity-check: only the four lines above should appear in the staged diff.
+git diff --cached --name-only
+
 git commit -m "$(cat <<'EOF'
 refactor(core): merge llm-errors.ts into errors.ts
 
@@ -386,10 +394,19 @@ Expected: `OK`.
 Run: `npm run test`
 Expected: same pass count as baseline.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Commit (stage by name; never `git add -A`)**
 
 ```bash
-git add -A
+# Stage the rename and the rewritten imports — by name only.
+git add src/core/embeddings/embedClient.ts \
+        src/service/search/embeddings/embedClient.ts \
+        src/service/search/retriever/vector-retriever.ts \
+        src/service/search/index/indexService.ts \
+        test/embed-client.test.ts
+
+# Sanity-check: only those five lines should appear.
+git diff --cached --name-only
+
 git commit -m "$(cat <<'EOF'
 refactor(core): move embedClient out of core into service/search
 
@@ -456,3 +473,4 @@ If Issue 8 in `docs/superpowers/refactor-ops/2026-06-30-core-layer-review-issue-
 - **`rmdir` not `rm -rf`.** The folder must be empty after `git mv`/`git rm`; `rmdir` will refuse if there's anything left, which is the safety check we want.
 - **Tests between tasks.** Each task ends with `npm run test`. If a task breaks tests, do not proceed — investigate, fix, and commit the fix as part of that task before moving on.
 - **No content edits.** This refactor is path-only. Do not reformat, reorder exports, or rename symbols inside any moved file. If you spot a code smell, file a separate issue.
+- **Never use `git add -A` / `git add .`.** Stage only the files this task touches by name. Untracked files in `docs/gstack/` and elsewhere are pre-existing scratch work and MUST NOT be swept into a refactor commit. The commit steps in Tasks 4 and 5 specify the exact `git add <path>` calls — follow them literally.
