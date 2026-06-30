@@ -21,13 +21,14 @@ import { AmbientPushRuntime } from '@/service/ambient/AmbientPushRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { AmbientPorts } from '@/service/ambient/ports/AmbientPorts';
 import { SqliteSemanticGraphTraversalAdapter } from '@/app/adapters/search/SqliteSemanticGraphTraversalAdapter';
+import { SqliteAmbientBriefingReadAdapter } from '@/app/adapters/ambient/SqliteAmbientBriefingReadAdapter';
 import { SerendipitySearcher } from '@/service/ambient/serendipity/SerendipitySearcher';
+import { BriefingItemBuilder } from '@/service/ambient/briefing/BriefingItemBuilder';
 import { ObsidianAmbientSettingsAdapter } from './ObsidianAmbientSettingsAdapter';
 import { ObsidianAmbientEditorContextAdapter } from './ObsidianAmbientEditorContextAdapter';
 import { SearchAmbientSearchAdapter } from './SearchAmbientSearchAdapter';
 import { AmbientUiProjectionAdapter } from './AmbientUiProjectionAdapter';
 import { SqliteAmbientPersistenceAdapter } from './SqliteAmbientPersistenceAdapter';
-import { SqliteAmbientBriefingAdapter } from './SqliteAmbientBriefingAdapter';
 import { LlmAmbientExplanationAdapter } from './LlmAmbientExplanationAdapter';
 import { DefaultAmbientClock } from './DefaultAmbientClock';
 
@@ -39,7 +40,8 @@ export function composeAmbientRuntime(app: App): AmbientRuntime {
 	const serendipity = new SerendipitySearcher(graphTraversal);
 	const search = new SearchAmbientSearchAdapter(persistence, serendipity);
 	const projection = new AmbientUiProjectionAdapter();
-	const briefing = new SqliteAmbientBriefingAdapter();
+	const briefingRead = new SqliteAmbientBriefingReadAdapter();
+	const briefing = new BriefingItemBuilder(briefingRead);
 	const explanation = new LlmAmbientExplanationAdapter();
 	const clock = new DefaultAmbientClock();
 
