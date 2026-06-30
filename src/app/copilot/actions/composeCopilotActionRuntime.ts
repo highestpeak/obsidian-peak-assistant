@@ -18,7 +18,9 @@ import type { CopilotActionPorts } from '@/service/copilot/actions/CopilotAction
 import { AppCopilotActionAiAdapter } from './AppCopilotActionAiAdapter';
 import { ObsidianCopilotActionVaultAdapter } from './ObsidianCopilotActionVaultAdapter';
 import { AppCopilotActionSearchAdapter } from './AppCopilotActionSearchAdapter';
-import { SqliteCopilotActionSemanticGraphAdapter } from './SqliteCopilotActionSemanticGraphAdapter';
+import { SqliteSemanticLinkReadAdapter } from '@/app/adapters/copilot/SqliteSemanticLinkReadAdapter';
+import { SemanticLinkSuggestionService } from '@/service/copilot/SemanticLinkSuggestionService';
+import { SmartConnectionService } from '@/service/copilot/SmartConnectionService';
 import { SqliteCopilotActionTagsAdapter } from './SqliteCopilotActionTagsAdapter';
 import { createAppCopilotActionAgentAdapter } from './AppCopilotActionAgentAdapter';
 import { ObsidianCustomPromptSourceAdapter } from './ObsidianCustomPromptSourceAdapter';
@@ -42,7 +44,18 @@ export function composeCopilotActionRuntime(app: App): CopilotActionRuntime {
 		// instead of crashing the catalog. The runtime stays usable on
 		// mobile and during the SQLite-deferred window.
 		search: new AppCopilotActionSearchAdapter(() => safeGetSearchClient()),
-		semanticGraph: new SqliteCopilotActionSemanticGraphAdapter(),
+		// T11Y-4b: semantic-link suggestion algorithms now live in the
+		// service layer behind a narrow {@link SemanticLinkReadPort}; the
+		// sqlite adapter is just a read surface. Bundling the two
+		// services satisfies the action-facing
+		// {@link CopilotActionSemanticGraphPort} contract unchanged.
+		semanticGraph: (() => {
+			const reads = new SqliteSemanticLinkReadAdapter();
+			return SemanticLinkSuggestionService.bundle(
+				new SemanticLinkSuggestionService(reads),
+				new SmartConnectionService(reads),
+			);
+		})(),
 		tags: new SqliteCopilotActionTagsAdapter(appContext.manager),
 		agent: createAppCopilotActionAgentAdapter({
 			app,
