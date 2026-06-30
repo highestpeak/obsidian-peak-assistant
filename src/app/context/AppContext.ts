@@ -16,7 +16,7 @@ import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import { getVaultPersona } from '@/app/debug/system-info';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
-import { AppRuntimeRegistry } from '@/app/runtime/AppRuntimeRegistry';
+import { AppRuntimeRegistry } from '@/app/context/AppRuntimeRegistry';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';

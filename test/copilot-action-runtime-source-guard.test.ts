@@ -20,7 +20,7 @@ const SERVICE_CUSTOM_PROMPT = abs('src/service/copilot/CustomPromptRegistry.ts')
 const SERVICE_ACTION_REGISTRY = abs('src/service/copilot/CopilotActionRegistry.ts');
 const UI_PICKER_MODAL = abs('src/ui/view/copilot/CopilotPickerContent.tsx'); // CopilotPickerModal.tsx was renamed to CopilotPickerContent.tsx
 const APP_COMMANDS_REGISTER = abs('src/app/commands/Register.ts');
-const APP_RUNTIME_REGISTRY = abs('src/app/runtime/AppRuntimeRegistry.ts');
+const APP_RUNTIME_REGISTRY = abs('src/app/context/AppRuntimeRegistry.ts');
 
 function abs(rel: string): string {
 	return path.resolve(process.cwd(), rel);

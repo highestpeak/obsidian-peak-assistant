@@ -3,7 +3,7 @@
 // T6 placed a module-level `currentRuntime` binding here (the central
 // fail-loud handoff between `composeVaultLintRuntime` and the service
 // consumers). T6R relocates that binding to app-level ownership in
-// `src/app/runtime/AppRuntimeRegistry.ts` so the "no service-layer
+// `src/app/context/AppRuntimeRegistry.ts` so the "no service-layer
 // module singletons" rule holds at the capability boundary.
 //
 // What stays here: the minimum runtime SURFACE consumers depend on.

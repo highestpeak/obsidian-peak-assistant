@@ -169,7 +169,7 @@ export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 		// been replaced by `AppContext.{get,set,clear}VaultLintRuntime`
 		// delegating to `AppRuntimeRegistry`.
 		{
-			site: 'src/app/runtime/AppRuntimeRegistry.ts',
+			site: 'src/app/context/AppRuntimeRegistry.ts',
 			singleton: 'AppRuntimeRegistry.{set,get,tryGet,clear}VaultLintRuntime',
 			purpose: 'app-owned Vault Lint runtime binding (single instance held on AppContext)',
 		},

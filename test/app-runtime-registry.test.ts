@@ -10,7 +10,7 @@
 import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
-import { AppRuntimeRegistry } from '@/app/runtime/AppRuntimeRegistry';
+import { AppRuntimeRegistry } from '@/app/context/AppRuntimeRegistry';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { LintScanResult } from '@/service/lint/types';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
@@ -107,7 +107,7 @@ function testClearVaultLintRuntimeAllowsRebind(): void {
 function testRegistryFileDoesNotReachAppShellOrObsidian(): void {
 	const registryPath = path.resolve(
 		process.cwd(),
-		'src/app/runtime/AppRuntimeRegistry.ts',
+		'src/app/context/AppRuntimeRegistry.ts',
 	);
 	const source = fs.readFileSync(registryPath, 'utf8');
 	const code = source

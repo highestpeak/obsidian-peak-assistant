@@ -6,7 +6,7 @@
 import assert from 'assert';
 import { createBuiltInCopilotActions } from '@/service/copilot/actions';
 import { CopilotActionRuntimeImpl } from '@/service/copilot/actions/CopilotActionRuntimeImpl';
-import { AppRuntimeRegistry } from '@/app/runtime/AppRuntimeRegistry';
+import { AppRuntimeRegistry } from '@/app/context/AppRuntimeRegistry';
 import type { CopilotActionPorts } from '@/core/ports/CopilotActionPorts';
 import type { CopilotAction, DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 

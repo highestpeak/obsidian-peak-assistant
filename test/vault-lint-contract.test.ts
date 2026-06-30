@@ -155,7 +155,7 @@ function testDependencyInventoryCoversAllResolutionSites(): void {
 	assert.ok(
 		inv.singletonResolutions.some(
 			(r) =>
-				r.site === 'src/app/runtime/AppRuntimeRegistry.ts' &&
+				r.site === 'src/app/context/AppRuntimeRegistry.ts' &&
 				/AppRuntimeRegistry/.test(r.singleton),
 		),
 		'T6R: the app-owned runtime registry binding must be inventoried',

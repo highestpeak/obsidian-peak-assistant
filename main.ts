@@ -5,7 +5,7 @@ import { MySettings } from 'src/app/settings/MySetting';
 import { normalizePluginSettings } from 'src/app/settings/PluginSettingsLoader';
 import { ViewManager } from 'src/app/ui-host/views/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
-import { registerCoreEvents, removeAllChatViewButtons, clearPendingConversationTimeouts } from 'src/app/events/Register';
+import { registerCoreEvents, removeAllChatViewButtons, clearPendingConversationTimeouts } from 'src/app/chat/registerChatMarkdownAffordance';
 import { MyPluginSettings, DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
 import { SearchClient } from '@/service/search/SearchClient';
 import { SearchUpdateListener } from '@/service/search/index/indexUpdater';

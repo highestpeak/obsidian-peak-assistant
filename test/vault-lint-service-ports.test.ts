@@ -347,7 +347,7 @@ function testServiceLayerRuntimeFileIsPureInterface(): void {
 	// T6R closure: `src/service/lint/VaultLintRuntime.ts` must no
 	// longer host any module-level mutable state, factory function,
 	// or binding accessor. The runtime binding lives in
-	// `src/app/runtime/AppRuntimeRegistry.ts` (app layer); this file
+	// `src/app/context/AppRuntimeRegistry.ts` (app layer); this file
 	// is a pure interface module.
 	const source = fs.readFileSync(RUNTIME_PATH, 'utf8');
 	const code = stripComments(source);
