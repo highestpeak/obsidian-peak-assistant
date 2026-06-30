@@ -12,7 +12,7 @@ import type { QuickSearchAnalysisPersistencePort } from '@/core/ports/QuickSearc
 import type { QuickSearchForegroundSnapshot } from '@/service/search/background/QuickSearchBackgroundTypes';
 import { persistSessionToVault } from '@/service/search/analysisDocPersistence';
 import type { V2SessionSnapshot } from '@/core/search/sessionSnapshot';
-import { AppAnalysisDocVaultWriterAdapter } from '@/app/quick-search/AppAnalysisDocVaultWriterAdapter';
+import { AppAnalysisDocVaultWriterAdapter } from '@/app/search/AppAnalysisDocVaultWriterAdapter';
 import { AppContext } from '@/app/context/AppContext';
 
 export class AppAnalysisPersistenceAdapter implements QuickSearchAnalysisPersistencePort {

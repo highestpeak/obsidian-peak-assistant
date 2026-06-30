@@ -11,7 +11,7 @@ import path from 'path';
 const ROOT = process.cwd();
 const ORCH = path.resolve(ROOT, 'src/service/agents/report/ReportOrchestrator.ts');
 const PORT = path.resolve(ROOT, 'src/core/ports/ReportSessionPort.ts');
-const ADAPTER = path.resolve(ROOT, 'src/app/quick-search/SearchSessionReportAdapter.ts');
+const ADAPTER = path.resolve(ROOT, 'src/app/search/SearchSessionReportAdapter.ts');
 
 function readNoComments(p: string): string {
 	const src = fs.readFileSync(p, 'utf8');

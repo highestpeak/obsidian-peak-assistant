@@ -8,7 +8,7 @@
  * markdown file" / "overwrite this markdown file" without knowing about
  * `AppContext`, `app.vault.create`, `TFile`, folder normalization, or
  * filename sanitization — those live in the app-layer adapter
- * (`src/app/quick-search/AppAnalysisDocVaultWriterAdapter.ts`).
+ * (`src/app/search/AppAnalysisDocVaultWriterAdapter.ts`).
  *
  * Rules:
  * - There is no module-level default writer in this file. Callers must

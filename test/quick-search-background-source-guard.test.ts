@@ -36,7 +36,7 @@ const SERVICE_QSB_ROOT = path.resolve(
 );
 const APP_QSB_ROOT = path.resolve(
 	process.cwd(),
-	'src/app/quick-search/background',
+	'src/app/search/background',
 );
 const RETIRED_BSM_PATH = path.resolve(
 	process.cwd(),
@@ -101,7 +101,7 @@ function testTreeIsNonEmpty(): void {
 	);
 	assert.ok(
 		app.length >= 5,
-		`expected src/app/quick-search/background to contain at least 5 .ts files, found ${app.length}`,
+		`expected src/app/search/background to contain at least 5 .ts files, found ${app.length}`,
 	);
 	console.log(`PASS: treeIsNonEmpty (service ${service.length}, app ${app.length})`);
 }

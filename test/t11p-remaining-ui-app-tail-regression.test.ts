@@ -212,7 +212,7 @@ async function testNewPortFilesExist(): Promise<void> {
 		'app/commands/composeSettingsActions.ts',
 		'app/adapters/navigation/AppWikilinkAdapter.ts',
 		'app/adapters/vault/AppVaultStatsAdapter.ts',
-		'app/quick-search/composeQuickSearchHost.ts',
+		'app/search/composeQuickSearchHost.ts',
 	];
 	for (const rel of [...required, ...compositionFiles]) {
 		assert.strictEqual(

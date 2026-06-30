@@ -5,7 +5,7 @@
 // through `AppContext.{get,tryGet}QuickSearchBackgroundRuntime()`. The
 // concrete `QuickSearchBackgroundRuntimeImpl` lives next to this file
 // and takes a `QuickSearchBackgroundDeps` port bag; the runtime
-// composition (`src/app/quick-search/background/composeQuickSearchBackgroundRuntime`)
+// composition (`src/app/search/background/composeQuickSearchBackgroundRuntime`)
 // is the ONE place that wires app singletons (Obsidian `Notice`,
 // Zustand `useSearchSessionStore`, `eventTargetRedirect`,
 // `QuickSearchModal`, `persistSessionToVault`) into ports.

@@ -2,11 +2,11 @@ import React from 'react';
 import { ServiceProvider } from '@/ui/context/ServiceContext';
 import { AppContext } from '@/app/context/AppContext';
 import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPanelVault';
-import { AppAnalysisDocVaultWriterAdapter } from '@/app/quick-search/AppAnalysisDocVaultWriterAdapter';
-import { SearchSessionReportAdapter } from '@/app/quick-search/SearchSessionReportAdapter';
+import { AppAnalysisDocVaultWriterAdapter } from '@/app/search/AppAnalysisDocVaultWriterAdapter';
+import { SearchSessionReportAdapter } from '@/app/search/SearchSessionReportAdapter';
 import { composeSettingsActions } from '@/app/commands/composeSettingsActions';
 import { createChatNavigation } from '@/ui/view/chat-view/chatNavigation';
-import { composeQuickSearchHost } from '@/app/quick-search/composeQuickSearchHost';
+import { composeQuickSearchHost } from '@/app/search/composeQuickSearchHost';
 import { composeCopilotReviewDeps } from '@/app/copilot/composeCopilotReviewDeps';
 
 /**

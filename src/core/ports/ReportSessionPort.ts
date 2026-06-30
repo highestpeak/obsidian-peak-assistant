@@ -6,7 +6,7 @@
  * The previous design called `useSearchSessionStore.getState()` from
  * the service, which made ReportOrchestrator depend on
  * `@/ui/view/quick-search/store/searchSessionStore`. The app-layer
- * adapter (`src/app/quick-search/SearchSessionReportAdapter.ts`)
+ * adapter (`src/app/search/SearchSessionReportAdapter.ts`)
  * wraps that store; the orchestrator only sees this interface.
  */
 

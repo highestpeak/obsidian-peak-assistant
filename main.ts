@@ -247,7 +247,7 @@ export default class MyPlugin extends Plugin {
 		// previous `BackgroundSessionManager.getInstance()` singleton
 		// is retired.
 		{
-			const { composeQuickSearchBackgroundRuntime } = await import('@/app/quick-search/background/composeQuickSearchBackgroundRuntime');
+			const { composeQuickSearchBackgroundRuntime } = await import('@/app/search/background/composeQuickSearchBackgroundRuntime');
 			AppContext.setQuickSearchBackgroundRuntime(composeQuickSearchBackgroundRuntime(this.app));
 		}
 

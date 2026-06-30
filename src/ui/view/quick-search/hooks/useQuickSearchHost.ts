@@ -10,7 +10,7 @@
 // sees Obsidian primitives, the adapter does.
 //
 // T11P (Track D): the host bundle is now composed in the app layer
-// (`src/app/quick-search/composeQuickSearchHost.ts`) and published on
+// (`src/app/search/composeQuickSearchHost.ts`) and published on
 // `ServiceContext.quickSearchHost`. UI calls this hook to read the bundle;
 // the hook itself no longer captures `app`/`plugin` or builds the host.
 
