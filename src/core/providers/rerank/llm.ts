@@ -1,6 +1,6 @@
 import type { RerankProvider, RerankRequest, RerankResponse, RerankResult } from './types';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 
 interface LLMRerankOptions {
 	modelId: string;

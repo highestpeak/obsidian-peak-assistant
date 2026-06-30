@@ -4,7 +4,7 @@
 // `queryStructured`. Kept distinct from `IDocSummarizer` (which stays a
 // single-method surface for core document loaders).
 
-import type { PromptId, PromptVariables } from '@/core/prompt/PromptId';
+import type { PromptId, PromptVariables } from '@/core/types/prompt';
 import type { LLMStreamEvent, LLMUsage } from '@/core/providers/types';
 import type { UsageFeature } from '@/core/types/usage';
 

@@ -18,7 +18,7 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import type { Profile } from '@/core/profiles/types';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import type { SearchClient } from '@/service/search/SearchClient';
 import { warmupPool, queryWithProfile } from '@/service/agents/core/sdkAgentPool';

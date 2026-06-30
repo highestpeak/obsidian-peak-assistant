@@ -7,7 +7,7 @@ import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { ChatConversation } from './types';
 import { PromptService } from '@/service/prompt/PromptService';
-import { PromptId, PromptInfo, PromptVariables } from '@/core/prompt/PromptId';
+import { PromptId, PromptInfo, PromptVariables } from '@/core/types/prompt';
 import { ProjectService } from './service-project';
 import { ConversationService } from './service-conversation';
 import {

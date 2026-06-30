@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import type { ReviewResult } from '@/service/copilot/copilot-schemas';
 import { PolishPanel } from './PolishPanel';
 import { AlertCircle, AlertTriangle, Info, FileCheck, Wrench, Lightbulb, Check } from 'lucide-react';

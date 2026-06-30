@@ -1,6 +1,6 @@
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { LLMUsage } from '@/core/providers/types';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { computeUsdFromUsage, normalizeUsageTokens } from '@/service/search/support/llm-cost-utils';
 

@@ -5,7 +5,7 @@
  * See spec §6.1.
  */
 
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { serializeForPrompt } from './catalog';
 import { summarizeEnvironment, summarizePreferences } from './envProbe';

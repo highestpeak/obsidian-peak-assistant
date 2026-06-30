@@ -1,4 +1,4 @@
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import type { Round } from '@/core/search/v2SessionTypes';
 import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 

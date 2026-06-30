@@ -13,7 +13,7 @@
 // is returned in full and PushCard applies a `line-clamp` + tooltip
 // when displaying it.
 
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
 
 /**

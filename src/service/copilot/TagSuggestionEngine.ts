@@ -4,7 +4,7 @@
 // The app composition layer is the only place that wires concrete
 // SQLite repos into the port.
 
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { tagSuggestionsSchema, type TagSuggestions } from './copilot-schemas';
 import { decodeIndexedTagsBlob } from '@/core/document/helper/TagService';
 import type { AIServiceManager } from '@/service/chat/service-manager';

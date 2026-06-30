@@ -20,7 +20,7 @@ import {
 	SEARCH_AI_ANALYSIS_PROMPT_IDS,
 	INDEXING_AND_HUB_PROMPT_IDS,
 	CONFIGURABLE_PROMPT_IDS,
-} from '@/core/prompt/PromptId';
+} from '@/core/types/prompt';
 import {
 	TEMPLATE_METADATA,
 	ToolTemplateId,

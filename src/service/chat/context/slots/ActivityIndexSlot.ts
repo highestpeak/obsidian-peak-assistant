@@ -2,7 +2,7 @@ import type { ContextSlot, SlotBuildContext, SlotContent } from './types';
 import { EMPTY_SLOT_CONTENT, estimateTokensFromText, formatTimeAgo, renderSystemText } from './types';
 import type { LLMRequestMessage } from '@/core/providers/types';
 import type { PromptService } from '@/service/prompt/PromptService';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 
 export class ActivityIndexSlot implements ContextSlot {
   id = 'activity-index';

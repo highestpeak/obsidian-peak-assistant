@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant 文档索引与治理方案 - 2026-06-30</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --paper: #ffffff;
+      --paper-soft: #f0f3ed;
+      --ink: #17201b;
+      --muted: #5f6d64;
+      --faint: #87958b;
+      --line: #d9dfd7;
+      --line-strong: #bac5b8;
+      --green: #276b52;
+      --green-soft: #dcebe3;
+      --teal: #236875;
+      --teal-soft: #dcecef;
+      --gold: #8a6722;
+      --gold-soft: #f1e7cf;
+      --red: #9a453f;
+      --red-soft: #f2ddda;
+      --violet: #62538a;
+      --violet-soft: #e6e1f0;
+      --shadow: 0 16px 48px rgba(22, 31, 25, 0.08);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      line-height: 1.55;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .side {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 28px 22px;
+      border-right: 1px solid var(--line);
+      background: rgba(246, 247, 244, 0.92);
+      backdrop-filter: blur(12px);
+      overflow: auto;
+    }
+
+    .side .brand {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 28px;
+    }
+
+    .side .brand strong {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--green);
+    }
+
+    .side .brand span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .nav {
+      display: grid;
+      gap: 5px;
+    }
+
+    .nav a {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 7px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .nav a:hover {
+      color: var(--ink);
+      background: var(--paper);
+      text-decoration: none;
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    .hero {
+      padding: 56px clamp(28px, 5vw, 72px) 40px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(135deg, rgba(220, 235, 227, 0.9), rgba(255, 255, 255, 0.82) 52%, rgba(241, 231, 207, 0.72));
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      color: var(--green);
+      background: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    h1 {
+      max-width: 1080px;
+      margin: 18px 0 14px;
+      font-size: clamp(32px, 5vw, 64px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .hero-copy {
+      max-width: 900px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 34px;
+      max-width: 1120px;
+    }
+
+    .metric {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 8px 28px rgba(22, 31, 25, 0.05);
+    }
+
+    .metric b {
+      display: block;
+      font-size: 24px;
+      line-height: 1;
+      margin-bottom: 7px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .section {
+      padding: 42px clamp(28px, 5vw, 72px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section.alt {
+      background: var(--paper);
+    }
+
+    .section-head {
+      max-width: 980px;
+      margin-bottom: 24px;
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.14;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .lead {
+      color: var(--muted);
+      max-width: 940px;
+    }
+
+    .judgement {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .callout {
+      padding: 22px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .callout.strong {
+      border-color: rgba(39, 107, 82, 0.32);
+      background: linear-gradient(180deg, #ffffff, var(--green-soft));
+    }
+
+    .callout.warn {
+      border-color: rgba(138, 103, 34, 0.32);
+      background: linear-gradient(180deg, #ffffff, var(--gold-soft));
+    }
+
+    .callout p + p {
+      margin-top: 10px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 650;
+      border: 1px solid var(--line-strong);
+      background: var(--paper);
+      color: var(--muted);
+    }
+
+    .pill.green { color: var(--green); background: var(--green-soft); border-color: rgba(39, 107, 82, 0.18); }
+    .pill.teal { color: var(--teal); background: var(--teal-soft); border-color: rgba(35, 104, 117, 0.18); }
+    .pill.gold { color: var(--gold); background: var(--gold-soft); border-color: rgba(138, 103, 34, 0.2); }
+    .pill.red { color: var(--red); background: var(--red-soft); border-color: rgba(154, 69, 63, 0.18); }
+    .pill.violet { color: var(--violet); background: var(--violet-soft); border-color: rgba(98, 83, 138, 0.18); }
+
+    .stack {
+      display: grid;
+      gap: 10px;
+      max-width: 1080px;
+    }
+
+    .stack-row {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr) 88px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+    }
+
+    .stack-row b {
+      font-size: 13px;
+    }
+
+    .bar {
+      height: 12px;
+      border-radius: 999px;
+      background: var(--paper-soft);
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--green), var(--teal));
+    }
+
+    .count {
+      text-align: right;
+      color: var(--muted);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ladder {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .rung {
+      min-height: 132px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      display: grid;
+      align-content: start;
+      gap: 8px;
+    }
+
+    .rung .num {
+      width: 28px;
+      height: 28px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #ffffff;
+      background: var(--green);
+      font-weight: 750;
+      font-size: 13px;
+    }
+
+    .rung span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .decision-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .decision {
+      padding: 18px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    .decision small {
+      display: inline-block;
+      margin-bottom: 8px;
+      color: var(--green);
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .schema {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 10px 11px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      background: var(--paper-soft);
+      font-weight: 700;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    pre {
+      margin: 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #17201b;
+      color: #edf2ed;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .filter {
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--muted);
+      padding: 7px 11px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .filter.active {
+      color: #ffffff;
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    .doc-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .doc-row {
+      display: grid;
+      gap: 9px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+    }
+
+    .doc-row a {
+      font-weight: 750;
+      color: var(--ink);
+    }
+
+    .doc-row p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .doc-row .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .phase-list {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .phase {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      overflow: hidden;
+    }
+
+    .phase header {
+      padding: 14px;
+      background: var(--paper-soft);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .phase div {
+      padding: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .anti {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .anti-item {
+      padding: 14px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(154, 69, 63, 0.2);
+      background: var(--red-soft);
+    }
+
+    .anti-item b {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .anti-item span {
+      color: #6f504d;
+      font-size: 13px;
+    }
+
+    .footer {
+      padding: 28px clamp(28px, 5vw, 72px);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 1100px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        position: relative;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .hero-grid,
+      .ladder,
+      .phase-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .judgement,
+      .schema {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .hero-grid,
+      .ladder,
+      .decision-grid,
+      .doc-grid,
+      .phase-list,
+      .anti {
+        grid-template-columns: 1fr;
+      }
+
+      .stack-row {
+        grid-template-columns: 1fr;
+      }
+
+      .count {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="side">
+      <div class="brand">
+        <strong>Peak Assistant Docs</strong>
+        <span>文档索引与治理方案<br>2026-06-30</span>
+      </div>
+      <nav class="nav" aria-label="Report navigation">
+        <a href="#answer">核心答案</a>
+        <a href="#topology">现状拓扑</a>
+        <a href="#truth">真相源梯子</a>
+        <a href="#index-model">索引模型</a>
+        <a href="#first-index">第一批索引</a>
+        <a href="#workflow">维护流程</a>
+        <a href="#roadmap">落地路线</a>
+        <a href="#anti-goals">不要做什么</a>
+      </nav>
+    </aside>
+
+    <main>
+      <section class="hero">
+        <span class="eyebrow">Documentation control plane</span>
+        <h1>不要把 512 个文档整理成更长的目录。要建立一个能判断真相、证据、历史和下一步的文档索引。</h1>
+        <p class="hero-copy">
+          这份 HTML 报告重写了上一版重要文档地图，并补上治理方案：如何优化现有文档、如何给文档分层、如何建立一个人可读且机器可维护的项目文档索引。
+        </p>
+        <div class="hero-grid" aria-label="Documentation metrics">
+          <div class="metric"><b>512</b><span>当前 docs 文件总数</span></div>
+          <div class="metric"><b>192</b><span>`docs/gstack` 报告与视觉资产</span></div>
+          <div class="metric"><b>82</b><span>refactor-ops 现代化文档</span></div>
+          <div class="metric"><b>79</b><span>historical and active plans</span></div>
+          <div class="metric"><b>63</b><span>architecture and feature specs</span></div>
+        </div>
+      </section>
+
+      <section id="answer" class="section alt">
+        <div class="section-head">
+          <h2>1. 核心答案</h2>
+          <p class="lead">这个项目现在不缺文档，缺的是索引规则。最优解不是搬目录，也不是把全部文档合并成一本书，而是在现有 docs 上方加一个清晰的控制平面。</p>
+        </div>
+        <div class="judgement">
+          <div class="callout strong">
+            <h3>推荐办法：双层索引</h3>
+            <p><b>第一层：人看的入口。</b>保留一份 HTML / README 门户，让 owner 和 coding agent 能按任务进入：当前状态、架构正稿、最近证据、设计参考、调试手册、历史考古。</p>
+            <p><b>第二层：机器可维护的 registry。</b>新增 `docs/doc-registry.json` 或 `docs/doc-registry.yml`，给关键文档记录 status、role、canonicalFor、supersedes、lastVerified、readWhen、tags。以后 HTML 索引可以从 registry 生成。</p>
+            <div class="pill-row">
+              <span class="pill green">先加索引</span>
+              <span class="pill teal">再做归档</span>
+              <span class="pill gold">不要按日期盲删</span>
+            </div>
+          </div>
+          <div class="callout warn">
+            <h3>为什么不直接重组目录</h3>
+            <p>很多文档是证据链：handoff、implementation note、owner review、audit、HTML map 之间互相解释。如果只按目录清理，很容易把“过期文档”和“历史证据”混在一起删掉。</p>
+            <p>更安全的做法是先给文档加语义标签，跑一轮索引验证，再决定哪些移动到 archive、哪些保留为 evidence。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="topology" class="section">
+        <div class="section-head">
+          <h2>2. 当前文档拓扑</h2>
+          <p class="lead">调研口径：扫描 `docs/` 当前文件树。数字不是质量评价，只说明导航负担和索引优先级。</p>
+        </div>
+        <div class="stack" aria-label="Docs topology">
+          <div class="stack-row">
+            <b>docs/gstack</b>
+            <div class="bar"><span style="width: 100%"></span></div>
+            <span class="count">192 files</span>
+          </div>
+          <div class="stack-row">
+            <b>superpowers/refactor-ops</b>
+            <div class="bar"><span style="width: 43%"></span></div>
+            <span class="count">82 files</span>
+          </div>
+          <div class="stack-row">
+            <b>superpowers/plans</b>
+            <div class="bar"><span style="width: 41%"></span></div>
+            <span class="count">79 files</span>
+          </div>
+          <div class="stack-row">
+            <b>superpowers/specs</b>
+            <div class="bar"><span style="width: 33%"></span></div>
+            <span class="count">63 files</span>
+          </div>
+          <div class="stack-row">
+            <b>superpowers/audits</b>
+            <div class="bar"><span style="width: 19%"></span></div>
+            <span class="count">36 files</span>
+          </div>
+          <div class="stack-row">
+            <b>root docs</b>
+            <div class="bar"><span style="width: 16%"></span></div>
+            <span class="count">30 files</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="truth" class="section alt">
+        <div class="section-head">
+          <h2>3. 真相源梯子</h2>
+          <p class="lead">以后读文档时先判断它处在哪一层。层级越高，越能驱动当前决策；层级越低，越偏证据、设计参考或历史上下文。</p>
+        </div>
+        <div class="ladder" aria-label="Source of truth ladder">
+          <div class="rung">
+            <span class="num">0</span>
+            <h3>Current Status</h3>
+            <span>`progress.md` 和 AGENTS 规则。回答“现在项目进行到哪”。</span>
+          </div>
+          <div class="rung">
+            <span class="num">1</span>
+            <h3>Canonical Architecture</h3>
+            <span>主 handbook、Ambient 正稿、Command Gateway 正稿。</span>
+          </div>
+          <div class="rung">
+            <span class="num">2</span>
+            <h3>Operating Rules</h3>
+            <span>scorecard、handoff template、owner review template、governance。</span>
+          </div>
+          <div class="rung">
+            <span class="num">3</span>
+            <h3>Active Evidence</h3>
+            <span>T11X、6月30日 issue maps、implementation notes。</span>
+          </div>
+          <div class="rung">
+            <span class="num">4</span>
+            <h3>Reading Maps</h3>
+            <span>codebase reading map、support-layer report、import graph。</span>
+          </div>
+          <div class="rung">
+            <span class="num">5</span>
+            <h3>Design References</h3>
+            <span>gstack mock/report families，按 surface 查。</span>
+          </div>
+          <div class="rung">
+            <span class="num">6</span>
+            <h3>Archaeology</h3>
+            <span>旧 roadmap、旧 TASKS、archive、早期 plans/specs。</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="index-model" class="section">
+        <div class="section-head">
+          <h2>4. 文档索引模型</h2>
+          <p class="lead">索引的目标不是记录所有路径，而是让每份重要文档回答：它现在是什么身份，什么时候该读，能不能覆盖别的文档，是否已经被替代。</p>
+        </div>
+        <div class="schema">
+          <table>
+            <thead>
+              <tr><th>字段</th><th>作用</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>`id`</td><td>稳定短 id，例如 `architecture-handbook-2026-06-01`。</td></tr>
+              <tr><td>`path`</td><td>相对路径，方便跨机器和仓库内链接。</td></tr>
+              <tr><td>`status`</td><td>`current`、`draft`、`evidence`、`historical`、`superseded`、`archive`。</td></tr>
+              <tr><td>`role`</td><td>`status-source`、`canonical`、`operating-rule`、`evidence`、`design-ref`、`debug-ref`。</td></tr>
+              <tr><td>`tier`</td><td>0 到 6，对应真相源梯子。</td></tr>
+              <tr><td>`canonicalFor`</td><td>这份文档对哪个主题拥有最高解释权。</td></tr>
+              <tr><td>`supersedes` / `supersededBy`</td><td>显式记录替代关系，不靠读者猜。</td></tr>
+              <tr><td>`lastVerified`</td><td>上次确认仍然可信的日期。</td></tr>
+              <tr><td>`readWhen`</td><td>一句话告诉 reader 什么时候打开它。</td></tr>
+              <tr><td>`tags`</td><td>能力、surface、阶段、文档类型标签。</td></tr>
+            </tbody>
+          </table>
+          <pre><code>{
+  "id": "architecture-handbook-2026-06-01",
+  "title": "Peak 系统架构理解手册与现代化行动地图",
+  "path": "docs/superpowers/specs/2026-06-01-peak-system-architecture-modernization-handbook.html",
+  "status": "current",
+  "role": "canonical",
+  "tier": 1,
+  "canonicalFor": ["architecture-modernization", "capability-contract", "run-envelope", "ports-adapters"],
+  "supersedes": [
+    "docs/superpowers/specs/2026-05-30-code-design-architecture-review.html",
+    "docs/superpowers/specs/2026-06-01-peak-architecture-modernization-proposal.html"
+  ],
+  "lastVerified": "2026-06-30",
+  "readWhen": "Any architecture or refactor decision needs a source of truth.",
+  "tags": ["architecture", "modernization", "source-of-truth"]
+}</code></pre>
+        </div>
+      </section>
+
+      <section id="first-index" class="section alt">
+        <div class="section-head">
+          <h2>5. 第一批应该进入索引的文档</h2>
+          <p class="lead">先索引 40 到 60 份高价值文档，不要一开始就试图登记 512 个文件。下面是第一轮 seed set。</p>
+        </div>
+        <div class="filters" aria-label="Document filters">
+          <button class="filter active" data-filter="all">全部</button>
+          <button class="filter" data-filter="canonical">正稿</button>
+          <button class="filter" data-filter="evidence">证据</button>
+          <button class="filter" data-filter="reading">读代码</button>
+          <button class="filter" data-filter="ops">规则</button>
+          <button class="filter" data-filter="archive">考古</button>
+        </div>
+        <div class="doc-grid">
+          <article class="doc-row" data-role="canonical">
+            <div class="meta"><span class="pill green">canonical</span><span class="pill">tier 1</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/specs/2026-06-01-peak-system-architecture-modernization-handbook.html">Peak 系统架构理解手册与现代化行动地图</a>
+            <p>主架构正稿。后续 refactor、runtime ownership、Capability Contract、RunEnvelope 都应回到这里校准。</p>
+          </article>
+          <article class="doc-row" data-role="canonical">
+            <div class="meta"><span class="pill green">canonical</span><span class="pill">Ambient</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">Ambient Push Current Work State 正稿</a>
+            <p>Ambient 的产品语义和技术方向。关键约束：不是沿旧 Ambient pipeline 平行加功能。</p>
+          </article>
+          <article class="doc-row" data-role="canonical">
+            <div class="meta"><span class="pill green">canonical</span><span class="pill">T12</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">Command Gateway Capstone 正稿</a>
+            <p>外部 Obsidian command 接入能力体系的最终验收任务。当前不应被提前混进清理波次。</p>
+          </article>
+          <article class="doc-row" data-role="ops">
+            <div class="meta"><span class="pill teal">operating rule</span><span class="pill">score</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/refactor-ops/architecture-scorecard.md">Architecture Scorecard</a>
+            <p>判断一轮工作是否真的算 major wave。尤其防止把小 cleanup 包装成架构进展。</p>
+          </article>
+          <article class="doc-row" data-role="ops">
+            <div class="meta"><span class="pill teal">operating rule</span><span class="pill">handoff</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/refactor-ops/claude-code-handoff-template.md">Claude Code Handoff Template</a>
+            <p>未来大型实现 prompt 的标准形状。适合和 Impact Contract / investigation gate 一起使用。</p>
+          </article>
+          <article class="doc-row" data-role="ops">
+            <div class="meta"><span class="pill teal">operating rule</span><span class="pill">truth source</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/refactor-ops/t11z-truth-source-governance-rules.html">T11Z Truth Source Governance</a>
+            <p>Provider/model catalog、prompts/templates、SQLite/chat persistence 这类高风险真相源的治理规则。</p>
+          </article>
+          <article class="doc-row" data-role="evidence">
+            <div class="meta"><span class="pill gold">active evidence</span><span class="pill">T11X</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/refactor-ops/t11x-owner-readable-structural-slimming-map.html">T11X Owner Readable Structural Slimming Map</a>
+            <p>当前代码瘦身方向的人类可读地图。更适合作为下一次大 prompt 的入口，而不是读全部 T11X 原始材料。</p>
+          </article>
+          <article class="doc-row" data-role="evidence">
+            <div class="meta"><span class="pill gold">active evidence</span><span class="pill">T11X-F</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/refactor-ops/t11x-f-implementation-note.md">T11X-F Implementation Note</a>
+            <p>最新执行结果。必须保留它的诚实标签：partial / large cleanup，不是 full major-wave completion。</p>
+          </article>
+          <article class="doc-row" data-role="evidence">
+            <div class="meta"><span class="pill gold">active evidence</span><span class="pill">2026-06-30</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/refactor-ops/2026-06-30-owner-code-review-issue-log.md">Owner Code Review Issue Log</a>
+            <p>滚动 owner review 记录。它是最新问题池，不是 implementation handoff。</p>
+          </article>
+          <article class="doc-row" data-role="evidence">
+            <div class="meta"><span class="pill gold">active evidence</span><span class="pill">app layer</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/refactor-ops/2026-06-30-app-layer-service-logic-issue-map.md">App Layer Service-Logic Issue Map</a>
+            <p>指出 app adapter 里藏 service/domain logic 的问题，是下一轮 service extraction 的主入口之一。</p>
+          </article>
+          <article class="doc-row" data-role="evidence">
+            <div class="meta"><span class="pill gold">active evidence</span><span class="pill">core layer</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/refactor-ops/2026-06-30-core-layer-review-issue-map.md">Core Layer Review Issue Map</a>
+            <p>解释为什么 `core` 现在太宽，以及 SQLite/provider/document-loader 等 runtime 如何从 core 分离。</p>
+          </article>
+          <article class="doc-row" data-role="reading">
+            <div class="meta"><span class="pill violet">reading map</span><span class="pill">codebase</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/codebase-reading-map-2026-06-28.html">Codebase Reading Map</a>
+            <p>当前读代码最好的入口。按 capability path、boot path、runtime ownership 读，而不是按目录随机读。</p>
+          </article>
+          <article class="doc-row" data-role="reading">
+            <div class="meta"><span class="pill violet">reading map</span><span class="pill">support layer</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/technical-support-layer-report-2026-06-29.html">Technical Support Layer Report</a>
+            <p>Boot/App shell、Runtime Registry、Shared UI、Storage、Agents、MCP/Skills/Tools 的阅读地图。</p>
+          </article>
+          <article class="doc-row" data-role="archive">
+            <div class="meta"><span class="pill red">historical</span><span class="pill">stale status</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/TASKS.md">TASKS.md</a>
+            <p>2026-04-12 的任务板。可以作为 issue 历史看，但不应作为当前 scheduling source。</p>
+          </article>
+          <article class="doc-row" data-role="archive">
+            <div class="meta"><span class="pill red">historical</span><span class="pill">roadmap</span></div>
+            <a href="/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/execution-roadmap.md">execution-roadmap.md</a>
+            <p>早期并行工作树计划。现在主要用于理解历史，不用于当前架构现代化排序。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="workflow" class="section">
+        <div class="section-head">
+          <h2>6. 维护流程</h2>
+          <p class="lead">文档治理要轻。每次新增或重写重要文档，只需要过一个短流程，不要让索引本身变成新负担。</p>
+        </div>
+        <div class="decision-grid">
+          <div class="decision">
+            <small>Step 1</small>
+            <h3>写状态横幅</h3>
+            <p>每份重要文档顶部写明：`current`、`draft`、`evidence`、`historical`、`superseded` 或 `archive`。HTML 文档也应该在 hero 或 meta 区展示。</p>
+          </div>
+          <div class="decision">
+            <small>Step 2</small>
+            <h3>登记 registry</h3>
+            <p>只登记高价值文档。普通截图、局部 mock、一次性输出可以挂在父文档下面，不必都变成一条 registry record。</p>
+          </div>
+          <div class="decision">
+            <small>Step 3</small>
+            <h3>标替代关系</h3>
+            <p>不要让读者猜哪个文档覆盖哪个文档。用 `supersedes` 和 `supersededBy` 记录旧稿、正稿和后续修订。</p>
+          </div>
+          <div class="decision">
+            <small>Step 4</small>
+            <h3>更新入口</h3>
+            <p>`docs/README.md` 或 HTML 门户只列最重要入口。细节留给 registry 和 per-folder README。</p>
+          </div>
+          <div class="decision">
+            <small>Step 5</small>
+            <h3>链接校验</h3>
+            <p>至少跑本地 link check，确保 registry 和 HTML report 里的路径存在。上一版打不开的问题就应该由这个门拦住。</p>
+          </div>
+          <div class="decision">
+            <small>Step 6</small>
+            <h3>定期清理</h3>
+            <p>按 `status` 和 `lastVerified` 清，不按日期粗暴清。老文档可以是 historical evidence，不一定要删。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="roadmap" class="section alt">
+        <div class="section-head">
+          <h2>7. 落地路线</h2>
+          <p class="lead">建议先做索引覆盖，不要先移动文件。目录搬迁应该发生在 registry 跑通之后。</p>
+        </div>
+        <div class="phase-list">
+          <div class="phase">
+            <header><h3>P0 - 入口固定</h3></header>
+            <div>新增或更新 `docs/README.md`，只放 7 个入口：current status、architecture source、refactor ops、active evidence、code reading maps、design refs、debug refs。</div>
+          </div>
+          <div class="phase">
+            <header><h3>P1 - Registry seed</h3></header>
+            <div>新增 `docs/doc-registry.json`，先登记 40 到 60 份高价值文档。每条记录有 status、role、tier、readWhen、supersedes。</div>
+          </div>
+          <div class="phase">
+            <header><h3>P2 - 生成索引</h3></header>
+            <div>用一个小脚本从 registry 生成 HTML index。HTML 是阅读入口，registry 是事实源。</div>
+          </div>
+          <div class="phase">
+            <header><h3>P3 - 归档与 guard</h3></header>
+            <div>给 stale docs 加 `supersededBy`，再移动到 archive。添加 link check 和 registry shape check，防止新文档继续漂移。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="anti-goals" class="section">
+        <div class="section-head">
+          <h2>8. 不要做什么</h2>
+          <p class="lead">文档治理最容易失败在“看起来更整齐，但实际更难找真相”。下面这些动作应该避免。</p>
+        </div>
+        <div class="anti">
+          <div class="anti-item">
+            <b>不要按日期批量归档</b>
+            <span>老文档可能是证据链。先标 status 和 supersededBy，再决定移动。</span>
+          </div>
+          <div class="anti-item">
+            <b>不要把所有文档合成一本</b>
+            <span>这个项目需要分层索引，不需要一本巨大的 architecture bible。</span>
+          </div>
+          <div class="anti-item">
+            <b>不要让 README 变成 500 行目录</b>
+            <span>README 应该是入口，完整列表交给 registry 和生成报告。</span>
+          </div>
+          <div class="anti-item">
+            <b>不要把设计图和正稿混成同一层</b>
+            <span>gstack 视觉材料很重要，但多数是 design reference，不是 current source of truth。</span>
+          </div>
+          <div class="anti-item">
+            <b>不要只靠文件夹表达状态</b>
+            <span>同一文件夹里可能有正稿、draft、证据和历史。状态必须进 metadata。</span>
+          </div>
+          <div class="anti-item">
+            <b>不要让 AI 只按路径猜文档价值</b>
+            <span>索引要告诉 agent 读什么、什么时候读、不要被什么旧稿误导。</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="section-head">
+          <h2>9. 验证记录</h2>
+          <p class="lead">本报告是 desktop-reading technical report。主阅读场景是本地浏览器或 Codex/编辑器打开，不承诺移动端产品级适配。</p>
+        </div>
+        <table>
+          <thead>
+            <tr><th>检查项</th><th>结果</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>文档扫描</td><td>完成</td><td>统计 `docs/` 文件数、主要目录族群、README/index/map 分布、近期修改。</td></tr>
+            <tr><td>使用场景门</td><td>完成</td><td>定位为 owner / agent 共用的本地技术文档控制面，不按 public SaaS 或 dashboard 文案写。</td></tr>
+            <tr><td>链接策略</td><td>完成</td><td>HTML 内核心链接使用本地绝对路径，避免上一版相对 Markdown 链接打不开。</td></tr>
+            <tr><td>下一步可执行性</td><td>完成</td><td>给出 `docs/README.md`、`docs/doc-registry.json`、生成式 HTML index 和 link guard 的落地顺序。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <footer class="footer">
+        Generated as a project-local HTML report. Evidence came from the current `docs/` tree, `docs/progress.md`, architecture source docs, refactor-ops evidence, and the 2026-06-30 issue maps.
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const buttons = Array.from(document.querySelectorAll('.filter'));
+    const rows = Array.from(document.querySelectorAll('.doc-row'));
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const filter = button.dataset.filter;
+        buttons.forEach((item) => item.classList.toggle('active', item === button));
+        rows.forEach((row) => {
+          const visible = filter === 'all' || row.dataset.role === filter;
+          row.style.display = visible ? 'grid' : 'none';
+        });
+      });
+    });
+  </script>
+</body>
+</html>

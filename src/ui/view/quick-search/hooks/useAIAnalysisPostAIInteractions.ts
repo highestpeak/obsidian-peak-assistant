@@ -5,7 +5,7 @@
 import { SLICE_CAPS } from '@/core/constant';
 import { useCallback } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { useSharedStore } from '../store/sharedStore';
 import { getLastAnalysisHistorySearch, searchCurrentResult } from '../followupContextRuntime';

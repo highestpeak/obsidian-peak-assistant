@@ -7,7 +7,7 @@
  * sourcesTable then delegates to TemplateManager.
  */
 
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
 
 export async function buildGraphSystemPrompt(searchQuery: string, sourcesMeta: Array<{

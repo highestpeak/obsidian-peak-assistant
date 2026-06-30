@@ -9,7 +9,7 @@
  * later when the user invokes the skill).
  */
 
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
 
 export interface BuiltinSkillEntry {

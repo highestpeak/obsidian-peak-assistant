@@ -3,7 +3,7 @@ import { Wand2, Loader2 } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { usePromptInputContext } from '@/ui/component/prompt-input';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 
 const VAGUE_THRESHOLD = 20;
 

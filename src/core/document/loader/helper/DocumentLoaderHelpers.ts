@@ -1,7 +1,7 @@
 import { emptyUsage, type LLMUsage } from '@/core/providers/types';
 import type { Document, ResourceSummary } from '@/core/document/types';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import type { TextRankTerm } from '@/core/document/loader/helper/textRank';
 import type { TextrankSentenceStructured } from '@/core/document/loader/helper/assembleIndexedChunks';
 

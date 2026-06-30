@@ -10,7 +10,7 @@ import {
 	type AmbientExplanationLlmPort,
 } from '@/service/ambient/AmbientExplanationService';
 import { TemplateManager } from '@/core/template/TemplateManager';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 
 interface FakeLlmStats {
 	calls: Array<{ prompt: string; systemPrompt: string }>;

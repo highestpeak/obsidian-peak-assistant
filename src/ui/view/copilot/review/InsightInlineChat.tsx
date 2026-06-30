@@ -12,7 +12,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Send, Sparkles, X } from 'lucide-react';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';

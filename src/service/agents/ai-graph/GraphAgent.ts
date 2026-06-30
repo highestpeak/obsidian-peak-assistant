@@ -14,7 +14,7 @@
 
 import type { AppHandle } from '@/core/ports/AppHandle';
 import type { Profile } from '@/core/profiles/types';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import type { GraphOutput } from './graph-output-types';
 import { buildGraphMcpServer } from './graphMcpServer';

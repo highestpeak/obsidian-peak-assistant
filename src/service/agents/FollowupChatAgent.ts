@@ -15,7 +15,7 @@ import { contentReaderTool } from '@/service/tools/content-reader';
 import { exploreFolderEnvFromManager } from '@/service/tools/exploreFolderEnv';
 import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
-import { PromptId, type PromptVariables } from '@/core/prompt/PromptId';
+import { PromptId, type PromptVariables } from '@/core/types/prompt';
 import { mergeTokenUsage, type LLMStreamEvent, type LLMUsage } from '@/core/providers/types';
 import { TierController } from '@/service/agents/harness/tier/TierController';
 import { defaultTierBindings } from '@/service/agents/harness/tier/bindings';

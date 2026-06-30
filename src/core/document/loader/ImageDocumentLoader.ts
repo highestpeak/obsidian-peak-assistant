@@ -2,7 +2,7 @@ import type { DocumentType, Document, ResourceSummary } from '@/core/document/ty
 import { binaryContentHash } from '@/core/utils/hash-utils';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import type { DocumentSummaryConfig } from './helper/DocumentLoaderHelpers';

@@ -1,4 +1,4 @@
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import type { ActivityEntry, WorkingTheme } from './types';
 
 const INFERENCE_THRESHOLD = 10;

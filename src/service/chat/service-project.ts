@@ -4,7 +4,7 @@ import { ChatProject, ChatProjectMeta } from './types';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { DEFAULT_SUMMARY } from '@/core/constant';
 import { PromptService } from '@/service/prompt/PromptService';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 
 /**
  * Service for managing chat projects.

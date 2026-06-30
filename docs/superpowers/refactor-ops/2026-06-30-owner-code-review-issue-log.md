@@ -652,6 +652,11 @@ Relevant source map:
 
 - `docs/superpowers/refactor-ops/2026-06-30-app-layer-service-logic-issue-map.md`
 
+Post-T11Y reconciliation source:
+
+- T11Y completion note: 34 commits, `116/116` tests passing, build green, working tree clean at handoff time.
+- Current tree check confirms the major target shapes now exist: `src/app/adapters/<capability>`, `src/app/ui-host`, `src/app/search`, `src/app/context/AppRuntimeRegistry.ts`, `src/core/ports`, and service-side extraction targets listed below.
+
 High-confidence files from the map:
 
 - `src/app/copilot/actions/SqliteCopilotActionSemanticGraphAdapter.ts`
@@ -672,6 +677,29 @@ Medium-confidence files from the map:
 - `src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts`
 - `src/app/debug/system-info.ts`
 
+Post-T11Y status:
+
+- Mostly resolved: the app-layer issue map has been implemented rather than merely appended as future planning work.
+- `SearchAmbientSearchAdapter.serendipitySearch` was extracted to `src/service/ambient/serendipity/SerendipitySearcher.ts`; the app file now delegates to the service searcher.
+- `SqliteAmbientBriefingAdapter` was replaced by a read-side adapter plus service logic in `src/service/ambient/briefing/BriefingItemBuilder.ts`.
+- `PeakCommandActions.cleanupUselessData()` now delegates maintenance workflow work to `src/service/maintenance/MaintenanceCleanupService.ts`.
+- `src/app/context/graph-cleanup.ts` was replaced by `src/service/search/index/maintenance/GraphCleanupService.ts`, with DevTools composition in `src/app/context/devtools.ts`.
+- `SqliteVaultReviewDigestAdapter` was split into `src/service/copilot/vault/VaultDigestBuilder.ts` plus app-side read adapters under `src/app/adapters/copilot`.
+- `SqliteCopilotActionSemanticGraphAdapter` was split into `src/service/copilot/SemanticLinkSuggestionService.ts`, `src/service/copilot/SmartConnectionService.ts`, and narrow read adapters under `src/app/adapters/copilot` / `src/app/adapters/search`.
+- `LlmAmbientExplanationAdapter` is still present, but prompt/policy moved to `src/service/ambient/AmbientExplanationService.ts`; prompt bodies moved to templates and the historical `500`-character hard truncation was removed.
+- `AppCopilotActionSearchAdapter` now reports a discriminated `SearchAvailabilityResult` through `src/core/ports/SearchAvailabilityPort.ts` instead of silently mapping unavailable search to an empty result list.
+- Copilot AI/vault forwarding adapters were removed in favor of shared ports such as `src/core/llm/IAgentPrompter.ts` and core vault/metadata ports.
+- Custom prompt source moved out of Copilot actions into `src/core/ports/CustomPromptSourcePort.ts` plus `src/app/adapters/prompts/ObsidianCustomPromptSourceAdapter.ts`.
+- Pattern-learning policy moved out of `SqliteAmbientPersistenceAdapter` into `src/service/ambient/PatternLearningService.ts`.
+- Directory topology work from Issues 9-14 also landed: standalone X-Ray UI retired, ports moved to `core/ports`, platform adapters consolidated under `app/adapters`, React/view/modal shell moved to `app/ui-host`, Quick Search moved into `app/search`, app runtime registry moved beside context, and chat markdown events moved out of generic `app/events`.
+
+Remaining scope after T11Y:
+
+- `src/app/debug/system-info.ts` still exists and still owns `getVaultPersona()` aggregation. The completion note explicitly left this outside the T11Y scope because it is still called by DevTools.
+- `src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts` remains a large adapter. The original map rated it medium-confidence: likely acceptable host projection for now, but worth monitoring if detector/domain rules keep growing there.
+- Core-layer cleanup is intentionally separate and tracked by `docs/superpowers/refactor-ops/2026-06-30-core-layer-review-issue-map.md`.
+- Some older entries in this owner log preserve pre-T11Y code facts for review history. Use this Issue 15 status block as the current reconciliation point for the app-layer map.
+
 Confirmed code-reading conclusion:
 
 - Directory cleanup alone is not enough. Moving a file from `src/app/navigation` to `src/app/adapters/navigation` is useful only when the file is actually host adapter code.
@@ -687,30 +715,20 @@ How this merges with earlier issues:
 - Issues 10, 11, 12, 13, and 14 cover app-layer directory shape; the issue map adds the rule that directories should not simply hide service logic under nicer names.
 - Issue 9 says standalone X-Ray surface should be retired but Vault Lint capability retained; the issue map adds that health/digest construction must stay in service/Vault Intelligence logic, not app adapters.
 
-Preliminary judgement:
+Current judgement:
 
-The next planning pass should treat app cleanup as two axes:
+The app-layer map was the right bridge between the owner's code review notes and the T11Y implementation wave. It should no longer be treated as an open priority list wholesale; it should be treated as a mostly consumed investigation artifact whose remaining value is the architectural rule it clarified.
+
+Future app cleanup should still treat app work as two axes:
 
 1. App topology cleanup: consolidate one-file/tiny app folders into stable roles such as `context`, `ui-host`, `adapters`, and larger feature composition domains.
 2. Responsibility cleanup: extract real domain/service logic out of app adapters before or while moving files.
 
-If these are conflated, there is a risk of producing a cleaner-looking `src/app/adapters` tree that still contains serendipity ranking, briefing scoring, semantic graph suggestion, digest shaping, prompt wording, and maintenance workflows. That would improve navigation but not architecture.
-
-Suggested priority imported from the issue map:
-
-- First: `SearchAmbientSearchAdapter.serendipitySearch`.
-- Then: `SqliteAmbientBriefingAdapter` briefing categories/scoring.
-- Then: `PeakCommandActions.cleanupUselessData`.
-- Then: `app/context/graph-cleanup.ts`.
-- Then: `SqliteVaultReviewDigestAdapter`.
-- Then: `SqliteCopilotActionSemanticGraphAdapter`.
-- Then: `LlmAmbientExplanationAdapter` prompt/policy.
-- Then: `AppCopilotActionSearchAdapter` availability semantics.
-- Then: Copilot AI/vault adapter consolidation.
-- Then: `ObsidianCustomPromptSourceAdapter` relocation.
+T11Y addressed the highest-risk cases from both axes. The important follow-up is not to repeat the same cleanup, but to preserve the rule: a cleaner-looking `src/app/adapters` tree is only a real win when ranking, scoring, traversal, prompt wording, digest shaping, cache policy, and maintenance workflows have moved into service/core owners.
 
 Planning guidance:
 
 - Do not solve this by creating a single giant `AppAdapter` or generic `VaultAdapter`.
 - Prefer shared narrow ports for common capabilities: AI/prompter, vault reader, vault metadata resolver, vector search/search availability, semantic graph read access, and prompt source.
 - App adapters may project host/runtime shapes into safe data structures, but service/core should own decisions, thresholds, scoring, ranking, prompt wording, and product fallback semantics.
+- If a future review sees `sort`, `score`, `threshold`, `topK`, multi-step graph traversal, prompt text, or multi-repo cleanup workflow inside `src/app/**`, treat it as a fresh review candidate even if the file lives in a correctly named adapter folder.

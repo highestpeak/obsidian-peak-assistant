@@ -1,5 +1,5 @@
 import type { AppHandle } from '@/core/ports/AppHandle';
-import { PromptId, type PromptVariables, PromptInfo } from '@/core/prompt/PromptId';
+import { PromptId, type PromptVariables, PromptInfo } from '@/core/types/prompt';
 import { normalizeVaultPath } from '@/core/utils/path-utils';
 import { ensureFolderRecursive, getFileRef, getFolderRef, isFile } from '@/core/storage/vault/vault-ops';
 import type { AIServiceSettings } from '@/core/config/settingsTypes';

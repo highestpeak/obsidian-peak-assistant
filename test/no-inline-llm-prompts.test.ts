@@ -21,7 +21,7 @@ const SRC_DIR = path.join(REPO_ROOT, 'src');
 /** Files we never scan — these *are* the prompt registry, so prompt-shaped
  *  strings in them are by design (jsonConstraint metadata, doc comments, etc.). */
 const SCAN_SKIP_FILES = new Set<string>([
-	'src/core/prompt/PromptId.ts',
+	'src/core/types/prompt.ts',
 	'src/core/template/TemplateRegistry.ts',
 ]);
 

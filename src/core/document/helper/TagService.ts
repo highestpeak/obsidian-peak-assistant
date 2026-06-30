@@ -1,7 +1,7 @@
 import { z } from 'zod/v3';
 import type { LLMUsage } from '@/core/providers/types';
 import type { IDocTagClassifier } from '@/core/llm/IDocTagClassifier';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { parseInferCreatedAtStringToMs, parseLooseTimestampToMs } from '@/core/utils/date-utils';
 import {
 	FUNCTIONAL_TAG_IDS,

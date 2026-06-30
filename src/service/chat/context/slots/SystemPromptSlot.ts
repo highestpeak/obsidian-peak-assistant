@@ -2,7 +2,7 @@ import type { ContextSlot, SlotBuildContext, SlotContent } from './types';
 import { estimateTokensFromText } from './types';
 import type { LLMRequestMessage } from '@/core/providers/types';
 import type { PromptService } from '@/service/prompt/PromptService';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { ChatRuntimeStatePort } from '@/core/ports/ChatRuntimeStatePort';
 

@@ -1,5 +1,5 @@
 import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
-import { PromptId } from '@/core/prompt/PromptId';
+import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
 
 interface TreeInferenceInput {

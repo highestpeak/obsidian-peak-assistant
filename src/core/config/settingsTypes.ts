@@ -5,7 +5,7 @@
 
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import type { DocumentType } from '@/core/document/types';
-import { PromptId, CONFIGURABLE_PROMPT_IDS, INDEXING_AND_HUB_PROMPT_IDS, SEARCH_AI_ANALYSIS_PROMPT_IDS } from '@/core/prompt/PromptId';
+import { PromptId, CONFIGURABLE_PROMPT_IDS, INDEXING_AND_HUB_PROMPT_IDS, SEARCH_AI_ANALYSIS_PROMPT_IDS } from '@/core/types/prompt';
 import type { ProfileSettings, RoleConfig } from '@/core/profiles/types';
 import type { AmbientPushSettings } from '@/core/types/ambient';
 import type { MCPServerConfig } from '@/core/types/mcp';
