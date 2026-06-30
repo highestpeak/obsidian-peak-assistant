@@ -24,6 +24,8 @@ import { KnowledgeIntuitionAgent } from '@/service/agents/KnowledgeIntuitionAgen
 import { composeBackboneEnv } from '@/app/search/composeBackboneEnv';
 import { computeEvalMetrics, formatEvalReport } from '@/service/search/query/pprEvaluator';
 import { runStructuralAnalysis } from '@/service/search/index/helper/structural/orchestrator';
+import { MaintenanceCleanupService } from '@/service/maintenance/MaintenanceCleanupService';
+import { obsidianNotifier } from '@/app/adapters/NoticeNotifier';
 
 /**
  * Persistent bottom notice with updatable message (Obsidian 1.5+ `setMessage` when available).
@@ -443,72 +445,29 @@ export async function clearUserProfileBuildRecord(): Promise<void> {
 }
 
 export async function cleanupUselessData(): Promise<void> {
+	// T11Y-3A: command is now a UI shell. The actual cleanup workflow
+	// (orphan documents -> search index -> vec embeddings -> orphan
+	// conversations) lives in `MaintenanceCleanupService`, which only
+	// reaches storage through narrow ports.
 	const ctx = getContext();
 	try {
-		new Notice('Starting cleanup of useless data...', 2000);
-
-		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
-		const indexedPaths = await indexedDocumentRepo.getAllIndexedPaths();
-		const vaultPathSet = new Set(ctx.app.vault.getFiles().map((f) => f.path));
-		const orphanPaths = Array.from(indexedPaths.keys()).filter((p) => !vaultPathSet.has(p));
-		if (orphanPaths.length > 0) {
-			await IndexService.getInstance().deleteDocuments(orphanPaths);
-			new Notice(`Search index: removed ${orphanPaths.length} orphaned document(s).`, 4000);
-		} else {
-			new Notice('Search index: no orphaned documents found.', 3000);
-		}
-
-		const orphanResult = await IndexService.getInstance().cleanupOrphanedSearchIndexData();
-		const orphanTotal =
-			orphanResult.metaFts +
-			orphanResult.fts +
-			orphanResult.chunks +
-			orphanResult.embeddings +
-			orphanResult.graphNodes;
-		if (orphanTotal > 0) {
-			new Notice(
-				`Search index: cleaned ${orphanTotal} orphan record(s) (meta FTS, FTS, chunks, embeddings, Mobius document nodes).`,
-				4000,
-			);
-		}
-
-		const vecResult = await sqliteStoreManager.getEmbeddingRepo().cleanupOrphanedVecEmbeddings();
-		if (vecResult.found === 0) {
-			new Notice('Vector embeddings: no orphaned records.', 3000);
-		} else {
-			new Notice(`Vector embeddings: removed ${vecResult.deleted} orphaned record(s).`, 4000);
-		}
-
-		const convRepo = sqliteStoreManager.getChatConversationRepo();
-		const messageRepo = sqliteStoreManager.getChatMessageRepo();
-		const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
-		const starRepo = sqliteStoreManager.getChatStarRepo();
-		const allConvs = await convRepo.getAllWithFilePaths();
-		const orphanConvIds: string[] = [];
-		for (const c of allConvs) {
-			const effectivePath = c.archived_rel_path ?? c.file_rel_path;
-			if (!vaultPathSet.has(effectivePath)) {
-				orphanConvIds.push(c.conversation_id);
-			}
-		}
-		if (orphanConvIds.length > 0) {
-			const messageIds: string[] = [];
-			for (const convId of orphanConvIds) {
-				const msgs = await messageRepo.listByConversation(convId);
-				messageIds.push(...msgs.map((m) => m.message_id));
-			}
-			if (messageIds.length > 0) {
-				await resourceRepo.deleteByMessageIds(messageIds);
-			}
-			await starRepo.deleteByConversationIds(orphanConvIds);
-			await messageRepo.deleteByConversationIds(orphanConvIds);
-			await convRepo.deleteByConversationIds(orphanConvIds);
-			new Notice(`Chat: removed ${orphanConvIds.length} orphaned conversation(s).`, 4000);
-		} else {
-			new Notice('Chat: no orphaned conversations found.', 3000);
-		}
-
-		new Notice('Cleanup finished.', 3000);
+		const service = new MaintenanceCleanupService({
+			vaultPaths: {
+				listVaultFilePaths: () => new Set(ctx.app.vault.getFiles().map((f) => f.path)),
+			},
+			indexedDocuments: sqliteStoreManager.getIndexedDocumentRepo(),
+			searchIndex: {
+				deleteDocuments: (paths) => IndexService.getInstance().deleteDocuments(paths),
+				cleanupOrphanedSearchIndexData: () =>
+					IndexService.getInstance().cleanupOrphanedSearchIndexData(),
+			},
+			embeddings: sqliteStoreManager.getEmbeddingRepo(),
+			conversations: sqliteStoreManager.getChatConversationRepo(),
+			messages: sqliteStoreManager.getChatMessageRepo(),
+			resources: sqliteStoreManager.getChatMessageResourceRepo(),
+			stars: sqliteStoreManager.getChatStarRepo(),
+		});
+		await service.runCleanup(obsidianNotifier);
 	} catch (error) {
 		console.error('[Register] Error during cleanup useless data:', error);
 		new Notice('Cleanup failed. See console for details.', 5000);
