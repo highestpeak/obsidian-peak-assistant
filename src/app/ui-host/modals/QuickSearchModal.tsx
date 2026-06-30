@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { QuickSearchModalContent } from '@/ui/view/quick-search/SearchModal';
-import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 
 /**

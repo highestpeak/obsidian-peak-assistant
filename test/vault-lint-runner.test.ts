@@ -568,7 +568,7 @@ function testVaultXRaySurfaceIsRetired(): void {
 	const retired = [
 		'src/ui/view/vault-lint/VaultXRayPanel.tsx',
 		'src/ui/view/vault-lint/hooks/useVaultLintRunState.ts',
-		'src/app/view/VaultXRayView.ts',
+		'src/app/ui-host/views/VaultXRayView.ts',
 	];
 	for (const rel of retired) {
 		const full = path.resolve(process.cwd(), rel);

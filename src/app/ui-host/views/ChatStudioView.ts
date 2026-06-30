@@ -1,8 +1,8 @@
 import { type IconName } from 'obsidian';
-import { ReactItemViewHost } from '@/app/shell/ReactItemViewHost';
-import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
+import { ReactItemViewHost } from '@/app/ui-host/ReactItemViewHost';
+import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import { ChatStudioPanel } from '@/ui/view/chat-studio-view/ChatStudioView';
-import { CHAT_STUDIO_VIEW_TYPE } from '@/app/view/types';
+import { CHAT_STUDIO_VIEW_TYPE } from '@/app/ui-host/views/types';
 
 export { CHAT_STUDIO_VIEW_TYPE };
 

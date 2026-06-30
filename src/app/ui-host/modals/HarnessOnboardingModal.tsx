@@ -7,8 +7,8 @@
  *   - Single-column body, max-width hugged by modal shell (mock uses 680px)
  */
 
-import { ReactModalHost, type ReactModalShellOptions } from '@/app/shell/ReactModalHost';
-import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
+import { ReactModalHost, type ReactModalShellOptions } from '@/app/ui-host/ReactModalHost';
+import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import type { AppContext } from '@/app/context/AppContext';
 import type { PrimaryStep } from '@/ui/view/onboarding/OnboardingStateMachine';
 import { HarnessOnboardingWizard } from '@/ui/view/onboarding/HarnessOnboardingWizard';

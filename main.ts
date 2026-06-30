@@ -3,7 +3,7 @@ import { isDesktop } from '@/core/platform';
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { MySettings } from 'src/app/settings/MySetting';
 import { normalizePluginSettings } from 'src/app/settings/PluginSettingsLoader';
-import { ViewManager } from 'src/app/view/ViewManager';
+import { ViewManager } from 'src/app/ui-host/views/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
 import { registerCoreEvents, removeAllChatViewButtons, clearPendingConversationTimeouts } from 'src/app/events/Register';
 import { MyPluginSettings, DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
@@ -482,7 +482,7 @@ export default class MyPlugin extends Plugin {
 		if (profiles.length === 0) {
 			// Slight delay so the workspace is fully rendered before opening the modal
 			setTimeout(() => {
-				const { HarnessOnboardingModal } = require('@/app/modals/HarnessOnboardingModal');
+				const { HarnessOnboardingModal } = require('@/app/ui-host/modals/HarnessOnboardingModal');
 				new HarnessOnboardingModal(appContext, { isReRun: false }).open();
 			}, 500);
 		}
@@ -581,7 +581,7 @@ export default class MyPlugin extends Plugin {
 						const runtime = AppContext.tryGetAmbientRuntime();
 						const shouldShow = (await runtime?.tryShowMorningBriefing()) ?? false;
 						if (shouldShow) {
-							const { MorningBriefingModal } = await import('@/app/modals/MorningBriefingModal');
+							const { MorningBriefingModal } = await import('@/app/ui-host/modals/MorningBriefingModal');
 							if (!this.appContext) return;
 							const modal = new MorningBriefingModal(this.app, this.appContext);
 							modal.open();

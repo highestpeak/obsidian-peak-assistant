@@ -1,6 +1,6 @@
 import { Modal } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPanelVault';
 import { type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';

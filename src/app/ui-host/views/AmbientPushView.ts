@@ -1,8 +1,8 @@
 import { type IconName, ItemView, type WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import type { AppContext } from '@/app/context/AppContext';
-import { AMBIENT_PUSH_VIEW_TYPE } from '@/app/view/types';
+import { AMBIENT_PUSH_VIEW_TYPE } from '@/app/ui-host/views/types';
 
 export { AMBIENT_PUSH_VIEW_TYPE };
 

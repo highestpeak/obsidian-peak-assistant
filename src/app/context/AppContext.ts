@@ -1,7 +1,7 @@
 import { App } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { SearchClient } from '@/service/search/SearchClient';
-import { ViewManager } from '@/app/view/ViewManager';
+import { ViewManager } from '@/app/ui-host/views/ViewManager';
 import type MyPlugin from 'main';
 import { MyPluginSettings, HarnessSettings, DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
 import { BusinessError, ErrorCode } from '@/core/errors';

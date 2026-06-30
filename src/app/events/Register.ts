@@ -1,6 +1,6 @@
 import { MarkdownView, TFile } from 'obsidian';
 import type MyPlugin from 'main';
-import { ViewManager } from '@/app/view/ViewManager';
+import { ViewManager } from '@/app/ui-host/views/ViewManager';
 import { EventBus } from '@/core/eventBus';
 import { createElement, icons } from 'lucide';
 import { CHAT_PROJECT_SUMMARY_FILENAME } from '@/core/constant';

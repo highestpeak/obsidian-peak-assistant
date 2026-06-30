@@ -2,7 +2,7 @@ import { App, Modal } from 'obsidian';
 import { createRoot, Root } from 'react-dom/client';
 import { useMorningBriefingStore } from '@/ui/store/morningBriefingStore';
 import { AppContext } from '@/app/context/AppContext';
-import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 
 /**
  * Obsidian Modal that renders the Morning Briefing React panel.

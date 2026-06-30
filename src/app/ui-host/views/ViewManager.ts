@@ -1,13 +1,13 @@
 import type MyPlugin from 'main';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { CHAT_VIEW_TYPE, ChatView } from '@/app/view/ChatView';
-import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from '@/app/view/ProjectListView';
-import { AmbientPushView, AMBIENT_PUSH_VIEW_TYPE } from '@/app/view/AmbientPushView';
-import { UsageDashboardView, USAGE_DASHBOARD_VIEW_TYPE } from '@/app/view/UsageDashboardView';
-import { ConversationOutlineView, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/app/view/ConversationOutlineView';
-import { ChatStudioView, CHAT_STUDIO_VIEW_TYPE } from '@/app/view/ChatStudioView';
-import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
-import { InputModal } from '@/app/modals/InputModal';
+import { CHAT_VIEW_TYPE, ChatView } from '@/app/ui-host/views/ChatView';
+import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from '@/app/ui-host/views/ProjectListView';
+import { AmbientPushView, AMBIENT_PUSH_VIEW_TYPE } from '@/app/ui-host/views/AmbientPushView';
+import { UsageDashboardView, USAGE_DASHBOARD_VIEW_TYPE } from '@/app/ui-host/views/UsageDashboardView';
+import { ConversationOutlineView, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/app/ui-host/views/ConversationOutlineView';
+import { ChatStudioView, CHAT_STUDIO_VIEW_TYPE } from '@/app/ui-host/views/ChatStudioView';
+import { ViewSwitchConsistentHandler } from '@/app/ui-host/views/ViewSwitchConsistentHandler';
+import { InputModal } from '@/app/ui-host/modals/InputModal';
 import { App, Notice, ViewCreator, WorkspaceLeaf } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 

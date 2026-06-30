@@ -1,7 +1,7 @@
 import { IconName } from 'obsidian';
-import { ReactItemViewHost } from '@/app/shell/ReactItemViewHost';
-import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
-import { USAGE_DASHBOARD_VIEW_TYPE } from '@/app/view/types';
+import { ReactItemViewHost } from '@/app/ui-host/ReactItemViewHost';
+import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
+import { USAGE_DASHBOARD_VIEW_TYPE } from '@/app/ui-host/views/types';
 
 export { USAGE_DASHBOARD_VIEW_TYPE };
 

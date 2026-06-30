@@ -30,7 +30,7 @@ import {
 	runVectorEnrichmentPending,
 	verifyDatabaseHealthAction,
 } from '@/app/commands/PeakCommandActions';
-import { SettingsModal } from '@/app/modals/SettingsModal';
+import { SettingsModal } from '@/app/ui-host/modals/SettingsModal';
 import { detectEnvironment } from '@/service/agents/harness/curator';
 import type {
 	IndexLevel,

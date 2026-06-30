@@ -82,7 +82,7 @@ const ServiceContext = createContext<ServiceContextValue | null>(null);
  * be supplied by the caller — there is no longer a `AppContext.getInstance()`
  * fallback chain (T11O Track 5) and no raw `app` field (T11P). The single
  * composition point is
- * `@/app/react/ReactElementFactory#createReactElementWithServices`, which
+ * `@/app/ui-host/ReactElementFactory#createReactElementWithServices`, which
  * threads every port off the app-owned `AppContext`.
  */
 export const ServiceProvider: React.FC<{

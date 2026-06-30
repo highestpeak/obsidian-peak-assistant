@@ -1,7 +1,7 @@
 import { App, Modal } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { ConfirmDialog } from '@/ui/view/modals/ConfirmDialog';
-import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 
 /**

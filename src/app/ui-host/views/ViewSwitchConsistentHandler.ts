@@ -7,7 +7,7 @@ import {
 	PROJECT_LIST_VIEW_TYPE,
 	STANDALONE_PEAK_VIEW_TYPES,
 	TRACKED_VIEW_TYPES,
-} from '@/app/view/types';
+} from '@/app/ui-host/views/types';
 
 /**
  * Ensures that when in chat view, the left, center, and right panes always maintain a consistent chat-related layout

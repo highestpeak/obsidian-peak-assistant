@@ -16,11 +16,11 @@
 //     introduce a single new `.app` consumer, even where it could have
 //     skirted the rule).
 //   • Obsidian shell files (ItemView / Modal subclasses) MUST live under
-//     `src/app/view/**`, `src/app/modals/**`, or `src/app/copilot/modals/**`.
+//     `src/app/ui-host/views/**`, `src/app/ui-host/modals/**`, or `src/app/copilot/modals/**`.
 //     The previously blended files under `src/ui/view/copilot/` and
 //     `src/ui/view/modals/` MUST NOT exist any more.
 //   • `src/ui/react/ReactElementFactory.tsx` MUST NOT exist (relocated to
-//     `src/app/react/ReactElementFactory.tsx`).
+//     `src/app/ui-host/ReactElementFactory.tsx`).
 //   • `src/ui/context/ServiceContext.tsx` MUST NOT import
 //     `@/app/context/AppContext` (Track 5 pruned the fallback chain).
 //   • Scanner script thresholds were not weakened.
@@ -163,7 +163,7 @@ async function testUiHasNoObsidianShellSubclasses(): Promise<void> {
 	}
 	if (truly.length > 0) {
 		throw new Error(
-			`T11O shell-relocation regression: ${truly.length} Obsidian Modal/ItemView subclasses still live under src/ui/**.\nRelocate them to src/app/view/, src/app/modals/, or src/app/copilot/modals/.\nMatches:\n${truly.slice(0, 10).join('\n')}`,
+			`T11O shell-relocation regression: ${truly.length} Obsidian Modal/ItemView subclasses still live under src/ui/**.\nRelocate them to src/app/ui-host/views/, src/app/ui-host/modals/, or src/app/copilot/modals/.\nMatches:\n${truly.slice(0, 10).join('\n')}`,
 		);
 	}
 	console.log('PASS: uiHasNoObsidianShellSubclasses (0 src/ui files extend Obsidian Modal/ItemView)');
@@ -214,26 +214,26 @@ async function testRetiredFilesAreGone(): Promise<void> {
 async function testRelocatedShellsLandedInApp(): Promise<void> {
 	// Each relocated shell must EXIST in its new src/app/** home.
 	const newHomes = [
-		'app/view/AmbientPushView.ts',
-		'app/view/ChatStudioView.ts',
-		'app/view/ChatView.ts',
-		'app/view/ConversationOutlineView.ts',
-		'app/view/ProjectListView.ts',
-		'app/view/UsageDashboardView.ts',
-		'app/modals/ConfirmModal.ts',
-		'app/modals/SettingsModal.tsx',
-		'app/modals/QuickSearchModal.tsx',
-		'app/modals/BuildUserProfileProgressModal.ts',
-		'app/modals/CostEstimationModal.tsx',
-		'app/modals/IndexingProgressModal.tsx',
-		'app/modals/HarnessOnboardingModal.tsx',
+		'app/ui-host/views/AmbientPushView.ts',
+		'app/ui-host/views/ChatStudioView.ts',
+		'app/ui-host/views/ChatView.ts',
+		'app/ui-host/views/ConversationOutlineView.ts',
+		'app/ui-host/views/ProjectListView.ts',
+		'app/ui-host/views/UsageDashboardView.ts',
+		'app/ui-host/modals/ConfirmModal.ts',
+		'app/ui-host/modals/SettingsModal.tsx',
+		'app/ui-host/modals/QuickSearchModal.tsx',
+		'app/ui-host/modals/BuildUserProfileProgressModal.ts',
+		'app/ui-host/modals/CostEstimationModal.tsx',
+		'app/ui-host/modals/IndexingProgressModal.tsx',
+		'app/ui-host/modals/HarnessOnboardingModal.tsx',
 		'app/copilot/modals/CopilotAutoRunModal.tsx',
 		'app/copilot/modals/CopilotPickerModal.tsx',
 		'app/copilot/modals/CopilotResultModal.tsx',
 		'app/copilot/modals/CopilotReviewHistoryModal.tsx',
 		'app/copilot/modals/VaultAutoRunModal.tsx',
 		'app/copilot/modals/openVaultReviewHistoryRecord.ts',
-		'app/react/ReactElementFactory.tsx',
+		'app/ui-host/ReactElementFactory.tsx',
 	];
 	for (const rel of newHomes) {
 		const full = path.join(SRC, rel);
@@ -256,7 +256,7 @@ async function testServiceContextDoesNotImportAppContext(): Promise<void> {
 async function testReactElementFactoryThreadsAllPorts(): Promise<void> {
 	// The factory is now the single composition point — confirm it threads
 	// the new Track 6 ports.
-	const f = await readFile(path.join(SRC, 'app/react/ReactElementFactory.tsx'), 'utf8');
+	const f = await readFile(path.join(SRC, 'app/ui-host/ReactElementFactory.tsx'), 'utf8');
 	for (const sym of [
 		'vaultReviewRuntime',
 		'quickSearchBackgroundRuntime',

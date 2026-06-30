@@ -1,5 +1,5 @@
-import { ReactModalHost, type ReactModalShellOptions } from '@/app/shell/ReactModalHost';
-import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
+import { ReactModalHost, type ReactModalShellOptions } from '@/app/ui-host/ReactModalHost';
+import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import { SettingsRoot } from '@/ui/view/SettingsView';
 
 export class SettingsModal extends ReactModalHost {

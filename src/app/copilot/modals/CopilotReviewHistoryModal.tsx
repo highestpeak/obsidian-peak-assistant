@@ -1,6 +1,6 @@
 import { Modal, type App, TFile, Notice } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
+import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPanelVault';
 import {

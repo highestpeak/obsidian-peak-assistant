@@ -7,7 +7,7 @@
 
 import type { App } from 'obsidian';
 import type { QuickSearchModalOpenerPort } from '@/core/ports/QuickSearchBackgroundPorts';
-import { QuickSearchModal } from '@/app/modals/QuickSearchModal';
+import { QuickSearchModal } from '@/app/ui-host/modals/QuickSearchModal';
 import { AppContext } from '@/app/context/AppContext';
 
 export class AppModalOpenerAdapter implements QuickSearchModalOpenerPort {

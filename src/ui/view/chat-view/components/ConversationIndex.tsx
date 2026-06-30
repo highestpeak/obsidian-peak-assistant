@@ -155,7 +155,7 @@ function useScrollToMessage(): (messageId: string) => void {
 			// outline share a leaf so this is a no-op; in legacy mode the outline
 			// sits in the right sidebar and we reveal the chat leaf without
 			// stealing focus. Reveal goes through the chat-navigation port so we
-			// don't import view-type constants from `@/app/view/types`.
+			// don't import view-type constants from `@/app/ui-host/views/types`.
 			void chatNavigation.revealChatView();
 			const doc = portalContainer?.ownerDocument ?? document;
 			scrollToMessageInDoc(messageId, doc);

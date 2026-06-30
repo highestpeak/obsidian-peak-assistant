@@ -1,8 +1,8 @@
 import { IconName } from 'obsidian';
-import { ReactItemViewHost } from '@/app/shell/ReactItemViewHost';
+import { ReactItemViewHost } from '@/app/ui-host/ReactItemViewHost';
 import { ProjectListViewComponent } from '@/ui/view/project-list-view/ProjectListView';
-import { createReactElementWithServices } from '@/app/react/ReactElementFactory';
-import { PROJECT_LIST_VIEW_TYPE } from '@/app/view/types';
+import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
+import { PROJECT_LIST_VIEW_TYPE } from '@/app/ui-host/views/types';
 
 export { PROJECT_LIST_VIEW_TYPE };
 

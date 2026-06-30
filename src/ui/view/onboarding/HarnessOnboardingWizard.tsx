@@ -1,7 +1,7 @@
 /**
  * Harness Onboarding Wizard — React content for the Curator-driven
  * capability-binding wizard. Mounted by the app-shell modal at
- * `@/app/modals/HarnessOnboardingModal`.
+ * `@/app/ui-host/modals/HarnessOnboardingModal`.
  *
  * Architecture:
  *   - State machine in src/ui/view/onboarding/OnboardingStateMachine.ts

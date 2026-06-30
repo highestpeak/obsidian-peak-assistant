@@ -1,13 +1,13 @@
 import { Modal, normalizePath, Notice } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { AIServiceManager } from '@/service/chat/service-manager';
-import { QuickSearchModal } from '@/app/modals/QuickSearchModal';
-import { HarnessOnboardingModal } from '@/app/modals/HarnessOnboardingModal';
-import { SettingsModal } from '@/app/modals/SettingsModal';
+import { QuickSearchModal } from '@/app/ui-host/modals/QuickSearchModal';
+import { HarnessOnboardingModal } from '@/app/ui-host/modals/HarnessOnboardingModal';
+import { SettingsModal } from '@/app/ui-host/modals/SettingsModal';
 import { CopilotPickerModal } from '@/app/copilot/modals/CopilotPickerModal';
 import { CopilotReviewHistoryModal } from '@/app/copilot/modals/CopilotReviewHistoryModal';
-import { BuildUserProfileProgressModal } from '@/app/modals/BuildUserProfileProgressModal';
-import { ConfirmModal } from '@/app/modals/ConfirmModal';
+import { BuildUserProfileProgressModal } from '@/app/ui-host/modals/BuildUserProfileProgressModal';
+import { ConfirmModal } from '@/app/ui-host/modals/ConfirmModal';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
 import {
 	IndexService,
@@ -15,8 +15,8 @@ import {
 	type MobiusGlobalMaintenanceProgress,
 } from '@/service/search/index/indexService';
 import { BulkOperationCostEstimator } from '@/service/search/support/cost-estimator';
-import { CostEstimationModal } from '@/app/modals/CostEstimationModal';
-import { IndexingProgressModal } from '@/app/modals/IndexingProgressModal';
+import { CostEstimationModal } from '@/app/ui-host/modals/CostEstimationModal';
+import { IndexingProgressModal } from '@/app/ui-host/modals/IndexingProgressModal';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';

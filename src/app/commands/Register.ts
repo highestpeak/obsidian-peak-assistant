@@ -2,7 +2,7 @@ import type { Command } from 'obsidian';
 import type { MyPluginSettings, SearchSettings } from '@/core/config/settingsTypes';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { IndexInitializer } from '@/service/search/index/indexInitializer';
-import type { ViewManager } from '@/app/view/ViewManager';
+import type { ViewManager } from '@/app/ui-host/views/ViewManager';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import {
 	openChatStudio,
