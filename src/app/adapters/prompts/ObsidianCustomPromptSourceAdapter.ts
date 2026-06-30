@@ -1,14 +1,20 @@
-// T11B: Concrete custom prompt source — scans the configured Obsidian
-// folder, reads each markdown file, and parses it via the service-side
-// {@link parseCustomPromptFile}. Service code never imports Obsidian
-// `App` / `TFile` / `TFolder` / `normalizePath` for custom prompts.
+// T11B / T11Y-7d: concrete custom prompt source — scans the configured
+// Obsidian folder, reads each markdown file, and parses it via the
+// service-side {@link parseCustomPromptFile}. Service code never imports
+// Obsidian `App` / `TFile` / `TFolder` / `normalizePath` for custom
+// prompts.
+//
+// T11Y-7d (2026-06-30): relocated under `src/app/adapters/prompts/`
+// because scanning user prompt folders is not a Copilot-action concern
+// — it's one consumer. The action runtime now takes the shared
+// {@link CustomPromptSourcePort} as input.
 
 import { type App, TFile, TFolder, normalizePath } from 'obsidian';
 import {
 	parseCustomPromptFile,
 	type CustomPromptDef,
 } from '@/service/copilot/CustomPromptRegistry';
-import type { CopilotCustomPromptPort } from '@/service/copilot/actions/CopilotActionPorts';
+import type { CustomPromptSourcePort } from '@/core/ports/CustomPromptSourcePort';
 
 export interface ObsidianCustomPromptSourceAdapterOptions {
 	app: App;
@@ -16,7 +22,7 @@ export interface ObsidianCustomPromptSourceAdapterOptions {
 	resolveFolder: () => string;
 }
 
-export class ObsidianCustomPromptSourceAdapter implements CopilotCustomPromptPort {
+export class ObsidianCustomPromptSourceAdapter implements CustomPromptSourcePort {
 	constructor(private readonly opts: ObsidianCustomPromptSourceAdapterOptions) {}
 
 	async loadAll(): Promise<CustomPromptDef[]> {

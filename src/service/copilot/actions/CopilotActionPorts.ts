@@ -23,9 +23,10 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
 import type { VaultMetadataResolverPort } from '@/core/ports/VaultMetadataResolverPort';
 import type { VaultMetadataCachePort } from '@/core/ports/VaultMetadataCachePort';
+import type { SearchAvailabilityPort } from '@/core/ports/SearchAvailabilityPort';
+import type { CustomPromptSourcePort } from '@/core/ports/CustomPromptSourcePort';
 import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 import type { ActionResult } from '../CopilotActionRegistry';
-import type { CustomPromptDef } from '../CustomPromptRegistry';
 import type { RankedTagSuggestion } from '../TagSuggestionEngine';
 import type { CopilotOutputCollector } from '../CopilotOutputCollector';
 
@@ -57,21 +58,14 @@ export type CopilotActionAiPort = IAgentPrompter;
 // new `AppVaultMetadataCacheAdapter` to the port bag.
 
 /**
- * Vector / hybrid search over the indexed vault. Wraps
- * {@link SearchClient.vectorSearch} for the find-related action.
+ * Vector / hybrid search over the indexed vault. Used by the
+ * find-related action.
+ *
+ * T11Y-7c: this is now an alias of the shared {@link SearchAvailabilityPort},
+ * which explicitly distinguishes "search subsystem not ready" from
+ * "search ran and returned zero hits". The previous shape collapsed both.
  */
-export interface CopilotActionSearchPort {
-	vectorSearch(input: { text: string; scopeMode: 'vault' | 'current-note'; topK: number }): Promise<{
-		items: Array<{
-			path: string;
-			title?: string;
-			score?: number;
-			finalScore?: number;
-			content?: string;
-			highlight?: { text?: string };
-		}>;
-	}>;
-}
+export type CopilotActionSearchPort = SearchAvailabilityPort;
 
 /** Suggestion item for unlinked semantic neighbors (suggest-semantic-links). */
 export interface SemanticLinkNeighbor {
@@ -145,14 +139,14 @@ export interface CopilotActionAgentPort {
 /**
  * Source of custom prompt definitions. Implementations parse user
  * markdown files (the default Obsidian-folder source lives in
- * `src/app/copilot/actions/ObsidianCustomPromptSourceAdapter.ts`).
+ * `src/app/adapters/prompts/ObsidianCustomPromptSourceAdapter.ts`).
  *
- * Service-side runtime only sees parsed defs — it does not know about
- * Obsidian `VaultFileRef` / `TFolder`.
+ * T11Y-7d (2026-06-30): this is now a type-alias of the shared
+ * {@link CustomPromptSourcePort} — scanning user prompt files is not a
+ * Copilot-action concern, the runtime is just one consumer of parsed
+ * prompt defs.
  */
-export interface CopilotCustomPromptPort {
-	loadAll(): Promise<CustomPromptDef[]>;
-}
+export type CopilotCustomPromptPort = CustomPromptSourcePort;
 
 /**
  * Cohesive port bag handed to {@link createBuiltInCopilotActions} and

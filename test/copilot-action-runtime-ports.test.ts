@@ -135,10 +135,14 @@ async function testFindRelatedUsesSearchPort(): Promise<void> {
 		search: {
 			async vectorSearch(input) {
 				captured = input;
-				return { items: [
-					{ path: 'Other.md', title: 'Other', score: 0.9, content: 'excerpt body' },
-					{ path: fakeDoc().file.path, title: 'self', score: 0.5, content: 'self' },
-				] };
+				// T11Y-7c: SearchAvailabilityPort returns a discriminator.
+				return {
+					available: true,
+					items: [
+						{ path: 'Other.md', title: 'Other', score: 0.9, content: 'excerpt body' },
+						{ path: fakeDoc().file.path, title: 'self', score: 0.5, content: 'self' },
+					],
+				};
 			},
 		},
 	});

@@ -1,28 +1,29 @@
-// T11B / T11B-R: Concrete search port — delegates to
+// T11B / T11B-R / T11Y-7c: concrete search port — delegates to
 // {@link SearchClient.vectorSearch}.
 //
 // T11B-R (2026-06-14): the resolver may return `null`/`undefined` when
 // SQLite has not finished initializing yet (or never will, on mobile).
-// In that case the port returns an empty item list so search-driven
-// actions (`find-related`) render a clear empty result instead of
-// crashing the picker / result modal.
+// T11Y-7c (2026-06-30): we now distinguish that boot-order /
+// degraded-mode case from "search ran and returned zero hits" by
+// emitting the discriminated {@link SearchAvailabilityResult} shape.
+// The previous `{ items: [] }` short-circuit conflated the two; UI
+// surfaces can now render a clear "Search not ready" empty state.
 
 import type { SearchClient } from '@/service/search/SearchClient';
-import type { CopilotActionSearchPort } from '@/service/copilot/actions/CopilotActionPorts';
+import type { SearchAvailabilityPort, SearchAvailabilityResult } from '@/core/ports/SearchAvailabilityPort';
 
-export class AppCopilotActionSearchAdapter implements CopilotActionSearchPort {
+export class AppCopilotActionSearchAdapter implements SearchAvailabilityPort {
 	constructor(private readonly resolveClient: () => SearchClient | null | undefined) {}
 
-	async vectorSearch(input: { text: string; scopeMode: 'vault' | 'current-note'; topK: number }) {
+	async vectorSearch(input: { text: string; scopeMode: 'vault' | 'current-note'; topK: number }): Promise<SearchAvailabilityResult> {
 		const client = this.resolveClient();
 		if (!client) {
 			// Boot order or mobile mode: search index is not available.
-			// Returning an empty list keeps the catalog usable; the
-			// `find-related` action surfaces "no items" rather than the
-			// caller throwing.
-			return { items: [] };
+			// Surface the explicit unavailable branch so callers can
+			// render "Search not ready" instead of "no results found".
+			return { available: false, reason: 'search-client-unavailable' };
 		}
 		const response = await client.vectorSearch(input);
-		return { items: response.items as any[] };
+		return { available: true, items: response.items as any[] };
 	}
 }

@@ -25,7 +25,9 @@ export const FindRelatedPanel: React.FC<FindRelatedPanelProps> = ({
 			footerSummary={`Semantic similarity to "${ctx.title}"`}
 			onClose={onClose}
 		>
-			{result.items.length === 0 ? (
+			{result.searchUnavailable ? (
+				<PanelEmptyState message="Search is not ready yet — finish indexing or wait for the search service to start, then try again." />
+			) : result.items.length === 0 ? (
 				<PanelEmptyState message="No related notes found in the vault." />
 			) : (
 				result.items.map((item, i) => (

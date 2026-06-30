@@ -10,17 +10,24 @@ import { SemanticLinkSuggestionService } from '@/service/copilot/SemanticLinkSug
 import { SmartConnectionService } from '@/service/copilot/SmartConnectionService';
 import { SqliteCopilotActionTagsAdapter } from '@/app/copilot/actions/SqliteCopilotActionTagsAdapter';
 
-async function testSearchAdapterReturnsEmptyWithoutClient(): Promise<void> {
+async function testSearchAdapterReturnsUnavailableWithoutClient(): Promise<void> {
+	// T11Y-7c: the previous shape `{ items: [] }` conflated "subsystem
+	// not ready" with "no results". The adapter now emits a discriminated
+	// {available:false, reason} so panels can render the right empty state.
 	const adapter = new AppCopilotActionSearchAdapter(() => null);
 	const res = await adapter.vectorSearch({ text: 'anything', scopeMode: 'vault', topK: 5 });
-	assert.deepStrictEqual(res, { items: [] }, 'search adapter must return {items:[]} when SearchClient is null');
-	console.log('PASS: searchAdapterReturnsEmptyWithoutClient');
+	assert.deepStrictEqual(
+		res,
+		{ available: false, reason: 'search-client-unavailable' },
+		'search adapter must surface unavailable reason when SearchClient is null',
+	);
+	console.log('PASS: searchAdapterReturnsUnavailableWithoutClient');
 }
 
 async function testSearchAdapterToleratesUndefinedResolver(): Promise<void> {
 	const adapter = new AppCopilotActionSearchAdapter(() => undefined);
 	const res = await adapter.vectorSearch({ text: 'q', scopeMode: 'vault', topK: 5 });
-	assert.deepStrictEqual(res, { items: [] });
+	assert.deepStrictEqual(res, { available: false, reason: 'search-client-unavailable' });
 	console.log('PASS: searchAdapterToleratesUndefinedResolver');
 }
 
@@ -66,7 +73,7 @@ async function testTagsPersistenceBecomesNoOpWithoutSqlite(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-	await testSearchAdapterReturnsEmptyWithoutClient();
+	await testSearchAdapterReturnsUnavailableWithoutClient();
 	await testSearchAdapterToleratesUndefinedResolver();
 	await testSemanticGraphReportsNotIndexedOnFailure();
 	await testTagsPersistenceBecomesNoOpWithoutSqlite();

@@ -3,7 +3,8 @@
  *
  * T11B (2026-06-14): the static singleton is gone. Vault folder
  * scanning lives in an app adapter
- * (`src/app/copilot/actions/ObsidianCustomPromptSourceAdapter.ts`)
+ * (`src/app/adapters/prompts/ObsidianCustomPromptSourceAdapter.ts`,
+ * relocated in T11Y-7d 2026-06-30)
  * which uses {@link parseCustomPromptFile} to turn raw markdown into
  * {@link CustomPromptDef}. Action construction is now a free
  * function — {@link buildCustomPromptAction} — that takes an injected

@@ -23,7 +23,7 @@ import { SemanticLinkSuggestionService } from '@/service/copilot/SemanticLinkSug
 import { SmartConnectionService } from '@/service/copilot/SmartConnectionService';
 import { SqliteCopilotActionTagsAdapter } from './SqliteCopilotActionTagsAdapter';
 import { createAppCopilotActionAgentAdapter } from './AppCopilotActionAgentAdapter';
-import { ObsidianCustomPromptSourceAdapter } from './ObsidianCustomPromptSourceAdapter';
+import { ObsidianCustomPromptSourceAdapter } from '@/app/adapters/prompts/ObsidianCustomPromptSourceAdapter';
 
 /**
  * Compose the manual Copilot action runtime. The caller hands the

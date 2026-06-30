@@ -29,6 +29,15 @@ import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 
 export interface FindRelatedResult {
 	items: Array<{ path: string; title: string; score: number; excerpt: string }>;
+	/**
+	 * T11Y-7c: when the search subsystem is not ready (mobile mode or
+	 * the SQLite-deferred window), the action surfaces an explicit
+	 * unavailable flag so panels can render "Search not ready" instead
+	 * of the generic "no related notes" empty state. `items` stays an
+	 * empty array on this branch so the panel render path does not
+	 * branch on `undefined`.
+	 */
+	searchUnavailable?: { reason: string };
 }
 
 export interface SynthesizeResult {
@@ -324,6 +333,16 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 			const response = await search.vectorSearch({
 				text: ctx.content.slice(0, 1000), scopeMode: 'vault', topK: 10,
 			});
+			// T11Y-7c: thread the availability discriminator through so
+			// the panel can render "Search not ready" distinctly from
+			// "no related notes found".
+			if (!response.available) {
+				const data: FindRelatedResult = {
+					items: [],
+					searchUnavailable: { reason: response.reason },
+				};
+				return { type: 'structured', data };
+			}
 			const items = response.items
 				.filter(item => item.path !== ctx.file.path)
 				.map(item => ({
