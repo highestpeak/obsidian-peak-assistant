@@ -6,15 +6,11 @@ import type MyPlugin from 'main';
 import { MyPluginSettings, HarnessSettings, DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
 import { BusinessError, ErrorCode } from '@/core/errors';
 import { EventBus, ViewEventType } from '@/core/eventBus';
-import { GraphInspectorTestTools, AISearchAgentTestTools } from '@/app/context/test-tools';
-import { GraphCleanupService } from '@/service/search/index/maintenance/GraphCleanupService';
-import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
-import { getVaultPersona } from '@/app/debug/system-info';
 import { SessionContextService } from '@/service/context/SessionContextService';
+import { registerDevtools, unregisterDevtools } from '@/app/context/devtools';
 import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
 import { AppRuntimeRegistry } from '@/app/context/AppRuntimeRegistry';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
@@ -400,127 +396,15 @@ export class AppContext {
 	}
 
 	/**
-	 * Handle dynamic changes to enableDevTools setting
+	 * Handle dynamic changes to enableDevTools setting. Delegates to
+	 * `@/app/context/devtools` so the registration/teardown details live
+	 * with their peers and AppContext stays focused on lifecycle.
 	 */
 	private handleDevToolsSettingChange(enabled: boolean) {
 		if (enabled) {
-			// Dynamically initialize test tools when setting is enabled
-			if (typeof window !== 'undefined') {
-				(window as any).testGraphTools = new GraphInspectorTestTools();
-				(window as any).testAISearchTools = new AISearchAgentTestTools();
-				(window as any).indexDocument = (docPath: string) =>
-					IndexService.getInstance().indexDocument(
-						docPath,
-						this.settings.search,
-						defaultIndexDocumentOptions('listener_fast'),
-					);
-				(window as any).indexDocumentFull = (docPath: string) =>
-					IndexService.getInstance().indexDocument(
-						docPath,
-						this.settings.search,
-						defaultIndexDocumentOptions('manual_full'),
-					);
-				(window as any).runPendingLlmIndexEnrichment = () =>
-					IndexService.runPendingLlmIndexEnrichment(this.settings.search);
-				(window as any).runPendingVectorIndexEnrichment = () =>
-					IndexService.runPendingVectorIndexEnrichment(this.settings.search);
-				(window as any).getVaultPersona = () => getVaultPersona();
-				(window as any).cleanupGraphTable = () => {
-					const graphCleanupService = new GraphCleanupService(
-						sqliteStoreManager.getIndexContext('vault'),
-						sqliteStoreManager.getMobiusNodeRepo(),
-						sqliteStoreManager.getIndexedDocumentRepo(),
-					);
-					return graphCleanupService.run();
-				};
-
-				// V2 search debug — screenshot + DOM + state, saved to /tmp
-					(window as any).dumpV2State = () => {
-						try {
-							const { useSearchSessionStore } = require('@/ui/view/quick-search/store/searchSessionStore');
-							const s = useSearchSessionStore.getState();
-							const dump = {
-								status: s.status, query: s.query,
-								v2Steps: s.v2Steps.map((st: any) => ({
-									id: st.id, toolName: st.toolName, displayName: st.displayName,
-									status: st.status, summary: st.summary,
-									durationMs: st.endedAt && st.startedAt ? st.endedAt - st.startedAt : null,
-								})),
-								v2ReportLength: s.v2ReportChunks.join('').length,
-								v2ReportChunkCount: s.v2ReportChunks.length,
-								v2ReportComplete: s.v2ReportComplete,
-								v1Steps: s.steps.map((st: any) => ({ type: st.type, status: st.status })),
-								usage: s.usage, duration: s.duration, error: s.error,
-								debugLogCount: s.agentDebugLog.length,
-							};
-							console.log('[V2 State Dump]', JSON.stringify(dump, null, 2));
-							return dump;
-						} catch (e) { console.error('dumpV2State failed', e); }
-					};
-					(window as any).captureV2Debug = async () => {
-						const fs = require('fs');
-						const path = require('path');
-						const outDir = '/tmp/peak-v2-debug';
-						try { fs.mkdirSync(outDir, { recursive: true }); } catch {}
-						const ts = Date.now();
-
-						// 1. State dump
-						const state = (window as any).dumpV2State?.();
-						if (state) {
-							fs.writeFileSync(path.join(outDir, `state-${ts}.json`), JSON.stringify(state, null, 2));
-						}
-
-						// 2. DOM snapshot of the search result area
-						const modalEl = document.querySelector('.modal-container');
-						if (modalEl) {
-							const html = modalEl.innerHTML;
-							fs.writeFileSync(path.join(outDir, `dom-${ts}.html`), html);
-						}
-
-						// 3. Screenshot via Electron
-						try {
-							const electron = require('electron');
-							const win = (electron.remote ?? electron).getCurrentWindow?.()
-								?? electron.BrowserWindow?.getFocusedWindow?.();
-							if (win) {
-								const image = await win.webContents.capturePage();
-								fs.writeFileSync(path.join(outDir, `screenshot-${ts}.png`), image.toPNG());
-								console.log(`[captureV2Debug] screenshot saved: ${outDir}/screenshot-${ts}.png`);
-							}
-						} catch (e) {
-							console.warn('[captureV2Debug] screenshot failed (expected in some Electron configs):', (e as Error).message);
-						}
-
-						console.log(`[captureV2Debug] saved to ${outDir}/ (state + dom + screenshot)`);
-						return outDir;
-					};
-
-					console.debug('🔧 Dev Tools initialized!');
-				console.debug('📖 Usage: window.testGraphTools.inspectNote("path/to/note.md")');
-				console.debug('📖 Usage: await window.testAISearchTools.testSlotRecall("your question")');
-				console.debug('📖 Usage: window.indexDocument("path/to/note.md") — fast core index');
-				console.debug('📖 Usage: window.indexDocumentFull("path/to/note.md") — full index + LLM');
-				(window as any).testBackboneMap = (opts?: Record<string, unknown>) =>
-					(window as any).testAISearchTools.testBackboneMap(opts);
-				(window as any).testKnowledgeIntuition = (opts?: Record<string, unknown>) =>
-					(window as any).testAISearchTools.testKnowledgeIntuition(opts);
-				(window as any).testClassify = (query: string) =>
-					(window as any).testAISearchTools.testClassify(query);
-				(window as any).testPipelinePhases = (query: string) =>
-					(window as any).testAISearchTools.testPipelinePhases(query);
-			}
+			registerDevtools(this);
 		} else {
-			if (typeof window !== 'undefined') {
-				const globals = [
-					'testGraphTools', 'testAISearchTools', 'indexDocument', 'indexDocumentFull',
-					'runPendingLlmIndexEnrichment', 'runPendingVectorIndexEnrichment',
-					'getVaultPersona', 'cleanupGraphTable', 'dumpV2State', 'captureV2Debug',
-					'testBackboneMap', 'testKnowledgeIntuition', 'testClassify', 'testPipelinePhases',
-				];
-				for (const g of globals) {
-					if ((window as any)[g]) delete (window as any)[g];
-				}
-			}
+			unregisterDevtools();
 		}
 	}
 }
