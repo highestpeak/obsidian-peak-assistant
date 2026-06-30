@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ModelInfoForSwitch } from '@/core/providers/types';
+import { ViewEventType } from '@/core/eventBus';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 
 /**
@@ -34,7 +35,7 @@ export function useModels() {
 	// Listen for settings updates to reload models
 	useEffect(() => {
 		if (!eventBus) return;
-		const unsubscribe = eventBus.on('settings-updated', () => {
+		const unsubscribe = eventBus.on(ViewEventType.SETTINGS_UPDATED, () => {
 			loadModels();
 		});
 		return unsubscribe;

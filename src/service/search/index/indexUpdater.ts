@@ -10,7 +10,7 @@ import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoa
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { defaultIndexDocumentOptions, IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
-import { EventBus } from '@/core/eventBus';
+import { EventBus, ViewEventType } from '@/core/eventBus';
 import { CascadeWorker } from './cascade/CascadeWorker';
 import { HubStalenessDetector } from './helper/hub/hubStalenessDetector';
 import type MyPlugin from 'main';
@@ -72,7 +72,7 @@ export class SearchUpdateListener {
 
 		// Listen for settings updates to restart if indexRefreshInterval changed
 		const eventBus = EventBus.getInstance(this.app);
-		this.settingsUnsubscribe = eventBus.on('peak:settings-updated', () => {
+		this.settingsUnsubscribe = eventBus.on(ViewEventType.SETTINGS_UPDATED, () => {
 			if (this.debounceMs !== this.plugin.settings.search.indexRefreshInterval) {
 				this.restartWithNewInterval();
 			}
