@@ -5,7 +5,7 @@
 // modal-scoped ref (no module global).
 import { Notice } from 'obsidian';
 import React, { useState, useEffect } from 'react';
-import { AuthenticationError } from '@/core/errors/llm-errors';
+import { AuthenticationError } from '@/core/errors';
 import { Loader2, AlertTriangle, Settings2, ArrowLeft, X, Ban } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { CopilotAction, DocumentContext, ActionUsage, ActionResult } from '@/service/copilot/CopilotActionRegistry';

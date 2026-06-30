@@ -14,7 +14,7 @@
 
 import type { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import type { SDKMessage } from './sdkAgentPool';
-import { throwTypedError, LLMResponseError } from '@/core/errors/llm-errors';
+import { throwTypedError, LLMResponseError } from '@/core/errors';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
