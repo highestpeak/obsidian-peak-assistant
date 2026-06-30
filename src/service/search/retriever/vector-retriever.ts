@@ -2,7 +2,7 @@ import type { SearchRetriever, RetrieverResult } from './types';
 import type { QueryPlan } from '@/service/search/query/query-parser';
 import { applyChunkDecay } from './fts-retriever';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { embedText } from '@/core/embeddings/embedClient';
+import { embedText } from '@/service/search/embeddings/embedClient';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { DEFAULT_SEARCH_TOP_K } from '@/core/constant';
 

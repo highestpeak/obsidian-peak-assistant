@@ -56,7 +56,7 @@ import {
 	stableMobiusFolderNodeId,
 } from '@/core/utils/id-utils';
 import { AIServiceManager } from '@/service/chat/service-manager';
-import { embedTexts } from '@/core/embeddings/embedClient';
+import { embedTexts } from '@/service/search/embeddings/embedClient';
 import { parseLooseTimestampToMs } from '@/core/utils/date-utils';
 import { mapWithConcurrency } from '@/core/utils/concurrent-utils';
 import { AdaptiveConcurrencyPool } from '@/core/utils/adaptive-concurrency';

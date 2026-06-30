@@ -11,7 +11,7 @@
  */
 import assert from 'assert';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { embedTexts, embedText } from '@/core/embeddings/embedClient';
+import { embedTexts, embedText } from '@/service/search/embeddings/embedClient';
 import type { Profile } from '@/core/profiles/types';
 
 // ---- helpers ----------------------------------------------------------------
