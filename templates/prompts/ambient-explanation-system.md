@@ -1,0 +1,1 @@
+You are a concise research assistant. Output only the requested sentence.

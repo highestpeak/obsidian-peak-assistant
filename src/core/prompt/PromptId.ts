@@ -137,6 +137,64 @@ export enum PromptId {
 
 	// Prompt enhancement
 	PromptEnhance = 'prompt-enhance',
+
+	// Ambient explanation (LLM micro-explanation for ambient push notes)
+	AmbientExplanationSystem = 'ambient-explanation-system',
+	AmbientExplanationUser = 'ambient-explanation-user',
+
+	// Copilot Auto Review meta-agent (subject = single note)
+	CopilotMetaAgentSystemBase = 'copilot-meta-agent-system-base',
+	CopilotMetaAgentFastModeSuffix = 'copilot-meta-agent-fast-mode-suffix',
+	CopilotMetaAgentCompleteModeSuffix = 'copilot-meta-agent-complete-mode-suffix',
+
+	// Vault Review meta-agent (subject = whole vault)
+	VaultMetaAgentSystemBase = 'vault-meta-agent-system-base',
+	VaultMetaAgentFastModeSuffix = 'vault-meta-agent-fast-mode-suffix',
+	VaultMetaAgentCompleteModeSuffix = 'vault-meta-agent-complete-mode-suffix',
+
+	// Insight inline chat (per-insight follow-up / draft-proposal modes)
+	InsightInlineChatDraftProposalSystem = 'insight-inline-chat-draft-proposal-system',
+	InsightInlineChatFollowupSystem = 'insight-inline-chat-followup-system',
+
+	// Knowledge graph agent (search → graph structure)
+	GraphAgentSystem = 'graph-agent-system',
+	GraphAgentUser = 'graph-agent-user',
+
+	// Thinking-tree inference (document hierarchy from titles + first lines)
+	GraphInferThinkingTreeSystem = 'graph-infer-thinking-tree-system',
+	GraphInferThinkingTreeUser = 'graph-infer-thinking-tree-user',
+
+	// Report orchestrator: assign user insights to plan sections
+	ReportAssignInsights = 'report-assign-insights',
+
+	// Curator (agent harness setup): recommend model bindings
+	CuratorSystem = 'curator-system',
+
+	// Usage optimization: rank cost-saving recommendations
+	UsageOptimizationSystem = 'usage-optimization-system',
+
+	// Copilot action: find vault tasks that look like open questions and solve them
+	CopilotFindAndSolveTasksSystem = 'copilot-find-and-solve-tasks-system',
+	CopilotFindAndSolveTasksUser = 'copilot-find-and-solve-tasks-user',
+
+	// Lint insights (vault-health LintFinding → AI repair prompts)
+	LintBrokenLinkRepair = 'lint-broken-link-repair',
+	LintMissingTargets = 'lint-missing-targets',
+	LintNoiseSource = 'lint-noise-source',
+	LintOrphanReconnect = 'lint-orphan-reconnect',
+	LintTagCoverage = 'lint-tag-coverage',
+	LintContentCleanup = 'lint-content-cleanup',
+
+	// Web search MCP tool / chat web search tool (shared)
+	WebSearchToolSystem = 'web-search-tool-system',
+
+	// Plan mode (chat) system prompt prepended in plan conversation mode
+	PlanModeSystem = 'plan-mode-system',
+
+	// Built-in skills (full skill markdown including frontmatter)
+	SkillWeeklyReport = 'skill-weekly-report',
+	SkillLiteratureReview = 'skill-literature-review',
+	SkillVaultHealthCheck = 'skill-vault-health-check',
 }
 
 /**
@@ -526,6 +584,106 @@ export interface PromptVariables {
 	[PromptId.PromptEnhance]: {
 		userPrompt: string;
 	};
+
+	// Ambient explanation
+	[PromptId.AmbientExplanationSystem]: Record<string, never>;
+	[PromptId.AmbientExplanationUser]: {
+		currentParagraph: string;
+		pushNoteTitle: string;
+		pushNoteExcerpt: string;
+	};
+
+	// Copilot Auto Review meta-agent
+	[PromptId.CopilotMetaAgentSystemBase]: Record<string, never>;
+	[PromptId.CopilotMetaAgentFastModeSuffix]: Record<string, never>;
+	[PromptId.CopilotMetaAgentCompleteModeSuffix]: Record<string, never>;
+
+	// Vault Review meta-agent
+	[PromptId.VaultMetaAgentSystemBase]: Record<string, never>;
+	[PromptId.VaultMetaAgentFastModeSuffix]: Record<string, never>;
+	[PromptId.VaultMetaAgentCompleteModeSuffix]: Record<string, never>;
+
+	// Insight inline chat
+	[PromptId.InsightInlineChatDraftProposalSystem]: {
+		subjectPath: string;
+		subjectBasename: string;
+		insightTitle: string;
+		insightBody: string;
+	};
+	[PromptId.InsightInlineChatFollowupSystem]: {
+		subjectPath: string;
+		subjectBasename: string;
+		insightTitle: string;
+		insightBody: string;
+	};
+
+	// Graph agent
+	[PromptId.GraphAgentSystem]: {
+		searchQuery: string;
+		sourcesTable: string;
+	};
+	[PromptId.GraphAgentUser]: {
+		sourceCount: number;
+		searchQuery: string;
+	};
+
+	// Thinking-tree inference
+	[PromptId.GraphInferThinkingTreeSystem]: Record<string, never>;
+	[PromptId.GraphInferThinkingTreeUser]: {
+		filesText: string;
+	};
+
+	// Report orchestrator: assign insights
+	[PromptId.ReportAssignInsights]: {
+		sectionList: string;
+		insightList: string;
+		userQuery: string;
+	};
+
+	// Curator
+	[PromptId.CuratorSystem]: Record<string, never>;
+
+	// Usage optimization
+	[PromptId.UsageOptimizationSystem]: Record<string, never>;
+
+	// Copilot find-and-solve-tasks
+	[PromptId.CopilotFindAndSolveTasksSystem]: Record<string, never>;
+	[PromptId.CopilotFindAndSolveTasksUser]: {
+		taskList: string;
+	};
+
+	// Lint insights
+	[PromptId.LintBrokenLinkRepair]: {
+		topFiles: string;
+	};
+	[PromptId.LintMissingTargets]: {
+		targetLines: string;
+		sourceSample: string;
+	};
+	[PromptId.LintNoiseSource]: {
+		folder: string;
+		fileLines: string;
+	};
+	[PromptId.LintOrphanReconnect]: {
+		lines: string;
+	};
+	[PromptId.LintTagCoverage]: {
+		lines: string;
+	};
+	[PromptId.LintContentCleanup]: {
+		lines: string;
+	};
+
+	// Web search tool
+	[PromptId.WebSearchToolSystem]: Record<string, never>;
+
+	// Plan mode
+	[PromptId.PlanModeSystem]: Record<string, never>;
+
+	// Built-in skills
+	[PromptId.SkillWeeklyReport]: Record<string, never>;
+	[PromptId.SkillLiteratureReview]: Record<string, never>;
+	[PromptId.SkillVaultHealthCheck]: Record<string, never>;
 }
 
 export type PromptInfo = PromptTemplate & { systemPromptId?: PromptId };

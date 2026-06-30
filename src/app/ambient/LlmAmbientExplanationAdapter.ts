@@ -6,6 +6,8 @@
 
 import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { PromptId } from '@/core/prompt/PromptId';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import type { AmbientExplanationPort } from '@/service/ambient/ports/AmbientPorts';
 
@@ -26,12 +28,14 @@ export class LlmAmbientExplanationAdapter implements AmbientExplanationPort {
 		const profile = registry.getActiveAgentProfile();
 		if (!profile) return null;
 
-		const prompt = [
-			`Given the user is writing about: "${currentParagraph.slice(0, 300)}"`,
-			`And this note exists: "${pushNoteTitle}" with excerpt: "${pushNoteExcerpt.slice(0, 200)}"`,
-			`In one sentence (max 20 words), explain how this note could contribute to the current writing.`,
-			`Reply with ONLY the explanation sentence, no preamble.`,
-		].join('\n');
+		const tm = TemplateManager.getInstance();
+		if (!tm) return null;
+		const prompt = await tm.render(PromptId.AmbientExplanationUser, {
+			currentParagraph: currentParagraph.slice(0, 300),
+			pushNoteTitle,
+			pushNoteExcerpt: pushNoteExcerpt.slice(0, 200),
+		});
+		const systemPrompt = await tm.render(PromptId.AmbientExplanationSystem, {});
 
 		try {
 			const app = AppContext.getApp();
@@ -41,7 +45,7 @@ export class LlmAmbientExplanationAdapter implements AmbientExplanationPort {
 			const messages = queryWithProfile(app, pluginId, profile, {
 				prompt,
 				maxTurns: 1,
-				systemPrompt: 'You are a concise research assistant. Output only the requested sentence.',
+				systemPrompt,
 			});
 
 			for await (const msg of messages) {

@@ -12,6 +12,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Send, Sparkles, X } from 'lucide-react';
+import { PromptId } from '@/core/prompt/PromptId';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import { StreamdownIsolated } from '@/ui/component/mine';
@@ -46,57 +48,30 @@ interface InsightInlineChatProps {
 	readOnly?: boolean;
 }
 
-function buildSystemPrompt(params: {
+async function buildSystemPrompt(params: {
 	mode: InsightChatMode;
 	subjectBasename: string;
 	subjectPath: string;
 	insightTitle: string;
 	insightBody: string;
-}): string {
-	const docBlock = [
-		'CONTEXT — Document under review:',
-		`- Path: ${params.subjectPath || '(unknown)'}`,
-		`- Title: ${params.subjectBasename || '(untitled)'}`,
-	].join('\n');
-
-	const insightBlock = [
-		'INSIGHT being discussed:',
-		`Title: ${params.insightTitle}`,
-		'',
-		params.insightBody,
-	].join('\n');
-
-	if (params.mode === 'draft-proposal') {
-		return [
-			'You are turning an Auto Review insight into 1-3 concrete edits the user could make to their note.',
-			'',
-			docBlock,
-			'',
-			insightBlock,
-			'',
-			'INSTRUCTIONS:',
-			'- Output 1 to 3 specific, copy-pastable edits.',
-			'- For each edit: a one-line rationale, then the exact text to insert or replace inside a fenced code block.',
-			'- Format as a numbered list.',
-			'- Do NOT add commentary beyond rationale + edit.',
-			'- If a [[wikilink]] would improve connectivity, include it inside the edit text.',
-		].join('\n');
-	}
-
-	// follow-up
-	return [
-		'You are a research assistant helping the user dig deeper into one specific finding from an Auto Review.',
-		'',
-		docBlock,
-		'',
-		insightBlock,
-		'',
-		'INSTRUCTIONS:',
-		'- Stay focused on this insight. Help the user understand or explore it further.',
-		'- Be concise but substantive (a few short paragraphs at most).',
-		'- Reference vault notes by [[wikilink]] if it adds value.',
-		'- Do NOT propose document edits in this mode — there is a separate "Draft proposal" action for that.',
-	].join('\n');
+}): Promise<string> {
+	// T11Y-6: prompt body migrated to
+	// templates/prompts/insight-inline-chat-{draft-proposal,followup}-system.md.
+	// Pre-template `params.subjectPath || '(unknown)'` /
+	// `params.subjectBasename || '(untitled)'` fallbacks are computed here so
+	// the template stores only `{{{subjectPath}}}` / `{{{subjectBasename}}}`.
+	const tm = TemplateManager.getInstance();
+	if (!tm) throw new Error('TemplateManager not bound — cannot render insight inline chat system prompt.');
+	const vars = {
+		subjectPath: params.subjectPath || '(unknown)',
+		subjectBasename: params.subjectBasename || '(untitled)',
+		insightTitle: params.insightTitle,
+		insightBody: params.insightBody,
+	};
+	const id = params.mode === 'draft-proposal'
+		? PromptId.InsightInlineChatDraftProposalSystem
+		: PromptId.InsightInlineChatFollowupSystem;
+	return tm.render(id, vars);
 }
 
 function buildUserPrompt(history: ChatTurn[], question: string): string {
@@ -165,7 +140,7 @@ export const InsightInlineChat: React.FC<InsightInlineChatProps> = ({
 		abortRef.current = controller;
 
 		try {
-			const systemPrompt = buildSystemPrompt({
+			const systemPrompt = await buildSystemPrompt({
 				mode,
 				subjectBasename: subjectBasename ?? '',
 				subjectPath: subjectPath ?? '',

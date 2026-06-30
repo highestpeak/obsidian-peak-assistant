@@ -361,6 +361,64 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 
 	// --- Structural analysis prompts ---
 	'gap-explanation': meta('prompts', 'gap-explanation', { label: 'Gap Explanation', description: 'LLM prompt for lazy gap explanations.', group: 'indexing' }),
+
+	// --- Ambient explanation (T11Y inline-prompt migration) ---
+	'ambient-explanation-system': meta('prompts', 'ambient-explanation-system', { label: 'Ambient Explanation (System)', description: 'System instructions for the ambient micro-explanation LLM call.', group: 'ambientContext' }),
+	'ambient-explanation-user': meta('prompts', 'ambient-explanation-user', { systemPromptId: 'ambient-explanation-system' as PromptId, label: 'Ambient Explanation', description: 'One-sentence explanation of how a pushed note relates to the current writing.', group: 'ambientContext' }),
+
+	// --- Copilot Auto Review meta-agent (T11Y inline-prompt migration) ---
+	'copilot-meta-agent-system-base': meta('prompts', 'copilot-meta-agent-system-base', { label: 'Auto Review Meta-Agent (Base)', description: 'Base system block for the Auto Review meta-agent — assembled with signal report + mode suffix at call time.', group: 'copilot' }),
+	'copilot-meta-agent-fast-mode-suffix': meta('prompts', 'copilot-meta-agent-fast-mode-suffix', { label: 'Auto Review Meta-Agent (Fast Suffix)', description: 'Mode suffix appended when Auto Review runs in fast (single focus) mode.', group: 'copilot' }),
+	'copilot-meta-agent-complete-mode-suffix': meta('prompts', 'copilot-meta-agent-complete-mode-suffix', { label: 'Auto Review Meta-Agent (Complete Suffix)', description: 'Mode suffix appended when Auto Review runs in complete (multi-round) mode.', group: 'copilot' }),
+
+	// --- Vault Review meta-agent (T11Y inline-prompt migration) ---
+	'vault-meta-agent-system-base': meta('prompts', 'vault-meta-agent-system-base', { label: 'Vault Review Meta-Agent (Base)', description: 'Base system block for the Vault Review meta-agent — assembled with digest + mode suffix at call time.', group: 'copilot' }),
+	'vault-meta-agent-fast-mode-suffix': meta('prompts', 'vault-meta-agent-fast-mode-suffix', { label: 'Vault Review Meta-Agent (Fast Suffix)', description: 'Mode suffix appended when Vault Review runs in fast mode.', group: 'copilot' }),
+	'vault-meta-agent-complete-mode-suffix': meta('prompts', 'vault-meta-agent-complete-mode-suffix', { label: 'Vault Review Meta-Agent (Complete Suffix)', description: 'Mode suffix appended when Vault Review runs in complete mode.', group: 'copilot' }),
+
+	// --- Insight inline chat (T11Y inline-prompt migration) ---
+	'insight-inline-chat-draft-proposal-system': meta('prompts', 'insight-inline-chat-draft-proposal-system', { label: 'Insight Chat (Draft Proposal)', description: 'System prompt for turning an Auto Review insight into 1-3 concrete edits.', group: 'copilot' }),
+	'insight-inline-chat-followup-system': meta('prompts', 'insight-inline-chat-followup-system', { label: 'Insight Chat (Follow-up)', description: 'System prompt for following up on an Auto Review insight.', group: 'copilot' }),
+
+	// --- Knowledge graph agent (T11Y inline-prompt migration) ---
+	'graph-agent-system': meta('prompts', 'graph-agent-system', { label: 'Graph Agent (System)', description: 'System prompt that asks the LLM to read source documents and produce a knowledge graph.', group: 'searchAnalysis' }),
+	'graph-agent-user': meta('prompts', 'graph-agent-user', { systemPromptId: 'graph-agent-system' as PromptId, label: 'Graph Agent (User)', description: 'User prompt that names the search query and source count for the graph agent.', group: 'searchAnalysis' }),
+
+	// --- Thinking-tree inference (T11Y inline-prompt migration) ---
+	'graph-infer-thinking-tree-system': meta('prompts', 'graph-infer-thinking-tree-system', { expectsJson: true, label: 'Infer Thinking Tree (System)', description: 'System prompt for the thinking-tree inference call.', group: 'searchAnalysis' }),
+	'graph-infer-thinking-tree-user': meta('prompts', 'graph-infer-thinking-tree-user', { systemPromptId: 'graph-infer-thinking-tree-system' as PromptId, expectsJson: true, label: 'Infer Thinking Tree (User)', description: 'User prompt with files for thinking-tree inference.', group: 'searchAnalysis' }),
+
+	// --- Report orchestrator: insight assignment (T11Y inline-prompt migration) ---
+	'report-assign-insights': meta('prompts', 'report-assign-insights', { expectsJson: true, label: 'Report Assign Insights', description: 'Assigns user insights to plan sections (or creates new sections).', group: 'searchAnalysis' }),
+
+	// --- Curator (T11Y inline-prompt migration) ---
+	'curator-system': meta('prompts', 'curator-system', { label: 'Curator (System)', description: 'System prompt for the Peak Assistant configuration curator agent.', group: 'copilot' }),
+
+	// --- Usage optimization (T11Y inline-prompt migration) ---
+	'usage-optimization-system': meta('prompts', 'usage-optimization-system', { expectsJson: true, label: 'Usage Optimization (System)', description: 'System prompt for the AI usage optimization curator.', group: 'copilot' }),
+
+	// --- Copilot find-and-solve-tasks action (T11Y inline-prompt migration) ---
+	'copilot-find-and-solve-tasks-system': meta('prompts', 'copilot-find-and-solve-tasks-system', { label: 'Find & Solve Tasks (System)', description: 'System prompt for the Find & Solve Tasks Copilot action.', group: 'copilot' }),
+	'copilot-find-and-solve-tasks-user': meta('prompts', 'copilot-find-and-solve-tasks-user', { systemPromptId: 'copilot-find-and-solve-tasks-system' as PromptId, label: 'Find & Solve Tasks (User)', description: 'User prompt listing open vault tasks that look like questions to resolve.', group: 'copilot' }),
+
+	// --- Lint insights (T11Y inline-prompt migration) ---
+	'lint-broken-link-repair': meta('prompts', 'lint-broken-link-repair', { label: 'Lint: Broken Link Repair', description: 'Repair plan prompt for the broken-link-repair vault health insight.', group: 'copilot' }),
+	'lint-missing-targets': meta('prompts', 'lint-missing-targets', { label: 'Lint: Missing Targets', description: 'Mapping/creation prompt for missing-target vault health insights.', group: 'copilot' }),
+	'lint-noise-source': meta('prompts', 'lint-noise-source', { label: 'Lint: Noise Source', description: 'Classification prompt for noise-source vault health insights.', group: 'copilot' }),
+	'lint-orphan-reconnect': meta('prompts', 'lint-orphan-reconnect', { label: 'Lint: Orphan Reconnect', description: 'Reconnect plan prompt for orphan-note vault health insights.', group: 'copilot' }),
+	'lint-tag-coverage': meta('prompts', 'lint-tag-coverage', { label: 'Lint: Tag Coverage', description: 'Tag-suggestion prompt for untagged-note vault health insights.', group: 'copilot' }),
+	'lint-content-cleanup': meta('prompts', 'lint-content-cleanup', { label: 'Lint: Content Cleanup', description: 'Triage prompt for empty/stub-note vault health insights.', group: 'copilot' }),
+
+	// --- Web search system prompt (shared by webSearchTool + chatToolBuilder) ---
+	'web-search-tool-system': meta('prompts', 'web-search-tool-system', { label: 'Web Search Tool (System)', description: 'System prompt used when delegating to a web-search-capable profile from chat and vault tools.', group: 'chat' }),
+
+	// --- Plan mode (chat) system prompt ---
+	'plan-mode-system': meta('prompts', 'plan-mode-system', { label: 'Plan Mode (System)', description: 'System prompt prepended in Plan conversation mode.', group: 'chat' }),
+
+	// --- Built-in skills (full skill markdown, frontmatter + body) ---
+	'skill-weekly-report': meta('prompts', 'skill-weekly-report', { label: 'Skill: Weekly Report', description: 'Built-in Weekly Report skill markdown.', group: 'copilot' }),
+	'skill-literature-review': meta('prompts', 'skill-literature-review', { label: 'Skill: Literature Review', description: 'Built-in Literature Review skill markdown.', group: 'copilot' }),
+	'skill-vault-health-check': meta('prompts', 'skill-vault-health-check', { label: 'Skill: Vault Health Check', description: 'Built-in Vault Health Check skill markdown.', group: 'copilot' }),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {

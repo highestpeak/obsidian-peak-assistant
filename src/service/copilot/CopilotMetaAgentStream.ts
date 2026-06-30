@@ -12,6 +12,8 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import type { Profile } from '@/core/profiles/types';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { PromptId } from '@/core/prompt/PromptId';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import { warmupPool, queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { buildVaultMcpServer, type GrepHit } from '@/service/agents/vault-sdk/vaultMcpServer';
 import { translateSdkMessage } from '@/service/agents/core/sdkMessageAdapter';
@@ -72,72 +74,16 @@ export interface MetaAgentOptions {
 	analysisHistory: import('@/core/ports/AnalysisHistoryPort').AnalysisHistoryPort;
 }
 
-const SYSTEM_PROMPT_BASE = `You are the Peak Assistant Auto Review agent.
-
-Your job: inspect the user's current note and publish findings through the
-structured propose_* toolset. End with submit_review.
-
-OUTPUT TOOLS:
-  - propose_insight   — analytical conclusion (Insights tab).
-  - propose_change    — concrete diff with before/after blocks (Changes tab).
-  - propose_source    — citation to a vault note (Sources tab).
-  - attach_chat_followup — open question worth asking (Insights tab tail).
-  - note_finding      — your own short scratch memo (echoed back, not user-facing).
-  - submit_review     — call EXACTLY ONCE to end this round.
-
-VAULT TOOLS:
-  - vault_list_folders, vault_read_folder, vault_read_note, vault_grep,
-    vault_wikilink_expand.
-
-THE SUBJECT NOTE IS ALREADY IN YOUR USER PROMPT — do NOT re-read it.
-
-RULES:
-1. Open with a 2-3 line plan in plain text. Then act.
-2. **Parallel tool calls**: when you need multiple files, request them in a
-   SINGLE turn (the SDK supports parallel tool_use blocks). Do NOT chain
-   reads serially when you could batch them.
-3. NEVER re-read a path you have already read. Use note_finding if you need
-   to remember something across turns.
-4. As soon as you have a concrete finding, call propose_insight / propose_change
-   / propose_source. Externalise findings via the tools instead of holding
-   them in chain-of-thought.
-5. You decide how much investigation is enough — submit_review when YOU think
-   the review is complete, not by a turn count.
-
-QUALITY:
-- Never claim something you did not verify against text you actually read.
-- propose_change.before must be an EXACT substring of the subject note (so it
-  can be applied). Copy-paste; do not paraphrase.
-- **Wikilinks MUST target a real note (.md file), NEVER a folder.**
-  - vault_list_folders returns FOLDERS. Folders are NOT valid link targets.
-  - vault_read_folder lists notes inside a folder; pick a specific note to link to.
-  - If you only have a folder name and no specific note in mind, do NOT invent
-    a wikilink — either explore the folder first, or describe the area in plain
-    text without a [[link]].
-  - propose_source.path must also be an actual note file, not a folder.`;
-
-const FAST_MODE_SUFFIX = `
-MODE: fast
-- Pick ONE focus area only. Produce a single propose_insight (and at most one
-  supporting propose_source). Set submit_review.continue = false.`;
-
-const COMPLETE_MODE_SUFFIX = `
-MODE: complete
-- Cover every relevant focus area surfaced by the signal report.
-- **One identified issue = one propose_change block.** Group blocks by theme
-  inside one propose_change; open new propose_change calls for distinct themes.
-  If you can name 10 fixable problems, the output should contain 10 blocks
-  (spread across however many themed propose_change calls makes sense) — not
-  hide 7 of them. Suppressing edits does not improve quality; tight rationales
-  on each block do.
-- **Pre-submit self-check** (mandatory, before calling submit_review): record
-  a note_finding that enumerates every issue you spotted this round, then for
-  each item write whether it is covered by an existing propose_change block.
-  If any item is NOT covered, EITHER add a block now OR set
-  submit_review.continue = true with a continueRationale naming what's left.
-- Do not submit with fewer blocks than identified issues unless you explicitly
-  acknowledge the omitted ones in the summary and request a continue round.
-- You decide when the review is done. There is no turn or round cap.`;
+/**
+ * T11Y-6: SYSTEM_PROMPT_BASE / FAST_MODE_SUFFIX / COMPLETE_MODE_SUFFIX moved to
+ * templates/prompts/copilot-meta-agent-{system-base,fast-mode-suffix,complete-mode-suffix}.md
+ * — see PromptId.CopilotMetaAgent{SystemBase,FastModeSuffix,CompleteModeSuffix}.
+ *
+ * The two suffix templates start with "MODE: ..." but the original constants
+ * started with a leading newline so that joining them with the rest of the
+ * prompt added a blank line before "MODE:". We prepend that "\n" back in the
+ * caller to preserve byte-equality with pre-migration output.
+ */
 
 /**
  * Pick the LLM profile + optional model override for a given review mode.
@@ -229,19 +175,25 @@ function buildUserPreferencesBlock(profileText: string | undefined): string {
 	].join('\n');
 }
 
-export function buildMetaAgentSystemPrompt(options: {
+export async function buildMetaAgentSystemPrompt(options: {
 	mode: ReviewMode;
 	signalReport: DocumentSignalReport;
 	previousRounds: PreviousRoundSummary[];
 	userProfileText?: string;
-}): string {
-	const modeSuffix = options.mode === 'fast' ? FAST_MODE_SUFFIX : COMPLETE_MODE_SUFFIX;
+}): Promise<string> {
+	const tm = TemplateManager.getInstance();
+	if (!tm) throw new Error('TemplateManager not bound — cannot render copilot meta-agent prompts.');
+	const base = await tm.render(PromptId.CopilotMetaAgentSystemBase, {});
+	const suffixBody = options.mode === 'fast'
+		? await tm.render(PromptId.CopilotMetaAgentFastModeSuffix, {})
+		: await tm.render(PromptId.CopilotMetaAgentCompleteModeSuffix, {});
+	const modeSuffix = '\n' + suffixBody;
 	const signal = formatSignalReportForPrompt(options.signalReport);
 	const prevBlock = buildPreviousRoundsBlock(options.previousRounds);
 	const languageBlock = buildLanguageGuidance(options.signalReport.language);
 	const preferencesBlock = buildUserPreferencesBlock(options.userProfileText);
 	return [
-		SYSTEM_PROMPT_BASE,
+		base,
 		'',
 		'SIGNAL REPORT (pre-flight, not from an agent — these are factual stats):',
 		signal,
@@ -340,7 +292,7 @@ export async function* buildCopilotMetaAgentStream(
 		collector: options.collector,
 	});
 
-	const systemPrompt = buildMetaAgentSystemPrompt({
+	const systemPrompt = await buildMetaAgentSystemPrompt({
 		mode: options.mode,
 		signalReport: options.signalReport,
 		previousRounds: options.previousRounds,

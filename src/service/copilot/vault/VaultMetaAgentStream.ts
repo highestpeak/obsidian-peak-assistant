@@ -18,6 +18,8 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import type { Profile } from '@/core/profiles/types';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { PromptId } from '@/core/prompt/PromptId';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import type { SearchClient } from '@/service/search/SearchClient';
 import { warmupPool, queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { buildVaultMcpServer, type GrepHit } from '@/service/agents/vault-sdk/vaultMcpServer';
@@ -53,92 +55,15 @@ export interface VaultMetaAgentOptions {
 	userProfileText?: string;
 }
 
-const SYSTEM_PROMPT_BASE = `You are the Peak Assistant Vault Review agent.
-
-Your job: produce a vault-level health diagnosis from the pre-computed signal
-digest. The subject is the ENTIRE knowledge base, not any single note.
-
-OUTPUT TOOLS (vault scope):
-  - propose_insight              — general analytical conclusion (Overview/Insights tab).
-  - propose_cluster_observation  — per-cluster judgement (growing / dying / central / fragmenting / abstraction-mix).
-  - propose_gap                  — structural-hole / dangling-reference / stale-hub / abstraction-mismatch.
-  - propose_action               — concrete recommendation (create / merge / split / archive / add-tag / restructure / refresh).
-  - propose_source               — cite a vault note that justified your call.
-  - attach_chat_followup         — open question worth surfacing.
-  - note_finding                 — short scratch memo (echoed back, not user-facing).
-  - submit_review                — call EXACTLY ONCE to end this round.
-
-VAULT TOOLS:
-  - vault_list_folders, vault_read_folder, vault_read_note, vault_grep,
-    vault_wikilink_expand.
-
-THE VAULT DIGEST IS ALREADY IN YOUR USER PROMPT — start with it, then read
-specific notes only when you need to verify a judgement.
-
-RULES:
-1. Open with a 2-3 line plan in plain text. Then act.
-2. **Parallel tool calls**: when you need multiple files, request them in a
-   SINGLE turn (the SDK supports parallel tool_use blocks).
-3. NEVER re-read a path you have already read. Use note_finding if you need
-   to remember something across turns.
-4. Externalise every concrete judgement through propose_* immediately. Do not
-   hold findings in chain-of-thought.
-5. You decide how much investigation is enough — submit_review when YOU think
-   the review is complete, not by a turn count.
-
-QUALITY:
-- Never claim something you did not verify against the digest OR a note you
-  actually read.
-- **Always reference real notes by [[wikilink]] inside body/rationale.** Generic
-  vague statements ("the vault has some gaps") are forbidden.
-- Wikilinks MUST target a real note (.md file). Folders are NOT valid link targets.
-- **propose_cluster_observation.clusterLabel MUST be a semantic name** derived
-  from the cluster's dominant_topics or top_nodes (e.g. "AI Engineering",
-  "Search Architecture"). NEVER use the raw "Community 7" id as the label —
-  invent a 1-3 word topic name based on the actual content. Keep clusterId as
-  the verbatim id from the digest, but clusterLabel is your synthesis.
-- propose_gap.references MUST be real .md paths or [[Concept]] tokens that
-  actually appear in the digest or in notes you read.
-- propose_action.involvedNotes MUST be real .md paths.
-- DO NOT propose changes to the vault-review-*.md files themselves; they have
-  frontmatter type: peak-vault-review.
-
-COVERAGE TARGETS (mandatory in complete mode):
-- propose_cluster_observation: at least one for every cluster listed in the
-  digest (up to the top 12). Even "stable" clusters deserve a one-sentence
-  observation. Skip only if the cluster is empty / noise.
-- propose_gap: aim for 5-10 across all 4 kinds. Cover every structural hole
-  with gapScore >= 0.4 in the digest. Surface dangling references that are
-  cited 3+ times. Flag every stale hub mentioned in the digest.
-- propose_action: aim for 5-8, mixing high / medium / low priorities. Use the
-  full kind vocabulary (create-note / merge-notes / split-note /
-  archive-cluster / add-tag / restructure / refresh-note) where applicable.
-- propose_source: cite 10-20 background notes. Source != evidence ONLY for
-  one cluster — distribute citations across the insights you produced.`;
-
-const FAST_MODE_SUFFIX = `
-MODE: fast
-- Single round. Produce 2-4 high-signal propose_* calls and stop.
-- Prioritise: 1 insight, 1-2 cluster observations on the most active or most
-  dying cluster, 1 gap, 1 action.
-- Set submit_review.continue = false.`;
-
-const COMPLETE_MODE_SUFFIX = `
-MODE: complete
-- Multi-round allowed. Cover all clusters in the digest plus the top
-  structural holes and the most impactful gaps.
-- Each cluster from the digest that materially changed in the last 30 days
-  deserves at least one propose_cluster_observation.
-- Each structural hole with gapScore ≥ 0.4 deserves a propose_gap (or a
-  reasoned dismissal in submit_review.summary).
-- One identified issue = one propose_*. If you spot 10 problems, produce 10
-  proposals; do not collapse them into vague single insights.
-- **Pre-submit self-check** (mandatory): record a note_finding that lists
-  every issue you identified, then verify each has a corresponding propose_*.
-  If anything is missing, add it OR set continue=true with a continueRationale.
-- Submit_review.summary should capture the 1-2 headline judgements of the
-  review (this becomes the report headline).
-- You decide when the review is done.`;
+/**
+ * T11Y-6: SYSTEM_PROMPT_BASE / FAST_MODE_SUFFIX / COMPLETE_MODE_SUFFIX moved to
+ * templates/prompts/vault-meta-agent-{system-base,fast-mode-suffix,complete-mode-suffix}.md
+ * — see PromptId.VaultMetaAgent{SystemBase,FastModeSuffix,CompleteModeSuffix}.
+ *
+ * The suffix templates begin with "MODE: ..." but the original constants
+ * started with a leading newline. We prepend that "\n" back when assembling
+ * to preserve byte-equality with pre-migration output.
+ */
 
 function resolveProfileForMode(mode: VaultReviewMode): { profile: Profile; modelOverride?: string } | null {
 	const registry = ProfileRegistry.getInstance();
@@ -191,18 +116,24 @@ function buildUserPreferencesBlock(profileText: string | undefined): string {
 	].join('\n');
 }
 
-export function buildVaultMetaAgentSystemPrompt(options: {
+export async function buildVaultMetaAgentSystemPrompt(options: {
 	mode: VaultReviewMode;
 	digest: VaultDigest;
 	previousRounds: VaultPreviousRoundSummary[];
 	userProfileText?: string;
-}): string {
-	const modeSuffix = options.mode === 'fast' ? FAST_MODE_SUFFIX : COMPLETE_MODE_SUFFIX;
+}): Promise<string> {
+	const tm = TemplateManager.getInstance();
+	if (!tm) throw new Error('TemplateManager not bound — cannot render vault meta-agent prompts.');
+	const base = await tm.render(PromptId.VaultMetaAgentSystemBase, {});
+	const suffixBody = options.mode === 'fast'
+		? await tm.render(PromptId.VaultMetaAgentFastModeSuffix, {})
+		: await tm.render(PromptId.VaultMetaAgentCompleteModeSuffix, {});
+	const modeSuffix = '\n' + suffixBody;
 	const digestText = formatVaultDigestForPrompt(options.digest);
 	const prevBlock = buildPreviousRoundsBlock(options.previousRounds);
 	const prefs = buildUserPreferencesBlock(options.userProfileText);
 	return [
-		SYSTEM_PROMPT_BASE,
+		base,
 		'',
 		'VAULT DIGEST (pre-flight, computed from index + lint + community detection):',
 		digestText,
@@ -291,7 +222,7 @@ export async function* buildVaultMetaAgentStream(
 		collector: options.collector,
 	});
 
-	const systemPrompt = buildVaultMetaAgentSystemPrompt({
+	const systemPrompt = await buildVaultMetaAgentSystemPrompt({
 		mode: options.mode,
 		digest: options.digest,
 		previousRounds: options.previousRounds,
