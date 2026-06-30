@@ -5,15 +5,23 @@
  * See spec §6.1.
  */
 
+import { PromptId } from '@/core/prompt/PromptId';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import { serializeForPrompt } from './catalog';
 import { summarizeEnvironment, summarizePreferences } from './envProbe';
 import { formatErrorsForLLM } from './validation';
 import type { CuratorContext, ValidationError } from './types';
 
-export const CURATOR_SYSTEM_PROMPT = `你是 Peak Assistant 的配置顾问。
-基于用户的环境信息和偏好，为 Quick / Deep / Premium 三个 capability 各推荐一个 model，并决定是否启用 cascade。
-输出必须严格符合给定的 JSON schema（zod 校验），不要 markdown、不要解释外的多余文字。
-rationale 字段必须用英文（English only），2-3 句说明为什么这样配，要点出关键取舍。`;
+/**
+ * T11Y-6: Curator system prompt body moved to templates/prompts/curator-system.md
+ * (PromptId.CuratorSystem). Callers should `await getCuratorSystemPrompt()` instead
+ * of importing the previous string constant.
+ */
+export async function getCuratorSystemPrompt(): Promise<string> {
+    const tm = TemplateManager.getInstance();
+    if (!tm) throw new Error('TemplateManager not bound — cannot render curator system prompt.');
+    return tm.render(PromptId.CuratorSystem, {});
+}
 
 export interface PromptInputs {
     ctx: CuratorContext;

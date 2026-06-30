@@ -13,7 +13,7 @@ import { vercelGenerateText } from '@/core/providers/vercel';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { isCatalogLoaded } from './catalog';
 import { buildFallbackRecommendation } from './fallback';
-import { buildCuratorPrompt, CURATOR_SYSTEM_PROMPT } from './prompt';
+import { buildCuratorPrompt, getCuratorSystemPrompt } from './prompt';
 import { RecommendationSchema } from './schema';
 import type {
     CuratorAttempt,
@@ -124,11 +124,12 @@ export async function runCurator(opts: RunCuratorOptions): Promise<CuratorResult
 }
 
 async function invokeLLM(bootstrap: BootstrapBinding, userPrompt: string): Promise<string> {
+    const systemPrompt = await getCuratorSystemPrompt();
     const { text } = await vercelGenerateText(
         bootstrap.profile,
         bootstrap.modelId,
         [
-            { role: 'system', content: [{ type: 'text', text: CURATOR_SYSTEM_PROMPT }] },
+            { role: 'system', content: [{ type: 'text', text: systemPrompt }] },
             { role: 'user', content: [{ type: 'text', text: userPrompt }] },
         ],
     );

@@ -5,7 +5,7 @@ import { vercelGenerateText } from '@/core/providers/vercel';
 import type { Profile } from '@/core/profiles/types';
 import { buildRuleRecommendations } from './rules';
 import {
-	OPTIMIZATION_SYSTEM_PROMPT,
+	getOptimizationSystemPrompt,
 	buildOptimizationPrompt,
 } from './prompt';
 import { RecommendationsResponseSchema } from './schema';
@@ -127,11 +127,12 @@ export class UsageOptimizationService {
 		signal?: AbortSignal,
 	): Promise<Recommendation[] | null> {
 		const userPrompt = buildOptimizationPrompt(signals);
+		const systemPrompt = await getOptimizationSystemPrompt();
 		for (let attempt = 0; attempt <= LLM_MAX_RETRIES; attempt++) {
 			if (signal?.aborted) return null;
 			try {
 				const { text } = await vercelGenerateText(llm.profile, llm.modelId, [
-					{ role: 'system', content: [{ type: 'text', text: OPTIMIZATION_SYSTEM_PROMPT }] },
+					{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
 					{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
 				]);
 				const parsed = parseJson(text);

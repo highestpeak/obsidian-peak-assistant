@@ -14,6 +14,8 @@
 
 import type { AppHandle } from '@/core/ports/AppHandle';
 import type { Profile } from '@/core/profiles/types';
+import { PromptId } from '@/core/prompt/PromptId';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import type { GraphOutput } from './graph-output-types';
 import { buildGraphMcpServer } from './graphMcpServer';
 import { buildGraphSystemPrompt } from './graph-system-prompt';
@@ -73,7 +75,7 @@ export class GraphAgent {
             };
         });
 
-        const systemPrompt = buildGraphSystemPrompt(input.searchQuery, sourcesMeta);
+        const systemPrompt = await buildGraphSystemPrompt(input.searchQuery, sourcesMeta);
 
         // 4. Build MCP server with graph tools
         let graphResult: GraphOutput | null = null;
@@ -89,8 +91,14 @@ export class GraphAgent {
 
         // 5. Call queryWithProfile() and consume messages until graph is submitted
         try {
+            const tm = TemplateManager.getInstance();
+            if (!tm) throw new Error('TemplateManager not bound — cannot render graph agent user prompt.');
+            const userPrompt = await tm.render(PromptId.GraphAgentUser, {
+                sourceCount: input.sources.length,
+                searchQuery: input.searchQuery,
+            });
             const messages = queryWithProfile(this.app, this.pluginId, profile, {
-                prompt: `Analyze these ${input.sources.length} source documents for the search query: "${input.searchQuery}". Read all sources, then submit the graph.`,
+                prompt: userPrompt,
                 systemPrompt,
                 maxTurns: 10,
                 allowedTools: [

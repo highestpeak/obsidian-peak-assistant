@@ -12,5 +12,5 @@ export type { CatalogEntry, CatalogFile, LatencyClass } from './catalog';
 export { detectEnvironment, summarizeEnvironment, summarizePreferences } from './envProbe';
 export { validateRecommendation, hardErrors, formatErrorsForLLM, summarizeForUI } from './validation';
 export { buildFallbackRecommendation } from './fallback';
-export { buildCuratorPrompt, CURATOR_SYSTEM_PROMPT } from './prompt';
+export { buildCuratorPrompt, getCuratorSystemPrompt } from './prompt';
 export { RecommendationSchema } from './schema';

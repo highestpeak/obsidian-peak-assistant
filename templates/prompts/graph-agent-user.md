@@ -1,0 +1,1 @@
+Analyze these {{sourceCount}} source documents for the search query: "{{{searchQuery}}}". Read all sources, then submit the graph.

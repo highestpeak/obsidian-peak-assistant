@@ -1,4 +1,6 @@
 import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
+import { PromptId } from '@/core/prompt/PromptId';
+import { TemplateManager } from '@/core/template/TemplateManager';
 
 interface TreeInferenceInput {
 	files: Array<{ path: string; title: string; firstLines: string }>;
@@ -15,41 +17,27 @@ interface TreeInferenceResult {
 	}>;
 }
 
-const SYSTEM_PROMPT = `You analyze document relationships and infer a thinking tree structure.
-Given a set of documents with their titles and first few lines, determine:
-1. Which document is the root (the starting point / index / overview)
-2. Parent-child relationships (which doc elaborates on which)
-3. The depth level of each document (0 = root)
-4. Each document's role: root, hub (connects many children), bridge (connects different topics), leaf (endpoint)
-
-Output JSON only, no explanation.`;
-
-const USER_PROMPT_TEMPLATE = `Analyze these documents and infer their hierarchical thinking tree:
-
-{{FILES}}
-
-Output format:
-{
-  "nodes": [
-    { "path": "...", "label": "short title", "parentPath": null, "level": 0, "role": "root", "summary": "one line summary" }
-  ]
-}`;
-
 /**
  * Call the default LLM provider to infer a thinking-tree hierarchy from document metadata.
  *
  * T11J B1: caller injects `prompter` so the agent no longer reaches
  * `AppContext.getInstance().manager`.
+ *
+ * T11Y-6: system + user prompts moved to templates/prompts/graph-infer-thinking-tree-{system,user}.md
+ * (PromptId.GraphInferThinkingTree{System,User}).
  */
 export async function inferThinkingTree(input: TreeInferenceInput, prompter: IAgentPrompter): Promise<TreeInferenceResult> {
 	const filesText = input.files
 		.map((f) => `### ${f.path}\nTitle: ${f.title}\n${f.firstLines}`)
 		.join('\n\n');
 
-	const prompt = USER_PROMPT_TEMPLATE.replace('{{FILES}}', filesText);
+	const tm = TemplateManager.getInstance();
+	if (!tm) throw new Error('TemplateManager not bound — cannot render thinking-tree prompts.');
+	const prompt = await tm.render(PromptId.GraphInferThinkingTreeUser, { filesText });
+	const systemPrompt = await tm.render(PromptId.GraphInferThinkingTreeSystem, {});
 
 	const text = await prompter.queryText(prompt, undefined, {
-		systemPrompt: SYSTEM_PROMPT,
+		systemPrompt,
 	});
 
 	const jsonMatch = text.match(/\{[\s\S]*\}/);
