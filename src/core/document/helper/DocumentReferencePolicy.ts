@@ -1,6 +1,6 @@
 import type { DocumentType } from '@/core/document/types';
 import { isVaultPathUnderPrefix } from '@/core/utils/hub-path-utils';
-import { GraphNodeType } from '@/core/po/graph.po';
+import { GraphNodeType } from '@/core/types/graph';
 
 /**
  * Internal policy: which {@link DocumentType} values count as doc-to-doc outgoing references

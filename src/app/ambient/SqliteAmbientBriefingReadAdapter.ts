@@ -7,7 +7,7 @@
 // filter, mtime/updated_at predicate, order, limit).
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { GRAPH_DOCUMENT_LIKE_NODE_TYPES } from '@/core/po/graph.po';
+import { GRAPH_DOCUMENT_LIKE_NODE_TYPES } from '@/core/types/graph';
 import type {
 	AmbientBriefingReadPort,
 	BriefingCandidateRow,

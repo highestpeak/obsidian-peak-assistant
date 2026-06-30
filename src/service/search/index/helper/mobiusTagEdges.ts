@@ -2,7 +2,7 @@
  * Stable Mobius tag node ids (deterministic) and shared doc→tag edge upserts for indexing.
  */
 
-import { GraphEdgeType, GraphNodeType } from '@/core/po/graph.po';
+import { GraphEdgeType, GraphNodeType } from '@/core/types/graph';
 import { MobiusEdgeRepo } from '@/core/storage/sqlite/repositories/MobiusEdgeRepo';
 import type { MobiusNodeRepo } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';

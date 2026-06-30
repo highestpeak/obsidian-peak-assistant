@@ -1,5 +1,5 @@
 import { z } from "zod/v3";
-import { GRAPH_TAGGED_EDGE_TYPES } from '@/core/po/graph.po';
+import { GRAPH_TAGGED_EDGE_TYPES } from '@/core/types/graph';
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
 import { KEY_NODES_RRF_K, RRF_RANKING_POOL_SIZE } from "@/core/constant";

@@ -5,7 +5,7 @@ import {
 	GRAPH_TAGGED_EDGE_TYPES,
 	GraphEdgeType,
 	GraphNodeType,
-} from '@/core/po/graph.po';
+} from '@/core/types/graph';
 import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
 import type { FunctionalTagId } from '@/core/schemas/agents/search-agent-schemas';
 

@@ -1,5 +1,5 @@
 import { EXPLORE_FOLDER_DEFAULT_LIMIT, SLICE_CAPS } from '@/core/constant';
-import { GRAPH_WIKI_REFERENCE_EDGE_TYPES } from '@/core/po/graph.po';
+import { GRAPH_WIKI_REFERENCE_EDGE_TYPES } from '@/core/types/graph';
 import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { humanReadableTime } from "@/core/utils/date-utils";
 import { compactPathsForPrompt, compactPathsWithSuffix } from "@/core/utils/pathTreeCompact";

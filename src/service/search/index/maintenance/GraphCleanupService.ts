@@ -1,5 +1,5 @@
 import { sql, type Kysely } from 'kysely';
-import { GRAPH_DOCUMENT_LIKE_NODE_TYPES } from '@/core/po/graph.po';
+import { GRAPH_DOCUMENT_LIKE_NODE_TYPES } from '@/core/types/graph';
 
 /**
  * Narrow ports that mirror only the SqliteStoreManager surface

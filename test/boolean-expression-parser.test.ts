@@ -1,4 +1,4 @@
-import { GraphEdgeType } from '@/core/po/graph.po';
+import { GraphEdgeType } from '@/core/types/graph';
 import { stableFunctionalTagNodeId } from '@/core/utils/id-utils';
 import { BooleanExpressionParser } from '@/core/utils/boolean-expression-parser';
 

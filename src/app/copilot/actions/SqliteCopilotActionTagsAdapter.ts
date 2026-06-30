@@ -8,7 +8,7 @@
 // than throwing inside the action.
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { GraphNodeType } from '@/core/po/graph.po';
+import { GraphNodeType } from '@/core/types/graph';
 import {
 	TagSuggestionEngine,
 	type TagSuggestionDataPort,

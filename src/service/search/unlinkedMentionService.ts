@@ -5,7 +5,7 @@
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { getIndexTenantForPath } from '@/service/search/index/indexService';
-import { GraphEdgeType } from '@/core/po/graph.po';
+import { GraphEdgeType } from '@/core/types/graph';
 
 export interface UnlinkedMention {
 	path: string;

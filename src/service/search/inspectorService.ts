@@ -8,7 +8,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { getPathFromNode } from '@/service/tools/search-graph-inspector/common';
 import { getIndexTenantForPath } from '@/service/search/index/indexService';
 import { SemanticRelatedEdgesReadService } from '@/service/search/index/helper/semanticRelatedEdges';
-import { GraphEdgeType, GraphNodeType } from '@/core/po/graph.po';
+import { GraphEdgeType, GraphNodeType } from '@/core/types/graph';
 
 const LINKS_LIMIT = 300;
 const SEMANTIC_LIMIT = 20;

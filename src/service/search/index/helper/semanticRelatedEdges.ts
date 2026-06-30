@@ -1,6 +1,6 @@
 /** Doc→doc `semantic_related` edges: overlay Mermaid, inspector reads, and tenant-wide vector KNN rebuild. */
 
-import { GraphEdgeType, GraphNodeType, isIndexedNoteNodeType } from '@/core/po/graph.po';
+import { GraphEdgeType, GraphNodeType, isIndexedNoteNodeType } from '@/core/types/graph';
 import type { EmbeddingRepo } from '@/core/storage/sqlite/repositories/EmbeddingRepo';
 import { MobiusEdgeRepo } from '@/core/storage/sqlite/repositories/MobiusEdgeRepo';
 import type { MobiusNodeRepo } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';

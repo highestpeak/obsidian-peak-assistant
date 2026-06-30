@@ -13,7 +13,7 @@ import type { SearchResultItem } from '@/core/search/searchTypes';
 import type { LLMUsage } from '@/core/providers/types';
 import type { AnalysisMode } from '@/core/types/agents-shared';
 import type { UIStepRecord, SectionAnalyzeResult } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
-import { GraphNodeType } from '@/core/po/graph.po';
+import { GraphNodeType } from '@/core/types/graph';
 import type { AiSearchAnalysisDocModel, SnapshotChatMessage } from './AiSearchAnalysisDoc';
 
 const EMPTY_DOC_MODEL: AiSearchAnalysisDocModel = {

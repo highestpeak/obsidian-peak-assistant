@@ -1,5 +1,5 @@
 import type { Kysely } from 'kysely';
-import { GRAPH_INDEXED_NOTE_NODE_TYPES } from '@/core/po/graph.po';
+import { GRAPH_INDEXED_NOTE_NODE_TYPES } from '@/core/types/graph';
 import type { Database as DbSchema } from '../ddl';
 import type { SqliteDatabase } from '../types';
 import type { SearchScopeMode, SearchScopeValue } from '@/core/search/searchTypes';

@@ -6,7 +6,7 @@ import { mapGetAll } from "@/core/utils/collection-utils";
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
-import { GraphNodeType } from "@/core/po/graph.po";
+import { GraphNodeType } from "@/core/types/graph";
 import type { FunctionalTagEntry } from '@/core/document/helper/TagService';
 import { inspectNoteContextInputSchema } from "@/core/schemas/tools/searchGraphInspector";
 

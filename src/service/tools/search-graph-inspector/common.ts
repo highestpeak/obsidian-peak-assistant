@@ -1,5 +1,5 @@
 import type { IndexTenant } from "@/core/storage/sqlite/types";
-import { GraphNodeType } from '@/core/po';
+import { GraphNodeType } from '@/core/types/graph';
 import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { EMPTY_SET, emptyMap } from "@/core/utils/collection-utils";

@@ -2,7 +2,7 @@ import { SLICE_CAPS } from '@/core/constant';
 import { App, TFile } from 'obsidian';
 import { ensureFolderRecursive as ensureFolder } from '@/core/storage/vault/vault-ops';
 import type { GraphPreview } from '@/core/storage/graph/types';
-import type { GraphNodeType } from '@/core/po/graph.po';
+import type { GraphNodeType } from '@/core/types/graph';
 import type { AISearchGraph, AISearchSource } from '@/core/types/agents-shared';
 import type { DashboardBlock } from '@/core/types/agents-shared';
 import type { SearchResultItem } from '@/core/search/searchTypes';

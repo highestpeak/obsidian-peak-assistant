@@ -8,7 +8,7 @@ import {
 	GraphEdgeType,
 	GraphNodeType,
 	isIndexedNoteNodeType,
-} from '@/core/po/graph.po';
+} from '@/core/types/graph';
 /** Public edge row shape (`attributes`); persisted in `mobius_edge` as `attributes_json`. */
 export type GraphEdge = DbSchema['graph_edges'];
 

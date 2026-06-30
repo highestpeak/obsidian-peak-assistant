@@ -1,4 +1,4 @@
-import { isIndexedNoteNodeType } from '@/core/po/graph.po';
+import { isIndexedNoteNodeType } from '@/core/types/graph';
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GRAPH_INSPECT_STEP_TIME_LIMIT, PATH_FINDING_CONSTANTS } from "@/core/constant";
 import { buildResponse, withTimeoutMessage } from "../../types";

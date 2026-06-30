@@ -17,7 +17,7 @@ import {
 	GRAPH_INDEXED_NOTE_NODE_TYPES,
 	GRAPH_TAG_NODE_TYPES,
 	isIndexedNoteNodeType,
-} from '@/core/po/graph.po';
+} from '@/core/types/graph';
 import { normalizeVaultPath } from '@/core/utils/vault-path-utils';
 import {
 	type FolderIntuition,

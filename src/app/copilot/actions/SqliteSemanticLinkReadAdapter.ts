@@ -11,7 +11,7 @@
 // services.
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { GraphEdgeType } from '@/core/po/graph.po';
+import { GraphEdgeType } from '@/core/types/graph';
 import { getSemanticNeighbors } from '@/service/tools/search-graph-inspector/common';
 import type {
 	SemanticEmbeddingNeighbor,

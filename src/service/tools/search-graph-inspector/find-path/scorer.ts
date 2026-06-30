@@ -1,4 +1,4 @@
-import { isIndexedNoteNodeType } from '@/core/po/graph.po';
+import { isIndexedNoteNodeType } from '@/core/types/graph';
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { SLICE_CAPS } from "@/core/constant";
 import { getSemanticNeighbors, applyFiltersAndSorters, getDefaultItemFiledGetter } from "../common";

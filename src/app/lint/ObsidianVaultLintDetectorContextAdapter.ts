@@ -20,7 +20,7 @@
 import { TFile } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { isIndexedNoteNodeType } from '@/core/po/graph.po';
+import { isIndexedNoteNodeType } from '@/core/types/graph';
 import { getSemanticNeighbors } from '@/service/tools/search-graph-inspector/common';
 import type {
 	VaultLintDetectorContextPort,

@@ -17,7 +17,7 @@ import {
 	GRAPH_WIKI_REFERENCE_EDGE_TYPES,
 	GRAPH_SEMANTIC_DOC_EDGE_TYPES,
 	GRAPH_TAGGED_EDGE_TYPES,
-} from '@/core/po/graph.po';
+} from '@/core/types/graph';
 import {
 	PPR_LAYER_WEIGHT_REFERENCE,
 	PPR_LAYER_WEIGHT_SEMANTIC,

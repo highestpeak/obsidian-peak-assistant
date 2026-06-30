@@ -68,7 +68,7 @@ import {
 	GRAPH_DOCUMENT_LIKE_NODE_TYPES,
 	GRAPH_TAG_NODE_TYPES,
 	isIndexedNoteNodeType,
-} from '@/core/po/graph.po';
+} from '@/core/types/graph';
 import {
 	SemanticRelatedEdgesRebuildService,
 	type RebuildSemanticEdgesBatchResult,

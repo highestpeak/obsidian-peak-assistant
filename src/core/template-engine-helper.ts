@@ -1,4 +1,4 @@
-import { GraphNodeType } from '@/core/po/graph.po';
+import { GraphNodeType } from '@/core/types/graph';
 import Handlebars from 'handlebars';
 import { humanReadableTime } from '@/core/utils/date-utils';
 import yaml from 'js-yaml';

@@ -6,7 +6,7 @@
 // `src/service/ambient/serendipity/SerendipitySearcher.ts`.
 
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { GRAPH_DOCUMENT_LIKE_NODE_TYPES } from '@/core/po/graph.po';
+import { GRAPH_DOCUMENT_LIKE_NODE_TYPES } from '@/core/types/graph';
 import type {
 	SemanticGraphTraversalNode,
 	SemanticGraphTraversalReadPort,

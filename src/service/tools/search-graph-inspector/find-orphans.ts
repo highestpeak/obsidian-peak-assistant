@@ -1,5 +1,5 @@
 import { z } from "zod/v3";
-import { isIndexedNoteNodeType } from '@/core/po/graph.po';
+import { isIndexedNoteNodeType } from '@/core/types/graph';
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";

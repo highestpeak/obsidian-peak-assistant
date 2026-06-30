@@ -1,7 +1,7 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import type { Database as DbSchema, IndexedDocumentRecord } from '../ddl';
-import { GraphNodeType, isIndexedNoteNodeType } from '@/core/po/graph.po';
+import { GraphNodeType, isIndexedNoteNodeType } from '@/core/types/graph';
 import { normalizeVaultPath } from '@/core/utils/vault-path-utils';
 
 /** Indexed vault notes stored on `mobius_node` as `document` or promoted `hub_doc`. */
