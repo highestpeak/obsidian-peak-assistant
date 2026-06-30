@@ -41,13 +41,14 @@ function testFileDoesNotConstructNoticeDirectly(): void {
 
 function testTypeOnlyAppImportFromObsidianIsStillAllowed(): void {
 	const source = readSource();
-	// Per T2B explicit correction: a type-only `App` import from obsidian
-	// is allowed because it is a typing dependency, not a side-effect one.
-	// This positive assertion documents that intent.
-	const re = /import\s+type\s+\{[^}]*\bApp\b[^}]*\}\s+from\s+['"]obsidian['"]/m;
+	// T11R Phase 2: the obsidian App import was migrated to the AppHandle port.
+	// We now assert the port-based App import is present instead.
+	// Previously checked: import type { App } from 'obsidian'
+	// Now checks: import type { AppHandle as App } from '@/core/ports/AppHandle'
+	const re = /import\s+type\s+\{[^}]*\bAppHandle\b[^}]*\}\s+from\s+['"]@\/core\/ports\/AppHandle['"]/m;
 	assert.ok(
 		re.test(source),
-		'indexInitializer.ts is expected to keep its type-only App import (constructor parameter typing)',
+		'indexInitializer.ts is expected to import AppHandle (as App) from @/core/ports/AppHandle (T11R Phase 2 port migration)',
 	);
 	console.log('PASS: typeOnlyAppImportFromObsidianIsStillAllowed');
 }
@@ -111,9 +112,10 @@ function testIndexProgressTrackerConstructionAlwaysPassesReporter(): void {
 		'IndexInitializer is expected to construct IndexProgressTracker at least once',
 	);
 	for (const call of ctorCalls) {
+		// this.reporter may be first or last arg depending on the constructor signature.
 		assert.ok(
-			/,\s*this\.reporter\s*\)/.test(call),
-			`IndexProgressTracker construction must pass this.reporter as the reporter argument; found: ${call}`,
+			/\(\s*this\.reporter[\s,]|,\s*this\.reporter\s*\)/.test(call),
+			`IndexProgressTracker construction must pass this.reporter as an argument; found: ${call}`,
 		);
 	}
 	console.log(`PASS: indexProgressTrackerConstructionAlwaysPassesReporter (${ctorCalls.length} construction site(s) checked)`);
@@ -121,12 +123,12 @@ function testIndexProgressTrackerConstructionAlwaysPassesReporter(): void {
 
 function testConstructorAcceptsOptionalProgressReporterPort(): void {
 	const source = readSource();
-	// The optional 4th constructor parameter is the wiring point that lets
-	// existing 3-arg IndexInitializer construction sites stay untouched.
-	const re = /constructor\([^)]*reporter\?:\s*ProgressReporterPort\s*,?\s*\)\s*\{/s;
+	// T2B originally planned reporter as optional (?); the parameter was later
+	// promoted to required (all callers now pass it). Accept either form.
+	const re = /constructor\([^)]*reporter\??:\s*ProgressReporterPort/s;
 	assert.ok(
 		re.test(source),
-		'IndexInitializer constructor must accept an optional ProgressReporterPort (T2B reuse-not-replace wiring)',
+		'IndexInitializer constructor must accept a ProgressReporterPort parameter (T2B reuse-not-replace wiring)',
 	);
 	console.log('PASS: constructorAcceptsOptionalProgressReporterPort');
 }

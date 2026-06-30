@@ -18,7 +18,7 @@ const SERVICE_AGENT_ACTIONS = abs('src/service/copilot/actions/agent-actions.ts'
 const SERVICE_TAG_ENGINE = abs('src/service/copilot/TagSuggestionEngine.ts');
 const SERVICE_CUSTOM_PROMPT = abs('src/service/copilot/CustomPromptRegistry.ts');
 const SERVICE_ACTION_REGISTRY = abs('src/service/copilot/CopilotActionRegistry.ts');
-const UI_PICKER_MODAL = abs('src/ui/view/copilot/CopilotPickerModal.tsx');
+const UI_PICKER_MODAL = abs('src/ui/view/copilot/CopilotPickerContent.tsx'); // CopilotPickerModal.tsx was renamed to CopilotPickerContent.tsx
 const APP_COMMANDS_REGISTER = abs('src/app/commands/Register.ts');
 const APP_RUNTIME_REGISTRY = abs('src/app/runtime/AppRuntimeRegistry.ts');
 

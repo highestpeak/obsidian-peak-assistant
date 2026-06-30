@@ -48,7 +48,9 @@ assert.equal(changeModel.activeTab, 'changes');
 assert.equal(changeModel.canApply, true);
 assert.equal(changeModel.totalChangeBlocks, 1);
 assert.equal(changeModel.tabs.find(tab => tab.id === 'changes')?.count, 1);
-assert.equal(changeModel.tabs.find(tab => tab.id === 'chat')?.count, 0);
+// Chat tab was removed from visibleTabs (follow-up questions surface inline in Insights).
+// It is intentionally absent from tabs[], so find() returns undefined.
+assert.strictEqual(changeModel.tabs.find(tab => tab.id === 'chat'), undefined);
 
 const modes: InsightLayoutMode[] = ['rail', 'split', 'full'];
 assert.deepStrictEqual(modes.map(nextInsightLayoutMode), ['split', 'full', 'rail']);

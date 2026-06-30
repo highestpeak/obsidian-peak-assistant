@@ -10,9 +10,17 @@ import { MockLanguageModelV3 } from 'ai/test';
 import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
 import { TierController } from '@/service/agents/harness/tier/TierController';
 import { DEFAULT_TIER_CAPABILITIES } from '@/service/agents/harness/tier/types';
+import { DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
 import type { TierBinding, TierBindings } from '@/service/agents/harness/tier/types';
+import type { AppHandle } from '@/core/ports/AppHandle';
 
 type GenResult = Awaited<ReturnType<NonNullable<MockLanguageModelV3['doGenerate']>>>;
+
+// Minimal stub satisfying BridgeRunConfig.app (T11J B1: bridge no longer reads AppContext).
+// The app and pluginId fields are only exercised on the SDK path; harness-path tests
+// pass useSDK: false so they never reach those branches.
+const STUB_APP = {} as unknown as AppHandle;
+const STUB_PLUGIN_ID = 'peak-assistant-test';
 
 function makeBinding(text: string): TierBinding {
     const model = new MockLanguageModelV3({
@@ -55,6 +63,9 @@ async function testHarnessPath() {
         tools: [],
         tierController: makeTierController('Hello from harness'),
         useSDK: false,
+        app: STUB_APP,
+        pluginId: STUB_PLUGIN_ID,
+        harnessSettings: DEFAULT_HARNESS_SETTINGS,
     });
 
     assert.strictEqual(result.loopId, 'bridge-harness-1', 'loopId preserved');
@@ -75,7 +86,10 @@ async function testDefaultUsesHarness() {
         initialMessages: [{ role: 'user', content: 'ping' }],
         tools: [],
         tierController: makeTierController('pong'),
-        // useSDK omitted → defaults to harness
+        // useSDK omitted → shouldUseSDK reads harnessSettings.agentBackend ('auto' → harness)
+        app: STUB_APP,
+        pluginId: STUB_PLUGIN_ID,
+        harnessSettings: DEFAULT_HARNESS_SETTINGS,
     });
 
     assert.strictEqual(result.finalText, 'pong', 'default routes to harness');
@@ -92,6 +106,9 @@ async function testResultShape() {
         initialMessages: [{ role: 'user', content: 'Q' }],
         tools: [],
         tierController: makeTierController('Answer'),
+        app: STUB_APP,
+        pluginId: STUB_PLUGIN_ID,
+        harnessSettings: DEFAULT_HARNESS_SETTINGS,
     });
 
     // AgentLoopResult shape
