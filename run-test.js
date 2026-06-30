@@ -1,60 +1,44 @@
 #!/usr/bin/env node
 
 /**
- * Universal Test Runner for TypeScript Test Files
+ * Universal Test Runner for TypeScript Test Files (parallel)
  *
- * This script automates the testing process for TypeScript test files:
- * 1. Uses esbuild to compile TypeScript test files into CommonJS format
- * 2. Runs the compiled JavaScript test files using Node.js
- * 3. Automatically cleans up temporary files
- * 4. Displays detailed test results with pass/fail indicators
+ * - Uses esbuild's JS API in-process (no per-file `npx esbuild` spawn)
+ * - Compiles+runs N tests concurrently (default: min(cpus, 8))
+ * - Per-file stdout/stderr buffered; only failed tests print full output
  *
  * Usage:
- *   node run-test.js                           # Run all .test.ts files under test/
- *   node run-test.js path/to/specific.test.ts   # Run specific test file
- *   npm run test                               # Run all tests (alias)
- *   npm run test -- path/to/specific.test.ts    # Run specific test file
- *
- * Examples:
- *   npm run test
- *   npm run test -- test/boolean-expression-parser.test.ts
+ *   node run-test.js                            # All .test.ts under test/
+ *   node run-test.js path/to/specific.test.ts   # Specific file(s)
+ *   TEST_CONCURRENCY=4 node run-test.js         # Override worker count
+ *   TEST_VERBOSE=1 node run-test.js             # Print output even on success
  */
 
-const { execSync } = require('child_process');
+const { build } = require('esbuild');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
-// Get command line arguments (skip 'node' and script name)
 const args = process.argv.slice(2);
 let testFiles = [];
 
-// Determine which test files to run
 if (args.length > 0) {
-    // Specific test file(s) provided
-    testFiles = args.map(arg => {
-        // Ensure .test.ts extension if not provided
-        return arg.endsWith('.test.ts') ? arg : `${arg}.test.ts`;
-    });
+    testFiles = args.map((arg) => (arg.endsWith('.test.ts') ? arg : `${arg}.test.ts`));
 } else {
-    // Find all .test.ts files under test/ directory
     function findTestFiles(dir) {
-        const files = [];
-        const items = fs.readdirSync(dir);
-
-        for (const item of items) {
+        const out = [];
+        for (const item of fs.readdirSync(dir)) {
             const fullPath = path.join(dir, item);
             const stat = fs.statSync(fullPath);
-
             if (stat.isDirectory()) {
-                files.push(...findTestFiles(fullPath));
+                out.push(...findTestFiles(fullPath));
             } else if (item.endsWith('.test.ts')) {
-                files.push(fullPath);
+                out.push(fullPath);
             }
         }
-
-        return files;
+        return out;
     }
-
     testFiles = findTestFiles('test');
 }
 
@@ -63,60 +47,138 @@ if (testFiles.length === 0) {
     process.exit(1);
 }
 
-console.log(`Running ${testFiles.length} test file(s)...\n`);
+const CONCURRENCY = Math.max(
+    1,
+    parseInt(process.env.TEST_CONCURRENCY || '', 10) || Math.min(os.cpus().length, 8),
+);
+const VERBOSE = process.env.TEST_VERBOSE === '1';
+const obsidianStub = path.join(__dirname, 'test', 'stubs', 'obsidian-stub.cjs');
+// Place temp files inside the project so `packages: 'external'` requires
+// resolve against the project's node_modules (esbuild externalises
+// dependencies without rewriting their require paths).
+const tmpDir = fs.mkdtempSync(path.join(__dirname, '.tmp-tests-'));
+process.on('exit', () => {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) { /* ignore */ }
+});
 
-let totalPassed = 0;
-let totalFailed = 0;
+console.log(`Running ${testFiles.length} test file(s) with concurrency ${CONCURRENCY}...\n`);
 
-for (const testFile of testFiles) {
+async function runOne(testFile, idx) {
     const testName = path.basename(testFile, '.test.ts');
-    console.log(`📋 Running tests for: ${testName}`);
+    const outFile = path.join(tmpDir, `${idx}-${testName}.js`);
+    const started = Date.now();
 
     try {
-        // Step 1: Compile TypeScript test file using esbuild
-        // - Bundle the test file and its dependencies
-        // - Output as CommonJS format for Node.js compatibility
-        // - Target Node.js platform for proper module resolution
-        // Obsidian is not installed for Node; tests may import hub modules that reference it.
-        // Externalize node_modules to keep bundles small and avoid pulling browser-only graphs into the test runner.
-        const obsidianStub = path.join(__dirname, 'test', 'stubs', 'obsidian-stub.cjs');
-        execSync(
-            `npx esbuild ${testFile} --bundle --format=cjs --outfile=temp-test.js --platform=node --tsconfig=tsconfig.json --alias:obsidian=${obsidianStub} --packages=external`,
-            {
-                stdio: 'inherit',
-                cwd: process.cwd(),
-            },
-        );
-
-        // Step 2: Execute the compiled test file
-        // - Runs all test cases defined in the test file
-        // - Displays detailed results for each test
-        execSync('node temp-test.js', {
-            stdio: 'inherit',
-            cwd: process.cwd()
+        await build({
+            entryPoints: [testFile],
+            bundle: true,
+            format: 'cjs',
+            outfile: outFile,
+            platform: 'node',
+            tsconfig: 'tsconfig.json',
+            alias: { obsidian: obsidianStub },
+            packages: 'external',
+            logLevel: 'silent',
+            sourcemap: false,
         });
+    } catch (err) {
+        return {
+            testFile,
+            testName,
+            status: 'compile-error',
+            durationMs: Date.now() - started,
+            stdout: '',
+            stderr: String((err && err.message) || err),
+        };
+    }
 
-        console.log(`✅ ${testName} tests completed successfully!\n`);
+    return new Promise((resolve) => {
+        const child = spawn('node', [outFile], { stdio: ['ignore', 'pipe', 'pipe'] });
+        let stdout = '';
+        let stderr = '';
+        child.stdout.on('data', (d) => (stdout += d.toString()));
+        child.stderr.on('data', (d) => (stderr += d.toString()));
+        child.on('error', (err) => {
+            resolve({
+                testFile,
+                testName,
+                status: 'spawn-error',
+                durationMs: Date.now() - started,
+                stdout,
+                stderr: String((err && err.message) || err),
+            });
+        });
+        child.on('exit', (code) => {
+            fs.promises.unlink(outFile).catch(() => {});
+            resolve({
+                testFile,
+                testName,
+                status: code === 0 ? 'pass' : 'fail',
+                durationMs: Date.now() - started,
+                stdout,
+                stderr,
+            });
+        });
+    });
+}
 
-    } catch (error) {
-        console.error(`❌ ${testName} tests failed:`, error.message);
-        totalFailed++;
-        // Continue to next test file instead of exiting immediately
-    } finally {
-        // Step 3: Clean up temporary files
-        // - Remove the compiled test file to keep the workspace clean
-        // - Ignore any cleanup errors that might occur
-        try {
-            execSync('rm -f temp-test.js');
-        } catch (e) {
-            // Ignore cleanup errors
+async function pool(items, n, worker) {
+    const results = new Array(items.length);
+    let next = 0;
+    const runners = Array.from({ length: n }, async () => {
+        while (true) {
+            const i = next++;
+            if (i >= items.length) return;
+            results[i] = await worker(items[i], i);
+            const r = results[i];
+            const dur = `${(r.durationMs / 1000).toFixed(1)}s`;
+            if (r.status === 'pass') {
+                process.stdout.write(`✅ ${r.testName} (${dur})\n`);
+                if (VERBOSE && r.stdout) {
+                    process.stdout.write(indent(r.stdout));
+                }
+            } else {
+                process.stdout.write(`❌ ${r.testName} [${r.status}] (${dur})\n`);
+                if (r.stdout) process.stdout.write(indent(r.stdout));
+                if (r.stderr) process.stderr.write(indent(r.stderr));
+            }
+        }
+    });
+    await Promise.all(runners);
+    return results;
+}
+
+function indent(s) {
+    return s.replace(/^/gm, '   ').replace(/\s+$/, '') + '\n';
+}
+
+(async () => {
+    const start = Date.now();
+    const results = await pool(testFiles, CONCURRENCY, runOne);
+
+    let passed = 0;
+    let failed = 0;
+    const failedNames = [];
+    for (const r of results) {
+        if (r.status === 'pass') passed++;
+        else {
+            failed++;
+            failedNames.push(r.testName);
         }
     }
-}
 
-if (totalFailed === 0) {
-    console.log(`🎉 All ${testFiles.length} test file(s) completed successfully!`);
-} else {
-    console.log(`⚠️  ${totalFailed} test file(s) failed out of ${testFiles.length}`);
-    process.exit(1);
-}
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+
+    const totalSec = ((Date.now() - start) / 1000).toFixed(1);
+    if (failed === 0) {
+        console.log(`\n🎉 All ${testFiles.length} test file(s) passed in ${totalSec}s.`);
+    } else {
+        console.log(`\n⚠️  ${failed} failed / ${passed} passed (of ${testFiles.length}) in ${totalSec}s.`);
+        console.log('Failed:');
+        for (const name of failedNames) console.log(`  - ${name}`);
+        process.exit(1);
+    }
+})().catch((err) => {
+    console.error('Runner crashed:', err);
+    process.exit(2);
+});
