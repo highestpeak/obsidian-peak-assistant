@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useChatViewStore } from './store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { OpenLinkEvent, ViewEventType } from '@/core/eventBus';
 import { MessageListRenderer } from './components/messages/MessageListRenderer';
 import { ConvertToProjectSuggestion } from './components/ConvertToProjectSuggestion';
 import { Header } from './components/Header';
@@ -45,7 +44,7 @@ export const MessagesViewComponent: React.FC = () => (
 );
 
 const MessagesViewInner: React.FC = () => {
-	const { eventBus, vaultNavigation } = useServiceContext();
+	const { eventBus } = useServiceContext();
 	const pendingConversation = useChatViewStore().pendingConversation;
 	const activeConversation = useChatDataStore((state) => state.activeConversation);
 
@@ -80,19 +79,6 @@ const MessagesViewInner: React.FC = () => {
 		enabled: true,
 		userScrollThreshold: 100,
 	});
-
-	useEffect(() => {
-		if (!eventBus) return;
-		const unsubscribeOpenLink = eventBus.on<OpenLinkEvent>(
-			ViewEventType.OPEN_LINK,
-			async (event) => {
-				await vaultNavigation.openLink(event.path, { newLeaf: true });
-			}
-		);
-		return () => {
-			unsubscribeOpenLink();
-		};
-	}, [eventBus, vaultNavigation]);
 
 	useEffect(() => {
 		if (!activeConversation) return;

@@ -28,10 +28,8 @@ const MAX_ACTIVITIES = 200;
 
 const EVENT_TO_OP: Partial<Record<ViewEventType, OperationType>> = {
 	[ViewEventType.MESSAGE_SENT]: 'chat_message',
-	[ViewEventType.COPILOT_ACTION]: 'copilot_action',
 	[ViewEventType.SEARCH_QUERY]: 'search_query',
 	[ViewEventType.AI_ANALYSIS_COMPLETE]: 'ai_analysis_complete',
-	[ViewEventType.RESOURCE_ATTACHED]: 'resource_attach',
 };
 
 const ROW_TYPE_TO_OP: Record<string, OperationType> = {

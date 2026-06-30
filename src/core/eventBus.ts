@@ -1,5 +1,4 @@
 import type { AppHandle } from '@/core/ports/AppHandle';
-import type { ChatProject } from '@/core/types/chat';
 import type { ChatConversation } from '@/core/types/chat-vault';
 
 /**
@@ -8,17 +7,12 @@ import type { ChatConversation } from '@/core/types/chat-vault';
 export enum ViewEventType {
 	SELECTION_CHANGED = 'peak:selection-changed',
 	CONVERSATION_UPDATED = 'peak:conversation-updated',
-	PROJECT_UPDATED = 'peak:project-updated',
 	SCROLL_TO_MESSAGE = 'peak:scroll-to-message',
-	OPEN_LINK = 'peak:open-link',
 	SHOW_TOAST = 'peak:show-toast',
 	SETTINGS_UPDATED = 'peak:settings-updated',
 	MESSAGE_SENT = 'peak:message-sent',
 	CONVERSATION_CREATED = 'peak:conversation-created',
-	CASCADE_COMPLETED = 'peak:cascade-completed',
-	COPILOT_ACTION = 'copilot-action',
 	SEARCH_QUERY = 'search-query',
-	RESOURCE_ATTACHED = 'resource-attached',
 	AI_ANALYSIS_COMPLETE = 'ai-analysis-complete',
 	USAGE_RECORDED = 'peak:usage-recorded',
 }
@@ -56,30 +50,12 @@ export class ConversationUpdatedEvent extends ViewEvent {
 	}
 }
 
-export class ProjectUpdatedEvent extends ViewEvent {
-	project: ChatProject;
-
-	constructor(data: { project: ChatProject }) {
-		super(ViewEventType.PROJECT_UPDATED);
-		this.project = data.project;
-	}
-}
-
 export class ScrollToMessageEvent extends ViewEvent {
 	messageId: string;
 
 	constructor(data: { messageId: string }) {
 		super(ViewEventType.SCROLL_TO_MESSAGE);
 		this.messageId = data.messageId;
-	}
-}
-
-export class OpenLinkEvent extends ViewEvent {
-	path: string;
-
-	constructor(data: { path: string }) {
-		super(ViewEventType.OPEN_LINK);
-		this.path = data.path;
 	}
 }
 
@@ -137,19 +113,6 @@ export class ShowToastEvent extends ViewEvent {
 		this.description = data.description;
 		this.duration = data.duration;
 		this.action = data.action;
-	}
-}
-
-export class CopilotActionEvent extends ViewEvent {
-	action: string;
-	path: string;
-	summary: string;
-
-	constructor(data: { action: string; targetFile: string; resultSummary: string }) {
-		super(ViewEventType.COPILOT_ACTION);
-		this.action = data.action;
-		this.path = data.targetFile;
-		this.summary = data.resultSummary;
 	}
 }
 

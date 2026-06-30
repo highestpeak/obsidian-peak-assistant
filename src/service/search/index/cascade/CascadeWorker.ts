@@ -2,7 +2,6 @@ import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { MobiusNodeRepo } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 import { SemanticRelatedEdgesRebuildService } from '../helper/semanticRelatedEdges';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
-import { EventBus, ViewEventType } from '@/core/eventBus';
 import type { CascadeDebtRecord } from '@/core/search/cascadeTypes';
 import { CASCADE_IDLE_DELAY_MS, CASCADE_MAX_ITEMS_PER_WINDOW, CASCADE_DEBT_HUB_REGEN_PRIORITY } from '@/core/constant';
 import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
@@ -80,11 +79,6 @@ export class CascadeWorker {
             }
 
             if (processedIds.length > 0) await cascadeRepo.markProcessed(processedIds);
-
-            if (affectedDocIds.size > 0) {
-                const eventBus = EventBus.getInstance(this.app);
-                eventBus.dispatch({ type: ViewEventType.CASCADE_COMPLETED, affectedDocIds: [...affectedDocIds] } as any);
-            }
 
             const remaining = await cascadeRepo.pendingCount('vault');
             if (remaining > 0) this.scheduler.notifyActivity();
