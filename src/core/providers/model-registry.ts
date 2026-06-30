@@ -1,4 +1,4 @@
-import catalogData from '../../../data/model-catalog.json';
+import catalogData from '../../../templates/config/models/model-catalog.json';
 import {
 	ModelCapabilities,
 	ModelMetaData,

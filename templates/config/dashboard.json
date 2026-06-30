@@ -310,13 +310,6 @@
 	"contextRing": {
 		"tooltip": "Context: {used} / {max} tokens"
 	},
-	"curatorPush": {
-		"heading": "Curator suggestion",
-		"apply": "Apply",
-		"dismiss": "Dismiss",
-		"dismissSession": "Don't show this session",
-		"close": "Close"
-	},
 	"screens": {
 		"overview": {
 			"id": "overview",

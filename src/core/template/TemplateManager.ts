@@ -37,8 +37,8 @@ export class TemplateManager {
 
 	/**
 	 * Read the bound instance. UI string loaders (chatStrings, settingsStrings,
-	 * onboardingStrings, InlineReceipt, ContextRing, UsageDashboard,
-	 * CuratorPushModal) call this so they do not need to reach into
+	 * onboardingStrings, InlineReceipt, UsageDashboard) call this so they
+	 * do not need to reach into
 	 * `AppContext`. Returns `null` if boot has not bound yet — callers handle
 	 * the null case (fall back to compiled defaults).
 	 */

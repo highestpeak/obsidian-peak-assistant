@@ -17,8 +17,7 @@
 *.map
 *.wasm
 .DS_Store
-.cursor/debug.log
-.cursor/plans/
+.cursor/
 .idea
 .mcp.json
 .superpowers/

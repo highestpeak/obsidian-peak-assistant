@@ -535,3 +535,292 @@ Possible follow-up direction:
 - Avoid adding `search/quick-search` or `search/backbone` unless the file count/complexity grows enough to justify it.
 - Update path comments and tests that currently point at `src/app/quick-search/*` or `src/app/search/composeBackboneEnv.ts`.
 - Keep the config snapshot pattern: app layer reads global settings, service/search algorithms receive narrow typed env/config objects.
+
+## Issue 13 - React mounting, ItemView shells, view registration, and Obsidian modals should be grouped as one app UI host layer
+
+Owner concern:
+
+The current top-level app folders `src/app/react`, `src/app/shell`, `src/app/view`, and `src/app/modals` look like separate systems. In practice, they are all part of one boundary: mounting React UI into Obsidian's app shell through `ServiceProvider`, `ItemView`, and `Modal` wrappers. The distinction between these folders is mostly implementation grain, not product domain.
+
+Relevant files:
+
+- `src/app/react/ReactElementFactory.tsx`
+- `src/app/shell/ReactItemViewHost.ts`
+- `src/app/shell/ReactModalHost.ts`
+- `src/app/view/*`
+- `src/app/modals/*`
+- `src/app/copilot/modals/*`
+- `src/ui/context/ServiceContext.tsx`
+- `src/ui/react/ReactRenderer.ts`
+- `test/t11o-app-shell-relocation-regression.test.ts`
+
+Confirmed code facts:
+
+- `src/app/react` contains 1 file: `ReactElementFactory.tsx`.
+- `src/app/shell` contains 2 files: `ReactItemViewHost.ts` and `ReactModalHost.ts`.
+- `src/app/view` contains Obsidian `ItemView` shells and view management: `ChatView`, `ProjectListView`, `AmbientPushView`, `UsageDashboardView`, `ChatStudioView`, `ConversationOutlineView`, `VaultXRayView`, `ViewManager`, `ViewSwitchConsistentHandler`, and `types`.
+- `src/app/modals` contains Obsidian modal shells such as `SettingsModal`, `QuickSearchModal`, `HarnessOnboardingModal`, `CostEstimationModal`, `IndexingProgressModal`, `InputModal`, `ConfirmModal`, and others.
+- `ReactModalHost` and `ReactItemViewHost` both wrap `ReactRenderer` and `AppContext`.
+- `SettingsModal` imports both `ReactModalHost` and `createReactElementWithServices`, showing the current cross-folder app-shell wiring.
+- `ViewManager` imports view shells from `src/app/view` and also imports `InputModal` from `src/app/modals`.
+- Existing T11O tests and docs currently name `src/app/view`, `src/app/modals`, and `src/app/react` as the app-shell relocation targets.
+
+Preliminary judgement:
+
+The owner-proposed boundary is clearer:
+
+- `src/ui` = actual React components and page content.
+- `src/app/ui-host` = Obsidian app shell integration, React mounting, ItemView shells, Modal shells, and view registration.
+
+The current split was useful during UI/app relocation, but it now creates extra top-level concepts. `react` and `shell` are too small to justify first-class app folders, and `view` / `modals` are not independent domains; they are both ways of hosting React or app UI inside Obsidian.
+
+Possible follow-up direction:
+
+- Create `src/app/ui-host`.
+- Move `ReactElementFactory.tsx`, `ReactItemViewHost.ts`, `ReactModalHost.ts`, `ViewManager.ts`, `ViewSwitchConsistentHandler.ts`, view shells, view `types.ts`, and app modal shells into that boundary.
+- Prefer a lightly grouped shape only if needed:
+  - `src/app/ui-host/shell/*`
+  - `src/app/ui-host/views/*`
+  - `src/app/ui-host/modals/*`
+- If keeping the owner's flattening preference, place the tiny shell/react files directly at `src/app/ui-host/*` and only group when file count grows.
+- Decide whether `src/app/copilot/modals/*` stays under the Copilot app domain or joins `src/app/ui-host/modals/*`; they are also Obsidian modal shells but are currently domain grouped.
+- Update tests/docs that currently treat `src/app/view`, `src/app/modals`, and `src/app/react` as canonical app-shell locations.
+- Do not preserve `VaultXRayView` just for the move if Issue 9 is executed first; retire it with the standalone X-Ray surface instead.
+
+## Issue 14 - `src/app` top-level folders reflect historical feature fragments rather than stable architectural roles
+
+Owner concern:
+
+`src/app` is currently grouped by many small capability fragments left by previous refactor waves. Some folders represent real feature/runtime composition, while others are one-file wrappers around Obsidian/platform capabilities. This makes the top-level app layer harder to scan: a reader sees `navigation`, `preview`, `stats`, `template`, `vault`, `runtime`, `react`, `shell`, and `view`, but cannot immediately tell which are feature domains, which are adapters, which are UI host shells, and which are lifecycle/context state.
+
+Relevant files/folders:
+
+- `src/app/runtime/AppRuntimeRegistry.ts`
+- `src/app/context/AppContext.ts`
+- `src/app/stats/AppVaultStatsAdapter.ts`
+- `src/app/template/VaultContentProvider.ts`
+- `src/app/vault/AppVaultReaderAdapter.ts`
+- `src/app/vault/obsidian-utils.ts`
+- `src/app/vault/vault-helpers.ts`
+- `src/app/preview/*`
+- `src/app/navigation/*`
+- `src/app/adapters/*`
+- `src/app/react/*`
+- `src/app/shell/*`
+- `src/app/view/*`
+- `src/app/modals/*`
+
+Confirmed code facts:
+
+- `src/app/runtime` contains only `AppRuntimeRegistry.ts`.
+- `AppRuntimeRegistry` is a meaningful class: it owns runtime binding lifecycle for Vault Lint, Ambient, Vault Review, Quick Search background, Copilot Action, and Curator Push runtimes; it supports fail-loud getters, soft `tryGet` accessors, double-bind protection, and clear/dispose behavior.
+- Tests construct `new AppRuntimeRegistry()` directly and guard that it does not import Obsidian, sqlite, or `AppContext`.
+- `AppContext` owns one `runtimeRegistry` instance and exposes thin static delegators.
+- `src/app/stats` contains only `AppVaultStatsAdapter.ts`.
+- `src/app/template` contains only `VaultContentProvider.ts`.
+- `src/app/vault` contains `AppVaultReaderAdapter.ts`, `obsidian-utils.ts`, and `vault-helpers.ts`.
+- These stats/template/vault files import Obsidian `App`, `TFile`, `TFolder`, or vault APIs and therefore are app/platform adapters or app-level Obsidian helpers.
+- Several app top-level directories are one-file folders: `debug`, `events`, `react`, `runtime`, `search`, `stats`, `template`, and `usage`. Others are tiny folders such as `preview`, `settings`, `shell`, `adapters`, `chat`, `commands`, `context`, and `vault`.
+
+Preliminary judgement:
+
+`AppRuntimeRegistry` should remain a separate class, but `src/app/runtime/` as a one-file top-level directory overstates its role. It is app lifecycle/context state and belongs closer to `AppContext`, either under `src/app/context` or a future `src/app/lifecycle` boundary.
+
+Likewise, `stats`, `template`, `vault`, `preview`, and `navigation` are mostly Obsidian-backed capability adapters/helpers. They should not each become first-class top-level app domains just because they wrap different slices of Obsidian.
+
+Possible follow-up direction:
+
+- Keep `AppRuntimeRegistry` as a class, but move it near app context/lifecycle, for example `src/app/context/AppRuntimeRegistry.ts` or `src/app/lifecycle/AppRuntimeRegistry.ts`.
+- Consolidate Obsidian/browser/vault capability wrappers under `src/app/adapters`, with coarse grouping only when it earns its keep:
+  - `src/app/adapters/vault/*`
+  - `src/app/adapters/navigation/*`
+  - `src/app/adapters/preview/*`
+  - `src/app/adapters/platform/*`
+- Move `AppVaultStatsAdapter`, `VaultContentProvider`, `AppVaultReaderAdapter`, `obsidian-utils`, and `vault-helpers` into that adapter/platform boundary if they remain app-owned Obsidian helpers.
+- Treat `src/app/context`, `src/app/ui-host`, `src/app/adapters`, and larger feature/runtime composition domains as the primary app-layer roles.
+- Keep larger feature/runtime composition folders only when they have real weight, such as `ambient`, `lint`, `copilot`, `search`, and `usage`.
+- Avoid flattening everything into one `adapters` junk drawer; use a few coarse subgroups but avoid one-folder-per-file.
+- Update tests/docs that currently hard-code old paths, especially boundary tests around `AppRuntimeRegistry`, app vault helpers, template provider, and stats adapter.
+
+## Issue 15 - App-layer cleanup must separate directory consolidation from service-logic extraction
+
+Owner concern:
+
+The separate issue map `docs/superpowers/refactor-ops/2026-06-30-app-layer-service-logic-issue-map.md` adds an important dimension to this review log. Issues 10-14 mostly identify directory naming and app-layer grouping problems. The issue map shows a deeper problem: some app adapters do not merely wrap Obsidian/platform APIs; they contain ranking, scoring, traversal, prompt, digest, and maintenance workflow logic that belongs in service/domain code.
+
+Relevant source map:
+
+- `docs/superpowers/refactor-ops/2026-06-30-app-layer-service-logic-issue-map.md`
+
+High-confidence files from the map:
+
+- `src/app/copilot/actions/SqliteCopilotActionSemanticGraphAdapter.ts`
+- `src/app/copilot/vault/SqliteVaultReviewDigestAdapter.ts`
+- `src/app/ambient/SearchAmbientSearchAdapter.ts`
+- `src/app/ambient/SqliteAmbientBriefingAdapter.ts`
+- `src/app/commands/PeakCommandActions.ts`
+- `src/app/context/graph-cleanup.ts`
+- `src/app/ambient/LlmAmbientExplanationAdapter.ts`
+
+Medium-confidence files from the map:
+
+- `src/app/copilot/actions/AppCopilotActionAiAdapter.ts`
+- `src/app/copilot/actions/ObsidianCopilotActionVaultAdapter.ts`
+- `src/app/copilot/actions/AppCopilotActionSearchAdapter.ts`
+- `src/app/copilot/actions/ObsidianCustomPromptSourceAdapter.ts`
+- `src/app/ambient/SqliteAmbientPersistenceAdapter.ts`
+- `src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts`
+- `src/app/debug/system-info.ts`
+
+Confirmed code-reading conclusion:
+
+- Directory cleanup alone is not enough. Moving a file from `src/app/navigation` to `src/app/adapters/navigation` is useful only when the file is actually host adapter code.
+- If an app file owns algorithmic behavior, the right fix is not only renaming/moving; it should usually split into:
+  - app layer: narrow host/data adapter or runtime composition;
+  - service/core layer: algorithm, scoring, thresholds, prompt wording, result shaping, maintenance workflow.
+- The issue map’s strongest examples involve app files containing `sort`, `score`, `threshold`, `topK`, graph traversal, prompt text, digest construction, cache policy, or multi-repo cleanup workflows.
+
+How this merges with earlier issues:
+
+- Issue 2 and Issue 3 already identified inline prompt/policy problems in `LlmAmbientExplanationAdapter`; the issue map confirms this is part of broader app-layer policy drift.
+- Issue 7 noted DevTools/test helpers and graph cleanup scattering; the issue map sharpens `graph-cleanup.ts` as database maintenance service logic hidden under `app/context`.
+- Issues 10, 11, 12, 13, and 14 cover app-layer directory shape; the issue map adds the rule that directories should not simply hide service logic under nicer names.
+- Issue 9 says standalone X-Ray surface should be retired but Vault Lint capability retained; the issue map adds that health/digest construction must stay in service/Vault Intelligence logic, not app adapters.
+
+Preliminary judgement:
+
+The next planning pass should treat app cleanup as two axes:
+
+1. App topology cleanup: consolidate one-file/tiny app folders into stable roles such as `context`, `ui-host`, `adapters`, and larger feature composition domains.
+2. Responsibility cleanup: extract real domain/service logic out of app adapters before or while moving files.
+
+If these are conflated, there is a risk of producing a cleaner-looking `src/app/adapters` tree that still contains serendipity ranking, briefing scoring, semantic graph suggestion, digest shaping, prompt wording, and maintenance workflows. That would improve navigation but not architecture.
+
+Suggested priority imported from the issue map:
+
+- First: `SearchAmbientSearchAdapter.serendipitySearch`.
+- Then: `SqliteAmbientBriefingAdapter` briefing categories/scoring.
+- Then: `PeakCommandActions.cleanupUselessData`.
+- Then: `app/context/graph-cleanup.ts`.
+- Then: `SqliteVaultReviewDigestAdapter`.
+- Then: `SqliteCopilotActionSemanticGraphAdapter`.
+- Then: `LlmAmbientExplanationAdapter` prompt/policy.
+- Then: `AppCopilotActionSearchAdapter` availability semantics.
+- Then: Copilot AI/vault adapter consolidation.
+- Then: `ObsidianCustomPromptSourceAdapter` relocation.
+
+Planning guidance:
+
+- Do not solve this by creating a single giant `AppAdapter` or generic `VaultAdapter`.
+- Prefer shared narrow ports for common capabilities: AI/prompter, vault reader, vault metadata resolver, vector search/search availability, semantic graph read access, and prompt source.
+- App adapters may project host/runtime shapes into safe data structures, but service/core should own decisions, thresholds, scoring, ranking, prompt wording, and product fallback semantics.
+
+## Issue 16 - `src/core` mixes pure contracts with infrastructure, runtime singletons, storage, provider adapters, UI policy, and indexing orchestration
+
+Owner concern:
+
+After reviewing `src/app`, the owner asked to inspect `src/core` with the same architectural preferences: core should be a stable place for pure types, contracts, and domain primitives, not a dumping ground for every globally shared thing. The question is where `core` itself is now misleading or too broad.
+
+Relevant files and folders:
+
+- `src/core/constant.ts`
+- `src/core/ports/*`
+- `src/core/template/*`
+- `src/core/prompt/PromptId.ts`
+- `src/core/providers/*`
+- `src/core/storage/sqlite/*`
+- `src/core/storage/vault/*`
+- `src/core/document/loader/*`
+- `src/core/document/helper/TagService.ts`
+- `src/core/search/*`
+- `src/core/types/*`
+- `src/service/**/ports/*`
+- `src/service/**/*Port.ts`
+- `src/service/**/types.ts`
+- UI files that import SQLite directly, including `src/ui/view/quick-search/SearchModal.tsx`, `src/ui/view/quick-search/components/VaultSearchResult.tsx`, settings tabs, and copilot panels.
+
+Confirmed code facts:
+
+- `src/core` currently has 171 files.
+- `src/core/storage` alone has 46 files, and `src/core/document/loader` has 18 files.
+- `src/core/storage/sqlite/NativeModuleManager.ts` performs native module lifecycle work: checks Electron/Node ABI, downloads `better-sqlite3` tarballs from GitHub/npm, writes under `{pluginDir}/native`, uses Node `fs/path/zlib`, and reports user-visible notices through ports.
+- `src/core/storage/sqlite/SqliteStoreManager.ts` is a global singleton that opens database connections, builds vault file paths, creates storage folders with Node `fs`, wires all repositories, and exposes repo getters.
+- `sqliteStoreManager` / `SqliteStoreManager` is referenced from 89 distinct files under `src/app`, `src/service`, and `src/ui`; raw line hits are 418.
+- UI imports storage internals directly in at least 9 files, including Quick Search, settings, and copilot panels.
+- `src/ui/view/quick-search/components/VaultSearchResult.tsx` constructs `SearchClickRepo` directly from `sqliteStoreManager.getDatabase('vault')`, so click telemetry bypasses a service/action boundary.
+- `src/ui/view/quick-search/SearchModal.tsx` imports `sqliteStoreManager`, `ProfileRegistry`, `SearchQueryEvent`, and vault analysis doc parsing in one UI surface.
+- `src/core/storage/vault/vault-ops.ts` uses `AppHandle = Record<string, any>` to duck-type `app.vault`; its own comments describe it as a temporary bridge until proper `VaultWriterPort` wiring lands.
+- `src/core/ports/AppHandle.ts` is explicitly an escape hatch. It avoids importing Obsidian types, but trades type safety for `Record<string, any>`.
+- `src/core/ports` contains several good narrow ports: `DocumentVaultReaderPort`, `VaultMetadataResolverPort`, `VaultWriterPort`, `HttpClientPort`, `NotifierPort`, `HostMetadataPort`, and `AnalysisHistoryPort`.
+- Port migration is incomplete: `src/service` still has many pure contract files such as `EditorCommandsPort`, `VaultStatsPort`, `ProgressReporterPort`, `ViewActivationPort`, `VaultPreviewPort`, `AmbientPorts`, navigation ports, lint ports, copilot action ports, vault review ports, quick-search background ports, and many `types.ts` files.
+- `src/core/constant.ts` mixes unrelated policy layers: database filenames, indexing/scoring weights, graph traversal limits, search ranking defaults, slice/truncation caps, UI display caps, typewriter timing, visual labels, color/icon metadata, capability-detection regexes, structural analysis thresholds, and `PLAN_MODE_SYSTEM_PROMPT`.
+- `src/core/constant.ts` therefore centralizes magic numbers, but it also hides product policy, UI display policy, prompt text, algorithm defaults, and storage constants in one global file.
+- `src/core/template/TemplateRegistry.ts` is the registry for template metadata and already points to `templates/prompts`, `templates/tools`, `templates/agents`, `templates/indexing`, `templates/stopwords`, and `templates/config`.
+- `TemplateRegistry` also contains UI-facing prompt group labels/order, JSON config template ids, prompt descriptions, system-prompt bindings, JSON constraints, and many product categories.
+- `src/core/prompt/PromptId.ts` centralizes prompt ids and variable schemas, which is good for template consistency, but the registry and schema file are becoming very large product maps.
+- `src/core/providers/vercel/vercel-adapter.ts` is a concrete Vercel AI SDK adapter with stream timeout policy, SDK message conversion, generated tool-call ids using `Date.now()`/`Math.random()`, and console logging.
+- `src/core/providers/ollama/fetchOllamaModels.ts`, rerank providers, and model registry code perform actual network/provider runtime work from under `core`.
+- `src/core/document/loader/MarkdownDocumentLoader.ts` does more than load files: it parses markdown, resolves wikilinks, extracts TextRank signals, computes merged keyword tags, calls LLM tag generation, calls LLM summary generation, logs telemetry, assembles chunks, and returns index-ready documents.
+- `src/core/document/helper/TagService.ts` owns LLM output schemas, functional tag mapping, context tag validation, doc-type folding, prompt variable assembly, and LLM call orchestration through `PromptId.DocTagGenerateJson`.
+- `src/core/document/loader/helper/DocumentLoaderHelpers.ts` owns summary prompt variable assembly, short/full summary mode policy, LLM call parallelism, and logging.
+
+Preliminary judgement:
+
+`src/core` is currently too broad. It contains some things that genuinely belong in core:
+
+- pure domain/entity types;
+- prompt ids and typed prompt variable contracts;
+- stable port contracts;
+- schema definitions;
+- pure utilities with no runtime side effects;
+- neutral vault file refs and other host-free data shapes.
+
+But it also contains infrastructure and runtime implementation that should probably not be called `core`:
+
+- SQLite connection lifecycle and repository factory/singleton;
+- native module download/install/verification;
+- concrete provider adapters and network fetch helpers;
+- vault write helpers that duck-type Obsidian through `AppHandle`;
+- document indexing orchestration with LLM calls and telemetry;
+- UI display caps and visual labels;
+- prompt/system-prompt content that should live in templates.
+
+This creates a misleading dependency direction. Because it is called `core`, app/service/ui import it freely. In practice, `core/storage/sqlite/SqliteStoreManager` acts like a global service locator, and UI can reach database/repo internals directly. That undercuts the same boundary cleanup the app-layer review is trying to accomplish.
+
+Possible follow-up direction:
+
+- Define a stricter rule for `core`:
+  - `core/types`: pure shared data types.
+  - `core/ports`: cross-layer contracts only, no singletons, no concrete storage/provider implementation.
+  - `core/schemas`: zod/json schemas and pure validators.
+  - `core/prompt`: prompt ids and typed variable contracts only.
+  - `core/utils`: pure or near-pure helpers; anything with timers, global caches, DOM/Node runtime, network, or storage should be audited.
+- Move concrete infrastructure out of `core` over time:
+  - SQLite/native module/runtime manager/repositories toward `src/infra/storage/sqlite` or a clearly named app/infra boundary.
+  - concrete AI/provider adapters toward `src/infra/providers` or `src/service/llm/providers`, while keeping provider protocol types in core if needed.
+  - vault write helpers out of `core/storage/vault/vault-ops.ts` once `VaultWriterPort` is wired.
+- Keep pure DDL/row types either in core schema/storage-types or expose them through repository/port return types; avoid forcing UI/service to import concrete repo internals.
+- Move service-facing ports still under `src/service` into `src/core/ports` only when they are true cross-layer contracts. Keep service-internal types near the service that owns them.
+- Replace direct UI imports of `sqliteStoreManager`, repos, and DDL with UI-facing service/context actions or read models.
+- Split `constant.ts` by ownership instead of treating it as a global junk drawer:
+  - storage constants;
+  - search/indexing algorithm defaults;
+  - UI display caps;
+  - prompt/template ids or template-backed prompt text;
+  - graph/structural analysis config.
+- Move `PLAN_MODE_SYSTEM_PROMPT` out of `constant.ts` into `templates/prompts` and register it like other prompts.
+- Treat document loaders as indexing pipeline components rather than pure core if they own LLM calls, TextRank, chunk assembly, and telemetry. A narrower split could be:
+  - core: `Document`, `DocumentType`, `VaultFileRef`, chunk/search types;
+  - service/indexing: loader orchestration, tag/summary enrichment, TextRank policy;
+  - app/adapters: vault file reading and metadata resolving.
+- Do not simply rename `core` to `shared`; the important cleanup is dependency direction and concrete implementation ownership.
+
+Suggested priority:
+
+1. Stop UI from importing `sqliteStoreManager` and repo classes directly. Replace with service/context actions or read ports.
+2. Treat `SqliteStoreManager` as infrastructure/runtime, not core domain. Plan a move or at least a facade boundary before moving files.
+3. Finish port migration consistently: cross-layer ports to `core/ports`; service-internal types stay local.
+4. Split `constant.ts` so UI caps, algorithm defaults, storage names, and prompt text have separate owners.
+5. Move remaining prompt/system-prompt text from core constants and code into `templates/prompts`.
+6. Audit `core/document/loader` and `TagService` as indexing service logic, not just file/model helpers.
+7. Audit concrete provider adapters under `core/providers` and separate protocol types from SDK/network implementations.

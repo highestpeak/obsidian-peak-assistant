@@ -56,8 +56,7 @@ import { SessionContextService } from '@/service/context/SessionContextService';
 import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
 import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 import { UsageOptimizationService } from '@/service/usage/optimization';
-import { composeCuratorPushRuntime } from '@/app/usage/composeCuratorPushRuntime';
-import { mountCuratorPushRoot } from '@/ui/view/usage-dashboard/runtime/mountCuratorPushRoot';
+import { registerUsageDashboardReceipts } from '@/ui/view/usage-dashboard/runtime/registerUsageDashboardReceipts';
 import { ModelRegistry } from '@/core/providers/model-registry';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 import { MCPClientManager } from '@/service/mcp/MCPClientManager';
@@ -98,8 +97,8 @@ export default class MyPlugin extends Plugin {
 	/** Cleanup function for hover menu globals. */
 	private uninstallHoverMenuGlobals?: () => void;
 
-	/** Cleanup function for the Curator runtime push hidden React root + chat-bridge slot registrations. */
-	private unmountCuratorPushRoot?: () => void;
+	/** Cleanup function for Usage Dashboard's chat receipt slot registration. */
+	private unregisterUsageDashboardReceipts?: () => void;
 
 	/**
 	 * Bootstraps services, views, commands, and layout handling.
@@ -146,8 +145,8 @@ export default class MyPlugin extends Plugin {
 		}
 		// T11M: bind the process-wide singleton so UI string loaders
 		// (chatStrings, settingsStrings, onboardingStrings, InlineReceipt,
-		// ContextRing, UsageDashboard, CuratorPushModal) can fetch the
-		// manager directly without reaching through AppContext.
+		// UsageDashboard) can fetch the manager directly without reaching
+		// through AppContext.
 		TemplateManager.setInstance(this.templateManager);
 		if (this.templateManager) {
 			try {
@@ -472,21 +471,9 @@ export default class MyPlugin extends Plugin {
 			}
 		}
 
-		// Dashboard carrier B/A/C — compose and bind the Curator Push
-		// runtime (T11E), then mount the hidden React root that hosts the
-		// modal + registers chat-bridge slots (inline receipt, context
-		// ring). The runtime is app-owned via AppRuntimeRegistry; unload
-		// tears it down via `AppContext.clearCuratorPushRuntime()` and
-		// drops the React root via `unmountCuratorPushRoot`.
-		const curatorPushRuntime = composeCuratorPushRuntime({
-			app: this.app,
-			getSettings: () => ({
-				usagePreviewEnabled: this.settings.usagePreviewEnabled ?? true,
-			}),
-		});
-		curatorPushRuntime.start();
-		AppContext.setCuratorPushRuntime(curatorPushRuntime);
-		this.unmountCuratorPushRoot = mountCuratorPushRoot();
+		// Usage Dashboard carrier A — register the inline receipt renderer
+		// shown under assistant messages.
+		this.unregisterUsageDashboardReceipts = registerUsageDashboardReceipts();
 
 		// Auto-open the Harness onboarding wizard on first run (no profiles
 		// configured). T11F retired the older general OnboardingModal — the
@@ -799,11 +786,8 @@ export default class MyPlugin extends Plugin {
 		SkillRegistry.getInstance().destroy();
 
 		// Break singletons so old bundle can be GC'd
-		try { this.unmountCuratorPushRoot?.(); } catch { /* ignore */ }
-		this.unmountCuratorPushRoot = undefined;
-		// T11E: release the app-owned Curator Push runtime (drops the
-		// EventBus subscription and resets the Zustand projection).
-		try { AppContext.clearCuratorPushRuntime(); } catch { /* not bound — ignore */ }
+		try { this.unregisterUsageDashboardReceipts?.(); } catch { /* ignore */ }
+		this.unregisterUsageDashboardReceipts = undefined;
 		UsageTrackingService.getInstance().destroy();
 		UsageOutcomeService.getInstance().destroy();
 		UsageOptimizationService.getInstance().destroy();

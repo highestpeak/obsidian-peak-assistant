@@ -140,10 +140,7 @@ async function testUiHasNoObsidianShellSubclasses(): Promise<void> {
 	const out = rg(String.raw`extends (Modal|ItemView)\b`, path.join(SRC, 'ui'));
 	const lines = out
 		.split('\n')
-		.filter((l) => l.trim().length > 0)
-		// CuratorPushModal uses the Radix primitive Modal from
-		// @/ui/components/primitives — not the Obsidian Modal class. Allowed.
-		.filter((l) => !l.includes('runtime/curatorPushStore.ts'));
+		.filter((l) => l.trim().length > 0);
 	const obsidianSubclasses = lines.filter((l) => {
 		// Heuristic: only flag lines where the surrounding import line shows
 		// `from 'obsidian'`. We re-read the file to confirm.

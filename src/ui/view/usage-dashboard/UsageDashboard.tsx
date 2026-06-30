@@ -312,8 +312,8 @@ export interface DashboardStrings {
 /**
  * Compiled fallback for `dashboard.json` when TemplateManager has not loaded yet.
  * Imported directly from the template so the bundle never drifts from the source.
- * The JSON ships extra runtime keys (curatorPush, inlineReceipt, contextRing) for
- * other consumers; they are tolerated structurally and ignored by `DashboardStrings`.
+ * The JSON ships extra runtime keys for other consumers; they are tolerated
+ * structurally and ignored by `DashboardStrings`.
  */
 const FALLBACK_STRINGS: DashboardStrings = dashboardDefaults as unknown as DashboardStrings;
 

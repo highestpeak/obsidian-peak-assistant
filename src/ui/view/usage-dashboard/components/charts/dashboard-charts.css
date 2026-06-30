@@ -1315,15 +1315,11 @@
 }
 
 /*
- * PR-Dash-4 — inline receipt / context ring / Curator push
- * ---------------------------------------------------------
- * These three patterns live OUTSIDE the `.peak-design-root.usage-dashboard`
- * scope above because they mount inside other surfaces (chat view, composer,
- * floating modal). They are still scoped to `.peak-design-root` so Obsidian's
- * theme rules don't bleed in, but they don't need the `usage-dashboard`
- * surface scope — the chat host already provides `.peak-design-root` on its
- * wrapper, and the modal root is mounted under `peak-design-root usage-dashboard`
- * via mountCuratorPushRoot.
+ * PR-Dash-4 — inline receipt
+ * --------------------------
+ * This pattern lives OUTSIDE the `.peak-design-root.usage-dashboard` scope
+ * above because it mounts inside the chat view. It is still scoped to
+ * `.peak-design-root` so Obsidian's theme rules don't bleed in.
  */
 
 /* ── inline receipt (Dashboard carrier A) ──────────────────────────────── */
@@ -1357,51 +1353,4 @@
 .peak-design-root .pk-inline-receipt__sep {
 	color: var(--pk-text-tertiary);
 	opacity: 0.6;
-}
-
-/* ── Curator runtime push modal (Dashboard carrier B) ──────────────────── */
-.peak-design-root .pk-curator-push__head {
-	display: flex;
-	flex-direction: column;
-	gap: var(--pk-space-2, 6px);
-}
-.peak-design-root .pk-curator-push__badge {
-	display: inline-flex;
-	align-items: center;
-	width: max-content;
-	padding: var(--pk-space-1, 3px) var(--pk-space-2, 6px);
-	font-size: var(--pk-text-xs, 11px);
-	font-weight: 500;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	color: var(--pk-accent);
-	background: var(--pk-accent-soft, rgba(124, 58, 237, 0.12));
-	border-radius: var(--pk-radius-pill, 999px);
-}
-.peak-design-root .pk-curator-push__body {
-	margin: 0;
-	color: var(--pk-text-primary);
-	font-size: var(--pk-text-sm);
-	line-height: var(--pk-leading-normal, 1.5);
-}
-.peak-design-root .pk-curator-push__actions {
-	display: flex;
-	gap: var(--pk-space-2, 6px);
-	justify-content: flex-end;
-	flex-wrap: wrap;
-}
-.peak-design-root .pk-curator-push__apply {
-	appearance: none;
-	background: var(--pk-accent);
-	color: var(--pk-text-on-accent, #ffffff);
-	border: 1px solid var(--pk-accent);
-	border-radius: var(--pk-radius-sm);
-	padding: var(--pk-space-2) var(--pk-space-3);
-	font-size: var(--pk-text-sm);
-	font-weight: 500;
-	cursor: pointer;
-	transition: filter var(--pk-motion-base, 240ms) ease;
-}
-.peak-design-root .pk-curator-push__apply:hover {
-	filter: brightness(1.05);
 }
