@@ -19,11 +19,15 @@
 import type { App } from 'obsidian';
 import { AmbientPushRuntime } from '@/service/ambient/AmbientPushRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
-import type { AmbientPorts } from '@/service/ambient/ports/AmbientPorts';
+import type {
+	AmbientPersistencePort,
+	AmbientPorts,
+} from '@/service/ambient/ports/AmbientPorts';
 import { SqliteSemanticGraphTraversalAdapter } from '@/app/adapters/search/SqliteSemanticGraphTraversalAdapter';
 import { SqliteAmbientBriefingReadAdapter } from '@/app/adapters/ambient/SqliteAmbientBriefingReadAdapter';
 import { SerendipitySearcher } from '@/service/ambient/serendipity/SerendipitySearcher';
 import { BriefingItemBuilder } from '@/service/ambient/briefing/BriefingItemBuilder';
+import { PatternLearningService } from '@/service/ambient/PatternLearningService';
 import { ObsidianAmbientSettingsAdapter } from './ObsidianAmbientSettingsAdapter';
 import { ObsidianAmbientEditorContextAdapter } from './ObsidianAmbientEditorContextAdapter';
 import { SearchAmbientSearchAdapter } from './SearchAmbientSearchAdapter';
@@ -35,7 +39,17 @@ import { DefaultAmbientClock } from './DefaultAmbientClock';
 export function composeAmbientRuntime(app: App): AmbientRuntime {
 	const settings = new ObsidianAmbientSettingsAdapter();
 	const editorContext = new ObsidianAmbientEditorContextAdapter(app, settings);
-	const persistence = new SqliteAmbientPersistenceAdapter();
+	const sqlitePersistence = new SqliteAmbientPersistenceAdapter();
+	// Pattern cache duration, lookback window, min-occurrences, and
+	// strength formula now live in the service layer; the adapter is
+	// pure SQL.
+	const patternLearner = new PatternLearningService(sqlitePersistence);
+	const persistence: AmbientPersistencePort = {
+		logPushes: (ctx, items, trigger) => sqlitePersistence.logPushes(ctx, items, trigger),
+		recordAction: (src, pushed, action) => sqlitePersistence.recordAction(src, pushed, action),
+		getLearnedPatterns: () => patternLearner.getLearnedPatterns(),
+		invalidatePatternCache: () => patternLearner.invalidateCache(),
+	};
 	const graphTraversal = new SqliteSemanticGraphTraversalAdapter();
 	const serendipity = new SerendipitySearcher(graphTraversal);
 	const search = new SearchAmbientSearchAdapter(persistence, serendipity);
