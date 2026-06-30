@@ -14,7 +14,7 @@ import type { VaultFileRef as TFile, VaultFolderRef } from '@/core/ports/VaultFi
 type TAbstractFile = TFile | VaultFolderRef;
 import type { SkillDefinition } from './types';
 import { parseSkillMarkdown, validateSkillDefinition } from './SkillParser';
-import { BUILTIN_SKILLS } from './builtin';
+import { loadBuiltinSkills } from './builtin';
 
 export class SkillRegistry {
 	private static instance: SkillRegistry | null = null;
@@ -42,7 +42,7 @@ export class SkillRegistry {
 		this.skillsFolder = skillsFolder;
 
 		// Load built-in skills
-		this.loadBuiltins();
+		await this.loadBuiltins();
 
 		// Scan vault folder
 		await this.scanVaultFolder();
@@ -107,8 +107,9 @@ export class SkillRegistry {
 
 	// ── Internal ──────────────────────────────────────────────────────
 
-	private loadBuiltins(): void {
-		for (const raw of BUILTIN_SKILLS) {
+	private async loadBuiltins(): Promise<void> {
+		const entries = await loadBuiltinSkills();
+		for (const raw of entries) {
 			try {
 				const skill = parseSkillMarkdown(raw.content, 'builtin');
 				const errors = validateSkillDefinition(skill);
