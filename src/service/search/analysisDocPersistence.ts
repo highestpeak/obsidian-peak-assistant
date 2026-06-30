@@ -13,10 +13,7 @@
  */
 
 import { SLICE_CAPS } from '@/core/constant';
-import {
-	getDefaultProgressReporter,
-	type ProgressReporterPort,
-} from '@/service/ports/ProgressReporterPort';
+import type { ProgressReporterPort } from '@/service/ports/ProgressReporterPort';
 import type { AnalysisDocVaultWriterPort } from '@/service/search/ports/AnalysisDocVaultWriterPort';
 import type { SearchSettings, MyPluginSettings } from '@/core/config/settingsTypes';
 import type { EventBus } from '@/core/eventBus';
@@ -130,13 +127,10 @@ export async function persistSessionToVault(
 			folderPath = '';
 			try {
 				saved = await options.vaultWriter.createDoc({ folderPath, fileName, content });
-				// Notification surface is optional. The vault-root save above
-				// has already succeeded, so a missing default reporter (e.g.
-				// in tests) or a reporter that throws must NOT degrade this
-				// path into a failed persistence result. Log and continue.
+				// Notification surface is optional; missing reporter is fine.
 				try {
-					const reporter = options.progressReporter ?? getDefaultProgressReporter();
-					reporter.show('Auto-save: saved to vault root (configured folder failed).', 5000);
+					const reporter = options.progressReporter;
+					if (reporter) reporter.show('Auto-save: saved to vault root (configured folder failed).', 5000);
 				} catch (e) {
 					console.warn('[analysisDocPersistence] fallback notice skipped:', e);
 				}

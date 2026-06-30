@@ -6,7 +6,7 @@ import { normalizePluginSettings } from 'src/app/settings/PluginSettingsLoader';
 import { ViewManager } from 'src/app/view/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
 import { registerCoreEvents, removeAllChatViewButtons, clearPendingConversationTimeouts } from 'src/app/events/Register';
-import { MyPluginSettings, DEFAULT_HARNESS_SETTINGS } from '@/app/settings/types';
+import { MyPluginSettings, DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
 import { SearchClient } from '@/service/search/SearchClient';
 import { SearchUpdateListener } from '@/service/search/index/indexUpdater';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
@@ -25,7 +25,6 @@ import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
 import { setEmbeddingUsageReporter } from '@/core/embeddings/embedClient';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { registerTemplateEngineHelpers } from '@/core/template-engine-helper';
-import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
 import { warmupPool, shutdownPool } from '@/service/agents/core/sdkAgentPool';
 import { TemplateManager } from '@/core/template/TemplateManager';
@@ -66,11 +65,6 @@ import { DEFAULT_SKILLS_FOLDER } from '@/core/constant';
 import { SkillRegistry } from '@/service/skills/SkillRegistry';
 import { CapabilityRegistry } from '@/service/capabilities';
 import { openSettingsModal } from '@/app/commands/PeakCommandActions';
-import {
-	clearDefaultProgressReporter,
-	setDefaultProgressReporter,
-} from '@/service/ports/ProgressReporterPort';
-import { ObsidianProgressReporter } from '@/app/adapters/ObsidianProgressReporter';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -111,13 +105,6 @@ export default class MyPlugin extends Plugin {
 	 * Bootstraps services, views, commands, and layout handling.
 	 */
 	async onload() {
-		// Register the process-level ProgressReporterPort default before any
-		// service code can construct an IndexProgressTracker. The tracker's
-		// constructor calls getDefaultProgressReporter() when no reporter is
-		// passed; a missing registration throws, which makes a forgotten
-		// wiring step fail loudly rather than silently dropping notifications.
-		setDefaultProgressReporter(new ObsidianProgressReporter());
-
 		registerTemplateEngineHelpers();
 
 		this.uninstallHoverMenuGlobals = installHoverMenuGlobals();
@@ -250,7 +237,6 @@ export default class MyPlugin extends Plugin {
 			this,
 			this.settings,
 			aiAnalysisHistoryService,
-			(aiServiceManager: AIServiceManager) => new DocSimpleAgent(aiServiceManager),
 		);
 
 		// T10: bind the Quick Search background-session runtime as
@@ -662,6 +648,7 @@ export default class MyPlugin extends Plugin {
 			this.app,
 			this.settings.search,
 			this.settings.dataStorageFolder,
+			AppContext.getInstance().progressReporter,
 		);
 		// todo tmp block. remove comments this after testing
 		// await this.indexInitializer.checkAndUpdateIndex();
@@ -827,9 +814,6 @@ export default class MyPlugin extends Plugin {
 		try { AppContext.clearVaultLintRuntime(); } catch { /* not bound — ignore */ }
 		AppContext.clearForUnload();
 		SessionContextService.destroyInstance();
-		// Drop the ProgressReporterPort default so a hot-reloaded plugin
-		// bundle does not see a stale Notice closure from the previous load.
-		clearDefaultProgressReporter();
 		EventBus.destroyInstance();
 		IndexService.clearInstance();
 		DocumentLoaderManager.clearInstance();

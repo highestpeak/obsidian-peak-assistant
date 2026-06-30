@@ -61,14 +61,9 @@ export type HookHandler<E extends HookEvent> = (
 /**
  * Registration descriptor. `matcher` filters by tool name for tool-scoped
  * hooks (pre_tool_use / post_tool_use); ignored for session events.
- *
- * `command` is reserved for future shell-command hooks (settings-driven);
- * the inline `handler` is the only mechanism actually executed in M2.
  */
 export interface HookConfig<E extends HookEvent = HookEvent> {
     event: E;
     matcher?: string | RegExp;
     handler?: HookHandler<E>;
-    /** TODO(M5): shell command hook executed via subprocess. Ignored in M2. */
-    command?: string;
 }

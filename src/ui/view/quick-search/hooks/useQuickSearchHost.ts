@@ -18,7 +18,6 @@ import type { TFile } from 'obsidian';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { ContextProvider } from '@/service/context/ContextProvider';
-import type { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import type { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import type { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
@@ -59,7 +58,6 @@ export interface QuickSearchHost {
 	createSynthesizeAgent(): SynthesizeAgent;
 	createAIGraphAgent(): AIGraphAgent;
 	createVaultSearchAgent(): VaultSearchAgent;
-	createDocSimpleAgent(): DocSimpleAgent;
 	createContinueAnalysisAgent(rounds: unknown[]): ContinueAnalysisAgent;
 	/** T11P review-fix: SDK-style GraphAgent factory, replacing the dynamic AppContext import previously used in `useGraphAgent`. */
 	createGraphAgent(): GraphAgent;

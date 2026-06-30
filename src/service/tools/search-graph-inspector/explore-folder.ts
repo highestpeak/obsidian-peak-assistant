@@ -407,49 +407,44 @@ function buildSameGroupCountByPath(tree: IterFile[]): Record<string, number> {
     return out;
 }
 
+function formatTopCounts(counts: Map<string, number>, topN: number): string {
+    return Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, topN)
+        .map(([name, count]) => `${name}(${count})`)
+        .join(", ");
+}
+
+async function tagDescriptorsFromDocIds(
+    docIds: string[] | undefined,
+    topN: number,
+): Promise<{ tagDesc: string; userKeywordTagDesc: string; categoryDesc: string }> {
+    const { topicTagCounts, functionalTagCounts, keywordTagCounts } =
+        await sqliteStoreManager.getGraphRepo().getTagsByDocIds(docIds);
+    return {
+        tagDesc: formatTopCounts(topicTagCounts, topN),
+        userKeywordTagDesc: formatTopCounts(keywordTagCounts, topN),
+        categoryDesc: formatTopCounts(functionalTagCounts, topN),
+    };
+}
+
 /**
  * Tag/category for this folder by path. Root (pathPrefix '') = full vault; no docIds passed from caller.
- * Limits to top N tags and top N categories by count.
  */
 async function getTagsAndCategoriesByFolderPath(
     pathPrefix: string,
     topN: number = 20,
 ): Promise<{ tagDesc: string; userKeywordTagDesc: string; categoryDesc: string }> {
-    const graphRepo = sqliteStoreManager.getGraphRepo();
     const docIds = pathPrefix === ""
         ? undefined
         : (await sqliteStoreManager.getIndexedDocumentRepo().getIdsByFolderPath(pathPrefix)).map((m) => m.id);
     if (docIds !== undefined && docIds.length === 0) {
         return { tagDesc: "", userKeywordTagDesc: "", categoryDesc: "" };
     }
-    const { topicTagCounts, functionalTagCounts, keywordTagCounts } = await graphRepo.getTagsByDocIds(docIds);
-    const tagDesc = Array.from(topicTagCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, topN)
-        .map(([name, count]) => `${name}(${count})`)
-        .join(", ");
-    const userKeywordTagDesc = Array.from(keywordTagCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, topN)
-        .map(([name, count]) => `${name}(${count})`)
-        .join(", ");
-    const categoryDesc = Array.from(functionalTagCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, topN)
-        .map(([name, count]) => `${name}(${count})`)
-        .join(", ");
-    return { tagDesc, userKeywordTagDesc, categoryDesc };
+    return tagDescriptorsFromDocIds(docIds, topN);
 }
 
-/**
- * Doc statistics for this folder by path. Root (pathPrefix '') = full vault; no docIds passed from caller.
- * topRecentEdited is compressed by normalizeRecentEditedKey (totalItems, totalGroups, sameGroupCount per row).
- * topLinksIn: top N by in-degree; topLinksOut: top N by out-degree.
- */
-async function getDocStatisticsByFolderPath(
-    pathPrefix: string,
-    topK: number = 5,
-): Promise<{
+interface DocStatistics {
     totalFiles: number;
     topRecentEdited: {
         items: Array<{ path: string; updated_at: number; sameGroupCount: number }>;
@@ -464,25 +459,39 @@ async function getDocStatisticsByFolderPath(
     topLinksOut: Array<{ path: string; outDegree: number }>;
     hasTopLinks: boolean;
     languageStats?: Record<string, number>;
-}> {
-    const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+}
+
+const EMPTY_DOC_STATISTICS: DocStatistics = {
+    totalFiles: 0,
+    topRecentEdited: { items: [], totalItems: 0, totalGroups: 0, compressedCount: 0 },
+    topWordCount: [],
+    topCharCount: [],
+    topRichness: [],
+    topLinksIn: [],
+    topLinksOut: [],
+    hasTopLinks: false,
+    languageStats: undefined,
+};
+
+async function buildDocStatistics(
+    docIds: string[],
+    topK: number,
+    totalFiles: number,
+    pathLookup: { idToPathMap: Map<string, string>; needsBackfill: boolean },
+    edgeMode: 'vault-wide' | 'scoped',
+): Promise<DocStatistics> {
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
     const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
-    const docIdsMaps = pathPrefix === "" ? null : await indexedDocumentRepo.getIdsByFolderPath(pathPrefix);
-    const docIds = docIdsMaps === null ? undefined : docIdsMaps.map((m) => m.id);
-    if (docIds !== undefined && docIds.length === 0) {
-        return {
-            totalFiles: 0,
-            topRecentEdited: { items: [], totalItems: 0, totalGroups: 0, compressedCount: 0 },
-            topWordCount: [],
-            topCharCount: [],
-            topRichness: [],
-            topLinksIn: [],
-            topLinksOut: [],
-            hasTopLinks: false,
-            languageStats: undefined,
-        };
-    }
+
+    const linksLoader = edgeMode === 'vault-wide'
+        ? mobiusEdgeRepo.getTopNodeIdsByDegree(topK, undefined, GRAPH_WIKI_REFERENCE_EDGE_TYPES).then((r) => ({
+            topLinksInRaw: r.topByInDegree.map((x) => ({ node_id: x.nodeId, inDegree: x.inDegree })),
+            topLinksOutRaw: r.topByOutDegree.map((x) => ({ node_id: x.nodeId, outDegree: x.outDegree })),
+        }))
+        : mobiusEdgeRepo.countEdges(docIds).then(({ incoming, outgoing }) => ({
+            topLinksInRaw: [...incoming.entries()].sort((a, b) => b[1] - a[1]).slice(0, topK).map(([node_id, inDegree]) => ({ node_id, inDegree })),
+            topLinksOutRaw: [...outgoing.entries()].sort((a, b) => b[1] - a[1]).slice(0, topK).map(([node_id, outDegree]) => ({ node_id, outDegree })),
+        }));
 
     const [
         topRecentEditedRaw,
@@ -490,7 +499,6 @@ async function getDocStatisticsByFolderPath(
         topCharCount,
         topRichness,
         languageStatsRows,
-        totalFiles,
         { topLinksInRaw, topLinksOutRaw },
     ] = await Promise.all([
         mobiusNodeRepo.getTopRecentEditedByDocIds(docIds, topK),
@@ -498,31 +506,25 @@ async function getDocStatisticsByFolderPath(
         mobiusNodeRepo.getTopCharCountByDocIds(docIds, topK),
         mobiusNodeRepo.getTopRichnessByDocIds(docIds, topK),
         mobiusNodeRepo.getLanguageStatsByDocIds(docIds),
-        docIds === undefined ? mobiusNodeRepo.countAllDocumentStatisticsRows() : Promise.resolve(docIds.length),
-        // Edge type in graph_edges is relationship type (e.g. 'references', 'tagged'), not node type; use no filter to count all edges.
-        pathPrefix === ""
-            ? mobiusEdgeRepo.getTopNodeIdsByDegree(topK, undefined, GRAPH_WIKI_REFERENCE_EDGE_TYPES).then((r) => ({
-                topLinksInRaw: r.topByInDegree.map((x) => ({ node_id: x.nodeId, inDegree: x.inDegree })),
-                topLinksOutRaw: r.topByOutDegree.map((x) => ({ node_id: x.nodeId, outDegree: x.outDegree })),
-            }))
-            : mobiusEdgeRepo.countEdges(docIds!).then(({ incoming, outgoing }) => ({
-                topLinksInRaw: [...incoming.entries()].sort((a, b) => b[1] - a[1]).slice(0, topK).map(([node_id, inDegree]) => ({ node_id, inDegree })),
-                topLinksOutRaw: [...outgoing.entries()].sort((a, b) => b[1] - a[1]).slice(0, topK).map(([node_id, outDegree]) => ({ node_id, outDegree })),
-            })),
+        linksLoader,
     ]);
 
-    const allDocIdsFromTops = [
-        ...topRecentEditedRaw.map((r) => r.doc_id),
-        ...topWordCount.map((r) => r.doc_id),
-        ...topCharCount.map((r) => r.doc_id),
-        ...topRichness.map((r) => r.doc_id),
-        ...topLinksInRaw.map((r) => r.node_id),
-        ...topLinksOutRaw.map((r) => r.node_id),
-    ];
-    const uniqueIds = [...new Set(allDocIdsFromTops)];
-    const idToPathMap = docIdsMaps !== null
-        ? new Map(docIdsMaps.map((m) => [m.id, m.path]))
-        : new Map((uniqueIds.length ? await indexedDocumentRepo.getByIds(uniqueIds) : []).map((m) => [m.id, m.path]));
+    let idToPathMap = pathLookup.idToPathMap;
+    if (pathLookup.needsBackfill) {
+        const allDocIdsFromTops = [
+            ...topRecentEditedRaw.map((r) => r.doc_id),
+            ...topWordCount.map((r) => r.doc_id),
+            ...topCharCount.map((r) => r.doc_id),
+            ...topRichness.map((r) => r.doc_id),
+            ...topLinksInRaw.map((r) => r.node_id),
+            ...topLinksOutRaw.map((r) => r.node_id),
+        ];
+        const uniqueIds = [...new Set(allDocIdsFromTops)];
+        idToPathMap = new Map(
+            (uniqueIds.length ? await sqliteStoreManager.getIndexedDocumentRepo().getByIds(uniqueIds) : [])
+                .map((m) => [m.id, m.path]),
+        );
+    }
 
     const languageStats: Record<string, number> = {};
     for (const row of languageStatsRows) {
@@ -544,17 +546,35 @@ async function getDocStatisticsByFolderPath(
         topWordCount: topWordCount.map((item) => ({ path: idToPathMap.get(item.doc_id) ?? item.doc_id, word_count: item.word_count })),
         topCharCount: topCharCount.map((item) => ({ path: idToPathMap.get(item.doc_id) ?? item.doc_id, char_count: item.char_count })),
         topRichness: topRichness.map((item) => ({ path: idToPathMap.get(item.doc_id) ?? item.doc_id, richness_score: item.richness_score })),
-        topLinksIn: topLinksInRaw.map((item) => ({
-            path: idToPathMap.get(item.node_id) ?? item.node_id,
-            inDegree: item.inDegree,
-        })),
-        topLinksOut: topLinksOutRaw.map((item) => ({
-            path: idToPathMap.get(item.node_id) ?? item.node_id,
-            outDegree: item.outDegree,
-        })),
+        topLinksIn: topLinksInRaw.map((item) => ({ path: idToPathMap.get(item.node_id) ?? item.node_id, inDegree: item.inDegree })),
+        topLinksOut: topLinksOutRaw.map((item) => ({ path: idToPathMap.get(item.node_id) ?? item.node_id, outDegree: item.outDegree })),
         hasTopLinks: topLinksInRaw.length > 0 || topLinksOutRaw.length > 0,
         languageStats: Object.keys(languageStats).length > 0 ? languageStats : undefined,
     };
+}
+
+/**
+ * Doc statistics for this folder by path. Root (pathPrefix '') = full vault; no docIds passed from caller.
+ * topRecentEdited is compressed by normalizeRecentEditedKey (totalItems, totalGroups, sameGroupCount per row).
+ * topLinksIn: top N by in-degree; topLinksOut: top N by out-degree.
+ */
+async function getDocStatisticsByFolderPath(
+    pathPrefix: string,
+    topK: number = 5,
+): Promise<DocStatistics> {
+    const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+    const docIdsMaps = pathPrefix === "" ? null : await indexedDocumentRepo.getIdsByFolderPath(pathPrefix);
+    const docIds = docIdsMaps === null ? undefined : docIdsMaps.map((m) => m.id);
+    if (docIds !== undefined && docIds.length === 0) {
+        return EMPTY_DOC_STATISTICS;
+    }
+    const totalFiles = docIds === undefined
+        ? await sqliteStoreManager.getMobiusNodeRepo().countAllDocumentStatisticsRows()
+        : docIds.length;
+    const pathLookup = docIdsMaps !== null
+        ? { idToPathMap: new Map(docIdsMaps.map((m) => [m.id, m.path])), needsBackfill: false }
+        : { idToPathMap: new Map<string, string>(), needsBackfill: true };
+    return buildDocStatistics(docIds ?? [], topK, totalFiles, pathLookup, pathPrefix === "" ? 'vault-wide' : 'scoped');
 }
 
 /**
@@ -730,25 +750,7 @@ async function getTagsAndCategoriesByDocPaths(
     const docIdsMaps = await sqliteStoreManager.getIndexedDocumentRepo().getIdsByPaths(uniquePaths);
     const docIds = docIdsMaps.map((m) => m.id);
     if (!docIds.length) return { tagDesc: "", userKeywordTagDesc: "", categoryDesc: "" };
-
-    const { topicTagCounts, functionalTagCounts, keywordTagCounts } =
-        await sqliteStoreManager.getGraphRepo().getTagsByDocIds(docIds);
-    const tagDesc = Array.from(topicTagCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, topN)
-        .map(([name, count]) => `${name}(${count})`)
-        .join(", ");
-    const userKeywordTagDesc = Array.from(keywordTagCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, topN)
-        .map(([name, count]) => `${name}(${count})`)
-        .join(", ");
-    const categoryDesc = Array.from(functionalTagCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, topN)
-        .map(([name, count]) => `${name}(${count})`)
-        .join(", ");
-    return { tagDesc, userKeywordTagDesc, categoryDesc };
+    return tagDescriptorsFromDocIds(docIds, topN);
 }
 
 /**
@@ -758,112 +760,15 @@ async function getTagsAndCategoriesByDocPaths(
 async function getDocStatisticsByDocPaths(
     paths: string[],
     topK: number = 5,
-): Promise<{
-    totalFiles: number;
-    topRecentEdited: {
-        items: Array<{ path: string; updated_at: number; sameGroupCount: number }>;
-        totalItems: number;
-        totalGroups: number;
-        compressedCount: number;
-    };
-    topWordCount: Array<{ path: string; word_count: number }>;
-    topCharCount: Array<{ path: string; char_count: number }>;
-    topRichness: Array<{ path: string; richness_score: number }>;
-    topLinksIn: Array<{ path: string; inDegree: number }>;
-    topLinksOut: Array<{ path: string; outDegree: number }>;
-    hasTopLinks: boolean;
-    languageStats?: Record<string, number>;
-}> {
+): Promise<DocStatistics> {
     const uniquePaths = [...new Set(paths)].filter(Boolean);
-    if (!uniquePaths.length) {
-        return {
-            totalFiles: 0,
-            topRecentEdited: { items: [], totalItems: 0, totalGroups: 0, compressedCount: 0 },
-            topWordCount: [],
-            topCharCount: [],
-            topRichness: [],
-            topLinksIn: [],
-            topLinksOut: [],
-            hasTopLinks: false,
-            languageStats: undefined,
-        };
-    }
+    if (!uniquePaths.length) return EMPTY_DOC_STATISTICS;
 
     const cappedPaths = uniquePaths.slice(0, SLICE_CAPS.inspector.exploreFolderPaths);
     const docIdsMaps = await sqliteStoreManager.getIndexedDocumentRepo().getIdsByPaths(cappedPaths);
     const docIds = docIdsMaps.map((m) => m.id);
-    if (!docIds.length) {
-        return {
-            totalFiles: 0,
-            topRecentEdited: { items: [], totalItems: 0, totalGroups: 0, compressedCount: 0 },
-            topWordCount: [],
-            topCharCount: [],
-            topRichness: [],
-            topLinksIn: [],
-            topLinksOut: [],
-            hasTopLinks: false,
-            languageStats: undefined,
-        };
-    }
+    if (!docIds.length) return EMPTY_DOC_STATISTICS;
 
-    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
-    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
     const idToPathMap = new Map(docIdsMaps.map((m) => [m.id, m.path]));
-
-    const [
-        topRecentEditedRaw,
-        topWordCount,
-        topCharCount,
-        topRichness,
-        languageStatsRows,
-        { topLinksInRaw, topLinksOutRaw },
-    ] = await Promise.all([
-        mobiusNodeRepo.getTopRecentEditedByDocIds(docIds, topK),
-        mobiusNodeRepo.getTopWordCountByDocIds(docIds, topK),
-        mobiusNodeRepo.getTopCharCountByDocIds(docIds, topK),
-        mobiusNodeRepo.getTopRichnessByDocIds(docIds, topK),
-        mobiusNodeRepo.getLanguageStatsByDocIds(docIds),
-        mobiusEdgeRepo.countEdges(docIds).then(({ incoming, outgoing }) => ({
-            topLinksInRaw: [...incoming.entries()]
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, topK)
-                .map(([node_id, inDegree]) => ({ node_id, inDegree })),
-            topLinksOutRaw: [...outgoing.entries()]
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, topK)
-                .map(([node_id, outDegree]) => ({ node_id, outDegree })),
-        })),
-    ]);
-
-    const languageStats: Record<string, number> = {};
-    for (const row of languageStatsRows) {
-        languageStats[row.language] = row.count;
-    }
-
-    const topRecentEditedList = topRecentEditedRaw.map((item) => ({
-        path: idToPathMap.get(item.doc_id) ?? item.doc_id,
-        updated_at: item.updated_at,
-    }));
-    const topRecentEdited = compressRecentEdited(topRecentEditedList);
-
-    return {
-        totalFiles: docIds.length,
-        topRecentEdited: {
-            ...topRecentEdited,
-            compressedCount: topRecentEdited.totalItems - topRecentEdited.totalGroups,
-        },
-        topWordCount: topWordCount.map((item) => ({ path: idToPathMap.get(item.doc_id) ?? item.doc_id, word_count: item.word_count })),
-        topCharCount: topCharCount.map((item) => ({ path: idToPathMap.get(item.doc_id) ?? item.doc_id, char_count: item.char_count })),
-        topRichness: topRichness.map((item) => ({ path: idToPathMap.get(item.doc_id) ?? item.doc_id, richness_score: item.richness_score })),
-        topLinksIn: topLinksInRaw.map((item) => ({
-            path: idToPathMap.get(item.node_id) ?? item.node_id,
-            inDegree: item.inDegree,
-        })),
-        topLinksOut: topLinksOutRaw.map((item) => ({
-            path: idToPathMap.get(item.node_id) ?? item.node_id,
-            outDegree: item.outDegree,
-        })),
-        hasTopLinks: topLinksInRaw.length > 0 || topLinksOutRaw.length > 0,
-        languageStats: Object.keys(languageStats).length > 0 ? languageStats : undefined,
-    };
+    return buildDocStatistics(docIds, topK, docIds.length, { idToPathMap, needsBackfill: false }, 'scoped');
 }

@@ -2,13 +2,7 @@ import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
 import { IndexProgressTracker } from '@/service/search/support/progress-tracker';
-import {
-	clearDefaultProgressReporter,
-	getDefaultProgressReporter,
-	setDefaultProgressReporter,
-	type ProgressHandle,
-	type ProgressReporterPort,
-} from '@/service/ports/ProgressReporterPort';
+import type { ProgressHandle, ProgressReporterPort } from '@/service/ports/ProgressReporterPort';
 
 const PORT_SOURCE_PATH = path.resolve(
 	process.cwd(),
@@ -103,10 +97,22 @@ function testTrackerFileNoLongerImportsObsidian(): void {
 	console.log('PASS: trackerFileNoLongerImportsObsidian');
 }
 
+function testPortFileHasNoModuleSingleton(): void {
+	const source = fs.readFileSync(PORT_SOURCE_PATH, 'utf8');
+	assert.ok(
+		!/\b(let|var)\s+defaultReporter\b/.test(source),
+		'port file must not declare a module-level mutable default reporter',
+	);
+	assert.ok(
+		!/setDefaultProgressReporter|getDefaultProgressReporter|clearDefaultProgressReporter/.test(source),
+		'port file must not export set/get/clear default reporter functions',
+	);
+	console.log('PASS: portFileHasNoModuleSingleton');
+}
+
 function testShowStartOpensHandleWithZeroTimeout(): void {
-	clearDefaultProgressReporter();
 	const fake = makeFakeReporter();
-	const tracker = new IndexProgressTracker(undefined, fake);
+	const tracker = new IndexProgressTracker(fake);
 	tracker.showStart('Building search index...');
 	assert.strictEqual(fake.events.length, 1);
 	assert.deepStrictEqual(fake.events[0], {
@@ -119,9 +125,8 @@ function testShowStartOpensHandleWithZeroTimeout(): void {
 }
 
 function testShowStartUsesCustomMessage(): void {
-	clearDefaultProgressReporter();
 	const fake = makeFakeReporter();
-	const tracker = new IndexProgressTracker(100, fake);
+	const tracker = new IndexProgressTracker(fake, 100);
 	tracker.showStart('Peak: Step 1/4 — Full-text (FTS), no embeddings…');
 	assert.strictEqual(fake.events[0]?.kind, 'show');
 	assert.strictEqual(
@@ -132,9 +137,8 @@ function testShowStartUsesCustomMessage(): void {
 }
 
 function testUpdateProgressFormatsMessageWithPercentAndElapsed(): void {
-	clearDefaultProgressReporter();
 	const fake = makeFakeReporter();
-	const tracker = new IndexProgressTracker(200, fake);
+	const tracker = new IndexProgressTracker(fake, 200);
 	tracker.showStart();
 	tracker.updateProgress(50);
 	const updateEvents = fake.events.filter((e) => e.kind === 'setMessage');
@@ -146,18 +150,16 @@ function testUpdateProgressFormatsMessageWithPercentAndElapsed(): void {
 }
 
 function testUpdateProgressIsNoopBeforeShowStart(): void {
-	clearDefaultProgressReporter();
 	const fake = makeFakeReporter();
-	const tracker = new IndexProgressTracker(10, fake);
+	const tracker = new IndexProgressTracker(fake, 10);
 	tracker.updateProgress(3);
 	assert.strictEqual(fake.events.length, 0, 'updateProgress before showStart must not emit any events');
 	console.log('PASS: updateProgressIsNoopBeforeShowStart');
 }
 
 function testDismissHidesActiveHandleAndIsIdempotent(): void {
-	clearDefaultProgressReporter();
 	const fake = makeFakeReporter();
-	const tracker = new IndexProgressTracker(undefined, fake);
+	const tracker = new IndexProgressTracker(fake);
 	tracker.showStart();
 	tracker.dismiss();
 	assert.strictEqual(fake.openHandleCount(), 0);
@@ -168,9 +170,8 @@ function testDismissHidesActiveHandleAndIsIdempotent(): void {
 }
 
 function testShowCompleteHidesPreviousAndOpensEightSecondHandle(): void {
-	clearDefaultProgressReporter();
 	const fake = makeFakeReporter();
-	const tracker = new IndexProgressTracker(undefined, fake);
+	const tracker = new IndexProgressTracker(fake);
 	tracker.showStart('start');
 	tracker.showComplete({ totalIndexed: 42, storageSize: 1024 * 1024 });
 	const kinds = fake.events.map((e) => e.kind);
@@ -184,9 +185,8 @@ function testShowCompleteHidesPreviousAndOpensEightSecondHandle(): void {
 }
 
 function testShowErrorHidesPreviousAndOpensFiveSecondHandle(): void {
-	clearDefaultProgressReporter();
 	const fake = makeFakeReporter();
-	const tracker = new IndexProgressTracker(undefined, fake);
+	const tracker = new IndexProgressTracker(fake);
 	tracker.showStart();
 	tracker.showError('disk full');
 	const lastShow = fake.events.at(-1) as { message: string; timeoutMs: number };
@@ -196,9 +196,8 @@ function testShowErrorHidesPreviousAndOpensFiveSecondHandle(): void {
 }
 
 function testCancelHidesPreviousAndOpensThreeSecondHandleAndSetsFlag(): void {
-	clearDefaultProgressReporter();
 	const fake = makeFakeReporter();
-	const tracker = new IndexProgressTracker(undefined, fake);
+	const tracker = new IndexProgressTracker(fake);
 	tracker.showStart();
 	assert.strictEqual(tracker.isCancelled(), false);
 	tracker.cancel();
@@ -210,9 +209,8 @@ function testCancelHidesPreviousAndOpensThreeSecondHandleAndSetsFlag(): void {
 }
 
 function testCancelIsNoopOnVisibleSideWhenHandleAlreadyDismissed(): void {
-	clearDefaultProgressReporter();
 	const fake = makeFakeReporter();
-	const tracker = new IndexProgressTracker(undefined, fake);
+	const tracker = new IndexProgressTracker(fake);
 	tracker.showStart();
 	tracker.dismiss();
 	const eventsBefore = fake.events.length;
@@ -222,41 +220,10 @@ function testCancelIsNoopOnVisibleSideWhenHandleAlreadyDismissed(): void {
 	console.log('PASS: cancelIsNoopOnVisibleSideWhenHandleAlreadyDismissed');
 }
 
-function testGetDefaultThrowsBeforeRegistration(): void {
-	clearDefaultProgressReporter();
-	let threw = false;
-	try { getDefaultProgressReporter(); } catch (err) {
-		threw = true;
-		assert.ok(err instanceof Error);
-		assert.ok((err as Error).message.includes('no default reporter registered'));
-	}
-	assert.ok(threw, 'getDefaultProgressReporter must throw when none is registered');
-	console.log('PASS: getDefaultThrowsBeforeRegistration');
-}
-
-function testConstructorFallsBackToRegisteredDefault(): void {
-	clearDefaultProgressReporter();
-	const fake = makeFakeReporter();
-	setDefaultProgressReporter(fake);
-	const tracker = new IndexProgressTracker(5); // no explicit reporter argument
-	tracker.showStart('default-path');
-	assert.strictEqual(fake.events.length, 1);
-	assert.strictEqual((fake.events[0] as { message: string }).message, 'default-path');
-	clearDefaultProgressReporter();
-	console.log('PASS: constructorFallsBackToRegisteredDefault');
-}
-
-function testConstructorWithoutDefaultAndWithoutArgumentThrows(): void {
-	clearDefaultProgressReporter();
-	let threw = false;
-	try { new IndexProgressTracker(5); } catch { threw = true; }
-	assert.ok(threw, 'tracker construction must throw when no reporter is available');
-	console.log('PASS: constructorWithoutDefaultAndWithoutArgumentThrows');
-}
-
 try {
 	testPortFileHasNoForbiddenImports();
 	testTrackerFileNoLongerImportsObsidian();
+	testPortFileHasNoModuleSingleton();
 	testShowStartOpensHandleWithZeroTimeout();
 	testShowStartUsesCustomMessage();
 	testUpdateProgressFormatsMessageWithPercentAndElapsed();
@@ -266,10 +233,6 @@ try {
 	testShowErrorHidesPreviousAndOpensFiveSecondHandle();
 	testCancelHidesPreviousAndOpensThreeSecondHandleAndSetsFlag();
 	testCancelIsNoopOnVisibleSideWhenHandleAlreadyDismissed();
-	testGetDefaultThrowsBeforeRegistration();
-	testConstructorFallsBackToRegisteredDefault();
-	testConstructorWithoutDefaultAndWithoutArgumentThrows();
-	clearDefaultProgressReporter();
 	process.exit(0);
 } catch (err) {
 	console.error(err);

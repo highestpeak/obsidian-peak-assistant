@@ -1,7 +1,6 @@
-import {
-	getDefaultProgressReporter,
-	type ProgressHandle,
-	type ProgressReporterPort,
+import type {
+	ProgressHandle,
+	ProgressReporterPort,
 } from '@/service/ports/ProgressReporterPort';
 
 /** Progress tracker for indexing operations with periodic updates and final statistics. */
@@ -12,9 +11,9 @@ export class IndexProgressTracker {
 	private startTime: number | null = null;
 	private cancelled = false;
 
-	constructor(totalFiles?: number, reporter?: ProgressReporterPort) {
+	constructor(reporter: ProgressReporterPort, totalFiles?: number) {
 		this.totalFiles = totalFiles ?? null;
-		this.reporter = reporter ?? getDefaultProgressReporter();
+		this.reporter = reporter;
 	}
 
 	showStart(customMessage?: string): void {

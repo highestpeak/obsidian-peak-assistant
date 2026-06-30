@@ -111,7 +111,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 		try {
 			eventBus.dispatch(new SearchQueryEvent({ query: searchQuery.trim() }));
 		} catch { /* EventBus may not be initialized */ }
-		performAnalysis(undefined, undefined);
+		performAnalysis(undefined);
 	};
 
 	const PRESETS: AnalysisMode[] = isMobile() ? ['vaultFull'] : ['vaultFull', 'aiGraph'];

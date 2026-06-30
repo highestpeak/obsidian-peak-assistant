@@ -35,8 +35,6 @@ import {
 	TrendingUp,
 	Filter,
 	FilePlus,
-	Eye,
-	Archive,
 	ExternalLink,
 	Download,
 	Copy,
@@ -1262,14 +1260,6 @@ function ActionCard({ action, rank }: {
 		};
 		return map[action.priority];
 	})();
-	const cta = (() => {
-		switch (action.kind) {
-			case 'create-note': return { label: 'Create proposal', Icon: FilePlus, primary: true };
-			case 'merge-notes': return { label: 'Preview dry-run', Icon: Eye, primary: false };
-			case 'archive-cluster': return { label: 'Review scope', Icon: Archive, primary: false };
-			default: return { label: 'Open note', Icon: ExternalLink, primary: false };
-		}
-	})();
 	const TrendIcon = rank === 1 ? ArrowUp : rank > 3 ? ArrowDown : Minus;
 	const trendClass = rank === 1 ? 'pktw-text-pk-success' : rank > 3 ? 'pktw-text-pk-foreground-faint' : 'pktw-text-pk-foreground-muted';
 	return (
@@ -1313,9 +1303,6 @@ function ActionCard({ action, rank }: {
 						<div><Pill variant="neutral">Planned</Pill></div>
 					</div>
 				</div>
-				<Button variant={cta.primary ? 'outline' : 'outline'} disabled title="Phase 2 dry-run">
-					<cta.Icon className="pktw-w-4 pktw-h-4" />{cta.label}
-				</Button>
 			</div>
 		</div>
 	);

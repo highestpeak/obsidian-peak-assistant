@@ -194,6 +194,23 @@ export class ChatConversationRepo {
 	}
 
 	/**
+	 * Look up conversation id by vault-relative file path. Matches either the
+	 * live `file_rel_path` or `archived_rel_path` so reopening an archived
+	 * conversation file still resolves.
+	 */
+	async getIdByFileRelPath(fileRelPath: string): Promise<string | null> {
+		const row = await this.db
+			.selectFrom('chat_conversation')
+			.select('conversation_id')
+			.where((eb) => eb.or([
+				eb('file_rel_path', '=', fileRelPath),
+				eb('archived_rel_path', '=', fileRelPath),
+			]))
+			.executeTakeFirst();
+		return row?.conversation_id ?? null;
+	}
+
+	/**
 	 * Get all conversations with file paths (for orphan cleanup).
 	 */
 	async getAllWithFilePaths(): Promise<Array<{ conversation_id: string; file_rel_path: string; archived_rel_path: string | null }>> {

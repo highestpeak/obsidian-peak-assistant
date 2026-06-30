@@ -27,12 +27,6 @@ export const VAULT_DB_FILENAME = 'vault.sqlite';
 export const CHAT_DB_FILENAME = 'chat.sqlite';
 
 /**
- * Progress update interval in milliseconds for indexing operations.
- * Used to control how frequently progress notifications are updated.
- */
-export const INDEX_PROGRESS_UPDATE_INTERVAL = 3000; // Update every 3 seconds
-
-/**
  * Index state keys for storing index metadata.
  */
 export const INDEX_STATE_KEYS = {
@@ -67,31 +61,9 @@ export const MOBIUS_MAINTENANCE_DIRTY_THRESHOLD = 30;
  */
 export const DEFAULT_SKILLS_FOLDER = '_skills';
 
-// ── OpenAI-compatible endpoint presets ──
-export const OPENAI_COMPATIBLE_PRESETS = {
-	lmstudio: {
-		name: 'LM Studio',
-		baseUrl: 'http://localhost:1234/v1',
-		icon: 'server',
-	},
-	litellm: {
-		name: 'LiteLLM Proxy',
-		baseUrl: 'http://localhost:4000/v1',
-		icon: 'server',
-	},
-	vllm: {
-		name: 'vLLM',
-		baseUrl: 'http://localhost:8000/v1',
-		icon: 'server',
-	},
-} as const;
-
 // ── Cascade update constants ──
 export const CASCADE_IDLE_DELAY_MS = 5000;
 export const CASCADE_MAX_ITEMS_PER_WINDOW = 20;
-export const CASCADE_ITEM_TIMEOUT_MS = 500;
-export const CASCADE_CHANGE_THRESHOLD_MINOR = 0.05;
-export const CASCADE_CHANGE_THRESHOLD_MODERATE = 0.15;
 export const CASCADE_DEBT_SEMANTIC_EDGE_PRIORITY = 1;
 export const CASCADE_DEBT_DEGREE_REFRESH_PRIORITY = 2;
 export const CASCADE_DEBT_MERMAID_OVERLAY_PRIORITY = 3;
@@ -367,12 +339,6 @@ export const CHAT_PROJECT_SUMMARY_FILENAME = 'Project-Summary.md';
 export const DEFAULT_NEW_CONVERSATION_TITLE = 'New Conversation';
 
 /**
- * Character limit for collapsed user messages in chat view.
- * Messages longer than this limit will be truncated with an expand button.
- */
-export const COLLAPSED_USER_MESSAGE_CHAR_LIMIT = 200;
-
-/**
  * Timeout in milliseconds for waiting on assistant response.
  * If no streaming content is received within this window, the message is marked as timeout.
  */
@@ -477,7 +443,6 @@ export const SLICE_CAPS = {
 		extractionFocus: 120,
 		slotRecallDimensions: 10,
 		summaryFacts: 500,
-		docSimpleTitle: 80,
 		suggestQuestions: 2,
 		dashboardBlocks: 10,
 		reportPlanMarkdown: 200,
@@ -610,8 +575,6 @@ export const GAP_DENSITY_THRESHOLD = 0.01;
 export const GAP_INTRA_DENSITY_MIN = 0.05;
 export const GAP_COMMUNITY_SIZE_MIN = 5;
 export const GAP_SEMANTIC_THRESHOLD = 0.3;
-export const STRUCTURAL_HOLE_OCCUPANT_BC_MIN = 0.1;
-export const STRUCTURAL_HOLE_OCCUPANT_CONSTRAINT_MAX = 0.3;
 
 // Gap scoring weights (sum to 1.0)
 export const GAP_WEIGHT_SEMANTIC = 0.5;

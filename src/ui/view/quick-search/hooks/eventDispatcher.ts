@@ -124,14 +124,8 @@ export function dispatchEvent(
 
 		// ---- Summary streaming ----
 		case 'text-delta': {
-			if (
-				event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
-			) {
-				const delta = getDeltaEventDeltaText(event);
-				summaryBuffer.appendDelta(delta);
-			}
 			// V2: text-delta goes to timeline; suppress post-submit_plan garbage
-			else if (target.getV2Active()) {
+			if (target.getV2Active()) {
 				if (target.getV2ProposedOutline()) break;
 				const delta = getDeltaEventDeltaText(event);
 				if (delta) {
@@ -141,11 +135,6 @@ export function dispatchEvent(
 			break;
 		}
 		case 'text-end': {
-			if (
-				event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
-			) {
-				summaryBuffer.flush();
-			}
 			break;
 		}
 
@@ -241,10 +230,7 @@ export function dispatchEvent(
 			}
 			publish('complete', event);
 
-			if (
-				event.triggerName === StreamTriggerName.SEARCH_AI_AGENT ||
-				event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
-			) {
+			if (event.triggerName === StreamTriggerName.SEARCH_AI_AGENT) {
 				const completeEvent = event as any;
 				if (completeEvent.usage) {
 					target.setUsage(completeEvent.usage);

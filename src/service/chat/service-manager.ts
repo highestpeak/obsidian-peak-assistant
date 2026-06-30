@@ -159,8 +159,8 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 
 	/**
 	 * Expose the narrow analysis-history read port for sub-agents and tools
-	 * that need it (e.g. `DocSimpleAgent.get_recent_analysis`). Lets the
-	 * caller use the port without reaching `AppContext`.
+	 * that need it. Lets the caller use the port without reaching
+	 * `AppContext`.
 	 */
 	getAnalysisHistory(): AnalysisHistoryPort {
 		return this.analysisHistory;
@@ -251,6 +251,14 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 	 */
 	async readConversation(conversationId: string, loadMessages: boolean = true): Promise<ChatConversation | null> {
 		return this.storage.readConversation(conversationId, loadMessages);
+	}
+
+	/**
+	 * Resolve a vault-relative markdown path to its conversation id, if the
+	 * file is a tracked conversation; otherwise null.
+	 */
+	async findConversationIdByVaultPath(vaultRelPath: string): Promise<string | null> {
+		return this.storage.findConversationIdByVaultPath(vaultRelPath);
 	}
 
 	/**

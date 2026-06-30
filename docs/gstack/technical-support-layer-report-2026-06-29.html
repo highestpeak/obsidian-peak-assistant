@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant 技术支撑层阅读报告</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #111827;
+      --muted: #64748b;
+      --soft: #f8fafc;
+      --line: #dbe3ef;
+      --blue: #2563eb;
+      --green: #0f766e;
+      --amber: #b45309;
+      --red: #b91c1c;
+      --violet: #6d28d9;
+      --cyan: #0891b2;
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.55;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      padding: 1px 5px;
+      border-radius: 5px;
+      background: #eef4ff;
+      color: #1e3a8a;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.92em;
+    }
+    .shell {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      min-width: 0;
+      padding: 24px 18px;
+      border-right: 1px solid var(--line);
+      background: #eef3fb;
+    }
+    nav strong {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    nav a {
+      display: block;
+      padding: 7px 8px;
+      border-radius: 6px;
+      color: #334155;
+      font-size: 13px;
+    }
+    nav a:hover {
+      background: #ffffff;
+      text-decoration: none;
+    }
+    main {
+      width: min(1180px, 100%);
+      min-width: 0;
+      padding: 32px;
+    }
+    .hero {
+      padding: 26px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .eyebrow {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 8px 0 10px;
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+    p { margin: 8px 0; }
+    .section {
+      margin-top: 18px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .lead {
+      max-width: 880px;
+      color: #334155;
+      font-size: 16px;
+    }
+    .small { color: var(--muted); font-size: 13px; }
+    .callout {
+      margin: 14px 0;
+      padding: 13px 15px;
+      border: 1px solid #f0c37d;
+      border-radius: var(--radius);
+      background: #fffbeb;
+      color: #52340b;
+    }
+    .grid {
+      display: grid;
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .grid > *,
+    .two-col > *,
+    .read-steps > *,
+    .path-list > * {
+      min-width: 0;
+    }
+    .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .card b {
+      display: block;
+      margin-bottom: 5px;
+      color: #0f172a;
+    }
+    .metric .num {
+      display: block;
+      font-size: 30px;
+      font-weight: 900;
+      line-height: 1;
+      color: var(--blue);
+    }
+    .metric .caption {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .layer-card {
+      border-top: 4px solid var(--blue);
+    }
+    .layer-card.storage { border-top-color: var(--amber); }
+    .layer-card.agents { border-top-color: var(--cyan); }
+    .layer-card.tools { border-top-color: var(--green); }
+    .layer-card.glue { border-top-color: var(--violet); }
+    .layer-card.ui { border-top-color: #db2777; }
+    .label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 4px 6px 4px 0;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .chart-box {
+      margin: 14px 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+    .chart-box h3 { margin-top: 0; }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      max-width: 100%;
+      min-height: 250px;
+      padding: 12px;
+      overflow: auto;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+    table {
+      width: 100%;
+      margin: 12px 0;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f8fafc;
+      color: #334155;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    td.num, th.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .path-list {
+      display: grid;
+      gap: 8px;
+      margin: 10px 0;
+      padding: 0;
+      list-style: none;
+    }
+    .path-list li {
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #ffffff;
+    }
+    .read-steps {
+      counter-reset: step;
+      display: grid;
+      gap: 8px;
+      margin: 12px 0;
+      padding: 0;
+      list-style: none;
+    }
+    .read-steps li {
+      counter-increment: step;
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #ffffff;
+      overflow-wrap: anywhere;
+    }
+    .read-steps li::before {
+      content: counter(step);
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #e0ecff;
+      color: var(--blue);
+      font-weight: 900;
+      font-size: 12px;
+    }
+    .mono {
+      margin: 10px 0;
+      padding: 14px;
+      overflow: auto;
+      border-radius: var(--radius);
+      background: #0f172a;
+      color: #dbeafe;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12.5px;
+      white-space: pre;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+      gap: 14px;
+    }
+    .ok { color: var(--green); font-weight: 800; }
+    .warn { color: var(--amber); font-weight: 800; }
+    .danger { color: var(--red); font-weight: 800; }
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      nav {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      main { padding: 18px; }
+      .cols-2, .cols-3, .cols-4, .two-col { grid-template-columns: 1fr; }
+      table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+      }
+      .card, .metric, td, th { overflow-wrap: anywhere; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav>
+      <strong>Support Layer Report</strong>
+      <a href="#purpose">1. 报告定位</a>
+      <a href="#route">2. 按问题进入</a>
+      <a href="#mental-model">3. 总心智模型</a>
+      <a href="#volume">4. 代码量地图</a>
+      <a href="#boot">5. Boot / App Shell</a>
+      <a href="#ui">6. Shared UI + CSS</a>
+      <a href="#storage">7. Core Storage</a>
+      <a href="#agents">8. Agents + Harness</a>
+      <a href="#tools">9. MCP / Skills / Tools</a>
+      <a href="#glue">10. Other / Cross-Cutting</a>
+      <a href="#patterns">11. 设计模式怎么读</a>
+      <a href="#third-party">12. 第三方依赖评估</a>
+      <a href="#review">13. 怎么 Review</a>
+      <a href="#verification">14. 验证记录</a>
+    </nav>
+
+    <main>
+      <header class="hero">
+        <div class="eyebrow">Peak Assistant · 2026-06-29</div>
+        <h1>技术支撑层阅读报告</h1>
+        <p class="lead">
+          这份报告只讲技术支撑层：Boot/App shell、Shared UI/CSS、Core storage、Agents/Harness、MCP/Skills/Tools、Other/cross-cutting。
+          它的目的不是评价代码多不多，而是帮你知道从哪里进、怎么追流程、哪些地方是状态真相、哪些地方只是 glue。
+        </p>
+        <div class="grid cols-4">
+          <div class="metric card"><span class="num">62,562</span><span class="caption">技术支撑层 raw lines，占当前统计口径 44.9%。</span></div>
+          <div class="metric card"><span class="num">6</span><span class="caption">支撑子层：UI、storage、agents、tools、boot、glue。</span></div>
+          <div class="metric card"><span class="num">1</span><span class="caption">推荐入口：先读 Boot/App shell，再向下追 ports。</span></div>
+          <div class="metric card"><span class="num">0</span><span class="caption">目标不是新功能，而是降低读代码时的迷路成本。</span></div>
+        </div>
+      </header>
+
+      <section id="purpose" class="section">
+        <h2>报告定位</h2>
+        <div class="callout">
+          <strong>核心判断：</strong>技术支撑层不是“剩下来的杂项”。它是所有用户功能共同站在上面的运行底座。你读用户功能时，如果看不懂依赖、状态、端口、持久化、工具执行，通常不是功能代码本身的问题，而是支撑层路径没先建立。
+        </div>
+        <div class="grid cols-3">
+          <div class="card">
+            <b>本文读者</b>
+            <p>代码 owner 或 reviewer，知道 Peak Assistant 是 Obsidian 插件，但不想在重构后的模块里靠猜。</p>
+          </div>
+          <div class="card">
+            <b>本文目标</b>
+            <p>读完后能追一条能力从 Obsidian 入口到 React ports、service runtime、SQLite/tool/agent 的路径。</p>
+          </div>
+          <div class="card">
+            <b>本文不做什么</b>
+            <p>不重新解释每个用户功能的业务逻辑；不为 Current Work State、Chat 或 Command Gateway 提前设计新架构。</p>
+          </div>
+        </div>
+        <h3>3 分钟读法</h3>
+        <ol class="read-steps">
+          <li><span>先看 <a href="#route">按问题进入</a>，决定你现在是在追启动、UI、存储、agent、tool，还是跨功能 glue。</span></li>
+          <li><span>再看 <a href="#boot">Boot/App shell</a>，因为所有支撑层对象几乎都从这里被装配出来。</span></li>
+          <li><span>最后按你正在读的用户能力跳到 UI、storage、agents 或 tools，不要按目录树从上往下硬啃。</span></li>
+        </ol>
+      </section>
+
+      <section id="route" class="section">
+        <h2>按问题进入</h2>
+        <p>技术支撑层的正确读法不是“从最大目录开始”。你先判断自己卡在哪个问题，再跳到对应层。</p>
+        <table>
+          <thead><tr><th>你卡住的问题</th><th>先读哪一层</th><th>第一批文件</th><th>读完应该能回答什么</th></tr></thead>
+          <tbody>
+            <tr><td>这个能力什么时候被创建、谁负责清理？</td><td>Boot / App Shell</td><td>`main.ts`、`AppContext`、`AppRuntimeRegistry`</td><td>runtime 生命周期、SQLite 初始化顺序、unload 清理是否对称。</td></tr>
+            <tr><td>React 组件为什么能拿到 service，但不直接拿 app？</td><td>Shared UI + CSS</td><td>`ReactElementFactory`、`ServiceContext`、primitive catalog</td><td>UI 注入边界和 projection store 是否健康。</td></tr>
+            <tr><td>数据到底落在哪里？</td><td>Core Storage</td><td>`SqliteStoreManager`、`ddl.ts`、repositories、`ChatStore`</td><td>SQLite tenant、repo contract、vault markdown 与 DB 的关系。</td></tr>
+            <tr><td>agent 一步一步怎么运行、工具怎么被允许？</td><td>Agents + Harness</td><td>`AgentLoop`、`ToolRegistry`、`PermissionGuard`、`TierController`</td><td>多步 agent run 的骨架、预算、权限、trace。</td></tr>
+            <tr><td>MCP server 或 vault skill 怎么进入 agent？</td><td>MCP / Skills / Tools</td><td>`MCPClientManager`、`MCPToolAdapter`、`SkillRegistry`</td><td>外部工具如何被 schema 化、命名、注册、调用和降级。</td></tr>
+            <tr><td>一个 type、constant、event、util 为什么在全局？</td><td>Other / Cross-Cutting</td><td>`EventBus`、`constant.ts`、`core/types/*`、`core/ports/*`</td><td>它是真正跨功能，还是应该留在 feature 内部。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="mental-model" class="section">
+        <h2>总心智模型</h2>
+        <p>技术支撑层可以理解成四条主线：启动装配、UI 注入、持久化底座、工具执行底座。`Other / cross-cutting` 不应该作为第一入口，它只在调用链需要时回看。</p>
+        <div class="chart-box">
+          <h3>支撑层总图：谁给谁供能力</h3>
+          <pre class="mermaid">flowchart LR
+  host["Obsidian Host&lt;br/&gt;workspace · vault · commands · views"]
+  boot["Boot / App shell&lt;br/&gt;main.ts · AppContext · ViewManager"]
+  registry["RuntimeRegistry&lt;br/&gt;lint · ambient · review · quick search · curator"]
+  react["React injection&lt;br/&gt;ReactElementFactory · ServiceContext"]
+  ui["Shared UI + CSS&lt;br/&gt;tokens · primitives · feature surfaces"]
+  storage["Core storage&lt;br/&gt;SQLite tenants · repos · vault markdown"]
+  agents["Agents + Harness&lt;br/&gt;loop · tools · tier · permission · memory"]
+  tools["MCP + Skills + Tools&lt;br/&gt;external tools · skill files · built-in tools"]
+  glue["Other / cross-cutting&lt;br/&gt;types · constants · EventBus · utils"]
+
+  host --> boot
+  boot --> registry
+  boot --> react
+  boot --> storage
+  react --> ui
+  registry --> ui
+  registry --> storage
+  registry --> agents
+  agents --> tools
+  tools --> agents
+  glue -. "shared contracts" .-> boot
+  glue -. "events / constants / neutral types" .-> storage
+  glue -. "utility only when referenced" .-> agents</pre>
+        </div>
+        <div class="grid cols-2">
+          <div class="card">
+            <b>最重要的边界</b>
+            <p>`src/app/**` 可以知道 Obsidian concrete API；`src/service/**` 应该靠 ports/runtime；`src/ui/**` 通过 `ServiceContext` 拿 narrow ports，不再直接进口 `@/app/**`。</p>
+          </div>
+          <div class="card">
+            <b>最容易误读的地方</b>
+            <p>代码量最大的支撑层不一定最先读。Shared UI + CSS 最大，但理解全局运行收益最高的是 Boot/App shell 和 `ReactElementFactory`。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="volume" class="section">
+        <h2>代码量地图</h2>
+        <p>下面的数字沿用当前 codebase reading map 的 raw line count 口径，包含空行和注释。它只用于判断认知负担，不用于判断代码质量。</p>
+        <div class="chart-box">
+          <h3>Mermaid treemap：技术支撑层内部体量</h3>
+          <pre class="mermaid">treemap
+"技术支撑层"
+  "Shared UI + CSS": 16564
+  "Other / cross-cutting": 13878
+  "Core storage": 13210
+  "Agents + Harness": 9071
+  "MCP + Skills + Tools": 5888
+  "Boot/App shell": 3951</pre>
+        </div>
+        <table>
+          <thead><tr><th>支撑子层</th><th class="num">文件</th><th class="num">行数</th><th class="num">支撑层占比</th><th>先读判断</th></tr></thead>
+          <tbody>
+            <tr><td>Shared UI + CSS</td><td class="num">109</td><td class="num">16,564</td><td class="num">26.5%</td><td>体量最大，但不先全读；先读 design doc、tokens、primitive。</td></tr>
+            <tr><td>Other / cross-cutting</td><td class="num">121</td><td class="num">13,878</td><td class="num">22.2%</td><td>不要从这里开始；遇到 type/event/constant 引用再回看。</td></tr>
+            <tr><td>Core storage</td><td class="num">46</td><td class="num">13,210</td><td class="num">21.1%</td><td>理解所有高价值能力的持久化和 search/chat tenant。</td></tr>
+            <tr><td>Agents + Harness</td><td class="num">76</td><td class="num">9,071</td><td class="num">14.5%</td><td>先读 harness，再按具体 agent type 读。</td></tr>
+            <tr><td>MCP + Skills + Tools</td><td class="num">29</td><td class="num">5,888</td><td class="num">9.4%</td><td>先读 manager/adapter/registry，再读具体 tool。</td></tr>
+            <tr><td>Boot/App shell</td><td class="num">19</td><td class="num">3,951</td><td class="num">6.3%</td><td>行数最小之一，但理解收益最高，应该第一批读。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="boot" class="section">
+        <h2>Boot / App Shell</h2>
+        <p>这一层回答：插件什么时候创建全局对象？哪些 runtime 在 boot 期间绑定？React tree 怎么拿到服务？卸载时谁负责清理？</p>
+        <div class="chart-box">
+          <h3>启动流程：从 Obsidian onload 到 runtime 可用</h3>
+          <pre class="mermaid">flowchart TB
+  onload["main.ts onload()"]
+  settings["loadData + normalize settings&lt;br/&gt;ProfileRegistry + TemplateManager"]
+  manager["AIServiceManager + AppContext"]
+  early["early runtimes&lt;br/&gt;QuickSearchBackground · CopilotAction"]
+  sqlite["initSqlite()"]
+  repos["SqliteStoreManager&lt;br/&gt;usage · search · repos"]
+  bind["bind runtimes&lt;br/&gt;VaultLint · VaultReview · SessionContext"]
+  views["ViewManager + commands + setting tab"]
+  react["ReactElementFactory injects ServiceContext"]
+  unload["onunload clears runtimes/stores/sqlite"]
+
+  onload --> settings --> manager --> early --> sqlite --> repos --> bind --> views --> react
+  onload -. "hot reload / plugin unload" .-> unload</pre>
+        </div>
+        <div class="two-col">
+          <div>
+            <h3>阅读顺序</h3>
+            <ol class="read-steps">
+              <li><span><a href="../../main.ts">`main.ts`</a>：先找 `onload()`、`initSqlite()`、`initializeSearchService()`、`onunload()`。</span></li>
+              <li><span><a href="../../src/app/context/AppContext.ts">`AppContext.ts`</a>：看 app-owned services、ports、runtime registry。</span></li>
+              <li><span><a href="../../src/app/runtime/AppRuntimeRegistry.ts">`AppRuntimeRegistry.ts`</a>：看 fail-loud、double-bind、clear 语义。</span></li>
+              <li><span><a href="../../src/app/react/ReactElementFactory.tsx">`ReactElementFactory.tsx`</a>：看 UI service context 的唯一注入点。</span></li>
+              <li><span><a href="../../src/app/view/ViewManager.ts">`ViewManager.ts`</a> 和 <a href="../../src/app/commands/Register.ts">`Register.ts`</a>：看 views 与 palette command 的暴露面。</span></li>
+            </ol>
+          </div>
+          <div>
+            <h3>你要带着这些问题读</h3>
+            <ul class="path-list">
+              <li><b>composition root 在哪里？</b>如果一个 runtime 需要 Obsidian、SQLite、Zustand store，它应该由 `app/compose*.ts` 或 `main.ts` 组合。</li>
+              <li><b>runtime 什么时候可用？</b>有些 runtime 在 `onload()` 早期可用，有些必须等 `initSqlite()`。</li>
+              <li><b>清理是否对称？</b>`onload()` bind 的对象，`onunload()` 要 clear/dispose。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>Review 重点：</strong>不要新增第二个 composition root。看到 service 或 UI 自己去拿 `AppContext.getInstance()`、动态 import `@/app/**`、或者自己 new app adapter，要停下来检查边界。
+        </div>
+      </section>
+
+      <section id="ui" class="section">
+        <h2>Shared UI + CSS</h2>
+        <p>这一层不是用户功能。它负责把同一套视觉 token、primitive、shared component 和 React service port 注入方式应用到不同 feature surface。</p>
+        <div class="chart-box">
+          <h3>UI 支撑路径：app composition 到 React projection</h3>
+          <pre class="mermaid">flowchart LR
+  appctx["AppContext&lt;br/&gt;manager · searchClient · runtimeRegistry · ports"]
+  factory["ReactElementFactory&lt;br/&gt;compose ports once"]
+  service["ServiceContext&lt;br/&gt;narrow ports only"]
+  primitives["Primitives&lt;br/&gt;Button · Row · Pill · Modal · Segmented"]
+  css["CSS tokens&lt;br/&gt;peak-tokens · peak-components"]
+  surface["Feature surfaces&lt;br/&gt;chat · settings · usage · quick search"]
+
+  appctx --> factory --> service --> surface
+  primitives --> surface
+  css --> primitives
+  css --> surface</pre>
+        </div>
+        <div class="grid cols-2">
+          <div class="card layer-card ui">
+            <b>先读这些</b>
+            <ul class="path-list">
+              <li><a href="../../docs/conventions/ui-design.md">`docs/conventions/ui-design.md`</a>：设计系统规则和 Obsidian CSS 防线。</li>
+              <li><a href="../../src/styles/peak-tokens.css">`peak-tokens.css`</a>：颜色、间距、radius、shadow 的源头。</li>
+              <li><a href="../../src/styles/peak-components.css">`peak-components.css`</a>：`.pk-*` primitive 样式。</li>
+              <li><a href="../../src/ui/components/primitives/index.ts">`src/ui/components/primitives/*`</a>：生产 wrapper。</li>
+              <li><a href="../../src/ui/context/ServiceContext.tsx">`ServiceContext.tsx`</a>：UI 能拿到哪些 service/port。</li>
+            </ul>
+          </div>
+          <div class="card layer-card ui">
+            <b>怎么理解</b>
+            <p>现在的 UI 支撑层有两条线：一条是视觉 primitive，一条是 service port 注入。前者管样式一致性，后者管 UI 不越界碰 app concrete。</p>
+            <p>旧的 `src/ui/component/shared-ui/*` 和新的 `src/ui/components/primitives/*` 同时存在，review 时要判断新增 UI 应该落在哪套 primitive 上，避免继续扩大双系统。</p>
+          </div>
+        </div>
+        <h3>常见误读</h3>
+        <table>
+          <thead><tr><th>误读</th><th>正确读法</th></tr></thead>
+          <tbody>
+            <tr><td>Shared UI 行数最大，所以先全读 UI。</td><td>先读 `ServiceContext` 和 primitive catalog，再按 feature surface 回看具体组件。</td></tr>
+            <tr><td>Zustand store 是业务真相。</td><td>多数 store 是 projection；runtime、repo、RunEnvelope、持久化层才更接近 truth。</td></tr>
+            <tr><td>一个新 button 随手写 class 就行。</td><td>先查 primitive，缺 primitive 才扩展；不要新增 per-surface button/pill 体系。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="storage" class="section">
+        <h2>Core Storage</h2>
+        <p>Core storage 是整个插件的持久化底座。它分成 SQLite tenant/repo 体系和 vault markdown 文档体系。理解它，就能知道 search、chat、usage、ambient、lint 的数据到底落在哪里。</p>
+        <div class="chart-box">
+          <h3>Storage 结构：两个 SQLite tenant + vault markdown</h3>
+          <pre class="mermaid">flowchart TB
+  init["main.initSqlite()"]
+  manager["SqliteStoreManager"]
+  vaultDb["vault.sqlite&lt;br/&gt;search/index/graph/lint/ambient"]
+  chatDb["chat.sqlite&lt;br/&gt;chat/project/AI analysis/usage"]
+  vaultDocs["Vault markdown docs&lt;br/&gt;chat transcripts · analysis docs"]
+  reposA["IndexedDocumentRepo · DocChunkRepo · EmbeddingRepo · GraphRepo"]
+  reposB["ChatProjectRepo · ChatConversationRepo · UsageLogRepo · AIAnalysisRepo"]
+  chatStore["ChatStorageService"]
+  vaultOps["vault-ops&lt;br/&gt;temporary AppHandle helpers"]
+
+  init --> manager
+  manager --> vaultDb --> reposA
+  manager --> chatDb --> reposB
+  chatStore --> vaultDocs
+  chatStore --> reposB
+  chatStore --> vaultOps</pre>
+        </div>
+        <div class="two-col">
+          <div>
+            <h3>阅读顺序</h3>
+            <ol class="read-steps">
+              <li><span><a href="../../src/core/storage/sqlite/SqliteStoreManager.ts">`SqliteStoreManager.ts`</a>：看开库、backend selection、tenant-aware repo getters。</span></li>
+              <li><span><a href="../../src/core/storage/sqlite/ddl.ts">`ddl.ts`</a>：看表语义，尤其 `mobius_node`、`doc_chunk`、chat tables、usage tables。</span></li>
+              <li><span>`src/core/storage/sqlite/repositories/*`：按 feature 找 repo，不要全量读。</span></li>
+              <li><span><a href="../../src/core/storage/vault/ChatStore.ts">`ChatStore.ts`</a>：看 chat markdown 与 SQLite meta 如何双写/回读。</span></li>
+              <li><span><a href="../../src/core/storage/vault/vault-ops.ts">`vault-ops.ts`</a>：看 T11R 后暂时保留的 duck-typed vault helper。</span></li>
+            </ol>
+          </div>
+          <div>
+            <h3>Review 重点</h3>
+            <ul class="path-list">
+              <li><b>Schema first：</b>先看 schema 和 repo contract，不要从 UI query 开始猜数据结构。</li>
+              <li><b>Tenant 意识：</b>`vault` tenant 和 `chat` tenant 共用部分 index repo，但落在不同 SQLite 文件。</li>
+              <li><b>AppHandle 是 containment：</b>`vault-ops.ts` 不 import Obsidian，但它仍是过渡桥，不应该无限扩张。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="agents" class="section">
+        <h2>Agents + Harness</h2>
+        <p>Agent Harness 是工具执行和多步推理的底座。具体 agent 是使用者，harness 才是共用框架：loop、tool registry、permission、tier、hooks、memory、subagent、trace。</p>
+        <div class="chart-box">
+          <h3>AgentLoop：一次 agent run 的骨架</h3>
+          <pre class="mermaid">flowchart LR
+  cfg["AgentLoopConfig&lt;br/&gt;model bindings · tools · hooks · memory · budget"]
+  start["loop_start + session_start hook"]
+  tier["TierController&lt;br/&gt;local-fast → local-deep → online"]
+  tools["ToolRegistry slice&lt;br/&gt;allowed tools per tier"]
+  model["AI SDK generateText&lt;br/&gt;one step at a time"]
+  trace["TraceBus&lt;br/&gt;step/tool/context events"]
+  stop["stop conditions&lt;br/&gt;max steps · tokens · final answer · abort"]
+
+  cfg --> start --> tier --> tools --> model --> trace --> stop
+  stop -- "continue" --> tier
+  stop -- "finish" --> result["AgentLoopResult"]</pre>
+        </div>
+        <div class="grid cols-3">
+          <div class="card layer-card agents">
+            <b>框架入口</b>
+            <p><a href="../../src/service/agents/harness/loop/AgentLoop.ts">`AgentLoop.ts`</a> 是主干；它控制 step、tool call、trace、budget、stop condition。</p>
+          </div>
+          <div class="card layer-card agents">
+            <b>工具入口</b>
+            <p><a href="../../src/service/agents/harness/tool/registry.ts">`ToolRegistry`</a> 管工具注册和 tier filter；具体工具不应绕开 registry。</p>
+          </div>
+          <div class="card layer-card agents">
+            <b>安全入口</b>
+            <p><a href="../../src/service/agents/harness/permission/PermissionGuard.ts">`PermissionGuard`</a> 是 deny-first，不应被 bypassPermissions 覆盖 explicit deny。</p>
+          </div>
+        </div>
+        <h3>阅读顺序</h3>
+        <ol class="read-steps">
+          <li><span>`src/service/agents/harness/loop/*`：先理解 loop 和 stop condition。</span></li>
+          <li><span>`tool/registry.ts`、`permission/PermissionGuard.ts`、`tier/TierController.ts`、`hook/HookBus.ts`：理解共用控制面。</span></li>
+          <li><span>`memory/*`、`subagent/*`、`trace/*`：按你要 debug 的现象回看。</span></li>
+          <li><span>最后读具体 agent：`DocSimpleAgent`、`VaultSearchAgent`、`GraphAgent`、`ReportOrchestrator`。</span></li>
+        </ol>
+        <div class="callout">
+          <strong>不要混淆：</strong>Copilot action runtime 是 Copilot 功能自己的 action catalog；Agent Harness 是多步 agent 执行底座。它们可能都调用 AI 和工具，但 ownership 不一样。
+        </div>
+      </section>
+
+      <section id="tools" class="section">
+        <h2>MCP / Skills / Tools</h2>
+        <p>这一层是 agent 能力的外部扩展面：MCP server、vault skill、内置工具。读它时要先看 registry/adapter，再看具体 tool 的实现和权限边界。</p>
+        <div class="chart-box">
+          <h3>工具供给链：从外部 server / vault skill 到 agent tool</h3>
+          <pre class="mermaid">flowchart LR
+  mcpServer["External MCP server&lt;br/&gt;stdio / SSE"]
+  mcpManager["MCPClientManager&lt;br/&gt;connect · listTools · callTool"]
+  mcpAdapter["MCPToolAdapter&lt;br/&gt;JSON schema → Zod · namespaced tool"]
+  skills["SkillRegistry&lt;br/&gt;built-in + vault _skills"]
+  parser["SkillParser&lt;br/&gt;markdown → SkillDefinition"]
+  builtin["Built-in tools&lt;br/&gt;content-reader · search graph · memory"]
+  agentTools["Agent tool surface"]
+  loop["AgentLoop"]
+
+  mcpServer --> mcpManager --> mcpAdapter --> agentTools
+  skills --> parser --> agentTools
+  builtin --> agentTools
+  agentTools --> loop</pre>
+        </div>
+        <div class="two-col">
+          <div>
+            <h3>阅读顺序</h3>
+            <ol class="read-steps">
+              <li><span><a href="../../src/service/mcp/MCPClientManager.ts">`MCPClientManager.ts`</a>：连接、发现 tools、callTool、dispose。</span></li>
+              <li><span><a href="../../src/service/mcp/MCPToolAdapter.ts">`MCPToolAdapter.ts`</a>：MCP JSON Schema 到 AgentTool/Zod 的转换。</span></li>
+              <li><span><a href="../../src/service/skills/SkillRegistry.ts">`SkillRegistry.ts`</a> 和 <a href="../../src/service/skills/SkillParser.ts">`SkillParser.ts`</a>：built-in / vault skill 加载与 hot reload。</span></li>
+              <li><span>`src/service/tools/*`：按 tool 名称读，重点看输入 schema、返回 envelope、错误降级。</span></li>
+            </ol>
+          </div>
+          <div>
+            <h3>Review 重点</h3>
+            <ul class="path-list">
+              <li><b>工具名命名空间：</b>MCP tool 会被命名成 `mcp_{serverName}_{toolName}`，避免和内置工具撞名。</li>
+              <li><b>输入要 schema 化：</b>外部 JSON Schema 会被转成 Zod；新增工具不应只靠自由文本参数。</li>
+              <li><b>权限不能后补：</b>会编辑 vault 或调用外部系统的工具，要先看 `PermissionGuard` 和 tool kind。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="glue" class="section">
+        <h2>Other / Cross-Cutting</h2>
+        <p>这是最容易变成“杂物桶”的层：constants、types、EventBus、utils、ports。正确读法是按调用链回看，不要把它当一个功能模块顺序阅读。</p>
+        <div class="chart-box">
+          <h3>Cross-cutting 的正确打开方式</h3>
+          <pre class="mermaid">flowchart LR
+  feature["你正在读的 feature/runtime"]
+  types["core/types&lt;br/&gt;neutral DTO / domain shape"]
+  ports["core/ports&lt;br/&gt;host-neutral handles"]
+  constants["core/constant.ts&lt;br/&gt;shared policy constants"]
+  events["EventBus&lt;br/&gt;view communication events"]
+  utils["core/utils&lt;br/&gt;path · markdown · hash · concurrency"]
+
+  feature --> types
+  feature --> ports
+  feature --> constants
+  feature --> events
+  feature --> utils
+  constants -. "avoid adding feature config here" .-> feature
+  utils -. "read caller first" .-> feature</pre>
+        </div>
+        <table>
+          <thead><tr><th>子类</th><th>代表文件</th><th>阅读规则</th></tr></thead>
+          <tbody>
+            <tr><td>Event bus</td><td><a href="../../src/core/eventBus.ts">`src/core/eventBus.ts`</a></td><td>先看事件枚举，再找 emit/on 调用方；不要把 EventBus 当业务 runtime。</td></tr>
+            <tr><td>Constants</td><td><a href="../../src/core/constant.ts">`src/core/constant.ts`</a></td><td>适合放真正跨功能的 policy；不适合塞 feature 文案、UI label、巨大配置。</td></tr>
+            <tr><td>Neutral types</td><td>`src/core/types/*`</td><td>先看对应 feature 的 service，再回看类型；不要从 types 目录开始读。</td></tr>
+            <tr><td>Ports / handles</td><td>`src/core/ports/*`</td><td>用于隔离 Obsidian concrete；新增 port 要窄，不要变成 god-port。</td></tr>
+            <tr><td>Utils</td><td>`src/core/utils/*`</td><td>按调用链读，重点看是否真的通用，还是应该留在 feature 内部。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="patterns" class="section">
+        <h2>设计模式怎么读</h2>
+        <p>技术支撑层里的模式不是抽象名词，它们是读代码时的路标。先识别实现形状，再判断改动有没有顺着这个形状走。</p>
+        <div class="chart-box">
+          <h3>支撑层模式结构</h3>
+          <pre class="mermaid">flowchart LR
+  host["Obsidian / SQLite / LLM / MCP&lt;br/&gt;真实依赖"]
+  compose["Composition Root&lt;br/&gt;main.ts · AppContext · compose*.ts"]
+  port["Port Interface&lt;br/&gt;service 看到的窄能力"]
+  adapter["App Adapter&lt;br/&gt;接真实依赖"]
+  runtime["Runtime / Manager&lt;br/&gt;状态真相和执行顺序"]
+  repo["Repository&lt;br/&gt;DDL · query · migration"]
+  ui["Projection&lt;br/&gt;ServiceContext · hooks · stores"]
+  guard["Guards&lt;br/&gt;Permission · boundary audit · regression"]
+
+  host --> compose
+  compose --> adapter --> port --> runtime
+  runtime --> repo
+  runtime --> ui
+  runtime --> guard
+  ui --> guard</pre>
+        </div>
+        <table>
+          <thead><tr><th>模式</th><th>它解决的问题</th><th>实现形状</th><th>Review 判断</th></tr></thead>
+          <tbody>
+            <tr><td>Composition Root</td><td>防止真实依赖在 service/UI 里乱窜。</td><td>`main.ts`、`AppContext`、`compose*.ts` 集中创建 runtime 和 ports。</td><td>新增依赖是否在 app 层装配？unload 是否能清理？</td></tr>
+            <tr><td>Ports / Adapters</td><td>让业务 runtime 不知道 Obsidian、SQLite、Notice、workspace 的细节。</td><td>service 定义 port interface，app adapter 连接 concrete。</td><td>port 是否足够窄？有没有把 raw app、viewManager、store 传下去？</td></tr>
+            <tr><td>Runtime Registry</td><td>让长期 runtime 有唯一 owner。</td><td>`AppRuntimeRegistry` 负责 bind/read/try/clear。</td><td>是否 fail-loud double bind？是否有第二个 hidden singleton owner？</td></tr>
+            <tr><td>Repository</td><td>把 SQLite 表访问集中管理。</td><td>`ddl.ts` 定义表，`repositories/*` 负责 query。</td><td>上层是否散落 raw SQL？schema 变更是否有兼容路径？</td></tr>
+            <tr><td>RunEnvelope</td><td>让长任务有 session、events、artifact、UI projection。</td><td>`VaultLintRun` 是当前最清楚样本。</td><td>UI 是否从 trace 投影，而不是重新拥有运行状态？</td></tr>
+            <tr><td>Facade / Host Bundle</td><td>在迁移期间把宽 host access 关在 app-owned bundle 里。</td><td>`composeQuickSearchHost` 这种 facade 可以存在，但必须有边界。</td><td>facade 是否继续变宽？能否逐步拆成更窄 ports？</td></tr>
+            <tr><td>Deny-first Guard</td><td>工具和 agent 权限默认保守。</td><td>`PermissionGuard` 先 explicit deny，再看模式和 allow。</td><td>`bypassPermissions` 是否仍不能覆盖 explicit deny？危险工具是否有 kind/schema？</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="third-party" class="section">
+        <h2>第三方依赖评估</h2>
+        <p>这里按“支撑层角色”评估依赖，而不是列包名。分数不是精确科学，它帮助你判断哪些依赖是底座、哪些可以局部替换、哪些只是在表现层。</p>
+        <table>
+          <thead><tr><th>角色</th><th>主要包</th><th>重要度</th><th>替代难度</th><th>影响范围</th><th>阅读提示</th></tr></thead>
+          <tbody>
+            <tr><td>Host / Platform</td><td>`obsidian`、Node `fs/path`</td><td class="num">10/10</td><td>不可替代</td><td>Boot/App shell、workspace/vault adapters、plugin lifecycle</td><td>Obsidian concrete 应留在 app 层；service/core 只能看到 port 或 containment helper。</td></tr>
+            <tr><td>Storage / Search</td><td>`better-sqlite3`、`kysely`、`sqlite-vec`、LangChain splitters</td><td class="num">10/10</td><td>高</td><td>Search index、chat.sqlite、usage、lint、ambient</td><td>先读 repo 和 DDL，再看 adapter。替换前要证明 migration、native module、tenant 兼容。</td></tr>
+            <tr><td>AI / Agent</td><td>`ai`、`@ai-sdk/*`、Anthropic SDK、OpenRouter/Ollama providers</td><td class="num">9/10</td><td>高</td><td>Chat、AgentLoop、Copilot、search analysis</td><td>provider 配置来自 ProfileRegistry；替换会影响 streaming、usage accounting、model routing。</td></tr>
+            <tr><td>MCP / Schema</td><td>`@modelcontextprotocol/sdk`、`zod`</td><td class="num">8/10</td><td>中高</td><td>External tools、agent tools、skill/tool validation</td><td>重点看 `MCPToolAdapter` 的 schema 转换、命名空间和错误降级。</td></tr>
+            <tr><td>UI</td><td>`react`、`react-dom`、Radix、lucide、CodeMirror、streamdown</td><td class="num">8/10</td><td>中</td><td>所有 views、settings、chat rendering、editor-like surfaces</td><td>先看 primitive/context，不要从每个 third-party component 开始读。可替换局部包，不替换 React。</td></tr>
+            <tr><td>Visualization</td><td>`mermaid`、`@xyflow/react`、D3 packages、`recharts`</td><td class="num">6/10</td><td>中</td><td>Graph/search/usage surfaces、docs/report diagrams</td><td>图表库是表现层；状态和数据来源仍要往 runtime/repo 追。</td></tr>
+            <tr><td>Document parsing / Templates</td><td>`handlebars`、`pdfjs-dist`、`mammoth`、`officeparser`、`gray-matter`</td><td class="num">6/10</td><td>中</td><td>content reader、templates、document analysis</td><td>替换前看输入格式覆盖和 tool result shape，不要只看包体积。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="review" class="section">
+        <h2>你应该怎么 Review 技术支撑层改动</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <b>按路径 Review</b>
+            <ol class="read-steps">
+              <li><span>确认改动属于哪个支撑子层，不要把用户功能和技术底座混在一张 diff 里看。</span></li>
+              <li><span>找到 composition root：是 `main.ts`、`AppContext`、`ReactElementFactory`、还是某个 `compose*.ts`。</span></li>
+              <li><span>找到 state truth：runtime、repo、RunEnvelope、SQLite、vault markdown，还是 UI projection。</span></li>
+              <li><span>找到 side effect：Obsidian workspace/vault、SQLite、MCP server、AI provider、filesystem。</span></li>
+              <li><span>跑边界和浏览器检查，不要只靠类型通过。</span></li>
+            </ol>
+          </div>
+          <div class="card">
+            <b>不要做这些</b>
+            <ul class="path-list">
+              <li>不要让 `ServiceContext` 重新发布 raw `app` 或 `viewManager`。</li>
+              <li>不要在 `src/service/**` 新增 app-layer ownership 或 UI store import。</li>
+              <li>不要把 `core/constant.ts` 当 feature 配置桶。</li>
+              <li>不要扩张 `AppHandle` 或 vault god-port 来快速过边界。</li>
+              <li>不要把 Shared UI 的局部样式复制成第三套 primitive。</li>
+            </ul>
+          </div>
+        </div>
+        <h3>常用检查命令</h3>
+        <div class="mono">npm run audit:boundary
+rg -n "from ['\"]@/app|import\\(['\"]@/app" src/ui src/service src/core
+rg -n "from ['\"]obsidian['\"]|import\\(['\"]obsidian['\"]" src/service src/core
+rg -n "useServiceContext\\(\\)\\.app|viewManager" src/ui
+rg -n "AppContext\\.getInstance|AppContext\\.getApp|AppContext\\.getManager" src/service src/core src/ui</div>
+      </section>
+
+      <section id="verification" class="section">
+        <h2>验证记录</h2>
+        <table>
+          <thead><tr><th>检查</th><th>结果</th><th>备注</th></tr></thead>
+          <tbody>
+            <tr><td>代码证据抽样</td><td class="ok">DONE</td><td>已检查 `main.ts`、`AppContext`、`RuntimeRegistry`、`ReactElementFactory`、`ServiceContext`、`SqliteStoreManager`、Agent Harness、MCP/Skills/Tools、EventBus、UI design doc。</td></tr>
+            <tr><td>Mermaid syntax/render</td><td class="ok">PASS</td><td>Playwright file://：Mermaid blocks=9、SVG=9、treemap 已渲染、无 Mermaid 语法错误。</td></tr>
+            <tr><td>HTML QA</td><td class="ok">PASS</td><td>主阅读视口 1440px：导航锚点完整、无横向溢出、截图已检查；390px 窄屏只做 smoke check，不作为移动端适配承诺。</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          本报告是技术阅读地图，不是功能 QA。它没有声明当前插件全部测试通过，也不替代 `npm run build` 或全量测试。
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="../../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: true,
+        securityLevel: "loose",
+        theme: "base",
+        themeVariables: {
+          fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          primaryColor: "#eff6ff",
+          primaryBorderColor: "#2563eb",
+          primaryTextColor: "#0f172a",
+          lineColor: "#94a3b8",
+          pie1: "#2563eb",
+          pie2: "#0f766e"
+        }
+      });
+    }
+  </script>
+</body>
+</html>

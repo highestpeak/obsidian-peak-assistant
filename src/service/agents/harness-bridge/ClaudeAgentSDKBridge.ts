@@ -10,7 +10,7 @@
 
 import type { AppHandle } from '@/core/ports/AppHandle';
 import type { AgentLoopConfig, AgentLoopResult } from '@/service/agents/harness/loop/types';
-import { runAgentLoop } from '@/service/agents/harness';
+import { runAgentLoop } from '@/service/agents/harness/loop/AgentLoop';
 import type { HarnessSettings } from '@/core/config/settingsTypes';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';

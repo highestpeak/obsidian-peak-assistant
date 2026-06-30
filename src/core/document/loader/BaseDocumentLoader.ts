@@ -3,7 +3,7 @@ import type { DocumentType, Document, ResourceSummary } from '@/core/document/ty
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/core/search/indexTypes';
 import type { ChunkingSettings } from '@/core/config/settingsTypes';
-import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { generateDocIdFromPath, generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
@@ -12,6 +12,70 @@ import {
 	type DocumentSummaryConfig,
 } from './helper/DocumentLoaderHelpers';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
+
+function fileInfoFromRef(file: VaultFileRef, content: string) {
+	return {
+		path: file.path,
+		name: file.name,
+		extension: file.extension,
+		size: file.stat.size,
+		mtime: file.stat.mtime,
+		ctime: file.stat.ctime,
+		content,
+	};
+}
+
+function emptyMetadata(file: VaultFileRef) {
+	return {
+		title: file.basename,
+		topicTags: [],
+		functionalTagEntries: [],
+		keywordTags: [],
+	};
+}
+
+/**
+ * Build a Document for text-based loaders where source and cache hold the same content.
+ */
+export function buildTextDocument(
+	file: VaultFileRef,
+	type: DocumentType,
+	content: string,
+	contentHash: string,
+): Document {
+	const info = fileInfoFromRef(file, content);
+	return {
+		id: generateDocIdFromPath(file.path),
+		type,
+		sourceFileInfo: info,
+		cacheFileInfo: { ...info },
+		metadata: emptyMetadata(file),
+		contentHash,
+		references: { outgoing: [], incoming: [] },
+		lastProcessedAt: Date.now(),
+	};
+}
+
+/**
+ * Build a Document for binary loaders where the cache holds the extracted text and the source is empty.
+ */
+export function buildBinaryDocument(
+	file: VaultFileRef,
+	type: DocumentType,
+	cacheContent: string,
+	contentHash: string,
+): Document {
+	return {
+		id: generateDocIdFromPath(file.path),
+		type,
+		sourceFileInfo: fileInfoFromRef(file, ''),
+		cacheFileInfo: fileInfoFromRef(file, cacheContent),
+		metadata: emptyMetadata(file),
+		contentHash,
+		references: { outgoing: [], incoming: [] },
+		lastProcessedAt: Date.now(),
+	};
+}
 
 /**
  * Base class for document loaders that share common boilerplate.

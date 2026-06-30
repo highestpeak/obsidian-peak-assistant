@@ -1,9 +1,6 @@
 import { Modal, normalizePath, Notice } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { AIServiceManager } from '@/service/chat/service-manager';
-import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
-import type { ChatProjectMeta } from '@/service/chat/types';
-import { createChatNavigation } from '@/ui/view/chat-view/chatNavigation';
 import { QuickSearchModal } from '@/app/modals/QuickSearchModal';
 import { HarnessOnboardingModal } from '@/app/modals/HarnessOnboardingModal';
 import { SettingsModal } from '@/app/modals/SettingsModal';
@@ -63,15 +60,6 @@ function getAIManager(): AIServiceManager {
 	return getContext().manager;
 }
 
-function navigation() {
-	const ctx = getContext();
-	return createChatNavigation({
-		manager: ctx.manager,
-		viewManager: ctx.viewManager,
-		eventBus: ctx.eventBus,
-	});
-}
-
 function getIndexInitializer(): IndexInitializer {
 	const ctx = getContext();
 	if (ctx.plugin.indexInitializer) return ctx.plugin.indexInitializer;
@@ -79,6 +67,7 @@ function getIndexInitializer(): IndexInitializer {
 		ctx.app,
 		ctx.plugin.settings.search,
 		ctx.plugin.settings.dataStorageFolder ?? '',
+		ctx.progressReporter,
 	);
 }
 
@@ -89,23 +78,6 @@ export function openAssistant(): void {
 export function openQuickSearch(): void {
 	const modal: Modal = new QuickSearchModal(getContext());
 	modal.open();
-}
-
-export async function createChatProject(): Promise<void> {
-	const ctx = getContext();
-	const name = await ctx.viewManager.promptForInput('Enter project name');
-	if (!name) return;
-	const meta: Omit<ChatProjectMeta, 'id' | 'createdAtTimestamp' | 'updatedAtTimestamp'> = {
-		name,
-	};
-	await ctx.manager.proj.createProject(meta);
-}
-
-export function createChatConversation(): void {
-	void navigation().openPendingConversationInChat({
-		title: DEFAULT_NEW_CONVERSATION_TITLE,
-		project: null,
-	});
 }
 
 export function openHarnessSetupWizard(): void {

@@ -10,6 +10,7 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { Toaster, toast as sonnerToast } from 'sonner';
 import { ConversationList } from './components/conversation-list';
 import { useChatViewStore } from './store/chatViewStore';
+import { useChatSession } from './hooks/useChatSession';
 
 interface ChatViewComponentProps {
 }
@@ -20,6 +21,7 @@ interface ChatViewComponentProps {
 export const ChatViewComponent: React.FC<ChatViewComponentProps> = () => {
 	const { eventBus, manager } = useServiceContext();
 	const { viewMode } = useChatViewStore();
+	useChatSession();
 
 	// Listen for toast events from other React instances
 	useEffect(() => {

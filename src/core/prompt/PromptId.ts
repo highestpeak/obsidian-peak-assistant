@@ -51,10 +51,6 @@ export enum PromptId {
 	// Search prompts
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
 	AiAnalysisTitle = 'ai-analysis-title',
-	/** Doc Simple mode: scope prefix (current file only + full coverage). */
-	AiAnalysisDocSimpleScope = 'ai-analysis-doc-simple-scope',
-	/** Doc Simple mode: system prompt for single-file Q&A agent. */
-	AiAnalysisDocSimpleSystem = 'ai-analysis-doc-simple-system',
 	/** Mermaid fix: system. */
 	AiAnalysisMermaidFixSystem = 'ai-analysis-mermaid-fix-system',
 	/** Mermaid fix: user prompt. */
@@ -149,8 +145,6 @@ export enum PromptId {
  */
 export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisTitle,
-	PromptId.AiAnalysisDocSimpleScope,
-	PromptId.AiAnalysisDocSimpleSystem,
 	PromptId.AiAnalysisFollowup,
 	PromptId.AiAnalysisFollowupSystem,
 	PromptId.AiAnalysisSaveFileName,
@@ -321,8 +315,6 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisFollowup]: { originalQuery: string; question: string; contextContent: string };
 	/** System prompt for all follow-up chats; no variables. */
 	[PromptId.AiAnalysisFollowupSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDocSimpleScope]: { scopeValue: string; userPrompt: string; fileContent: string };
-	[PromptId.AiAnalysisDocSimpleSystem]: Record<string, never>;
 
 	[PromptId.AiAnalysisMermaidFixSystem]: Record<string, never>;
 	[PromptId.AiAnalysisMermaidFix]: {

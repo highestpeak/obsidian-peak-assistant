@@ -185,8 +185,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-followup': meta('prompts', 'ai-analysis-followup', { label: 'Follow-up Chat', description: 'User prompt for follow-up questions on search results.', group: 'searchAnalysis' }),
 	'ai-analysis-followup-system': meta('prompts', 'ai-analysis-followup-system', { label: 'Follow-up Chat (System)', description: 'System prompt for follow-up conversations.', group: 'searchAnalysis' }),
 	'ai-analysis-title': meta('prompts', 'ai-analysis-dashboard-title', { label: 'Analysis Title', description: 'Generates a title for search analysis results.', group: 'searchAnalysis' }),
-	'ai-analysis-doc-simple-scope': meta('prompts', 'ai-analysis-doc-simple-scope', { label: 'Doc Simple Scope', description: 'Scope prefix for single-file Q&A mode.', group: 'searchAnalysis' }),
-	'ai-analysis-doc-simple-system': meta('prompts', 'ai-analysis-doc-simple-system', { label: 'Doc Simple (System)', description: 'System prompt for single-file Q&A agent.', group: 'searchAnalysis' }),
 	'ai-analysis-mermaid-fix-system': meta('prompts', 'ai-analysis-mermaid-fix-system', { label: 'Mermaid Fix (System)', description: 'System prompt for fixing mermaid syntax errors.', group: 'searchAnalysis' }),
 	'ai-analysis-mermaid-fix': meta('prompts', 'ai-analysis-mermaid-fix', { label: 'Mermaid Fix', description: 'Fixes broken mermaid diagram syntax in reports.', group: 'searchAnalysis' }),
 	'ai-analysis-save-filename': meta('prompts', 'ai-analysis-save-filename', { label: 'Save Filename', description: 'Suggests a filename when saving analysis results.', group: 'searchAnalysis' }),

@@ -3,7 +3,6 @@ import { useChatViewStore } from './store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { OpenLinkEvent, ViewEventType } from '@/core/eventBus';
 import { MessageListRenderer } from './components/messages/MessageListRenderer';
-import { FileChangesList } from './components/messages/FileChangesList';
 import { ConvertToProjectSuggestion } from './components/ConvertToProjectSuggestion';
 import { Header } from './components/Header';
 import { Composer } from './components/Composer';
@@ -161,7 +160,6 @@ const MessagesViewInner: React.FC = () => {
 					  MessageListRenderer + MessageViewItem pair (now removed).
 					*/}
 					<MessageListRenderer />
-					<FileChangesList />
 				</div>
 
 				<ConvertToProjectSuggestion />

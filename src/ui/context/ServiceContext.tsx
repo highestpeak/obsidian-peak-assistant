@@ -7,7 +7,6 @@ import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
-import type { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import type { AnalysisDocVaultWriterPort } from '@/service/search/ports/AnalysisDocVaultWriterPort';
 import type { ReportSessionPort } from '@/service/agents/report/ReportSessionPort';
 import type { CopilotPanelHostBundle } from '@/service/copilot/panels/CopilotPanelPorts';
@@ -52,7 +51,6 @@ interface ServiceContextValue {
 	quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime | null;
 	aiAnalysisHistoryService: AIAnalysisHistoryService;
 	isMockEnv: boolean;
-	searchAgent: () => DocSimpleAgent;
 	settings: MyPluginSettings;
 	settingsActions: SettingsActions;
 	analysisDocVaultWriter: AnalysisDocVaultWriterPort;
@@ -99,7 +97,6 @@ export const ServiceProvider: React.FC<{
 	quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime | null;
 	aiAnalysisHistoryService: AIAnalysisHistoryService;
 	isMockEnv: boolean;
-	searchAgent: () => DocSimpleAgent;
 	settings: MyPluginSettings;
 	settingsActions: SettingsActions;
 	analysisDocVaultWriter: AnalysisDocVaultWriterPort;
@@ -115,7 +112,7 @@ export const ServiceProvider: React.FC<{
 	quickSearchHost: QuickSearchHost;
 	copilotReviewHistory: CopilotReviewHistoryService;
 	copilotReviewDeps: () => Promise<CopilotReviewDeps>;
-}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps }) => {
+}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps }) => {
 	const value = useMemo<ServiceContextValue>(() => ({
 		manager,
 		eventBus,
@@ -127,7 +124,6 @@ export const ServiceProvider: React.FC<{
 		quickSearchBackgroundRuntime,
 		aiAnalysisHistoryService,
 		isMockEnv,
-		searchAgent,
 		settings,
 		settingsActions,
 		analysisDocVaultWriter,
@@ -143,7 +139,7 @@ export const ServiceProvider: React.FC<{
 		quickSearchHost,
 		copilotReviewHistory,
 		copilotReviewDeps,
-	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, searchAgent, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps]);
+	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps]);
 
 	return <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>;
 };

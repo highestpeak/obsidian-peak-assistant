@@ -1,7 +1,10 @@
 // App-layer adapter for ProgressReporterPort. This is the only file that
 // translates port calls into Obsidian's `Notice` API. Service-side code must
-// not import this file directly; it is wired in `main.ts` via
-// `setDefaultProgressReporter(new ObsidianProgressReporter())`.
+// not import this file directly; an instance is owned by the app layer
+// (`AppContext.progressReporter`) and passed to service consumers through
+// constructor / options injection. The previous transitional
+// `setDefaultProgressReporter(...)` module-singleton wiring was retired in
+// T11X-F along with the port-side `defaultReporter` global.
 
 import { Notice } from 'obsidian';
 import type { ProgressHandle, ProgressReporterPort } from '@/service/ports/ProgressReporterPort';

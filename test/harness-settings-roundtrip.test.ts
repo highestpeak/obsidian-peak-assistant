@@ -10,7 +10,7 @@
  */
 
 import assert from 'assert';
-import { DEFAULT_HARNESS_SETTINGS, DEFAULT_SETTINGS } from '@/app/settings/types';
+import { DEFAULT_HARNESS_SETTINGS, DEFAULT_SETTINGS } from '@/core/config/settingsTypes';
 import { normalizePluginSettings } from '@/app/settings/PluginSettingsLoader';
 
 // ─── 1. Default values ────────────────────────────────────────────────────────

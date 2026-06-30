@@ -2,10 +2,10 @@ import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
 import type { Chunk } from '@/core/search/indexTypes';
 import type { ChunkingSettings } from '@/core/config/settingsTypes';
-import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
-import { BaseDocumentLoader } from './BaseDocumentLoader';
+import { BaseDocumentLoader, buildTextDocument } from './BaseDocumentLoader';
 
 /**
  * Table document loader for CSV and XLSX files.
@@ -78,42 +78,7 @@ export class TableDocumentLoader extends BaseDocumentLoader {
 				return null;
 			}
 
-			const contentHash = hashString(content, 8);
-
-			return {
-				id: generateDocIdFromPath(file.path),
-				type: 'csv',
-				sourceFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content,
-				},
-				cacheFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content,
-				},
-				metadata: {
-					title: file.basename,
-					topicTags: [],
-					functionalTagEntries: [],
-					keywordTags: [],
-				},
-				contentHash,
-				references: {
-					outgoing: [],
-					incoming: [],
-				},
-				lastProcessedAt: Date.now(),
-			};
+			return buildTextDocument(file, 'csv', content, hashString(content, 8));
 		} catch {
 			return null;
 		}

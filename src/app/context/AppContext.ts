@@ -3,14 +3,13 @@ import { AIServiceManager } from '@/service/chat/service-manager';
 import { SearchClient } from '@/service/search/SearchClient';
 import { ViewManager } from '@/app/view/ViewManager';
 import type MyPlugin from 'main';
-import { MyPluginSettings, HarnessSettings, DEFAULT_HARNESS_SETTINGS } from '../settings/types';
+import { MyPluginSettings, HarnessSettings, DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
 import { BusinessError, ErrorCode } from '@/core/errors';
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import { GraphInspectorTestTools, AISearchAgentTestTools } from '@/app/context/test-tools';
 import { cleanupGraphTable } from '@/app/context/graph-cleanup';
 import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
-import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import { getVaultPersona } from '@/app/debug/system-info';
@@ -35,6 +34,8 @@ import { composeChatVaultWriter } from '@/app/chat/composeChatVaultWriter';
 import { AppVaultStatsAdapter } from '@/app/stats/AppVaultStatsAdapter';
 import { composeCopilotReviewHistory } from '@/app/copilot/composeCopilotReviewHistory';
 import type { CopilotReviewHistoryService } from '@/service/copilot/CopilotReviewHistoryService';
+import type { ProgressReporterPort } from '@/service/ports/ProgressReporterPort';
+import { ObsidianProgressReporter } from '@/app/adapters/ObsidianProgressReporter';
 
 /**
  * Application context containing all global dependencies.
@@ -51,6 +52,9 @@ export class AppContext {
 	 * capability runtimes plug in here too.
 	 */
 	public readonly runtimeRegistry: AppRuntimeRegistry;
+
+	/** App-owned progress notification reporter. Passed to service consumers via constructor injection. */
+	public readonly progressReporter: ProgressReporterPort;
 
 	/**
 	 * T11N: app-composed ports for the streamdown/chat-attachment preview
@@ -385,7 +389,6 @@ export class AppContext {
 		public readonly plugin: MyPlugin,
 		public settings: MyPluginSettings,
 		public readonly aiAnalysisHistoryService: AIAnalysisHistoryService,
-		public readonly searchAgentFactory: (aiServiceManager: AIServiceManager) => DocSimpleAgent,
 		/** When true, running in mock/dev environment (e.g. desktop dev). */
 		public readonly isMockEnv: boolean = false,
 	) {
@@ -394,6 +397,7 @@ export class AppContext {
 		this.eventBus = EventBus.getInstance(app);
 		this._bridge = new ClaudeAgentSDKBridge();
 		this.runtimeRegistry = new AppRuntimeRegistry();
+		this.progressReporter = new ObsidianProgressReporter();
 		this.vaultPreview = composeVaultPreview(app);
 		this.vaultNavigation = composeVaultNavigation(app);
 		this.wikilink = composeWikilink(app);
@@ -415,10 +419,6 @@ export class AppContext {
 				this.handleDevToolsSettingChange(currentEnableDevTools);
 			}
 		});
-	}
-
-	public static searchAgent(): DocSimpleAgent {
-		return AppContext.getInstance().searchAgentFactory(AppContext.getInstance().manager);
 	}
 
 	/** Create a VaultSearchAgent (routes to VaultSearchAgentSDK on desktop). */

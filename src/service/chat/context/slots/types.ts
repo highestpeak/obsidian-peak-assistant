@@ -63,3 +63,18 @@ export function estimateTokensFromText(text: string): number {
   }
   return Math.ceil(cjkChars + otherChars / 3.5);
 }
+
+/** Render text content as a single system message. Returns [] if text is empty. */
+export function renderSystemText(text: string | null | undefined): LLMRequestMessage[] {
+  if (!text) return [];
+  return [{ role: 'system', content: [{ type: 'text', text }] }];
+}
+
+/** Render text content as a single user message. Returns [] if text is empty. */
+export function renderUserText(text: string | null | undefined): LLMRequestMessage[] {
+  if (!text) return [];
+  return [{ role: 'user', content: [{ type: 'text', text }] }];
+}
+
+/** Standard empty SlotContent: no data, zero tokens, level 0. */
+export const EMPTY_SLOT_CONTENT: SlotContent = { data: null, tokens: 0, compressionLevel: 0 };

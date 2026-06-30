@@ -75,7 +75,6 @@ export function composeQuickSearchHost(
 		createSynthesizeAgent: () => new SynthesizeAgent(manager),
 		createAIGraphAgent: () => new AIGraphAgent(app, searchClient!, manager),
 		createVaultSearchAgent: () => new VaultSearchAgent(app, plugin.manifest.id, searchClient!, manager),
-		createDocSimpleAgent: () => appContext.searchAgentFactory(manager),
 		createContinueAnalysisAgent: (rounds) => new ContinueAnalysisAgent({
 			app,
 			pluginId: plugin.manifest.id,

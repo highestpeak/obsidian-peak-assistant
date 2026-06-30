@@ -133,22 +133,52 @@ function testFileDoesNotIntroduceNewModuleLevelMutableDefault(): void {
 	console.log('PASS: fileDoesNotIntroduceNewModuleLevelMutableDefault');
 }
 
-function testPortFileStillHasExactlyOneModuleLevelDefault(): void {
+function testPortFileHasNoModuleLevelMutableDefault(): void {
 	const source = readPort();
-	// Lock the existing T2A default in place: exactly one
-	// `let defaultReporter` declaration. If T2C accidentally added a
-	// second `let defaultX` (e.g. defaultNotification), this trips.
-	const matches = source.match(/^\s*let\s+default[A-Z][A-Za-z0-9_]*\b/gm) ?? [];
+	// T11X-F retired the T2A `defaultReporter` compromise: the port file
+	// must now have ZERO module-level mutable defaults. The concrete
+	// reporter is owned by the app layer (`AppContext.progressReporter`)
+	// and threaded through constructor / options injection.
+	const matches = source.match(/^\s*(?:let|var)\s+default[A-Z][A-Za-z0-9_]*\b/gm) ?? [];
 	assert.strictEqual(
 		matches.length,
-		1,
-		`ProgressReporterPort.ts must keep exactly one module-level default declaration; found ${matches.length}: ${JSON.stringify(matches)}`,
+		0,
+		`ProgressReporterPort.ts must declare zero module-level mutable default reporters; found ${matches.length}: ${JSON.stringify(matches)}`,
 	);
 	assert.ok(
-		/let\s+defaultReporter\b/.test(source),
-		'the single allowed module-level default must remain `defaultReporter` (T2A compromise)',
+		!/setDefaultProgressReporter|getDefaultProgressReporter|clearDefaultProgressReporter/.test(source),
+		'ProgressReporterPort.ts must not export set/get/clear default reporter functions (retired in T11X-F)',
 	);
-	console.log('PASS: portFileStillHasExactlyOneModuleLevelDefault');
+	console.log('PASS: portFileHasNoModuleLevelMutableDefault');
+}
+
+function stripCommentsAndStrings(source: string): string {
+	// Strip /* … */ block comments first (greedy across lines).
+	let out = source.replace(/\/\*[\s\S]*?\*\//g, '');
+	// Then strip // line comments.
+	out = out.replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+	return out;
+}
+
+function testPersistenceFileDoesNotImportAppContext(): void {
+	const source = readPersist();
+	// Service → app boundary: the file must not pull in the app shell at
+	// runtime. Historical migration notes that mention "AppContext" in
+	// JSDoc/comments are fine; what matters is the absence of any import
+	// or runtime access. Strip comments before matching so the
+	// "(was AppContext.getInstance().settings.search)" T11J migration
+	// note doesn't trip the runtime-access guard.
+	const importRe = /import\s+(?:type\s+)?[^;]*?\s+from\s+['"]@\/app\//;
+	assert.ok(
+		!importRe.test(source),
+		'analysisDocPersistence.ts must not import any `@/app/*` module (service → app boundary)',
+	);
+	const code = stripCommentsAndStrings(source);
+	assert.ok(
+		!/\bAppContext\b/.test(code),
+		'analysisDocPersistence.ts must not reference AppContext in executable code (comments are fine)',
+	);
+	console.log('PASS: persistenceFileDoesNotImportAppContext');
 }
 
 try {
@@ -161,7 +191,8 @@ try {
 	testFallbackNoticeIsWrappedInTryCatch();
 	testFallbackMessageTextAndTimeoutPreserved();
 	testFileDoesNotIntroduceNewModuleLevelMutableDefault();
-	testPortFileStillHasExactlyOneModuleLevelDefault();
+	testPortFileHasNoModuleLevelMutableDefault();
+	testPersistenceFileDoesNotImportAppContext();
 	process.exit(0);
 } catch (err) {
 	console.error(err);

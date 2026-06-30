@@ -53,7 +53,6 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			quickSearchBackgroundRuntime: appContext.runtimeRegistry.tryGetQuickSearchBackgroundRuntime(),
 			aiAnalysisHistoryService: appContext.aiAnalysisHistoryService,
 			isMockEnv: appContext.isMockEnv,
-			searchAgent: () => appContext.searchAgentFactory(appContext.manager),
 			settingsActions: composeSettingsActions(appContext),
 			analysisDocVaultWriter: new AppAnalysisDocVaultWriterAdapter(),
 			reportSessionPort: reportSessionPort,

@@ -5,10 +5,7 @@ import type { SearchSettings } from '@/core/config/settingsTypes';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { DocumentType } from '@/core/document/types';
 import { IndexProgressTracker } from '../support/progress-tracker';
-import {
-	getDefaultProgressReporter,
-	type ProgressReporterPort,
-} from '@/service/ports/ProgressReporterPort';
+import type { ProgressReporterPort } from '@/service/ports/ProgressReporterPort';
 import {
 	defaultIndexDocumentOptions,
 	IndexService,
@@ -50,16 +47,12 @@ function maintenanceProgressMsg(prefix: string, ev: { phase: string; tenant: str
 }
 
 export class IndexInitializer {
-	private readonly reporter: ProgressReporterPort;
-
 	constructor(
 		private readonly app: App,
 		private readonly settings: SearchSettings,
 		private readonly storageFolder: string,
-		reporter?: ProgressReporterPort,
-	) {
-		this.reporter = reporter ?? getDefaultProgressReporter();
-	}
+		private readonly reporter: ProgressReporterPort,
+	) {}
 
 	private async runMobiusMaintenanceIfDue(): Promise<void> {
 		if (!sqliteStoreManager.isInitialized()) return;
@@ -178,7 +171,7 @@ export class IndexInitializer {
 
 		const filesToIndex = await this.collectAllIndexableFilePaths();
 
-		const progressTracker = new IndexProgressTracker(filesToIndex.length, this.reporter);
+		const progressTracker = new IndexProgressTracker(this.reporter, filesToIndex.length);
 		let indexedCount = 0;
 		try {
 			progressTracker.showStart('Peak: Step 1/4 — Full-text (FTS), no embeddings…');
@@ -423,7 +416,7 @@ export class IndexInitializer {
 			return;
 		}
 
-		const progressTracker = new IndexProgressTracker(filesToIndexPaths.length, this.reporter);
+		const progressTracker = new IndexProgressTracker(this.reporter, filesToIndexPaths.length);
 		progressTracker.showStart(progressStartLabel);
 
 		let indexedCount = 0;

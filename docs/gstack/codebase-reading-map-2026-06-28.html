@@ -451,38 +451,6 @@
       background: #fbfdff;
     }
     .chart-box h3 { margin-top: 0; }
-    .split-summary {
-      display: grid;
-      grid-template-columns: 1.22fr 1fr;
-      gap: 12px;
-      margin: 16px 0;
-    }
-    .split-card {
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: #fbfdff;
-    }
-    .split-card strong {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 18px;
-    }
-    .split-card.user-facing {
-      border-color: rgba(37,99,235,0.3);
-      background: #eff6ff;
-    }
-    .split-card.platform {
-      border-color: rgba(15,118,110,0.28);
-      background: #ecfdf5;
-    }
-    .split-card .big {
-      display: block;
-      margin-top: 8px;
-      font-size: 24px;
-      font-weight: 900;
-      line-height: 1;
-    }
     .mermaid-box {
       margin: 16px 0;
     }
@@ -567,7 +535,7 @@
       .path, .module, .node, .metric, td, th {
         overflow-wrap: anywhere;
       }
-      .visual-pair, .guide-grid, .split-summary, .audit-note, .entry-grid, .flow-grid, .evidence-strip, .reading-lanes {
+      .visual-pair, .guide-grid, .audit-note, .entry-grid, .flow-grid, .evidence-strip, .reading-lanes {
         grid-template-columns: 1fr;
       }
       .grid.cols-2, .grid.cols-3, .grid.cols-4, .atlas, .flow.cols-5, .flow.cols-6 {
@@ -587,22 +555,21 @@
     <nav>
       <span class="label">Code Reading Report</span>
       <strong>Peak Assistant 当前工作树阅读地图</strong>
-      <a href="#purpose">读者与目标</a>
-      <a href="#how-to-use">怎么使用这份报告</a>
-      <a href="#current-state">当前状态</a>
-      <a href="#mental-model">总心智模型</a>
-      <a href="#entry-map">关键入口地图</a>
-      <a href="#runtime-map">全局运行图</a>
-      <a href="#boot-path">代码加载路径</a>
-      <a href="#module-atlas">模块分类</a>
-      <a href="#critical-paths">关键路径</a>
-      <a href="#patterns">设计模式</a>
-      <a href="#deps">第三方组件</a>
-      <a href="#volume">代码量</a>
-      <a href="#island-guides">功能与支撑阅读指南</a>
-      <a href="#review-guide">阅读与 Review 方法</a>
-      <a href="#watchpoints">审阅提醒</a>
-      <a href="#verification">验证记录</a>
+      <a href="#purpose">1. 读者、目标、当前事实</a>
+      <a href="#how-to-use">2. 阅读与 Review 路线</a>
+      <a href="#mental-model">3. 总心智模型</a>
+      <a href="#entry-map">4. 入口地图</a>
+      <a href="#runtime-map">5. 全局运行图</a>
+      <a href="#boot-path">6. 启动加载路径</a>
+      <a href="#module-atlas">7. 四个代码区域</a>
+      <a href="#critical-paths">8. 用户能力阅读路线</a>
+      <a href="#patterns">9. 设计模式怎么读</a>
+      <a href="#deps">10. 第三方组件评估</a>
+      <a href="#volume">11. 代码量地图</a>
+      <a href="#island-guides">12. 技术支撑层入口</a>
+      <a href="#review-guide">13. 命令附录</a>
+      <a href="#watchpoints">14. 审阅提醒</a>
+      <a href="#verification">15. 验证记录</a>
     </nav>
 
     <main>
@@ -615,7 +582,7 @@
       </header>
 
       <section id="purpose" class="section">
-        <h2>读者与目标</h2>
+        <h2>读者、目标、当前事实</h2>
         <div class="grid cols-3">
           <div class="metric">
             <span class="num">你</span>
@@ -632,60 +599,48 @@
         </div>
         <div class="band">
           <strong>最重要的结论</strong>
-          当前代码已经从“边界重构中”进入“边界扫描闭合”的状态：`npm run audit:boundary` 显示 `0 findings`。现在阅读难点不再是 service/core 到处摸 Obsidian，而是功能岛很多、runtime/port/adapter 层次多，需要按能力路径读。
+          当前最值得建立的模型不是“目录里有哪些文件”，而是“一个用户动作从哪里进、谁负责运行、状态真相在哪里、副作用怎么离开代码库”。边界扫描已经显示 `0 findings`，所以 review 重点从“有没有明显跨层引用”转到“能力路径是否清楚、支撑层是否继续收窄”。
         </div>
-        <div class="audit-note">
-          <div><b>文档类型</b>系统理解手册 + 架构阅读地图 + review 路线图。</div>
-          <div><b>读者问题</b>我从哪里进？怎么追一个功能？状态和副作用归谁？</div>
-          <div><b>旧版缺口</b>有模块清单，但入口、流程、状态真相不够。</div>
-          <div><b>本版修正</b>把 Mermaid 流程图和入口表放到主线位置。</div>
-        </div>
+        <table>
+          <thead><tr><th>事实</th><th>当前值</th><th>阅读含义</th></tr></thead>
+          <tbody>
+            <tr><td>统计范围</td><td>`main.ts src test scripts templates`</td><td>代码量用于判断认知负担，不用于评价质量。</td></tr>
+            <tr><td>总行数</td><td>145,395 `cloc` 行；139,221 raw line 口径用于功能岛图</td><td>阅读时不要按行数排序，先按能力路径排序。</td></tr>
+            <tr><td>边界扫描</td><td class="ok">`npm run audit:boundary`：0 findings</td><td>当前边界规则已经闭合；后续改动要防止重新引入 `service/ui -> app`。</td></tr>
+            <tr><td>构建</td><td class="ok">`npm run build`：PASS</td><td>报告基于一个能构建的当前工作树。</td></tr>
+            <tr><td>工作树</td><td>插件内仍有未提交变更</td><td>本文描述当前工作树，不假装是某个干净 commit。</td></tr>
+          </tbody>
+        </table>
       </section>
 
       <section id="how-to-use" class="section">
-        <h2>怎么使用这份报告</h2>
-        <p>不要从目录树开始读。这个代码库已经重构成 app composition、service runtime、core substrate、ui projection 四层；正确读法是先找用户入口，再沿 runtime 和 ports 往下追。</p>
+        <h2>阅读与 Review 路线</h2>
+        <p>这份报告按“你打开代码时真正会怎么追”的顺序组织。先选一个用户能力，再沿着入口、装配点、运行对象、状态、外部副作用读下去；如果你只是想理解底座，再跳到技术支撑层报告。</p>
         <div class="reading-lanes">
           <div class="lane">
-            <b>先看入口</b>
-            <p>从命令、view、modal、setting tab 找用户如何触发能力。入口不等于业务逻辑。</p>
+            <b>选一个能力</b>
+            <p>例如 Quick Search、Chat、Copilot、Usage、Settings、Ambient 或 Vault X-Ray。不要先打开目录树。</p>
           </div>
           <div class="lane">
-            <b>再看 composition</b>
-            <p>`compose*.ts` 和 `ReactElementFactory` 通常是一页版依赖图，说明谁把 concrete 变成 port。</p>
+            <b>找到入口</b>
+            <p>看用户从 command、view、modal、setting tab 还是 startup 进入。入口只负责把能力挂出来。</p>
           </div>
           <div class="lane">
-            <b>然后看 runtime</b>
-            <p>runtime/manager/service 回答“状态真相在哪里、流程怎么跑、并发如何处理”。</p>
+            <b>追到运行对象</b>
+            <p>找到实际拥有流程的 runtime、manager、service 或 RunEnvelope，不要停在 React 组件。</p>
           </div>
           <div class="lane">
-            <b>最后看 UI projection</b>
-            <p>Zustand、React hooks、panel 负责展示和交互，不应该反向拥有业务 truth。</p>
+            <b>检查副作用</b>
+            <p>看 vault、workspace、SQLite、LLM、MCP、filesystem 是否通过 app adapter 或明确 port 出去。</p>
           </div>
         </div>
-        <div class="band">
-          <strong>3 分钟读法</strong>
-          如果你只想快速找方向：先读“关键入口地图”，再读“全局运行图”，然后跳到对应用户功能的流程图。不要先读代码量表；代码量表只用于判断认知负担，不决定阅读顺序。
-        </div>
-      </section>
-
-      <section id="current-state" class="section">
-        <h2>当前状态</h2>
-        <div class="grid cols-4">
-          <div class="metric"><span class="num">145,395</span><span class="caption">`cloc` 统计代码行，范围：`main.ts src test scripts templates`。</span></div>
-          <div class="metric"><span class="num ok">0</span><span class="caption">Boundary baseline flagged cross-layer / side-effect edges。</span></div>
-          <div class="metric"><span class="num ok">PASS</span><span class="caption">`npm run build` 当前工作树通过。</span></div>
-          <div class="metric"><span class="num">918</span><span class="caption">boundary scanner 扫描的 `src/` 文件数。</span></div>
-        </div>
-        <h3>当前 dirty tree 的含义</h3>
-        <p>根仓库和插件仓库都有未提交变更。插件里大量改动集中在 `docs/superpowers/refactor-ops`、`src/ui/view`、`src/service/chat`、`src/service/ambient`、`src/app/ambient`。所以本文按“当前工作树”写，不假装这是某个干净 commit 的状态。</p>
         <table>
-          <thead><tr><th>变更密集区</th><th class="num">文件数</th><th>怎么理解</th></tr></thead>
+          <thead><tr><th>Review 问题</th><th>你要找的代码位置</th><th>判断方式</th></tr></thead>
           <tbody>
-            <tr><td>`docs/superpowers/refactor-ops`</td><td class="num">33</td><td>T11Q/T11R 这轮 handoff、implementation note、deletion map。</td></tr>
-            <tr><td>`src/ui/view`</td><td class="num">23</td><td>UI projection 和 view surface 是当前阅读量最大的区域。</td></tr>
-            <tr><td>`src/service/chat`</td><td class="num">16</td><td>Chat storage / context / prompt 仍是复杂核心路径。</td></tr>
-            <tr><td>`docs/superpowers/audits`</td><td class="num">15</td><td>owner review packet 是理解每轮重构意图的旁路证据。</td></tr>
+            <tr><td>入口在哪里？</td><td>`Register.ts`、`PeakCommandActions.ts`、`ViewManager.ts`、modal shell、startup path</td><td>入口应该很薄，只负责打开界面或触发 runtime。</td></tr>
+            <tr><td>谁拥有状态？</td><td>runtime、manager、RunEnvelope、repo、SQLite、vault markdown</td><td>Zustand/store 多数只是 UI 投影，不应该成为长期业务真相。</td></tr>
+            <tr><td>副作用怎么出去？</td><td>`compose*.ts`、ports、app adapters、storage repos、tool adapters</td><td>service/core 不应直接摸 Obsidian concrete 或 UI store。</td></tr>
+            <tr><td>怎么验证边界？</td><td>`npm run audit:boundary`、T11R regression、`rg` 搜索</td><td>不要靠感觉判断跨层，先用扫描命令定位。</td></tr>
           </tbody>
         </table>
       </section>
@@ -693,78 +648,49 @@
       <section id="mental-model" class="section">
         <h2>总心智模型</h2>
         <div class="callout">
-          不要把这里理解成传统 “UI 调 service，service 调 core” 的单向小项目。Peak Assistant 现在更像一个 Obsidian host 上的 capability platform：`app/` 是 composition shell，负责接 Obsidian；`service/` 是能力 runtime 和业务编排；`core/` 是可复用底座、类型、存储、provider；`ui/` 是 React projection 和用户操作面。
+          你可以把 Peak Assistant 想成一个挂在 Obsidian 里的能力平台。Obsidian 负责把插件加载起来；`app/` 负责把 Obsidian、SQLite、Notice、workspace 这些真实依赖接进来；`service/` 负责让能力运行；`core/` 放可复用底座；`ui/` 把运行状态展示给用户。
         </div>
         <div class="flow cols-5">
-          <div class="node"><b>Obsidian Host</b><span>加载 `main.js`，提供 `App`、workspace、vault、views、commands。</span></div>
-          <div class="node"><b>`main.ts`</b><span>插件入口和 boot sequence，创建 app context、services、runtimes。</span></div>
-          <div class="node"><b>`src/app/**`</b><span>唯一允许直接组合 Obsidian concrete APIs 的 shell。</span></div>
-          <div class="node"><b>`src/service/**`</b><span>能力逻辑：chat/search/copilot/ambient/lint/usage/agents。</span></div>
-          <div class="node"><b>`src/ui/**`</b><span>React views、stores、hooks；应消费 narrow ports，不再进口 `@/app/**`。</span></div>
+          <div class="node"><b>Obsidian 加载插件</b><span>`main.ts` 从 `onload()` 开始，把 settings、views、commands、SQLite、runtime 装起来。</span></div>
+          <div class="node"><b>app 层接真实依赖</b><span>`src/app/**` 可以知道 Obsidian 和宿主 API，但要把它们包成更窄的对象。</span></div>
+          <div class="node"><b>service 层跑能力</b><span>Chat、Search、Copilot、Ambient、Lint、Usage 的主流程在这里。</span></div>
+          <div class="node"><b>core 层放底座</b><span>存储、provider、类型、工具函数、ports，不应该反向依赖 app 或 UI。</span></div>
+          <div class="node"><b>UI 层做投影</b><span>React 组件、hooks、stores 展示状态和接用户动作，不反向拥有长期 truth。</span></div>
         </div>
 
-        <h3>现代化主线</h3>
-        <p>T11 系列的核心目标是把“隐藏依赖”和“host 类型泄漏”赶回 app shell。当前 T11R 已经把 scanner 看到的 `service/core -> Obsidian`、`service -> app`、`ui -> app`、`service -> ui` 清到 0。</p>
+        <h3>读代码时记住这条线</h3>
+        <p>一条健康路径应该是：用户触发入口很薄，app 层装配真实依赖，service/runtime 拥有流程和状态，副作用通过 port 或 adapter 出去，UI 只展示和发起动作。T11 系列的边界工作，就是把隐藏的宿主依赖赶回 app 层。</p>
         <div class="flow cols-6">
-          <div class="node"><b>Capability</b><span>按用户能力命名，而不是按老服务残留命名。</span></div>
-          <div class="node"><b>Runtime</b><span>单一执行路径，放进 `AppRuntimeRegistry`。</span></div>
-          <div class="node"><b>Ports</b><span>service/core 只看接口，不看 Obsidian concrete。</span></div>
-          <div class="node"><b>Adapters</b><span>app 层把 Obsidian/SQLite/Notice/Workspace 接进来。</span></div>
-          <div class="node"><b>Projection</b><span>UI store/hook 只投影运行状态，不做长期 truth owner。</span></div>
-          <div class="node"><b>Guards</b><span>source scan / regression test 锁边界。</span></div>
+          <div class="node"><b>用户能力</b><span>先问“用户要做什么”，不是先问“这个目录叫什么”。</span></div>
+          <div class="node"><b>入口</b><span>command、view、modal、setting tab 或 startup path。</span></div>
+          <div class="node"><b>装配点</b><span>`main.ts`、`AppContext`、`ReactElementFactory`、`compose*.ts`。</span></div>
+          <div class="node"><b>运行对象</b><span>runtime、manager、service、RunEnvelope 或 repo。</span></div>
+          <div class="node"><b>副作用出口</b><span>vault、workspace、SQLite、LLM、MCP、filesystem。</span></div>
+          <div class="node"><b>验证</b><span>build、boundary audit、regression test、局部 `rg`。</span></div>
         </div>
       </section>
 
       <section id="entry-map" class="section">
         <h2>关键入口地图</h2>
-        <p>读这个代码库时，入口分三类：插件生命周期入口、用户触发入口、React 服务注入入口。不要从 feature 目录里随机打开文件；先用下面这张表定位“用户怎么进来”。</p>
-        <div class="entry-grid">
-          <div class="entry-card">
-            <h3>插件启动入口 <em>boot</em></h3>
-            <ol>
-              <li><a href="../../main.ts">`main.ts`</a>：从 `onload()` 开始，看 settings、template、manager、AppContext、runtimes、views、commands 的顺序。</li>
-              <li><a href="../../main.ts">`main.ts`</a>：跳到 `initSqlite()`，看 SQLite、SearchClient、Usage、VaultLint、VaultReview 的初始化。</li>
-              <li><a href="../../main.ts">`main.ts`</a>：最后看 `onunload()`，确认 runtime、store、sqlite、manager 如何被清理。</li>
-            </ol>
-          </div>
-          <div class="entry-card">
-            <h3>用户命令入口 <em>palette</em></h3>
-            <ol>
-              <li><a href="../../src/app/commands/Register.ts">`src/app/commands/Register.ts`</a>：9 个 top-level command。</li>
-              <li><a href="../../src/app/commands/PeakCommandActions.ts">`PeakCommandActions.ts`</a>：命令如何打开 view/modal 或触发 runtime。</li>
-              <li>看到 command 后不要停在 action：继续追 view/modal 的 React mount 和 ServiceContext。</li>
-            </ol>
-          </div>
-          <div class="entry-card">
-            <h3>View / Modal 入口 <em>screen shell</em></h3>
-            <ol>
-              <li><a href="../../src/app/view/ViewManager.ts">`ViewManager.ts`</a>：注册 Chat、Ambient、Usage、Vault X-Ray、Chat Studio 等 Obsidian views。</li>
-              <li><a href="../../src/app/modals/QuickSearchModal.tsx">`QuickSearchModal.tsx`</a>、<a href="../../src/app/modals/HarnessOnboardingModal.tsx">`HarnessOnboardingModal.tsx`</a>：modal shell。</li>
-              <li>这些 shell 的职责是挂 React，不应该承载业务 runtime。</li>
-            </ol>
-          </div>
-          <div class="entry-card">
-            <h3>React 注入入口 <em>ports into UI</em></h3>
-            <ol>
-              <li><a href="../../src/app/react/ReactElementFactory.tsx">`ReactElementFactory.tsx`</a>：唯一把 app-owned ports 送进 React 的地方。</li>
-              <li><a href="../../src/ui/context/ServiceContext.tsx">`ServiceContext.tsx`</a>：UI 能拿到哪些 manager/runtime/ports。</li>
-              <li>如果 UI 还要直接 import `@/app/**`，优先怀疑边界回退。</li>
-            </ol>
-          </div>
-        </div>
+        <p>入口不是四张孤立卡片，而是你读代码时的第一跳。先用这个表决定从哪里打开文件，再跳到后面的用户能力流程图。</p>
 
         <table class="mini-table">
-          <thead><tr><th>用户能力</th><th>第一入口</th><th>第二入口</th><th>真正要追的 runtime / manager</th></tr></thead>
+          <thead><tr><th>你要理解什么</th><th>先打开</th><th>然后打开</th><th>真正要追的运行对象</th></tr></thead>
           <tbody>
-            <tr><td>Quick Search</td><td>`peak-quick-search` command</td><td>`QuickSearchModal.tsx` + `useSearchSession.ts`</td><td>`SearchClient`、`QueryService`、`QuickSearchBackgroundRuntimeImpl`</td></tr>
-            <tr><td>Chat</td><td>ribbon / `peak-open-chat-studio`</td><td>`ChatView.ts` / `ChatStudioView.ts`</td><td>`AIServiceManager`、`ConversationService`、context slots</td></tr>
-            <tr><td>Copilot</td><td>`peak-copilot-open`</td><td>Copilot picker / result modal</td><td>`CopilotActionRuntimeImpl`、built-in action catalog、panel binding</td></tr>
-            <tr><td>Usage Dashboard</td><td>`peak-usage-dashboard`</td><td>`UsageDashboardView.ts`</td><td>`UsageTrackingService`、`UsageOutcomeService`、`UsageOptimizationService`、`CuratorPushRuntime`</td></tr>
-            <tr><td>Settings / Onboarding</td><td>Setting tab / setup wizard command</td><td>`MySetting.ts` / `HarnessOnboardingModal.tsx`</td><td>`PluginSettingsLoader`、settings actions、profile/model registries</td></tr>
-            <tr><td>Ambient / Morning</td><td>startup + Related Notes command/view</td><td>`composeAmbientRuntime.ts`</td><td>`AmbientPushRuntime`、`AmbientPorts`</td></tr>
-            <tr><td>Vault X-Ray</td><td>`peak-vault-xray`</td><td>`VaultXRayView.ts`</td><td>`VaultLintService`、`VaultLintRun`、`RunEnvelope`</td></tr>
+            <tr><td>插件怎么启动</td><td><a href="../../main.ts">`main.ts`</a> `onload()`</td><td>`initSqlite()`、`onunload()`、<a href="../../src/app/context/AppContext.ts">`AppContext.ts`</a></td><td><a href="../../src/app/runtime/AppRuntimeRegistry.ts">`AppRuntimeRegistry`</a> 与各 `compose*.ts`</td></tr>
+            <tr><td>Quick Search</td><td><a href="../../src/app/commands/Register.ts">`Register.ts`</a> 里的 command</td><td><a href="../../src/app/modals/QuickSearchModal.tsx">`QuickSearchModal.tsx`</a>、<a href="../../src/ui/view/quick-search/hooks/useSearchSession.ts">`useSearchSession.ts`</a></td><td>`SearchClient`、`QueryService`、`QuickSearchBackgroundRuntimeImpl`</td></tr>
+            <tr><td>Chat</td><td><a href="../../src/app/view/ViewManager.ts">`ViewManager.ts`</a> 注册的 Chat views</td><td><a href="../../src/app/react/ReactElementFactory.tsx">`ReactElementFactory.tsx`</a>、`ServiceContext.manager`</td><td>`AIServiceManager`、`ConversationService`、context slots</td></tr>
+            <tr><td>Copilot</td><td><a href="../../src/app/copilot/actions/composeCopilotActionRuntime.ts">`composeCopilotActionRuntime.ts`</a></td><td>Copilot picker / result panel binding</td><td>`CopilotActionRuntimeImpl`、action catalog、review runtime</td></tr>
+            <tr><td>Usage Dashboard</td><td><a href="../../src/app/view/UsageDashboardView.ts">`UsageDashboardView.ts`</a></td><td>usage event subscribers、dashboard screens</td><td>`UsageTrackingService`、`UsageOutcomeService`、`UsageOptimizationService`、`CuratorPushRuntime`</td></tr>
+            <tr><td>Settings / Onboarding</td><td><a href="../../src/app/settings/MySetting.ts">`MySetting.ts`</a> / <a href="../../src/app/modals/HarnessOnboardingModal.tsx">`HarnessOnboardingModal.tsx`</a></td><td><a href="../../src/app/settings/PluginSettingsLoader.ts">`PluginSettingsLoader`</a>、settings actions</td><td>settings normalization、profile/model/template registries</td></tr>
+            <tr><td>Ambient / Morning</td><td><a href="../../src/app/ambient/composeAmbientRuntime.ts">`composeAmbientRuntime.ts`</a></td><td>`AmbientPorts`、app adapters、ambient UI projection</td><td>`AmbientPushRuntime`</td></tr>
+            <tr><td>Vault X-Ray</td><td><a href="../../src/app/lint/composeVaultLintRuntime.ts">`composeVaultLintRuntime.ts`</a></td><td>`VaultXRayView.ts`、`useVaultLintRunState.ts`</td><td>`VaultLintService`、`VaultLintRun`、`RunEnvelope`</td></tr>
           </tbody>
         </table>
+        <div class="band">
+          <strong>入口表的用法</strong>
+          看到入口后不要立刻改 UI。先追到运行对象，再确认状态真相和副作用出口。后面的“用户能力阅读路线”会把每个能力的流程图、阅读顺序、review 问题放在同一个小节里。
+        </div>
       </section>
 
       <section id="runtime-map" class="section">
@@ -885,8 +811,8 @@
       </section>
 
       <section id="critical-paths" class="section">
-        <h2>用户功能流程图</h2>
-        <p>这里按“用户动作怎么穿过代码”来读，不按目录读。每张图下面都有入口、状态真相、副作用出口、验证点。</p>
+        <h2>用户能力阅读路线</h2>
+        <p>这里按“用户动作怎么穿过代码”来读，不按目录读。每个能力都把流程图、阅读顺序和 review 问题放在一起；先看图，再按表里的顺序打开文件。</p>
 
         <div class="flow-panel">
           <h3>Quick Search：从 palette 到 AI 分析、后台 session、保存结果</h3>
@@ -916,6 +842,15 @@
             <div><b>状态真相</b>foreground 在 search session store；关闭 modal 后由 <a href="../../src/service/search/background/QuickSearchBackgroundRuntimeImpl.ts">`QuickSearchBackgroundRuntimeImpl`</a> 接管。</div>
             <div><b>副作用出口</b><a href="../../src/app/quick-search/composeQuickSearchHost.ts">`composeQuickSearchHost`</a> owns vault/workspace/chat interop；service 层不直接摸 Obsidian。</div>
           </div>
+          <table class="mini-table">
+            <thead><tr><th>阅读顺序</th><th>为什么先读它</th><th>Review 问题</th></tr></thead>
+            <tbody>
+              <tr><td>`Register.ts` → `QuickSearchModal.tsx`</td><td>确认用户入口只是打开 modal，不把业务逻辑塞进 Obsidian shell。</td><td>新增入口是否仍然薄？有没有绕过 `ReactElementFactory`？</td></tr>
+              <tr><td>`composeQuickSearchHost.ts`</td><td>这是 app-owned facade，能看到 vault/workspace/chat interop 都从哪里出去。</td><td>host 是否继续变宽？有没有把 raw `app` 发布给 UI？</td></tr>
+              <tr><td>`useSearchSession.ts` → `SearchClient` → `QueryService`</td><td>这里解释一次检索/AI 分析真正怎么跑。</td><td>session 状态是否只是 UI 投影？检索 pipeline 顺序有没有被隐式改变？</td></tr>
+              <tr><td>`QuickSearchBackgroundRuntimeImpl.ts`</td><td>modal 关闭后谁接管，是理解长任务的关键。</td><td>后台 run 是否能恢复、取消、保存 artifact？</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <div class="flow-panel">
@@ -945,6 +880,15 @@
             <div><b>状态真相</b>indexed docs、mobius graph、usage/lint tables 在 SQLite repos。</div>
             <div><b>阅读重点</b><a href="../../src/service/search/query/queryService.ts">`QueryService`</a> 的 6 步 pipeline 是检索阅读核心。</div>
           </div>
+          <table class="mini-table">
+            <thead><tr><th>阅读顺序</th><th>为什么先读它</th><th>Review 问题</th></tr></thead>
+            <tbody>
+              <tr><td>`main.ts` 的 `initSqlite()`</td><td>索引和 search client 必须等 SQLite backend 可用。</td><td>新增 search 依赖是否在 SQLite ready 前被调用？</td></tr>
+              <tr><td>`initializeSearchService()` → `IndexService`</td><td>建立索引、chunk、embedding、graph 的主线。</td><td>是否有重复 index path 或绕开 listener 的写入？</td></tr>
+              <tr><td>`SearchClient` → `QueryService`</td><td>读 parser、retriever、merge、boost、highlight 的执行顺序。</td><td>新 retriever 是否注册在统一 registry？排序/权重是否有可解释位置？</td></tr>
+              <tr><td>SQLite repositories</td><td>确认搜索 truth 落在哪些表，而不是猜 UI 的数据来源。</td><td>schema/repo 变更是否兼容旧库？</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <div class="flow-panel">
@@ -975,6 +919,15 @@
             <div><b>状态真相</b><a href="../../src/service/chat/service-manager.ts">`AIServiceManager`</a> owns storage/prompt/context services; <a href="../../src/service/chat/service-conversation.ts">`ConversationService`</a> owns streaming path。</div>
             <div><b>风险点</b>改 Chat 时先问是否改变 context slot 顺序，尤其 `PrevAnalysisSlot`、`WorkingContextSlot`、`CurrentFileSlot`。</div>
           </div>
+          <table class="mini-table">
+            <thead><tr><th>阅读顺序</th><th>为什么先读它</th><th>Review 问题</th></tr></thead>
+            <tbody>
+              <tr><td>`ChatView.ts` / `ChatStudioView.ts`</td><td>确认 Obsidian view shell 如何挂 React。</td><td>view 是否只负责 mount，不拥有 chat truth？</td></tr>
+              <tr><td>`AIServiceManager`</td><td>这里把 profile、prompt、storage、context services 组装起来。</td><td>有没有重新引入 `AppContext` reach 或隐藏 singleton 依赖？</td></tr>
+              <tr><td>`context/slots/*` → `ContextPipeline`</td><td>Chat 的质量主要来自 context assembly，而不是单个组件。</td><td>slot 顺序、fallback、token 预算是否清楚？</td></tr>
+              <tr><td>`ConversationService` → `ChatStore`</td><td>读 streaming、usage event、vault persistence。</td><td>usage 和 storage 是否在同一条发送路径里被记录？</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <div class="flow-panel">
@@ -1000,6 +953,15 @@
             <div><b>状态真相</b><a href="../../src/service/copilot/actions/CopilotActionRuntimeImpl.ts">`CopilotActionRuntimeImpl`</a> owns built-in/custom prompt catalog and ranking。</div>
             <div><b>UI 绑定</b><a href="../../src/ui/view/copilot/copilot-action-surfaces.tsx">`copilot-action-surfaces.tsx`</a> maps `action.id` to panel; blank result starts here。</div>
           </div>
+          <table class="mini-table">
+            <thead><tr><th>阅读顺序</th><th>为什么先读它</th><th>Review 问题</th></tr></thead>
+            <tbody>
+              <tr><td>`composeCopilotActionRuntime.ts`</td><td>这是 Copilot action ports 的装配页。</td><td>新增 action 依赖是否通过 port 进入，而不是直接 import app/storage/UI？</td></tr>
+              <tr><td>`CopilotActionRuntimeImpl.ts`</td><td>这里拥有 built-in/custom prompt catalog、rank、lookup。</td><td>catalog 是否仍是一处注册？排序和 fallback 是否可解释？</td></tr>
+              <tr><td>`actions/index.ts` 和具体 action</td><td>看每个 action 的输入、执行和 result shape。</td><td>action body 是否和 panel 展示解耦？</td></tr>
+              <tr><td>`copilot-action-surfaces.tsx`</td><td>这里决定 action result 怎么变成面板。</td><td>新增 panel 是否复用 generic renderer，还是又复制一套展示形态？</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <div class="flow-panel">
@@ -1026,6 +988,15 @@
             <div><b>状态真相</b><a href="../../src/service/usage/UsageTrackingService.ts">`UsageTrackingService`</a> + SQLite usage repos。</div>
             <div><b>推荐路径</b><a href="../../src/service/usage/optimization/UsageOptimizationService.ts">`UsageOptimizationService`</a> returns LLM-or-rules recommendations; curator push is app-composed。</div>
           </div>
+          <table class="mini-table">
+            <thead><tr><th>阅读顺序</th><th>为什么先读它</th><th>Review 问题</th></tr></thead>
+            <tbody>
+              <tr><td>`UsageRecordedViewEvent` producers</td><td>先知道 usage 数据从哪些 AI path 发出来。</td><td>新增 AI 调用是否记录 feature、action、session、cost？</td></tr>
+              <tr><td>`UsageTrackingService` + usage repos</td><td>这里是 usage truth 和查询入口。</td><td>写入与查询口径是否一致？</td></tr>
+              <tr><td>`UsageOptimizationService`</td><td>推荐来自 LLM 或规则 fallback，不能只看 dashboard UI。</td><td>fallback 是否可解释？推荐是否能在无 LLM 时工作？</td></tr>
+              <tr><td>`composeCuratorPushRuntime.ts`</td><td>usage nudges 是 app-composed runtime，不是 dashboard 内部副作用。</td><td>通知/推送是否有节流和可关闭路径？</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <div class="flow-panel">
@@ -1053,6 +1024,15 @@
             <div><b>状态真相</b><a href="../../src/app/settings/PluginSettingsLoader.ts">`PluginSettingsLoader`</a> normalizes persisted settings; registries load after settings。</div>
             <div><b>Review 点</b>新增 setting 必须有 default、normalize/sanitize、save path，不要只加 UI input。</div>
           </div>
+          <table class="mini-table">
+            <thead><tr><th>阅读顺序</th><th>为什么先读它</th><th>Review 问题</th></tr></thead>
+            <tbody>
+              <tr><td>`PluginSettingsLoader.ts` → `settings/types.ts`</td><td>先读 persisted shape、default、normalize、migration。</td><td>新增字段有没有默认值、sanitize、兼容旧数据？</td></tr>
+              <tr><td>`MySetting.ts` / `HarnessOnboardingModal.tsx`</td><td>确认 Settings tab 和 onboarding 都通过同一套 React 注入。</td><td>是否又把配置逻辑写进 Obsidian shell？</td></tr>
+              <tr><td>`composeSettingsActions.ts`</td><td>UI 通过 actions port 改 settings。</td><td>保存路径是否统一？是否有多套写法？</td></tr>
+              <tr><td>`templates/config/*`</td><td>大文案、默认行为、提示词应外置。</td><td>有没有把大配置重新写回 TS 逻辑文件？</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <div class="flow-panel">
@@ -1080,6 +1060,15 @@
             <div><b>状态真相</b><a href="../../src/service/ambient/AmbientPushRuntime.ts">`AmbientPushRuntime`</a> owns trigger orchestration and aborts stale searches。</div>
             <div><b>Projection</b>UI store writes happen through `AmbientUiProjectionAdapter`; runtime does not import UI。</div>
           </div>
+          <table class="mini-table">
+            <thead><tr><th>阅读顺序</th><th>为什么先读它</th><th>Review 问题</th></tr></thead>
+            <tbody>
+              <tr><td>`composeAmbientRuntime.ts`</td><td>这是 app adapters 进入 `AmbientPorts` 的地方。</td><td>新增依赖是否仍在 app 层装配？</td></tr>
+              <tr><td>`AmbientPorts.ts`</td><td>先看 runtime 需要哪些能力，而不是先看实现。</td><td>port 是否窄？有没有把 whole app 或 store 塞进去？</td></tr>
+              <tr><td>`AmbientPushRuntime.ts`</td><td>读 trigger、search、abort stale run、projection、briefing。</td><td>并发和取消是否清楚？startup path 是否可降级？</td></tr>
+              <tr><td>app adapters + UI stores</td><td>确认 runtime 不 import UI，只通过 projection adapter 写入。</td><td>未来 Current Work State 不应与旧 Ambient 形成双系统。</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <div class="flow-panel">
@@ -1106,79 +1095,77 @@
             <div><b>状态真相</b><a href="../../src/service/lint/VaultLintRun.ts">`VaultLintRun`</a> owns per-run events; <a href="../../src/ui/view/vault-lint/hooks/useVaultLintRunState.ts">`useVaultLintRunState`</a> only projects them。</div>
             <div><b>模式价值</b>This is the clearest sample for future long-running capabilities: runner + event trace + artifact ref。</div>
           </div>
+          <table class="mini-table">
+            <thead><tr><th>阅读顺序</th><th>为什么先读它</th><th>Review 问题</th></tr></thead>
+            <tbody>
+              <tr><td>`composeVaultLintRuntime.ts`</td><td>看 vault、persistence、detector context ports 怎么进入 runtime。</td><td>detector 是否通过 port 读 vault/sqlite？</td></tr>
+              <tr><td>`VaultLintContract.ts`</td><td>先看 capability contract，知道 UI 和 runtime 约定什么。</td><td>contract 是否能支撑长任务、错误、artifact？</td></tr>
+              <tr><td>`VaultLintRun.ts`</td><td>这是 RunEnvelope 的真实样本。</td><td>事件 trace 是否足够让 UI 恢复/展示？</td></tr>
+              <tr><td>`useVaultLintRunState.ts`</td><td>UI 如何从 event trace 投影状态。</td><td>UI 是否只投影，不重新拥有 scan truth？</td></tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
       <section id="patterns" class="section">
-        <h2>设计模式速查</h2>
+        <h2>设计模式怎么读</h2>
+        <p>这里不是背模式名。每个模式都回答一个阅读问题：依赖在哪里装配、状态由谁拥有、副作用怎么隔离、UI 为什么不能直接变成业务真相。</p>
+        <div class="chart-box mermaid-box">
+          <h3>模式结构图：从真实依赖到用户界面</h3>
+          <pre class="mermaid">flowchart LR
+  concrete["Obsidian / SQLite / LLM / MCP&lt;br/&gt;真实依赖"]
+  app["Composition Root&lt;br/&gt;main.ts · AppContext · compose*.ts"]
+  port["Port / Adapter&lt;br/&gt;窄接口 + app adapter"]
+  runtime["Runtime / Manager&lt;br/&gt;状态真相 + 执行流程"]
+  registry["Registry / Catalog&lt;br/&gt;统一注册和 lookup"]
+  pipeline["Pipeline / Slots&lt;br/&gt;有顺序的阶段"]
+  ui["Projection Store / React&lt;br/&gt;展示和用户动作"]
+  guard["Guard / Audit&lt;br/&gt;boundary scan · tests"]
+
+  concrete --> app --> port --> runtime
+  runtime --> registry
+  runtime --> pipeline
+  runtime --> ui
+  app --> guard
+  runtime --> guard
+  ui --> guard</pre>
+        </div>
         <table>
-          <thead><tr><th>模式</th><th>看哪里</th><th>怎么判断对不对</th></tr></thead>
+          <thead><tr><th>模式</th><th>它解决什么问题</th><th>先看哪里</th><th>怎么判断对不对</th></tr></thead>
           <tbody>
-            <tr><td>Composition Root</td><td>`main.ts`、`src/app/context/AppContext.ts`、`src/app/**/compose*.ts`</td><td>concrete dependency 是否只在 app 层被装配。</td></tr>
-            <tr><td>Port / Adapter</td><td>`src/core/ports/*`、`src/service/**/ports/*`、`src/app/adapters/*`</td><td>service/core 是否只依赖接口；adapter 是否拥有 Obsidian/SQLite/Notice 细节。</td></tr>
-            <tr><td>Runtime Registry</td><td>`src/app/runtime/AppRuntimeRegistry.ts`</td><td>runtime 是否 fail-loud double bind、soft accessor、clear on unload。</td></tr>
-            <tr><td>RunEnvelope</td><td>`src/service/run-envelope/*`、`src/service/lint/VaultLintRun.ts`</td><td>run 是否有 session、events、artifact ref；UI 是否从 trace 投影。</td></tr>
-            <tr><td>Registry / Catalog</td><td>`RetrieverRegistry`、`CopilotActionRuntimeImpl`、`SkillRegistry`、`ProfileRegistry`</td><td>新增类型是否注册一次，调用方是否只看统一 catalog。</td></tr>
-            <tr><td>Pipeline / Slots</td><td>`ContextPipeline`、`QueryService`</td><td>每个阶段是否小而可替换，阶段顺序是否清楚。</td></tr>
-            <tr><td>Template / Config externalization</td><td>`TemplateManager`、`TemplateRegistry`、`templates/config/*`</td><td>大文案、模型、阈值、规则是否不要散在逻辑文件。</td></tr>
-            <tr><td>Projection Store</td><td>`src/ui/store/*`、feature store</td><td>store 是否只是 UI 状态投影，不拥有长期业务 truth。</td></tr>
-            <tr><td>Duck-typed transitional bridge</td><td>`src/core/storage/vault/vault-ops.ts`、`AppHandle`</td><td>这是 T11R 的 containment，不是终局；未来可继续收窄成 typed ports。</td></tr>
+            <tr><td>Composition Root</td><td>把真实依赖集中装配，避免 service/UI 自己到处找 host。</td><td>`main.ts`、`AppContext`、`src/app/**/compose*.ts`</td><td>Obsidian、SQLite、Notice、workspace 这些 concrete 是否只在 app 层接入。</td></tr>
+            <tr><td>Port / Adapter</td><td>让 service/core 只看自己需要的窄能力。</td><td>`src/core/ports/*`、`src/service/**/ports/*`、`src/app/**/*Adapter.ts`</td><td>port 是否窄；adapter 是否拥有 host 细节；有没有把 whole app 传下去。</td></tr>
+            <tr><td>Runtime Registry</td><td>让长期 runtime 有统一 owner、bind/read/clear 语义。</td><td>`src/app/runtime/AppRuntimeRegistry.ts`</td><td>double bind 是否 fail loud；unload 是否清理；调用方是否只读 registry，不偷偷 new runtime。</td></tr>
+            <tr><td>RunEnvelope</td><td>给长任务提供 session、event trace、artifact、UI projection 的统一形状。</td><td>`src/service/run-envelope/*`、`VaultLintRun.ts`</td><td>UI 是否从 trace 投影；run 是否能取消、失败、产出 artifact。</td></tr>
+            <tr><td>Registry / Catalog</td><td>避免新增类型散落在 switch 和 if 里。</td><td>`RetrieverRegistry`、`CopilotActionRuntimeImpl`、`SkillRegistry`、`ProfileRegistry`</td><td>新增项是否注册一次；调用方是否通过 catalog lookup。</td></tr>
+            <tr><td>Pipeline / Slots</td><td>让复杂流程按阶段读，而不是在一个函数里追迷路。</td><td>`QueryService`、`ContextPipeline`、chat context slots</td><td>阶段顺序是否清楚；每段是否可替换；错误和 fallback 是否有位置。</td></tr>
+            <tr><td>Template / Config externalization</td><td>把大文案、默认模型、规则、阈值从业务逻辑里拿出去。</td><td>`TemplateManager`、`TemplateRegistry`、`templates/config/*`</td><td>新增配置是否可读、可替换；有没有把 prompt 或长文案塞回 TS。</td></tr>
+            <tr><td>Projection Store</td><td>让 UI store 表达显示状态，而不是接管业务 truth。</td><td>`src/ui/store/*`、feature stores、hooks</td><td>store 是否只保存 UI 状态；长期 truth 是否仍在 runtime/repo/envelope。</td></tr>
+            <tr><td>Transitional Bridge</td><td>在边界收敛期间隔离旧 host access，不把重构一次做爆。</td><td>`AppHandle`、`vault-ops.ts`、Quick Search host</td><td>bridge 是否被 containment；有没有继续扩张成新的 god-port。</td></tr>
           </tbody>
         </table>
       </section>
 
       <section id="deps" class="section">
-        <h2>第三方组件</h2>
-        <div class="grid cols-2">
-          <div class="module">
-            <h3>AI / Agents <em>10 deps</em></h3>
-            <p>`@ai-sdk/*`、`ai`、`ai-elements`、`@anthropic-ai/claude-agent-sdk`、`@openrouter/ai-sdk-provider`、`ollama-ai-provider-v2`、`@modelcontextprotocol/sdk`。</p>
-            <p class="small">阅读入口：`src/core/providers/*`、`src/service/agents/*`、`src/service/mcp/*`。</p>
-          </div>
-          <div class="module">
-            <h3>UI / Interaction <em>25 deps</em></h3>
-            <p>React 18、Radix primitives、CodeMirror、XYFlow、lucide、framer-motion/motion、sonner、recharts、tailwind-merge。</p>
-            <p class="small">阅读入口：`src/ui/component*`、`src/ui/view/*`、`src/styles/*`。</p>
-          </div>
-          <div class="module">
-            <h3>Data / Storage <em>7 deps</em></h3>
-            <p>`better-sqlite3`、`sqlite-vec`、`kysely`、`gray-matter`、`ignore`、`uuid`、`yaml`。</p>
-            <p class="small">阅读入口：`src/core/storage/sqlite/*`、`src/core/storage/vault/*`。</p>
-          </div>
-          <div class="module">
-            <h3>Docs / Markdown <em>16 deps</em></h3>
-            <p>`streamdown`、`@streamdown/*`、`remark*`、`mermaid`、`handlebars`、`pdfjs-dist`、`mammoth`、`officeparser`。</p>
-            <p class="small">阅读入口：document loaders、rendering components、template/prompt system。</p>
-          </div>
-          <div class="module">
-            <h3>Graph / Search <em>8 deps</em></h3>
-            <p>`@dagrejs/dagre`、`d3-*`、`@langchain/*` textsplitters/core/community。</p>
-            <p class="small">阅读入口：`src/service/search/index/helper/*`、graph UI、retrievers。</p>
-          </div>
-          <div class="module">
-            <h3>Build / Dev</h3>
-            <p>TypeScript、esbuild、Vite、Tailwind、PostCSS、Obsidian typings、test runner。</p>
-            <p class="small">阅读入口：`package.json` scripts、`esbuild.config.mjs`、`run-test.js`。</p>
-          </div>
-        </div>
+        <h2>第三方组件评估</h2>
+        <p>第三方依赖不要用卡片背包名。更有用的读法是：它支撑哪些能力、替换难不难、风险在哪里、从哪些代码入口看真实使用。</p>
+        <table>
+          <thead><tr><th>依赖族</th><th>关键包</th><th>依赖重要度</th><th>替代难度</th><th>影响能力</th><th>阅读入口 / 判断</th></tr></thead>
+          <tbody>
+            <tr><td>AI / Provider</td><td>`ai`、`@ai-sdk/*`、OpenRouter/Ollama providers、Anthropic SDK</td><td class="num">10/10</td><td>高</td><td>Chat、Copilot、Search agents、Usage recommendation</td><td>`src/core/providers/*`、`AIServiceManager`、`AgentLoop`。替代会影响 streaming、usage、profile/model routing。</td></tr>
+            <tr><td>SQLite / Vector / Query</td><td>`better-sqlite3`、`sqlite-vec`、`kysely`</td><td class="num">10/10</td><td>高</td><td>Search index、Chat history、Usage、Lint、Ambient memory</td><td>`SqliteStoreManager`、`ddl.ts`、repositories。替代收益不明显，风险在 native module、migration、tenant 兼容。</td></tr>
+            <tr><td>React / UI primitives</td><td>`react`、Radix、lucide、CodeMirror、XYFlow、recharts</td><td class="num">8/10</td><td>中</td><td>所有 views、settings、usage、graph、editor-like panels</td><td>`ReactElementFactory`、`ServiceContext`、`src/ui/components/primitives/*`。替换单个 UI 包可行，替换 React 不现实。</td></tr>
+            <tr><td>MCP / Tool schema</td><td>`@modelcontextprotocol/sdk`、`zod`</td><td class="num">8/10</td><td>中高</td><td>Agent tools、external tool bridge、skills/tool result validation</td><td>`MCPClientManager`、`MCPToolAdapter`、tool registry。风险在权限、schema 降级、外部 server 错误。</td></tr>
+            <tr><td>Markdown / Document parsing</td><td>`streamdown`、`remark*`、`pdfjs-dist`、`mammoth`、`officeparser`、`handlebars`</td><td class="num">6/10</td><td>中</td><td>Chat rendering、content reader、template/prompt system、file analysis</td><td>rendering components、document loaders、`TemplateManager`。可局部替换，但要检查格式兼容和 bundle 体积。</td></tr>
+            <tr><td>Graph / Search helpers</td><td>`@dagrejs/dagre`、`d3-*`、LangChain text splitters</td><td class="num">6/10</td><td>中</td><td>Graph UI、indexing、retrievers、chunking</td><td>`src/service/search/index/*`、graph UI。替换要先证明检索质量或布局稳定性提升。</td></tr>
+            <tr><td>Build / Dev</td><td>TypeScript、esbuild、Vite、Tailwind、PostCSS、Obsidian typings</td><td class="num">7/10</td><td>中高</td><td>Build、test、CSS bundling、plugin package</td><td>`package.json` scripts、`esbuild.config.mjs`、`run-test.js`。替换会影响开发体验和发布链，不是阅读优先级。</td></tr>
+          </tbody>
+        </table>
       </section>
 
       <section id="volume" class="section">
         <h2>代码量地图</h2>
         <p>这里改成两层口径：只有直接面向用户工作流的才叫“用户功能岛”；Shared UI、Core storage、Agents harness、MCP/tools、Boot/App shell、cross-cutting glue 合并理解为一个“技术支撑层”。图和表都用 raw line count，包含空行和注释，用于判断阅读优先级，不用于评价代码质量。</p>
-
-        <div class="split-summary">
-          <div class="split-card user-facing">
-            <strong>用户功能岛</strong>
-            <span>Quick Search、Copilot、Chat、Usage Dashboard、Settings/Onboarding、Ambient/Morning、Vault Lint/X-Ray。</span>
-            <span class="big">76,659 lines · 55.1%</span>
-          </div>
-          <div class="split-card platform">
-            <strong>技术支撑层</strong>
-            <span>Shared UI/CSS、Core storage、Agents harness、MCP/Skills/Tools、Boot/App shell、Other/cross-cutting。</span>
-            <span class="big">62,562 lines · 44.9%</span>
-          </div>
-        </div>
 
         <div class="chart-box mermaid-box">
           <h3>Mermaid：功能口径图</h3>
@@ -1275,128 +1262,10 @@
       </section>
 
       <section id="island-guides" class="section">
-        <h2>用户功能岛与技术支撑层阅读指南</h2>
-        <p>下面不是“目录说明”，而是两层阅读路线。先读用户功能岛，理解产品能力怎样跑起来；再读技术支撑层，理解这些能力共同依赖的 UI、storage、agents、tools、app shell 和 cross-cutting glue。</p>
-        <div class="audit-note">
-          <strong>每张功能卡都按同一个问题集阅读。</strong>
-          先找用户入口，再找 app composition，再找 runtime/state truth，再找 side effect 通过哪个 port/adapter 出去，最后才看 UI 组件和样式。这样读的好处是：你不是在目录树里迷路，而是在追一条能解释行为的调用链。
-        </div>
-
-        <h3 class="guide-group-title">用户功能岛：从用户入口追到 runtime</h3>
-        <div class="guide-grid">
-          <div class="guide user-facing">
-            <h3>Quick Search + Search <em>21,368 lines</em></h3>
-            <p>这是最大功能岛，包含即时检索、AI 分析、图谱生成、后台 session、保存分析结果。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../src/app/commands/Register.ts">`Register.ts`</a> 里看 `peak-quick-search` 命令。</li>
-              <li><a href="../../src/app/modals/QuickSearchModal.tsx">`app/modals/QuickSearchModal.tsx`</a> 了解 Obsidian modal shell。</li>
-              <li><a href="../../src/app/quick-search/composeQuickSearchHost.ts">`composeQuickSearchHost.ts`</a> 看 app-owned facade 暴露了哪些操作。</li>
-              <li><a href="../../src/ui/view/quick-search/hooks/useSearchSession.ts">`useSearchSession.ts`</a> 看一次搜索/AI 分析的 UI orchestration。</li>
-              <li><a href="../../src/service/search/SearchClient.ts">`SearchClient.ts`</a> 和 <a href="../../src/service/search/query/queryService.ts">`QueryService.ts`</a> 看 parser、retrievers、RRF、PPR、rerank。</li>
-              <li><a href="../../src/service/search/background/QuickSearchBackgroundRuntimeImpl.ts">`QuickSearchBackgroundRuntimeImpl.ts`</a> 看关闭 modal 后后台继续跑的 runtime。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>`composeQuickSearchHost` 比较宽，它把 raw Obsidian app 操作留在 app 层。service/search 负责检索逻辑，UI stores 只投影 session 状态。Review 时重点看有没有新 `src/ui/** -> @/app/**` 或 service 直接摸 UI。</p>
-          </div>
-
-          <div class="guide user-facing">
-            <h3>Copilot <em>19,213 lines</em></h3>
-            <p>Copilot 是动作 catalog + runtime + result panels 的组合，不要从某个 panel 开始读，否则会被 20 多个 action 淹没。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../src/app/copilot/actions/composeCopilotActionRuntime.ts">`composeCopilotActionRuntime.ts`</a> 看 app 层如何组装 action ports。</li>
-              <li><a href="../../src/service/copilot/actions/CopilotActionRuntimeImpl.ts">`CopilotActionRuntimeImpl.ts`</a> 看 built-in/custom prompt catalog、rank、lookup。</li>
-              <li><a href="../../src/service/copilot/actions/index.ts">`actions/index.ts`</a> 看 built-in actions 怎么创建。</li>
-              <li><a href="../../src/ui/view/copilot/copilot-action-surfaces.tsx">`copilot-action-surfaces.tsx`</a> 看 action 到 UI panel 的绑定。</li>
-              <li><a href="../../src/service/copilot/CopilotReviewSession.ts">`CopilotReviewSession.ts`</a> 看 Auto Review 这种长路径如何接 deps。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>现在动作执行的 dependency 都应该通过 `CopilotActionPorts`。阅读时把 action body 和 result panel 分开：前者回答“做什么”，后者回答“怎么展示”。后续瘦身最好从 generic panel/action factory 收敛重复形态，而不是删功能。</p>
-          </div>
-
-          <div class="guide user-facing">
-            <h3>Chat <em>14,128 lines</em></h3>
-            <p>Chat 是产品主路径之一，也是 context assembly 最复杂的地方。读它时要从 manager 和 pipeline 进，不要从单个 message component 进。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../src/app/view/ChatStudioView.ts">`ChatStudioView.ts`</a> / <a href="../../src/app/view/ChatView.ts">`ChatView.ts`</a> 看 Obsidian view shell。</li>
-              <li><a href="../../src/service/chat/service-manager.ts">`AIServiceManager`</a> 看 storage、prompt、profile、context services 怎么被组装。</li>
-              <li>`src/service/chat/context/slots/*` 逐个看上下文片段：system prompt、profile、summary、working context、previous analysis。</li>
-              <li><a href="../../src/service/chat/service-conversation.ts">`ConversationService`</a> 看发送、streaming、usage event、storage 写入。</li>
-              <li><a href="../../src/core/storage/vault/ChatStore.ts">`ChatStorageService`</a> 看 chat data 如何落到 vault。</li>
-              <li>`src/ui/view/chat-view/*` 最后读，理解 UI 如何消费 manager 和 stores。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>Chat 的关键不是某个组件，而是 context pipeline。任何改动都要问：会不会改变 prompt/context 顺序？会不会让 UI store 变成业务 truth？会不会绕开 `ChatVaultWriterPort` / app-owned composition？</p>
-          </div>
-
-          <div class="guide user-facing">
-            <h3>Usage Dashboard <em>8,635 lines</em></h3>
-            <p>Usage 是用户可见的成本与效果保护面：它连接 usage tracking、outcome、optimization、dashboard UI、curator push。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../src/app/view/UsageDashboardView.ts">`UsageDashboardView.ts`</a> 看 view shell。</li>
-              <li><a href="../../src/service/usage/UsageTrackingService.ts">`UsageTrackingService.ts`</a> 看 AI 调用记录。</li>
-              <li><a href="../../src/service/usage/UsageOutcomeService.ts">`UsageOutcomeService.ts`</a> 看 saved/adopted outcome。</li>
-              <li>`src/service/usage/optimization/*` 看 recommendation/rules/prompt/schema。</li>
-              <li><a href="../../src/app/usage/composeCuratorPushRuntime.ts">`composeCuratorPushRuntime.ts`</a> 和 `CuratorPushRuntime.ts` 看 usage nudges。</li>
-              <li>`src/ui/view/usage-dashboard/*` 最后读 UI screens。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>这里不要默认删 dashboard。可优化方向是 chart primitive 和 CSS 重复、fallback string 组织、recommendation renderer 复用。</p>
-          </div>
-
-          <div class="guide user-facing">
-            <h3>Settings + Onboarding <em>8,346 lines</em></h3>
-            <p>这是用户修复 capability readiness 的入口，覆盖模型/profile/MCP/skills/search/usage/harness setup。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../src/app/settings/PluginSettingsLoader.ts">`PluginSettingsLoader.ts`</a> 看 settings normalize/sanitize/migration。</li>
-              <li><a href="../../src/app/settings/types.ts">`settings/types.ts`</a> 看 persisted shape。</li>
-              <li><a href="../../src/app/settings/MySetting.ts">`MySetting.ts`</a> 看 Obsidian setting tab shell。</li>
-              <li>`src/ui/view/settings/*` 看分 tab UI。</li>
-              <li><a href="../../src/app/modals/HarnessOnboardingModal.tsx">`HarnessOnboardingModal.tsx`</a> 和 `src/ui/view/onboarding/*` 看初次配置。</li>
-              <li>`templates/config/*` 看外置 strings/config。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>这里的风险是把大配置表和文案写回 TS。Review 时看新增设置是否有 migration/default/sanitize，是否通过 template/config 外置。</p>
-          </div>
-
-          <div class="guide user-facing">
-            <h3>Vault Lint / X-Ray <em>2,494 lines</em></h3>
-            <p>体量小，但这是用户可见的 vault inspection 能力，同时也是 RunEnvelope 首个真实 adopter。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../src/app/lint/composeVaultLintRuntime.ts">`composeVaultLintRuntime.ts`</a> 看 lint ports/adapters。</li>
-              <li><a href="../../src/service/lint/VaultLintContract.ts">`VaultLintContract.ts`</a> 看 capability contract。</li>
-              <li><a href="../../src/service/lint/VaultLintRun.ts">`VaultLintRun.ts`</a> 看 RunEnvelope session/events/artifact。</li>
-              <li><a href="../../src/service/lint/VaultLintService.ts">`VaultLintService.ts`</a> 看 detector execution。</li>
-              <li><a href="../../src/ui/view/vault-lint/hooks/useVaultLintRunState.ts">`useVaultLintRunState.ts`</a> 看 UI 如何从 event trace 投影。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>这是读 `RunEnvelope` 的最佳样本。任何新 long-running capability 都应该参考它的 runner、event trace、artifact ref、UI projection 边界。</p>
-          </div>
-
-          <div class="guide user-facing">
-            <h3>Ambient + Morning <em>2,475 lines</em></h3>
-            <p>这是用户可感知的 proactive assistance 能力，也是 ports/adapters 模式的清爽样本。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../src/app/ambient/composeAmbientRuntime.ts">`composeAmbientRuntime.ts`</a> 看 ports 如何被 app adapters 填充。</li>
-              <li><a href="../../src/service/ambient/ports/AmbientPorts.ts">`AmbientPorts.ts`</a> 看 runtime 需要什么。</li>
-              <li><a href="../../src/service/ambient/AmbientPushRuntime.ts">`AmbientPushRuntime.ts`</a> 看 trigger/search/projection/briefing 的主流程。</li>
-              <li>`src/app/ambient/*Adapter.ts` 看具体 Obsidian/SQLite/UI store 接入。</li>
-              <li>`src/ui/view/ambient-push/*` 和 `src/ui/view/morning-briefing/*` 看呈现层。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>它是理解“service runtime 不摸 host”的好入口。未来 Current Work State 不应该和旧 Ambient 平行双系统并存。</p>
-          </div>
-        </div>
-
-        <h3 class="guide-group-title">技术支撑层：作为一个大底座读，内部再按责任拆</h3>
+        <h2>技术支撑层入口</h2>
+        <p>用户能力的阅读顺序已经并入上一章。技术支撑层不应该再被当成另一组“功能岛卡片”，它是一组共同底座：启动装配、React 注入、共享 UI、持久化、agent harness、工具系统、跨功能类型和事件。</p>
         <div class="flow-panel">
-          <h3>技术支撑层不是用户功能岛：它是所有能力共用的运行底座</h3>
+          <h3>从这里跳到技术支撑层报告</h3>
           <div class="chart-box mermaid-box">
             <pre class="mermaid">flowchart LR
   boot["Boot / App shell&lt;br/&gt;main.ts · AppContext · RuntimeRegistry"]
@@ -1416,116 +1285,27 @@
   glue -. "domain types / events" .-> storage
   glue -. "shared contracts" .-> agents</pre>
           </div>
-          <div class="evidence-strip">
-            <span>读支撑层时不要按行数排序，先读 Boot/App shell</span>
-            <span>Shared UI/CSS 主要是复用与命名问题，不是 runtime truth</span>
-            <span>Core storage 的 review 重点是 schema、migration、repo contract</span>
-            <span>Other/cross-cutting 只在调用链需要时回看</span>
-          </div>
         </div>
-        <div class="guide-grid">
-          <div class="guide platform">
-            <h3>Shared UI + CSS <em>16,564 lines</em></h3>
-            <p>这是技术支撑层的一部分，不是独立用户功能。它支撑所有用户功能的视觉 primitive、shared component、layout 和 CSS token。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../docs/conventions/ui-design.md">`docs/conventions/ui-design.md`</a> 先读设计系统约束。</li>
-              <li>`src/ui/components/primitives/*` 看真正跨功能 primitive。</li>
-              <li>`src/ui/component/*` 看旧 shared component 和 feature-ish component。</li>
-              <li><a href="../../src/styles/peak-components.css">`peak-components.css`</a> 看 CSS primitive/token 的实际承载。</li>
-              <li>再回到各 feature view，看它们是否重复实现 Button、Pill、Card、Modal、Row。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>这里要按“谁能复用”分类：primitive、shared composite、feature-local。Review 时不要只看行数，重点看同一种 UI 语义是不是有两套实现。</p>
-          </div>
-
-          <div class="guide platform">
-            <h3>Core storage <em>13,210 lines</em></h3>
-            <p>这是 SQLite、vault chat storage、repo、DDL、native module 的底座。它不是用户功能，但所有高价值能力都依赖它。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../src/core/storage/sqlite/SqliteStoreManager.ts">`SqliteStoreManager.ts`</a> 看 DB 初始化、backend selection、repo access。</li>
-              <li>`src/core/storage/sqlite/ddl.ts` 看数据表语义。</li>
-              <li>`src/core/storage/sqlite/repositories/*` 按 feature 找 repo。</li>
-              <li><a href="../../src/core/storage/vault/ChatStore.ts">`ChatStore.ts`</a> 看 vault-side chat persistence。</li>
-              <li><a href="../../src/core/storage/vault/vault-ops.ts">`vault-ops.ts`</a> 看 T11R 后 service/core 如何避免 import Obsidian。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>storage 是多能力共享底座。Review 时优先看 schema/migration/backward compatibility，不要用“这个文件大”作为删除理由。</p>
-          </div>
-
-          <div class="guide platform">
-            <h3>Agents + Harness <em>9,071 lines</em></h3>
-            <p>这是 agent 基础设施层，承载 VaultSearchAgent、GraphAgent、DocSimpleAgent、report orchestrator、agent loop、tool/hook/memory/permission。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../src/service/agents/harness/loop/AgentLoop.ts">`AgentLoop.ts`</a> 看通用 agent loop。</li>
-              <li>`src/service/agents/harness/tool/*` 看 tool registry / adapter。</li>
-              <li>`src/service/agents/core/*` 看 Agent SDK bridge、message adapter、pool。</li>
-              <li><a href="../../src/service/agents/DocSimpleAgent.ts">`DocSimpleAgent.ts`</a>、`VaultSearchAgent*`、`GraphAgent.ts` 按具体 agent 看。</li>
-              <li><a href="../../src/service/agents/report/ReportOrchestrator.ts">`ReportOrchestrator.ts`</a> 看报告生成 session。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>先分清“agent framework”与“具体 agent”。具体 agent 不应该重新定义 runtime ownership；它应该复用 tool/schema/loop/port 体系。</p>
-          </div>
-
-          <div class="guide platform">
-            <h3>MCP + Skills + Tools <em>5,888 lines</em></h3>
-            <p>这是外部工具与 skill 系统：MCP client、tool adapter、skill parser/registry、search graph inspector tools。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../src/service/mcp/MCPClientManager.ts">`MCPClientManager.ts`</a> 看 stdio/SSE server 连接管理。</li>
-              <li><a href="../../src/service/mcp/MCPToolAdapter.ts">`MCPToolAdapter.ts`</a> 看 MCP tool 怎么变成 agent tool。</li>
-              <li><a href="../../src/service/skills/SkillRegistry.ts">`SkillRegistry.ts`</a> 和 <a href="../../src/service/skills/SkillParser.ts">`SkillParser.ts`</a> 看 vault skill 加载。</li>
-              <li>`src/service/tools/*` 看内置工具，尤其 content reader、search memory、search graph inspector。</li>
-              <li>`templates/tools/*` 看工具提示词/输出模板。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>这类代码要重点看权限、输入 schema、错误降级、tool result 是否适合给 agent 消费。不要让 tool 直接跨层拿 UI 或 app concrete。</p>
-          </div>
-
-          <div class="guide platform">
-            <h3>Boot/App shell <em>3,951 lines</em></h3>
-            <p>虽然行数不大，但它决定全系统怎么被装起来。任何“我看不懂模块怎么连”的问题，先回这里。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li><a href="../../main.ts">`main.ts`</a>：`onload()`、`initSqlite()`、`initializeSearchService()`、`onunload()`。</li>
-              <li><a href="../../src/app/context/AppContext.ts">`AppContext.ts`</a>：app-owned services、ports、runtime registry。</li>
-              <li><a href="../../src/app/runtime/AppRuntimeRegistry.ts">`AppRuntimeRegistry.ts`</a>：所有 runtime bind/read/clear 语义。</li>
-              <li><a href="../../src/app/view/ViewManager.ts">`ViewManager.ts`</a>：view registration 和 activation。</li>
-              <li><a href="../../src/app/react/ReactElementFactory.tsx">`ReactElementFactory.tsx`</a>：UI service context 的唯一注入点。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>`app/` 可以知道 Obsidian；它的职责是把 concrete 变成 ports/adapters/runtime。Review 时看是否出现第二个 composition root 或 service-side runtime owner。</p>
-          </div>
-
-          <div class="guide platform">
-            <h3>Other / cross-cutting <em>13,878 lines</em></h3>
-            <p>这里不是一个功能，而是常量、事件、types、utils、small services、cross-feature glue。不要从这里开始读。</p>
-            <span class="read-label">阅读顺序</span>
-            <ol>
-              <li>先从某个功能岛遇到引用时再回来。</li>
-              <li><a href="../../src/core/constant.ts">`core/constant.ts`</a> 只看 cross-cutting constants，不要往里继续塞大配置。</li>
-              <li><a href="../../src/core/eventBus.ts">`eventBus.ts`</a> 看 view event/usage event 的横向通信。</li>
-              <li>`src/core/types/*` / `src/core/search/*` 看 neutral domain types。</li>
-              <li>`src/core/utils/*` 只按调用链读，不要全量硬啃。</li>
-            </ol>
-            <span class="read-label">理解重点</span>
-            <p>这个岛的 review 原则是“避免变成垃圾桶”。新增跨功能东西时，要问它到底是 port、type、config、utility，还是应该留在 feature 内部。</p>
-          </div>
+        <table>
+          <thead><tr><th>支撑层</th><th>先读</th><th>你要理解的事</th><th>更详细的读法</th></tr></thead>
+          <tbody>
+            <tr><td>Boot / App shell</td><td>`main.ts`、`AppContext`、`RuntimeRegistry`、`ReactElementFactory`</td><td>全系统如何被装起来，哪些 runtime 什么时候可用。</td><td rowspan="6"><a href="./technical-support-layer-report-2026-06-29.html">打开技术支撑层阅读报告</a></td></tr>
+            <tr><td>Shared UI + CSS</td><td>`docs/conventions/ui-design.md`、`peak-tokens.css`、primitive catalog</td><td>哪些是复用 primitive，哪些只是 feature-local UI。</td></tr>
+            <tr><td>Core storage</td><td>`SqliteStoreManager`、`ddl.ts`、repositories、`ChatStore`</td><td>数据 truth 落在哪里，schema/repo 怎么保持兼容。</td></tr>
+            <tr><td>Agents + Harness</td><td>`AgentLoop`、tool registry、permission、tier、memory</td><td>一次 agent run 的骨架和工具/权限边界。</td></tr>
+            <tr><td>MCP / Skills / Tools</td><td>`MCPClientManager`、`MCPToolAdapter`、`SkillRegistry`、built-in tools</td><td>外部工具和 vault skill 怎么变成 agent 可用能力。</td></tr>
+            <tr><td>Other / Cross-cutting</td><td>`EventBus`、constants、types、ports、utils</td><td>只在调用链需要时回看，避免把它当成杂物目录顺序读。</td></tr>
+          </tbody>
+        </table>
+        <div class="band">
+          <strong>什么时候跳到支撑层报告？</strong>
+          当你读某个用户能力时卡在“这个 service 怎么拿到 SQLite / Obsidian / UI store / MCP tool / AgentLoop”的问题上，就跳过去。支撑层报告按底座职责展开，不会再重复上一章的用户功能流程。
         </div>
       </section>
 
       <section id="review-guide" class="section">
-        <h2>你应该怎么读和 Review</h2>
-        <ol>
-          <li><strong>先定能力，不要先定目录。</strong>例如你要看 Quick Search，就从 command/modal/host/runtime 开始，不要直接冲进 `src/ui/view/quick-search`。</li>
-          <li><strong>每条路径都问三个问题。</strong>入口在哪里？runtime/state truth 在哪里？side effect 通过哪个 port/adapter 出去？</li>
-          <li><strong>读 app composition，再读 service runtime。</strong>`compose*.ts` 往往是一页版依赖图，能帮你避开在 service 内迷路。</li>
-          <li><strong>看到 `AppHandle` 要标记为 transitional bridge。</strong>这不是失败，是 T11R 后的 containment；未来优化方向是把它缩成更窄的 ports。</li>
-          <li><strong>看到 Zustand store，不要默认它是业务真相。</strong>检查是否只是 projection；长任务真相应该在 runtime / envelope / persistence。</li>
-          <li><strong>用扫描命令代替直觉。</strong>边界类判断先跑 `npm run audit:boundary`，再用 `rg` 查 `@/app`、`obsidian`、`AppContext`。</li>
-        </ol>
+        <h2>命令附录</h2>
+        <p>阅读和 review 的路线已经放在前面。这里保留可复制的检查模板和命令，用来在你实际打开代码时快速定位。</p>
 
         <h3>每次看一个能力的固定模板</h3>
         <div class="mono-block">1. Command / view entry
@@ -1567,7 +1347,7 @@ rg -n "AppContext\\.getInstance|AppContext\\.getApp|AppContext\\.getManager" src
             <tr><td>`cloc main.ts src test scripts templates --exclude-dir=node_modules --quiet`</td><td class="ok">PASS</td><td>用于代码量统计。</td></tr>
             <tr><td>`npm run audit:boundary`</td><td class="ok">PASS</td><td>`Total flagged cross-layer / side-effect edges: 0`。</td></tr>
             <tr><td>`npm run build`</td><td class="ok">PASS</td><td>CSS build、esbuild production、`node --check main.js`、SDK copy 均完成。</td></tr>
-            <tr><td>`Playwright file:// HTML QA`</td><td class="ok">PASS</td><td>Desktop 1440px + mobile 390px：导航锚点完整、Mermaid SVG=13、Mermaid treemap 已渲染、8 个用户功能流程图、入口卡=4、无横向溢出、13 个阅读指南分为 7 个用户功能与 6 个技术支撑。</td></tr>
+            <tr><td>`Playwright file:// HTML QA`</td><td class="ok">PASS</td><td>主阅读视口 1440px：导航锚点完整、Mermaid blocks=14、SVG=14、Mermaid treemap 已渲染、无横向溢出；390px 窄屏只做 smoke check，不作为移动端适配承诺。</td></tr>
           </tbody>
         </table>
         <div class="callout">

@@ -1,8 +1,7 @@
 import type { DocumentType, Document } from '@/core/document/types';
 import { binaryContentHash } from '@/core/utils/hash-utils';
-import { generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
-import { BaseDocumentLoader } from './BaseDocumentLoader';
+import { BaseDocumentLoader, buildBinaryDocument } from './BaseDocumentLoader';
 import officeParser from 'officeparser';
 
 /**
@@ -24,52 +23,16 @@ export class PptxDocumentLoader extends BaseDocumentLoader {
 
 	protected async readFile(file: VaultFileRef, genCacheContent?: boolean): Promise<Document | null> {
 		try {
-			// Read PPTX as binary
 			const arrayBuffer = await this.vault.readBinary(file);
 			const buffer = Buffer.from(arrayBuffer);
 			const sourceContentHash = binaryContentHash(arrayBuffer);
 
-			// Parse PPTX directly from buffer using officeparser
 			let cacheContent = '';
 			if (genCacheContent) {
-				const content = await officeParser.parseOfficeAsync(buffer);
-				cacheContent = content;
+				cacheContent = await officeParser.parseOfficeAsync(buffer);
 			}
 
-			return {
-				id: generateDocIdFromPath(file.path),
-				type: 'pptx',
-				sourceFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content: '', // PPTX has no text content in source
-				},
-				cacheFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content: cacheContent, // Extracted text content
-				},
-				metadata: {
-					title: file.basename,
-					topicTags: [],
-					functionalTagEntries: [],
-					keywordTags: [],
-				},
-				contentHash: sourceContentHash,
-				references: {
-					outgoing: [],
-					incoming: [],
-				},
-				lastProcessedAt: Date.now(),
-			};
+			return buildBinaryDocument(file, 'pptx', cacheContent, sourceContentHash);
 		} catch {
 			return null;
 		}

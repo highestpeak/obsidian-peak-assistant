@@ -255,31 +255,3 @@ export interface PendingConversation {
 	conversationType?: ConversationType;
 }
 
-
-/**
- * Represents a file change in the workspace
- */
-export interface FileChange {
-	/** Unique identifier for the file change */
-	id: string;
-	/** Relative path to the file */
-	filePath: string;
-	/** Number of lines added */
-	addedLines: number;
-	/** Number of lines removed */
-	removedLines: number;
-	/** Whether this change should be kept/accepted */
-	accepted: boolean;
-	/** File extension for icon display */
-	extension?: string;
-}
-
-/**
- * Represents the current state of file changes in a conversation
- */
-export interface FileChangesState {
-	/** Array of file changes */
-	changes: FileChange[];
-	/** Whether the changes area should be visible */
-	isVisible: boolean;
-}

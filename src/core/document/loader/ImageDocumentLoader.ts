@@ -1,13 +1,12 @@
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { binaryContentHash } from '@/core/utils/hash-utils';
-import { generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { PromptId } from '@/core/prompt/PromptId';
 import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import type { DocumentSummaryConfig } from './helper/DocumentLoaderHelpers';
-import { BaseDocumentLoader } from './BaseDocumentLoader';
+import { BaseDocumentLoader, buildBinaryDocument } from './BaseDocumentLoader';
 
 /**
  * Image document loader.
@@ -72,40 +71,7 @@ export class ImageDocumentLoader extends BaseDocumentLoader {
 
 			const cacheContent = genCacheContent ? await this.generateImageDescription(file) : '';
 
-			return {
-				id: generateDocIdFromPath(file.path),
-				type: 'image',
-				sourceFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content: '', // Image has no text content in source
-				},
-				cacheFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content: cacheContent, // OCR and AI description
-				},
-				metadata: {
-					title: file.basename,
-					topicTags: [],
-					functionalTagEntries: [],
-					keywordTags: [],
-				},
-				contentHash: realContentHash,
-				references: {
-					outgoing: [],
-					incoming: [],
-				},
-				lastProcessedAt: Date.now(),
-			};
+			return buildBinaryDocument(file, 'image', cacheContent, realContentHash);
 		} catch {
 			return null;
 		}

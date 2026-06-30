@@ -1,5 +1,5 @@
 import type { ContextSlot, SlotBuildContext, SlotContent } from './types';
-import { estimateTokensFromText, formatTimeAgo } from './types';
+import { EMPTY_SLOT_CONTENT, estimateTokensFromText, formatTimeAgo, renderSystemText } from './types';
 import type { LLMRequestMessage } from '@/core/providers/types';
 import type { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/core/prompt/PromptId';
@@ -12,7 +12,7 @@ export class ActivityIndexSlot implements ContextSlot {
   async build(ctx: SlotBuildContext): Promise<SlotContent> {
     const wc = ctx.sessionContext.getWorkingContext();
     if (wc.recentActivities.length === 0) {
-      return { data: null, tokens: 0, compressionLevel: 0 };
+      return EMPTY_SLOT_CONTENT;
     }
 
     const now = Date.now();
@@ -32,7 +32,7 @@ export class ActivityIndexSlot implements ContextSlot {
       counts,
     })).trim();
 
-    if (!text) return { data: null, tokens: 0, compressionLevel: 0 };
+    if (!text) return EMPTY_SLOT_CONTENT;
     return { data: { text, activities }, tokens: estimateTokensFromText(text), compressionLevel: 0 };
   }
 
@@ -53,8 +53,6 @@ export class ActivityIndexSlot implements ContextSlot {
 
   render(content: SlotContent): LLMRequestMessage[] {
     if (!content.data) return [];
-    const { text } = content.data as { text: string };
-    if (!text) return [];
-    return [{ role: 'system', content: [{ type: 'text', text }] }];
+    return renderSystemText((content.data as { text: string }).text);
   }
 }

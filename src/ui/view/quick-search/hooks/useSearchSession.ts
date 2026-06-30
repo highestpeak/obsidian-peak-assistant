@@ -141,9 +141,6 @@ export function useSearchSession() {
 	const didCancelRef = useRef<boolean>(false);
 	const noticeSentRef = useRef<boolean>(false);
 
-	// DocSimpleAgent (memoized, stateless)
-	const aiSearchAgent = useMemo(() => host.createDocSimpleAgent(), [host]);
-
 	// VaultSearchAgent (created per session)
 	const vaultAgentRef = useRef<VaultSearchAgent | null>(null);
 
@@ -173,7 +170,7 @@ export function useSearchSession() {
 	// performAnalysis
 	// -----------------------------------------------------------------------
 
-	const performAnalysis = useCallback(async (abortSignal?: AbortSignal, scopeValue?: string) => {
+	const performAnalysis = useCallback(async (abortSignal?: AbortSignal) => {
 		let controller: AbortController | null = null;
 		if (!abortSignal) {
 			controller = new AbortController();
@@ -188,10 +185,6 @@ export function useSearchSession() {
 			const cleanQuery = getCleanQuery(searchQuery);
 			if (!cleanQuery) {
 				store.getState().recordError('Please enter a search query.');
-				return;
-			}
-			if (!aiSearchAgent) {
-				store.getState().recordError('AI search agent is not ready yet. Please try again.');
 				return;
 			}
 
@@ -282,8 +275,7 @@ export function useSearchSession() {
 				return;
 			}
 
-			const stream = aiSearchAgent.stream(searchQuery, scopeValue ? { scopeValue } : { scopeValue: undefined });
-			await consumeStream(stream, streamCtx);
+			store.getState().recordError(`Unsupported analysis mode: ${analysisMode}`);
 		} catch (err) {
 			const errorMessage = err instanceof Error
 				? err.message
@@ -327,7 +319,6 @@ export function useSearchSession() {
 		searchQuery,
 		webEnabled,
 		analysisMode,
-		aiSearchAgent,
 		store,
 		routeEvent,
 		flushSummaryBuffer,

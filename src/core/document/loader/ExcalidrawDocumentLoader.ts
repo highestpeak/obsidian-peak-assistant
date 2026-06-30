@@ -1,8 +1,7 @@
 import type { DocumentType, Document } from '@/core/document/types';
 import { hashString } from '@/core/utils/hash-utils';
-import { generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
-import { BaseDocumentLoader } from './BaseDocumentLoader';
+import { BaseDocumentLoader, buildTextDocument } from './BaseDocumentLoader';
 
 /**
  * Excalidraw document loader.
@@ -18,9 +17,6 @@ export class ExcalidrawDocumentLoader extends BaseDocumentLoader {
 		return ['excalidraw', 'excalidraw.md'];
 	}
 
-	/**
-	 * Compound extensions need suffix-based matching.
-	 */
 	protected override matchesPath(path: string): boolean {
 		return this.getSupportedExtensions().some(ext => path.endsWith('.' + ext));
 	}
@@ -38,51 +34,14 @@ export class ExcalidrawDocumentLoader extends BaseDocumentLoader {
 		try {
 			let content = await this.vault.readText(file);
 
-			// For .excalidraw.md files, check if it's an excalidraw plugin file
 			if (file.path.endsWith('.excalidraw.md')) {
 				if (this.isExcalidrawMarkdown(content)) {
-					// Remove all comment sections (containing Excalidraw JSON data)
 					content = content.replace(/```excalidraw[\s\S]*?```/g, '');
 					content = content.replace(/```json[\s\S]*?```/g, '');
 				}
 			}
 
-			const contentHash = hashString(content, 8);
-
-			return {
-				id: generateDocIdFromPath(file.path),
-				type: 'excalidraw',
-				sourceFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content,
-				},
-				cacheFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content,
-				},
-				metadata: {
-					title: file.basename,
-					topicTags: [],
-					functionalTagEntries: [],
-					keywordTags: [],
-				},
-				contentHash,
-				references: {
-					outgoing: [],
-					incoming: [],
-				},
-				lastProcessedAt: Date.now(),
-			};
+			return buildTextDocument(file, 'excalidraw', content, hashString(content, 8));
 		} catch {
 			return null;
 		}

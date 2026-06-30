@@ -26,6 +26,18 @@ import {
 
 export type MobiusNodeRow = DbSchema['mobius_node'];
 
+/** Parse JSON safely, returning fallback on any parse error. */
+function safeParseJson<T>(raw: string | null | undefined, fallback: T): T {
+	if (!raw) return fallback;
+	try { return JSON.parse(raw) as T; } catch { return fallback; }
+}
+
+/** Extract `path` from a node's attributes-JSON column, or null if absent / malformed. */
+function pathFromAttributes(raw: string | null | undefined): string | null {
+	const a = safeParseJson<{ path?: string }>(raw, {});
+	return typeof a.path === 'string' ? a.path : null;
+}
+
 /** Escapes `%`, `_`, and `\` for SQLite `LIKE ... ESCAPE '\\'`. */
 
 /** Graph node DTO shape; rows live in `mobius_node`. */
@@ -198,12 +210,7 @@ export class MobiusNodeRepo {
 			.where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES])
 			.executeTakeFirst();
 		if (!row) return;
-		let prev: Record<string, unknown> = {};
-		try {
-			prev = JSON.parse(row.attributes_json || '{}') as Record<string, unknown>;
-		} catch {
-			prev = {};
-		}
+		const prev = safeParseJson<Record<string, unknown>>(row.attributes_json, {});
 		const next = { ...prev, ...merge };
 		await this.db
 			.updateTable('mobius_node')
@@ -275,13 +282,7 @@ export class MobiusNodeRepo {
 		created_at: number;
 		updated_at: number;
 	}): MobiusNodeRow {
-		let path: string | null = null;
-		try {
-			const a = JSON.parse(node.attributes) as { path?: string };
-			if (typeof a?.path === 'string') path = a.path;
-		} catch {
-			path = null;
-		}
+		const path = pathFromAttributes(node.attributes);
 		return {
 			node_id: node.id,
 			type: node.type,
@@ -409,18 +410,11 @@ export class MobiusNodeRepo {
 				.where('node_id', '=', graphNode.id)
 				.executeTakeFirst();
 			if (existing) {
-				let prevAttrs: Record<string, unknown> = {};
-				try {
-					prevAttrs = JSON.parse(existing.attributes_json || '{}') as Record<string, unknown>;
-				} catch {
-					prevAttrs = {};
-				}
-				let incomingAttrs: Record<string, unknown> = {};
-				try {
-					incomingAttrs = JSON.parse(graphNode.attributes) as Record<string, unknown>;
-				} catch {
-					incomingAttrs = { raw: graphNode.attributes };
-				}
+				const prevAttrs = safeParseJson<Record<string, unknown>>(existing.attributes_json, {});
+				const incomingAttrs = (() => {
+					try { return JSON.parse(graphNode.attributes) as Record<string, unknown>; }
+					catch { return { raw: graphNode.attributes } as Record<string, unknown>; }
+				})();
 				const merged = { ...prevAttrs, ...incomingAttrs };
 				let path = existing.path;
 				if (typeof incomingAttrs.path === 'string') path = incomingAttrs.path;
@@ -440,13 +434,7 @@ export class MobiusNodeRepo {
 
 		if (exists) {
 			if (graphNode.type === GraphNodeType.Folder) {
-				let folderPath: string | null = null;
-				try {
-					const a = JSON.parse(graphNode.attributes) as { path?: string };
-					if (typeof a?.path === 'string') folderPath = a.path;
-				} catch {
-					folderPath = null;
-				}
+				const folderPath = pathFromAttributes(graphNode.attributes);
 				await this.db
 					.updateTable('mobius_node')
 					.set({
@@ -461,13 +449,7 @@ export class MobiusNodeRepo {
 				return;
 			}
 			if (graphNode.type === GraphNodeType.Resource) {
-				let resourcePath: string | null = null;
-				try {
-					const a = JSON.parse(graphNode.attributes) as { path?: string };
-					if (typeof a?.path === 'string') resourcePath = a.path;
-				} catch {
-					resourcePath = null;
-				}
+				const resourcePath = pathFromAttributes(graphNode.attributes);
 				await this.db
 					.updateTable('mobius_node')
 					.set({

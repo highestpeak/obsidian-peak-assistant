@@ -32,15 +32,12 @@ async function reloadConversationMetaOnly(
 }
 
 /**
- * Every Chat Conversation is considered as a Chat Session.
- * Provides access to chat session data from the store.
+ * Conversation meta sync: pulls chatMode / attachment / outputControl / model
+ * from the active conversation on switch, and writes store changes back to the
+ * conversation. Mounted at the ChatView root so it runs for all chat sub-views.
  */
 export const useChatSession = () => {
     const {
-        fileChanges,
-        promptsSuggest,
-        suggestionTags,
-
         setAttachmentHandlingMode,
         setLlmOutputControlSettings,
         setSelectedModel,
@@ -176,10 +173,5 @@ export const useChatSession = () => {
         return () => unsubscribe();
     }, [manager, activeConversation]);
 
-    return {
-        fileChanges,
-        promptsSuggest,
-        suggestionTags,
-    };
 };
 

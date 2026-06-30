@@ -50,6 +50,7 @@ async function startStagedFullIndexing(
 			app,
 			settings.search,
 			settings.dataStorageFolder ?? '',
+			appContext.progressReporter,
 		);
 		await initializer.performStagedFullIndexing(true, level);
 	} catch (e) {

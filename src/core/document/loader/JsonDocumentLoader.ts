@@ -3,10 +3,10 @@ import { hashString } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/core/search/indexTypes';
 import type { ChunkingSettings } from '@/core/config/settingsTypes';
-import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
-import { BaseDocumentLoader } from './BaseDocumentLoader';
+import { BaseDocumentLoader, buildTextDocument } from './BaseDocumentLoader';
 
 /**
  * JSON document loader.
@@ -90,42 +90,7 @@ export class JsonDocumentLoader extends BaseDocumentLoader {
 	protected async readFile(file: VaultFileRef): Promise<Document | null> {
 		try {
 			const content = await this.vault.readText(file);
-			const contentHash = hashString(content, 8);
-
-			return {
-				id: generateDocIdFromPath(file.path),
-				type: 'json',
-				sourceFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content,
-				},
-				cacheFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content,
-				},
-				metadata: {
-					title: file.basename,
-					topicTags: [],
-					functionalTagEntries: [],
-					keywordTags: [],
-				},
-				contentHash,
-				references: {
-					outgoing: [],
-					incoming: [],
-				},
-				lastProcessedAt: Date.now(),
-			};
+			return buildTextDocument(file, 'json', content, hashString(content, 8));
 		} catch {
 			return null;
 		}

@@ -4016,3 +4016,61 @@
   letter-spacing: 0;
   text-transform: none;
 }
+
+
+/* ── peak-chat-view-button ──────────────────────────────────────────────────
+   Floating affordance injected into Obsidian's MarkdownView contentEl by
+   app/events/Register.ts to jump from a conversation .md file back to the
+   live chat view. Not a primitive — single-purpose surface.
+
+   The container itself carries `peak-design-root` (tagged in Register.ts) so
+   tokens resolve AND obsidian-reset.css strips Obsidian's bare-button defaults.
+   The button needs the §4.3 !important pattern on bg/border/padding/
+   border-radius/width/height because it lives inside an Obsidian WorkspaceLeaf
+   where the reset's `button { height: auto !important; ... }` rule wins
+   against bare values.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.peak-design-root.peak-chat-view-button-container {
+  position: absolute;
+  top: var(--pk-space-3);
+  right: var(--pk-space-4);
+  z-index: 5;
+}
+
+.peak-design-root .peak-chat-view-button {
+  background: var(--pk-surface-overlay) !important;
+  border: 1px solid var(--pk-border) !important;
+  padding: 0 !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--pk-radius-md) !important;
+  color: var(--pk-text-secondary);
+  cursor: pointer;
+  box-shadow: var(--pk-shadow-card);
+  transition:
+    background var(--pk-transition-fast),
+    color var(--pk-transition-fast),
+    border-color var(--pk-transition-fast);
+}
+
+.peak-design-root .peak-chat-view-button:hover {
+  background: var(--pk-accent-tint) !important;
+  border-color: var(--pk-accent-soft) !important;
+  color: var(--pk-accent-text);
+}
+
+.peak-design-root .peak-chat-view-button:focus-visible {
+  outline: 2px solid var(--pk-accent);
+  outline-offset: 2px;
+}
+
+.peak-design-root .peak-chat-view-button > svg {
+  width: 16px;
+  height: 16px;
+}

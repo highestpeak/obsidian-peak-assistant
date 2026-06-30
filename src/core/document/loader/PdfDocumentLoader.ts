@@ -1,8 +1,7 @@
 import type { DocumentType, Document } from '@/core/document/types';
 import { binaryContentHash } from '@/core/utils/hash-utils';
-import { generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
-import { BaseDocumentLoader } from './BaseDocumentLoader';
+import { BaseDocumentLoader, buildBinaryDocument } from './BaseDocumentLoader';
 
 /** CDN base for pdfjs-dist worker; avoids bundling the heavy worker. */
 const PDFJS_CDN_VERSION = '5.4.394';
@@ -93,40 +92,7 @@ export class PdfDocumentLoader extends BaseDocumentLoader {
 				cacheContent = await extractTextFromPdfBuffer(arrayBuffer);
 			}
 
-			return {
-				id: generateDocIdFromPath(file.path),
-				type: 'pdf',
-				sourceFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content: '',
-				},
-				cacheFileInfo: {
-					path: file.path,
-					name: file.name,
-					extension: file.extension,
-					size: file.stat.size,
-					mtime: file.stat.mtime,
-					ctime: file.stat.ctime,
-					content: cacheContent,
-				},
-				metadata: {
-					title: file.basename,
-					topicTags: [],
-					functionalTagEntries: [],
-					keywordTags: [],
-				},
-				contentHash: sourceContentHash,
-				references: {
-					outgoing: [],
-					incoming: [],
-				},
-				lastProcessedAt: Date.now(),
-			};
+			return buildBinaryDocument(file, 'pdf', cacheContent, sourceContentHash);
 		} catch (error) {
 			console.error('[PdfDocumentLoader] error reading PDF file:', file.path, error);
 			return null;

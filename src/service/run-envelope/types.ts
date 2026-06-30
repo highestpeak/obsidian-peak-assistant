@@ -27,14 +27,16 @@
 //   - No persistence of artifact bodies. `ArtifactRef` is a reference; the
 //     body lives wherever the producing capability stores it.
 //
-// Retirement plan for `ProgressReporterPort.defaultReporter`:
-//   - The module-level `defaultReporter` in
-//     `src/service/ports/ProgressReporterPort.ts` is a T2 transitional
-//     compromise. It will be retired once envelopes carry an explicit
-//     `ports.progress` field in T4 and downstream capabilities resolve
-//     their reporter from the envelope instead of the module global. T3A
-//     deliberately does NOT introduce that field yet (see above). RunEnvelope
-//     does not import `ProgressReporterPort` and never will at this layer.
+// Progress reporting ownership (post-T11X-F):
+//   - The transitional module-level `defaultReporter` that used to live in
+//     `src/service/ports/ProgressReporterPort.ts` has been retired. The
+//     concrete reporter is now app-owned (`AppContext.progressReporter`)
+//     and threaded to service consumers through constructor / options
+//     injection (`IndexProgressTracker`, `analysisDocPersistence`, ...).
+//     RunEnvelope itself stays pure and does not import
+//     `ProgressReporterPort`; future capabilities that need progress
+//     should accept the port through their own constructor or options
+//     surface, not via a service-layer module global.
 
 export type RunStatus =
 	| 'queued'

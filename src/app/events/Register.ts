@@ -1,6 +1,5 @@
 import { MarkdownView, TFile } from 'obsidian';
 import type MyPlugin from 'main';
-import { parseFrontmatter } from '@/core/utils/markdown-utils';
 import { ViewManager } from '@/app/view/ViewManager';
 import { EventBus } from '@/core/eventBus';
 import { createElement, icons } from 'lucide';
@@ -63,7 +62,9 @@ export function removeAllChatViewButtons(): void {
 }
 
 /**
- * Check if file is a conversation file and add chat view button if so
+ * If the opened file is a tracked conversation, schedule the chat-view button.
+ * Conversation identity lives in the chat sqlite store (file_rel_path → id),
+ * not in the markdown file itself.
  */
 async function handleConversationFileOpen(
 	plugin: MyPlugin,
@@ -71,28 +72,19 @@ async function handleConversationFileOpen(
 	file: TFile,
 	eventBus: EventBus
 ): Promise<void> {
-	// Skip project summary files
-	if (file.name === CHAT_PROJECT_SUMMARY_FILENAME) {
-		return;
-	}
+	if (file.name === CHAT_PROJECT_SUMMARY_FILENAME) return;
 
-	// Read file to check frontmatter
-	try {
-		const content = await plugin.app.vault.read(file);
-		const frontmatter = parseFrontmatter<Record<string, unknown>>(content);
-		
-		// Check if it's a conversation file (has id in frontmatter)
-		if (frontmatter?.data?.id && typeof frontmatter.data.id === 'string') {
-			const conversationId = frontmatter.data.id as string;
-			const id = setTimeout(() => {
-				pendingConversationTimeouts.delete(id);
-				addChatViewButton(plugin, viewManager, file, conversationId, eventBus);
-			}, 100);
-			pendingConversationTimeouts.add(id);
-		}
-	} catch (error) {
-		// File might not be a conversation, silently ignore
-	}
+	const aiManager = plugin.aiServiceManager;
+	if (!aiManager) return;
+
+	const conversationId = await aiManager.findConversationIdByVaultPath(file.path);
+	if (!conversationId) return;
+
+	const id = setTimeout(() => {
+		pendingConversationTimeouts.delete(id);
+		addChatViewButton(plugin, viewManager, file, conversationId, eventBus);
+	}, 100);
+	pendingConversationTimeouts.add(id);
 }
 
 /**
@@ -122,9 +114,11 @@ function addChatViewButton(
 		markdownView.contentEl.style.position = 'relative';
 	}
 
-	// Create button container
+	// Create button container — `peak-design-root` is required so peak tokens
+	// resolve here AND obsidian-reset.css blanks Obsidian's bare `button` styles
+	// (see docs/conventions/ui-design.md §4).
 	const buttonContainer = markdownView.contentEl.createDiv({
-		cls: 'peak-chat-view-button-container'
+		cls: 'peak-design-root peak-chat-view-button-container'
 	});
 
 	// Create button

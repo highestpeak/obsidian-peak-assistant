@@ -230,6 +230,23 @@ export class ChatStorageService {
 		return { meta, context, messages, content: raw, file };
 	}
 
+	/**
+	 * Resolve a vault-relative markdown path to its conversation id, if the
+	 * file belongs to a tracked conversation. Returns null for any file
+	 * outside the chat root, or files that are not registered conversations.
+	 */
+	async findConversationIdByVaultPath(vaultRelPath: string): Promise<string | null> {
+		if (!this.dbReady) return null;
+		const normalized = normalizeVaultPath(vaultRelPath);
+		const rootNormalized = normalizeVaultPath(this.rootFolder);
+		if (rootNormalized && !normalized.startsWith(rootNormalized + '/') && normalized !== rootNormalized) {
+			return null;
+		}
+		const fileRelPath = getRelativePath(this.rootFolder, normalized);
+		const convRepo = sqliteStoreManager.getChatConversationRepo();
+		return convRepo.getIdByFileRelPath(fileRelPath);
+	}
+
 	async readConversationMeta(conversationId: string): Promise<ChatConversationMeta | null> {
 		if (!this.dbReady) return null;
 		const convRepo = sqliteStoreManager.getChatConversationRepo();

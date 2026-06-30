@@ -1,4 +1,4 @@
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_HARNESS_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, HarnessSettings, MyPluginSettings, SearchSettings } from '@/app/settings/types';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_HARNESS_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, HarnessSettings, MyPluginSettings, SearchSettings } from '@/core/config/settingsTypes';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS, type AmbientPushSettings } from '@/core/types/ambient';
 import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';

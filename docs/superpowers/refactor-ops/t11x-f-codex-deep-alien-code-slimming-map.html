@@ -1,0 +1,1263 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T11X-F Codex Deep Alien Code Slimming Map</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f7f4;
+      --paper: #ffffff;
+      --ink: #1f2933;
+      --muted: #667085;
+      --line: #d8ded8;
+      --soft: #eef2ed;
+      --green: #2f855a;
+      --green-soft: #e5f4ec;
+      --amber: #9a6700;
+      --amber-soft: #fff5d6;
+      --red: #b42318;
+      --red-soft: #fde8e7;
+      --blue: #2563eb;
+      --blue-soft: #e8efff;
+      --violet: #6d28d9;
+      --violet-soft: #f0e7ff;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.55;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 36px 28px 72px;
+    }
+    header {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 28px;
+      box-shadow: 0 16px 40px rgba(31, 41, 51, 0.06);
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 34px 0 14px;
+      font-size: 22px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 20px 0 8px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+    p { margin: 8px 0; }
+    .lede {
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      padding: 5px 10px;
+      font-size: 12px;
+      color: #344054;
+      white-space: nowrap;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 10px 28px rgba(31, 41, 51, 0.04);
+    }
+    .span-4 { grid-column: span 4; }
+    .span-3 { grid-column: span 3; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+    .metric {
+      font-size: 28px;
+      font-weight: 760;
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+    .label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .callout {
+      border-left: 4px solid var(--blue);
+      background: var(--blue-soft);
+      padding: 12px 14px;
+      border-radius: 10px;
+      margin: 14px 0;
+    }
+    .warn { border-left-color: var(--amber); background: var(--amber-soft); }
+    .danger { border-left-color: var(--red); background: var(--red-soft); }
+    .ok { border-left-color: var(--green); background: var(--green-soft); }
+    code, .mono {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: #f2f4f7;
+      border: 1px solid #e4e7ec;
+      border-radius: 6px;
+      padding: 1px 5px;
+    }
+    pre {
+      overflow-x: auto;
+      background: #111827;
+      color: #f9fafb;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      display: table;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+      font-size: 13px;
+    }
+    th {
+      background: #f2f5f1;
+      font-weight: 700;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .risk-low { color: var(--green); font-weight: 700; }
+    .risk-med { color: var(--amber); font-weight: 700; }
+    .risk-high { color: var(--red); font-weight: 700; }
+    .flow {
+      display: grid;
+      grid-template-columns: 1fr 40px 1fr 40px 1fr;
+      gap: 10px;
+      align-items: center;
+      margin: 12px 0;
+    }
+    .node {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 12px;
+      padding: 14px;
+      min-height: 86px;
+    }
+    .arrow {
+      color: var(--muted);
+      font-size: 24px;
+      text-align: center;
+    }
+    .lane {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--paper);
+      margin: 14px 0;
+    }
+    .lane-title {
+      background: #f2f5f1;
+      padding: 10px 14px;
+      font-weight: 760;
+      border-bottom: 1px solid var(--line);
+    }
+    .lane-body {
+      display: grid;
+      grid-template-columns: 190px 1fr 130px 150px;
+      gap: 0;
+    }
+    .lane-body > div {
+      padding: 12px 14px;
+      border-right: 1px solid var(--line);
+      font-size: 13px;
+    }
+    .lane-body > div:last-child { border-right: 0; }
+    ul { margin: 8px 0 0 19px; padding: 0; }
+    li { margin: 4px 0; }
+    .small { color: var(--muted); font-size: 12px; }
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .toc a {
+      color: var(--blue);
+      text-decoration: none;
+      border: 1px solid #bfd0ff;
+      background: var(--blue-soft);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    @media (max-width: 900px) {
+      main { padding: 20px 14px 48px; }
+      .span-3, .span-4, .span-6, .span-8, .span-12 { grid-column: span 12; }
+      .flow { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); }
+      .lane-body { grid-template-columns: 1fr; }
+      .lane-body > div { border-right: 0; border-bottom: 1px solid var(--line); }
+      .lane-body > div:last-child { border-bottom: 0; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>T11X-F 深扫：远古路径、伪活代码与重复表面瘦身地图</h1>
+    <p class="lede">
+      这份报告回答一个具体问题：为什么前几轮看起来只能减几百行，但直觉上项目里还有大量旧代码？
+      结论是：全文件静态死代码确实很少，真正的水分主要藏在“被 barrel export 假激活的组件”“入口状态不可达的旧 agent”
+      “无人生产数据的 UI 状态”“debug/test globals”“重复 presentation grammar”里。
+    </p>
+    <div class="badge-row">
+      <span class="badge">范围：read-only code review</span>
+      <span class="badge">不改产品代码</span>
+      <span class="badge">保留 Usage Dashboard / Chat 三栏 / Quick Search / Copilot</span>
+      <span class="badge">边界治理不得回退</span>
+    </div>
+    <nav class="toc">
+      <a href="#headline">核心结论</a>
+      <a href="#why">为什么之前少</a>
+      <a href="#map">删除地图</a>
+      <a href="#evidence">证据池</a>
+      <a href="#clone">深扫新增</a>
+      <a href="#api">公共入口</a>
+      <a href="#latent">半成品面</a>
+      <a href="#waves">执行波次</a>
+      <a href="#read">代码阅读顺序</a>
+      <a href="#dont">不要误删</a>
+    </nav>
+  </header>
+
+  <section id="headline">
+    <h2>1. 核心结论</h2>
+    <div class="grid">
+      <div class="card span-3">
+        <div class="metric">71 LOC</div>
+        <div class="label">全文件静态不可达。这里确实很少，不是主要战场。</div>
+      </div>
+      <div class="card span-3">
+        <div class="metric">1,399 行</div>
+        <div class="label">jscpd 发现的字面重复行。集中在少数模块，不是随机噪音。</div>
+      </div>
+      <div class="card span-3">
+        <div class="metric">4.4k-7.2k</div>
+        <div class="label">更新后的可信功能保留型净削减池。主要来自“合并重复结构”和“收掉过渡面”，不是删功能。</div>
+      </div>
+      <div class="card span-3">
+        <div class="metric">+1.5k-2.6k</div>
+        <div class="label">需要产品/owner 决策的额外空间：隐藏 DocSimple、stub 诊断面、dev globals、Knowledge Intuition 重写等。</div>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>判断：</strong>你说“肯定不止这么一点”是对的，但不是因为有几千行全文件 0 import。
+      真正要做的是从 file-level dead code 转向 <strong>symbol-level + entry-state + ghost-state + old-surface</strong> 审计。
+    </div>
+  </section>
+
+  <section id="why">
+    <h2>2. 为什么之前看起来只能删很少</h2>
+    <div class="flow">
+      <div class="node">
+        <strong>静态 import 图</strong>
+        <p>从 <code>main.ts</code> 追到 <code>src/**</code>，大部分文件都能被 import 到。</p>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node">
+        <strong>假活性</strong>
+        <p>barrel export、legacy shim、factory fallback 会让旧代码“看起来还活着”。</p>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node">
+        <strong>真正瘦身点</strong>
+        <p>要看真实 UI 入口、store producer、mode enum、prompt registry、runtime factory。</p>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>扫描层级</th><th>能发现什么</th><th>这次结论</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>全文件 import reachability</td>
+          <td>完全没人 import 的文件</td>
+          <td>只有 4 个文件 / 71 LOC；不是主要空间。</td>
+        </tr>
+        <tr>
+          <td>export / barrel 层</td>
+          <td>只被 <code>index.ts</code> 挂着、没有真实消费者的 symbol</td>
+          <td>PromptInput 旧子组件、harness barrel、若干 helper export。</td>
+        </tr>
+        <tr>
+          <td>入口状态层</td>
+          <td>有 factory、有 fallback，但 UI mode 永远不会走到</td>
+          <td><code>DocSimpleAgent</code> 是最典型例子。</td>
+        </tr>
+        <tr>
+          <td>store producer 层</td>
+          <td>组件会渲染，但没有任何地方写入数据</td>
+          <td><code>FileChangesList</code> / <code>fileChanges</code> 状态疑似幽灵。</td>
+        </tr>
+        <tr>
+          <td>表面语法层</td>
+          <td>功能活着，但 screen/card/KPI/row grammar 重复</td>
+          <td>Usage Dashboard、Vault Review、Quick Search 可以收敛，但不是“删功能”。</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="map">
+    <h2>3. 删除与收敛地图</h2>
+
+    <div class="lane">
+      <div class="lane-title">A. PromptInput 旧子组件：低风险、第一优先级</div>
+      <div class="lane-body">
+        <div><strong>预计净减</strong><br />-650 到 -760 LOC</div>
+        <div>
+          <strong>要动哪里</strong>
+          <ul>
+            <li><code>src/ui/component/prompt-input/PromptInputSubmit.tsx</code> 206 LOC</li>
+            <li><code>PromptInputFileButton.tsx</code> 144 LOC</li>
+            <li><code>PromptInputSearchButton.tsx</code> 154 LOC</li>
+            <li><code>ToolButton.tsx</code> 51 LOC</li>
+            <li><code>TokenUsage.tsx</code> 139 LOC</li>
+            <li><code>SuggestionTags.tsx</code> 71 LOC，组件未用；类型可搬到 chat store 或本地 types</li>
+          </ul>
+        </div>
+        <div><span class="risk-low">LOW</span></div>
+        <div>需要 <code>rg</code> 证明无真实 caller，并收紧 <code>prompt-input/index.ts</code>。</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-title">B. DocSimpleAgent 隐藏路径：不是 0 import，但像远古单文件 Q&A 模式</div>
+      <div class="lane-body">
+        <div><strong>预计净减</strong><br />-250 到 -380 LOC</div>
+        <div>
+          <strong>证据</strong>
+          <ul>
+            <li><code>SearchModal.tsx</code> 只有 <code>vaultFull</code> / <code>aiGraph</code> 两个 mode。</li>
+            <li><code>performAnalysis(undefined, undefined)</code> 正常入口不会传 <code>scopeValue</code>。</li>
+            <li><code>DocSimpleAgent.stream()</code> 没有 <code>scopeValue</code> 会直接 error。</li>
+            <li>prompt 说不要调用 <code>submit_final_answer</code>，但 agent 仍注入该工具，设计已经不一致。</li>
+          </ul>
+        </div>
+        <div><span class="risk-med">MEDIUM</span></div>
+        <div>二选一：删除隐藏模式；或把它产品化为可见 “current file Q&A”。不能继续半隐藏。</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-title">C. Chat 幽灵状态：无人生产数据的 FileChanges + 未挂载 useChatSession</div>
+      <div class="lane-body">
+        <div><strong>预计净减</strong><br />-450 到 -700 LOC</div>
+        <div>
+          <strong>要拆开处理</strong>
+          <ul>
+            <li><code>FileChangesList.tsx</code> 166 LOC 被渲染，但 <code>fileChanges</code> 没有真实 producer。</li>
+            <li><code>chatViewStore.ts</code> 有 <code>fileChanges</code> / <code>promptsSuggest</code> / <code>suggestionTags</code> action。</li>
+            <li><code>useChatSession.ts</code> 185 LOC 未被调用，但里面有 conversation meta sync 副作用。</li>
+            <li><code>showOutline</code> 仍在 <code>INITIAL_SESSION</code> 类型 Pick 里，是旧字段残留。</li>
+          </ul>
+        </div>
+        <div><span class="risk-med">MEDIUM</span></div>
+        <div>不能直接删 hook；先把模型/附件/输出设置同步迁移到真实挂载点，或证明 live path 已覆盖。</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-title">D. Shim / barrel / helper public surface：小 LOC，高维护收益</div>
+      <div class="lane-body">
+        <div><strong>预计净减</strong><br />-180 到 -350 LOC</div>
+        <div>
+          <strong>候选</strong>
+          <ul>
+            <li><code>src/ui/view/quick-search/store/v2SessionTypes.ts</code> 23 LOC，无真实 import。</li>
+            <li><code>src/core/utils/vault-utils.ts</code> 10 LOC，legacy re-export shim。</li>
+            <li><code>src/service/agents/harness/index.ts</code> 112 LOC，暴露大量无外部消费者 symbol。</li>
+            <li><code>src/app/vault/obsidian-utils.ts</code> 多个 unused export，如 <code>readFileAsBase64</code> / <code>getActiveNoteDetail</code> / <code>getFileTypeByPath</code> / <code>openFileAtLine</code>。</li>
+          </ul>
+        </div>
+        <div><span class="risk-low">LOW</span></div>
+        <div>删除前必须更新或重写 regression guard，避免测试继续保护旧 shim。</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-title">E. Search graph inspector：重复 BFS / scorer 过宽</div>
+      <div class="lane-body">
+        <div><strong>预计净减</strong><br />-150 到 -300 LOC</div>
+        <div>
+          <strong>问题形态</strong>
+          <ul>
+            <li><code>find-path/reliable.ts</code> 与 <code>brainstorm.ts</code> 都有相似双向 BFS。</li>
+            <li><code>find-path/scorer.ts</code> 850 LOC，混合类型、邻居、评分、格式化、分析段落。</li>
+            <li><code>getNodeLabel</code>、<code>ConnectionType</code>、<code>CommonAncestorAnalysis</code> 等 export 显示未用。</li>
+          </ul>
+        </div>
+        <div><span class="risk-med">MEDIUM</span></div>
+        <div>这是结构重构，不是死删；必须保留 inspector 行为和 tool schema。</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-title">F. Dev/debug globals：可隔离，可删除取决于 owner</div>
+      <div class="lane-body">
+        <div><strong>预计净减</strong><br />隔离：主路径 -350 到 -520 LOC<br />真删：-450 到 -650 LOC</div>
+        <div>
+          <strong>候选</strong>
+          <ul>
+            <li><code>src/app/context/test-tools.ts</code> 282 LOC 注册一批 <code>window.*</code> 测试工具。</li>
+            <li><code>src/app/debug/system-info.ts</code> 58 LOC。</li>
+            <li><code>src/app/context/graph-cleanup.ts</code> 75 LOC。</li>
+            <li><code>src/app/context/AppContext.ts:440-551</code> 直接挂载 <code>testGraphTools</code>、<code>dumpV2State</code>、<code>captureV2Debug</code> 等 globals。</li>
+          </ul>
+        </div>
+        <div><span class="risk-med">MEDIUM</span></div>
+        <div><code>enableDevTools</code> 是设置项，所以默认建议先 dev-only dynamic import；只有 owner 明确不用时才真删。</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-title">G. UI component 根目录收敛：维护收益大，净 LOC 不应吹大</div>
+      <div class="lane-body">
+        <div><strong>预计净减</strong><br />-100 到 -350 LOC</div>
+        <div>
+          <strong>问题</strong>
+          <ul>
+            <li><code>src/ui/component/shared-ui</code> 与 <code>src/ui/components/primitives</code> 同时存在。</li>
+            <li>新代码应该走 <code>src/ui/components/primitives</code> 和 <code>src/ui/components/surface</code>。</li>
+            <li><code>surface</code> 不需要再叫 <code>shared/surface</code>，直接作为组件层的表面模式。</li>
+          </ul>
+        </div>
+        <div><span class="risk-med">MEDIUM</span></div>
+        <div>目标是统一 import 和视觉语法；不要把 Usage Dashboard 或 Chat 三栏当成可删功能。</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-title">H. SQLite repo helper / JSON codec：真实但有限</div>
+      <div class="lane-body">
+        <div><strong>预计净减</strong><br />-150 到 -350 LOC</div>
+        <div>
+          <strong>可做</strong>
+          <ul>
+            <li>抽 <code>safeJsonParse</code> / <code>jsonText</code> / row mapping helper。</li>
+            <li>统一部分 upsert/keyset/helper。</li>
+            <li>不要碰 DDL 真相源，除非走 T11Z golden tests。</li>
+          </ul>
+        </div>
+        <div><span class="risk-med">MEDIUM</span></div>
+        <div>这是降低重复，不是大块删除；需要 repo 单测。</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-title">I. Public API / barrel 过宽：不大但很该收</div>
+      <div class="lane-body">
+        <div><strong>预计净减</strong><br />-350 到 -850 LOC</div>
+        <div>
+          <strong>新增证据</strong>
+          <ul>
+            <li><code>ts-prune</code> 标出 368 个 <code>src/**</code> unused/export-only symbol；大部分不是直接死删，但能暴露公共入口过宽。</li>
+            <li><code>src/service/agents/harness/index.ts</code> 113 LOC re-export 88 个 symbol；产品侧只有 bridge 需要 <code>runAgentLoop</code>。</li>
+            <li><code>src/core/schemas</code> root 只有少数真实 barrel 消费者，schema 实体应从子模块直连。</li>
+            <li><code>src/app/settings/types.ts</code> 是旧 app shim，真实类型已在 <code>core/config/*</code>。</li>
+            <li><code>src/app/vault/obsidian-utils.ts</code> 有 <code>getFileSize</code>、<code>readFileAsBase64</code>、<code>getActiveNoteDetail</code>、<code>getFileTypeByPath</code>、<code>openFileAtLine</code> 等 unused export。</li>
+            <li><code>src/core/constant.ts</code> 至少 13 个导出在 live code 中无消费者，属于历史 tuning knob 残留。</li>
+          </ul>
+        </div>
+        <div><span class="risk-low">LOW-MED</span></div>
+        <div>这不是功能删除，是把旧公共面收窄。收益是后续 dead-code 扫描更准，代码阅读更少绕路。</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-title">J. 大文件结构消化：不要只搬文件，要把重复 grammar 抽掉</div>
+      <div class="lane-body">
+        <div><strong>预计净减</strong><br />-600 到 -1,200 LOC</div>
+        <div>
+          <strong>高价值大块</strong>
+          <ul>
+            <li><code>src/ui/view/copilot/vault/VaultAutoRunContent.tsx</code> 1,602 LOC，6 个 tab / empty state / action row / trace panel grammar 混在一起。</li>
+            <li><code>src/service/search/index/indexService.ts</code> 2,318 LOC，只允许做“净减少”的 phase helper，不接受纯拆文件。</li>
+            <li><code>src/core/storage/sqlite/repositories/MobiusNodeRepo.ts</code> 1,293 LOC，row mapping / bulk operation helper 有空间。</li>
+            <li><code>src/service/search/index/helper/backbone/buildBackboneMap.ts</code> 1,212 LOC，历史上已合并 9 个旧文件，但仍有 world/folder/tag summary grammar 可抽。</li>
+            <li><code>src/service/tools/search-graph-inspector/explore-folder.ts</code> 870 LOC，folder path 与 doc paths 两套统计已被 clone scan 命中。</li>
+          </ul>
+        </div>
+        <div><span class="risk-med">MEDIUM</span></div>
+        <div>这一池不要单独拆 20 个文件交差；每个 helper 必须替换 2 个以上真实重复点，并报告净 LOC。</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="evidence">
+    <h2>4. 关键证据与判断</h2>
+    <div class="grid">
+      <div class="card span-6">
+        <h3>DocSimpleAgent 为什么可疑</h3>
+        <ul>
+          <li><code>src/service/agents/DocSimpleAgent.ts:79</code> 要求 <code>scopeValue</code>。</li>
+          <li><code>src/ui/view/quick-search/SearchModal.tsx:114</code> 正常 Analyze 传 <code>undefined</code>。</li>
+          <li><code>SearchModal.tsx:75-78</code> mode label 只有 <code>vaultFull</code> / <code>aiGraph</code>。</li>
+          <li><code>useSearchSession.ts:233-285</code> 只有不是 vault/graph 才 fallback 到 DocSimple，但没有 visible mode 能稳定进入。</li>
+        </ul>
+      </div>
+      <div class="card span-6">
+        <h3>PromptInput 为什么是低风险</h3>
+        <ul>
+          <li><code>PromptInputSubmit</code> / <code>PromptInputFileButton</code> / <code>PromptInputSearchButton</code> / <code>ToolButton</code> / <code>TokenUsage</code> 只被 barrel export。</li>
+          <li>真实 Composer 使用的是 <code>PromptInput</code>、<code>PromptInputBody</code>、<code>PromptInputAttachments</code>、<code>usePromptInputContext</code>。</li>
+          <li><code>SuggestionTags</code> 组件未用，只有 <code>SuggestionTag</code> 类型被 store 牵住。</li>
+        </ul>
+      </div>
+      <div class="card span-6">
+        <h3>Chat 幽灵状态为什么要谨慎</h3>
+        <ul>
+          <li><code>FileChangesList</code> 会被 <code>view-Messages.tsx</code> 渲染，但没有发现 <code>setFileChanges(...)</code> producer。</li>
+          <li><code>useChatSession</code> 没人调用，但里面负责把 conversation meta 同步到 UI store。</li>
+          <li>这说明旧路径可能已经断挂，也可能是一个潜在 bug。正确做法是先迁移副作用，再删文件。</li>
+        </ul>
+      </div>
+      <div class="card span-6">
+        <h3>哪些不是死代码</h3>
+        <ul>
+          <li>Usage Dashboard 的 chart components 多数经 <code>components/charts/index.ts</code> barrel 使用，不能用入边少误删。</li>
+          <li><code>KnowledgeIntuitionAgent</code> 仍由 command / Maintenance / dev tools 入口使用，不能静默删除。</li>
+          <li><code>ai-elements/reasoning.tsx</code> 被 message rendering 使用，不是死组件。</li>
+          <li><code>StreamdownIsolated</code> / wikilink hover / multi-lens graph 仍是活 UI 能力。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="clone">
+    <h2>5. 追加深扫：重复结构候选池</h2>
+    <div class="callout">
+      <strong>新增发现：</strong><code>jscpd</code> 扫描 <code>src/**</code> 后找到 81 个 clone block，
+      字面重复约 1,399 行。更重要的是，这些重复不是零散小片段，而是集中在
+      DocumentLoader、Copilot meta-agent、Search Inspector、SQLite repo、Quick Search/UI grammar
+      这几个可以成波次治理的结构点。
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>新增池</th>
+          <th>证据</th>
+          <th>建议动作</th>
+          <th>预计净减</th>
+          <th>风险</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>DocumentLoader Document shape 重复</strong></td>
+          <td>
+            <code>CanvasDocumentLoader.ts:50-86</code> 与
+            <code>Excalidraw/HtmlXml/Json/Table/Text</code> 多处重复 37 行；
+            <code>Docx/Pptx/Pdf/Image</code> 也重复 binary loader skeleton。
+          </td>
+          <td>
+            在 <code>BaseDocumentLoader</code> 或 helper 下抽
+            <code>buildTextDocument()</code> / <code>buildBinaryDocument()</code>。
+            各 loader 只保留“怎么读内容”和“文档类型/扩展名”。
+          </td>
+          <td>-300 到 -550 LOC</td>
+          <td><span class="risk-med">MEDIUM</span></td>
+        </tr>
+        <tr>
+          <td><strong>Copilot doc/vault meta-agent 双系统痕迹</strong></td>
+          <td>
+            <code>CopilotMetaAgentStream.ts</code> 与
+            <code>vault/VaultMetaAgentStream.ts</code> 有 warmup/profile/searchFn/MCP/query/stream/error
+            多段重复；jscpd 标出 25 + 22 + 21 + 17 + 17 行 clone。
+            另外 <code>CopilotMetaAgentStream.ts:312</code> 仍出现未注入的
+            <code>appContext.searchClient</code>，像半迁移残留。
+          </td>
+          <td>
+            抽一个 shared <code>runSdkMetaAgentStream</code> 或
+            <code>MetaAgentRuntime</code>，doc/vault 只提供 prompt、tool names、disallowed tools、
+            usageAction、searchClient deps。
+          </td>
+          <td>-280 到 -520 LOC，另带一个潜在 runtime bug 修复</td>
+          <td><span class="risk-med">MEDIUM</span></td>
+        </tr>
+        <tr>
+          <td><strong>Search Inspector explore_folder 双统计实现</strong></td>
+          <td>
+            <code>explore-folder.ts:425-558</code> folder path 统计与
+            <code>735-869</code> doc paths sample 统计重复：
+            tags/category、empty return、top docs、language stats、links in/out、path mapping。
+          </td>
+          <td>
+            抽 <code>resolveDocScope()</code> + <code>buildDocStatistics()</code>
+            + <code>formatTagCounts()</code>。folder/path 两个入口只负责 scope resolution。
+          </td>
+          <td>-250 到 -430 LOC</td>
+          <td><span class="risk-med">MEDIUM</span></td>
+        </tr>
+        <tr>
+          <td><strong>SQLite repo 查询/row mapping 重复</strong></td>
+          <td>
+            <code>DocChunkRepo.searchFts/searchMetaFts/searchFtsStem</code> 重复 path filter 与 exclude filter；
+            <code>ChatMessageRepo.upsertMessages</code> insert/update 组装重复；
+            <code>MobiusEdgeRepo</code> incoming/outgoing、batch iterator 形态重复。
+          </td>
+          <td>
+            抽 <code>buildPathFilterSql()</code>、<code>messageToRow()</code>、
+            <code>iterateEdgeBatches()</code>。不要碰 DDL schema 语义，只收 helper。
+          </td>
+          <td>-300 到 -650 LOC</td>
+          <td><span class="risk-med">MEDIUM</span></td>
+        </tr>
+        <tr>
+          <td><strong>Quick Search V2 session/snapshot 重复</strong></td>
+          <td>
+            <code>core/search/sessionSnapshot.ts:31-49</code> 与
+            <code>core/search/v2SessionTypes.ts:71-89</code> 同一 V2 state shape；
+            <code>v2SessionTypes.ts</code> 内部 round/current section serialization 也重复。
+          </td>
+          <td>
+            让 <code>V2SessionSnapshot</code> 组合 <code>V2SessionState</code>，
+            抽 <code>serializeSections()</code> / <code>serializeRoundBlock()</code>。
+          </td>
+          <td>-150 到 -300 LOC</td>
+          <td><span class="risk-low">LOW-MED</span></td>
+        </tr>
+        <tr>
+          <td><strong>Chat context slot render/compress boilerplate</strong></td>
+          <td>
+            <code>ActivityIndexSlot</code> / <code>ConvSummarySlot</code> /
+            <code>PrevAnalysisSlot</code> / <code>ResourceIndexSlot</code> /
+            <code>CurrentFileSlot</code> / <code>VaultIntuitionSlot</code>
+            都重复 <code>if (!data)</code>、token estimate、system message render、level-1 compression。
+          </td>
+          <td>
+            抽 <code>TextContextSlotBase</code> 或小 helper：
+            <code>emptySlot()</code>、<code>textSlot()</code>、<code>renderSystemText()</code>。
+          </td>
+          <td>-120 到 -240 LOC</td>
+          <td><span class="risk-low">LOW</span></td>
+        </tr>
+        <tr>
+          <td><strong>UI surface grammar：Project/Conversation/V2/Dashboard</strong></td>
+          <td>
+            <code>ProjectsSection</code> 与 <code>ConversationsSection</code> 重复 context menu、rename modal、delete-store sync；
+            <code>V2InlinePlanReview</code> 与 <code>V2RoundBlock</code> 共享 collapsible motion panel；
+            Usage Dashboard hooks 重复 <code>readBudget()</code>。
+          </td>
+          <td>
+            抽 <code>useRenameModal</code>、<code>useConversationTypewriter</code>、
+            <code>CollapsiblePanel</code>、<code>readUsageBudget</code>。
+            保留 Chat 三栏与 Usage Dashboard 功能。
+          </td>
+          <td>-300 到 -650 LOC</td>
+          <td><span class="risk-med">MEDIUM</span></td>
+        </tr>
+        <tr>
+          <td><strong>小而确定的 helper/constant 清理</strong></td>
+          <td>
+            <code>HttpClientAdapter.ts</code> 与 <code>uiHttpClient.ts</code> 重复；
+            <code>documentPageRank.ts</code> 两个 PageRank 算法 skeleton 重复；
+            <code>core/constant.ts</code> 有一批只在历史 docs 中出现的旧常量。
+          </td>
+          <td>
+            合并 HTTP client interface；抽 PageRank transfer kernel；
+            对 constant 做 live-code-only sweep，历史 docs 命中不算运行时引用。
+          </td>
+          <td>-180 到 -350 LOC</td>
+          <td><span class="risk-low">LOW-MED</span></td>
+        </tr>
+        <tr>
+          <td><strong>DevTools 主路径剥离</strong></td>
+          <td>
+            <code>AppContext.ts:440-551</code> 直接声明一批 <code>window.*</code> 调试入口；
+            <code>test-tools.ts</code> 282 LOC、<code>graph-cleanup.ts</code> 75 LOC、
+            <code>system-info.ts</code> 58 LOC 都只通过 <code>enableDevTools</code> 入口触达。
+          </td>
+          <td>
+            把 dev globals 从 AppContext 构造路径移到 <code>app/debug/composeDevTools.ts</code>
+            并 dynamic import；如果 owner 不再需要控制台调试入口，再删除。
+          </td>
+          <td>主路径 -350 到 -520 LOC；owner 真删 -450 到 -650 LOC</td>
+          <td><span class="risk-med">MEDIUM</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="grid" style="margin-top:14px">
+      <div class="card span-6">
+        <h3>更新后的削减模型</h3>
+        <ul>
+          <li>旧报告可信池：约 -2.1k 到 -3.4k。</li>
+          <li>本轮 clone/结构深扫新增：约 -1.5k 到 -2.4k。</li>
+          <li>本轮继续追加的 public API / shim / 大文件结构池：约 -0.4k 到 -0.8k，可与前两池组合。</li>
+          <li>本轮再追加的临时/半成品/过渡全局面：约 -0.4k 到 -0.6k 安全池，另有 -0.2k 到 -0.6k owner 决策池。</li>
+          <li>合计可信池：约 -4.4k 到 -7.2k，但不建议一把全切到最大值。</li>
+          <li>如果再包含 DocSimple owner 决策、stub 诊断面、dev globals、Knowledge Intuition 重写，可额外打开 -1.5k 到 -2.6k。</li>
+        </ul>
+      </div>
+      <div class="card span-6">
+        <h3>怎么理解“不是很少”</h3>
+        <p>
+          现在能确认：项目里不是没有空间，而是空间已经从“删掉一个巨大死文件”
+          变成“把十几个活系统里的重复壳抽掉”。这类瘦身单次不能承诺 -8k，
+          但可以通过 2 到 3 个结构波次稳定拿到几千行，并且让代码更可读。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="api">
+    <h2>6. 继续深扫：公共入口、旧 shim 与类型层证据</h2>
+    <div class="callout">
+      <strong>这一层回答“为什么还能有”：</strong>项目已经没有多少整文件 0 import，
+      但仍有很多“因为出口太宽而看起来活着”的代码。下一波不应该只问“文件有没有 import”，
+      而要问“这个 public API 有没有真实业务消费者，还是只是 barrel / 测试 / 历史兼容在维持它”。
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>证据点</th>
+          <th>读法</th>
+          <th>可执行动作</th>
+          <th>估计收益</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>AnalysisMode = 'vaultFull' | 'aiGraph'</code></td>
+          <td>
+            类型层已经只有两个 Quick Search 模式；<code>useSearchSession</code> 仍保留第三条 fallback
+            去跑 <code>DocSimpleAgent</code>。
+          </td>
+          <td>
+            如果 owner 不要隐藏 current-file Q&amp;A，则删除 <code>DocSimpleAgent</code>、
+            <code>createDocSimpleAgent</code> factory、fallback branch、相关 prompt id/template。
+          </td>
+          <td>-250 到 -380 LOC</td>
+        </tr>
+        <tr>
+          <td><code>@/app/settings/types</code> 只有 3 个真实 import</td>
+          <td>
+            它本质是 T11J 后留下的兼容入口；核心 settings 类型和默认值已经在
+            <code>@/core/config/settingsTypes</code>，folder path 在 <code>@/core/config/folderPaths</code>。
+          </td>
+          <td>
+            main / Register / PluginSettingsLoader 改为 core config 直连，然后删除 app shim。
+            这也减少 AppContext fallback 的误导。
+          </td>
+          <td>-40 到 -90 LOC，维护收益高</td>
+        </tr>
+        <tr>
+          <td><code>@/service/agents/harness</code> root 过宽</td>
+          <td>
+            <code>harness/index.ts</code> 113 LOC re-export 88 个 symbol；产品侧主要只有
+            <code>ClaudeAgentSDKBridge</code> 从 root 拿 <code>runAgentLoop</code>。
+          </td>
+          <td>
+            产品代码改成子模块直 import；测试也改 direct import；删除 root barrel 或保留最小 root。
+          </td>
+          <td>-80 到 -180 LOC，且让 ts-prune 噪音大幅下降</td>
+        </tr>
+        <tr>
+          <td><code>@/core/schemas</code> root 过宽</td>
+          <td>
+            root index 只有少数真实消费者，但让 searchGraphInspector、intuition、zod type 都像一个大公共面。
+          </td>
+          <td>
+            <code>ZodType/ZodError</code> 走 <code>zod-types</code>，intuition 走 <code>agents</code>，
+            search tools 走 <code>tools/searchGraphInspector</code>。
+          </td>
+          <td>-10 到 -60 LOC，主要收益是边界清晰</td>
+        </tr>
+        <tr>
+          <td>legacy type shim cluster</td>
+          <td>
+            <code>src/service/chat/types.ts</code> 24 LOC，但仍有 27 个旧路径 import；
+            <code>src/service/usage/types.ts</code> 3 LOC，但仍有 13 个旧路径 import；
+            <code>structural/types.ts</code>、<code>core/utils/vault-utils.ts</code>、
+            <code>quick-search/store/v2SessionTypes.ts</code> 当前已是 0 direct import。
+          </td>
+          <td>
+            这不是大 LOC，但会持续制造“service 类型像真 owner”的错觉。Chat 类型应直达
+            <code>@/core/types/chat</code> / <code>@/core/types/chat-vault</code>；
+            Usage 类型应直达 <code>@/core/types/usage</code>。
+          </td>
+          <td>
+            先迁移 40 个旧路径 import，再删除 0-import shim；<code>aiAnalysisStore</code>
+            仅剩 2 个 type import，要和 Quick Search snapshot bridge 一起处理。
+          </td>
+          <td>-40 到 -90 LOC；阅读路径收益高</td>
+        </tr>
+        <tr>
+          <td><code>src/app/vault/obsidian-utils.ts</code> unused export</td>
+          <td>
+            <code>rg</code> 只找到这些函数自身定义和注释引用：
+            <code>getFileSize</code>、<code>readFileAsBase64</code>、<code>getActiveNoteDetail</code>、
+            <code>getFileTypeByPath</code>、<code>openFileAtLine</code>。
+          </td>
+          <td>
+            删除 unused helper；保留 <code>getPluginDirAbsolute</code>、<code>getSelectedTextFromActiveEditor</code>、
+            <code>readFileAsText</code> 等真实消费者。
+          </td>
+          <td>-80 到 -150 LOC</td>
+        </tr>
+        <tr>
+          <td><code>src/core/constant.ts</code> historical knobs</td>
+          <td>
+            <code>EMBEDDING_DIMENSION</code>、<code>OPENAI_COMPATIBLE_PRESETS</code>、
+            <code>DEFAULT_SEARCH_MODE</code>、多个 cascade/folder/structural 常量只命中定义或注释。
+          </td>
+          <td>
+            live-code-only sweep：只删运行时无人用的导出；历史 docs 命中不算消费者。
+            不要把仍在 index/search/graph 用的 tuning knob 一起删。
+          </td>
+          <td>-80 到 -180 LOC</td>
+        </tr>
+        <tr>
+          <td>旧 UI 根仍有大量 import</td>
+          <td>
+            当前粗计：<code>@/ui/component/shared-ui</code> 84 次、<code>@/ui/component/mine</code> 35 次、
+            <code>@/ui/component/</code> 127 次；新 <code>components/surface</code> 只有 1 次。
+          </td>
+          <td>
+            不做盲迁移。先迁移低风险 shared primitives，再逐步让新代码只落
+            <code>src/ui/components/primitives</code> 与 <code>src/ui/components/surface</code>。
+          </td>
+          <td>-100 到 -350 LOC；架构可读性收益更大</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="latent">
+    <h2>7. 再继续深扫：临时、半成品、过渡全局面</h2>
+    <div class="callout warn">
+      <strong>这一层是最新追加：</strong>这些代码通常不是 0 import，所以普通 dead-code 扫描不会抓出来。
+      它们的共同点是：现在运行路径里只有占位、fallback、过渡默认、过宽 export 或永远 disabled 的 UI。处理方式不是直接猛删，
+      而是给每一项定性：已经完成的一次性脚本可删；过渡全局要收归 app/runtime ownership；未来功能 stub 要由 owner 决定“产品化还是移除”。
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>候选点</th>
+          <th>代码证据</th>
+          <th>判断</th>
+          <th>建议动作</th>
+          <th>估计收益</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>ProgressReporterPort</code> 过渡全局默认</td>
+          <td>
+            <code>src/service/ports/ProgressReporterPort.ts</code> 仍有
+            <code>let defaultReporter</code> + <code>set/get/clearDefaultProgressReporter</code>；
+            注释也写明这是 T2 transitional compromise。
+          </td>
+          <td>这正是 owner 之前指出的“不要散落内存单例”。它不一定大幅减 LOC，但会消除一个架构债。</td>
+          <td>
+            让 <code>IndexInitializer</code> / <code>IndexProgressTracker</code> / <code>analysisDocPersistence</code>
+            走 app composition 或 AppContext-owned registry；删除 service 层 module mutable default。
+          </td>
+          <td>-30 到 -80 LOC；治理收益高</td>
+        </tr>
+        <tr>
+          <td>一次性模板迁移脚本</td>
+          <td>
+            <code>scripts/migrate-templates-to-md.mjs</code> 97 LOC；package scripts 无引用；
+            文件头写的是“migration complete / source paths no longer exist”。
+          </td>
+          <td>这是 repo hygiene，不算产品 TS/TSX 瘦身，但会减少历史噪音。</td>
+          <td>删除脚本，或移入 archived docs。如果保留，必须说明它不可再运行。</td>
+          <td>-97 repo LOC；非 product LOC</td>
+        </tr>
+        <tr>
+          <td><code>PeakCommandActions</code> public surface 过宽</td>
+          <td>
+            <code>createChatProject</code> / <code>createChatConversation</code> 在当前 <code>src/**</code> 无外部引用；
+            <code>openProgressNotice</code> 只是同文件内部工具，却被 export。
+          </td>
+          <td>这是旧 command action 面暴露过宽，不是功能点。</td>
+          <td>
+            未注册命令直接删除；内部 helper 去 export；必要时把 progress notice 迁到 app notice helper，与 ProgressReporter ownership 对齐。
+          </td>
+          <td>-30 到 -90 LOC</td>
+        </tr>
+        <tr>
+          <td>Copilot Setting diagnostics stub</td>
+          <td>
+            <code>PickerReadinessAdapters.settingReadiness</code> 仍返回 hardcoded signals；
+            <code>CopilotPickerContent</code> 注释写明 <code>SystemDiagnosticsService</code> 是 Phase D follow-up。
+          </td>
+          <td>这是“看起来像功能，实际是未来占位”。如果近期不做 System Diagnostics，就不该继续占主入口复杂度。</td>
+          <td>
+            二选一：要么接真实 diagnostics service；要么移除 setting tab 的 fake readiness / empty diagnostics 面，
+            保留 Settings 真实入口即可。
+          </td>
+          <td>-120 到 -260 LOC（owner 决策）</td>
+        </tr>
+        <tr>
+          <td>Vault Review Phase 2 disabled dry-run CTA</td>
+          <td>
+            <code>VaultAutoRunContent.tsx</code> 内 action row 渲染 disabled button，
+            title 为 <code>Phase 2 dry-run</code>。
+          </td>
+          <td>Vault Review 是要保留的功能，但“永远 disabled 的下一阶段按钮”可以从当前 UI 语法里移走。</td>
+          <td>
+            把 action ranking/card 里的 dry-run CTA 数据移出当前主组件，或只显示 report/read-only 信息；
+            等 Phase 2 真做时再以真实 handler 回来。
+          </td>
+          <td>-80 到 -180 LOC</td>
+        </tr>
+        <tr>
+          <td>Harness shell-command hook 占位</td>
+          <td>
+            <code>HookConfig.command?: string</code> 当前被 <code>runHook</code> warn 后跳过；
+            注释写明 M5 才实现 shell command hooks。
+          </td>
+          <td>如果近期不在 Obsidian 内执行 shell hooks，这个字段就是半成品 API。</td>
+          <td>
+            删除 <code>command?</code> 字段和 warn-skip 分支；保留 inline TS handler hooks。
+            若以后要做 shell hooks，另开 capability + permission 方案，不留现在这个假入口。
+          </td>
+          <td>-40 到 -100 LOC</td>
+        </tr>
+        <tr>
+          <td>Composer disabled mic</td>
+          <td>
+            <code>Composer.tsx</code> 总是渲染 disabled mic，以匹配 locked mock；代码注释说明其他 coming-soon 图标已删。
+          </td>
+          <td>这是视觉占位，不是死代码。是否删除取决于产品视觉：要固定布局还是只显示真实能力。</td>
+          <td>
+            如果“只显示真实能力”优先，删 disabled mic 和相关 string；否则保留，不计入安全瘦身池。
+          </td>
+          <td>-20 到 -60 LOC（设计决策）</td>
+        </tr>
+        <tr>
+          <td>Cascade / Gap placeholder</td>
+          <td>
+            <code>CascadeWorker</code> 的 <code>hub_regen</code> 是 consume-and-no-op；
+            <code>gapDetection</code> 的 <code>potentialBridges</code> 是空数组 placeholder。
+          </td>
+          <td>这类不是“安全删除”。它们可能是未来算法 contract 的占位，也可能代表产品欠账。</td>
+          <td>
+            不纳入瘦身波。另开 search/index correctness audit：要么实现，要么明确降级 contract。
+          </td>
+          <td>不计安全 LOC</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>UI barrel-only 复核：哪些是真水分，哪些是误报</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>扫描结果</th>
+          <th>证据</th>
+          <th>结论</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>PromptInput 旧按钮族</td>
+          <td>
+            <code>PromptInputSubmit</code> 206 LOC、<code>PromptInputSearchButton</code> 154、
+            <code>PromptInputFileButton</code> 144、<code>TokenUsage</code> 139、<code>ToolButton</code> 51；
+            当前只在 <code>src/ui/component/prompt-input/index.ts</code> barrel 中暴露。
+          </td>
+          <td>
+            高可信瘦身点。Chat composer 已有自己的 live surface；这批应该从 barrel 移除并删除文件。
+          </td>
+        </tr>
+        <tr>
+          <td><code>resource-preview-hover.tsx</code> 文件名级 0 引用</td>
+          <td>
+            文件名本身 0 引用，但真实组件名 <code>ResourcePreviewHover</code> 被
+            <code>MessageAttachmentsList.tsx</code> 多处使用。
+          </td>
+          <td>误报。不能删；但可以从 <code>ui/component/mine</code> 老根迁到更清楚的 attachments/preview surface。</td>
+        </tr>
+        <tr>
+          <td>Usage Dashboard 多个 screen 文件名级 0 引用</td>
+          <td>
+            <code>BudgetAlerts.tsx</code> / <code>OutcomeValue.tsx</code> / <code>ProviderModel.tsx</code>
+            文件名 0 引用，但导出名是 <code>BudgetAlertsScreen</code> 等，并由
+            <code>UsageDashboard.tsx</code> 按 active screen 渲染。
+          </td>
+          <td>误报。Usage Dashboard 必须保留；瘦身只能做 screen grammar / KPI / table helper 收敛。</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>大文件前沿：下一步别再只看 0 import</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>文件</th>
+          <th>当前 LOC</th>
+          <th>为什么还大</th>
+          <th>可收敛方式</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>src/ui/view/copilot/vault/VaultAutoRunContent.tsx</code></td>
+          <td>1601</td>
+          <td>多个 tab / card / source / trace / action ranking 混在一个组件文件里。</td>
+          <td>只抽重复 presentation grammar，禁止纯搬文件；目标 -250 到 -500。</td>
+        </tr>
+        <tr>
+          <td><code>src/service/search/index/indexService.ts</code></td>
+          <td>2317</td>
+          <td>索引 orchestration、chunking、embedding、edge、maintenance 多阶段同文件。</td>
+          <td>只有能净减少的 phase helper 可做；不能为了“拆”而增加 adapter 层。</td>
+        </tr>
+        <tr>
+          <td><code>src/core/storage/sqlite/repositories/*Repo.ts</code></td>
+          <td>MobiusNode 1292 / Embedding 873 / Edge 780</td>
+          <td>Kysely row mapping、JSON codec、pagination、upsert shape 重复。</td>
+          <td>共享 codec / row mapper / keyset helper；目标 -300 到 -700。</td>
+        </tr>
+        <tr>
+          <td><code>src/service/tools/search-graph-inspector/*</code></td>
+          <td>explore-folder 869 / scorer 850</td>
+          <td>BFS、path scoring、folder/doc statistics 有重复算法壳。</td>
+          <td>共享 graph traversal engine；目标 -180 到 -350。</td>
+        </tr>
+        <tr>
+          <td><code>src/ui/view/usage-dashboard/*</code></td>
+          <td>多屏 200-505 LOC</td>
+          <td>功能要保留，但 screen/card/KPI/empty/loading 语法重复。</td>
+          <td>抽 dashboard screen grammar；目标 -300 到 -600，不删 Usage Dashboard。</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="waves">
+    <h2>8. 建议执行波次</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>波次</th>
+          <th>目标</th>
+          <th>硬指标</th>
+          <th>必须先做的判断</th>
+          <th>验证</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>F0.9 Latent Surface Closure</strong></td>
+          <td>收掉临时/半成品/过渡全局面：ProgressReporter 默认单例、one-time migration script、command export surface、harness command hook 假入口、Vault Review disabled CTA。</td>
+          <td>-350 floor / -650 target；另有 -200 到 -500 owner 决策池</td>
+          <td>区分安全项和 owner 决策项；stub 诊断面不能假装已实现。</td>
+          <td><code>npm run build</code>；progress-tracker tests；harness-hook tests；Vault Review smoke；boundary audit 0。</td>
+        </tr>
+        <tr>
+          <td><strong>F0 Clone Consolidation Preflight</strong></td>
+          <td>先用 jscpd 结果生成 candidate matrix，只允许执行 DocumentLoader / Copilot stream / Search Inspector / SQLite repo / UI grammar 中能被测试覆盖的项。</td>
+          <td>-1,500 floor / -2,400 target</td>
+          <td>必须证明不是纯搬文件；每个 helper 都要替换至少 2 个真实 call site。</td>
+          <td><code>npm run build</code>；document loader tests；copilot review tests；search inspector tests；boundary audit 0。</td>
+        </tr>
+        <tr>
+          <td><strong>F0.8 Public API / Shim Diet</strong></td>
+          <td>收窄 app/settings shim、harness root barrel、core/schemas root、app/vault unused export、core/constant historical knobs。</td>
+          <td>-350 floor / -850 target</td>
+          <td>所有删除都要有 <code>rg</code> 证据；barrel 迁移必须改成子模块 direct import，不能留下兼容 re-export。</td>
+          <td><code>npm run build</code>；ts-prune delta；boundary audit 0；settings roundtrip tests。</td>
+        </tr>
+        <tr>
+          <td><strong>F0.5 DevTools Main-path Extraction</strong></td>
+          <td>把 AppContext 里的 <code>window.*</code> dev globals 和 test-tools 组合移到 app/debug composer；默认不删功能，只让生产主路径变干净。</td>
+          <td>-350 floor / -520 target（主路径 LOC）；若 owner 决定删 dev console，另计 -450 到 -650。</td>
+          <td>确认 <code>enableDevTools</code> 设置仍可打开这些工具；不要把 Quick Search debug markdown 的 <code>includeSteps</code> 误删。</td>
+          <td>toggle Enable DevTools；检查 globals create/cleanup；build；boundary audit 0。</td>
+        </tr>
+        <tr>
+          <td><strong>F1 Dead Export + Shim Cleanup</strong></td>
+          <td>PromptInput 旧组件、quick-search v2 shim、vault-utils shim、harness barrel、unused helper exports。</td>
+          <td>-800 floor / -1,100 target</td>
+          <td>只删 <code>rg</code> 证明无真实 caller 的 symbol；barrel-only 不等于一定死，必须核对 import 名称。</td>
+          <td><code>npm run build</code>；Chat composer smoke；PromptInput import guard；boundary audit 维持 0。</td>
+        </tr>
+        <tr>
+          <td><strong>F2 Chat Ghost State Closure</strong></td>
+          <td>移除无人生产的 fileChanges/promptsSuggest/suggestionTags；处理 useChatSession 幽灵副作用。</td>
+          <td>-400 floor / -650 target</td>
+          <td>确认 conversation model/output/attachment override 的真实同步位置；必要时先迁移到 mounted hook。</td>
+          <td>Chat create/open conversation；切换模型后发送；attachment mode；conversation meta persistence tests。</td>
+        </tr>
+        <tr>
+          <td><strong>F3 DocSimple Decision Gate</strong></td>
+          <td>删除隐藏 current-file Q&A 旧模式，或产品化成 visible mode。</td>
+          <td>Delete path: -250 到 -380；Productize path: 不以 LOC 为目标</td>
+          <td>owner 决策：是否需要“当前文件问答”。如果需要，不应该藏在 fallback。</td>
+          <td>Quick Search AI tab：Vault Analysis / AI Graph 正常；prompt registry golden；template registry clean。</td>
+        </tr>
+        <tr>
+          <td><strong>F4 Search Inspector Helper Consolidation</strong></td>
+          <td>共享 BFS engine，收窄 scorer export，拆除未用类型/常量。</td>
+          <td>-150 floor / -300 target</td>
+          <td>find-path 三策略输出不能行为退化。</td>
+          <td>search-graph-inspector tests；manual one query if possible。</td>
+        </tr>
+        <tr>
+          <td><strong>F5 UI Root Consolidation</strong></td>
+          <td><code>component/shared-ui</code> 向 <code>components/primitives</code> / <code>components/surface</code> 收敛。</td>
+          <td>-100 floor / -350 target；维护评分提升更重要</td>
+          <td>视觉系统选择：新代码默认 primitives/surface；不新增第三套。</td>
+          <td>Settings / Usage Dashboard / Chat composer / Copilot modal visual smoke。</td>
+        </tr>
+        <tr>
+          <td><strong>F6 Big-file Structural Digestion</strong></td>
+          <td>VaultAutoRunContent / indexService / MobiusNodeRepo / buildBackboneMap / explore-folder 只做能净减少的 helper 抽取。</td>
+          <td>-600 floor / -1,200 target</td>
+          <td>禁止纯搬文件。每个 helper 至少替换 2 个重复点；每个大文件要给 before/after LOC。</td>
+          <td>focused tests + build；Quick Search / Vault Review / indexing smoke；boundary audit 0。</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="callout ok">
+      <strong>推荐顺序：</strong>F0.9 + F0 + F0.8 + F1 可以合成一个大波次；F2/F3 做“远古路径真实性”；
+      F4/F5/F6 做结构收益。不要把这些再拆成十几个小 prompt，应该作为一个 single prompt 里的内部 DAG 执行。
+    </div>
+  </section>
+
+  <section id="read">
+    <h2>9. 代码阅读顺序</h2>
+    <ol>
+      <li><code>src/ui/component/prompt-input/index.ts</code>：看哪些旧组件只是被出口挂着。</li>
+      <li><code>src/ui/view/chat-view/components/Composer.tsx</code>：确认真正 live 的 PromptInput surface。</li>
+      <li><code>src/ui/view/quick-search/SearchModal.tsx</code>：看 AI mode 入口只有 Vault Analysis / AI Graph。</li>
+      <li><code>src/ui/view/quick-search/hooks/useSearchSession.ts</code>：看 fallback 到 DocSimple 的条件。</li>
+      <li><code>src/service/agents/DocSimpleAgent.ts</code>：看它要求 current file path，但入口不传。</li>
+      <li><code>src/ui/view/chat-view/store/chatViewStore.ts</code>：看 fileChanges / promptsSuggest / suggestionTags 旧状态。</li>
+      <li><code>src/ui/view/chat-view/hooks/useChatSession.ts</code>：看未挂载 hook 里的真实副作用。</li>
+      <li><code>src/service/tools/search-graph-inspector/find-path/*</code>：看 reliable/brainstorm/scorer 的重复模式。</li>
+      <li><code>src/core/document/loader/*DocumentLoader.ts</code>：看重复的 Document object construction。</li>
+      <li><code>src/service/copilot/CopilotMetaAgentStream.ts</code> 与 <code>src/service/copilot/vault/VaultMetaAgentStream.ts</code>：看 doc/vault meta-agent 的半重复运行壳。</li>
+      <li><code>src/service/tools/search-graph-inspector/explore-folder.ts</code>：看 folder path 和 doc paths 两套统计函数的重复。</li>
+      <li><code>src/core/storage/sqlite/repositories/DocChunkRepo.ts</code> / <code>ChatMessageRepo.ts</code> / <code>MobiusEdgeRepo.ts</code>：看 repo helper 重复。</li>
+      <li><code>src/app/settings/types.ts</code>：看旧 app shim 与 AppContext fallback。</li>
+      <li><code>src/app/vault/obsidian-utils.ts</code>：看 unused export 和真实 app 入口。</li>
+      <li><code>src/service/agents/harness/index.ts</code> 与 <code>src/core/schemas/index.ts</code>：看 public API 过宽。</li>
+      <li><code>src/ui/view/copilot/vault/VaultAutoRunContent.tsx</code>：看 6 个 tab 混在一个文件里的结构问题。</li>
+      <li><code>src/service/ports/ProgressReporterPort.ts</code>：看 T2 过渡全局默认是否该收归 app ownership。</li>
+      <li><code>src/service/agents/harness/hook/runHook.ts</code>：看 <code>command?</code> shell hook 假入口。</li>
+      <li><code>src/ui/view/copilot/PickerReadinessAdapters.tsx</code>：看 Setting diagnostics stub。</li>
+      <li><code>scripts/migrate-templates-to-md.mjs</code>：看一次性迁移脚本是否还应该留在 repo。</li>
+      <li><code>src/ui/component/shared-ui/*</code> 与 <code>src/ui/components/primitives/*</code>：看两套 UI 根的并存。</li>
+    </ol>
+  </section>
+
+  <section id="dont">
+    <h2>10. 不要误删的东西</h2>
+    <div class="grid">
+      <div class="card span-6">
+        <h3>功能必须保留</h3>
+        <ul>
+          <li>Usage Dashboard：这是产品能力，不是瘦身对象。</li>
+          <li>Chat 三栏 view：项目列表、聊天、Conversation Outline 都是必要形态。</li>
+          <li>Quick Search：只能清隐藏旧路径，不能削掉 Vault Analysis / AI Graph。</li>
+          <li>Copilot panels：可以收敛 panel grammar，但不能删 action surface。</li>
+          <li><code>FollowupChatAgent</code>、<code>ContinueAnalysisAgent</code>、<code>CopilotArtifactAdapter</code> 当前仍有真实 UI 或测试入口，不能按名字“老”直接删除。</li>
+        </ul>
+      </div>
+      <div class="card span-6">
+        <h3>架构护栏</h3>
+        <ul>
+          <li>不得重新引入 <code>service/core -&gt; Obsidian</code>。</li>
+          <li>不得重新引入 <code>ui -&gt; app</code> 或 <code>service -&gt; ui</code>。</li>
+          <li>不得新建 service 层 module mutable singleton。</li>
+          <li>新 shared UI 必须落到 <code>components/primitives</code> 或 <code>components/surface</code>，不要再造 <code>component</code> / <code>components</code> 第三套。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>11. 给下一次实现的 Impact Contract 草案</h2>
+    <pre>Primary target:
+  Product TS/TSX LOC -3,800 minimum, -5,500 target.
+
+Required tracks:
+  F0.9 latent surface closure must land all safe items:
+    ProgressReporter default ownership, one-time migration script cleanup,
+    command public-surface narrowing, harness shell-command hook fake entry,
+    Vault Review disabled Phase 2 CTA cleanup.
+  F0 clone consolidation preflight must scan and execute all safe duplicate-structure candidates:
+    DocumentLoader helpers, Copilot meta-agent runner, Search Inspector explore_folder,
+    SQLite repo helper, Quick Search V2 snapshot serialization, UI surface grammar.
+  F0.8 public API / shim diet must land:
+    app/settings shim, harness root barrel, core/schemas root, app/vault unused exports,
+    core/constant live-code-only cleanup.
+  F1 dead exports/shims must land.
+  F2 chat ghost state must either land or return a precise blocker.
+  F3 DocSimple must return an explicit owner decision branch:
+    delete hidden mode OR productize current-file Q&A.
+  F6 big-file structural digestion must touch at least 3 large files and prove net LOC decrease.
+
+Forbidden:
+  No feature deletion.
+  No boundary regression.
+  No new UI/app/service shortcut.
+  No "partial progress" labeled as major wave.
+
+Stop rule:
+  If preflight cannot prove at least -3,300 safe net LOC, stop before implementation
+  and return the exact blocked files/owners. Do not ship another -500 LOC wave as major.</pre>
+  </section>
+
+  <p class="small">
+    Generated by Codex read-only audit. Evidence commands used: import graph scan, <code>ts-prune</code>, targeted <code>rg</code>,
+    LOC by module, jscpd clone scan, knip/ts-prune export scan, and manual inspection of Quick Search, Chat, PromptInput, Copilot Vault Review,
+    DocumentLoader, SQLite repo patterns, Usage Dashboard hooks, and search graph inspector.
+  </p>
+</main>
+</body>
+</html>

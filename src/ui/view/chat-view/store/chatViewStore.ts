@@ -3,10 +3,8 @@
  * Replaces old chatViewStore + chatSessionStore.
  */
 import { create } from 'zustand';
-import { ChatProject, PendingConversation, ChatConversation, FileChange } from '@/service/chat/types';
+import { ChatProject, PendingConversation, ChatConversation } from '@/service/chat/types';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import type { SuggestionTag } from '@/ui/component/prompt-input/SuggestionTags';
-import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
 
 // ---------------------------------------------------------------------------
 // Types (re-exported for consumers)
@@ -55,12 +53,7 @@ interface ChatViewState {
 	attachmentHandlingMode: 'direct' | 'degrade_to_text';
 	llmOutputControlSettings: Record<string, any>;
 	isCodeInterpreterEnabled: boolean;
-	suggestionTags: SuggestionTag[];
 	currentInputTags: ChatTag[];
-
-	// ── File changes (copilot feature — kept from chatSessionStore) ──
-	fileChanges: FileChange[];
-	promptsSuggest: NavigableMenuItem[];
 
 	// ── Submit action (for StyleButtons / Quick Actions) ──
 	submitAction: ((text: string) => void) | null;
@@ -101,17 +94,7 @@ interface ChatViewActions {
 	setAttachmentHandlingMode: (mode: 'direct' | 'degrade_to_text') => void;
 	setLlmOutputControlSettings: (settings: Record<string, any>) => void;
 	setIsCodeInterpreterEnabled: (enabled: boolean) => void;
-	setSuggestionTags: (tags: SuggestionTag[]) => void;
 	setCurrentInputTags: (tags: ChatTag[]) => void;
-
-	// ── File changes actions ──
-	setFileChanges: (changes: FileChange[]) => void;
-	updateFileChange: (id: string, updates: Partial<FileChange>) => void;
-	acceptAllFileChanges: () => void;
-	discardAllFileChanges: () => void;
-	acceptFileChange: (id: string) => void;
-	discardFileChange: (id: string) => void;
-	setExternalPrompts: (prompts: NavigableMenuItem[]) => void;
 
 	// ── Submit / Insert actions ──
 	setSubmitAction: (fn: ((text: string) => void) | null) => void;
@@ -133,7 +116,7 @@ type ChatViewStore = ChatViewState & ChatViewActions;
 const INITIAL_SESSION: Pick<ChatViewState,
 	'chatMode' | 'selectedModel' | 'isSearchActive' | 'searchProvider' | 'enableWebSearch' |
 	'enableVaultSearch' | 'attachmentHandlingMode' | 'llmOutputControlSettings' |
-	'isCodeInterpreterEnabled' | 'suggestionTags' | 'currentInputTags' | 'fileChanges' | 'promptsSuggest' | 'showOutline'
+	'isCodeInterpreterEnabled' | 'currentInputTags'
 > = {
 	chatMode: 'chat',
 	selectedModel: undefined,
@@ -144,10 +127,7 @@ const INITIAL_SESSION: Pick<ChatViewState,
 	attachmentHandlingMode: 'degrade_to_text',
 	llmOutputControlSettings: {},
 	isCodeInterpreterEnabled: false,
-	suggestionTags: [],
 	currentInputTags: [],
-	fileChanges: [],
-	promptsSuggest: [],
 };
 
 // ---------------------------------------------------------------------------
@@ -297,25 +277,7 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 	setAttachmentHandlingMode: (mode) => set({ attachmentHandlingMode: mode }),
 	setLlmOutputControlSettings: (settings) => set({ llmOutputControlSettings: settings }),
 	setIsCodeInterpreterEnabled: (enabled) => set({ isCodeInterpreterEnabled: enabled }),
-	setSuggestionTags: (tags) => set({ suggestionTags: tags }),
 	setCurrentInputTags: (tags) => set({ currentInputTags: tags }),
-
-	// ═══════════════════════════════════════════════════════════════════════
-	// File changes (copilot feature)
-	// ═══════════════════════════════════════════════════════════════════════
-
-	setFileChanges: (changes) => set({ fileChanges: changes }),
-	updateFileChange: (id, updates) =>
-		set((s) => ({ fileChanges: s.fileChanges.map(c => c.id === id ? { ...c, ...updates } : c) })),
-	acceptAllFileChanges: () =>
-		set((s) => ({ fileChanges: s.fileChanges.map(c => ({ ...c, accepted: true })) })),
-	discardAllFileChanges: () =>
-		set((s) => ({ fileChanges: s.fileChanges.map(c => ({ ...c, accepted: false })) })),
-	acceptFileChange: (id) =>
-		set((s) => ({ fileChanges: s.fileChanges.map(c => c.id === id ? { ...c, accepted: true } : c) })),
-	discardFileChange: (id) =>
-		set((s) => ({ fileChanges: s.fileChanges.map(c => c.id === id ? { ...c, accepted: false } : c) })),
-	setExternalPrompts: (prompts) => set({ promptsSuggest: prompts }),
 
 	// ═══════════════════════════════════════════════════════════════════════
 	// Submit action
