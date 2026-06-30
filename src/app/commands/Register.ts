@@ -13,7 +13,6 @@ import {
 	openRelatedNotes,
 	openSettingsModal,
 	openUsageDashboard,
-	openVaultXRay,
 } from '@/app/commands/PeakCommandActions';
 
 /**
@@ -72,11 +71,6 @@ export function buildCoreCommands(
 			id: 'peak-usage-dashboard',
 			name: 'Usage Dashboard',
 			callback: openUsageDashboard,
-		},
-		{
-			id: 'peak-vault-xray',
-			name: 'Open Vault X-Ray',
-			callback: openVaultXRay,
 		},
 		{
 			id: 'peak-related-notes',

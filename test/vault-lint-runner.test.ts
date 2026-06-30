@@ -258,10 +258,6 @@ const RUNNER_PATH = path.resolve(
 	process.cwd(),
 	'src/service/lint/VaultLintRun.ts',
 );
-const PANEL_PATH = path.resolve(
-	process.cwd(),
-	'src/ui/view/vault-lint/VaultXRayPanel.tsx',
-);
 const SERVICE_PATH = path.resolve(
 	process.cwd(),
 	'src/service/lint/VaultLintService.ts',
@@ -336,31 +332,6 @@ function testRunnerHasNoModuleLevelMutableDefaults(): void {
 		}
 	}
 	console.log('PASS: runnerHasNoModuleLevelMutableDefaults');
-}
-
-function testPanelNoLongerImportsVaultLintServiceDirectly(): void {
-	const source = fs.readFileSync(PANEL_PATH, 'utf8');
-	const specifiers = extractImportSpecifiers(source);
-
-	assert.ok(
-		!specifiers.includes('@/service/lint/VaultLintService'),
-		'VaultXRayPanel.tsx must not import VaultLintService directly',
-	);
-	assert.ok(
-		!/VaultLintService\.getInstance\(\)/.test(source),
-		'VaultXRayPanel.tsx must not call VaultLintService.getInstance()',
-	);
-	// T5: the panel now goes through the projection hook, not the runner
-	// import directly. Either entry is acceptable proof the panel reaches
-	// the envelope-backed scan path.
-	const usesHook = specifiers.some((s) => /useVaultLintRunState$/.test(s));
-	const usesRunnerDirect = specifiers.includes('@/service/lint/VaultLintRun');
-	assert.ok(
-		usesHook || usesRunnerDirect,
-		'VaultXRayPanel.tsx must reach the runner (directly or via the projection hook)',
-	);
-
-	console.log('PASS: panelNoLongerImportsVaultLintServiceDirectly');
 }
 
 function testServiceAcceptsCallbacksAndHasNoUiStoreCoupling(): void {
@@ -581,26 +552,6 @@ async function testTwoConcurrentRunsHaveIsolatedSinks(): Promise<void> {
 // Test driver
 // ---------------------------------------------------------------------------
 
-function testPanelAndComponentsHaveNoUiStoreImport(): void {
-	const panel = fs.readFileSync(PANEL_PATH, 'utf8');
-	for (const [label, source] of [
-		['VaultXRayPanel.tsx', panel],
-	] as const) {
-		const code = source
-			.replace(/\/\*[\s\S]*?\*\//g, '')
-			.replace(/\/\/[^\n]*/g, '');
-		assert.ok(
-			!/useVaultLintStore/.test(code),
-			`T5 closure: ${label} must not reference useVaultLintStore in code`,
-		);
-		assert.ok(
-			!/from\s+['"]@\/ui\/store\/vaultLintStore['"]/.test(code),
-			`T5 closure: ${label} must not import from @/ui/store/vaultLintStore`,
-		);
-	}
-	console.log('PASS: panelAndComponentsHaveNoUiStoreImport');
-}
-
 function testUiStoreFileIsDeleted(): void {
 	const storePath = path.resolve(process.cwd(), 'src/ui/store/vaultLintStore.ts');
 	assert.ok(
@@ -610,34 +561,20 @@ function testUiStoreFileIsDeleted(): void {
 	console.log('PASS: uiStoreFileIsDeleted');
 }
 
-function testRunStateHookProjectsFromEventsOnly(): void {
-	const hookPath = path.resolve(
-		process.cwd(),
+function testVaultXRaySurfaceIsRetired(): void {
+	// T11Y-1: the standalone Vault X-Ray surface (view, panel, hook) was
+	// hard-retired. The lint runtime remains as an internal provider for
+	// the Vault Intelligence loop.
+	const retired = [
+		'src/ui/view/vault-lint/VaultXRayPanel.tsx',
 		'src/ui/view/vault-lint/hooks/useVaultLintRunState.ts',
-	);
-	const source = fs.readFileSync(hookPath, 'utf8');
-	const specifiers = extractImportSpecifiers(source);
-	const code = source
-		.replace(/\/\*[\s\S]*?\*\//g, '')
-		.replace(/\/\/[^\n]*/g, '');
-
-	assert.ok(
-		!specifiers.some((s) => /vaultLintStore/.test(s)),
-		'projection hook must not import the deleted UI store',
-	);
-	assert.ok(
-		!specifiers.includes('zustand'),
-		'projection hook must not import zustand',
-	);
-	assert.ok(
-		/runVaultLintManualScan/.test(code),
-		'projection hook must drive scans through the runner',
-	);
-	assert.ok(
-		/onEvent/.test(code),
-		'projection hook must subscribe via the runner onEvent sink',
-	);
-	console.log('PASS: runStateHookProjectsFromEventsOnly');
+		'src/app/view/VaultXRayView.ts',
+	];
+	for (const rel of retired) {
+		const full = path.resolve(process.cwd(), rel);
+		assert.ok(!fs.existsSync(full), `T11Y-1: ${rel} must be deleted`);
+	}
+	console.log('PASS: vaultXRaySurfaceIsRetired');
 }
 
 async function main(): Promise<void> {
@@ -652,11 +589,9 @@ async function main(): Promise<void> {
 	await testTwoConcurrentRunsHaveIsolatedSinks();
 	testRunnerImportsAreBoundaryClean();
 	testRunnerHasNoModuleLevelMutableDefaults();
-	testPanelNoLongerImportsVaultLintServiceDirectly();
 	testServiceAcceptsCallbacksAndHasNoUiStoreCoupling();
-	testPanelAndComponentsHaveNoUiStoreImport();
 	testUiStoreFileIsDeleted();
-	testRunStateHookProjectsFromEventsOnly();
+	testVaultXRaySurfaceIsRetired();
 }
 
 main()

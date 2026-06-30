@@ -14,8 +14,12 @@ import type { VaultLintRunCallbacks } from './VaultLintRun';
 
 /**
  * The minimum runtime surface consumers (`runVaultLintManualScan`,
- * `openVaultXRay`, `VaultDigestService`) need from the Vault Lint
- * engine. The implementing class today is `VaultLintService`.
+ * `VaultDigestService`, the Vault Review runtime) need from the Vault
+ * Lint engine. The implementing class today is `VaultLintService`.
+ *
+ * The standalone Vault X-Ray view + `openVaultXRay` command have been
+ * retired (T11Y-1); Vault Lint is now an internal provider for the
+ * Vault Intelligence loop (Copilot Picker → Vault tab → VaultAutoRunModal).
  *
  * Binding lifecycle lives in `AppRuntimeRegistry`; this file is
  * purely a contract between engine and consumers.

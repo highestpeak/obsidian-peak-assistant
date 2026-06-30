@@ -208,9 +208,13 @@ export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 		{ kind: 'sqlite.read', site: 'ObsidianVaultLintDetectorContextAdapter.getSemanticNeighbors', target: 'getSemanticNeighbors (embedding search)' },
 	],
 	consumers: [
-		{ site: 'src/app/commands/PeakCommandActions.ts:openVaultXRay', mode: 'runManualScan' },
-		{ site: 'src/ui/view/vault-lint/VaultXRayPanel.tsx', mode: 'runManualScan' },
-		{ site: 'src/service/copilot/vault/VaultDigestService.ts', mode: 'loadLatestScan' },
+		// X-Ray standalone surface retired (T11Y-1). Vault Lint is now an
+		// internal provider for the Vault Intelligence loop: the digest
+		// adapter pulls the latest persisted scan, and the Copilot Picker
+		// Vault tab drives manual scans through the Vault Review runtime.
+		{ site: 'src/app/copilot/vault/SqliteVaultReviewDigestAdapter.ts', mode: 'loadLatestScan' },
+		{ site: 'src/app/copilot/vault/composeVaultReviewRuntime.ts', mode: 'loadLatestScan' },
+		{ site: 'src/ui/view/copilot/CopilotPickerContent.tsx', mode: 'runManualScan' },
 	],
 	knownDimensions: ['structural', 'content', 'temporal', 'semantic', 'tags'],
 } as const;

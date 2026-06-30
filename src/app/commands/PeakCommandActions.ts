@@ -120,14 +120,6 @@ export function refreshRelatedNotes(): void {
 	AppContext.tryGetAmbientRuntime()?.triggerManual();
 }
 
-export async function openVaultXRay(): Promise<void> {
-	// T6: the Vault Lint runtime is bound at plugin boot
-	// (`main.onload` -> `composeVaultLintRuntime` -> `setVaultLintRuntime`)
-	// and the detector registry is already initialized there. The view
-	// itself only needs to be activated.
-	await getContext().viewManager.activateVaultXRayView();
-}
-
 export async function refreshHubSummaries(): Promise<void> {
 	new Notice('Hub summary refresh started...');
 	const { HubRegenService } = await import('@/service/search/index/helper/hub/hubRegenService');

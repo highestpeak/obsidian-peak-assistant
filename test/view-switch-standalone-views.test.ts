@@ -4,7 +4,6 @@ import {
 	PROJECT_LIST_VIEW_TYPE,
 	STANDALONE_PEAK_VIEW_TYPES,
 	USAGE_DASHBOARD_VIEW_TYPE,
-	VAULT_XRAY_VIEW_TYPE,
 } from '@/app/view/types';
 
 function assert(condition: boolean, message: string): void {
@@ -57,18 +56,18 @@ function createHandler() {
 	};
 }
 
-// T11G (2026-06-26): GAP_ANALYSIS_VIEW_TYPE retired; assert standalone
-// behavior against a still-live standalone view (Vault X-Ray). Standalone
-// Peak views should never flip layout to chat or document mode just
-// because focus moves onto them.
+// T11Y-1 (2026-06-30): Vault X-Ray retired; assert standalone behavior
+// against a still-live standalone view (Usage Dashboard). Standalone Peak
+// views should never flip layout to chat or document mode just because
+// focus moves onto them.
 {
 	assert(
-		STANDALONE_PEAK_VIEW_TYPES.has(VAULT_XRAY_VIEW_TYPE),
-		'Vault X-Ray must be treated as a standalone Peak view',
+		STANDALONE_PEAK_VIEW_TYPES.has(USAGE_DASHBOARD_VIEW_TYPE),
+		'Usage Dashboard must be treated as a standalone Peak view',
 	);
 
 	const harness = createHandler();
-	harness.handler.handleActiveLeafChange(mockLeaf(VAULT_XRAY_VIEW_TYPE));
+	harness.handler.handleActiveLeafChange(mockLeaf(USAGE_DASHBOARD_VIEW_TYPE));
 	assert(harness.getChatActivations() === 0, 'Standalone view should not activate chat layout');
 	assert(harness.getDocumentActivations() === 0, 'Standalone view should not restore document layout');
 }

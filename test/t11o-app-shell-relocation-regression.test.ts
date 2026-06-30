@@ -180,7 +180,6 @@ async function testRetiredFilesAreGone(): Promise<void> {
 		'ui/view/ConversationOutlineView.ts',
 		'ui/view/ProjectListView.ts',
 		'ui/view/usage-dashboard/UsageDashboardView.ts',
-		'ui/view/vault-lint/VaultXRayView.ts',
 		// Track 2 standalone Modals
 		'ui/view/ConfirmModal.ts',
 		'ui/view/SettingsModal.tsx',
@@ -221,7 +220,6 @@ async function testRelocatedShellsLandedInApp(): Promise<void> {
 		'app/view/ConversationOutlineView.ts',
 		'app/view/ProjectListView.ts',
 		'app/view/UsageDashboardView.ts',
-		'app/view/VaultXRayView.ts',
 		'app/modals/ConfirmModal.ts',
 		'app/modals/SettingsModal.tsx',
 		'app/modals/QuickSearchModal.tsx',
