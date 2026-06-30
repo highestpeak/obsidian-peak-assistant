@@ -7,9 +7,21 @@
 // AmbientPushItem mapping — lives in `service/ambient/serendipity/
 // SerendipitySearcher.ts`, NOT here.
 //
-// Distinct from `SemanticLinkReadPort` (L2-C's link-suggestion port);
-// the names share the "Semantic*" prefix only because both touch the
-// mobius graph. This port serves the ambient serendipity flow only.
+// Relationship to SemanticLinkReadPort (T11Y-4b / L2-C):
+// Both ports read from the mobius graph but serve different callers:
+//
+//   SemanticGraphTraversalReadPort (this file) — 2-hop traversal via
+//     getNeighborIdsMap + filterToDocumentLikeIds + getNodesByIds (label-
+//     only); used exclusively by SerendipitySearcher.
+//
+//   SemanticLinkReadPort — 1-hop edge neighbors with direction+weight,
+//     embedding-similarity search with exclusion set, topic-tag lookup,
+//     path-based doc-id resolution; used by SemanticLinkSuggestionService
+//     and SmartConnectionService.
+//
+// The overlap is narrow (both expose a "get node metadata by id"
+// primitive) but the returned shapes and callers diverge enough that a
+// merge would add unused surface to both. Keep separate.
 
 /** A row of (node_id, node_id of 1-hop neighbor). */
 export interface SemanticGraphTraversalNode {

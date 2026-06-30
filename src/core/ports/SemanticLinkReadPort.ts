@@ -14,11 +14,23 @@
 //   - any error wrapping into "indexed: false" — callers translate sqlite
 //     failures themselves so the adapter stays a pure read surface.
 //
-// Note: L2-A is introducing a wider `SemanticGraphTraversalReadPort` in
-// the same refactor wave. The two ports overlap in subject matter
-// (graph reads) but differ in scope — this one is intentionally narrower
-// (1-hop only, no traversal). A follow-up wave can dedupe them once both
-// land.
+// Relationship to SemanticGraphTraversalReadPort (T11Y-2a / L2-A):
+// The two ports share the "graph read" subject but serve different callers
+// and differ in enough specifics that a merge would bloat both interfaces:
+//
+//   SemanticGraphTraversalReadPort — 2-hop traversal, getNeighborIdsMap,
+//     filterToDocumentLikeIds, getNodesByIds; used by SerendipitySearcher.
+//
+//   SemanticLinkReadPort (this file) — 1-hop edge neighbors with direction
+//     + weight, embedding-similarity search with exclusion set, topic-tag
+//     lookup, indexed-doc-id resolution by path; used by
+//     SemanticLinkSuggestionService + SmartConnectionService.
+//
+// The overlapping primitive is "look up node metadata by id" (both expose
+// something like getNodesByIds / getGraphNodeMetaByIds), but the returned
+// shapes differ (label-only vs. path+label+nodeId) and their callers
+// never cross-call. Keeping two narrow ports is intentional; do not merge
+// unless both callers converge on the same traversal algorithm.
 
 /** Raw graph neighbor of a document node returned by the read port. */
 export interface SemanticGraphNeighbor {
