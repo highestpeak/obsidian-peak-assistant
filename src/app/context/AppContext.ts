@@ -7,7 +7,8 @@ import { MyPluginSettings, HarnessSettings, DEFAULT_HARNESS_SETTINGS } from '@/c
 import { BusinessError, ErrorCode } from '@/core/errors';
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import { GraphInspectorTestTools, AISearchAgentTestTools } from '@/app/context/test-tools';
-import { cleanupGraphTable } from '@/app/context/graph-cleanup';
+import { GraphCleanupService } from '@/service/search/index/maintenance/GraphCleanupService';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
@@ -424,7 +425,14 @@ export class AppContext {
 				(window as any).runPendingVectorIndexEnrichment = () =>
 					IndexService.runPendingVectorIndexEnrichment(this.settings.search);
 				(window as any).getVaultPersona = () => getVaultPersona();
-				(window as any).cleanupGraphTable = () => cleanupGraphTable();
+				(window as any).cleanupGraphTable = () => {
+					const graphCleanupService = new GraphCleanupService(
+						sqliteStoreManager.getIndexContext('vault'),
+						sqliteStoreManager.getMobiusNodeRepo(),
+						sqliteStoreManager.getIndexedDocumentRepo(),
+					);
+					return graphCleanupService.run();
+				};
 
 				// V2 search debug — screenshot + DOM + state, saved to /tmp
 					(window as any).dumpV2State = () => {
