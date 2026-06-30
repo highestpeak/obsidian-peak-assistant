@@ -1,7 +1,7 @@
 import type { AppHandle } from '@/core/ports/AppHandle';
 import { buildSourcesGraphWithDiscoveredEdges } from '@/service/tools/search-graph-inspector/build-sources-graph';
 import type { SearchResultItem } from '@/core/search/searchTypes';
-import type { LensGraphData } from '@/core/graph/lensGraphTypes';
+import type { LensGraphData } from '@/core/types/lens-graph';
 import { enrichWithCrossDomain } from '@/service/agents/ai-graph/infer-cross-domain';
 import { inferThinkingTree } from './infer-thinking-tree';
 import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';

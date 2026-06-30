@@ -1,4 +1,4 @@
-import type { LensGraphData } from '@/core/graph/lensGraphTypes';
+import type { LensGraphData } from '@/core/types/lens-graph';
 
 export function enrichWithCrossDomain(data: LensGraphData): LensGraphData {
 	const getTopFolder = (path: string): string => {

@@ -584,6 +584,8 @@
       </div>
       <nav class="nav" aria-label="Report navigation">
         <a href="#answer">核心答案</a>
+        <a href="#ground-truth">Ground Truth</a>
+        <a href="#directory-plan">目录形状</a>
         <a href="#topology">现状拓扑</a>
         <a href="#truth">真相源梯子</a>
         <a href="#index-model">索引模型</a>
@@ -599,7 +601,7 @@
         <span class="eyebrow">Documentation control plane</span>
         <h1>不要把 512 个文档整理成更长的目录。要建立一个能判断真相、证据、历史和下一步的文档索引。</h1>
         <p class="hero-copy">
-          这份 HTML 报告重写了上一版重要文档地图，并补上治理方案：如何优化现有文档、如何给文档分层、如何建立一个人可读且机器可维护的项目文档索引。
+          这份 HTML 报告重写了上一版重要文档地图，并补上治理方案：哪些文档应该成为 ground truth、docs 根目录应该怎么瘦身、旧文档如何转成证据库、以后如何建立一个人可读且机器可维护的项目文档索引。
         </p>
         <div class="hero-grid" aria-label="Documentation metrics">
           <div class="metric"><b>512</b><span>当前 docs 文件总数</span></div>
@@ -618,9 +620,10 @@
         <div class="judgement">
           <div class="callout strong">
             <h3>推荐办法：双层索引</h3>
-            <p><b>第一层：人看的入口。</b>保留一份 HTML / README 门户，让 owner 和 coding agent 能按任务进入：当前状态、架构正稿、最近证据、设计参考、调试手册、历史考古。</p>
-            <p><b>第二层：机器可维护的 registry。</b>新增 `docs/doc-registry.json` 或 `docs/doc-registry.yml`，给关键文档记录 status、role、canonicalFor、supersedes、lastVerified、readWhen、tags。以后 HTML 索引可以从 registry 生成。</p>
+            <p><b>第一层：人看的入口。</b>使用 `docs/index.html` 作为唯一入口，让 owner 和 coding agent 能按任务进入：ground truth、当前状态、最近证据、设计参考、调试手册、历史考古。</p>
+            <p><b>第二层：机器可维护的 registry。</b>后续新增 `docs/doc-registry.json` 或 `docs/doc-registry.yml`，给关键文档记录 status、role、canonicalFor、supersedes、lastVerified、readWhen、tags。HTML 是阅读形态，registry 是维护形态。</p>
             <div class="pill-row">
+              <span class="pill green">HTML first</span>
               <span class="pill green">先加索引</span>
               <span class="pill teal">再做归档</span>
               <span class="pill gold">不要按日期盲删</span>
@@ -634,9 +637,83 @@
         </div>
       </section>
 
+      <section id="ground-truth" class="section">
+        <div class="section-head">
+          <h2>2. Ground Truth 文档族</h2>
+          <p class="lead">你列的四类应该升级成项目的最高解释层。它们不是普通目录文档，而是所有后续代码阅读、refactor、handoff 和 review 的引用入口。</p>
+        </div>
+        <div class="decision-grid">
+          <div class="decision">
+            <small>Canonical 1</small>
+            <h3>架构文档</h3>
+            <p>回答“系统为什么这样分层、运行时归谁拥有、边界在哪里”。建议正稿路径：`docs/ground-truth/architecture.html`。内容必须覆盖 app/service/core/ui、Capability Contract、Run Envelope、runtime ownership、禁止双系统双代码共存。</p>
+          </div>
+          <div class="decision">
+            <small>Canonical 2</small>
+            <h3>代码组织文档</h3>
+            <p>回答“我要改某个能力时先看哪里、哪些 import 合法、目录名代表什么责任”。建议正稿路径：`docs/ground-truth/code-organization.html`。它应该是读代码地图，不是简单文件树。</p>
+          </div>
+          <div class="decision">
+            <small>Canonical 3</small>
+            <h3>功能与算法文档</h3>
+            <p>这里不要写成营销式功能介绍，而要写重要能力的算法逻辑：Chat context 如何堆叠、Search 如何检索和重排、Agent loop 如何推进、Ambient signal 如何进入 review surface。建议正稿路径：`docs/ground-truth/capabilities-and-algorithms.html`。</p>
+          </div>
+          <div class="decision">
+            <small>Canonical 4</small>
+            <h3>配置项与用户视图文档</h3>
+            <p>回答“哪些东西可配置、默认值从哪里来、用户在 Vault 里会看到什么 folder/file 形状”。建议正稿路径：`docs/ground-truth/configuration-and-user-views.html`。重点覆盖 `templates/config/`、settings UI、provider/model/profile、用户侧项目/聊天/历史文件结构。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="directory-plan" class="section alt">
+        <div class="section-head">
+          <h2>3. 建议目录形状</h2>
+          <p class="lead">docs 根目录应该从“所有东西都摊开”改成“只有入口和少数控制文件”。旧文档先不删，先降级成 evidence、design reference 或 archaeology。</p>
+        </div>
+        <div class="schema">
+          <table>
+            <thead>
+              <tr><th>区域</th><th>责任</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>`docs/index.html`</td><td>唯一人工入口。只回答“现在应该读哪几份”。</td></tr>
+              <tr><td>`docs/ground-truth/`</td><td>四份正稿 HTML：架构、代码组织、功能算法、配置项和用户视图。</td></tr>
+              <tr><td>`docs/current/`</td><td>当前阶段、当前 roadmap、当前 issue pool。可以由 `progress.md` 逐步迁成 HTML。</td></tr>
+              <tr><td>`docs/evidence/`</td><td>implementation notes、owner review packets、audit findings、issue maps。保留证据链，但不当正稿。</td></tr>
+              <tr><td>`docs/design/`</td><td>gstack/mockup/UX flow 报告。作为设计参考，不和架构正稿混层。</td></tr>
+              <tr><td>`docs/archive/`</td><td>明确 superseded 或 historical 的旧路线、旧任务板、旧探索。</td></tr>
+              <tr><td>`docs/registry/`</td><td>后续放 registry、link check 输出、生成索引脚本的输入数据。</td></tr>
+            </tbody>
+          </table>
+          <pre><code>docs/
+  index.html
+  ground-truth/
+    architecture.html
+    code-organization.html
+    capabilities-and-algorithms.html
+    configuration-and-user-views.html
+  current/
+    progress.html
+    active-work.html
+  evidence/
+    refactor-ops/
+    audits/
+    implementation-notes/
+  design/
+    gstack/
+    mockups/
+  registry/
+    doc-registry.json
+  archive/
+    legacy-root/
+    superseded-specs/</code></pre>
+        </div>
+      </section>
+
       <section id="topology" class="section">
         <div class="section-head">
-          <h2>2. 当前文档拓扑</h2>
+          <h2>4. 当前文档拓扑</h2>
           <p class="lead">调研口径：扫描 `docs/` 当前文件树。数字不是质量评价，只说明导航负担和索引优先级。</p>
         </div>
         <div class="stack" aria-label="Docs topology">
@@ -675,7 +752,7 @@
 
       <section id="truth" class="section alt">
         <div class="section-head">
-          <h2>3. 真相源梯子</h2>
+          <h2>5. 真相源梯子</h2>
           <p class="lead">以后读文档时先判断它处在哪一层。层级越高，越能驱动当前决策；层级越低，越偏证据、设计参考或历史上下文。</p>
         </div>
         <div class="ladder" aria-label="Source of truth ladder">
@@ -719,7 +796,7 @@
 
       <section id="index-model" class="section">
         <div class="section-head">
-          <h2>4. 文档索引模型</h2>
+          <h2>6. 文档索引模型</h2>
           <p class="lead">索引的目标不是记录所有路径，而是让每份重要文档回答：它现在是什么身份，什么时候该读，能不能覆盖别的文档，是否已经被替代。</p>
         </div>
         <div class="schema">
@@ -761,7 +838,7 @@
 
       <section id="first-index" class="section alt">
         <div class="section-head">
-          <h2>5. 第一批应该进入索引的文档</h2>
+          <h2>7. 第一批应该进入索引的文档</h2>
           <p class="lead">先索引 40 到 60 份高价值文档，不要一开始就试图登记 512 个文件。下面是第一轮 seed set。</p>
         </div>
         <div class="filters" aria-label="Document filters">
@@ -853,7 +930,7 @@
 
       <section id="workflow" class="section">
         <div class="section-head">
-          <h2>6. 维护流程</h2>
+          <h2>8. 维护流程</h2>
           <p class="lead">文档治理要轻。每次新增或重写重要文档，只需要过一个短流程，不要让索引本身变成新负担。</p>
         </div>
         <div class="decision-grid">
@@ -875,7 +952,7 @@
           <div class="decision">
             <small>Step 4</small>
             <h3>更新入口</h3>
-            <p>`docs/README.md` 或 HTML 门户只列最重要入口。细节留给 registry 和 per-folder README。</p>
+            <p>`docs/index.html` 只列最重要入口。细节留给 registry、ground truth 文档内部目录和按主题归档的 evidence。</p>
           </div>
           <div class="decision">
             <small>Step 5</small>
@@ -892,21 +969,21 @@
 
       <section id="roadmap" class="section alt">
         <div class="section-head">
-          <h2>7. 落地路线</h2>
+          <h2>9. 落地路线</h2>
           <p class="lead">建议先做索引覆盖，不要先移动文件。目录搬迁应该发生在 registry 跑通之后。</p>
         </div>
         <div class="phase-list">
           <div class="phase">
             <header><h3>P0 - 入口固定</h3></header>
-            <div>新增或更新 `docs/README.md`，只放 7 个入口：current status、architecture source、refactor ops、active evidence、code reading maps、design refs、debug refs。</div>
+            <div>新增 `docs/index.html`，只放少数入口：ground truth、current status、architecture source、active evidence、code reading maps、design refs、debug refs。</div>
           </div>
           <div class="phase">
-            <header><h3>P1 - Registry seed</h3></header>
-            <div>新增 `docs/doc-registry.json`，先登记 40 到 60 份高价值文档。每条记录有 status、role、tier、readWhen、supersedes。</div>
+            <header><h3>P1 - Ground truth HTML</h3></header>
+            <div>先写四份正稿 HTML：架构、代码组织、功能算法、配置项和用户视图。旧 Markdown 只能作为证据引用，不继续承担正稿责任。</div>
           </div>
           <div class="phase">
-            <header><h3>P2 - 生成索引</h3></header>
-            <div>用一个小脚本从 registry 生成 HTML index。HTML 是阅读入口，registry 是事实源。</div>
+            <header><h3>P2 - Registry seed</h3></header>
+            <div>新增 `docs/registry/doc-registry.json`，先登记 40 到 60 份高价值文档。每条记录有 status、role、tier、readWhen、supersedes。</div>
           </div>
           <div class="phase">
             <header><h3>P3 - 归档与 guard</h3></header>
@@ -917,7 +994,7 @@
 
       <section id="anti-goals" class="section">
         <div class="section-head">
-          <h2>8. 不要做什么</h2>
+          <h2>10. 不要做什么</h2>
           <p class="lead">文档治理最容易失败在“看起来更整齐，但实际更难找真相”。下面这些动作应该避免。</p>
         </div>
         <div class="anti">
@@ -950,7 +1027,7 @@
 
       <section class="section alt">
         <div class="section-head">
-          <h2>9. 验证记录</h2>
+          <h2>11. 验证记录</h2>
           <p class="lead">本报告是 desktop-reading technical report。主阅读场景是本地浏览器或 Codex/编辑器打开，不承诺移动端产品级适配。</p>
         </div>
         <table>
@@ -961,7 +1038,7 @@
             <tr><td>文档扫描</td><td>完成</td><td>统计 `docs/` 文件数、主要目录族群、README/index/map 分布、近期修改。</td></tr>
             <tr><td>使用场景门</td><td>完成</td><td>定位为 owner / agent 共用的本地技术文档控制面，不按 public SaaS 或 dashboard 文案写。</td></tr>
             <tr><td>链接策略</td><td>完成</td><td>HTML 内核心链接使用本地绝对路径，避免上一版相对 Markdown 链接打不开。</td></tr>
-            <tr><td>下一步可执行性</td><td>完成</td><td>给出 `docs/README.md`、`docs/doc-registry.json`、生成式 HTML index 和 link guard 的落地顺序。</td></tr>
+            <tr><td>下一步可执行性</td><td>完成</td><td>给出 `docs/index.html`、四份 ground truth HTML、registry seed 和 link guard 的落地顺序。</td></tr>
           </tbody>
         </table>
       </section>

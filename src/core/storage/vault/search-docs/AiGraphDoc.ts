@@ -1,4 +1,4 @@
-import type { LensGraphData } from '@/core/graph/lensGraphTypes';
+import type { LensGraphData } from '@/core/types/lens-graph';
 import { MarkdownDocBuilder } from '@/core/storage/vault/framework/MarkdownDocBuilder';
 
 interface AiGraphDocModel {

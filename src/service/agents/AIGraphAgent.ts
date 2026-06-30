@@ -14,7 +14,7 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 import { buildLensGraphFromSources, enrichWithThinkingTree } from './ai-graph/build-graph-data';
-import type { LensGraphData } from '@/core/graph/lensGraphTypes';
+import type { LensGraphData } from '@/core/types/lens-graph';
 import type { SearchResultItem } from '@/core/search/searchTypes';
 
 export type AIGraphEvent = LLMStreamEvent;
