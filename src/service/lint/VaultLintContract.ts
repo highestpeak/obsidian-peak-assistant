@@ -210,9 +210,9 @@ export const VAULT_LINT_CURRENT_DEPENDENCIES: VaultLintDependencyInventory = {
 	consumers: [
 		// X-Ray standalone surface retired (T11Y-1). Vault Lint is now an
 		// internal provider for the Vault Intelligence loop: the digest
-		// adapter pulls the latest persisted scan, and the Copilot Picker
+		// builder pulls the latest persisted scan, and the Copilot Picker
 		// Vault tab drives manual scans through the Vault Review runtime.
-		{ site: 'src/app/copilot/vault/SqliteVaultReviewDigestAdapter.ts', mode: 'loadLatestScan' },
+		{ site: 'src/service/copilot/vault/VaultDigestBuilder.ts', mode: 'loadLatestScan' },
 		{ site: 'src/app/copilot/vault/composeVaultReviewRuntime.ts', mode: 'loadLatestScan' },
 		{ site: 'src/ui/view/copilot/CopilotPickerContent.tsx', mode: 'runManualScan' },
 	],

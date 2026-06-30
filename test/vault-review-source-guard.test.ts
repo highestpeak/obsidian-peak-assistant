@@ -92,8 +92,8 @@ function testTreeIsNonEmpty(): void {
 		`expected src/service/copilot/vault to contain at least 6 .ts files, found ${service.length}`,
 	);
 	assert.ok(
-		app.length >= 5,
-		`expected src/app/copilot/vault to contain at least 5 .ts files, found ${app.length}`,
+		app.length >= 4,
+		`expected src/app/copilot/vault to contain at least 4 .ts files, found ${app.length}`,
 	);
 	console.log(`PASS: treeIsNonEmpty (service ${service.length}, app ${app.length})`);
 }

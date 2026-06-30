@@ -191,11 +191,11 @@ function testDependencyInventoryCoversAllResolutionSites(): void {
 
 	const consumerSites = inv.consumers.map((c) => c.site);
 	for (const expected of [
-		// T11Y-1: X-Ray standalone surface retired. Remaining consumers
-		// are the Vault Review digest adapter (loadLatestScan), the
-		// Vault Review runtime composer (binds the lint runtime), and
+		// T11Y-1 / T11Y-4a: X-Ray standalone surface retired. Remaining
+		// consumers are the Vault Review digest builder (loadLatestScan),
+		// the Vault Review runtime composer (binds the lint runtime), and
 		// the Copilot Picker Vault tab (runManualScan).
-		'src/app/copilot/vault/SqliteVaultReviewDigestAdapter.ts',
+		'src/service/copilot/vault/VaultDigestBuilder.ts',
 		'src/app/copilot/vault/composeVaultReviewRuntime.ts',
 		'src/ui/view/copilot/CopilotPickerContent.tsx',
 	]) {
