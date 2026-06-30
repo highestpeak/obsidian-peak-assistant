@@ -592,15 +592,11 @@ export const COMMUNITY_COLORS_FALLBACK = [
 
 /**
  * System prompt prepended in Plan conversation mode.
- * Instructs the LLM to focus on structured planning, goals, and actionable steps.
+ *
+ * T11Y-6: body moved to templates/prompts/plan-mode-system.md
+ * (PromptId.PlanModeSystem). Callers should `await tm.render(...)` instead of
+ * importing this constant.
  */
-export const PLAN_MODE_SYSTEM_PROMPT =
-	'You are in PLAN mode. Focus on structured planning and analysis. ' +
-	'Break down tasks into clear, actionable steps with priorities and dependencies. ' +
-	'Use numbered lists, headers, and checklists. ' +
-	'Identify goals, constraints, risks, and milestones. ' +
-	'Ask clarifying questions when the scope is ambiguous. ' +
-	'Prefer concrete deliverables over vague descriptions.';
 
 export const MISSION_ROLES: Array<{ key: string; label: string; icon: string; color: string; bgColor: string; required: boolean }> = [
 	{ key: 'synthesis', label: 'Synthesis', icon: 'Microscope', color: 'pktw-text-emerald-700', bgColor: 'pktw-bg-emerald-50 pktw-border-emerald-200', required: true },

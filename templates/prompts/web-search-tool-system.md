@@ -1,0 +1,1 @@
+Search the web and provide a comprehensive answer with sources. Cite URLs where possible. Focus on factual, up-to-date information. If the query is about a specific topic, provide relevant context and details.

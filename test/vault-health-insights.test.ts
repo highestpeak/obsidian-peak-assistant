@@ -1,6 +1,21 @@
 import assert from 'assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { buildVaultHealthInsights } from '@/service/lint/insights';
+import { TemplateManager, type TemplateContentProvider } from '@/core/template/TemplateManager';
 import type { LintFinding } from '@/service/lint/types';
+
+// T11Y-6: lint insight prompts now live in templates/prompts/*.md. Set up a
+// simple file-backed TemplateManager so the synchronous expectations of this
+// test continue to hold against the migrated builders.
+const repoRoot = process.cwd();
+const fsProvider: TemplateContentProvider = {
+	async load(relativePath: string): Promise<string> {
+		const abs = path.join(repoRoot, relativePath);
+		return fs.promises.readFile(abs, 'utf8');
+	},
+};
+TemplateManager.setInstance(new TemplateManager(fsProvider));
 
 function brokenFinding(path: string, targets: string[], occurrences = targets.length): LintFinding {
 	return {
@@ -21,7 +36,7 @@ function brokenFinding(path: string, targets: string[], occurrences = targets.le
 	};
 }
 
-function testBuildsRepairOrientedInsights(): void {
+async function testBuildsRepairOrientedInsights(): Promise<void> {
 	const findings = [
 		brokenFinding('imports/a.md', ['Missing Concept', 'Alias One'], 20),
 		brokenFinding('imports/b.md', ['Missing Concept', 'Alias Two'], 15),
@@ -39,7 +54,7 @@ function testBuildsRepairOrientedInsights(): void {
 		} satisfies LintFinding,
 	];
 
-	const insights = buildVaultHealthInsights(findings);
+	const insights = await buildVaultHealthInsights(findings);
 	const repair = insights.find(i => i.kind === 'broken-link-repair');
 	const missing = insights.find(i => i.kind === 'missing-targets');
 	const orphan = insights.find(i => i.kind === 'orphan-reconnect');
@@ -53,10 +68,9 @@ function testBuildsRepairOrientedInsights(): void {
 	console.log('PASS: buildsRepairOrientedInsights');
 }
 
-try {
-	testBuildsRepairOrientedInsights();
-	process.exit(0);
-} catch (err) {
-	console.error(err);
-	process.exit(1);
-}
+testBuildsRepairOrientedInsights()
+	.then(() => process.exit(0))
+	.catch((err) => {
+		console.error(err);
+		process.exit(1);
+	});

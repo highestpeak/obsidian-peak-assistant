@@ -1,3 +1,5 @@
+import { PromptId } from '@/core/prompt/PromptId';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import type { LintFinding } from './types';
 
 export type HealthInsightKind =
@@ -70,90 +72,49 @@ function brokenLinkFiles(findings: LintFinding[]): BrokenLinkFile[] {
 		.filter(item => item.sourcePath.length > 0);
 }
 
-function buildBrokenLinkPrompt(files: BrokenLinkFile[]): string {
+// T11Y-6: the six builders below now render
+// templates/prompts/lint-{broken-link-repair, missing-targets, noise-source,
+// orphan-reconnect, tag-coverage, content-cleanup}.md via TemplateManager.
+function requireTm() {
+	const tm = TemplateManager.getInstance();
+	if (!tm) throw new Error('TemplateManager not bound — cannot render lint insight prompts.');
+	return tm;
+}
+
+async function buildBrokenLinkPrompt(files: BrokenLinkFile[]): Promise<string> {
 	const topFiles = files.slice(0, 20).map((item) => {
 		const targets = item.targets.slice(0, 8).map(t => `[[${t}]]`).join(', ');
 		return `- ${item.sourcePath}: ${item.targetCount} missing targets, ${item.occurrenceCount} occurrences. Targets: ${targets}`;
 	}).join('\n');
-
-	return [
-		'Repair these Obsidian broken links with a cautious, reviewable plan.',
-		'For each missing target, decide whether to:',
-		'1. redirect links to an existing note if there is a clear alias or near match,',
-		'2. create a missing concept note if multiple useful notes reference it,',
-		'3. remove or ignore links that look like import/generated noise.',
-		'',
-		'Return a concise repair plan first. Then propose exact file edits as a diff before applying anything.',
-		'',
-		'Affected files:',
-		topFiles,
-	].join('\n');
+	return requireTm().render(PromptId.LintBrokenLinkRepair, { topFiles });
 }
 
-function buildMissingTargetsPrompt(files: BrokenLinkFile[], repeatedTargets: Array<{ target: string; fileCount: number; occurrenceCount: number }>): string {
+async function buildMissingTargetsPrompt(files: BrokenLinkFile[], repeatedTargets: Array<{ target: string; fileCount: number; occurrenceCount: number }>): Promise<string> {
 	const targetLines = repeatedTargets.slice(0, 25)
 		.map(t => `- [[${t.target}]] referenced by ${t.fileCount} files, ${t.occurrenceCount} occurrences`)
 		.join('\n');
 	const sourceSample = files.slice(0, 12).map(item => `- ${item.sourcePath}`).join('\n');
-
-	return [
-		'Analyze these missing Obsidian note targets and turn them into useful repairs.',
-		'Prefer creating a new note only when the target is a meaningful concept. Prefer redirecting when the target is an alias of an existing note.',
-		'Return a table with: missing target, recommended action, confidence, affected files, and proposed note/link edits.',
-		'',
-		'Repeated missing targets:',
-		targetLines,
-		'',
-		'Sample affected files:',
-		sourceSample,
-	].join('\n');
+	return requireTm().render(PromptId.LintMissingTargets, { targetLines, sourceSample });
 }
 
-function buildNoisePrompt(folder: string, files: BrokenLinkFile[]): string {
+async function buildNoisePrompt(folder: string, files: BrokenLinkFile[]): Promise<string> {
 	const fileLines = files.slice(0, 20).map(item => `- ${item.sourcePath}: ${item.occurrenceCount} unresolved links`).join('\n');
-	return [
-		'Review this cluster of broken links and decide whether it is real knowledge-base debt or low-signal import/generated noise.',
-		`Folder: ${folder}`,
-		'If it is noise, recommend an ignore/exclusion rule and explain what should still be sampled manually.',
-		'If it is real debt, group the files into repair batches.',
-		'',
-		'Files:',
-		fileLines,
-	].join('\n');
+	return requireTm().render(PromptId.LintNoiseSource, { folder, fileLines });
 }
 
-function buildOrphanPrompt(findings: LintFinding[]): string {
+async function buildOrphanPrompt(findings: LintFinding[]): Promise<string> {
 	const lines = findings.slice(0, 25).map(f => `- ${f.filePath ?? f.title}: ${f.description}`).join('\n');
-	return [
-		'Reconnect these orphan Obsidian notes to the knowledge graph.',
-		'For each note, suggest 1-3 existing notes it should link to or be linked from. Prefer semantic fit over generic tags.',
-		'Return a reviewable link insertion plan before editing files.',
-		'',
-		'Orphan notes:',
-		lines,
-	].join('\n');
+	return requireTm().render(PromptId.LintOrphanReconnect, { lines });
 }
 
-function buildTagPrompt(findings: LintFinding[]): string {
+async function buildTagPrompt(findings: LintFinding[]): Promise<string> {
 	const lines = findings.slice(0, 40).map(f => `- ${f.filePath ?? f.title}`).join('\n');
-	return [
-		'Suggest useful Obsidian tags for these untagged notes.',
-		'Use a restrained taxonomy. Avoid creating one-off tags. Return proposed frontmatter edits grouped by tag.',
-		'',
-		'Untagged notes:',
-		lines,
-	].join('\n');
+	return requireTm().render(PromptId.LintTagCoverage, { lines });
 }
 
-function buildContentPrompt(findings: LintFinding[]): string {
+async function buildContentPrompt(findings: LintFinding[]): Promise<string> {
 	const lines = findings.slice(0, 30).map(f => `- ${f.filePath ?? f.title}: ${f.description}`).join('\n');
-	return [
-		'Review these empty or stub Obsidian notes and recommend whether to delete, expand, merge, or ignore each one.',
-		'Return a short repair plan grouped by action and ask for confirmation before file edits.',
-		'',
-		'Notes:',
-		lines,
-	].join('\n');
+	return requireTm().render(PromptId.LintContentCleanup, { lines });
 }
 
 function topRepeatedTargets(files: BrokenLinkFile[]): Array<{ target: string; fileCount: number; occurrenceCount: number }> {
@@ -195,7 +156,7 @@ function topNoiseFolder(files: BrokenLinkFile[]): { folder: string; files: Broke
 	return top;
 }
 
-export function buildVaultHealthInsights(findings: LintFinding[]): HealthInsight[] {
+export async function buildVaultHealthInsights(findings: LintFinding[]): Promise<HealthInsight[]> {
 	const openFindings = findings.filter(f => f.status === 'open');
 	const insights: HealthInsight[] = [];
 	const brokenFiles = brokenLinkFiles(openFindings).sort((a, b) => b.occurrenceCount - a.occurrenceCount);
@@ -215,7 +176,7 @@ export function buildVaultHealthInsights(findings: LintFinding[]): HealthInsight
 				{ label: 'Missing targets', value: allBrokenTargets.size },
 			],
 			recommendedActions: [
-				{ id: 'ai-repair-links', label: 'Ask AI to repair', mode: 'ai', prompt: buildBrokenLinkPrompt(brokenFiles) },
+				{ id: 'ai-repair-links', label: 'Ask AI to repair', mode: 'ai', prompt: await buildBrokenLinkPrompt(brokenFiles) },
 				{ id: 'manual-top-files', label: 'Review top files', mode: 'manual' },
 			],
 			evidence: brokenFiles.slice(0, 8).map(item => item.finding),
@@ -237,7 +198,7 @@ export function buildVaultHealthInsights(findings: LintFinding[]): HealthInsight
 				{ label: 'File references', value: references },
 			],
 			recommendedActions: [
-				{ id: 'ai-map-targets', label: 'Map or create notes', mode: 'ai', prompt: buildMissingTargetsPrompt(brokenFiles, repeatedTargets) },
+				{ id: 'ai-map-targets', label: 'Map or create notes', mode: 'ai', prompt: await buildMissingTargetsPrompt(brokenFiles, repeatedTargets) },
 			],
 			evidence: brokenFiles.filter(item => item.targets.some(t => repeatedTargets.slice(0, 20).some(rt => rt.target === t))).slice(0, 8).map(item => item.finding),
 			evidenceLabel: `Top targets: ${formatList(repeatedTargets.map(item => `[[${item.target}]]`), 5)}`,
@@ -257,7 +218,7 @@ export function buildVaultHealthInsights(findings: LintFinding[]): HealthInsight
 				{ label: 'Occurrences', value: noise.occurrenceCount },
 			],
 			recommendedActions: [
-				{ id: 'ai-classify-noise', label: 'Classify noise', mode: 'ai', prompt: buildNoisePrompt(noise.folder, noise.files) },
+				{ id: 'ai-classify-noise', label: 'Classify noise', mode: 'ai', prompt: await buildNoisePrompt(noise.folder, noise.files) },
 				{ id: 'manual-ignore-folder', label: 'Review ignore rule', mode: 'manual' },
 			],
 			evidence: noise.files.slice(0, 8).map(item => item.finding),
@@ -277,7 +238,7 @@ export function buildVaultHealthInsights(findings: LintFinding[]): HealthInsight
 				{ label: 'Orphans', value: orphanFindings.length },
 			],
 			recommendedActions: [
-				{ id: 'ai-reconnect-orphans', label: 'Suggest links', mode: 'ai', prompt: buildOrphanPrompt(orphanFindings) },
+				{ id: 'ai-reconnect-orphans', label: 'Suggest links', mode: 'ai', prompt: await buildOrphanPrompt(orphanFindings) },
 			],
 			evidence: orphanFindings.slice(0, 8),
 			evidenceLabel: 'Disconnected notes',
@@ -296,7 +257,7 @@ export function buildVaultHealthInsights(findings: LintFinding[]): HealthInsight
 				{ label: 'Untagged', value: untaggedFindings.length },
 			],
 			recommendedActions: [
-				{ id: 'ai-suggest-tags', label: 'Suggest tags', mode: 'ai', prompt: buildTagPrompt(untaggedFindings) },
+				{ id: 'ai-suggest-tags', label: 'Suggest tags', mode: 'ai', prompt: await buildTagPrompt(untaggedFindings) },
 			],
 			evidence: untaggedFindings.slice(0, 8),
 			evidenceLabel: 'Sample notes',
@@ -315,7 +276,7 @@ export function buildVaultHealthInsights(findings: LintFinding[]): HealthInsight
 				{ label: 'Notes', value: contentFindings.length },
 			],
 			recommendedActions: [
-				{ id: 'ai-triage-content', label: 'Triage notes', mode: 'ai', prompt: buildContentPrompt(contentFindings) },
+				{ id: 'ai-triage-content', label: 'Triage notes', mode: 'ai', prompt: await buildContentPrompt(contentFindings) },
 			],
 			evidence: contentFindings.slice(0, 8),
 			evidenceLabel: 'Sample notes',

@@ -10,12 +10,17 @@ import type { AppHandle } from '@/core/ports/AppHandle';
 import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { PromptId } from '@/core/prompt/PromptId';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { collectText } from '@/service/agents/core/sdkMessageAdapter';
 
-const WEB_SEARCH_SYSTEM_PROMPT =
-    'Search the web and provide a comprehensive answer with sources. Cite URLs where possible. ' +
-    'Focus on factual, up-to-date information. If the query is about a specific topic, provide relevant context and details.';
+/**
+ * T11Y-6: web search tool system prompt body moved to
+ * templates/prompts/web-search-tool-system.md
+ * (PromptId.WebSearchToolSystem). This file and chatToolBuilder.ts had the
+ * same string duplicated — now deduped to a single template.
+ */
 
 export interface WebSearchMcpServerDeps {
     app: AppHandle;
@@ -45,9 +50,16 @@ export function buildWebSearchMcpServer(deps: WebSearchMcpServerDeps) {
             }
 
             try {
+                const tm = TemplateManager.getInstance();
+                if (!tm) {
+                    return {
+                        content: [{ type: 'text' as const, text: 'Web search is not available (template manager not bound).' }],
+                    };
+                }
+                const systemPrompt = await tm.render(PromptId.WebSearchToolSystem, {});
                 const messages = queryWithProfile(app as any, pluginId, profile, {
                     prompt: input.query,
-                    systemPrompt: WEB_SEARCH_SYSTEM_PROMPT,
+                    systemPrompt,
                     maxTurns: 1,
                 });
                 const text = await collectText(messages);

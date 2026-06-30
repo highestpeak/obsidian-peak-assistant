@@ -4,12 +4,16 @@ import { z } from 'zod';
 import type { AppHandle } from '@/core/ports/AppHandle';
 import type { ModelCapabilities } from '@/core/providers/types';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { PromptId } from '@/core/prompt/PromptId';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { collectText } from '@/service/agents/core/sdkMessageAdapter';
 
-const WEB_SEARCH_SYSTEM_PROMPT =
-    'Search the web and provide a comprehensive answer with sources. Cite URLs where possible. ' +
-    'Focus on factual, up-to-date information. If the query is about a specific topic, provide relevant context and details.';
+/**
+ * T11Y-6: web search tool system prompt body moved to
+ * templates/prompts/web-search-tool-system.md
+ * (PromptId.WebSearchToolSystem). Previously duplicated in webSearchTool.ts.
+ */
 
 export interface ChatToolDeps {
     app: AppHandle;
@@ -45,9 +49,12 @@ export function buildChatTools(
                 }),
                 execute: async ({ query }) => {
                     try {
+                        const tm = TemplateManager.getInstance();
+                        if (!tm) return 'Web search error: template manager not bound';
+                        const systemPrompt = await tm.render(PromptId.WebSearchToolSystem, {});
                         const messages = queryWithProfile(deps.app as any, deps.pluginId, webProfile, {
                             prompt: query,
-                            systemPrompt: WEB_SEARCH_SYSTEM_PROMPT,
+                            systemPrompt,
                             maxTurns: 1,
                         });
                         return (await collectText(messages)) || 'No results found.';

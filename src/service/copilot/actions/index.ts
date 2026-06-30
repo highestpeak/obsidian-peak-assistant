@@ -665,30 +665,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 		iconId: 'circle-help', category: 'vault',
 		relevance: () => 0.5,
 		async *execute(_ctx, signal) {
-			const systemPrompt = `You are a task resolution assistant. You search a knowledge vault to find answers to open tasks that contain questions or research items.
-
-Your job:
-1. You will receive a list of open tasks (checkboxes) from the vault.
-2. For each task that contains a question or research item, search the vault for relevant notes that might answer it.
-3. Return a structured JSON result via submit_result with this schema:
-{
-  "tasks": [
-    {
-      "filePath": "path/to/file.md",
-      "lineNumber": 42,
-      "taskText": "the original task text",
-      "suggestedAnswer": "concise answer found in vault",
-      "sourceNotePath": "path/to/source.md",
-      "sourceNoteTitle": "Source Note Title",
-      "confidence": 0.85
-    }
-  ],
-  "totalTasksScanned": 15,
-  "summary": "Found answers for 3 of 15 tasks"
-}
-
-Focus on tasks that ask questions (contain "?"), request research, or mention finding/looking up information. Skip simple action items like "buy groceries" unless the vault contains relevant information.
-Only include tasks where you found a credible answer with confidence >= 0.5.`;
+			const systemPrompt = await ai.renderPrompt(PromptId.CopilotFindAndSolveTasksSystem, {} as any);
 
 			const files = vault.getMarkdownFiles();
 			const todoPattern = /^(\s*)-\s\[\s\]\s(.+)$/;
@@ -723,11 +700,7 @@ Only include tasks where you found a credible answer with confidence >= 0.5.`;
 				`- [${t.filePath}:L${t.lineNumber}] ${t.text}`
 			).join('\n');
 
-			const userPrompt = `## Open Tasks with Questions/Research Items
-
-${taskList}
-
-Search the vault for answers to these tasks. Use vault_grep and vault_read_note to find relevant information.`;
+			const userPrompt = await ai.renderPrompt(PromptId.CopilotFindAndSolveTasksUser, { taskList } as any);
 
 			yield* agent.runAgentStream({ systemPrompt, userPrompt, signal });
 		},

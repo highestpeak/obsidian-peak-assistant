@@ -4,7 +4,8 @@ import { LLMUsage, LLMOutputControlSettings, LLMStreamEvent, ToolEvent } from '@
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
 import { getAIUploadFolder } from '@/core/config/folderPaths';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
-import { DEFAULT_SUMMARY, PLAN_MODE_SYSTEM_PROMPT } from '@/core/constant';
+import { DEFAULT_SUMMARY } from '@/core/constant';
+import { TemplateManager } from '@/core/template/TemplateManager';
 import { EventBus, MessageSentEvent, ConversationCreatedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
 import { LLMRequestMessage } from '@/core/providers/types';
 import {
@@ -198,7 +199,10 @@ export class ConversationService {
 
 			// Plan mode: prepend planning-focused system prompt
 			if (effectiveMode === 'plan') {
-				const planSystemPrompt = PLAN_MODE_SYSTEM_PROMPT;
+				// T11Y-6: PLAN_MODE_SYSTEM_PROMPT body lives at templates/prompts/plan-mode-system.md.
+				const tm = TemplateManager.getInstance();
+				if (!tm) throw new Error('TemplateManager not bound — cannot render plan-mode system prompt.');
+				const planSystemPrompt = await tm.render(PromptId.PlanModeSystem, {});
 				// Find the system message and prepend planning instructions
 				const systemIdx = prepared.prompt.findIndex(m => m.role === 'system');
 				if (systemIdx >= 0) {
