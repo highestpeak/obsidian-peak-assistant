@@ -1,7 +1,7 @@
 import type {
 	ProgressHandle,
 	ProgressReporterPort,
-} from '@/service/ports/ProgressReporterPort';
+} from '@/core/ports/ProgressReporterPort';
 
 /** Progress tracker for indexing operations with periodic updates and final statistics. */
 export class IndexProgressTracker {

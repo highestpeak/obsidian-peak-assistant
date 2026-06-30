@@ -3,7 +3,7 @@
 // the Ambient push-card "Insert link" affordance.
 
 import { MarkdownView, type App } from 'obsidian';
-import type { EditorCommandsPort } from '@/service/editor/EditorCommandsPort';
+import type { EditorCommandsPort } from '@/core/ports/EditorCommandsPort';
 
 export class AppEditorCommandsAdapter implements EditorCommandsPort {
 	constructor(private readonly app: App) {}

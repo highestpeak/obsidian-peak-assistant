@@ -25,8 +25,8 @@ import type {
 	BriefingItem,
 	TriggerType,
 	UserAction,
-} from '../types';
-import type { LearnedPattern } from '../PatternLearner';
+} from '@/core/types/ambient';
+import type { LearnedPattern } from '@/service/ambient/PatternLearner';
 
 /**
  * Reads the current `ambientPush` settings slice. Implementations

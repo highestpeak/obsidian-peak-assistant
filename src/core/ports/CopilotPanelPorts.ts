@@ -17,9 +17,9 @@
 // would only hide the dependency from the scanner without removing it.
 
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
-import type { DocumentContext } from '../CopilotActionRegistry';
-import type { CopilotRunArtifacts } from '../CopilotRunArtifacts';
-import type { IntentTabId } from '../intent-hub';
+import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
+import type { CopilotRunArtifacts } from '@/service/copilot/CopilotRunArtifacts';
+import type { IntentTabId } from '@/service/copilot/intent-hub';
 
 /**
  * Vault / editor write operations the Copilot panels need to apply

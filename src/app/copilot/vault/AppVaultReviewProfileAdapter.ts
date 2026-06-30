@@ -7,7 +7,7 @@
 // prompt builder treats `undefined` as "no user preferences known".
 
 import { AppContext } from '@/app/context/AppContext';
-import type { VaultReviewProfilePort } from '@/service/copilot/vault/ports/VaultReviewPorts';
+import type { VaultReviewProfilePort } from '@/core/ports/VaultReviewPorts';
 
 export class AppVaultReviewProfileAdapter implements VaultReviewProfilePort {
 	async loadUserProfileText(): Promise<string | undefined> {

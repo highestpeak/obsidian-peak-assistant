@@ -7,7 +7,7 @@
 
 import type {
 	QuickSearchEventRouterPort,
-} from '@/service/search/background/ports/QuickSearchBackgroundPorts';
+} from '@/core/ports/QuickSearchBackgroundPorts';
 import type { QuickSearchBackgroundEventTarget } from '@/service/search/background/QuickSearchBackgroundTypes';
 import { eventTargetRedirect } from '@/ui/view/quick-search/hooks/useEventRouter';
 import type { EventDispatchTarget } from '@/ui/view/quick-search/hooks/eventDispatcher';

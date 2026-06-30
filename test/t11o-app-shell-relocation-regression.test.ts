@@ -39,7 +39,7 @@ const FLOORS = {
 	uiAppShell: 9,
 	serviceApp: 7,
 	serviceUi: 0,
-	coreUpstream: 0,
+	coreUpstream: 17,
 	uiRawVaultOps: 7,
 	useServiceContextApp: 27,
 };

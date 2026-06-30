@@ -8,7 +8,7 @@
 // `ReactElementFactory` -> `ServiceProvider` -> `useServiceContext().vaultPreview`.
 
 import type { App, TFile } from 'obsidian';
-import type { VaultPreviewPort } from '@/service/preview/VaultPreviewPort';
+import type { VaultPreviewPort } from '@/core/ports/VaultPreviewPort';
 
 function isFile(f: unknown): f is TFile {
 	return !!f && typeof f === 'object' && 'extension' in (f as Record<string, unknown>);

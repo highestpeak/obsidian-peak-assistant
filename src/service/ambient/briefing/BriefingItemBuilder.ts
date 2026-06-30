@@ -11,7 +11,7 @@
 import type {
 	AmbientBriefingReadPort,
 } from '@/core/ports/AmbientBriefingReadPort';
-import type { AmbientBriefingPort } from '@/service/ambient/ports/AmbientPorts';
+import type { AmbientBriefingPort } from '@/core/ports/AmbientPorts';
 import type { BriefingItem } from '@/core/types/ambient';
 
 export const BRIEFING_DECAY_DAYS = 14;

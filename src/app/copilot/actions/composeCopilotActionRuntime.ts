@@ -14,7 +14,7 @@ import { AppContext } from '@/app/context/AppContext';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
 import { CopilotActionRuntimeImpl } from '@/service/copilot/actions/CopilotActionRuntimeImpl';
-import type { CopilotActionPorts } from '@/service/copilot/actions/CopilotActionPorts';
+import type { CopilotActionPorts } from '@/core/ports/CopilotActionPorts';
 import { AppVaultReaderAdapter } from '@/app/vault/AppVaultReaderAdapter';
 import { AppVaultMetadataCacheAdapter } from '@/app/vault/AppVaultMetadataCacheAdapter';
 import { AppCopilotActionSearchAdapter } from './AppCopilotActionSearchAdapter';

@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT = process.cwd();
-const PORT = path.resolve(ROOT, 'src/service/chat/ChatRuntimeStatePort.ts');
+const PORT = path.resolve(ROOT, 'src/core/ports/ChatRuntimeStatePort.ts');
 const ADAPTER = path.resolve(ROOT, 'src/app/chat/ChatRuntimeStateAdapter.ts');
 const SLOT = path.resolve(ROOT, 'src/service/chat/context/slots/SystemPromptSlot.ts');
 const CONV = path.resolve(ROOT, 'src/service/chat/service-conversation.ts');

@@ -18,7 +18,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { VaultDigestBuilder } from '@/service/copilot/vault/VaultDigestBuilder';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 import { VaultReviewRuntimeImpl } from '@/service/copilot/vault/VaultReviewRuntimeImpl';
-import type { VaultReviewDeps } from '@/service/copilot/vault/ports/VaultReviewPorts';
+import type { VaultReviewDeps } from '@/core/ports/VaultReviewPorts';
 import { AppVaultReviewProfileAdapter } from './AppVaultReviewProfileAdapter';
 import { AppVaultReviewAgentAdapter } from './AppVaultReviewAgentAdapter';
 import { ObsidianVaultReviewReportAdapter } from './ObsidianVaultReviewReportAdapter';

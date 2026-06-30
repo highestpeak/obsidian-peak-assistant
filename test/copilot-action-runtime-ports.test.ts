@@ -7,7 +7,7 @@ import assert from 'assert';
 import { createBuiltInCopilotActions } from '@/service/copilot/actions';
 import { CopilotActionRuntimeImpl } from '@/service/copilot/actions/CopilotActionRuntimeImpl';
 import { AppRuntimeRegistry } from '@/app/runtime/AppRuntimeRegistry';
-import type { CopilotActionPorts } from '@/service/copilot/actions/CopilotActionPorts';
+import type { CopilotActionPorts } from '@/core/ports/CopilotActionPorts';
 import type { CopilotAction, DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 
 function fakeDoc(overrides: Partial<DocumentContext> = {}): DocumentContext {

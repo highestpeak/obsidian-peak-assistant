@@ -1,4 +1,4 @@
-import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
+import type { VaultNavigationPort } from '@/core/ports/VaultNavigationPort';
 import type { SearchResultItem } from '@/core/search/searchTypes';
 
 /**

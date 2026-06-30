@@ -11,7 +11,7 @@ import {
 	createCopilotAgentPort,
 	type CopilotAgentSearchFn,
 } from '@/service/copilot/actions/agent-actions';
-import type { CopilotActionAgentPort } from '@/service/copilot/actions/CopilotActionPorts';
+import type { CopilotActionAgentPort } from '@/core/ports/CopilotActionPorts';
 import type { AnalysisHistoryPort } from '@/core/ports/AnalysisHistoryPort';
 
 export interface AppCopilotActionAgentAdapterOptions {

@@ -21,7 +21,7 @@ import type {
 	AmbientSettingsPort,
 	AmbientTriggerCallback,
 	AmbientUiProjectionPort,
-} from '@/service/ambient/ports/AmbientPorts';
+} from '@/core/ports/AmbientPorts';
 import {
 	DEFAULT_AMBIENT_PUSH_SETTINGS,
 	type AmbientContext,

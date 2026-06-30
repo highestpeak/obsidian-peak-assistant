@@ -7,7 +7,7 @@
 // T11X-F along with the port-side `defaultReporter` global.
 
 import { Notice } from 'obsidian';
-import type { ProgressHandle, ProgressReporterPort } from '@/service/ports/ProgressReporterPort';
+import type { ProgressHandle, ProgressReporterPort } from '@/core/ports/ProgressReporterPort';
 
 export class ObsidianProgressReporter implements ProgressReporterPort {
 	show(message: string, timeoutMs = 0): ProgressHandle {

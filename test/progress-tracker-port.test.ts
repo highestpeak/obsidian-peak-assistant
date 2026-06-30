@@ -2,11 +2,11 @@ import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
 import { IndexProgressTracker } from '@/service/search/support/progress-tracker';
-import type { ProgressHandle, ProgressReporterPort } from '@/service/ports/ProgressReporterPort';
+import type { ProgressHandle, ProgressReporterPort } from '@/core/ports/ProgressReporterPort';
 
 const PORT_SOURCE_PATH = path.resolve(
 	process.cwd(),
-	'src/service/ports/ProgressReporterPort.ts',
+	'src/core/ports/ProgressReporterPort.ts',
 );
 
 const TRACKER_SOURCE_PATH = path.resolve(

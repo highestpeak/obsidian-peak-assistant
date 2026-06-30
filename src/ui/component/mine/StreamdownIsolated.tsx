@@ -7,8 +7,8 @@ import {
 	defaultRemarkPlugins,
 } from 'streamdown';
 import type { PluggableList } from 'unified';
-import type { WikilinkPort } from '@/service/navigation/WikilinkPort';
-import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
+import type { WikilinkPort } from '@/core/ports/WikilinkPort';
+import type { VaultNavigationPort } from '@/core/ports/VaultNavigationPort';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { STREAMDOWN_ISOLATED_CSS } from '@/styles/streamdown-isolated-css';
 import { remarkWikilink } from './streamdown';

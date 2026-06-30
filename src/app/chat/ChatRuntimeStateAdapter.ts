@@ -6,7 +6,7 @@
  * `SystemPromptSlot` and `ConversationService`.
  */
 
-import type { ChatRuntimeMode, ChatRuntimeStatePort } from '@/service/chat/ChatRuntimeStatePort';
+import type { ChatRuntimeMode, ChatRuntimeStatePort } from '@/core/ports/ChatRuntimeStatePort';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 
 export class ChatRuntimeStateAdapter implements ChatRuntimeStatePort {

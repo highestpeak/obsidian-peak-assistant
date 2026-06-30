@@ -16,7 +16,7 @@ const PERSIST_PATH = path.resolve(
 
 const PORT_PATH = path.resolve(
 	process.cwd(),
-	'src/service/ports/ProgressReporterPort.ts',
+	'src/core/ports/ProgressReporterPort.ts',
 );
 
 function readPersist(): string { return fs.readFileSync(PERSIST_PATH, 'utf8'); }
@@ -56,7 +56,7 @@ function testFileHasZeroObsidianImports(): void {
 function testFileImportsProgressReporterPort(): void {
 	const source = readPersist();
 	assert.ok(
-		/from\s+['"]@\/service\/ports\/ProgressReporterPort['"]/.test(source),
+		/from\s+['"]@\/core\/ports\/ProgressReporterPort['"]/.test(source),
 		'analysisDocPersistence.ts must import ProgressReporterPort (T2C reuse contract)',
 	);
 	console.log('PASS: fileImportsProgressReporterPort');

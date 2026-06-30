@@ -16,7 +16,7 @@ import type {
 	QuickSearchForegroundDetachIntent,
 	QuickSearchForegroundSnapshot,
 	QuickSearchSessionNotification,
-} from '../QuickSearchBackgroundTypes';
+} from '@/service/search/background/QuickSearchBackgroundTypes';
 
 /**
  * Read+write access to the foreground session. The adapter wraps the

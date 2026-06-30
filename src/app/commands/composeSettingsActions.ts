@@ -35,7 +35,7 @@ import { detectEnvironment } from '@/service/agents/harness/curator';
 import type {
 	IndexLevel,
 	SettingsActions,
-} from '@/service/settings/SettingsActionsPort';
+} from '@/core/ports/SettingsActionsPort';
 
 async function startStagedFullIndexing(
 	app: App,

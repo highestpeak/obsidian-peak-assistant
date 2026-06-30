@@ -29,7 +29,7 @@ import type {
 	LintScanResult,
 	LintSignalDetector,
 	VaultLintConfig,
-} from '../types';
+} from '@/service/lint/types';
 
 /**
  * Loads the (optional) config-vault-lint template and returns the

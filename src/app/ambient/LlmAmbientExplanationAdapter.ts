@@ -16,7 +16,7 @@ import {
 	AmbientExplanationService,
 	type AmbientExplanationLlmPort,
 } from '@/service/ambient/AmbientExplanationService';
-import type { AmbientExplanationPort } from '@/service/ambient/ports/AmbientPorts';
+import type { AmbientExplanationPort } from '@/core/ports/AmbientPorts';
 
 class QueryWithProfileLlmPort implements AmbientExplanationLlmPort {
 	async collectText(input: {

@@ -7,7 +7,7 @@
 import assert from 'assert';
 import { AppCopilotActionSearchAdapter } from '@/app/copilot/actions/AppCopilotActionSearchAdapter';
 import { createBuiltInCopilotActions, type FindRelatedResult } from '@/service/copilot/actions';
-import type { CopilotActionPorts } from '@/service/copilot/actions/CopilotActionPorts';
+import type { CopilotActionPorts } from '@/core/ports/CopilotActionPorts';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 
 function fakeDoc(): DocumentContext {

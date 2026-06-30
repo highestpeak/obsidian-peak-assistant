@@ -11,7 +11,7 @@
 
 import type {
 	QuickSearchBackgroundTargetFactoryPort,
-} from '@/service/search/background/ports/QuickSearchBackgroundPorts';
+} from '@/core/ports/QuickSearchBackgroundPorts';
 import type {
 	QuickSearchBackgroundEventTarget,
 	QuickSearchBackgroundSession,

@@ -15,7 +15,7 @@ import {
 	type RankedTagSuggestion,
 } from '@/service/copilot/TagSuggestionEngine';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import type { CopilotActionTagsPort } from '@/service/copilot/actions/CopilotActionPorts';
+import type { CopilotActionTagsPort } from '@/core/ports/CopilotActionPorts';
 
 async function safe<T>(label: string, fallback: T, fn: () => Promise<T>): Promise<T> {
 	try {

@@ -10,7 +10,7 @@
 // leaving the freshly mounted `SearchModal` with nothing to restore.
 
 import { Notice } from 'obsidian';
-import type { QuickSearchNotificationPort } from '@/service/search/background/ports/QuickSearchBackgroundPorts';
+import type { QuickSearchNotificationPort } from '@/core/ports/QuickSearchBackgroundPorts';
 import type { QuickSearchSessionNotification } from '@/service/search/background/QuickSearchBackgroundTypes';
 
 const NOTICE_TIMEOUT_MS = 8000;

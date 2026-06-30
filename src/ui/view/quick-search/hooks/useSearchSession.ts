@@ -26,7 +26,7 @@ import type { StreamConsumerContext } from './streamConsumer';
 import { useEventRouter } from './useEventRouter';
 import { useContinueAnalysis } from './useContinueAnalysis';
 import { persistSessionToVault } from '@/service/search/analysisDocPersistence';
-import type { AnalysisDocVaultWriterPort } from '@/service/search/ports/AnalysisDocVaultWriterPort';
+import type { AnalysisDocVaultWriterPort } from '@/core/ports/AnalysisDocVaultWriterPort';
 import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import type { EventBus } from '@/core/eventBus';
 import type { MyPluginSettings } from '@/core/config/settingsTypes';

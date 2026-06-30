@@ -7,9 +7,9 @@
 // `StreamdownIsolated` + `WikilinkHoverPreview`.
 
 import type { App } from 'obsidian';
-import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
-import type { EditorCommandsPort } from '@/service/editor/EditorCommandsPort';
-import type { WikilinkPort } from '@/service/navigation/WikilinkPort';
+import type { VaultNavigationPort } from '@/core/ports/VaultNavigationPort';
+import type { EditorCommandsPort } from '@/core/ports/EditorCommandsPort';
+import type { WikilinkPort } from '@/core/ports/WikilinkPort';
 import { AppVaultNavigationAdapter } from './AppVaultNavigationAdapter';
 import { AppEditorCommandsAdapter } from './AppEditorCommandsAdapter';
 import { AppWikilinkAdapter } from './AppWikilinkAdapter';

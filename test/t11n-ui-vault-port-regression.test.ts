@@ -36,7 +36,7 @@ const FLOORS = {
 	totalFlagged: 92,
 	obsidianTypes: 35,
 	obsidianSideEffect: 5,
-	coreUpstream: 0,
+	coreUpstream: 17,
 	serviceApp: 7,
 	serviceUi: 0,
 	// T11M baseline UI -> app was 80; T11N nudged to 45. Floor at 46 so a
@@ -147,17 +147,17 @@ function testUiRawVaultOpFloor(): void {
 async function testT11nInfraFilesExist(): Promise<void> {
 	const required = [
 		// Track 1 — preview port + adapter + composer
-		'service/preview/VaultPreviewPort.ts',
+		'core/ports/VaultPreviewPort.ts',
 		'app/preview/AppVaultPreviewAdapter.ts',
 		'app/preview/composeVaultPreview.ts',
 		// Track 2 — navigation + editor commands ports + adapters + composer
-		'service/navigation/VaultNavigationPort.ts',
+		'core/ports/VaultNavigationPort.ts',
 		'app/navigation/AppVaultNavigationAdapter.ts',
-		'service/editor/EditorCommandsPort.ts',
+		'core/ports/EditorCommandsPort.ts',
 		'app/navigation/AppEditorCommandsAdapter.ts',
 		'app/navigation/composeNavigation.ts',
 		// Track 3 — chat-vault writer port + adapter + composer
-		'service/chat/ports/ChatVaultWriterPort.ts',
+		'core/ports/ChatVaultWriterPort.ts',
 		'app/chat/AppChatVaultWriterAdapter.ts',
 		'app/chat/composeChatVaultWriter.ts',
 		// Track 6 — vault-backed chat types in core (eliminates core->upstream)

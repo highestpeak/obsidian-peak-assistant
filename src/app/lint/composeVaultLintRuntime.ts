@@ -19,7 +19,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { VaultLintService } from '@/service/lint/VaultLintService';
 import { DEFAULT_VAULT_LINT_CONFIG } from '@/service/lint/config/VaultLintDefaults';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
-import type { VaultLintPorts } from '@/service/lint/ports/VaultLintPorts';
+import type { VaultLintPorts } from '@/core/ports/VaultLintPorts';
 import { InMemoryDetectorRegistry } from '@/service/lint/runtime/InMemoryDetectorRegistry';
 import { DefaultVaultLintIdFactory } from '@/service/lint/runtime/defaultIdFactory';
 import { DefaultVaultLintClock } from '@/service/lint/runtime/defaultClock';

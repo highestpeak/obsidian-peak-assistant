@@ -15,7 +15,7 @@
 import type {
 	AmbientPushPatternReadPort,
 	RecurringPushPair,
-} from '@/service/ambient/ports/AmbientPushPatternReadPort';
+} from '@/core/ports/AmbientPushPatternReadPort';
 import type { LearnedPattern } from './PatternLearner';
 
 export const PATTERN_REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes

@@ -8,7 +8,7 @@
 // T11I (2026-06-26): constructs `AppAnalysisDocVaultWriterAdapter` per
 // call (no module-level default).
 
-import type { QuickSearchAnalysisPersistencePort } from '@/service/search/background/ports/QuickSearchBackgroundPorts';
+import type { QuickSearchAnalysisPersistencePort } from '@/core/ports/QuickSearchBackgroundPorts';
 import type { QuickSearchForegroundSnapshot } from '@/service/search/background/QuickSearchBackgroundTypes';
 import { persistSessionToVault } from '@/service/search/analysisDocPersistence';
 import type { V2SessionSnapshot } from '@/core/search/sessionSnapshot';

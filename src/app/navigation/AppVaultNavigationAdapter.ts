@@ -14,7 +14,7 @@ import type {
 	OpenVaultPathAtLineOptions,
 	VaultNavigationOpenOptions,
 	VaultNavigationPort,
-} from '@/service/navigation/VaultNavigationPort';
+} from '@/core/ports/VaultNavigationPort';
 import type { SearchResultItem } from '@/core/search/searchTypes';
 
 function isFile(f: unknown): f is TFile {

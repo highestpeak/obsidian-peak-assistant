@@ -3,7 +3,7 @@
 // `app.vault.create` for the chat-message save-to-vault surface.
 
 import { normalizePath, type App } from 'obsidian';
-import type { ChatVaultWriterPort } from '@/service/chat/ports/ChatVaultWriterPort';
+import type { ChatVaultWriterPort } from '@/core/ports/ChatVaultWriterPort';
 
 export class AppChatVaultWriterAdapter implements ChatVaultWriterPort {
 	constructor(private readonly app: App) {}

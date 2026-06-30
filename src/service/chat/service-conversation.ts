@@ -35,7 +35,7 @@ import { detectTimezone } from '@/core/utils/date-utils';
 import { uploadFilesToVault } from '@/core/storage/vault/vault-ops';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { buildChatTools } from '@/service/chat/tools/chatToolBuilder';
-import type { ChatRuntimeStatePort } from '@/service/chat/ChatRuntimeStatePort';
+import type { ChatRuntimeStatePort } from '@/core/ports/ChatRuntimeStatePort';
 
 interface ChatPreparationResult {
 	modelId: string;

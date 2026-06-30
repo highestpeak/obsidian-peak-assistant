@@ -3,7 +3,7 @@
 // streamdown href parsing.
 
 import type { App } from 'obsidian';
-import type { WikilinkPort } from '@/service/navigation/WikilinkPort';
+import type { WikilinkPort } from '@/core/ports/WikilinkPort';
 
 function stripAnchor(target: string): string {
 	if (!target || typeof target !== 'string') return target;

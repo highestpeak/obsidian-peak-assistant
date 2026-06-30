@@ -6,7 +6,7 @@
  * orchestrator never imports the store directly.
  */
 
-import type { ReportSessionPort } from '@/service/agents/report/ReportSessionPort';
+import type { ReportSessionPort } from '@/core/ports/ReportSessionPort';
 import type { V2Section } from '@/core/search/v2SessionTypes';
 import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessionStore';
 

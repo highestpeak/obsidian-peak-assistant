@@ -5,7 +5,7 @@
 // growing this port requires real engine demand, not speculation.
 
 import { AppContext } from '@/app/context/AppContext';
-import type { VaultLintVaultPort } from '@/service/lint/ports/VaultLintPorts';
+import type { VaultLintVaultPort } from '@/core/ports/VaultLintPorts';
 
 export class ObsidianVaultLintVaultAdapter implements VaultLintVaultPort {
 	getMarkdownFileCount(): number {

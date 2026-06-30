@@ -19,7 +19,7 @@ import {
 import type {
 	AmbientPushPatternReadPort,
 	RecurringPushPair,
-} from '@/service/ambient/ports/AmbientPushPatternReadPort';
+} from '@/core/ports/AmbientPushPatternReadPort';
 
 interface PortStats {
 	calls: Array<{ withinDays: number; minCount: number }>;

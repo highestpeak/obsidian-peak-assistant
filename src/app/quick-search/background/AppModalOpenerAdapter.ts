@@ -6,7 +6,7 @@
 // id as the pending-restore target so the modal mount picks it up.
 
 import type { App } from 'obsidian';
-import type { QuickSearchModalOpenerPort } from '@/service/search/background/ports/QuickSearchBackgroundPorts';
+import type { QuickSearchModalOpenerPort } from '@/core/ports/QuickSearchBackgroundPorts';
 import { QuickSearchModal } from '@/app/modals/QuickSearchModal';
 import { AppContext } from '@/app/context/AppContext';
 

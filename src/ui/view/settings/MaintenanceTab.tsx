@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { Row, Button } from '@/ui/components/primitives';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import type { SettingsActions } from '@/service/settings/SettingsActionsPort';
+import type { SettingsActions } from '@/core/ports/SettingsActionsPort';
 
 interface MaintenanceAction {
     id: string;

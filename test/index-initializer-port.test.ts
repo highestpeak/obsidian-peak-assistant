@@ -55,7 +55,7 @@ function testTypeOnlyAppImportFromObsidianIsStillAllowed(): void {
 
 function testFileImportsProgressReporterPort(): void {
 	const source = readSource();
-	const re = /from\s+['"]@\/service\/ports\/ProgressReporterPort['"]/;
+	const re = /from\s+['"]@\/core\/ports\/ProgressReporterPort['"]/;
 	assert.ok(
 		re.test(source),
 		'indexInitializer.ts must import ProgressReporterPort (T2B reuse contract)',

@@ -2,8 +2,8 @@ import type { EventBus } from '@/core/eventBus';
 import { SelectionChangedEvent, ScrollToMessageEvent } from '@/core/eventBus';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { ChatConversation, ChatProject, PendingConversation } from '@/service/chat/types';
-import type { ViewActivationPort } from '@/service/view/ViewActivationPort';
-import type { ChatNavigationPort } from '@/service/chat/navigation/ChatNavigationPort';
+import type { ViewActivationPort } from '@/core/ports/ViewActivationPort';
+import type { ChatNavigationPort } from '@/core/ports/ChatNavigationPort';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 

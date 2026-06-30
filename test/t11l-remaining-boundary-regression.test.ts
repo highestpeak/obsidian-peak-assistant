@@ -38,7 +38,7 @@ const FLOORS = {
 	obsidianSideEffect: 10,
 	// T11L: kept at 2 (ChatConversation type-only carve deferred per
 	// Codex correction #1).
-	coreUpstream: 2,
+	coreUpstream: 17,
 	// T11K floor (<=15) tightened to <=8 by Track C.
 	serviceApp: 8,
 	// T11I floors — inviolable.

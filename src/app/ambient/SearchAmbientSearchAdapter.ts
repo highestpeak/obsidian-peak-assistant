@@ -19,7 +19,7 @@ import type {
 	AmbientPersistencePort,
 	AmbientSearchDeps,
 	AmbientSearchPort,
-} from '@/service/ambient/ports/AmbientPorts';
+} from '@/core/ports/AmbientPorts';
 import { ambientSearch } from '@/service/ambient/AmbientSearcher';
 import { SerendipitySearcher } from '@/service/ambient/serendipity/SerendipitySearcher';
 

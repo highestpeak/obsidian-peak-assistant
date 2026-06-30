@@ -23,7 +23,7 @@ import fs from 'fs';
 import path from 'path';
 import { VaultLintService } from '@/service/lint/VaultLintService';
 import { DEFAULT_VAULT_LINT_CONFIG } from '@/service/lint/config/VaultLintDefaults';
-import type { VaultLintPorts } from '@/service/lint/ports/VaultLintPorts';
+import type { VaultLintPorts } from '@/core/ports/VaultLintPorts';
 import type {
 	LintDismissal,
 	LintScanResult,
@@ -244,7 +244,7 @@ const RUNTIME_PATH = path.resolve(
 );
 const PORTS_PATH = path.resolve(
 	process.cwd(),
-	'src/service/lint/ports/VaultLintPorts.ts',
+	'src/core/ports/VaultLintPorts.ts',
 );
 const COMPOSITION_PATH = path.resolve(
 	process.cwd(),
@@ -316,8 +316,8 @@ function testPortsFileImportsOnlyTypes(): void {
 	assert.ok(specifiers.length > 0, 'ports file should import its supporting types');
 	for (const spec of specifiers) {
 		assert.ok(
-			spec === '../types',
-			`ports file may only import from '../types'; found '${spec}'`,
+			spec === '@/service/lint/types',
+			`ports file may only import from '@/service/lint/types'; found '${spec}'`,
 		);
 	}
 	console.log(`PASS: portsFileImportsOnlyTypes (${specifiers.length} import(s) checked)`);

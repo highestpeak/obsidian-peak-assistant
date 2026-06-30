@@ -8,7 +8,7 @@
 
 import { AppContext } from '@/app/context/AppContext';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
-import type { VaultLintConfigPort } from '@/service/lint/ports/VaultLintPorts';
+import type { VaultLintConfigPort } from '@/core/ports/VaultLintPorts';
 import type { VaultLintConfig } from '@/service/lint/types';
 
 export class ObsidianVaultLintConfigAdapter implements VaultLintConfigPort {

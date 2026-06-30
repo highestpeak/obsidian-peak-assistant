@@ -4,7 +4,7 @@ import type { LLMRequestMessage } from '@/core/providers/types';
 import type { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/core/prompt/PromptId';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import type { ChatRuntimeStatePort } from '@/service/chat/ChatRuntimeStatePort';
+import type { ChatRuntimeStatePort } from '@/core/ports/ChatRuntimeStatePort';
 
 /**
  * Build the dynamic capabilities object for the conversation system prompt.

@@ -1,4 +1,4 @@
-import type { ChatNavigationPort } from '@/service/chat/navigation/ChatNavigationPort';
+import type { ChatNavigationPort } from '@/core/ports/ChatNavigationPort';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 
 /**

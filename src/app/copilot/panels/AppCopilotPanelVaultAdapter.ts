@@ -12,7 +12,7 @@
 
 import type { App, TFile, TFolder } from 'obsidian';
 import { Notice } from 'obsidian';
-import type { CopilotPanelVaultPort } from '@/service/copilot/panels/CopilotPanelPorts';
+import type { CopilotPanelVaultPort } from '@/core/ports/CopilotPanelPorts';
 import {
 	applyCopilotArtifactsToContext,
 	type ApplyCopilotArtifactsOps,

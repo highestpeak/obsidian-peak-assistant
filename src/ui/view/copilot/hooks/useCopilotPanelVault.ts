@@ -9,7 +9,7 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import type {
 	CopilotPanelVaultPort,
 	CopilotPanelNavigator,
-} from '@/service/copilot/panels/CopilotPanelPorts';
+} from '@/core/ports/CopilotPanelPorts';
 
 export interface CopilotPanelHost {
 	vault: CopilotPanelVaultPort;

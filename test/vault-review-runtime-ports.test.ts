@@ -30,7 +30,7 @@ import type {
 	VaultReviewDigestDataPort,
 	VaultReviewAgentPort,
 	VaultReviewReportPort,
-} from '@/service/copilot/vault/ports/VaultReviewPorts';
+} from '@/core/ports/VaultReviewPorts';
 import type {
 	BuildVaultDigestOptions,
 	ClusterMember,

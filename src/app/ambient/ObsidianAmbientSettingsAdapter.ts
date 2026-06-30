@@ -5,7 +5,7 @@
 // the plugin's `saveSettings` path.
 
 import { AppContext } from '@/app/context/AppContext';
-import type { AmbientSettingsPort } from '@/service/ambient/ports/AmbientPorts';
+import type { AmbientSettingsPort } from '@/core/ports/AmbientPorts';
 import type { AmbientPushSettings } from '@/core/types/ambient';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS } from '@/core/types/ambient';
 import { markAmbientPushPanelAutoOpened } from '@/service/ambient/ambientPanelStartup';

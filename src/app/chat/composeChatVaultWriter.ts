@@ -4,7 +4,7 @@
 // concrete adapter directly.
 
 import type { App } from 'obsidian';
-import type { ChatVaultWriterPort } from '@/service/chat/ports/ChatVaultWriterPort';
+import type { ChatVaultWriterPort } from '@/core/ports/ChatVaultWriterPort';
 import { AppChatVaultWriterAdapter } from './AppChatVaultWriterAdapter';
 
 export function composeChatVaultWriter(app: App): ChatVaultWriterPort {

@@ -3,7 +3,7 @@
 // code so service / UI never instantiate the concrete adapter directly.
 
 import type { App } from 'obsidian';
-import type { VaultPreviewPort } from '@/service/preview/VaultPreviewPort';
+import type { VaultPreviewPort } from '@/core/ports/VaultPreviewPort';
 import { AppVaultPreviewAdapter } from './AppVaultPreviewAdapter';
 
 export function composeVaultPreview(app: App): VaultPreviewPort {

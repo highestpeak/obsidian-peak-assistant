@@ -5,7 +5,7 @@ import type { SearchSettings } from '@/core/config/settingsTypes';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { DocumentType } from '@/core/document/types';
 import { IndexProgressTracker } from '../support/progress-tracker';
-import type { ProgressReporterPort } from '@/service/ports/ProgressReporterPort';
+import type { ProgressReporterPort } from '@/core/ports/ProgressReporterPort';
 import {
 	defaultIndexDocumentOptions,
 	IndexService,

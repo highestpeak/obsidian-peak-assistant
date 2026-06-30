@@ -21,7 +21,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type {
 	AmbientPushPatternReadPort,
 	RecurringPushPair,
-} from '@/service/ambient/ports/AmbientPushPatternReadPort';
+} from '@/core/ports/AmbientPushPatternReadPort';
 import type { AmbientContext, AmbientPushItem, TriggerType, UserAction } from '@/core/types/ambient';
 
 export class SqliteAmbientPersistenceAdapter implements AmbientPushPatternReadPort {

@@ -13,8 +13,8 @@
  */
 
 import { SLICE_CAPS } from '@/core/constant';
-import type { ProgressReporterPort } from '@/service/ports/ProgressReporterPort';
-import type { AnalysisDocVaultWriterPort } from '@/service/search/ports/AnalysisDocVaultWriterPort';
+import type { ProgressReporterPort } from '@/core/ports/ProgressReporterPort';
+import type { AnalysisDocVaultWriterPort } from '@/core/ports/AnalysisDocVaultWriterPort';
 import type { SearchSettings, MyPluginSettings } from '@/core/config/settingsTypes';
 import type { EventBus } from '@/core/eventBus';
 import { AIAnalysisCompleteEvent } from '@/core/eventBus';

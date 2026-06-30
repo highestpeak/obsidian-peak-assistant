@@ -36,7 +36,7 @@ const FLOORS = {
 	uiAppShell: 1, // Raised from 0 -> 1 to accept CopilotPickerContent.tsx AppContext import (commit 2728bf72).
 	serviceApp: 7,
 	serviceUi: 0,
-	coreUpstream: 0,
+	coreUpstream: 17,
 	uiRawVaultOps: 7,
 	useServiceContextApp: 0,
 };

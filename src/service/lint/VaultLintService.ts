@@ -24,7 +24,7 @@ import type {
 	LintScanResult,
 } from './types';
 import { mergeVaultLintConfig } from './config/VaultLintDefaults';
-import type { VaultLintPorts } from './ports/VaultLintPorts';
+import type { VaultLintPorts } from '@/core/ports/VaultLintPorts';
 import type { VaultLintRuntime } from './VaultLintRuntime';
 import type { VaultLintRunCallbacks } from './VaultLintRun';
 

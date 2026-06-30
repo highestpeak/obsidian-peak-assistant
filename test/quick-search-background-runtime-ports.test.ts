@@ -17,7 +17,7 @@ import type {
 	QuickSearchForegroundSessionPort,
 	QuickSearchModalOpenerPort,
 	QuickSearchNotificationPort,
-} from '@/service/search/background/ports/QuickSearchBackgroundPorts';
+} from '@/core/ports/QuickSearchBackgroundPorts';
 import type {
 	QuickSearchAgentHandle,
 	QuickSearchBackgroundEventTarget,

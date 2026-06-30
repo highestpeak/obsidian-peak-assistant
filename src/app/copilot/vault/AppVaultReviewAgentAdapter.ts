@@ -18,7 +18,7 @@ import {
 	buildVaultMetaAgentStream,
 	type VaultMetaAgentOptions,
 } from '@/service/copilot/vault/VaultMetaAgentStream';
-import type { VaultReviewAgentPort } from '@/service/copilot/vault/ports/VaultReviewPorts';
+import type { VaultReviewAgentPort } from '@/core/ports/VaultReviewPorts';
 
 export class AppVaultReviewAgentAdapter implements VaultReviewAgentPort {
 	constructor(private readonly app: App) {}

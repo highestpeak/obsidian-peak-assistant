@@ -34,7 +34,7 @@ import type {
 	VaultLintDetectorGraphNode,
 	VaultLintDetectorSemanticNeighbor,
 	VaultLintDetectorTagInfo,
-} from '@/service/lint/ports/VaultLintPorts';
+} from '@/core/ports/VaultLintPorts';
 
 // ---------------------------------------------------------------------------
 // Fake detector context

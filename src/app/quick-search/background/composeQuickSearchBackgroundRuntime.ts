@@ -12,7 +12,7 @@
 import type { App } from 'obsidian';
 import { QuickSearchBackgroundRuntimeImpl } from '@/service/search/background/QuickSearchBackgroundRuntimeImpl';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
-import type { QuickSearchBackgroundDeps } from '@/service/search/background/ports/QuickSearchBackgroundPorts';
+import type { QuickSearchBackgroundDeps } from '@/core/ports/QuickSearchBackgroundPorts';
 import { AppForegroundSessionAdapter } from './AppForegroundSessionAdapter';
 import { AppEventRouterAdapter } from './AppEventRouterAdapter';
 import { AppBackgroundTargetFactory } from './AppBackgroundTargetFactory';

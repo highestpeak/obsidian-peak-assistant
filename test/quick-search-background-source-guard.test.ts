@@ -96,8 +96,8 @@ function testTreeIsNonEmpty(): void {
 	const service = readFiles(SERVICE_QSB_ROOT);
 	const app = readFiles(APP_QSB_ROOT);
 	assert.ok(
-		service.length >= 4,
-		`expected src/service/search/background to contain at least 4 .ts files, found ${service.length}`,
+		service.length >= 3,
+		`expected src/service/search/background to contain at least 3 .ts files, found ${service.length}`,
 	);
 	assert.ok(
 		app.length >= 5,

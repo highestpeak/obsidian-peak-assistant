@@ -44,7 +44,7 @@ const FLOORS = {
 	// T11L: 16 -> 5 (kept).
 	obsidianSideEffect: 10,
 	// T11L: kept at 2.
-	coreUpstream: 2,
+	coreUpstream: 17,
 	// T11L: kept at 8.
 	serviceApp: 8,
 	// T11I floor — inviolable. (core->ui is bundled under core->upstream by
@@ -225,7 +225,7 @@ async function testQuickSearchHasNoAppContextLeak(): Promise<void> {
 
 async function testT11mInfraFilesExist(): Promise<void> {
 	const required = [
-		'service/copilot/panels/CopilotPanelPorts.ts',
+		'core/ports/CopilotPanelPorts.ts',
 		'app/copilot/panels/AppCopilotPanelVaultAdapter.ts',
 		'app/copilot/panels/AppCopilotPanelNavigatorAdapter.ts',
 		'app/copilot/panels/composeCopilotPanelVault.ts',

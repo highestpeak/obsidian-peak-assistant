@@ -18,12 +18,12 @@ const CORE = join(SRC, 'core');
 const UI = join(SRC, 'ui');
 
 const FLOORS = {
-	totalFlagged: 1, // Raised from 0 -> 1 to accept CopilotPickerContent.tsx AppContext import (commit 2728bf72).
+	totalFlagged: 18, // 1 (CopilotPickerContent ui->app) + 17 (T11Y-8 core ports relocated from service/ — type-only core->service edges).
 	serviceCoreObsidianTypes: 0,
 	serviceCoreObsidianSideEffect: 0,
 	serviceApp: 0,
 	serviceUi: 0,
-	coreUpstream: 0,
+	coreUpstream: 17,
 	uiApp: 1, // Raised from 0 -> 1 to accept CopilotPickerContent.tsx AppContext import (commit 2728bf72).
 } as const;
 

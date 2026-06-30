@@ -7,7 +7,7 @@ import React, { useRef } from 'react';
 import type { App } from 'obsidian';
 import { getExtensionFromSource } from '@/core/document/helper/FileTypeUtils';
 import { IMAGE_EXTENSIONS } from '@/core/document/helper/FileTypeUtils';
-import type { VaultPreviewPort } from '@/service/preview/VaultPreviewPort';
+import type { VaultPreviewPort } from '@/core/ports/VaultPreviewPort';
 
 const PREVIEW_TEXT_LINES = 15;
 const PREVIEW_CACHE_MAX = 50;

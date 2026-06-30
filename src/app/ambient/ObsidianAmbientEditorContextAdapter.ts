@@ -10,7 +10,7 @@ import type {
 	AmbientEditorContextPort,
 	AmbientSettingsPort,
 	AmbientTriggerCallback,
-} from '@/service/ambient/ports/AmbientPorts';
+} from '@/core/ports/AmbientPorts';
 import type { AmbientContext } from '@/core/types/ambient';
 import {
 	extractHeadings,

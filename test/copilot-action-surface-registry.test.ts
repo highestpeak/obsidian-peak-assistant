@@ -12,7 +12,7 @@
 
 import assert from 'assert';
 import { createBuiltInCopilotActions } from '@/service/copilot/actions';
-import type { CopilotActionPorts } from '@/service/copilot/actions/CopilotActionPorts';
+import type { CopilotActionPorts } from '@/core/ports/CopilotActionPorts';
 import {
 	_internal,
 	getCopilotActionIcon,

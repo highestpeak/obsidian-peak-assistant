@@ -19,15 +19,15 @@ import type {
 	VaultDigest,
 	BuildVaultDigestOptions,
 	ClusterMember,
-} from '../VaultDigestService';
-import type { VaultFingerprint } from '../VaultFingerprintService';
+} from '@/service/copilot/vault/VaultDigestService';
+import type { VaultFingerprint } from '@/service/copilot/vault/VaultFingerprintService';
 import type {
 	VaultMetaAgentOptions,
-} from '../VaultMetaAgentStream';
+} from '@/service/copilot/vault/VaultMetaAgentStream';
 import type {
 	VaultReviewHistoryRecord,
-} from '../VaultReviewReportService';
-import type { VaultReviewSessionSnapshot } from '../VaultReviewSession';
+} from '@/service/copilot/vault/VaultReviewReportService';
+import type { VaultReviewSessionSnapshot } from '@/service/copilot/vault/VaultReviewSession';
 
 /**
  * User profile text used in the meta-agent system prompt. Returns

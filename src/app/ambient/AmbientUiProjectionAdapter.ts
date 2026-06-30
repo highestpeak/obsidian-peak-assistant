@@ -5,7 +5,7 @@
 
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { useMorningBriefingStore } from '@/ui/store/morningBriefingStore';
-import type { AmbientUiProjectionPort } from '@/service/ambient/ports/AmbientPorts';
+import type { AmbientUiProjectionPort } from '@/core/ports/AmbientPorts';
 import type { AmbientPushItem, BriefingItem } from '@/core/types/ambient';
 
 export class AmbientUiProjectionAdapter implements AmbientUiProjectionPort {

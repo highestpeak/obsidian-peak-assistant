@@ -1,7 +1,7 @@
 // T11P (Track H): Obsidian implementation of `VaultStatsPort`.
 
 import type { App } from 'obsidian';
-import type { VaultStatsPort } from '@/service/stats/VaultStatsPort';
+import type { VaultStatsPort } from '@/core/ports/VaultStatsPort';
 
 export class AppVaultStatsAdapter implements VaultStatsPort {
 	constructor(private readonly app: App) {}

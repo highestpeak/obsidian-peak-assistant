@@ -22,7 +22,7 @@ import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type {
 	AmbientPersistencePort,
 	AmbientPorts,
-} from '@/service/ambient/ports/AmbientPorts';
+} from '@/core/ports/AmbientPorts';
 import { SqliteSemanticGraphTraversalAdapter } from '@/app/adapters/search/SqliteSemanticGraphTraversalAdapter';
 import { SqliteAmbientBriefingReadAdapter } from '@/app/adapters/ambient/SqliteAmbientBriefingReadAdapter';
 import { SerendipitySearcher } from '@/service/ambient/serendipity/SerendipitySearcher';

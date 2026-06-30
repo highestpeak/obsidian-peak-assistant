@@ -6,7 +6,7 @@
 // `sqliteStoreManager` or the repo type directly.
 
 import type { VaultLintRepo } from '@/core/storage/sqlite/repositories/VaultLintRepo';
-import type { VaultLintPersistencePort } from '@/service/lint/ports/VaultLintPorts';
+import type { VaultLintPersistencePort } from '@/core/ports/VaultLintPorts';
 import type { LintDismissal, LintScanResult } from '@/service/lint/types';
 
 export class SqliteVaultLintPersistenceAdapter implements VaultLintPersistencePort {

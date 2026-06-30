@@ -38,7 +38,7 @@ import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
 import { createChatMessage } from './utils/chat-message-builder';
 import type { UsageFeature } from '@/service/usage/types';
 import type { TemplateManager } from '@/core/template/TemplateManager';
-import type { ChatRuntimeStatePort } from '@/service/chat/ChatRuntimeStatePort';
+import type { ChatRuntimeStatePort } from '@/core/ports/ChatRuntimeStatePort';
 import type { AnalysisHistoryPort } from '@/core/ports/AnalysisHistoryPort';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { SearchSettings } from '@/core/config/settingsTypes';

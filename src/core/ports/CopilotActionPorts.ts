@@ -26,9 +26,9 @@ import type { VaultMetadataCachePort } from '@/core/ports/VaultMetadataCachePort
 import type { SearchAvailabilityPort } from '@/core/ports/SearchAvailabilityPort';
 import type { CustomPromptSourcePort } from '@/core/ports/CustomPromptSourcePort';
 import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
-import type { ActionResult } from '../CopilotActionRegistry';
-import type { RankedTagSuggestion } from '../TagSuggestionEngine';
-import type { CopilotOutputCollector } from '../CopilotOutputCollector';
+import type { ActionResult } from '@/service/copilot/CopilotActionRegistry';
+import type { RankedTagSuggestion } from '@/service/copilot/TagSuggestionEngine';
+import type { CopilotOutputCollector } from '@/service/copilot/CopilotOutputCollector';
 
 /**
  * Talk to the AI provider. Service-side actions consume the general

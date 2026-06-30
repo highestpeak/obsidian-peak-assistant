@@ -2,7 +2,7 @@ import type { AppHandle } from '@/core/ports/AppHandle';
 import { PromptId } from '@/core/prompt/PromptId';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { V2Section } from '@/core/search/v2SessionTypes';
-import type { ReportSessionPort } from './ReportSessionPort';
+import type { ReportSessionPort } from '@/core/ports/ReportSessionPort';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
 import { queryWithProfile, type SDKMessage } from '@/service/agents/core/sdkAgentPool';

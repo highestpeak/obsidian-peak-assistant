@@ -7,7 +7,7 @@
 
 import type {
 	QuickSearchForegroundSessionPort,
-} from '@/service/search/background/ports/QuickSearchBackgroundPorts';
+} from '@/core/ports/QuickSearchBackgroundPorts';
 import type {
 	QuickSearchAgentHandle,
 	QuickSearchForegroundDetachIntent,

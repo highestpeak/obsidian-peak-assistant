@@ -22,19 +22,19 @@ import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
-import type { VaultPreviewPort } from '@/service/preview/VaultPreviewPort';
-import type { VaultNavigationPort } from '@/service/navigation/VaultNavigationPort';
-import type { WikilinkPort } from '@/service/navigation/WikilinkPort';
-import type { EditorCommandsPort } from '@/service/editor/EditorCommandsPort';
-import type { ChatVaultWriterPort } from '@/service/chat/ports/ChatVaultWriterPort';
-import type { VaultStatsPort } from '@/service/stats/VaultStatsPort';
+import type { VaultPreviewPort } from '@/core/ports/VaultPreviewPort';
+import type { VaultNavigationPort } from '@/core/ports/VaultNavigationPort';
+import type { WikilinkPort } from '@/core/ports/WikilinkPort';
+import type { EditorCommandsPort } from '@/core/ports/EditorCommandsPort';
+import type { ChatVaultWriterPort } from '@/core/ports/ChatVaultWriterPort';
+import type { VaultStatsPort } from '@/core/ports/VaultStatsPort';
 import { composeVaultPreview } from '@/app/preview/composeVaultPreview';
 import { composeVaultNavigation, composeEditorCommands, composeWikilink } from '@/app/navigation/composeNavigation';
 import { composeChatVaultWriter } from '@/app/chat/composeChatVaultWriter';
 import { AppVaultStatsAdapter } from '@/app/stats/AppVaultStatsAdapter';
 import { composeCopilotReviewHistory } from '@/app/copilot/composeCopilotReviewHistory';
 import type { CopilotReviewHistoryService } from '@/service/copilot/CopilotReviewHistoryService';
-import type { ProgressReporterPort } from '@/service/ports/ProgressReporterPort';
+import type { ProgressReporterPort } from '@/core/ports/ProgressReporterPort';
 import { ObsidianProgressReporter } from '@/app/adapters/ObsidianProgressReporter';
 
 /**

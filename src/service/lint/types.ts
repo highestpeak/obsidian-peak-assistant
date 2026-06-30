@@ -17,7 +17,7 @@ export interface LintScanContext {
    * inject a fake implementation. See
    * `src/service/lint/ports/VaultLintPorts.ts`.
    */
-  detectorContext: import('./ports/VaultLintPorts').VaultLintDetectorContextPort;
+  detectorContext: import('@/core/ports/VaultLintPorts').VaultLintDetectorContextPort;
 }
 
 export interface LintSignalDetector {
