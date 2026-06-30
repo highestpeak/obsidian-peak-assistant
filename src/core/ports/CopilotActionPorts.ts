@@ -139,7 +139,7 @@ export interface CopilotActionAgentPort {
 /**
  * Source of custom prompt definitions. Implementations parse user
  * markdown files (the default Obsidian-folder source lives in
- * `src/app/adapters/prompts/ObsidianCustomPromptSourceAdapter.ts`).
+ * `src/app/copilot/actions/ObsidianCustomPromptSourceAdapter.ts`).
  *
  * T11Y-7d (2026-06-30): this is now a type-alias of the shared
  * {@link CustomPromptSourcePort} — scanning user prompt files is not a

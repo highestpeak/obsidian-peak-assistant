@@ -24,14 +24,14 @@ import type { WikilinkPort } from '@/core/ports/WikilinkPort';
 import type { EditorCommandsPort } from '@/core/ports/EditorCommandsPort';
 import type { ChatVaultWriterPort } from '@/core/ports/ChatVaultWriterPort';
 import type { VaultStatsPort } from '@/core/ports/VaultStatsPort';
-import { composeVaultPreview } from '@/app/adapters/preview/composeVaultPreview';
-import { composeVaultNavigation, composeEditorCommands, composeWikilink } from '@/app/adapters/navigation/composeNavigation';
+import { composeVaultPreview } from '@/app/preview/composeVaultPreview';
+import { composeVaultNavigation, composeEditorCommands, composeWikilink } from '@/app/navigation/composeNavigation';
 import { composeChatVaultWriter } from '@/app/chat/composeChatVaultWriter';
-import { AppVaultStatsAdapter } from '@/app/adapters/vault/AppVaultStatsAdapter';
+import { AppVaultStatsAdapter } from '@/app/vault/AppVaultStatsAdapter';
 import { composeCopilotReviewHistory } from '@/app/copilot/composeCopilotReviewHistory';
 import type { CopilotReviewHistoryService } from '@/service/copilot/CopilotReviewHistoryService';
 import type { ProgressReporterPort } from '@/core/ports/ProgressReporterPort';
-import { ObsidianProgressReporter } from '@/app/adapters/ObsidianProgressReporter';
+import { ObsidianProgressReporter } from '@/app/platform/ObsidianProgressReporter';
 
 /**
  * Application context containing all global dependencies.

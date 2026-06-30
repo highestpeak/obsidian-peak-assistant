@@ -4,10 +4,11 @@
 // Obsidian `App` / `TFile` / `TFolder` / `normalizePath` for custom
 // prompts.
 //
-// T11Y-7d (2026-06-30): relocated under `src/app/adapters/prompts/`
-// because scanning user prompt folders is not a Copilot-action concern
-// — it's one consumer. The action runtime now takes the shared
-// {@link CustomPromptSourcePort} as input.
+// T11Y-7d (2026-06-30): the Copilot action runtime is the sole consumer
+// of this adapter today, so it lives next to its composer. The shared
+// {@link CustomPromptSourcePort} contract still lives in core/ports, so
+// future consumers can construct their own source without coupling to
+// this adapter's location.
 
 import { type App, TFile, TFolder, normalizePath } from 'obsidian';
 import {

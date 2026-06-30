@@ -15,7 +15,7 @@ import { GraphInspectorTestTools, AISearchAgentTestTools } from '@/app/context/t
 import { GraphCleanupService } from '@/service/search/index/maintenance/GraphCleanupService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
-import { getVaultPersona } from '@/app/debug/system-info';
+import { getVaultPersona } from '@/app/context/system-info';
 
 const REGISTERED_GLOBALS = [
 	'testGraphTools',

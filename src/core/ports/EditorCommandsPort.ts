@@ -4,7 +4,7 @@
 // `app.workspace.getActiveViewOfType(MarkdownView)` + `editor.replaceRange`
 // directly, dragging Obsidian's `MarkdownView` import into UI code.
 //
-// Implementation: `src/app/adapters/navigation/AppEditorCommandsAdapter.ts`.
+// Implementation: `src/app/navigation/AppEditorCommandsAdapter.ts`.
 
 export interface EditorCommandsPort {
 	/**

@@ -5,7 +5,7 @@
 
 import assert from 'assert';
 import { AppCopilotActionSearchAdapter } from '@/app/copilot/actions/AppCopilotActionSearchAdapter';
-import { SqliteSemanticLinkReadAdapter } from '@/app/adapters/copilot/SqliteSemanticLinkReadAdapter';
+import { SqliteSemanticLinkReadAdapter } from '@/app/copilot/actions/SqliteSemanticLinkReadAdapter';
 import { SemanticLinkSuggestionService } from '@/service/copilot/SemanticLinkSuggestionService';
 import { SmartConnectionService } from '@/service/copilot/SmartConnectionService';
 import { SqliteCopilotActionTagsAdapter } from '@/app/copilot/actions/SqliteCopilotActionTagsAdapter';

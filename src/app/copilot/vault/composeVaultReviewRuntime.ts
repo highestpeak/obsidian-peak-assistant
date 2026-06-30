@@ -13,7 +13,7 @@
 // the runtime deps where the sqlite adapter used to.
 
 import type { App } from 'obsidian';
-import { SqliteVaultReviewReadAdapter } from '@/app/adapters/copilot/SqliteVaultReviewReadAdapter';
+import { SqliteVaultReviewReadAdapter } from '@/app/copilot/vault/SqliteVaultReviewReadAdapter';
 import { AppContext } from '@/app/context/AppContext';
 import { VaultDigestBuilder } from '@/service/copilot/vault/VaultDigestBuilder';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';

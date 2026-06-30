@@ -29,8 +29,8 @@ import type {
 } from '@/core/ports/AmbientPorts';
 import type { AmbientPushItem, AmbientPushSettings, BriefingItem } from '@/core/types/ambient';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS } from '@/core/types/ambient';
-import { SqliteSemanticGraphTraversalAdapter } from '@/app/adapters/search/SqliteSemanticGraphTraversalAdapter';
-import { SqliteAmbientBriefingReadAdapter } from '@/app/adapters/ambient/SqliteAmbientBriefingReadAdapter';
+import { SqliteSemanticGraphTraversalAdapter } from '@/app/ambient/SqliteSemanticGraphTraversalAdapter';
+import { SqliteAmbientBriefingReadAdapter } from '@/app/ambient/SqliteAmbientBriefingReadAdapter';
 import { SerendipitySearcher } from '@/service/ambient/serendipity/SerendipitySearcher';
 import { BriefingItemBuilder } from '@/service/ambient/briefing/BriefingItemBuilder';
 import { PatternLearningService } from '@/service/ambient/PatternLearningService';

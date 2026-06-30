@@ -15,15 +15,15 @@ import type { SearchClient } from '@/service/search/SearchClient';
 import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
 import { CopilotActionRuntimeImpl } from '@/service/copilot/actions/CopilotActionRuntimeImpl';
 import type { CopilotActionPorts } from '@/core/ports/CopilotActionPorts';
-import { AppVaultReaderAdapter } from '@/app/adapters/vault/AppVaultReaderAdapter';
-import { AppVaultMetadataCacheAdapter } from '@/app/adapters/vault/AppVaultMetadataCacheAdapter';
+import { AppVaultReaderAdapter } from '@/app/vault/AppVaultReaderAdapter';
+import { AppVaultMetadataCacheAdapter } from '@/app/vault/AppVaultMetadataCacheAdapter';
 import { AppCopilotActionSearchAdapter } from './AppCopilotActionSearchAdapter';
-import { SqliteSemanticLinkReadAdapter } from '@/app/adapters/copilot/SqliteSemanticLinkReadAdapter';
+import { SqliteSemanticLinkReadAdapter } from '@/app/copilot/actions/SqliteSemanticLinkReadAdapter';
 import { SemanticLinkSuggestionService } from '@/service/copilot/SemanticLinkSuggestionService';
 import { SmartConnectionService } from '@/service/copilot/SmartConnectionService';
 import { SqliteCopilotActionTagsAdapter } from './SqliteCopilotActionTagsAdapter';
 import { createAppCopilotActionAgentAdapter } from './AppCopilotActionAgentAdapter';
-import { ObsidianCustomPromptSourceAdapter } from '@/app/adapters/prompts/ObsidianCustomPromptSourceAdapter';
+import { ObsidianCustomPromptSourceAdapter } from '@/app/copilot/actions/ObsidianCustomPromptSourceAdapter';
 
 /**
  * Compose the manual Copilot action runtime. The caller hands the

@@ -25,7 +25,7 @@ import { composeBackboneEnv } from '@/app/search/composeBackboneEnv';
 import { computeEvalMetrics, formatEvalReport } from '@/service/search/query/pprEvaluator';
 import { runStructuralAnalysis } from '@/service/search/index/helper/structural/orchestrator';
 import { MaintenanceCleanupService } from '@/service/maintenance/MaintenanceCleanupService';
-import { obsidianNotifier } from '@/app/adapters/NoticeNotifier';
+import { obsidianNotifier } from '@/app/platform/NoticeNotifier';
 
 /**
  * Persistent bottom notice with updatable message (Obsidian 1.5+ `setMessage` when available).
