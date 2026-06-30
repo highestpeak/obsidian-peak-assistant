@@ -92,13 +92,24 @@ async function runOne(testFile, idx) {
         };
     }
 
+    const perTestTimeoutMs = parseInt(process.env.TEST_TIMEOUT_MS || '', 10) || 30000;
+    // Tests are synchronous assertion scripts but many leak open handles
+    // (native sqlite, intervals, etc.) and never exit naturally. Wrap the
+    // bundle in a tiny harness that forces process.exit after sync run.
     return new Promise((resolve) => {
-        const child = spawn('node', [outFile], { stdio: ['ignore', 'pipe', 'pipe'] });
+        const harness = `process.on('uncaughtException',(e)=>{console.error(e&&e.stack||e);process.exit(1);});require(${JSON.stringify(outFile)});setImmediate(()=>process.exit(0));`;
+        const child = spawn('node', ['-e', harness], { stdio: ['ignore', 'pipe', 'pipe'] });
         let stdout = '';
         let stderr = '';
+        let timedOut = false;
+        const timer = setTimeout(() => {
+            timedOut = true;
+            try { child.kill('SIGKILL'); } catch (_) {}
+        }, perTestTimeoutMs);
         child.stdout.on('data', (d) => (stdout += d.toString()));
         child.stderr.on('data', (d) => (stderr += d.toString()));
         child.on('error', (err) => {
+            clearTimeout(timer);
             resolve({
                 testFile,
                 testName,
@@ -109,14 +120,17 @@ async function runOne(testFile, idx) {
             });
         });
         child.on('exit', (code) => {
+            clearTimeout(timer);
             fs.promises.unlink(outFile).catch(() => {});
             resolve({
                 testFile,
                 testName,
-                status: code === 0 ? 'pass' : 'fail',
+                status: timedOut ? 'timeout' : code === 0 ? 'pass' : 'fail',
                 durationMs: Date.now() - started,
                 stdout,
-                stderr,
+                stderr: timedOut
+                    ? stderr + `\n[runner] killed after ${perTestTimeoutMs}ms timeout`
+                    : stderr,
             });
         });
     });
