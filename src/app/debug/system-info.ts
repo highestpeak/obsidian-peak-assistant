@@ -1,6 +1,6 @@
 import { AppContext } from "@/app/context/AppContext";
 import { getAIPromptFolder } from "@/core/config/folderPaths";
-import { readFileAsText } from "@/app/vault/obsidian-utils";
+import { readFileAsText } from "@/app/adapters/vault/obsidian-utils";
 import { GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT, VAULT_DESCRIPTION_FILENAME } from "@/core/constant";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { exploreFolder } from "@/service/tools/search-graph-inspector/explore-folder";

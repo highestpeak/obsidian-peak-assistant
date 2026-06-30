@@ -148,14 +148,14 @@ async function testT11nInfraFilesExist(): Promise<void> {
 	const required = [
 		// Track 1 — preview port + adapter + composer
 		'core/ports/VaultPreviewPort.ts',
-		'app/preview/AppVaultPreviewAdapter.ts',
-		'app/preview/composeVaultPreview.ts',
+		'app/adapters/preview/AppVaultPreviewAdapter.ts',
+		'app/adapters/preview/composeVaultPreview.ts',
 		// Track 2 — navigation + editor commands ports + adapters + composer
 		'core/ports/VaultNavigationPort.ts',
-		'app/navigation/AppVaultNavigationAdapter.ts',
+		'app/adapters/navigation/AppVaultNavigationAdapter.ts',
 		'core/ports/EditorCommandsPort.ts',
-		'app/navigation/AppEditorCommandsAdapter.ts',
-		'app/navigation/composeNavigation.ts',
+		'app/adapters/navigation/AppEditorCommandsAdapter.ts',
+		'app/adapters/navigation/composeNavigation.ts',
 		// Track 3 — chat-vault writer port + adapter + composer
 		'core/ports/ChatVaultWriterPort.ts',
 		'app/chat/AppChatVaultWriterAdapter.ts',

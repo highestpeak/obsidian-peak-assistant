@@ -162,9 +162,9 @@ function testT11rInfraFilesExist(): void {
 	const required = [
 		'src/app/adapters/HttpClientAdapter.ts',
 		'src/app/adapters/NoticeNotifier.ts',
-		'src/app/vault/vault-helpers.ts',
-		'src/app/vault/obsidian-utils.ts',
-		'src/app/template/VaultContentProvider.ts',
+		'src/app/adapters/vault/vault-helpers.ts',
+		'src/app/adapters/vault/obsidian-utils.ts',
+		'src/app/adapters/vault/VaultContentProvider.ts',
 		'src/core/storage/vault/vault-ops.ts',
 		'src/core/ports/VaultWriterPort.ts',
 		'src/core/ports/HostMetadataPort.ts',

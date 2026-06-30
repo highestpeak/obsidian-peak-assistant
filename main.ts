@@ -12,7 +12,7 @@ import { SearchUpdateListener } from '@/service/search/index/indexUpdater';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
-import { AppVaultReaderAdapter } from '@/app/vault/AppVaultReaderAdapter';
+import { AppVaultReaderAdapter } from '@/app/adapters/vault/AppVaultReaderAdapter';
 import { IndexService } from '@/service/search/index/indexService';
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { BetterSqliteStore } from '@/core/storage/sqlite/better-sqlite3-adapter/BetterSqliteStore';
@@ -30,10 +30,10 @@ import { warmupPool, shutdownPool } from '@/service/agents/core/sdkAgentPool';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { initPatternSystem } from '@/service/context/PatternDiscoveryTrigger';
 import { createPluginDirContentProvider } from '@/core/template/PluginDirContentProvider';
-import { createVaultContentProvider } from '@/app/template/VaultContentProvider';
+import { createVaultContentProvider } from '@/app/adapters/vault/VaultContentProvider';
 import { clearTemplateEngineForUnload } from '@/core/template-engine-helper';
 import { clearFormatUtilsCaches } from '@/core/utils/format-utils';
-import { getPluginDirAbsolute } from '@/app/vault/obsidian-utils';
+import { getPluginDirAbsolute } from '@/app/adapters/vault/obsidian-utils';
 import {
 	hydrateCodeStopwordsFromTemplateManager,
 } from '@/core/utils/markdown-utils';

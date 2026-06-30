@@ -210,8 +210,8 @@ async function testNewPortFilesExist(): Promise<void> {
 	];
 	const compositionFiles = [
 		'app/commands/composeSettingsActions.ts',
-		'app/navigation/AppWikilinkAdapter.ts',
-		'app/stats/AppVaultStatsAdapter.ts',
+		'app/adapters/navigation/AppWikilinkAdapter.ts',
+		'app/adapters/vault/AppVaultStatsAdapter.ts',
 		'app/quick-search/composeQuickSearchHost.ts',
 	];
 	for (const rel of [...required, ...compositionFiles]) {

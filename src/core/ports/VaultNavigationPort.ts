@@ -14,8 +14,8 @@
 // `App`/`Vault`/`Workspace`/`TFile` accessors — those would only hide
 // the dependency from the scanner.
 //
-// Implementation: `src/app/navigation/AppVaultNavigationAdapter.ts`.
-// Composition: `src/app/navigation/composeNavigation.ts` (used by
+// Implementation: `src/app/adapters/navigation/AppVaultNavigationAdapter.ts`.
+// Composition: `src/app/adapters/navigation/composeNavigation.ts` (used by
 // `AppContext`).
 
 import type { SearchResultItem } from '@/core/search/searchTypes';

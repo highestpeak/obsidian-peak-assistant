@@ -4,7 +4,7 @@ import { createReactElementWithServices } from '@/app/react/ReactElementFactory'
 import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPanelVault';
 import { type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';
-import { getSelectedTextFromActiveEditor } from '@/app/vault/obsidian-utils';
+import { getSelectedTextFromActiveEditor } from '@/app/adapters/vault/obsidian-utils';
 import type { IntentTabId } from '@/service/copilot/intent-hub';
 import { AppContext } from '@/app/context/AppContext';
 import { type CopilotReviewHistoryRecord } from '@/service/copilot/CopilotReviewHistoryService';

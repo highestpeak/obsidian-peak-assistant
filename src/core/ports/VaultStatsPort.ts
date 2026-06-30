@@ -3,7 +3,7 @@
 // The Quick Search modal also reads `activeFilePath()` to decide whether to
 // route to in-file / in-folder search modes.
 //
-// Implementation: `src/app/stats/AppVaultStatsAdapter.ts`.
+// Implementation: `src/app/adapters/vault/AppVaultStatsAdapter.ts`.
 // Kept intentionally narrow — if more stats are needed later, add a named
 // accessor here rather than exposing the vault.
 
