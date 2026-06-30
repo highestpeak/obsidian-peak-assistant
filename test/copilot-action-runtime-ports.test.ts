@@ -35,14 +35,21 @@ function basePorts(overrides: Partial<CopilotActionPorts> = {}): CopilotActionPo
 		ai: {
 			renderPrompt: unreachable('ai.renderPrompt') as any,
 			queryStructured: unreachable('ai.queryStructured') as any,
-			queryTextStream: unreachable('ai.queryTextStream') as any,
+			queryStream: unreachable('ai.queryStream') as any,
+			queryText: unreachable('ai.queryText') as any,
+		} as any,
+		vaultReader: {
+			getFile: () => null,
+			getFolder: () => null,
+			listFiles: () => [],
+			listFolderChildren: () => ({ files: [], folders: [] }),
+			readText: unreachable('vaultReader.readText') as any,
+			readBinary: unreachable('vaultReader.readBinary') as any,
 		},
-		vault: {
-			getMarkdownFiles: () => [],
-			cachedRead: unreachable('vault.cachedRead') as any,
+		linkResolver: { resolveLinkPath: () => null },
+		vaultMetadataCache: {
 			getFileCache: () => null,
 			getResolvedLinks: () => ({}),
-			getFirstLinkpathDest: () => null,
 		},
 		search: { vectorSearch: unreachable('search.vectorSearch') as any },
 		semanticGraph: {
@@ -81,12 +88,13 @@ async function testCorrectContentRunsThroughAiPort(): Promise<void> {
 	const actions = createBuiltInCopilotActions(basePorts({
 		ai: {
 			renderPrompt: async () => 'unused',
-			queryStructured: async (promptId, vars, _schema, _opts) => {
+			queryStructured: async (promptId: any, vars: any, _schema: any, _opts: any) => {
 				calledWith = { promptId, vars };
 				return { issues: [] };
 			},
-			queryTextStream: (() => { throw new Error('not used here'); }) as any,
-		},
+			queryStream: (() => { throw new Error('not used here'); }) as any,
+			queryText: (() => { throw new Error('not used'); }) as any,
+		} as any,
 	}));
 	const action = findAction(actions, 'correct-content');
 	const { result } = await drainGenerator(action.execute(fakeDoc(), undefined));
@@ -96,16 +104,23 @@ async function testCorrectContentRunsThroughAiPort(): Promise<void> {
 }
 
 async function testPolishStreamsThroughAiPort(): Promise<void> {
+	// T11Y-7a: streaming actions now consume IAgentPrompter.queryStream which
+	// emits LLMStreamEvent (text-delta + complete with usage).
 	const ports = basePorts({
 		ai: {
 			renderPrompt: async () => 'unused',
 			queryStructured: (() => { throw new Error('not used here'); }) as any,
-			async *queryTextStream() {
-				yield { type: 'delta', text: 'hello ' };
-				yield { type: 'delta', text: 'world' };
-				yield { type: 'done', usage: { inputTokens: 5, outputTokens: 2 } as any };
+			async *queryStream() {
+				yield { type: 'text-delta', text: 'hello ' } as any;
+				yield { type: 'text-delta', text: 'world' } as any;
+				yield {
+					type: 'complete',
+					usage: { inputTokens: 5, outputTokens: 2 } as any,
+					finishReason: 'stop',
+				} as any;
 			},
-		},
+			queryText: (() => { throw new Error('not used'); }) as any,
+		} as any,
 	});
 	const actions = createBuiltInCopilotActions(ports);
 	const action = findAction(actions, 'polish');
@@ -164,8 +179,9 @@ async function testKnowledgeGapsRunsThroughAgentPort(): Promise<void> {
 		ai: {
 			renderPrompt: async () => 'sys',
 			queryStructured: (() => { throw new Error('not used'); }) as any,
-			queryTextStream: (() => { throw new Error('not used'); }) as any,
-		},
+			queryStream: (() => { throw new Error('not used'); }) as any,
+			queryText: (() => { throw new Error('not used'); }) as any,
+		} as any,
 		agent: {
 			async *runAgentStream(_opts) {
 				invoked = true;

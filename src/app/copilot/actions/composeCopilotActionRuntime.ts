@@ -15,8 +15,8 @@ import type { SearchClient } from '@/service/search/SearchClient';
 import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
 import { CopilotActionRuntimeImpl } from '@/service/copilot/actions/CopilotActionRuntimeImpl';
 import type { CopilotActionPorts } from '@/service/copilot/actions/CopilotActionPorts';
-import { AppCopilotActionAiAdapter } from './AppCopilotActionAiAdapter';
-import { ObsidianCopilotActionVaultAdapter } from './ObsidianCopilotActionVaultAdapter';
+import { AppVaultReaderAdapter } from '@/app/vault/AppVaultReaderAdapter';
+import { AppVaultMetadataCacheAdapter } from '@/app/vault/AppVaultMetadataCacheAdapter';
 import { AppCopilotActionSearchAdapter } from './AppCopilotActionSearchAdapter';
 import { SqliteSemanticLinkReadAdapter } from '@/app/adapters/copilot/SqliteSemanticLinkReadAdapter';
 import { SemanticLinkSuggestionService } from '@/service/copilot/SemanticLinkSuggestionService';
@@ -36,9 +36,24 @@ export function composeCopilotActionRuntime(app: App): CopilotActionRuntime {
 	const appContext = AppContext.getInstance();
 	const pluginId = appContext.plugin.manifest.id;
 
+	// T11Y-7b: one shared reader adapter covers both narrow vault ports
+	// the action runtime needs.
+	const vaultReaderAdapter = new AppVaultReaderAdapter(app);
+
 	const ports: CopilotActionPorts = {
-		ai: new AppCopilotActionAiAdapter(appContext.manager),
-		vault: new ObsidianCopilotActionVaultAdapter(app),
+		// T11Y-7a: AIServiceManager structurally satisfies IAgentPrompter
+		// (the action runtime's AI port is now a type-alias of that
+		// shared port), so no bespoke wrapper is needed.
+		ai: appContext.manager,
+		// T11Y-7b: the bespoke ObsidianCopilotActionVaultAdapter is retired.
+		// The shared AppVaultReaderAdapter covers DocumentVaultReaderPort
+		// (list files + cached reads) and VaultMetadataResolverPort
+		// (linkpath resolution); AppVaultMetadataCacheAdapter is the one
+		// new narrow port (per-file cache + resolved-links graph) that the
+		// shared adapter does not already expose.
+		vaultReader: vaultReaderAdapter,
+		linkResolver: vaultReaderAdapter,
+		vaultMetadataCache: new AppVaultMetadataCacheAdapter(app),
 		// T11B-R: search / semantic / tags adapters tolerate a null
 		// SearchClient or unavailable SQLite — they return empty results
 		// instead of crashing the catalog. The runtime stays usable on

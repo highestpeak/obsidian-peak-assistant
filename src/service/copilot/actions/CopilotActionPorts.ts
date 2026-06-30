@@ -19,55 +19,42 @@
 // capability (talk to AI, read the vault, search semantically, suggest
 // tags, run a copilot agent, list custom prompts) — not a single method.
 
-import type { PromptId, PromptVariables } from '@/core/prompt/PromptId';
-import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
-import type { VaultFileRef } from '@/core/ports/VaultFileRef';
+import type { LLMStreamEvent } from '@/core/providers/types';
+import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
+import type { VaultMetadataResolverPort } from '@/core/ports/VaultMetadataResolverPort';
+import type { VaultMetadataCachePort } from '@/core/ports/VaultMetadataCachePort';
+import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 import type { ActionResult } from '../CopilotActionRegistry';
 import type { CustomPromptDef } from '../CustomPromptRegistry';
 import type { RankedTagSuggestion } from '../TagSuggestionEngine';
 import type { CopilotOutputCollector } from '../CopilotOutputCollector';
 
 /**
- * Talk to the AI provider. Wraps {@link AIServiceManager.renderPrompt},
- * {@link AIServiceManager.queryStructured}, and
- * {@link AIServiceManager.queryTextStream} without exposing the manager
- * itself — the port keeps service code free of any AppContext lookup.
+ * Talk to the AI provider. Service-side actions consume the general
+ * {@link IAgentPrompter} surface that other service-side agents use
+ * (search synthesis, AI graph, intuition, copilot agents) — no
+ * Copilot-specific AI wrapper exists.
+ *
+ * Built-in actions use `queryStream` for streaming text actions and
+ * `queryStructured` for JSON-shaped actions; both already cover the
+ * usage callback + abort signal shape the action runtime needs.
+ *
+ * T11Y-7a (was T11B): retired the bespoke `CopilotActionAiPort` and
+ * `AppCopilotActionAiAdapter` in favor of the shared port — the
+ * `AIServiceManager` already satisfies `IAgentPrompter` structurally so
+ * the composition layer hands it directly.
  */
-export interface CopilotActionAiPort {
-	renderPrompt<T extends PromptId>(promptId: T, variables: PromptVariables[T] | null): Promise<string>;
+export type CopilotActionAiPort = IAgentPrompter;
 
-	queryStructured<R = unknown>(
-		promptId: PromptId,
-		variables: Record<string, unknown>,
-		schema: unknown,
-		options?: { signal?: AbortSignal; usageCallback?: (u: LLMUsage) => void },
-	): Promise<R>;
-
-	queryTextStream(
-		promptId: PromptId,
-		variables: Record<string, unknown>,
-		options?: { signal?: AbortSignal },
-	): AsyncIterable<{ type: 'delta'; text: string } | { type: 'done'; usage?: LLMUsage }>;
-}
-
-/**
- * Read Obsidian vault state. Adapters wrap `app.vault` /
- * `app.metadataCache`. Methods are intentionally narrow: actions only
- * need the file list, cached read, file cache lookup, resolved-link
- * snapshot, and linkpath resolution. No write surface.
- */
-export interface CopilotActionVaultPort {
-	getMarkdownFiles(): VaultFileRef[];
-	cachedRead(file: VaultFileRef): Promise<string>;
-	getFileCache(file: VaultFileRef): {
-		links?: Array<{ link: string }>;
-		embeds?: Array<{ link: string }>;
-		tags?: Array<{ tag: string }>;
-		frontmatter?: { tags?: string[]; [k: string]: unknown };
-	} | null;
-	getResolvedLinks(): Record<string, Record<string, number>>;
-	getFirstLinkpathDest(linkpath: string, sourcePath: string): VaultFileRef | null;
-}
+// T11Y-7b: the bespoke `CopilotActionVaultPort` is retired in favor of
+// composing three existing narrow ports:
+//   - {@link DocumentVaultReaderPort}    — list files + cached read,
+//   - {@link VaultMetadataResolverPort}  — linkpath resolution,
+//   - {@link VaultMetadataCachePort}     — per-file cache + resolved-links.
+// The old port re-implemented all five methods in
+// `ObsidianCopilotActionVaultAdapter`; the adapter is deleted and the
+// composition layer hands the existing `AppVaultReaderAdapter` plus the
+// new `AppVaultMetadataCacheAdapter` to the port bag.
 
 /**
  * Vector / hybrid search over the indexed vault. Wraps
@@ -174,7 +161,12 @@ export interface CopilotCustomPromptPort {
  */
 export interface CopilotActionPorts {
 	ai: CopilotActionAiPort;
-	vault: CopilotActionVaultPort;
+	/** Read vault files + cached text reads. (T11Y-7b: shared with loaders.) */
+	vaultReader: DocumentVaultReaderPort;
+	/** Resolve `[[link]]` text to vault paths. (T11Y-7b: shared with loaders.) */
+	linkResolver: VaultMetadataResolverPort;
+	/** Per-file metadata cache + resolved-links graph. (T11Y-7b: new narrow port.) */
+	vaultMetadataCache: VaultMetadataCachePort;
 	search: CopilotActionSearchPort;
 	semanticGraph: CopilotActionSemanticGraphPort;
 	tags: CopilotActionTagsPort;

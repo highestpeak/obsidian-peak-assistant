@@ -21,10 +21,9 @@ import {
 import type { CopilotAction, DocumentContext, ActionResult, ActionUsage } from '../CopilotActionRegistry';
 import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
 import { v4 as uuidv4 } from 'uuid';
-import type {
-	CopilotActionPorts,
-	CopilotActionAiPort,
-} from './CopilotActionPorts';
+import type { CopilotActionPorts } from './CopilotActionPorts';
+import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
+import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 
 // ── Re-exported types (consumed by UI panels) ──────────────────────────
 
@@ -49,21 +48,28 @@ function toActionUsage(u?: LLMUsage): ActionUsage | undefined {
 	return { inputTokens: u.inputTokens ?? 0, outputTokens: u.outputTokens ?? 0 };
 }
 
-/** Run a queryTextStream prompt, yielding text-delta events and returning the final result. */
+/**
+ * Run a streaming prompt via {@link IAgentPrompter.queryStream}, forwarding
+ * text-delta events and returning the final aggregated result.
+ *
+ * T11Y-7a: the previous wrapper read `queryTextStream`'s `{type:'delta'|'done'}`
+ * shape; the action now consumes the shared `LLMStreamEvent` stream — `complete`
+ * carries the usage payload and we forward `text-delta` straight through.
+ */
 async function* streamAction(
-	ai: CopilotActionAiPort,
+	ai: IAgentPrompter,
 	promptId: PromptId,
 	vars: Record<string, any>,
 	signal?: AbortSignal,
 ): AsyncGenerator<LLMStreamEvent, ActionResult> {
 	let fullText = '';
 	let usage: ActionUsage | undefined;
-	for await (const chunk of ai.queryTextStream(promptId, vars, { signal })) {
-		if (chunk.type === 'delta') {
-			fullText += chunk.text;
-			yield { type: 'text-delta', text: chunk.text } as LLMStreamEvent;
-		} else if (chunk.type === 'done') {
-			usage = toActionUsage(chunk.usage);
+	for await (const event of ai.queryStream(promptId, vars, { signal })) {
+		if (event.type === 'text-delta') {
+			fullText += event.text;
+			yield event;
+		} else if (event.type === 'complete') {
+			usage = toActionUsage(event.usage);
 		}
 	}
 	return { type: 'stream' as const, text: fullText, usage };
@@ -93,7 +99,20 @@ function hasCJKMajority(text: string): boolean {
  * Obsidian / AppContext / sqlite / Agent SDK dependencies.
  */
 export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAction[] {
-	const { ai, vault, search, semanticGraph, tags, agent } = deps;
+	// T11Y-7b: actions read the vault through three shared narrow ports
+	// (DocumentVaultReaderPort + VaultMetadataResolverPort +
+	// VaultMetadataCachePort) instead of a bespoke `vault` wrapper. Local
+	// helpers preserve the previous call shapes.
+	const { ai, vaultReader, linkResolver, vaultMetadataCache, search, semanticGraph, tags, agent } = deps;
+
+	const listMarkdownFiles = (): VaultFileRef[] =>
+		vaultReader.listFiles().filter(f => f.extension === 'md');
+	const cachedReadFile = (file: VaultFileRef): Promise<string> => vaultReader.readText(file);
+	const lookupFileCache = (file: VaultFileRef) => vaultMetadataCache.getFileCache(file);
+	const lookupResolvedLinks = (): Record<string, Record<string, number>> =>
+		vaultMetadataCache.getResolvedLinks();
+	const resolveLinkPath = (linkText: string, sourcePath: string): string | null =>
+		linkResolver.resolveLinkPath(linkText, sourcePath);
 
 	const polishDocumentAction: CopilotAction = {
 		id: 'polish', label: 'Polish Document', description: 'Improve clarity and style',
@@ -145,7 +164,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 		iconId: 'link-2', category: 'document',
 		relevance: (ctx) => ctx.isOrphan ? 0.8 : ctx.links.length < 3 ? 0.5 : 0.2,
 		async *execute(ctx, signal) {
-			const cache = vault.getFileCache(ctx.file);
+			const cache = lookupFileCache(ctx.file);
 			const existingLinks = (cache?.links ?? []).map(l => l.link).join(', ');
 
 			const systemPrompt = await ai.renderPrompt(PromptId.CopilotAgentSuggestLinks, {} as any);
@@ -167,11 +186,11 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 		iconId: 'share-2', category: 'document',
 		relevance: (ctx) => ctx.isOrphan ? 0.9 : ctx.links.length < 3 ? 0.6 : 0.3,
 		async *execute(ctx, _signal) {
-			const cache = vault.getFileCache(ctx.file);
+			const cache = lookupFileCache(ctx.file);
 			const existingLinkPaths = new Set<string>();
 			for (const l of cache?.links ?? []) {
-				const resolved = vault.getFirstLinkpathDest(l.link, ctx.file.path);
-				if (resolved) existingLinkPaths.add(resolved.path);
+				const resolved = resolveLinkPath(l.link, ctx.file.path);
+				if (resolved) existingLinkPaths.add(resolved);
 			}
 
 			const { suggestions, totalNeighbors, indexed } = await semanticGraph.findSemanticLinkNeighbors(
@@ -362,8 +381,8 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 		iconId: 'activity', category: 'vault',
 		relevance: () => 0.5,
 		async *execute(_ctx, signal) {
-			const files = vault.getMarkdownFiles();
-			const resolvedLinks = vault.getResolvedLinks();
+			const files = listMarkdownFiles();
+			const resolvedLinks = lookupResolvedLinks();
 			const now = Date.now();
 			const oneDay = 86400000;
 
@@ -371,7 +390,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 			const tagCounts: Record<string, number> = {};
 
 			for (const file of files) {
-				const cache = vault.getFileCache(file);
+				const cache = lookupFileCache(file);
 				const linkCount = (cache?.links?.length ?? 0) + (cache?.embeds?.length ?? 0);
 				const backlinks = Object.keys(resolvedLinks)
 					.filter(src => resolvedLinks[src]?.[file.path]).length;
@@ -406,7 +425,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 		iconId: 'calendar', category: 'vault',
 		relevance: () => 0.5,
 		async *execute(_ctx, signal) {
-			const files = vault.getMarkdownFiles();
+			const files = listMarkdownFiles();
 			const now = Date.now();
 			const days = 7;
 			const cutoff = now - days * 86400000;
@@ -481,14 +500,14 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 		iconId: 'check-square', category: 'vault',
 		relevance: () => 0.6,
 		async *execute(_ctx, _signal) {
-			const files = vault.getMarkdownFiles();
+			const files = listMarkdownFiles();
 			const todoPattern = /^(\s*)-\s\[\s\]\s(.+)$/;
 			const tagPattern = /#[\w/-]+/g;
 
 			const todos: Array<{ filePath: string; text: string; lineNumber: number; tags: string[] }> = [];
 
 			for (const file of files) {
-				const content = await vault.cachedRead(file);
+				const content = await cachedReadFile(file);
 				const lines = content.split('\n');
 				for (let i = 0; i < lines.length; i++) {
 					const match = lines[i].match(todoPattern);
@@ -621,13 +640,13 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 		iconId: 'fingerprint', category: 'vault',
 		relevance: () => 0.4,
 		async *execute(_ctx, _signal) {
-			const files = vault.getMarkdownFiles();
+			const files = listMarkdownFiles();
 			const { hashMD5 } = await import('@/core/utils/hash-utils');
 
 			const hashMap = new Map<string, Array<{ path: string; size: number; modified: number }>>();
 
 			for (const file of files) {
-				const content = await vault.cachedRead(file);
+				const content = await cachedReadFile(file);
 				const hash = hashMD5(content);
 				const entry = { path: file.path, size: file.stat.size, modified: file.stat.mtime };
 				const existing = hashMap.get(hash);
@@ -667,13 +686,13 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 		async *execute(_ctx, signal) {
 			const systemPrompt = await ai.renderPrompt(PromptId.CopilotFindAndSolveTasksSystem, {} as any);
 
-			const files = vault.getMarkdownFiles();
+			const files = listMarkdownFiles();
 			const todoPattern = /^(\s*)-\s\[\s\]\s(.+)$/;
 			const questionIndicators = /\?|find|research|look up|investigate|what|how|why|when|where|figure out/i;
 
 			const candidateTasks: Array<{ filePath: string; lineNumber: number; text: string }> = [];
 			for (const file of files) {
-				const content = await vault.cachedRead(file);
+				const content = await cachedReadFile(file);
 				const lines = content.split('\n');
 				for (let i = 0; i < lines.length; i++) {
 					const match = lines[i].match(todoPattern);
@@ -711,11 +730,11 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 		iconId: 'zap', category: 'vault',
 		relevance: (ctx) => ctx.isOrphan ? 0.9 : ctx.links.length < 5 ? 0.6 : 0.3,
 		async *execute(ctx, _signal) {
-			const cache = vault.getFileCache(ctx.file);
+			const cache = lookupFileCache(ctx.file);
 			const existingLinkPaths = new Set<string>();
 			for (const l of cache?.links ?? []) {
-				const resolved = vault.getFirstLinkpathDest(l.link, ctx.file.path);
-				if (resolved) existingLinkPaths.add(resolved.path);
+				const resolved = resolveLinkPath(l.link, ctx.file.path);
+				if (resolved) existingLinkPaths.add(resolved);
 			}
 
 			const { connections, indexed } = await semanticGraph.findSmartConnections(
