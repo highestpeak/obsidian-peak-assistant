@@ -10,8 +10,8 @@
 // NOT expose `app` / `vault` / `workspace` accessors — that would only
 // hide the dependency without removing it.
 //
-// Implementation: `src/app/preview/AppVaultPreviewAdapter.ts`.
-// Composition: `src/app/preview/composeVaultPreview.ts` (called once at
+// Implementation: `src/app/platform/preview/AppVaultPreviewAdapter.ts`.
+// Composition: `src/app/platform/preview/composeVaultPreview.ts` (called once at
 // boot inside `AppContext`).
 
 export interface VaultPreviewPort {

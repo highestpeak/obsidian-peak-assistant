@@ -4,8 +4,8 @@
 // reaching for raw `app.metadataCache.getFirstLinkpathDest` and so the
 // hover-preview / click-handler logic share a single resolver.
 //
-// Implementation: `src/app/navigation/AppWikilinkAdapter.ts`.
-// Composition: `src/app/navigation/composeNavigation.ts`.
+// Implementation: `src/app/platform/navigation/AppWikilinkAdapter.ts`.
+// Composition: `src/app/platform/navigation/composeNavigation.ts`.
 //
 // "Opening" a wikilink reuses `VaultNavigationPort.openLink` — this port
 // only owns the name → path resolution that needs the metadata cache.

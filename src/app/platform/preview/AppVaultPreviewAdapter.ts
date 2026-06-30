@@ -4,7 +4,7 @@
 // chat-attachment hover-preview surface.
 //
 // Constructed at boot inside `AppContext` (see
-// `src/app/preview/composeVaultPreview.ts`) and published through
+// `src/app/platform/preview/composeVaultPreview.ts`) and published through
 // `ReactElementFactory` -> `ServiceProvider` -> `useServiceContext().vaultPreview`.
 
 import type { App, TFile } from 'obsidian';

@@ -12,7 +12,7 @@
 import { TFile } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { SLICE_CAPS } from '@/core/constant';
-import { ensureFolder } from '@/app/vault/vault-helpers';
+import { ensureFolder } from '@/app/platform/vault/vault-helpers';
 import type { AnalysisDocVaultWriterPort } from '@/core/ports/AnalysisDocVaultWriterPort';
 
 function sanitizeFileName(name: string): string {

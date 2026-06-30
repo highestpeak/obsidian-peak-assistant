@@ -130,7 +130,7 @@ function testRegressionFloors(): void {
 
 async function testNoObsidianInLoaderCluster(): Promise<void> {
 	// The T11K vault port lives in `src/core/ports/` and the adapter
-	// lives in `src/app/vault/`. Loader code in `src/core/document/loader/**`
+	// lives in `src/app/platform/vault/`. Loader code in `src/core/document/loader/**`
 	// and `src/core/document/resource/**` must not import from `obsidian`.
 	const loaderOffenders = await findObsidianImportsIn(path.join(SRC, 'core', 'document', 'loader'));
 	const resourceOffenders = await findObsidianImportsIn(path.join(SRC, 'core', 'document', 'resource'));
