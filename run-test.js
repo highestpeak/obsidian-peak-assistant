@@ -20,6 +20,40 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+const srcDir = path.join(__dirname, 'src');
+
+const EXTS = ['.ts', '.tsx', '.js', '.jsx', '.cjs', '.mjs', ''];
+const INDEX_EXTS = ['/index.ts', '/index.tsx', '/index.js', '/index.cjs', '/index.mjs'];
+
+function resolveCandidate(base) {
+    for (const ext of EXTS) {
+        const p = base + ext;
+        if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
+    }
+    for (const idx of INDEX_EXTS) {
+        const p = base + idx;
+        if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
+    }
+    return null;
+}
+
+function aliasResolverPlugin() {
+    return {
+        name: 'alias-at-to-src',
+        setup(b) {
+            b.onResolve({ filter: /^@\// }, (args) => {
+                const rest = args.path.slice(2);
+                const base = path.join(srcDir, rest);
+                const resolved = resolveCandidate(base);
+                if (!resolved) {
+                    return { errors: [{ text: `@/ alias: cannot resolve ${args.path}` }] };
+                }
+                return { path: resolved };
+            });
+        },
+    };
+}
+
 const args = process.argv.slice(2);
 let testFiles = [];
 
@@ -78,6 +112,12 @@ async function runOne(testFile, idx) {
             tsconfig: 'tsconfig.json',
             alias: { obsidian: obsidianStub },
             packages: 'external',
+            // tsconfig "paths" is overruled by packages:external for any
+            // import that starts with a non-`.`/`/` prefix (esbuild treats
+            // `@/...` as an external scoped package before alias lookup).
+            // Use a resolver plugin to translate `@/foo` -> <project>/src/foo
+            // before externalisation.
+            plugins: [aliasResolverPlugin()],
             logLevel: 'silent',
             sourcemap: false,
         });
