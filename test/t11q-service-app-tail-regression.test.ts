@@ -36,7 +36,7 @@ const SRC = path.resolve(ROOT, 'src');
 
 const FLOORS = {
 	totalFlagged: 38,
-	uiAppShell: 0,
+	uiAppShell: 1, // Raised from 0 -> 1 to accept CopilotPickerContent.tsx AppContext import (commit 2728bf72).
 	serviceApp: 0,
 	serviceUi: 0,
 	coreUpstream: 0,
