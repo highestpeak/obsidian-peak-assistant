@@ -59,9 +59,13 @@ export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
 				{excerpt.length > 100 ? `${excerpt.slice(0, 100)}...` : excerpt}
 			</span>
 
-			{/* Explanation badge */}
+			{/* Explanation badge — line-clamp keeps tall LLM explanations
+				 from blowing up the card. Full text is available via the
+				 native tooltip (the 500-char data-layer truncation was
+				 removed in T11Y-5). */}
 			<span
-				className="pktw-mt-1.5 pktw-inline-flex pktw-items-center pktw-gap-1 pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw-text-xs"
+				className="pktw-mt-1.5 pktw-inline-flex pktw-items-start pktw-gap-1 pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw-text-xs pktw-line-clamp-3"
+				title={explanation}
 				style={{
 					color: item.explanationType === 'llm' ? 'var(--pk-text-primary)' : 'var(--pk-accent-text)',
 					backgroundColor: item.explanationType === 'llm'
@@ -70,7 +74,7 @@ export const PushCard: React.FC<PushCardProps> = ({ item, sourceFilePath }) => {
 				}}
 			>
 				{item.explanationType === 'llm' && (
-					<Sparkles className="pktw-h-3 pktw-w-3" />
+					<Sparkles className="pktw-h-3 pktw-w-3 pktw-shrink-0 pktw-mt-0.5" />
 				)}
 				{explanation}
 			</span>
