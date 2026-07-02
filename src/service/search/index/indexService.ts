@@ -267,15 +267,30 @@ import type {
 import type { IndexReaderPort } from '@/core/ports/IndexReaderPort';
 import type { IndexWriterPort } from '@/core/ports/IndexWriterPort';
 import type { IndexMaintenancePort } from '@/core/ports/IndexMaintenancePort';
+import type {
+	IndexGraphMaintenanceOptions,
+	IndexGraphPort,
+} from '@/core/ports/IndexGraphPort';
 
 /**
  * IndexService concentrates the index writer, reader, graph, and
- * maintenance surfaces. It implements the narrower `IndexReaderPort`
- * (T8 first slice) so callers that only need read-status can depend on
- * the port instead of this god-object class. Subsequent T8 slices will
- * extract WriterPort / GraphPort / MaintenancePort the same way.
+ * maintenance surfaces. It implements the narrower ports so callers
+ * that only need one slice can depend on the port instead of this
+ * god-object class.
+ *
+ * Port slices: `IndexReaderPort` (read status/lookups), `IndexWriterPort`
+ * (single-doc upsert / delete), `IndexMaintenancePort` (periodic sweep +
+ * enrichment), `IndexGraphPort` (graph-mutating operations). Slices may
+ * overlap on composite operations (e.g. `runMobiusGlobalMaintenance`
+ * belongs to both Maintenance and Graph facets).
  */
-export class IndexService implements IndexReaderPort, IndexWriterPort, IndexMaintenancePort {
+export class IndexService
+	implements
+		IndexReaderPort,
+		IndexWriterPort,
+		IndexMaintenancePort,
+		IndexGraphPort
+{
 	private static isIndexingCancelled = false;
 
 	constructor(
@@ -1683,6 +1698,64 @@ export class IndexService implements IndexReaderPort, IndexWriterPort, IndexMain
 
 		sw.print();
 		await this.resetMaintenanceDebtAfterFullMaintenance(tenants);
+	}
+
+	// ---------------------------------------------------------------
+	// IndexGraphPort — narrow public entrypoints. Each is a thin wrapper
+	// around the corresponding `*Internal` helper so consumers that hold
+	// only an `IndexGraphPort` reference can drive a single graph phase
+	// without touching the composite `runMobiusGlobalMaintenance` sweep.
+	// ---------------------------------------------------------------
+
+	async refreshMobiusAggregates(
+		tenants: IndexTenant[] = ['vault', 'chat'],
+		options?: IndexGraphMaintenanceOptions,
+	): Promise<void> {
+		for (const tenant of tenants) {
+			await this.refreshMobiusAggregatesInternal(tenant, options?.onProgress);
+		}
+	}
+
+	async recomputeVaultPageRank(
+		tenants: IndexTenant[] = ['vault', 'chat'],
+		options?: IndexGraphMaintenanceOptions,
+	): Promise<void> {
+		for (const tenant of tenants) {
+			await this.computeAndPersistVaultPageRankInternal(tenant, options?.onProgress);
+		}
+	}
+
+	async recomputeSemanticPageRank(
+		tenants: IndexTenant[] = ['vault', 'chat'],
+		options?: IndexGraphMaintenanceOptions,
+	): Promise<void> {
+		for (const tenant of tenants) {
+			await this.computeAndPersistSemanticPageRankInternal(tenant, options?.onProgress);
+		}
+	}
+
+	async rebuildSemanticEdgesForTenant(
+		tenants: IndexTenant[] = ['vault', 'chat'],
+		options?: IndexGraphMaintenanceOptions,
+	): Promise<void> {
+		const onProgress = options?.onProgress;
+		for (const tenant of tenants) {
+			await SemanticRelatedEdgesRebuildService.rebuildForTenant(tenant, {
+				onProgress: !onProgress
+					? undefined
+					: (p) =>
+						onProgress({
+							tenant: p.tenant,
+							phase: 'semantic_related',
+							progressTextSuffix: `${p.processed}/${p.total} docs`,
+						}),
+			});
+			await yieldForLargePass();
+		}
+	}
+
+	async rebuildFolderHubStats(options?: IndexGraphMaintenanceOptions): Promise<void> {
+		await this.rebuildFolderHubStatsForVaultInternal(options?.onProgress);
 	}
 
 	/**
