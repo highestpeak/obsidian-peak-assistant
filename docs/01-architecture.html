@@ -626,13 +626,13 @@ flowchart LR
               <tr>
                 <td><strong>Artifact</strong></td>
                 <td>Answer / sources / report / patch / trace 的稳定引用与存储，供 review 与历史检索。</td>
-                <td><span class="pill blue">partial</span>：<code>CopilotReviewHistoryService</code>、AI Analysis 结果落 Vault、Chat message 落 SQLite；<strong>无统一 <code>ArtifactRef</code></strong></td>
+                <td><span class="pill green">landed</span>：<code>ArtifactPort</code> + <code>InMemoryArtifactStore</code> 已 landed；Vault-backed 实现（<code>VaultArtifactStore</code>）见 backlog B6。</td>
                 <td>Copilot / AI Analysis 都需要“review-before-write”，没有统一 artifact 时每个 feature 各自写一套。</td>
               </tr>
               <tr>
                 <td><strong>Trace</strong></td>
                 <td>一次 run 的完整事件序列，含 tool call、backend 选择、context stack；供 golden test 与 UI trace inspector。</td>
-                <td><span class="pill blue">partial</span>：<code>service/agents/harness/trace</code>；<strong>无跨引擎统一格式</strong></td>
+                <td><span class="pill green">landed</span>：<code>RunEnvelope</code> + 8 个 adopter + <code>golden-trace-cross-backend</code> 已 landed；跨引擎事件形状收敛在 <code>RunEvent</code>。</td>
                 <td>没有 trace，Chat / Copilot 回归只能靠“手感”；有 trace 后可以 pin fixture + golden trace 进 CI。</td>
               </tr>
             </tbody>

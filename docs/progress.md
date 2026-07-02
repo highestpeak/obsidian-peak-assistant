@@ -71,6 +71,18 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ## Next
 
+### 0. Active — 2026-07-03 Full Backlog Sweep
+
+按 `docs/superpowers/plans/2026-07-03-full-backlog-execution-plan.md` 依 DAG 拓扑推进；判断依据记 `docs/superpowers/plans/2026-07-03-execution-decisions.md`。
+
+- [x] **A0 · 文档标签同步 (2026-07-03)** — `01-architecture.html` §trace-artifact 表 `Artifact 统一` / `Trace 事件统一` 两行 `partial` → `landed`，正文改成 "ArtifactPort + InMemoryArtifactStore 已 landed，Vault-backed 实现见 B6" / "RunEnvelope + 8 adopter + golden-trace-cross-backend 已 landed"；`roadmap.html` §decided 删掉 "Feature 文档 14 / 15 / 13" 一行（三份 doc 都在 `index.html` 有真 link），"AN / AO / AP 收尾" 一行 `pending commit + QA` → `landed 未验证`；`index.html` L130 陈旧文案 "灰色标 planned 的还没写，其他都可点击" → "15 份根目录文档按主题分三组，全部已 landed"。
+- [ ] E1 · 05 playbook Case 3/4/9 补详细文档
+- [ ] B7 · IndexService Graph slice → `IndexGraphPort`
+- [ ] B6 · `VaultArtifactStore implements ArtifactPort`
+- [ ] B4 · PermissionGuard 消费 skill quarantine
+- [ ] B1 · CommandGateway wire-in（`main.ts` 命令）
+- [ ] B3 · Backend live strategies 注册（hermes-harness / claude-sdk / provider-direct）
+
 ### 0. Active — Architecture Modernization T1-T9
 
 - [x] T0 Boundary Baseline 完成：`9850eef` + Owner Review `667bfdd`
