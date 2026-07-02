@@ -35,7 +35,6 @@ export interface SettingsMaintenanceIndexActions {
 	updateIndex(): Promise<void>;
 	runFullPipeline(): Promise<void>;
 	cancelIndexing(): void;
-	refreshRelatedNotes(): void;
 	refreshHubSummaries(): Promise<void>;
 	recomputeGapAnalysis(): Promise<void>;
 	analyzeVaultIntuition(): Promise<void>;

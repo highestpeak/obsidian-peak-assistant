@@ -22,7 +22,6 @@ import {
 	openHarnessSetupWizard,
 	recomputeGapAnalysis,
 	refreshHubSummaries,
-	refreshRelatedNotes,
 	runFullIndexPipeline,
 	runGlobalMaintenance,
 	runLlmEnrichmentPending,
@@ -51,6 +50,7 @@ async function startStagedFullIndexing(
 			settings.search,
 			settings.dataStorageFolder ?? '',
 			appContext.progressReporter,
+			appContext.runtimeRegistry.getIndexService(),
 		);
 		await initializer.performStagedFullIndexing(true, level);
 	} catch (e) {
@@ -72,7 +72,6 @@ export function composeSettingsActions(appContext: AppContext): SettingsActions 
 				updateIndex: () => runSearchFastIndex(),
 				runFullPipeline: () => runFullIndexPipeline(),
 				cancelIndexing: () => cancelIndexing(),
-				refreshRelatedNotes: () => refreshRelatedNotes(),
 				refreshHubSummaries: () => refreshHubSummaries(),
 				recomputeGapAnalysis: () => recomputeGapAnalysis(),
 				analyzeVaultIntuition: () => analyzeVaultIntuition(),

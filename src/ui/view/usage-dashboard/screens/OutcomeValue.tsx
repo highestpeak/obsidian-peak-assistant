@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { TimeRange } from '@/service/usage/types';
-import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
-import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { InlineTableBar, HelpAffordance } from '../components/charts';
 import type { OutcomeValueStrings } from '../UsageDashboard';
 
@@ -64,15 +63,20 @@ const EMPTY_STATE: State = { rows: [], loading: true };
  * the dashboard shouldn't assume so).
  */
 export function OutcomeValueScreen({ range, strings }: OutcomeValueScreenProps) {
+	const { usageServices } = useServiceContext();
 	const [state, setState] = useState<State>(EMPTY_STATE);
 
 	useEffect(() => {
+		if (!usageServices) {
+			setState({ ...EMPTY_STATE, loading: false });
+			return;
+		}
 		let cancelled = false;
 		setState((p) => ({ ...p, loading: true }));
 		(async () => {
 			try {
-				const tracking = UsageTrackingService.getInstance();
-				const outcome = UsageOutcomeService.getInstance();
+				const tracking = usageServices.tracking;
+				const outcome = usageServices.outcome;
 				const ms = timeRangeToMs(range);
 
 				const [costs, msgsByFeature, usefulIds, adoptedIds] = await Promise.all([
@@ -116,7 +120,7 @@ export function OutcomeValueScreen({ range, strings }: OutcomeValueScreenProps) 
 			}
 		})();
 		return () => { cancelled = true; };
-	}, [range]);
+	}, [range, usageServices]);
 
 	// MPG scaling: invert so SMALLER (=better) MPG renders as LONGER bar
 	// per spec's "less cost per outcome = better" framing. Anchor: minimum MPG

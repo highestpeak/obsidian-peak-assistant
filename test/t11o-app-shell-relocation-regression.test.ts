@@ -214,7 +214,6 @@ async function testRetiredFilesAreGone(): Promise<void> {
 async function testRelocatedShellsLandedInApp(): Promise<void> {
 	// Each relocated shell must EXIST in its new src/app/** home.
 	const newHomes = [
-		'app/ui-host/views/AmbientPushView.ts',
 		'app/ui-host/views/ChatStudioView.ts',
 		'app/ui-host/views/ChatView.ts',
 		'app/ui-host/views/ConversationOutlineView.ts',

@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>21 Agent Harness / Agent Runtime</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --line-strong: #b9c7bd;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --code-bg: #eef2eb;
+      --code: #25352d;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+
+    .page {
+      width: min(960px, calc(100vw - 64px));
+      margin: 0 auto;
+      padding: 48px 0 72px;
+    }
+
+    header {
+      width: 100%;
+      padding: 8px 0 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    h1 {
+      max-width: 900px;
+      margin: 14px 0 16px;
+      font-size: 48px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 880px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 19px;
+      line-height: 1.72;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .meta span {
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+    }
+
+    .doc-layout { display: block; margin-top: 28px; }
+
+    .content {
+      min-width: 0;
+    }
+
+    .side-nav {
+      position: fixed;
+      top: 92px;
+      left: calc(50vw - 764px);
+      z-index: 20;
+      width: 260px;
+      max-height: calc(100vh - 116px);
+      padding: 14px 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      overflow: auto;
+      box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045);
+      backdrop-filter: blur(8px);
+    }
+
+    .side-nav strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .side-nav a {
+      display: block;
+      padding: 5px 8px;
+      border-left: 2px solid transparent;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+      border-radius: 6px;
+    }
+
+    .side-nav a.sub {
+      margin-left: 10px;
+      font-size: 13px;
+    }
+
+    .side-nav a.active {
+      border-left-color: var(--green);
+      color: var(--ink);
+      background: var(--soft-green);
+      text-decoration: none;
+    }
+
+    .side-nav .nav-note {
+      margin-top: 12px;
+      padding-top: 11px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    section {
+      width: 100%;
+      padding: 42px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 31px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 28px 0 9px;
+      font-size: 21px;
+      line-height: 1.28;
+      letter-spacing: 0;
+    }
+
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+
+    .lead {
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.72;
+    }
+
+    .prose {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .claim {
+      margin: 22px 0 0;
+      padding: 16px 18px;
+      border-left: 4px solid var(--green);
+      background: var(--paper);
+      color: var(--muted);
+      box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055);
+    }
+
+    .claim strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--ink);
+    }
+
+    .figure {
+      width: 100%;
+      max-width: 100%;
+      margin: 24px 0 0;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      overflow-x: auto;
+      box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06);
+    }
+
+    .figure-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .figure-title strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .mermaid {
+      min-width: 820px;
+      text-align: center;
+    }
+
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .read-note {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .read-note b { color: var(--ink); }
+
+    .diagram-notes {
+      margin: 14px 0 0;
+      padding: 12px 14px 12px 30px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .diagram-notes li { margin: 3px 0; }
+    .diagram-notes b { color: var(--ink); }
+
+    ul.clean {
+      margin: 16px 0 0;
+      padding: 0 0 0 20px;
+      color: var(--muted);
+    }
+
+    ul.clean li { margin: 7px 0; }
+    ul.clean b { color: var(--ink); }
+
+    .codebox {
+      margin: 20px 0 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--code-bg);
+      overflow: hidden;
+    }
+
+    .codebox .caption {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      background: #f7f9f4;
+    }
+
+    pre {
+      margin: 0;
+      padding: 17px 18px;
+      overflow-x: auto;
+      color: var(--code);
+      font-size: 13px;
+      line-height: 1.62;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      font-size: 14px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      background: #edf2eb;
+      font-weight: 800;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    td code { color: var(--code); }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      margin-top: 20px;
+    }
+
+    .plain-panel {
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    .plain-panel strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .plain-panel p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .reader-map {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .reader-map .plain-panel {
+      background: #fbfcf8;
+    }
+
+    .route {
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: route;
+    }
+
+    .route li {
+      counter-increment: route;
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr);
+      gap: 10px;
+      padding: 11px 0;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .route li::before {
+      content: counter(route);
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      color: var(--green);
+      background: var(--soft-green);
+      font-size: 12px;
+      font-weight: 820;
+    }
+
+    .route b {
+      display: block;
+      color: var(--ink);
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 999px;
+      border: 1px solid var(--line-strong);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .tag.green { color: var(--green); background: var(--soft-green); }
+    .tag.blue { color: var(--blue); background: var(--soft-blue); }
+    .tag.gold { color: var(--gold); background: var(--soft-gold); }
+    .tag.red { color: var(--red); background: #f8ecea; }
+
+    .footer {
+      width: 100%;
+      padding-top: 24px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+
+    @media (max-width: 900px) {
+      .page { width: min(100% - 28px, 1100px); padding-top: 28px; }
+      h1 { font-size: 34px; }
+      .subtitle { font-size: 17px; }
+      .reader-map { grid-template-columns: 1fr; }
+      .two-col { grid-template-columns: 1fr; }
+      .figure { width: calc(100vw - 28px); padding: 16px; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">21 · Infrastructure · Agent runtime</div>
+      <h1>Agent Harness：让 Peak Assistant 的多步 AI 工作可控、可停、可追踪。</h1>
+      <p class="subtitle">这篇文档写给第一次接触 Peak Assistant 的维护者。先别把 Harness 想成一个用户功能；它更像一层<strong>运行时</strong>——上游任意能力都可以借用它，把多步 AI 工作关进同一套边界：</p>
+      <ul class="subtitle-list">
+        <li><strong>谁会用到</strong>：Chat、Search、Review、Copilot、以及未来的 capability。</li>
+        <li><strong>做什么</strong>：分步思考、调用工具、切换模型、压缩上下文、留下 trace。</li>
+      </ul>
+      <div class="meta">
+        <span>Current draft · 2026-07-01</span>
+        <span>Root doc #21</span>
+        <span>Reader: first-time maintainer</span>
+        <span>约 12.5k 混合字符 · 18-22 分钟</span>
+        <span>User label: Agent runtime</span>
+        <span>Code entry: <code>runAgentLoop</code></span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <aside class="side-nav" aria-label="Document sections">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">0. 读者定位</a>
+          <a href="#why">1. 为什么需要它</a>
+          <a href="#boundary">2. 系统边界</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">运行时</span>
+          <a href="#run">3. 一次运行</a>
+          <a href="#contracts">4. 核心合同</a>
+          <a class="sub" href="#loop-contract">Loop contract</a>
+          <a class="sub" href="#tool-contract">Tool contract</a>
+          <a class="sub" href="#permission-contract">Permission contract</a>
+          <a class="sub" href="#runtime-sidecars">Trace / Context / Subagent</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">参考</span>
+          <a href="#read-code">5. 读代码顺序</a>
+          <a href="#limits">6. 限制与不要做</a>
+          <a href="#validation">7. 验证矩阵</a>
+        </div>
+        <div class="nav-note">主场景：桌面浏览器或编辑器预览阅读。本文只记录主阅读视口验证。</div>
+      </aside>
+
+      <div class="content">
+    <section id="orientation">
+      <h2>0. 这份文档怎么读。</h2>
+      <p class="lead">本文是 <span class="tag blue">runtime explanation</span> + <span class="tag green">source-code reading guide</span>，目标不是介绍所有 agent 愿景，而是让维护者能打开代码、判断边界、写新工具、审查改动。</p>
+      <div class="reader-map">
+        <div class="plain-panel">
+          <strong>本文读者</strong>
+          <p>懂 TypeScript 和 AI tool-calling，但第一次接触 Peak Assistant 的工程师或 AI coding agent。</p>
+        </div>
+        <div class="plain-panel">
+          <strong>读完能做什么</strong>
+          <p>解释一次 Harness run 怎么走，知道改工具、权限、context 或 subagent 时该先看哪些文件。</p>
+        </div>
+        <div class="plain-panel">
+          <strong>本文不做什么</strong>
+          <p>不规划 Command Gateway，不替代主架构手册，不把旧 spec 里的未来能力写成现状。</p>
+        </div>
+      </div>
+      <ul class="route" aria-label="Recommended reading route">
+        <li><span><b>先看系统边界。</b>如果只想知道 Harness 在项目里负责什么，读第 1-2 节和系统边界图。</span></li>
+        <li><span><b>再看一次运行。</b>如果要改代码，先读第 3 节的时序图，再打开 <code>AgentLoop.ts</code>。</span></li>
+        <li><span><b>最后按合同定位改动。</b>改工具看 ToolDef；改安全看 Permission/Hook；改长上下文看 Context；改委托任务看 Subagent。</span></li>
+      </ul>
+    </section>
+
+    <section id="why">
+      <h2>1. 为什么这里需要一个 Harness？</h2>
+      <p class="lead">Obsidian 用户真正要的是“帮我完成一个知识工作”，不是“让模型多说几句话”。</p>
+      <p class="prose">例如：用户在 Chat 里说“帮我看看 Research/AI agents 这个 folder，找出可以合并的重复笔记，并给一个整理建议”。一个普通 chat completion 可以直接生成建议，但它很难可靠地做以下决策——</p>
+      <ul>
+        <li>什么时候搜索、什么时候读文件、什么时候停？</li>
+        <li>能不能写 Vault？</li>
+        <li>工具结果怎么记录？</li>
+        <li>上下文超了怎么办？</li>
+        <li>模型不确定时是否升级？</li>
+      </ul>
+      <p class="prose">Harness 要解决的正是这类“多步 AI 工作”的运行问题。它不是某个 prompt，不是某个 UI，也不是某个 provider wrapper——它把每一步模型调用放进外层 loop，由代码负责七件事：</p>
+      <ul>
+        <li>预算（budget）</li>
+        <li>权限（permission）</li>
+        <li>工具封装（tool wrapping）</li>
+        <li>trace</li>
+        <li>context compaction</li>
+        <li>tier escalation</li>
+        <li>停止条件（stop condition）</li>
+      </ul>
+      <div class="claim">
+        <strong>一句话定义</strong>
+        Agent Harness 是 Peak Assistant 的 agent runtime：它让模型可以分步工作，但每一步都被确定性的代码边界接管。
+      </div>
+
+      <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+        <thead>
+          <tr><th>读者问题</th><th>当前事实</th><th>文档里的处理方式</th><th>验证入口</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>它和普通 Chat 有什么区别？</td>
+            <td><code>AgentLoop.ts</code> 每轮只让 AI SDK 跑一步，外层 loop 决定继续、停止、升级和记录。</td>
+            <td>先用一个真实任务解释 loop，再拆合同。</td>
+            <td><code data-copy="test/harness-loop.test.ts">harness-loop.test.ts</code></td>
+          </tr>
+          <tr>
+            <td>它真的能挡住危险工具吗？</td>
+            <td><code>PermissionGuard</code> deny-first，且 <code>wrapTool</code> 在 hook 和 execute 前先检查权限。</td>
+            <td>把权限写成运行门，而不是 prompt 建议。</td>
+            <td><code data-copy="test/harness-permission.test.ts">harness-permission.test.ts</code></td>
+          </tr>
+          <tr>
+            <td>它怎么处理长上下文？</td>
+            <td><code>ContextManager</code> 先估 token，再丢低优先级 evictable blocks，最后滑动窗口。</td>
+            <td>单独解释 memory/context 不是“无限塞 prompt”。</td>
+            <td><code data-copy="test/harness-context.test.ts">harness-context.test.ts</code></td>
+          </tr>
+          <tr>
+            <td>Subagent 是另一个系统吗？</td>
+            <td>Subagent 被包装成 <code>subagent.&lt;name&gt;</code> 工具，父 loop 只看到 summary。</td>
+            <td>把 subagent 解释成统一 ToolDef 下面的隔离运行。</td>
+            <td><code data-copy="test/harness-subagent.test.ts">harness-subagent.test.ts</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="boundary">
+      <h2>2. 系统边界：Feature 说“要做什么”，Harness 管“怎么安全地做”。</h2>
+      <p class="lead">这条边界很重要，因为它决定后续功能不会各自长出一套小 runtime。</p>
+      <p class="prose">五类 surface 都可能需要 agent 能力——Chat、Search、Copilot、AI Analysis、未来的 Command Gateway——但它们不应该自己实现 loop、权限、工具封装、context budget、trace。分工：</p>
+      <ul>
+        <li><strong>Feature service</strong>：只声明「任务、可用工具、权限模式、预算、结果订阅」。</li>
+        <li><strong>Harness</strong>：用统一合同执行上面这些声明。</li>
+      </ul>
+
+      <div class="figure" role="figure" aria-label="Agent Harness system boundary">
+        <div class="figure-title"><strong>系统边界图</strong><span>从用户意图到模型和工具的控制面</span></div>
+        <div class="mermaid">
+flowchart LR
+  User["Obsidian user<br/>发起知识工作"] --> Surface["Product surface<br/>Chat / Search / Review / Copilot"]
+  Surface --> Feature["Feature service<br/>声明任务、预算、权限、可用工具"]
+  Feature --> Harness["Agent Harness<br/>loop / tier / permission / hooks / trace / context"]
+  Harness --> Model["Vercel AI SDK model<br/>generateText one step"]
+  Harness --> Tools["ToolDef tools<br/>Vault / Search / MCP / subagent"]
+  Harness --> Trace["TraceBus<br/>step、tool、tier、context events"]
+  Tools --> Vault["Vault / SQLite / external providers"]
+  Trace --> Observer["UI observer / test / future RunEvent"]
+
+  classDef user fill:#eef6f1,stroke:#1f6b52,color:#17221d;
+  classDef feature fill:#eef5f7,stroke:#245f7a,color:#17221d;
+  classDef harness fill:#f7f2e8,stroke:#80611f,color:#17221d;
+  classDef external fill:#f8ecea,stroke:#90423d,color:#17221d;
+  class User user;
+  class Surface,Feature feature;
+  class Harness,Trace harness;
+  class Model,Tools,Vault,Observer external;
+        </div>
+        <ul class="diagram-notes">
+          <li><b>业务语义在 Feature service。</b>它决定用户要完成什么任务、可用哪些工具、预算和权限是什么。</li>
+          <li><b>运行纪律在 Harness。</b>loop、tier、permission、hook、trace、context 不应该散落到 Chat 或 Search 里。</li>
+          <li><b>不要把图读成产品 UI。</b>普通用户看到的是 Agent runtime 状态，不需要知道内部类名。</li>
+        </ul>
+      </div>
+
+      <h3>用户侧命名也要收敛。</h3>
+      <p class="prose">普通用户不需要看到 “Agent Harness” 这个内部词。设置页和用户提示更应该说 “Agent runtime” 或 “AI 运行时”。旧的设置心智模型文档已经写明：Harness 可以作为内部名存在，但不应成为普通用户的一阶概念。</p>
+      <div class="two-col">
+        <div class="plain-panel">
+          <strong>用户需要知道</strong>
+          <ul>
+            <li>AI 正在执行几步</li>
+            <li>用了什么工具</li>
+            <li>是否要授权</li>
+            <li>结果能不能应用</li>
+            <li>失败时该改哪个设置</li>
+          </ul>
+        </div>
+        <div class="plain-panel">
+          <strong>维护者需要知道</strong>
+          <ul>
+            <li>loop 怎么停</li>
+            <li>ToolDef 怎么写</li>
+            <li>权限怎么挡</li>
+            <li>trace 怎么订阅</li>
+            <li>subagent 怎么隔离</li>
+            <li>context 怎么压缩</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="run">
+      <h2>3. 一次 Agent run 到底发生了什么？</h2>
+      <p class="lead">核心不是“模型有多聪明”，而是每一步都先经过运行时检查。</p>
+      <p class="prose">当前实现的主入口是 <code>runAgentLoop(cfg)</code>。它合并默认预算，创建或复用 <code>TraceBus</code>，触发 <code>session_start</code> hook，自动把 subagent 包装成工具，然后进入 while loop。每轮开始前先检查停止条件，选择当前 tier，过滤当前 tier 可用工具，必要时压缩上下文，再调用 Vercel AI SDK 的 <code>generateText</code>。每次调用被限制为 <code>stopWhen: stepCountIs(1)</code>，所以“继续跑几步”不是模型说了算，而是外层 loop 再决定。</p>
+
+      <div class="figure" role="figure" aria-label="AgentLoop sequence">
+        <div class="figure-title"><strong>运行时序图</strong><span>一次 run 的主要控制点</span></div>
+        <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant F as Feature service
+  participant L as AgentLoop
+  participant H as HookBus
+  participant P as PermissionGuard
+  participant C as ContextManager
+  participant T as TierController
+  participant M as Model
+  participant Tool as ToolDef
+  participant Trace as TraceBus
+
+  F->>L: runAgentLoop(config)
+  L->>Trace: loop_start
+  L->>H: session_start
+  H-->>L: continue or block
+  loop each step
+    L->>L: evaluateStopConditions
+    L->>T: current tier
+    L->>C: compactIfNeeded
+    C-->>L: messages and memory blocks
+    L->>M: generateText with one-step stop
+    M-->>L: text or tool calls
+    alt model calls tool
+      L->>Trace: tool_call
+      L->>P: check tool and args
+      P-->>L: allow or deny
+      L->>H: pre_tool_use
+      L->>Tool: execute
+      Tool-->>L: ToolResult
+      L->>H: post_tool_use
+      L->>Trace: tool_result
+    end
+    L->>T: onStepFinish and possible escalation
+    L->>Trace: step_finish
+  end
+  L->>H: stop
+  L->>Trace: loop_finish
+  L-->>F: AgentLoopResult
+        </div>
+        <ul class="diagram-notes">
+          <li><b>模型每次只获得一步机会。</b><code>stepCountIs(1)</code> 让外层 loop 能在每步之间重新检查预算、权限和上下文。</li>
+          <li><b>工具调用不是直通。</b>tool call 先进入 trace，再过 permission、pre hook、execute、post hook，最后才把结果交回模型。</li>
+          <li><b>状态真相在返回值和 trace。</b>调试时先看 <code>finishReason</code>、<code>steps</code>、tool traces，不要只看最后一段文本。</li>
+        </ul>
+      </div>
+
+      <div class="codebox">
+        <div class="caption"><span class="tag blue">illustrative</span> 简化后的控制逻辑，来自 <code>src/service/agents/harness/loop/AgentLoop.ts</code> 的结构，不是完整源码。</div>
+        <pre><code>while (true) {
+  const stop = evaluateStopConditions(state, budget);
+  if (stop) break;
+
+  const tier = tierController.current();
+  const tools = filterToolsForTier(effectiveTools, tier);
+  const messages = await context.compactIfNeeded(...);
+
+  const result = await generateText({
+    model: tier.resolve(),
+    messages,
+    tools: wrapToolsWithPermissionHooksAndTrace(tools),
+    stopWhen: stepCountIs(1),
+  });
+
+  recordStep(result);
+  tierController.onStepFinish(step);
+  if (hasFinalAnswer(step)) break;
+}</code></pre>
+      </div>
+
+      <h3>为什么要一轮只跑一步？</h3>
+      <p class="prose">因为多步 agent 最大的问题不是“能不能调用工具”，而是“谁负责每一步之间的安全检查”。如果一次 <code>generateText</code> 放任模型自己连跑很多步，预算、权限、trace、context 压缩和 tier 升级都会被动跟在后面。当前实现把模型调用切成单步，外层 loop 就能在每次 step 之间重新检查运行条件。</p>
+    </section>
+
+    <section id="contracts">
+      <h2>4. 核心合同：Harness 由四个门和三个侧车组成。</h2>
+      <p class="lead">第一次读代码时，可以先把 Harness 想成一个受控管道。</p>
+      <p class="prose">四个“门”决定能不能继续：预算停止门、模型 tier 门、权限/Hook 门、最终答案门。三个“侧车”提供运行支撑：Trace 记录过程，Context 管理上下文，Subagent 把委托任务变成工具。</p>
+
+      <div class="figure" role="figure" aria-label="Contracts and gates">
+        <div class="figure-title"><strong>合同与门控图</strong><span>哪些判断由代码负责</span></div>
+        <div class="mermaid">
+flowchart TB
+  Start["AgentLoopConfig<br/>任务、消息、工具、预算、权限"] --> Budget["Budget gate<br/>maxSteps / maxTokens / maxToolCalls / abort"]
+  Budget --> Tier["Tier gate<br/>local-fast / local-deep / online"]
+  Tier --> Context["Context sidecar<br/>memory blocks + compaction"]
+  Context --> Model["Model step<br/>generateText stopWhen=1"]
+  Model --> Decision{"模型输出"}
+  Decision -->|"tool call"| ToolGate["Tool gate<br/>PermissionGuard then hooks"]
+  ToolGate --> Tool["ToolDef execute<br/>returns ToolResult"]
+  Tool --> Trace["Trace sidecar<br/>tool_call / tool_result / step_finish"]
+  Trace --> Final{"Final answer?"}
+  Decision -->|"text only"| Final
+  Final -->|"no"| Budget
+  Final -->|"yes"| Result["AgentLoopResult<br/>finalText / steps / usage / finishReason"]
+
+  Sub["Subagent sidecar<br/>subagent.name as ToolDef"] --> ToolGate
+
+  classDef gate fill:#f7f2e8,stroke:#80611f,color:#17221d;
+  classDef side fill:#eef5f7,stroke:#245f7a,color:#17221d;
+  classDef run fill:#eef6f1,stroke:#1f6b52,color:#17221d;
+  class Budget,Tier,ToolGate,Final gate;
+  class Context,Trace,Sub side;
+  class Start,Model,Decision,Tool,Result run;
+        </div>
+        <ul class="diagram-notes">
+          <li><b>Budget gate 是第一层。</b>超过 step、token、tool call 或收到 abort signal 时，模型不会再获得下一步。</li>
+          <li><b>Tool gate 是真实世界边界。</b>Vault、Search、MCP 和 subagent 都要通过 ToolDef wrapper，不能裸露给模型。</li>
+          <li><b>Trace sidecar 贯穿全程。</b>它不是可选日志，而是 UI、测试和未来 RunEvent 的共同事实来源。</li>
+        </ul>
+      </div>
+
+      <h3 id="loop-contract">4.1 Loop contract：运行一次任务需要传进什么。</h3>
+      <p class="prose"><code>AgentLoopConfig</code> 是 Harness 的主合同。它包含 <code>loopId</code>、system prompt、初始消息、工具、tier controller、预算、abort signal、trace、hooks、permission、subagents、memory 和 context。默认预算当前是 5 steps、20,000 tokens、10 tool calls。</p>
+      <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+        <thead>
+          <tr><th>字段</th><th>它回答的问题</th><th>维护风险</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>budget</code></td><td>这个 run 最多能走几步、花多少 token、调用多少工具。</td><td>不要在 feature 里写自己的 step counter，统一传给 Harness。</td></tr>
+          <tr><td><code>tierController</code></td><td>本轮用哪个模型 tier，是否可以升级。</td><td>不要让某个 agent 私自选择 provider 后绕过 tier 记录。</td></tr>
+          <tr><td><code>permission</code></td><td>哪些工具可用，哪些写入或危险动作必须被挡住。</td><td>没有 guard 时会回到 legacy allow-all，写工具时要显式传入。</td></tr>
+          <tr><td><code>trace</code></td><td>UI、测试或未来 RunEvent 怎么观察过程。</td><td>不要只靠 console 或 UI state 当调试事实。</td></tr>
+          <tr><td><code>context</code> + <code>memory</code></td><td>哪些上下文块进入 system prompt，超过预算时怎么丢弃或压缩。</td><td>不要把长历史直接拼进 prompt。</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="tool-contract">4.2 Tool contract：工具必须是可审查的接口。</h3>
+      <p class="prose"><code>ToolDef</code> 声明名称、描述、Zod input schema、可用 tier、工具风险类型和执行函数。工具结果必须回到 <code>ToolResult</code> envelope：成功是 <code>{ ok: true, data }</code>，失败是 <code>{ ok: false, error, recoverable }</code>。业务失败不要用 throw 作为主路径，因为模型需要看到可恢复错误并调整策略。</p>
+      <div class="codebox">
+        <div class="caption"><span class="tag green">existing excerpt</span> ToolDef 的最小心智模型，来自 <code>src/service/agents/harness/tool/types.ts</code>。</div>
+        <pre><code>interface ToolDef {
+  name: string;
+  description: string;
+  inputSchema: ZodTypeAny;
+  allowedTiers?: ModelTier[];
+  kind?: "read" | "edit" | "destructive" | "meta";
+  execute(args, ctx): Promise&lt;ToolResult&gt;;
+}</code></pre>
+      </div>
+
+      <h3 id="permission-contract">4.3 Permission contract：deny-first 是硬规则。</h3>
+      <p class="prose">权限不是给模型的一句提示，而是工具执行前的同步检查。当前 <code>PermissionGuard</code> 的优先级是：显式 deny rule、read mode 禁止 edit/destructive、显式 allow rule、模式默认。代码里还明确写着：<code>bypassPermissions</code> 也不能越过 deny rule。</p>
+      <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+        <thead>
+          <tr><th>顺序</th><th>规则</th><th>为什么这样排</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>匹配显式 deny rule</td><td>项目级红线不能被用户模式或模型输出覆盖。</td></tr>
+          <tr><td>2</td><td>read mode 阻止 edit / destructive</td><td>只读运行必须真的只读。</td></tr>
+          <tr><td>3</td><td>匹配显式 allow rule</td><td>允许细粒度开放某些工具。</td></tr>
+          <tr><td>4</td><td>模式默认 allow</td><td>保持 legacy 兼容，但前面的 deny 已经先执行。</td></tr>
+        </tbody>
+      </table>
+      <div class="claim">
+        <strong>不要过度承诺</strong>
+        当前权限层不是完整的“弹窗询问用户授权 UI”。代码事实是同步 guard + hook blocking/modification。用户确认界面、可审阅 diff、apply/reject 仍属于上层产品能力或未来 RunEvent/Artifact 工作。
+      </div>
+
+      <h3 id="runtime-sidecars">4.4 Trace / Context / Subagent：让过程能被看见、缩小和隔离。</h3>
+      <p class="prose">TraceBus 记录 <code>loop_start</code>、<code>step_start</code>、<code>tool_call</code>、<code>tool_result</code>、<code>tier_escalate</code>、<code>context_compacted</code>、<code>loop_finish</code> 等事件。ContextManager 用与 chat token estimation 一致的 chars/4 启发式估算消息和 memory block，超过阈值时先丢低优先级可驱逐块，再保留 system 和最近消息。Subagent 则不是第二套 runtime；它被包装成 <code>subagent.&lt;name&gt;</code> 工具，子 loop 使用新的 TierController，父 loop 只接收 summary、finish reason、steps 和 token 数。</p>
+    </section>
+
+    <section id="read-code">
+      <h2>5. 第一次读代码，按这个顺序打开文件。</h2>
+      <p class="lead">不要从 UI 搜 Harness，也不要先读旧 spec。先读当前实现的主干，再回头看设计文档。</p>
+      <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+        <thead>
+          <tr><th>顺序</th><th>文件</th><th>要看什么</th><th>读完应该能回答</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><a href="../src/service/agents/harness/loop/AgentLoop.ts"><code data-copy="loop/AgentLoop.ts">AgentLoop.ts</code></a></td>
+            <td><code>runAgentLoop</code>、<code>wrapTool</code>、<code>stepCountIs(1)</code>、trace emission。</td>
+            <td>一次 run 如何开始、如何走一步、如何停。</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><a href="../src/service/agents/harness/loop/types.ts"><code data-copy="loop/types.ts">types.ts</code></a></td>
+            <td><code>AgentLoopConfig</code>、<code>AgentLoopResult</code>、默认预算和 finish reason。</td>
+            <td>Feature service 要给 Harness 哪些输入，能拿到哪些输出。</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><a href="../src/service/agents/harness/tool/types.ts"><code data-copy="tool/types.ts">types.ts</code></a></td>
+            <td><code>ToolDef</code>、<code>ToolResult</code>、<code>kind</code>、<code>allowedTiers</code>。</td>
+            <td>新工具应该怎么暴露给模型，错误怎么返回。</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><a href="../src/service/agents/harness/permission/PermissionGuard.ts"><code data-copy="permission/PermissionGuard.ts">PermissionGuard.ts</code></a></td>
+            <td>deny-first 顺序、read mode、allow/default 的优先级。</td>
+            <td>为什么危险动作不能靠 prompt 管。</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><a href="../src/service/agents/harness/tier/TierController.ts"><code data-copy="tier/TierController.ts">TierController.ts</code></a></td>
+            <td>preferred tier、fallback、<code>escalate</code> tool、auto escalation。</td>
+            <td>模型升级什么时候发生，如何记录。</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td><a href="../src/service/agents/harness/context/ContextManager.ts"><code data-copy="context/ContextManager.ts">ContextManager.ts</code></a></td>
+            <td>token estimate、memory block eviction、message sliding window。</td>
+            <td>上下文超预算时实际丢什么。</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td><a href="../src/service/agents/harness/subagent/SubAgentDispatcher.ts"><code data-copy="subagent/SubAgentDispatcher.ts">SubAgentDispatcher.ts</code></a></td>
+            <td>子 loop 隔离、fresh messages、child controller、summary 返回。</td>
+            <td>Subagent 为什么不是另一条父子共享状态链。</td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td><a href="../test/harness-loop.test.ts"><code data-copy="test/harness-*.test.ts">harness-*.test.ts</code></a></td>
+            <td>loop、permission、context、subagent 的当前验收行为。</td>
+            <td>改 Harness 前后应该保护哪些行为。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="limits">
+      <h2>6. 当前限制和不要做的事。</h2>
+      <p class="lead">这几条画出 Harness 现在能承担什么、不能承担什么。把未来能力当成已上线，代码和用户预期就会立刻错位。</p>
+      <ul class="clean">
+        <li><b>不要把 Harness 当成用户功能。</b>用户侧看到的是 Agent runtime、运行状态、工具授权和结果审阅；Harness 是维护者术语。</li>
+        <li><b>Command Gateway 现在不属于 Harness。</b>Gateway 在主架构手册里仍是 T12 capstone；本页只覆盖现有 Harness 运行层的行为和边界。</li>
+        <li><b>不要在 feature service 里复制 loop。</b>Chat、Search、Review 需要 agent 时通过统一 runtime 合同传任务、工具、预算、权限和订阅。</li>
+        <li><b>不要把 permission 写成 prompt。</b>需要保证的行为必须在 <code>PermissionGuard</code> 或 hooks 里实现。</li>
+        <li><b>不要让工具返回任意形状。</b>工具必须用 <code>ToolResult</code>，否则模型、trace 和测试都难以判断失败是否可恢复。</li>
+        <li><b>不要把旧 spec 里的全部愿景当成已实现。</b>当前已有 loop、tool、permission、hook、tier、trace、context、subagent；完整 AgentBackend/RunEvent/Artifact 汇合还属于架构现代化目标。</li>
+      </ul>
+
+      <div class="figure" role="figure" aria-label="AgentLoop finish reasons">
+        <div class="figure-title"><strong>停止原因图</strong><span>一个 run 为什么结束</span></div>
+        <div class="mermaid">
+stateDiagram-v2
+  state "Running step loop" as Running
+  state "Final answer" as Stop
+  state "Max steps" as MaxSteps
+  state "Max tokens" as MaxTokens
+  state "Max tool calls" as MaxTools
+  state "Abort signal" as Abort
+  state "Provider or runtime error" as Error
+  state "Session hook blocked" as HookBlock
+
+  [*] --> Running
+  Running --> Stop: assistant text and no tool calls
+  Running --> MaxSteps: steps >= maxSteps
+  Running --> MaxTokens: totalTokens >= maxTokens
+  Running --> MaxTools: totalToolCalls >= maxToolCalls
+  Running --> Abort: abortSignal
+  Running --> Error: generateText throws
+  [*] --> HookBlock: session_start block
+  Stop --> [*]
+  MaxSteps --> [*]
+  MaxTokens --> [*]
+  MaxTools --> [*]
+  Abort --> [*]
+  Error --> [*]
+  HookBlock --> [*]
+        </div>
+        <ul class="diagram-notes">
+          <li><b><code>stop</code> 不是唯一成功线索。</b>预算停和 abort 也可能返回部分有用信息，但调用方必须按 finish reason 处理。</li>
+          <li><b><code>hook_block</code> 只发生在 session start。</b>工具级 block 会以 ToolResult 错误回到模型，而不是直接结束整个 run。</li>
+          <li><b>调试顺序要固定。</b>先看 finish reason，再看最后一个 step，再看 tool_result 和 context_compacted trace。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="validation">
+      <h2>7. 怎么判断这份基础设施还能信。</h2>
+      <p class="lead">Harness 的验证重点不是页面好不好看，而是运行边界有没有被测试锁住。</p>
+      <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+        <thead>
+          <tr><th>能力</th><th>应该被保护的行为</th><th>当前测试入口</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Loop</td>
+            <td>最终答案停止、工具调用后继续、maxSteps、abort、trace events、工具异常被包成错误。</td>
+            <td><code data-copy="npm run test -- test/harness-loop.test.ts">harness-loop.test.ts</code></td>
+          </tr>
+          <tr>
+            <td>Permission</td>
+            <td>deny 胜过 allow，bypass 也不能绕过 deny，read mode 阻止 edit/destructive，denied tool 不执行。</td>
+            <td><code data-copy="npm run test -- test/harness-permission.test.ts">harness-permission.test.ts</code></td>
+          </tr>
+          <tr>
+            <td>Context</td>
+            <td>token estimate 增长，低优先级 evictable blocks 先丢，pinned block 保留，滑动窗口保留 system 和最近消息。</td>
+            <td><code data-copy="npm run test -- test/harness-context.test.ts">harness-context.test.ts</code></td>
+          </tr>
+          <tr>
+            <td>Subagent</td>
+            <td>子任务使用隔离 loop，父 loop 只看到 subagent tool 的 summary，子工具调用不泄漏到父步骤。</td>
+            <td><code data-copy="npm run test -- test/harness-subagent.test.ts">harness-subagent.test.ts</code></td>
+          </tr>
+          <tr>
+            <td>文档本身</td>
+            <td>所有 Mermaid 图能渲染；本地链接存在；主阅读视口 1440px 无明显重叠或横向布局破裂。</td>
+            <td>桌面主阅读视口检查；未扩展成其他视口验收。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="claim">
+        <strong>维护时的判断标准</strong>
+        新增 agent 能力时，先问它能否用 <code>AgentLoopConfig</code> 表达。如果答案是否定的，优先补 runtime contract；不要直接在业务 service 里开一条新 agent 小系统。
+      </div>
+    </section>
+
+    <div class="footer">
+      <p>验证记录：2026-07-01，主阅读视口 1440px；Mermaid、本地链接、侧边导航、阅读时长元信息和聚焦 Harness 测试由本轮检查。</p>
+      <p>相关文档：<a href="index.html">docs index</a>、<a href="05-use-case-playbook.html">05-use-case-playbook.html</a>、<a href="11-feature-chat-context.html">11-feature-chat-context.html</a>、<a href="12-feature-search.html">12-feature-search.html</a>、<a href="superpowers/specs/2026-05-24-self-hosted-agent-harness.md">self-hosted-agent-harness spec</a>。</p>
+    </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

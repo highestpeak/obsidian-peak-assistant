@@ -36,8 +36,6 @@ import type { LearnedPattern } from '@/service/ambient/PatternLearner';
  */
 export interface AmbientSettingsPort {
 	getSettings(): AmbientPushSettings;
-	/** Persist that the panel auto-open ran on first launch. */
-	markPanelAutoOpened(): Promise<void>;
 }
 
 export type AmbientTriggerCallback = (

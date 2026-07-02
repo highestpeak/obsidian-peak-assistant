@@ -1,34 +1,24 @@
 /**
  * Registry where surfaces self-register adapters.
  *
+ * Owned by the app layer via `AppRuntimeRegistry`. Consumers reach it through
+ * `AppContext.getCapabilityRegistry()` / `tryGetCapabilityRegistry()`.
+ *
  * Pattern (each surface, in its own PR):
- *   import { CapabilityRegistry } from '@/service/capabilities';
- *   CapabilityRegistry.getInstance().register({
+ *   const registry = AppContext.getCapabilityRegistry();
+ *   registry.register({
  *     surfaceId: 'chat',
  *     surfaceLabel: 'Chat',
  *     getCapabilityStatus: async () => [...],
  *   });
  *
- * Settings consumes via getAll() or getById(id).
+ * Settings consumes via `getAll()` or `getById(id)`.
  */
 
 import type { SurfaceCapabilityAdapter, SurfaceId } from './SurfaceCapability';
 
 export class CapabilityRegistry {
-	private static instance: CapabilityRegistry | null = null;
 	private adapters = new Map<SurfaceId, SurfaceCapabilityAdapter>();
-
-	private constructor() {}
-
-	static getInstance(): CapabilityRegistry {
-		if (!this.instance) this.instance = new CapabilityRegistry();
-		return this.instance;
-	}
-
-	/** Test seam — reset registry between tests. NOT for production use. */
-	static resetForTest(): void {
-		this.instance = null;
-	}
 
 	/** Surface registers (or re-registers, last-write-wins) its adapter. */
 	register(adapter: SurfaceCapabilityAdapter): void {

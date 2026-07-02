@@ -4,7 +4,7 @@ import { Server, Plug, PlugZap, Trash2, ChevronRight, Power, PowerOff } from 'lu
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { MCPServerConfig, MCPConnectionStatus } from '@/core/types/mcp';
-import { MCPClientManager } from '@/service/mcp/MCPClientManager';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,6 +58,7 @@ function StatusDot({ status, toolCount, error }: { status: MCPConnectionStatus; 
 // ---------------------------------------------------------------------------
 
 export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps) {
+	const { mcpClientManager } = useServiceContext();
 	const [expanded, setExpanded] = useState(false);
 	const [connStatus, setConnStatus] = useState<MCPConnectionStatus>('disconnected');
 	const [toolCount, setToolCount] = useState(0);
@@ -66,21 +67,23 @@ export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps
 
 	// Sync with manager state
 	React.useEffect(() => {
-		const info = MCPClientManager.getInstance().getConnectionInfo(config.id);
+		if (!mcpClientManager) return;
+		const info = mcpClientManager.getConnectionInfo(config.id);
 		if (info) {
 			setConnStatus(info.status);
 			setToolCount(info.toolCount);
 			setErrorMsg(info.error);
 		}
-	}, [config.id]);
+	}, [config.id, mcpClientManager]);
 
 	const handleConnect = async () => {
+		if (!mcpClientManager) return;
 		setConnecting(true);
 		setConnStatus('connecting');
 		setErrorMsg(undefined);
 		try {
-			await MCPClientManager.getInstance().connect(config);
-			const info = MCPClientManager.getInstance().getConnectionInfo(config.id);
+			await mcpClientManager.connect(config);
+			const info = mcpClientManager.getConnectionInfo(config.id);
 			setConnStatus(info?.status ?? 'connected');
 			setToolCount(info?.toolCount ?? 0);
 		} catch (e) {
@@ -91,7 +94,8 @@ export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps
 	};
 
 	const handleDisconnect = async () => {
-		await MCPClientManager.getInstance().disconnect(config.id);
+		if (!mcpClientManager) return;
+		await mcpClientManager.disconnect(config.id);
 		setConnStatus('disconnected');
 		setToolCount(0);
 	};

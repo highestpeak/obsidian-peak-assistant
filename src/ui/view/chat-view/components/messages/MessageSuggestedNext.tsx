@@ -5,7 +5,6 @@ import {
 	HelpCircle,
 	Wand2,
 	CheckSquare,
-	FolderOpen,
 	Pencil,
 } from 'lucide-react';
 import {
@@ -40,15 +39,14 @@ export interface MessageSuggestedNextProps {
 	 * the FOLLOW-UP overflow questions. Each renders only when supplied so
 	 * the caller can scope the menu progressively.
 	 *
-	 * MIGRATION-DEFERRED: real handlers for Rewrite / Checklist / Open related
-	 * notes don't exist yet — only `onAskCustom` (delegates to inline followup
-	 * composer) is wired. Other slots will light up as their service plumbing
-	 * lands. Tracked in chat surface modernization.
+	 * MIGRATION-DEFERRED: real handlers for Rewrite / Checklist don't exist
+	 * yet — only `onAskCustom` (delegates to inline followup composer) is
+	 * wired. Other slots will light up as their service plumbing lands.
+	 * Tracked in chat surface modernization.
 	 */
 	onRewriteSimply?: () => void;
 	onCreateChecklist?: () => void;
 	onSaveToNote?: () => void;
-	onOpenRelatedNotes?: () => void;
 	onAskCustom?: () => void;
 }
 
@@ -58,7 +56,6 @@ export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
 	onRewriteSimply,
 	onCreateChecklist,
 	onSaveToNote,
-	onOpenRelatedNotes,
 	onAskCustom,
 }) => {
 	const strings = useChatStrings();
@@ -84,12 +81,6 @@ export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
 			icon: <ArrowUpRight />,
 			label: strings.message.moreSaveToVault,
 			onClick: onSaveToNote,
-		},
-		onOpenRelatedNotes && {
-			key: 'related',
-			icon: <FolderOpen />,
-			label: strings.message.moreOpenRelatedNotes,
-			onClick: onOpenRelatedNotes,
 		},
 		onAskCustom && {
 			key: 'custom',

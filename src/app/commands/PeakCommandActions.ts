@@ -70,6 +70,7 @@ function getIndexInitializer(): IndexInitializer {
 		ctx.plugin.settings.search,
 		ctx.plugin.settings.dataStorageFolder ?? '',
 		ctx.progressReporter,
+		AppContext.getIndexService(),
 	);
 }
 
@@ -109,19 +110,6 @@ export function openChatStudio(): void {
 	void getContext().viewManager.openChatStudio();
 }
 
-export async function openRelatedNotes(): Promise<void> {
-	await getContext().viewManager.activateAmbientPushView();
-	// T8: the Ambient runtime is bound at plugin boot
-	// (`main.onload` -> `composeAmbientRuntime` -> `setAmbientRuntime`).
-	// `tryGetAmbientRuntime()` returns null if Ambient is disabled in
-	// settings, in which case the panel still opens.
-	AppContext.tryGetAmbientRuntime()?.triggerManual();
-}
-
-export function refreshRelatedNotes(): void {
-	AppContext.tryGetAmbientRuntime()?.triggerManual();
-}
-
 export async function refreshHubSummaries(): Promise<void> {
 	new Notice('Hub summary refresh started...');
 	const { HubRegenService } = await import('@/service/search/index/helper/hub/hubRegenService');
@@ -153,7 +141,7 @@ export async function runSearchFastIndex(): Promise<void> {
 		return;
 	}
 
-	const indexStatus = await IndexService.getInstance().getIndexStatus();
+	const indexStatus = await AppContext.getIndexService().getIndexStatus();
 	const hasIndex = indexStatus.isReady && indexStatus.indexBuiltAt !== null;
 	if (hasIndex) {
 		await getIndexInitializer().performFastCoreIncrementalIndexing();
@@ -189,7 +177,7 @@ export async function runVectorEnrichmentPending(): Promise<void> {
 	const ui = openProgressNotice('Search: preparing vector enrichment...');
 	try {
 		const { processed, errors, skippedWrongTenant } =
-			await IndexService.runPendingVectorIndexEnrichment(searchSettings, {
+			await AppContext.getIndexService().runPendingVectorIndexEnrichment(searchSettings, {
 				onProgress: ({ processed: done, total, path }) => {
 					const short = truncatePathForNotice(path);
 					ui.setMessage(`Search: vectors ${done}/${total}\n${short}`);
@@ -222,7 +210,7 @@ export async function runLlmEnrichmentPending(): Promise<void> {
 	const costModal = new CostEstimationModal(ctx, async (choice) => {
 		if (choice === 'skip') {
 			try {
-				const { cleared } = await IndexService.clearPendingLlmFlags();
+				const { cleared } = await AppContext.getIndexService().clearPendingLlmFlags();
 				new Notice(`LLM enrichment skipped. Cleared ${cleared} pending flag(s).`, 5000);
 			} catch (e) {
 				console.error('[peak-search-llm-enrich-pending] skip failed', e);
@@ -239,7 +227,7 @@ export async function runLlmEnrichmentPending(): Promise<void> {
 
 		try {
 			const { processed, errors, skippedWrongTenant } =
-				await IndexService.runPendingLlmIndexEnrichment(searchSettings, {
+				await AppContext.getIndexService().runPendingLlmIndexEnrichment(searchSettings, {
 					onProgress: (ev) => {
 						progressModal?.updateProgress(ev);
 					},
@@ -287,7 +275,7 @@ export async function runGlobalMaintenance(): Promise<void> {
 		activeNotice = new Notice(text, 0);
 	};
 	try {
-		await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
+		await AppContext.getIndexService().runMobiusGlobalMaintenance(['vault', 'chat'], {
 			onProgress: (ev: MobiusGlobalMaintenanceProgress) => {
 				setProgressText(`Search: ${ev.tenant} - ${phaseLabel(ev.phase)} - ${ev.progressTextSuffix}`);
 			},
@@ -316,6 +304,7 @@ export async function analyzeVaultIntuition(): Promise<void> {
 			isMockEnv: ctx.isMockEnv,
 			rootFolder: ctx.plugin.settings.ai.rootFolder,
 			backboneEnv: composeBackboneEnv(ctx),
+			mcpClientManager: AppContext.tryGetMcpClientManager(),
 		});
 		for await (const _ev of agent.streamRun({}, async (result) => {
 			const stateRepo = sqliteStoreManager.getIndexStateRepo();
@@ -352,7 +341,7 @@ export function cancelIndexing(): void {
 
 export async function deleteIndexData(): Promise<void> {
 	const ctx = getContext();
-	const indexStatus = await IndexService.getInstance().getIndexStatus();
+	const indexStatus = await AppContext.getIndexService().getIndexStatus();
 	const hasIndex =
 		indexStatus.isReady && indexStatus.indexedDocs !== null && indexStatus.indexedDocs > 0;
 
@@ -368,7 +357,7 @@ export async function deleteIndexData(): Promise<void> {
 		`Are you sure you want to delete all index data? This will remove ${indexStatus.indexedDocs} indexed documents and cannot be undone.`,
 		async () => {
 			try {
-				await IndexService.getInstance().clearAllIndexData();
+				await AppContext.getIndexService().clearAllIndexData();
 				new Notice('Index data deleted successfully.', 3000);
 			} catch (error) {
 				console.error('[Register] Error deleting index data:', error);
@@ -457,9 +446,9 @@ export async function cleanupUselessData(): Promise<void> {
 			},
 			indexedDocuments: sqliteStoreManager.getIndexedDocumentRepo(),
 			searchIndex: {
-				deleteDocuments: (paths) => IndexService.getInstance().deleteDocuments(paths),
+				deleteDocuments: (paths) => AppContext.getIndexService().deleteDocuments(paths),
 				cleanupOrphanedSearchIndexData: () =>
-					IndexService.getInstance().cleanupOrphanedSearchIndexData(),
+					AppContext.getIndexService().cleanupOrphanedSearchIndexData(),
 			},
 			embeddings: sqliteStoreManager.getEmbeddingRepo(),
 			conversations: sqliteStoreManager.getChatConversationRepo(),

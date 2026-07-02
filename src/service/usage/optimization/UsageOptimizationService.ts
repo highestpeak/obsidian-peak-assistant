@@ -36,23 +36,18 @@ export interface RunOptimizationOptions {
 }
 
 /**
- * Singleton optimization curator. Owns the rule engine + LLM dispatch + result
- * caching. Lifecycle mirrors UsageTrackingService.
+ * Optimization curator. Owns the rule engine + LLM dispatch + result caching.
+ * Lifecycle mirrors UsageTrackingService.
+ *
+ * Owned by the app layer via `AppRuntimeRegistry.usageServices`.
+ * Consumers reach it through `AppContext.getUsageServices().optimization`.
  *
  * The service produces a `OptimizationResult` that the Overview "Recommended
  * actions" card AND the Optimization screen both render — Overview takes the
  * top 3, Optimization shows everything.
  */
 export class UsageOptimizationService {
-	private static instance: UsageOptimizationService | null = null;
 	private db: Kysely<DbSchema> | null = null;
-
-	static getInstance(): UsageOptimizationService {
-		if (!UsageOptimizationService.instance) {
-			UsageOptimizationService.instance = new UsageOptimizationService();
-		}
-		return UsageOptimizationService.instance;
-	}
 
 	init(db: Kysely<DbSchema>): void {
 		this.db = db;
@@ -60,7 +55,6 @@ export class UsageOptimizationService {
 
 	destroy(): void {
 		this.db = null;
-		UsageOptimizationService.instance = null;
 	}
 
 	/**

@@ -34,7 +34,6 @@ import { SqliteAmbientBriefingReadAdapter } from '@/app/ambient/SqliteAmbientBri
 import { SerendipitySearcher } from '@/service/ambient/serendipity/SerendipitySearcher';
 import { BriefingItemBuilder } from '@/service/ambient/briefing/BriefingItemBuilder';
 import { PatternLearningService } from '@/service/ambient/PatternLearningService';
-import { markAmbientPushPanelAutoOpened } from '@/service/ambient/ambientPanelStartup';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { useMorningBriefingStore } from '@/ui/store/morningBriefingStore';
 import { ObsidianAmbientEditorContextAdapter } from './ObsidianAmbientEditorContextAdapter';
@@ -42,17 +41,10 @@ import { SearchAmbientSearchAdapter } from './SearchAmbientSearchAdapter';
 import { SqliteAmbientPersistenceAdapter } from './SqliteAmbientPersistenceAdapter';
 import { LlmAmbientExplanationAdapter } from './LlmAmbientExplanationAdapter';
 
-// T8: settings adapter. Wraps AppContext.getSettings() and forwards the
-// markAmbientPushPanelAutoOpened write through the plugin's saveSettings.
+// T8: settings adapter. Wraps AppContext.getSettings().
 class ObsidianAmbientSettingsAdapter implements AmbientSettingsPort {
 	getSettings(): AmbientPushSettings {
 		return AppContext.getSettings().ambientPush ?? DEFAULT_AMBIENT_PUSH_SETTINGS;
-	}
-
-	async markPanelAutoOpened(): Promise<void> {
-		const plugin = AppContext.getPlugin();
-		plugin.settings.ambientPush = markAmbientPushPanelAutoOpened(plugin.settings.ambientPush);
-		await plugin.saveSettings();
 	}
 }
 

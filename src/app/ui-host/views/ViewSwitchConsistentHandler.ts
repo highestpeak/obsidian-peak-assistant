@@ -1,6 +1,5 @@
 import { App, ViewState, WorkspaceLeaf } from 'obsidian';
 import {
-	AMBIENT_PUSH_VIEW_TYPE,
 	CHAT_STUDIO_VIEW_TYPE,
 	CHAT_VIEW_TYPE,
 	CONVERSATION_OUTLINE_VIEW_TYPE,
@@ -112,18 +111,12 @@ export class ViewSwitchConsistentHandler {
 
 			// Right sidebar: ensure the Conversation Outline leaf exists. Mounts the
 			// new (PR-Chat-3) 4-tab ConversationIndex UI on Obsidian's actual right
-			// sidebar instead of inside the chat shell. AmbientPushView still gets
-			// the same sidebar — if it's already there we create a sibling tab.
+			// sidebar instead of inside the chat shell.
 			const existingOutlineLeaves =
 				this.app.workspace.getLeavesOfType?.(CONVERSATION_OUTLINE_VIEW_TYPE) ?? [];
 			let outlineLeaf: WorkspaceLeaf | null = existingOutlineLeaves[0] ?? null;
 			if (!outlineLeaf && typeof this.app.workspace.getRightLeaf === 'function') {
-				const candidate = this.app.workspace.getRightLeaf(false);
-				if (candidate && candidate.view?.getViewType() === AMBIENT_PUSH_VIEW_TYPE) {
-					outlineLeaf = this.app.workspace.getRightLeaf(true) ?? candidate;
-				} else {
-					outlineLeaf = candidate;
-				}
+				outlineLeaf = this.app.workspace.getRightLeaf(false);
 			}
 			if (outlineLeaf) {
 				await outlineLeaf.setViewState({
@@ -162,16 +155,11 @@ export class ViewSwitchConsistentHandler {
 				await leftLeaf.setViewState({ ...fallbackLeft, active: true });
 			}
 
-			// Find existing outline leaf or create new one (without clobbering ambient push)
+			// Find existing outline leaf or create new one
 			const existingOutlineLeaves = this.app.workspace.getLeavesOfType('outline');
 			let rightLeaf = existingOutlineLeaves[0];
 			if (!rightLeaf) {
-				const candidate = this.app.workspace.getRightLeaf(false);
-				if (candidate && candidate.view?.getViewType() === AMBIENT_PUSH_VIEW_TYPE) {
-					rightLeaf = this.app.workspace.getRightLeaf(true);
-				} else {
-					rightLeaf = candidate;
-				}
+				rightLeaf = this.app.workspace.getRightLeaf(false);
 			}
 			if (rightLeaf) {
 				await rightLeaf.setViewState({ ...fallbackRight, active: true });

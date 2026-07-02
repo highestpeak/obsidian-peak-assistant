@@ -1,8 +1,14 @@
 /**
- * Singleton managing connections to external MCP servers.
+ * Manages connections to external MCP servers.
  *
  * Supports stdio (local process) and SSE (remote) transports.
  * Each connected server's tools are discoverable via getAllDiscoveredTools().
+ *
+ * Owned by the app layer via `AppRuntimeRegistry`. Consumers reach it
+ * through `AppContext.getMcpClientManager()` / `tryGetMcpClientManager()`.
+ * Hot-reload safety: `AppRuntimeRegistry.clearMcpClientManager()` calls
+ * `dispose()` so stdio child processes are reaped before the new bundle
+ * spawns replacements.
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -26,17 +32,7 @@ interface MCPConnection {
 }
 
 export class MCPClientManager {
-	private static instance: MCPClientManager | null = null;
 	private connections = new Map<string, MCPConnection>();
-
-	private constructor() {}
-
-	static getInstance(): MCPClientManager {
-		if (!MCPClientManager.instance) {
-			MCPClientManager.instance = new MCPClientManager();
-		}
-		return MCPClientManager.instance;
-	}
 
 	async connect(config: MCPServerConfig): Promise<void> {
 		if (this.connections.has(config.id)) {
@@ -155,6 +151,5 @@ export class MCPClientManager {
 	async dispose(): Promise<void> {
 		const ids = [...this.connections.keys()];
 		await Promise.allSettled(ids.map(id => this.disconnect(id)));
-		MCPClientManager.instance = null;
 	}
 }

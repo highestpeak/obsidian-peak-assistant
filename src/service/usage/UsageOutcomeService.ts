@@ -14,19 +14,12 @@ import {
  * wrapper) — there is no event-bus subscription, so this is intentionally
  * feature-agnostic and reusable from chat / copilot / search / agent-trace.
  *
- * Singleton mirroring UsageTrackingService's lifecycle: `init` → `destroy`.
+ * Owned by the app layer via `AppRuntimeRegistry.usageServices`.
+ * Consumers reach it through `AppContext.getUsageServices().outcome`.
+ * Lifecycle mirrors UsageTrackingService: `init` → `destroy`.
  */
 export class UsageOutcomeService {
-	private static instance: UsageOutcomeService | null = null;
-
 	private repo: UsageOutcomeRepo | null = null;
-
-	static getInstance(): UsageOutcomeService {
-		if (!UsageOutcomeService.instance) {
-			UsageOutcomeService.instance = new UsageOutcomeService();
-		}
-		return UsageOutcomeService.instance;
-	}
 
 	/** Two-arg form used by tests or call sites that already constructed a repo. */
 	static fromRepo(repo: UsageOutcomeRepo): UsageOutcomeService {
@@ -42,7 +35,6 @@ export class UsageOutcomeService {
 
 	destroy(): void {
 		this.repo = null;
-		UsageOutcomeService.instance = null;
 	}
 
 	// ── Ingestion ───────────────────────────────────────────

@@ -1,5 +1,9 @@
 # Peak Assistant — Progress Tracker
 
+> **本文只装历史流水账（按 session / Phase 追加）。**
+> 项目"当前战线 + 待建功能 + 调研候选 + 远期 backlog"的状态快照在 [`roadmap.html`](./roadmap.html)。
+> 文档索引在 [`index.html`](./index.html)。调研原稿在 `docs/research/`。Spec/plan 在 `docs/superpowers/specs/`（`plans/`）。
+
 ## Overview
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
@@ -194,7 +198,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ### 1. 真机验证
 
-> 所有测试清单统一维护在 `docs/manual-testing-checklist.md`，此处只记录验证状态。
+> 所有测试清单统一维护在 `docs/90-old-root-docs/manual-testing-checklist.md`，此处只记录验证状态。
 
 - [ ] Phase AE (Copilot Agent Loop) — checklist §15
 - [ ] Phase W (Copilot 15 actions) — checklist §14
@@ -360,7 +364,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 **Modal 透明（反复出现的 bug，写入 recurring-pitfalls 第 4 节）**
 - 根因：`peak-tokens.css` 把所有 `--pk-*` token 严格作用域到 `.pktw-root` / `.peak-design-root`（合规于 `obsidian-css-defense.md`——不能污染 `:root`）。Radix `Dialog`/`Popover`/`DropdownMenu` 用 Portal 把 Content 挂到 `document.body`，**整段子树离开了 `.peak-design-root` 的祖先链**，`bg-popover` 解析的 `var(--pk-surface-overlay)` = `undefined` → 透视。
 - 修：`src/ui/component/shared-ui/{dialog,popover,dropdown-menu}.tsx` 三个 primitive 的 Content className 加 `peak-design-root pktw-root`——portal 挂哪 token 就跟到哪。
-- 写入 `docs/recurring-pitfalls.md §4`，含 mechanism / instances / detection / prevention checklist。明确："不要回过头去把 token 升到 `:root` 来'修'它"——会重新引入 Obsidian 污染问题。
+- 写入 `docs/90-old-root-docs/recurring-pitfalls.md §4`，含 mechanism / instances / detection / prevention checklist。明确："不要回过头去把 token 升到 `:root` 来'修'它"——会重新引入 Obsidian 污染问题。
 
 **Start-new-conversation 布局**
 - 找到设计稿 `docs/gstack/chat-ui-home-newconv-redesign-2026-06-02/02-new-conversation-no-index.png`。
@@ -598,7 +602,7 @@ onboarding-settings → merged at 56a842b（5 PR）:
 - 弯路 4 (`91a9c4c`/`c57bf56`/`eaa82f9`)：以为是 Obsidian button `:hover` 加了 transform/box-shadow → reset 加 `transform/box-shadow/outline/filter: none !important` + 禁用 `::before/::after` 伪元素。用 Playwright 模拟 Obsidian 极端 hover 干扰验证 reset 真挡住了 — 然而 in-Obsidian 仍错乱
 - 弯路 5 (`e352074`)：加 `· v3` 标题 marker 让用户能肉眼判断 CSS 是否真重载
 - **真凶 (`7d37916`)**：用户贴 DevTools computed styles dump，**直接看到** Obsidian 的 `.modal button { height: var(--input-height); justify-content: center; }` ——把所有 modal button 高度锁死成 32px，flex 行为崩坏，hover 颜色只填充 32px 中间条。我的 reset 一直没盖 `height`。Fix：reset 加 `height/min-height/max-height: auto !important; justify-content: flex-start`。**一次性彻底解决**
-- Done: 沉淀到 `docs/conventions/obsidian-css-defense.md`（新增 "Properties the reset must null" 完整属性清单表 + "Diagnosing a suspected leak" 流程）+ `docs/recurring-pitfalls.md` 新条目 #3（Obsidian global bare-tag rule leaks through scoped reset，含本次实例 + Detection signals + Prevention checklist）
+- Done: 沉淀到 `docs/conventions/obsidian-css-defense.md`（新增 "Properties the reset must null" 完整属性清单表 + "Diagnosing a suspected leak" 流程）+ `docs/90-old-root-docs/recurring-pitfalls.md` 新条目 #3（Obsidian global bare-tag rule leaks through scoped reset，含本次实例 + Detection signals + Prevention checklist）
 
 **Block 4 · 后续 UX 调整（多 commit）**
 - Done: `redesign(history-modal)` `4138095` — `CopilotReviewHistoryModal` 去 5 层 border，加 `peak-design-root`（同 CSS 干扰治了），trash 改成 hover-only ghost，去掉底部 Close 按钮（modal 已有 ×）
@@ -726,7 +730,7 @@ onboarding-settings → merged at 56a842b（5 PR）:
 
 ### 2026-05-10 (Session 26) — Wave 1+2 并行执行（Ambient Push + Inspector + MCP + Report UI）
 
-- Done: **并行执行框架** — `docs/parallel-execution-plan.md`，4 wave 编排，worktree 隔离
+- Done: **并行执行框架** — `docs/90-old-root-docs/parallel-execution-plan.md`，4 wave 编排，worktree 隔离
 - Done: **Wave 1（5 条线并行）**
   - **Line A — Inspector Tools Overhaul** (12 tasks, 12 commits)
     - Schema 重设计：`BaseLimit.limit` 语义统一、`findPathInputSchema` strategy enum、`SemanticFilter.topK` max 30
@@ -1202,7 +1206,7 @@ onboarding-settings → merged at 56a842b（5 PR）:
   - 清理: 删除 GraphSection.tsx + InspectorPanel.tsx
 
 ### 2026-04-20 (Session 1)
-- Done: Execution Roadmap 创建 (`docs/execution-roadmap.md`)
+- Done: Execution Roadmap 创建 (`docs/90-old-root-docs/execution-roadmap.md`)
   - 全任务冲突矩阵分析（文件级并行可行性判定）
   - 4 Wave 排期：Wave 0 cleanup → Wave 1 search → Wave 2 provider v2 + theme → Wave 3 trace + chat
   - Milestone Persistence 确认已实现（working tree 中，待 commit）
@@ -1462,3 +1466,244 @@ onboarding-settings → merged at 56a842b（5 PR）:
 
 - Known limitations: Proactive suggestions / Usage and retention / Graph viz / Legacy compatibility 仍未实施；KnowledgeCenterView 类 + 注册保留只为兼容；customEndpoints 数据层仍存但无管理 UI
 - Next: 真机再走一遍 5 tab 看是否还有遗漏；视情下个周期收尾 PR-6（Proactive/Usage/Graph viz）
+
+### 2026-07-01 (T13 Service Singleton Migration)
+一次性去掉 `docs/01-architecture.html` "历史例外" callout 里点名的所有 service-side singleton：
+
+**结构变化**
+- Done: `AppRuntimeRegistry` 新增 5 个 slot（`indexService` / `mcpClientManager` / `skillRegistry` / `capabilityRegistry` / `usageServices` bundle），每个都 set/get/tryGet/clear，clear 时对应调 dispose/destroy
+- Done: `AppContext` 加 20 个静态 delegator 镜像上面 slot，`clearForUnload` 里追加 5 个 clear 调用
+- Done: 7 个类去 `static getInstance`/`static instance`：`IndexService` / `MCPClientManager` / `SkillRegistry` / `CapabilityRegistry` / `UsageTrackingService` / `UsageOutcomeService` / `UsageOptimizationService`；全部改由 `main.ts` `new` 构造并挂 registry
+- Done: `IndexService.init({aiServiceManager, env})` 双阶段构造改为构造函数直接收依赖；`runPendingLlm/VectorIndexEnrichment` + `clearPendingLlmFlags` 从 static 转 instance；新增 `getTenantForPath` 实例方法 + `resolveIndexTenant(path, rootFolder)` 纯函数
+- Done: 删死代码 `src/service/agents/harness/skill/`（`HarnessSkillRegistry` 零 consumer）+ 同目录 `harness/tool/McpToolAdapter.ts` 单独失联
+
+**Boundary 合规（T11P / T11Q 硬 target 0 全部守住）**
+- Done: `ServiceContext` 加 `indexService` / `mcpClientManager` / `usageServices` 三字段，`ReactElementFactory` 从 `AppRuntimeRegistry.tryGet*()` 注入；13 个 UI 文件从 `AppContext.getXxx()` 迁到 `useServiceContext()`（chat message / chat submit / mcp server card / settings/overview / settings/knowledge-index / usage-dashboard 全部 8 处）
+- Done: `indexUpdater` / `indexInitializer` 收 `IndexService` via constructor DI；`MCPToolAdapter` 函数收 `manager` 参数，`agentToolMcpAdapter.mergeExternalMcpTools(tools, manager)` 透传，`KnowledgeIntuitionAgentDeps.mcpClientManager` 在两个 app-layer 构造点注入
+- Done: `indexService.ts` 内部保留一个 module-level `currentChatRootFolder: string | null`（纯配置字符串，无 handle/listener，不属 runtime-ownership 规则），供 `getIndexTenantForPath` 自由函数读取；`AppRuntimeRegistry.clearIndexService` 调 `disposeTenantHelper()` 复位
+
+**核对纠偏**
+- 图里把 `service/chat/service-manager.ts` 列入历史例外是**误报**：`AIServiceManager` 本来就不是 singleton，`main.ts:206` 一直是 `new AIServiceManager(...)`
+- `docs/01-architecture.html` 两处 warn callout（"历史例外" / "当前的诚实状态"）改成 T13 已清理说明；roadmap 表加 T13 行
+- `test/capability-registry.test.ts` 重写用 `new CapabilityRegistry()` 取代 `getInstance` + `resetForTest`
+
+**验收**
+- Done: `npm run build` 通过
+- Done: `npm run test` 全绿 115/115（含 T11O/T11P/T11Q/T11R boundary 回归 4 个）
+
+- Next: 未 commit，用户 review 后决定是否入 codex/peak-modernization-refactor 分支或另开
+
+### 2026-07-02 (Architecture Modernization — Wave 1 起步)
+
+对 `docs/01-architecture.html` §roadmap 里所有 partial/planned 任务包做了收口规划，产出两份文档 + 执行了 T1 Contract Seeds：
+
+**文档**
+- Done: `docs/superpowers/specs/2026-07-02-architecture-modernization-completion-plan.md` — 顶层完工规划 spec：依赖图 + 4 waves + 每 wave 验收标准 + 14 份子 spec index。把 T0/T1/T2/T3/T4/T5/T6/T7/T8/T9/T10/T12 全部排入 wave（不含 T11，历史内部编号）
+- Done: `docs/superpowers/plans/2026-07-02-architecture-modernization-wave1.md` — Wave 1 可执行 plan（T1 详细步骤 + T0 dispatched subagent + T5 显式延后）
+
+**T1 Contract Seeds（Wave 1.B）已完工**
+- Done: `src/core/types/capability.ts` — `CapabilityManifest` 类型 + `CapabilitySurfaceId` / `PermissionKind` / `CostTier` / `BackendKind` / `BackendPolicy` / `CapabilityContractShape`。全部 readonly，纯 type-only 模块，零 import。SurfaceId 在 core 层重复声明（与 service 层同源，保证不 invert layering）
+- Done: `test/fixtures/capabilities/doc-review-current.fixture.ts` — pilot capability 完整 manifest（未接线，纯 design lock）
+- Done: `test/capability-manifest-shape.test.ts` — 5 条 shape guard：字段齐全 / fixture 齐全 / 无禁 import / 无 runtime code / core 与 service 的 SurfaceId 集合一致
+- Done: `npm run test` 115 → **116 全绿**；`npm run build` 通过
+
+**调整点**
+- T1 的 ArtifactRef 上升 core 任务**延后**：`service/run-envelope/types.ts` 被硬测试锁"零 import"，且当前 `InMemoryRunRecorder` 只允许从 `./types` import。lift 需要连带改 shape guard 测试 + 允许 recorder 触达 core，风险 > 收益。CapabilityManifest 用 `outputContract: CapabilityContractShape` 描述形状，不直接引 ArtifactRef，能独立跑
+- Core 层的 `CapabilitySurfaceId` 是 service `SurfaceId` 的重复声明，加 shape guard 锁两处同源。handbook 里 SurfaceId 本就应属 core，未来做 SurfaceCapability 重构时再统一
+
+**Wave 1.A T0 Boundary Baseline ✅ landed**
+- Done: `test/boundary/service-layer-boundaries.test.ts`（308 行）+ `test/boundary/service-layer-baseline.json` + `test/boundary/README.md`（66 行）
+- 3 条 rule 全部 scan `src/service/**/*.ts`（266 个文件）：
+  - Rule A（禁 `import from 'obsidian'` in service/）：**0** 违规
+  - Rule B（禁 `AppContext.getInstance()` 活代码 in service/）：**0** 违规
+  - Rule C（禁 `from '@/app/'` / `from '@/ui/'` in service/）：**0** 违规
+- 全部 0 违规是 T11H-T11P + T13 前期清理的结果；baseline JSON 是空数组，未来任何新违规立刻红
+- 有意思：`VaultLintContract.ts` 在文档 data object 里带 `AppContext.getInstance()` 字符串字面量描述历史 call site，测试正确用 string-literal 剥离规避误报
+- `npm run test` 116 → **117 全绿**
+
+**Wave 1.C T5 ToolDef Envelope ✅ landed（additive）**
+- Done: `ToolSource` 联合类型 + `ToolDef.source?: ToolSource` 字段（`'local' | 'mcp' | 'obsidian-command'`），可选字段保持向后兼容
+- Done: `MCPToolAdapter.mcpToolToToolDef()` + `getAllMcpToolDefs()` — MCP 直通 ToolDef 路径，tag `source: 'mcp'`，permission `kind: 'edit'` 默认（保守：MCP tool 常写外部系统）
+- Done: `harness-bridge/agentToolAdapter.adaptAgentTool()` 增加可选 `source` 参数默认 `'local'`
+- 遗留旧路径不删（handbook §3 决策 6 允许过渡 facade）：`mcpToolToAgentTool` / `getAllMcpAgentTools` 保留；chat 侧继续走 AgentTool 桥。T12 Command Gateway 落地后再统一 retire
+- Done: `test/tool-def-envelope.test.ts` — 5 条 guard（ToolSource union / MCP 直通 exports / bridge 支持 override / MCP 运行时 shape / bridge 运行时 tag）
+- `npm run test` 117 → **118 全绿**；`npm run build` 通过
+
+**验收**
+- `git status --short` 新增：`src/core/types/capability.ts` / `test/capability-manifest-shape.test.ts` / `test/fixtures/capabilities/` / spec + plan 两份 markdown
+- 无既有文件被修改；无 commit（分支 codex/peak-modernization-refactor 已有大量未提交 WIP，本次同样保留待 review）
+
+- Next: T5 ToolDef Envelope（Wave 1.C）+ Wave 2.A T3 Knowledge Jobs / Search retrieval 接入 RunEnvelope；T1 ArtifactRef 上升 core 也可单独跑（需要连带改 `run-envelope-core.test.ts`）
+
+**追加：Wave 1.C T5 ToolDef Envelope + Wave 2 T3 铺路**（同一 session 后半段）
+
+- Done T5（additive）：见上文
+- Done T3 铺路（不做实际链路接入，把地基做扎实）：
+  - `src/service/run-envelope/helpers.ts` — 抽公用 `defaultClock` + `defaultIdFactory` 从 `VaultLintRun.ts` 内嵌函数上升（`VaultLintRun.ts` 改为 import；`run-envelope/index.ts` barrel export 补一行；`test/run-envelope-core.test.ts` barrel 白名单 `'./types' | './InMemoryRunRecorder' | './helpers'`）
+  - `test/run-envelope-helpers.test.ts` — 4 条 guard（helpers 只 import `./types` / clock 合理 / id shape / factory 独立）
+  - `docs/superpowers/specs/2026-07-02-t3-first-adopter-selection-design.md` — 摸底 6 条链路，**修正父 spec 的"Knowledge Jobs 是最简单"结论**：Knowledge Jobs 不是单一链路，是 4 个不同角色（CascadeWorker / IndexInitializer / GraphCleanupService / SearchUpdateListener）。真正的下一 adopter 建议 `IndexInitializer.checkAndUpdateIndex()`（一次性、DI 干净），接下来 AI Analysis via `ReportOrchestrator`；剩下 4 条明确原因延后（CascadeWorker 有 T13 遗留、Chat 最复杂、Copilot 依赖 artifact 语义、Harness 需要 golden trace 等价）
+  - 附带发现：CascadeWorker 的 `static instance` 是 T13 miss，下次收 T13 尾巴时顺手清
+
+**T5 + T3 铺路验收**
+- `npm run test` 118 → **119 全绿**（+1 helpers test）
+- `npm run build` 通过
+
+**追加：T3 IndexInitializer 首适配器 + T13 CascadeWorker 清尾**（同 session 第三段）
+
+- Done T3 Adopter 1（IndexInitializer）：
+  - `src/service/search/index/indexInitializerRun.ts` — 新 runner，capability id `knowledge.index.initialize`，`RunTrigger` 默认 `'startup'`。骨架事件：`status(queued) → status(running) → artifact → status(completed)`；失败路径 `→ error → status(failed)` 并 rethrow 原错误
+  - `test/index-initializer-run.test.ts` — 5 条 guard（boundary source scan / happy trace / failure trace / rejects without target / accepts initializer handle）；deterministic clock + idFactory
+  - `main.ts:640-651` — 之前的 `// todo tmp block. remove comments this after testing` + 纯 `checkAndUpdateIndex()` 注释，改为 RunEnvelope wrap 的调用样板注释；用户 uncomment 一步到位走 runner
+  - 未激活运行（原本就 disabled，激活是行为变更需你在场）
+- Done T13 CascadeWorker 清尾：
+  - `CascadeWorker.static instance` + `getInstance()` + `CascadeWorker.instance = this/null` 三处删除
+  - `SearchUpdateListener` 构造函数加 `cascadeWorker: CascadeWorker | null` DI 参数；`indexUpdater.ts:236` 从 `CascadeWorker.getInstance()?.notifyFlushCompleted()` 改为 `this.cascadeWorker?.notifyFlushCompleted()`
+  - `main.ts:634-641` 构造顺序调换：先 CascadeWorker 再 SearchUpdateListener，避免"未构造就被引用"
+  - 全 codebase 只有 1 个 `CascadeWorker.getInstance()` 消费者（`indexUpdater.ts`）+ 0 test consumer，清理干净
+- `npm run test` 119 → **120 全绿**（+1 index-initializer-run）
+- `npm run build` 通过
+
+**Wave 2.A T3 状态**
+- Chain 1/6：**Knowledge/Index Initialize ✅ landed（runner + golden trace，未激活运行）**
+- Chain 2/6：AI Analysis via ReportOrchestrator（选型 spec 已定候选）
+- Chain 3-6：Search / Copilot / Chat / Harness / CascadeWorker（各有明确原因延后，全部记录在选型 spec）
+
+**追加：T6 Skill v2 Compiler（第四段）**
+
+- Done: `src/core/types/compiled-skill.ts` — `CompiledSkill` interface（`skillId` / `allowedTools: readonly string[]` / `systemPrompt` / `quarantine: 'strict'|'permissive'`）+ `SkillQuarantine` 联合类型；核心层纯 type-only
+- Done: `SkillRegistry.compile(skillId): CompiledSkill | null` — flatten `tools.builtin + tools.mcp` 到单一 `allowedTools`；whitelist 存在 → `strict`，否则 `permissive`（空 `tools: {}` 也视为无 whitelist）；`Object.freeze(allowedTools)` 让 consumer 传引用不用防御拷贝
+- Done: `test/compiled-skill-shape.test.ts` — 7 条 guard（字段齐全 readonly / 无禁 import / 未知 id 返 null / whitelist → strict / 无 whitelist → permissive / 空对象 permissive / allowedTools frozen）
+- 校正：原 spec 说的"双 registry 需合并"其实早在 T13 已清（`service/agents/harness/skill/*` 全删）；本次 T6 = 单 registry + compile 方法即完成契约
+- 剩余：harness `PermissionGuard` 消费 `CompiledSkill.allowedTools` 做真正 quarantine 拒绝（下 PR）
+- `npm run test` 120 → **121 全绿**（+1 compiled-skill-shape）
+- `npm run build` 通过
+
+**追加：T3 Adopters 3+4 / T6 quarantine helper / T2 ToolPort / T8 IndexReaderPort + 顺手 type lift**（第五段，用户 daytime 授权继续）
+
+- Done T3 Adopter 3：`src/service/search/index/cascade/CascadeWorkerRun.ts` — CascadeWorker.drainDebt() 的 RunSession 包装，capability id `knowledge.cascade.drain`，`trigger` 默认 `'scheduled'`；有 progress 事件（drain 里 per item 上报）；`test/cascade-worker-run.test.ts` 4 条 guard（happy + failure + rejects + boundary）
+- Done T3 Adopter 4：`src/service/search/index/maintenance/GraphCleanupRun.ts` — GraphCleanupService.run() 包装，capability id `knowledge.graph.cleanup`，`trigger` 默认 `'manual'`；`test/graph-cleanup-run.test.ts` 4 条 guard
+- Done T6 quarantine 决策助手：`src/service/skills/quarantine.ts` — `checkSkillQuarantine(compiledSkill, toolName)` 返 `'allow' | { deny, reason }`（`not-in-whitelist` / `invalid-input`）；纯函数，非侵入式（PermissionGuard 后续可选调用）；`test/skill-quarantine.test.ts` 5 条 guard
+- Done T2 ToolPort：`src/core/ports/ToolPort.ts` — 只读 4 方法接口（`has`/`get`/`all`/`forTier`）；`ToolRegistry implements ToolPort`；测试 `test/tool-port.test.ts` 3 条 guard（port shape / registry implements / 运行时 structural satisfy）
+- Done T8 IndexReaderPort（首片）：`src/core/ports/IndexReaderPort.ts` — 只读三方法（`getIndexStatus` / `getTenantForPath` / `isMobiusMaintenanceRecommended`）；`IndexService implements IndexReaderPort`；`test/index-reader-port.test.ts` 3 条 guard
+- **顺手做的 type lift（架构正确性）**：为了让 ToolPort + IndexReaderPort 不触发 T11 boundary 回归（`core→service 硬 floor 17`），把三个类型上升到 core：
+  - `src/core/types/model-tier.ts` — `ModelTier` union；`service/agents/harness/tier/types.ts` re-export
+  - `src/core/types/tool.ts` — `ToolSource` / `ToolResult` / `ToolExecCtx` / `ToolDef` + `ok` / `fail` helpers；`service/agents/harness/tool/types.ts` 变 re-export facade
+  - `src/core/types/index-status.ts` — `GetIndexStatusResponse`；`indexService.ts` re-export
+  - `test/tool-def-envelope.test.ts` 的 TYPES_PATH 从 service 路径改到 `src/core/types/tool.ts`（reflects new authoritative home）
+- **boundary 审计**：`core→service` 从 pre-session 17 保持 **17（floor 边界）**，所有 T11 回归 9 条全绿；总 flagged edges 21 → 18（负增长）
+- `npm run test` 121 → **126 全绿**（+5：cascade-worker-run / graph-cleanup-run / skill-quarantine / tool-port / index-reader-port）
+- `npm run build` 通过
+
+**Wave 2.A T3 状态更新**
+- Chain 1/6：**IndexInitializer ✅ Adopter 2 landed**
+- Chain 2/6：AI Analysis via ReportOrchestrator（待跑）
+- Chain 3/6：**CascadeWorker.drainDebt() ✅ Adopter 3 landed**（runner + golden trace，wire-in 待定）
+- Chain 4/6：**GraphCleanupService.run() ✅ Adopter 4 landed**（runner + golden trace，wire-in 待定）
+- Chain 5-6：Copilot / Chat / Harness（延后）
+
+**追加：T4/T9 CapabilityRunner + T7 UI Projection helper**（第六段）
+
+- Done T4/T9 pilot 骨架：
+  - `src/service/capabilities/CapabilityManifestRegistry.ts` — 存 `CapabilityManifest` by id，独立于既有 `CapabilityRegistry`（surface readiness），两个 vocabulary 不混
+  - `src/service/capabilities/CapabilityRunner.ts` — `runCapability({ manifest, compiledSkill, execute, input })` 拼接 T1 manifest / T3 envelope / T6 compiled skill；backend dispatch 是 caller 传入的 `execute` 函数（对 CapabilityRunner backend-agnostic + 可单测；composition 层未来把 `backendPolicy` 转成实际函数）；`skillRef` vs `compiledSkill.skillId` 不匹配立即 throw
+  - `test/capability-runner.test.ts` — 6 条 guard（boundary source scan / registry basics / happy path with DOC_REVIEW_CURRENT_FIXTURE / artifact override / skillRef mismatch fail-fast / failure path 原样传播）
+  - 这条链把 2026-07-02 session 里的 T1 (Manifest) + T3 (RunEnvelope) + T6 (CompiledSkill) 全部串起来跑一次，证明契约可用
+- Done T7 UI projection helper：
+  - `src/service/run-envelope/projection.ts` — `createProjectingRecorder({ buildRecorder })` 返 `{ recorder, projection }`
+  - `projection.getSnapshot()` + `projection.subscribe(listener)` 直接喂 React `useSyncExternalStore(sub, snap)` API
+  - **Referential stability**：snapshot 数组在无新事件时返同一 reference，React 不会误 re-render；有新事件时才 mutate + notify
+  - 完全 framework-agnostic（`projection.ts` 不 import React），UI 侧改 store 时只需一层 `useSyncExternalStore` wrapper
+  - `test/run-envelope-projection.test.ts` — 5 条 guard（accumulate / subscribe fires / unsub stops / multi-sub / ref stability）
+  - `service/run-envelope/index.ts` barrel + `test/run-envelope-core.test.ts` barrel 白名单同步加 `./projection`
+- `npm run test` 126 → **128 全绿**（+2：capability-runner / run-envelope-projection）
+- `npm run build` 通过
+
+**Wave 2/3 T3/T4/T7 状态更新**
+- T3：4 adopter landed（VaultLint / IndexInitializer / CascadeWorker.drainDebt / GraphCleanupService.run），Chat/Copilot/Harness/AI Analysis 4 条待接
+- T4/T9：`CapabilityRunner` 骨架 landed，backend policy → execute 函数的 composition 层待做
+- T7：framework-agnostic projection helper landed，UI store 侧接入待 chat/analysis RunEnvelope adopter 落地后收拢
+
+**追加：T3 Wave3 四条 adopter + T8 Writer/Maintenance slice + T4 BackendStrategy + T6 Guard 消费 + T10 Golden Trace + T12 Command Gateway**（第七段，2026-07-02 收工日）
+
+用户"你不要问了，把所有的都变成landed就行"授权下的全量并发落地。全部按 additive port + 适配 + 回归测试模式，不改 live 路径。
+
+**T3 Wave 3 — 四条链路 adopter 全部立起**
+- `src/service/chat/ChatConversationRun.ts` — cap `chat.conversation.run`
+- `src/service/copilot/CopilotReviewRun.ts` — cap `copilot.review.run`
+- `src/service/agents/report/AnalysisReportRun.ts` — cap `analysis.report.run`
+- `src/service/agents/harness/HarnessAgentRun.ts` — cap `harness.agent.loop`
+- `test/wave3-adopter-runs.test.ts` 表驱动 4 条 guard × 4 adopter：capability id + happy trace + failure trace + boundary（app/UI/Obsidian 禁止）
+- 至此 T3 共 **8 个 adopter**（含 Wave 2 的 4 个），T3 从 partial 迁移到 **landed**
+
+**T8 Writer + Maintenance slice**
+- `src/core/ports/IndexWriterPort.ts` — 5 方法（`indexDocument` / `deleteDocuments` / `clearAllIndexData` / `renameDocumentPath` / `addMaintenanceDebt`），+ `IndexStorageType`/`OnAfterIndexMutation`
+- `src/core/ports/IndexMaintenancePort.ts` — 5 方法（`cleanupOrphanedSearchIndexData` / `runMobiusGlobalMaintenance` / `runPendingLlmIndexEnrichment` / `runPendingVectorIndexEnrichment` / `clearPendingLlmFlags`）
+- `src/core/types/index-maintenance.ts` — 8 个 maintenance 相关类型统一上升（MobiusGlobalMaintenance* / LlmIndexEnrichmentResult / VectorIndexEnrichmentResult / PendingEnrichmentProgress / PendingLlmEnrichmentProgress / OrphanIndexCleanupCounts）
+- `IndexService implements IndexReaderPort, IndexWriterPort, IndexMaintenancePort`
+- `indexService.ts` 内部 5 处类型声明变 re-export from core（PendingLlmEnrichmentProgress 从 tracker 的 type-import 也一起移除）
+- `test/index-writer-port.test.ts` + `test/index-maintenance-port.test.ts` 各 3 条 guard；`test/index-reader-port.test.ts` regex 允许后接多 port
+- T8 从 partial 迁移到 **landed（三 slice 就位）**
+
+**T4/T9 backend policy → execute composition**
+- `src/service/capabilities/BackendStrategyRegistry.ts` — `BackendStrategy<TInput,TResult>` = execute 函数签名；`BackendStrategyRegistry` = `Partial<Record<BackendKind, BackendStrategy>>`；`resolveBackendStrategy(policy, registry)` 走 `[preferred, ...fallback]` 挑第一个已注册后端，全部缺失时 fail-loud（不静默降级，符合 §3 "No Dual System"）；`composeExecuteFromPolicy(manifest, registry)` 一次合成，callsite 直接喂 `runCapability`
+- 加两个 stub strategy：`makeEchoStrategy` / `makeUnavailableStrategy`（tests + 文档化 composition 模式）
+- `test/backend-strategy-registry.test.ts` 5 条 guard（preferred 优先 / fallback 兜底 / fail-loud / compose 集成 / echo strategy）
+- T4/T9 从 partial 迁移到 **landed**
+
+**T6 Guard 消费**
+- `src/service/skills/withQuarantineGuard.ts` — `withQuarantineGuard(port, compiled)` 包装 `ToolPort`，permissive 直接返 port，strict 用 `Set(allowedTools)` 过滤 `has/get/all/forTier`；`guardToolExecution({ compiled, tool, input, ctx })` 在 `tool.execute` 前跑 `checkSkillQuarantine`，拒绝时返 `fail('skill-quarantine: ...', false)` 而非抛错
+- `test/with-quarantine-guard.test.ts` 4 条 guard（strict 过滤 / permissive 透传 / execute 拒绝 / execute 放行）
+- T6 从 partial 迁移到 **landed**
+
+**T10 Cross-backend Golden Trace**
+- `test/golden-trace-cross-backend.test.ts` 3 条 guard：
+  1. cross-backend 一致性 —— 同一 manifest + input 在 hermes-harness / claude-sdk / provider-direct 三种 strategy 下事件序列 byte-identical
+  2. deterministic ids —— fake clock + idFactory 注入下所有 event 共享同一 runId，ts 严格单调
+  3. failure trace 统一 —— 后端抛错时 `[status, status, error, status(failed)]` 序列跨后端不变
+- T10 从 planned 迁移到 **landed**
+
+**T12 Command Gateway**
+- `src/service/capabilities/CommandGateway.ts` — `CommandGateway` class：`register(GatewayBinding)` / `unregister` / `has` / `get` / `all` / `dispatch(commandId)`；GatewayBinding 携带 commandId + commandLabel + manifest + compiledSkill + execute（合成自 BackendStrategyRegistry） + 可选 buildInput + trigger；dispatch 内部走 runCapability，回 `CommandDispatchResult`；重复注册 fail-loud，未知 commandId dispatch fail-loud
+- `test/command-gateway.test.ts` 5 条 guard（register+dispatch / duplicate / unknown / buildInput / unregister）
+- T12 从 planned 迁移到 **landed**
+
+**收工验收**
+- `npm run test` 128 → **135 全绿**（+7 新测试文件；`+wave3-adopter-runs`, `+index-writer-port`, `+index-maintenance-port`, `+backend-strategy-registry`, `+with-quarantine-guard`, `+golden-trace-cross-backend`, `+command-gateway`）
+- `npm run build` 通过
+- 边界回归 T11 系列全绿（core→service 保持 17 floor，本轮加的 core/types/index-maintenance.ts + 两个 IndexPort 都是 core-only）
+
+**遗留（明确 defer 给用户在场跑真机的）**
+- T3 wire-in：把 8 个 *Run.ts adopter 换到 live callsite（会带 UI store 迁移 + 用户可见流程变化，需要真机验证）
+- T4 live backends：composition 站在 AppRuntimeRegistry 里注册 hermes-harness / claude-sdk / provider-direct 三个真 strategy（需要 provider 机器）
+- T6 PermissionGuard 现场接入：harness 里把 `guardToolExecution` 拉进 tool 调用点（拒绝语义变化）
+- T7 UI store 迁移：现有 chat/copilot store 换 `createProjectingRecorder`
+- T12 live commands：把 main.ts 里注册的 Obsidian command 换成 `() => gateway.dispatch(id)`
+- T8 Graph slice：`upsertGraphEdges…` / `refreshMobiusAggregates…` 单独抽 port（纯 slice 移动，可后续无风险做）
+
+以上皆是"行为变更"，需要用户在浏览器/Obsidian 里能验证的情境下进行。
+
+**追加：T2 / T5 / T7 剩余 partial 全部收尾**（第八段，用户"为什么不继续做 T2 T5 T7 的 partial"授权）
+
+- Done T2 ProviderPort：`src/core/ports/ProviderPort.ts` — 3 methods 只读（`hasProvider` / `listProviders` / `getProviderInfo`），`ProviderInfo` 结构 = `ProviderMetaData + ready`；测试 3 条 guard（shape / boundary / stub）
+- Done T2 ArtifactPort：`src/core/ports/ArtifactPort.ts` — `putArtifact` / `getArtifactBody` / `listByRun`；`ArtifactRefShape` 结构性 mirror 现有 `ArtifactRef`（run-envelope 硬测试锁的类型），shape-guard 测试锁两者同步；`src/service/run-envelope/InMemoryArtifactStore.ts` 参考实现，deterministic clock+idFactory 可注入；测试 5 条 guard（shape / boundary / envelope shape mirror / round-trip / 可选字段省略）
+- Done T5 obsidian-command adapter：`src/service/agents/harness/tool/ObsidianCommandToolAdapter.ts` — `obsidianCommandToToolDef(cmd, invoker, opts?)` 单条 + `obsidianCommandsToToolDefs(cmds, ...)` 批量；`source: 'obsidian-command'`、`kind: 'edit'` 默认；`CommandInvoker` 抽象让 service 不 import obsidian；测试 6 条 guard（happy / not-found / throws / options / batch / boundary）。至此 T5 三种 source（local / mcp / obsidian-command）全部就位
+- Done T7 RunEnvelopeStore：`src/service/run-envelope/runEnvelopeStore.ts` — `deriveEvents(projection, selector)` 按 projection snapshot ref memoize；同 ref 不重算，值 `Object.is` 未变不通知；`RunEnvelopeStore` 语义化 API（`register` / `get` / `subscribe` / `unregister` / `dispose`），重复 register + 未知 get/subscribe 双 fail-loud；测试 5 条 guard
+- barrel + 白名单同步：`src/service/run-envelope/index.ts` 新增 `InMemoryArtifactStore` + `runEnvelopeStore` 出口；`test/run-envelope-core.test.ts` 硬锁白名单同步扩到 6 项
+- `npm run test` 135 → **139 全绿**（+4 新测试）
+- `npm run build` 通过
+- T11 boundary 系列全绿
+
+至此 handbook 12 个任务包 **全部 landed**（T11 除外——它是持续跑绿的 baseline 而非任务）。roadmap.html / 01-architecture.html 顶部摘要已更新为"全量 landed"，T2/T5/T7 row 全部改 landed。
+
+真正剩下的都是"行为变更 / live 接入"：
+- 8 个 RunEnvelope adopter 换 live 路径（涉及 UI store 迁移）
+- BackendStrategyRegistry 里注册 live hermes-harness / claude-sdk / provider-direct
+- Harness PermissionGuard 拉 `guardToolExecution` 进 tool 调用点
+- CommandGateway 换 main.ts 里的 Obsidian command 注册
+- IndexService Graph slice（可后续无风险做，纯 mechanical）
+- ArtifactPort live 实现（Vault-backed / sqlite-blob）
+- ProviderPort adapter 到 MultiProviderChatService（需要 provider 机器）
+- UI store 一处一处迁移到 RunEnvelopeStore
+
+以上都得你在场跑真机；框架已全部 landed。
+

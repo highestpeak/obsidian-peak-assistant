@@ -3,10 +3,7 @@ import { isFile } from '@/core/storage/vault/vault-ops';
 import { normalizeVaultPath } from '@/core/utils/path-utils';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { emptyUsage, type LLMUsage } from '@/core/providers/types';
-import {
-	LlmEnrichmentProgressTracker,
-	type PendingLlmEnrichmentProgress,
-} from '@/service/search/support/llm-enrichment-progress-tracker';
+import { LlmEnrichmentProgressTracker } from '@/service/search/support/llm-enrichment-progress-tracker';
 import {
 	type Chunk,
 	defaultIndexDocumentOptions,
@@ -108,7 +105,7 @@ export type StorageType = 'sqlite' | 'graph';
 /**
  * T11Q (Track G): app-supplied env for IndexService + the free
  * `getIndexTenantForPath` helper. Bound once at boot via
- * `IndexService.getInstance().init({ aiServiceManager, env })` so neither
+ * `new IndexService(aiServiceManager, env)` in main.onload so neither
  * the singleton nor the helper reaches into `AppContext`.
  *
  * Field semantics:
@@ -132,62 +129,69 @@ export { defaultIndexDocumentOptions } from '@/core/search/indexTypes';
 type PathIndexedDocInfo = { id: string; title: string | null };
 
 /**
- * Resolve index tenant from path.
+ * Resolve index tenant from path — pure function.
  * Hub summary subtree is indexed in vault DB even when physically under chat rootFolder.
- *
- * T11Q (Track G): reads the chat-root folder from the env IndexService was
- * initialised with — no `AppContext.getInstance()` lookup.
  */
-export function getIndexTenantForPath(path: string): IndexTenant {
-	const env = IndexService.getEnv();
-	const hubFolder = getAIHubSummaryFolder(env.rootFolder);
+export function resolveIndexTenant(path: string, rootFolder: string): IndexTenant {
+	const hubFolder = getAIHubSummaryFolder(rootFolder);
 	if (hubFolder && isVaultPathUnderPrefix(path, hubFolder)) {
 		return 'vault';
 	}
-	const rootFolder = env.rootFolder.trim();
+	const root = rootFolder.trim();
 	const normalized = path.replace(/^\/+/, '');
-	const prefix = rootFolder.endsWith('/') ? rootFolder.replace(/\/+$/, '') : rootFolder;
+	const prefix = root.endsWith('/') ? root.replace(/\/+$/, '') : root;
 	return (normalized === prefix || normalized.startsWith(prefix + '/')) ? 'chat' : 'vault';
 }
 
-export interface GetIndexStatusResponse {
-	indexBuiltAt: number | null;
-	indexedDocs: number | null;
-	isReady: boolean;
+/**
+ * Module-level chat-root cell for the free `getIndexTenantForPath` helper.
+ *
+ * IndexService's constructor sets this; its `disposeTenantHelper()` method
+ * (called from `AppRuntimeRegistry.clearIndexService`) resets it. This cell
+ * holds a plain string — no listeners, no handles — so it does not fall under
+ * the "no service-layer module singletons" runtime-ownership rule in
+ * `CLAUDE.md`. It exists so far-flung services (`content-reader`,
+ * `inspectorService`, `coCitationService`, etc.) can resolve tenants without
+ * threading rootFolder through every layer, and so this file doesn't reach
+ * into `@/app/**` (T11Q floor stays clean).
+ */
+let currentChatRootFolder: string | null = null;
+
+/**
+ * Free-function wrapper around `resolveIndexTenant` that reads the chat-root
+ * from the module-level cell set by IndexService construction. Prefer the
+ * instance method `indexService.getTenantForPath(...)` when the caller
+ * already holds an IndexService via constructor injection.
+ */
+export function getIndexTenantForPath(path: string): IndexTenant {
+	if (currentChatRootFolder === null) {
+		throw new Error('IndexService not initialised — construct IndexService at boot before resolving tenant.');
+	}
+	return resolveIndexTenant(path, currentChatRootFolder);
 }
+
+// GetIndexStatusResponse now lives in `@/core/types/index-status.ts` so
+// `core/ports/IndexReaderPort.ts` can reference it without inverting the
+// layering. Re-exported here to preserve existing import paths for the
+// downstream ~10 consumers.
+export type { GetIndexStatusResponse } from '@/core/types/index-status';
+import type { GetIndexStatusResponse } from '@/core/types/index-status';
 
 /** Batch size for Mobius aggregate keyset pagination inside {@link IndexService.runMobiusGlobalMaintenance}. */
 export const DEFAULT_MOBIUS_AGGREGATE_BATCH_SIZE = 200;
 
-/** Batch-style maintenance phases; progress detail is in {@link MobiusGlobalMaintenanceProgress.progressTextSuffix}. */
-export type MobiusGlobalMaintenanceBatchPhase =
-	| 'tag_doc_count'
-	| 'document_degrees'
-	| 'pagerank_edges'
-	| 'pagerank_persist'
-	| 'semantic_pagerank_edges'
-	| 'semantic_pagerank_persist'
-	| 'semantic_related'
-	| 'folder_hub_stats'
-;
-
-/** All maintenance progress phases (batch-style or `semantic_related`). */
-export type MobiusGlobalMaintenancePhase = MobiusGlobalMaintenanceBatchPhase | 'semantic_related';
-
-/**
- * Progress events for {@link IndexService.runMobiusGlobalMaintenance}.
- * Human-readable detail (batch counts, doc fractions, hub steps) is in `progressTextSuffix`.
- */
-export type MobiusGlobalMaintenanceProgress = {
-	tenant: IndexTenant;
-	phase: MobiusGlobalMaintenancePhase;
-	progressTextSuffix?: string;
-};
-
-/** Options for {@link IndexService.runMobiusGlobalMaintenance}. */
-export interface MobiusGlobalMaintenanceOptions {
-	onProgress?: (ev: MobiusGlobalMaintenanceProgress) => void;
-}
+// T8 maintenance-slice types live in core so `IndexMaintenancePort` can be
+// declared there without service leakage. We re-export the legacy names.
+export type {
+	MobiusGlobalMaintenanceBatchPhase,
+	MobiusGlobalMaintenancePhase,
+	MobiusGlobalMaintenanceProgress,
+	MobiusGlobalMaintenanceOptions,
+} from '@/core/types/index-maintenance';
+import type {
+	MobiusGlobalMaintenanceProgress,
+	MobiusGlobalMaintenanceOptions,
+} from '@/core/types/index-maintenance';
 
 /** Yields so the UI can stay responsive during long aggregate passes. */
 async function yieldForLargePass(): Promise<void> {
@@ -236,89 +240,77 @@ function folderHubStatsPathAllowed(folderPath: string, hubSummaryFolder: string)
 	return true;
 }
 
-/** Batched deferred enrichment: LLM tags/summary after fast index (`llm_pending`). */
-export type LlmIndexEnrichmentResult = {
-	processed: number;
-	skippedWrongTenant: number;
-	errors: Array<{ path: string; message: string }>;
-};
-
-/** Batched deferred enrichment: vector embeddings after fast index (`vector_pending`). */
-export type VectorIndexEnrichmentResult = {
-	processed: number;
-	skippedWrongTenant: number;
-	errors: Array<{ path: string; message: string }>;
-};
-
-/** Progress for pending vector enrichment loops. */
-export type PendingEnrichmentProgress = {
-	processed: number;
-	total: number;
-	path: string;
-};
-
-export type { PendingLlmEnrichmentProgress } from '@/service/search/support/llm-enrichment-progress-tracker';
+// T8: enrichment result + progress shapes now live in core.
+export type {
+	LlmIndexEnrichmentResult,
+	VectorIndexEnrichmentResult,
+	PendingEnrichmentProgress,
+	PendingLlmEnrichmentProgress,
+	OrphanIndexCleanupCounts,
+} from '@/core/types/index-maintenance';
+import type {
+	LlmIndexEnrichmentResult,
+	VectorIndexEnrichmentResult,
+	PendingEnrichmentProgress,
+	PendingLlmEnrichmentProgress,
+} from '@/core/types/index-maintenance';
 
 /**
- * Singleton entry for document indexing, CRUD lifecycle, and global Mobius maintenance.
+ * Entry point for document indexing, CRUD lifecycle, and global Mobius maintenance.
+ *
+ * Owned by the app layer via `AppRuntimeRegistry`. Consumers reach it through
+ * `AppContext.getIndexService()` / `tryGetIndexService()`. The free helper
+ * `getIndexTenantForPath` reads the chat-root folder from the currently-bound
+ * runtime — it MUST NOT be called before boot resolves `main.onload`.
  */
 
-export class IndexService {
-	private static instance: IndexService | null = null;
+import type { IndexReaderPort } from '@/core/ports/IndexReaderPort';
+import type { IndexWriterPort } from '@/core/ports/IndexWriterPort';
+import type { IndexMaintenancePort } from '@/core/ports/IndexMaintenancePort';
+
+/**
+ * IndexService concentrates the index writer, reader, graph, and
+ * maintenance surfaces. It implements the narrower `IndexReaderPort`
+ * (T8 first slice) so callers that only need read-status can depend on
+ * the port instead of this god-object class. Subsequent T8 slices will
+ * extract WriterPort / GraphPort / MaintenancePort the same way.
+ */
+export class IndexService implements IndexReaderPort, IndexWriterPort, IndexMaintenancePort {
 	private static isIndexingCancelled = false;
-	/**
-	 * T11Q (Track G): app-supplied env (chat root + live `App`) so neither
-	 * the singleton nor the free `getIndexTenantForPath` helper reaches
-	 * into `AppContext`. Bound once via `init` at boot.
-	 */
-	private static env: IndexServiceEnv | null = null;
-	private aiServiceManager: AIServiceManager | undefined;
 
-	private constructor() {
-		// Private constructor to prevent direct instantiation.
-	}
-
-	static getInstance(): IndexService {
-		if (!IndexService.instance) {
-			IndexService.instance = new IndexService();
-		}
-		return IndexService.instance;
+	constructor(
+		private readonly aiServiceManager: AIServiceManager,
+		public readonly env: IndexServiceEnv,
+	) {
+		// Seed the tenant-helper cell so free `getIndexTenantForPath(...)`
+		// callers can resolve without holding an IndexService reference.
+		currentChatRootFolder = env.rootFolder;
 	}
 
 	/**
-	 * Clear the global singleton instance.
-	 * Call from plugin onunload to release memory.
+	 * Release the module-level tenant cell. Called by
+	 * `AppRuntimeRegistry.clearIndexService` on plugin unload so the free
+	 * helper throws (instead of silently reading stale data) if invoked after
+	 * teardown.
 	 */
-	static clearInstance(): void {
-		IndexService.instance = null;
-		IndexService.env = null;
+	disposeTenantHelper(): void {
+		currentChatRootFolder = null;
 	}
 
-	/** T11Q (Track G): typed accessor used by `getIndexTenantForPath` + internal callsites. */
-	static getEnv(): IndexServiceEnv {
-		if (!IndexService.env) {
-			throw new Error('IndexService env not initialised — call IndexService.getInstance().init({ aiServiceManager, env }) at boot.');
-		}
-		return IndexService.env;
-	}
-
-	/**
-	 * Initialize IndexService with AIServiceManager for embedding generation
-	 * and the app-supplied env (chat root folder + live `App`).
-	 * This should be called once during plugin initialization in main.ts.
-	 * Can also be called when settings are updated to refresh the service instance.
-	 */
-	init(params: { aiServiceManager: AIServiceManager; env: IndexServiceEnv }): void {
-		this.aiServiceManager = params.aiServiceManager;
-		IndexService.env = params.env;
-	}
-
-	/** T11Q (Track G): typed accessor for static enrichment methods. */
+	/** T11Q (Track G): typed accessor for enrichment methods that need embedding generation. */
 	getAiServiceManager(): AIServiceManager {
-		if (!this.aiServiceManager) {
-			throw new Error('IndexService.aiServiceManager not initialised — call init({ aiServiceManager, env }) at boot.');
-		}
 		return this.aiServiceManager;
+	}
+
+	/**
+	 * Resolve tenant using the chat-root folder bound at construction. Used by
+	 * every internal call site + by external services that hold an IndexService
+	 * reference (via constructor/RunEnvelope injection). Prefer this over the
+	 * pure `resolveIndexTenant` helper unless the caller genuinely does not
+	 * have an IndexService instance.
+	 */
+	getTenantForPath(path: string): IndexTenant {
+		return resolveIndexTenant(path, this.env.rootFolder);
 	}
 
 	/** Cancel ongoing indexing operations. */
@@ -353,7 +345,7 @@ export class IndexService {
 
 		const byTenant = new Map<IndexTenant, string[]>();
 		for (const p of paths) {
-			const t = getIndexTenantForPath(p);
+			const t = this.getTenantForPath(p);
 			const list = byTenant.get(t) ?? [];
 			list.push(p);
 			byTenant.set(t, list);
@@ -508,8 +500,8 @@ export class IndexService {
 	 * @returns true if a row was updated under oldPath.
 	 */
 	async renameDocumentPath(oldPath: string, newPath: string): Promise<boolean> {
-		const tenantOld = getIndexTenantForPath(oldPath);
-		const tenantNew = getIndexTenantForPath(newPath);
+		const tenantOld = this.getTenantForPath(oldPath);
+		const tenantNew = this.getTenantForPath(newPath);
 		if (tenantOld !== tenantNew) return false;
 		const tenant = tenantOld;
 		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
@@ -632,7 +624,7 @@ export class IndexService {
 				return;
 			}
 
-			const tenant = getIndexTenantForPath(rawDoc.sourceFileInfo.path);
+			const tenant = this.getTenantForPath(rawDoc.sourceFileInfo.path);
 			rawDoc.id = await this.resolveDocumentNodeId(rawDoc.sourceFileInfo.path, tenant);
 
 			if (IndexService.isCancelled()) {
@@ -1165,7 +1157,7 @@ export class IndexService {
 	 * (including auto `Hub-*.md` and user `Manual/*.md`).
 	 */
 	private resolveMobiusGraphNodeTypeForPath(path: string): GraphNodeType {
-		const hub = getAIHubSummaryFolder(IndexService.getEnv().rootFolder);
+		const hub = getAIHubSummaryFolder(this.env.rootFolder);
 		if (hub && isVaultPathUnderPrefix(path, hub)) return GraphNodeType.HubDoc;
 		return GraphNodeType.Document;
 	}
@@ -1314,7 +1306,7 @@ export class IndexService {
 	 * Cross-tenant wiki links are ignored (no cross-DB reference edges or placeholder nodes).
 	 */
 	private filterOutgoingRefsForTenant(outgoing: DocumentReference[], tenant: IndexTenant): DocumentReference[] {
-		return outgoing.filter((r) => getIndexTenantForPath(r.fullPath) === tenant);
+		return outgoing.filter((r) => this.getTenantForPath(r.fullPath) === tenant);
 	}
 
 	/**
@@ -1353,7 +1345,7 @@ export class IndexService {
 
 			const targetGraphType = indexed
 				? this.resolveMobiusGraphNodeTypeForPath(ref.fullPath)
-				: graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, docType, getAIHubSummaryFolder(IndexService.getEnv().rootFolder));
+				: graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, docType, getAIHubSummaryFolder(this.env.rootFolder));
 
 			// Placeholder until the target file is indexed (full row from IndexedDocumentRepo).
 			await mobiusNodeRepo.upsert({
@@ -1527,7 +1519,7 @@ export class IndexService {
 			const dt = loaderMgr.getTypeForPath(ref.fullPath);
 			if (indexed) {
 				docIdsForIncoming.add(targetId);
-			} else if (graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, dt, getAIHubSummaryFolder(IndexService.getEnv().rootFolder)) !== GraphNodeType.Resource) {
+			} else if (graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, dt, getAIHubSummaryFolder(this.env.rootFolder)) !== GraphNodeType.Resource) {
 				docIdsForIncoming.add(targetId);
 			}
 		}
@@ -1923,7 +1915,7 @@ export class IndexService {
 		const now = Date.now();
 		await mobiusNodeRepo.clearFolderHubMaterializedStatsColumns(now);
 
-		const hubFolder = getAIHubSummaryFolder(IndexService.getEnv().rootFolder);
+		const hubFolder = getAIHubSummaryFolder(this.env.rootFolder);
 		type Agg = {
 			count: number;
 			sumPr: number;
@@ -2059,7 +2051,7 @@ export class IndexService {
 	 * LLM tags + summary for documents marked `llm_pending` (fast index deferred enrichment).
 	 * Does not bump global index_state; does not re-chunk unless options change.
 	 */
-	static async runPendingLlmIndexEnrichment(
+	async runPendingLlmIndexEnrichment(
 		settings: SearchSettings,
 		options?: {
 			onProgress?: (ev: PendingLlmEnrichmentProgress) => void;
@@ -2074,7 +2066,7 @@ export class IndexService {
 			};
 		}
 
-		const indexSvc = IndexService.getInstance();
+		const indexSvc = this;
 		const baseOpts = defaultIndexDocumentOptions('llm_enrich_only');
 		const tenants: IndexTenant[] = ['vault', 'chat'];
 		let processed = 0;
@@ -2086,7 +2078,7 @@ export class IndexService {
 			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 			const paths = await repo.listPathsWithPendingLlm();
 			for (const path of paths) {
-				if (getIndexTenantForPath(path) !== tenant) {
+				if (this.getTenantForPath(path) !== tenant) {
 					skippedWrongTenant++;
 					continue;
 				}
@@ -2099,7 +2091,7 @@ export class IndexService {
 		const ai = indexSvc.getAiServiceManager();
 		const tracker = new LlmEnrichmentProgressTracker(settings, ai);
 		const loaderMgr = DocumentLoaderManager.getInstance();
-		const indexApp = IndexService.getEnv().app;
+		const indexApp = this.env.app;
 
 		const readMarkdownContentChars = async (path: string): Promise<number> => {
 			const app = indexApp;
@@ -2126,7 +2118,7 @@ export class IndexService {
 			total: number;
 			error?: unknown;
 		}): Promise<void> => {
-			const tenant = getIndexTenantForPath(params.path);
+			const tenant = this.getTenantForPath(params.path);
 			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 			const indexed = await repo.getByPath(params.path);
 			const tok = normalizeUsageTokens(params.usage);
@@ -2240,7 +2232,7 @@ export class IndexService {
 	/**
 	 * Vector embeddings for documents marked `vector_pending`; uses persisted chunks, no core FTS re-pass.
 	 */
-	static async runPendingVectorIndexEnrichment(
+	async runPendingVectorIndexEnrichment(
 		settings: SearchSettings,
 		options?: { onProgress?: (ev: PendingEnrichmentProgress) => void },
 	): Promise<VectorIndexEnrichmentResult> {
@@ -2252,7 +2244,7 @@ export class IndexService {
 			};
 		}
 
-		const index = IndexService.getInstance();
+		const index = this;
 		const opts = defaultIndexDocumentOptions('vector_enrich_only');
 		const tenants: IndexTenant[] = ['vault', 'chat'];
 		let processed = 0;
@@ -2264,7 +2256,7 @@ export class IndexService {
 			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 			const paths = await repo.listPathsWithPendingVector();
 			for (const path of paths) {
-				if (getIndexTenantForPath(path) !== tenant) {
+				if (this.getTenantForPath(path) !== tenant) {
 					skippedWrongTenant++;
 					continue;
 				}
@@ -2293,7 +2285,7 @@ export class IndexService {
 	 * Clears `llm_pending` flags on all pending documents without calling LLM.
 	 * Use when the user explicitly skips LLM enrichment.
 	 */
-	static async clearPendingLlmFlags(): Promise<{ cleared: number }> {
+	async clearPendingLlmFlags(): Promise<{ cleared: number }> {
 		if (!sqliteStoreManager.isInitialized()) return { cleared: 0 };
 
 		const tenants: IndexTenant[] = ['vault', 'chat'];
@@ -2302,7 +2294,7 @@ export class IndexService {
 		for (const tenant of tenants) {
 			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 			const paths = await repo.listPathsWithPendingLlm();
-			const filtered = paths.filter((p) => getIndexTenantForPath(p) === tenant);
+			const filtered = paths.filter((p) => this.getTenantForPath(p) === tenant);
 			const idMap = await repo.getIdsByPaths(filtered);
 			for (const { id } of idMap) {
 				await repo.mergeDocumentLlmState(id, {

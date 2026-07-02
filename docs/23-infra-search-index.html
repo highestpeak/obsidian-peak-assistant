@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>23 Search Index / SQLite Infra</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); font-size: 0.94em; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 0 0 8px; font-size: 20px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .warn { border-left-color: var(--gold); }
+    .warn strong { color: var(--gold); }
+    .danger { border-left-color: var(--red); }
+    .danger strong { color: var(--red); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    td code { background: var(--code-bg); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    .note-list { display: grid; gap: 10px; margin-top: 18px; }
+    .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .note-item b { display: block; margin-bottom: 3px; }
+    .note-item span { color: var(--muted); font-size: 14px; }
+    .kv { display: grid; grid-template-columns: 200px 1fr; gap: 8px 18px; margin-top: 18px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .kv dt { color: var(--ink); font-weight: 780; }
+    .kv dd { margin: 0; color: var(--muted); }
+    .kv dd code { background: var(--code-bg); }
+    .path-tree { margin-top: 20px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: var(--ink); font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 13.5px; line-height: 1.65; white-space: pre; overflow-x: auto; }
+    .path-tree .comment { color: var(--muted); }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+    @media (max-width: 980px) {
+      .kv { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">23 · Infra · Search Index · SQLite、chunk、embedding、图</div>
+      <h1>笔记怎么变成可以被搜索的表、向量、边——以及索引崩了怎么办。</h1>
+      <p class="subtitle">这份文档写给要改索引管线、诊断“搜索为什么忽然不准”或者接一种新文档类型的维护者。它把两个 SQLite 库的表拆开讲清楚——谁写、谁读、fast/semantic/full 三档在这几张表上跑到哪一步，以及 <code>sqlite-vec</code> / <code>better-sqlite3</code> / embedding provider 挂掉时索引各自怎么退化、怎么恢复。不覆盖查询侧的 ranking / UI（那是 <a href="12-feature-search.html">12 Search</a>），也不重复 Settings 面板里的开关（那是 <a href="04-configuration-and-user-views.html">04 Configuration</a>）。</p>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 12k 混合字符</span>
+        <span>Reading time: 26-32 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">这页解决什么</a>
+          <a href="#two-databases">两个 SQLite 库</a>
+          <a href="#schema">Schema：核心表</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">索引管线</span>
+          <a href="#pipeline">三档跑到哪</a>
+          <a href="#chunking">Chunking 细节</a>
+          <a href="#embeddings">Embedding 与 sqlite-vec</a>
+          <a href="#graph">节点、边、Hub、PPR</a>
+          <a href="#tenancy">Tenant 与 ignore 规则</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">维护与排障</span>
+          <a href="#maintenance">增量、Rebuild、Cascade</a>
+          <a href="#failure-recovery">失败诊断与恢复</a>
+          <a href="#evidence">代码证据</a>
+        </div>
+        <div class="nav-note">改 chunking / 加文档类型 → 直接跳到 <a href="#pipeline">管线</a> + <a href="#chunking">Chunking</a>；诊断 “搜索没结果 / 只能出关键词” → 从 <a href="#failure-recovery">失败诊断</a> 反查。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>这页解决什么</h2>
+          <p class="lead">Peak Assistant 的搜索表面上是一套东西——用户按 <kbd>Cmd+P</kbd> 敲 Quick Search，Chat 里 <code>@</code> 引笔记，Ambient Push 冒相关卡片，都指向“找到相关文档”。但底下有六层：<strong>文档扫描 → chunk 拆分 → FTS 索引 → 向量索引 → 图关系 → hub / community 补图</strong>。这份文档把这六层一次讲清楚，让改索引结构 / 加文档类型 / 排障的人有一张摊平的物理地图。</p>
+          <div class="claim">
+            <strong>本文读者</strong>
+            要改 chunk 大小 / 加代码块处理 / 接入一种新文档类型（PDF、Excalidraw、Canvas…）的维护者；诊断“搜不到 / 只出关键词 / semantic 档不可用”的排障者；准备迁移 SQLite schema 的人。
+          </div>
+          <div class="claim">
+            <strong>本文不做什么</strong>
+            不讲查询侧：query parser、weighted RRF、rerank、highlight——那是 <a href="12-feature-search.html">12 Search</a>。不讲 Settings UI 的档位开关、AI Analysis 保存路径——那是 <a href="04-configuration-and-user-views.html">04 Configuration</a>。不讲 provider embedding endpoint 怎么绑定——那是 04 的 <code>activeEmbeddingConfig</code> 章节。
+          </div>
+        </section>
+
+        <section id="two-databases">
+          <h2>两个 SQLite 库</h2>
+          <p class="lead">Peak Assistant 在 <code>&lt;Vault&gt;/A-control/PeakAssistant/DataStore/</code> 下开两个文件：<code>vault.sqlite</code> 和 <code>chat.sqlite</code>。名字暗示了业务分工，但表的分布并没有“搜索全在 vault、聊天全在 chat”那么干净。</p>
+
+          <h3 style="margin-top: 22px;"><code>vault.sqlite</code> <span class="pill green">search store</span></h3>
+          <dl class="field-list">
+            <dt>常量</dt><dd><code>VAULT_DB_FILENAME</code>（<code data-copy="src/core/constant.ts">constant.ts</code>）</dd>
+            <dt>Tenant</dt><dd><code>tenant = 'vault'</code></dd>
+            <dt>装什么</dt><dd>Vault 内所有被扫描笔记的 FTS / chunk / embedding / graph / hub / lint / ambient log / structural analysis——即“用户笔记体”索引。</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;"><code>chat.sqlite</code> <span class="pill blue">meta store</span></h3>
+          <dl class="field-list">
+            <dt>常量</dt><dd><code>CHAT_DB_FILENAME</code></dd>
+            <dt>Tenant</dt><dd><code>tenant = 'chat'</code></dd>
+            <dt>装什么</dt><dd>Chat project / conversation / message / star / resource；AI analysis 记录；query pattern；tag suggestion；usage_log + usage_daily + usage_outcome；harness_reflection；<strong>以及 chat tenant 的一整套 index 表</strong>（chunk / embedding / mobius_node / mobius_edge）。</dd>
+          </dl>
+
+          <div class="claim warn">
+            <strong>与 04 的 Vault layout 对照</strong>
+            04 的 <a href="04-configuration-and-user-views.html#vault-layout">Vault 里长出什么</a> 把 <code>vault.sqlite</code> 描述成“搜索 / embedding / graph”、<code>chat.sqlite</code> 描述成“会话历史 / usage log”。这是简化说法：<strong>chat.sqlite 里也带一整套索引表</strong>（<code>doc_chunk</code>、<code>embedding</code>、<code>mobius_node</code>、<code>mobius_edge</code> 都在 <code>SqliteStoreManager.init()</code> 里以 chat tenant 起了一份），用于把聊天历史当成“可以被搜索的文档”接入 hub / cross-search。tenant 是运行时切换（<code>getIndexedDocumentRepo('chat')</code>），schema 是同一份 <code>Database</code> interface。
+          </div>
+
+          <p class="prose">为什么不合并？分库是为了让<strong>用户笔记的重建</strong>和<strong>聊天历史 + 用量数据的保留</strong>解耦。Rebuild vault 索引不会踩 chat.sqlite；反过来用户删除会话不会触发 vault 索引重扫。两库之间没有 foreign key，跨库的引用（比如“某条 message resource 指向 vault 里的笔记路径”）用字符串路径连——不做 join，只做 lookup。</p>
+
+          <div class="path-tree">
+&lt;Vault&gt;/A-control/PeakAssistant/DataStore/
+├── <b>vault.sqlite</b>              <span class="comment"># 用户笔记全部索引；tenant='vault'</span>
+├── <b>vault.sqlite-journal</b>      <span class="comment"># SQLite 事务日志（正常）</span>
+├── <b>vault.sqlite-shm/-wal</b>     <span class="comment"># WAL 模式副产品（若启用）</span>
+├── <b>chat.sqlite</b>               <span class="comment"># 会话 + 用量 + chat tenant 索引</span>
+└── ...
+          </div>
+        </section>
+
+        <section id="schema">
+          <h2>Schema：核心表</h2>
+          <p class="lead">全部 <code>CREATE TABLE</code> 都在一处：<code>src/core/storage/sqlite/ddl.ts</code> 的 <code>migrateSqliteSchema()</code>。类型定义在同文件的 <code>Database</code> interface。这一节只讲搜索索引会碰的表；chat / usage / lint 表放到相应文档。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · 索引核心表 ER 视图</strong>
+              <span>Mermaid · schema</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  Node["mobius_node<br/>(document, folder, tag, hub_doc,<br/>resource nodes)<br/><br/>path UNIQUE / content_hash /<br/>tags_json / pagerank /<br/>semantic_pagerank /<br/>betweenness / community_id"]
+  Chunk["doc_chunk<br/>chunk_id PK, doc_id,<br/>chunk_type, content_raw,<br/>content_fts_norm"]
+  Emb["embedding<br/>id PK, doc_id,<br/>chunk_id, content_hash,<br/>embedding BLOB,<br/>embedding_model, len"]
+  Vec["vec_embeddings<br/>(virtual, sqlite-vec)<br/>rowid ↔ embedding.rowid<br/>float[N]"]
+  FtsC["doc_fts (FTS5)<br/>chunk_id, doc_id, content"]
+  FtsS["doc_fts_stem (FTS5)<br/>Porter stem"]
+  FtsM["doc_meta_fts (FTS5)<br/>path, title, tags"]
+  Edge["mobius_edge<br/>from → to, type,<br/>weight, attributes_json"]
+  State["index_state<br/>key/value 键值<br/>(indexedDocs / builtAt)"]
+  Hub["hub_constituent<br/>hub_regen_queue"]
+  Cascade["cascade_debt<br/>tenant, target_id,<br/>debt_type, priority"]
+
+  Node -->|doc_id| Chunk
+  Chunk -->|chunk_id| FtsC
+  Chunk -->|chunk_id| FtsS
+  Chunk -->|doc_id| Emb
+  Emb -.rowid.-> Vec
+  Node -->|node_id| Edge
+  Node -->|path→member_path| Hub
+  Node -.path.-> FtsM
+  Node -.-> State
+  Node -->|write triggers| Cascade
+            </div>
+            <p class="read-note"><b>读图：</b><code>mobius_node</code> 是<strong>所有实体的单表</strong>——文档、文件夹、四种 tag、hub 文档、resource 都在同一张表用 <code>type</code> 列区分。<code>doc_chunk</code> 是 SSOT；<code>doc_fts</code> / <code>doc_fts_stem</code> / <code>embedding</code> / <code>vec_embeddings</code> 都是从 chunk 派生的搜索索引。图边 <code>mobius_edge</code> 是引用、语义相似、标签、文件夹 contains 的四类关系合表。</p>
+          </div>
+
+          <p class="prose">下面每张表分成三段：<strong>关键列</strong>（schema）／<strong>谁写</strong>／<strong>谁读</strong>。带 <span class="pill green">节点</span> 的是搜索走图必碰的核心；<span class="pill blue">向量</span> 一对；<span class="pill gold">辅助</span> 是 hub / cascade / signal。</p>
+
+          <h3 style="margin-top: 22px;"><code>mobius_node</code> <span class="pill green">节点单表</span></h3>
+          <pre><code>node_id PK, type, path UNIQUE, content_hash, title, summary, tags_json,
+word_count, doc_incoming_cnt, doc_outgoing_cnt,
+pagerank, semantic_pagerank, folder_cohesion_score,
+betweenness_centrality, structural_constraint, community_id,
+hub_stale_since, semantic_edges_version, attributes_json</code></pre>
+          <dl class="field-list">
+            <dt>谁写</dt><dd><code>IndexService.indexDocument()</code>（upsert）；<code>runMobiusGlobalMaintenance()</code>（PPR/degree/hub）；<code>runStructuralAnalysis()</code>（betweenness/Louvain）；<code>mobiusTagEdges</code>（tag/topic/functional/keyword/context 节点）</dd>
+            <dt>谁读</dt><dd>SearchClient 的 keyword/meta/graph 检索；hub summarizer；Vault Intelligence；Graph 视图；PPR 走图时读 <code>pagerank</code> / <code>semantic_pagerank</code></dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;"><code>doc_chunk</code> <span class="pill green">chunk SSOT</span></h3>
+          <pre><code>chunk_id PK, doc_id, chunk_index,
+chunk_type ∈ { body_raw | summary_short | summary_full | salient_textrank_sentence },
+chunk_meta_json, title, content_raw, content_fts_norm</code></pre>
+          <dl class="field-list">
+            <dt>谁写</dt><dd><code>indexDocument()</code> 里的 <code>DocChunkRepo</code>；写前经 <code>enforceChunkLengthWithOverlap</code>（<code>safeChunking.ts</code>）做长度守门</dd>
+            <dt>谁读</dt><dd>FTS5 / vector snippet 展示；rebuild embedding 时按 <code>chunk_id</code> 回读 raw content</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;"><code>doc_fts</code> · <code>doc_fts_stem</code> · <code>doc_meta_fts</code> <span class="pill green">FTS5 virtual</span></h3>
+          <dl class="field-list">
+            <dt><code>doc_fts</code></dt><dd>列：<code>chunk_id UNINDEXED, doc_id UNINDEXED, content</code>。chunk 落库时写 <code>normalizeTextForFts()</code> 结果；供 Quick Search / SearchClient 的 <code>MATCH / bm25</code></dd>
+            <dt><code>doc_fts_stem</code></dt><dd>同上，写入前走 <code>stemText()</code>（Porter）；形态学 fallback：搜 “index” 命中 “indexing / indexed”</dd>
+            <dt><code>doc_meta_fts</code></dt><dd>列：<code>doc_id UNINDEXED, path, title, tags</code>。按 doc 粒度更新，schema migration 会 drop 重建缺失的 <code>tags</code> 列；<a href="12-feature-search.html">12</a> 里 “title 命中权重更高” 走它</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;"><code>embedding</code> · <code>vec_embeddings</code> <span class="pill blue">向量对</span></h3>
+          <pre><code>embedding: id PK, doc_id, chunk_id, chunk_type, content_hash, mtime,
+           embedding BLOB, embedding_model, embedding_len
+vec_embeddings: rowid (= embedding.rowid), embedding float[N]  -- sqlite-vec virtual</code></pre>
+          <dl class="field-list">
+            <dt>谁写</dt><dd><code>indexService</code> 的 vector enrich pass / <code>runPendingVectorIndexEnrichment()</code>。<code>embedding.embedding</code> 是二进制序列化的 float 向量（<em>不可查</em>，仅备份）。<code>vec_embeddings</code> 懒建：首次 upsert 时才 <code>CREATE VIRTUAL TABLE ... USING vec0(embedding float[dim])</code>；dim 变了重建 vec 表，元数据留下用来 replay</dd>
+            <dt>谁读</dt><dd>SearchClient vector KNN；<code>SemanticRelatedEdgesRebuildService</code> 用 KNN 生成 <code>semantic_related</code> 边；诊断校验 dimension/model</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;"><code>mobius_edge</code> <span class="pill green">边单表</span></h3>
+          <pre><code>id PK, from_node_id, to_node_id,
+type ∈ { references | references_resource | semantic_related | tagged_* | contains },
+weight, attributes_json</code></pre>
+          <dl class="field-list">
+            <dt>谁写</dt><dd>Wiki links → <code>references(_resource)</code>；LLM tags → <code>tagged_*</code>；文件夹 → <code>contains</code>；<code>SemanticRelatedEdgesRebuildService</code> → <code>semantic_related</code></dd>
+            <dt>谁读</dt><dd>PPR、hub 发现、graph 可视化、Ambient 推荐</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;"><code>index_state</code> <span class="pill gold">状态键值</span></h3>
+          <dl class="field-list">
+            <dt>列</dt><dd><code>key TEXT PK, value TEXT</code>；key 集合在 <code>constant.INDEX_STATE_KEYS</code></dd>
+            <dt>谁写</dt><dd><code>indexDocument()</code> 完成后（<code>incrementIndexState</code> 为 true 时）bump 计数</dd>
+            <dt>谁读</dt><dd>Overview tab 的 “indexed files” 数字；<code>IndexInitializer.checkAndUpdateIndex()</code> 判断 index 是否 built</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;"><code>hub_constituent</code> · <code>hub_regen_queue</code> <span class="pill gold">Hub 生命周期</span></h3>
+          <dl class="field-list">
+            <dt><code>hub_constituent</code></dt><dd>列 <code>(hub_node_id, member_path) PK, source_kind, added_at</code>。hub 生成时写；member 变更时用 path 反查。<code>HubStalenessDetector</code> 据此标记 <code>mobius_node.hub_stale_since</code></dd>
+            <dt><code>hub_regen_queue</code></dt><dd>列 <code>hub_node_id PK, queued_at, trigger_paths, priority, status, fail_count</code>。Detector 入队，<code>HubRegenService</code> 后台消费；startup 时 <code>IndexInitializer</code> 检查 pendingCount，&gt; 0 就 <code>processQueueNow()</code></dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;"><code>cascade_debt</code> <span class="pill gold">副作用债务</span></h3>
+          <pre><code>id AUTO, tenant, source_path, target_id,
+debt_type ∈ { semantic_edge | degree_refresh | mermaid_overlay
+             | hub_invalidate | folder_stats | hub_regen },
+priority, change_magnitude, created_at, processed_at
+UNIQUE (tenant, target_id, debt_type) WHERE processed_at IS NULL</code></pre>
+          <dl class="field-list">
+            <dt>谁写</dt><dd>文档 upsert 后 <code>CascadeChangeDetector</code> 按 diff 入队；UNIQUE 索引天然去重</dd>
+            <dt>谁读</dt><dd><code>CascadeWorker</code> 按 priority 排空：语义边补全 / degree 刷新 / mermaid overlay 重画 / hub 标脏 / folder stats 重算</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;"><code>search_click</code> <span class="pill gold">learning signal</span></h3>
+          <dl class="field-list">
+            <dt>列</dt><dd><code>query_stems, path, rank, ts</code></dd>
+            <dt>谁写 / 读</dt><dd>Quick Search UI 记录点击；SearchClient ranking boost（<a href="12-feature-search.html">12</a> 展开）</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;"><code>community_metadata</code> · <code>structural_holes</code> · <code>structural_analysis_state</code> <span class="pill gold">structural</span></h3>
+          <dl class="field-list">
+            <dt>装什么</dt><dd>Louvain community 元数据 / 社区间结构洞 / 离线分析 checkpoint</dd>
+            <dt>谁写</dt><dd><code>runStructuralAnalysis()</code>（<code>helper/structural/orchestrator.ts</code>）</dd>
+            <dt>谁读</dt><dd>Graph 视图、Vault Intelligence 的 community view</dd>
+          </dl>
+
+          <div class="claim warn">
+            <strong>chunk_type 的四挡值是 SSOT</strong>
+            <code>doc_chunk.chunk_type</code> 的合法值只有四个：<code>body_raw</code>（正文切片）、<code>summary_short</code>（短摘要作为一个 chunk）、<code>summary_full</code>（长摘要，可能 slice 成多个）、<code>salient_textrank_sentence</code>（TextRank 提取的显著句）。定义在 <code>src/core/search/chunkTypes.ts</code> 的 <code>CHUNK_TYPES</code>。<code>embedding.chunk_type</code> 是<em>冗余副本</em>，为了 KNN 时不用 join <code>doc_chunk</code>。改语义时两处必须同步。
+          </div>
+        </section>
+
+        <section id="pipeline">
+          <h2>索引管线：三档跑到哪</h2>
+          <p class="lead">Settings 的 <code>indexLevel</code>（fast / semantic / full）决定 <code>IndexService.indexDocument()</code> 收到的 <code>IndexDocumentOptions</code>——本质上是一组布尔开关：<code>includeCoreSearchIndex</code>、<code>includeEmbeddings</code>、<code>includeLlmTags</code>、<code>includeLlmSummary</code>。三档就是不同的组合。映射在 <code>defaultIndexDocumentOptionsForLevel()</code>（<code>src/core/search/indexTypes.ts</code>）。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · fast → semantic → full 的物理写入</strong>
+              <span>Mermaid · pipeline by level</span>
+            </div>
+            <div class="mermaid">
+flowchart TB
+  Scan["DocumentLoaderManager.scanDocuments()<br/>ignorePatterns 过滤"]
+  Read["loader.readByPath(path)<br/>RecursiveCharacterTextSplitter<br/>(langchain/textsplitters)"]
+  ChunkStage["chunkContent + assembleIndexedChunks<br/>+ enforceChunkLengthWithOverlap"]
+
+  subgraph FAST["listener_fast / IndexLevel = fast"]
+    F1["mobius_node upsert<br/>(path, title, tags_json,<br/>word_count, content_hash)"]
+    F2["doc_chunk 写入 body_raw<br/>+ summary_short / summary_full 若已有<br/>+ salient_textrank_sentence"]
+    F3["doc_fts / doc_fts_stem / doc_meta_fts"]
+    F4["mobius_edge references / tagged_*<br/>(基于当前解析)"]
+    F5["cascade_debt 入队<br/>(semantic_edge / degree_refresh /<br/>hub_invalidate / folder_stats)"]
+  end
+
+  subgraph SEMANTIC["+ IndexLevel = semantic"]
+    S1["embedTexts(chunks) via activeEmbeddingConfig"]
+    S2["embedding BLOB + vec_embeddings"]
+    S3["SemanticRelatedEdgesRebuildService<br/>KNN → mobius_edge type=semantic_related"]
+  end
+
+  subgraph FULL["+ IndexLevel = full"]
+    L1["LLM tags<br/>(topic / functional / keyword / context tag 节点 + tagged_* 边)"]
+    L2["LLM short + full summary<br/>(re-index summary_* chunks)"]
+    L3["Hub discovery<br/>folder_cohesion_score, hub_constituent"]
+    L4["Mobius maintenance:<br/>tag_doc_count / degree /<br/>vault PageRank / semantic PageRank"]
+    L5["Structural analysis (orchestrator):<br/>Brandes betweenness / Burt constraint /<br/>Louvain community"]
+  end
+
+  Scan --> Read --> ChunkStage --> F1 --> F2 --> F3 --> F4 --> F5
+  F5 -.upgrade.-> S1 --> S2 --> S3
+  S3 -.upgrade.-> L1 --> L2 --> L3 --> L4 --> L5
+            </div>
+            <p class="read-note"><b>读图：</b>fast 挡完全不出网——纯本地 FTS + 图构建，是所有档位的地基。semantic 才开始调 embedding endpoint。full 再加两轮 LLM 富化（tags + 长短摘要）+ hub 发现 + 全量 Mobius 维护 + structural analysis。<code>cascade_debt</code> 是三档共通的机制：fast 挡把“待补语义边 / 待重算 hub”写进 debt 表，semantic / full 挡的定时任务负责消费。</p>
+          </div>
+
+          <p class="prose"><strong>Reason vs Level 两个维度</strong>。<code>indexDocument()</code> 收的是 <code>IndexDocumentOptions</code>，但常用入口有两个：一个是运行时的 <code>IndexDocumentReason</code>（<code>listener_fast</code> / <code>startup_scan</code> / <code>manual_full</code> / <code>hub_maintenance</code> / <code>vector_enrich_only</code> / <code>llm_enrich_only</code>），一个是 Settings 里的 <code>IndexLevel</code>（fast / semantic / full）。前者是<em>为什么这次索引</em>，后者是<em>用户当前的档位</em>。<code>defaultIndexDocumentOptionsForLevel('semantic')</code> 就是在 <code>listener_fast</code> 基础上打开 <code>includeEmbeddings</code>；<code>'full'</code> 直接等价 <code>manual_full</code>。</p>
+
+          <p class="prose"><strong>为什么要 markPending 标志</strong>。当档位是 fast 但用户可能升到 semantic / full，索引跳过 embedding / LLM 时会在 <code>mobius_node.attributes_json</code> 上标 <code>vector_pending</code> / <code>llm_pending</code>。之后 Advanced 面板执行 “Update index” 或 <code>IndexInitializer.performStagedFullIndexing()</code> 时，<code>IndexService.runPendingVectorIndexEnrichment()</code> / <code>runPendingLlmIndexEnrichment()</code> 就按这个标志扫过一遍，只补需要补的文档，避免全量重跑。</p>
+
+          <p class="prose"><strong>Full 挡的 4 步流水线</strong>（<code>IndexInitializer.performStagedFullIndexing()</code>）：Step 1 FTS（<code>listener_fast</code> options 跑所有文档）→ Step 2 Vector（<code>runPendingVectorIndexEnrichment</code> 消费 <code>vector_pending</code>）→ Step 3 LLM（<code>runPendingLlmIndexEnrichment</code> 消费 <code>llm_pending</code>）→ Step 4 Graph maintenance（<code>runMobiusGlobalMaintenance</code> 跑 tag_doc_count → degree → PageRank → semantic PageRank → semantic edges → folder hub stats）。任一步都可以带 <code>IndexErrorHandler</code>，返回 <code>continue / retry / cancel</code>——错误从 embedding 报出来一次不至于把整轮索引废掉。</p>
+        </section>
+
+        <section id="chunking">
+          <h2>Chunking 细节</h2>
+          <p class="lead">Chunking 有两层保护：<strong>loader 层用 LangChain 的 <code>RecursiveCharacterTextSplitter</code></strong>，<strong>IndexService 侧再用 <code>enforceChunkLengthWithOverlap</code></strong> 做最终守门。Loader 层意图是“按语言 / 段落切”，safeChunking 意图是“embedding input 不能超”。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>字段（<code>ChunkingSettings</code>）</th><th>默认</th><th>作用</th><th>UI 露出</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>maxChunkSize</code></td>
+                <td>1000</td>
+                <td>单 chunk 字符上限（loader + safeChunking 都用这个）。</td>
+                <td>Knowledge Index tab</td>
+              </tr>
+              <tr>
+                <td><code>chunkOverlap</code></td>
+                <td>200</td>
+                <td>chunk 之间的重叠字数，保证跨 chunk 的语义连续。safeChunking 会 clamp 到 <code>[0, maxChunkSize - 1]</code>。</td>
+                <td>Knowledge Index tab</td>
+              </tr>
+              <tr>
+                <td><code>minDocumentSizeForChunking</code></td>
+                <td>1500</td>
+                <td>文档小于这个字数直接整篇当一个 <code>body_raw</code> chunk，不走 splitter。</td>
+                <td>不露出（<code>data.json</code>）</td>
+              </tr>
+              <tr>
+                <td><code>skipCodeBlocksInChunking</code></td>
+                <td>false</td>
+                <td>true 时会用 <code>codeBlockPlaceholder</code> 替换 fenced code block，避免代码文本污染 embedding。</td>
+                <td>不露出</td>
+              </tr>
+              <tr>
+                <td><code>codeBlockPlaceholder</code></td>
+                <td><code>"\n\n[code omitted]\n\n"</code></td>
+                <td>替换字符串。</td>
+                <td>不露出</td>
+              </tr>
+              <tr>
+                <td><code>maxCodeChunkChars</code></td>
+                <td>0</td>
+                <td>0 = 完全省略；&gt;0 = 保留前 N 字符后截断。</td>
+                <td>不露出</td>
+              </tr>
+              <tr>
+                <td><code>embeddingModel</code></td>
+                <td>—</td>
+                <td>legacy 遗留；现在真正生效的是 <code>activeEmbeddingConfig</code>（04 定义）。</td>
+                <td>不露出</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="prose"><strong>Loader 侧的两条路径</strong>。<code>BaseDocumentLoader.chunkContent()</code>（<code>src/core/document/loader/BaseDocumentLoader.ts</code>）是通用路径：<code>new RecursiveCharacterTextSplitter({ chunkSize, chunkOverlap }).createDocuments([content])</code>，得到 <code>body_raw</code> 类型的 chunks。<code>MarkdownDocumentLoader</code> 走 <code>RecursiveCharacterTextSplitter.fromLanguage('markdown', ...)</code>，多一层 markdown 结构感知（headers / lists 优先作为切点）。JsonDocumentLoader 用普通 splitter，但 loader 里把 JSON 结构先扁平化成文本。所有 loader 最终都调 <code>assembleIndexedChunks()</code>（<code>src/core/document/loader/helper/assembleIndexedChunks.ts</code>），把 body_raw 主体 + LLM 短摘 + LLM 长摘（可能切片） + TextRank 显著句合并成最终 chunk 数组。</p>
+
+          <p class="prose"><strong>safeChunking 是 embedding 侧的最终守门</strong>。<code>enforceChunkLengthWithOverlap()</code>（<code>src/service/search/index/helper/safeChunking.ts</code>）遍历 loader 返回的 chunks，超长的用 <code>findSplitPoint()</code>（优先落在 <code>\n</code> / 空格 / <code>\t</code>）+ overlap 二次切。每个切片重新生成 <code>chunkId</code>，之后统一 reindex <code>chunkIndex</code>。这一步确保 embedding provider 不会因为单个巨型 chunk 崩掉（尤其是 Markdown 内嵌 base64 图片、超长 code block 时）。</p>
+
+          <div class="claim warn">
+            <strong>加新文档类型时的最小工作量</strong>
+            继承 <code>BaseDocumentLoader</code>；实现 <code>getSupportedExtensions()</code>、<code>readFile()</code>；如果源是二进制（PDF、图片、Word），override <code>getContentForChunking()</code> 用 <code>cacheFileInfo.content</code>（缓存的文本表示）。<code>chunkContent()</code> 不用重写——只要 chunk 长度守门跑到位，safeChunking 会兜。然后：注册到 <code>DocumentLoaderManager</code>；在 <code>SearchSettings.includeDocumentTypes</code> 加一个开关；<code>settings.json</code> 里加对应的 vocab；<code>ignorePatterns</code> 判断是否需要默认排除。
+          </div>
+        </section>
+
+        <section id="embeddings">
+          <h2>Embedding 与 sqlite-vec</h2>
+          <p class="lead">Embedding 从两条视角看：<strong>调 provider 的 <code>embedClient</code></strong>，和 <strong>写入 <code>vec_embeddings</code> 虚表</strong>。前者是 OpenAI 兼容的 <code>POST {endpoint}/embeddings</code>；后者是懒建维度的 <code>sqlite-vec</code> 虚表。</p>
+
+          <h3 style="margin-top: 22px;">调用侧：<code>embedClient.ts</code></h3>
+          <p class="prose">入口 <code>embedTexts(texts: string[]): Promise&lt;number[][]&gt;</code>（<code>src/service/search/embeddings/embedClient.ts</code>）。它做四件事：从 <code>ProfileRegistry.getActiveEmbeddingProfile()</code> 取 profile（fallback 到 <code>getActiveAgentProfile()</code>）；<code>toEmbeddingConfig()</code> 生成 <code>{ endpoint, model, apiKey }</code>；POST 到 <code>${endpoint}/embeddings</code> body <code>{ model, input: texts }</code>；把 <code>data.data[].embedding</code> 拆成 <code>number[][]</code> 返回；顺带把 token 用量通过 <code>setEmbeddingUsageReporter</code> 注册的 reporter 上报（<code>feature: 'indexing', action: 'embed'</code>）。</p>
+
+          <p class="prose"><strong>Reporter 是 late-bound sink</strong>。<code>main.ts</code> 在 boot 时调 <code>setEmbeddingUsageReporter(...)</code>，reporter 里的 <code>report()</code> 会把用量写进 <code>usage_log</code>（chat.sqlite），进而累计到 Usage Dashboard 的 “indexing / embed” 行。没绑 reporter 时 embed 仍然工作，只是不上报。</p>
+
+          <h3 style="margin-top: 22px;">存储侧：<code>embedding</code> + <code>vec_embeddings</code></h3>
+          <p class="prose"><code>embedding</code> 表是普通 SQLite 表，存 <strong>BLOB 副本 + 元数据</strong>（<code>doc_id</code>、<code>chunk_id</code>、<code>chunk_type</code>、<code>content_hash</code>、<code>embedding_model</code>、<code>embedding_len</code>）。<code>vec_embeddings</code> 是 <code>sqlite-vec</code> 提供的<code>vec0</code>虚表，只有 <code>rowid</code> + <code>float[N]</code>。两张表通过共享 rowid 关联——<code>vec_embeddings.rowid</code> 就是 <code>embedding.rowid</code>，避免映射表。</p>
+
+          <p class="prose"><strong>为什么需要虚表</strong>。SQLite 的 B-tree / Hash 索引只能处理标量。多维距离（cosine / euclidean）+ HNSW/IVF 近似最近邻只有虚表能提供。<code>ddl.ts</code> 里那段长注释（“VEC0 VIRTUAL TABLE EXPLANATION”）就是说这件事，代码在 <code>src/core/storage/sqlite/repositories/EmbeddingRepo.ts</code>。</p>
+
+          <p class="prose"><strong>维度懒建</strong>。<code>vec_embeddings</code> 不在 <code>migrateSqliteSchema()</code> 里创建——因为不能 hardcode 一个维度（openai-embedding-3-small 是 1536，bge-m3 是 1024，其它 provider 各异）。<code>EmbeddingRepo.ensureVecEmbeddingsTable(dim)</code> 在<em>第一次插入</em>时才 <code>CREATE VIRTUAL TABLE vec_embeddings USING vec0(embedding float[${dim}])</code>。</p>
+
+          <div class="claim warn">
+            <strong>换 embedding 模型 = 重建 vec_embeddings</strong>
+            当写入维度和已存在的 <code>vec_embeddings</code> 不一致（比如从 1536 换成 1024），<code>recreateVecEmbeddingsTable(newDim)</code> 会 <code>DROP TABLE vec_embeddings</code> 重建。<strong>vec 表数据丢失，但 <code>embedding</code> 元数据留着</strong>——之后需要用户走一次“Rebuild vector”把 BLOB replay 回 vec 表。这是有意的取舍：BLOB 是安全网，vec 表是可再生的索引。
+          </div>
+
+          <p class="prose"><strong>Chunk 类型冗余</strong>。<code>embedding.chunk_type</code> 冗余了 <code>doc_chunk.chunk_type</code>，理由写在 <code>ddl.ts</code> 注释里：<em>Redundant copy of chunk_type for fast KNN filtering; SSOT is doc_chunk</em>。SearchClient 在做 semantic doc→doc 查询时按 <code>SEMANTIC_CHUNK_TYPE_ORDER</code>（<code>summary_short</code> &gt; <code>summary_full</code> &gt; <code>salient_textrank_sentence</code> &gt; <code>body_raw</code>）优先返回摘要类命中；<code>SEMANTIC_EDGE_CHUNK_TYPE_WEIGHT</code>（1.25 / 1.15 / 1.1 / 1.0）给不同 chunk 类型的 KNN 分加权，生成 semantic edges。</p>
+        </section>
+
+        <section id="graph">
+          <h2>节点、边、Hub、PPR</h2>
+          <p class="lead">搜索侧的“图”其实就是 <code>mobius_node</code> + <code>mobius_edge</code> 两张表加上派生的统计列（<code>pagerank</code> / <code>semantic_pagerank</code> / <code>folder_cohesion_score</code> / <code>betweenness_centrality</code> / <code>community_id</code>）。图不是独立子系统，是索引结果<em>再</em>算一层。</p>
+
+          <h3 style="margin-top: 22px;">Wiki refs</h3>
+          <dl class="field-list">
+            <dt>来源</dt><dd>Obsidian metadata cache 解析出的 <code>[[link]]</code></dd>
+            <dt>写入</dt><dd><code>mobius_edge type=references</code>（doc→doc）／<code>references_resource</code>（doc→attachment）</dd>
+            <dt>何时算</dt><dd>每次 <code>indexDocument()</code> upsert 时同步重写</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">Tag 节点与边</h3>
+          <dl class="field-list">
+            <dt>来源</dt><dd>frontmatter tags + LLM tags 的四分类（topic / functional / keyword / context）</dd>
+            <dt>写入</dt><dd>四种 tag <code>mobius_node</code> + <code>tagged_topic|functional|keyword|context</code> 边；stable node ID 见 <code>mobiusTagEdges.ts</code></dd>
+            <dt>何时算</dt><dd>fast 挡就写 frontmatter tags；LLM tags 仅在 full 挡（<code>includeLlmTags: true</code>）</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">Folder contains</h3>
+          <dl class="field-list">
+            <dt>来源</dt><dd>路径分割</dd>
+            <dt>写入</dt><dd><code>Folder</code> 节点 + <code>contains</code> 边（父 → 子）</dd>
+            <dt>何时算</dt><dd>indexDocument 期间；<code>folder_cohesion_score</code> 在 <code>runMobiusGlobalMaintenance</code> 阶段</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">Semantic edges</h3>
+          <dl class="field-list">
+            <dt>来源</dt><dd>vector KNN（<code>vec_embeddings</code>）</dd>
+            <dt>写入</dt><dd><code>mobius_edge type=semantic_related</code>，权重 = 加权 KNN 得分</dd>
+            <dt>何时算</dt><dd><code>SemanticRelatedEdgesRebuildService</code>：按 doc 增量（<code>fromDocIds</code>）或 tenant 全量；cascade_debt 里的 <code>semantic_edge</code> 债务由此消费</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">Vault PageRank</h3>
+          <dl class="field-list">
+            <dt>来源</dt><dd>整个 mobius 图（references + tags + contains）</dd>
+            <dt>写入</dt><dd><code>mobius_node.pagerank</code> + <code>pagerank_updated_at</code> + <code>pagerank_version</code></dd>
+            <dt>何时算</dt><dd><code>computeVaultPageRankStreaming</code>（<code>helper/documentPageRank.ts</code>）分批 push 边不装内存；<code>runMobiusGlobalMaintenance</code> 的 <code>pagerank_edges → pagerank_persist</code></dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">Semantic PageRank</h3>
+          <dl class="field-list">
+            <dt>来源</dt><dd>只走 <code>semantic_related</code> 子图</dd>
+            <dt>写入</dt><dd><code>semantic_pagerank</code> + 版本列</dd>
+            <dt>何时算</dt><dd>独立两 phase：<code>semantic_pagerank_edges → semantic_pagerank_persist</code></dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">Hub discovery</h3>
+          <dl class="field-list">
+            <dt>来源</dt><dd>已存在的 <code>Hub-Summaries/</code> markdown + <code>hub_constituent</code> 反查</dd>
+            <dt>写入</dt><dd><code>hub_doc</code> 节点、<code>hub_constituent</code>、<code>folder_cohesion_score</code>、<code>hub_stale_since</code></dd>
+            <dt>何时算</dt><dd>Full 挡；文档变更后 <code>HubStalenessDetector</code> 标脏，<code>HubRegenService</code> 后台重算</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">Structural analysis</h3>
+          <dl class="field-list">
+            <dt>来源</dt><dd>整图</dd>
+            <dt>写入</dt><dd><code>betweenness_centrality</code>（Brandes）、<code>structural_constraint</code>（Burt）、<code>community_id</code>（Louvain, 参数 <code>LOUVAIN_RESOLUTION</code>）；伴随 <code>community_metadata</code> / <code>structural_holes</code></dd>
+            <dt>何时算</dt><dd><code>runStructuralAnalysis()</code>（<code>helper/structural/orchestrator.ts</code>），独立触发，通常在 full 挡 rebuild 尾部</dd>
+          </dl>
+
+          <p class="prose"><strong>PPR（Personalized PageRank）是查询时的</strong>，不是索引时的。<code>SearchSettings.enablePPR</code> 默认 true。查询时 SearchClient 拿 query 命中的 seeds 做一次 personalized walk，把图上强相关但 keyword / vector 都没命中的笔记加权提升——这是<em>读侧</em>的行为，索引期间只保证 <code>pagerank</code> / <code>semantic_pagerank</code> 列已经算好，PPR 本身不写库。</p>
+
+          <p class="prose"><strong>Semantic edges 是 KNN 的物化视图</strong>。<code>SemanticRelatedEdgesRebuildService</code>（<code>helper/semanticRelatedEdges.ts</code>）走 <code>vec_embeddings</code> 的 KNN，按 <code>SEMANTIC_EDGE_CHUNK_TYPE_WEIGHT</code> 加权聚合到 doc→doc 边。为什么物化？因为查询时反复做 KNN 不划算；把结果写成边之后，PPR / rerank / semantic PageRank 全都能<em>只读边</em>就能算。<code>mobius_node.semantic_edges_version</code> 是幂等标记，每次某个 doc 的 semantic edges 被重建就 <code>+= 1</code>。</p>
+        </section>
+
+        <section id="tenancy">
+          <h2>Tenant 与 ignore 规则</h2>
+          <p class="lead"><code>IndexTenant = 'vault' | 'chat'</code>（<code>src/core/storage/sqlite/types.ts</code>）。tenant 决定 <code>SqliteStoreManager</code> 返回<em>哪个数据库的</em>同名 repo（<code>getIndexedDocumentRepo(tenant)</code> / <code>getDocChunkRepo(tenant)</code> / <code>getEmbeddingRepo(tenant)</code> / <code>getMobiusNodeRepo(tenant)</code> 等）。schema 完全一致，只是文件不同。</p>
+
+          <h3 style="margin-top: 22px;">路径 → tenant 的判断</h3>
+          <p class="prose"><code>getIndexTenantForPath(path)</code>（<code>indexService.ts</code>）逻辑非常小：</p>
+          <ol style="color: var(--muted); font-size: 15px;">
+            <li>如果路径落在 <code>getAIHubSummaryFolder(rootFolder)</code> 之下（Hub-Summaries），tenant 是 <code>vault</code>——<em>即使它物理位置在 <code>ChatFolder/</code> 之内</em>。理由是 hub 摘要虽然写在 chat 根目录下面，但功能上是 vault 索引的一部分。</li>
+            <li>否则如果路径以 <code>settings.ai.rootFolder</code>（默认 <code>ChatFolder</code>）为前缀，tenant 是 <code>chat</code>。</li>
+            <li>其它路径都是 <code>vault</code>。</li>
+          </ol>
+
+          <h3 style="margin-top: 22px;">Ignore patterns 是<em>是否入库</em>的开关</h3>
+          <p class="prose"><code>SearchSettings.ignorePatterns</code>（默认包含 <code>.git/</code>、<code>node_modules/</code>、<code>.obsidian/</code>、<code>A-control/</code>、<code>*.tmp</code>、<code>*.log</code>、<code>.DS_Store</code> 等）由 <code>DocumentLoaderManager.shouldIndexDocument()</code> 消费。命中的路径连 chunk 都不生成，也不入 <code>mobius_node</code>。</p>
+
+          <div class="claim warn">
+            <strong>A-control/ 默认排除意味着 DataStore 不会自己吃自己</strong>
+            <code>A-control/PeakAssistant/DataStore/*.sqlite</code> 是二进制文件，一旦被误当 markdown 扫，chunking 就会跑出天量垃圾 chunk。默认 <code>ignorePatterns</code> 里的 <code>A-control/</code> 就是防这个。改 dataStorageFolder 到别的位置时必须给新位置加对应 ignore，否则 rebuild 会崩。
+          </div>
+
+          <p class="prose"><strong>AI Analysis 文件夹的选择性 exclude</strong>。<code>aiAnalysisAutoSaveFolder</code>（默认 <code>ChatFolder/AI-Analysis</code>）在 <code>aiAnalysisExcludeAutoSaveFolderFromSearch=true</code>（默认）时不参与 Local Search / Graph 的召回——避免 AI 分析结果反过来污染下一次分析。它跟 <code>ignorePatterns</code> 的区别是：AI Analysis 文件夹依然被<em>索引</em>（chunk / embedding / node 都会建），只是查询侧过滤掉。这个区别很重要——不然重启后 hub 引用就断了。</p>
+        </section>
+
+        <section id="maintenance">
+          <h2>增量、Rebuild、Cascade</h2>
+          <p class="lead">索引不是一次性事件，是一个持续跑的<em>反应系统</em>。文件改动、Obsidian 重启、用户点 “Rebuild index” 都会触发不同粒度的重扫。</p>
+
+          <h3 style="margin-top: 22px;">增量：<code>checkAndUpdateIndex()</code></h3>
+          <p class="prose">Obsidian 启动时 <code>IndexInitializer.checkAndUpdateIndex()</code> 跑一次（<a href="04-configuration-and-user-views.html">04</a> 里说的 “Auto-index on startup”）。逻辑：</p>
+          <ol style="color: var(--muted); font-size: 15px;">
+            <li>查 <code>index_state</code>：如果没建过 index，<code>autoIndex</code> 开着就跑 <code>performFullIndexing()</code>；关着就弹提示让用户手动跑 Rebuild。</li>
+            <li>建过：<code>scanForIndexChanges()</code> 扫 vault，用 <code>IndexedDocumentRepo.batchCheckIndexed()</code> 比 mtime；mtime 不同的用 <code>contentHash</code> 再核一次——因为 Obsidian 的 mtime 有时会因为 sync 抖动，hash 才是权威。</li>
+            <li>命中变更的进入 <code>performIncrementalIndexing()</code>；同时并发跑 <code>checkAndDeleteRemovedFiles()</code>（vault 里没了但 index 里还在的路径调 <code>IndexService.deleteDocuments()</code>）。</li>
+            <li>如果没有增量且 <code>isMobiusMaintenanceRecommended()</code> 说该维护了，跑 <code>runMobiusGlobalMaintenance(['vault', 'chat'])</code>。</li>
+            <li>Startup 尾巴：<code>HubRegenService</code> 检查 <code>hub_regen_queue.pendingCount()</code>，非零就后台清。</li>
+          </ol>
+
+          <p class="prose"><code>indexRefreshInterval</code>（默认 5000ms）是<em>运行时</em>的 debounce——用户在编辑器里输入时不至于每敲一个字就 reindex。</p>
+
+          <h3 style="margin-top: 22px;">Rebuild：<code>performStagedFullIndexing()</code></h3>
+          <p class="prose">Advanced tab 的 “Rebuild index” 或用户显式选 full 挡时调 <code>performStagedFullIndexing(level='full', onError?)</code>。4 步流水线（见 <a href="#pipeline">上一节</a>）。可以中途取消——<code>IndexService.isCancelled()</code> 被观测就退出；<code>onError</code> handler 决定 continue / retry / cancel。fast 挡的 rebuild 只跑 Step 1 + Step 4（graph 维护）。</p>
+
+          <h3 style="margin-top: 22px;">Cascade：文档变更的副作用债</h3>
+          <p class="prose"><code>CascadeChangeDetector</code>（<code>service/search/index/cascade/</code>）在 <code>indexDocument()</code> upsert 之后跑一次差量比较（对比 <code>PreIndexSnapshot</code>）。检测到的变化按类型入队 <code>cascade_debt</code>：</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>debt_type</th><th>触发</th><th>Worker 动作</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>semantic_edge</code></td><td>doc 内容或 embedding 变了。</td><td><code>SemanticRelatedEdgesRebuildService.rebuildIncrementalFromDocIds([...])</code>。</td></tr>
+              <tr><td><code>degree_refresh</code></td><td>doc 的 references 数量变了。</td><td>重算 <code>doc_incoming_cnt</code> / <code>doc_outgoing_cnt</code>。</td></tr>
+              <tr><td><code>mermaid_overlay</code></td><td>被 mermaid 图引用的 doc 变了。</td><td>让 mermaid overlay 重画。</td></tr>
+              <tr><td><code>hub_invalidate</code></td><td>doc 是某 hub 的 member。</td><td>把 <code>hub_regen</code> debt 入队（延迟消费）；<code>hub_stale_since</code> 打时间戳。</td></tr>
+              <tr><td><code>folder_stats</code></td><td>doc 所在文件夹发生结构变化。</td><td>重算 <code>folder_cohesion_score</code>。</td></tr>
+            </tbody>
+          </table>
+
+          <p class="prose"><code>UNIQUE INDEX (tenant, target_id, debt_type) WHERE processed_at IS NULL</code> 是天然去重——同一 doc 短时间内改多次只会入一次 debt。<code>CascadeWorker</code> 按 <code>priority</code> 排空。这套设计让 fast 挡的 <code>indexDocument()</code> 保持轻量：昂贵的语义边、hub 重算不阻塞主索引，进 debt 表异步跑。</p>
+        </section>
+
+        <section id="failure-recovery">
+          <h2>失败诊断与恢复</h2>
+          <p class="lead">这一节是排障 checklist：症状 → 检查 → 修复。多数问题落在四个位置：native 模块（better-sqlite3）、<code>sqlite-vec</code> 扩展、embedding provider、DataStore 文件状态。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 3 · 失败/恢复决策路径</strong>
+              <span>Mermaid · failure diagnosis</span>
+            </div>
+            <div class="mermaid">
+flowchart TB
+  Sym["用户症状"] --> S1{"搜索完全不工作?"}
+  S1 -->|Yes| B1["检查 better-sqlite3"]
+  B1 --> B1a{"BetterSqliteStore.checkAvailable"}
+  B1a -->|false| Fix1["NativeModuleManager.ensureCompatible()<br/>rebuild 或重装 native binding<br/>(见 unavailableReporter Notice)"]
+  B1a -->|true| S2
+
+  S1 -->|No| S2{"只出关键词, 无语义?"}
+  S2 -->|Yes| V1["检查 sqlite-vec"]
+  V1 --> V1a{"tryLoadSqliteVec 成功?"}
+  V1a -->|false| Fix2["console 会写 'no such table:<br/>vec_embeddings' → 重装 sqlite-vec<br/>或对应平台 package"]
+  V1a -->|true| V2{"embedding endpoint 通吗?"}
+  V2 -->|No| Fix3["检查 activeEmbeddingConfig<br/>(profile / apiKey / endpoint)"]
+  V2 -->|Yes| Fix4["确认 indexLevel ≥ semantic<br/>且已跑 Vector enrichment"]
+
+  S1 -->|No| S3{"结果陈旧, hub 不更新?"}
+  S3 -->|Yes| H1["检查 hub_regen_queue"]
+  H1 --> Fix5["HubRegenService.processQueueNow()<br/>或手动 Rebuild"]
+
+  S1 -->|No| S4{"embedding 维度对不上?"}
+  S4 -->|Yes| Fix6["EmbeddingRepo.recreateVecEmbeddingsTable(newDim)<br/>然后 runPendingVectorIndexEnrichment"]
+
+  S1 -->|No| S5{"DataStore 损坏?"}
+  S5 -->|Yes| Fix7["备份 vault.sqlite / chat.sqlite<br/>删除 → Auto-index 重建<br/>(chat 历史 markdown 在 ChatFolder 里, 保留)"]
+            </div>
+            <p class="read-note"><b>读图：</b>五条常见故障链，都能靠一段代码或一步操作恢复。最贵的是全量重建（走 fast → semantic → full 三阶段），最便宜的是补跑 pending enrichment。</p>
+          </div>
+
+          <h3 style="margin-top: 22px;">1. better-sqlite3 加载失败</h3>
+          <p class="prose">症状：启动时弹 “Peak Assistant: SQLite component failed to load. Search and indexing features are unavailable.”（<code>unavailableReporter</code> 触发）。<code>SqliteStoreManager.isInitialized()</code> 返回 false，任何 <code>getXxxRepo()</code> 都抛 “SqliteStoreManager not initialized”。</p>
+          <p class="prose">原因：<code>better-sqlite3</code> 的 native binding 与当前 Electron ABI 不匹配。<code>BetterSqliteStore.checkAvailable()</code> 先跑 <code>NativeModuleManager.ensureCompatible()</code> 尝试自动下载对应版本；失败后按 <code>getPossiblePaths()</code> 列的多路径 fallback 加载；全都失败才报 Notice。修复：<code>npm install better-sqlite3</code> 后 <code>electron-rebuild</code>（或 README 里的对应脚本），重启 Obsidian。</p>
+
+          <h3 style="margin-top: 22px;">2. sqlite-vec 扩展未加载</h3>
+          <p class="prose">症状：insert 到 <code>vec_embeddings</code> 时报 <code>no such table: vec_embeddings</code>；<code>isVectorSearchEnabled()</code> 返回 false；semantic / full 挡不可用但 fast 挡照跑（因为 FTS 不依赖 vec）。</p>
+          <p class="prose">原因：<code>BetterSqliteStore.tryLoadSqliteVec()</code>（<code>better-sqlite3-adapter/BetterSqliteStore.ts</code>）尝试 <code>require('sqlite-vec')</code>；失败时 console 会 warn “sqlite-vec extension is not installed / Failed to load”。sqlite-vec 依赖平台特定 package（<code>sqlite-vec-darwin-arm64</code> / <code>sqlite-vec-darwin-x64</code> / <code>sqlite-vec-linux-*</code> / <code>sqlite-vec-windows-x64</code>），未安装或安装错平台包都会挂。修复：<code>npm install sqlite-vec</code> 让它自动装对应平台 package。</p>
+
+          <h3 style="margin-top: 22px;">3. Embedding provider 不可用</h3>
+          <p class="prose">症状：<code>embedTexts()</code> 抛 “No embedding profile configured”（未绑 <code>activeEmbeddingConfig</code>）、“Embedding endpoint not configured on active profile”（profile 没 embedding endpoint）、或者 <code>Embedding API error 401 / 429 / 500</code>。Vector enrichment 时进入 <code>onError</code> handler，用户选 continue / retry / cancel。</p>
+          <p class="prose">修复：Settings → AI Setup → Knowledge Index 换 profile；或到 Advanced tab 直接看 profile 定义；如果是 Ollama 本地，确认 <code>ollama serve</code> 起了。选 retry 时 <code>runPendingVectorIndexEnrichment</code> 会重跑，只重跑还未标记为已完成的 doc。</p>
+
+          <h3 style="margin-top: 22px;">4. Embedding 维度不匹配</h3>
+          <p class="prose">症状：切了 embedding model（比如 openai text-embedding-3-small 1536 → bge-m3 1024）后，写 <code>vec_embeddings</code> 抛 <code>Expected 1536 dimensions</code>。</p>
+          <p class="prose">修复：<code>EmbeddingRepo.recreateVecEmbeddingsTable(newDim)</code> 会 drop 重建 vec 表（<code>embedding</code> BLOB 元数据保留）。之后跑 <code>runPendingVectorIndexEnrichment()</code> 或 <code>performStagedFullIndexing()</code> 让所有向量重新写入新维度。</p>
+
+          <h3 style="margin-top: 22px;">5. Hub 陈旧 / 结果不更新</h3>
+          <p class="prose">症状：Hub summary 里显示的相关笔记还是老的，或搜索结果里 hub 相关笔记权重不对。</p>
+          <p class="prose">诊断：<code>SELECT COUNT(*) FROM hub_regen_queue WHERE status='pending'</code>；或 <code>SELECT hub_path, hub_stale_since FROM mobius_node WHERE hub_stale_since IS NOT NULL</code>。修复：<code>HubRegenService.getInstance().processQueueNow()</code>（Advanced 面板 Diagnostics 或 devtools console）。或走一遍 Rebuild。</p>
+
+          <h3 style="margin-top: 22px;">6. DataStore 文件损坏</h3>
+          <p class="prose">症状：open db 直接抛 “database disk image is malformed”，或搜索永远转圈。</p>
+          <p class="prose">修复：<strong>先备份</strong> <code>vault.sqlite</code> / <code>chat.sqlite</code>（含 <code>-journal</code> / <code>-wal</code> / <code>-shm</code>）。删除 <code>vault.sqlite</code>：下次启动 <code>autoIndex=true</code> 会全量重建（大 vault 需要数分钟）；autoIndex=false 会提示手动。删除 <code>chat.sqlite</code> 会丢会话 metadata + 用量 log，但对话本体（markdown）在 <code>ChatFolder/</code> 里，可以按需重扫恢复元数据。<strong>删之前想清楚 usage_log 是不是要留</strong>——那是 Budget 阈值和 Dashboard 唯一的历史。</p>
+
+          <div class="claim danger">
+            <strong>不要直接手改 SQLite 文件</strong>
+            用外部 SQLite CLI 打开 <code>vault.sqlite</code> 只读查表是可以的（诊断很有用），但 <em>写入</em> 会破坏 FTS5 / vec0 虚表的一致性、破坏 Kysely 的 statement cache。所有变更必须走 <code>SqliteStoreManager</code> 提供的 repo。
+          </div>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>本页说法</th><th>证据入口</th><th>用途</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>两个 SQLite 文件名 + 分工</td>
+                <td><code>constant.ts</code>、<code>SqliteStoreManager.ts</code></td>
+                <td>chat.sqlite 也带 chat tenant 索引 repo</td>
+              </tr>
+              <tr>
+                <td>所有 CREATE TABLE</td>
+                <td><code data-copy="src/core/storage/sqlite/ddl.ts">ddl.ts</code>（<code>migrateSqliteSchema</code>）</td>
+                <td>核对本页 §Schema 字段</td>
+              </tr>
+              <tr>
+                <td>Tenant 判断与 repo 分发</td>
+                <td><code>types.ts</code> <code>IndexTenant</code>、<code>indexService.getIndexTenantForPath</code>、<code>SqliteStoreManager.getXxxRepo(tenant)</code></td>
+                <td>路径 → tenant 三步判断</td>
+              </tr>
+              <tr>
+                <td>IndexLevel → IndexDocumentOptions</td>
+                <td><code data-copy="src/core/search/indexTypes.ts">indexTypes.ts</code></td>
+                <td>fast/semantic/full 开关组合 + markPending</td>
+              </tr>
+              <tr>
+                <td>Chunking + safeChunking</td>
+                <td><code>settingsTypes.ChunkingSettings</code>、<code>safeChunking.enforceChunkLengthWithOverlap</code></td>
+                <td>默认 max=1000 / overlap=200 / min=1500</td>
+              </tr>
+              <tr>
+                <td>Loader + langchain splitter</td>
+                <td><code>BaseDocumentLoader.chunkContent</code>、<code>MarkdownDocumentLoader</code>、<code>assembleIndexedChunks.ts</code></td>
+                <td><code>@langchain/textsplitters</code> Recursive splitter</td>
+              </tr>
+              <tr>
+                <td>Chunk types SSOT + 权重</td>
+                <td><code data-copy="src/core/search/chunkTypes.ts">chunkTypes.ts</code></td>
+                <td>四种 chunk_type + 语义边加权</td>
+              </tr>
+              <tr>
+                <td>Embedding 客户端 + reporter</td>
+                <td><code data-copy="src/service/search/embeddings/embedClient.ts">embedClient.ts</code></td>
+                <td>OpenAI 兼容 POST；reporter 挂 <code>usage_log</code></td>
+              </tr>
+              <tr>
+                <td>vec_embeddings 懒建 + 重建</td>
+                <td><code>EmbeddingRepo.ts</code>、<code>ddl.ts</code> VEC0 注释</td>
+                <td>首次 upsert 才建；维度变则 drop；BLOB 留 replay</td>
+              </tr>
+              <tr>
+                <td>Graph canonical 类型</td>
+                <td><code data-copy="src/core/types/graph.ts">graph.ts</code></td>
+                <td>8 edge / 7 node / 4 tag 类</td>
+              </tr>
+              <tr>
+                <td>Semantic edges 重建服务</td>
+                <td><code data-copy="src/service/search/index/helper/semanticRelatedEdges.ts">semanticRelatedEdges.ts</code></td>
+                <td>KNN + chunk_type 加权；全量 + fromDocIds 增量</td>
+              </tr>
+              <tr>
+                <td>PageRank streaming</td>
+                <td><code data-copy="src/service/search/index/helper/documentPageRank.ts">documentPageRank.ts</code></td>
+                <td>分批 push 边；写 pagerank / semantic_pagerank + version</td>
+              </tr>
+              <tr>
+                <td>Structural analysis</td>
+                <td><code>helper/structural/{orchestrator,brandesBetweenness,louvainCommunity,burtConstraint}.ts</code></td>
+                <td>三算法各写列；orchestrator 输出 community/holes</td>
+              </tr>
+              <tr>
+                <td>Hub 生命周期</td>
+                <td><code>helper/hub/{hubStalenessDetector,hubRegenService,hubDocServices}.ts</code></td>
+                <td>member 变 → stale → 重建 → 清</td>
+              </tr>
+              <tr>
+                <td>Cascade debt 全流程</td>
+                <td><code>cascade/{CascadeChangeDetector,CascadeScheduler,CascadeWorker}.ts</code></td>
+                <td>5 种 debt_type；UNIQUE dedup on <code>processed_at IS NULL</code></td>
+              </tr>
+              <tr>
+                <td>Incremental / Rebuild 入口</td>
+                <td><code data-copy="src/service/search/index/indexInitializer.ts">indexInitializer.ts</code></td>
+                <td>startup 分支 + autoIndex + 4 步 staged + hub queue drain</td>
+              </tr>
+              <tr>
+                <td>better-sqlite3 / sqlite-vec 加载</td>
+                <td><code data-copy="src/core/storage/sqlite/better-sqlite3-adapter/BetterSqliteStore.ts">BetterSqliteStore.ts</code></td>
+                <td>fallback + sqlite-vec 平台包 + <code>unavailableReporter</code></td>
+              </tr>
+              <tr>
+                <td>Mobius 全局维护 phase 顺序</td>
+                <td><code data-copy="src/service/search/index/indexService.ts">indexService.runMobiusGlobalMaintenance</code></td>
+                <td>tag_doc_count → degrees → pagerank_edges|persist → semantic_pagerank_edges|persist → semantic_related → folder_hub_stats</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01，按维护者/排障场景整理。相关文档：<a href="index.html">docs index</a>、<a href="04-configuration-and-user-views.html">04 Configuration</a>、<a href="12-feature-search.html">12 Search</a>、<a href="13-feature-vault-intelligence.html">13 Vault Intelligence (planned)</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。与 04 <a href="04-configuration-and-user-views.html#vault-layout">Vault layout</a> 的差异已在 <a href="#two-databases">§ 两个 SQLite 库</a> 里说明。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

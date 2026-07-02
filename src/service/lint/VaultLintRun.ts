@@ -17,6 +17,8 @@
 
 import {
 	InMemoryRunRecorder,
+	defaultClock,
+	defaultIdFactory,
 	type ArtifactRef,
 	type RunClock,
 	type RunEvent,
@@ -115,22 +117,9 @@ export interface VaultLintRunOptions {
 
 const ARTIFACT_CONTENT_TYPE = 'application/vnd.peak.vault-lint-scan+json';
 
-function defaultClock(): RunClock {
-	return { now: () => Date.now() };
-}
-
-function defaultIdFactory(prefix: string): RunIdFactory {
-	let seq = 0;
-	return {
-		next(): string {
-			seq += 1;
-			// Process-uniqueness comes from Date.now(); within-process
-			// monotonic seq prevents collision when two ids are minted
-			// in the same millisecond.
-			return `${prefix}-${Date.now().toString(36)}-${seq}`;
-		},
-	};
-}
+// T3: defaultClock + defaultIdFactory now live in run-envelope/helpers.ts
+// (imported above) so future capability runners share the same
+// "prefix-<timestamp-base36>-<seq>" id shape.
 
 function buildArtifactTitle(result: LintScanResult): string {
 	return `Vault Lint scan (${result.findings.length} finding${result.findings.length === 1 ? '' : 's'}, health ${result.healthScore})`;

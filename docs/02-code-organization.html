@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>02 Peak Assistant Code Organization</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); font-size: 0.94em; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 0 0 8px; font-size: 20px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .warn { border-left-color: var(--gold); }
+    .warn strong { color: var(--gold); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    td code { background: var(--code-bg); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    .note-list { display: grid; gap: 10px; margin-top: 18px; }
+    .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .note-item b { display: block; margin-bottom: 3px; }
+    .note-item span { color: var(--muted); font-size: 14px; }
+    .kv { display: grid; grid-template-columns: 200px 1fr; gap: 8px 18px; margin-top: 18px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .kv dt { color: var(--ink); font-weight: 780; }
+    .kv dd { margin: 0; color: var(--muted); }
+    .kv dd code { background: var(--code-bg); }
+    .path-tree { margin-top: 20px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: var(--ink); font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 13.5px; line-height: 1.65; white-space: pre; overflow-x: auto; }
+    .path-tree .comment { color: var(--muted); }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+    @media (max-width: 980px) {
+      .kv { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">02 · Code Organization · 代码目录地图</div>
+      <h1>第一次读代码的人，按什么顺序打开文件。</h1>
+      <p class="subtitle">这份文档不解释四层架构<em>为什么</em>是这个形状（那是 01 的工作），也不列出所有文件（那是仓库自己的责任）。它只回答四组问题：<strong>目录职责的边界在哪</strong>、<strong>依赖方向允许什么禁止什么</strong>、<strong>按哪个能力入手读代码</strong>、<strong>我要改 X 应该从哪个文件动手</strong>。读完 01（架构原理）之后再打开代码时，读这一页。</p>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 8.6k 混合字符</span>
+        <span>Reading time: 18-22 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">这页解决什么</a>
+          <a href="#layers-quick">4 层一眼</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">读代码手册</span>
+          <a href="#read-order">按能力读代码</a>
+          <a href="#directory-responsibilities">目录职责表</a>
+          <a href="#change-entries">改动入口手册</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">约束与验证</span>
+          <a href="#dependency-rules">依赖规则</a>
+          <a href="#test-map">测试地图</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">参考</span>
+          <a href="#maintain">维护规则</a>
+          <a href="#evidence">代码证据</a>
+        </div>
+        <div class="nav-note">要理解“为什么这样分层”回到 <a href="01-architecture.html">01 架构</a>；要按能力挨个读文件从 <a href="#read-order">按能力读代码</a> 开始；要改一个具体开关跳 <a href="#change-entries">改动入口手册</a>。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>这页解决什么</h2>
+          <p class="lead">Peak Assistant 大约 13 万行 TypeScript，分四个顶层目录（<code>app/</code> / <code>service/</code> / <code>core/</code> / <code>ui/</code>）加一个根 <code>main.ts</code> 入口。第一次打开仓库很容易犯两个错：</p>
+          <ol class="lead-list">
+            <li><strong>按字母顺序逐个目录读</strong>——读到一半就忘了自己在追什么。</li>
+            <li><strong>从 UI 组件切入</strong>——以为看到 <code>useState</code> 就找到了业务真相，结果 truth 其实在 service 的 runtime 里。</li>
+          </ol>
+          <p class="lead">这页把"按能力追踪"的读法固化下来，让你打开文件的顺序总是对的。</p>
+          <div class="claim">
+            <strong>本文读者</strong>
+            已经读过 <a href="01-architecture.html">01 架构与边界</a>、能理解 app 层为什么可以 import Obsidian 而 service/core/ui 不行；正准备打开代码，为一个具体能力或一个具体修改追踪文件顺序。
+          </div>
+          <div class="claim">
+            <strong>本文不做什么</strong>
+            <ul>
+              <li>不重复架构层次的动机——那是 <a href="01-architecture.html">01 架构与边界</a> 的题目。</li>
+              <li>不列举 <code>src/**/*.ts</code> 每个文件——那种清单半年后就过期。</li>
+              <li>不解释具体能力的业务逻辑——Chat 看 <a href="11-feature-chat-context.html">11</a>、Search 看 <a href="12-feature-search.html">12</a>、Agent Harness 看 <a href="21-infra-agent-harness.html">21</a>、Settings 看 <a href="04-configuration-and-user-views.html">04</a>。</li>
+            </ul>
+          </div>
+          <div class="claim warn">
+            <strong><a href="01-architecture.html">01</a> 与 02 的分工</strong>
+            <ul>
+              <li><strong><a href="01-architecture.html">01</a> 讲"为什么"</strong>——四层为什么这么切、port/adapter 为什么必要、Runtime Registry 为什么放 app 层。</li>
+              <li><strong>02 讲"怎么读"</strong>——按什么顺序打开文件、哪些目录不能互相越界、改一个开关从哪儿动。</li>
+            </ul>
+            <p>两页配套使用；本页所有"依赖方向"的规则都可以在 <a href="01-architecture.html">01</a> 找到原理性解释，本页只把它翻译成阅读动作。</p>
+          </div>
+        </section>
+
+        <section id="layers-quick">
+          <h2>4 层一眼</h2>
+          <p class="lead">四个顶层目录不是平级的“功能分区”，而是<strong>依赖方向严格单向</strong>的分层。把它们的允许/禁止关系刻在脑子里，任何“这个 import 应该放哪”的犹豫都能立刻解决。</p>
+
+          <table>
+            <thead>
+              <tr><th>层</th><th>可以 import</th><th>禁止 import</th><th>存在感</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>app/</strong><br><span class="pill blue">composition</span></td>
+                <td>obsidian、service、core、ui；任何 concrete host API。</td>
+                <td>无禁止（它是最外圈，本来就要粘所有真实依赖）。</td>
+                <td>约 100 个文件；<code>main.ts</code> + 各 <code>compose*.ts</code> + adapters。</td>
+              </tr>
+              <tr>
+                <td><strong>service/</strong><br><span class="pill green">capabilities</span></td>
+                <td>core、其它 service 模块、<code>obsidian</code> 的 <em>类型</em>（有限）。</td>
+                <td><strong>禁止</strong> <code>@/app/**</code>、<code>@/ui/**</code>；禁止直接触碰 Obsidian concrete API。</td>
+                <td>业务能力主战场：chat / search / copilot / ambient / lint / usage / agents / mcp / skills。</td>
+              </tr>
+              <tr>
+                <td><strong>core/</strong><br><span class="pill gold">substrate</span></td>
+                <td>只 import 其它 <code>core/</code> 子模块、第三方库。</td>
+                <td><strong>禁止</strong> <code>@/app/**</code>、<code>@/service/**</code>、<code>@/ui/**</code>；甚至 <code>obsidian</code> 也基本不出现（个别遗留 duck-typed handle 除外）。</td>
+                <td>底座：storage / providers / ports / schemas / types / template / utils。</td>
+              </tr>
+              <tr>
+                <td><strong>ui/</strong><br><span class="pill red">projection</span></td>
+                <td>service（通过 <code>ServiceContext</code>）、core 的类型和 ports。</td>
+                <td><strong>禁止</strong> <code>@/app/**</code>；禁止直接 import <code>obsidian</code>；禁止把 Zustand store 当长期业务 truth。</td>
+                <td>React 视图、hooks、stores、shared components。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · 依赖方向：谁可以指向谁</strong>
+              <span>Mermaid · dependency direction</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  host["Obsidian host<br/>obsidian API"]
+  app["app/<br/>composition root"]
+  service["service/<br/>capabilities"]
+  core["core/<br/>substrate"]
+  ui["ui/<br/>React projection"]
+
+  host --> app
+  app --> service
+  app --> ui
+  app --> core
+  service --> core
+  ui --> service
+  ui --> core
+
+  service -. "禁止" .-> app
+  service -. "禁止" .-> ui
+  core -. "禁止" .-> service
+  core -. "禁止" .-> app
+  core -. "禁止" .-> ui
+  ui -. "禁止" .-> app
+  ui -. "禁止 obsidian" .-> host
+            </div>
+            <p class="read-note"><b>读图：</b>实线是允许的 import 方向；虚线是被 <code>npm run audit:boundary</code> 明确阻止的方向。当前扫描结果是 <strong>0 findings</strong>，这条契约靠 CI 保护，不是靠自觉。改代码时如果发现自己想画一条虚线，先停下来找 port 或 compose 页。</p>
+          </div>
+
+          <div class="claim">
+            <strong>为什么 app 可以 import 一切</strong>
+            <code>app/</code> 是 Composition Root。它的<em>唯一</em>职责是把 Obsidian、SQLite、LLM、workspace 这些 concrete 依赖装配成窄 port，交给 service/ui。所以它必然需要看到所有层；但反过来说，任何一段“为了拿到某个 host 能力而想 import app”的 service/ui 代码，一定是设计错了——正确姿势是让 app 层把那个能力包成 port 传下去。
+          </div>
+        </section>
+
+        <section id="read-order">
+          <h2>按能力读代码</h2>
+          <p class="lead">读代码永远不要从 <code>src/</code> 的字母序开始。先选一个具体<strong>用户能力</strong>（Chat、Search、Copilot、Ambient、Vault X-Ray、Usage Dashboard），沿“入口 → 装配 → runtime → port → adapter → UI projection”这条骨架读下去，一次只追一条线。下面 4 条 recipe 是最有代表性的读法，覆盖了当前所有能力的形态。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · 读一个能力的通用 6 步骨架</strong>
+              <span>Mermaid · read-order skeleton</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  entry["1 入口<br/>Register / ViewManager / modal"]
+  compose["2 装配<br/>main.ts 或 compose*.ts"]
+  runtime["3 运行对象<br/>runtime / manager / service"]
+  port["4 port<br/>核心契约"]
+  adapter["5 adapter<br/>app 层 concrete 实现"]
+  ui["6 UI projection<br/>view / hook / store"]
+
+  entry --> compose --> runtime
+  runtime --> port --> adapter
+  runtime --> ui
+            </div>
+            <p class="read-note"><b>读图：</b>每次只打开 1 个文件，读懂它再跳下一步。runtime 是所有能力的“状态真相”所在——追到它就可以停下来判断“这块业务逻辑是干净的吗”。</p>
+          </div>
+
+          <h3 style="margin-top: 32px;">Recipe A · 从 Chat 开始读</h3>
+          <p class="prose">Chat 是最经典的“view + streaming + context stack”形态。适合第一次读，因为 6 步都清晰可见。</p>
+          <table>
+            <thead>
+              <tr><th>#</th><th>打开</th><th>你在确认什么</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td><code>src/app/ui-host/views/ViewManager.ts</code></td><td>Chat 是一个 Obsidian ItemView；view shell 只挂 React。</td></tr>
+              <tr><td>2</td><td><code>src/app/ui-host/views/ChatView.ts</code> → <code>src/app/ui-host/ReactElementFactory.tsx</code></td><td>view 通过 factory 拿 <code>ServiceContext</code>，不 import service singleton。</td></tr>
+              <tr><td>3</td><td><code>src/service/chat/service-manager.ts</code>（<code>AIServiceManager</code>）</td><td>组装 chat storage、prompt、profile、context slots——真正的 owner。</td></tr>
+              <tr><td>4</td><td><code>src/service/chat/service-conversation.ts</code> + <code>src/service/context/</code></td><td>streaming 主路径 + context pipeline 的 slot 顺序（System / Profile / Summary / Recent / Working / PrevAnalysis）。</td></tr>
+              <tr><td>5</td><td><code>src/core/providers/</code> + <code>src/core/profiles/ProfileRegistry.ts</code></td><td>provider adapter 和 profile 路由；这里回答“为什么切模型是这个开关”。</td></tr>
+              <tr><td>6</td><td><code>src/ui/view/chat-view/</code>（store + components）</td><td>UI store 只投影 streaming state；不拥有 conversation truth。</td></tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 22px;">Recipe B · 从 Search / Quick Search 开始读</h3>
+          <p class="prose">Search 是理解 pipeline 模式 + 后台 runtime 模式的最佳样本。它同时有 foreground（modal）和 background runtime（关闭 modal 后接管）。</p>
+          <table>
+            <thead>
+              <tr><th>#</th><th>打开</th><th>你在确认什么</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td><code>src/app/commands/Register.ts</code> → <code>src/app/ui-host/modals/QuickSearchModal.tsx</code></td><td>command 入口只是打开 modal；modal 只是 React 挂载壳。</td></tr>
+              <tr><td>2</td><td><code>src/app/search/composeQuickSearchHost.ts</code></td><td>app 层 facade：把 vault / workspace / chat interop 打包给 UI。</td></tr>
+              <tr><td>3</td><td><code>src/ui/view/quick-search/</code>（<code>hooks/useSearchSession</code>）</td><td>foreground 编排；不拥有检索算法。</td></tr>
+              <tr><td>4</td><td><code>src/service/search/SearchClient.ts</code> → <code>src/service/search/query/</code>（<code>QueryService</code>）</td><td>6 步 pipeline：parse → retrievers → RRF merge → PPR → boosts → highlight。</td></tr>
+              <tr><td>5</td><td><code>src/service/search/index/</code></td><td>index 侧：chunk / embed / graph；<code>IndexService</code> 是 singleton owner。</td></tr>
+              <tr><td>6</td><td><code>src/app/search/background/composeQuickSearchBackgroundRuntime.ts</code></td><td>modal 关闭后谁在接管 long-running 分析；这是 RunEnvelope 之前的形态。</td></tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 22px;">Recipe C · 从 Agent / Copilot 开始读</h3>
+          <p class="prose">Copilot 是 “registry + ports + surface” 三件套的样板。适合读完 Chat/Search 之后再打开，因为它假设你已经理解 port/adapter。</p>
+          <table>
+            <thead>
+              <tr><th>#</th><th>打开</th><th>你在确认什么</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td><code>src/app/copilot/actions/composeCopilotActionRuntime.ts</code></td><td>装配 <code>CopilotActionPorts</code>（ai / vault / search / graph / tags / agent / customPrompts）。</td></tr>
+              <tr><td>2</td><td><code>src/core/ports/CopilotActionPorts.ts</code></td><td>先看契约，再看实现——port 决定 runtime 能做什么。</td></tr>
+              <tr><td>3</td><td><code>src/service/copilot/actions/</code> + <code>src/service/copilot/CopilotActionRegistry.ts</code></td><td>runtime 拥有 built-in + custom prompt catalog 和排序。</td></tr>
+              <tr><td>4</td><td><code>src/service/agents/harness/</code>（<code>loop</code> / <code>tier</code> / <code>tool</code> / <code>permission</code>）</td><td>agent 底座：AgentLoop、tier 升级、tool 权限。跳到 <a href="21-infra-agent-harness.html">21 Agent Harness</a>。</td></tr>
+              <tr><td>5</td><td><code>src/app/copilot/modals/</code> + <code>src/ui/view/copilot/copilot-action-surfaces.tsx</code></td><td><code>action.id</code> → result panel 映射；空白面板是这里没注册。</td></tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 22px;">Recipe D · 从 Vault X-Ray 开始读 RunEnvelope</h3>
+          <p class="prose">Vault X-Ray 代码量最小、结构最干净，是当前<strong>唯一</strong>完整跑通 RunEnvelope 模式的能力。未来所有长任务能力都要按它读。</p>
+          <table>
+            <thead>
+              <tr><th>#</th><th>打开</th><th>你在确认什么</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td><code>src/app/lint/composeVaultLintRuntime.ts</code></td><td>app 装配 4 个 port（config / vault / persistence / detectorContext）。</td></tr>
+              <tr><td>2</td><td><code>src/service/lint/VaultLintContract.ts</code></td><td>capability contract：UI 和 runtime 之间约定什么，先看 contract 再看代码。</td></tr>
+              <tr><td>3</td><td><code>src/service/lint/VaultLintRun.ts</code> + <code>src/service/run-envelope/</code></td><td>RunEnvelope 真身：run session、event trace、artifact ref。</td></tr>
+              <tr><td>4</td><td>Vault X-Ray UI hook（当前工作树里尚未落在 <code>src/ui/view/</code>，实际投影通过 <code>ServiceContext</code> 暴露的 <code>vaultLintRuntime</code> 拿 event trace）</td><td>UI 只从 event trace 投影，不拥有 scan truth。</td></tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>没有列 Ambient / Usage 的 recipe</strong>
+            Ambient runtime 的读法和 Vault X-Ray 高度同构（<code>composeAmbientRuntime.ts</code> + <code>AmbientPorts</code> + <code>AmbientPushRuntime</code>），Usage 的读法和 Copilot 同构（<code>UsageTrackingService</code> + SQLite repos + <code>UsageOptimizationService</code>）。把 4 条 recipe 读完再回来看它们，你自己就能推出阅读顺序。
+          </div>
+        </section>
+
+        <section id="directory-responsibilities">
+          <h2>目录职责表</h2>
+          <p class="lead">这张表回答"看到一个目录，我该期待里面是什么"。<strong>Owns</strong> 是它应该负责的东西；<strong>不 owns</strong> 是它明确不该放的东西——放错了就成了跨层耦合。</p>
+
+          <table class="tree-table">
+            <colgroup>
+              <col style="width: 240px;">
+              <col>
+              <col style="width: 22%;">
+              <col style="width: 130px;">
+            </colgroup>
+            <thead>
+              <tr><th>目录</th><th>Owns</th><th>不 owns</th><th>Next-hop</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code class="tree-leaf">main.ts</code> <span class="tree-tag">composition root</span></td>
+                <td>plugin 生命周期（<code>onload</code> / <code>onunload</code>）、装配顺序、<code>initSqlite()</code>。</td>
+                <td>业务逻辑；具体能力的实现。它只是 composition root。</td>
+                <td><a href="01-architecture.html">01</a> 装配</td>
+              </tr>
+
+              <tr class="tree-group"><td colspan="4"><code>src/app/</code> <span class="tree-tag">— Obsidian 集成层：唯一允许 import obsidian / SQLite 的层</span></td></tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">context/</code></td>
+                <td><code>AppContext</code>（DI 容器）、<code>AppRuntimeRegistry</code>（长期 runtime bind/read）。</td>
+                <td>能力代码本身；具体 runtime 实现类。</td>
+                <td>本页 <a href="#dependency-rules">依赖规则</a></td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">commands/</code></td>
+                <td>Obsidian command palette 注册、settings actions 装配、command action 类型。</td>
+                <td>命令的业务体（那属于 service）。</td>
+                <td><a href="index.html#capability-model">功能全景</a></td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">ui-host/</code></td>
+                <td>ItemView / Modal / React 挂载（<code>ViewManager</code>、<code>ReactElementFactory</code>、<code>ReactModalHost</code>）。</td>
+                <td>视图内的 React 组件树（那在 <code>src/ui/view/</code>）。</td>
+                <td><a href="04-configuration-and-user-views.html">04</a> Config & Views</td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">settings/</code></td>
+                <td><code>PluginSettingsLoader</code>（normalize / clamp / migrate）、<code>MySettings</code> tab shell。</td>
+                <td>Settings UI 组件、字段类型定义（那在 <code>src/core/config/</code> 与 <code>src/ui/view/settings/</code>）。</td>
+                <td><a href="04-configuration-and-user-views.html">04</a></td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">{ambient,chat,copilot,lint,search}/</code></td>
+                <td>各能力的 <code>compose*.ts</code> + app adapter（把 Obsidian / SQLite 包成 port）。</td>
+                <td>runtime 主流程；port 契约本身。</td>
+                <td>本页 <a href="#read-order">按能力读代码</a></td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">└─</span> <code class="tree-leaf">platform/</code></td>
+                <td>跨能力共享的 host adapter：<code>HttpClientAdapter</code>、<code>NoticeNotifier</code>、<code>ObsidianProgressReporter</code>、<code>vault/*</code>、<code>navigation/*</code>、<code>preview/*</code>。</td>
+                <td>能力私有 adapter（那放在能力自己的 <code>src/app/&lt;capability&gt;/</code>）。</td>
+                <td>本页 <a href="#dependency-rules">依赖规则</a></td>
+              </tr>
+
+              <tr class="tree-group"><td colspan="4"><code>src/service/</code> <span class="tree-tag">— 业务编排层：不感知 Obsidian，也不感知 React</span></td></tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">chat/</code></td>
+                <td><code>AIServiceManager</code>、<code>ConversationService</code>、context slots、tools。</td>
+                <td>Provider SDK 细节（那在 <code>core/providers/</code>）；React 组件。</td>
+                <td><a href="11-feature-chat-context.html">11</a> Chat Context</td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">search/</code></td>
+                <td><code>SearchClient</code>、<code>QueryService</code>、<code>IndexService</code>、retrievers、embeddings、background runtime。</td>
+                <td>SQLite schema DDL（那在 <code>core/storage/sqlite/</code>）。</td>
+                <td><a href="12-feature-search.html">12</a> Search</td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">copilot/</code></td>
+                <td>action catalog、review session、artifact、intent hub。</td>
+                <td>panel 渲染（那在 <code>src/ui/view/copilot/</code>）。</td>
+                <td>本页 Recipe C</td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">agents/</code></td>
+                <td>agent 具体类型（<code>VaultSearchAgent</code>、<code>AIGraphAgent</code> …）+ <code>harness/</code>（loop / tier / tool / permission / memory / hook / trace）。</td>
+                <td>Obsidian concrete；UI store。</td>
+                <td><a href="21-infra-agent-harness.html">21</a> Harness</td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">{ambient,lint,usage,mcp,skills}/</code></td>
+                <td>各能力的 runtime + port 消费者。</td>
+                <td>concrete adapter；view code。</td>
+                <td>Recipe D + <a href="04-configuration-and-user-views.html">04</a></td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">└─</span> <code class="tree-leaf">run-envelope/</code></td>
+                <td>长任务的通用 session + event + artifact 类型；<code>InMemoryRunRecorder</code>。</td>
+                <td>具体能力的 run 实现。</td>
+                <td>Recipe D</td>
+              </tr>
+
+              <tr class="tree-group"><td colspan="4"><code>src/core/</code> <span class="tree-tag">— 框架无关的抽象与类型：不 import obsidian / react / service</span></td></tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">ports/</code></td>
+                <td>所有 capability-shaped port 契约（37 个）。</td>
+                <td>port 实现。</td>
+                <td>本页 <a href="#dependency-rules">依赖规则</a></td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">storage/</code></td>
+                <td>SQLite（<code>SqliteStoreManager</code>、DDL、repos）、vault ops、graph store。</td>
+                <td>业务 domain 逻辑。</td>
+                <td>Recipe B 第 5 步</td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">providers/</code></td>
+                <td>Vercel AI SDK 适配（Claude / OpenAI / Google / Perplexity / Ollama / OpenRouter）、<code>ModelRegistry</code>、rerank、streaming helper。</td>
+                <td>Chat 视图；prompt content。</td>
+                <td>Recipe A 第 5 步</td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">profiles/</code></td>
+                <td>Profile v2 数据模型、<code>ProfileRegistry</code>、role 路由。</td>
+                <td>Settings UI；模型 catalog。</td>
+                <td><a href="04-configuration-and-user-views.html">04</a></td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">template/</code></td>
+                <td><code>TemplateManager</code>、<code>TemplateRegistry</code>、<code>PromptService</code>、模板加载。</td>
+                <td>具体模板内容（那在 <code>templates/config/</code>）。</td>
+                <td><a href="04-configuration-and-user-views.html">04</a></td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">{config,schemas,types}/</code></td>
+                <td>settings 类型 + defaults、Zod schemas、跨层通用 domain 类型。</td>
+                <td>持久化读写（那在 <code>src/app/settings/</code>）。</td>
+                <td><a href="04-configuration-and-user-views.html">04</a></td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">└─</span> <code class="tree-leaf">{document,utils,errors.ts}</code></td>
+                <td>document loader、pure helper、错误类型。</td>
+                <td>业务能力。</td>
+                <td>能力代码引用时回看</td>
+              </tr>
+
+              <tr class="tree-group"><td colspan="4"><code>src/ui/</code> <span class="tree-tag">— React 视图 + Zustand store：不 import obsidian、不拿 service singleton</span></td></tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">view/</code></td>
+                <td>各能力的 React 视图（<code>chat-view</code>、<code>chat-studio-view</code>、<code>quick-search</code>、<code>copilot</code>、<code>settings</code>、<code>usage-dashboard</code>、<code>morning-briefing</code>、<code>onboarding</code>、<code>project-list-view</code>、<code>conversation-outline-view</code>、<code>shared</code> …）。</td>
+                <td>Obsidian API；service singleton。</td>
+                <td>各能力 Recipe</td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">component*/</code>、<code class="tree-leaf">components/primitives/</code></td>
+                <td>可复用 primitive、shadcn wrappers、icon、AI elements。</td>
+                <td>feature 私有组件（那放在 <code>ui/view/&lt;feature&gt;/components/</code>）。</td>
+                <td><code>ui-design.md</code></td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">store/</code></td>
+                <td>跨视图 Zustand store（<code>uiEventStore</code>、<code>chatDataStore</code>、<code>ambientPushStore</code> …）。</td>
+                <td><strong>长期业务真相</strong>——store 是投影。</td>
+                <td><a href="01-architecture.html">01</a></td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">├─</span> <code class="tree-leaf">context/</code>、<code class="tree-leaf">react/</code></td>
+                <td><code>ServiceContext</code>（UI 拿 service 的窄接口）、React helper。</td>
+                <td>service 实现。</td>
+                <td>Recipe A 第 2 步</td>
+              </tr>
+              <tr class="tree-child">
+                <td><span class="tree-line">└─</span> <code class="tree-leaf">hooks/</code></td>
+                <td>跨视图 hook。</td>
+                <td>feature 私有 hook（放 <code>ui/view/&lt;feature&gt;/hooks/</code>）。</td>
+                <td>各能力 Recipe</td>
+              </tr>
+
+              <tr>
+                <td><code class="tree-leaf">test/</code></td>
+                <td>单文件 <code>*.test.ts</code>、<code>test/stubs/</code>、<code>test/fixtures/</code>、<code>test/scenarios/</code>、<code>test/vault-framework/</code>。</td>
+                <td>无。</td>
+                <td>本页 <a href="#test-map">测试地图</a></td>
+              </tr>
+              <tr>
+                <td><code class="tree-leaf">templates/config/</code></td>
+                <td>用户可覆盖的配置（settings 文案 / prompts / model catalog / curator catalog）。</td>
+                <td>业务逻辑；私有默认值（那在 <code>core/config/</code>）。</td>
+                <td><a href="04-configuration-and-user-views.html">04</a> templates/config</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="read-note"><b>如何用这张表：</b>看到一个 import path 拿不准“它应该长在哪儿”，就沿“Owns / 不 owns”两栏对照。落到“不 owns”那一栏的一定是选错了目录。</p>
+        </section>
+
+        <section id="change-entries">
+          <h2>改动入口手册</h2>
+          <p class="lead">下面是最常见的 7 类改动。查表拿到入口，再套 <a href="#read-order">6 步骨架</a> 展开——你不会再遇到“不知道从哪儿动手”的问题。</p>
+
+          <table>
+            <thead>
+              <tr><th>我想改</th><th>第 1 处</th><th>第 2 处（几乎总是要改）</th><th>第 3 处（视情况）</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>加一个 feature toggle / 开关</strong></td>
+                <td><code>src/core/config/settingsTypes.ts</code>（interface + DEFAULT）</td>
+                <td><code>src/app/settings/PluginSettingsLoader.ts</code>（normalize / clamp / migrate）</td>
+                <td>相应 <code>src/ui/view/settings/tabs/*.tsx</code> + <code>templates/config/settings.json</code> 用户文案</td>
+              </tr>
+              <tr>
+                <td><strong>加一个新 prompt</strong></td>
+                <td><code>src/core/template/TemplateRegistry.ts</code>（<code>PromptId</code>）</td>
+                <td><code>templates/prompts/&lt;id&gt;.md</code>（模板内容）</td>
+                <td>通过 <code>PromptService</code> 消费；不要 inline 字符串。</td>
+              </tr>
+              <tr>
+                <td><strong>加一个新 provider</strong></td>
+                <td><code>src/core/providers/&lt;name&gt;/</code>（SDK adapter + stream helper）</td>
+                <td><code>src/core/providers/model-registry.ts</code> + <code>templates/config/models/&lt;name&gt;.json</code></td>
+                <td><code>src/core/profiles/types.ts</code>（<code>ProfileKind</code>）+ <code>src/ui/view/settings/</code> 展示。</td>
+              </tr>
+              <tr>
+                <td><strong>加一个新 tool（agent 可调用）</strong></td>
+                <td><code>src/service/chat/tools/</code>（内置）或 <code>src/service/mcp/</code>（MCP）</td>
+                <td><code>src/service/agents/harness/tool/</code> 注册 + <code>src/service/agents/harness/permission/</code> 权限</td>
+                <td><code>src/core/schemas/</code>（Zod 参数校验）</td>
+              </tr>
+              <tr>
+                <td><strong>加一个新 view / 面板</strong></td>
+                <td><code>src/ui/view/&lt;feature&gt;/</code>（组件 + hook + store）</td>
+                <td><code>src/app/ui-host/views/</code>（ItemView shell）+ <code>ViewManager.ts</code> 注册</td>
+                <td>命令入口在 <code>src/app/commands/Register.ts</code>；ReactElementFactory 挂载。</td>
+              </tr>
+              <tr>
+                <td><strong>加一个新 setting tab section</strong></td>
+                <td><code>src/ui/view/settings/tabs/&lt;Tab&gt;.tsx</code>（section 组件）</td>
+                <td><code>templates/config/settings.json</code>（section 文案 + vocabulary contract）</td>
+                <td>如果新绑定了一个 role，同步 <code>src/core/profiles/</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>加一个新 agent</strong></td>
+                <td><code>src/service/agents/&lt;YourAgent&gt;.ts</code>（复用 <code>service/agents/core/</code> 的 <code>runAgentLoop</code> / <code>AgentLoop</code>）</td>
+                <td><code>src/service/agents/harness/tier/</code>（tier 归属）+ tool 集合</td>
+                <td>如果 UI 需要投影，加 <code>src/service/run-envelope/</code> 事件 + <code>src/ui/view/&lt;feature&gt;/</code> hook。</td>
+              </tr>
+              <tr>
+                <td><strong>加一个新 capability port</strong></td>
+                <td><code>src/core/ports/&lt;Name&gt;Port.ts</code>（先定义窄接口）</td>
+                <td><code>src/app/&lt;capability&gt;/&lt;Name&gt;Adapter.ts</code>（concrete 实现）</td>
+                <td>runtime 通过 <code>src/app/&lt;capability&gt;/compose*.ts</code> 注入。</td>
+              </tr>
+              <tr>
+                <td><strong>改索引 pipeline / retriever</strong></td>
+                <td><code>src/service/search/retriever/</code>（新 retriever）或 <code>src/service/search/query/queryService.ts</code>（改 pipeline 顺序）</td>
+                <td><code>src/service/search/index/</code>（如果需要新 index 数据）</td>
+                <td>SQLite schema 变动走 <code>src/core/storage/sqlite/</code> DDL + migration。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim warn">
+            <strong>“找不到位置的改动”一般是设计错了</strong>
+            如果一个新开关既想改 UI 又想 fetch 一个 Obsidian API 又想写 SQLite——先停下来。这类通常应该拆成：port（<code>core/ports/</code>）+ adapter（<code>app/&lt;cap&gt;/</code>）+ runtime 消费（<code>service/</code>）+ UI 触发（<code>ui/view/</code>）。硬塞进任何一个目录都会成为跨层耦合。
+          </div>
+        </section>
+
+        <section id="dependency-rules">
+          <h2>依赖规则</h2>
+          <p class="lead">四层架构的红线不是靠代码审查靠的，是靠 <code>npm run audit:boundary</code> 扫描 + 一批 <code>test/*-source-guard.test.ts</code> 守的。改代码前理解这些规则，能省下大量“为什么这样 import 会报错”的困惑。</p>
+
+          <dl class="kv">
+            <dt>1 · service/ui 禁 <code>@/app/**</code></dt>
+            <dd>service 和 ui 不能 import app 层的任何文件。要拿 host 能力就走 port。<code>npm run audit:boundary</code> 会扫这条；<code>test/ambient-source-guard.test.ts</code>、<code>copilot-action-runtime-source-guard.test.ts</code>、<code>copilot-action-surface-source-guard.test.ts</code> 等专项测试守着特定 runtime。</dd>
+
+            <dt>2 · service/core 禁 <code>obsidian</code> concrete</dt>
+            <dd>service/core 只能 import 类型（<code>type</code>），不能 import 真正会跑代码的 Obsidian API。T11R 已把 Obsidian import 清到 0；剩下少量 duck-typed 访问走 <code>src/core/ports/AppHandle.ts</code> 与 <code>src/core/storage/vault/vault-ops.ts</code>，这两个是过渡桥，未来会继续收窄成更强类型 port。</dd>
+
+            <dt>3 · 不做 service-layer 模块 singleton</dt>
+            <dd>禁止 <code>let currentRuntime = null; export function setRuntime()</code> 这种 service 内部藏 singleton 的写法。runtime 的 owner 是 <code>src/app/context/AppRuntimeRegistry.ts</code>（bind/read/try/clear 四态语义）。如果 service 需要拿到某个 runtime，只能通过依赖注入或 <code>ServiceContext</code>——不能自己 static 一份。</dd>
+
+            <dt>4 · 不扩张 <code>AppContext.getInstance()</code></dt>
+            <dd><code>AppContext.getInstance()</code> 是历史遗留，不允许在 service 侧继续新增使用。新代码通过 constructor、port 或 RunEnvelope 边界传依赖。<code>rg AppContext\\.getInstance src/service src/core src/ui</code> 定期跑一遍，看新增是不是回潮。</dd>
+
+            <dt>5 · UI store 是投影，不是 truth</dt>
+            <dd>Zustand store（<code>src/ui/store/</code> + <code>src/ui/view/&lt;feature&gt;/store/</code>）只保存 UI 显示状态。业务真相在 service runtime / repo / RunEnvelope。判断依据：如果这段状态在“重启插件”后必须恢复，它就不该只活在 store 里。</dd>
+
+            <dt>6 · Templates / config 强制外置</dt>
+            <dd><code>docs/conventions/configurability.md</code> 明确：i18n、regex、label map、颜色、阈值、权重、timing 都不许硬编码在逻辑文件里，必须走 <code>templates/config/</code> + 一个文档化的 domain fallback。改动前先确认新配置属于哪个已有 JSON。跨切面小常量放 <code>src/core/constant.ts</code>；大 domain 配置表不许倒进 <code>constant.ts</code>。</dd>
+
+            <dt>7 · 加新层前先问“它是不是 port”</dt>
+            <dd>诱惑：在 service 和 core 之间加一个 “helper 层”。90% 的情况下，这个 helper 要么是一个新 port（放 <code>src/core/ports/</code>），要么是一个新 compose 页（放 <code>src/app/&lt;cap&gt;/</code>）。别开新目录。</dd>
+          </dl>
+
+          <div class="claim">
+            <strong>为什么这些规则存在</strong>
+            四层依赖方向被打破的代价是重构成本呈指数增长——不是审美问题。<code>audit:boundary</code> = 0 findings 是当前的稳定状态；每一处新的“service reach app”都会让下一次 provider 或 UI 重构多花一天。这是 01 详细论证的结论，本页只做规则的操作化。
+          </div>
+        </section>
+
+        <section id="test-map">
+          <h2>测试地图</h2>
+          <p class="lead">测试都在 <code>test/</code>；约 100+ 个 <code>*.test.ts</code>。它们不是按代码目录组织，而是按<strong>能力 + 边界 + 契约</strong>组织。</p>
+
+          <table>
+            <thead>
+              <tr><th>测试类型</th><th>命名模式</th><th>覆盖什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Source guard</strong></td>
+                <td><code>test/*-source-guard.test.ts</code></td>
+                <td>用 AST/字符串扫描守边界：某个 runtime 是否 import 了不该 import 的层。<code>ambient-source-guard</code>、<code>copilot-action-runtime-source-guard</code>、<code>copilot-action-surface-source-guard</code> 等。</td>
+              </tr>
+              <tr>
+                <td><strong>Ports contract</strong></td>
+                <td><code>test/*-ports.test.ts</code></td>
+                <td>验证 port 的 shape 和 runtime 消费方一致；<code>ambient-runtime-ports</code>、<code>copilot-action-runtime-ports</code>、<code>chat-runtime-state-port</code>、<code>analysis-doc-persistence-port</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Capability behavior</strong></td>
+                <td><code>test/&lt;capability&gt;-*.test.ts</code></td>
+                <td>能力主流程：<code>ambient-push</code>、<code>fts-retriever</code>、<code>fuzzy-retriever</code>、<code>context-slots</code>、<code>copilot-review-model</code>、<code>graph-cleanup-service</code>、<code>budget-governor</code> 等。</td>
+              </tr>
+              <tr>
+                <td><strong>Regression</strong></td>
+                <td><code>test/t11r-*.test.ts</code></td>
+                <td>T11R 边界重构的回归护栏（Obsidian import zero、vault-ops 收敛等）。</td>
+              </tr>
+              <tr>
+                <td><strong>Fixtures / scenarios / stubs</strong></td>
+                <td><code>test/fixtures/</code>、<code>test/scenarios/</code>、<code>test/stubs/</code>、<code>test/vault-framework/</code></td>
+                <td>共用夹具：假 vault、事件序列、跨用例复用 stub。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="read-note"><b>Runner 长什么样：</b><code>run-test.js</code> 用 esbuild 把 <code>*.test.ts</code> 编成临时 JS 跑 Node，结束后清理。跑全部：<code>npm run test</code>；跑单个：<code>npm run test -- test/&lt;name&gt;.test.ts</code>。所以每个 test 文件必须是可独立运行的模块，不要跨文件共享全局状态。</p>
+
+          <p class="read-note"><b>怎么找相关测试：</b>看到能力代码找不到测试时，先按能力名 <code>ls test/ | grep &lt;capability&gt;</code>；再看 port 名 <code>ls test/ | grep -i port</code>。source-guard 类跑在 CI，本地也应该跑一遍（<code>npm run audit:boundary</code>）。</p>
+        </section>
+
+        <section id="maintain">
+          <h2>维护规则</h2>
+          <p class="lead">这份文档最容易过期的地方：目录搬家、能力增删、port 改名。按下面几条维护，能撑住半年不脱钩。</p>
+          <div class="note-list">
+            <div class="note-item">
+              <b>目录搬家 = 同步 3 处。</b>
+              <span>目录改名或迁移必须同步：本页 <a href="#directory-responsibilities">目录职责表</a> + <a href="#change-entries">改动入口手册</a> 的相关行 + <code>docs/gstack/codebase-reading-map-2026-06-28.html</code>（source of truth）。仅改一处就是埋雷。</span>
+            </div>
+            <div class="note-item">
+              <b>新增能力 = 新增一条 Recipe。</b>
+              <span>加了新的用户能力（不是内部 helper），补一条 recipe 到 <a href="#read-order">按能力读代码</a>。如果新能力和已有 recipe 同构（例如又一个 RunEnvelope adopter），可以只在 Recipe D 后面加一句“XX 也按这个读”。</span>
+            </div>
+            <div class="note-item">
+              <b>新增 port = 补入口表。</b>
+              <span>加了新 port（<code>src/core/ports/&lt;Name&gt;Port.ts</code>），在 <a href="#change-entries">改动入口手册</a> 的“加一个新 capability port”样例后加一行具体路径。port 命名要 stable，别频繁改。</span>
+            </div>
+            <div class="note-item">
+              <b>依赖规则 7 条不许扩张。</b>
+              <span>“依赖规则”这 7 条不是随手加的：每一条都对应 <code>audit:boundary</code> 或 source-guard 测试。想加第 8 条前先让规则落进 CI，否则它只是纸面约定。</span>
+            </div>
+            <div class="note-item">
+              <b>测试地图跟随 <code>test/</code> 命名。</b>
+              <span>不列具体 test 文件（那会过期），只维护<strong>命名模式</strong>。加新测试请沿用现有模式：<code>*-source-guard</code>、<code>*-ports</code>、<code>&lt;capability&gt;-*</code>、<code>t11r-*</code>。</span>
+            </div>
+            <div class="note-item">
+              <b>不要在这页塞架构原理。</b>
+              <span>“为什么四层单向”、“为什么 port/adapter 存在”这些是 <a href="01-architecture.html">01</a> 的题目。这里出现的每一句“为什么”都应该能删掉后不影响读者按顺序打开文件——否则就抢了 01 的活。</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+          <table>
+            <thead>
+              <tr><th>本页说法</th><th>证据入口</th><th>用途</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Plugin 生命周期</td>
+                <td><code>main.ts</code>（<code>onload</code> / <code>initSqlite</code> / <code>onunload</code>）</td>
+                <td>装配顺序参考</td>
+              </tr>
+              <tr>
+                <td>App-owned 装配点</td>
+                <td><code>src/app/context/{AppContext,AppRuntimeRegistry}.ts</code>、<code>ui-host/ReactElementFactory.tsx</code></td>
+                <td>DI 容器 · runtime bind-read · React 注入</td>
+              </tr>
+              <tr>
+                <td>Compose 页（每能力一处）</td>
+                <td><code>src/app/{ambient,copilot/actions,copilot/vault,lint,search,search/background,chat,commands}/compose*.ts</code></td>
+                <td>找 compose 页 = 找能力的“出海口”</td>
+              </tr>
+              <tr>
+                <td>Port 契约集合</td>
+                <td><code>src/core/ports/</code>（37 个 port）</td>
+                <td>能力 shape 收窄程度</td>
+              </tr>
+              <tr>
+                <td>Runtime owner</td>
+                <td><code>src/service/{chat/service-manager, search/SearchClient, search/index/indexService, ambient/AmbientPushRuntime, copilot/actions/CopilotActionRuntimeImpl, lint/VaultLintService, usage/UsageTrackingService}.ts</code></td>
+                <td>每能力状态真相所在；UI 只投影</td>
+              </tr>
+              <tr>
+                <td>UI 通过窄接口拿服务</td>
+                <td><code>src/ui/context/</code>（<code>ServiceContext</code>）</td>
+                <td>T11P 成果：不见 raw <code>app</code> / <code>viewManager</code></td>
+              </tr>
+              <tr>
+                <td>边界守卫</td>
+                <td><code>npm run audit:boundary</code>、<code>test/*-source-guard.test.ts</code>、<code>test/t11r-*.test.ts</code></td>
+                <td>依赖规则由 CI 强制</td>
+              </tr>
+              <tr>
+                <td>Configurability 治理</td>
+                <td><code>docs/conventions/configurability.md</code>、<code>src/core/constant.ts</code>、<code>templates/config/</code></td>
+                <td>i18n / regex / 阈值 / 颜色 / timing 禁硬编码</td>
+              </tr>
+              <tr>
+                <td>参考的完整版</td>
+                <td><code>docs/gstack/codebase-reading-map-2026-06-28.html</code></td>
+                <td>源头 reading map</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01，按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="01-architecture.html">01 Architecture & Boundaries</a>、<a href="04-configuration-and-user-views.html">04 Configuration & User Views</a>；源头 <a href="gstack/codebase-reading-map-2026-06-28.html">Codebase Reading Map</a>。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

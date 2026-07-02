@@ -18,6 +18,11 @@ import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
+import type { IndexService } from '@/service/search/index/indexService';
+import type { MCPClientManager } from '@/service/mcp/MCPClientManager';
+import type { SkillRegistry } from '@/service/skills/SkillRegistry';
+import type { CapabilityRegistry } from '@/service/capabilities/CapabilityRegistry';
+import type { UsageServices } from '@/app/context/AppRuntimeRegistry';
 import type { VaultPreviewPort } from '@/core/ports/VaultPreviewPort';
 import type { VaultNavigationPort } from '@/core/ports/VaultNavigationPort';
 import type { WikilinkPort } from '@/core/ports/WikilinkPort';
@@ -178,8 +183,7 @@ export class AppContext {
 
 	/**
 	 * T8: Read the bound Ambient runtime. Fail-loud if boot has not
-	 * run yet. Command actions (`openRelatedNotes` /
-	 * `refreshRelatedNotes`) use this.
+	 * run yet.
 	 */
 	public static getAmbientRuntime(): AmbientRuntime {
 		return AppContext.getInstance().runtimeRegistry.getAmbientRuntime();
@@ -187,8 +191,8 @@ export class AppContext {
 
 	/**
 	 * T8: Soft accessor — returns `null` if boot has not bound the
-	 * runtime yet. UI providers (Related Notes panel, gutter widget)
-	 * use this so an early mount does not throw inside React rendering.
+	 * runtime yet. The serendipity gutter widget uses this so an early
+	 * mount does not throw inside React rendering.
 	 */
 	public static tryGetAmbientRuntime(): AmbientRuntime | null {
 		return AppContext.getInstance().runtimeRegistry.tryGetAmbientRuntime();
@@ -316,6 +320,96 @@ export class AppContext {
 		AppContext.getInstance().runtimeRegistry.clearCopilotActionRuntime();
 	}
 
+	// ─── T13: IndexService ────────────────────────────────────────────────
+
+	public static setIndexService(service: IndexService): void {
+		AppContext.getInstance().runtimeRegistry.setIndexService(service);
+	}
+
+	public static getIndexService(): IndexService {
+		return AppContext.getInstance().runtimeRegistry.getIndexService();
+	}
+
+	public static tryGetIndexService(): IndexService | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetIndexService();
+	}
+
+	public static clearIndexService(): void {
+		AppContext.getInstance().runtimeRegistry.clearIndexService();
+	}
+
+	// ─── T13: MCPClientManager ────────────────────────────────────────────
+
+	public static setMcpClientManager(manager: MCPClientManager): void {
+		AppContext.getInstance().runtimeRegistry.setMcpClientManager(manager);
+	}
+
+	public static getMcpClientManager(): MCPClientManager {
+		return AppContext.getInstance().runtimeRegistry.getMcpClientManager();
+	}
+
+	public static tryGetMcpClientManager(): MCPClientManager | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetMcpClientManager();
+	}
+
+	public static clearMcpClientManager(): void {
+		AppContext.getInstance().runtimeRegistry.clearMcpClientManager();
+	}
+
+	// ─── T13: SkillRegistry ───────────────────────────────────────────────
+
+	public static setSkillRegistry(registry: SkillRegistry): void {
+		AppContext.getInstance().runtimeRegistry.setSkillRegistry(registry);
+	}
+
+	public static getSkillRegistry(): SkillRegistry {
+		return AppContext.getInstance().runtimeRegistry.getSkillRegistry();
+	}
+
+	public static tryGetSkillRegistry(): SkillRegistry | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetSkillRegistry();
+	}
+
+	public static clearSkillRegistry(): void {
+		AppContext.getInstance().runtimeRegistry.clearSkillRegistry();
+	}
+
+	// ─── T13: CapabilityRegistry ──────────────────────────────────────────
+
+	public static setCapabilityRegistry(registry: CapabilityRegistry): void {
+		AppContext.getInstance().runtimeRegistry.setCapabilityRegistry(registry);
+	}
+
+	public static getCapabilityRegistry(): CapabilityRegistry {
+		return AppContext.getInstance().runtimeRegistry.getCapabilityRegistry();
+	}
+
+	public static tryGetCapabilityRegistry(): CapabilityRegistry | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetCapabilityRegistry();
+	}
+
+	public static clearCapabilityRegistry(): void {
+		AppContext.getInstance().runtimeRegistry.clearCapabilityRegistry();
+	}
+
+	// ─── T13: UsageServices bundle ────────────────────────────────────────
+
+	public static setUsageServices(services: UsageServices): void {
+		AppContext.getInstance().runtimeRegistry.setUsageServices(services);
+	}
+
+	public static getUsageServices(): UsageServices {
+		return AppContext.getInstance().runtimeRegistry.getUsageServices();
+	}
+
+	public static tryGetUsageServices(): UsageServices | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetUsageServices();
+	}
+
+	public static clearUsageServices(): void {
+		AppContext.getInstance().runtimeRegistry.clearUsageServices();
+	}
+
 	/**
 	 * Clear singleton and unsubscribe from workspace events.
 	 * Must be called from plugin onunload to break reference chains and allow GC.
@@ -333,6 +427,12 @@ export class AppContext {
 			AppContext.instance.runtimeRegistry.clearVaultReviewRuntime();
 			AppContext.instance.runtimeRegistry.clearQuickSearchBackgroundRuntime();
 			AppContext.instance.runtimeRegistry.clearCopilotActionRuntime();
+			// T13 additions — release the migrated singletons.
+			AppContext.instance.runtimeRegistry.clearUsageServices();
+			AppContext.instance.runtimeRegistry.clearSkillRegistry();
+			AppContext.instance.runtimeRegistry.clearMcpClientManager();
+			AppContext.instance.runtimeRegistry.clearCapabilityRegistry();
+			AppContext.instance.runtimeRegistry.clearIndexService();
 			AppContext.instance = null;
 		}
 	}

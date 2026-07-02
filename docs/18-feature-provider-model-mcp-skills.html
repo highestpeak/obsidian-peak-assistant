@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>18 Peak Assistant Provider · Model · MCP · Skills</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); font-size: 0.94em; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .subtitle-list { max-width: 900px; margin: 12px 0 0 22px; padding: 0; color: var(--muted); font-size: 17px; }
+    .subtitle-list li + li { margin-top: 4px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .side-nav .nav-jump { display: flex; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+    .side-nav .nav-jump a { padding: 0; border: 0; color: var(--green); }
+    .side-nav .nav-jump a:hover { text-decoration: underline; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 0 0 8px; font-size: 20px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .warn { border-left-color: var(--gold); }
+    .warn strong { color: var(--gold); }
+    .danger { border-left-color: var(--red); }
+    .danger strong { color: var(--red); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    td code { background: var(--code-bg); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    .note-list { display: grid; gap: 10px; margin-top: 18px; }
+    .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .note-item b { display: block; margin-bottom: 3px; }
+    .note-item span { color: var(--muted); font-size: 14px; }
+    .field-list { display: grid; grid-template-columns: 200px 1fr; gap: 8px 18px; margin: 14px 0 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .field-list dt { color: var(--ink); font-weight: 780; }
+    .field-list dd { margin: 0; color: var(--muted); }
+    .field-list dd code { background: var(--code-bg); }
+    pre { margin: 12px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; overflow-x: auto; font-size: 13.2px; line-height: 1.6; color: var(--ink); }
+    pre code { padding: 0; background: transparent; }
+    .side-nav .nav-group { margin: 10px -4px 0; padding: 8px 4px 4px; border-top: 1px solid var(--line); }
+    .side-nav .nav-group:first-of-type { margin-top: 4px; padding-top: 4px; border-top: 0; }
+    .side-nav .nav-group-title { display: block; margin: 0 6px 4px; color: var(--muted); font-size: 10.5px; font-weight: 780; letter-spacing: 0.06em; text-transform: uppercase; }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+    @media (max-width: 980px) {
+      .field-list { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">18 · Feature · Provider · Model · MCP · Skills · 四层 AI 供给的用户视角</div>
+      <h1>Provider 是账户；Profile 是账户 + 模型；Role 是任务；MCP 是外部工具；Skill 是工作手册。</h1>
+      <p class="subtitle">Peak 里 <strong>“配置 AI”</strong> 涉及四个概念——它们容易混，因为供应商常把它们混着叫。这份文档把每一个说清楚：</p>
+      <ul class="subtitle-list">
+        <li><strong>Provider</strong>：Anthropic / OpenAI / Google / Perplexity / Ollama / LiteLLM / 自定义。选谁提供 AI 服务。</li>
+        <li><strong>Profile</strong>：一个 Provider + API key + 一组模型偏好。它是“账户”的技术叫法。</li>
+        <li><strong>Role</strong>：一次“任务用哪个 Profile 的哪个模型”。Chat / Copilot / Agent / Fast / Embedding / Web Search 六种任务。</li>
+        <li><strong>MCP</strong>：Model Context Protocol。第三方进程暴露的工具集，AI 可以调用（读文件、搜网、控制 IDE 等）。</li>
+        <li><strong>Skill</strong>：工作手册，告诉 AI <em>“在 X 场景下用哪几种工具、什么步骤、产出什么”</em>。</li>
+      </ul>
+      <p class="subtitle">这份文档讲清楚这五个概念的 <strong>责任分工</strong>、<strong>怎么在 Settings 里配</strong>、<strong>Curator 怎么替你选</strong>、<strong>加一个新 MCP server / 一份新 skill 走什么路径</strong>。</p>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 13k 混合字符</span>
+        <span>Reading time: 26-30 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">这页解决什么</a>
+          <a href="#five-concepts">五个概念的分工</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">AI 供给</span>
+          <a href="#provider-profile">Provider &amp; Profile</a>
+          <a href="#roles">六种 Role</a>
+          <a href="#model-catalog">Model catalog</a>
+          <a href="#curator">Curator 怎么替你选</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">工具与工作流</span>
+          <a href="#mcp">MCP 外部工具</a>
+          <a href="#skills">Skills 工作手册</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">技术附录</span>
+          <a href="#composition">运行时装配</a>
+          <a href="#failure-modes">失败与降级</a>
+          <a href="#evidence">代码证据</a>
+        </div>
+        <div class="nav-note">只想搞清楚 “哪个 Role 用了哪个模型”，跳到 <a href="#roles">六种 Role</a>。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>这页解决什么</h2>
+          <p class="lead">在 <a href="04-configuration-and-user-views.html">04 · Configuration</a> 里，Provider / Profile / Role / MCP / Skills 各占一节——但 <em>它们之间的关系</em> 分散在各段，第一次读的用户很难拼出全景。这页把五个概念放到 <strong>一张地图</strong> 上：</p>
+          <div class="claim">
+            <strong>核心结论：AI 供给分两条独立通路</strong>
+            <em>(1) 模型能力通路</em>：Provider → Profile → Role → 具体调用；<em>(2) 工具与工作流通路</em>：MCP servers 暴露工具，Skills 组织成工作手册，Agent 从 Skill 拿白名单再从 ToolRegistry 拿工具。<strong>两条通路只在 Agent 里汇合</strong>——Chat / Copilot 走通路 1，Agent / Skill 调用需要通路 1 + 2 一起。
+          </div>
+          <div class="claim">
+            <strong>本文读者</strong>
+            刚装 Peak 想搞清楚要不要填 6 个 API key 的新用户；想给团队接入自建 LiteLLM 的管理员；要加一个自定义 MCP server 的 tinker；打算发布 skill 到 marketplace 的 skill 作者。
+          </div>
+          <div class="claim">
+            <strong>本文不做什么</strong>
+            不重复 <a href="04-configuration-and-user-views.html">04</a> 里 Settings tab 逐字段的说明；不覆盖 <a href="21-infra-agent-harness.html">21 Agent Harness</a> 的 tool loop 内部；不讲每个 provider 的定价历史；不写 “Ollama 本地跑 llama3 vs qwen” 这类模型选择建议——那属于 Curator。
+          </div>
+          <div class="claim warn">
+            <strong>Curator 与本文关系</strong>
+            <em>你不需要理解四层就能用 Peak</em>：Curator 会读你的环境（有没有 Ollama / 有没有 API key / 内存多少 / 语言偏好），推荐一套 Recommended Setup。<strong>本文是给那些想手动 override Curator 建议的用户</strong>——正常情况下走 <em>Settings → AI Setup → Apply recommended</em> 就够了。
+          </div>
+        </section>
+
+        <section id="five-concepts">
+          <h2>五个概念的分工</h2>
+          <p class="lead">同一张“AI 服务” 概念被不同人切成不同层。Peak 的分层如下——<strong>每一层回答一个不同的问题</strong>，重叠越少越健康。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · 五层概念的责任边界</strong>
+              <span>Mermaid · semantic stack</span>
+            </div>
+            <div class="mermaid">
+flowchart TB
+  Prov["Provider<br/>Anthropic / OpenAI / Ollama / ..."] --> Prof["Profile<br/>Provider + API key + 模型偏好"]
+  Prof --> Role["Role<br/>Chat / Copilot / Agent / Fast / Embedding / WebSearch"]
+  Role --> Call[["实际 AI 调用"]]
+
+  MCP["MCP Servers<br/>外部进程暴露工具"] --> Tools["ToolDef<br/>标准化工具"]
+  Skill["Skill<br/>工作手册: allowedTools + phases"] --> Tools
+  Tools --> Agent[["Agent 执行"]]
+
+  Role -. Agent role .-> Agent
+            </div>
+            <p class="read-note"><b>读图：</b>Chat / Copilot 只需要走 <em>左半</em> 的 Provider→Profile→Role→Call。Agent / Skill 类调用需要走 <em>左半 + 右半</em>——Role 提供模型，Skill 提供剧本，MCP 提供额外工具。<em>五个概念都可以独立配、独立测</em>。</p>
+          </div>
+
+          <table class="doc-table">
+<colgroup><col style="width: 16%"><col style="width: 24%"><col style="width: 22%"><col></colgroup>
+            <thead>
+              <tr><th>层</th><th>它回答的问题</th><th>谁生成 / 决定</th><th>不可混淆点</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Provider</strong></td>
+                <td>“AI 服务来自哪家？”</td>
+                <td>用户选：Anthropic / OpenAI / Google / Perplexity / Ollama / LiteLLM / 自定义</td>
+                <td>Provider 只是 “vendor 名”，不带 key、不带模型选择。</td>
+              </tr>
+              <tr>
+                <td><strong>Profile</strong></td>
+                <td>“我这个账户上有哪些模型可用？”</td>
+                <td>用户配 API key + baseUrl；系统从模型 catalog 挑该 vendor 下的所有模型</td>
+                <td>可以同一 Provider 有多个 Profile（例如个人账号 + 公司账号）。</td>
+              </tr>
+              <tr>
+                <td><strong>Role</strong></td>
+                <td>“这次 Chat / Copilot / Agent 用哪个 Profile 的哪个模型？”</td>
+                <td>用户在 <em>AI Setup</em> 绑定每个 Role → (Profile, modelId)</td>
+                <td>Role 是产品概念（任务），不是技术概念（vendor）。</td>
+              </tr>
+              <tr>
+                <td><strong>MCP Server</strong></td>
+                <td>“外部工具从哪个进程 / URL 来？”</td>
+                <td>用户加 MCP config（stdio 命令 或 SSE url）</td>
+                <td>MCP 不是模型，是 <em>工具集</em>；AI 不 <em>成为</em> MCP，AI <em>调用</em> MCP。</td>
+              </tr>
+              <tr>
+                <td><strong>Skill</strong></td>
+                <td>“AI 在 X 场景下应该怎么工作？”</td>
+                <td>作者写（vault 目录里的 markdown 或内置代码）</td>
+                <td>Skill 白名单里可以包含 MCP 工具；Skill 本身不带模型，跑时用当前 Role 的模型。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim warn">
+            <strong>常见误解 1：Provider = Model</strong>
+            用户常说 “我要用 OpenAI” —— 但 <em>OpenAI</em> 是 Provider（vendor），<em>gpt-4o-mini</em> 才是 Model。同一 Provider 下有几十个 Model，每一个价钱、能力都不同。<em>“绑了 API key” = Profile 就绪，还没决定 Role 用哪个 Model</em>。
+          </div>
+          <div class="claim warn">
+            <strong>常见误解 2：Skill = Prompt</strong>
+            Skill 不只是一段 prompt——它包含 <em>allowedTools 白名单</em>、<em>phases（如果是 pipeline）</em>、<em>outputTemplate</em>、<em>inputs schema</em>。“把 prompt 存起来” 属于 Chat 的 System Prompt / Copilot 的自定义 action；<em>skill 是完整的工作手册</em>。
+          </div>
+          <div class="claim warn">
+            <strong>常见误解 3：MCP = 插件</strong>
+            MCP 是 <em>协议</em>——一个外部进程用 stdio 或 SSE 暴露工具。Obsidian 插件是 <em>插件</em>——同一个进程里注册 command。两者边界完全不同，见 <a href="15-feature-command-gateway.html">15 · Command Gateway</a>。
+          </div>
+        </section>
+
+        <section id="provider-profile">
+          <h2>Provider &amp; Profile</h2>
+          <p class="lead">Provider 是 <em>vendor 类型</em>；Profile 是 <em>用户配好的 vendor 实例</em>。当前 Peak 支持 7 种 Provider kind，每一种都有对应的 SDK adapter。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 18%"><col style="width: 20%"><col style="width: 22%"><col></colgroup>
+            <thead>
+              <tr><th>Provider kind</th><th>典型 models</th><th>Profile 需要填的字段</th><th>特点</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>anthropic</strong></td>
+                <td>claude-opus-4 / claude-sonnet-4 / claude-haiku-4-5</td>
+                <td>apiKey</td>
+                <td>官方 Anthropic API；<em>maxOutputTokens</em> 可能需要额外配。</td>
+              </tr>
+              <tr>
+                <td><strong>openai</strong></td>
+                <td>gpt-4o / gpt-4o-mini / o3 / o3-mini</td>
+                <td>apiKey，可选 baseUrl</td>
+                <td>官方 OpenAI 或 Azure OpenAI；baseUrl 兼容 OpenAI 格式的都能用。</td>
+              </tr>
+              <tr>
+                <td><strong>google</strong></td>
+                <td>gemini-1.5-pro / gemini-2.5-pro-exp / gemini-flash</td>
+                <td>apiKey</td>
+                <td>Google AI Studio 或 Vertex AI（后者需要更多字段）。</td>
+              </tr>
+              <tr>
+                <td><strong>perplexity</strong></td>
+                <td>sonar / sonar-reasoning / sonar-pro</td>
+                <td>apiKey</td>
+                <td>Web-native 模型；有内置检索。<em>Web Search Role</em> 常用这里。</td>
+              </tr>
+              <tr>
+                <td><strong>ollama</strong></td>
+                <td>llama3.1 / qwen2.5 / deepseek-r1 / phi4 / ...</td>
+                <td>baseUrl（默认 <code>http://localhost:11434</code>）</td>
+                <td>本地跑；无 API key；<em>模型必须先 <code>ollama pull</code></em>。</td>
+              </tr>
+              <tr>
+                <td><strong>litellm</strong></td>
+                <td>用户自建 gateway 路由的一切</td>
+                <td>baseUrl + apiKey</td>
+                <td>典型企业接入：一个 LiteLLM 后端后面接多家 provider。</td>
+              </tr>
+              <tr>
+                <td><strong>custom</strong></td>
+                <td>OpenAI-compatible 的任何后端（LM Studio / vLLM / TGI / ...）</td>
+                <td>baseUrl + apiKey（可选）</td>
+                <td>走 <code>createOpenAI({ baseUrl })</code>——只要接口兼容就行。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>Profile 与 Provider 是多对一</strong>
+            同一个 Provider kind 可以有 <em>多个</em> Profile。典型场景：<em>anthropic-personal</em>（你的个人 key）+ <em>anthropic-work</em>（公司报销的 key）——两个 Profile 都是 kind=anthropic，但 apiKey 不同，Role 可以分别绑到不同 Profile。<em>“换公司账号”</em> 就是切 Role 到 <em>anthropic-work</em>。
+          </div>
+        </section>
+
+        <section id="roles">
+          <h2>六种 Role</h2>
+          <p class="lead">Role 是 <em>任务</em>，不是 <em>vendor</em>。同一个 Chat Role 可能今天用 Claude 明天换到 Gemini。Peak 里有 6 种 Role，每种都是 <code>(profileId, modelId)</code> 的绑定。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 30%"><col></colgroup>
+            <thead>
+              <tr><th>Role</th><th>什么时候用</th><th>选模型时的偏好</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Chat</strong><br><span class="pill green">最常用</span></td>
+                <td>用户和 AI 对话；Chat view 里那些消息</td>
+                <td>能力强 + 上下文长；一般选 <em>Opus 级</em> 或 <em>GPT-4o 级</em></td>
+              </tr>
+              <tr>
+                <td><strong>Copilot</strong></td>
+                <td>Document Copilot 的 17 条 action（polish/review/tags/...）</td>
+                <td>结构化输出稳 + 中等价位；<em>Sonnet 级</em> 或 <em>gpt-4o-mini</em> 常见</td>
+              </tr>
+              <tr>
+                <td><strong>Agent</strong></td>
+                <td>Vault Intelligence 的多步 agent（find-related / extract-todos / ...）</td>
+                <td>tool use 好 + 推理强；<em>Opus / Sonnet / o3</em></td>
+              </tr>
+              <tr>
+                <td><strong>Agent Fast</strong></td>
+                <td>agent 循环里的快速中间步骤（planner / router）</td>
+                <td>便宜 + 快；<em>Haiku / gpt-4o-mini / gemini-flash</em></td>
+              </tr>
+              <tr>
+                <td><strong>Embedding</strong></td>
+                <td>Search Index 的 chunk 嵌入 + 查询嵌入</td>
+                <td>专用 embedding 模型（<em>text-embedding-3-small</em> / <em>nomic-embed-text</em> for Ollama）</td>
+              </tr>
+              <tr>
+                <td><strong>Web Search</strong></td>
+                <td>Chat 里 <em>“搜网”</em> 触发的检索</td>
+                <td>web-native 模型；<em>sonar-pro</em> 或 <em>gpt-4o + web tool</em></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>Copilot 回落到 Chat</strong>
+            如果没绑 Copilot Role，<code>ProfileRegistry.getActiveCopilotConfig()</code> 返回 null；Copilot action 会回落到 Chat Role。这意味着 <em>“不配 Copilot 也能用”</em>——但 Chat 模型往往过强 / 过贵，Copilot 应该显式绑到 <em>Sonnet 级</em> 或更便宜的模型。
+          </div>
+
+          <div class="claim warn">
+            <strong>Embedding Role 不能用普通 LLM</strong>
+            Embedding 是专用模型（输出向量而非文本）。绑到 Chat / Reasoning 模型会 <em>直接报错</em>。合法选择：<em>OpenAI text-embedding-3-small/large</em>、<em>Voyage voyage-3</em>、<em>Ollama nomic-embed-text</em>、<em>Google text-embedding-004</em>。<em>没有 embedding = 语义搜索不可用</em>——见 <a href="12-feature-search.html">12 · Search</a>。
+          </div>
+
+          <div class="claim">
+            <strong>Role 到底怎么设置</strong>
+            <em>Settings → AI → AI Setup → AI behavior</em> 里每个 Role 都有一个 inline picker——先选 Profile，再从该 Profile 下的模型 catalog 里选一个 Model。<em>点 Recommended Setup 一键应用</em> 会跳 Curator，由 curator 根据你的环境推荐。
+          </div>
+        </section>
+
+        <section id="model-catalog">
+          <h2>Model catalog</h2>
+          <p class="lead">Peak 里的所有价格 / token 上限 / 能力标注都来自一份中央 catalog：<code>templates/config/models/model-catalog.json</code>。它是 <strong>Provider / Profile / Role / Usage Dashboard / Curator 五方共用的真实源</strong>。</p>
+
+          <h3>Catalog 里每条模型的字段</h3>
+          <div class="field-list">
+            <dt><code>id / apiModelId</code></dt>
+            <dd>用户看的 id vs API 用的字符串（有时会 diverge，例如别名迁移）。</dd>
+            <dt><code>modelType</code></dt>
+            <dd><code>llm | embedding | image | video | sound</code>——不同类型进不同 Role 的 picker。</dd>
+            <dt><code>icon</code></dt>
+            <dd>Simple Icons slug 或 vendor 官方 mark 引用；<em>不能</em> 用 emoji 或手写通用图。</dd>
+            <dt><code>costInput / costOutput</code></dt>
+            <dd>USD per 1M tokens，字符串（"2.50"）。<em>Cached / reasoning token</em> 若 vendor 有独立价，可加额外字段。</dd>
+            <dt><code>tokenLimits</code></dt>
+            <dd><code>maxTokens</code>（单次输出上限）、<code>maxInputTokens</code>（context 窗口）、<code>recommendedSummaryThreshold</code>（compact 触发点）。</dd>
+            <dt><code>capabilities</code></dt>
+            <dd><code>vision / pdfInput / tools / webSearch / reasoning / maxCtx</code>——布尔或 tier；Role picker 会按这些字段过滤（Embedding Role 不显示 llm）。</dd>
+            <dt><code>releaseTimestamp</code></dt>
+            <dd>用于按 recency 排序；老模型排后面。</dd>
+          </div>
+
+          <div class="claim">
+            <strong>Catalog 变化会立即生效</strong>
+            重启插件（或 <code>ModelRegistry.reload()</code>）后：<em>新价格</em> 应用到新调用（<em>历史</em> usage_log 不追溯）；<em>新能力标注</em> 立即影响 Role picker；<em>新模型</em> 出现在下拉里。反过来——<em>catalog 里没有</em> 的 model id 用户填了，Peak 会用 fallback 定价（按 input token 单价近似），并在 <a href="17-feature-usage-dashboard.html">17 Usage Dashboard</a> 上体现为不准确。
+          </div>
+
+          <div class="claim warn">
+            <strong>Catalog 有历史演化：多 provider 单文件 → 按 provider 拆</strong>
+            当前是单一 <code>model-catalog.json</code>。计划中的 Phase 1 会拆成 <code>models/{openai,claude,gemini,perplexity,ollama}.json</code>——每个 provider 一份，允许 TemplateManager 独立加载。<em>迁移期</em>：两种布局都支持；<em>作者写扩展</em> 应用新的拆分布局。
+          </div>
+        </section>
+
+        <section id="curator">
+          <h2>Curator 怎么替你选</h2>
+          <p class="lead">Curator 是 Peak 里 <strong>唯一会 “替你决定 AI 用哪个模型” 的 agent</strong>。它读你的环境 + 你的预算/速度偏好，产出 <em>推荐 Role 绑定</em>。用户在 Onboarding 或 AI Setup 里点 <em>Apply recommended</em> 就是调它。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · Curator 输入输出</strong>
+              <span>Mermaid · recommendation flow</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  Env["EnvironmentSnapshot<br/>RAM · Ollama running? · profiles · Chinese ratio · mobile"]
+  Pref["UserPreferences<br/>budget · speed/quality tradeoff"]
+  Catalog["model-catalog.json<br/>~110 models"]
+  Curator["CuratorAgent.run()<br/>LLM 试 3 次 + 规则 fallback"]
+  Rec["Recommendation<br/>bindings: quick/deep/premium<br/>cascadeEnabled · modelsToDownload · rationale"]
+
+  Env --> Curator
+  Pref --> Curator
+  Catalog --> Curator
+  Curator --> Rec
+            </div>
+            <p class="read-note"><b>读图：</b>Curator 不 <em>执行</em> 绑定——它 <em>推荐</em>；用户 Apply 才写进 <code>ProfileRegistry</code>。<em>LLM 失败时规则兜底</em> 保证离线也能出建议。</p>
+          </div>
+
+          <div class="claim">
+            <strong>Curator 的三档：quick / deep / premium</strong>
+            对应 <em>Agent Fast / Agent / Chat</em>（大致）——但更细：quick 是 “便宜快”，deep 是 “有推理能力”，premium 是 “最强给关键场景”。Curator 会把 6 个 Role 分别落到这三档里，例如 <em>Copilot → deep, Chat → premium, Agent Fast → quick</em>。
+          </div>
+
+          <div class="claim warn">
+            <strong>Curator 需要 LLM</strong>
+            Curator 本身也是 agent——需要一个 provider + model 才能跑。这带来 <em>鸡生蛋</em> 问题：Onboarding 第一次跑 Curator 时用户还没配 provider。解决：<em>Onboarding wizard</em> 先要求配一个（最快的路径通常是 Anthropic 或 OpenAI 的 API key，或本地 Ollama），然后用它跑 Curator 推荐其他 Role。
+          </div>
+        </section>
+
+        <section id="mcp">
+          <h2>MCP 外部工具</h2>
+          <p class="lead">MCP（Model Context Protocol）让 AI 调用 <strong>另一个进程</strong> 里的工具——文件系统、Slack、GitHub、你自己写的服务。Peak 的 MCP 集成分三步：<em>连接 → 发现工具 → 包装成 ToolDef 供 Agent 调用</em>。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 3 · MCP 集成链路</strong>
+              <span>Mermaid · MCPClientManager</span>
+            </div>
+            <div class="mermaid">
+flowchart TB
+  Cfg["MCPServerConfig<br/>id · transport (stdio | sse)<br/>command/args (stdio) 或 url/headers (sse)"]
+  Mgr["MCPClientManager<br/>connect() · listTools() · callTool()"]
+  Discover["Discovered tools<br/>Record{serverId, tools[]}"]
+  Adapter["MCPToolAdapter<br/>mcpToolToAgentTool()"]
+  ToolDef["AgentTool / ToolDef<br/>namespaced: mcp_<serverName>_<toolName>"]
+  Agent["Agent / Skill 调用"]
+
+  Cfg --> Mgr --> Discover --> Adapter --> ToolDef --> Agent
+            </div>
+            <p class="read-note"><b>读图：</b>连接是 <em>可选</em> 的——用户 disable 某个 MCP server 后它不 connect，tools 不出现在 registry；Skill 白名单里的 <code>mcp_x_y</code> 也就找不到，agent 会跳过或报错。</p>
+          </div>
+
+          <div class="field-list">
+            <dt><code>transport: stdio</code></dt>
+            <dd>用 <em>本地 command + args</em> 起一个子进程；典型：<code>npx mcp-server-filesystem /path</code>。</dd>
+            <dt><code>transport: sse</code></dt>
+            <dd>用 <em>远端 SSE endpoint</em>；典型：远程部署的 MCP server 通过 auth header 访问。</dd>
+            <dt><code>enabled</code></dt>
+            <dd>UI 上的 toggle；关掉后不 connect。<em>加了 config 但没启用</em> = tool 不会出现在 registry。</dd>
+            <dt><code>status</code></dt>
+            <dd><code>disconnected | connecting | connected | error</code>；UI 上以徽章显示；错误 message 保留在 <code>MCPConnectionInfo.error</code>。</dd>
+          </div>
+
+          <div class="claim">
+            <strong>Tool 名字空间</strong>
+            工具名是 <code>mcp_&lt;serverName&gt;_&lt;toolName&gt;</code>——避免不同 server 的同名工具冲突。Skill 里的 <code>allowedTools</code> 白名单必须写全名。
+          </div>
+
+          <div class="claim danger">
+            <strong>MCP 工具不走 <a href="15-feature-command-gateway.html">15 Command Gateway</a> 的 review</strong>
+            当前 MCP 集成是 <em>直接把 tool 交给 agent</em>——没有 Curator 审查、没有用户 review。这是因为 <em>MCP config 是用户自己写的 stdio 命令</em>——用户已经默认信任这个进程。<em>但</em>：Command Gateway 是给 <em>Obsidian 插件生态</em> 用的（不是 MCP）；MCP 的信任模型是 <em>“你敢加就假定你懂”</em>。生产环境应用 MCP 时要谨慎。
+          </div>
+        </section>
+
+        <section id="skills">
+          <h2>Skills 工作手册</h2>
+          <p class="lead">Skill 告诉 AI <em>“在 X 场景下，用哪几种工具，按什么步骤，产出什么”</em>。它 <strong>不是</strong> 一段 prompt，也 <strong>不是</strong> 一段代码——是一份结构化的工作手册。</p>
+
+          <h3>SkillDefinition 的字段</h3>
+          <div class="field-list">
+            <dt><code>id / name / version / author</code></dt>
+            <dd>唯一标识 + 元信息；vault 里的 skill 从 markdown frontmatter 读。</dd>
+            <dt><code>type</code></dt>
+            <dd><code>simple</code>（一个 prompt + output）或 <code>pipeline</code>（多 phase，前一步输出是后一步输入）。</dd>
+            <dt><code>tools</code></dt>
+            <dd><code>{ builtin: string[], mcp: string[] }</code>——两类白名单。<em>不在这里的工具 agent 不能用</em>。</dd>
+            <dt><code>model</code></dt>
+            <dd><code>{ recommended, minCapabilities, outputControl }</code>——建议的模型能力，跑时 Peak 用当前 Agent Role 的模型，如果不满足会 warn。</dd>
+            <dt><code>inputs</code></dt>
+            <dd>用户提供什么：<code>file | text | selection | active-note</code>；UI 会渲染对应的 picker。</dd>
+            <dt><code>phases</code>（pipeline 才有）</dt>
+            <dd>多步执行顺序；每步一份 prompt + tools 子集。</dd>
+            <dt><code>systemPrompt / outputTemplate</code></dt>
+            <dd>系统提示；产出的 markdown 模板。</dd>
+            <dt><code>source / filePath</code></dt>
+            <dd><code>builtin</code>（打包在插件里）或 <code>vault</code>（用户 <code>_skills/</code> 目录里的 markdown）。</dd>
+          </div>
+
+          <div class="claim">
+            <strong>Skill 的 hot-reload</strong>
+            <code>SkillRegistry</code> 监听 <code>_skills/</code> 目录变化——用户改 markdown 保存后立即生效，不用重启插件。<em>Built-in skill</em> 需要重启。
+          </div>
+
+          <div class="claim warn">
+            <strong>invocation: <code>model-first</code> vs <code>user-only</code></strong>
+            <code>model-first</code>：agent 在生成响应时可以主动调用；<code>user-only</code>：只有用户显式选“运行这个 skill”才跑。<em>破坏性 skill</em>（会改 vault 的）默认走 user-only，防止 agent 幻觉调用。
+          </div>
+
+          <div class="claim">
+            <strong>License 与 marketplace（roadmap）</strong>
+            当前 <code>license: free | community | premium</code> 只是标签——没有真正的 marketplace 或订阅。<em>未来</em> Skill Marketplace 会：(1) 一键安装（下载到 <code>_skills/</code>）；(2) 版本管理；(3) 依赖的 MCP server 自动提示安装。规划见 <a href="roadmap.html#researching">roadmap</a>。
+          </div>
+        </section>
+
+        <section id="composition">
+          <h2>技术附录 · 运行时装配</h2>
+          <p class="lead">五个概念的 <em>service</em> 都是 singleton，在 <code>main.ts</code> onload 顺序装配。它们互相依赖但耦合弱：<em>Profile 不知道 MCP；MCP 不知道 Skill；Skill 只在拿工具时才看 registry</em>。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 4 · main.ts 里的装配顺序（涉及 AI 供给的部分）</strong>
+              <span>Mermaid · plugin onload subset</span>
+            </div>
+            <div class="mermaid">
+flowchart TB
+  Settings["PluginSettingsLoader.load()"]
+  ModelReg["ModelRegistry.getInstance()<br/>加载 model-catalog.json"]
+  Profiles["ProfileRegistry.load(settings)<br/>六种 Role 就位"]
+  Tmpl["TemplateManager"]
+  AI["AIServiceManager<br/>MultiProviderChatService factory"]
+  MCP["new MCPClientManager()<br/>→ AppRuntimeRegistry.setMcpClientManager<br/>connect(config[])"]
+  Skills["new SkillRegistry()<br/>→ AppRuntimeRegistry.setSkillRegistry<br/>init(app, skillsFolder)"]
+  Harness["Harness ToolRegistry<br/>合并 built-in + MCP tools"]
+  Ctx["AppContext"]
+
+  Settings --> ModelReg --> Profiles --> Tmpl --> AI
+  Settings --> MCP --> Harness
+  Settings --> Skills --> Harness
+  AI --> Ctx
+  Harness --> Ctx
+            </div>
+            <p class="read-note"><b>读图：</b>ModelRegistry 优先——因为 Profile 加载后要按 catalog 校验 modelId；MCP 与 Skill 并行；Harness 的 ToolRegistry 是 MCP + Skill 汇合点。<em>MCP 连接失败 ≠ AI 不可用</em>——只是那些 MCP 工具不出现在 registry。</p>
+          </div>
+        </section>
+
+        <section id="failure-modes">
+          <h2>失败与降级</h2>
+          <p class="lead">五层任何一层出问题都可能让 “AI 不响应”——诊断顺序从最简单往最复杂。</p>
+
+          <div class="note-list">
+            <div class="note-item">
+              <b>1. Profile 缺 API key / baseUrl 错。</b>
+              <span>症状：Chat 里点发送后一直转圈，最后报 <em>“Provider not configured”</em> 或 401。修：Settings → AI Setup → Providers，检查 key。<em>Anthropic key 以 sk-ant- 开头，OpenAI 以 sk- 开头</em>——粘错格式会立即报错。</span>
+            </div>
+            <div class="note-item">
+              <b>2. Role 没绑 model。</b>
+              <span>症状：Chat 直接说 <em>“No model configured for Chat role”</em>。修：AI Setup → AI behavior → Conversation 选一个。<em>Copilot 缺</em> 会回落 Chat（安静发生），<em>Embedding 缺</em> 会导致 Search 语义档不能用。</span>
+            </div>
+            <div class="note-item">
+              <b>3. Model ID 在 catalog 里不存在。</b>
+              <span>症状：调用能过（用 provider 原样接收），但成本显示为 <em>fallback price</em>（Usage Dashboard 上表现为 <em>Cost ≈ 0 或明显不对</em>）。修：升级插件（catalog 更新）；或手动在 <code>templates/config/models/model-catalog.json</code> 加条目重启。</span>
+            </div>
+            <div class="note-item">
+              <b>4. Ollama baseUrl 不对 / 模型没 pull。</b>
+              <span>症状：报 <em>connection refused</em> 或 <em>model not found</em>。修：<em>确认 Ollama 在跑</em>（<code>curl http://localhost:11434</code>）；<em>确认模型 pulled</em>（<code>ollama list</code>）；模型不在必须 <code>ollama pull &lt;model&gt;</code>。</span>
+            </div>
+            <div class="note-item">
+              <b>5. MCP server 状态 error。</b>
+              <span>症状：Settings → Tools → 该 server 徽章红色；agent 请求 <code>mcp_x_y</code> 工具时 <em>tool not found</em>。修：查 <em>error message</em>——stdio 常见是 <em>command not found</em>（npx / uvx 路径），SSE 常见是 <em>auth</em> 或 <em>CORS</em>。改完 disable + enable 触发重连。</span>
+            </div>
+            <div class="note-item">
+              <b>6. Skill 白名单里的工具不存在。</b>
+              <span>症状：跑 skill 时 agent 说 <em>“Tool X not available”</em>。可能原因：<em>写错 tool 名</em>（拼写 / 缺 mcp_ 前缀）；<em>MCP server 未连接</em>；<em>Peak 版本升级去掉了某个 built-in tool</em>。修：改 <code>_skills/</code> 里的 markdown，重新保存触发 hot-reload。</span>
+            </div>
+            <div class="note-item">
+              <b>7. Curator 推的模型没在 catalog。</b>
+              <span>症状：Apply recommended 后 Chat 报 error。<em>Curator schema 校验</em> 就是防这个的——若发生说明 catalog 与 curator prompt 不同步，是 bug；报 GitHub issue。</span>
+            </div>
+          </div>
+
+          <div class="claim danger">
+            <strong>“换 provider 后 chat 记忆丢了” 是预期行为</strong>
+            切换 Chat Role 到另一 Profile 不会 <em>迁移 conversation history</em>——上下文仍在 SQLite 里，但新 provider 用新的 tokenizer 计 context 窗口。<em>历史消息</em> 会在下次发送时按新模型的 context limit 重新截断，可能触发 auto-compact。<em>没丢，只是重装了</em>。
+          </div>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+
+          <table class="doc-table">
+<colgroup><col style="width: 26%"><col style="width: 26%"><col></colgroup>
+            <thead>
+              <tr><th>关心的事</th><th>入口文件</th><th>要点</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Provider adapter 分发</td>
+                <td><code data-copy="src/core/providers/vercel/provider-factory.ts">provider-factory.ts</code></td>
+                <td>按 <code>ProfileKind</code> 路由到对应 AI SDK adapter；<code>custom</code> 走 <code>createOpenAI({ baseUrl })</code>。</td>
+              </tr>
+              <tr>
+                <td>Profile 与 Role 的 registry</td>
+                <td><code data-copy="src/core/profiles/ProfileRegistry.ts">ProfileRegistry.ts</code><br><code data-copy="src/core/profiles/types.ts">profiles/types.ts</code></td>
+                <td>六种 active Role config；<code>getActiveChatConfig / getActiveCopilotConfig</code>；模型 id 迁移逻辑。</td>
+              </tr>
+              <tr>
+                <td>Model catalog 载入</td>
+                <td><code data-copy="src/core/providers/model-registry.ts">model-registry.ts</code><br><code data-copy="templates/config/models/model-catalog.json">model-catalog.json</code></td>
+                <td>Singleton；normalize provider id（anthropic→claude，gemini→google）；exposed via <code>getProviderMetadata / getModelMetadata</code>。</td>
+              </tr>
+              <tr>
+                <td>成本计算</td>
+                <td><code data-copy="src/service/search/support/llm-cost-utils.ts">llm-cost-utils.ts</code></td>
+                <td><code>computeUsdFromUsage(usage, modelInfo)</code>——按 catalog 的 costInput/costOutput 算 USD。</td>
+              </tr>
+              <tr>
+                <td>MCP client</td>
+                <td><code data-copy="src/service/mcp/MCPClientManager.ts">MCPClientManager.ts</code><br><code data-copy="src/service/mcp/MCPToolAdapter.ts">MCPToolAdapter.ts</code><br><code data-copy="src/core/types/mcp.ts">mcp.ts</code></td>
+                <td>Singleton；<code>connect(config)</code>；<code>getAllDiscoveredTools()</code>；<code>mcpToolToAgentTool()</code> 走 JSON Schema → Zod 转换。</td>
+              </tr>
+              <tr>
+                <td>Skill 定义与 registry</td>
+                <td><code data-copy="src/service/skills/types.ts">skills/types.ts</code><br><code data-copy="src/service/skills/SkillRegistry.ts">SkillRegistry.ts</code></td>
+                <td><code>SkillDefinition</code>；<code>getBuiltins / getVaultSkills</code>；vault hot-reload。</td>
+              </tr>
+              <tr>
+                <td>Harness Skill 包装</td>
+                <td><code data-copy="src/service/agents/harness/skill/types.ts">harness/skill/types.ts</code></td>
+                <td><code>HarnessSkill</code>：allowedTools 白名单、invocation（model-first vs user-only）、allowedTiers。</td>
+              </tr>
+              <tr>
+                <td>Curator</td>
+                <td><code data-copy="src/service/agents/harness/curator/CuratorAgent.ts">CuratorAgent.ts</code><br><code data-copy="src/service/agents/harness/curator/types.ts">curator/types.ts</code><br><code data-copy="src/service/agents/harness/curator/schema.ts">curator/schema.ts</code></td>
+                <td>3 次 retry + 规则 fallback；<code>Recommendation { bindings, cascadeEnabled, apiKeysNeeded, rationale }</code>。</td>
+              </tr>
+              <tr>
+                <td>Settings UI</td>
+                <td><code data-copy="src/ui/view/settings/tabs/AISetupTab.tsx">AISetupTab.tsx</code><br><code data-copy="src/ui/view/settings/tabs/ToolsTab.tsx">ToolsTab.tsx</code></td>
+                <td>AI Setup 归 Provider + Role；Tools 归 MCP + Web Access。Skill marketplace 尚未落到 UI。</td>
+              </tr>
+              <tr>
+                <td>Settings schema</td>
+                <td><code data-copy="src/core/config/settingsTypes.ts">settingsTypes.ts</code></td>
+                <td><code>MyPluginSettings.profiles</code>；<code>mcpServers: MCPServerConfig[]</code>；<code>harnessSettings</code>；default provider 与 role fallback。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>加一个新 provider kind 的最短路径</strong>
+            (1) 在 <code>ProfileKind</code> union 加值；(2) 在 <code>provider-factory.ts</code> 加分支；(3) 在 <code>model-catalog.json</code> 加该 provider 下的模型；(4) 在 AI Setup 的 Profile picker 里加一项。不要新起 <em>service manager</em>——所有 provider 共用 <code>AIServiceManager</code>。
+          </div>
+
+          <div class="claim">
+            <strong>加一个新 MCP server 的最短路径</strong>
+            (1) Settings → Tools → Add MCP server；(2) 选 transport（stdio 或 SSE）；(3) 填 command / url；(4) enable。<em>发现工具</em> 全自动，<em>只有</em> 想在 Skill 里用才需要写白名单。
+          </div>
+
+          <div class="claim">
+            <strong>加一个 vault skill 的最短路径</strong>
+            (1) 在 vault 里建 <code>_skills/</code> 目录；(2) 新建 markdown，frontmatter 写 <code>id / name / version / tools / systemPrompt</code>；(3) 保存——SkillRegistry 立即发现。<em>见 <code>src/service/skills/types.ts</code> 里的 <code>SkillDefinition</code> 全字段</em>；不要跳过 <code>version</code> 和 <code>author</code>，marketplace 未来会依赖。
+          </div>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01。当前 Provider / Profile / Role / MCP / Skills 的 5-phase redesign 已完成 Phase 0-3；Phase 4-5（Settings IA + Skill Marketplace）仍在 <a href="roadmap.html#researching">roadmap</a>。本页按 <em>当前代码事实</em> 描述现状；概念栈稳定后不受 UI 重设影响，UI 变化会追加到这里的 “Settings UI” 段落。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

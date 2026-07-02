@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { TimeRange } from '@/service/usage/types';
-import {
-	UsageTrackingService,
-	type CostPerSavedArtifact,
-	type MonthlyPaceSnapshot,
-	type ThisWeekTrio,
+import type {
+	CostPerSavedArtifact,
+	MonthlyPaceSnapshot,
+	ThisWeekTrio,
 } from '@/service/usage/UsageTrackingService';
-import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 
 export interface OverviewSnapshot {
@@ -36,17 +34,18 @@ const EMPTY: OverviewSnapshot = {
  * immediately when the user navigates back to Overview.
  */
 export function useOverviewSnapshot(range: TimeRange): OverviewSnapshot {
-	const { settings } = useServiceContext();
+	const { settings, usageServices } = useServiceContext();
 	const budget = readBudget(settings);
 	const [snapshot, setSnapshot] = useState<OverviewSnapshot>(EMPTY);
 
 	useEffect(() => {
+		if (!usageServices) return;
 		let cancelled = false;
 		setSnapshot((prev) => ({ ...prev, loading: true }));
 		(async () => {
 			try {
-				const tracking = UsageTrackingService.getInstance();
-				const outcome = UsageOutcomeService.getInstance();
+				const tracking = usageServices.tracking;
+				const outcome = usageServices.outcome;
 
 				const [pace, costPerSaved, thisWeek] = await Promise.all([
 					budget.monthlyUsd > 0
@@ -77,7 +76,7 @@ export function useOverviewSnapshot(range: TimeRange): OverviewSnapshot {
 			}
 		})();
 		return () => { cancelled = true; };
-	}, [range, budget.monthlyUsd, budget.resetDayOfMonth]);
+	}, [range, budget.monthlyUsd, budget.resetDayOfMonth, usageServices]);
 
 	return snapshot;
 }

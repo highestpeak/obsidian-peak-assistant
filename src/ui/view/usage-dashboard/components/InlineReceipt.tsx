@@ -1,8 +1,6 @@
 import * as React from 'react';
 import type { UsageLogRow } from '@/core/storage/sqlite/ddl';
 import { Chip } from '@/ui/components/primitives';
-import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
-import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
@@ -31,6 +29,7 @@ import type { MessageReceiptSlotProps } from '@/ui/view/chat-view/integration/me
  */
 export function InlineReceipt(props: MessageReceiptSlotProps) {
 	const { messageId, sessionId, usageLogId } = props;
+	const { settings, usageServices } = useServiceContext();
 	const [row, setRow] = React.useState<UsageLogRow | null>(null);
 	const [outcomeKinds, setOutcomeKinds] = React.useState<Set<string>>(new Set());
 	const [open, setOpen] = React.useState(false);
@@ -70,10 +69,11 @@ export function InlineReceipt(props: MessageReceiptSlotProps) {
 
 	// Look up usage_log row.
 	React.useEffect(() => {
+		if (!usageServices) return;
 		let cancelled = false;
 		const lookup = async () => {
 			try {
-				const tracking = UsageTrackingService.getInstance();
+				const tracking = usageServices.tracking;
 				const found = usageLogId != null
 					? await tracking.getLogById(usageLogId)
 					: await tracking.getLogByMessageId(messageId, sessionId);
@@ -84,14 +84,15 @@ export function InlineReceipt(props: MessageReceiptSlotProps) {
 		};
 		void lookup();
 		return () => { cancelled = true; };
-	}, [messageId, sessionId, usageLogId]);
+	}, [messageId, sessionId, usageLogId, usageServices]);
 
 	// Look up outcomes for this message — drives the status chip.
 	React.useEffect(() => {
+		if (!usageServices) return;
 		let cancelled = false;
 		const lookup = async () => {
 			try {
-				const outcomes = await UsageOutcomeService.getInstance().outcomesForMessage(messageId);
+				const outcomes = await usageServices.outcome.outcomesForMessage(messageId);
 				if (cancelled) return;
 				setOutcomeKinds(new Set(outcomes.map(o => o.event_type)));
 			} catch {
@@ -100,9 +101,8 @@ export function InlineReceipt(props: MessageReceiptSlotProps) {
 		};
 		void lookup();
 		return () => { cancelled = true; };
-	}, [messageId]);
+	}, [messageId, usageServices]);
 
-	const { settings } = useServiceContext();
 	const previewEnabled = settings.usagePreviewEnabled ?? true;
 
 	if (!row) return null;

@@ -1,0 +1,6 @@
+{
+  "_comment": "Wave 1.A — T0 Boundary Baseline. Current violation snapshot for src/service/**. See test/boundary/README.md for how to shrink or add exceptions.",
+  "ruleA": [],
+  "ruleB": [],
+  "ruleC": []
+}

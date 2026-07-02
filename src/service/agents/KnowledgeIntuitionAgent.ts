@@ -50,6 +50,8 @@ export interface KnowledgeIntuitionAgentDeps {
 	isMockEnv: boolean;
 	rootFolder: string;
 	backboneEnv: import('@/service/search/index/helper/backbone').BackboneEnv;
+	/** T13: MCP client manager for recon-loop tool merging; may be null when MCP is disabled. */
+	mcpClientManager: import('@/service/mcp/MCPClientManager').MCPClientManager | null;
 }
 
 /**
@@ -166,6 +168,7 @@ export class KnowledgeIntuitionAgent {
 			},
 			app: this.deps.app,
 			pluginId: this.deps.pluginId,
+			mcpClientManager: this.deps.mcpClientManager,
 		});
 		if (!memory) {
 			throw new Error('KnowledgeIntuitionAgent: recon finished without memory (onComplete not invoked).');

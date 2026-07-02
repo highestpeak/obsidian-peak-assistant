@@ -235,6 +235,7 @@ export class AISearchAgentTestTools {
             isMockEnv: ctx.isMockEnv,
             rootFolder: ctx.settings.ai.rootFolder,
             backboneEnv: composeBackboneEnv(ctx),
+            mcpClientManager: ctx.runtimeRegistry.tryGetMcpClientManager(),
         });
         let result: KnowledgeIntuitionAgentResult | null = null;
         let eventCount = 0;

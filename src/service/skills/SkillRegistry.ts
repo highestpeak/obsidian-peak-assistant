@@ -1,5 +1,5 @@
 /**
- * Singleton registry that discovers and caches skill definitions.
+ * Registry that discovers and caches skill definitions.
  *
  * Skills are loaded from two sources:
  *   1. Built-in skills (bundled strings, always available)
@@ -7,31 +7,24 @@
  *
  * Hot-reload: vault file changes (create/modify/delete) in the skills
  * folder trigger automatic re-parsing of the affected skill.
+ *
+ * Owned by the app layer via `AppRuntimeRegistry`. Consumers reach it
+ * through `AppContext.getSkillRegistry()` / `tryGetSkillRegistry()`.
  */
 
 import type { AppHandle as App } from '@/core/ports/AppHandle';
 import type { VaultFileRef as TFile, VaultFolderRef } from '@/core/ports/VaultFileRef';
 type TAbstractFile = TFile | VaultFolderRef;
 import type { SkillDefinition } from './types';
+import type { CompiledSkill } from '@/core/types/compiled-skill';
 import { parseSkillMarkdown, validateSkillDefinition } from './SkillParser';
 import { loadBuiltinSkills } from './builtin';
 
 export class SkillRegistry {
-	private static instance: SkillRegistry | null = null;
-
 	private app: App | null = null;
 	private skillsFolder = '_skills';
 	private skills = new Map<string, SkillDefinition>();
 	private eventRefs: ReturnType<App['vault']['on']>[] = [];
-
-	private constructor() {}
-
-	static getInstance(): SkillRegistry {
-		if (!SkillRegistry.instance) {
-			SkillRegistry.instance = new SkillRegistry();
-		}
-		return SkillRegistry.instance;
-	}
 
 	/**
 	 * Initialize the registry: load built-in skills, scan vault folder,
@@ -68,7 +61,6 @@ export class SkillRegistry {
 		this.eventRefs = [];
 		this.skills.clear();
 		this.app = null;
-		SkillRegistry.instance = null;
 	}
 
 	// ── Selectors ─────────────────────────────────────────────────────
@@ -92,6 +84,29 @@ export class SkillRegistry {
 
 	getVaultSkills(): SkillDefinition[] {
 		return this.getAll().filter((s) => s.source === 'vault');
+	}
+
+	/**
+	 * T6 Skill v2 — produce the runtime-facing `CompiledSkill` form for
+	 * a registered skill. Returns `null` when the id is unknown.
+	 *
+	 * Flattens the `tools.builtin` + `tools.mcp` whitelist into a single
+	 * `allowedTools` list. Quarantine defaults to `'strict'` when a
+	 * whitelist is present (author expressed intent to constrain tools)
+	 * and `'permissive'` otherwise (silence = capability decides).
+	 */
+	compile(skillId: string): CompiledSkill | null {
+		const skill = this.skills.get(skillId);
+		if (skill === undefined) return null;
+		const builtin = skill.tools?.builtin ?? [];
+		const mcp = skill.tools?.mcp ?? [];
+		const hasWhitelist = builtin.length > 0 || mcp.length > 0;
+		return {
+			skillId: skill.id,
+			allowedTools: Object.freeze([...builtin, ...mcp]),
+			systemPrompt: skill.systemPrompt,
+			quarantine: hasWhitelist ? 'strict' : 'permissive',
+		};
 	}
 
 	/**

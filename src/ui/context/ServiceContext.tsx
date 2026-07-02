@@ -22,7 +22,19 @@ import type { SettingsActions } from '@/core/ports/SettingsActionsPort';
 import type { QuickSearchHost } from '@/ui/view/quick-search/hooks/useQuickSearchHost';
 import type { CopilotReviewHistoryService } from '@/service/copilot/CopilotReviewHistoryService';
 import type { CopilotReviewDeps } from '@/service/copilot/CopilotReviewSession';
+import type { IndexService } from '@/service/search/index/indexService';
+import type { MCPClientManager } from '@/service/mcp/MCPClientManager';
+import type { UsageTrackingService } from '@/service/usage/UsageTrackingService';
+import type { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
+import type { UsageOptimizationService } from '@/service/usage/optimization/UsageOptimizationService';
 import type MyPlugin from 'main';
+
+/** T13: Usage-telemetry bundle mirrored from `AppRuntimeRegistry.usageServices`. */
+export interface UsageServicesCtx {
+	tracking: UsageTrackingService;
+	outcome: UsageOutcomeService;
+	optimization: UsageOptimizationService;
+}
 
 /**
  * T11P (Tracks A–J): Service context now publishes only narrow ports —
@@ -73,6 +85,12 @@ interface ServiceContextValue {
 	 * module no longer imports `AppContext`.
 	 */
 	copilotReviewDeps: () => Promise<CopilotReviewDeps>;
+	/** T13: read-only handle to the app-owned IndexService (may be null before boot). */
+	indexService: IndexService | null;
+	/** T13: read-only handle to the app-owned MCPClientManager. */
+	mcpClientManager: MCPClientManager | null;
+	/** T13: read-only handle to the app-owned usage-telemetry bundle. */
+	usageServices: UsageServicesCtx | null;
 }
 
 const ServiceContext = createContext<ServiceContextValue | null>(null);
@@ -112,7 +130,10 @@ export const ServiceProvider: React.FC<{
 	quickSearchHost: QuickSearchHost;
 	copilotReviewHistory: CopilotReviewHistoryService;
 	copilotReviewDeps: () => Promise<CopilotReviewDeps>;
-}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps }) => {
+	indexService: IndexService | null;
+	mcpClientManager: MCPClientManager | null;
+	usageServices: UsageServicesCtx | null;
+}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices }) => {
 	const value = useMemo<ServiceContextValue>(() => ({
 		manager,
 		eventBus,
@@ -139,7 +160,10 @@ export const ServiceProvider: React.FC<{
 		quickSearchHost,
 		copilotReviewHistory,
 		copilotReviewDeps,
-	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps]);
+		indexService,
+		mcpClientManager,
+		usageServices,
+	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices]);
 
 	return <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>;
 };

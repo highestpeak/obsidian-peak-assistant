@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>11 Chat Context / Feature Document</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 28px 0 9px; font-size: 21px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 22px; }
+    .card { padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: 0 12px 28px rgba(23, 34, 29, 0.05); }
+    .card h3 { margin-top: 10px; }
+    .card p { color: var(--muted); font-size: 15px; line-height: 1.65; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    .code-box { margin-top: 20px; padding: 15px 17px; border: 1px solid var(--line); border-radius: 8px; background: var(--code-bg); overflow-x: auto; color: #25352d; font-size: 13px; line-height: 1.65; }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+    }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">11 · Feature · Chat Context</div>
+      <h1>Chat 的关键不是“模型更聪明”，而是每次回答前给它看什么。</h1>
+      <p class="subtitle">面向用户，这份文档解释 Peak Assistant 的 Chat 为什么能带着当前会话、附件、focus folder 和能力开关一起回答。面向维护者，它把一次请求如何进入 context pipeline、哪些 slot 真正启用、预算如何压缩讲清楚。</p>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 9.9k 混合字符</span>
+        <span>Reading time: 22-26 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">先理解用户场景</a>
+          <a href="#reader">读者和边界</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">用户视角</span>
+          <a href="#entry">入口和开始前检查</a>
+          <a href="#tasks">常见任务和结果</a>
+          <a href="#user-behavior">用户能感知的行为</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">内部机制</span>
+          <a href="#context-stack">上下文堆叠</a>
+          <a href="#request-flow">一次请求的代码路径</a>
+          <a href="#slots">当前启用的 slots</a>
+          <a href="#budget">预算和压缩</a>
+          <a href="#modes">Chat / Agent / Plan</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">排障与维护</span>
+          <a href="#troubleshooting">排障</a>
+          <a href="#maintain">维护规则</a>
+          <a href="#freshness">更新触发</a>
+          <a href="#evidence">代码证据</a>
+        </div>
+        <div class="nav-note">这份文档解释 Chat 功能；共享 Context Pipeline 后续会抽成 22。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>先理解用户场景</h2>
+          <p class="lead">用户在 Obsidian 里问 AI 时，通常不是在问一个孤立问题。他可能刚上传了一份 PDF，正在某个项目 folder 里整理笔记，前面已经聊了十几轮，还打开了 web search 或 vault search 开关。</p>
+          <p class="prose">所以 Chat 的产品价值不是“把最后一句话发给模型”。真正的价值是把这次回答需要的工作现场组装出来——八项一起：</p>
+          <ul>
+            <li>当前用户消息</li>
+            <li>最近会话</li>
+            <li>附件引用</li>
+            <li>会话级 prompt</li>
+            <li>focus folder</li>
+            <li>模型能力</li>
+            <li>输出控制</li>
+            <li>模式差异（Chat / Agent）</li>
+          </ul>
+          <p class="prose">这个组装过程就是本文的主线。</p>
+          <div class="claim">
+            <strong>一句话结论</strong>
+            Chat 回答 = 用户消息 + conversation state + resource handling + ChatProfile slots + budget governance + provider streaming。任何改动如果绕过这条路径，都容易制造第二套 prompt 系统。
+          </div>
+        </section>
+
+        <section id="reader">
+          <h2>本文读者、目标和不做什么</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>对象</th><th>读完应该知道什么</th><th>不需要在这里解决什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Obsidian 用户</strong></td>
+                <td>Chat 会参考哪些信息；什么时候旧消息会被压缩；附件和 focus folder 对回答有什么影响。</td>
+                <td>不需要理解每个 TypeScript class 的实现。</td>
+              </tr>
+              <tr>
+                <td><strong>维护者</strong></td>
+                <td>一次 chat request 的主路径、当前启用的 slots、预算治理和 mode 分支。</td>
+                <td>不在这里设计新的 agent harness；多步 agent 见 <a href="21-infra-agent-harness.html">21</a>。</td>
+              </tr>
+              <tr>
+                <td><strong>Coding agent</strong></td>
+                <td>新增上下文应该加 slot，不应该在 UI 或 provider adapter 里临时拼 prompt。</td>
+                <td>不把 22 Context Pipeline 的独立基础设施文档提前写完。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="entry">
+          <h2>入口和开始前检查</h2>
+          <p class="lead">Chat 是 Obsidian 里的工作区能力，不是孤立网页聊天框。开始前先确认入口、模型配置和你想让它参考的上下文。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>你想做什么</th><th>从哪里开始</th><th>开始前确认</th><th>预期结果</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>打开主聊天视图</td>
+                <td>左侧 ribbon 的 <strong>Open Peak Assistant</strong> 图标。</td>
+                <td>至少有可用的 chat profile / provider。</td>
+                <td>打开 Peak Assistant chat view，可以选择项目、会话并输入消息。</td>
+              </tr>
+              <tr>
+                <td>打开三栏聊天工作区</td>
+                <td>Obsidian Command Palette → <strong>Open Chat Studio</strong>。</td>
+                <td>适合同时看会话列表、当前聊天和索引/产物。</td>
+                <td>打开 <strong>Chat Studio</strong> 视图。</td>
+              </tr>
+              <tr>
+                <td>让 Chat 使用 Vault / Web 线索</td>
+                <td>在 Chat 运行设置或能力开关里启用对应能力。</td>
+                <td>Vault Search 需要索引可用；Web Search 需要配置 Web Search profile。</td>
+                <td>系统 prompt 会包含 capability 状态；agent mode 才会注入可用工具。</td>
+              </tr>
+              <tr>
+                <td>附加文件</td>
+                <td>使用 composer 的 attachment 入口。</td>
+                <td>附件处理模式可能是 direct 或 degrade_to_text。</td>
+                <td>附件进入本轮消息资源；非 direct 模式会先生成或读取摘要。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="tasks">
+          <h2>常见任务和预期结果</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>任务</th><th>怎么做</th><th>成功时应该看到什么</th><th>注意</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>继续追问同一件事</td>
+                <td>留在同一个 conversation 里输入下一条消息。</td>
+                <td>回答会承接最近对话，而不是只看最后一句。</td>
+                <td>很长的历史会被预算治理压缩。</td>
+              </tr>
+              <tr>
+                <td>让回答围绕某个 folder</td>
+                <td>在会话支持的 focus folder 控制里设置 folder。</td>
+                <td>回答会更偏向该 folder 的材料，搜索指令也会默认提到这个范围。</td>
+                <td>这是模型偏好，不是硬过滤。</td>
+              </tr>
+              <tr>
+                <td>让 AI 只规划，不执行</td>
+                <td>把 mode 切到 <strong>Plan</strong>。</td>
+                <td>回答更偏计划说明；不会注入 tools。</td>
+                <td>Plan mode 会 prepend planning system prompt。</td>
+              </tr>
+              <tr>
+                <td>让 AI 调用工具</td>
+                <td>把 mode 切到 <strong>Agent</strong>，并打开对应工具开关。</td>
+                <td>如果模型和开关允许，stream 中可能出现工具调用。</td>
+                <td>工具能力不是普通 Chat mode 的默认行为。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="user-behavior">
+          <h2>用户能感知到的行为</h2>
+          <p class="lead">如果用户不看代码，他会感受到四件事：Chat 会记住最近对话；附件会变成上下文线索；focus folder 会改变回答偏好；模式切换会改变工具能力。</p>
+          <div class="grid">
+            <article class="card">
+              <div class="pill-row"><span class="pill green">Conversation memory</span></div>
+              <h3>继续追问时，最近几轮会被带上</h3>
+              <p><code>RecentMessagesSlot</code> 从当前 conversation messages 里取最近消息。当前 <code>ChatProfile</code> 给它的参数是 <code>maxRecentMessages: 20</code>。</p>
+            </article>
+            <article class="card">
+              <div class="pill-row"><span class="pill green">Resources</span></div>
+              <h3>附件不是简单塞进 prompt</h3>
+              <p>legacy attachments 会被转成 <code>ChatResourceRef</code>。非 direct 模式会先确保资源摘要存在；render 时旧资源主要以 attached marker 进入消息。</p>
+            </article>
+            <article class="card">
+              <div class="pill-row"><span class="pill blue">Focus folder</span></div>
+              <h3>focus folder 是回答偏好，不是硬过滤器</h3>
+              <p><code>SystemPromptSlot</code> 会把 focus folder 追加到 system prompt，让模型优先考虑该 folder 的笔记和搜索范围。</p>
+            </article>
+            <article class="card">
+              <div class="pill-row"><span class="pill gold">Mode</span></div>
+              <h3>Chat、Agent、Plan 共享上下文，但能力不同</h3>
+              <p>三种模式都先走 <code>prepareChatRequest</code>。只有 agent mode 会注入 tools；plan mode 会把 planning system prompt 加到 system message 前面。</p>
+            </article>
+          </div>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>用户操作</th><th>系统实际行为</th><th>用户需要知道的限制</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>在同一个 conversation 里继续问</td>
+                <td>当前用户消息会和已有 conversation messages 合并，再交给 context pipeline。</td>
+                <td>上下文过大时，旧内容可能被压缩，不承诺逐字保留全部历史。</td>
+              </tr>
+              <tr>
+                <td>上传或引用文件</td>
+                <td>附件会转成 resource ref；非 direct 模式会触发 summary generation 事件。</td>
+                <td>direct / degrade_to_text 模式看到的信息量不同；当前 render 对非最新资源偏引用标记。</td>
+              </tr>
+              <tr>
+                <td>设置 custom system prompt</td>
+                <td>自定义 prompt 会 prepend 到默认 conversation system prompt 前面。</td>
+                <td>它影响整段 conversation，而不是只影响当前一条消息。</td>
+              </tr>
+              <tr>
+                <td>设置 focus folder</td>
+                <td>system prompt 会追加一段 Focus Mode 指令。</td>
+                <td>这是模型侧偏好，不是数据库搜索层的强制 folder filter。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="context-stack">
+          <h2>上下文堆叠：模型回答前到底看到了什么</h2>
+          <p class="lead">Chat context 不是一段大字符串，而是一组 slot。每个 slot 有顺序、预算、是否 required、最大压缩等级。这个结构让系统可以在上下文太大时有规则地牺牲低优先级内容。</p>
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · Chat context stack</strong>
+              <span>Mermaid · context stack</span>
+            </div>
+            <div class="mermaid">
+flowchart TB
+  User["用户当前消息"]
+  History["Conversation messages"]
+  Resource["Attachments / ChatResourceRef"]
+  Meta["Conversation meta<br/>custom prompt / focus folder / output control"]
+  Cap["Model capabilities<br/>max context / tool support"]
+  State["Runtime toggles<br/>web search / vault search / mode"]
+  Pipeline["ContextPipeline.assemble(ChatProfile)"]
+  Slots["Profile slots<br/>system / recent / working / summary / resource"]
+  Budget["BudgetGovernor<br/>per-slot cap / compress / drop"]
+  Provider["Provider stream<br/>messages + outputControl + tools"]
+  User --> Pipeline
+  History --> Pipeline
+  Resource --> Pipeline
+  Meta --> Pipeline
+  Cap --> Pipeline
+  State --> Pipeline
+  Pipeline --> Slots --> Budget --> Provider
+            </div>
+            <p class="read-note"><b>读图：</b>左侧是上下文来源，中间是 slot 化装配，右侧才是 provider stream。新增上下文应该进入 slot，而不是直接拼到 provider message 里。</p>
+          </div>
+        </section>
+
+        <section id="request-flow">
+          <h2>一次请求的代码路径</h2>
+          <p class="prose">从代码看，Chat 主路径集中在 <code>ConversationService.streamChat</code> 和 <code>prepareChatRequest</code>。stream 层负责 mode、profile 和 provider；prepare 层负责模型能力、附件处理、context pipeline 和 output control。</p>
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · streamChat 到 provider 的执行顺序</strong>
+              <span>Mermaid · sequence diagram</span>
+            </div>
+            <div class="mermaid">
+sequenceDiagram
+  participant UI as Chat UI
+  participant Conversation as ConversationService
+  participant Resources as ResourceSummaryService
+  participant Pipeline as ContextPipeline
+  participant Budget as BudgetGovernor
+  participant Tools as buildChatTools
+  participant Provider as vercelStreamChat
+  UI->>Conversation: streamChat(conversation, userContent, attachments)
+  Conversation->>Conversation: createChatMessage()
+  alt attachments and not direct
+    Conversation-->>UI: tool-call generate_summary
+    Conversation->>Resources: ensureResourceSummary()
+    Conversation-->>UI: tool-result generate_summary
+  end
+  Conversation->>Pipeline: assemble(ChatProfile, buildCtx, modelCapabilities)
+  Pipeline->>Budget: fit(slots, resolvedBudget)
+  Budget-->>Pipeline: governed slots
+  Pipeline-->>Conversation: LLMRequestMessage[]
+  alt agent mode
+    Conversation->>Tools: buildChatTools(toggles, capabilities)
+  end
+  alt plan mode
+    Conversation->>Conversation: prepend PlanModeSystem prompt
+  end
+  Conversation->>Provider: messages + outputControl + tools/maxSteps
+            </div>
+            <p class="read-note"><b>读图：</b>附件摘要事件会在 context 组装前发生；tools 是 context 准备完成后根据 mode 决定的；plan prompt 是对 system message 的额外前置。</p>
+          </div>
+          <div class="code-box" aria-label="existing code path">
+existing path:
+src/service/chat/service-conversation.ts
+  streamChat()
+  prepareChatRequest()
+
+src/service/chat/context/ContextPipeline.ts
+  assemble(ChatProfile, buildCtx, modelCapabilities)
+          </div>
+        </section>
+
+        <section id="slots">
+          <h2>当前启用的 slots</h2>
+          <p class="lead">服务层注册了不止这些 slot，但当前 <code>ChatProfile</code> 只启用下面这一组。维护者要以 profile 为准，不要看到注册表里有某个 slot 就假设它已经进入 prompt。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 18%"><col><col><col><col></colgroup>
+            <thead>
+              <tr><th>顺序</th><th>Slot</th><th>Required</th><th>预算/压缩</th><th>职责</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td><code>system-prompt</code></td>
+                <td>yes</td>
+                <td>1500 tokens；不压缩</td>
+                <td>渲染 conversation system prompt；叠加 custom prompt、focus folder 和 capability toggles。</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><code>recent-messages</code></td>
+                <td>yes</td>
+                <td>100000 tokens；最多 L3</td>
+                <td>保留最近消息。当前 profile 传 <code>maxRecentMessages: 20</code>。</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td><code>working-context</code></td>
+                <td>no</td>
+                <td>500 tokens；最多 L2</td>
+                <td>当前工作上下文，优先级高于 summary/resource 这类辅助信息。</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td><code>conv-summary</code></td>
+                <td>no</td>
+                <td>800 tokens；最多 L2</td>
+                <td>会话摘要，用来让旧上下文在预算紧张时仍有概要。</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td><code>activity-index</code></td>
+                <td>no</td>
+                <td>200 tokens；最多 L1</td>
+                <td>活动索引。</td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td><code>user-profile</code></td>
+                <td>no</td>
+                <td>400 tokens；最多 L1</td>
+                <td>用户画像信息。</td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td><code>prev-analysis</code></td>
+                <td>no</td>
+                <td>600 tokens；最多 L2</td>
+                <td>历史分析记录。</td>
+              </tr>
+              <tr>
+                <td>8</td>
+                <td><code>resource-index</code></td>
+                <td>no</td>
+                <td>300 tokens；最多 L1</td>
+                <td>资源索引。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="budget">
+          <h2>上下文太大时会怎样</h2>
+          <p class="prose">ChatProfile 的总预算是 <code>auto</code>。实际预算由模型上下文窗口决定：<code>maxCtx - 8192 - 5%</code>。在这个预算内，系统先处理每个 slot 自己的上限，再压缩低优先级 non-required slot，最后才 drop。</p>
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 3 · BudgetGovernor 的压缩顺序</strong>
+              <span>Mermaid · gate pipeline</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  Items["Built slots"]
+  PerSlot["Phase 0<br/>超过 maxTokens 的 slot<br/>先按 L1/L2/L3 压缩"]
+  Check["totalTokens <= totalBudget?"]
+  Compress["Phase 1<br/>低优先级 non-required<br/>逐个压缩"]
+  Drop["Phase 2<br/>仍超预算则 drop<br/>non-required slot"]
+  Render["Render surviving slots"]
+  Items --> PerSlot --> Check
+  Check -- "yes" --> Render
+  Check -- "no" --> Compress --> Drop --> Render
+            </div>
+            <p class="read-note"><b>读图：</b>required slot 不会被 drop。priority 数字越小，越早作为牺牲对象。recent messages 是 required，但仍允许按自身压缩等级处理。</p>
+          </div>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>用户能感知到的现象</th><th>代码事实</th><th>维护者含义</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>不同模型能带的上下文不同。</td>
+                <td><code>ContextPipeline.resolveBudget()</code> 读取 <code>modelCapabilities.maxCtx</code>。</td>
+                <td>不要硬写全局 chat token limit；模型切换会影响预算。</td>
+              </tr>
+              <tr>
+                <td>旧对话可能被缩短。</td>
+                <td><code>RecentMessagesSlot</code> L1 保留后一半；L2 保留最后 3 条原文，旧消息变成 100 字符摘要。</td>
+                <td>如果用户抱怨“忘了前面”，优先看 compression/budget，而不是 provider。</td>
+              </tr>
+              <tr>
+                <td>辅助上下文可能消失。</td>
+                <td>BudgetGovernor 只 drop non-required slots。</td>
+                <td>新增 slot 时要认真设置 required、priority、maxTokens 和 maxCompressionLevel。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="modes">
+          <h2>Chat / Agent / Plan 的差异</h2>
+          <p class="lead">这三个模式共享 context 准备，不共享执行能力。用户看到的是模式切换；维护者要记住 mode 分支发生在 context 准备之后。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>Mode</th><th>上下文</th><th>Tools</th><th>特殊处理</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>chat</strong></td>
+                <td>走同一套 <code>prepareChatRequest</code>。</td>
+                <td>不传 tools。</td>
+                <td>纯对话。</td>
+              </tr>
+              <tr>
+                <td><strong>agent</strong></td>
+                <td>走同一套 <code>prepareChatRequest</code>。</td>
+                <td><code>buildChatTools</code> 根据 UI toggles 和 model capabilities 构建。</td>
+                <td>当前 web search 会在模型没有 native web search 且 toggle 开启时注入。</td>
+              </tr>
+              <tr>
+                <td><strong>plan</strong></td>
+                <td>走同一套 <code>prepareChatRequest</code>。</td>
+                <td>不传 tools。</td>
+                <td>渲染 <code>PromptId.PlanModeSystem</code>，并 prepend 到 system message。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="troubleshooting">
+          <h2>排障：回答不像你预期时先看这里</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>现象</th><th>可能原因</th><th>先检查</th><th>处理方式</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>它好像忘了很久以前的内容。</td>
+                <td>上下文超过预算，旧消息被压缩。</td>
+                <td>当前模型的 context window、conversation 长度、是否有大型附件。</td>
+                <td>把关键事实重新说明一次，或把重要材料作为当前附件/当前消息引用。</td>
+              </tr>
+              <tr>
+                <td>附件没有被完整理解。</td>
+                <td>附件处理模式不是 direct，或资源摘要失败/过短。</td>
+                <td>conversation attachment handling、资源摘要是否生成。</td>
+                <td>切换 direct/degrade_to_text 策略，或把关键段落贴进当前消息。</td>
+              </tr>
+              <tr>
+                <td>Web Search 没有参与。</td>
+                <td>没有 Web Search profile，或 mode/toggle 不满足工具注入条件。</td>
+                <td>Settings → Profiles 是否配置 Web Search；当前 mode 是否为 Agent。</td>
+                <td>配置 profile，打开 web search 开关，必要时切到 Agent mode。</td>
+              </tr>
+              <tr>
+                <td>Focus folder 没有像硬过滤一样生效。</td>
+                <td>focus folder 是 system prompt 偏好，不是 Search 层强制过滤。</td>
+                <td>本轮回答是否真的需要严格 folder scope。</td>
+                <td>在用户消息里明确要求“只使用这个 folder”，或后续把 Search/Context 文档补成硬 scope 设计。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="maintain">
+          <h2>维护规则：不要重开一条 prompt 小系统</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>不要这样做</th><th>应该怎么做</th><th>原因</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>在 UI store 里拼完整 prompt。</td>
+                <td>通过 app/service port 传状态，让 <code>SystemPromptSlot</code> 或新 slot 处理。</td>
+                <td>当前系统已经用 <code>ChatRuntimeStatePort</code> 把 UI toggles 从 service 里隔离出来。</td>
+              </tr>
+              <tr>
+                <td>把新上下文直接塞进 recent messages。</td>
+                <td>新增 slot，并定义预算、压缩、render 规则。</td>
+                <td>slot 才能被 BudgetGovernor 治理。</td>
+              </tr>
+              <tr>
+                <td>看到注册过某个 slot 就说它已启用。</td>
+                <td>以 <code>ChatProfile.slots</code> 为准。</td>
+                <td>注册表只是可用组件；profile 决定当前 prompt 组成。</td>
+              </tr>
+              <tr>
+                <td>把 agent 工具逻辑塞进 context pipeline。</td>
+                <td>context 只准备模型该看的信息；工具由 mode 分支和 Harness/ToolDef 处理。</td>
+                <td>上下文装配和工具授权是两条边界，混在一起会变成双系统。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="freshness">
+          <h2>相关文档和更新触发</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 32%"><col></colgroup>
+            <thead>
+              <tr><th>触发条件</th><th>需要更新什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Chat UI 入口、mode label、composer attachment 交互变化。</td>
+                <td>更新本页“入口和开始前检查”“常见任务和结果”。</td>
+              </tr>
+              <tr>
+                <td><code>ChatProfile</code> slot 顺序、required、priority、maxTokens 变化。</td>
+                <td>更新“当前启用的 slots”和预算解释。</td>
+              </tr>
+              <tr>
+                <td>工具注入从 <code>buildChatTools</code> 迁移到 Harness / ToolDef。</td>
+                <td>更新 mode 差异，并链接到 <a href="21-infra-agent-harness.html">21 Agent Harness</a>。</td>
+              </tr>
+              <tr>
+                <td>Context Pipeline 抽成独立 root 正稿。</td>
+                <td>把共享基础设施细节移到 <code>22-infra-context-pipeline.html</code>，本页只保留用户行为和 Chat-specific appendix。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>文件</th><th>读什么</th><th>本文用它确认什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code data-copy="src/service/chat/service-conversation.ts">service-conversation.ts</code></td>
+                <td><code>streamChat</code>、<code>prepareChatRequest</code>、mode/tools/plan prompt 分支。</td>
+                <td>确认请求从用户消息到 provider stream 的主路径。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/chat/context/ContextPipeline.ts">ContextPipeline.ts</code></td>
+                <td><code>assemble()</code> 的 resolve budget、build slots、budget govern、render。</td>
+                <td>确认 context 是 slot 化装配，不是一段字符串拼接。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/chat/context/BudgetGovernor.ts">BudgetGovernor.ts</code></td>
+                <td>per-slot cap、compress、drop。</td>
+                <td>确认上下文过大时的牺牲顺序。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/chat/context/profiles/ChatProfile.ts">ChatProfile.ts</code></td>
+                <td>当前 active slots、priority、required、maxTokens。</td>
+                <td>确认哪些 slot 真的进入当前 Chat。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/chat/context/slots/SystemPromptSlot.ts">SystemPromptSlot.ts</code></td>
+                <td>capabilities、custom prompt、focus folder。</td>
+                <td>确认系统提示词的动态组成。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/chat/context/slots/RecentMessagesSlot.ts">RecentMessagesSlot.ts</code></td>
+                <td>最近消息截取、压缩、资源 marker。</td>
+                <td>确认用户历史消息和附件引用如何进入请求。</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="claim">
+            <strong>下一步文档</strong>
+            这份文档已经覆盖 Chat 用到的 context stack。后续写 <code>22-infra-context-pipeline.html</code> 时，应该把 Chat 之外的 Agent、Ambient、Command Gateway 的共同上下文规则抽出来，而不是重复本页内容。
+          </div>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01，按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="05-use-case-playbook.html">05 Use Case Playbook</a>、<a href="12-feature-search.html">12 Search</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

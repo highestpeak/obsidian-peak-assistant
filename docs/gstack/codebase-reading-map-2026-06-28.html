@@ -1347,7 +1347,7 @@ rg -n "AppContext\\.getInstance|AppContext\\.getApp|AppContext\\.getManager" src
             <tr><td>`cloc main.ts src test scripts templates --exclude-dir=node_modules --quiet`</td><td class="ok">PASS</td><td>用于代码量统计。</td></tr>
             <tr><td>`npm run audit:boundary`</td><td class="ok">PASS</td><td>`Total flagged cross-layer / side-effect edges: 0`。</td></tr>
             <tr><td>`npm run build`</td><td class="ok">PASS</td><td>CSS build、esbuild production、`node --check main.js`、SDK copy 均完成。</td></tr>
-            <tr><td>`Playwright file:// HTML QA`</td><td class="ok">PASS</td><td>主阅读视口 1440px：导航锚点完整、Mermaid blocks=14、SVG=14、Mermaid treemap 已渲染、无横向溢出；390px 窄屏只做 smoke check，不作为移动端适配承诺。</td></tr>
+            <tr><td>`Playwright file:// HTML QA`</td><td class="ok">PASS</td><td>主阅读视口 1440px：导航锚点完整、Mermaid blocks=14、SVG=14、Mermaid treemap 已渲染、无横向溢出。本报告是桌面代码阅读 artifact，不记录其他设备宽度验证。</td></tr>
           </tbody>
         </table>
         <div class="callout">

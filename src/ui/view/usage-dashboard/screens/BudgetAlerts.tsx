@@ -10,10 +10,7 @@ import {
 	type BudgetSettings,
 	type HarnessSettings,
 } from '@/core/config/settingsTypes';
-import {
-	UsageTrackingService,
-	type MonthlyPaceSnapshot,
-} from '@/service/usage/UsageTrackingService';
+import type { MonthlyPaceSnapshot } from '@/service/usage/UsageTrackingService';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import {
 	Field,
@@ -42,9 +39,11 @@ export interface BudgetAlertsScreenProps {
  */
 export function BudgetAlertsScreen({ strings }: BudgetAlertsScreenProps) {
 	const { budget, harness, save } = useHarnessBudget();
+	const { usageServices } = useServiceContext();
 	const [pace, setPace] = React.useState<MonthlyPaceSnapshot | null>(null);
 
 	React.useEffect(() => {
+		if (!usageServices) return;
 		let cancelled = false;
 		(async () => {
 			if (budget.monthlyUsd <= 0) {
@@ -52,7 +51,7 @@ export function BudgetAlertsScreen({ strings }: BudgetAlertsScreenProps) {
 				return;
 			}
 			try {
-				const snap = await UsageTrackingService.getInstance().getMonthlyPace(
+				const snap = await usageServices.tracking.getMonthlyPace(
 					budget.monthlyUsd,
 					budget.resetDayOfMonth,
 				);
@@ -62,7 +61,7 @@ export function BudgetAlertsScreen({ strings }: BudgetAlertsScreenProps) {
 			}
 		})();
 		return () => { cancelled = true; };
-	}, [budget.monthlyUsd, budget.resetDayOfMonth]);
+	}, [budget.monthlyUsd, budget.resetDayOfMonth, usageServices]);
 
 	const writeBudget = (next: BudgetSettings) => {
 		save({ ...harness, budget: next });

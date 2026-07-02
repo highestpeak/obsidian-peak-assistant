@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>17 Peak Assistant Usage Dashboard</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); font-size: 0.94em; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .subtitle-list { max-width: 900px; margin: 12px 0 0 22px; padding: 0; color: var(--muted); font-size: 17px; }
+    .subtitle-list li + li { margin-top: 4px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .side-nav .nav-jump { display: flex; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+    .side-nav .nav-jump a { padding: 0; border: 0; color: var(--green); }
+    .side-nav .nav-jump a:hover { text-decoration: underline; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 0 0 8px; font-size: 20px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .warn { border-left-color: var(--gold); }
+    .warn strong { color: var(--gold); }
+    .danger { border-left-color: var(--red); }
+    .danger strong { color: var(--red); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    td code { background: var(--code-bg); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    .note-list { display: grid; gap: 10px; margin-top: 18px; }
+    .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .note-item b { display: block; margin-bottom: 3px; }
+    .note-item span { color: var(--muted); font-size: 14px; }
+    .field-list { display: grid; grid-template-columns: 200px 1fr; gap: 8px 18px; margin: 14px 0 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .field-list dt { color: var(--ink); font-weight: 780; }
+    .field-list dd { margin: 0; color: var(--muted); }
+    .field-list dd code { background: var(--code-bg); }
+    pre { margin: 12px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; overflow-x: auto; font-size: 13.2px; line-height: 1.6; color: var(--ink); }
+    pre code { padding: 0; background: transparent; }
+    .side-nav .nav-group { margin: 10px -4px 0; padding: 8px 4px 4px; border-top: 1px solid var(--line); }
+    .side-nav .nav-group:first-of-type { margin-top: 4px; padding-top: 4px; border-top: 0; }
+    .side-nav .nav-group-title { display: block; margin: 0 6px 4px; color: var(--muted); font-size: 10.5px; font-weight: 780; letter-spacing: 0.06em; text-transform: uppercase; }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+    @media (max-width: 980px) {
+      .field-list { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">17 · Feature · Usage Dashboard · AI 用量 · 预算 · 有效性</div>
+      <h1>看清 AI 花了多少 token / 多少美元 / 有没有真的帮上忙。</h1>
+      <p class="subtitle">Usage Dashboard 是 Peak 唯一 <strong>回答“AI 到底给我带来了什么”</strong> 的界面。它把六件事放在同一个面板：</p>
+      <ul class="subtitle-list">
+        <li>每次 AI 调用的原始记录（token / 成本 / 时延 / feature 归属）</li>
+        <li>按月 / 周 / 天的预算 pace，逼近上限时的告警</li>
+        <li>Provider × Model 的分布，看是不是被某个昂贵模型吃掉一半</li>
+        <li>Outcome funnel：<em>调了 → 有下文 → 真被采纳</em>，MPG（Model Per-Get）指标</li>
+        <li>History：可回溯的调用明细，能翻到“上次那笔 $0.4 是干什么的”</li>
+        <li>Optimization：curator 推的模型路由 / 阈值 / 静音建议，一键 Preview / Apply</li>
+      </ul>
+      <p class="subtitle">这份文档讲 <strong>数据从哪来（AIServiceManager.emitUsage）</strong>、<strong>三张表怎么存（<code>usage_log</code> / <code>usage_daily</code> / <code>usage_outcome</code>）</strong>、<strong>六屏各自看什么</strong>、<strong>Optimization curator 的规则 vs LLM 双路径</strong>、以及 <strong>关掉这个功能的正确方式</strong>。</p>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 13k 混合字符</span>
+        <span>Reading time: 25-30 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">这页解决什么</a>
+          <a href="#screens">六屏各自看什么</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">数据链路</span>
+          <a href="#recording">谁在写 usage 记录</a>
+          <a href="#storage">三张 SQLite 表</a>
+          <a href="#kpis">六个核心指标</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">Optimization</span>
+          <a href="#optimization">规则 vs LLM 双路径</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">用户视角</span>
+          <a href="#privacy-and-off">隐私 / 关掉它 / 数据保留</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">技术附录</span>
+          <a href="#composition">运行时装配</a>
+          <a href="#failure-modes">失败与降级</a>
+          <a href="#evidence">代码证据</a>
+        </div>
+        <div class="nav-note">只想搞清楚 <em>预算超支怎么办</em>，跳到 <a href="#optimization">Optimization</a>。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>这页解决什么</h2>
+          <p class="lead">Peak 有 6 个 feature 会主动调 LLM（<code>chat</code>、<code>search_analysis</code>、<code>copilot</code>、<code>graph</code>、<code>indexing</code>、<code>internal</code>，加上 <code>skill</code> agent 调用共 7 类）。用户一天下来 <strong>不知道</strong> 这些调用累计花了多少 token、多少钱、有没有真正落进笔记。Usage Dashboard 把这层黑盒打开：</p>
+          <div class="claim">
+            <strong>核心结论</strong>
+            这个面板 <em>只读</em>——它从不主动调 LLM，也不改动任何 vault 文件。它做三件事：<strong>(1) 订阅 event bus 收 usage 事件写 SQLite</strong>；<strong>(2) 定时把 <code>usage_log</code> 的详情行汇总进 <code>usage_daily</code></strong>；<strong>(3) 用聚合数据给六屏提供查询结果</strong>。Optimization 那屏是唯一可选调 LLM 的地方，规则 fallback 保证不联网也能出建议。
+          </div>
+          <div class="claim">
+            <strong>MPG（Model Per-Get）：这个面板最重要的一族指标</strong>
+            单看 token / 美元只回答“花了多少”；MPG 类指标回答 <em>“这些钱换来了多少真正保存到笔记里的产出”</em>。核心一条 <em>cost per saved artifact</em>：Σ(以 <code>vault_save / copilot_accept / agent_file_emit</code> 结尾的调用成本) ÷ 保存事件数。这条指标出现在 Overview 的 KPI 条，也出现在 Outcome Value 屏。
+          </div>
+          <div class="claim">
+            <strong>本文读者</strong>
+            想知道 Peak 有没有偷偷烧钱的 Obsidian 用户；正在调 Overview / Budget 屏 UI 的前端；想搞明白 <em>为什么某个 feature 的调用没进 dashboard</em> 的排障 agent。
+          </div>
+          <div class="claim">
+            <strong>本文不做什么</strong>
+            不重复 <a href="04-configuration-and-user-views.html#safety-and-budget">04 里 Budget / Safety 的设置界面说明</a>；不覆盖模型定价（那是每个 provider 各自的事）；不讲 <a href="21-infra-agent-harness.html">Agent Harness</a> 的 trace UI（这里只用 sessionId 关联）。
+          </div>
+          <div class="claim warn">
+            <strong>规格有历史坍塌，本文写当前实现</strong>
+            <a href="superpowers/specs/2026-05-29-usage-dashboard-insights.md">2026-05-29 那一版 insights</a> 认为“一板 BI dashboard 打不了 9 个 JTBD 中的 7 个”，主张把用量情报拆到 inline receipts / status bar / callout 多处。当前代码是 <em>六屏 + inline receipt + status bar</em> 混合的落地版本，本页按 <strong>代码事实</strong> 描述现状；未来 UI 变化在 <a href="roadmap.html">roadmap</a> 里追踪。
+          </div>
+        </section>
+
+        <section id="screens">
+          <h2>六屏各自看什么</h2>
+          <p class="lead">Command Palette → <em>Open Usage Dashboard</em> 打开 <code>UsageDashboardView</code>。顶栏有时间范围切换（<em>Today / 7d / 30d / All</em>）和六个 tab。<strong>六屏不是六份数据</strong>——底层是同一份 <code>usage_log</code> + <code>usage_outcome</code>，只是切面不同。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 18%"><col style="width: 24%"><col style="width: 26%"><col></colgroup>
+            <thead>
+              <tr><th>屏</th><th>回答什么</th><th>核心组件</th><th>数据来源</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Overview</strong><br><span class="pill green">默认打开</span></td>
+                <td>“今天 / 本周有没有异常？” 一屏见分晓</td>
+                <td>KPI 条（Budget pace + Context risk + Cost/saved + Calls）+ 推荐动作卡 + This week 三小图</td>
+                <td><code>useOverviewSnapshot()</code>：<code>getMonthlyPace</code> + <code>getCostPerSavedArtifact</code> + <code>getThisWeekTrio</code></td>
+              </tr>
+              <tr>
+                <td><strong>Provider-Model</strong></td>
+                <td>“钱都去了哪个 provider / model？”</td>
+                <td>Cost breakdown × 分布图 + model popularity 表</td>
+                <td><code>getModelDistribution / getCostBreakdown</code></td>
+              </tr>
+              <tr>
+                <td><strong>Outcome Value</strong></td>
+                <td>“调用 → 有下文 → 真被采纳，漏斗窄不窄？”</td>
+                <td>三段 funnel + 每 feature MPG 分解</td>
+                <td><code>UsageOutcomeService.adoptedMessageIds</code> + <code>getCostByFeature</code></td>
+              </tr>
+              <tr>
+                <td><strong>Budget Alerts</strong></td>
+                <td>“按当前 pace，月底会不会超预算？”</td>
+                <td>Monthly pace bar + 阈值告警</td>
+                <td><code>getMonthlyPace(monthlyUsd, resetDayOfMonth)</code></td>
+              </tr>
+              <tr>
+                <td><strong>History</strong></td>
+                <td>“上次那笔 $0.4 是干什么的？”</td>
+                <td>分页明细表 + feature 筛选 + expandable row</td>
+                <td><code>getRecentCalls(range, feature, limit, offset)</code></td>
+              </tr>
+              <tr>
+                <td><strong>Optimization</strong></td>
+                <td>“下个月省钱的行动清单？”</td>
+                <td>Recommendation 列表 + Preview/Apply + scenario 选择</td>
+                <td><code>UsageOptimizationService.run(opts)</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>Overview 的四个 KPI 是可点的</strong>
+            <em>Budget pace</em> 点进去 = 跳 Budget Alerts；<em>Context risk</em> 点进去 = Chat Studio 打开 compact 面板；<em>Cost per saved</em> 点进去 = 跳 Outcome Value；<em>Calls</em> 点进去 = 跳 History。这不是装饰性 KPI，是 <em>“看到不对劲就能直接跳到详情”</em> 的入口。
+          </div>
+
+          <div class="claim warn">
+            <strong>Overview 的推荐动作卡 = Optimization 的前 3 条</strong>
+            <em>推荐动作</em> 这张卡不是新算的——它调 <code>useOptimization()</code> 拿全量建议，只显示前 3 条 impact = high 的。所以“看到卡 → 点 Optimization → 看到相同 3 条”不是 bug，是同一份数据的两个入口。
+          </div>
+        </section>
+
+        <section id="recording">
+          <h2>谁在写 usage 记录</h2>
+          <p class="lead">所有写入都走 <strong>event bus</strong>——service 层不直接摸 SQLite。这让 UsageTracking 能作为 <em>可选</em> 服务：关掉后调用方仍能正常跑，只是没人订阅事件。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · Usage 记录链路</strong>
+              <span>Mermaid · event bus flow</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  Call["AI 调用发生<br/>queryText / queryStream / queryStructured"]
+  Emit["AIServiceManager.emitUsage()<br/>service-manager.ts L744"]
+  Bus["EventBus<br/>USAGE_RECORDED"]
+  Tracker["UsageTrackingService.init()<br/>订阅 + 写 usage_log"]
+  Outcome["UsageOutcomeService.recordEvent()<br/>UI 触发写 usage_outcome"]
+  Log[("usage_log 详情表")]
+  Daily[("usage_daily 聚合表")]
+  Outcm[("usage_outcome 事件表")]
+
+  Call --> Emit --> Bus --> Tracker --> Log
+  Tracker -. periodic .-> Daily
+  Outcome --> Outcm
+            </div>
+            <p class="read-note"><b>读图：</b>写记录只有一个入口 <code>emitUsage()</code>；下游谁订阅完全是订阅方的事。Outcome 事件走独立通路——不通过 event bus，因为它们来自 UI 而不是 LLM 调用。</p>
+          </div>
+
+          <h3>emitUsage 的四种调用点</h3>
+          <p class="prose">主要写入源在 <code>AIServiceManager</code>，每次 LLM 请求结束时打一条：</p>
+          <div class="field-list">
+            <dt><code>queryText()</code></dt>
+            <dd>一次性文本请求。成功后 <code>emitUsage(usage, startMs, false, feature, action, sessionId)</code>。</dd>
+            <dt><code>queryTextStream()</code></dt>
+            <dd>流式文本。最后一个 chunk 的 usage 累加后打点，<code>isStreaming = true</code>。</dd>
+            <dt><code>queryStream()</code></dt>
+            <dd>包含 tool use 的完整 stream；同样最后打一次点。</dd>
+            <dt><code>queryStructured()</code></dt>
+            <dd>结构化 output（zod 校验）。<code>action</code> 里带 schema 名，方便 History 屏识别。</dd>
+          </div>
+
+          <p class="prose" style="margin-top: 22px;">Agent 调用（SDK harness）在 <code>sdkAgentPool.ts</code> L344 有独立 emit，<code>feature: 'skill'</code>。<code>embedTexts</code>（embedding 客户端）目前 <strong>没有</strong> 手动 emit——insights spec 里列作已知 gap，需要在 T13 之前补上。</p>
+
+          <div class="claim">
+            <strong>成本是本地算的，不是 provider 传的</strong>
+            <code>emitUsage</code> 里的 <code>costUsd</code> 走 <code>computeUsdFromUsage()</code> + 本地模型 catalog 定价，所以：(1) 断网时也有成本估算；(2) provider 涨价 / 降价必须更新 catalog；(3) 缓存 token 与 reasoning token 的价格差异需要 catalog 支持——如果 catalog 里没写就按 input token 价近似。这条口径在 <a href="21-infra-agent-harness.html">21 Harness</a> 的 model catalog 里维护。
+          </div>
+        </section>
+
+        <section id="storage">
+          <h2>三张 SQLite 表</h2>
+          <p class="lead">Dashboard 依赖三张表，属于 <em>vault.sqlite</em>（不是 <em>chat.sqlite</em>）。schema 在 <code>src/core/storage/sqlite/ddl.ts</code> L981-1031。</p>
+
+          <h3><code>usage_log</code> — 每一次调用的原始记录</h3>
+          <p class="prose">写频繁读稀疏；带三个 index（<em>created_at / feature / session</em>）。<code>compactBefore(cutoffMs)</code> 定期把过期行汇进 <code>usage_daily</code> 后 DELETE。</p>
+          <pre><code>usage_log (
+  id                INTEGER PRIMARY KEY,
+  session_id        TEXT,
+  feature           TEXT,          -- chat | search_analysis | copilot | graph | indexing | internal | skill
+  action            TEXT,          -- 'queryText' | 'stream' | schema name for structured
+  provider          TEXT,
+  model             TEXT,
+  input_tokens      INTEGER,
+  output_tokens     INTEGER,
+  cached_tokens     INTEGER,
+  reasoning_tokens  INTEGER,
+  cost_usd          REAL,
+  duration_ms       INTEGER,
+  is_streaming      INTEGER,
+  created_at        INTEGER,       -- monotonic ms
+  metadata_json     TEXT
+);</code></pre>
+
+          <h3 style="margin-top: 22px;"><code>usage_daily</code> — 每日聚合</h3>
+          <p class="prose">写稀疏读频繁；unique constraint <em>(date, feature, action, provider, model)</em> + index <em>date</em>。History 屏之外的所有屏都是从这张表查——它是 dashboard 的 “热数据”。</p>
+          <pre><code>usage_daily (
+  date              TEXT,          -- YYYY-MM-DD
+  feature           TEXT,
+  action            TEXT,
+  provider          TEXT,
+  model             TEXT,
+  call_count        INTEGER,
+  total_input_tokens    INTEGER,
+  total_output_tokens   INTEGER,
+  total_cached_tokens   INTEGER,
+  total_reasoning_tokens INTEGER,
+  total_cost_usd    REAL,
+  avg_duration_ms   INTEGER,
+  max_duration_ms   INTEGER
+);</code></pre>
+
+          <h3 style="margin-top: 22px;"><code>usage_outcome</code> — 后置事件</h3>
+          <p class="prose">与 <code>usage_log</code> 的关联是 <em>message_id</em>（弱关联，不做外键；outcome 可能没有对应 log）。5 种事件类型闭集：</p>
+          <div class="field-list">
+            <dt><code>vault_save</code></dt>
+            <dd>用户把 AI 回复保存 / 复制到笔记（<em>Save to note</em> 按钮）。</dd>
+            <dt><code>copilot_accept</code></dt>
+            <dd>用户接受了 Copilot 内联建议（<em>Apply changes</em>）。</dd>
+            <dt><code>search_click</code></dt>
+            <dd>Quick Search 结果被点开。</dd>
+            <dt><code>agent_file_emit</code></dt>
+            <dd>Agent 直接产出了一个 vault 文件。</dd>
+            <dt><code>continuation</code></dt>
+            <dd>用户在 10-60s 内继续发送下一条消息且没有拒绝关键词——弱信号：至少没被拒绝。</dd>
+          </div>
+
+          <div class="claim">
+            <strong>Adoption vs Useful 的区别</strong>
+            <em>Useful</em> = 有 &ge; 1 条 outcome 事件（任一种）。<em>Adopted</em> = 有 <code>vault_save | copilot_accept | agent_file_emit</code> 中至少一种（不含 <code>search_click</code> 与 <code>continuation</code>）。所以 <em>useful ⊇ adopted</em>。Cost per saved 分母是 adopted 事件数；Cost per useful click 分母是 useful message 数。
+          </div>
+
+          <div class="claim warn">
+            <strong>Compaction：默认 30 天详情 → 之后仅存 daily</strong>
+            <code>usageDetailRetentionDays</code>（默认 30）到期后 <code>compactBefore</code> 把详情行汇进 daily 并 DELETE。<em>History 屏只能查 30 天内的明细</em>——超出后仍能看聚合统计，但看不到单条调用了。要看更长历史，把设置调大；代价是 <code>usage_log</code> 表体积随时间增长。
+          </div>
+        </section>
+
+        <section id="kpis">
+          <h2>六个核心指标</h2>
+          <p class="lead">Dashboard 上有几十个数字，但真正决策用的就下面这六个。每个都来自明确的 service 方法，不是 UI 拼算的。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 26%"><col style="width: 22%"><col></colgroup>
+            <thead>
+              <tr><th>指标</th><th>怎么算</th><th>来自哪个方法</th><th>看到不对劲时看哪</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Budget pace</strong></td>
+                <td>当月已花 / 当月预算，按线性外推到月底</td>
+                <td><code>UsageTrackingService.getMonthlyPace(monthlyUsd, resetDayOfMonth)</code></td>
+                <td>Budget Alerts 屏</td>
+              </tr>
+              <tr>
+                <td><strong>Context risk</strong></td>
+                <td>当前 chat session token 占 auto-compact 阈值的百分比</td>
+                <td><code>useCurrentContextUtilization()</code>（前端 hook，走 <code>SessionContextService</code>）</td>
+                <td>Chat Studio 的 compact 按钮</td>
+              </tr>
+              <tr>
+                <td><strong>Cost per saved artifact</strong></td>
+                <td>Σ以 <em>vault_save / copilot_accept / agent_file_emit</em> 结尾的调用成本 ÷ 保存事件数（默认 7d 窗口）</td>
+                <td><code>getCostPerSavedArtifact(range, outcome)</code></td>
+                <td>Outcome Value 屏</td>
+              </tr>
+              <tr>
+                <td><strong>Cost per useful click</strong></td>
+                <td>Σ search + rerank 调用成本 ÷ <em>search_click</em> 事件数</td>
+                <td>组合调用</td>
+                <td>Outcome Value 屏（每 feature 分解）</td>
+              </tr>
+              <tr>
+                <td><strong>Total calls</strong></td>
+                <td>期内 <code>usage_log</code> 行数</td>
+                <td><code>getKPIs(range)</code></td>
+                <td>History 屏</td>
+              </tr>
+              <tr>
+                <td><strong>Outcome funnel</strong></td>
+                <td>Total calls → Useful（≥1 outcome）→ Saved（adoption 类）</td>
+                <td><code>UsageOutcomeRepo.countUsefulMessages / adoptedMessageIds</code></td>
+                <td>Outcome Value 屏</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>为什么 “calls” 不是最有用的数字</strong>
+            用户 <em>本能</em> 会去看“今天 AI 被调了几次”，但那个数没有决策价值——分母是使用意愿，不是浪费。真正有决策力的是 <em>cost per saved</em>：如果它异常高，要么模型选错了（Optimization 会建议 route_to_cheaper），要么调用没落地（Outcome funnel 会显示 useful 但没 adopted）。所以 Overview 把 <em>Cost per saved</em> 放在第三个 KPI，比 Calls 更显眼。
+          </div>
+        </section>
+
+        <section id="optimization">
+          <h2>Optimization：规则 vs LLM 双路径</h2>
+          <p class="lead">Optimization 是这个 dashboard 里唯一 <strong>会调 LLM</strong> 的通路——但只在你手动打开 Optimization tab 且当前 <em>Optimization Curator</em> 设置了 provider 时才发生。规则路径始终作为兜底，保证离线也能出建议。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · UsageOptimizationService.run() 的双路径</strong>
+              <span>Mermaid · curator</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  Signals["collectSignals()<br/>featureModelStats · noOutcomeHighCost<br/>longSessions · projections"]
+  LlmCfg{"curator LLM<br/>配置了 profile?"}
+  TryLlm["tryLLM(signals)<br/>vercelGenerateText + zod 校验"]
+  Rules["buildRuleRecommendations(signals)<br/>纯规则"]
+  Result["OptimizationResult<br/>{recommendations[], source}"]
+
+  Signals --> LlmCfg
+  LlmCfg -- yes --> TryLlm
+  LlmCfg -- no --> Rules
+  TryLlm -- schema fail / error --> Rules
+  TryLlm -- ok --> Result
+  Rules --> Result
+            </div>
+            <p class="read-note"><b>读图：</b>只要 signals 收得到，就 <em>一定</em> 有 recommendations——LLM 只是让文案更贴当前 vault，schema 校验失败会静默回落到规则。规则路径产出的建议是 <em>正确</em> 但 <em>套话</em>；LLM 路径是 <em>更贴</em> 但 <em>可能幻觉</em>——所以走 zod 校验，不听“天马行空”。</p>
+          </div>
+
+          <h3>能推的建议种类（<code>action</code>）</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 26%"><col style="width: 30%"><col></colgroup>
+            <thead>
+              <tr><th>action</th><th>触发信号</th><th>预估影响</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>route_to_cheaper_model</code></td>
+                <td>某 feature-model 的 no-outcome 率 &gt; 50% 且 cost per call &gt; $0.05</td>
+                <td>预估月省，按建议 model 的价格差 × 调用次数外推</td>
+              </tr>
+              <tr>
+                <td><code>lower_compact_threshold</code></td>
+                <td>长 session 数量 &gt; 阈值，session 平均 token 占比接近上限</td>
+                <td>压 chat context 让 compact 提前发生</td>
+              </tr>
+              <tr>
+                <td><code>review_no_outcome</code></td>
+                <td>某 feature 的 useful rate 特别低</td>
+                <td>不省钱，但值得排查：feature 是不是给了坏 prompt</td>
+              </tr>
+              <tr>
+                <td><code>silence_low_cost_pip</code></td>
+                <td>某 feature 频繁但单价很低（例如 embedding 心跳）</td>
+                <td>不省钱，只是提示别在 Overview 焦虑这类噪声</td>
+              </tr>
+              <tr>
+                <td><code>set_budget</code></td>
+                <td>用户还没设 monthly budget</td>
+                <td>预算是 pace 的分母；没设的话所有告警都不起作用</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>Scenario：保守 / 均衡 / 激进</strong>
+            <code>Scenario = conservative | balanced | aggressive</code> 只影响 <em>过滤</em>——保守模式只保留 <em>impact = high</em> 且 <em>investigate</em> 类的建议；激进保留全部。UI 右侧的 <em>projection summary</em> 会随 scenario 变——你能在真的 Apply 之前看到 “选保守能省多少 vs 选激进能省多少”。
+          </div>
+
+          <div class="claim warn">
+            <strong>Apply 会真的改设置吗？</strong>
+            会——但走的是 <em>建议对应的具体 action</em>：<code>route_to_cheaper_model</code> 修改 <a href="04-configuration-and-user-views.html#profiles-and-roles">04 profiles 里的 role → model 映射</a>；<code>lower_compact_threshold</code> 改 chat 的 compact 阈值；<code>set_budget</code> 写 monthly budget。<em>都是 settings 层的修改</em>，不改 vault，不 evict 已有 chat 上下文。想撤销：Preview 阶段可以退出；Apply 后到 <em>Settings → Restore</em> 或用 Obsidian 的 File Recovery 找 <code>data.json</code>。
+          </div>
+        </section>
+
+        <section id="privacy-and-off">
+          <h2>隐私 / 关掉它 / 数据保留</h2>
+          <p class="lead">用户对 usage tracking 的三个疑问：<strong>数据发出去了吗</strong>、<strong>能不能关</strong>、<strong>存多久</strong>。答案：本地保存，可关，默认 30 天。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 26%"><col style="width: 32%"><col></colgroup>
+            <thead>
+              <tr><th>问题</th><th>实际行为</th><th>控制项</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>会不会把我的 prompt / response 传到 provider 之外</td>
+                <td>不会。UsageTracking 只订阅 <em>usage 事件</em>——input/output tokens 数、cost、duration。<em>调用内容</em> 从来不写进 <code>usage_log</code>。<em>Prompt/response preview</em> 是可选的（Storefront 那栏 metadata），默认关。</td>
+                <td><code>usagePreviewEnabled: false</code>（默认）</td>
+              </tr>
+              <tr>
+                <td>数据存哪里</td>
+                <td>本地 <em>vault.sqlite</em>；从不发送到 Peak 服务端（Peak 没有服务端）；也不发到 provider。</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>能全关吗</td>
+                <td>能。<code>usageTrackingEnabled: false</code> 后 <code>UsageTrackingService.init</code> 跳过订阅——从此 event bus 上的事件全丢。dashboard 打开会显示空数据。</td>
+                <td><code>usageTrackingEnabled: false</code></td>
+              </tr>
+              <tr>
+                <td>历史明细存多久</td>
+                <td>默认 30 天详情；到期后 compact 进 daily。daily 长期保留（用户几乎不会主动清）。</td>
+                <td><code>usageDetailRetentionDays</code></td>
+              </tr>
+              <tr>
+                <td>outcome 事件呢</td>
+                <td>存在 <code>usage_outcome</code>，不受 detail retention 影响；outcome 分析要跨窗口，不宜按 30 天砍。</td>
+                <td>手工清 SQLite</td>
+              </tr>
+              <tr>
+                <td>Optimization LLM 呢</td>
+                <td>只有你打开 Optimization 屏且配置了 curator LLM 才调用；每次点 Refresh 才请一次。发的是 <em>聚合 signals</em>（feature-model stats、cost 分布），<em>不发 prompt/response 原文</em>。</td>
+                <td>不配 curator LLM = 规则路径</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim danger">
+            <strong>Prompt preview 打开前请三思</strong>
+            <code>usagePreviewEnabled: true</code> 会把 prompt/response 的前几百字符写进 <code>metadata_json</code>——之后 History 屏的 <em>What was this about</em> 会有内容，但 <em>usage_log</em> 表变大且带上你与 AI 的对话内容。误开 → 忘了关 → 分享 vault backup 时会带出对话历史。<em>只在排障时临时开</em>，排完关掉。
+          </div>
+        </section>
+
+        <section id="composition">
+          <h2>技术附录 · 运行时装配</h2>
+          <p class="lead">Usage Dashboard 是 Peak 里 <strong>装配最简单</strong> 的 feature 之一——两个 singleton service + 一个 Obsidian View。装配全在 <code>main.ts</code>。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 3 · main.ts 里的装配顺序</strong>
+              <span>Mermaid · plugin onload</span>
+            </div>
+            <div class="mermaid">
+flowchart TB
+  Tmpl["TemplateManager"]
+  Ai["AIServiceManager"]
+  Docs["DocumentLoaderManager"]
+  Sql["SQLite ready"]
+  Track["UsageTrackingService.init(db, app, settings)"]
+  Out["UsageOutcomeService.init(db)"]
+  Search["SearchService"]
+  Ctx["AppContext"]
+  Views["ViewManager (registerView)"]
+  Cmds["Commands: peak-usage-dashboard"]
+
+  Tmpl --> Ai --> Docs --> Sql --> Track --> Out --> Search --> Ctx --> Views --> Cmds
+            </div>
+            <p class="read-note"><b>读图：</b>Track 与 Out 必须在 Sql ready 之后（要拿 db），必须在 Ai 之后（要订阅 event bus），必须在 View 之前（View 会同步读它们）。顺序不能乱。onunload 里两个 service 各自 <code>destroy()</code>。</p>
+          </div>
+
+          <h3 style="margin-top: 30px;">关键文件</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>层</th><th>文件</th><th>职责</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Command</strong></td>
+                <td><code data-copy="src/app/commands/Register.ts">Register.ts</code></td>
+                <td>注册 <code>peak-usage-dashboard</code> → 打开 <code>UsageDashboardView</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Plugin lifecycle</strong></td>
+                <td><code data-copy="main.ts">main.ts</code></td>
+                <td>L502-510 <code>init</code>；L779-780 <code>destroy</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Service：写 / 查</strong></td>
+                <td><code data-copy="src/service/usage/UsageTrackingService.ts">UsageTrackingService.ts</code></td>
+                <td>订阅 <code>USAGE_RECORDED</code>；20+ 查询方法；定时 compaction。</td>
+              </tr>
+              <tr>
+                <td><strong>Service：outcome</strong></td>
+                <td><code data-copy="src/service/usage/UsageOutcomeService.ts">UsageOutcomeService.ts</code></td>
+                <td>UI 触发写入；<code>recordVaultSave / recordCopilotAccept / recordSearchClick / recordAgentFileEmit / recordContinuation</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Optimization curator</strong></td>
+                <td><code data-copy="src/service/usage/optimization/UsageOptimizationService.ts">UsageOptimizationService.ts</code></td>
+                <td><code>collectSignals</code> → <code>tryLLM</code> / <code>buildRuleRecommendations</code> → <code>OptimizationResult</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Types</strong></td>
+                <td><code data-copy="src/core/types/usage.ts">usage.ts</code><br><code data-copy="src/service/usage/optimization/types.ts">optimization/types.ts</code></td>
+                <td><code>UsageFeature</code> / <code>UsageRecordPayload</code> / <code>UsageKPIs</code> / <code>TimeRange</code> / <code>UsageOutcomeEventType</code>；<code>OptimizationSignals</code> / <code>Recommendation</code> / <code>Scenario</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Repositories</strong></td>
+                <td><code data-copy="src/core/storage/sqlite/repositories/UsageLogRepo.ts">UsageLogRepo.ts</code><br><code data-copy="src/core/storage/sqlite/repositories/UsageOutcomeRepo.ts">UsageOutcomeRepo.ts</code></td>
+                <td>Kysely 查询实现；<code>sumByRange / groupByFeature / groupByModel</code> 等；<code>countByType / adoptedMessageIds</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Schema</strong></td>
+                <td><code data-copy="src/core/storage/sqlite/ddl.ts">ddl.ts</code>（L981-1031）</td>
+                <td>三张表 + 索引。</td>
+              </tr>
+              <tr>
+                <td><strong>Event bus</strong></td>
+                <td><code data-copy="src/core/eventBus.ts">eventBus.ts</code></td>
+                <td><code>USAGE_RECORDED = 'peak:usage-recorded'</code>；<code>UsageRecordedViewEvent</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>UI 主视图</strong></td>
+                <td><code data-copy="src/ui/view/usage-dashboard/UsageDashboard.tsx">UsageDashboard.tsx</code></td>
+                <td>顶栏 tab + 时间范围切换；分发到 6 屏组件。</td>
+              </tr>
+              <tr>
+                <td><strong>UI 六屏</strong></td>
+                <td><code data-copy="src/ui/view/usage-dashboard/screens/">screens/*.tsx</code></td>
+                <td>Overview / ProviderModel / OutcomeValue / BudgetAlerts / History / Optimization。</td>
+              </tr>
+              <tr>
+                <td><strong>UI hooks</strong></td>
+                <td><code data-copy="src/ui/view/usage-dashboard/hooks/">hooks/*.ts</code></td>
+                <td><code>useUsageData</code> / <code>useOverviewSnapshot</code> / <code>useOptimization</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Recording surface（call site）</strong></td>
+                <td><code data-copy="src/service/chat/service-manager.ts">service-manager.ts</code>（L744）<br><code data-copy="src/service/agents/core/sdkAgentPool.ts">sdkAgentPool.ts</code>（L344）</td>
+                <td><code>emitUsage()</code>：chat 各种 query 完成时；agent 完成时。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>为什么两个 service 都是 singleton</strong>
+            两者都持有 db handle 和长期计时器（compaction、daily 汇总），且要跨插件重启唯一——用 singleton 而非 <code>AppContext</code> 注入。<em>唯一</em> 允许 singleton 的例外场景（<a href="01-architecture.html#capability-contract">01 里的规矩</a>）：<em>纯 telemetry + 全局生命周期</em>。dashboard 之外的 feature 不该模仿这种模式加 singleton。
+          </div>
+        </section>
+
+        <section id="failure-modes">
+          <h2>失败与降级</h2>
+          <p class="lead">当 Dashboard 里数字对不上、屏空、或告警不出，按下面顺序排。</p>
+
+          <div class="note-list">
+            <div class="note-item">
+              <b>屏空 — <code>usageTrackingEnabled</code> 关了。</b>
+              <span>症状：所有六屏都空，<em>Cost per saved</em> 显示 <em>—</em>。修：<em>Settings → AI → Usage tracking → Enable</em>；打开后 <strong>只对之后</strong> 的调用生效——之前的记录已经没写。</span>
+            </div>
+            <div class="note-item">
+              <b>某个 feature 从来不在 Provider-Model 屏出现。</b>
+              <span>症状：明明在用 embedding / graph，dashboard 却没有 <code>graph</code> / <code>indexing</code> 分布。原因：该 feature 的调用路径 <em>没有</em> 调 <code>emitUsage</code>。目前已知 gap：<code>embedTexts()</code>。修：在该 feature 的调用结束点补一次 <code>emitUsage(usage, startMs, false, 'indexing', 'embed')</code>。</span>
+            </div>
+            <div class="note-item">
+              <b>Cost 显示 $0.00 但明明调了 provider。</b>
+              <span>症状：History 屏 <em>cost</em> 列 0。原因：模型 catalog 里没有该 model 的定价条目。修：在 <a href="21-infra-agent-harness.html">Harness</a> 的 model catalog 加一条；<em>之前</em> 的行 cost 不会补算，只有之后的新行按新价。</span>
+            </div>
+            <div class="note-item">
+              <b>Budget alert 从来不响。</b>
+              <span>症状：明明月底了、pace 明显超支，Budget Alerts 屏没有告警。原因：<em>monthly budget 未设</em> 或 <em>resetDayOfMonth 不对</em>。修：Settings → AI → Budget → 设 monthly $ 上限；Optimization 屏也会推 <code>set_budget</code> 建议。</span>
+            </div>
+            <div class="note-item">
+              <b>Outcome funnel 一直显示 0 saved。</b>
+              <span>症状：明明常在用 <em>Save to note</em>，Outcome Value 屏的 saved 分子是 0。原因：这些 UI 动作没有触发 <code>UsageOutcomeService.recordVaultSave()</code>。修：找该 UI 组件，在保存成功后调 <code>recordVaultSave(messageId, sessionId)</code>。</span>
+            </div>
+            <div class="note-item">
+              <b>Optimization 屏建议全是 “Set a monthly budget”。</b>
+              <span>症状：只出一条 set_budget，别的建议都没有。原因：signals 里 monthlyBudgetUsd = 0，规则引擎因为 <em>不知道要省什么</em> 没法推别的。修：先设预算，再回来看建议。</span>
+            </div>
+            <div class="note-item">
+              <b>History 表分页“下一页”不响应。</b>
+              <span>症状：翻到第 3 页后卡住。原因：<code>getRecentCalls</code> 的 <em>offset</em> 超过留存窗口（30 天前的行已被 compact 掉）。修：把 <code>usageDetailRetentionDays</code> 调大；或接受 “30 天前只有 daily 聚合可看”。</span>
+            </div>
+          </div>
+
+          <div class="claim danger">
+            <strong>event bus 上的 usage 事件被跨插件其他订阅者读到？</strong>
+            <code>USAGE_RECORDED</code> 是 <em>Peak 内部</em> event bus，不进 Obsidian 的公开 event 通道，其他插件读不到。如果你另外写了 vault-level Obsidian event，要小心别把 usage 数据带出去——本 dashboard 的 event 类型永远只在 <code>src/core/eventBus.ts</code> 里。
+          </div>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+          <p class="lead">在改这个 feature 的人：以下是常见任务的入口。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 30%"><col style="width: 24%"><col></colgroup>
+            <thead>
+              <tr><th>关心的事</th><th>入口文件</th><th>要点</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Emit 一条 usage 事件</td>
+                <td><code data-copy="src/service/chat/service-manager.ts">service-manager.ts</code>（L744 <code>emitUsage</code>）</td>
+                <td>包 <code>UsageRecordedViewEvent</code>；成本本地算；错误时 console.warn 静默失败。</td>
+              </tr>
+              <tr>
+                <td>加一种新的 <code>UsageFeature</code></td>
+                <td><code data-copy="src/core/types/usage.ts">usage.ts</code></td>
+                <td>先扩 union，再在 UI feature filter 里加渲染名，最后在 <code>groupByFeature</code> 的按 feature 分组查询里能出现。</td>
+              </tr>
+              <tr>
+                <td>加一种新的 outcome event</td>
+                <td><code data-copy="src/core/types/usage.ts">usage.ts</code>（<code>UsageOutcomeEventType</code>）<br><code data-copy="src/service/usage/UsageOutcomeService.ts">UsageOutcomeService.ts</code></td>
+                <td>先扩闭集，然后加 <em>convenience wrapper</em>；决定它算不算 adoption（会不会进 <code>adoptedMessageIds</code>）。</td>
+              </tr>
+              <tr>
+                <td>加一种新的 Optimization 建议</td>
+                <td><code data-copy="src/service/usage/optimization/UsageOptimizationService.ts">UsageOptimizationService.ts</code></td>
+                <td>在 <code>collectSignals</code> 里补新的信号，然后规则路径新增分支；LLM 路径通过 prompt 更新自然会用。</td>
+              </tr>
+              <tr>
+                <td>改 SQL schema</td>
+                <td><code data-copy="src/core/storage/sqlite/ddl.ts">ddl.ts</code>（L981-1031）</td>
+                <td>加字段 → 更新 <code>UsageLogRepo</code> insert / query → 迁移写在 <code>src/core/storage/sqlite/migrations/</code>；<em>不要</em> 直接改现有字段类型。</td>
+              </tr>
+              <tr>
+                <td>改 Overview 屏的 KPI</td>
+                <td><code data-copy="src/ui/view/usage-dashboard/screens/Overview.tsx">Overview.tsx</code><br><code data-copy="src/ui/view/usage-dashboard/hooks/useOverviewSnapshot.ts">useOverviewSnapshot.ts</code></td>
+                <td>KPI 组件由 <em>KpiActionCard</em> 承担；点击跳转路由是 <em>screen name string</em>。</td>
+              </tr>
+              <tr>
+                <td>Dashboard 从哪里读时间范围</td>
+                <td><code data-copy="src/ui/view/usage-dashboard/UsageDashboard.tsx">UsageDashboard.tsx</code></td>
+                <td>顶栏 <em>Segmented</em> 控件 → local state；所有 hook 都接一个 <code>range: TimeRange</code>。改成 URL 参数需要动 view lifecycle。</td>
+              </tr>
+              <tr>
+                <td>Compact 何时发生</td>
+                <td><code data-copy="src/service/usage/UsageTrackingService.ts">UsageTrackingService.ts</code>（<code>compactionBefore</code>）<br><code data-copy="src/core/storage/sqlite/repositories/UsageLogRepo.ts">UsageLogRepo.ts</code>（<code>compactBefore</code>）</td>
+                <td>Service 层判定“何时该跑”；Repo 层做实际 UPSERT + DELETE。<em>不要</em> 在 Repo 层加时间判定——那是 service 的责任。</td>
+              </tr>
+              <tr>
+                <td>Provider 定价</td>
+                <td><code data-copy="src/service/agents/harness/">harness/model-catalog</code></td>
+                <td>catalog 是 <em>Harness</em> 的资产，dashboard 只读。加新模型：在 catalog 加条目，重启插件后 <code>emitUsage</code> 就会用新价。</td>
+              </tr>
+              <tr>
+                <td>Settings 界面</td>
+                <td><code data-copy="src/core/config/settingsTypes.ts">settingsTypes.ts</code><br><code data-copy="src/ui/view/settings/">settings/</code></td>
+                <td><code>usageTrackingEnabled</code> / <code>usagePreviewEnabled</code>；budget / retention 在 04 · Configuration 里详解。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>调试小抄</strong>
+            (1) 想看 event bus 上事件真的有没有发：在 devtools 加 <code>window.__peakEventBus.on('peak:usage-recorded', console.log)</code>；(2) 想手动补一条 outcome：<code>window.PeakServices.usageOutcome.recordVaultSave(messageId, sessionId)</code>；(3) 想让 dashboard 立刻跑 compaction：改设置里的 retention 天数、重启插件——onload 时会立即 compact。
+          </div>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01。当前实现落地版本对应 2026-05-29 insights 之后的六屏 + inline receipt + status bar 混合方案。<em>Prompt/response preview</em> 默认关；<em>Optimization curator</em> LLM 默认不配、只走规则；<em>embedding usage emit</em> 是已知 gap。规格原稿：<a href="superpowers/specs/2026-05-08-token-usage-dashboard-design.md">2026-05-08 design</a> + <a href="superpowers/specs/2026-05-29-usage-dashboard-insights.md">2026-05-29 insights</a>。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

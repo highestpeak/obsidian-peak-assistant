@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { UsageOptimizationService } from '@/service/usage/optimization';
 import type {
 	OptimizationResult,
 } from '@/service/usage/optimization';
-import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -20,21 +18,22 @@ export interface UseOptimizationState {
  * configured). Cycles auto-refresh on mount.
  */
 export function useOptimization(): UseOptimizationState {
-	const { settings } = useServiceContext();
+	const { settings, usageServices } = useServiceContext();
 	const [result, setResult] = useState<OptimizationResult | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [nonce, setNonce] = useState(0);
 
 	useEffect(() => {
+		if (!usageServices) return;
 		let cancelled = false;
 		const controller = new AbortController();
 		setLoading(true);
 		(async () => {
 			try {
-				const svc = UsageOptimizationService.getInstance();
+				const svc = usageServices.optimization;
 				const budget = readBudget(settings);
 				const pace = budget.monthlyUsd > 0
-					? await UsageTrackingService.getInstance().getMonthlyPace(
+					? await usageServices.tracking.getMonthlyPace(
 						budget.monthlyUsd,
 						budget.resetDayOfMonth,
 					)
@@ -65,7 +64,7 @@ export function useOptimization(): UseOptimizationState {
 			cancelled = true;
 			controller.abort();
 		};
-	}, [nonce]);
+	}, [nonce, usageServices, settings]);
 
 	const refresh = useCallback(() => setNonce((n) => n + 1), []);
 	return { result, loading, refresh };

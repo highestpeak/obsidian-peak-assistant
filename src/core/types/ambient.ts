@@ -65,7 +65,6 @@ export interface AmbientPushSettings {
 	llmExplanationCooldownMs: number;
 	enableSerendipityGutter: boolean;
 	enableMorningBriefing: boolean;
-	autoOpenedPanel: boolean;
 }
 
 export const DEFAULT_AMBIENT_PUSH_SETTINGS: AmbientPushSettings = {
@@ -82,5 +81,4 @@ export const DEFAULT_AMBIENT_PUSH_SETTINGS: AmbientPushSettings = {
 	llmExplanationCooldownMs: 120_000,
 	enableSerendipityGutter: true,
 	enableMorningBriefing: true,
-	autoOpenedPanel: false,
 };

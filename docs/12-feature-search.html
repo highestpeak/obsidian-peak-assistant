@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>12 Search / Feature Document</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 28px 0 9px; font-size: 21px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 22px; }
+    .card { padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: 0 12px 28px rgba(23, 34, 29, 0.05); }
+    .card h3 { margin-top: 10px; }
+    .card p { color: var(--muted); font-size: 15px; line-height: 1.65; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    .code-box { margin-top: 20px; padding: 15px 17px; border: 1px solid var(--line); border-radius: 8px; background: var(--code-bg); overflow-x: auto; color: #25352d; font-size: 13px; line-height: 1.65; }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+    }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">12 · Feature · Search</div>
+      <h1>Search 的目标不是找“完全一样的词”，而是帮用户找回相关笔记。</h1>
+      <p class="subtitle">这份文档两条并行线索：面向用户解释搜索为什么混合六种信号，面向维护者讲清六阶段管线的顺序。</p>
+      <ul class="subtitle-list">
+        <li><strong>用户视角</strong>：关键词、语义、标题、图关系、点击反馈、高亮——为什么要混合。</li>
+        <li><strong>维护者视角</strong>：query parser → 多路 retriever → weighted RRF → PPR → ranking boost → highlight——每个阶段的顺序和边界。</li>
+      </ul>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 10k 混合字符</span>
+        <span>Reading time: 22-26 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">先理解搜索意图</a>
+          <a href="#reader">读者和边界</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">用户视角</span>
+          <a href="#entry">入口和开始前检查</a>
+          <a href="#tasks">常见任务和结果</a>
+          <a href="#user-behavior">用户能感知的行为</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">检索流水</span>
+          <a href="#pipeline">Search Pipeline</a>
+          <a href="#parser">Query Parser</a>
+          <a href="#retrievers">Retrievers</a>
+          <a href="#merge">Merge / Rerank / Highlight</a>
+          <a href="#fallback">失败和降级</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">排障与维护</span>
+          <a href="#troubleshooting">排障</a>
+          <a href="#maintain">维护规则</a>
+          <a href="#freshness">更新触发</a>
+          <a href="#evidence">代码证据</a>
+        </div>
+        <div class="nav-note">这份文档解释搜索功能；索引/embedding/chunk 细节后续归 23。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>先理解搜索意图</h2>
+          <p class="lead">Obsidian 用户搜索时，经常记不住准确标题，也不一定知道某个概念被自己写在哪篇笔记里。一个只做精确关键词匹配的搜索，很快会变成“我知道它存在，但我找不到”。</p>
+          <p class="prose">Peak Assistant 的 Search 选择了多路信号融合：关键词召回负责可解释性，vector 负责概念相近，metadata/fuzzy 负责标题路径和拼写容错，PPR 和 reranker 负责图关系、最近性、hub、点击反馈。最终结果再做高亮，让用户知道为什么这条结果出现。</p>
+          <div class="claim">
+            <strong>一句话结论</strong>
+            Search 是一个“多路召回 + 可降级增强”的 pipeline。任何一个 retriever、vector、PPR 或 LLM rerank 失败，都不应该让基础搜索不可用。
+          </div>
+        </section>
+
+        <section id="reader">
+          <h2>本文读者、目标和不做什么</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>对象</th><th>读完应该知道什么</th><th>不在这里展开什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Obsidian 用户</strong></td>
+                <td>为什么搜索结果不是纯关键词排序；为什么语义、模糊、图关系会影响结果。</td>
+                <td>不需要理解 SQLite FTS5、embedding 表和图算法细节。</td>
+              </tr>
+              <tr>
+                <td><strong>维护者</strong></td>
+                <td>一条 query 如何被 parse、召回、合并、rerank、highlight；哪些环节必须保持失败隔离。</td>
+                <td>不在这里重写 search index 生命周期；那属于 <code>23-infra-search-index.html</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Coding agent</strong></td>
+                <td>新增 retriever 时要接入 registry 和 weight，不要在 UI 或某个单一路径里 bypass RRF。</td>
+                <td>不把 Search 写成一个 LLM-only 问答功能。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="entry">
+          <h2>入口和开始前检查</h2>
+          <p class="lead">Search 的用户入口是 <strong>Quick Search</strong>。它有两个主要 tab：<strong>Vault Search</strong> 用来直接找笔记，<strong>AI Analysis</strong> 用来让 AI 围绕 Vault 做分析。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>你想做什么</th><th>从哪里开始</th><th>开始前确认</th><th>预期结果</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>搜索整个 Vault</td>
+                <td>Command Palette → <strong>Quick Search</strong> → <strong>Vault Search</strong>。</td>
+                <td>Search service 已初始化；基础索引可用。</td>
+                <td>输入框下方出现结果数量、耗时和结果列表。</td>
+              </tr>
+              <tr>
+                <td>限定当前文件、folder 或行号</td>
+                <td>输入框提示支持 <code>#</code> in-file、<code>@</code> folder、<code>:</code> go to line。</td>
+                <td>当前 Obsidian editor 或 folder scope 有意义。</td>
+                <td>mode label 会切到 in-file / folder / line 等状态。</td>
+              </tr>
+              <tr>
+                <td>让 AI 做 Vault 分析</td>
+                <td>Quick Search → <strong>AI Analysis</strong>。</td>
+                <td>需要可用 AI profile；Web Search 还需要 Web Search profile。</td>
+                <td>进入分析输入和流式结果区域。</td>
+              </tr>
+              <tr>
+                <td>使用语义搜索</td>
+                <td>正常输入 query；系统按条件决定是否启用 vector retriever。</td>
+                <td>Settings 里 vector search enabled，且有 embedding endpoint/model。</td>
+                <td>概念相近但不完全同词的笔记可能进入结果。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="tasks">
+          <h2>常见任务和预期结果</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>任务</th><th>怎么做</th><th>成功时应该看到什么</th><th>注意</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>找一篇记不清标题的笔记</td>
+                <td>在 <strong>Vault Search</strong> 输入关键词或概念词。</td>
+                <td>结果列表包含标题、路径、snippet/highlight 和耗时。</td>
+                <td>排序会混合多路信号，不是纯关键词次数。</td>
+              </tr>
+              <tr>
+                <td>在当前文件里找内容</td>
+                <td>用 <code>#</code> 前缀进入 in-file 模式。</td>
+                <td>mode label 显示 in-file，结果聚焦当前文件。</td>
+                <td>如果没有活动文件，这个模式价值有限。</td>
+              </tr>
+              <tr>
+                <td>在某个 folder 里找内容</td>
+                <td>用 <code>@</code> 前缀进入 folder 模式。</td>
+                <td>mode label 显示 folder，query 会带 folder scope。</td>
+                <td>folder scope 与全文多路召回共同作用。</td>
+              </tr>
+              <tr>
+                <td>从结果进入 AI 分析</td>
+                <td>切换到 <strong>AI Analysis</strong> 或用界面里的 Ask AI 入口。</td>
+                <td>AI Analysis 输入会带入相关 query。</td>
+                <td>AI Analysis 是分析 workflow，不等同于基础 Search pipeline。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="user-behavior">
+          <h2>用户能感知到的行为</h2>
+          <div class="grid">
+            <article class="card">
+              <div class="pill-row"><span class="pill green">Relevant, not literal only</span></div>
+              <h3>结果可能来自不同信号</h3>
+              <p>同一个结果可能因为正文 FTS、标题/路径 metadata、vector 相似、fuzzy correction 或 graph boost 出现。排序不是单一关键词计数。</p>
+            </article>
+            <article class="card">
+              <div class="pill-row"><span class="pill blue">Explainable snippets</span></div>
+              <h3>最终结果会有高亮</h3>
+              <p>高亮发生在 final topK 阶段，帮用户确认匹配点。高亮不是排序的唯一来源。</p>
+            </article>
+            <article class="card">
+              <div class="pill-row"><span class="pill gold">Semantic optional</span></div>
+              <h3>语义搜索是增强，不是基础依赖</h3>
+              <p>vector retriever 只有在 vector search enabled 且存在 embedding profile/model 时才启用。</p>
+            </article>
+            <article class="card">
+              <div class="pill-row"><span class="pill red">Failure tolerant</span></div>
+              <h3>单路失败不应该拖垮整次搜索</h3>
+              <p><code>RetrieverRegistry</code> 会捕获单个 retriever 的错误并返回空结果；PPR 失败也会回退原结果。</p>
+            </article>
+          </div>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>用户输入/场景</th><th>系统会怎么找</th><th>用户需要知道的限制</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>普通关键词</td>
+                <td>FTS、stem、metadata、fuzzy 等多路召回会参与。</td>
+                <td>排序不是“词出现次数越多越靠前”。</td>
+              </tr>
+              <tr>
+                <td>短 query 或拼写不准</td>
+                <td>fuzzy retriever 从 title token cache 找近似词，再查 metadata FTS。</td>
+                <td>它不是完整拼写检查器，主要依赖标题 token。</td>
+              </tr>
+              <tr>
+                <td>概念型长 query</td>
+                <td>vector weight 会提高；如果 embedding 条件满足，vector retriever 会参与。</td>
+                <td>没有 embedding profile/model 时，语义召回不会启用。</td>
+              </tr>
+              <tr>
+                <td>带 <code>-term</code></td>
+                <td>exclude 会进入 query plan，并在排序后过滤结果。</td>
+                <td>不是每一路 retriever 都提前过滤；最终输出会过滤。</td>
+              </tr>
+              <tr>
+                <td>打开 LLM rerank</td>
+                <td>只有 <code>enableLLMRerank</code> 为 true 时才跑 LLM rerank。</td>
+                <td>基础 search 不依赖 LLM 才能返回结果。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="pipeline">
+          <h2>Search Pipeline</h2>
+          <p class="lead">从代码入口看，SearchClient 很薄，真正的 pipeline 在 <code>QueryService.textSearch</code>。它先 parse query，再并行执行 active retrievers，之后用 RRF 合并，最后叠加 PPR、ranking boost、exclude、highlight 和可选 LLM rerank。</p>
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · 一条 query 的主路径</strong>
+              <span>Mermaid · pipeline</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  User["用户 query"]
+  Parse["parseQuery<br/>terms / phrases / excludes / filters / weights"]
+  Registry["RetrieverRegistry.executeAll<br/>只跑 shouldActivate=true 的 retrievers"]
+  FTS["fts"]
+  Stem["ftsStem"]
+  Vector["vector"]
+  Meta["meta"]
+  Fuzzy["fuzzy"]
+  RRF["rrfMerge<br/>weighted reciprocal rank fusion"]
+  PPR["PPR graph rerank / expand<br/>optional"]
+  Boost["Ranking boosts<br/>frequency / recency / graph / hub / click"]
+  Filter["exclude + topK"]
+  Highlight["highlight final results"]
+  LLM["LLM rerank<br/>optional"]
+  User --> Parse --> Registry
+  Registry --> FTS --> RRF
+  Registry --> Stem --> RRF
+  Registry --> Vector --> RRF
+  Registry --> Meta --> RRF
+  Registry --> Fuzzy --> RRF
+  RRF --> PPR --> Boost --> Filter --> Highlight --> LLM
+            </div>
+            <p class="read-note"><b>读图：</b>FTS/vector/fuzzy 等 retriever 是并行候选来源；RRF 是合并点；PPR、boost 和 LLM rerank 是增强层，不应该成为基础搜索的硬依赖。</p>
+          </div>
+          <div class="code-box" aria-label="existing code path">
+existing path:
+src/service/search/SearchClient.ts
+  search()
+
+src/service/search/query/queryService.ts
+  textSearch()
+          </div>
+        </section>
+
+        <section id="parser">
+          <h2>Query Parser：先把用户输入变成计划</h2>
+          <p class="prose"><code>parseQuery</code> 会把原始文本拆成 terms、phrases、excludes、filters，并根据 query 形态计算 retriever weights。这个 plan 是后续多路召回和 RRF 的共同输入。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>输入形式</th><th>处理</th><th>影响</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>"quoted phrase"</code></td>
+                <td>进入 <code>phrases</code>。</td>
+                <td>FTS 权重上调，vector 权重下调。</td>
+              </tr>
+              <tr>
+                <td><code>-term</code></td>
+                <td>normalize 后进入 <code>excludes</code>。</td>
+                <td>排序后执行 exclude filter。</td>
+              </tr>
+              <tr>
+                <td><code>tag:x</code> / <code>ext:x</code> / <code>folder:x</code></td>
+                <td>进入 <code>filters</code>。</td>
+                <td>给 retriever/query 层使用。</td>
+              </tr>
+              <tr>
+                <td>普通词</td>
+                <td>normalize 后生成 <code>QueryTerm</code>，非 CJK 计算 porter stem。</td>
+                <td>用于 FTS、stem、fuzzy 等召回。</td>
+              </tr>
+              <tr>
+                <td>CJK term</td>
+                <td>stem 保持原词。</td>
+                <td><code>ftsStem</code> weight 被压低到 0.1 倍。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="retrievers">
+          <h2>Retrievers：每一路只负责拿候选，不负责最终真理</h2>
+          <p class="lead">每个 retriever 都实现 <code>shouldActivate(plan)</code> 和 <code>retrieve(plan)</code>。Registry 只执行 active retrievers，并且单路失败会被捕获。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>Retriever</th><th>何时启用</th><th>做什么</th><th>注意</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>fts</code></td>
+                <td>有 terms 或 phrases。</td>
+                <td>构造 FTS5 query；BM25 归一化；多 chunk 文档用 decay 合并。</td>
+                <td>精确/前缀召回的主力。</td>
+              </tr>
+              <tr>
+                <td><code>ftsStem</code></td>
+                <td>按 plan 激活。</td>
+                <td>stemmed query 召回。</td>
+                <td>CJK 场景权重会显著下降。</td>
+              </tr>
+              <tr>
+                <td><code>vector</code></td>
+                <td>vector weight &gt; 0.1、sqlite vector enabled、存在 embedding endpoint/model。</td>
+                <td>把 raw query embed 后查相似 chunk/doc，并对多 chunk 做 decay。</td>
+                <td>没有 embedding 配置时不启用；embedding 失败返回空。</td>
+              </tr>
+              <tr>
+                <td><code>meta</code></td>
+                <td>按 plan 激活。</td>
+                <td>元数据召回。</td>
+                <td>适合 title/path/meta 信号。</td>
+              </tr>
+              <tr>
+                <td><code>fuzzy</code></td>
+                <td>有 terms。</td>
+                <td>从标题 token cache 找近似词，再用 corrected terms 查 meta FTS。</td>
+                <td>返回 <code>fuzzyCorrection</code> 给 UI。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="merge">
+          <h2>Merge / Rerank / Highlight：从候选变成用户看到的结果</h2>
+          <p class="prose">Search 的排序核心不是某一路 retriever 的分数，而是 RRF 合并后的路径级分数。之后才叠加图和行为信号，最后只对 final results 做高亮。</p>
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · 排序增强层</strong>
+              <span>Mermaid · ranking stages</span>
+            </div>
+            <div class="mermaid">
+flowchart TB
+  Results["Retriever results<br/>path / docId / score / source"]
+  Merge["RRF merge<br/>weight / (60 + rank + 1)"]
+  Candidate["Merged path candidates<br/>slice topK * 2"]
+  Graph["PPR<br/>seed from top results + query-node docIds"]
+  Signals["Reranker signals<br/>frequency / recency / graph / hub / click-through"]
+  Output["Final items<br/>exclude / topK / highlight"]
+  Results --> Merge --> Candidate --> Graph --> Signals --> Output
+            </div>
+            <p class="read-note"><b>读图：</b>RRF 是主合并点；PPR 可能扩展 graph neighbor；boost 只改变排序，不应该改变 retriever contract。</p>
+          </div>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>阶段</th><th>规则</th><th>维护边界</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>RRF merge</td>
+                <td>每条 result 贡献 <code>weight / (60 + rank + 1)</code>；同 path 合并。</td>
+                <td>新增 retriever 必须有 weight；缺省 weight 是 0.5。</td>
+              </tr>
+              <tr>
+                <td>PPR</td>
+                <td>由 settings 控制，query 可 force-disable；失败 catch 后回退原结果。</td>
+                <td>图排序不能成为基础 search 的硬依赖。</td>
+              </tr>
+              <tr>
+                <td>Ranking boosts</td>
+                <td>读取 reranker signals、current file related paths 和 click-through paths。</td>
+                <td>boost 是排序增强，不应该绕过原始召回。</td>
+              </tr>
+              <tr>
+                <td>Highlight</td>
+                <td>只对 final topK 结果生成 snippet/title highlight。</td>
+                <td>不要在每一路 retriever 提前做高成本 highlight。</td>
+              </tr>
+              <tr>
+                <td>LLM rerank</td>
+                <td>只有 <code>enableLLMRerank</code> 为 true 才运行。</td>
+                <td>默认 search 不依赖 LLM。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="fallback">
+          <h2>失败和降级：增强项不能拖垮基础搜索</h2>
+          <p class="lead">这个 pipeline 的一个重要产品承诺是：即使语义索引、图排序或某一路召回不可用，用户仍然应该尽量得到基础结果。</p>
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 3 · 失败隔离边界</strong>
+              <span>Mermaid · fallback map</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  Query["Search query"]
+  Init{"SearchClient initialized?"}
+  Empty{"terms or phrases?"}
+  Registry["Registry executes active retrievers"]
+  RetrieverFail["One retriever fails"]
+  VectorMissing["Vector unavailable"]
+  PPRFail["PPR throws"]
+  Results["Return available results"]
+  Query --> Init
+  Init -- "no" --> HardError["throw SearchClient not initialized"]
+  Init -- "yes" --> Empty
+  Empty -- "no" --> NoItems["return empty items"]
+  Empty -- "yes" --> Registry
+  Registry --> RetrieverFail --> Results
+  Registry --> VectorMissing --> Results
+  Registry --> PPRFail --> Results
+  Registry --> Results
+            </div>
+            <p class="read-note"><b>读图：</b>未初始化和空 query 是明确分支；retriever/vector/PPR 的失败要局部吸收。维护 Search 时要保住这条产品体验。</p>
+          </div>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>情况</th><th>当前行为</th><th>文档结论</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>SearchClient</code> 未 init</td>
+                <td>抛出 <code>SearchClient not initialized. Call init() first.</code></td>
+                <td>调用方必须保证 SQLite/store 初始化顺序。</td>
+              </tr>
+              <tr>
+                <td>空 query</td>
+                <td>返回空 items。</td>
+                <td>不要把空 query 偷换成 recent 或 browse。</td>
+              </tr>
+              <tr>
+                <td>单个 retriever 失败</td>
+                <td>Registry catch 错误，该路返回空。</td>
+                <td>多路召回必须局部失败可恢复。</td>
+              </tr>
+              <tr>
+                <td>Vector 条件不满足</td>
+                <td><code>VectorRetriever.shouldActivate</code> 返回 false。</td>
+                <td>semantic search 是增强，不是基础 search 必选项。</td>
+              </tr>
+              <tr>
+                <td>PPR 失败</td>
+                <td>catch 后继续用原 resultItems。</td>
+                <td>graph rerank 不应阻断普通搜索。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="troubleshooting">
+          <h2>排障：结果不符合预期时先看这里</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>现象</th><th>可能原因</th><th>先检查</th><th>处理方式</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>输入后没有结果。</td>
+                <td>query 为空、索引未准备好，或当前 scope 太窄。</td>
+                <td>是否有实际 terms/phrases；Quick Search footer 是否显示搜索中；索引是否完成。</td>
+                <td>换一个更宽的 query，退出 in-file/folder scope，或先运行索引维护。</td>
+              </tr>
+              <tr>
+                <td>语义相关结果没有出现。</td>
+                <td>vector retriever 没有激活。</td>
+                <td>vector search 是否 enabled；embedding profile 是否有 endpoint 和 model。</td>
+                <td>配置 embedding profile，或接受基础 FTS/metadata 结果。</td>
+              </tr>
+              <tr>
+                <td>拼写接近但没有被纠错。</td>
+                <td>fuzzy 主要依赖标题 token cache，不是全文拼写检查。</td>
+                <td>目标词是否出现在标题 token 里。</td>
+                <td>改用更接近标题的词，或用普通关键词/语义 query 扩宽搜索。</td>
+              </tr>
+              <tr>
+                <td>AI Analysis 里 Web Search 不可用。</td>
+                <td>没有配置 Web Search profile。</td>
+                <td>Settings → Profiles 是否有 profile 被设为 Web Search。</td>
+                <td>配置后重试；没有 profile 时只使用 Vault/模型已有能力。</td>
+              </tr>
+              <tr>
+                <td>图关系排序看起来没有影响。</td>
+                <td>PPR 被关闭、没有可用 docId seed，或 PPR 失败后回退。</td>
+                <td>Search settings 的 PPR 开关；console 是否有 PPR failed 日志。</td>
+                <td>先确认基础结果可用，再检查图索引和 PPR 设置。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="maintain">
+          <h2>维护规则：新增搜索能力必须进入同一条 pipeline</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>不要这样做</th><th>应该怎么做</th><th>原因</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>在 UI 里单独写一个“更聪明搜索”。</td>
+                <td>新增 retriever 或 rerank/boost stage，并接入 <code>QueryService</code>。</td>
+                <td>否则用户会得到两套不一致的搜索语义。</td>
+              </tr>
+              <tr>
+                <td>让 vector/PPR/LLM rerank 成为必选路径。</td>
+                <td>保持它们 optional/failure-tolerant。</td>
+                <td>搜索是基础能力，不能因为增强项失效而不可用。</td>
+              </tr>
+              <tr>
+                <td>新增 retriever 但不定义 weight。</td>
+                <td>在 query plan weights 中表达它的相对重要性。</td>
+                <td>RRF 需要知道每一路信号的分量，不然排序会漂。</td>
+              </tr>
+              <tr>
+                <td>把高亮提前塞进每个 retriever。</td>
+                <td>最终 topK 后统一 highlight。</td>
+                <td>降低成本，也避免每一路结果展示语义不一致。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="freshness">
+          <h2>相关文档和更新触发</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 32%"><col></colgroup>
+            <thead>
+              <tr><th>触发条件</th><th>需要更新什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Quick Search 的 tab、placeholder、mode prefix 或 UI label 改了。</td>
+                <td>更新“入口和开始前检查”“常见任务和结果”。</td>
+              </tr>
+              <tr>
+                <td>新增、删除或重命名 retriever。</td>
+                <td>更新 Retriever 表、pipeline 图和 RRF weight 说明。</td>
+              </tr>
+              <tr>
+                <td>Search index、embedding、PPR 或 click-through 存储结构变化。</td>
+                <td>更新本页相关限制，并在 <code>23-infra-search-index.html</code> 补完整 index-time 说明。</td>
+              </tr>
+              <tr>
+                <td>AI Analysis 和 Vault Search 的状态管理拆分或合并。</td>
+                <td>更新用户任务，避免把基础搜索和 AI 分析混成同一个功能。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>文件</th><th>读什么</th><th>本文用它确认什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code data-copy="src/service/search/SearchClient.ts">SearchClient.ts</code></td>
+                <td><code>search()</code>、<code>vectorSearch()</code>、<code>init()</code>。</td>
+                <td>确认 SearchClient 是薄入口，未 init 会 hard error。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/search/query/queryService.ts">queryService.ts</code></td>
+                <td><code>textSearch()</code> 主 pipeline。</td>
+                <td>确认 parse、retriever、RRF、PPR、boost、exclude、highlight、LLM rerank 的顺序。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/search/query/query-parser.ts">query-parser.ts</code></td>
+                <td>terms、phrases、excludes、filters、retriever weights。</td>
+                <td>确认用户输入如何变成 query plan。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/search/retriever/registry.ts">registry.ts</code></td>
+                <td>active retriever 执行和错误隔离。</td>
+                <td>确认单路失败不会直接失败整次搜索。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/search/merger/rrf-merger.ts">rrf-merger.ts</code></td>
+                <td>weighted RRF 公式。</td>
+                <td>确认多路结果如何融合到 path 维度。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/search/retriever/fts-retriever.ts">fts-retriever.ts</code></td>
+                <td>FTS5 query、BM25 normalization、chunk decay。</td>
+                <td>确认关键词召回和多 chunk 合并。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/search/retriever/vector-retriever.ts">vector-retriever.ts</code></td>
+                <td>vector activation 条件、embedding、chunk/doc retrieval。</td>
+                <td>确认语义搜索是条件增强。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/search/retriever/fuzzy-retriever.ts">fuzzy-retriever.ts</code></td>
+                <td>title token cache、correction、meta FTS。</td>
+                <td>确认模糊搜索的范围和限制。</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="claim">
+            <strong>下一步文档</strong>
+            这份文档讲 query-time Search。后续 <code>23-infra-search-index.html</code> 应该讲 index-time：SQLite 表、chunk、embedding、node/edge、index tenant、维护任务和失败恢复。
+          </div>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01，按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="05-use-case-playbook.html">05 Use Case Playbook</a>、<a href="11-feature-chat-context.html">11 Chat Context</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

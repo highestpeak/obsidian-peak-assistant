@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>16 Peak Assistant Document Copilot</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); font-size: 0.94em; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 0 0 8px; font-size: 20px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .warn { border-left-color: var(--gold); }
+    .warn strong { color: var(--gold); }
+    .danger { border-left-color: var(--red); }
+    .danger strong { color: var(--red); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    td code { background: var(--code-bg); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    .note-list { display: grid; gap: 10px; margin-top: 18px; }
+    .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .note-item b { display: block; margin-bottom: 3px; }
+    .note-item span { color: var(--muted); font-size: 14px; }
+    .kv { display: grid; grid-template-columns: 200px 1fr; gap: 8px 18px; margin-top: 18px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .kv dt { color: var(--ink); font-weight: 780; }
+    .kv dd { margin: 0; color: var(--muted); }
+    .kv dd code { background: var(--code-bg); }
+    .path-tree { margin-top: 20px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: var(--ink); font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 13.5px; line-height: 1.65; white-space: pre; overflow-x: auto; }
+    .path-tree .comment { color: var(--muted); }
+    .recipe { margin-top: 22px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    .recipe h3 { margin: 0 0 4px; font-size: 18px; }
+    .recipe h3 span { color: var(--muted); font-size: 14px; font-weight: 600; margin-left: 8px; }
+    .recipe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px; margin-top: 14px; }
+    .recipe-block b { display: block; color: var(--ink); font-size: 13px; margin-bottom: 4px; }
+    .recipe-block p, .recipe-block ol, .recipe-block ul { color: var(--muted); font-size: 14px; margin: 0; }
+    .recipe-block ol, .recipe-block ul { padding-left: 18px; }
+    .recipe-block li + li { margin-top: 4px; }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+    @media (max-width: 980px) {
+      .kv { grid-template-columns: 1fr; }
+      .recipe-grid { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">16 · Feature · Document Copilot · 面向当前文档的动作</div>
+      <h1>Open Copilot 的 Document lane：会看什么、会写什么、什么时候要按 Apply。</h1>
+      <p class="subtitle">这份文档只讲 <strong>Copilot 的 Document lane</strong>：当你在一篇笔记里想让 AI 做五类事情时——</p>
+      <ul class="subtitle-list">
+        <li>润色</li>
+        <li>审稿</li>
+        <li>找链接</li>
+        <li>补标签</li>
+        <li>拆分文档</li>
+      </ul>
+      <p class="subtitle">怎么选、按下去会发生什么、结果最终以什么方式落回你正在编辑的文件。用户视角在前——先说“打哪个按钮”“会不会改到我的文档”“怎么撤销”；维护者视角在后——action 是怎么注册、怎么拿到文档上下文、怎么调 Copilot role 的模型的。Vault lane 和 Setting lane 不在这一页。</p>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 12k 混合字符</span>
+        <span>Reading time: 24-28 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">这页解决什么</a>
+          <a href="#lane-map">三条 lane 的分工</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">Action 详解</span>
+          <a href="#action-catalog">Document lane 动作清单</a>
+          <a href="#user-workflows">4 条常用 recipe</a>
+          <a href="#writes-and-safety">会不会直接改我的文档</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">技术附录</span>
+          <a href="#technical-appendix">派发路径</a>
+          <a href="#failure-modes">失败与降级</a>
+          <a href="#maintain">加新 action 的规则</a>
+          <a href="#evidence">代码证据</a>
+        </div>
+        <div class="nav-note">如果你只想搞清楚 <em>某个 action 会不会直接改我文档</em>，跳到 <a href="#writes-and-safety">"会不会直接改我的文档"</a> 的那张表。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>这页解决什么</h2>
+          <p class="lead">用户对 Copilot 的第一个疑问不是“功能强不强”，而是 <strong>"我按下去，它会不会把我文档改坏"</strong>。这页把 Document lane 的每一个 action 拆开：它读什么（整篇 / 选区 / 关联笔记）、结果长什么样（结构化面板 / 流式改写 / 建议列表）、是否直接落笔（几乎全部不是）、Apply 按钮按下去之后又发生了什么。</p>
+          <div class="claim">
+            <strong>核心结论</strong>
+            Document lane 的所有 action <strong>先出结果、再等你按 Apply</strong>。除了 <code>Suggest Tags</code> 的 frontmatter 写入是显式的“Add Tags to Frontmatter”按钮，没有任何一个 action 在“执行完”那一刻就把改动落回你的文件。文档改动全部走确认面板。
+          </div>
+          <div class="claim">
+            <strong>本文读者</strong>
+            正在写笔记、想用 Copilot 但又怕它乱改的 Obsidian 用户；打算加一条新 action 的维护者；正在排障“为什么按了 Apply 却没变化”的 coding agent。
+          </div>
+          <div class="claim">
+            <strong>本文不做什么</strong>
+            不重复 Chat / Search / Vault Intelligence 的用户手册（分别在 <a href="11-feature-chat-context.html">11</a> / <a href="12-feature-search.html">12</a> / 13）。不讲 Vault lane 的 <code>Vault Health</code>、<code>Extract Todos</code>、<code>Smart Connections</code> 等（那些属于 Vault Intelligence）。不展开 Copilot 底层 agent loop 的实现（在 <a href="21-infra-agent-harness.html">21 Agent Harness</a>）。
+          </div>
+        </section>
+
+        <section id="lane-map">
+          <h2>三条 lane 的分工</h2>
+          <p class="lead">Command Palette 里的 <strong>Open Copilot</strong> 弹出一个 Picker Modal，顶部三个 tab 一字排开：<strong>Document</strong> / <strong>Vault</strong> / <strong>Setting</strong>。它们不是三个界面，而是同一个 modal 上的 <strong>Intent Tab</strong>——切 tab 只换 action 列表，右侧的“最近记录”、readiness card 都跟着换。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · Open Copilot 的三条 lane 与各自的意图</strong>
+              <span>Mermaid · intent-hub</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  User(("Open Copilot"))
+  Doc["Document lane<br/>= Copilot<br/>针对当前打开的文档"]
+  Vault["Vault lane<br/>= Vault Intelligence<br/>针对整个 vault"]
+  Setting["Setting lane<br/>= System<br/>针对插件与索引"]
+
+  User --> Doc
+  User --> Vault
+  User --> Setting
+
+  Doc --> DocEx["polish · review · links<br/>tags · split · translate<br/>summarize · task list · ..."]
+  Vault --> VaultEx["vault-health · find-related<br/>knowledge-gaps · extract-todos<br/>deduplicate · smart-connections"]
+  Setting --> SetEx["prompt-audit · ..."]
+            </div>
+            <p class="read-note"><b>读图：</b>本页只覆盖 <strong>Document lane</strong>。Vault lane 与 Setting lane 的动作在这里出现的目的只是让你知道 Copilot Picker 里那些看起来相似的项其实属于哪一层。</p>
+          </div>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>Lane</th><th>意图</th><th>看到的 action 属于</th><th>典型输入</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Document</strong><br><span class="pill green">本页主题</span></td>
+                <td>处理你现在打开的这篇笔记。</td>
+                <td>category 为 <code>document</code> 或 <code>writing</code> 的 action（12 + 5 条）。</td>
+                <td>当前 file、当前 selection（可选）、frontmatter、tags、links、backlinks、wordCount。</td>
+              </tr>
+              <tr>
+                <td><strong>Vault</strong></td>
+                <td>横跨整个 vault 分析结构 / 找关联。</td>
+                <td>category 为 <code>vault</code> 的 action（10 条）；由 <a href="#">13 Vault Intelligence</a> 详解。</td>
+                <td>整个 vault 的 markdown files 索引与图结构。</td>
+              </tr>
+              <tr>
+                <td><strong>Setting</strong></td>
+                <td>系统级审计，例如检查 prompt 质量。</td>
+                <td>目前只有 <code>prompt-audit</code>；未来会长出更多“管理动作”。</td>
+                <td>Prompts 目录 / 系统配置。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim warn">
+            <strong>Document ≠ 当前笔记的内容窗口</strong>
+            即使你没有打开任何笔记，Copilot Picker 仍会渲染 Document tab，只是里面的 action 都会被 <code>guard</code> 挡住（比如 <code>Rewrite Selection</code> 会显示 “Select text to rewrite”，<code>Correct Content</code> 会显示 “Document is too short to check for errors”）。这是刻意的——不让 Picker 少半个 tab。
+          </div>
+        </section>
+
+        <section id="action-catalog">
+          <h2>Document lane 动作清单</h2>
+          <p class="lead">Document lane 里一共 <strong>17 条 action</strong>：12 条 <code>document</code> category + 5 条 <code>writing</code> category。下面这张表按“怎么用”排序——最上面 6 条是核心的润色 / 审阅 / 链接 / 标签 / 拆分，往下是辅助性的写作与阅读工具。三个核心列：<strong>读什么</strong>、<strong>结果面板长什么样</strong>、<strong>Apply 会做什么</strong>。所有 action 都从当前文档拿 <code>DocumentContext</code>；<code>scope</code> 为 <code>selection</code> 时优先用选区，否则用整篇。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>Action</th><th>读什么</th><th>结果面板</th><th>Apply 会做什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Polish Document</strong><br><code>polish</code></td>
+                <td>整篇或选区</td>
+                <td>流式 + 双栏 Diff</td>
+                <td>整篇 / 选区替换</td>
+              </tr>
+              <tr>
+                <td><strong>Format Polish</strong><br><code>format-polish</code></td>
+                <td>整篇或选区</td>
+                <td>Diff，专注 heading / 列表 / 断链</td>
+                <td>同 Polish（<code>applyDiffResult</code>）</td>
+              </tr>
+              <tr>
+                <td><strong>Correct Content</strong><br><code>correct-content</code></td>
+                <td>整篇或选区，&lt; 50 词拒绝</td>
+                <td>corrections 列表 · severity + type</td>
+                <td>逐条 Accept 就地 replace；可 Accept All</td>
+              </tr>
+              <tr>
+                <td><strong>Review Article</strong><br><code>review</code></td>
+                <td>整篇或选区，建议 &gt; 500 词</td>
+                <td>sections 列表：overall + findings</td>
+                <td>不改。Fix → 嵌套 PolishPanel</td>
+              </tr>
+              <tr>
+                <td><strong>Suggest Links</strong><br><code>suggest-links</code></td>
+                <td>整篇 + 现有 <code>[[wiki]]</code>，不读别的笔记</td>
+                <td>Agent stream，outgoing / incoming 分列</td>
+                <td>按 context 插入 <code>[[target]]</code>；incoming 不写</td>
+              </tr>
+              <tr>
+                <td><strong>Suggest Links (Graph)</strong><br><code>suggest-semantic-links</code></td>
+                <td>Graph 邻居（<code>findSemanticLinkNeighbors</code>），需索引</td>
+                <td>path / title / score / direction 列表</td>
+                <td>末尾追加 <code>## Related Notes</code></td>
+              </tr>
+              <tr>
+                <td><strong>Suggest Tags</strong><br><code>suggest-tags</code></td>
+                <td>内容 + graph + folder（<code>TagSuggestionEngine</code>）</td>
+                <td>High/Med/Low 三档，可 Accept / Edit</td>
+                <td><code>writeFrontmatterTags</code> 写 YAML</td>
+              </tr>
+              <tr>
+                <td><strong>Suggest Split</strong><br><code>suggest-split</code></td>
+                <td>整篇 + wordCount，&lt; 500 词拒绝</td>
+                <td>lineRange / newTitle / reason + 字数条形图</td>
+                <td><span class="pill red">重</span>建 N 个 note + 原位置写 <code>→ [[newTitle]]</code></td>
+              </tr>
+              <tr>
+                <td><strong>Summarize</strong><br><code>summarize</code></td>
+                <td>整篇或选区，&lt; 100 词拒绝</td>
+                <td>流式文本（默认 short）</td>
+                <td>Copy 或 Insert at Top → <code>&gt; [!summary]</code> callout</td>
+              </tr>
+              <tr>
+                <td><strong>Extract Concepts</strong><br><code>extract-concepts</code></td>
+                <td>整篇或选区，&lt; 100 词拒绝</td>
+                <td>term + definition + 相关 term</td>
+                <td>为选中概念在 folder 新建笔记；不改原文</td>
+              </tr>
+              <tr>
+                <td><strong>Translate</strong><br><code>translate</code></td>
+                <td>整篇或选区，CJK &gt; 10% 时翻 EN，否则翻 ZH</td>
+                <td>左右对照流式面板</td>
+                <td>整篇 / 选区替换（<code>applyDiffResult</code>）</td>
+              </tr>
+              <tr>
+                <td><strong>Check Task List</strong><br><code>check-task-list</code></td>
+                <td>整篇，须含 <code>- [ ]</code> / <code>- [x]</code></td>
+                <td>总 / 完成 / 逾期 + 每项 recommendation</td>
+                <td>只读诊断，无 Apply 按钮</td>
+              </tr>
+              <tr>
+                <td colspan="4" style="background: var(--soft-green); color: var(--ink); font-weight: 780;">↓ 下面 5 条 category 为 <code>writing</code>：输入偏“写作过程”而非“已完成文档”</td>
+              </tr>
+              <tr>
+                <td><strong>Continue Writing</strong><br><code>continue-writing</code></td>
+                <td>整篇 + 标题，空文档拒绝</td>
+                <td>流式续写</td>
+                <td>Insert at Cursor，追加到末尾</td>
+              </tr>
+              <tr>
+                <td><strong>Rewrite Selection</strong><br><code>rewrite-selection</code></td>
+                <td>选区 + 上下文，必须有选区</td>
+                <td>流式改写</td>
+                <td>Replace Selection</td>
+              </tr>
+              <tr>
+                <td><strong>Add Evidence</strong><br><code>add-evidence</code></td>
+                <td>整篇 + 可选选区，&lt; 50 词拒绝，走 Agent</td>
+                <td>Agent stream，候选证据 + 来源</td>
+                <td>选中证据带 <code>[[link]]</code> 插到段落后</td>
+              </tr>
+              <tr>
+                <td><strong>Writing Plan</strong><br><code>writing-plan</code></td>
+                <td>整篇作上下文，走 Agent</td>
+                <td>Agent stream，outline / 节奏</td>
+                <td>Copy 或作为新章节 Insert，不覆盖</td>
+              </tr>
+              <tr>
+                <td><strong>Write Article</strong><br><code>write-article</code></td>
+                <td>标题 + ≤ 2000 字 context，Agent 会搜 vault</td>
+                <td>Agent stream，草稿 + <code>[[citations]]</code></td>
+                <td>Copy 或 Insert，不覆盖</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="read-note"><b>相关系数（<code>relevance</code>）决定排序：</b>Picker 会按 <code>action.relevance(ctx)</code> 排序。有选区时 Polish / Rewrite Selection 排前面；没有链接时 Suggest Links / Suggest Semantic Links 排前面；文档 &gt; 2000 词时 Suggest Split 排前面。所以“该给我推什么 action” 完全由当前文档形状决定，不是随机。</p>
+
+          <div class="claim">
+            <strong>用哪个模型跑：Copilot role</strong>
+            这 17 条 action 全部走 <code>ProfileRegistry.getActiveCopilotConfig()</code>——也就是 <a href="04-configuration-and-user-views.html#profiles-and-roles">04 Configuration</a> 里那张 6 role 表格里的 <code>activeCopilotConfig</code>。没绑就回落到 Conversation。想让 Copilot 走另一个 model：<em>Settings → AI Setup → AI behavior → Copilot</em>。想给单条 action 换 model：目前不支持，只能整块 Copilot 换。
+          </div>
+        </section>
+
+        <section id="user-workflows">
+          <h2>4 条常用 recipe</h2>
+          <p class="lead">下面 4 条是我们观察到的最高频用法。每条都写清 <strong>入口 → 面板长啥样 → Apply 时会改到文档的哪部分</strong>。</p>
+
+          <article class="recipe">
+            <div class="pill-row"><span class="pill green">Document → Polish</span><span class="pill">重写</span></div>
+            <h3>Recipe 1 · 润色当前一段 / 一整篇 <span>Polish Document</span></h3>
+            <div class="recipe-grid">
+              <div class="recipe-block">
+                <b>怎么做</b>
+                <ol>
+                  <li>打开笔记；想润色单段的话，先在编辑器里选中那段。</li>
+                  <li>Command Palette → <strong>Open Copilot</strong>。</li>
+                  <li>Document tab → <strong>Polish Document</strong>。</li>
+                  <li>面板里出现流式改写和双栏 Diff。等它跑完，检查 Diff。</li>
+                  <li>按 <strong>Apply Changes</strong>。</li>
+                </ol>
+              </div>
+              <div class="recipe-block">
+                <b>会写到文档吗</b>
+                <p>不会——直到你按 Apply Changes 那一刻。Apply 后，如果 scope 是 selection 就替换选区；如果 scope 是 full 就整篇覆盖。<strong>Ctrl-Z 可以撤销</strong>（Obsidian 的 native undo）。</p>
+                <p style="margin-top: 8px; color: var(--ink);"><b>小心：</b>整篇覆盖时如果 Apply 前你又手动改了几行，你的改动会被覆盖。习惯上：跑 Polish 前不要边改边等。</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="recipe">
+            <div class="pill-row"><span class="pill green">Document → Review Article</span><span class="pill">审阅 + 定点 Fix</span></div>
+            <h3>Recipe 2 · 审阅整篇，再让它逐条修 <span>Review + inline Fix</span></h3>
+            <div class="recipe-grid">
+              <div class="recipe-block">
+                <b>怎么做</b>
+                <ol>
+                  <li>打开长文（≥ 500 词效果最好）。</li>
+                  <li><strong>Open Copilot → Review Article</strong>。</li>
+                  <li>拿到一份 overall + N 条 findings（error / warning / info）。</li>
+                  <li>看到不满意的 finding，按它旁边的 <strong>Fix</strong>——面包屑跳到嵌套的 PolishPanel，展示针对该条建议的改写。</li>
+                  <li>按 <strong>Accept Fix</strong> 落笔；不喜欢就按 Skip 退回 Review。</li>
+                </ol>
+              </div>
+              <div class="recipe-block">
+                <b>会写到文档吗</b>
+                <p>Review 本身<strong>不改</strong>。它只是评审报告。改动发生在你按 Fix 之后进入的 Polish 面板里，那里再按 Accept Fix 才真的落笔——所以你能针对每条 finding 独立决定。</p>
+                <p style="margin-top: 8px;">面板底部的 <strong>Copy Feedback</strong> 会把 overall + findings 拼成 markdown 复制到剪贴板。适合把审阅意见发给合作者而不动原文。</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="recipe">
+            <div class="pill-row"><span class="pill green">Document → Suggest Links / Suggest Links (Graph)</span><span class="pill">补链接</span></div>
+            <h3>Recipe 3 · 给一篇“孤儿笔记”补 <code>[[links]]</code> <span>Suggest Links + Suggest Links (Graph)</span></h3>
+            <div class="recipe-grid">
+              <div class="recipe-block">
+                <b>怎么做</b>
+                <ol>
+                  <li>打开一篇看起来没什么 backlinks 的笔记（<code>isOrphan</code> 会让这两条 action 排到最前）。</li>
+                  <li>先试 <strong>Suggest Links (Graph)</strong>——它从索引图上找“语义上很近但没连上”的笔记，需要该文档已被索引；Fast 档位没有语义边。</li>
+                  <li>再试 <strong>Suggest Links</strong>——它走 agent，不依赖索引，agent 会自己去 vault 里搜。</li>
+                  <li>面板里挑选想插入的 outgoing 建议，按 <strong>Insert N Links</strong>。</li>
+                </ol>
+              </div>
+              <div class="recipe-block">
+                <b>会写到文档吗</b>
+                <p>Insert 会把 <code>[[target]]</code> 直接嵌进当前文档。<strong>Suggest Links</strong> 精准到 <code>context</code>——link 会插在建议里给出的 context 短语后面；<strong>Suggest Links (Graph)</strong> 粗一些——会在文档末尾新加一段 <code>## Related Notes</code>。</p>
+                <p style="margin-top: 8px;"><b>区别选择：</b>写文中链接选 Suggest Links；只想在文末列个“Related notes”块选 Suggest Links (Graph)。</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="recipe">
+            <div class="pill-row"><span class="pill green">Document → Suggest Split</span><span class="pill">最重的写入</span></div>
+            <h3>Recipe 4 · 拆分一篇写太长的笔记 <span>Suggest Split</span></h3>
+            <div class="recipe-grid">
+              <div class="recipe-block">
+                <b>怎么做</b>
+                <ol>
+                  <li>打开一篇 &gt; 2000 词的笔记（&lt; 500 词的会被 guard 拒绝）。</li>
+                  <li><strong>Open Copilot → Suggest Split</strong>。</li>
+                  <li>面板给出 N 段 (lineRange, newTitle, reason)。仔细读 reason，看 line range 是不是真的按你希望的地方切。</li>
+                  <li>不满意就直接关掉——不按 Split 什么都不会变。</li>
+                  <li>确认后按 <strong>Split into N Notes</strong>。</li>
+                </ol>
+              </div>
+              <div class="recipe-block">
+                <b>会写到文档吗</b>
+                <p><strong>会，而且是最“重”的一次</strong>。会在原 folder 下新建 N 个笔记；把原文件里被切走的部分替换成 <code>→ [[newTitle]]</code> 单行链接。<strong>不能用一次 Ctrl-Z 撤销</strong>——那是多文件的改动。</p>
+                <p style="margin-top: 8px; color: var(--ink);"><b>撤销策略：</b>看不满意就手动删除新生成的 N 个 note，把原文件从 Obsidian 的 File Recovery 恢复。习惯上：跑 Suggest Split 前先做一次 Git commit 或 Vault 快照。</p>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section id="writes-and-safety">
+          <h2>"会不会直接改我的文档"</h2>
+          <p class="lead">用户对 Copilot 的头号疑问。逐条 action 给出确定答案：<strong>只有 Suggest Tags 的 frontmatter 写入是"直觉上直接"的</strong>（因为它没有 Diff 面板），其它全部走"结果面板 + 明确 Apply 按钮"两步。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>Action</th><th>结果生成时改文档？</th><th>Apply 后改哪里</th><th>可撤销程度</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Polish / Format Polish / Translate</strong></td>
+                <td>不改。只出 Diff。</td>
+                <td>整篇替换（scope=full）或替换选区（scope=selection）。</td>
+                <td>单次 Ctrl-Z。</td>
+              </tr>
+              <tr>
+                <td><strong>Correct Content</strong></td>
+                <td>不改。列出 corrections。</td>
+                <td>逐条 Accept 时直接做字符串 replace；也可 Accept All。</td>
+                <td>每次 Accept 是一次编辑，逐条 Ctrl-Z。</td>
+              </tr>
+              <tr>
+                <td><strong>Review Article</strong></td>
+                <td>不改。只出评审。</td>
+                <td>只有按 Fix → 进入嵌套 Polish → Accept Fix 才改。</td>
+                <td>Ctrl-Z 逐次撤销。</td>
+              </tr>
+              <tr>
+                <td><strong>Suggest Links</strong></td>
+                <td>不改。列 outgoing/incoming 建议。</td>
+                <td>把 <code>[[target]]</code> 插到指定 context 之后。</td>
+                <td>一次 Apply 是一批插入；Ctrl-Z 一次能撤销这一批。</td>
+              </tr>
+              <tr>
+                <td><strong>Suggest Links (Graph)</strong></td>
+                <td>不改。列邻居。</td>
+                <td>在文档末尾追加 <code>## Related Notes</code> 段。</td>
+                <td>Ctrl-Z 一次撤销。</td>
+              </tr>
+              <tr>
+                <td><strong>Suggest Tags</strong><br><span class="pill gold">写 frontmatter</span></td>
+                <td>不改。分档给建议。</td>
+                <td>走 <code>writeFrontmatterTags</code> 写入 YAML frontmatter。<em>不</em>动正文。</td>
+                <td>Ctrl-Z 一次撤销 frontmatter 编辑。</td>
+              </tr>
+              <tr>
+                <td><strong>Suggest Split</strong><br><span class="pill red">多文件</span></td>
+                <td>不改。给拆分方案。</td>
+                <td>新建 N 文件 + 原文 N 段被替换为 stub 链接。</td>
+                <td>不可用单次 Ctrl-Z；手动清理 + File Recovery。</td>
+              </tr>
+              <tr>
+                <td><strong>Summarize</strong></td>
+                <td>不改。流式摘要。</td>
+                <td>Insert at Top：在 frontmatter 之后插 <code>&gt; [!summary]</code> callout。</td>
+                <td>Ctrl-Z 一次撤销。</td>
+              </tr>
+              <tr>
+                <td><strong>Extract Concepts</strong></td>
+                <td>不改。列 concepts。</td>
+                <td>Create Notes：为每个选中概念在当前 folder 新建笔记。<strong>不改</strong>原文档。</td>
+                <td>手动删除新笔记即可。</td>
+              </tr>
+              <tr>
+                <td><strong>Check Task List</strong></td>
+                <td>不改。只诊断。</td>
+                <td>没有 Apply 按钮。</td>
+                <td>不涉及。</td>
+              </tr>
+              <tr>
+                <td><strong>Continue Writing</strong></td>
+                <td>不改。流式续写。</td>
+                <td>Insert 会追加到文档末尾。</td>
+                <td>Ctrl-Z 一次撤销。</td>
+              </tr>
+              <tr>
+                <td><strong>Rewrite Selection</strong></td>
+                <td>不改。流式改写。</td>
+                <td>Replace Selection：只改当前选区。</td>
+                <td>Ctrl-Z 一次撤销。</td>
+              </tr>
+              <tr>
+                <td><strong>Add Evidence / Writing Plan / Write Article</strong></td>
+                <td>不改。Agent 流。</td>
+                <td>用户复制或选择插入；无一 Apply-then-overwrite。</td>
+                <td>Ctrl-Z（如果用户选择插入）。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim danger">
+            <strong>Safety mode 目前不阻挡 Document lane 的 Apply</strong>
+            <a href="04-configuration-and-user-views.html#safety-and-budget">04 里的 permission mode</a>（<code>read</code> / <code>acceptEdits</code> / <code>bypassPermissions</code>）是给 Agent Harness 用的。Document lane 的 Apply 是用户在 UI 上按下去的显式动作，不走 Harness 的 permission gate。这意味着：<em>即使把 Safety 调到 Read only，你按 Suggest Split 的 “Split into N Notes” 还是会真的拆</em>。Safety 保护的是 agent 无人监督执行的场景；Copilot 结果面板的 Apply 按钮不在保护范围内。
+          </div>
+          <div class="claim warn">
+            <strong>Agent 流的 action 是例外</strong>
+            <code>Suggest Links</code>、<code>Add Evidence</code>、<code>Knowledge Gaps</code>、<code>Writing Plan</code>、<code>Write Article</code>、<code>Detect & File</code> 等走 <code>agent.runAgentStream()</code>——它们在 <strong>生成结果</strong> 的过程中会真的调用 vault 搜索工具、可能读多份笔记。如果 permission mode 拒绝 read，这些 agent 会直接卡住。这里 permission mode 起作用，但作用点是 “agent 能不能读”，而不是 “能不能改”。
+          </div>
+        </section>
+
+        <section id="technical-appendix">
+          <h2>技术附录 · 派发路径</h2>
+          <p class="lead">下面这段给维护者看：从 <em>Command Palette → Open Copilot</em> 到 <em>结果面板里的 Apply</em>，中间经过了哪些层。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · Document action 的派发与写回</strong>
+              <span>Mermaid · action dispatch</span>
+            </div>
+            <div class="mermaid">
+flowchart TD
+  Cmd["Command Palette<br/>'Open Copilot'"]
+  Modal["CopilotPickerModal<br/>(Document tab)"]
+  Runtime["CopilotActionRuntime<br/>(app 层单例)"]
+  Ctx["DocumentContextBuilder.build()<br/>file + selection + tags + links + wordCount"]
+  Action["CopilotAction.execute(ctx, signal)<br/>(async generator)"]
+  Prompter["IAgentPrompter<br/>queryStream / queryStructured / renderPrompt"]
+  Agent["agent.runAgentStream()<br/>(限走 agent 的 5 条 action)"]
+  Copilot["ProfileRegistry<br/>.getActiveCopilotConfig()"]
+  Result["CopilotResultModal<br/>面板注册表 copilot-action-surfaces.tsx"]
+  Panel["Panel.Apply()<br/>applyDiffResult / writeFrontmatterTags / createNoteInFolder"]
+  Vault["Obsidian Vault<br/>(vault.modify / vault.create)"]
+
+  Cmd --> Modal
+  Modal --> Runtime
+  Modal --> Ctx
+  Runtime --> Action
+  Action --> Prompter
+  Action --> Agent
+  Prompter --> Copilot
+  Action --> Result
+  Result --> Panel
+  Panel --> Vault
+            </div>
+            <p class="read-note"><b>读图：</b>service 层的 <code>execute()</code> 只生成结果；<em>不</em>知道 Obsidian 存在。写回是 UI 层的 panel 显式调用 <code>CopilotPanelVaultPort</code> 完成的（<code>writeFrontmatterTags</code> / <code>replaceFileContent</code> / <code>createNoteInFolder</code>）。所以“service 不改文档”是架构上的硬约束，不是纪律问题。</p>
+          </div>
+
+          <h3 style="margin-top: 30px;">关键文件</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>层</th><th>文件</th><th>职责</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Command</strong></td>
+                <td><code data-copy="src/app/commands/Register.ts">Register.ts</code></td>
+                <td>注册 <code>peak-copilot-open</code> → <code>openCopilotPanel</code>（回到 <code>PeakCommandActions.ts</code> 里的 <code>CopilotPickerModal</code>）。</td>
+              </tr>
+              <tr>
+                <td><strong>Modal</strong></td>
+                <td><code data-copy="src/app/copilot/modals/CopilotPickerModal.tsx">CopilotPickerModal.tsx</code><br><code data-copy="src/app/copilot/modals/CopilotResultModal.tsx">CopilotResultModal.tsx</code></td>
+                <td>Picker → 用户选 action → 触发 <code>execute</code>；结果 modal 根据 <code>action.id</code> 挂对应 panel。</td>
+              </tr>
+              <tr>
+                <td><strong>Intent Tab</strong></td>
+                <td><code data-copy="src/service/copilot/intent-hub.ts">intent-hub.ts</code></td>
+                <td>三条 lane 的 tab 定义 + <code>getActionIntentTab()</code>：category=document/writing 或在 <code>DOCUMENT_ACTION_IDS</code> ⇒ Document lane。</td>
+              </tr>
+              <tr>
+                <td><strong>Runtime</strong></td>
+                <td><code data-copy="src/ui/view/copilot/CopilotActionRuntime.ts">CopilotActionRuntime.ts</code><br><code data-copy="src/ui/view/copilot/CopilotActionRuntimeImpl.ts">CopilotActionRuntimeImpl.ts</code><br><code data-copy="src/app/copilot/actions/composeCopilotActionRuntime.ts">composeCopilotActionRuntime.ts</code></td>
+                <td>app 层单例；<code>getAll()</code> 返回 27 条内置 + 用户自定义 prompt-action。</td>
+              </tr>
+              <tr>
+                <td><strong>Action factory</strong></td>
+                <td><code data-copy="src/service/copilot/actions/index.ts">index.ts</code></td>
+                <td>27 条内置 <code>CopilotAction</code> 的 <code>execute()</code> 闭包。全部通过 <code>CopilotActionPorts</code> 拿依赖。</td>
+              </tr>
+              <tr>
+                <td><strong>Context builder</strong></td>
+                <td><code data-copy="src/service/copilot/DocumentContextBuilder.ts">DocumentContextBuilder.ts</code></td>
+                <td>拼装 <code>{ file, title, content, selection, scope, wordCount, tags, links, backlinks, headingCount, isOrphan, frontmatter }</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Model 路由</strong></td>
+                <td><code data-copy="src/core/profiles/ProfileRegistry.ts">ProfileRegistry.ts</code><br>字段 <code>activeCopilotConfig</code></td>
+                <td>Document lane 的所有 action 走 Copilot role；没绑就回落 Conversation。</td>
+              </tr>
+              <tr>
+                <td><strong>Panel surface</strong></td>
+                <td><code data-copy="src/ui/view/copilot/copilot-action-surfaces.tsx">copilot-action-surfaces.tsx</code></td>
+                <td><code>action.id → PanelComponent</code> 唯一注册表；结果 modal 找不到 panel 时报“Copilot wiring bug”。</td>
+              </tr>
+              <tr>
+                <td><strong>Panel components</strong></td>
+                <td><code data-copy="src/ui/view/copilot/panels/*.tsx">*.tsx</code>（28 个）</td>
+                <td>每个 action 一个 panel；panel 里的 Apply 按钮走 <code>useCopilotPanelVault()</code> → <code>CopilotPanelVaultPort</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Vault write ops</strong></td>
+                <td><code data-copy="src/service/copilot/CopilotArtifactApply.ts">CopilotArtifactApply.ts</code><br><code data-copy="src/service/copilot/frontmatterTagWriter.ts">frontmatterTagWriter.ts</code></td>
+                <td><code>applyCopilotArtifactsToContext()</code> 是 Diff-style 落笔的公用入口；tag 写入独立走 <code>frontmatterTagWriter</code>。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>为什么 execute 是 async generator</strong>
+            <code>CopilotAction.execute</code> 返回 <code>AsyncGenerator&lt;LLMStreamEvent, ActionResult&gt;</code>：yield 出去的 <code>text-delta</code> 事件让结果 modal 边跑边显示，最后 return 的 <code>ActionResult</code>（<code>type: 'stream' | 'structured'</code>）是最终数据。结构化结果不流式；流式结果没有结构。这让 Diff 面板、结构化面板、Agent 面板可以走同一条派发管线。
+          </div>
+        </section>
+
+        <section id="failure-modes">
+          <h2>失败与降级</h2>
+          <p class="lead">Copilot action 会以三种方式“不成功”：<strong>guard 挡住</strong>、<strong>依赖没准备好</strong>、<strong>模型 / 网络出错</strong>。UI 表现各不同——搞清是哪一种能少走弯路。</p>
+
+          <div class="note-list">
+            <div class="note-item">
+              <b>Guard 挡住：文档不符合 action 前提。</b>
+              <span>Picker 里 action 仍可见但被禁用，鼠标悬停显示原因。举例：<code>Correct Content</code>“Document is too short to check for errors (minimum 50 words).”、<code>Suggest Split</code>“Document is too short to split (&lt; 500 words)”、<code>Rewrite Selection</code>“Select text to rewrite”。这不是 bug，是设计上防止无意义调用。</span>
+            </div>
+            <div class="note-item">
+              <b>索引未就绪：语义类 action 走不动。</b>
+              <span><code>Suggest Links (Graph)</code>、<code>Smart Connections</code>、<code>Find Related</code> 依赖已构建的 semantic graph 或 vector index。当前文档未被索引时结果面板显示“Document not indexed yet. Run indexing first.”，或返回 <code>searchUnavailable</code>。解决方法：<a href="04-configuration-and-user-views.html#indexing">04 · Knowledge Index</a> 切到 semantic/full 档并重建索引。</span>
+            </div>
+            <div class="note-item">
+              <b>Copilot role 未绑定：回落到 Conversation。</b>
+              <span><code>ProfileRegistry.getActiveCopilotConfig()</code> 返回 null 时会走 Chat role；日志里没有特殊提示，用户可能只是感觉“质量不太对”。Overview 卡片会显示 Needs attention。修法：AI Setup → AI behavior → Copilot 选一个 provider + model。</span>
+            </div>
+            <div class="note-item">
+              <b>Agent 流的 action 需要工具权限。</b>
+              <span><code>Suggest Links</code>、<code>Add Evidence</code>、<code>Writing Plan</code>、<code>Write Article</code>、<code>Detect & File</code> 会调 vault 搜索工具、读取多份笔记。permission mode 是 <code>read</code> 时能跑；工具被显式禁用会直接 error。</span>
+            </div>
+            <div class="note-item">
+              <b>模型 / 网络出错：Panel 显示 Notice。</b>
+              <span>Streaming 中途中断会保留已流式的文本、Apply 时会拿部分结果——注意 Diff 双栏可能只显示半段。<code>Notice</code>（Obsidian 右上角吐司）会显示 “Fix failed: ...” / “Failed to apply: ...”。</span>
+            </div>
+            <div class="note-item">
+              <b>Apply 之后 diff 没变：source 已经不在原文档里。</b>
+              <span><code>Correct Content</code> 逐条 Accept 是做字符串 <code>replace</code>。如果你在生成后又手动改了那段原文，Accept 会找不到 <code>before</code>，静默失败（<code>applyCopilotBlocksPure</code> 里 <code>if (!next.includes(block.before)) continue;</code>）。UI 上表现为“按了 Accept 但文档没变”。解决：先关闭面板，重新跑一次。</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="maintain">
+          <h2>加新 action 的规则</h2>
+          <p class="lead">Document lane 目前已有 17 条，Vault lane 10 条。以后加新 action 请按下面这条最小契约走。</p>
+
+          <div class="note-list">
+            <div class="note-item">
+              <b>1 · 在 <code>src/service/copilot/actions/index.ts</code> 里加 <code>CopilotAction</code>，不要绕过 factory。</b>
+              <span>Action 必须只用 <code>CopilotActionPorts</code>——不要直接 <code>AppContext.getInstance()</code>、不要碰 <code>obsidian</code>。<code>execute()</code> 是 async generator，返回 <code>ActionResult</code>（stream 或 structured）。</span>
+            </div>
+            <div class="note-item">
+              <b>2 · category 决定 lane。</b>
+              <span><code>document</code> 或 <code>writing</code> ⇒ Document lane；<code>vault</code> ⇒ Vault lane。想放某条“Document 里的 vault 操作”，走 <code>DOCUMENT_ACTION_IDS</code> 白名单或显式设 <code>intentTab: 'document'</code>——但要写清为什么打破默认。</span>
+            </div>
+            <div class="note-item">
+              <b>3 · 有 guard 就写 guard；不要用文档不符时静默返回空结果。</b>
+              <span>Picker 会给出 disabled 状态 + 悬停提示。这是用户能预期到的行为，比“跑了但空”好得多。</span>
+            </div>
+            <div class="note-item">
+              <b>4 · Prompt 走 PromptId，不要拼串。</b>
+              <span>需要 LLM 就用 <code>ai.queryStream / queryStructured / renderPrompt</code> 配合 <code>PromptId.*</code>；提示词落在 <code>templates/prompts/</code>。结构化输出要在 <code>copilot-schemas.ts</code> 里新增 zod schema。</span>
+            </div>
+            <div class="note-item">
+              <b>5 · UI 面板注册到 <code>copilot-action-surfaces.tsx</code>。</b>
+              <span>结果 modal 通过 <code>action.id → PanelComponent</code> 查表；漏了这一步 modal 会显示 “This is a Copilot wiring bug — the action ran but no UI is bound.”</span>
+            </div>
+            <div class="note-item">
+              <b>6 · 一次 Apply = 一次编辑器 transaction。</b>
+              <span>批量改动尽量拼成一个 <code>vault.modify</code> 调用（<code>applyCopilotBlocksPure</code> 就是这样组装的），让 Ctrl-Z 一次撤销。多文件 action（如 Suggest Split）必须在文档里明确说“不可 Ctrl-Z 撤销”，或提供撤销脚本。</span>
+            </div>
+            <div class="note-item">
+              <b>7 · Copilot role 决定用哪个模型；不要在 action 里 hardcode provider。</b>
+              <span>如果新 action 需要“更强的 planning 能力”，考虑给它走 agent 路径（<code>agent.runAgentStream</code>）；agent 会独立走 <code>activeAgentConfig</code>。</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>本页说法</th><th>证据入口</th><th>用途</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Command "Open Copilot" 注册</td>
+                <td><code data-copy="src/app/commands/Register.ts">Register.ts</code>（<code>peak-copilot-open</code>）<br><code data-copy="src/app/commands/PeakCommandActions.ts">PeakCommandActions.ts</code>（<code>openCopilotPanel</code>）</td>
+                <td>确认 Command Palette 入口 → <code>CopilotPickerModal</code>。</td>
+              </tr>
+              <tr>
+                <td>Document / Vault / Setting 三 lane</td>
+                <td><code data-copy="src/service/copilot/intent-hub.ts">intent-hub.ts</code>（<code>COPILOT_INTENT_TABS</code>、<code>getActionIntentTab</code>、<code>DOCUMENT_ACTION_IDS</code>）</td>
+                <td>确认三条 lane 的 tab 定义与 category → lane 的映射。</td>
+              </tr>
+              <tr>
+                <td>Document lane 17 条 action</td>
+                <td><code data-copy="src/service/copilot/actions/index.ts">index.ts</code>（<code>createBuiltInCopilotActions</code>）</td>
+                <td>逐条对齐 category、guard、relevance、execute 行为、读什么、写什么。</td>
+              </tr>
+              <tr>
+                <td>DocumentContext 结构</td>
+                <td><code data-copy="src/service/copilot/DocumentContextBuilder.ts">DocumentContextBuilder.ts</code></td>
+                <td>确认 <code>scope</code>、<code>wordCount</code>、<code>isOrphan</code>、<code>frontmatter</code> 等字段的来源。</td>
+              </tr>
+              <tr>
+                <td>Panel → Vault 写入路径</td>
+                <td><code data-copy="src/service/copilot/CopilotArtifactApply.ts">CopilotArtifactApply.ts</code>（<code>applyCopilotBlocksPure</code>、<code>applyCopilotArtifactsToContext</code>）<br><code data-copy="src/service/copilot/frontmatterTagWriter.ts">frontmatterTagWriter.ts</code></td>
+                <td>确认 Diff 类 Apply、tag frontmatter 写入的具体入口。</td>
+              </tr>
+              <tr>
+                <td>Panel 注册表</td>
+                <td><code data-copy="src/ui/view/copilot/copilot-action-surfaces.tsx">copilot-action-surfaces.tsx</code></td>
+                <td>确认 <code>action.id → PanelComponent</code> 一对一绑定；找不到 panel 会报“wiring bug”。</td>
+              </tr>
+              <tr>
+                <td>各 action 的 UI 行为</td>
+                <td><code>src/ui/view/copilot/panels/*Panel.tsx</code>（详见下方分列）</td>
+                <td>确认“会不会直接改文档”“Apply 后改哪里”的每一格。</td>
+              </tr>
+              <tr>
+                <td>Copilot role 绑定</td>
+                <td><code data-copy="src/core/profiles/ProfileRegistry.ts">ProfileRegistry.ts</code>（<code>activeCopilotConfig</code>、<code>getActiveCopilotConfig</code>）</td>
+                <td>确认 Document lane 全部走 Copilot role；未绑回落 Conversation。</td>
+              </tr>
+              <tr>
+                <td>Auto Review Fast/Complete 是另一个入口</td>
+                <td><code data-copy="src/service/copilot/CopilotMetaAgentStream.ts">CopilotMetaAgentStream.ts</code>（<code>MODE_LABELS</code> Fast Lookup / Research）<br><code data-copy="src/app/copilot/modals/CopilotAutoRunModal.tsx">CopilotAutoRunModal.tsx</code></td>
+                <td>Picker 里的 “Auto” 按钮走 meta-agent，不属于本页的 Document action 清单。</td>
+              </tr>
+              <tr>
+                <td>Use case 5 / 6 / 7 与本页一致</td>
+                <td><code>docs/05-use-case-playbook.html</code>（Case 5 Polish、Case 6 Review/Correct、Case 7 Links/Tags/Split）</td>
+                <td>确认本页描述与 playbook 里 5/6/7 的 “怎么做 / 成功结果” 对齐；playbook 里 Case 6 明确要本页把 “是否直接改文档、是否需要用户确认、如何保留原文” 写清——本页在 <a href="#writes-and-safety">Writes &amp; Safety</a> 完成。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 30px;">Panel 分工（Apply 落地点）</h3>
+          <dl class="field-list">
+            <dt><code>PolishPanel.tsx</code></dt><dd><code>applyDiffResult</code>——整篇/选区替换</dd>
+            <dt><code>ReviewPanel.tsx</code></dt><dd>inline Fix → 嵌套 PolishPanel（breadcrumb）</dd>
+            <dt><code>CorrectContentPanel.tsx</code></dt><dd>逐条 Accept 就地 replace</dd>
+            <dt><code>LinkSuggestPanel.tsx</code></dt><dd>按 context 插入 <code>[[target]]</code></dd>
+            <dt><code>SemanticLinkSuggestPanel.tsx</code></dt><dd>文档末尾追加 <code>## Related Notes</code></dd>
+            <dt><code>SplitPanel.tsx</code></dt><dd><code>createNoteInFolder</code> + stub 链接替换</dd>
+            <dt><code>TagSuggestionPanel.tsx</code></dt><dd><code>writeFrontmatterTags</code>（写 YAML）</dd>
+            <dt><code>SummarizePanel.tsx</code></dt><dd>frontmatter 后插 <code>&gt; [!summary]</code> callout</dd>
+            <dt><code>CheckTaskListPanel.tsx</code></dt><dd>只读诊断，无 Apply</dd>
+          </dl>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01，按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="04-configuration-and-user-views.html">04 Configuration &amp; User Views</a>、<a href="05-use-case-playbook.html">05 Use Case Playbook</a>、<a href="11-feature-chat-context.html">11 Chat Context</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

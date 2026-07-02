@@ -20,7 +20,6 @@ import {
 	getAIResourcesSummaryFolder,
 } from '@/core/config/folderPaths';
 import { ResourceSummaryService } from './context/ResourceSummaryService';
-import { IndexService } from '@/service/search/index/indexService';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
 import { ContextUpdateService } from './context/ContextUpdateService';
 import { ContextPipeline } from './context/ContextPipeline';
@@ -44,7 +43,6 @@ import type { SearchClient } from '@/service/search/SearchClient';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import { AgentTemplateId, getTemplateMetadata } from '@/core/template/TemplateRegistry';
 import { estimateTokens as estimateTokensFn } from './token-estimation';
-import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { collectText, collectJson, translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
@@ -347,14 +345,8 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 			this.proj,
 		);
 
-		// Update IndexService with updated AIServiceManager instance.
-		// T11Q (Track G): env is supplied at the original boot point; here
-		// we only need to refresh the manager reference, so we re-init with
-		// the existing env.
-		IndexService.getInstance().init({
-			aiServiceManager: this,
-			env: { app: this.app, rootFolder: this.settings.rootFolder },
-		});
+		// IndexService itself is constructed by `main.initializeSearchService`
+		// which runs after `aiServiceManager.init()`; no rebinding needed here.
 	}
 
 	setPromptFolder(folder: string): void {

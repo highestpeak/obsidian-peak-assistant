@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant Roadmap</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --purple: #5a3d8a;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --soft-purple: #f1edf8;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    .page { width: min(1040px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 44px; line-height: 1.1; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 18px; line-height: 1.72; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 220px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    section { width: 100%; padding: 40px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 12px; font-size: 28px; line-height: 1.2; letter-spacing: 0; }
+    h3 { margin: 24px 0 8px; font-size: 18px; line-height: 1.28; letter-spacing: 0; color: var(--ink); }
+    p { margin: 0; }
+    p + p { margin-top: 12px; }
+    .lead { color: var(--ink); font-size: 17px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 15px; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 13.5px; }
+    .read-note b { color: var(--ink); }
+    table { width: 100%; margin-top: 18px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 11px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    td code { font-size: 12.5px; color: var(--ink); }
+    .pill { display: inline-flex; align-items: center; min-height: 22px; padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    .purple { color: var(--purple); background: var(--soft-purple); border-color: rgba(90, 61, 138, 0.24); }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1560px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+    }
+  </style>
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">Peak Assistant Roadmap</div>
+      <h1>状态快照：里程碑、待建、调研、远期</h1>
+      <p class="subtitle">这份文档回答"项目现在在做什么、下一步做什么"。<strong>只登记关键节点</strong>——不是流水账。逐 session 的完成粒度看 <a href="progress.md"><code>progress.md</code></a>；文档索引看 <a href="index.html"><code>index.html</code></a>；调研原稿在 <code>docs/research/</code>；架构 spec 在 <code>docs/superpowers/specs/</code>。</p>
+      <div class="meta">
+        <span>Status: current · 2026-07-01</span>
+        <span>Scope: milestone-level only</span>
+        <span>Updated: 手动维护 + session-end 补关键节点</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="roadmap 导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+        </div>
+        <strong>路线段</strong>
+        <a href="#how-to-read">怎么读这个 roadmap</a>
+        <a href="#done">已完成的关键里程碑</a>
+        <a href="#decided">已决策待建</a>
+        <a href="#researching">调研候选</a>
+        <a href="#backlog">远期 Backlog</a>
+        <a href="#update-rule">如何维护本表</a>
+        <div class="nav-note">Only 关键节点。逐 session 细节看 progress.md；spec/plan 原稿看 superpowers/。</div>
+      </nav>
+
+      <div class="content">
+        <section id="how-to-read">
+          <h2>怎么读这个 roadmap</h2>
+          <p class="lead">四段自上而下就是项目在时间轴上的位置：<strong>过去里程碑 → 已决策待建 → 调研候选 → 远期想法</strong>。每一段都是状态快照，不是承诺。</p>
+          <p class="prose">"已决策"意味着有 spec、有共识、只等排期；"调研候选"意味着 <code>docs/research/</code> 里有报告但决策未落；"远期 Backlog"是无 spec 的想法，不承担交付责任。</p>
+        </section>
+
+        <section id="done">
+          <h2>已完成的关键里程碑</h2>
+          <p class="prose">按主题聚合，只列每一波的定调节点。详细每阶段（Phase A–AP、S1-S7、T0-T11P）看 <a href="progress.md"><code>progress.md</code></a>。</p>
+
+          <h3>产品能力 — 用户可见的核心功能</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>里程碑</th><th>价值</th><th>阶段</th><th>状态</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Mobile 支持</strong></td><td>iCloud 同步 + Claude 长上下文替代 RAG，dual-mode 单 bundle</td><td>Phase M</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Search Pipeline Upgrade</strong></td><td>QueryParser + 5 Retrievers + adaptive RRF + Highlight + stemming/fuzzy + click-through</td><td>Phase AB</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Vault Search Redesign</strong></td><td>VS Code 风格 inspector side panel</td><td>Phase J</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Chat UI Redesign</strong></td><td>Message UI v9 + Topic 聚合 + Suggested follow-ups + Outline + Composer 三态</td><td>Phase L / U / AN</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Copilot Expansion</strong></td><td>5→15 actions，Document/Vault/Writing 三类；agent loop 化 4 actions</td><td>Phase W / AE</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Copilot Doc Intelligence</strong></td><td>polish / review / suggest-links / split（#42/#33/#38/#36）</td><td>Phase P</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Background Multi-Session</strong></td><td>关闭 modal 继续分析 + 多 session 并发 + Active Sessions UI</td><td>Phase H</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Ambient Push（S1 全 4 phase）</strong></td><td>FTS5 pipeline → 图谱扩展 → Serendipity Engine → Morning Briefing</td><td>Phase S1×4</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Vault Lint / Health Check</strong></td><td>5 信号检测器 + VaultXRayView + ScoreRing</td><td>Phase S2</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Cascade Update</strong></td><td>hub_constituent 表 + CascadeWorker + folder_stats + hub_regen stub</td><td>Phase S3</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Structural Hole 检测</strong></td><td>Brandes BC + Louvain + Burt constraint + Gap Analysis UI + bridge actions</td><td>Phase S4</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>PPR Search Tuning</strong></td><td>Co-citation 第 4 层 + query-node seeding + Settings UI + 评估命令</td><td>Phase S5</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Precompiled Knowledge / Hub Regen</strong></td><td>HubStalenessDetector + HubRegenService + hub_regen_queue + reranker boost</td><td>Phase S6</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Auto-tag（建议模式）</strong></td><td>Schema 修复 + 反馈持久化 + batch + FolderPicker</td><td>Phase S7</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Query Pattern Discovery</strong></td><td>LLM 驱动查询模式发现 + 上下文建议</td><td>Phase I</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Onboarding + 三档索引</strong></td><td>4 步 Onboarding + fast/semantic/full 索引档 + 智能升级提示</td><td>Phase AC / Q</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Usage Dashboard</strong></td><td>全站 AI 调用追踪 + SQLite 持久化 + KPI/Budget/Optimization 三屏</td><td>Phase Y / AP</td><td><span class="pill green">shipped</span></td></tr>
+            </tbody>
+          </table>
+
+          <h3>基础设施 / Runtime</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>里程碑</th><th>价值</th><th>阶段</th><th>状态</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Provider v2 迁移</strong></td><td>删 Vercel AI SDK → Agent SDK query()，7 packages 移除，~3700 行删</td><td>Phase F</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Agent Trace 可观测性</strong></td><td>TraceSink + fixture vault + MCP server + CLI harness + scenarios（15 tasks, 100+ assertions）</td><td>Phase G</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>MCP Integration Wave</strong></td><td>Model Registry JSON 化 + Custom OpenAI-compat + MCP Client (stdio/SSE) + Skill System</td><td>Phase AH / AI / AJ</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Curator Onboarding</strong></td><td>22-model catalog + zod schema + 9-step wizard + apply 写 HarnessSettings</td><td>Phase AK</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Design System Unification</strong></td><td>tokens + 10 primitives + Copilot skin + chat/dashboard/onboarding 三 worktree（21 PR）</td><td>Phase AL / AM</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Streaming 内存修复</strong></td><td>6 条流式路径 RAF 节流 + O(n²)→O(n)（17 files）</td><td>Phase R</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Chat System Polish</strong></td><td>Store 重构（4→2）+ ChatInputArea 拆分（453→176）+ #93 delete</td><td>Phase K</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>V1 Search 退役</strong></td><td>删除旧 V1 pipeline + step UI（-9000 行）</td><td>V1 退役</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>代码库精简</strong></td><td>71.2k → 66.7k（-4485 行）：死代码 + 算法简化 + 冗余压缩</td><td>Phase AA</td><td><span class="pill green">shipped</span></td></tr>
+            </tbody>
+          </table>
+
+          <h3>Architecture Modernization（T0–T11P）</h3>
+          <p class="prose">Codex 主导 audit + design，Claude Code 做 bounded implementation。目标：清 <code>service → app</code> / <code>service/core → obsidian</code> / <code>ui → app</code> 等违规边界。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>里程碑</th><th>关键成果</th><th>阶段</th><th>状态</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Boundary Baseline</strong></td><td>819 files / 423 flagged edges 起点</td><td>T0</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Vault Lint Contract Seed</strong></td><td>ProgressReporterPort 首个 port 铺路</td><td>T1 / T2A–C</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>RunEnvelope Core</strong></td><td>Runtime capsule 引入，vertical slice 从 Vault Lint 打通</td><td>T3A / T4–T7</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Ambient / Copilot / Quick Search Runtime</strong></td><td>三大 feature 从 singleton 迁到 runtime boundary</td><td>T8 / T9 / T10</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Copilot Action Registry Ownership</strong></td><td>Execution ports + Registry ownership + boot availability fix</td><td>T11 / T11B / T11B-R</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Code Deletion Waves</strong></td><td>Volume audit + 3 波 guarded deletion（Curator push runtime move 等）</td><td>T11C–T11G</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Big-Bucket Boundary Cleanup</strong></td><td>Total flagged 338 → 47；core→upstream 79→0；service→app 56→7；UI→app 114→0；useServiceContext().app 25→0</td><td>T11H–T11P</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Service Singleton Migration</strong></td><td>IndexService / MCPClientManager / SkillRegistry / CapabilityRegistry / Usage×3 全部去 <code>getInstance</code>，改由 <code>AppRuntimeRegistry</code> 拥有；UI 走 <code>useServiceContext()</code>，service 走 constructor DI；T11P/T11Q 硬 target 0 保持</td><td>T13</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T1 Contract Seeds (partial)</strong></td><td><code>CapabilityManifest</code> 类型 + <code>doc.review.current</code> fixture + shape guard 落地在 <code>src/core/types/capability.ts</code>；ArtifactRef 上升 core 延后（需连带改 run-envelope 硬测试）；spec/plan 见 <code>2026-07-02-architecture-modernization-*</code></td><td>T1（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T0 Boundary Baseline</strong></td><td>统一 import-scan：<code>test/boundary/service-layer-boundaries.test.ts</code> 扫 <code>src/service/**</code> 266 文件 × 3 rule（Obsidian import / <code>AppContext.getInstance()</code> / <code>@/app|@/ui</code>），全部 0 违规；JSON baseline + no-new-violation 门禁</td><td>T0（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T5 ToolDef Envelope (additive)</strong></td><td><code>ToolSource</code> union + <code>ToolDef.source</code> 字段；MCP 直通 ToolDef 路径（<code>mcpToolToToolDef</code> + <code>getAllMcpToolDefs</code>）；bridge <code>adaptAgentTool</code> 支持 source override；旧 AgentTool 路径保留 facade。<code>test/tool-def-envelope.test.ts</code> 5 条 guard</td><td>T5（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T3 helpers + adopter 选型</strong></td><td><code>defaultClock</code>/<code>defaultIdFactory</code> 从 VaultLintRun 抽到 <code>service/run-envelope/helpers.ts</code>；下一 adopter 选型 spec 定稿：<code>IndexInitializer.checkAndUpdateIndex()</code> → AI Analysis → …（<a href="superpowers/specs/2026-07-02-t3-first-adopter-selection-design.md">select spec</a>）</td><td>T3 prep（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T3 Adopter 1: IndexInitializer</strong></td><td><code>src/service/search/index/indexInitializerRun.ts</code> — 新 runner + capability id <code>knowledge.index.initialize</code>；<code>test/index-initializer-run.test.ts</code> golden trace 5 条 guard；<code>main.ts</code> 注释样板改为 RunEnvelope wrap 版；启动 auto-run 仍 disabled（原状），激活由用户决定</td><td>T3 Adopter 1（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T13 CascadeWorker 清尾</strong></td><td>删 <code>static instance</code>/<code>getInstance()</code>；<code>SearchUpdateListener</code> 加 <code>cascadeWorker</code> DI；<code>indexUpdater.ts</code> 从 <code>CascadeWorker.getInstance()</code> 迁到 <code>this.cascadeWorker</code>；<code>main.ts</code> 调换构造顺序</td><td>T13 tail（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T6 CompiledSkill</strong></td><td><code>core/types/compiled-skill.ts</code> + <code>SkillRegistry.compile()</code>（whitelist→strict / 无 whitelist→permissive）；<code>test/compiled-skill-shape.test.ts</code> 7 条 guard；原双 registry 说法已 stale（T13 时删过 harness 侧）</td><td>T6（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T3 Adopters 3+4</strong></td><td>CascadeWorker.drainDebt() + GraphCleanupService.run() 各自 RunEnvelope 包装 + golden trace，capability id 分别 <code>knowledge.cascade.drain</code> / <code>knowledge.graph.cleanup</code></td><td>T3 Adopters 3-4（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T6 quarantine helper</strong></td><td><code>service/skills/quarantine.ts</code>—<code>checkSkillQuarantine()</code> 决策纯函数，非侵入式，consumer 显式 opt-in</td><td>T6 helper（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T2 ToolPort</strong></td><td><code>core/ports/ToolPort.ts</code> 只读端口 + <code>ToolRegistry implements ToolPort</code>；顺手把 tool envelope 类型全部上升到 <code>core/types/</code> 保持 boundary</td><td>T2 partial（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T8 IndexReaderPort</strong></td><td>首片：<code>core/ports/IndexReaderPort.ts</code>（read-only 3 methods）+ <code>IndexService implements</code>；<code>GetIndexStatusResponse</code> 上升 core</td><td>T8 partial（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T4/T9 CapabilityRunner</strong></td><td><code>service/capabilities/CapabilityRunner.ts</code> + <code>CapabilityManifestRegistry.ts</code>—拼接 T1 manifest / T3 envelope / T6 compiled skill；backend dispatch 由 caller <code>execute</code> 函数注入（可单测）；<code>test/capability-runner.test.ts</code> 6 条 guard</td><td>T4/T9 partial（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T7 UI Projection helper</strong></td><td><code>service/run-envelope/projection.ts</code>—<code>createProjectingRecorder</code>，返 <code>{ recorder, projection }</code>；<code>projection.subscribe</code>/<code>getSnapshot</code> 直供 <code>useSyncExternalStore</code>；referential stability 保证</td><td>T7 partial（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T3 Wave 3：Chat/Copilot/Analysis/Harness adopters</strong></td><td>4 条链路 RunEnvelope 包装：<code>ChatConversationRun.ts</code>（<code>chat.conversation.run</code>）· <code>CopilotReviewRun.ts</code>（<code>copilot.review.run</code>）· <code>AnalysisReportRun.ts</code>（<code>analysis.report.run</code>）· <code>HarnessAgentRun.ts</code>（<code>harness.agent.loop</code>）；共享 golden-trace 测试 <code>wave3-adopter-runs.test.ts</code> 表驱动 4 adopter × 4 guard；T3 至此 8 个 adopter 全部立起</td><td>T3 landed（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T8 Writer + Maintenance slice</strong></td><td><code>IndexWriterPort.ts</code>（5 methods）+ <code>IndexMaintenancePort.ts</code>（5 methods）+ 8 个 maintenance 类型上升 <code>core/types/index-maintenance.ts</code>；<code>IndexService implements IndexReaderPort, IndexWriterPort, IndexMaintenancePort</code>；三片 slice 全部就位</td><td>T8 landed（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T4/T9 BackendStrategyRegistry</strong></td><td><code>BackendStrategyRegistry.ts</code>—<code>resolveBackendStrategy(policy, registry)</code> preferred/fallback 挑选 + fail-loud（不静默降级）；<code>composeExecuteFromPolicy(manifest, registry)</code> 直接产 execute；<code>makeEchoStrategy</code> / <code>makeUnavailableStrategy</code> 脚手架；backend policy → execute 合成闭环</td><td>T4/T9 landed（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T6 Guard 消费</strong></td><td><code>withQuarantineGuard.ts</code>—<code>withQuarantineGuard(port, compiled)</code> 包装 <code>ToolPort</code> 自动过滤；<code>guardToolExecution(...)</code> 在 <code>tool.execute</code> 前跑 quarantine，拒绝时返 <code>fail('skill-quarantine: ...', false)</code>；T6 完整闭环</td><td>T6 landed（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T10 Cross-backend Golden Trace</strong></td><td><code>golden-trace-cross-backend.test.ts</code>—hermes-harness / claude-sdk / provider-direct 三 strategy 下 RunEvent shape 序列 byte-identical；deterministic ids + strictly monotonic ts；failure trace 亦跨后端统一</td><td>T10 landed（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T12 Command Gateway</strong></td><td><code>service/capabilities/CommandGateway.ts</code>—<code>CommandGateway</code> class + <code>GatewayBinding</code>；<code>dispatch(commandId)</code> 内部走 <code>runCapability</code> 回 <code>CommandDispatchResult</code>；重复 register + 未知 dispatch 双 fail-loud；<code>test/command-gateway.test.ts</code> 5 条 guard</td><td>T12 landed（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T2 ProviderPort</strong></td><td><code>core/ports/ProviderPort.ts</code>—read-only 3 methods（<code>hasProvider</code> / <code>listProviders</code> / <code>getProviderInfo</code>）；<code>ProviderInfo</code> 结构 = <code>ProviderMetaData + ready</code>；无 mutation / stream / complete 泄漏。测试 3 条 guard（shape / boundary / stub 满足 port）。</td><td>T2 ProviderPort（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T2 ArtifactPort</strong></td><td><code>core/ports/ArtifactPort.ts</code>—<code>putArtifact</code> / <code>getArtifactBody</code> / <code>listByRun</code>；结构性 <code>ArtifactRefShape</code>（mirror <code>ArtifactRef</code> keys，shape-guard 测试锁）；<code>InMemoryArtifactStore</code>（<code>service/run-envelope/</code>）作为参考实现，round-trip + 可注入 clock/idFactory；测试 5 条 guard（port shape / boundary / envelope shape mirror / 实现 round-trip / 可选字段省略）。</td><td>T2 ArtifactPort（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T5 obsidian-command adapter</strong></td><td><code>service/agents/harness/tool/ObsidianCommandToolAdapter.ts</code>—<code>obsidianCommandToToolDef(cmd, invoker, opts?)</code> + 批量 <code>obsidianCommandsToToolDefs(...)</code>；<code>source: 'obsidian-command'</code>、<code>kind: 'edit'</code> 默认；<code>CommandInvoker</code> 抽象让 service 层不 import <code>obsidian</code>；测试 6 条 guard（happy / not-found / throws / options / batch / boundary）。至此 T5 三种 source（local / mcp / obsidian-command）全覆盖。</td><td>T5 obsidian-command（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>T7 RunEnvelopeStore</strong></td><td><code>service/run-envelope/runEnvelopeStore.ts</code>—<code>deriveEvents(projection, selector)</code> 按 snapshot ref memoize（同 snapshot 不重算，值 <code>Object.is</code> 未变不通知）；<code>RunEnvelopeStore</code> 语义化 <code>register</code>/<code>get</code>/<code>subscribe</code>/<code>unregister</code>/<code>dispose</code>；重复 register + 未知 get/subscribe fail-loud。测试 5 条 guard。UI 侧任何框架接入这份 store 即拿到"事件唯一真源 + 派生视图缓存"。</td><td>T7 RunEnvelopeStore（本次）</td><td><span class="pill green">shipped</span></td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="decided">
+          <h2>已决策待建</h2>
+          <p class="lead">有 spec 或强共识，等排期或等前置依赖。这是"下一步做什么"的短名单。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>项</th><th>内容</th><th>Spec / Ref</th><th>状态</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>T12 Command Gateway 落地接线</strong></td>
+                <td>Gateway 类 + 测试已 shipped（见 Done 段）；剩余：<code>main.ts</code> 里注册的 Obsidian command 换成 <code>() =&gt; gateway.dispatch(id)</code>，涉及行为变更需真机验证。</td>
+                <td><a href="superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">Capstone spec</a></td>
+                <td><span class="pill gold">decided · wire-in only</span></td>
+              </tr>
+              <tr>
+                <td><strong>Ambient Push Current Work State 升级</strong></td>
+                <td>从 Related Notes 升级为 Current Work State / Session Thought Trace（产品评审已过）。</td>
+                <td><a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">Product/Technical Review</a></td>
+                <td><span class="pill gold">decided</span></td>
+              </tr>
+              <tr>
+                <td><strong>Copilot Command Center Redesign</strong></td>
+                <td>点 Copilot / Knowledge Analysis 后自动规划 capability，再用侧边/弹出/review panel 承载。</td>
+                <td><code>2026-05-14-copilot-command-center-user-centered-redesign.md</code></td>
+                <td><span class="pill gold">planned (spec only)</span></td>
+              </tr>
+              <tr>
+                <td><strong>Feature 文档 14 / 15 / 13</strong></td>
+                <td>Ambient Push / Command Gateway / Vault Intelligence 的根目录 HTML 正稿（feature 已建部分先写）。</td>
+                <td><a href="index.html#planned">index.html planned 表</a></td>
+                <td><span class="pill gold">docs planned</span></td>
+              </tr>
+              <tr>
+                <td><strong>AN / AO / AP 收尾</strong></td>
+                <td>三批 UI 改动已完成未 commit + 待真机验证；见 progress.md Next § "Pending"。</td>
+                <td><a href="progress.md">progress.md</a></td>
+                <td><span class="pill red">pending commit + QA</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="researching">
+          <h2>调研候选</h2>
+          <p class="lead">调研已完成但决策未落。每条对应 <code>docs/research/YYYY-MM-DD-slug/</code> 下的研究报告。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>日期</th><th>方向</th><th>结论</th><th>调研</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2026-07-01</td>
+                <td><strong>Chat 内富生成能力</strong>（Mermaid / Bases / Excalidraw / Dataview / drawio）</td>
+                <td>必要性高；分层押注：Mermaid + Bases 必做，Excalidraw 复用官方管线，Dataview 只生成，drawio 放弃。差异化押"vault-aware 生图"。</td>
+                <td><a href="research/2026-07-01-rich-generation-in-chat/README.md">研究报告</a></td>
+              </tr>
+              <tr>
+                <td>2026-07-01</td>
+                <td><strong>多模态生成（Image / Video / Music / Voice）与 Studio 形态</strong></td>
+                <td>必要性中高；形态不是 Studio 是"媒体工具环"，挂在 chat/note/copilot 上。骨干押 fal.ai 聚合器。序列：TTS + 笔记播客 → 封面图 → chat 内插图 → 视频（可选）→ 音乐（放弃）。护城河同前：vault-aware + project style token + 附件生命周期。</td>
+                <td><a href="research/2026-07-01-multimodal-generation-studio/README.md">研究报告</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="backlog">
+          <h2>远期 Backlog</h2>
+          <p class="lead">无 spec 的想法，不承担交付责任。要动之前必须先调研落 <code>docs/research/</code>，再升到"调研候选"。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>方向</th><th>描述</th><th>来源</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Canvas conversation type</strong></td><td>Split-pane chat + artifact rendering</td><td>progress.md § 5</td></tr>
+              <tr><td><strong>Template marketplace</strong></td><td>Template conversation type + marketplace 分发</td><td>progress.md § 5</td></tr>
+              <tr><td><strong>Message persistence queue</strong></td><td>AI 自动把有价值信息存到 vault</td><td>progress.md § 5</td></tr>
+              <tr><td><strong>Conversation auto-split</strong></td><td>多 topic 自动检测并拆分会话</td><td>progress.md § 5</td></tr>
+              <tr><td><strong>n8n / multi-agent / marketplace</strong></td><td>集成 n8n / 多 agent 并发模式 / agent marketplace</td><td>progress.md § 5</td></tr>
+              <tr><td><strong>Real-time LLM context inspector</strong></td><td>实时看 LLM 拿到的 context 面板</td><td>progress.md § 5</td></tr>
+              <tr><td><strong>Graph 高级可视化</strong></td><td>nebula background / healing ray / source-sink 视图</td><td>progress.md § 5</td></tr>
+              <tr><td><strong>Sync 外部笔记源</strong></td><td>flomo / Apple Notes / Calendar / ChatGPT 历史 / Gemini / Claude 历史</td><td>#53 / #23</td></tr>
+              <tr><td><strong>IFTTT / Workflow agent</strong></td><td>规则触发的工作流 agent 模式</td><td>#48</td></tr>
+              <tr><td><strong>Message branching</strong></td><td>从任意消息点 fork 会话</td><td>#14</td></tr>
+              <tr><td><strong>Work focus mode + project templates</strong></td><td>项目模板 + focus 模式</td><td>#57</td></tr>
+            </tbody>
+          </table>
+          <p class="read-note"><b>提升规则：</b>Backlog → 调研候选需要一份 <code>docs/research/YYYY-MM-DD-slug/</code> 报告；调研候选 → 已决策需要一份 <code>docs/superpowers/specs/</code> spec；已决策 → shipped 需要 progress.md 里对应 Phase 完成条目。</p>
+        </section>
+
+        <section id="update-rule">
+          <h2>如何维护本表</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>触发时机</th><th>动作</th><th>写到哪</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>一个 Phase / 大波 shipped</strong></td>
+                <td>progress.md 加详细条目 <em>+</em> 本表 <a href="#done">已完成的关键里程碑</a> 加一行（只在是关键节点时）</td>
+                <td>progress.md + roadmap.html</td>
+              </tr>
+              <tr>
+                <td><strong>新 spec / plan 落地</strong></td>
+                <td>本表 <a href="#decided">已决策待建</a> 加一行，指向 spec 文件</td>
+                <td>roadmap.html</td>
+              </tr>
+              <tr>
+                <td><strong>新调研完成</strong></td>
+                <td>调研原稿写到 <code>docs/research/YYYY-MM-DD-slug/README.md</code>；本表 <a href="#researching">调研候选</a> 加一行</td>
+                <td>docs/research/ + roadmap.html</td>
+              </tr>
+              <tr>
+                <td><strong>Backlog 想法产生</strong></td>
+                <td>本表 <a href="#backlog">远期 Backlog</a> 加一行（一句话即可）；正式跟踪前不要展开细节</td>
+                <td>roadmap.html</td>
+              </tr>
+              <tr>
+                <td><strong>状态迁移</strong></td>
+                <td>Backlog → 调研候选：加研究报告；调研候选 → 已决策：加 spec；已决策 → shipped：本表挪进 Done + progress.md 记录</td>
+                <td>逐段迁移</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="read-note"><b>关键节点判定：</b>能用一句话向新读者解释"我们做了什么、他能感知到什么"的才算。逐 session 的 UI 微调、bug 修复、局部 refactor 不上这张表——留在 progress.md 就够。</p>
+        </section>
+
+        <div class="footer">
+          <p>维护记录：2026-07-01 首次落地。规则见项目 <code>CLAUDE.md → Docs & Research Workflow</code>。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('how-to-read');
+    }
+  </script>
+<script src="assets/copy-path.js"></script>
+</body>
+</html>

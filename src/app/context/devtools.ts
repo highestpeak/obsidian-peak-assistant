@@ -14,7 +14,8 @@ import type { AppContext } from '@/app/context/AppContext';
 import { GraphInspectorTestTools, AISearchAgentTestTools } from '@/app/context/test-tools';
 import { GraphCleanupService } from '@/service/search/index/maintenance/GraphCleanupService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
+import { defaultIndexDocumentOptions } from '@/service/search/index/indexService';
+import { AppContext as AppCtx } from '@/app/context/AppContext';
 import { getVaultPersona } from '@/app/context/system-info';
 
 const REGISTERED_GLOBALS = [
@@ -39,21 +40,21 @@ export function registerDevtools(ctx: AppContext): void {
 	w.testGraphTools = new GraphInspectorTestTools();
 	w.testAISearchTools = new AISearchAgentTestTools();
 	w.indexDocument = (docPath: string) =>
-		IndexService.getInstance().indexDocument(
+		AppCtx.getIndexService().indexDocument(
 			docPath,
 			ctx.settings.search,
 			defaultIndexDocumentOptions('listener_fast'),
 		);
 	w.indexDocumentFull = (docPath: string) =>
-		IndexService.getInstance().indexDocument(
+		AppCtx.getIndexService().indexDocument(
 			docPath,
 			ctx.settings.search,
 			defaultIndexDocumentOptions('manual_full'),
 		);
 	w.runPendingLlmIndexEnrichment = () =>
-		IndexService.runPendingLlmIndexEnrichment(ctx.settings.search);
+		AppCtx.getIndexService().runPendingLlmIndexEnrichment(ctx.settings.search);
 	w.runPendingVectorIndexEnrichment = () =>
-		IndexService.runPendingVectorIndexEnrichment(ctx.settings.search);
+		AppCtx.getIndexService().runPendingVectorIndexEnrichment(ctx.settings.search);
 	w.getVaultPersona = () => getVaultPersona();
 	w.cleanupGraphTable = () => {
 		const graphCleanupService = new GraphCleanupService(

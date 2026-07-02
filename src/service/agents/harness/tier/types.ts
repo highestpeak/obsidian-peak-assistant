@@ -6,8 +6,12 @@
  */
 
 import type { LanguageModel } from 'ai';
-
-export type ModelTier = 'local-fast' | 'local-deep' | 'online';
+// Re-export ModelTier from core so downstream service files keep their
+// existing import paths. The identifier union itself lives in
+// `core/types/model-tier.ts` so `core/ports/ToolPort.ts` can reference
+// it without inverting the layering.
+export type { ModelTier } from '@/core/types/model-tier';
+import type { ModelTier } from '@/core/types/model-tier';
 
 export const TIER_ORDER: readonly ModelTier[] = ['local-fast', 'local-deep', 'online'] as const;
 

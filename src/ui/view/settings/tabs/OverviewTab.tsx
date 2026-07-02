@@ -192,18 +192,17 @@ type IndexCoverage =
     | { kind: 'ready'; indexed: number; total: number; pct: number };
 
 function useIndexCoverage(): IndexCoverage {
-    const { vaultStats } = useServiceContext();
+    const { vaultStats, indexService } = useServiceContext();
     const [state, setState] = useState<IndexCoverage>({ kind: 'loading' });
     useEffect(() => {
-        if (!sqliteStoreManager.isInitialized()) {
+        if (!sqliteStoreManager.isInitialized() || !indexService) {
             setState({ kind: 'empty' });
             return;
         }
         let cancelled = false;
         void (async () => {
             try {
-                const { IndexService } = await import('@/service/search/index/indexService');
-                const status = await IndexService.getInstance().getIndexStatus();
+                const status = await indexService.getIndexStatus();
                 if (cancelled) return;
                 const total = vaultStats.markdownCount();
                 const indexed = status.indexedDocs ?? 0;

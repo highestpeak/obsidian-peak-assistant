@@ -31,7 +31,6 @@ import {
     Sparkles,
     Trash2,
     Wrench,
-    Zap,
 } from 'lucide-react';
 import { Row, Button } from '@/ui/components/primitives';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -54,7 +53,6 @@ function buildIndexGroup(actions: SettingsActions): MaintenanceAction[] {
         { id: 'update-index', label: 'Update index', icon: Database, run: maintenance.index.updateIndex },
         { id: 'full-pipeline', label: 'Full pipeline', icon: RefreshCw, run: maintenance.index.runFullPipeline },
         { id: 'cancel-indexing', label: 'Cancel indexing', icon: ShieldAlert, run: maintenance.index.cancelIndexing },
-        { id: 'related-refresh', label: 'Refresh related notes', icon: Zap, run: maintenance.index.refreshRelatedNotes },
         { id: 'hub-refresh', label: 'Refresh hub summaries', icon: FileSearch, run: maintenance.index.refreshHubSummaries },
         { id: 'gap-recompute', label: 'Recompute gap analysis', icon: Layers, run: maintenance.index.recomputeGapAnalysis },
         { id: 'vault-intuition', label: 'Analyze vault intuition', icon: Brain, run: maintenance.index.analyzeVaultIntuition },

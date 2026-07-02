@@ -2,7 +2,6 @@ import type MyPlugin from 'main';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { CHAT_VIEW_TYPE, ChatView } from '@/app/ui-host/views/ChatView';
 import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from '@/app/ui-host/views/ProjectListView';
-import { AmbientPushView, AMBIENT_PUSH_VIEW_TYPE } from '@/app/ui-host/views/AmbientPushView';
 import { UsageDashboardView, USAGE_DASHBOARD_VIEW_TYPE } from '@/app/ui-host/views/UsageDashboardView';
 import { ConversationOutlineView, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/app/ui-host/views/ConversationOutlineView';
 import { ChatStudioView, CHAT_STUDIO_VIEW_TYPE } from '@/app/ui-host/views/ChatStudioView';
@@ -30,9 +29,6 @@ export class ViewManager {
 		});
 		this.viewCreators.set(PROJECT_LIST_VIEW_TYPE, (leaf) => {
 			return new ProjectListView(leaf, appContext);
-		});
-		this.viewCreators.set(AMBIENT_PUSH_VIEW_TYPE, (leaf) => {
-			return new AmbientPushView(leaf, appContext);
 		});
 		this.viewCreators.set(USAGE_DASHBOARD_VIEW_TYPE, (leaf) => {
 			return new UsageDashboardView(leaf, appContext);
@@ -90,26 +86,6 @@ export class ViewManager {
 	}
 
 	// Commands and events are intentionally kept outside this manager per design.
-
-	/**
-	 * Open or reveal the Ambient Push (Related Notes) side panel.
-	 */
-	async activateAmbientPushView(): Promise<void> {
-		const { workspace } = this.plugin.app;
-		let leaf = workspace.getLeavesOfType(AMBIENT_PUSH_VIEW_TYPE)[0];
-		if (!leaf) {
-			const candidate = workspace.getRightLeaf(false);
-			if (candidate?.view?.getViewType() === AMBIENT_PUSH_VIEW_TYPE) {
-				leaf = candidate;
-			} else {
-				leaf = workspace.getRightLeaf(true) ?? candidate ?? null;
-			}
-			if (leaf) {
-				await leaf.setViewState({ type: AMBIENT_PUSH_VIEW_TYPE, state: {}, active: true });
-			}
-		}
-		if (leaf) workspace.revealLeaf(leaf);
-	}
 
 	/**
 	 * Open the Usage Dashboard in a new tab.

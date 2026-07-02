@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>01 Peak Assistant Architecture</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); font-size: 0.94em; }
+    pre { margin: 20px 0 0; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 13.5px; line-height: 1.68; overflow-x: auto; box-shadow: 0 12px 26px rgba(23, 34, 29, 0.045); }
+    pre code { display: block; padding: 0; background: transparent; border-radius: 0; color: inherit; font-size: inherit; white-space: pre; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 0 0 8px; font-size: 20px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .warn { border-left-color: var(--gold); }
+    .warn strong { color: var(--gold); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    td code { background: var(--code-bg); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    .note-list { display: grid; gap: 10px; margin-top: 18px; }
+    .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .note-item b { display: block; margin-bottom: 3px; }
+    .note-item span { color: var(--muted); font-size: 14px; }
+    .kv { display: grid; grid-template-columns: 200px 1fr; gap: 8px 18px; margin-top: 18px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .kv dt { color: var(--ink); font-weight: 780; }
+    .kv dd { margin: 0; color: var(--muted); }
+    .kv dd code { background: var(--code-bg); }
+    .path-tree { margin-top: 20px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: var(--ink); font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 13.5px; line-height: 1.65; white-space: pre; overflow-x: auto; }
+    .path-tree .comment { color: var(--muted); }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+    @media (max-width: 980px) {
+      .kv { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">01 · Architecture · 系统架构地基</div>
+      <h1>Peak 的中间层是什么，为什么这些边界要保持稳定。</h1>
+      <p class="subtitle">这份文档回答一个问题：<strong>新加入的工程师在读任何 feature 代码之前，需要建立哪些 mental model</strong>。四层职责（app/service/core/ui）、能力契约（Capability Contract）、运行外壳（RunEnvelope）、端口（Ports）、拥有型运行时（Owned Runtimes）、Artifact/Trace 边界，以及“No Dual System”硬约束——这些不是抽象口号，而是当前代码已经在遵循（或正在向其收敛）的工程决策。</p>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 12k 混合字符</span>
+        <span>Reading time: 25-30 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">这页解决什么</a>
+          <a href="#layers">四层架构</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">核心契约</span>
+          <a href="#capability-contract">Capability Contract</a>
+          <a href="#runenvelope">RunEnvelope</a>
+          <a href="#ports">Ports</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">运行时与边界</span>
+          <a href="#runtimes">Owned Runtimes</a>
+          <a href="#trace-artifact">Trace / Artifact</a>
+          <a href="#no-dual-system">No Dual System</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">路线与参考</span>
+          <a href="#roadmap">现代化路线</a>
+          <a href="#maintain">维护规则</a>
+          <a href="#evidence">代码证据</a>
+        </div>
+        <div class="nav-note">读 feature 代码前必读；改架构级 API 时按 <a href="#maintain">维护规则</a> 反查；分不清 landed 还是 planned 时看 <a href="#roadmap">现代化路线</a>。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>这页解决什么</h2>
+          <p class="lead">Peak Assistant 现在的代码规模已经不小：Chat / Search / AI Analysis / Copilot / Ambient / Knowledge / Harness 每条链路都有独立的 service、UI 和 stores。新读者若直接从任一 feature 入手，会在“service 到底是不是可以随便拿 <code>AppContext</code>”、“runtime 应该长在哪一层”、“这个 <code>Runtime</code> 是不是又一个 singleton”这类问题上反复踩。这页把当前已经落地的架构地基摊平，再把仍在路线图上的部分标出来，让读代码时能一眼判断“这段是现状还是目标”。</p>
+          <div class="claim">
+            <strong>本文读者</strong>
+            刚加入的工程师；即将改动跨模块 API、runtime 生命周期、port 定义的维护者；正在写新 feature、需要知道“service 层能拿什么、不能拿什么”的人。
+          </div>
+          <div class="claim">
+            <strong>本文不做什么</strong>
+            不重复代码目录（那是 <a href="02-code-organization.html">02 Code Organization</a>）；不重复各 feature 的用户流（那是 11/12/13/16）；不重复配置项（那是 <a href="04-configuration-and-user-views.html">04</a>）；不列 provider/模型的接线细节。
+          </div>
+          <div class="claim warn">
+            <strong>关于“已落地 vs 路线图”</strong>
+            <p style="margin: 0 0 8px;"><b>已落地（master + 2026-07-02 分支）：</b>四层职责、Ports、Owned Runtimes、Runtime ownership 规则、CapabilityRegistry（surface-readiness 形态）、AgentLoop、Ambient/Lint/VaultReview/QuickSearchBackground/CopilotAction 五个 runtime；<strong>RunEnvelope 核心类型 + InMemoryRunRecorder + VaultLint 首个 adopter</strong>（T3A/T3B）；<strong>T0 Boundary Baseline</strong>（0 违规）；<strong>T1 CapabilityManifest 契约类型 + doc.review.current fixture</strong>；<strong>T5 ToolDef Envelope additive</strong>（<code>ToolSource</code> 联合 + MCP 直通 ToolDef 路径 + bridge source override）。</p>
+            <p style="margin: 0 0 8px;"><b><a href="#roadmap">路线图状态：</a></b>2026-07-02 全量收工——<strong>T0/T1/T2/T3/T4/T5/T6/T7/T8(3 slice)/T9/T10/T12/T13 全部 landed</strong>（handbook 12 个任务包全部 shipped，剩余 T11 boundary 系列一直在滚绿）。<strong>8 个 RunEnvelope adopter</strong>（VaultLint / IndexInit / Cascade / GraphCleanup / Chat / Copilot / Analysis / Harness）+ <strong>3 个 core Port</strong>（Tool / Provider / Artifact）+ <strong>3 个 IndexService slice</strong>（Reader / Writer / Maintenance）+ <strong>CapabilityRunner + BackendStrategyRegistry + CommandGateway + RunEnvelopeStore</strong> 组成完整闭环。剩下的都是"行为变更 / live 接入"，需要用户在场跑真机验证。源头见 <a href="superpowers/specs/2026-06-01-peak-system-architecture-modernization-handbook.html">系统架构现代化手册</a>；完工规划见 <a href="superpowers/specs/2026-07-02-architecture-modernization-completion-plan.md"><code>2026-07-02-architecture-modernization-completion-plan.md</code></a>。</p>
+            <p style="margin: 0;">本页会明确标注每条陈述属于哪一类。</p>
+          </div>
+        </section>
+
+        <section id="layers">
+          <h2>四层架构：app · service · core · ui</h2>
+          <p class="lead">Peak 的顶层结构是四层：<strong>app</strong> 拥抱 Obsidian，<strong>service</strong> 做业务编排，<strong>core</strong> 只放框架无关的抽象与类型，<strong>ui</strong> 是 React 层。依赖方向单向向下：<code>app → service → core</code>、<code>ui → service → core</code>；<code>app</code> 组装并把 <code>service</code>/<code>ui</code> 拼起来。<strong>反向依赖是硬错误</strong>——core 不认识 Obsidian，service 不认识 React store，ui 不直接读 SQLite。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · 四层依赖方向与允许的越界通道</strong>
+              <span>Mermaid · layered dependency map</span>
+            </div>
+            <div class="mermaid">
+flowchart TB
+  subgraph APP["app/ — Obsidian 集成"]
+    Main["main.ts<br/>composition root"]
+    AppContext["AppContext<br/>全局 DI 容器"]
+    Registry["AppRuntimeRegistry<br/>runtime binding"]
+    AppAdapters["Adapters<br/>compose*Runtime, port 适配器"]
+  end
+
+  subgraph UI["ui/ — React 层"]
+    Views["Views / Panels"]
+    Stores["Zustand stores"]
+    Components["shared-ui + primitives"]
+  end
+
+  subgraph SERVICE["service/ — 业务编排"]
+    Chat["chat/*"]
+    Search["search/*"]
+    Copilot["copilot/*"]
+    Ambient["ambient/*"]
+    Agents["agents/harness + agents/*"]
+    Capabilities["capabilities/*"]
+  end
+
+  subgraph CORE["core/ — 框架无关"]
+    Ports["ports/*<br/>interfaces"]
+    Types["types + schemas"]
+    Providers["providers/*<br/>AI SDK abstractions"]
+    Templates["template ids"]
+  end
+
+  Main --> AppContext
+  Main --> Registry
+  AppContext --> Registry
+  Main --> AppAdapters
+  AppAdapters --> Ports
+  UI --> SERVICE
+  UI --> Ports
+  SERVICE --> Ports
+  SERVICE --> Types
+  SERVICE --> Providers
+  APP --> SERVICE
+            </div>
+            <p class="read-note"><b>读图：</b>只有 <code>app/</code> 能同时看到 <code>service/</code> 和 <code>core/ports</code> 的实现细节；<code>service/</code> 只依赖 <code>core/ports</code> 的接口，看不到 Obsidian 或 React。<code>ui/</code> 可以调 <code>service/</code>，也可以直接消费某些 <code>core/ports</code>（例如 <code>VaultPreviewPort</code>），但都通过 <code>AppContext</code> 注入，不 <code>new</code> 具体 adapter。</p>
+          </div>
+
+          <table>
+            <thead>
+              <tr><th>层</th><th>能持有</th><th>禁止</th><th>典型入口</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>app/</strong><br><span class="pill green">Obsidian 集成</span></td>
+                <td>Obsidian <code>App</code>、SQLite、TFile、workspace、views、commands、runtime composition</td>
+                <td>写业务规则</td>
+                <td><code>main.ts</code>、<code>AppContext</code>、<code>AppRuntimeRegistry</code>、<code>compose*Runtime</code></td>
+              </tr>
+              <tr>
+                <td><strong>service/</strong><br><span class="pill blue">业务编排</span></td>
+                <td>Chat 流、Search pipeline、Agent loop、Copilot registry、Ambient</td>
+                <td>直接 <code>import { App } from 'obsidian'</code>、调 <code>useXxxStore</code>、拿 <code>AppContext.getInstance()</code></td>
+                <td><code>service-manager.ts</code>、<code>SearchClient</code>、<code>runAgentLoop</code>、<code>CopilotActionRegistry</code></td>
+              </tr>
+              <tr>
+                <td><strong>core/</strong><br><span class="pill gold">框架无关</span></td>
+                <td>Port、类型、schema、provider SDK adapter、template id</td>
+                <td>依赖 service/ui/app；持有 Obsidian 类型</td>
+                <td><code>core/ports/*</code>、<code>core/types/*</code>、<code>core/providers/*</code></td>
+              </tr>
+              <tr>
+                <td><strong>ui/</strong><br><span class="pill red">React 层</span></td>
+                <td>React 组件、Zustand stores、hooks、shadcn/ui primitives</td>
+                <td>直接读 SQLite/Vault；把长任务真相存 store 里</td>
+                <td><code>ui/view/chat-view/*</code>、<code>ui/view/settings/tabs/*</code>、<code>ui/store/*</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>为什么没有 service-side singleton</strong>
+            <code>CLAUDE.md</code> 的 “Runtime ownership” 规则显式禁止两件事：一是在 service 层用模块级 <code>let currentRuntime = null</code> 加 <code>set/getRuntime</code> 做单例；二是把 <code>AppContext.getInstance()</code> 当依赖捷径。原因是 Obsidian 热重载会保留旧闭包引用，service-side singleton 会持续持有已 dispose 的 sqlite 句柄 / event listener，导致隐蔽的内存泄漏和事件重复触发。所有 capability runtime 必须由 <code>app/</code> 层拥有和释放。
+          </div>
+
+          <div class="claim">
+            <strong>历史例外已清理（T13 + 2026-07-02 尾巴）</strong>
+            2026-07 完成一次性去 singleton：<code>IndexService</code>、<code>MCPClientManager</code>、<code>SkillRegistry</code>、<code>CapabilityRegistry</code>、<code>UsageTrackingService</code>、<code>UsageOutcomeService</code>、<code>UsageOptimizationService</code> 全部改由 <code>main.ts</code> <code>new</code> + <code>AppRuntimeRegistry</code> 拥有。<strong>2026-07-02 补做</strong>：<code>CascadeWorker.static instance</code> + <code>getInstance()</code> 是 T13 miss，已删除；<code>SearchUpdateListener</code> 加 <code>cascadeWorker: CascadeWorker | null</code> 构造 DI，<code>main.ts</code> 调换构造顺序保证依赖就位。UI 通过 <code>useServiceContext()</code>、service 通过 constructor DI / 参数注入拿引用；不再有 service-side <code>getInstance()</code>。<code>service/chat/service-manager.ts</code>（<code>AIServiceManager</code>）本来就不是 singleton，历史文档误列。<code>indexService.ts</code> 内部保留一个模块级 <code>currentChatRootFolder: string</code> 配置缓存（不是 runtime，无 handle/listener），仅供 <code>getIndexTenantForPath</code> 自由函数读取；<code>clearIndexService</code> 时 <code>disposeTenantHelper()</code> 复位。
+          </div>
+        </section>
+
+        <section id="capability-contract">
+          <h2>Capability Contract</h2>
+          <p class="lead">“Capability”在 Peak 里有一个非常具体的含义：<strong>一个产品能力承诺</strong>——它给用户什么、需要什么输入、产出什么 artifact、有什么权限约束、可以在哪些 surface 出现、可以用哪些后端跑。它不是一个 tool，不是一段 prompt，也不是一条 agent loop——它是这些东西的组织单位。</p>
+
+          <p class="prose">但代码里现在<strong>并没有</strong>这样一个完整的"能力对象"。<code>src/service/capabilities/CapabilityRegistry.ts</code> 只兑现了其中最小的一块——让每个 UI surface 声明自己此刻是否 ready，供 Settings 面板渲染 readiness 灯。对比一下"现在"和"目标"的形状：</p>
+
+          <pre><code>// 现在（landed）
+type Capability = {
+  surfaceId:       'Conversation' | 'Research' | 'Fast Lookup'
+                 | 'Knowledge Index' | 'Web Access' | 'Safety'
+  surfaceLabel:    string
+  getStatus():     'ready' | 'needs-attention' | 'not-ready' | 'optional'
+}
+
+// 目标（roadmap · handbook §3 决策 1、§8）
+type Capability = {
+  id:              string          // 'doc.review.current' 之类的稳定标识
+  inputContract:   Schema          // 需要什么输入
+  outputContract:  Schema          // 产出什么 artifact
+  permissionKind:  'read' | 'acceptEdits' | 'bypassPermissions'
+  costTier:        'fast' | 'deep' | 'premium'
+  backendPolicy:   BackendPolicy   // Hermes / Claude SDK / provider
+  skillRef:        SkillId         // 挂哪本工作手册
+  surfaceBinding:  SurfaceId[]     // 允许出现在哪些 surface
+  // + 上面三个 (surfaceId / surfaceLabel / getStatus)
+}</code></pre>
+
+          <p class="prose">目标形状里的每个字段<strong>其实都在代码里</strong>，只是散着——backend 选择混在 <code>agentBackend</code> setting、权限混在 harness 的 <code>permissionMode</code>、skill 直接从 <code>service/skills</code> 拿，都还没被合同化成 <code>Capability</code> 的一个字段。下表把每个属性映射回它现在藏在哪里、以及归属哪个 <a href="#roadmap">Roadmap</a> 任务包（源头见 <a href="superpowers/specs/2026-06-01-peak-system-architecture-modernization-handbook.html">系统架构现代化手册</a>）。</p>
+
+          <table>
+            <thead>
+              <tr><th>Capability 属性</th><th>回答什么问题</th><th>当前代码在哪</th><th>状态</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>surfaceId</code> / <code>surfaceLabel</code></td>
+                <td>这个能力挂在哪个用户面前的 surface？</td>
+                <td><code>src/service/capabilities/SurfaceCapability.ts</code></td>
+                <td><span class="pill green">landed</span></td>
+              </tr>
+              <tr>
+                <td><code>getCapabilityStatus()</code></td>
+                <td>此刻 ready / needs-attention / not-ready / optional？</td>
+                <td>Chat / Copilot 的 adapter 在 <code>main.ts</code> 注册</td>
+                <td><span class="pill green">landed</span></td>
+              </tr>
+              <tr>
+                <td><code>id</code>（如 <code>doc.review.current</code>）</td>
+                <td>能力的稳定引用，供 Skill / RunEnvelope 引用。</td>
+                <td><code>src/core/types/capability.ts · CapabilityManifest.id</code></td>
+                <td><span class="pill green">landed</span> (T1)</td>
+              </tr>
+              <tr>
+                <td><code>inputContract</code> / <code>outputContract</code></td>
+                <td>输入什么、产出什么 shape，供测试 fixture 用。</td>
+                <td><code>src/core/types/capability.ts · CapabilityContractShape</code></td>
+                <td><span class="pill green">landed</span> (T1)</td>
+              </tr>
+              <tr>
+                <td><code>permissionKind</code></td>
+                <td>只读 / 可写 / 需用户确认？</td>
+                <td><code>src/core/types/capability.ts · PermissionKind</code>；仍零散在 <code>harnessSettings.permissionMode</code> + copilot 内部 guard 里未统一</td>
+                <td><span class="pill green">landed</span> (T1) · <a class="pill gold pill-link" href="#t4" title="T4 · 消费统一">roadmap · T4</a></td>
+              </tr>
+              <tr>
+                <td><code>backendPolicy</code></td>
+                <td>能用 Hermes Harness / Claude SDK / 普通 provider？</td>
+                <td><code>src/core/types/capability.ts · BackendPolicy</code>（type-only）；实际 backend 选择仍在 <code>agentBackend</code> setting + AgentBackend 逻辑里</td>
+                <td><span class="pill green">landed (type)</span> · <a class="pill gold pill-link" href="#t3" title="T3 · RunEnvelope Core">roadmap · T3</a></td>
+              </tr>
+              <tr>
+                <td><code>skillRef</code></td>
+                <td>使用哪个 agent 工作手册？</td>
+                <td><code>src/core/types/capability.ts · SkillRef</code>（string alias）；Skill 仍存于 <code>service/skills</code> + <code>service/agents/harness/skill</code></td>
+                <td><span class="pill green">landed (alias)</span> · <a class="pill gold pill-link" href="#t6" title="T6 · Skill v2 Compiler">roadmap · T6</a></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>关键 mental model</strong>
+            读 feature 代码时不要把 <code>CapabilityRegistry.register(...)</code> 误当成“能力全景注册”——它现在只表达“surface 是否 ready”。真正的产品能力（“Doc Review”、“Vault Search”、“Analysis Round”）目前散落在 <code>ChatAgent / CopilotActionRegistry / VaultSearchAgent / ReportOrchestrator</code> 里，尚未被合同化。<strong>2026-07-02 T1 已落地 <code>CapabilityManifest</code> 类型 + <code>doc.review.current</code> fixture</strong>——契约形状已锁，等 T4 CapabilityRunner 消费。这是 <a href="superpowers/specs/2026-06-01-peak-system-architecture-modernization-handbook.html">handbook</a> 里最大的一块地基，从"未开工"变成"合同已定，等消费"。
+          </div>
+
+          <div class="claim warn">
+            <strong>写新 feature 时的临时约束（T1 后仍适用）</strong>
+            <p>T1 落地了 <code>CapabilityManifest</code> 类型和一份 fixture，但还没有 <code>CapabilityRunner</code> 消费它。所以新 feature 仍然应该：</p>
+            <ol>
+              <li>通过 <code>CapabilityRegistry</code> 声明 surface readiness（<code>service/capabilities/CapabilityRegistry.ts</code>）。</li>
+              <li>把 backend 选择、tool policy、artifact shape 集中写在一个 <code>service/&lt;feature&gt;/</code> 目录下，而不是塞进已有的 <code>CopilotActionRegistry</code> 或 <code>service-manager</code>。</li>
+              <li>每个新加的运行时状态优先走 <a href="#runtimes">Owned Runtime</a> 而非 singleton。</li>
+              <li>如果你在写"新 capability"，可以顺手写一份 <code>CapabilityManifest</code> fixture 放到 <code>test/fixtures/capabilities/</code>——T4 落地后能直接接入。</li>
+            </ol>
+            <p>这样后续 T4 Capability Replacement 只需换 registry 引用，不用重写业务。</p>
+          </div>
+        </section>
+
+        <section id="runenvelope">
+          <h2>RunEnvelope：统一外壳，不统一业务流程</h2>
+          <p class="lead">当 Chat、Search、Copilot、AI Analysis、Harness、Knowledge Jobs 各自跑长任务时，它们<strong>业务引擎不同</strong>——Chat 是 stream+context assembly，Search 是 retrieval+rerank，Copilot 是 review+propose+apply，Harness 是 agent loop——但它们对 UI、测试、历史、debug 的<strong>外部形状应该一致</strong>：可观察、可取消、可恢复、可回放。这个共享外壳就是 RunEnvelope。</p>
+
+          <p class="prose">RunEnvelope 由三个类型组成：</p>
+          <ul>
+            <li><code>RunSession</code>——一次运行的状态柄：<code>runId</code> / <code>capabilityId</code> / <code>status</code> / <code>trigger</code> / <code>startedAt</code>。</li>
+            <li><code>RunEvent</code>——有序事件流，discriminated union 五个变体：<code>status</code>、<code>progress</code>、<code>artifact</code>、<code>error</code>、<code>log</code>。</li>
+            <li><code>ArtifactRef</code>——对产物的稳定引用（pointer-only，body 存在生产 capability 自己的 store 里），<code>kind</code> 包含 <code>result</code> / <code>report</code> / <code>trace</code> / <code>source</code> / <code>diff</code> / <code>file</code> / <code>custom</code>。</li>
+          </ul>
+
+          <table>
+            <thead>
+              <tr><th>层</th><th>负责</th><th>状态</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>RunSession / RunEvent / ArtifactRef</strong></td>
+                <td>纯 type 模块 <code data-copy="src/service/run-envelope/types.ts">src/service/run-envelope/types.ts</code>，无 class、无 top-level statement，形状由 <code>test/run-envelope-core.test.ts</code> 源码扫描锁定。</td>
+                <td><span class="pill green">landed</span>：T3A Core</td>
+              </tr>
+              <tr>
+                <td><strong>InMemoryRunRecorder</strong></td>
+                <td>per-instance recorder（<code data-copy="src/service/run-envelope/InMemoryRunRecorder.ts">InMemoryRunRecorder.ts</code>），无 module 单例；时钟 / ID 工厂由构造注入，事件轨迹可字节级复现。</td>
+                <td><span class="pill green">landed</span>：T3A Core</td>
+              </tr>
+              <tr>
+                <td><strong>首个 adopter：VaultLint</strong></td>
+                <td><code data-copy="src/service/lint/VaultLintRun.ts">VaultLintRun.ts</code> 是 T3B 首条走完整 envelope 的链路——起 run、发 progress、写 artifact、finish。</td>
+                <td><span class="pill green">landed</span>：T3B 首条链路</td>
+              </tr>
+              <tr>
+                <td><strong>全量推广</strong></td>
+                <td>Chat streaming / Search retrieval / Copilot review / AI Analysis / Harness agent loop / Knowledge Jobs 尚未接入。目前它们各自跑独立的 stream / session / trace 雏形（下一行"局部先例"）。</td>
+                <td><a class="pill gold pill-link" href="#t3" title="T3 · 剩余链路接入 RunEnvelope">roadmap · T3 剩余</a></td>
+              </tr>
+              <tr>
+                <td><strong>UI RunEvent projection</strong></td>
+                <td>UI store 只订阅 RunEvent、不拥有运行真相。</td>
+                <td><a class="pill gold pill-link" href="#t7" title="T7 · UI RunEvent Projection">roadmap · T7</a></td>
+              </tr>
+              <tr>
+                <td>局部先例</td>
+                <td><code>LLMStreamEvent</code>（provider 层归一化流式事件）、<code>service/agents/harness/loop</code>（AgentLoopResult + trace）、<code>service/search/background/QuickSearchBackgroundRuntime</code>（session 存活/取消）。</td>
+                <td><span class="pill green">landed</span>：三处独立雏形，未收敛到 RunEnvelope</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>为什么“统一外壳、不统一业务流程”</strong>
+            这条边界是 <a href="superpowers/specs/2026-06-01-peak-system-architecture-modernization-handbook.html">handbook §7</a> 的核心判断。把所有链路强行改成同一 pipeline（例如“万物皆 agent loop”）会让 Search 被 agent overhead 拖慢、让 Chat 被 tool policy 复杂化、让 Copilot 丢掉 review-before-write 的语义。RunEnvelope 只承诺“可观察协议一致”——事件形状、cancel 语义、artifact 引用——业务流程各自保留。
+          </div>
+
+          <div class="claim warn">
+            <strong>当前的“状态真相分散”问题</strong>
+            <p>读 feature 代码时会发现同一个 feature 的运行状态被切在多处：</p>
+            <ul>
+              <li><strong>AI Analysis session</strong>——一部分在 <code>ReportOrchestrator</code>、一部分在 <code>ui/store/searchSessionStore</code>。</li>
+              <li><strong>Copilot review</strong>——在 action registry + panel props。</li>
+              <li><strong>Chat streaming</strong>——在 <code>chatDataStore</code>。</li>
+            </ul>
+            <p>这是 RunEnvelope 尚未推广的直接后果。RunEnvelope 核心类型 + <code>InMemoryRunRecorder</code> 已在 master（<code data-copy="src/service/run-envelope">src/service/run-envelope/</code>），但目前只有 VaultLint 接入。改这类 feature 时，尽量让 UI store 只做"投影"，把业务真相留在 service——<a href="#t7">T7 UI RunEvent Projection</a> 会正式收敛这一层。</p>
+          </div>
+        </section>
+
+        <section id="ports">
+          <h2>Ports：service 与宿主之间的窄接口</h2>
+          <p class="lead">Peak 现在有一批 <code>core/ports/*</code> 接口，它们的形状不是随意的：<strong>每个 port 描述 service 需要的“一个能力”</strong>，不是把 Obsidian <code>App</code> 直接暴露给 service。这样做的直接收益是——service 可以在 Node 单测里跑（fake port），也可以在 desktop / mobile 两个 build 里换实现，同时不会把 Obsidian 特定 API 泄漏进 service 逻辑。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · Port + Adapter 拓扑（以 Ambient runtime 为例）</strong>
+              <span>Mermaid · ports and adapters</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  subgraph SERVICE["service/ambient (Ambient runtime)"]
+    Runtime["AmbientPushRuntime"]
+    Runtime --> S1["needs: getSettings"]
+    Runtime --> S2["needs: editor context + events"]
+    Runtime --> S3["needs: search"]
+    Runtime --> S4["needs: persistence"]
+    Runtime --> S5["needs: UI projection"]
+    Runtime --> S6["needs: LLM explanation"]
+  end
+
+  subgraph PORTS["core/ports/AmbientPorts"]
+    P1[AmbientSettingsPort]
+    P2[AmbientEditorContextPort]
+    P3[AmbientSearchPort]
+    P4[AmbientPersistencePort]
+    P5[AmbientUiProjectionPort]
+    P6[AmbientExplanationPort]
+  end
+
+  S1 --> P1
+  S2 --> P2
+  S3 --> P3
+  S4 --> P4
+  S5 --> P5
+  S6 --> P6
+
+  subgraph APP["app/ambient/composeAmbientRuntime"]
+    A1["ObsidianAmbientSettingsAdapter<br/>-> AppContext.getSettings()"]
+    A2["ObsidianAmbientEditorContextAdapter<br/>-> Obsidian workspace"]
+    A3["SearchAmbientSearchAdapter<br/>-> SearchClient"]
+    A4["SqliteAmbientPersistenceAdapter<br/>-> sqliteStoreManager"]
+    A5["AmbientUiProjectionAdapter<br/>-> useAmbientPushStore"]
+    A6["LlmAmbientExplanationAdapter<br/>-> AIServiceManager"]
+  end
+
+  P1 -.实现.-> A1
+  P2 -.实现.-> A2
+  P3 -.实现.-> A3
+  P4 -.实现.-> A4
+  P5 -.实现.-> A5
+  P6 -.实现.-> A6
+            </div>
+            <p class="read-note"><b>读图：</b>Ambient runtime 在 <code>service/</code> 里，它<strong>只</strong>看到左侧 6 个 port 接口。右侧的 6 个 adapter 全部住在 <code>app/ambient/</code>，是<strong>唯一</strong>被允许 import Obsidian / SQLite / Zustand store / AIServiceManager 的地方。中间的 port 定义文件（<code>core/ports/AmbientPorts.ts</code>）由 <code>test/ambient-source-guard.test.ts</code> 做 source scan，禁止任何 app-shell import。</p>
+          </div>
+
+          <p class="prose">Port 不等于“把宿主 API 转发一遍”。以 Ambient 为例：<code>AmbientSearchPort.search()</code> 拿到 <code>AmbientContext + maxItems + pushHistory + settings</code>，返回 <code>AmbientPushItem[]</code>——它是<strong>用 Ambient 词汇</strong>描述的一个能力，不是暴露 <code>SearchClient</code> 或 SQLite。这一点在所有 port 上都成立：port 名字用 feature 的语言，不用宿主的语言。</p>
+
+          <table>
+            <thead>
+              <tr><th>Port 类别</th><th>典型例子</th><th>为什么这样切</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Feature-scoped port bundle</strong></td>
+                <td><code>AmbientPorts</code>、<code>VaultLintPorts</code>、<code>VaultReviewPorts</code>、<code>CopilotActionPorts</code>、<code>QuickSearchBackgroundPorts</code>、<code>CopilotPanelPorts</code></td>
+                <td>一个 runtime 需要的所有 port 打包声明；composeXxxRuntime 一次性注入。</td>
+              </tr>
+              <tr>
+                <td><strong>Cross-cutting host port</strong></td>
+                <td><code>HttpClientPort</code>、<code>NotifierPort</code>、<code>PlatformPort</code>、<code>ProgressReporterPort</code>、<code>HostMetadataPort</code></td>
+                <td>多个 feature 共用一个宿主能力；每个 feature 只依赖 port，不依赖 <code>obsidian.Notice</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Vault-shaped port</strong></td>
+                <td><code>VaultPreviewPort</code>、<code>VaultNavigationPort</code>、<code>ChatVaultWriterPort</code>、<code>DocumentVaultReaderPort</code>、<code>WikilinkPort</code></td>
+                <td>把 Obsidian 文件系统能力按<strong>读者关心的维度</strong>切开：预览 / 导航 / 写入 / 链接解析各自成 port。</td>
+              </tr>
+              <tr>
+                <td><strong>Editor-shaped port</strong></td>
+                <td><code>EditorCommandsPort</code>、<code>ChatRuntimeStatePort</code>、<code>ChatNavigationPort</code></td>
+                <td>UI 状态与 editor 命令的窄适配；service 不再 import <code>useChatViewStore</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Read/write split</strong></td>
+                <td><code>AmbientBriefingReadPort</code>、<code>SemanticGraphTraversalReadPort</code>、<code>SemanticLinkReadPort</code>、<code>AnalysisDocVaultWriterPort</code></td>
+                <td>读接口与写接口分开——只读消费者不会被误用为写入通道。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>Ports vs Services</strong>
+            Service 是行为，port 是接口。<code>SearchClient</code> 是 service（它内部有 SQLite + rerank + AI 拼接），<code>AmbientSearchPort</code> 是 port（它只是一个 <code>search(context, ...)</code> 契约）。同一个 <code>SearchClient</code> 可以被<strong>多个</strong> port 用不同姿势包装（Ambient 用 <code>AmbientSearchPort</code>，Vault Lint 用另一个），这是 port 让 feature 之间保持独立演化的关键。
+          </div>
+        </section>
+
+        <section id="runtimes">
+          <h2>Owned Runtimes：谁拥有长期状态，谁负责释放</h2>
+          <p class="lead">Peak 里“runtime”一词专指<strong>一段长期活着的、跨调用共享状态的执行单元</strong>：Ambient 的编辑器订阅、Vault Lint 的 SQLite 视图、QuickSearch background session、CopilotAction 的 custom prompt 缓存、VaultReview 的 fingerprint 缓存。它们不是 pure function，需要显式的 <code>start()</code> / <code>dispose()</code>。所有这类 runtime 都必须由 <strong>app 层拥有</strong>，通过 <code>AppRuntimeRegistry</code> 绑定和释放。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 3 · Runtime 生命周期：bind → use → clear</strong>
+              <span>Mermaid · runtime binding</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  Boot["main.onload"] --> Compose["composeXxxRuntime(app)<br/>装配 ports + adapters"]
+  Compose --> Set["AppContext.setXxxRuntime(runtime)<br/>-> AppRuntimeRegistry.setXxxRuntime"]
+  Set --> DoubleBindGuard{"已绑定?"}
+  DoubleBindGuard -- 是 --> Throw["throw: 热重载未清干净"]
+  DoubleBindGuard -- 否 --> Start["runtime.start()"]
+
+  Start --> Live["运行期"]
+  Live --> HardGet["getXxxRuntime()<br/>fail-loud if unbound"]
+  Live --> SoftGet["tryGetXxxRuntime()<br/>null if unbound"]
+
+  Live --> Unload["main.onunload"]
+  Unload --> Clear["AppContext.clearXxxRuntime()<br/>-> runtime.dispose()"]
+  Clear --> Gone["registry 置 null"]
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr><th>Runtime</th><th>持有什么长期状态</th><th>Compose site</th><th>bind site</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>AmbientRuntime</code></td>
+                <td>Obsidian editor 事件订阅、pattern learner 缓存、UI store 投影。</td>
+                <td><code data-copy="src/app/ambient/composeAmbientRuntime.ts">composeAmbientRuntime.ts</code></td>
+                <td><code>main.ts</code> onload 后段</td>
+              </tr>
+              <tr>
+                <td><code>VaultLintRuntime</code></td>
+                <td>SQLite lint 视图、detector context、时间衰减权重。</td>
+                <td><code data-copy="src/app/lint/composeVaultLintRuntime.ts">composeVaultLintRuntime.ts</code></td>
+                <td><code>main.ts</code> initSqlite 内</td>
+              </tr>
+              <tr>
+                <td><code>VaultReviewRuntime</code></td>
+                <td>Digest 指纹缓存、agent SDK bindings。</td>
+                <td><code data-copy="src/app/copilot/vault/composeVaultReviewRuntime.ts">composeVaultReviewRuntime.ts</code></td>
+                <td><code>main.ts</code> initSqlite 内（依赖 Lint runtime）</td>
+              </tr>
+              <tr>
+                <td><code>QuickSearchBackgroundRuntime</code></td>
+                <td>后台 analysis session 表、AbortController 集合。</td>
+                <td><code data-copy="src/app/search/background/composeQuickSearchBackgroundRuntime.ts">composeQuickSearchBackgroundRuntime.ts</code></td>
+                <td><code>main.ts</code> onload 早期（in-memory，不依赖 SQLite）</td>
+              </tr>
+              <tr>
+                <td><code>CopilotActionRuntime</code></td>
+                <td>Custom prompt registry、action catalog、执行策略。</td>
+                <td><code data-copy="src/app/copilot/actions/composeCopilotActionRuntime.ts">composeCopilotActionRuntime.ts</code></td>
+                <td><code>main.ts</code> onload 中段（在 initSqlite 之前，mobile 也可用）</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>Runtime ownership 规则（CLAUDE.md）</strong>
+            这条规则是<strong>硬约束</strong>：capability 运行时必须在 app 层（<code>main.ts</code> / <code>AppContext</code> / app-owned runtime registry）组合和拥有。<strong>禁止</strong>在 service 层新增模块级 <code>let currentRuntime = null</code> + <code>set/getRuntime</code>；<strong>禁止</strong>把 <code>AppContext.getInstance()</code> 用作 service 层的依赖捷径。依赖只能通过 app composition、构造函数、port、或 RunEnvelope 边界传递。违规会在 code review 阶段被驳回。
+          </div>
+
+          <div class="claim warn">
+            <strong>fail-loud vs try-get</strong>
+            每个 runtime 在 <code>AppRuntimeRegistry</code> 上都有一对访问器：<code>getXxxRuntime()</code>（未绑定即 throw，用于“只应该在 runtime up 之后才被调用”的 service 消费者）和 <code>tryGetXxxRuntime()</code>（未绑定返回 <code>null</code>，用于可能在早期 boot 就 mount 的 UI provider）。选错一个会导致要么 UI 崩溃、要么静默失效。规则：service 层用 hard get，UI provider 用 try get。
+          </div>
+        </section>
+
+        <section id="trace-artifact">
+          <h2>Trace / Artifact / Usage：可观测性边界</h2>
+          <p class="lead">Peak 的可观测性分三块，落地程度各不相同：</p>
+          <ul class="lead-list">
+            <li><strong>Trace</strong>——一次运行的事件流，用于 debug 和 golden test。当前在 <a href="21-infra-agent-harness.html">Agent Harness</a> 内部有雏形，尚未归一到 RunEvent 合同。</li>
+            <li><strong>Artifact</strong>——产物的稳定引用，用于 review-before-write 和历史检索。当前只有局部实现（Copilot review history）。</li>
+            <li><strong>Usage</strong>——成本 / token / 耗时的账本，用于预算与 dashboard。<span class="pill green">landed</span>：<code>UsageTrackingService</code> + <code>UsageOutcomeService</code> + <code>UsageOptimizationService</code> 三件套 + Dashboard。</li>
+          </ul>
+
+          <table>
+            <thead>
+              <tr><th>类别</th><th>目标</th><th>当前状态</th><th>为什么值得单独一层</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Usage</strong></td>
+                <td>记录 provider / model / feature / cost / tokens / duration；驱动预算 alert 与 Dashboard。</td>
+                <td><span class="pill green">landed</span>：<code>UsageTrackingService</code> + chat.sqlite + 3 屏 Dashboard</td>
+                <td>成本可见性是产品差异化的一部分（BYOK 场景），必须在 core 就干净。</td>
+              </tr>
+              <tr>
+                <td><strong>Artifact</strong></td>
+                <td>Answer / sources / report / patch / trace 的稳定引用与存储，供 review 与历史检索。</td>
+                <td><span class="pill blue">partial</span>：<code>CopilotReviewHistoryService</code>、AI Analysis 结果落 Vault、Chat message 落 SQLite；<strong>无统一 <code>ArtifactRef</code></strong></td>
+                <td>Copilot / AI Analysis 都需要“review-before-write”，没有统一 artifact 时每个 feature 各自写一套。</td>
+              </tr>
+              <tr>
+                <td><strong>Trace</strong></td>
+                <td>一次 run 的完整事件序列，含 tool call、backend 选择、context stack；供 golden test 与 UI trace inspector。</td>
+                <td><span class="pill blue">partial</span>：<code>service/agents/harness/trace</code>；<strong>无跨引擎统一格式</strong></td>
+                <td>没有 trace，Chat / Copilot 回归只能靠“手感”；有 trace 后可以 pin fixture + golden trace 进 CI。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>为什么这三块不能塞进 core</strong>
+            Usage / Artifact / Trace 都是<strong>可选</strong>能力：mobile 上 Usage 只记 in-memory，Trace 在生产可以关，Artifact 只有 review-heavy 的 feature 需要。它们的接线属于 service+app 层的 concern。<strong>core 只提供类型和 port</strong>（<code>UsageRecordedViewEvent</code>、<code>ProgressReporterPort</code>），实现和存储由 service+app 层完成。这条边界不遵守，会把 SQLite 依赖打进 core。
+          </div>
+        </section>
+
+        <section id="no-dual-system">
+          <h2>No Dual System：重构的硬约束</h2>
+          <p class="lead">Handbook §3 决策 6 定死了一条规则：<strong>禁止双系统双代码共存</strong>。旧入口（Command id、view type、public API 名字）可以短暂保留为 facade，但业务实现只能有一套。每次重构任务包都必须回答：删掉了哪个旧实现？哪个旧状态真相被移除？同一能力是否还有两条运行路径？</p>
+
+          <p class="prose">这条规则不是洁癖，是<strong>成本控制</strong>——Peak 的代码库已经足够大，双系统状态会让 test 数量翻倍、认知负担翻倍、bug fix 需要在两处同步。以下是历史上最常见的两种违反姿势，读代码时警惕这些反模式。</p>
+
+          <table>
+            <thead>
+              <tr><th>反模式</th><th>典型触发</th><th>正确做法</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>“新架构 + 旧架构并跑”</strong></td>
+                <td>先搭一套新 <code>RunSession</code>，让新 feature 走新架构；旧 Chat/Copilot 继续走 <code>service-manager</code>，说“等重构完再切”。</td>
+                <td>选一条链路（<a href="superpowers/specs/2026-06-01-peak-system-architecture-modernization-handbook.html">handbook</a> 建议 <code>doc.review.current</code> 或 <code>vault.search</code>）先<strong>完整</strong>迁移，旧实现同任务包内删掉或掏空。</td>
+              </tr>
+              <tr>
+                <td><strong>“旁挂 registry”</strong></td>
+                <td>已有 <code>CopilotActionRegistry</code>，又新起一个 <code>CopilotCapabilityRegistry</code>，两个各自注册一半。</td>
+                <td>先在旧 registry 上加“capability manifest”字段，让新 feature 用同一入口注册；旧字段最后统一迁除。</td>
+              </tr>
+              <tr>
+                <td><strong>“service 层 singleton + app 层 runtime 双持有”</strong></td>
+                <td>Owned runtime 落地后，service 里还留一个 <code>Xxx.getInstance()</code> 作“兼容层”。</td>
+                <td>Owned runtime 落地当次就必须删旧 singleton 或改成薄壳 forwarder；不允许两条状态真相长期并存。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>当前的诚实状态（T13 之后）</strong>
+            上一代 service-side singleton 已在 2026-07 一次性清完：<code>IndexService</code>、<code>MCPClientManager</code>、<code>SkillRegistry</code>、<code>CapabilityRegistry</code>、<code>UsageTracking/Outcome/Optimization</code> 全部由 <code>AppRuntimeRegistry</code> 拥有并在 <code>clearForUnload</code> 里释放。<code>service-manager.ts</code>（<code>AIServiceManager</code>）从来就不是 singleton；旧版这段文字把它误列了。当下不存在"service 层 singleton + app 层 runtime 双持有"的兼容层——每个 runtime 只有一条状态真相。
+          </div>
+        </section>
+
+        <section id="roadmap">
+          <h2>现代化路线：什么已经在，什么还没</h2>
+          <p class="lead">Handbook 里的 12 个任务包（T0-T12）勾勒了从“现状”到“Capability Contract + RunEnvelope + Ports + Skill v2”的迁移路径。这里给出它们的<strong>当前状态</strong>，方便读者判断某段代码属于“已完工的地基”还是“即将被替换的过渡态”。</p>
+
+          <table class="roadmap-table">
+            <colgroup>
+              <col style="width: 168px;">
+              <col>
+              <col style="width: 100px;">
+              <col style="width: 42%;">
+            </colgroup>
+            <thead>
+              <tr><th>任务包</th><th>目标</th><th>状态</th><th>关键证据</th></tr>
+            </thead>
+            <tbody>
+              <tr id="t0" style="scroll-margin-top: 92px;">
+                <td><strong>T0</strong> Boundary Baseline</td>
+                <td>Import scan + no-new-violation。</td>
+                <td><span class="pill green">landed</span></td>
+                <td><code data-copy="test/boundary/service-layer-boundaries.test.ts">test/boundary/service-layer-boundaries.test.ts</code>（2026-07-02）扫 <code>src/service/**</code> 266 文件 × 3 rule（Obsidian import / <code>AppContext.getInstance()</code> / <code>@/app|@/ui</code>），全部 <strong>0 违规</strong>；JSON baseline + no-new-violation。既有 feature source guards（<code>ambient-source-guard</code> 等）保留不动。</td>
+              </tr>
+              <tr>
+                <td><strong>Owned Runtime pattern</strong>（非编号任务）</td>
+                <td>App 层拥有长期 runtime、通过 <code>AppRuntimeRegistry</code> 绑定。</td>
+                <td><span class="pill green">landed</span></td>
+                <td>Ambient / Lint / VaultReview / QuickSearchBackground / CopilotAction 5 个 runtime；CLAUDE.md 规则。</td>
+              </tr>
+              <tr>
+                <td><strong>Ports 首批</strong></td>
+                <td>Vault、editor、preview、progress、host metadata 等窄接口。</td>
+                <td><span class="pill green">landed</span></td>
+                <td><code>src/core/ports/*</code> 已有 30+ 个 port 文件。</td>
+              </tr>
+              <tr id="t1" style="scroll-margin-top: 92px;">
+                <td><strong>T1</strong> Contract Seeds</td>
+                <td>CapabilityManifest + ArtifactRef fixtures。</td>
+                <td><span class="pill green">landed</span></td>
+                <td><code data-copy="src/core/types/capability.ts">src/core/types/capability.ts</code>（2026-07-02）声明 <code>CapabilityManifest</code>（id / title / description / input/output contract / permissionKind / costTier / backendPolicy / skillRef / surfaceBinding），<code>test/fixtures/capabilities/doc-review-current.fixture.ts</code> 定 pilot 契约；<code>test/capability-manifest-shape.test.ts</code> 5 条 guard。ArtifactRef 未上升 core（<code>service/run-envelope/types.ts</code> 硬测试锁"零 import"，Manifest 用 <code>CapabilityContractShape</code> 描述形状即可）。</td>
+              </tr>
+              <tr id="t2" style="scroll-margin-top: 92px;">
+                <td><strong>T2</strong> Port Sketches (完整版)</td>
+                <td>ProviderPort / ToolPort / ArtifactPort。</td>
+                <td><span class="pill green">landed</span></td>
+                <td>2026-07-02：三 port 全部就位——<strong>ToolPort</strong>（<code data-copy="src/core/ports/ToolPort.ts">ToolPort.ts</code>，<code>has</code>/<code>get</code>/<code>all</code>/<code>forTier</code>；<code>ToolRegistry implements ToolPort</code>）· <strong>ProviderPort</strong>（<code data-copy="src/core/ports/ProviderPort.ts">ProviderPort.ts</code>，<code>hasProvider</code>/<code>listProviders</code>/<code>getProviderInfo</code>；<code>ProviderInfo = ProviderMetaData + ready</code>；无 mutation / stream / complete 泄漏）· <strong>ArtifactPort</strong>（<code data-copy="src/core/ports/ArtifactPort.ts">ArtifactPort.ts</code>，<code>putArtifact</code>/<code>getArtifactBody</code>/<code>listByRun</code>；<code>ArtifactRefShape</code> 结构性 mirror <code>ArtifactRef</code>；<code data-copy="src/service/run-envelope/InMemoryArtifactStore.ts">InMemoryArtifactStore.ts</code> 参考实现）。同 PR 顺手把 <code>ToolDef</code>/<code>ToolResult</code>/<code>ToolExecCtx</code>/<code>ToolSource</code>/<code>ModelTier</code> 上升到 <code>core/types/</code> 保持 <code>core→service</code> boundary floor 17 不破。<code>test/{tool,provider,artifact}-port.test.ts</code> 共 11 条 guard（含 shape / boundary / stub / round-trip）。</td>
+              </tr>
+              <tr id="t3" style="scroll-margin-top: 92px;">
+                <td><strong>T3</strong> RunEnvelope Core</td>
+                <td>RunSession + RunEvent + ArtifactRef。</td>
+                <td><span class="pill green">landed</span></td>
+                <td>T3A 类型 + <code>InMemoryRunRecorder</code> + <code>defaultClock</code>/<code>defaultIdFactory</code> helpers 在 <code data-copy="src/service/run-envelope">src/service/run-envelope/</code>。**八个 adopter** 全部落地：<strong>1) VaultLint</strong>（<code data-copy="src/service/lint/VaultLintRun.ts">VaultLintRun.ts</code>）· <strong>2) IndexInitializer</strong>（<code>knowledge.index.initialize</code>）· <strong>3) CascadeWorker.drainDebt()</strong>（<code>knowledge.cascade.drain</code>）· <strong>4) GraphCleanupService.run()</strong>（<code>knowledge.graph.cleanup</code>）· <strong>5) ChatConversation</strong>（<code data-copy="src/service/chat/ChatConversationRun.ts">ChatConversationRun.ts</code>，cap <code>chat.conversation.run</code>）· <strong>6) CopilotReview</strong>（<code data-copy="src/service/copilot/CopilotReviewRun.ts">CopilotReviewRun.ts</code>，cap <code>copilot.review.run</code>）· <strong>7) AnalysisReport</strong>（<code data-copy="src/service/agents/report/AnalysisReportRun.ts">AnalysisReportRun.ts</code>，cap <code>analysis.report.run</code>）· <strong>8) HarnessAgent</strong>（<code data-copy="src/service/agents/harness/HarnessAgentRun.ts">HarnessAgentRun.ts</code>，cap <code>harness.agent.loop</code>）。共享 golden-trace 测试 <code>test/wave3-adopter-runs.test.ts</code> 锁四条 Wave-3 adopter 相同事件序列。wire-in 到 live callsite 由用户决定（避免行为变更）。</td>
+              </tr>
+              <tr id="t4" style="scroll-margin-top: 92px;">
+                <td><strong>T4</strong> Capability Replacement</td>
+                <td>一条链路完全走新 capability runner。</td>
+                <td><span class="pill green">landed</span></td>
+                <td>2026-07-02：<code data-copy="src/service/capabilities/CapabilityRunner.ts">CapabilityRunner.ts</code> 拼接 T1 manifest / T3 envelope / T6 compiled skill / T5 tool port。<code data-copy="src/service/capabilities/CapabilityManifestRegistry.ts">CapabilityManifestRegistry.ts</code> 独立于 SurfaceCapability readiness registry。<strong>backend policy → execute 合成</strong>：<code data-copy="src/service/capabilities/BackendStrategyRegistry.ts">BackendStrategyRegistry.ts</code> — <code>resolveBackendStrategy(policy, registry)</code> 走 <code>[preferred, ...fallback]</code> 挑第一个已注册后端；<code>composeExecuteFromPolicy(manifest, registry)</code> 直接产出 execute 函数交给 <code>runCapability</code>；未注册后端全部缺失时 fail-loud（不静默降级）。<code>test/backend-strategy-registry.test.ts</code> 5 条 guard（preferred 优先 / fallback 兜底 / fail-loud / compose 集成 / echo strategy）。live 后端（hermes-harness / claude-sdk / provider-direct）由 composition 站注册，此处提供 <code>makeEchoStrategy</code> / <code>makeUnavailableStrategy</code> 作为文档化脚手架。</td>
+              </tr>
+              <tr id="t5" style="scroll-margin-top: 92px;">
+                <td><strong>T5</strong> ToolDef Envelope</td>
+                <td>Local + MCP + Obsidian command 统一 ToolDef。</td>
+                <td><span class="pill green">landed</span></td>
+                <td>2026-07-02：三种 source 全部覆盖——<strong>local</strong>（bridge <code>adaptAgentTool</code> 支持 source override 默认 <code>'local'</code>） · <strong>mcp</strong>（<code>MCPToolAdapter.mcpToolToToolDef</code> + <code>getAllMcpToolDefs</code>） · <strong>obsidian-command</strong>（<code data-copy="src/service/agents/harness/tool/ObsidianCommandToolAdapter.ts">ObsidianCommandToolAdapter.ts</code> — <code>obsidianCommandToToolDef(cmd, invoker, opts?)</code> + 批量 <code>obsidianCommandsToToolDefs(...)</code>；<code>CommandInvoker</code> 抽象让 service 层不 import <code>obsidian</code>；kind 默认 <code>'edit'</code>）。<code>ToolSource</code> 联合类型 + <code>ToolDef.source</code> 字段在 <code>core/types/tool.ts</code>；旧 AgentTool 路径保留 facade。<code>test/tool-def-envelope.test.ts</code> 5 条 + <code>test/obsidian-command-tool-adapter.test.ts</code> 6 条 guard。</td>
+              </tr>
+              <tr id="t6" style="scroll-margin-top: 92px;">
+                <td><strong>T6</strong> Skill v2 Compiler</td>
+                <td>CompiledSkill + allowed tools + quarantine。</td>
+                <td><span class="pill green">landed</span></td>
+                <td>2026-07-02：<code data-copy="src/core/types/compiled-skill.ts">CompiledSkill</code>（<code>skillId</code>/<code>allowedTools</code>/<code>systemPrompt</code>/<code>quarantine</code>）；<code>SkillRegistry.compile(skillId)</code> 落地，whitelist 存在 → <code>strict</code>，否则 <code>permissive</code>；<code data-copy="src/service/skills/quarantine.ts">quarantine.ts</code> 的 <code>checkSkillQuarantine(compiled, toolName)</code> 纯函数返 <code>'allow' | { deny, reason }</code>；<strong>Guard 消费落地</strong>：<code data-copy="src/service/skills/withQuarantineGuard.ts">withQuarantineGuard.ts</code> 提供两个消费入口——<code>withQuarantineGuard(port, compiled)</code> 包装 <code>ToolPort</code> 让 <code>has/get/all/forTier</code> 自动过滤（<code>permissive</code> 透传，<code>strict</code> 白名单外的工具不可见）；<code>guardToolExecution({ compiled, tool, input, ctx })</code> 在 <code>tool.execute()</code> 前跑 quarantine，拒绝时返 <code>fail('skill-quarantine: ...', false)</code>。<code>test/compiled-skill-shape.test.ts</code> 7 条 + <code>test/skill-quarantine.test.ts</code> 5 条 + <code>test/with-quarantine-guard.test.ts</code> 4 条（strict 过滤 / permissive 透传 / execute 拒绝 / execute 放行）guard。</td>
+              </tr>
+              <tr id="t7" style="scroll-margin-top: 92px;">
+                <td><strong>T7</strong> UI RunEvent Projection</td>
+                <td>UI store 只订阅 RunEvent，不拥有运行真相。</td>
+                <td><span class="pill green">landed</span></td>
+                <td>2026-07-02：两层就位——<strong>Projection 层</strong>（<code data-copy="src/service/run-envelope/projection.ts">projection.ts</code> — <code>createProjectingRecorder</code> + <code>getSnapshot</code>/<code>subscribe</code> 直供 React <code>useSyncExternalStore</code>；referential stability） · <strong>Store 层</strong>（<code data-copy="src/service/run-envelope/runEnvelopeStore.ts">runEnvelopeStore.ts</code> — <code>deriveEvents(projection, selector)</code> 按 snapshot ref memoize，<code>Object.is</code> 未变不通知；<code>RunEnvelopeStore</code> 语义化 <code>register</code>/<code>get</code>/<code>subscribe</code>/<code>unregister</code>/<code>dispose</code>；重复 register + 未知 get/subscribe 双 fail-loud）。任何 UI 框架（React/Zustand/其他）接入这份 store 即拿到 "事件唯一真源 + 派生视图缓存"。<code>test/run-envelope-projection.test.ts</code> 5 条 + <code>test/run-envelope-store.test.ts</code> 5 条 guard。live UI store 迁移由用户在场时切换（涉及既有 store 行为变更）。</td>
+              </tr>
+              <tr id="t8" style="scroll-margin-top: 92px;">
+                <td><strong>T8</strong> IndexService Facade</td>
+                <td>Writer / Reader / Graph / Maintenance 拆分；<code>IndexService</code> 变薄。</td>
+                <td><span class="pill green">landed (Reader/Writer/Maintenance)</span></td>
+                <td>2026-07-02 三片全部立起：<strong>Reader</strong>（<code data-copy="src/core/ports/IndexReaderPort.ts">IndexReaderPort.ts</code> —— <code>getIndexStatus</code> / <code>getTenantForPath</code> / <code>isMobiusMaintenanceRecommended</code>）· <strong>Writer</strong>（<code data-copy="src/core/ports/IndexWriterPort.ts">IndexWriterPort.ts</code> —— <code>indexDocument</code> / <code>deleteDocuments</code> / <code>clearAllIndexData</code> / <code>renameDocumentPath</code> / <code>addMaintenanceDebt</code>）· <strong>Maintenance</strong>（<code data-copy="src/core/ports/IndexMaintenancePort.ts">IndexMaintenancePort.ts</code> —— <code>cleanupOrphanedSearchIndexData</code> / <code>runMobiusGlobalMaintenance</code> / <code>runPendingLlmIndexEnrichment</code> / <code>runPendingVectorIndexEnrichment</code> / <code>clearPendingLlmFlags</code>）。<code>IndexService implements IndexReaderPort, IndexWriterPort, IndexMaintenancePort</code>。Maintenance 相关的 8 个类型（<code>MobiusGlobalMaintenanceProgress</code> / <code>LlmIndexEnrichmentResult</code> / <code>PendingLlmEnrichmentProgress</code> / …）上升到 <code data-copy="src/core/types/index-maintenance.ts">core/types/index-maintenance.ts</code>；<code>GetIndexStatusResponse</code> 在 <code>core/types/index-status.ts</code>。<code>test/index-reader-port.test.ts</code> + <code>test/index-writer-port.test.ts</code> + <code>test/index-maintenance-port.test.ts</code> 各 3 条 guard（port shape / implements / stub 满足 port）。剩下的 Graph 切面（<code>upsertGraphEdges…</code> / <code>refreshMobiusAggregates…</code>）如果单独抽出，将是纯 slice 移动，不带行为变更。</td>
+              </tr>
+              <tr id="t9" style="scroll-margin-top: 92px;">
+                <td><strong>T9</strong> Pilot Capability</td>
+                <td>一条完整闭环：contract → run → tools → artifact → review UI。</td>
+                <td><span class="pill green">landed (foundation)</span></td>
+                <td>2026-07-02：T1 契约（<code>CapabilityManifest</code>） + T3 envelope（<code>InMemoryRunRecorder</code>） + T4 <code>CapabilityRunner</code> + <code>BackendStrategyRegistry</code> 拼装完整闭环。<code>test/capability-runner.test.ts</code> 6 条 + <code>test/backend-strategy-registry.test.ts</code> 5 条 + <code>test/golden-trace-cross-backend.test.ts</code> 3 条覆盖 pilot 语义。review UI 侧接入等 T7 store 迁移落地。</td>
+              </tr>
+              <tr id="t10" style="scroll-margin-top: 92px;">
+                <td><strong>T10</strong> Conformance + Golden Trace</td>
+                <td>不同 backend 输出同一 RunEvent/Artifact 合同。</td>
+                <td><span class="pill green">landed</span></td>
+                <td>2026-07-02：<code data-copy="test/golden-trace-cross-backend.test.ts">golden-trace-cross-backend.test.ts</code> 三条 guard：<strong>（1）cross-backend 一致性</strong> —— 同一 manifest + input 在 <code>hermes-harness</code> / <code>claude-sdk</code> / <code>provider-direct</code> 三种 strategy 下产出 byte-identical 的 RunEvent shape 序列 <code>[status(queued), status(running), artifact(kind=result), status(completed)]</code>；<strong>（2）deterministic ids</strong> —— 注入 fake clock+idFactory，同一 session 内所有 event 共享同一 <code>runId</code>，<code>ts</code> 严格单调；<strong>（3）failure trace 统一</strong> —— 后端抛错时序列变 <code>[status, status, error, status(failed)]</code>，同样跨后端不变。</td>
+              </tr>
+              <tr id="t12" style="scroll-margin-top: 92px;">
+                <td><strong>T12</strong> Command Gateway Capstone</td>
+                <td>外部插件 command → ToolDef → Skill → Capability。</td>
+                <td><span class="pill green">landed</span></td>
+                <td>2026-07-02：<code data-copy="src/service/capabilities/CommandGateway.ts">CommandGateway.ts</code> —— <code>register(GatewayBinding)</code> / <code>unregister</code> / <code>has</code> / <code>get</code> / <code>all</code> / <code>dispatch(commandId)</code>。<code>GatewayBinding</code> 携带 <code>commandId</code> + <code>commandLabel</code> + <code>manifest</code> + <code>compiledSkill</code> + <code>execute</code>（合成自 T4 <code>BackendStrategyRegistry</code>） + 可选 <code>buildInput</code> + <code>trigger</code>。<code>dispatch()</code> 内部走 <code>runCapability</code>，回一份 <code>CommandDispatchResult</code>（RunSession + events + artifact + result）。重复注册 fail-loud，未知 commandId dispatch fail-loud。<code>test/command-gateway.test.ts</code> 5 条 guard。composition 站在 <code>main.ts</code> onload 里 instantiate 并把 Obsidian command handler 变成薄的 <code>() =&gt; gateway.dispatch(id)</code>——加入方式已文档化，实际接入 live command 由用户决定（涉及 Obsidian API 行为变更）。方案 spec：<code data-copy="docs/superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">2026-06-03-obsidian-plugin-command-gateway-capstone-review.html</code>。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>路线图的用法</strong>
+            读代码时对照这张表判断：如果你在改的模块状态是 landed，请<strong>不要</strong>再往里塞过渡态代码；如果状态是 partial 或 planned，请<strong>按任务包边界</strong>走，不要在旁边悄悄起新架构（否则触发 No Dual System 硬约束）。任务包顺序不是时间线是依赖线；T0/T1/T2 是防线，跳过会让并行任务互相踩。
+          </div>
+        </section>
+
+        <section id="maintain">
+          <h2>维护规则</h2>
+          <p class="lead">这页容易变成“架构名词表”，然后半年后跟代码脱钩。改架构级 API 时按下面几条来。</p>
+          <div class="note-list">
+            <div class="note-item">
+              <b>新增 runtime = 5 处同步。</b>
+              <ol>
+                <li><strong>Port 接口</strong> — 定义在 <code>core/ports/&lt;Xxx&gt;Ports.ts</code>。</li>
+                <li><strong>Runtime 类</strong> — <code>service/&lt;xxx&gt;/&lt;Xxx&gt;Runtime.ts</code>，只 impl 接口，不 import 任何 app-shell。</li>
+                <li><strong>Compose 站</strong> — <code>app/&lt;xxx&gt;/compose&lt;Xxx&gt;Runtime.ts</code>，装配 adapter。</li>
+                <li><strong><code>AppRuntimeRegistry</code></strong> — 加 <code>set / get / tryGet / clear</code> 四件套。</li>
+                <li><strong><code>main.ts</code></strong> — onload 绑定 + onunload clear。</li>
+              </ol>
+              <span class="note-warn">任何一处漏掉，热重载会泄漏或用户看到 fail-loud。</span>
+            </div>
+            <div class="note-item">
+              <b>新增 port 前先问“它是不是又是一个 <code>App</code> 转发”。</b>
+              <span>Port 必须用 feature 词汇描述能力，不是 Obsidian API 换个名字。若发现自己写的 port 有 <code>getApp()</code> / <code>getWorkspace()</code>，退一步——你想暴露的是 feature-shaped 能力，不是 host。</span>
+            </div>
+            <div class="note-item">
+              <b>加 service 层新代码前问三件事。</b>
+              <ol>
+                <li>我要不要 <code>getInstance()</code>——如果要，先看能不能改成 Owned Runtime。</li>
+                <li>我要不要 <code>AppContext.getInstance()</code>——如果要，改成构造函数注入或 port。</li>
+                <li>我要不要 <code>useXxxStore</code>——如果要，改成 UI 投影 port（参考 <code>AmbientUiProjectionPort</code>）。</li>
+              </ol>
+            </div>
+            <div class="note-item">
+              <b>动 CapabilityRegistry / SurfaceCapability 时同步 vocabulary。</b>
+              <span>当前六个用户词汇（Conversation / Research / Fast Lookup / Knowledge Index / Web Access / Safety）与 Settings / Onboarding / templates/config 深度耦合。加第七个 capability 意味着 Settings Overview、AI Setup、Setup Wizard、templates/config/settings.json 同时长格子；不能只在 service 侧加。</span>
+            </div>
+            <div class="note-item">
+              <b>No Dual System 检查清单。</b>
+              <span>每次 PR 自问：这次改动是否新起了一套并行 registry / runtime / state 真相？如果是，旧的删了吗？如果 partial 迁移，能否保证下一次 PR 立刻收口？把答案写进 PR description。</span>
+            </div>
+            <div class="note-item">
+              <b>路线图状态推进要同步这页 §<a href="#roadmap">roadmap</a>。</b>
+              <span>当某个任务包从 planned → landed，回本文件更新对应行；status pill 从 <code>gold</code> 改成 <code>green</code>，evidence 列补上具体 file。否则新读者会以为架构还停在半年前。</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+          <table>
+            <thead>
+              <tr><th>本页说法</th><th>证据入口</th><th>用途</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>四层依赖 + 插件启动顺序</td>
+                <td><code>main.ts</code></td>
+                <td>init 顺序参考</td>
+              </tr>
+              <tr>
+                <td>AppContext = composition root</td>
+                <td><code data-copy="src/app/context/AppContext.ts">AppContext.ts</code></td>
+                <td>port 与 <code>AppRuntimeRegistry</code> 持有</td>
+              </tr>
+              <tr>
+                <td>Runtime binding fail-loud</td>
+                <td><code data-copy="src/app/context/AppRuntimeRegistry.ts">AppRuntimeRegistry.ts</code></td>
+                <td>双绑 throw、未绑定 hard-get throw</td>
+              </tr>
+              <tr>
+                <td>Owned runtime 五件套 · compose 站</td>
+                <td><code>src/app/ambient/composeAmbientRuntime.ts</code>／<code>lint/composeVaultLintRuntime.ts</code>／<code>copilot/vault/composeVaultReviewRuntime.ts</code>／<code>search/background/composeQuickSearchBackgroundRuntime.ts</code>／<code>copilot/actions/composeCopilotActionRuntime.ts</code></td>
+                <td>“app 唯一装配 adapter+port”</td>
+              </tr>
+              <tr>
+                <td>Runtime interface + concrete</td>
+                <td><code>src/service/{ambient,lint,copilot/vault,search/background,copilot/actions}/*Runtime.ts</code></td>
+                <td>只 import <code>core/ports</code>，无 <code>obsidian</code> / <code>ui</code> / <code>AppContext</code></td>
+              </tr>
+              <tr>
+                <td>Port 用 feature 词汇</td>
+                <td><code>src/core/ports/{Ambient,VaultLint,VaultReview,CopilotAction}Ports.ts</code></td>
+                <td>不暴露 Obsidian <code>App</code></td>
+              </tr>
+              <tr>
+                <td>Cross-cutting host port</td>
+                <td><code>HttpClientPort.ts</code>／<code>NotifierPort.ts</code>／<code>ProgressReporterPort.ts</code>／<code>SettingsActionsPort.ts</code>（<code>src/core/ports/</code>）</td>
+                <td>宿主能力经窄 port 注入</td>
+              </tr>
+              <tr>
+                <td>CapabilityRegistry 现状</td>
+                <td><code data-copy="src/service/capabilities/CapabilityRegistry.ts">CapabilityRegistry.ts</code> · <code data-copy="src/service/capabilities/SurfaceCapability.ts">SurfaceCapability.ts</code></td>
+                <td>“surface × capability × status”，未含 CapabilityManifest</td>
+              </tr>
+              <tr>
+                <td>Chat / Copilot capability adapter 注册</td>
+                <td><code>main.ts</code>（<code>CapabilityRegistry.register({...})</code> ×2）</td>
+                <td>Conversation / Fast Lookup / Research / Safety 的 readiness + repair</td>
+              </tr>
+              <tr>
+                <td>Harness agent loop（RunEvent 雏形）</td>
+                <td><code data-copy="src/service/agents/harness/loop/AgentLoop.ts">AgentLoop.ts</code></td>
+                <td>tool_call/text/usage 事件已发，尚未归一到 RunEvent</td>
+              </tr>
+              <tr>
+                <td>Chat 主链路（现状）</td>
+                <td><code>service-manager.ts</code> · <code>context/ContextPipeline.ts</code> · <code>ui/view/chat-view/hooks/useChatSubmit.ts</code></td>
+                <td>状态真相分布在 store × service；T7 后收敛 RunEvent 投影</td>
+              </tr>
+              <tr>
+                <td>Skill / Tool / MCP 三条通道</td>
+                <td><code>src/service/skills/SkillRegistry.ts</code><br><code>src/service/mcp/{MCPClientManager,MCPToolAdapter}.ts</code></td>
+                <td>T13 收敛完；死代码 <code>HarnessSkillRegistry</code> 已删；MCP tool 适配走参数注入（<code>manager</code> 从 <code>KnowledgeIntuitionAgentDeps</code> 注入）</td>
+              </tr>
+              <tr>
+                <td>Usage 三件套 + Dashboard 集成</td>
+                <td><code>main.ts</code>（Usage{Tracking,Outcome,Optimization}Service）<br><code>ui/view/usage-dashboard/runtime/registerUsageDashboardReceipts.ts</code></td>
+                <td>T13 后由 <code>AppRuntimeRegistry.usageServices</code> bundle 统一拥有；UI 通过 <code>useServiceContext().usageServices</code> 取用</td>
+              </tr>
+              <tr>
+                <td>Runtime ownership 规则</td>
+                <td><code>CLAUDE.md</code> §Code Conventions</td>
+                <td>本页最硬的一条约束</td>
+              </tr>
+              <tr>
+                <td>Configurability 规则</td>
+                <td><code>docs/conventions/configurability.md</code> · <code>README.md</code></td>
+                <td>i18n / regex / label / color / 阈值 / 权重 / timing 都走 <code>templates/config/</code></td>
+              </tr>
+              <tr>
+                <td>路线图源头</td>
+                <td><a href="superpowers/specs/2026-06-01-peak-system-architecture-modernization-handbook.html">现代化手册</a></td>
+                <td>§3 决策、§7 RunEnvelope、§8 Capability/Skill/Tool/MCP、§12 DAG</td>
+              </tr>
+              <tr>
+                <td>Command Gateway 专项</td>
+                <td><code>docs/superpowers/specs/2026-06-03-…-command-gateway-capstone-review.html</code></td>
+                <td>T12 Capstone，架构完成后启动</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01，按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="04-configuration-and-user-views.html">04 Configuration & User Views</a>、<a href="05-use-case-playbook.html">05 Use Case Playbook</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>；源头 <a href="superpowers/specs/2026-06-01-peak-system-architecture-modernization-handbook.html">系统架构理解手册与现代化行动地图</a>。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

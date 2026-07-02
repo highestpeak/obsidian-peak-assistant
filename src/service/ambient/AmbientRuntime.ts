@@ -22,9 +22,9 @@ export interface AmbientRuntime {
 	start(): void;
 
 	/**
-	 * Force a "manual" ambient trigger for the current active file. Used
-	 * by the Related Notes panel refresh button, the `peak-related-notes`
-	 * open command, and the Settings -> Maintenance refresh action.
+	 * Force a "manual" ambient trigger for the current active file. Kept
+	 * on the interface so headless callers (tests, future entry points)
+	 * can prompt a refresh of the in-memory push items.
 	 */
 	triggerManual(): void;
 

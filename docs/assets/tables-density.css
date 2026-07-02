@@ -1,0 +1,431 @@
+/* Table density + code wrapping — shared by all root docs.
+ *
+ * Problem: at the 960px page width, 4-column tables mixing long code paths
+ * (`src/app/.../composeXxxRuntime.ts`) with short Chinese phrases cause the
+ * code column to hog width and the text columns to wrap into 3-4 short lines,
+ * and status pills to break across multiple lines.
+ *
+ * Fix:
+ *  - Let inline code inside cells break at natural points (path segments,
+ *    or anywhere as last resort) so column widths rebalance.
+ *  - Tighten line-height and vertical padding in cells so wrapped text
+ *    doesn't accumulate excess vertical space.
+ *  - Never wrap pill labels — status chips must stay on one line.
+ */
+
+th,
+td {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: 1.55;
+  vertical-align: top;
+  hyphens: none;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Inline code inside cells: allow breaking only when the token would overflow,
+ * and prefer natural break points (path separators, hyphens) over mid-identifier
+ * breaks. Never use `overflow-wrap: anywhere` — that turns identifiers into
+ * garbage (e.g. `AppRuntimeRegistr\ny`). */
+td code {
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
+}
+
+/* --- Compact roadmap-style 4-column tables -----------------------------------
+ * Tables tagged with .roadmap-table get an opinionated fixed layout:
+ *   col 1 (label)        - narrow but readable (e.g. "T0 Boundary Baseline")
+ *   col 2 (description)  - flex-grow (main reading column)
+ *   col 3 (status)       - just wide enough for a pill
+ *   col 4 (evidence)     - flex-grow
+ * Applies via table-layout: fixed so column widths are predictable and
+ * long identifiers can't hijack width. Use with a <colgroup> for widths.
+ * ---------------------------------------------------------------------------- */
+table.roadmap-table {
+  table-layout: fixed;
+}
+
+/* --- Generic doc-wide fixed-layout tables -----------------------------------
+ * Any <table class="doc-table"> gets predictable column widths (from its
+ * <colgroup>) so long identifiers can't hijack width and prose columns
+ * don't collapse to 3-4 short lines. Applied automatically by
+ * /tmp/doc-mech-fix.py across all root docs.
+ * ---------------------------------------------------------------------------- */
+table.doc-table {
+  table-layout: fixed;
+}
+
+/* --- Identifier-first-column tables -----------------------------------------
+ * Tables where the FIRST column holds a single code identifier per row
+ * (e.g. `activeAgentFastConfig` in the Role table). Without a rule the
+ * identifier breaks mid-word — visually broken and unreadable. Nowrap it,
+ * and let the cell scroll horizontally as a last resort if the column is
+ * still too narrow. Pair with a colgroup that widens col 1 (24–28%).
+ * ---------------------------------------------------------------------------- */
+table.identifier-first td:first-child code {
+  white-space: nowrap;
+}
+table.identifier-first td:first-child {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* --- Structured field list ---------------------------------------------------
+ * Used to replace dense prose paragraphs that pack 5+ inline <code> tokens
+ * ("入口 X (path). 它接收 Y 和 Z, 把 A 塞进 B..."). Rendering the same content
+ * as label→value rows brings each fact to one focus point instead of forcing
+ * eye-jumps through connective Chinese.
+ *
+ *   <dl class="field-list">
+ *     <dt>入口</dt>
+ *     <dd><code>Foo.bar()</code></dd>
+ *     <dt>文件</dt>
+ *     <dd><code data-copy="src/a/b.ts">b.ts</code></dd>
+ *     ...
+ *   </dl>
+ * ---------------------------------------------------------------------------- */
+.field-list {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 6px 14px;
+  margin: 12px 0 18px;
+}
+.field-list dt {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 780;
+  padding-top: 3px;
+  letter-spacing: 0.02em;
+}
+.field-list dd {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.62;
+  font-size: 14.5px;
+}
+.field-list dd code {
+  font-size: 13px;
+}
+
+/* --- Simple doc-list under h3 group headers ---------------------------------
+ * Used by index.html §docs to list docs inside each subject group. Keeps the
+ * document's normal ul rhythm — just adds a subtle "planned" style so unwritten
+ * docs are visible but muted, and are not links. Zero decoration beyond that.
+ * ---------------------------------------------------------------------------- */
+.doc-list {
+  margin: 10px 0 22px;
+  padding-left: 22px;
+}
+.doc-list li { margin-bottom: 6px; line-height: 1.6; }
+.doc-list li.planned { color: var(--muted); }
+.doc-list li.planned strong { color: var(--muted); font-weight: 700; }
+.doc-list li.planned em {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--soft-gold);
+  color: var(--gold);
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* --- h3 visual nesting under h2 --------------------------------------------
+ * The per-file <style> distinguishes h3 from h2 only by font-size (20–21 vs
+ * 28–31). At a glance the reader can't tell "this h3 belongs under the h2
+ * above it" vs "this is a new sibling section". Add a small colored bar +
+ * padding to the left so h3 reads as an indented child.
+ *
+ * Note: h2 stays hanging on the same left edge as body text; only h3 gets
+ * the bar. First-child h3 inside a section keeps its natural top margin —
+ * we don't add extra spacing here so the per-file margin-top still governs.
+ * ---------------------------------------------------------------------------- */
+section h3 {
+  position: relative;
+  padding-left: 14px;
+  border-left: 3px solid rgba(31, 107, 82, 0.45);
+}
+section h3::before {
+  content: none;
+}
+
+/* --- 3-column reference tables ----------------------------------------------
+ *   col 1 (label / row header)  - narrow, wraps in 2 lines max
+ *   col 2 (source / entry)      - path chips (mostly short names via data-copy)
+ *   col 3 (purpose)             - flex-grow
+ * ---------------------------------------------------------------------------- */
+table.evidence-table {
+  table-layout: fixed;
+}
+
+.pill {
+  white-space: nowrap;
+}
+
+/* Pill rendered as an anchor — jumps to a related section or doc.
+ * Reuses .pill visual, adds click affordance and suppresses default link chrome. */
+a.pill,
+.pill-link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.14s ease, filter 0.14s ease;
+}
+a.pill:hover,
+.pill-link:hover {
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(23, 34, 29, 0.1);
+  filter: brightness(0.98);
+}
+a.pill:focus-visible,
+.pill-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* --- Admonition strong-tag fix ------------------------------------------------
+ *
+ * The per-file <style> defines `.claim strong { display: block; ... }` which
+ * was intended for the leading title strong (the "first strong == title"
+ * convention). Because it uses a descendant selector, it also promotes
+ * every mid-paragraph <strong> inside <p>/<li>/<ul>/<ol>/<div>/<span> to
+ * block level, which breaks sentences mid-flow (e.g. "…确立 <br> 之前 <br> 的历史结构").
+ *
+ * Industry pattern (MDN / Docusaurus / GitHub Alerts / VitePress / Stripe docs)
+ * is to keep mid-paragraph <strong> inline and only elevate a dedicated title
+ * element. We can't remove the per-file rule without touching 13 files, so
+ * here we restore inline behavior for any <strong> nested inside a real
+ * text-flow element within .claim, using higher-specificity selectors that
+ * beat the descendant-selector default.
+ *
+ * The title (direct child <strong> of .claim) is untouched and keeps its
+ * display:block + margin-bottom styling.
+ * ---------------------------------------------------------------------------- */
+
+.claim p strong,
+.claim li strong,
+.claim ul strong,
+.claim ol strong,
+.claim div strong,
+.claim span strong {
+  display: inline;
+  margin: 0;
+}
+
+/* In .claim.warn, the per-file rule paints all <strong> with gold. That's
+ * appropriate for the title but wrong for mid-paragraph emphasis. Let
+ * nested strong inherit the surrounding text color. */
+.claim.warn p strong,
+.claim.warn li strong,
+.claim.warn ul strong,
+.claim.warn ol strong,
+.claim.warn div strong {
+  color: inherit;
+}
+
+/* Also apply the same fix to .note-item blocks (used in the "读代码时" note
+ * grid), which uses <b> for the title label + <span> for the body — but if
+ * body contains <strong>, keep it inline. */
+.note-item span strong,
+.note-item span b {
+  display: inline;
+  margin: 0;
+  font-weight: 700;
+}
+
+/* Bullet list that shares .lead font size / weight — used for "3-parallel
+ * items" restructures out of prose paragraphs. */
+.lead-list {
+  margin: 14px 0 0;
+  padding-left: 22px;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.72;
+}
+.lead-list li {
+  margin-bottom: 8px;
+}
+.lead-list li:last-child {
+  margin-bottom: 0;
+}
+.lead-list strong {
+  color: var(--ink);
+}
+
+/* --- Cross-doc quick-jump for side-nav ----------------------------------------
+ * Sits at the top of .side-nav so every doc in the set surfaces "return to the
+ * top-level index / roadmap" without hiding the current-page reading path.
+ *
+ * <div class="nav-jump">
+ *   <a href="index.html">← 文档总索引</a>
+ *   <a href="roadmap.html">Roadmap</a>
+ * </div>
+ *
+ * Rendered as a compact link stack with a bottom divider that separates it
+ * from the per-page ToC below.
+ * ---------------------------------------------------------------------------- */
+.side-nav .nav-jump {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: -4px -4px 10px;
+  padding: 6px 4px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.side-nav .nav-jump a {
+  display: block;
+  padding: 4px 8px;
+  border-left: 2px solid transparent;
+  color: var(--green);
+  font-size: 12.5px;
+  font-weight: 760;
+  line-height: 1.4;
+  border-radius: 6px;
+}
+.side-nav .nav-jump a:hover {
+  background: var(--soft-green);
+  text-decoration: none;
+}
+
+/* --- Nav group layer ----------------------------------------------------------
+ * Anchors in a long side-nav should read as a shape, not a stack. Wrap related
+ * anchors in <div class="nav-group"> and give each group a short caption via
+ * <span class="nav-group-title">. Renders as a small-caps label above a
+ * hairline-separated cluster so readers scan by phase rather than line-by-line.
+ * ---------------------------------------------------------------------------- */
+.side-nav .nav-group {
+  margin: 10px -4px 0;
+  padding: 8px 4px 4px;
+  border-top: 1px solid var(--line);
+}
+.side-nav .nav-group:first-of-type {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 0;
+}
+.side-nav .nav-group-title {
+  display: block;
+  margin: 0 6px 4px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 780;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Subtitle-scoped bullet list — sits inside <header> after a subtitle blob
+ * that was previously packed with 顿号 chains. Matches subtitle color / size. */
+.subtitle-list {
+  margin: 10px 0 0;
+  padding-left: 22px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.72;
+}
+.subtitle-list li {
+  margin-bottom: 4px;
+}
+.subtitle-list li:last-child {
+  margin-bottom: 0;
+}
+
+/* Warning line inside a .note-item — used after a sequence list to call out
+ * "if any step is missed, X happens". Sits under the list, red-tinted. */
+.note-item .note-warn {
+  display: block;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(144, 66, 61, 0.35);
+  color: var(--red);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Ordered/unordered lists inside a .note-item body — same font size / color
+ * as the surrounding note text, tighter than global lists. */
+.note-item ol,
+.note-item ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.62;
+}
+.note-item ol li,
+.note-item ul li {
+  margin-bottom: 4px;
+}
+.note-item ol li:last-child,
+.note-item ul li:last-child {
+  margin-bottom: 0;
+}
+.note-item ol strong,
+.note-item ul strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* --- Tree table ------------------------------------------------------------
+ * Directory-tree-shaped tables (e.g. 02 目录职责表) where col 1 shows the
+ * hierarchy visually so the reader doesn't re-read `src/app/` on every row.
+ *
+ *   <tr class="tree-group">   → group header (spans all cols, tinted bg)
+ *   <tr class="tree-child">   → nested child, indented, with ├─/└─ leader
+ *   <span class="tree-line">  → ASCII branch character
+ *   <code class="tree-leaf">  → leaf directory name (no prefix)
+ *   <span class="tree-tag">   → muted tag next to the group name
+ * ---------------------------------------------------------------------------- */
+
+table.tree-table {
+  table-layout: fixed;
+}
+
+table.tree-table tr.tree-group > td {
+  background: var(--soft-green);
+  border-top: 2px solid rgba(31, 107, 82, 0.18);
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+table.tree-table tr.tree-group > td > code {
+  background: transparent;
+  color: var(--green);
+  font-weight: 780;
+  font-size: 13.5px;
+  padding: 0;
+}
+
+table.tree-table .tree-tag {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  margin-left: 6px;
+}
+
+table.tree-table tr.tree-child > td:first-child {
+  padding-left: 24px;
+}
+
+table.tree-table .tree-line {
+  display: inline-block;
+  width: 20px;
+  color: rgba(105, 118, 111, 0.72);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-weight: 400;
+  user-select: none;
+}
+
+table.tree-table code.tree-leaf {
+  background: transparent;
+  color: var(--ink);
+  padding: 0;
+  font-weight: 600;
+}
+
+table.tree-table tr.tree-child:hover > td {
+  background: rgba(31, 107, 82, 0.03);
+}

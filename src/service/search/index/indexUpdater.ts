@@ -9,7 +9,7 @@ const TFile = { [Symbol.hasInstance]: (x: unknown) => isFile(x) } as unknown as 
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { defaultIndexDocumentOptions, IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
+import { IndexService, defaultIndexDocumentOptions, getIndexTenantForPath } from '@/service/search/index/indexService';
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import { CascadeWorker } from './cascade/CascadeWorker';
 import { HubStalenessDetector } from './helper/hub/hubStalenessDetector';
@@ -43,6 +43,14 @@ export class SearchUpdateListener {
 		private readonly app: App,
 		private readonly plugin: MyPlugin,
 		private readonly settings: SearchSettings,
+		// T13: IndexService injected via constructor so indexUpdater no
+		// longer imports @/app/AppContext just to reach the singleton.
+		private readonly indexService: IndexService,
+		// T13-followup (2026-07-02): CascadeWorker injected so we no
+		// longer reach the retired `CascadeWorker.getInstance()`
+		// singleton. Nullable because a caller (test / future
+		// mobile build) may run without a worker.
+		private readonly cascadeWorker: CascadeWorker | null,
 		// five seconds debounce to avoid too many updates
 		private readonly debounceMs: number = 5000
 	) {
@@ -213,14 +221,14 @@ export class SearchUpdateListener {
 			const work = (async () => {
 				for (const { oldPath, newPath } of renameBatch) {
 					try {
-						await IndexService.getInstance().renameDocumentPath(oldPath, newPath);
+						await this.indexService.renameDocumentPath(oldPath, newPath);
 					} catch (e) {
 						console.warn('[SearchUpdateListener] renameDocumentPath failed:', oldPath, newPath, e);
 					}
 				}
 				await Promise.all([
 					deletePaths.length > 0
-						? IndexService.getInstance().deleteDocuments(deletePaths)
+						? this.indexService.deleteDocuments(deletePaths)
 						: Promise.resolve(),
 					upsertPaths.length > 0
 						? this.indexDocuments(upsertPaths)
@@ -228,8 +236,9 @@ export class SearchUpdateListener {
 				]);
 			})()
 				.then(() => {
-					// Notify cascade worker that indexing is done; it will drain debt on next idle
-					CascadeWorker.getInstance()?.notifyFlushCompleted();
+					// Notify cascade worker that indexing is done; it will drain debt on next idle.
+					// T13-followup: reach via injected reference instead of static getInstance.
+					this.cascadeWorker?.notifyFlushCompleted();
 
 					// Detect and queue stale hub docs from constituent changes (S6)
 					if (upsertPaths.length > 0) {
@@ -262,7 +271,7 @@ export class SearchUpdateListener {
 	private async indexDocuments(paths: string[]): Promise<void> {
 		for (const p of paths) {
 			if (this.shouldSkipListenerIndexing(p)) continue;
-			await IndexService.getInstance().indexDocument(p, this.settings, defaultIndexDocumentOptions('listener_fast'));
+			await this.indexService.indexDocument(p, this.settings, defaultIndexDocumentOptions('listener_fast'));
 		}
 	}
 

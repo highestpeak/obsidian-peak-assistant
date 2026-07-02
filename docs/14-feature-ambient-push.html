@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>14 Peak Assistant Ambient Push</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); font-size: 0.94em; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .subtitle-list { max-width: 900px; margin: 12px 0 0 22px; padding: 0; color: var(--muted); font-size: 17px; }
+    .subtitle-list li + li { margin-top: 4px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .side-nav .nav-jump { display: flex; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+    .side-nav .nav-jump a { padding: 0; border: 0; color: var(--green); }
+    .side-nav .nav-jump a:hover { text-decoration: underline; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 0 0 8px; font-size: 20px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .warn { border-left-color: var(--gold); }
+    .warn strong { color: var(--gold); }
+    .danger { border-left-color: var(--red); }
+    .danger strong { color: var(--red); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    td code { background: var(--code-bg); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    .note-list { display: grid; gap: 10px; margin-top: 18px; }
+    .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .note-item b { display: block; margin-bottom: 3px; }
+    .note-item span { color: var(--muted); font-size: 14px; }
+    .field-list { display: grid; grid-template-columns: 200px 1fr; gap: 8px 18px; margin: 14px 0 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .field-list dt { color: var(--ink); font-weight: 780; }
+    .field-list dd { margin: 0; color: var(--muted); }
+    .field-list dd code { background: var(--code-bg); }
+    pre { margin: 12px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; overflow-x: auto; font-size: 13.2px; line-height: 1.6; color: var(--ink); }
+    pre code { padding: 0; background: transparent; }
+    .side-nav .nav-group { margin: 10px -4px 0; padding: 8px 4px 4px; border-top: 1px solid var(--line); }
+    .side-nav .nav-group:first-of-type { margin-top: 4px; padding-top: 4px; border-top: 0; }
+    .side-nav .nav-group-title { display: block; margin: 0 6px 4px; color: var(--muted); font-size: 10.5px; font-weight: 780; letter-spacing: 0.06em; text-transform: uppercase; }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+    @media (max-width: 980px) {
+      .field-list { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">14 · Feature · Ambient Push · 编辑时后台送来的相关笔记</div>
+      <h1>你在写笔记，Ambient 在旁边找关联，只有你看它一眼时才发言。</h1>
+      <p class="subtitle">Ambient Push 是 Peak 唯一一条 <strong>用户没点也会发生</strong> 的 AI 通路。它在你写作 / 切文档 / 早上第一次打开 vault 时被触发，读你正在写的段落，去搜可能相关的笔记，把结果推到三种界面之一：</p>
+      <ul class="subtitle-list">
+        <li>状态栏的一行小字（默认打开）</li>
+        <li>编辑器行首的 <code>?</code> 提示（Serendipity Gutter，只在冷门邻居出现时亮）</li>
+        <li>4 小时一次的 Morning Briefing 卡片（Vault 里长时间没被打开的高度中心节点）</li>
+      </ul>
+      <p class="subtitle">全程 <strong>不写你的文档</strong>——它只呈现，不落笔。这份文档讲这条通路里被推的是谁、什么信号让它排到前面、怎么关掉、以及维护者应该盯什么。</p>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 11k 混合字符</span>
+        <span>Reading time: 22-26 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">这页解决什么</a>
+          <a href="#surfaces">三条呈现通路</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">信号与排序</span>
+          <a href="#trigger">什么时候会跑</a>
+          <a href="#signals">送谁上榜的六种信号</a>
+          <a href="#briefing">Morning Briefing 的三类候选</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">用户视角</span>
+          <a href="#quiet-and-safety">会不会打扰我 / 会不会改文档</a>
+          <a href="#control">关掉它 / 只留一部分</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">技术附录</span>
+          <a href="#dispatch">运行时装配</a>
+          <a href="#storage">写进 SQLite 的两张表</a>
+          <a href="#failure-modes">失败与降级</a>
+          <a href="#evidence">代码证据</a>
+        </div>
+        <div class="nav-note">只想搞清楚 <em>那些从来不出现的推送去哪了</em>，跳到 <a href="#failure-modes">失败与降级</a>。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>这页解决什么</h2>
+          <p class="lead">Ambient Push 的争议不在“有没有用”，在 <strong>“它会不会烦我”</strong>。这页把这条通路拆开：<strong>什么时候被触发（三种 trigger）</strong>、<strong>拿什么去搜（当前段落 + 图邻居 + 学到的 co-open 规律）</strong>、<strong>结果落到哪里（三条呈现通路）</strong>、<strong>怎么全关或只留一部分</strong>。</p>
+          <div class="claim">
+            <strong>核心结论</strong>
+            Ambient Push 是纯 <strong>只读 + 只呈现</strong> 的通路。它不改任何笔记；它对文档的影响仅限于“如果你按下推荐里的 <em>Link</em>，我们才在当前段末尾插一个 <code>[[wikilink]]</code>”——那是显式动作，走同一条 Vault write op。呈现层的所有 UI 也从不弹窗遮挡编辑器：状态栏一行文字、gutter 上一个 <code>?</code>、Morning Briefing 是打开 vault 时的一次卡片。
+          </div>
+          <div class="claim">
+            <strong>本文读者</strong>
+            正在写作、不确定“右下角那个提示是谁在推”的 Obsidian 用户；打算调 trigger 阈值或加一种新 signal 的维护者；正在排障“为什么一天了都没有推荐”的 coding agent。
+          </div>
+          <div class="claim">
+            <strong>本文不做什么</strong>
+            不重复 <a href="12-feature-search.html">12 Search</a> 的语义搜索原理；不讲 <a href="23-infra-search-index.html">23 Search Index</a> 里 SQLite 表的建表脚本；不覆盖 <a href="13-feature-vault-intelligence.html">13 Vault Intelligence</a> 的 <em>Vault Health / Extract Todos</em> 等用户主动跑的 vault-scope 分析。Ambient 只关心 <strong>你现在这一段的邻居</strong>。
+          </div>
+          <div class="claim warn">
+            <strong>Spec 里的 “Current Work State / Thought Trace” 是未来方向</strong>
+            当前实现的 UI 是状态栏 + gutter + briefing，这是 2026-05 那一版 spec 的落地。<a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">2026-06 那一版 spec</a> 把这条通路重命名为 <em>Current Work State</em>、把右侧的推荐列表升级成 <em>Thought Trace</em>，本文按 <strong>当前代码</strong> 描述现状；spec 里的下一步 UI 变化不在这一页。
+          </div>
+        </section>
+
+        <section id="surfaces">
+          <h2>三条呈现通路</h2>
+          <p class="lead">Ambient 计算得到的候选笔记会流进三条不同的 UI，每条通路针对不同心境。<strong>它们不是三个视图，而是三种被动的暗示</strong>——你不主动看它们不会挡到编辑。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · Ambient runtime 与三条呈现通路</strong>
+              <span>Mermaid · runtime dispatch</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  Editor(("你在编辑器里"))
+  Trigger["writing_pause · doc_switch · manual"]
+  Runtime["AmbientPushRuntime<br/>handleTrigger()"]
+  Search["ambientSearch()<br/>vault + graph + patterns + serendipity"]
+  Store["ambientPushStore<br/>(Zustand)"]
+  StatusBar["状态栏一行<br/>peak-ambient-status"]
+  Gutter["编辑器行首 ? 提示<br/>SerendipityGutterPlugin"]
+  Briefing["Morning Briefing 卡片<br/>4h 一次，登录首弹"]
+
+  Editor --> Trigger
+  Trigger --> Runtime
+  Runtime --> Search
+  Search --> Store
+  Store --> StatusBar
+  Store --> Gutter
+  Runtime --> Briefing
+            </div>
+            <p class="read-note"><b>读图：</b>Runtime 负责 <em>什么时候搜、搜什么</em>；三条 UI 只订阅 Zustand store。所以关掉某条 UI 不会让 runtime 少跑一次搜索——只是不呈现。Morning Briefing 是唯一 <em>runtime 直接调 projection.showMorningBriefing()</em> 的通路（不走 store），因为它按“会话开始”而不是“段落触发”。</p>
+          </div>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 22%"><col style="width: 26%"><col></colgroup>
+            <thead>
+              <tr><th>通路</th><th>什么时候出现</th><th>看到什么</th><th>关掉方法</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>状态栏一行</strong><br><span class="pill green">默认</span></td>
+                <td>每次 push 有结果就更新</td>
+                <td>底栏一行小字：Top 1 的标题 + 一句解释</td>
+                <td>Settings → Ambient Push → <code>showStatusBar</code> 关闭</td>
+              </tr>
+              <tr>
+                <td><strong>Gutter <code>?</code> 提示</strong><br><span class="pill gold">冷门时才亮</span></td>
+                <td>当前段有 <em>serendipity</em> 邻居时（2-hop 图上的“意外近似”）</td>
+                <td>该行行首出现一个 <code>?</code>；hover 显示笔记标题；点击打开</td>
+                <td>Settings → Ambient Push → <code>enableSerendipityGutter</code> 关闭</td>
+              </tr>
+              <tr>
+                <td><strong>Morning Briefing</strong><br><span class="pill blue">4h 首次</span></td>
+                <td>距离上次 briefing ≥ 4h + Vault ready 时</td>
+                <td>一张卡片罗列 3 类候选（下面 <a href="#briefing">Briefing 段</a> 详解）</td>
+                <td>Settings → Ambient Push → <code>enableMorningBriefing</code> 关闭</td>
+              </tr>
+              <tr>
+                <td><strong>右侧 Push 面板</strong><br><span class="pill red">已废弃</span></td>
+                <td>——</td>
+                <td>之前的“右侧推荐列表”视图已在 <em>codex/peak-modernization-refactor</em> 分支被删除，取而代之的是上面三条更“克制”的通路。</td>
+                <td>——</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim warn">
+            <strong>状态栏并不是通知</strong>
+            状态栏那一行 <em>会随每次 push 悄悄更新</em>，不会弹动画、不会震动、不会响。用户如果没抬头就永远不会看到它——这是设计上的保留。想把它变成硬提醒？现在只有 gutter 那条通路会“在段旁边视觉出现”，且门槛更高（必须是 serendipity 邻居）。
+          </div>
+        </section>
+
+        <section id="trigger">
+          <h2>什么时候会跑</h2>
+          <p class="lead">Runtime 在 <strong>三种情况</strong> 下会触发一次搜索。每种都有 cooldown 保护，不会连续开火。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 22%"><col style="width: 22%"><col></colgroup>
+            <thead>
+              <tr><th>Trigger</th><th>触发条件</th><th>默认阈值</th><th>用意</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>writing_pause</code></td>
+                <td>你停止敲键盘且当前段落字符增量足够</td>
+                <td><code>writingPauseMs</code> = 5000ms；<code>minCharDelta</code> = 30 字符</td>
+                <td>写完一段就查一下有没有可以引的笔记，不打扰下一段思考。</td>
+              </tr>
+              <tr>
+                <td><code>doc_switch</code></td>
+                <td>切换到新文件</td>
+                <td><code>docSwitchCooldownMs</code> = 5000ms 冷却</td>
+                <td>打开一篇旧笔记时提醒“这块内容你近期也写过”。</td>
+              </tr>
+              <tr>
+                <td><code>manual</code></td>
+                <td>Command Palette → Ambient · Trigger Related Notes 或点 gutter 的 <code>?</code></td>
+                <td>无 cooldown</td>
+                <td>逃生舱：任何情况下都能强触发一次。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>Cooldown 是 <em>trigger</em> 级别，不是 <em>UI</em> 级别</strong>
+            两次搜索最短间隔 <code>triggerCooldownMs</code> = 30s。这意味着：写作时你连续停顿两次，第二次并不会真的搜。这是刻意的，避免连续 push 造成阅读疲劳。想更激进？调低 <code>triggerCooldownMs</code>；想更安静？调到 5 分钟以上，几乎只在切文档时才有 push。
+          </div>
+
+          <p class="prose" style="margin-top: 22px;">触发之后 Runtime 会从当前编辑器抽出一份 <code>AmbientContext</code>：当前段落 + 光标所在标题 + 文档标题 / 标签 / 已有 outlinks + 最近编辑增量。段落长度 &lt; 10 字符会被 <code>handleTrigger</code> 直接跳过——不搜太短的东西。</p>
+
+          <div class="field-list">
+            <dt><code>currentParagraph</code></dt>
+            <dd>光标所在的段落原文；用于关键词 + 嵌入检索。</dd>
+            <dt><code>cursorSection</code></dt>
+            <dd>光标当前所在的 <code>##</code> 标题路径；用于给结果排序时对齐主题。</dd>
+            <dt><code>documentTitle / Tags / Headings</code></dt>
+            <dd>整篇上下文摘要，用于图查询和 hub_member 信号判定。</dd>
+            <dt><code>existingOutlinks</code></dt>
+            <dd>已经在本文档里出现过的 <code>[[wikilink]]</code>；<strong>会被从候选里剔除</strong>，避免推“你早就链过的”。</dd>
+            <dt><code>recentEditDelta / editSessionDuration</code></dt>
+            <dd>最近编辑增量与本次写作持续时长；供未来的模式学习使用（当前排序主要看信号而非会话长度）。</dd>
+          </div>
+        </section>
+
+        <section id="signals">
+          <h2>送谁上榜的六种信号</h2>
+          <p class="lead">从 vault 检索到的候选笔记会同时挂上一到多种 <code>AmbientSignal</code>。Runtime 用信号强度打分，最终排序 + 只留 <code>maxPushItems</code> 条（默认 5）。同一个 <code>AmbientPushItem</code> 通常带 2-3 个信号，展示时选 <strong>优先级最高</strong> 的那个渲染成人话解释。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 22%"><col style="width: 22%"><col></colgroup>
+            <thead>
+              <tr><th>信号</th><th>意味着什么</th><th>数据来源</th><th>展示例</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>shared_tag</code></td>
+                <td>那篇笔记和当前文档共享至少一个 tag</td>
+                <td>vault 索引；<code>mobius_node.tags</code></td>
+                <td>“共享标签 #<em>research</em>”</td>
+              </tr>
+              <tr>
+                <td><code>graph_neighbor</code><br><span class="pill">hop=1/2</span></td>
+                <td>在语义/结构图上距离 1 或 2 跳</td>
+                <td>graph traversal port（<code>mobius_edge</code>）</td>
+                <td>“图上一跳的邻居”</td>
+              </tr>
+              <tr>
+                <td><code>co_citation</code></td>
+                <td>存在第三方笔记同时引了当前笔记与这篇候选</td>
+                <td>反向索引 + 图查询</td>
+                <td>“<em>A.md</em> 同时引用了它和当前文档”</td>
+              </tr>
+              <tr>
+                <td><code>hub_member</code></td>
+                <td>候选是当前文档所在结构 hub 的一员</td>
+                <td>Vault Intelligence 的 hub 识别</td>
+                <td>“同属 hub <em>Reading queue</em>”</td>
+              </tr>
+              <tr>
+                <td><code>text_overlap</code></td>
+                <td>候选与当前段落在 chunk-level 有强关键词/嵌入重合</td>
+                <td>SearchClient hybrid 检索</td>
+                <td>“主题很近：<em>attention · self-supervised</em>”</td>
+              </tr>
+              <tr>
+                <td><code>recency</code></td>
+                <td>近期编辑过；作为 boost 附加</td>
+                <td>vault mtime</td>
+                <td>“3 天前刚改过”</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="prose" style="margin-top: 22px;">除了这 6 种基础信号，还有两条 <strong>后处理</strong> 会调整最终排序：</p>
+
+          <div class="claim">
+            <strong>Pattern boost：从你的 co-open 历史学出的加分</strong>
+            <code>PatternLearningService</code> 每 10 分钟聚一次 <em>ambient_push_action</em> 表里最近 30 天的行为，找出 <em>“打开 A 之后 &lt; 10 分钟又打开了 B”</em> 重复出现 ≥ 2 次的 pair。当 A 是当前文档、B 是候选时，<code>PatternLearner.getPatternBoost</code> 给候选一个 0 - 0.4 的加分。<em>这就是所谓“学到你的习惯”</em>：不是你手动配置，也不是 embedding，是纯经验统计。<br>关掉：Settings → Ambient Push → <code>feedbackLearning</code>。
+          </div>
+
+          <div class="claim warn">
+            <strong>Serendipity：图上远但嵌入近，塞给你一个惊喜</strong>
+            <code>SerendipitySearcher</code> 做的是 <em>2-hop 图遍历 + 嵌入距离 &lt; 阈值</em>，找出 <em>“语义上很像但没被链过”</em> 的候选，最多注入 1 条到最终列表。它是 <strong>gutter <code>?</code></strong> 提示的直接来源；如果 <code>enableSerendipityGutter</code> 关掉，仍然可能进入状态栏 top 1。这种候选往往和当前段主题只沾一点边，用来打破“同温层”。
+          </div>
+        </section>
+
+        <section id="briefing">
+          <h2>Morning Briefing 的三类候选</h2>
+          <p class="lead">Briefing 不是“当前段落的邻居”，它是 <strong>“过去几天你的 vault 发生了什么值得看的变化”</strong>。窗口默认 14 天，<code>tryShowMorningBriefing()</code> 在插件启动时被调用一次，距上次 briefing ≥ 4 小时才真的展示。</p>
+
+          <div class="field-list">
+            <dt>Unresolved Connections</dt>
+            <dd>被多人引用（<code>doc_incoming_cnt ≥ 2</code>）但自己 outgoing 很少（&lt; incoming × 0.5）的笔记——说明它是个 <em>话题磁铁</em>，但还没被主动延展。</dd>
+            <dt>Changed Hubs</dt>
+            <dd>hub 类文档（Vault Intelligence 已识别）在过去 14 天被编辑过：“你有个中心节点又动了，想重新翻看一下吗”。</dd>
+            <dt>Decaying Engagement</dt>
+            <dd>PageRank 高但 <code>last_open_ts</code> 距今 &gt; 14 天：“这些一直很重要的笔记，你有阵子没看了”。</dd>
+          </div>
+
+          <p class="prose" style="margin-top: 18px;">每类最多返回 5 条候选，最终按 <code>score</code> 降序合并。<code>BriefingItemBuilder</code> 负责三类的分类策略；<code>SqliteAmbientBriefingReadAdapter</code> 只做 SQL 抽取，不判定归属。</p>
+
+          <div class="claim">
+            <strong>Briefing 的“会话”是插件启动的会话，不是 vault 打开的会话</strong>
+            <code>ambient_last_briefing_ts</code>、<code>ambient_last_session_ts</code> 存在 <code>index_state</code> 表。冷启动时对齐上一次的时间戳；两次连续启动之间 &lt; 4h 不会重复弹。<em>“早上第一次打开 Obsidian”</em> 是常见触发场景，但严格来说是 <em>“距离上次 briefing 满 4h 的插件启动”</em>。
+          </div>
+        </section>
+
+        <section id="quiet-and-safety">
+          <h2>会不会打扰我 / 会不会改文档</h2>
+          <p class="lead">用户对 Ambient Push 的两大疑问：<strong>“它会不会一直在角落弹东西”</strong>、<strong>“它会不会在我不知情时写笔记”</strong>。答案是两个都不会——但值得逐条说清楚。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 25%"><col style="width: 35%"><col></colgroup>
+            <thead>
+              <tr><th>担心的事情</th><th>实际行为</th><th>控制手段</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>状态栏一直闪</td>
+                <td>状态栏是一行 <strong>静态文字</strong>——push 到来时替换，不闪、不动。</td>
+                <td><code>showStatusBar: false</code>。</td>
+              </tr>
+              <tr>
+                <td>gutter 老是跳出来 <code>?</code></td>
+                <td>只在 serendipity 候选存在时才亮；不出现在每一行。</td>
+                <td><code>enableSerendipityGutter: false</code>。</td>
+              </tr>
+              <tr>
+                <td>Morning Briefing 每次开插件都弹</td>
+                <td>4h 冷却 + Vault ready 检查；短时间开关插件不会重复弹。</td>
+                <td><code>enableMorningBriefing: false</code>。</td>
+              </tr>
+              <tr>
+                <td>它会不会写我的笔记</td>
+                <td><strong>不会。</strong>runtime 只调 <code>projection</code> 与 <code>persistence</code> 端口；前者写 Zustand store，后者写自己的 <code>ambient_push_log</code> / <code>ambient_push_action</code> 表；<em>vault 文件从头到尾没有 write path</em>。</td>
+                <td>——</td>
+              </tr>
+              <tr>
+                <td>它是不是暗中调 LLM 花我的 token</td>
+                <td>默认 <strong>不调</strong>。<code>enableLlmExplanation</code> 打开后才走 <em>tier-2 micro-explanation</em>：在 top 1 出现时 <em>非阻塞</em> 请一句话解释，冷却 <code>llmExplanationCooldownMs</code> = 120s。</td>
+                <td><code>enableLlmExplanation: false</code>（默认）。</td>
+              </tr>
+              <tr>
+                <td>它会不会把我在写的段落传给 LLM</td>
+                <td>只有当 <code>enableLlmExplanation: true</code> 时，才会把 <em>currentParagraph + 候选标题 + 候选 excerpt</em> 发给 <a href="04-configuration-and-user-views.html#profiles-and-roles">Chat role 配置里的 provider</a>。关掉就完全不出你的机器。</td>
+                <td>——</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim danger">
+            <strong>“完全不弹” 是通过 <code>enabled: false</code> 达到的</strong>
+            设置里的顶层 <code>enabled</code> 关掉后，<em>composeAmbientRuntime</em> 那一步就会跳过——runtime 干脆不启动，也不订阅任何事件。这是最彻底的关掉方式；只把 <code>showStatusBar</code>、<code>enableSerendipityGutter</code>、<code>enableMorningBriefing</code> 全关的效果类似，但 runtime 仍在跑（还是会写 SQLite 的 push_log，占用一点 CPU / disk）。
+          </div>
+        </section>
+
+        <section id="control">
+          <h2>关掉它 / 只留一部分</h2>
+          <p class="lead">下面这张是常见组合的“食谱”——对应到 <a href="04-configuration-and-user-views.html">04 · 配置项与用户视图</a> 里的 Ambient Push 段落。</p>
+
+          <div class="note-list">
+            <div class="note-item">
+              <b>“我只想要早上那张 briefing”</b>
+              <span><code>enabled: true</code>，其它三个（<code>showStatusBar</code>、<code>enableSerendipityGutter</code>、<code>enableLlmExplanation</code>）全关，只留 <code>enableMorningBriefing</code>。runtime 还在跑（会累积 push_log 供 briefing 用），只是完全不呈现日常 push。</span>
+            </div>
+            <div class="note-item">
+              <b>“我要 gutter 的意外发现，但状态栏太吵”</b>
+              <span><code>showStatusBar: false</code> + <code>enableSerendipityGutter: true</code>。<em>注意：</em>serendipity 只在 2-hop 有远近似候选时才有产出——如果 vault 还没建好语义边（<a href="04-configuration-and-user-views.html#indexing">04 · Knowledge Index</a> 处于 Fast 档），gutter 会几乎永不亮。</span>
+            </div>
+            <div class="note-item">
+              <b>“我要每一次 push 都给我一句 AI 的解释”</b>
+              <span><code>enableLlmExplanation: true</code> + 把 <code>llmExplanationCooldownMs</code> 调到很短（例如 10s）。<em>代价</em>：每 top 1 一次 LLM 请求，累积 token 消费；在 <a href="12-feature-search.html">12 Search</a> 的 <em>Model role</em> 里被计到 chat.role 上，Usage Dashboard 会看到。</span>
+            </div>
+            <div class="note-item">
+              <b>“完全静音”</b>
+              <span>顶层 <code>enabled: false</code>。Runtime 不会被 <code>composeAmbientRuntime</code> 起起来，也不会 <em>occupy</em> event bus。想再打开：改设置后需要重启插件（重新走 <code>onload()</code>）。</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="dispatch">
+          <h2>技术附录 · 运行时装配</h2>
+          <p class="lead">Ambient Push 是 Peak 里 <strong>端口最多</strong> 的 feature——<a href="01-architecture.html#capability-contract">01 里的 capability contract</a> 在这里体现得最完整：runtime 完全不知道 Obsidian、SQLite、LLM 是什么，所有依赖都从 <code>AmbientPorts</code> 拿。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · composeAmbientRuntime 的装配</strong>
+              <span>Mermaid · adapter binding</span>
+            </div>
+            <div class="mermaid">
+flowchart TD
+  Compose["composeAmbientRuntime(app)<br/>src/app/ambient/composeAmbientRuntime.ts"]
+
+  Editor["ObsidianAmbientEditorContextAdapter<br/>writing-pause + doc-switch"]
+  Search["SearchAmbientSearchAdapter<br/>vault SearchClient + patterns + serendipity"]
+  Store["ambientPushStore + morningBriefingStore<br/>projection port"]
+  Persist["SqliteAmbientPersistenceAdapter<br/>push_log + push_action + pattern cache"]
+  Brief["SqliteAmbientBriefingReadAdapter<br/>changed/hub/decaying 三类候选"]
+  Traverse["SqliteSemanticGraphTraversalAdapter<br/>mobius_node + mobius_edge + embedding"]
+  Llm["LlmAmbientExplanationAdapter<br/>chat.role queryStream"]
+  Clock["monotonic clock port"]
+
+  Runtime["AmbientPushRuntime<br/>src/service/ambient/AmbientPushRuntime.ts"]
+
+  Compose --> Editor --> Runtime
+  Compose --> Search --> Runtime
+  Compose --> Store --> Runtime
+  Compose --> Persist --> Runtime
+  Compose --> Brief --> Runtime
+  Compose --> Traverse --> Runtime
+  Compose --> Llm --> Runtime
+  Compose --> Clock --> Runtime
+            </div>
+            <p class="read-note"><b>读图：</b>Runtime 是纯服务类，测试时 8 个端口全部可以 mock。加一种新的呈现通路 = 加一个 <code>projection</code> 端口的 method；加一种新的信号 = 改 <code>SearchAmbientSearchAdapter</code> 和 <code>AmbientPushItem.signals</code>；加一种新的存储后端 = 换 <code>persistence</code> 实现。</p>
+          </div>
+
+          <h3 style="margin-top: 30px;">关键文件</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>层</th><th>文件</th><th>职责</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Composition</strong></td>
+                <td><code data-copy="src/app/ambient/composeAmbientRuntime.ts">composeAmbientRuntime.ts</code></td>
+                <td>把 8 个端口装配成 <code>AmbientPorts</code>，实例化 <code>AmbientPushRuntime</code>，绑到 <code>AppRuntimeRegistry</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>App wiring</strong></td>
+                <td><code data-copy="main.ts">main.ts</code>（<code>onload</code> L433-460）</td>
+                <td>读 <code>settings.ambientPush.enabled</code>；启动 runtime；挂状态栏 + gutter；订阅 store 更新写状态栏。</td>
+              </tr>
+              <tr>
+                <td><strong>Runtime</strong></td>
+                <td><code data-copy="src/service/ambient/AmbientPushRuntime.ts">AmbientPushRuntime.ts</code></td>
+                <td><code>start / triggerManual / handleTrigger / tryShowMorningBriefing / recordAction / dispose</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Search 编排</strong></td>
+                <td><code data-copy="src/service/ambient/AmbientSearcher.ts">AmbientSearcher.ts</code></td>
+                <td><code>ambientSearch()</code>：vault 搜索 → 去掉已在 <code>existingOutlinks</code> 的 → pattern boost → serendipity 注入 → 截 <code>maxPushItems</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Signal 产出</strong></td>
+                <td><code data-copy="src/service/ambient/SerendipitySearcher.ts">SerendipitySearcher.ts</code><br><code data-copy="src/service/ambient/PatternLearningService.ts">PatternLearningService.ts</code><br><code data-copy="src/service/ambient/PatternLearner.ts">PatternLearner.ts</code><br><code data-copy="src/service/ambient/RelevanceExplainer.ts">RelevanceExplainer.ts</code></td>
+                <td>Serendipity 单独走 2-hop + 嵌入距离；Pattern 学 co-open 规律给 boost；Explainer 从多信号里选最高优先级渲成人话。</td>
+              </tr>
+              <tr>
+                <td><strong>Ports 契约</strong></td>
+                <td><code data-copy="src/core/ports/AmbientPorts.ts">AmbientPorts.ts</code></td>
+                <td>Settings / EditorContext / Search / SearchDeps / UiProjection / Persistence / Briefing / Explanation / Clock 共 9 个端口。</td>
+              </tr>
+              <tr>
+                <td><strong>Types</strong></td>
+                <td><code data-copy="src/core/types/ambient.ts">ambient.ts</code></td>
+                <td><code>AmbientContext</code>、<code>AmbientPushItem</code>、<code>AmbientSignal</code> union、<code>AmbientPushSettings</code> + defaults。</td>
+              </tr>
+              <tr>
+                <td><strong>Adapters</strong></td>
+                <td><code data-copy="src/app/ambient/">src/app/ambient/*</code></td>
+                <td>Editor / Search / Persistence / Briefing / SemanticGraph / LlmExplanation / SerendipityGutterPlugin 各一个文件。</td>
+              </tr>
+              <tr>
+                <td><strong>UI store</strong></td>
+                <td><code data-copy="src/ui/store/ambientPushStore.ts">ambientPushStore.ts</code><br><code data-copy="src/ui/store/morningBriefingStore.ts">morningBriefingStore.ts</code></td>
+                <td>Zustand store：<code>items</code>、<code>pushHistory</code>、<code>serendipityItem</code>、<code>briefingItems</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>Briefing 分类</strong></td>
+                <td><code data-copy="src/service/ambient/briefing/BriefingItemBuilder.ts">BriefingItemBuilder.ts</code></td>
+                <td>把 SQL 抽出的原始行分类到 <code>unresolved_connections / changed_hubs / decaying_engagement</code>；每类最多 5 条。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>为什么 handleTrigger 用 AbortController</strong>
+            触发很密（用户可能在 5s 内切两次文档），后到的触发要 <em>放弃</em> 前一次的搜索结果——否则会有“上上一次的 push 覆盖上一次”的抖动。每次进入 <code>handleTrigger</code> 都新建一个 <code>AbortController</code>，前一次持有的 <code>pendingSearch</code> 立即 <code>abort()</code>。这不是网络优化，是 UI 一致性。
+          </div>
+        </section>
+
+        <section id="storage">
+          <h2>技术附录 · 写进 SQLite 的两张表</h2>
+          <p class="lead">Ambient 自己拥有两张表；其余读取都是从 <a href="23-infra-search-index.html">23 Search Index</a> 的 <code>mobius_node</code> / <code>mobius_edge</code> / <code>embedding</code> 取。</p>
+
+          <h3><code>ambient_push_log</code> — 每一次 push 的原始记录</h3>
+          <p class="prose">Fire-and-forget 写入。用来供 <a href="17-feature-usage-dashboard.html">17 Usage Dashboard</a> 与 Pattern learning 反溯。</p>
+          <div class="field-list">
+            <dt><code>timestamp</code></dt>
+            <dd>push 时的 monotonic 时间戳。</dd>
+            <dt><code>triggerType</code></dt>
+            <dd><code>writing_pause | doc_switch | manual</code>。</dd>
+            <dt><code>sourceFilePath</code></dt>
+            <dd>被 push 的文档（你正在写的那篇）。</dd>
+            <dt><code>contextParagraph</code></dt>
+            <dd>被搜的当前段（用于事后 debug / 优化 signal 时看命中原因）。</dd>
+            <dt><code>pushedFilePath / pushedScore</code></dt>
+            <dd>推荐的候选与它的排序分。</dd>
+            <dt><code>explanationType / explanationText</code></dt>
+            <dd><code>template</code>（<code>RelevanceExplainer</code> 生成）或 <code>llm</code>（tier-2 micro-explanation）。</dd>
+          </div>
+
+          <h3 style="margin-top: 22px;"><code>ambient_push_action</code> — 你有没有点进去</h3>
+          <p class="prose">走 <code>runtime.recordAction()</code>。用来给 <em>Pattern learning</em> 提供正样本 / 负样本，并让后续 push 的排序偏向你真的会点开的候选。</p>
+          <div class="field-list">
+            <dt><code>sourceFilePath / pushedFilePath</code></dt>
+            <dd>成对的“你在这篇上被推了那篇”。</dd>
+            <dt><code>action</code></dt>
+            <dd><code>opened | linked | dismissed | ignored</code>；<code>opened</code> 与 <code>linked</code> 是正样本，<code>dismissed</code> 与 <code>ignored</code> 是负样本。</dd>
+            <dt><code>actionTs</code></dt>
+            <dd>动作时间；<em>Pattern learning</em> 只统计 30 天内的记录。</dd>
+          </div>
+
+          <div class="claim">
+            <strong>为什么 push_log 和 push_action 分两张表</strong>
+            Push 每次触发都写 log（可能一次 5 条），几乎不查。Action 只在用户真的点了推荐时才写，读频繁（Pattern learning 每 10 分钟聚一次）。分表让写频繁的那张 <em>不带索引 / 只 append</em>，读频繁的那张 <em>加 index 优先按 sourceFilePath 查</em>。schema 本身在 <a href="23-infra-search-index.html#ambient-tables">23 Search Index</a> 的建表段。
+          </div>
+        </section>
+
+        <section id="failure-modes">
+          <h2>失败与降级</h2>
+          <p class="lead">当 Ambient 一整天都没给你任何推荐时，八成是下面这几种情况之一——诊断顺序按“可能性”排。</p>
+
+          <div class="note-list">
+            <div class="note-item">
+              <b>顶层 <code>enabled</code> 关了 → runtime 根本没起。</b>
+              <span>症状：状态栏没有 <code>peak-ambient-status</code> 元素，Command Palette 里也搜不到 <em>Ambient · Trigger Related Notes</em>。修：<em>Settings → Ambient Push → Enable</em>。</span>
+            </div>
+            <div class="note-item">
+              <b>Vault 尚未被索引 → search 返回空。</b>
+              <span>症状：runtime 起了，但每次触发 <code>handleTrigger</code> 都最终走到 <code>items.length === 0</code>。<code>SearchClient</code> 需要 vault SQLite 里有 <em>chunk + embedding</em>。修：<a href="04-configuration-and-user-views.html#indexing">04 · Knowledge Index</a> 切到 semantic/full 档并等索引跑完。Fast 档缺 embedding，语义信号全空。</span>
+            </div>
+            <div class="note-item">
+              <b>段落太短 → 被 <code>currentParagraph.length &lt; 10</code> 挡住。</b>
+              <span>症状：写单行笔记时永远没 push。修：写完一个完整句子（含标点）通常就够。</span>
+            </div>
+            <div class="note-item">
+              <b>Cooldown 未到 → 触发但不搜。</b>
+              <span>症状：明明感觉“我停了很久”仍无推荐。<code>triggerCooldownMs</code> 30s 是最短间隔；30s 内两次 <code>writing_pause</code> 只有第一次真会跑。</span>
+            </div>
+            <div class="note-item">
+              <b>Existing outlinks 把所有候选 filter 光了。</b>
+              <span>症状：候选表很小的段落（例如你正在写“笔记学习目录”）——因为候选早就被链过，剔除后一个不剩。修：改到写正文段试试。</span>
+            </div>
+            <div class="note-item">
+              <b>LLM explanation 慢 / 拒绝 → tier-2 静默失败。</b>
+              <span>症状：状态栏和 push 都在，但一直用 template 解释（<em>“共享标签 #xxx”</em> 这种），从没出现过流畅的一句 AI 解释。<code>LlmAmbientExplanationAdapter</code> 是 <em>非阻塞</em> 的，失败时静默——不会打扰你，但也没有明显提示。诊断：devtools 里看 <code>LlmAmbientExplanationAdapter</code> 相关 error。</span>
+            </div>
+            <div class="note-item">
+              <b>Briefing 冷却未到 → “早上没有卡片”。</b>
+              <span>症状：一天内多次开关插件都不弹 briefing。<code>ambient_last_briefing_ts</code> 保存了上次弹出的时间；4h 内不重弹是刻意的。修：如果你 <em>确实</em> 想强弹，只能等到间隔满，或手动改 SQLite（不推荐）。</span>
+            </div>
+          </div>
+
+          <div class="claim danger">
+            <strong>Pattern boost 依赖 <em>你之前用过 Ambient</em></strong>
+            <code>PatternLearner.getPatternBoost</code> 只有在 <code>ambient_push_action</code> 里累积了 &ge; 2 次相同 pair 才会给分。新装的插件 / 一直关着 Ambient 的用户不会有 pattern boost，排序完全依赖基础信号。这不是 bug，是学习类特性的启动成本。
+          </div>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+          <p class="lead">下面这张给正在改 Ambient 的 coding agent 或维护者：想找“XX 是从哪读来的”“YY 写在哪里”，从这里查。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 26%"><col style="width: 22%"><col></colgroup>
+            <thead>
+              <tr><th>关心的事</th><th>入口文件</th><th>要点</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Trigger 何时发火 / 冷却</td>
+                <td><code data-copy="src/app/ambient/ObsidianAmbientEditorContextAdapter.ts">ObsidianAmbientEditorContextAdapter.ts</code></td>
+                <td>写作监听、cooldown 判断、字符 delta 阈值；发出 <code>AmbientEditorTrigger</code> 回调。</td>
+              </tr>
+              <tr>
+                <td>候选是怎么打出来的</td>
+                <td><code data-copy="src/service/ambient/AmbientSearcher.ts">AmbientSearcher.ts</code></td>
+                <td><code>ambientSearch(deps, ctx, maxItems, pushHistory, settings)</code> 一次搞完，纯函数。</td>
+              </tr>
+              <tr>
+                <td>Serendipity 的 2-hop 逻辑</td>
+                <td><code data-copy="src/service/ambient/SerendipitySearcher.ts">SerendipitySearcher.ts</code></td>
+                <td><code>search(ctx, existingOutlinksLower, maxResults)</code>；调 graph traversal 与 embedding。</td>
+              </tr>
+              <tr>
+                <td>Pattern learning</td>
+                <td><code data-copy="src/service/ambient/PatternLearningService.ts">PatternLearningService.ts</code><br><code data-copy="src/service/ambient/PatternLearner.ts">PatternLearner.ts</code></td>
+                <td>10 分钟缓存 + 30 天窗口 + 最少 2 次重复；<code>getPatternBoost</code> 返回 0-0.4 加分。</td>
+              </tr>
+              <tr>
+                <td>解释文字是怎么长出来的</td>
+                <td><code data-copy="src/service/ambient/RelevanceExplainer.ts">RelevanceExplainer.ts</code><br><code data-copy="src/service/ambient/AmbientExplanationService.ts">AmbientExplanationService.ts</code></td>
+                <td>Template 走 <code>RelevanceExplainer.generateExplanation(signals)</code>；LLM 走 <code>AmbientExplanationService.generate(paragraph, title, excerpt)</code>。</td>
+              </tr>
+              <tr>
+                <td>SQLite 端的读写</td>
+                <td><code data-copy="src/app/ambient/SqliteAmbientPersistenceAdapter.ts">SqliteAmbientPersistenceAdapter.ts</code><br><code data-copy="src/app/ambient/SqliteAmbientBriefingReadAdapter.ts">SqliteAmbientBriefingReadAdapter.ts</code></td>
+                <td>写 <code>ambient_push_log</code> / <code>ambient_push_action</code>；读 <code>index_state</code> + <code>mobius_node</code> 的 mtime。</td>
+              </tr>
+              <tr>
+                <td>图查询与嵌入</td>
+                <td><code data-copy="src/app/ambient/SqliteSemanticGraphTraversalAdapter.ts">SqliteSemanticGraphTraversalAdapter.ts</code></td>
+                <td>薄适配层：把 <code>getNodeIdByPath</code> / <code>getEmbedding</code> / <code>getNeighborIdsMap</code> / <code>getNodesByIds</code> 转给 Serendipity。</td>
+              </tr>
+              <tr>
+                <td>Gutter 编辑器扩展</td>
+                <td><code data-copy="src/app/ambient/SerendipityGutterPlugin.ts">SerendipityGutterPlugin.ts</code></td>
+                <td>CodeMirror6 扩展：从 store 读 <code>serendipityItem</code>，渲染行首 <code>?</code>，hover 提示，点击打开。</td>
+              </tr>
+              <tr>
+                <td>Briefing 类别判定</td>
+                <td><code data-copy="src/service/ambient/briefing/BriefingItemBuilder.ts">BriefingItemBuilder.ts</code></td>
+                <td>14 天窗口；三类候选各最多 5 条；按 score 合并。</td>
+              </tr>
+              <tr>
+                <td>settings + defaults</td>
+                <td><code data-copy="src/core/types/ambient.ts">ambient.ts</code><br><code data-copy="src/core/config/settingsTypes.ts">settingsTypes.ts</code></td>
+                <td><code>DEFAULT_AMBIENT_PUSH_SETTINGS</code>（顶层 <code>enabled: true</code>，其它见 defaults）。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>加一种新信号的最短路径</strong>
+            (1) 在 <code>AmbientSignal</code> union 里加一个 variant；(2) 在 <code>AmbientSearcher.ambientSearch</code> 里把该信号推进候选的 <code>signals</code>；(3) 在 <code>RelevanceExplainer.generateExplanation</code> 里加它的模板句 + 优先级。<em>不要</em> 直接改 <code>AmbientPushRuntime</code> —— runtime 是编排层，不该知道信号种类。
+          </div>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01。Ambient Push 是 T8 边界重构的产物；此前 <code>AmbientPushService</code> singleton 与右侧推荐面板已在 <em>codex/peak-modernization-refactor</em> 分支删除。UI 层未来变化（Current Work State / Thought Trace）参考 <a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">2026-06 那一版 spec</a>。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

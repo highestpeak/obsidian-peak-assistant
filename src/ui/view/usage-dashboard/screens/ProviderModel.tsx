@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { TimeRange } from '@/service/usage/types';
-import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { HorizontalBar, InlineTableBar, BrandAvatar } from '../components/charts';
 import type { ProviderModelStrings } from '../UsageDashboard';
 import type { ProviderId } from '@/ui/components/primitives/types';
@@ -45,14 +45,19 @@ const EMPTY_STATE: State = { providers: [], models: [], loading: true };
  * (both already existed pre-PR-Dash-3).
  */
 export function ProviderModelScreen({ range, strings }: ProviderModelScreenProps) {
+	const { usageServices } = useServiceContext();
 	const [state, setState] = useState<State>(EMPTY_STATE);
 
 	useEffect(() => {
+		if (!usageServices) {
+			setState({ ...EMPTY_STATE, loading: false });
+			return;
+		}
 		let cancelled = false;
 		setState((p) => ({ ...p, loading: true }));
 		(async () => {
 			try {
-				const svc = UsageTrackingService.getInstance();
+				const svc = usageServices.tracking;
 				const [providers, models] = await Promise.all([
 					svc.getCostBreakdown(range),
 					svc.getModelDistribution(range),
@@ -65,7 +70,7 @@ export function ProviderModelScreen({ range, strings }: ProviderModelScreenProps
 			}
 		})();
 		return () => { cancelled = true; };
-	}, [range]);
+	}, [range, usageServices]);
 
 	const totalProviderCost = state.providers.reduce((s, r) => s + r.cost, 0);
 	const totalModelTokens = state.models.reduce(

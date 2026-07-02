@@ -9,7 +9,6 @@ import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/
 import { MessageStatus } from '@/service/chat/types';
 import { TopicAggregationService } from '@/service/chat/TopicAggregationService';
 import { MESSAGE_TIMEOUT_MS } from '@/core/constant';
-import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 
 /** Engagement window for `continuation` outcome events (PR-Chat-4 §11.4). */
 const CONTINUATION_WINDOW_MS = 60_000;
@@ -26,7 +25,7 @@ export interface ChatSubmitOptions {
  * Handles conversation creation, file upload, and message streaming.
  */
 export function useChatSubmit() {
-	const { manager } = useServiceContext();
+	const { manager, usageServices } = useServiceContext();
 	const { streamChat, updateConv } = useStreamChat();
 	const { addMessage: addMessageToStore, commitStreamingMessage } = useChatDataStore();
 
@@ -157,7 +156,7 @@ export function useChatSubmit() {
 		const prevAssistantId = viewState.lastAssistantMessageId;
 		const prevTs = viewState.lastAssistantCompletedAt;
 		if (prevAssistantId && prevTs && Date.now() - prevTs < CONTINUATION_WINDOW_MS) {
-			void UsageOutcomeService.getInstance()
+			void usageServices?.outcome
 				.recordContinuation(prevAssistantId, conversation.meta.id, userMessage.id)
 				.catch((err) => {
 					console.warn('[useChatSubmit] recordContinuation failed:', err);

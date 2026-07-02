@@ -4,7 +4,7 @@
  *  - register overwrites when the same surfaceId is re-used (last-write-wins)
  *  - getAll returns adapters in stable surface-id order regardless of registration order
  *  - size() reflects the current count
- *  - resetForTest() clears the singleton — subsequent getInstance() returns a fresh registry
+ *  - a fresh `new CapabilityRegistry()` starts empty
  */
 
 import assert from 'assert';
@@ -33,8 +33,7 @@ const tests: TestCase[] = [
 	{
 		name: 'register + getById + getAll: a single adapter is discoverable',
 		run: () => {
-			CapabilityRegistry.resetForTest();
-			const reg = CapabilityRegistry.getInstance();
+			const reg = new CapabilityRegistry();
 			const adapter = makeAdapter('chat', 'Chat', [
 				{ capability: 'Conversation', status: 'ready' },
 			]);
@@ -53,8 +52,7 @@ const tests: TestCase[] = [
 	{
 		name: 'register overwrites: re-registering same surfaceId replaces previous adapter',
 		run: () => {
-			CapabilityRegistry.resetForTest();
-			const reg = CapabilityRegistry.getInstance();
+			const reg = new CapabilityRegistry();
 			const first = makeAdapter('chat', 'Chat (v1)');
 			const second = makeAdapter('chat', 'Chat (v2)');
 			reg.register(first);
@@ -73,8 +71,7 @@ const tests: TestCase[] = [
 	{
 		name: 'getAll returns adapters in stable surface-id order (chat → vault-search → ai-analysis → copilot → web-chat)',
 		run: () => {
-			CapabilityRegistry.resetForTest();
-			const reg = CapabilityRegistry.getInstance();
+			const reg = new CapabilityRegistry();
 
 			// Register out of canonical order.
 			reg.register(makeAdapter('web-chat', 'Web-enabled Chat'));
@@ -95,8 +92,7 @@ const tests: TestCase[] = [
 	{
 		name: 'getAll skips surfaces that have not registered',
 		run: () => {
-			CapabilityRegistry.resetForTest();
-			const reg = CapabilityRegistry.getInstance();
+			const reg = new CapabilityRegistry();
 			reg.register(makeAdapter('chat', 'Chat'));
 			reg.register(makeAdapter('copilot', 'Copilot'));
 
@@ -111,26 +107,23 @@ const tests: TestCase[] = [
 	},
 
 	{
-		name: 'resetForTest clears state: getInstance returns a fresh registry',
+		name: 'a fresh `new CapabilityRegistry()` starts empty',
 		run: () => {
-			CapabilityRegistry.resetForTest();
-			const first = CapabilityRegistry.getInstance();
+			const first = new CapabilityRegistry();
 			first.register(makeAdapter('chat', 'Chat'));
-			assert.strictEqual(first.size(), 1, 'first instance has one adapter');
+			assert.strictEqual(first.size(), 1, 'first registry has one adapter');
 
-			CapabilityRegistry.resetForTest();
-			const second = CapabilityRegistry.getInstance();
-			assert.notStrictEqual(second, first, 'resetForTest should produce a new singleton');
-			assert.strictEqual(second.size(), 0, 'fresh registry should be empty');
-			assert.strictEqual(second.getById('chat'), undefined, 'previously-registered adapter should be gone');
+			const second = new CapabilityRegistry();
+			assert.notStrictEqual(second, first, 'each constructor call yields a new instance');
+			assert.strictEqual(second.size(), 0, 'fresh registry starts empty');
+			assert.strictEqual(second.getById('chat'), undefined, 'previously-registered adapter is not shared');
 		},
 	},
 
 	{
 		name: 'getCapabilityStatus is invocable through the registered adapter',
 		run: async () => {
-			CapabilityRegistry.resetForTest();
-			const reg = CapabilityRegistry.getInstance();
+			const reg = new CapabilityRegistry();
 			const statuses: CapabilityStatus[] = [
 				{ capability: 'Conversation', status: 'ready' },
 				{

@@ -22,3 +22,26 @@ export {
 	InMemoryRunRecorder,
 	type InMemoryRunRecorderOptions,
 } from './InMemoryRunRecorder';
+
+export {
+	defaultClock,
+	defaultIdFactory,
+} from './helpers';
+
+export {
+	createProjectingRecorder,
+	type RunEventProjection,
+	type ProjectingRecorderHooks,
+} from './projection';
+
+export {
+	InMemoryArtifactStore,
+	type InMemoryArtifactStoreOptions,
+} from './InMemoryArtifactStore';
+
+export {
+	RunEnvelopeStore,
+	deriveEvents,
+	type EventSelector,
+	type DerivedView,
+} from './runEnvelopeStore';

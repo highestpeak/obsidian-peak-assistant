@@ -135,7 +135,6 @@
     "moreSectionActions": "ACTIONS",
     "moreRewriteSimply": "Rewrite last reply simply",
     "moreCreateChecklist": "Create implementation checklist",
-    "moreOpenRelatedNotes": "Open related notes",
     "moreAskCustomFollowup": "Ask custom follow-up…",
     "viewRawTitle": "Raw message",
     "inlineFollowupHint": "Inline reply — sent as the next message (threading lands later).",

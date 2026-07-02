@@ -5,8 +5,15 @@
 
 import type { ModelTier } from '../tier/types';
 import type { ToolDef } from './types';
+import type { ToolPort } from '@/core/ports/ToolPort';
 
-export class ToolRegistry {
+/**
+ * Concrete tool registry. Implements the read-only `ToolPort` so
+ * consumers can depend on the port interface rather than this class
+ * directly (T2 Port Sketches). Composition sites still touch the
+ * concrete class for `register` / `clear`.
+ */
+export class ToolRegistry implements ToolPort {
     private tools = new Map<string, ToolDef>();
 
     register(def: ToolDef): void {

@@ -187,7 +187,7 @@ function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
 }
 
 function useReadinessSnapshot(currentLevel: IndexLevel): ReadinessSnapshot {
-    const { vaultStats } = useServiceContext();
+    const { vaultStats, indexService } = useServiceContext();
     const [snap, setSnap] = useState<ReadinessSnapshot>({
         storeReady: false,
         indexedDocs: null,
@@ -206,10 +206,9 @@ function useReadinessSnapshot(currentLevel: IndexLevel): ReadinessSnapshot {
                 ProfileRegistry.getInstance().getActiveEmbeddingProfile() !== null;
 
             let indexedDocs: number | null = null;
-            if (storeReady) {
+            if (storeReady && indexService) {
                 try {
-                    const { IndexService } = await import('@/service/search/index/indexService');
-                    const status = await IndexService.getInstance().getIndexStatus();
+                    const status = await indexService.getIndexStatus();
                     indexedDocs = status.indexedDocs;
                 } catch {
                     indexedDocs = null;

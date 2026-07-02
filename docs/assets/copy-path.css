@@ -1,0 +1,65 @@
+/* Click-to-copy path chips — used by all root docs.
+ *
+ * Convention: <code data-copy="src/app/foo/bar.ts">bar.ts</code>
+ *   - display text = short name (filename / class / symbol)
+ *   - data-copy    = full path or symbol qname (goes to clipboard on click)
+ */
+
+code.copy-path,
+code[data-copy] {
+  cursor: pointer;
+  border-bottom: 1px dashed rgba(31, 107, 82, 0.55);
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+code.copy-path:hover,
+code[data-copy]:hover {
+  background: var(--soft-green);
+  color: var(--green);
+  border-bottom-color: var(--green);
+}
+
+code.copy-path:focus-visible,
+code[data-copy]:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+  border-bottom-color: transparent;
+}
+
+code.copy-path.just-copied,
+code[data-copy].just-copied {
+  background: var(--soft-green);
+  color: var(--green);
+  border-bottom-color: transparent;
+}
+
+.copy-path-toast {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translate(-50%, 16px);
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: rgba(20, 30, 25, 0.92);
+  color: #eef6f1;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12.5px;
+  line-height: 1.4;
+  max-width: min(560px, calc(100vw - 40px));
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 10000;
+  pointer-events: none;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  letter-spacing: 0.01em;
+  word-break: break-all;
+  text-align: center;
+}
+
+.copy-path-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}

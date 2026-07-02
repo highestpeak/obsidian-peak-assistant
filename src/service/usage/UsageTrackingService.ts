@@ -86,23 +86,20 @@ function rangeToMs(range: TimeRange): { start: number; end: number; prevStart: n
 }
 
 /**
- * Singleton service that subscribes to usage events, persists them,
- * runs daily compaction, and provides query methods for the dashboard.
+ * Service that subscribes to usage events, persists them, runs daily
+ * compaction, and provides query methods for the dashboard.
+ *
+ * Owned by the app layer via `AppRuntimeRegistry.usageServices`.
+ * Consumers reach it through `AppContext.getUsageServices().tracking`.
+ * The EventBus listener registered in `init()` MUST be released via
+ * `destroy()` before a hot reload — otherwise the new bundle double-
+ * registers and every usage event fires twice.
  */
 export class UsageTrackingService {
-	private static instance: UsageTrackingService | null = null;
-
 	private repo: UsageLogRepo | null = null;
 	private unsubscribe: (() => void) | null = null;
 	private compactionTimer: ReturnType<typeof setInterval> | null = null;
 	private settings: UsageSettings = { usageTrackingEnabled: true, usageDetailRetentionDays: 30 };
-
-	static getInstance(): UsageTrackingService {
-		if (!UsageTrackingService.instance) {
-			UsageTrackingService.instance = new UsageTrackingService();
-		}
-		return UsageTrackingService.instance;
-	}
 
 	/**
 	 * Initialize the service: create repo, subscribe to events, run compaction, start timer.
@@ -144,7 +141,6 @@ export class UsageTrackingService {
 			this.unsubscribe = null;
 		}
 		this.repo = null;
-		UsageTrackingService.instance = null;
 	}
 
 	/**

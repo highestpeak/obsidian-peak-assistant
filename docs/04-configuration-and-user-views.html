@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>04 Peak Assistant Configuration & User Views</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); font-size: 0.94em; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 0 0 8px; font-size: 20px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .warn { border-left-color: var(--gold); }
+    .warn strong { color: var(--gold); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    td code { background: var(--code-bg); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    .note-list { display: grid; gap: 10px; margin-top: 18px; }
+    .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .note-item b { display: block; margin-bottom: 3px; }
+    .note-item span { color: var(--muted); font-size: 14px; }
+    .kv { display: grid; grid-template-columns: 200px 1fr; gap: 8px 18px; margin-top: 18px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .kv dt { color: var(--ink); font-weight: 780; }
+    .kv dd { margin: 0; color: var(--muted); }
+    .kv dd code { background: var(--code-bg); }
+    .path-tree { margin-top: 20px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: var(--ink); font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 13.5px; line-height: 1.65; white-space: pre; overflow-x: auto; }
+    .path-tree .comment { color: var(--muted); }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+    @media (max-width: 980px) {
+      .kv { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">04 · Configuration & User Views · 配置项与用户视角</div>
+      <h1>用户能改什么，用户会在 Vault 里看到什么。</h1>
+      <p class="subtitle">这份文档回答两组问题：<strong>Settings 面板到底在管什么</strong>（5 个 tab 各自的边界、词汇表、Profile 与 Role 的关系），以及 <strong>安装 Peak Assistant 之后 Vault 里会长出哪些 folder 和 file</strong>（哪些是数据、哪些是给用户读的、哪些是缓存）。功能页 11/<a href="12-feature-search.html">12</a> 讲“怎么用”，这份文档只讲配置侧和用户视角。</p>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 10.4k 混合字符</span>
+        <span>Reading time: 22-26 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">这页解决什么</a>
+          <a href="#surfaces">配置入口在哪</a>
+          <a href="#vocabulary">字段与用户术语对照</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">Settings tab</span>
+          <a href="#five-tabs">5 个 Settings tab</a>
+          <a href="#profiles-and-roles">Provider、Profile 与 Role</a>
+          <a href="#indexing">Knowledge Index 深度</a>
+          <a href="#web-and-tools">Web Access 与 External Tools</a>
+          <a href="#safety-and-budget">Safety、Runtime 与预算</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">存储与生命周期</span>
+          <a href="#templates-config">templates/config 分工</a>
+          <a href="#vault-layout">Vault 里长出什么</a>
+          <a href="#lifecycle">Settings 的读写规则</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">参考</span>
+          <a href="#maintain">维护规则</a>
+          <a href="#evidence">代码证据</a>
+        </div>
+        <div class="nav-note">如果你只是要改一个开关，从 <a href="#five-tabs">五 tab</a> 反查；如果你在 Vault 里看到不认识的文件夹，跳到 <a href="#vault-layout">Vault 里长出什么</a>。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>这页解决什么</h2>
+          <p class="lead">Peak Assistant 的配置面很宽——十个左右并列的概念，用户第一眼看不出它们的关系，维护者改一个开关时也容易忘了它落在哪一层：</p>
+          <ul class="lead-list">
+            <li>模型 provider</li>
+            <li>profile</li>
+            <li>role 绑定</li>
+            <li>索引深度</li>
+            <li>web 搜索</li>
+            <li>MCP</li>
+            <li>agent runtime</li>
+            <li>safety</li>
+            <li>budget</li>
+            <li>templates</li>
+          </ul>
+          <p class="prose">这页把整个配置面的“形状”摊平，让改东西的时候有一张地图。</p>
+          <div class="claim">
+            <strong>本文读者</strong>
+            正在配置插件的用户；正在改 Settings UI、加新开关或调整默认值的维护者；想搞清楚“为什么我在 Vault 里看到 <code>ChatFolder/</code>、<code>A-control/PeakAssistant/</code> 或 <code>_skills/</code>”的人。
+          </div>
+          <div class="claim">
+            <strong>本文不做什么</strong>
+            不重复功能怎么用（那是 11/12/13/16）。不讲 Search / Chat / Agent 内部实现（那是 22/23/21）。不涉及具体 provider SDK 的接线（那放在 24-infra-provider-model-runtime）。
+          </div>
+        </section>
+
+        <section id="surfaces">
+          <h2>配置入口在哪</h2>
+          <p class="lead">同一份 <code>MyPluginSettings</code>，用户从三个不同 surface 触碰它：Settings tab、Setup Wizard、Command Center。三者共享同一份持久化，只是场景不同。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>入口</th><th>什么时候用</th><th>能改什么</th><th>持久化在哪</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Settings tab</strong><br><span class="pill green">主入口</span></td>
+                <td>已经上手的用户想改绑定、切索引深度、加 provider、调 safety。</td>
+                <td>五个 tab 覆盖 provider、role 绑定、index、tools、advanced（storage / runtime / dev tools）。</td>
+                <td>Obsidian 的 <code>data.json</code>；由 <code>PluginSettingsLoader.normalizePluginSettings()</code> 读取。</td>
+              </tr>
+              <tr>
+                <td><strong>Setup Wizard</strong><br><span class="pill blue">首次 / re-run</span></td>
+                <td>第一次装，或想让 Curator 根据当前环境重新推荐一次。</td>
+                <td>7 步引导：环境探测 → Curator 推荐 → 用户接受/编辑 → 写入 profile + role 绑定。</td>
+                <td>同一份 <code>MyPluginSettings.profileSettings</code>；Curator 只是一次性写入。</td>
+              </tr>
+              <tr>
+                <td><strong>Command Center / status bar</strong><br><span class="pill gold">运行时轻量调整</span></td>
+                <td>写作过程中要换模型、切 role、临时改 run mode。</td>
+                <td>覆盖“下一次运行”的 run settings（role / model routing / tools）；不改持久化。</td>
+                <td>Chat 视图的临时 store；退出会话即失效。</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="claim warn">
+            <strong>不要混淆持久化和临时覆盖</strong>
+            Command Center 里改的 “Auto model / Manual override / Agent / Plan” 只影响下一条消息。要让绑定永久生效，得回到 Settings → AI Setup。这是 Chat run chip 的设计约束，不是 bug。
+          </div>
+        </section>
+
+        <section id="vocabulary">
+          <h2>字段与用户术语对照</h2>
+          <p class="lead">Settings 现在跑一份统一的用户词汇，把内部技术术语一层层翻译。改 UI 文案时必须尊重这份契约，否则 AI Setup、Setup Wizard、Advanced tab 会互相打架。</p>
+          <p class="prose">这份契约由 <code>templates/config/settings.json</code> 和 <code>templates/config/onboarding.json</code> 强制。两个文件顶部都有 <code>_doc</code> 说明当前 vocabulary contract；只有 Advanced tab 允许出现“Harness”这类内部词。</p>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>内部术语</th><th>用户看到</th><th>出现的 tab / step</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Profile</strong>（<code>Profile</code> 数据结构）</td><td>Provider</td><td>AI Setup · Providers；Setup Wizard 前 3 步</td></tr>
+              <tr><td><strong>Quick tier</strong> / <code>fastModel</code></td><td>Fast Lookup</td><td>AI Setup · AI behavior；Advanced · Tier bindings</td></tr>
+              <tr><td><strong>Deep tier</strong> / <code>primaryModel</code>（agent 场景）</td><td>Research</td><td>同上</td></tr>
+              <tr><td><strong>Premium / online tier</strong></td><td>Use stronger model when needed</td><td>AI Setup；Advanced · Escalation policy</td></tr>
+              <tr><td><strong>Embedding model</strong></td><td>Knowledge Index</td><td>Knowledge Index tab；AI Setup · AI behavior</td></tr>
+              <tr><td><strong>Web search slot</strong> / <code>activeWebSearchConfig</code></td><td>Web Access</td><td>Tools tab</td></tr>
+              <tr><td><strong>MCP servers</strong></td><td>External tools</td><td>Tools tab</td></tr>
+              <tr><td><strong>Permission mode</strong></td><td>Safety</td><td>AI Setup · Safety；Advanced · Safety mode</td></tr>
+              <tr><td><strong>Agent Harness</strong></td><td>Agent runtime</td><td>仅 Advanced tab</td></tr>
+            </tbody>
+          </table>
+          <p class="read-note"><b>如果你要加新配置项：</b>先在这张契约里给它一个用户术语，再决定它出现在哪个 tab。契约里没有的词，绝大多数情况下就是这个开关不应该暴露给用户，而应该留在 templates/config 或 Advanced tab。</p>
+        </section>
+
+        <section id="five-tabs">
+          <h2>5 个 Settings tab</h2>
+          <p class="lead">Settings 由 5 个 tab 组成：<strong>Overview / AI Setup / Knowledge Index / Tools / Advanced</strong>。每个 tab 只负责一类用户任务；越靠后越偏运行时和排障。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · Settings 5 tab 的职责分布</strong>
+              <span>Mermaid · settings ownership</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  User(("用户任务"))
+  Overview["Overview<br/>readiness / summary"]
+  AISetup["AI Setup<br/>provider + role"]
+  Index["Knowledge Index<br/>深度 + 索引质量"]
+  Tools["Tools<br/>Web Access / MCP"]
+  Advanced["Advanced<br/>Runtime / Storage / Diag"]
+
+  User --> Overview
+  User --> AISetup
+  User --> Index
+  User --> Tools
+  User --> Advanced
+
+  AISetup --> Overview
+  Index --> Overview
+  Tools --> Overview
+  Advanced --> Overview
+            </div>
+            <p class="read-note"><b>读图：</b>Overview 是只读快照，反映其它 4 个 tab 的状态；用户要“修好”问题时永远从其它 tab 改，然后回 Overview 复核。</p>
+          </div>
+
+          <h3 style="margin-top: 32px;">Overview · 一眼看 Peak 是否可用</h3>
+          <p class="prose">五张卡片：Providers、AI behavior、Knowledge Index、Web Access、Safety。每张卡片是“Ready / Needs attention / Not ready / Optional”四态之一。它不直接改设置，而是把用户导向其它 tab；卡片下面挂 4 个 Actions（Run setup / Test providers / Check index / Try Chat）。</p>
+          <p class="prose">AI behavior 摘要块 (<code>overview.aiBehaviorSummary</code>) 是只读的：Conversation / Fast Lookup / Research / Use stronger model when needed 各自绑定的模型。想改绑定要跳到 AI Setup。</p>
+
+          <h3 style="margin-top: 22px;">AI Setup · Provider 和 Role 的主编辑面</h3>
+          <p class="prose">4 个 section：</p>
+          <ul>
+            <li><strong>Recommended setup</strong> — Balanced / Lowest cost / Research quality / Local &amp; private 四个预设，一键改绑定。</li>
+            <li><strong>AI behavior</strong> — Conversation / Fast Lookup / Research / Use stronger model when needed / Knowledge Index，每个 role 单独选 provider + model。</li>
+            <li><strong>Providers</strong> — 列出 profile，Test / Edit / Add Provider。</li>
+            <li><strong>Safety</strong> — 默认 permission mode。</li>
+          </ul>
+          <p class="prose">这 tab 是 Profile v2 的门面。它不直接编辑 <code>Profile</code> 对象，而是让用户看到“角色 → provider + modelId”的一对映射，中间转换由 <code>ProfileRegistry</code> 负责。</p>
+
+          <h3 style="margin-top: 22px;">Knowledge Index · 索引深度与质量</h3>
+          <p class="prose">5 个 section：</p>
+          <ul>
+            <li><strong>Knowledge Index status</strong> — vector store / indexed files / index depth 只读快照。</li>
+            <li><strong>Indexing</strong> — index depth、Auto-index on startup、Document types、Ignore patterns、Rebuild index。</li>
+            <li><strong>Search quality</strong> — Personalized PageRank 开关。</li>
+            <li><strong>Chunking</strong> — Max chunk size、Chunk overlap。</li>
+            <li><strong>AI Analysis</strong> — Auto-save results、Save folder、Recent history limit。</li>
+          </ul>
+          <p class="prose">详细的深度区别放在 <a href="#indexing">Knowledge Index 深度</a>。</p>
+
+          <h3 style="margin-top: 22px;">Tools · Web Access 与 External Tools</h3>
+          <p class="prose">两个 section：<strong>External tools</strong>（挂 MCP server），<strong>Web Access</strong>（选一个 profile 作为 web search provider；显示会被哪些 surface 使用，例如 Chat、Research）。Web Access 是 optional，没配也不影响其它功能，只是 Chat / Research 无法调 web search 工具。</p>
+
+          <h3 style="margin-top: 22px;">Advanced · 运行时、存储、诊断</h3>
+          <p class="prose">用户不常动的一层：Re-run setup wizard、Diagnostics（agent runtime + backend health）、Storage（Data storage folder + Chat root folder）、General（Attachment handling、DevTools graph inspector）。“Harness”这个词只允许在这个 tab 出现；Tier bindings、Escalation policy、Hooks 也在这里。</p>
+
+          <div class="claim">
+            <strong>为什么 5 tab 而不是一大坨</strong>
+            这次分 tab 是 2026-05-30 design-system-unification 的结果。核心判断：Overview 服务“Peak 现在有没有问题”这一个问题；AI Setup 服务“我要换模型 / 换 provider”；Knowledge Index 服务“搜索为什么不准”；Tools 服务“我想加 MCP / Web”；Advanced 服务“运行时 / 排障 / 我知道自己在做什么”。原先所有配置堆在一个 tab 时用户根本找不到入口。
+          </div>
+        </section>
+
+        <section id="profiles-and-roles">
+          <h2>Provider、Profile 与 Role</h2>
+          <p class="lead">Profile v2 是当前的模型配置数据模型。用户看到的是“Provider”和“Role”；底层结构是 <code>Profile</code> + 6 个 <code>RoleConfig</code>。</p>
+
+          <p class="prose"><code>Profile</code> 是一次能通所有 SDK 的凭据 + 模型 bundle：<code>kind</code>（anthropic / openai / google / perplexity / ollama / openrouter / litellm / custom）、<code>baseUrl</code>、<code>apiKey</code>、<code>primaryModel</code>、<code>fastModel</code>、可选 <code>embeddingEndpoint</code> / <code>embeddingModel</code>。用户在 Settings 里看到的“Provider 卡片”，一张卡就是一个 <code>Profile</code>。</p>
+
+          <p class="prose"><code>RoleConfig</code> 是一次“角色需要哪个 profile 的哪个 model”的绑定，只有 <code>profileId</code> + <code>modelId</code> 两个字段。整个插件目前用 6 个 role：</p>
+
+          <table class="doc-table identifier-first">
+<colgroup><col style="width: 24%"><col style="width: 18%"><col style="width: 30%"><col></colgroup>
+            <thead>
+              <tr><th>Role 字段</th><th>用户术语</th><th>谁在读</th><th>不配时会发生什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>activeChatConfig</code></td>
+                <td>Conversation</td>
+                <td>Chat 视图默认回答；Fast Lookup / Copilot 未绑定时回落到它。</td>
+                <td>Chat 拒答；Overview 卡片显示 Needs attention。</td>
+              </tr>
+              <tr>
+                <td><code>activeAgentFastConfig</code></td>
+                <td>Fast Lookup（local）</td>
+                <td>Agent Harness 的 fast tier；Ambient Push / 短回复。</td>
+                <td>Harness 跳过该 tier，进入 escalation。</td>
+              </tr>
+              <tr>
+                <td><code>activeAgentConfig</code></td>
+                <td>Research（local）</td>
+                <td>Vault 分析、多步 agent、长文档处理。</td>
+                <td>回落到 Conversation；agent 质量下降但仍能跑。</td>
+              </tr>
+              <tr>
+                <td><code>activeCopilotConfig</code></td>
+                <td>Copilot（继承 Research 命名）</td>
+                <td>Copilot Document lane：polish / review / links / tags。</td>
+                <td>回落到 Conversation。</td>
+              </tr>
+              <tr>
+                <td><code>activeEmbeddingConfig</code></td>
+                <td>Knowledge Index</td>
+                <td>Search 索引写入时用它算 embedding。</td>
+                <td>semantic / full 深度不可用；Search 只能跑 fast。</td>
+              </tr>
+              <tr>
+                <td><code>activeWebSearchConfig</code></td>
+                <td>Web Access</td>
+                <td>Chat + Research 里的 web search 工具。</td>
+                <td>Chat / Research 无 web search；其它功能不受影响。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="read-note"><b>Curator 只写这一层：</b>Setup Wizard 里 Curator 推荐的结果，最后落成的就是这 6 个 RoleConfig。Curator 不能创建新的 role，也不改 Profile 结构；它只是根据 <code>templates/config/curator-catalog.json</code> 里 22 个模型的元数据挑选。</p>
+
+          <div class="claim">
+            <strong>Harness 那三个 tier 又是什么</strong>
+            <code>harnessSettings.localFastConfig / localDeepConfig / onlineConfig</code> 是 Advanced tab 里的“Tier bindings”。它们和上面 6 个 role 是同类型 <code>RoleConfig</code>，但用途不同：这 3 个是 Agent Harness 内部 tier；上面 6 个是产品级 role。分开是因为 harness escalation 逻辑独立，允许 local-fast 走本地小模型、online 走云端强模型，而 Conversation / Research 的 role 绑定不必跟着切。
+          </div>
+        </section>
+
+        <section id="indexing">
+          <h2>Knowledge Index 深度</h2>
+          <p class="lead">Knowledge Index tab 最重要的一件事是 <strong>Index depth</strong>：fast / semantic / full。三档不是“质量高低”，而是“索引管线跑到哪一步”。用户看到的搜索质量、AI Analysis 能力、Ambient Push 精度都会跟着变。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>深度</th><th>索引跑到哪</th><th>用得上的功能</th><th>代价</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Fast</strong><br><span class="pill green">默认</span></td>
+                <td>标题、路径、文本分片、关键词。</td>
+                <td>Quick Search 关键词 + 标题匹配；不含语义。</td>
+                <td>无 embedding 成本；重建快。</td>
+              </tr>
+              <tr>
+                <td><strong>Semantic</strong></td>
+                <td>Fast 全部 + embedding + 语义边。</td>
+                <td>Search 支持向量召回；AI Analysis 可用；Ambient Push 更准。</td>
+                <td>需要 Knowledge Index role；首次索引消耗 embedding token。</td>
+              </tr>
+              <tr>
+                <td><strong>Full</strong></td>
+                <td>Semantic 全部 + hub 发现 + structural 补图 + 更多 enrichment。</td>
+                <td>Vault Intelligence（13）全量能力；更好的相关推荐。</td>
+                <td>索引周期显著变长；后台 job 更多。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="prose">Auto-index on startup（<code>search.autoIndex</code>）默认 <strong>关</strong>。开启后 Peak 每次 Obsidian 启动都会跑一遍当前深度的索引。ignore patterns 也在这个 tab 编辑（<code>search.ignorePatterns</code>），默认过滤 <code>.git/</code>、<code>node_modules/</code>、<code>.obsidian/</code>、<code>A-control/</code> 等；如果你把 <code>ChatFolder</code> 也想排除，得手动加。</p>
+
+          <p class="prose">Search quality 里的 <strong>Personalized PageRank</strong>（<code>search.enablePPR</code>，默认开）会在每次查询时做一次图 walk，把 keyword / vector 搜不到但图上强相关的笔记提升排名。这跟深度无关，fast 深度也能开，代价是每次查询多几十 ms。</p>
+
+          <p class="prose">Chunking 有两条最常改的参数：<code>maxChunkSize</code>（默认 1000）和 <code>chunkOverlap</code>（默认 200）。剩下的（<code>skipCodeBlocksInChunking</code>、<code>codeBlockPlaceholder</code>、<code>maxCodeChunkChars</code>）不在 UI 露出，只能通过 <code>data.json</code> 改；它们更接近 <a href="23-infra-search-index.html">23 Search Index</a> 的话题。</p>
+
+          <p class="prose">AI Analysis 区块决定“分析结果要不要保存回 Vault”：<code>aiAnalysisAutoSaveEnabled</code>（默认开）+ <code>aiAnalysisAutoSaveFolder</code>（默认 <code>ChatFolder/AI-Analysis</code>）+ <code>aiAnalysisExcludeAutoSaveFolderFromSearch</code>（默认开，避免分析结果反过来污染下次搜索）。</p>
+        </section>
+
+        <section id="web-and-tools">
+          <h2>Web Access 与 External Tools</h2>
+          <p class="lead">Tools tab 是“把外部能力接进来”：<strong>Web Access</strong> 让 Chat / Research 可以查最新信息；<strong>External tools</strong> 让 agent 可以调 MCP server。两个都是可选。</p>
+
+          <p class="prose"><strong>Web Access</strong> 通过 <code>activeWebSearchConfig</code> 绑定到一个 profile。当前 UI 只显示“Web search provider”一栏；如果没配，Chat 里的相关能力开关会显示 “Web search not configured”，但不会阻塞普通对话。触发 web search 的判断散落在 <code>CapabilitySuggestion.tsx</code>：Chat 会根据用户输入匹配 <code>CAPABILITY_SUGGESTION_PATTERNS.webSearch</code>，在合适时提示。</p>
+
+          <p class="prose"><strong>External tools</strong> 是 MCP（Model Context Protocol）server 列表，持久化在 <code>settings.mcpServers</code>。UI 目前给的能力是“加 / 删 tool server”，具体连接生命周期由 MCP 客户端管。这块和 21 Agent Harness 的 tool 权限模型直连：agent 拿到的工具集 = 内置 tools + MCP-registered tools。</p>
+
+          <div class="claim">
+            <strong>为什么放在一个 tab</strong>
+            Web search 和 MCP 从用户角度都是“外部能力入口”。放一起让用户在同一处 review 自己“开放”了哪些外部依赖，也让排障时能一次看清 Chat 为什么会去联网、agent 为什么会调外部命令。
+          </div>
+        </section>
+
+        <section id="safety-and-budget">
+          <h2>Safety、Runtime 与预算</h2>
+          <p class="lead">Safety / Agent runtime / Budget 三块合起来决定 <strong>“agent 能不能改我的 Vault、跑多少钱、跑什么引擎”</strong>。它们分别在 AI Setup（Safety 简版）、Advanced tab（全部）和 Usage Dashboard（预算显示）三处露出，但读同一份 <code>harnessSettings</code>。</p>
+
+          <h3 style="margin-top: 22px;">Safety · 三档 permission mode</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>模式</th><th>Agent 可以</th><th>Agent 不可以</th><th>默认？</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>read</code><br>Read only</td>
+                <td>读 Vault、搜索、调只读工具。</td>
+                <td>写文件、删除、跑 shell / MCP 副作用。</td>
+                <td>不是默认。</td>
+              </tr>
+              <tr>
+                <td><code>acceptEdits</code><br>Accept edits</td>
+                <td>自动执行写入类工具（含 Vault 写）。</td>
+                <td>无。适合已建立信任的场景。</td>
+                <td><span class="pill green">默认</span></td>
+              </tr>
+              <tr>
+                <td><code>bypassPermissions</code><br>Bypass safety</td>
+                <td>跳过所有 permission gate，甚至不弹确认。</td>
+                <td>UI 标红：unsafe。</td>
+                <td>不是默认。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 22px;">Runtime · 谁在跑 agent loop</h3>
+          <p class="prose">Advanced · Agent runtime 里的 <code>agentBackend</code> 有三种取值：<strong>auto</strong>（默认；有能力时用自研 Harness，个别 agent 仍走 Claude Agent SDK）、<strong>harness</strong>（强制自研；跑在 Vercel AI SDK 上，支持任何 provider）、<strong>claude-agent-sdk</strong>（走 Anthropic 官方 SDK，仅 Anthropic 模型）。</p>
+          <p class="prose">Escalation policy 是 Harness 特有的：<code>allowEscalation</code>（默认开）+ <code>maxEscalationsPerLoop</code>（1–3，默认 3）+ <code>autoEscalateScoreBelow</code>（0–1，默认 0.4）。当 self-score 低于阈值时，Harness 会尝试升到下一 tier（fast → deep → online）。详细语义放在 <a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
+
+          <h3 style="margin-top: 22px;">Budget · 4 条 alert rule</h3>
+          <p class="prose">Budget 现在直接持久化在 <code>harnessSettings.budget</code>：<code>monthlyUsd</code>（默认 40 美元；0 表示无预算）+ <code>resetDayOfMonth</code>（1–28）+ 4 条 <code>alertRules</code>。每条 rule 有独立 kind：</p>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>Kind</th><th>触发条件</th><th>用户看到的载体</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>budget_threshold</code></td><td>月度花费 ≥ threshold × 预算（默认 40%）。</td><td>Dashboard 通知。</td></tr>
+              <tr><td><code>context_compact</code></td><td>context ratio ≥ threshold（默认 0.7）。</td><td>Chat 内 inline 提示，让用户压缩。</td></tr>
+              <tr><td><code>agent_receipt</code></td><td>单次调用花费 ≥ 阈值美元（默认 0.15）或 token ≥ 5 万。</td><td>Post-task receipt。</td></tr>
+              <tr><td><code>silence_low_cost_pip</code></td><td>call cost &lt; 阈值时压制 per-message pip（默认关）。</td><td>Chat 消息旁的 pip 隐藏。</td></tr>
+            </tbody>
+          </table>
+          <p class="read-note"><b>为什么 alert rule 是闭合枚举：</b>每条 rule 都对应一个已经写好的 UI 载体（通知 / 内联提示 / receipt / 消息 pip）。<code>PluginSettingsLoader.sanitizeBudget()</code> 用 <code>ALERT_RULE_KINDS</code> 白名单过滤持久化数据，未知 kind 一律丢弃。改这里前请先确认对应载体已经存在，否则 sanitize 会把新 kind 静默清掉。</p>
+        </section>
+
+        <section id="templates-config">
+          <h2>templates/config 分工</h2>
+          <p class="lead">除了 Settings 面板里能改的开关，剩下影响用户体验的配置都在 <code>templates/config/</code>。这层不叫“数据”，叫“可编辑的配置”：随插件发货，但也允许用户覆盖。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>文件</th><th>owns</th><th>Loader / 消费者</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>settings.json</code></td>
+                <td>Settings UI 全部用户字符串 + vocabulary contract（5 tabs / Harness 词汇 / External tools）。</td>
+                <td><code>TemplateManager.loadJson(ConfigTemplateId.Settings)</code>；渲染前 fallback 到 <code>settingsStrings.ts</code>。</td>
+              </tr>
+              <tr>
+                <td><code>onboarding.json</code></td>
+                <td>Setup Wizard 全部 7 步字符串 + Curator 提示 + welcome / capabilities 文案。</td>
+                <td><code>TemplateManager.loadJson(ConfigTemplateId.Onboarding)</code>；fallback <code>onboardingStrings.ts</code>。</td>
+              </tr>
+              <tr>
+                <td><code>chat.json</code></td>
+                <td>Chat 视图所有 header / composer / runSettings / capability suggestion 用户字符串。</td>
+                <td><code>TemplateManager.loadJson(ConfigTemplateId.Chat)</code>。</td>
+              </tr>
+              <tr>
+                <td><code>dashboard.json</code></td>
+                <td>Usage Dashboard 三屏字符串 + preset alert rules 显示。</td>
+                <td><code>TemplateManager.loadJson(ConfigTemplateId.Dashboard)</code>。</td>
+              </tr>
+              <tr>
+                <td><code>curator-catalog.json</code></td>
+                <td>22 个可选模型的元数据（benchmark、cost、language、tier 适配）。Curator 推荐来源。</td>
+                <td>Setup Wizard；<code>validation.ts</code> 做硬约束校验。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="models/*.json">*.json</code></td>
+                <td>各 provider 的 model catalog（<code>claude.json</code> / <code>openai.json</code> / <code>ollama-families.json</code> 等）+ <code>_defaults.json</code>。</td>
+                <td>Provider 服务启动时加载，供 model picker 展示。</td>
+              </tr>
+              <tr>
+                <td><code>vault-lint-config.json</code></td>
+                <td>Vault Intelligence 的维度权重、阈值、时间衰减系数。</td>
+                <td><a href="#">13-feature-vault-intelligence.html</a>（planned）；lint pipeline。</td>
+              </tr>
+              <tr>
+                <td><code>time-within-normalize.json</code></td>
+                <td>时间归一化字典（“昨天 / 上周” 等自然语言 → 时间窗口）。</td>
+                <td>Search / Ambient Push 的时间感知逻辑。</td>
+              </tr>
+              <tr>
+                <td><code>community-colors.json</code></td>
+                <td>Graph / community 视图的调色板。</td>
+                <td>Graph viz。</td>
+              </tr>
+              <tr>
+                <td><code>bridge-note-template.hbs</code></td>
+                <td>Bridge note 的 handlebars 模板。</td>
+                <td>Copilot / Vault Intelligence 生成 bridge note 时。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim warn">
+            <strong>Configurability 原则</strong>
+            <code>docs/conventions/configurability.md</code> 定死了一条：以下七类都不许硬编码在逻辑文件里，必须走 <code>templates/config/</code> 加一个文档化的 domain fallback——
+            <ul>
+              <li>i18n</li>
+              <li>regex</li>
+              <li>label maps</li>
+              <li>颜色</li>
+              <li>阈值</li>
+              <li>权重</li>
+              <li>timing</li>
+            </ul>
+            加新配置项时先决定它属于哪个已有 JSON；只有当没有归属时才开新文件。
+          </div>
+        </section>
+
+        <section id="vault-layout">
+          <h2>Vault 里长出什么</h2>
+          <p class="lead">装完 Peak Assistant，Vault 里会多出几组 folder，分三类：</p>
+          <ol class="lead-list">
+            <li><strong>用户会读会写</strong> — Chat root、_prompts、_skills、_inbox。</li>
+            <li><strong>Peak 自己管理但用户会看到</strong> — Hub-Summaries、AI-Analysis、Attachments。</li>
+            <li><strong>纯数据 / 缓存</strong> — DataStore、resources-summary-cache。</li>
+          </ol>
+          <p class="prose">全部路径来自 <code>settingsTypes.ts</code> 的 <code>DEFAULT_SETTINGS</code> 和 <code>folderPaths.ts</code>。</p>
+
+          <div class="path-tree">
+&lt;Vault&gt;/
+├── <b>ChatFolder/</b>                        <span class="comment"># settings.ai.rootFolder（可改）</span>
+│   ├── Prompts/                       <span class="comment"># 用户自建 prompt；Chat prompt picker 读它</span>
+│   ├── Attachments/                   <span class="comment"># Chat 里粘/传的附件落地</span>
+│   ├── Hub-Summaries/                 <span class="comment"># Vault Intelligence 生成的 hub 摘要</span>
+│   │   └── Manual/                    <span class="comment"># 用户手写 hub note</span>
+│   ├── AI-Analysis/                   <span class="comment"># AI Analysis 自动保存结果（可关）</span>
+│   ├── resources-summary-cache/       <span class="comment"># 资源摘要缓存；用户通常不用看</span>
+│   └── system/
+│       └── User-Profile.md            <span class="comment"># AI 记住的用户偏好；用户可改</span>
+│
+├── <b>A-control/PeakAssistant/DataStore/</b>  <span class="comment"># settings.dataStorageFolder（可改）</span>
+│   ├── vault.sqlite                   <span class="comment"># 搜索 / embedding / graph（vault tenant）</span>
+│   ├── chat.sqlite                    <span class="comment"># 会话历史 / usage log + 会话的独立索引 tenant，见 <a href="23-infra-search-index.html#two-databases">23</a></span>
+│   └── ...                            <span class="comment"># backup / journal 等 SQLite 附属文件</span>
+│
+├── <b>_prompts/</b>                          <span class="comment"># settings.customPromptsFolder（可改，默认 _prompts）</span>
+├── <b>_skills/</b>                           <span class="comment"># settings.skillsFolder（可改，默认 _skills）</span>
+└── <b>_inbox/</b>                            <span class="comment"># settings.inboxFolder（可改，默认 _inbox）</span>
+          </div>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>路径</th><th>谁写</th><th>谁读</th><th>删了会怎样</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code data-copy="ChatFolder/Prompts/">Prompts/</code></td>
+                <td>用户手写；Copilot 保存 prompt 时也可能落这里。</td>
+                <td>Chat prompt picker、Copilot lane。</td>
+                <td>丢失自建 prompt；插件自身不会崩。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="ChatFolder/Attachments/">Attachments/</code></td>
+                <td>Chat 附件上传。</td>
+                <td>Chat 历史消息渲染。</td>
+                <td>历史消息里附件链接失效。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="ChatFolder/Hub-Summaries/">Hub-Summaries/</code></td>
+                <td>Vault Intelligence 的 hub summarizer。</td>
+                <td>Chat / Search / Ambient 引用 hub 时。</td>
+                <td>下次索引重建时会重生成；<code>Manual/</code> 里的手写笔记不会自动补回。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="ChatFolder/AI-Analysis/">AI-Analysis/</code></td>
+                <td>AI Analysis 自动保存（可关）。</td>
+                <td>用户回顾；默认 <em>不</em>纳入搜索（<code>aiAnalysisExcludeAutoSaveFolderFromSearch</code>）。</td>
+                <td>历史分析结果丢失；不影响下次分析。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="ChatFolder/system/User-Profile.md">User-Profile.md</code></td>
+                <td>AI 摘要 / 用户手写。</td>
+                <td>Chat 上下文装配时可被注入。</td>
+                <td>下次生成 profile 时会重建，但历史偏好丢失。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="ChatFolder/resources-summary-cache/">resources-summary-cache/</code></td>
+                <td>Peak 内部资源摘要缓存。</td>
+                <td>Peak 内部；用户不需要直接看。</td>
+                <td>重新触发摘要时会重建；只是一次性变慢。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="A-control/PeakAssistant/DataStore/">DataStore/</code></td>
+                <td>两个 SQLite 引擎写入。</td>
+                <td>Search / Chat / Ambient / Usage 都读这里。</td>
+                <td><strong>危险：</strong>搜索索引 + 全部聊天历史 + 用量数据全部丢失。删前请手动备份。</td>
+              </tr>
+              <tr>
+                <td><code>_prompts/</code></td>
+                <td>用户手写。</td>
+                <td>Peak 的 custom prompt registry。</td>
+                <td>自定义 prompt 全部丢失。</td>
+              </tr>
+              <tr>
+                <td><code>_skills/</code></td>
+                <td>用户手写 skill 定义。</td>
+                <td>Skill runtime；Copilot / Agent Harness。</td>
+                <td>自定义 skill 全部丢失。</td>
+              </tr>
+              <tr>
+                <td><code>_inbox/</code></td>
+                <td>Quick capture。</td>
+                <td>用户日常整理；Peak 一般不主动写这里。</td>
+                <td>Quick capture 记录丢失；插件不受影响。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim warn">
+            <strong>DataStore 不在 Vault index 里</strong>
+            <code>A-control/</code> 默认在 <code>search.ignorePatterns</code> 里，所以 SQLite 文件不会被 Search 当成笔记扫。改根目录时保留这条 ignore，否则你会看到大量 SQLite 二进制被当作 “markdown” 处理，索引直接崩。
+          </div>
+        </section>
+
+        <section id="lifecycle">
+          <h2>Settings 的读写规则</h2>
+          <p class="lead"><code>PluginSettingsLoader.normalizePluginSettings()</code> 是唯一把 <code>data.json</code> 转成运行时 <code>MyPluginSettings</code> 的入口。它有三个非明显规则，改配置结构前必须理解。</p>
+
+          <dl class="kv">
+            <dt>1 · Whitelist over spread</dt>
+            <dd>Loader 不做 <code>{ ...raw, ...defaults }</code>。它显式抽出每个字段，未知字段直接被丢。加新字段时必须在 loader 里补 normalize 分支，否则用户 <code>data.json</code> 里的值读不出来。</dd>
+
+            <dt>2 · Defaults 分层</dt>
+            <dd>三层默认：字段层（<code>DEFAULT_SEARCH_SETTINGS</code> / <code>DEFAULT_AI_SERVICE_SETTINGS</code> / <code>DEFAULT_HARNESS_SETTINGS</code>）、块层（<code>promptModelMap</code> 是所有 PromptId 的默认 map）、结构层（<code>DEFAULT_SETTINGS</code> 组合前两层）。加字段前先看它属于哪一层。</dd>
+
+            <dt>3 · 只 clamp 边界</dt>
+            <dd>数值字段基本都夹一次上下界：<code>shortSummaryLength</code> 50–500、<code>fullSummaryLength</code> 500–10000、<code>aiAnalysisHistoryLimit</code> 1–50、<code>maxEscalationsPerLoop</code> 1–3、<code>autoEscalateScoreBelow</code> 0–1、<code>resetDayOfMonth</code> 1–28、Ambient 的各种 cooldown 至少 1000ms。用户输错也不会崩，但 UI 组件也要跟这份界一致。</dd>
+
+            <dt>4 · Legacy migrate</dt>
+            <dd>目前只有一处：Profile 的 <code>authToken</code> → <code>apiKey</code>（loader 会读旧字段、写新字段、删旧字段）。历史迁移点尽量收敛在这一个函数；新迁移应在这里挂。</dd>
+
+            <dt>5 · Budget sanitize</dt>
+            <dd><code>sanitizeBudget()</code> 用一个 <code>ALERT_RULE_KINDS</code> 白名单过滤 alertRules。未知 kind 一律丢弃、保留默认 rule 集。加新 alert kind 前必须同步 white list。</dd>
+          </dl>
+
+          <div class="claim">
+            <strong>Settings 写入</strong>
+            插件运行时不再直接改 <code>data.json</code>，写入走 <code>PluginSettingsLoader</code> 反向序列化 + Obsidian <code>saveData()</code>。Setup Wizard、Command Center 的临时覆盖、Settings tab 三个入口都收敛到这一个 write path。
+          </div>
+        </section>
+
+        <section id="maintain">
+          <h2>维护规则</h2>
+          <p class="lead">04 最容易变成“把每个字段抄一遍”，然后半年后就跟代码脱钩。维护时按这些规则来。</p>
+          <div class="note-list">
+            <div class="note-item">
+              <b>加新 Settings 字段 = 4 处同步。</b>
+              <span><code>settingsTypes.ts</code>（interface + DEFAULT）→ <code>PluginSettingsLoader.ts</code>（normalize + clamp）→ 对应 <code>tabs/*.tsx</code>（UI）→ <code>templates/config/settings.json</code>（用户文案 + vocabulary contract）。任何一处漏掉，用户就会遇到 “设置了但没生效”。</span>
+            </div>
+            <div class="note-item">
+              <b>加新 Role 前先想它的 vocabulary。</b>
+              <span>Role 是 6 个（Chat / Agent / Agent-Fast / Copilot / Embedding / Web Search），已经吃掉了字段和用户看到的名字里的 5 个用户术语 + Web Access。加第 7 个 Role 意味着 Setup Wizard、AI Setup、Overview、StatusBar 都要同时长出对应格子。别绕开 <code>ProfileRegistry</code> 单独引一份新的绑定。</span>
+            </div>
+            <div class="note-item">
+              <b>加新 templates/config JSON 前先找归属。</b>
+              <span>已有的 9 个 JSON 各有 owner 注释和 <code>_doc</code> 声明。加新文件时先确认现有 JSON 装不下再开；开了之后必须补 <code>_doc</code> + fallback + TemplateRegistry 注册。</span>
+            </div>
+            <div class="note-item">
+              <b>改 Vault 路径 = 迁移用户数据。</b>
+              <span>ChatFolder 结构或 DataStore 路径变，必须写迁移；不能靠“下次生成时重建”。用户的 Chat 附件、Prompts、AI-Analysis 都在这些路径下，改动前想清楚旧文件怎么保留。</span>
+            </div>
+            <div class="note-item">
+              <b>Advanced tab 才是排障入口，不是隐藏抽屉。</b>
+              <span>不要把“找不到位置的开关”丢进 Advanced。Advanced 只放：Re-run wizard、Diagnostics、Storage、Attachment handling、DevTools 这种明确“运行时 / 调试”的字段。产品级开关必须待在前 4 个 tab。</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>本页说法</th><th>证据入口</th><th>用途</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>MyPluginSettings 结构与 defaults</td>
+                <td><code data-copy="src/core/config/settingsTypes.ts">settingsTypes.ts</code></td>
+                <td>确认 6 个 role、3 个 harness tier、budget alert rule kind、search 深度、chunking、AI Analysis 字段。</td>
+              </tr>
+              <tr>
+                <td>持久化读取 / clamp / migrate</td>
+                <td><code data-copy="src/app/settings/PluginSettingsLoader.ts">PluginSettingsLoader.ts</code></td>
+                <td>确认 normalize 白名单、budget sanitize、authToken → apiKey 迁移。</td>
+              </tr>
+              <tr>
+                <td>Vault 里生成的 folder 路径</td>
+                <td><code data-copy="src/core/config/folderPaths.ts">folderPaths.ts</code></td>
+                <td>确认 <code>AI_PATH_SUBFOLDERS</code>：Prompts / Attachments / resources-summary-cache / Hub-Summaries / Manual / system/User-Profile.md。</td>
+              </tr>
+              <tr>
+                <td>Profile v2 数据模型</td>
+                <td><code data-copy="src/core/profiles/types.ts">types.ts</code><br><code data-copy="src/core/profiles/ProfileRegistry.ts">ProfileRegistry.ts</code></td>
+                <td>确认 Profile / RoleConfig / 6 个 activeXxxConfig / SdkSettings。</td>
+              </tr>
+              <tr>
+                <td>Settings UI 5 tab</td>
+                <td><code data-copy="src/ui/view/settings/tabs/OverviewTab.tsx">OverviewTab.tsx</code><br><code data-copy="src/ui/view/settings/tabs/AISetupTab.tsx">AISetupTab.tsx</code><br><code data-copy="src/ui/view/settings/tabs/KnowledgeIndexTab.tsx">KnowledgeIndexTab.tsx</code><br><code data-copy="src/ui/view/settings/tabs/ToolsTab.tsx">ToolsTab.tsx</code><br><code data-copy="src/ui/view/settings/tabs/AdvancedTab.tsx">AdvancedTab.tsx</code></td>
+                <td>section 划分与用户任务对齐；vocabulary 严格来自 <code>settings.json</code>。</td>
+              </tr>
+              <tr>
+                <td>Vocabulary contract</td>
+                <td><code data-copy="templates/config/settings.json">settings.json</code>（<code>_doc</code>）<br><code data-copy="templates/config/onboarding.json">onboarding.json</code>（<code>_doc</code>）</td>
+                <td>确认 Profile→Provider / Quick→Fast Lookup / Deep→Research / Premium→Use stronger model when needed / Web Search→Web Access / MCP→External tools / Permission mode→Safety / Harness only in Advanced。</td>
+              </tr>
+              <tr>
+                <td>Web Access 的实际使用</td>
+                <td><code data-copy="src/ui/view/settings/components/StatusBar.tsx">StatusBar.tsx</code><br><code data-copy="src/ui/view/chat-view/components/messages/CapabilitySuggestion.tsx">CapabilitySuggestion.tsx</code><br><code data-copy="src/core/constant.ts">constant.ts</code>（<code>CAPABILITY_SUGGESTION_PATTERNS.webSearch</code>）</td>
+                <td>确认 role kind <code>webSearch</code>、Chat 侧的能力提示模式。</td>
+              </tr>
+              <tr>
+                <td>Curator 与模型 catalog</td>
+                <td><code data-copy="templates/config/curator-catalog.json">curator-catalog.json</code><br><code data-copy="templates/config/models/*.json">*.json</code></td>
+                <td>确认 22 个模型 + 各 provider 的 model catalog + Curator 输出落到 6 个 role。</td>
+              </tr>
+              <tr>
+                <td>Vault Intelligence 配置来源</td>
+                <td><code data-copy="templates/config/vault-lint-config.json">vault-lint-config.json</code></td>
+                <td>确认维度权重 / 阈值 / 时间衰减；13-feature-vault-intelligence 完善后回引。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01，按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="05-use-case-playbook.html">05 Use Case Playbook</a>、<a href="11-feature-chat-context.html">11 Chat Context</a>、<a href="12-feature-search.html">12 Search</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

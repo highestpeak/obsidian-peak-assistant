@@ -11,12 +11,9 @@ import type { AppHandle as App } from '@/core/ports/AppHandle';
 export { CascadeScheduler } from './CascadeScheduler';
 
 export class CascadeWorker {
-    private static instance: CascadeWorker | null = null;
     private scheduler: CascadeScheduler;
     private processing = false;
     private eventRefs: any[] = []; // Obsidian EventRef[]
-
-    static getInstance(): CascadeWorker | null { return CascadeWorker.instance; }
 
     constructor(
         private readonly app: App,
@@ -37,7 +34,10 @@ export class CascadeWorker {
             idleDelayMs: CASCADE_IDLE_DELAY_MS,
             onIdle: () => void this.drainDebt(),
         });
-        CascadeWorker.instance = this;
+        // T13-followup (2026-07-02): the previous `static instance` +
+        // `getInstance()` singleton was a T13 miss. Removed — the sole
+        // consumer (`SearchUpdateListener`) now receives the worker via
+        // constructor DI from `main.ts`.
     }
 
     start(): void {
@@ -234,6 +234,5 @@ export class CascadeWorker {
         this.scheduler.dispose();
         for (const ref of this.eventRefs) this.app.vault.offref(ref);
         this.eventRefs = [];
-        CascadeWorker.instance = null;
     }
 }

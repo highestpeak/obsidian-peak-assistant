@@ -11,6 +11,7 @@ import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import type { AgentTool } from '@/service/tools/types';
 import type { ZodObject, ZodRawShape } from 'zod/v3';
 import { getAllMcpAgentTools } from '@/service/mcp/MCPToolAdapter';
+import type { MCPClientManager } from '@/service/mcp/MCPClientManager';
 
 /**
  * Convert a record of AgentTool instances into an Agent SDK MCP server config.
@@ -67,8 +68,10 @@ export function mcpToolNames(serverName: string, tools: Record<string, unknown>)
  */
 export function mergeExternalMcpTools(
 	builtinTools: Record<string, AgentTool>,
+	manager: MCPClientManager | null,
 ): Record<string, AgentTool> {
-	const externalTools = getAllMcpAgentTools();
+	if (!manager) return builtinTools;
+	const externalTools = getAllMcpAgentTools(manager);
 	if (Object.keys(externalTools).length === 0) return builtinTools;
 	return { ...builtinTools, ...externalTools };
 }

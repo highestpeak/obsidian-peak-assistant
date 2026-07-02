@@ -10,7 +10,6 @@ import {
 	openCopilotReviewHistory,
 	openHarnessSetupWizard,
 	openQuickSearch,
-	openRelatedNotes,
 	openSettingsModal,
 	openUsageDashboard,
 } from '@/app/commands/PeakCommandActions';
@@ -71,11 +70,6 @@ export function buildCoreCommands(
 			id: 'peak-usage-dashboard',
 			name: 'Usage Dashboard',
 			callback: openUsageDashboard,
-		},
-		{
-			id: 'peak-related-notes',
-			name: 'Open Related Notes',
-			callback: openRelatedNotes,
 		},
 		{
 			id: 'peak-harness-setup-wizard',

@@ -75,8 +75,10 @@ export async function* runKnowledgeIntuitionLoop(options: {
 	/** T11J B1: caller passes app + pluginId so this module no longer reaches AppContext. */
 	app: import('@/core/ports/AppHandle').AppHandle;
 	pluginId: string;
+	/** T13: MCP client manager injected so this module never reaches AppContext. */
+	mcpClientManager: import('@/service/mcp/MCPClientManager').MCPClientManager | null;
 }): AsyncGenerator<LLMStreamEvent, void> {
-	const { ctx, stepId, aiServiceManager, onComplete, debug, app, pluginId } = options;
+	const { ctx, stepId, aiServiceManager, onComplete, debug, app, pluginId, mcpClientManager } = options;
 	const stopwatch = new Stopwatch('Knowledge intuition recon');
 	const getEnv = () => exploreFolderEnvFromManager(aiServiceManager);
 	const tools = {
@@ -111,7 +113,7 @@ export async function* runKnowledgeIntuitionLoop(options: {
 	];
 
 	// Build MCP server and tool names once (tools don't change across iterations)
-	const allTools = mergeExternalMcpTools(tools);
+	const allTools = mergeExternalMcpTools(tools, mcpClientManager);
 	const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, allTools);
 	const allowedTools = mcpToolNames(MCP_SERVER_NAME, allTools);
 

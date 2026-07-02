@@ -150,7 +150,6 @@ export interface ChatStrings {
 		moreSectionActions: string;
 		moreRewriteSimply: string;
 		moreCreateChecklist: string;
-		moreOpenRelatedNotes: string;
 		moreAskCustomFollowup: string;
 		viewRawTitle: string;
 		inlineFollowupHint: string;

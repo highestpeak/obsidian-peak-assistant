@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { TimeRange } from '@/service/usage/types';
 import type { UsageLogRow } from '@/core/storage/sqlite/ddl';
-import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { NumberedPager, BrandAvatar } from '../components/charts';
 import { WhatWasThisAbout } from '../components/WhatWasThisAbout';
 import type { DetailPanelStrings } from '../UsageDashboard';
@@ -23,6 +23,7 @@ const PAGE_SIZE = 25;
  * second.
  */
 export function HistoryScreen({ range, detailStrings }: HistoryScreenProps) {
+	const { usageServices } = useServiceContext();
 	const [page, setPage] = useState(1);
 	const [rows, setRows] = useState<UsageLogRow[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -35,11 +36,12 @@ export function HistoryScreen({ range, detailStrings }: HistoryScreenProps) {
 	}, [range]);
 
 	useEffect(() => {
+		if (!usageServices) return;
 		let cancelled = false;
 		setLoading(true);
 		(async () => {
 			try {
-				const svc = UsageTrackingService.getInstance();
+				const svc = usageServices.tracking;
 				// Fetch one page worth + a probe row to know if "next" exists.
 				const fetched = await svc.getRecentCalls(
 					range,
@@ -59,7 +61,7 @@ export function HistoryScreen({ range, detailStrings }: HistoryScreenProps) {
 			}
 		})();
 		return () => { cancelled = true; };
-	}, [range, page]);
+	}, [range, page, usageServices]);
 
 	const visible = useMemo(() => rows.slice(0, PAGE_SIZE), [rows]);
 	const hasNext = rows.length > PAGE_SIZE;

@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>22 Peak Assistant Infra · Context Pipeline</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); font-size: 0.94em; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 0 0 8px; font-size: 20px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .warn { border-left-color: var(--gold); }
+    .warn strong { color: var(--gold); }
+    .danger { border-left-color: var(--red); }
+    .danger strong { color: var(--red); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    td code { background: var(--code-bg); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    .note-list { display: grid; gap: 10px; margin-top: 18px; }
+    .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .note-item b { display: block; margin-bottom: 3px; }
+    .note-item span { color: var(--muted); font-size: 14px; }
+    .kv { display: grid; grid-template-columns: 200px 1fr; gap: 8px 18px; margin-top: 18px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .kv dt { color: var(--ink); font-weight: 780; }
+    .kv dd { margin: 0; color: var(--muted); }
+    .kv dd code { background: var(--code-bg); }
+    .path-tree { margin-top: 20px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: var(--ink); font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 13.5px; line-height: 1.65; white-space: pre; overflow-x: auto; }
+    .path-tree .comment { color: var(--muted); }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+    @media (max-width: 980px) {
+      .kv { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">22 · Infra · Context Pipeline · 让四个 surface 说同一种上下文</div>
+      <h1>Chat、Agent、Ambient、Command Gateway 在同一份原语上装配上下文。</h1>
+      <p class="subtitle">这份文档回答一个问题：<strong>如果你要新加一个 AI surface，怎么让它跟已有的 Chat / Agent / Ambient 用同一套上下文规则，而不是重新发明一套 prompt 系统？</strong></p>
+      <p class="subtitle"><strong>结论前置</strong>：Peak 目前没有一个叫 <code>ContextPipeline</code> 的共享大模块，而是<em>一组共享原语 + 每个 surface 自己的装配器</em>。共享原语有五件：</p>
+      <ul class="subtitle-list">
+        <li><code>PromptService</code></li>
+        <li><code>LLMStreamEvent</code></li>
+        <li><code>SessionContextService</code></li>
+        <li><code>templates/config</code></li>
+        <li><code>ModelCapabilities</code></li>
+      </ul>
+      <p class="subtitle">这份文档把共享的和分歧的部分摊开。</p>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 10.1k 混合字符</span>
+        <span>Reading time: 22-26 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">这页解决什么</a>
+          <a href="#shared-primitives">共享原语</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">装配流水</span>
+          <a href="#assembly">四个 surface 各自装配</a>
+          <a href="#compression">预算和压缩</a>
+          <a href="#rendering">装配好之后怎么进模型</a>
+          <a href="#tenancy">每个 surface 的隔离</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">失败与演进</span>
+          <a href="#failure-modes">典型失败模式</a>
+          <a href="#roadmap">Roadmap 与未合并的部分</a>
+          <a href="#maintain">加新 surface 时的规则</a>
+          <a href="#evidence">代码证据</a>
+        </div>
+        <div class="nav-note">如果你要改 Chat 的 slot 顺序，回 <a href="11-feature-chat-context.html">11</a>；如果你要改 harness 的 tool loop，去 <a href="21-infra-agent-harness.html">21</a>；这一页只讲跨 surface 的共同结构。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>这页解决什么</h2>
+          <p class="lead">Peak Assistant 里“把东西喂给模型”的地方不止一处。Chat 视图有 <code>ContextPipeline</code>；自研 Agent Harness 有 <code>ContextManager</code> 加 <code>MemoryBlock</code>；Ambient Push 只是渲染两条 prompt 模板；Command Gateway 还没落地。四个 surface 都自己写自己的装配逻辑，但它们必须落到相同的下游：同一份 provider adapter、同一份 <code>LLMStreamEvent</code>、同一份 <code>templates/config/</code>、同一个 <code>SessionContextService</code>。这页就是把这条“共同下游”和四条“各自上游”摊开。</p>
+          <div class="claim">
+            <strong>本文读者</strong>
+            正在设计新 AI surface 的维护者（Copilot lane、Vault Intelligence、Command Gateway、未来任何 headless job）；要改动跨 surface 原语（Prompt、LLMStreamEvent、SessionContextService）的人；想搞清楚“为什么 Chat 有 8 个 slot，Agent 有 MemoryBlock，Ambient 却只有两条 prompt”的人。
+          </div>
+          <div class="claim warn">
+            <strong>本文不重复解释</strong>
+            Chat 侧的 slot 顺序、预算细节、mode 分支 — 那是 <a href="11-feature-chat-context.html">11 Chat Context</a>。Agent 的 tool loop、tier escalation、hook 生命周期 — 那是 <a href="21-infra-agent-harness.html">21 Agent Harness</a>。Provider SDK 接线、模型注册表、Vercel adapter — 那放在 24 Provider Model Runtime（未写）。这里只讲跨 surface 的形状。
+          </div>
+          <div class="claim danger">
+            <strong>形态诚实：目前没有单一 <code>ContextPipeline</code> 拥有者</strong>
+            2026-05-02 的 spec（<code>docs/superpowers/specs/2026-05-02-unified-context-pipeline-design.md</code>）设想 Chat / AI Analysis / Copilot / Followup / Ambient 都统一走一个 <code>ContextPipeline.assemble(profile, ctx)</code>。今天只有 Chat 用上了这个 pipeline；其它 surface 走各自的路径。所以本文描述的“共享”是<em>共享原语</em>，不是<em>共享装配器</em>。这是一个 <strong>de facto shared primitives</strong> 状态，不是 <strong>single owned module</strong>。roadmap 见 <a href="#roadmap">§ Roadmap</a>。
+          </div>
+        </section>
+
+        <section id="shared-primitives">
+          <h2>共享原语：所有 surface 都得走这条底盘</h2>
+          <p class="lead">虽然装配器各写各的，但四个 surface 最终喂给模型的东西必须落到一组共享原语。改这些原语就是在改所有 surface 的语言。</p>
+
+          <h3 style="margin-top: 22px;">PromptService + TemplateManager + PromptId</h3>
+          <dl class="field-list">
+            <dt>Owner</dt><dd><code data-copy="src/service/prompt/PromptService.ts">PromptService.ts</code> · <code data-copy="src/core/template/TemplateManager.ts">TemplateManager.ts</code></dd>
+            <dt>谁用</dt><dd>Chat 的 <code>SystemPromptSlot</code>；Agent 的 <code>renderPrompt</code>；Ambient 的 <code>AmbientExplanationService</code>；所有 subagent；Curator</dd>
+            <dt>破坏后果</dt><dd>四个 surface 各写各的 prompt 字符串；templates/config 契约失效</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">LLMRequestMessage（+ <code>ModelMessage</code> for harness）</h3>
+          <dl class="field-list">
+            <dt>Owner</dt><dd><code data-copy="src/core/providers/types.ts">types.ts</code></dd>
+            <dt>谁用</dt><dd>Chat 的 <code>ContextPipeline</code> 输出；Ambient 的 <code>collectText</code>；SDK adapter <code>vercelStreamChat</code>；Harness 的 <code>generateText</code>（走 ai-sdk 的 <code>ModelMessage</code>，与本类型对齐但类型不同）</dd>
+            <dt>破坏后果</dt><dd>Provider adapter 接收异构 payload；tool-call round-trip 碎裂</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">LLMStreamEvent</h3>
+          <dl class="field-list">
+            <dt>Owner</dt><dd><code data-copy="src/core/providers/types.ts">types.ts</code>（line 391）</dd>
+            <dt>谁用</dt><dd>所有流式 surface：Chat / Agent / Ambient Explanation / Copilot；tool-call / tool-result / progress / agent-step-progress 都是本类型</dd>
+            <dt>破坏后果</dt><dd>UI（<code>ToolCallSummary.tsx</code>）不知怎么渲染；trace 无法落表；预算统计错乱</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">ModelCapabilities</h3>
+          <dl class="field-list">
+            <dt>Owner</dt><dd><code data-copy="src/core/providers/types.ts">types.ts</code></dd>
+            <dt>谁用</dt><dd>Chat 的 <code>ContextPipeline.resolveBudget()</code>；Harness 的 tier 上下文预算；未来 Command Gateway 的路由决策</dd>
+            <dt>破坏后果</dt><dd>预算算错、模型窗口被超；用户看到“对话突然忘了前面”</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">SessionContextService（singleton）</h3>
+          <dl class="field-list">
+            <dt>Owner</dt><dd><code data-copy="src/service/context/SessionContextService.ts">SessionContextService.ts</code></dd>
+            <dt>谁用</dt><dd>Chat 的 <code>ActivityIndexSlot</code> / <code>WorkingContextSlot</code>；Ambient 经此记录 push；Vault Intelligence 也读它</dd>
+            <dt>破坏后果</dt><dd>每 surface 自维护“最近做了什么”；重复 SQLite 读；working theme 不一致</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">templates/config/*.json</h3>
+          <dl class="field-list">
+            <dt>Owner</dt><dd><code data-copy="templates/config/">config/</code></dd>
+            <dt>谁用</dt><dd>UI 用户文案、prompt fallback、chunking 阈值、colors——见 <a href="04-configuration-and-user-views.html#templates-config">04 § templates/config 分工</a>；任何字符串 / regex / 阈值必须走这里</dd>
+            <dt>破坏后果</dt><dd>硬编码用户文案；违反 <code>docs/conventions/configurability.md</code></dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">RunEnvelope（<code>RunSession</code> + <code>RunEvent</code>）</h3>
+          <dl class="field-list">
+            <dt>Owner</dt><dd><code data-copy="src/service/run-envelope/">run-envelope/</code></dd>
+            <dt>谁用</dt><dd>Vault Lint / 未来 headless capability 记录一次 run 的 status/progress/artifact。<em>不装</em>上下文，只装运行结果</dd>
+            <dt>破坏后果</dt><dd>capability 运行无可 replay 痕迹；observability 拆散</dd>
+          </dl>
+
+          <p class="read-note"><b>要看清一件事：</b>RunEnvelope 的名字容易误导。它不装 prompt、不装 messages、不装 slots — 它只装<em>“capability X 从 T1 到 T2 发生了什么”</em>。装 prompt 的是 PromptService + Slot；装 messages 的是每 surface 的装配器。想让 RunEnvelope 变成“跨 surface 上下文封套”是 T3+ 才可能考虑的事，见 <a href="#roadmap">§ Roadmap</a>。</p>
+
+          <div class="claim">
+            <strong>SessionContextService 是最容易被忽视的共享原语</strong>
+            它是唯一一个跨 Chat / Ambient / Vault Intelligence 的“最近发生了什么”的事实源。Chat 通过 <code>SlotBuildContext.sessionContext</code> 拿到它；Ambient 通过 <code>ports.persistence</code> 把 push 写回；Vault Intelligence 通过 SQLite 直接读 <code>mobius_operation</code> 表（同一份数据）。新 surface 想“知道用户最近在忙什么”，第一选择永远是 <code>SessionContextService.getInstance()</code>，不是自己去 scan file-open。
+          </div>
+        </section>
+
+        <section id="assembly">
+          <h2>四个 surface 各自装配</h2>
+          <p class="lead">上下文装配今天分四路。共享的是右侧下游（PromptService、messages、provider stream、SessionContext）；不共享的是左侧上游（每个 surface 自己怎么把当前工作现场变成一份可发的东西）。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · 四个 surface 的装配路径（共享 vs surface-specific）</strong>
+              <span>Mermaid · assembly overview</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  subgraph Chat["Chat surface"]
+    C1["ConversationService.prepareChatRequest()"]
+    C2["ContextPipeline.assemble(ChatProfile)"]
+    C3["8 slots<br/>system/recent/working/summary/...<br/>via SlotBuildContext"]
+    C4["BudgetGovernor.fit()"]
+  end
+  subgraph Agent["Agent Harness surface"]
+    A1["runAgentLoop(cfg)"]
+    A2["initialMessages<br/>+ baseSystemPrompt"]
+    A3["MemoryStore<br/>MemoryBlock[]"]
+    A4["ContextManager.compactIfNeeded()"]
+  end
+  subgraph Ambient["Ambient surface"]
+    M1["AmbientPushRuntime.handleTrigger()"]
+    M2["ContextExtractor<br/>(paragraph + outlinks + headings)"]
+    M3["AmbientExplanationService.generate()"]
+    M4["2 prompts via TemplateManager<br/>(system + user)"]
+  end
+  subgraph Gateway["Command Gateway (spec-only)"]
+    G1["未实现"]
+    G2["spec 假设: 复用 ChatProfile<br/>或走独立 profile"]
+  end
+
+  Shared[["Shared downstream<br/>LLMRequestMessage[] / ModelMessage[]<br/>+ LLMStreamEvent + PromptService<br/>+ SessionContextService"]]
+
+  C1 --> C2 --> C3 --> C4 --> Shared
+  A1 --> A2 --> A3 --> A4 --> Shared
+  M1 --> M2 --> M3 --> M4 --> Shared
+  G1 -.-> G2 -.-> Shared
+            </div>
+            <p class="read-note"><b>读图：</b>四个 surface 直到最后一步才共用同一份下游。Chat 走 slot-based；Agent 走 message-based + MemoryBlock；Ambient 走 direct prompt render；Command Gateway 是虚线（未实现）。</p>
+          </div>
+
+          <h3 style="margin-top: 32px;">Chat · slot-based assembly（已实现）</h3>
+          <dl class="field-list">
+            <dt>入口</dt>
+            <dd><code>ConversationService.prepareChatRequest()</code></dd>
+            <dt>文件</dt>
+            <dd><code data-copy="src/service/chat/service-conversation.ts:235">service-conversation.ts:235</code></dd>
+            <dt>装配输入</dt>
+            <dd><code>SlotBuildContext</code>：sessionContext / conversation / project / messages / activeFilePath / modelCapabilities / app，加上传入的 <code>ChatProfile</code>。</dd>
+            <dt>装配流程</dt>
+            <dd>调用 <code>ContextPipeline.assemble()</code>，Pipeline 并行 build 所有 slot → 跑 <code>BudgetGovernor.fit()</code> → 按 profile 顺序 render 成 <code>LLMRequestMessage[]</code>。</dd>
+            <dt>Slot 详情</dt>
+            <dd>8 个 slot 的职责见 <a href="11-feature-chat-context.html#slots">11 § 当前启用的 slots</a>。</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">Agent Harness · message + memory block（已实现）</h3>
+          <dl class="field-list">
+            <dt>入口</dt>
+            <dd><code>runAgentLoop(cfg)</code></dd>
+            <dt>文件</dt>
+            <dd><code data-copy="src/service/agents/harness/loop/AgentLoop.ts">AgentLoop.ts</code></dd>
+            <dt>装配输入</dt>
+            <dd><code>cfg.initialMessages: ModelMessage[]</code> + <code>cfg.systemPrompt</code>；额外上下文进 <code>MemoryBlock[]</code>（named + prioritized + evictable）。</dd>
+            <dt>每步前处理</dt>
+            <dd><code>ContextManager.compactIfNeeded(messages, blocks)</code> 三段式压缩：<strong>drop lowest-priority evictable → slide window → LLM summarise (TODO)</strong>。</dd>
+            <dt>最终 prompt</dt>
+            <dd><code>composeSystemPrompt(baseSystemPrompt, keptBlocks)</code> 把幸存 block 拼进 system prompt。</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">Ambient Push · 直接 prompt 渲染（已实现）</h3>
+          <dl class="field-list">
+            <dt>入口</dt>
+            <dd><code>AmbientPushRuntime.handleTrigger()</code></dd>
+            <dt>文件</dt>
+            <dd><code data-copy="src/service/ambient/AmbientPushRuntime.ts:102">AmbientPushRuntime.ts:102</code></dd>
+            <dt>抽本地文本</dt>
+            <dd><code>ContextExtractor</code>：<code>extractParagraphAtLine</code> / <code>extractOutlinks</code> / <code>extractHeadings</code>，然后走 search。</dd>
+            <dt>喂给模型</dt>
+            <dd>tier-2 的 <code>AmbientExplanationService.generate()</code> 只调 <code>TemplateManager.render(PromptId.AmbientExplanation{System,User})</code>，然后 <code>llm.collectText({ prompt, systemPrompt })</code>。</dd>
+            <dt>不做的事</dt>
+            <dd><strong>没有 slot、没有预算治理、没有历史消息</strong>——Ambient 是单条 explanation，不是多轮对话。</dd>
+          </dl>
+
+          <h3 style="margin-top: 22px;">Command Gateway · 未实现（T12 capstone）</h3>
+          <dl class="field-list">
+            <dt>状态</dt>
+            <dd>Spec 已定，代码未起。审阅 packet <code>2026-06-27-t11o</code> / <code>2026-06-26-t11m/n</code> 明确 "Do not start Command Gateway yet"。</dd>
+            <dt>Spec</dt>
+            <dd><code data-copy="docs/superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">command-gateway-capstone-review.html</code></dd>
+            <dt>代码</dt>
+            <dd>目前 <code>src/</code> 下没有 <code>CommandGateway</code> 命名的类。</dd>
+            <dt>落地路径</dt>
+            <dd>建议<strong>复用 ChatProfile 或注册 GatewayProfile 走同一份 ContextPipeline</strong>，不再造第四套装配器。见 <a href="#roadmap">§ Roadmap</a>。</dd>
+          </dl>
+
+          <table class="doc-table">
+<colgroup><col style="width: 18%"><col><col><col><col></colgroup>
+            <thead>
+              <tr><th>Surface</th><th>装配单元</th><th>预算</th><th>历史消息</th><th>动态发现</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Chat</strong><br><span class="pill green">shipped</span></td>
+                <td>8 slots @ ChatProfile</td>
+                <td>auto（<code>maxCtx − 8192 − 5%</code>）</td>
+                <td>RecentMessagesSlot（默认 20）</td>
+                <td>SlotBuildContext.sessionContext</td>
+              </tr>
+              <tr>
+                <td><strong>Agent</strong><br><span class="pill green">shipped</span></td>
+                <td>MemoryBlock[] + baseSystemPrompt</td>
+                <td>ContextManagerConfig.maxTokens（tier 决定）</td>
+                <td>由 caller 传 initialMessages</td>
+                <td>subagent tool；memory block priority</td>
+              </tr>
+              <tr>
+                <td><strong>Ambient</strong><br><span class="pill green">shipped</span></td>
+                <td>2 prompt templates + 抽取的段落/链接</td>
+                <td>硬 clamp：<code>PARAGRAPH_INPUT_LIMIT = 300</code>、<code>EXCERPT_INPUT_LIMIT = 200</code></td>
+                <td>无</td>
+                <td>无（只看当前段落）</td>
+              </tr>
+              <tr>
+                <td><strong>Command Gateway</strong><br><span class="pill gold">spec-only</span></td>
+                <td>未定 — spec 建议复用 ChatProfile</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="compression">
+          <h2>预算和压缩：两套算法，一个用户契约</h2>
+          <p class="lead">Chat 和 Agent 各写各的压缩，但它们对外的用户契约是共享的：Settings 里那条 <code>context_compact</code> 的 alert rule（阈值默认 0.7），Chat 里的 inline “context ratio 提示”，Usage Dashboard 里的“上下文健康度”，都读同一份阈值。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · Chat 与 Agent 的压缩流程 + 共同的用户契约</strong>
+              <span>Mermaid · compression flow</span>
+            </div>
+            <div class="mermaid">
+flowchart TB
+  subgraph ChatComp["Chat · BudgetGovernor.fit()"]
+    CH1["Phase 0<br/>超过 maxTokens 的 slot<br/>先按 L1/L2/L3 压缩"]
+    CH2["totalTokens > totalBudget?"]
+    CH3["Phase 1<br/>低优先级 non-required 逐个压缩"]
+    CH4["Phase 2<br/>仍超预算则 drop non-required"]
+    CH5["Render"]
+    CH1 --> CH2
+    CH2 -- yes --> CH3 --> CH4 --> CH5
+    CH2 -- no --> CH5
+  end
+  subgraph AgentComp["Agent · ContextManager.compactIfNeeded()"]
+    AG1["Stage a<br/>drop evictable blocks<br/>lowest priority first"]
+    AG2["Stage b<br/>slide window over messages<br/>keep last N + system"]
+    AG3["Stage c<br/>LLM summarise (TODO)"]
+    AG1 --> AG2 --> AG3
+  end
+  Rule[["templates/config/settings.json<br/>harnessSettings.budget.alertRules<br/>{ kind: 'context_compact', threshold: 0.7 }"]]
+  Rule --> ChatComp
+  Rule --> AgentComp
+  Rule --> UI["Chat inline 提示<br/>+ Usage Dashboard<br/>+ Copilot receipt"]
+            </div>
+            <p class="read-note"><b>读图：</b>两套压缩算法互不相通（Chat 是 slot-based、Agent 是 message + block），但阈值来源同一份 Settings（<code>04</code> § Budget · 4 条 alert rule）。用户不需要知道“底下是哪套算法”；他只需要知道“70% 到了会被提醒”。</p>
+          </div>
+
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>维度</th><th>Chat（BudgetGovernor）</th><th>Agent（ContextManager）</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>装配单元</strong></td>
+                <td>slot（有 priority / required / maxCompressionLevel）</td>
+                <td>MemoryBlock（有 priority / evictable / tokenBudget）</td>
+              </tr>
+              <tr>
+                <td><strong>预算来源</strong></td>
+                <td><code>modelCapabilities.maxCtx − 8192 − 5%</code></td>
+                <td><code>ContextManagerConfig.maxTokens</code>（由 tier 决定）</td>
+              </tr>
+              <tr>
+                <td><strong>触发条件</strong></td>
+                <td><code>totalTokens > totalBudget</code>（immediate）</td>
+                <td><code>estimateTokens ≥ maxTokens × compactionThreshold</code>（默认 0.8）</td>
+              </tr>
+              <tr>
+                <td><strong>Token 估算</strong></td>
+                <td><code>estimateTokensFromText</code>（CJK ≈ 1 token/char，其它 1/3.5）</td>
+                <td><code>estimateObjectSize</code>（chars/4，与 <code>token-estimation.ts</code> 共享）</td>
+              </tr>
+              <tr>
+                <td><strong>牺牲顺序</strong></td>
+                <td>低 priority 的 non-required slot → L1/L2/L3 压缩 → drop</td>
+                <td>低 priority 的 evictable block → slide window → LLM summarise (TODO)</td>
+              </tr>
+              <tr>
+                <td><strong>永远不动</strong></td>
+                <td><code>required: true</code> 的 slot（system-prompt / recent-messages）</td>
+                <td><code>evictable: false</code> 的 block；system 消息</td>
+              </tr>
+              <tr>
+                <td><strong>Trace 事件</strong></td>
+                <td><code>tool-call context-pipeline:budget-govern</code></td>
+                <td><code>context_compacted</code>（TraceBus）</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim warn">
+            <strong>两套估算函数不是巧合，是历史</strong>
+            Chat 的 <code>estimateTokensFromText</code>（CJK 1:1）比 Agent 的 <code>chars/4</code> 精确一些，但 Agent 侧的调用点在 ai-sdk <code>ModelMessage</code> 上，用 chars/4 是为了跟 <code>token-estimation.ts</code> 保持一致（那份是全局共享的 SDK 消息估算器）。想合并成一个，需要先把 Chat slot 里的 <code>estimateTokensFromText</code> 改成 <code>estimateObjectSize</code>，并确认 CJK 用户不会突然感觉预算变紧。这是 low-risk 但没紧迫性的改动，roadmap 里挂着。
+          </div>
+        </section>
+
+        <section id="rendering">
+          <h2>装配好之后怎么进模型</h2>
+          <p class="lead">四个 surface 最后一步都走同一条 provider stream。产出是 <code>AsyncGenerator&lt;LLMStreamEvent&gt;</code>，消费者（UI 或 agent loop）拉取事件序列。</p>
+
+          <p class="prose"><strong>Chat</strong> 把 <code>ContextPipeline.assemble</code> 的最终 <code>LLMRequestMessage[]</code>、mode-specific 的 tools（<code>buildChatTools</code>）、outputControl 一起交给 <code>vercelStreamChat</code>（<code>src/core/providers/vercel/index.ts</code>）。Plan mode 会 prepend 一段 planning system prompt；Agent mode 会附带 tools + <code>maxSteps</code>。</p>
+
+          <p class="prose"><strong>Agent Harness</strong> 直接走 <code>generateText({ model, system, messages, tools, stopWhen: stepCountIs(1) })</code> — 一次 step 一个 <code>generateText</code> 调用；tool 用 ai-sdk 的 <code>tool()</code> 包装，返回值是 <code>ToolResult</code> envelope 的 JSON。<code>TraceBus</code> 把 <code>step</code> / <code>tool_call</code> / <code>tool_result</code> / <code>context_compacted</code> / <code>escalate</code> emit 出去。</p>
+
+          <p class="prose"><strong>Ambient Explanation</strong> 走最短路径：<code>llm.collectText({ prompt, systemPrompt })</code> 返回一个 <code>string | null</code>。它不需要 tool、不需要多步、不需要预算 — <code>AmbientExplanationLlmPort</code> 是 adapter 层直接把 <code>queryWithProfile</code> 的流吃掉，concat 成字符串。<code>PushCard</code> 上再做 <code>line-clamp</code>。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+            <thead>
+              <tr><th>Surface</th><th>输出的最小单元</th><th>Tool call round-trip？</th><th>UI 消费者</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Chat</strong></td>
+                <td><code>LLMStreamEvent</code> 流（RawStream + tool-call + tool-result + agent-step-progress）</td>
+                <td>Agent mode 时是；Chat mode 时否；Plan mode 时否</td>
+                <td><code>useChatStore</code> + <code>MessageViewItem.tsx</code> + <code>ToolCallSummary.tsx</code></td>
+              </tr>
+              <tr>
+                <td><strong>Agent</strong></td>
+                <td><code>StepResult[]</code> + <code>TraceEvent</code> 流</td>
+                <td>是（tool 是 loop 的核心）</td>
+                <td>Analysis view / Vault Intelligence 视图</td>
+              </tr>
+              <tr>
+                <td><strong>Ambient</strong></td>
+                <td>单条 <code>string | null</code></td>
+                <td>否</td>
+                <td><code>PushCard</code> 内联</td>
+              </tr>
+              <tr>
+                <td><strong>Command Gateway</strong></td>
+                <td>spec 未定；预计走 <code>LLMStreamEvent</code></td>
+                <td>预计是</td>
+                <td>Command Palette / notification</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>LLMStreamEvent 是共同货币</strong>
+            即使 Ambient 目前不 emit tool-call（它只等 collectText 返回），它下面用的 <code>queryWithProfile</code> 内部仍走 <code>LLMStreamEvent</code>，只是被 adapter 折成 string。想让 Ambient 变成 “可以调 tool 的解释”，只需要不折叠：直接把 <code>LLMStreamEvent</code> 交给一个新的 <code>AmbientToolLoop</code>。基础设施已经在那儿。
+          </div>
+        </section>
+
+        <section id="tenancy">
+          <h2>每个 surface 的隔离：session / conversation / push / capability</h2>
+          <p class="lead">四个 surface 有不同的“单位”。Chat 的单位是 conversation（用户视角是一段对话）；Agent 的单位是 loop run（用户视角是一次分析）；Ambient 的单位是 push（一次 trigger 一条建议）；Command Gateway spec 里是 command invocation。四个单位各自的存储、TTL、并发规则都不一样。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 18%"><col><col><col><col></colgroup>
+            <thead>
+              <tr><th>Surface</th><th>单位</th><th>持久化在哪</th><th>并发规则</th><th>清理时机</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Chat</strong></td>
+                <td>Conversation（含多条 message）</td>
+                <td><code>chat.sqlite</code> + Vault 里的 chat root folder（<code>04</code> § Vault layout）</td>
+                <td>一次一个用户输入；同 conversation 内 messages 顺序追加</td>
+                <td>用户删 conversation；不会自动 GC</td>
+              </tr>
+              <tr>
+                <td><strong>Agent Harness</strong></td>
+                <td>Loop run（<code>loopId</code>）</td>
+                <td>Trace: TraceBus + 未来 harness trace 表；Reflection: <code>chat.sqlite / harness_reflection</code></td>
+                <td>Loop 之间独立；同一个 loop 内 <code>runAgentLoop</code> 内部循环 sequential</td>
+                <td>Trace 不落表时随进程消失；Reflection 长驻</td>
+              </tr>
+              <tr>
+                <td><strong>Ambient Push</strong></td>
+                <td>Push event（<code>sourceFilePath</code>, <code>pushedFilePath</code>, <code>ts</code>）</td>
+                <td><code>vault.sqlite</code> 里 push 相关表（由 <code>ports.persistence</code> 管）</td>
+                <td>每次 trigger 前 <code>pendingSearch?.abort()</code>；只保留最新一次 in-flight</td>
+                <td>受 <code>MAX_ACTIVITIES = 200</code>（SessionContext）+ push history 限制</td>
+              </tr>
+              <tr>
+                <td><strong>Command Gateway</strong></td>
+                <td>Command invocation（未实现）</td>
+                <td>Spec 假设走 RunEnvelope</td>
+                <td>—</td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="prose">这里最容易踩的一坑是：<strong>Ambient 不能塞进 Chat 的 conversation 里</strong>。它没有 conversation id、没有历史 message 列表，也不该被 Chat prompt picker 看到。反过来，<strong>Chat 也不应该直接读 push 表</strong>；如果 Chat 想知道“最近推了什么”，应该走 <code>SessionContextService</code> 的 <code>WorkingContext.recentActivities</code>，而不是绕过它去读 SQLite。</p>
+
+          <div class="claim warn">
+            <strong>SessionContextService.getInstance() 是 singleton — 不是每 surface 一个</strong>
+            这个 singleton 是四个 surface 共享的“最近工作现场”。它读 <code>mobius_operation</code> 表、订阅 <code>MESSAGE_SENT / SEARCH_QUERY / AI_ANALYSIS_COMPLETE</code> event、监听 <code>file-open</code>。新 surface 想产生活动，请 emit event（走 <code>eventBus</code>）或调 <code>recordActivity()</code>，<em>不要</em>再实例化第二个 SessionContextService。
+          </div>
+        </section>
+
+        <section id="failure-modes">
+          <h2>典型失败模式</h2>
+          <p class="lead">跨 surface 上下文问题一半来自新加装配器时忘了对齐共享原语，另一半来自模型能力和预算不匹配。</p>
+
+          <div class="note-list">
+            <div class="note-item">
+              <b>Over-budget: 明明模型上下文很大，还是被截断。</b>
+              <span>Chat：<code>ContextPipeline.resolveBudget</code> 需要 <code>modelCapabilities.maxCtx</code>。如果新加的 provider 忘了填 <code>maxCtx</code>，会 fallback 到 200000 — 对小模型可能爆窗口。Agent：<code>ContextManagerConfig.maxTokens</code> 传的是当前 tier 的窗口；tier 切换时要重建 ContextManager，不然会用旧窗口。</span>
+            </div>
+            <div class="note-item">
+              <b>Missing prompt template：surface 起来了但模型静音。</b>
+              <span>PromptId 找不到 template 时，<code>TemplateManager.render()</code> 抛错。Ambient 的 <code>AmbientExplanationService</code> 会 catch 并返回 null（用户看不到解释，但也不 crash）；Chat 的 <code>SystemPromptSlot</code> 会让 build 失败并被 <code>Promise.allSettled</code> 吞掉（slot 内容为空）。新增 PromptId 一定要在 <code>templates/</code> 里放对应文件 + fallback。</span>
+            </div>
+            <div class="note-item">
+              <b>Provider capability mismatch：模型不支持 tool call。</b>
+              <span>Chat agent mode 会仍然把 tools 传给 <code>vercelStreamChat</code>，能不能用取决于 provider 的 tool-call 支持。Agent Harness 更明确：<code>generateText({ tools })</code> 在不支持 tool 的 provider 上直接 fail。roadmap 里的“capability probing”会把这个前置到装配层。</span>
+            </div>
+            <div class="note-item">
+              <b>SessionContext 未初始化：新 surface 装配时 slot 建不起来。</b>
+              <span><code>SessionContextService.getInstance()</code> 首次调用需要 <code>app + eventBus + themeQueryText</code>。主 <code>main.ts</code> 已经在启动时 init 一次；如果新 surface 在 <code>main.ts</code> 之前的启动阶段跑，会抛 “requires app, eventBus, and themeQueryText on first call”。解决：装配前保证 <code>AppContext</code> 已就绪。</span>
+            </div>
+            <div class="note-item">
+              <b>LLMStreamEvent 不被 UI 认识：加了新 tool-call 但 ToolCallSummary 空白。</b>
+              <span><code>ToolCallSummary.tsx</code> 有一份 <code>label + icon</code> 的字典（例如 <code>context-pipeline:assemble</code>）。加新 tool 名字要同步这份表；否则 UI 会显示空白 pill。</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="roadmap">
+          <h2>Roadmap · 哪些是 spec-only</h2>
+          <p class="lead">本页所有代码事实都来自 <code>src/</code>。下面是当前 <em>没</em> 落地但已经写在 spec 里的部分，供新装配器参考“未来会长成什么样”。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>方向</th><th>Spec 位置</th><th>今天的状态</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Unified ContextPipeline 覆盖 Chat / AI Analysis / Copilot / Followup / Ambient</td>
+                <td><code data-copy="docs/superpowers/specs/2026-05-02-unified-context-pipeline-design.md">2026-05-02-unified-context-pipeline-design.md</code></td>
+                <td>只有 Chat 一条路径切过来；AI Analysis / Copilot / Followup 仍走各自的 <code>chatWithPrompt</code>；Ambient 仍走 <code>AmbientExplanationService</code> 两条 prompt。</td>
+              </tr>
+              <tr>
+                <td>Command Gateway（T12 capstone）</td>
+                <td><code data-copy="docs/superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">2026-06-03-obsidian-plugin-command-gateway-capstone-review.html</code></td>
+                <td>未开工。多个 owner review packet（<code>t11o / t11m / t11j</code>）明确“do not start yet”。</td>
+              </tr>
+              <tr>
+                <td>ContextManager stage-c LLM summarise</td>
+                <td><code data-copy="src/service/agents/harness/context/ContextManager.ts">ContextManager.ts</code> § stage (c) TODO</td>
+                <td>drop-evictable + slide-window 已实现；LLM summarise 留 TODO 到 M5+。当前超预算时依赖 provider 返回 <code>max_tokens</code> stop。</td>
+              </tr>
+              <tr>
+                <td>RunEnvelope 上挂 <code>ports?: TPorts</code> 泛型口</td>
+                <td><code data-copy="src/service/run-envelope/types.ts">types.ts</code> 顶部注释</td>
+                <td>T3A 明确 out-of-scope；T4 由 Vault Lint replacement 决定形状。想让 Command Gateway 或未来 surface 通过 RunEnvelope 拿依赖，得等 T4 定形。</td>
+              </tr>
+              <tr>
+                <td>Dynamic context discovery tools（模型自主查 vault）</td>
+                <td>Spec 2026-05-02 § “Dynamic context discovery”</td>
+                <td>Chat Agent mode 已经能通过 <code>buildChatTools</code> 调 vault-search 类工具；spec 里的“把 slot 变成动态查询”尚未实施。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>为什么不立刻统一</strong>
+            2026-05-02 spec 是好设计，但 Chat 用 slot、Agent 用 MemoryBlock、Ambient 用直接 render — 这些差异不是历史包袱，是<em>形态不同</em>。Chat 需要多 slot 因为它要装 conversation history + focus folder + resource；Agent 需要 MemoryBlock 因为它需要在 loop 每一步动态注入；Ambient 只需要两条 prompt 因为它不做对话。强行统一到一个 <code>assemble(profile, ctx)</code> 会引入抽象税。当前立场：<strong>把原语做扎实（PromptService / LLMStreamEvent / SessionContext / templates/config），装配器保留形态自由</strong>。Command Gateway 落地时再判断它更像 Chat 还是更像 Agent。
+          </div>
+        </section>
+
+        <section id="maintain">
+          <h2>加新 surface 时的规则</h2>
+          <p class="lead">如果你在写一个第五个 AI surface（例如 Copilot lane 想脱离 Chat 自己起一套、或者 headless job 想跑 agent），按这套规则来。</p>
+
+          <div class="note-list">
+            <div class="note-item">
+              <b>1 · 先判断形态：conversation / loop / one-shot。</b>
+              <span>多轮对话 → 复用 Chat 的 ContextPipeline，加一个 Profile（不是加 slot 到 ChatProfile）。多步 tool call → 复用 Agent Harness 的 <code>runAgentLoop</code>，塞 MemoryBlock。单次 render → 直接 <code>PromptService.chatWithPrompt(PromptId.X, vars)</code>，不要装 pipeline。</span>
+            </div>
+            <div class="note-item">
+              <b>2 · 所有 prompt 走 PromptId / TemplateManager。</b>
+              <span>不要在 surface 代码里写 <code>"You are an AI that..."</code>。这违反 <code>docs/conventions/configurability.md</code>，也会绕开用户的 vault override 机制。新 prompt = 新 <code>PromptId</code> + <code>templates/prompts/&lt;id&gt;.md</code> + 代码里的 fallback 字符串。</span>
+            </div>
+            <div class="note-item">
+              <b>3 · 所有流式产出走 <code>LLMStreamEvent</code>。</b>
+              <span>即使你的 surface 最终只想要一段字符串（像 Ambient），底下也要用 <code>LLMStreamEvent</code> — 让 adapter 折成字符串是 adapter 的事，不是 surface 的事。理由：trace / observability / UI 全部读这个类型。</span>
+            </div>
+            <div class="note-item">
+              <b>4 · 用 <code>ModelCapabilities</code> 定预算，不要硬写数字。</b>
+              <span>无论走 Chat pipeline 还是 Agent ContextManager，预算都得从 <code>modelCapabilities.maxCtx</code>（或 tier 决定）来。硬写 <code>maxTokens: 100000</code> 会在用户切小模型时爆窗口。</span>
+            </div>
+            <div class="note-item">
+              <b>5 · 想知道“最近做了什么”，走 SessionContextService。</b>
+              <span>不要 scan file-open、不要重扫 chat.sqlite。<code>SessionContextService.getInstance()</code> 已经维护了带 30 分钟衰减窗口的 <code>WorkingContext.recentActivities</code>；你要就直接读。要产生活动，emit <code>ViewEventType</code> 或调 <code>recordActivity()</code>。</span>
+            </div>
+            <div class="note-item">
+              <b>6 · Capability run 记录走 RunEnvelope，但装配上下文不走 RunEnvelope。</b>
+              <span>看它的名字容易被误导。RunEnvelope 只装 “一次 run 的状态和产物”；prompt / messages / slots 不是它的职责。装配上下文用 PromptService + Slot / MemoryBlock，run 结果用 RunEnvelope。</span>
+            </div>
+            <div class="note-item">
+              <b>7 · runtime 在 app 层拥有，不要在 service 层放模块 singleton。</b>
+              <span>见 <code>CLAUDE.md</code> § Runtime ownership。新 surface 的 runtime 要通过 <code>AppContext</code> / <code>AppRuntimeRegistry</code> 组装（参考 <code>src/app/ambient/composeAmbientRuntime.ts</code>）；不要在 service 里搞 <code>let currentRuntime = null</code>。</span>
+            </div>
+          </div>
+
+          <div class="claim warn">
+            <strong>Anti-pattern：绕过 PromptService 直接调 provider</strong>
+            过去有几次“为了快”，surface 直接调 <code>vercelStreamChat(messages, { system: 'hardcoded system' })</code>。结果：用户改 vault prompt override 不生效、Curator 更换模型时这条路径没跟着切、i18n 契约破裂。所有走模型的路径都必须先经过 PromptId + TemplateManager；一个 <code>PromptService.chatWithPrompt</code> 的调用是最低门槛。
+          </div>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>本页说法</th><th>证据入口</th><th>用途</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Chat 侧的 <code>ContextPipeline.assemble()</code> chat-only</td>
+                <td><code>src/service/chat/context/{ContextPipeline,profiles/ChatProfile}.ts</code></td>
+                <td>唯一 Profile = ChatProfile</td>
+              </tr>
+              <tr>
+                <td>Chat pipeline 唯一调用点 = <code>prepareChatRequest</code></td>
+                <td><code>service-conversation.ts</code>（<code>:289 assemble()</code>）· <code>service-manager.ts</code>（<code>:216</code>, <code>:324</code>）</td>
+                <td>无第二消费者</td>
+              </tr>
+              <tr>
+                <td>BudgetGovernor 三阶段</td>
+                <td><code data-copy="src/service/chat/context/BudgetGovernor.ts">BudgetGovernor.ts</code></td>
+                <td>Phase 0 per-slot cap → Phase 1 cascade compress → Phase 2 drop non-required</td>
+              </tr>
+              <tr>
+                <td>Harness 有独立 ContextManager</td>
+                <td><code>src/service/agents/harness/{context/ContextManager,context/types,memory/types}.ts</code></td>
+                <td>三段式 compactIfNeeded；MemoryBlock priority + evictable</td>
+              </tr>
+              <tr>
+                <td>Agent Loop 装配 message + memory block</td>
+                <td><code>AgentLoop.ts</code>（<code>:95 initialMessages</code> / <code>:153 composeSystemPrompt</code>）</td>
+                <td>不用 slot，用 <code>initialMessages: ModelMessage[]</code> + <code>MemoryBlock[]</code></td>
+              </tr>
+              <tr>
+                <td>Ambient 只渲染 2 条 prompt</td>
+                <td><code>src/service/ambient/{AmbientExplanationService,AmbientPushRuntime}.ts</code></td>
+                <td>走 <code>TemplateManager.render(PromptId.Ambient*)</code>；无 slot / budget</td>
+              </tr>
+              <tr>
+                <td>Ambient 上下文只做本地文本</td>
+                <td><code data-copy="src/service/ambient/ContextExtractor.ts">ContextExtractor.ts</code></td>
+                <td>不装 history / focus folder，只当前段落</td>
+              </tr>
+              <tr>
+                <td>Command Gateway 是 spec-only</td>
+                <td><code>docs/superpowers/specs/2026-06-03-…-capstone-review.html</code>、<code>audits/2026-06-27-t11o-owner-review-packet.md</code></td>
+                <td>grep <code>CommandGateway</code> 在 <code>src/</code> 无结果</td>
+              </tr>
+              <tr>
+                <td>Unified ContextPipeline spec-only</td>
+                <td><code>docs/superpowers/specs/2026-05-02-unified-context-pipeline-design.md</code></td>
+                <td>今天 grep 只出现在 Chat 路径</td>
+              </tr>
+              <tr>
+                <td>共享的 LLMStreamEvent 类型</td>
+                <td><code data-copy="src/core/providers/types.ts">types.ts</code>（<code>:391</code> / <code>:417 ToolEvent</code>）</td>
+                <td>四 surface 共同货币；<code>BUILD_CONTEXT_MESSAGES / LOAD_SYSTEM_PROMPT / GENERATE_SUMMARY</code> 是 context 事件</td>
+              </tr>
+              <tr>
+                <td>SessionContextService = singleton</td>
+                <td><code>SessionContextService.ts</code>、Chat <code>SlotBuildContext.sessionContext</code></td>
+                <td>Chat 经 SlotBuildContext 拿；Ambient 经 <code>recordActivity</code> 写回；无第二实例</td>
+              </tr>
+              <tr>
+                <td>RunEnvelope 不装 prompt/context</td>
+                <td><code data-copy="src/service/run-envelope/types.ts">types.ts</code>（§ Vocabulary / Out of scope）</td>
+                <td><code>RunSession</code> 只有 runId/capabilityId/status/trigger/时间戳；<code>RunEvent</code> 无 messages</td>
+              </tr>
+              <tr>
+                <td>context_compact 阈值默认 0.7</td>
+                <td><code>settingsTypes.ts</code>（<code>:180</code>, <code>:205</code>）· <code>PluginSettingsLoader.ts</code>（<code>:361</code>）</td>
+                <td>Chat / Agent 压缩共享同一份用户阈值；Usage Dashboard 也读</td>
+              </tr>
+              <tr>
+                <td>Harness trace 有 <code>context_compacted</code></td>
+                <td><code>harness/trace/events.ts</code>（<code>:69</code>）· <code>AgentLoop.ts</code>（<code>:142</code>）</td>
+                <td>每次 compact 一条 trace，可 replay</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01，按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="04-configuration-and-user-views.html">04 Configuration & User Views</a>、<a href="11-feature-chat-context.html">11 Chat Context</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>

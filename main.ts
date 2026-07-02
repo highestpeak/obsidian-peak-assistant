@@ -48,7 +48,6 @@ import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useGraphAnimationStore } from '@/ui/store/graphAnimationStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { composeAmbientRuntime } from '@/app/ambient/composeAmbientRuntime';
-import { markAmbientPushPanelAutoOpened, shouldAutoOpenAmbientPushPanel } from '@/service/ambient/ambientPanelStartup';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { serendipityGutterExtension } from '@/app/ambient/SerendipityGutterPlugin';
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
@@ -347,12 +346,18 @@ export default class MyPlugin extends Plugin {
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
 
+		// T13: capability registry owned by AppRuntimeRegistry. Constructed
+		// here so Chat + Copilot adapters can self-register before Settings
+		// mounts.
+		const capabilityRegistry = new CapabilityRegistry();
+		AppContext.setCapabilityRegistry(capabilityRegistry);
+
 		// Register Chat surface capability adapter so Settings sees readiness.
 		// Chat needs an active agent profile with a primaryModel (the
 		// "Conversation" capability). Without one, sends would fail at the
 		// service-conversation.streamChat layer; surfacing the gap in Settings
 		// lets the user repair via the onboarding wizard / model picker.
-		CapabilityRegistry.getInstance().register({
+		capabilityRegistry.register({
 			surfaceId: 'chat',
 			surfaceLabel: 'Chat',
 			getCapabilityStatus: async () => {
@@ -377,7 +382,7 @@ export default class MyPlugin extends Plugin {
 		// Reports: Fast Lookup (single-pass review), Research (multi-round review),
 		// Safety (inherited from harness permission mode — optional from copilot's
 		// perspective, since copilot does not own permission settings).
-		CapabilityRegistry.getInstance().register({
+		capabilityRegistry.register({
 			surfaceId: 'copilot',
 			surfaceLabel: 'Copilot',
 			getCapabilityStatus: async () => {
@@ -415,19 +420,28 @@ export default class MyPlugin extends Plugin {
 			},
 		});
 
+		// T13: MCP client manager owned by AppRuntimeRegistry. Constructed
+		// here and disposed in onunload so stdio child processes are reaped
+		// before a hot-reload spawns replacements.
+		const mcpClientManager = new MCPClientManager();
+		AppContext.setMcpClientManager(mcpClientManager);
 		// Connect enabled MCP servers (non-blocking)
 		const mcpConfigs = this.settings.mcpServers ?? [];
 		for (const config of mcpConfigs) {
 			if (config.enabled) {
-				MCPClientManager.getInstance().connect(config).catch(e => {
+				mcpClientManager.connect(config).catch(e => {
 					console.warn(`[Peak Assistant] Failed to connect MCP server "${config.name}":`, e);
 				});
 			}
 		}
 
-		// Initialize Skill Registry (vault folder skills + built-ins)
+		// T13: SkillRegistry owned by AppRuntimeRegistry. `init(...)` scans
+		// the vault folder + registers file watchers; `destroy()` in clear
+		// releases the watchers so a hot reload doesn't double-register them.
+		const skillRegistry = new SkillRegistry();
+		AppContext.setSkillRegistry(skillRegistry);
 		const skillsFolder = this.settings.skillsFolder ?? DEFAULT_SKILLS_FOLDER;
-		SkillRegistry.getInstance().init(this.app, skillsFolder).catch(e => {
+		skillRegistry.init(this.app, skillsFolder).catch(e => {
 			console.warn('[Peak Assistant] SkillRegistry init failed:', e);
 		});
 
@@ -447,23 +461,12 @@ export default class MyPlugin extends Plugin {
 				const statusBarEl = this.addStatusBarItem();
 				statusBarEl.addClass('peak-ambient-status');
 				statusBarEl.setText('\u26A1 \u2013');
-				statusBarEl.onClickEvent(() => void this.viewManager?.activateAmbientPushView());
 
 				this.ambientStoreUnsub = useAmbientPushStore.subscribe((state) => {
 					const count = state.items.length;
 					statusBarEl.setText(count > 0 ? `\u26A1 ${count} related` : '\u26A1 \u2013');
 				});
 			}
-
-			// Auto-open the Related Notes panel in the right sidebar on first run
-			this.app.workspace.onLayoutReady(() => {
-				if (!shouldAutoOpenAmbientPushPanel(this.settings.ambientPush)) return;
-
-				void this.viewManager?.activateAmbientPushView().then(() => {
-					this.settings.ambientPush = markAmbientPushPanelAutoOpened(this.settings.ambientPush);
-					void this.saveSettings();
-				});
-			});
 
 			// CM6 gutter hint for serendipity items (Phase 3)
 			if (!ambientPushSettings || ambientPushSettings.enableSerendipityGutter !== false) {
@@ -511,20 +514,25 @@ export default class MyPlugin extends Plugin {
 						new Notice(message, durationMs);
 					},
 				});
-				UsageTrackingService.getInstance().init(
-					sqliteStoreManager.getIndexContext('chat'),
-					this.app,
-					{
-						usageTrackingEnabled: this.settings.usageTrackingEnabled,
-						usageDetailRetentionDays: this.settings.usageDetailRetentionDays,
-					},
-				);
-				UsageOutcomeService.getInstance().init(
-					sqliteStoreManager.getIndexContext('chat'),
-				);
-				UsageOptimizationService.getInstance().init(
-					sqliteStoreManager.getIndexContext('chat'),
-				);
+				// T13: Usage services owned by AppRuntimeRegistry as a bundle.
+				// UsageTrackingService subscribes to EventBus in `init()`;
+				// `clearUsageServices` in onunload calls `destroy()` on all
+				// three so a hot reload does not double-register the listener.
+				const chatDb = sqliteStoreManager.getIndexContext('chat');
+				const usageTracking = new UsageTrackingService();
+				const usageOutcome = new UsageOutcomeService();
+				const usageOptimization = new UsageOptimizationService();
+				usageTracking.init(chatDb, this.app, {
+					usageTrackingEnabled: this.settings.usageTrackingEnabled,
+					usageDetailRetentionDays: this.settings.usageDetailRetentionDays,
+				});
+				usageOutcome.init(chatDb);
+				usageOptimization.init(chatDb);
+				AppContext.setUsageServices({
+					tracking: usageTracking,
+					outcome: usageOutcome,
+					optimization: usageOptimization,
+				});
 				await this.initializeSearchService();
 				if (this.appContext) {
 					this.appContext.searchClient = this.searchClient!;
@@ -604,30 +612,33 @@ export default class MyPlugin extends Plugin {
 	 * Initialize search client and background indexing.
 	 */
 	private async initializeSearchService(): Promise<void> {
-		// Initialize IndexService with AIServiceManager for embedding generation
-		// T11Q (Track G): also bind the app-supplied env (chat root + live `App`)
-		// so the singleton + the free `getIndexTenantForPath` helper never
-		// reach back into `AppContext`.
-		IndexService.getInstance().init({
-			aiServiceManager: this.aiServiceManager,
-			env: {
+		// T13: IndexService constructed with AIServiceManager + env (chat root
+		// + live `App`) injected via constructor. Bound on the app-owned
+		// `AppRuntimeRegistry`; consumers reach it through
+		// `AppContext.getIndexService()`.
+		const indexService = new IndexService(
+			this.aiServiceManager,
+			{
 				app: this.app,
 				rootFolder: this.settings.ai.rootFolder,
 			},
-		});
+		);
+		AppContext.setIndexService(indexService);
 
 		this.searchClient = new SearchClient(this.app, this.aiServiceManager, this.settings.search);
 		await this.searchClient.init();
 
-		// first init listener then initializer to avoid missing index changes
-		this.searchUpdateQueue = new SearchUpdateListener(this.app, this, this.settings.search, this.settings.search.indexRefreshInterval);
-		this.searchUpdateQueue.start();
-
-		// T10: inject the Quick Search background runtime so the
-		// worker can defer drain while user-facing analyses run,
-		// without reaching the retired BackgroundSessionManager.
+		// T10 / T13-followup (2026-07-02): construct the cascade worker
+		// BEFORE the search update listener so the listener can hold a
+		// direct reference (drops the retired `CascadeWorker.getInstance()`
+		// singleton). Quick Search background runtime is injected so the
+		// worker can defer drain while user-facing analyses run.
 		this.cascadeWorker = new CascadeWorker(this.app, AppContext.getQuickSearchBackgroundRuntime(), this.settings.ai.rootFolder);
 		this.cascadeWorker.start();
+
+		// first init listener then initializer to avoid missing index changes
+		this.searchUpdateQueue = new SearchUpdateListener(this.app, this, this.settings.search, indexService, this.cascadeWorker, this.settings.search.indexRefreshInterval);
+		this.searchUpdateQueue.start();
 
 		// Check index status and perform incremental indexing if needed
 		// This handles cases where files were modified outside Obsidian (e.g., git sync, external editors)
@@ -636,9 +647,22 @@ export default class MyPlugin extends Plugin {
 			this.settings.search,
 			this.settings.dataStorageFolder,
 			AppContext.getInstance().progressReporter,
+			indexService,
 		);
-		// todo tmp block. remove comments this after testing
-		// await this.indexInitializer.checkAndUpdateIndex();
+		// T3 Wave 2.A (2026-07-02): the startup check-and-update is
+		// disabled for the interim. When re-enabled, prefer the
+		// RunEnvelope-wrapped call so startup latency + failures land
+		// in the run trace:
+		//
+		//   const { runIndexInitializer } = await import(
+		//     '@/service/search/index/indexInitializerRun'
+		//   );
+		//   await runIndexInitializer({
+		//     initializer: this.indexInitializer,
+		//     trigger: 'startup',
+		//   });
+		//
+		// See docs/superpowers/specs/2026-07-02-t3-first-adopter-selection-design.md.
 	}
 
 	/**
@@ -692,8 +716,11 @@ export default class MyPlugin extends Plugin {
 		// hot-reloaded bundle.
 		try { AppContext.clearVaultReviewRuntime(); } catch { /* not bound — ignore */ }
 
-		// Disconnect MCP servers
-		MCPClientManager.getInstance().dispose().catch(() => { /* ignore */ });
+		// T13: MCP client manager is released via `clearForUnload` (below),
+		// which calls `dispose()` and reaps any live stdio child processes.
+		// Kept as a fail-loud break in case the AppContext is already torn
+		// down when this code path runs (e.g. crash-recovery unload).
+		try { AppContext.clearMcpClientManager(); } catch { /* not bound — ignore */ }
 
 		clearPendingConversationTimeouts();
 		this.viewManager?.unload();
@@ -782,15 +809,12 @@ export default class MyPlugin extends Plugin {
 		// Shutdown SDK agent pool (clear cached node info so reload re-probes)
 		shutdownPool();
 
-		// Destroy skill registry (removes vault watchers)
-		SkillRegistry.getInstance().destroy();
-
-		// Break singletons so old bundle can be GC'd
+		// T13: Skill + Usage services are released via `clearForUnload`
+		// below (which invokes `destroy()` on each). Break the usage
+		// dashboard message-receipt registration explicitly so its
+		// closure references release before the services do.
 		try { this.unregisterUsageDashboardReceipts?.(); } catch { /* ignore */ }
 		this.unregisterUsageDashboardReceipts = undefined;
-		UsageTrackingService.getInstance().destroy();
-		UsageOutcomeService.getInstance().destroy();
-		UsageOptimizationService.getInstance().destroy();
 		// T6R: drop the Vault Lint runtime BEFORE clearing AppContext.
 		// `AppContext.clearForUnload()` also calls clearVaultLintRuntime
 		// internally, but invoking it here makes the ordering explicit
@@ -799,7 +823,8 @@ export default class MyPlugin extends Plugin {
 		AppContext.clearForUnload();
 		SessionContextService.destroyInstance();
 		EventBus.destroyInstance();
-		IndexService.clearInstance();
+		// T13: IndexService release now goes through `AppContext.clearForUnload()`
+		// invoked just above; no `clearInstance()` static remains.
 		DocumentLoaderManager.clearInstance();
 		SqliteStoreManager.clearInstance();
 		BetterSqliteStore.clearInstance();

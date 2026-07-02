@@ -5,8 +5,7 @@ import type {
 	UsageOutcomeEventType,
 } from '@/service/usage/types';
 import { USAGE_OUTCOME_EVENT_TYPES } from '@/service/usage/types';
-import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
-import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { UsageLogRow } from '@/core/storage/sqlite/ddl';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -94,6 +93,7 @@ export interface UsageData {
 }
 
 export function useUsageData(range: TimeRange): UsageData {
+	const { usageServices } = useServiceContext();
 	const [data, setData] = useState<UsageData>({
 		kpis: null,
 		tokenTrend: [],
@@ -107,13 +107,14 @@ export function useUsageData(range: TimeRange): UsageData {
 	});
 
 	useEffect(() => {
+		if (!usageServices) return;
 		let cancelled = false;
 
 		async function fetchAll() {
 			setData((prev) => ({ ...prev, loading: true }));
 
 			try {
-				const svc = UsageTrackingService.getInstance();
+				const svc = usageServices!.tracking;
 				const [kpis, tokenTrend, costTrend, featureDist, modelDist, costBreakdown, dailyBreakdown, recentCalls] =
 					await Promise.all([
 						svc.getKPIs(range),
@@ -151,7 +152,7 @@ export function useUsageData(range: TimeRange): UsageData {
 		return () => {
 			cancelled = true;
 		};
-	}, [range]);
+	}, [range, usageServices]);
 
 	return data;
 }
@@ -230,17 +231,19 @@ const EMPTY_METRICS: DashboardMetrics = {
  * metrics + `loading: false`, never an exception bubbling into React.
  */
 export function useDashboardMetrics(range: TimeRange): DashboardMetrics {
+	const { usageServices } = useServiceContext();
 	const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY_METRICS);
 
 	useEffect(() => {
+		if (!usageServices) return;
 		let cancelled = false;
 
 		async function fetchAll() {
 			setMetrics((prev) => ({ ...prev, loading: true }));
 
 			try {
-				const tracking = UsageTrackingService.getInstance();
-				const outcome = UsageOutcomeService.getInstance();
+				const tracking = usageServices!.tracking;
+				const outcome = usageServices!.outcome;
 				const ms = timeRangeToMs(range);
 
 				const [kpis, usefulCount, adoptedCount, counts] = await Promise.all([
@@ -291,7 +294,7 @@ export function useDashboardMetrics(range: TimeRange): DashboardMetrics {
 		return () => {
 			cancelled = true;
 		};
-	}, [range]);
+	}, [range, usageServices]);
 
 	return metrics;
 }

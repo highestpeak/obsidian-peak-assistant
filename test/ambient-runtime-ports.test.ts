@@ -118,7 +118,6 @@ function buildFakePorts(state: FakeState, opts: PortBuildOpts = {}): {
 			state.settingsCalls += 1;
 			return settingsSnapshot;
 		},
-		async markPanelAutoOpened() { /* noop */ },
 	};
 
 	const editorContext: AmbientEditorContextPort = {

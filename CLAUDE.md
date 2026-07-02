@@ -61,6 +61,24 @@ Detailed conventions live in `docs/conventions/`. Read `docs/conventions/README.
 - **UI design system** — tokens, primitive catalog, primitive usage decisions, Obsidian CSS defense, JSX-mock fidelity. One file, 5 sections, section-anchored. [`ui-design.md`](./docs/conventions/ui-design.md)
 - **Configurability** — no inline i18n / regex / label maps / color, thresholds, weights, timing knobs, or style configs; route through `templates/config/` plus a documented domain fallback when needed. [`configurability.md`](./docs/conventions/configurability.md)
 
+## Docs & Research Workflow
+
+三个文件承担不同职责，不要混用：
+
+| 文件 | 职责 | 写入时机 |
+|---|---|---|
+| [`docs/index.html`](./docs/index.html) | 根目录**文档索引**（哪份 HTML 存在、待写、归档） | 新增/挪动根目录文档时 |
+| [`docs/roadmap.html`](./docs/roadmap.html) | **产品状态快照**：已完成关键里程碑 + 已决策待建 + 调研候选 + 远期 backlog | 关键节点 shipped、新 spec、新调研、新 backlog 想法时 |
+| [`docs/progress.md`](./docs/progress.md) | **历史流水账**：逐 session / Phase 追加日志 | 每次 session end |
+
+三条硬规则：
+
+- **调研必须落库到 `docs/research/`。** 任何"调研 / 竞品分析 / 学术梳理 / 第一性原理拆解"类产出，写到 `docs/research/YYYY-MM-DD-slug/README.md`（复杂主题可拆成 `01-*.md`、`02-*.md`，参照 `2026-05-24-agent-harness/`）。不要把结论只留对话里，也不要写进 feature 页。
+- **潜在功能登记到 `docs/roadmap.html`。** 调研完成后在 `#researching` 段补一行；新 spec 落地在 `#decided` 段补一行；backlog 想法在 `#backlog` 段补一行。**不要**再往 `index.html` 加"潜在功能"表——那里只装文档索引。
+- **只登记关键节点。** `roadmap.html` 是"读者一屏看战线"的看板，不复制 `progress.md` 的每 Phase 粒度。判定标准：能一句话向新读者解释"我们做了什么、他能感知到什么"的才上。逐 session 的 UI 微调、bug 修复、局部 refactor 留在 `progress.md` 就够。
+
+状态迁移：**Backlog → 调研候选**需要一份 `docs/research/` 报告；**调研候选 → 已决策**需要一份 `docs/superpowers/specs/` spec；**已决策 → shipped** 需要 `progress.md` 对应 Phase 完成条目 + `roadmap.html` 迁移到 Done 段。
+
 ## Key External Dependencies
 
 - **AI:** Vercel AI SDK adapters (`@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`, etc.)

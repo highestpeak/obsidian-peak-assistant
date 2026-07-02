@@ -21,6 +21,24 @@ import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
+import type { IndexService } from '@/service/search/index/indexService';
+import type { MCPClientManager } from '@/service/mcp/MCPClientManager';
+import type { SkillRegistry } from '@/service/skills/SkillRegistry';
+import type { CapabilityRegistry } from '@/service/capabilities/CapabilityRegistry';
+import type { UsageTrackingService } from '@/service/usage/UsageTrackingService';
+import type { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
+import type { UsageOptimizationService } from '@/service/usage/optimization/UsageOptimizationService';
+
+/**
+ * Bundle of the three usage-telemetry services. They boot and dispose
+ * together (all bound to the same chat-tenant Kysely handle), so the
+ * registry treats them as one slot to keep boot/unload symmetric.
+ */
+export interface UsageServices {
+	tracking: UsageTrackingService;
+	outcome: UsageOutcomeService;
+	optimization: UsageOptimizationService;
+}
 
 export class AppRuntimeRegistry {
 	private vaultLintRuntime: VaultLintRuntime | null = null;
@@ -28,6 +46,11 @@ export class AppRuntimeRegistry {
 	private vaultReviewRuntime: VaultReviewRuntime | null = null;
 	private quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime | null = null;
 	private copilotActionRuntime: CopilotActionRuntime | null = null;
+	private indexService: IndexService | null = null;
+	private mcpClientManager: MCPClientManager | null = null;
+	private skillRegistry: SkillRegistry | null = null;
+	private capabilityRegistry: CapabilityRegistry | null = null;
+	private usageServices: UsageServices | null = null;
 
 	/**
 	 * Bind the Vault Lint runtime. Called exactly once at plugin boot
@@ -96,8 +119,7 @@ export class AppRuntimeRegistry {
 
 	/**
 	 * Read the active Ambient runtime. Fail-loud if no runtime is
-	 * bound — that is a boot-order bug. Command actions
-	 * (`openRelatedNotes` / `refreshRelatedNotes`) use this form.
+	 * bound — that is a boot-order bug.
 	 */
 	getAmbientRuntime(): AmbientRuntime {
 		if (this.ambientRuntime === null) {
@@ -272,6 +294,160 @@ export class AppRuntimeRegistry {
 		const runtime = this.copilotActionRuntime;
 		this.copilotActionRuntime = null;
 		runtime?.dispose?.();
+	}
+
+	// ─── T13: IndexService ────────────────────────────────────────────────
+
+	setIndexService(service: IndexService): void {
+		if (this.indexService !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setIndexService: a service is already bound. Call clearIndexService first if this is intentional.',
+			);
+		}
+		this.indexService = service;
+	}
+
+	getIndexService(): IndexService {
+		if (this.indexService === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getIndexService: no service is bound. Plugin boot must call setIndexService() before consumers reach it.',
+			);
+		}
+		return this.indexService;
+	}
+
+	tryGetIndexService(): IndexService | null {
+		return this.indexService;
+	}
+
+	clearIndexService(): void {
+		const service = this.indexService;
+		this.indexService = null;
+		service?.disposeTenantHelper();
+	}
+
+	// ─── T13: MCPClientManager ────────────────────────────────────────────
+
+	setMcpClientManager(manager: MCPClientManager): void {
+		if (this.mcpClientManager !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setMcpClientManager: a manager is already bound. Call clearMcpClientManager first if this is intentional.',
+			);
+		}
+		this.mcpClientManager = manager;
+	}
+
+	getMcpClientManager(): MCPClientManager {
+		if (this.mcpClientManager === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getMcpClientManager: no manager is bound. Plugin boot must call setMcpClientManager() before consumers reach it.',
+			);
+		}
+		return this.mcpClientManager;
+	}
+
+	tryGetMcpClientManager(): MCPClientManager | null {
+		return this.mcpClientManager;
+	}
+
+	clearMcpClientManager(): void {
+		const manager = this.mcpClientManager;
+		this.mcpClientManager = null;
+		// stdio child processes must be reaped so a hot-reload does not leak them.
+		void manager?.dispose().catch(() => { /* ignore close errors */ });
+	}
+
+	// ─── T13: SkillRegistry ───────────────────────────────────────────────
+
+	setSkillRegistry(registry: SkillRegistry): void {
+		if (this.skillRegistry !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setSkillRegistry: a registry is already bound. Call clearSkillRegistry first if this is intentional.',
+			);
+		}
+		this.skillRegistry = registry;
+	}
+
+	getSkillRegistry(): SkillRegistry {
+		if (this.skillRegistry === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getSkillRegistry: no registry is bound. Plugin boot must call setSkillRegistry() before consumers reach it.',
+			);
+		}
+		return this.skillRegistry;
+	}
+
+	tryGetSkillRegistry(): SkillRegistry | null {
+		return this.skillRegistry;
+	}
+
+	clearSkillRegistry(): void {
+		const registry = this.skillRegistry;
+		this.skillRegistry = null;
+		registry?.destroy();
+	}
+
+	// ─── T13: CapabilityRegistry ──────────────────────────────────────────
+
+	setCapabilityRegistry(registry: CapabilityRegistry): void {
+		if (this.capabilityRegistry !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setCapabilityRegistry: a registry is already bound. Call clearCapabilityRegistry first if this is intentional.',
+			);
+		}
+		this.capabilityRegistry = registry;
+	}
+
+	getCapabilityRegistry(): CapabilityRegistry {
+		if (this.capabilityRegistry === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getCapabilityRegistry: no registry is bound. Plugin boot must call setCapabilityRegistry() before consumers reach it.',
+			);
+		}
+		return this.capabilityRegistry;
+	}
+
+	tryGetCapabilityRegistry(): CapabilityRegistry | null {
+		return this.capabilityRegistry;
+	}
+
+	clearCapabilityRegistry(): void {
+		this.capabilityRegistry = null;
+	}
+
+	// ─── T13: UsageServices bundle (tracking + outcome + optimization) ────
+
+	setUsageServices(services: UsageServices): void {
+		if (this.usageServices !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setUsageServices: services are already bound. Call clearUsageServices first if this is intentional.',
+			);
+		}
+		this.usageServices = services;
+	}
+
+	getUsageServices(): UsageServices {
+		if (this.usageServices === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getUsageServices: no services are bound. Plugin boot must call setUsageServices() before consumers reach them.',
+			);
+		}
+		return this.usageServices;
+	}
+
+	tryGetUsageServices(): UsageServices | null {
+		return this.usageServices;
+	}
+
+	clearUsageServices(): void {
+		const services = this.usageServices;
+		this.usageServices = null;
+		// Destroy in reverse boot order — optimization depends on nothing,
+		// outcome on nothing, tracking has the EventBus listener that MUST
+		// detach before a hot reload double-registers it.
+		services?.optimization.destroy();
+		services?.outcome.destroy();
+		services?.tracking.destroy();
 	}
 
 }

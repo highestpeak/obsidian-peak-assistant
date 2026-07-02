@@ -26,7 +26,6 @@ import { MessageMorePopover } from './MessageMorePopover';
 import { MessageInlineFollowup } from './MessageInlineFollowup';
 import { useChatStrings } from '../../chatStringsContext';
 import { getMessageReceiptRenderer } from '../../integration/messageReceiptSlot';
-import { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 import { Notice } from 'obsidian';
 
 interface StreamingState {
@@ -81,7 +80,7 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 	isLastMessage = false,
 }) => {
 	const strings = useChatStrings();
-	const { manager, eventBus, chatVaultWriter, settingsActions } = useServiceContext();
+	const { manager, eventBus, chatVaultWriter, settingsActions, usageServices } = useServiceContext();
 	const chatNavigation = useChatNavigation();
 	const openSettings = settingsActions.openSettings;
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
@@ -213,7 +212,7 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 
 			// Best-effort telemetry — failure here must NOT block UX.
 			try {
-				await UsageOutcomeService.getInstance().recordVaultSave(
+				await usageServices?.outcome.recordVaultSave(
 					message.id,
 					activeConversation.meta.id,
 					path,
@@ -534,13 +533,12 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 					onSaveToNote={handleSaveToVault}
 					onAskCustom={() => setShowInlineFollowup(true)}
 					/*
-					 * MIGRATION-DEFERRED: Rewrite-simply / Create-checklist /
-					 * Open-related-notes ACTIONS rows. Need a service-layer entry
-					 * point — `manager.actions.rewriteSimply(messageId)`,
-					 * `manager.actions.createChecklist(messageId)`, and a
-					 * vault-search query derived from the assistant content.
-					 * Slots in MessageSuggestedNext render only when their handler
-					 * is supplied, so omitting them here keeps the popover honest
+					 * MIGRATION-DEFERRED: Rewrite-simply / Create-checklist
+					 * ACTIONS rows. Need a service-layer entry point —
+					 * `manager.actions.rewriteSimply(messageId)` and
+					 * `manager.actions.createChecklist(messageId)`. Slots in
+					 * MessageSuggestedNext render only when their handler is
+					 * supplied, so omitting them here keeps the popover honest
 					 * until the wiring lands.
 					 */
 				/>

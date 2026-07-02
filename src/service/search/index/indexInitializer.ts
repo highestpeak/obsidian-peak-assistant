@@ -52,14 +52,17 @@ export class IndexInitializer {
 		private readonly settings: SearchSettings,
 		private readonly storageFolder: string,
 		private readonly reporter: ProgressReporterPort,
+		// T13: IndexService via constructor DI so this file no longer imports
+		// @/app/AppContext to reach the singleton.
+		private readonly indexService: IndexService,
 	) {}
 
 	private async runMobiusMaintenanceIfDue(): Promise<void> {
 		if (!sqliteStoreManager.isInitialized()) return;
-		if (!(await IndexService.getInstance().isMobiusMaintenanceRecommended())) return;
+		if (!(await this.indexService.isMobiusMaintenanceRecommended())) return;
 		const ui = this.reporter.show('Mobius: running graph maintenance…', 0);
 		try {
-			await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
+			await this.indexService.runMobiusGlobalMaintenance(['vault', 'chat'], {
 				onProgress: (ev) => ui.setMessage(maintenanceProgressMsg('Mobius', ev)),
 			});
 			ui.hide();
@@ -74,7 +77,7 @@ export class IndexInitializer {
 	/** Check index status and perform incremental indexing for new/modified files. */
 	async checkAndUpdateIndex(): Promise<void> {
 		try {
-			const indexStatus = await IndexService.getInstance().getIndexStatus();
+			const indexStatus = await this.indexService.getIndexStatus();
 			const hasIndex = indexStatus.isReady && indexStatus.indexBuiltAt !== null;
 
 			if (!hasIndex) {
@@ -184,7 +187,7 @@ export class IndexInitializer {
 					progressTracker.dismiss();
 					return;
 				}
-				await IndexService.getInstance().indexDocument(
+				await this.indexService.indexDocument(
 					path,
 					this.settings,
 					defaultIndexDocumentOptions('listener_fast'),
@@ -216,7 +219,7 @@ export class IndexInitializer {
 		if (level === 'semantic' || level === 'full') {
 			const pipelineUi = this.reporter.show('Peak: Step 2/4 — Vector embeddings…', 0);
 			try {
-				await IndexService.runPendingVectorIndexEnrichment(this.settings, {
+				await this.indexService.runPendingVectorIndexEnrichment(this.settings, {
 					onProgress: ({ processed, total, path }) => {
 						const short = path.length > 48 ? `${path.slice(0, 45)}…` : path;
 						pipelineUi.setMessage(`Peak: Step 2/4 — Vector ${processed}/${total}\n${short}`);
@@ -231,7 +234,7 @@ export class IndexInitializer {
 					}
 					if (action === 'retry') {
 						try {
-							await IndexService.runPendingVectorIndexEnrichment(this.settings, {
+							await this.indexService.runPendingVectorIndexEnrichment(this.settings, {
 								onProgress: ({ processed, total, path }) => {
 									const short = path.length > 48 ? `${path.slice(0, 45)}…` : path;
 									pipelineUi.setMessage(`Peak: Step 2/4 — Vector (retry) ${processed}/${total}\n${short}`);
@@ -253,7 +256,7 @@ export class IndexInitializer {
 			if (level === 'full') {
 				pipelineUi.setMessage('Peak: Step 3/4 — LLM tags & summaries…');
 				try {
-					await IndexService.runPendingLlmIndexEnrichment(this.settings, {
+					await this.indexService.runPendingLlmIndexEnrichment(this.settings, {
 						onProgress: (ev) => {
 							const short = ev.path.length > 48 ? `${ev.path.slice(0, 45)}…` : ev.path;
 							pipelineUi.setMessage(
@@ -270,7 +273,7 @@ export class IndexInitializer {
 						}
 						if (action === 'retry') {
 							try {
-								await IndexService.runPendingLlmIndexEnrichment(this.settings, {
+								await this.indexService.runPendingLlmIndexEnrichment(this.settings, {
 									onProgress: (ev) => {
 										const short = ev.path.length > 48 ? `${ev.path.slice(0, 45)}…` : ev.path;
 										pipelineUi.setMessage(
@@ -291,7 +294,7 @@ export class IndexInitializer {
 
 			pipelineUi.setMessage('Peak: Step 4/4 — Graph maintenance…');
 			try {
-				await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
+				await this.indexService.runMobiusGlobalMaintenance(['vault', 'chat'], {
 					onProgress: (ev) => pipelineUi.setMessage(maintenanceProgressMsg('Peak: Step 4/4', ev)),
 				});
 			} catch (e) {
@@ -308,7 +311,7 @@ export class IndexInitializer {
 			// level === 'fast': only FTS done, run maintenance step
 			const pipelineUi = this.reporter.show('Peak: Step 2/2 — Graph maintenance…', 0);
 			try {
-				await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
+				await this.indexService.runMobiusGlobalMaintenance(['vault', 'chat'], {
 					onProgress: (ev) => pipelineUi.setMessage(maintenanceProgressMsg('Peak: Step 2/2', ev)),
 				});
 			} catch (e) {
@@ -325,7 +328,7 @@ export class IndexInitializer {
 		IndexService.resetCancellation();
 		const filesToIndex = await this.collectAllIndexableFilePaths();
 		await this.indexNewAndModifiedFiles(filesToIndex);
-		await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat']);
+		await this.indexService.runMobiusGlobalMaintenance(['vault', 'chat']);
 	}
 
 	/** Incremental indexing: check for new/modified files and index them. */
@@ -403,7 +406,7 @@ export class IndexInitializer {
 		}
 
 		if (deletedPaths.length > 0) {
-			await IndexService.getInstance().deleteDocuments(deletedPaths);
+			await this.indexService.deleteDocuments(deletedPaths);
 		}
 	}
 
@@ -429,7 +432,7 @@ export class IndexInitializer {
 				break;
 			}
 
-			await IndexService.getInstance().indexDocument(path, this.settings, opts);
+			await this.indexService.indexDocument(path, this.settings, opts);
 			indexedCount += 1;
 
 			if (Date.now() - lastProgressUpdate >= PROGRESS_INTERVAL_MS) {

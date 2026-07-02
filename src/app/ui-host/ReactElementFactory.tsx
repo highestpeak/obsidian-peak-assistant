@@ -67,6 +67,12 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			quickSearchHost: composeQuickSearchHost(appContext, reportSessionPort),
 			copilotReviewHistory: appContext.copilotReviewHistory,
 			copilotReviewDeps: composeCopilotReviewDeps(appContext),
+			// T13: thread the three de-singletoned runtimes through the
+			// React ServiceContext so UI consumers never reach into
+			// `AppContext.getInstance()` for them.
+			indexService: appContext.runtimeRegistry.tryGetIndexService(),
+			mcpClientManager: appContext.runtimeRegistry.tryGetMcpClientManager(),
+			usageServices: appContext.runtimeRegistry.tryGetUsageServices(),
 			children: React.createElement(Component, props as T)
 		}
 	);

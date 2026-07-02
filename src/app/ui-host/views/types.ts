@@ -1,6 +1,5 @@
 export const CHAT_VIEW_TYPE = 'peak-chat-view';
 export const PROJECT_LIST_VIEW_TYPE = 'peak-project-list-view';
-export const AMBIENT_PUSH_VIEW_TYPE = 'peak-ambient-push-view';
 export const USAGE_DASHBOARD_VIEW_TYPE = 'peak-usage-dashboard';
 export const CONVERSATION_OUTLINE_VIEW_TYPE = 'peak-conversation-outline-view';
 export const CHAT_STUDIO_VIEW_TYPE = 'peak-chat-studio-view';
@@ -11,7 +10,6 @@ export const TRACKED_VIEW_TYPES = new Set<string>([
 ]);
 
 export const STANDALONE_PEAK_VIEW_TYPES = new Set<string>([
-	AMBIENT_PUSH_VIEW_TYPE,
 	USAGE_DASHBOARD_VIEW_TYPE,
 	// Conversation Outline lives in Obsidian's right sidebar (companion to
 	// the chat view). Marked standalone so that focusing it / clicking inside

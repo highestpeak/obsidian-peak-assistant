@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>15 Peak Assistant Command Gateway</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      --code-bg: #eef2eb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); font-size: 0.94em; }
+    .page { width: min(960px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { width: 100%; padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
+    .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .subtitle-list { max-width: 900px; margin: 12px 0 0 22px; padding: 0; color: var(--muted); font-size: 17px; }
+    .subtitle-list li + li { margin-top: 4px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .doc-layout { display: block; margin-top: 28px; }
+    .content { min-width: 0; }
+    .side-nav { position: fixed; top: 92px; left: calc(50vw - 764px); z-index: 20; width: 260px; max-height: calc(100vh - 116px); padding: 14px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.94); overflow: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); backdrop-filter: blur(8px); }
+    .side-nav strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+    .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
+    .side-nav a.sub { margin-left: 10px; font-size: 13px; }
+    .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .side-nav .nav-jump { display: flex; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+    .side-nav .nav-jump a { padding: 0; border: 0; color: var(--green); }
+    .side-nav .nav-jump a:hover { text-decoration: underline; }
+    section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
+    h3 { margin: 0 0 8px; font-size: 20px; line-height: 1.28; letter-spacing: 0; }
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+    .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
+    .prose { color: var(--muted); font-size: 16px; }
+    .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
+    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .warn { border-left-color: var(--gold); }
+    .warn strong { color: var(--gold); }
+    .danger { border-left-color: var(--red); }
+    .danger strong { color: var(--red); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
+    table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    td code { background: var(--code-bg); }
+    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure-title strong { color: var(--ink); font-size: 14px; }
+    .mermaid { min-width: 820px; text-align: center; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .read-note b { color: var(--ink); }
+    .note-list { display: grid; gap: 10px; margin-top: 18px; }
+    .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .note-item b { display: block; margin-bottom: 3px; }
+    .note-item span { color: var(--muted); font-size: 14px; }
+    .field-list { display: grid; grid-template-columns: 200px 1fr; gap: 8px 18px; margin: 14px 0 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .field-list dt { color: var(--ink); font-weight: 780; }
+    .field-list dd { margin: 0; color: var(--muted); }
+    .field-list dd code { background: var(--code-bg); }
+    pre { margin: 12px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; overflow-x: auto; font-size: 13.2px; line-height: 1.6; color: var(--ink); }
+    pre code { padding: 0; background: transparent; }
+    .side-nav .nav-group { margin: 10px -4px 0; padding: 8px 4px 4px; border-top: 1px solid var(--line); }
+    .side-nav .nav-group:first-of-type { margin-top: 4px; padding-top: 4px; border-top: 0; }
+    .side-nav .nav-group-title { display: block; margin: 0 6px 4px; color: var(--muted); font-size: 10.5px; font-weight: 780; letter-spacing: 0.06em; text-transform: uppercase; }
+    .planned-banner { margin: 18px 0 0; padding: 14px 18px; border: 1px dashed var(--gold); border-radius: 8px; background: var(--soft-gold); color: var(--gold); font-size: 14px; font-weight: 700; }
+    .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+    @media (max-width: 980px) {
+      .field-list { grid-template-columns: 1fr; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">15 · Feature · Command Gateway · T12 capstone</div>
+      <h1>把第三方 Obsidian command 关到闸门里：AI 起草 · 用户授权 · runtime 守边界。</h1>
+      <p class="subtitle">Command Gateway 不是又一条“让 agent 更强”的功能，它是 <strong>整个新架构最后的验收关卡</strong>。它回答一个非常具体的问题：</p>
+      <ul class="subtitle-list">
+        <li>第三方 Obsidian 插件注册了它自己的 command（比如 <em>Calendar: open weekly note</em>、<em>QuickAdd: template</em>、<em>Advanced Tables: sort rows</em>）</li>
+        <li>Peak 的 agent 能不能安全地调用它们</li>
+        <li>而不用给 agent 一个 <em>“调用一切 Obsidian API”</em> 的口子</li>
+      </ul>
+      <p class="subtitle">这份文档讲：<strong>四层概念（Command / ToolDef / Skill / Capability）为什么必须分开</strong>；<strong>AI Curator 起草到用户授权到 runtime 执行的完整流水</strong>；<strong>当前仓库里哪些零件已经在了、哪些还得补</strong>；<strong>什么样的 command 不应该被授权</strong>。</p>
+      <div class="meta">
+        <span>Status: current draft · 2026-07-01</span>
+        <span>Approx. length: 约 13k 混合字符</span>
+        <span>Reading time: 25-30 分钟</span>
+        <span>Primary viewport: desktop/editor 1440px</span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <nav class="side-nav" aria-label="文档导航">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">这页解决什么</a>
+          <a href="#four-layers">四层概念：Command / Tool / Skill / Capability</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">流水</span>
+          <a href="#pipeline">Draft → Authorize → Execute</a>
+          <a href="#curator">AI Curator 输出规格</a>
+          <a href="#review">用户 Review Surface</a>
+          <a href="#runtime">运行时合同</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">当前实现</span>
+          <a href="#foundations">已经落地的基础零件</a>
+          <a href="#gap">T12 还得补的四件事</a>
+          <a href="#risks">禁止 / 阻断的场景</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">技术附录</span>
+          <a href="#evidence">代码证据</a>
+          <a href="#anti-patterns">不要退化成什么</a>
+        </div>
+        <div class="nav-note">只想搞清楚“为什么 Peak 不直接给 agent 一个 executeCommand”，跳到 <a href="#four-layers">四层概念</a>。</div>
+      </nav>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>这页解决什么</h2>
+          <p class="lead">Obsidian 是插件生态。用户装了几十个第三方插件，每一个都往 command palette 注册若干 command。<strong>agent 想帮用户完成一次工作流</strong>，往往需要触发这些 command 的一部分——但绝不能 <em>任意</em> 触发。Command Gateway 就是把 “agent 能调外部 command” 这件事关进闸门：</p>
+
+          <div class="planned-banner">
+            <strong>本篇文档同时是 <em>说明</em> 与 <em>规格</em>。</strong>Command Gateway 是 T12 capstone；当前仓库里 <strong>foundations 已在（ToolDef / PermissionGuard / Skill / RunEnvelope）</strong>，但 <em>CommandPort、Curator 的 CommandGateway schema、Settings/Tools 里的 Plugin Capabilities review 界面、command 副作用观测</em> 都还没接上——本页 <a href="#gap">§ T12 还得补的四件事</a> 明列。
+          </div>
+
+          <div class="claim">
+            <strong>核心决策</strong>
+            <em>AI 负责判断，用户负责授权，runtime 负责边界</em>。三者缺一不可：AI 能读 command 名、插件源、用户上下文，比硬编码规则更适合分类；但 <strong>AI 不能自己写进 allowlist</strong>——必须走 Review Surface 让用户勾一次。授权后，执行阶段仍由 <code>PermissionGuard</code> 守 deny-first 边界——就算 AI 和用户都同意，系统级 deny rule 也 override。
+          </div>
+          <div class="claim">
+            <strong>本文读者</strong>
+            熟悉 agent / tool / policy 概念但不熟悉 Peak 新架构的工程师；正在规划 T12 交付的 coding agent；打算读懂“Peak 会不会偷偷让 agent 删我 vault”的用户。
+          </div>
+          <div class="claim">
+            <strong>本文不做什么</strong>
+            不列举 Obsidian 插件生态；不做 UI 完整视觉稿（review surface 只画一版概念图，正式设计在 T12 spec 里）；不把 command 当作 capability（这正是要避免的最深退化）；不重复 <a href="21-infra-agent-harness.html">21 Agent Harness</a> 的 tool loop 内部机制。
+          </div>
+        </section>
+
+        <section id="four-layers">
+          <h2>四层概念：Command / Tool / Skill / Capability</h2>
+          <p class="lead">这是本页最重要的一段。<strong>如果这四层被拉平成同一层，整个 Command Gateway 会退化成“扫描 palette + prompt 让模型调”，那就是新架构的第二套 runtime</strong>。四层的角色完全不同：</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · 四层的责任分工</strong>
+              <span>Mermaid · semantic stack</span>
+            </div>
+            <div class="mermaid">
+flowchart TB
+  Cap["Capability<br/>用户想完成什么<br/>work.plan.weekly"] --> Skill["Skill<br/>怎么做这件事<br/>read context, call approved command, produce artifact"]
+  Skill --> Tool["ToolDef<br/>可调用动作<br/>obsidian.command.execute"]
+  Tool --> Cmd["Obsidian Command<br/>外部插件原始 action<br/>calendar:open-weekly-note"]
+
+  Policy["Policy<br/>谁允许、何时允许、是否确认"] -. guards .-> Skill
+  Policy -. guards .-> Tool
+  Artifact["Artifact<br/>结果、diff、trace、用户确认"] -. produced by .-> Cap
+            </div>
+            <p class="read-note"><b>读图：</b>每一层都可以独立测试；<em>Policy</em> 横跨 Tool 与 Skill，<em>Artifact</em> 由 Capability 输出。Capability 是产品语义，Skill 是工作手册，ToolDef 是工程契约，Command 是最底层的原始按钮。</p>
+          </div>
+
+          <table class="doc-table">
+<colgroup><col style="width: 18%"><col style="width: 26%"><col style="width: 22%"><col></colgroup>
+            <thead>
+              <tr><th>层</th><th>它回答的问题</th><th>谁生成 / 决定</th><th>不可混淆点</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Command</strong></td>
+                <td>“Obsidian 或第三方插件暴露了什么按钮？”</td>
+                <td>Obsidian core 或第三方插件</td>
+                <td>Command 可能只打开 UI；不代表 agent 能安全自动调。</td>
+              </tr>
+              <tr>
+                <td><strong>ToolDef</strong></td>
+                <td>“Peak 能否把它包装成可测试、可阻断、可返回结果的工具？”</td>
+                <td>Gateway 生成候选；系统实现执行器</td>
+                <td>ToolDef 必须有 schema、kind、错误归一化、policy 入口。</td>
+              </tr>
+              <tr>
+                <td><strong>Skill</strong></td>
+                <td>“Agent 在什么场景下应该如何组合这些工具？”</td>
+                <td>AI Curator 起草；用户或系统确认后编译</td>
+                <td>Skill 是工作手册，不是权限本身；权限来自 Policy。</td>
+              </tr>
+              <tr>
+                <td><strong>Capability</strong></td>
+                <td>“Peak 产品承诺帮用户完成什么知识工作？”</td>
+                <td>产品架构定义</td>
+                <td>Capability 引用 Skill + ToolPolicy；<em>绝不</em>直接等于 command。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim warn">
+            <strong>为什么 command 不能直接是 capability</strong>
+            举个反例：<em>Calendar: open weekly note</em> 是一个 command。如果直接把它注册成 capability，产品对外承诺变成 “Peak 支持 open weekly note” —— 但 <em>用户真正想做的</em> 是 “按当前工作状态起草这周的规划，Calendar 只是承载物”。Capability 应该是 <em>work.plan.weekly</em>；<em>Calendar: open weekly note</em> 只是这个 skill 里的一个原子操作。倒过来的分层会导致：<em>capability 数量爆炸</em>（每装一个插件就多几十条 capability），<em>UI 全是命令 id</em>，<em>Skill 概念消失</em>。
+          </div>
+        </section>
+
+        <section id="pipeline">
+          <h2>Draft → Authorize → Execute</h2>
+          <p class="lead">Command Gateway 的完整流水是三段，每段边界清楚：<strong>AI 只在 Draft 阶段起作用</strong>；<strong>Authorize 是纯 UI + 用户判断</strong>；<strong>Execute 是运行时守边界</strong>。跨段的东西一定要落到持久化 / 可回放的记录里，不能只留在内存里。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · 三段流水（Curator pipeline）</strong>
+              <span>Mermaid · gate pipeline, not execution flow</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  Discover["Discover<br/>command descriptors"] --> Enrich["Enrich<br/>plugin source, context needs, usage hints"]
+  Enrich --> Classify["Classify<br/>risk + utility + observability"]
+  Classify --> DraftTool["Draft ToolDef<br/>name, schema, kind, preflight"]
+  Classify --> DraftSkill["Draft Skill<br/>when to use, allowed tools, output contract"]
+  DraftTool --> Review["User Review<br/>allow, deny, edit"]
+  DraftSkill --> Review
+  Review --> Compile["Compile<br/>approved ToolDef + Skill"]
+  Compile --> Runtime["Runtime<br/>capability run only"]
+            </div>
+            <p class="read-note"><b>读图：</b>Discover → Enrich → Classify 是 <em>AI Curator 内部</em> 的三步；DraftTool + DraftSkill 是 <em>它的两份产物</em>；Review 是 <em>唯一的人参与点</em>；Compile 后才把 Skill / ToolDef 写进 <em>quarantined registry</em>，Runtime 只从那读。</p>
+          </div>
+
+          <table class="doc-table">
+<colgroup><col style="width: 18%"><col style="width: 22%"><col style="width: 24%"><col></colgroup>
+            <thead>
+              <tr><th>阶段</th><th>谁参与</th><th>输入 / 输出</th><th>硬约束</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Discover</strong></td>
+                <td>Gateway service</td>
+                <td>入：Obsidian app.commands 表 + 已装插件 manifest；出：raw <code>CommandDescriptor[]</code></td>
+                <td>只查、不订阅、不缓存原始 API 引用。</td>
+              </tr>
+              <tr>
+                <td><strong>Enrich</strong></td>
+                <td>Gateway service</td>
+                <td>入：descriptor；出：加了 plugin source、需要的 context（active editor?）、历史使用频率</td>
+                <td>不看 command 的具体实现，只看 metadata。</td>
+              </tr>
+              <tr>
+                <td><strong>Classify（AI）</strong></td>
+                <td>Curator LLM</td>
+                <td>入：enriched；出：<code>{risk, utility, observability, notes}</code></td>
+                <td>输出必须走 zod schema；错误 fallback 到规则。</td>
+              </tr>
+              <tr>
+                <td><strong>Draft（AI）</strong></td>
+                <td>Curator LLM</td>
+                <td>出：候选 <code>ToolDefDraft</code> + <code>SkillDraft</code></td>
+                <td>Skill 的 <code>allowedTools</code> 白名单必须是 <em>已批准</em> 的名字。</td>
+              </tr>
+              <tr>
+                <td><strong>Review</strong></td>
+                <td>用户</td>
+                <td>入：draft；出：allow / deny / edit</td>
+                <td>可以拒绝、可以修改 rationale；<em>不</em>能批量 “allow all” 未看的建议。</td>
+              </tr>
+              <tr>
+                <td><strong>Compile</strong></td>
+                <td>Gateway service</td>
+                <td>入：approved draft；出：ToolDef 注册进 ToolRegistry；Skill 注册进 SkillRegistry</td>
+                <td>都进 <em>quarantined</em> 命名空间；不覆盖内置。</td>
+              </tr>
+              <tr>
+                <td><strong>Runtime</strong></td>
+                <td><code>PermissionGuard</code> + <code>CommandPort</code> + <code>RunEnvelope</code></td>
+                <td>入：Skill 请求 tool；出：<code>ToolResult</code> + <code>RunEvent</code> + <code>ArtifactRef</code></td>
+                <td>Deny rule 永远最高优先级，即使 Skill 白名单同意也可能被拦。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="curator">
+          <h2>AI Curator 输出规格</h2>
+          <p class="lead">Curator 是本流水唯一的 AI 环节。它的输出 <strong>必须结构化 + 必须可解释 + 必须可拒绝</strong>——不能只有一句 “recommended: true”。</p>
+
+          <div class="claim">
+            <strong>为什么 Curator 是 LLM 而不是规则</strong>
+            command id 本身就有语义（<code>calendar:open-weekly-note</code> 就是可读的），加上插件名和 category 提示，LLM 的分类和解释比正则准得多。<em>但</em>——LLM 会幻觉出不存在的 command，会给危险 command 起漂亮名字。所以必须：<strong>schema 校验 + 规则兜底 + 用户 review</strong> 三重防御。
+          </div>
+
+          <p class="prose" style="margin-top: 22px;">Curator 每评估一个 command 产出这样一份 record（用当前仓库里 <code>src/service/agents/harness/curator/</code> 的 zod schema 类比来写）：</p>
+
+          <pre><code>{
+  commandId: "calendar:open-weekly-note",
+  pluginSource: "obsidian-calendar-plugin",
+  risk: {
+    level: "medium",              // green | amber | red | blocked
+    modifiesVault: true,
+    needsActiveEditor: false,
+    observable: true,
+    rationale: "创建或打开一个周记 note；副作用可观察"
+  },
+  utility: {
+    intent: "work.plan.weekly",
+    exampleUseCase: "把当前工作状态草稿汇进本周规划",
+    evidence: ["plugin source", "command name", "recent weekly note use"]
+  },
+  toolProposal: {
+    name: "calendar.openWeeklyNote",
+    kind: "edit",                 // read | edit | destructive | meta
+    inputSchema: { /* zod schema */ },
+    confirmation: "per-run"       // never | per-run | per-session
+  },
+  skillDraft: {
+    id: "work.plan.weekly.calendar",
+    whenToUse: "用户想按当前状态起草本周规划时",
+    allowedTools: ["calendar.openWeeklyNote", "vault.readFile"],
+    outputContract: "一份 markdown 草稿 + 保存位置",
+    failureMode: "无 active editor 时提示用户手动打开"
+  },
+  action: "suggest"               // suggest | auto-allow (never for edit+) | block
+}</code></pre>
+
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 30%"><col style="width: 24%"><col></colgroup>
+            <thead>
+              <tr><th>Curator 输出</th><th>必须包含</th><th>不能包含</th><th>为什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Risk finding</strong></td>
+                <td>等级、依据、是否修改 vault、是否需要 active editor、是否可观察结果</td>
+                <td>不能只有 <code>recommended: true</code></td>
+                <td>用户授权需要理由，不是相信模型一句话</td>
+              </tr>
+              <tr>
+                <td><strong>Tool proposal</strong></td>
+                <td>候选 tool name、kind、input schema、confirmation policy、preflight needs</td>
+                <td>不能直接写入 runtime registry</td>
+                <td>工具必须先过权限和 review</td>
+              </tr>
+              <tr>
+                <td><strong>Skill draft</strong></td>
+                <td>适用场景、使用步骤、allowedTools、输出契约、失败时怎么做</td>
+                <td>不能带无限制工具访问</td>
+                <td>Skill 是工作手册，不是越权口子</td>
+              </tr>
+              <tr>
+                <td><strong>Rejection reason</strong></td>
+                <td>为什么不建议开放：modal-only、unknown side effect、destructive</td>
+                <td>不能静默丢弃</td>
+                <td>用户需要理解 Peak 的安全判断</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim warn">
+            <strong>Retry + fallback：Curator 已经是这个模式</strong>
+            当前 <code>src/service/agents/harness/curator/CuratorAgent.ts</code> 已实现 <em>LLM 试 3 次 → 失败回落到规则</em>。Command Gateway 的 Curator 应复用同一模式；不要新起一套。用户能容忍 “这条命令我们没能自动分类，请手动查看”，不能容忍 “模型幻觉了一个不存在的 command 让我批准”。
+          </div>
+        </section>
+
+        <section id="review">
+          <h2>用户 Review Surface</h2>
+          <p class="lead">Review Surface 是用户心智的关键。<strong>不能只是 raw command 表</strong>。用户看到的必须是“Plugin Capabilities”——按用途聚合的能力包，每一行都带证据、风险、Skill 用途、执行策略。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 3 · Review Surface 概念图（Settings → Tools → Plugin Capabilities）</strong>
+              <span>ASCII layout · 未定稿</span>
+            </div>
+            <pre style="min-height: 260px;"><code>┌──────────────────────────┬──────────────────────────────────────────────┐
+│ Plugin Capabilities      │ AI suggested capabilities                    │
+│ (aggregate by intent)    │                                              │
+│                          │  Weekly planning with Calendar        [Allow]│
+│  • Planning              │   2 commands · Medium risk · creates 1 note  │
+│  • Capture               │   Evidence: plugin src + recent use          │
+│  • Task work             │                                              │
+│  • Query / view          │  Quick capture template               [Sugg.]│
+│  • Blocked / unknown     │   1 command · Modal-only · opens plugin UI   │
+│                          │   Evidence: command has no observable result │
+│                          │                                              │
+│                          │  Bulk rename / delete             [System deny]
+│                          │   destructive · multi-file mutation          │
+│                          │   Evidence: name + operation pattern         │
+└──────────────────────────┴──────────────────────────────────────────────┘</code></pre>
+            <p class="read-note"><b>读图：</b>左侧按 <em>用户意图</em> 分组，右侧每条建议携带 evidence / risk / action。<strong>不出现</strong> command id 列表；<strong>不出现</strong> “Allow all” 按钮。</p>
+          </div>
+
+          <div class="claim">
+            <strong>信任原则</strong>
+            Review Surface 不是让用户管理底层技术细节，而是让用户 <em>相信</em> Peak 没有偷偷开放插件能力。用户必须能看到每个建议的 evidence、risk、Skill 用途、confirmation policy、最后一次运行 trace。做不到，就宁可不开放。
+          </div>
+
+          <div class="claim danger">
+            <strong>禁止的三种 UI 退化</strong>
+            (1) “一键 Allow all suggested” 按钮——摧毁授权语义。(2) command id 直接 checkbox 列表——用户没上下文，只会随便勾。(3) 授权后不再展示 trace——用户会以为 “只批一次” 结果 agent 反复用。任何一种都会让 Gateway 从 “安全边界” 退化成 “安全遮羞布”。
+          </div>
+        </section>
+
+        <section id="runtime">
+          <h2>运行时合同</h2>
+          <p class="lead">授权完成后，agent 请求 tool → PermissionGuard 判定 → CommandPort 调 Obsidian → RunEnvelope 记录。这条链的顺序不能变，任一环缺了都会破坏 <em>可预检 / 可阻断 / 可观察 / 可回放</em>。</p>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 4 · Runtime 时序（sequence diagram）</strong>
+              <span>Mermaid · runtime collaboration</span>
+            </div>
+            <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cap as Capability Runner
+  participant Skill as Compiled Skill
+  participant Tool as ToolRegistry
+  participant Policy as PermissionGuard
+  participant Cmd as CommandPort
+  participant App as Obsidian App
+  participant Run as RunEnvelope
+
+  Cap->>Skill: select approved skill for user intent
+  Skill->>Tool: request tool by name
+  Tool->>Policy: check kind + rules + mode
+  Policy-->>Tool: allow / deny / require-confirm
+  Tool->>Cmd: execute(commandId, args)
+  Cmd->>App: app.commands.executeCommandById()
+  App-->>Cmd: side-effect happens
+  Cmd-->>Tool: ToolResult { ok, data | error }
+  Tool-->>Skill: result
+  Skill->>Run: recordArtifact + recordEvent
+  Run-->>Cap: RunEvent stream
+            </div>
+            <p class="read-note"><b>读图：</b>Skill 从不 <em>直接</em> 摸 Obsidian —— 它只跟 <code>ToolRegistry</code> 说话。<code>Policy</code> 在 tool 之前，不在 command 之前，因为 <em>tool 层是 Peak 拥有的抽象</em>，是加 guard 的正确层。</p>
+          </div>
+
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 26%"><col style="width: 24%"><col></colgroup>
+            <thead>
+              <tr><th>运行时属性</th><th>由谁保证</th><th>怎么验证</th><th>破坏后果</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>可预检</strong></td>
+                <td><code>CommandPort.preflight()</code></td>
+                <td>需要 active editor 但没有 → 直接返回 <code>error: preconditions</code></td>
+                <td>无声失败；用户不知道 command 为什么没跑</td>
+              </tr>
+              <tr>
+                <td><strong>可阻断</strong></td>
+                <td><code>PermissionGuard</code> deny-first</td>
+                <td>golden scenario：<em>even in bypass mode, system deny rule still blocks</em></td>
+                <td>用户以为 “只让 agent 读”，agent 却在改文件</td>
+              </tr>
+              <tr>
+                <td><strong>可观察</strong></td>
+                <td><code>RunEnvelope</code> 记录 event + artifact</td>
+                <td>trace 里能看到 <code>ArtifactRef</code>（新文件、diff、workspace state 变化）</td>
+                <td>用户没法回看“上次 agent 到底改了啥”</td>
+              </tr>
+              <tr>
+                <td><strong>可回放</strong></td>
+                <td>Test harness 用 fake CommandPort</td>
+                <td>用 recorded RunSession 跑一次 fake port 得到相同 artifact</td>
+                <td>bug 复现只能靠原地重试</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>Policy 加在 Tool 层，不加在 Command 层</strong>
+            因为 <em>ToolDef 是 Peak 拥有的模型</em>——它的 name、kind、schema 都是 Peak 定义的。Command 是外部 API，可能只提供 id 和一个回调函数，没有稳定语义。在 tool 层加 guard 意味着：<em>不管 command 长什么样，agent 请求 tool 就必然过 Policy</em>。这是新架构 <a href="01-architecture.html#capability-contract">capability contract</a> 的直接应用。
+          </div>
+        </section>
+
+        <section id="foundations">
+          <h2>已经落地的基础零件</h2>
+          <p class="lead">好消息：新架构 T0-T11 落地后，Command Gateway 需要的 <strong>大部分</strong> 基础已经在仓库里了。下面这张给正在读代码的人一个“哪些已可复用”的清单。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 28%"><col></colgroup>
+            <thead>
+              <tr><th>基础</th><th>当前文件</th><th>Command Gateway 怎么复用</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>ToolDef 契约</strong></td>
+                <td><code data-copy="src/service/agents/harness/tool/types.ts">tool/types.ts</code></td>
+                <td><code>ToolDef { name, description, inputSchema, kind, execute() → ToolResult }</code>；Command wrapper 复用这个模型，不新起 <code>AgentTool</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>ToolRegistry + 分层</strong></td>
+                <td><code data-copy="src/service/agents/harness/tool/registry.ts">tool/registry.ts</code></td>
+                <td><code>forTier(tier, allowedNames?)</code> 已支持按白名单 + tier 过滤；Command Gateway 把 approved tool 注册到 quarantined 命名空间。</td>
+              </tr>
+              <tr>
+                <td><strong>MCP → ToolDef adapter</strong></td>
+                <td><code data-copy="src/service/agents/harness/tool/McpToolAdapter.ts">McpToolAdapter.ts</code></td>
+                <td>“外部工具发现 → adapter → ToolDef” 的工程范式已有；Command adapter 模仿这一形状，多加 <em>用户授权</em> 和 <em>副作用观测</em> 两步。</td>
+              </tr>
+              <tr>
+                <td><strong>PermissionGuard deny-first</strong></td>
+                <td><code data-copy="src/service/agents/harness/permission/PermissionGuard.ts">PermissionGuard.ts</code></td>
+                <td>决策优先级 (1) deny rules → (2) mode prohibitions（<code>read</code> 禁 edit/destructive）→ (3) allow rules → (4) mode default。Command Gateway 无需改一个字。</td>
+              </tr>
+              <tr>
+                <td><strong>PermissionMode + ToolKind</strong></td>
+                <td><code data-copy="src/service/agents/harness/permission/types.ts">permission/types.ts</code></td>
+                <td><code>read | acceptEdits | bypassPermissions</code>；<code>read | edit | destructive | meta</code>。Command classifier 输出映射到这四个 kind。</td>
+              </tr>
+              <tr>
+                <td><strong>Skill + 白名单</strong></td>
+                <td><code data-copy="src/service/agents/harness/skill/types.ts">skill/types.ts</code></td>
+                <td><code>HarnessSkill.allowedTools[]</code>；<code>invocation: model-first | user-only</code>；<code>allowedTiers</code>。Command Skill 走这里，不新建 SkillRegistry。</td>
+              </tr>
+              <tr>
+                <td><strong>Curator：LLM + retry + fallback</strong></td>
+                <td><code data-copy="src/service/agents/harness/curator/CuratorAgent.ts">CuratorAgent.ts</code><br><code data-copy="src/service/agents/harness/curator/schema.ts">schema.ts</code></td>
+                <td>Curator 已有的 <em>3 次 retry + 规则 fallback</em> + zod schema 校验直接复用；换 prompt 即可用于 command classification。</td>
+              </tr>
+              <tr>
+                <td><strong>RunEnvelope 时序</strong></td>
+                <td><code data-copy="src/service/run-envelope/types.ts">run-envelope/types.ts</code><br><code data-copy="src/service/run-envelope/InMemoryRunRecorder.ts">InMemoryRunRecorder.ts</code></td>
+                <td><code>RunSession</code>、<code>ArtifactRef</code>、<code>RunEvent</code>（status/progress/artifact/error/log）；Command 执行的每一步落到这里。</td>
+              </tr>
+              <tr>
+                <td><strong>CapabilityRegistry（surface readiness）</strong></td>
+                <td><code data-copy="src/service/capabilities/CapabilityRegistry.ts">CapabilityRegistry.ts</code></td>
+                <td>当前只做 surface self-register（chat / vault-search / ai-analysis / copilot / web-chat）；<em>不要</em> 把 command 塞进去假装成 capability——是产品架构定义的。</td>
+              </tr>
+              <tr>
+                <td><strong>Copilot Action 分层（对照）</strong></td>
+                <td><code data-copy="src/service/copilot/CopilotActionRegistry.ts">CopilotActionRegistry.ts</code><br><code data-copy="src/service/copilot/intent-hub.ts">intent-hub.ts</code></td>
+                <td>Copilot 已经是“Peak 自己写的、显式列表的 action”——Command Gateway 是它的镜像，处理的是 <em>外部</em> command。分层是同一套。</td>
+              </tr>
+              <tr>
+                <td><strong>Settings UI 语境</strong></td>
+                <td><code data-copy="src/ui/view/settings/settingsStrings.ts">settingsStrings.ts</code></td>
+                <td>MCP 已被叫作 <em>External tools</em>；Command Gateway 的 review 界面应放进同一段（<em>Tools / External capability</em>）。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="gap">
+          <h2>T12 还得补的四件事</h2>
+          <p class="lead">下面这四件是当前仓库 <strong>没有</strong> 的，T12 交付时必须补齐。如果任何一件被 “先跳过、以后补”，那 Command Gateway 就变回了 “agent 直连 Obsidian”。</p>
+
+          <div class="note-list">
+            <div class="note-item">
+              <b>1. <code>CommandPort</code> 抽象（discover / preflight / execute）</b>
+              <span>现在 Peak 只 <em>注册</em> 自己的 command（<code>src/app/commands/Register.ts</code>）；<em>调</em> 外部 command 没有稳定入口。CommandPort 必须暴露 <code>listCommands()</code>、<code>preflight(commandId, ctx)</code>、<code>execute(commandId, args)</code> 三个方法；service 层 <em>永远</em> 不直接摸 <code>app.commands</code>。放在 <code>src/core/ports/CommandPort.ts</code>；实现在 <code>src/app/commands/ObsidianCommandAdapter.ts</code>。</span>
+            </div>
+            <div class="note-item">
+              <b>2. Curator 的 CommandGateway schema + prompt</b>
+              <span>当前 <code>curator/schema.ts</code> 是 <em>模型 curator</em> 的（quick/deep/premium binding、cascadeEnabled）；<em>命令 curator</em> 需要新一份 schema：<code>{risk, utility, toolProposal, skillDraft, action}</code>，加对应 prompt。文件路径建议 <code>src/service/agents/harness/curator-command/</code>，与模型 curator 平级。</span>
+            </div>
+            <div class="note-item">
+              <b>3. Review Surface：Settings → Tools → Plugin Capabilities</b>
+              <span>UI 目前 <em>没有</em> 这一屏。放在 <code>src/ui/view/settings/</code>（复用现有 Tools 段）；列表按 <em>用户意图</em> 聚合而非 command id；每行必须显示 evidence + risk + action。<em>没有</em> “Allow all” 按钮。</span>
+            </div>
+            <div class="note-item">
+              <b>4. 副作用观测（Artifact for command execution）</b>
+              <span>Command 执行后需要产出 <em>可回放</em> 的 <code>ArtifactRef</code>：<em>创建了什么新文件？改了哪几行？workspace state 怎么变了？</em>。RunEnvelope 已有 ArtifactRef 类型；补的是 CommandPort 在 <code>execute()</code> 后包这个 artifact 的逻辑，让 <code>PermissionGuard</code> 的判定和结果都被记录。</span>
+            </div>
+          </div>
+
+          <div class="claim warn">
+            <strong>顺序有讲究：先补 1 → 4，最后才做 2 → 3</strong>
+            没有 CommandPort（1）和 Artifact 观测（4），Curator（2）没有稳定输入，Review（3）没有 evidence。<em>先</em> 把工程边界打好，<em>再</em> 让 AI 起草，<em>最后</em> 做用户 UI。反过来的顺序会把 AI 逼到 “想象一份接口来分类”，产出不可信。
+          </div>
+        </section>
+
+        <section id="risks">
+          <h2>禁止 / 阻断的场景</h2>
+          <p class="lead">下列 command 类别 <strong>不进入 Curator 建议流程</strong>——直接由规则拒绝。规则永远高于 AI，AI 高于用户默认，用户显式高于 AI 默认——但系统 deny 永远最高。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 26%"><col style="width: 22%"><col></colgroup>
+            <thead>
+              <tr><th>Gateway 风险</th><th>典型 command</th><th>映射 ToolKind</th><th>默认策略</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="pill green">Read / Navigate</span></td>
+                <td>打开视图、切换面板、显示搜索结果</td>
+                <td><code>read</code> 或 <code>meta</code></td>
+                <td>可推荐开启，但仍需授权。记录 tool_call + workspace-state artifact。</td>
+              </tr>
+              <tr>
+                <td><span class="pill gold">Current-note edit</span></td>
+                <td>插入模板、格式化当前选区、创建单个 note</td>
+                <td><code>edit</code></td>
+                <td>默认关闭；per-skill 开启；preflight 需 active editor；执行前展示可读意图；执行后记录 diff。</td>
+              </tr>
+              <tr>
+                <td><span class="pill red">Vault mutation</span></td>
+                <td>批量移动、批量重命名、批量标签修改</td>
+                <td><code>destructive</code> 或 system deny</td>
+                <td>默认 deny。只能人工 review，<em>不</em> 作为自动 tool。</td>
+              </tr>
+              <tr>
+                <td><span class="pill blue">Modal-only</span></td>
+                <td>打开 QuickAdd modal、打开插件设置</td>
+                <td><code>meta</code></td>
+                <td>不作为自动 tool；只作为 <em>suggested action</em> 让用户点。</td>
+              </tr>
+              <tr>
+                <td><span class="pill red">Unknown</span></td>
+                <td>来源不清、名称不清、副作用不可观察</td>
+                <td>system deny</td>
+                <td>阻断。需要用户手动标注或插件 manifest 补充。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim danger">
+            <strong>Deny-first 是硬约束，不是策略偏好</strong>
+            <code>PermissionGuard</code> 的决策顺序 (1) deny → (2) mode prohibitions → (3) allow → (4) mode default 意味着：<em>用户手动加 allow rule 也不能覆盖系统 deny</em>。Command Gateway 依赖这条约束——否则 “允许 agent 帮我做事” 的模式随时可能被一条恶意 command 利用。
+          </div>
+        </section>
+
+        <section id="evidence">
+          <h2>代码证据</h2>
+          <p class="lead">正在写 T12 的人：先读这些，再动手。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 26%"><col style="width: 22%"><col></colgroup>
+            <thead>
+              <tr><th>关心的事</th><th>入口文件</th><th>要点</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Peak 现在怎么注册 command</td>
+                <td><code data-copy="src/app/commands/Register.ts">Register.ts</code><br><code data-copy="src/app/commands/PeakCommandActions.ts">PeakCommandActions.ts</code></td>
+                <td><code>buildCoreCommands()</code> + <code>PeakCommandActions</code> bundle；这是 <em>Peak 自己的</em> command，不是 Gateway 的对象——但 CommandPort 的实现（<em>ObsidianCommandAdapter</em>）会调 <code>this.app.commands</code>，需要熟悉这个 API 形状。</td>
+              </tr>
+              <tr>
+                <td>ToolDef 的完整契约</td>
+                <td><code data-copy="src/service/agents/harness/tool/types.ts">tool/types.ts</code></td>
+                <td><code>name / description / inputSchema (zod) / kind / execute() → ToolResult&#123;ok, data|error&#125;</code>——Command wrapper 严格照这个模板。</td>
+              </tr>
+              <tr>
+                <td>MCP adapter 的复用模板</td>
+                <td><code data-copy="src/service/agents/harness/tool/McpToolAdapter.ts">McpToolAdapter.ts</code></td>
+                <td>“外部工具 → ToolDef” 的最短路径。Command Gateway 的 adapter 模仿它 + 加 review 门槛 + 加 artifact 记录。</td>
+              </tr>
+              <tr>
+                <td>PermissionGuard 决策优先级</td>
+                <td><code data-copy="src/service/agents/harness/permission/PermissionGuard.ts">PermissionGuard.ts</code><br><code data-copy="src/service/agents/harness/permission/types.ts">permission/types.ts</code></td>
+                <td>Deny-first 是四层里最重要的一层。改这里前先跑 harness 测试。</td>
+              </tr>
+              <tr>
+                <td>Skill 白名单</td>
+                <td><code data-copy="src/service/agents/harness/skill/types.ts">skill/types.ts</code></td>
+                <td><code>allowedTools</code>: <em>undefined = 不限制</em>，<em>empty = 无工具</em>——这个差别很微妙，加 Command Skill 时不要留 <code>undefined</code>。</td>
+              </tr>
+              <tr>
+                <td>Curator retry + schema</td>
+                <td><code data-copy="src/service/agents/harness/curator/CuratorAgent.ts">CuratorAgent.ts</code><br><code data-copy="src/service/agents/harness/curator/types.ts">curator/types.ts</code></td>
+                <td>3 次 retry + fallback + zod 校验的成熟模板。CommandGateway Curator 复用同一 <code>runCurator&lt;T&gt;()</code> 骨架，换 prompt + schema。</td>
+              </tr>
+              <tr>
+                <td>RunEnvelope</td>
+                <td><code data-copy="src/service/run-envelope/types.ts">run-envelope/types.ts</code></td>
+                <td><code>RunSession / ArtifactRef / RunEvent / RunClock / RunIdFactory</code>——所有 command 执行都必须落这里。</td>
+              </tr>
+              <tr>
+                <td>CapabilityRegistry 的当前语义</td>
+                <td><code data-copy="src/service/capabilities/CapabilityRegistry.ts">CapabilityRegistry.ts</code></td>
+                <td>“Surface self-register adapter”——不是 command registry。<strong>不要</strong> 把 command 塞进这个 registry；capability 是产品概念，需要在架构层显式声明。</td>
+              </tr>
+              <tr>
+                <td>Copilot 的分层对照</td>
+                <td><code data-copy="src/service/copilot/CopilotActionRegistry.ts">CopilotActionRegistry.ts</code><br><code data-copy="src/service/copilot/intent-hub.ts">intent-hub.ts</code></td>
+                <td>Copilot 的 <em>Vault lane</em> 已经是 “按用户意图聚合 action” 的范本；Command Gateway 的 Review Surface 视觉与语义都参考这里。</td>
+              </tr>
+              <tr>
+                <td>Settings 外部工具语境</td>
+                <td><code data-copy="src/ui/view/settings/settingsStrings.ts">settingsStrings.ts</code></td>
+                <td>MCP 叫 <em>External tools</em>；Command Gateway 的 review 走同一段。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="anti-patterns">
+          <h2>不要退化成什么</h2>
+          <p class="lead">下面这几种“看起来合理但违背设计目标”的实现方式必须显式列出——每一种都会把 T12 从 capstone 变成又一层技术债。</p>
+
+          <div class="note-list">
+            <div class="note-item">
+              <b>不要：service 层直接 <code>this.app.commands.executeCommandById()</code></b>
+              <span>这么做等于放弃 Port 抽象；测试无法 mock、副作用无法观测、guard 无处安放。<em>永远</em> 走 <code>CommandPort</code>。</span>
+            </div>
+            <div class="note-item">
+              <b>不要：新建 <code>CommandAgentService</code> 或 command-only agent loop</b>
+              <span>Peak 已经有 <a href="21-infra-agent-harness.html">Agent Harness</a>。Command Gateway 是 <em>它的一种输入源</em>——不是另一套 runtime。多一套 runtime，意味着多一份 permission gap、多一份 trace gap。</span>
+            </div>
+            <div class="note-item">
+              <b>不要：把 command 直接注册进 <code>CapabilityRegistry</code></b>
+              <span>Capability 是 <em>产品语义</em>（<em>work.plan.weekly</em>），不是 <em>技术能力</em>（<em>calendar:open-weekly-note</em>）。混层意味着 UI 上会长出几百条“capability”，且 Skill 概念被绕过。</span>
+            </div>
+            <div class="note-item">
+              <b>不要：让 Curator 直接写 allowlist</b>
+              <span>AI 的产出永远只到 <em>draft</em>——用户 Review 才能进 quarantined registry。绕过 Review 意味着 “agent 静默给自己扩权”，是本 feature 最坏的失败模式。</span>
+            </div>
+            <div class="note-item">
+              <b>不要：把 Review Surface 藏在 agent 内部</b>
+              <span>Review 属于 <em>Settings / Tools / External capability</em>——用户找 “插件权限” 时能找到的地方。藏在 “Chat / Advanced” 里等于没做。</span>
+            </div>
+            <div class="note-item">
+              <b>不要：单元测试用 real Obsidian app</b>
+              <span>要用 <em>fake CommandPort</em>——golden scenario 输入一个虚拟 command 表，输出一份 recorded RunSession，能确定性验证 “curator 是否分类正确 / guard 是否阻断 / artifact 是否记录”。</span>
+            </div>
+          </div>
+
+          <div class="claim">
+            <strong>验收标准（回到 spec §1）</strong>
+            当以下三个都为真时，T12 才算完成：(1) fake CommandPort 能跑测试并输出确定性 RunEvent + ArtifactRef + policy trace；(2) 真实插件跑 golden scenario（比如 <em>Calendar weekly note</em>）；(3) system deny rule 在 bypass mode 下仍能拦住 destructive command。少一样都是 “看起来能用” 而不是 “架构通过外部压力测试”。
+          </div>
+        </section>
+
+        <div class="footer">
+          <p>验证记录：2026-07-01。当前状态：foundations 已在（ToolDef / PermissionGuard / Skill / RunEnvelope / Curator），T12 交付所需的 CommandPort / CommandCurator schema / Review Surface / command 副作用 artifact 尚未接入。规格原稿：<a href="superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">2026-06-03 spec</a>；本页负责在正稿位置以“说明 + 规格”的双身份持续存在，直到 T12 交付完成后转成纯说明。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sectionById = new Map(navLinks.map((link) => {
+      const id = link.getAttribute('href').slice(1);
+      return [id, document.getElementById(id)];
+    }).filter(([, section]) => section));
+    const setActive = (id) => {
+      navLinks.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sectionById.forEach((section) => observer.observe(section));
+    }
+    if (location.hash) {
+      const active = location.hash.slice(1);
+      if (sectionById.has(active)) setActive(active);
+    } else {
+      setActive('orientation');
+    }
+  </script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8',
+        noteBkgColor: '#ffffff',
+        noteTextColor: '#17221d'
+      }
+    });
+  </script>  <script src="assets/mermaid-zoom.js"></script>
+  <script src="assets/copy-path.js"></script>
+</body>
+</html>
