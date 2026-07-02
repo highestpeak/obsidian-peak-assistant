@@ -243,39 +243,43 @@
           </article>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill blue">待补详细文档</span><span class="pill">Vault Intelligence</span></div>
+            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Vault Intelligence</span></div>
             <h3>Case 3 · 我想让 AI 总结某个主题在 Vault 里的材料 <span>AI Analysis</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
                 <b>怎么做</b>
                 <ol>
-                  <li>打开 <strong>Quick Search</strong>。</li>
-                  <li>切到 <strong>AI Analysis</strong>。</li>
-                  <li>使用 <strong>Vault Analysis</strong> 预设，输入主题或问题。</li>
+                  <li>打开 <strong>Quick Search</strong>（默认 <code>Cmd/Ctrl + Shift + K</code>）。</li>
+                  <li>切到 <strong>AI Analysis</strong> tab。</li>
+                  <li>选 <strong>Vault Analysis</strong> mission。</li>
+                  <li>输入主题或问题，例如“最近三个月我对 RAG 的看法有什么演变”。</li>
+                  <li>可选：在 Copilot 侧栏切到 <strong>Vault</strong> tab，触发 <strong>Vault Health Scan</strong>（<code>13-feature-vault-intelligence.html</code> §Signals）或 <strong>Knowledge Gaps</strong>，让 AI 先扫一遍再总结。</li>
                 </ol>
               </div>
               <div class="recipe-block">
                 <b>成功结果</b>
-                <p>你应该得到围绕 Vault 材料的分析，而不是单条搜索结果。后续需要在 <code>13-feature-vault-intelligence.html</code> 写清：它依赖哪些索引、如何引用来源、失败时怎么降级。</p>
+                <p>你应该拿到一份围绕 Vault 材料的分析报告，含引用清单、confidence 提示、以及 lint findings（若触发过 Vault Health Scan）。落 Vault 的位置默认 <code>peak-assistant/analysis/</code>。降级路径：检索无结果 → 提示"未找到相关材料"；模型失败 → 保留 partial + retry 按钮。深入见 <a href="13-feature-vault-intelligence.html">13 · Vault Intelligence</a>。</p>
               </div>
             </div>
           </article>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill blue">待补详细文档</span><span class="pill">AI Graph</span></div>
+            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">AI Graph</span></div>
             <h3>Case 4 · 我想看一组笔记之间的关系 <span>AI Graph</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
                 <b>怎么做</b>
                 <ol>
                   <li>打开 <strong>Quick Search</strong> → <strong>AI Analysis</strong>。</li>
-                  <li>选择 <strong>AI Graph</strong>。</li>
-                  <li>用自然语言描述你想看的知识图谱。</li>
+                  <li>选 <strong>AI Graph</strong> mission，用自然语言描述你想看的关系（例："帮我看 tag=research 下 2026 年新加的笔记怎么连的"）。</li>
+                  <li>view 打开后：hover 节点看 title/summary/degree；单击节点在右侧栏 inspection panel 里看 backlinks / semantic edges / community。</li>
+                  <li>点顶部 <strong>Highlight communities</strong> 用 Louvain 分组着色；<strong>Highlight bridges</strong> 用 Brandes betweenness 突出结构洞。</li>
+                  <li>右上 <strong>Open in leaf</strong> 把当前视图切成独立 leaf；点节点标题回原始笔记。</li>
                 </ol>
               </div>
               <div class="recipe-block">
                 <b>成功结果</b>
-                <p>这个任务应该产生“关系视角”，而不是普通列表。真正的产品文档还需要补：图节点来自哪里、边如何解释、用户怎么从图回到笔记。</p>
+                <p>你得到一张按语义 / graph 关系聚合的图，节点来自 <code>vault.sqlite</code> 的 <code>document</code> 表，边来自 <code>edges</code>（wikilink / backlink / semantic edge / co-citation）。用户可从图节点直接回笔记。降级：数据不足 → 显示 "&lt;20 nodes"; 无 embedding → 只画 wikilink 图。深入见 <a href="13-feature-vault-intelligence.html">13 · Vault Intelligence · Graph</a> 与 <a href="23-infra-search-index.html">23 · Search Index</a>。</p>
               </div>
             </div>
           </article>
@@ -366,20 +370,21 @@
           </article>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill blue">待抽基础设施文档</span><span class="pill">Context Pipeline</span></div>
+            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Context Pipeline</span></div>
             <h3>Case 9 · 我想让 AI “知道我现在在做什么” <span>Context-aware answer</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
                 <b>怎么做</b>
                 <ol>
-                  <li>如果是普通问答，先走 Chat。</li>
-                  <li>如果是多步任务，feature 应把当前会话、当前文件、附件、focus folder、预算和能力开关作为 context 输入。</li>
-                  <li>不要在 UI 里临时拼一段 prompt 假装 context。</li>
+                  <li>普通问答：直接在 <strong>Chat</strong> 里发消息 —— Context Pipeline 会自动装配：<code>activeFile</code>（当前编辑的笔记，取 title + 前 N 段） + <code>recentMessages</code>（当前 conversation 最近 K 轮） + <code>focusFolder</code>（Settings → General → Focus Folder，若设置则限定 retrieval scope）+ 用户 profile（语言、tone、姓名）。</li>
+                  <li>需要跨文档上下文：在 composer 里 <code>@</code> 触发 attachment picker 手动挂笔记 / 网页 / PDF；<code>#</code> 触发 tag 语义检索；<code>:</code> 触发 mission / capability 选择。</li>
+                  <li>多步 agent 任务：feature 把 <code>ChatConversation</code> + <code>focusFolder</code> + <code>activeFile</code> + budget 通过 <code>RunEnvelope</code> 传给 Agent Harness，不要在 UI 层拼 prompt。</li>
+                  <li>Debug context：Chat → 消息头齿轮 → <strong>Show context stack</strong>（会显示 pipeline 装配的每一层与截断比例）。</li>
                 </ol>
               </div>
               <div class="recipe-block">
                 <b>成功结果</b>
-                <p>回答能解释它基于什么上下文；当上下文太大时，系统能截断、压缩或降级。当前 Chat 细节在 11，跨功能 context 规则后续归 22。</p>
+                <p>回答能引用上下文（例如提到 activeFile 的具体段落）；context 超预算时按优先级降级：attachments 全保留 → recentMessages 从头截断 → focusFolder retrieval 减少 top-k → activeFile 只留 heading。底层 pipeline / 优先级 / 预算规则详见 <a href="22-infra-context-pipeline.html">22 · Context Pipeline</a>；Chat 端的用户可见字段详见 <a href="11-feature-chat-context.html">11 · Chat Context</a>。</p>
               </div>
             </div>
           </article>
