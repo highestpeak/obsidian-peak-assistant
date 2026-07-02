@@ -40,6 +40,11 @@ export {
 } from './InMemoryArtifactStore';
 
 export {
+	VaultArtifactStore,
+	type VaultArtifactStoreOptions,
+} from './VaultArtifactStore';
+
+export {
 	RunEnvelopeStore,
 	deriveEvents,
 	type EventSelector,

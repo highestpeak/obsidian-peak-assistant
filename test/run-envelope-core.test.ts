@@ -122,7 +122,7 @@ function testRecorderFileHasNoForbiddenImports(): void {
 function testIndexFileIsBarrelOnly(): void {
 	const source = fs.readFileSync(INDEX_PATH, 'utf8');
 	const specifiers = extractImportSpecifiers(source);
-	const allowed = new Set(['./types', './InMemoryRunRecorder', './helpers', './projection', './InMemoryArtifactStore', './runEnvelopeStore']);
+	const allowed = new Set(['./types', './InMemoryRunRecorder', './helpers', './projection', './InMemoryArtifactStore', './VaultArtifactStore', './runEnvelopeStore']);
 	for (const spec of specifiers) {
 		assert.ok(
 			allowed.has(spec),
