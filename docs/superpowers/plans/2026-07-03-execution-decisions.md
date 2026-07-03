@@ -44,6 +44,13 @@ If any of B1/B3 turn out to have huge blast radius, land the scaffolding + a doc
 - 并发处理：内部 writeQueue 串行化 put —— Obsidian 单进程 + Vault 读写异步就够，不引 lock/mutex 复杂度。
 - 二进制 body 场景（ArrayBuffer）暂不支持 —— plan 没提，等 Wave 4 D4 media generation 真正落到 vault 时再补。
 
+### B1 (2026-07-03)
+- 7 个 palette 命令按 `main.ts` 现状（Quick Search / Copilot / Review History / Chat Studio / Usage Dashboard / Setup Wizard / Settings）全部纳入 CommandGateway。不再区分"哪些走 gateway 哪些不走"。
+- 每条命令的 CapabilityManifest 用 `ui.open.*` 命名空间，与后续会新增的真正 capability（`doc.review.current` / `vault.search` 等）区分开 —— surface-open ≠ token-consuming capability，但走同一个 observability 通道是有价值的。
+- backendPolicy.preferred 一律填 `provider-direct` + fallback `[hermes-harness, claude-sdk]`。`surfaceOpenStrategy` 是本地闭包直接执行 UI open callback，走 runCapability 只是为了记录 RunSession start/finish。B3 落 backend registry 后，`surfaceOpenStrategy` 可以逐条替换成真 backend dispatch，不用改 manifest。
+- 保留 `buildCoreCommands` import 并 `void`，等 T11P 之后的 code retirement wave 一起删 —— 现在删会破坏一些 grep-audit 的 UI-command inventory 脚本（不确定但保守）。
+- UI 层没有强制 CommandGateway.tryGet：settings tab 等地方以后想反查"有哪些命令"可以走 `gateway.all()`，不再依赖 buildCoreCommands 的 return value。
+
 ### B4 (2026-07-03)
 - AgentLoop 加 `compiledSkill?: CompiledSkill` 字段而不是复用旧的 `skills?: HarnessSkill[]`（后者的 `../skill/types` 文件已不存在，字段是死的）。CompiledSkill 是 T6 的现产。
 - Skill quarantine check 与 PermissionGuard.check 并列（不是替代）：两者语义正交，PermissionGuard 是用户配置的 deny lists，Quarantine 是 skill 自带的 capability boundary。谁 veto 都算 deny，先跑 PermissionGuard 再跑 Quarantine。

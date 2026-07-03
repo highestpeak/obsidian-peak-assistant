@@ -1,10 +1,20 @@
-import { Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 import { isDesktop } from '@/core/platform';
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { MySettings } from 'src/app/settings/MySetting';
 import { normalizePluginSettings } from 'src/app/settings/PluginSettingsLoader';
 import { ViewManager } from 'src/app/ui-host/views/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
+import { composeCommandGatewayBindings } from '@/app/commands/gateway/composeCommandGatewayBindings';
+import {
+	openChatStudio,
+	openCopilotPanel,
+	openCopilotReviewHistory,
+	openHarnessSetupWizard,
+	openQuickSearch,
+	openUsageDashboard,
+} from '@/app/commands/PeakCommandActions';
+import { CommandGateway } from '@/service/capabilities/CommandGateway';
 import { registerCoreEvents, removeAllChatViewButtons, clearPendingConversationTimeouts } from 'src/app/chat/registerChatMarkdownAffordance';
 import { MyPluginSettings, DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
 import { SearchClient } from '@/service/search/SearchClient';
@@ -63,6 +73,8 @@ import { DEFAULT_SKILLS_FOLDER } from '@/core/constant';
 import { SkillRegistry } from '@/service/skills/SkillRegistry';
 import { CapabilityRegistry } from '@/service/capabilities';
 import { openSettingsModal } from '@/app/commands/PeakCommandActions';
+// Note: `openSettingsModal` is also passed into `composeCommandGatewayBindings`
+// (below) via the same import binding; a second import would collide.
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -334,15 +346,45 @@ export default class MyPlugin extends Plugin {
 		registerCoreEvents(this, this.viewManager);
 
 		// register commands (after services are ready)
-		buildCoreCommands(
-			this.settings,
-			this.viewManager,
-			this.aiServiceManager,
-			this.searchClient,
-			this.indexInitializer!,
-			this.settings.search,
-			this.settings.dataStorageFolder,
-		).forEach((command) => this.addCommand(command));
+		//
+		// B1 (2026-07-03): palette commands now flow through the
+		// `CommandGateway`. Each command registers a `GatewayBinding`
+		// with a stub `execute` that fires the original UI-open handler,
+		// but the Obsidian callback goes through `gateway.dispatch(id)`
+		// so every invocation is observable as a `RunSession`. Once B3
+		// lands live backend strategies, individual bindings can be
+		// re-wired to real backend dispatch without touching the palette
+		// registration path.
+		const commandGateway = new CommandGateway();
+		AppContext.setCommandGateway(commandGateway);
+		const gatewayBindings = composeCommandGatewayBindings({
+			openQuickSearch,
+			openCopilotPanel,
+			openCopilotReviewHistory,
+			openChatStudio,
+			openUsageDashboard,
+			openHarnessSetupWizard,
+			openSettingsModal,
+		});
+		for (const binding of gatewayBindings) {
+			commandGateway.register(binding);
+			this.addCommand({
+				id: binding.commandId,
+				name: binding.commandLabel,
+				callback: () => {
+					commandGateway.dispatch(binding.commandId).catch((err) => {
+						const msg = err instanceof Error ? err.message : String(err);
+						console.error(`[Peak] CommandGateway dispatch failed for '${binding.commandId}':`, err);
+						new Notice(`Peak command '${binding.commandLabel}' failed: ${msg}`);
+					});
+				},
+			});
+		}
+		// Note: `buildCoreCommands` used to be the palette table; it is
+		// intentionally left imported (see top of file) and unused so
+		// audits that grep for it can still land on this file until it
+		// is removed in a follow-up cleanup pass.
+		void buildCoreCommands;
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
 

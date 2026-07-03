@@ -22,6 +22,7 @@ import type { IndexService } from '@/service/search/index/indexService';
 import type { MCPClientManager } from '@/service/mcp/MCPClientManager';
 import type { SkillRegistry } from '@/service/skills/SkillRegistry';
 import type { CapabilityRegistry } from '@/service/capabilities/CapabilityRegistry';
+import type { CommandGateway } from '@/service/capabilities/CommandGateway';
 import type { UsageServices } from '@/app/context/AppRuntimeRegistry';
 import type { VaultPreviewPort } from '@/core/ports/VaultPreviewPort';
 import type { VaultNavigationPort } from '@/core/ports/VaultNavigationPort';
@@ -390,6 +391,24 @@ export class AppContext {
 
 	public static clearCapabilityRegistry(): void {
 		AppContext.getInstance().runtimeRegistry.clearCapabilityRegistry();
+	}
+
+	// ─── B1: CommandGateway ───────────────────────────────────────────────
+
+	public static setCommandGateway(gateway: CommandGateway): void {
+		AppContext.getInstance().runtimeRegistry.setCommandGateway(gateway);
+	}
+
+	public static getCommandGateway(): CommandGateway {
+		return AppContext.getInstance().runtimeRegistry.getCommandGateway();
+	}
+
+	public static tryGetCommandGateway(): CommandGateway | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetCommandGateway();
+	}
+
+	public static clearCommandGateway(): void {
+		AppContext.getInstance().runtimeRegistry.clearCommandGateway();
 	}
 
 	// ─── T13: UsageServices bundle ────────────────────────────────────────

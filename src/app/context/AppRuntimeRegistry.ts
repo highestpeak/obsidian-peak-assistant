@@ -25,6 +25,7 @@ import type { IndexService } from '@/service/search/index/indexService';
 import type { MCPClientManager } from '@/service/mcp/MCPClientManager';
 import type { SkillRegistry } from '@/service/skills/SkillRegistry';
 import type { CapabilityRegistry } from '@/service/capabilities/CapabilityRegistry';
+import type { CommandGateway } from '@/service/capabilities/CommandGateway';
 import type { UsageTrackingService } from '@/service/usage/UsageTrackingService';
 import type { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 import type { UsageOptimizationService } from '@/service/usage/optimization/UsageOptimizationService';
@@ -50,6 +51,7 @@ export class AppRuntimeRegistry {
 	private mcpClientManager: MCPClientManager | null = null;
 	private skillRegistry: SkillRegistry | null = null;
 	private capabilityRegistry: CapabilityRegistry | null = null;
+	private commandGateway: CommandGateway | null = null;
 	private usageServices: UsageServices | null = null;
 
 	/**
@@ -413,6 +415,34 @@ export class AppRuntimeRegistry {
 
 	clearCapabilityRegistry(): void {
 		this.capabilityRegistry = null;
+	}
+
+	// ─── B1: CommandGateway ───────────────────────────────────────────────
+
+	setCommandGateway(gateway: CommandGateway): void {
+		if (this.commandGateway !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setCommandGateway: a gateway is already bound. Call clearCommandGateway first if this is intentional.',
+			);
+		}
+		this.commandGateway = gateway;
+	}
+
+	getCommandGateway(): CommandGateway {
+		if (this.commandGateway === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getCommandGateway: no gateway is bound. Plugin boot must call setCommandGateway() before consumers reach it.',
+			);
+		}
+		return this.commandGateway;
+	}
+
+	tryGetCommandGateway(): CommandGateway | null {
+		return this.commandGateway;
+	}
+
+	clearCommandGateway(): void {
+		this.commandGateway = null;
 	}
 
 	// ─── T13: UsageServices bundle (tracking + outcome + optimization) ────
