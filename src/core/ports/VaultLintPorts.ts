@@ -183,6 +183,15 @@ export interface VaultLintDetectorDocDegree {
 	 * concrete markdown backing).
 	 */
 	readonly mtimeMs: number | null;
+	/**
+	 * Louvain community assignment from `mobius_node.community_id`.
+	 * `null` when structural analysis has not yet assigned the node to
+	 * a community. Optional so pre-Wave-2 fake fixtures compile without
+	 * threading `communityId: null` through every literal. Used by
+	 * `T-ABANDONED-CLUSTER` to aggregate the newest edit time per
+	 * community without a second SQL join.
+	 */
+	readonly communityId?: string | null;
 }
 
 /**

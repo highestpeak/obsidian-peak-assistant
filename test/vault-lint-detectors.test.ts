@@ -709,6 +709,9 @@ async function main(): Promise<void> {
 	await testDecayingBridgeDetectorSkipsFreshOrLowDegree();
 	await testAbandonedFolderDetectorFiresForOldMultiMemberFolder();
 	await testAbandonedFolderDetectorSkipsFreshOrTinyFolder();
+	await testAbandonedClusterDetectorFiresForOldCommunity();
+	await testAbandonedClusterDetectorSkipsTinyOrUnassigned();
+	await testAbandonedClusterDetectorRespectsDismissals();
 	await testSoftOrphanDetectorFiresBelowThreshold();
 	await testSoftOrphanDetectorSkipsHardOrphans();
 	await testSoftOrphanDetectorRespectsDismissals();
@@ -899,6 +902,92 @@ async function testAbandonedFolderDetectorSkipsFreshOrTinyFolder(): Promise<void
 	const findings = await abandoned.detect(makeScanContext(dc));
 	assert.strictEqual(findings.length, 0, 'folders with < 3 members must not fire');
 	console.log('PASS: abandonedFolderDetectorSkipsFreshOrTinyFolder');
+}
+
+async function testAbandonedClusterDetectorFiresForOldCommunity(): Promise<void> {
+	const detectors = buildTemporalDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, abandonedClusterDays: 180 },
+	});
+	const abandoned = detectors.find((d) => d.id === 'T-ABANDONED-CLUSTER');
+	assert.ok(abandoned, 'buildTemporalDetectors must include T-ABANDONED-CLUSTER');
+	const now = Date.now();
+	const oldAge = now - 250 * 24 * 60 * 60 * 1000;
+	const olderAge = now - 300 * 24 * 60 * 60 * 1000;
+	const dc = makeFakeContext({
+		communities: [
+			{ communityId: 'c-old', label: 'Old Community', memberCount: 5, internalDensity: 0.4 },
+			{ communityId: 'c-active', label: 'Active Community', memberCount: 8, internalDensity: 0.6 },
+		],
+		docDegrees: [
+			{ nodeId: 'o1', label: 'o1', filePath: 'old/1.md', incoming: 1, outgoing: 1, mtimeMs: oldAge, communityId: 'c-old' },
+			{ nodeId: 'o2', label: 'o2', filePath: 'old/2.md', incoming: 1, outgoing: 1, mtimeMs: olderAge, communityId: 'c-old' },
+			{ nodeId: 'o3', label: 'o3', filePath: 'old/3.md', incoming: 1, outgoing: 1, mtimeMs: olderAge, communityId: 'c-old' },
+			{ nodeId: 'a1', label: 'a1', filePath: 'active/1.md', incoming: 1, outgoing: 1, mtimeMs: now - 5 * 24 * 60 * 60 * 1000, communityId: 'c-active' },
+			{ nodeId: 'a2', label: 'a2', filePath: 'active/2.md', incoming: 1, outgoing: 1, mtimeMs: now - 5 * 24 * 60 * 60 * 1000, communityId: 'c-active' },
+			{ nodeId: 'a3', label: 'a3', filePath: 'active/3.md', incoming: 1, outgoing: 1, mtimeMs: now - 5 * 24 * 60 * 60 * 1000, communityId: 'c-active' },
+		],
+	});
+	const findings = await abandoned!.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 1, 'only the old community fires');
+	assert.strictEqual((findings[0]!.metadata as any).communityId, 'c-old');
+	assert.strictEqual((findings[0]!.metadata as any).label, 'Old Community');
+	assert.strictEqual((findings[0]!.metadata as any).memberCount, 3);
+	assert.strictEqual(findings[0]!.filePath, null);
+	assert.deepStrictEqual(findings[0]!.fixActions, ['archive-cluster', 'review-cluster']);
+	console.log('PASS: abandonedClusterDetectorFiresForOldCommunity');
+}
+
+async function testAbandonedClusterDetectorSkipsTinyOrUnassigned(): Promise<void> {
+	const detectors = buildTemporalDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, abandonedClusterDays: 180 },
+	});
+	const abandoned = detectors.find((d) => d.id === 'T-ABANDONED-CLUSTER')!;
+	const now = Date.now();
+	const veryOld = now - 400 * 24 * 60 * 60 * 1000;
+	const dc = makeFakeContext({
+		communities: [
+			{ communityId: 'c-tiny', label: 'Tiny', memberCount: 2, internalDensity: 0.5 },
+		],
+		docDegrees: [
+			// Tiny community — under min members even though very old.
+			{ nodeId: 't1', label: 't1', filePath: 't/1.md', incoming: 0, outgoing: 0, mtimeMs: veryOld, communityId: 'c-tiny' },
+			{ nodeId: 't2', label: 't2', filePath: 't/2.md', incoming: 0, outgoing: 0, mtimeMs: veryOld, communityId: 'c-tiny' },
+			// Nodes with no community assignment — never fire.
+			{ nodeId: 'u1', label: 'u1', filePath: 'u/1.md', incoming: 0, outgoing: 0, mtimeMs: veryOld, communityId: null },
+			{ nodeId: 'u2', label: 'u2', filePath: 'u/2.md', incoming: 0, outgoing: 0, mtimeMs: veryOld, communityId: null },
+			{ nodeId: 'u3', label: 'u3', filePath: 'u/3.md', incoming: 0, outgoing: 0, mtimeMs: veryOld, communityId: null },
+		],
+	});
+	const findings = await abandoned.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: abandonedClusterDetectorSkipsTinyOrUnassigned');
+}
+
+async function testAbandonedClusterDetectorRespectsDismissals(): Promise<void> {
+	const detectors = buildTemporalDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, abandonedClusterDays: 180 },
+	});
+	const abandoned = detectors.find((d) => d.id === 'T-ABANDONED-CLUSTER')!;
+	const now = Date.now();
+	const veryOld = now - 400 * 24 * 60 * 60 * 1000;
+	const dc = makeFakeContext({
+		communities: [
+			{ communityId: 'c-dismissed', label: 'Dismissed', memberCount: 5, internalDensity: 0.5 },
+		],
+		docDegrees: [
+			{ nodeId: 'd1', label: 'd1', filePath: 'd/1.md', incoming: 0, outgoing: 0, mtimeMs: veryOld, communityId: 'c-dismissed' },
+			{ nodeId: 'd2', label: 'd2', filePath: 'd/2.md', incoming: 0, outgoing: 0, mtimeMs: veryOld, communityId: 'c-dismissed' },
+			{ nodeId: 'd3', label: 'd3', filePath: 'd/3.md', incoming: 0, outgoing: 0, mtimeMs: veryOld, communityId: 'c-dismissed' },
+		],
+	});
+	const findings = await abandoned.detect(
+		makeScanContext(dc, ['T-ABANDONED-CLUSTER:c-dismissed']),
+	);
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: abandonedClusterDetectorRespectsDismissals');
 }
 
 async function testMissingBacklinkDetectorFiresOnSemPairWithoutLinks(): Promise<void> {

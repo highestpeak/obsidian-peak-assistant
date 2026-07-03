@@ -27,10 +27,12 @@ export function buildTemporalDetectors(config: VaultLintConfig): LintSignalDetec
 		),
 		buildDecayingBridgeDetector(config.thresholds.decayingBridgeDays),
 		buildAbandonedFolderDetector(config.thresholds.abandonedFolderDays),
+		buildAbandonedClusterDetector(config.thresholds.abandonedClusterDays),
 	];
 }
 
 const ABANDONED_FOLDER_MIN_MEMBERS = 3;
+const ABANDONED_CLUSTER_MIN_MEMBERS = 3;
 
 /**
  * `T-ABANDONED-FOLDER` — folder-level signal. A folder whose newest
@@ -90,6 +92,80 @@ function buildAbandonedFolderDetector(abandonedDays: number): LintSignalDetector
 					metadata: {
 						folder,
 						memberCount: count,
+						newestAgeDays: Math.floor(ageDays),
+						thresholdDays: abandonedDays,
+					},
+					status: 'open',
+				});
+			}
+			return findings;
+		},
+	};
+}
+
+/**
+ * `T-ABANDONED-CLUSTER` — community-level signal. Aggregate the
+ * newest child-note mtime per Louvain community; when that peak edit
+ * age exceeds `abandonedClusterDays` (default 180) the whole
+ * community counts as abandoned. Skips communities under
+ * `ABANDONED_CLUSTER_MIN_MEMBERS` to avoid false positives on the
+ * long tail of tiny communities that `S-ISLAND-CLUSTER` already
+ * covers. Community label + memberCount come from
+ * `listCommunities`; the recency comes from
+ * `listDocDegrees` (already returns `communityId + mtimeMs`).
+ */
+function buildAbandonedClusterDetector(abandonedDays: number): LintSignalDetector {
+	return {
+		id: 'T-ABANDONED-CLUSTER',
+		dimension: 'temporal',
+		severity: 'warning',
+		signalWeight: 0.15,
+		requiresLlm: false,
+
+		async detect(context: LintScanContext): Promise<LintFinding[]> {
+			if (abandonedDays <= 0) return [];
+			const dc = context.detectorContext;
+			const communities = await dc.listCommunities();
+			if (communities.length === 0) return [];
+			const communityById = new Map(communities.map((c) => [c.communityId, c]));
+
+			const rows = await dc.listDocDegrees(TEMPORAL_FETCH_LIMIT);
+			const now = Date.now();
+			const perCommunity = new Map<string, { newestMtime: number; memberCount: number }>();
+			for (const row of rows) {
+				const communityId = row.communityId ?? null;
+				if (communityId === null || row.mtimeMs === null) continue;
+				const acc = perCommunity.get(communityId);
+				if (!acc) {
+					perCommunity.set(communityId, { newestMtime: row.mtimeMs, memberCount: 1 });
+				} else {
+					if (row.mtimeMs > acc.newestMtime) acc.newestMtime = row.mtimeMs;
+					acc.memberCount += 1;
+				}
+			}
+
+			const findings: LintFinding[] = [];
+			for (const [communityId, { newestMtime, memberCount }] of perCommunity) {
+				if (memberCount < ABANDONED_CLUSTER_MIN_MEMBERS) continue;
+				const ageDays = (now - newestMtime) / MS_PER_DAY;
+				if (ageDays < abandonedDays) continue;
+				const meta = communityById.get(communityId);
+				const label = meta?.label || communityId;
+				const dismissalKey = `T-ABANDONED-CLUSTER:${communityId}`;
+				if (context.dismissals.has(dismissalKey)) continue;
+				findings.push({
+					id: findingId('scan', 'T-ABANDONED-CLUSTER', communityId),
+					signalId: 'T-ABANDONED-CLUSTER',
+					severity: 'warning',
+					filePath: null,
+					title: `Abandoned cluster: ${label}`,
+					description: `Community with ${memberCount} sampled notes; newest edit ${Math.floor(ageDays)} days ago (threshold ${abandonedDays}). Consider archiving or bridging to an active community.`,
+					fixActions: ['archive-cluster', 'review-cluster'],
+					metadata: {
+						communityId,
+						label,
+						memberCount,
+						registeredMemberCount: meta?.memberCount ?? memberCount,
 						newestAgeDays: Math.floor(ageDays),
 						thresholdDays: abandonedDays,
 					},

@@ -1027,6 +1027,7 @@ export class MobiusNodeRepo {
 		filePath: string | null;
 		incoming: number;
 		outgoing: number;
+		communityId: string | null;
 	}>> {
 		const rows = await this.db
 			.selectFrom('mobius_node')
@@ -1037,6 +1038,7 @@ export class MobiusNodeRepo {
 				'attributes_json',
 				'doc_incoming_cnt',
 				'doc_outgoing_cnt',
+				'community_id',
 			])
 			.where('type', 'in', [...GRAPH_DOCUMENT_LIKE_NODE_TYPES])
 			.limit(Math.max(1, Math.floor(limit)))
@@ -1055,6 +1057,7 @@ export class MobiusNodeRepo {
 				filePath,
 				incoming,
 				outgoing,
+				communityId: r.community_id ?? null,
 			};
 		}).sort((a, b) => (a.incoming + a.outgoing) - (b.incoming + b.outgoing));
 	}
