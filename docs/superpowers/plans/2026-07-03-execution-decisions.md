@@ -56,5 +56,12 @@ If any of B1/B3 turn out to have huge blast radius, land the scaffolding + a doc
 - Skill quarantine check 与 PermissionGuard.check 并列（不是替代）：两者语义正交，PermissionGuard 是用户配置的 deny lists，Quarantine 是 skill 自带的 capability boundary。谁 veto 都算 deny，先跑 PermissionGuard 再跑 Quarantine。
 - UI toast "某 tool 被 skill quarantine 拒绝" 推迟到 Wave 3 UI store 迁 RunEnvelopeStore 时统一 —— 现在从 trace event `tool_result ok=false` 派生比在 AgentLoop 里直接调 obsidian Notice 更合层次。这条 debt 记在这里，Wave 3 时再兑现。
 
+### B3 (2026-07-03)
+- 策略分派用 discriminated `BackendInvocationInput`（`agent-loop` / `sdk-query` / `provider-stream`）而不是 `unknown`。理由：capability adopter 会带 typed payload；strategy fail-loud 时能立刻定位是哪里发错格式。
+- `claude-sdk` / `provider-direct` 需要 composition 侧再提供 adapter（`sdkQueryAdapter` / `providerStreamAdapter`）才注册。没 adapter 就不注册 —— 相当于"backend 不可用"，`resolveBackendStrategy` 自然 fallback。这是防止空跑到 strategy 内部再 throw 的第一道防线。
+- main.ts 里目前只提供 `profileRegistry`，两个 adapter 留空。Wave 1 B2.chat / B2.copilot 落地时把 adapter 传进来（`runQueryOnce` 或类似），届时 palette 命令外的真 backend 才被解锁。
+- 没为 `openrouter` / `google` / `perplexity` / `custom` / `litellm` 单独区分 —— 它们都被视为"任一 provider 有 apiKey" 时 `hermes-harness` / `provider-direct` 一起启用；claude-sdk 严格只认 Anthropic。
+- 完全跳过与真 API key 的集成测试 —— 这条 debt 归给 Wave 1 真机烟测。这里的 7 条 unit test 覆盖"注册决策"逻辑，足以证明 registry 组装正确。
+
 _Decisions appended below as they happen._
 

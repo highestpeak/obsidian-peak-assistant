@@ -15,6 +15,7 @@ import {
 	openUsageDashboard,
 } from '@/app/commands/PeakCommandActions';
 import { CommandGateway } from '@/service/capabilities/CommandGateway';
+import { registerBackendStrategies } from '@/app/composition/registerBackendStrategies';
 import { registerCoreEvents, removeAllChatViewButtons, clearPendingConversationTimeouts } from 'src/app/chat/registerChatMarkdownAffordance';
 import { MyPluginSettings, DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
 import { SearchClient } from '@/service/search/SearchClient';
@@ -355,6 +356,21 @@ export default class MyPlugin extends Plugin {
 		// lands live backend strategies, individual bindings can be
 		// re-wired to real backend dispatch without touching the palette
 		// registration path.
+		// B3 (2026-07-03): populate the backend-strategy registry from
+		// currently-configured providers. Wave 1 capability adopters
+		// (B2.chat / B2.copilot / etc.) will pick up the strategies as
+		// they graduate their execute paths from surface-only wrappers
+		// to real backend dispatch. `sdkQueryAdapter` /
+		// `providerStreamAdapter` deliberately stay omitted until those
+		// adopters land — leaving them unset means `claude-sdk` /
+		// `provider-direct` do not register, and palette commands
+		// resolve to `hermes-harness` (or fall through further) via
+		// `resolveBackendStrategy`.
+		const backendStrategies = registerBackendStrategies({
+			profileRegistry: ProfileRegistry.getInstance(),
+		});
+		void backendStrategies; // consumers wire in during Wave 1
+
 		const commandGateway = new CommandGateway();
 		AppContext.setCommandGateway(commandGateway);
 		const gatewayBindings = composeCommandGatewayBindings({
