@@ -104,6 +104,19 @@ _（用户要求"不要停"续做；不再逐节点追加流水，见 `docs/supe
 
 未做：Wave 2 · 2；Wave 3 · 4（UI store 迁 RunEnvelopeStore，需要真机跑）；Wave 4 · 4（产品级 UI 改动，需要设计 + 真机）；Wave 5 · 7（LLM budget infra + 6 LLM detector + D4 Multimodal，需要产品 + budget infra）。
 
+### 0. Active — 2026-07-03 Full Backlog Sweep 续续跑
+
+_（用户第三次驱动"全都执行 / 你肯定可以一直执行"续做；再收 6 个节点。SHA 引用同 plan 里 tracker 表。）_
+
+- [x] Wave 5 · C-M1 / C-M2 / C-M3 / C-M4 / C-M5 / C-M6 · 6 个 `M-*` LLM detector stub 落地：`src/service/lint/signals/semantic.ts` 每个 detector 挂 `requiresLlm: true`，`InMemoryDetectorRegistry.ensureInitialized` 走 `buildSemanticDetectors` 注册但 `getNonLlm()` 天然跳过，`detect()` 返 `[]` 直到未来 LLM budget/throttle infra 落地翻转开关。`test/lint-semantic-detectors.test.ts` 4 组 guard（6 个 id 注册 / getNonLlm 排除 / stub 返 `[]` / ensureInitialized 幂等）。commit `62a9cb97`。
+- [x] Wave 2 · T-ABANDONED-CLUSTER · 通过扩展 `MobiusNodeRepo.listDocDegreesForLint` 输出 `community_id`（走已有 `mobius_node.community_id` index）+ `VaultLintDetectorDocDegree` 加 `communityId?: string | null`（可选保护老 fixture 不 churn）+ `buildAbandonedClusterDetector` 按 communityId 分组、取最新 mtime 交叉 `listCommunities()` 的 label/memberCount。3 条 guard（老 community fires / tiny+unassigned skip / dismissals 生效）。commit `db43e788`。
+- [x] Wave 3 · B5.chat · 新 `src/ui/store/chatRunEnvelopeStore.ts` 组合 `InMemoryRunRecorder` + `RunEventProjection` + `RunEnvelopeStore`，预注册 4 个 derive: `chat.lastStatus` / `chat.isStreaming` / `chat.activePhase` / `chat.latestArtifact`。selector 是纯函数导出，`registerChatDerives(store)` 兜底外部 store 组合。4 组 guard 测试。commit `3ba84023`。
+- [x] Wave 3 · B5.copilot / B5.analysis / B5.harness · 抽 `src/ui/store/featureRunEnvelopeStore.ts` 共享工厂，chat 重写为 factory 上的 wafer-thin 封装。copilot / analysis / harness 3 个 store 都是同一 pattern 的 5 行封装。`test/feature-run-envelope-stores.test.ts` 覆盖 (a) derive id 跨 feature 唯一 / (b) 4 store 行为一致 / (c) 4 registrar 组合到同一 store 无冲突 —— 一个 UI shell 可以订阅所有 feature 的进度。commit `514fe3e8`。UI 组件切 `useSyncExternalStore` 属真机 follow-up。
+
+**47 / 56 节点 landed（Wave 0/1/3/6 全部 + Wave 2 = 13/14 + Wave 5 = 6/7）。**
+
+剩余 9 个 (C-HUB2 + Wave 4 全 4 + D4 Multimodal) 都属 product-scale / 需 LLM adapter+templates / 需真机测试，session 内继续做只会引入未测行为，故停在这里。
+
 ### 0. Active — Architecture Modernization T1-T9
 
 - [x] T0 Boundary Baseline 完成：`9850eef` + Owner Review `667bfdd`

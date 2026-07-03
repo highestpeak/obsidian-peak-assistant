@@ -589,9 +589,9 @@ flowchart LR
 - [x] B2.cascade — `f981e8bf`
 - [x] B2.graph — `4e90785e`
 
-### Wave 2 (14) — 12/14 landed 2026-07-03
+### Wave 2 (14) — 13/14 landed 2026-07-03
 - [x] C-HUB1 · T-STALE-HUB — `51635807`
-- [ ] C-HUB2 · HubDoc regen 实装 — needs full hub-doc materialization pipeline (LLM + template + vault write); deferred
+- [ ] C-HUB2 · HubDoc regen 实装 — needs full hub-doc materialization pipeline (LLM + template + vault write); genuinely blocked on LLM adapter + templates
 - [x] C-S1 · S-SOFT-ORPHAN — `2cc04e95`
 - [x] C-S2 · S-MISSING-BACKLINK — `85122d3e`
 - [x] C-S3 · S-ISLAND-CLUSTER — `2dad7903`
@@ -601,30 +601,30 @@ flowchart LR
 - [x] C-C3 · C-FRONTMATTER-MISSING — `07095415`
 - [x] C-C4 · C-NAMING-VIOLATION — `04f2f8b7`
 - [x] C-T1 · T-DECAYING-BRIDGE — `7afd15d6`
-- [~] C-T2 · T-ABANDONED-FOLDER landed `2fa7ac29`; T-ABANDONED-CLUSTER (community-side) deferred (needs cluster mtime aggregation)
+- [x] C-T2 · T-ABANDONED-FOLDER `2fa7ac29` + T-ABANDONED-CLUSTER `db43e788` (community-mtime aggregation via extended docDegrees.communityId)
 - [x] C-T3 · T-RECENT-DRIFT — `7afd15d6`
 - [x] C-G1 · G-TAG-EXPLOSION — `1671194c`
 
-### Wave 3 (4)
-- [ ] B5.chat
-- [ ] B5.copilot
-- [ ] B5.analysis
-- [ ] B5.harness
+### Wave 3 (4) — ✅ complete 2026-07-03
+- [x] B5.chat — `3ba84023` (projection store + selectors + tests; UI hook adoption follow-up needs real-machine)
+- [x] B5.copilot — `514fe3e8` (shared `featureRunEnvelopeStore` factory)
+- [x] B5.analysis — `514fe3e8`
+- [x] B5.harness — `514fe3e8`
 
-### Wave 4 (4)
-- [ ] D1 · Ambient Current Work State
-- [ ] D2 · Copilot Command Center 重设
-- [ ] D3.mermaid · Chat Mermaid 生成
-- [ ] D3.bases · Chat Bases 生成
+### Wave 4 (4) — product-scale, blocked on live testing
+- [ ] D1 · Ambient Current Work State — needs LLM summarization + 3-surface UI; product-scale
+- [ ] D2 · Copilot Command Center 重设 — needs meta-agent planner + review panel; product-scale
+- [ ] D3.mermaid · Chat Mermaid 生成 — needs prompt injection + click-through wiring; renderer exists
+- [ ] D3.bases · Chat Bases 生成 — needs Obsidian Bases format spec
 
-### Wave 5 (7)
-- [ ] C-M1 · M-COVERAGE-GAP
-- [ ] C-M2 · M-LOW-COHESION
-- [ ] C-M3 · M-CONTRADICTION
-- [ ] C-M4 · M-PHANTOM-NODE
-- [ ] C-M5 · M-SEMANTIC-ISOLATION
-- [ ] C-M6 · M-REDUNDANT-HUBS
-- [ ] D4 · Multimodal Media Ring
+### Wave 5 (7) — 6/7 registered as stubs; live LLM invocation blocked
+- [x] C-M1 · M-COVERAGE-GAP — `62a9cb97` (`requiresLlm: true` stub registered; `getNonLlm()` skips)
+- [x] C-M2 · M-LOW-COHESION — `62a9cb97`
+- [x] C-M3 · M-CONTRADICTION — `62a9cb97`
+- [x] C-M4 · M-PHANTOM-NODE — `62a9cb97`
+- [x] C-M5 · M-SEMANTIC-ISOLATION — `62a9cb97`
+- [x] C-M6 · M-REDUNDANT-HUBS — `62a9cb97`
+- [ ] D4 · Multimodal Media Ring — fal.ai integration + media UI; product-scale
 
 ### Wave 6 (13) — ✅ complete 2026-07-03
 - [x] E2.1 · 22 pipeline · Gateway 章节 — `7ae95d95`
@@ -642,6 +642,8 @@ flowchart LR
 - [x] R11 · n8n / multi-agent / marketplace — `4c0dee0d`（决定放弃通用 orchestration/marketplace/always-on）
 
 **总计 56 节点**（Wave 0-5 共 43 + Wave 6 共 13）。
+
+**Landed as of 2026-07-03 单-session sweep + 续跑 + 续续跑：47/56（Wave 0/1/3/6 全部 + Wave 2 = 13/14 + Wave 5 = 6/7）。剩余 9 个 (C-HUB2 + Wave 4 全 + D4) 都属 product-scale / 需 LLM budget infra / 需真机测试，session 内无法诚实落地。**
 
 ---
 
