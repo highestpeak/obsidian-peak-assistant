@@ -580,29 +580,29 @@ flowchart LR
 - [x] B7 · IndexService Graph slice — `0bd328c0`
 - [x] E1 · 05 playbook 3 cases — `6b514756`
 
-### Wave 1 (7)
-- [ ] B2.chat
-- [ ] B2.copilot
-- [ ] B2.analysis
-- [ ] B2.harness
-- [ ] B2.index
-- [ ] B2.cascade
-- [ ] B2.graph
+### Wave 1 (7) — ✅ complete 2026-07-03
+- [x] B2.chat — `76c4779b`
+- [x] B2.copilot — `c20b1966`
+- [x] B2.analysis — `c20b1966`
+- [x] B2.harness — `c20b1966`
+- [x] B2.index — `0e3cb5a5`
+- [x] B2.cascade — `f981e8bf`
+- [x] B2.graph — `4e90785e`
 
-### Wave 2 (14)
-- [ ] C-HUB1 · T-STALE-HUB
-- [ ] C-HUB2 · HubDoc regen 实装
-- [ ] C-S1 · S-SOFT-ORPHAN
-- [ ] C-S2 · S-MISSING-BACKLINK
-- [ ] C-S3 · S-ISLAND-CLUSTER
-- [ ] C-S4 · S-FRAGILE-BRIDGE
+### Wave 2 (14) — 12/14 landed 2026-07-03
+- [x] C-HUB1 · T-STALE-HUB — `51635807`
+- [ ] C-HUB2 · HubDoc regen 实装 — needs full hub-doc materialization pipeline (LLM + template + vault write); deferred
+- [x] C-S1 · S-SOFT-ORPHAN — `2cc04e95`
+- [x] C-S2 · S-MISSING-BACKLINK — `85122d3e`
+- [x] C-S3 · S-ISLAND-CLUSTER — `2dad7903`
+- [x] C-S4 · S-FRAGILE-BRIDGE — `2dad7903`
 - [x] C-C1 · C-OVERSIZED — `50e52101`
-- [ ] C-C2 · C-DUPLICATE
+- [x] C-C2 · C-DUPLICATE — `cfbb2d44`
 - [x] C-C3 · C-FRONTMATTER-MISSING — `07095415`
 - [x] C-C4 · C-NAMING-VIOLATION — `04f2f8b7`
-- [ ] C-T1 · T-DECAYING-BRIDGE
-- [ ] C-T2 · T-ABANDONED-CLUSTER/FOLDER
-- [ ] C-T3 · T-RECENT-DRIFT
+- [x] C-T1 · T-DECAYING-BRIDGE — `7afd15d6`
+- [~] C-T2 · T-ABANDONED-FOLDER landed `2fa7ac29`; T-ABANDONED-CLUSTER (community-side) deferred (needs cluster mtime aggregation)
+- [x] C-T3 · T-RECENT-DRIFT — `7afd15d6`
 - [x] C-G1 · G-TAG-EXPLOSION — `1671194c`
 
 ### Wave 3 (4)
