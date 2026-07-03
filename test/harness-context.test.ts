@@ -260,6 +260,100 @@ async function run(): Promise<void> {
                 assert.strictEqual(events.length, 0);
             },
         },
+        {
+            name: 'stage (c) summariser replaces placeholder + enriches CompactSummary',
+            fn: async () => {
+                const heavy = 'z'.repeat(400);
+                const cm = new ContextManager({
+                    maxTokens: 80,
+                    compactionThreshold: 0.8,
+                    keepRecentMessages: 2,
+                    summarizer: async ({ droppedMessages }) => {
+                        return `Compacted ${droppedMessages.length} turns. User asked to write; assistant drafted twice.`;
+                    },
+                });
+                const msgs: ModelMessage[] = [
+                    { role: 'system', content: 'sys' },
+                    { role: 'user', content: `u1 ${heavy}` },
+                    { role: 'assistant', content: `a1 ${heavy}` },
+                    { role: 'user', content: `u2 ${heavy}` },
+                    { role: 'assistant', content: `a2 ${heavy}` },
+                    { role: 'user', content: 'u3-recent' },
+                    { role: 'assistant', content: 'a3-recent' },
+                ];
+                const result = await cm.compactIfNeeded(msgs, []);
+                assert.ok(result.compacted);
+                // The placeholder must be gone — replaced with the summariser output.
+                const placeholderStill = result.messages.some(
+                    (m) => typeof m.content === 'string' && (m.content as string).includes('summarized'),
+                );
+                assert.strictEqual(placeholderStill, false, 'stage (b) placeholder was replaced');
+                const summaryMsg = result.messages.find(
+                    (m) => typeof m.content === 'string' && (m.content as string).includes('[Summary of prior turns]'),
+                );
+                assert.ok(summaryMsg, 'summary message present');
+                assert.ok(
+                    typeof summaryMsg!.content === 'string' && (summaryMsg!.content as string).includes('drafted twice'),
+                    'summary body carried through',
+                );
+                // CompactSummary carries the LLM prose in `summary`, not the default text.
+                const messageSummary = result.compactSummaries.find((s) => s.anchors[0]?.kind === 'message');
+                assert.ok(messageSummary);
+                assert.ok(messageSummary!.summary.includes('drafted twice'), 'CompactSummary.summary uses stage (c) prose');
+            },
+        },
+        {
+            name: 'stage (c) failure falls back to placeholder — never breaks the loop',
+            fn: async () => {
+                const heavy = 'z'.repeat(400);
+                const cm = new ContextManager({
+                    maxTokens: 80,
+                    compactionThreshold: 0.8,
+                    keepRecentMessages: 2,
+                    summarizer: async () => {
+                        throw new Error('LLM offline');
+                    },
+                });
+                const msgs: ModelMessage[] = [
+                    { role: 'system', content: 'sys' },
+                    { role: 'user', content: `u1 ${heavy}` },
+                    { role: 'assistant', content: `a1 ${heavy}` },
+                    { role: 'user', content: 'u2-recent' },
+                    { role: 'assistant', content: 'a2-recent' },
+                ];
+                const result = await cm.compactIfNeeded(msgs, []);
+                assert.ok(result.compacted, 'still compacted');
+                // Placeholder from stage (b) must survive when stage (c) throws.
+                const placeholder = result.messages.find(
+                    (m) => typeof m.content === 'string' && (m.content as string).includes('summarized'),
+                );
+                assert.ok(placeholder, 'stage (b) placeholder retained');
+            },
+        },
+        {
+            name: 'stage (c) empty return also falls back to placeholder',
+            fn: async () => {
+                const heavy = 'z'.repeat(400);
+                const cm = new ContextManager({
+                    maxTokens: 80,
+                    compactionThreshold: 0.8,
+                    keepRecentMessages: 2,
+                    summarizer: async () => '   ',
+                });
+                const msgs: ModelMessage[] = [
+                    { role: 'system', content: 'sys' },
+                    { role: 'user', content: `u1 ${heavy}` },
+                    { role: 'assistant', content: `a1 ${heavy}` },
+                    { role: 'user', content: 'u2-recent' },
+                    { role: 'assistant', content: 'a2-recent' },
+                ];
+                const result = await cm.compactIfNeeded(msgs, []);
+                const placeholder = result.messages.find(
+                    (m) => typeof m.content === 'string' && (m.content as string).includes('summarized'),
+                );
+                assert.ok(placeholder, 'whitespace-only summariser output → placeholder retained');
+            },
+        },
     ];
 
     let passed = 0;

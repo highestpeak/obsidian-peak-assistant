@@ -27,6 +27,7 @@ import { renderMemoryBlock } from '../memory/MemoryBlock';
 import {
     DEFAULT_CONTEXT_CONFIG,
     type CompactionResult,
+    type CompactSummarizer,
     type ContextManagerConfig,
 } from './types';
 import type { CompactSummary } from '@/core/context/compactSummary';
@@ -50,6 +51,7 @@ export class ContextManager {
     readonly compactionThreshold: number;
     readonly keepRecentMessages: number;
     readonly summaryPlaceholder: string;
+    readonly summarizer?: CompactSummarizer;
 
     constructor(config: ContextManagerConfig) {
         if (!config.maxTokens || config.maxTokens <= 0) {
@@ -63,6 +65,7 @@ export class ContextManager {
         );
         this.summaryPlaceholder =
             config.summaryPlaceholder ?? DEFAULT_CONTEXT_CONFIG.summaryPlaceholder;
+        this.summarizer = config.summarizer;
     }
 
     /**
@@ -131,6 +134,7 @@ export class ContextManager {
         // Stage (b): slide window over messages if still over budget.
         let workingMessages = input;
         let droppedMessageCount = 0;
+        let droppedMiddle: ModelMessage[] = [];
         if (this.estimateTokens(workingMessages, keptBlocks) >= ceiling) {
             const systemMsgs = workingMessages.filter((m) => m.role === 'system');
             const nonSystem = workingMessages.filter((m) => m.role !== 'system');
@@ -138,6 +142,7 @@ export class ContextManager {
             const tail = nonSystem.slice(nonSystem.length - keep);
             const dropped = nonSystem.length - tail.length;
             if (dropped > 0) {
+                droppedMiddle = nonSystem.slice(0, dropped);
                 const placeholder = this.summaryPlaceholder.replace('${count}', String(dropped));
                 workingMessages = [
                     ...systemMsgs,
@@ -148,9 +153,46 @@ export class ContextManager {
             }
         }
 
-        // Stage (c): LLM summarisation — TODO (spec §3.9). For now we accept
-        // the result of stages (a)+(b); if still over budget the loop will
-        // surface a max_tokens stop or a provider-side context overflow.
+        // Stage (c): LLM summarisation (spec §3.9). When a `summarizer` was
+        // injected, replace the plain placeholder from stage (b) with a
+        // real prose summary. On any failure (throw / empty / abort) the
+        // placeholder survives — the loop never hangs on an LLM outage.
+        let stageCSummary: string | null = null;
+        if (this.summarizer && (droppedMessageCount > 0 || droppedBlocks.length > 0)) {
+            try {
+                const text = await this.summarizer({
+                    droppedMessages: droppedMiddle,
+                    droppedBlocks,
+                });
+                if (typeof text === 'string' && text.trim().length > 0) {
+                    stageCSummary = text.trim();
+                    if (droppedMessageCount > 0) {
+                        // Replace the placeholder assistant message with the summary.
+                        // Locate the first assistant message whose content matches the
+                        // placeholder we wrote in stage (b) and swap it out.
+                        const placeholder = this.summaryPlaceholder.replace(
+                            '${count}',
+                            String(droppedMessageCount),
+                        );
+                        const idx = workingMessages.findIndex(
+                            (m) =>
+                                m.role === 'assistant' &&
+                                typeof m.content === 'string' &&
+                                m.content === placeholder,
+                        );
+                        if (idx >= 0) {
+                            workingMessages = [
+                                ...workingMessages.slice(0, idx),
+                                { role: 'assistant', content: `[Summary of prior turns]\n${stageCSummary}` } as ModelMessage,
+                                ...workingMessages.slice(idx + 1),
+                            ];
+                        }
+                    }
+                }
+            } catch {
+                // Summariser failed — keep stage (b) placeholder untouched.
+            }
+        }
 
         // Re-sort kept blocks priority desc for caller convenience.
         keptBlocks.sort((a, b) => b.priority - a.priority);
@@ -162,6 +204,7 @@ export class ContextManager {
             droppedMessageCount,
             originalMessages: input,
             keepTail: this.keepRecentMessages,
+            stageCSummary,
         });
         return {
             messages: workingMessages,
@@ -198,6 +241,8 @@ function buildCompactSummaries(input: {
     droppedMessageCount: number;
     originalMessages: ReadonlyArray<ModelMessage>;
     keepTail: number;
+    /** Optional prose summary returned by stage (c). Overrides the default summary text. */
+    stageCSummary?: string | null;
 }): CompactSummary[] {
     const summaries: CompactSummary[] = [];
     for (const block of input.droppedBlocks) {
@@ -208,9 +253,12 @@ function buildCompactSummaries(input: {
     }
     if (input.droppedMessageCount > 0) {
         const messageIds = extractMessageIds(input.originalMessages, input.droppedMessageCount, input.keepTail);
-        summaries.push(
-            makeMessageWindowSummary(input.droppedMessageCount, messageIds.first, messageIds.last),
-        );
+        const summary = makeMessageWindowSummary(input.droppedMessageCount, messageIds.first, messageIds.last);
+        if (input.stageCSummary && input.stageCSummary.length > 0) {
+            summary.summary = input.stageCSummary;
+            summary.lostDetail = `${input.droppedMessageCount} original turns replaced by LLM summary; refetch via anchors to inspect the raw content.`;
+        }
+        summaries.push(summary);
     }
     return summaries;
 }
