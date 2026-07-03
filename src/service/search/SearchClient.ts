@@ -6,6 +6,7 @@ import type {
 import type { StorageType } from '@/service/search/index/indexService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { QueryService } from './query/queryService';
+import { maybeCompileWithAiParser } from './query/aiQueryParserRuntime';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 
@@ -36,8 +37,16 @@ export class SearchClient {
 			throw new Error('SearchClient not initialized. Call init() first.');
 		}
 
-		// Execute search using the query service (ranking boosts are applied internally)
-		return await this.queryService.textSearch(query, enableLLMRerank);
+		// Track E wiring: opt-in NL → Hyper Search syntax compile. When
+		// `settings.useAiQueryParser` is off, this returns the raw text; when
+		// on, it invokes the fast-role LLM and falls back to raw on failure so
+		// search flow never breaks.
+		const compiled = await maybeCompileWithAiParser(query.text ?? '', this.searchSettings);
+		const effectiveQuery: SearchQuery = compiled.compiled !== (query.text ?? '')
+			? { ...query, text: compiled.compiled }
+			: query;
+
+		return await this.queryService.textSearch(effectiveQuery, enableLLMRerank);
 	}
 
 	async vectorSearch(query: SearchQuery): Promise<SearchResponse & { duration: number }> {

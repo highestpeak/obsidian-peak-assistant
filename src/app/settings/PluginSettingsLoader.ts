@@ -242,6 +242,9 @@ function normalizeSearchSettings(raw: Record<string, unknown>, rootFolder: strin
 	// enablePPR: restore persisted value or keep default
 	settings.enablePPR = getBoolean((rawSearch as any).enablePPR, settings.enablePPR);
 
+	// useAiQueryParser: Track E opt-in. Default false; enabled via Advanced settings.
+	settings.useAiQueryParser = getBoolean((rawSearch as any).useAiQueryParser, settings.useAiQueryParser);
+
 	settings.ignorePatterns = ensureIgnoredFolder(settings.ignorePatterns, dataStorageFolder);
 
 	return settings;

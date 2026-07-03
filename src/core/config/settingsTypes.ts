@@ -78,6 +78,13 @@ export interface SearchSettings {
 	hubCurationSchedulerEnabled: boolean;
 	/** Interval (days) between scheduled Hub Curation runs. Default: 7. */
 	hubCurationIntervalDays: number;
+	/**
+	 * Compile natural-language search queries into Hyper Search syntax via
+	 * an LLM before running the retriever pipeline. Off by default — adds
+	 * a fast-role LLM round-trip; falls back to raw text on any failure so
+	 * search never breaks. See `src/service/search/query/aiQueryParser.ts`.
+	 */
+	useAiQueryParser: boolean;
 }
 
 export interface InspectorLinksSettings {
@@ -131,6 +138,7 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	enablePPR: true,
 	hubCurationSchedulerEnabled: false,
 	hubCurationIntervalDays: 7,
+	useAiQueryParser: false,
 };
 
 export interface AIServiceSettings {
