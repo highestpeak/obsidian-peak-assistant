@@ -11,7 +11,7 @@
 // `ensureInitialized` method is idempotent so a second call during
 // `runFullScan` (defense in depth) is a no-op.
 
-import { orphanDetector, brokenLinkDetector } from '../signals/structural';
+import { brokenLinkDetector, buildStructuralDetectors, orphanDetector } from '../signals/structural';
 import { emptyDetector, buildContentDetectors } from '../signals/content';
 import { buildTagDetectors, untaggedDetector } from '../signals/tags';
 import { buildHubDetectors } from '../signals/hub';
@@ -30,6 +30,9 @@ export class InMemoryDetectorRegistry implements VaultLintDetectorRegistryPort {
 		if (this.initialized) return;
 		this.detectors.set(orphanDetector.id, orphanDetector);
 		this.detectors.set(brokenLinkDetector.id, brokenLinkDetector);
+		for (const detector of buildStructuralDetectors(config)) {
+			this.detectors.set(detector.id, detector);
+		}
 		this.detectors.set(emptyDetector.id, emptyDetector);
 		for (const detector of buildContentDetectors(config)) {
 			// `C-EMPTY` is already registered above; `buildContentDetectors`

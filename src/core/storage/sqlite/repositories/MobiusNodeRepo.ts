@@ -1012,6 +1012,53 @@ export class MobiusNodeRepo {
 	}
 
 	/** Load stale hub docs ordered by pagerank descending (highest priority first). */
+	/**
+	 * Doc-like nodes with cached in/out degree columns, projected into
+	 * the shape the lint layer consumes. `filePath` is pulled from the
+	 * top-level `path` column when present; otherwise falls back to
+	 * `attributes_json.path` (older records).
+	 *
+	 * Ordered by (incoming + outgoing) ascending so soft-orphan and
+	 * fragile-bridge detectors see the lowest-degree candidates first.
+	 */
+	async listDocDegreesForLint(limit: number): Promise<Array<{
+		nodeId: string;
+		label: string;
+		filePath: string | null;
+		incoming: number;
+		outgoing: number;
+	}>> {
+		const rows = await this.db
+			.selectFrom('mobius_node')
+			.select([
+				'node_id',
+				'label',
+				'path',
+				'attributes_json',
+				'doc_incoming_cnt',
+				'doc_outgoing_cnt',
+			])
+			.where('type', 'in', [...GRAPH_DOCUMENT_LIKE_NODE_TYPES])
+			.limit(Math.max(1, Math.floor(limit)))
+			.execute();
+		return rows.map((r) => {
+			let filePath: string | null = (r as any).path ?? null;
+			if (filePath === null && r.attributes_json) {
+				const attrs = safeParseJson<{ path?: string }>(r.attributes_json, {});
+				filePath = attrs.path ?? null;
+			}
+			const incoming = Math.max(0, Math.floor(Number(r.doc_incoming_cnt ?? 0)));
+			const outgoing = Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0)));
+			return {
+				nodeId: String(r.node_id),
+				label: String(r.label ?? ''),
+				filePath,
+				incoming,
+				outgoing,
+			};
+		}).sort((a, b) => (a.incoming + a.outgoing) - (b.incoming + b.outgoing));
+	}
+
 	async getStaleHubs(limit: number): Promise<Array<{ node_id: string; hub_stale_since: number; pagerank: number | null }>> {
 		const rows = await this.db
 			.selectFrom('mobius_node')

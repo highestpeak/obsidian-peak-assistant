@@ -154,6 +154,20 @@ export interface VaultLintDetectorStaleHub {
 }
 
 /**
+ * Doc-like node with cached in/out degree counts. Used by the
+ * S-SOFT-ORPHAN detector (any node with `incoming + outgoing <=
+ * softOrphanMaxDegree`) and — in the future — by other structural
+ * signals that need degree information.
+ */
+export interface VaultLintDetectorDocDegree {
+	readonly nodeId: string;
+	readonly label: string;
+	readonly filePath: string | null;
+	readonly incoming: number;
+	readonly outgoing: number;
+}
+
+/**
  * Single dependency surface for detectors.
  *
  * Today this is shaped to cover the four T7-closure callers:
@@ -187,6 +201,14 @@ export interface VaultLintDetectorContextPort {
 	 * catch the longest-standing debt.
 	 */
 	getStaleHubs(limit: number): Promise<VaultLintDetectorStaleHub[]>;
+	/**
+	 * Enumerate all doc-like nodes with their cached in/out edge
+	 * counts. Adapters MAY bound the returned set by `limit`; passing
+	 * `Infinity` requests the full set. Used today by S-SOFT-ORPHAN;
+	 * future structural detectors (island cluster, fragile bridge)
+	 * will reuse the same surface.
+	 */
+	listDocDegrees(limit: number): Promise<VaultLintDetectorDocDegree[]>;
 }
 
 /**

@@ -28,6 +28,7 @@ import {
 	orphanDetector,
 	brokenLinkDetector,
 	buildBrokenLinkFindings,
+	buildStructuralDetectors,
 } from '@/service/lint/signals/structural';
 import { DEFAULT_VAULT_LINT_CONFIG } from '@/service/lint/config/VaultLintDefaults';
 import type {
@@ -36,6 +37,7 @@ import type {
 } from '@/service/lint/types';
 import type {
 	VaultLintDetectorContextPort,
+	VaultLintDetectorDocDegree,
 	VaultLintDetectorFileRef,
 	VaultLintDetectorGraphNode,
 	VaultLintDetectorSemanticNeighbor,
@@ -58,6 +60,7 @@ interface FakeContextSpec {
 	semanticNeighbors?: Record<string, VaultLintDetectorSemanticNeighbor[]>;
 	semanticThrows?: boolean;
 	staleHubs?: VaultLintDetectorStaleHub[];
+	docDegrees?: VaultLintDetectorDocDegree[];
 }
 
 function makeFakeContext(spec: FakeContextSpec = {}): VaultLintDetectorContextPort {
@@ -90,6 +93,9 @@ function makeFakeContext(spec: FakeContextSpec = {}): VaultLintDetectorContextPo
 		},
 		async getStaleHubs(_limit: number): Promise<VaultLintDetectorStaleHub[]> {
 			return spec.staleHubs ?? [];
+		},
+		async listDocDegrees(_limit: number): Promise<VaultLintDetectorDocDegree[]> {
+			return spec.docDegrees ?? [];
 		},
 	};
 }
@@ -687,6 +693,66 @@ async function main(): Promise<void> {
 	await testStaleHubDetectorFiresPastThreshold();
 	await testStaleHubDetectorSkipsFreshHubs();
 	await testStaleHubDetectorRespectsDismissals();
+	await testSoftOrphanDetectorFiresBelowThreshold();
+	await testSoftOrphanDetectorSkipsHardOrphans();
+	await testSoftOrphanDetectorRespectsDismissals();
+}
+
+async function testSoftOrphanDetectorFiresBelowThreshold(): Promise<void> {
+	const detectors = buildStructuralDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, softOrphanMaxDegree: 2 },
+	});
+	const soft = detectors.find((d) => d.id === 'S-SOFT-ORPHAN');
+	assert.ok(soft, 'buildStructuralDetectors must include S-SOFT-ORPHAN');
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'n1', label: 'weak', filePath: 'weak.md', incoming: 1, outgoing: 1 }, // 2 → fires (at threshold)
+			{ nodeId: 'n2', label: 'lonely', filePath: 'lonely.md', incoming: 0, outgoing: 1 }, // 1 → fires
+			{ nodeId: 'n3', label: 'ok', filePath: 'ok.md', incoming: 2, outgoing: 2 }, // 4 → skip
+		],
+	});
+	const findings = await soft!.detect(makeScanContext(dc));
+	const paths = findings.map((f) => f.filePath).sort();
+	assert.deepStrictEqual(paths, ['lonely.md', 'weak.md']);
+	for (const f of findings) {
+		assert.strictEqual(f.signalId, 'S-SOFT-ORPHAN');
+		assert.deepStrictEqual(f.fixActions, ['suggest-links', 'strengthen-connections']);
+	}
+	console.log('PASS: softOrphanDetectorFiresBelowThreshold');
+}
+
+async function testSoftOrphanDetectorSkipsHardOrphans(): Promise<void> {
+	const detectors = buildStructuralDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, softOrphanMaxDegree: 2 },
+	});
+	const soft = detectors.find((d) => d.id === 'S-SOFT-ORPHAN')!;
+	// degree 0 is the S-ORPHAN territory; soft-orphan detector must skip
+	// them so users don't see both signals on the same note.
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'hard', label: 'hard', filePath: 'hard.md', incoming: 0, outgoing: 0 },
+		],
+	});
+	const findings = await soft.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: softOrphanDetectorSkipsHardOrphans');
+}
+
+async function testSoftOrphanDetectorRespectsDismissals(): Promise<void> {
+	const detectors = buildStructuralDetectors(DEFAULT_VAULT_LINT_CONFIG);
+	const soft = detectors.find((d) => d.id === 'S-SOFT-ORPHAN')!;
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'n', label: 'x', filePath: 'x.md', incoming: 0, outgoing: 1 },
+		],
+	});
+	const findings = await soft.detect(
+		makeScanContext(dc, ['S-SOFT-ORPHAN:x.md']),
+	);
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: softOrphanDetectorRespectsDismissals');
 }
 
 // ---------------------------------------------------------------------------

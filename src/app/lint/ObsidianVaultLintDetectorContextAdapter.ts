@@ -24,6 +24,7 @@ import { isIndexedNoteNodeType } from '@/core/types/graph';
 import { getSemanticNeighbors } from '@/service/tools/search-graph-inspector/common';
 import type {
 	VaultLintDetectorContextPort,
+	VaultLintDetectorDocDegree,
 	VaultLintDetectorFileRef,
 	VaultLintDetectorGraphNode,
 	VaultLintDetectorSemanticNeighbor,
@@ -95,6 +96,12 @@ export class ObsidianVaultLintDetectorContextAdapter
 
 	isIndexedNoteNodeType(type: string): boolean {
 		return isIndexedNoteNodeType(type);
+	}
+
+	async listDocDegrees(limit: number): Promise<VaultLintDetectorDocDegree[]> {
+		return sqliteStoreManager
+			.getMobiusNodeRepo()
+			.listDocDegreesForLint(limit);
 	}
 
 	async getStaleHubs(limit: number): Promise<VaultLintDetectorStaleHub[]> {

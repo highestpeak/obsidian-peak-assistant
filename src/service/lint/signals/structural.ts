@@ -10,8 +10,57 @@
 // behaviorally identical to T6R; only the dependency surface changed.
 
 import { createHash } from 'crypto';
-import type { LintSignalDetector, LintScanContext, LintFinding, OrphanMetadata, BrokenLinkMetadata } from '../types';
+import type { LintSignalDetector, LintScanContext, LintFinding, OrphanMetadata, BrokenLinkMetadata, VaultLintConfig } from '../types';
 import { ORPHAN_FETCH_LIMIT } from '@/core/constant';
+
+const SOFT_ORPHAN_FETCH_LIMIT = 5_000;
+
+export function buildStructuralDetectors(config: VaultLintConfig): LintSignalDetector[] {
+	return [buildSoftOrphanDetector(config.thresholds.softOrphanMaxDegree)];
+}
+
+function buildSoftOrphanDetector(maxDegree: number): LintSignalDetector {
+	return {
+		id: 'S-SOFT-ORPHAN',
+		dimension: 'structural',
+		severity: 'info',
+		signalWeight: 0.20,
+		requiresLlm: false,
+
+		async detect(context: LintScanContext): Promise<LintFinding[]> {
+			const dc = context.detectorContext;
+			const rows = await dc.listDocDegrees(SOFT_ORPHAN_FETCH_LIMIT);
+			const findings: LintFinding[] = [];
+			for (const row of rows) {
+				const degree = row.incoming + row.outgoing;
+				// Hard orphans (degree === 0) are already surfaced by
+				// `S-ORPHAN`; skip so users don't see both.
+				if (degree === 0) continue;
+				if (degree > maxDegree) continue;
+				const key = row.filePath ?? row.nodeId;
+				const dismissalKey = `S-SOFT-ORPHAN:${key}`;
+				if (context.dismissals.has(dismissalKey)) continue;
+				findings.push({
+					id: findingId('scan', 'S-SOFT-ORPHAN', key),
+					signalId: 'S-SOFT-ORPHAN',
+					severity: 'info',
+					filePath: row.filePath,
+					title: `Weakly connected: ${row.label || row.nodeId}`,
+					description: `Note has only ${degree} link${degree === 1 ? '' : 's'} (threshold ${maxDegree}). Consider adding more inbound/outbound links.`,
+					fixActions: ['suggest-links', 'strengthen-connections'],
+					metadata: {
+						nodeId: row.nodeId,
+						incoming: row.incoming,
+						outgoing: row.outgoing,
+						threshold: maxDegree,
+					},
+					status: 'open',
+				});
+			}
+			return findings;
+		},
+	};
+}
 
 function findingId(scanSeed: string, signalId: string, filePath: string | null): string {
 	return createHash('sha256').update(`${scanSeed}:${signalId}:${filePath ?? ''}`).digest('hex').slice(0, 32);
