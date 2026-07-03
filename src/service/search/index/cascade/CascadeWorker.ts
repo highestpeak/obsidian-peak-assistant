@@ -7,13 +7,29 @@ import { CASCADE_IDLE_DELAY_MS, CASCADE_MAX_ITEMS_PER_WINDOW, CASCADE_DEBT_HUB_R
 import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 import { CascadeScheduler } from './CascadeScheduler';
 import type { AppHandle as App } from '@/core/ports/AppHandle';
+import {
+    runCascadeDrain,
+    type CascadeDrainCallbacks,
+    type CascadeDrainSummary,
+} from './CascadeWorkerRun';
 
 export { CascadeScheduler } from './CascadeScheduler';
+
+/**
+ * Optional per-worker RunEnvelope wiring. When present, each drain
+ * window fires inside a fresh RunSession and events land in the
+ * caller-supplied sink (typically the app's RunEnvelopeStore or a
+ * trace collector).
+ */
+export interface CascadeWorkerRunSink {
+    readonly onEvent?: (event: unknown, snapshot: readonly unknown[]) => void;
+}
 
 export class CascadeWorker {
     private scheduler: CascadeScheduler;
     private processing = false;
     private eventRefs: any[] = []; // Obsidian EventRef[]
+    private readonly runSink: CascadeWorkerRunSink | null;
 
     constructor(
         private readonly app: App,
@@ -29,15 +45,37 @@ export class CascadeWorker {
          * the hub-summary folder without reaching `AppContext.getInstance()`.
          */
         private readonly rootFolder: string,
+        runSink?: CascadeWorkerRunSink,
     ) {
+        this.runSink = runSink ?? null;
         this.scheduler = new CascadeScheduler({
             idleDelayMs: CASCADE_IDLE_DELAY_MS,
-            onIdle: () => void this.drainDebt(),
+            onIdle: () => void this.runIdleDrain(),
         });
         // T13-followup (2026-07-02): the previous `static instance` +
         // `getInstance()` singleton was a T13 miss. Removed — the sole
         // consumer (`SearchUpdateListener`) now receives the worker via
         // constructor DI from `main.ts`.
+    }
+
+    /**
+     * B2.cascade (2026-07-03): drive one drain window through a
+     * RunEnvelope so scheduling / failures / debt-window latency land
+     * in the shared trace fabric. Errors are logged (not rethrown)
+     * because the idle timer is fire-and-forget.
+     */
+    private async runIdleDrain(): Promise<void> {
+        try {
+            await runCascadeDrain({
+                drain: (callbacks) => this.drainDebtOnce(callbacks),
+                trigger: 'scheduled',
+                ...(this.runSink?.onEvent !== undefined
+                    ? { onEvent: this.runSink.onEvent as (event: any, snapshot: readonly any[]) => void }
+                    : {}),
+            });
+        } catch (err) {
+            console.error('[CascadeWorker] drain window failed:', err);
+        }
     }
 
     start(): void {
@@ -50,11 +88,18 @@ export class CascadeWorker {
         this.scheduler.notifyActivity();
     }
 
-    private async drainDebt(): Promise<void> {
-        if (this.processing) return;
+    /**
+     * Execute a single drain window. Exposed so `runCascadeDrain` can
+     * drive it inside a RunEnvelope. Callbacks (optional) feed
+     * per-item progress events into the run trace.
+     */
+    private async drainDebtOnce(callbacks?: CascadeDrainCallbacks): Promise<CascadeDrainSummary> {
+        if (this.processing) {
+            return { processedCount: 0, affectedDocCount: 0, remainingCount: 0 };
+        }
         if (this.quickSearchBackgroundRuntime.getActiveCount() > 0) {
             this.scheduler.notifyActivity(); // retry later
-            return;
+            return { processedCount: 0, affectedDocCount: 0, remainingCount: 0 };
         }
 
         this.processing = true;
@@ -62,10 +107,16 @@ export class CascadeWorker {
             const storeManager = SqliteStoreManager.getInstance();
             const cascadeRepo = storeManager.getCascadeDebtRepo('vault');
             const items = await cascadeRepo.drainPending('vault', CASCADE_MAX_ITEMS_PER_WINDOW);
-            if (items.length === 0) return;
+            if (items.length === 0) return { processedCount: 0, affectedDocCount: 0, remainingCount: 0 };
+
+            callbacks?.onProgress?.({
+                phase: 'drain_started',
+                total: items.length,
+            });
 
             const processedIds: number[] = [];
             const affectedDocIds = new Set<string>();
+            let processed = 0;
 
             for (const item of items) {
                 try {
@@ -76,6 +127,13 @@ export class CascadeWorker {
                     console.error('[CascadeWorker] Failed:', err);
                     if (item.id != null) processedIds.push(item.id);
                 }
+                processed += 1;
+                callbacks?.onProgress?.({
+                    phase: 'debt_item',
+                    label: item.debtType,
+                    processed,
+                    total: items.length,
+                });
             }
 
             if (processedIds.length > 0) await cascadeRepo.markProcessed(processedIds);
@@ -84,6 +142,12 @@ export class CascadeWorker {
             if (remaining > 0) this.scheduler.notifyActivity();
 
             await cascadeRepo.clearProcessed();
+
+            return {
+                processedCount: processedIds.length,
+                affectedDocCount: affectedDocIds.size,
+                remainingCount: remaining,
+            };
         } finally {
             this.processing = false;
         }
