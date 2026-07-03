@@ -48,9 +48,13 @@ export class ContextPipeline {
 
     // 3. Budget governance
     yield { type: 'tool-call', toolName: 'context-pipeline:budget-govern', input: { totalBudget } };
-    const governed = await this.budgetGovernor.fit(items, totalBudget);
+    const { items: governed, summaries: compactSummaries } = await this.budgetGovernor.fit(items, totalBudget);
     yield { type: 'tool-result', toolName: 'context-pipeline:budget-govern',
-      output: { survivingSlots: governed.length, totalTokens: governed.reduce((s, g) => s + g.content.tokens, 0) }
+      output: {
+        survivingSlots: governed.length,
+        totalTokens: governed.reduce((s, g) => s + g.content.tokens, 0),
+        compactSummaries,
+      }
     };
 
     // 4. Render in profile order (profile.slots defines order)

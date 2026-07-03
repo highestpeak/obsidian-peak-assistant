@@ -1,4 +1,6 @@
 import type { ContextSlot, SlotConfig, SlotContent } from './slots/types';
+import type { CompactSummary } from '@/core/context/compactSummary';
+import { makeDroppedSlotSummary } from '@/core/context/compactSummary';
 
 export interface GovernedSlot {
   slot: ContextSlot;
@@ -6,13 +8,29 @@ export interface GovernedSlot {
   config: SlotConfig;
 }
 
+export interface GovernResult {
+  items: GovernedSlot[];
+  /**
+   * Compaction records produced by this fit() call. Phase 2 drops are always
+   * recorded; heavier compressions may be recorded in future revisions. Empty
+   * when the input fit within budget with no compaction.
+   */
+  summaries: CompactSummary[];
+}
+
 export class BudgetGovernor {
   /**
    * Fit slot contents within a token budget.
    * Strategy: compress lowest-priority non-required slots first (L1 → L2 → L3),
    * then drop if still over budget. Required slots are never dropped.
+   *
+   * Whenever Phase 2 drops a slot, a `CompactSummary` is emitted so callers
+   * (the trace pipeline, the agent tool layer, UI) can render "N slots were
+   * dropped" and refetch source material on demand instead of losing it silently.
    */
-  async fit(items: GovernedSlot[], totalBudget: number): Promise<GovernedSlot[]> {
+  async fit(items: GovernedSlot[], totalBudget: number): Promise<GovernResult> {
+    const summaries: CompactSummary[] = [];
+
     // Phase 0: Enforce per-slot maxTokens — compress slots that exceed their individual cap
     for (const item of items) {
       const cap = item.config.maxTokens;
@@ -27,7 +45,7 @@ export class BudgetGovernor {
 
     let totalTokens = items.reduce((s, item) => s + item.content.tokens, 0);
 
-    if (totalTokens <= totalBudget) return items;
+    if (totalTokens <= totalBudget) return { items, summaries };
 
     const compressible = items
       .filter(item => !item.config.required)
@@ -53,15 +71,22 @@ export class BudgetGovernor {
       }
     }
 
-    // Phase 2: Drop
+    // Phase 2: Drop — record a CompactSummary anchor for each drop so the
+    // agent (or UI trace) can rehydrate the slot instead of silently losing it.
     if (totalTokens > totalBudget) {
       for (const item of compressible) {
         if (totalTokens <= totalBudget) break;
-        totalTokens -= item.content.tokens;
+        const priorTokens = item.content.tokens;
+        if (priorTokens === 0) continue;
+        totalTokens -= priorTokens;
+        summaries.push(makeDroppedSlotSummary(item.config.slotId, priorTokens));
         item.content = { data: null, tokens: 0, compressionLevel: 0 };
       }
     }
 
-    return items.filter(item => item.content.tokens > 0 || item.config.required);
+    return {
+      items: items.filter(item => item.content.tokens > 0 || item.config.required),
+      summaries,
+    };
   }
 }
