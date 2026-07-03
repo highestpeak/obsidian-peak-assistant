@@ -388,6 +388,96 @@ _（用户第三次驱动"全都执行 / 你肯定可以一直执行"续做；�
 
 ## Log
 
+### 2026-07-04 — Code-Handoff From Root Doc Annotations（7-track sweep + 4 项技术债清尾）
+
+按 `docs/superpowers/plans/2026-07-03-code-handoff-from-doc-annotations.md` 执行。这是"文档 annotation → 代码/产品动作"的分工交接：Codex 已完成 root docs 文字清理和 folder-default baseline，本 session 负责剩余 7 个 track 的代码落地 + 用户追加的 4 项技术债。
+
+分支：`codex/peak-modernization-refactor`。全程 `npm run test` + `npm run build` 每 commit 绿。169/169 test files pass。共 17 个 commit（1 checkpoint + 7 track + 5 补丁 + 4 debt）。
+
+**Track A · 删除 legacy folder fallback**（commit `aa910535`）
+- `src/core/config/folderPaths.ts` 新增 `LEGACY_FOLDER_DEFAULTS` + `resolveFolderSetting`，把 loader 和 onboarding wizard 共用一份规范化逻辑。
+- `_prompts` / `_skills` / `_inbox` / `A-control/PeakAssistant/DataStore` 持久化值 → 规范化到 `ChatFolder/*`。空字符串也算 unset。
+- `DEFAULT_SEARCH_SETTINGS.ignorePatterns` 删掉 `'A-control/'` —— 唯一自动 ignore 是 `dataStorageFolder/`（Codex 已加的 `ensureIgnoredFolder` 走这条路径）。
+- `test/settings-folder-defaults.test.ts` 补 3 场景：legacy 规范化 / 默认 ignore pattern shape / 非 legacy 下划线路径作为 override 保留。
+
+**Track B · Onboarding wizard apply 目录 + 预算 + 绑定**（commit `bf91e857`）
+- `applyRecommendation.ts` 从只写 3 个 tier binding 扩展到：folder defaults（复用 A 的 helper）+ `ensureBudgetDefaults`（用户 non-default 值不覆盖）+ ProfileRegistry active binding（`activeAgentConfig`/`activeAgentFastConfig`/`activeChatConfig`/`activeCopilotConfig`，已有绑定 never clobber）。
+- `test/onboarding-apply-recommendation.test.ts` — 7 场景（budget defaults 补空 / preserve / reject NaN&range / folder derive / legacy 归一 / explicit override 保留 / blank root）。
+
+**Track G · Formula/scoring worked-example 单测**（commit `66c167a8`）
+- `Reranker.applyRankingBoosts` 内部循环体抽成纯函数 `computeRankingBoostFinalScore` → `src/service/search/query/rankingBoosts.ts`。类方法委托。
+- 3 组新单测：
+  - `ranking-boosts` — worked example + recency decay + never-opened + hub-tier fallback + PPR dampening + hubTier='none' 覆盖 high incoming
+  - `fts-scoring` — normalizeBm25Scores + applyChunkDecay 用 SQLite most-negative=best 约定的 worked example
+  - `lint-content-signals` — jaccard / titleTokens / stripped(Length|WordCount) / detectNamingViolation / hasFrontmatter（含 horizontal-rule bad case）
+
+**Track F · Cloud SDK backend + Chat/Agent/Plan mode audit**（commit `46bc0d23`）
+- 只出 spec 不动代码：`docs/superpowers/specs/2026-07-03-cloud-sdk-and-mode-choice-audit.md`
+- Part A：`AgentBackend` 三值枚举全部 inventory；两个 option（保留 as-supported / 移除 backend 保留 library）+ 推荐 Option 2 contingent on HITL migration
+- Part B：Chat/Agent/Plan mode routing 只映射到 agent-profile vs chat-profile 两条路径（plan 是 label 无 runtime 分支）；两个 option（give Plan 独立 profile / collapse 到 intent router）+ 两阶段 rollout 建议
+
+**Track E · AI Query Parser（NL → Hyper Search syntax）**（commit `91ddaf32`）
+- `src/service/search/query/aiQueryParser.ts` — pure module，injected LLM invoker，Zod schema，最多 2 次重试 + AbortSignal + fenced JSON 容错；LLM 任何失败都 fallback 到原文，search flow 永不阻断
+- `test/ai-query-parser.test.ts` — 9 场景
+
+**Track C · Ambient Push canonical surface**（commit `9dbca284`）
+- `DEFAULT_AMBIENT_PUSH_SETTINGS` 三个开关翻默认：`enableMorningBriefing` / `showStatusBar` / `enableSerendipityGutter` 全部 true → false（`enabled` runtime 仍默认 true，data layer 照样跑）
+- 新增 `peak-related-notes-view` 右侧 dockable 面板 + `openRelatedNotes` 命令；`RelatedNotesPanel` 读 `useAmbientPushStore.items` + 15s 轮询 `SessionContextService.workingTheme`（LLM 优先，rule-based fallback）；无动画
+- `test/ambient-canonical-surface.test.ts` + 修 `test/ambient-runtime-ports.test.ts` 两个 briefing 场景显式开 `enableMorningBriefing:true`（否则它们只是在测新默认，不测 4h gap 逻辑）
+
+**Track D · Recoverable Context Compact（chat 侧）**（commit `e63d8a51`）
+- 新增 `src/core/context/compactSummary.ts`：`CompactAnchor`（6 种 kind：message / file / resource / chunk / slot / block）+ `CompactSummary` + 3 个 factory
+- `BudgetGovernor.fit` 返回从 `GovernedSlot[]` 改为 `{ items, summaries }`。Phase 2 drop 每次产 `CompactSummary`（原来是静默 nullify）
+- `ContextPipeline` 把 summaries 塞进 budget-govern trace output
+- `src/service/context/refetchAnchor.ts` — 按 anchor kind 分派的 refetch dispatcher，注入 6 个 port 函数
+- `test/budget-governor.test.ts` 扩：destructured return + Phase-2 drop 发 summary + under-budget 不发 + required-only over-budget 不 spin
+- `test/compact-summary-refetch.test.ts` — factory shape + 6 kind 分派 + throw / null / missing port 三种错误
+
+**Track F.A · Cloud SDK backend 退役**（commit `f99399af`，用户批准 Option 2）
+- `AgentBackend` 收窄到 `'auto' | 'harness'`；loader 把持久化的 `'claude-agent-sdk'` 规范化到 `'auto'`
+- `AISetupTab` dropdown 删第三项
+- `ClaudeAgentSDKBridge` 收缩到 `runAgentLoop + RunEnvelope` 单路径（`shouldUseSDK`/`runViaSDK`/`sdkPrompt`/`sdkMaxTurns`/`sdkAllowedTools`/`sdkMcpServers` 全删）
+- `VaultSearchAgentSDK` backend gate 删掉（SDK-as-library 保留 —— `queryWithProfile`/`tool()`/`createSdkMcpServer()` 不受影响）
+- `test/harness-*` 三个 test 同步（roundtrip 加 retired value 归一 case，bridge test 去 `useSDK`，b2 wire-in test 断言 bridge 无 `shouldUseSDK`/`runViaSDK`）
+
+**Track F.B · Chat/Agent/Plan mode picker 退役**（commit `f25a4eae`，用户批准："我们不需要了啊 直接，全都是 agent 模式了" → 后追加澄清："AI 自己决定，或根本不需要让 AI 知道 mode"）
+- Composer RunChip 删 Mode Segmented + `RUN_MODE_OPTIONS` + `modeLabel`；trigger 显示 `model · ctx`（原 `mode · model · ctx`）
+- view-Home suggestion cards 删 `chatViewStore.setChatMode(...)` 副作用
+- `useChatSubmit` 从 `getConfigForMode('agent')` 改成 `getActiveAgentConfig()` —— 语义不是"选 agent mode"而是"取默认 assistant profile"
+- `chatViewStore.INITIAL_SESSION.chatMode` 默认 `'chat'` → `'agent'`；`ChatRuntimeMode` 类型 + `ChatMeta.conversationType` 保留供历史恢复
+- 保留 `getConfigForMode` 给老 session restore 用
+
+**Track E 补丁 · UI 开关**（commit `81cb46f9` + `1d6225bf`）
+- `KnowledgeIndexTab` "Search quality" 段加 `AI query parser` Switch，用户不必编辑 data.json
+- Related Notes 面板样式加 ~110 行 `peak-related-notes-*` token-driven CSS 到 `peak-components.css`
+
+**Track D 补丁 · agent 侧 CompactSummary**（commit `b291c497`）
+- `ContextManager.compactIfNeeded` 现在也产 `CompactSummary[]`：每个 dropped MemoryBlock 一条（kind='block'）+ 折叠 message window 一条（kind='message'）
+- `extractMessageIds` 抽 first/last dropped middle message 的 id（缺 `id` 字段时 fallback `message-index-N`）
+- `ContextCompactedEvent` 加载荷字段；`AgentLoop.emit` 转发
+- `test/harness-context.test.ts` 加 shape guard
+
+**Debt-1 / Debt-2 · 老 chatMode 恢复 + `/plan` slash-prefix**（commit `66d0377d`）
+- `useChatSession` 恢复路径也走 `getActiveAgentConfig()`，不再用 `getConfigForMode(convMode)`；老 session `kind:'plan'` 不崩、只是 UI 显示字段
+- `service-conversation.streamChat` 里检测 `/plan ` 前缀（严格匹配，`/planner`/`/plan-x` 都不算）→ 剥前缀 + effectiveMode='plan' → 走既有 `PromptId.PlanModeSystem` playbook + tools=off
+- `test/plan-intent-detection.test.ts` — 6 场景（大小写 / 前导空白 / substring 拒绝 / 前缀剥离保留正文）
+
+**Debt-3 · Stage (c) LLM 摘要**（commit `9dc2aa54`）
+- `ContextManagerConfig.summarizer?: CompactSummarizer` 可选注入
+- `compactIfNeeded` 在 stage (b) 之后：如注入 summariser，用真 LLM 摘要替换占位符 + 富化 `CompactSummary.summary`；失败/空返回都自动 fallback 到 stage (b) 占位符（loop 永不因 LLM 崩溃挂）
+- `src/service/agents/harness/context/compactSummarizerRuntime.ts` — 默认 summariser factory（fast-role + `vercelGenerateText`），跟 `aiQueryParserRuntime` 同 pattern
+- `test/harness-context.test.ts` 加 3 场景（成功替换 / throw fallback / whitespace fallback）
+
+**Debt-4 · VaultSearchAgentSDK harness-native**（commit `fd438d81`，只做 doc + spec）
+- 说明：全量重写 933 行 orchestration + HITL 语义（vault_submit_plan 触发 SDK result 消息终止 loop）+ 无 end-to-end 回归测试 —— 风险太大不在本 session 做
+- 修 3 处过时注释（`VaultSearchAgentSDK.ts` header + class docstring / `VaultSearchAgent.ts` router header / `AppContext.vaultSearchAgent()`）—— 原来都在说"选 harness backend 会 error out"，这条 gate 早在 F.A 删了
+- 写完整迁移 spec：`docs/superpowers/specs/2026-07-04-vault-search-harness-native-migration.md` —— 4 个 phase（tool 适配 → loop shell → `stopWhen` hook → 重命名清理）+ 每 phase blast radius 表 + 验收 gate（新 test/vault-search-harness.test.ts + 三种 query shape 人工 QA）
+
+**遗留 / 显式 defer**
+- Vault Search harness-native 全量重写（spec 已定，需要单独 session + 真机 QA）
+- CompactSummarizer 在生产 ContextManager 构造点的接线（当前无生产 `new ContextManager(...)` 站点，seam 就位）
+- F.B intent router / planner-mode 差异化（用户明确不要，属于"AI 不知道 mode"的产品原则）
+
 ### 2026-06-04 — Chat View 微设计修复（sidebar 精简 + project/topic 统一 + composer 居中 + 透明 modal 根因）
 
 围绕 chat-view 在 Obsidian sidebar 模式下的视觉一致性和几个反复出现的细节问题逐项推进。
