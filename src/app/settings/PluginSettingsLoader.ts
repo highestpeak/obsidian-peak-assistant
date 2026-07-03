@@ -8,6 +8,8 @@ import {
 	getAIDataStoreFolder,
 	getAIInboxFolder,
 	getAISkillsFolder,
+	LEGACY_FOLDER_DEFAULTS,
+	resolveFolderSetting,
 } from '@/core/config/folderPaths';
 
 /**
@@ -252,7 +254,11 @@ function normalizeSearchSettings(raw: Record<string, unknown>, rootFolder: strin
 export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	const raw = (data ?? {}) as Record<string, unknown>;
 	const ai = normalizeAIServiceSettings(raw);
-	const dataStorageFolder = getString(raw?.dataStorageFolder, getAIDataStoreFolder(ai.rootFolder));
+	const dataStorageFolder = resolveFolderSetting(
+		raw?.dataStorageFolder,
+		getAIDataStoreFolder(ai.rootFolder),
+		LEGACY_FOLDER_DEFAULTS.dataStorageFolder,
+	);
 
 	// Build settings object explicitly, only extracting needed fields
 	const settings: MyPluginSettings = {
@@ -267,9 +273,21 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		usagePreviewEnabled: DEFAULT_SETTINGS.usagePreviewEnabled,
 	};
 
-	settings.skillsFolder = getString(raw?.skillsFolder, getAISkillsFolder(ai.rootFolder));
-	settings.inboxFolder = getString(raw?.inboxFolder, getAIInboxFolder(ai.rootFolder));
-	settings.customPromptsFolder = getString(raw?.customPromptsFolder, getAICustomPromptsFolder(ai.rootFolder));
+	settings.skillsFolder = resolveFolderSetting(
+		raw?.skillsFolder,
+		getAISkillsFolder(ai.rootFolder),
+		LEGACY_FOLDER_DEFAULTS.skillsFolder,
+	);
+	settings.inboxFolder = resolveFolderSetting(
+		raw?.inboxFolder,
+		getAIInboxFolder(ai.rootFolder),
+		LEGACY_FOLDER_DEFAULTS.inboxFolder,
+	);
+	settings.customPromptsFolder = resolveFolderSetting(
+		raw?.customPromptsFolder,
+		getAICustomPromptsFolder(ai.rootFolder),
+		LEGACY_FOLDER_DEFAULTS.customPromptsFolder,
+	);
 
 	// SQLite backend setting
 	const sqliteBackend = raw?.sqliteBackend;

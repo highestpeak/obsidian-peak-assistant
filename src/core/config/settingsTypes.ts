@@ -109,7 +109,7 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	} as Record<DocumentType, boolean>,
 	chunking: DEFAULT_CHUNKING_SETTINGS,
 	ignorePatterns: [
-		'.git/', 'node_modules/', '.obsidian/', 'A-control/',
+		'.git/', 'node_modules/', '.obsidian/',
 		`${getAIDataStoreFolder(DEFAULT_AI_ROOT_FOLDER)}/`,
 		'*.tmp', '*.temp', '*.log', '.DS_Store', 'Thumbs.db',
 	],

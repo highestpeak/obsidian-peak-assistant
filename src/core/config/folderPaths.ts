@@ -89,3 +89,28 @@ export function getAIManualHubFolder(rootFolder: string): string {
 export function getAIProfileFilePath(rootFolder: string): string {
 	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.UserProfile}`);
 }
+
+/**
+ * Folder values that used to be the plugin defaults before the ChatFolder
+ * mental model landed. Persisted settings holding one of these values must
+ * be treated as unset and re-derived from `ai.rootFolder`. Users who
+ * intentionally set an unrelated non-legacy path in Advanced settings keep
+ * their value.
+ */
+export const LEGACY_FOLDER_DEFAULTS = {
+	skillsFolder: new Set(['_skills']),
+	inboxFolder: new Set(['_inbox']),
+	customPromptsFolder: new Set(['_prompts']),
+	dataStorageFolder: new Set(['A-control/PeakAssistant/DataStore']),
+} as const;
+
+export function resolveFolderSetting(
+	source: unknown,
+	currentDefault: string,
+	legacy: ReadonlySet<string>,
+): string {
+	if (typeof source !== 'string') return currentDefault;
+	const trimmed = source.trim();
+	if (trimmed.length === 0) return currentDefault;
+	return legacy.has(trimmed) ? currentDefault : source;
+}

@@ -72,6 +72,51 @@ function testExplicitFolderOverridesArePreserved() {
 	console.log('[settings-folder-defaults] explicit overrides: PASS');
 }
 
+function testLegacyPersistedFoldersNormalizeToNewDefaults() {
+	const result = normalizePluginSettings({
+		skillsFolder: '_skills',
+		inboxFolder: '_inbox',
+		customPromptsFolder: '_prompts',
+		dataStorageFolder: 'A-control/PeakAssistant/DataStore',
+	});
+
+	const root = result.ai.rootFolder;
+	assert.strictEqual(result.skillsFolder, getAISkillsFolder(root), 'legacy _skills normalized');
+	assert.strictEqual(result.inboxFolder, getAIInboxFolder(root), 'legacy _inbox normalized');
+	assert.strictEqual(result.customPromptsFolder, getAICustomPromptsFolder(root), 'legacy _prompts normalized');
+	assert.strictEqual(result.dataStorageFolder, getAIDataStoreFolder(root), 'legacy A-control/PeakAssistant/DataStore normalized');
+	assert.ok(
+		result.search.ignorePatterns.includes(`${getAIDataStoreFolder(root)}/`),
+		'normalized DataStore auto-included in ignorePatterns',
+	);
+
+	console.log('[settings-folder-defaults] legacy default normalization: PASS');
+}
+
+function testDefaultIgnorePatternsDoNotContainLegacyAControl() {
+	const result = normalizePluginSettings({});
+	assert.ok(
+		!result.search.ignorePatterns.some((p) => p.startsWith('A-control')),
+		'A-control/ no longer auto-included in default ignorePatterns',
+	);
+
+	console.log('[settings-folder-defaults] default ignore patterns: PASS');
+}
+
+function testExplicitLegacyStyledButNonLegacyOverridePreserved() {
+	// e.g. user set skillsFolder to an unrelated folder that starts with underscore.
+	const result = normalizePluginSettings({
+		skillsFolder: '_my-custom-skills',
+		inboxFolder: 'Notes/inbox',
+	});
+	assert.strictEqual(result.skillsFolder, '_my-custom-skills', 'non-legacy underscore folder preserved');
+	assert.strictEqual(result.inboxFolder, 'Notes/inbox', 'explicit inbox override preserved');
+	console.log('[settings-folder-defaults] non-legacy user overrides preserved: PASS');
+}
+
 testDefaultFoldersLiveUnderChatRoot();
 testCustomRootDerivesUnsetFolders();
 testExplicitFolderOverridesArePreserved();
+testLegacyPersistedFoldersNormalizeToNewDefaults();
+testDefaultIgnorePatternsDoNotContainLegacyAControl();
+testExplicitLegacyStyledButNonLegacyOverridePreserved();
