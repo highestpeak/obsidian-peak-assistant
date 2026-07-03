@@ -62,6 +62,7 @@ export const DEFAULT_VAULT_LINT_CONFIG: VaultLintConfig = {
 		softOrphanMaxDegree: 2,
 		phantomNodeMinReferences: 3,
 		islandClusterMaxSize: 5,
+		tagExplosionMultiplier: 5,
 	},
 	scan: {
 		incrementalDebounceMs: 30000,

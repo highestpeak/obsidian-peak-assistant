@@ -13,7 +13,7 @@
 
 import { orphanDetector, brokenLinkDetector } from '../signals/structural';
 import { emptyDetector, buildContentDetectors } from '../signals/content';
-import { untaggedDetector } from '../signals/tags';
+import { buildTagDetectors, untaggedDetector } from '../signals/tags';
 import type {
 	LintSignalDetector,
 	LintSignalId,
@@ -37,6 +37,11 @@ export class InMemoryDetectorRegistry implements VaultLintDetectorRegistryPort {
 			// content detectors (`C-STUB`, `C-OVERSIZED`, ...) all flow in
 			// through `buildContentDetectors`.
 			if (detector.id !== 'C-EMPTY') this.detectors.set(detector.id, detector);
+		}
+		for (const detector of buildTagDetectors(config)) {
+			// `G-UNTAGGED` is already the anchor; `buildTagDetectors`
+			// re-emits it plus the new tag-explosion signal.
+			if (detector.id !== 'G-UNTAGGED') this.detectors.set(detector.id, detector);
 		}
 		this.detectors.set(untaggedDetector.id, untaggedDetector);
 		this.initialized = true;

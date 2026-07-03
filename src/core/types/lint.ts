@@ -95,6 +95,7 @@ export interface VaultLintConfig {
     phantomNodeMinReferences: number;
     softOrphanMaxDegree: number;
     islandClusterMaxSize: number;
+    tagExplosionMultiplier: number;
   };
   scan: {
     incrementalDebounceMs: number;

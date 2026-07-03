@@ -22,7 +22,7 @@ import {
 	strippedLength,
 	strippedWordCount,
 } from '@/service/lint/signals/content';
-import { untaggedDetector } from '@/service/lint/signals/tags';
+import { buildTagDetectors, untaggedDetector } from '@/service/lint/signals/tags';
 import {
 	orphanDetector,
 	brokenLinkDetector,
@@ -401,6 +401,89 @@ async function testUntaggedDetectorRespectsDismissals(): Promise<void> {
 	console.log('PASS: untaggedDetectorRespectsDismissals');
 }
 
+async function testTagExplosionDetectorFiresAtMultiplier(): Promise<void> {
+	const detectors = buildTagDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, tagExplosionMultiplier: 3 },
+	});
+	const explosion = detectors.find((d) => d.id === 'G-TAG-EXPLOSION');
+	assert.ok(explosion, 'buildTagDetectors must include G-TAG-EXPLOSION');
+	const dc = makeFakeContext({
+		files: [
+			{ path: 'a.md', basename: 'a' },
+			{ path: 'b.md', basename: 'b' },
+			{ path: 'c.md', basename: 'c' },
+			{ path: 'wall.md', basename: 'wall' },   // 15 tags, way above median
+			{ path: 'edge.md', basename: 'edge' },   // exactly 3× median
+		],
+		tags: {
+			'a.md': { inlineTags: ['x'], frontmatterTags: [] },   // 1 tag
+			'b.md': { inlineTags: [], frontmatterTags: ['y'] },   // 1 tag
+			'c.md': { inlineTags: ['x', 'y'], frontmatterTags: [] }, // 2 tags
+			'wall.md': {
+				inlineTags: ['t1', 't2', 't3', 't4', 't5'],
+				frontmatterTags: ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10'],
+			},
+			'edge.md': { inlineTags: ['e1', 'e2', 'e3'], frontmatterTags: [] }, // 3 (== 3× median of 1)
+		},
+	});
+	const findings = await explosion!.detect(makeScanContext(dc));
+	// median of tagged-only counts [1,1,2,15,3] sorted [1,1,2,3,15] → median 2. threshold = 6.
+	const firedPaths = findings.map((f) => f.filePath).sort();
+	assert.deepStrictEqual(firedPaths, ['wall.md']);
+	assert.strictEqual((findings[0]!.metadata as any).vaultMedian, 2);
+	assert.strictEqual((findings[0]!.metadata as any).threshold, 6);
+	console.log('PASS: tagExplosionDetectorFiresAtMultiplier');
+}
+
+async function testTagExplosionDetectorNoOpWhenTaggedFilesTooFew(): Promise<void> {
+	const detectors = buildTagDetectors(DEFAULT_VAULT_LINT_CONFIG);
+	const explosion = detectors.find((d) => d.id === 'G-TAG-EXPLOSION')!;
+	const dc = makeFakeContext({
+		files: [
+			{ path: 'a.md', basename: 'a' },
+			{ path: 'b.md', basename: 'b' },
+		],
+		tags: {
+			'a.md': { inlineTags: ['x'], frontmatterTags: [] },
+			'b.md': { inlineTags: ['y'], frontmatterTags: [] },
+		},
+	});
+	const findings = await explosion.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: tagExplosionDetectorNoOpWhenTaggedFilesTooFew');
+}
+
+async function testTagExplosionDetectorRespectsDismissals(): Promise<void> {
+	const detectors = buildTagDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, tagExplosionMultiplier: 2 },
+	});
+	const explosion = detectors.find((d) => d.id === 'G-TAG-EXPLOSION')!;
+	const dc = makeFakeContext({
+		files: [
+			{ path: 'a.md', basename: 'a' },
+			{ path: 'b.md', basename: 'b' },
+			{ path: 'c.md', basename: 'c' },
+			{ path: 'big.md', basename: 'big' },
+		],
+		tags: {
+			'a.md': { inlineTags: ['x'], frontmatterTags: [] },
+			'b.md': { inlineTags: ['y'], frontmatterTags: [] },
+			'c.md': { inlineTags: ['z'], frontmatterTags: [] },
+			'big.md': {
+				inlineTags: ['t1', 't2'],
+				frontmatterTags: ['f1', 'f2', 'f3'],
+			},
+		},
+	});
+	const findings = await explosion.detect(
+		makeScanContext(dc, ['G-TAG-EXPLOSION:big.md']),
+	);
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: tagExplosionDetectorRespectsDismissals');
+}
+
 // ---------------------------------------------------------------------------
 // Structural detectors
 // ---------------------------------------------------------------------------
@@ -584,6 +667,9 @@ async function main(): Promise<void> {
 	testStrippedLengthHelperIsExposed();
 	await testUntaggedDetectorFiresOnlyWhenBothTagSourcesEmpty();
 	await testUntaggedDetectorRespectsDismissals();
+	await testTagExplosionDetectorFiresAtMultiplier();
+	await testTagExplosionDetectorNoOpWhenTaggedFilesTooFew();
+	await testTagExplosionDetectorRespectsDismissals();
 	await testBrokenLinkDetectorPullsFromContextAndGroupsBySource();
 	await testBrokenLinkDetectorRespectsDismissals();
 	await testOrphanDetectorReturnsEmptyWhenNoOrphansFromContext();
