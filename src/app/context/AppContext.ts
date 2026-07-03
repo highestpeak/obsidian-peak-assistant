@@ -502,7 +502,13 @@ export class AppContext {
 		});
 	}
 
-	/** Create a VaultSearchAgent (routes to VaultSearchAgentSDK on desktop). */
+	/**
+	 * Create a VaultSearchAgent. Currently delegates to VaultSearchAgentSDK
+	 * which runs on Claude Agent SDK primitives (library usage, not the
+	 * retired 2026-07 backend option). Migration to harness-native
+	 * `runAgentLoop` is spec'd separately —
+	 * docs/superpowers/specs/2026-07-04-vault-search-harness-native-migration.md.
+	 */
 	public static vaultSearchAgent(): VaultSearchAgent {
 		const ctx = AppContext.getInstance();
 		return new VaultSearchAgent(ctx.app, ctx.plugin.manifest.id, ctx.searchClient, ctx.manager);

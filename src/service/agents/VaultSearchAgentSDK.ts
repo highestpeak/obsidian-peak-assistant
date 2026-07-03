@@ -1,6 +1,14 @@
 /**
- * VaultSearchAgentSDK — thin outer shell over Claude Agent SDK query() for
- * vault search. This is the sole desktop search path (V1 pipeline removed).
+ * VaultSearchAgentSDK — sole desktop path for Vault Search (V1 pipeline removed).
+ *
+ * Naming note (2026-07): the `SDK` suffix reflects that the class currently
+ * runs on `@anthropic-ai/claude-agent-sdk`'s `query()` orchestration (via
+ * `queryWithProfile` + `createSdkMcpServer`), NOT that the user selected a
+ * "Claude Agent SDK backend" from Settings — that backend option was retired
+ * in F.A. See docs/superpowers/specs/2026-07-04-vault-search-harness-native-migration.md
+ * for the concrete steps to move this class onto the harness's `runAgentLoop`
+ * so the `SDK` suffix can be dropped and the SDK dependency narrows to
+ * library-only usage (tool + createSdkMcpServer for MCP servers).
  *
  * Flow:
  *   1. warmupPool() installs renderer compat patches + probes node binary
@@ -43,12 +51,15 @@ export interface VaultSearchAgentSdkOptions {
 }
 
 /**
- * Main shell for vault search. Currently only supports the Claude Agent SDK
- * backend because vaultMcpServer's 6 tools (vault_list_folders / vault_read_*
- * / vault_grep / vault_wikilink_expand / vault_submit_plan) use the Anthropic
- * SDK MCP protocol shape. Adapting them to harness ToolDef + HITL handler is
- * tracked as future work; until then, selecting harness backend errors out
- * with a clear message rather than silently falling back.
+ * Main shell for vault search. Uses SDK primitives (`query()`, `tool()`,
+ * `createSdkMcpServer()`) as a library — no user-visible backend routing.
+ * The 6 vault tools (`vault_list_folders` / `vault_read_folder` /
+ * `vault_read_note` / `vault_grep` / `vault_wikilink_expand` /
+ * `vault_submit_plan`) live in `vault-sdk/vaultMcpServer.ts` in the SDK
+ * MCP protocol shape. Adapting them to the harness `ToolDef` shape +
+ * folding the HITL `submit_plan` semantics into `runAgentLoop` is the
+ * migration tracked in
+ * `docs/superpowers/specs/2026-07-04-vault-search-harness-native-migration.md`.
  */
 export class VaultSearchAgentSDK {
 
