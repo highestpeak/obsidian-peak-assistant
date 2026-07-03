@@ -165,6 +165,13 @@ export interface VaultLintDetectorDocDegree {
 	readonly filePath: string | null;
 	readonly incoming: number;
 	readonly outgoing: number;
+	/**
+	 * Last-modified timestamp (ms since epoch), when available. Read
+	 * from Obsidian's `TFile.stat.mtime`; falls back to `null` when the
+	 * node has no corresponding vault file (e.g. HubDoc without a
+	 * concrete markdown backing).
+	 */
+	readonly mtimeMs: number | null;
 }
 
 /**

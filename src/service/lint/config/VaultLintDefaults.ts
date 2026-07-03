@@ -64,6 +64,11 @@ export const DEFAULT_VAULT_LINT_CONFIG: VaultLintConfig = {
 		phantomNodeMinReferences: 3,
 		islandClusterMaxSize: 5,
 		missingBacklinkMinSimilarity: 0.70,
+		recentDriftActiveDays: 30,
+		recentDriftStaleDays: 180,
+		decayingBridgeDays: 365,
+		abandonedClusterDays: 180,
+		abandonedFolderDays: 365,
 		tagExplosionMultiplier: 5,
 	},
 	scan: {

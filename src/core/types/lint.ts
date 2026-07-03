@@ -97,6 +97,11 @@ export interface VaultLintConfig {
     softOrphanMaxDegree: number;
     islandClusterMaxSize: number;
     missingBacklinkMinSimilarity: number;
+    recentDriftActiveDays: number;
+    recentDriftStaleDays: number;
+    decayingBridgeDays: number;
+    abandonedClusterDays: number;
+    abandonedFolderDays: number;
     tagExplosionMultiplier: number;
   };
   scan: {

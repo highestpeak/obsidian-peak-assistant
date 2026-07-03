@@ -26,6 +26,7 @@ import {
 } from '@/service/lint/signals/content';
 import { buildTagDetectors, untaggedDetector } from '@/service/lint/signals/tags';
 import { buildHubDetectors } from '@/service/lint/signals/hub';
+import { buildTemporalDetectors } from '@/service/lint/signals/temporal';
 import {
 	orphanDetector,
 	brokenLinkDetector,
@@ -697,6 +698,10 @@ async function main(): Promise<void> {
 	await testStaleHubDetectorFiresPastThreshold();
 	await testStaleHubDetectorSkipsFreshHubs();
 	await testStaleHubDetectorRespectsDismissals();
+	await testRecentDriftDetectorFiresInWindow();
+	await testRecentDriftDetectorSkipsFreshEdits();
+	await testDecayingBridgeDetectorFiresForOldWellConnectedNotes();
+	await testDecayingBridgeDetectorSkipsFreshOrLowDegree();
 	await testSoftOrphanDetectorFiresBelowThreshold();
 	await testSoftOrphanDetectorSkipsHardOrphans();
 	await testSoftOrphanDetectorRespectsDismissals();
@@ -707,6 +712,75 @@ async function main(): Promise<void> {
 	await testDuplicateDetectorSkipsLowTitleOverlap();
 	await testDuplicateDetectorRespectsDismissals();
 	testTitleTokensAndJaccardHelpers();
+}
+
+async function testRecentDriftDetectorFiresInWindow(): Promise<void> {
+	const detectors = buildTemporalDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, recentDriftActiveDays: 30, recentDriftStaleDays: 180 },
+	});
+	const drift = detectors.find((d) => d.id === 'T-RECENT-DRIFT');
+	assert.ok(drift, 'buildTemporalDetectors must include T-RECENT-DRIFT');
+	const now = Date.now();
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'a', label: 'DriftedA', filePath: 'a.md', incoming: 1, outgoing: 1, mtimeMs: now - 45 * 24 * 60 * 60 * 1000 }, // 45 days → fires
+			{ nodeId: 'b', label: 'FreshB', filePath: 'b.md', incoming: 1, outgoing: 1, mtimeMs: now - 5 * 24 * 60 * 60 * 1000 }, // 5 days → skip
+			{ nodeId: 'c', label: 'StaleC', filePath: 'c.md', incoming: 1, outgoing: 1, mtimeMs: now - 400 * 24 * 60 * 60 * 1000 }, // 400 days → skip
+			{ nodeId: 'd', label: 'NoMtime', filePath: null, incoming: 1, outgoing: 1, mtimeMs: null }, // no path → skip
+		],
+	});
+	const findings = await drift!.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 1);
+	assert.strictEqual(findings[0]!.filePath, 'a.md');
+	assert.deepStrictEqual(findings[0]!.fixActions, ['review-update', 'snooze']);
+	console.log('PASS: recentDriftDetectorFiresInWindow');
+}
+
+async function testRecentDriftDetectorSkipsFreshEdits(): Promise<void> {
+	const detectors = buildTemporalDetectors(DEFAULT_VAULT_LINT_CONFIG);
+	const drift = detectors.find((d) => d.id === 'T-RECENT-DRIFT')!;
+	const now = Date.now();
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'a', label: 'FreshA', filePath: 'a.md', incoming: 0, outgoing: 0, mtimeMs: now - 1 * 24 * 60 * 60 * 1000 },
+		],
+	});
+	const findings = await drift.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: recentDriftDetectorSkipsFreshEdits');
+}
+
+async function testDecayingBridgeDetectorFiresForOldWellConnectedNotes(): Promise<void> {
+	const detectors = buildTemporalDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, decayingBridgeDays: 365 },
+	});
+	const decay = detectors.find((d) => d.id === 'T-DECAYING-BRIDGE');
+	assert.ok(decay, 'buildTemporalDetectors must include T-DECAYING-BRIDGE');
+	const now = Date.now();
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'bridge', label: 'Bridge', filePath: 'bridge.md', incoming: 3, outgoing: 5, mtimeMs: now - 400 * 24 * 60 * 60 * 1000 }, // degree 8, 400 days → fires
+			{ nodeId: 'small', label: 'Small', filePath: 'small.md', incoming: 1, outgoing: 1, mtimeMs: now - 400 * 24 * 60 * 60 * 1000 }, // degree 2 → skip
+			{ nodeId: 'fresh', label: 'FreshBridge', filePath: 'fresh.md', incoming: 3, outgoing: 5, mtimeMs: now - 100 * 24 * 60 * 60 * 1000 }, // recent → skip
+		],
+	});
+	const findings = await decay!.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 1);
+	assert.strictEqual(findings[0]!.filePath, 'bridge.md');
+	assert.strictEqual((findings[0]!.metadata as any).degree, 8);
+	assert.deepStrictEqual(findings[0]!.fixActions, ['review-update', 'suggest-split']);
+	console.log('PASS: decayingBridgeDetectorFiresForOldWellConnectedNotes');
+}
+
+async function testDecayingBridgeDetectorSkipsFreshOrLowDegree(): Promise<void> {
+	const detectors = buildTemporalDetectors(DEFAULT_VAULT_LINT_CONFIG);
+	const decay = detectors.find((d) => d.id === 'T-DECAYING-BRIDGE')!;
+	const dc = makeFakeContext({ docDegrees: [] });
+	const findings = await decay.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: decayingBridgeDetectorSkipsFreshOrLowDegree');
 }
 
 async function testMissingBacklinkDetectorFiresOnSemPairWithoutLinks(): Promise<void> {

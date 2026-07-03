@@ -103,9 +103,21 @@ export class ObsidianVaultLintDetectorContextAdapter
 	}
 
 	async listDocDegrees(limit: number): Promise<VaultLintDetectorDocDegree[]> {
-		return sqliteStoreManager
+		const rows = await sqliteStoreManager
 			.getMobiusNodeRepo()
 			.listDocDegreesForLint(limit);
+		// Enrich with mtime from Obsidian's TFile.stat so temporal
+		// detectors (T-RECENT-DRIFT, T-DECAYING-BRIDGE, T-ABANDONED-*)
+		// can read note age without a separate lookup.
+		const app = AppContext.getInstance().app;
+		return rows.map((row) => {
+			let mtimeMs: number | null = null;
+			if (row.filePath) {
+				const file = app.vault.getAbstractFileByPath(row.filePath);
+				if (file instanceof TFile) mtimeMs = file.stat.mtime;
+			}
+			return { ...row, mtimeMs };
+		});
 	}
 
 	async getStaleHubs(limit: number): Promise<VaultLintDetectorStaleHub[]> {
