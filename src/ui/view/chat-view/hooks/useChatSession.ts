@@ -47,7 +47,12 @@ export const useChatSession = () => {
     const { manager } = useServiceContext();
     const activeConversation = useChatDataStore((state) => state.activeConversation);
 
-    // Sync chatMode from conversation metadata when opening an existing conversation
+    // Sync chatMode from conversation metadata when opening an existing conversation.
+    //
+    // 2026-07 F.B: mode routing was retired. `chatMode` now only survives on the
+    // store for history restore — no downstream consumer branches on it. We still
+    // hydrate the field from persisted `conversationType.kind` so old conversations
+    // don't look like they lost state; new conversations always land as 'agent'.
     useEffect(() => {
         if (!activeConversation) return;
         const convKind = activeConversation.meta.conversationType?.kind;
@@ -80,10 +85,11 @@ export const useChatSession = () => {
         } else if (globalDefaultModel) {
             setSelectedModel(globalDefaultModel.provider, globalDefaultModel.modelId);
         } else {
-            const convMode = activeConversation?.meta.conversationType?.kind ?? 'chat';
-            const modeConfig = ProfileRegistry.getInstance().getConfigForMode(convMode);
-            if (modeConfig) {
-                setSelectedModel(modeConfig.profile.kind, modeConfig.modelId);
+            // Post-F.B: fall back to the default assistant profile regardless of
+            // the legacy `conversationType.kind` — routing by mode was retired.
+            const defaultConfig = ProfileRegistry.getInstance().getActiveAgentConfig();
+            if (defaultConfig) {
+                setSelectedModel(defaultConfig.profile.kind, defaultConfig.modelId);
             }
         }
     }, [activeConversation, manager, setAttachmentHandlingMode, setLlmOutputControlSettings, setSelectedModel]);

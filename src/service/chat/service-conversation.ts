@@ -146,7 +146,16 @@ export class ConversationService {
 	}): AsyncGenerator<LLMStreamEvent> {
 		const self = this;
 		return (async function* (): AsyncGenerator<LLMStreamEvent> {
-			const preparationGenerator = self.prepareChatRequest(params);
+			// 2026-07 F.B follow-up (Debt-2): `/plan ` prefix opts a single message
+			// into planning mode without touching the persisted conversationType or
+			// the runtime chatMode. The prefix is stripped before the message
+			// reaches the LLM. Users get planning UX ("please think about it as a
+			// plan, list steps, surface uncertainty") without a routing branch.
+			const planIntent = detectPlanIntent(params.userContent);
+			const effectiveParams = planIntent
+				? { ...params, userContent: stripPlanPrefix(params.userContent) }
+				: params;
+			const preparationGenerator = self.prepareChatRequest(effectiveParams);
 			// Manually iterate through the generator to get both events and final result
 			let prepared: ChatPreparationResult | undefined;
 			let result: IteratorResult<LLMStreamEvent, ChatPreparationResult>;
@@ -173,11 +182,15 @@ export class ConversationService {
 				throw new Error(`No active profile found for provider "${convProvider}". Please configure it in Settings → Profiles.`);
 			}
 
-			// Resolve conversation mode via the chat runtime port (which wraps
-			// the UI toggle store) or conversation metadata.
+			// Resolve conversation mode. Priority:
+			//   1. Per-message `/plan ` prefix (Debt-2): highest, only for this send.
+			//   2. Persisted conversationType.kind (for restored old conversations).
+			//   3. Runtime chatMode (legacy path; F.B removed the UI picker but
+			//      the field survives for restored state).
+			//   4. Default 'chat' — which today means "no tools, no plan suffix".
 			const runtimeMode = self.chatState.getChatMode();
 			const convTypeKind = params.conversation.meta.conversationType?.kind;
-			const effectiveMode = runtimeMode ?? convTypeKind ?? 'chat';
+			const effectiveMode = planIntent ? 'plan' : (runtimeMode ?? convTypeKind ?? 'chat');
 
 			// Build tools based on mode + UI toggles + model capabilities
 			// Chat mode: no tools (pure conversation)
@@ -609,3 +622,24 @@ export class ConversationService {
 	}
 
 }
+
+/**
+ * Debt-2 (2026-07): per-message `/plan ` prefix detection.
+ *
+ * Users get planning UX without a persistent mode. Detection is intentionally
+ * strict — leading whitespace tolerated, then a literal `/plan` followed by a
+ * space or newline. `/plan-x` or `/planner` do not match.
+ */
+const PLAN_PREFIX_REGEX = /^\s*\/plan(?=[ \t\r\n])/i;
+
+function detectPlanIntent(userContent: string): boolean {
+	if (typeof userContent !== 'string' || userContent.length === 0) return false;
+	return PLAN_PREFIX_REGEX.test(userContent);
+}
+
+function stripPlanPrefix(userContent: string): string {
+	const trimmedLeading = userContent.replace(/^\s+/, '');
+	const remainder = trimmedLeading.replace(/^\/plan[ \t\r\n]+/i, '');
+	return remainder;
+}
+
