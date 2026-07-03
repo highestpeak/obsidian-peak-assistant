@@ -59,12 +59,16 @@ function getWikilinkHref(el: HTMLElement): string | null {
 	return href && parseWikilinkHrefToPath(href) !== null ? href : null;
 }
 
-/** Find the link element from a composed event path. */
+/** Find the link element from a composed event path. Covers HTML `<a>`, SVG `<a>`
+ * (mermaid `click` directive), and `[data-streamdown="link"]` wikilink spans. */
 function findLinkInPath(composedPath: EventTarget[]): HTMLElement | undefined {
 	return composedPath.find((n): n is HTMLElement => {
-		if (!(n instanceof HTMLElement)) return false;
-		return n.tagName === 'A' || n.getAttribute?.('data-streamdown') === 'link';
-	});
+		if (!(n instanceof HTMLElement) && !(n instanceof SVGElement)) return false;
+		const el = n as HTMLElement & SVGElement;
+		const tag = el.tagName?.toLowerCase?.() ?? '';
+		if (tag === 'a') return true;
+		return el.getAttribute?.('data-streamdown') === 'link';
+	}) as HTMLElement | undefined;
 }
 
 /**

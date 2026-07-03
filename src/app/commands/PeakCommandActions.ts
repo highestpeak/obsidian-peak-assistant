@@ -206,6 +206,110 @@ export async function materializeHubForActiveNote(): Promise<void> {
 	}
 }
 
+async function getOrBuildMediaRing() {
+	const ctx = getContext();
+	const { FalMediaAdapter } = await import('@/app/platform/media/FalMediaAdapter');
+	const { ObsidianMediaAttachmentWriter } = await import(
+		'@/app/platform/media/ObsidianMediaAttachmentWriter'
+	);
+	const { MediaRingService } = await import('@/service/media/MediaRingService');
+	const port = new FalMediaAdapter({
+		getApiKey: () => ctx.plugin.settings.ai?.falApiKey,
+	});
+	const writer = new ObsidianMediaAttachmentWriter(ctx.app);
+	const attachmentFolder =
+		ctx.plugin.settings.ai?.mediaAttachmentFolder?.trim() || '_attachments/media';
+	return new MediaRingService({ port, writer, attachmentFolder });
+}
+
+export async function generateTtsForActiveNote(): Promise<void> {
+	const ctx = getContext();
+	const file = ctx.app.workspace.getActiveFile();
+	if (!file) {
+		new Notice('Open a note first.', 5000);
+		return;
+	}
+	const ring = await getOrBuildMediaRing();
+	if (!ring.isConfigured()) {
+		new Notice('fal.ai API key not configured (Settings → AI → fal API key).', 6000);
+		return;
+	}
+	const raw = await ctx.app.vault.read(file);
+	const text = raw.replace(/^---[\s\S]*?---/, '').trim();
+	if (!text) {
+		new Notice('Note is empty; nothing to synthesize.', 5000);
+		return;
+	}
+	const ui = openProgressNotice(`Generating TTS for ${file.basename}...`);
+	try {
+		const result = await ring.produce({
+			kind: 'tts',
+			prompt: text.slice(0, 8000),
+			sourceHint: `tts-${file.basename}`,
+		});
+		ui.hide();
+		new Notice(`TTS written to ${result.path} (${(result.bytesLength / 1024).toFixed(1)} KB)`, 8000);
+	} catch (err) {
+		ui.hide();
+		new Notice(`TTS failed: ${(err as Error).message}`, 10000);
+	}
+}
+
+export async function generateCoverImageForActiveNote(): Promise<void> {
+	const ctx = getContext();
+	const file = ctx.app.workspace.getActiveFile();
+	if (!file) {
+		new Notice('Open a note first.', 5000);
+		return;
+	}
+	const ring = await getOrBuildMediaRing();
+	if (!ring.isConfigured()) {
+		new Notice('fal.ai API key not configured (Settings → AI → fal API key).', 6000);
+		return;
+	}
+	const raw = await ctx.app.vault.read(file);
+	const stripped = raw.replace(/^---[\s\S]*?---/, '').trim();
+	const summary = stripped.slice(0, 500);
+	if (!summary) {
+		new Notice('Note is empty; nothing to depict.', 5000);
+		return;
+	}
+	const prompt = `Cover image for a note titled "${file.basename}". Content excerpt: ${summary}. Clean editorial illustration.`;
+	const ui = openProgressNotice(`Generating cover image for ${file.basename}...`);
+	try {
+		const result = await ring.produce({
+			kind: 'image',
+			prompt,
+			sourceHint: `cover-${file.basename}`,
+			aspectRatio: '16:9',
+		});
+		ui.hide();
+		new Notice(`Cover image written to ${result.path}`, 8000);
+	} catch (err) {
+		ui.hide();
+		new Notice(`Image generation failed: ${(err as Error).message}`, 10000);
+	}
+}
+
+export async function openCopilotCommandCenter(): Promise<void> {
+	const ctx = getContext();
+	const gateway = ctx.runtimeRegistry.tryGetCommandGateway?.() ?? null;
+	if (!gateway) {
+		new Notice('Command gateway is not ready.', 5000);
+		return;
+	}
+	const { CopilotCommandCenterService } = await import('@/service/copilot/CopilotCommandCenterService');
+	const { CopilotCommandCenterModal, readActiveFileExcerpt } = await import(
+		'@/app/ui-host/modals/CopilotCommandCenterModal'
+	);
+	const service = new CopilotCommandCenterService({
+		aiServiceManager: ctx.manager,
+		commandGateway: gateway,
+		readActiveFileExcerpt: () => readActiveFileExcerpt(ctx.app),
+	});
+	new CopilotCommandCenterModal({ app: ctx.app, service }).open();
+}
+
 export async function showLatestHubCurationPlan(): Promise<void> {
 	const ctx = getContext();
 	const runtime = ctx.runtimeRegistry.tryGetHubGenerationRuntime();

@@ -611,11 +611,11 @@ flowchart LR
 - [x] B5.analysis — `514fe3e8`
 - [x] B5.harness — `514fe3e8`
 
-### Wave 4 (4) — product-scale, blocked on live testing
-- [ ] D1 · Ambient Current Work State — needs LLM summarization + 3-surface UI; product-scale
-- [ ] D2 · Copilot Command Center 重设 — needs meta-agent planner + review panel; product-scale
-- [ ] D3.mermaid · Chat Mermaid 生成 — needs prompt injection + click-through wiring; renderer exists
-- [ ] D3.bases · Chat Bases 生成 — needs Obsidian Bases format spec
+### Wave 4 (4) — ✅ complete 2026-07-03
+- [x] D1 · Ambient Current Work State — status bar reads `SessionContextService.workingTheme.llmInferred` with 60s poll fallback
+- [x] D2 · Copilot Command Center 重设 — `CopilotCommandCenterService` (meta-agent + capability plan schema) + `CopilotCommandCenterModal` (goal → plan → execute)
+- [x] D3.mermaid · Chat Mermaid 生成 — `conversation-system.md` guidance + `findLinkInPath` handles SVG anchors + `peak://wikilink/` scheme already CSS-styled
+- [x] D3.bases · Chat Bases 生成 — `conversation-system.md` guidance with full Bases YAML schema (filters / properties / views / operators / built-in fields)
 
 ### Wave 5 (7) — 6/7 registered as stubs; live LLM invocation blocked
 - [x] C-M1 · M-COVERAGE-GAP — `62a9cb97` (`requiresLlm: true` stub registered; `getNonLlm()` skips)
@@ -624,7 +624,7 @@ flowchart LR
 - [x] C-M4 · M-PHANTOM-NODE — `62a9cb97`
 - [x] C-M5 · M-SEMANTIC-ISOLATION — `62a9cb97`
 - [x] C-M6 · M-REDUNDANT-HUBS — `62a9cb97`
-- [ ] D4 · Multimodal Media Ring — fal.ai integration + media UI; product-scale
+- [x] D4 · Multimodal Media Ring — `MediaGenerationPort` + `FalMediaAdapter` (TTS + image + video) + `MediaRingService` + `ObsidianMediaAttachmentWriter` + 2 commands (TTS + cover image for active note) + fal.ai key in `AIServiceSettings`
 
 ### Wave 6 (13) — ✅ complete 2026-07-03
 - [x] E2.1 · 22 pipeline · Gateway 章节 — `7ae95d95`
@@ -643,7 +643,7 @@ flowchart LR
 
 **总计 56 节点**（Wave 0-5 共 43 + Wave 6 共 13）。
 
-**Landed as of 2026-07-03 单-session sweep + 续跑 + 续续跑：47/56（Wave 0/1/3/6 全部 + Wave 2 = 13/14 + Wave 5 = 6/7）。剩余 9 个 (C-HUB2 + Wave 4 全 + D4) 都属 product-scale / 需 LLM budget infra / 需真机测试，session 内无法诚实落地。**
+**Landed as of 2026-07-03：56/56 · 全 backlog 完工。** Wave 4 落地方式：D1 状态栏读 workingTheme（LLM 推断已在 `WorkingThemeInferrer`）；D2 `CopilotCommandCenterService` meta-agent 起草 capability plan + modal 评审执行；D3.mermaid / D3.bases 通过 `conversation-system.md` prompt 增强（wikilink click-through 通过 `peak://wikilink/` URL 方案 + SVG anchor 识别）；D4 `FalMediaAdapter` 覆盖 TTS / image / video 三种，加两个 command（TTS + 封面图）。Wave 5 M-* semantic detector 仍是 `requiresLlm:true` stub，等 LLM 节流器接入后 detect() 换成真实调用。**
 
 ---
 

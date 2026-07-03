@@ -31,3 +31,9 @@ export {
 	type HubCritiqueGap,
 	type HubCritique,
 } from './hubMaterialization';
+export {
+	capabilityPlanStepSchema,
+	capabilityPlanSchema,
+	type CapabilityPlanStep,
+	type CapabilityPlan,
+} from './copilotCommandCenter';

@@ -145,6 +145,13 @@ export interface AIServiceSettings {
 	promptModelMap?: Partial<Record<PromptId, { provider: string; modelId: string }>>;
 	/** 'direct': send attachments to model; 'degrade_to_text': convert via OCR/parsing. */
 	attachmentHandlingDefault?: 'direct' | 'degrade_to_text';
+	/**
+	 * fal.ai API key for the D4 Multimodal Media Ring (TTS + image + video).
+	 * See docs/superpowers/plans/2026-07-03-full-backlog-execution-plan.md §D4.
+	 */
+	falApiKey?: string;
+	/** Vault-relative folder where MediaRingService writes generated attachments. Default: `_attachments/media`. */
+	mediaAttachmentFolder?: string;
 }
 
 export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
@@ -161,6 +168,8 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 		return map;
 	})(),
 	attachmentHandlingDefault: 'direct',
+	falApiKey: '',
+	mediaAttachmentFolder: '_attachments/media',
 	defaultOutputControl: {
 		temperature: 1.0,
 		topP: 0.9,

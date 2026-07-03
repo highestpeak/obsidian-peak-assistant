@@ -429,6 +429,36 @@ export default class MyPlugin extends Plugin {
 				})();
 			},
 		});
+		this.addCommand({
+			id: 'peak-copilot-command-center',
+			name: 'Open Copilot Command Center',
+			callback: () => {
+				void (async () => {
+					const { openCopilotCommandCenter } = await import('@/app/commands/PeakCommandActions');
+					await openCopilotCommandCenter();
+				})();
+			},
+		});
+		this.addCommand({
+			id: 'peak-media-tts-active-note',
+			name: 'Generate TTS for Active Note (fal.ai)',
+			callback: () => {
+				void (async () => {
+					const { generateTtsForActiveNote } = await import('@/app/commands/PeakCommandActions');
+					await generateTtsForActiveNote();
+				})();
+			},
+		});
+		this.addCommand({
+			id: 'peak-media-cover-active-note',
+			name: 'Generate Cover Image for Active Note (fal.ai)',
+			callback: () => {
+				void (async () => {
+					const { generateCoverImageForActiveNote } = await import('@/app/commands/PeakCommandActions');
+					await generateCoverImageForActiveNote();
+				})();
+			},
+		});
 
 		// Note: `buildCoreCommands` used to be the palette table; it is
 		// intentionally left imported (see top of file) and unused so
@@ -548,16 +578,39 @@ export default class MyPlugin extends Plugin {
 			AppContext.setAmbientRuntime(ambientRuntime);
 			ambientRuntime.start();
 
-			// Status bar indicator
+			// Status bar indicator. D1 upgrade: prefer the LLM-inferred working
+			// context summary when available (SessionContextService.workingTheme
+			// .llmInferred), fall back to the "N related" count otherwise. The
+			// status-bar text is refreshed on both AmbientPushStore updates and
+			// a 60s poll so the working-theme summary appears once the
+			// WorkingThemeInferrer produces one.
 			if (!ambientPushSettings || ambientPushSettings.showStatusBar !== false) {
 				const statusBarEl = this.addStatusBarItem();
 				statusBarEl.addClass('peak-ambient-status');
 				statusBarEl.setText('\u26A1 \u2013');
 
-				this.ambientStoreUnsub = useAmbientPushStore.subscribe((state) => {
-					const count = state.items.length;
+				const refreshStatusBar = () => {
+					try {
+						const sessionCtx = SessionContextService.getInstance();
+						const summary = sessionCtx.getWorkingContext().workingTheme.llmInferred?.summary;
+						if (summary && summary.trim().length > 0) {
+							const short = summary.length > 44 ? `${summary.slice(0, 41)}\u2026` : summary;
+							statusBarEl.setText(`\uD83E\uDDE0 ${short}`);
+							statusBarEl.title = summary;
+							return;
+						}
+					} catch {
+						// SessionContextService not initialized yet \u2014 fall through
+					}
+					const count = useAmbientPushStore.getState().items.length;
 					statusBarEl.setText(count > 0 ? `\u26A1 ${count} related` : '\u26A1 \u2013');
-				});
+					statusBarEl.title = '';
+				};
+
+				this.ambientStoreUnsub = useAmbientPushStore.subscribe(() => refreshStatusBar());
+				const themePollTimer = window.setInterval(refreshStatusBar, 60_000);
+				this.register(() => window.clearInterval(themePollTimer));
+				refreshStatusBar();
 			}
 
 			// CM6 gutter hint for serendipity items (Phase 3)

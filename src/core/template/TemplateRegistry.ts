@@ -258,6 +258,14 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 		description: 'System prompt for the Hub Materialization critique subagent.',
 		group: 'indexing',
 	}),
+	'copilot-command-center-plan': meta('prompts', 'copilot-command-center-plan', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only one JSON object matching CapabilityPlan: planTitle, summary, goalRestatement, steps (min 1 max 8; each stepNumber/commandId/commandLabel/rationale/optional reviewHint/readOnly), confidence (0..1).',
+		label: 'Copilot Command Center Plan',
+		description: 'Meta-agent drafts a capability sequence from a plain-language user goal.',
+		group: 'copilot',
+	}),
 	'pattern-discovery': meta('prompts', 'pattern-discovery', { expectsJson: true, jsonConstraint: 'Return only the JSON object with newPatterns and deprecateIds, no markdown or explanation.', label: 'Pattern Discovery', description: 'Analyzes query history to discover new query template patterns.', group: 'indexing' }),
 	'context-memory': meta('prompts', 'context-memory', { label: 'Context Memory', description: 'Renders long-term memory entries into the conversation context.', group: 'userProfile' }),
 	'user-profile-context': meta('prompts', 'user-profile-context', { label: 'User Profile Context', description: 'Renders the user profile into the conversation context window.', group: 'userProfile' }),

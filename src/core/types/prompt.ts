@@ -56,6 +56,8 @@ export enum PromptId {
 	HubMaterializationDraft = 'hub-materialization-draft',
 	/** System: Hub materialization critique (subagent). */
 	HubMaterializationCritique = 'hub-materialization-critique',
+	/** System: Copilot Command Center capability plan drafting. */
+	CopilotCommandCenterPlan = 'copilot-command-center-plan',
 
 	// Search prompts
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
@@ -397,6 +399,12 @@ export interface PromptVariables {
 		fringeCount: number;
 		draftMarkdown: string;
 		referencedMemberIds: string[];
+	};
+	[PromptId.CopilotCommandCenterPlan]: {
+		userGoal: string;
+		activeFilePath: string;
+		activeFileExcerpt: string;
+		availableCommands: Array<{ commandId: string; commandLabel: string; description: string }>;
 	};
 	[PromptId.DocTagGenerateJson]: {
 		content: string;
