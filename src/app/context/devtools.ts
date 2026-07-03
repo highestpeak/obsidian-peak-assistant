@@ -13,6 +13,7 @@
 import type { AppContext } from '@/app/context/AppContext';
 import { GraphInspectorTestTools, AISearchAgentTestTools } from '@/app/context/test-tools';
 import { GraphCleanupService } from '@/service/search/index/maintenance/GraphCleanupService';
+import { runGraphCleanup } from '@/service/search/index/maintenance/GraphCleanupRun';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { defaultIndexDocumentOptions } from '@/service/search/index/indexService';
 import { AppContext as AppCtx } from '@/app/context/AppContext';
@@ -56,13 +57,23 @@ export function registerDevtools(ctx: AppContext): void {
 	w.runPendingVectorIndexEnrichment = () =>
 		AppCtx.getIndexService().runPendingVectorIndexEnrichment(ctx.settings.search);
 	w.getVaultPersona = () => getVaultPersona();
-	w.cleanupGraphTable = () => {
+	// B2.graph (2026-07-03): route DevTools-triggered graph cleanup
+	// through `runGraphCleanup` so each invocation gets a fresh
+	// RunSession (runId, artifact with deletion counters, failure
+	// trace on rollback). Callers still see `{orphanEdgesDeleted,
+	// nodesWithoutIndexedDocumentDeleted, ...}` — the runner unwraps
+	// the underlying result via `.result`.
+	w.cleanupGraphTable = async () => {
 		const graphCleanupService = new GraphCleanupService(
 			sqliteStoreManager.getIndexContext('vault'),
 			sqliteStoreManager.getMobiusNodeRepo(),
 			sqliteStoreManager.getIndexedDocumentRepo(),
 		);
-		return graphCleanupService.run();
+		const { result } = await runGraphCleanup({
+			cleaner: graphCleanupService,
+			trigger: 'manual',
+		});
+		return result;
 	};
 
 	// V2 search debug — screenshot + DOM + state, saved to /tmp.
