@@ -325,6 +325,190 @@ flowchart TB
           </div>
         </section>
 
+        <section id="provider-catalog">
+          <h2>Provider 全景 · 支持的 vendor 与选择规则</h2>
+          <p class="lead">Peak 支持的所有 provider 都列在这里。<strong>三张表分工</strong>：LLM/embedding 一张、多模态生成一张、rerank/向量一张。表下的<em>选择规则</em>是 Curator 内置的推荐逻辑——用户可以手动 override 但默认走这份判断。</p>
+
+          <h3>LLM / Embedding Provider（<code>Profile.kind</code>）</h3>
+          <p class="prose"><code>createLanguageModel(profile, modelId)</code>（<code>src/core/providers/vercel/provider-factory.ts</code>）目前接受 <strong>8 种 kind</strong>。前 4 种是原生 API，中间 2 种是聚合/开源，最后 2 种是 OpenAI-兼容的兜底：</p>
+          <table class="doc-table">
+<colgroup><col style="width: 12%"><col style="width: 12%"><col style="width: 16%"><col style="width: 16%"><col></colgroup>
+            <thead>
+              <tr><th><code>kind</code></th><th>Catalog</th><th>成本梯度</th><th>能力亮点</th><th>典型用途 · 建议 Role 绑定</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>anthropic</code></td>
+                <td>claude.json · 11 model</td>
+                <td>中-高</td>
+                <td>Reasoning 强、Tool use 稳、200k ctx、Vision</td>
+                <td><strong>Chat 主推</strong>、<strong>Agent Deep tier</strong>、<strong>Copilot Research</strong>；写作、结构化 JSON、长上下文工程都优先它</td>
+              </tr>
+              <tr>
+                <td><code>openai</code></td>
+                <td>openai.json · 18 model</td>
+                <td>低-高</td>
+                <td>覆盖最广（gpt-5-nano 到 gpt-5-pro）、原生 embedding、Vision、Reasoning</td>
+                <td><strong>Fast tier</strong>（gpt-5-nano 便宜）、<strong>Embedding Role</strong>（<code>text-embedding-3-small</code>）、<strong>Copilot Fast Lookup</strong>；catalog 最全，作为 fallback 也稳</td>
+              </tr>
+              <tr>
+                <td><code>google</code>（gemini）</td>
+                <td>gemini.json · 8 model</td>
+                <td>低-中</td>
+                <td>1M ctx（gemini-2.0-flash）、PDF input 原生、多模态、便宜</td>
+                <td><strong>长文档 chunk 处理</strong>、<strong>Ambient LLM 摘要</strong>（成本敏感 + 内容长）、<strong>Auto-tag / DocSummary</strong> 类高频调用</td>
+              </tr>
+              <tr>
+                <td><code>perplexity</code></td>
+                <td>perplexity.json · 5 model</td>
+                <td>中</td>
+                <td>原生 web search、citation 返回、实时新闻</td>
+                <td><strong>Web Search Role</strong> 专用；不推荐做 chat 主 provider（一般对话它算贵）</td>
+              </tr>
+              <tr>
+                <td><code>openrouter</code></td>
+                <td>动态（走 OR 的 model list API）</td>
+                <td>低-高</td>
+                <td>400+ 模型聚合、单 key 走遍 open-source + 闭源、有 free tier 层</td>
+                <td><strong>试用新模型</strong>（先在 OR 上跑 3 天决定是否单独接原生 provider）、<strong>成本压缩</strong>（用 OR 的 discount 版路由）、<strong>兜底</strong>（原生 provider 都挂时切它）</td>
+              </tr>
+              <tr>
+                <td><code>ollama</code></td>
+                <td>ollama-families.json（families 而非单模）</td>
+                <td>0（本地）</td>
+                <td>本地推理、无网络依赖、隐私 vault 场景</td>
+                <td><strong>移动/离线</strong>、<strong>敏感 vault 强隐私</strong>、<strong>Local Fast tier</strong>；缺点：延迟高、tool use 表现不稳，不推荐做 Agent Deep</td>
+              </tr>
+              <tr>
+                <td><code>litellm</code></td>
+                <td>用户自己填（走 OpenAI 兼容 API 层）</td>
+                <td>视代理商而定</td>
+                <td>企业内部 LLM 代理常用、把私有云 model 暴露成 OpenAI shape</td>
+                <td><strong>企业 vault</strong> 走 LiteLLM 代理；配置 baseUrl + apiKey，其它跟 <code>openai</code> 无差别</td>
+              </tr>
+              <tr>
+                <td><code>custom</code></td>
+                <td>用户填（OpenAI-shape 兼容）</td>
+                <td>取决于服务</td>
+                <td>任何 OpenAI-兼容 endpoint（Deepseek / Groq / Together / Mistral 等）</td>
+                <td><strong>Groq</strong>（超低延迟 chat）、<strong>Deepseek</strong>（性价比 reasoning）、<strong>Together</strong>（社区开源 model）——它们目前没独立 kind，走 custom + baseUrl</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>为什么 8 种够用</strong>
+            LLM 生态本质上是"闭源 4 家（Anthropic / OpenAI / Google / Perplexity 特色场景）+ 聚合器 1 家（OpenRouter）+ 本地 1 家（Ollama）+ OpenAI-shape 兜底 2 种（LiteLLM / custom）"。每加一个原生 kind 都要写一个 <code>ai-sdk provider</code> 依赖 + provider-factory case + catalog JSON。新兴 vendor（如 Groq）先走 <code>custom</code>；如果长期活跃再独立成 kind。
+          </div>
+
+          <h3>多模态生成 Provider（<code>MediaGenerationPort</code>）</h3>
+          <p class="prose">跟 LLM 是<strong>独立的抽象轴</strong>：不进 Profile / Role 系统，只需要 API key + 端点。目前只 shipped 一家：</p>
+          <table class="doc-table">
+<colgroup><col style="width: 14%"><col style="width: 14%"><col style="width: 22%"><col></colgroup>
+            <thead>
+              <tr><th>Adapter</th><th>状态</th><th>覆盖类型</th><th>推荐理由 · 备胎位置</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>FalMediaAdapter</code></td>
+                <td><span class="pill green">shipped</span></td>
+                <td>TTS · 图像 · 视频（音乐放弃）</td>
+                <td><strong>主推</strong>：985 endpoints，image API 市场 50%、video 44%，比 Replicate 便宜 30–50%、快 10×，一个 key 覆盖四类</td>
+              </tr>
+              <tr>
+                <td><code>ReplicateMediaAdapter</code></td>
+                <td><span class="pill gold">planned</span></td>
+                <td>预期覆盖同上</td>
+                <td>fal.ai 挂/涨价时的备胎；社区自定义模型比 fal.ai 更多</td>
+              </tr>
+              <tr>
+                <td><code>ElevenLabsMediaAdapter</code></td>
+                <td>backlog</td>
+                <td>只 TTS</td>
+                <td>用户对 fal.ai 的 Kokoro TTS 声音质量不满时的升级路径；成本 3–5×</td>
+              </tr>
+              <tr>
+                <td><code>OpenAIMediaAdapter</code></td>
+                <td>backlog</td>
+                <td>DALL-E 3 图像 + TTS</td>
+                <td>用户只有 OpenAI key、不想再注册 fal.ai 时的最小配置路径</td>
+              </tr>
+              <tr>
+                <td><code>ComfyUILocalAdapter</code></td>
+                <td>backlog</td>
+                <td>图像（视用户装的 workflow）</td>
+                <td>本地 GPU 用户；成本 0 但需自己起 ComfyUI 服务</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Rerank / Vector Provider</h3>
+          <p class="prose">Rerank（<code>src/core/providers/rerank/</code>）目前有 2 层实现：</p>
+          <ul>
+            <li><strong>RankGPT</strong>（走上表的 <code>Rerank Role</code> 绑定 LLM Profile）——用 LLM 自身对搜索结果打分。适合精细但慢+贵。</li>
+            <li><strong>Cohere Rerank API</strong>（Backlog）——独立 rerank service，性价比高。当前用 RankGPT 替代。</li>
+          </ul>
+          <p class="prose">Vector store 直接用 <code>sqlite-vec</code>（不走 provider 抽象）；用户不需要选。</p>
+
+          <h3>Curator 推荐规则</h3>
+          <p class="prose"><a href="#curator">Curator</a> 拿到用户环境（有哪些 provider key + 优先级 = 便宜 / 快 / 高质）后走这份 hard-coded 优先级：</p>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 30%"><col></colgroup>
+            <thead>
+              <tr><th>Role</th><th>用户偏好：<em>quality</em></th><th>用户偏好：<em>cost / speed</em></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Chat / Agent Deep</td>
+                <td><code>anthropic</code> claude-opus-4-x → <code>anthropic</code> claude-sonnet-4-x → <code>openai</code> gpt-5-pro</td>
+                <td><code>openai</code> gpt-5-mini → <code>google</code> gemini-2.0-flash → <code>ollama</code> llama-3.x-8b</td>
+              </tr>
+              <tr>
+                <td>Agent Fast / Copilot Fast Lookup</td>
+                <td><code>anthropic</code> claude-sonnet-4-x → <code>openai</code> gpt-5</td>
+                <td><code>openai</code> gpt-5-nano → <code>google</code> gemini-2.0-flash-lite → <code>ollama</code> llama-3.x-8b</td>
+              </tr>
+              <tr>
+                <td>Embedding</td>
+                <td><code>openai</code> text-embedding-3-large</td>
+                <td><code>openai</code> text-embedding-3-small → <code>ollama</code> nomic-embed-text</td>
+              </tr>
+              <tr>
+                <td>Web Search</td>
+                <td><code>perplexity</code> sonar-large-online</td>
+                <td><code>perplexity</code> sonar-small-online → 关闭</td>
+              </tr>
+              <tr>
+                <td>Rerank</td>
+                <td>与 Agent Fast 同 Profile（RankGPT）</td>
+                <td>关闭 rerank，用 RRF 兜底</td>
+              </tr>
+              <tr>
+                <td>Media (TTS)</td>
+                <td><code>fal.ai</code> Kokoro（默认可用）→ ElevenLabs（backlog）</td>
+                <td><code>fal.ai</code> Kokoro</td>
+              </tr>
+              <tr>
+                <td>Media (Image)</td>
+                <td><code>fal.ai</code> Flux dev（override styleHint）</td>
+                <td><code>fal.ai</code> fast-sdxl（默认）</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim warn">
+            <strong>推荐规则是 hard-coded 不是 LLM 决定的</strong>
+            Curator 本身用 LLM 是为了"环境检测"（有没有 key 有效、哪些模型响应通）——最终 Role → Provider 绑定的选择规则写死在代码里（<code>src/service/agents/harness/curator/</code>），确保结果 deterministic。用户可以在 Onboarding wizard 点<em>Apply recommended</em> 一键套用，也可以手动 override 到 backlog 里的任何 Provider。
+          </div>
+
+          <h3>2026-07-03 本轮 Provider 新增</h3>
+          <p class="prose">这次 backlog 收尾期一并接入的 provider 记录：</p>
+          <ul>
+            <li><strong>fal.ai</strong>（新增第一个 Media Provider）——为 D4 Multimodal Media Ring 骨架，见下方 <a href="#media-providers">§媒体生成 provider</a>。之前 Peak 里没有任何"非 LLM"provider，媒体 API 是本轮引入的新维度。</li>
+            <li>无新增 LLM kind；hub agent / copilot command center / ambient / mermaid+bases 全都复用现有 8 种 LLM kind，未增加 provider 面接线。</li>
+          </ul>
+        </section>
+
         <section id="roles">
           <h2>六种 Role</h2>
           <p class="lead">Role 是 <em>任务</em>，不是 <em>vendor</em>。同一个 Chat Role 可能今天用 Claude 明天换到 Gemini。Peak 里有 6 种 Role，每种都是 <code>(profileId, modelId)</code> 的绑定。</p>
