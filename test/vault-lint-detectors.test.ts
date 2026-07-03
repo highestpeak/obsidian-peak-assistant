@@ -15,8 +15,10 @@ import assert from 'assert';
 import {
 	emptyDetector,
 	buildContentDetectors,
+	detectNamingViolation,
 	frontmatterMissingDetector,
 	hasFrontmatter,
+	namingViolationDetector,
 	strippedLength,
 	strippedWordCount,
 } from '@/service/lint/signals/content';
@@ -306,6 +308,51 @@ function testHasFrontmatterHelperIsExposed(): void {
 	console.log('PASS: hasFrontmatterHelperIsExposed');
 }
 
+async function testNamingViolationDetectorFires(): Promise<void> {
+	const dc = makeFakeContext({
+		files: [
+			{ path: 'Untitled.md', basename: 'Untitled' },
+			{ path: 'Untitled 3.md', basename: 'Untitled 3' },
+			{ path: '  spaced.md', basename: '  spaced' },
+			{ path: 'ok/valid-note.md', basename: 'valid-note' },
+			{ path: 'ok/Also OK.md', basename: 'Also OK' },
+		],
+	});
+	const findings = await namingViolationDetector.detect(makeScanContext(dc));
+	const firedPaths = findings.map((f) => f.filePath).sort();
+	assert.deepStrictEqual(firedPaths, ['  spaced.md', 'Untitled 3.md', 'Untitled.md']);
+	for (const f of findings) {
+		assert.strictEqual(f.signalId, 'C-NAMING-VIOLATION');
+		assert.deepStrictEqual(f.fixActions, ['rename-with-prefix']);
+	}
+	console.log('PASS: namingViolationDetectorFires');
+}
+
+async function testNamingViolationDetectorRespectsDismissals(): Promise<void> {
+	const dc = makeFakeContext({
+		files: [{ path: 'Untitled.md', basename: 'Untitled' }],
+	});
+	const findings = await namingViolationDetector.detect(
+		makeScanContext(dc, ['C-NAMING-VIOLATION:Untitled.md']),
+	);
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: namingViolationDetectorRespectsDismissals');
+}
+
+function testDetectNamingViolationHelperEdgeCases(): void {
+	assert.deepStrictEqual(detectNamingViolation(''), { reason: 'empty basename' });
+	assert.deepStrictEqual(detectNamingViolation('Untitled'), { reason: `default placeholder name 'Untitled'` });
+	assert.deepStrictEqual(detectNamingViolation('untitled'), { reason: `default placeholder name 'untitled'` });
+	assert.deepStrictEqual(detectNamingViolation('Untitled  42'), { reason: `default placeholder name 'Untitled  42'` });
+	assert.deepStrictEqual(detectNamingViolation(' leading'), { reason: 'basename has leading or trailing whitespace' });
+	assert.deepStrictEqual(detectNamingViolation('trailing '), { reason: 'basename has leading or trailing whitespace' });
+	// Legit basenames must not trigger.
+	assert.strictEqual(detectNamingViolation('My Note'), null);
+	assert.strictEqual(detectNamingViolation('2026-07-03 daily'), null);
+	assert.strictEqual(detectNamingViolation('Untitled Chapter One'), null); // more than the placeholder
+	console.log('PASS: detectNamingViolationHelperEdgeCases');
+}
+
 function testStrippedLengthHelperIsExposed(): void {
 	// `strippedLength` is exported so existing assumptions about
 	// frontmatter/heading stripping stay easy to verify.
@@ -530,6 +577,9 @@ async function main(): Promise<void> {
 	await testFrontmatterMissingDetectorFiresOnNotesWithout();
 	await testFrontmatterMissingDetectorRespectsDismissals();
 	testHasFrontmatterHelperIsExposed();
+	await testNamingViolationDetectorFires();
+	await testNamingViolationDetectorRespectsDismissals();
+	testDetectNamingViolationHelperEdgeCases();
 	testStrippedWordCountHelperIsExposed();
 	testStrippedLengthHelperIsExposed();
 	await testUntaggedDetectorFiresOnlyWhenBothTagSourcesEmpty();

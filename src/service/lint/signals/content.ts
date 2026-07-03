@@ -36,7 +36,34 @@ export function buildContentDetectors(config: VaultLintConfig): LintSignalDetect
 		buildStubDetector(config.thresholds.stubMaxChars),
 		buildOversizedDetector(config.thresholds.oversizedMinWords),
 		frontmatterMissingDetector,
+		namingViolationDetector,
 	];
+}
+
+/**
+ * Naming rules for `C-NAMING-VIOLATION`. Kept intentionally narrow —
+ * only high-confidence, opinion-neutral checks:
+ *
+ *   - Obsidian's default "Untitled" placeholder (with or without a
+ *     trailing " N" counter) — always a housekeeping smell.
+ *   - Empty basename (should not exist on a real vault, but a defence
+ *     against corrupted metadata).
+ *   - Trailing/leading whitespace in the basename — invisible and
+ *     usually a paste artifact.
+ *
+ * More opinionated rules (kebab-case, no spaces, ...) are deliberately
+ * omitted so this detector doesn't wage a style war with existing
+ * vaults. Future config knobs can extend it.
+ */
+const UNTITLED_BASENAME_REGEX = /^Untitled(\s+\d+)?$/i;
+
+export function detectNamingViolation(basename: string): { reason: string } | null {
+	if (basename.length === 0) return { reason: 'empty basename' };
+	if (basename !== basename.trim()) return { reason: 'basename has leading or trailing whitespace' };
+	if (UNTITLED_BASENAME_REGEX.test(basename)) {
+		return { reason: `default placeholder name '${basename}'` };
+	}
+	return null;
 }
 
 /**
@@ -163,6 +190,41 @@ export const frontmatterMissingDetector: LintSignalDetector = {
 					status: 'open',
 				});
 			}
+		}
+
+		return findings;
+	},
+};
+
+export const namingViolationDetector: LintSignalDetector = {
+	id: 'C-NAMING-VIOLATION',
+	dimension: 'content',
+	severity: 'info',
+	signalWeight: 0.05,
+	requiresLlm: false,
+
+	async detect(context: LintScanContext): Promise<LintFinding[]> {
+		const dc = context.detectorContext;
+		const files = dc.listMarkdownFiles();
+		const findings: LintFinding[] = [];
+
+		for (const file of files) {
+			if (context.dismissals.has(`C-NAMING-VIOLATION:${file.path}`)) continue;
+
+			const verdict = detectNamingViolation(file.basename);
+			if (verdict === null) continue;
+
+			findings.push({
+				id: findingId('C-NAMING-VIOLATION', file.path),
+				signalId: 'C-NAMING-VIOLATION',
+				severity: 'info',
+				filePath: file.path,
+				title: `Rename suggested: ${file.basename || '(empty)'}`,
+				description: `Naming violation — ${verdict.reason}. Rename this note to something descriptive.`,
+				fixActions: ['rename-with-prefix'],
+				metadata: { reason: verdict.reason, basename: file.basename },
+				status: 'open',
+			});
 		}
 
 		return findings;
