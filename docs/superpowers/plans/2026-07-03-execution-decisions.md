@@ -63,5 +63,21 @@ If any of B1/B3 turn out to have huge blast radius, land the scaffolding + a doc
 - 没为 `openrouter` / `google` / `perplexity` / `custom` / `litellm` 单独区分 —— 它们都被视为"任一 provider 有 apiKey" 时 `hermes-harness` / `provider-direct` 一起启用；claude-sdk 严格只认 Anthropic。
 - 完全跳过与真 API key 的集成测试 —— 这条 debt 归给 Wave 1 真机烟测。这里的 7 条 unit test 覆盖"注册决策"逻辑，足以证明 registry 组装正确。
 
+### Wave 2 batch (2026-07-03)
+- 只做规则型（rule-based）content / tags detector —— S-*/T-*/HUB-*/M-* 需要新 port surface（node degree / date / semantic sim / LLM budget）或跨文件 aggregation 面板，超出本 session 单节点粒度。
+- C-C2 · C-DUPLICATE **暂缓**：需要 semantic edges + title jaccard 阈值 + 潜在的 semanticNeighbors port 扩展；下 session 先补 DetectorContextPort 上的 similarity access，再补 detector。
+- C-G1 · G-TAG-EXPLOSION 主动扩了 `VaultLintConfig.thresholds.tagExplosionMultiplier`（type + default + JSON 对齐）—— 这属于"detector 上线 must-have 的一等 config"，不是把 constants 塞进 core/constant.ts 那条禁忌。
+- Median-of-positive 而不是 mean 的判据：一个 wall.md 拖高 mean 会让 vault 里所有别的重标签的文档都逃过检测；median 更稳。
+- < 3 tagged 文件时 detector no-op 是 defense against tiny vault false positive —— 新 vault 里 median=1 一档，任何 2 标签文件都命中很尴尬。
+
+### 会话结束记录 (2026-07-03)
+本 session 单人跑，一路 commit 在 `codex/peak-modernization-refactor` 分支上，14 commits（含起始 plan 提交），11 个节点 landed（Wave 0 全 7 + Wave 2 部分 4）：C-C1 / C-C3 / C-C4 / C-G1。每个节点都跑绿 `npm run test` + `npm run build`。剩 45 节点未做，见 tracker。
+
+next-session 优先建议：
+1. Wave 1 · B2.chat / B2.copilot —— 前置 W0 已全绿，可以开始给 backend live strategies 补 sdkQueryAdapter + providerStreamAdapter。
+2. Wave 2 剩下的 rule-based —— C-C2 (需要 detectorContext.getSemanticNeighbors 顺便暴露相似度 top-k) / T-RECENT-DRIFT (需要 mtime port).
+3. Wave 2 · HubDoc 实装 (C-HUB2)。
+4. 不要碰 W5 LLM detector，先跑通 W2 那 14 个便宜的。
+
 _Decisions appended below as they happen._
 

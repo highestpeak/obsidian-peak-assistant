@@ -570,14 +570,15 @@ flowchart LR
 
 ## 11. 追踪表（executor 每完成一节点在这里勾选）
 
-### Wave 0 (7)
-- [ ] A0 · 文档标签同步
-- [ ] B1 · CommandGateway wire-in
-- [ ] B3 · Backend live strategies
-- [ ] B4 · PermissionGuard 消费 quarantine
-- [ ] B6 · Vault-backed ArtifactPort
-- [ ] B7 · IndexService Graph slice
-- [ ] E1 · 05 playbook 3 cases
+### Wave 0 (7) — ✅ complete 2026-07-03 单 session
+
+- [x] A0 · 文档标签同步 — `3cbbc26e`
+- [x] B1 · CommandGateway wire-in — `2a70b38a`
+- [x] B3 · Backend live strategies — `08318c91`
+- [x] B4 · PermissionGuard 消费 quarantine — `1cf12f9b`
+- [x] B6 · Vault-backed ArtifactPort — `66b0a57f`
+- [x] B7 · IndexService Graph slice — `0bd328c0`
+- [x] E1 · 05 playbook 3 cases — `6b514756`
 
 ### Wave 1 (7)
 - [ ] B2.chat
@@ -595,14 +596,14 @@ flowchart LR
 - [ ] C-S2 · S-MISSING-BACKLINK
 - [ ] C-S3 · S-ISLAND-CLUSTER
 - [ ] C-S4 · S-FRAGILE-BRIDGE
-- [ ] C-C1 · C-OVERSIZED
+- [x] C-C1 · C-OVERSIZED — `50e52101`
 - [ ] C-C2 · C-DUPLICATE
-- [ ] C-C3 · C-FRONTMATTER-MISSING
-- [ ] C-C4 · C-NAMING-VIOLATION
+- [x] C-C3 · C-FRONTMATTER-MISSING — `07095415`
+- [x] C-C4 · C-NAMING-VIOLATION — `04f2f8b7`
 - [ ] C-T1 · T-DECAYING-BRIDGE
 - [ ] C-T2 · T-ABANDONED-CLUSTER/FOLDER
 - [ ] C-T3 · T-RECENT-DRIFT
-- [ ] C-G1 · G-TAG-EXPLOSION
+- [x] C-G1 · G-TAG-EXPLOSION — `1671194c`
 
 ### Wave 3 (4)
 - [ ] B5.chat
