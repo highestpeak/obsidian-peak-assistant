@@ -86,6 +86,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 **Wave 0 complete (7/7). Wave 2 lint detectors kicked off:**
 
 - [x] **C-C1 · C-OVERSIZED (2026-07-03)** — 内容维度的规则型检测器：单文档 stripped prose word count ≥ config.thresholds.oversizedMinWords（默认 5000）触发，severity=info，fixActions=['suggest-split']。`src/service/lint/signals/content.ts` 加 `buildOversizedDetector` + `strippedWordCount` 辅助；`buildContentDetectors` 加进 emit 序列；`InMemoryDetectorRegistry` 自动挑起来（走 `buildContentDetectors` 已注册路径）。`test/vault-lint-detectors.test.ts` 新增 3 条 guard（阈值临界+超过 / dismissals / strippedWordCount）。顺手把 `strippedLength` 与 `strippedWordCount` 抽同一 `strippedProse` 底座并补 `.trim()` 保持既有 empty 判定语义。
+- [x] **C-C3 · C-FRONTMATTER-MISSING (2026-07-03)** — 内容维度规则型检测器：任何 markdown 首块不是 `---\n<yaml>\n---` 结构就 fire (`add-frontmatter` fix action)。`frontmatterMissingDetector` + `hasFrontmatter(content)` 用严格 regex 只匹配开头合法 YAML block，body 中间的 `---` 分隔线不误判；empty file 也 fire（也需要 frontmatter）。`test/vault-lint-detectors.test.ts` 新 3 条 guard（有/无/body 分隔线 / dismissals / hasFrontmatter helper 边界）。
 
 ### 0. Active — Architecture Modernization T1-T9
 

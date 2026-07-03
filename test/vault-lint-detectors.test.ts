@@ -15,6 +15,8 @@ import assert from 'assert';
 import {
 	emptyDetector,
 	buildContentDetectors,
+	frontmatterMissingDetector,
+	hasFrontmatter,
 	strippedLength,
 	strippedWordCount,
 } from '@/service/lint/signals/content';
@@ -254,6 +256,56 @@ function testStrippedWordCountHelperIsExposed(): void {
 	console.log('PASS: strippedWordCountHelperIsExposed');
 }
 
+async function testFrontmatterMissingDetectorFiresOnNotesWithout(): Promise<void> {
+	const dc = makeFakeContext({
+		files: [
+			{ path: 'has.md', basename: 'has' },
+			{ path: 'missing.md', basename: 'missing' },
+			{ path: 'empty.md', basename: 'empty' },
+			{ path: 'body-rules.md', basename: 'body-rules' },
+		],
+		fileContent: {
+			'has.md': '---\ntitle: With\ntags: [a]\n---\n\nBody.',
+			'missing.md': '# Header\n\nNo frontmatter here.',
+			'empty.md': '',
+			// horizontal rule in body must NOT be mistaken for frontmatter
+			'body-rules.md': '# Head\n\nSome text\n\n---\n\nMore text',
+		},
+	});
+	const findings = await frontmatterMissingDetector.detect(makeScanContext(dc));
+	const firedPaths = findings.map((f) => f.filePath).sort();
+	assert.deepStrictEqual(firedPaths, ['body-rules.md', 'empty.md', 'missing.md']);
+	for (const f of findings) {
+		assert.strictEqual(f.signalId, 'C-FRONTMATTER-MISSING');
+		assert.deepStrictEqual(f.fixActions, ['add-frontmatter']);
+	}
+	console.log('PASS: frontmatterMissingDetectorFiresOnNotesWithout');
+}
+
+async function testFrontmatterMissingDetectorRespectsDismissals(): Promise<void> {
+	const dc = makeFakeContext({
+		files: [{ path: 'x.md', basename: 'x' }],
+		fileContent: { 'x.md': '# no frontmatter' },
+	});
+	const findings = await frontmatterMissingDetector.detect(
+		makeScanContext(dc, ['C-FRONTMATTER-MISSING:x.md']),
+	);
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: frontmatterMissingDetectorRespectsDismissals');
+}
+
+function testHasFrontmatterHelperIsExposed(): void {
+	assert.strictEqual(hasFrontmatter(''), false);
+	assert.strictEqual(hasFrontmatter('# H\n'), false);
+	assert.strictEqual(hasFrontmatter('---\ntitle: a\n---\n'), true);
+	assert.strictEqual(hasFrontmatter('---\ntitle: a\n---\nbody'), true);
+	// Bare '---' (no key/value block) must not qualify.
+	assert.strictEqual(hasFrontmatter('---\n---\n'), false);
+	// Frontmatter that is not the very first content must NOT match.
+	assert.strictEqual(hasFrontmatter('\n---\ntitle: a\n---\n'), false);
+	console.log('PASS: hasFrontmatterHelperIsExposed');
+}
+
 function testStrippedLengthHelperIsExposed(): void {
 	// `strippedLength` is exported so existing assumptions about
 	// frontmatter/heading stripping stay easy to verify.
@@ -475,6 +527,9 @@ async function main(): Promise<void> {
 	await testStubDetectorRespectsDismissals();
 	await testOversizedDetectorFiresAtOrAboveThreshold();
 	await testOversizedDetectorRespectsDismissals();
+	await testFrontmatterMissingDetectorFiresOnNotesWithout();
+	await testFrontmatterMissingDetectorRespectsDismissals();
+	testHasFrontmatterHelperIsExposed();
 	testStrippedWordCountHelperIsExposed();
 	testStrippedLengthHelperIsExposed();
 	await testUntaggedDetectorFiresOnlyWhenBothTagSourcesEmpty();

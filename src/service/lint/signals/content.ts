@@ -35,7 +35,19 @@ export function buildContentDetectors(config: VaultLintConfig): LintSignalDetect
 		emptyDetector,
 		buildStubDetector(config.thresholds.stubMaxChars),
 		buildOversizedDetector(config.thresholds.oversizedMinWords),
+		frontmatterMissingDetector,
 	];
+}
+
+/**
+ * Match the leading YAML frontmatter block: `---\n<body>\n---\n?`.
+ * The body must NOT contain a `---` line to avoid greedy matches when
+ * the note body itself uses `---` horizontal rules.
+ */
+const FRONTMATTER_REGEX = /^---\r?\n(?!---\r?\n)[\s\S]*?\r?\n---\r?\n?/;
+
+export function hasFrontmatter(content: string): boolean {
+	return FRONTMATTER_REGEX.test(content);
 }
 
 export const emptyDetector: LintSignalDetector = {
@@ -115,6 +127,47 @@ function buildOversizedDetector(oversizedMinWords: number): LintSignalDetector {
 		},
 	};
 }
+
+/**
+ * `C-FRONTMATTER-MISSING` — notes that have no YAML frontmatter block.
+ * Rule-based; fires per file, severity `info`. Empty files and stub
+ * files still fire — the fix (`add-frontmatter`) is meaningful there
+ * too. Users who want per-folder policies can dismiss individually.
+ */
+export const frontmatterMissingDetector: LintSignalDetector = {
+	id: 'C-FRONTMATTER-MISSING',
+	dimension: 'content',
+	severity: 'info',
+	signalWeight: 0.05,
+	requiresLlm: false,
+
+	async detect(context: LintScanContext): Promise<LintFinding[]> {
+		const dc = context.detectorContext;
+		const files = dc.listMarkdownFiles();
+		const findings: LintFinding[] = [];
+
+		for (const file of files) {
+			if (context.dismissals.has(`C-FRONTMATTER-MISSING:${file.path}`)) continue;
+
+			const content = await dc.readMarkdownFile(file.path);
+			if (!hasFrontmatter(content)) {
+				findings.push({
+					id: findingId('C-FRONTMATTER-MISSING', file.path),
+					signalId: 'C-FRONTMATTER-MISSING',
+					severity: 'info',
+					filePath: file.path,
+					title: `No frontmatter: ${file.basename}`,
+					description: 'This note does not have a YAML frontmatter block. Add one for consistent metadata (tags, aliases, date).',
+					fixActions: ['add-frontmatter'],
+					metadata: {},
+					status: 'open',
+				});
+			}
+		}
+
+		return findings;
+	},
+};
 
 function buildStubDetector(stubMaxChars: number): LintSignalDetector {
 	return {
