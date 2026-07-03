@@ -16,7 +16,104 @@ import { ORPHAN_FETCH_LIMIT } from '@/core/constant';
 const SOFT_ORPHAN_FETCH_LIMIT = 5_000;
 
 export function buildStructuralDetectors(config: VaultLintConfig): LintSignalDetector[] {
-	return [buildSoftOrphanDetector(config.thresholds.softOrphanMaxDegree)];
+	return [
+		buildSoftOrphanDetector(config.thresholds.softOrphanMaxDegree),
+		buildMissingBacklinkDetector(config.thresholds.missingBacklinkMinSimilarity),
+	];
+}
+
+const MISSING_BACKLINK_FETCH_LIMIT = 5_000;
+const MISSING_BACKLINK_NEIGHBOR_LIMIT = 5;
+
+/**
+ * `S-MISSING-BACKLINK` — surface pairs where two notes are semantically
+ * close (similarity ≥ `missingBacklinkMinSimilarity`) but neither
+ * wiki-links to the other. Rule-based; no LLM.
+ *
+ * Ranks the missing side on the anchor (lex-smaller) so the pair
+ * collapses to one finding per (a, b) group.
+ */
+function buildMissingBacklinkDetector(minSimilarity: number): LintSignalDetector {
+	return {
+		id: 'S-MISSING-BACKLINK',
+		dimension: 'structural',
+		severity: 'info',
+		signalWeight: 0.15,
+		requiresLlm: false,
+
+		async detect(context: LintScanContext): Promise<LintFinding[]> {
+			const dc = context.detectorContext;
+			const rows = await dc.listDocDegrees(MISSING_BACKLINK_FETCH_LIMIT);
+			if (rows.length === 0) return [];
+
+			const resolved = dc.getResolvedLinks();
+			const nodeIdToPath = new Map<string, string>();
+			const pathToNodeId = new Map<string, string>();
+			for (const row of rows) {
+				if (row.filePath) {
+					nodeIdToPath.set(row.nodeId, row.filePath);
+					pathToNodeId.set(row.filePath, row.nodeId);
+				}
+			}
+
+			const linksBetween = (a: string, b: string): boolean => {
+				const outA = resolved[a];
+				if (outA && outA[b] && outA[b] > 0) return true;
+				const outB = resolved[b];
+				if (outB && outB[a] && outB[a] > 0) return true;
+				return false;
+			};
+
+			const seenPairs = new Set<string>();
+			const findings: LintFinding[] = [];
+			for (const row of rows) {
+				let neighbors: Awaited<ReturnType<typeof dc.getSemanticNeighbors>>;
+				try {
+					neighbors = await dc.getSemanticNeighbors(row.nodeId, MISSING_BACKLINK_NEIGHBOR_LIMIT, new Set());
+				} catch {
+					continue;
+				}
+				const rowPath = row.filePath;
+				if (!rowPath) continue;
+				for (const n of neighbors) {
+					if (n.id === row.nodeId) continue;
+					const simPct = parseFloat(n.similarity);
+					if (!Number.isFinite(simPct)) continue;
+					const sim = simPct / 100;
+					if (sim < minSimilarity) continue;
+
+					const otherPath = nodeIdToPath.get(n.id);
+					if (!otherPath) continue;
+					if (linksBetween(rowPath, otherPath)) continue;
+
+					const [a, b] = [rowPath, otherPath].sort();
+					const pairKey = `${a}::${b}`;
+					if (seenPairs.has(pairKey)) continue;
+					seenPairs.add(pairKey);
+
+					const dismissalKey = `S-MISSING-BACKLINK:${a}`;
+					if (context.dismissals.has(dismissalKey)) continue;
+
+					findings.push({
+						id: findingId('scan', 'S-MISSING-BACKLINK', pairKey),
+						signalId: 'S-MISSING-BACKLINK',
+						severity: 'info',
+						filePath: a,
+						title: `Missing wiki-link: ${fileName(a)} ↔ ${fileName(b)}`,
+						description: `Semantic similarity ${(sim * 100).toFixed(1)}% (≥ ${(minSimilarity * 100).toFixed(0)}%) but the two notes don't reference each other. Adding a wiki-link makes the connection explicit.`,
+						fixActions: ['insert-backlink', 'suggest-links'],
+						metadata: {
+							similarity: sim,
+							threshold: minSimilarity,
+							partner: b,
+						},
+						status: 'open',
+					});
+				}
+			}
+			return findings;
+		},
+	};
 }
 
 function buildSoftOrphanDetector(maxDegree: number): LintSignalDetector {

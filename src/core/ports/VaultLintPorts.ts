@@ -209,6 +209,13 @@ export interface VaultLintDetectorContextPort {
 	 * will reuse the same surface.
 	 */
 	listDocDegrees(limit: number): Promise<VaultLintDetectorDocDegree[]>;
+	/**
+	 * Return Obsidian's resolved link map (source path → { target
+	 * path: occurrence count }). Mirrors `getUnresolvedLinks` but for
+	 * links whose targets exist. Used by S-MISSING-BACKLINK to
+	 * decide whether a semantic neighbour already links back.
+	 */
+	getResolvedLinks(): Record<string, Record<string, number>>;
 }
 
 /**

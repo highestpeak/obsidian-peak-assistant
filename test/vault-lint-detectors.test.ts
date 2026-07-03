@@ -56,6 +56,7 @@ interface FakeContextSpec {
 	fileContent?: Record<string, string>;
 	tags?: Record<string, VaultLintDetectorTagInfo>;
 	unresolvedLinks?: Record<string, Record<string, number>>;
+	resolvedLinks?: Record<string, Record<string, number>>;
 	hardOrphans?: string[];
 	nodes?: Record<string, VaultLintDetectorGraphNode>;
 	indexedNoteTypes?: ReadonlySet<string>;
@@ -75,6 +76,7 @@ function makeFakeContext(spec: FakeContextSpec = {}): VaultLintDetectorContextPo
 			return spec.tags?.[path] ?? { inlineTags: [], frontmatterTags: [] };
 		},
 		getUnresolvedLinks: () => spec.unresolvedLinks ?? {},
+		getResolvedLinks: () => spec.resolvedLinks ?? {},
 		async getHardOrphans(_limit: number): Promise<string[]> {
 			return spec.hardOrphans ?? [];
 		},
@@ -698,10 +700,81 @@ async function main(): Promise<void> {
 	await testSoftOrphanDetectorFiresBelowThreshold();
 	await testSoftOrphanDetectorSkipsHardOrphans();
 	await testSoftOrphanDetectorRespectsDismissals();
+	await testMissingBacklinkDetectorFiresOnSemPairWithoutLinks();
+	await testMissingBacklinkDetectorSkipsExistingLinks();
+	await testMissingBacklinkDetectorRespectsDismissals();
 	await testDuplicateDetectorFiresAndDeDups();
 	await testDuplicateDetectorSkipsLowTitleOverlap();
 	await testDuplicateDetectorRespectsDismissals();
 	testTitleTokensAndJaccardHelpers();
+}
+
+async function testMissingBacklinkDetectorFiresOnSemPairWithoutLinks(): Promise<void> {
+	const detectors = buildStructuralDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, missingBacklinkMinSimilarity: 0.70 },
+	});
+	const mb = detectors.find((d) => d.id === 'S-MISSING-BACKLINK');
+	assert.ok(mb, 'buildStructuralDetectors must include S-MISSING-BACKLINK');
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'a', label: 'Alpha', filePath: 'a.md', incoming: 1, outgoing: 1 },
+			{ nodeId: 'b', label: 'Beta', filePath: 'b.md', incoming: 1, outgoing: 1 },
+		],
+		semanticNeighbors: {
+			a: [{ id: 'b', label: 'Beta', type: 'IndexedDoc', attributes: null, similarity: '78.0%' }],
+			b: [{ id: 'a', label: 'Alpha', type: 'IndexedDoc', attributes: null, similarity: '78.0%' }],
+		},
+		resolvedLinks: {}, // no explicit links either direction
+	});
+	const findings = await mb!.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 1, 'pair (a,b) and (b,a) collapse to one finding');
+	assert.strictEqual(findings[0]!.filePath, 'a.md');
+	assert.deepStrictEqual(findings[0]!.fixActions, ['insert-backlink', 'suggest-links']);
+	console.log('PASS: missingBacklinkDetectorFiresOnSemPairWithoutLinks');
+}
+
+async function testMissingBacklinkDetectorSkipsExistingLinks(): Promise<void> {
+	const detectors = buildStructuralDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, missingBacklinkMinSimilarity: 0.70 },
+	});
+	const mb = detectors.find((d) => d.id === 'S-MISSING-BACKLINK')!;
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'a', label: 'A', filePath: 'a.md', incoming: 1, outgoing: 1 },
+			{ nodeId: 'b', label: 'B', filePath: 'b.md', incoming: 1, outgoing: 1 },
+		],
+		semanticNeighbors: {
+			a: [{ id: 'b', label: 'B', type: 'IndexedDoc', attributes: null, similarity: '85.0%' }],
+			b: [{ id: 'a', label: 'A', type: 'IndexedDoc', attributes: null, similarity: '85.0%' }],
+		},
+		resolvedLinks: { 'a.md': { 'b.md': 1 } },  // a already links to b
+	});
+	const findings = await mb.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: missingBacklinkDetectorSkipsExistingLinks');
+}
+
+async function testMissingBacklinkDetectorRespectsDismissals(): Promise<void> {
+	const detectors = buildStructuralDetectors(DEFAULT_VAULT_LINT_CONFIG);
+	const mb = detectors.find((d) => d.id === 'S-MISSING-BACKLINK')!;
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'a', label: 'A', filePath: 'a.md', incoming: 1, outgoing: 1 },
+			{ nodeId: 'b', label: 'B', filePath: 'b.md', incoming: 1, outgoing: 1 },
+		],
+		semanticNeighbors: {
+			a: [{ id: 'b', label: 'B', type: 'IndexedDoc', attributes: null, similarity: '80.0%' }],
+			b: [{ id: 'a', label: 'A', type: 'IndexedDoc', attributes: null, similarity: '80.0%' }],
+		},
+		resolvedLinks: {},
+	});
+	const findings = await mb.detect(
+		makeScanContext(dc, ['S-MISSING-BACKLINK:a.md']),
+	);
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: missingBacklinkDetectorRespectsDismissals');
 }
 
 async function testDuplicateDetectorFiresAndDeDups(): Promise<void> {

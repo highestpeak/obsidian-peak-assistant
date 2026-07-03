@@ -70,6 +70,10 @@ export class ObsidianVaultLintDetectorContextAdapter
 		return AppContext.getInstance().app.metadataCache.unresolvedLinks;
 	}
 
+	getResolvedLinks(): Record<string, Record<string, number>> {
+		return AppContext.getInstance().app.metadataCache.resolvedLinks;
+	}
+
 	async getHardOrphans(limit: number): Promise<string[]> {
 		return sqliteStoreManager.getMobiusEdgeRepo().getHardOrphans(limit);
 	}
