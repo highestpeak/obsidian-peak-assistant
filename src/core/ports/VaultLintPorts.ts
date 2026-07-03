@@ -159,6 +159,17 @@ export interface VaultLintDetectorStaleHub {
  * softOrphanMaxDegree`) and — in the future — by other structural
  * signals that need degree information.
  */
+/**
+ * One community from the Louvain analysis (see `runStructuralAnalysis`).
+ * Consumed by S-ISLAND-CLUSTER + T-ABANDONED-CLUSTER + S-FRAGILE-BRIDGE.
+ */
+export interface VaultLintDetectorCommunity {
+	readonly communityId: string;
+	readonly label: string;
+	readonly memberCount: number;
+	readonly internalDensity: number;
+}
+
 export interface VaultLintDetectorDocDegree {
 	readonly nodeId: string;
 	readonly label: string;
@@ -223,6 +234,12 @@ export interface VaultLintDetectorContextPort {
 	 * decide whether a semantic neighbour already links back.
 	 */
 	getResolvedLinks(): Record<string, Record<string, number>>;
+	/**
+	 * Return every Louvain community with its member count and
+	 * internal density. Empty when `runStructuralAnalysis` has not
+	 * yet populated `community_metadata`.
+	 */
+	listCommunities(): Promise<VaultLintDetectorCommunity[]>;
 }
 
 /**

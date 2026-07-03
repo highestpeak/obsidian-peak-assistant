@@ -23,6 +23,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { isIndexedNoteNodeType } from '@/core/types/graph';
 import { getSemanticNeighbors } from '@/service/tools/search-graph-inspector/common';
 import type {
+	VaultLintDetectorCommunity,
 	VaultLintDetectorContextPort,
 	VaultLintDetectorDocDegree,
 	VaultLintDetectorFileRef,
@@ -118,6 +119,18 @@ export class ObsidianVaultLintDetectorContextAdapter
 			}
 			return { ...row, mtimeMs };
 		});
+	}
+
+	async listCommunities(): Promise<VaultLintDetectorCommunity[]> {
+		const communities = await sqliteStoreManager
+			.getStructuralAnalysisRepo()
+			.getCommunities();
+		return communities.map((c) => ({
+			communityId: c.id,
+			label: c.label,
+			memberCount: c.memberCount,
+			internalDensity: c.internalDensity,
+		}));
 	}
 
 	async getStaleHubs(limit: number): Promise<VaultLintDetectorStaleHub[]> {

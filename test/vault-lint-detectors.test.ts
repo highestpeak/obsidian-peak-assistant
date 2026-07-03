@@ -39,6 +39,7 @@ import type {
 	LintScanContext,
 } from '@/service/lint/types';
 import type {
+	VaultLintDetectorCommunity,
 	VaultLintDetectorContextPort,
 	VaultLintDetectorDocDegree,
 	VaultLintDetectorFileRef,
@@ -65,6 +66,7 @@ interface FakeContextSpec {
 	semanticThrows?: boolean;
 	staleHubs?: VaultLintDetectorStaleHub[];
 	docDegrees?: VaultLintDetectorDocDegree[];
+	communities?: VaultLintDetectorCommunity[];
 }
 
 function makeFakeContext(spec: FakeContextSpec = {}): VaultLintDetectorContextPort {
@@ -101,6 +103,9 @@ function makeFakeContext(spec: FakeContextSpec = {}): VaultLintDetectorContextPo
 		},
 		async listDocDegrees(_limit: number): Promise<VaultLintDetectorDocDegree[]> {
 			return spec.docDegrees ?? [];
+		},
+		async listCommunities(): Promise<VaultLintDetectorCommunity[]> {
+			return spec.communities ?? [];
 		},
 	};
 }
@@ -714,6 +719,76 @@ async function main(): Promise<void> {
 	await testDuplicateDetectorSkipsLowTitleOverlap();
 	await testDuplicateDetectorRespectsDismissals();
 	testTitleTokensAndJaccardHelpers();
+	await testIslandClusterDetectorFiresForSmallCommunities();
+	await testIslandClusterDetectorSkipsLargeCommunities();
+	await testFragileBridgeDetectorFiresForLowDensityCommunities();
+	await testFragileBridgeDetectorSkipsDenseCommunities();
+}
+
+async function testIslandClusterDetectorFiresForSmallCommunities(): Promise<void> {
+	const detectors = buildStructuralDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, islandClusterMaxSize: 5 },
+	});
+	const island = detectors.find((d) => d.id === 'S-ISLAND-CLUSTER');
+	assert.ok(island, 'buildStructuralDetectors must include S-ISLAND-CLUSTER');
+	const dc = makeFakeContext({
+		communities: [
+			{ communityId: 'c_small', label: 'Small', memberCount: 3, internalDensity: 0.9 },
+			{ communityId: 'c_big', label: 'Big', memberCount: 42, internalDensity: 0.5 },
+			{ communityId: 'c_edge', label: 'Edge', memberCount: 5, internalDensity: 0.8 },
+		],
+	});
+	const findings = await island!.detect(makeScanContext(dc));
+	const ids = findings.map((f) => (f.metadata as any).communityId).sort();
+	assert.deepStrictEqual(ids, ['c_edge', 'c_small']);
+	for (const f of findings) {
+		assert.strictEqual(f.filePath, null);
+		assert.deepStrictEqual(f.fixActions, ['bridge-to-main', 'create-hub']);
+	}
+	console.log('PASS: islandClusterDetectorFiresForSmallCommunities');
+}
+
+async function testIslandClusterDetectorSkipsLargeCommunities(): Promise<void> {
+	const detectors = buildStructuralDetectors(DEFAULT_VAULT_LINT_CONFIG);
+	const island = detectors.find((d) => d.id === 'S-ISLAND-CLUSTER')!;
+	const dc = makeFakeContext({
+		communities: [{ communityId: 'c_big', label: 'Big', memberCount: 42, internalDensity: 0.5 }],
+	});
+	const findings = await island.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: islandClusterDetectorSkipsLargeCommunities');
+}
+
+async function testFragileBridgeDetectorFiresForLowDensityCommunities(): Promise<void> {
+	const detectors = buildStructuralDetectors(DEFAULT_VAULT_LINT_CONFIG);
+	const fragile = detectors.find((d) => d.id === 'S-FRAGILE-BRIDGE');
+	assert.ok(fragile, 'buildStructuralDetectors must include S-FRAGILE-BRIDGE');
+	const dc = makeFakeContext({
+		communities: [
+			{ communityId: 'c_fragile', label: 'Fragile', memberCount: 8, internalDensity: 0.15 },
+			{ communityId: 'c_dense', label: 'Dense', memberCount: 8, internalDensity: 0.6 },
+			{ communityId: 'c_tiny', label: 'Tiny', memberCount: 2, internalDensity: 0.10 },
+		],
+	});
+	const findings = await fragile!.detect(makeScanContext(dc));
+	const ids = findings.map((f) => (f.metadata as any).communityId);
+	assert.deepStrictEqual(ids, ['c_fragile']);
+	assert.deepStrictEqual(findings[0]!.fixActions, ['strengthen-connections', 'suggest-split']);
+	console.log('PASS: fragileBridgeDetectorFiresForLowDensityCommunities');
+}
+
+async function testFragileBridgeDetectorSkipsDenseCommunities(): Promise<void> {
+	const detectors = buildStructuralDetectors(DEFAULT_VAULT_LINT_CONFIG);
+	const fragile = detectors.find((d) => d.id === 'S-FRAGILE-BRIDGE')!;
+	const dc = makeFakeContext({
+		communities: [
+			{ communityId: 'c1', label: 'Dense', memberCount: 10, internalDensity: 0.55 },
+		],
+	});
+	const findings = await fragile.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: fragileBridgeDetectorSkipsDenseCommunities');
 }
 
 async function testRecentDriftDetectorFiresInWindow(): Promise<void> {

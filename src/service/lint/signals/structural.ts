@@ -19,7 +19,102 @@ export function buildStructuralDetectors(config: VaultLintConfig): LintSignalDet
 	return [
 		buildSoftOrphanDetector(config.thresholds.softOrphanMaxDegree),
 		buildMissingBacklinkDetector(config.thresholds.missingBacklinkMinSimilarity),
+		buildIslandClusterDetector(config.thresholds.islandClusterMaxSize),
+		buildFragileBridgeDetector(),
 	];
+}
+
+const FRAGILE_BRIDGE_MAX_DENSITY = 0.30;
+const FRAGILE_BRIDGE_MIN_MEMBERS = 3;
+
+/**
+ * `S-ISLAND-CLUSTER` — Louvain communities with member count ≤
+ * `islandClusterMaxSize` (default 5). These are small, likely
+ * disconnected pockets that either need a bridging note or should
+ * be merged into a nearby community.
+ */
+function buildIslandClusterDetector(islandMaxSize: number): LintSignalDetector {
+	return {
+		id: 'S-ISLAND-CLUSTER',
+		dimension: 'structural',
+		severity: 'info',
+		signalWeight: 0.10,
+		requiresLlm: false,
+
+		async detect(context: LintScanContext): Promise<LintFinding[]> {
+			if (islandMaxSize < 1) return [];
+			const dc = context.detectorContext;
+			const communities = await dc.listCommunities();
+			const findings: LintFinding[] = [];
+			for (const c of communities) {
+				if (c.memberCount > islandMaxSize) continue;
+				const dismissalKey = `S-ISLAND-CLUSTER:${c.communityId}`;
+				if (context.dismissals.has(dismissalKey)) continue;
+				findings.push({
+					id: findingId('scan', 'S-ISLAND-CLUSTER', c.communityId),
+					signalId: 'S-ISLAND-CLUSTER',
+					severity: 'info',
+					filePath: null,
+					title: `Island cluster: ${c.label || c.communityId}`,
+					description: `Community has only ${c.memberCount} member${c.memberCount === 1 ? '' : 's'} (threshold ≤ ${islandMaxSize}). Bridge to a larger community or merge.`,
+					fixActions: ['bridge-to-main', 'create-hub'],
+					metadata: {
+						communityId: c.communityId,
+						memberCount: c.memberCount,
+						threshold: islandMaxSize,
+					},
+					status: 'open',
+				});
+			}
+			return findings;
+		},
+	};
+}
+
+/**
+ * `S-FRAGILE-BRIDGE` — Louvain communities whose internal density is
+ * below {@link FRAGILE_BRIDGE_MAX_DENSITY} despite having enough
+ * members ({@link FRAGILE_BRIDGE_MIN_MEMBERS}+). Low internal density
+ * means the group is only loosely knit — pulling out any single note
+ * risks fragmenting the cluster.
+ */
+function buildFragileBridgeDetector(): LintSignalDetector {
+	return {
+		id: 'S-FRAGILE-BRIDGE',
+		dimension: 'structural',
+		severity: 'info',
+		signalWeight: 0.10,
+		requiresLlm: false,
+
+		async detect(context: LintScanContext): Promise<LintFinding[]> {
+			const dc = context.detectorContext;
+			const communities = await dc.listCommunities();
+			const findings: LintFinding[] = [];
+			for (const c of communities) {
+				if (c.memberCount < FRAGILE_BRIDGE_MIN_MEMBERS) continue;
+				if (c.internalDensity > FRAGILE_BRIDGE_MAX_DENSITY) continue;
+				const dismissalKey = `S-FRAGILE-BRIDGE:${c.communityId}`;
+				if (context.dismissals.has(dismissalKey)) continue;
+				findings.push({
+					id: findingId('scan', 'S-FRAGILE-BRIDGE', c.communityId),
+					signalId: 'S-FRAGILE-BRIDGE',
+					severity: 'info',
+					filePath: null,
+					title: `Fragile bridge: ${c.label || c.communityId}`,
+					description: `Community has ${c.memberCount} members but only ${(c.internalDensity * 100).toFixed(0)}% internal density (threshold ≤ ${(FRAGILE_BRIDGE_MAX_DENSITY * 100).toFixed(0)}%). Add more intra-community links or split.`,
+					fixActions: ['strengthen-connections', 'suggest-split'],
+					metadata: {
+						communityId: c.communityId,
+						memberCount: c.memberCount,
+						internalDensity: c.internalDensity,
+						densityThreshold: FRAGILE_BRIDGE_MAX_DENSITY,
+					},
+					status: 'open',
+				});
+			}
+			return findings;
+		},
+	};
 }
 
 const MISSING_BACKLINK_FETCH_LIMIT = 5_000;
