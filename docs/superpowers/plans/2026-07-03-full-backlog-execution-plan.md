@@ -626,20 +626,20 @@ flowchart LR
 - [ ] C-M6 · M-REDUNDANT-HUBS
 - [ ] D4 · Multimodal Media Ring
 
-### Wave 6 (13)
-- [ ] E2.1 · 22 pipeline · Gateway 章节
-- [ ] E2.2 · 22 pipeline · Unified 章节
-- [ ] R1 · Real-time LLM context inspector
-- [ ] R2 · Message branching
-- [ ] R3 · Conversation auto-split
-- [ ] R4 · Canvas conversation type
-- [ ] R5 · Sync 外部笔记源
-- [ ] R6 · Graph 高级可视化
-- [ ] R7 · Message persistence queue
-- [ ] R8 · Template marketplace
-- [ ] R9 · Work focus mode + project templates
-- [ ] R10 · IFTTT / Workflow agent
-- [ ] R11 · n8n / multi-agent / marketplace
+### Wave 6 (13) — ✅ complete 2026-07-03
+- [x] E2.1 · 22 pipeline · Gateway 章节 — `7ae95d95`
+- [x] E2.2 · 22 pipeline · Unified 章节 — `7ae95d95`（决定不收敛）
+- [x] R1 · Real-time LLM context inspector — `f56cd0d5`
+- [x] R2 · Message branching — `f56cd0d5`
+- [x] R3 · Conversation auto-split — `4c0dee0d`
+- [x] R4 · Canvas conversation type — `4c0dee0d`
+- [x] R5 · Sync 外部笔记源 — `4c0dee0d`
+- [x] R6 · Graph 高级可视化 — `4c0dee0d`
+- [x] R7 · Message persistence queue — `4c0dee0d`
+- [x] R8 · Template marketplace — `4c0dee0d`
+- [x] R9 · Work focus mode + project templates — `4c0dee0d`
+- [x] R10 · IFTTT / Workflow agent — `4c0dee0d`
+- [x] R11 · n8n / multi-agent / marketplace — `4c0dee0d`（决定放弃通用 orchestration/marketplace/always-on）
 
 **总计 56 节点**（Wave 0-5 共 43 + Wave 6 共 13）。
 

@@ -90,6 +90,20 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] **C-C4 · C-NAMING-VIOLATION (2026-07-03)** — 内容维度规则型检测器：basename 匹配 `/^Untitled(\s+\d+)?$/i` / 空 basename / leading-trailing whitespace 三条规则触发。`namingViolationDetector` + `detectNamingViolation(basename)` pure helper 使规则可脱离 detector 单测。刻意留窄，不打 kebab-case / no-spaces 之类风格战；vault 有既定命名的用户可以 dismiss 单条。fixActions=['rename-with-prefix']。`test/vault-lint-detectors.test.ts` 新 3 条 guard（触发/dismissals/helper 边界）。
 - [x] **C-G1 · G-TAG-EXPLOSION (2026-07-03)** — 标签维度规则型检测器：单文件总标签数 ≥ `vault median × multiplier`（默认 5×）触发。median 只从有标签的文件里算，避免大量 untagged 文件把 baseline 拉到 0；tagged files 少于 3 时 detector no-op（vault typical 未成立）。`VaultLintConfig.thresholds` 新增 `tagExplosionMultiplier`（type + default 5，与 template JSON 已有值对齐）。`buildTagDetectors(config)` 出 `[untaggedDetector, tagExplosionDetector]`；`InMemoryDetectorRegistry` 走同 `buildContentDetectors` 的 anchor 模式（`G-UNTAGGED` 已注册就 skip）。`test/vault-lint-detectors.test.ts` 新 3 条 guard（median 计算 + 阈值 / 少标签 no-op / dismissals）。
 
+### 0. Active — 2026-07-03 Full Backlog Sweep 续跑
+
+_（用户要求"不要停"续做；不再逐节点追加流水，见 `docs/superpowers/plans/2026-07-03-full-backlog-execution-plan.md` § tracker 内 SHA 引用。）_
+
+- [x] Wave 1 · B2.chat / B2.copilot / B2.analysis / B2.harness / B2.index / B2.cascade / B2.graph — 全部 7 节点走 RunEnvelope，各自加 wire-in test 防 regression
+- [x] Wave 2 · C-HUB1 / C-S1 / C-S2 / C-S3 / C-S4 / C-C2 / C-T1 / C-T2 (folder slice) / C-T3 · 8 个 detector 补齐，port surface 加 `listDocDegrees` / `getResolvedLinks` / `listCommunities` / `getStaleHubs`，config 加 5 个 threshold
+- [~] Wave 2 · C-HUB2 (HubDoc regen 实装) + T-ABANDONED-CLUSTER · 需要更大 pipeline / community-mtime aggregation，本 session 未做
+- [x] Wave 6 · E2.1 (Command Gateway 章节) + E2.2 (Unified 决定不收敛)
+- [x] Wave 6 · R1-R11 · 11 份研究报告全部落地 `docs/research/2026-07-03-*/README.md`，`roadmap.html` §researching 同步 11 行
+
+**41 / 56 节点 landed（Wave 0 全 7 + Wave 1 全 7 + Wave 2 12/14 + Wave 6 全 13 + Wave 5 D4 未起）。**
+
+未做：Wave 2 · 2；Wave 3 · 4（UI store 迁 RunEnvelopeStore，需要真机跑）；Wave 4 · 4（产品级 UI 改动，需要设计 + 真机）；Wave 5 · 7（LLM budget infra + 6 LLM detector + D4 Multimodal，需要产品 + budget infra）。
+
 ### 0. Active — Architecture Modernization T1-T9
 
 - [x] T0 Boundary Baseline 完成：`9850eef` + Owner Review `667bfdd`
