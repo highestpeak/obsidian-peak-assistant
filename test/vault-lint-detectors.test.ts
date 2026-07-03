@@ -702,6 +702,8 @@ async function main(): Promise<void> {
 	await testRecentDriftDetectorSkipsFreshEdits();
 	await testDecayingBridgeDetectorFiresForOldWellConnectedNotes();
 	await testDecayingBridgeDetectorSkipsFreshOrLowDegree();
+	await testAbandonedFolderDetectorFiresForOldMultiMemberFolder();
+	await testAbandonedFolderDetectorSkipsFreshOrTinyFolder();
 	await testSoftOrphanDetectorFiresBelowThreshold();
 	await testSoftOrphanDetectorSkipsHardOrphans();
 	await testSoftOrphanDetectorRespectsDismissals();
@@ -781,6 +783,47 @@ async function testDecayingBridgeDetectorSkipsFreshOrLowDegree(): Promise<void> 
 	const findings = await decay.detect(makeScanContext(dc));
 	assert.strictEqual(findings.length, 0);
 	console.log('PASS: decayingBridgeDetectorSkipsFreshOrLowDegree');
+}
+
+async function testAbandonedFolderDetectorFiresForOldMultiMemberFolder(): Promise<void> {
+	const detectors = buildTemporalDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, abandonedFolderDays: 365 },
+	});
+	const abandoned = detectors.find((d) => d.id === 'T-ABANDONED-FOLDER');
+	assert.ok(abandoned, 'buildTemporalDetectors must include T-ABANDONED-FOLDER');
+	const now = Date.now();
+	const oldAge = now - 400 * 24 * 60 * 60 * 1000;
+	const olderAge = now - 500 * 24 * 60 * 60 * 1000;
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: '1', label: 'old1', filePath: 'archive/old1.md', incoming: 0, outgoing: 0, mtimeMs: oldAge },
+			{ nodeId: '2', label: 'old2', filePath: 'archive/old2.md', incoming: 0, outgoing: 0, mtimeMs: olderAge },
+			{ nodeId: '3', label: 'old3', filePath: 'archive/old3.md', incoming: 0, outgoing: 0, mtimeMs: olderAge },
+			{ nodeId: '4', label: 'fresh', filePath: 'active/fresh.md', incoming: 0, outgoing: 0, mtimeMs: now - 5 * 24 * 60 * 60 * 1000 },
+		],
+	});
+	const findings = await abandoned!.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 1);
+	assert.strictEqual((findings[0]!.metadata as any).folder, 'archive');
+	assert.strictEqual((findings[0]!.metadata as any).memberCount, 3);
+	assert.strictEqual(findings[0]!.filePath, null);
+	console.log('PASS: abandonedFolderDetectorFiresForOldMultiMemberFolder');
+}
+
+async function testAbandonedFolderDetectorSkipsFreshOrTinyFolder(): Promise<void> {
+	const detectors = buildTemporalDetectors(DEFAULT_VAULT_LINT_CONFIG);
+	const abandoned = detectors.find((d) => d.id === 'T-ABANDONED-FOLDER')!;
+	const now = Date.now();
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'a', label: 'a', filePath: 'small/a.md', incoming: 0, outgoing: 0, mtimeMs: now - 400 * 24 * 60 * 60 * 1000 },
+			{ nodeId: 'b', label: 'b', filePath: 'small/b.md', incoming: 0, outgoing: 0, mtimeMs: now - 400 * 24 * 60 * 60 * 1000 },
+		],
+	});
+	const findings = await abandoned.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 0, 'folders with < 3 members must not fire');
+	console.log('PASS: abandonedFolderDetectorSkipsFreshOrTinyFolder');
 }
 
 async function testMissingBacklinkDetectorFiresOnSemPairWithoutLinks(): Promise<void> {

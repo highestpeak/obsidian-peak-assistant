@@ -26,7 +26,79 @@ export function buildTemporalDetectors(config: VaultLintConfig): LintSignalDetec
 			config.thresholds.recentDriftStaleDays,
 		),
 		buildDecayingBridgeDetector(config.thresholds.decayingBridgeDays),
+		buildAbandonedFolderDetector(config.thresholds.abandonedFolderDays),
 	];
+}
+
+const ABANDONED_FOLDER_MIN_MEMBERS = 3;
+
+/**
+ * `T-ABANDONED-FOLDER` — folder-level signal. A folder whose newest
+ * child note was last touched more than `abandonedFolderDays` days
+ * ago (default 365) fires a warning; below `ABANDONED_FOLDER_MIN_MEMBERS`
+ * files the folder is too small to meaningfully call abandoned.
+ *
+ * Attribution: findings emit `filePath: null` and pin the folder path
+ * in metadata (Obsidian dismissals typically key on file paths; users
+ * can dismiss by folder path via the metadata surface).
+ */
+function buildAbandonedFolderDetector(abandonedDays: number): LintSignalDetector {
+	return {
+		id: 'T-ABANDONED-FOLDER',
+		dimension: 'temporal',
+		severity: 'warning',
+		signalWeight: 0.15,
+		requiresLlm: false,
+
+		async detect(context: LintScanContext): Promise<LintFinding[]> {
+			if (abandonedDays <= 0) return [];
+			const dc = context.detectorContext;
+			const rows = await dc.listDocDegrees(TEMPORAL_FETCH_LIMIT);
+			const now = Date.now();
+
+			// Aggregate by parent folder path.
+			const folderMax = new Map<string, { newestMtime: number; count: number }>();
+			for (const row of rows) {
+				if (!row.filePath || row.mtimeMs === null) continue;
+				const idx = row.filePath.lastIndexOf('/');
+				if (idx <= 0) continue; // top-level file; treat vault root as active
+				const folder = row.filePath.slice(0, idx);
+				const acc = folderMax.get(folder);
+				if (!acc) {
+					folderMax.set(folder, { newestMtime: row.mtimeMs, count: 1 });
+				} else {
+					if (row.mtimeMs > acc.newestMtime) acc.newestMtime = row.mtimeMs;
+					acc.count += 1;
+				}
+			}
+
+			const findings: LintFinding[] = [];
+			for (const [folder, { newestMtime, count }] of folderMax) {
+				if (count < ABANDONED_FOLDER_MIN_MEMBERS) continue;
+				const ageDays = (now - newestMtime) / MS_PER_DAY;
+				if (ageDays < abandonedDays) continue;
+				const dismissalKey = `T-ABANDONED-FOLDER:${folder}`;
+				if (context.dismissals.has(dismissalKey)) continue;
+				findings.push({
+					id: findingId('scan', 'T-ABANDONED-FOLDER', folder),
+					signalId: 'T-ABANDONED-FOLDER',
+					severity: 'warning',
+					filePath: null,
+					title: `Abandoned folder: ${folder}`,
+					description: `${count} notes in folder; newest edit ${Math.floor(ageDays)} days ago (threshold ${abandonedDays}). Archive or reintegrate.`,
+					fixActions: ['archive-cluster', 'review-cluster'],
+					metadata: {
+						folder,
+						memberCount: count,
+						newestAgeDays: Math.floor(ageDays),
+						thresholdDays: abandonedDays,
+					},
+					status: 'open',
+				});
+			}
+			return findings;
+		},
+	};
 }
 
 /**
