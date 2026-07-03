@@ -707,20 +707,23 @@ export default class MyPlugin extends Plugin {
 			AppContext.getInstance().progressReporter,
 			indexService,
 		);
-		// T3 Wave 2.A (2026-07-02): the startup check-and-update is
-		// disabled for the interim. When re-enabled, prefer the
-		// RunEnvelope-wrapped call so startup latency + failures land
-		// in the run trace:
-		//
-		//   const { runIndexInitializer } = await import(
-		//     '@/service/search/index/indexInitializerRun'
-		//   );
-		//   await runIndexInitializer({
-		//     initializer: this.indexInitializer,
-		//     trigger: 'startup',
-		//   });
-		//
-		// See docs/superpowers/specs/2026-07-02-t3-first-adopter-selection-design.md.
+		// B2.index (2026-07-03): startup check-and-update runs inside a
+		// RunEnvelope so startup latency + failures land in the run
+		// trace. Errors are logged (not rethrown) — a startup index
+		// glitch must not prevent the plugin from loading, mirroring
+		// the pre-RunEnvelope try/catch behaviour that used to wrap
+		// this call.
+		try {
+			const { runIndexInitializer } = await import(
+				'@/service/search/index/indexInitializerRun'
+			);
+			await runIndexInitializer({
+				initializer: this.indexInitializer,
+				trigger: 'startup',
+			});
+		} catch (err) {
+			console.error('[Peak] startup IndexInitializer run failed:', err);
+		}
 	}
 
 	/**
