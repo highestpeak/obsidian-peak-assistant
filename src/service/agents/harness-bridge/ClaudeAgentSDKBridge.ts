@@ -1,136 +1,46 @@
 /**
- * ClaudeAgentSDKBridge — unified run() entry point.
+ * ClaudeAgentSDKBridge — the single choke point for external `runAgentLoop`
+ * invocations. Every dispatch runs inside a `RunEnvelope` so timing, failures,
+ * and backend-selection land uniformly in the trace/usage pipelines.
  *
- * Routing rules (in order):
- * 1. cfg.useSDK explicitly true/false  → honor caller's choice (overrides settings)
- * 2. Settings agentBackend = 'claude-agent-sdk'  → SDK
- * 3. Settings agentBackend = 'harness'           → harness
- * 4. Settings agentBackend = 'auto' (default)    → harness (with SDK reserved for hard-coded callers like VaultSearchAgentSDK)
+ * History (2026-07): the bridge used to dispatch between two backends — the
+ * self-hosted harness and a `queryWithProfile`-based Cloud Agent SDK path
+ * gated by `agentBackend === 'claude-agent-sdk'`. That backend was retired
+ * (see docs/superpowers/specs/2026-07-03-cloud-sdk-and-mode-choice-audit.md
+ * Part A / Option 2). The SDK stays imported as a library — `tool()` /
+ * `createSdkMcpServer()` / `queryWithProfile` are still used by MCP servers
+ * (`vaultMcpServer`, `graphMcpServer`, `webSearchTool`) and one-shot LLM
+ * callers (`service-manager.ts`, `LlmAmbientExplanationAdapter`) — but the
+ * bridge no longer routes to them as a chosen backend.
+ *
+ * The class name is preserved because a large number of imports reference it;
+ * conceptually it is now `HarnessRunBridge`.
  */
 
 import type { AppHandle } from '@/core/ports/AppHandle';
 import type { AgentLoopConfig, AgentLoopResult } from '@/service/agents/harness/loop/types';
 import { runAgentLoop } from '@/service/agents/harness/loop/AgentLoop';
 import type { HarnessSettings } from '@/core/config/settingsTypes';
-import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
-import { translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
 
 export interface BridgeRunConfig extends AgentLoopConfig {
-    /**
-     * Explicit backend override. When set, ignores user settings.
-     * Used by VaultSearchAgentSDK which is HITL-coupled to vaultMcpServer.
-     */
-    useSDK?: boolean;
-    /** SDK-specific: system prompt string (used instead of AgentLoopConfig.systemPrompt when routing via SDK). */
-    sdkPrompt?: string;
-    /** SDK-specific: max turns for the SDK agent. Default 10. */
-    sdkMaxTurns?: number;
-    /** SDK-specific: allowed tool names for the SDK agent. */
-    sdkAllowedTools?: string[];
-    /** SDK-specific: MCP servers for the SDK agent. */
-    sdkMcpServers?: Record<string, unknown>;
     /** T11J B1: explicit app + pluginId so the bridge doesn't reach AppContext. */
     app: AppHandle;
     pluginId: string;
-    /** T11J B1: caller passes current harness settings (used for backend gating). */
+    /**
+     * Current harness settings. Kept on the config even after the SDK-backend
+     * retirement so future gating (permission modes, escalation caps) has a
+     * single passthrough surface.
+     */
     harnessSettings: HarnessSettings;
 }
 
 export class ClaudeAgentSDKBridge {
     async run(cfg: BridgeRunConfig): Promise<AgentLoopResult> {
-        // B2.harness (2026-07-03): every bridge dispatch (SDK or
-        // hermes-harness fallback) runs inside a RunEnvelope so timing,
-        // failures, and backend-selection land uniformly. The bridge is
-        // the single choke point for external `runAgentLoop`-style
-        // invocations (subagents and backend-strategy internal calls
-        // already sit inside a parent RunEnvelope).
         const { runHarnessAgent } = await import('@/service/agents/harness/HarnessAgentRun');
         const { payload } = await runHarnessAgent<AgentLoopResult>({
             trigger: 'manual',
-            execute: async () => {
-                if (this.shouldUseSDK(cfg)) {
-                    return this.runViaSDK(cfg);
-                }
-                return runAgentLoop(cfg);
-            },
+            execute: async () => runAgentLoop(cfg),
         });
         return payload;
     }
-
-    /** Resolve which backend to use, honoring caller override then settings. */
-    private shouldUseSDK(cfg: BridgeRunConfig): boolean {
-        if (typeof cfg.useSDK === 'boolean') return cfg.useSDK;
-        return cfg.harnessSettings.agentBackend === 'claude-agent-sdk';
-    }
-
-    private async runViaSDK(cfg: BridgeRunConfig): Promise<AgentLoopResult> {
-        const startedAt = Date.now();
-        const profile = ProfileRegistry.getInstance().getActiveAgentProfile()!;
-
-        // Extract user-facing prompt from initialMessages
-        const userMsg = cfg.initialMessages.find((m) => m.role === 'user');
-        const prompt =
-            cfg.sdkPrompt ??
-            (userMsg && typeof userMsg.content === 'string'
-                ? userMsg.content
-                : Array.isArray(userMsg?.content)
-                  ? (userMsg!.content as { type: string; text?: string }[])
-                        .filter((p) => p.type === 'text')
-                        .map((p) => p.text ?? '')
-                        .join('\n')
-                  : '');
-
-        const messages = queryWithProfile(cfg.app as any, cfg.pluginId, profile, {
-            prompt,
-            systemPrompt: cfg.systemPrompt,
-            maxTurns: cfg.sdkMaxTurns ?? 10,
-            allowedTools: cfg.sdkAllowedTools,
-            mcpServers: cfg.sdkMcpServers ?? {},
-            signal: cfg.abortSignal,
-        });
-
-        let finalText = '';
-        let totalTokens = 0;
-
-        for await (const ev of translateSdkMessages(messages, { hasPartialMessages: true })) {
-            if (ev.type === 'text-delta' && typeof (ev as { text?: string }).text === 'string') {
-                finalText += (ev as { text: string }).text;
-            } else if (ev.type === 'complete') {
-                const usage = (ev as { usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number } }).usage;
-                if (usage) {
-                    totalTokens += usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
-                }
-            }
-        }
-
-        const durationMs = Date.now() - startedAt;
-        return {
-            loopId: cfg.loopId,
-            finalText: finalText.trim(),
-            steps: [
-                {
-                    loopId: cfg.loopId,
-                    stepIndex: 0,
-                    tier: 'online' as const,
-                    modelId: profile.primaryModel ?? 'unknown',
-                    providerId: profile.id ?? profile.kind ?? 'unknown',
-                    promptTokens: 0,
-                    completionTokens: 0,
-                    totalTokens,
-                    toolCalls: [],
-                    toolResults: [],
-                    text: finalText.trim(),
-                    finishReason: 'stop',
-                    durationMs,
-                },
-            ],
-            finishReason: 'stop' as const,
-            tierUsage: { 'local-fast': 0, 'local-deep': 0, online: 1 },
-            totalTokens,
-            totalToolCalls: 0,
-            durationMs,
-        };
-    }
 }
-

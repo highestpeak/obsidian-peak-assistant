@@ -98,7 +98,7 @@ export function AISetupTab({ settings, settingsUpdates }: AISetupTabProps) {
                     <SettingsRow
                         icon={Cpu}
                         title="Agent runtime"
-                        desc="Auto in-process where supported, Claude Agent SDK for the rest."
+                        desc="Auto prefers the in-process harness; use In-process to force local models only."
                         right={
                             <select
                                 className="pktw-text-sm pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5"
@@ -110,7 +110,6 @@ export function AISetupTab({ settings, settingsUpdates }: AISetupTabProps) {
                             >
                                 <option value="auto">Auto</option>
                                 <option value="harness">In-process (Vercel AI SDK)</option>
-                                <option value="claude-agent-sdk">Claude Agent SDK</option>
                             </select>
                         }
                     />

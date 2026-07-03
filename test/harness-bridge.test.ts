@@ -1,8 +1,9 @@
 /**
  * Tests for ClaudeAgentSDKBridge.
  *
- * harness path:  bridge.run({ useSDK: false }) → runAgentLoop (mock model)
- * sdk path:      bridge.run({ useSDK: true })  → sdkAgentPool (stubbed via module mock)
+ * Post 2026-07 SDK-backend retirement the bridge has one path: it wraps
+ * runAgentLoop in a RunEnvelope. The pre-retirement `useSDK` branch is gone;
+ * these tests exercise the single path and the AgentLoopResult shape.
  */
 
 import assert from 'assert';
@@ -17,8 +18,6 @@ import type { AppHandle } from '@/core/ports/AppHandle';
 type GenResult = Awaited<ReturnType<NonNullable<MockLanguageModelV3['doGenerate']>>>;
 
 // Minimal stub satisfying BridgeRunConfig.app (T11J B1: bridge no longer reads AppContext).
-// The app and pluginId fields are only exercised on the SDK path; harness-path tests
-// pass useSDK: false so they never reach those branches.
 const STUB_APP = {} as unknown as AppHandle;
 const STUB_PLUGIN_ID = 'peak-assistant-test';
 
@@ -62,7 +61,6 @@ async function testHarnessPath() {
         initialMessages: [{ role: 'user', content: 'hello' }],
         tools: [],
         tierController: makeTierController('Hello from harness'),
-        useSDK: false,
         app: STUB_APP,
         pluginId: STUB_PLUGIN_ID,
         harnessSettings: DEFAULT_HARNESS_SETTINGS,
@@ -76,7 +74,7 @@ async function testHarnessPath() {
     console.log('[harness-bridge] harness path: PASS');
 }
 
-// ─── default (no useSDK flag) also uses harness ──────────────────────────────
+// ─── default settings still route to harness ─────────────────────────────────
 
 async function testDefaultUsesHarness() {
     const bridge = new ClaudeAgentSDKBridge();
@@ -86,14 +84,13 @@ async function testDefaultUsesHarness() {
         initialMessages: [{ role: 'user', content: 'ping' }],
         tools: [],
         tierController: makeTierController('pong'),
-        // useSDK omitted → shouldUseSDK reads harnessSettings.agentBackend ('auto' → harness)
         app: STUB_APP,
         pluginId: STUB_PLUGIN_ID,
         harnessSettings: DEFAULT_HARNESS_SETTINGS,
     });
 
     assert.strictEqual(result.finalText, 'pong', 'default routes to harness');
-    console.log('[harness-bridge] default (no useSDK) → harness: PASS');
+    console.log('[harness-bridge] default settings → harness: PASS');
 }
 
 // ─── result shape from harness path ──────────────────────────────────────────

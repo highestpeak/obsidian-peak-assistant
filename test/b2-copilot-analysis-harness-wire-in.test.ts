@@ -66,8 +66,10 @@ function testAnalysisWireIn(): void {
 }
 
 // ---------------------------------------------------------------------------
-// B2.harness — ClaudeAgentSDKBridge.run wraps the SDK-or-hermes dispatch
-// in `runHarnessAgent({ trigger: 'manual', execute })`.
+// B2.harness — ClaudeAgentSDKBridge.run wraps the single-path harness
+// dispatch in `runHarnessAgent({ trigger: 'manual', execute })`. Post
+// 2026-07 SDK-backend retirement, the SDK branch is gone; the bridge is a
+// thin RunEnvelope wrapper over `runAgentLoop`.
 // ---------------------------------------------------------------------------
 
 function testHarnessWireIn(): void {
@@ -83,13 +85,13 @@ function testHarnessWireIn(): void {
 	const stripped = stripComments(src);
 	assert.match(
 		stripped,
-		/runHarnessAgent<AgentLoopResult>\s*\(\s*\{[\s\S]*?trigger:\s*['"]manual['"][\s\S]*?execute:\s*async\s*\(\)\s*=>\s*\{[\s\S]*?shouldUseSDK\s*\(\s*cfg\s*\)[\s\S]*?runAgentLoop\s*\(\s*cfg\s*\)/,
-		'bridge.run must dispatch through runHarnessAgent({ trigger: "manual", execute: async () => shouldUseSDK ? runViaSDK : runAgentLoop })',
+		/runHarnessAgent<AgentLoopResult>\s*\(\s*\{[\s\S]*?trigger:\s*['"]manual['"][\s\S]*?execute:\s*async\s*\(\)\s*=>\s*runAgentLoop\s*\(\s*cfg\s*\)/,
+		'bridge.run must dispatch through runHarnessAgent({ trigger: "manual", execute: () => runAgentLoop(cfg) })',
 	);
-	// The raw fallback pattern must not survive.
+	// The pre-retirement SDK path pattern must not resurface without being wrapped.
 	assert.ok(
-		!/return\s+runAgentLoop\s*\(\s*cfg\s*\)\s*;\s*\n\s*\}\s*\n\s*private\s+shouldUseSDK/.test(stripped),
-		'bridge.run must NOT return runAgentLoop(cfg) directly — that bypasses the RunEnvelope',
+		!/shouldUseSDK|runViaSDK/.test(stripped),
+		'bridge.run must NOT contain SDK dispatch helpers — retired 2026-07',
 	);
 	console.log('PASS: harnessWireIn');
 }

@@ -37,7 +37,7 @@ function testDefaults() {
 function testFullRoundtrip() {
     const saved = {
         harnessSettings: {
-            agentBackend: 'claude-agent-sdk',
+            agentBackend: 'harness',
             localFastConfig: { profileId: 'ollama-1', modelId: 'qwen3:14b' },
             localDeepConfig: { profileId: 'ollama-1', modelId: 'qwen3:32b' },
             onlineConfig: { profileId: 'anthropic-1', modelId: 'claude-sonnet-4-7' },
@@ -52,7 +52,7 @@ function testFullRoundtrip() {
     const result = normalizePluginSettings(saved);
     const h = result.harnessSettings!;
 
-    assert.strictEqual(h.agentBackend, 'claude-agent-sdk', 'agentBackend roundtrip');
+    assert.strictEqual(h.agentBackend, 'harness', 'agentBackend roundtrip');
     assert.deepStrictEqual(h.localFastConfig, { profileId: 'ollama-1', modelId: 'qwen3:14b' }, 'localFastConfig roundtrip');
     assert.deepStrictEqual(h.localDeepConfig, { profileId: 'ollama-1', modelId: 'qwen3:32b' }, 'localDeepConfig roundtrip');
     assert.deepStrictEqual(h.onlineConfig, { profileId: 'anthropic-1', modelId: 'claude-sonnet-4-7' }, 'onlineConfig roundtrip');
@@ -136,11 +136,25 @@ function testInvalidAgentBackend() {
 }
 
 function testValidAgentBackends() {
-    for (const backend of ['auto', 'harness', 'claude-agent-sdk'] as const) {
+    for (const backend of ['auto', 'harness'] as const) {
         const result = normalizePluginSettings({ harnessSettings: { agentBackend: backend } });
         assert.strictEqual(result.harnessSettings!.agentBackend, backend, `backend ${backend} preserved`);
     }
     console.log('[harness-settings-roundtrip] valid agent backends: PASS');
+}
+
+// Legacy `'claude-agent-sdk'` persisted from the retired backend must normalize
+// to the default so existing users are not left with an unroutable backend value.
+function testRetiredClaudeAgentSdkNormalizesToDefault() {
+    const result = normalizePluginSettings({
+        harnessSettings: { agentBackend: 'claude-agent-sdk' },
+    });
+    assert.strictEqual(
+        result.harnessSettings!.agentBackend,
+        'auto',
+        'retired claude-agent-sdk value → default auto',
+    );
+    console.log('[harness-settings-roundtrip] retired claude-agent-sdk normalized: PASS');
 }
 
 // ─── run all ──────────────────────────────────────────────────────────────────
@@ -154,6 +168,7 @@ function testValidAgentBackends() {
     testValidPermissionModes();
     testInvalidAgentBackend();
     testValidAgentBackends();
+    testRetiredClaudeAgentSdkNormalizesToDefault();
     console.log('[harness-settings-roundtrip] all tests passed');
 })().catch((err) => {
     console.error('[harness-settings-roundtrip] FAIL:', err);

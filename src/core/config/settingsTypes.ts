@@ -192,11 +192,18 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
  */
 /**
  * Which backend runs agent loops:
- * - 'auto'              — prefer self-hosted harness; fall back to SDK only for agents that hard-code it (VaultSearchAgentSDK).
- * - 'harness'           — always use the self-hosted loop (local models). VaultSearchAgentSDK still uses SDK regardless (HITL coupling).
- * - 'claude-agent-sdk'  — route migrated agents through Claude Agent SDK (highest quality, requires Anthropic API key).
+ * - 'auto'    — prefer self-hosted harness; VaultSearchAgentSDK / ContinueAnalysisAgent
+ *               still rely on `@anthropic-ai/claude-agent-sdk` internals as a library
+ *               (tool() / createSdkMcpServer() / HITL loop), but that is not a
+ *               separate backend the user can select.
+ * - 'harness' — always use the self-hosted loop (local models).
+ *
+ * The `'claude-agent-sdk'` backend was retired in 2026-07 alongside the
+ * Chat/Agent/Plan mode picker (spec: docs/superpowers/specs/2026-07-03-cloud-sdk-and-mode-choice-audit.md).
+ * The SDK stays imported as a library — only the user-facing "cloud backend"
+ * routing is gone.
  */
-export type AgentBackend = 'auto' | 'harness' | 'claude-agent-sdk';
+export type AgentBackend = 'auto' | 'harness';
 
 /**
  * Closed enum of alert rule kinds shipped in the mock Budget & Alerts surface.

@@ -79,21 +79,11 @@ export class VaultSearchAgentSDK {
         const triggerName = StreamTriggerName.SEARCH_AI_AGENT;
         const startTs = Date.now();
 
-        // 0. Backend gate — vault MCP tools aren't yet adapted to harness.
-        // T11J B1: pull harness settings via the manager port instead of AppContext.
-        const backend = aiServiceManager.getHarnessSettings().agentBackend;
-        if (backend === 'harness') {
-            yield {
-                type: 'error',
-                error: new Error(
-                    'Vault Search currently requires the Claude Agent SDK backend. ' +
-                    'Switch Agent Backend to "Auto" or "Claude Agent SDK" in Settings → Agent Harness, ' +
-                    'or wait for the vault MCP tools to be adapted to the harness loop.',
-                ),
-                triggerName,
-            } as LLMStreamEvent;
-            return;
-        }
+        // Vault Search still uses the SDK-as-library (`queryWithProfile`) for
+        // its HITL loop against `vaultMcpServer`. That path is available under
+        // both `agentBackend === 'auto'` and `agentBackend === 'harness'` —
+        // it does not route through ClaudeAgentSDKBridge, so no backend gate
+        // is needed post the 2026-07 SDK-backend retirement.
 
         // 1. Ensure pool is warmed up (idempotent)
         try {

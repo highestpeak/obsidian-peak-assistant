@@ -379,7 +379,7 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	if (rawHarness && typeof rawHarness === 'object') {
 		const d = DEFAULT_HARNESS_SETTINGS;
 		settings.harnessSettings = {
-			agentBackend: (rawHarness.agentBackend === 'auto' || rawHarness.agentBackend === 'harness' || rawHarness.agentBackend === 'claude-agent-sdk')
+			agentBackend: (rawHarness.agentBackend === 'auto' || rawHarness.agentBackend === 'harness')
 				? rawHarness.agentBackend
 				: d.agentBackend,
 			localFastConfig: rawHarness.localFastConfig ?? d.localFastConfig,
