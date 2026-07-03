@@ -76,13 +76,21 @@ export function useChatSubmit() {
 		const latestActiveConversation = useChatDataStore.getState().activeConversation;
 		const latestPendingConversation = useChatViewStore.getState().pendingConversation;
 		const latestInitialSelectedModel = useChatViewStore.getState().initialSelectedModel;
-		// Fallback chain: initialSelectedModel → UI selectedModel → agent profile.
-		// 2026-07 F.B: mode picker retired; every session routes to the agent
-		// profile. chatMode is still read from the store for history restore but
-		// no longer influences profile resolution here.
+		// Fallback chain: initialSelectedModel → UI selectedModel → default
+		// assistant profile.
+		//
+		// 2026-07 F.B: mode routing retired. The AI does not have a
+		// Chat/Agent/Plan concept — every submission resolves to the single
+		// default assistant profile. "Planning" or "chat-only" UX is a
+		// prompt-level concern layered on top of the same profile, not a
+		// separate routing branch. `getConfigForMode()` still exists on
+		// ProfileRegistry for history-restore reasons, but we no longer call
+		// it here; using `getActiveAgentConfig()` directly makes the intent
+		// explicit and stops future readers from thinking mode influences
+		// profile selection.
 		const latestSelectedModel = useChatViewStore.getState().selectedModel;
-		const modeConfig = ProfileRegistry.getInstance().getConfigForMode('agent');
-		const profileFallback = modeConfig ? { provider: modeConfig.profile.kind, modelId: modeConfig.modelId } : null;
+		const defaultConfig = ProfileRegistry.getInstance().getActiveAgentConfig();
+		const profileFallback = defaultConfig ? { provider: defaultConfig.profile.kind, modelId: defaultConfig.modelId } : null;
 		const modelForNewConversation = latestInitialSelectedModel ?? latestSelectedModel ?? profileFallback;
 
 		let conversation = latestActiveConversation || null;
