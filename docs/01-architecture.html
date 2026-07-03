@@ -141,18 +141,18 @@
           <a href="#no-dual-system">No Dual System</a>
         </div>
         <div class="nav-group">
-          <span class="nav-group-title">路线与参考</span>
-          <a href="#roadmap">现代化路线</a>
+          <span class="nav-group-title">约束与参考</span>
+          <a href="#architecture-checklist">架构判定清单</a>
           <a href="#maintain">维护规则</a>
           <a href="#evidence">代码证据</a>
         </div>
-        <div class="nav-note">读 feature 代码前必读；改架构级 API 时按 <a href="#maintain">维护规则</a> 反查；分不清 landed 还是 planned 时看 <a href="#roadmap">现代化路线</a>。</div>
+        <div class="nav-note">读 feature 代码前必读；改架构级 API 时按 <a href="#maintain">维护规则</a> 反查；需要追施工历史时去 <a href="roadmap.html">Roadmap</a> 与 <a href="progress.md"><code>progress.md</code></a>。</div>
       </nav>
 
       <div class="content">
         <section id="orientation">
           <h2>这页解决什么</h2>
-          <p class="lead">Peak Assistant 现在的代码规模已经不小：Chat / Search / AI Analysis / Copilot / Ambient / Knowledge / Harness 每条链路都有独立的 service、UI 和 stores。新读者若直接从任一 feature 入手，会在“service 到底是不是可以随便拿 <code>AppContext</code>”、“runtime 应该长在哪一层”、“这个 <code>Runtime</code> 是不是又一个 singleton”这类问题上反复踩。这页把当前已经落地的架构地基摊平，再把仍在路线图上的部分标出来，让读代码时能一眼判断“这段是现状还是目标”。</p>
+          <p class="lead">Peak Assistant 的代码规模已经不小：Chat / Hyper Search / AI Analysis / Copilot / Ambient / Vault Intelligence / Harness 每条链路都有独立的 service、UI 和 stores。新读者若直接从任一 feature 入手，会在“service 能不能拿 <code>AppContext</code>”、“runtime 应该长在哪一层”、“这个 <code>Runtime</code> 是不是又一个 singleton”这类问题上反复踩。这页只解释稳定边界：四层职责、端口、运行时归属、RunEnvelope 和 No Dual System。</p>
           <div class="claim">
             <strong>本文读者</strong>
             刚加入的工程师；即将改动跨模块 API、runtime 生命周期、port 定义的维护者；正在写新 feature、需要知道“service 层能拿什么、不能拿什么”的人。
@@ -162,10 +162,8 @@
             不重复代码目录（那是 <a href="02-code-organization.html">02 Code Organization</a>）；不重复各 feature 的用户流（那是 11/12/13/16）；不重复配置项（那是 <a href="04-configuration-and-user-views.html">04</a>）；不列 provider/模型的接线细节。
           </div>
           <div class="claim warn">
-            <strong>关于“已落地 vs 路线图”</strong>
-            <p style="margin: 0 0 8px;"><b>已落地（master + 2026-07-02 分支）：</b>四层职责、Ports、Owned Runtimes、Runtime ownership 规则、CapabilityRegistry（surface-readiness 形态）、AgentLoop、Ambient/Lint/VaultReview/QuickSearchBackground/CopilotAction 五个 runtime；<strong>RunEnvelope 核心类型 + InMemoryRunRecorder + VaultLint 首个 adopter</strong>（T3A/T3B）；<strong>T0 Boundary Baseline</strong>（0 违规）；<strong>T1 CapabilityManifest 契约类型 + doc.review.current fixture</strong>；<strong>T5 ToolDef Envelope additive</strong>（<code>ToolSource</code> 联合 + MCP 直通 ToolDef 路径 + bridge source override）。</p>
-            <p style="margin: 0 0 8px;"><b><a href="#roadmap">路线图状态：</a></b>2026-07-02 全量收工——<strong>T0/T1/T2/T3/T4/T5/T6/T7/T8(3 slice)/T9/T10/T12/T13 全部 landed</strong>（handbook 12 个任务包全部 shipped，剩余 T11 boundary 系列一直在滚绿）。<strong>8 个 RunEnvelope adopter</strong>（VaultLint / IndexInit / Cascade / GraphCleanup / Chat / Copilot / Analysis / Harness）+ <strong>3 个 core Port</strong>（Tool / Provider / Artifact）+ <strong>3 个 IndexService slice</strong>（Reader / Writer / Maintenance）+ <strong>CapabilityRunner + BackendStrategyRegistry + CommandGateway + RunEnvelopeStore</strong> 组成完整闭环。剩下的都是"行为变更 / live 接入"，需要用户在场跑真机验证。源头见 <a href="superpowers/specs/2026-06-01-peak-system-architecture-modernization-handbook.html">系统架构现代化手册</a>；完工规划见 <a href="superpowers/specs/2026-07-02-architecture-modernization-completion-plan.md"><code>2026-07-02-architecture-modernization-completion-plan.md</code></a>。</p>
-            <p style="margin: 0;">本页会明确标注每条陈述属于哪一类。</p>
+            <strong>阅读边界</strong>
+            本页不做施工状态记录。你在这里看到的内容都应该能长期指导读代码和改边界；任务包、日期、分支、验收证据属于 <a href="progress.md"><code>progress.md</code></a>、<a href="roadmap.html">Roadmap</a> 或 <code>docs/superpowers/</code> 下的审计/计划文档。
           </div>
         </section>
 
@@ -262,8 +260,8 @@ flowchart TB
           </div>
 
           <div class="claim">
-            <strong>历史例外已清理（T13 + 2026-07-02 尾巴）</strong>
-            2026-07 完成一次性去 singleton：<code>IndexService</code>、<code>MCPClientManager</code>、<code>SkillRegistry</code>、<code>CapabilityRegistry</code>、<code>UsageTrackingService</code>、<code>UsageOutcomeService</code>、<code>UsageOptimizationService</code> 全部改由 <code>main.ts</code> <code>new</code> + <code>AppRuntimeRegistry</code> 拥有。<strong>2026-07-02 补做</strong>：<code>CascadeWorker.static instance</code> + <code>getInstance()</code> 是 T13 miss，已删除；<code>SearchUpdateListener</code> 加 <code>cascadeWorker: CascadeWorker | null</code> 构造 DI，<code>main.ts</code> 调换构造顺序保证依赖就位。UI 通过 <code>useServiceContext()</code>、service 通过 constructor DI / 参数注入拿引用；不再有 service-side <code>getInstance()</code>。<code>service/chat/service-manager.ts</code>（<code>AIServiceManager</code>）本来就不是 singleton，历史文档误列。<code>indexService.ts</code> 内部保留一个模块级 <code>currentChatRootFolder: string</code> 配置缓存（不是 runtime，无 handle/listener），仅供 <code>getIndexTenantForPath</code> 自由函数读取；<code>clearIndexService</code> 时 <code>disposeTenantHelper()</code> 复位。
+            <strong>service 层不拥有 runtime</strong>
+            长生命周期对象由 <code>app/</code> 的 composition root 创建、绑定到 <code>AppRuntimeRegistry</code>，并在插件卸载时释放。UI 通过 <code>useServiceContext()</code> 取得已经装配好的能力，service 通过构造函数或参数注入拿依赖。service 层如果出现 <code>getInstance()</code>、模块级可变 runtime、或绕过 port 的 host 访问，都应该被视为边界问题。
           </div>
         </section>
 

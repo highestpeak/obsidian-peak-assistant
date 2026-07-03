@@ -88,9 +88,9 @@ table.identifier-first td:first-child {
  * ---------------------------------------------------------------------------- */
 .field-list {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 6px 14px;
-  margin: 12px 0 18px;
+  grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
+  gap: 8px 18px;
+  margin: 14px 0 20px;
 }
 .field-list dt {
   color: var(--muted);
@@ -107,6 +107,94 @@ table.identifier-first td:first-child {
 }
 .field-list dd code {
   font-size: 13px;
+}
+
+.field-list dt code {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .field-list {
+    grid-template-columns: 1fr;
+    gap: 3px 0;
+  }
+}
+
+/* Formula / rule blocks used by algorithm-heavy feature docs. These keep
+ * formulas, variables, and worked examples out of prose paragraphs and tables. */
+.formula-box {
+  margin: 20px 0 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--blue);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--muted);
+  box-shadow: 0 12px 26px rgba(23, 34, 29, 0.045);
+}
+.formula-box strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+.formula-box .formula {
+  display: block;
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--code-bg);
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.58;
+  white-space: normal;
+}
+.formula-box ul,
+.formula-box ol {
+  margin: 8px 0 0;
+  padding-left: 22px;
+}
+.formula-box li {
+  margin-bottom: 5px;
+}
+.formula-box li:last-child {
+  margin-bottom: 0;
+}
+
+.rule-flow {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0 0;
+}
+.rule-step {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.rule-step b {
+  color: var(--ink);
+}
+.rule-step span {
+  color: var(--muted);
+}
+@media (max-width: 760px) {
+  .rule-step {
+    grid-template-columns: 1fr;
+  }
+}
+
+.signal-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.signal-list code {
+  white-space: nowrap;
 }
 
 /* --- Simple doc-list under h3 group headers ---------------------------------

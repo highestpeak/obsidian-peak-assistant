@@ -16,6 +16,7 @@ import { emptyDetector, buildContentDetectors } from '../signals/content';
 import { buildTagDetectors, untaggedDetector } from '../signals/tags';
 import { buildHubDetectors } from '../signals/hub';
 import { buildTemporalDetectors } from '../signals/temporal';
+import { buildSemanticDetectors } from '../signals/semantic';
 import type {
 	LintSignalDetector,
 	LintSignalId,
@@ -55,10 +56,22 @@ export class InMemoryDetectorRegistry implements VaultLintDetectorRegistryPort {
 		for (const detector of buildTemporalDetectors(config)) {
 			this.detectors.set(detector.id, detector);
 		}
+		// Wave 5 · six `M-*` semantic detectors. They register but
+		// carry `requiresLlm: true`; `getNonLlm()` skips them until the
+		// LLM budget / throttle helper lands.
+		for (const detector of buildSemanticDetectors(config)) {
+			this.detectors.set(detector.id, detector);
+		}
 		this.initialized = true;
 	}
 
 	getNonLlm(): LintSignalDetector[] {
 		return Array.from(this.detectors.values()).filter((d) => !d.requiresLlm);
+	}
+
+	// Not on the port surface — introspection helper for tests and for
+	// future LLM-budget infra that will iterate the LLM-only subset.
+	getAll(): LintSignalDetector[] {
+		return Array.from(this.detectors.values());
 	}
 }

@@ -127,7 +127,7 @@
 
         <section id="docs">
           <h2>文档地图</h2>
-          <p class="lead">15 份根目录文档按主题分三组，全部已 landed。</p>
+          <p class="lead">根目录文档按主题分三组。这里列的是长期阅读入口，不记录每一波开发状态。</p>
 
           <h3>入门 &amp; 地基（01、02、04、05）</h3>
           <p class="prose">项目是什么、代码怎么读、配置怎么改。第一次接触先看这几份。功能全景已经并入本页 <a href="#capability-model">功能和基础设施怎么连起来</a>。</p>
@@ -142,10 +142,10 @@
           <p class="prose">用户看得到的能力。每份聚焦一个功能。</p>
           <ul class="doc-list">
             <li><a href="11-feature-chat-context.html"><strong>11 · Chat Context</strong></a> — 回答前如何组装会话、附件、focus folder、能力开关。</li>
-            <li><a href="12-feature-search.html"><strong>12 · Search</strong></a> — 关键词、语义、标题、图关系、点击反馈、高亮。</li>
-            <li><a href="13-feature-vault-intelligence.html"><strong>13 · Vault Intelligence</strong></a> — 健康、知识缺口、hub、结构洞、lint。</li>
-            <li><a href="14-feature-ambient-push.html"><strong>14 · Ambient Push</strong></a> — 写作 / 切文档 / 首弹时后台送来的相关笔记；状态栏 + gutter + Morning Briefing。</li>
-            <li><a href="15-feature-command-gateway.html"><strong>15 · Command Gateway</strong></a> — T12 capstone：AI 起草、用户授权、runtime 守边界。</li>
+            <li><a href="12-feature-search.html"><strong>12 · Hyper Search</strong></a> — 快速找笔记：关键词、语义、标题、图关系、点击反馈和高亮。</li>
+            <li><a href="13-feature-vault-intelligence.html"><strong>13 · Vault Intelligence / AI Analysis</strong></a> — 让 AI 看整个 Vault：健康、知识缺口、hub、结构洞、lint 和分析报告。</li>
+            <li><a href="14-feature-ambient-push.html"><strong>14 · Ambient Push</strong></a> — 写作时在固定位置显示相关笔记；解释 trigger、候选、信号和排序。</li>
+            <li><a href="15-feature-command-gateway.html"><strong>15 · Command Gateway</strong></a> — AI 起草、用户授权、runtime 守边界。</li>
             <li><a href="16-feature-document-copilot.html"><strong>16 · Document Copilot</strong></a> — Document lane：polish / review / links / split / tags。</li>
             <li><a href="17-feature-usage-dashboard.html"><strong>17 · Usage Dashboard</strong></a> — AI 用量、预算、成本、模型分布、告警。</li>
             <li><a href="18-feature-provider-model-mcp-skills.html"><strong>18 · Provider · Model · MCP · Skills</strong></a> — 五层 AI 供给：Provider / Profile / Role / MCP / Skill 各自解决什么，怎么配、怎么排障。</li>
@@ -164,7 +164,7 @@
 
         <section id="capability-model">
           <h2>功能和基础设施怎么连起来</h2>
-          <p class="lead">用户功能不是独立小系统。Chat 需要 context pipeline；Search 依赖 index 和 retrievers；Vault Intelligence 复用搜索、lint 和 digest；Ambient 复用搜索、图索引和 context；Agent 类能力必须走 Harness。这张图把 <strong>产品功能</strong> 与 <strong>共享基础设施</strong> 的依赖关系一次画清。</p>
+          <p class="lead">用户功能不是独立小系统。Chat 需要 context pipeline；Hyper Search 依赖 index 和 retrievers；AI Analysis 复用 Search、Vault Intelligence 和 Agent Harness；Ambient 复用搜索、图索引和上下文；Agent 类能力必须走 Harness。这张图把 <strong>产品功能</strong> 与 <strong>共享基础设施</strong> 的依赖关系一次画清。</p>
           <div class="figure">
             <div class="figure-title">
               <strong>图 · 产品功能和基础设施关系</strong>
@@ -174,7 +174,8 @@
 flowchart TB
   subgraph Product["用户能直接感知的产品功能"]
     Chat["11 Chat Context"]
-    Search["12 Search"]
+    Search["12 Hyper Search"]
+    Analysis["AI Analysis<br/>agent-driven vault report"]
     Vault["13 Vault Intelligence"]
     Ambient["14 Ambient Push"]
     Gateway["15 Command Gateway"]
@@ -191,6 +192,9 @@ flowchart TB
   Chat --> Context
   Chat --> Harness
   Search --> Index
+  Analysis --> Search
+  Analysis --> Vault
+  Analysis --> Harness
   Vault --> Search
   Vault --> Index
   Vault --> Harness
