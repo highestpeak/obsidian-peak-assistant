@@ -346,6 +346,20 @@ export interface Database {
 		fail_count: number;
 		error_message: string | null;
 	};
+	/** Hub Curator agent output: one plan per curator run, retained ~20. */
+	hub_curation_plan: {
+		plan_id: string;
+		curated_at: number;
+		trigger: string;
+		coverage_pct: number;
+		confidence: number;
+		iterations: number;
+		total_hubs: number;
+		decisions_json: string;
+		world_summary: string | null;
+		executor_status: string;
+		executor_error: string | null;
+	};
 	/** Cascade update debt tracking: pending side-effect work after document index changes. */
 	cascade_debt: {
 		id: number | undefined; // AUTOINCREMENT — omit on insert
@@ -924,6 +938,20 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			error_message  TEXT
 		);
 		CREATE INDEX IF NOT EXISTS idx_hub_regen_queue_status ON hub_regen_queue(status, priority DESC);
+		CREATE TABLE IF NOT EXISTS hub_curation_plan (
+			plan_id         TEXT PRIMARY KEY,
+			curated_at      INTEGER NOT NULL,
+			trigger         TEXT NOT NULL,
+			coverage_pct    REAL NOT NULL,
+			confidence      REAL NOT NULL,
+			iterations      INTEGER NOT NULL,
+			total_hubs      INTEGER NOT NULL,
+			decisions_json  TEXT NOT NULL,
+			world_summary   TEXT,
+			executor_status TEXT NOT NULL DEFAULT 'pending',
+			executor_error  TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_hub_curation_plan_curated_at ON hub_curation_plan(curated_at DESC);
 	`);
 
 	// ── Vault lint / health-check tables ──

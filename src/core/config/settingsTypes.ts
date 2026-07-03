@@ -10,6 +10,14 @@ import type { ProfileSettings, RoleConfig } from '@/core/profiles/types';
 import type { AmbientPushSettings } from '@/core/types/ambient';
 import type { MCPServerConfig } from '@/core/types/mcp';
 import type { IndexLevel } from '@/core/search/indexTypes';
+import {
+	DEFAULT_AI_ROOT_FOLDER,
+	getAIAnalysisFolder,
+	getAICustomPromptsFolder,
+	getAIDataStoreFolder,
+	getAIInboxFolder,
+	getAISkillsFolder,
+} from '@/core/config/folderPaths';
 
 export interface ChunkingSettings {
 	maxChunkSize: number;
@@ -62,6 +70,14 @@ export interface SearchSettings {
 	searchUpgradePromptDismissedAt: number | null;
 	/** Enable Personalized PageRank graph reranking during text search. Default: true. */
 	enablePPR: boolean;
+	/**
+	 * Opt-in scheduled Hub Curation runs. When true, HubCurationScheduler runs
+	 * the Curator agent every `hubCurationIntervalDays` days at startup.
+	 * See docs/superpowers/specs/2026-07-03-hub-generation-agent.md §Component 10.
+	 */
+	hubCurationSchedulerEnabled: boolean;
+	/** Interval (days) between scheduled Hub Curation runs. Default: 7. */
+	hubCurationIntervalDays: number;
 }
 
 export interface InspectorLinksSettings {
@@ -94,6 +110,7 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	chunking: DEFAULT_CHUNKING_SETTINGS,
 	ignorePatterns: [
 		'.git/', 'node_modules/', '.obsidian/', 'A-control/',
+		`${getAIDataStoreFolder(DEFAULT_AI_ROOT_FOLDER)}/`,
 		'*.tmp', '*.temp', '*.log', '.DS_Store', 'Thumbs.db',
 	],
 	aiAnalysisModel: {
@@ -105,13 +122,15 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	fullSummaryLength: 2000,
 	aiAnalysisSessionSummaryWordCount: 3000,
 	aiAnalysisAutoSaveEnabled: true,
-	aiAnalysisAutoSaveFolder: 'ChatFolder/AI-Analysis',
+	aiAnalysisAutoSaveFolder: getAIAnalysisFolder(DEFAULT_AI_ROOT_FOLDER),
 	aiAnalysisExcludeAutoSaveFolderFromSearch: true,
 	aiAnalysisHistoryLimit: 5,
 	inspectorLinks: DEFAULT_INSPECTOR_LINKS_SETTINGS,
 	indexLevel: 'fast' as IndexLevel,
 	searchUpgradePromptDismissedAt: null,
 	enablePPR: true,
+	hubCurationSchedulerEnabled: false,
+	hubCurationIntervalDays: 7,
 };
 
 export interface AIServiceSettings {
@@ -129,7 +148,7 @@ export interface AIServiceSettings {
 }
 
 export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
-	rootFolder: 'ChatFolder',
+	rootFolder: DEFAULT_AI_ROOT_FOLDER,
 	defaultModel: { provider: 'openai', modelId: 'gpt-4o-mini' },
 	llmProviderConfigs: {},
 	profileEnabled: true,
@@ -272,13 +291,13 @@ export interface MyPluginSettings {
 	/** External MCP server connections (stdio/SSE). */
 	mcpServers?: MCPServerConfig[];
 
-	/** Vault folder for user-defined skills (default: _skills). */
+	/** Vault folder for user-defined skills. Defaults under ai.rootFolder. */
 	skillsFolder?: string;
 
-	/** Vault folder for quick-captured notes (default: _inbox). */
+	/** Vault folder for quick-captured notes. Defaults under ai.rootFolder. */
 	inboxFolder?: string;
 
-	/** Vault folder for user-defined custom prompts (default: _prompts). */
+	/** Vault folder for user-defined custom prompts. Defaults under ai.rootFolder. */
 	customPromptsFolder?: string;
 
 	/** Self-hosted agent harness configuration. */
@@ -287,7 +306,7 @@ export interface MyPluginSettings {
 }
 
 export const DEFAULT_SETTINGS: MyPluginSettings = {
-	dataStorageFolder: 'A-control/PeakAssistant/DataStore',
+	dataStorageFolder: getAIDataStoreFolder(DEFAULT_AI_SERVICE_SETTINGS.rootFolder),
 	ai: DEFAULT_AI_SERVICE_SETTINGS,
 	search: DEFAULT_SEARCH_SETTINGS,
 	sqliteBackend: 'auto',
@@ -303,4 +322,7 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	usageTrackingEnabled: true,
 	usageDetailRetentionDays: 30,
 	usagePreviewEnabled: true,
+	skillsFolder: getAISkillsFolder(DEFAULT_AI_SERVICE_SETTINGS.rootFolder),
+	inboxFolder: getAIInboxFolder(DEFAULT_AI_SERVICE_SETTINGS.rootFolder),
+	customPromptsFolder: getAICustomPromptsFolder(DEFAULT_AI_SERVICE_SETTINGS.rootFolder),
 };

@@ -57,6 +57,10 @@ export const IndexingTemplateId = {
 	KnowledgeIntuitionSkeletonMarkdown: 'indexing-knowledge-intuition-skeleton-markdown',
 	/** Knowledge intuition agent: prep-only output when `stopAt: prep` (Handlebars; English). */
 	KnowledgeIntuitionPrepOnlyMarkdown: 'indexing-knowledge-intuition-prep-only-markdown',
+	/** Hub materialization: markdown skeleton written to vault (Handlebars). */
+	HubDocSkeleton: 'indexing-hub-doc-skeleton',
+	/** Hub curation: world snapshot markdown embedded in curator plan prompt (Handlebars). */
+	HubCurationWorldSnapshot: 'indexing-hub-curation-world-snapshot',
 } as const;
 
 export type IndexingTemplateId = (typeof IndexingTemplateId)[keyof typeof IndexingTemplateId];
@@ -225,6 +229,35 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 		description: 'Submits intuition results with findings, entities, and topology.',
 		group: 'indexing',
 	}),
+	'hub-curation-plan': meta('prompts', 'hub-curation-plan', {
+		label: 'Hub Curation Plan',
+		description: 'System prompt for the Hub Curator plan step (which nodes deserve hubs).',
+		group: 'indexing',
+	}),
+	'hub-curation-submit': meta('prompts', 'hub-curation-submit', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only one JSON object: hubs (max 30 decisions, each with nodeId/hubPath/action/scope/reason and optional mergeSourceHubs), coverage (totalMembers/coveredMembers/uncoveredHighValue max 20), confidence (0..1), should_stop.',
+		label: 'Hub Curation Submit',
+		description: 'Structured-output prompt for the Hub Curator submit step.',
+		group: 'indexing',
+	}),
+	'hub-materialization-draft': meta('prompts', 'hub-materialization-draft', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only one JSON object matching HubDraft: title, summary, coreConceptSection, structureSection, evolutionSection, openQuestionsSection, entryPointsSection, referencedMemberIds (max 60).',
+		label: 'Hub Materialization Draft',
+		description: 'System prompt for the Hub Materialization draft step.',
+		group: 'indexing',
+	}),
+	'hub-materialization-critique': meta('prompts', 'hub-materialization-critique', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only one JSON object matching HubCritique: retryDraft (bool), gaps (max 15; each memberId/kind/hint), overallCoverage (0..1).',
+		label: 'Hub Materialization Critique',
+		description: 'System prompt for the Hub Materialization critique subagent.',
+		group: 'indexing',
+	}),
 	'pattern-discovery': meta('prompts', 'pattern-discovery', { expectsJson: true, jsonConstraint: 'Return only the JSON object with newPatterns and deprecateIds, no markdown or explanation.', label: 'Pattern Discovery', description: 'Analyzes query history to discover new query template patterns.', group: 'indexing' }),
 	'context-memory': meta('prompts', 'context-memory', { label: 'Context Memory', description: 'Renders long-term memory entries into the conversation context.', group: 'userProfile' }),
 	'user-profile-context': meta('prompts', 'user-profile-context', { label: 'User Profile Context', description: 'Renders the user profile into the conversation context window.', group: 'userProfile' }),
@@ -335,6 +368,8 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[IndexingTemplateId.KnowledgeIntuitionDefaultUserGoal]: meta('indexing', 'knowledge-intuition-default-user-goal'),
 	[IndexingTemplateId.KnowledgeIntuitionSkeletonMarkdown]: meta('indexing', 'knowledge-intuition-skeleton-markdown'),
 	[IndexingTemplateId.KnowledgeIntuitionPrepOnlyMarkdown]: meta('indexing', 'knowledge-intuition-prep-only-markdown'),
+	[IndexingTemplateId.HubDocSkeleton]: meta('indexing', 'hub-doc-skeleton'),
+	[IndexingTemplateId.HubCurationWorldSnapshot]: meta('indexing', 'hub-curation-world-snapshot'),
 	[StopwordTemplateId.Common]: meta('stopwords', 'common'),
 	[StopwordTemplateId.English]: meta('stopwords', 'en'),
 	[StopwordTemplateId.Chinese]: meta('stopwords', 'zh'),

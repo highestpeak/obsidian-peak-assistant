@@ -48,6 +48,15 @@ export enum PromptId {
 	/** User: memory + tool results for intuition submit. */
 	KnowledgeIntuitionSubmit = 'knowledge-intuition-submit',
 
+	/** System: Hub curation plan step. */
+	HubCurationPlan = 'hub-curation-plan',
+	/** User: submit hub curation JSON. */
+	HubCurationSubmit = 'hub-curation-submit',
+	/** System: Hub materialization draft. */
+	HubMaterializationDraft = 'hub-materialization-draft',
+	/** System: Hub materialization critique (subagent). */
+	HubMaterializationCritique = 'hub-materialization-critique',
+
 	// Search prompts
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
 	AiAnalysisTitle = 'ai-analysis-title',
@@ -229,6 +238,10 @@ export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.DocTagGenerateJson,
 	PromptId.KnowledgeIntuitionPlan,
 	PromptId.KnowledgeIntuitionSubmit,
+	PromptId.HubCurationPlan,
+	PromptId.HubCurationSubmit,
+	PromptId.HubMaterializationDraft,
+	PromptId.HubMaterializationCritique,
 ] as const;
 
 /**
@@ -352,6 +365,38 @@ export interface PromptVariables {
 		folderTreeMarkdown: string;
 		backboneEdgesJson: string;
 		toolResultsMarkdown: string;
+	};
+	[PromptId.HubCurationPlan]: {
+		vaultName: string;
+		currentDateLabel: string;
+		worldSnapshotMarkdown: string;
+	};
+	[PromptId.HubCurationSubmit]: Record<string, never>;
+	[PromptId.HubMaterializationDraft]: {
+		vaultName: string;
+		hubNodeId: string;
+		hubPath: string;
+		curatorReason: string;
+		coreMembers: Array<{
+			path: string;
+			title: string;
+			pagerank: string;
+			betweenness: string;
+			tagsCsv: string;
+			excerpt: string;
+		}>;
+		fringeMembers: Array<{ path: string; title: string }>;
+		aggregatedTagsCsv: string;
+		aggregatedKeywordsCsv: string;
+		previousGaps: Array<{ memberId: string; kind: string; hint: string }>;
+	};
+	[PromptId.HubMaterializationCritique]: {
+		hubPath: string;
+		memberCount: number;
+		coreCount: number;
+		fringeCount: number;
+		draftMarkdown: string;
+		referencedMemberIds: string[];
 	};
 	[PromptId.DocTagGenerateJson]: {
 		content: string;

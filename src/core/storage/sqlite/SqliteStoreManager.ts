@@ -23,6 +23,7 @@ import { QueryPatternRepo } from './repositories/QueryPatternRepo';
 import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcessedHashRepo';
 import { CascadeDebtRepo } from './repositories/CascadeDebtRepo';
 import { HubConstituentRepo } from './repositories/HubConstituentRepo';
+import { HubCurationPlanRepo } from './repositories/HubCurationPlanRepo';
 import { AmbientPushRepo } from './repositories/AmbientPushRepo';
 import { TagSuggestionRepo } from './repositories/TagSuggestionRepo';
 import { VaultLintRepo } from './repositories/VaultLintRepo';
@@ -286,6 +287,14 @@ export class SqliteStoreManager {
 			this.hubConstituentRepo = new HubConstituentRepo(this.getIndexContext('vault'));
 		}
 		return this.hubConstituentRepo;
+	}
+
+	private hubCurationPlanRepo: HubCurationPlanRepo | null = null;
+	getHubCurationPlanRepo(): HubCurationPlanRepo {
+		if (!this.hubCurationPlanRepo) {
+			this.hubCurationPlanRepo = new HubCurationPlanRepo(this.getIndexContext('vault'));
+		}
+		return this.hubCurationPlanRepo;
 	}
 
 	getTagSuggestionRepo(): TagSuggestionRepo {

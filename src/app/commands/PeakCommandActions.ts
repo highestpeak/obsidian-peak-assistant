@@ -117,6 +117,112 @@ export async function refreshHubSummaries(): Promise<void> {
 	new Notice(`Hub refresh complete: ${result.processed} regenerated, ${result.failed} failed`);
 }
 
+export async function curateHubsNow(): Promise<void> {
+	const ctx = getContext();
+	const scheduler = ctx.runtimeRegistry.tryGetHubCurationScheduler();
+	if (!scheduler) {
+		new Notice('Hub Curation runtime is not ready. Try again after plugin boot completes.');
+		return;
+	}
+	const ui = openProgressNotice('Hub Curator: running plan iterations...');
+	try {
+		const result = await scheduler.run('manual');
+		ui.hide();
+		if (!result) {
+			new Notice('Hub Curator: another run is already in progress.', 5000);
+			return;
+		}
+		new Notice(`Hub Curator complete. Plan ${result.planId.slice(0, 8)} landed.`, 6000);
+	} catch (e) {
+		ui.hide();
+		console.error('[peak-hub-curate]', e);
+		new Notice(`Hub Curator failed: ${(e as Error).message}`, 8000);
+	}
+}
+
+export async function materializeHubForActiveNote(): Promise<void> {
+	const ctx = getContext();
+	const runtime = ctx.runtimeRegistry.tryGetHubGenerationRuntime();
+	if (!runtime) {
+		new Notice('Hub Generation runtime is not ready.', 5000);
+		return;
+	}
+	const activeFile = ctx.app.workspace.getActiveFile();
+	if (!activeFile) {
+		new Notice('Open a note first to materialize its hub.', 5000);
+		return;
+	}
+	// Look up the active file's node id + community id; pick community representative as hub.
+	const { sqliteStoreManager } = await import('@/core/storage/sqlite/SqliteStoreManager');
+	if (!sqliteStoreManager.isInitialized()) {
+		new Notice('Index not ready. Run indexing first.', 5000);
+		return;
+	}
+	const repo = sqliteStoreManager.getMobiusNodeRepo('vault');
+	const active = await repo.getByPath?.(activeFile.path).catch(() => null);
+	if (!active?.node_id) {
+		new Notice('Active note is not indexed yet.', 5000);
+		return;
+	}
+	const signals = await repo.getDocumentNodeSignals(active.node_id);
+	if (!signals?.community_id) {
+		new Notice('Active note has no community assigned yet. Run Gap Analysis first.', 6000);
+		return;
+	}
+	const members = await repo.listCommunityMembers(signals.community_id, 40);
+	const hubMember = members[0];
+	if (!hubMember) {
+		new Notice('No members found in this note\'s community.', 5000);
+		return;
+	}
+	const ui = openProgressNotice(`Materializing hub for community ${signals.community_id.slice(0, 8)}...`);
+	try {
+		const result = await runtime.materializer.run({
+			decision: {
+				nodeId: hubMember.node_id,
+				hubPath: `AI Hub/${signals.community_id}.md`,
+				action: 'keep',
+				scope: {
+					communityIds: [signals.community_id],
+					memberNodeIds: members.map((m) => m.node_id),
+				},
+				reason: 'materialize-from-active-note command',
+			},
+			planId: 'active-note-' + Date.now(),
+			trigger: 'manual',
+		});
+		ui.hide();
+		if (result.status === 'written') {
+			new Notice(`Hub written to ${result.hubPath} (coverage ${(result.coverage ?? 0).toFixed(2)}).`, 8000);
+		} else if (result.status === 'skipped-user-owned') {
+			new Notice(`Hub at ${result.hubPath} is user-owned; skipped.`, 6000);
+		} else {
+			new Notice(`Hub materialization failed: ${result.error ?? 'unknown'}`, 8000);
+		}
+	} catch (e) {
+		ui.hide();
+		console.error('[peak-hub-materialize-active]', e);
+		new Notice(`Hub materialization failed: ${(e as Error).message}`, 8000);
+	}
+}
+
+export async function showLatestHubCurationPlan(): Promise<void> {
+	const ctx = getContext();
+	const runtime = ctx.runtimeRegistry.tryGetHubGenerationRuntime();
+	if (!runtime) {
+		new Notice('Hub Generation runtime is not ready.', 5000);
+		return;
+	}
+	const recent = await runtime.planRepo.listRecent(1);
+	const plan = recent[0];
+	if (!plan) {
+		new Notice('No Hub Curation plan on record yet. Run "Curate Hubs Now" first.', 6000);
+		return;
+	}
+	const { HubCurationPlanModal } = await import('@/app/ui-host/modals/HubCurationPlanModal');
+	new HubCurationPlanModal(ctx.app, plan).open();
+}
+
 export async function recomputeGapAnalysis(): Promise<void> {
 	const ui = openProgressNotice('Gap Analysis: recomputing structural analysis...');
 	try {

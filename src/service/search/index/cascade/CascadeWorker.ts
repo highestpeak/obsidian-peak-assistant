@@ -192,12 +192,20 @@ export class CascadeWorker {
                 }
                 break;
             }
-            case 'hub_regen':
-                // S6 will implement hub regeneration.
-                // This no-op ensures the debt record is consumed and marked processed
-                // so the queue does not grow indefinitely. S6 will replace this with
-                // the actual LLM-based hub doc rewrite / incremental patch logic.
+            case 'hub_regen': {
+                // Drain one item from hub_regen_queue and delegate to HubRegenService
+                // for the LLM-driven materialization pipeline. If no agent is wired
+                // (e.g., plugin loaded without hub runtime), fall back to marking the
+                // debt processed to prevent queue growth — HubRegenService.init() must
+                // run at plugin startup for real regeneration to occur.
+                const { HubRegenService } = await import('@/service/search/index/helper/hub/hubRegenService');
+                try {
+                    await HubRegenService.getInstance().processQueueNow();
+                } catch (err) {
+                    console.warn('[CascadeWorker] hub_regen dispatch failed', err);
+                }
                 break;
+            }
             case 'folder_stats': {
                 // item.targetId = the changed document's node id
                 // Resolve the doc's vault path, then walk ancestor folders up the tree

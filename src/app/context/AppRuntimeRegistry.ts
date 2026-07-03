@@ -29,6 +29,8 @@ import type { CommandGateway } from '@/service/capabilities/CommandGateway';
 import type { UsageTrackingService } from '@/service/usage/UsageTrackingService';
 import type { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 import type { UsageOptimizationService } from '@/service/usage/optimization/UsageOptimizationService';
+import type { HubGenerationRuntime } from '@/service/hub/HubGenerationRuntime';
+import type { HubCurationScheduler } from '@/service/hub/HubCurationScheduler';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -53,6 +55,8 @@ export class AppRuntimeRegistry {
 	private capabilityRegistry: CapabilityRegistry | null = null;
 	private commandGateway: CommandGateway | null = null;
 	private usageServices: UsageServices | null = null;
+	private hubGenerationRuntime: HubGenerationRuntime | null = null;
+	private hubCurationScheduler: HubCurationScheduler | null = null;
 
 	/**
 	 * Bind the Vault Lint runtime. Called exactly once at plugin boot
@@ -478,6 +482,42 @@ export class AppRuntimeRegistry {
 		services?.optimization.destroy();
 		services?.outcome.destroy();
 		services?.tracking.destroy();
+	}
+
+	// ── Hub Generation runtime (Curator + Materializer + Executor + Scheduler) ──
+
+	setHubGenerationRuntime(runtime: HubGenerationRuntime, scheduler: HubCurationScheduler): void {
+		if (this.hubGenerationRuntime !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setHubGenerationRuntime: a runtime is already bound. Call clearHubGenerationRuntime first if this is intentional.',
+			);
+		}
+		this.hubGenerationRuntime = runtime;
+		this.hubCurationScheduler = scheduler;
+	}
+
+	getHubGenerationRuntime(): HubGenerationRuntime {
+		if (this.hubGenerationRuntime === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getHubGenerationRuntime: no runtime is bound. Plugin boot must call setHubGenerationRuntime() before consumers reach the runtime.',
+			);
+		}
+		return this.hubGenerationRuntime;
+	}
+
+	tryGetHubGenerationRuntime(): HubGenerationRuntime | null {
+		return this.hubGenerationRuntime;
+	}
+
+	tryGetHubCurationScheduler(): HubCurationScheduler | null {
+		return this.hubCurationScheduler;
+	}
+
+	clearHubGenerationRuntime(): void {
+		const scheduler = this.hubCurationScheduler;
+		this.hubGenerationRuntime = null;
+		this.hubCurationScheduler = null;
+		scheduler?.dispose();
 	}
 
 }

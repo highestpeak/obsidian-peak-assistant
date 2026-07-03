@@ -589,9 +589,9 @@ flowchart LR
 - [x] B2.cascade — `f981e8bf`
 - [x] B2.graph — `4e90785e`
 
-### Wave 2 (14) — 13/14 landed 2026-07-03
+### Wave 2 (14) — 14/14 landed 2026-07-03
 - [x] C-HUB1 · T-STALE-HUB — `51635807`
-- [ ] C-HUB2 · HubDoc regen 实装 — needs full hub-doc materialization pipeline (LLM + template + vault write); genuinely blocked on LLM adapter + templates
+- [x] C-HUB2 · HubDoc regen 实装 — landed via HubGenerationRuntime (Curator + Materializer + Executor + Scheduler); spec `docs/superpowers/specs/2026-07-03-hub-generation-agent.md`; research `docs/research/2026-07-03-hub-generation-agent-design/README.md`
 - [x] C-S1 · S-SOFT-ORPHAN — `2cc04e95`
 - [x] C-S2 · S-MISSING-BACKLINK — `85122d3e`
 - [x] C-S3 · S-ISLAND-CLUSTER — `2dad7903`

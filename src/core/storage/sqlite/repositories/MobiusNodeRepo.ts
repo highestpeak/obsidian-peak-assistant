@@ -84,6 +84,15 @@ export type MobiusNodeHubDiscoveryScoredRow = MobiusNodeHubDiscoveryRow & {
 };
 
 /**
+ * Curator-specific hub candidate row: scored row plus `community_id` and `betweenness_centrality`.
+ * See docs/superpowers/specs/2026-07-03-hub-generation-agent.md §Component 4 · Prep.
+ */
+export type MobiusNodeHubCuratorCandidateRow = MobiusNodeHubDiscoveryScoredRow & {
+	community_id: string | null;
+	betweenness_centrality: number | null;
+};
+
+/**
  * Folder hub candidate row with scores matching in-app folder hub scoring (materialized columns on `type=folder`).
  */
 export type MobiusNodeFolderHubDiscoveryRow = {
@@ -1273,6 +1282,116 @@ export class MobiusNodeRepo {
 
 		const rows = await q.orderBy('hub_graph_score', 'desc').limit(lim).execute();
 		return rows as MobiusNodeHubDiscoveryScoredRow[];
+	}
+
+	/**
+	 * Curator variant of {@link listTopDocumentNodesForHubDiscovery}: additionally selects
+	 * `community_id` and `betweenness_centrality` so the Hub Curator agent can reason
+	 * about community coverage and bridge nodes.
+	 */
+	async listCuratorHubCandidates(
+		limit: number,
+		hubSummaryFolder: string,
+	): Promise<MobiusNodeHubCuratorCandidateRow[]> {
+		const lim = Math.max(1, limit);
+		const hub = hubSummaryFolder.trim();
+		const likeUnderHub = hub ? `${hub}/%` : '';
+
+		const wIn = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.incoming;
+		const wOut = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.outgoing;
+		const hubPhysical = sql<number>`min(1.0, (coalesce(pagerank, 0) * 2.5) + min(0.08, (coalesce(word_count, 0) / 50000.0) * 0.08))`;
+		const hubOrg = sql<number>`min(1.0, (coalesce(doc_incoming_cnt, 0) * ${wIn}) + (coalesce(doc_outgoing_cnt, 0) * ${wOut}))`;
+		const hubSem = sql<number>`min(1.0, coalesce(semantic_pagerank, 0) * 1.2)`;
+		const hubGraph = sql<number>`min(1.0, (${hubPhysical} * 0.35) + (${hubOrg} * 0.25) + (${hubSem} * 0.35))`;
+
+		let q = this.db
+			.selectFrom('mobius_node')
+			.select([
+				'node_id',
+				'path',
+				'label',
+				'type',
+				'doc_incoming_cnt',
+				'doc_outgoing_cnt',
+				'pagerank',
+				'semantic_pagerank',
+				'word_count',
+				'community_id',
+				'betweenness_centrality',
+				hubPhysical.as('hub_physical_authority_score'),
+				hubOrg.as('hub_organizational_score'),
+				hubSem.as('hub_semantic_centrality_score'),
+				hubGraph.as('hub_graph_score'),
+			])
+			.where('type', '=', GraphNodeType.Document)
+			.where('path', 'is not', null);
+
+		if (hub) {
+			q = q.where((eb) =>
+				eb.and([eb('path', '!=', hub), eb('path', 'not like', likeUnderHub)]),
+			);
+		}
+
+		const rows = await q.orderBy('hub_graph_score', 'desc').limit(lim).execute();
+		return rows as MobiusNodeHubCuratorCandidateRow[];
+	}
+
+	/** Count documents (used by curator to size the candidate budget). */
+	async countDocumentNodes(): Promise<number> {
+		const row = await this.db
+			.selectFrom('mobius_node')
+			.select((eb) => eb.fn.countAll<number>().as('cnt'))
+			.where('type', '=', GraphNodeType.Document)
+			.executeTakeFirst();
+		return Number(row?.cnt ?? 0);
+	}
+
+	/**
+	 * Curator variant helper: given a set of node ids, return community members
+	 * sorted by pagerank desc. Used by materializer prep to compose "core/fringe"
+	 * partitions and by curator to explore candidate scope.
+	 */
+	async listCommunityMembers(
+		communityId: string,
+		limit: number,
+	): Promise<Array<{
+		node_id: string;
+		path: string | null;
+		label: string;
+		pagerank: number | null;
+		betweenness_centrality: number | null;
+	}>> {
+		const rows = await this.db
+			.selectFrom('mobius_node')
+			.select(['node_id', 'path', 'label', 'pagerank', 'betweenness_centrality'])
+			.where('community_id', '=', communityId)
+			.where('type', '=', GraphNodeType.Document)
+			.orderBy('pagerank', 'desc')
+			.limit(Math.max(1, limit))
+			.execute();
+		return rows as any[];
+	}
+
+	/**
+	 * Read a single doc-like node with its centrality signals — used by materializer prep
+	 * to seed the members list when a curator decision names its scope.
+	 */
+	async getDocumentNodeSignals(
+		nodeId: string,
+	): Promise<{
+		node_id: string;
+		path: string | null;
+		label: string;
+		pagerank: number | null;
+		betweenness_centrality: number | null;
+		community_id: string | null;
+	} | null> {
+		const row = await this.db
+			.selectFrom('mobius_node')
+			.select(['node_id', 'path', 'label', 'pagerank', 'betweenness_centrality', 'community_id'])
+			.where('node_id', '=', nodeId)
+			.executeTakeFirst();
+		return (row as any) ?? null;
 	}
 
 	/**

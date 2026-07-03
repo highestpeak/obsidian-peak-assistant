@@ -13,3 +13,21 @@ export {
 	type IntuitionTopology,
 	type KnowledgeIntuitionSubmit,
 } from './knowledgeIntuition';
+export {
+	hubCurationScopeSchema,
+	hubCurationDecisionSchema,
+	hubCurationCoverageSchema,
+	hubCurationSubmitSchema,
+	type HubCurationScope,
+	type HubCurationDecision,
+	type HubCurationCoverage,
+	type HubCurationSubmit,
+} from './hubCuration';
+export {
+	hubDraftSchema,
+	hubCritiqueGapSchema,
+	hubCritiqueSchema,
+	type HubDraft,
+	type HubCritiqueGap,
+	type HubCritique,
+} from './hubMaterialization';

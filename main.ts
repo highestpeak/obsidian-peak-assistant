@@ -70,7 +70,7 @@ import { registerUsageDashboardReceipts } from '@/ui/view/usage-dashboard/runtim
 import { ModelRegistry } from '@/core/providers/model-registry';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 import { MCPClientManager } from '@/service/mcp/MCPClientManager';
-import { DEFAULT_SKILLS_FOLDER } from '@/core/constant';
+import { getAISkillsFolder } from '@/core/config/folderPaths';
 import { SkillRegistry } from '@/service/skills/SkillRegistry';
 import { CapabilityRegistry } from '@/service/capabilities';
 import { openSettingsModal } from '@/app/commands/PeakCommandActions';
@@ -396,6 +396,40 @@ export default class MyPlugin extends Plugin {
 				},
 			});
 		}
+		// Hub Curation commands. Not routed through CommandGateway because they
+		// are low-frequency background actions with independent runtime deps.
+		// See docs/superpowers/specs/2026-07-03-hub-generation-agent.md §Component 9.
+		this.addCommand({
+			id: 'peak-hub-curate-now',
+			name: 'Curate Hubs Now',
+			callback: () => {
+				void (async () => {
+					const { curateHubsNow } = await import('@/app/commands/PeakCommandActions');
+					await curateHubsNow();
+				})();
+			},
+		});
+		this.addCommand({
+			id: 'peak-hub-materialize-active-note',
+			name: 'Materialize Hub for Active Note',
+			callback: () => {
+				void (async () => {
+					const { materializeHubForActiveNote } = await import('@/app/commands/PeakCommandActions');
+					await materializeHubForActiveNote();
+				})();
+			},
+		});
+		this.addCommand({
+			id: 'peak-hub-show-latest-plan',
+			name: 'Show Latest Hub Curation Plan',
+			callback: () => {
+				void (async () => {
+					const { showLatestHubCurationPlan } = await import('@/app/commands/PeakCommandActions');
+					await showLatestHubCurationPlan();
+				})();
+			},
+		});
+
 		// Note: `buildCoreCommands` used to be the palette table; it is
 		// intentionally left imported (see top of file) and unused so
 		// audits that grep for it can still land on this file until it
@@ -498,7 +532,7 @@ export default class MyPlugin extends Plugin {
 		// releases the watchers so a hot reload doesn't double-register them.
 		const skillRegistry = new SkillRegistry();
 		AppContext.setSkillRegistry(skillRegistry);
-		const skillsFolder = this.settings.skillsFolder ?? DEFAULT_SKILLS_FOLDER;
+		const skillsFolder = this.settings.skillsFolder ?? getAISkillsFolder(this.settings.ai.rootFolder);
 		skillRegistry.init(this.app, skillsFolder).catch(e => {
 			console.warn('[Peak Assistant] SkillRegistry init failed:', e);
 		});
@@ -612,6 +646,26 @@ export default class MyPlugin extends Plugin {
 				{
 					const { composeVaultReviewRuntime } = await import('@/app/copilot/vault/composeVaultReviewRuntime');
 					AppContext.setVaultReviewRuntime(composeVaultReviewRuntime(this.app));
+				}
+				// Hub Generation runtime (Curator + Materializer + Executor + Scheduler).
+				// Must run after sqlite + AIServiceManager + TemplateManager are ready.
+				try {
+					const { composeHubGenerationRuntime } = await import('@/app/hub/composeHubGenerationRuntime');
+					const templateManager = this.aiServiceManager.getTemplateManager?.();
+					if (templateManager) {
+						const { runtime, scheduler } = composeHubGenerationRuntime({
+							app: this.app,
+							aiServiceManager: this.aiServiceManager,
+							templateManager,
+							getSettings: () => this.settings.search,
+							rootFolder: this.settings.ai?.rootFolder ?? '',
+						});
+						appContext.runtimeRegistry.setHubGenerationRuntime(runtime, scheduler);
+					} else {
+						console.warn('[Peak] Hub Generation runtime skipped — TemplateManager not available.');
+					}
+				} catch (e) {
+					console.warn('[Peak] Hub Generation runtime compose failed:', e);
 				}
 				// T11B-R: Copilot action runtime is now bound earlier in
 				// onload (right after `aiServiceManager.init()`), so
@@ -776,6 +830,11 @@ export default class MyPlugin extends Plugin {
 		// fingerprint cache + agent SDK bindings drop with the
 		// hot-reloaded bundle.
 		try { AppContext.clearVaultReviewRuntime(); } catch { /* not bound — ignore */ }
+		// Hub Generation runtime: dispose scheduler timer + drop agent refs.
+		try {
+			const registry = AppContext.getInstance().runtimeRegistry;
+			registry.clearHubGenerationRuntime();
+		} catch { /* not initialized — ignore */ }
 
 		// T13: MCP client manager is released via `clearForUnload` (below),
 		// which calls `dispose()` and reaps any live stdio child processes.

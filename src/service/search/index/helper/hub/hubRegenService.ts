@@ -1,6 +1,14 @@
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 
+/**
+ * App-composed callback that materializes one hub doc. When registered via
+ * {@link HubRegenService.init}, the service delegates to this instead of the
+ * legacy `HubDocService.regenerateSingleHub` warning stub. See
+ * docs/superpowers/specs/2026-07-03-hub-generation-agent.md §Component 8.
+ */
+export type HubRegenerateFn = (hubNodeId: string, hubPath: string) => Promise<void>;
+
 const HUB_REGEN_DEBOUNCE_MS = 30_000; // 30s after last stale detection
 const HUB_REGEN_BATCH_SIZE = 10;       // max hubs per sweep
 const HUB_REGEN_MAX_RETRIES = 3;       // max attempts before giving up
@@ -26,6 +34,7 @@ export class HubRegenService {
     private timer: ReturnType<typeof setTimeout> | null = null;
     private processing = false;
     private getSearchSettings: (() => SearchSettings) | null = null;
+    private regenerateFn: HubRegenerateFn | null = null;
 
     static getInstance(): HubRegenService {
         if (!HubRegenService._instance) {
@@ -34,9 +43,21 @@ export class HubRegenService {
         return HubRegenService._instance;
     }
 
-    /** Must be called before scheduleRegenSweep or processQueueNow. */
-    init(getSearchSettings: () => SearchSettings): void {
+    /**
+     * Must be called before scheduleRegenSweep or processQueueNow.
+     * The optional `regenerateFn` is composed at the app layer and delegates
+     * to `HubMaterializationAgent`. When omitted, the service falls back to
+     * the legacy `HubDocService.regenerateSingleHub` stub (no LLM).
+     */
+    init(getSearchSettings: () => SearchSettings, regenerateFn?: HubRegenerateFn): void {
         this.getSearchSettings = getSearchSettings;
+        // Only overwrite when a fn is provided; boot ordering is:
+        //   1) IndexInitializer.init(getSettings)  ← no fn (legacy caller)
+        //   2) composeHubGenerationRuntime(getSettings, fn) ← installs fn
+        // We do not want (1) or a later settings refresh to clobber the fn from (2).
+        if (regenerateFn !== undefined) {
+            this.regenerateFn = regenerateFn;
+        }
     }
 
     /** Schedule a regen sweep after the debounce window (idempotent — multiple calls collapse). */
@@ -119,10 +140,13 @@ export class HubRegenService {
      *   3. Call materializeHubDocFromCandidate() — this also updates hub_constituent
      */
     private async regenerateHub(hubNodeId: string, hubPath: string): Promise<void> {
-        // Dynamic import to avoid circular deps (hubDocServices imports sqliteStoreManager)
+        if (this.regenerateFn) {
+            await this.regenerateFn(hubNodeId, hubPath);
+            return;
+        }
+        // Fallback: legacy stub warning. App layer should always inject a real fn.
         const { HubDocService } = await import('./hubDocServices');
         const searchSettings = this.getSearchSettings!();
-
         await HubDocService.regenerateSingleHub(hubNodeId, hubPath, searchSettings);
     }
 
