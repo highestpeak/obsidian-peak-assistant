@@ -90,6 +90,7 @@ export interface VaultLintConfig {
     stubMaxChars: number;
     oversizedMinWords: number;
     duplicateMinSimilarity: number;
+    duplicateMinTitleJaccard: number;
     staleHubDays: number;
     staleHubMinPageRankPercentile: number;
     phantomNodeMinReferences: number;

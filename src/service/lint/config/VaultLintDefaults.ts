@@ -57,6 +57,7 @@ export const DEFAULT_VAULT_LINT_CONFIG: VaultLintConfig = {
 		stubMaxChars: 100,
 		oversizedMinWords: 5000,
 		duplicateMinSimilarity: 0.92,
+		duplicateMinTitleJaccard: 0.50,
 		staleHubDays: 180,
 		staleHubMinPageRankPercentile: 75,
 		softOrphanMaxDegree: 2,

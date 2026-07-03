@@ -37,7 +37,32 @@ export function buildContentDetectors(config: VaultLintConfig): LintSignalDetect
 		buildOversizedDetector(config.thresholds.oversizedMinWords),
 		frontmatterMissingDetector,
 		namingViolationDetector,
+		buildDuplicateDetector(
+			config.thresholds.duplicateMinSimilarity,
+			config.thresholds.duplicateMinTitleJaccard,
+		),
 	];
+}
+
+/**
+ * Token set for a Jaccard comparison. Lowercase, alphanumeric-only,
+ * shorter than 2 characters is discarded so stopwords don't dominate
+ * small titles.
+ */
+export function titleTokens(title: string): Set<string> {
+	const tokens = title
+		.toLowerCase()
+		.split(/[^\p{L}\p{N}]+/u)
+		.filter((tok) => tok.length >= 2);
+	return new Set(tokens);
+}
+
+export function jaccard(a: Set<string>, b: Set<string>): number {
+	if (a.size === 0 && b.size === 0) return 0;
+	let intersection = 0;
+	for (const tok of a) if (b.has(tok)) intersection += 1;
+	const union = a.size + b.size - intersection;
+	return union === 0 ? 0 : intersection / union;
 }
 
 /**
@@ -230,6 +255,106 @@ export const namingViolationDetector: LintSignalDetector = {
 		return findings;
 	},
 };
+
+/**
+ * `C-DUPLICATE` — surface note pairs whose semantic similarity ≥
+ * `duplicateMinSimilarity` (default 0.92) AND whose title Jaccard
+ * similarity ≥ `duplicateMinTitleJaccard` (default 0.5). Uses the
+ * detector-context port's `listDocDegrees` for the node inventory and
+ * `getSemanticNeighbors` for pairwise checks.
+ *
+ * De-dup: pairs (A→B) and (B→A) collapse to a single canonical (min,
+ * max) pair-key so users see one finding per duplicate group; the
+ * finding is anchored on the lexicographically-smaller path.
+ */
+const DUPLICATE_FETCH_LIMIT = 5_000;
+const DUPLICATE_NEIGHBOR_LIMIT = 5;
+
+function buildDuplicateDetector(
+	minSimilarity: number,
+	minTitleJaccard: number,
+): LintSignalDetector {
+	return {
+		id: 'C-DUPLICATE',
+		dimension: 'content',
+		severity: 'warning',
+		signalWeight: 0.25,
+		requiresLlm: false,
+
+		async detect(context: LintScanContext): Promise<LintFinding[]> {
+			const dc = context.detectorContext;
+			const rows = await dc.listDocDegrees(DUPLICATE_FETCH_LIMIT);
+			if (rows.length === 0) return [];
+
+			const nodeInfo = new Map<string, { label: string; filePath: string | null }>();
+			const tokenCache = new Map<string, Set<string>>();
+			for (const row of rows) {
+				nodeInfo.set(row.nodeId, { label: row.label, filePath: row.filePath });
+				tokenCache.set(row.nodeId, titleTokens(row.label));
+			}
+
+			const seenPairs = new Set<string>();
+			const findings: LintFinding[] = [];
+
+			for (const row of rows) {
+				let neighbors: Awaited<ReturnType<typeof dc.getSemanticNeighbors>>;
+				try {
+					neighbors = await dc.getSemanticNeighbors(row.nodeId, DUPLICATE_NEIGHBOR_LIMIT, new Set());
+				} catch {
+					continue;
+				}
+				const myTokens = tokenCache.get(row.nodeId)!;
+				for (const n of neighbors) {
+					if (n.id === row.nodeId) continue;
+					const simPct = parseFloat(n.similarity);
+					if (!Number.isFinite(simPct)) continue;
+					const sim = simPct / 100;
+					if (sim < minSimilarity) continue;
+					const theirTokens = tokenCache.get(n.id) ?? titleTokens(n.label);
+					const j = jaccard(myTokens, theirTokens);
+					if (j < minTitleJaccard) continue;
+
+					const otherInfo = nodeInfo.get(n.id) ?? { label: n.label, filePath: null };
+					const [a, b] = [row.nodeId, n.id].sort();
+					const pairKey = `${a}::${b}`;
+					if (seenPairs.has(pairKey)) continue;
+					seenPairs.add(pairKey);
+
+					const anchor = row.nodeId === a
+						? { nodeId: row.nodeId, label: row.label, filePath: row.filePath }
+						: { nodeId: n.id, label: otherInfo.label, filePath: otherInfo.filePath };
+					const partner = row.nodeId === a
+						? { nodeId: n.id, label: otherInfo.label, filePath: otherInfo.filePath }
+						: { nodeId: row.nodeId, label: row.label, filePath: row.filePath };
+
+					const dismissalKey = `C-DUPLICATE:${anchor.filePath ?? anchor.nodeId}`;
+					if (context.dismissals.has(dismissalKey)) continue;
+
+					findings.push({
+						id: findingId('C-DUPLICATE', pairKey),
+						signalId: 'C-DUPLICATE',
+						severity: 'warning',
+						filePath: anchor.filePath,
+						title: `Likely duplicate: ${anchor.label} ↔ ${partner.label}`,
+						description: `Semantic similarity ${(sim * 100).toFixed(1)}% (≥ ${(minSimilarity * 100).toFixed(0)}%), title overlap ${(j * 100).toFixed(0)}% (≥ ${(minTitleJaccard * 100).toFixed(0)}%). Merge into a single note or link them explicitly.`,
+						fixActions: ['merge-notes', 'link-as-alias'],
+						metadata: {
+							similarity: sim,
+							titleJaccard: j,
+							partner: {
+								nodeId: partner.nodeId,
+								filePath: partner.filePath,
+								label: partner.label,
+							},
+						},
+						status: 'open',
+					});
+				}
+			}
+			return findings;
+		},
+	};
+}
 
 function buildStubDetector(stubMaxChars: number): LintSignalDetector {
 	return {

@@ -18,9 +18,11 @@ import {
 	detectNamingViolation,
 	frontmatterMissingDetector,
 	hasFrontmatter,
+	jaccard,
 	namingViolationDetector,
 	strippedLength,
 	strippedWordCount,
+	titleTokens,
 } from '@/service/lint/signals/content';
 import { buildTagDetectors, untaggedDetector } from '@/service/lint/signals/tags';
 import { buildHubDetectors } from '@/service/lint/signals/hub';
@@ -696,6 +698,100 @@ async function main(): Promise<void> {
 	await testSoftOrphanDetectorFiresBelowThreshold();
 	await testSoftOrphanDetectorSkipsHardOrphans();
 	await testSoftOrphanDetectorRespectsDismissals();
+	await testDuplicateDetectorFiresAndDeDups();
+	await testDuplicateDetectorSkipsLowTitleOverlap();
+	await testDuplicateDetectorRespectsDismissals();
+	testTitleTokensAndJaccardHelpers();
+}
+
+async function testDuplicateDetectorFiresAndDeDups(): Promise<void> {
+	const detectors = buildContentDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: {
+			...DEFAULT_VAULT_LINT_CONFIG.thresholds,
+			duplicateMinSimilarity: 0.92,
+			duplicateMinTitleJaccard: 0.5,
+		},
+	});
+	const dup = detectors.find((d) => d.id === 'C-DUPLICATE');
+	assert.ok(dup, 'buildContentDetectors must include C-DUPLICATE');
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'a', label: 'Vector search architecture', filePath: 'a.md', incoming: 1, outgoing: 1 },
+			{ nodeId: 'b', label: 'Vector search internals architecture', filePath: 'b.md', incoming: 1, outgoing: 1 },
+		],
+		semanticNeighbors: {
+			// bi-directional: a→b and b→a both surface, but detector de-dups
+			a: [{ id: 'b', label: 'Vector search internals architecture', type: 'IndexedDoc', attributes: null, similarity: '95.0%' }],
+			b: [{ id: 'a', label: 'Vector search architecture', type: 'IndexedDoc', attributes: null, similarity: '95.0%' }],
+		},
+	});
+	const findings = await dup!.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 1, 'pair (a,b) and (b,a) collapse to one finding');
+	assert.strictEqual(findings[0]!.filePath, 'a.md', 'anchor is lexicographically-smaller node');
+	assert.match(findings[0]!.title, /Likely duplicate/);
+	const meta = findings[0]!.metadata as any;
+	assert.ok(meta.similarity >= 0.92);
+	assert.ok(meta.titleJaccard >= 0.5);
+	assert.strictEqual(meta.partner.nodeId, 'b');
+	console.log('PASS: duplicateDetectorFiresAndDeDups');
+}
+
+async function testDuplicateDetectorSkipsLowTitleOverlap(): Promise<void> {
+	// Similar embeddings but different titles → likely different notes
+	// (e.g. two papers on the same topic with distinct focuses). Should
+	// NOT fire.
+	const detectors = buildContentDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: {
+			...DEFAULT_VAULT_LINT_CONFIG.thresholds,
+			duplicateMinSimilarity: 0.90,
+			duplicateMinTitleJaccard: 0.5,
+		},
+	});
+	const dup = detectors.find((d) => d.id === 'C-DUPLICATE')!;
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'p1', label: 'Ranking algorithms overview', filePath: 'p1.md', incoming: 1, outgoing: 1 },
+			{ nodeId: 'p2', label: 'PageRank convergence proof', filePath: 'p2.md', incoming: 1, outgoing: 1 },
+		],
+		semanticNeighbors: {
+			p1: [{ id: 'p2', label: 'PageRank convergence proof', type: 'IndexedDoc', attributes: null, similarity: '93.0%' }],
+			p2: [{ id: 'p1', label: 'Ranking algorithms overview', type: 'IndexedDoc', attributes: null, similarity: '93.0%' }],
+		},
+	});
+	const findings = await dup.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: duplicateDetectorSkipsLowTitleOverlap');
+}
+
+async function testDuplicateDetectorRespectsDismissals(): Promise<void> {
+	const detectors = buildContentDetectors(DEFAULT_VAULT_LINT_CONFIG);
+	const dup = detectors.find((d) => d.id === 'C-DUPLICATE')!;
+	const dc = makeFakeContext({
+		docDegrees: [
+			{ nodeId: 'a', label: 'Same title', filePath: 'a.md', incoming: 1, outgoing: 1 },
+			{ nodeId: 'b', label: 'Same title', filePath: 'b.md', incoming: 1, outgoing: 1 },
+		],
+		semanticNeighbors: {
+			a: [{ id: 'b', label: 'Same title', type: 'IndexedDoc', attributes: null, similarity: '99.0%' }],
+			b: [{ id: 'a', label: 'Same title', type: 'IndexedDoc', attributes: null, similarity: '99.0%' }],
+		},
+	});
+	const findings = await dup.detect(
+		makeScanContext(dc, ['C-DUPLICATE:a.md']),
+	);
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: duplicateDetectorRespectsDismissals');
+}
+
+function testTitleTokensAndJaccardHelpers(): void {
+	assert.deepStrictEqual(Array.from(titleTokens('Vector Search — internals!')).sort(), ['internals', 'search', 'vector']);
+	assert.deepStrictEqual(Array.from(titleTokens('a.b.c 42')).sort(), ['42']); // single-char tokens dropped
+	assert.strictEqual(jaccard(new Set(['a']), new Set(['a'])), 1);
+	assert.strictEqual(jaccard(new Set(['a', 'b']), new Set(['b', 'c'])), 1 / 3);
+	assert.strictEqual(jaccard(new Set(), new Set()), 0);
+	console.log('PASS: titleTokensAndJaccardHelpers');
 }
 
 async function testSoftOrphanDetectorFiresBelowThreshold(): Promise<void> {
