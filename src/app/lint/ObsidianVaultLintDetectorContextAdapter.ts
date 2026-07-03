@@ -27,6 +27,7 @@ import type {
 	VaultLintDetectorFileRef,
 	VaultLintDetectorGraphNode,
 	VaultLintDetectorSemanticNeighbor,
+	VaultLintDetectorStaleHub,
 	VaultLintDetectorTagInfo,
 } from '@/core/ports/VaultLintPorts';
 
@@ -94,6 +95,17 @@ export class ObsidianVaultLintDetectorContextAdapter
 
 	isIndexedNoteNodeType(type: string): boolean {
 		return isIndexedNoteNodeType(type);
+	}
+
+	async getStaleHubs(limit: number): Promise<VaultLintDetectorStaleHub[]> {
+		const rows = await sqliteStoreManager
+			.getMobiusNodeRepo()
+			.getStaleHubs(limit);
+		return rows.map((r) => ({
+			nodeId: r.node_id,
+			hubStaleSince: r.hub_stale_since,
+			pagerank: r.pagerank,
+		}));
 	}
 
 	async getSemanticNeighbors(

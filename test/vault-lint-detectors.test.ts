@@ -23,6 +23,7 @@ import {
 	strippedWordCount,
 } from '@/service/lint/signals/content';
 import { buildTagDetectors, untaggedDetector } from '@/service/lint/signals/tags';
+import { buildHubDetectors } from '@/service/lint/signals/hub';
 import {
 	orphanDetector,
 	brokenLinkDetector,
@@ -38,6 +39,7 @@ import type {
 	VaultLintDetectorFileRef,
 	VaultLintDetectorGraphNode,
 	VaultLintDetectorSemanticNeighbor,
+	VaultLintDetectorStaleHub,
 	VaultLintDetectorTagInfo,
 } from '@/core/ports/VaultLintPorts';
 
@@ -55,6 +57,7 @@ interface FakeContextSpec {
 	indexedNoteTypes?: ReadonlySet<string>;
 	semanticNeighbors?: Record<string, VaultLintDetectorSemanticNeighbor[]>;
 	semanticThrows?: boolean;
+	staleHubs?: VaultLintDetectorStaleHub[];
 }
 
 function makeFakeContext(spec: FakeContextSpec = {}): VaultLintDetectorContextPort {
@@ -84,6 +87,9 @@ function makeFakeContext(spec: FakeContextSpec = {}): VaultLintDetectorContextPo
 		async getSemanticNeighbors(nodeId: string): Promise<VaultLintDetectorSemanticNeighbor[]> {
 			if (spec.semanticThrows) throw new Error('embedding store unavailable');
 			return spec.semanticNeighbors?.[nodeId] ?? [];
+		},
+		async getStaleHubs(_limit: number): Promise<VaultLintDetectorStaleHub[]> {
+			return spec.staleHubs ?? [];
 		},
 	};
 }
@@ -678,6 +684,102 @@ async function main(): Promise<void> {
 	await testOrphanDetectorTolersSemanticPortFailures();
 	await testOrphanDetectorRespectsDismissalsKeyedByPath();
 	testBuildBrokenLinkFindingsIsUnchanged();
+	await testStaleHubDetectorFiresPastThreshold();
+	await testStaleHubDetectorSkipsFreshHubs();
+	await testStaleHubDetectorRespectsDismissals();
+}
+
+// ---------------------------------------------------------------------------
+// Hub detectors
+// ---------------------------------------------------------------------------
+
+async function testStaleHubDetectorFiresPastThreshold(): Promise<void> {
+	const detectors = buildHubDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, staleHubDays: 30 },
+	});
+	const stale = detectors.find((d) => d.id === 'T-STALE-HUB');
+	assert.ok(stale, 'buildHubDetectors must include T-STALE-HUB');
+	const now = Date.now();
+	const fortyDaysMs = 40 * 24 * 60 * 60 * 1000;
+	const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+	const dc = makeFakeContext({
+		staleHubs: [
+			{ nodeId: 'hub-1', hubStaleSince: now - fortyDaysMs, pagerank: 0.02 },
+			{ nodeId: 'hub-2', hubStaleSince: now - twoDaysMs, pagerank: 0.01 },
+		],
+		nodes: {
+			'hub-1': {
+				id: 'hub-1',
+				label: 'Old Hub',
+				type: 'HubDoc',
+				attributes: JSON.stringify({ path: 'hubs/old.md' }),
+			},
+			'hub-2': {
+				id: 'hub-2',
+				label: 'Fresh Hub',
+				type: 'HubDoc',
+				attributes: JSON.stringify({ path: 'hubs/fresh.md' }),
+			},
+		},
+	});
+	const findings = await stale!.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 1);
+	assert.strictEqual(findings[0]!.filePath, 'hubs/old.md');
+	assert.strictEqual(findings[0]!.signalId, 'T-STALE-HUB');
+	assert.deepStrictEqual(findings[0]!.fixActions, ['review-update', 'mark-current']);
+	assert.strictEqual((findings[0]!.metadata as any).thresholdDays, 30);
+	assert.ok((findings[0]!.metadata as any).ageDays >= 40);
+	console.log('PASS: staleHubDetectorFiresPastThreshold');
+}
+
+async function testStaleHubDetectorSkipsFreshHubs(): Promise<void> {
+	const detectors = buildHubDetectors(DEFAULT_VAULT_LINT_CONFIG);
+	const stale = detectors.find((d) => d.id === 'T-STALE-HUB')!;
+	const now = Date.now();
+	const dc = makeFakeContext({
+		staleHubs: [
+			{ nodeId: 'hub-3', hubStaleSince: now - 1 * 24 * 60 * 60 * 1000, pagerank: null },
+		],
+		nodes: {
+			'hub-3': {
+				id: 'hub-3',
+				label: 'One Day Old',
+				type: 'HubDoc',
+				attributes: JSON.stringify({ path: 'h.md' }),
+			},
+		},
+	});
+	const findings = await stale.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: staleHubDetectorSkipsFreshHubs');
+}
+
+async function testStaleHubDetectorRespectsDismissals(): Promise<void> {
+	const detectors = buildHubDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, staleHubDays: 1 },
+	});
+	const stale = detectors.find((d) => d.id === 'T-STALE-HUB')!;
+	const now = Date.now();
+	const dc = makeFakeContext({
+		staleHubs: [
+			{ nodeId: 'hub-x', hubStaleSince: now - 10 * 24 * 60 * 60 * 1000, pagerank: null },
+		],
+		nodes: {
+			'hub-x': {
+				id: 'hub-x',
+				label: 'Retired',
+				type: 'HubDoc',
+				attributes: JSON.stringify({ path: 'retired.md' }),
+			},
+		},
+	});
+	const findings = await stale.detect(
+		makeScanContext(dc, ['T-STALE-HUB:retired.md']),
+	);
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: staleHubDetectorRespectsDismissals');
 }
 
 main()

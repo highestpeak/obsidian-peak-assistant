@@ -14,6 +14,7 @@
 import { orphanDetector, brokenLinkDetector } from '../signals/structural';
 import { emptyDetector, buildContentDetectors } from '../signals/content';
 import { buildTagDetectors, untaggedDetector } from '../signals/tags';
+import { buildHubDetectors } from '../signals/hub';
 import type {
 	LintSignalDetector,
 	LintSignalId,
@@ -44,6 +45,9 @@ export class InMemoryDetectorRegistry implements VaultLintDetectorRegistryPort {
 			if (detector.id !== 'G-UNTAGGED') this.detectors.set(detector.id, detector);
 		}
 		this.detectors.set(untaggedDetector.id, untaggedDetector);
+		for (const detector of buildHubDetectors(config)) {
+			this.detectors.set(detector.id, detector);
+		}
 		this.initialized = true;
 	}
 

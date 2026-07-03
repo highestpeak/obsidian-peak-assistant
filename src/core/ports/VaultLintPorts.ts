@@ -142,6 +142,18 @@ export interface VaultLintDetectorSemanticNeighbor {
 }
 
 /**
+ * Hub-doc node whose `hub_stale_since` timestamp has been set by the
+ * cascade worker (member docs changed after the hub was last
+ * regenerated). Returned by `getStaleHubs` so the T-STALE-HUB detector
+ * can report them without reaching into sqlite directly.
+ */
+export interface VaultLintDetectorStaleHub {
+	readonly nodeId: string;
+	readonly hubStaleSince: number;
+	readonly pagerank: number | null;
+}
+
+/**
  * Single dependency surface for detectors.
  *
  * Today this is shaped to cover the four T7-closure callers:
@@ -168,6 +180,13 @@ export interface VaultLintDetectorContextPort {
 		limit: number,
 		excludeIds: ReadonlySet<string>,
 	): Promise<VaultLintDetectorSemanticNeighbor[]>;
+	/**
+	 * Return stale hub-doc nodes (those with a non-null
+	 * `hub_stale_since` timestamp). Used by the T-STALE-HUB detector.
+	 * Bounded by `limit`; ordered oldest-stale-first so early scans
+	 * catch the longest-standing debt.
+	 */
+	getStaleHubs(limit: number): Promise<VaultLintDetectorStaleHub[]>;
 }
 
 /**
