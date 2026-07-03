@@ -1,10 +1,57 @@
 # 多模态生成能力调研：Image / Video / Music / Voice 与 Obsidian Studio 形态
 
 - **日期**：2026-07-01
-- **状态**：调研完成，未实施
+- **状态**：**已实施骨架**（2026-07-03 commit `459aa5ba`，见下方 §实施记录）
 - **类型**：产品方向调研（学术 + 产业 + 竞品 + 第一性原理 + 集成架构）
 - **姊妹调研**：`docs/research/2026-07-01-rich-generation-in-chat/`（Mermaid/Bases/Excalidraw/Dataview 富生成）——本报告在其之上补齐"重度媒体生成"这一层
 - **候选功能索引**：见 `docs/index.html` → "潜在功能与调研索引"
+
+## 实施记录（2026-07-03）
+
+Backlog D4 Multimodal Media Ring 已落地骨架，本节记录**方案选择的对应实现**，方便后来者对齐：
+
+### 架构选择：Port + Adapter（对应报告 §骨干选择）
+
+| 报告结论 | 落地方式 |
+|---|---|
+| "不要为每个 provider 写 adapter，沿用已有 provider 抽象套一层聚合器" | 抽象层：`src/core/ports/MediaGenerationPort.ts` — 三方法 (`generate` / `isConfigured`)，输入 `MediaGenerationRequest { kind, prompt, styleHint, negativePrompt, aspectRatio }`，输出 `MediaGenerationResult { bytes, extension, mimeType, modelId, latencyMs }`。**换 provider 只需实现一个新 adapter，orchestration 层零改动。** |
+| "主推 fal.ai，Replicate 做备胎" | 具体 adapter：`src/app/platform/media/FalMediaAdapter.ts`（唯一一个 shipped）。fal.ai queue.fal.run 提交-轮询模式，指数退避 1.5s → 5s，超时 5min。Replicate 备胎位置留给未来 `ReplicateMediaAdapter`。 |
+| "TTS + 封面图必做，视频界面暂不暴露" | 命令：`peak-media-tts-active-note` + `peak-media-cover-active-note`。视频只在 `FalMediaAdapter.defaultModelFor('video')` 里留了默认 model id (`fal-ai/veo3/text-to-video`)，没接命令 UI。 |
+| "产物必须落 vault + 附件生命周期" | 写回：`ObsidianMediaAttachmentWriter` — 默认目录 `_attachments/media/`（可 override），带时间戳冲突后缀，`createBinary`。 |
+| "成本必须显性化" | 尚未实施：`FalMediaAdapter.generate` 返回 `latencyMs` 但没记 cost。属于后续 Usage Dashboard 挂接。 |
+
+### 具体 model 选择
+
+`FalMediaAdapter` 默认值（都可以 `styleHint = "model:..."` override）：
+
+- **TTS**：`fal-ai/kokoro/american-english`（开源 Kokoro，声音自然、成本极低——`voice: af_bella` 默认）
+- **图像**：`fal-ai/fast-sdxl`（比 Flux 便宜 3-5×，够用于笔记封面；未来若用户抱怨质量再上 Flux）
+- **视频**：`fal-ai/veo3/text-to-video`（占位，未接命令）
+
+### 设置 shape
+
+`AIServiceSettings` 新增两字段：
+
+```ts
+falApiKey?: string;          // 用户去 fal.ai 拿 key 填这里
+mediaAttachmentFolder?: string; // 默认 '_attachments/media'
+```
+
+### 缺口 / follow-up
+
+以下功能报告里点了，但**没实施**（诚实标记）：
+
+1. **NotebookLM 风格笔记播客**——需要双人 TTS 编排 + 对话脚本生成，不是单 `generate` 调用，需要新 orchestrator 层
+2. **Chat 内插图**——需要挂到 chat 消息流（同 D3.mermaid 的位置），会用同一个 `MediaGenerationPort`
+3. **Project style token**（每个项目一致的视觉风格）——需要设置层 + prompt 组装策略
+4. **Cost tracking**——Usage Dashboard 联动
+5. **`ReplicateMediaAdapter`**——备胎位，没写
+6. **音乐**——报告直接说 "放弃"，本次也没做
+
+要接入以上任一项：写新 orchestrator / 命令即可，`MediaGenerationPort` 层无需改动。
+
+---
+
 
 ## TL;DR
 

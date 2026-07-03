@@ -614,6 +614,48 @@ sequenceDiagram
           </div>
         </section>
 
+        <section id="copilot-command-center">
+          <h2>Copilot Command Center meta-agent（D2 · 2026-07-03 shipped）</h2>
+          <p class="lead">Command Gateway 的第一个"AI 组合器"是 <strong>Copilot Command Center</strong>——不是单一 command，而是让 meta-agent 根据用户的一句话目标 <em>草拟一串 command 顺序</em>，然后逐条 <code>gateway.dispatch(commandId)</code>。</p>
+
+          <h3>为什么走 CommandGateway 而不是 Copilot 自己实现</h3>
+          <ol>
+            <li><strong>不重造能力</strong> — Copilot 想让用户"summarize this note then draft link suggestions then run vault-health"？三个 command 都已经在 CommandGateway 里注册过，直接引用 commandId。</li>
+            <li><strong>Curator/PermissionGuard 生效</strong> — 走同一个 <code>runCapability</code>，manifest/permission 分级不需要额外接线。</li>
+            <li><strong>路径统一</strong> — palette 手动触发、Copilot meta-agent 触发、未来 Skills 触发，全部经 <code>dispatch(commandId)</code>；trace 里 <code>trigger</code> 字段区分。</li>
+          </ol>
+
+          <h3>数据流</h3>
+          <div class="claim">
+            <strong>plan 只引用已注册 commandId</strong>
+            <code>copilot-command-center-plan</code> 系统 prompt 把 <code>commandGateway.all()</code> 的当前列表塞进上下文，硬约束"MUST be one of the ones listed above"。<code>capabilityPlanStepSchema</code> 里 <code>readOnly: boolean</code> 让规划器区分读 vs 写，Executor 在写-步骤失败时立即停手，避免部分 mutation 级联。
+          </div>
+
+          <p class="prose">流程：用户在 <code>CopilotCommandCenterModal</code> 输入 goal → <code>CopilotCommandCenterService.planOnly()</code> 走 <code>queryStructured</code> 拿到 <code>CapabilityPlan</code>（<code>planTitle</code> / <code>summary</code> / <code>goalRestatement</code> / <code>steps[1..8]</code> / <code>confidence</code>）→ modal 展示 review → 用户点 Execute → <code>executePlan()</code> 逐条 <code>gateway.dispatch</code> → 每步 outcome 汇总回 <code>stepOutcomes</code>。</p>
+
+          <h3>失败模式</h3>
+          <ul>
+            <li>规划器凭空生成不存在的 <code>commandId</code> → executor 按 <code>outcome: 'skipped'</code> 继续下一步（不中断）</li>
+            <li>写-步骤失败（<code>readOnly: false</code> + throw）→ executor 立即停止，保护后续写不做</li>
+            <li>读-步骤失败 → 记为 <code>failed</code> 但继续（读失败不脏化状态）</li>
+          </ul>
+
+          <h3>代码证据</h3>
+          <ul>
+            <li>Service: <code>src/service/copilot/CopilotCommandCenterService.ts</code>（<code>planOnly</code> + <code>executePlan</code>）</li>
+            <li>Modal: <code>src/app/ui-host/modals/CopilotCommandCenterModal.ts</code>（goal → plan → execute 三段）</li>
+            <li>Schema: <code>src/core/schemas/agents/copilotCommandCenter.ts</code>（<code>capabilityPlanSchema</code>）</li>
+            <li>Prompt: <code>templates/prompts/copilot-command-center-plan.md</code></li>
+            <li>Command: <code>peak-copilot-command-center</code>（<code>main.ts</code>）</li>
+            <li>Spec: <code>docs/superpowers/specs/2026-05-14-copilot-command-center-user-centered-redesign.md</code></li>
+          </ul>
+
+          <div class="claim warn">
+            <strong>Review panel 侧栏形态未做</strong>
+            spec 提到"侧栏 / 弹窗 / review panel 三种承载方式"，本轮只做了 modal（三段就在同一个 modal 里切换）。侧栏形态需要 workspace leaf 注册 + 状态持久化，是产品迭代事项。
+          </div>
+        </section>
+
         <section id="risks">
           <h2>禁止 / 阻断的场景</h2>
           <p class="lead">下列 command 类别 <strong>不进入 Curator 建议流程</strong>——直接由规则拒绝。规则永远高于 AI，AI 高于用户默认，用户显式高于 AI 默认——但系统 deny 永远最高。</p>

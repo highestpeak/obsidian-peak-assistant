@@ -139,6 +139,11 @@
               <tr><td><strong>Query Pattern Discovery</strong></td><td>LLM 驱动查询模式发现 + 上下文建议</td><td>Phase I</td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Onboarding + 三档索引</strong></td><td>4 步 Onboarding + fast/semantic/full 索引档 + 智能升级提示</td><td>Phase AC / Q</td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Usage Dashboard</strong></td><td>全站 AI 调用追踪 + SQLite 持久化 + KPI/Budget/Optimization 三屏</td><td>Phase Y / AP</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Hub Generation Agent</strong></td><td>Curator + Materializer 两 agent 串联替代 stub；LLM 自决 hub 数量 / 合并 / 淘汰 + coverage 自评；merge 遇 user-owned 拦截；retire 归档不删；single-hub stale fallback</td><td>2026-07-03 · commit <code>6bea87c3</code></td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Chat 富生成（Mermaid / Bases）</strong></td><td><code>conversation-system.md</code> 加 mermaid vault-link 约定（<code>peak://wikilink/</code> URL scheme）+ SVG anchor click 识别；Obsidian Bases YAML 完整 schema 注入 prompt</td><td>2026-07-03 · commit <code>459aa5ba</code></td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Ambient Current Work State（D1 状态栏面）</strong></td><td>状态栏读 <code>SessionContextService.workingTheme.llmInferred.summary</code>（<code>WorkingThemeInferrer</code> 已在推断），60s 定时刷新，fallback 到 related count；gutter / briefing 面待接入</td><td>2026-07-03 · commit <code>459aa5ba</code></td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Copilot Command Center（D2 骨架）</strong></td><td>Meta-agent 起草 capability plan（<code>capabilityPlanSchema</code>）→ modal 逐步评审 → gateway dispatch；写步骤失败即停</td><td>2026-07-03 · commit <code>459aa5ba</code></td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Multimodal Media Ring（D4 骨架）</strong></td><td><code>MediaGenerationPort</code> 抽象 + <code>FalMediaAdapter</code>（TTS / 图 / 视频；queue.fal.run 提交-轮询） + <code>MediaRingService</code> + Obsidian binary writer；fal.ai key 在 <code>AIServiceSettings</code>；2 命令（TTS + 封面图）</td><td>2026-07-03 · commit <code>459aa5ba</code></td><td><span class="pill green">shipped</span></td></tr>
             </tbody>
           </table>
 
@@ -237,12 +242,7 @@
                 <td><a href="progress.md">progress.md</a></td>
                 <td><span class="pill red">landed 未验证</span></td>
               </tr>
-              <tr>
-                <td><strong>Hub Generation Agent</strong></td>
-                <td>Curator + Materializer 两 agent 串联替换 <code>HubDocService.regenerateHubByNodeId</code> stub；复用现有 PageRank / Louvain / SQL 复合 hub score + KnowledgeIntuitionAgent 骨架；LLM 自决数量 / 合并 / 淘汰。5 phase 独立交付。</td>
-                <td><a href="superpowers/specs/2026-07-03-hub-generation-agent.md">Spec</a> · <a href="research/2026-07-03-hub-generation-agent-design/README.md">Research</a></td>
-                <td><span class="pill gold">decided</span></td>
-              </tr>
+              <!-- Hub Generation Agent 2026-07-03 shipped as commit 6bea87c3 — see #done -->
             </tbody>
           </table>
         </section>
@@ -256,12 +256,8 @@
               <tr><th>日期</th><th>方向</th><th>结论</th><th>调研</th></tr>
             </thead>
             <tbody>
-              <tr>
-                <td>2026-07-01</td>
-                <td><strong>Chat 内富生成能力</strong>（Mermaid / Bases / Excalidraw / Dataview / drawio）</td>
-                <td>必要性高；分层押注：Mermaid + Bases 必做，Excalidraw 复用官方管线，Dataview 只生成，drawio 放弃。差异化押"vault-aware 生图"。</td>
-                <td><a href="research/2026-07-01-rich-generation-in-chat/README.md">研究报告</a></td>
-              </tr>
+              <!-- Chat 内富生成能力 2026-07-03 shipped as commit 459aa5ba (Mermaid + Bases) — see #done -->
+              <!-- Multimodal Media Ring 2026-07-03 shipped骨架 as commit 459aa5ba — see #done for scope. Excalidraw / Dataview / 视频 / 音乐 / 播客 未做,仍在 backlog。-->
               <tr>
                 <td>2026-07-01</td>
                 <td><strong>多模态生成（Image / Video / Music / Voice）与 Studio 形态</strong></td>

@@ -83,7 +83,7 @@
     .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
     .note-item b { display: block; margin-bottom: 3px; }
     .note-item span { color: var(--muted); font-size: 14px; }
-    .recipe-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 22px; }
+    .recipe-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 22px; }
     .recipe { padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: 0 10px 22px rgba(23, 34, 29, 0.04); }
     .recipe h3 { margin: 0 0 8px; font-size: 17px; color: var(--ink); }
     .recipe .steps { margin: 6px 0 8px; padding-left: 18px; color: var(--muted); font-size: 14px; line-height: 1.6; }
@@ -115,7 +115,7 @@
       <h1>Vault Intelligence 告诉你哪些笔记正在腐烂，哪些地方缺连接，哪些可以修。</h1>
       <p class="subtitle">Search（12）帮你找回一篇具体笔记。<strong>Vault Intelligence</strong> 处理另一个问题：把整个 Vault 当成一张有健康度、断裂点、失效枢纽的知识图，把肉眼看不到的信号显影出来。这份文档面向两个读者：想理解 <em>Health / Hubs / Structural holes / Lint / Bridge</em> 各自意味着什么并且知道下一步怎么做的 Obsidian 用户；以及要维护这条管线的开发者。用户视角在前，技术附录在后。</p>
       <div class="meta">
-        <span>Status: current draft · 2026-07-01</span>
+        <span>Reference doc</span>
         <span>Approx. length: 约 12k 混合字符</span>
         <span>Reading time: 24-28 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
@@ -163,8 +163,8 @@
             不重复 Search（<a href="12-feature-search.html">12</a>）；不解释 Chat / Copilot 的对话形态（<a href="11-feature-chat-context.html">11</a>）；不定义索引数据库结构（那是 23-infra-search-index）。当 Vault Intelligence 的信号是靠索引才能算出来时，本文会说明依赖，但不重写索引本身。
           </div>
           <div class="claim">
-            <strong>已发货 vs 规划中</strong>
-            这条管线上有一部分是 <em>shipped</em>（Vault Lint 5 类 signals 各自的一部分 + Health score + 6 类可修复建议）；一部分是 <em>partial</em>（hub 目录 + hub staleness 检测已经在跑，hub doc 材化本身还是 stub）；一部分是 <em>spec-only</em>（<code>vault-lint-config.json</code> 里的很多阈值今天并没有对应 detector）。每节会显式标注。
+            <strong>读法</strong>
+            先把五类维度当成“Vault 健康的五个视角”来读：结构、内容、语义、时间、标签。概览只解释每类问什么问题；具体 signal、阈值、误判场景和修复动作放在 <a href="#signals">每类信号细看</a>，避免把整页变成一张状态表。
           </div>
         </section>
 
@@ -183,11 +183,11 @@ flowchart LR
   Graph[(mobius_node / mobius_edge<br>+ unresolved links)]
   Semantic[(embeddings +<br>semantic neighbors)]
 
-  Notes --> Content["Content 20%<br>C-EMPTY / C-STUB / ..."]
-  Notes --> Tags["Tags 10%<br>G-UNTAGGED / ..."]
-  Graph --> Structural["Structural 30%<br>S-ORPHAN / S-BROKEN-LINK / ..."]
-  Semantic --> SemDim["Semantic 25%<br>M-COVERAGE-GAP / M-CONTRADICTION / ..."]
-  Notes --> Temporal["Temporal 15%<br>T-STALE-HUB / T-DECAYING-BRIDGE / ..."]
+  Notes --> Content["Content 20%<br/>笔记内容质量"]
+  Notes --> Tags["Tags 10%<br/>标签系统"]
+  Graph --> Structural["Structural 30%<br/>链接和图结构"]
+  Semantic --> SemDim["Semantic 25%<br/>话题结构"]
+  Notes --> Temporal["Temporal 15%<br/>时间衰减"]
 
   Structural --> Health((Health<br>0-100))
   Content --> Health
@@ -199,49 +199,49 @@ flowchart LR
           </div>
 
           <table class="doc-table">
-<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+<colgroup><col style="width: 22%"><col><col style="width: 28%"></colgroup>
             <thead>
-              <tr><th>维度</th><th>问的问题</th><th>典型 signal（本工程 signal ID）</th><th>权重</th></tr>
+              <tr><th>维度</th><th>问的问题</th><th>代表 signal</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td><strong>Structural</strong><br><span class="pill green">最重要</span></td>
                 <td>图上有没有断链、孤岛、脆弱桥？</td>
-                <td><code>S-ORPHAN</code>、<code>S-BROKEN-LINK</code>、<code>S-SOFT-ORPHAN</code>、<code>S-ISLAND-CLUSTER</code>、<code>S-FRAGILE-BRIDGE</code>、<code>S-MISSING-BACKLINK</code></td>
-                <td>0.30</td>
+                <td><code>S-ORPHAN</code> / <code>S-BROKEN-LINK</code></td>
               </tr>
               <tr>
                 <td><strong>Content</strong></td>
                 <td>笔记本身是不是空的 / 太短 / 太长 / 重复 / frontmatter 缺失？</td>
-                <td><code>C-EMPTY</code>、<code>C-STUB</code>、<code>C-OVERSIZED</code>、<code>C-DUPLICATE</code>、<code>C-FRONTMATTER-MISSING</code>、<code>C-NAMING-VIOLATION</code></td>
-                <td>0.20</td>
+                <td><code>C-EMPTY</code> / <code>C-DUPLICATE</code></td>
               </tr>
               <tr>
                 <td><strong>Semantic</strong></td>
                 <td>整个 Vault 的话题结构：有没有 coverage gap / low cohesion / phantom node / contradiction？</td>
-                <td><code>M-COVERAGE-GAP</code>、<code>M-LOW-COHESION</code>、<code>M-CONTRADICTION</code>、<code>M-PHANTOM-NODE</code>、<code>M-SEMANTIC-ISOLATION</code>、<code>M-REDUNDANT-HUBS</code></td>
-                <td>0.25</td>
+                <td><code>M-COVERAGE-GAP</code> / <code>M-CONTRADICTION</code></td>
               </tr>
               <tr>
                 <td><strong>Temporal</strong></td>
                 <td>时间维度：哪些 hub / bridge / cluster / folder 已经腐烂了？</td>
-                <td><code>T-STALE-HUB</code>、<code>T-DECAYING-BRIDGE</code>、<code>T-ABANDONED-CLUSTER</code>、<code>T-RECENT-DRIFT</code>、<code>T-ABANDONED-FOLDER</code></td>
-                <td>0.15</td>
+                <td><code>T-STALE-HUB</code> / <code>T-ABANDONED-CLUSTER</code></td>
               </tr>
               <tr>
                 <td><strong>Tags</strong></td>
                 <td>标签系统是否可用（覆盖率、爆炸、噪声）？</td>
-                <td><code>G-UNTAGGED</code>、<code>G-TAG-ISLAND</code>、<code>G-TAG-REDUNDANCY</code>、<code>G-TAG-EXPLOSION</code>、<code>G-NOISE-TAGS</code></td>
-                <td>0.10</td>
+                <td><code>G-UNTAGGED</code> / <code>G-TAG-EXPLOSION</code></td>
               </tr>
             </tbody>
           </table>
 
-          <p class="prose">分数怎么合成：每个 finding 按 <code>severity × signalWeight × affectedRatio</code> 扣分（<code>error</code> 权重 3.0、<code>warning</code> 1.5、<code>info</code> 0.5；signalWeight 表在 <code>HealthScoreEngine.ts</code>），单维度得分 = 100 × (1 − 累积惩罚)，取整；总分再按 <code>dimensionWeights</code> 加权。90+ = Excellent，70–89 = Good，50–69 = Needs Attention，&lt; 50 = Critical。</p>
-
-          <div class="claim warn">
-            <strong>“规划中”的信号也占权重</strong>
-            上表里的 signal ID 都是编码进 <code>LintSignalId</code> 枚举的，全部 signal 的 signalWeight 都会参与 <em>健康分</em> 计算，即使它对应的 detector 目前不存在（例如 <code>M-CONTRADICTION</code>）。含义是：等 detector 上线，Health 分立刻会掉一截。这个设计是有意的——它把“规划中的信号”和“低估的健康分”绑一起，避免大家把当前分数当成绝对真理。真实交付情况见后面 <a href="#signals">每类信号细看</a>。
+          <div class="formula-box">
+            <strong>分数怎么合成</strong>
+            <div class="formula"><code>dimensionScore = 100 × (1 - Σ severityWeight × signalWeight × affectedRatio)</code></div>
+            <div class="formula"><code>vaultHealth = Σ dimensionScore × dimensionWeight</code></div>
+            <ol>
+              <li><code>severityWeight</code>：error = 3.0，warning = 1.5，info = 0.5。</li>
+              <li><code>dimensionWeight</code>：Structural 0.30、Semantic 0.25、Content 0.20、Temporal 0.15、Tags 0.10。</li>
+              <li>例子：Structural 里有 2 个 broken link warning，影响 4% 文档；另有 1 个 hard orphan error，影响 2% 文档。惩罚大约是 <code>1.5 × signalWeight × 0.04 + 3.0 × signalWeight × 0.02</code>，再乘 Structural 0.30 进入总分。</li>
+              <li>解释分数时不要只看总分：70 分可能是 tags 很乱，也可能是 structural 断裂。用户真正要看的通常是“哪个 dimension 拉低了分”。</li>
+            </ol>
           </div>
         </section>
 
@@ -258,7 +258,7 @@ flowchart LR
               <tr>
                 <td><strong>Open Copilot → Vault tab</strong><br><span class="pill green">主入口</span></td>
                 <td>Vault Review 摘要（fingerprint + freshness + 最近一次报告）；用户点 "Scan now" 会跑一次 Vault Lint full scan。</td>
-                <td>手动。这是 T1 契约里唯一的 <code>trigger: 'manual'</code> 入口。</td>
+                <td>手动触发；用户主动点 scan 才会重算。</td>
                 <td>Scan 结果落 <code>vault.sqlite</code>（<code>VaultLintRepo</code>）；报告落 Vault 里的 Copilot review 历史。</td>
               </tr>
               <tr>
@@ -274,8 +274,8 @@ flowchart LR
                 <td>无。</td>
               </tr>
               <tr>
-                <td><strong>Ambient hints</strong><br><span class="pill gold">当前无 lint 触发</span></td>
-                <td>Ambient Push 目前 <em>不</em>由 lint 触发；lint 的 <code>trigger: 'startup' | 'scheduled'</code> 是 T1 契约里显式排除的未来项。</td>
+                <td><strong>Ambient hints</strong><br><span class="pill gold">只读推荐</span></td>
+                <td>Ambient Push 可以消费搜索和图信号，但不把 lint scan 当作日常触发源。</td>
                 <td>—</td>
                 <td>—</td>
               </tr>
@@ -317,54 +317,54 @@ flowchart LR
 
           <div class="claim">
             <strong>为什么合并到 Copilot Picker 而不是独立面板</strong>
-            早期存在过“X-Ray 面板”作为 lint 的独立入口，T11Y-1 关掉了它——lint 现在是 Vault Intelligence 内部的一个 provider。理由：用户不需要“扫 lint”这个动作，用户需要的是<em>“Vault 现在如何 + 下一步做什么”</em>；把 lint 从独立面板改成 Copilot Vault tab 的驱动源，让扫描和后续对话/修复在同一处衔接（见 <code>VaultLintContract.ts</code> consumers 段的注释）。
+            用户不需要记住“扫 lint”这个内部动作，用户需要的是<em>“Vault 现在如何 + 下一步做什么”</em>。所以 lint 应作为 Vault Intelligence 的数据 provider，而不是一个需要用户单独学习的功能孤岛；扫描、解释、修复和后续对话应该在 Copilot Vault tab 里衔接。
           </div>
         </section>
 
         <section id="signals">
           <h2>每类信号细看</h2>
-          <p class="lead">下面按维度展开。<span class="pill green">shipped</span> = 当前 <code>src/service/lint/signals/</code> 里存在 detector；<span class="pill blue">partial</span> = 有辅助管线在运行但 detector 缺；<span class="pill gold">spec-only</span> = 只在 <code>vault-lint-config.json</code> 或 <code>LintSignalId</code> 枚举里出现，还没有 detector。</p>
+          <p class="lead">下面按维度展开。每个 signal 只回答三件事：它意味着什么、触发条件是什么、什么时候该相信或忽略它。尚未成为 UI finding 的信号，先写成“需要设计成形”的规则草案，不在概览里抢注意力。</p>
 
           <h3 style="margin-top: 26px;">Structural · 图上有没有断裂</h3>
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
             <thead>
-              <tr><th>Signal</th><th>状态</th><th>阈值 / 触发条件</th><th>什么时候相信它</th></tr>
+              <tr><th>Signal</th><th>当前呈现</th><th>阈值 / 触发条件</th><th>什么时候相信它</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td><strong>S-BROKEN-LINK</strong><br><em>error</em></td>
-                <td><span class="pill green">shipped</span></td>
+                <td><span class="pill green">用户可见</span></td>
                 <td>Obsidian <code>metadataCache.unresolvedLinks</code> 里所有非空 target；一次统计到每个 source 文件的所有 broken target 数。无阈值。</td>
                 <td>永远可信。Obsidian 自己算好的。</td>
               </tr>
               <tr>
                 <td><strong>S-ORPHAN</strong><br><em>warning</em></td>
-                <td><span class="pill green">shipped</span></td>
+                <td><span class="pill green">用户可见</span></td>
                 <td>hard orphan = 在图上没有任何 in/out edge。数量上限 <code>ORPHAN_FETCH_LIMIT</code>；有 semantic neighbor 时附带 <em>revivalSuggestion</em>。</td>
-                <td>要求索引至少跑到 semantic 档位（否则没有语义 revival 建议，只有硬孤儿列表）。见 <a href="04-configuration-and-user-views.html#indexing">Index depth</a>。</td>
+                <td>要求索引至少跑到 semantic 深度（否则没有语义 revival 建议，只有硬孤儿列表）。见 <a href="04-configuration-and-user-views.html#indexing">Index depth</a>。</td>
               </tr>
               <tr>
                 <td><strong>S-SOFT-ORPHAN</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td>阈值 <code>softOrphanMaxDegree = 2</code>（度数 ≤ 2 判定为软孤儿）。detector 未实现。</td>
                 <td>今天不出现；等 detector 上线后按度数判断。</td>
               </tr>
               <tr>
                 <td><strong>S-MISSING-BACKLINK</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td>阈值 <code>missingBacklinkMinSimilarity = 0.70</code>：语义邻近但没有反向链接的对。</td>
                 <td>—</td>
               </tr>
               <tr>
                 <td><strong>S-ISLAND-CLUSTER</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td>阈值 <code>islandClusterMaxSize = 5</code>：连通分量大小 ≤ 5 且与主图不连通。</td>
                 <td>—</td>
               </tr>
               <tr>
                 <td><strong>S-FRAGILE-BRIDGE</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td>阈值 <code>lowCohesionMaxDensity = 0.30</code> 类；桥梁笔记连接两个 community，但自身度数低。</td>
                 <td>—</td>
               </tr>
@@ -375,36 +375,36 @@ flowchart LR
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
             <thead>
-              <tr><th>Signal</th><th>状态</th><th>阈值 / 触发条件</th><th>什么时候相信它</th></tr>
+              <tr><th>Signal</th><th>当前呈现</th><th>阈值 / 触发条件</th><th>什么时候相信它</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td><strong>C-EMPTY</strong><br><em>warning</em></td>
-                <td><span class="pill green">shipped</span></td>
+                <td><span class="pill green">用户可见</span></td>
                 <td>剥离 frontmatter + headings 后 prose 长度 = 0。</td>
                 <td>永远可信；容易假阳的场景（例如整篇是图片/嵌入）用户手动 dismiss。</td>
               </tr>
               <tr>
                 <td><strong>C-STUB</strong><br><em>info</em></td>
-                <td><span class="pill green">shipped</span></td>
+                <td><span class="pill green">用户可见</span></td>
                 <td>剥离后长度 &gt; 0 且 &lt; <code>stubMaxChars = 100</code>。</td>
                 <td>纯粹字数判断；不适合“笔记就应该简短”的语境（例如 daily notes）。</td>
               </tr>
               <tr>
                 <td><strong>C-OVERSIZED</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td>阈值 <code>oversizedMinWords = 5000</code>。</td>
                 <td>—</td>
               </tr>
               <tr>
                 <td><strong>C-DUPLICATE</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td><code>duplicateMinSimilarity = 0.92</code> + <code>duplicateMinTitleJaccard = 0.50</code>。</td>
                 <td>—</td>
               </tr>
               <tr>
                 <td><strong>C-FRONTMATTER-MISSING / C-NAMING-VIOLATION</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td>无阈值，规则驱动。</td>
                 <td>—</td>
               </tr>
@@ -415,30 +415,30 @@ flowchart LR
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
             <thead>
-              <tr><th>Signal</th><th>状态</th><th>阈值</th><th>什么时候相信它</th></tr>
+              <tr><th>Signal</th><th>当前呈现</th><th>阈值</th><th>什么时候相信它</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td><strong>T-STALE-HUB</strong></td>
-                <td><span class="pill blue">partial</span></td>
+                <td><span class="pill blue">依赖已有管线</span></td>
                 <td><code>staleHubDays = 180</code> + <code>staleHubMinPageRankPercentile = 75</code>（PageRank 前 25% 且 180 天未动）</td>
                 <td>Digest 里显示 stale hubs 数量，但 lint detector 未写；<code>HubStalenessDetector</code> 已在打 <code>hub_stale_since</code>。</td>
               </tr>
               <tr>
                 <td><strong>T-DECAYING-BRIDGE</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td><code>decayingBridgeDays = 365</code>。</td>
                 <td>—</td>
               </tr>
               <tr>
                 <td><strong>T-ABANDONED-CLUSTER / T-ABANDONED-FOLDER</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td><code>abandonedClusterDays = 180</code>、<code>abandonedFolderDays = 365</code>。</td>
                 <td>—</td>
               </tr>
               <tr>
                 <td><strong>T-RECENT-DRIFT</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td><code>recentDriftActiveDays = 30</code>、<code>recentDriftStaleDays = 180</code>：最近 30 天新增的笔记与已有主题的语义距离。</td>
                 <td>—</td>
               </tr>
@@ -446,31 +446,31 @@ flowchart LR
           </table>
 
           <h3 style="margin-top: 30px;">Semantic · 话题结构层</h3>
-          <p class="prose">整层 <em>spec-only</em>：<code>M-COVERAGE-GAP</code>、<code>M-LOW-COHESION</code>、<code>M-CONTRADICTION</code>、<code>M-PHANTOM-NODE</code>、<code>M-SEMANTIC-ISOLATION</code>、<code>M-REDUNDANT-HUBS</code> 都还没 detector。阈值已定义：<code>contradictionMinSimilarity = 0.80</code>、<code>phantomNodeMinReferences = 3</code>、<code>lowCohesionMaxDensity = 0.30</code>、<code>redundantHubMinOverlap = 0.70</code>；<code>scan.contradictionBatchSize = 20</code>、<code>contradictionConcurrency = 2</code>——一看就知道这一层是给 LLM detector 预留的（<code>LintSignalDetector.requiresLlm</code> 字段），做全量扫描要有节流。</p>
+          <p class="prose">整层 <em>待设计成形</em>：<code>M-COVERAGE-GAP</code>、<code>M-LOW-COHESION</code>、<code>M-CONTRADICTION</code>、<code>M-PHANTOM-NODE</code>、<code>M-SEMANTIC-ISOLATION</code>、<code>M-REDUNDANT-HUBS</code> 都还没 detector。阈值已定义：<code>contradictionMinSimilarity = 0.80</code>、<code>phantomNodeMinReferences = 3</code>、<code>lowCohesionMaxDensity = 0.30</code>、<code>redundantHubMinOverlap = 0.70</code>；<code>scan.contradictionBatchSize = 20</code>、<code>contradictionConcurrency = 2</code>——一看就知道这一层是给 LLM detector 预留的（<code>LintSignalDetector.requiresLlm</code> 字段），做全量扫描要有节流。</p>
           <p class="prose">在 detector 落地之前，semantic 维度的“话题地图”感受主要来自 <strong>AI Graph</strong>（community layout + hub 高亮）和 <strong>VaultDigestBuilder</strong> 内部的 top structural holes 抽取；用户看到的<em>信号</em>还没有。</p>
 
           <h3 style="margin-top: 30px;">Tags · 标签系统的健康</h3>
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
             <thead>
-              <tr><th>Signal</th><th>状态</th><th>阈值</th><th>什么时候相信它</th></tr>
+              <tr><th>Signal</th><th>当前呈现</th><th>阈值</th><th>什么时候相信它</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td><strong>G-UNTAGGED</strong><br><em>info</em></td>
-                <td><span class="pill green">shipped</span></td>
+                <td><span class="pill green">用户可见</span></td>
                 <td>frontmatter 与 inline tag 都为空。</td>
                 <td>永远可信；但“笔记该不该有 tag”是策略选择，不喜欢就 dismiss。</td>
               </tr>
               <tr>
                 <td><strong>G-TAG-EXPLOSION</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td><code>tagExplosionMultiplier = 5</code>：某个 tag 覆盖到全 Vault 平均值的 5 倍以上。</td>
                 <td>—</td>
               </tr>
               <tr>
                 <td><strong>G-TAG-ISLAND / G-TAG-REDUNDANCY / G-NOISE-TAGS</strong></td>
-                <td><span class="pill gold">spec-only</span></td>
+                <td><span class="pill gold">待设计成形</span></td>
                 <td>无独立阈值。</td>
                 <td>—</td>
               </tr>
@@ -489,37 +489,37 @@ flowchart LR
             </thead>
             <tbody>
               <tr>
-                <td><strong>broken-link-repair</strong><br><span class="pill green">shipped</span></td>
+                <td><strong>broken-link-repair</strong><br><span class="pill green">用户可见</span></td>
                 <td>S-BROKEN-LINK</td>
                 <td>files × occurrences × unique missing targets；&gt; 100 occurrences 标 critical。</td>
                 <td><code>PromptId.LintBrokenLinkRepair</code></td>
               </tr>
               <tr>
-                <td><strong>missing-targets</strong><br><span class="pill green">shipped</span></td>
+                <td><strong>missing-targets</strong><br><span class="pill green">用户可见</span></td>
                 <td>S-BROKEN-LINK 的 top repeated targets（≥ 2 files 引用同一 target）</td>
                 <td>target 数 × 总 file 引用数。</td>
                 <td><code>PromptId.LintMissingTargets</code></td>
               </tr>
               <tr>
-                <td><strong>noise-source</strong><br><span class="pill green">shipped</span></td>
+                <td><strong>noise-source</strong><br><span class="pill green">用户可见</span></td>
                 <td>S-BROKEN-LINK 集中于单一文件夹（占比 ≥ 45% 且 ≥ 5 files 且总 &gt; 50 occurrences）</td>
                 <td>触发时通常意味着导入/generated 材料应该被 ignore 而不是修。</td>
                 <td><code>PromptId.LintNoiseSource</code></td>
               </tr>
               <tr>
-                <td><strong>orphan-reconnect</strong><br><span class="pill green">shipped</span></td>
+                <td><strong>orphan-reconnect</strong><br><span class="pill green">用户可见</span></td>
                 <td>S-ORPHAN</td>
                 <td>&gt; 25 orphans 标 warning。</td>
                 <td><code>PromptId.LintOrphanReconnect</code></td>
               </tr>
               <tr>
-                <td><strong>tag-coverage</strong><br><span class="pill green">shipped</span></td>
+                <td><strong>tag-coverage</strong><br><span class="pill green">用户可见</span></td>
                 <td>G-UNTAGGED</td>
                 <td>&gt; 100 未标签笔记标 warning。</td>
                 <td><code>PromptId.LintTagCoverage</code></td>
               </tr>
               <tr>
-                <td><strong>content-cleanup</strong><br><span class="pill green">shipped</span></td>
+                <td><strong>content-cleanup</strong><br><span class="pill green">用户可见</span></td>
                 <td>C-EMPTY + C-STUB</td>
                 <td>存在 C-EMPTY 时标 warning，否则 info。</td>
                 <td><code>PromptId.LintContentCleanup</code></td>
@@ -542,69 +542,69 @@ flowchart LR
 
         <section id="technical-appendix">
           <h2>技术附录：Vault Intelligence 的组装</h2>
-          <p class="lead">下面这张图是从索引（<a href="#">23-infra-search-index</a>）到 Vault Intelligence 五类信号的全链路。索引档位（fast / semantic / full）决定了哪些信号有能力算得出来。</p>
+          <p class="lead">下面这张图是从索引（<a href="#">23-infra-search-index</a>）到 Vault Intelligence 五类信号的全链路。索引深度（fast / semantic / full）决定了哪些信号有能力算得出来。</p>
 
           <div class="figure">
             <div class="figure-title">
-              <strong>图 2 · 索引档位 → 信号产出</strong>
+              <strong>图 2 · 索引深度 → 信号产出</strong>
               <span>Mermaid · pipeline to signal</span>
             </div>
             <div class="mermaid">
 flowchart TB
-  subgraph Fast["Fast 档位 (listener_fast)"]
-    F1[FTS + chunks]
-    F2[mobius_node + mobius_edge<br>基础图]
-    F3[metadataCache.unresolvedLinks]
-    F4[getTags / frontmatter]
+  subgraph Fast["Fast depth"]
+    F1["FTS + chunks"]
+    F2["mobius_node + mobius_edge<br/>基础图"]
+    F3["metadataCache.unresolvedLinks"]
+    F4["getTags / frontmatter"]
   end
 
-  subgraph Semantic["Semantic 档位 (+embeddings)"]
-    S1[embedding vectors]
-    S2[semantic edges]
-    S3[getSemanticNeighbors]
+  subgraph Semantic["Semantic depth"]
+    S1["embedding vectors"]
+    S2["semantic edges"]
+    S3["getSemanticNeighbors"]
   end
 
-  subgraph Full["Full 档位 (+LLM enrichment)"]
-    U1[LLM tags]
-    U2[LLM summaries]
-    U3[Hub candidate discovery]
-    U4[Hub summary docs<br><i>partial: stub</i>]
+  subgraph Full["Full depth"]
+    U1["LLM tags"]
+    U2["LLM summaries"]
+    U3["Hub candidate discovery"]
+    U4["Hub summary docs"]
   end
 
-  F2 --> DstOrphan[S-ORPHAN detector]
-  F3 --> DstBroken[S-BROKEN-LINK detector]
-  F1 --> DstContent[C-EMPTY / C-STUB detectors]
-  F4 --> DstTags[G-UNTAGGED detector]
+  F2 --> DstOrphan["S-ORPHAN detector"]
+  F3 --> DstBroken["S-BROKEN-LINK detector"]
+  F1 --> DstContent["C-EMPTY / C-STUB detectors"]
+  F4 --> DstTags["G-UNTAGGED detector"]
 
   S3 --> DstOrphan
-  S2 -.-> Spec1[semantic dim detectors<br><i>spec-only</i>]
-  U3 --> HubStale[HubStalenessDetector<br>hub_stale_since]
-  HubStale -.-> Spec2[T-STALE-HUB<br><i>spec-only</i>]
+  S2 -.-> SemanticRules["semantic signal rules"]
+  U3 --> HubStale["HubStalenessDetector<br/>hub_stale_since"]
+  HubStale -.-> StaleHub["T-STALE-HUB finding"]
 
   DstOrphan --> Findings
   DstBroken --> Findings
   DstContent --> Findings
   DstTags --> Findings
 
-  Findings[LintFinding[]] --> Engine[HealthScoreEngine]
-  Engine --> Persist[(VaultLintRepo<br>vault.sqlite)]
-  Persist --> Digest[VaultDigestBuilder]
-  Digest --> Review[Vault Review meta-agent]
-  Persist --> Insights[buildVaultHealthInsights]
-  Insights --> Copilot[Copilot 6 类 fixable]
+  Findings["LintFinding[]"] --> Engine["HealthScoreEngine"]
+  Engine --> Persist[("VaultLintRepo<br/>vault.sqlite")]
+  Persist --> Digest["VaultDigestBuilder"]
+  Digest --> Review["Vault Review meta-agent"]
+  Persist --> Insights["buildVaultHealthInsights"]
+  Insights --> Copilot["Copilot fixable suggestions"]
             </div>
-            <p class="read-note"><b>读图：</b>左边三档是索引管线（详见 <a href="04-configuration-and-user-views.html#indexing">04 · Knowledge Index 档位</a>）；箭头进入右边说明 detector 依赖哪一档。实线 = 今天真的连着；虚线 = 阈值和路径都在，但 detector 还没实现。Hub 那条 branch 特别值得留意：<em>staleness 已经在算了，只是没作为 lint finding 弹出</em>——它是 partial 而不是 spec-only。</p>
+            <p class="read-note"><b>读图：</b>左边三层是索引深度（详见 <a href="04-configuration-and-user-views.html#indexing">04 · Knowledge Index 深度</a>）；箭头进入右边说明 detector 依赖哪一层。实线表示已经能稳定产出 finding 的路径；虚线表示已有数据或规则，但还需要把用户可见 shape 设计清楚。</p>
           </div>
 
           <p class="prose"><strong>入口调用链</strong>：<code>CopilotPickerContent</code>（Vault tab 的 "Scan now" 按钮）→ <code>runVaultLintManualScan</code>（RunEnvelope）→ <code>VaultLintService.runFullScan</code> → 并行跑 <code>InMemoryDetectorRegistry.getNonLlm()</code> 里的所有 detector → <code>computeHealthScore</code> → <code>VaultLintRepo.saveScanResult</code>。<code>VaultDigestBuilder.getVaultHealth()</code> 通过持有的 <code>VaultLintRuntime</code> 直接读 <code>loadLatestScan()</code>，作为 Vault Review meta-agent 输入的一部分。<code>buildVaultHealthInsights</code> 从同一个 scan 派生出 6 类 insight。</p>
 
-          <p class="prose"><strong>依赖注入形态</strong>：从 T6 开始 <code>VaultLintService</code> 是一个 plain class，构造时接收 <code>VaultLintPorts</code>（<code>config</code> / <code>vault</code> / <code>persistence</code> / <code>detectorRegistry</code> / <code>idFactory</code> / <code>clock</code> / <code>detectorContext</code>）。所有 Obsidian / sqlite / <code>getSemanticNeighbors</code> 的访问都藏在 <code>app/lint/*.ts</code> 的四个 adapter 后面，detector 本身零 Obsidian 依赖。测试直接注入 fake context。这是让 detector 好写、好测的关键约束——不要试图在 detector 里再拿 <code>AppContext.getInstance()</code>。</p>
+          <p class="prose"><strong>依赖注入形态</strong>：<code>VaultLintService</code> 是一个 plain class，构造时接收 <code>VaultLintPorts</code>（<code>config</code> / <code>vault</code> / <code>persistence</code> / <code>detectorRegistry</code> / <code>idFactory</code> / <code>clock</code> / <code>detectorContext</code>）。所有 Obsidian / sqlite / <code>getSemanticNeighbors</code> 的访问都藏在 <code>app/lint/*.ts</code> 的四个 adapter 后面，detector 本身零 Obsidian 依赖。测试直接注入 fake context。这是让 detector 好写、好测的关键约束——不要试图在 detector 里再拿 <code>AppContext.getInstance()</code>。</p>
 
           <p class="prose"><strong>Runtime 归属</strong>：<code>VaultLintRuntime</code> 由 <code>composeVaultLintRuntime</code> 一次性构造，存在 app 层的 <code>AppRuntimeRegistry</code>；service 层不再有 module-scope singleton。见 <code>VaultLintContract.ts</code> 的 dependency inventory 及 CLAUDE.md 项目约定“Runtime ownership”。</p>
 
           <dl class="kv">
             <dt>Full scan 频率</dt>
-            <dd><code>scan.fullScanIntervalHours = 168</code>（一周）——今天只是 <em>建议值</em>，因为 startup / scheduled trigger 是 T1 契约里显式排除的未来项。用户不点 “Scan now” 就不会扫。</dd>
+            <dd><code>scan.fullScanIntervalHours = 168</code>（一周）——今天只是 <em>建议值</em>，因为 startup / scheduled trigger 不属于手动 scan 的当前路径。用户不点 “Scan now” 就不会扫。</dd>
 
             <dt>Incremental debounce</dt>
             <dd><code>scan.incrementalDebounceMs = 30000</code>——同上，未实装的 incremental 模式预留值。</dd>
@@ -620,6 +620,63 @@ flowchart TB
           </dl>
         </section>
 
+        <section id="hub-generation-agent">
+          <h2>Hub Generation Agent（2026-07-03 shipped）</h2>
+          <p class="lead">Hub doc（社区综述文档）的生成从"1-hop 邻居拼接"或"stub warning"升级为 <strong>两 agent 串联</strong>：<code>HubCuratorAgent</code> 决定 vault 该有哪些 hub、要不要合并/淘汰；<code>HubMaterializationAgent</code> 负责给每个 hub 起草综述并写回 vault。</p>
+
+          <h3>为什么不用 1-hop 拼接</h3>
+          <p class="prose">最初 <code>HubDocService.regenerateHubByNodeId</code> 是 stub，一个直觉方案是拼接 hub node 的 1-hop 邻居。<strong>用户否决</strong>：1-hop 混杂"引用了但不重要"的噪声、忽略 2-hop 桥接结构、无中心性权重、无覆盖率自检。方向 C 用整体网络图 + PageRank/Louvain + LLM agent 自评替代——<em>基建已经全在</em>，只是没被这样组合过。</p>
+
+          <h3>复用现有基建（不重造）</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 32%"><col></colgroup>
+            <thead><tr><th>基建</th><th>Curator/Materializer 里怎么用</th></tr></thead>
+            <tbody>
+              <tr><td>Vault PageRank + Semantic PageRank</td><td>Curator prep 的候选排序主键，Materializer core/fringe 划分权重之一</td></tr>
+              <tr><td>Brandes 中介中心性</td><td>Materializer core/fringe 划分权重（<code>0.6·pagerank + 0.4·betweenness</code>）</td></tr>
+              <tr><td>Louvain 社区检测 + <code>community_metadata</code></td><td>Curator 决定 hub 归属；建议一社区一 hub，但 LLM 有 override 空间</td></tr>
+              <tr><td>SQL 复合 hub score（<code>hub_graph_score</code> = 0.35·物理权威 + 0.25·组织 + 0.35·语义中心性）</td><td>Curator prep top-K shortlist；K = <code>clamp(⌈√N × 1.5⌉, 12, 60)</code></td></tr>
+              <tr><td><code>KnowledgeIntuitionAgent</code> 的 prep → recon loop → structured submit 架构</td><td><code>HubCuratorAgent</code> 逐一镜像三段式；prompt/schema 换成 hub 焦点</td></tr>
+              <tr><td><code>hub_stale_since</code> / <code>hub_constituent</code> / <code>hub_regen_queue</code> / <code>HubRegenService</code></td><td>staleness-triggered regen 走同一队列；只是队列消费端换成 agent 调用（single-hub fallback）</td></tr>
+            </tbody>
+          </table>
+
+          <h3>LLM 自决 · 覆盖率 · 冲突处理</h3>
+          <ul>
+            <li><strong>数量</strong> — 由 <code>hubCurationSubmitSchema</code> 决定（<code>hubs</code> 数组），LLM 看 <code>coverage.uncoveredHighValue</code> 自评是否再补</li>
+            <li><strong>合并 / 淘汰</strong> — <code>action: 'create' | 'keep' | 'merge' | 'retire'</code>；merge 遇 <code>peak_user_owned=true</code> 源即拦截整个 merge（不静默丢用户手写）；retire 归档到 <code>_archive/hub/</code>，永不物理删除</li>
+            <li><strong>覆盖率</strong> — Curator submit 里 <code>coverage_pct = coveredMembers / totalMembers</code>，Materializer critique 里 <code>overallCoverage</code>（core 成员 2× 权重）</li>
+            <li><strong>Single-hub fallback</strong> — stale-triggered regen（例如某个 hub 的成员改了）不用等 Curator 跑完，<code>HubGenerationRuntime.buildRegenerateFn()</code> 会合成一个单-hub decision 现场喂给 Materializer</li>
+          </ul>
+
+          <div class="claim">
+            <strong>用户手写的 hub 永远不被 AI 覆盖</strong>
+            <code>ObsidianVaultHubDocAdapter.readPeakUserOwned()</code> 读 frontmatter；<code>peak_user_owned: true</code> 直接跳过写回。同时 skeleton 保留 <code>&lt;!-- USER_SECTIONS_BELOW --&gt;</code> marker 之下的手写区，AI 只覆盖上方结构化 section。
+          </div>
+
+          <h3>触发点</h3>
+          <ul>
+            <li>命令 <code>Curate Hubs Now</code> — 手动跑 Curator + Executor</li>
+            <li>命令 <code>Materialize Hub for Active Note</code> — 从当前笔记的社区反查代表节点，直接跑 Materializer</li>
+            <li>命令 <code>Show Latest Hub Curation Plan</code> — 打开 <code>HubCurationPlanModal</code> 看最近一份决策</li>
+            <li><code>HubCurationScheduler</code> — opt-in 定时（默认 7 天关），<code>hubCurationSchedulerEnabled</code> 打开</li>
+            <li><code>hub_regen_queue</code> — <code>HubStalenessDetector</code> 检测到 constituent 变化时入队，<code>HubRegenService</code> 排空</li>
+          </ul>
+
+          <h3>代码证据</h3>
+          <ul>
+            <li>Agents: <code>src/service/agents/HubCuratorAgent.ts</code> / <code>HubMaterializationAgent.ts</code></li>
+            <li>Executor + Scheduler: <code>src/service/agents/hub-curation-helper/HubCurationExecutor.ts</code> / <code>src/service/hub/HubCurationScheduler.ts</code></li>
+            <li>Runtime 挂 <code>AppRuntimeRegistry</code>: <code>src/service/hub/HubGenerationRuntime.ts</code> + <code>src/app/hub/composeHubGenerationRuntime.ts</code></li>
+            <li>Ports: <code>src/core/ports/HubGenerationPorts.ts</code>（write + archive）</li>
+            <li>Repo: <code>src/core/storage/sqlite/repositories/HubCurationPlanRepo.ts</code>（保留 20 份决策历史）</li>
+            <li>Schemas: <code>src/core/schemas/agents/hubCuration.ts</code> + <code>hubMaterialization.ts</code></li>
+            <li>Modal: <code>src/app/ui-host/modals/HubCurationPlanModal.ts</code></li>
+            <li>Rewire: <code>CascadeWorker.hub_regen</code> handler 补齐；<code>HubRegenService.init()</code> 新增 <code>regenerateFn</code> 参数</li>
+            <li>Spec / Research: <a href="superpowers/specs/2026-07-03-hub-generation-agent.md">spec</a> · <a href="research/2026-07-03-hub-generation-agent-design/README.md">research</a></li>
+          </ul>
+        </section>
+
         <section id="failure-modes">
           <h2>失效模式与恢复</h2>
           <p class="lead">Vault Intelligence 依赖索引和 Vault Lint 两条管线；两边都有会让信号“看起来不对”的失效模式。这一节告诉你怎么复位。</p>
@@ -632,12 +689,12 @@ flowchart TB
             <tbody>
               <tr>
                 <td>Health 分数明显偏低但 Vault 看起来还行</td>
-                <td>索引档位 = fast；或 <code>C-STUB</code> 在 daily notes 批量触发</td>
+                <td>索引深度 = fast；或 <code>C-STUB</code> 在 daily notes 批量触发</td>
                 <td>Index depth 升到 semantic/full；不适用的 signal 批量 dismiss（<code>wont_fix</code>）</td>
               </tr>
               <tr>
                 <td>S-ORPHAN 数量突增</td>
-                <td>fast 档位没有 semantic edges；或新导入了大批未链接笔记</td>
+                <td>fast 深度没有 semantic edges；或新导入了大批未链接笔记</td>
                 <td>看 orphan-reconnect insight 样本，若属导入把目录加进 <code>search.ignorePatterns</code></td>
               </tr>
               <tr>
@@ -653,7 +710,7 @@ flowchart TB
               <tr>
                 <td>“Scan now” 一直转不出结果</td>
                 <td>某 detector 抛异常不阻断其他；但 <code>getSemanticNeighbors</code> 在 embedding 不可用时抛，orphan 分支退化。看 console 是否有 <code>[VaultLintService] detector … failed</code></td>
-                <td>Advanced → Diagnostics 查 embedding 连通；或临时关 semantic 档位跑一次</td>
+                <td>Advanced → Diagnostics 查 embedding 连通；或临时关 semantic 深度跑一次</td>
               </tr>
               <tr>
                 <td>Dismiss 的 finding 又冒出来</td>
@@ -670,7 +727,7 @@ flowchart TB
 
           <div class="claim danger">
             <strong>不要清 vault.sqlite 来“重置”Vault Intelligence</strong>
-            <code>A-control/PeakAssistant/DataStore/vault.sqlite</code> 同时装载全部搜索索引、embedding、graph、lint scan、dismissal。删掉 = 前面所有指标一起归零、下次扫全部要重算。要“重来一次 lint”，正确做法是 Copilot Vault tab 里再点一次 “Scan now”，会重写 latest scan 但保留 dismissal 历史。
+            <code>DataStore/vault.sqlite</code> 同时装载全部搜索索引、embedding、graph、lint scan、dismissal。删掉 = 前面所有指标一起归零、下次扫全部要重算。要“重来一次 lint”，正确做法是 Copilot Vault tab 里再点一次 “Scan now”，会重写 latest scan 但保留 dismissal 历史。
           </div>
         </section>
 
@@ -688,19 +745,19 @@ flowchart TB
             </div>
             <div class="note-item">
               <b>Detector 不许拿 AppContext / sqliteStoreManager。</b>
-              <span>T7 之后所有 Vault / metadata / graph 访问必须走 <code>context.detectorContext</code>（<code>VaultLintDetectorContextPort</code>）。想读新的东西？先在 <code>ObsidianVaultLintDetectorContextAdapter</code> 加接口。<code>test/vault-lint-contract.test.ts</code> 会源码扫描防止回退。</span>
+              <span>当前边界要求所有 Vault / metadata / graph 访问必须走 <code>context.detectorContext</code>（<code>VaultLintDetectorContextPort</code>）。想读新的东西？先在 <code>ObsidianVaultLintDetectorContextAdapter</code> 加接口。<code>test/vault-lint-contract.test.ts</code> 会源码扫描防止回退。</span>
             </div>
             <div class="note-item">
               <b>新的 fix action 要落枚举，不能自由字符串。</b>
               <span><code>FixActionId</code> 是闭合联合。UI 侧根据 kind 分派动作类型。加新 action = 更新枚举 + 更新对应 insight builder + 更新 Copilot 侧的 dispatcher。</span>
             </div>
             <div class="note-item">
-              <b>如果要加 startup/scheduled trigger，先改 T1 契约。</b>
-              <span><code>VaultLintCapabilityInput.trigger</code> 目前是 literal <code>'manual'</code>；<code>VaultLintFutureTrigger</code> 明确列了 <code>'startup' | 'scheduled'</code> 作为“未来项”。这个刻意的窄接口是给合约用的——不要绕开它自己新起一条“自动扫描”的定时任务。</span>
+              <b>自动触发必须先进入能力契约。</b>
+              <span><code>VaultLintCapabilityInput.trigger</code> 当前以 <code>'manual'</code> 为主；如果要加入 <code>'startup'</code> 或 <code>'scheduled'</code>，先扩展契约和 UI 说明，不要绕开它自己新起一条“自动扫描”的定时任务。</span>
             </div>
             <div class="note-item">
-              <b>把 spec-only 变 shipped 时同步文档。</b>
-              <span>每个 spec-only signal 上线之前 Health 分数是低估的；上线的那次发布公告里必须写“Health 分数可能因新增 detector 而下降”，否则用户会以为是 regression。</span>
+              <b>新增 detector 时同步用户说明。</b>
+              <span>每个新 signal 都可能改变 Health 分数。只要 detector 进入健康分计算，就要同步阈值、公式例子和用户解释，否则用户会以为分数突然下降是 bug。</span>
             </div>
           </div>
         </section>
@@ -731,7 +788,7 @@ flowchart TB
               <tr>
                 <td>Shipped 的 5 个 detector（S-ORPHAN、S-BROKEN-LINK、C-EMPTY、C-STUB、G-UNTAGGED）</td>
                 <td><code data-copy="src/service/lint/signals/structural.ts">structural.ts</code><br><code data-copy="src/service/lint/signals/content.ts">content.ts</code><br><code data-copy="src/service/lint/signals/tags.ts">tags.ts</code></td>
-                <td>确认 shipped 名单；确认 <code>C-STUB</code> 走 <code>stubMaxChars</code> 阈值；确认 orphan 依赖 <code>getSemanticNeighbors</code>。</td>
+                <td>确认 用户可见 名单；确认 <code>C-STUB</code> 走 <code>stubMaxChars</code> 阈值；确认 orphan 依赖 <code>getSemanticNeighbors</code>。</td>
               </tr>
               <tr>
                 <td>Scan 编排 + detector 失败隔离</td>
@@ -744,13 +801,13 @@ flowchart TB
                 <td>broken-link-repair / missing-targets / noise-source / orphan-reconnect / tag-coverage / content-cleanup 的触发条件、severity 判定和 <code>PromptId.Lint*</code> 使用。</td>
               </tr>
               <tr>
-                <td>Manual scan 是唯一 trigger（T1 契约）</td>
+                <td>Manual scan 是这个入口的唯一 trigger</td>
                 <td><code data-copy="src/service/lint/VaultLintContract.ts">VaultLintContract.ts</code></td>
                 <td>VAULT_LINT_CAPABILITY_ID、VaultLintCapabilityInput、VaultLintFutureTrigger、runtime side-effect inventory。</td>
               </tr>
               <tr>
                 <td>Runtime 组装 + adapter 层</td>
-                <td><code data-copy="src/app/lint/composeVaultLintRuntime.ts">composeVaultLintRuntime.ts</code><br><code data-copy="src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts">ObsidianVaultLintDetectorContextAdapter.ts</code><br><code data-copy="src/app/lint/ObsidianVaultLintConfigAdapter.ts">ObsidianVaultLintConfigAdapter.ts</code><br><code data-copy="src/app/lint/ObsidianVaultLintVaultAdapter.ts">ObsidianVaultLintVaultAdapter.ts</code><br><code data-copy="src/app/lint/SqliteVaultLintPersistenceAdapter.ts">SqliteVaultLintPersistenceAdapter.ts</code></td>
+                <td><code data-copy="src/app/lint/composeVaultLintRuntime.ts">composeVaultLintRuntime.ts</code><br><code data-copy="src/app/lint/ObsidianVaultLintDetectorContextAdapter.ts">DetectorContextAdapter.ts</code><br><code data-copy="src/app/lint/ObsidianVaultLintConfigAdapter.ts">ConfigAdapter.ts</code><br><code data-copy="src/app/lint/ObsidianVaultLintVaultAdapter.ts">VaultAdapter.ts</code><br><code data-copy="src/app/lint/SqliteVaultLintPersistenceAdapter.ts">PersistenceAdapter.ts</code></td>
                 <td>确认 detector 从 Obsidian/sqlite 隔离，所有依赖注入。</td>
               </tr>
               <tr>
@@ -759,12 +816,12 @@ flowchart TB
                 <td>持有 VaultLintRuntime；<code>loadLatestScan</code> 缺失时 debug 日志；top-K 常量（TOP_K_HUBS = 15 / TOP_K_HOLES = 8 / TOP_K_STALE_HUBS = 10 / STALE_HUB_DAYS = 180）。</td>
               </tr>
               <tr>
-                <td>Hub 目录发现 + staleness 检测 + hub doc 生成 (partial)</td>
+                <td>Hub 目录发现 + staleness 检测 + hub doc 生成</td>
                 <td><code data-copy="src/service/search/index/helper/hub/hubStalenessDetector.ts">hubStalenessDetector.ts</code><br><code data-copy="src/service/search/index/helper/hub/hubDocServices.ts">hubDocServices.ts</code><br><code data-copy="src/service/search/index/helper/hub/hubRegenService.ts">hubRegenService.ts</code></td>
-                <td>staleness 检测已跑；<code>HubDocService.regenerateHubByNodeId</code> 目前是 stub（<code>console.warn(...)</code>），确认 partial 判定。</td>
+                <td>读 hub 的 staleness、regen queue 和 hub document service 如何接到 Vault Intelligence；具体生成策略以这些入口为准。</td>
               </tr>
               <tr>
-                <td>索引档位定义 + 每档位跑什么</td>
+                <td>索引深度定义 + 每深度跑什么</td>
                 <td><code data-copy="src/core/search/indexTypes.ts">indexTypes.ts</code></td>
                 <td><code>IndexLevel = 'fast' | 'semantic' | 'full'</code>；<code>defaultIndexDocumentOptionsForLevel</code> 显示 semantic 加 embedding、full 加 LLM tags/summary。</td>
               </tr>
@@ -788,7 +845,7 @@ flowchart TB
         </section>
 
         <div class="footer">
-          <p>验证记录：2026-07-01，按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="04-configuration-and-user-views.html">04 Configuration & User Views</a>、<a href="05-use-case-playbook.html">05 Use Case Playbook</a>、<a href="12-feature-search.html">12 Search</a>。</p>
+          <p>按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="04-configuration-and-user-views.html">04 Configuration & User Views</a>、<a href="05-use-case-playbook.html">05 Use Case Playbook</a>、<a href="12-feature-search.html">12 Search</a>。</p>
         </div>
       </div>
     </div>

@@ -88,9 +88,10 @@
     .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
     .note-item b { display: block; margin-bottom: 3px; }
     .note-item span { color: var(--muted); font-size: 14px; }
-    .field-list { display: grid; grid-template-columns: 200px 1fr; gap: 8px 18px; margin: 14px 0 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
-    .field-list dt { color: var(--ink); font-weight: 780; }
-    .field-list dd { margin: 0; color: var(--muted); }
+    .content .field-list { display: grid; grid-template-columns: 1fr; gap: 4px; margin: 14px 0 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .content .field-list dt { color: var(--ink); font-weight: 780; overflow-wrap: anywhere; }
+    .content .field-list dd { margin: 0 0 8px; color: var(--muted); }
+    .content .field-list dd:last-child { margin-bottom: 0; }
     .field-list dd code { background: var(--code-bg); }
     pre { margin: 12px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; overflow-x: auto; font-size: 13.2px; line-height: 1.6; color: var(--ink); }
     pre code { padding: 0; background: transparent; }
@@ -104,7 +105,7 @@
       .side-nav a.sub { margin-left: 0; }
     }
     @media (max-width: 980px) {
-      .field-list { grid-template-columns: 1fr; }
+      .content .field-list { grid-template-columns: 1fr; }
     }
   </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
   <link rel="stylesheet" href="assets/tables-density.css">
@@ -115,15 +116,15 @@
     <header>
       <div class="eyebrow">14 · Feature · Ambient Push · 编辑时后台送来的相关笔记</div>
       <h1>你在写笔记，Ambient 在旁边找关联，只有你看它一眼时才发言。</h1>
-      <p class="subtitle">Ambient Push 是 Peak 唯一一条 <strong>用户没点也会发生</strong> 的 AI 通路。它在你写作 / 切文档 / 早上第一次打开 vault 时被触发，读你正在写的段落，去搜可能相关的笔记，把结果推到三种界面之一：</p>
+      <p class="subtitle">Ambient Push 是 Peak 唯一一条 <strong>用户没点也会发生</strong> 的 AI 通路。它在你写作、切文档或手动触发时读取当前段落，去找可能相关的笔记，并把结果放在固定、可忽略的位置：</p>
       <ul class="subtitle-list">
-        <li>状态栏的一行小字（默认打开）</li>
-        <li>编辑器行首的 <code>?</code> 提示（Serendipity Gutter，只在冷门邻居出现时亮）</li>
-        <li>4 小时一次的 Morning Briefing 卡片（Vault 里长时间没被打开的高度中心节点）</li>
+        <li>固定的 Related Notes / Ambient 面板（可停在右侧，也可拆到独立 leaf）</li>
+        <li>编辑器行首的 <code>?</code> 提示（只在意外相关笔记出现时亮）</li>
+        <li>手动触发的 Related Notes 刷新，用来主动找当前段落邻居</li>
       </ul>
       <p class="subtitle">全程 <strong>不写你的文档</strong>——它只呈现，不落笔。这份文档讲这条通路里被推的是谁、什么信号让它排到前面、怎么关掉、以及维护者应该盯什么。</p>
       <div class="meta">
-        <span>Status: current draft · 2026-07-01</span>
+        <span>Reference doc</span>
         <span>Approx. length: 约 11k 混合字符</span>
         <span>Reading time: 22-26 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
@@ -140,13 +141,13 @@
         <div class="nav-group">
           <span class="nav-group-title">起点</span>
           <a href="#orientation">这页解决什么</a>
-          <a href="#surfaces">三条呈现通路</a>
+          <a href="#surfaces">固定呈现通路</a>
         </div>
         <div class="nav-group">
           <span class="nav-group-title">信号与排序</span>
           <a href="#trigger">什么时候会跑</a>
-          <a href="#signals">送谁上榜的六种信号</a>
-          <a href="#briefing">Morning Briefing 的三类候选</a>
+          <a href="#signals">候选怎么上榜</a>
+          <a href="#candidate-sets">候选来源</a>
         </div>
         <div class="nav-group">
           <span class="nav-group-title">用户视角</span>
@@ -166,10 +167,10 @@
       <div class="content">
         <section id="orientation">
           <h2>这页解决什么</h2>
-          <p class="lead">Ambient Push 的争议不在“有没有用”，在 <strong>“它会不会烦我”</strong>。这页把这条通路拆开：<strong>什么时候被触发（三种 trigger）</strong>、<strong>拿什么去搜（当前段落 + 图邻居 + 学到的 co-open 规律）</strong>、<strong>结果落到哪里（三条呈现通路）</strong>、<strong>怎么全关或只留一部分</strong>。</p>
+          <p class="lead">Ambient Push 的争议不在“有没有用”，在 <strong>“它会不会烦我”</strong>。这页把这条通路拆开：什么时候触发、拿什么去搜、候选怎么打分、结果应该落到哪个固定位置，以及怎么全关或只留一部分。</p>
           <div class="claim">
             <strong>核心结论</strong>
-            Ambient Push 是纯 <strong>只读 + 只呈现</strong> 的通路。它不改任何笔记；它对文档的影响仅限于“如果你按下推荐里的 <em>Link</em>，我们才在当前段末尾插一个 <code>[[wikilink]]</code>”——那是显式动作，走同一条 Vault write op。呈现层的所有 UI 也从不弹窗遮挡编辑器：状态栏一行文字、gutter 上一个 <code>?</code>、Morning Briefing 是打开 vault 时的一次卡片。
+            Ambient Push 是只读 + 只呈现的通路。它不改任何笔记；只有当你按下推荐里的 <em>Link</em>，系统才会在当前段末尾插入 <code>[[wikilink]]</code>。主呈现应固定在 Related Notes / Ambient 面板里，行首 <code>?</code> 只是高置信度的辅助手势，不应该靠状态栏闪动或启动弹窗打断写作。
           </div>
           <div class="claim">
             <strong>本文读者</strong>
@@ -180,18 +181,18 @@
             不重复 <a href="12-feature-search.html">12 Search</a> 的语义搜索原理；不讲 <a href="23-infra-search-index.html">23 Search Index</a> 里 SQLite 表的建表脚本；不覆盖 <a href="13-feature-vault-intelligence.html">13 Vault Intelligence</a> 的 <em>Vault Health / Extract Todos</em> 等用户主动跑的 vault-scope 分析。Ambient 只关心 <strong>你现在这一段的邻居</strong>。
           </div>
           <div class="claim warn">
-            <strong>Spec 里的 “Current Work State / Thought Trace” 是未来方向</strong>
-            当前实现的 UI 是状态栏 + gutter + briefing，这是 2026-05 那一版 spec 的落地。<a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">2026-06 那一版 spec</a> 把这条通路重命名为 <em>Current Work State</em>、把右侧的推荐列表升级成 <em>Thought Trace</em>，本文按 <strong>当前代码</strong> 描述现状；spec 里的下一步 UI 变化不在这一页。
+            <strong>产品形态</strong>
+            这条能力的主界面应该是固定位置的相关笔记面板，而不是反复出现的启动卡片或状态栏提示。本文按长期形态描述：一个可见、可关闭、可停靠的推荐面。
           </div>
         </section>
 
         <section id="surfaces">
-          <h2>三条呈现通路</h2>
-          <p class="lead">Ambient 计算得到的候选笔记会流进三条不同的 UI，每条通路针对不同心境。<strong>它们不是三个视图，而是三种被动的暗示</strong>——你不主动看它们不会挡到编辑。</p>
+          <h2>固定呈现通路</h2>
+          <p class="lead">Ambient 计算得到的候选笔记应该先进入一个固定面板。用户想看的时候它一直在那里；用户不想看的时候，它不弹窗、不闪动、不抢编辑器焦点。</p>
 
           <div class="figure">
             <div class="figure-title">
-              <strong>图 1 · Ambient runtime 与三条呈现通路</strong>
+              <strong>图 1 · Ambient runtime 到固定面板</strong>
               <span>Mermaid · runtime dispatch</span>
             </div>
             <div class="mermaid">
@@ -201,19 +202,19 @@ flowchart LR
   Runtime["AmbientPushRuntime<br/>handleTrigger()"]
   Search["ambientSearch()<br/>vault + graph + patterns + serendipity"]
   Store["ambientPushStore<br/>(Zustand)"]
-  StatusBar["状态栏一行<br/>peak-ambient-status"]
-  Gutter["编辑器行首 ? 提示<br/>SerendipityGutterPlugin"]
-  Briefing["Morning Briefing 卡片<br/>4h 一次，登录首弹"]
+  Panel["Related Notes / Ambient panel<br/>固定位置"]
+  Gutter["行首 ? 提示<br/>高置信度意外邻居"]
+  Manual["manual refresh<br/>用户主动刷新"]
 
   Editor --> Trigger
   Trigger --> Runtime
   Runtime --> Search
   Search --> Store
-  Store --> StatusBar
+  Store --> Panel
   Store --> Gutter
-  Runtime --> Briefing
+  Manual --> Runtime
             </div>
-            <p class="read-note"><b>读图：</b>Runtime 负责 <em>什么时候搜、搜什么</em>；三条 UI 只订阅 Zustand store。所以关掉某条 UI 不会让 runtime 少跑一次搜索——只是不呈现。Morning Briefing 是唯一 <em>runtime 直接调 projection.showMorningBriefing()</em> 的通路（不走 store），因为它按“会话开始”而不是“段落触发”。</p>
+            <p class="read-note"><b>读图：</b>Runtime 负责什么时候搜、搜什么；UI 只订阅 store。固定面板是主呈现，行首 <code>?</code> 是辅助提示，手动刷新是用户主动拉取。</p>
           </div>
 
           <table class="doc-table">
@@ -223,41 +224,45 @@ flowchart LR
             </thead>
             <tbody>
               <tr>
-                <td><strong>状态栏一行</strong><br><span class="pill green">默认</span></td>
-                <td>每次 push 有结果就更新</td>
-                <td>底栏一行小字：Top 1 的标题 + 一句解释</td>
-                <td>Settings → Ambient Push → <code>showStatusBar</code> 关闭</td>
+                <td><strong>Related Notes / Ambient 面板</strong><br><span class="pill green">主通路</span></td>
+                <td>每次 push 有结果就更新，也支持用户手动刷新</td>
+                <td>候选笔记列表、原因、信号、打开/链接动作</td>
+                <td>关闭 Ambient Push，或隐藏/收起该 view</td>
               </tr>
               <tr>
-                <td><strong>Gutter <code>?</code> 提示</strong><br><span class="pill gold">冷门时才亮</span></td>
+                <td><strong>行首 <code>?</code> 提示</strong><br><span class="pill gold">意外相关时才亮</span></td>
                 <td>当前段有 <em>serendipity</em> 邻居时（2-hop 图上的“意外近似”）</td>
                 <td>该行行首出现一个 <code>?</code>；hover 显示笔记标题；点击打开</td>
                 <td>Settings → Ambient Push → <code>enableSerendipityGutter</code> 关闭</td>
               </tr>
               <tr>
-                <td><strong>Morning Briefing</strong><br><span class="pill blue">4h 首次</span></td>
-                <td>距离上次 briefing ≥ 4h + Vault ready 时</td>
-                <td>一张卡片罗列 3 类候选（下面 <a href="#briefing">Briefing 段</a> 详解）</td>
-                <td>Settings → Ambient Push → <code>enableMorningBriefing</code> 关闭</td>
-              </tr>
-              <tr>
-                <td><strong>右侧 Push 面板</strong><br><span class="pill red">已废弃</span></td>
-                <td>——</td>
-                <td>之前的“右侧推荐列表”视图已在 <em>codex/peak-modernization-refactor</em> 分支被删除，取而代之的是上面三条更“克制”的通路。</td>
-                <td>——</td>
+                <td><strong>手动刷新</strong><br><span class="pill blue">主动查找</span></td>
+                <td>用户在面板或命令里触发</td>
+                <td>围绕当前段落重新计算候选</td>
+                <td>不需要关；这是显式动作</td>
               </tr>
             </tbody>
           </table>
 
           <div class="claim warn">
-            <strong>状态栏并不是通知</strong>
-            状态栏那一行 <em>会随每次 push 悄悄更新</em>，不会弹动画、不会震动、不会响。用户如果没抬头就永远不会看到它——这是设计上的保留。想把它变成硬提醒？现在只有 gutter 那条通路会“在段旁边视觉出现”，且门槛更高（必须是 serendipity 邻居）。
+            <strong>状态栏不是主界面</strong>
+            如果保留状态栏，它只能作为很轻的兼容提示：不闪、不动、不承载主要信息。真正的结果列表和解释应该放在固定面板里，否则用户既看不全，也容易觉得被打扰。
           </div>
         </section>
 
         <section id="trigger">
           <h2>什么时候会跑</h2>
           <p class="lead">Runtime 在 <strong>三种情况</strong> 下会触发一次搜索。每种都有 cooldown 保护，不会连续开火。</p>
+          <div class="formula-box">
+            <strong>触发判定</strong>
+            <div class="formula"><code>canRun = enabled && contextReady && triggerCooldownPassed && triggerSpecificCondition</code></div>
+            <ol>
+              <li><code>writing_pause</code>：停止输入超过 <code>writingPauseMs</code>，且当前段落新增字符数 ≥ <code>minCharDelta</code>。</li>
+              <li><code>doc_switch</code>：活动文件变化，且距离上次 doc switch 搜索超过 <code>docSwitchCooldownMs</code>。</li>
+              <li><code>manual</code>：用户主动刷新，不受普通 cooldown 限制，但仍需要当前 editor/context 可读。</li>
+              <li>段落过短、没有活动文件、索引不可用时直接跳过；这是安静策略，不是故障。</li>
+            </ol>
+          </div>
 
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 22%"><col style="width: 22%"><col></colgroup>
@@ -279,7 +284,7 @@ flowchart LR
               </tr>
               <tr>
                 <td><code>manual</code></td>
-                <td>Command Palette → Ambient · Trigger Related Notes 或点 gutter 的 <code>?</code></td>
+                <td>Command Palette → Ambient · Trigger Related Notes 或点行首 <code>?</code> 提示</td>
                 <td>无 cooldown</td>
                 <td>逃生舱：任何情况下都能强触发一次。</td>
               </tr>
@@ -308,7 +313,7 @@ flowchart LR
         </section>
 
         <section id="signals">
-          <h2>送谁上榜的六种信号</h2>
+          <h2>候选怎么上榜</h2>
           <p class="lead">从 vault 检索到的候选笔记会同时挂上一到多种 <code>AmbientSignal</code>。Runtime 用信号强度打分，最终排序 + 只留 <code>maxPushItems</code> 条（默认 5）。同一个 <code>AmbientPushItem</code> 通常带 2-3 个信号，展示时选 <strong>优先级最高</strong> 的那个渲染成人话解释。</p>
 
           <table class="doc-table">
@@ -355,6 +360,16 @@ flowchart LR
               </tr>
             </tbody>
           </table>
+          <div class="formula-box">
+            <strong>排序公式</strong>
+            <div class="formula"><code>score = baseSearchScore + Σ signalStrength × signalWeight + patternBoost + recencyBoost</code></div>
+            <ol>
+              <li><code>baseSearchScore</code> 来自当前段落的关键词 / embedding 检索。</li>
+              <li><code>signalStrength</code> 来自 shared tag、graph neighbor、co-citation、hub member、text overlap 等信号。</li>
+              <li><code>patternBoost</code> 只来自用户历史 co-open 行为；它不是 LLM 判断。</li>
+              <li>同一个候选可以带多个 signal；展示时选择优先级最高、最容易解释的一条。</li>
+            </ol>
+          </div>
 
           <p class="prose" style="margin-top: 22px;">除了这 6 种基础信号，还有两条 <strong>后处理</strong> 会调整最终排序：</p>
 
@@ -365,13 +380,13 @@ flowchart LR
 
           <div class="claim warn">
             <strong>Serendipity：图上远但嵌入近，塞给你一个惊喜</strong>
-            <code>SerendipitySearcher</code> 做的是 <em>2-hop 图遍历 + 嵌入距离 &lt; 阈值</em>，找出 <em>“语义上很像但没被链过”</em> 的候选，最多注入 1 条到最终列表。它是 <strong>gutter <code>?</code></strong> 提示的直接来源；如果 <code>enableSerendipityGutter</code> 关掉，仍然可能进入状态栏 top 1。这种候选往往和当前段主题只沾一点边，用来打破“同温层”。
+            <code>SerendipitySearcher</code> 做的是 <em>2-hop 图遍历 + 嵌入距离 &lt; 阈值</em>，找出 <em>“语义上很像但没被链过”</em> 的候选，最多注入 1 条到最终列表。它是 <strong>行首 <code>?</code> 提示</strong> 提示的直接来源；如果 <code>enableSerendipityGutter</code> 关掉，仍然可能进入状态栏 top 1。这种候选往往和当前段主题只沾一点边，用来打破“同温层”。
           </div>
         </section>
 
-        <section id="briefing">
-          <h2>Morning Briefing 的三类候选</h2>
-          <p class="lead">Briefing 不是“当前段落的邻居”，它是 <strong>“过去几天你的 vault 发生了什么值得看的变化”</strong>。窗口默认 14 天，<code>tryShowMorningBriefing()</code> 在插件启动时被调用一次，距上次 briefing ≥ 4 小时才真的展示。</p>
+        <section id="candidate-sets">
+          <h2>候选来源</h2>
+          <p class="lead">Ambient 的主候选来自当前段落邻居，不来自启动弹窗。下面这些来源只说明候选从哪来，不代表一定要把它们做成单独 UI。</p>
 
           <div class="field-list">
             <dt>Unresolved Connections</dt>
@@ -385,8 +400,8 @@ flowchart LR
           <p class="prose" style="margin-top: 18px;">每类最多返回 5 条候选，最终按 <code>score</code> 降序合并。<code>BriefingItemBuilder</code> 负责三类的分类策略；<code>SqliteAmbientBriefingReadAdapter</code> 只做 SQL 抽取，不判定归属。</p>
 
           <div class="claim">
-            <strong>Briefing 的“会话”是插件启动的会话，不是 vault 打开的会话</strong>
-            <code>ambient_last_briefing_ts</code>、<code>ambient_last_session_ts</code> 存在 <code>index_state</code> 表。冷启动时对齐上一次的时间戳；两次连续启动之间 &lt; 4h 不会重复弹。<em>“早上第一次打开 Obsidian”</em> 是常见触发场景，但严格来说是 <em>“距离上次 briefing 满 4h 的插件启动”</em>。
+            <strong>不要把候选来源等同于通知形式</strong>
+            PageRank 高、长期未打开、hub 变化这些信号可以进入固定面板的候选解释，但不需要包装成一个每次启动都出现的卡片。用户要的是持续可见的相关笔记面板，不是打开 Obsidian 时再处理一张新任务。
           </div>
         </section>
 
@@ -401,19 +416,19 @@ flowchart LR
             </thead>
             <tbody>
               <tr>
-                <td>状态栏一直闪</td>
-                <td>状态栏是一行 <strong>静态文字</strong>——push 到来时替换，不闪、不动。</td>
-                <td><code>showStatusBar: false</code>。</td>
+                <td>面板一直占空间</td>
+                <td>主通路是固定面板；用户可以把它收起、停靠到右侧，或拆到独立 leaf。</td>
+                <td>隐藏 Ambient view，或关闭 <code>enabled</code>。</td>
               </tr>
               <tr>
-                <td>gutter 老是跳出来 <code>?</code></td>
+                <td>行首 <code>?</code> 老是跳出来</td>
                 <td>只在 serendipity 候选存在时才亮；不出现在每一行。</td>
                 <td><code>enableSerendipityGutter: false</code>。</td>
               </tr>
               <tr>
-                <td>Morning Briefing 每次开插件都弹</td>
-                <td>4h 冷却 + Vault ready 检查；短时间开关插件不会重复弹。</td>
-                <td><code>enableMorningBriefing: false</code>。</td>
+                <td>启动时弹窗打断我</td>
+                <td>长期形态不依赖启动卡片。相关候选应该进入固定面板，不作为每次打开 Obsidian 的待处理任务。</td>
+                <td>关闭旧启动卡片入口；保留固定面板。</td>
               </tr>
               <tr>
                 <td>它会不会写我的笔记</td>
@@ -435,7 +450,7 @@ flowchart LR
 
           <div class="claim danger">
             <strong>“完全不弹” 是通过 <code>enabled: false</code> 达到的</strong>
-            设置里的顶层 <code>enabled</code> 关掉后，<em>composeAmbientRuntime</em> 那一步就会跳过——runtime 干脆不启动，也不订阅任何事件。这是最彻底的关掉方式；只把 <code>showStatusBar</code>、<code>enableSerendipityGutter</code>、<code>enableMorningBriefing</code> 全关的效果类似，但 runtime 仍在跑（还是会写 SQLite 的 push_log，占用一点 CPU / disk）。
+            设置里的顶层 <code>enabled</code> 关掉后，<em>composeAmbientRuntime</em> 那一步就会跳过——runtime 干脆不启动，也不订阅任何事件。这是最彻底的关掉方式；只隐藏 UI 只是不呈现，runtime 仍可能写 SQLite 的 push log，占用一点 CPU / disk。
           </div>
         </section>
 
@@ -445,12 +460,12 @@ flowchart LR
 
           <div class="note-list">
             <div class="note-item">
-              <b>“我只想要早上那张 briefing”</b>
-              <span><code>enabled: true</code>，其它三个（<code>showStatusBar</code>、<code>enableSerendipityGutter</code>、<code>enableLlmExplanation</code>）全关，只留 <code>enableMorningBriefing</code>。runtime 还在跑（会累积 push_log 供 briefing 用），只是完全不呈现日常 push。</span>
+              <b>“我只想要固定面板，不要行首提示”</b>
+              <span><code>enabled: true</code>，隐藏/关闭行首 <code>?</code> 提示，保留 Related Notes / Ambient 面板。这样结果持续可见，但不会在编辑器正文旁边闪出提示。</span>
             </div>
             <div class="note-item">
-              <b>“我要 gutter 的意外发现，但状态栏太吵”</b>
-              <span><code>showStatusBar: false</code> + <code>enableSerendipityGutter: true</code>。<em>注意：</em>serendipity 只在 2-hop 有远近似候选时才有产出——如果 vault 还没建好语义边（<a href="04-configuration-and-user-views.html#indexing">04 · Knowledge Index</a> 处于 Fast 档），gutter 会几乎永不亮。</span>
+              <b>“我要行首的意外发现，但不要其它提示”</b>
+              <span>保留行首 <code>?</code>，隐藏固定面板的常驻区域。<em>注意：</em>serendipity 只在 2-hop 有远近似候选时才有产出——如果 vault 还没建好语义边（<a href="04-configuration-and-user-views.html#indexing">04 · Knowledge Index</a> 处于 Fast 深度），行首提示会很少出现。</span>
             </div>
             <div class="note-item">
               <b>“我要每一次 push 都给我一句 AI 的解释”</b>
@@ -514,7 +529,7 @@ flowchart TD
               <tr>
                 <td><strong>App wiring</strong></td>
                 <td><code data-copy="main.ts">main.ts</code>（<code>onload</code> L433-460）</td>
-                <td>读 <code>settings.ambientPush.enabled</code>；启动 runtime；挂状态栏 + gutter；订阅 store 更新写状态栏。</td>
+                <td>读 <code>settings.ambientPush.enabled</code>；启动 runtime；挂固定面板投影和行首提示；订阅 store 更新 UI。</td>
               </tr>
               <tr>
                 <td><strong>Runtime</strong></td>
@@ -549,7 +564,7 @@ flowchart TD
               <tr>
                 <td><strong>UI store</strong></td>
                 <td><code data-copy="src/ui/store/ambientPushStore.ts">ambientPushStore.ts</code><br><code data-copy="src/ui/store/morningBriefingStore.ts">morningBriefingStore.ts</code></td>
-                <td>Zustand store：<code>items</code>、<code>pushHistory</code>、<code>serendipityItem</code>、<code>briefingItems</code>。</td>
+                <td>Zustand store：固定面板 items、push 历史、行首提示候选，以及旧启动卡片兼容数据。</td>
               </tr>
               <tr>
                 <td><strong>Briefing 分类</strong></td>
@@ -603,6 +618,39 @@ flowchart TD
           </div>
         </section>
 
+        <section id="current-work-state">
+          <h2>Current Work State（D1 状态栏面 · 2026-07-03 shipped）</h2>
+          <p class="lead">Ambient 侧栏一直显示"跟当前笔记语义相关的其他笔记"，这一面是 <em>相关性</em>。D1 加了正交的第二视角：<strong>你现在正在思考的问题</strong>——由 <code>SessionContextService.workingTheme.llmInferred</code> 承载。</p>
+
+          <h3>数据源已经在</h3>
+          <p class="prose"><code>WorkingThemeInferrer</code>（<code>src/service/context/WorkingThemeInferrer.ts</code>）已经在做这件事：读最近 20 条 <code>ActivityEntry</code>（编辑 / chat / 搜索 / 打开笔记），30s 防抖 + 10 次活动阈值触发一次 LLM 推断，产出 <code>{ summary, relatedFiles, updatedAt }</code>。本轮 <em>没有</em> 重新造这个 pipeline——只是让它的输出被 <strong>用户可见</strong>。</p>
+
+          <h3>状态栏优先展示 thinking summary</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 25%"><col></colgroup>
+            <thead><tr><th>条件</th><th>状态栏显示</th></tr></thead>
+            <tbody>
+              <tr><td><code>llmInferred.summary</code> 非空</td><td><code>🧠 &lt;截断到 44 字符&gt;</code> · hover tooltip 显示全文</td></tr>
+              <tr><td>无 summary，AmbientPushStore 有 items</td><td><code>⚡ N related</code>（原行为）</td></tr>
+              <tr><td>无 summary 也无 items</td><td><code>⚡ –</code></td></tr>
+            </tbody>
+          </table>
+          <p class="prose">60s 定时 <code>setInterval</code> 定期 refresh + <code>useAmbientPushStore.subscribe</code> 事件驱动，任一路径都会重算。</p>
+
+          <div class="claim warn">
+            <strong>只做了状态栏一面</strong>
+            spec 里的三面（状态栏 + Serendipity gutter + Morning Briefing）本轮只做了第一面。<code>SerendipityGutterPlugin</code> 和 <code>MorningBriefingModal</code> 都已经能读 <code>SessionContextService.getWorkingContext()</code>，接入是纯 UI 决策——例如 gutter 里为高相关文件加"🧠 relates to your current thinking"角标、Morning Briefing 里加一段"昨天的思考主线"。
+          </div>
+
+          <h3>代码证据</h3>
+          <ul>
+            <li>状态栏 wire: <code>main.ts</code> · <code>refreshStatusBar</code>（60s poll + AmbientPushStore subscribe）</li>
+            <li>数据源: <code>src/service/context/SessionContextService.ts</code> · <code>getWorkingContext()</code> / <code>setLlmInferredTheme</code></li>
+            <li>推断: <code>src/service/context/WorkingThemeInferrer.ts</code>（PromptId.WorkingThemeInference）</li>
+            <li>Spec: <code>docs/superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html</code></li>
+          </ul>
+        </section>
+
         <section id="failure-modes">
           <h2>失败与降级</h2>
           <p class="lead">当 Ambient 一整天都没给你任何推荐时，八成是下面这几种情况之一——诊断顺序按“可能性”排。</p>
@@ -633,8 +681,8 @@ flowchart TD
               <span>症状：状态栏和 push 都在，但一直用 template 解释（<em>“共享标签 #xxx”</em> 这种），从没出现过流畅的一句 AI 解释。<code>LlmAmbientExplanationAdapter</code> 是 <em>非阻塞</em> 的，失败时静默——不会打扰你，但也没有明显提示。诊断：devtools 里看 <code>LlmAmbientExplanationAdapter</code> 相关 error。</span>
             </div>
             <div class="note-item">
-              <b>Briefing 冷却未到 → “早上没有卡片”。</b>
-              <span>症状：一天内多次开关插件都不弹 briefing。<code>ambient_last_briefing_ts</code> 保存了上次弹出的时间；4h 内不重弹是刻意的。修：如果你 <em>确实</em> 想强弹，只能等到间隔满，或手动改 SQLite（不推荐）。</span>
+              <b>旧启动卡片入口没有出现。</b>
+              <span>把它当兼容入口排查即可，不要把它作为 Ambient 的主成功标准。主路径应该看固定面板是否有候选、候选是否能打开、信号解释是否合理。</span>
             </div>
           </div>
 
@@ -656,7 +704,7 @@ flowchart TD
             <tbody>
               <tr>
                 <td>Trigger 何时发火 / 冷却</td>
-                <td><code data-copy="src/app/ambient/ObsidianAmbientEditorContextAdapter.ts">ObsidianAmbientEditorContextAdapter.ts</code></td>
+                <td><code data-copy="src/app/ambient/ObsidianAmbientEditorContextAdapter.ts">EditorContextAdapter.ts</code></td>
                 <td>写作监听、cooldown 判断、字符 delta 阈值；发出 <code>AmbientEditorTrigger</code> 回调。</td>
               </tr>
               <tr>
@@ -671,27 +719,27 @@ flowchart TD
               </tr>
               <tr>
                 <td>Pattern learning</td>
-                <td><code data-copy="src/service/ambient/PatternLearningService.ts">PatternLearningService.ts</code><br><code data-copy="src/service/ambient/PatternLearner.ts">PatternLearner.ts</code></td>
+                <td><code data-copy="src/service/ambient/PatternLearningService.ts">PatternService.ts</code><br><code data-copy="src/service/ambient/PatternLearner.ts">PatternLearner.ts</code></td>
                 <td>10 分钟缓存 + 30 天窗口 + 最少 2 次重复；<code>getPatternBoost</code> 返回 0-0.4 加分。</td>
               </tr>
               <tr>
                 <td>解释文字是怎么长出来的</td>
-                <td><code data-copy="src/service/ambient/RelevanceExplainer.ts">RelevanceExplainer.ts</code><br><code data-copy="src/service/ambient/AmbientExplanationService.ts">AmbientExplanationService.ts</code></td>
+                <td><code data-copy="src/service/ambient/RelevanceExplainer.ts">RelevanceExplainer.ts</code><br><code data-copy="src/service/ambient/AmbientExplanationService.ts">ExplanationService.ts</code></td>
                 <td>Template 走 <code>RelevanceExplainer.generateExplanation(signals)</code>；LLM 走 <code>AmbientExplanationService.generate(paragraph, title, excerpt)</code>。</td>
               </tr>
               <tr>
                 <td>SQLite 端的读写</td>
-                <td><code data-copy="src/app/ambient/SqliteAmbientPersistenceAdapter.ts">SqliteAmbientPersistenceAdapter.ts</code><br><code data-copy="src/app/ambient/SqliteAmbientBriefingReadAdapter.ts">SqliteAmbientBriefingReadAdapter.ts</code></td>
+                <td><code data-copy="src/app/ambient/SqliteAmbientPersistenceAdapter.ts">PersistenceAdapter.ts</code><br><code data-copy="src/app/ambient/SqliteAmbientBriefingReadAdapter.ts">CandidateReadAdapter.ts</code></td>
                 <td>写 <code>ambient_push_log</code> / <code>ambient_push_action</code>；读 <code>index_state</code> + <code>mobius_node</code> 的 mtime。</td>
               </tr>
               <tr>
                 <td>图查询与嵌入</td>
-                <td><code data-copy="src/app/ambient/SqliteSemanticGraphTraversalAdapter.ts">SqliteSemanticGraphTraversalAdapter.ts</code></td>
+                <td><code data-copy="src/app/ambient/SqliteSemanticGraphTraversalAdapter.ts">GraphTraversalAdapter.ts</code></td>
                 <td>薄适配层：把 <code>getNodeIdByPath</code> / <code>getEmbedding</code> / <code>getNeighborIdsMap</code> / <code>getNodesByIds</code> 转给 Serendipity。</td>
               </tr>
               <tr>
                 <td>Gutter 编辑器扩展</td>
-                <td><code data-copy="src/app/ambient/SerendipityGutterPlugin.ts">SerendipityGutterPlugin.ts</code></td>
+                <td><code data-copy="src/app/ambient/SerendipityGutterPlugin.ts">LineStartPlugin.ts</code></td>
                 <td>CodeMirror6 扩展：从 store 读 <code>serendipityItem</code>，渲染行首 <code>?</code>，hover 提示，点击打开。</td>
               </tr>
               <tr>
@@ -714,7 +762,7 @@ flowchart TD
         </section>
 
         <div class="footer">
-          <p>验证记录：2026-07-01。Ambient Push 是 T8 边界重构的产物；此前 <code>AmbientPushService</code> singleton 与右侧推荐面板已在 <em>codex/peak-modernization-refactor</em> 分支删除。UI 层未来变化（Current Work State / Thought Trace）参考 <a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">2026-06 那一版 spec</a>。</p>
+          <p>相关文档：<a href="12-feature-search.html">12 Search</a>、<a href="13-feature-vault-intelligence.html">13 Vault Intelligence</a>、<a href="23-infra-search-index.html">23 Search Index</a>。产品背景参考 <a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">Ambient Push / Current Work State 设计稿</a>。</p>
         </div>
       </div>
     </div>

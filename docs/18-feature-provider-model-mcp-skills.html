@@ -453,6 +453,73 @@ flowchart LR
           </div>
         </section>
 
+        <section id="media-providers">
+          <h2>媒体生成 provider（TTS / 图像 / 视频）</h2>
+          <p class="lead">LLM provider 只覆盖文本+embedding；<strong>音频 / 图像 / 视频生成走一条独立的抽象轴</strong>——<code>MediaGenerationPort</code>（<code>src/core/ports/MediaGenerationPort.ts</code>）。它的形状比 LLM provider 简单：不需要流式、不需要工具调用、不需要 profile 组合，只需要 <em>请求 → 二进制字节 + 扩展名 + MIME</em>。</p>
+
+          <h3>抽象层选择</h3>
+          <div class="claim">
+            <strong>不为每个 vendor 写 adapter，用聚合器</strong>
+            调研（<code>docs/research/2026-07-01-multimodal-generation-studio/</code>）明确否决"为 ElevenLabs / OpenAI / Midjourney / Runway 各写一个"，选择用<strong>聚合器</strong>作为主 adapter：一家聚合了图/音/视/TTS 四个方向、单一 API key、单一账单。这样多家 vendor 的选型不落到 Peak 用户身上，只在 <code>styleHint = "model:..."</code> override 那一层暴露。
+          </div>
+
+          <h3>Shipped adapter：fal.ai</h3>
+          <p class="prose">当前唯一 shipped 的 <code>MediaGenerationPort</code> 实现是 <code>FalMediaAdapter</code>（<code>src/app/platform/media/FalMediaAdapter.ts</code>）。选它的原因：</p>
+          <ul>
+            <li><strong>覆盖广</strong> — 985 个 endpoint，image API 市场占有率 50%、video 44%，一家搞定四大类</li>
+            <li><strong>价格 &amp; 速度</strong> — 比 Replicate 便宜 30–50%、速度快 10×</li>
+            <li><strong>API 模式统一</strong> — 全部走 <code>queue.fal.run</code> 提交-轮询，指数退避 1.5s → 5s，超时 5min；无需为每类媒体单独学 SDK</li>
+            <li><strong>Key 单一</strong> — 用户在 Settings → AI → fal API key 填一次就都能用</li>
+          </ul>
+
+          <h3>默认 model 选择</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 18%"><col style="width: 32%"><col style="width: 50%"></colgroup>
+            <thead><tr><th>类别</th><th>默认 model</th><th>选择理由</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>TTS</td>
+                <td><code>fal-ai/kokoro/american-english</code>（<code>voice: af_bella</code>）</td>
+                <td>开源 Kokoro，声音自然、成本极低（远低于 ElevenLabs）；许可干净可商用。</td>
+              </tr>
+              <tr>
+                <td>图像</td>
+                <td><code>fal-ai/fast-sdxl</code></td>
+                <td>比 Flux 便宜 3–5×，够用于笔记封面场景。质量瓶颈到了再切 Flux（override 已内建）。</td>
+              </tr>
+              <tr>
+                <td>视频</td>
+                <td><code>fal-ai/veo3/text-to-video</code>（占位，未接命令）</td>
+                <td>Veo3 是当下 SOTA；但视频成本高、场景刚需度弱，本轮只留 model id，不暴露命令。</td>
+              </tr>
+              <tr>
+                <td>音乐</td>
+                <td><em>（放弃）</em></td>
+                <td>调研直接否决——Obsidian 用户不需要，会自己开 Suno。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>换 provider 的成本</h3>
+          <p class="prose">要接入 ElevenLabs / OpenAI TTS / Replicate / 本地 ComfyUI 等，只需要实现 <code>MediaGenerationPort</code> 的两个方法（<code>generate</code> + <code>isConfigured</code>），其他代码零改动：<code>MediaRingService</code> 只识别 port，命令层通过 <code>getOrBuildMediaRing</code> 拿到 service，谁都不 import 具体 adapter。备胎位（<code>ReplicateMediaAdapter</code>）本轮没写。</p>
+
+          <div class="claim warn">
+            <strong>成本追踪未接入 Usage Dashboard</strong>
+            <code>FalMediaAdapter.generate</code> 返回 <code>latencyMs</code>，但没有把每次调用的费用写进 <code>usage_log</code>——媒体生成的定价模型（按秒 / 按图 / 按 token）跟 LLM 完全不同，需要单独一份 catalog。这是 D4 骨架落地后的第一个 follow-up。
+          </div>
+
+          <h3>代码证据</h3>
+          <ul>
+            <li>Port: <code>src/core/ports/MediaGenerationPort.ts</code></li>
+            <li>Adapter: <code>src/app/platform/media/FalMediaAdapter.ts</code></li>
+            <li>Orchestrator: <code>src/service/media/MediaRingService.ts</code></li>
+            <li>Vault 附件写: <code>src/app/platform/media/ObsidianMediaAttachmentWriter.ts</code></li>
+            <li>Settings: <code>AIServiceSettings.falApiKey</code> + <code>AIServiceSettings.mediaAttachmentFolder</code></li>
+            <li>Commands: <code>peak-media-tts-active-note</code> + <code>peak-media-cover-active-note</code></li>
+            <li>调研：<a href="research/2026-07-01-multimodal-generation-studio/README.md">2026-07-01 multimodal-generation-studio</a></li>
+          </ul>
+        </section>
+
         <section id="mcp">
           <h2>MCP 外部工具</h2>
           <p class="lead">MCP（Model Context Protocol）让 AI 调用 <strong>另一个进程</strong> 里的工具——文件系统、Slack、GitHub、你自己写的服务。Peak 的 MCP 集成分三步：<em>连接 → 发现工具 → 包装成 ToolDef 供 Agent 调用</em>。</p>

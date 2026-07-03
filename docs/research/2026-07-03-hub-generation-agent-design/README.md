@@ -2,8 +2,43 @@
 
 **Date**: 2026-07-03
 **Owner**: Claude / codex-peak-modernization-refactor
-**Status**: 调研完，未实施
+**Status**: **已实施**（2026-07-03 commit `6bea87c3`，见下方 §实施记录）
 **Blocker upstream**: 无（基建齐备，可直接进 spec）
+**Spec**: `docs/superpowers/specs/2026-07-03-hub-generation-agent.md`
+
+## 实施记录（2026-07-03）
+
+按方向 C（Agent-driven curation + materialization）整体落地。**方案里的所有关键选择**都对上了实现：
+
+### 架构选择对应实现
+
+| 报告结论 | 落地方式 |
+|---|---|
+| 复用 `KnowledgeIntuitionAgent` 骨架（prep → recon loop → structured submit） | `HubCuratorAgent` 逐一镜像其目录结构：`hub-curation-helper/hubCurationPrep.ts` + `hubCurationRecon.ts` + `hubCurationMemory.ts` + `types.ts` |
+| SQL 排候选 + Louvain 社区作为 curator prep（不重算图算法） | `MobiusNodeRepo.listCuratorHubCandidates()` 扩展现有 `listTopDocumentNodesForHubDiscovery` 增加 `community_id` + `betweenness_centrality`；`StructuralAnalysisRepo.getCommunities()` 提供社区元数据 |
+| 数量 / 合并 / 淘汰全由 LLM 决定 + 自评覆盖率 | `hubCurationSubmitSchema` 内嵌 `coverage.uncoveredHighValue` + `confidence` + `should_stop`；curator budget 用 `clamp(⌈√N × 1.5⌉, 12, 60)` sqrt 缩放 |
+| Materializer 独立每 hub 跑 + draft → critique 循环 | `HubMaterializationAgent` + `hubMaterializationRecon.ts`（`hubDraftSchema` / `hubCritiqueSchema`）；核心/边缘划分 `⌈√N⌉ clamped [3,12]` |
+| `peak_user_owned` frontmatter guard | `ObsidianVaultHubDocAdapter.readPeakUserOwned()` + Materializer `finalize` 前置检查 |
+| Merge 遇 user-owned 源 → 拦截整个 merge | `HubCurationExecutor.detectMergeConflict()` |
+| Retire = archive 不删除 | `ObsidianVaultHubArchiveAdapter.archive()` → `_archive/hub/<sanitized-path>` |
+| Single-hub fallback（stale-triggered 不必等 curator） | `HubGenerationRuntime.buildRegenerateFn()` 综合社区成员 + 最近 3 份 plan 找 decision |
+
+### 具体交付
+
+- 5 phase 一次性交付（见 spec §Phase 顺序）
+- 48 files, +4455 lines
+- 5 unit test + build + 158/158 tests green
+- 3 命令：`peak-hub-curate-now` / `peak-hub-materialize-active-note` / `peak-hub-show-latest-plan`
+- HubCurationPlanModal 简单 debug 面板
+
+### Follow-up（本轮未做）
+
+1. **UI 面板**（Phase 5 只做了 modal，Lint panel 里 Hub Curation tab 未加）
+2. **Curator 触发频率**（Scheduler opt-in 默认关，用户体验后再决定是否默认打开）
+3. **Cost tracking**（Usage Dashboard 联动 curator+materializer 调用成本）
+4. **多语言 vault 效果对比**（观察后调整 prompt）
+
+---
 
 ---
 
