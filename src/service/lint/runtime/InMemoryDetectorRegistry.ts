@@ -33,7 +33,9 @@ export class InMemoryDetectorRegistry implements VaultLintDetectorRegistryPort {
 		for (const detector of buildContentDetectors(config)) {
 			// `C-EMPTY` is already registered above; `buildContentDetectors`
 			// emits it as part of its bundle but we keep the explicit
-			// registration so the order matches the pre-T6 behavior.
+			// registration so the order matches the pre-T6 behavior. New
+			// content detectors (`C-STUB`, `C-OVERSIZED`, ...) all flow in
+			// through `buildContentDetectors`.
 			if (detector.id !== 'C-EMPTY') this.detectors.set(detector.id, detector);
 		}
 		this.detectors.set(untaggedDetector.id, untaggedDetector);

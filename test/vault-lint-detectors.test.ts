@@ -16,6 +16,7 @@ import {
 	emptyDetector,
 	buildContentDetectors,
 	strippedLength,
+	strippedWordCount,
 } from '@/service/lint/signals/content';
 import { untaggedDetector } from '@/service/lint/signals/tags';
 import {
@@ -191,6 +192,66 @@ async function testStubDetectorRespectsDismissals(): Promise<void> {
 	);
 	assert.strictEqual(findings.length, 0);
 	console.log('PASS: stubDetectorRespectsDismissals');
+}
+
+async function testOversizedDetectorFiresAtOrAboveThreshold(): Promise<void> {
+	const detectors = buildContentDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, oversizedMinWords: 5 },
+	});
+	const oversized = detectors.find((d) => d.id === 'C-OVERSIZED');
+	assert.ok(oversized, 'buildContentDetectors must include C-OVERSIZED');
+	const dc = makeFakeContext({
+		files: [
+			{ path: 'ok.md', basename: 'ok' },
+			{ path: 'over.md', basename: 'over' },
+			{ path: 'exact.md', basename: 'exact' },
+		],
+		fileContent: {
+			'ok.md': 'one two three',                       // 3 words → below
+			'exact.md': 'alpha beta gamma delta epsilon',   // 5 words → fires (≥ threshold)
+			'over.md': 'a b c d e f g h i j k',              // 11 words → fires
+		},
+	});
+	const findings = await oversized!.detect(makeScanContext(dc));
+	assert.strictEqual(findings.length, 2);
+	assert.deepStrictEqual(
+		findings.map((f) => f.filePath).sort(),
+		['exact.md', 'over.md'],
+	);
+	const over = findings.find((f) => f.filePath === 'over.md')!;
+	assert.strictEqual(over.signalId, 'C-OVERSIZED');
+	assert.strictEqual(over.severity, 'info');
+	assert.deepStrictEqual(over.fixActions, ['suggest-split']);
+	assert.strictEqual((over.metadata as any).wordCount, 11);
+	assert.strictEqual((over.metadata as any).threshold, 5);
+	console.log('PASS: oversizedDetectorFiresAtOrAboveThreshold');
+}
+
+async function testOversizedDetectorRespectsDismissals(): Promise<void> {
+	const detectors = buildContentDetectors({
+		...DEFAULT_VAULT_LINT_CONFIG,
+		thresholds: { ...DEFAULT_VAULT_LINT_CONFIG.thresholds, oversizedMinWords: 3 },
+	});
+	const oversized = detectors.find((d) => d.id === 'C-OVERSIZED')!;
+	const dc = makeFakeContext({
+		files: [{ path: 'big.md', basename: 'big' }],
+		fileContent: { 'big.md': 'one two three four' },
+	});
+	const findings = await oversized.detect(
+		makeScanContext(dc, ['C-OVERSIZED:big.md']),
+	);
+	assert.strictEqual(findings.length, 0);
+	console.log('PASS: oversizedDetectorRespectsDismissals');
+}
+
+function testStrippedWordCountHelperIsExposed(): void {
+	assert.strictEqual(strippedWordCount(''), 0);
+	assert.strictEqual(strippedWordCount('---\nx: 1\n---\n'), 0);
+	assert.strictEqual(strippedWordCount('# Title\n'), 0);
+	assert.strictEqual(strippedWordCount('# Title\n\nhello world'), 2);
+	assert.strictEqual(strippedWordCount('---\ntitle: a\n---\n# H\nfoo  bar\tbaz\n'), 3);
+	console.log('PASS: strippedWordCountHelperIsExposed');
 }
 
 function testStrippedLengthHelperIsExposed(): void {
@@ -412,6 +473,9 @@ async function main(): Promise<void> {
 	await testEmptyDetectorRespectsDismissals();
 	await testStubDetectorFiresUnderConfiguredThreshold();
 	await testStubDetectorRespectsDismissals();
+	await testOversizedDetectorFiresAtOrAboveThreshold();
+	await testOversizedDetectorRespectsDismissals();
+	testStrippedWordCountHelperIsExposed();
 	testStrippedLengthHelperIsExposed();
 	await testUntaggedDetectorFiresOnlyWhenBothTagSourcesEmpty();
 	await testUntaggedDetectorRespectsDismissals();
