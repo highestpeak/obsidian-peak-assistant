@@ -4,6 +4,7 @@
 
 import type { ModelMessage } from 'ai';
 import type { MemoryBlock } from '../memory/types';
+import type { CompactSummary } from '@/core/context/compactSummary';
 
 export interface ContextManagerConfig {
     /**
@@ -44,6 +45,14 @@ export interface CompactionResult {
     estimatedTokens: number;
     /** True if any compaction work happened — useful for trace emission. */
     compacted: boolean;
+    /**
+     * Anchor records for every block dropped and every message-window folded
+     * this pass. Trace consumers render "N blocks dropped / M messages folded"
+     * without silent loss; the agent tool layer can rehydrate the material via
+     * `refetchCompactAnchor` (`src/service/context/refetchAnchor.ts`).
+     * Empty when `compacted === false`.
+     */
+    compactSummaries: CompactSummary[];
 }
 
 export const DEFAULT_CONTEXT_CONFIG: Required<Omit<ContextManagerConfig, 'maxTokens'>> = {

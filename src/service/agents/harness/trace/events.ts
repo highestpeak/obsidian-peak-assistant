@@ -4,6 +4,7 @@
  */
 
 import type { ModelTier } from '../tier/types';
+import type { CompactSummary } from '@/core/context/compactSummary';
 
 export interface ToolCallTrace {
     toolName: string;
@@ -56,6 +57,13 @@ export interface ContextCompactedEvent {
     droppedBlocks: number;
     /** Count of middle messages folded into the summary placeholder. */
     droppedMessages: number;
+    /**
+     * Recoverable-compaction anchor records (Track D). One entry per dropped
+     * block; plus one entry when the message window was folded. Trace UI can
+     * render "N blocks dropped / M messages folded" with refetch hints
+     * without touching the ContextManager result.
+     */
+    compactSummaries: CompactSummary[];
 }
 
 export type TraceEventMap = {

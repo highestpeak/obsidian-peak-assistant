@@ -147,6 +147,7 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
                     tokensAfter: compaction.estimatedTokens,
                     droppedBlocks: compaction.droppedBlocks.length,
                     droppedMessages: compaction.droppedMessageCount,
+                    compactSummaries: compaction.compactSummaries,
                 });
             }
             keptBlocks = compaction.keptBlocks;

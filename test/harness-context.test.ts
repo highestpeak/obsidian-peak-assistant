@@ -231,6 +231,14 @@ async function run(): Promise<void> {
                 assert.strictEqual(ev.loopId, 'L-ctx');
                 assert.ok(ev.tokensBefore >= ev.tokensAfter, 'tokensAfter should not exceed tokensBefore');
                 assert.ok(ev.droppedBlocks >= 1, 'at least one block should have been dropped');
+                assert.ok(
+                    Array.isArray(ev.compactSummaries) && ev.compactSummaries.length >= 1,
+                    'context_compacted event carries recoverable CompactSummary anchors',
+                );
+                const blockSummary = ev.compactSummaries.find((s) => s.anchors[0]?.kind === 'block');
+                assert.ok(blockSummary, 'summary for dropped block should be emitted');
+                assert.strictEqual(blockSummary!.level, 4, 'dropped block level=4');
+                assert.ok(blockSummary!.suggestedRefetch.length > 0, 'summary carries refetch hint');
             },
         },
         {

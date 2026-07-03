@@ -29,6 +29,11 @@ import {
     type CompactionResult,
     type ContextManagerConfig,
 } from './types';
+import type { CompactSummary } from '@/core/context/compactSummary';
+import {
+    makeDroppedBlockSummary,
+    makeMessageWindowSummary,
+} from '@/core/context/compactSummary';
 
 /** Same heuristic as token-estimation.ts: chars/4, rounded up. */
 const CHARS_PER_TOKEN = 4;
@@ -108,6 +113,7 @@ export class ContextManager {
                 droppedMessageCount: 0,
                 estimatedTokens: initialTokens,
                 compacted: false,
+                compactSummaries: [],
             };
         }
 
@@ -151,6 +157,12 @@ export class ContextManager {
 
         const estimatedTokens = this.estimateTokens(workingMessages, keptBlocks);
         const compacted = droppedBlocks.length > 0 || droppedMessageCount > 0;
+        const compactSummaries = buildCompactSummaries({
+            droppedBlocks,
+            droppedMessageCount,
+            originalMessages: input,
+            keepTail: this.keepRecentMessages,
+        });
         return {
             messages: workingMessages,
             keptBlocks,
@@ -158,6 +170,7 @@ export class ContextManager {
             droppedMessageCount,
             estimatedTokens,
             compacted,
+            compactSummaries,
         };
     }
 
@@ -173,6 +186,57 @@ export class ContextManager {
             .map(renderMemoryBlock)
             .join('\n\n');
     }
+}
+
+/**
+ * Build the recoverable-compaction anchor records for one compact pass. See
+ * Track D + `src/core/context/compactSummary.ts`. Handles both dropped
+ * evictable blocks and the folded message window.
+ */
+function buildCompactSummaries(input: {
+    droppedBlocks: ReadonlyArray<MemoryBlock>;
+    droppedMessageCount: number;
+    originalMessages: ReadonlyArray<ModelMessage>;
+    keepTail: number;
+}): CompactSummary[] {
+    const summaries: CompactSummary[] = [];
+    for (const block of input.droppedBlocks) {
+        const priorTokens = Math.ceil((block.name.length + block.content.length) / CHARS_PER_TOKEN);
+        summaries.push(
+            makeDroppedBlockSummary(block.name, priorTokens, block.content.slice(0, 120)),
+        );
+    }
+    if (input.droppedMessageCount > 0) {
+        const messageIds = extractMessageIds(input.originalMessages, input.droppedMessageCount, input.keepTail);
+        summaries.push(
+            makeMessageWindowSummary(input.droppedMessageCount, messageIds.first, messageIds.last),
+        );
+    }
+    return summaries;
+}
+
+/**
+ * Try to recover message ids for the first and last dropped middle turns so
+ * the CompactAnchor can point back at them. ModelMessage does not carry an
+ * `id` field in the ai-sdk shape; we fall back to a synthetic index-based ref.
+ */
+function extractMessageIds(
+    messages: ReadonlyArray<ModelMessage>,
+    droppedCount: number,
+    keepTail: number,
+): { first: string | undefined; last: string | undefined } {
+    const nonSystemIdx: number[] = [];
+    for (let i = 0; i < messages.length; i++) {
+        if (messages[i].role !== 'system') nonSystemIdx.push(i);
+    }
+    if (droppedCount <= 0 || nonSystemIdx.length === 0) return { first: undefined, last: undefined };
+    const firstIdx = nonSystemIdx[0];
+    const lastIdx = nonSystemIdx[nonSystemIdx.length - keepTail - 1] ?? nonSystemIdx[droppedCount - 1];
+    const idOf = (idx: number): string | undefined => {
+        const m = messages[idx] as ModelMessage & { id?: string };
+        return m?.id ?? (typeof idx === 'number' ? `message-index-${idx}` : undefined);
+    };
+    return { first: idOf(firstIdx), last: idOf(lastIdx) };
 }
 
 /**
