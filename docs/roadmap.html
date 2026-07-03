@@ -274,6 +274,60 @@
                 <td>必要性中高；schema 加三列（parent_message_id / branch_id / branch_label）即可；UI 押 minimap + 主流线性两窗口。3-4 天工程，Wave 4 后与 Copilot Command Center 一起做。</td>
                 <td><a href="research/2026-07-03-message-branching/README.md">研究报告</a></td>
               </tr>
+              <tr>
+                <td>2026-07-03</td>
+                <td><strong>Conversation Auto-split</strong></td>
+                <td>推荐 B 方案（提示 + 一键接受）；fast-tier LLM 分类主题偏移。3-4 天工程，依赖 R2 落地。</td>
+                <td><a href="research/2026-07-03-conversation-auto-split/README.md">研究报告</a></td>
+              </tr>
+              <tr>
+                <td>2026-07-03</td>
+                <td><strong>Canvas Conversation Type</strong></td>
+                <td>Obsidian Canvas API 不足以嵌深度 UI；推荐"Chat + Canvas 视图切换"轻量 export，不做 native canvas conversation type。低优先级。</td>
+                <td><a href="research/2026-07-03-canvas-conversation-type/README.md">研究报告</a></td>
+              </tr>
+              <tr>
+                <td>2026-07-03</td>
+                <td><strong>Sync 外部笔记源</strong>（flomo / Apple Notes / Calendar）</td>
+                <td>三源单向导入 vault；flomo 用 RSS/API、Apple Notes 用 AppleScript、Calendar 用 OAuth。不做双向。总计 2 周工程。</td>
+                <td><a href="research/2026-07-03-external-notes-sync/README.md">研究报告</a></td>
+              </tr>
+              <tr>
+                <td>2026-07-03</td>
+                <td><strong>Graph 高级可视化</strong>（Nebula / Healing Ray / Source-Sink）</td>
+                <td>Nebula + Source-Sink 各 3-4 天工程；Healing Ray 挂 Vault Intelligence overlay 不独立视图。复用 IndexGraphPort。</td>
+                <td><a href="research/2026-07-03-graph-advanced-viz/README.md">研究报告</a></td>
+              </tr>
+              <tr>
+                <td>2026-07-03</td>
+                <td><strong>Message Persistence Queue</strong></td>
+                <td>Tri-state 分类（yes/maybe/no）+ 用户策略（never/auto/always）；LLM 判定 has-lasting-value。2-3 天工程，Wave 5 后。</td>
+                <td><a href="research/2026-07-03-message-persistence-queue/README.md">研究报告</a></td>
+              </tr>
+              <tr>
+                <td>2026-07-03</td>
+                <td><strong>Template Marketplace</strong></td>
+                <td>官方 GitHub central repo + `index.json` + 3 档信任签名。不做 SaaS。~2 周工程 (含 curation)，Wave 6+。</td>
+                <td><a href="research/2026-07-03-template-marketplace/README.md">研究报告</a></td>
+              </tr>
+              <tr>
+                <td>2026-07-03</td>
+                <td><strong>Work Focus Mode + Project Templates</strong></td>
+                <td>Mode = per-project override bag（focusFolder / profile / ambient / time-window）；template = 可分发 mode + starter notes。依赖 R8。</td>
+                <td><a href="research/2026-07-03-work-focus-mode/README.md">研究报告</a></td>
+              </tr>
+              <tr>
+                <td>2026-07-03</td>
+                <td><strong>IFTTT / Workflow Agent</strong></td>
+                <td>本地化 IFTTT：Trigger → Filter → Actions[]，Action 是 CapabilityGateway binding。3-5 天工程。</td>
+                <td><a href="research/2026-07-03-ifttt-workflow-agent/README.md">研究报告</a></td>
+              </tr>
+              <tr>
+                <td>2026-07-03</td>
+                <td><strong>n8n / Multi-agent / Marketplace</strong></td>
+                <td>决定<strong>放弃通用 orchestration / SaaS marketplace / always-on agent</strong>；只做 MCP server 让别的 workflow tool 反向调 Peak。</td>
+                <td><a href="research/2026-07-03-n8n-multi-agent-marketplace/README.md">研究报告</a></td>
+              </tr>
             </tbody>
           </table>
         </section>
