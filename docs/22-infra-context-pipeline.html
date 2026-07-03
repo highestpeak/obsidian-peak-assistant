@@ -319,16 +319,18 @@ flowchart LR
             <dd><strong>没有 slot、没有预算治理、没有历史消息</strong>——Ambient 是单条 explanation，不是多轮对话。</dd>
           </dl>
 
-          <h3 style="margin-top: 22px;">Command Gateway · 未实现（T12 capstone）</h3>
+          <h3 style="margin-top: 22px;">Command Gateway · <span class="pill green">landed 2026-07-03 (B1)</span></h3>
           <dl class="field-list">
             <dt>状态</dt>
-            <dd>Spec 已定，代码未起。审阅 packet <code>2026-06-27-t11o</code> / <code>2026-06-26-t11m/n</code> 明确 "Do not start Command Gateway yet"。</dd>
+            <dd>Gateway 类 + 7 个 palette-command binding 已 landed（B1 · <code>2a70b38a</code>）。Obsidian palette 的 <code>Cmd+P → Peak: …</code> 现在都走 <code>gateway.dispatch(commandId)</code>，每次触发都开一次 <code>RunSession</code>。</dd>
             <dt>Spec</dt>
-            <dd><code data-copy="docs/superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">command-gateway-capstone-review.html</code></dd>
+            <dd><a href="superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">command-gateway-capstone-review.html</a>（原 spec，代码 landed 后仍可作背景阅读）</dd>
             <dt>代码</dt>
-            <dd>目前 <code>src/</code> 下没有 <code>CommandGateway</code> 命名的类。</dd>
-            <dt>落地路径</dt>
-            <dd>建议<strong>复用 ChatProfile 或注册 GatewayProfile 走同一份 ContextPipeline</strong>，不再造第四套装配器。见 <a href="#roadmap">§ Roadmap</a>。</dd>
+            <dd><code data-copy="src/service/capabilities/CommandGateway.ts">CommandGateway.ts</code>（<code>register</code>/<code>dispatch</code>/<code>has</code>/<code>get</code>/<code>all</code>/<code>unregister</code>）+ <code data-copy="src/app/commands/gateway/manifests.ts">manifests.ts</code>（7 个 <code>ui.open.*</code> CapabilityManifest）+ <code data-copy="src/app/commands/gateway/composeCommandGatewayBindings.ts">composeCommandGatewayBindings.ts</code>。<code>main.ts</code> boot 时 <code>new CommandGateway()</code> → <code>AppContext.setCommandGateway(...)</code> → 每条 binding 注册 → Obsidian <code>addCommand.callback = () =&gt; gateway.dispatch(id).catch(new Notice)</code>。</dd>
+            <dt>Context 装配</dt>
+            <dd>Palette command 属于 <strong>surface-open capability</strong>（<code>ui.open.quick-search</code> / <code>ui.open.copilot</code> / <code>ui.open.chat-studio</code> / …）：只负责 focus 一个 leaf 或 modal，不产 token，不组装长 context。<code>surfaceOpenStrategy</code> 只把原 UI-open callback 包成 <code>CapabilityExecutionOutput&lt;void&gt;</code>，走 <code>runCapability(...)</code> 记录 <code>RunSession start/finish</code>。真正需要长 context 的 capability（<code>doc.review.current</code>、<code>vault.search</code>、未来的 <code>doc.polish</code> 等）注册进 gateway 时，会指定不同的 <code>backendPolicy</code>（<code>preferred: 'hermes-harness'</code> 走 AgentLoop、<code>preferred: 'claude-sdk'</code> 走 SDK），context 由对应 backend 的 adapter 装配 —— gateway 只提供 <em>命令 → 能力 → backend</em> 三段映射，不做装配本身。</dd>
+            <dt>用途</dt>
+            <dd>URI scheme / MCP <code>propose_*</code> tool call / Copilot Command Center 未来的 "AI 起草 capability 序列" 都会走同一份 gateway，避免每个 trigger 源重复复制映射表。</dd>
           </dl>
 
           <table class="doc-table">
@@ -359,11 +361,11 @@ flowchart LR
                 <td>无（只看当前段落）</td>
               </tr>
               <tr>
-                <td><strong>Command Gateway</strong><br><span class="pill gold">spec-only</span></td>
-                <td>未定 — spec 建议复用 ChatProfile</td>
-                <td>—</td>
-                <td>—</td>
-                <td>—</td>
+                <td><strong>Command Gateway</strong><br><span class="pill green">landed 2026-07-03</span></td>
+                <td>Palette command → CapabilityManifest → GatewayBinding；surface-open 命令用 surfaceOpenStrategy 直接跑 UI-open callback，不组 context；产 token 的 command 由 backend 侧 adapter 装 context</td>
+                <td>由绑定的 backend 决定（<code>hermes-harness</code>→AgentLoop budget / <code>claude-sdk</code>→SDK budget / <code>provider-direct</code>→provider budget）</td>
+                <td>无（gateway 层不带历史；backend 装配时按需拉）</td>
+                <td>无（gateway 层不做发现；backend 层继续用 SlotBuildContext / MemoryBlock 逻辑）</td>
               </tr>
             </tbody>
           </table>
@@ -593,12 +595,12 @@ flowchart TB
               <tr>
                 <td>Unified ContextPipeline 覆盖 Chat / AI Analysis / Copilot / Followup / Ambient</td>
                 <td><code data-copy="docs/superpowers/specs/2026-05-02-unified-context-pipeline-design.md">2026-05-02-unified-context-pipeline-design.md</code></td>
-                <td>只有 Chat 一条路径切过来；AI Analysis / Copilot / Followup 仍走各自的 <code>chatWithPrompt</code>；Ambient 仍走 <code>AmbientExplanationService</code> 两条 prompt。</td>
+                <td><strong>2026-07-03 决定：不收敛</strong>（E2.2）。Wave 1 结束后所有四个 surface（Chat / Copilot / Analysis / Harness）都走同一份 <code>RunEnvelope</code> 记 observability，但 context 装配保持 slot-based / MemoryBlock / direct-render / manifest-driven 四条独立路径 —— 见下方 <a href="#unified-decision">§ E2.2 决定不收敛</a>。</td>
               </tr>
               <tr>
                 <td>Command Gateway（T12 capstone）</td>
                 <td><code data-copy="docs/superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">2026-06-03-obsidian-plugin-command-gateway-capstone-review.html</code></td>
-                <td>未开工。多个 owner review packet（<code>t11o / t11m / t11j</code>）明确“do not start yet”。</td>
+                <td><span class="pill green">landed 2026-07-03 (B1)</span> · gateway 类 + 7 palette-command binding + main.ts wire-in（<code>2a70b38a</code>）。</td>
               </tr>
               <tr>
                 <td>ContextManager stage-c LLM summarise</td>
@@ -622,6 +624,48 @@ flowchart TB
             <strong>为什么不立刻统一</strong>
             2026-05-02 spec 是好设计，但 Chat 用 slot、Agent 用 MemoryBlock、Ambient 用直接 render — 这些差异不是历史包袱，是<em>形态不同</em>。Chat 需要多 slot 因为它要装 conversation history + focus folder + resource；Agent 需要 MemoryBlock 因为它需要在 loop 每一步动态注入；Ambient 只需要两条 prompt 因为它不做对话。强行统一到一个 <code>assemble(profile, ctx)</code> 会引入抽象税。当前立场：<strong>把原语做扎实（PromptService / LLMStreamEvent / SessionContext / templates/config），装配器保留形态自由</strong>。Command Gateway 落地时再判断它更像 Chat 还是更像 Agent。
           </div>
+        </section>
+
+        <section id="unified-decision">
+          <h2>E2.2 决定不收敛（2026-07-03）</h2>
+          <p class="lead">Wave 1 的 <code>B2.*</code> 节点把 Chat / Copilot / Analysis / Harness 四条 live 路径都接上了 <code>RunEnvelope</code>（<code>runChatConversation</code> / <code>runCopilotReview</code> / <code>runAnalysisReport</code> / <code>runHarnessAgent</code>）。原本的 Unified ContextPipeline spec 期望这一步之后 context 装配也能同步收敛。<strong>2026-07-03 复盘后我们决定 <em>不</em> 收敛。</strong></p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col><col></colgroup>
+            <thead>
+              <tr><th>Surface</th><th>装配范式（保留）</th><th>为什么不能变成 slot-based</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Chat</strong></td>
+                <td>8 slots @ ChatProfile · <code>SlotBuildContext.sessionContext</code></td>
+                <td>基线，不动。</td>
+              </tr>
+              <tr>
+                <td><strong>Agent Harness</strong></td>
+                <td><code>MemoryBlock[]</code> + <code>ContextManager.compactIfNeeded</code>（每步注入）</td>
+                <td>Agent 每步都可能新增 block（tool result、subagent 结论），slot 模型的 "一次组装" 不适配 loop 结构。硬套只会把 <code>SlotBuildContext</code> 改成动态可变，等于重写 slot 模型。</td>
+              </tr>
+              <tr>
+                <td><strong>Ambient</strong></td>
+                <td>2 条 prompt 模板 + 段落/链接直接 render</td>
+                <td>没有对话、没有历史消息、没有 tool call。装 slot pipeline 只是把 200 字 prompt 塞进 8 slot 框架，抽象税 &gt; 收益。</td>
+              </tr>
+              <tr>
+                <td><strong>Command Gateway</strong></td>
+                <td>Per-CapabilityManifest（<code>surfaceOpenStrategy</code> 或 backend adapter）</td>
+                <td>Gateway 是<em>命令→能力→backend</em> 三段映射器，不做装配。产 token 的 capability 由 backend adapter 走自己那条形态（Chat slot / Agent block / Ambient render）。Gateway 层强行装 context 会绕开 backend 契约。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>Decision</strong>
+            我们收敛的是 <em>observability</em>（RunEnvelope + RunEvent + Artifact 记录方式统一）和 <em>原语</em>（PromptId / LLMStreamEvent / SessionContextService / templates/config）；我们<strong>不收敛</strong>装配器，因为 4 种形态本质不同。判断标准：如果两个 surface 的差异需要在 slot 模型上加 "特殊 flag"，那它们就不应该共用 slot。当前 4 种形态各自的 flag 全是特殊 flag。<br><br>
+            这条决定不是"不做了"，而是"做完了"。原 spec 里"unify context assembly" 一条从<em>待办</em>变成<em>否决</em>；剩余动作是保持原语原地更新（新 prompt → PromptId、新 event → LLMStreamEvent、新 tenant → SessionContextService）。
+          </div>
+
+          <p class="read-note"><b>影响到你的两种场景：</b>写一个第 5 种 surface 时，别再问 "能不能复用 Chat pipeline"；改为按上表判断你更像哪种形态。看到 spec 里 "Unified ContextPipeline" 字眼时，把它当成 <em>历史 2026-05-02 spec，2026-07-03 决定不收敛</em> 处理，不必等待。</p>
         </section>
 
         <section id="maintain">
