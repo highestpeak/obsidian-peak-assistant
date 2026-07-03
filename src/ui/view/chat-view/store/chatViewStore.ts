@@ -118,7 +118,10 @@ const INITIAL_SESSION: Pick<ChatViewState,
 	'enableVaultSearch' | 'attachmentHandlingMode' | 'llmOutputControlSettings' |
 	'isCodeInterpreterEnabled' | 'currentInputTags'
 > = {
-	chatMode: 'chat',
+	// 2026-07 F.B: default mode is 'agent'. Persisted history restore may set
+	// 'chat'/'plan' on older sessions; useChatSubmit ignores the value and
+	// always resolves the agent profile.
+	chatMode: 'agent',
 	selectedModel: undefined,
 	isSearchActive: false,
 	searchProvider: 'local',

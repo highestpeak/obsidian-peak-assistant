@@ -26,7 +26,6 @@ import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-	Segmented,
 	IconButton,
 	Pill,
 } from '@/ui/components/primitives';
@@ -72,9 +71,10 @@ const InsertToInputHandler: React.FC = () => {
 
 // ---------------------------------------------------------------------------
 // Run-chip popover — single affordance for mode/model/role/context.
-// Only renders sections backed by real state (chatMode, role local selection,
+// Only renders sections backed by real state (role local selection,
 // model auto-routing, vault/web search toggles). Coming-soon stub rows were
-// removed in T11U to avoid false affordances.
+// removed in T11U to avoid false affordances. The Chat/Agent/Plan mode
+// picker was retired 2026-07 (F.B); every session runs as agent now.
 // ---------------------------------------------------------------------------
 
 type RunRole = 'default' | 'researcher' | 'writer' | 'planner' | 'coder';
@@ -82,8 +82,9 @@ type RunRole = 'default' | 'researcher' | 'writer' | 'planner' | 'coder';
 const RunChip: React.FC = () => {
 	const strings = useChatStrings();
 	const [open, setOpen] = useState(false);
-	const chatMode = useChatViewStore((s) => s.chatMode);
-	const setChatMode = useChatViewStore((s) => s.setChatMode);
+	// 2026-07 F.B: Chat/Agent/Plan mode picker retired. Every session runs as
+	// agent — chatMode still lives on the store for persisted-conversation
+	// backward compat but is no longer user-selectable from Composer.
 	const selectedModel = useChatViewStore((s) => s.selectedModel);
 	const enableVaultSearch = useChatViewStore((s) => s.enableVaultSearch);
 	const setEnableVaultSearch = useChatViewStore((s) => s.setEnableVaultSearch);
@@ -97,12 +98,6 @@ const RunChip: React.FC = () => {
 	// feedback; PR-Chat-5+ will route this into the system prompt.
 	const [role, setRole] = useState<RunRole>('default');
 
-	const RUN_MODE_OPTIONS = [
-		{ value: 'chat' as const, label: strings.composer.runChipModeChat },
-		{ value: 'agent' as const, label: strings.composer.runChipModeAgent },
-		{ value: 'plan' as const, label: strings.composer.runChipModePlan },
-	];
-
 	const ROLE_OPTIONS: Array<{ id: RunRole; label: string; icon: React.ReactNode }> = [
 		{ id: 'default', label: strings.runSettings.roleDefault, icon: <HelpCircle /> },
 		{ id: 'researcher', label: strings.runSettings.roleResearcher, icon: <Microscope /> },
@@ -110,10 +105,6 @@ const RunChip: React.FC = () => {
 		{ id: 'planner', label: strings.runSettings.rolePlanner, icon: <CheckSquare /> },
 		{ id: 'coder', label: strings.runSettings.roleCoder, icon: <Code /> },
 	];
-
-	const modeLabel =
-		RUN_MODE_OPTIONS.find((opt) => opt.value === chatMode)?.label ??
-		strings.composer.runChipModeChat;
 
 	const modelSummary = selectedModel
 		? `${selectedModel.provider}/${selectedModel.modelId}`
@@ -129,13 +120,9 @@ const RunChip: React.FC = () => {
 					aria-label={strings.composer.runChipLabel}
 				>
 					{/*
-					  Trigger shows 3 segments per mock: mode · model · ctx.
-					  Role lives inside the popover (selecting a role doesn't
-					  need to be a glance-able trigger fact — most users keep
-					  Default).
+					  Trigger shows 2 segments post-F.B: model · ctx.
+					  Mode was retired 2026-07 (every session is agent).
 					*/}
-					<span className="pkchat-run-chip__label">{modeLabel}</span>
-					<span className="pkchat-run-chip__sep">·</span>
 					<span className="pkchat-run-chip__mid">
 						{selectedModel ? selectedModel.modelId : strings.composer.runChipModelAuto}
 					</span>
@@ -155,22 +142,6 @@ const RunChip: React.FC = () => {
 						<span className="pkchat-runpop__sub">
 							{strings.runSettings.subtitle}
 						</span>
-					</div>
-
-					{/* Mode ─────────────────────────────────────── */}
-					<div>
-						<span className="pkchat-runpop__label">
-							{strings.runSettings.fieldMode}
-						</span>
-						<div style={{ marginTop: 6 }}>
-							<Segmented
-								value={chatMode}
-								onValueChange={(v) =>
-									setChatMode(v as 'chat' | 'agent' | 'plan')
-								}
-								options={RUN_MODE_OPTIONS}
-							/>
-						</div>
 					</div>
 
 					{/* Role ─────────────────────────────────────── */}

@@ -124,7 +124,6 @@ export const HomeViewComponent: React.FC = () => {
 			description: 'Get a digest of what changed',
 			action: () => {
 				void chatNavigation.openPendingConversationInChat({ title: 'Summarize recent notes', project: null });
-				chatViewStore.setChatMode('chat');
 			},
 		},
 		{
@@ -133,7 +132,6 @@ export const HomeViewComponent: React.FC = () => {
 			description: 'Deep-dive with an AI agent',
 			action: () => {
 				void chatNavigation.openPendingConversationInChat({ title: 'Research', project: null });
-				chatViewStore.setChatMode('agent');
 			},
 		},
 	];

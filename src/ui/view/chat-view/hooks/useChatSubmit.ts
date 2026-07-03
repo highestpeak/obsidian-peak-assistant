@@ -76,10 +76,12 @@ export function useChatSubmit() {
 		const latestActiveConversation = useChatDataStore.getState().activeConversation;
 		const latestPendingConversation = useChatViewStore.getState().pendingConversation;
 		const latestInitialSelectedModel = useChatViewStore.getState().initialSelectedModel;
-		// Fallback chain: initialSelectedModel → UI selectedModel → mode-aware profile
+		// Fallback chain: initialSelectedModel → UI selectedModel → agent profile.
+		// 2026-07 F.B: mode picker retired; every session routes to the agent
+		// profile. chatMode is still read from the store for history restore but
+		// no longer influences profile resolution here.
 		const latestSelectedModel = useChatViewStore.getState().selectedModel;
-		const currentMode = useChatViewStore.getState().chatMode;
-		const modeConfig = ProfileRegistry.getInstance().getConfigForMode(currentMode);
+		const modeConfig = ProfileRegistry.getInstance().getConfigForMode('agent');
 		const profileFallback = modeConfig ? { provider: modeConfig.profile.kind, modelId: modeConfig.modelId } : null;
 		const modelForNewConversation = latestInitialSelectedModel ?? latestSelectedModel ?? profileFallback;
 
