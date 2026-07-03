@@ -11,8 +11,8 @@
  * agent port instead of reaching `AppContext.getInstance()` from
  * inside the closure.
  *
- * Custom prompts are markdown files in the `customPromptsFolder`
- * (default: `_prompts/`). Each file becomes a copilot action available
+ * Custom prompts are markdown files in the configured `customPromptsFolder`
+ * (by default under ai.rootFolder). Each file becomes a copilot action available
  * when a note's frontmatter includes `prompts: [prompt-name]` matching
  * the file's basename.
  *

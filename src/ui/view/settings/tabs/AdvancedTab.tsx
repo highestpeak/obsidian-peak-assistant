@@ -12,7 +12,14 @@ import { Input } from '@/ui/component/shared-ui/input';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { Switch } from '@/ui/component/shared-ui/switch';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { AI_PATH_SUBFOLDERS } from '@/core/config/folderPaths';
+import {
+	AI_PATH_SUBFOLDERS,
+	getAIAnalysisFolder,
+	getAICustomPromptsFolder,
+	getAIDataStoreFolder,
+	getAIInboxFolder,
+	getAISkillsFolder,
+} from '@/core/config/folderPaths';
 import type { MyPluginSettings, HarnessSettings } from '@/core/config/settingsTypes';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import { MaintenanceTab } from '../MaintenanceTab';
@@ -45,8 +52,8 @@ export function AdvancedTab({ settings, settingsUpdates }: AdvancedTabProps) {
             </SettingsSection>
 
             <SettingsSection
-                title={advCopy.general.sectionTitle}
-                sub="Two primary folders. Everything else (Prompts, Attachments, Hub-Summaries, AI Analysis output, Skills, Inbox, Custom prompts) lives under them and can be overridden below."
+                title={advCopy.storage.sectionTitle}
+                sub="Peak keeps plugin-owned folders under the chat root by default. Advanced users can override individual paths below."
             >
                 <StorageSection settings={settings} settingsUpdates={settingsUpdates} />
             </SettingsSection>
@@ -102,20 +109,26 @@ function StorageSection({
     const { update, updateAI, updateSearch } = settingsUpdates;
     const chatRoot = settings.ai.rootFolder.trim() || 'ChatFolder';
     const derivedPath = (subPath: string) => `${chatRoot.replace(/\/+$/, '')}/${subPath}`;
+    const dataStoreFolder = settings.dataStorageFolder || getAIDataStoreFolder(chatRoot);
 
     const derived: Array<{ icon: LucideIcon; title: string; desc: string; value: string }> = [
         { icon: FileText, title: 'Prompts', desc: 'Built-in agent prompts.', value: derivedPath(AI_PATH_SUBFOLDERS.Prompts) },
+        { icon: Folder, title: 'Custom prompts', desc: 'User-authored Copilot prompt actions.', value: settings.customPromptsFolder ?? getAICustomPromptsFolder(chatRoot) },
+        { icon: Sparkles, title: 'Skills', desc: 'User-authored agent skill packs.', value: settings.skillsFolder ?? getAISkillsFolder(chatRoot) },
+        { icon: Inbox, title: 'Inbox', desc: 'Quick captures and ambient suggestions.', value: settings.inboxFolder ?? getAIInboxFolder(chatRoot) },
         { icon: FileText, title: 'Attachments', desc: 'Files uploaded via chat.', value: derivedPath(AI_PATH_SUBFOLDERS.Attachments) },
+        { icon: Microscope, title: 'AI Analysis output', desc: 'Saved AI Analysis runs.', value: settings.search.aiAnalysisAutoSaveFolder ?? getAIAnalysisFolder(chatRoot) },
         { icon: FileText, title: 'Resources summary cache', desc: 'Per-resource summaries cached for retrieval.', value: derivedPath(AI_PATH_SUBFOLDERS.ResourcesSummary) },
         { icon: FileText, title: 'Hub summaries', desc: 'Generated hub-note summaries.', value: derivedPath(AI_PATH_SUBFOLDERS.HubSummaries) },
         { icon: User, title: 'User profile', desc: 'LLM-derived user profile note.', value: derivedPath(AI_PATH_SUBFOLDERS.UserProfile) },
+        { icon: HardDrive, title: 'DataStore', desc: 'SQLite database and plugin data.', value: dataStoreFolder },
     ];
 
     const overrides: Array<{ icon: LucideIcon; title: string; desc: string; value: string; placeholder: string; onChange: (v: string) => void }> = [
-        { icon: Microscope, title: 'AI Analysis output', desc: 'Saved AI Analysis runs.', value: settings.search.aiAnalysisAutoSaveFolder ?? 'ChatFolder/AI-Analysis', placeholder: 'ChatFolder/AI-Analysis', onChange: (v) => updateSearch('aiAnalysisAutoSaveFolder', v) },
-        { icon: Sparkles, title: 'Skills folder', desc: 'Vault folder Peak scans for skill packs.', value: settings.skillsFolder ?? '_skills', placeholder: '_skills', onChange: (v) => update('skillsFolder', v) },
-        { icon: Inbox, title: 'Inbox folder', desc: 'Quick captures and ambient suggestions.', value: settings.inboxFolder ?? '_inbox', placeholder: '_inbox', onChange: (v) => update('inboxFolder', v) },
-        { icon: Folder, title: 'Custom prompts folder', desc: 'Where Peak picks up your hand-written prompt templates.', value: settings.customPromptsFolder ?? '_prompts', placeholder: '_prompts', onChange: (v) => update('customPromptsFolder', v) },
+        { icon: Microscope, title: 'AI Analysis output', desc: 'Saved AI Analysis runs.', value: settings.search.aiAnalysisAutoSaveFolder ?? getAIAnalysisFolder(chatRoot), placeholder: getAIAnalysisFolder(chatRoot), onChange: (v) => updateSearch('aiAnalysisAutoSaveFolder', v) },
+        { icon: Sparkles, title: 'Skills folder', desc: 'Vault folder Peak scans for skill packs.', value: settings.skillsFolder ?? getAISkillsFolder(chatRoot), placeholder: getAISkillsFolder(chatRoot), onChange: (v) => update('skillsFolder', v) },
+        { icon: Inbox, title: 'Inbox folder', desc: 'Quick captures and ambient suggestions.', value: settings.inboxFolder ?? getAIInboxFolder(chatRoot), placeholder: getAIInboxFolder(chatRoot), onChange: (v) => update('inboxFolder', v) },
+        { icon: Folder, title: 'Custom prompts folder', desc: 'Where Peak picks up your hand-written prompt templates.', value: settings.customPromptsFolder ?? getAICustomPromptsFolder(chatRoot), placeholder: getAICustomPromptsFolder(chatRoot), onChange: (v) => update('customPromptsFolder', v) },
     ];
 
     return (
@@ -123,12 +136,12 @@ function StorageSection({
             <SettingsRow
                 icon={HardDrive}
                 title="Data storage folder"
-                desc="SQLite database + plugin data. Leave empty to use the plugin directory."
+                desc="SQLite database + plugin data. Defaults under the chat root; override only if you want it elsewhere."
                 right={
                     <div className="pktw-w-56">
                         <Input
-                            value={settings.dataStorageFolder ?? ''}
-                            placeholder="Leave empty for plugin directory"
+                            value={dataStoreFolder}
+                            placeholder={getAIDataStoreFolder(chatRoot)}
                             onChange={(e) => update('dataStorageFolder', e.target.value.trim())}
                         />
                     </div>
@@ -152,8 +165,8 @@ function StorageSection({
             <SettingsDisclosure
                 icon={Folder}
                 title="Derived folders"
-                desc="Auto-generated paths and override-able vault folders."
-                meta="9 paths"
+                desc="Auto-generated paths and advanced override targets."
+                meta="10 paths"
             >
                 <div className="pkset-row-list">
                     {derived.map((d) => (

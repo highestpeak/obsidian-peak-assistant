@@ -1,8 +1,8 @@
 /**
  * Skill = markdown-defined reusable agent workflow.
  *
- * Skills live in a configurable vault folder (default: _skills/) or are
- * bundled as built-in defaults. Each skill specifies:
+ * Skills live in a configurable vault folder (by default under ai.rootFolder)
+ * or are bundled as built-in defaults. Each skill specifies:
  *   - Metadata (id, name, description, tags)
  *   - Tool whitelist (builtin + MCP)
  *   - Model preferences (recommended model, min capabilities)

@@ -233,7 +233,7 @@ async function testCustomPromptCatalogBuildsThroughRuntime(): Promise<void> {
 	const ports = basePorts({
 		customPrompts: {
 			loadAll: async () => [
-				{ id: 'rewrite-v2', label: 'Rewrite v2', description: 'Custom rewrite', category: 'document', template: 'sys', filePath: '_prompts/rewrite-v2.md' },
+				{ id: 'rewrite-v2', label: 'Rewrite v2', description: 'Custom rewrite', category: 'document', template: 'sys', filePath: 'ChatFolder/Prompts/Custom/rewrite-v2.md' },
 			],
 		},
 		agent: {

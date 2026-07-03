@@ -347,8 +347,8 @@ flowchart LR
               <tr>
                 <td><strong>S-SOFT-ORPHAN</strong></td>
                 <td><span class="pill gold">待设计成形</span></td>
-                <td>阈值 <code>softOrphanMaxDegree = 2</code>（度数 ≤ 2 判定为软孤儿）。detector 未实现。</td>
-                <td>今天不出现；等 detector 上线后按度数判断。</td>
+                <td>阈值 <code>softOrphanMaxDegree = 2</code>（度数 ≤ 2 判定为软孤儿）。</td>
+                <td>适合做低优先级整理建议；必须和语义邻居一起看，不能直接当成“这篇没价值”。</td>
               </tr>
               <tr>
                 <td><strong>S-MISSING-BACKLINK</strong></td>
@@ -621,11 +621,11 @@ flowchart TB
         </section>
 
         <section id="hub-generation-agent">
-          <h2>Hub Generation Agent（2026-07-03 shipped）</h2>
-          <p class="lead">Hub doc（社区综述文档）的生成从"1-hop 邻居拼接"或"stub warning"升级为 <strong>两 agent 串联</strong>：<code>HubCuratorAgent</code> 决定 vault 该有哪些 hub、要不要合并/淘汰；<code>HubMaterializationAgent</code> 负责给每个 hub 起草综述并写回 vault。</p>
+          <h2>Hub Generation Agent</h2>
+          <p class="lead">Hub doc（社区综述文档）的生成走 <strong>两 agent 串联</strong>：<code>HubCuratorAgent</code> 决定 vault 该有哪些 hub、要不要合并/淘汰；<code>HubMaterializationAgent</code> 负责给每个 hub 起草综述并写回 vault。</p>
 
-          <h3>为什么不用 1-hop 拼接</h3>
-          <p class="prose">最初 <code>HubDocService.regenerateHubByNodeId</code> 是 stub，一个直觉方案是拼接 hub node 的 1-hop 邻居。<strong>用户否决</strong>：1-hop 混杂"引用了但不重要"的噪声、忽略 2-hop 桥接结构、无中心性权重、无覆盖率自检。方向 C 用整体网络图 + PageRank/Louvain + LLM agent 自评替代——<em>基建已经全在</em>，只是没被这样组合过。</p>
+          <h3>为什么不是 1-hop 拼接</h3>
+          <p class="prose">Hub doc 不能只拼接 hub node 的 1-hop 邻居：那会混入“引用了但不重要”的噪声，忽略 2-hop 桥接结构，也没有中心性权重和覆盖率自检。更稳的方式是整体网络图 + PageRank/Louvain + LLM agent 自评：先由图结构筛出候选，再让 agent 判断 hub 的边界、覆盖率和合并/淘汰策略。</p>
 
           <h3>复用现有基建（不重造）</h3>
           <table class="doc-table">

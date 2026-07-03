@@ -101,7 +101,7 @@
         <li><strong>维护者视角</strong>：query parser → 多路 retriever → weighted RRF → PPR → ranking boost → highlight——每个阶段的顺序和边界。</li>
       </ul>
       <div class="meta">
-        <span>Status: current draft · 2026-07-01</span>
+        <span>Reference doc</span>
         <span>Approx. length: 约 10k 混合字符</span>
         <span>Reading time: 22-26 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
@@ -151,7 +151,11 @@
           <p class="prose">Peak Assistant 的 Search 选择了多路信号融合：关键词召回负责可解释性，vector 负责概念相近，metadata/fuzzy 负责标题路径和拼写容错，PPR 和 reranker 负责图关系、最近性、hub、点击反馈。最终结果再做高亮，让用户知道为什么这条结果出现。</p>
           <div class="claim">
             <strong>一句话结论</strong>
-            Search 是一个“多路召回 + 可降级增强”的 pipeline。任何一个 retriever、vector、PPR 或 LLM rerank 失败，都不应该让基础搜索不可用。
+            Hyper Search 是一个“多路召回 + 可降级增强”的 pipeline。任何一个 retriever、vector、PPR 或 LLM rerank 失败，都不应该让基础搜索不可用。
+          </div>
+          <div class="claim">
+            <strong>和 AI Analysis 的边界</strong>
+            <a href="13-feature-vault-intelligence.html">AI Analysis</a> 是 agent-driven 分析 workflow：它可以读取搜索结果、Vault Health、hub、graph 和外部工具，再生成报告。Hyper Search 只负责快速找回候选笔记和解释排序原因；它不负责写报告，也不要求 LLM 才能返回结果。
           </div>
         </section>
 
@@ -183,12 +187,12 @@
         </section>
 
         <section id="entry">
-          <h2>入口和开始前检查</h2>
+          <h2>入口和结果</h2>
           <p class="lead">Search 的用户入口是 <strong>Quick Search</strong>。它有两个主要 tab：<strong>Vault Search</strong> 用来直接找笔记，<strong>AI Analysis</strong> 用来让 AI 围绕 Vault 做分析。</p>
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
             <thead>
-              <tr><th>你想做什么</th><th>从哪里开始</th><th>开始前确认</th><th>预期结果</th></tr>
+              <tr><th>你想做什么</th><th>从哪里开始</th><th>需要条件</th><th>预期结果</th></tr>
             </thead>
             <tbody>
               <tr>
@@ -361,6 +365,10 @@ src/service/search/query/queryService.ts
         <section id="parser">
           <h2>Query Parser：先把用户输入变成计划</h2>
           <p class="prose"><code>parseQuery</code> 会把原始文本拆成 terms、phrases、excludes、filters，并根据 query 形态计算 retriever weights。这个 plan 是后续多路召回和 RRF 的共同输入。</p>
+          <div class="claim">
+            <strong>自然语言 query parser 的方向</strong>
+            高级语法要支持，但不能要求用户记住所有写法。更好的入口是让用户用自然语言描述检索意图，再由轻量模型或本地规则把它翻译成 <code>phrases</code>、<code>excludes</code>、<code>filters</code> 和 retriever weights。它不是完整 AI Analysis，只是把一句话变成 Hyper Search 的 query plan。
+          </div>
           <table class="doc-table">
 <colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
             <thead>
@@ -394,6 +402,17 @@ src/service/search/query/queryService.ts
               </tr>
             </tbody>
           </table>
+          <div class="formula-box">
+            <strong>排序例子：RRF + PPR + boost 怎么叠起来</strong>
+            <div class="formula"><code>rrf(path) = Σ retrieverWeight / (60 + rank + 1)</code></div>
+            <ol>
+              <li>用户搜 <code>"attention head" -draft tag:research</code>。</li>
+              <li><code>A.md</code> 在 FTS 排第 1、metadata 排第 4：RRF 贡献约 <code>1.0 / 61 + 0.6 / 64</code>。</li>
+              <li><code>B.md</code> 在 vector 排第 1，但 FTS 没命中：RRF 贡献约 <code>0.9 / 61</code>。它可能靠语义进入候选，但解释时要告诉用户“词不完全相同”。</li>
+              <li>PPR 用 top docId 做 seed，如果 <code>C.md</code> 是 A/B 的强图邻居，它可能被提升；boost 再叠加近期编辑、hub、click-through 等信号。</li>
+              <li>最后执行 <code>-draft</code> exclude、取 topK、生成高亮。高亮解释“为什么看得见”，不是唯一排序来源。</li>
+            </ol>
+          </div>
         </section>
 
         <section id="retrievers">
@@ -560,7 +579,8 @@ flowchart LR
         </section>
 
         <section id="troubleshooting">
-          <h2>排障：结果不符合预期时先看这里</h2>
+          <h2>失败、bad case 和处理</h2>
+          <p class="lead">搜索问题不全是“故障”。有些是增强项不可用，有些是排序权重不符合直觉，有些是 query 太窄。先区分类型，再决定是修配置、改 query，还是调权重。</p>
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
             <thead>
@@ -596,6 +616,18 @@ flowchart LR
                 <td>PPR 被关闭、没有可用 docId seed，或 PPR 失败后回退。</td>
                 <td>Search settings 的 PPR 开关；console 是否有 PPR failed 日志。</td>
                 <td>先确认基础结果可用，再检查图索引和 PPR 设置。</td>
+              </tr>
+              <tr>
+                <td>标题明明很像，但结果排得低。</td>
+                <td>正文/语义分数压过了 metadata/title boost，或 query 太长稀释了标题命中。</td>
+                <td>目标词是否在标题 token cache；metadata retriever 是否参与；title boost 权重。</td>
+                <td>用更接近标题的短 query 复测；如果复现稳定，调 metadata/title boost 而不是硬编码某个结果。</td>
+              </tr>
+              <tr>
+                <td>语义结果相关但用户不想要。</td>
+                <td>vector 召回把概念近似当成相关；缺少 folder/tag 过滤。</td>
+                <td>query 是否该带 <code>tag:</code> / <code>folder:</code>；vector weight 是否过高。</td>
+                <td>把自然语言意图翻译成更窄的 filters；必要时降低当前 query 形态下的 vector weight。</td>
               </tr>
             </tbody>
           </table>
@@ -718,7 +750,7 @@ flowchart LR
         </section>
 
         <div class="footer">
-          <p>验证记录：2026-07-01，按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="05-use-case-playbook.html">05 Use Case Playbook</a>、<a href="11-feature-chat-context.html">11 Chat Context</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
+          <p>阅读场景：桌面/编辑器。相关文档：<a href="index.html">docs index</a>、<a href="05-use-case-playbook.html">05 Use Case Playbook</a>、<a href="11-feature-chat-context.html">11 Chat Context</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
         </div>
       </div>
     </div>

@@ -97,7 +97,7 @@
     .side-nav .nav-group { margin: 10px -4px 0; padding: 8px 4px 4px; border-top: 1px solid var(--line); }
     .side-nav .nav-group:first-of-type { margin-top: 4px; padding-top: 4px; border-top: 0; }
     .side-nav .nav-group-title { display: block; margin: 0 6px 4px; color: var(--muted); font-size: 10.5px; font-weight: 780; letter-spacing: 0.06em; text-transform: uppercase; }
-    .planned-banner { margin: 18px 0 0; padding: 14px 18px; border: 1px dashed var(--gold); border-radius: 8px; background: var(--soft-gold); color: var(--gold); font-size: 14px; font-weight: 700; }
+    .scope-banner { margin: 18px 0 0; padding: 14px 18px; border: 1px solid rgba(181, 138, 69, 0.35); border-radius: 8px; background: var(--soft-gold); color: var(--gold); font-size: 14px; font-weight: 700; }
     .footer { padding-top: 24px; color: var(--muted); font-size: 13px; }
     @media (max-width: 1440px) {
       .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
@@ -122,9 +122,9 @@
         <li>Peak 的 agent 能不能安全地调用它们</li>
         <li>而不用给 agent 一个 <em>“调用一切 Obsidian API”</em> 的口子</li>
       </ul>
-      <p class="subtitle">这份文档讲：<strong>四层概念（Command / ToolDef / Skill / Capability）为什么必须分开</strong>；<strong>AI Curator 起草到用户授权到 runtime 执行的完整流水</strong>；<strong>当前仓库里哪些零件已经在了、哪些还得补</strong>；<strong>什么样的 command 不应该被授权</strong>。</p>
+      <p class="subtitle">这份文档讲：<strong>四层概念（Command / ToolDef / Skill / Capability）为什么必须分开</strong>；<strong>AI Curator 起草到用户授权到 runtime 执行的完整流水</strong>；<strong>runtime 怎样守住 permission / trace / artifact 边界</strong>；<strong>什么样的 command 不应该被授权</strong>。</p>
       <div class="meta">
-        <span>Status: current draft · 2026-07-01</span>
+        <span>Reference doc</span>
         <span>Approx. length: 约 13k 混合字符</span>
         <span>Reading time: 25-30 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
@@ -151,9 +151,9 @@
           <a href="#runtime">运行时合同</a>
         </div>
         <div class="nav-group">
-          <span class="nav-group-title">当前实现</span>
-          <a href="#foundations">已经落地的基础零件</a>
-          <a href="#gap">T12 还得补的四件事</a>
+          <span class="nav-group-title">实现边界</span>
+          <a href="#foundations">基础零件</a>
+          <a href="#gap">接入清单</a>
           <a href="#risks">禁止 / 阻断的场景</a>
         </div>
         <div class="nav-group">
@@ -169,8 +169,8 @@
           <h2>这页解决什么</h2>
           <p class="lead">Obsidian 是插件生态。用户装了几十个第三方插件，每一个都往 command palette 注册若干 command。<strong>agent 想帮用户完成一次工作流</strong>，往往需要触发这些 command 的一部分——但绝不能 <em>任意</em> 触发。Command Gateway 就是把 “agent 能调外部 command” 这件事关进闸门：</p>
 
-          <div class="planned-banner">
-            <strong>本篇文档同时是 <em>说明</em> 与 <em>规格</em>。</strong>Command Gateway 是 T12 capstone；当前仓库里 <strong>foundations 已在（ToolDef / PermissionGuard / Skill / RunEnvelope）</strong>，但 <em>CommandPort、Curator 的 CommandGateway schema、Settings/Tools 里的 Plugin Capabilities review 界面、command 副作用观测</em> 都还没接上——本页 <a href="#gap">§ T12 还得补的四件事</a> 明列。
+          <div class="scope-banner">
+            <strong>边界先于能力。</strong>Command Gateway 不替代 <code>PermissionGuard</code>、<code>RunEnvelope</code> 或 Skill，它只把可触发动作整理成可授权能力；真正执行时仍由 runtime 记录 trace、检查 policy，并把副作用写成可审查的 artifact。
           </div>
 
           <div class="claim">
@@ -399,8 +399,8 @@ flowchart LR
           </table>
 
           <div class="claim warn">
-            <strong>Retry + fallback：Curator 已经是这个模式</strong>
-            当前 <code>src/service/agents/harness/curator/CuratorAgent.ts</code> 已实现 <em>LLM 试 3 次 → 失败回落到规则</em>。Command Gateway 的 Curator 应复用同一模式；不要新起一套。用户能容忍 “这条命令我们没能自动分类，请手动查看”，不能容忍 “模型幻觉了一个不存在的 command 让我批准”。
+            <strong>Retry + fallback：复用 Curator 模式</strong>
+            <code>src/service/agents/harness/curator/CuratorAgent.ts</code> 采用 <em>LLM 试 3 次 → 失败回落到规则</em>。Command Gateway 的 Curator 应复用同一模式；不要新起一套。用户能容忍 “这条命令我们没能自动分类，请手动查看”，不能容忍 “模型幻觉了一个不存在的 command 让我批准”。
           </div>
         </section>
 
@@ -517,8 +517,8 @@ sequenceDiagram
         </section>
 
         <section id="foundations">
-          <h2>已经落地的基础零件</h2>
-          <p class="lead">好消息：新架构 T0-T11 落地后，Command Gateway 需要的 <strong>大部分</strong> 基础已经在仓库里了。下面这张给正在读代码的人一个“哪些已可复用”的清单。</p>
+          <h2>基础零件</h2>
+          <p class="lead">Command Gateway 不是一套新 runtime；它复用已有的 ToolDef、PermissionGuard、Skill、RunEnvelope 和 Curator 模式。下面这张给正在读代码的人一个“复用哪块基础”的清单。</p>
 
           <table class="doc-table">
 <colgroup><col style="width: 22%"><col style="width: 28%"><col></colgroup>
@@ -586,8 +586,8 @@ sequenceDiagram
         </section>
 
         <section id="gap">
-          <h2>T12 还得补的四件事</h2>
-          <p class="lead">下面这四件是当前仓库 <strong>没有</strong> 的，T12 交付时必须补齐。如果任何一件被 “先跳过、以后补”，那 Command Gateway 就变回了 “agent 直连 Obsidian”。</p>
+          <h2>接入清单</h2>
+          <p class="lead">Command Gateway 要保持“AI 起草、用户授权、runtime 守边界”的形状，接入时必须同时覆盖四类接口。如果其中一类缺失，系统会退化成“agent 直连 Obsidian command”。</p>
 
           <div class="note-list">
             <div class="note-item">
@@ -615,7 +615,7 @@ sequenceDiagram
         </section>
 
         <section id="copilot-command-center">
-          <h2>Copilot Command Center meta-agent（D2 · 2026-07-03 shipped）</h2>
+          <h2>Copilot Command Center meta-agent</h2>
           <p class="lead">Command Gateway 的第一个"AI 组合器"是 <strong>Copilot Command Center</strong>——不是单一 command，而是让 meta-agent 根据用户的一句话目标 <em>草拟一串 command 顺序</em>，然后逐条 <code>gateway.dispatch(commandId)</code>。</p>
 
           <h3>为什么走 CommandGateway 而不是 Copilot 自己实现</h3>
@@ -651,8 +651,8 @@ sequenceDiagram
           </ul>
 
           <div class="claim warn">
-            <strong>Review panel 侧栏形态未做</strong>
-            spec 提到"侧栏 / 弹窗 / review panel 三种承载方式"，本轮只做了 modal（三段就在同一个 modal 里切换）。侧栏形态需要 workspace leaf 注册 + 状态持久化，是产品迭代事项。
+            <strong>Review surface 要避免临时弹窗思维</strong>
+            如果用户需要审查一串 command 计划，侧栏 / 弹窗 / review panel 都可以承载，但必须保留同一份信息：目标复述、步骤列表、读写风险、失败后的停止策略。正式实现时优先选择能保存状态、能返回继续审查的 surface。
           </div>
         </section>
 
@@ -807,7 +807,7 @@ sequenceDiagram
         </section>
 
         <div class="footer">
-          <p>验证记录：2026-07-01。当前状态：foundations 已在（ToolDef / PermissionGuard / Skill / RunEnvelope / Curator），T12 交付所需的 CommandPort / CommandCurator schema / Review Surface / command 副作用 artifact 尚未接入。规格原稿：<a href="superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">2026-06-03 spec</a>；本页负责在正稿位置以“说明 + 规格”的双身份持续存在，直到 T12 交付完成后转成纯说明。</p>
+          <p>阅读场景：面向维护者和 coding agent 的 Command Gateway 正稿。相关背景可看 <a href="superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">Command Gateway capstone review</a>；本页负责解释长期稳定的概念边界、接入清单和运行时约束。</p>
         </div>
       </div>
     </div>

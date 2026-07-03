@@ -1,7 +1,14 @@
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_HARNESS_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, HarnessSettings, MyPluginSettings, SearchSettings } from '@/core/config/settingsTypes';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS, type AmbientPushSettings } from '@/core/types/ambient';
-import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
+import { DEFAULT_SDK_SETTINGS, type ProfileSettings } from '@/core/profiles/types';
+import {
+	getAIAnalysisFolder,
+	getAICustomPromptsFolder,
+	getAIDataStoreFolder,
+	getAIInboxFolder,
+	getAISkillsFolder,
+} from '@/core/config/folderPaths';
 
 /**
  * Get string value from source or return default.
@@ -15,6 +22,17 @@ function getString(source: unknown, defaultValue: string): string {
  */
 function getBoolean(source: unknown, defaultValue: boolean): boolean {
 	return typeof source === 'boolean' ? source : defaultValue;
+}
+
+function ensureIgnoredFolder(patterns: string[], folder: string): string[] {
+	const normalized = folder.trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+	if (!normalized) return patterns;
+	const folderPattern = `${normalized}/`;
+	const exists = patterns.some((pattern) => {
+		const p = pattern.trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+		return p === normalized || p === `${normalized}/**`;
+	});
+	return exists ? patterns : [...patterns, folderPattern];
 }
 
 /**
@@ -76,13 +94,20 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 /**
  * Normalize search settings from raw data.
  */
-function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
+function normalizeSearchSettings(raw: Record<string, unknown>, rootFolder: string, dataStorageFolder: string): SearchSettings {
+	const defaults: SearchSettings = {
+		...DEFAULT_SEARCH_SETTINGS,
+		aiAnalysisAutoSaveFolder: getAIAnalysisFolder(rootFolder),
+	};
 	const rawSearch = raw?.search as Partial<SearchSettings> | undefined;
 	if (!rawSearch || typeof rawSearch !== 'object') {
-		return { ...DEFAULT_SEARCH_SETTINGS };
+		return {
+			...defaults,
+			ignorePatterns: ensureIgnoredFolder(defaults.ignorePatterns, dataStorageFolder),
+		};
 	}
 
-	const settings = { ...DEFAULT_SEARCH_SETTINGS };
+	const settings = { ...defaults };
 
 	// Auto index
 	settings.autoIndex = getBoolean(rawSearch.autoIndex, settings.autoIndex);
@@ -215,6 +240,8 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 	// enablePPR: restore persisted value or keep default
 	settings.enablePPR = getBoolean((rawSearch as any).enablePPR, settings.enablePPR);
 
+	settings.ignorePatterns = ensureIgnoredFolder(settings.ignorePatterns, dataStorageFolder);
+
 	return settings;
 }
 
@@ -224,16 +251,25 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
  */
 export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	const raw = (data ?? {}) as Record<string, unknown>;
+	const ai = normalizeAIServiceSettings(raw);
+	const dataStorageFolder = getString(raw?.dataStorageFolder, getAIDataStoreFolder(ai.rootFolder));
 
 	// Build settings object explicitly, only extracting needed fields
 	const settings: MyPluginSettings = {
 		// General folder settings
-		dataStorageFolder: getString(raw?.dataStorageFolder, DEFAULT_SETTINGS.dataStorageFolder),
+		dataStorageFolder,
 
 		// Core settings (normalized)
-		ai: normalizeAIServiceSettings(raw),
-		search: normalizeSearchSettings(raw),
+		ai,
+		search: normalizeSearchSettings(raw, ai.rootFolder, dataStorageFolder),
+		usageTrackingEnabled: DEFAULT_SETTINGS.usageTrackingEnabled,
+		usageDetailRetentionDays: DEFAULT_SETTINGS.usageDetailRetentionDays,
+		usagePreviewEnabled: DEFAULT_SETTINGS.usagePreviewEnabled,
 	};
+
+	settings.skillsFolder = getString(raw?.skillsFolder, getAISkillsFolder(ai.rootFolder));
+	settings.inboxFolder = getString(raw?.inboxFolder, getAIInboxFolder(ai.rootFolder));
+	settings.customPromptsFolder = getString(raw?.customPromptsFolder, getAICustomPromptsFolder(ai.rootFolder));
 
 	// SQLite backend setting
 	const sqliteBackend = raw?.sqliteBackend;
@@ -291,9 +327,10 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	// Profile v2: load existing profileSettings or initialize empty.
 	const rawProfileSettings = raw?.profileSettings;
 	if (rawProfileSettings && typeof rawProfileSettings === 'object') {
-		settings.profileSettings = rawProfileSettings as any;
+		const profileSettings = rawProfileSettings as ProfileSettings;
+		settings.profileSettings = profileSettings;
 		// Migrate legacy authToken → apiKey (authToken field was removed)
-		for (const p of settings.profileSettings.profiles) {
+		for (const p of profileSettings.profiles) {
 			if ((p as any).authToken && !p.apiKey) {
 				p.apiKey = (p as any).authToken;
 			}

@@ -106,7 +106,7 @@
         <li>想知道某个未来能力现在能不能用</li>
       </ul>
       <div class="meta">
-        <span>Status: current draft · 2026-07-01</span>
+        <span>Reference doc</span>
         <span>Approx. length: 约 9.3k 混合字符</span>
         <span>Reading time: 19-23 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
@@ -147,7 +147,7 @@
           <p class="prose">它面向两类人：一类是正在用插件的人，他们不想先学架构；另一类是维护者和 coding agent，他们要从真实任务回到功能文档和代码入口。这里的每个 case 都尽量避免内部黑话：先说用户意图，再说 UI 入口，最后才说背后的 Search、Chat、Copilot、Harness 或未来 Command Gateway。</p>
           <div class="claim">
             <strong>阅读方式</strong>
-            不需要从头读到尾。打开目录，找到最像你当下那句话的 case；如果 case 后面标了“planned”，就说明它目前是设计方向或后续文档，不要把它当作已完成的用户功能。
+            不需要从头读到尾。先在 <a href="#quick-pick">先选入口</a> 找到最像你当下那句话的路由，再跳到下面对应 case。这里不记录施工状态；需要细节时直接跳到下一步该读的功能页。
           </div>
         </section>
 
@@ -155,46 +155,40 @@
           <h2>先选入口</h2>
           <p class="lead">Peak Assistant 的入口不是一个。你要做的事情不同，应该从不同 surface 开始。</p>
           <table class="doc-table">
-<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+<colgroup><col style="width: 32%"><col style="width: 38%"><col></colgroup>
             <thead>
-              <tr><th>用户会说</th><th>第一入口</th><th>为什么</th><th>详细文档</th></tr>
+              <tr><th>用户会说</th><th>第一入口</th><th>继续读</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td><strong>“我想问当前笔记 / 当前话题。”</strong></td>
                 <td>侧边栏 ribbon：<strong>Open Peak Assistant</strong>；或 Chat 相关视图。</td>
-                <td>Chat 会把用户消息、会话历史、当前上下文和能力开关一起送进回答流程。</td>
-                <td><a href="11-feature-chat-context.html">11 Chat Context</a></td>
+                <td><a href="11-feature-chat-context.html">11 · Chat Context</a></td>
               </tr>
               <tr>
                 <td><strong>“我记得有这个概念，但忘了在哪。”</strong></td>
                 <td>Command Palette → <strong>Quick Search</strong> → <strong>Vault Search</strong>。</td>
-                <td>Search 会混合关键词、语义、标题、路径、图关系和点击反馈，不只找完全相同的词。</td>
-                <td><a href="12-feature-search.html">12 Search</a></td>
+                <td><a href="#knowledge-cases">Case 1 / 2</a> · <a href="12-feature-search.html">12 · Hyper Search</a></td>
               </tr>
               <tr>
                 <td><strong>“我想让 AI 看一下整个 Vault。”</strong></td>
                 <td><strong>Quick Search</strong> → <strong>AI Analysis</strong>，或 <strong>Open Copilot</strong> → Vault。</td>
-                <td>这是跨笔记分析，不是单条搜索结果。它通常依赖索引、Search 和 Vault actions。</td>
-                <td><code>13-feature-vault-intelligence.html</code> · planned</td>
+                <td><a href="#knowledge-cases">Case 3 / 4</a> · <a href="13-feature-vault-intelligence.html">13 · Vault Intelligence / AI Analysis</a></td>
               </tr>
               <tr>
                 <td><strong>“我想润色、审阅或整理当前文档。”</strong></td>
                 <td>Command Palette → <strong>Open Copilot</strong> → Document。</td>
-                <td>Document lane 面向当前文档动作，例如 polish、review、suggest links、split、tags。</td>
-                <td><code>16-feature-document-copilot.html</code> · planned</td>
+                <td><a href="#writing-cases">Case 5 / 6 / 7</a> · <a href="16-feature-document-copilot.html">16 · Document Copilot</a></td>
               </tr>
               <tr>
                 <td><strong>“我想配置模型、Web Search、profile 或第一次 setup。”</strong></td>
                 <td><strong>Settings</strong> 或 <strong>Setup Wizard</strong>。</td>
-                <td>很多能力不是功能坏了，而是 provider、profile、index 或权限没有配好。</td>
-                <td><code>04-configuration-and-user-views.html</code> · planned</td>
+                <td><a href="#admin-cases">Case 10 / 11</a> · <a href="04-configuration-and-user-views.html">04 · 配置项与用户视图</a></td>
               </tr>
               <tr>
                 <td><strong>“我想跑一个多步 agent，但不要失控。”</strong></td>
                 <td>具体功能入口发起任务；底层应接入 Agent Harness。</td>
-                <td>Harness 负责模型选择、工具权限、trace、context、预算和停止条件。</td>
-                <td><a href="21-infra-agent-harness.html">21 Agent Harness</a></td>
+                <td><a href="#ai-cases">Case 8</a> · <a href="21-infra-agent-harness.html">21 · Agent Harness</a></td>
               </tr>
             </tbody>
           </table>
@@ -205,7 +199,7 @@
           <p class="lead">这类任务的核心不是“让 AI 随便回答”，而是先把 Vault 里的相关材料找出来，再决定要不要让 AI 分析。</p>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Quick Search</span></div>
+            <div class="pill-row"><span class="pill">Quick Search</span></div>
             <h3>Case 1 · 我记得一个概念，但忘了笔记标题 <span>Vault Search</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
@@ -224,7 +218,7 @@
           </article>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Scoped search</span></div>
+            <div class="pill-row"><span class="pill">Scoped search</span></div>
             <h3>Case 2 · 我只想在当前文件或某个 folder 里找 <span># / @ / :</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
@@ -243,7 +237,7 @@
           </article>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Vault Intelligence</span></div>
+            <div class="pill-row"><span class="pill">Vault Intelligence</span></div>
             <h3>Case 3 · 我想让 AI 总结某个主题在 Vault 里的材料 <span>AI Analysis</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
@@ -264,7 +258,7 @@
           </article>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">AI Graph</span></div>
+            <div class="pill-row"><span class="pill">AI Graph</span></div>
             <h3>Case 4 · 我想看一组笔记之间的关系 <span>AI Graph</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
@@ -290,7 +284,7 @@
           <p class="lead">这类任务通常发生在当前文档旁边：用户已经在写，想要改得更清楚、找相关链接、拆分结构或补标签。</p>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Open Copilot</span></div>
+            <div class="pill-row"><span class="pill">Open Copilot</span></div>
             <h3>Case 5 · 我想润色当前文档 <span>Document → Polish</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
@@ -303,13 +297,13 @@
               </div>
               <div class="recipe-block">
                 <b>成功结果</b>
-                <p>你应该得到面向当前文档的改写或格式优化建议。详细文档还没写，所以现在只把它作为用户入口记录，不把内部实现展开在本页。</p>
+                <p>你应该得到面向当前文档的改写或格式优化建议。继续看 <a href="16-feature-document-copilot.html">16 · Document Copilot</a>；本页只保留用户入口和结果。</p>
               </div>
             </div>
           </article>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Review / Correct</span></div>
+            <div class="pill-row"><span class="pill">Review / Correct</span></div>
             <h3>Case 6 · 我想检查内容是否有问题 <span>Document → Review Article</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
@@ -328,7 +322,7 @@
           </article>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Links / Tags / Split</span></div>
+            <div class="pill-row"><span class="pill">Links / Tags / Split</span></div>
             <h3>Case 7 · 我想给当前笔记补链接、标签或拆分建议 <span>Document actions</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
@@ -370,7 +364,7 @@
           </article>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Context Pipeline</span></div>
+            <div class="pill-row"><span class="pill">Context Pipeline</span></div>
             <h3>Case 9 · 我想让 AI “知道我现在在做什么” <span>Context-aware answer</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
@@ -395,7 +389,7 @@
           <p class="lead">很多“功能不好用”的问题，根因是 profile、provider、index、Web Search 或权限没有准备好。配置文档要专门写，不能分散在每个功能页里。</p>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Settings / Setup Wizard</span></div>
+            <div class="pill-row"><span class="pill">Settings / Setup Wizard</span></div>
             <h3>Case 10 · 我第一次安装，想把模型和基础能力配起来 <span>Setup Wizard</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
@@ -414,7 +408,7 @@
           </article>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Web Search profile</span></div>
+            <div class="pill-row"><span class="pill">Web Search profile</span></div>
             <h3>Case 11 · AI Analysis 提示没有 Web Search profile <span>Settings → Profiles</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
@@ -433,7 +427,7 @@
           </article>
 
           <article class="recipe">
-            <div class="pill-row"><span class="pill green">已在代码中确认</span><span class="pill">Usage Dashboard</span></div>
+            <div class="pill-row"><span class="pill">Usage Dashboard</span></div>
             <h3>Case 12 · 我想知道 AI 用量和成本情况 <span>Usage Dashboard</span></h3>
             <div class="recipe-grid">
               <div class="recipe-block">
@@ -469,7 +463,7 @@
               <tr>
                 <td><strong>“我想让 AI 帮我执行 Obsidian 命令。”</strong></td>
                 <td>这是 Command Gateway：AI 判断和起草，用户授权，runtime 控边界。</td>
-                <td>不要让 AI 直接绕过权限执行命令；它是 T12 capstone，不是先做的小功能。</td>
+                <td>不要让 AI 直接绕过权限执行命令；它必须走用户授权、命令参数审阅和 runtime 边界。</td>
                 <td><code>15-feature-command-gateway.html</code></td>
               </tr>
               <tr>
@@ -506,7 +500,7 @@
                 <td>确认 Document、Vault、Setting 入口，以及 polish、review、links、split、tags 等动作名称。</td>
               </tr>
               <tr>
-                <td>已有详细文档</td>
+                <td>继续读这些文档</td>
                 <td><a href="index.html">docs index</a><br><a href="11-feature-chat-context.html">11 Chat Context</a><br><a href="12-feature-search.html">12 Search</a><br><a href="21-infra-agent-harness.html">21 Agent Harness</a></td>
                 <td>本页只负责 case 路由；细节继续由功能文档承载。</td>
               </tr>
@@ -515,7 +509,7 @@
         </section>
 
         <div class="footer">
-          <p>验证记录：2026-07-01，按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="11-feature-chat-context.html">11 Chat Context</a>、<a href="12-feature-search.html">12 Search</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
+          <p>阅读场景：桌面/编辑器。相关文档：<a href="index.html">docs index</a>、<a href="11-feature-chat-context.html">11 Chat Context</a>、<a href="12-feature-search.html">12 Search</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
         </div>
       </div>
     </div>

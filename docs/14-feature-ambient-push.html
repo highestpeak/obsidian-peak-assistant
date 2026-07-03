@@ -619,27 +619,27 @@ flowchart TD
         </section>
 
         <section id="current-work-state">
-          <h2>Current Work State（D1 状态栏面 · 2026-07-03 shipped）</h2>
-          <p class="lead">Ambient 侧栏一直显示"跟当前笔记语义相关的其他笔记"，这一面是 <em>相关性</em>。D1 加了正交的第二视角：<strong>你现在正在思考的问题</strong>——由 <code>SessionContextService.workingTheme.llmInferred</code> 承载。</p>
+          <h2>当前思考线索</h2>
+          <p class="lead">Ambient 的长期形态应该固定在 Related Notes / 当前思考线索这类可停留的面板里：一面显示“跟当前笔记语义相关的其他笔记”，另一面显示“你现在正在思考的问题”。后者由 <code>SessionContextService.workingTheme.llmInferred</code> 承载。</p>
 
-          <h3>数据源已经在</h3>
-          <p class="prose"><code>WorkingThemeInferrer</code>（<code>src/service/context/WorkingThemeInferrer.ts</code>）已经在做这件事：读最近 20 条 <code>ActivityEntry</code>（编辑 / chat / 搜索 / 打开笔记），30s 防抖 + 10 次活动阈值触发一次 LLM 推断，产出 <code>{ summary, relatedFiles, updatedAt }</code>。本轮 <em>没有</em> 重新造这个 pipeline——只是让它的输出被 <strong>用户可见</strong>。</p>
+          <h3>数据源</h3>
+          <p class="prose"><code>WorkingThemeInferrer</code>（<code>src/service/context/WorkingThemeInferrer.ts</code>）读最近 20 条 <code>ActivityEntry</code>（编辑 / chat / 搜索 / 打开笔记），30s 防抖 + 10 次活动阈值触发一次 LLM 推断，产出 <code>{ summary, relatedFiles, updatedAt }</code>。UI 层只消费这个结果，不重新推断用户正在想什么。</p>
 
-          <h3>状态栏优先展示 thinking summary</h3>
+          <h3>显示优先级</h3>
           <table class="doc-table">
 <colgroup><col style="width: 25%"><col></colgroup>
-            <thead><tr><th>条件</th><th>状态栏显示</th></tr></thead>
+            <thead><tr><th>条件</th><th>面板显示</th></tr></thead>
             <tbody>
-              <tr><td><code>llmInferred.summary</code> 非空</td><td><code>🧠 &lt;截断到 44 字符&gt;</code> · hover tooltip 显示全文</td></tr>
-              <tr><td>无 summary，AmbientPushStore 有 items</td><td><code>⚡ N related</code>（原行为）</td></tr>
-              <tr><td>无 summary 也无 items</td><td><code>⚡ –</code></td></tr>
+              <tr><td><code>llmInferred.summary</code> 非空</td><td>显示 thinking summary；展开后可看 relatedFiles。</td></tr>
+              <tr><td>无 summary，AmbientPushStore 有 items</td><td>显示相关笔记列表。</td></tr>
+              <tr><td>无 summary 也无 items</td><td>保持安静空态，不闪烁提醒。</td></tr>
             </tbody>
           </table>
-          <p class="prose">60s 定时 <code>setInterval</code> 定期 refresh + <code>useAmbientPushStore.subscribe</code> 事件驱动，任一路径都会重算。</p>
+          <p class="prose">刷新可以由定时与 store 事件共同驱动，但 UI 不应该用状态栏闪烁来抢注意力；它应该是一块稳定的、用户愿意一直开着的侧栏区域。</p>
 
           <div class="claim warn">
-            <strong>只做了状态栏一面</strong>
-            spec 里的三面（状态栏 + Serendipity gutter + Morning Briefing）本轮只做了第一面。<code>SerendipityGutterPlugin</code> 和 <code>MorningBriefingModal</code> 都已经能读 <code>SessionContextService.getWorkingContext()</code>，接入是纯 UI 决策——例如 gutter 里为高相关文件加"🧠 relates to your current thinking"角标、Morning Briefing 里加一段"昨天的思考主线"。
+            <strong>避免把 Ambient 做成通知系统</strong>
+            Related Notes 面板可以长期存在；gutter 只适合极少数高置信度提示；Morning Briefing 不应变成每次打开都弹出的例行卡片。Ambient 的原则是可见、可忽略、可停留，而不是不断打断。
           </div>
 
           <h3>代码证据</h3>

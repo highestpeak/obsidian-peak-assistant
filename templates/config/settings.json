@@ -276,11 +276,11 @@
       "sectionTitle": "Storage",
       "dataFolder": {
         "title": "Data storage folder",
-        "desc": "Folder for storing plugin data files (e.g., search database). Leave empty to use plugin directory."
+        "desc": "Folder for storing plugin data files (e.g., search database). Defaults under the chat root."
       },
       "chatRoot": {
         "title": "Chat root folder",
-        "desc": "Root folder for AI conversation data (Prompts, Attachments, Hub-Summaries, etc. are derived automatically)."
+        "desc": "Root folder for Peak-owned AI data. Prompts, Skills, Attachments, Hub-Summaries and DataStore derive from it by default."
       }
     },
     "general": {

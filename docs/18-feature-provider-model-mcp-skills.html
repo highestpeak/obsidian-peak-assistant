@@ -113,9 +113,9 @@
 <body>
   <main class="page">
     <header>
-      <div class="eyebrow">18 · Feature · Provider · Model · MCP · Skills · 四层 AI 供给的用户视角</div>
+      <div class="eyebrow">18 · Feature · Provider · Model · MCP · Skills · 五层 AI 供给的用户视角</div>
       <h1>Provider 是账户；Profile 是账户 + 模型；Role 是任务；MCP 是外部工具；Skill 是工作手册。</h1>
-      <p class="subtitle">Peak 里 <strong>“配置 AI”</strong> 涉及四个概念——它们容易混，因为供应商常把它们混着叫。这份文档把每一个说清楚：</p>
+      <p class="subtitle">Peak 里 <strong>“配置 AI”</strong> 涉及五个概念——它们容易混，因为供应商常把账户、模型、工具和工作手册混着叫。这份文档把每一个说清楚：</p>
       <ul class="subtitle-list">
         <li><strong>Provider</strong>：Anthropic / OpenAI / Google / Perplexity / Ollama / LiteLLM / 自定义。选谁提供 AI 服务。</li>
         <li><strong>Profile</strong>：一个 Provider + API key + 一组模型偏好。它是“账户”的技术叫法。</li>
@@ -125,7 +125,7 @@
       </ul>
       <p class="subtitle">这份文档讲清楚这五个概念的 <strong>责任分工</strong>、<strong>怎么在 Settings 里配</strong>、<strong>Curator 怎么替你选</strong>、<strong>加一个新 MCP server / 一份新 skill 走什么路径</strong>。</p>
       <div class="meta">
-        <span>Status: current draft · 2026-07-01</span>
+        <span>Reference doc</span>
         <span>Approx. length: 约 13k 混合字符</span>
         <span>Reading time: 26-30 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
@@ -183,7 +183,7 @@
           </div>
           <div class="claim warn">
             <strong>Curator 与本文关系</strong>
-            <em>你不需要理解四层就能用 Peak</em>：Curator 会读你的环境（有没有 Ollama / 有没有 API key / 内存多少 / 语言偏好），推荐一套 Recommended Setup。<strong>本文是给那些想手动 override Curator 建议的用户</strong>——正常情况下走 <em>Settings → AI Setup → Apply recommended</em> 就够了。
+            <em>你不需要理解五层就能用 Peak</em>：Curator 会读你的环境（有没有 Ollama / 有没有 API key / 内存多少 / 语言偏好），推荐一套 Recommended Setup。<strong>本文是给那些想手动 override Curator 建议的用户</strong>——正常情况下走 <em>Settings → AI Setup → Apply recommended</em> 就够了。
           </div>
         </section>
 
@@ -402,40 +402,40 @@ flowchart TB
           </div>
 
           <h3>多模态生成 Provider（<code>MediaGenerationPort</code>）</h3>
-          <p class="prose">跟 LLM 是<strong>独立的抽象轴</strong>：不进 Profile / Role 系统，只需要 API key + 端点。目前只 shipped 一家：</p>
+          <p class="prose">跟 LLM 是<strong>独立的抽象轴</strong>：不进 Profile / Role 系统，只需要 API key + 端点。当前默认实现走一家聚合器，备选 adapter 只在默认路径不满足时出现。</p>
           <table class="doc-table">
 <colgroup><col style="width: 14%"><col style="width: 14%"><col style="width: 22%"><col></colgroup>
             <thead>
-              <tr><th>Adapter</th><th>状态</th><th>覆盖类型</th><th>推荐理由 · 备胎位置</th></tr>
+              <tr><th>Adapter</th><th>角色</th><th>覆盖类型</th><th>推荐理由 · 备胎位置</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td><code>FalMediaAdapter</code></td>
-                <td><span class="pill green">shipped</span></td>
+                <td><span class="pill green">默认适配器</span></td>
                 <td>TTS · 图像 · 视频（音乐放弃）</td>
                 <td><strong>主推</strong>：985 endpoints，image API 市场 50%、video 44%，比 Replicate 便宜 30–50%、快 10×，一个 key 覆盖四类</td>
               </tr>
               <tr>
                 <td><code>ReplicateMediaAdapter</code></td>
-                <td><span class="pill gold">planned</span></td>
+                <td><span class="pill gold">备选适配器</span></td>
                 <td>预期覆盖同上</td>
                 <td>fal.ai 挂/涨价时的备胎；社区自定义模型比 fal.ai 更多</td>
               </tr>
               <tr>
                 <td><code>ElevenLabsMediaAdapter</code></td>
-                <td>backlog</td>
+                <td>专项备选</td>
                 <td>只 TTS</td>
                 <td>用户对 fal.ai 的 Kokoro TTS 声音质量不满时的升级路径；成本 3–5×</td>
               </tr>
               <tr>
                 <td><code>OpenAIMediaAdapter</code></td>
-                <td>backlog</td>
+                <td>OpenAI-only 备选</td>
                 <td>DALL-E 3 图像 + TTS</td>
                 <td>用户只有 OpenAI key、不想再注册 fal.ai 时的最小配置路径</td>
               </tr>
               <tr>
                 <td><code>ComfyUILocalAdapter</code></td>
-                <td>backlog</td>
+                <td>本地 GPU 备选</td>
                 <td>图像（视用户装的 workflow）</td>
                 <td>本地 GPU 用户；成本 0 但需自己起 ComfyUI 服务</td>
               </tr>
@@ -485,7 +485,7 @@ flowchart TB
               </tr>
               <tr>
                 <td>Media (TTS)</td>
-                <td><code>fal.ai</code> Kokoro（默认可用）→ ElevenLabs（backlog）</td>
+                <td><code>fal.ai</code> Kokoro（默认可用）→ ElevenLabs（专项备选）</td>
                 <td><code>fal.ai</code> Kokoro</td>
               </tr>
               <tr>
@@ -498,14 +498,15 @@ flowchart TB
 
           <div class="claim warn">
             <strong>推荐规则是 hard-coded 不是 LLM 决定的</strong>
-            Curator 本身用 LLM 是为了"环境检测"（有没有 key 有效、哪些模型响应通）——最终 Role → Provider 绑定的选择规则写死在代码里（<code>src/service/agents/harness/curator/</code>），确保结果 deterministic。用户可以在 Onboarding wizard 点<em>Apply recommended</em> 一键套用，也可以手动 override 到 backlog 里的任何 Provider。
+            Curator 本身用 LLM 是为了"环境检测"（有没有 key 有效、哪些模型响应通）——最终 Role → Provider 绑定的选择规则写死在代码里（<code>src/service/agents/harness/curator/</code>），确保结果 deterministic。用户可以在 Onboarding wizard 点<em>Apply recommended</em> 一键套用，也可以手动 override 到 Provider 列表里的任何可用项。
           </div>
 
-          <h3>2026-07-03 本轮 Provider 新增</h3>
-          <p class="prose">这次 backlog 收尾期一并接入的 provider 记录：</p>
+          <h3>Provider 扩展边界</h3>
+          <p class="prose">Provider 扩展要先判断它属于 LLM provider、media provider，还是 OpenAI-shape 兼容 endpoint。不同类型进入不同抽象轴，不要把所有外部服务都塞进 Profile / Role。</p>
           <ul>
-            <li><strong>fal.ai</strong>（新增第一个 Media Provider）——为 D4 Multimodal Media Ring 骨架，见下方 <a href="#media-providers">§媒体生成 provider</a>。之前 Peak 里没有任何"非 LLM"provider，媒体 API 是本轮引入的新维度。</li>
-            <li>无新增 LLM kind；hub agent / copilot command center / ambient / mermaid+bases 全都复用现有 8 种 LLM kind，未增加 provider 面接线。</li>
+            <li><strong>LLM provider</strong>：进入 Provider/Profile/Role；只有长期稳定、能力差异明显的 vendor 才值得独立成 kind。</li>
+            <li><strong>Media provider</strong>：进入 <code>MediaGenerationPort</code>，与文本模型选择解耦。</li>
+            <li><strong>OpenAI-shape endpoint</strong>：优先走 <code>custom</code> 或 <code>litellm</code>，等到有明确产品理由再独立成 provider。</li>
           </ul>
         </section>
 
@@ -597,7 +598,7 @@ flowchart TB
 
           <div class="claim warn">
             <strong>Catalog 有历史演化：多 provider 单文件 → 按 provider 拆</strong>
-            当前是单一 <code>model-catalog.json</code>。计划中的 Phase 1 会拆成 <code>models/{openai,claude,gemini,perplexity,ollama}.json</code>——每个 provider 一份，允许 TemplateManager 独立加载。<em>迁移期</em>：两种布局都支持；<em>作者写扩展</em> 应用新的拆分布局。
+            当前 catalog 的读法是按 provider 查模型能力、价格和 recency。无论物理文件是单一 <code>model-catalog.json</code> 还是按 provider 拆分，Settings 和 Role picker 都只依赖 <code>ModelRegistry</code> 暴露的同一份查询接口；扩展作者不应该绕过 registry 直接读 JSON。
           </div>
         </section>
 
@@ -648,7 +649,7 @@ flowchart LR
           </div>
 
           <h3>Shipped adapter：fal.ai</h3>
-          <p class="prose">当前唯一 shipped 的 <code>MediaGenerationPort</code> 实现是 <code>FalMediaAdapter</code>（<code>src/app/platform/media/FalMediaAdapter.ts</code>）。选它的原因：</p>
+          <p class="prose">当前默认的 <code>MediaGenerationPort</code> 实现是 <code>FalMediaAdapter</code>（<code>src/app/platform/media/FalMediaAdapter.ts</code>）。选它的原因：</p>
           <ul>
             <li><strong>覆盖广</strong> — 985 个 endpoint，image API 市场占有率 50%、video 44%，一家搞定四大类</li>
             <li><strong>价格 &amp; 速度</strong> — 比 Replicate 便宜 30–50%、速度快 10×</li>
@@ -673,8 +674,8 @@ flowchart LR
               </tr>
               <tr>
                 <td>视频</td>
-                <td><code>fal-ai/veo3/text-to-video</code>（占位，未接命令）</td>
-                <td>Veo3 是当下 SOTA；但视频成本高、场景刚需度弱，本轮只留 model id，不暴露命令。</td>
+                <td><code>fal-ai/veo3/text-to-video</code>（高成本候选）</td>
+                <td>视频成本高、场景刚需度弱；只适合作为明确用户动作触发的媒体生成能力，不应默认进入普通写作流。</td>
               </tr>
               <tr>
                 <td>音乐</td>
@@ -685,11 +686,11 @@ flowchart LR
           </table>
 
           <h3>换 provider 的成本</h3>
-          <p class="prose">要接入 ElevenLabs / OpenAI TTS / Replicate / 本地 ComfyUI 等，只需要实现 <code>MediaGenerationPort</code> 的两个方法（<code>generate</code> + <code>isConfigured</code>），其他代码零改动：<code>MediaRingService</code> 只识别 port，命令层通过 <code>getOrBuildMediaRing</code> 拿到 service，谁都不 import 具体 adapter。备胎位（<code>ReplicateMediaAdapter</code>）本轮没写。</p>
+          <p class="prose">要接入 ElevenLabs / OpenAI TTS / Replicate / 本地 ComfyUI 等，只需要实现 <code>MediaGenerationPort</code> 的两个方法（<code>generate</code> + <code>isConfigured</code>），其他代码零改动：<code>MediaRingService</code> 只识别 port，命令层通过 <code>getOrBuildMediaRing</code> 拿到 service，谁都不 import 具体 adapter。</p>
 
           <div class="claim warn">
-            <strong>成本追踪未接入 Usage Dashboard</strong>
-            <code>FalMediaAdapter.generate</code> 返回 <code>latencyMs</code>，但没有把每次调用的费用写进 <code>usage_log</code>——媒体生成的定价模型（按秒 / 按图 / 按 token）跟 LLM 完全不同，需要单独一份 catalog。这是 D4 骨架落地后的第一个 follow-up。
+            <strong>媒体成本不能套用 LLM 定价</strong>
+            媒体生成的定价模型可能按秒、按图、按 token 或按队列任务计费，不能直接复用 LLM 的 input/output token catalog。接入 Usage Dashboard 时应给 Media provider 单独的 catalog 和 usage event shape。
           </div>
 
           <h3>代码证据</h3>
@@ -770,12 +771,12 @@ flowchart TB
             <dt><code>systemPrompt / outputTemplate</code></dt>
             <dd>系统提示；产出的 markdown 模板。</dd>
             <dt><code>source / filePath</code></dt>
-            <dd><code>builtin</code>（打包在插件里）或 <code>vault</code>（用户 <code>_skills/</code> 目录里的 markdown）。</dd>
+            <dd><code>builtin</code>（打包在插件里）或 <code>vault</code>（用户 <code>ChatFolder/Skills/</code> 目录里的 markdown）。</dd>
           </div>
 
           <div class="claim">
             <strong>Skill 的 hot-reload</strong>
-            <code>SkillRegistry</code> 监听 <code>_skills/</code> 目录变化——用户改 markdown 保存后立即生效，不用重启插件。<em>Built-in skill</em> 需要重启。
+            <code>SkillRegistry</code> 监听 <code>ChatFolder/Skills/</code> 目录变化——用户改 markdown 保存后立即生效，不用重启插件。<em>Built-in skill</em> 需要重启。
           </div>
 
           <div class="claim warn">
@@ -785,7 +786,7 @@ flowchart TB
 
           <div class="claim">
             <strong>License 与 marketplace（roadmap）</strong>
-            当前 <code>license: free | community | premium</code> 只是标签——没有真正的 marketplace 或订阅。<em>未来</em> Skill Marketplace 会：(1) 一键安装（下载到 <code>_skills/</code>）；(2) 版本管理；(3) 依赖的 MCP server 自动提示安装。规划见 <a href="roadmap.html#researching">roadmap</a>。
+            当前 <code>license: free | community | premium</code> 只是标签——没有真正的 marketplace 或订阅。Skill Marketplace 的产品形态放在 <a href="roadmap.html#researching">roadmap</a>；无论安装源来自哪里，vault skill 都应落到用户配置的 Skills folder，默认是 <code>ChatFolder/Skills/</code>。
           </div>
         </section>
 
@@ -847,7 +848,7 @@ flowchart TB
             </div>
             <div class="note-item">
               <b>6. Skill 白名单里的工具不存在。</b>
-              <span>症状：跑 skill 时 agent 说 <em>“Tool X not available”</em>。可能原因：<em>写错 tool 名</em>（拼写 / 缺 mcp_ 前缀）；<em>MCP server 未连接</em>；<em>Peak 版本升级去掉了某个 built-in tool</em>。修：改 <code>_skills/</code> 里的 markdown，重新保存触发 hot-reload。</span>
+              <span>症状：跑 skill 时 agent 说 <em>“Tool X not available”</em>。可能原因：<em>写错 tool 名</em>（拼写 / 缺 mcp_ 前缀）；<em>MCP server 未连接</em>；<em>Peak 版本升级去掉了某个 built-in tool</em>。修：改 Skills folder 里的 markdown，重新保存触发 hot-reload。</span>
             </div>
             <div class="note-item">
               <b>7. Curator 推的模型没在 catalog。</b>
@@ -913,7 +914,7 @@ flowchart TB
               <tr>
                 <td>Settings UI</td>
                 <td><code data-copy="src/ui/view/settings/tabs/AISetupTab.tsx">AISetupTab.tsx</code><br><code data-copy="src/ui/view/settings/tabs/ToolsTab.tsx">ToolsTab.tsx</code></td>
-                <td>AI Setup 归 Provider + Role；Tools 归 MCP + Web Access。Skill marketplace 尚未落到 UI。</td>
+                <td>AI Setup 归 Provider + Role；Tools 归 MCP + Web Access。Skill 分发属于独立的产品入口，不应混进 Provider 设置。</td>
               </tr>
               <tr>
                 <td>Settings schema</td>
@@ -935,12 +936,12 @@ flowchart TB
 
           <div class="claim">
             <strong>加一个 vault skill 的最短路径</strong>
-            (1) 在 vault 里建 <code>_skills/</code> 目录；(2) 新建 markdown，frontmatter 写 <code>id / name / version / tools / systemPrompt</code>；(3) 保存——SkillRegistry 立即发现。<em>见 <code>src/service/skills/types.ts</code> 里的 <code>SkillDefinition</code> 全字段</em>；不要跳过 <code>version</code> 和 <code>author</code>，marketplace 未来会依赖。
+            (1) 在 vault 的 <code>ChatFolder/Skills/</code> 下新建 markdown；(2) frontmatter 写 <code>id / name / version / tools / systemPrompt</code>；(3) 保存——SkillRegistry 立即发现。<em>见 <code>src/service/skills/types.ts</code> 里的 <code>SkillDefinition</code> 全字段</em>；不要跳过 <code>version</code> 和 <code>author</code>，后续分发和版本管理会依赖。
           </div>
         </section>
 
         <div class="footer">
-          <p>验证记录：2026-07-01。当前 Provider / Profile / Role / MCP / Skills 的 5-phase redesign 已完成 Phase 0-3；Phase 4-5（Settings IA + Skill Marketplace）仍在 <a href="roadmap.html#researching">roadmap</a>。本页按 <em>当前代码事实</em> 描述现状；概念栈稳定后不受 UI 重设影响，UI 变化会追加到这里的 “Settings UI” 段落。</p>
+          <p>阅读场景：面向需要手动配置 AI 供给链的用户和维护者。相关文档：<a href="04-configuration-and-user-views.html">04 Configuration</a>、<a href="17-feature-usage-dashboard.html">17 Usage Dashboard</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
         </div>
       </div>
     </div>

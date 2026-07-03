@@ -109,7 +109,7 @@
       <h1>笔记怎么变成可以被搜索的表、向量、边——以及索引崩了怎么办。</h1>
       <p class="subtitle">这份文档写给要改索引管线、诊断“搜索为什么忽然不准”或者接一种新文档类型的维护者。它把两个 SQLite 库的表拆开讲清楚——谁写、谁读、fast/semantic/full 三档在这几张表上跑到哪一步，以及 <code>sqlite-vec</code> / <code>better-sqlite3</code> / embedding provider 挂掉时索引各自怎么退化、怎么恢复。不覆盖查询侧的 ranking / UI（那是 <a href="12-feature-search.html">12 Search</a>），也不重复 Settings 面板里的开关（那是 <a href="04-configuration-and-user-views.html">04 Configuration</a>）。</p>
       <div class="meta">
-        <span>Status: current draft · 2026-07-01</span>
+        <span>Reference doc</span>
         <span>Approx. length: 约 12k 混合字符</span>
         <span>Reading time: 26-32 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
@@ -162,7 +162,7 @@
 
         <section id="two-databases">
           <h2>两个 SQLite 库</h2>
-          <p class="lead">Peak Assistant 在 <code>&lt;Vault&gt;/A-control/PeakAssistant/DataStore/</code> 下开两个文件：<code>vault.sqlite</code> 和 <code>chat.sqlite</code>。名字暗示了业务分工，但表的分布并没有“搜索全在 vault、聊天全在 chat”那么干净。</p>
+          <p class="lead">Peak Assistant 默认在 <code>&lt;Vault&gt;/ChatFolder/DataStore/</code> 下开两个文件：<code>vault.sqlite</code> 和 <code>chat.sqlite</code>。名字暗示了业务分工，但表的分布并没有“搜索全在 vault、聊天全在 chat”那么干净。</p>
 
           <h3 style="margin-top: 22px;"><code>vault.sqlite</code> <span class="pill green">search store</span></h3>
           <dl class="field-list">
@@ -186,7 +186,7 @@
           <p class="prose">为什么不合并？分库是为了让<strong>用户笔记的重建</strong>和<strong>聊天历史 + 用量数据的保留</strong>解耦。Rebuild vault 索引不会踩 chat.sqlite；反过来用户删除会话不会触发 vault 索引重扫。两库之间没有 foreign key，跨库的引用（比如“某条 message resource 指向 vault 里的笔记路径”）用字符串路径连——不做 join，只做 lookup。</p>
 
           <div class="path-tree">
-&lt;Vault&gt;/A-control/PeakAssistant/DataStore/
+&lt;Vault&gt;/ChatFolder/DataStore/
 ├── <b>vault.sqlite</b>              <span class="comment"># 用户笔记全部索引；tenant='vault'</span>
 ├── <b>vault.sqlite-journal</b>      <span class="comment"># SQLite 事务日志（正常）</span>
 ├── <b>vault.sqlite-shm/-wal</b>     <span class="comment"># WAL 模式副产品（若启用）</span>
@@ -422,7 +422,7 @@ flowchart TB
               <tr>
                 <td><code>embeddingModel</code></td>
                 <td>—</td>
-                <td>legacy 遗留；现在真正生效的是 <code>activeEmbeddingConfig</code>（04 定义）。</td>
+                <td>不作为运行时来源；当前真正生效的是 <code>activeEmbeddingConfig</code>（04 定义）。</td>
                 <td>不露出</td>
               </tr>
             </tbody>
@@ -540,11 +540,11 @@ flowchart TB
           </ol>
 
           <h3 style="margin-top: 22px;">Ignore patterns 是<em>是否入库</em>的开关</h3>
-          <p class="prose"><code>SearchSettings.ignorePatterns</code>（默认包含 <code>.git/</code>、<code>node_modules/</code>、<code>.obsidian/</code>、<code>A-control/</code>、<code>*.tmp</code>、<code>*.log</code>、<code>.DS_Store</code> 等）由 <code>DocumentLoaderManager.shouldIndexDocument()</code> 消费。命中的路径连 chunk 都不生成，也不入 <code>mobius_node</code>。</p>
+          <p class="prose"><code>SearchSettings.ignorePatterns</code>（默认包含 <code>.git/</code>、<code>node_modules/</code>、<code>.obsidian/</code>、当前 <code>dataStorageFolder/</code>、<code>*.tmp</code>、<code>*.log</code>、<code>.DS_Store</code> 等）由 <code>DocumentLoaderManager.shouldIndexDocument()</code> 消费。命中的路径连 chunk 都不生成，也不入 <code>mobius_node</code>。</p>
 
           <div class="claim warn">
-            <strong>A-control/ 默认排除意味着 DataStore 不会自己吃自己</strong>
-            <code>A-control/PeakAssistant/DataStore/*.sqlite</code> 是二进制文件，一旦被误当 markdown 扫，chunking 就会跑出天量垃圾 chunk。默认 <code>ignorePatterns</code> 里的 <code>A-control/</code> 就是防这个。改 dataStorageFolder 到别的位置时必须给新位置加对应 ignore，否则 rebuild 会崩。
+            <strong>DataStore 必须被排除，避免索引吃到自己的 SQLite</strong>
+            <code>ChatFolder/DataStore/*.sqlite</code> 是二进制文件，一旦被误当 markdown 扫，chunking 就会跑出天量垃圾 chunk。默认 <code>ignorePatterns</code> 会把当前 <code>dataStorageFolder/</code> 加进去。用户把 dataStorageFolder 改到别处时，loader 也必须同步排除新位置；旧默认目录不再作为兼容路径参与判断。
           </div>
 
           <p class="prose"><strong>AI Analysis 文件夹的选择性 exclude</strong>。<code>aiAnalysisAutoSaveFolder</code>（默认 <code>ChatFolder/AI-Analysis</code>）在 <code>aiAnalysisExcludeAutoSaveFolderFromSearch=true</code>（默认）时不参与 Local Search / Graph 的召回——避免 AI 分析结果反过来污染下一次分析。它跟 <code>ignorePatterns</code> 的区别是：AI Analysis 文件夹依然被<em>索引</em>（chunk / embedding / node 都会建），只是查询侧过滤掉。这个区别很重要——不然重启后 hub 引用就断了。</p>
@@ -760,7 +760,7 @@ flowchart TB
         </section>
 
         <div class="footer">
-          <p>验证记录：2026-07-01，按维护者/排障场景整理。相关文档：<a href="index.html">docs index</a>、<a href="04-configuration-and-user-views.html">04 Configuration</a>、<a href="12-feature-search.html">12 Search</a>、<a href="13-feature-vault-intelligence.html">13 Vault Intelligence (planned)</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。与 04 <a href="04-configuration-and-user-views.html#vault-layout">Vault layout</a> 的差异已在 <a href="#two-databases">§ 两个 SQLite 库</a> 里说明。</p>
+          <p>阅读场景：按维护者/排障场景整理。相关文档：<a href="index.html">docs index</a>、<a href="04-configuration-and-user-views.html">04 Configuration</a>、<a href="12-feature-search.html">12 Search</a>、<a href="13-feature-vault-intelligence.html">13 Vault Intelligence</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。与 04 <a href="04-configuration-and-user-views.html#vault-layout">Vault layout</a> 的差异已在 <a href="#two-databases">§ 两个 SQLite 库</a> 里说明。</p>
         </div>
       </div>
     </div>

@@ -615,7 +615,7 @@ function isPathExcluded(path: string, excludedPathPrefixes: string[], env: Explo
  * Compute excluded path prefixes for explore_folder based on plugin settings.
  * When `aiAnalysisExcludeAutoSaveFolderFromSearch` is enabled:
  * - exclude `ai.rootFolder` (default: ChatFolder)
- * - exclude `search.aiAnalysisAutoSaveFolder` (default: ChatFolder/AI-Analysis)
+ * - exclude `search.aiAnalysisAutoSaveFolder` (defaults under ai.rootFolder)
  */
 function getExploreFolderExclusions(env: ExploreFolderEnv): { enabled: boolean; excludedPathPrefixes: string[] } {
     const enabled = env.excludeAutoSaveFolder ?? true;

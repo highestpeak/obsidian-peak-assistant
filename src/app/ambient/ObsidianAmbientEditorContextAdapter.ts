@@ -184,7 +184,7 @@ class AmbientEditorTrigger {
 	private shouldSkip(path: string): boolean {
 		if (!path.endsWith('.md')) return true;
 		if (path.includes('Hub-Summaries/')) return true;
-		if (path.includes('ChatFolder/AI-Analysis/')) return true;
+		if (path.split('/').includes('AI-Analysis')) return true;
 		return false;
 	}
 

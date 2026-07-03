@@ -107,7 +107,7 @@
       <h1>第一次读代码的人，按什么顺序打开文件。</h1>
       <p class="subtitle">这份文档不解释四层架构<em>为什么</em>是这个形状（那是 01 的工作），也不列出所有文件（那是仓库自己的责任）。它只回答四组问题：<strong>目录职责的边界在哪</strong>、<strong>依赖方向允许什么禁止什么</strong>、<strong>按哪个能力入手读代码</strong>、<strong>我要改 X 应该从哪个文件动手</strong>。读完 01（架构原理）之后再打开代码时，读这一页。</p>
       <div class="meta">
-        <span>Status: current draft · 2026-07-01</span>
+        <span>Reference doc</span>
         <span>Approx. length: 约 8.6k 混合字符</span>
         <span>Reading time: 18-22 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
@@ -124,7 +124,7 @@
         <div class="nav-group">
           <span class="nav-group-title">起点</span>
           <a href="#orientation">这页解决什么</a>
-          <a href="#layers-quick">4 层一眼</a>
+          <a href="#layers-quick">四层目录关系</a>
         </div>
         <div class="nav-group">
           <span class="nav-group-title">读代码手册</span>
@@ -148,7 +148,13 @@
       <div class="content">
         <section id="orientation">
           <h2>这页解决什么</h2>
-          <p class="lead">Peak Assistant 大约 13 万行 TypeScript，分四个顶层目录（<code>app/</code> / <code>service/</code> / <code>core/</code> / <code>ui/</code>）加一个根 <code>main.ts</code> 入口。第一次打开仓库很容易犯两个错：</p>
+          <p class="lead">Peak Assistant 大约 13 万行 TypeScript，由一个根入口 <code>main.ts</code> 和四个顶层目录组成。第一次打开仓库很容易犯两个错：</p>
+          <ul class="lead-list">
+            <li><code>app/</code>：Obsidian composition root、commands、settings、view lifecycle。</li>
+            <li><code>service/</code>：Chat、Search、Copilot、Ambient、Lint、Agent 等业务能力。</li>
+            <li><code>core/</code>：ports、types、schemas、storage、providers、templates 等框架无关底座。</li>
+            <li><code>ui/</code>：React views、hooks、stores 和 shared components。</li>
+          </ul>
           <ol class="lead-list">
             <li><strong>按字母顺序逐个目录读</strong>——读到一半就忘了自己在追什么。</li>
             <li><strong>从 UI 组件切入</strong>——以为看到 <code>useState</code> 就找到了业务真相，结果 truth 其实在 service 的 runtime 里。</li>
@@ -163,7 +169,7 @@
             <ul>
               <li>不重复架构层次的动机——那是 <a href="01-architecture.html">01 架构与边界</a> 的题目。</li>
               <li>不列举 <code>src/**/*.ts</code> 每个文件——那种清单半年后就过期。</li>
-              <li>不解释具体能力的业务逻辑——Chat 看 <a href="11-feature-chat-context.html">11</a>、Search 看 <a href="12-feature-search.html">12</a>、Agent Harness 看 <a href="21-infra-agent-harness.html">21</a>、Settings 看 <a href="04-configuration-and-user-views.html">04</a>。</li>
+              <li>不解释具体能力的业务逻辑——看 <a href="11-feature-chat-context.html">11 · Chat Context</a>、<a href="12-feature-search.html">12 · Hyper Search</a>、<a href="21-infra-agent-harness.html">21 · Agent Harness</a>、<a href="04-configuration-and-user-views.html">04 · 配置项与用户视图</a>。</li>
             </ul>
           </div>
           <div class="claim warn">
@@ -177,7 +183,7 @@
         </section>
 
         <section id="layers-quick">
-          <h2>4 层一眼</h2>
+          <h2>四层目录关系</h2>
           <p class="lead">四个顶层目录不是平级的“功能分区”，而是<strong>依赖方向严格单向</strong>的分层。把它们的允许/禁止关系刻在脑子里，任何“这个 import 应该放哪”的犹豫都能立刻解决。</p>
 
           <table>
@@ -540,7 +546,7 @@ flowchart LR
 
           <table>
             <thead>
-              <tr><th>我想改</th><th>第 1 处</th><th>第 2 处（几乎总是要改）</th><th>第 3 处（视情况）</th></tr>
+              <tr><th>改动类型</th><th>主要入口</th><th>配套位置</th><th>常见关联</th></tr>
             </thead>
             <tbody>
               <tr>
@@ -615,7 +621,7 @@ flowchart LR
             <dd>service 和 ui 不能 import app 层的任何文件。要拿 host 能力就走 port。<code>npm run audit:boundary</code> 会扫这条；<code>test/ambient-source-guard.test.ts</code>、<code>copilot-action-runtime-source-guard.test.ts</code>、<code>copilot-action-surface-source-guard.test.ts</code> 等专项测试守着特定 runtime。</dd>
 
             <dt>2 · service/core 禁 <code>obsidian</code> concrete</dt>
-            <dd>service/core 只能 import 类型（<code>type</code>），不能 import 真正会跑代码的 Obsidian API。T11R 已把 Obsidian import 清到 0；剩下少量 duck-typed 访问走 <code>src/core/ports/AppHandle.ts</code> 与 <code>src/core/storage/vault/vault-ops.ts</code>，这两个是过渡桥，未来会继续收窄成更强类型 port。</dd>
+            <dd>service/core 只能 import 类型（<code>type</code>），不能 import 真正会跑代码的 Obsidian API。当前稳定状态是 Obsidian concrete import 清到 0；剩下少量 duck-typed 访问走 <code>AppHandle</code> 与 <code>vault-ops</code>，这两个是边界桥，后续继续收窄成更强类型 port。</dd>
 
             <dt>3 · 不做 service-layer 模块 singleton</dt>
             <dd>禁止 <code>let currentRuntime = null; export function setRuntime()</code> 这种 service 内部藏 singleton 的写法。runtime 的 owner 是 <code>src/app/context/AppRuntimeRegistry.ts</code>（bind/read/try/clear 四态语义）。如果 service 需要拿到某个 runtime，只能通过依赖注入或 <code>ServiceContext</code>——不能自己 static 一份。</dd>
@@ -665,8 +671,8 @@ flowchart LR
               </tr>
               <tr>
                 <td><strong>Regression</strong></td>
-                <td><code>test/t11r-*.test.ts</code></td>
-                <td>T11R 边界重构的回归护栏（Obsidian import zero、vault-ops 收敛等）。</td>
+                <td><code>test/*boundary*.test.ts</code> / <code>test/*source-guard.test.ts</code></td>
+                <td>边界回归护栏：Obsidian import zero、vault-ops 收敛、runtime 不反向 import app。</td>
               </tr>
               <tr>
                 <td><strong>Fixtures / scenarios / stubs</strong></td>
@@ -747,7 +753,7 @@ flowchart LR
               <tr>
                 <td>UI 通过窄接口拿服务</td>
                 <td><code>src/ui/context/</code>（<code>ServiceContext</code>）</td>
-                <td>T11P 成果：不见 raw <code>app</code> / <code>viewManager</code></td>
+                <td>UI 只拿服务接口，不直接碰 raw <code>app</code> / <code>viewManager</code></td>
               </tr>
               <tr>
                 <td>边界守卫</td>
@@ -769,7 +775,7 @@ flowchart LR
         </section>
 
         <div class="footer">
-          <p>验证记录：2026-07-01，按桌面/编辑器阅读场景设计。相关文档：<a href="index.html">docs index</a>、<a href="01-architecture.html">01 Architecture & Boundaries</a>、<a href="04-configuration-and-user-views.html">04 Configuration & User Views</a>；源头 <a href="gstack/codebase-reading-map-2026-06-28.html">Codebase Reading Map</a>。</p>
+          <p>阅读场景：桌面/编辑器。相关文档：<a href="index.html">docs index</a>、<a href="01-architecture.html">01 Architecture & Boundaries</a>、<a href="04-configuration-and-user-views.html">04 Configuration & User Views</a>；源头 <a href="gstack/codebase-reading-map-2026-06-28.html">Codebase Reading Map</a>。</p>
         </div>
       </div>
     </div>

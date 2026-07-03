@@ -9,12 +9,19 @@ import { BusinessError, ErrorCode } from '@/core/errors';
 /** Subfolder names under rootFolder. Only rootFolder is configurable. */
 export const AI_PATH_SUBFOLDERS = {
 	Prompts: 'Prompts',
+	CustomPrompts: 'Prompts/Custom',
+	Skills: 'Skills',
+	Inbox: 'Inbox',
+	DataStore: 'DataStore',
+	AIAnalysis: 'AI-Analysis',
 	Attachments: 'Attachments',
 	ResourcesSummary: 'resources-summary-cache',
 	HubSummaries: 'Hub-Summaries',
 	ManualHubNotes: 'Manual',
 	UserProfile: 'system/User-Profile.md',
 } as const;
+
+export const DEFAULT_AI_ROOT_FOLDER = 'ChatFolder';
 
 /**
  * Local stand-in for Obsidian's `normalizePath`. Obsidian's version lives
@@ -41,6 +48,26 @@ export function aiNormalizedRootFolder(rootFolder: string): string {
 
 export function getAIPromptFolder(rootFolder: string): string {
 	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.Prompts}`);
+}
+
+export function getAICustomPromptsFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.CustomPrompts}`);
+}
+
+export function getAISkillsFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.Skills}`);
+}
+
+export function getAIInboxFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.Inbox}`);
+}
+
+export function getAIDataStoreFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.DataStore}`);
+}
+
+export function getAIAnalysisFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.AIAnalysis}`);
 }
 
 export function getAIUploadFolder(rootFolder: string): string {

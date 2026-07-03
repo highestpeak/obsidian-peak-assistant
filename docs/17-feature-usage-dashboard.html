@@ -126,7 +126,7 @@
       </ul>
       <p class="subtitle">这份文档讲 <strong>数据从哪来（AIServiceManager.emitUsage）</strong>、<strong>三张表怎么存（<code>usage_log</code> / <code>usage_daily</code> / <code>usage_outcome</code>）</strong>、<strong>六屏各自看什么</strong>、<strong>Optimization curator 的规则 vs LLM 双路径</strong>、以及 <strong>关掉这个功能的正确方式</strong>。</p>
       <div class="meta">
-        <span>Status: current draft · 2026-07-01</span>
+        <span>Reference doc</span>
         <span>Approx. length: 约 13k 混合字符</span>
         <span>Reading time: 25-30 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
@@ -766,7 +766,7 @@ flowchart TB
         </section>
 
         <div class="footer">
-          <p>验证记录：2026-07-01。当前实现落地版本对应 2026-05-29 insights 之后的六屏 + inline receipt + status bar 混合方案。<em>Prompt/response preview</em> 默认关；<em>Optimization curator</em> LLM 默认不配、只走规则；<em>embedding usage emit</em> 是已知 gap。规格原稿：<a href="superpowers/specs/2026-05-08-token-usage-dashboard-design.md">2026-05-08 design</a> + <a href="superpowers/specs/2026-05-29-usage-dashboard-insights.md">2026-05-29 insights</a>。</p>
+          <p>阅读场景：Usage Dashboard 正稿。<em>Prompt/response preview</em> 默认关；<em>Optimization curator</em> 在没有 LLM 配置时走规则路径；embedding usage 的记录边界需要和 provider/embedding 调用链一起维护。背景设计见 <a href="superpowers/specs/2026-05-08-token-usage-dashboard-design.md">token usage dashboard design</a> 与 <a href="superpowers/specs/2026-05-29-usage-dashboard-insights.md">usage dashboard insights</a>。</p>
         </div>
       </div>
     </div>

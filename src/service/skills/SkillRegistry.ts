@@ -3,7 +3,7 @@
  *
  * Skills are loaded from two sources:
  *   1. Built-in skills (bundled strings, always available)
- *   2. Vault folder (configurable, default: _skills/)
+ *   2. Vault folder (configurable, default under ai.rootFolder)
  *
  * Hot-reload: vault file changes (create/modify/delete) in the skills
  * folder trigger automatic re-parsing of the affected skill.
@@ -22,7 +22,7 @@ import { loadBuiltinSkills } from './builtin';
 
 export class SkillRegistry {
 	private app: App | null = null;
-	private skillsFolder = '_skills';
+	private skillsFolder = 'ChatFolder/Skills';
 	private skills = new Map<string, SkillDefinition>();
 	private eventRefs: ReturnType<App['vault']['on']>[] = [];
 

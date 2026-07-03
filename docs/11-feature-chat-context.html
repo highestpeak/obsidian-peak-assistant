@@ -447,10 +447,10 @@ src/service/chat/context/ContextPipeline.ts
             <div class="mermaid">
 flowchart LR
   Items["Built slots"]
-  PerSlot["Phase 0<br/>超过 maxTokens 的 slot<br/>先按 L1/L2/L3 压缩"]
+  PerSlot["步骤 1<br/>超过 maxTokens 的 slot<br/>先按 L1/L2/L3 压缩"]
   Check["totalTokens <= totalBudget?"]
-  Compress["Phase 1<br/>低优先级 non-required<br/>逐个压缩"]
-  Drop["Phase 2<br/>仍超预算则 drop<br/>non-required slot"]
+  Compress["步骤 2<br/>低优先级 non-required<br/>逐个压缩"]
+  Drop["步骤 3<br/>仍超预算则 drop<br/>non-required slot"]
   Render["Render surviving slots"]
   Items --> PerSlot --> Check
   Check -- "yes" --> Render
@@ -519,11 +519,11 @@ flowchart LR
         </section>
 
         <section id="rich-generation">
-          <h2>富生成：Mermaid + Obsidian Bases（2026-07-03 shipped）</h2>
+          <h2>富生成：Mermaid 与 Obsidian Bases</h2>
           <p class="lead">Chat 系统 prompt（<code>templates/prompts/conversation-system.md</code>）加了两块领域约定，让模型能生成 <strong>vault-aware</strong> 的图表和数据视图——而不是通用图/通用表。</p>
 
           <h3>Mermaid · vault-link click-through</h3>
-          <p class="prose">给 mermaid 节点加 <code>click NodeId "peak://wikilink/Note%20Title"</code> 指令。<code>peak://wikilink/</code> 是 Peak 自定义 scheme，由 <code>AppWikilinkAdapter.parseHref</code> 解析、由 streamdown-isolated CSS 直接样式化。前提是 <code>StreamdownIsolated.findLinkInPath</code> 也识别 <em>SVG</em> anchor（mermaid 的 <code>click</code> 编译成 SVG <code>&lt;a&gt;</code>），这本轮已改为大小写不敏感、<code>HTMLElement</code>+<code>SVGElement</code> 都覆盖。</p>
+          <p class="prose">给 mermaid 节点加 <code>click NodeId "peak://wikilink/Note%20Title"</code> 指令。<code>peak://wikilink/</code> 是 Peak 自定义 scheme，由 <code>AppWikilinkAdapter.parseHref</code> 解析、由 streamdown-isolated CSS 直接样式化。Mermaid 的 <code>click</code> 会编译成 SVG <code>&lt;a&gt;</code>，所以 link 识别必须同时覆盖 <code>HTMLElement</code> 和 <code>SVGElement</code>，并保持大小写不敏感。</p>
           <div class="claim">
             <strong>模型不能凭空生成 wikilink</strong>
             prompt 明确"只对已知存在的笔记加 <code>click</code> 指令"。判断依据是对话上下文里给了引用（<code>[[...]]</code> 或 attached resource），不是模型幻觉。

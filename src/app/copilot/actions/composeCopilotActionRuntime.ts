@@ -24,6 +24,7 @@ import { SmartConnectionService } from '@/service/copilot/SmartConnectionService
 import { SqliteCopilotActionTagsAdapter } from './SqliteCopilotActionTagsAdapter';
 import { createAppCopilotActionAgentAdapter } from './AppCopilotActionAgentAdapter';
 import { ObsidianCustomPromptSourceAdapter } from '@/app/copilot/actions/ObsidianCustomPromptSourceAdapter';
+import { getAICustomPromptsFolder } from '@/core/config/folderPaths';
 
 /**
  * Compose the manual Copilot action runtime. The caller hands the
@@ -80,7 +81,10 @@ export function composeCopilotActionRuntime(app: App): CopilotActionRuntime {
 		}),
 		customPrompts: new ObsidianCustomPromptSourceAdapter({
 			app,
-			resolveFolder: () => AppContext.getSettings().customPromptsFolder ?? '_prompts',
+			resolveFolder: () => {
+				const settings = AppContext.getSettings();
+				return settings.customPromptsFolder ?? getAICustomPromptsFolder(settings.ai.rootFolder);
+			},
 		}),
 	};
 

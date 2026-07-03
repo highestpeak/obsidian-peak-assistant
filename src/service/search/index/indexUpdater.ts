@@ -14,6 +14,7 @@ import { EventBus, ViewEventType } from '@/core/eventBus';
 import { CascadeWorker } from './cascade/CascadeWorker';
 import { HubStalenessDetector } from './helper/hub/hubStalenessDetector';
 import type MyPlugin from 'main';
+import { getAIAnalysisFolder } from '@/core/config/folderPaths';
 
 /**
  * Debounced update queue for incremental indexing.
@@ -129,7 +130,8 @@ export class SearchUpdateListener {
 	 */
 	private shouldSkipListenerIndexing(path: string): boolean {
 		try {
-			const aiAnalysisFolder = this.settings.aiAnalysisAutoSaveFolder?.trim() || 'ChatFolder/AI-Analysis';
+			const aiAnalysisFolder = this.settings.aiAnalysisAutoSaveFolder?.trim()
+				|| getAIAnalysisFolder(this.plugin.settings.ai.rootFolder);
 			if (aiAnalysisFolder && path.startsWith(aiAnalysisFolder)) {
 				return true;
 			}
@@ -312,5 +314,4 @@ export class SearchUpdateListener {
 		this.start();
 	}
 }
-
 

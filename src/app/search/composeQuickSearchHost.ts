@@ -21,6 +21,7 @@ import {
 	saveAiGraphToMarkdown,
 	buildAiAnalyzeMarkdownFromSnapshot,
 } from '@/ui/view/quick-search/callbacks/save-ai-analyze-to-md';
+import { getAIAnalysisFolder } from '@/core/config/folderPaths';
 
 export function composeQuickSearchHost(
 	appContext: AppContext,
@@ -56,7 +57,7 @@ export function composeQuickSearchHost(
 		enableDevTools,
 		isMockEnv,
 		autoSaveEnabled: search.aiAnalysisAutoSaveEnabled ?? true,
-		autoSaveFolder: search.aiAnalysisAutoSaveFolder?.trim() || 'ChatFolder/AI-Analysis',
+		autoSaveFolder: search.aiAnalysisAutoSaveFolder?.trim() || getAIAnalysisFolder(settings.ai.rootFolder),
 		analysisHistoryPageSize: search.aiAnalysisHistoryLimit ?? 20,
 		indexLevel: search.indexLevel,
 		searchUpgradePromptDismissedAt: search.searchUpgradePromptDismissedAt,

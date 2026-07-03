@@ -29,6 +29,7 @@ import { buildV2AnalysisSnapshotFromData } from '@/core/search/v2SessionTypes';
 import type { V2SessionSnapshot } from '@/core/search/sessionSnapshot';
 import type { CompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
+import { DEFAULT_AI_ROOT_FOLDER, getAIAnalysisFolder } from '@/core/config/folderPaths';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -109,7 +110,7 @@ export async function persistSessionToVault(
 	}
 
 	// Create new file
-	const defaultFolder = 'ChatFolder/AI-Analysis';
+	const defaultFolder = getAIAnalysisFolder(DEFAULT_AI_ROOT_FOLDER);
 	let folderPath = (settings.aiAnalysisAutoSaveFolder?.trim()) || defaultFolder;
 
 	const title = snapshot.title?.trim() || query.slice(0, SLICE_CAPS.ui.analysisDisplayTitle) || 'Query';

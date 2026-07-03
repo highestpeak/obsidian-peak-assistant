@@ -432,7 +432,7 @@
         <li><strong>做什么</strong>：分步思考、调用工具、切换模型、压缩上下文、留下 trace。</li>
       </ul>
       <div class="meta">
-        <span>Current draft · 2026-07-01</span>
+        <span>Reference doc</span>
         <span>Root doc #21</span>
         <span>Reader: first-time maintainer</span>
         <span>约 12.5k 混合字符 · 18-22 分钟</span>
@@ -858,14 +858,14 @@ flowchart TB
 
     <section id="limits">
       <h2>6. 当前限制和不要做的事。</h2>
-      <p class="lead">这几条画出 Harness 现在能承担什么、不能承担什么。把未来能力当成已上线，代码和用户预期就会立刻错位。</p>
+      <p class="lead">这几条画出 Harness 能承担什么、不能承担什么。把愿景能力当成 runtime 合同，代码和用户预期就会立刻错位。</p>
       <ul class="clean">
         <li><b>不要把 Harness 当成用户功能。</b>用户侧看到的是 Agent runtime、运行状态、工具授权和结果审阅；Harness 是维护者术语。</li>
         <li><b>Command Gateway 现在不属于 Harness。</b>Gateway 在主架构手册里仍是 T12 capstone；本页只覆盖现有 Harness 运行层的行为和边界。</li>
         <li><b>不要在 feature service 里复制 loop。</b>Chat、Search、Review 需要 agent 时通过统一 runtime 合同传任务、工具、预算、权限和订阅。</li>
         <li><b>不要把 permission 写成 prompt。</b>需要保证的行为必须在 <code>PermissionGuard</code> 或 hooks 里实现。</li>
         <li><b>不要让工具返回任意形状。</b>工具必须用 <code>ToolResult</code>，否则模型、trace 和测试都难以判断失败是否可恢复。</li>
-        <li><b>不要把旧 spec 里的全部愿景当成已实现。</b>当前已有 loop、tool、permission、hook、tier、trace、context、subagent；完整 AgentBackend/RunEvent/Artifact 汇合还属于架构现代化目标。</li>
+        <li><b>不要把旧 spec 里的全部愿景当成 runtime 合同。</b>Harness 的稳定边界是 loop、tool、permission、hook、tier、trace、context、subagent；AgentBackend / RunEvent / Artifact 的汇合要看架构层的 owner 规则。</li>
       </ul>
 
       <div class="figure" role="figure" aria-label="AgentLoop finish reasons">
@@ -949,7 +949,7 @@ stateDiagram-v2
     </section>
 
     <div class="footer">
-      <p>验证记录：2026-07-01，主阅读视口 1440px；Mermaid、本地链接、侧边导航、阅读时长元信息和聚焦 Harness 测试由本轮检查。</p>
+      <p>阅读场景：主阅读视口 1440px；本页用于维护者理解 Harness runtime 的职责、停止原因、工具权限和 trace 边界。</p>
       <p>相关文档：<a href="index.html">docs index</a>、<a href="05-use-case-playbook.html">05-use-case-playbook.html</a>、<a href="11-feature-chat-context.html">11-feature-chat-context.html</a>、<a href="12-feature-search.html">12-feature-search.html</a>、<a href="superpowers/specs/2026-05-24-self-hosted-agent-harness.md">self-hosted-agent-harness spec</a>。</p>
     </div>
       </div>

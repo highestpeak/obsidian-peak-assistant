@@ -5,6 +5,7 @@ import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVau
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { FileText, AlertTriangle, Copy, Save, ExternalLink } from 'lucide-react';
 import { CopilotPanelShell } from '@/ui/view/copilot/components/CopilotPanelShell';
+import { getAIInboxFolder } from '@/core/config/folderPaths';
 
 export interface WritingPlanOutlineSection {
 	section: string;
@@ -90,7 +91,7 @@ export const WritingPlanPanel: React.FC<WritingPlanPanelProps> = ({ result, onCl
 	};
 
 	const handleSaveAsNote = async () => {
-		const inboxFolder = (settings as { inboxFolder?: string }).inboxFolder ?? '_inbox';
+		const inboxFolder = settings.inboxFolder ?? getAIInboxFolder(settings.ai.rootFolder);
 		const safeName = result.title.replace(/[\\/:*?"<>|]/g, '-');
 		try {
 			const filePath = await vault.createNoteInFolder(normalizePath(inboxFolder), safeName, planToMarkdown(result, false));
