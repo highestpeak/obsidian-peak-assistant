@@ -10,6 +10,7 @@ import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/
 import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { ChatDataStore } from '@/ui/store/chatDataStore';
+import { runChatConversation } from '@/service/chat/ChatConversationRun';
 
 export interface StreamChatOptions {
 	conversation: ChatConversation;
@@ -165,7 +166,16 @@ export function useStreamChat() {
 		let finalMessage: ChatMessage | null = null;
 		let finalUsage: LLMUsage | undefined;
 
-		try {
+		// B2.chat (2026-07-03): wrap the conversation turn in a
+		// RunEnvelope so each send gets a runId + start/finish trace.
+		// Behaviour-preserving: the entire try/catch/finally body runs
+		// inside `runChatConversation({ send })`; UI stores keep
+		// getting token deltas the same way. Errors surface via the
+		// existing try/catch AND via `error` events on the envelope.
+		const result = await runChatConversation<StreamChatResult>({
+			trigger: 'manual',
+			send: async () => {
+				try {
 			// Start streaming
 			const stream = manager.conv.streamChat({
 				conversation,
@@ -299,23 +309,27 @@ export function useStreamChat() {
 					true // Only create message if finalMessage is null
 				);
 			}
-		} catch (streamError) {
-			console.error('[useStreamChat] Stream error:', streamError);
-			finalMessage = createFinalAssistantMessage(
-				conversation,
-				manager,
-				assistantMessageId,
-				{ isErrorMessage: true },
-				streamError
-			);
-		} finally {
-			// Clear reasoning and tool calls; streaming state is kept alive
-			// until commitStreamingMessage() atomically swaps it for the saved message
-			messageStore.clearReasoning();
-			messageStore.clearToolCalls();
-		}
+			} catch (streamError) {
+				console.error('[useStreamChat] Stream error:', streamError);
+				finalMessage = createFinalAssistantMessage(
+					conversation,
+					manager,
+					assistantMessageId,
+					{ isErrorMessage: true },
+					streamError
+				);
+			} finally {
+				// Clear reasoning and tool calls; streaming state is kept alive
+				// until commitStreamingMessage() atomically swaps it for the saved message
+				messageStore.clearReasoning();
+				messageStore.clearToolCalls();
+			}
 
-		return { finalMessage, finalUsage };
+				return { finalMessage, finalUsage };
+			},
+		});
+
+		return result.payload;
 	}, [manager, messageStore]);
 
 	return {
