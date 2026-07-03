@@ -39,10 +39,23 @@ export interface BridgeRunConfig extends AgentLoopConfig {
 
 export class ClaudeAgentSDKBridge {
     async run(cfg: BridgeRunConfig): Promise<AgentLoopResult> {
-        if (this.shouldUseSDK(cfg)) {
-            return this.runViaSDK(cfg);
-        }
-        return runAgentLoop(cfg);
+        // B2.harness (2026-07-03): every bridge dispatch (SDK or
+        // hermes-harness fallback) runs inside a RunEnvelope so timing,
+        // failures, and backend-selection land uniformly. The bridge is
+        // the single choke point for external `runAgentLoop`-style
+        // invocations (subagents and backend-strategy internal calls
+        // already sit inside a parent RunEnvelope).
+        const { runHarnessAgent } = await import('@/service/agents/harness/HarnessAgentRun');
+        const { payload } = await runHarnessAgent<AgentLoopResult>({
+            trigger: 'manual',
+            execute: async () => {
+                if (this.shouldUseSDK(cfg)) {
+                    return this.runViaSDK(cfg);
+                }
+                return runAgentLoop(cfg);
+            },
+        });
+        return payload;
     }
 
     /** Resolve which backend to use, honoring caller override then settings. */

@@ -343,12 +343,22 @@ export function useSearchSession() {
 		store.getState().approvePlan();
 
 		try {
-			await reportOrchestrator.generateReport(
-				sections,
-				state.v2Sources.map((s) => s.path),
-				state.v2ProposedOutline ?? '',
-				state.query,
-			);
+			// B2.analysis (2026-07-03): route report generation through
+			// the RunEnvelope so each user "approve plan" click becomes
+			// an observable runId with start/finish/error events.
+			const { runAnalysisReport } = await import('@/service/agents/report/AnalysisReportRun');
+			await runAnalysisReport({
+				trigger: 'manual',
+				generate: async () => {
+					await reportOrchestrator.generateReport(
+						sections,
+						state.v2Sources.map((s) => s.path),
+						state.v2ProposedOutline ?? '',
+						state.query,
+					);
+					return null;
+				},
+			});
 			// Milestone: report fully generated — persist to vault
 			persistForegroundSession(persistDeps, store.getState().autoSaveState.lastSavedPath);
 		} catch (err: any) {

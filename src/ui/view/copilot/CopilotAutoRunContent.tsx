@@ -4,6 +4,7 @@ import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { useCopilotPanelVault } from '@/ui/view/copilot/hooks/useCopilotPanelVault';
 import type { IntentTabId } from '@/service/copilot/intent-hub';
 import { runCopilotReview, type ReviewSessionSnapshot } from '@/service/copilot/CopilotReviewSession';
+import { runCopilotReview as runCopilotReviewEnvelope } from '@/service/copilot/CopilotReviewRun';
 import { buildReviewArtifacts, reviewSubtitle } from '@/service/copilot/CopilotReviewArtifactBuilder';
 import { MODE_LABELS, type ReviewMode } from '@/service/copilot/CopilotMetaAgentStream';
 import type { InsightChatHistories } from '@/service/copilot/CopilotReviewHistoryService';
@@ -52,11 +53,23 @@ export const CopilotAutoRunContent: React.FC<{
 			try {
 				const deps = await copilotReviewDeps();
 				if (!mounted) return;
-				const generator = runCopilotReview({ ctx, mode, signal: controller.signal, deps });
-				for await (const next of generator) {
-					if (!mounted) return;
-					setSnapshot(next);
-				}
+				// B2.copilot (2026-07-03): wrap the review session in a
+				// RunEnvelope so each review gets a runId + start/finish
+				// trace. The `review` worker drains the async generator
+				// exactly like before — snapshots still flow into
+				// `setSnapshot` in the same order, and the envelope
+				// records failures separately from the try/catch.
+				await runCopilotReviewEnvelope({
+					trigger: 'manual',
+					review: async () => {
+						const generator = runCopilotReview({ ctx, mode, signal: controller.signal, deps });
+						for await (const next of generator) {
+							if (!mounted) return null;
+							setSnapshot(next);
+						}
+						return null;
+					},
+				});
 			} catch (err) {
 				if (!mounted) return;
 				console.error('[CopilotAutoRunModal] review failed', err);
