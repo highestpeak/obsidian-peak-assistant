@@ -3,6 +3,7 @@ export const PROJECT_LIST_VIEW_TYPE = 'peak-project-list-view';
 export const USAGE_DASHBOARD_VIEW_TYPE = 'peak-usage-dashboard';
 export const CONVERSATION_OUTLINE_VIEW_TYPE = 'peak-conversation-outline-view';
 export const CHAT_STUDIO_VIEW_TYPE = 'peak-chat-studio-view';
+export const RELATED_NOTES_VIEW_TYPE = 'peak-related-notes-view';
 
 export const TRACKED_VIEW_TYPES = new Set<string>([
 	CHAT_VIEW_TYPE,

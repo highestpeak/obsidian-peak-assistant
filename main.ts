@@ -440,6 +440,16 @@ export default class MyPlugin extends Plugin {
 			},
 		});
 		this.addCommand({
+			id: 'peak-related-notes-open',
+			name: 'Open Related Notes panel',
+			callback: () => {
+				void (async () => {
+					const { openRelatedNotes } = await import('@/app/commands/PeakCommandActions');
+					openRelatedNotes();
+				})();
+			},
+		});
+		this.addCommand({
 			id: 'peak-media-tts-active-note',
 			name: 'Generate TTS for Active Note (fal.ai)',
 			callback: () => {

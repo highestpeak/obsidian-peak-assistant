@@ -5,6 +5,7 @@ import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from '@/app/ui-host/views/Pro
 import { UsageDashboardView, USAGE_DASHBOARD_VIEW_TYPE } from '@/app/ui-host/views/UsageDashboardView';
 import { ConversationOutlineView, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/app/ui-host/views/ConversationOutlineView';
 import { ChatStudioView, CHAT_STUDIO_VIEW_TYPE } from '@/app/ui-host/views/ChatStudioView';
+import { RelatedNotesView, RELATED_NOTES_VIEW_TYPE } from '@/app/ui-host/views/RelatedNotesView';
 import { ViewSwitchConsistentHandler } from '@/app/ui-host/views/ViewSwitchConsistentHandler';
 import { InputModal } from '@/app/ui-host/modals/InputModal';
 import { App, Notice, ViewCreator, WorkspaceLeaf } from 'obsidian';
@@ -38,6 +39,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(CHAT_STUDIO_VIEW_TYPE, (leaf) => {
 			return new ChatStudioView(leaf, appContext);
+		});
+		this.viewCreators.set(RELATED_NOTES_VIEW_TYPE, (leaf) => {
+			return new RelatedNotesView(leaf, appContext);
 		});
 	}
 
@@ -94,6 +98,24 @@ export class ViewManager {
 		const leaf = this.plugin.app.workspace.getLeaf('tab');
 		await leaf.setViewState({ type: USAGE_DASHBOARD_VIEW_TYPE, active: true });
 		this.plugin.app.workspace.revealLeaf(leaf);
+	}
+
+	/**
+	 * Open the Related Notes / Ambient panel in the right sidebar. Reuses the
+	 * existing leaf if one is already open; otherwise creates a right-split
+	 * leaf so the panel lives in a stable, dockable location.
+	 */
+	async activateRelatedNotesView(): Promise<void> {
+		const { workspace } = this.plugin.app;
+		const existing = workspace.getLeavesOfType(RELATED_NOTES_VIEW_TYPE);
+		if (existing.length > 0) {
+			workspace.revealLeaf(existing[0]);
+			return;
+		}
+		const leaf = workspace.getRightLeaf(false);
+		if (!leaf) return;
+		await leaf.setViewState({ type: RELATED_NOTES_VIEW_TYPE, active: true });
+		workspace.revealLeaf(leaf);
 	}
 
 	/**

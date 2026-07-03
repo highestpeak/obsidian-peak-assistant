@@ -110,6 +110,10 @@ export function openChatStudio(): void {
 	void getContext().viewManager.openChatStudio();
 }
 
+export function openRelatedNotes(): void {
+	void getContext().viewManager.activateRelatedNotesView();
+}
+
 export async function refreshHubSummaries(): Promise<void> {
 	new Notice('Hub summary refresh started...');
 	const { HubRegenService } = await import('@/service/search/index/helper/hub/hubRegenService');

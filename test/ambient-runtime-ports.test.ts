@@ -468,10 +468,17 @@ async function testBriefingProjectsItemsSortedByScore(): Promise<void> {
 		{ filePath: 'b.md', title: 'B', category: 'changed_hubs', reason: '', score: 5 },
 		{ filePath: 'c.md', title: 'C', category: 'decaying_engagement', reason: '', score: 3 },
 	];
+	// Track C flipped Morning Briefing to opt-in; this test verifies the
+	// projection path after the user (or a spec) explicitly enables it.
+	const settings: AmbientPushSettings = {
+		...DEFAULT_AMBIENT_PUSH_SETTINGS,
+		enableMorningBriefing: true,
+	};
 	const { ports } = buildFakePorts(state, {
 		briefingReady: true,
 		lastBriefingTs: 0,
 		briefingItems: items,
+		settings,
 	});
 	const runtime = new AmbientPushRuntime(ports);
 	const shown = await runtime.tryShowMorningBriefing();
@@ -488,6 +495,12 @@ async function testBriefingProjectsItemsSortedByScore(): Promise<void> {
 
 async function testBriefingSkippedWhenWithinFourHourGap(): Promise<void> {
 	const state = newFakeState();
+	// Explicitly enable briefing so the assertion verifies the 4h gap, not the
+	// opt-in default (Track C flipped enableMorningBriefing off).
+	const settings: AmbientPushSettings = {
+		...DEFAULT_AMBIENT_PUSH_SETTINGS,
+		enableMorningBriefing: true,
+	};
 	const { ports } = buildFakePorts(state, {
 		briefingReady: true,
 		// 1 hour ago — under the 4h minimum gap.
@@ -495,6 +508,7 @@ async function testBriefingSkippedWhenWithinFourHourGap(): Promise<void> {
 		briefingItems: [
 			{ filePath: 'a.md', title: 'A', category: 'unresolved_connections', reason: '', score: 1 },
 		],
+		settings,
 	});
 	const runtime = new AmbientPushRuntime(ports);
 	const shown = await runtime.tryShowMorningBriefing();

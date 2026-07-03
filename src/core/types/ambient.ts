@@ -67,6 +67,11 @@ export interface AmbientPushSettings {
 	enableMorningBriefing: boolean;
 }
 
+// Ambient defaults follow the canonical-surface direction:
+//   - Related Notes panel is the primary carrier (opt in via ribbon/command).
+//   - Attention-grabbing surfaces (status-bar animation, gutter marker,
+//     recurring Morning Briefing) are OFF by default; users can re-enable
+//     them from Advanced settings once they know what they want.
 export const DEFAULT_AMBIENT_PUSH_SETTINGS: AmbientPushSettings = {
 	enabled: true,
 	triggerCooldownMs: 30_000,
@@ -74,11 +79,11 @@ export const DEFAULT_AMBIENT_PUSH_SETTINGS: AmbientPushSettings = {
 	writingPauseMs: 5_000,
 	minCharDelta: 30,
 	maxPushItems: 5,
-	showStatusBar: true,
+	showStatusBar: false,
 	graphExpansionHops: 2,
 	feedbackLearning: true,
 	enableLlmExplanation: false,
 	llmExplanationCooldownMs: 120_000,
-	enableSerendipityGutter: true,
-	enableMorningBriefing: true,
+	enableSerendipityGutter: false,
+	enableMorningBriefing: false,
 };
