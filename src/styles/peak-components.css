@@ -4074,3 +4074,113 @@
   width: 16px;
   height: 16px;
 }
+
+/* ── peak-related-notes-panel ───────────────────────────────────────────────
+   Stable Ambient Push canonical surface (Track C 2026-07). Right-sidebar
+   dockable panel that shows the current WorkingTheme summary + related-notes
+   items. Restrained tokens; no animation. Sourced from RelatedNotesPanel.tsx.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  height: 100%;
+  overflow-y: auto;
+  color: var(--pk-text-primary);
+  font-size: var(--pk-text-sm);
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pk-text-secondary);
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-title {
+  font-weight: 600;
+  font-size: var(--pk-text-sm);
+  letter-spacing: 0.02em;
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-summary-label {
+  font-size: var(--pk-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pk-text-tertiary);
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-summary-text {
+  color: var(--pk-text-primary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-empty {
+  color: var(--pk-text-tertiary);
+  font-style: italic;
+  padding: 12px 4px;
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  transition: border-color var(--pk-transition-fast);
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-item:hover {
+  border-color: var(--pk-border-accent);
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  color: var(--pk-accent-text, var(--pk-text-primary));
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-link:hover {
+  text-decoration: underline;
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-item-title {
+  font-weight: 500;
+}
+
+:is(.pktw-root, .peak-design-root) .peak-related-notes-item-explanation {
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+  line-height: 1.35;
+}
