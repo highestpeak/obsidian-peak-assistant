@@ -5,14 +5,8 @@ import type { IndexTenant } from '@/core/storage/sqlite/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
 import type { RerankDocument } from '@/core/providers/rerank/types';
-import {
-	INDEX_HUB_TIER_THRESHOLDS,
-	INDEX_SEARCH_HUB_INCOMING_BOOST,
-	INDEX_SEARCH_SECONDARY_INCOMING_BOOST,
-	INDEX_SEARCH_HUB_DOC_TYPE_BOOST,
-	PPR_GLOBAL_PR_DAMPENING,
-} from '@/core/constant';
 import type { DocRankingSignal } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
+import { computeRankingBoostFinalScore } from './rankingBoosts';
 
 /**
  * Ranking signals for boosting search results.
@@ -318,64 +312,17 @@ export class Reranker {
 		const now = params.nowTs ?? Date.now();
 		const items = params.items.map((i) => ({ ...i }));
 
-		const th = INDEX_HUB_TIER_THRESHOLDS;
-		const hubBoostAmt = INDEX_SEARCH_HUB_INCOMING_BOOST;
-		const secBoostAmt = INDEX_SEARCH_SECONDARY_INCOMING_BOOST;
-
 		for (const item of items) {
-			const s = params.signals.get(item.path);
-			const base = item.score ?? 0;
-			if (!s) {
-				item.finalScore = base;
-				continue;
-			}
-
-			// Frequency boost: logarithmic scaling of total open count
-			const freqBoost = Math.log1p(s.openCount) * 0.10;
-
-			// Recency boost: linear decay based on days since last open
-			const dayMs = 1000 * 60 * 60 * 24;
-			const days = s.lastOpenTs ? Math.max(0, (now - s.lastOpenTs) / dayMs) : Infinity;
-			const recencyBoost = Number.isFinite(days) ? Math.max(0, 0.2 - days * 0.005) : 0;
-
-			// Graph boost: fixed boost for files related to current file (within 2 hops)
-			const graphBoost = params.relatedPaths.has(item.path) ? 0.2 : 0;
-
-			// Hub boost: prefer vault PageRank tiers when computed; else incoming reference counts.
-			const inc = s.docIncomingCnt ?? 0;
-			let anchorBoost = 0;
-			const prReady = typeof s.pagerankVersion === 'number';
-			if (prReady) {
-				if (s.hubTier === 'hub') anchorBoost = hubBoostAmt;
-				else if (s.hubTier === 'secondary') anchorBoost = secBoostAmt;
-				else if (s.hubTier === 'none') anchorBoost = 0;
-				else {
-					if (inc >= th.hubIncomingMin) anchorBoost = hubBoostAmt;
-					else if (inc >= th.secondaryIncomingMin) anchorBoost = secBoostAmt;
-				}
-			} else {
-				if (inc >= th.hubIncomingMin) {
-					anchorBoost = hubBoostAmt;
-				} else if (inc >= th.secondaryIncomingMin) {
-					anchorBoost = secBoostAmt;
-				}
-			}
-
-			// When PPR is active, dampen global PR boost to avoid double-counting
-			// graph structure signals (PPR already captures personalized graph importance).
-			if (params.pprActive) {
-				anchorBoost *= PPR_GLOBAL_PR_DAMPENING;
-			}
-
-			const clickBoost = params.clickedPaths?.has(item.path) ? 0.15 : 0;
-
-			// Hub doc type boost: compiled summaries get a modest preference boost
-			const hubDocBoost = (s.mobiusNodeType === 'hub_doc') ? INDEX_SEARCH_HUB_DOC_TYPE_BOOST : 0;
-
-			item.finalScore = base + freqBoost + recencyBoost + graphBoost + anchorBoost + clickBoost + hubDocBoost;
+			item.finalScore = computeRankingBoostFinalScore({
+				base: item.score ?? 0,
+				signal: params.signals.get(item.path),
+				relatedToCurrentFile: params.relatedPaths.has(item.path),
+				clicked: params.clickedPaths?.has(item.path) ?? false,
+				pprActive: params.pprActive ?? false,
+				nowTs: now,
+			});
 		}
 
-		// Sort by final score (descending)
 		items.sort((a, b) => (b.finalScore ?? b.score ?? 0) - (a.finalScore ?? a.score ?? 0));
 		return items;
 	}
