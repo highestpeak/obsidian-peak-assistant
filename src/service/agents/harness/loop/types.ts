@@ -13,6 +13,7 @@ import type { PermissionGuard } from '../permission/PermissionGuard';
 import type { SubAgentDefinition } from '../subagent/types';
 import type { ContextManager } from '../context/ContextManager';
 import type { MemoryStore } from '../memory/MemoryStore';
+import type { CompiledSkill } from '@/core/types/compiled-skill';
 
 export interface AgentLoopBudget {
     /** Hard cap on outer-loop iterations (one model call per iteration). */
@@ -79,6 +80,17 @@ export interface AgentLoopConfig {
      * Absent → no compaction (M1+M2 behavior).
      */
     context?: ContextManager;
+    /**
+     * Compiled skill for the current run (from `SkillRegistry.compile()`).
+     * When present, the loop consults `compiled.quarantine` before every
+     * tool execution:
+     *   - `permissive` → pass through (M1 behaviour).
+     *   - `strict`     → reject tools not in `compiled.allowedTools` with a
+     *                    synthetic `fail('skill-quarantine: ...', false)`
+     *                    ToolResult, so the model can observe the denial
+     *                    without the agent actually invoking the tool.
+     */
+    compiledSkill?: CompiledSkill;
 }
 
 export interface AgentLoopResult {

@@ -16,6 +16,7 @@ import type { ModelTier } from '../tier/types';
 import type { ToolDef, ToolExecCtx, ToolResult } from '../tool/types';
 import { TraceBus } from '../trace/events';
 import type { StepResult, ToolCallTrace, ToolResultTrace } from '../trace/events';
+import { checkSkillQuarantine } from '@/service/skills/quarantine';
 import { DEFAULT_BUDGET } from './types';
 import type {
     AgentLoopBudget,
@@ -339,6 +340,22 @@ function wrapTool(
                     return finalize({
                         ok: false,
                         error: `permission denied: ${decision.reason}`,
+                        recoverable: false,
+                    });
+                }
+            }
+
+            // (1b) Skill quarantine check — strict compiled skills only
+            // allow tools listed in `allowedTools`. Runs alongside the
+            // PermissionGuard because they enforce different policies:
+            // permission = deny lists from user config; quarantine = the
+            // skill's own capability boundary. Either can veto.
+            if (cfg.compiledSkill) {
+                const verdict = checkSkillQuarantine(cfg.compiledSkill, def.name);
+                if (verdict !== 'allow') {
+                    return finalize({
+                        ok: false,
+                        error: `skill-quarantine: ${verdict.reason}`,
                         recoverable: false,
                     });
                 }
