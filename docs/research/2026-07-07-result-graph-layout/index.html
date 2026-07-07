@@ -359,8 +359,19 @@
 			'border-color': '#f59e0b',
 			'border-width': 3,
 		}},
+		// Smooth transitions on all interactive properties.
+		{ selector: 'node', style: {
+			'transition-property': 'background-color, border-color, border-width, opacity',
+			'transition-duration': '260ms',
+			'transition-timing-function': 'ease-out',
+		}},
+		{ selector: 'edge', style: {
+			'transition-property': 'line-color, target-arrow-color, width, opacity',
+			'transition-duration': '260ms',
+			'transition-timing-function': 'ease-out',
+		}},
 		// Hover highlight — dim the rest, spotlight the neighborhood.
-		{ selector: '.dimmed', style: { 'opacity': 0.15 } },
+		{ selector: '.dimmed', style: { 'opacity': 0.12 } },
 		{ selector: 'node.highlighted', style: {
 			'border-color': '#f59e0b',
 			'border-width': 3,
@@ -370,10 +381,10 @@
 		{ selector: 'edge.highlighted', style: {
 			'line-color': '#f59e0b',
 			'target-arrow-color': '#f59e0b',
-			'width': 2,
+			'width': 2.4,
 			'opacity': 1,
 			'z-index': 999,
-			'line-dash-pattern': [8, 4],
+			'line-dash-pattern': [10, 6],
 			'line-style': 'dashed',
 		}},
 		// Region separators (Cytoscape node-based bounding boxes).
@@ -397,7 +408,6 @@
 		switch (name) {
 			case 'fcose': return { name: 'fcose', animate: true, animationDuration: 500, nodeRepulsion: 8000, idealEdgeLength: 90, edgeElasticity: 0.3, gravity: 0.25, tile: true, randomize: true, packComponents: true, nodeSeparation: 80 };
 			case 'cise': return { name: 'cise', animate: true, animationDuration: 700, clusters: (n) => {
-				// Cluster by hub membership if present, else by folder.
 				const parent = n.data('parent');
 				if (parent) return parent;
 				return n.data('folder') || 'misc';
@@ -409,25 +419,54 @@
 			case 'concentric-hub': return {
 				name: 'concentric',
 				animate: true,
-				concentric: (n) => n.data('kind') === 'hub' ? 100 : Math.floor((n.data('score') || 0) * 10),
+				// Only 3 rings: hubs · connected · rest. Prevents "empty ring" gap.
+				concentric: (n) => {
+					if (n.data('kind') === 'hub') return 3;
+					if (n.hasClass('isolated')) return 1;
+					return 2;
+				},
 				levelWidth: () => 1,
-				minNodeSpacing: 30,
+				minNodeSpacing: 22,
+				spacingFactor: 1.1,
 			};
 			case 'concentric-score': return {
 				name: 'concentric',
 				animate: true,
-				concentric: (n) => Math.floor((n.data('score') || 0) * 20),
+				// Bucket into 4 tiers so we don't get 50 rings.
+				concentric: (n) => {
+					const s = n.data('score') || 0;
+					if (s > 0.75) return 4;
+					if (s > 0.4) return 3;
+					if (s > 0.25) return 2;
+					return 1;
+				},
 				levelWidth: () => 1,
-				minNodeSpacing: 30,
+				minNodeSpacing: 20,
+				spacingFactor: 1.2,
 			};
 			case 'breadthfirst': return {
 				name: 'breadthfirst',
 				animate: true,
 				roots: subgraph.hubAnchors.map((h) => h.id).join(','),
 				spacingFactor: 1.4,
-				directed: true,
+				directed: false, // undirected so BFS reaches all connected via any edge kind
+				grid: true,
+				maximal: true,
 			};
-			case 'grid': return { name: 'grid', rows: 6 };
+			case 'grid':
+				// Sort by folder then by score DESC so adjacent grid cells are similar,
+				// making the flat picture actually informative.
+				return {
+					name: 'grid',
+					sort: (a, b) => {
+						const fa = a.data('folder') || 'z';
+						const fb = b.data('folder') || 'z';
+						if (fa !== fb) return fa.localeCompare(fb);
+						return (b.data('score') || 0) - (a.data('score') || 0);
+					},
+					cols: 7,
+					avoidOverlapPadding: 20,
+				};
 			default: return { name: 'fcose' };
 		}
 	}
@@ -454,37 +493,52 @@
 	function animateEdges(selector) {
 		stopAnimation();
 		let offset = 0;
-		const tick = () => {
-			offset -= 0.6;
+		let last = performance.now();
+		const tick = (now) => {
+			// Time-based step (~24 px/s) → consistent regardless of framerate,
+			// and gentler than the previous raw per-frame delta.
+			const dt = Math.min(now - last, 50);
+			last = now;
+			offset -= dt * 0.024;
+			if (!cy) return;
 			const edges = cy.edges(selector);
 			if (edges.length === 0) return;
 			edges.style('line-dash-offset', offset);
 			animationFrame = requestAnimationFrame(tick);
 		};
-		tick();
+		animationFrame = requestAnimationFrame(tick);
 	}
 
 	function layoutIsolatedGrid(cy) {
 		const isolated = cy.nodes('.isolated');
 		if (isolated.length === 0) return;
 		const connected = cy.nodes().not('.isolated').not('.regionLabel');
-		let baseY = 0;
+		let baseY = 0, centerX = 0, gridWidth = 0;
 		if (connected.length > 0) {
 			const bbox = connected.boundingBox();
-			baseY = bbox.y2 + 120; // gap between regions
-			// Divider label
-			cy.add({ group: 'nodes', data: { id: '__label:isolated', label: 'Isolated matches', kind: 'regionLabel' }, classes: 'regionLabel', position: { x: (bbox.x1 + bbox.x2) / 2, y: baseY - 40 } });
+			baseY = bbox.y2 + 140;
+			centerX = (bbox.x1 + bbox.x2) / 2;
+			gridWidth = Math.max(bbox.x2 - bbox.x1, 700);
+		} else {
+			gridWidth = 700;
 		}
-		const cols = 5;
-		const w = 160, h = 44;
+		const cellW = 160, cellH = 44;
+		// Pick a column count that keeps the isolated grid roughly as wide as
+		// the connected region, so the two areas look aligned.
+		const cols = Math.max(4, Math.min(8, Math.floor(gridWidth / cellW)));
+		const gridStartX = centerX - (cols * cellW) / 2;
+		// Divider label
+		cy.add({
+			group: 'nodes',
+			data: { id: '__label:isolated', label: 'Isolated matches', kind: 'regionLabel' },
+			classes: 'regionLabel',
+			position: { x: centerX, y: baseY - 40 },
+		});
 		isolated.forEach((n, i) => {
 			const col = i % cols;
 			const row = Math.floor(i / cols);
-			n.position({ x: col * w, y: baseY + row * h });
-			n.lock();
+			n.position({ x: gridStartX + col * cellW, y: baseY + row * cellH });
 		});
-		// Unlock afterwards so user can still drag if desired.
-		setTimeout(() => isolated.unlock(), 200);
 	}
 
 	function render() {
@@ -496,43 +550,56 @@
 			container: document.getElementById('cy'),
 			elements: els,
 			style: styles,
-			layout: opts.splitIsolated
-				? {
-					...layoutConfig(currentLayout),
-					// Only layout the connected subgraph; isolated get placed manually after.
-					eles: '.doc:not(.isolated), .hub, .hubGroup, .folderGroup',
-					stop: undefined,
-				}
-				: layoutConfig(currentLayout),
 			minZoom: 0.15,
 			maxZoom: 3,
 			wheelSensitivity: 0.2,
 		});
 
-		cy.ready(() => {
-			// Wait for layout to settle before positioning isolated so we know
-			// the connected cluster's bounding box.
-			setTimeout(() => {
-				if (opts.splitIsolated) layoutIsolatedGrid(cy);
-				cy.fit(undefined, 50);
-				if (opts.alwaysAnimate) animateEdges('edge');
-			}, 400);
-		});
+		// Run layout only on the connected subgraph when splitting isolated.
+		const connectedEles = opts.splitIsolated
+			? cy.elements().filter((el) => {
+				if (el.isNode()) return !el.hasClass('isolated') && !el.hasClass('regionLabel');
+				const s = el.source(), t = el.target();
+				return !(s.hasClass('isolated') || t.hasClass('isolated'));
+			})
+			: cy.elements();
 
-		// ─── Hover highlight (spotlight neighborhood) ────────────────
+		const layoutObj = connectedEles.layout(layoutConfig(currentLayout));
+
+		// Wait for the layout event (not a timeout) so isolated positioning
+		// always happens after the connected cluster settles.
+		layoutObj.one('layoutstop', () => {
+			if (opts.splitIsolated) layoutIsolatedGrid(cy);
+			cy.fit(undefined, 50);
+			if (opts.alwaysAnimate) animateEdges('edge');
+		});
+		layoutObj.run();
+
+		// Debounced hover so mouse skim doesn't flash the highlight state.
+		let hoverTimer = null;
 		cy.on('mouseover', 'node', (evt) => {
 			const n = evt.target;
 			if (n.hasClass('regionLabel')) return;
-			const neigh = n.closedNeighborhood();
-			cy.elements().addClass('dimmed');
-			neigh.removeClass('dimmed').addClass('highlighted');
-			n.addClass('highlighted');
-			if (opts.animateEdges) animateEdges('edge.highlighted');
+			clearTimeout(hoverTimer);
+			hoverTimer = setTimeout(() => {
+				const neigh = n.closedNeighborhood();
+				cy.batch(() => {
+					cy.elements().addClass('dimmed');
+					neigh.removeClass('dimmed').addClass('highlighted');
+					n.addClass('highlighted');
+				});
+				if (opts.animateEdges) animateEdges('edge.highlighted');
+			}, 80);
 		});
 		cy.on('mouseout', 'node', () => {
-			cy.elements().removeClass('dimmed').removeClass('highlighted');
-			stopAnimation();
-			if (opts.alwaysAnimate) animateEdges('edge');
+			clearTimeout(hoverTimer);
+			hoverTimer = setTimeout(() => {
+				cy.batch(() => {
+					cy.elements().removeClass('dimmed').removeClass('highlighted');
+				});
+				stopAnimation();
+				if (opts.alwaysAnimate) animateEdges('edge');
+			}, 120);
 		});
 
 		// Click → inspector
