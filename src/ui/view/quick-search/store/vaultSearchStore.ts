@@ -1,6 +1,18 @@
 import { create } from 'zustand';
 import type { SearchQuery, SearchResultItem, SearchScopeValue } from '@/core/search/searchTypes';
 
+/**
+ * T0 (2026-07-07 heading-mode refactor):
+ * QuickSearchMode collapsed from `vault | inFile | inFolder | goToLine | help`
+ * to `all | heading | help`. Folder (`@`) and go-to-line (`:`) parsers were
+ * removed — see spec `docs/superpowers/specs/2026-07-07-vault-search-heading-graph-navigation.md`.
+ * `inFile` was renamed to `heading` (# prefix still triggers it).
+ */
+export type QuickSearchMode = 'all' | 'heading' | 'help';
+
+// TODO T1: `InFileSearch` / `GoToLine` types are retained as unused re-exports
+// so that T1-owned files (useVaultSearch, SearchModal) still compile during
+// the T0 → T1 handoff. Delete along with the corresponding removed feature paths.
 export interface InFileSearch {
 	text: string;
 	path: string;
@@ -15,13 +27,9 @@ export interface GoToLine {
 	text: string;
 }
 
-export type QuickSearchMode = 'vault' | 'inFile' | 'inFolder' | 'goToLine' | 'help';
-
 interface VaultSearchStore {
 	// State
 	quickSearchMode: QuickSearchMode;
-	inFileSearch?: InFileSearch;
-	goToLine?: GoToLine;
 	parsedQuery?: SearchQuery;
 	lastSearchDuration: number | null;
 	isSearching: boolean;
@@ -43,13 +51,11 @@ interface VaultSearchStore {
 	reset: () => void;
 }
 
-export const DEFAULT_SEARCH_QUERY: SearchQuery = { text: '', scopeMode: 'vault', topK: 50 };
+export const DEFAULT_SEARCH_QUERY: SearchQuery = { text: '', scopeMode: 'all', topK: 50 };
 
 export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 	// Initial state
-	quickSearchMode: 'vault',
-	inFileSearch: undefined,
-	goToLine: undefined,
+	quickSearchMode: 'all',
 	parsedQuery: DEFAULT_SEARCH_QUERY,
 	lastSearchDuration: null,
 	isSearching: false,
@@ -65,20 +71,12 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 			currentFilePath,
 			rawInput: searchQuery,
 		});
-		// Validate and parse line number for goToLine mode
-		let lineNumber: number | undefined;
-		if (mode === 'goToLine') {
-			const parsed = parseInt(text);
-			if (Number.isInteger(parsed) && parsed > 0) {
-				lineNumber = parsed;
-			}
-		}
-
 		set({
 			quickSearchMode: mode,
-			inFileSearch: mode === 'inFile' ? { text, path: scope?.currentFilePath ?? '' } : undefined,
-			goToLine: lineNumber !== undefined ? { line: lineNumber, path: scope?.currentFilePath ?? '', text: text } : undefined,
-			parsedQuery: mode === 'vault' || mode === 'inFolder' ? { text, scopeMode: mode, scopeValue: scope } : undefined,
+			// `heading` currently reuses the same SearchQuery pipeline as `all`
+			// (T5 will replace this with the outline-tree service). `help` has
+			// no query object — the ModeHelpList renders directly off the mode.
+			parsedQuery: mode === 'help' ? undefined : { text, scopeMode: mode, scopeValue: scope },
 		});
 	},
 	setLastSearchData: ({ results, duration, fuzzyCorrection }) => set({
@@ -88,9 +86,7 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 	}),
 	setIsSearching: (isSearching) => set({ isSearching }),
 	reset: () => set({
-		quickSearchMode: 'vault',
-		inFileSearch: undefined,
-		goToLine: undefined,
+		quickSearchMode: 'all',
 		parsedQuery: DEFAULT_SEARCH_QUERY,
 		lastSearchDuration: null,
 		isSearching: false,
@@ -103,10 +99,13 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 /**
  * Parse the user input according to quick-search conventions.
  *
- * Conventions:
- * - `#` prefix: in-file search (current active file)
- * - `@` prefix: in-folder search (current active file folder)
- * - Default: vault-wide search
+ * Conventions (post-T0, 2026-07-07):
+ * - `?` prefix: help / cheat-sheet mode
+ * - `#` prefix: heading mode (outline tree of the current active file)
+ * - Default: `all` — vault-wide search
+ *
+ * Folder (`@`) and go-to-line (`:`) prefixes were removed by T0. The
+ * corresponding features are being retired in T1.
  */
 function parseQuickSearchInput(params: {
 	currentFilePath: string | null;
@@ -116,39 +115,23 @@ function parseQuickSearchInput(params: {
 	const input = rawInput ?? '';
 	const trimmed = input.trimStart();
 
-	let mode: QuickSearchMode = 'vault';
+	let mode: QuickSearchMode = 'all';
 	let text = input;
 
 	if (trimmed.startsWith('?')) {
 		mode = 'help';
 		text = trimmed.slice(1).trimStart();
 	} else if (trimmed.startsWith('#')) {
-		mode = 'inFile';
-		text = trimmed.slice(1).trimStart();
-	} else if (trimmed.startsWith('@')) {
-		mode = 'inFolder';
-		text = trimmed.slice(1).trimStart();
-	} else if (trimmed.startsWith(':')) {
-		mode = 'goToLine';
+		mode = 'heading';
 		text = trimmed.slice(1).trimStart();
 	}
 
-	const folderPath = currentFilePath ? currentFilePath.slice(0, currentFilePath.lastIndexOf('/')) : null;
-	const scope = { currentFilePath, folderPath };
-	if (mode === 'inFolder' && !scope.folderPath) {
-		// Fallback to vault mode if no folder context.
-		mode = 'vault';
-	}
-	if (mode === 'inFile' && !scope.currentFilePath) {
-		mode = 'vault';
-	}
-	if (mode === 'goToLine') {
-		const parsedLine = parseInt(text);
-		if (!Number.isInteger(parsedLine) || parsedLine <= 0 || !scope.currentFilePath) {
-			// Fallback to vault mode if invalid line number or no file context.
-			mode = 'vault';
-			text = input; // Restore original input for vault search
-		}
+	const scope: SearchScopeValue = { currentFilePath };
+
+	// Heading mode requires a current file; fall back to `all` when there is
+	// no file context (desktop / mock harness).
+	if (mode === 'heading' && !scope.currentFilePath) {
+		mode = 'all';
 	}
 
 	return {

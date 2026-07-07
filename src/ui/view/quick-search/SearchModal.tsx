@@ -27,6 +27,7 @@ import { ActiveSessionsList } from './components/ActiveSessionsList';
 import { parse as parseAiSearchAnalysisDoc, toCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 import { RecentAnalysisList } from './components/RecentAnalysisList';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
+import { createOpenSourceCallback } from './callbacks/open-source-file';
 
 type TabType = 'vault' | 'ai';
 
@@ -451,15 +452,15 @@ interface VaultTabContentProps {
 	setActiveTab: (tab: TabType) => void;
 }
 
-/** Returns search query string for the given mode (prefix # / @ / : or none). */
+/** Returns search query string for the given mode (prefix # / ? or none).
+ *  TODO T1: strip out remaining `@` / `:` prefix handling once folder / line
+ *  modes are fully retired. */
 function transformQueryForMode(raw: string, toMode: QuickSearchMode): string {
 	const trimmed = raw.trimStart();
 	// Strip existing mode prefix (#, @, :, ?).
 	const withoutPrefix = trimmed.replace(/^\s*[#@:?]\s*/, '') || '';
-	if (toMode === 'vault') return withoutPrefix;
-	if (toMode === 'inFolder') return trimmed.startsWith('@') ? raw : `@ ${withoutPrefix}`;
-	if (toMode === 'inFile') return trimmed.startsWith('#') ? raw : `# ${withoutPrefix}`;
-	if (toMode === 'goToLine') return trimmed.startsWith(':') ? raw : `: ${withoutPrefix}`;
+	if (toMode === 'all') return withoutPrefix;
+	if (toMode === 'heading') return trimmed.startsWith('#') ? raw : `# ${withoutPrefix}`;
 	return raw;
 }
 
@@ -469,7 +470,7 @@ function transformQueryForMode(raw: string, toMode: QuickSearchMode): string {
  */
 const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, setActiveTab }) => {
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
-	const { vaultStats } = useServiceContext();
+	const { vaultStats, vaultNavigation } = useServiceContext();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
 	const { updateParsedQuery, isSearching, quickSearchMode, inspectorOpen, lastSearchDuration, lastSearchResults } = useVaultSearchStore();
 	const hasSearchQuery = !!vaultSearchQuery.trim();
@@ -478,18 +479,17 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 
 	/**
 	 * Display mode is derived from the raw input prefix, not from store mode.
-	 * Store mode may fallback to 'vault' when there is no file context (desktop/mock),
-	 * but UI should still highlight what the user is trying to use (# / : / @).
+	 * Store mode may fallback to 'all' when there is no file context (desktop/mock),
+	 * but UI should still highlight what the user is trying to use (# / ?).
+	 * TODO T1: remove `@` / `:` prefix probes once folder/line modes are gone.
 	 */
 	const displayMode = vaultSearchQuery.trimStart().startsWith('#')
-		? ('inFile' as const)
-		: vaultSearchQuery.trimStart().startsWith(':')
-			? ('goToLine' as const)
-			: vaultSearchQuery.trimStart().startsWith('@')
-				? ('inFolder' as const)
-				: ('vault' as const);
+		? ('heading' as const)
+		: ('all' as const);
 
-	const VAULT_CYCLE_MODES = ['vault', 'inFolder', 'inFile', 'goToLine'] as const;
+	// TODO T1: 'inFolder' / 'goToLine' entries retained purely so the picker
+	// UI (below) still renders identically until the folder/line delete pass.
+	const VAULT_CYCLE_MODES = ['all', 'heading'] as const;
 	const cycleVaultMode = (dir: 1 | -1) => {
 		const idx = VAULT_CYCLE_MODES.indexOf(displayMode as typeof VAULT_CYCLE_MODES[number]);
 		const safeIdx = idx >= 0 ? idx : 0;
@@ -539,14 +539,8 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 		if (inputRef.current) inputRef.current.focus();
 	}, []);
 
-	useEffect(() => {
-		if (quickSearchMode === 'goToLine' && !isSearching && inputRef.current) {
-			const t = setTimeout(() => {
-				if (inputRef.current) inputRef.current.focus();
-			}, 100);
-			return () => clearTimeout(t);
-		}
-	}, [quickSearchMode, isSearching]);
+	// TODO T1: goToLine re-focus effect removed with the mode. If heading mode
+	// needs analogous focus-management, add it here in T5.
 
 	return (
 		<>
@@ -572,11 +566,9 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 								'pktw-text-[10px] pktw-font-medium pktw-px-2 pktw-py-0.5 pktw-rounded-full',
 								'pktw-bg-pk-highlight pktw-text-pk-accent pktw-border pktw-border-pk-accent/20',
 							)}>
-								{quickSearchMode === 'vault' ? 'vault' :
-								 quickSearchMode === 'inFile' ? 'in-file' :
-								 quickSearchMode === 'inFolder' ? 'folder' :
-								 quickSearchMode === 'goToLine' ? 'line' :
-								 quickSearchMode === 'help' ? 'help' : 'vault'}
+								{quickSearchMode === 'all' ? 'all' :
+								 quickSearchMode === 'heading' ? 'heading' :
+								 quickSearchMode === 'help' ? 'help' : 'all'}
 							</span>
 						</div>
 					</div>
@@ -596,8 +588,9 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 
 			{/* Mode picker row */}
 			<div className="pktw-flex-shrink-0 pktw-px-3 pktw-py-1.5 pktw-bg-pk-background pktw-border-b pktw-border-pk-border pktw-flex pktw-items-center pktw-gap-1">
-				{(['vault', 'inFolder', 'inFile', 'goToLine'] as const).map((mode) => {
-					const labels: Record<string, string> = { vault: 'All', inFolder: 'Folder', inFile: 'Heading', goToLine: 'Line' };
+				{/* TODO T1: reintroduce Folder / Line entries only if the retirement is reverted. */}
+			{(['all', 'heading'] as const).map((mode) => {
+					const labels: Record<string, string> = { all: 'All', heading: 'Heading' };
 					const isActive = displayMode === mode;
 					return (
 						<Button
@@ -640,10 +633,14 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 							currentPath={inspectorPath}
 							searchQuery={vaultSearchQuery}
 							onClose={() => useVaultSearchStore.getState().setInspectorOpen(false)}
-							onNavigate={(path) => {
-						setInspectorPath(path);
-						setNavigateToPath(path);
-					}}
+							onOpenDocument={(path) => {
+								// Open the doc but keep the Search modal open so the user can hop.
+								void createOpenSourceCallback(undefined, true, vaultNavigation)(path);
+							}}
+							onInspectInPanel={(path) => {
+								setInspectorPath(path);
+								setNavigateToPath(path);
+							}}
 						/>
 					</div>
 				)}

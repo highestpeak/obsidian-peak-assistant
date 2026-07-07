@@ -9,12 +9,13 @@ export type SearchResultType = DocumentType | 'heading';
 
 /**
  * Supported search modes in quick search.
- * - vault: global vault search
- * - inFile: search within a single file
- * - inFolder: search within a folder scope
+ * - all: global vault search (was `vault` pre-T0/2026-07-07)
+ * - heading: search / outline within a single file (was `inFile` pre-T0)
+ * - inFolder: search within a folder scope — TODO T1: remove once folder mode is retired
  * - limitIdsSet: search within a limited set of IDs
+ * - excludeDocIdsSet: search excluding a set of IDs
  */
-export type SearchScopeMode = 'vault' | 'inFile' | 'inFolder' | 'limitIdsSet' | 'excludeDocIdsSet';
+export type SearchScopeMode = 'all' | 'heading' | 'inFolder' | 'limitIdsSet' | 'excludeDocIdsSet';
 
 /**
  * Optional search scope information.

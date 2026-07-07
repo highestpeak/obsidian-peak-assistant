@@ -325,11 +325,11 @@ export const localSearchWholeVaultInputSchema = z
 				"Search mode: 'fulltext' (text only), 'vector' (embedding-based), or 'hybrid' (combine both)."
 			),
 		scopeMode: z
-			.enum(["vault", "inFile", "inFolder", "limitIdsSet"])
+			.enum(["all", "heading", "inFolder", "limitIdsSet"])
 			.nullable()
-			.default("vault")
+			.default("all")
 			.describe(
-				"Scope of search: 'vault' (entire vault), 'inFile' (current file), 'inFolder' (a folder and its subnotes), or 'limitIdsSet' (specific note ids set)."
+				"Scope of search: 'all' (entire vault), 'heading' (current file / heading outline), 'inFolder' (a folder and its subnotes), or 'limitIdsSet' (specific note ids set)."
 			),
 		current_file_path: z
 			.string()

@@ -197,7 +197,7 @@ export async function* buildVaultMetaAgentStream(
 			text: q,
 			topK: limit,
 			searchMode: 'hybrid',
-			scopeMode: 'vault',
+			scopeMode: 'all',
 			indexTenant: 'vault',
 		} as unknown as Parameters<typeof searchClient.search>[0]);
 		return (res.items ?? []).map((i: { path: string; title?: string; score?: number }) => ({

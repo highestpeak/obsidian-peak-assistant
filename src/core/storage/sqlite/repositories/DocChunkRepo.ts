@@ -337,7 +337,7 @@ export class DocChunkRepo {
 		let pathFilter = '';
 		const pathParams: string[] = [];
 
-		if (scopeMode === 'inFile' && scopeValue?.currentFilePath) {
+		if (scopeMode === 'heading' && scopeValue?.currentFilePath) {
 			pathFilter = 'AND dm.path = ?';
 			pathParams.push(scopeValue.currentFilePath);
 		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
@@ -411,7 +411,7 @@ export class DocChunkRepo {
 		let pathFilter = '';
 		const pathParams: string[] = [];
 
-		if (scopeMode === 'inFile' && scopeValue?.currentFilePath) {
+		if (scopeMode === 'heading' && scopeValue?.currentFilePath) {
 			pathFilter = 'AND mf.path = ?';
 			pathParams.push(scopeValue.currentFilePath);
 		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
@@ -510,7 +510,7 @@ export class DocChunkRepo {
 		let pathFilter = '';
 		const pathParams: string[] = [];
 
-		if (scopeMode === 'inFile' && scopeValue?.currentFilePath) {
+		if (scopeMode === 'heading' && scopeValue?.currentFilePath) {
 			pathFilter = 'AND dm.path = ?';
 			pathParams.push(scopeValue.currentFilePath);
 		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {

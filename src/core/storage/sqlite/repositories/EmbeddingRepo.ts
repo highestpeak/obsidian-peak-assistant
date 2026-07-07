@@ -566,7 +566,7 @@ export class EmbeddingRepo {
 		// Handle scope filtering - pre-fetch constrained rowids to avoid JOIN in KNN query
 		let scopedRowids: number[] | null = null;
 
-		if (scopeMode === 'inFile' && scopeValue?.currentFilePath) {
+		if (scopeMode === 'heading' && scopeValue?.currentFilePath) {
 			scopedRowids = await this.getEmbeddingRowidsByPath([scopeValue.currentFilePath]);
 		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
 			const folderPath = (scopeValue.folderPath ?? '').trim().replace(/\/+$/, '') || undefined;

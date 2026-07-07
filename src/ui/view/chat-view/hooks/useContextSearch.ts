@@ -72,7 +72,7 @@ export function useContextSearch() {
 			if (shouldSearchVault) {
 				const searchResults = await searchClient.search({
 					text: normalizedQuery,
-					scopeMode: currentFolder ? 'inFolder' : 'vault',
+					scopeMode: currentFolder ? 'inFolder' : 'all',
 					scopeValue: currentFolder ? { folderPath: currentFolder } : undefined,
 					topK: SEARCH_RESULTS_TOP_K,
 					searchMode: 'fulltext',

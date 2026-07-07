@@ -36,7 +36,7 @@ export function createAppCopilotActionAgentAdapter(
 			text: q,
 			topK: limit,
 			searchMode: 'hybrid',
-			scopeMode: 'vault',
+			scopeMode: 'all',
 			indexTenant: 'vault',
 		} as any);
 		return ((res.items ?? []) as any[]).map<GrepHit>((i: any) => ({

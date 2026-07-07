@@ -138,7 +138,7 @@ export async function ambientSearch(
 ): Promise<AmbientPushItem[]> {
 	const query: SearchQuery = {
 		text: context.currentParagraph,
-		scopeMode: 'vault',
+		scopeMode: 'all',
 		scopeValue: { currentFilePath: context.filePath },
 		topK: 15,
 		searchMode: 'fulltext',

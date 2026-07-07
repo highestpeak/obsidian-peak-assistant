@@ -151,6 +151,28 @@ export const INDEX_SEARCH_SECONDARY_INCOMING_BOOST = 0.04;
 /** Additive score boost applied when a search result is a hub_doc type (compiled knowledge summary). */
 export const INDEX_SEARCH_HUB_DOC_TYPE_BOOST = 0.12;
 
+/**
+ * Additive boost when query terms/phrases hit the document title.
+ * Multiplied by (hits / totalTerms) so a full title match adds the whole boost.
+ * Sized to sit above content-only vector hits so a doc literally titled `X` beats
+ * a semantically-related doc for query `X`.
+ */
+export const INDEX_SEARCH_TITLE_MATCH_BOOST = 0.6;
+
+/**
+ * Additive boost when query terms/phrases hit ONLY the folder segments of a
+ * doc's path (filename didn't match). Smaller than title boost because a
+ * matching folder is a weaker signal — the doc happens to live in a topic
+ * folder, but its own name is unrelated to the query.
+ */
+export const INDEX_SEARCH_FOLDER_MATCH_BOOST = 0.15;
+
+/**
+ * Additive boost when query terms/phrases hit the retrieved content snippet.
+ * Rewards actual keyword occurrences in the body over pure vector similarity.
+ */
+export const INDEX_SEARCH_CONTENT_MATCH_BOOST = 0.25;
+
 /** Incoming/outgoing degree bands for hybrid rerank anchor boosts. */
 export const INDEX_HUB_TIER_THRESHOLDS = {
 	hubIncomingMin: 5,
@@ -177,7 +199,7 @@ export const DEFAULT_SEARCH_TOP_K = 50;
  * Default search mode.
  * Used when query.mode is not specified.
  */
-export const DEFAULT_SEARCH_MODE = 'vault';
+export const DEFAULT_SEARCH_MODE = 'all';
 
 /**
  * RRF (Reciprocal Rank Fusion) configuration constants.

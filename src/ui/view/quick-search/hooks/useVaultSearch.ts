@@ -1,212 +1,40 @@
 import { useEffect, useRef } from 'react';
 import { DEFAULT_RECENT_SEARCH_RESULTS_COUNT } from '@/core/constant';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { DEFAULT_SEARCH_QUERY, GoToLine, InFileSearch, useVaultSearchStore } from '../store/vaultSearchStore';
+import { DEFAULT_SEARCH_QUERY, useVaultSearchStore } from '../store/vaultSearchStore';
 import { SearchQuery } from '@/core/search/searchTypes';
-import type { SearchResultItem, SearchSnippet } from '@/core/search/searchTypes';
-import type { VaultPreviewPort } from '@/core/ports/VaultPreviewPort';
-import type { VaultNavigationPort } from '@/core/ports/VaultNavigationPort';
 
-export const useSearchQuery = (): InFileSearch | GoToLine | SearchQuery => {
-	const { quickSearchMode, inFileSearch, goToLine, parsedQuery } = useVaultSearchStore();
-	if (quickSearchMode === 'vault' || quickSearchMode === 'inFolder') {
-		return parsedQuery ?? DEFAULT_SEARCH_QUERY;
-	} else if (quickSearchMode === 'inFile') {
-		return { text: inFileSearch?.text ?? '', path: inFileSearch?.path ?? '' };
-	} else if (quickSearchMode === 'goToLine') {
-		return { text: goToLine?.text ?? '', path: goToLine?.path ?? '', line: goToLine?.line };
-	}
-	return DEFAULT_SEARCH_QUERY;
+// TODO T1: the previous version of this file carried polymorphic return types
+// (`InFileSearch | GoToLine | SearchQuery`) plus dedicated `performInFileSearch`
+// and `performGoToLine` helpers that read markdown line-by-line. After the T0
+// enum shrink to `all | heading | help`, those custom code paths are dead —
+// `heading` mode will be replaced by the outline-tree service in T5, not by
+// the old brute-force in-file scan. T1 removes the retired feature files;
+// T5 wires the new heading service in. Both are outside T0's scope.
+
+export const useSearchQuery = (): SearchQuery => {
+	const { parsedQuery } = useVaultSearchStore();
+	return parsedQuery ?? DEFAULT_SEARCH_QUERY;
 };
 
 export const useHasSearchQuery = () => {
-	const { quickSearchMode, inFileSearch, goToLine, parsedQuery } = useVaultSearchStore();
-	if (quickSearchMode === 'vault' || quickSearchMode === 'inFolder') {
-		return (parsedQuery?.text.trim().length ?? 0) > 0;
-	} else if (quickSearchMode === 'inFile') {
-		return (inFileSearch?.text.trim().length ?? 0) > 0;
-	} else if (quickSearchMode === 'goToLine') {
-		const line = goToLine?.line;
-		return line !== undefined && Number.isInteger(line) && line > 0;
-	}
-	return false;
+	const { parsedQuery } = useVaultSearchStore();
+	return (parsedQuery?.text.trim().length ?? 0) > 0;
 };
-
-/**
- * Extract heading title from a markdown line
- */
-function extractHeadingTitle(line: string): string | null {
-	const trimmed = line.trim();
-	if (trimmed.startsWith('#')) {
-		// Remove leading # and spaces
-		const headingText = trimmed.replace(/^#+\s*/, '');
-		return headingText || null;
-	}
-	return null;
-}
-
-/**
- * Find the most recent heading title before the given line index
- */
-function findRecentHeadingTitle(lines: string[], currentIndex: number): string | null {
-	// Search backwards from current line to find the most recent heading
-	for (let i = currentIndex; i >= 0; i--) {
-		const heading = extractHeadingTitle(lines[i]);
-		if (heading) {
-			return heading;
-		}
-	}
-	return null;
-}
-
-/**
- * Perform in-file search by reading file content and using string matching
- */
-async function performInFileSearch(
-	text: string,
-	filePath: string,
-	vaultPreview: VaultPreviewPort,
-): Promise<{ results: SearchResultItem[]; duration: number }> {
-	const startTime = Date.now();
-
-	try {
-		const fileContent = await vaultPreview.readText(filePath);
-		if (!fileContent) {
-			return { results: [], duration: Date.now() - startTime };
-		}
-
-		const lines = fileContent.split('\n');
-		const results: SearchResultItem[] = [];
-		const searchText = text.toLowerCase();
-
-		// Calculate character offsets for each line
-		let charOffset = 0;
-		const lineOffsets: number[] = [];
-		for (let i = 0; i < lines.length; i++) {
-			lineOffsets.push(charOffset);
-			charOffset += lines[i].length + 1; // +1 for newline
-		}
-
-		// Search through each line
-		lines.forEach((line, index) => {
-			if (!line.toLowerCase().includes(searchText)) {
-				return;
-			}
-
-			// Find the most recent heading title before this line
-			const recentHeadingTitle = findRecentHeadingTitle(lines, index);
-			// If no heading found, show line number
-			const displayTitle = recentHeadingTitle || `Line ${index + 1}`;
-
-			const matchStart = line.toLowerCase().indexOf(searchText);
-			results.push({
-				id: `${filePath}:${index + 1}`,
-				path: filePath,
-				title: displayTitle,
-				type: 'heading',
-				lastModified: Date.now(),
-				highlight: {
-					text: line,
-					highlights: [{ start: matchStart, end: matchStart + searchText.length }],
-				} as SearchSnippet,
-				loc: {
-					line: index + 1, // 1-based line number
-					charOffset: lineOffsets[index]
-				}
-			});
-		});
-
-		return { results, duration: Date.now() - startTime };
-	} catch (error) {
-		console.error('In-file search failed:', error);
-		return { results: [], duration: Date.now() - startTime };
-	}
-}
-
-/**
- * Perform go-to-line operation by opening file and navigating to line
- */
-async function performGoToLine(
-	lineNumber: number,
-	filePath: string,
-	vaultPreview: VaultPreviewPort,
-	vaultNavigation: VaultNavigationPort,
-): Promise<{ results: SearchResultItem[]; duration: number }> {
-	const startTime = Date.now();
-
-	try {
-		// Validate line number - should be a positive integer
-		if (!Number.isInteger(lineNumber) || lineNumber < 1) {
-			throw new Error(`Invalid line number: ${lineNumber}. Line numbers must be positive integers.`);
-		}
-
-		// Read file content to get the target line
-		const fileContent = await vaultPreview.readText(filePath);
-		if (!fileContent) {
-			throw new Error(`Could not read file: ${filePath}`);
-		}
-
-		const lines = fileContent.split('\n');
-
-		// Validate line number is within file bounds
-		if (lineNumber > lines.length) {
-			throw new Error(`Line number ${lineNumber} exceeds file length (${lines.length} lines)`);
-		}
-
-		// Get the target line (0-indexed)
-		const targetLineIndex = lineNumber - 1;
-		const targetLine = lines[targetLineIndex];
-
-		// Calculate character offset for the target line
-		let charOffset = 0;
-		for (let i = 0; i < targetLineIndex; i++) {
-			charOffset += lines[i].length + 1; // +1 for newline
-		}
-
-		// Find the most recent heading title before this line
-		const recentHeadingTitle = findRecentHeadingTitle(lines, targetLineIndex);
-		const displayTitle = recentHeadingTitle || `Line ${lineNumber}`;
-
-		// Create a search result item for the target line
-		const result: SearchResultItem = {
-			id: `goto:${filePath}:${lineNumber}`,
-			path: filePath,
-			title: displayTitle,
-			type: 'heading',
-			lastModified: Date.now(),
-			content: targetLine, // Full content of the target line
-			highlight: null, // No search highlighting for go-to-line
-			loc: {
-				line: lineNumber, // 1-based line number
-				charOffset: charOffset
-			}
-		};
-
-		// Convert to 0-indexed line number and open file at line
-		const zeroIndexedLine = Math.max(0, lineNumber - 1);
-
-		// Open file and scroll to line
-		void vaultNavigation.openVaultPathAtLine(filePath, { line: zeroIndexedLine });
-
-		return {
-			results: [result],
-			duration: Date.now() - startTime
-		};
-
-	} catch (error) {
-		console.error('Go to line failed:', error);
-		return { results: [], duration: Date.now() - startTime };
-	}
-}
 
 /**
  * Custom hook for vault search data fetching logic.
  * Handles both recent files fetching and search with debouncing.
- * Special handling for in-file search and go-to-line operations.
+ *
+ * T0 (2026-07-07): dropped the mode-specific `performInFileSearch` /
+ * `performGoToLine` branches. All modes now share the SearchClient path.
+ * T5 will reintroduce heading-mode-specific behavior via the new outline
+ * tree service.
  */
 export const useVaultSearch = () => {
-	const { searchClient, vaultPreview, vaultNavigation } = useServiceContext();
-	const { quickSearchMode, inFileSearch, goToLine, parsedQuery, setLastSearchData, setIsSearching } = useVaultSearchStore();
+	const { searchClient, debugTracePort } = useServiceContext();
+	const lastDebugRunIdRef = useRef<string | null>(null);
+	const { parsedQuery, setLastSearchData, setIsSearching } = useVaultSearchStore();
 	const hasSearchQuery = useHasSearchQuery();
 
 	// avoid duplicate search
@@ -236,102 +64,61 @@ export const useVaultSearch = () => {
 			return () => {
 				cancelled = true;
 			};
-		} else {
-			// Handle different search modes
-			if (quickSearchMode === 'inFile' && inFileSearch) {
-				// Perform in-file search by reading file content directly
-				const searchId = `inFile-${inFileSearch.text}-${inFileSearch.path}`;
-				currentSearchId.current = searchId;
-
-				setIsSearching(true);
-
-				let cancelled = false;
-				const timeoutId = setTimeout(async () => {
-					try {
-						const res = await performInFileSearch(inFileSearch.text, inFileSearch.path, vaultPreview);
-						if (!cancelled && currentSearchId.current === searchId) {
-							setLastSearchData({ results: res.results, duration: res.duration });
-							setIsSearching(false);
-						}
-					} catch (e) {
-						console.error('In-file search failed:', e);
-						if (!cancelled && currentSearchId.current === searchId) {
-							setLastSearchData({ results: [], duration: 0 });
-							setIsSearching(false);
-						}
-					}
-				}, 150); // Shorter debounce for in-file search
-
-				return () => {
-					cancelled = true;
-					clearTimeout(timeoutId);
-				};
-			} else if (quickSearchMode === 'goToLine' && goToLine) {
-				// Perform go-to-line operation with a short delay to allow user to finish typing
-				const searchId = `goToLine-${goToLine.line}-${goToLine.path}`;
-				currentSearchId.current = searchId;
-
-				// Use a shorter delay than other search modes to make it responsive
-				// but still allow user to finish typing multi-digit line numbers
-				setTimeout(() => {
-					if (currentSearchId.current !== searchId) return; // Cancelled
-
-					setIsSearching(true);
-
-					(async () => {
-						try {
-							const result = await performGoToLine(goToLine.line, goToLine.path, vaultPreview, vaultNavigation);
-							if (currentSearchId.current === searchId) {
-								setLastSearchData(result);
-								setIsSearching(false);
-							}
-						} catch (e) {
-							console.error('Go to line failed:', e);
-							if (currentSearchId.current === searchId) {
-								setLastSearchData({ results: [], duration: 0 });
-								setIsSearching(false);
-							}
-						}
-					})();
-				}, 100); // 100ms delay - fast response for go-to-line
-			} else if (parsedQuery) {
-				// Perform regular vault/folder search
-				const searchId = `${parsedQuery.text}-${parsedQuery.scopeMode}-${parsedQuery.scopeValue}`;
-				currentSearchId.current = searchId;
-
-				setIsSearching(true);
-
-				let cancelled = false;
-				const timeoutId = setTimeout(async () => {
-					try {
-						const res = await searchClient.search(parsedQuery);
-						if (!cancelled && currentSearchId.current === searchId) {
-							setLastSearchData({ results: res.items, duration: res.duration ?? null, fuzzyCorrection: res.fuzzyCorrection ?? null });
-							setIsSearching(false);
-						}
-					} catch (e) {
-						console.error('Vault search failed:', e);
-						if (!cancelled && currentSearchId.current === searchId) {
-							setLastSearchData({ results: [], duration: null });
-							setIsSearching(false);
-						}
-					}
-				}, 200); // Wait 200ms after user stops typing
-
-				return () => {
-					cancelled = true;
-					clearTimeout(timeoutId);
-				};
-			} else {
-				// No valid search query
-				setLastSearchData({ results: [], duration: null });
-				setIsSearching(false);
-				return;
-			}
 		}
-	}, [hasSearchQuery, quickSearchMode, inFileSearch?.text, inFileSearch?.path, goToLine?.line, goToLine?.path, parsedQuery?.text, parsedQuery?.scopeMode, parsedQuery?.scopeValue, searchClient, setLastSearchData, setIsSearching]);
+
+		if (!parsedQuery) {
+			// No valid search query (e.g. help mode)
+			setLastSearchData({ results: [], duration: null });
+			setIsSearching(false);
+			return;
+		}
+
+		// Perform regular vault search (heading mode currently reuses the same
+		// pipeline until T5 lands the dedicated outline service).
+		const searchId = `${parsedQuery.text}-${parsedQuery.scopeMode}-${parsedQuery.scopeValue}`;
+		currentSearchId.current = searchId;
+
+		setIsSearching(true);
+
+		let cancelled = false;
+		const timeoutId = setTimeout(async () => {
+			const debugRun = debugTracePort?.isEnabled()
+				? debugTracePort.startRun({
+					surface: 'search',
+					capabilityId: 'search.query',
+				})
+				: null;
+			try {
+				const res = await searchClient.search(parsedQuery, false, debugRun ?? undefined);
+				if (debugRun) {
+					debugRun.finish('completed');
+					lastDebugRunIdRef.current = debugRun.runId;
+				}
+				if (!cancelled && currentSearchId.current === searchId) {
+					setLastSearchData({ results: res.items, duration: res.duration ?? null, fuzzyCorrection: res.fuzzyCorrection ?? null });
+					setIsSearching(false);
+				}
+			} catch (e) {
+				if (debugRun) {
+					debugRun.finish('failed');
+					lastDebugRunIdRef.current = debugRun.runId;
+				}
+				console.error('Vault search failed:', e);
+				if (!cancelled && currentSearchId.current === searchId) {
+					setLastSearchData({ results: [], duration: null });
+					setIsSearching(false);
+				}
+			}
+		}, 200); // Wait 200ms after user stops typing
+
+		return () => {
+			cancelled = true;
+			clearTimeout(timeoutId);
+		};
+	}, [hasSearchQuery, parsedQuery?.text, parsedQuery?.scopeMode, parsedQuery?.scopeValue, searchClient, setLastSearchData, setIsSearching]);
 
 	return {
 		currentSearchId,
+		lastDebugRunIdRef,
 	};
 };

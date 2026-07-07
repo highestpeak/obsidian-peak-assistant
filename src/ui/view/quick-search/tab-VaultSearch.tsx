@@ -17,13 +17,14 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SearchUpgradePrompt } from './components/SearchUpgradePrompt';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 
-const NoResultsState: React.FC<{ mode?: string }> = ({ mode }) => (
+// TODO T1: `mode` prop was previously used to render a goToLine-specific
+// empty state. After T0 removed goToLine, only the generic "no results"
+// copy remains — drop the prop when the T1 delete pass rolls through.
+const NoResultsState: React.FC<{ mode?: string }> = ({ mode: _mode }) => (
 	<EmptyState
 		icon={SearchX}
-		title={mode === 'goToLine' ? 'Line number out of range' : 'No results found'}
-		description={mode === 'goToLine'
-			? 'Please enter a valid line number within the file range.'
-			: 'Try different keywords or check your spelling, or try AI Analysis.'}
+		title="No results found"
+		description="Try different keywords or check your spelling, or try AI Analysis."
 	/>
 );
 
@@ -189,7 +190,9 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 								if (queryStems) clickRepo.record(queryStems, selectedResult.path, selectedIndex);
 							}
 						} catch { /* non-critical */ }
-						const defaultNewTab = currentMode !== 'goToLine' && currentMode !== 'inFile';
+						// TODO T1: previously `goToLine`/`inFile` opened in-place; heading
+						// mode (T5) may want the same. For now, `all` opens in new tab.
+						const defaultNewTab = currentMode !== 'heading';
 						const openInNewTab = (e.metaKey || e.ctrlKey) || defaultNewTab;
 						await createOpenSourceCallback(onClose, openInNewTab, vaultNavigation)(selectedResult);
 					}
@@ -283,7 +286,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 											itemRefs.current[index] = el;
 										}}
 										onClose={onClose}
-										newTab={quickSearchMode !== 'goToLine' && quickSearchMode !== 'inFile'}
+										newTab={quickSearchMode !== 'heading'}
 									/>
 								))}
 								{hasSearchQuery && !isSearching && displayedResults.length >= RESULT_HINT_THRESHOLD && (

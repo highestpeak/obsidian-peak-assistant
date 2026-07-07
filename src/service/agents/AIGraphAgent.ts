@@ -39,7 +39,7 @@ export class AIGraphAgent {
 		yield { type: 'ui-signal', channel: 'search-stage', data: { stage: 'searching' } } as any;
 
 		const results = await this.searchClient.search(
-			{ text: userQuery, scopeMode: 'vault', topK: 30, searchMode: 'hybrid' },
+			{ text: userQuery, scopeMode: 'all', topK: 30, searchMode: 'hybrid' },
 			false,
 		);
 

@@ -275,7 +275,7 @@ function calculateDocumentRRF(
 export async function getSemanticSearchResults(
     searchClient: SearchClient,
     semanticFilter?: { query: string; topK: number },
-    scopeMode: SearchScopeMode = 'vault',
+    scopeMode: SearchScopeMode = 'all',
     scopeValue?: SearchScopeValue,
 ): Promise<Array<{ nodeId: string; score: number }>> {
     if (!semanticFilter) {

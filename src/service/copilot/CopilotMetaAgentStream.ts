@@ -72,6 +72,8 @@ export interface MetaAgentOptions {
 	pluginId: string;
 	/** T11L: narrow port the embedded `get_recent_analysis` tool needs. */
 	analysisHistory: import('@/core/ports/AnalysisHistoryPort').AnalysisHistoryPort;
+	/** Search client for grep_vault helper — injected by caller so this module never reaches AppContext. */
+	searchClient: import('@/service/search/SearchClient').SearchClient;
 }
 
 /**
@@ -261,13 +263,13 @@ export async function* buildCopilotMetaAgentStream(
 	}
 	const { profile, modelOverride } = resolved;
 
-	const searchClient = appContext.searchClient;
+	const searchClient = options.searchClient;
 	const searchFn = async (q: string, limit: number): Promise<GrepHit[]> => {
 		const res = await searchClient.search({
 			text: q,
 			topK: limit,
 			searchMode: 'hybrid',
-			scopeMode: 'vault',
+			scopeMode: 'all',
 			indexTenant: 'vault',
 		} as unknown as Parameters<typeof searchClient.search>[0]);
 		return (res.items ?? []).map((i: { path: string; title?: string; score?: number }) => ({

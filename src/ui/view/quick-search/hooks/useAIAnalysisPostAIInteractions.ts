@@ -131,7 +131,7 @@ async function getCandidateFoldersFromSearch(
         const res = await searchClient.search(
             {
                 text: searchText.trim().slice(0, SLICE_CAPS.ui.analysisSearchText),
-                scopeMode: 'vault',
+                scopeMode: 'all',
                 topK: 24,
                 searchMode: 'hybrid',
             },

@@ -685,13 +685,13 @@ export async function compareSearchResults(): Promise<void> {
 	const searchClient = ctx.searchClient;
 	const t0 = Date.now();
 	const baseline = await searchClient.search(
-		{ text: query, scopeMode: 'vault', enablePPR: false },
+		{ text: query, scopeMode: 'all', enablePPR: false },
 	);
 	const baselineMs = Date.now() - t0;
 
 	const t1 = Date.now();
 	const pprResult = await searchClient.search(
-		{ text: query, scopeMode: 'vault', enablePPR: true },
+		{ text: query, scopeMode: 'all', enablePPR: true },
 	);
 	const pprMs = Date.now() - t1;
 
