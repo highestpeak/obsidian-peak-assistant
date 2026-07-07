@@ -198,6 +198,26 @@ export async function getHubReferencesForDoc(currentPath: string): Promise<HubRe
 	return refs.sort((a, b) => b.constituentCount - a.constituentCount);
 }
 
+/**
+ * T7 (2026-07-07 hub graph subview): return the member vault paths for a hub.
+ * Used by `useOpenHubGraphSubview` to pin the Vault Search result set to a
+ * specific hub's constituents. Thin wrapper over
+ * `HubConstituentRepo.getMembersForHub` — kept here so hooks import the
+ * inspector-service surface uniformly, matching `getHubReferencesForDoc`.
+ */
+export async function getHubMembers(hubNodeId: string): Promise<string[]> {
+	const hubConstituentRepo = sqliteStoreManager.getHubConstituentRepo();
+	const rows = await hubConstituentRepo.getMembersForHub(hubNodeId);
+	const seen = new Set<string>();
+	const paths: string[] = [];
+	for (const row of rows) {
+		if (!row.member_path || seen.has(row.member_path)) continue;
+		seen.add(row.member_path);
+		paths.push(row.member_path);
+	}
+	return paths;
+}
+
 // ─── DiscoveredConnections ───────────────────────────────────────────────────
 
 import { getCoCitations } from './coCitationService';

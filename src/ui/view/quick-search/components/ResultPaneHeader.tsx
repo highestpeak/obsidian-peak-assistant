@@ -1,6 +1,6 @@
-import React from 'react';
-import { Network } from 'lucide-react';
-import { IconButton, Pill } from '@/ui/components/primitives';
+import React, { useEffect } from 'react';
+import { Network, X } from 'lucide-react';
+import { Chip, IconButton, Pill } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import { useVaultSearchStore } from '../store';
 import type { QuickSearchMode } from '../store/vaultSearchStore';
@@ -44,9 +44,52 @@ const GraphOverlayToggles: React.FC = () => {
 	);
 };
 
+/**
+ * T7: chip showing an active hub pin ("Pinned to hub: N docs · clear"). Only
+ * renders when `pinnedResultDocIds` is set. Clicking dismisses the pin, which
+ * lets `useVaultSearch` fall back to the normal query pipeline.
+ */
+const PinnedHubChip: React.FC = () => {
+	const pinned = useVaultSearchStore((s) => s.pinnedResultDocIds);
+	const setPinned = useVaultSearchStore((s) => s.setPinnedResultDocIds);
+	if (!pinned) return null;
+	return (
+		<Chip
+			variant="accent"
+			role="button"
+			tabIndex={0}
+			onClick={() => setPinned(null)}
+			onKeyDown={(e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					setPinned(null);
+				}
+			}}
+			className="pktw-cursor-pointer pktw-inline-flex pktw-items-center pktw-gap-1"
+			title="Clear hub pin and return to full search"
+		>
+			<span>Pinned to hub: {pinned.length} doc{pinned.length !== 1 ? 's' : ''}</span>
+			<span aria-hidden="true">·</span>
+			<X className="pktw-w-3 pktw-h-3" />
+			<span>clear</span>
+		</Chip>
+	);
+};
+
 export const ResultPaneHeader: React.FC<ResultPaneHeaderProps> = ({ mode, className }) => {
 	const resultView = useVaultSearchStore((s) => s.resultView);
 	const setResultView = useVaultSearchStore((s) => s.setResultView);
+	const pinnedResultDocIds = useVaultSearchStore((s) => s.pinnedResultDocIds);
+	const setPinnedResultDocIds = useVaultSearchStore((s) => s.setPinnedResultDocIds);
+
+	// T7: exit criterion — leaving `all` mode (e.g. user types `#` for
+	// heading) invalidates the pin, since heading mode is scoped to a
+	// single file. `help` also clears the pin so it doesn't linger.
+	useEffect(() => {
+		if (mode !== 'all' && pinnedResultDocIds) {
+			setPinnedResultDocIds(null);
+		}
+	}, [mode, pinnedResultDocIds, setPinnedResultDocIds]);
 
 	if (mode === 'help') return null;
 
@@ -60,6 +103,7 @@ export const ResultPaneHeader: React.FC<ResultPaneHeaderProps> = ({ mode, classN
 				className,
 			)}
 		>
+			<PinnedHubChip />
 			{isGraph && <GraphOverlayToggles />}
 			<IconButton
 				label={isGraph ? 'Switch to list view' : 'Switch to graph view'}

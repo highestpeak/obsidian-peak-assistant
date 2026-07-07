@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { DEFAULT_RECENT_SEARCH_RESULTS_COUNT } from '@/core/constant';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { DEFAULT_SEARCH_QUERY, useVaultSearchStore } from '../store/vaultSearchStore';
-import { SearchQuery } from '@/core/search/searchTypes';
+import { SearchQuery, SearchResultItem } from '@/core/search/searchTypes';
 
 // T1 (2026-07-07): the previous polymorphic return type
 // (InFileSearch | GoToLine | SearchQuery) and the dedicated
@@ -33,6 +33,7 @@ export const useVaultSearch = () => {
 	const { searchClient, debugTracePort } = useServiceContext();
 	const lastDebugRunIdRef = useRef<string | null>(null);
 	const { parsedQuery, setLastSearchData, setIsSearching } = useVaultSearchStore();
+	const pinnedResultDocIds = useVaultSearchStore((s) => s.pinnedResultDocIds);
 	const hasSearchQuery = useHasSearchQuery();
 
 	// avoid duplicate search
@@ -43,6 +44,43 @@ export const useVaultSearch = () => {
 		if (!searchClient) {
 			console.warn('[useVaultSearch] Search client is not ready yet');
 			return;
+		}
+
+		// T7 (2026-07-07 hub graph subview): when a hub pin is active we
+		// short-circuit the regular pipeline. Empty query → return every
+		// pinned member (stub SearchResultItems from path). Non-empty query →
+		// run the shared SearchClient path, then post-filter to the pin set
+		// so query text keeps filtering *within* the pin.
+		if (pinnedResultDocIds) {
+			const pinSet = new Set(pinnedResultDocIds);
+			currentSearchId.current = null;
+			setIsSearching(false);
+
+			if (!hasSearchQuery || !parsedQuery) {
+				setLastSearchData({
+					results: pinnedResultDocIds.map((path) => buildStubResultFromPath(path)),
+					duration: null,
+				});
+				return;
+			}
+
+			let cancelled = false;
+			(async () => {
+				try {
+					const res = await searchClient.search(parsedQuery, false);
+					if (cancelled) return;
+					const filtered = res.items.filter((item) => pinSet.has(item.path));
+					setLastSearchData({
+						results: filtered,
+						duration: res.duration ?? null,
+						fuzzyCorrection: res.fuzzyCorrection ?? null,
+					});
+				} catch (e) {
+					console.error('Vault search (pinned) failed:', e);
+					if (!cancelled) setLastSearchData({ results: [], duration: null });
+				}
+			})();
+			return () => { cancelled = true; };
 		}
 
 		if (!hasSearchQuery) {
@@ -113,10 +151,28 @@ export const useVaultSearch = () => {
 			cancelled = true;
 			clearTimeout(timeoutId);
 		};
-	}, [hasSearchQuery, parsedQuery?.text, parsedQuery?.scopeMode, parsedQuery?.scopeValue, searchClient, setLastSearchData, setIsSearching]);
+	}, [hasSearchQuery, parsedQuery?.text, parsedQuery?.scopeMode, parsedQuery?.scopeValue, pinnedResultDocIds, searchClient, setLastSearchData, setIsSearching]);
 
 	return {
 		currentSearchId,
 		lastDebugRunIdRef,
 	};
 };
+
+/**
+ * T7: minimal SearchResultItem shim for pinned constituents when there is no
+ * query text. `ResultGraphView` reads `docId ?? id` and `path`, and its
+ * subgraph builder resolves node metadata off the doc path — so this stub is
+ * enough for the graph view. The list view still shows the row title from
+ * `path` if a user flips back to list while pinned.
+ */
+function buildStubResultFromPath(path: string): SearchResultItem {
+	const label = path.split('/').pop()?.replace(/\.md$/, '') ?? path;
+	return {
+		id: path,
+		type: 'markdown',
+		title: label,
+		path,
+		lastModified: 0,
+	};
+}

@@ -28,6 +28,7 @@ import { parse as parseAiSearchAnalysisDoc, toCompletedAnalysisSnapshot } from '
 import { RecentAnalysisList } from './components/RecentAnalysisList';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
+import { useOpenHubGraphSubview } from './hooks/useOpenHubGraphSubview';
 
 type TabType = 'vault' | 'ai';
 
@@ -474,6 +475,10 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const hasSearchQuery = !!vaultSearchQuery.trim();
 	const [inspectorPath, setInspectorPath] = useState<string | null>(null);
 	const [navigateToPath, setNavigateToPath] = useState<string | null>(null);
+	// T7: Cmd+click on a hub reference row pins the result set to that hub's
+	// constituents and forces the graph view — shared hook, same as
+	// `tab-VaultSearch` wires for Result Graph View hub anchors.
+	const openHubGraphSubview = useOpenHubGraphSubview();
 
 	/**
 	 * Display mode is derived from the raw input prefix, not from store mode.
@@ -638,7 +643,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 								// treats `newLeaf: true` as "new tab".
 								void createOpenSourceCallback(undefined, true, vaultNavigation)(path);
 							}}
-							// T7 will wire `onOpenHubGraphSubview` via `useOpenHubGraphSubview()`.
+							onOpenHubGraphSubview={(hubNodeId) => void openHubGraphSubview(hubNodeId)}
 						/>
 					</div>
 				)}

@@ -19,6 +19,7 @@ import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { ResultPaneHeader } from './components/ResultPaneHeader';
 import { HeadingModeContainer } from './components/heading-mode/HeadingModeContainer';
 import { ResultGraphView } from './components/result-graph/ResultGraphView';
+import { useOpenHubGraphSubview } from './hooks/useOpenHubGraphSubview';
 
 const NoResultsState: React.FC = () => (
 	<EmptyState
@@ -100,6 +101,9 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 	// Use vault search hook for data fetching
 	const { lastDebugRunIdRef } = useVaultSearch();
 	const copyDebugTrace = useDebugTraceCopy();
+	// T7: Cmd+click on a hub anchor in Result Graph View pins the result set
+	// to that hub's constituents and keeps `resultView === 'graph'`.
+	const openHubGraphSubview = useOpenHubGraphSubview();
 
 	// Debounced selection tracking for inspector panel
 	useEffect(() => {
@@ -264,7 +268,10 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 			{/* Results — list or (T4) graph. Inspector is rendered side-by-side in parent. */}
 			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto" style={{ flexBasis: 0, minHeight: 0 }}>
 				{showGraph ? (
-					<ResultGraphView onClose={onClose} />
+					<ResultGraphView
+						onClose={onClose}
+						onOpenHubGraphSubview={(hubNodeId) => void openHubGraphSubview(hubNodeId)}
+					/>
 				) : showHeadingMode ? (
 					<HeadingModeContainer
 						filePath={headingFilePath!}

@@ -42,6 +42,18 @@ interface VaultSearchStore {
 	setGraphOverlayFolder: (on: boolean) => void;
 	toggleGraphOverlayFolder: () => void;
 
+	/**
+	 * T7 (2026-07-07 hub graph subview): when set, the result set is pinned to
+	 * these doc paths (member_path from hub_constituent). Populated by
+	 * `useOpenHubGraphSubview` when the user Cmd+clicks a hub anchor or a hub
+	 * reference row. Query text still filters *within* the pinned set —
+	 * `useVaultSearch` post-filters `lastSearchResults` by this list, and an
+	 * empty query renders every pinned doc regardless of substring match.
+	 * `null` = no pin (default vault-wide behavior).
+	 */
+	pinnedResultDocIds: string[] | null;
+	setPinnedResultDocIds: (ids: string[] | null) => void;
+
 	// Actions
 	/**
 	 * T11P (Track D/H): caller passes `currentFilePath` from
@@ -78,6 +90,10 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 	setGraphOverlayFolder: (on) => set({ graphOverlayFolder: on }),
 	toggleGraphOverlayFolder: () => set((s) => ({ graphOverlayFolder: !s.graphOverlayFolder })),
 
+	// T7: hub-graph-subview pin
+	pinnedResultDocIds: null,
+	setPinnedResultDocIds: (ids) => set({ pinnedResultDocIds: ids }),
+
 	// Actions
 	updateParsedQuery: (currentFilePath, searchQuery) => {
 		const { mode, text, scope } = parseQuickSearchInput({
@@ -108,6 +124,7 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 		resultView: 'list',
 		graphOverlaySemantic: false,
 		graphOverlayFolder: false,
+		pinnedResultDocIds: null,
 	}),
 }));
 
