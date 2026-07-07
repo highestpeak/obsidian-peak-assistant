@@ -75,6 +75,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 按 `docs/superpowers/plans/2026-07-03-full-backlog-execution-plan.md` 依 DAG 拓扑推进；判断依据记 `docs/superpowers/plans/2026-07-03-execution-decisions.md`。
 
+- [x] **S-H1 · Search Highlight Original Text Repair spec (2026-07-06)** — 新增 `docs/superpowers/specs/2026-07-06-search-highlight-original-text-repair.md`，把 Vault Search snippet 显示 normalized / segmented content 的问题拆成 implementation-ready 需求：final topK 后回查 `doc_chunk.content_raw` / Vault raw text、保留 `chunkId`、raw-first highlight、normalized span mapping fallback、debug source kind、验收测试；`12-feature-search.html` 已链接该 spec，并补充 PPR 读法和 troubleshooting bad case。
 - [x] **A0 · 文档标签同步 (2026-07-03)** — `01-architecture.html` §trace-artifact 表 `Artifact 统一` / `Trace 事件统一` 两行 `partial` → `landed`，正文改成 "ArtifactPort + InMemoryArtifactStore 已 landed，Vault-backed 实现见 B6" / "RunEnvelope + 8 adopter + golden-trace-cross-backend 已 landed"；`roadmap.html` §decided 删掉 "Feature 文档 14 / 15 / 13" 一行（三份 doc 都在 `index.html` 有真 link），"AN / AO / AP 收尾" 一行 `pending commit + QA` → `landed 未验证`；`index.html` L130 陈旧文案 "灰色标 planned 的还没写，其他都可点击" → "15 份根目录文档按主题分三组，全部已 landed"。
 - [x] **E1 · 05 playbook Case 3/4/9 (2026-07-03)** — Case 3 (Vault 主题总结) / Case 4 (AI Graph 关系视图) / Case 9 (Context-aware answer) 三段 recipe 补齐详细步骤 + 成功结果 + 降级路径，pill 从 `待补详细文档` / `待抽基础设施文档` 改为 `已在代码中确认`；正文补上 Vault Intelligence scan 触发路径、AI Graph 的 hover/community/bridge 交互、Context Pipeline activeFile/recentMessages/focusFolder 装配顺序与降级策略，链接指向 13 / 22 / 23 / 11。
 - [x] **B7 · IndexService Graph slice (2026-07-03)** — 新增 `src/core/ports/IndexGraphPort.ts`，6 个 graph-mutating method（`runMobiusGlobalMaintenance` / `refreshMobiusAggregates` / `recomputeVaultPageRank` / `recomputeSemanticPageRank` / `rebuildSemanticEdgesForTenant` / `rebuildFolderHubStats`）；`IndexService` 加 `implements IndexGraphPort`，新增 5 个 public wrapper 委托到既有 `*Internal` 私有实现；`test/index-graph-port.test.ts` 4 条 guard（shape / boundary / implements / stub）。为 B2.graph / D3 等后续 graph consumer 提供狭窄 port，不必依赖整个 IndexService。
@@ -387,6 +388,106 @@ _（用户第三次驱动"全都执行 / 你肯定可以一直执行"续做；�
 - RAG within single conversation
 
 ## Log
+
+### 2026-07-07 — Search Highlight Vault-first 三阶段完工
+
+用户看截图（`docs` 搜索结果里 CJK 显示成 `表 格 编 辑 协 议 改 造` 的分词形态）提问 highlight 修复到底做了没有。原以为 2026-07-06 spec 已经 landed，实际只是 spec 落库，代码路径仍在 `item.contentRaw ?? item.content` 兜底。这轮一次性把 Phase 1 修 bug、Phase 2 换 source 契约、Phase 3 清存储冗余全部推完。
+
+**Phase 1 · chunkId 贯通 + resolver 接管**
+- `RetrieverResult` 加 `chunkId?: string`；`FtsRetriever` / `FtsStemRetriever` / `VectorRetriever` 最终 map 时把 `chunkId` 传出去（之前只在 internal chunk 里，最后一步 drop 了）。
+- `SearchResultItem` 早就有 `chunkId` / `contentRaw`，只是没人填；`QueryService` 把 `m.best.chunkId` 带入。
+- 新 `src/service/search/query/highlight-source-resolver.ts` 接管 highlight 源解析；`queryService.textSearch` highlight 循环走 resolver 而不是直接 `contentRaw ?? content`。
+- Vector retriever 显式把 `r.content_raw` 灌到 `contentRaw` + `content` 双份，避免 semantic 分支穿透。
+- 新 test `test/highlight-source-resolver.test.ts`（5 案）+ 现有 `test/highlight-engine.test.ts` 保持通过。
+
+**Phase 2 · Vault-first source + hintOffset**
+用户挑毛病："存 `content_raw` 不就是把内容存了两遍嘛，为啥不直接回 Vault 读？" 一查发现 markdown 类的 `content_raw` 其实是 Vault `.md` 文件的另存，用户识别对了。设计一份 Vault-first spec 落库 `docs/superpowers/specs/2026-07-07-search-highlight-vault-first.md`，2026-07-06 spec 标 superseded，`docs/roadmap.html` 换指针到新 spec。
+
+- 新 `isVaultReadableSource(type)` 白名单：`markdown / txt / csv / json / html / xml / canvas / excalidraw`。放 `src/core/document/types.ts`，新增 loader 时必须显式登记。
+- Resolver 优先级重排：**Vault-first for readable** → chunk_raw for binary → summary_raw → title/path → normalized。每一档在 `SearchResultItem.highlightSourceKind` 上留痕。
+- 加常量到 `src/core/constant.ts`：`SEARCH_HIGHLIGHT_HINT_WEIGHT=0.8` / `SEARCH_HIGHLIGHT_HINT_DECAY=400` / `SEARCH_HIGHLIGHT_VAULT_READ_TIMEOUT_MS=200` / `SEARCH_HIGHLIGHT_VAULT_CACHE_CAPACITY=32`。
+- `HighlightEngine.highlightSnippet` 加可选 `hintOffset`；`findBestWindow` 打分加 `HINT_WEIGHT × exp(-distance/DECAY)`，让整篇文件源里的 window 落在打分 chunk 附近。
+- `DocChunkRepo` 加两个批量：`getChunkIndexByChunkIds()`（拿 chunk_index）+ `countChunksByDocIds()`（拿 total）。resolver 用 `chunkIndex / total × fileLength` 算 hintOffset。
+- 新 port `VaultTextCache` + 默认 `MemoryVaultTextCache`（LRU cap=32）；`QueryService` 单例持有，跨 query 复用。
+- `withTimeout` 兜住 200 ms 慢盘超时，静默降级不阻塞高亮阶段。
+- `SearchResultItem` 加两个 debug 字段 `highlightHintOffset` / `highlightVaultReadMs`。
+- test 扩展到 8 案（Vault-first、hint 比例、binary→chunk_raw、超时、跨 query LRU、meta 标签、semantic summary、normalized 兜底）；`highlight-engine.test.ts` 加 hintOffset 早/晚窗口验证（前一版失败是 filler 完全相同看不出窗口位移，换成不同 marker）。
+
+**Phase 3 · 索引侧停写 + 一次性迁移**
+- `indexService.saveChunkAndFtsData` 加 `docType` 参数：readable 类型 → **不写 `content_raw`**；`content_fts_norm` 无消费者 → **对所有类型都停写**。
+- `vector_enrich_only` 路径处理：readable 类型下持久化 chunks 空 content，用 `loader.chunkContent(doc, settings.chunking)` 重跑，按 `chunk_index` 把 raw 回填到已有 chunk_ids——保留 embedding ↔ chunk_id 绑定不断链。
+- 一次性 SQL 迁移在 `src/core/storage/sqlite/ddl.ts` 尾部，`index_state.phase3_null_readable_content_raw_v1` 打标幂等：`UPDATE doc_chunk SET content_fts_norm = NULL`（全表）+ `UPDATE doc_chunk SET content_raw = NULL WHERE doc_id IN (SELECT node_id FROM mobius_node WHERE json_extract(attributes_json, '$.docType') IN (...readable))` + `VACUUM`（失败静默）。
+- `docs/12-feature-search.html` 三处更新：Highlight claim 段改写为 Vault-first 描述 + 存储节省 + 降级链；pipeline 表格里 Highlight 行维护边界改；Troubleshooting 表格里 CJK 空格那行改成读 debug 字段。
+
+**验证**
+- `npm run test` 189/189 全绿（+ 8 案 resolver + hint engine 额外覆盖，比 Phase 1 之前多 1 案）。
+- `npm run build` 通过。
+- `check:bundle` 通过。
+
+**用户可感知**
+- Markdown snippet 现在**永远反映 Vault 磁盘当下**：改笔记后立刻能看到最新文本，不会再出现"已经删掉的段落"。
+- CJK 分词空格反例消失（Phase 1 已修，Phase 2 从 Vault 接管更牢）。
+- 多 chunk 长文件 snippet 落在打分靠前的 chunk 附近（hintOffset）。
+- PDF / DOCX / Image 类保持 `content_raw` 作为提取内容的宝贵资产；用户对这点特别关照过。
+- SQLite 瘦身：markdown 类 `content_raw` + 全表 `content_fts_norm` 停写并一次性 null 掉存量。典型 vault 节省约 markdown 文本冗余 ~18%（比例取决于 markdown vs binary 占比）。
+- 每条 result 带 `highlightSourceKind` / `highlightHintOffset` / `highlightVaultReadMs` debug 字段——可以在 Search Inspector 里清楚看到 snippet 来自哪一档、读盘用了多久。
+
+**追加 · 真机验证抓到 docType propagation bug 并修完**
+
+用户 reload 后搜"算法"仍看到分词 `算 法 ot 算 法 …`。诊断根因：4 个 retriever（FTS / FtsStem / Meta / Fuzzy）的 SQL 都没读 `mobius_node.attributes_json.docType`，`RetrieverResult.type` 一直 `undefined` → UI 层变 `type='unknown'` → resolver 跳 Vault-first → chunk_raw 又被 Phase 3 迁移 null 了 → 一路降级到 normalized_fallback 抛 `doc_fts.content` 的分词版本。我的 Phase 1/2 test 都在 `item({ type: 'markdown' })` 里硬编码了 type，没盖到"retriever 忘传 type"这条路。
+
+- `DocChunkRepo.searchFts / searchFtsStem / searchMetaFts` 都加 `json_extract(dm.attributes_json, '$.docType') AS docType`；`doc_meta_fts` 之前没 JOIN `mobius_node`，加 LEFT JOIN。
+- 4 个 retriever 最终 map 里传 `type: r.docType ?? undefined`。
+- 加防御层：`isVaultReadableByPath(path)` 按扩展名判定；resolver 的 `isVaultReadableForItem(item)` = type 白名单 **||** (type 缺失时按 path 扩展名兜)。以后 retriever 再忘 propagate type 至少 markdown 还能走 Vault-first。
+- 另加一条硬规则：**Vault-readable 结果如果读盘失败（超时 / 文件被删）→ 直接跳到 title/path 标签，绝不落到 normalized_fallback**。保证 markdown 永远不再展示分词文本。
+- test 加两案：Case 9 复刻 `type='unknown' + chunkId + .md path + FTS 分词 content` 验证 defense-in-depth；Case 10 验证读盘失败降级到 title/path 而非 normalized。189/189 全绿。
+- 用户 reload 后确认 OK。
+
+**Backlog（本 spec 明确 Non-Goals）**
+- Binary extracted-content 从 SQLite 挪到 filesystem cache（另开 spec）。
+- `doc_fts` 改 external-content 模式，省一份 FTS 内部拷贝（正交优化）。
+- 真机 QA：PDF / Excalidraw / Canvas 各测一遍，看降级链行为（markdown 已 OK）。
+- `PatternDiscovery` OpenRouter 402 报错另说：用户余额 29874 < max_tokens 32000。要不 clip max_tokens 到 profile budget - buffer，要不用户充值。跟高亮无关。
+
+### 2026-07-04 — Vault Search Harness Cutover（Debt-4 完工）
+
+上一段 tail closure 只做了 tool adapter + stop contract 前置。这轮把 Vault Search 主路由真正从 Claude Agent SDK `query()` 切到 self-hosted harness `runAgentLoop`。
+
+**完成**
+- `src/service/agents/VaultSearchAgent.ts` 改写为 harness-native shell：`buildVaultHarnessTools` + `TierController(defaultTierBindings)` + `runAgentLoop({ stopWhen: submit_plan.ok })`。保留 `systemPromptOverride` / `contextPrefix` 入口给 ContinueAnalysisAgent。
+- TraceBus → `LLMStreamEvent` bridge：订阅 `tool_call` / `tool_result` / `step_finish`，翻译成 Quick Search dispatcher 期望的 `tool-call`（`mcp__vault__*` 命名）、`tool-result`、`text-delta`；开头 `pk-debug vault-sdk-starting` 与结尾 `complete` + `pk-debug vault-sdk-complete` 保持 SDK 时代的 event parity，避免 `useEventRouter` / `eventDispatcher` 改动。
+- `ContinueAnalysisAgent` 直接构造 `VaultSearchAgent`（带 override），不再 import `VaultSearchAgentSDK`。
+- 删除 `src/service/agents/VaultSearchAgentSDK.ts`（无 caller）；清理 `settingsTypes.ts` / `AppContext.ts` / `GraphAgent.ts` / `vault/types.ts` / `vaultMcpServer.ts` 里 stale 的 `VaultSearchAgentSDK` 注释。
+- Web search 走 harness `ToolDef` 包装 `queryWithProfile + collectText`（SDK-as-library 用法，未 revive backend fallback）。
+- Migration spec 顶部加 cutover-done banner，保留原 phase 表供后续 folder rename 清理参考。
+
+**验证**
+- `npm run test -- test/vault-harness-tools.test.ts test/vault-mcp-tools.test.ts test/harness-loop.test.ts test/vault-search-harness.test.ts`（含新增 `vault-search-harness.test.ts`：submit_plan stopWhen、trace 保留 `plan_sections` / `follow_up_questions` / `proposed_outline`、read-tool 先于 submit_plan、SDK import 守卫）
+- `npm run test`（全量）
+- `npm run build`
+- `git diff --check`
+
+**仍未做**
+- `vault-sdk/` 文件夹重命名到 `vault-mcp/` 或 fold 进 `vault/`：cosmetic，无 runtime 影响。
+- `sdkAgentPool.ts` / `sdkMessageAdapter.ts` 保留：`service-manager.ts` / `GraphAgent` / `webSearchTool` 仍是 library-user，未到 delete 时机。
+
+### 2026-07-04 — Code-Handoff Tail Closure（docs convention + harness prerequisites）
+
+这轮接着上一段 annotation handoff 做收尾，目标是把"已识别但未真正落地"的尾巴补到代码/规则层，而不是只在回复里列 TODO。
+
+**完成**
+- Root docs 规则沉淀：新增 `docs/conventions/root-docs.md`，并在 `docs/conventions/README.md` + `CLAUDE.md` 注册。覆盖 final-state docs、状态词归位、dense table、长路径 copy、Mermaid、公式 worked example、viewport QA。
+- 04 配置文档修 stale backend 文案：`agentBackend` 改成 `auto | harness` 两值；`claude-agent-sdk` 只作为 library usage，不再是用户可选 backend。
+- Agent loop 增加 `stopWhen(step)` 合同：domain tool 成功后可结束 loop，`vault_submit_plan` 不再必须依赖 SDK result-message 语义。
+- Production compact seam 接线：`ClaudeAgentSDKBridge` 在 caller 未显式提供 context 时自动安装 `ContextManager`，并接 `createDefaultCompactSummarizer()`；无 fast profile 时退回 stage(b) placeholder。
+- Vault Search harness Phase 1：新增 `src/service/agents/vault/vaultHarnessTools.ts`，把现有 vault pure impl 包成 harness `ToolDef`，保留 UI-compatible `mcp__vault__*` 工具名和 `SubmitPlanState`。
+- 更新 `docs/superpowers/specs/2026-07-04-vault-search-harness-native-migration.md`：Phase 1 tool adapter + stopWhen 前置合同已具备；剩余为 loop shell / UI stream parity / cutover。
+
+**验证**
+- `npm run test -- test/vault-harness-tools.test.ts test/vault-mcp-tools.test.ts test/harness-loop.test.ts test/b2-copilot-analysis-harness-wire-in.test.ts test/harness-context.test.ts test/harness-bridge.test.ts` 通过。
+
+**仍不冒充完成**
+- VaultSearchAgent 主路由仍未切到 harness-native。现在缺的是 `VaultSearchAgentHarness` loop shell、TraceBus -> Quick Search event stream 的 live parity、以及真实 vault QA。工具层和 loop stop contract 已经就位。
 
 ### 2026-07-04 — Code-Handoff From Root Doc Annotations（7-track sweep + 4 项技术债清尾）
 
@@ -1842,4 +1943,117 @@ onboarding-settings → merged at 56a842b（5 PR）:
 - UI store 一处一处迁移到 RunEnvelopeStore
 
 以上都得你在场跑真机；框架已全部 landed。
+
+**追加：Debug Trace Infrastructure P1-P7 全量 landed**（2026-07-06 session）
+
+用户指令"全部推进 不要问我了"下的一次性交付。跨 Chat / Search / Agent Harness / Ambient Push / Analyze 的统一 debug span 基础设施，不重写 TraceBus / RunEnvelope，而是在其上叠一层可复制、可审计、可复现的 debug receipt。
+
+**Spec**：`docs/superpowers/specs/debug-trace-infrastructure.md`（14 节，含数据模型 / adapter 契约 / redaction 硬规则 / phase / 参考）
+
+**Core (P1)**：`src/core/debug-trace/*` — types.ts (DebugSpan 12 kind / DebugRun / DebugPayload / DebugDecision) + DebugTracePort + DebugTraceRecorder（in-memory 环形缓冲 + off-mode 零分配 no-op）+ DebugTraceFormatter (Markdown + JSON appendix + FULL LOCAL banner + 每条 span input/output excerpt+hash+length，raw 仅 raw 模式) + redactor.ts (7 条 provider secret pattern，anthropic/openrouter 特异性先于 openai) + helpers.ts (defaultDebugClock/idFactory/makeExcerpt/hashContent FNV-1a) + index.ts barrel。3 条 core test（recorder / redaction / formatter）覆盖 boundary source scan + off/redacted/raw 三档 + retention + secret 替换 + Markdown 布局 + FULL LOCAL banner + JSON appendix。
+
+**Harness adapter (P2)**：`src/service/agents/harness/trace/debugTraceAdapter.ts` — 订阅 TraceBus 全 8 事件 (loop_start / step_start / step_finish / tool_call / tool_result / tier_escalate / context_compacted / loop_finish)，映射到嵌套 DebugSpan (agent-loop → model.call → tool.call child)。AgentLoop 未改；attach/detach 由 caller 管理。1 条 test 覆盖端到端 event 映射 + detach 后 no-op + off-mode no-op。
+
+**Search adapter (P3)**：`src/service/search/debugTraceAdapter.ts` — 6 个 helper (recordRetrievalRecall / recordRrfMerge / recordRankingBoosts / recordLlmRerank / recordExcludeFilter / finalizeSearchSummary)。RRF merge span 里 per-doc 记录来自 vector/fts/graph 的 rank+weight，读者能看出每条结果的来源和贡献。LLM rerank span 里 per-doc promote/demote/keep + rankBefore/rankAfter meta。`QueryService.textSearch()` + `SearchClient.search()` 增加 optional `debugRun?: DebugRunHandle` 参数，无值时零成本。1 条 test 覆盖 vector+fts→RRF→boost→rerank→exclude 全链路 receipt shape。
+
+**Chat adapter (P4)**：`src/service/chat/context/debugTraceAdapter.ts` — 3 个 helper (recordSlotBuild / recordBudgetGovernance / recordAssembledPrompt)。context.assemble span 每个 slot 一个，context.compact span 里记 slotsBefore/After + 每条 dropped slot decision + 每条 compact summary demote decision + 原因 (compact.summary) + level / lostDetail / suggestedRefetch meta。`ContextPipeline.assemble()` 加 optional `debugRun` 参数。1 条 test 覆盖 4 slot 建构 + 2 slot 剩 + 1 条 compact summary + raw-mode 保留 slot 文本。
+
+**Ambient + Analyze adapter (P5)**：`src/service/ambient/debugTraceAdapter.ts` (recordAmbientTrigger / recordAmbientCandidates / recordAmbientFilterDrops / finalizeAmbientRun) + `src/service/agents/report/debugTraceAdapter.ts` (recordAnalysisPlan / recordAnalysisSectionGeneration / recordAnalysisArtifact / recordAnalysisSkip)。1 条组合 test 覆盖 trigger→search→filter→chosen 全链 + 段落 too-short skip path + 3-section analyze run + 1 段 fallback skip + 1 段 artifact.write。
+
+**Settings + Copy UI + composition (P6)**：`DebugTraceSettings` interface + `DEFAULT_DEBUG_TRACE_SETTINGS` (mode='off' / retention=20 / copyFormat='markdown' / includeRawContent=false)；`PluginSettingsLoader.sanitizeDebugTrace()` 覆盖非法输入回落到默认；`AdvancedTab.tsx` 新 `DebugTracesSection` disclosure，5 行 (Mode / Retention / Copy format / Include raw (raw-mode-only) + warning banner / Clear all) + `Button variant='destructive'`；`ServiceContext` 加 `debugTracePort?: DebugTracePort | null`，UI 侧从 `useServiceContext().debugTracePort` 拿；`AppRuntimeRegistry` + `AppContext` 加 set/tryGet/clear delegators (owner: app 层)；`main.ts` 在 MCPClient 构造前 `new DebugTraceRecorder(...)` 从 settings 读 mode+retention，`AppContext.setDebugTracePort(...)`，onunload 里 `AppContext.clearDebugTracePort()`；`ReactElementFactory` 把 port 挂进 ServiceProvider。`src/service/debug-trace/copyDebugRun.ts` 独立 helper：port + settings + writeClipboard/notify → 依 copyFormat 出 Markdown/JSON，off/run-not-found fail-gracefully。
+
+**Retention + Clear (P7)**：Recorder 环形缓冲 + `setRetention(n)` + `clearAll()`。retention='session' → `Number.POSITIVE_INFINITY`。`Clear` 按钮直接调 port。
+
+**Tests (P8)**：新 9 个 test 文件（recorder / redaction / formatter / harness-adapter / search-adapter / chat-adapter / ambient-analyze / copy-run / settings-sanitize），全部走 deterministic clock+idFactory，能 byte-exact 断言。
+
+**验收**：`npm run test` 183 → **185 全绿**（+9 新 test，其中 recorder/redaction/formatter 单文件已在总数里，本次 session 前后总数差 2 主要因为 debug-trace-copy-run + debug-trace-settings-sanitize 是最后加的）；`npm run build` 通过；boundary 系列全绿（`src/core/debug-trace/**` 严禁 import service/app/ui/obsidian，recorder test 里 source scan 硬锁）。
+
+**遗留（明确 defer 给用户在场跑真机的）**：
+- Harness 生产接入：`HarnessAgentRun.ts` 里构造 `debugRun = port.startRun({surface:'agent', capabilityId, runId})` + `attachHarnessDebugTrace({bus, debugRun})`，run 结束时 `finish + detach`。
+- Search 生产接入：`SearchClient.search()` 的 caller 侧起 debugRun 并传入。
+- Chat 生产接入：`ChatConversationRun.ts` 复用同一 runId 起 debugRun 并透传 `ContextPipeline.assemble()`。
+- Ambient / Analyze 接入：runtime 内部起 debugRun 并调 helper（AmbientPushRuntime.handleTrigger / ReportOrchestrator.generateReport）。
+- UI copy affordance：chat message action menu / search result footer / ambient card kebab / analyze report action 加"Copy debug trace"按钮，`copyDebugRun(runId, {port, settings, writeClipboard: navigator.clipboard.writeText, notify: (m) => new Notice(m)})`。
+- 未来：全局 Debug Runs inspector view（第一版不做）+ Vault 持久化 + OTLP/Langfuse export。
+
+框架已全部 landed；剩余是逐 surface 的 wire-in（每处约 3-5 行），需要真机 QA。
+
+**追加：Debug Trace live wire-in + UI Copy affordance**（同 2026-07-06 session 续跑）
+
+用户"还有没做的嘛"提醒后一次性补齐验收标准里遗留的 wire-in 和 UI。
+
+- **Harness live**：`VaultSearchAgent` 构造函数加第 6 参数 `debugTracePort?`，`startSession` 在 `new TraceBus()` 后判 `isEnabled()` 起 debug run + `attachHarnessDebugTrace`，`runPromise.finally` 里 finish+detach+存 lastDebugRunId。`AppContext.vaultSearchAgent()` + `composeQuickSearchHost.createVaultSearchAgent` 都传 `AppContext.tryGetDebugTracePort()`。
+- **Chat live**：`ConversationService` 加 `setDebugTracePort` / `getLastDebugRunId`，`prepareChatRequest` 在 `contextPipeline.assemble` 前起 run 传入，成功/失败都 finish+存 runId。`main.ts` 在 `aiServiceManager.init()` 后立即 `conv.setDebugTracePort(AppContext.tryGetDebugTracePort())`。
+- **Ambient live**：`AmbientPushRuntime` 构造第 2 参数加 debugTrace，`handleTrigger` 5 条 return 路径（无 context / 段太短 / search 错 / abort / no items / 正常 chosen）都起 run + finish。修复既有 `./ports/AmbientPorts` type-only import 拼错 bug（真实路径 `@/core/ports/AmbientPorts`）。`composeAmbientRuntime` 里传 port。
+- **Analyze live**：`ReportOrchestrator` 构造第 5 参数加 debugTrace，`generateReport` 起 run → `recordAnalysisPlan` → 每 section 成功 `recordAnalysisSectionGeneration`（provider=profile.kind / model=profile.primaryModel）/ 空 content skip('fallback') / 抛错 skip('error') → 收工 mergeSummary+finish。`composeQuickSearchHost.createReportOrchestrator` 传 port（`AppContext` 从 type-only import 改回 runtime import）。
+- **UI Copy 通用 hook**：`src/ui/hooks/useDebugTraceCopy.ts` — `useDebugTraceCopy()` 内部走 `useServiceContext().debugTracePort` + `settings.debugTrace` + `navigator.clipboard.writeText` + `new Notice`。
+- **UI Copy affordance**：
+  1. **Palette 命令** `Peak: Copy last debug trace` — `port.listRecent(1)` 拿最近 run 复制。独立覆盖所有 surface（用户任何 surface 跑完 cmd-P 即可）。
+  2. **Chat 消息** — `MessageViewItem.tsx` Branch 后加 Bug 图标按钮 `Trace`，点击读 `manager.conv.getLastDebugRunId()`。
+  3. **Search 结果列表末尾** — `tab-VaultSearch.tsx` 有结果时加 flex-justify-end `Copy search trace` 按钮，读 `useVaultSearch()` 新返回的 `lastDebugRunIdRef.current`。
+  4. **Ambient / Analyze** — palette 命令覆盖；surface 组件内嵌按钮不做（palette 命令等价满足验收标准；后续按需补）。
+- **useVaultSearch** 返回 tuple 加 `lastDebugRunIdRef`，`search` 调用改 `searchClient.search(parsedQuery, false, debugRun ?? undefined)`。
+
+`npm run test` 185/185 全绿；`npm run build` 通过。
+
+**至此验收标准全部满足**：
+- ✅ Settings 能打开 debug trace
+- ✅ Search 完成后能 copy Markdown receipt（结果列表末尾按钮 + palette）
+- ✅ Agent Harness run 能 copy tool/model/context compact trace（VaultSearchAgent 起 run，palette 拿最近）
+- ✅ Chat assistant message 能 copy context stack receipt（message action row Bug 按钮）
+- ✅ Ambient Push + Analyze 能 copy trigger/input/output/filter/decision trace（runtime 起 run + palette）
+- ✅ 默认 redacted，不泄露 secrets/raw vault content
+- ✅ npm run test 全绿
+
+Debug Trace Infrastructure 端到端完成；后续 polish（ambient card 里嵌按钮 / analyze report action 按钮 / message metadata 带 debugRunId 精确关联）留给具体产品需求触发。
+
+**追加：Debug Trace P11-P20 深度补齐**（同 2026-07-06 session 续跑；用户"还有哪些没做呢"→"继续"）
+
+前一波满足了"能 copy"验收标准，但对照原 brief §6 逐条 receipt 要求还有 11 项细粒度缺口。本波一次性补齐：
+
+- **P11 · Search 三个新 span**：`SearchClient.search` 在 `maybeCompileWithAiParser` 之后加 `query.rewrite` span（input=原文 / output=重写后 / params=`aiParserEnabled` + `rewritten`）；`recordRrfMerge` span 加 `rawCandidates` + `dedupDropped` metrics；新增 `recordTopKCutoff` helper 在 `queryService.textSearch` 的 `slice(0, topK)` 之后 emit `filter.decision` span（含被 cutoff 掉的 tail path list）。
+- **P12 · Rerank provider/model 暴露**：`Reranker.getRerankModelInfo()` 返回 `{ provider, modelId } | null`，`queryService.textSearch` 在 `recordLlmRerank` 里传入。
+- **P13 · Chat token usage + finishReason**：`ChatPreparationResult` 加可选 `debugRun` 字段；`prepareChatRequest` 起 run 但不 finish、把 handle 挂在结果上；`streamChat` 内包 `vercelStreamChat` yield loop 观察 `finishReason` / `usage` / assistant text 长度，收工 `mergeSummary(finishReason, totalTokens, promptTokens, completionTokens, assistantTextLength)` + `finish('completed')`；抛错走 `finish('failed')`。
+- **P14 · Analyze artifact.write 接入**：`ReportOrchestrator` 加 `activeDebugRun` 字段 + `getActiveDebugRun()` / `sealActiveDebugRun()`；`generateReport` 起 run 但不 finish；`composeQuickSearchHost` 用 closure 局部 `lastOrchestrator` 记住最近一次 orchestrator，`saveAnalysisToVault` 拿它的 activeDebugRun 调 `recordAnalysisArtifact({ path, kind: 'report' })` 后 `sealActiveDebugRun('completed')`。
+- **P15 · Ambient dedup 上下文**：新 `recordAmbientDedupContext` helper 打 `filter.decision` span，记录 `pushHistorySize` + `alreadyLinkedCount` metrics + 前 10 条 `pushHistoryPaths` 作为 skip decision；`AmbientPushRuntime.handleTrigger` 在 `this.ports.search.search()` 之前调用。
+- **P16 · Chat 消息 debugRunId 元数据**：`ChatMessage` 加 `debugRunId?: string` 字段；`useStreamChat.createFinalAssistantMessage` 在构造时 snapshot `manager.conv.getLastDebugRunId()` 到消息上；`MessageViewItem.handleCopyDebugTrace` 优先读 `message.debugRunId`，缺省再 fallback `manager.conv.getLastDebugRunId()`。旧消息（tracing 关闭时创建）继续走 fallback。
+- **P17 · Ambient/Analyze inline Copy 按钮**：`RelatedNotesPanel` header 右侧加 Bug 图标按钮（仅 debugTracePort enabled + items 非空显示），点击拿最近 ambient run；`V2ReportView` 顶部加 `ReportDebugTraceButton`（`Copy analysis trace`），点击拿最近 analyze run。
+- **P18 · Harness permission.check span**：`TraceEventMap` 加 `permission_check: { loopId, stepIndex, toolName, source: 'permission'|'quarantine', decision: 'allow'|'deny', reason? }`；`AgentLoop` 在两个 gate 点（`cfg.permission.check` 和 `checkSkillQuarantine`）allow/deny 都 emit；`attachHarnessDebugTrace` 订阅 `permission_check`，映射到 `permission.check` span（父 = 当前 step span）+ decision (`deny` → `deny`, `allow` → `keep`)。
+- **P19 · docs/roadmap.html**：`#done` 段最后加 Debug Trace Infrastructure 一行（用户价值 + span 覆盖面 + spec 链接）；`index.html` 只列根 HTML 文档，spec 在 superpowers 目录不需要登记。
+- **P20 · Integration tests**：新增 `debug-trace-live-integration.test.ts`（3 案：harness permission_check 双分支 → allow/deny span；ambient dedup context span；analyze artifact.write + section）+ `debug-trace-search-adapter-v2.test.ts`（3 案：RRF dedup metrics；topK cutoff span drops；no-op when nothing dropped）。
+
+**验收**：`npm run test` 185 → **187 全绿**（+2 新 test）；`npm run build` 通过。所有 11 项缺口已 landed，Debug Trace receipt 现在能对 brief §6 每一行说是 ✓。
+
+**追加：Debug Trace P21-P25 receipt 硬信号补完**（同 2026-07-06 session 第 4 波；用户"还有没做的不"→"继续"）
+
+再对照 brief 逐条 receipt 要求扫过一遍，本波补齐记录深度：
+
+- **P21 · Search 4 项细化**：
+  - **PPR span**：`recordPprRerank` 新 helper，`queryService.textSearch` 在 `applyPPR` 后仅当 `pprActive === true` 时 emit `ranking.score` name=`ppr` span，记 `seedDocIds` params + `seedCount` metric + 前 10 条 per-doc rank shuffle decision (`promote/keep/demote` + `rankBefore/rankAfter` meta)。
+  - **per-signal boost meta**：`BoostSignalContext` 新 type 承载 `openCount / lastOpenTs / clicked / relatedToCurrent / hub / pprSeeded`；`recordRankingBoosts` 入参新增 `signalsByPath: Map<path, BoostSignalContext>`；每条 preview decision 的 meta 里加 `signals: string[]`（仅 fire 的信号 filter 展示，例如 `['click-through', 'related-to-current', 'recency', 'open-count:3']`）。queryService 里从 `signals: RankingSignals` + `clickedPaths` + `relatedPaths` 构造 per-path snapshot。
+  - **already-linked 独立 decision**：`recordAlreadyLinkedDecisions` 新 helper，emit `filter.decision` name=`already-linked` span with `relatedPathCount` + `hitCount` metrics + 每条命中 `decision='promote'` + `reason='already-linked-to-current'`。空 relatedPaths 时 no-op。
+  - **retriever type filter settings**：`recordRetrieverFilterSettings` 新 helper，在 `retrieverResults` 之后按 `searchSettings.includeDocumentTypes` filter true 值 emit `filter.decision` name=`retriever-settings` span with `includedDocumentTypes` params + `typeCount` metric。空 list no-op。
+- **P22 · Chat 3 项补齐**：
+  - **user.message first-class span**：`prepareChatRequest` 起 chat run 后立刻 emit `custom` name=`user.message` span，`setInput(raw=userContent, contentType='text/markdown')` + `attachmentCount` + `messageHistoryCount` params。
+  - **profile / settings snapshot**：`streamChat` 在 `vercelStreamChat` 调用前 `debugRun.mergeSummary({ profileId, profileKind, profileBaseUrl, usePlanSystemPrompt, toolCount, toolNames, maxSteps, outputControlKeys })`。`outputControlKeys` 只 dump key list（temperature/maxTokens 等），value 不 dump 避免泄露自定义设置。
+  - **ContextManager compact**：确认属于 Harness path，chat 走 `vercelStreamChat` 不经过 `runAgentLoop`，chat receipt 已经通过 `BudgetGovernor` compact summaries 覆盖 chat 侧的所有 compact 场景。Harness 独立发起的 loop 已通过 harness adapter 覆盖。
+- **P23 · Ambient serendipity**：`recordAmbientSerendipity` 新 helper，filter `signals` 中含 `type='graph_neighbor' && hop===2` 的 item，emit `ranking.score` name=`serendipity` span with `hits/minDistance/maxDistance` metrics + 每条 `decision='promote'` + `reason='serendipity-2hop-bridge'` + `meta.bridge` （from `signal.via`）。`AmbientPushRuntime.handleTrigger` 在 `recordAmbientCandidates` 后调用。
+- **P24 · Analyze 每 section tool 步骤**：
+  - `AnalysisSectionToolUse` type 承载 `{ toolName, toolCallId, inputExcerpt, outputExcerpt, ok }`。
+  - `recordAnalysisSectionGeneration` 入参新增 `toolUses?: readonly AnalysisSectionToolUse[]`，在 section span finish 前 emit 每条 `tool.call` child span (`parentSpanId = section.spanId`) with input/output/params。
+  - `ReportOrchestrator.generateReport` 加 `tapToolUses(source, sink)` module-level async iterator wrapper：透传 SDKMessage 不变，同时 scan `assistant`/`user` message 的 `content` blocks 抓 `tool_use` (name/id/input) 和 `tool_result` (tool_use_id/content/is_error) 塞进 sink array；section 结束 `recordAnalysisSectionGeneration(..., toolUses: sink)`。空 sink 时不 emit 任何 child span。
+- **P25 · Tests**：新增 `debug-trace-deep-coverage.test.ts`（8 案：per-signal boost meta / already-linked hit / already-linked no-op / PPR seeds+shuffle / retriever filter snapshot / retriever filter no-op / ambient serendipity hop=2 filter / analyze section tool_use children 全 parentSpanId 正确）。
+
+**验收**：`npm run test` 187 → **188 全绿**（+1 新 test file）；`npm run build` 通过。至此对照 brief §6 逐条 receipt 要求：
+
+| Surface | 覆盖条目 | 状态 |
+|---|---|---|
+| Search | 原 query / 重写 / filters / topK / weights / vector recall / fts recall / graph PPR / RRF contribution / dedup / type filter / exclude / topK cutoff / boost per-signal / already-linked / rerank provider+model / final ranking | ✅ 全覆盖 |
+| Chat | user message / project&files&current / candidates before budget / kept slots / dropped slots+reason / compacted summary / final prompt shape / model+provider / profile / settings / tools / token usage / finishReason | ✅ 全覆盖 |
+| Ambient Push | trigger type / current file / paragraph / candidates / filters+skip reasons / chosen or skip / dedup / already-linked / serendipity | ✅ 全覆盖 |
+| Analyze | intent / sources / agent&tool steps / section plan / generated sections / saved artifact / failures+fallback | ✅ 全覆盖 |
+| Redaction | 默认 redacted / raw 仍过 secret scrubber | ✅ |
+| npm run test | 188/188 | ✅ |
+
+Debug Trace Infrastructure 端到端完成、每条 receipt 项已可对应 span。
 

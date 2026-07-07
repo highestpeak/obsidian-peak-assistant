@@ -95,16 +95,17 @@
     <header>
       <div class="eyebrow">12 · Feature · Search</div>
       <h1>Search 的目标不是找“完全一样的词”，而是帮用户找回相关笔记。</h1>
-      <p class="subtitle">这份文档两条并行线索：面向用户解释搜索为什么混合六种信号，面向维护者讲清六阶段管线的顺序。</p>
+      <p class="subtitle">这份文档两条并行线索：面向用户解释搜索为什么混合六种信号，面向维护者讲清 query rewrite、parse、召回、合并、排序、高亮的边界。</p>
       <ul class="subtitle-list">
         <li><strong>用户视角</strong>：关键词、语义、标题、图关系、点击反馈、高亮——为什么要混合。</li>
-        <li><strong>维护者视角</strong>：query parser → 多路 retriever → weighted RRF → PPR → ranking boost → highlight——每个阶段的顺序和边界。</li>
+        <li><strong>维护者视角</strong>：optional AI query parser → <code>parseQuery</code> → 多路 retriever → weighted RRF → PPR → ranking boost → highlight——每个阶段的顺序和边界。</li>
       </ul>
       <div class="meta">
         <span>Reference doc</span>
         <span>Approx. length: 约 10k 混合字符</span>
         <span>Reading time: 22-26 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
+        <span>Related spec: <a href="superpowers/specs/2026-07-06-search-highlight-original-text-repair.md">Highlight Original Text Repair</a></span>
       </div>
     </header>
 
@@ -156,6 +157,10 @@
           <div class="claim">
             <strong>和 AI Analysis 的边界</strong>
             <a href="13-feature-vault-intelligence.html">AI Analysis</a> 是 agent-driven 分析 workflow：它可以读取搜索结果、Vault Health、hub、graph 和外部工具，再生成报告。Hyper Search 只负责快速找回候选笔记和解释排序原因；它不负责写报告，也不要求 LLM 才能返回结果。
+          </div>
+          <div class="claim">
+            <strong>规划中的结果侧栏上下文</strong>
+            General Search 的右侧 drawer 未来需要在选中文档时展示 hub context，并链接到 hub 文档或 hub local graph。这个需求还没有实现，登记在 <a href="planned-requirements.html#active-planned">Planned Requirements</a>，具体草图见 <a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#search-drawer">Search drawer hub context</a>。
           </div>
         </section>
 
@@ -320,7 +325,7 @@
 
         <section id="pipeline">
           <h2>Search Pipeline</h2>
-          <p class="lead">从代码入口看，SearchClient 很薄，真正的 pipeline 在 <code>QueryService.textSearch</code>。它先 parse query，再并行执行 active retrievers，之后用 RRF 合并，最后叠加 PPR、ranking boost、exclude、highlight 和可选 LLM rerank。</p>
+          <p class="lead">从代码入口看，<code>SearchClient.search()</code> 先做可选 query rewrite；真正的召回、排序和高亮 pipeline 在 <code>QueryService.textSearch()</code>。它 parse query，并行执行 active retrievers，用 RRF 合并，再叠加 PPR、ranking boost、exclude、topK、highlight 和可选 LLM rerank。</p>
           <div class="figure">
             <div class="figure-title">
               <strong>图 1 · 一条 query 的主路径</strong>
@@ -329,6 +334,7 @@
             <div class="mermaid">
 flowchart LR
   User["用户 query"]
+  Rewrite["optional AI query parser<br/>natural language -> Hyper Search syntax"]
   Parse["parseQuery<br/>terms / phrases / excludes / filters / weights"]
   Registry["RetrieverRegistry.executeAll<br/>只跑 shouldActivate=true 的 retrievers"]
   FTS["fts"]
@@ -342,7 +348,7 @@ flowchart LR
   Filter["exclude + topK"]
   Highlight["highlight final results"]
   LLM["LLM rerank<br/>optional"]
-  User --> Parse --> Registry
+  User --> Rewrite --> Parse --> Registry
   Registry --> FTS --> RRF
   Registry --> Stem --> RRF
   Registry --> Vector --> RRF
@@ -366,8 +372,8 @@ src/service/search/query/queryService.ts
           <h2>Query Parser：先把用户输入变成计划</h2>
           <p class="prose"><code>parseQuery</code> 会把原始文本拆成 terms、phrases、excludes、filters，并根据 query 形态计算 retriever weights。这个 plan 是后续多路召回和 RRF 的共同输入。</p>
           <div class="claim">
-            <strong>自然语言 query parser 的方向</strong>
-            高级语法要支持，但不能要求用户记住所有写法。更好的入口是让用户用自然语言描述检索意图，再由轻量模型或本地规则把它翻译成 <code>phrases</code>、<code>excludes</code>、<code>filters</code> 和 retriever weights。它不是完整 AI Analysis，只是把一句话变成 Hyper Search 的 query plan。
+            <strong>自然语言 query parser 的当前状态</strong>
+            这条能力已经作为可选增强接入：<code>SearchClient.search()</code> 会在 <code>settings.useAiQueryParser</code> 开启时调用 <code>maybeCompileWithAiParser()</code>，把自然语言编译成 <code>parseQuery</code> 能吃的 Hyper Search syntax。默认关闭；没有 fast-role invoker、LLM 调用失败或 schema 校验失败时，会回退原始 query。后续产品任务是补足改写解释、bad-case 收集、本地规则 fallback 和用户可见的开关/状态。
           </div>
           <table class="doc-table">
 <colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
@@ -403,14 +409,11 @@ src/service/search/query/queryService.ts
             </tbody>
           </table>
           <div class="formula-box">
-            <strong>排序例子：RRF + PPR + boost 怎么叠起来</strong>
-            <div class="formula"><code>rrf(path) = Σ retrieverWeight / (60 + rank + 1)</code></div>
+            <strong>Parser 例子：这里只产生 query plan，不解释排序</strong>
             <ol>
-              <li>用户搜 <code>"attention head" -draft tag:research</code>。</li>
-              <li><code>A.md</code> 在 FTS 排第 1、metadata 排第 4：RRF 贡献约 <code>1.0 / 61 + 0.6 / 64</code>。</li>
-              <li><code>B.md</code> 在 vector 排第 1，但 FTS 没命中：RRF 贡献约 <code>0.9 / 61</code>。它可能靠语义进入候选，但解释时要告诉用户“词不完全相同”。</li>
-              <li>PPR 用 top docId 做 seed，如果 <code>C.md</code> 是 A/B 的强图邻居，它可能被提升；boost 再叠加近期编辑、hub、click-through 等信号。</li>
-              <li>最后执行 <code>-draft</code> exclude、取 topK、生成高亮。高亮解释“为什么看得见”，不是唯一排序来源。</li>
+              <li>用户输入 <code>"attention head" -draft tag:research</code>。</li>
+              <li><code>"attention head"</code> 进入 <code>phrases</code>；<code>-draft</code> normalize 后进入 <code>excludes</code>；<code>tag:research</code> 进入 <code>filters</code>。</li>
+              <li><code>parseQuery</code> 只负责把输入拆成 plan，并按 query 形态计算 retriever weights。RRF、PPR、boost 和 highlight 都属于后面的 merge/rerank/highlight 阶段。</li>
             </ol>
           </div>
         </section>
@@ -460,23 +463,133 @@ src/service/search/query/queryService.ts
 
         <section id="merge">
           <h2>Merge / Rerank / Highlight：从候选变成用户看到的结果</h2>
-          <p class="prose">Search 的排序核心不是某一路 retriever 的分数，而是 RRF 合并后的路径级分数。之后才叠加图和行为信号，最后只对 final results 做高亮。</p>
-          <div class="figure">
-            <div class="figure-title">
-              <strong>图 2 · 排序增强层</strong>
-              <span>Mermaid · ranking stages</span>
-            </div>
-            <div class="mermaid">
-flowchart TB
-  Results["Retriever results<br/>path / docId / score / source"]
-  Merge["RRF merge<br/>weight / (60 + rank + 1)"]
-  Candidate["Merged path candidates<br/>slice topK * 2"]
-  Graph["PPR<br/>seed from top results + query-node docIds"]
-  Signals["Reranker signals<br/>frequency / recency / graph / hub / click-through"]
-  Output["Final items<br/>exclude / topK / highlight"]
-  Results --> Merge --> Candidate --> Graph --> Signals --> Output
-            </div>
-            <p class="read-note"><b>读图：</b>RRF 是主合并点；PPR 可能扩展 graph neighbor；boost 只改变排序，不应该改变 retriever contract。</p>
+          <p class="prose">Search 的排序核心不是某一路 retriever 的 raw score，而是按 path 聚合后的分数账本。维护这段时先看公式和伪代码：RRF 负责多路召回融合，PPR 把图结果作为另一种 rank source 融入，ranking boost 叠加行为/图谱信号，LLM rerank 只在显式开启时做最后一层重排。</p>
+          <div class="formula-box">
+            <strong>排序公式：从多路候选到 final score</strong>
+            <div class="formula"><code>rrf(path) = Σ sourceWeight[source] / (RRF_K + rank0(source, path) + 1)</code></div>
+            <div class="formula"><code>pprFuse(path) = 0.7 / (RRF_K + cmRank0(path) + 1) + 0.3 / (RRF_K + pprRank1(path))</code></div>
+            <div class="formula"><code>boosted(path) = base + freq + recency + graph + anchor + click + hubDoc</code></div>
+            <div class="formula"><code>llmFinal(path) = 0.7 * boosted(path) + 0.3 * normalizedRerankScore(path)</code></div>
+            <ul>
+              <li><code>RRF_K = 60</code>。普通 retriever merge 使用 0-based rank，所以代码里是 <code>60 + rank0 + 1</code>；人类看到的“第 1 名”对应 <code>rank0 = 0</code>，分母是 <code>61</code>。</li>
+              <li><code>cmRank0</code> 是 PPR 前的候选排序位置；<code>pprRank1</code> 是 PPR 分数排序后的 1-based rank，所以 PPR 分量不再额外加 <code>+ 1</code>。</li>
+              <li><code>freq = log1p(openCount) * 0.10</code>；<code>recency = max(0, 0.2 - daysSinceLastOpen * 0.005)</code>。</li>
+              <li><code>graph = 0.2</code> 表示当前文件 2-hop related；<code>click = 0.15</code> 表示 click-through 命中。</li>
+              <li><code>anchor</code> 来自 hub/secondary/incoming signals；如果 PPR 已启用，anchor 会乘 <code>PPR_GLOBAL_PR_DAMPENING = 0.3</code>，避免全局 PageRank 和 PPR 双重放大。</li>
+            </ul>
+          </div>
+          <div class="claim">
+            <strong>PPR 到底在做什么</strong>
+            PPR 是 Personalized PageRank，不是全局“哪篇笔记最重要”的 PageRank。它把本次搜索已经找到的 top docId 当作起点，再把 FTS 命中的 query-node docId 混入一小部分 seed budget，然后沿 reference、semantic related、shared tag 和 co-citation 这些图边扩散。这样它回答的问题是：“如果用户已经在找 A/B 这些笔记，图上哪些邻近笔记也可能相关？”所以 PPR 可以把没直接命中关键词、但和强候选关系很近的 <code>C.md</code> 拉进候选；它不能替代关键词召回，也不能成为基础搜索的硬依赖。
+          </div>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>PPR 步骤</th><th>当前实现</th><th>读结果时怎么理解</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>选 seed</td>
+                <td>取 RRF 后 top result 里有 <code>docId</code> 的前 <code>PPR_SEED_K = 10</code> 条；如果 FTS 有 query-node docId，再给它们 <code>0.25</code> 的 seed weight。</td>
+                <td>它从“这次 query 已经像样的结果”出发，不是从整个 Vault 随机找 hub。</td>
+              </tr>
+              <tr>
+                <td>沿图扩散</td>
+                <td>edge fetcher 混合 reference、semantic related、shared tag、co-citation 四层边，并各自归一化。</td>
+                <td>被提升的结果通常是强候选的图邻居、语义邻居或共同被引用对象。</td>
+              </tr>
+              <tr>
+                <td>融合排序</td>
+                <td>已有候选按 <code>0.7</code> 原候选 rank + <code>0.3</code> PPR rank 融合；PPR-only 邻居最多扩展 <code>20</code> 条。</td>
+                <td>PPR 是 rerank/expand 层。它能补相关笔记，但不应压过所有文本证据。</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="formula-box">
+            <strong>排序算例：RRF + PPR + boost 在这里叠加</strong>
+            <ol>
+              <li>用户搜 <code>"attention head" -draft tag:research</code>；Parser 先产出 phrase、exclude 和 tag filter。</li>
+              <li><code>A.md</code> 在 FTS 人类排名第 1、metadata 人类排名第 4：代码 rank 分别是 <code>0</code> 和 <code>3</code>，RRF 贡献约 <code>1.0 / 61 + 0.6 / 64</code>。</li>
+              <li><code>B.md</code> 在 vector 人类排名第 1，但 FTS 没命中：RRF 贡献约 <code>0.9 / 61</code>。它可能靠语义进入候选，但解释时要告诉用户“词不完全相同”。</li>
+              <li>PPR 用 top docId 做 seed。如果 <code>C.md</code> 是 A/B 的强图邻居，它可能作为扩展候选进入；如果某个已有候选在 PPR 里排第 2，它的 PPR 分量是 <code>0.3 / 62</code>。</li>
+              <li>Ranking boost 再叠加近期编辑、hub、click-through、当前文件 2-hop related 等信号。最后执行 <code>-draft</code> exclude、取 topK、生成高亮。</li>
+            </ol>
+          </div>
+          <pre class="code-box">function rankSearch(rawQuery, settings):
+  effectiveQuery = maybeCompileWithAiParser(rawQuery, settings)
+  plan = parseQuery(effectiveQuery)
+  retrieverResults = new Map()
+
+  for retriever in registry:
+    if retriever.shouldActivate(plan):
+      retrieverResults[retriever.name] = retriever.retrieve(plan)
+
+  merged = []
+  for each source, results in retrieverResults:
+    weight = plan.retrievers[source] ?? 0.5
+    for rank0, item in results:
+      contribution = weight / (60 + rank0 + 1)
+      merged[item.path].rrfScore += contribution
+      merged[item.path].sources.add(source)
+      merged[item.path].best = maxScoreChunk(item)
+
+  candidates = sortByScoreDesc(merged)
+
+  if settings.pprEnabled and not plan.disablePpr:
+    seeds = normalize(topWithDocId(candidates, PPR_SEED_K))
+    seeds = blendQueryNodeSeeds(seeds, plan.queryNodeDocIds, fraction = 0.25)
+    pprRanks = computePPR(seeds)
+    candidates = fuseByRrf(candidates, pprRanks, cmWeight = 0.7, pprWeight = 0.3)
+    candidates += graphNeighborsFromPpr(pprRanks, max = 20)
+
+  boosted = candidates.map(item =&gt; {
+    signal = readRankingSignal(item.path)
+    base = item.score
+    score = base
+    score += log1p(signal.openCount) * 0.10
+    score += max(0, 0.2 - daysSince(signal.lastOpenTs) * 0.005)
+    score += isRelatedToCurrentFile(item.path) ? 0.2 : 0
+    score += anchorBoost(signal, pprActive)
+    score += wasClicked(item.path) ? 0.15 : 0
+    score += signal.mobiusNodeType == "hub_doc" ? hubDocBoost : 0
+    return { ...item, score }
+  })
+
+  ranked = sortByScoreDesc(boosted)
+
+  visible = applyExcludesAndTopK(ranked, plan.excludes, plan.topK)
+  visible = addHighlightSnippets(visible, plan)
+
+  if settings.enableLLMRerank and settings.rerankModel:
+    rerankScores = callRerankProvider(rawQuery, visible)
+    visible = visible.map(item =&gt; {
+      normalized = rerankScores[item].raw &gt; 1
+        ? rerankScores[item].raw / visible.length
+        : rerankScores[item].raw
+      return { ...item, score: item.score * 0.7 + normalized * 0.3 }
+    })
+    visible = sortByScoreDesc(visible)
+
+  return visible</pre>
+          <div class="formula-box">
+            <strong>维护者读法</strong>
+            <ol>
+              <li>如果用户问“为什么这条出现”，先看 <code>sources</code> 和每路 RRF contribution。</li>
+              <li>如果用户问“为什么这条排这么高”，再看 PPR rank、ranking boost 分量和 LLM rerank 是否启用。</li>
+              <li>如果用户问“为什么没出现”，看 retriever 是否激活、path 是否被 exclude、是否被 topK 截断。</li>
+              <li>Highlight 只解释 final result 的可见匹配片段，不应该被当成排序分数来源。</li>
+            </ol>
+          </div>
+          <div class="claim">
+            <strong>Highlight 源边界（2026-07-07 起）：Vault-first for markdown-like，chunk_raw for binary</strong>
+            <code>QueryService.textSearch()</code> 在 final topK 后走 <code>HighlightSourceResolver</code>。按 <code>DocumentType</code> 分流：
+            <ul>
+              <li><strong>Vault-readable</strong>（markdown / txt / csv / json / html / xml / canvas / excalidraw）：resolver 直接 <code>vault.cachedRead(path)</code> 拿当前文件全文，喂给 <code>HighlightEngine.highlightSnippet()</code>，用 <code>hintOffset = chunkIndex / total × fileLength</code> 让 window 落在打分 chunk 附近。这条路径**永远反映磁盘当前状态**，不会展示"已经删掉的段落"。</li>
+              <li><strong>Binary / derived</strong>（pdf / docx / pptx / image / url）：resolver 从 <code>doc_chunk.content_raw</code> 拿索引期提取的文本。这些类型没有可 re-parse 的 Vault 源，<code>content_raw</code> 是它们的唯一 extracted-content 存储。</li>
+              <li><strong>降级链</strong>：Vault read 超时（<code>SEARCH_HIGHLIGHT_VAULT_READ_TIMEOUT_MS = 200</code>）→ chunk_raw → semantic summary → title/path 标签 → normalized。每一档在 <code>SearchResultItem.highlightSourceKind</code> 上留痕，Search debug trace 可读。</li>
+              <li><strong>存储变化</strong>：Vault-readable 类型的 <code>doc_chunk.content_raw</code> 与全表 <code>content_fts_norm</code> 都停写，一次性迁移 null 掉存量并 VACUUM，去掉 markdown 大约 <span class="pill blue">18%</span> 的 SQLite 文本冗余。</li>
+            </ul>
+            设计详见 <a href="superpowers/specs/2026-07-07-search-highlight-vault-first.md">2026-07-07 Vault-first spec</a>（supersedes <a href="superpowers/specs/2026-07-06-search-highlight-original-text-repair.md">2026-07-06 spec</a>）。
           </div>
           <table class="doc-table">
 <colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
@@ -486,7 +599,7 @@ flowchart TB
             <tbody>
               <tr>
                 <td>RRF merge</td>
-                <td>每条 result 贡献 <code>weight / (60 + rank + 1)</code>；同 path 合并。</td>
+                <td>每条 result 贡献 <code>weight / (60 + rank0 + 1)</code>；同 path 合并。</td>
                 <td>新增 retriever 必须有 weight；缺省 weight 是 0.5。</td>
               </tr>
               <tr>
@@ -501,8 +614,8 @@ flowchart TB
               </tr>
               <tr>
                 <td>Highlight</td>
-                <td>只对 final topK 结果生成 snippet/title highlight。</td>
-                <td>不要在每一路 retriever 提前做高成本 highlight。</td>
+                <td>只对 final topK 结果生成 snippet/title highlight；raw source 由 <code>HighlightSourceResolver</code> 决定——markdown-like 类型走 Vault 磁盘原文，binary 类走 <code>doc_chunk.content_raw</code>，无源时降级到 title/path 或 normalized。</td>
+                <td>不要在每一路 retriever 提前做高成本 highlight；不要为 Vault-readable 类型写回 <code>content_raw</code>——resolver 会实时读盘，避免 stale。新增 <code>DocumentType</code> 时到 <code>isVaultReadableSource()</code> 显式登记。</td>
               </tr>
               <tr>
                 <td>LLM rerank</td>
@@ -544,35 +657,30 @@ flowchart LR
             <p class="read-note"><b>读图：</b>未初始化和空 query 是明确分支；retriever/vector/PPR 的失败要局部吸收。维护 Search 时要保住这条产品体验。</p>
           </div>
           <table class="doc-table">
-<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+<colgroup><col style="width: 28%"><col></colgroup>
             <thead>
-              <tr><th>情况</th><th>当前行为</th><th>文档结论</th></tr>
+              <tr><th>情况</th><th>现在怎么处理</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td><code>SearchClient</code> 未 init</td>
-                <td>抛出 <code>SearchClient not initialized. Call init() first.</code></td>
-                <td>调用方必须保证 SQLite/store 初始化顺序。</td>
+                <td>抛出 <code>SearchClient not initialized. Call init() first.</code>；调用方要保证 SQLite/store 初始化顺序。</td>
               </tr>
               <tr>
                 <td>空 query</td>
-                <td>返回空 items。</td>
-                <td>不要把空 query 偷换成 recent 或 browse。</td>
+                <td>返回空 items；不要把空 query 偷换成 recent 或 browse。</td>
               </tr>
               <tr>
                 <td>单个 retriever 失败</td>
-                <td>Registry catch 错误，该路返回空。</td>
-                <td>多路召回必须局部失败可恢复。</td>
+                <td>Registry catch 错误，该路返回空；多路召回必须局部失败可恢复。</td>
               </tr>
               <tr>
                 <td>Vector 条件不满足</td>
-                <td><code>VectorRetriever.shouldActivate</code> 返回 false。</td>
-                <td>semantic search 是增强，不是基础 search 必选项。</td>
+                <td><code>VectorRetriever.shouldActivate</code> 返回 false；semantic search 是增强，不是基础 search 必选项。</td>
               </tr>
               <tr>
                 <td>PPR 失败</td>
-                <td>catch 后继续用原 resultItems。</td>
-                <td>graph rerank 不应阻断普通搜索。</td>
+                <td>catch 后继续用原 resultItems；graph rerank 不应阻断普通搜索。</td>
               </tr>
             </tbody>
           </table>
@@ -582,52 +690,50 @@ flowchart LR
           <h2>失败、bad case 和处理</h2>
           <p class="lead">搜索问题不全是“故障”。有些是增强项不可用，有些是排序权重不符合直觉，有些是 query 太窄。先区分类型，再决定是修配置、改 query，还是调权重。</p>
           <table class="doc-table">
-<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+<colgroup><col style="width: 22%"><col style="width: 30%"><col></colgroup>
             <thead>
-              <tr><th>现象</th><th>可能原因</th><th>先检查</th><th>处理方式</th></tr>
+              <tr><th>现象</th><th>可能原因</th><th>怎么判断和处理</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td>输入后没有结果。</td>
                 <td>query 为空、索引未准备好，或当前 scope 太窄。</td>
-                <td>是否有实际 terms/phrases；Quick Search footer 是否显示搜索中；索引是否完成。</td>
-                <td>换一个更宽的 query，退出 in-file/folder scope，或先运行索引维护。</td>
+                <td>先看是否有实际 terms/phrases、Quick Search footer 是否显示搜索中、索引是否完成；再换一个更宽的 query，退出 in-file/folder scope，或运行索引维护。</td>
               </tr>
               <tr>
                 <td>语义相关结果没有出现。</td>
                 <td>vector retriever 没有激活。</td>
-                <td>vector search 是否 enabled；embedding profile 是否有 endpoint 和 model。</td>
-                <td>配置 embedding profile，或接受基础 FTS/metadata 结果。</td>
+                <td>检查 vector search 是否 enabled、embedding profile 是否有 endpoint 和 model；条件不满足时配置 embedding profile，或接受基础 FTS/metadata 结果。</td>
               </tr>
               <tr>
                 <td>拼写接近但没有被纠错。</td>
                 <td>fuzzy 主要依赖标题 token cache，不是全文拼写检查。</td>
-                <td>目标词是否出现在标题 token 里。</td>
-                <td>改用更接近标题的词，或用普通关键词/语义 query 扩宽搜索。</td>
+                <td>看目标词是否出现在标题 token 里；没有命中时改用更接近标题的词，或用普通关键词/语义 query 扩宽搜索。</td>
               </tr>
               <tr>
                 <td>AI Analysis 里 Web Search 不可用。</td>
                 <td>没有配置 Web Search profile。</td>
-                <td>Settings → Profiles 是否有 profile 被设为 Web Search。</td>
-                <td>配置后重试；没有 profile 时只使用 Vault/模型已有能力。</td>
+                <td>到 Settings → Profiles 看是否有 profile 被设为 Web Search；配置后重试，没有 profile 时只使用 Vault/模型已有能力。</td>
               </tr>
               <tr>
                 <td>图关系排序看起来没有影响。</td>
                 <td>PPR 被关闭、没有可用 docId seed，或 PPR 失败后回退。</td>
-                <td>Search settings 的 PPR 开关；console 是否有 PPR failed 日志。</td>
-                <td>先确认基础结果可用，再检查图索引和 PPR 设置。</td>
+                <td>先确认基础结果可用；再看 Search settings 的 PPR 开关、console 是否有 PPR failed 日志、图索引是否可用。</td>
               </tr>
               <tr>
                 <td>标题明明很像，但结果排得低。</td>
                 <td>正文/语义分数压过了 metadata/title boost，或 query 太长稀释了标题命中。</td>
-                <td>目标词是否在标题 token cache；metadata retriever 是否参与；title boost 权重。</td>
-                <td>用更接近标题的短 query 复测；如果复现稳定，调 metadata/title boost 而不是硬编码某个结果。</td>
+                <td>看目标词是否在标题 token cache、metadata retriever 是否参与；用更接近标题的短 query 复测，若稳定复现再调 metadata/title boost。</td>
+              </tr>
+              <tr>
+                <td>Snippet 高亮看起来像分词后的文本，CJK 字符之间有空格。</td>
+                <td>Resolver 落到了 <code>normalized_fallback</code>——Vault 读文件超时或 chunk_raw 也没有。</td>
+                <td>看 <code>SearchResultItem.highlightSourceKind</code> / <code>highlightVaultReadMs</code>（debug 字段）。若是 markdown 类，通常是 Vault 慢盘或路径丢失；若是 binary 类，可能是 <code>content_raw</code> 索引缺失。设计和降级链见 <a href="superpowers/specs/2026-07-07-search-highlight-vault-first.md">Vault-first spec</a>。</td>
               </tr>
               <tr>
                 <td>语义结果相关但用户不想要。</td>
                 <td>vector 召回把概念近似当成相关；缺少 folder/tag 过滤。</td>
-                <td>query 是否该带 <code>tag:</code> / <code>folder:</code>；vector weight 是否过高。</td>
-                <td>把自然语言意图翻译成更窄的 filters；必要时降低当前 query 形态下的 vector weight。</td>
+                <td>判断 query 是否该带 <code>tag:</code> / <code>folder:</code>，以及 vector weight 是否过高；把自然语言意图翻译成更窄的 filters，必要时降低当前 query 形态下的 vector weight。</td>
               </tr>
             </tbody>
           </table>
@@ -682,8 +788,16 @@ flowchart LR
                 <td>更新 Retriever 表、pipeline 图和 RRF weight 说明。</td>
               </tr>
               <tr>
+                <td>AI query parser 的默认开关、fallback 策略或 rewrite receipt 改了。</td>
+                <td>更新 Pipeline、Query Parser 当前状态和排障说明，避免把 opt-in 能力写成默认能力。</td>
+              </tr>
+              <tr>
                 <td>Search index、embedding、PPR 或 click-through 存储结构变化。</td>
                 <td>更新本页相关限制，并在 <code>23-infra-search-index.html</code> 补完整 index-time 说明。</td>
+              </tr>
+              <tr>
+                <td>Highlight source、chunk offset 或 raw/normalized content contract 改了。</td>
+                <td>更新 Merge / Rerank / Highlight 的已知问题，并同步 <a href="superpowers/specs/2026-07-06-search-highlight-original-text-repair.md">Highlight Original Text Repair</a>。</td>
               </tr>
               <tr>
                 <td>AI Analysis 和 Vault Search 的状态管理拆分或合并。</td>
@@ -704,7 +818,17 @@ flowchart LR
               <tr>
                 <td><code data-copy="src/service/search/SearchClient.ts">SearchClient.ts</code></td>
                 <td><code>search()</code>、<code>vectorSearch()</code>、<code>init()</code>。</td>
-                <td>确认 SearchClient 是薄入口，未 init 会 hard error。</td>
+                <td>确认 SearchClient 是入口，未 init 会 hard error，并且会在 <code>useAiQueryParser</code> 开启时先做 query rewrite。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/search/query/aiQueryParserRuntime.ts">aiQueryParserRuntime.ts</code></td>
+                <td><code>maybeCompileWithAiParser()</code>。</td>
+                <td>确认自然语言 query parser 是 opt-in；默认关闭，缺少 invoker 或失败时回退 raw query。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/search/query/aiQueryParser.ts">aiQueryParser.ts</code></td>
+                <td><code>parseNaturalLanguageQuery()</code> 和 LLM response schema。</td>
+                <td>确认它把自然语言编译成 Hyper Search syntax，而不是执行 AI Analysis。</td>
               </tr>
               <tr>
                 <td><code data-copy="src/service/search/query/queryService.ts">queryService.ts</code></td>
@@ -725,6 +849,11 @@ flowchart LR
                 <td><code data-copy="src/service/search/merger/rrf-merger.ts">rrf-merger.ts</code></td>
                 <td>weighted RRF 公式。</td>
                 <td>确认多路结果如何融合到 path 维度。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/search/query/highlight-engine.ts">highlight-engine.ts</code></td>
+                <td><code>highlightSnippet()</code>、raw/normalized content 参数。</td>
+                <td>确认 final topK 高亮的当前边界，以及 original-text repair 的问题来源。</td>
               </tr>
               <tr>
                 <td><code data-copy="src/service/search/retriever/fts-retriever.ts">fts-retriever.ts</code></td>
@@ -750,7 +879,7 @@ flowchart LR
         </section>
 
         <div class="footer">
-          <p>阅读场景：桌面/编辑器。相关文档：<a href="index.html">docs index</a>、<a href="05-use-case-playbook.html">05 Use Case Playbook</a>、<a href="11-feature-chat-context.html">11 Chat Context</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
+          <p>阅读场景：桌面/编辑器。相关文档：<a href="index.html">docs index</a>、<a href="05-use-case-playbook.html">05 Use Case Playbook</a>、<a href="11-feature-chat-context.html">11 Chat Context</a>、<a href="21-infra-agent-harness.html">21 Agent Harness</a>、<a href="superpowers/specs/2026-07-06-search-highlight-original-text-repair.md">Highlight Original Text Repair</a>。</p>
         </div>
       </div>
     </div>

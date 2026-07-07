@@ -81,9 +81,9 @@
     <header>
       <div class="eyebrow">Peak Assistant Roadmap</div>
       <h1>状态快照：里程碑、待建、调研、远期</h1>
-      <p class="subtitle">这份文档回答"项目现在在做什么、下一步做什么"。<strong>只登记关键节点</strong>——不是流水账。逐 session 的完成粒度看 <a href="progress.md"><code>progress.md</code></a>；文档索引看 <a href="index.html"><code>index.html</code></a>；调研原稿在 <code>docs/research/</code>；架构 spec 在 <code>docs/superpowers/specs/</code>。</p>
+      <p class="subtitle">这份文档回答"项目现在在做什么、下一步做什么"。<strong>只登记关键节点</strong>——不是流水账。逐 session 的完成粒度看 <a href="progress.md"><code>progress.md</code></a>；文档索引看 <a href="index.html"><code>index.html</code></a>；调研原稿在 <code>docs/research/</code>；架构 spec 在 <code>docs/superpowers/specs/</code>；小型未实现需求登记在 <a href="planned-requirements.html"><code>planned-requirements.html</code></a>。</p>
       <div class="meta">
-        <span>Status: current · 2026-07-01</span>
+        <span>Status: current · 2026-07-06</span>
         <span>Scope: milestone-level only</span>
         <span>Updated: 手动维护 + session-end 补关键节点</span>
       </div>
@@ -93,6 +93,7 @@
       <nav class="side-nav" aria-label="roadmap 导航">
         <div class="nav-jump">
           <a href="index.html">← 文档总索引</a>
+          <a href="planned-requirements.html">Planned Requirements</a>
         </div>
         <strong>路线段</strong>
         <a href="#how-to-read">怎么读这个 roadmap</a>
@@ -139,7 +140,7 @@
               <tr><td><strong>Query Pattern Discovery</strong></td><td>LLM 驱动查询模式发现 + 上下文建议</td><td>Phase I</td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Onboarding + 三档索引</strong></td><td>4 步 Onboarding + fast/semantic/full 索引档 + 智能升级提示</td><td>Phase AC / Q</td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Usage Dashboard</strong></td><td>全站 AI 调用追踪 + SQLite 持久化 + KPI/Budget/Optimization 三屏</td><td>Phase Y / AP</td><td><span class="pill green">shipped</span></td></tr>
-              <tr><td><strong>Hub Generation Agent</strong></td><td>Curator + Materializer 两 agent 串联替代 stub；LLM 自决 hub 数量 / 合并 / 淘汰 + coverage 自评；merge 遇 user-owned 拦截；retire 归档不删；single-hub stale fallback</td><td>2026-07-03 · commit <code>6bea87c3</code></td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Hub Generation Agent</strong></td><td>Curator + Materializer 两 agent 串联替代 stub；LLM 判断 hub 数量、合并和归档策略，并做 coverage 自评；merge 遇 user-owned 拦截；retire 归档不删；single-hub stale fallback</td><td>2026-07-03 · commit <code>6bea87c3</code></td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Chat 富生成（Mermaid / Bases）</strong></td><td><code>conversation-system.md</code> 加 mermaid vault-link 约定（<code>peak://wikilink/</code> URL scheme）+ SVG anchor click 识别；Obsidian Bases YAML 完整 schema 注入 prompt</td><td>2026-07-03 · commit <code>459aa5ba</code></td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Ambient Current Work State（D1 状态栏面）</strong></td><td>状态栏读 <code>SessionContextService.workingTheme.llmInferred.summary</code>（<code>WorkingThemeInferrer</code> 已在推断），60s 定时刷新，fallback 到 related count；gutter / briefing 面待接入</td><td>2026-07-03 · commit <code>459aa5ba</code></td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Copilot Command Center（D2 骨架）</strong></td><td>Meta-agent 起草 capability plan（<code>capabilityPlanSchema</code>）→ modal 逐步评审 → gateway dispatch；写步骤失败即停</td><td>2026-07-03 · commit <code>459aa5ba</code></td><td><span class="pill green">shipped</span></td></tr>
@@ -149,6 +150,7 @@
               <tr><td><strong>Ambient Canonical Surface（Track C）</strong></td><td><code>DEFAULT_AMBIENT_PUSH_SETTINGS</code> 三个 attention-grabbing 开关翻默认关（<code>enableMorningBriefing</code> / <code>showStatusBar</code> / <code>enableSerendipityGutter</code>）；新增 <code>peak-related-notes-view</code> 右侧 dockable 面板 + <code>Open Related Notes panel</code> 命令；<code>RelatedNotesPanel</code> 读 <code>useAmbientPushStore.items</code> + 15s 轮询 <code>SessionContextService.workingTheme</code>；~110 行 token-driven CSS。data layer（<code>AmbientPushRuntime</code>/<code>WorkingThemeInferrer</code>）不动。</td><td>2026-07-04 · commit <code>9dbca284</code> + <code>81cb46f9</code></td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Recoverable Context Compact（Track D）</strong></td><td><code>src/core/context/compactSummary.ts</code> 定义 <code>CompactAnchor</code>（6 kind: message/file/resource/chunk/slot/block）+ <code>CompactSummary</code>；<code>BudgetGovernor.fit</code> Phase-2 drop 从静默 <code>data:null</code> 改为发 <code>CompactSummary</code>；<code>ContextManager.compactIfNeeded</code> 也发；<code>ContextCompactedEvent</code> 加载荷；<code>refetchCompactAnchor</code> 按 kind 分派的 refetch dispatcher 就位；stage (c) LLM 摘要可选注入（`summarizer?: CompactSummarizer`，失败自动 fallback stage(b) 占位符）。</td><td>2026-07-04 · commit <code>e63d8a51</code> + <code>b291c497</code> + <code>9dc2aa54</code></td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>AI Query Parser（Hyper Search NL → syntax）</strong></td><td>opt-in <code>search.useAiQueryParser</code>（默认 false）；启用后 <code>SearchClient.search</code> 走 fast-role LLM 编译成 Hyper Search 语法（<code>parseQuery</code> 直接吃），Zod schema + 最多 2 次重试 + AbortSignal + fenced JSON 容错。任何失败 fallback 到原文，search flow 永不阻断。KnowledgeIndexTab 加 Switch。</td><td>2026-07-04 · commit <code>91ddaf32</code> + <code>cec06ff3</code> + <code>1d6225bf</code></td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Debug Trace Infrastructure</strong></td><td>跨 Chat / Search / Agent Harness / Ambient Push / Analyze 的统一 debug span 基础设施：<code>DebugTraceRecorder</code>（in-memory + 环形缓冲 + off-mode 零分配）+ <code>DebugTraceFormatter</code>（Markdown + JSON appendix + FULL LOCAL banner + secret redaction）+ 5 个 surface adapter + Advanced tab UI（Off/Redacted/Full-local × retention × copy format）+ 4 处 UI Copy 按钮 + palette 命令 <code>Peak: Copy last debug trace</code>。Search receipt 覆盖 query.rewrite / per-retriever recall / RRF per-source contribution / rerank provider+model / boost delta / topK cutoff / exclude；Chat receipt 覆盖 context.assemble per-slot / budget drop / compact summaries / token usage / finishReason；Ambient receipt 覆盖 trigger / candidates with source signal / dedup context / chosen or skip reason；Analyze receipt 覆盖 plan / per-section model.call / skip fallback / artifact.write。默认 redacted，raw 模式仍过 7-pattern secret scrubber。spec 在 <a href="superpowers/specs/debug-trace-infrastructure.md">docs/superpowers/specs/debug-trace-infrastructure.md</a>。</td><td>2026-07-06 · session-in-progress</td><td><span class="pill green">shipped</span></td></tr>
             </tbody>
           </table>
 
@@ -213,6 +215,7 @@
               <tr><td><strong>T2 ArtifactPort</strong></td><td><code>core/ports/ArtifactPort.ts</code>—<code>putArtifact</code> / <code>getArtifactBody</code> / <code>listByRun</code>；结构性 <code>ArtifactRefShape</code>（mirror <code>ArtifactRef</code> keys，shape-guard 测试锁）；<code>InMemoryArtifactStore</code>（<code>service/run-envelope/</code>）作为参考实现，round-trip + 可注入 clock/idFactory；测试 5 条 guard（port shape / boundary / envelope shape mirror / 实现 round-trip / 可选字段省略）。</td><td>T2 ArtifactPort（本次）</td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>T5 obsidian-command adapter</strong></td><td><code>service/agents/harness/tool/ObsidianCommandToolAdapter.ts</code>—<code>obsidianCommandToToolDef(cmd, invoker, opts?)</code> + 批量 <code>obsidianCommandsToToolDefs(...)</code>；<code>source: 'obsidian-command'</code>、<code>kind: 'edit'</code> 默认；<code>CommandInvoker</code> 抽象让 service 层不 import <code>obsidian</code>；测试 6 条 guard（happy / not-found / throws / options / batch / boundary）。至此 T5 三种 source（local / mcp / obsidian-command）全覆盖。</td><td>T5 obsidian-command（本次）</td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>T7 RunEnvelopeStore</strong></td><td><code>service/run-envelope/runEnvelopeStore.ts</code>—<code>deriveEvents(projection, selector)</code> 按 snapshot ref memoize（同 snapshot 不重算，值 <code>Object.is</code> 未变不通知）；<code>RunEnvelopeStore</code> 语义化 <code>register</code>/<code>get</code>/<code>subscribe</code>/<code>unregister</code>/<code>dispose</code>；重复 register + 未知 get/subscribe fail-loud。测试 5 条 guard。UI 侧任何框架接入这份 store 即拿到"事件唯一真源 + 派生视图缓存"。</td><td>T7 RunEnvelopeStore（本次）</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Search Highlight Vault-first 源改造</strong></td><td>3 阶段一次 landed：<code>chunkId</code> 贯通 retriever → <code>SearchResultItem</code>；<code>HighlightSourceResolver</code> 按 <code>DocumentType</code> 分流——Vault-readable（markdown / txt / canvas / excalidraw / json / html / xml / csv）走 <code>vault.cachedRead</code> + <code>hintOffset</code>，binary/derived（PDF/DOCX/Image/URL）走 <code>doc_chunk.content_raw</code>；索引侧对 Vault-readable 停写 <code>content_raw</code>、全表停写 <code>content_fts_norm</code>；一次性 SQL 迁移 + VACUUM 清存量。真机验证抓到 retriever 未 propagate <code>docType</code> 的 bug——4 个 retriever SQL 加 <code>json_extract(attributes_json,'$.docType')</code>，resolver 加 path-suffix defense-in-depth；Vault-readable 读盘失败改走 <code>title/path</code> 标签，绝不落回 normalized。用户 confirmed OK；189/189 tests。</td><td>2026-07-07 · <a href="superpowers/specs/2026-07-07-search-highlight-vault-first.md">Vault-first spec</a>（supersedes <a href="superpowers/specs/2026-07-06-search-highlight-original-text-repair.md">2026-07-06 spec</a>）</td><td><span class="pill green">shipped</span></td></tr>
             </tbody>
           </table>
         </section>
@@ -256,6 +259,8 @@
                 <td><a href="superpowers/specs/2026-07-04-vault-search-harness-native-migration.md">Migration spec</a></td>
                 <td><span class="pill gold">planned (spec only)</span></td>
               </tr>
+              <!-- Search Highlight Vault-first 源改造 2026-07-07 shipped — see #done -->
+
               <!-- Hub Generation Agent 2026-07-03 shipped as commit 6bea87c3 — see #done -->
             </tbody>
           </table>
@@ -351,6 +356,7 @@
         <section id="backlog">
           <h2>远期 Backlog</h2>
           <p class="lead">无 spec 的想法，不承担交付责任。要动之前必须先调研落 <code>docs/research/</code>，再升到"调研候选"。</p>
+          <p class="read-note"><b>局部 UI 小需求：</b>不够 roadmap 级别、但已经明确的 surface-level 需求登记在 <a href="planned-requirements.html">Planned Requirements</a>，例如 Vault graph segment、Document local graph、Search drawer hub context、Ambient floating panel。</p>
           <table class="doc-table">
 <colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
             <thead>
@@ -364,6 +370,7 @@
               <tr><td><strong>n8n / multi-agent / marketplace</strong></td><td>集成 n8n / 多 agent 并发模式 / agent marketplace</td><td>progress.md § 5</td></tr>
               <tr><td><strong>Real-time LLM context inspector</strong></td><td>实时看 LLM 拿到的 context 面板</td><td>progress.md § 5</td></tr>
               <tr><td><strong>Graph 高级可视化</strong></td><td>nebula background / healing ray / source-sink 视图</td><td>progress.md § 5</td></tr>
+              <tr><td><strong>Vault Intelligence signal explainability + Semantic finding UI</strong></td><td>把 soft orphan、island cluster、fragile bridge、phantom node、redundant hubs 等 signal 的解释、例子、图上 overlay 和 review surface 合到各自 signal 行里；<code>M-*</code> semantic detector 需要 LLM budget / throttle / evidence review 后才能从 stub 变成用户可见 finding。</td><td><a href="13-feature-vault-intelligence.html#signals">13 · 每类信号细看</a></td></tr>
               <tr><td><strong>Sync 外部笔记源</strong></td><td>flomo / Apple Notes / Calendar / ChatGPT 历史 / Gemini / Claude 历史</td><td>#53 / #23</td></tr>
               <tr><td><strong>IFTTT / Workflow agent</strong></td><td>规则触发的工作流 agent 模式</td><td>#48</td></tr>
               <tr><td><strong>Message branching</strong></td><td>从任意消息点 fork 会话</td><td>#14</td></tr>
