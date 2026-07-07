@@ -74,7 +74,6 @@
 			<button class="preset-btn" data-preset="flow-tb" title="Top→down hierarchical flow — what references what?">Flow ↓</button>
 			<button class="preset-btn" data-preset="flow-lr" title="Left→right hierarchical flow — same as ↓ but sideways">Flow →</button>
 			<button class="preset-btn" data-preset="folder" title="Full-depth folder tree — where in my vault?">Folder tree</button>
-			<button class="preset-btn" data-preset="hub" title="Docs grouped under their hubs — which hub owns what?">Hub cluster</button>
 			<button class="preset-btn" data-preset="orbit" title="Hubs at center, docs orbit — are hubs the center of gravity?">Orbit</button>
 		</div>
 		<div class="control">
@@ -137,9 +136,11 @@
 		<li><b>Constellation</b> — how do these results cluster together? (constraint force)</li>
 		<li><b>Flow ↓ / →</b> — what references what, top-down or left-right (dagre)</li>
 		<li><b>Folder tree</b> — where in my vault do they live?</li>
-		<li><b>Hub cluster</b> — which hub owns which docs?</li>
 		<li><b>Orbit</b> — are hubs the center of gravity?</li>
 	</ul>
+	<p style="font-size:11px;color:#94a3b8;line-height:1.5;margin:4px 0 0">
+		"Group by hub" is a grouping overlay, not a view mode — available in <b>Advanced</b>.
+	</p>
 	<h2>Notes</h2>
 	<ul style="padding-left:16px;line-height:1.5;color:#666">
 		<li>Semantic-edge toggle flips density inside every mode.</li>
@@ -536,7 +537,6 @@
 		'flow-tb':     { label: 'Flow ↓',        layout: 'dagre-tb',    showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
 		'flow-lr':     { label: 'Flow →',        layout: 'dagre-lr',    showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
 		folder:        { label: 'Folder tree',   layout: 'cola',        showRef: false, showHubC: false, showSem: false, groupFolder: true,  groupHub: false },
-		hub:           { label: 'Hub cluster',   layout: 'cise',        showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: true },
 		orbit:         { label: 'Orbit',         layout: 'concentric-hub', showRef: true, showHubC: true, showSem: true,  groupFolder: false, groupHub: false },
 	};
 	let activePreset = 'constellation';
