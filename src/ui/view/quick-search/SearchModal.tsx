@@ -682,11 +682,13 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
  */
 export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
 	const { activeTab, setActiveTab } = useSharedStore();
-	// Graph view needs more canvas than the list. Bump the modal's floor
-	// only while in graph mode so list-mode users still get the compact
-	// modal size they're used to.
+	// Graph view claims all available modal height (list view stays
+	// content-driven so short result sets don't leave empty space).
 	const resultView = useVaultSearchStore((s) => s.resultView);
-	const modalMinHeight = activeTab === 'vault' && resultView === 'graph' ? '640px' : '400px';
+	const isGraph = activeTab === 'vault' && resultView === 'graph';
+	const modalStyle: React.CSSProperties = isGraph
+		? { height: 'calc(100vh - 160px)', maxHeight: 'calc(100vh - 160px)' }
+		: { maxHeight: 'calc(100vh - 160px)', minHeight: '400px' };
 
 	const handleContainerKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === 'Tab' && !e.shiftKey) {
@@ -700,7 +702,7 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 			className="pktw-w-full pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-overflow-hidden peak-no-native-outline"
 			onKeyDown={handleContainerKeyDown}
 			tabIndex={-1}
-			style={{ maxHeight: 'calc(100vh - 160px)', minHeight: modalMinHeight }}
+			style={modalStyle}
 		>
 			<div className="pktw-flex-shrink-0 pktw-flex pktw-border-b pktw-border-pk-border pktw-bg-pk-surface-raised">
 				<TabButton
