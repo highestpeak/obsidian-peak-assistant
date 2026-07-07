@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Header Toolbar Variants · Result Graph View</title>
+<style>
+	:root {
+		--pk-accent: #7c3aed;
+		--pk-accent-soft: #ede9fe;
+		--pk-accent-tint: #f5f3ff;
+		--pk-fg: #1c1c1c;
+		--pk-fg-muted: #6b7280;
+		--pk-fg-tertiary: #94a3b8;
+		--pk-border: #e5e5e5;
+		--pk-border-strong: #d4d4d4;
+		--pk-bg: #ffffff;
+		--pk-bg-sunken: #f7f5fb;
+		--pk-bg-hover: #f4f2f8;
+	}
+	* { box-sizing: border-box; }
+	html, body {
+		margin: 0;
+		font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+		background: var(--pk-bg-sunken);
+		color: var(--pk-fg);
+		font-size: 14px;
+	}
+	body { padding: 32px; max-width: 1200px; margin: 0 auto; }
+	h1 { font-size: 20px; margin: 0 0 6px; color: var(--pk-accent); }
+	.tagline { color: var(--pk-fg-muted); margin-bottom: 32px; font-size: 13px; }
+	.variant {
+		margin-bottom: 36px;
+		background: var(--pk-bg);
+		border-radius: 12px;
+		border: 1px solid var(--pk-border);
+		overflow: hidden;
+		box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+	}
+	.variant-hd {
+		padding: 12px 16px 8px;
+		border-bottom: 1px solid var(--pk-border);
+		background: var(--pk-bg-sunken);
+	}
+	.variant-hd h2 { font-size: 13px; font-weight: 600; margin: 0; color: var(--pk-fg); }
+	.variant-hd .note { font-size: 11px; color: var(--pk-fg-tertiary); margin-top: 3px; }
+
+	/* Mock the search modal chrome */
+	.modal-mock {
+		padding: 0;
+		background: var(--pk-bg);
+	}
+	.mock-tabs {
+		display: flex;
+		border-bottom: 1px solid var(--pk-border);
+	}
+	.mock-tab {
+		flex: 1;
+		text-align: center;
+		padding: 12px;
+		font-size: 13px;
+		font-weight: 500;
+		color: var(--pk-fg-muted);
+		position: relative;
+	}
+	.mock-tab.active { color: var(--pk-accent); }
+	.mock-tab.active::after {
+		content: '';
+		position: absolute;
+		left: 0; right: 0; bottom: -1px;
+		height: 2px;
+		background: var(--pk-accent);
+	}
+	.mock-input {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		padding: 10px 14px;
+		border-bottom: 1px solid var(--pk-border);
+	}
+	.mock-input .pill-mock {
+		flex: 1;
+		height: 36px;
+		background: var(--pk-bg-sunken);
+		border-radius: 999px;
+		display: flex;
+		align-items: center;
+		padding: 0 18px;
+		font-size: 13px;
+		color: var(--pk-fg);
+		position: relative;
+	}
+	.mock-input .pill-mock::after {
+		content: 'all';
+		position: absolute;
+		right: 12px;
+		font-size: 10px;
+		font-weight: 500;
+		padding: 2px 8px;
+		border-radius: 999px;
+		background: var(--pk-accent-tint);
+		color: var(--pk-accent);
+		border: 1px solid rgba(124,58,237,0.2);
+	}
+	.mock-input .ai-btn {
+		font-size: 12px;
+		color: var(--pk-accent);
+		padding: 6px 8px;
+	}
+	.mock-modeline {
+		display: flex;
+		align-items: center;
+		padding: 8px 14px;
+		border-bottom: 1px solid var(--pk-border);
+		gap: 6px;
+		min-height: 44px;
+	}
+	.mock-modeline .mode-chip {
+		padding: 4px 10px;
+		border-radius: 999px;
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--pk-fg-muted);
+		cursor: pointer;
+	}
+	.mock-modeline .mode-chip.active {
+		background: rgba(124,58,237,0.10);
+		color: var(--pk-accent);
+		border: 1px solid rgba(124,58,237,0.25);
+	}
+	.mock-body {
+		background: repeating-linear-gradient(45deg, #f7f5fb, #f7f5fb 8px, #f0edf6 8px, #f0edf6 16px);
+		height: 80px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 11px;
+		color: var(--pk-fg-tertiary);
+		font-style: italic;
+	}
+
+	/* Icons — inline SVG helpers so we don't ship an icon lib */
+	.i {
+		width: 14px;
+		height: 14px;
+		display: inline-block;
+		flex-shrink: 0;
+		stroke: currentColor;
+		stroke-width: 1.8;
+		fill: none;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	.i-network > * { stroke: currentColor; fill: none; }
+
+	/* ─── Variant A · SEGMENTED CONTROL (macOS style) ─────────────────── */
+	.va-wrap { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+	.va-segmented {
+		display: inline-flex;
+		background: rgba(124,58,237,0.06);
+		border-radius: 8px;
+		padding: 3px;
+		gap: 2px;
+	}
+	.va-segmented button {
+		border: none;
+		background: transparent;
+		font-size: 11px;
+		font-weight: 500;
+		padding: 5px 12px;
+		border-radius: 6px;
+		color: var(--pk-fg-muted);
+		cursor: pointer;
+		transition: background 120ms ease, color 120ms ease;
+	}
+	.va-segmented button:hover { color: var(--pk-accent); }
+	.va-segmented button.active {
+		background: white;
+		color: var(--pk-accent);
+		box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(124,58,237,0.15);
+	}
+	.va-divider { width: 1px; height: 20px; background: var(--pk-border); }
+	.va-switch {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 11px;
+		color: var(--pk-fg-muted);
+		cursor: pointer;
+	}
+	.va-switch input { display: none; }
+	.va-switch .track {
+		width: 30px;
+		height: 16px;
+		background: var(--pk-border-strong);
+		border-radius: 999px;
+		position: relative;
+		transition: background 180ms ease;
+	}
+	.va-switch .track::after {
+		content: '';
+		position: absolute;
+		top: 2px; left: 2px;
+		width: 12px; height: 12px;
+		background: white;
+		border-radius: 999px;
+		transition: transform 180ms ease;
+		box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+	}
+	.va-switch input:checked + .track { background: var(--pk-accent); }
+	.va-switch input:checked + .track::after { transform: translateX(14px); }
+	.va-graph-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 11px;
+		font-weight: 500;
+		padding: 5px 12px;
+		border-radius: 999px;
+		background: var(--pk-accent);
+		color: white;
+		border: none;
+		cursor: pointer;
+	}
+	.va-graph-btn.off {
+		background: transparent;
+		color: var(--pk-fg-muted);
+		border: 1px solid var(--pk-border-strong);
+	}
+
+	/* ─── Variant B · ACCENT-FILLED PILL (bold active) ────────────────── */
+	.vb-wrap { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+	.vb-preset-row { display: inline-flex; gap: 4px; }
+	.vb-chip {
+		font-size: 11px;
+		font-weight: 500;
+		padding: 5px 12px;
+		border-radius: 999px;
+		background: transparent;
+		color: var(--pk-fg-muted);
+		border: 1px solid var(--pk-border-strong);
+		cursor: pointer;
+		transition: all 120ms ease;
+	}
+	.vb-chip:hover { color: var(--pk-accent); border-color: rgba(124,58,237,0.3); }
+	.vb-chip.active {
+		background: var(--pk-accent);
+		color: white;
+		border-color: var(--pk-accent);
+		box-shadow: 0 1px 3px rgba(124,58,237,0.3);
+	}
+	.vb-sem-chip {
+		font-size: 11px;
+		font-weight: 500;
+		padding: 4px 12px;
+		border-radius: 999px;
+		background: transparent;
+		color: var(--pk-fg-muted);
+		border: 1px dashed var(--pk-border-strong);
+		cursor: pointer;
+	}
+	.vb-sem-chip.active {
+		background: var(--pk-accent-tint);
+		color: var(--pk-accent);
+		border: 1px dashed var(--pk-accent);
+	}
+	.vb-graph { font-size: 11px; color: var(--pk-accent); padding: 5px 8px; display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
+	.vb-graph.off { color: var(--pk-fg-muted); }
+
+	/* ─── Variant C · TWO-ROW (mode row + graph row) ──────────────────── */
+	.vc-row2 {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		padding: 8px 14px;
+		border-bottom: 1px solid var(--pk-border);
+		background: var(--pk-bg-sunken);
+	}
+	.vc-label {
+		font-size: 10px;
+		color: var(--pk-fg-tertiary);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	.vc-segmented {
+		display: inline-flex;
+		background: white;
+		border: 1px solid var(--pk-border);
+		border-radius: 8px;
+		padding: 2px;
+	}
+	.vc-segmented button {
+		border: none;
+		background: transparent;
+		font-size: 11px;
+		font-weight: 500;
+		padding: 5px 10px;
+		border-radius: 6px;
+		color: var(--pk-fg-muted);
+		cursor: pointer;
+	}
+	.vc-segmented button.active {
+		background: var(--pk-accent);
+		color: white;
+	}
+	.vc-graph-toggle { margin-left: auto; }
+
+	/* ─── Variant D · UNDERLINE ACTIVE (like tabs) ──────────────────── */
+	.vd-wrap { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+	.vd-tabs { display: inline-flex; gap: 0; }
+	.vd-tab {
+		font-size: 11px;
+		font-weight: 500;
+		padding: 6px 10px;
+		background: transparent;
+		border: none;
+		color: var(--pk-fg-muted);
+		cursor: pointer;
+		border-bottom: 2px solid transparent;
+		margin-bottom: -1px;
+		transition: color 120ms ease, border-color 120ms ease;
+	}
+	.vd-tab:hover { color: var(--pk-accent); }
+	.vd-tab.active {
+		color: var(--pk-accent);
+		border-bottom-color: var(--pk-accent);
+	}
+	.vd-sem {
+		font-size: 11px;
+		font-weight: 500;
+		padding: 3px 10px;
+		border-radius: 999px;
+		background: transparent;
+		border: 1px solid var(--pk-border-strong);
+		color: var(--pk-fg-muted);
+		cursor: pointer;
+	}
+	.vd-sem.active {
+		background: var(--pk-accent);
+		color: white;
+		border-color: var(--pk-accent);
+	}
+
+	/* ─── Variant E · ICON-FIRST WITH TOOLTIPS ────────────────────── */
+	.ve-wrap { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+	.ve-icon-btn {
+		width: 32px;
+		height: 28px;
+		border-radius: 6px;
+		background: transparent;
+		border: 1px solid transparent;
+		color: var(--pk-fg-muted);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		position: relative;
+	}
+	.ve-icon-btn:hover { color: var(--pk-accent); background: var(--pk-bg-hover); }
+	.ve-icon-btn.active {
+		color: var(--pk-accent);
+		background: var(--pk-accent-tint);
+		border-color: rgba(124,58,237,0.25);
+	}
+	.ve-icon-btn::before {
+		content: attr(data-tt);
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		transform: translate(-50%, 6px);
+		background: rgba(28,28,28,0.9);
+		color: white;
+		font-size: 10px;
+		padding: 4px 8px;
+		border-radius: 4px;
+		white-space: nowrap;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 120ms ease;
+	}
+	.ve-icon-btn:hover::before { opacity: 1; }
+	.ve-separator {
+		width: 1px;
+		height: 20px;
+		background: var(--pk-border);
+	}
+
+	/* Comparison sections */
+	.compare {
+		display: flex;
+		gap: 24px;
+		padding: 14px 16px 18px;
+		background: var(--pk-bg);
+	}
+	.compare > div { flex: 1; }
+	.compare .label { font-size: 10px; color: var(--pk-fg-tertiary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; font-weight: 600; }
+	.compare .demo { min-height: 44px; padding: 8px 12px; border: 1px dashed var(--pk-border); border-radius: 8px; display: flex; align-items: center; }
+
+	.wanted-list {
+		background: var(--pk-accent-tint);
+		border-left: 3px solid var(--pk-accent);
+		padding: 12px 16px;
+		margin-bottom: 24px;
+		font-size: 12px;
+		color: var(--pk-fg);
+		border-radius: 4px;
+	}
+	.wanted-list h3 { font-size: 12px; margin: 0 0 8px; color: var(--pk-accent); }
+	.wanted-list ul { margin: 0; padding-left: 18px; line-height: 1.7; }
+
+	.modal-size-demo {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 20px;
+		padding: 14px 16px;
+	}
+	.msd-card { border: 1px dashed var(--pk-border); border-radius: 8px; padding: 12px; }
+	.msd-card .h { font-size: 11px; color: var(--pk-fg-tertiary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+	.msd-card .b { background: var(--pk-bg-sunken); border-radius: 6px; }
+	.msd-card .b.short { height: 100px; }
+	.msd-card .b.tall { height: 200px; }
+	.msd-card .p { font-size: 11px; color: var(--pk-fg-muted); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>Result Graph — header toolbar variants</h1>
+<p class="tagline">Five variants of the mode-picker row when in Graph view. Click any preset chip to see the active state. Pick one (or mix elements from several) and I'll port it.</p>
+
+<div class="wanted-list">
+	<h3>What you called out</h3>
+	<ul>
+		<li>Pill style feels weak — active state should be unambiguous</li>
+		<li>"Graph view" toggle position is off — it competes with presets on the right</li>
+		<li>No visible on/off state for Graph view itself</li>
+		<li>Modal should be taller in Graph mode (below)</li>
+	</ul>
+</div>
+
+<!-- ─── Variant A · Segmented control + toggle switch ─── -->
+<div class="variant">
+	<div class="variant-hd">
+		<h2>A · Segmented control + toggle switch (macOS style)</h2>
+		<div class="note">Presets read as one grouped control. Semantic is a real toggle switch. Graph view has its own filled state on the left, doesn't compete with presets.</div>
+	</div>
+	<div class="modal-mock">
+		<div class="mock-tabs">
+			<div class="mock-tab active">Vault Search</div>
+			<div class="mock-tab">AI Analysis</div>
+		</div>
+		<div class="mock-input">
+			<div class="pill-mock">英语学习</div>
+			<div class="ai-btn">✨ AI</div>
+		</div>
+		<div class="mock-modeline">
+			<div class="mode-chip active">All</div>
+			<div class="mode-chip">Heading</div>
+			<div class="va-wrap">
+				<button class="va-graph-btn" id="va-graph">
+					<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><circle cx="4" cy="20" r="2"/><circle cx="20" cy="20" r="2"/><path d="M12 6v3M12 12l-6 6M12 12l6 6"/></svg>
+					Graph view
+				</button>
+				<div class="va-divider"></div>
+				<div class="va-segmented" data-group="va-preset">
+					<button class="active">Constellation</button>
+					<button>Flow ↓</button>
+					<button>Flow →</button>
+					<button>Folder tree</button>
+					<button>Orbit</button>
+				</div>
+				<label class="va-switch">
+					<input type="checkbox" />
+					<span class="track"></span>
+					<span>Semantic</span>
+				</label>
+			</div>
+		</div>
+		<div class="mock-body">graph canvas</div>
+	</div>
+</div>
+
+<!-- ─── Variant B · Accent-filled pill on active ─── -->
+<div class="variant">
+	<div class="variant-hd">
+		<h2>B · Accent-filled pill (bold active)</h2>
+		<div class="note">Each preset is an outlined pill; the active one fills with accent. Semantic sits apart with dashed border (matches the dashed semantic edge style). "Graph view" becomes just a plain accent text-icon toggle on the far right.</div>
+	</div>
+	<div class="modal-mock">
+		<div class="mock-modeline">
+			<div class="mode-chip active">All</div>
+			<div class="mode-chip">Heading</div>
+			<div class="vb-wrap">
+				<div class="vb-preset-row" data-group="vb-preset">
+					<button class="vb-chip active">Constellation</button>
+					<button class="vb-chip">Flow ↓</button>
+					<button class="vb-chip">Flow →</button>
+					<button class="vb-chip">Folder tree</button>
+					<button class="vb-chip">Orbit</button>
+				</div>
+				<button class="vb-sem-chip" data-toggle="vb-sem">Semantic</button>
+				<button class="vb-graph">
+					<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><circle cx="4" cy="20" r="2"/><circle cx="20" cy="20" r="2"/><path d="M12 6v3M12 12l-6 6M12 12l6 6"/></svg>
+					Graph view
+				</button>
+			</div>
+		</div>
+		<div class="mock-body">graph canvas</div>
+	</div>
+</div>
+
+<!-- ─── Variant C · Two-row header ─── -->
+<div class="variant">
+	<div class="variant-hd">
+		<h2>C · Two-row header (labeled sections)</h2>
+		<div class="note">Row 1 keeps All / Heading + graph toggle. Row 2 (visible only in graph view) is a labeled toolbar: "View" segmented + "Layers" switch. Semantic vocabulary makes it feel like a professional data tool.</div>
+	</div>
+	<div class="modal-mock">
+		<div class="mock-modeline">
+			<div class="mode-chip active">All</div>
+			<div class="mode-chip">Heading</div>
+			<div class="vc-graph-toggle">
+				<button class="va-graph-btn">
+					<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><circle cx="4" cy="20" r="2"/><circle cx="20" cy="20" r="2"/><path d="M12 6v3M12 12l-6 6M12 12l6 6"/></svg>
+					Graph view
+				</button>
+			</div>
+		</div>
+		<div class="vc-row2">
+			<span class="vc-label">View</span>
+			<div class="vc-segmented" data-group="vc-preset">
+				<button class="active">Constellation</button>
+				<button>Flow ↓</button>
+				<button>Flow →</button>
+				<button>Folder tree</button>
+				<button>Orbit</button>
+			</div>
+			<span class="vc-label" style="margin-left: 16px">Layers</span>
+			<label class="va-switch">
+				<input type="checkbox" />
+				<span class="track"></span>
+				<span>Semantic</span>
+			</label>
+		</div>
+		<div class="mock-body">graph canvas</div>
+	</div>
+</div>
+
+<!-- ─── Variant D · Underline tabs style ─── -->
+<div class="variant">
+	<div class="variant-hd">
+		<h2>D · Underline tabs (Vault Search / AI Analysis style)</h2>
+		<div class="note">Presets read as sub-tabs of "Graph view". Active preset gets an accent underline (same idiom as the main Vault Search tab above). Semantic is a single pill toggle.</div>
+	</div>
+	<div class="modal-mock">
+		<div class="mock-modeline">
+			<div class="mode-chip active">All</div>
+			<div class="mode-chip">Heading</div>
+			<div class="vd-wrap">
+				<div class="vd-tabs" data-group="vd-preset">
+					<button class="vd-tab active">Constellation</button>
+					<button class="vd-tab">Flow ↓</button>
+					<button class="vd-tab">Flow →</button>
+					<button class="vd-tab">Folder tree</button>
+					<button class="vd-tab">Orbit</button>
+				</div>
+				<button class="vd-sem" data-toggle="vd-sem">Semantic</button>
+				<button class="vb-graph">
+					<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><circle cx="4" cy="20" r="2"/><circle cx="20" cy="20" r="2"/><path d="M12 6v3M12 12l-6 6M12 12l6 6"/></svg>
+					Graph view
+				</button>
+			</div>
+		</div>
+		<div class="mock-body">graph canvas</div>
+	</div>
+</div>
+
+<!-- ─── Variant E · Icon-first (compact) ─── -->
+<div class="variant">
+	<div class="variant-hd">
+		<h2>E · Icon-first (compact, tooltip-driven)</h2>
+		<div class="note">Each preset is a small icon button with tooltip. Saves horizontal space, feels like a design-tool toolbar (Figma / Sketch). Downside: needs users to hover to learn the labels; but for repeat users it's fastest.</div>
+	</div>
+	<div class="modal-mock">
+		<div class="mock-modeline">
+			<div class="mode-chip active">All</div>
+			<div class="mode-chip">Heading</div>
+			<div class="ve-wrap" data-group="ve-preset">
+				<button class="ve-icon-btn active" data-tt="Constellation">
+					<svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="8" r="1.5"/><circle cx="18" cy="8" r="1.5"/><circle cx="12" cy="14" r="2"/><circle cx="6" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M6 8l6 6M18 8l-6 6M12 14l-6 6M12 14l6 6"/></svg>
+				</button>
+				<button class="ve-icon-btn" data-tt="Flow ↓">
+					<svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M12 7v3"/><rect x="4" y="10" width="6" height="4" rx="1"/><rect x="14" y="10" width="6" height="4" rx="1"/><path d="M7 14v3M17 14v3"/><rect x="4" y="17" width="6" height="4" rx="1"/><rect x="14" y="17" width="6" height="4" rx="1"/></svg>
+				</button>
+				<button class="ve-icon-btn" data-tt="Flow →">
+					<svg class="i" viewBox="0 0 24 24" style="transform: rotate(-90deg)"><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M12 7v3"/><rect x="4" y="10" width="6" height="4" rx="1"/><rect x="14" y="10" width="6" height="4" rx="1"/><path d="M7 14v3M17 14v3"/><rect x="4" y="17" width="6" height="4" rx="1"/><rect x="14" y="17" width="6" height="4" rx="1"/></svg>
+				</button>
+				<button class="ve-icon-btn" data-tt="Folder tree">
+					<svg class="i" viewBox="0 0 24 24"><path d="M3 6a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/></svg>
+				</button>
+				<button class="ve-icon-btn" data-tt="Orbit">
+					<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/></svg>
+				</button>
+				<div class="ve-separator"></div>
+				<button class="ve-icon-btn" data-tt="Toggle semantic edges" data-toggle="ve-sem">
+					<svg class="i" viewBox="0 0 24 24"><path d="M4 12h4M12 12h4M20 12" stroke-dasharray="3 3"/><circle cx="4" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="20" cy="12" r="1.5"/></svg>
+				</button>
+				<div class="ve-separator"></div>
+				<button class="ve-icon-btn active" data-tt="Graph view">
+					<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><circle cx="4" cy="20" r="2"/><circle cx="20" cy="20" r="2"/><path d="M12 6v3M12 12l-6 6M12 12l6 6"/></svg>
+				</button>
+			</div>
+		</div>
+		<div class="mock-body">graph canvas</div>
+	</div>
+</div>
+
+<!-- ─── Modal height ─── -->
+<div class="variant">
+	<div class="variant-hd">
+		<h2>Modal height in Graph view</h2>
+		<div class="note">Same modal chrome (mode-picker + tabs). In list view the modal sizes to content. In graph view we want more canvas.</div>
+	</div>
+	<div class="modal-size-demo">
+		<div class="msd-card">
+			<div class="h">Current</div>
+			<div class="b short"></div>
+			<div class="p">minHeight: 400 · maxHeight: calc(100vh - 160px). List-optimised; graph feels cramped.</div>
+		</div>
+		<div class="msd-card">
+			<div class="h">Proposed (graph view only)</div>
+			<div class="b tall"></div>
+			<div class="p">minHeight bumps to 640 when resultView === 'graph'. List view stays as-is.</div>
+		</div>
+	</div>
+</div>
+
+<script>
+	// Simple radio/toggle behavior for all groups.
+	for (const group of document.querySelectorAll('[data-group]')) {
+		for (const btn of group.querySelectorAll('button')) {
+			btn.addEventListener('click', () => {
+				for (const other of group.querySelectorAll('button')) other.classList.remove('active');
+				btn.classList.add('active');
+			});
+		}
+	}
+	// Toggle chips (semantic, graph icon)
+	for (const el of document.querySelectorAll('[data-toggle]')) {
+		el.addEventListener('click', () => el.classList.toggle('active'));
+	}
+	// Variant A "Graph view" button toggles between filled and outlined
+	const vaGraph = document.getElementById('va-graph');
+	if (vaGraph) {
+		vaGraph.addEventListener('click', () => vaGraph.classList.toggle('off'));
+	}
+</script>
+</body>
+</html>
