@@ -2091,3 +2091,53 @@ Tracks 与 commits：
 验证：`npm run build` 通过；`npm run test` **191/191 全绿**；`node scripts/audit/boundary-baseline.mjs` 与新 floor 一致。
 
 
+
+---
+
+## 2026-07-08 · Result Graph View V2（cytoscape port + preset UX + Variant A header）
+
+Spec: `docs/superpowers/specs/2026-07-08-result-graph-view-v2-cytoscape.md`
+Sandbox: `docs/research/2026-07-07-result-graph-layout/index.html`（layout playground）+ `header-variants.html`（5 个 header 布局比较）
+
+V1 landing（07-07）后一天真机试用出的三条根子问题：
+
+- ReactFlow 缺 native compound node，folder tree 五层嵌套硬拼太丑
+- 让用户直接勾 8 个 toggle 是 graph-viz 思维，不是产品思维——需要 named modes
+- `hub_constituent` 虚线在图上纯噪音，hub doc 本身就有 reference / semantic 真边
+
+一整天走"sandbox → 定稿 → 移植"的循环：先在 standalone HTML 里 iterate 到用户满意，再一次性搬回插件。
+
+**Sandbox 阶段（前半天）**：
+- 10 张用户挑的顺眼图 → 抽出共同默认（isolated 分区 / hover 高亮 / 不隐藏 isolated，一致 10/10）
+- 5 个 preset 命名（Constellation / Flow ↓ / Flow → / Folder tree / Orbit）× 每个绑一个 layout + grouping + 边默认
+- 淘汰 4 个 layout：`cose` / `breadthfirst` / `grid` / `concentric-score`
+- `cise` 从 preset 退到 Advanced（用户观察：hub cluster 是 grouping 不是 layout）
+- 修 folder tree：只按 top-level 分组不够 → 拆完整路径 nested compound（每层 padding + 深度递减透明度）
+- 修 hover：edge 全关时全 dim → 永远保留祖先 folder chain（面包屑高亮）
+- 修 compound hover：整个子树高亮 + subtree 内 edges
+- Hover 边动画：reference 实线静态、semantic 虚线蚁行（rAF time-based，帧率无关）
+- Node label 不再 truncate：改 `width: label` + `text-wrap: wrap` 到 360 px
+- Isolated grid：按 label 字典序（zh collation），查询变了排列不乱窜
+- Header 出 5 个 variant 让用户挑：A 段control + toggle switch、B 描边 pill、C 两行、D underline tabs、E icon-only。用户选 **A**。
+
+**Plugin 移植（后半天）**：
+- 依赖：`cytoscape` / `cytoscape-fcose` / `cytoscape-cise` / `cytoscape-cola` / `cytoscape-dagre` + `@types/cytoscape` 一次性 `--legacy-peer-deps` 装齐（obsidian@1.11 与 codemirror 6.5 peer 冲突，绕过）
+- `ResultGraphView.tsx` 500 行整体重写，xyflow 六个卫星组件（`HubAnchorNode` / `ResultDocNode` / `CommunityBackground` / `FolderBoundary` / `IsolatedMatchesRail` / `SparseFallbackBanner`）全删
+- Store 换端：`graphOverlayFolder` + `graphOverlaySemantic` 两字段 → `graphPreset: GraphPreset` + `graphShowSemantic: boolean`。`setGraphPreset` 切到 orbit 自动开 semantic
+- Header 走 Variant A：`GraphViewToggle`（filled/outlined）→ 竖分隔线 → `GraphPresetSegmented`（macOS 分段控件，白 pill + 微阴影）→ `SemanticToggle`（真开关，30×16 track + 12×12 圆头滑动）
+- Modal 高度：真机看还是短，root cause 是 Obsidian 外层 `.modal` 是内容驱动的，我在 React root 上设 `height` 被外框卡住。改成 `useEffect` 里 `closest('.modal')` 找到外层，进 graph view 时 imperative `height = calc(100vh - 160px)`，退回时清掉
+- Copy 按钮从 JSON 换成 Mermaid（LLM 友好），拷完图标变 Check 停 1.5 s
+
+**验证**：`npm run build` 通过；`npm run test` 191/191 全绿；用户真机 confirmed 5 preset 切换、semantic overlay、folder tree、Orbit、hub subview 都 OK。
+
+关键 commits：
+- `325ab871` — plugin port（cytoscape 替换 xyflow，5 preset 生效，legacy 组件删）
+- `184d93fa` — header variants 原型 HTML
+- `be2499ab` — Variant A header
+- `c03055d3` + `e4c0c461` — 全屏 modal 修（imperative 走 Obsidian `.modal` ancestor）
+- 落文档：`2026-07-08-result-graph-view-v2-cytoscape.md`（spec + AC）
+
+**Deferred**（V1 遗留、V2 也没做）：
+- Edge hover tooltip 需要 custom cytoscape edge component（数据在 `edge.data.kind`）
+- Hub anchor 显示 curator LLM 名字而非 raw `Hub-000031ae70fe`——是 hub curator 侧问题不是 viewer 侧
+- Multi-select / lasso 导出子集到 Mermaid
