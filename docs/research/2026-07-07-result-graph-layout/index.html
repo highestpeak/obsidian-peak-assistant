@@ -181,29 +181,60 @@
 			subgraph.resultNodes.filter((n) => !structuralEndpoints.has(n.id)).map((n) => n.id)
 		);
 
-		// Group parents (compound nodes).
-		const parentIds = new Set();
+		// Hub group parents (compound nodes).
 		if (groupHub) {
-			// Only real hub anchors emit a group parent.
 			for (const h of subgraph.hubAnchors) {
 				els.push({
 					group: 'nodes',
 					data: { id: `group:hub:${h.id}`, label: h.title || h.path || h.id, kind: 'hubGroup' },
 					classes: 'hubGroup',
 				});
-				parentIds.add(`group:hub:${h.id}`);
 			}
-			// Docs unattached to a hub → orphan
 		}
+
+		// Full-depth folder-tree parents (compound nodes). Each doc's path is
+		// split into segments (excluding the filename); each segment becomes a
+		// parent, and each level's parent is the previous cumulative segment.
+		// So `kb1-life-notes/D-留学和移民/mess/foo.md` produces three nested
+		// compound nodes, and the doc lives inside the deepest one.
+		const folderChainMemo = new Map(); // path → array of {id, label, parentId, depth}
+		function folderChainForPath(rawPath) {
+			if (!rawPath) return [];
+			if (folderChainMemo.has(rawPath)) return folderChainMemo.get(rawPath);
+			const parts = rawPath.split('/');
+			parts.pop(); // strip filename
+			let cum = '';
+			const chain = [];
+			let prevId = undefined;
+			for (const p of parts) {
+				cum = cum ? `${cum}/${p}` : p;
+				const id = `group:folder:${cum}`;
+				chain.push({ id, label: p, parentId: prevId, depth: chain.length, top: parts[0] });
+				prevId = id;
+			}
+			folderChainMemo.set(rawPath, chain);
+			return chain;
+		}
+
 		if (groupFolder) {
-			const folders = new Set(subgraph.resultNodes.map((n) => n.folder).filter(Boolean));
-			for (const f of folders) {
-				els.push({
-					group: 'nodes',
-					data: { id: `group:folder:${f}`, label: f, kind: 'folderGroup', color: folderColor(f) },
-					classes: 'folderGroup',
-				});
-				parentIds.add(`group:folder:${f}`);
+			const seenFolder = new Set();
+			for (const n of subgraph.resultNodes) {
+				for (const seg of folderChainForPath(n.path)) {
+					if (seenFolder.has(seg.id)) continue;
+					seenFolder.add(seg.id);
+					els.push({
+						group: 'nodes',
+						data: {
+							id: seg.id,
+							label: seg.label,
+							kind: 'folderGroup',
+							parent: seg.parentId,
+							color: folderColor(seg.top),
+							depth: seg.depth,
+						},
+						classes: 'folderGroup',
+					});
+				}
 			}
 		}
 
@@ -230,9 +261,15 @@
 		}
 		for (const n of subgraph.resultNodes) {
 			if (hideIsolated && isolatedIds.has(n.id)) continue;
+			// Priority: hub group wins over folder group when both are on and
+			// this doc is a hub constituent — that keeps the hub cluster tight.
 			let parent;
-			if (groupHub && hubOfDoc.has(n.id)) parent = `group:hub:${hubOfDoc.get(n.id)}`;
-			else if (groupFolder && n.folder) parent = `group:folder:${n.folder}`;
+			if (groupHub && hubOfDoc.has(n.id)) {
+				parent = `group:hub:${hubOfDoc.get(n.id)}`;
+			} else if (groupFolder) {
+				const chain = folderChainForPath(n.path);
+				if (chain.length) parent = chain[chain.length - 1].id;
+			}
 			els.push({
 				group: 'nodes',
 				data: {
@@ -316,18 +353,23 @@
 		}},
 		{ selector: 'node.folderGroup', style: {
 			'background-color': 'data(color)',
-			'background-opacity': 0.5,
+			// Deeper levels get progressively more transparent so nested
+			// rectangles are visually distinguishable — a form of "matryoshka
+			// shading". Depth 0 is fully saturated (top-level folder), each
+			// nested layer sheds ~20% opacity.
+			'background-opacity': 'mapData(depth, 0, 4, 0.55, 0.08)',
 			'border-color': '#94a3b8',
-			'border-width': 1,
+			'border-width': 'mapData(depth, 0, 4, 1.6, 0.6)',
 			'border-style': 'dashed',
 			'shape': 'round-rectangle',
 			'label': 'data(label)',
-			'font-size': 9, 'font-weight': 700,
+			'font-size': 'mapData(depth, 0, 4, 11, 8)',
+			'font-weight': 700,
 			'color': '#334155',
 			'text-valign': 'top', 'text-halign': 'left',
 			'text-margin-y': -4,
 			'text-margin-x': 8,
-			'padding': 16,
+			'padding': 'mapData(depth, 0, 4, 22, 10)',
 		}},
 		{ selector: 'edge', style: {
 			'curve-style': 'bezier',
@@ -555,8 +597,14 @@
 			wheelSensitivity: 0.2,
 		});
 
+		// When the folder tree is on, isolated docs sit inside their folder
+		// ancestors. Forcibly relocating them to a bottom grid would stretch
+		// the folder parents to swallow the whole canvas — so we disable the
+		// split in that case. The tree itself provides visual grouping.
+		const shouldSplitIsolated = opts.splitIsolated && !opts.groupFolder;
+
 		// Run layout only on the connected subgraph when splitting isolated.
-		const connectedEles = opts.splitIsolated
+		const connectedEles = shouldSplitIsolated
 			? cy.elements().filter((el) => {
 				if (el.isNode()) return !el.hasClass('isolated') && !el.hasClass('regionLabel');
 				const s = el.source(), t = el.target();
@@ -569,7 +617,7 @@
 		// Wait for the layout event (not a timeout) so isolated positioning
 		// always happens after the connected cluster settles.
 		layoutObj.one('layoutstop', () => {
-			if (opts.splitIsolated) layoutIsolatedGrid(cy);
+			if (shouldSplitIsolated) layoutIsolatedGrid(cy);
 			cy.fit(undefined, 50);
 			if (opts.alwaysAnimate) animateEdges('edge');
 		});
