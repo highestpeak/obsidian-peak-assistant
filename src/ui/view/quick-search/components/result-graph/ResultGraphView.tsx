@@ -1,24 +1,35 @@
+/**
+ * Result Graph View — cytoscape.js port of the 2026-07-07 sandbox design.
+ * `docs/research/2026-07-07-result-graph-layout/index.html` is the reference
+ * implementation; this component keeps parity with it feature-for-feature:
+ *
+ *  - 5 presets (Constellation / Flow ↓ / Flow → / Folder tree / Orbit)
+ *    switched via the store's `graphPreset` field; `graphShowSemantic`
+ *    layered on top.
+ *  - Full-depth folder tree grouping (Folder preset only) — every path
+ *    segment becomes a compound parent, nested inside the previous.
+ *  - Isolated docs relocate to a labeled grid below the connected cluster
+ *    (sorted alphabetically for stable scanning).
+ *  - Hover highlight expands to the closed neighborhood + ancestor
+ *    breadcrumb (compound hover expands to the whole subtree).
+ *  - Marching-ants animation on hovered semantic (dashed) edges; reference
+ *    edges keep a static accent stroke.
+ *  - Copy button emits a Mermaid flowchart for LLM analysis; icon swaps to
+ *    a checkmark for 1.5 s after copy.
+ *
+ * `hub_constituent` edges are dropped entirely — hub docs are documents
+ * themselves and their real cross-links show up as reference / semantic.
+ */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import dagre from '@dagrejs/dagre';
-import { Copy, Check } from 'lucide-react';
-import {
-	ReactFlow,
-	Background,
-	Controls,
-	applyNodeChanges,
-	type Edge,
-	type Node,
-	type NodeChange,
-	type NodeMouseHandler,
-	type ReactFlowInstance,
-} from '@xyflow/react';
-import { HubAnchorNode, type HubAnchorNodeType } from './HubAnchorNode';
-import { ResultDocNode, type ResultDocNodeType } from './ResultDocNode';
-import { CommunityBackground, type CommunityRegion } from './CommunityBackground';
-import { FolderBoundary, type FolderBoundaryRegion } from './FolderBoundary';
-import { IsolatedMatchesRail, type IsolatedMatchItem } from './IsolatedMatchesRail';
-import { SparseFallbackBanner } from './SparseFallbackBanner';
+import cytoscape from 'cytoscape';
+import type { Core, EdgeSingular, ElementDefinition, NodeSingular } from 'cytoscape';
+import fcose from 'cytoscape-fcose';
+import cise from 'cytoscape-cise';
+import cola from 'cytoscape-cola';
+import dagre from 'cytoscape-dagre';
+import { Check, Copy } from 'lucide-react';
 import { useVaultSearchStore } from '../../store';
+import type { GraphPreset } from '../../store/vaultSearchStore';
 import { buildResultSubgraph, type ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
@@ -26,18 +37,359 @@ import { IconButton } from '@/ui/components/primitives';
 import type { SearchResultItem } from '@/core/search/searchTypes';
 
 const NODE_CAP = 100;
-const NARROW_MODAL_PX = 640;
-const HUB_NODE_W = 200;
-const HUB_NODE_H = 60;
-const DOC_NODE_W = 170;
-const DOC_NODE_H = 44;
-const ISOLATED_GRID_COLS = 4;
+
+// ─── One-time Cytoscape extension registration ──────────────────────────────
+let extensionsRegistered = false;
+function ensureExtensionsRegistered(): void {
+	if (extensionsRegistered) return;
+	cytoscape.use(fcose as never);
+	cytoscape.use(cise as never);
+	cytoscape.use(cola as never);
+	cytoscape.use(dagre as never);
+	extensionsRegistered = true;
+}
+
+// ─── Preset bundle ──────────────────────────────────────────────────────────
+interface PresetBundle {
+	layout: 'fcose' | 'cola' | 'dagre-tb' | 'dagre-lr' | 'concentric-hub';
+	groupFolder: boolean;
+}
+const PRESETS: Record<GraphPreset, PresetBundle> = {
+	constellation: { layout: 'fcose',          groupFolder: false },
+	'flow-tb':     { layout: 'dagre-tb',       groupFolder: false },
+	'flow-lr':     { layout: 'dagre-lr',       groupFolder: false },
+	folder:        { layout: 'cola',           groupFolder: true },
+	orbit:         { layout: 'concentric-hub', groupFolder: false },
+};
+
+// ─── Palette (folder wash background) ───────────────────────────────────────
+const FOLDER_COLORS = ['#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#e0e7ff', '#fed7aa', '#ccfbf1', '#f5d0fe', '#fef9c3'];
+function makeFolderColorPicker(): (folder: string) => string {
+	const map = new Map<string, string>();
+	return (folder) => {
+		if (!folder) return '#f5f5f5';
+		let c = map.get(folder);
+		if (!c) {
+			c = FOLDER_COLORS[map.size % FOLDER_COLORS.length];
+			map.set(folder, c);
+		}
+		return c;
+	};
+}
+
+/** Numeric match score of a raw search result. */
+function scoreOf(r: SearchResultItem): number {
+	const s = r.finalScore ?? r.score ?? 0;
+	return Number.isFinite(s) ? s : 0;
+}
 
 /**
- * Turn a subgraph into a Mermaid flowchart string. Format chosen so an LLM or
- * a reader can eyeball structure quickly: hubs styled with a class, edges
- * labelled with their kind, doc IDs shortened.
+ * Turn subgraph → cytoscape elements. Isolation is decided by reference
+ * edges only (hub_constituent is dropped from render + isolation logic
+ * altogether). folderPicker seeds the depth-0 folder wash colors.
  */
+function buildElements(
+	sub: ResultSubgraphOutput,
+	opts: { showSemantic: boolean; groupFolder: boolean },
+	folderPicker: (folder: string) => string,
+): ElementDefinition[] {
+	const els: ElementDefinition[] = [];
+
+	// Isolation criterion — only reference edges keep a doc "connected".
+	const refEndpoints = new Set<string>();
+	for (const e of sub.edges) {
+		if (e.kind !== 'reference') continue;
+		refEndpoints.add(e.from);
+		refEndpoints.add(e.to);
+	}
+	const isolatedIds = new Set<string>(
+		sub.resultNodes.filter((n) => !refEndpoints.has(n.id)).map((n) => n.id),
+	);
+
+	// Full-depth folder compound tree (Folder preset only). Each path segment
+	// becomes a parent, nested inside the previous one; docs live inside the
+	// deepest segment.
+	const folderChainMemo = new Map<string, Array<{ id: string; label: string; parentId?: string; depth: number; top: string }>>();
+	const chainForPath = (rawPath: string) => {
+		if (!rawPath) return [];
+		let hit = folderChainMemo.get(rawPath);
+		if (hit) return hit;
+		const parts = rawPath.split('/');
+		parts.pop();
+		let cum = '';
+		let prevId: string | undefined;
+		const chain: Array<{ id: string; label: string; parentId?: string; depth: number; top: string }> = [];
+		const top = parts[0] ?? '';
+		for (const p of parts) {
+			cum = cum ? `${cum}/${p}` : p;
+			const id = `group:folder:${cum}`;
+			chain.push({ id, label: p, parentId: prevId, depth: chain.length, top });
+			prevId = id;
+		}
+		hit = chain;
+		folderChainMemo.set(rawPath, hit);
+		return hit;
+	};
+
+	if (opts.groupFolder) {
+		const seen = new Set<string>();
+		for (const n of sub.resultNodes) {
+			for (const seg of chainForPath(n.path)) {
+				if (seen.has(seg.id)) continue;
+				seen.add(seg.id);
+				els.push({
+					group: 'nodes',
+					data: {
+						id: seg.id,
+						label: seg.label,
+						kind: 'folderGroup',
+						parent: seg.parentId,
+						color: folderPicker(seg.top),
+						depth: seg.depth,
+					},
+					classes: 'folderGroup',
+				});
+			}
+		}
+	}
+
+	// Nodes
+	const maxScore = sub.resultNodes.reduce((m, n) => Math.max(m, n.score), 0) || 1;
+	for (const h of sub.hubAnchors) {
+		els.push({
+			group: 'nodes',
+			data: {
+				id: h.id,
+				label: `${h.title || h.path || h.id}\n(${h.constituentCount} constituents)`,
+				kind: 'hub',
+				score: 1,
+			},
+			classes: 'hub',
+		});
+	}
+	for (const n of sub.resultNodes) {
+		let parent: string | undefined;
+		if (opts.groupFolder) {
+			const chain = chainForPath(n.path);
+			if (chain.length) parent = chain[chain.length - 1].id;
+		}
+		els.push({
+			group: 'nodes',
+			data: {
+				id: n.id,
+				label: n.title || n.path || n.id,
+				kind: 'doc',
+				score: n.score / maxScore,
+				folder: (n.path ? n.path.split('/')[0] : '') || '',
+				parent,
+			},
+			classes: `doc ${isolatedIds.has(n.id) ? 'isolated' : ''}`,
+		});
+	}
+
+	// Edges. reference always renders; semantic respects the store toggle;
+	// hub_constituent is intentionally never emitted.
+	const seen = new Set<string>();
+	for (const e of sub.edges) {
+		if (e.kind === 'hub_constituent') continue;
+		if (e.kind === 'semantic' && !opts.showSemantic) continue;
+		if (e.kind === 'reference' && !e) continue;
+		if (e.from === e.to) continue;
+		const key = `${e.kind}|${e.from}|${e.to}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		els.push({
+			group: 'edges',
+			data: { id: key, source: e.from, target: e.to, kind: e.kind },
+			classes: e.kind,
+		});
+	}
+
+	return els;
+}
+
+// ─── Style — mirrors the sandbox's CSS spec ────────────────────────────────
+const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
+	{
+		selector: 'node.hub',
+		style: {
+			'background-color': '#c4b5fd',
+			'border-color': '#7c3aed',
+			'border-width': 2,
+			shape: 'round-rectangle',
+			width: 'label',
+			height: 'label',
+			'padding-left': '10px', 'padding-right': '10px',
+			'padding-top': '6px',   'padding-bottom': '6px',
+			label: 'data(label)',
+			'text-wrap': 'wrap',
+			'text-max-width': '360px',
+			'font-size': 11,
+			'font-weight': 600,
+			'text-valign': 'center',
+			'text-halign': 'center',
+			color: '#4c1d95',
+		} as never,
+	},
+	{
+		selector: 'node.doc',
+		style: {
+			'background-color': 'mapData(score, 0, 1, #f5f3ff, #a78bfa)',
+			'border-color': '#a78bfa',
+			'border-width': 1,
+			shape: 'round-rectangle',
+			width: 'label',
+			height: 'label',
+			'padding-left': '10px', 'padding-right': '10px',
+			'padding-top': '5px',   'padding-bottom': '5px',
+			label: 'data(label)',
+			'text-wrap': 'wrap',
+			'text-max-width': '360px',
+			'font-size': 10,
+			'text-valign': 'center',
+			'text-halign': 'center',
+			color: '#1e1b4b',
+			'min-width': '80px',
+		} as never,
+	},
+	{
+		selector: 'node.doc.isolated',
+		style: {
+			opacity: 0.55,
+			'border-style': 'dashed',
+		} as never,
+	},
+	{
+		selector: 'node.folderGroup',
+		style: {
+			'background-color': 'data(color)',
+			'background-opacity': 'mapData(depth, 0, 4, 0.55, 0.08)',
+			'border-color': '#94a3b8',
+			'border-width': 'mapData(depth, 0, 4, 1.6, 0.6)',
+			'border-style': 'dashed',
+			shape: 'round-rectangle',
+			label: 'data(label)',
+			'font-size': 'mapData(depth, 0, 4, 11, 8)',
+			'font-weight': 700,
+			color: '#334155',
+			'text-valign': 'top',
+			'text-halign': 'left',
+			'text-margin-y': -4,
+			'text-margin-x': 8,
+			padding: 'mapData(depth, 0, 4, 22, 10)',
+		} as never,
+	},
+	{
+		selector: 'edge',
+		style: {
+			'curve-style': 'bezier',
+			'target-arrow-shape': 'triangle',
+			'target-arrow-color': '#94a3b8',
+			'line-color': '#94a3b8',
+			width: 1,
+			'arrow-scale': 0.7,
+		} as never,
+	},
+	{
+		selector: 'edge.reference',
+		style: { 'line-color': '#334155', 'target-arrow-color': '#334155', width: 1.4 } as never,
+	},
+	{
+		selector: 'edge.semantic',
+		style: {
+			'line-color': '#cbd5e1',
+			'target-arrow-color': '#cbd5e1',
+			'line-style': 'dashed',
+			width: 0.8,
+			opacity: 0.7,
+		} as never,
+	},
+	{ selector: 'node', style: { 'transition-property': 'background-color, border-color, border-width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
+	{ selector: 'edge', style: { 'transition-property': 'line-color, target-arrow-color, width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
+	{ selector: '.dimmed', style: { opacity: 0.12 } as never },
+	{ selector: 'node.highlighted', style: { 'border-color': '#f59e0b', 'border-width': 3, opacity: 1, 'z-index': 999 } as never },
+	{ selector: 'edge.highlighted', style: { 'line-color': '#f59e0b', 'target-arrow-color': '#f59e0b', opacity: 1, 'z-index': 999, 'arrow-scale': 1.4 } as never },
+	{ selector: 'edge.reference.highlighted', style: { 'line-style': 'solid', width: 2.6 } as never },
+	{ selector: 'edge.semantic.highlighted', style: { 'line-style': 'dashed', 'line-dash-pattern': [10, 6], width: 2.0 } as never },
+	{
+		selector: 'node.regionLabel',
+		style: {
+			'background-opacity': 0,
+			'border-width': 0,
+			label: 'data(label)',
+			'font-size': 11,
+			'font-weight': 700,
+			color: '#94a3b8',
+			'text-transform': 'uppercase',
+			'letter-spacing': '2px',
+			'text-valign': 'center',
+			'text-halign': 'center',
+			width: 200,
+			height: 20,
+		} as never,
+	},
+];
+
+// ─── Layout config picker (matches sandbox `layoutConfig`) ─────────────────
+function layoutConfig(name: PresetBundle['layout']): cytoscape.LayoutOptions {
+	switch (name) {
+		case 'fcose':
+			return { name: 'fcose', animate: true, animationDuration: 500, nodeRepulsion: 8000, idealEdgeLength: 90, edgeElasticity: 0.3, gravity: 0.25, tile: true, randomize: true, packComponents: true, nodeSeparation: 80 } as never;
+		case 'cola':
+			return { name: 'cola', animate: true, maxSimulationTime: 3000, nodeSpacing: 20, edgeLength: 90, avoidOverlap: true } as never;
+		case 'dagre-tb':
+			return { name: 'dagre', rankDir: 'TB', nodeSep: 20, edgeSep: 12, rankSep: 70, animate: true } as never;
+		case 'dagre-lr':
+			return { name: 'dagre', rankDir: 'LR', nodeSep: 20, edgeSep: 12, rankSep: 100, animate: true } as never;
+		case 'concentric-hub':
+			return {
+				name: 'concentric',
+				animate: true,
+				concentric: (n: NodeSingular) => {
+					if (n.data('kind') === 'hub') return 3;
+					if (n.hasClass('isolated')) return 1;
+					return 2;
+				},
+				levelWidth: () => 1,
+				minNodeSpacing: 22,
+				spacingFactor: 1.1,
+			} as never;
+	}
+}
+
+// ─── Isolated grid — same behavior as sandbox `layoutIsolatedGrid` ─────────
+function layoutIsolatedGrid(cy: Core): void {
+	const isolated = cy.nodes('.isolated').sort((a, b) => {
+		const la = (a.data('label') || a.id() || '').toLowerCase();
+		const lb = (b.data('label') || b.id() || '').toLowerCase();
+		return la.localeCompare(lb, 'zh');
+	});
+	if (isolated.length === 0) return;
+	const connected = cy.nodes().not('.isolated').not('.regionLabel');
+	let baseY = 0, centerX = 0, gridWidth = 700;
+	if (connected.length > 0) {
+		const bbox = connected.boundingBox({});
+		baseY = bbox.y2 + 140;
+		centerX = (bbox.x1 + bbox.x2) / 2;
+		gridWidth = Math.max(bbox.x2 - bbox.x1, 700);
+	}
+	const cellW = 160, cellH = 44;
+	const cols = Math.max(4, Math.min(8, Math.floor(gridWidth / cellW)));
+	const gridStartX = centerX - (cols * cellW) / 2;
+	cy.add({
+		group: 'nodes',
+		data: { id: '__label:isolated', label: 'Isolated matches', kind: 'regionLabel' },
+		classes: 'regionLabel',
+		position: { x: centerX, y: baseY - 40 },
+	});
+	isolated.forEach((n, i) => {
+		const col = i % cols;
+		const row = Math.floor(i / cols);
+		n.position({ x: gridStartX + col * cellW, y: baseY + row * cellH });
+	});
+}
+
+/** Turn subgraph → Mermaid flowchart string for copy-to-clipboard. */
 function subgraphToMermaid(sub: ResultSubgraphOutput): string {
 	const lines: string[] = ['flowchart TD'];
 	const sid = (id: string) => `n${id.slice(0, 10)}`;
@@ -53,305 +405,34 @@ function subgraphToMermaid(sub: ResultSubgraphOutput): string {
 	for (const e of sub.edges) {
 		if (e.from === e.to) continue;
 		if (e.kind === 'reference') lines.push(`  ${sid(e.from)} -->|ref| ${sid(e.to)}`);
-		else if (e.kind === 'hub_constituent') lines.push(`  ${sid(e.from)} -.->|hub| ${sid(e.to)}`);
-		else lines.push(`  ${sid(e.from)} -.->|sem| ${sid(e.to)}`);
+		else if (e.kind === 'semantic') lines.push(`  ${sid(e.from)} -.->|sem| ${sid(e.to)}`);
 	}
 	lines.push('  classDef hub fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#4c1d95');
 	lines.push('  classDef iso fill:#f5f5f5,stroke:#cbd5e1,stroke-dasharray:3 3,color:#64748b');
 	return lines.join('\n');
 }
 
-/** Numeric score to pick the "match score" for graph coloring / sort. */
-function scoreOf(r: SearchResultItem): number {
-	const s = r.finalScore ?? r.score ?? 0;
-	return Number.isFinite(s) ? s : 0;
-}
-
-/** Stable palette index per community/folder id, without a global registry. */
-function hashIndex(key: string): number {
-	let h = 0;
-	for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
-	return Math.abs(h);
-}
-
-interface LayoutResult {
-	nodes: Node[];
-	edges: Edge[];
-	communityRegions: CommunityRegion[];
-	folderRegions: FolderBoundaryRegion[];
-	isolatedItems: IsolatedMatchItem[];
-	connectedPairs: number;
-	sharedHubs: number;
-	dominantCommunityId: string | null;
-}
-
-interface DominationDecision {
-	skipCommunityId: string | null;
-}
-
-function decideCommunityDomination(sub: ResultSubgraphOutput): DominationDecision {
-	if (!sub.resultNodes.length) return { skipCommunityId: null };
-	const counts = new Map<string, number>();
-	for (const n of sub.resultNodes) {
-		if (!n.communityId) continue;
-		counts.set(n.communityId, (counts.get(n.communityId) ?? 0) + 1);
-	}
-	let skip: string | null = null;
-	for (const [id, c] of counts) {
-		if (c / sub.resultNodes.length > 0.6) { skip = id; break; }
-	}
-	return { skipCommunityId: skip };
-}
-
-function computeLayout(
-	sub: ResultSubgraphOutput,
-	selectedNodeId: string | null,
-	semanticOn: boolean,
-	folderOn: boolean,
-): LayoutResult {
-	const nodes: Node[] = [];
-	const nodeIndexById = new Map<string, { x: number; y: number }>();
-
-	const isolatedSet = new Set(sub.isolatedDocIds);
-	const connected = sub.resultNodes.filter((n) => !isolatedSet.has(n.id));
-	const isolated = sub.resultNodes.filter((n) => isolatedSet.has(n.id));
-	const maxScore = sub.resultNodes.reduce((m, n) => Math.max(m, n.score), 0) || 1;
-
-	// Layout: dagre TB on hubs + connected docs (using hub_constituent AND
-	// reference edges as rank drivers). Isolated docs go into a tight grid
-	// under the connected cluster so they stay on-canvas and edges to them
-	// (if any structural links exist) still render.
-	const g = new dagre.graphlib.Graph();
-	g.setDefaultEdgeLabel(() => ({}));
-	g.setGraph({ rankdir: 'TB', nodesep: 30, ranksep: 70, marginx: 20, marginy: 20 });
-	for (const h of sub.hubAnchors) g.setNode(h.id, { width: HUB_NODE_W, height: HUB_NODE_H });
-	for (const n of connected) g.setNode(n.id, { width: DOC_NODE_W, height: DOC_NODE_H });
-	for (const e of sub.edges) {
-		if (e.kind === 'semantic') continue;
-		if (!g.hasNode(e.from) || !g.hasNode(e.to)) continue;
-		g.setEdge(e.from, e.to);
-	}
-	dagre.layout(g);
-
-	let maxDagreY = 0;
-	for (const h of sub.hubAnchors) {
-		const p = g.node(h.id);
-		if (!p) continue;
-		const x = p.x - HUB_NODE_W / 2;
-		const y = p.y - HUB_NODE_H / 2;
-		maxDagreY = Math.max(maxDagreY, p.y + HUB_NODE_H / 2);
-		const node: HubAnchorNodeType = {
-			id: h.id,
-			type: 'hubAnchor',
-			position: { x, y },
-			data: {
-				title: h.title || h.path,
-				constituentCount: h.constituentCount,
-				selected: h.id === selectedNodeId,
-			},
-		};
-		nodes.push(node as unknown as Node);
-		nodeIndexById.set(h.id, { x: p.x, y: p.y });
-	}
-	for (const n of connected) {
-		const p = g.node(n.id);
-		if (!p) continue;
-		const x = p.x - DOC_NODE_W / 2;
-		const y = p.y - DOC_NODE_H / 2;
-		maxDagreY = Math.max(maxDagreY, p.y + DOC_NODE_H / 2);
-		const node: ResultDocNodeType = {
-			id: n.id,
-			type: 'resultDoc',
-			position: { x, y },
-			data: {
-				title: n.title || n.path,
-				scoreIntensity: n.score / maxScore,
-				selected: n.id === selectedNodeId,
-			},
-		};
-		nodes.push(node as unknown as Node);
-		nodeIndexById.set(n.id, { x: p.x, y: p.y });
-	}
-
-	// Isolated docs — grid below the connected cluster, sorted by score.
-	const isolatedSorted = [...isolated].sort((a, b) => b.score - a.score);
-	const gridTop = maxDagreY + 80;
-	const gridPitchX = DOC_NODE_W + 30;
-	const gridPitchY = DOC_NODE_H + 16;
-	isolatedSorted.forEach((n, i) => {
-		const col = i % ISOLATED_GRID_COLS;
-		const row = Math.floor(i / ISOLATED_GRID_COLS);
-		const x = col * gridPitchX;
-		const y = gridTop + row * gridPitchY;
-		const node: ResultDocNodeType = {
-			id: n.id,
-			type: 'resultDoc',
-			position: { x, y },
-			data: {
-				title: n.title || n.path,
-				scoreIntensity: n.score / maxScore,
-				selected: n.id === selectedNodeId,
-			},
-		};
-		nodes.push(node as unknown as Node);
-		nodeIndexById.set(n.id, { x: x + DOC_NODE_W / 2, y: y + DOC_NODE_H / 2 });
-	});
-
-	// Edges — all three kinds render. Reference (solid), hub_constituent (accent
-	// dotted → clear "this hub owns this doc"), semantic (overlay toggle).
-	const edges: Edge[] = [];
-	for (const e of sub.edges) {
-		if (e.kind === 'semantic' && !semanticOn) continue;
-		if (!nodeIndexById.has(e.from) || !nodeIndexById.has(e.to)) continue;
-		const style = ((): { stroke: string; strokeDasharray?: string; strokeWidth: number } => {
-			if (e.kind === 'reference') return { stroke: 'var(--pk-border-strong)', strokeWidth: 1.4 };
-			if (e.kind === 'semantic') return { stroke: 'var(--pk-border-strong)', strokeDasharray: '5 4', strokeWidth: 1.2 };
-			return { stroke: 'var(--pk-accent-soft)', strokeDasharray: '2 3', strokeWidth: 1 };
-		})();
-		edges.push({
-			id: `${e.kind}-${e.from}-${e.to}`,
-			source: e.from,
-			target: e.to,
-			style,
-			data: { kind: e.kind },
-		});
-	}
-
-	// Community wash regions (bounding box per community, skipping the dominant one).
-	const domination = decideCommunityDomination(sub);
-	const commBuckets = new Map<string, { xs: number[]; ys: number[] }>();
-	for (const n of sub.resultNodes) {
-		if (!n.communityId) continue;
-		if (n.communityId === domination.skipCommunityId) continue;
-		const pos = nodeIndexById.get(n.id);
-		if (!pos) continue;
-		const bucket = commBuckets.get(n.communityId) ?? { xs: [], ys: [] };
-		bucket.xs.push(pos.x);
-		bucket.ys.push(pos.y);
-		commBuckets.set(n.communityId, bucket);
-	}
-	const communityRegions: CommunityRegion[] = [];
-	for (const [communityId, { xs, ys }] of commBuckets) {
-		if (xs.length < 2) continue;
-		const minX = Math.min(...xs) - 60;
-		const maxX = Math.max(...xs) + 60;
-		const minY = Math.min(...ys) - 40;
-		const maxY = Math.max(...ys) + 40;
-		communityRegions.push({
-			communityId,
-			colorIndex: hashIndex(communityId),
-			x: minX,
-			y: minY,
-			width: maxX - minX,
-			height: maxY - minY,
-		});
-	}
-
-	// Folder groupings (only when overlay on).
-	const folderRegions: FolderBoundaryRegion[] = [];
-	if (folderOn) {
-		const folderBuckets = new Map<string, { xs: number[]; ys: number[] }>();
-		for (const n of sub.resultNodes) {
-			if (!n.folder) continue;
-			const pos = nodeIndexById.get(n.id);
-			if (!pos) continue;
-			const bucket = folderBuckets.get(n.folder) ?? { xs: [], ys: [] };
-			bucket.xs.push(pos.x);
-			bucket.ys.push(pos.y);
-			folderBuckets.set(n.folder, bucket);
-		}
-		for (const [folder, { xs, ys }] of folderBuckets) {
-			if (xs.length < 2) continue;
-			const minX = Math.min(...xs) - 40;
-			const maxX = Math.max(...xs) + 40;
-			const minY = Math.min(...ys) - 20;
-			const maxY = Math.max(...ys) + 20;
-			folderRegions.push({
-				folder,
-				colorIndex: hashIndex(folder),
-				x: minX,
-				y: minY,
-				width: maxX - minX,
-				height: maxY - minY,
-			});
-		}
-	}
-
-	// Isolated rail items.
-	const isolatedItems: IsolatedMatchItem[] = sub.isolatedDocIds
-		.map((id) => sub.resultNodes.find((n) => n.id === id))
-		.filter((n): n is ResultSubgraphOutput['resultNodes'][number] => !!n)
-		.map((n) => ({ id: n.id, title: n.title || n.path, path: n.path }));
-
-	// Sparse-fallback signal counts.
-	let connectedPairs = 0;
-	const seenPairs = new Set<string>();
-	for (const e of sub.edges) {
-		if (e.kind === 'semantic') continue;
-		const key = e.from < e.to ? `${e.from}|${e.to}` : `${e.to}|${e.from}`;
-		if (seenPairs.has(key)) continue;
-		seenPairs.add(key);
-		connectedPairs++;
-	}
-
-	return {
-		nodes,
-		edges,
-		communityRegions,
-		folderRegions,
-		isolatedItems,
-		connectedPairs,
-		sharedHubs: sub.hubAnchors.length,
-		dominantCommunityId: domination.skipCommunityId,
-	};
-}
-
-const nodeTypes = {
-	hubAnchor: HubAnchorNode,
-	resultDoc: ResultDocNode,
-};
-
 interface ResultGraphViewProps {
-	/** Optional close handler for the search modal (used when double-click opens a file). */
 	onClose?: () => void;
-	/** Optional Cmd+click surface for a hub anchor — T7 will wire the real implementation. */
 	onOpenHubGraphSubview?: (hubNodeId: string) => void;
-	/**
-	 * T8: propagates result-doc selection from a graph node click to the
-	 * modal-level Inspector state so single click updates the Inspector,
-	 * matching the AC ("Single click a result node selects it and updates
-	 * the Inspector"). Hub anchors do not update the Inspector.
-	 */
 	onSelectForInspector?: (path: string) => void;
 }
 
 export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpenHubGraphSubview, onSelectForInspector }) => {
 	const results = useVaultSearchStore((s) => s.lastSearchResults);
-	const semanticOn = useVaultSearchStore((s) => s.graphOverlaySemantic);
-	const folderOn = useVaultSearchStore((s) => s.graphOverlayFolder);
+	const preset = useVaultSearchStore((s) => s.graphPreset);
+	const showSemantic = useVaultSearchStore((s) => s.graphShowSemantic);
 	const { vaultNavigation, resultSubgraph: resultSubgraphDeps } = useServiceContext();
 
 	const [subgraph, setSubgraph] = useState<ResultSubgraphOutput | null>(null);
-	const [loading, setLoading] = useState(false);
-	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-	const [nodes, setNodes] = useState<Node[]>([]);
 	const [copied, setCopied] = useState(false);
 	const containerRef = useRef<HTMLDivElement | null>(null);
-	const rfInstance = useRef<ReactFlowInstance | null>(null);
-	const [containerWidth, setContainerWidth] = useState<number>(0);
+	const cyRef = useRef<Core | null>(null);
+	const animRef = useRef<number | null>(null);
+	const folderPickerRef = useRef(makeFolderColorPicker());
 
-	// Watch container width (drives narrow-modal isolated-rail collapse).
-	useEffect(() => {
-		if (!containerRef.current) return;
-		const el = containerRef.current;
-		const ro = new ResizeObserver((entries) => {
-			for (const entry of entries) setContainerWidth(entry.contentRect.width);
-		});
-		ro.observe(el);
-		return () => ro.disconnect();
-	}, []);
-
-	// Rebuild subgraph whenever the result set changes.
+	// Rebuild subgraph when results change. Baseline synth (from raw results)
+	// runs first so the graph is never blank; enrichment refines it.
 	useEffect(() => {
 		let cancelled = false;
 		(async () => {
@@ -359,9 +440,6 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				setSubgraph({ resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 });
 				return;
 			}
-			// Always synthesize a baseline from the raw search results so the
-			// graph area is never blank, even when metadata enrichment fails
-			// (deps null / sqlite miss / chunk-id mismatch).
 			const scoreById = new Map<string, number>();
 			const baselineNodes: ResultSubgraphOutput['resultNodes'] = [];
 			const baselineIds: string[] = [];
@@ -390,21 +468,14 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				isolatedDocIds: baselineIds,
 				overflowCount: 0,
 			};
-			// Show the baseline immediately; enrichment refines it below.
 			if (!cancelled) setSubgraph(baseline);
 			if (!resultSubgraphDeps) return;
-			setLoading(true);
 			try {
 				const sub = await buildResultSubgraph(resultSubgraphDeps, {
 					resultDocIds: baselineIds,
 					matchScores: scoreById,
 					nodeCap: NODE_CAP,
 				});
-				// Backfill title / path / folder from the raw search results
-				// when metadata lookup returned empty (chunk-id mismatch or
-				// mobius_node has no row for this vault path). Otherwise the
-				// isolated list would render empty labels — the exact bug
-				// where the user saw a blank graph pane.
 				const byId = new Map(baselineNodes.map((n) => [n.id, n]));
 				const enriched: ResultSubgraphOutput = {
 					...sub,
@@ -420,194 +491,173 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				};
 				if (!cancelled) setSubgraph(enriched);
 			} catch (err) {
-				console.warn('[ResultGraphView] buildResultSubgraph failed, using baseline', err);
-			} finally {
-				if (!cancelled) setLoading(false);
+				// eslint-disable-next-line no-console
+				console.warn('[ResultGraphView] buildResultSubgraph failed, keeping baseline', err);
 			}
 		})();
 		return () => { cancelled = true; };
 	}, [results, resultSubgraphDeps]);
 
-	const layout = useMemo(() => {
-		if (!subgraph) return null;
-		return computeLayout(subgraph, selectedNodeId, semanticOn, folderOn);
-	}, [subgraph, selectedNodeId, semanticOn, folderOn]);
-
-	// Fade transitions for enter/exit as nodes come and go while user types.
+	// Mount / tear down cytoscape when the mount point appears / disappears.
 	useEffect(() => {
-		if (!layout) { setNodes([]); return; }
-		const nextIds = new Set(layout.nodes.map((n) => n.id));
-		const prev = nodes;
-		const removedIds = prev.filter((n) => !nextIds.has(n.id)).map((n) => n.id);
-		if (!removedIds.length) {
-			setNodes(layout.nodes);
-			return;
-		}
-		// Fade removed nodes for one tick, then apply the new set.
-		const fadingChanges: NodeChange[] = removedIds.map((id) => ({
-			id, type: 'select', selected: false,
-		})) as unknown as NodeChange[];
-		setNodes((cur) => applyNodeChanges(fadingChanges, cur));
-		const t = setTimeout(() => setNodes(layout.nodes), 150);
-		return () => clearTimeout(t);
-	}, [layout]);
-
-	// Fit view when the graph changes shape.
-	useEffect(() => {
-		const t = setTimeout(() => rfInstance.current?.fitView({ padding: 0.25 }), 60);
-		return () => clearTimeout(t);
-	}, [nodes.length]);
-
-	const onNodesChange = useCallback((changes: NodeChange[]) => {
-		setNodes((cur) => applyNodeChanges(changes, cur));
+		ensureExtensionsRegistered();
+		return () => {
+			if (animRef.current) cancelAnimationFrame(animRef.current);
+			animRef.current = null;
+			cyRef.current?.destroy();
+			cyRef.current = null;
+		};
 	}, []);
 
-	const openDocById = useCallback(async (id: string) => {
-		const found = results.find((r) => (r.docId ?? r.id) === id);
-		if (!found) return;
-		await createOpenSourceCallback(onClose, true, vaultNavigation)(found);
-	}, [results, onClose, vaultNavigation]);
+	// Full redraw whenever subgraph, preset, or semantic toggle changes.
+	useEffect(() => {
+		if (!containerRef.current || !subgraph) return;
+		const bundle = PRESETS[preset];
+		const els = buildElements(subgraph, { showSemantic, groupFolder: bundle.groupFolder }, folderPickerRef.current);
+		if (animRef.current) cancelAnimationFrame(animRef.current);
+		animRef.current = null;
+		cyRef.current?.destroy();
+		const cy = cytoscape({
+			container: containerRef.current,
+			elements: els,
+			style: CYTOSCAPE_STYLES,
+			minZoom: 0.15,
+			maxZoom: 3,
+			wheelSensitivity: 0.2,
+		});
+		cyRef.current = cy;
 
-	const openHubByAnchorPath = useCallback(async (hubNodeId: string) => {
-		const hub = subgraph?.hubAnchors.find((h) => h.id === hubNodeId);
-		if (!hub?.path) return;
-		await vaultNavigation.openLink(hub.path, { newLeaf: 'tab' });
-	}, [subgraph, vaultNavigation]);
+		// Folder tree preset needs the isolated grid to skip splitting so the
+		// folder parent doesn't stretch to swallow the moved grid area.
+		const shouldSplitIsolated = !bundle.groupFolder;
 
-	const handleNodeClick: NodeMouseHandler = useCallback((event, node) => {
-		setSelectedNodeId(node.id);
-		const modKey = event.metaKey || event.ctrlKey;
-		// Cmd/Ctrl+click on a hub anchor: open hub graph subview (T7 wires).
-		if (modKey) {
-			if (node.type === 'hubAnchor') {
-				onOpenHubGraphSubview?.(node.id);
+		const connectedEles = shouldSplitIsolated
+			? cy.elements().filter((el) => {
+				if (el.isNode()) return !el.hasClass('isolated') && !el.hasClass('regionLabel');
+				const s = (el as EdgeSingular).source();
+				const t = (el as EdgeSingular).target();
+				return !(s.hasClass('isolated') || t.hasClass('isolated'));
+			})
+			: cy.elements();
+
+		const layoutObj = connectedEles.layout(layoutConfig(bundle.layout));
+		layoutObj.one('layoutstop', () => {
+			if (shouldSplitIsolated) layoutIsolatedGrid(cy);
+			cy.fit(undefined, 40);
+		});
+		layoutObj.run();
+
+		// Hover neighborhood + ancestor breadcrumb spotlight
+		let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+		const startEdgeAnimation = () => {
+			if (animRef.current) cancelAnimationFrame(animRef.current);
+			let offset = 0;
+			let last = performance.now();
+			const tick = (now: number) => {
+				const dt = Math.min(now - last, 50);
+				last = now;
+				offset -= dt * 0.024;
+				const edges = cy.edges('edge.highlighted');
+				if (edges.length === 0) { animRef.current = null; return; }
+				edges.style('line-dash-offset', offset);
+				animRef.current = requestAnimationFrame(tick);
+			};
+			animRef.current = requestAnimationFrame(tick);
+		};
+		const stopEdgeAnimation = () => {
+			if (animRef.current) cancelAnimationFrame(animRef.current);
+			animRef.current = null;
+		};
+
+		cy.on('mouseover', 'node', (evt) => {
+			const n = evt.target as NodeSingular;
+			if (n.hasClass('regionLabel')) return;
+			if (hoverTimer) clearTimeout(hoverTimer);
+			hoverTimer = setTimeout(() => {
+				const isCompound = n.hasClass('folderGroup');
+				let highlight;
+				if (isCompound) {
+					const descendants = n.descendants();
+					highlight = n.union(descendants).union(descendants.connectedEdges());
+				} else {
+					highlight = n.closedNeighborhood();
+				}
+				highlight = highlight.union(n.ancestors());
+				cy.batch(() => {
+					cy.elements().addClass('dimmed');
+					highlight.removeClass('dimmed').addClass('highlighted');
+					n.addClass('highlighted');
+				});
+				startEdgeAnimation();
+			}, 80);
+		});
+		cy.on('mouseout', 'node', () => {
+			if (hoverTimer) clearTimeout(hoverTimer);
+			hoverTimer = setTimeout(() => {
+				stopEdgeAnimation();
+				cy.batch(() => {
+					cy.elements().removeClass('dimmed').removeClass('highlighted');
+					cy.edges().removeStyle('line-dash-offset');
+				});
+			}, 120);
+		});
+
+		// Selection surfaces to inspector; double-click opens the doc; Cmd+click
+		// on a hub anchor triggers the hub-graph subview.
+		cy.on('tap', 'node', async (evt) => {
+			const n = evt.target as NodeSingular;
+			if (n.hasClass('regionLabel') || n.hasClass('folderGroup')) return;
+			const originalEvent = (evt as { originalEvent?: MouseEvent }).originalEvent;
+			const modKey = !!(originalEvent && (originalEvent.metaKey || originalEvent.ctrlKey));
+			if (modKey && n.hasClass('hub')) {
+				onOpenHubGraphSubview?.(n.id());
 				return;
 			}
-		}
-		// Single click on a hub anchor without modifiers: open the hub doc file.
-		if (node.type === 'hubAnchor') {
-			void openHubByAnchorPath(node.id);
-			return;
-		}
-		// Single click on a result doc: update the Inspector via the
-		// modal-level selection state (spec AC · Interaction).
-		if (node.type === 'resultDoc') {
-			const found = results.find((r) => (r.docId ?? r.id) === node.id);
+			if (n.hasClass('hub')) {
+				const hub = subgraph.hubAnchors.find((h) => h.id === n.id());
+				if (hub?.path) await vaultNavigation.openLink(hub.path, { newLeaf: 'tab' });
+				return;
+			}
+			// resultDoc: propagate to inspector
+			const found = results.find((r) => (r.docId ?? r.path ?? r.id) === n.id());
 			if (found?.path) onSelectForInspector?.(found.path);
-		}
-	}, [onOpenHubGraphSubview, openHubByAnchorPath, onSelectForInspector, results]);
+		});
+		cy.on('dbltap', 'node', async (evt) => {
+			const n = evt.target as NodeSingular;
+			if (n.hasClass('regionLabel') || n.hasClass('folderGroup') || n.hasClass('hub')) return;
+			const found = results.find((r) => (r.docId ?? r.path ?? r.id) === n.id());
+			if (!found) return;
+			await createOpenSourceCallback(onClose, true, vaultNavigation)(found);
+		});
+	}, [subgraph, preset, showSemantic, results, resultSubgraphDeps, vaultNavigation, onOpenHubGraphSubview, onSelectForInspector, onClose]);
 
-	const handleNodeDoubleClick: NodeMouseHandler = useCallback((_event, node) => {
-		if (node.type === 'resultDoc') void openDocById(node.id);
-	}, [openDocById]);
-
-	if (loading && !subgraph) {
-		return (
-			<div className="pktw-flex pktw-flex-1 pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary" style={{ minHeight: 200 }}>
-				Building graph…
-			</div>
-		);
-	}
-
-	if (!subgraph || (!subgraph.resultNodes.length && !subgraph.hubAnchors.length)) {
-		return (
-			<div className="pktw-flex pktw-flex-1 pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary" style={{ minHeight: 200 }}>
-				No results to graph.
-			</div>
-		);
-	}
-
-	if (!layout) return null;
-
-	const sparse = layout.connectedPairs < 3 && layout.sharedHubs < 2;
-	const narrow = containerWidth > 0 && containerWidth < NARROW_MODAL_PX;
-	// If ReactFlow has nothing to draw (no hubs, all docs isolated), fall
-	// back to a full-width isolated matches list — the ReactFlow canvas
-	// would otherwise render as a blank band which is what the user hit.
-	const emptyCanvas = layout.nodes.length === 0;
-	if (emptyCanvas) {
-		const totalIsolated = layout.isolatedItems.length;
-		return (
-			<div ref={containerRef} className="pktw-w-full pktw-block" style={{ minHeight: 220 }}>
-				<div className="pktw-px-4 pktw-py-2 pktw-text-xs pktw-text-pk-text-tertiary pktw-border-b pktw-border-pk-border/40">
-					{totalIsolated} result{totalIsolated === 1 ? '' : 's'} · no structural connections between them
-				</div>
-				<div className="pktw-flex pktw-flex-col pktw-gap-0.5 pktw-px-3 pktw-py-2">
-					{layout.isolatedItems.map((it) => (
-						<div
-							key={it.id}
-							role="button"
-							tabIndex={0}
-							onClick={() => setSelectedNodeId(it.id)}
-							onDoubleClick={() => void openDocById(it.id)}
-							title={it.path}
-							className={selectedNodeId === it.id
-								? 'pktw-block pktw-truncate pktw-rounded pktw-px-2 pktw-py-1 pktw-text-[12px] pktw-cursor-pointer pktw-bg-pk-accent-tint pktw-text-pk-accent-text'
-								: 'pktw-block pktw-truncate pktw-rounded pktw-px-2 pktw-py-1 pktw-text-[12px] pktw-cursor-pointer pktw-text-pk-text-secondary hover:pktw-bg-pk-surface-raised'}
-						>
-							{it.title || it.path || it.id}
-						</div>
-					))}
-				</div>
-				{subgraph.overflowCount > 0 && (
-					<div className="pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border-t pktw-border-pk-border">
-						{`Showing top ${NODE_CAP} of ${NODE_CAP + subgraph.overflowCount} results`}
-					</div>
-				)}
-			</div>
-		);
-	}
-
-	const handleCopyGraph = () => {
-		const mermaid = subgraphToMermaid(subgraph!);
-		const jsonPayload = {
-			timestamp: new Date().toISOString(),
-			subgraph,
-			computed: {
-				nodes: nodes.map((n) => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
-				edges: layout.edges.map((e) => ({ id: e.id, from: e.source, to: e.target, kind: (e.data as { kind?: string } | undefined)?.kind })),
-				communityRegions: layout.communityRegions,
-				folderRegions: layout.folderRegions,
-			},
-		};
+	const handleCopyGraph = useCallback(() => {
+		if (!subgraph) return;
 		try {
-			void navigator.clipboard.writeText(mermaid);
-			console.log('[ResultGraphView] mermaid copied. JSON payload also available:', jsonPayload);
+			void navigator.clipboard.writeText(subgraphToMermaid(subgraph));
 			setCopied(true);
 			window.setTimeout(() => setCopied(false), 1500);
 		} catch (err) {
+			// eslint-disable-next-line no-console
 			console.warn('[ResultGraphView] clipboard write failed', err);
 		}
-	};
+	}, [subgraph]);
+
+	const overflowCount = subgraph?.overflowCount ?? 0;
+	const emptyMessage = useMemo(() => {
+		if (!subgraph) return 'Building graph…';
+		if (!subgraph.resultNodes.length) return 'No results to graph.';
+		return null;
+	}, [subgraph]);
 
 	return (
-		<div
-			ref={containerRef}
-			className="pktw-relative pktw-w-full pktw-h-full pktw-overflow-hidden"
-			style={{ minHeight: 420 }}
-		>
-			<CommunityBackground regions={layout.communityRegions} />
-			<FolderBoundary regions={layout.folderRegions} />
-			{sparse && <SparseFallbackBanner />}
-			<div className="pktw-absolute pktw-inset-0">
-				<ReactFlow
-					nodes={nodes}
-					edges={layout.edges}
-					nodeTypes={nodeTypes}
-					onNodesChange={onNodesChange}
-					onNodeClick={handleNodeClick}
-					onNodeDoubleClick={handleNodeDoubleClick}
-					onInit={(instance) => { rfInstance.current = instance; }}
-					fitView
-					fitViewOptions={{ padding: 0.25 }}
-					proOptions={{ hideAttribution: true }}
-					minZoom={0.3}
-					maxZoom={2.5}
-				>
-					<Background color="var(--pk-surface-sunken)" gap={20} />
-					<Controls showInteractive={false} />
-				</ReactFlow>
-			</div>
+		<div className="pktw-relative pktw-w-full pktw-h-full pktw-overflow-hidden" style={{ minHeight: 420 }}>
+			<div ref={containerRef} className="pktw-absolute pktw-inset-0" />
+			{emptyMessage && (
+				<div className="pktw-absolute pktw-inset-0 pktw-flex pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary">
+					{emptyMessage}
+				</div>
+			)}
 			<div className="pktw-absolute pktw-top-2 pktw-right-2 pktw-z-20">
 				<IconButton
 					label={copied ? 'Copied Mermaid to clipboard' : 'Copy graph as Mermaid'}
@@ -617,9 +667,9 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 					{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
 				</IconButton>
 			</div>
-			{subgraph.overflowCount > 0 && (
+			{overflowCount > 0 && (
 				<span className="pktw-absolute pktw-bottom-2 pktw-left-1/2 pktw--translate-x-1/2 pktw-rounded-md pktw-bg-pk-surface-raised pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border pktw-border-pk-border pktw-z-10">
-					{`Showing top ${NODE_CAP} of ${NODE_CAP + subgraph.overflowCount} results`}
+					{`Showing top ${NODE_CAP} of ${NODE_CAP + overflowCount} results`}
 				</span>
 			)}
 		</div>

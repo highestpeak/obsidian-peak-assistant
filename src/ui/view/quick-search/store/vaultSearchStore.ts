@@ -12,11 +12,22 @@ export type QuickSearchMode = 'all' | 'heading' | 'help';
 
 /**
  * T3 (2026-07-07 result graph): the result pane can render either the
- * ranked list (default) or a graph visualization of the same result set
- * (T4 will fill in). Store owns the toggle so `ResultPaneHeader`,
- * `tab-VaultSearch`, and the keyboard handler can coordinate.
+ * ranked list (default) or a graph visualization of the same result set.
  */
 export type ResultView = 'list' | 'graph';
+
+/**
+ * Graph view mode presets (distilled from user's preferred layouts in the
+ * 2026-07-07 layout sandbox). Each preset bundles a Cytoscape layout
+ * algorithm + grouping + edge kind defaults into one named mode:
+ *
+ *  - `constellation` — force-directed cluster (fcose), no grouping
+ *  - `flow-tb`       — dagre top-down, no grouping
+ *  - `flow-lr`       — dagre left-right, no grouping
+ *  - `folder`        — cola + full-depth folder tree compound
+ *  - `orbit`         — concentric with hubs at center + semantic on
+ */
+export type GraphPreset = 'constellation' | 'flow-tb' | 'flow-lr' | 'folder' | 'orbit';
 
 interface VaultSearchStore {
 	// State
@@ -30,17 +41,16 @@ interface VaultSearchStore {
 	setInspectorOpen: (open: boolean) => void;
 	toggleInspector: () => void;
 
-	// T3: result-view toggle shell (list ↔ graph) + graph overlay toggles.
-	// Graph content lands in T4; these fields exist now so T3/T4 can build in
-	// parallel without a mid-branch schema shift.
+	// Result view toggle (list ↔ graph) + graph preset + semantic overlay.
+	// Preset bundles layout algorithm + grouping + default edge kinds; the
+	// semantic toggle is the one dial the user still sees inside every mode.
 	resultView: ResultView;
 	setResultView: (view: ResultView) => void;
-	graphOverlaySemantic: boolean;
-	setGraphOverlaySemantic: (on: boolean) => void;
-	toggleGraphOverlaySemantic: () => void;
-	graphOverlayFolder: boolean;
-	setGraphOverlayFolder: (on: boolean) => void;
-	toggleGraphOverlayFolder: () => void;
+	graphPreset: GraphPreset;
+	setGraphPreset: (preset: GraphPreset) => void;
+	graphShowSemantic: boolean;
+	setGraphShowSemantic: (on: boolean) => void;
+	toggleGraphShowSemantic: () => void;
 
 	/**
 	 * T7 (2026-07-07 hub graph subview): when set, the result set is pinned to
@@ -80,15 +90,20 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 	setInspectorOpen: (open) => set({ inspectorOpen: open }),
 	toggleInspector: () => set((s) => ({ inspectorOpen: !s.inspectorOpen })),
 
-	// T3: result-view toggle shell
+	// Result view toggle + graph preset + semantic overlay
 	resultView: 'list',
 	setResultView: (view) => set({ resultView: view }),
-	graphOverlaySemantic: false,
-	setGraphOverlaySemantic: (on) => set({ graphOverlaySemantic: on }),
-	toggleGraphOverlaySemantic: () => set((s) => ({ graphOverlaySemantic: !s.graphOverlaySemantic })),
-	graphOverlayFolder: false,
-	setGraphOverlayFolder: (on) => set({ graphOverlayFolder: on }),
-	toggleGraphOverlayFolder: () => set((s) => ({ graphOverlayFolder: !s.graphOverlayFolder })),
+	graphPreset: 'constellation',
+	setGraphPreset: (preset) => {
+		// Orbit shows semantic edges by default (its whole point is showing
+		// hubs as gravitational centers, which needs the wider edge set).
+		// Every other preset defaults to semantic off; user can still toggle.
+		const preferSemantic = preset === 'orbit';
+		set({ graphPreset: preset, graphShowSemantic: preferSemantic });
+	},
+	graphShowSemantic: false,
+	setGraphShowSemantic: (on) => set({ graphShowSemantic: on }),
+	toggleGraphShowSemantic: () => set((s) => ({ graphShowSemantic: !s.graphShowSemantic })),
 
 	// T7: hub-graph-subview pin
 	pinnedResultDocIds: null,
@@ -122,8 +137,8 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 		lastSearchResults: [],
 		fuzzyCorrection: null,
 		resultView: 'list',
-		graphOverlaySemantic: false,
-		graphOverlayFolder: false,
+		graphPreset: 'constellation',
+		graphShowSemantic: false,
 		pinnedResultDocIds: null,
 	}),
 }));

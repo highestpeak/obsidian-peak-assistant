@@ -3,15 +3,20 @@ import { Network, X } from 'lucide-react';
 import { Chip, Pill } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import { useVaultSearchStore } from '../store';
-import type { QuickSearchMode } from '../store/vaultSearchStore';
+import type { GraphPreset, QuickSearchMode } from '../store/vaultSearchStore';
 
 /**
- * T3 (2026-07-07 result graph): the graph-toggle affordance. Rendered
- * inline on the right side of the mode picker row so it does not occupy
- * its own whitespace band. Hosts:
- *  - Network icon toggling `resultView` between `'list'` and `'graph'`.
- *  - Two overlay Pills (Folder / Semantic) shown only in graph view.
+ * The graph-toggle affordance. Rendered inline on the right side of the
+ * mode picker row. Hosts:
+ *  - "Graph view" pill toggling `resultView` between `'list'` and `'graph'`.
+ *  - Five preset chips (Constellation / Flow ↓ / Flow → / Folder tree /
+ *    Orbit) shown only in graph view.
+ *  - "Semantic" chip that layers semantic edges on top of any preset.
  *  - Optional pinned-hub chip.
+ *
+ * Preset selection is stored in `graphPreset`, semantic overlay in
+ * `graphShowSemantic`. Design finalized in the 2026-07-07 sandbox — see
+ * `docs/research/2026-07-07-result-graph-layout/index.html`.
  *
  * `help` mode has no graph representation → returns null.
  */
@@ -20,17 +25,39 @@ interface ResultPaneHeaderProps {
 	className?: string;
 }
 
-const GraphOverlayToggles: React.FC = () => {
-	const folderOn = useVaultSearchStore((s) => s.graphOverlayFolder);
-	const semanticOn = useVaultSearchStore((s) => s.graphOverlaySemantic);
-	const toggleFolder = useVaultSearchStore((s) => s.toggleGraphOverlayFolder);
-	const toggleSemantic = useVaultSearchStore((s) => s.toggleGraphOverlaySemantic);
+const PRESET_LABELS: Array<[GraphPreset, string, string]> = [
+	['constellation', 'Constellation', 'Force-directed cluster — how do these results cluster together?'],
+	['flow-tb',       'Flow ↓',        'Top-down hierarchical flow — what references what?'],
+	['flow-lr',       'Flow →',        'Left-right hierarchical flow — same as ↓ but sideways'],
+	['folder',        'Folder tree',   'Full-depth folder tree — where in my vault do they live?'],
+	['orbit',         'Orbit',         'Hubs at center, docs orbit — are hubs the center of gravity?'],
+];
+
+const GraphPresetPicker: React.FC = () => {
+	const preset = useVaultSearchStore((s) => s.graphPreset);
+	const setPreset = useVaultSearchStore((s) => s.setGraphPreset);
+	const showSemantic = useVaultSearchStore((s) => s.graphShowSemantic);
+	const toggleSemantic = useVaultSearchStore((s) => s.toggleGraphShowSemantic);
 	return (
 		<div className="pktw-flex pktw-items-center pktw-gap-1">
-			<Pill selected={folderOn} onClick={toggleFolder} aria-label="Toggle folder overlay">
-				Folder
-			</Pill>
-			<Pill selected={semanticOn} onClick={toggleSemantic} aria-label="Toggle semantic overlay">
+			{PRESET_LABELS.map(([id, label, title]) => (
+				<Pill
+					key={id}
+					selected={preset === id}
+					onClick={() => setPreset(id)}
+					aria-label={label}
+					title={title}
+				>
+					{label}
+				</Pill>
+			))}
+			<span className="pktw-mx-1 pktw-text-pk-border">·</span>
+			<Pill
+				selected={showSemantic}
+				onClick={toggleSemantic}
+				aria-label="Toggle semantic edges"
+				title="Layer semantic-similarity edges on top of the current preset"
+			>
 				Semantic
 			</Pill>
 		</div>
@@ -92,7 +119,7 @@ export const ResultPaneHeader: React.FC<ResultPaneHeaderProps> = ({ mode, classN
 	return (
 		<div className={cn('pktw-flex pktw-items-center pktw-gap-2', className)}>
 			<PinnedHubChip />
-			{isGraph && <GraphOverlayToggles />}
+			{isGraph && <GraphPresetPicker />}
 			<button
 				type="button"
 				onClick={toggle}
