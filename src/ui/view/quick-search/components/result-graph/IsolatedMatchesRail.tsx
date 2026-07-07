@@ -23,6 +23,12 @@ interface IsolatedMatchesRailProps {
 	onSelect: (id: string) => void;
 	onOpen: (id: string) => void;
 	narrow: boolean;
+	/**
+	 * When the graph canvas would render zero connected nodes, callers
+	 * render the rail inline as the primary content instead of a right-
+	 * side rail — no absolute positioning, no border, no width cap.
+	 */
+	fullWidth?: boolean;
 }
 
 const IsolatedList: React.FC<{
@@ -62,9 +68,18 @@ export const IsolatedMatchesRail: React.FC<IsolatedMatchesRailProps> = ({
 	onSelect,
 	onOpen,
 	narrow,
+	fullWidth,
 }) => {
 	const [expanded, setExpanded] = useState(false);
 	if (!items.length) return null;
+
+	if (fullWidth) {
+		return (
+			<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-px-3 pktw-py-2">
+				<IsolatedList items={items} selectedId={selectedId} onSelect={onSelect} onOpen={onOpen} />
+			</div>
+		);
+	}
 
 	if (narrow) {
 		return (

@@ -16,7 +16,6 @@ import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickR
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SearchUpgradePrompt } from './components/SearchUpgradePrompt';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
-import { ResultPaneHeader } from './components/ResultPaneHeader';
 import { HeadingModeContainer } from './components/heading-mode/HeadingModeContainer';
 import { ResultGraphView } from './components/result-graph/ResultGraphView';
 import { useOpenHubGraphSubview } from './hooks/useOpenHubGraphSubview';
@@ -264,7 +263,6 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0 pktw-overflow-hidden">
-			<ResultPaneHeader mode={quickSearchMode} />
 			{/* Results — list or (T4) graph. Inspector is rendered side-by-side in parent. */}
 			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto" style={{ flexBasis: 0, minHeight: 0 }}>
 				{showGraph ? (

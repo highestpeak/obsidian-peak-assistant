@@ -13,10 +13,9 @@
  * placeholder rows.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Link2 } from 'lucide-react';
+import { Link2 } from 'lucide-react';
 import type { HeadingTreeNode } from '@/service/search/heading/headingTree';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { IconButton } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import { HEADING_MODE_STRINGS } from './strings';
 
@@ -110,11 +109,10 @@ const KindColumn: React.FC<{
 
 export const LinkPositionsFooter: React.FC<LinkPositionsFooterProps> = ({ filePath, tree, onOpenLine }) => {
 	const { headingMode } = useServiceContext();
-	const [expanded, setExpanded] = useState(false);
 	const [occurrences, setOccurrences] = useState<LinkOccurrence[]>([]);
 
 	useEffect(() => {
-		if (!headingMode || !expanded) return;
+		if (!headingMode) return;
 		let cancelled = false;
 		headingMode.getLinkPositions(filePath).then((occ) => {
 			if (!cancelled) setOccurrences(occ);
@@ -125,7 +123,7 @@ export const LinkPositionsFooter: React.FC<LinkPositionsFooterProps> = ({ filePa
 		return () => {
 			cancelled = true;
 		};
-	}, [headingMode, filePath, expanded]);
+	}, [headingMode, filePath]);
 
 	const sections = useMemo(() => flattenSections(tree), [tree]);
 	const outgoing = useMemo(() => occurrences.filter((o) => o.kind === 'outgoing'), [occurrences]);
@@ -135,37 +133,26 @@ export const LinkPositionsFooter: React.FC<LinkPositionsFooterProps> = ({ filePa
 		<span className={cn(
 			'pktw-flex pktw-flex-col pktw-border-t pktw-border-pk-border/40 pktw-bg-pk-surface-sunken/30',
 		)}>
-			<span className="pktw-flex pktw-items-center pktw-justify-between pktw-px-3 pktw-py-1">
-				<span className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-text-[11px] pktw-text-pk-text-secondary">
-					<Link2 className="pktw-w-3 pktw-h-3 pktw-opacity-70" />
-					{HEADING_MODE_STRINGS.linksFooterTitle}
-				</span>
-				<IconButton
-					label={expanded ? 'Collapse link positions' : 'Expand link positions'}
-					onClick={() => setExpanded((v) => !v)}
-					aria-expanded={expanded}
-				>
-					{expanded ? <ChevronDown className="pktw-w-3.5 pktw-h-3.5" /> : <ChevronRight className="pktw-w-3.5 pktw-h-3.5" />}
-				</IconButton>
+			<span className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-secondary">
+				<Link2 className="pktw-w-3 pktw-h-3 pktw-opacity-70" />
+				{HEADING_MODE_STRINGS.linksFooterTitle}
 			</span>
-			{expanded && (
-				<span className="pktw-flex pktw-gap-4 pktw-px-3 pktw-py-2 pktw-min-w-0">
-					<KindColumn
-						title={HEADING_MODE_STRINGS.outgoingHeader}
-						occurrences={outgoing}
-						emptyText={HEADING_MODE_STRINGS.noOutgoingLinks}
-						sections={sections}
-						onOpenLine={onOpenLine}
-					/>
-					<KindColumn
-						title={HEADING_MODE_STRINGS.backlinkHeader}
-						occurrences={backlinks}
-						emptyText={HEADING_MODE_STRINGS.noBacklinks}
-						sections={sections}
-						onOpenLine={onOpenLine}
-					/>
-				</span>
-			)}
+			<span className="pktw-flex pktw-gap-4 pktw-px-3 pktw-py-2 pktw-min-w-0">
+				<KindColumn
+					title={HEADING_MODE_STRINGS.outgoingHeader}
+					occurrences={outgoing}
+					emptyText={HEADING_MODE_STRINGS.noOutgoingLinks}
+					sections={sections}
+					onOpenLine={onOpenLine}
+				/>
+				<KindColumn
+					title={HEADING_MODE_STRINGS.backlinkHeader}
+					occurrences={backlinks}
+					emptyText={HEADING_MODE_STRINGS.noBacklinks}
+					sections={sections}
+					onOpenLine={onOpenLine}
+				/>
+			</span>
 		</span>
 	);
 };

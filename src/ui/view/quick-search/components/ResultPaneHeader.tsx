@@ -6,21 +6,14 @@ import { useVaultSearchStore } from '../store';
 import type { QuickSearchMode } from '../store/vaultSearchStore';
 
 /**
- * T3 (2026-07-07 result graph): shell header sitting on top of the result
- * pane. It hosts:
- *  - A right-aligned Network icon toggling `resultView` between
- *    `'list'` and `'graph'`. Active state uses the accent tint via the
- *    shared `data-active` convention on `.pk-icon-btn` (see
- *    `peak-components.css` §"Active toggle state for IconButton").
- *  - Two overlay Pills (Folder / Semantic) that appear only while the
- *    graph view is on. These control `graphOverlayFolder` +
- *    `graphOverlaySemantic`; T4's ResultGraphView reads them.
+ * T3 (2026-07-07 result graph): the graph-toggle affordance. Rendered
+ * inline on the right side of the mode picker row so it does not occupy
+ * its own whitespace band. Hosts:
+ *  - Network icon toggling `resultView` between `'list'` and `'graph'`.
+ *  - Two overlay Pills (Folder / Semantic) shown only in graph view.
+ *  - Optional pinned-hub chip.
  *
- * The header is intentionally light — no title, no divider — because the
- * result pane already has its own visual separation from the query bar.
- *
- * `help` mode has no graph representation, so the whole header collapses
- * to `null` in that mode (result list still renders on its own).
+ * `help` mode has no graph representation → returns null.
  */
 interface ResultPaneHeaderProps {
 	mode: QuickSearchMode;
@@ -97,12 +90,7 @@ export const ResultPaneHeader: React.FC<ResultPaneHeaderProps> = ({ mode, classN
 	const toggle = () => setResultView(isGraph ? 'list' : 'graph');
 
 	return (
-		<div
-			className={cn(
-				'pktw-flex pktw-items-center pktw-justify-end pktw-gap-2 pktw-px-3 pktw-py-1.5',
-				className,
-			)}
-		>
+		<div className={cn('pktw-flex pktw-items-center pktw-gap-2', className)}>
 			<PinnedHubChip />
 			{isGraph && <GraphOverlayToggles />}
 			<IconButton

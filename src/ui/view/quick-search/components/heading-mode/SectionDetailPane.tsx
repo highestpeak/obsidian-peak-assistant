@@ -85,7 +85,7 @@ const SnippetLine: React.FC<{
 			<span className="pktw-shrink-0 pktw-font-mono pktw-text-[10px] pktw-text-pk-text-tertiary pktw-tabular-nums pktw-w-8 pktw-text-right">
 				{snippet.line}
 			</span>
-			<span className="pktw-truncate pktw-min-w-0 pktw-text-pk-text-secondary">
+			<span className="pktw-min-w-0 pktw-flex-1 pktw-text-pk-text-secondary pktw-whitespace-normal pktw-break-words pktw-leading-snug">
 				{parts.map((p, i) =>
 					p.hit ? (
 						<span key={i} className="pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-font-medium pktw-rounded-sm pktw-px-0.5">

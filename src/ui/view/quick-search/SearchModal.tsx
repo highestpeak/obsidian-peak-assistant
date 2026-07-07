@@ -29,6 +29,7 @@ import { RecentAnalysisList } from './components/RecentAnalysisList';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { useOpenHubGraphSubview } from './hooks/useOpenHubGraphSubview';
+import { ResultPaneHeader } from './components/ResultPaneHeader';
 
 type TabType = 'vault' | 'ai';
 
@@ -606,6 +607,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 						</Button>
 					);
 				})}
+				<ResultPaneHeader mode={quickSearchMode} className="pktw-ml-auto" />
 			</div>
 
 			{/* Content area — side-by-side results + inspector */}

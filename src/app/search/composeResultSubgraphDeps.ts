@@ -41,6 +41,7 @@ export function composeResultSubgraphDeps(): ResultSubgraphDeps {
             if (!docIds.length) return out;
             if (!sqliteStoreManager.isInitialized()) return out;
             const repo = sqliteStoreManager.getMobiusNodeRepo('vault');
+            // First pass: treat inputs as node_id.
             const rowMap = await repo.getByIds(docIds);
             for (const [id, node] of rowMap) {
                 const path = (node as { path?: string | null }).path ?? '';
@@ -52,6 +53,28 @@ export function composeResultSubgraphDeps(): ResultSubgraphDeps {
                     communityId,
                     folder: topLevelFolder(path),
                 });
+            }
+            // Second pass: any input not yet resolved likely came in as a path
+            // (search results carry chunk ids in `.id` and only sometimes set
+            // `.docId`). Look those up by path so the graph is not silently
+            // empty when callers pass path-style keys.
+            const unresolved = docIds.filter((id) => !out.has(id));
+            if (unresolved.length) {
+                const rows = await Promise.all(unresolved.map((p) => repo.getByPath(p).catch(() => null)));
+                for (let i = 0; i < unresolved.length; i++) {
+                    const inputId = unresolved[i];
+                    const node = rows[i];
+                    if (!node) continue;
+                    const path = (node as { path?: string | null }).path ?? inputId;
+                    const label = (node as { label?: string | null }).label ?? '';
+                    const communityId = (node as { community_id?: string | null }).community_id ?? null;
+                    out.set(inputId, {
+                        path,
+                        title: label || fallbackTitle(path),
+                        communityId,
+                        folder: topLevelFolder(path),
+                    });
+                }
             }
             return out;
         },

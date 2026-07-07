@@ -296,8 +296,19 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				const docIds: string[] = [];
 				const scores = new Map<string, number>();
 				for (const r of results) {
-					const id = r.docId ?? r.id;
+					// Prefer docId (mobius_node.node_id) when the search
+					// resolved it, else fall back to path so the app-layer
+					// port can look up by path. Chunk ids (`r.id`) are last
+					// resort — they will not match `mobius_node` and produce
+					// an empty graph, which is what triggered the bug where
+					// the whole graph area rendered blank.
+					const id = r.docId ?? r.path ?? r.id;
 					if (!id) continue;
+					if (scores.has(id)) {
+						// Multiple chunks per doc: keep the max score.
+						scores.set(id, Math.max(scores.get(id)!, scoreOf(r)));
+						continue;
+					}
 					docIds.push(id);
 					scores.set(id, scoreOf(r));
 				}
@@ -391,17 +402,17 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 
 	if (loading && !subgraph) {
 		return (
-			<span className="pktw-flex pktw-flex-1 pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary">
+			<div className="pktw-flex pktw-flex-1 pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary" style={{ minHeight: 200 }}>
 				Building graph…
-			</span>
+			</div>
 		);
 	}
 
 	if (!subgraph || (!subgraph.resultNodes.length && !subgraph.hubAnchors.length)) {
 		return (
-			<span className="pktw-flex pktw-flex-1 pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary">
+			<div className="pktw-flex pktw-flex-1 pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary" style={{ minHeight: 200 }}>
 				No results to graph.
-			</span>
+			</div>
 		);
 	}
 
@@ -409,6 +420,35 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 
 	const sparse = layout.connectedPairs < 3 && layout.sharedHubs < 2;
 	const narrow = containerWidth > 0 && containerWidth < NARROW_MODAL_PX;
+	// If ReactFlow has nothing to draw (no hubs, all docs isolated), fall
+	// back to a full-width isolated matches list — the ReactFlow canvas
+	// would otherwise render as a blank band which is what the user hit.
+	const emptyCanvas = layout.nodes.length === 0;
+	if (emptyCanvas) {
+		const totalIsolated = layout.isolatedItems.length;
+		return (
+			<div ref={containerRef} className="pktw-relative pktw-flex pktw-flex-col pktw-flex-1 pktw-min-h-0 pktw-w-full pktw-overflow-hidden" style={{ minHeight: 200 }}>
+				<div className="pktw-px-4 pktw-py-2 pktw-text-xs pktw-text-pk-text-tertiary pktw-border-b pktw-border-pk-border/40">
+					{totalIsolated} result{totalIsolated === 1 ? '' : 's'} · no structural connections between them
+				</div>
+				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto">
+					<IsolatedMatchesRail
+						items={layout.isolatedItems}
+						selectedId={selectedNodeId}
+						onSelect={setSelectedNodeId}
+						onOpen={(id) => void openDocById(id)}
+						narrow={false}
+						fullWidth
+					/>
+				</div>
+				{subgraph.overflowCount > 0 && (
+					<span className="pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border-t pktw-border-pk-border">
+						{`Showing top ${NODE_CAP} of ${NODE_CAP + subgraph.overflowCount} results`}
+					</span>
+				)}
+			</div>
+		);
+	}
 
 	return (
 		<div
