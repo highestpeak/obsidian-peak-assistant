@@ -223,6 +223,22 @@ export const SEARCH_SCORING_DIVERSITY_BOOST_CONTENT = 0.5; // Up to 50% boost fo
 export const SEARCH_SCORING_DIVERSITY_BOOST_META = 0.8; // Up to 80% boost for diversity in meta matches
 
 /**
+ * When a highlight snippet is taken from a whole-file Vault read, the resolver
+ * hands `findBestWindow` an approximate chunk anchor so the picked window
+ * still lands near the chunk that scored. Higher weight = stronger pull
+ * toward the hint; decay controls how quickly proximity influence falls off
+ * in character distance.
+ */
+export const SEARCH_HIGHLIGHT_HINT_WEIGHT = 0.8;
+export const SEARCH_HIGHLIGHT_HINT_DECAY = 400; // characters — half-influence around 400 chars from hint
+
+/** Vault file read timeout for highlight source resolver (ms). */
+export const SEARCH_HIGHLIGHT_VAULT_READ_TIMEOUT_MS = 200;
+
+/** Cross-query LRU capacity for the highlight vault text cache (# of files). */
+export const SEARCH_HIGHLIGHT_VAULT_CACHE_CAPACITY = 32;
+
+/**
  * Graph Inspector RRF weights for document node ranking.
  * Compiled defaults; not runtime-configurable by design.
  * Weights are applied to each ranking dimension in the RRF formula.

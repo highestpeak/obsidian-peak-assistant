@@ -1,5 +1,9 @@
 import type { QueryPlan } from '@/service/search/query/query-parser';
 import { porterStem } from '@/core/utils/porter-stemmer';
+import {
+    SEARCH_HIGHLIGHT_HINT_WEIGHT,
+    SEARCH_HIGHLIGHT_HINT_DECAY,
+} from '@/core/constant';
 
 export type HighlightSpan = { start: number; end: number; type: 'exact' | 'stem' | 'fuzzy' };
 export type HighlightResult = { text: string; spans: HighlightSpan[] };
@@ -53,6 +57,7 @@ export class HighlightEngine {
         plan: QueryPlan,
         windowBefore = 80,
         windowAfter = 140,
+        hintOffset?: number,
     ): HighlightResult {
         // Work on lowercased raw content for matching
         const lower = rawContent.toLowerCase();
@@ -107,8 +112,12 @@ export class HighlightEngine {
         }
 
         if (allMatches.length === 0) {
-            // No matches: return beginning of content as snippet with no spans
-            const snippet = rawContent.slice(0, windowBefore + windowAfter);
+            // No matches: return snippet from around the hint (if any) or the beginning.
+            const windowLen = windowBefore + windowAfter;
+            const startFromHint = hintOffset !== undefined
+                ? Math.max(0, Math.min(rawContent.length - windowLen, hintOffset - windowBefore))
+                : 0;
+            const snippet = rawContent.slice(startFromHint, startFromHint + windowLen);
             return { text: snippet, spans: [] };
         }
 
@@ -119,6 +128,7 @@ export class HighlightEngine {
             plan,
             windowBefore,
             windowAfter,
+            hintOffset,
         );
 
         const snippet = rawContent.slice(winStart, winEnd);
@@ -137,6 +147,7 @@ export class HighlightEngine {
         _plan: QueryPlan,
         windowBefore: number,
         windowAfter: number,
+        hintOffset?: number,
     ): { start: number; end: number } {
         const windowLen = windowBefore + windowAfter;
         let bestScore = -1;
@@ -161,7 +172,17 @@ export class HighlightEngine {
 
             const actualWindowLen = winEnd - adjustedStart;
             const density = actualWindowLen > 0 ? totalMatchChars / actualWindowLen : 0;
-            const score = coveredKeywords.size * 2 + density;
+            let score = coveredKeywords.size * 2 + density;
+
+            // Hint proximity: when the caller knows which region of a large
+            // whole-file source is the "expected" chunk, bias the window
+            // toward that anchor so multi-chunk files don't always snap to
+            // the first match found.
+            if (hintOffset !== undefined) {
+                const winCenter = adjustedStart + windowLen / 2;
+                const distance = Math.abs(winCenter - hintOffset);
+                score += SEARCH_HIGHLIGHT_HINT_WEIGHT * Math.exp(-distance / SEARCH_HIGHLIGHT_HINT_DECAY);
+            }
 
             if (score > bestScore) {
                 bestScore = score;

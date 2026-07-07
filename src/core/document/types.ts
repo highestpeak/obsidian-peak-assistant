@@ -11,6 +11,49 @@ export const DOCUMENT_TYPES = [
 
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
+/**
+ * Document types whose highlight source can be read live from the Vault file.
+ * For these types, the file on disk is authoritative — search highlight and
+ * chunk reads should prefer `vault.cachedRead(path)` over the copy in
+ * `doc_chunk.content_raw`. Binary types (pdf/docx/pptx/xlsx/image) require the
+ * indexed extracted text because the Vault file cannot be re-parsed cheaply
+ * per query.
+ */
+const VAULT_READABLE_DOCUMENT_TYPES: ReadonlySet<DocumentType> = new Set([
+	'markdown',
+	'txt',
+	'csv',
+	'json',
+	'html',
+	'xml',
+	'canvas',
+	'excalidraw',
+]);
+
+export function isVaultReadableSource(type: DocumentType | string | undefined | null): boolean {
+	return typeof type === 'string' && VAULT_READABLE_DOCUMENT_TYPES.has(type as DocumentType);
+}
+
+/**
+ * File extensions whose contents can be read as UTF-8 text via
+ * `vault.adapter.read`. Used as a defense-in-depth fallback for search
+ * results whose `type` field was lost or is 'unknown' — the resolver still
+ * routes through Vault-first when the path extension is recognizable text.
+ */
+const VAULT_READABLE_EXTENSIONS: ReadonlySet<string> = new Set([
+	'md', 'markdown', 'txt', 'csv', 'json', 'html', 'htm', 'xml',
+	'canvas', 'excalidraw',
+]);
+
+export function isVaultReadableByPath(path: string | undefined | null): boolean {
+	if (typeof path !== 'string' || !path) return false;
+	// Handle .excalidraw.md specifically (matched by 'md' below anyway).
+	const lower = path.toLowerCase();
+	const dot = lower.lastIndexOf('.');
+	if (dot < 0) return false;
+	return VAULT_READABLE_EXTENSIONS.has(lower.slice(dot + 1));
+}
+
 /** Source file information, read lazily after DocumentPO creation. */
 export interface DocumentFileInfo {
 	path: string;

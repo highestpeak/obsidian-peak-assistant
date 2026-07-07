@@ -26,12 +26,33 @@ import { MetaRetriever } from '@/service/search/retriever/meta-retriever';
 import { FuzzyRetriever } from '@/service/search/retriever/fuzzy-retriever';
 import { rrfMerge } from '@/service/search/merger/rrf-merger';
 import { HighlightEngine } from './highlight-engine';
+import {
+	HighlightSourceResolver,
+	MemoryVaultTextCache,
+	type VaultTextReader,
+	type VaultTextCache,
+} from './highlight-source-resolver';
 import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickRepo';
+import type { DebugRunHandle } from '@/core/debug-trace';
+import {
+	recordRetrievalRecall,
+	recordRrfMerge,
+	recordRankingBoosts,
+	recordLlmRerank,
+	recordExcludeFilter,
+	recordTopKCutoff,
+	recordPprRerank,
+	recordAlreadyLinkedDecisions,
+	recordRetrieverFilterSettings,
+	finalizeSearchSummary,
+	type BoostSignalContext,
+} from '@/service/search/debugTraceAdapter';
 
 export class QueryService {
 	private readonly reranker: Reranker;
 	private readonly registry: RetrieverRegistry;
 	private readonly highlightEngine = new HighlightEngine();
+	private readonly vaultTextCache: VaultTextCache = new MemoryVaultTextCache();
 
 	constructor(
 		private readonly aiServiceManager: AIServiceManager,
@@ -55,7 +76,11 @@ export class QueryService {
 	 * 5. Ranking boosts (frequency, recency, graph, hub, click-through)
 	 * 6. Exclude filter, highlight, optional LLM rerank
 	 */
-	async textSearch(query: SearchQuery, enableLLMRerank: boolean = false): Promise<SearchResponse & { duration: number }> {
+	async textSearch(
+		query: SearchQuery,
+		enableLLMRerank: boolean = false,
+		debugRun?: DebugRunHandle,
+	): Promise<SearchResponse & { duration: number }> {
 		const sw = new Stopwatch('SearchQuery');
 		const termRaw = query?.text ?? '';
 		const plan = parseQuery(termRaw);
@@ -69,10 +94,36 @@ export class QueryService {
 		const retrieverResults = await this.registry.executeAll(plan);
 		sw.stop();
 
+		if (debugRun) {
+			// Type filter is a settings-driven gate applied inside each retriever;
+			// the debug receipt captures the configured allow-list so a reader
+			// can see whether markdown-only / PDF-included etc. was in effect.
+			const includedTypes = this.searchSettings.includeDocumentTypes
+				? Object.entries(this.searchSettings.includeDocumentTypes)
+					.filter(([, on]) => on)
+					.map(([t]) => t)
+				: [];
+			recordRetrieverFilterSettings(debugRun, {
+				includedDocumentTypes: includedTypes,
+			});
+			for (const [name, results] of retrieverResults) {
+				recordRetrievalRecall(debugRun, name, results);
+			}
+		}
+
 		// Merge with adaptive RRF
 		sw.start('rrf_merge');
 		const merged = rrfMerge(retrieverResults, plan.retrievers);
 		sw.stop();
+
+		if (debugRun) {
+			recordRrfMerge(
+				debugRun,
+				plan.retrievers as unknown as Record<string, number>,
+				retrieverResults,
+				merged,
+			);
+		}
 
 		const topK = Number(query?.topK ?? DEFAULT_SEARCH_TOP_K);
 
@@ -86,6 +137,7 @@ export class QueryService {
 			score: m.rrfScore,
 			lastModified: m.best.lastModified ?? 0,
 			docId: m.best.docId,
+			chunkId: m.best.chunkId,
 			highlight: null,
 			contentRaw: m.best.contentRaw,
 			matchType: m.best.matchType,
@@ -109,6 +161,7 @@ export class QueryService {
 			})();
 
 			sw.start('ppr_computation');
+			const itemsBeforePpr = resultItems;
 			try {
 				const pprEnriched = await this.applyPPR(resultItems, tenant, ftsDocIds);
 				pprActive = pprEnriched !== resultItems;
@@ -117,6 +170,13 @@ export class QueryService {
 				console.error('[QueryService] PPR failed, using original results:', error);
 			}
 			sw.stop();
+			if (debugRun && pprActive) {
+				recordPprRerank(debugRun, {
+					seedDocIds: ftsDocIds,
+					before: itemsBeforePpr,
+					after: resultItems,
+				});
+			}
 		}
 
 		// Ranking boosts with click-through
@@ -129,6 +189,7 @@ export class QueryService {
 				tenant,
 			)
 			: new Set<string>();
+		const itemsBeforeBoost = resultItems;
 		resultItems = this.reranker.applyRankingBoosts({
 			items: resultItems,
 			signals,
@@ -138,27 +199,88 @@ export class QueryService {
 		});
 		sw.stop();
 
+		if (debugRun) {
+			// Per-path signal snapshot for preview items so the receipt shows
+			// which heuristics could have fired for each doc.
+			const signalsByPath = new Map<string, BoostSignalContext>();
+			for (const item of resultItems.slice(0, 20)) {
+				const sig = signals.get(item.path);
+				signalsByPath.set(item.path, {
+					...(sig ? {
+						openCount: sig.openCount,
+						lastOpenTs: sig.lastOpenTs,
+					} : {}),
+					clicked: clickedPaths.has(item.path),
+					relatedToCurrent: relatedPaths.has(item.path),
+				});
+			}
+			recordRankingBoosts(debugRun, {
+				items: itemsBeforeBoost,
+				afterItems: resultItems,
+				pprActive,
+				clickedPathCount: clickedPaths.size,
+				relatedPathCount: relatedPaths.size,
+				signalsByPath,
+			});
+			// Already-linked emerges as its own decision so a reader sees
+			// exactly which items were promoted because they already link
+			// to the current file.
+			recordAlreadyLinkedDecisions(debugRun, resultItems, relatedPaths);
+		}
+
 		// Post-ranking exclude filter
 		if (plan.excludes.length > 0) {
+			const before = resultItems;
 			resultItems = this.reranker.applyExcludeFilter(resultItems, plan.excludes);
+			if (debugRun) {
+				recordExcludeFilter(debugRun, before, resultItems, plan.excludes);
+			}
 		}
 
 		// Trim to topK
+		const itemsBeforeTopK = resultItems;
 		resultItems = resultItems.slice(0, topK);
+		if (debugRun) {
+			recordTopKCutoff(debugRun, itemsBeforeTopK, resultItems, topK);
+		}
 
-		// Highlight on final results only
+		// Highlight on final results only. Raw source resolution runs once per
+		// query, batched over topK: markdown-like types read the current Vault
+		// file (authoritative, no stale `content_raw`); binary/derived types
+		// fall back to indexed `content_raw` since their extracted text has
+		// no re-parseable source.
 		sw.start('highlighting');
+		const sourceResolver = new HighlightSourceResolver(
+			sqliteStoreManager.getDocChunkRepo(tenant),
+			this.buildVaultReader(),
+			this.vaultTextCache,
+		);
+		const sourceByItemId = await sourceResolver.resolveMany(resultItems);
 		for (const item of resultItems) {
-			const raw = item.contentRaw ?? item.content ?? '';
+			const source = sourceByItemId.get(item.id);
+			const raw = source?.text ?? item.contentRaw ?? item.content ?? '';
 			const norm = item.content ?? '';
-			item.highlight = this.highlightEngine.highlightSnippet(raw, norm, plan);
+			item.highlight = this.highlightEngine.highlightSnippet(
+				raw,
+				norm,
+				plan,
+				undefined,
+				undefined,
+				source?.hintOffset,
+			);
 			item.titleHighlight = this.highlightEngine.highlight(item.title ?? '', plan);
+			if (source) {
+				item.highlightSourceKind = source.kind;
+				if (source.hintOffset !== undefined) item.highlightHintOffset = source.hintOffset;
+				if (source.vaultReadMs !== undefined) item.highlightVaultReadMs = source.vaultReadMs;
+			}
 		}
 		sw.stop();
 
 		// Optional LLM rerank
 		if (enableLLMRerank) {
 			sw.start('llm_rerank');
+			const beforeRerank = resultItems;
 			resultItems = await this.reranker.rerank(
 				resultItems,
 				termRaw,
@@ -168,6 +290,15 @@ export class QueryService {
 				pprActive,
 			);
 			sw.stop();
+			if (debugRun) {
+				const info = this.reranker.getRerankModelInfo();
+				recordLlmRerank(debugRun, {
+					before: beforeRerank,
+					after: resultItems,
+					provider: info?.provider,
+					model: info?.modelId,
+				});
+			}
 		}
 
 		// Find fuzzy correction for UI
@@ -175,10 +306,21 @@ export class QueryService {
 
 		sw.print(false);
 
+		const totalDuration = sw.getTotalElapsed();
+		if (debugRun) {
+			finalizeSearchSummary(debugRun, {
+				query: termRaw,
+				topK,
+				finalCount: resultItems.length,
+				llmRerank: enableLLMRerank,
+				durationMs: totalDuration,
+			});
+		}
+
 		return {
 			query,
 			items: resultItems,
-			duration: sw.getTotalElapsed(),
+			duration: totalDuration,
 			...(fuzzyCorrection ? { fuzzyCorrection } : {}),
 		};
 	}
@@ -241,6 +383,31 @@ export class QueryService {
 		} catch {
 			return new Set();
 		}
+	}
+
+	/**
+	 * Build a minimal Vault text reader for the resolver. Returns null if no
+	 * Obsidian App is reachable — the resolver then skips Vault fallback and
+	 * relies on doc_chunk.content_raw, which is the common case in tests.
+	 */
+	private buildVaultReader(): VaultTextReader | null {
+		let app: { vault?: { adapter?: { read?: (p: string) => Promise<string> } } } | null = null;
+		try {
+			app = (this.aiServiceManager as unknown as { getApp?: () => unknown }).getApp?.() as typeof app ?? null;
+		} catch {
+			app = null;
+		}
+		const adapter = app?.vault?.adapter;
+		if (!adapter || typeof adapter.read !== 'function') return null;
+		return {
+			async readText(path: string): Promise<string | null> {
+				try {
+					return await adapter.read!(path);
+				} catch {
+					return null;
+				}
+			},
+		};
 	}
 
 	private async applyPPR(
