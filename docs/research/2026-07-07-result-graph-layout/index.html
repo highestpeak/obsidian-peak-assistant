@@ -100,7 +100,8 @@
 			</div>
 			<div class="control">
 				<label><input type="checkbox" id="showRef" checked /> reference</label>
-				<label><input type="checkbox" id="showHubC" checked /> hub_constituent</label>
+				<!-- showHubC kept as hidden input for compat with readOpts / PRESETS bookkeeping -->
+				<input type="checkbox" id="showHubC" checked hidden />
 			</div>
 			<div class="control">
 				<label><input type="checkbox" id="groupFolder" /> group by folder</label>
@@ -123,7 +124,6 @@
 	<h2>Legend</h2>
 	<div class="legend" style="flex-direction:column">
 		<div class="swatch ref">reference (solid)</div>
-		<div class="swatch hub">hub_constituent (dashed accent)</div>
 		<div class="swatch sem">semantic (dashed gray)</div>
 	</div>
 	<h2>Node types</h2>
@@ -211,10 +211,12 @@
 		const els = [];
 		const { showRef, showHubC, showSem, groupFolder, groupHub, hideIsolated } = opts;
 
-		// Determine isolated set based on structural edges (kind='reference' / 'hub_constituent').
+		// Determine isolated set based on reference edges only. hub_constituent
+		// edges are no longer rendered, so counting them here would produce
+		// docs that appear "connected" yet visually have no incident edge.
 		const structuralEndpoints = new Set();
 		for (const e of subgraph.edges) {
-			if (e.kind === 'reference' || e.kind === 'hub_constituent') {
+			if (e.kind === 'reference') {
 				structuralEndpoints.add(e.from);
 				structuralEndpoints.add(e.to);
 			}
@@ -327,11 +329,13 @@
 			});
 		}
 
-		// Edges.
+		// Edges. hub_constituent edges are intentionally dropped — hub docs are
+		// themselves regular documents and their real cross-links already show
+		// up as reference / semantic edges, so the dashed hub line is noise.
 		const seen = new Set();
 		for (const e of subgraph.edges) {
+			if (e.kind === 'hub_constituent') continue;
 			if (e.kind === 'reference' && !showRef) continue;
-			if (e.kind === 'hub_constituent' && !showHubC) continue;
 			if (e.kind === 'semantic' && !showSem) continue;
 			const from = e.from, to = e.to;
 			if (from === to) continue;
@@ -482,6 +486,9 @@
 			'z-index': 999,
 			'line-dash-pattern': [10, 6],
 			'line-style': 'dashed',
+			// Bigger arrow head on hover so direction stays legible even at
+			// small zoom. Base edges use 0.7 — highlight scales to 1.4.
+			'arrow-scale': 1.4,
 		}},
 		// Region separators (Cytoscape node-based bounding boxes).
 		{ selector: 'node.regionLabel', style: {
@@ -602,7 +609,14 @@
 	}
 
 	function layoutIsolatedGrid(cy) {
-		const isolated = cy.nodes('.isolated');
+		// Sort isolated nodes by label (case-insensitive, locale-aware). Grid
+		// order is deterministic and scannable — otherwise iteration order
+		// reflected score, which meant every query re-shuffled the grid.
+		const isolated = cy.nodes('.isolated').sort((a, b) => {
+			const la = (a.data('label') || a.id() || '').toLowerCase();
+			const lb = (b.data('label') || b.id() || '').toLowerCase();
+			return la.localeCompare(lb, 'zh');
+		});
 		if (isolated.length === 0) return;
 		const connected = cy.nodes().not('.isolated').not('.regionLabel');
 		let baseY = 0, centerX = 0, gridWidth = 0;
