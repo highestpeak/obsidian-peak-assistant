@@ -26,6 +26,8 @@ here are fetched on demand when an agent works in a relevant area.
 |---|---|---|
 | [ui-design.md](./ui-design.md) | The single design-system reference — tokens, primitive catalog, primitive usage decisions, Obsidian CSS defense, JSX-mock fidelity. 5 sections with section anchors. | ✅ enforced |
 | [configurability.md](./configurability.md) | No inline i18n / regex / label maps / color or style configs in logic files; route through `templates/config/` or `core/constant.ts` | ✅ enforced |
+| [root-docs.md](./root-docs.md) | Root `docs/*.html` pages are final-state manuals, not work logs; includes rules for status language, dense tables, long paths, Mermaid, formulas, and viewport QA. | ✅ enforced |
+| [spec-and-tests.md](./spec-and-tests.md) | Spec / design doc 与其 acceptance criteria / test 文件清单 / bad-case 复现都写在同一份文档，不拆到独立的 test-plan.md / verification.md / qa.md。 | ✅ enforced |
 
 **On why design rules consolidated into one file (2026-06-01):** the five earlier files (`design-tokens.md`, `component-primitives.md`, `primitive-usage.md`, `obsidian-css-defense.md`, `jsx-mock-fidelity.md`) were all design-system-stack content cross-linking each other every other paragraph. Splitting them made "which file do I open?" a cognitive tax and forced contributors to chase pointers between files. Merged into `ui-design.md` with section anchors (`#1-design-tokens`, `#2-component-primitives-catalog`, etc.) so a reader can grep within one file or jump to a specific section. Each old file's full content is preserved as a section.
 

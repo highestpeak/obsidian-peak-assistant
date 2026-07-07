@@ -60,6 +60,8 @@ Detailed conventions live in `docs/conventions/`. Read `docs/conventions/README.
 
 - **UI design system** — tokens, primitive catalog, primitive usage decisions, Obsidian CSS defense, JSX-mock fidelity. One file, 5 sections, section-anchored. [`ui-design.md`](./docs/conventions/ui-design.md)
 - **Configurability** — no inline i18n / regex / label maps / color, thresholds, weights, timing knobs, or style configs; route through `templates/config/` plus a documented domain fallback when needed. [`configurability.md`](./docs/conventions/configurability.md)
+- **Root docs** — final-state `docs/*.html` manuals, not work logs; status language, dense tables, long paths, Mermaid, formulas, and viewport QA rules. [`root-docs.md`](./docs/conventions/root-docs.md)
+- **Spec + tests one doc** — spec 与 acceptance criteria / test 文件清单 / bad-case 复现写在同一份 `docs/superpowers/specs/*.md`，不拆到 `test-plan.md` / `qa.md`。[`spec-and-tests.md`](./docs/conventions/spec-and-tests.md)
 
 ## Docs & Research Workflow
 
