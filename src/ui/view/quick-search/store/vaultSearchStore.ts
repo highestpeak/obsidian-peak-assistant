@@ -10,22 +10,13 @@ import type { SearchQuery, SearchResultItem, SearchScopeValue } from '@/core/sea
  */
 export type QuickSearchMode = 'all' | 'heading' | 'help';
 
-// TODO T1: `InFileSearch` / `GoToLine` types are retained as unused re-exports
-// so that T1-owned files (useVaultSearch, SearchModal) still compile during
-// the T0 → T1 handoff. Delete along with the corresponding removed feature paths.
-export interface InFileSearch {
-	text: string;
-	path: string;
-}
-
-export interface GoToLine {
-	line: number;
-	path: string;
-	/**
-	 * same as line number. but str type
-	 */
-	text: string;
-}
+/**
+ * T3 (2026-07-07 result graph): the result pane can render either the
+ * ranked list (default) or a graph visualization of the same result set
+ * (T4 will fill in). Store owns the toggle so `ResultPaneHeader`,
+ * `tab-VaultSearch`, and the keyboard handler can coordinate.
+ */
+export type ResultView = 'list' | 'graph';
 
 interface VaultSearchStore {
 	// State
@@ -38,6 +29,18 @@ interface VaultSearchStore {
 	inspectorOpen: boolean;
 	setInspectorOpen: (open: boolean) => void;
 	toggleInspector: () => void;
+
+	// T3: result-view toggle shell (list ↔ graph) + graph overlay toggles.
+	// Graph content lands in T4; these fields exist now so T3/T4 can build in
+	// parallel without a mid-branch schema shift.
+	resultView: ResultView;
+	setResultView: (view: ResultView) => void;
+	graphOverlaySemantic: boolean;
+	setGraphOverlaySemantic: (on: boolean) => void;
+	toggleGraphOverlaySemantic: () => void;
+	graphOverlayFolder: boolean;
+	setGraphOverlayFolder: (on: boolean) => void;
+	toggleGraphOverlayFolder: () => void;
 
 	// Actions
 	/**
@@ -64,6 +67,16 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 	inspectorOpen: false,
 	setInspectorOpen: (open) => set({ inspectorOpen: open }),
 	toggleInspector: () => set((s) => ({ inspectorOpen: !s.inspectorOpen })),
+
+	// T3: result-view toggle shell
+	resultView: 'list',
+	setResultView: (view) => set({ resultView: view }),
+	graphOverlaySemantic: false,
+	setGraphOverlaySemantic: (on) => set({ graphOverlaySemantic: on }),
+	toggleGraphOverlaySemantic: () => set((s) => ({ graphOverlaySemantic: !s.graphOverlaySemantic })),
+	graphOverlayFolder: false,
+	setGraphOverlayFolder: (on) => set({ graphOverlayFolder: on }),
+	toggleGraphOverlayFolder: () => set((s) => ({ graphOverlayFolder: !s.graphOverlayFolder })),
 
 	// Actions
 	updateParsedQuery: (currentFilePath, searchQuery) => {
@@ -92,6 +105,9 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 		isSearching: false,
 		lastSearchResults: [],
 		fuzzyCorrection: null,
+		resultView: 'list',
+		graphOverlaySemantic: false,
+		graphOverlayFolder: false,
 	}),
 }));
 

@@ -452,13 +452,11 @@ interface VaultTabContentProps {
 	setActiveTab: (tab: TabType) => void;
 }
 
-/** Returns search query string for the given mode (prefix # / ? or none).
- *  TODO T1: strip out remaining `@` / `:` prefix handling once folder / line
- *  modes are fully retired. */
+/** Returns search query string for the given mode (prefix # / ? or none). */
 function transformQueryForMode(raw: string, toMode: QuickSearchMode): string {
 	const trimmed = raw.trimStart();
-	// Strip existing mode prefix (#, @, :, ?).
-	const withoutPrefix = trimmed.replace(/^\s*[#@:?]\s*/, '') || '';
+	// Strip existing mode prefix (#, ?).
+	const withoutPrefix = trimmed.replace(/^\s*[#?]\s*/, '') || '';
 	if (toMode === 'all') return withoutPrefix;
 	if (toMode === 'heading') return trimmed.startsWith('#') ? raw : `# ${withoutPrefix}`;
 	return raw;
@@ -481,14 +479,11 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	 * Display mode is derived from the raw input prefix, not from store mode.
 	 * Store mode may fallback to 'all' when there is no file context (desktop/mock),
 	 * but UI should still highlight what the user is trying to use (# / ?).
-	 * TODO T1: remove `@` / `:` prefix probes once folder/line modes are gone.
 	 */
 	const displayMode = vaultSearchQuery.trimStart().startsWith('#')
 		? ('heading' as const)
 		: ('all' as const);
 
-	// TODO T1: 'inFolder' / 'goToLine' entries retained purely so the picker
-	// UI (below) still renders identically until the folder/line delete pass.
 	const VAULT_CYCLE_MODES = ['all', 'heading'] as const;
 	const cycleVaultMode = (dir: 1 | -1) => {
 		const idx = VAULT_CYCLE_MODES.indexOf(displayMode as typeof VAULT_CYCLE_MODES[number]);
@@ -539,9 +534,6 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 		if (inputRef.current) inputRef.current.focus();
 	}, []);
 
-	// TODO T1: goToLine re-focus effect removed with the mode. If heading mode
-	// needs analogous focus-management, add it here in T5.
-
 	return (
 		<>
 			{/* Input row */}
@@ -554,7 +546,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 								value={vaultSearchQuery}
 								onChange={setVaultSearchQuery}
 								onKeyDown={handleInputKeyDown}
-								placeholder="Search in vault... (# in-file, @ folder, : go to line, ? help)"
+								placeholder="Search in vault... (# heading, ? help)"
 								enableSearchTags={false}
 								singleLine={true}
 								containerClassName="pktw-flex-1 pktw-min-w-0 pktw-pl-4 pktw-pr-16 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border focus-within:pktw-border-pk-accent focus-within:pktw-shadow-sm pktw-rounded-full pktw-transition-all pktw-z-0"
@@ -588,7 +580,6 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 
 			{/* Mode picker row */}
 			<div className="pktw-flex-shrink-0 pktw-px-3 pktw-py-1.5 pktw-bg-pk-background pktw-border-b pktw-border-pk-border pktw-flex pktw-items-center pktw-gap-1">
-				{/* TODO T1: reintroduce Folder / Line entries only if the retirement is reverted. */}
 			{(['all', 'heading'] as const).map((mode) => {
 					const labels: Record<string, string> = { all: 'All', heading: 'Heading' };
 					const isActive = displayMode === mode;

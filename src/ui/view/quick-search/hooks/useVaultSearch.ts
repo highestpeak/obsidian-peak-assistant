@@ -4,13 +4,11 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { DEFAULT_SEARCH_QUERY, useVaultSearchStore } from '../store/vaultSearchStore';
 import { SearchQuery } from '@/core/search/searchTypes';
 
-// TODO T1: the previous version of this file carried polymorphic return types
-// (`InFileSearch | GoToLine | SearchQuery`) plus dedicated `performInFileSearch`
-// and `performGoToLine` helpers that read markdown line-by-line. After the T0
-// enum shrink to `all | heading | help`, those custom code paths are dead —
-// `heading` mode will be replaced by the outline-tree service in T5, not by
-// the old brute-force in-file scan. T1 removes the retired feature files;
-// T5 wires the new heading service in. Both are outside T0's scope.
+// T1 (2026-07-07): the previous polymorphic return type
+// (InFileSearch | GoToLine | SearchQuery) and the dedicated
+// performInFileSearch / performGoToLine helpers were deleted along with
+// the inFolder / goToLine quick-search modes. Heading mode reuses this
+// shared SearchClient path until T5 lands the outline-tree service.
 
 export const useSearchQuery = (): SearchQuery => {
 	const { parsedQuery } = useVaultSearchStore();
@@ -26,7 +24,7 @@ export const useHasSearchQuery = () => {
  * Custom hook for vault search data fetching logic.
  * Handles both recent files fetching and search with debouncing.
  *
- * T0 (2026-07-07): dropped the mode-specific `performInFileSearch` /
+ * T0/T1 (2026-07-07): dropped the mode-specific `performInFileSearch` /
  * `performGoToLine` branches. All modes now share the SearchClient path.
  * T5 will reintroduce heading-mode-specific behavior via the new outline
  * tree service.

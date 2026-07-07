@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Hash, FolderSearch, ListOrdered, HelpCircle } from 'lucide-react';
+import { Search, Hash, HelpCircle } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 
 interface ModeItem {
@@ -11,9 +11,7 @@ interface ModeItem {
 
 const MODES: ModeItem[] = [
 	{ prefix: '', name: 'Vault', description: 'Search all notes by title, content, and path', icon: Search },
-	{ prefix: '#', name: 'In-file', description: 'Search within the active file', icon: Hash },
-	{ prefix: '@', name: 'In-folder', description: 'Search within the current folder', icon: FolderSearch },
-	{ prefix: ':', name: 'Go to line', description: 'Jump to a line in the active file', icon: ListOrdered },
+	{ prefix: '#', name: 'Heading', description: 'Outline the active file and jump to a heading', icon: Hash },
 	{ prefix: '?', name: 'Help', description: 'Show all available search modes', icon: HelpCircle },
 ];
 

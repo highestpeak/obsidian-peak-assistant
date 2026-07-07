@@ -16,11 +16,9 @@ import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickR
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SearchUpgradePrompt } from './components/SearchUpgradePrompt';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
+import { ResultPaneHeader } from './components/ResultPaneHeader';
 
-// TODO T1: `mode` prop was previously used to render a goToLine-specific
-// empty state. After T0 removed goToLine, only the generic "no results"
-// copy remains — drop the prop when the T1 delete pass rolls through.
-const NoResultsState: React.FC<{ mode?: string }> = ({ mode: _mode }) => (
+const NoResultsState: React.FC = () => (
 	<EmptyState
 		icon={SearchX}
 		title="No results found"
@@ -63,6 +61,16 @@ const FilterSyntaxHint: React.FC<{ variant: 'browse' | 'results' }> = ({ variant
 /** Show the tail syntax hint once the result count is worth filtering. */
 const RESULT_HINT_THRESHOLD = 15;
 
+/**
+ * T3 shell placeholder — T4 replaces this with `<ResultGraphView />`.
+ * Kept intentionally minimal so T4 has a clear mount point.
+ */
+const ResultGraphPlaceholder: React.FC = () => (
+	<div className="pktw-flex pktw-flex-1 pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary">
+		<span>Result graph coming soon (T4)</span>
+	</div>
+);
+
 /** Footer hints for vault search tab. Exported for use in SearchModal footer. */
 export const VaultSearchFooterHints: React.FC = () => (
 	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-pk-text-tertiary">
@@ -90,6 +98,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 	const { vaultNavigation, debugTracePort } = useServiceContext();
 	const { quickSearchMode, isSearching, lastSearchResults: displayedResults, fuzzyCorrection, parsedQuery } = useVaultSearchStore();
 	const inspectorOpen = useVaultSearchStore((s) => s.inspectorOpen);
+	const resultView = useVaultSearchStore((s) => s.resultView);
 	const hasSearchQuery = useHasSearchQuery();
 	const searchQuery = useSearchQuery();
 	const [selectedIndex, setSelectedIndex] = React.useState(-1);
@@ -144,6 +153,16 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 			const currentMode = useVaultSearchStore.getState().quickSearchMode;
 			const maxIndex = currentMode === 'help' ? MODE_COUNT - 1 : displayedResults.length - 1;
 
+			// T3: Esc while result-view is graph flips back to list instead of
+			// closing the modal. Only intercept when in graph — otherwise the
+			// modal's own Esc handler runs.
+			if (e.key === 'Escape' && useVaultSearchStore.getState().resultView === 'graph') {
+				e.preventDefault();
+				e.stopPropagation();
+				useVaultSearchStore.getState().setResultView('list');
+				return;
+			}
+
 			switch (e.key) {
 				case 'ArrowRight':
 					e.preventDefault();
@@ -169,7 +188,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 					if (maxIndex < 0) return;
 					e.preventDefault();
 					if (currentMode === 'help') {
-						const prefixes = ['', '#', '@', ':', '?'];
+						const prefixes = ['', '#', '?'];
 						const prefix = prefixes[selectedIndex] ?? '';
 						useSharedStore.getState().setVaultSearchQuery(prefix);
 						break;
@@ -190,8 +209,8 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 								if (queryStems) clickRepo.record(queryStems, selectedResult.path, selectedIndex);
 							}
 						} catch { /* non-critical */ }
-						// TODO T1: previously `goToLine`/`inFile` opened in-place; heading
-						// mode (T5) may want the same. For now, `all` opens in new tab.
+						// `all` opens in new tab by default; heading mode opens in place
+						// (T5 will refine heading-mode navigation via the outline service).
 						const defaultNewTab = currentMode !== 'heading';
 						const openInNewTab = (e.metaKey || e.ctrlKey) || defaultNewTab;
 						await createOpenSourceCallback(onClose, openInNewTab, vaultNavigation)(selectedResult);
@@ -228,11 +247,19 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 		}
 	}, [selectedIndex]);
 
+	// T3: graph view is only meaningful for `all` and `heading` — `help`
+	// has no result payload to graph.
+	const showGraph = resultView === 'graph'
+		&& (quickSearchMode === 'all' || quickSearchMode === 'heading');
+
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0 pktw-overflow-hidden">
-			{/* Results List — always visible (inspector is rendered side-by-side in parent) */}
+			<ResultPaneHeader mode={quickSearchMode} />
+			{/* Results — list or (T4) graph. Inspector is rendered side-by-side in parent. */}
 			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto" style={{ flexBasis: 0, minHeight: 0 }}>
-				{quickSearchMode === 'help' ? (
+				{showGraph ? (
+					<ResultGraphPlaceholder />
+				) : quickSearchMode === 'help' ? (
 					<ModeHelpList
 						onSelectMode={(prefix) => {
 							useSharedStore.getState().setVaultSearchQuery(prefix);
@@ -254,7 +281,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 						)}
 						{/* Empty State - No Results */}
 						{hasSearchQuery && !isSearching && displayedResults.length === 0 ? (
-							<NoResultsState mode={quickSearchMode} />
+							<NoResultsState />
 						) : !isSearching && displayedResults.length === 0 ? (
 							<NoRecentlyAccessedState />
 						) : (

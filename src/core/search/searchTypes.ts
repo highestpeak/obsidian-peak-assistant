@@ -8,10 +8,11 @@ import type { ChunkType } from '@/core/search/chunkTypes';
 export type SearchResultType = DocumentType | 'heading';
 
 /**
- * Supported search modes in quick search.
+ * Supported search scope modes.
  * - all: global vault search (was `vault` pre-T0/2026-07-07)
  * - heading: search / outline within a single file (was `inFile` pre-T0)
- * - inFolder: search within a folder scope — TODO T1: remove once folder mode is retired
+ * - inFolder: folder-scoped search — used by chat-view context `@folder`
+ *   autocomplete; the quick-search `@` folder mode was retired by T1.
  * - limitIdsSet: search within a limited set of IDs
  * - excludeDocIdsSet: search excluding a set of IDs
  */
