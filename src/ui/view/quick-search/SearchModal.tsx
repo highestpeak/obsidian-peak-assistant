@@ -686,8 +686,26 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 	// content-driven so short result sets don't leave empty space).
 	const resultView = useVaultSearchStore((s) => s.resultView);
 	const isGraph = activeTab === 'vault' && resultView === 'graph';
+	const rootRef = React.useRef<HTMLDivElement | null>(null);
+
+	// The Obsidian `Modal` wrapper (`.modal` ancestor) is set up in
+	// `QuickSearchModal.onOpen()` with a content-driven height. To make
+	// graph view fill the viewport, walk up to that ancestor and force
+	// its inline height while the graph view is active; restore on exit
+	// so list-mode sizing is untouched.
+	React.useEffect(() => {
+		if (!rootRef.current) return;
+		const modalEl = rootRef.current.closest('.modal') as HTMLElement | null;
+		if (!modalEl) return;
+		if (isGraph) {
+			modalEl.style.height = 'calc(100vh - 160px)';
+		} else {
+			modalEl.style.height = '';
+		}
+	}, [isGraph]);
+
 	const modalStyle: React.CSSProperties = isGraph
-		? { height: 'calc(100vh - 160px)', maxHeight: 'calc(100vh - 160px)' }
+		? { height: '100%', maxHeight: 'calc(100vh - 160px)' }
 		: { maxHeight: 'calc(100vh - 160px)', minHeight: '400px' };
 
 	const handleContainerKeyDown = (e: React.KeyboardEvent) => {
@@ -699,6 +717,7 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 
 	return (
 		<div
+			ref={rootRef}
 			className="pktw-w-full pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-overflow-hidden peak-no-native-outline"
 			onKeyDown={handleContainerKeyDown}
 			tabIndex={-1}
