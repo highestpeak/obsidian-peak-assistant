@@ -624,6 +624,37 @@ export const COMMUNITY_COLORS_FALLBACK = [
 ];
 
 /**
+ * Result Graph View — subtle community wash background palette
+ * (spec 2026-07-07 §Result Graph View · Content Layers point 1). Alphas
+ * kept low so the wash reads as spatial grouping, not as a foreground
+ * highlight. Pure UI concern; kept here so both light + dark themes
+ * inherit the same source of truth per configurability rule.
+ */
+export const RESULT_GRAPH_COMMUNITY_WASH_COLORS = [
+	'rgba(137, 180, 250, 0.12)',
+	'rgba(166, 227, 161, 0.12)',
+	'rgba(249, 226, 175, 0.14)',
+	'rgba(203, 166, 247, 0.12)',
+	'rgba(250, 179, 135, 0.12)',
+	'rgba(148, 226, 213, 0.12)',
+	'rgba(243, 139, 168, 0.10)',
+	'rgba(116, 199, 236, 0.12)',
+];
+
+/**
+ * Result Graph View — dashed folder-boundary stroke palette (spec
+ * §Content Layers point 2). Used only when `graphOverlayFolder === true`.
+ */
+export const RESULT_GRAPH_FOLDER_BOUNDARY_COLORS = [
+	'rgba(124, 58, 237, 0.35)',
+	'rgba(59, 130, 246, 0.35)',
+	'rgba(34, 197, 94, 0.35)',
+	'rgba(234, 88, 12, 0.35)',
+	'rgba(220, 38, 38, 0.35)',
+	'rgba(20, 184, 166, 0.35)',
+];
+
+/**
  * System prompt prepended in Plan conversation mode.
  *
  * T11Y-6: body moved to templates/prompts/plan-mode-system.md
