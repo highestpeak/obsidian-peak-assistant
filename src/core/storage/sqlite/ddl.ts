@@ -1169,5 +1169,45 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_structural_holes_score ON structural_holes(gap_score DESC);
 		CREATE INDEX IF NOT EXISTS idx_structural_holes_version ON structural_holes(analysis_version);
 	`);
+
+	// ── One-time migration: drop redundant content in doc_chunk ──
+	// Rationale (spec: 2026-07-07-search-highlight-vault-first):
+	//   - `content_fts_norm` is unconditionally redundant with `doc_fts.content`
+	//     and has no runtime consumers.
+	//   - `content_raw` for Vault-readable types (markdown / txt / canvas /
+	//     excalidraw / html / json / xml / csv) duplicates the Vault file on
+	//     disk; the highlight resolver now reads the file live. Binary /
+	//     derived types (PDF / DOCX / PPTX / image / URL) keep `content_raw`
+	//     because their extracted text has no re-parseable source.
+	// Idempotent: guarded by an `index_state` key so it runs only once per DB.
+	try {
+		const rows = db.prepare?.(
+			`SELECT value FROM index_state WHERE key = 'phase3_null_readable_content_raw_v1'`,
+		)?.all() as Array<{ value?: string }> | undefined;
+		if (!rows || rows.length === 0) {
+			db.exec(`
+				UPDATE doc_chunk
+				   SET content_fts_norm = NULL
+				 WHERE content_fts_norm IS NOT NULL;
+				UPDATE doc_chunk
+				   SET content_raw = NULL
+				 WHERE doc_id IN (
+				   SELECT node_id FROM mobius_node
+				    WHERE json_extract(attributes_json, '$.docType') IN
+				      ('markdown','txt','csv','json','html','xml','canvas','excalidraw')
+				 );
+				INSERT OR REPLACE INTO index_state (key, value)
+				VALUES ('phase3_null_readable_content_raw_v1', '1');
+			`);
+			// VACUUM must run outside a transaction; ddl invocations are
+			// unwrapped so this is safe. Skip on failure — worst case is
+			// deferred space reclamation, not correctness.
+			try { db.exec('VACUUM'); } catch { /* vacuum optional */ }
+		}
+	} catch {
+		// index_state may not exist on very old schemas; the CREATE above runs
+		// first inside the same migrate call, so this shouldn't fire, but we
+		// swallow to keep migration side-effect-safe.
+	}
 }
 

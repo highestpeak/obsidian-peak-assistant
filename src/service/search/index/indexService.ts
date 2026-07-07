@@ -20,7 +20,7 @@ import { normalizeTextForFts } from '@/core/utils/segmenter';
 import { stemText } from '@/core/utils/porter-stemmer';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
-import type { Document, DocumentReference } from '@/core/document/types';
+import { isVaultReadableSource, type Document, type DocumentReference, type DocumentType } from '@/core/document/types';
 import {
 	INDEX_FRONTMATTER_KEYS,
 	INDEX_LONG_RANGE_LCA_MAX_DEPTH,
@@ -665,6 +665,26 @@ export class IndexService
 			} else if (opts.includeEmbeddings) {
 				sw.start('Load chunks for vector enrichment');
 				chunks = await this.loadPersistedChunksForEmbedding(doc.id, tenant);
+				// Vault-readable types no longer store content_raw, so persisted
+				// chunks arrive with empty `content`. Re-chunk from the freshly
+				// loaded Vault text and zip by chunk_index to preserve chunk_ids
+				// (existing embeddings key off chunk_id).
+				if (isVaultReadableSource(doc.type) && chunks.some(c => !c.content)) {
+					const freshChunks = await loader.chunkContent(doc, settings.chunking);
+					const byIndex = new Map<number, Chunk>();
+					for (const c of freshChunks) byIndex.set(Number(c.chunkIndex ?? 0), c);
+					for (const c of chunks) {
+						if (c.content) continue;
+						const fresh = byIndex.get(Number(c.chunkIndex ?? 0));
+						if (fresh?.content) c.content = fresh.content;
+					}
+					const stillEmpty = chunks.filter(c => !c.content).length;
+					if (stillEmpty > 0) {
+						console.warn(
+							`[IndexService] vector_enrich_only: ${stillEmpty}/${chunks.length} chunks still empty for ${doc.sourceFileInfo.path} — chunker output shape changed since indexing.`,
+						);
+					}
+				}
 				sw.stop();
 			}
 
@@ -750,6 +770,7 @@ export class IndexService
 						chunks,
 						doc.metadata.keywordTags,
 						tenant,
+						doc.type,
 					);
 					if (opts.includeEmbeddings) {
 						await this.saveEmbeddingData(doc.id, chunks, embeddingModelName, tenant);
@@ -1048,9 +1069,18 @@ export class IndexService
 		chunks: Chunk[],
 		keywordTags: string[] = [],
 		tenant: IndexTenant = 'vault',
+		docType?: DocumentType,
 	): Promise<void> {
 		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
 		const now = Date.now();
+
+		// Vault-readable types (markdown / txt / canvas / excalidraw / html / json / xml / csv)
+		// have an authoritative file on disk; storing content_raw would just
+		// duplicate it and go stale on edits. Highlight resolver reads the
+		// Vault file live. `content_fts_norm` is unconditionally redundant
+		// with `doc_fts.content` and has no consumers, so we stop writing it
+		// for every type.
+		const persistRaw = docType != null && !isVaultReadableSource(docType);
 
 		// Delete existing FTS and doc_chunk rows for this doc.
 		docChunkRepo.deleteFtsByDocId(docId);
@@ -1087,8 +1117,8 @@ export class IndexService
 				chunk_meta_json: metaJson,
 				title: chunk.title ?? null,
 				mtime: now,
-				content_raw: chunk.content ?? null,
-				content_fts_norm: normContent,
+				content_raw: persistRaw ? (chunk.content ?? null) : null,
+				content_fts_norm: null,
 			});
 
 			docChunkRepo.insertFts({
