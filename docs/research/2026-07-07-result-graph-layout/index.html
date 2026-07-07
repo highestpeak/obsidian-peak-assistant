@@ -70,7 +70,7 @@
 	<h1>Result Graph · Layout Sandbox</h1>
 	<div class="controls" style="width:100%;flex-wrap:wrap">
 		<div class="presets" role="tablist" aria-label="View mode">
-			<button class="preset-btn active" data-preset="constellation" title="Constraint force layout — how do these results cluster?">Constellation</button>
+			<button class="preset-btn active" data-preset="constellation" title="Force-directed layout — how do these results cluster?">Constellation</button>
 			<button class="preset-btn" data-preset="flow-tb" title="Top→down hierarchical flow — what references what?">Flow ↓</button>
 			<button class="preset-btn" data-preset="flow-lr" title="Left→right hierarchical flow — same as ↓ but sideways">Flow →</button>
 			<button class="preset-btn" data-preset="folder" title="Full-depth folder tree — where in my vault?">Folder tree</button>
@@ -133,7 +133,7 @@
 	</div>
 	<h2>View modes</h2>
 	<ul style="padding-left:16px;line-height:1.55;color:#666">
-		<li><b>Constellation</b> — how do these results cluster together? (constraint force)</li>
+		<li><b>Constellation</b> — how do these results cluster together? (force-directed)</li>
 		<li><b>Flow ↓ / →</b> — what references what, top-down or left-right (dagre)</li>
 		<li><b>Folder tree</b> — where in my vault do they live?</li>
 		<li><b>Orbit</b> — are hubs the center of gravity?</li>
@@ -533,7 +533,7 @@
 	// edges are the only per-view toggle the user still sees — presets set
 	// its default, the user can override on top.
 	const PRESETS = {
-		constellation: { label: 'Constellation', layout: 'cola',        showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
+		constellation: { label: 'Constellation', layout: 'fcose',       showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
 		'flow-tb':     { label: 'Flow ↓',        layout: 'dagre-tb',    showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
 		'flow-lr':     { label: 'Flow →',        layout: 'dagre-lr',    showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
 		folder:        { label: 'Folder tree',   layout: 'cola',        showRef: false, showHubC: false, showSem: false, groupFolder: true,  groupHub: false },
