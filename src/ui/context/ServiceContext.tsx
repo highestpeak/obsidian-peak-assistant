@@ -27,6 +27,8 @@ import type { MCPClientManager } from '@/service/mcp/MCPClientManager';
 import type { UsageTrackingService } from '@/service/usage/UsageTrackingService';
 import type { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 import type { UsageOptimizationService } from '@/service/usage/optimization/UsageOptimizationService';
+import type { DebugTracePort } from '@/core/debug-trace';
+import type { HeadingModeDeps } from '@/app/search/composeHeadingModeDeps';
 import type MyPlugin from 'main';
 
 /** T13: Usage-telemetry bundle mirrored from `AppRuntimeRegistry.usageServices`. */
@@ -91,6 +93,19 @@ interface ServiceContextValue {
 	mcpClientManager: MCPClientManager | null;
 	/** T13: read-only handle to the app-owned usage-telemetry bundle. */
 	usageServices: UsageServicesCtx | null;
+	/**
+	 * Debug Trace Infrastructure port. `null` until composition wires the
+	 * recorder in `main.ts`. UI surfaces (Copy debug trace affordances,
+	 * Advanced tab controls) probe this and no-op when absent.
+	 */
+	debugTracePort: DebugTracePort | null;
+	/**
+	 * T5 (2026-07-07 heading-mode UI): app-composed heading-mode data
+	 * bundle. Adapts `extractHeadingTree` / `getSectionSnippets` /
+	 * `getLinkPositions` to the Obsidian vault reader. Null before
+	 * composition wires it (mock harness / early boot).
+	 */
+	headingMode: HeadingModeDeps | null;
 }
 
 const ServiceContext = createContext<ServiceContextValue | null>(null);
@@ -133,7 +148,9 @@ export const ServiceProvider: React.FC<{
 	indexService: IndexService | null;
 	mcpClientManager: MCPClientManager | null;
 	usageServices: UsageServicesCtx | null;
-}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices }) => {
+	debugTracePort?: DebugTracePort | null;
+	headingMode?: HeadingModeDeps | null;
+}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort = null, headingMode = null }) => {
 	const value = useMemo<ServiceContextValue>(() => ({
 		manager,
 		eventBus,
@@ -163,7 +180,9 @@ export const ServiceProvider: React.FC<{
 		indexService,
 		mcpClientManager,
 		usageServices,
-	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices]);
+		debugTracePort,
+		headingMode,
+	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort, headingMode]);
 
 	return <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>;
 };

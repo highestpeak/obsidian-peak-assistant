@@ -8,6 +8,7 @@ import { composeSettingsActions } from '@/app/commands/composeSettingsActions';
 import { createChatNavigation } from '@/ui/view/chat-view/chatNavigation';
 import { composeQuickSearchHost } from '@/app/search/composeQuickSearchHost';
 import { composeCopilotReviewDeps } from '@/app/copilot/composeCopilotReviewDeps';
+import { composeHeadingModeDeps } from '@/app/search/composeHeadingModeDeps';
 
 /**
  * Factory function to create React elements wrapped with ServiceProvider.
@@ -73,6 +74,8 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			indexService: appContext.runtimeRegistry.tryGetIndexService(),
 			mcpClientManager: appContext.runtimeRegistry.tryGetMcpClientManager(),
 			usageServices: appContext.runtimeRegistry.tryGetUsageServices(),
+			debugTracePort: appContext.runtimeRegistry.tryGetDebugTracePort(),
+			headingMode: composeHeadingModeDeps(appContext),
 			children: React.createElement(Component, props as T)
 		}
 	);

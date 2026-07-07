@@ -17,6 +17,8 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SearchUpgradePrompt } from './components/SearchUpgradePrompt';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { ResultPaneHeader } from './components/ResultPaneHeader';
+import { HeadingModeContainer } from './components/heading-mode/HeadingModeContainer';
+import { ResultGraphView } from './components/result-graph/ResultGraphView';
 
 const NoResultsState: React.FC = () => (
 	<EmptyState
@@ -61,16 +63,6 @@ const FilterSyntaxHint: React.FC<{ variant: 'browse' | 'results' }> = ({ variant
 /** Show the tail syntax hint once the result count is worth filtering. */
 const RESULT_HINT_THRESHOLD = 15;
 
-/**
- * T3 shell placeholder — T4 replaces this with `<ResultGraphView />`.
- * Kept intentionally minimal so T4 has a clear mount point.
- */
-const ResultGraphPlaceholder: React.FC = () => (
-	<div className="pktw-flex pktw-flex-1 pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary">
-		<span>Result graph coming soon (T4)</span>
-	</div>
-);
-
 /** Footer hints for vault search tab. Exported for use in SearchModal footer. */
 export const VaultSearchFooterHints: React.FC = () => (
 	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-pk-text-tertiary">
@@ -95,7 +87,7 @@ interface VaultSearchTabProps {
  * Quick search tab for regular vault search results.
  */
 export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelectForInspector, navigateToPath }) => {
-	const { vaultNavigation, debugTracePort } = useServiceContext();
+	const { vaultNavigation, debugTracePort, vaultStats } = useServiceContext();
 	const { quickSearchMode, isSearching, lastSearchResults: displayedResults, fuzzyCorrection, parsedQuery } = useVaultSearchStore();
 	const inspectorOpen = useVaultSearchStore((s) => s.inspectorOpen);
 	const resultView = useVaultSearchStore((s) => s.resultView);
@@ -151,6 +143,14 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 			}
 
 			const currentMode = useVaultSearchStore.getState().quickSearchMode;
+
+			// T5: heading mode owns its own arrow/enter behavior via
+			// `useHeadingModeKeyboard`. Only Esc (handled below) should
+			// pass through the tab-level handler when in heading + list.
+			if (currentMode === 'heading' && useVaultSearchStore.getState().resultView === 'list') {
+				if (e.key !== 'Escape') return;
+			}
+
 			const maxIndex = currentMode === 'help' ? MODE_COUNT - 1 : displayedResults.length - 1;
 
 			// T3: Esc while result-view is graph flips back to list instead of
@@ -252,13 +252,25 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 	const showGraph = resultView === 'graph'
 		&& (quickSearchMode === 'all' || quickSearchMode === 'heading');
 
+	// T5: heading mode owns the middle when in list projection. Compute
+	// the file path + trailing query text off the store's parsed query.
+	const headingFilePath = vaultStats.activeFilePath();
+	const headingQueryText = parsedQuery?.text ?? '';
+	const showHeadingMode = quickSearchMode === 'heading' && resultView === 'list' && !!headingFilePath;
+
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0 pktw-overflow-hidden">
 			<ResultPaneHeader mode={quickSearchMode} />
 			{/* Results — list or (T4) graph. Inspector is rendered side-by-side in parent. */}
 			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto" style={{ flexBasis: 0, minHeight: 0 }}>
 				{showGraph ? (
-					<ResultGraphPlaceholder />
+					<ResultGraphView onClose={onClose} />
+				) : showHeadingMode ? (
+					<HeadingModeContainer
+						filePath={headingFilePath!}
+						queryText={headingQueryText}
+						onClose={onClose}
+					/>
 				) : quickSearchMode === 'help' ? (
 					<ModeHelpList
 						onSelectMode={(prefix) => {
