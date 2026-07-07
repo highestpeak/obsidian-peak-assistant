@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dagre from '@dagrejs/dagre';
+import { Copy } from 'lucide-react';
 import {
 	ReactFlow,
 	Background,
@@ -20,6 +22,7 @@ import { useVaultSearchStore } from '../../store';
 import { buildResultSubgraph, type ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
+import { IconButton } from '@/ui/components/primitives';
 import type { SearchResultItem } from '@/core/search/searchTypes';
 
 const NODE_CAP = 100;
@@ -28,6 +31,7 @@ const HUB_NODE_W = 200;
 const HUB_NODE_H = 60;
 const DOC_NODE_W = 170;
 const DOC_NODE_H = 44;
+const ISOLATED_GRID_COLS = 4;
 
 /** Numeric score to pick the "match score" for graph coloring / sort. */
 function scoreOf(r: SearchResultItem): number {
@@ -82,102 +86,99 @@ function computeLayout(
 
 	const isolatedSet = new Set(sub.isolatedDocIds);
 	const connected = sub.resultNodes.filter((n) => !isolatedSet.has(n.id));
-	const maxScore = connected.reduce((m, n) => Math.max(m, n.score), 0) || 1;
+	const isolated = sub.resultNodes.filter((n) => isolatedSet.has(n.id));
+	const maxScore = sub.resultNodes.reduce((m, n) => Math.max(m, n.score), 0) || 1;
 
-	// Swimlane layout: one column per hub, constituents stack below their
-	// hub. Docs shared by multiple hubs are assigned to the first one only
-	// (dedupe). Docs connected to other docs but not to any hub go in a
-	// trailing "cross-referenced" column so the picture stays a set of
-	// clean columns rather than a hairball.
-	const docToHubs = new Map<string, string[]>();
+	// Layout: dagre TB on hubs + connected docs (using hub_constituent AND
+	// reference edges as rank drivers). Isolated docs go into a tight grid
+	// under the connected cluster so they stay on-canvas and edges to them
+	// (if any structural links exist) still render.
+	const g = new dagre.graphlib.Graph();
+	g.setDefaultEdgeLabel(() => ({}));
+	g.setGraph({ rankdir: 'TB', nodesep: 30, ranksep: 70, marginx: 20, marginy: 20 });
+	for (const h of sub.hubAnchors) g.setNode(h.id, { width: HUB_NODE_W, height: HUB_NODE_H });
+	for (const n of connected) g.setNode(n.id, { width: DOC_NODE_W, height: DOC_NODE_H });
 	for (const e of sub.edges) {
-		if (e.kind !== 'hub_constituent') continue;
-		const arr = docToHubs.get(e.to) ?? [];
-		arr.push(e.from);
-		docToHubs.set(e.to, arr);
+		if (e.kind === 'semantic') continue;
+		if (!g.hasNode(e.from) || !g.hasNode(e.to)) continue;
+		g.setEdge(e.from, e.to);
 	}
+	dagre.layout(g);
 
-	const hubColumns = new Map<string, string[]>();
-	for (const h of sub.hubAnchors) hubColumns.set(h.id, []);
-	const crossRefColumn: string[] = [];
+	let maxDagreY = 0;
+	for (const h of sub.hubAnchors) {
+		const p = g.node(h.id);
+		if (!p) continue;
+		const x = p.x - HUB_NODE_W / 2;
+		const y = p.y - HUB_NODE_H / 2;
+		maxDagreY = Math.max(maxDagreY, p.y + HUB_NODE_H / 2);
+		const node: HubAnchorNodeType = {
+			id: h.id,
+			type: 'hubAnchor',
+			position: { x, y },
+			data: {
+				title: h.title || h.path,
+				constituentCount: h.constituentCount,
+				selected: h.id === selectedNodeId,
+			},
+		};
+		nodes.push(node as unknown as Node);
+		nodeIndexById.set(h.id, { x: p.x, y: p.y });
+	}
 	for (const n of connected) {
-		const hubs = docToHubs.get(n.id) ?? [];
-		if (hubs.length > 0 && hubColumns.has(hubs[0])) {
-			hubColumns.get(hubs[0])!.push(n.id);
-		} else {
-			crossRefColumn.push(n.id);
-		}
+		const p = g.node(n.id);
+		if (!p) continue;
+		const x = p.x - DOC_NODE_W / 2;
+		const y = p.y - DOC_NODE_H / 2;
+		maxDagreY = Math.max(maxDagreY, p.y + DOC_NODE_H / 2);
+		const node: ResultDocNodeType = {
+			id: n.id,
+			type: 'resultDoc',
+			position: { x, y },
+			data: {
+				title: n.title || n.path,
+				scoreIntensity: n.score / maxScore,
+				selected: n.id === selectedNodeId,
+			},
+		};
+		nodes.push(node as unknown as Node);
+		nodeIndexById.set(n.id, { x: p.x, y: p.y });
 	}
-	// Sort docs within a column by score DESC so the highest-relevance
-	// item sits closest to its hub.
-	const scoreById = new Map(sub.resultNodes.map((n) => [n.id, n.score]));
-	for (const arr of hubColumns.values()) {
-		arr.sort((a, b) => (scoreById.get(b) ?? 0) - (scoreById.get(a) ?? 0));
-	}
-	crossRefColumn.sort((a, b) => (scoreById.get(b) ?? 0) - (scoreById.get(a) ?? 0));
 
-	const COL_W = 210; // column pitch (node + gap)
-	const HUB_ROW_H = 80;
-	const DOC_ROW_H = 52;
+	// Isolated docs — grid below the connected cluster, sorted by score.
+	const isolatedSorted = [...isolated].sort((a, b) => b.score - a.score);
+	const gridTop = maxDagreY + 80;
+	const gridPitchX = DOC_NODE_W + 30;
+	const gridPitchY = DOC_NODE_H + 16;
+	isolatedSorted.forEach((n, i) => {
+		const col = i % ISOLATED_GRID_COLS;
+		const row = Math.floor(i / ISOLATED_GRID_COLS);
+		const x = col * gridPitchX;
+		const y = gridTop + row * gridPitchY;
+		const node: ResultDocNodeType = {
+			id: n.id,
+			type: 'resultDoc',
+			position: { x, y },
+			data: {
+				title: n.title || n.path,
+				scoreIntensity: n.score / maxScore,
+				selected: n.id === selectedNodeId,
+			},
+		};
+		nodes.push(node as unknown as Node);
+		nodeIndexById.set(n.id, { x: x + DOC_NODE_W / 2, y: y + DOC_NODE_H / 2 });
+	});
 
-	// Emit columns left-to-right: one per hub, then the cross-ref column.
-	let colIdx = 0;
-	const emitColumn = (title: string, hubId: string | null, docIds: string[]) => {
-		const x = colIdx * COL_W;
-		if (hubId) {
-			const h = sub.hubAnchors.find((a) => a.id === hubId);
-			if (h) {
-				const node: HubAnchorNodeType = {
-					id: h.id,
-					type: 'hubAnchor',
-					position: { x, y: 0 },
-					data: {
-						title: h.title || h.path || title,
-						constituentCount: h.constituentCount,
-						selected: h.id === selectedNodeId,
-					},
-				};
-				nodes.push(node as unknown as Node);
-				nodeIndexById.set(h.id, { x: x + HUB_NODE_W / 2, y: HUB_NODE_H / 2 });
-			}
-		}
-		docIds.forEach((id, i) => {
-			const meta = sub.resultNodes.find((r) => r.id === id);
-			if (!meta) return;
-			const y = HUB_ROW_H + i * DOC_ROW_H;
-			const node: ResultDocNodeType = {
-				id: meta.id,
-				type: 'resultDoc',
-				position: { x: x + (HUB_NODE_W - DOC_NODE_W) / 2, y },
-				data: {
-					title: meta.title || meta.path,
-					scoreIntensity: meta.score / maxScore,
-					selected: meta.id === selectedNodeId,
-				},
-			};
-			nodes.push(node as unknown as Node);
-			nodeIndexById.set(meta.id, {
-				x: x + HUB_NODE_W / 2,
-				y: y + DOC_NODE_H / 2,
-			});
-		});
-		colIdx++;
-	};
-
-	for (const [hubId, docs] of hubColumns) emitColumn('', hubId, docs);
-	if (crossRefColumn.length) emitColumn('Other matches', null, crossRefColumn);
-
-	// Edges: hub_constituent is now implicit in the swimlane grouping — dropping
-	// it removes visual noise. Reference edges (doc → doc cross-links) still
-	// convey signal so we keep them. Semantic edges respect the overlay toggle.
+	// Edges — all three kinds render. Reference (solid), hub_constituent (accent
+	// dotted → clear "this hub owns this doc"), semantic (overlay toggle).
 	const edges: Edge[] = [];
 	for (const e of sub.edges) {
-		if (e.kind === 'hub_constituent') continue;
 		if (e.kind === 'semantic' && !semanticOn) continue;
 		if (!nodeIndexById.has(e.from) || !nodeIndexById.has(e.to)) continue;
 		const style = ((): { stroke: string; strokeDasharray?: string; strokeWidth: number } => {
 			if (e.kind === 'reference') return { stroke: 'var(--pk-border-strong)', strokeWidth: 1.4 };
-			return { stroke: 'var(--pk-border-strong)', strokeDasharray: '5 4', strokeWidth: 1.2 };
+			if (e.kind === 'semantic') return { stroke: 'var(--pk-border-strong)', strokeDasharray: '5 4', strokeWidth: 1.2 };
+			return { stroke: 'var(--pk-accent-soft)', strokeDasharray: '2 3', strokeWidth: 1 };
 		})();
 		edges.push({
 			id: `${e.kind}-${e.from}-${e.to}`,
@@ -528,6 +529,25 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 		);
 	}
 
+	const handleCopyGraph = () => {
+		const payload = {
+			timestamp: new Date().toISOString(),
+			subgraph,
+			computed: {
+				nodes: nodes.map((n) => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
+				edges: layout.edges.map((e) => ({ id: e.id, from: e.source, to: e.target, kind: (e.data as { kind?: string } | undefined)?.kind })),
+				communityRegions: layout.communityRegions,
+				folderRegions: layout.folderRegions,
+			},
+		};
+		try {
+			void navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+			console.log('[ResultGraphView] graph JSON copied to clipboard', payload);
+		} catch (err) {
+			console.warn('[ResultGraphView] clipboard write failed', err);
+		}
+	};
+
 	return (
 		<div
 			ref={containerRef}
@@ -556,13 +576,11 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 					<Controls showInteractive={false} />
 				</ReactFlow>
 			</div>
-			<IsolatedMatchesRail
-				items={layout.isolatedItems}
-				selectedId={selectedNodeId}
-				onSelect={setSelectedNodeId}
-				onOpen={(id) => void openDocById(id)}
-				narrow={narrow}
-			/>
+			<div className="pktw-absolute pktw-top-2 pktw-right-2 pktw-z-20">
+				<IconButton label="Copy graph JSON to clipboard" onClick={handleCopyGraph}>
+					<Copy className="pktw-w-3.5 pktw-h-3.5" />
+				</IconButton>
+			</div>
 			{subgraph.overflowCount > 0 && (
 				<span className="pktw-absolute pktw-bottom-2 pktw-left-1/2 pktw--translate-x-1/2 pktw-rounded-md pktw-bg-pk-surface-raised pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border pktw-border-pk-border pktw-z-10">
 					{`Showing top ${NODE_CAP} of ${NODE_CAP + subgraph.overflowCount} results`}
