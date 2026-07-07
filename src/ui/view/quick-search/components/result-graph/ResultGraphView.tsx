@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import dagre from '@dagrejs/dagre';
 import {
 	ReactFlow,
 	Background,
@@ -85,78 +84,100 @@ function computeLayout(
 	const connected = sub.resultNodes.filter((n) => !isolatedSet.has(n.id));
 	const maxScore = connected.reduce((m, n) => Math.max(m, n.score), 0) || 1;
 
-	// Dagre TB layout: hubs at rank 0, their constituents below, cross-doc
-	// reference chains extend further down. Isolated docs are already in the
-	// side rail, not on the canvas.
-	const g = new dagre.graphlib.Graph();
-	g.setDefaultEdgeLabel(() => ({}));
-	g.setGraph({ rankdir: 'TB', nodesep: 24, ranksep: 60, marginx: 20, marginy: 20 });
-
-	for (const h of sub.hubAnchors) {
-		g.setNode(h.id, { width: HUB_NODE_W, height: HUB_NODE_H });
-	}
-	for (const n of connected) {
-		g.setNode(n.id, { width: DOC_NODE_W, height: DOC_NODE_H });
-	}
-	// Rank-forming edges — only reference + hub_constituent shape the layout.
-	// Semantic edges are visual overlay only; if they steer the layout they
-	// pull unrelated results together and the picture becomes a hairball.
+	// Swimlane layout: one column per hub, constituents stack below their
+	// hub. Docs shared by multiple hubs are assigned to the first one only
+	// (dedupe). Docs connected to other docs but not to any hub go in a
+	// trailing "cross-referenced" column so the picture stays a set of
+	// clean columns rather than a hairball.
+	const docToHubs = new Map<string, string[]>();
 	for (const e of sub.edges) {
-		if (e.kind === 'semantic') continue;
-		if (!g.hasNode(e.from) || !g.hasNode(e.to)) continue;
-		g.setEdge(e.from, e.to);
+		if (e.kind !== 'hub_constituent') continue;
+		const arr = docToHubs.get(e.to) ?? [];
+		arr.push(e.from);
+		docToHubs.set(e.to, arr);
 	}
 
-	dagre.layout(g);
-
-	// Emit nodes at dagre-computed positions (dagre reports center-x/center-y;
-	// xyflow expects top-left, so subtract half the node box).
-	for (const h of sub.hubAnchors) {
-		const p = g.node(h.id);
-		if (!p) continue;
-		const x = p.x - HUB_NODE_W / 2;
-		const y = p.y - HUB_NODE_H / 2;
-		const node: HubAnchorNodeType = {
-			id: h.id,
-			type: 'hubAnchor',
-			position: { x, y },
-			data: {
-				title: h.title || h.path,
-				constituentCount: h.constituentCount,
-				selected: h.id === selectedNodeId,
-			},
-		};
-		nodes.push(node as unknown as Node);
-		nodeIndexById.set(h.id, { x: p.x, y: p.y });
-	}
+	const hubColumns = new Map<string, string[]>();
+	for (const h of sub.hubAnchors) hubColumns.set(h.id, []);
+	const crossRefColumn: string[] = [];
 	for (const n of connected) {
-		const p = g.node(n.id);
-		if (!p) continue;
-		const x = p.x - DOC_NODE_W / 2;
-		const y = p.y - DOC_NODE_H / 2;
-		const node: ResultDocNodeType = {
-			id: n.id,
-			type: 'resultDoc',
-			position: { x, y },
-			data: {
-				title: n.title || n.path,
-				scoreIntensity: n.score / maxScore,
-				selected: n.id === selectedNodeId,
-			},
-		};
-		nodes.push(node as unknown as Node);
-		nodeIndexById.set(n.id, { x: p.x, y: p.y });
+		const hubs = docToHubs.get(n.id) ?? [];
+		if (hubs.length > 0 && hubColumns.has(hubs[0])) {
+			hubColumns.get(hubs[0])!.push(n.id);
+		} else {
+			crossRefColumn.push(n.id);
+		}
 	}
+	// Sort docs within a column by score DESC so the highest-relevance
+	// item sits closest to its hub.
+	const scoreById = new Map(sub.resultNodes.map((n) => [n.id, n.score]));
+	for (const arr of hubColumns.values()) {
+		arr.sort((a, b) => (scoreById.get(b) ?? 0) - (scoreById.get(a) ?? 0));
+	}
+	crossRefColumn.sort((a, b) => (scoreById.get(b) ?? 0) - (scoreById.get(a) ?? 0));
 
-	// Edges. `semantic` respects the overlay toggle.
+	const COL_W = 210; // column pitch (node + gap)
+	const HUB_ROW_H = 80;
+	const DOC_ROW_H = 52;
+
+	// Emit columns left-to-right: one per hub, then the cross-ref column.
+	let colIdx = 0;
+	const emitColumn = (title: string, hubId: string | null, docIds: string[]) => {
+		const x = colIdx * COL_W;
+		if (hubId) {
+			const h = sub.hubAnchors.find((a) => a.id === hubId);
+			if (h) {
+				const node: HubAnchorNodeType = {
+					id: h.id,
+					type: 'hubAnchor',
+					position: { x, y: 0 },
+					data: {
+						title: h.title || h.path || title,
+						constituentCount: h.constituentCount,
+						selected: h.id === selectedNodeId,
+					},
+				};
+				nodes.push(node as unknown as Node);
+				nodeIndexById.set(h.id, { x: x + HUB_NODE_W / 2, y: HUB_NODE_H / 2 });
+			}
+		}
+		docIds.forEach((id, i) => {
+			const meta = sub.resultNodes.find((r) => r.id === id);
+			if (!meta) return;
+			const y = HUB_ROW_H + i * DOC_ROW_H;
+			const node: ResultDocNodeType = {
+				id: meta.id,
+				type: 'resultDoc',
+				position: { x: x + (HUB_NODE_W - DOC_NODE_W) / 2, y },
+				data: {
+					title: meta.title || meta.path,
+					scoreIntensity: meta.score / maxScore,
+					selected: meta.id === selectedNodeId,
+				},
+			};
+			nodes.push(node as unknown as Node);
+			nodeIndexById.set(meta.id, {
+				x: x + HUB_NODE_W / 2,
+				y: y + DOC_NODE_H / 2,
+			});
+		});
+		colIdx++;
+	};
+
+	for (const [hubId, docs] of hubColumns) emitColumn('', hubId, docs);
+	if (crossRefColumn.length) emitColumn('Other matches', null, crossRefColumn);
+
+	// Edges: hub_constituent is now implicit in the swimlane grouping — dropping
+	// it removes visual noise. Reference edges (doc → doc cross-links) still
+	// convey signal so we keep them. Semantic edges respect the overlay toggle.
 	const edges: Edge[] = [];
 	for (const e of sub.edges) {
+		if (e.kind === 'hub_constituent') continue;
 		if (e.kind === 'semantic' && !semanticOn) continue;
 		if (!nodeIndexById.has(e.from) || !nodeIndexById.has(e.to)) continue;
 		const style = ((): { stroke: string; strokeDasharray?: string; strokeWidth: number } => {
 			if (e.kind === 'reference') return { stroke: 'var(--pk-border-strong)', strokeWidth: 1.4 };
-			if (e.kind === 'semantic') return { stroke: 'var(--pk-border-strong)', strokeDasharray: '5 4', strokeWidth: 1.2 };
-			return { stroke: 'var(--pk-accent-soft)', strokeDasharray: '2 3', strokeWidth: 1 };
+			return { stroke: 'var(--pk-border-strong)', strokeDasharray: '5 4', strokeWidth: 1.2 };
 		})();
 		edges.push({
 			id: `${e.kind}-${e.from}-${e.to}`,
@@ -164,10 +185,6 @@ function computeLayout(
 			target: e.to,
 			style,
 			data: { kind: e.kind },
-			label: undefined,
-			// title tooltip via native browser edge title is not exposed; rely on
-			// data.kind for future hover surfaces (spec §Interaction · edge hover
-			// tooltip is a follow-up but the data is already routed).
 		});
 	}
 
