@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dagre from '@dagrejs/dagre';
-import { Copy } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import {
 	ReactFlow,
 	Background,
@@ -32,6 +32,34 @@ const HUB_NODE_H = 60;
 const DOC_NODE_W = 170;
 const DOC_NODE_H = 44;
 const ISOLATED_GRID_COLS = 4;
+
+/**
+ * Turn a subgraph into a Mermaid flowchart string. Format chosen so an LLM or
+ * a reader can eyeball structure quickly: hubs styled with a class, edges
+ * labelled with their kind, doc IDs shortened.
+ */
+function subgraphToMermaid(sub: ResultSubgraphOutput): string {
+	const lines: string[] = ['flowchart TD'];
+	const sid = (id: string) => `n${id.slice(0, 10)}`;
+	const escape = (s: string) => s.replace(/["`]/g, '').replace(/\n/g, ' ').slice(0, 60);
+	for (const h of sub.hubAnchors) {
+		lines.push(`  ${sid(h.id)}[["${escape(h.title || h.path || h.id)} · hub (${h.constituentCount})"]]:::hub`);
+	}
+	const isolatedSet = new Set(sub.isolatedDocIds);
+	for (const n of sub.resultNodes) {
+		const cls = isolatedSet.has(n.id) ? ':::iso' : '';
+		lines.push(`  ${sid(n.id)}["${escape(n.title || n.path || n.id)}"]${cls}`);
+	}
+	for (const e of sub.edges) {
+		if (e.from === e.to) continue;
+		if (e.kind === 'reference') lines.push(`  ${sid(e.from)} -->|ref| ${sid(e.to)}`);
+		else if (e.kind === 'hub_constituent') lines.push(`  ${sid(e.from)} -.->|hub| ${sid(e.to)}`);
+		else lines.push(`  ${sid(e.from)} -.->|sem| ${sid(e.to)}`);
+	}
+	lines.push('  classDef hub fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#4c1d95');
+	lines.push('  classDef iso fill:#f5f5f5,stroke:#cbd5e1,stroke-dasharray:3 3,color:#64748b');
+	return lines.join('\n');
+}
 
 /** Numeric score to pick the "match score" for graph coloring / sort. */
 function scoreOf(r: SearchResultItem): number {
@@ -307,6 +335,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	const [loading, setLoading] = useState(false);
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [nodes, setNodes] = useState<Node[]>([]);
+	const [copied, setCopied] = useState(false);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const rfInstance = useRef<ReactFlowInstance | null>(null);
 	const [containerWidth, setContainerWidth] = useState<number>(0);
@@ -530,7 +559,8 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	}
 
 	const handleCopyGraph = () => {
-		const payload = {
+		const mermaid = subgraphToMermaid(subgraph!);
+		const jsonPayload = {
 			timestamp: new Date().toISOString(),
 			subgraph,
 			computed: {
@@ -541,8 +571,10 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 			},
 		};
 		try {
-			void navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-			console.log('[ResultGraphView] graph JSON copied to clipboard', payload);
+			void navigator.clipboard.writeText(mermaid);
+			console.log('[ResultGraphView] mermaid copied. JSON payload also available:', jsonPayload);
+			setCopied(true);
+			window.setTimeout(() => setCopied(false), 1500);
 		} catch (err) {
 			console.warn('[ResultGraphView] clipboard write failed', err);
 		}
@@ -577,8 +609,12 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				</ReactFlow>
 			</div>
 			<div className="pktw-absolute pktw-top-2 pktw-right-2 pktw-z-20">
-				<IconButton label="Copy graph JSON to clipboard" onClick={handleCopyGraph}>
-					<Copy className="pktw-w-3.5 pktw-h-3.5" />
+				<IconButton
+					label={copied ? 'Copied Mermaid to clipboard' : 'Copy graph as Mermaid'}
+					onClick={handleCopyGraph}
+					data-active={copied ? 'true' : undefined}
+				>
+					{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
 				</IconButton>
 			</div>
 			{subgraph.overflowCount > 0 && (

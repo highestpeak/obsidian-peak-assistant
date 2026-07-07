@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Result Graph Layout Sandbox · 2026-07-07</title>
+<style>
+	* { box-sizing: border-box; }
+	html, body { margin: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif; background: #fafafa; color: #1c1c1c; }
+	body { display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: 1fr 320px; height: 100vh; }
+	header { grid-column: 1 / 3; padding: 10px 16px; border-bottom: 1px solid #e5e5e5; background: white; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+	header h1 { font-size: 14px; font-weight: 600; margin: 0; color: #7c3aed; }
+	.controls { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+	.control { display: flex; gap: 6px; align-items: center; font-size: 12px; color: #444; }
+	.control label { user-select: none; }
+	select, button { font-size: 12px; padding: 4px 8px; border: 1px solid #d4d4d4; border-radius: 4px; background: white; cursor: pointer; }
+	button:hover, select:hover { border-color: #7c3aed; }
+	button.primary { background: #7c3aed; color: white; border-color: #7c3aed; }
+	button.primary:hover { background: #6d28d9; }
+	input[type="checkbox"] { accent-color: #7c3aed; }
+	main { position: relative; overflow: hidden; background: #f7f5fb; }
+	#cy { position: absolute; inset: 0; }
+	aside { border-left: 1px solid #e5e5e5; background: white; padding: 14px; overflow-y: auto; font-size: 12px; }
+	aside h2 { font-size: 12px; text-transform: uppercase; color: #888; margin: 12px 0 6px; font-weight: 500; letter-spacing: 0.02em; }
+	aside h2:first-child { margin-top: 0; }
+	.field { margin: 6px 0; }
+	.field .k { color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
+	.field .v { color: #1c1c1c; word-break: break-all; }
+	footer { grid-column: 1 / 3; padding: 6px 16px; border-top: 1px solid #e5e5e5; background: white; font-size: 11px; color: #666; display: flex; justify-content: space-between; }
+	.stats span { margin-right: 12px; }
+	.legend { display: inline-flex; gap: 12px; }
+	.legend .swatch { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #666; }
+	.legend .swatch::before { content: ""; display: inline-block; width: 20px; height: 2px; background: #999; }
+	.legend .swatch.ref::before { background: #333; height: 2px; }
+	.legend .swatch.hub::before { background: #7c3aed; border-top: 2px dashed #7c3aed; height: 0; width: 20px; }
+	.legend .swatch.sem::before { background: transparent; border-top: 1.5px dashed #999; height: 0; }
+	.datapaste { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 10; }
+	.datapaste.open { display: flex; }
+	.datapaste .panel { background: white; padding: 18px; border-radius: 8px; width: 720px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column; gap: 10px; }
+	.datapaste textarea { flex: 1; min-height: 400px; font-family: "SF Mono", Menlo, monospace; font-size: 11px; padding: 8px; border: 1px solid #d4d4d4; border-radius: 4px; resize: vertical; }
+	.datapaste .row { display: flex; gap: 10px; justify-content: flex-end; }
+	kbd { background: #f0f0f0; border: 1px solid #d4d4d4; border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; font-family: inherit; font-size: 10px; color: #444; }
+</style>
+</head>
+<body>
+
+<header>
+	<h1>Result Graph · Layout Sandbox</h1>
+	<div class="controls">
+		<div class="control">
+			<label for="layout">Layout</label>
+			<select id="layout">
+				<option value="fcose">fcose · force-directed (best default)</option>
+				<option value="cise">cise · compound spring (best for hub clusters)</option>
+				<option value="cola">cola · constraint force</option>
+				<option value="cose">cose · classic force</option>
+				<option value="dagre-tb">dagre · TB</option>
+				<option value="dagre-lr">dagre · LR</option>
+				<option value="concentric-hub">concentric · hubs in center</option>
+				<option value="concentric-score">concentric · high-score in center</option>
+				<option value="breadthfirst">breadthfirst · roots=hubs</option>
+				<option value="grid">grid · flat</option>
+			</select>
+		</div>
+		<div class="control">
+			<label><input type="checkbox" id="showRef" checked /> reference</label>
+			<label><input type="checkbox" id="showHubC" checked /> hub_constituent</label>
+			<label><input type="checkbox" id="showSem" /> semantic</label>
+		</div>
+		<div class="control">
+			<label><input type="checkbox" id="groupFolder" /> group by folder</label>
+			<label><input type="checkbox" id="groupHub" /> group by hub</label>
+			<label><input type="checkbox" id="hideIsolated" /> hide isolated</label>
+		</div>
+		<div class="control">
+			<button id="fitBtn">Fit</button>
+			<button id="pasteBtn" class="primary">Paste data</button>
+		</div>
+	</div>
+</header>
+
+<main><div id="cy"></div></main>
+
+<aside>
+	<h2>Selection</h2>
+	<div id="selection"><em style="color:#999">click a node to inspect</em></div>
+	<h2>Legend</h2>
+	<div class="legend" style="flex-direction:column">
+		<div class="swatch ref">reference (solid)</div>
+		<div class="swatch hub">hub_constituent (dashed accent)</div>
+		<div class="swatch sem">semantic (dashed gray)</div>
+	</div>
+	<h2>Node types</h2>
+	<div style="display:flex;gap:8px;flex-direction:column">
+		<div><span style="display:inline-block;width:14px;height:14px;background:#c4b5fd;border:2px solid #7c3aed;border-radius:8px;vertical-align:middle;margin-right:6px"></span>Hub anchor</div>
+		<div><span style="display:inline-block;width:14px;height:14px;background:#e9d5ff;border:1px solid #a78bfa;border-radius:6px;vertical-align:middle;margin-right:6px"></span>Result doc (color intensity = match score)</div>
+	</div>
+	<h2>Notes</h2>
+	<ul style="padding-left:16px;line-height:1.5;color:#666">
+		<li>Toggle edge kinds and grouping to compare visual density.</li>
+		<li>Try <b>cise</b> or <b>fcose + group by hub</b> — usually the cleanest for hub-doc data.</li>
+		<li>Semantic edges are hidden by default because they explode density.</li>
+		<li>Score-intensity determines fill on doc nodes.</li>
+	</ul>
+</aside>
+
+<footer>
+	<div class="stats">
+		<span id="statNodes">nodes: 0</span>
+		<span id="statEdges">edges: 0</span>
+		<span id="statLayout">layout: —</span>
+	</div>
+	<div>press <kbd>P</kbd> paste · <kbd>F</kbd> fit · <kbd>Space</kbd> re-layout</div>
+</footer>
+
+<div class="datapaste" id="datapaste">
+	<div class="panel">
+		<div>Paste the JSON exported from the plugin's <b>Copy</b> button:</div>
+		<textarea id="pasteBox" placeholder='{"subgraph": {...}, "computed": {...}}'></textarea>
+		<div class="row">
+			<button onclick="closePaste()">Cancel</button>
+			<button class="primary" onclick="applyPasted()">Apply</button>
+		</div>
+	</div>
+</div>
+
+<script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+<script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
+<script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
+<script src="https://unpkg.com/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
+<script src="https://unpkg.com/avsdf-base@1.0.0/avsdf-base.js"></script>
+<script src="https://unpkg.com/cytoscape-cise@1.0.0/cytoscape-cise.js"></script>
+<script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+<script src="https://unpkg.com/webcola@3.4.0/WebCola/cola.min.js"></script>
+<script src="https://unpkg.com/cytoscape-cola@2.5.1/cytoscape-cola.js"></script>
+
+<script id="fixture" type="application/json">
+{"timestamp":"2026-07-07T10:36:14.051Z","subgraph":{"resultNodes":[{"id":"cc474fd277b3f497d857470b1b0aacdc","path":"kb1-life-notes/D-留学和移民/B-新的英语学习历程-english.md","title":"B-新的英语学习历程","score":0.7949807861801516,"communityId":null,"folder":"kb1-life-notes"},{"id":"1d7a6b0cd182f558e12db7efc918376b","path":"kb3-tech-articles/F-howTo系列/如何学习新的技术点.md","title":"如何学习新的技术点","score":0.585044073366124,"communityId":null,"folder":"kb3-tech-articles"},{"id":"6cc7488cfc00fd1e80b7c2ba000b4d12","path":"kb5-automation-cowork/每日任务/2026-06/0603-daily-tasks.md","title":"0603-daily-tasks","score":0.3698927308398752,"communityId":null,"folder":"kb5-automation-cowork"},{"id":"21ac576bd6ef330e8f244cb35ba2ef84","path":"kb1-life-notes/F-英语/专业英语.md","title":"专业英语","score":0.3398753894080997,"communityId":null,"folder":"kb1-life-notes"},{"id":"129ffbb8a941609ea977d98942d1899f","path":"kb1-life-notes/F-英语/学校英语.md","title":"学校英语","score":0.33897849462365587,"communityId":null,"folder":"kb1-life-notes"},{"id":"ac05a987fe63b6856c064c005964cd25","path":"kb5-automation-cowork/英语练习记录/2026-06-04-behavioral-b0e848.md","title":"2026-06-04-behavioral-b0e848","score":0.3233265974206388,"communityId":null,"folder":"kb5-automation-cowork"},{"id":"e2129a2a407090e79367c122a3be2721","path":"kb3-tech-articles/E-A-特定领域-Java相关服务端内容/A-1-如何学习java.md","title":"如何学习java","score":0.3147017543859649,"communityId":null,"folder":"kb3-tech-articles"},{"id":"bc6452c9fd4cf4d884f806034097cd5d","path":"kb1-life-notes/D-雅思/mess/Z-英语材料.md","title":"Z-英语材料","score":0.30492237442922376,"communityId":null,"folder":"kb1-life-notes"},{"id":"2990c26ce745854e0e86a962202a81b1","path":"kb3-tech-articles/F-howTo系列/如何学习新技术.md","title":"如何学习新技术","score":0.3024040404040404,"communityId":null,"folder":"kb3-tech-articles"},{"id":"3df725413cbe074544a3971da9547239","path":"kb1-life-notes/E-日记/2025/0415-732threejs学习.md","title":"0415-732threejs学习","score":0.30116666666666664,"communityId":null,"folder":"kb1-life-notes"},{"id":"f5eee2f799af94cae9fef7f59e3464a7","path":"kb1-life-notes/D-杂谈碎念/关于如何工作、学习、生活、习惯.md","title":"关于如何工作、学习、生活、习惯","score":0.2915686274509804,"communityId":null,"folder":"kb1-life-notes"},{"id":"45b35e3f10c64430a2d585cfbd1bb98f","path":"kb1-life-notes/E-日记/mess/问答-学习前端难不难，要学好的话需要多长时间？.md","title":"问答-学习前端难不难，要学好的话需要多长时间？","score":0.29119850187265917,"communityId":null,"folder":"kb1-life-notes"},{"id":"5d934a111bdfdfefd2a7966843b0dd4b","path":"kb1-life-notes/D-留学和移民/mess/课程和学习.md","title":"课程和学习","score":0.291025641025641,"communityId":null,"folder":"kb1-life-notes"},{"id":"daba6ccb0c195f86571fdba4a62d5ace","path":"kb1-life-notes/D-杂谈碎念/一些人物-学习-辩证.md","title":"一些人物-学习-辩证","score":0.29094202898550725,"communityId":null,"folder":"kb1-life-notes"},{"id":"719b453c9f5e19f8b76864c3e44cc84c","path":"kb1-life-notes/E-日记/mess/戴传庆推荐的学习资料.md","title":"戴传庆推荐的学习资料","score":0.2908602150537634,"communityId":null,"folder":"kb1-life-notes"},{"id":"381651f0bb16de348bebc66283e11f67","path":"kb1-life-notes/E-日记/2025-0906-脑膜炎后/1020-726-课件学习.md","title":"1020-726-课件学习","score":0.2905498281786941,"communityId":null,"folder":"kb1-life-notes"},{"id":"1b8e61a49ec1f6a28d80064d752f6ae3","path":"kb1-life-notes/E-日记/mess/问答-有什么关于运营学习推荐的网站或书籍？.md","title":"问答-有什么关于运营学习推荐的网站或书籍？","score":0.29026402640264026,"communityId":null,"folder":"kb1-life-notes"},{"id":"fe00e9ef621fb8adf491124ccc8b75f7","path":"kb1-life-notes/E-日记/mess/编程路上那些让我效率暴增的学习方法！.md","title":"编程路上那些让我效率暴增的学习方法！","score":0.29012944983818767,"communityId":null,"folder":"kb1-life-notes"},{"id":"4e2b57372a5b8308c4d1dc71b865de3a","path":"kb2-learn-prd/B-2-创意和想法管理/C-大类-信息聚合-PKM/Z-10-PKM产品类别分析/使用思想/费曼学习法.md","title":"费曼学习法","score":0.29,"communityId":null,"folder":"kb2-learn-prd"},{"id":"466c4dedc19fab445bf9e83f0956856f","path":"kb1-life-notes/E-日记/mess/LLM实战学习笔记.md","title":"LLM实战学习笔记","score":0.28926553672316385,"communityId":null,"folder":"kb1-life-notes"},{"id":"2275ad2f297acb6d3ed5174ffcd8ef31","path":"kb1-life-notes/E-日记/2025-0722-/0723-开学第三天--英语.md","title":"0723-开学第三天--英语","score":0.28880208333333335,"communityId":null,"folder":"kb1-life-notes"},{"id":"6e3c70898d7172c0c88fc9ff2e6a02a0","path":"kb1-life-notes/E-日记/2025/0605-colima理解和学习.md","title":"0605-colima理解和学习","score":0.2879084967320261,"communityId":null,"folder":"kb1-life-notes"},{"id":"056a0f865d940f8d05138180e7973d29","path":"kb1-life-notes/E-日记/2025/0304-配置自己的学习环境.md","title":"0304-配置自己的学习环境","score":0.28787878787878785,"communityId":null,"folder":"kb1-life-notes"},{"id":"e061ceade289ed89df21b31a2e69c61a","path":"concept-extraction/output/study-pack/study-cards.md","title":"study-cards","score":0.24426150808329444,"communityId":null,"folder":"concept-extraction"},{"id":"ee11e0ff11a6a0089d1f14c83e6269da","path":"concept-extraction/output/study-pack/by-type/writing_method.md","title":"writing_method","score":0.23914833564814814,"communityId":null,"folder":"concept-extraction"},{"id":"fd369d671813ebc2d8162042bf341afd","path":"concept-extraction/output/study-pack/by-type/personal_reflection.md","title":"personal_reflection","score":0.2389545365040913,"communityId":null,"folder":"concept-extraction"},{"id":"8994fda59e6b0307cdf2f4d357958d96","path":"concept-extraction/output/study-pack/deep-extract-queue.md","title":"deep-extract-queue","score":0.23809855700231483,"communityId":null,"folder":"concept-extraction"},{"id":"4e490e1f4d2540ca3529d261375ebf1d","path":"concept-extraction/output/study-pack/by-type/project_memory.md","title":"project_memory","score":0.23741877543675752,"communityId":null,"folder":"concept-extraction"},{"id":"a7ed1a0ba27b7440f16bdada9354195e","path":"concept-extraction/output/study-pack/by-type/technical_review.md","title":"technical_review","score":0.23669735508238018,"communityId":null,"folder":"concept-extraction"},{"id":"9d5f99201d292bc439f41c640bc2a561","path":"kb1-life-notes/E-日记/2025/0717-a good lesson i learned these years-小马过河.md","title":"0717-a good lesson i learned these years-小马过河","score":0.22475842895664355,"communityId":null,"folder":"kb1-life-notes"},{"id":"09a89b25416ff79098804ffd5e527695","path":"kb1-life-notes/E-日记/mess/PR FAQs for Product Documents.md","title":"PR FAQs for Product Documents","score":0.19609302325581396,"communityId":null,"folder":"kb1-life-notes"},{"id":"e347a68e33e86f4bf291b728791e92ce","path":"kb1-life-notes/B-milestone/2024-0829-ielts-finish.md","title":"0829-ielts-finish","score":0.1866212121212121,"communityId":null,"folder":"kb1-life-notes"},{"id":"185721adbd51a5b684995b11ef8dea44","path":"kb1-life-notes/D-留学和移民/A-1-奥克兰大学.md","title":"申请","score":0.18611347517730495,"communityId":null,"folder":"kb1-life-notes"},{"id":"20724f8b27d2846d070dd1736140824e","path":"kb1-life-notes/D-留学和移民/A-0-雅思之后.md","title":"A-0-雅思之后","score":0.18566666666666665,"communityId":null,"folder":"kb1-life-notes"},{"id":"0dc85e24dabc9ca1e764d97257826457","path":"kb1-life-notes/D-雅思/mess/Z-0-备考历程.md","title":"单词备考","score":0.18480701754385964,"communityId":null,"folder":"kb1-life-notes"},{"id":"ebc9db3a06ee7d818a7a8471c6650703","path":"kb1-life-notes/D-留学和移民/奥克兰大学/各种学校资源收集.md","title":"各种学校资源收集","score":0.1827188940092166,"communityId":null,"folder":"kb1-life-notes"},{"id":"a31980023d52df48d74f00138b7f4615","path":"kb1-life-notes/D-留学和移民/mess/UOA申请历程记录.md","title":"UOA申请历程记录","score":0.18212339743589742,"communityId":null,"folder":"kb1-life-notes"},{"id":"047618091f8a5d269bf27ef44b7599a5","path":"kb1-life-notes/CA-WHOAMI/C-关键事物的看法/关于跑路这件事/run的准备.md","title":"run的准备","score":0.18200312989045384,"communityId":null,"folder":"kb1-life-notes"},{"id":"f162a90ce8f68e8079fc5c68480b20d3","path":"kb1-life-notes/E-日记/2025/0327-再次回首主线.md","title":"0327-再次回首主线","score":0.18188988095238096,"communityId":null,"folder":"kb1-life-notes"},{"id":"ca1ff940ea8108a1df37a0c3a7a7e3cc","path":"kb1-life-notes/E-日记/2024/2024-0912-所有想做的事的列表.md","title":"2024-0912-所有想做的事的列表","score":0.1818181818181818,"communityId":null,"folder":"kb1-life-notes"},{"id":"3785421a7304cf92b39e6cc503e22f51","path":"kb1-life-notes/E-日记/2025/0719-展望接下来的移民路.md","title":"0719-展望接下来的移民路","score":0.181438396254024,"communityId":null,"folder":"kb1-life-notes"},{"id":"68dc230506e411281ff485740bdd5b04","path":"kb1-life-notes/E-日记/2025-0722-/0728-english-plan.md","title":"0728-english-plan","score":0.181078431372549,"communityId":null,"folder":"kb1-life-notes"},{"id":"516254fcc03072af85de25da0a6826ee","path":"kb1-life-notes/E-日记/2025/0720-总结之前的教训 展望接下来的改进.md","title":"0720-总结之前的教训 展望接下来的改进","score":0.1809782608695652,"communityId":null,"folder":"kb1-life-notes"},{"id":"007f60842af27e743f4b7c7eed8bd446","path":"kb1-life-notes/D-留学和移民/mess/NZ工作.md","title":"NZ工作","score":0.1765258215962441,"communityId":null,"folder":"kb1-life-notes"},{"id":"5334637990a838681a7b5ef6755177b1","path":"kb1-life-notes/E-日记/2025-0722-/0725-en练习.md","title":"0725-en练习","score":0.17471264367816092,"communityId":null,"folder":"kb1-life-notes"},{"id":"84692bfc12531e23be84bc773102f15d","path":"kb1-life-notes/D-雅思/mess/B-写作-0-index.md","title":"B-写作-0-index","score":0.17466832504145935,"communityId":null,"folder":"kb1-life-notes"},{"id":"232add4cb84117bdaec7549d41fc4bae","path":"kb1-life-notes/E-日记/mess/我常用的提效工具们.md","title":"我常用的提效工具们","score":0.17444444444444443,"communityId":null,"folder":"kb1-life-notes"},{"id":"c2cc5e95aee46b716cddb21fdb585298","path":"kb1-life-notes/E-日记/mess/5分钟教你学会《用图表说话》.md","title":"5分钟教你学会《用图表说话》","score":0.17352941176470588,"communityId":null,"folder":"kb1-life-notes"},{"id":"674df646bfdf2fe62e4e02143197a1d7","path":"kb1-life-notes/CA-WHOAMI/C-关键事物的看法/关于跑路这件事/run的优缺点.md","title":"run的优缺点","score":0.1733974358974359,"communityId":null,"folder":"kb1-life-notes"},{"id":"d7a2b81663f0dd5cf240adf0aae342bb","path":"kb3-tech-articles/F-工具系列/A-1-AppleProductsMacSystem/Ipad-A-Index.md","title":"Ipad-A-Index","score":0.1730886850152905,"communityId":null,"folder":"kb3-tech-articles"}],"hubAnchors":[{"id":"ea1dfa04ab7a88f9944b98ebcac735dc","path":"","title":"Hub-000022fe1a1b","constituentCount":24},{"id":"fae38c49bd0cf9b022f3a675b93d84cc","path":"","title":"Hub-000031ae70fe","constituentCount":24}],"edges":[{"from":"007f60842af27e743f4b7c7eed8bd446","to":"5d934a111bdfdfefd2a7966843b0dd4b","kind":"semantic"},{"from":"007f60842af27e743f4b7c7eed8bd446","to":"185721adbd51a5b684995b11ef8dea44","kind":"semantic"},{"from":"047618091f8a5d269bf27ef44b7599a5","to":"cc474fd277b3f497d857470b1b0aacdc","kind":"semantic"},{"from":"09a89b25416ff79098804ffd5e527695","to":"ea1dfa04ab7a88f9944b98ebcac735dc","kind":"semantic"},{"from":"0dc85e24dabc9ca1e764d97257826457","to":"a31980023d52df48d74f00138b7f4615","kind":"semantic"},{"from":"0dc85e24dabc9ca1e764d97257826457","to":"d7a2b81663f0dd5cf240adf0aae342bb","kind":"semantic"},{"from":"129ffbb8a941609ea977d98942d1899f","to":"ea1dfa04ab7a88f9944b98ebcac735dc","kind":"semantic"},{"from":"185721adbd51a5b684995b11ef8dea44","to":"a31980023d52df48d74f00138b7f4615","kind":"reference"},{"from":"185721adbd51a5b684995b11ef8dea44","to":"5d934a111bdfdfefd2a7966843b0dd4b","kind":"reference"},{"from":"185721adbd51a5b684995b11ef8dea44","to":"5d934a111bdfdfefd2a7966843b0dd4b","kind":"semantic"},{"from":"185721adbd51a5b684995b11ef8dea44","to":"007f60842af27e743f4b7c7eed8bd446","kind":"semantic"},{"from":"185721adbd51a5b684995b11ef8dea44","to":"381651f0bb16de348bebc66283e11f67","kind":"semantic"},{"from":"1b8e61a49ec1f6a28d80064d752f6ae3","to":"45b35e3f10c64430a2d585cfbd1bb98f","kind":"semantic"},{"from":"1b8e61a49ec1f6a28d80064d752f6ae3","to":"1d7a6b0cd182f558e12db7efc918376b","kind":"semantic"},{"from":"2990c26ce745854e0e86a962202a81b1","to":"1d7a6b0cd182f558e12db7efc918376b","kind":"reference"},{"from":"2990c26ce745854e0e86a962202a81b1","to":"e2129a2a407090e79367c122a3be2721","kind":"reference"},{"from":"2990c26ce745854e0e86a962202a81b1","to":"e2129a2a407090e79367c122a3be2721","kind":"semantic"},{"from":"3785421a7304cf92b39e6cc503e22f51","to":"516254fcc03072af85de25da0a6826ee","kind":"semantic"},{"from":"3785421a7304cf92b39e6cc503e22f51","to":"c2cc5e95aee46b716cddb21fdb585298","kind":"semantic"},{"from":"3785421a7304cf92b39e6cc503e22f51","to":"e347a68e33e86f4bf291b728791e92ce","kind":"semantic"},{"from":"3785421a7304cf92b39e6cc503e22f51","to":"185721adbd51a5b684995b11ef8dea44","kind":"semantic"},{"from":"381651f0bb16de348bebc66283e11f67","to":"a31980023d52df48d74f00138b7f4615","kind":"semantic"},{"from":"381651f0bb16de348bebc66283e11f67","to":"1d7a6b0cd182f558e12db7efc918376b","kind":"semantic"},{"from":"45b35e3f10c64430a2d585cfbd1bb98f","to":"2990c26ce745854e0e86a962202a81b1","kind":"reference"},{"from":"45b35e3f10c64430a2d585cfbd1bb98f","to":"1d7a6b0cd182f558e12db7efc918376b","kind":"reference"},{"from":"45b35e3f10c64430a2d585cfbd1bb98f","to":"1b8e61a49ec1f6a28d80064d752f6ae3","kind":"semantic"},{"from":"4e490e1f4d2540ca3529d261375ebf1d","to":"e2129a2a407090e79367c122a3be2721","kind":"reference"},{"from":"5d934a111bdfdfefd2a7966843b0dd4b","to":"185721adbd51a5b684995b11ef8dea44","kind":"semantic"},{"from":"5d934a111bdfdfefd2a7966843b0dd4b","to":"ebc9db3a06ee7d818a7a8471c6650703","kind":"semantic"},{"from":"674df646bfdf2fe62e4e02143197a1d7","to":"a31980023d52df48d74f00138b7f4615","kind":"semantic"},{"from":"68dc230506e411281ff485740bdd5b04","to":"a31980023d52df48d74f00138b7f4615","kind":"semantic"},{"from":"6e3c70898d7172c0c88fc9ff2e6a02a0","to":"056a0f865d940f8d05138180e7973d29","kind":"semantic"},{"from":"8994fda59e6b0307cdf2f4d357958d96","to":"1d7a6b0cd182f558e12db7efc918376b","kind":"reference"},{"from":"9d5f99201d292bc439f41c640bc2a561","to":"e347a68e33e86f4bf291b728791e92ce","kind":"semantic"},{"from":"a31980023d52df48d74f00138b7f4615","to":"0dc85e24dabc9ca1e764d97257826457","kind":"reference"},{"from":"a31980023d52df48d74f00138b7f4615","to":"0dc85e24dabc9ca1e764d97257826457","kind":"semantic"},{"from":"bc6452c9fd4cf4d884f806034097cd5d","to":"ebc9db3a06ee7d818a7a8471c6650703","kind":"semantic"},{"from":"ca1ff940ea8108a1df37a0c3a7a7e3cc","to":"185721adbd51a5b684995b11ef8dea44","kind":"reference"},{"from":"ca1ff940ea8108a1df37a0c3a7a7e3cc","to":"cc474fd277b3f497d857470b1b0aacdc","kind":"reference"},{"from":"cc474fd277b3f497d857470b1b0aacdc","to":"0dc85e24dabc9ca1e764d97257826457","kind":"semantic"},{"from":"cc474fd277b3f497d857470b1b0aacdc","to":"185721adbd51a5b684995b11ef8dea44","kind":"semantic"},{"from":"e061ceade289ed89df21b31a2e69c61a","to":"e2129a2a407090e79367c122a3be2721","kind":"reference"},{"from":"e061ceade289ed89df21b31a2e69c61a","to":"1d7a6b0cd182f558e12db7efc918376b","kind":"reference"},{"from":"e061ceade289ed89df21b31a2e69c61a","to":"09a89b25416ff79098804ffd5e527695","kind":"reference"},{"from":"e061ceade289ed89df21b31a2e69c61a","to":"3df725413cbe074544a3971da9547239","kind":"reference"},{"from":"e2129a2a407090e79367c122a3be2721","to":"2990c26ce745854e0e86a962202a81b1","kind":"semantic"},{"from":"e347a68e33e86f4bf291b728791e92ce","to":"20724f8b27d2846d070dd1736140824e","kind":"reference"},{"from":"e347a68e33e86f4bf291b728791e92ce","to":"185721adbd51a5b684995b11ef8dea44","kind":"reference"},{"from":"e347a68e33e86f4bf291b728791e92ce","to":"cc474fd277b3f497d857470b1b0aacdc","kind":"reference"},{"from":"ea1dfa04ab7a88f9944b98ebcac735dc","to":"129ffbb8a941609ea977d98942d1899f","kind":"reference"},{"from":"ebc9db3a06ee7d818a7a8471c6650703","to":"5d934a111bdfdfefd2a7966843b0dd4b","kind":"semantic"},{"from":"ebc9db3a06ee7d818a7a8471c6650703","to":"c2cc5e95aee46b716cddb21fdb585298","kind":"semantic"},{"from":"ebc9db3a06ee7d818a7a8471c6650703","to":"185721adbd51a5b684995b11ef8dea44","kind":"semantic"},{"from":"ee11e0ff11a6a0089d1f14c83e6269da","to":"1d7a6b0cd182f558e12db7efc918376b","kind":"reference"},{"from":"ee11e0ff11a6a0089d1f14c83e6269da","to":"e2129a2a407090e79367c122a3be2721","kind":"reference"},{"from":"ee11e0ff11a6a0089d1f14c83e6269da","to":"09a89b25416ff79098804ffd5e527695","kind":"reference"},{"from":"fae38c49bd0cf9b022f3a675b93d84cc","to":"381651f0bb16de348bebc66283e11f67","kind":"reference"},{"from":"ea1dfa04ab7a88f9944b98ebcac735dc","to":"129ffbb8a941609ea977d98942d1899f","kind":"hub_constituent"},{"from":"fae38c49bd0cf9b022f3a675b93d84cc","to":"381651f0bb16de348bebc66283e11f67","kind":"hub_constituent"}],"isolatedDocIds":[],"overflowCount":0}}
+</script>
+
+<script>
+	// ─── State ──────────────────────────────────────────────────────────
+	let subgraph = JSON.parse(document.getElementById('fixture').textContent).subgraph;
+	let cy = null;
+	let currentLayout = 'fcose';
+
+	// ─── Registration ───────────────────────────────────────────────────
+	if (window.cytoscape && window.cytoscapeFcose) cytoscape.use(cytoscapeFcose);
+	if (window.cytoscape && window.cytoscapeCise) cytoscape.use(cytoscapeCise);
+	if (window.cytoscape && window.cytoscapeDagre) cytoscape.use(cytoscapeDagre);
+	if (window.cytoscape && window.cytoscapeCola) cytoscape.use(cytoscapeCola);
+
+	// ─── Palette ────────────────────────────────────────────────────────
+	const FOLDER_COLORS = ['#fef3c7','#dbeafe','#dcfce7','#fce7f3','#e0e7ff','#fed7aa','#ccfbf1','#f5d0fe','#fef9c3'];
+	const folderColorMap = new Map();
+	function folderColor(folder) {
+		if (!folder) return '#f5f5f5';
+		if (!folderColorMap.has(folder)) folderColorMap.set(folder, FOLDER_COLORS[folderColorMap.size % FOLDER_COLORS.length]);
+		return folderColorMap.get(folder);
+	}
+
+	// ─── Build elements ─────────────────────────────────────────────────
+	function buildElements(opts) {
+		const els = [];
+		const { showRef, showHubC, showSem, groupFolder, groupHub, hideIsolated } = opts;
+
+		// Determine isolated set based on structural edges (kind='reference' / 'hub_constituent').
+		const structuralEndpoints = new Set();
+		for (const e of subgraph.edges) {
+			if (e.kind === 'reference' || e.kind === 'hub_constituent') {
+				structuralEndpoints.add(e.from);
+				structuralEndpoints.add(e.to);
+			}
+		}
+		const isolatedIds = new Set(
+			subgraph.resultNodes.filter((n) => !structuralEndpoints.has(n.id)).map((n) => n.id)
+		);
+
+		// Group parents (compound nodes).
+		const parentIds = new Set();
+		if (groupHub) {
+			// Only real hub anchors emit a group parent.
+			for (const h of subgraph.hubAnchors) {
+				els.push({
+					group: 'nodes',
+					data: { id: `group:hub:${h.id}`, label: h.title || h.path || h.id, kind: 'hubGroup' },
+					classes: 'hubGroup',
+				});
+				parentIds.add(`group:hub:${h.id}`);
+			}
+			// Docs unattached to a hub → orphan
+		}
+		if (groupFolder) {
+			const folders = new Set(subgraph.resultNodes.map((n) => n.folder).filter(Boolean));
+			for (const f of folders) {
+				els.push({
+					group: 'nodes',
+					data: { id: `group:folder:${f}`, label: f, kind: 'folderGroup', color: folderColor(f) },
+					classes: 'folderGroup',
+				});
+				parentIds.add(`group:folder:${f}`);
+			}
+		}
+
+		// Hub → doc membership (from hub_constituent edges).
+		const hubOfDoc = new Map();
+		for (const e of subgraph.edges) {
+			if (e.kind !== 'hub_constituent') continue;
+			if (!hubOfDoc.has(e.to)) hubOfDoc.set(e.to, e.from);
+		}
+
+		// Nodes.
+		const maxScore = subgraph.resultNodes.reduce((m, n) => Math.max(m, n.score), 0) || 1;
+		for (const h of subgraph.hubAnchors) {
+			els.push({
+				group: 'nodes',
+				data: {
+					id: h.id,
+					label: `${h.title || h.path || h.id}\n(${h.constituentCount} constituents)`,
+					kind: 'hub',
+					score: 1,
+				},
+				classes: 'hub',
+			});
+		}
+		for (const n of subgraph.resultNodes) {
+			if (hideIsolated && isolatedIds.has(n.id)) continue;
+			let parent;
+			if (groupHub && hubOfDoc.has(n.id)) parent = `group:hub:${hubOfDoc.get(n.id)}`;
+			else if (groupFolder && n.folder) parent = `group:folder:${n.folder}`;
+			els.push({
+				group: 'nodes',
+				data: {
+					id: n.id,
+					label: n.title || n.path || n.id,
+					kind: 'doc',
+					score: n.score / maxScore,
+					folder: n.folder,
+					folderColor: folderColor(n.folder),
+					parent,
+				},
+				classes: `doc ${isolatedIds.has(n.id) ? 'isolated' : ''}`,
+			});
+		}
+
+		// Edges.
+		const seen = new Set();
+		for (const e of subgraph.edges) {
+			if (e.kind === 'reference' && !showRef) continue;
+			if (e.kind === 'hub_constituent' && !showHubC) continue;
+			if (e.kind === 'semantic' && !showSem) continue;
+			const from = e.from, to = e.to;
+			if (from === to) continue;
+			if (hideIsolated && (isolatedIds.has(from) || isolatedIds.has(to))) continue;
+			const key = `${e.kind}|${from}|${to}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			els.push({
+				group: 'edges',
+				data: { id: key, source: from, target: to, kind: e.kind },
+				classes: e.kind,
+			});
+		}
+
+		return els;
+	}
+
+	// ─── Style ──────────────────────────────────────────────────────────
+	const styles = [
+		{ selector: 'node.hub', style: {
+			'background-color': '#c4b5fd',
+			'border-color': '#7c3aed',
+			'border-width': 2,
+			'shape': 'round-rectangle',
+			'width': 160, 'height': 46,
+			'label': 'data(label)',
+			'text-wrap': 'wrap', 'text-max-width': 150,
+			'font-size': 11, 'font-weight': 600,
+			'text-valign': 'center', 'text-halign': 'center',
+			'color': '#4c1d95',
+		}},
+		{ selector: 'node.doc', style: {
+			'background-color': 'mapData(score, 0, 1, #f5f3ff, #a78bfa)',
+			'border-color': '#a78bfa',
+			'border-width': 1,
+			'shape': 'round-rectangle',
+			'width': 140, 'height': 32,
+			'label': 'data(label)',
+			'text-wrap': 'ellipsis', 'text-max-width': 130,
+			'font-size': 10,
+			'text-valign': 'center', 'text-halign': 'center',
+			'color': '#1e1b4b',
+		}},
+		{ selector: 'node.doc.isolated', style: {
+			'opacity': 0.55,
+			'border-style': 'dashed',
+		}},
+		{ selector: 'node.hubGroup', style: {
+			'background-color': '#ede9fe',
+			'background-opacity': 0.6,
+			'border-color': '#a78bfa',
+			'border-width': 1,
+			'border-style': 'dashed',
+			'shape': 'round-rectangle',
+			'label': 'data(label)',
+			'font-size': 10, 'font-weight': 700,
+			'color': '#6d28d9',
+			'text-valign': 'top', 'text-halign': 'center',
+			'text-margin-y': -6,
+			'padding': 20,
+		}},
+		{ selector: 'node.folderGroup', style: {
+			'background-color': 'data(color)',
+			'background-opacity': 0.5,
+			'border-color': '#94a3b8',
+			'border-width': 1,
+			'border-style': 'dashed',
+			'shape': 'round-rectangle',
+			'label': 'data(label)',
+			'font-size': 9, 'font-weight': 700,
+			'color': '#334155',
+			'text-valign': 'top', 'text-halign': 'left',
+			'text-margin-y': -4,
+			'text-margin-x': 8,
+			'padding': 16,
+		}},
+		{ selector: 'edge', style: {
+			'curve-style': 'bezier',
+			'target-arrow-shape': 'triangle',
+			'target-arrow-color': '#94a3b8',
+			'line-color': '#94a3b8',
+			'width': 1,
+			'arrow-scale': 0.7,
+		}},
+		{ selector: 'edge.reference', style: {
+			'line-color': '#334155',
+			'target-arrow-color': '#334155',
+			'width': 1.4,
+		}},
+		{ selector: 'edge.hub_constituent', style: {
+			'line-color': '#7c3aed',
+			'target-arrow-color': '#7c3aed',
+			'line-style': 'dashed',
+			'width': 1.2,
+		}},
+		{ selector: 'edge.semantic', style: {
+			'line-color': '#cbd5e1',
+			'target-arrow-color': '#cbd5e1',
+			'line-style': 'dashed',
+			'width': 0.8,
+			'opacity': 0.7,
+		}},
+		{ selector: 'node:selected', style: {
+			'border-color': '#f59e0b',
+			'border-width': 3,
+		}},
+	];
+
+	// ─── Layout configs ─────────────────────────────────────────────────
+	function layoutConfig(name) {
+		switch (name) {
+			case 'fcose': return { name: 'fcose', animate: true, animationDuration: 500, nodeRepulsion: 8000, idealEdgeLength: 90, edgeElasticity: 0.3, gravity: 0.25, tile: true, randomize: true, packComponents: true, nodeSeparation: 80 };
+			case 'cise': return { name: 'cise', animate: true, animationDuration: 700, clusters: (n) => {
+				// Cluster by hub membership if present, else by folder.
+				const parent = n.data('parent');
+				if (parent) return parent;
+				return n.data('folder') || 'misc';
+			}, allowNodesInsideCircle: false, nodeSeparation: 20, idealInterClusterEdgeLengthCoefficient: 1.4 };
+			case 'cola': return { name: 'cola', animate: true, maxSimulationTime: 3000, nodeSpacing: 20, edgeLength: 90, avoidOverlap: true };
+			case 'cose': return { name: 'cose', animate: true, nodeRepulsion: 8000, idealEdgeLength: 100, gravity: 0.3 };
+			case 'dagre-tb': return { name: 'dagre', rankDir: 'TB', nodeSep: 20, edgeSep: 12, rankSep: 70, animate: true };
+			case 'dagre-lr': return { name: 'dagre', rankDir: 'LR', nodeSep: 20, edgeSep: 12, rankSep: 100, animate: true };
+			case 'concentric-hub': return {
+				name: 'concentric',
+				animate: true,
+				concentric: (n) => n.data('kind') === 'hub' ? 100 : Math.floor((n.data('score') || 0) * 10),
+				levelWidth: () => 1,
+				minNodeSpacing: 30,
+			};
+			case 'concentric-score': return {
+				name: 'concentric',
+				animate: true,
+				concentric: (n) => Math.floor((n.data('score') || 0) * 20),
+				levelWidth: () => 1,
+				minNodeSpacing: 30,
+			};
+			case 'breadthfirst': return {
+				name: 'breadthfirst',
+				animate: true,
+				roots: subgraph.hubAnchors.map((h) => h.id).join(','),
+				spacingFactor: 1.4,
+				directed: true,
+			};
+			case 'grid': return { name: 'grid', rows: 6 };
+			default: return { name: 'fcose' };
+		}
+	}
+
+	// ─── Render ─────────────────────────────────────────────────────────
+	function readOpts() {
+		return {
+			showRef: document.getElementById('showRef').checked,
+			showHubC: document.getElementById('showHubC').checked,
+			showSem: document.getElementById('showSem').checked,
+			groupFolder: document.getElementById('groupFolder').checked,
+			groupHub: document.getElementById('groupHub').checked,
+			hideIsolated: document.getElementById('hideIsolated').checked,
+		};
+	}
+
+	function render() {
+		const opts = readOpts();
+		const els = buildElements(opts);
+		if (cy) cy.destroy();
+		cy = cytoscape({
+			container: document.getElementById('cy'),
+			elements: els,
+			style: styles,
+			layout: layoutConfig(currentLayout),
+			minZoom: 0.15,
+			maxZoom: 3,
+			wheelSensitivity: 0.2,
+		});
+		cy.on('tap', 'node', (evt) => {
+			const n = evt.target;
+			const d = n.data();
+			document.getElementById('selection').innerHTML = `
+				<div class="field"><div class="k">kind</div><div class="v">${d.kind}</div></div>
+				<div class="field"><div class="k">id</div><div class="v">${d.id}</div></div>
+				<div class="field"><div class="k">label</div><div class="v">${d.label || ''}</div></div>
+				${d.folder ? `<div class="field"><div class="k">folder</div><div class="v">${d.folder}</div></div>` : ''}
+				${d.score != null ? `<div class="field"><div class="k">score (norm.)</div><div class="v">${(d.score).toFixed(3)}</div></div>` : ''}
+				${d.parent ? `<div class="field"><div class="k">parent</div><div class="v">${d.parent}</div></div>` : ''}
+			`;
+		});
+		cy.on('tap', (evt) => {
+			if (evt.target === cy) {
+				document.getElementById('selection').innerHTML = '<em style="color:#999">click a node to inspect</em>';
+			}
+		});
+		document.getElementById('statNodes').textContent = 'nodes: ' + cy.nodes().length;
+		document.getElementById('statEdges').textContent = 'edges: ' + cy.edges().length;
+		document.getElementById('statLayout').textContent = 'layout: ' + currentLayout;
+	}
+
+	// ─── Events ─────────────────────────────────────────────────────────
+	document.getElementById('layout').addEventListener('change', (e) => { currentLayout = e.target.value; render(); });
+	for (const id of ['showRef','showHubC','showSem','groupFolder','groupHub','hideIsolated']) {
+		document.getElementById(id).addEventListener('change', render);
+	}
+	document.getElementById('fitBtn').addEventListener('click', () => cy && cy.fit(undefined, 40));
+	document.getElementById('pasteBtn').addEventListener('click', openPaste);
+	function openPaste() { document.getElementById('datapaste').classList.add('open'); document.getElementById('pasteBox').focus(); }
+	function closePaste() { document.getElementById('datapaste').classList.remove('open'); }
+	function applyPasted() {
+		try {
+			const txt = document.getElementById('pasteBox').value.trim();
+			const parsed = JSON.parse(txt);
+			if (parsed.subgraph) subgraph = parsed.subgraph;
+			else if (parsed.resultNodes) subgraph = parsed;
+			else throw new Error('expected { subgraph: {...} } or a bare subgraph');
+			folderColorMap.clear();
+			closePaste();
+			render();
+		} catch (err) { alert('parse failed: ' + err.message); }
+	}
+	window.closePaste = closePaste;
+	window.applyPasted = applyPasted;
+
+	document.addEventListener('keydown', (e) => {
+		if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+		if (e.key === 'p' || e.key === 'P') { openPaste(); }
+		if (e.key === 'f' || e.key === 'F') { cy && cy.fit(undefined, 40); }
+		if (e.key === ' ') { e.preventDefault(); render(); }
+		if (e.key === 'Escape') { closePaste(); }
+	});
+
+	render();
+</script>
+</body>
+</html>
