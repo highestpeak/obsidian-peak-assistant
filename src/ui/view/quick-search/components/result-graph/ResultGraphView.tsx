@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dagre from '@dagrejs/dagre';
 import {
 	ReactFlow,
 	Background,
@@ -24,8 +25,10 @@ import type { SearchResultItem } from '@/core/search/searchTypes';
 
 const NODE_CAP = 100;
 const NARROW_MODAL_PX = 640;
-const HUB_RADIUS = 220;
-const DOC_RADIUS = 340;
+const HUB_NODE_W = 200;
+const HUB_NODE_H = 60;
+const DOC_NODE_W = 170;
+const DOC_NODE_H = 44;
 
 /** Numeric score to pick the "match score" for graph coloring / sort. */
 function scoreOf(r: SearchResultItem): number {
@@ -78,12 +81,41 @@ function computeLayout(
 	const nodes: Node[] = [];
 	const nodeIndexById = new Map<string, { x: number; y: number }>();
 
-	// Hub anchors: evenly spread around a small inner ring.
-	const hubCount = sub.hubAnchors.length;
-	sub.hubAnchors.forEach((h, i) => {
-		const angle = hubCount === 0 ? 0 : (2 * Math.PI * i) / hubCount;
-		const x = Math.cos(angle) * HUB_RADIUS;
-		const y = Math.sin(angle) * HUB_RADIUS;
+	const isolatedSet = new Set(sub.isolatedDocIds);
+	const connected = sub.resultNodes.filter((n) => !isolatedSet.has(n.id));
+	const maxScore = connected.reduce((m, n) => Math.max(m, n.score), 0) || 1;
+
+	// Dagre TB layout: hubs at rank 0, their constituents below, cross-doc
+	// reference chains extend further down. Isolated docs are already in the
+	// side rail, not on the canvas.
+	const g = new dagre.graphlib.Graph();
+	g.setDefaultEdgeLabel(() => ({}));
+	g.setGraph({ rankdir: 'TB', nodesep: 24, ranksep: 60, marginx: 20, marginy: 20 });
+
+	for (const h of sub.hubAnchors) {
+		g.setNode(h.id, { width: HUB_NODE_W, height: HUB_NODE_H });
+	}
+	for (const n of connected) {
+		g.setNode(n.id, { width: DOC_NODE_W, height: DOC_NODE_H });
+	}
+	// Rank-forming edges — only reference + hub_constituent shape the layout.
+	// Semantic edges are visual overlay only; if they steer the layout they
+	// pull unrelated results together and the picture becomes a hairball.
+	for (const e of sub.edges) {
+		if (e.kind === 'semantic') continue;
+		if (!g.hasNode(e.from) || !g.hasNode(e.to)) continue;
+		g.setEdge(e.from, e.to);
+	}
+
+	dagre.layout(g);
+
+	// Emit nodes at dagre-computed positions (dagre reports center-x/center-y;
+	// xyflow expects top-left, so subtract half the node box).
+	for (const h of sub.hubAnchors) {
+		const p = g.node(h.id);
+		if (!p) continue;
+		const x = p.x - HUB_NODE_W / 2;
+		const y = p.y - HUB_NODE_H / 2;
 		const node: HubAnchorNodeType = {
 			id: h.id,
 			type: 'hubAnchor',
@@ -95,18 +127,13 @@ function computeLayout(
 			},
 		};
 		nodes.push(node as unknown as Node);
-		nodeIndexById.set(h.id, { x, y });
-	});
-
-	// Result docs — connected ones on the outer ring, isolated ones extracted for the rail.
-	const isolatedSet = new Set(sub.isolatedDocIds);
-	const connected = sub.resultNodes.filter((n) => !isolatedSet.has(n.id));
-	const maxScore = connected.reduce((m, n) => Math.max(m, n.score), 0) || 1;
-	const docCount = connected.length;
-	connected.forEach((n, i) => {
-		const angle = docCount === 0 ? 0 : (2 * Math.PI * i) / docCount;
-		const x = Math.cos(angle) * DOC_RADIUS;
-		const y = Math.sin(angle) * DOC_RADIUS;
+		nodeIndexById.set(h.id, { x: p.x, y: p.y });
+	}
+	for (const n of connected) {
+		const p = g.node(n.id);
+		if (!p) continue;
+		const x = p.x - DOC_NODE_W / 2;
+		const y = p.y - DOC_NODE_H / 2;
 		const node: ResultDocNodeType = {
 			id: n.id,
 			type: 'resultDoc',
@@ -118,8 +145,8 @@ function computeLayout(
 			},
 		};
 		nodes.push(node as unknown as Node);
-		nodeIndexById.set(n.id, { x, y });
-	});
+		nodeIndexById.set(n.id, { x: p.x, y: p.y });
+	}
 
 	// Edges. `semantic` respects the overlay toggle.
 	const edges: Edge[] = [];
@@ -427,14 +454,6 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 		if (node.type === 'resultDoc') void openDocById(node.id);
 	}, [openDocById]);
 
-	console.log('[ResultGraphView] render', {
-		resultsLen: results.length,
-		subgraphNodes: subgraph?.resultNodes.length ?? 'null',
-		hubAnchors: subgraph?.hubAnchors.length ?? 'null',
-		hasDeps: !!resultSubgraphDeps,
-		loading,
-	});
-
 	if (loading && !subgraph) {
 		return (
 			<div className="pktw-flex pktw-flex-1 pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary" style={{ minHeight: 200 }}>
@@ -461,7 +480,6 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	const emptyCanvas = layout.nodes.length === 0;
 	if (emptyCanvas) {
 		const totalIsolated = layout.isolatedItems.length;
-		console.log('[ResultGraphView] emptyCanvas branch, isolated:', totalIsolated, 'sample:', layout.isolatedItems.slice(0, 3));
 		return (
 			<div ref={containerRef} className="pktw-w-full pktw-block" style={{ minHeight: 220 }}>
 				<div className="pktw-px-4 pktw-py-2 pktw-text-xs pktw-text-pk-text-tertiary pktw-border-b pktw-border-pk-border/40">
