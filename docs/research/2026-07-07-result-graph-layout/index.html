@@ -70,11 +70,12 @@
 	<h1>Result Graph · Layout Sandbox</h1>
 	<div class="controls" style="width:100%;flex-wrap:wrap">
 		<div class="presets" role="tablist" aria-label="View mode">
-			<button class="preset-btn active" data-preset="constellation" title="Force-directed cluster view. Best for 'how do these results cluster?'">Constellation</button>
-			<button class="preset-btn" data-preset="flow" title="Top-down dependency flow. Best for 'what references what?'">Flow</button>
-			<button class="preset-btn" data-preset="folder" title="Full-depth folder tree. Best for 'where in my vault?'">Folder tree</button>
-			<button class="preset-btn" data-preset="hub" title="Docs grouped under their hubs. Best for 'which hub owns what?'">Hub cluster</button>
-			<button class="preset-btn" data-preset="orbit" title="Hubs at center, docs orbit. Best for 'are hubs the center of gravity?'">Orbit</button>
+			<button class="preset-btn active" data-preset="constellation" title="Constraint force layout — how do these results cluster?">Constellation</button>
+			<button class="preset-btn" data-preset="flow-tb" title="Top→down hierarchical flow — what references what?">Flow ↓</button>
+			<button class="preset-btn" data-preset="flow-lr" title="Left→right hierarchical flow — same as ↓ but sideways">Flow →</button>
+			<button class="preset-btn" data-preset="folder" title="Full-depth folder tree — where in my vault?">Folder tree</button>
+			<button class="preset-btn" data-preset="hub" title="Docs grouped under their hubs — which hub owns what?">Hub cluster</button>
+			<button class="preset-btn" data-preset="orbit" title="Hubs at center, docs orbit — are hubs the center of gravity?">Orbit</button>
 		</div>
 		<div class="control">
 			<label><input type="checkbox" id="showSem" /> Show semantic edges</label>
@@ -133,8 +134,8 @@
 	</div>
 	<h2>View modes</h2>
 	<ul style="padding-left:16px;line-height:1.55;color:#666">
-		<li><b>Constellation</b> — how do these results cluster together?</li>
-		<li><b>Flow</b> — what references what?</li>
+		<li><b>Constellation</b> — how do these results cluster together? (constraint force)</li>
+		<li><b>Flow ↓ / →</b> — what references what, top-down or left-right (dagre)</li>
 		<li><b>Folder tree</b> — where in my vault do they live?</li>
 		<li><b>Hub cluster</b> — which hub owns which docs?</li>
 		<li><b>Orbit</b> — are hubs the center of gravity?</li>
@@ -531,10 +532,11 @@
 	// edges are the only per-view toggle the user still sees — presets set
 	// its default, the user can override on top.
 	const PRESETS = {
-		constellation: { label: 'Constellation', layout: 'fcose', showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
-		flow:          { label: 'Flow',          layout: 'dagre-tb', showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
-		folder:        { label: 'Folder tree',   layout: 'cola', showRef: false, showHubC: false, showSem: false, groupFolder: true,  groupHub: false },
-		hub:           { label: 'Hub cluster',   layout: 'cise', showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: true },
+		constellation: { label: 'Constellation', layout: 'cola',        showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
+		'flow-tb':     { label: 'Flow ↓',        layout: 'dagre-tb',    showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
+		'flow-lr':     { label: 'Flow →',        layout: 'dagre-lr',    showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
+		folder:        { label: 'Folder tree',   layout: 'cola',        showRef: false, showHubC: false, showSem: false, groupFolder: true,  groupHub: false },
+		hub:           { label: 'Hub cluster',   layout: 'cise',        showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: true },
 		orbit:         { label: 'Orbit',         layout: 'concentric-hub', showRef: true, showHubC: true, showSem: true,  groupFolder: false, groupHub: false },
 	};
 	let activePreset = 'constellation';
