@@ -285,41 +285,68 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				setSubgraph({ resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 });
 				return;
 			}
-			// resultSubgraphDeps is null before app-layer composition wires it
-			// (mock harness / early boot); degrade to the sparse fallback banner.
-			if (!resultSubgraphDeps) {
-				setSubgraph({ resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 });
-				return;
+			// Always synthesize a baseline from the raw search results so the
+			// graph area is never blank, even when metadata enrichment fails
+			// (deps null / sqlite miss / chunk-id mismatch).
+			const scoreById = new Map<string, number>();
+			const baselineNodes: ResultSubgraphOutput['resultNodes'] = [];
+			const baselineIds: string[] = [];
+			for (const r of results) {
+				const id = r.docId ?? r.path ?? r.id;
+				if (!id) continue;
+				if (scoreById.has(id)) {
+					scoreById.set(id, Math.max(scoreById.get(id)!, scoreOf(r)));
+					continue;
+				}
+				scoreById.set(id, scoreOf(r));
+				baselineIds.push(id);
+				baselineNodes.push({
+					id,
+					path: r.path ?? '',
+					title: r.title || r.path || id,
+					score: scoreOf(r),
+					communityId: null,
+					folder: r.path ? (r.path.split('/')[0] ?? '') : '',
+				});
 			}
+			const baseline: ResultSubgraphOutput = {
+				resultNodes: baselineNodes,
+				hubAnchors: [],
+				edges: [],
+				isolatedDocIds: baselineIds,
+				overflowCount: 0,
+			};
+			// Show the baseline immediately; enrichment refines it below.
+			if (!cancelled) setSubgraph(baseline);
+			if (!resultSubgraphDeps) return;
 			setLoading(true);
 			try {
-				const docIds: string[] = [];
-				const scores = new Map<string, number>();
-				for (const r of results) {
-					// Prefer docId (mobius_node.node_id) when the search
-					// resolved it, else fall back to path so the app-layer
-					// port can look up by path. Chunk ids (`r.id`) are last
-					// resort — they will not match `mobius_node` and produce
-					// an empty graph, which is what triggered the bug where
-					// the whole graph area rendered blank.
-					const id = r.docId ?? r.path ?? r.id;
-					if (!id) continue;
-					if (scores.has(id)) {
-						// Multiple chunks per doc: keep the max score.
-						scores.set(id, Math.max(scores.get(id)!, scoreOf(r)));
-						continue;
-					}
-					docIds.push(id);
-					scores.set(id, scoreOf(r));
-				}
 				const sub = await buildResultSubgraph(resultSubgraphDeps, {
-					resultDocIds: docIds,
-					matchScores: scores,
+					resultDocIds: baselineIds,
+					matchScores: scoreById,
 					nodeCap: NODE_CAP,
 				});
-				if (!cancelled) setSubgraph(sub);
-			} catch {
-				if (!cancelled) setSubgraph({ resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 });
+				// Backfill title / path / folder from the raw search results
+				// when metadata lookup returned empty (chunk-id mismatch or
+				// mobius_node has no row for this vault path). Otherwise the
+				// isolated list would render empty labels — the exact bug
+				// where the user saw a blank graph pane.
+				const byId = new Map(baselineNodes.map((n) => [n.id, n]));
+				const enriched: ResultSubgraphOutput = {
+					...sub,
+					resultNodes: sub.resultNodes.map((n) => {
+						const src = byId.get(n.id);
+						return {
+							...n,
+							title: n.title || src?.title || src?.path || n.id,
+							path: n.path || src?.path || '',
+							folder: n.folder || src?.folder || '',
+						};
+					}),
+				};
+				if (!cancelled) setSubgraph(enriched);
+			} catch (err) {
+				console.warn('[ResultGraphView] buildResultSubgraph failed, using baseline', err);
 			} finally {
 				if (!cancelled) setLoading(false);
 			}
@@ -427,24 +454,22 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	if (emptyCanvas) {
 		const totalIsolated = layout.isolatedItems.length;
 		return (
-			<div ref={containerRef} className="pktw-relative pktw-flex pktw-flex-col pktw-flex-1 pktw-min-h-0 pktw-w-full pktw-overflow-hidden" style={{ minHeight: 200 }}>
+			<div ref={containerRef} className="pktw-w-full">
 				<div className="pktw-px-4 pktw-py-2 pktw-text-xs pktw-text-pk-text-tertiary pktw-border-b pktw-border-pk-border/40">
 					{totalIsolated} result{totalIsolated === 1 ? '' : 's'} · no structural connections between them
 				</div>
-				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto">
-					<IsolatedMatchesRail
-						items={layout.isolatedItems}
-						selectedId={selectedNodeId}
-						onSelect={setSelectedNodeId}
-						onOpen={(id) => void openDocById(id)}
-						narrow={false}
-						fullWidth
-					/>
-				</div>
+				<IsolatedMatchesRail
+					items={layout.isolatedItems}
+					selectedId={selectedNodeId}
+					onSelect={setSelectedNodeId}
+					onOpen={(id) => void openDocById(id)}
+					narrow={false}
+					fullWidth
+				/>
 				{subgraph.overflowCount > 0 && (
-					<span className="pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border-t pktw-border-pk-border">
+					<div className="pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border-t pktw-border-pk-border">
 						{`Showing top ${NODE_CAP} of ${NODE_CAP + subgraph.overflowCount} results`}
-					</span>
+					</div>
 				)}
 			</div>
 		);
