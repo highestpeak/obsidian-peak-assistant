@@ -427,6 +427,14 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 		if (node.type === 'resultDoc') void openDocById(node.id);
 	}, [openDocById]);
 
+	console.log('[ResultGraphView] render', {
+		resultsLen: results.length,
+		subgraphNodes: subgraph?.resultNodes.length ?? 'null',
+		hubAnchors: subgraph?.hubAnchors.length ?? 'null',
+		hasDeps: !!resultSubgraphDeps,
+		loading,
+	});
+
 	if (loading && !subgraph) {
 		return (
 			<div className="pktw-flex pktw-flex-1 pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary" style={{ minHeight: 200 }}>
@@ -453,19 +461,29 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	const emptyCanvas = layout.nodes.length === 0;
 	if (emptyCanvas) {
 		const totalIsolated = layout.isolatedItems.length;
+		console.log('[ResultGraphView] emptyCanvas branch, isolated:', totalIsolated, 'sample:', layout.isolatedItems.slice(0, 3));
 		return (
-			<div ref={containerRef} className="pktw-w-full">
+			<div ref={containerRef} className="pktw-w-full pktw-block" style={{ minHeight: 220 }}>
 				<div className="pktw-px-4 pktw-py-2 pktw-text-xs pktw-text-pk-text-tertiary pktw-border-b pktw-border-pk-border/40">
 					{totalIsolated} result{totalIsolated === 1 ? '' : 's'} · no structural connections between them
 				</div>
-				<IsolatedMatchesRail
-					items={layout.isolatedItems}
-					selectedId={selectedNodeId}
-					onSelect={setSelectedNodeId}
-					onOpen={(id) => void openDocById(id)}
-					narrow={false}
-					fullWidth
-				/>
+				<div className="pktw-flex pktw-flex-col pktw-gap-0.5 pktw-px-3 pktw-py-2">
+					{layout.isolatedItems.map((it) => (
+						<div
+							key={it.id}
+							role="button"
+							tabIndex={0}
+							onClick={() => setSelectedNodeId(it.id)}
+							onDoubleClick={() => void openDocById(it.id)}
+							title={it.path}
+							className={selectedNodeId === it.id
+								? 'pktw-block pktw-truncate pktw-rounded pktw-px-2 pktw-py-1 pktw-text-[12px] pktw-cursor-pointer pktw-bg-pk-accent-tint pktw-text-pk-accent-text'
+								: 'pktw-block pktw-truncate pktw-rounded pktw-px-2 pktw-py-1 pktw-text-[12px] pktw-cursor-pointer pktw-text-pk-text-secondary hover:pktw-bg-pk-surface-raised'}
+						>
+							{it.title || it.path || it.id}
+						</div>
+					))}
+				</div>
 				{subgraph.overflowCount > 0 && (
 					<div className="pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border-t pktw-border-pk-border">
 						{`Showing top ${NODE_CAP} of ${NODE_CAP + subgraph.overflowCount} results`}
@@ -478,29 +496,31 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	return (
 		<div
 			ref={containerRef}
-			className="pktw-relative pktw-flex pktw-flex-1 pktw-min-h-0 pktw-w-full pktw-overflow-hidden"
-			style={{ minHeight: 320 }}
+			className="pktw-relative pktw-w-full pktw-h-full pktw-overflow-hidden"
+			style={{ minHeight: 420 }}
 		>
 			<CommunityBackground regions={layout.communityRegions} />
 			<FolderBoundary regions={layout.folderRegions} />
 			{sparse && <SparseFallbackBanner />}
-			<ReactFlow
-				nodes={nodes}
-				edges={layout.edges}
-				nodeTypes={nodeTypes}
-				onNodesChange={onNodesChange}
-				onNodeClick={handleNodeClick}
-				onNodeDoubleClick={handleNodeDoubleClick}
-				onInit={(instance) => { rfInstance.current = instance; }}
-				fitView
-				fitViewOptions={{ padding: 0.25 }}
-				proOptions={{ hideAttribution: true }}
-				minZoom={0.3}
-				maxZoom={2.5}
-			>
-				<Background color="var(--pk-surface-sunken)" gap={20} />
-				<Controls showInteractive={false} />
-			</ReactFlow>
+			<div className="pktw-absolute pktw-inset-0">
+				<ReactFlow
+					nodes={nodes}
+					edges={layout.edges}
+					nodeTypes={nodeTypes}
+					onNodesChange={onNodesChange}
+					onNodeClick={handleNodeClick}
+					onNodeDoubleClick={handleNodeDoubleClick}
+					onInit={(instance) => { rfInstance.current = instance; }}
+					fitView
+					fitViewOptions={{ padding: 0.25 }}
+					proOptions={{ hideAttribution: true }}
+					minZoom={0.3}
+					maxZoom={2.5}
+				>
+					<Background color="var(--pk-surface-sunken)" gap={20} />
+					<Controls showInteractive={false} />
+				</ReactFlow>
+			</div>
 			<IsolatedMatchesRail
 				items={layout.isolatedItems}
 				selectedId={selectedNodeId}
@@ -509,7 +529,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				narrow={narrow}
 			/>
 			{subgraph.overflowCount > 0 && (
-				<span className="pktw-absolute pktw-bottom-2 pktw-left-1/2 pktw--translate-x-1/2 pktw-rounded-md pktw-bg-pk-surface-raised pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border pktw-border-pk-border">
+				<span className="pktw-absolute pktw-bottom-2 pktw-left-1/2 pktw--translate-x-1/2 pktw-rounded-md pktw-bg-pk-surface-raised pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border pktw-border-pk-border pktw-z-10">
 					{`Showing top ${NODE_CAP} of ${NODE_CAP + subgraph.overflowCount} results`}
 				</span>
 			)}
