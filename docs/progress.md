@@ -2057,3 +2057,37 @@ Debug Trace Infrastructure 端到端完成；后续 polish（ambient card 里嵌
 
 Debug Trace Infrastructure 端到端完成、每条 receipt 项已可对应 span。
 
+---
+
+## 2026-07-07 · Vault Search Heading Mode + Result Graph View (T0–T8)
+
+Spec: `docs/superpowers/specs/2026-07-07-vault-search-heading-graph-navigation.md`
+Plan: `docs/superpowers/plans/2026-07-07-vault-search-heading-and-result-graph.md`
+
+Quick Search 的两次结构性升级一次性 land：
+
+- **Heading Mode（`#` 前缀）**：整份文档 heading 树 + 右侧 section detail pane。行显示 `12-34` 无 `L` 前缀 + match count 徽标；typing 查询 dim 非命中而非删行；箭头 / Enter / Cmd+Enter 在 tree 与 detail 双 zone 键盘全覆盖；footer 有总匹配数 + link positions（outgoing / backlink 未实现 backlink，按 spec 允许）。
+- **Result Graph View**：结果集 ≤100 个 result node 的 ReactFlow 投影。community 背景 wash + 结构性 reference 边 + 可 toggle 的 semantic dashed 边 + 可 toggle 的 folder boundary + hub anchor 节点（`HubConstituentRepo` 拉出的 `hub_doc`）+ 右侧 Isolated Matches rail + sparse-fallback banner。Cmd+click hub anchor 打开 hub graph subview（pinned 到 hub constituent 结果集）；Esc 回 list view 不关闭 modal。
+- **Hub Reference block**：Inspector 底部 top-5 hubs by constituent count + `+N more` expander。行只有一个主 click target 加一个 Waypoints icon 副 affordance（Cmd/Ctrl+click 或 icon 都开 hub graph subview）。选中 doc 无 hub_constituent 时整块隐藏。
+- **legacy 清理**：`QuickSearchMode` 从 `all|inFile|inFolder|goToLine|heading|help` 缩到 `all|heading|help`；`Line` / `Folder` 两个 legacy parser + UI panel 全删。
+
+Tracks 与 commits：
+- T0 `afdac31c` — 缩 QuickSearchMode enum
+- T1 `97c0bd54` — 删 Folder / Line stack
+- T2a `b2a8329f` — Result subgraph service
+- T2b `be8f4e0a` + `c9df7c09` — Heading tree service + section snippets
+- T3 `479b20c9` — ResultPaneHeader list↔graph toggle
+- T4 `259d318f` — Result Graph View content
+- T5 `3cd56915` — Heading Mode 两 zone UI + 键盘
+- T6 `c582a6d7` — Hub Reference block
+- T7 `5f7ca857` — hub graph subview 双向 wire
+- T8 本次 — 集成 polish + AC 交叉验证 + 边界回归对齐
+
+**T8 polish**：
+- 修 boundary 回归：把 `ResultGraphView` 的 `composeResultSubgraphDeps` 值 import 迁到 `ServiceContext.resultSubgraph` 端口，从 `@/app/**` 挪走；把 `ServiceContext` 里 `HeadingModeDeps` type import 从 `@/app/search/composeHeadingModeDeps` 迁到新 `@/core/ports/HeadingModePort`。ui→app leak 从 2 回到 1（仅 CopilotPickerContent 旧债），core→upstream 从 17→19（新 port 的 2 条 type-only 边），totalFlagged 稳定 20。同步 6 份 t11 boundary regression floor（j/k/l/m/n/o/p/q/r）从 coreUpstream 17→19。
+- Inspector 联动：graph 里 single click resultDoc 现在也会更新 modal 的 `inspectorPath`（新 `onSelectForInspector` prop 从 tab-VaultSearch 一路穿到 ResultGraphView）。
+- 已知 defer：edge hover tooltip（reference / semantic / hub_constituent）目前数据已挂在 `edge.data.kind`，但 ReactFlow 默认边不渲染 tooltip；后续需要一个 custom edge component 承载 `<title>`。
+
+验证：`npm run build` 通过；`npm run test` **191/191 全绿**；`node scripts/audit/boundary-baseline.mjs` 与新 floor 一致。
+
+
