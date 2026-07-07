@@ -70,6 +70,11 @@
 			<label><input type="checkbox" id="groupFolder" /> group by folder</label>
 			<label><input type="checkbox" id="groupHub" /> group by hub</label>
 			<label><input type="checkbox" id="hideIsolated" /> hide isolated</label>
+			<label><input type="checkbox" id="splitIsolated" checked /> isolated in separate region</label>
+		</div>
+		<div class="control">
+			<label><input type="checkbox" id="animateEdges" checked /> animate edges on hover</label>
+			<label><input type="checkbox" id="alwaysAnimate" /> animate all edges</label>
 		</div>
 		<div class="control">
 			<button id="fitBtn">Fit</button>
@@ -354,6 +359,37 @@
 			'border-color': '#f59e0b',
 			'border-width': 3,
 		}},
+		// Hover highlight — dim the rest, spotlight the neighborhood.
+		{ selector: '.dimmed', style: { 'opacity': 0.15 } },
+		{ selector: 'node.highlighted', style: {
+			'border-color': '#f59e0b',
+			'border-width': 3,
+			'opacity': 1,
+			'z-index': 999,
+		}},
+		{ selector: 'edge.highlighted', style: {
+			'line-color': '#f59e0b',
+			'target-arrow-color': '#f59e0b',
+			'width': 2,
+			'opacity': 1,
+			'z-index': 999,
+			'line-dash-pattern': [8, 4],
+			'line-style': 'dashed',
+		}},
+		// Region separators (Cytoscape node-based bounding boxes).
+		{ selector: 'node.regionLabel', style: {
+			'background-opacity': 0,
+			'border-width': 0,
+			'label': 'data(label)',
+			'font-size': 11,
+			'font-weight': 700,
+			'color': '#94a3b8',
+			'text-transform': 'uppercase',
+			'letter-spacing': '2px',
+			'text-valign': 'center',
+			'text-halign': 'center',
+			'width': 200, 'height': 20,
+		}},
 	];
 
 	// ─── Layout configs ─────────────────────────────────────────────────
@@ -405,24 +441,104 @@
 			groupFolder: document.getElementById('groupFolder').checked,
 			groupHub: document.getElementById('groupHub').checked,
 			hideIsolated: document.getElementById('hideIsolated').checked,
+			splitIsolated: document.getElementById('splitIsolated').checked,
+			animateEdges: document.getElementById('animateEdges').checked,
+			alwaysAnimate: document.getElementById('alwaysAnimate').checked,
 		};
+	}
+
+	let animationFrame = null;
+	function stopAnimation() {
+		if (animationFrame) { cancelAnimationFrame(animationFrame); animationFrame = null; }
+	}
+	function animateEdges(selector) {
+		stopAnimation();
+		let offset = 0;
+		const tick = () => {
+			offset -= 0.6;
+			const edges = cy.edges(selector);
+			if (edges.length === 0) return;
+			edges.style('line-dash-offset', offset);
+			animationFrame = requestAnimationFrame(tick);
+		};
+		tick();
+	}
+
+	function layoutIsolatedGrid(cy) {
+		const isolated = cy.nodes('.isolated');
+		if (isolated.length === 0) return;
+		const connected = cy.nodes().not('.isolated').not('.regionLabel');
+		let baseY = 0;
+		if (connected.length > 0) {
+			const bbox = connected.boundingBox();
+			baseY = bbox.y2 + 120; // gap between regions
+			// Divider label
+			cy.add({ group: 'nodes', data: { id: '__label:isolated', label: 'Isolated matches', kind: 'regionLabel' }, classes: 'regionLabel', position: { x: (bbox.x1 + bbox.x2) / 2, y: baseY - 40 } });
+		}
+		const cols = 5;
+		const w = 160, h = 44;
+		isolated.forEach((n, i) => {
+			const col = i % cols;
+			const row = Math.floor(i / cols);
+			n.position({ x: col * w, y: baseY + row * h });
+			n.lock();
+		});
+		// Unlock afterwards so user can still drag if desired.
+		setTimeout(() => isolated.unlock(), 200);
 	}
 
 	function render() {
 		const opts = readOpts();
 		const els = buildElements(opts);
+		stopAnimation();
 		if (cy) cy.destroy();
 		cy = cytoscape({
 			container: document.getElementById('cy'),
 			elements: els,
 			style: styles,
-			layout: layoutConfig(currentLayout),
+			layout: opts.splitIsolated
+				? {
+					...layoutConfig(currentLayout),
+					// Only layout the connected subgraph; isolated get placed manually after.
+					eles: '.doc:not(.isolated), .hub, .hubGroup, .folderGroup',
+					stop: undefined,
+				}
+				: layoutConfig(currentLayout),
 			minZoom: 0.15,
 			maxZoom: 3,
 			wheelSensitivity: 0.2,
 		});
+
+		cy.ready(() => {
+			// Wait for layout to settle before positioning isolated so we know
+			// the connected cluster's bounding box.
+			setTimeout(() => {
+				if (opts.splitIsolated) layoutIsolatedGrid(cy);
+				cy.fit(undefined, 50);
+				if (opts.alwaysAnimate) animateEdges('edge');
+			}, 400);
+		});
+
+		// ─── Hover highlight (spotlight neighborhood) ────────────────
+		cy.on('mouseover', 'node', (evt) => {
+			const n = evt.target;
+			if (n.hasClass('regionLabel')) return;
+			const neigh = n.closedNeighborhood();
+			cy.elements().addClass('dimmed');
+			neigh.removeClass('dimmed').addClass('highlighted');
+			n.addClass('highlighted');
+			if (opts.animateEdges) animateEdges('edge.highlighted');
+		});
+		cy.on('mouseout', 'node', () => {
+			cy.elements().removeClass('dimmed').removeClass('highlighted');
+			stopAnimation();
+			if (opts.alwaysAnimate) animateEdges('edge');
+		});
+
+		// Click → inspector
 		cy.on('tap', 'node', (evt) => {
 			const n = evt.target;
+			if (n.hasClass('regionLabel')) return;
 			const d = n.data();
 			document.getElementById('selection').innerHTML = `
 				<div class="field"><div class="k">kind</div><div class="v">${d.kind}</div></div>
@@ -438,14 +554,15 @@
 				document.getElementById('selection').innerHTML = '<em style="color:#999">click a node to inspect</em>';
 			}
 		});
-		document.getElementById('statNodes').textContent = 'nodes: ' + cy.nodes().length;
+
+		document.getElementById('statNodes').textContent = 'nodes: ' + cy.nodes().not('.regionLabel').length;
 		document.getElementById('statEdges').textContent = 'edges: ' + cy.edges().length;
-		document.getElementById('statLayout').textContent = 'layout: ' + currentLayout;
+		document.getElementById('statLayout').textContent = 'layout: ' + currentLayout + (opts.splitIsolated ? ' + split' : '');
 	}
 
 	// ─── Events ─────────────────────────────────────────────────────────
 	document.getElementById('layout').addEventListener('change', (e) => { currentLayout = e.target.value; render(); });
-	for (const id of ['showRef','showHubC','showSem','groupFolder','groupHub','hideIsolated']) {
+	for (const id of ['showRef','showHubC','showSem','groupFolder','groupHub','hideIsolated','splitIsolated','animateEdges','alwaysAnimate']) {
 		document.getElementById(id).addEventListener('change', render);
 	}
 	document.getElementById('fitBtn').addEventListener('click', () => cy && cy.fit(undefined, 40));
