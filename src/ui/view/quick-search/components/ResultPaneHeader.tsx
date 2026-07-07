@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Network, X } from 'lucide-react';
-import { Chip, IconButton, Pill } from '@/ui/components/primitives';
+import { Chip, Pill } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import { useVaultSearchStore } from '../store';
 import type { QuickSearchMode } from '../store/vaultSearchStore';
@@ -93,14 +93,23 @@ export const ResultPaneHeader: React.FC<ResultPaneHeaderProps> = ({ mode, classN
 		<div className={cn('pktw-flex pktw-items-center pktw-gap-2', className)}>
 			<PinnedHubChip />
 			{isGraph && <GraphOverlayToggles />}
-			<IconButton
-				label={isGraph ? 'Switch to list view' : 'Switch to graph view'}
+			<button
+				type="button"
 				onClick={toggle}
 				data-active={isGraph ? 'true' : undefined}
 				aria-pressed={isGraph}
+				title={isGraph ? 'Switch to list view' : 'Switch to graph view'}
+				className={cn(
+					'pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-h-6 pktw-px-2.5 pktw-rounded-full',
+					'pktw-text-[11px] pktw-font-medium pktw-transition-colors pktw-cursor-pointer pktw-shadow-none',
+					isGraph
+						? 'pktw-bg-pk-accent/10 pktw-text-pk-accent pktw-border pktw-border-pk-accent/25'
+						: 'pktw-text-pk-foreground-muted pktw-border pktw-border-transparent hover:pktw-text-pk-accent hover:pktw-bg-pk-background-hover',
+				)}
 			>
-				<Network className="pktw-w-4 pktw-h-4" />
-			</IconButton>
+				<Network className="pktw-w-3.5 pktw-h-3.5" />
+				<span>Graph view</span>
+			</button>
 		</div>
 	);
 };
