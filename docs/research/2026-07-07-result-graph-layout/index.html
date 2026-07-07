@@ -630,22 +630,24 @@
 			if (n.hasClass('regionLabel')) return;
 			clearTimeout(hoverTimer);
 			hoverTimer = setTimeout(() => {
-				// For compound nodes (folder / hub groups), the highlight
-				// should include the whole subtree — all nested folders and
-				// docs, plus edges among them. Otherwise the user hovers a
-				// folder and its contents stay dim, which reads wrong.
+				// For compound nodes (folder / hub groups), highlight the
+				// whole subtree — all nested folders and docs + edges among
+				// them — otherwise the folder goes bright but its contents
+				// look dim, which reads wrong.
 				const isCompound = n.hasClass('folderGroup') || n.hasClass('hubGroup');
 				let highlight;
 				if (isCompound) {
 					const descendants = n.descendants();
-					const inside = n.union(descendants);
-					// Include edges whose both endpoints are inside the subtree,
-					// plus edges that connect the subtree to its neighborhood.
-					const insideEdges = descendants.connectedEdges();
-					highlight = inside.union(insideEdges);
+					highlight = n.union(descendants).union(descendants.connectedEdges());
 				} else {
 					highlight = n.closedNeighborhood();
 				}
+				// Always include the ancestor chain of the hovered node so
+				// its containing folders stay bright — reads like a
+				// breadcrumb. Handles the edge case where all edges are
+				// toggled off: a leaf doc's neighborhood is just itself, and
+				// without this the whole picture would collapse to dim.
+				highlight = highlight.union(n.ancestors());
 				cy.batch(() => {
 					cy.elements().addClass('dimmed');
 					highlight.removeClass('dimmed').addClass('highlighted');
