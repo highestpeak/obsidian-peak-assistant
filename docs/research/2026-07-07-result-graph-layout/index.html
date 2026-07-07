@@ -7,7 +7,7 @@
 	* { box-sizing: border-box; }
 	html, body { margin: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif; background: #fafafa; color: #1c1c1c; }
 	body { display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: 1fr 320px; height: 100vh; }
-	header { grid-column: 1 / 3; padding: 10px 16px; border-bottom: 1px solid #e5e5e5; background: white; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+	header { grid-column: 1 / 3; padding: 12px 16px; border-bottom: 1px solid #e5e5e5; background: white; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
 	header h1 { font-size: 14px; font-weight: 600; margin: 0; color: #7c3aed; }
 	.controls { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 	.control { display: flex; gap: 6px; align-items: center; font-size: 12px; color: #444; }
@@ -17,6 +17,29 @@
 	button.primary { background: #7c3aed; color: white; border-color: #7c3aed; }
 	button.primary:hover { background: #6d28d9; }
 	input[type="checkbox"] { accent-color: #7c3aed; }
+	.presets { display: flex; gap: 6px; padding: 3px; background: #f4f2f8; border-radius: 999px; border: 1px solid #ede9fe; }
+	.preset-btn {
+		padding: 6px 14px;
+		font-size: 12px;
+		font-weight: 500;
+		border: none;
+		background: transparent;
+		border-radius: 999px;
+		cursor: pointer;
+		color: #6b7280;
+		transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+	}
+	.preset-btn:hover { color: #7c3aed; }
+	.preset-btn.active {
+		background: white;
+		color: #7c3aed;
+		box-shadow: 0 1px 3px rgba(124,58,237,0.15), 0 0 0 1px rgba(124,58,237,0.15);
+	}
+	.preset-tag { display: inline-block; font-size: 10px; color: #94a3b8; margin-left: 4px; }
+	.advanced-toggle { font-size: 11px; color: #94a3b8; background: transparent; border: none; cursor: pointer; padding: 2px 6px; }
+	.advanced-toggle:hover { color: #7c3aed; }
+	.advanced { display: none; width: 100%; padding-top: 10px; border-top: 1px dashed #ede9fe; margin-top: 8px; gap: 14px; flex-wrap: wrap; }
+	.advanced.open { display: flex; }
 	main { position: relative; overflow: hidden; background: #f7f5fb; }
 	#cy { position: absolute; inset: 0; }
 	aside { border-left: 1px solid #e5e5e5; background: white; padding: 14px; overflow-y: auto; font-size: 12px; }
@@ -45,40 +68,49 @@
 
 <header>
 	<h1>Result Graph · Layout Sandbox</h1>
-	<div class="controls">
-		<div class="control">
-			<label for="layout">Layout</label>
-			<select id="layout">
-				<option value="fcose">fcose · force-directed (best default)</option>
-				<option value="cise">cise · compound spring (best for hub clusters)</option>
-				<option value="cola">cola · constraint force</option>
-				<option value="cose">cose · classic force</option>
-				<option value="dagre-tb">dagre · TB</option>
-				<option value="dagre-lr">dagre · LR</option>
-				<option value="concentric-hub">concentric · hubs in center</option>
-				<option value="concentric-score">concentric · high-score in center</option>
-				<option value="breadthfirst">breadthfirst · roots=hubs</option>
-				<option value="grid">grid · flat</option>
-			</select>
+	<div class="controls" style="width:100%;flex-wrap:wrap">
+		<div class="presets" role="tablist" aria-label="View mode">
+			<button class="preset-btn active" data-preset="constellation" title="Force-directed cluster view. Best for 'how do these results cluster?'">Constellation</button>
+			<button class="preset-btn" data-preset="flow" title="Top-down dependency flow. Best for 'what references what?'">Flow</button>
+			<button class="preset-btn" data-preset="folder" title="Full-depth folder tree. Best for 'where in my vault?'">Folder tree</button>
+			<button class="preset-btn" data-preset="hub" title="Docs grouped under their hubs. Best for 'which hub owns what?'">Hub cluster</button>
+			<button class="preset-btn" data-preset="orbit" title="Hubs at center, docs orbit. Best for 'are hubs the center of gravity?'">Orbit</button>
 		</div>
 		<div class="control">
-			<label><input type="checkbox" id="showRef" checked /> reference</label>
-			<label><input type="checkbox" id="showHubC" checked /> hub_constituent</label>
-			<label><input type="checkbox" id="showSem" /> semantic</label>
+			<label><input type="checkbox" id="showSem" /> Show semantic edges</label>
 		</div>
-		<div class="control">
-			<label><input type="checkbox" id="groupFolder" /> group by folder</label>
-			<label><input type="checkbox" id="groupHub" /> group by hub</label>
-			<label><input type="checkbox" id="hideIsolated" /> hide isolated</label>
-			<label><input type="checkbox" id="splitIsolated" checked /> isolated in separate region</label>
-		</div>
-		<div class="control">
-			<label><input type="checkbox" id="animateEdges" checked /> animate edges on hover</label>
-			<label><input type="checkbox" id="alwaysAnimate" /> animate all edges</label>
-		</div>
-		<div class="control">
+		<div class="control" style="margin-left:auto">
 			<button id="fitBtn">Fit</button>
 			<button id="pasteBtn" class="primary">Paste data</button>
+			<button id="advBtn" class="advanced-toggle" aria-expanded="false">Advanced ▾</button>
+		</div>
+
+		<!-- Advanced panel — hidden by default, expose raw layout + toggles for fine-tuning. -->
+		<div class="advanced" id="advPanel">
+			<div class="control">
+				<label for="layout">Layout</label>
+				<select id="layout">
+					<option value="fcose">fcose · force-directed</option>
+					<option value="cise">cise · compound spring</option>
+					<option value="cola">cola · constraint force</option>
+					<option value="dagre-tb">dagre · TB</option>
+					<option value="dagre-lr">dagre · LR</option>
+					<option value="concentric-hub">concentric · hubs in center</option>
+				</select>
+			</div>
+			<div class="control">
+				<label><input type="checkbox" id="showRef" checked /> reference</label>
+				<label><input type="checkbox" id="showHubC" checked /> hub_constituent</label>
+			</div>
+			<div class="control">
+				<label><input type="checkbox" id="groupFolder" /> group by folder</label>
+				<label><input type="checkbox" id="groupHub" /> group by hub</label>
+				<label><input type="checkbox" id="hideIsolated" /> hide isolated</label>
+			</div>
+			<div class="control">
+				<label><input type="checkbox" id="alwaysAnimate" /> animate all edges (always)</label>
+			</div>
+			<span style="font-size:10px;color:#94a3b8;align-self:center">Fine-tuning · presets above bundle these for you</span>
 		</div>
 	</div>
 </header>
@@ -99,12 +131,20 @@
 		<div><span style="display:inline-block;width:14px;height:14px;background:#c4b5fd;border:2px solid #7c3aed;border-radius:8px;vertical-align:middle;margin-right:6px"></span>Hub anchor</div>
 		<div><span style="display:inline-block;width:14px;height:14px;background:#e9d5ff;border:1px solid #a78bfa;border-radius:6px;vertical-align:middle;margin-right:6px"></span>Result doc (color intensity = match score)</div>
 	</div>
+	<h2>View modes</h2>
+	<ul style="padding-left:16px;line-height:1.55;color:#666">
+		<li><b>Constellation</b> — how do these results cluster together?</li>
+		<li><b>Flow</b> — what references what?</li>
+		<li><b>Folder tree</b> — where in my vault do they live?</li>
+		<li><b>Hub cluster</b> — which hub owns which docs?</li>
+		<li><b>Orbit</b> — are hubs the center of gravity?</li>
+	</ul>
 	<h2>Notes</h2>
 	<ul style="padding-left:16px;line-height:1.5;color:#666">
-		<li>Toggle edge kinds and grouping to compare visual density.</li>
-		<li>Try <b>cise</b> or <b>fcose + group by hub</b> — usually the cleanest for hub-doc data.</li>
-		<li>Semantic edges are hidden by default because they explode density.</li>
-		<li>Score-intensity determines fill on doc nodes.</li>
+		<li>Semantic-edge toggle flips density inside every mode.</li>
+		<li>Isolated docs always get a bottom region; hover always highlights the neighborhood — those are baked in.</li>
+		<li>Score intensity drives doc fill color.</li>
+		<li>Open <b>Advanced</b> to override the preset's bundle.</li>
 	</ul>
 </aside>
 
@@ -467,7 +507,6 @@
 				return n.data('folder') || 'misc';
 			}, allowNodesInsideCircle: false, nodeSeparation: 20, idealInterClusterEdgeLengthCoefficient: 1.4 };
 			case 'cola': return { name: 'cola', animate: true, maxSimulationTime: 3000, nodeSpacing: 20, edgeLength: 90, avoidOverlap: true };
-			case 'cose': return { name: 'cose', animate: true, nodeRepulsion: 8000, idealEdgeLength: 100, gravity: 0.3 };
 			case 'dagre-tb': return { name: 'dagre', rankDir: 'TB', nodeSep: 20, edgeSep: 12, rankSep: 70, animate: true };
 			case 'dagre-lr': return { name: 'dagre', rankDir: 'LR', nodeSep: 20, edgeSep: 12, rankSep: 100, animate: true };
 			case 'concentric-hub': return {
@@ -483,46 +522,40 @@
 				minNodeSpacing: 22,
 				spacingFactor: 1.1,
 			};
-			case 'concentric-score': return {
-				name: 'concentric',
-				animate: true,
-				// Bucket into 4 tiers so we don't get 50 rings.
-				concentric: (n) => {
-					const s = n.data('score') || 0;
-					if (s > 0.75) return 4;
-					if (s > 0.4) return 3;
-					if (s > 0.25) return 2;
-					return 1;
-				},
-				levelWidth: () => 1,
-				minNodeSpacing: 20,
-				spacingFactor: 1.2,
-			};
-			case 'breadthfirst': return {
-				name: 'breadthfirst',
-				animate: true,
-				roots: subgraph.hubAnchors.map((h) => h.id).join(','),
-				spacingFactor: 1.4,
-				directed: false, // undirected so BFS reaches all connected via any edge kind
-				grid: true,
-				maximal: true,
-			};
-			case 'grid':
-				// Sort by folder then by score DESC so adjacent grid cells are similar,
-				// making the flat picture actually informative.
-				return {
-					name: 'grid',
-					sort: (a, b) => {
-						const fa = a.data('folder') || 'z';
-						const fb = b.data('folder') || 'z';
-						if (fa !== fb) return fa.localeCompare(fb);
-						return (b.data('score') || 0) - (a.data('score') || 0);
-					},
-					cols: 7,
-					avoidOverlapPadding: 20,
-				};
 			default: return { name: 'fcose' };
 		}
+	}
+
+	// ─── Presets ────────────────────────────────────────────────────────
+	// Each preset bundles a layout + edge-kind + grouping choices. Semantic
+	// edges are the only per-view toggle the user still sees — presets set
+	// its default, the user can override on top.
+	const PRESETS = {
+		constellation: { label: 'Constellation', layout: 'fcose', showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
+		flow:          { label: 'Flow',          layout: 'dagre-tb', showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: false },
+		folder:        { label: 'Folder tree',   layout: 'cola', showRef: false, showHubC: false, showSem: false, groupFolder: true,  groupHub: false },
+		hub:           { label: 'Hub cluster',   layout: 'cise', showRef: true, showHubC: true, showSem: false, groupFolder: false, groupHub: true },
+		orbit:         { label: 'Orbit',         layout: 'concentric-hub', showRef: true, showHubC: true, showSem: true,  groupFolder: false, groupHub: false },
+	};
+	let activePreset = 'constellation';
+
+	function applyPreset(name) {
+		const p = PRESETS[name];
+		if (!p) return;
+		activePreset = name;
+		document.getElementById('layout').value = p.layout;
+		document.getElementById('showRef').checked = p.showRef;
+		document.getElementById('showHubC').checked = p.showHubC;
+		document.getElementById('showSem').checked = p.showSem;
+		document.getElementById('groupFolder').checked = p.groupFolder;
+		document.getElementById('groupHub').checked = p.groupHub;
+		document.getElementById('hideIsolated').checked = false;
+		// Update button visual state.
+		document.querySelectorAll('.preset-btn').forEach((btn) => {
+			btn.classList.toggle('active', btn.dataset.preset === name);
+		});
+		currentLayout = p.layout;
+		render();
 	}
 
 	// ─── Render ─────────────────────────────────────────────────────────
@@ -534,8 +567,11 @@
 			groupFolder: document.getElementById('groupFolder').checked,
 			groupHub: document.getElementById('groupHub').checked,
 			hideIsolated: document.getElementById('hideIsolated').checked,
-			splitIsolated: document.getElementById('splitIsolated').checked,
-			animateEdges: document.getElementById('animateEdges').checked,
+			// Always-on defaults — the user consistently chose these across
+			// every preferred layout, so they are baked in rather than exposed.
+			splitIsolated: true,
+			animateEdges: true,
+			// Advanced-only opt-in.
 			alwaysAnimate: document.getElementById('alwaysAnimate').checked,
 		};
 	}
@@ -705,9 +741,36 @@
 	}
 
 	// ─── Events ─────────────────────────────────────────────────────────
-	document.getElementById('layout').addEventListener('change', (e) => { currentLayout = e.target.value; render(); });
-	for (const id of ['showRef','showHubC','showSem','groupFolder','groupHub','hideIsolated','splitIsolated','animateEdges','alwaysAnimate']) {
-		document.getElementById(id).addEventListener('change', render);
+	// Preset buttons — clicking one applies its whole bundle and re-renders.
+	document.querySelectorAll('.preset-btn').forEach((btn) => {
+		btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+	});
+
+	// Advanced panel toggle.
+	document.getElementById('advBtn').addEventListener('click', () => {
+		const panel = document.getElementById('advPanel');
+		const opened = panel.classList.toggle('open');
+		document.getElementById('advBtn').setAttribute('aria-expanded', String(opened));
+		document.getElementById('advBtn').textContent = opened ? 'Advanced ▴' : 'Advanced ▾';
+	});
+
+	// Advanced: raw layout / edge / grouping toggles re-render on change and
+	// clear the active preset (user has strayed off the beaten path).
+	document.getElementById('layout').addEventListener('change', (e) => {
+		currentLayout = e.target.value;
+		clearActivePreset();
+		render();
+	});
+	for (const id of ['showRef','showHubC','groupFolder','groupHub','hideIsolated','alwaysAnimate']) {
+		document.getElementById(id).addEventListener('change', () => { clearActivePreset(); render(); });
+	}
+	// Semantic toggle stays part of the main UI — it doesn't clear the
+	// preset because switching semantic on/off is expected within a view.
+	document.getElementById('showSem').addEventListener('change', render);
+
+	function clearActivePreset() {
+		activePreset = null;
+		document.querySelectorAll('.preset-btn').forEach((btn) => btn.classList.remove('active'));
 	}
 	document.getElementById('fitBtn').addEventListener('click', () => cy && cy.fit(undefined, 40));
 	document.getElementById('pasteBtn').addEventListener('click', openPaste);
@@ -736,7 +799,7 @@
 		if (e.key === 'Escape') { closePaste(); }
 	});
 
-	render();
+	applyPreset('constellation');
 </script>
 </body>
 </html>
