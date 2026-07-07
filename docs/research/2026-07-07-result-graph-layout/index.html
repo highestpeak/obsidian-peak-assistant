@@ -630,10 +630,25 @@
 			if (n.hasClass('regionLabel')) return;
 			clearTimeout(hoverTimer);
 			hoverTimer = setTimeout(() => {
-				const neigh = n.closedNeighborhood();
+				// For compound nodes (folder / hub groups), the highlight
+				// should include the whole subtree — all nested folders and
+				// docs, plus edges among them. Otherwise the user hovers a
+				// folder and its contents stay dim, which reads wrong.
+				const isCompound = n.hasClass('folderGroup') || n.hasClass('hubGroup');
+				let highlight;
+				if (isCompound) {
+					const descendants = n.descendants();
+					const inside = n.union(descendants);
+					// Include edges whose both endpoints are inside the subtree,
+					// plus edges that connect the subtree to its neighborhood.
+					const insideEdges = descendants.connectedEdges();
+					highlight = inside.union(insideEdges);
+				} else {
+					highlight = n.closedNeighborhood();
+				}
 				cy.batch(() => {
 					cy.elements().addClass('dimmed');
-					neigh.removeClass('dimmed').addClass('highlighted');
+					highlight.removeClass('dimmed').addClass('highlighted');
 					n.addClass('highlighted');
 				});
 				if (opts.animateEdges) animateEdges('edge.highlighted');
