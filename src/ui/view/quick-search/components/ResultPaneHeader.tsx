@@ -1,24 +1,22 @@
 import React, { useEffect } from 'react';
 import { Network, X } from 'lucide-react';
-import { Chip, Pill } from '@/ui/components/primitives';
+import { Chip } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import { useVaultSearchStore } from '../store';
 import type { GraphPreset, QuickSearchMode } from '../store/vaultSearchStore';
 
 /**
- * The graph-toggle affordance. Rendered inline on the right side of the
- * mode picker row. Hosts:
- *  - "Graph view" pill toggling `resultView` between `'list'` and `'graph'`.
- *  - Five preset chips (Constellation / Flow ↓ / Flow → / Folder tree /
- *    Orbit) shown only in graph view.
- *  - "Semantic" chip that layers semantic edges on top of any preset.
- *  - Optional pinned-hub chip.
+ * The graph-toggle affordance rendered inline on the right side of the
+ * mode-picker row. Layout follows Variant A of the 2026-07-07 header
+ * prototype (see `docs/research/2026-07-07-result-graph-layout/
+ * header-variants.html`):
  *
- * Preset selection is stored in `graphPreset`, semantic overlay in
- * `graphShowSemantic`. Design finalized in the 2026-07-07 sandbox — see
- * `docs/research/2026-07-07-result-graph-layout/index.html`.
+ *   [ Graph view (filled ↔ outlined) ] · [ segmented preset control ]
+ *   [ Semantic toggle switch ] [ optional pinned-hub chip ]
  *
- * `help` mode has no graph representation → returns null.
+ * Only the Graph view button is present when the user is on the list
+ * view; the preset control and semantic switch appear when Graph view
+ * is on.
  */
 interface ResultPaneHeaderProps {
 	mode: QuickSearchMode;
@@ -33,41 +31,97 @@ const PRESET_LABELS: Array<[GraphPreset, string, string]> = [
 	['orbit',         'Orbit',         'Hubs at center, docs orbit — are hubs the center of gravity?'],
 ];
 
-const GraphPresetPicker: React.FC = () => {
+/**
+ * macOS-style segmented control for the graph preset. The container has
+ * an accent-tinted background; each active preset gets a white pill with
+ * a subtle shadow. Aligns visually with a native segmented control so
+ * users read it as "pick one of these" rather than "several toggles".
+ */
+const GraphPresetSegmented: React.FC = () => {
 	const preset = useVaultSearchStore((s) => s.graphPreset);
 	const setPreset = useVaultSearchStore((s) => s.setGraphPreset);
-	const showSemantic = useVaultSearchStore((s) => s.graphShowSemantic);
-	const toggleSemantic = useVaultSearchStore((s) => s.toggleGraphShowSemantic);
 	return (
-		<div className="pktw-flex pktw-items-center pktw-gap-1">
-			{PRESET_LABELS.map(([id, label, title]) => (
-				<Pill
-					key={id}
-					selected={preset === id}
-					onClick={() => setPreset(id)}
-					aria-label={label}
-					title={title}
-				>
-					{label}
-				</Pill>
-			))}
-			<span className="pktw-mx-1 pktw-text-pk-border">·</span>
-			<Pill
-				selected={showSemantic}
-				onClick={toggleSemantic}
-				aria-label="Toggle semantic edges"
-				title="Layer semantic-similarity edges on top of the current preset"
-			>
-				Semantic
-			</Pill>
+		<div
+			role="tablist"
+			aria-label="Graph view preset"
+			className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-p-0.5 pktw-rounded-md"
+			style={{ backgroundColor: 'rgba(124,58,237,0.06)' }}
+		>
+			{PRESET_LABELS.map(([id, label, title]) => {
+				const active = preset === id;
+				return (
+					<button
+						key={id}
+						type="button"
+						role="tab"
+						aria-selected={active}
+						title={title}
+						onClick={() => setPreset(id)}
+						className={cn(
+							'pktw-shadow-none pktw-h-5 pktw-px-2.5 pktw-text-[11px] pktw-font-medium pktw-rounded-[5px]',
+							'pktw-transition-colors pktw-cursor-pointer pktw-border-none pktw-bg-transparent',
+							active
+								? 'pktw-text-pk-accent'
+								: 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent',
+						)}
+						style={active ? {
+							backgroundColor: '#fff',
+							boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(124,58,237,0.15)',
+						} : undefined}
+					>
+						{label}
+					</button>
+				);
+			})}
 		</div>
 	);
 };
 
 /**
- * T7: chip showing an active hub pin ("Pinned to hub: N docs · clear"). Only
- * renders when `pinnedResultDocIds` is set. Clicking dismisses the pin, which
- * lets `useVaultSearch` fall back to the normal query pipeline.
+ * True toggle switch (30 × 16 track with sliding thumb) for the Semantic
+ * overlay. Reads like a setting toggle rather than a preset chip so the
+ * user immediately understands it's "layer on / off", not "another mode".
+ */
+const SemanticToggle: React.FC = () => {
+	const on = useVaultSearchStore((s) => s.graphShowSemantic);
+	const toggle = useVaultSearchStore((s) => s.toggleGraphShowSemantic);
+	return (
+		<label
+			className="pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-cursor-pointer pktw-select-none pktw-text-[11px] pktw-text-pk-foreground-muted"
+			title="Layer semantic-similarity edges on top of the current preset"
+		>
+			<input
+				type="checkbox"
+				checked={on}
+				onChange={toggle}
+				className="pktw-sr-only peer"
+				aria-label="Toggle semantic edges"
+			/>
+			<span
+				aria-hidden="true"
+				className={cn(
+					'pktw-relative pktw-inline-block pktw-w-[30px] pktw-h-4 pktw-rounded-full pktw-transition-colors',
+					on ? 'pktw-bg-pk-accent' : 'pktw-bg-pk-border',
+				)}
+			>
+				<span
+					className={cn(
+						'pktw-absolute pktw-top-0.5 pktw-left-0.5 pktw-w-3 pktw-h-3 pktw-bg-white pktw-rounded-full',
+						'pktw-transition-transform',
+						on ? 'pktw-translate-x-[14px]' : 'pktw-translate-x-0',
+					)}
+					style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.15)' }}
+				/>
+			</span>
+			<span>Semantic</span>
+		</label>
+	);
+};
+
+/**
+ * T7: chip showing an active hub pin ("Pinned to hub: N docs · clear").
+ * Only renders when `pinnedResultDocIds` is set; clicking dismisses the
+ * pin so `useVaultSearch` falls back to the normal query pipeline.
  */
 const PinnedHubChip: React.FC = () => {
 	const pinned = useVaultSearchStore((s) => s.pinnedResultDocIds);
@@ -96,6 +150,31 @@ const PinnedHubChip: React.FC = () => {
 	);
 };
 
+/**
+ * "Graph view" toggle. Filled accent pill when on (clear on/off state);
+ * outlined muted pill when off. Sits on the LEFT of the preset control
+ * because it is the top-level state — presets and semantic overlay only
+ * matter when Graph view is on.
+ */
+const GraphViewToggle: React.FC<{ isGraph: boolean; onToggle: () => void }> = ({ isGraph, onToggle }) => (
+	<button
+		type="button"
+		onClick={onToggle}
+		aria-pressed={isGraph}
+		title={isGraph ? 'Switch to list view' : 'Switch to graph view'}
+		className={cn(
+			'pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-h-6 pktw-px-2.5 pktw-rounded-full',
+			'pktw-text-[11px] pktw-font-medium pktw-transition-colors pktw-cursor-pointer pktw-shadow-none',
+			isGraph
+				? 'pktw-bg-pk-accent pktw-text-white pktw-border pktw-border-pk-accent'
+				: 'pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border hover:pktw-text-pk-accent hover:pktw-border-pk-accent/40',
+		)}
+	>
+		<Network className="pktw-w-3.5 pktw-h-3.5" />
+		<span>Graph view</span>
+	</button>
+);
+
 export const ResultPaneHeader: React.FC<ResultPaneHeaderProps> = ({ mode, className }) => {
 	const resultView = useVaultSearchStore((s) => s.resultView);
 	const setResultView = useVaultSearchStore((s) => s.setResultView);
@@ -117,26 +196,17 @@ export const ResultPaneHeader: React.FC<ResultPaneHeaderProps> = ({ mode, classN
 	const toggle = () => setResultView(isGraph ? 'list' : 'graph');
 
 	return (
-		<div className={cn('pktw-flex pktw-items-center pktw-gap-2', className)}>
+		<div className={cn('pktw-flex pktw-items-center pktw-gap-2.5', className)}>
 			<PinnedHubChip />
-			{isGraph && <GraphPresetPicker />}
-			<button
-				type="button"
-				onClick={toggle}
-				data-active={isGraph ? 'true' : undefined}
-				aria-pressed={isGraph}
-				title={isGraph ? 'Switch to list view' : 'Switch to graph view'}
-				className={cn(
-					'pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-h-6 pktw-px-2.5 pktw-rounded-full',
-					'pktw-text-[11px] pktw-font-medium pktw-transition-colors pktw-cursor-pointer pktw-shadow-none',
-					isGraph
-						? 'pktw-bg-pk-accent/10 pktw-text-pk-accent pktw-border pktw-border-pk-accent/25'
-						: 'pktw-text-pk-foreground-muted pktw-border pktw-border-transparent hover:pktw-text-pk-accent hover:pktw-bg-pk-background-hover',
-				)}
-			>
-				<Network className="pktw-w-3.5 pktw-h-3.5" />
-				<span>Graph view</span>
-			</button>
+			<GraphViewToggle isGraph={isGraph} onToggle={toggle} />
+			{isGraph && (
+				<>
+					{/* Vertical divider between Graph view toggle and preset controls */}
+					<span aria-hidden="true" className="pktw-w-px pktw-h-5 pktw-bg-pk-border" />
+					<GraphPresetSegmented />
+					<SemanticToggle />
+				</>
+			)}
 		</div>
 	);
 };
