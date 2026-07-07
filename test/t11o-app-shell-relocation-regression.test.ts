@@ -39,7 +39,7 @@ const FLOORS = {
 	uiAppShell: 9,
 	serviceApp: 7,
 	serviceUi: 0,
-	coreUpstream: 17,
+	coreUpstream: 19, // Raised from 17 -> 19 for `core/ports/HeadingModePort.ts` (2026-07-07 T8 heading-mode port).
 	uiRawVaultOps: 7,
 	useServiceContextApp: 27,
 };

@@ -23,7 +23,7 @@ const FLOORS = {
 	// and near the 12 stretch target. Floor at 12 (one over current 11
 	// to absorb a single accidental re-import without re-running the
 	// audit).
-	coreUpstream: 17,
+	coreUpstream: 19, // Raised from 17 -> 19 for `core/ports/HeadingModePort.ts` (2026-07-07 T8 heading-mode port).
 	// Bucket B hit its ceiling: service->app 56 -> 15. Floor at 16
 	// (one over current 15) gives a single-edge slack window.
 	serviceApp: 16,

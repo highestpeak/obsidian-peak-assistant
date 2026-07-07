@@ -18,12 +18,12 @@ const CORE = join(SRC, 'core');
 const UI = join(SRC, 'ui');
 
 const FLOORS = {
-	totalFlagged: 18, // 1 (CopilotPickerContent ui->app) + 17 (T11Y-8 core ports relocated from service/ — type-only core->service edges).
+	totalFlagged: 20, // 1 (CopilotPickerContent ui->app) + 19 (17 T11Y-8 core ports + 2 HeadingModePort type-only edges added in T5 heading-mode composition, 2026-07-07).
 	serviceCoreObsidianTypes: 0,
 	serviceCoreObsidianSideEffect: 0,
 	serviceApp: 0,
 	serviceUi: 0,
-	coreUpstream: 17,
+	coreUpstream: 19, // Raised from 17 -> 19 to accept `core/ports/HeadingModePort.ts` type-only imports of `service/search/heading/*` (2026-07-07 T8).
 	uiApp: 1, // Raised from 0 -> 1 to accept CopilotPickerContent.tsx AppContext import (commit 2728bf72).
 } as const;
 

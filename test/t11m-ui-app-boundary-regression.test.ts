@@ -44,7 +44,7 @@ const FLOORS = {
 	// T11L: 16 -> 5 (kept).
 	obsidianSideEffect: 10,
 	// T11L: kept at 2.
-	coreUpstream: 17,
+	coreUpstream: 19, // Raised from 17 -> 19 for `core/ports/HeadingModePort.ts` (2026-07-07 T8 heading-mode port).
 	// T11L: kept at 8.
 	serviceApp: 8,
 	// T11I floor — inviolable. (core->ui is bundled under core->upstream by

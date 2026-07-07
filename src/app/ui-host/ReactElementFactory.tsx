@@ -9,6 +9,7 @@ import { createChatNavigation } from '@/ui/view/chat-view/chatNavigation';
 import { composeQuickSearchHost } from '@/app/search/composeQuickSearchHost';
 import { composeCopilotReviewDeps } from '@/app/copilot/composeCopilotReviewDeps';
 import { composeHeadingModeDeps } from '@/app/search/composeHeadingModeDeps';
+import { composeResultSubgraphDeps } from '@/app/search/composeResultSubgraphDeps';
 
 /**
  * Factory function to create React elements wrapped with ServiceProvider.
@@ -76,6 +77,7 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			usageServices: appContext.runtimeRegistry.tryGetUsageServices(),
 			debugTracePort: appContext.runtimeRegistry.tryGetDebugTracePort(),
 			headingMode: composeHeadingModeDeps(appContext),
+			resultSubgraph: composeResultSubgraphDeps(),
 			children: React.createElement(Component, props as T)
 		}
 	);

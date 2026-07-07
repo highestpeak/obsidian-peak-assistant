@@ -39,7 +39,7 @@ const FLOORS = {
 	uiAppShell: 1, // Raised from 0 -> 1 to accept CopilotPickerContent.tsx AppContext import (commit 2728bf72).
 	serviceApp: 0,
 	serviceUi: 0,
-	coreUpstream: 17,
+	coreUpstream: 19, // Raised from 17 -> 19 for `core/ports/HeadingModePort.ts` (2026-07-07 T8 heading-mode port).
 	obsidianSideEffect: 3,
 	obsidianTypes: 35,
 };

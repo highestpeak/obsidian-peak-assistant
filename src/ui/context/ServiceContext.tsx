@@ -28,7 +28,8 @@ import type { UsageTrackingService } from '@/service/usage/UsageTrackingService'
 import type { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 import type { UsageOptimizationService } from '@/service/usage/optimization/UsageOptimizationService';
 import type { DebugTracePort } from '@/core/debug-trace';
-import type { HeadingModeDeps } from '@/app/search/composeHeadingModeDeps';
+import type { HeadingModeDeps } from '@/core/ports/HeadingModePort';
+import type { ResultSubgraphDeps } from '@/service/search/graph/resultSubgraph';
 import type MyPlugin from 'main';
 
 /** T13: Usage-telemetry bundle mirrored from `AppRuntimeRegistry.usageServices`. */
@@ -106,6 +107,14 @@ interface ServiceContextValue {
 	 * composition wires it (mock harness / early boot).
 	 */
 	headingMode: HeadingModeDeps | null;
+	/**
+	 * T4 (2026-07-07 result graph): app-composed `ResultSubgraphDeps`
+	 * bundle. Adapts the sqlite mobius node/edge/hub repos to the pure
+	 * `buildResultSubgraph` function. Null before composition wires it
+	 * (mock harness / early boot); ResultGraphView renders the sparse
+	 * fallback banner in that case.
+	 */
+	resultSubgraph: ResultSubgraphDeps | null;
 }
 
 const ServiceContext = createContext<ServiceContextValue | null>(null);
@@ -150,7 +159,8 @@ export const ServiceProvider: React.FC<{
 	usageServices: UsageServicesCtx | null;
 	debugTracePort?: DebugTracePort | null;
 	headingMode?: HeadingModeDeps | null;
-}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort = null, headingMode = null }) => {
+	resultSubgraph?: ResultSubgraphDeps | null;
+}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort = null, headingMode = null, resultSubgraph = null }) => {
 	const value = useMemo<ServiceContextValue>(() => ({
 		manager,
 		eventBus,
@@ -182,7 +192,8 @@ export const ServiceProvider: React.FC<{
 		usageServices,
 		debugTracePort,
 		headingMode,
-	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort, headingMode]);
+		resultSubgraph,
+	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort, headingMode, resultSubgraph]);
 
 	return <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>;
 };

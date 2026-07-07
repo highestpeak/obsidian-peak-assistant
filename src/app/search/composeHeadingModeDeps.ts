@@ -16,26 +16,15 @@ import {
 	extractHeadingTree,
 	getLinkPositions,
 	type HeadingFileReaderPort,
-	type HeadingTreeInput,
-	type HeadingTreeNode,
 } from '@/service/search/heading/headingTree';
-import {
-	getSectionSnippets,
-	type SectionSnippet,
-} from '@/service/search/heading/sectionSnippets';
+import { getSectionSnippets } from '@/service/search/heading/sectionSnippets';
+import type { HeadingModeDeps } from '@/core/ports/HeadingModePort';
 import type { TFile } from 'obsidian';
 
-export interface HeadingModeDeps {
-	extractHeadingTree(input: HeadingTreeInput): Promise<HeadingTreeNode[]>;
-	getSectionSnippets(
-		filePath: string,
-		section: { lineStart: number; lineEnd: number },
-		queryText: string,
-	): Promise<SectionSnippet[]>;
-	getLinkPositions(filePath: string): Promise<
-		Array<{ line: number; target: string; kind: 'outgoing' | 'backlink' }>
-	>;
-}
+// Port definition lives at `@/core/ports/HeadingModePort` so the UI does
+// not need to reach into `@/app/**` for the deps type. Re-exported for
+// backward compatibility with app-layer imports.
+export type { HeadingModeDeps } from '@/core/ports/HeadingModePort';
 
 function isTFile(f: unknown): f is TFile {
 	return !!f && typeof f === 'object' && 'extension' in (f as Record<string, unknown>);

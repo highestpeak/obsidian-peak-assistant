@@ -271,6 +271,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 					<ResultGraphView
 						onClose={onClose}
 						onOpenHubGraphSubview={(hubNodeId) => void openHubGraphSubview(hubNodeId)}
+						onSelectForInspector={onSelectForInspector}
 					/>
 				) : showHeadingMode ? (
 					<HeadingModeContainer

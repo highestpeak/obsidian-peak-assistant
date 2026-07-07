@@ -17,7 +17,6 @@ import { FolderBoundary, type FolderBoundaryRegion } from './FolderBoundary';
 import { IsolatedMatchesRail, type IsolatedMatchItem } from './IsolatedMatchesRail';
 import { SparseFallbackBanner } from './SparseFallbackBanner';
 import { useVaultSearchStore } from '../../store';
-import { composeResultSubgraphDeps } from '@/app/search/composeResultSubgraphDeps';
 import { buildResultSubgraph, type ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
@@ -244,13 +243,20 @@ interface ResultGraphViewProps {
 	onClose?: () => void;
 	/** Optional Cmd+click surface for a hub anchor — T7 will wire the real implementation. */
 	onOpenHubGraphSubview?: (hubNodeId: string) => void;
+	/**
+	 * T8: propagates result-doc selection from a graph node click to the
+	 * modal-level Inspector state so single click updates the Inspector,
+	 * matching the AC ("Single click a result node selects it and updates
+	 * the Inspector"). Hub anchors do not update the Inspector.
+	 */
+	onSelectForInspector?: (path: string) => void;
 }
 
-export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpenHubGraphSubview }) => {
+export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpenHubGraphSubview, onSelectForInspector }) => {
 	const results = useVaultSearchStore((s) => s.lastSearchResults);
 	const semanticOn = useVaultSearchStore((s) => s.graphOverlaySemantic);
 	const folderOn = useVaultSearchStore((s) => s.graphOverlayFolder);
-	const { vaultNavigation } = useServiceContext();
+	const { vaultNavigation, resultSubgraph: resultSubgraphDeps } = useServiceContext();
 
 	const [subgraph, setSubgraph] = useState<ResultSubgraphOutput | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -279,6 +285,12 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				setSubgraph({ resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 });
 				return;
 			}
+			// resultSubgraphDeps is null before app-layer composition wires it
+			// (mock harness / early boot); degrade to the sparse fallback banner.
+			if (!resultSubgraphDeps) {
+				setSubgraph({ resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 });
+				return;
+			}
 			setLoading(true);
 			try {
 				const docIds: string[] = [];
@@ -289,8 +301,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 					docIds.push(id);
 					scores.set(id, scoreOf(r));
 				}
-				const deps = composeResultSubgraphDeps();
-				const sub = await buildResultSubgraph(deps, {
+				const sub = await buildResultSubgraph(resultSubgraphDeps, {
 					resultDocIds: docIds,
 					matchScores: scores,
 					nodeCap: NODE_CAP,
@@ -303,7 +314,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 			}
 		})();
 		return () => { cancelled = true; };
-	}, [results]);
+	}, [results, resultSubgraphDeps]);
 
 	const layout = useMemo(() => {
 		if (!subgraph) return null;
@@ -364,8 +375,15 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 		// Single click on a hub anchor without modifiers: open the hub doc file.
 		if (node.type === 'hubAnchor') {
 			void openHubByAnchorPath(node.id);
+			return;
 		}
-	}, [onOpenHubGraphSubview, openHubByAnchorPath]);
+		// Single click on a result doc: update the Inspector via the
+		// modal-level selection state (spec AC · Interaction).
+		if (node.type === 'resultDoc') {
+			const found = results.find((r) => (r.docId ?? r.id) === node.id);
+			if (found?.path) onSelectForInspector?.(found.path);
+		}
+	}, [onOpenHubGraphSubview, openHubByAnchorPath, onSelectForInspector, results]);
 
 	const handleNodeDoubleClick: NodeMouseHandler = useCallback((_event, node) => {
 		if (node.type === 'resultDoc') void openDocById(node.id);

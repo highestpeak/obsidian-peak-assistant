@@ -36,7 +36,7 @@ const FLOORS = {
 	totalFlagged: 92,
 	obsidianTypes: 35,
 	obsidianSideEffect: 5,
-	coreUpstream: 17,
+	coreUpstream: 19, // Raised from 17 -> 19 for `core/ports/HeadingModePort.ts` (2026-07-07 T8 heading-mode port).
 	serviceApp: 7,
 	serviceUi: 0,
 	// T11M baseline UI -> app was 80; T11N nudged to 45. Floor at 46 so a

@@ -28,7 +28,7 @@ const FLOORS = {
 	obsidianTypes: 50,
 	// T11K secondary cut: 11 -> 6. Floor at 8 (hard min target) gives
 	// a small slack window for an accidental single-edge re-add.
-	coreUpstream: 17,
+	coreUpstream: 19, // Raised from 17 -> 19 for `core/ports/HeadingModePort.ts` (2026-07-07 T8 heading-mode port).
 	// T11K total: 236 -> 199. Floor at 205 (hard min target).
 	totalFlagged: 205,
 	// T11J floor inviolable. Per T11K handoff: floor is 15 (not 16) — a
