@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { SearchX } from 'lucide-react';
+import { Bug, Filter, SearchX } from 'lucide-react';
+import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { EmptyState } from '../../component/mine/EmptyState';
 import { SearchResultRow } from './components/VaultSearchResult';
@@ -34,6 +35,33 @@ const NoRecentlyAccessedState: React.FC = () => (
 	/>
 );
 
+/**
+ * Compact filter-syntax hint. Rendered in the "Recently opened" browse mode
+ * and again at the tail of a long results list. Wording is intentionally
+ * light — pointing at existing grammar (see `query-parser.ts`), not asking
+ * the user to memorise anything. Part of the 2026-07-07 ranking research
+ * doc's recommended UI change.
+ */
+const FilterSyntaxHint: React.FC<{ variant: 'browse' | 'results' }> = ({ variant }) => {
+	const chip = 'pktw-inline-flex pktw-items-center pktw-rounded pktw-bg-pk-surface-2 pktw-px-1.5 pktw-py-0.5 pktw-font-mono pktw-text-[10px] pktw-text-pk-text-secondary';
+	return (
+		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-4 pktw-py-1.5 pktw-text-[11px] pktw-text-pk-text-tertiary">
+			<Filter className="pktw-h-3 pktw-w-3 pktw-shrink-0 pktw-opacity-70" />
+			<span className="pktw-shrink-0">
+				{variant === 'browse' ? 'Narrow it down:' : 'Too many results? Try:'}
+			</span>
+			<span className={chip}>folder:研究</span>
+			<span className={chip}>tag:idea</span>
+			<span className={chip}>ext:md</span>
+			<span className={chip}>-drafts</span>
+			<span className={chip}>"exact phrase"</span>
+		</div>
+	);
+};
+
+/** Show the tail syntax hint once the result count is worth filtering. */
+const RESULT_HINT_THRESHOLD = 15;
+
 /** Footer hints for vault search tab. Exported for use in SearchModal footer. */
 export const VaultSearchFooterHints: React.FC = () => (
 	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-pk-text-tertiary">
@@ -58,7 +86,7 @@ interface VaultSearchTabProps {
  * Quick search tab for regular vault search results.
  */
 export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelectForInspector, navigateToPath }) => {
-	const { vaultNavigation } = useServiceContext();
+	const { vaultNavigation, debugTracePort } = useServiceContext();
 	const { quickSearchMode, isSearching, lastSearchResults: displayedResults, fuzzyCorrection, parsedQuery } = useVaultSearchStore();
 	const inspectorOpen = useVaultSearchStore((s) => s.inspectorOpen);
 	const hasSearchQuery = useHasSearchQuery();
@@ -68,7 +96,8 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 
 	// Use vault search hook for data fetching
-	useVaultSearch();
+	const { lastDebugRunIdRef } = useVaultSearch();
+	const copyDebugTrace = useDebugTraceCopy();
 
 	// Debounced selection tracking for inspector panel
 	useEffect(() => {
@@ -236,6 +265,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 											}}
 											onClear={() => useSharedStore.getState().clearRecentQueries()}
 										/>
+										<FilterSyntaxHint variant="browse" />
 										<div className="pktw-px-4 pktw-pb-2">
 											<span className="pktw-text-xs pktw-text-pk-text-tertiary">Recently opened</span>
 										</div>
@@ -256,6 +286,22 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 										newTab={quickSearchMode !== 'goToLine' && quickSearchMode !== 'inFile'}
 									/>
 								))}
+								{hasSearchQuery && !isSearching && displayedResults.length >= RESULT_HINT_THRESHOLD && (
+									<FilterSyntaxHint variant="results" />
+								)}
+								{hasSearchQuery && !isSearching && displayedResults.length > 0 && debugTracePort?.isEnabled() && (
+									<div className="pktw-flex pktw-justify-end pktw-px-3 pktw-py-1.5">
+										<button
+											type="button"
+											className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-text-pk-foreground-faint hover:pktw-text-pk-foreground pktw-transition"
+											onClick={() => void copyDebugTrace(lastDebugRunIdRef.current)}
+											aria-label="Copy debug trace for this search"
+										>
+											<Bug className="pktw-w-3 pktw-h-3" />
+											Copy search trace
+										</button>
+									</div>
+								)}
 								<SearchUpgradePrompt />
 							</>
 						)}

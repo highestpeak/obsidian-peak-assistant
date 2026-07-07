@@ -1,6 +1,7 @@
 import type { SearchQuery, SearchResponse, SearchResultItem, SearchResultType } from '../types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { Reranker } from './reranker';
+import type { RankingBoostBreakdown } from './rankingBoosts';
 import { DEFAULT_SEARCH_TOP_K } from '@/core/constant';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { SearchSettings } from '@/core/config/settingsTypes';
@@ -190,12 +191,18 @@ export class QueryService {
 			)
 			: new Set<string>();
 		const itemsBeforeBoost = resultItems;
+		// Only allocate the breakdown capture when debug is on — production
+		// pays zero. See `Reranker.applyRankingBoosts` `breakdownOut` param.
+		const breakdownByPath = debugRun ? new Map<string, RankingBoostBreakdown>() : undefined;
 		resultItems = this.reranker.applyRankingBoosts({
 			items: resultItems,
 			signals,
 			relatedPaths,
 			pprActive,
 			clickedPaths,
+			queryTerms: plan.terms.map((t) => t.text),
+			queryPhrases: plan.phrases,
+			breakdownOut: breakdownByPath,
 		});
 		sw.stop();
 
@@ -221,6 +228,7 @@ export class QueryService {
 				clickedPathCount: clickedPaths.size,
 				relatedPathCount: relatedPaths.size,
 				signalsByPath,
+				breakdownByPath,
 			});
 			// Already-linked emerges as its own decision so a reader sees
 			// exactly which items were promoted because they already link

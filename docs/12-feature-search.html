@@ -726,6 +726,38 @@ flowchart LR
                 <td>看目标词是否在标题 token cache、metadata retriever 是否参与；用更接近标题的短 query 复测，若稳定复现再调 metadata/title boost。</td>
               </tr>
               <tr>
+                <td>CJK query 下语义相似但无关键词命中的文档排到前面，命中关键词的反而靠后（2026-07-07 遇到过：搜 <code>英语练习</code>，<code>docs-表格中的Deltas和Mask插槽机制</code> 37% 排第二，命中 <code>英语练习</code> 的多条只有 21%）。</td>
+                <td>title/path/content 命中 boost 用了 FTS-normalized 字段做匹配，且 CJK query 是一个整 token —— 两条都命中 → hit ratio 恒为 0 → 每条 result 的 keyword boost 都是 0，最终排序完全靠 vector base score。<br>
+                  <strong>失败链条：</strong>
+                  <ol style="margin: 0.4em 0 0 1.2em; padding: 0;">
+                    <li>Indexer 把 title 存进 <code>doc_chunk_meta_fts</code> 前跑 <code>normalizeTextForFts()</code>，CJK 被逐字加空格、<code>-</code> 变空格；</li>
+                    <li>Retriever 直接把 normalized title 塞回 <code>SearchResultItem.title</code>；</li>
+                    <li>Boost 逻辑 <code>title.includes('英语练习')</code> 在 <code>英语 需要 练习</code> 里找不到（整串被切开了）；</li>
+                    <li>Query parser 按空格切 token，CJK 没空格，plan.terms 里就一个 <code>英语练习</code> 整块；这个整块在任何被切开的 normalized 文本里都不匹配。</li>
+                  </ol>
+                </td>
+                <td>
+                  <strong>修法（rankingBoosts.ts + reranker.ts + highlight-engine.ts）：</strong>
+                  <ol style="margin: 0.4em 0 0 1.2em; padding: 0;">
+                    <li>Title match 用 <code>deriveRawFilename(item.path)</code>（原文文件名，含 <code>-</code>），不要用 <code>item.title</code>；</li>
+                    <li>用 <code>expandQueryTokens(terms, phrases)</code> 展开 query —— CJK 走 <code>segmentToWhitespace</code> 拆子 token，<code>英语练习</code> → <code>['英语练习', '英语', '练习']</code>；</li>
+                    <li>加 <code>pathHitRatio</code>（含 folder segment，救 <code>英语练习记录/foo.md</code>）+ <code>contentHitRatio</code>（救正文命中但 title/path 无命中）；</li>
+                    <li>Snippet 高亮和 UI title 高亮也走同一套 CJK 子 token 展开（<code>highlight-engine.cjkSubTokens</code> / <code>VaultSearchResult.highlightRawTitle</code>）。</li>
+                  </ol>
+                  <strong>回归检查：</strong>动 rank/highlight/display 前，问自己「这个字段是否流过 <code>normalizeTextForFts</code>」；是的话，改用 path 派生原文。CJK query + 带 <code>-</code> 的文件名必须进 test case。
+                </td>
+              </tr>
+              <tr>
+                <td>整个排序算法看起来"不对"——常打开的文档挤前面 / vector 相似度无关文档进来 / folder 命中的看不懂 / 百分比像随机数。</td>
+                <td>加法 boost 架构 + personalization 权重过高 + 无 relevance gate + 排序组成不可见。属于结构问题，不是单点 bug。</td>
+                <td>
+                  完整的第一性原理拆解、学术界+产业界调研（Dumais SIS / Teevan re-finding thesis / Notion 2026 blog / Elastic multiplicative boost / Slack Personalized Search 等）、所有讨论过的方案矩阵及取舍见
+                  <a href="research/2026-07-07-vault-search-ranking-first-principles/">2026-07-07 Vault Search 排序：第一性原理拆解</a>。
+                  <br>
+                  <strong>核心结论</strong>：先做诊断层（debug trace 补记每一项 boost 贡献）+ UI 暗示 filter 语法；先看清楚，再改算法。BM25F / LLM rerank / 意图分流 / 反向 personalization 全部先搁置——都是过度设计或未验证猜想。
+                </td>
+              </tr>
+              <tr>
                 <td>Snippet 高亮看起来像分词后的文本，CJK 字符之间有空格。</td>
                 <td>Resolver 落到了 <code>normalized_fallback</code>——Vault 读文件超时或 chunk_raw 也没有。</td>
                 <td>看 <code>SearchResultItem.highlightSourceKind</code> / <code>highlightVaultReadMs</code>（debug 字段）。若是 markdown 类，通常是 Vault 慢盘或路径丢失；若是 binary 类，可能是 <code>content_raw</code> 索引缺失。设计和降级链见 <a href="superpowers/specs/2026-07-07-search-highlight-vault-first.md">Vault-first spec</a>。</td>

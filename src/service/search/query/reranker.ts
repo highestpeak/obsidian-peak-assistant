@@ -6,12 +6,31 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
 import type { RerankDocument } from '@/core/providers/rerank/types';
 import type { DocRankingSignal } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
-import { computeRankingBoostFinalScore } from './rankingBoosts';
+import {
+	computeRankingBoostBreakdown,
+	computeHitRatio,
+	expandQueryTokens,
+	type RankingBoostBreakdown,
+} from './rankingBoosts';
 
 /**
  * Ranking signals for boosting search results.
  */
 export type RankingSignals = Map<string, DocRankingSignal>;
+
+/** Basename minus extension. Used for keyword-hit boost so we ignore the
+ * FTS-normalized `item.title` (which drops hyphens and inserts CJK spaces). */
+function deriveRawFilename(path: string): string {
+	const base = path.split('/').pop() ?? path;
+	const dot = base.lastIndexOf('.');
+	return dot > 0 ? base.slice(0, dot) : base;
+}
+
+/** Folder segments of a vault path (everything except the final basename). */
+function deriveFolderPath(path: string): string {
+	const idx = path.lastIndexOf('/');
+	return idx >= 0 ? path.slice(0, idx) : '';
+}
 
 /**
  * Reranker for merging and reranking hybrid search results.
@@ -21,6 +40,16 @@ export class Reranker {
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly searchSettings: SearchSettings,
 	) { }
+
+	/**
+	 * Provider + model of the configured LLM reranker, or null when disabled.
+	 * Callers (debug trace, telemetry) read this so span metadata reflects the
+	 * exact reranker in effect at query time.
+	 */
+	getRerankModelInfo(): { provider: string; modelId: string } | null {
+		const rerankModel = this.searchSettings.chunking.rerankModel;
+		return rerankModel ?? null;
+	}
 
 	/**
 	 * Rerank search results with optional LLM reranking.
@@ -308,19 +337,41 @@ export class Reranker {
 		nowTs?: number;
 		pprActive?: boolean;
 		clickedPaths?: Set<string>;
+		/** Query terms + phrases used to compute keyword-hit boosts per item. */
+		queryTerms?: string[];
+		queryPhrases?: string[];
+		/**
+		 * When provided, per-item boost breakdowns are written into this map
+		 * keyed by `item.path`. Debug callers pass a fresh Map to record what
+		 * each individual boost contributed; production callers omit this so
+		 * we skip the (small) allocation.
+		 */
+		breakdownOut?: Map<string, RankingBoostBreakdown>;
 	}): SearchResultItem[] {
 		const now = params.nowTs ?? Date.now();
 		const items = params.items.map((i) => ({ ...i }));
 
+		// Expand once for the whole batch; each item then does 3 cheap
+		// substring passes over its raw filename, path and content.
+		const tokens = expandQueryTokens(params.queryTerms ?? [], params.queryPhrases ?? []);
+		const capture = params.breakdownOut;
+
 		for (const item of items) {
-			item.finalScore = computeRankingBoostFinalScore({
+			const rawTitle = deriveRawFilename(item.path);
+			const folderPart = deriveFolderPath(item.path);
+			const breakdown = computeRankingBoostBreakdown({
 				base: item.score ?? 0,
 				signal: params.signals.get(item.path),
 				relatedToCurrentFile: params.relatedPaths.has(item.path),
 				clicked: params.clickedPaths?.has(item.path) ?? false,
 				pprActive: params.pprActive ?? false,
 				nowTs: now,
+				titleHitRatio: computeHitRatio(rawTitle, tokens),
+				folderHitRatio: computeHitRatio(folderPart, tokens),
+				contentHitRatio: computeHitRatio(item.content, tokens),
 			});
+			item.finalScore = breakdown.finalScore;
+			if (capture) capture.set(item.path, breakdown);
 		}
 
 		items.sort((a, b) => (b.finalScore ?? b.score ?? 0) - (a.finalScore ?? a.score ?? 0));
