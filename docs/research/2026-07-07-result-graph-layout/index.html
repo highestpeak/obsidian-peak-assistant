@@ -491,6 +491,13 @@
 		{ selector: 'edge.reference.highlighted', style: {
 			'line-style': 'solid',
 			'width': 2.6,
+			// Static baseline for the halo; the padding is animated in JS to
+			// give reference edges a "breathing energy field" that is distinct
+			// from semantic's marching-ants (soft signal) metaphor.
+			'underlay-color': '#f59e0b',
+			'underlay-opacity': 0.18,
+			'underlay-padding': 4,
+			'underlay-shape': 'ellipse',
 		}},
 		{ selector: 'edge.semantic.highlighted', style: {
 			'line-style': 'dashed',
@@ -599,7 +606,8 @@
 	function animateEdges(selector) {
 		stopAnimation();
 		let offset = 0;
-		let last = performance.now();
+		const start = performance.now();
+		let last = start;
 		const tick = (now) => {
 			// Time-based step (~24 px/s) → consistent regardless of framerate,
 			// and gentler than the previous raw per-frame delta.
@@ -609,7 +617,20 @@
 			if (!cy) return;
 			const edges = cy.edges(selector);
 			if (edges.length === 0) return;
+			// Semantic (dashed) — marching-ants via dash offset. Solid edges
+			// receive this style too but with no dashes it has no effect.
 			edges.style('line-dash-offset', offset);
+			// Reference (solid) — halo "breathing". Sine-eased padding from
+			// 3 to 9 over ~1.8 s. underlay-opacity co-eases so the pulse
+			// feels like an energy field, not a hard rectangle.
+			const t = (now - start) / 1000;
+			const phase = Math.sin(t * (2 * Math.PI) / 1.8);
+			const padding = 6 + phase * 3; // 3 → 9
+			const opacity = 0.20 + phase * 0.10; // 0.10 → 0.30
+			edges.filter('.reference').style({
+				'underlay-padding': padding,
+				'underlay-opacity': opacity,
+			});
 			animationFrame = requestAnimationFrame(tick);
 		};
 		animationFrame = requestAnimationFrame(tick);
