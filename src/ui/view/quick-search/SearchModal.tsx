@@ -632,6 +632,13 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 								setInspectorPath(path);
 								setNavigateToPath(path);
 							}}
+							onOpenDocumentInNewTab={(path) => {
+								// Middle click / Cmd+Enter on a Hub Reference row.
+								// Same helper as onOpenDocument today — Obsidian workspace
+								// treats `newLeaf: true` as "new tab".
+								void createOpenSourceCallback(undefined, true, vaultNavigation)(path);
+							}}
+							// T7 will wire `onOpenHubGraphSubview` via `useOpenHubGraphSubview()`.
 						/>
 					</div>
 				)}

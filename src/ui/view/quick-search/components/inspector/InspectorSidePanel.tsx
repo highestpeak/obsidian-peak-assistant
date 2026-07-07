@@ -5,6 +5,8 @@ import { cn } from '@/ui/react/lib/utils';
 import { ConnectedSection } from './ConnectedSection';
 import { DiscoveredSection } from './DiscoveredSection';
 import { AIGraphSection } from './AIGraphSection';
+import { HubSection } from './HubSection';
+import { HubReferenceBlock } from './HubReferenceBlock';
 
 /** Collapsible section wrapper used by InspectorSidePanel. */
 const CollapsibleSection: React.FC<{
@@ -35,16 +37,26 @@ export interface InspectorSidePanelProps {
 	currentPath: string | null;
 	searchQuery: string;
 	onClose: () => void;
-	onNavigate: (notePath: string) => void;
+	/** Open the target doc in the vault (Search modal stays open). */
+	onOpenDocument: (notePath: string) => void;
+	/** Re-target the inspector panel to another doc without opening it. */
+	onInspectInPanel: (notePath: string) => void;
+	/** Open the target doc in a new tab (middle click / Cmd+Enter from Hub Reference). */
+	onOpenDocumentInNewTab?: (notePath: string) => void;
+	/**
+	 * Cross-wire for the hub graph subview (T7). When absent (T6 landed alone),
+	 * the hub row's graph icon becomes a no-op; T7 wires this via a hook.
+	 */
+	onOpenHubGraphSubview?: (hubNodeId: string) => void;
 }
 
 /**
  * Side-panel inspector shown next to search results (340px).
- * Contains collapsible Connected / Discovered / AI Graph sections.
- * Section contents are placeholders — real components land in VS-7/9/10.
+ * Contains collapsible Hub / Connected / Discovered / AI Graph sections.
  */
 export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
-	currentPath, searchQuery, onClose, onNavigate,
+	currentPath, searchQuery, onClose, onOpenDocument, onInspectInPanel,
+	onOpenDocumentInNewTab, onOpenHubGraphSubview,
 }) => {
 	if (!currentPath) {
 		return (
@@ -79,15 +91,38 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 
 			{/* Scrollable content with collapsible sections */}
 			<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto">
+				<CollapsibleSection title="Hubs">
+					<HubSection
+						currentPath={currentPath}
+						onOpenDocument={onOpenDocument}
+						onInspectInPanel={onInspectInPanel}
+					/>
+				</CollapsibleSection>
 				<CollapsibleSection title="Connected">
-					<ConnectedSection currentPath={currentPath} searchQuery={searchQuery} onNavigate={onNavigate} />
+					<ConnectedSection
+						currentPath={currentPath}
+						searchQuery={searchQuery}
+						onOpenDocument={onOpenDocument}
+						onInspectInPanel={onInspectInPanel}
+					/>
 				</CollapsibleSection>
 				<CollapsibleSection title="Discovered">
-					<DiscoveredSection currentPath={currentPath} searchQuery={searchQuery} onNavigate={onNavigate} />
+					<DiscoveredSection
+						currentPath={currentPath}
+						searchQuery={searchQuery}
+						onOpenDocument={onOpenDocument}
+						onInspectInPanel={onInspectInPanel}
+					/>
 				</CollapsibleSection>
-				<CollapsibleSection title="AI Graph" defaultOpen={false}>
+				<CollapsibleSection title="AI Graph">
 					<AIGraphSection currentPath={currentPath} searchQuery={searchQuery} />
 				</CollapsibleSection>
+				<HubReferenceBlock
+					selectedDocId={currentPath}
+					onOpenHub={onOpenDocument}
+					onOpenHubInNewTab={onOpenDocumentInNewTab ?? onOpenDocument}
+					onOpenHubGraphSubview={onOpenHubGraphSubview}
+				/>
 			</div>
 		</div>
 	);

@@ -122,6 +122,82 @@ export function filterLinksByQuery(links: ConnectedLink[], query: string): Conne
 	return scored.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
 }
 
+// ─── Hubs ────────────────────────────────────────────────────────────────────
+
+export interface HubForDoc {
+	path: string;
+	label: string;
+}
+
+/**
+ * Returns hub docs that contain the given doc path as a constituent.
+ * Reads from hub_constituent + resolves labels via mobius_node.
+ */
+export async function getHubsForDoc(currentPath: string): Promise<HubForDoc[]> {
+	const tenant: IndexTenant = getIndexTenantForPath(currentPath);
+	const hubConstituentRepo = sqliteStoreManager.getHubConstituentRepo();
+	const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+
+	const hubs = await hubConstituentRepo.findHubsForMembers([currentPath]);
+	if (!hubs.length) return [];
+
+	const nodeIds = hubs.map((h) => h.hub_node_id);
+	const nodesMap = await mobiusNodeRepo.getByIds(nodeIds);
+
+	return hubs.map((hub) => {
+		const node = nodesMap.get(hub.hub_node_id);
+		const label = node?.label
+			|| hub.hub_path.split('/').pop()?.replace(/\.md$/, '')
+			|| hub.hub_path;
+		return { path: hub.hub_path, label };
+	});
+}
+
+// ─── Hub References (T6: bottom-of-inspector block) ─────────────────────────
+
+export interface HubReference {
+	hubNodeId: string;
+	hubPath: string;
+	label: string;
+	constituentCount: number;
+}
+
+/**
+ * Returns hub docs that contain the given doc path as a constituent, enriched
+ * with a constituent count for each hub. Sorted by constituent count DESC as a
+ * curator-score fallback — `hub_constituent` does not persist a per-member
+ * affinity column today, so count acts as the "hub size" proxy for ordering.
+ */
+export async function getHubReferencesForDoc(currentPath: string): Promise<HubReference[]> {
+	const tenant: IndexTenant = getIndexTenantForPath(currentPath);
+	const hubConstituentRepo = sqliteStoreManager.getHubConstituentRepo();
+	const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+
+	const hubs = await hubConstituentRepo.findHubsForMembers([currentPath]);
+	if (!hubs.length) return [];
+
+	const nodeIds = hubs.map((h) => h.hub_node_id);
+	const [nodesMap, counts] = await Promise.all([
+		mobiusNodeRepo.getByIds(nodeIds),
+		Promise.all(nodeIds.map((id) => hubConstituentRepo.countMembersForHub(id))),
+	]);
+
+	const refs: HubReference[] = hubs.map((hub, idx) => {
+		const node = nodesMap.get(hub.hub_node_id);
+		const label = node?.label
+			|| hub.hub_path.split('/').pop()?.replace(/\.md$/, '')
+			|| hub.hub_path;
+		return {
+			hubNodeId: hub.hub_node_id,
+			hubPath: hub.hub_path,
+			label,
+			constituentCount: counts[idx] ?? 0,
+		};
+	});
+
+	return refs.sort((a, b) => b.constituentCount - a.constituentCount);
+}
+
 // ─── DiscoveredConnections ───────────────────────────────────────────────────
 
 import { getCoCitations } from './coCitationService';
