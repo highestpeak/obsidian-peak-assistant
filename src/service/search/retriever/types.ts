@@ -6,6 +6,7 @@ export type MatchType = 'exact' | 'stem' | 'semantic' | 'fuzzy' | 'meta';
 export type RetrieverResult = {
   path: string;
   docId?: string;
+  chunkId?: string;
   score: number;
   title?: string;
   content?: string;

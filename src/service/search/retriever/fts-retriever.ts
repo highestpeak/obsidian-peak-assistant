@@ -1,6 +1,6 @@
 import type { SearchRetriever, RetrieverResult } from './types';
 import type { QueryPlan } from '@/service/search/query/query-parser';
-import { normalizeTextForFts } from '@/core/utils/segmenter';
+import { normalizeTextForFts, sanitizeFtsBarewords } from '@/core/utils/segmenter';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { DEFAULT_SEARCH_TOP_K, SEARCH_SCORING_DIVERSITY_BOOST_CONTENT } from '@/core/constant';
 
@@ -79,11 +79,9 @@ function buildFtsQueryFromPlan(plan: QueryPlan): string {
 
     // Terms as prefix matches, joined with OR
     if (plan.terms.length > 0) {
-        const termParts = plan.terms.map(t => {
-            const normalized = normalizeTextForFts(t.text);
-            if (!normalized) return null;
-            return `${normalized}*`;
-        }).filter((p): p is string => p !== null);
+        const termParts = plan.terms.flatMap(t =>
+            sanitizeFtsBarewords(normalizeTextForFts(t.text)).map(w => `${w}*`),
+        );
 
         if (termParts.length > 0) {
             parts.push(termParts.join(' OR '));
@@ -92,17 +90,17 @@ function buildFtsQueryFromPlan(plan: QueryPlan): string {
 
     // Phrases
     for (const phrase of plan.phrases) {
-        const normalized = normalizeTextForFts(phrase);
-        if (normalized) {
-            parts.push(`"${normalized.replace(/"/g, '""')}"`);
+        const words = sanitizeFtsBarewords(normalizeTextForFts(phrase));
+        if (words.length > 0) {
+            parts.push(`"${words.join(' ')}"`);
         }
     }
 
     // Excludes
     for (const exclude of plan.excludes) {
-        const normalized = normalizeTextForFts(exclude);
-        if (normalized) {
-            parts.push(`NOT ${normalized}`);
+        const words = sanitizeFtsBarewords(normalizeTextForFts(exclude));
+        for (const w of words) {
+            parts.push(`NOT ${w}`);
         }
     }
 
@@ -155,6 +153,7 @@ export class FtsRetriever implements SearchRetriever {
                 matchType: 'exact' as const,
                 source: 'fts',
                 chunkId: r.chunkId,
+                type: r.docType ?? undefined,
             };
         });
 
@@ -164,11 +163,13 @@ export class FtsRetriever implements SearchRetriever {
         return decayed.slice(0, topK).map(c => ({
             path: c.path,
             docId: c.docId,
+            chunkId: c.chunkId,
             score: c.score,
             title: c.title,
             content: c.content,
             matchType: c.matchType,
             source: c.source,
+            type: c.type,
         }));
     }
 }

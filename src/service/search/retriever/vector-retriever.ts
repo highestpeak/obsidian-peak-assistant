@@ -61,9 +61,11 @@ export class VectorRetriever implements SearchRetriever {
         type Chunk = {
             path: string;
             docId?: string;
+            chunkId?: string;
             score: number;
             title?: string;
             content: string;
+            contentRaw?: string;
             matchType: 'semantic';
             source: string;
             chunkType?: string;
@@ -85,12 +87,15 @@ export class VectorRetriever implements SearchRetriever {
                 title = filename.replace(/\.[^/.]+$/, '');
             }
 
+            const rawText = r.content_raw ?? '';
             chunks.push({
                 path,
                 docId: r.doc_id,
+                chunkId: r.chunk_id,
                 score,
                 title: title ?? undefined,
-                content: r.content_raw ?? '',
+                content: rawText,
+                contentRaw: rawText,
                 matchType: 'semantic',
                 source: this.name,
                 chunkType: r.chunk_type ?? undefined,
@@ -118,6 +123,7 @@ export class VectorRetriever implements SearchRetriever {
                 score,
                 title: title ?? undefined,
                 content: summaryText,
+                contentRaw: summaryText,
                 matchType: 'semantic',
                 source: this.name,
                 chunkType: r.chunk_type ?? undefined,
@@ -131,9 +137,11 @@ export class VectorRetriever implements SearchRetriever {
         return decayed.slice(0, topK).map(c => ({
             path: c.path,
             docId: c.docId,
+            chunkId: c.chunkId,
             score: c.score,
             title: c.title,
             content: c.content,
+            contentRaw: c.contentRaw,
             matchType: c.matchType,
             source: c.source,
             type: c.type,

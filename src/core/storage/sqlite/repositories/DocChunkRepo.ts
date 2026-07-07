@@ -272,6 +272,44 @@ export class DocChunkRepo {
 	}
 
 	/**
+	 * Get chunk_index for a batch of chunk ids. Used by the highlight source
+	 * resolver to compute an approximate anchor into the whole-file text so
+	 * multi-chunk documents pick the window near the chunk that scored.
+	 */
+	async getChunkIndexByChunkIds(chunkIds: string[]): Promise<Map<string, { docId: string; chunkIndex: number }>> {
+		const out = new Map<string, { docId: string; chunkIndex: number }>();
+		if (!chunkIds.length) return out;
+		const rows = await this.db
+			.selectFrom('doc_chunk')
+			.select(['chunk_id', 'doc_id', 'chunk_index'])
+			.where('chunk_id', 'in', chunkIds)
+			.execute();
+		for (const r of rows) {
+			out.set(r.chunk_id, { docId: r.doc_id, chunkIndex: Number(r.chunk_index ?? 0) });
+		}
+		return out;
+	}
+
+	/**
+	 * Total chunk count per doc, used to normalize a chunk_index into a
+	 * character-offset hint (chunkIndex / total * fileLength).
+	 */
+	async countChunksByDocIds(docIds: string[]): Promise<Map<string, number>> {
+		const out = new Map<string, number>();
+		if (!docIds.length) return out;
+		const rows = await this.db
+			.selectFrom('doc_chunk')
+			.select(['doc_id', (eb) => eb.fn.countAll<number>().as('cnt')])
+			.where('doc_id', 'in', docIds)
+			.groupBy('doc_id')
+			.execute();
+		for (const r of rows) {
+			out.set(r.doc_id, Number(r.cnt ?? 0));
+		}
+		return out;
+	}
+
+	/**
 	 * Search FTS (full-text search).
 	 * Returns chunk_id, doc_id, and path. Caller should fetch indexed document path/title separately to avoid JOIN.
 	 * 
@@ -293,6 +331,7 @@ export class DocChunkRepo {
 		title: string | null;
 		content: string;
 		bm25: number;
+		docType: string | null;
 	}> {
 		// Build path filter condition based on scope
 		let pathFilter = '';
@@ -326,7 +365,8 @@ export class DocChunkRepo {
 				dm.path as path,
 				dm.title as title,
 				f.content as content,
-				bm25(doc_fts) as bm25
+				bm25(doc_fts) as bm25,
+				json_extract(dm.attributes_json, '$.docType') as docType
 			FROM doc_fts f
 			INNER JOIN mobius_node dm ON f.doc_id = dm.node_id AND dm.type IN ('${GraphNodeType.Document}', '${GraphNodeType.HubDoc}')
 			WHERE doc_fts MATCH ?
@@ -342,6 +382,7 @@ export class DocChunkRepo {
 			title: string | null;
 			content: string;
 			bm25: number;
+			docType: string | null;
 		}>;
 	}
 
@@ -364,6 +405,7 @@ export class DocChunkRepo {
 		path: string;
 		title: string | null;
 		bm25: number;
+		docType: string | null;
 	}> {
 		// Build path filter condition based on scope
 		let pathFilter = '';
@@ -395,8 +437,10 @@ export class DocChunkRepo {
 				mf.doc_id as docId,
 				mf.path as path,
 				mf.title as title,
-				bm25(doc_meta_fts) as bm25
+				bm25(doc_meta_fts) as bm25,
+				json_extract(dm.attributes_json, '$.docType') as docType
 			FROM doc_meta_fts mf
+			LEFT JOIN mobius_node dm ON mf.doc_id = dm.node_id
 			WHERE doc_meta_fts MATCH ?
 			${pathFilter}
 			ORDER BY bm25 ASC
@@ -408,6 +452,7 @@ export class DocChunkRepo {
 			path: string;
 			title: string | null;
 			bm25: number;
+			docType: string | null;
 		}>;
 	}
 
@@ -460,6 +505,7 @@ export class DocChunkRepo {
 		title: string | null;
 		content: string;
 		bm25: number;
+		docType: string | null;
 	}> {
 		let pathFilter = '';
 		const pathParams: string[] = [];
@@ -491,7 +537,8 @@ export class DocChunkRepo {
 				dm.path as path,
 				dm.title as title,
 				f.content as content,
-				bm25(doc_fts_stem) as bm25
+				bm25(doc_fts_stem) as bm25,
+				json_extract(dm.attributes_json, '$.docType') as docType
 			FROM doc_fts_stem f
 			INNER JOIN mobius_node dm ON f.doc_id = dm.node_id AND dm.type IN ('${GraphNodeType.Document}', '${GraphNodeType.HubDoc}')
 			WHERE doc_fts_stem MATCH ?
@@ -507,6 +554,7 @@ export class DocChunkRepo {
 			title: string | null;
 			content: string;
 			bm25: number;
+			docType: string | null;
 		}>;
 	}
 }

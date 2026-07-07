@@ -104,6 +104,7 @@ export class FuzzyRetriever implements SearchRetriever {
             matchType: 'fuzzy' as const,
             source: 'fuzzy',
             fuzzyCorrection: correctionLabel,
+            type: r.docType ?? undefined,
         })).slice(0, topK);
     }
 }

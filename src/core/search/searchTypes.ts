@@ -166,6 +166,23 @@ export interface SearchResultItem {
 	 * Highlighted title with span positions.
 	 */
 	titleHighlight?: { text: string; spans: Array<{ start: number; end: number; type: string }> };
+	/**
+	 * Debug-only: identifies which source produced the highlight snippet raw
+	 * text (chunk_raw, vault_raw, summary_raw, title_or_path, normalized_fallback).
+	 * Not shown in production UI; consumed by Search debug trace.
+	 */
+	highlightSourceKind?: string;
+	/**
+	 * Debug-only: hint offset (chars) into the whole-file source that
+	 * `findBestWindow` used to bias window selection. Undefined when chunk
+	 * metadata was unavailable.
+	 */
+	highlightHintOffset?: number;
+	/**
+	 * Debug-only: milliseconds spent reading the Vault text for this item.
+	 * Zero when served from the resolver's in-memory cache.
+	 */
+	highlightVaultReadMs?: number;
 }
 
 /**

@@ -2,6 +2,7 @@ import type { SearchRetriever, RetrieverResult } from './types';
 import type { QueryPlan } from '@/service/search/query/query-parser';
 import { normalizeBm25Scores, applyChunkDecay } from './fts-retriever';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { sanitizeFtsBarewords } from '@/core/utils/segmenter';
 import { DEFAULT_SEARCH_TOP_K } from '@/core/constant';
 
 const FTS_STEM_SEARCH_LIMIT = 100;
@@ -16,7 +17,7 @@ export class FtsStemRetriever implements SearchRetriever {
     async retrieve(plan: QueryPlan): Promise<RetrieverResult[]> {
         const stemTokens = plan.terms
             .filter(t => t.stem !== t.text)
-            .map(t => t.isPrefix ? `${t.stem}*` : t.stem);
+            .flatMap(t => sanitizeFtsBarewords(t.stem).map(w => t.isPrefix ? `${w}*` : w));
         if (stemTokens.length === 0) return [];
 
         const ftsQuery = stemTokens.join(' OR ');
@@ -37,6 +38,7 @@ export class FtsStemRetriever implements SearchRetriever {
             source: this.name,
             title: r.title ?? undefined,
             chunkId: r.chunkId,
+            type: r.docType ?? undefined,
         }));
 
         const decayed = applyChunkDecay(chunks);
@@ -44,11 +46,13 @@ export class FtsStemRetriever implements SearchRetriever {
         return decayed.slice(0, DEFAULT_SEARCH_TOP_K).map(c => ({
             path: c.path,
             docId: c.docId,
+            chunkId: c.chunkId,
             score: c.score,
             title: c.title,
             content: c.content,
             matchType: c.matchType,
             source: c.source,
+            type: c.type,
         }));
     }
 }
