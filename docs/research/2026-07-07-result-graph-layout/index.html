@@ -478,17 +478,24 @@
 			'opacity': 1,
 			'z-index': 999,
 		}},
+		// Base hover-highlight state (color, opacity, arrow scale, z-order).
+		// Per-kind overrides below preserve line style so reference stays
+		// solid and semantic stays dashed even when spotlighted.
 		{ selector: 'edge.highlighted', style: {
 			'line-color': '#f59e0b',
 			'target-arrow-color': '#f59e0b',
-			'width': 2.4,
 			'opacity': 1,
 			'z-index': 999,
-			'line-dash-pattern': [10, 6],
-			'line-style': 'dashed',
-			// Bigger arrow head on hover so direction stays legible even at
-			// small zoom. Base edges use 0.7 — highlight scales to 1.4.
 			'arrow-scale': 1.4,
+		}},
+		{ selector: 'edge.reference.highlighted', style: {
+			'line-style': 'solid',
+			'width': 2.6,
+		}},
+		{ selector: 'edge.semantic.highlighted', style: {
+			'line-style': 'dashed',
+			'line-dash-pattern': [10, 6],
+			'width': 2.0,
 		}},
 		// Region separators (Cytoscape node-based bounding boxes).
 		{ selector: 'node.regionLabel', style: {
