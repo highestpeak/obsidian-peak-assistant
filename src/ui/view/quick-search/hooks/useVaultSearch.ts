@@ -145,7 +145,7 @@ export const useVaultSearch = () => {
 					setIsSearching(false);
 				}
 			}
-		}, 200); // Wait 200ms after user stops typing
+		}, 400); // Wait 400ms after user stops typing
 
 		return () => {
 			cancelled = true;

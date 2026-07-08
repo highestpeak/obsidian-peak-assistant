@@ -1,21 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, ArrowLeft, Check } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Eye } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import { getConnectedLinks, filterLinksByQuery, type ConnectedLink } from '@/service/search/inspectorService';
 
-const INITIAL_VISIBLE = 3;
+const INITIAL_VISIBLE = 5;
 
 export interface ConnectedSectionProps {
 	currentPath: string;
 	searchQuery: string;
-	onNavigate: (notePath: string) => void;
+	onOpenDocument: (notePath: string) => void;
+	onInspectInPanel: (notePath: string) => void;
 }
 
 export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 	currentPath,
 	searchQuery,
-	onNavigate,
+	onOpenDocument,
+	onInspectInPanel,
 }) => {
 	const [links, setLinks] = useState<ConnectedLink[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -79,7 +81,7 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 
 							<span
 								className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground pktw-truncate pktw-cursor-pointer hover:pktw-text-pk-accent"
-								onClick={() => onNavigate(link.path)}
+								onClick={() => onOpenDocument(link.path)}
 								title={link.path}
 							>
 								{link.label}
@@ -97,6 +99,19 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 									{link.convergenceCount} refs
 								</span>
 							)}
+
+							<Button
+								variant="ghost"
+								size="xs"
+								className="pktw-shadow-none !pktw-w-5 !pktw-h-5 pktw-ml-auto pktw-shrink-0"
+								title="Inspect in panel"
+								onClick={(e) => {
+									e.stopPropagation();
+									onInspectInPanel(link.path);
+								}}
+							>
+								<Eye className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted" />
+							</Button>
 						</div>
 
 						{link.contextSnippet && (

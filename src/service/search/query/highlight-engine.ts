@@ -1,9 +1,12 @@
 import type { QueryPlan } from '@/service/search/query/query-parser';
 import { porterStem } from '@/core/utils/porter-stemmer';
+import { segmentToWhitespace } from '@/core/utils/segmenter';
 import {
     SEARCH_HIGHLIGHT_HINT_WEIGHT,
     SEARCH_HIGHLIGHT_HINT_DECAY,
 } from '@/core/constant';
+
+const CJK_RE = /[　-鿿가-힯豈-﫿]/;
 
 export type HighlightSpan = { start: number; end: number; type: 'exact' | 'stem' | 'fuzzy' };
 export type HighlightResult = { text: string; spans: HighlightSpan[] };
@@ -41,6 +44,24 @@ export class HighlightEngine {
                     spans.push({ start: idx, end, type: 'exact' });
                 }
                 pos = idx + termText.length;
+            }
+        }
+
+        // CJK sub-token fallback: a CJK term like "英语练习" is stored as a single
+        // token because there is no whitespace, but the FTS retrievers match it
+        // via segmentation and fuzzy expansion (e.g. `英语练习 → 练习`). Without
+        // this fallback the snippet/title stay un-highlighted even when the user
+        // sees the corrected token in the text. Sub-tokens are marked 'fuzzy'.
+        for (const sub of this.cjkSubTokens(plan)) {
+            let pos = 0;
+            while (pos < lower.length) {
+                const idx = lower.indexOf(sub, pos);
+                if (idx === -1) break;
+                const end = idx + sub.length;
+                if (!this.overlapsAny(spans, idx, end)) {
+                    spans.push({ start: idx, end, type: 'exact' });
+                }
+                pos = idx + sub.length;
             }
         }
 
@@ -111,6 +132,20 @@ export class HighlightEngine {
             }
         }
 
+        // CJK sub-token fallback. See `highlight()` for the motivation — the
+        // retriever may match a segmented sub-token of a CJK term even when the
+        // full merged term is not a substring. Styled as an exact hit so users
+        // see one consistent highlight colour.
+        for (const sub of this.cjkSubTokens(plan)) {
+            let pos = 0;
+            while (pos < lower.length) {
+                const idx = lower.indexOf(sub, pos);
+                if (idx === -1) break;
+                allMatches.push({ start: idx, end: idx + sub.length, type: 'exact' });
+                pos = idx + sub.length;
+            }
+        }
+
         if (allMatches.length === 0) {
             // No matches: return snippet from around the hint (if any) or the beginning.
             const windowLen = windowBefore + windowAfter;
@@ -139,6 +174,28 @@ export class HighlightEngine {
             .map(m => ({ start: m.start - winStart, end: m.end - winStart, type: m.type }));
 
         return { text: snippet, spans: this.mergeOverlappingSpans(snippetSpans) };
+    }
+
+    /**
+     * Expand plan.terms into CJK sub-tokens for fallback highlighting. Returns
+     * lowercased unique sub-tokens that are shorter than the parent term (so
+     * we don't duplicate the exact-match pass) and non-trivial (>= 1 char).
+     * Empty when no plan term contains CJK — zero-alloc on the common path.
+     */
+    private cjkSubTokens(plan: QueryPlan): string[] {
+        const out = new Set<string>();
+        for (const term of plan.terms) {
+            const text = term.text.toLowerCase();
+            if (!CJK_RE.test(text)) continue;
+            const segmented = segmentToWhitespace(text);
+            if (!segmented) continue;
+            for (const part of segmented.split(/\s+/)) {
+                const p = part.trim().toLowerCase();
+                if (!p || p === text) continue;
+                out.add(p);
+            }
+        }
+        return [...out];
     }
 
     private findBestWindow(

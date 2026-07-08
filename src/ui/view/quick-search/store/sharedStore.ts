@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
-type TabType = 'vault' | 'ai';
+// 'intel' is Vault Intelligence — reached only via the floating button.
+// Tab-key cycling only rotates between 'vault' and 'ai'.
+type TabType = 'vault' | 'ai' | 'intel';
 
 const MAX_RECENT_QUERIES = 10;
 

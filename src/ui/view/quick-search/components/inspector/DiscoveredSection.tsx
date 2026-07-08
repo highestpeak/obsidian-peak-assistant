@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { Eye } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import { getDiscoveredConnections, type DiscoveredConnection } from '@/service/search/inspectorService';
 
-const INITIAL_VISIBLE = 3;
+const INITIAL_VISIBLE = 5;
 
 const TYPE_BADGE: Record<DiscoveredConnection['type'], { label: string; className: string }> = {
 	SEM: { label: 'SEM', className: 'pktw-bg-purple-100 pktw-text-purple-700' },
@@ -14,13 +15,15 @@ const TYPE_BADGE: Record<DiscoveredConnection['type'], { label: string; classNam
 export interface DiscoveredSectionProps {
 	currentPath: string;
 	searchQuery: string;
-	onNavigate: (notePath: string) => void;
+	onOpenDocument: (notePath: string) => void;
+	onInspectInPanel: (notePath: string) => void;
 }
 
 export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 	currentPath,
 	searchQuery,
-	onNavigate,
+	onOpenDocument,
+	onInspectInPanel,
 }) => {
 	const [items, setItems] = useState<DiscoveredConnection[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -71,7 +74,7 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 						<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-min-w-0">
 							<span
 								className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground pktw-truncate pktw-cursor-pointer hover:pktw-text-pk-accent"
-								onClick={() => onNavigate(item.path)}
+								onClick={() => onOpenDocument(item.path)}
 								title={item.path}
 							>
 								{item.label}
@@ -87,6 +90,19 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 							)}>
 								{badgeLabel}
 							</span>
+
+							<Button
+								variant="ghost"
+								size="xs"
+								className="pktw-shadow-none !pktw-w-5 !pktw-h-5 pktw-ml-auto pktw-shrink-0"
+								title="Inspect in panel"
+								onClick={(e) => {
+									e.stopPropagation();
+									onInspectInPanel(item.path);
+								}}
+							>
+								<Eye className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted" />
+							</Button>
 						</div>
 
 						{item.whyText && (

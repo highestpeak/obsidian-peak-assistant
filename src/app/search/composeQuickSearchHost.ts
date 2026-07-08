@@ -5,7 +5,7 @@
 // chat interop) but builds it once at mount time from `AppContext`.
 
 import type { TFile } from 'obsidian';
-import type { AppContext } from '@/app/context/AppContext';
+import { AppContext } from '@/app/context/AppContext';
 import { ContextProvider } from '@/service/context/ContextProvider';
 import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
@@ -31,6 +31,11 @@ export function composeQuickSearchHost(
 	const settings = appContext.settings;
 	const enableDevTools = settings.enableDevTools === true;
 	const search = settings.search;
+
+	// Closure-owned handle to the most recent ReportOrchestrator so
+	// saveAnalysisToVault can reach for its still-open debug run and attach
+	// an artifact.write span before sealing it.
+	let lastOrchestrator: ReportOrchestrator | null = null;
 
 	return {
 		openVaultPath: async (path, opts) => {
@@ -75,7 +80,7 @@ export function composeQuickSearchHost(
 
 		createSynthesizeAgent: () => new SynthesizeAgent(manager),
 		createAIGraphAgent: () => new AIGraphAgent(app, searchClient!, manager),
-		createVaultSearchAgent: () => new VaultSearchAgent(app, plugin.manifest.id, searchClient!, manager),
+		createVaultSearchAgent: () => new VaultSearchAgent(app, plugin.manifest.id, searchClient!, manager, {}, AppContext.tryGetDebugTracePort()),
 		createContinueAnalysisAgent: (rounds) => new ContinueAnalysisAgent({
 			app,
 			pluginId: plugin.manifest.id,
@@ -85,14 +90,40 @@ export function composeQuickSearchHost(
 		}),
 		createGraphAgent: () => new GraphAgent(app, plugin.manifest.id),
 		createContextProvider: () => new ContextProvider(app),
-		createReportOrchestrator: () => new ReportOrchestrator(
-			manager,
-			reportSessionPort,
-			app,
-			plugin.manifest.id,
-		),
+		// Debug trace plumbing: the save site records an artifact.write span
+		// on the orchestrator's still-open debug run before sealing it. We
+		// remember the most recently constructed orchestrator here so the
+		// save callback can reach the active run without changing the
+		// host contract.
+		createReportOrchestrator: () => {
+			const orch = new ReportOrchestrator(
+				manager,
+				reportSessionPort,
+				app,
+				plugin.manifest.id,
+				AppContext.tryGetDebugTracePort(),
+			);
+			lastOrchestrator = orch;
+			return orch;
+		},
 
-		saveAnalysisToVault: (params) => saveAiAnalyzeResultToMarkdown(params, { app, enableDevTools }),
+		saveAnalysisToVault: async (params) => {
+			const result = await saveAiAnalyzeResultToMarkdown(params, { app, enableDevTools });
+			const debugRun = lastOrchestrator?.getActiveDebugRun();
+			if (debugRun) {
+				// Import lazily so a debug-trace-off boot doesn't pay for the
+				// helper module.
+				const { recordAnalysisArtifact } = await import(
+					'@/service/agents/report/debugTraceAdapter'
+				);
+				recordAnalysisArtifact(debugRun, {
+					path: result.path,
+					kind: 'report',
+				});
+				lastOrchestrator?.sealActiveDebugRun('completed');
+			}
+			return result;
+		},
 		persistAnalysisDoc: (path, content) => persistAnalysisDocToPath(path, content, { app }),
 		saveGraphToVault: (params) => saveAiGraphToMarkdown(params, { app }),
 		buildAnalysisMarkdownFromSnapshot: (snapshot, query, webEnabled) =>

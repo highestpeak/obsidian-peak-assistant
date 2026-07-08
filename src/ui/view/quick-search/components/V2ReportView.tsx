@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Copy, Check, Sparkles, Loader2, CheckCircle, Clock, ChevronRight, ArrowLeft } from 'lucide-react';
+import { RefreshCw, Copy, Check, Sparkles, Loader2, CheckCircle, Clock, ChevronRight, ArrowLeft, Bug } from 'lucide-react';
+import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Section } from '../store/searchSessionStore';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
@@ -313,6 +315,7 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 
 	return (
 		<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pktw-px-1 pktw-py-2">
+			<ReportDebugTraceButton />
 			{/* Back to Process button — visible when coming from a round's Report link */}
 			{rounds.length > 0 && (
 				<div
@@ -420,3 +423,27 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 		</motion.div>
 	);
 };
+
+function ReportDebugTraceButton(): React.ReactElement | null {
+	const { debugTracePort } = useServiceContext();
+	const copyDebugTrace = useDebugTraceCopy();
+	if (!debugTracePort?.isEnabled()) return null;
+	return (
+		<div className="pktw-flex pktw-justify-end pktw-px-2 pktw-pb-1">
+			<button
+				type="button"
+				className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-text-pk-foreground-faint hover:pktw-text-pk-foreground pktw-transition"
+				title="Copy analyze report debug trace"
+				aria-label="Copy analyze report debug trace"
+				onClick={() => {
+					const recent = debugTracePort.listRecent(5);
+					const analyzeRun = recent.find((r) => r.surface === 'analyze');
+					void copyDebugTrace(analyzeRun?.runId);
+				}}
+			>
+				<Bug className="pktw-w-3 pktw-h-3" />
+				Copy analysis trace
+			</button>
+		</div>
+	);
+}

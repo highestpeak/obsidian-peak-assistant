@@ -27,7 +27,7 @@ import fcose from 'cytoscape-fcose';
 import cise from 'cytoscape-cise';
 import cola from 'cytoscape-cola';
 import dagre from 'cytoscape-dagre';
-import { Check, Copy } from 'lucide-react';
+import { Check, Image as ImageIcon, Workflow } from 'lucide-react';
 import { useVaultSearchStore } from '../../store';
 import type { GraphPreset } from '../../store/vaultSearchStore';
 import { buildResultSubgraph, type ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
@@ -153,6 +153,22 @@ function buildElements(
 		}
 	}
 
+	// Degree map for visual weighting. Same filtering as edge emission so the
+	// count matches what the user actually sees.
+	const degreeMap = new Map<string, number>();
+	for (const e of sub.edges) {
+		if (e.kind === 'hub_constituent') continue;
+		if (e.kind === 'semantic' && !opts.showSemantic) continue;
+		if (e.from === e.to) continue;
+		degreeMap.set(e.from, (degreeMap.get(e.from) ?? 0) + 1);
+		degreeMap.set(e.to, (degreeMap.get(e.to) ?? 0) + 1);
+	}
+	// Cap at 8 so a runaway super-connector doesn't compress the rest of the
+	// scale to invisibility. degreeNorm in [0,1] feeds cytoscape `mapData`.
+	const DEGREE_CAP = 8;
+	const HUBLIKE_THRESHOLD = 3;
+	const normDegree = (id: string) => Math.min(degreeMap.get(id) ?? 0, DEGREE_CAP) / DEGREE_CAP;
+
 	// Nodes
 	const maxScore = sub.resultNodes.reduce((m, n) => Math.max(m, n.score), 0) || 1;
 	for (const h of sub.hubAnchors) {
@@ -163,6 +179,7 @@ function buildElements(
 				label: `${h.title || h.path || h.id}\n(${h.constituentCount} constituents)`,
 				kind: 'hub',
 				score: 1,
+				degreeNorm: normDegree(h.id),
 			},
 			classes: 'hub',
 		});
@@ -173,6 +190,8 @@ function buildElements(
 			const chain = chainForPath(n.path);
 			if (chain.length) parent = chain[chain.length - 1].id;
 		}
+		const degree = degreeMap.get(n.id) ?? 0;
+		const isHublike = degree >= HUBLIKE_THRESHOLD;
 		els.push({
 			group: 'nodes',
 			data: {
@@ -180,10 +199,12 @@ function buildElements(
 				label: n.title || n.path || n.id,
 				kind: 'doc',
 				score: n.score / maxScore,
+				degree,
+				degreeNorm: normDegree(n.id),
 				folder: (n.path ? n.path.split('/')[0] : '') || '',
 				parent,
 			},
-			classes: `doc ${isolatedIds.has(n.id) ? 'isolated' : ''}`,
+			classes: `doc ${isolatedIds.has(n.id) ? 'isolated' : ''}${isHublike ? ' hublike' : ''}`.trim(),
 		});
 	}
 
@@ -213,28 +234,28 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{
 		selector: 'node.hub',
 		style: {
-			'background-color': '#c4b5fd',
-			'border-color': '#7c3aed',
-			'border-width': 2,
+			'background-color': '#a78bfa',
+			'border-color': '#4c1d95',
+			'border-width': 4,
 			shape: 'round-rectangle',
 			width: 'label',
 			height: 'label',
-			'padding-left': '10px', 'padding-right': '10px',
-			'padding-top': '6px',   'padding-bottom': '6px',
+			'padding-left': '18px', 'padding-right': '18px',
+			'padding-top': '12px',  'padding-bottom': '12px',
 			label: 'data(label)',
 			'text-wrap': 'wrap',
 			'text-max-width': '360px',
-			'font-size': 11,
-			'font-weight': 600,
+			'font-size': 15,
+			'font-weight': 800,
 			'text-valign': 'center',
 			'text-halign': 'center',
-			color: '#4c1d95',
+			color: '#2e1065',
 		} as never,
 	},
 	{
 		selector: 'node.doc',
 		style: {
-			'background-color': 'mapData(score, 0, 1, #f5f3ff, #a78bfa)',
+			'background-color': 'mapData(score, 0, 1, #f5f3ff, #c4b5fd)',
 			'border-color': '#a78bfa',
 			'border-width': 1,
 			shape: 'round-rectangle',
@@ -250,6 +271,19 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 			'text-halign': 'center',
 			color: '#1e1b4b',
 			'min-width': '80px',
+		} as never,
+	},
+	{
+		selector: 'node.doc.hublike',
+		style: {
+			'background-color': '#c4b5fd',
+			'border-color': '#6d28d9',
+			'border-width': 3,
+			'padding-left': '14px', 'padding-right': '14px',
+			'padding-top': '9px',   'padding-bottom': '9px',
+			'font-size': 13,
+			'font-weight': 700,
+			color: '#4c1d95',
 		} as never,
 	},
 	{
@@ -425,7 +459,8 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	const { vaultNavigation, resultSubgraph: resultSubgraphDeps } = useServiceContext();
 
 	const [subgraph, setSubgraph] = useState<ResultSubgraphOutput | null>(null);
-	const [copied, setCopied] = useState(false);
+	const [copiedMode, setCopiedMode] = useState<'mermaid' | 'image' | null>(null);
+	const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const cyRef = useRef<Core | null>(null);
 	const animRef = useRef<number | null>(null);
@@ -572,6 +607,10 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 		cy.on('mouseover', 'node', (evt) => {
 			const n = evt.target as NodeSingular;
 			if (n.hasClass('regionLabel')) return;
+			// Update the bottom preview immediately so users can read tiny labels
+			// without waiting for the 80ms spotlight debounce.
+			const raw = (n.data('label') as string | undefined) ?? '';
+			if (raw) setHoveredLabel(raw);
 			if (hoverTimer) clearTimeout(hoverTimer);
 			hoverTimer = setTimeout(() => {
 				const isCompound = n.hasClass('folderGroup');
@@ -592,6 +631,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 			}, 80);
 		});
 		cy.on('mouseout', 'node', () => {
+			setHoveredLabel(null);
 			if (hoverTimer) clearTimeout(hoverTimer);
 			hoverTimer = setTimeout(() => {
 				stopEdgeAnimation();
@@ -631,17 +671,49 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 		});
 	}, [subgraph, preset, showSemantic, results, resultSubgraphDeps, vaultNavigation, onOpenHubGraphSubview, onSelectForInspector, onClose]);
 
-	const handleCopyGraph = useCallback(() => {
+	const handleCopyMermaid = useCallback(() => {
 		if (!subgraph) return;
 		try {
 			void navigator.clipboard.writeText(subgraphToMermaid(subgraph));
-			setCopied(true);
-			window.setTimeout(() => setCopied(false), 1500);
+			setCopiedMode('mermaid');
+			window.setTimeout(() => setCopiedMode(null), 1500);
 		} catch (err) {
 			// eslint-disable-next-line no-console
 			console.warn('[ResultGraphView] clipboard write failed', err);
 		}
 	}, [subgraph]);
+
+	const handleCopyImage = useCallback(async () => {
+		const cy = cyRef.current;
+		if (!cy) return;
+		try {
+			// Cytoscape's `blob-promise` output routes through `canvas.toBlob()`
+			// which returns null in Electron for large offscreen canvases. Take
+			// the base64 dataURL path and decode manually — reliable across
+			// canvas sizes. `maxWidth`/`maxHeight` clamp scale to keep the PNG
+			// under Electron's clipboard ceiling for very large graphs.
+			const dataUrl = (cy.png as unknown as (opts: Record<string, unknown>) => string)({
+				full: true,
+				bg: '#ffffff',
+				scale: 2,
+				maxWidth: 4096,
+				maxHeight: 4096,
+			});
+			const commaIdx = dataUrl.indexOf(',');
+			if (commaIdx < 0) throw new Error('unexpected png dataURL shape');
+			const base64 = dataUrl.slice(commaIdx + 1);
+			const binary = atob(base64);
+			const bytes = new Uint8Array(binary.length);
+			for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+			const blob = new Blob([bytes], { type: 'image/png' });
+			await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+			setCopiedMode('image');
+			window.setTimeout(() => setCopiedMode(null), 1500);
+		} catch (err) {
+			// eslint-disable-next-line no-console
+			console.warn('[ResultGraphView] copy-as-image failed', err);
+		}
+	}, []);
 
 	const overflowCount = subgraph?.overflowCount ?? 0;
 	const emptyMessage = useMemo(() => {
@@ -658,15 +730,46 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 					{emptyMessage}
 				</div>
 			)}
-			<div className="pktw-absolute pktw-top-2 pktw-right-2 pktw-z-20">
+			<div className="pktw-absolute pktw-top-2 pktw-right-2 pktw-z-20 pktw-flex pktw-gap-1">
 				<IconButton
-					label={copied ? 'Copied Mermaid to clipboard' : 'Copy graph as Mermaid'}
-					onClick={handleCopyGraph}
-					data-active={copied ? 'true' : undefined}
+					label={copiedMode === 'mermaid' ? 'Copied Mermaid to clipboard' : 'Copy graph as Mermaid'}
+					onClick={handleCopyMermaid}
+					data-active={copiedMode === 'mermaid' ? 'true' : undefined}
 				>
-					{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
+					{copiedMode === 'mermaid'
+						? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
+						: <Workflow className="pktw-w-3.5 pktw-h-3.5" />}
+				</IconButton>
+				<IconButton
+					label={copiedMode === 'image' ? 'Copied image to clipboard' : 'Copy graph as image'}
+					onClick={handleCopyImage}
+					data-active={copiedMode === 'image' ? 'true' : undefined}
+				>
+					{copiedMode === 'image'
+						? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
+						: <ImageIcon className="pktw-w-3.5 pktw-h-3.5" />}
 				</IconButton>
 			</div>
+			{hoveredLabel && (() => {
+				const [title, ...rest] = hoveredLabel.split('\n');
+				const sub = rest.join(' ').trim();
+				return (
+					<div
+						className="pktw-absolute pktw-bottom-10 pktw-left-1/2 pktw--translate-x-1/2 pktw-z-30 pktw-pointer-events-none pktw-max-w-[80%]"
+					>
+						<div className="pktw-rounded-lg pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border pktw-shadow-md pktw-px-5 pktw-py-3 pktw-text-center">
+							<span className="pktw-block pktw-text-lg pktw-font-semibold pktw-text-pk-text-primary pktw-break-all">
+								{title}
+							</span>
+							{sub && (
+								<span className="pktw-block pktw-mt-1 pktw-text-xs pktw-text-pk-text-tertiary">
+									{sub}
+								</span>
+							)}
+						</div>
+					</div>
+				);
+			})()}
 			{overflowCount > 0 && (
 				<span className="pktw-absolute pktw-bottom-2 pktw-left-1/2 pktw--translate-x-1/2 pktw-rounded-md pktw-bg-pk-surface-raised pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border pktw-border-pk-border pktw-z-10">
 					{`Showing top ${NODE_CAP} of ${NODE_CAP + overflowCount} results`}

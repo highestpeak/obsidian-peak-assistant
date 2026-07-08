@@ -16,7 +16,6 @@ import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickR
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SearchUpgradePrompt } from './components/SearchUpgradePrompt';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
-import { HeadingModeContainer } from './components/heading-mode/HeadingModeContainer';
 import { ResultGraphView } from './components/result-graph/ResultGraphView';
 import { useOpenHubGraphSubview } from './hooks/useOpenHubGraphSubview';
 
@@ -255,11 +254,9 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 	const showGraph = resultView === 'graph'
 		&& (quickSearchMode === 'all' || quickSearchMode === 'heading');
 
-	// T5: heading mode owns the middle when in list projection. Compute
-	// the file path + trailing query text off the store's parsed query.
-	const headingFilePath = vaultStats.activeFilePath();
-	const headingQueryText = parsedQuery?.text ?? '';
-	const showHeadingMode = quickSearchMode === 'heading' && resultView === 'list' && !!headingFilePath;
+	// Heading mode moved to Copilot Modal's Atlas tab — Vault Search no
+	// longer renders `HeadingModeContainer` even if the query happens to
+	// parse into 'heading' mode.
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0 pktw-overflow-hidden">
@@ -270,12 +267,6 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 						onClose={onClose}
 						onOpenHubGraphSubview={(hubNodeId) => void openHubGraphSubview(hubNodeId)}
 						onSelectForInspector={onSelectForInspector}
-					/>
-				) : showHeadingMode ? (
-					<HeadingModeContainer
-						filePath={headingFilePath!}
-						queryText={headingQueryText}
-						onClose={onClose}
 					/>
 				) : quickSearchMode === 'help' ? (
 					<ModeHelpList

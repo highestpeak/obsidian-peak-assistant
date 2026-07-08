@@ -1,10 +1,13 @@
 import React from 'react';
-import { ChevronRight, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { getFileIcon } from '@/ui/view/shared/file-utils';
+import { getFileIcon, pathToFileIconType } from '@/ui/view/shared/file-utils';
 import { humanReadableTime } from '@/core/utils/date-utils';
 import type { SearchResultItem, SearchSnippet } from '@/core/search/searchTypes';
-import type { HighlightResult } from '@/service/search/query/highlight-engine';
+import type { HighlightResult, HighlightSpan } from '@/service/search/query/highlight-engine';
+import { segmentToWhitespace } from '@/core/utils/segmenter';
+
+const CJK_RE = /[　-鿿가-힯豈-﫿]/;
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickRepo';
@@ -19,6 +22,72 @@ function recordSearchClick(currentQuery: string, path: string, rank: number): vo
 			if (queryStems) clickRepo.record(queryStems, path, rank);
 		}
 	} catch { /* non-critical */ }
+}
+
+/**
+ * Derive display title from the file path: basename minus its extension. The
+ * indexed `title` field is FTS-normalized (spaces inserted between CJK chars,
+ * hyphens stripped) so it looks like `docs 表格 代码 …` in search results —
+ * the raw filename is what the user actually recognises.
+ */
+function deriveDisplayTitle(path: string, fallback: string): string {
+	const base = path.split('/').pop();
+	if (!base) return fallback;
+	const dotIdx = base.lastIndexOf('.');
+	return dotIdx > 0 ? base.slice(0, dotIdx) : base;
+}
+
+/**
+ * Case-insensitive substring highlight of `text` against space-separated query
+ * words + quoted phrases. Used to re-highlight the raw display title since the
+ * server-side `titleHighlight` is computed against the FTS-normalized string.
+ */
+function highlightRawTitle(text: string, query: string): HighlightResult {
+	const spans: HighlightSpan[] = [];
+	if (!query.trim() || !text) return { text, spans };
+
+	const lower = text.toLowerCase();
+	const primary: string[] = [];
+	const phraseRe = /"([^"]+)"|(\S+)/g;
+	let m: RegExpExecArray | null;
+	while ((m = phraseRe.exec(query)) !== null) {
+		const tok = (m[1] ?? m[2] ?? '').trim();
+		if (tok) primary.push(tok.toLowerCase());
+	}
+
+	// CJK sub-tokens fallback: "英语练习" is one token to the parser but the
+	// user recognises "英语" and "练习" separately in a title/path.
+	const fallback = new Set<string>();
+	for (const tok of primary) {
+		if (!CJK_RE.test(tok)) continue;
+		const segmented = segmentToWhitespace(tok);
+		if (!segmented) continue;
+		for (const part of segmented.split(/\s+/)) {
+			const p = part.trim().toLowerCase();
+			if (p && p !== tok) fallback.add(p);
+		}
+	}
+
+	const pushMatches = (tok: string, type: HighlightSpan['type']) => {
+		let pos = 0;
+		while (pos < lower.length) {
+			const idx = lower.indexOf(tok, pos);
+			if (idx === -1) break;
+			spans.push({ start: idx, end: idx + tok.length, type });
+			pos = idx + tok.length;
+		}
+	};
+	for (const tok of primary) pushMatches(tok, 'exact');
+	for (const tok of fallback) pushMatches(tok, 'exact');
+
+	spans.sort((a, b) => a.start - b.start);
+	const merged: HighlightSpan[] = [];
+	for (const s of spans) {
+		const last = merged[merged.length - 1];
+		if (last && s.start <= last.end) last.end = Math.max(last.end, s.end);
+		else merged.push({ ...s });
+	}
+	return { text, spans: merged };
 }
 
 /**
@@ -107,6 +176,18 @@ export const SearchResultRow: React.FC<{
 		createOpenSourceCallback(onClose, openInNewTab, vaultNavigation)(result);
 	};
 
+	// Derive icon from path so all docs use the same FileText icon regardless of
+	// whether the retriever populated `result.type` — meta-retriever hits and
+	// vector-retriever hits shouldn't visually differ from FTS hits.
+	const iconType = pathToFileIconType(result.path);
+	const rawScore = result.finalScore ?? result.score;
+	const hasScore = rawScore != null && rawScore > 0;
+	const scorePercent = hasScore ? Math.round(rawScore * 100) : null;
+	const modifiedText = humanReadableTime(result.lastModified);
+	const shortPath = result.path.split('/').slice(-2).join('/');
+	const displayTitle = deriveDisplayTitle(result.path, result.title);
+	const titleHighlight = highlightRawTitle(displayTitle, currentQuery);
+
 	return (
 		<div
 			ref={itemRef}
@@ -120,62 +201,71 @@ export const SearchResultRow: React.FC<{
 				style={{ backgroundColor: 'var(--pk-accent)', opacity: isSelected ? 1 : 0 }}
 			/>
 
+			{/* Open in new tab button — floats top-right on row hover */}
+			<Button
+				variant="ghost"
+				size="icon"
+				title="Open in new tab"
+				className="pktw-absolute pktw-top-1.5 pktw-right-2 pktw-h-6 pktw-w-6 pktw-rounded pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity"
+				onClick={(e) => {
+					e.stopPropagation();
+					recordSearchClick(currentQuery, result.path, index);
+					createOpenSourceCallback(onClose, true, vaultNavigation)(result);
+				}}
+			>
+				<ExternalLink className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-text-tertiary" />
+			</Button>
+
 			<div className="pktw-flex pktw-items-start pktw-gap-3">
 				{/* File Icon */}
-				<div className="pktw-flex-shrink-0 pktw-mt-1">{getFileIcon(result.type)}</div>
+				<div className="pktw-flex-shrink-0 pktw-mt-1">{getFileIcon(iconType)}</div>
 
-				{/* Content */}
-				<div className="pktw-flex-1 pktw-min-w-0">
-					{/* Title and Path */}
-					<div className="pktw-flex pktw-items-baseline pktw-gap-2 pktw-mb-1">
-						<span className="pktw-font-semibold pktw-text-pk-text-primary pktw-truncate" style={{ fontWeight: 800, fontSize: '1.2rem', lineHeight: '1.2' }}>
-							{result.titleHighlight
-								? renderHighlightSpans(result.titleHighlight as HighlightResult)
-								: result.title}
+				{/* Content — three lines: title / snippet / metadata */}
+				<div className="pktw-flex-1 pktw-min-w-0 pktw-pr-8">
+					{/* Line 1: title + trailing badge.
+					    - Search with score → score pill on right.
+					    - No query (recents) → modified time on right instead.
+					    Trailing element is flex-shrink-0 so it never squeezes the title. */}
+					<div className="pktw-flex pktw-items-baseline pktw-gap-2 pktw-min-w-0">
+						<span
+							className="pktw-flex-1 pktw-min-w-0 pktw-font-semibold pktw-text-pk-text-primary pktw-truncate"
+							style={{ fontWeight: 800, fontSize: '1.2rem', lineHeight: '1.2' }}
+							title={displayTitle}
+						>
+							{renderHighlightSpans(titleHighlight)}
 						</span>
-						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-text-pk-border-strong pktw-flex-shrink-0" />
-						<span className="pktw-text-xs pktw-text-pk-text-tertiary pktw-truncate" title={result.path}>
-							{result.path.split('/').slice(-2).join('/')}
-						</span>
+						{scorePercent != null ? (
+							<span className="pktw-flex-shrink-0 pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-whitespace-nowrap">
+								{scorePercent}%
+							</span>
+						) : modifiedText ? (
+							<span className="pktw-flex-shrink-0 pktw-text-[10px] pktw-text-pk-text-tertiary pktw-whitespace-nowrap">
+								{modifiedText}
+							</span>
+						) : null}
 					</div>
 
-					{/* Snippet */}
+					{/* Line 2: snippet — clamped to 2 lines */}
 					{result.highlight?.text && (
-						<span className="pktw-text-sm pktw-text-pk-text-secondary pktw-line-clamp-2 pktw-mt-1">
+						<div className="pktw-text-sm pktw-text-pk-text-secondary pktw-line-clamp-2 pktw-mt-1">
 							{(result.highlight as unknown as HighlightResult).spans
 								? renderHighlightSpans(result.highlight as unknown as HighlightResult)
 								: result.highlight.highlights?.length
 									? renderLegacyHighlights(result.highlight)
 									: result.highlight.text}
-						</span>
+						</div>
 					)}
-				</div>
 
-				{/* Relevance score badge — prefer finalScore (post-rerank) over raw score */}
-				{(result.finalScore ?? result.score) != null && (result.finalScore ?? result.score)! > 0 && (
-					<span className="pktw-flex-shrink-0 pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent">
-						{Math.round((result.finalScore ?? result.score ?? 0) * 100)}%
-					</span>
-				)}
-
-				{/* Open in new tab button — visible on row hover only */}
-				<Button
-					variant="ghost"
-					size="icon"
-					title="Open in new tab"
-					className="pktw-flex-shrink-0 pktw-h-6 pktw-w-6 pktw-rounded pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity"
-					onClick={(e) => {
-						e.stopPropagation();
-						recordSearchClick(currentQuery, result.path, index);
-						createOpenSourceCallback(onClose, true, vaultNavigation)(result);
-					}}
-				>
-					<ExternalLink className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-text-tertiary" />
-				</Button>
-
-				{/* Last Modified Time */}
-				<div className="pktw-flex-shrink-0 pktw-ml-4 pktw-text-xs pktw-text-pk-text-tertiary pktw-whitespace-nowrap">
-					{humanReadableTime(result.lastModified)}
+					{/* Line 3: metadata — path (+ time when score took the title-row slot) */}
+					<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mt-1 pktw-text-[10px] pktw-text-pk-text-tertiary pktw-min-w-0">
+						<span className="pktw-truncate" title={result.path}>{shortPath}</span>
+						{scorePercent != null && modifiedText && (
+							<>
+								<span className="pktw-flex-shrink-0 pktw-opacity-50">·</span>
+								<span className="pktw-flex-shrink-0 pktw-whitespace-nowrap">{modifiedText}</span>
+							</>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>

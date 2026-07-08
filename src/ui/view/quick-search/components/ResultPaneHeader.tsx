@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { Network, X } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { List, ListTree, Network, X } from 'lucide-react';
 import { Chip } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import { useVaultSearchStore } from '../store';
@@ -44,8 +45,7 @@ const GraphPresetSegmented: React.FC = () => {
 		<div
 			role="tablist"
 			aria-label="Graph view preset"
-			className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-p-0.5 pktw-rounded-md"
-			style={{ backgroundColor: 'rgba(124,58,237,0.06)' }}
+			className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
 		>
 			{PRESET_LABELS.map(([id, label, title]) => {
 				const active = preset === id;
@@ -58,18 +58,20 @@ const GraphPresetSegmented: React.FC = () => {
 						title={title}
 						onClick={() => setPreset(id)}
 						className={cn(
-							'pktw-shadow-none pktw-h-5 pktw-px-2.5 pktw-text-[11px] pktw-font-medium pktw-rounded-[5px]',
-							'pktw-transition-colors pktw-cursor-pointer pktw-border-none pktw-bg-transparent',
+							'pktw-relative pktw-inline-flex pktw-items-center pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-[11px] pktw-font-medium',
 							active
-								? 'pktw-text-pk-accent'
-								: 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent',
+								? 'pktw-text-white'
+								: 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors',
 						)}
-						style={active ? {
-							backgroundColor: '#fff',
-							boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(124,58,237,0.15)',
-						} : undefined}
 					>
-						{label}
+						{active && (
+							<motion.div
+								layoutId="graph-preset-thumb"
+								className="pktw-absolute pktw-inset-0 pktw-rounded-full pktw-bg-pk-accent"
+								transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+							/>
+						)}
+						<span className="pktw-relative pktw-z-10">{label}</span>
 					</button>
 				);
 			})}
@@ -151,33 +153,73 @@ const PinnedHubChip: React.FC = () => {
 };
 
 /**
- * "Graph view" toggle. Filled accent pill when on (clear on/off state);
- * outlined muted pill when off. Sits on the LEFT of the preset control
- * because it is the top-level state — presets and semantic overlay only
- * matter when Graph view is on.
+ * 3-way view mode toggle — List (default) / Tree view (coming soon) / Graph view.
+ * Capsule-pill layout: sunken container, purple-filled active option, muted
+ * inactive text. Uses framer-motion `layoutId` to slide the active thumb
+ * between options. Relies on `peak-design-root` reset (applied at modal
+ * root) to neutralise Obsidian's global button styles.
  */
-const GraphViewToggle: React.FC<{ isGraph: boolean; onToggle: () => void }> = ({ isGraph, onToggle }) => (
-	<button
-		type="button"
-		onClick={onToggle}
-		aria-pressed={isGraph}
-		title={isGraph ? 'Switch to list view' : 'Switch to graph view'}
-		className={cn(
-			'pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-h-6 pktw-px-2.5 pktw-rounded-full',
-			'pktw-text-[11px] pktw-font-medium pktw-transition-colors pktw-cursor-pointer pktw-shadow-none',
-			isGraph
-				? 'pktw-bg-pk-accent pktw-text-white pktw-border pktw-border-pk-accent'
-				: 'pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border hover:pktw-text-pk-accent hover:pktw-border-pk-accent/40',
-		)}
-	>
-		<Network className="pktw-w-3.5 pktw-h-3.5" />
-		<span>Graph view</span>
-	</button>
-);
-
-export const ResultPaneHeader: React.FC<ResultPaneHeaderProps> = ({ mode, className }) => {
+export const ViewModeToggle: React.FC = () => {
 	const resultView = useVaultSearchStore((s) => s.resultView);
 	const setResultView = useVaultSearchStore((s) => s.setResultView);
+	const isGraph = resultView === 'graph';
+	const isList = !isGraph;
+	// Wrapped in <button> children as absolutely-positioned motion.div —
+	// framer-motion animates a shared layoutId across mount points, so the
+	// purple thumb slides from previous-active to new-active on click.
+	const Thumb: React.FC = () => (
+		<motion.div
+			layoutId="view-mode-thumb"
+			className="pktw-absolute pktw-inset-0 pktw-rounded-full pktw-bg-pk-accent"
+			transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+		/>
+	);
+	const optBase = 'pktw-relative pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-[11px] pktw-font-medium';
+	const activeLabel = 'pktw-relative pktw-z-10 pktw-text-white';
+	const idleLabel = 'pktw-relative pktw-z-10 pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors';
+	const disabledLabel = 'pktw-relative pktw-z-10 pktw-text-pk-foreground-faint pktw-opacity-60';
+	return (
+		<div
+			role="tablist"
+			aria-label="Result view mode"
+			className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
+		>
+			<button type="button" title="List view"
+				onClick={() => { if (isGraph) setResultView('list'); }}
+				className={cn(optBase, isList ? activeLabel : idleLabel)}>
+				{isList && <Thumb />}
+				<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
+					<List className="pktw-w-3 pktw-h-3" /> List
+				</span>
+			</button>
+			<button type="button" disabled title="Tree view — coming soon"
+				className={cn(optBase, disabledLabel)}
+				style={{ cursor: 'not-allowed' }}>
+				<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
+					<ListTree className="pktw-w-3 pktw-h-3" /> Tree view
+				</span>
+			</button>
+			<button type="button" title="Graph view"
+				onClick={() => { if (!isGraph) setResultView('graph'); }}
+				className={cn(optBase, isGraph ? activeLabel : idleLabel)}>
+				{isGraph && <Thumb />}
+				<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
+					<Network className="pktw-w-3 pktw-h-3" /> Graph view
+				</span>
+			</button>
+		</div>
+	);
+};
+
+/**
+ * Right-side graph-specific controls: pinned hub chip + preset picker +
+ * semantic toggle. Only visible when the user is on graph view; on list
+ * view this renders nothing (returns null). The 3-way view-mode toggle
+ * itself moved to `<ViewModeToggle />`, rendered on the LEFT of the same
+ * toolbar row in SearchModal.
+ */
+export const ResultPaneGraphControls: React.FC<ResultPaneHeaderProps> = ({ mode, className }) => {
+	const resultView = useVaultSearchStore((s) => s.resultView);
 	const pinnedResultDocIds = useVaultSearchStore((s) => s.pinnedResultDocIds);
 	const setPinnedResultDocIds = useVaultSearchStore((s) => s.setPinnedResultDocIds);
 
@@ -191,22 +233,16 @@ export const ResultPaneHeader: React.FC<ResultPaneHeaderProps> = ({ mode, classN
 	}, [mode, pinnedResultDocIds, setPinnedResultDocIds]);
 
 	if (mode === 'help') return null;
-
-	const isGraph = resultView === 'graph';
-	const toggle = () => setResultView(isGraph ? 'list' : 'graph');
+	if (resultView !== 'graph') return <PinnedHubChip />;
 
 	return (
 		<div className={cn('pktw-flex pktw-items-center pktw-gap-2.5', className)}>
 			<PinnedHubChip />
-			<GraphViewToggle isGraph={isGraph} onToggle={toggle} />
-			{isGraph && (
-				<>
-					{/* Vertical divider between Graph view toggle and preset controls */}
-					<span aria-hidden="true" className="pktw-w-px pktw-h-5 pktw-bg-pk-border" />
-					<GraphPresetSegmented />
-					<SemanticToggle />
-				</>
-			)}
+			<GraphPresetSegmented />
+			<SemanticToggle />
 		</div>
 	);
 };
+
+// Back-compat alias so the old import site still resolves during rollout.
+export const ResultPaneHeader = ResultPaneGraphControls;
