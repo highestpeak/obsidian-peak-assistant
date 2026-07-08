@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { VaultSearchTab, VaultSearchFooterHints } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
+import { CopilotPickerContent } from '@/ui/view/copilot/CopilotPickerContent';
+import type { CopilotAction, DocumentContext } from '@/service/copilot/CopilotActionRegistry';
+import type { CopilotReviewHistoryRecord } from '@/service/copilot/CopilotReviewHistoryService';
+import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
+import type { IntentTabId } from '@/service/copilot/intent-hub';
 import { Search, Sparkles, Globe, X, RotateCcw, Library, Network, ChevronDown } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
@@ -29,7 +34,7 @@ import { RecentAnalysisList } from './components/RecentAnalysisList';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { useOpenHubGraphSubview } from './hooks/useOpenHubGraphSubview';
-import { ResultPaneHeader } from './components/ResultPaneHeader';
+import { ResultPaneGraphControls, ViewModeToggle } from './components/ResultPaneHeader';
 
 type TabType = 'vault' | 'ai';
 
@@ -481,22 +486,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	// `tab-VaultSearch` wires for Result Graph View hub anchors.
 	const openHubGraphSubview = useOpenHubGraphSubview();
 
-	/**
-	 * Display mode is derived from the raw input prefix, not from store mode.
-	 * Store mode may fallback to 'all' when there is no file context (desktop/mock),
-	 * but UI should still highlight what the user is trying to use (# / ?).
-	 */
-	const displayMode = vaultSearchQuery.trimStart().startsWith('#')
-		? ('heading' as const)
-		: ('all' as const);
-
-	const VAULT_CYCLE_MODES = ['all', 'heading'] as const;
-	const cycleVaultMode = (dir: 1 | -1) => {
-		const idx = VAULT_CYCLE_MODES.indexOf(displayMode as typeof VAULT_CYCLE_MODES[number]);
-		const safeIdx = idx >= 0 ? idx : 0;
-		const nextMode = VAULT_CYCLE_MODES[(safeIdx + dir + VAULT_CYCLE_MODES.length) % VAULT_CYCLE_MODES.length];
-		setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, nextMode));
-	};
+	// Heading mode moved to Copilot Modal's Atlas tab — no `#` cycling here.
 
 	const handleInputKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === 'Tab' && !e.shiftKey) {
@@ -505,11 +495,8 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 			setActiveTab('ai');
 			return;
 		}
-		if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-			e.preventDefault();
-			cycleVaultMode(e.key === 'ArrowUp' ? -1 : 1);
-			return;
-		}
+		// Alt+ArrowUp/Down previously cycled sub-modes; heading mode moved
+		// to Copilot Modal's Atlas tab, so this shortcut is retired.
 		if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
 			e.preventDefault();
 			return;
@@ -584,30 +571,13 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 				</div>
 			</div>
 
-			{/* Mode picker row */}
-			<div className="pktw-flex-shrink-0 pktw-px-3 pktw-py-1.5 pktw-bg-pk-background pktw-border-b pktw-border-pk-border pktw-flex pktw-items-center pktw-gap-1">
-			{(['all', 'heading'] as const).map((mode) => {
-					const labels: Record<string, string> = { all: 'All', heading: 'Heading' };
-					const isActive = displayMode === mode;
-					return (
-						<Button
-							key={mode}
-							variant="ghost"
-							size="sm"
-							style={{ cursor: 'pointer' }}
-							onClick={() => setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, mode))}
-							className={cn(
-								'pktw-shadow-none pktw-h-6 pktw-px-2.5 pktw-text-[11px] pktw-font-medium pktw-rounded-full pktw-transition-colors',
-								isActive
-									? 'pktw-bg-pk-accent/10 pktw-text-pk-accent pktw-border pktw-border-pk-accent/25'
-									: 'pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground hover:pktw-bg-pk-background-hover',
-							)}
-						>
-							{labels[mode]}
-						</Button>
-					);
-				})}
-				<ResultPaneHeader mode={quickSearchMode} className="pktw-ml-auto" />
+			{/* View toolbar row — heading mode moved to Copilot Modal's Atlas tab.
+			    Left: 3-way ViewModeToggle (List / Tree view / Graph view).
+			    Right: graph-only controls (presets + semantic) that appear
+			    when Graph view is active. */}
+			<div className="pktw-flex-shrink-0 pktw-px-3 pktw-py-1.5 pktw-bg-pk-background pktw-border-b pktw-border-pk-border pktw-flex pktw-items-center pktw-gap-2.5">
+				<ViewModeToggle />
+				<ResultPaneGraphControls mode={quickSearchMode} className="pktw-ml-auto" />
 			</div>
 
 			{/* Content area — side-by-side results + inspector */}
@@ -677,10 +647,29 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	);
 };
 
+interface QuickSearchModalContentProps {
+	onClose?: () => void;
+	/** Optional Vault Intelligence context supplied by QuickSearchModal wrapper. */
+	intelCtx?: DocumentContext | null;
+	/** Fired when the user runs a vault-intelligence auto-run. */
+	onVaultAuto?: (mode: 'fast' | 'complete') => void;
+	/** Fired when the user opens a past vault review record. */
+	onOpenVaultRecord?: (record: VaultReviewHistoryRecord) => void;
+}
+
 /**
  * Root quick search modal content with tabs for vault and AI search.
+ * A floating Sparkles button in the tab bar reveals the Vault Intelligence
+ * panel (activeTab='intel'). Tab-key cycling only rotates between 'vault'
+ * and 'ai' — the intel panel is button-only to avoid accidentally triggering
+ * an expensive review.
  */
-export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = ({
+	onClose,
+	intelCtx = null,
+	onVaultAuto,
+	onOpenVaultRecord,
+}) => {
 	const { activeTab, setActiveTab } = useSharedStore();
 	// Graph view claims all available modal height (list view stays
 	// content-driven so short result sets don't leave empty space).
@@ -711,7 +700,13 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 	const handleContainerKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === 'Tab' && !e.shiftKey) {
 			e.preventDefault();
-			setActiveTab(activeTab === 'vault' ? 'ai' : 'vault');
+			// Tab cycles only vault ↔ ai. When on 'intel', Tab exits back to vault.
+			if (activeTab === 'intel') setActiveTab('vault');
+			else setActiveTab(activeTab === 'vault' ? 'ai' : 'vault');
+		}
+		if (e.key === 'Escape' && activeTab === 'intel') {
+			e.preventDefault();
+			setActiveTab('vault');
 		}
 	};
 
@@ -723,7 +718,7 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 			tabIndex={-1}
 			style={modalStyle}
 		>
-			<div className="pktw-flex-shrink-0 pktw-flex pktw-border-b pktw-border-pk-border pktw-bg-pk-surface-raised">
+			<div className="pktw-flex-shrink-0 pktw-relative pktw-flex pktw-border-b pktw-border-pk-border pktw-bg-pk-surface-raised" style={{ minHeight: 48 }}>
 				<TabButton
 					tab="vault"
 					label="Vault Search"
@@ -738,9 +733,40 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 					onClick={() => setActiveTab('ai')}
 					className="pktw-rounded-tr-lg"
 				/>
+				{/* Floating Vault Intelligence button — outside Tab-key cycle */}
+				<div className="pktw-absolute pktw-right-3 pktw-top-0 pktw-bottom-0 pktw-z-10 pktw-flex pktw-items-center">
+					<button
+						type="button"
+						onClick={() => setActiveTab(activeTab === 'intel' ? 'vault' : 'intel')}
+						title="Vault Intelligence — vault-wide AI review (expensive, manual)"
+						className={cn(
+							'pktw-inline-flex pktw-items-center pktw-gap-1.5',
+							'pktw-text-[11px] pktw-font-medium pktw-whitespace-nowrap',
+							'pktw-rounded-full pktw-border pktw-px-2.5 pktw-py-1',
+							activeTab === 'intel'
+								? 'pktw-bg-pk-accent pktw-text-white pktw-border-pk-accent'
+								: 'pktw-bg-pk-background pktw-text-pk-accent pktw-border-pk-accent-tint hover:pktw-bg-pk-accent-tint',
+						)}
+					>
+						<Sparkles className="pktw-w-3 pktw-h-3" />
+						<span>Vault Intelligence</span>
+					</button>
+				</div>
 			</div>
 			{activeTab === 'ai' ? (
 				<AITabContent onClose={onClose} activeTab={activeTab} setActiveTab={setActiveTab} />
+			) : activeTab === 'intel' ? (
+				<CopilotPickerContent
+					hideTabBar
+					initialTab="vault"
+					ctx={intelCtx}
+					onSelect={() => { /* Vault actions dispatched separately */ }}
+					onAuto={(_tab, mode) => onVaultAuto?.(mode)}
+					onOpenHistoryRecord={() => { /* document-scope only; unused here */ }}
+					onOpenAllHistory={() => { /* wired via Copilot Modal path */ }}
+					onOpenVaultRecord={(record) => onOpenVaultRecord?.(record)}
+					onClose={onClose}
+				/>
 			) : (
 				<VaultTabContent onClose={onClose} activeTab={activeTab} setActiveTab={setActiveTab} />
 			)}

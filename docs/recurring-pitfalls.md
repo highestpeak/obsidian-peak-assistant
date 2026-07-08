@@ -202,6 +202,135 @@ For any streaming text accumulation:
 
 ---
 
+## 5. UI shell registered after long awaits in `onload` — one hang = plugin invisible
+
+### Symptom
+- User: "chat icon 消失了 / 打不开 search modal / 命令搜不到 / settings tab 没了"
+- 插件在 Obsidian 里显示"已启用"，但 ribbon、command palette、settings tab 全部不出现
+- console 里没有明显 error，最后一条 log 停在某个 sqlite / init / 长 await 之前
+- 每次给 `onload` 加东西之后偶发；`git log --grep="fix(boot"` 显示这个模式重复过很多次
+
+### Mechanism
+1. `Plugin.onload()` 是一条巨长的串行 await 链（30+ 步）：settings → templates → aiServiceManager → **sqlite → search → indexer → sessionContext** → ambient → …
+2. `viewManager.init()`（ribbon 注册）+ `addCommand` 循环 + `addSettingTab` 排在**中后段**，紧跟在 `await initSqlite()` 之后
+3. 只要前面任何一个 await hang 或抛出：
+   - **Hang**：onload 永远不 resolve，UI 注册那步永远走不到
+   - **Throw 未捕获**：同上
+   - **Throw 被 catch 但 catch 后跳过 UI 注册**：更隐蔽
+4. Obsidian 的插件管理器只根据 `load()` 是否 resolve 判断状态。所以插件"已启用"但界面全空
+5. 每次给 init 链加新的东西（Ambient / debug-trace / context pipeline / hub runtime / MCP connect / ...），都可能触发一次同类事故
+
+### Instances
+
+| Date | 触发 change | Hang / throw 点 | Fix |
+|---|---|---|---|
+| 2026-07-06 | Debug trace 引入（`AppRuntimeRegistry.setDebugTracePort` 严格模式 + 多处新增 await）+ 相关 refactor 后触发 `initSqlite` 链上静默卡住 | `await this.initSqlite()` 挂住；下游 `viewManager.init()` 永远没跑到，ribbon icon 缺失 | `main.ts` reshape：ViewManager + registerCoreEvents + 所有 addCommand + addSettingTab + capabilityRegistry + debug-trace recorder 全部移到 `initSqlite` 之前；仅真依赖 sqlite/SessionContext 的（Ambient runtime）留在 initSqlite 之后 |
+| 2026-XX-XX | `8b101962` — DocumentLoaderManager init-order cycle on plugin re-enable | 构造期循环 → onload throw | (历史修复，同类模式) |
+| 2026-XX-XX | `ce380273` — morning-briefing modal missing ServiceProvider | 早期开的 modal 拿不到 context throw | (历史修复，同类模式) |
+| _(add next instance here)_ | | | |
+
+### Detection signals
+- 用户描述里出现"chat icon 不见了 / 命令不见了 / settings tab 消失 / modal 打不开"，且 devtools console 里插件加载没报错
+- Console 里能看到 `Dev Tools initialized` / `sqliteStoreManager` 之类的早期 log，但**没有** `[Peak Assistant] SQLite and search services initialized` 或等价的收尾 log
+- `git log --grep="fix(boot)\|fix(onload)\|fix(morning-briefing)"` 已经有多条 → 这就是重复模式的直接证据
+- 症状总是紧跟在给 `onload` 加东西的 commit 之后
+
+### Prevention checklist
+**核心原则：UI shell 无条件先注册，backend 慢或失败都不能拖累它。**
+
+1. `viewManager.init()`（ribbon + view types）+ `registerCoreEvents` + 所有 `addCommand` + `addSettingTab` + `capabilityRegistry` 排在**任何** `await initSqlite / initSearch / initIndex / initSessionContext` **之前**
+2. Backend 依赖 sqlite / search 的 runtime（Ambient、部分 Copilot 功能）可以留在后面，但它们的 UI 入口（settings 里的 tab、command）**必须已经注册好**，被调用时优雅降级（`"still initialising"` 提示）
+3. **加 onload 步骤前先问自己**："如果这一步 hang 30 秒，用户还能用插件吗？" 如果答案是 No → 这步应该 non-blocking（fire-and-forget）或放在 UI shell 之后
+4. 涉及 `AppRuntimeRegistry.set*(...)`（严格模式，重复 set 会抛）的注册：调用点必须在 `onunload` 有对应 `clear*` + `try/catch`；同一 session 里 hot-reload 才不会因为残留而 throw
+5. 定期扫一眼 `git log --grep="fix(boot"`：每多一条历史修复都是这个模式还没根治的证据
+
+---
+
+## 6. Heavy loader called for a lightweight check — parse cost eats the fast path
+
+### Symptom
+- "为什么 X 这么慢" 里 X 是**快速检查**类操作：is-dirty / has-changed / diff-since-last-index / cache-invalidate
+- 单文件耗时远高于纯 I/O + hash 的合理成本（几十 ms vs. 1 ms）
+- Diagnostic / profiler 显示时间落在 markdown 解析 / TextRank / keyword 抽取 / summary 构建里，而调用点其实只用了返回对象的 1-2 个字段
+- 总耗时 = O(候选文件数 × 完整解析成本)，随 vault 大小线性放大
+
+### Mechanism
+1. 存在一个"完整加载"入口（`DocumentLoaderManager.readByPath` / `loader.readFile`），它产出**完整 Document** — 包含 readText + remark parse + TextRank + keyword bundle + LLM stub
+2. 另一个"只需要一个 field"的调用者（scan / dirty-check / cache invalidation / mtime-vs-hash 比对）图省事，直接调 readByPath 拿这一个字段
+3. 每次调用都白跑一遍完整解析。对 markdown/txt，实际需要的 `contentHash` 就是 `hashString(readText())`，直接算只要 1-2ms；readByPath 42ms/file
+4. 对 canvas / PDF / DOCX / Image：hash 是从**解析后**的内容算的（例如 canvas 是 join 所有 node 的 text），必须走 heavy path。这类文件在笔记 vault 里占比 <1%，被"总是走 heavy"的选择拖累的是 markdown 主体
+5. 结果：scan 阶段 1319 file × 42ms = 56s；改成 fast-path markdown/txt 后 1319 × 0.4ms = 0.5s（**82× 提速**）
+
+### Instances
+
+| Date | Area | Heavy method misused | What was actually needed | Fix |
+|---|---|---|---|---|
+| 2026-07-06 | `indexInitializer.scanForIndexChanges → processMaybeIndexBatch` | `DocumentLoaderManager.readByPath` (readText + remark parse + TextRank + keyword bundle + summary stub) | 只需要 `contentHash = hashString(readText(file), 8)` — markdown/txt 的 loader 就是这么算的 | `indexInitializer.ts:processMaybeIndexBatch` 加 fast path：`docItem.type === 'markdown' \|\| 'txt'` 时用 `vault.readText + hashString`；canvas/PDF/DOCX 等仍走 readByPath。同时加 `[scan-diag]` 一行输出让下次一眼定位（fast=/slow= 分开、top-10 slowest 文件） |
+| _(add next instance here)_ | | | | |
+
+### Detection signals
+- 用户描述里出现"scan 略长 / index 检查慢 / 每次启动要等 X 秒"
+- 单文件耗时远超预期：markdown 文件的 read + hash 应该 <5ms/file，如果日志显示 30-100ms/file，几乎肯定是这个坑
+- Profile 火焰图里 "parse" / "TextRank" / "keyword" 帧出现在**非索引路径**的调用栈里
+- 调用点用 `readByPath` 后只解构一两个字段（尤其是 hash / size / mtime / path），其他字段都不用
+
+### Prevention checklist
+
+**核心原则：field-level 操作应该有 field-level API，别为一个字段跑一整套解析。**
+
+1. **写"只用一个 field"的调用点前**：先看这个 field 是怎么产生的 —— 是解析副产品（例如 title、tags、textrank），还是 loader 直接可算（例如 hash of raw content、size、mtime）？
+2. **field 是直接可算的（hash / size / mtime）**：在 manager 上暴露一个 lightweight 方法（例如 `computeContentHash(path)`），不要复用 heavy loader
+3. **加诊断 log**：per-file 耗时 + 总时间 + fast/slow 路径分桶。如果 avg > 5ms 而 field 又是"简单可算"的，就是这个坑
+4. **必须走 heavy path 的少数格式**（binary、需要解析才能算 hash）：保留 fallback 就好，不要为了一致性把所有格式都拖到 heavy path
+5. **命名警觉**：任何叫 `readByPath` / `loadFull` / `parseDocument` / `getDocument` 的方法，出现在快速检查路径上都要打问号
+
+---
+
+## 7. Scoped reset over-nulls a property we also use for our own layout
+
+### Symptom
+- Element is positioned correctly at rest, but **jumps / shifts / stretches on hover / focus / active** — sometimes with a size change, sometimes a position change.
+- The state that breaks matches a pseudo-class the reset targets (`:hover` / `:focus` / `:active` / `:focus-visible`).
+- DevTools Computed Styles on the broken state shows the layout property forced to `none` / `0` / `auto` by a `.peak-design-root button:hover { ... !important }` rule.
+- Attempting the same layout technique on non-`<button>` elements (e.g. wrap in `<div>`) works fine, which confirms the reset is the source.
+
+### Mechanism
+1. `obsidian-reset.css` defensively nulls geometry-changing properties on **all** bare tags inside `.peak-design-root` (see pattern #3): `transform: none !important; box-shadow: none !important; scale: none !important; translate: none !important;` on `:hover / :focus / :active / :focus-visible`.
+2. This is correct as a defense against Obsidian themes attaching `transform: translateY(-1px)` etc.
+3. **But we also legitimately use `transform` for centering** (`top: 50%; transform: translateY(-50%)`), micro-nudges, rotations, etc.
+4. At rest, our inline / Tailwind `transform` applies normally.
+5. On hover/focus, the reset's `transform: none !important` fires and wipes our own transform → the element snaps to the un-transformed position (in the centering case, from visual center to top:50% anchor, which reads as "jumped down").
+6. This only shows up on **interactive states** and only for **bare tags the reset targets** (`button`, and any others we extend the reset to).
+
+### Instances
+
+| Date | Element | Layout property clobbered | Original technique | Fix |
+|---|---|---|---|---|
+| 2026-07-08 | Vault Intelligence pill in Quick Search tab bar (`SearchModal.tsx:737`) | `transform: translateY(-50%)` on hover, reset by `.peak-design-root button:hover { transform: none !important }` | Absolute-positioned `<button>` centered with `top:50% + translateY(-50%)`; hovered button jumped down to top:50% anchor | Wrap in absolute `<div>` `top-0 bottom-0 flex items-center`, let the `<button>` inside flow normally at natural height — centering no longer relies on `transform` |
+| _(add next instance here)_ | | | | |
+
+### Detection signals
+- User words: "hover 上去会向下浮动 / 抖动 / 位置错位 / 变大变小 only on hover".
+- Reproduce: in Obsidian DevTools, hover the element, watch Computed Styles for `transform` (or `scale` / `translate` / `box-shadow`) flipping to `none` from your intended value with a strikethrough on your rule and no strikethrough on the reset rule.
+- The reset in `src/styles/obsidian-reset.css` lists the property that "broke" as `X: none !important` on the matching pseudo-class.
+
+### Prevention checklist
+
+**Core principle: don't lean on `transform` (or any other reset-nulled property) to hold layout on a bare tag inside `.peak-design-root`. Use techniques that survive `transform: none !important`.**
+
+1. **Centering:** don't use `top:50% + translateY(-50%)` on a `<button>` (or any bare tag the reset touches). Use one of:
+   - Parent `flex items-center` + child in normal flow.
+   - Absolute wrapper `top-0 bottom-0 flex items-center` around the button (button itself stays natural height).
+   - `top: <half of container - half of element>px` if you know both heights exactly.
+2. **Nudges (`translateY(-1px)` for optical alignment):** move them to the outer non-button wrapper, or use `margin-top: -1px` instead.
+3. **Rotations / scales tied to state:** if `hover:rotate-90` or `hover:scale-105` is essential, apply on a non-button wrapper, or extend the reset to allow that specific case (unusual — think twice).
+4. **Before adding a new property to the reset's null list**, `grep` the codebase for `transform:`, `translate`, `scale(`, `box-shadow:` on `<button>` — anything relying on that property for layout will break silently on hover.
+5. **When user reports "hover 时按钮抖 / 移位"**, check this file FIRST before debugging the component — the reset is almost always the cause.
+
+**Cross-ref:** pattern #3 is the outbound leak (Obsidian's rule wins); this pattern is the inbound clobber (our defense wins over our own layout). Fix families are inverse: #3 → add !important null; #7 → stop relying on the nulled property.
+
+---
+
 ## How to consult this doc
 
 - Bug feels familiar? `grep` this file for the symptom phrase before re-deriving the root cause.
