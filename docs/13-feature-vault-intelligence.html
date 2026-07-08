@@ -45,6 +45,9 @@
     .side-nav a { display: block; padding: 5px 8px; border-left: 2px solid transparent; color: var(--muted); font-size: 14px; line-height: 1.35; border-radius: 6px; }
     .side-nav a.sub { margin-left: 10px; font-size: 13px; }
     .side-nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--soft-green); text-decoration: none; }
+    .nav-group { margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .nav-group:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+    .nav-group-title { display: block; margin: 0 0 6px; padding: 0 8px; color: var(--muted); font-size: 11px; font-weight: 820; letter-spacing: 0.08em; text-transform: uppercase; }
     .side-nav .nav-note { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
     section { width: 100%; padding: 42px 0; border-bottom: 1px solid var(--line); }
     h2 { margin: 0 0 14px; font-size: 31px; line-height: 1.18; letter-spacing: 0; }
@@ -54,11 +57,12 @@
     .lead { color: var(--ink); font-size: 18px; line-height: 1.72; }
     .prose { color: var(--muted); font-size: 16px; }
     .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
-    .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .claim strong { display: inline; margin: 0; color: inherit; }
+    .claim > strong:first-child { display: block; margin-bottom: 5px; color: var(--ink); }
     .warn { border-left-color: var(--gold); }
-    .warn strong { color: var(--gold); }
+    .claim.warn > strong:first-child { color: var(--gold); }
     .danger { border-left-color: var(--red); }
-    .danger strong { color: var(--red); }
+    .claim.danger > strong:first-child { color: var(--red); }
     .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
     .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 760; }
     .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
@@ -66,7 +70,8 @@
     .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
     .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
     table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
-    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    table.doc-table { table-layout: fixed; }
+    th, td { padding: 11px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; line-height: 1.52; word-break: normal; overflow-wrap: break-word; hyphens: none; }
     th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
     tr:last-child td { border-bottom: 0; }
     td { color: var(--muted); }
@@ -83,6 +88,19 @@
     .note-item { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
     .note-item b { display: block; margin-bottom: 3px; }
     .note-item span { color: var(--muted); font-size: 14px; }
+    .signal-name { display: grid; gap: 5px; }
+    .signal-name strong { color: var(--ink); }
+    .signal-name em { color: var(--muted); font-size: 12px; font-style: normal; }
+    .mini-list, .steps-list { margin: 8px 0 0; padding-left: 19px; color: var(--muted); font-size: 14px; line-height: 1.58; }
+    .mini-list li, .steps-list li { margin: 4px 0; }
+    .steps-list { margin-top: 18px; }
+    .action-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .action-chips code { white-space: nowrap; }
+    .code-shape { margin: 18px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--code-bg); overflow-x: auto; }
+    .code-shape code { display: block; padding: 0; background: transparent; color: var(--ink); font-size: 13px; line-height: 1.58; }
+    .field-list { display: grid; grid-template-columns: 180px 1fr; gap: 8px 16px; margin: 16px 0 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .field-list dt { color: var(--ink); font-weight: 780; }
+    .field-list dd { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.58; }
     .recipe-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 22px; }
     .recipe { padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: 0 10px 22px rgba(23, 34, 29, 0.04); }
     .recipe h3 { margin: 0 0 8px; font-size: 17px; color: var(--ink); }
@@ -103,6 +121,7 @@
     @media (max-width: 980px) {
       .recipe-grid { grid-template-columns: 1fr; }
       .kv { grid-template-columns: 1fr; }
+      .field-list { grid-template-columns: 1fr; }
     }
   </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
   <link rel="stylesheet" href="assets/tables-density.css">
@@ -113,11 +132,11 @@
     <header>
       <div class="eyebrow">13 · Feature · Vault Intelligence · 让 Vault 显影</div>
       <h1>Vault Intelligence 告诉你哪些笔记正在腐烂，哪些地方缺连接，哪些可以修。</h1>
-      <p class="subtitle">Search（12）帮你找回一篇具体笔记。<strong>Vault Intelligence</strong> 处理另一个问题：把整个 Vault 当成一张有健康度、断裂点、失效枢纽的知识图，把肉眼看不到的信号显影出来。这份文档面向两个读者：想理解 <em>Health / Hubs / Structural holes / Lint / Bridge</em> 各自意味着什么并且知道下一步怎么做的 Obsidian 用户；以及要维护这条管线的开发者。用户视角在前，技术附录在后。</p>
+      <p class="subtitle">Search（12）帮你找回一篇具体笔记。<strong>Vault Intelligence</strong> 处理另一个问题：把整个 Vault 当成一张有健康度、断裂点、失效枢纽的知识图，把肉眼看不到的信号显影出来。这份文档面向两个读者：想理解 <em>Health / Hubs / Structural holes / Lint / Bridge</em> 各自意味着什么并且知道下一步怎么做的 Obsidian 用户；以及要维护这条管线的开发者。用户视角在前，组装链路和证据入口在后。</p>
       <div class="meta">
         <span>Reference doc</span>
-        <span>Approx. length: 约 12k 混合字符</span>
-        <span>Reading time: 24-28 分钟</span>
+        <span>Approx. length: 约 16k 混合字符</span>
+        <span>Reading time: 32-36 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
       </div>
     </header>
@@ -136,18 +155,24 @@
           <a href="#user-workflows">用户如何触发</a>
         </div>
         <div class="nav-group">
-          <span class="nav-group-title">信号细节</span>
+          <span class="nav-group-title">维护能力</span>
           <a href="#signals">每类信号细看</a>
+          <a class="sub" href="#signals-structural">Structural</a>
+          <a class="sub" href="#signals-content">Content</a>
+          <a class="sub" href="#signals-temporal">Temporal</a>
+          <a class="sub" href="#signals-semantic">Semantic</a>
+          <a class="sub" href="#signals-tags">Tags</a>
           <a href="#fixable">可修复建议</a>
+          <a href="#hub-generation-agent">Hub 生成</a>
         </div>
         <div class="nav-group">
           <span class="nav-group-title">技术与排障</span>
-          <a href="#technical-appendix">技术附录</a>
+          <a href="#technical-appendix">组装链路</a>
           <a href="#failure-modes">失效模式与恢复</a>
           <a href="#maintain">维护规则</a>
-          <a href="#evidence">代码证据</a>
+          <a href="#evidence">证据入口</a>
         </div>
-        <div class="nav-note">先看 <a href="#at-a-glance">五类信号一览</a>，用户视角够了就止步；想理解“为什么某个信号今天是灰的”，跳到 <a href="#failure-modes">失效模式</a>。</div>
+        <div class="nav-note">先看 <a href="#at-a-glance">五类信号一览</a>；想排障跳到 <a href="#failure-modes">失效模式</a>。</div>
       </nav>
 
       <div class="content">
@@ -247,7 +272,12 @@ flowchart LR
 
         <section id="user-workflows">
           <h2>用户如何触发</h2>
-          <p class="lead">Vault Intelligence 没有独立视图。用户从 <strong>Open Copilot（Vault tab）</strong>、<strong>Quick Search（AI Analysis）</strong>、<strong>AI Graph</strong> 三个入口触碰这些信号。理解不同入口拿到的是同一份数据的不同投影是关键。</p>
+          <p class="lead">Vault Intelligence 没有独立视图，也不要求用户记住额外命令。主入口是 <strong>Open Copilot（Vault tab）</strong> 里的 Vault Maintenance：用户在同一个面板里看 scan / 信号建议，也可以选择生成或更新 hub 综述。Quick Search 和 AI Graph 只是消费同一份数据的不同投影。</p>
+
+          <div class="claim">
+            <strong>Vault Maintenance segment 草图</strong>
+            关于 Vault tab 里如何聚合 stats、overview graph、hubs、current note 位置和 last report，见 <a href="superpowers/specs/2026-07-07-vault-maintenance-graph-segment.html">Vault Maintenance Graph Segment 低保真设计</a>。Document tab / Search drawer 的 hub context 需求登记在 <a href="planned-requirements.html">Planned Requirements</a>；这类补充只定信息架构，不定最终 compare panel UI。
+          </div>
 
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
@@ -257,8 +287,8 @@ flowchart LR
             <tbody>
               <tr>
                 <td><strong>Open Copilot → Vault tab</strong><br><span class="pill green">主入口</span></td>
-                <td>Vault Review 摘要（fingerprint + freshness + 最近一次报告）；用户点 "Scan now" 会跑一次 Vault Lint full scan。</td>
-                <td>手动触发；用户主动点 scan 才会重算。</td>
+                <td>Vault Maintenance：Vault Review 摘要、Scan now、信号复核、Hub 生成 / 更新综述。</td>
+                <td>手动触发；用户在同一个 Copilot Vault 面板里选择，不需要单独记一个 hub 命令。</td>
                 <td>Scan 结果落 <code>vault.sqlite</code>（<code>VaultLintRepo</code>）；报告落 Vault 里的 Copilot review 历史。</td>
               </tr>
               <tr>
@@ -317,162 +347,178 @@ flowchart LR
 
           <div class="claim">
             <strong>为什么合并到 Copilot Picker 而不是独立面板</strong>
-            用户不需要记住“扫 lint”这个内部动作，用户需要的是<em>“Vault 现在如何 + 下一步做什么”</em>。所以 lint 应作为 Vault Intelligence 的数据 provider，而不是一个需要用户单独学习的功能孤岛；扫描、解释、修复和后续对话应该在 Copilot Vault tab 里衔接。
+            用户不需要记住“扫 lint”或“整理 hub”这些内部动作，用户需要的是<em>“Vault 现在如何 + 下一步做什么”</em>。所以信号复核和 Hub 生成都应该作为 Vault Maintenance 的选项出现在 Copilot Vault tab 里；扫描、解释、修复、生成综述和后续对话在同一个入口衔接。
           </div>
         </section>
 
         <section id="signals">
           <h2>每类信号细看</h2>
-          <p class="lead">下面按维度展开。每个 signal 只回答三件事：它意味着什么、触发条件是什么、什么时候该相信或忽略它。尚未成为 UI finding 的信号，先写成“需要设计成形”的规则草案，不在概览里抢注意力。</p>
+          <p class="lead">这节按维度展开。每个 signal 行里直接解释名字、例子和处理方式，避免读者在单独 glossary 和真正规则之间来回跳。</p>
 
-          <h3 style="margin-top: 26px;">Structural · 图上有没有断裂</h3>
+          <h3 id="signals-structural" style="margin-top: 26px;">Structural · 图上有没有断裂</h3>
           <table class="doc-table">
-<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+<colgroup><col style="width: 24%"><col style="width: 36%"><col></colgroup>
             <thead>
-              <tr><th>Signal</th><th>当前呈现</th><th>阈值 / 触发条件</th><th>什么时候相信它</th></tr>
+              <tr><th>Signal</th><th>怎么理解</th><th>触发与处理</th></tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>S-BROKEN-LINK</strong><br><em>error</em></td>
-                <td><span class="pill green">用户可见</span></td>
-                <td>Obsidian <code>metadataCache.unresolvedLinks</code> 里所有非空 target；一次统计到每个 source 文件的所有 broken target 数。无阈值。</td>
-                <td>永远可信。Obsidian 自己算好的。</td>
+                <td class="signal-name"><strong>S-BROKEN-LINK</strong><em>error · 用户可见</em></td>
+                <td>某篇笔记里有指向不存在 target 的 wikilink。</td>
+                <td>直接来自 Obsidian unresolved links，无阈值。优先 create / redirect / remove；如果集中在导入目录，先看是不是应该 ignore。</td>
               </tr>
               <tr>
-                <td><strong>S-ORPHAN</strong><br><em>warning</em></td>
-                <td><span class="pill green">用户可见</span></td>
-                <td>hard orphan = 在图上没有任何 in/out edge。数量上限 <code>ORPHAN_FETCH_LIMIT</code>；有 semantic neighbor 时附带 <em>revivalSuggestion</em>。</td>
-                <td>要求索引至少跑到 semantic 深度（否则没有语义 revival 建议，只有硬孤儿列表）。见 <a href="04-configuration-and-user-views.html#indexing">Index depth</a>。</td>
+                <td class="signal-name"><strong>S-ORPHAN</strong><em>warning · 用户可见</em></td>
+                <td>硬孤儿：图上没有任何 in/out edge。</td>
+                <td>可直接相信。semantic 深度可提供 revival suggestion；fast 深度只能列出孤儿本身。见 <a href="04-configuration-and-user-views.html#indexing">Index depth</a>。</td>
               </tr>
               <tr>
-                <td><strong>S-SOFT-ORPHAN</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td>阈值 <code>softOrphanMaxDegree = 2</code>（度数 ≤ 2 判定为软孤儿）。</td>
-                <td>适合做低优先级整理建议；必须和语义邻居一起看，不能直接当成“这篇没价值”。</td>
+                <td class="signal-name"><strong>S-SOFT-ORPHAN</strong><em>detector 已落地 · UI 解释待加强</em></td>
+                <td>软孤儿：链接数量很少，但不是 0。例子：一篇读书笔记只连到当天 daily note，没有连到主题笔记。</td>
+                <td><code>softOrphanMaxDegree = 2</code>。适合做低优先级整理建议；不要把它解释成“这篇笔记没价值”。</td>
               </tr>
               <tr>
-                <td><strong>S-MISSING-BACKLINK</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td>阈值 <code>missingBacklinkMinSimilarity = 0.70</code>：语义邻近但没有反向链接的对。</td>
-                <td>—</td>
+                <td class="signal-name"><strong>S-MISSING-BACKLINK</strong><em>detector 已落地 · UI 解释待加强</em></td>
+                <td>两篇笔记语义很近，但彼此没有链接。</td>
+                <td><code>missingBacklinkMinSimilarity = 0.70</code>。先建议显式 wikilink；如果只是概念相似但写作意图不同，用户可 dismiss。</td>
               </tr>
               <tr>
-                <td><strong>S-ISLAND-CLUSTER</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td>阈值 <code>islandClusterMaxSize = 5</code>：连通分量大小 ≤ 5 且与主图不连通。</td>
-                <td>—</td>
+                <td class="signal-name"><strong>S-ISLAND-CLUSTER</strong><em>detector 已落地 · 需要更好的可视化</em></td>
+                <td>小 community 像一座孤岛，内部有少量关系，但没有接回主图。例子：一次性导入的课程材料形成 4 篇小组，和日常研究笔记没有桥。</td>
+                <td><code>islandClusterMaxSize = 5</code>。UI 上最好显示成员样本和可连接的主图候选，而不是只报 community id。</td>
               </tr>
               <tr>
-                <td><strong>S-FRAGILE-BRIDGE</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td>阈值 <code>lowCohesionMaxDensity = 0.30</code> 类；桥梁笔记连接两个 community，但自身度数低。</td>
-                <td>—</td>
+                <td class="signal-name"><strong>S-FRAGILE-BRIDGE</strong><em>detector 已落地 · 需要图上解释</em></td>
+                <td>脆弱桥：community 内部连接密度太低，像靠几条细线勉强连着。例子：几篇相关笔记只通过一篇总览互相触达。</td>
+                <td>当前阈值是 internal density ≤ 0.30 且成员数 ≥ 3。处理上是补内部链接或拆分，不是直接删除。</td>
               </tr>
             </tbody>
           </table>
 
-          <h3 style="margin-top: 30px;">Content · 笔记本身够不够用</h3>
+          <p class="read-note"><b>Bridge note：</b>它不是 detector 名字，而是一种修复产物：人为写一篇短 note，把两个 community 的核心节点连起来。它通常来自 <code>bridge-to-main</code> / <code>create-hub</code> 这类 action。</p>
+
+          <h3 id="signals-content" style="margin-top: 30px;">Content · 笔记本身够不够用</h3>
           <table class="doc-table">
-<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+<colgroup><col style="width: 24%"><col style="width: 36%"><col></colgroup>
             <thead>
-              <tr><th>Signal</th><th>当前呈现</th><th>阈值 / 触发条件</th><th>什么时候相信它</th></tr>
+              <tr><th>Signal</th><th>怎么理解</th><th>触发与处理</th></tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>C-EMPTY</strong><br><em>warning</em></td>
-                <td><span class="pill green">用户可见</span></td>
-                <td>剥离 frontmatter + headings 后 prose 长度 = 0。</td>
-                <td>永远可信；容易假阳的场景（例如整篇是图片/嵌入）用户手动 dismiss。</td>
+                <td class="signal-name"><strong>C-EMPTY / C-STUB</strong><em>用户可见</em></td>
+                <td>空笔记或只有很短 prose 的笔记。</td>
+                <td><code>C-STUB</code> 默认 &lt; 100 chars。Daily note、图片笔记、引用收集可能是假阳，适合 dismiss 或 folder-level ignore。</td>
               </tr>
               <tr>
-                <td><strong>C-STUB</strong><br><em>info</em></td>
-                <td><span class="pill green">用户可见</span></td>
-                <td>剥离后长度 &gt; 0 且 &lt; <code>stubMaxChars = 100</code>。</td>
-                <td>纯粹字数判断；不适合“笔记就应该简短”的语境（例如 daily notes）。</td>
+                <td class="signal-name"><strong>C-OVERSIZED</strong><em>detector 已落地</em></td>
+                <td>单篇笔记过长，后续搜索、阅读和维护都变重。</td>
+                <td><code>oversizedMinWords = 5000</code>。处理通常是 suggest split，不是强制拆分。</td>
               </tr>
               <tr>
-                <td><strong>C-OVERSIZED</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td>阈值 <code>oversizedMinWords = 5000</code>。</td>
-                <td>—</td>
+                <td class="signal-name"><strong>C-DUPLICATE</strong><em>detector 已落地</em></td>
+                <td>两篇笔记标题和语义都很像，可能重复。</td>
+                <td><code>duplicateMinSimilarity = 0.92</code> 且 title Jaccard ≥ 0.50。处理是 merge / alias / keep-both decision，不能自动合并。</td>
               </tr>
               <tr>
-                <td><strong>C-DUPLICATE</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td><code>duplicateMinSimilarity = 0.92</code> + <code>duplicateMinTitleJaccard = 0.50</code>。</td>
-                <td>—</td>
-              </tr>
-              <tr>
-                <td><strong>C-FRONTMATTER-MISSING / C-NAMING-VIOLATION</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td>无阈值，规则驱动。</td>
-                <td>—</td>
+                <td class="signal-name"><strong>C-FRONTMATTER-MISSING / C-NAMING-VIOLATION</strong><em>detector 已落地</em></td>
+                <td>结构化 metadata 缺失，或标题仍是 Untitled / 前后空格这类明显命名问题。</td>
+                <td>规则驱动。适合批量 add frontmatter / rename-with-prefix；不要引入风格战，比如强制 kebab-case。</td>
               </tr>
             </tbody>
           </table>
 
-          <h3 style="margin-top: 30px;">Temporal · 时间维度上腐烂</h3>
+          <h3 id="signals-temporal" style="margin-top: 30px;">Temporal · 时间维度上腐烂</h3>
           <table class="doc-table">
-<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+<colgroup><col style="width: 24%"><col style="width: 36%"><col></colgroup>
             <thead>
-              <tr><th>Signal</th><th>当前呈现</th><th>阈值</th><th>什么时候相信它</th></tr>
+              <tr><th>Signal</th><th>怎么理解</th><th>触发与处理</th></tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>T-STALE-HUB</strong></td>
-                <td><span class="pill blue">依赖已有管线</span></td>
-                <td><code>staleHubDays = 180</code> + <code>staleHubMinPageRankPercentile = 75</code>（PageRank 前 25% 且 180 天未动）</td>
-                <td>Digest 里显示 stale hubs 数量，但 lint detector 未写；<code>HubStalenessDetector</code> 已在打 <code>hub_stale_since</code>。</td>
+                <td class="signal-name"><strong>T-STALE-HUB</strong><em>detector 已落地</em></td>
+                <td>曾经重要的 hub 长期未更新。</td>
+                <td><code>staleHubDays = 180</code>。通常建议 review-update 或 mark-current，而不是自动重写。</td>
               </tr>
               <tr>
-                <td><strong>T-DECAYING-BRIDGE</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td><code>decayingBridgeDays = 365</code>。</td>
-                <td>—</td>
+                <td class="signal-name"><strong>T-DECAYING-BRIDGE</strong><em>detector 已落地</em></td>
+                <td>过期桥：桥接作用的笔记太久没有维护。例子：一篇总览一年前连接过两个 topic，但两边内容已经变化，它还没有更新。</td>
+                <td><code>decayingBridgeDays = 365</code>。处理是更新邻域、补 links，或确认它已经不再是桥。</td>
               </tr>
               <tr>
-                <td><strong>T-ABANDONED-CLUSTER / T-ABANDONED-FOLDER</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td><code>abandonedClusterDays = 180</code>、<code>abandonedFolderDays = 365</code>。</td>
-                <td>—</td>
+                <td class="signal-name"><strong>T-ABANDONED-CLUSTER / T-ABANDONED-FOLDER</strong><em>detector 已落地</em></td>
+                <td>停摆簇 / 停摆目录：一个 community 或 folder 很久没有任何成员更新。它可能是已完成项目，也可能是被遗忘的研究线。</td>
+                <td>cluster 默认 180 天，folder 默认 365 天。先判断是“已完成项目”还是“被遗忘的研究线”，再 archive 或 review。</td>
               </tr>
               <tr>
-                <td><strong>T-RECENT-DRIFT</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td><code>recentDriftActiveDays = 30</code>、<code>recentDriftStaleDays = 180</code>：最近 30 天新增的笔记与已有主题的语义距离。</td>
-                <td>—</td>
+                <td class="signal-name"><strong>T-RECENT-DRIFT</strong><em>detector 已落地</em></td>
+                <td>最近新增的笔记偏离了已有主题邻域。</td>
+                <td>默认看最近 30 天 active notes 和 180 天 stale baseline。适合提示“新方向正在形成”，不适合作为错误。</td>
               </tr>
             </tbody>
           </table>
 
-          <h3 style="margin-top: 30px;">Semantic · 话题结构层</h3>
-          <p class="prose">整层 <em>待设计成形</em>：<code>M-COVERAGE-GAP</code>、<code>M-LOW-COHESION</code>、<code>M-CONTRADICTION</code>、<code>M-PHANTOM-NODE</code>、<code>M-SEMANTIC-ISOLATION</code>、<code>M-REDUNDANT-HUBS</code> 都还没 detector。阈值已定义：<code>contradictionMinSimilarity = 0.80</code>、<code>phantomNodeMinReferences = 3</code>、<code>lowCohesionMaxDensity = 0.30</code>、<code>redundantHubMinOverlap = 0.70</code>；<code>scan.contradictionBatchSize = 20</code>、<code>contradictionConcurrency = 2</code>——一看就知道这一层是给 LLM detector 预留的（<code>LintSignalDetector.requiresLlm</code> 字段），做全量扫描要有节流。</p>
-          <p class="prose">在 detector 落地之前，semantic 维度的“话题地图”感受主要来自 <strong>AI Graph</strong>（community layout + hub 高亮）和 <strong>VaultDigestBuilder</strong> 内部的 top structural holes 抽取；用户看到的<em>信号</em>还没有。</p>
-
-          <h3 style="margin-top: 30px;">Tags · 标签系统的健康</h3>
+          <h3 id="signals-semantic" style="margin-top: 30px;">Semantic · 话题结构层</h3>
+          <p class="prose">Semantic 层不是纯规则判断。<code>M-*</code> detector 在实现里被标成需要 LLM 的候选能力，普通 Vault Lint 扫描不会执行它们；只有预算上限、节流、证据复核和 prompt 模板都准备好后，这类 finding 才适合对用户可见。</p>
           <table class="doc-table">
-<colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
+<colgroup><col style="width: 24%"><col style="width: 40%"><col></colgroup>
             <thead>
-              <tr><th>Signal</th><th>当前呈现</th><th>阈值</th><th>什么时候相信它</th></tr>
+              <tr><th>Signal</th><th>产品含义和例子</th><th>成形前还缺什么</th></tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>G-UNTAGGED</strong><br><em>info</em></td>
-                <td><span class="pill green">用户可见</span></td>
+                <td class="signal-name"><strong>M-COVERAGE-GAP</strong><em>LLM stub</em></td>
+                <td>话题地图里明显缺一块。例子：有很多 Transformer 训练笔记，但没有任何 evaluation / benchmark 笔记。</td>
+                <td>需要 topic map prompt + “缺口是否真的重要”的人工确认，不应自动创建任务。</td>
+              </tr>
+              <tr>
+                <td class="signal-name"><strong>M-LOW-COHESION</strong><em>LLM stub</em></td>
+                <td>单篇笔记内部主题太散。例子：一篇 note 同时写面试、数据库、旅行计划。</td>
+                <td>需要 LLM 判断“混合是否有意为之”。UI 应建议 split，不应直接说这篇错了。</td>
+              </tr>
+              <tr>
+                <td class="signal-name"><strong>M-CONTRADICTION</strong><em>LLM stub</em></td>
+                <td>两篇语义接近的笔记有事实冲突。例子：一篇写 PPR 权重 0.3，另一篇写 0.7。</td>
+                <td>需要候选对预过滤、批量上限、引用证据和用户确认；默认并发是 2，避免扫全库烧模型。</td>
+              </tr>
+              <tr>
+                <td class="signal-name"><strong>M-PHANTOM-NODE</strong><em>LLM stub</em></td>
+                <td>多个文件引用同一个不存在 target。例子：很多 note 都写 <code>[[PageRank damping]]</code>，但没有这篇 note。</td>
+                <td><code>phantomNodeMinReferences = 3</code> 只是候选门槛；LLM 要判断是创建新 note，还是 redirect typo。</td>
+              </tr>
+              <tr>
+                <td class="signal-name"><strong>M-SEMANTIC-ISOLATION</strong><em>LLM stub</em></td>
+                <td>一篇笔记语义上找不到邻居。例子：某个新研究方向刚开始，还没有主题邻域。</td>
+                <td>需要区分“真正孤立”和“合理的新方向”。UI 更适合提示 create-hub / tag，而不是报错。</td>
+              </tr>
+              <tr>
+                <td class="signal-name"><strong>M-REDUNDANT-HUBS</strong><em>LLM stub</em></td>
+                <td>两个 hub 覆盖成员高度重叠。例子：<em>Search Ranking</em> 和 <em>Retrieval Ranking</em> 下面几乎是同一批 note。</td>
+                <td><code>redundantHubMinOverlap = 0.70</code> 只是候选；最终动作可能是 merge、split、alias 或 bridge。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 id="signals-tags" style="margin-top: 30px;">Tags · 标签系统的健康</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 24%"><col style="width: 36%"><col></colgroup>
+            <thead>
+              <tr><th>Signal</th><th>怎么理解</th><th>触发与处理</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="signal-name"><strong>G-UNTAGGED</strong><em>info · 用户可见</em></td>
                 <td>frontmatter 与 inline tag 都为空。</td>
-                <td>永远可信；但“笔记该不该有 tag”是策略选择，不喜欢就 dismiss。</td>
+                <td>可直接相信，但“是否必须有 tag”是个人策略。适合 suggest-tags 或批量 dismiss。</td>
               </tr>
               <tr>
-                <td><strong>G-TAG-EXPLOSION</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td><code>tagExplosionMultiplier = 5</code>：某个 tag 覆盖到全 Vault 平均值的 5 倍以上。</td>
-                <td>—</td>
+                <td class="signal-name"><strong>G-TAG-EXPLOSION</strong><em>detector 已落地</em></td>
+                <td>某篇 note 的 tag 数显著高于 Vault 典型值。</td>
+                <td>按有 tag 文件的 median 计算，默认倍率 5。处理是 review taxonomy，不是把 tag 自动删掉。</td>
               </tr>
               <tr>
-                <td><strong>G-TAG-ISLAND / G-TAG-REDUNDANCY / G-NOISE-TAGS</strong></td>
-                <td><span class="pill gold">待设计成形</span></td>
-                <td>无独立阈值。</td>
-                <td>—</td>
+                <td class="signal-name"><strong>G-TAG-ISLAND / G-TAG-REDUNDANCY / G-NOISE-TAGS</strong><em>枚举预留 · 需产品设计</em></td>
+                <td>标签体系本身的问题：孤立标签、重复标签、噪声标签。</td>
+                <td>还缺 detector 和 UI 决策。更适合先做 taxonomy review 面板，再决定是否进入 Health score。</td>
               </tr>
             </tbody>
           </table>
@@ -527,11 +573,54 @@ flowchart LR
             </tbody>
           </table>
 
-          <p class="prose">每个 finding 自身还带一个 <code>fixActions: FixActionId[]</code>（枚举定义在 <code>@/core/types/lint</code>）：<code>suggest-links</code>、<code>delete-note</code>、<code>redirect-link</code>、<code>create-note</code>、<code>remove-link</code>、<code>insert-backlink</code>、<code>bridge-to-main</code>、<code>strengthen-connections</code>、<code>draft-content</code>、<code>suggest-split</code>、<code>merge-notes</code>、<code>link-as-alias</code>、<code>add-frontmatter</code>、<code>rename-with-prefix</code>、<code>review-update</code>、<code>mark-current</code>、<code>snooze</code>、<code>archive-cluster</code>、<code>update-neighborhood</code>、<code>create-hub</code>、<code>review-cluster</code>、<code>reconcile-contradiction</code>、<code>create-phantom-note</code>、<code>suggest-tags</code>、<code>merge-tag</code>、<code>review-taxonomy</code>。这套动作是给 <em>未来</em> 的 finding-level UI 用的；今天进入 Copilot 的路径主要还是 6 类聚合 insight。</p>
+          <p class="prose">finding-level UI 还没有完全成形，但数据结构已经给每条 finding 留了可执行动作。读它时不要把 action 当成“一定会自动执行”的命令；它只是告诉 Copilot 或未来 review UI：这类问题适合给用户哪些处理入口。</p>
+
+          <pre class="code-shape"><code>// existing shape, simplified for reading
+LintFinding {
+  signalId: LintSignalId
+  severity: 'error' | 'warning' | 'info'
+  filePath: string | null
+  fixActions: FixActionId[]
+  metadata: Record&lt;string, unknown&gt;
+}</code></pre>
+
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>动作族</th><th>包含哪些 action</th><th>为什么建议它们</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>连接修复</strong></td>
+                <td><span class="action-chips"><code>suggest-links</code><code>insert-backlink</code><code>redirect-link</code><code>remove-link</code><code>link-as-alias</code></span></td>
+                <td>用于 broken link、missing backlink、soft orphan。目标是把图上的断点补回来。</td>
+              </tr>
+              <tr>
+                <td><strong>内容整理</strong></td>
+                <td><span class="action-chips"><code>draft-content</code><code>suggest-split</code><code>merge-notes</code><code>delete-note</code></span></td>
+                <td>用于 empty/stub/oversized/duplicate。默认给 review 建议，不能直接删或合并。</td>
+              </tr>
+              <tr>
+                <td><strong>结构维护</strong></td>
+                <td><span class="action-chips"><code>bridge-to-main</code><code>strengthen-connections</code><code>create-hub</code><code>review-cluster</code><code>archive-cluster</code><code>update-neighborhood</code></span></td>
+                <td>用于 island、fragile bridge、stale/abandoned cluster。目标是让 community 有清楚边界。</td>
+              </tr>
+              <tr>
+                <td><strong>语义与标签</strong></td>
+                <td><span class="action-chips"><code>reconcile-contradiction</code><code>create-phantom-note</code><code>suggest-tags</code><code>merge-tag</code><code>review-taxonomy</code></span></td>
+                <td>用于未来 semantic detector 和 tag taxonomy。必须有用户确认，因为误判成本高。</td>
+              </tr>
+              <tr>
+                <td><strong>状态控制</strong></td>
+                <td><span class="action-chips"><code>review-update</code><code>mark-current</code><code>snooze</code><code>add-frontmatter</code><code>rename-with-prefix</code></span></td>
+                <td>用于不需要 AI 改正文的维护动作：确认当前、延后处理、补 metadata 或修命名。</td>
+              </tr>
+            </tbody>
+          </table>
 
           <div class="claim">
             <strong>Bridge note 是特殊的可修复建议</strong>
-            <code>templates/config/bridge-note-template.hbs</code> 是 handlebars 模板，用于 <em>bridge-to-main</em> / <em>create-hub</em> 类动作：当 signal 检测到两个 community 之间缺一座桥时，Peak 用这个模板生成一个 seed note（frontmatter <code>tags: [bridge-note, communityA, communityB]</code>，加上两侧 top nodes 的 <code>[[wikilink]]</code>）。今天这个模板存在，但生成 flow 还挂在 semantic 层的 spec detector 上；只有当 Copilot 手动请求“帮我生成一座桥”时才会用到。
+            <code>templates/config/bridge-note-template.hbs</code> 是 handlebars 模板，用于 <em>bridge-to-main</em> / <em>create-hub</em> 类动作：当 signal 检测到两个 community 之间缺一座桥时，Peak 用这个模板生成一个 seed note（frontmatter <code>tags: [bridge-note, communityA, communityB]</code>，加上两侧 top nodes 的 <code>[[wikilink]]</code>）。模板文件已经准备好；自动生成桥接笔记的流程还没有对普通扫描开放，只在 Copilot 手动请求“帮我生成一座桥”时使用。
           </div>
 
           <div class="claim warn">
@@ -540,13 +629,132 @@ flowchart LR
           </div>
         </section>
 
+        <section id="hub-generation-agent">
+          <h2>Hub 生成：Vault Maintenance 的第二个能力</h2>
+          <p class="lead">Hub doc（社区综述文档）和“信号细看 / 可修复建议”是并列能力：前者把 community 写成可维护的综述，后者告诉用户哪里断了、哪里该修。产品入口仍然是 Copilot Vault tab 里的 Vault Maintenance 选项，不是另开一个命令体系。</p>
+
+          <div class="claim">
+            <strong>用户入口</strong>
+            用户通过 <strong>Open Copilot → Vault tab</strong> 进入 Vault Maintenance，然后选择“生成 / 更新 Hub 综述”。背后的实现可以调用 Curator 和 Materializer，但 UI 不应该要求用户理解这两个 agent 名字。
+          </div>
+
+          <p class="prose">生成过程内部仍然分两段：Curator 先决定哪些 hub 应该存在、哪些该合并或归档；Materializer 再把单个 hub 写成一篇可维护的 Vault 笔记。</p>
+
+          <h3>为什么不是 1-hop 拼接</h3>
+          <p class="prose">Hub doc 不能只拼接 hub node 的 1-hop 邻居：那会混入“引用了但不重要”的噪声，忽略 2-hop 桥接结构，也没有中心性权重和覆盖率自检。更稳的方式是整体网络图 + PageRank/Louvain + LLM agent 自评：先由图结构筛出候选，再让 agent 判断 hub 的边界、覆盖率和合并/淘汰策略。</p>
+
+          <h3>复用现有基建（不重造）</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 32%"><col></colgroup>
+            <thead><tr><th>基建</th><th>Curator/Materializer 里怎么用</th></tr></thead>
+            <tbody>
+              <tr><td>Vault PageRank + Semantic PageRank</td><td>Curator prep 的候选排序主键，Materializer core/fringe 划分权重之一</td></tr>
+              <tr><td>Brandes 中介中心性</td><td>Materializer core/fringe 划分权重（<code>0.6·pagerank + 0.4·betweenness</code>）</td></tr>
+              <tr><td>Louvain 社区检测 + <code>community_metadata</code></td><td>Curator 决定 hub 归属；建议一社区一 hub，但 LLM 有 override 空间</td></tr>
+              <tr><td>SQL 复合 hub score（<code>hub_graph_score</code> = 0.35·物理权威 + 0.25·组织 + 0.35·语义中心性）</td><td>Curator prep top-K shortlist；K = <code>clamp(⌈√N × 1.5⌉, 12, 60)</code></td></tr>
+              <tr><td><code>KnowledgeIntuitionAgent</code> 的 prep → recon loop → structured submit 架构</td><td><code>HubCuratorAgent</code> 逐一镜像三段式；prompt/schema 换成 hub 焦点</td></tr>
+              <tr><td><code>hub_stale_since</code> / <code>hub_constituent</code> / <code>hub_regen_queue</code> / <code>HubRegenService</code></td><td>staleness-triggered regen 走同一队列；只是队列消费端换成 agent 调用（single-hub fallback）</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Hub 候选如何被保留、合并或归档</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 36%"><col></colgroup>
+            <thead>
+              <tr><th>问题</th><th>规则</th><th>用户保护</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>生成几个 hub</strong></td>
+                <td>Curator 提交 <code>hubs[]</code>，并用 coverage 检查高价值成员是否被覆盖。</td>
+                <td>不是按固定数量生成；覆盖不足时补 hub，覆盖重复时考虑合并。</td>
+              </tr>
+              <tr>
+                <td><strong>保留 / 新建 / 合并 / 归档</strong></td>
+                <td><code>action</code> 只有 <code>create</code>、<code>keep</code>、<code>merge</code>、<code>retire</code> 四类。</td>
+                <td>遇到 <code>peak_user_owned: true</code> 的源 hub，merge 会被拦截；不会静默覆盖用户手写内容。</td>
+              </tr>
+              <tr>
+                <td><strong>覆盖率怎么算</strong></td>
+                <td>Curator 看成员覆盖率；Materializer critique 里 core 成员权重更高。</td>
+                <td>覆盖率低只触发复核，不代表自动追加不相关材料。</td>
+              </tr>
+              <tr>
+                <td><strong>单个 hub 过期怎么办</strong></td>
+                <td>stale-triggered regen 可以绕过全量 Curator，直接合成 single-hub decision 给 Materializer。</td>
+                <td>适合“这一个 hub 变旧了”的局部修复，不必等整库重算。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>用户手写的 hub 永远不被 AI 覆盖</strong>
+            <code>ObsidianVaultHubDocAdapter.readPeakUserOwned()</code> 读 frontmatter；<code>peak_user_owned: true</code> 直接跳过写回。同时 skeleton 保留 <code>&lt;!-- USER_SECTIONS_BELOW --&gt;</code> marker 之下的手写区，AI 只覆盖上方结构化 section。
+          </div>
+
+          <h3>入口和范围</h3>
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 2 · Hub 生成在 Vault Maintenance 里的位置</strong>
+              <span>Mermaid · entry map</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  Open["Open Copilot<br/>Cmd / Command palette"] --> Vault["Vault tab"]
+  Vault --> Maintenance["Vault Maintenance"]
+  Maintenance --> Signals["看 scan / 信号建议"]
+  Maintenance --> HubOption["生成 / 更新 Hub 综述"]
+  HubOption --> Scope{"选择范围"}
+  Scope --> Whole["整库 community<br/>Curator + Materializer"]
+  Scope --> Active["当前 note 所在 community<br/>Materializer"]
+  Scope --> Stale["过期 hub refresh<br/>single-hub decision"]
+  Whole --> Runtime["HubGenerationRuntime"]
+  Active --> Runtime
+  Stale --> Runtime
+  Runtime --> HubDocs["Hub markdown docs"]
+  Runtime --> Plan["Review curation plan"]
+            </div>
+            <p class="read-note"><b>读图：</b>用户只需要进入 Copilot 的 Vault tab。Hub 生成是 Vault Maintenance 里的一个选项；范围可以是整库 community、当前 note 的 community，或只刷新一个过期 hub。Review curation plan 是复核结果，不是另一个生成入口。</p>
+          </div>
+
+          <h3>证据入口</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 24%"><col style="width: 36%"><col></colgroup>
+            <thead>
+              <tr><th>证据</th><th>入口</th><th>看什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Agent 逻辑</td>
+                <td><code data-copy="src/service/agents/HubCuratorAgent.ts">HubCuratorAgent.ts</code><br><code data-copy="src/service/agents/HubMaterializationAgent.ts">HubMaterializationAgent.ts</code></td>
+                <td>Curator / Materializer 的 prompt、schema 和提交形态。</td>
+              </tr>
+              <tr>
+                <td>运行时和调度</td>
+                <td><code data-copy="src/service/hub/HubGenerationRuntime.ts">HubGenerationRuntime.ts</code><br><code data-copy="src/app/hub/composeHubGenerationRuntime.ts">composeHubGenerationRuntime.ts</code><br><code data-copy="src/service/hub/HubCurationScheduler.ts">HubCurationScheduler.ts</code></td>
+                <td>runtime 归属、scheduler opt-in、single-hub fallback。</td>
+              </tr>
+              <tr>
+                <td>写回和历史</td>
+                <td><code data-copy="src/core/ports/HubGenerationPorts.ts">HubGenerationPorts.ts</code><br><code data-copy="src/core/storage/sqlite/repositories/HubCurationPlanRepo.ts">HubCurationPlanRepo.ts</code></td>
+                <td>hub doc 写回、归档、保留最近决策历史。</td>
+              </tr>
+              <tr>
+                <td>设计背景</td>
+                <td><a href="superpowers/specs/2026-07-03-hub-generation-agent.md">Hub generation spec</a><br><a href="research/2026-07-03-hub-generation-agent-design/README.md">Hub generation research</a></td>
+                <td>为什么用两 agent 串联，以及为什么保护用户手写 hub。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
         <section id="technical-appendix">
-          <h2>技术附录：Vault Intelligence 的组装</h2>
-          <p class="lead">下面这张图是从索引（<a href="#">23-infra-search-index</a>）到 Vault Intelligence 五类信号的全链路。索引深度（fast / semantic / full）决定了哪些信号有能力算得出来。</p>
+          <h2>Vault Intelligence 组装链路</h2>
+          <p class="lead">这不是附录级细节。Vault Intelligence 的核心就是这条链路：索引准备数据，detector 产出 finding，HealthScoreEngine 合成分数，Copilot 把结果变成用户能处理的建议。</p>
 
           <div class="figure">
             <div class="figure-title">
-              <strong>图 2 · 索引深度 → 信号产出</strong>
+              <strong>图 3 · 索引深度 → 信号产出</strong>
               <span>Mermaid · pipeline to signal</span>
             </div>
             <div class="mermaid">
@@ -593,88 +801,64 @@ flowchart TB
   Persist --> Insights["buildVaultHealthInsights"]
   Insights --> Copilot["Copilot fixable suggestions"]
             </div>
-            <p class="read-note"><b>读图：</b>左边三层是索引深度（详见 <a href="04-configuration-and-user-views.html#indexing">04 · Knowledge Index 深度</a>）；箭头进入右边说明 detector 依赖哪一层。实线表示已经能稳定产出 finding 的路径；虚线表示已有数据或规则，但还需要把用户可见 shape 设计清楚。</p>
+            <p class="read-note"><b>读图：</b>左边三层是索引深度（详见 <a href="23-infra-search-index.html">23 · Search Index</a>）；箭头进入右边说明 detector 依赖哪一层。实线表示已经能稳定产出 finding 的路径；虚线表示已有数据或规则，但还需要把用户可见 shape 设计清楚。</p>
           </div>
 
-          <p class="prose"><strong>入口调用链</strong>：<code>CopilotPickerContent</code>（Vault tab 的 "Scan now" 按钮）→ <code>runVaultLintManualScan</code>（RunEnvelope）→ <code>VaultLintService.runFullScan</code> → 并行跑 <code>InMemoryDetectorRegistry.getNonLlm()</code> 里的所有 detector → <code>computeHealthScore</code> → <code>VaultLintRepo.saveScanResult</code>。<code>VaultDigestBuilder.getVaultHealth()</code> 通过持有的 <code>VaultLintRuntime</code> 直接读 <code>loadLatestScan()</code>，作为 Vault Review meta-agent 输入的一部分。<code>buildVaultHealthInsights</code> 从同一个 scan 派生出 6 类 insight。</p>
+          <h3 style="margin-top: 24px;">一次 Scan now 会发生什么</h3>
+          <ol class="steps-list">
+            <li>用户在 Copilot 的 Vault tab 点 <strong>Scan now</strong>。</li>
+            <li>UI 通过 <code>runVaultLintManualScan</code> 进入 RunEnvelope，scan 有统一状态和错误出口。</li>
+            <li><code>VaultLintService</code> 调 <code>getNonLlm()</code>，只跑不需要 LLM 的 detector；<code>M-*</code> semantic stub 被跳过。</li>
+            <li>detector 只读 adapter 给出的纯数据：Vault 文件、unresolved links、doc degree、communities、semantic neighbors。</li>
+            <li>scan result 写入 <code>VaultLintRepo</code>；同一份 result 被 digest 和 <code>buildVaultHealthInsights</code> 复用。</li>
+          </ol>
 
-          <p class="prose"><strong>依赖注入形态</strong>：<code>VaultLintService</code> 是一个 plain class，构造时接收 <code>VaultLintPorts</code>（<code>config</code> / <code>vault</code> / <code>persistence</code> / <code>detectorRegistry</code> / <code>idFactory</code> / <code>clock</code> / <code>detectorContext</code>）。所有 Obsidian / sqlite / <code>getSemanticNeighbors</code> 的访问都藏在 <code>app/lint/*.ts</code> 的四个 adapter 后面，detector 本身零 Obsidian 依赖。测试直接注入 fake context。这是让 detector 好写、好测的关键约束——不要试图在 detector 里再拿 <code>AppContext.getInstance()</code>。</p>
-
-          <p class="prose"><strong>Runtime 归属</strong>：<code>VaultLintRuntime</code> 由 <code>composeVaultLintRuntime</code> 一次性构造，存在 app 层的 <code>AppRuntimeRegistry</code>；service 层不再有 module-scope singleton。见 <code>VaultLintContract.ts</code> 的 dependency inventory 及 CLAUDE.md 项目约定“Runtime ownership”。</p>
+          <h3 style="margin-top: 24px;">依赖边界</h3>
+          <table class="doc-table">
+<colgroup><col style="width: 24%"><col style="width: 32%"><col></colgroup>
+            <thead>
+              <tr><th>边界</th><th>谁负责</th><th>为什么这么分</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Runtime 归属</strong></td>
+                <td><code>composeVaultLintRuntime</code> → <code>AppRuntimeRegistry</code></td>
+                <td>runtime 在 app 层组装，service 层保持 plain class，不再加 module-scope singleton。</td>
+              </tr>
+              <tr>
+                <td><strong>端口注入</strong></td>
+                <td><code>VaultLintPorts</code></td>
+                <td>配置、Vault 读取、persistence、registry、clock、idFactory 都从构造函数进来，方便测试替换。</td>
+              </tr>
+              <tr>
+                <td><strong>Obsidian / SQLite 隔离</strong></td>
+                <td><code>app/lint</code> adapters</td>
+                <td>detector 本身不碰 Obsidian API，也不直接拿 sqlite manager；新增数据先扩 port。</td>
+              </tr>
+              <tr>
+                <td><strong>用户可见建议</strong></td>
+                <td><code>buildVaultHealthInsights</code></td>
+                <td>finding 可以很多，用户先看聚合后的 6 类 insight；未来再做 finding-level review UI。</td>
+              </tr>
+            </tbody>
+          </table>
 
           <dl class="kv">
-            <dt>Full scan 频率</dt>
-            <dd><code>scan.fullScanIntervalHours = 168</code>（一周）——今天只是 <em>建议值</em>，因为 startup / scheduled trigger 不属于手动 scan 的当前路径。用户不点 “Scan now” 就不会扫。</dd>
+            <dt>手动 full scan</dt>
+            <dd><code>scan.fullScanIntervalHours = 168</code> 的意思是“如果将来做定时扫描，一周一次比较合理”。它尚未接入定时触发；用户不点 Scan now 就不会扫。</dd>
 
-            <dt>Incremental debounce</dt>
-            <dd><code>scan.incrementalDebounceMs = 30000</code>——同上，未实装的 incremental 模式预留值。</dd>
+            <dt>增量扫描预留</dt>
+            <dd><code>scan.incrementalDebounceMs = 30000</code> 是未来 incremental scan 的防抖值，避免每次文件保存都触发重算。当前手动 scan 不靠它。</dd>
 
             <dt>Detector 失败隔离</dt>
-            <dd>每个 detector 都用 <code>.catch()</code> 隔离；失败只走 <code>console.warn</code> + <code>onDetectorWarning</code> callback，返回空数组，不阻塞其他 detector。</dd>
+            <dd>单个 detector 失败只记 warning 并返回空数组，不阻塞其他 detector。用户应该看到 partial result，而不是整次 scan 失败。</dd>
 
             <dt>Health score 归零保护</dt>
             <dd><code>totalNotes === 0</code> 时每个维度返回 100（空 Vault 视为满分，避免除零）。</dd>
 
             <dt>Signal counts</dt>
-            <dd><code>LintScanResult.signalCounts</code> 是 <code>Partial&lt;Record&lt;LintSignalId, number&gt;&gt;</code>，方便 digest / dashboard 只看某一 signal 的数量而不必遍历 findings 列表。</dd>
+            <dd><code>signalCounts</code> 是每种 signal 的数量摘要。digest / dashboard 可以直接读它，不必遍历完整 findings 列表。</dd>
           </dl>
-        </section>
-
-        <section id="hub-generation-agent">
-          <h2>Hub Generation Agent</h2>
-          <p class="lead">Hub doc（社区综述文档）的生成走 <strong>两 agent 串联</strong>：<code>HubCuratorAgent</code> 决定 vault 该有哪些 hub、要不要合并/淘汰；<code>HubMaterializationAgent</code> 负责给每个 hub 起草综述并写回 vault。</p>
-
-          <h3>为什么不是 1-hop 拼接</h3>
-          <p class="prose">Hub doc 不能只拼接 hub node 的 1-hop 邻居：那会混入“引用了但不重要”的噪声，忽略 2-hop 桥接结构，也没有中心性权重和覆盖率自检。更稳的方式是整体网络图 + PageRank/Louvain + LLM agent 自评：先由图结构筛出候选，再让 agent 判断 hub 的边界、覆盖率和合并/淘汰策略。</p>
-
-          <h3>复用现有基建（不重造）</h3>
-          <table class="doc-table">
-<colgroup><col style="width: 32%"><col></colgroup>
-            <thead><tr><th>基建</th><th>Curator/Materializer 里怎么用</th></tr></thead>
-            <tbody>
-              <tr><td>Vault PageRank + Semantic PageRank</td><td>Curator prep 的候选排序主键，Materializer core/fringe 划分权重之一</td></tr>
-              <tr><td>Brandes 中介中心性</td><td>Materializer core/fringe 划分权重（<code>0.6·pagerank + 0.4·betweenness</code>）</td></tr>
-              <tr><td>Louvain 社区检测 + <code>community_metadata</code></td><td>Curator 决定 hub 归属；建议一社区一 hub，但 LLM 有 override 空间</td></tr>
-              <tr><td>SQL 复合 hub score（<code>hub_graph_score</code> = 0.35·物理权威 + 0.25·组织 + 0.35·语义中心性）</td><td>Curator prep top-K shortlist；K = <code>clamp(⌈√N × 1.5⌉, 12, 60)</code></td></tr>
-              <tr><td><code>KnowledgeIntuitionAgent</code> 的 prep → recon loop → structured submit 架构</td><td><code>HubCuratorAgent</code> 逐一镜像三段式；prompt/schema 换成 hub 焦点</td></tr>
-              <tr><td><code>hub_stale_since</code> / <code>hub_constituent</code> / <code>hub_regen_queue</code> / <code>HubRegenService</code></td><td>staleness-triggered regen 走同一队列；只是队列消费端换成 agent 调用（single-hub fallback）</td></tr>
-            </tbody>
-          </table>
-
-          <h3>LLM 自决 · 覆盖率 · 冲突处理</h3>
-          <ul>
-            <li><strong>数量</strong> — 由 <code>hubCurationSubmitSchema</code> 决定（<code>hubs</code> 数组），LLM 看 <code>coverage.uncoveredHighValue</code> 自评是否再补</li>
-            <li><strong>合并 / 淘汰</strong> — <code>action: 'create' | 'keep' | 'merge' | 'retire'</code>；merge 遇 <code>peak_user_owned=true</code> 源即拦截整个 merge（不静默丢用户手写）；retire 归档到 <code>_archive/hub/</code>，永不物理删除</li>
-            <li><strong>覆盖率</strong> — Curator submit 里 <code>coverage_pct = coveredMembers / totalMembers</code>，Materializer critique 里 <code>overallCoverage</code>（core 成员 2× 权重）</li>
-            <li><strong>Single-hub fallback</strong> — stale-triggered regen（例如某个 hub 的成员改了）不用等 Curator 跑完，<code>HubGenerationRuntime.buildRegenerateFn()</code> 会合成一个单-hub decision 现场喂给 Materializer</li>
-          </ul>
-
-          <div class="claim">
-            <strong>用户手写的 hub 永远不被 AI 覆盖</strong>
-            <code>ObsidianVaultHubDocAdapter.readPeakUserOwned()</code> 读 frontmatter；<code>peak_user_owned: true</code> 直接跳过写回。同时 skeleton 保留 <code>&lt;!-- USER_SECTIONS_BELOW --&gt;</code> marker 之下的手写区，AI 只覆盖上方结构化 section。
-          </div>
-
-          <h3>触发点</h3>
-          <ul>
-            <li>命令 <code>Curate Hubs Now</code> — 手动跑 Curator + Executor</li>
-            <li>命令 <code>Materialize Hub for Active Note</code> — 从当前笔记的社区反查代表节点，直接跑 Materializer</li>
-            <li>命令 <code>Show Latest Hub Curation Plan</code> — 打开 <code>HubCurationPlanModal</code> 看最近一份决策</li>
-            <li><code>HubCurationScheduler</code> — opt-in 定时（默认 7 天关），<code>hubCurationSchedulerEnabled</code> 打开</li>
-            <li><code>hub_regen_queue</code> — <code>HubStalenessDetector</code> 检测到 constituent 变化时入队，<code>HubRegenService</code> 排空</li>
-          </ul>
-
-          <h3>代码证据</h3>
-          <ul>
-            <li>Agents: <code>src/service/agents/HubCuratorAgent.ts</code> / <code>HubMaterializationAgent.ts</code></li>
-            <li>Executor + Scheduler: <code>src/service/agents/hub-curation-helper/HubCurationExecutor.ts</code> / <code>src/service/hub/HubCurationScheduler.ts</code></li>
-            <li>Runtime 挂 <code>AppRuntimeRegistry</code>: <code>src/service/hub/HubGenerationRuntime.ts</code> + <code>src/app/hub/composeHubGenerationRuntime.ts</code></li>
-            <li>Ports: <code>src/core/ports/HubGenerationPorts.ts</code>（write + archive）</li>
-            <li>Repo: <code>src/core/storage/sqlite/repositories/HubCurationPlanRepo.ts</code>（保留 20 份决策历史）</li>
-            <li>Schemas: <code>src/core/schemas/agents/hubCuration.ts</code> + <code>hubMaterialization.ts</code></li>
-            <li>Modal: <code>src/app/ui-host/modals/HubCurationPlanModal.ts</code></li>
-            <li>Rewire: <code>CascadeWorker.hub_regen</code> handler 补齐；<code>HubRegenService.init()</code> 新增 <code>regenerateFn</code> 参数</li>
-            <li>Spec / Research: <a href="superpowers/specs/2026-07-03-hub-generation-agent.md">spec</a> · <a href="research/2026-07-03-hub-generation-agent-design/README.md">research</a></li>
-          </ul>
         </section>
 
         <section id="failure-modes">
@@ -705,7 +889,7 @@ flowchart TB
               <tr>
                 <td>digest 显示 stale hubs 为 0，但你认为不是</td>
                 <td>Hub 材化尚是 stub（<code>regenerateHubByNodeId</code> 仅 warn）；staleness 检测跑，但 hub markdown 未生成</td>
-                <td>今日无自愈；digest 数字随索引重跑刷新，hub 摘要仍需手动</td>
+                <td>没有自动自愈入口；digest 数字随索引重跑刷新，hub 摘要从 Copilot Vault tab 的 Hub 生成 / 更新入口处理</td>
               </tr>
               <tr>
                 <td>“Scan now” 一直转不出结果</td>
@@ -737,7 +921,14 @@ flowchart TB
           <div class="note-list">
             <div class="note-item">
               <b>加新 signal = 5 处同步。</b>
-              <span>1) <code>src/core/types/lint.ts</code> 的 <code>LintSignalId</code> 枚举；2) <code>HealthScoreEngine</code> 的 <code>SIGNAL_WEIGHTS</code> + <code>DIMENSION_OF</code> 两张表；3) 写一个新的 <code>LintSignalDetector</code> 放到 <code>src/service/lint/signals/&lt;dimension&gt;.ts</code>；4) 在 <code>composeVaultLintRuntime</code> 的 registry 注册；5) 如果要暴露 fixable insight，在 <code>buildVaultHealthInsights</code> 里加一段，并在 <code>templates/prompts/lint-*.md</code> 补 prompt。任一步漏掉都会造成“Health score 悄悄降但 UI 显示不出来”。</span>
+              <ol class="mini-list">
+                <li>在 <code data-copy="src/core/types/lint.ts">lint.ts</code> 加 <code>LintSignalId</code>。</li>
+                <li>在 <code data-copy="src/service/lint/HealthScoreEngine.ts">HealthScoreEngine.ts</code> 同步 <code>SIGNAL_WEIGHTS</code> 和 <code>DIMENSION_OF</code>。</li>
+                <li>在 <code data-copy="src/service/lint/signals">signals/</code> 里新增对应 <code>LintSignalDetector</code>。</li>
+                <li>在 runtime registry 里注册 detector，确认 <code>getNonLlm()</code> 或 <code>requiresLlm</code> 语义正确。</li>
+                <li>如果要进入 Copilot 建议，在 <code data-copy="src/service/lint/insights.ts">insights.ts</code> 加聚合逻辑，并补 prompt 模板。</li>
+              </ol>
+              <span>漏任一步都可能造成“Health score 已被影响，但 UI 解释不出来”。</span>
             </div>
             <div class="note-item">
               <b>阈值要放 <code>vault-lint-config.json</code>，别硬编码。</b>
@@ -763,7 +954,7 @@ flowchart TB
         </section>
 
         <section id="evidence">
-          <h2>代码证据</h2>
+          <h2>证据入口</h2>
           <table class="doc-table">
 <colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
             <thead>
@@ -786,9 +977,9 @@ flowchart TB
                 <td>SIGNAL_WEIGHTS / SEVERITY_MULTIPLIER / DIMENSION_OF / scoreLabel。</td>
               </tr>
               <tr>
-                <td>Shipped 的 5 个 detector（S-ORPHAN、S-BROKEN-LINK、C-EMPTY、C-STUB、G-UNTAGGED）</td>
-                <td><code data-copy="src/service/lint/signals/structural.ts">structural.ts</code><br><code data-copy="src/service/lint/signals/content.ts">content.ts</code><br><code data-copy="src/service/lint/signals/tags.ts">tags.ts</code></td>
-                <td>确认 用户可见 名单；确认 <code>C-STUB</code> 走 <code>stubMaxChars</code> 阈值；确认 orphan 依赖 <code>getSemanticNeighbors</code>。</td>
+                <td>Detector 分组入口</td>
+                <td><code data-copy="src/service/lint/signals/structural.ts">structural.ts</code><br><code data-copy="src/service/lint/signals/content.ts">content.ts</code><br><code data-copy="src/service/lint/signals/temporal.ts">temporal.ts</code><br><code data-copy="src/service/lint/signals/tags.ts">tags.ts</code><br><code data-copy="src/service/lint/signals/semantic.ts">semantic.ts</code></td>
+                <td>确认哪些 detector 已经规则化落地，哪些 semantic detector 只是 <code>requiresLlm</code> stub。</td>
               </tr>
               <tr>
                 <td>Scan 编排 + detector 失败隔离</td>

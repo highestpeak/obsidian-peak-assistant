@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant Planned Requirements</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #eef3ee;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+    }
+    .page { width: min(1040px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 820; }
+    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 42px; line-height: 1.1; letter-spacing: 0; }
+    h2 { margin: 0 0 12px; font-size: 28px; line-height: 1.2; }
+    h3 { margin: 0 0 8px; font-size: 19px; line-height: 1.28; }
+    p { margin: 0; }
+    .subtitle { max-width: 900px; color: var(--muted); font-size: 18px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .nav { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; font-size: 14px; }
+    section { padding: 40px 0; border-bottom: 1px solid var(--line); }
+    .lead { color: var(--ink); font-size: 17px; }
+    .prose { color: var(--muted); font-size: 15px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 20px;
+    }
+    .card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045);
+    }
+    .card p { color: var(--muted); font-size: 14px; line-height: 1.58; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 23px;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--paper);
+      font-size: 14px;
+      box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04);
+    }
+    th, td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.52;
+      overflow-wrap: break-word;
+    }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    .note {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--green);
+      background: var(--paper);
+      color: var(--muted);
+      box-shadow: 0 10px 24px rgba(23, 34, 29, 0.04);
+    }
+    .note-title { margin-bottom: 3px; color: var(--ink); font-weight: 820; }
+    @media (max-width: 980px) {
+      .page { width: min(100vw - 24px, 760px); }
+      .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">Peak Assistant Planned Requirements</div>
+      <h1>未实现的小需求不要塞进 roadmap，也不要丢在聊天里。</h1>
+      <p class="subtitle">这份文档登记已经明确、但还不是 roadmap 级里程碑的产品规划。它们通常是某个现有 surface 的补充：够重要，不能忘；又还没到“关键节点”的级别。</p>
+      <div class="meta">
+        <span>Status: planning register</span>
+        <span>Scope: small / surface-level requirements</span>
+        <span>Updated: 2026-07-07</span>
+      </div>
+      <nav class="nav" aria-label="cross document navigation">
+        <a href="index.html">← 文档总索引</a>
+        <a href="roadmap.html">Roadmap</a>
+        <a href="13-feature-vault-intelligence.html">13 · Vault Intelligence</a>
+        <a href="14-feature-ambient-push.html">14 · Ambient Push</a>
+        <a href="12-feature-search.html">12 · Search</a>
+        <a href="16-feature-document-copilot.html">16 · Document Copilot</a>
+      </nav>
+    </header>
+
+    <section id="how-to-use">
+      <h2>怎么用这份文档</h2>
+      <p class="lead">Roadmap 只放标志性功能和关键节点；这里放已经被用户指出、但暂时不实现的 surface-level 需求。每条需求都要有入口、用户价值、链接到 spec 或低保真稿。</p>
+      <div class="note">
+        <div class="note-title">升级规则</div>
+        小需求变成 implementation work 前，先补一份 spec 或 mock；如果它变成跨模块里程碑，再迁到 <a href="roadmap.html">roadmap.html</a> 的已决策待建。
+      </div>
+    </section>
+
+    <section id="active-planned">
+      <h2>当前登记</h2>
+      <div class="grid">
+        <article class="card" id="pr-ambient-floating-panel">
+          <div class="pill-row"><span class="pill green">Vault tab</span><span class="pill gold">planned</span></div>
+          <h3>PR-VAULT-GRAPH-SEGMENT</h3>
+          <p>Vault Maintenance segment 聚合 stats、overview graph、hubs、current note 位置和 last report。不是独立命令，也不定最终 compare panel。</p>
+          <p><a href="superpowers/specs/2026-07-07-vault-maintenance-graph-segment.html">低保真设计</a></p>
+        </article>
+        <article class="card">
+          <div class="pill-row"><span class="pill green">Document tab</span><span class="pill gold">planned</span></div>
+          <h3>PR-DOC-LOCAL-GRAPH</h3>
+          <p>Document tab 显示当前文档属于哪些 hub、出处链是什么、局部 local graph 在哪里。</p>
+          <p><a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#document-tab">需求草图</a></p>
+        </article>
+        <article class="card">
+          <div class="pill-row"><span class="pill green">Quick Search</span><span class="pill gold">planned</span></div>
+          <h3>PR-SEARCH-HUB-DRAWER</h3>
+          <p>General Search 右侧 drawer 在选中文档时展示 hub context，并能打开 hub doc 或 hub local graph。</p>
+          <p><a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#search-drawer">需求草图</a></p>
+        </article>
+        <article class="card">
+          <div class="pill-row"><span class="pill green">Ambient Push</span><span class="pill gold">planned</span></div>
+          <h3>PR-AMBIENT-FLOATING-PANEL</h3>
+          <p>Ambient Push 需要一个只悬在 Obsidian 内的 floating panel，替代右下角 related 提示，并暴露明确刷新入口。</p>
+          <p><a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">低保真设计</a> · <a href="14-feature-ambient-push.html#doc-map">Ambient 文档地图</a></p>
+        </article>
+      </div>
+    </section>
+
+    <section id="register-table">
+      <h2>登记表</h2>
+      <table>
+        <colgroup>
+          <col style="width: 20%">
+          <col style="width: 22%">
+          <col style="width: 34%">
+          <col>
+        </colgroup>
+        <thead>
+          <tr><th>ID</th><th>Surface</th><th>用户价值</th><th>来源 / 下一步</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>PR-VAULT-GRAPH-SEGMENT</strong></td>
+            <td>Copilot → Vault tab</td>
+            <td>用户先看到 Vault 结构、hubs、last report，不需要去多个命令里找。</td>
+            <td><a href="superpowers/specs/2026-07-07-vault-maintenance-graph-segment.html">low fidelity spec</a></td>
+          </tr>
+          <tr>
+            <td><strong>PR-DOC-LOCAL-GRAPH</strong></td>
+            <td>Copilot → Document tab</td>
+            <td>写当前文档时直接知道它属于哪些 hub、从哪里来、局部图谱怎么连接。</td>
+            <td><a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#document-tab">contextual graph spec</a></td>
+          </tr>
+          <tr>
+            <td><strong>PR-SEARCH-HUB-DRAWER</strong></td>
+            <td>Quick Search drawer</td>
+            <td>搜索结果不仅是单篇文档，还能带出它的 hub 文档和 hub local graph。</td>
+            <td><a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#search-drawer">contextual graph spec</a></td>
+          </tr>
+          <tr>
+            <td><strong>PR-AMBIENT-FLOATING-PANEL</strong></td>
+            <td>Ambient Push / Related Notes</td>
+            <td>写作时保持相关笔记可见，但不使用右下角短提示，也不变成系统级悬浮窗。</td>
+            <td><a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">ambient floating panel spec</a><br><a href="14-feature-ambient-push.html#doc-map">Ambient doc map</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

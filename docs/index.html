@@ -34,6 +34,8 @@
     .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; }
     h1 { max-width: 100%; margin: 14px 0 16px; font-size: 48px; line-height: 1.08; letter-spacing: 0; }
     .subtitle { max-width: 900px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.72; }
+    .file-tree { margin: 0; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: #25352d; font-size: 14px; line-height: 1.68; overflow-x: auto; box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045); }
+    .file-tree code { display: block; white-space: pre; }
     .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
     .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
     .doc-layout { display: block; margin-top: 28px; }
@@ -59,10 +61,15 @@
     .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
     .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
     .red { color: var(--red); background: var(--soft-red); border-color: rgba(144, 66, 61, 0.22); }
-    .figure { width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
-    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+    .figure { position: relative; width: 100%; max-width: 100%; margin: 24px 0 0; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-x: auto; box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06); }
+    .figure-title { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
     .figure-title strong { color: var(--ink); font-size: 14px; }
-    .mermaid { min-width: 820px; text-align: center; }
+    .figure-actions { display: inline-flex; gap: 6px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+    .figure-toggle { min-height: 28px; padding: 3px 9px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 760; cursor: pointer; }
+    .figure-toggle.active { background: var(--paper); color: var(--green); box-shadow: 0 2px 8px rgba(23, 34, 29, 0.08); }
+    .diagram-panel.is-hidden { position: absolute; left: 22px; right: 22px; top: 72px; visibility: hidden; pointer-events: none; }
+    .dependency-visual { min-width: 860px; width: 100%; height: auto; display: block; }
+    .mermaid { min-width: 860px; text-align: center; }
     .mermaid svg { max-width: 100%; height: auto; }
     .read-note { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
     .read-note b { color: var(--ink); }
@@ -74,6 +81,8 @@
     td strong { color: var(--ink); }
     .claim { margin: 22px 0 0; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--paper); color: var(--muted); box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055); }
     .claim strong { display: block; margin-bottom: 5px; color: var(--ink); }
+    .decision-list { margin: 8px 0 0; padding-left: 20px; color: var(--muted); font-size: 15px; line-height: 1.62; }
+    .decision-list li + li { margin-top: 6px; }
     .side-nav .nav-group { margin: 10px -4px 0; padding: 8px 4px 4px; border-top: 1px solid var(--line); }
     .side-nav .nav-group:first-of-type { margin-top: 4px; padding-top: 4px; border-top: 0; }
     .side-nav .nav-group-title { display: block; margin: 0 6px 4px; color: var(--muted); font-size: 10.5px; font-weight: 780; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -85,7 +94,8 @@
     @media (max-width: 980px) {
       .grid { grid-template-columns: 1fr; }
     }
-  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  </style>
+  <link rel="stylesheet" href="assets/mermaid-zoom.css">
   <link rel="stylesheet" href="assets/tables-density.css">
   <link rel="stylesheet" href="assets/copy-path.css">
 </head>
@@ -94,7 +104,20 @@
     <header>
       <div class="eyebrow">Peak Assistant Docs Index</div>
       <h1>根目录只放长期维护的正稿</h1>
-      <p class="subtitle"><code>docs/</code> 根目录现在是项目的主文档入口：少数编号 HTML 正稿、<code>index.html</code>、<code>progress.md</code>。历史讨论稿、旧 roadmap、旧 checklist 不再挤在根目录里；需要追溯时去 <code>90-old-root-docs/</code>、<code>gstack/</code> 或 <code>superpowers/</code>。</p>
+      <pre class="file-tree" aria-label="docs root layout"><code>docs/
+├─ index.html                         # 主入口：先从这里选文档
+├─ progress.md                        # 当前阶段和历史流水
+├─ 01-architecture.html               # 架构 / 边界 / 运行时
+├─ 02-code-organization.html
+├─ 04-configuration-and-user-views.html
+├─ 05-use-case-playbook.html
+├─ 11-18-feature-*.html               # 用户看得到的产品能力
+├─ 21-23-infra-*.html                 # 共享基础设施
+├─ roadmap.html                       # 关键待建 / 候选 / backlog
+├─ planned-requirements.html          # 已规划但未实现的小需求
+├─ 90-old-root-docs/                  # 历史根目录稿
+├─ gstack/                            # 设计和视觉探索
+└─ superpowers/                       # specs / plans / audits</code></pre>
       <div class="meta">
         <span>Reference index</span>
         <span>Approx. length: 约 8.2k 混合字符</span>
@@ -159,46 +182,219 @@
             <li><a href="23-infra-search-index.html"><strong>23 · Search Index</strong></a> — SQLite 表、chunk、embedding、node/edge、维护任务。</li>
           </ul>
 
-          <p class="read-note"><b>不在这张地图里：</b>远期设想（已决策待建、调研候选、backlog）全部登记在 <a href="roadmap.html">roadmap.html</a>。</p>
+          <p class="read-note"><b>不在这张地图里：</b>关键远期设想（已决策待建、调研候选、backlog）登记在 <a href="roadmap.html">roadmap.html</a>；局部 UI 小需求登记在 <a href="planned-requirements.html">planned-requirements.html</a>。</p>
         </section>
 
         <section id="capability-model">
           <h2>功能和基础设施怎么连起来</h2>
-          <p class="lead">用户功能不是独立小系统。Chat 需要 context pipeline；Hyper Search 依赖 index 和 retrievers；AI Analysis 复用 Search、Vault Intelligence 和 Agent Harness；Ambient 复用搜索、图索引和上下文；Agent 类能力必须走 Harness。这张图把 <strong>产品功能</strong> 与 <strong>共享基础设施</strong> 的依赖关系一次画清。</p>
+          <p class="lead">用户功能不是独立小系统。</p>
+          <p class="prose">这张图只回答一件事：每个产品能力应该接入哪条共享底座。</p>
           <div class="figure">
             <div class="figure-title">
               <strong>图 · 产品功能和基础设施关系</strong>
-              <span>Mermaid · dependency boundary</span>
+              <div class="figure-actions" aria-label="切换依赖图显示方式">
+                <button type="button" class="figure-toggle active" data-diagram-target="visual" aria-pressed="true">清晰图</button>
+                <button type="button" class="figure-toggle" data-diagram-target="mermaid" aria-pressed="false">Mermaid</button>
+              </div>
             </div>
-            <div class="mermaid">
-flowchart TB
+            <div class="diagram-panel" data-diagram-panel="visual">
+              <svg class="dependency-visual" viewBox="0 0 1040 680" role="img" aria-labelledby="depTitle depDesc" xmlns="http://www.w3.org/2000/svg">
+                <title id="depTitle">产品功能与共享基础设施关系</title>
+                <desc id="depDesc">左侧按能力簇列出端到端用户能力，右侧列出共享基础设施底座。绿色实线表示接入共享底座，蓝色虚线表示复用产品能力；悬浮或聚焦卡片时，相关连线会高亮并流动。</desc>
+                <defs>
+                  <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f6b52"/>
+                  </marker>
+                  <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#245f7a"/>
+                  </marker>
+                  <style>
+                    .dep-bg { fill: #f7f8f4; }
+                    .dep-panel { fill: #fbfcfa; stroke: #d9e1d8; stroke-width: 1; }
+                    .dep-cluster { fill: #ffffff; stroke: #d9e1d8; stroke-width: 1; }
+                    .dep-panel-title { fill: #17221d; font: 800 15px Inter, system-ui, sans-serif; }
+                    .dep-cluster-title { fill: #69766f; font: 750 11px Inter, system-ui, sans-serif; letter-spacing: 0.02em; }
+                    .dep-node { cursor: pointer; outline: none; }
+                    .dep-card { fill: #eef5f7; stroke: #245f7a; stroke-width: 1.2; transition: fill 160ms ease, stroke-width 160ms ease, filter 160ms ease; }
+                    .dep-foundation { fill: #eef6f1; stroke: #1f6b52; stroke-width: 1.25; transition: fill 160ms ease, stroke-width 160ms ease, filter 160ms ease; }
+                    .dep-text { fill: #17221d; font: 700 13px Inter, system-ui, sans-serif; }
+                    .dep-small { fill: #69766f; font: 600 10.5px Inter, system-ui, sans-serif; }
+                    .dep-num { fill: #1f6b52; font: 800 12px Inter, system-ui, sans-serif; }
+                    .dep-edge { fill: none; stroke-linecap: round; opacity: 0.42; pointer-events: none; transition: opacity 160ms ease, stroke-width 160ms ease, filter 160ms ease; }
+                    .dep-line { stroke: #1f6b52; stroke-width: 1.5; }
+                    .dep-reuse { opacity: 0.56; stroke: #245f7a; stroke-width: 1.55; stroke-dasharray: 5 6; }
+                    .dep-arrowhead { fill: none; stroke: transparent; stroke-width: 2; opacity: 0.86; pointer-events: none; transition: opacity 160ms ease, filter 160ms ease; }
+                    .dep-arrow-green { marker-end: url(#arrow-green); }
+                    .dep-arrow-blue { marker-end: url(#arrow-blue); }
+                    .dep-legend { fill: #69766f; font: 650 12px Inter, system-ui, sans-serif; }
+                    .dep-hint { fill: #69766f; font: 650 11px Inter, system-ui, sans-serif; }
+                    .dependency-visual.has-focus .dep-edge { opacity: 0.015; }
+                    .dependency-visual.has-focus .dep-arrowhead { opacity: 0.015; }
+                    .dependency-visual.has-focus .dep-node { opacity: 0.42; }
+                    .dependency-visual.has-focus .dep-node.is-active,
+                    .dependency-visual.has-focus .dep-node.is-neighbor { opacity: 1; }
+                    .dep-node.is-active .dep-card,
+                    .dep-node.is-active .dep-foundation { stroke-width: 2.4; filter: drop-shadow(0 8px 10px rgba(23, 34, 29, 0.14)); }
+                    .dep-node.is-neighbor .dep-card,
+                    .dep-node.is-neighbor .dep-foundation { stroke-width: 1.8; }
+                    .dependency-visual.has-focus .dep-edge.is-active { opacity: 1; stroke-width: 3.8; stroke: #17684f; stroke-dasharray: 10 8; filter: drop-shadow(0 0 3px rgba(31, 107, 82, 0.36)); animation: depFlow 900ms linear infinite; }
+                    .dependency-visual.has-focus .dep-reuse.is-active { stroke: #1d5f7c; stroke-width: 3.2; stroke-dasharray: 7 6; filter: drop-shadow(0 0 3px rgba(36, 95, 122, 0.32)); }
+                    .dependency-visual.has-focus .dep-arrowhead.is-active { opacity: 1; filter: drop-shadow(0 0 3px rgba(31, 107, 82, 0.32)); }
+                    @keyframes depFlow {
+                      from { stroke-dashoffset: 0; }
+                      to { stroke-dashoffset: -36; }
+                    }
+                  </style>
+                </defs>
+                <rect class="dep-bg" x="0" y="0" width="1040" height="680" rx="10"/>
+                <rect class="dep-panel" x="24" y="24" width="620" height="594" rx="8"/>
+                <rect class="dep-panel" x="724" y="24" width="292" height="594" rx="8"/>
+                <text class="dep-panel-title" x="44" y="54">端到端用户能力</text>
+                <text class="dep-panel-title" x="744" y="54">共享基础设施底座</text>
+
+                <rect class="dep-cluster" x="44" y="74" width="566" height="166" rx="8"/>
+                <text class="dep-cluster-title" x="60" y="99">上下文 / 写作端</text>
+                <rect class="dep-cluster" x="44" y="260" width="566" height="178" rx="8"/>
+                <text class="dep-cluster-title" x="60" y="285">检索 / 全库分析端</text>
+                <rect class="dep-cluster" x="44" y="458" width="566" height="134" rx="8"/>
+                <text class="dep-cluster-title" x="60" y="483">控制 / 配置端</text>
+
+                <g id="dependency-edges" aria-hidden="true">
+                  <path class="dep-edge dep-line" data-dep-from="chat" data-dep-to="context" d="M 324 127 C 502 120, 626 96, 760 104"/>
+                  <path class="dep-edge dep-line" data-dep-from="chat" data-dep-to="harness" d="M 324 146 C 510 198, 622 366, 760 384"/>
+                  <path class="dep-edge dep-line" data-dep-from="copilot" data-dep-to="context" d="M 324 185 C 506 176, 620 118, 760 120"/>
+                  <path class="dep-edge dep-line" data-dep-from="copilot" data-dep-to="harness" d="M 324 204 C 502 236, 626 382, 760 400"/>
+                  <path class="dep-edge dep-line" data-dep-from="ambient" data-dep-to="context" d="M 578 156 C 650 146, 708 134, 760 136"/>
+                  <path class="dep-edge dep-line" data-dep-from="ambient" data-dep-to="index" d="M 578 171 C 666 188, 704 244, 760 244"/>
+                  <path class="dep-edge dep-line" data-dep-from="search" data-dep-to="index" d="M 324 318 C 448 268, 620 246, 760 244"/>
+                  <path class="dep-edge dep-line" data-dep-from="vault" data-dep-to="index" d="M 578 315 C 650 304, 704 272, 760 276"/>
+                  <path class="dep-edge dep-line" data-dep-from="vault" data-dep-to="harness" d="M 578 336 C 652 346, 704 394, 760 400"/>
+                  <path class="dep-edge dep-line" data-dep-from="analysis" data-dep-to="harness" d="M 578 385 C 650 384, 704 414, 760 414"/>
+                  <path class="dep-edge dep-line" data-dep-from="gateway" data-dep-to="harness" d="M 324 519 C 508 500, 632 426, 760 426"/>
+                  <path class="dep-edge dep-line" data-dep-from="gateway" data-dep-to="config" d="M 324 537 C 510 548, 648 526, 760 526"/>
+                  <path class="dep-edge dep-line" data-dep-from="supply" data-dep-to="harness" d="M 578 506 C 646 484, 704 428, 760 428"/>
+                  <path class="dep-edge dep-line" data-dep-from="supply" data-dep-to="config" d="M 578 522 C 650 530, 704 540, 760 540"/>
+                  <path class="dep-edge dep-line" data-dep-from="usage" data-dep-to="config" d="M 578 563 C 646 562, 704 554, 760 554"/>
+
+                  <path class="dep-edge dep-reuse" data-dep-from="ambient" data-dep-to="search" d="M 358 164 C 330 198, 276 260, 236 310"/>
+                  <path class="dep-edge dep-reuse" data-dep-from="vault" data-dep-to="search" d="M 358 322 C 348 322, 336 325, 324 326"/>
+                  <path class="dep-edge dep-reuse" data-dep-from="analysis" data-dep-to="search" d="M 358 386 C 322 386, 274 370, 236 352"/>
+                  <path class="dep-edge dep-reuse" data-dep-from="analysis" data-dep-to="vault" d="M 468 363 C 468 356, 468 350, 468 342"/>
+                </g>
+
+                <g id="product-cards">
+                  <g class="dep-node" data-dep-node="chat" tabindex="0" aria-label="11 Chat Context depends on 22 Context Pipeline and 21 Agent Harness">
+                    <rect class="dep-card" x="64" y="112" width="260" height="42" rx="5"/><text class="dep-num" x="80" y="138">11</text><text class="dep-text" x="112" y="138">Chat Context</text>
+                  </g>
+                  <g class="dep-node" data-dep-node="copilot" tabindex="0" aria-label="16 Document Copilot depends on 22 Context Pipeline and 21 Agent Harness">
+                    <rect class="dep-card" x="64" y="170" width="260" height="42" rx="5"/><text class="dep-num" x="80" y="196">16</text><text class="dep-text" x="112" y="196">Document Copilot</text>
+                  </g>
+                  <g class="dep-node" data-dep-node="ambient" tabindex="0" aria-label="14 Ambient Push reuses 12 Hyper Search and depends on 22 Context Pipeline and 23 Search Index">
+                    <rect class="dep-card" x="358" y="141" width="220" height="42" rx="5"/><text class="dep-num" x="374" y="167">14</text><text class="dep-text" x="406" y="167">Ambient Push</text>
+                  </g>
+
+                  <g class="dep-node" data-dep-node="search" tabindex="0" aria-label="12 Hyper Search depends on 23 Search Index">
+                    <rect class="dep-card" x="64" y="310" width="260" height="42" rx="5"/><text class="dep-num" x="80" y="336">12</text><text class="dep-text" x="112" y="336">Hyper Search</text>
+                  </g>
+                  <g class="dep-node" data-dep-node="vault" tabindex="0" aria-label="13 Vault Intelligence reuses 12 Hyper Search and depends on 23 Search Index and 21 Agent Harness">
+                    <rect class="dep-card" x="358" y="300" width="220" height="42" rx="5"/><text class="dep-num" x="374" y="326">13</text><text class="dep-text" x="406" y="326">Vault Intelligence</text>
+                  </g>
+                  <g class="dep-node" data-dep-node="analysis" tabindex="0" aria-label="AI Analysis reuses 12 Hyper Search and 13 Vault Intelligence and depends on 21 Agent Harness">
+                    <rect class="dep-card" x="358" y="363" width="220" height="42" rx="5"/><text class="dep-small" x="374" y="386">AI</text><text class="dep-text" x="406" y="389">AI Analysis</text><text class="dep-small" x="498" y="389">/ Vault Report</text>
+                  </g>
+
+                  <g class="dep-node" data-dep-node="gateway" tabindex="0" aria-label="15 Command Gateway depends on 21 Agent Harness and 04 Config User Views">
+                    <rect class="dep-card" x="64" y="504" width="260" height="42" rx="5"/><text class="dep-num" x="80" y="530">15</text><text class="dep-text" x="112" y="530">Command Gateway</text>
+                  </g>
+                  <g class="dep-node" data-dep-node="supply" tabindex="0" aria-label="18 Provider Model MCP Skills depends on 21 Agent Harness and 04 Config User Views">
+                    <rect class="dep-card" x="358" y="488" width="220" height="42" rx="5"/><text class="dep-num" x="374" y="514">18</text><text class="dep-text" x="406" y="514">Provider · MCP · Skills</text>
+                  </g>
+                  <g class="dep-node" data-dep-node="usage" tabindex="0" aria-label="17 Usage Dashboard depends on 04 Config User Views">
+                    <rect class="dep-card" x="358" y="542" width="220" height="42" rx="5"/><text class="dep-num" x="374" y="568">17</text><text class="dep-text" x="406" y="568">Usage Dashboard</text>
+                  </g>
+                </g>
+
+                <g id="foundation-cards">
+                  <g class="dep-node" data-dep-node="context" tabindex="0" aria-label="22 Context Pipeline is used by Chat Context, Document Copilot, and Ambient Push">
+                    <rect class="dep-foundation" x="760" y="82" width="216" height="64" rx="7"/><text class="dep-text" x="790" y="119">22 Context Pipeline</text>
+                  </g>
+                  <g class="dep-node" data-dep-node="index" tabindex="0" aria-label="23 Search Index is used by Hyper Search, Vault Intelligence, and Ambient Push">
+                    <rect class="dep-foundation" x="760" y="222" width="216" height="64" rx="7"/><text class="dep-text" x="790" y="259">23 Search Index</text>
+                  </g>
+                  <g class="dep-node" data-dep-node="harness" tabindex="0" aria-label="21 Agent Harness is used by Chat Context, Document Copilot, Vault Intelligence, AI Analysis, Command Gateway, and Provider Model MCP Skills">
+                    <rect class="dep-foundation" x="760" y="362" width="216" height="64" rx="7"/><text class="dep-text" x="790" y="399">21 Agent Harness</text>
+                  </g>
+                  <g class="dep-node" data-dep-node="config" tabindex="0" aria-label="04 Config User Views is used by Command Gateway, Provider Model MCP Skills, and Usage Dashboard">
+                    <rect class="dep-foundation" x="760" y="512" width="216" height="64" rx="7"/><text class="dep-text" x="790" y="549">04 Config / User Views</text>
+                  </g>
+                </g>
+
+                <g id="dependency-arrowheads" aria-hidden="true">
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="chat" data-dep-to="context" d="M 744 104 L 760 104"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="chat" data-dep-to="harness" d="M 744 382 L 760 384"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="copilot" data-dep-to="context" d="M 744 120 L 760 120"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="copilot" data-dep-to="harness" d="M 744 398 L 760 400"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="ambient" data-dep-to="context" d="M 744 136 L 760 136"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="ambient" data-dep-to="index" d="M 744 244 L 760 244"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="search" data-dep-to="index" d="M 744 244 L 760 244"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="vault" data-dep-to="index" d="M 744 276 L 760 276"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="vault" data-dep-to="harness" d="M 744 400 L 760 400"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="analysis" data-dep-to="harness" d="M 744 414 L 760 414"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="gateway" data-dep-to="harness" d="M 744 426 L 760 426"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="gateway" data-dep-to="config" d="M 744 526 L 760 526"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="supply" data-dep-to="harness" d="M 744 428 L 760 428"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="supply" data-dep-to="config" d="M 744 540 L 760 540"/>
+                  <path class="dep-arrowhead dep-arrow-green" data-dep-from="usage" data-dep-to="config" d="M 744 554 L 760 554"/>
+
+                  <path class="dep-arrowhead dep-arrow-blue" data-dep-from="ambient" data-dep-to="search" d="M 248 294 L 236 310"/>
+                  <path class="dep-arrowhead dep-arrow-blue" data-dep-from="vault" data-dep-to="search" d="M 340 324 L 324 326"/>
+                  <path class="dep-arrowhead dep-arrow-blue" data-dep-from="analysis" data-dep-to="search" d="M 254 363 L 236 352"/>
+                  <path class="dep-arrowhead dep-arrow-blue" data-dep-from="analysis" data-dep-to="vault" d="M 468 358 L 468 342"/>
+                </g>
+
+                <rect x="260" y="630" width="520" height="32" rx="16" fill="#ffffff" stroke="#d9e1d8"/>
+                <path d="M 288 646 L 330 646" stroke="#245f7a" stroke-width="1.8" stroke-dasharray="5 6" stroke-linecap="round"/>
+                <text class="dep-legend" x="344" y="650">复用产品能力</text>
+                <path d="M 500 646 L 542 646" stroke="#1f6b52" stroke-width="1.8" stroke-linecap="round"/>
+                <text class="dep-legend" x="556" y="650">接入共享底座</text>
+                <text class="dep-hint" x="684" y="650">悬浮矩形看线</text>
+              </svg>
+            </div>
+            <div class="diagram-panel mermaid is-hidden" data-diagram-panel="mermaid" aria-hidden="true">
+%%{init: {"flowchart": {"defaultRenderer": "elk", "curve": "linear", "nodeSpacing": 34, "rankSpacing": 86}} }%%
+flowchart LR
   subgraph Product["用户能直接感知的产品功能"]
+    direction TB
     Chat["11 Chat Context"]
-    Search["12 Hyper Search"]
-    Analysis["AI Analysis<br/>agent-driven vault report"]
-    Vault["13 Vault Intelligence"]
-    Ambient["14 Ambient Push"]
-    Gateway["15 Command Gateway"]
     Copilot["16 Document Copilot"]
-    Usage["17 Usage Dashboard"]
+    Ambient["14 Ambient Push"]
+    Search["12 Hyper Search"]
+    Vault["13 Vault Intelligence"]
+    Analysis["AI Analysis<br/>agent-driven vault report"]
+    Gateway["15 Command Gateway"]
     Supply["18 Provider · Model · MCP · Skills"]
+    Usage["17 Usage Dashboard"]
   end
+
   subgraph Infra["共享基础设施能力"]
+    direction TB
     Context["22 Context Pipeline"]
     Index["23 Search Index"]
     Harness["21 Agent Harness"]
     Config["04 Config / User Views"]
   end
+
+  Analysis -.-> Search
+  Analysis -.-> Vault
+  Vault -.-> Search
+  Ambient -.-> Search
+
   Chat --> Context
   Chat --> Harness
   Search --> Index
-  Analysis --> Search
-  Analysis --> Vault
   Analysis --> Harness
-  Vault --> Search
   Vault --> Index
   Vault --> Harness
-  Ambient --> Search
   Ambient --> Index
   Ambient --> Context
   Gateway --> Harness
@@ -208,12 +404,25 @@ flowchart TB
   Usage --> Config
   Supply --> Harness
   Supply --> Config
+
+  classDef product fill:#eef5f7,stroke:#245f7a,color:#17221d,stroke-width:1px
+  classDef infra fill:#eef6f1,stroke:#1f6b52,color:#17221d,stroke-width:1px
+  class Chat,Copilot,Ambient,Search,Vault,Analysis,Gateway,Supply,Usage product
+  class Context,Index,Harness,Config infra
+  linkStyle 0,1,2,3 stroke:#245f7a,stroke-width:1.4px,stroke-dasharray:4 4
+  linkStyle 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 stroke:#1f6b52,stroke-width:1.5px
             </div>
-            <p class="read-note"><b>读图：</b>上层是用户功能，下层是共享底座。加新能力时，先判断它复用哪个底座；<em>不要</em>为了一个功能复制一套 context、search 或 agent loop。</p>
+            <p class="read-note"><b>读图：</b>绿色实线表示接入共享底座，蓝色虚线表示复用产品能力。悬浮或键盘聚焦任一矩形时，只显示它相关的流动连线；需要看完整可审查图源时切到 Mermaid。</p>
           </div>
           <div class="claim">
             <strong>维护结论</strong>
-            如果某个新功能需要多步模型调用、工具执行、权限或 trace，它应该先解释自己如何接入 <a href="21-infra-agent-harness.html">Harness</a>；如果它需要"让模型知道当前工作"，它应该接入 <a href="22-infra-context-pipeline.html">Context Pipeline</a>，而不是在 UI 里临时拼 prompt。四条底座（21/22/23/04）是硬约束——绕过它们就是开始建第二套系统。
+            <ul class="decision-list">
+              <li>需要多步模型调用、工具执行、权限或 trace：先接入 <a href="21-infra-agent-harness.html">21 Agent Harness</a>。</li>
+              <li>需要“让模型知道当前工作”：先接入 <a href="22-infra-context-pipeline.html">22 Context Pipeline</a>。</li>
+              <li>需要搜索、图关系、retriever 或索引维护：先接入 <a href="23-infra-search-index.html">23 Search Index</a>。</li>
+              <li>需要用户配置、profile、provider、开关或可见设置：先接入 <a href="04-configuration-and-user-views.html">04 Config / User Views</a>。</li>
+              <li>绕过这些底座在 UI 里临时拼逻辑，就是开始建第二套系统。</li>
+            </ul>
           </div>
         </section>
 
@@ -223,7 +432,6 @@ flowchart TB
       </div>
     </div>
   </main>
-  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
   <script>
     const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
     const sectionById = new Map(navLinks.map((link) => {
@@ -250,7 +458,66 @@ flowchart TB
     } else {
       setActive('orientation');
     }
+
+    const diagramButtons = Array.from(document.querySelectorAll('[data-diagram-target]'));
+    const diagramPanels = Array.from(document.querySelectorAll('[data-diagram-panel]'));
+    const showDiagram = (target) => {
+      diagramPanels.forEach((panel) => {
+        const active = panel.getAttribute('data-diagram-panel') === target;
+        panel.classList.toggle('is-hidden', !active);
+        panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+      });
+      diagramButtons.forEach((button) => {
+        const active = button.getAttribute('data-diagram-target') === target;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    };
+    diagramButtons.forEach((button) => {
+      button.addEventListener('click', () => showDiagram(button.getAttribute('data-diagram-target')));
+    });
+
+    const dependencyVisuals = Array.from(document.querySelectorAll('.dependency-visual'));
+    dependencyVisuals.forEach((svg) => {
+      const nodes = Array.from(svg.querySelectorAll('[data-dep-node]'));
+      const edges = Array.from(svg.querySelectorAll('[data-dep-from][data-dep-to]'));
+      const clearDependencyFocus = () => {
+        svg.classList.remove('has-focus');
+        nodes.forEach((node) => node.classList.remove('is-active', 'is-neighbor'));
+        edges.forEach((edge) => edge.classList.remove('is-active'));
+      };
+      const setDependencyFocus = (key) => {
+        const neighbors = new Set([key]);
+        svg.classList.add('has-focus');
+        edges.forEach((edge) => {
+          const from = edge.getAttribute('data-dep-from');
+          const to = edge.getAttribute('data-dep-to');
+          const active = from === key || to === key;
+          edge.classList.toggle('is-active', active);
+          if (active) {
+            neighbors.add(from);
+            neighbors.add(to);
+          }
+        });
+        nodes.forEach((node) => {
+          const nodeKey = node.getAttribute('data-dep-node');
+          node.classList.toggle('is-active', nodeKey === key);
+          node.classList.toggle('is-neighbor', nodeKey !== key && neighbors.has(nodeKey));
+        });
+      };
+      nodes.forEach((node) => {
+        const key = node.getAttribute('data-dep-node');
+        node.addEventListener('mouseenter', () => setDependencyFocus(key));
+        node.addEventListener('focus', () => setDependencyFocus(key));
+        node.addEventListener('blur', clearDependencyFocus);
+      });
+      svg.addEventListener('mouseleave', clearDependencyFocus);
+      svg.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') clearDependencyFocus();
+      });
+    });
   </script>
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
   <script>
     mermaid.initialize({
       startOnLoad: true,
@@ -268,7 +535,8 @@ flowchart TB
         noteTextColor: '#17221d'
       }
     });
-  </script>  <script src="assets/mermaid-zoom.js"></script>
+  </script>
+  <script src="assets/mermaid-zoom.js"></script>
   <script src="assets/copy-path.js"></script>
 </body>
 </html>

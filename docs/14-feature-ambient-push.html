@@ -118,9 +118,9 @@
       <h1>你在写笔记，Ambient 在旁边找关联，只有你看它一眼时才发言。</h1>
       <p class="subtitle">Ambient Push 是 Peak 唯一一条 <strong>用户没点也会发生</strong> 的 AI 通路。它在你写作、切文档或手动触发时读取当前段落，去找可能相关的笔记，并把结果放在固定、可忽略的位置：</p>
       <ul class="subtitle-list">
-        <li>固定的 Related Notes / Ambient 面板（可停在右侧，也可拆到独立 leaf）</li>
-        <li>编辑器行首的 <code>?</code> 提示（只在意外相关笔记出现时亮）</li>
-        <li>手动触发的 Related Notes 刷新，用来主动找当前段落邻居</li>
+        <li>当前实现：右侧 Related Notes 面板；规划形态：Obsidian 窗口内置顶的 Ambient floating panel</li>
+        <li>可选的编辑器行首 <code>?</code> 提示（默认关闭，只适合极少数高置信度意外邻居）</li>
+        <li>规划中的面板内刷新入口，用来主动找当前段落邻居</li>
       </ul>
       <p class="subtitle">全程 <strong>不写你的文档</strong>——它只呈现，不落笔。这份文档讲这条通路里被推的是谁、什么信号让它排到前面、怎么关掉、以及维护者应该盯什么。</p>
       <div class="meta">
@@ -141,7 +141,9 @@
         <div class="nav-group">
           <span class="nav-group-title">起点</span>
           <a href="#orientation">这页解决什么</a>
+          <a href="#doc-map">相关文档地图</a>
           <a href="#surfaces">固定呈现通路</a>
+          <a href="#floating-panel">悬浮面板规划</a>
         </div>
         <div class="nav-group">
           <span class="nav-group-title">信号与排序</span>
@@ -176,6 +178,10 @@
             <strong>本文读者</strong>
             正在写作、不确定“右下角那个提示是谁在推”的 Obsidian 用户；打算调 trigger 阈值或加一种新 signal 的维护者；正在排障“为什么一天了都没有推荐”的 coding agent。
           </div>
+          <div class="claim warn">
+            <strong>当前产品缺口</strong>
+            现有代码里真正可找的入口是 Command Palette 的 <em>Open Related Notes panel</em>，它打开右侧 sidebar leaf；状态栏 <code>N related</code> 和行首 <code>?</code> 都不是主入口，默认也应保持安静。下一步需要补一个 Obsidian 窗口内置顶的 Ambient floating panel：写作时不消失，点 <code>×</code> 后关闭，只在 Obsidian 里悬浮，不变成系统级 always-on-top 窗口。需求登记在 <a href="planned-requirements.html#active-planned">Planned Requirements</a>，低保真稿见 <a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">Ambient Floating Panel</a>。
+          </div>
           <div class="claim">
             <strong>本文不做什么</strong>
             不重复 <a href="12-feature-search.html">12 Search</a> 的语义搜索原理；不讲 <a href="23-infra-search-index.html">23 Search Index</a> 里 SQLite 表的建表脚本；不覆盖 <a href="13-feature-vault-intelligence.html">13 Vault Intelligence</a> 的 <em>Vault Health / Extract Todos</em> 等用户主动跑的 vault-scope 分析。Ambient 只关心 <strong>你现在这一段的邻居</strong>。
@@ -186,9 +192,63 @@
           </div>
         </section>
 
+        <section id="doc-map">
+          <h2>相关文档地图</h2>
+          <p class="lead">Ambient Push 已经有几代设计稿和执行记录。读的时候不要把它们当成同一层文档：本页是当前解释入口；低保真稿记录下一步 UI；早期 spec/plan 解释为什么会有这条能力；gstack 图是 Current Work State 方向的视觉证据。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 20%"><col style="width: 34%"><col></colgroup>
+            <thead>
+              <tr><th>先读顺序</th><th>文档 / 资产</th><th>它回答什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1 · 当前入口</strong></td>
+                <td><a href="14-feature-ambient-push.html">14 · Ambient Push</a></td>
+                <td>当前产品心智、固定呈现通路、触发、信号、关闭方式、运行时装配。</td>
+              </tr>
+              <tr>
+                <td><strong>2 · 下一步 UI</strong></td>
+                <td><a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">Ambient Floating Panel</a><br><a href="planned-requirements.html#pr-ambient-floating-panel">Planned Requirements · PR-AMBIENT-FLOATING-PANEL</a></td>
+                <td>只悬在 Obsidian 内的 floating panel：不做系统级置顶，不做右下角短提示，必须有关闭和刷新入口。</td>
+              </tr>
+              <tr>
+                <td><strong>3 · 产品升级方向</strong></td>
+                <td><a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">Current Work State Product/Technical Review</a></td>
+                <td>Ambient 从“Related Notes”升级到 Current Work State / Recent Work Trace / Session Thought Trace 的目标形态。</td>
+              </tr>
+              <tr>
+                <td><strong>4 · 视觉证据</strong></td>
+                <td><a href="gstack/ambient-current-work-state-2026-06-02/ambient-current-work-state-v1.png">current work state 图</a><br><a href="gstack/ambient-current-work-state-2026-06-02/ambient-session-thought-trace-v1.png">session thought trace 图</a></td>
+                <td>两张 gstack 图展示“当前工作状态”和“会话思路轨迹”怎么靠近写作，而不是变成通知中心。</td>
+              </tr>
+              <tr>
+                <td><strong>5 · 原始设计</strong></td>
+                <td><a href="superpowers/specs/2026-05-01-ambient-push-design.md">Ambient Push Design</a></td>
+                <td>最初为什么要做 Ambient Push、候选来源和阶段拆分的原始设计。</td>
+              </tr>
+              <tr>
+                <td><strong>6 · 执行计划</strong></td>
+                <td><a href="superpowers/plans/2026-05-01-ambient-push-phase1.md">Phase 1</a> · <a href="superpowers/plans/2026-05-10-ambient-push-phase2.md">Phase 2</a> · <a href="superpowers/plans/2026-05-10-ambient-push-phase3.md">Phase 3</a> · <a href="superpowers/plans/2026-05-10-ambient-push-phase4.md">Phase 4</a></td>
+                <td>早期分阶段落地记录。查历史决策时看这里；不要把它们当成当前 UI 的唯一真相。</td>
+              </tr>
+              <tr>
+                <td><strong>7 · 架构迁移</strong></td>
+                <td><a href="superpowers/refactor-ops/t8-ambient-foundation-runtime-boundary-wave-handoff.md">T8 Ambient runtime boundary handoff</a><br><a href="roadmap.html">Roadmap</a> · <a href="progress.md">Progress</a></td>
+                <td>runtime boundary、已完成状态和后续 backlog 的证据入口。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>维护规则</strong>
+            新增 Ambient 规划时，先判断它是当前解释、低保真需求、历史计划还是实现进度。小型未实现需求登记到 <a href="planned-requirements.html">Planned Requirements</a>；完整设计放到 <code>docs/superpowers/specs/</code>；本节只保留能帮助读者找到正确文档的入口。
+          </div>
+        </section>
+
         <section id="surfaces">
           <h2>固定呈现通路</h2>
-          <p class="lead">Ambient 计算得到的候选笔记应该先进入一个固定面板。用户想看的时候它一直在那里；用户不想看的时候，它不弹窗、不闪动、不抢编辑器焦点。</p>
+          <p class="lead">Ambient 计算得到的候选笔记应该先进入一个固定面板。用户想看的时候它一直在那里；用户不想看的时候，它不弹窗、不闪动、不抢编辑器焦点。当前实现是右侧 Related Notes leaf；更贴近写作场景的下一步是 Obsidian 窗口内置顶的 floating panel。</p>
 
           <div class="figure">
             <div class="figure-title">
@@ -202,7 +262,8 @@ flowchart LR
   Runtime["AmbientPushRuntime<br/>handleTrigger()"]
   Search["ambientSearch()<br/>vault + graph + patterns + serendipity"]
   Store["ambientPushStore<br/>(Zustand)"]
-  Panel["Related Notes / Ambient panel<br/>固定位置"]
+  Panel["Related Notes panel<br/>当前右侧 leaf"]
+  Floating["Ambient floating panel<br/>规划中的 Obsidian 内置顶窗口"]
   Gutter["行首 ? 提示<br/>高置信度意外邻居"]
   Manual["manual refresh<br/>用户主动刷新"]
 
@@ -211,10 +272,11 @@ flowchart LR
   Runtime --> Search
   Search --> Store
   Store --> Panel
+  Store --> Floating
   Store --> Gutter
   Manual --> Runtime
             </div>
-            <p class="read-note"><b>读图：</b>Runtime 负责什么时候搜、搜什么；UI 只订阅 store。固定面板是主呈现，行首 <code>?</code> 是辅助提示，手动刷新是用户主动拉取。</p>
+            <p class="read-note"><b>读图：</b>Runtime 负责什么时候搜、搜什么；UI 只订阅 store。当前 panel 是右侧 leaf；floating panel 是规划中的更强呈现层。行首 <code>?</code> 和状态栏只能当辅助提示，不能承担主入口。</p>
           </div>
 
           <table class="doc-table">
@@ -225,28 +287,73 @@ flowchart LR
             <tbody>
               <tr>
                 <td><strong>Related Notes / Ambient 面板</strong><br><span class="pill green">主通路</span></td>
-                <td>每次 push 有结果就更新，也支持用户手动刷新</td>
+                <td>当前可通过 Command Palette → <em>Open Related Notes panel</em> 打开</td>
                 <td>候选笔记列表、原因、信号、打开/链接动作</td>
                 <td>关闭 Ambient Push，或隐藏/收起该 view</td>
               </tr>
               <tr>
+                <td><strong>Ambient floating panel</strong><br><span class="pill blue">规划中</span></td>
+                <td>用户打开后悬在 Obsidian 窗口内；写作时保持可见</td>
+                <td>当前段落邻居、刷新、收起、关闭、打开笔记动作</td>
+                <td>点 <code>×</code> 关闭；再次从 Copilot / command 打开</td>
+              </tr>
+              <tr>
                 <td><strong>行首 <code>?</code> 提示</strong><br><span class="pill gold">意外相关时才亮</span></td>
-                <td>当前段有 <em>serendipity</em> 邻居时（2-hop 图上的“意外近似”）</td>
+                <td>可选；当前段有 <em>serendipity</em> 邻居时（2-hop 图上的“意外近似”）</td>
                 <td>该行行首出现一个 <code>?</code>；hover 显示笔记标题；点击打开</td>
                 <td>Settings → Ambient Push → <code>enableSerendipityGutter</code> 关闭</td>
               </tr>
               <tr>
                 <td><strong>手动刷新</strong><br><span class="pill blue">主动查找</span></td>
-                <td>用户在面板或命令里触发</td>
-                <td>围绕当前段落重新计算候选</td>
-                <td>不需要关；这是显式动作</td>
+                <td>Runtime 已有 <code>manual</code> trigger；当前缺清晰 UI 入口</td>
+                <td>围绕当前段落重新计算候选；应出现在 floating panel / Related Notes header</td>
+                <td>不需要关；这是显式动作，默认不自动打扰</td>
               </tr>
             </tbody>
           </table>
 
           <div class="claim warn">
             <strong>状态栏不是主界面</strong>
-            如果保留状态栏，它只能作为很轻的兼容提示：不闪、不动、不承载主要信息。真正的结果列表和解释应该放在固定面板里，否则用户既看不全，也容易觉得被打扰。
+            如果保留状态栏，它只能作为很轻的兼容提示：不闪、不动、不承载主要信息。真正的结果列表和解释应该放在固定面板里，否则用户既看不全，也会觉得“右下角几个 related”既干扰又不可操作。
+          </div>
+        </section>
+
+        <section id="floating-panel">
+          <h2>悬浮面板规划</h2>
+          <p class="lead">可以做成“只悬在 Obsidian 里面”的窗口：实现上是 Obsidian 主窗口 DOM 内的 overlay / workspace companion surface，不是 macOS/Windows 的系统级 always-on-top。这样用户在 Obsidian 里写作时它不消失；切到别的应用时它不会盖住别的窗口。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 24%"><col style="width: 38%"><col></colgroup>
+            <thead>
+              <tr><th>需求</th><th>设计约束</th><th>为什么</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Obsidian 内置顶</strong></td>
+                <td>绑定在当前 Obsidian window / workspace root，不使用 OS-level always-on-top。</td>
+                <td>保持写作上下文，但不污染其它应用窗口。</td>
+              </tr>
+              <tr>
+                <td><strong>可关闭、可重新打开</strong></td>
+                <td>面板右上角有 <code>×</code>；关闭只隐藏 UI，不停 runtime。Command Palette / Copilot 后续可以重新打开。</td>
+                <td>用户要有明确控制权，不要变成甩不掉的通知。</td>
+              </tr>
+              <tr>
+                <td><strong>刷新入口可见</strong></td>
+                <td>header 放 Refresh / Find related；调用 runtime 的 <code>manual</code> trigger。</td>
+                <td>解决“我想主动触发，但找不到入口”。</td>
+              </tr>
+              <tr>
+                <td><strong>替代右下角提示</strong></td>
+                <td>状态栏 <code>N related</code> 不作为主成功路径；最多保留为高级设置里的兼容开关。</td>
+                <td>右下角短文本不可解释、不可展开，也不适合承载推荐。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>低保真稿</strong>
+            详细线框图和验收点放在 <a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">Ambient Floating Panel</a>。这仍是规划需求，不代表当前版本已经实现。
           </div>
         </section>
 
@@ -284,7 +391,7 @@ flowchart LR
               </tr>
               <tr>
                 <td><code>manual</code></td>
-                <td>Command Palette → Ambient · Trigger Related Notes 或点行首 <code>?</code> 提示</td>
+                <td>Runtime 支持手动触发；当前缺清晰 UI。规划入口是 floating panel / Related Notes header 的 Refresh。</td>
                 <td>无 cooldown</td>
                 <td>逃生舱：任何情况下都能强触发一次。</td>
               </tr>
@@ -614,7 +721,7 @@ flowchart TD
 
           <div class="claim">
             <strong>为什么 push_log 和 push_action 分两张表</strong>
-            Push 每次触发都写 log（可能一次 5 条），几乎不查。Action 只在用户真的点了推荐时才写，读频繁（Pattern learning 每 10 分钟聚一次）。分表让写频繁的那张 <em>不带索引 / 只 append</em>，读频繁的那张 <em>加 index 优先按 sourceFilePath 查</em>。schema 本身在 <a href="23-infra-search-index.html#ambient-tables">23 Search Index</a> 的建表段。
+            Push 每次触发都写 log（可能一次 5 条），几乎不查。Action 只在用户真的点了推荐时才写，读频繁（Pattern learning 每 10 分钟聚一次）。分表让写频繁的那张 <em>不带索引 / 只 append</em>，读频繁的那张 <em>加 index 优先按 sourceFilePath 查</em>。schema 本身在 <a href="23-infra-search-index.html">23 Search Index</a> 的建表段。
           </div>
         </section>
 
@@ -658,7 +765,7 @@ flowchart TD
           <div class="note-list">
             <div class="note-item">
               <b>顶层 <code>enabled</code> 关了 → runtime 根本没起。</b>
-              <span>症状：状态栏没有 <code>peak-ambient-status</code> 元素，Command Palette 里也搜不到 <em>Ambient · Trigger Related Notes</em>。修：<em>Settings → Ambient Push → Enable</em>。</span>
+              <span>症状：Command Palette 里搜不到 <em>Open Related Notes panel</em>，或打开后一直没有任何候选。修：<em>Settings → Ambient Push → Enable</em>；如果只是状态栏没有 <code>peak-ambient-status</code>，不一定是故障，因为状态栏默认不作为主入口。</span>
             </div>
             <div class="note-item">
               <b>Vault 尚未被索引 → search 返回空。</b>
@@ -702,6 +809,11 @@ flowchart TD
               <tr><th>关心的事</th><th>入口文件</th><th>要点</th></tr>
             </thead>
             <tbody>
+              <tr>
+                <td>当前用户入口在哪里</td>
+                <td><code data-copy="main.ts">main.ts</code><br><code data-copy="src/app/ui-host/views/ViewManager.ts">ViewManager.ts</code></td>
+                <td>Command Palette 注册 <em>Open Related Notes panel</em>；当前实现打开右侧 sidebar leaf，不是 floating panel，也没有清晰的面板内 refresh。</td>
+              </tr>
               <tr>
                 <td>Trigger 何时发火 / 冷却</td>
                 <td><code data-copy="src/app/ambient/ObsidianAmbientEditorContextAdapter.ts">EditorContextAdapter.ts</code></td>
@@ -762,7 +874,7 @@ flowchart TD
         </section>
 
         <div class="footer">
-          <p>相关文档：<a href="12-feature-search.html">12 Search</a>、<a href="13-feature-vault-intelligence.html">13 Vault Intelligence</a>、<a href="23-infra-search-index.html">23 Search Index</a>。产品背景参考 <a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">Ambient Push / Current Work State 设计稿</a>。</p>
+          <p>相关文档：<a href="12-feature-search.html">12 Search</a>、<a href="13-feature-vault-intelligence.html">13 Vault Intelligence</a>、<a href="23-infra-search-index.html">23 Search Index</a>。产品背景参考 <a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">Ambient Push / Current Work State 设计稿</a>；新悬浮面板需求见 <a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">Ambient Floating Panel</a>。</p>
         </div>
       </div>
     </div>
