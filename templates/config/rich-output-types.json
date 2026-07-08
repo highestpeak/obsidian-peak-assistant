@@ -1,0 +1,24 @@
+{
+  "_doc": "Rich-output types available to the model in the conversation-system prompt. Each entry contributes one convention block. Loaded via TemplateManager.loadJson(ConfigTemplateId.RichOutputTypes) and rendered by SystemPromptSlot. Register a new type by appending an entry — no code change required unless a new renderer needs UI-side wiring.",
+  "_owner": "chat-unified-mode-2026-07-05",
+  "_fields": {
+    "id": "Stable slug (kebab-case). Used in tests / logs.",
+    "label": "Short display name for logs/docs. Not shown to end users today.",
+    "renderer": "'native' means the plugin renders the block directly (e.g. Mermaid via Streamdown). 'source-only' means the model emits source and the user copies it into a `.ext` file.",
+    "conventionMarkdown": "Markdown block appended to the conversation-system prompt. Should describe when to use, the fenced code fence tag, and any structural rules the model must follow."
+  },
+  "types": [
+    {
+      "id": "mermaid",
+      "label": "Mermaid diagram",
+      "renderer": "native",
+      "conventionMarkdown": "Mermaid diagram conventions (when generating mermaid blocks):\n- Prefer node labels that reference real vault documents. Wrap document references with double-quoted labels: `A[\"Note Title\"]`.\n- To make a node clickable and open the referenced vault note, add a `click` directive with a `peak://wikilink/` URL: `click A \"peak://wikilink/Note%20Title\" \"Open note\"`. Use URL-encoding for spaces and special characters.\n- Do NOT invent vault paths. Only add `click` directives for notes you know exist (from the current conversation context or attached resources).\n- Example:\n  ```mermaid\n  graph TD\n    A[\"Concept Overview\"] --> B[\"Sub-topic Details\"]\n    click A \"peak://wikilink/Concept%20Overview\" \"Open Concept Overview\"\n    click B \"peak://wikilink/Sub-topic%20Details\" \"Open Sub-topic Details\"\n  ```"
+    },
+    {
+      "id": "bases",
+      "label": "Obsidian Bases view",
+      "renderer": "source-only",
+      "conventionMarkdown": "Obsidian Bases view conventions (when the user asks for a data view / database / Bases file):\n- Bases files use extension `.base` and contain YAML with three top-level keys: `filters` (which notes to include), `views` (how to display), and optionally `properties` (per-property display metadata).\n- Emit generated Bases in a fenced code block tagged `base`. The chat UI adds a \"Save & Open in Bases\" button on every `base` block that writes the YAML to a `.base` file and opens it in Obsidian for native rendering.\n- **First line of the block should be a filename hint**: `# filename: my-projects.base` (kebab-case, no spaces). If the hint is absent, the file is saved with a timestamped name. The hint is stripped before the file is written.\n- Example:\n  ```base\n  # filename: active-projects.base\n  filters:\n    and:\n      - file.tags.contains(\"project\")\n      - status != \"archived\"\n  properties:\n    status:\n      displayName: Status\n    priority:\n      displayName: Priority\n  views:\n    - type: table\n      name: Active Projects\n      order:\n        - file.name\n        - status\n        - priority\n        - file.mtime\n      sort:\n        - property: priority\n          direction: DESC\n  ```\n- Filter operators: `==`, `!=`, `>`, `<`, `>=`, `<=`, `contains(...)`, `startsWith(...)`, `endsWith(...)`, `taggedWith(...)`. Combine with `and:` / `or:` / `not:` blocks.\n- Built-in file properties: `file.name`, `file.path`, `file.folder`, `file.ext`, `file.mtime`, `file.ctime`, `file.size`, `file.tags`, `file.links`, `file.inlinks`, `file.outlinks`.\n- View types: `table` (columns via `order`), `cards` (`imageProperty` optional), `board` (`groupBy` required), `calendar` (`dateProperty` required).\n- Only reference vault properties that exist. If unsure, use `file.*` built-ins."
+    }
+  ]
+}

@@ -287,6 +287,12 @@ export interface PromptVariables {
 			vaultSearchAvailable: boolean;
 			vaultSearchEnabled: boolean;
 		};
+		richOutputTypes?: Array<{
+			id: string;
+			label: string;
+			renderer: 'native' | 'source-only';
+			conventionMarkdown: string;
+		}>;
 	};
 	[PromptId.ConversationSummaryShort]: {
 		messages: Array<{ role: string; content: string }>;

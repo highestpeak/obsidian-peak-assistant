@@ -9,7 +9,7 @@ import { Composer } from './components/Composer';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
 import { useAutoScroll } from './hooks/useAutoScroll';
-import { NewConversationTypePicker } from './components/NewConversationTypePicker';
+import { NewConversationStartHero } from './components/NewConversationTypePicker';
 import { ChatStringsProvider } from './chatStringsContext';
 
 /**
@@ -85,27 +85,18 @@ const MessagesViewInner: React.FC = () => {
 		scrollToBottomUtil(bodyScrollRef, true);
 	}, [activeConversation?.meta.id]);
 
-	// Pending state: picker + composer in a single centered stack so the eye
-	// reads "pick mode → type message" as one block. Composer is NOT pinned
-	// to the bottom in this state (that left ~half a screen of empty space
-	// between picker and composer — picker and composer read as two
-	// unrelated UI islands). Once a real conversation exists the composer
-	// snaps back to its bottom-docked position via the active-conversation
-	// branch below.
+	// Pending state (chat-unified-mode 2026-07-05, Track B): the 3-card
+	// Chat / Agent / Plan picker was retired. Users see a small "Start a new
+	// conversation" hero above a centered composer — pick-mode-then-type-msg
+	// is replaced by type-immediately. `resolveChatExecutionStrategy` decides
+	// tools/plan-prompt without any UI selection. `/plan ` slash-prefix stays
+	// as the per-message planning opt-in.
 	if (pendingConversation) {
 		return (
 			<div className="peak-design-root pkchat-shell">
 				<div className="pkchat-center">
 					<div className="pkchat-body pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-gap-3">
-						<NewConversationTypePicker
-							selectedKind={pendingConversation.conversationType?.kind ?? 'chat'}
-							onSelectType={(type) => {
-								useChatViewStore.getState().setPendingConversation({
-									...pendingConversation,
-									conversationType: type,
-								});
-							}}
-						/>
+						<NewConversationStartHero />
 						<div className="pktw-w-full pktw-max-w-[760px]">
 							<Composer />
 						</div>
