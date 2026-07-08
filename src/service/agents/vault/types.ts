@@ -1,5 +1,5 @@
 /**
- * Shared types for VaultSearchAgent / VaultSearchAgentSDK pipelines.
+ * Shared types for the VaultSearchAgent pipeline.
  * UI components import plan-presentation and event types from here.
  */
 

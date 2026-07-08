@@ -308,9 +308,9 @@ export interface SubmitPlanFeedback {
 // ─── buildVaultMcpServer ──────────────────────────────────────────────────────
 
 /**
- * Minimal search function signature the MCP tool wrapper expects. The real
- * implementation wraps the plugin's SearchClient in VaultSearchAgentSDK
- * (Task 11) and passes it here.
+ * Minimal search function signature the MCP tool wrapper expects. The
+ * harness-native VaultSearchAgent (and vaultHarnessTools) wraps the
+ * plugin's SearchClient into this shape and passes it in.
  */
 export type GrepSearchFn = (
     query: string,

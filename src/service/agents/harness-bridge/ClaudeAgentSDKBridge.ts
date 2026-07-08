@@ -21,6 +21,8 @@ import type { AppHandle } from '@/core/ports/AppHandle';
 import type { AgentLoopConfig, AgentLoopResult } from '@/service/agents/harness/loop/types';
 import { runAgentLoop } from '@/service/agents/harness/loop/AgentLoop';
 import type { HarnessSettings } from '@/core/config/settingsTypes';
+import { ContextManager } from '@/service/agents/harness/context/ContextManager';
+import { createDefaultCompactSummarizer } from '@/service/agents/harness/context/compactSummarizerRuntime';
 
 export interface BridgeRunConfig extends AgentLoopConfig {
     /** T11J B1: explicit app + pluginId so the bridge doesn't reach AppContext. */
@@ -37,10 +39,26 @@ export interface BridgeRunConfig extends AgentLoopConfig {
 export class ClaudeAgentSDKBridge {
     async run(cfg: BridgeRunConfig): Promise<AgentLoopResult> {
         const { runHarnessAgent } = await import('@/service/agents/harness/HarnessAgentRun');
+        const loopConfig = withDefaultContextManager(cfg);
         const { payload } = await runHarnessAgent<AgentLoopResult>({
             trigger: 'manual',
-            execute: async () => runAgentLoop(cfg),
+            execute: async () => runAgentLoop(loopConfig),
         });
         return payload;
     }
+}
+
+function withDefaultContextManager(cfg: BridgeRunConfig): BridgeRunConfig {
+    if (cfg.context) return cfg;
+    const maxTokens =
+        cfg.tierController.current().capabilities.maxContextTokens ??
+        cfg.budget?.maxTokens ??
+        20_000;
+    return {
+        ...cfg,
+        context: new ContextManager({
+            maxTokens,
+            summarizer: createDefaultCompactSummarizer() ?? undefined,
+        }),
+    };
 }
