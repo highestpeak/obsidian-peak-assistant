@@ -4,6 +4,7 @@ import type { AppHandle as App } from '@/core/ports/AppHandle';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { DocumentType } from '@/core/document/types';
+import { hashString } from '@/core/utils/hash-utils';
 import { IndexProgressTracker } from '../support/progress-tracker';
 import type { ProgressReporterPort } from '@/core/ports/ProgressReporterPort';
 import {
@@ -457,54 +458,209 @@ export class IndexInitializer {
 	}
 
 	private async scanForIndexChanges(): Promise<{ filesToIndex: string[] }> {
+		// Diagnostic accumulators — one summary line at the end so we can
+		// binary-search which phase dominates when the scan feels slow.
+		// Grep for "[scan-diag]" in the console after a reload.
+		const diag = {
+			batches: 0,
+			totalScanned: 0,
+			totalIndexable: 0,
+			totalMtimeMismatch: 0,
+			totalReads: 0,
+			totalReadsFast: 0, // markdown/txt hashed via lightweight readText path
+			totalReadsSlow: 0, // fallback readByPath (parse + TextRank + …)
+			totalActuallyDirty: 0,
+			msScanDocuments: 0, // vault walk (fs.readdir + stat)
+			msFilterIndexable: 0, // shouldIndexDocument
+			msSqliteMtimeCheck: 0, // batchCheckIndexed
+			msFileReadHash: 0, // read + hash total (fast + slow paths)
+			msFileReadHashFast: 0, // fast path only
+			msFileReadHashSlow: 0, // slow path only
+			msSqliteHashCheck: 0, // batchGetByContentHashes
+			// Top-10 slowest per-file read+hash — helps spot outliers (huge files,
+			// iCloud materialize, canvas/PDF that fell to slow path).
+			slowestFiles: [] as Array<{ path: string; ms: number; type: DocumentType; via: 'fast' | 'slow' }>,
+		};
+
+		const scanStart = performance.now();
 		const loaderManager = DocumentLoaderManager.getInstance();
 		const filesToIndex: string[] = [];
+
+		let batchLoopMark = performance.now();
 		for await (const docBatch of loaderManager.scanDocuments({ batchSize: INDEX_CHECK_BATCH_SIZE })) {
+			diag.msScanDocuments += performance.now() - batchLoopMark;
+
+			diag.batches += 1;
+			diag.totalScanned += docBatch.length;
+
+			const filterMark = performance.now();
 			const indexable = docBatch.filter(d =>
 				loaderManager.shouldIndexDocument({ type: d.type, sourceFileInfo: { path: d.path } } as any),
 			);
-			filesToIndex.push(...await this.checkAndCollectModifiedFiles(indexable));
+			diag.msFilterIndexable += performance.now() - filterMark;
+			diag.totalIndexable += indexable.length;
+
+			filesToIndex.push(...await this.checkAndCollectModifiedFiles(indexable, diag));
+
+			batchLoopMark = performance.now();
 		}
+
+		const totalMs = performance.now() - scanStart;
+		const other = Math.max(
+			0,
+			totalMs
+				- diag.msScanDocuments
+				- diag.msFilterIndexable
+				- diag.msSqliteMtimeCheck
+				- diag.msFileReadHash
+				- diag.msSqliteHashCheck,
+		);
+		const avgFast = diag.totalReadsFast > 0
+			? (diag.msFileReadHashFast / diag.totalReadsFast).toFixed(1)
+			: '-';
+		const avgSlow = diag.totalReadsSlow > 0
+			? (diag.msFileReadHashSlow / diag.totalReadsSlow).toFixed(1)
+			: '-';
+		console.log(
+			`[scan-diag] total ${totalMs.toFixed(0)}ms in ${diag.batches} batch(es) — ` +
+			`scanned=${diag.totalScanned} indexable=${diag.totalIndexable} ` +
+			`mtimeMismatch=${diag.totalMtimeMismatch} reads=${diag.totalReads} ` +
+			`(fast=${diag.totalReadsFast} slow=${diag.totalReadsSlow}) ` +
+			`actuallyDirty=${diag.totalActuallyDirty} | phases: ` +
+			`scanDocs=${diag.msScanDocuments.toFixed(0)}ms ` +
+			`filterIndexable=${diag.msFilterIndexable.toFixed(0)}ms ` +
+			`sqliteMtimeCheck=${diag.msSqliteMtimeCheck.toFixed(0)}ms ` +
+			`fileReadHash=${diag.msFileReadHash.toFixed(0)}ms (fast=${diag.msFileReadHashFast.toFixed(0)}ms avg=${avgFast}ms/file, slow=${diag.msFileReadHashSlow.toFixed(0)}ms avg=${avgSlow}ms/file) ` +
+			`sqliteHashCheck=${diag.msSqliteHashCheck.toFixed(0)}ms ` +
+			`other=${other.toFixed(0)}ms`,
+		);
+		if (diag.slowestFiles.length > 0) {
+			const top = [...diag.slowestFiles].sort((a, b) => b.ms - a.ms).slice(0, 10);
+			console.log(
+				'[scan-diag] top-10 slowest read+hash:\n' +
+				top.map(f => `  ${f.ms.toFixed(0)}ms (${f.via}, ${f.type}) ${f.path}`).join('\n'),
+			);
+		}
+
 		return { filesToIndex };
 	}
 
 	private async checkAndCollectModifiedFiles(
 		currentBatch: Array<{ path: string; mtime: number; type: DocumentType }>,
+		diag?: {
+			totalMtimeMismatch: number;
+			totalReads: number;
+			totalReadsFast: number;
+			totalReadsSlow: number;
+			totalActuallyDirty: number;
+			msSqliteMtimeCheck: number;
+			msFileReadHash: number;
+			msFileReadHashFast: number;
+			msFileReadHashSlow: number;
+			msSqliteHashCheck: number;
+			slowestFiles: Array<{ path: string; ms: number; type: DocumentType; via: 'fast' | 'slow' }>;
+		},
 	): Promise<string[]> {
 		if (currentBatch.length === 0) return [];
 
 		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+		const mtimeMark = performance.now();
 		const indexedMap = await indexedDocumentRepo.batchCheckIndexed(currentBatch.map(d => d.path));
+		if (diag) diag.msSqliteMtimeCheck += performance.now() - mtimeMark;
+
 		const maybeIndex = currentBatch.filter(d => {
 			const info = indexedMap.get(d.path);
 			return info === undefined || info.mtime !== d.mtime;
 		});
+		if (diag) diag.totalMtimeMismatch += maybeIndex.length;
 		if (maybeIndex.length === 0) return [];
-		return this.processMaybeIndexBatch(maybeIndex);
+		return this.processMaybeIndexBatch(maybeIndex, diag);
 	}
 
-	/** Content-hash check: only files whose hash is genuinely new need re-indexing. */
+	/** Content-hash check: only files whose hash is genuinely new need re-indexing.
+	 *
+	 * Fast path (markdown / txt): the loader's `contentHash` is just
+	 * `hashString(readText(file), 8)` — same as what we can compute directly
+	 * here without triggering `readByPath`'s parse + TextRank pipeline. Uses
+	 * ~1-2ms/file instead of ~40ms/file, which is the difference between a
+	 * <2s scan and a 60s scan on a 1k+ dirty vault.
+	 *
+	 * Slow path (canvas / PDF / DOCX / etc.): the loader's `contentHash` is
+	 * derived from extracted content, so we still delegate to `readByPath`
+	 * for those. Fine because binary formats are rare in a note vault.
+	 */
 	private async processMaybeIndexBatch(
 		maybeIndexArray: Array<{ path: string; mtime: number; type: DocumentType }>,
+		diag?: {
+			totalReads: number;
+			totalReadsFast: number;
+			totalReadsSlow: number;
+			totalActuallyDirty: number;
+			msFileReadHash: number;
+			msFileReadHashFast: number;
+			msFileReadHashSlow: number;
+			msSqliteHashCheck: number;
+			slowestFiles: Array<{ path: string; ms: number; type: DocumentType; via: 'fast' | 'slow' }>;
+		},
 	): Promise<string[]> {
 		const loaderManager = DocumentLoaderManager.getInstance();
+		const vault = loaderManager.getVaultReader();
 		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 		const pathToHash = new Map<string, string>();
 		const filesWithoutHash: string[] = [];
 
+		const readMark = performance.now();
 		for (const docItem of maybeIndexArray) {
-			const doc = await loaderManager.readByPath(docItem.path, false, { includeLlmTags: false, includeLlmSummary: false });
-			if (doc?.contentHash) pathToHash.set(docItem.path, doc.contentHash);
-			else filesWithoutHash.push(docItem.path);
+			const fileMark = diag ? performance.now() : 0;
+			const isFastType = docItem.type === 'markdown' || docItem.type === 'txt';
+			let via: 'fast' | 'slow' = 'slow';
+			if (isFastType) {
+				const file = vault.getFile(docItem.path);
+				if (file) {
+					try {
+						const content = await vault.readText(file);
+						pathToHash.set(docItem.path, hashString(content, 8));
+						via = 'fast';
+					} catch {
+						filesWithoutHash.push(docItem.path);
+					}
+				} else {
+					filesWithoutHash.push(docItem.path);
+				}
+			} else {
+				const doc = await loaderManager.readByPath(docItem.path, false, { includeLlmTags: false, includeLlmSummary: false });
+				if (doc?.contentHash) pathToHash.set(docItem.path, doc.contentHash);
+				else filesWithoutHash.push(docItem.path);
+			}
+			if (diag) {
+				const dt = performance.now() - fileMark;
+				if (via === 'fast') { diag.totalReadsFast += 1; diag.msFileReadHashFast += dt; }
+				else { diag.totalReadsSlow += 1; diag.msFileReadHashSlow += dt; }
+				// Track top slowest — keep a bounded heap-ish list.
+				if (diag.slowestFiles.length < 10 || dt > diag.slowestFiles[diag.slowestFiles.length - 1].ms) {
+					diag.slowestFiles.push({ path: docItem.path, ms: dt, type: docItem.type, via });
+					if (diag.slowestFiles.length > 20) {
+						diag.slowestFiles.sort((a, b) => b.ms - a.ms);
+						diag.slowestFiles.length = 10;
+					}
+				}
+			}
+		}
+		if (diag) {
+			diag.msFileReadHash += performance.now() - readMark;
+			diag.totalReads += maybeIndexArray.length;
 		}
 
 		const filesToIndex = [...filesWithoutHash];
 		if (pathToHash.size > 0) {
+			const hashMark = performance.now();
 			const existingHashes = await indexedDocumentRepo.batchGetByContentHashes([...pathToHash.values()]);
+			if (diag) diag.msSqliteHashCheck += performance.now() - hashMark;
 			for (const [path, hash] of pathToHash) {
 				if (!existingHashes.has(hash)) filesToIndex.push(path);
 			}
 		}
+		if (diag) diag.totalActuallyDirty += filesToIndex.length;
 		return filesToIndex;
 	}
 
