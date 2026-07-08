@@ -141,6 +141,7 @@ export const ConfigTemplateId = {
 	Settings: 'config-settings' as const,
 	Chat: 'config-chat' as const,
 	Dashboard: 'config-dashboard' as const,
+	RichOutputTypes: 'config-rich-output-types' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -401,6 +402,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ConfigTemplateId.Settings]: meta('config', 'settings', { expectsJson: true }),
 	[ConfigTemplateId.Chat]: meta('config', 'chat', { expectsJson: true }),
 	[ConfigTemplateId.Dashboard]: meta('config', 'dashboard', { expectsJson: true }),
+	[ConfigTemplateId.RichOutputTypes]: meta('config', 'rich-output-types', { expectsJson: true }),
 
 	// --- Structural analysis prompts ---
 	'gap-explanation': meta('prompts', 'gap-explanation', { label: 'Gap Explanation', description: 'LLM prompt for lazy gap explanations.', group: 'indexing' }),

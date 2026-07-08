@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import type { WorkingTheme } from '@/service/context/types';
-import { FileText, Sparkles } from 'lucide-react';
+import { Bug, FileText, Sparkles } from 'lucide-react';
 import type { App } from 'obsidian';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
 
 interface RelatedNotesPanelProps {
 	app: App;
@@ -24,6 +26,8 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = ({ app }) => 
 	const items = useAmbientPushStore((s) => s.items);
 	const sourceFilePath = useAmbientPushStore((s) => s.sourceFilePath);
 	const [theme, setTheme] = useState<WorkingTheme | null>(null);
+	const { debugTracePort } = useServiceContext();
+	const copyDebugTrace = useDebugTraceCopy();
 
 	// Poll WorkingTheme every 15s while the panel is open. This is a stable
 	// surface — no store subscription flicker.
@@ -52,6 +56,25 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = ({ app }) => 
 			<header className="peak-related-notes-header">
 				<Sparkles size={14} />
 				<span className="peak-related-notes-title">Related Notes</span>
+				{debugTracePort?.isEnabled() && items.length > 0 && (
+					<button
+						type="button"
+						className="peak-related-notes-debug-btn"
+						title="Copy ambient push debug trace"
+						aria-label="Copy ambient push debug trace"
+						onClick={() => {
+							// The runtime opens one debug run per trigger. Take the most
+							// recent ambient run — normally the one that produced the
+							// items currently rendered.
+							const recent = debugTracePort.listRecent(5);
+							const ambientRun = recent.find((r) => r.surface === 'ambient');
+							void copyDebugTrace(ambientRun?.runId);
+						}}
+						style={{ marginLeft: 'auto', background: 'transparent', border: 'none', cursor: 'pointer', padding: 2 }}
+					>
+						<Bug size={12} />
+					</button>
+				)}
 			</header>
 
 			{summary.length > 0 && (

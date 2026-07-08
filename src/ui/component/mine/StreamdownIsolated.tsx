@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
+import { Notice } from 'obsidian';
 import {
 	Streamdown,
 	defaultRehypePlugins,
@@ -9,9 +10,12 @@ import {
 import type { PluggableList } from 'unified';
 import type { WikilinkPort } from '@/core/ports/WikilinkPort';
 import type { VaultNavigationPort } from '@/core/ports/VaultNavigationPort';
+import type { ChatVaultWriterPort } from '@/core/ports/ChatVaultWriterPort';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { STREAMDOWN_ISOLATED_CSS } from '@/styles/streamdown-isolated-css';
 import { remarkWikilink } from './streamdown';
+import { getAIBasesFolder } from '@/core/config/folderPaths';
+import { resolveBasesTargetName, stripBasesFilenameHint } from '@/service/chat/bases/basesFileHelpers';
 import {
 	loadWikilinkPreview,
 	parseWikilinkHrefToPath,
@@ -109,6 +113,105 @@ function setupMermaidPartInjection(shadowRoot: ShadowRoot): () => void {
 	return () => observer.disconnect();
 }
 
+/**
+ * chat-unified-mode 2026-07-05 follow-up: add a "Save & Open in Bases"
+ * affordance to every ```base fenced code block. Obsidian's Bases view
+ * only renders `.base` files — inline rendering is not possible via any
+ * public API — so this button automates the copy → create → open path.
+ * The button is idempotent (a `data-peak-bases-btn` flag guards against
+ * double-inject on streaming re-renders) and works in both the shadow
+ * host and the light-DOM fallback.
+ */
+const BASE_BLOCK_SELECTOR = '[data-streamdown="code-block"][data-language="base"]';
+const BASE_BUTTON_FLAG = 'peakBasesBtn';
+
+interface BasesInjectionDeps {
+	rootFolder: string;
+	chatVaultWriter: ChatVaultWriterPort;
+	vaultNavigation: VaultNavigationPort;
+}
+
+function extractBaseSourceFromBlock(block: HTMLElement): string {
+	const codeEl = block.querySelector('code');
+	// `code.textContent` gives the raw text without highlighting spans,
+	// which is what we want for the .base file body.
+	return String(codeEl?.textContent ?? '');
+}
+
+async function handleSaveAndOpenBases(block: HTMLElement, deps: BasesInjectionDeps): Promise<void> {
+	const raw = extractBaseSourceFromBlock(block);
+	if (!raw.trim()) {
+		new Notice('Nothing to save — the base block is empty.');
+		return;
+	}
+	const target = resolveBasesTargetName(raw);
+	const body = stripBasesFilenameHint(raw);
+	const folder = getAIBasesFolder(deps.rootFolder);
+	try {
+		const path = await deps.chatVaultWriter.saveChatMessageToFolder(folder, target.fileName, body);
+		new Notice(`Saved ${target.fileName} — opening in Bases…`);
+		await deps.vaultNavigation.openVaultPath(path, { newLeaf: 'tab' });
+	} catch (err) {
+		console.error('[Bases] save-and-open failed', err);
+		new Notice('Save & Open in Bases failed. See console for details.');
+	}
+}
+
+function injectBasesButton(block: HTMLElement, deps: BasesInjectionDeps): void {
+	if ((block.dataset as DOMStringMap)[BASE_BUTTON_FLAG]) return;
+	(block.dataset as DOMStringMap)[BASE_BUTTON_FLAG] = '1';
+	const btn = document.createElement('button');
+	btn.type = 'button';
+	btn.textContent = 'Save & Open in Bases';
+	btn.setAttribute('data-peak-bases-save', '1');
+	btn.title = 'Save this YAML to a new .base file and open it in Obsidian';
+	// Inline styles so both shadow-scoped and fallback (light-DOM) paths
+	// look consistent without leaking Obsidian button chrome. The palette
+	// mirrors the streamdown copy/download button hover states.
+	btn.style.cssText = [
+		'position:absolute',
+		'top:8px',
+		'right:8px',
+		'z-index:2',
+		'padding:4px 10px',
+		'font-size:11px',
+		'font-weight:600',
+		'border-radius:6px',
+		'border:1px solid hsl(var(--border))',
+		'background-color:hsl(var(--background))',
+		'color:hsl(var(--foreground))',
+		'cursor:pointer',
+		'box-shadow:0 1px 2px rgba(0,0,0,0.06)',
+	].join(';');
+	btn.addEventListener('click', (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		void handleSaveAndOpenBases(block, deps);
+	});
+	// Anchor for the absolutely positioned button.
+	if (getComputedStyle(block).position === 'static') {
+		block.style.position = 'relative';
+	}
+	block.appendChild(btn);
+}
+
+function injectAllBasesButtons(root: ParentNode, deps: BasesInjectionDeps): void {
+	root.querySelectorAll<HTMLElement>(BASE_BLOCK_SELECTOR).forEach((block) => injectBasesButton(block, deps));
+}
+
+/**
+ * Observe `root` (either a ShadowRoot or an HTMLElement) and inject the
+ * Bases affordance on every base code block that appears. Streaming
+ * renders trigger MutationObserver callbacks; the per-block flag keeps
+ * it idempotent.
+ */
+function setupBasesButtons(root: ShadowRoot | HTMLElement, deps: BasesInjectionDeps): () => void {
+	injectAllBasesButtons(root, deps);
+	const observer = new MutationObserver(() => injectAllBasesButtons(root, deps));
+	observer.observe(root, { childList: true, subtree: true });
+	return () => observer.disconnect();
+}
+
 /** Min length for STREAMDOWN_ISOLATED_CSS to be considered complete (host + streamdown Tailwind + KaTeX). */
 const MIN_ISOLATED_CSS_LENGTH = 5000;
 
@@ -149,7 +252,14 @@ function FallbackStreamdown({
 	className,
 	onClick,
 }: StreamdownIsolatedProps) {
-	const { wikilink, vaultNavigation } = useServiceContext();
+	const { wikilink, vaultNavigation, chatVaultWriter, settings } = useServiceContext();
+	const rootFolder = settings.ai.rootFolder;
+	const fallbackRootRef = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		const root = fallbackRootRef.current;
+		if (!root) return;
+		return setupBasesButtons(root, { rootFolder, chatVaultWriter, vaultNavigation });
+	}, [rootFolder, chatVaultWriter, vaultNavigation]);
 	const handleClickCapture = React.useCallback(
 		(evt: React.MouseEvent<HTMLDivElement>) => {
 			const composedPath = evt.nativeEvent.composedPath?.() ?? [];
@@ -161,6 +271,7 @@ function FallbackStreamdown({
 	);
 	return (
 		<div
+			ref={fallbackRootRef}
 			className={className}
 			data-streamdown-root
 			data-streamdown-mode="fallback"
@@ -205,7 +316,8 @@ const HOVER_CLOSE_DELAY_MS = 100;
 type HoverState = { path: string; rect: DOMRect; preview: PreviewResult | null; loading: boolean };
 
 export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => {
-	const { vaultPreview, wikilink, vaultNavigation } = useServiceContext();
+	const { vaultPreview, wikilink, vaultNavigation, chatVaultWriter, settings } = useServiceContext();
+	const basesDeps: BasesInjectionDeps = { rootFolder: settings.ai.rootFolder, chatVaultWriter, vaultNavigation };
 	const { children: rawChildren, isAnimating = false, className, onClick } = props;
 	// Strip inline $...$ (not $$...$$) to prevent KaTeX from rendering product names as math
 	const children = rawChildren.replace(/(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/g, '$1');
@@ -270,9 +382,11 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 			(rootRef as React.MutableRefObject<Root | null>).current = root;
 			const cleanupFullscreen = setupMermaidFullscreenEscape(shadow);
 			const cleanupPart = setupMermaidPartInjection(shadow);
+			const cleanupBases = setupBasesButtons(shadow, basesDeps);
 			cleanupRef.current = () => {
 				cleanupFullscreen();
 				cleanupPart();
+				cleanupBases();
 			};
 			// Capture-phase listener on shadow root so we see clicks before Streamdown's button handler.
 			const clickHandler = (e: MouseEvent) => {
@@ -345,7 +459,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 				}, 0);
 			}
 		};
-	}, [useFallback, wikilink, vaultNavigation]);
+	}, [useFallback, wikilink, vaultNavigation, chatVaultWriter, settings.ai.rootFolder]);
 
 	useLayoutEffect(() => {
 		if (useFallback) return;

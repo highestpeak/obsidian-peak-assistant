@@ -106,7 +106,9 @@ const EXTENSION_TYPE_MAP: Record<string, string> = {
  */
 export function pathToFileIconType(path: string | null): string {
 	if (!path?.trim()) return 'markdown';
-	const ext = path.split('.').pop()?.toLowerCase() || '';
+	const last = path.split('/').pop() ?? path;
+	if (!last.includes('.')) return 'markdown';
+	const ext = last.split('.').pop()?.toLowerCase() || '';
 	return EXTENSION_TYPE_MAP[ext] || 'file';
 }
 

@@ -76,6 +76,21 @@ export function normalizeTextForFts(text: string, locale?: string): string {
 }
 
 /**
+ * Turn a normalized term into FTS5-safe bareword tokens.
+ *
+ * Why: FTS5 MATCH treats `' " ( ) : * + - ^ ~` etc. as syntax. A term like
+ * `don't` pasted into `MATCH 'don't*'` triggers `fts5: syntax error near "'"`
+ * and aborts the whole retrieve. Strip all such chars to spaces, then split.
+ */
+export function sanitizeFtsBarewords(normalized: string): string[] {
+	if (!normalized) return [];
+	return normalized
+		.replace(/['"()[\]{}:*+\-^~,;!?<>=/\\|`]/g, ' ')
+		.split(/\s+/)
+		.filter(Boolean);
+}
+
+/**
  * Tokenize path/label-like text: normalize separators to space, then segment + normalize and split.
  */
 export function tokenizePathOrLabel(text: string, locale?: string): string[] {

@@ -15,6 +15,7 @@ export const AI_PATH_SUBFOLDERS = {
 	DataStore: 'DataStore',
 	AIAnalysis: 'AI-Analysis',
 	Attachments: 'Attachments',
+	Bases: 'Bases',
 	ResourcesSummary: 'resources-summary-cache',
 	HubSummaries: 'Hub-Summaries',
 	ManualHubNotes: 'Manual',
@@ -72,6 +73,15 @@ export function getAIAnalysisFolder(rootFolder: string): string {
 
 export function getAIUploadFolder(rootFolder: string): string {
 	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.Attachments}`);
+}
+
+/**
+ * chat-unified-mode 2026-07-05 Track C follow-up: model-generated Bases
+ * (`.base`) files land here so the "Save & Open in Bases" affordance
+ * on ```base fenced blocks has a deterministic destination.
+ */
+export function getAIBasesFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.Bases}`);
 }
 
 export function getAIResourcesSummaryFolder(rootFolder: string): string {

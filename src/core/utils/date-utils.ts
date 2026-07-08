@@ -12,6 +12,7 @@
  *  "more than one year ago"
  */
 export function humanReadableTime(timestamp: number): string {
+	if (!Number.isFinite(timestamp) || timestamp <= 0) return '';
 	const now = Date.now();
 	const dateObj = new Date(timestamp);
 	const nowDate = new Date(now);
