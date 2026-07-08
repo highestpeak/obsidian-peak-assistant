@@ -13,8 +13,19 @@ export type QuickSearchMode = 'all' | 'heading' | 'help';
 /**
  * T3 (2026-07-07 result graph): the result pane can render either the
  * ranked list (default) or a graph visualization of the same result set.
+ *
+ * 2026-07-08: added `tree` — folder-hierarchy view of the same result set.
+ * See `docs/research/2026-07-08-tree-view-mockup/`.
  */
-export type ResultView = 'list' | 'graph';
+export type ResultView = 'list' | 'graph' | 'tree';
+
+/**
+ * Tree view density. Compact mimics Obsidian's own file explorer (24px
+ * single-line rows, filename + hit-count badge). Detailed adds heading
+ * anchor + modified date + snippet under each file. See mockup at
+ * `docs/research/2026-07-08-tree-view-mockup/index.html`.
+ */
+export type TreeDensity = 'compact' | 'detailed';
 
 /**
  * Graph view mode presets (distilled from user's preferred layouts in the
@@ -51,6 +62,20 @@ interface VaultSearchStore {
 	graphShowSemantic: boolean;
 	setGraphShowSemantic: (on: boolean) => void;
 	toggleGraphShowSemantic: () => void;
+
+	// Tree view state.
+	// - density: whether file rows are single-line or 3-line (see TreeDensity).
+	// - collapsedFolders: folder paths the user manually collapsed. Default is
+	//   empty (all folders auto-expanded since we only show hit-containing
+	//   subtrees). New search resets this — otherwise a stale collapse from a
+	//   prior query would hide new matches.
+	// - cursor: focused file path for keyboard nav. `null` = none yet.
+	treeDensity: TreeDensity;
+	setTreeDensity: (density: TreeDensity) => void;
+	treeCollapsedFolders: string[];
+	toggleTreeFolderCollapsed: (folderPath: string) => void;
+	treeCursor: string | null;
+	setTreeCursor: (path: string | null) => void;
 
 	/**
 	 * T7 (2026-07-07 hub graph subview): when set, the result set is pinned to
@@ -105,6 +130,18 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 	setGraphShowSemantic: (on) => set({ graphShowSemantic: on }),
 	toggleGraphShowSemantic: () => set((s) => ({ graphShowSemantic: !s.graphShowSemantic })),
 
+	// Tree view initial state
+	treeDensity: 'compact',
+	setTreeDensity: (density) => set({ treeDensity: density }),
+	treeCollapsedFolders: [],
+	toggleTreeFolderCollapsed: (folderPath) => set((s) => ({
+		treeCollapsedFolders: s.treeCollapsedFolders.includes(folderPath)
+			? s.treeCollapsedFolders.filter((p) => p !== folderPath)
+			: [...s.treeCollapsedFolders, folderPath],
+	})),
+	treeCursor: null,
+	setTreeCursor: (path) => set({ treeCursor: path }),
+
 	// T7: hub-graph-subview pin
 	pinnedResultDocIds: null,
 	setPinnedResultDocIds: (ids) => set({ pinnedResultDocIds: ids }),
@@ -127,6 +164,11 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 		lastSearchResults: results,
 		lastSearchDuration: duration,
 		fuzzyCorrection: fuzzyCorrection ?? null,
+		// New result set invalidates the previous tree cursor + user-collapsed
+		// folders — a stale collapse from a prior query would hide new matches,
+		// and the cursor path may no longer exist. Both auto-reset on load.
+		treeCollapsedFolders: [],
+		treeCursor: null,
 	}),
 	setIsSearching: (isSearching) => set({ isSearching }),
 	reset: () => set({
@@ -140,6 +182,8 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 		graphPreset: 'constellation',
 		graphShowSemantic: false,
 		pinnedResultDocIds: null,
+		treeCollapsedFolders: [],
+		treeCursor: null,
 	}),
 }));
 
