@@ -15,6 +15,7 @@ export enum ViewEventType {
 	SEARCH_QUERY = 'search-query',
 	AI_ANALYSIS_COMPLETE = 'ai-analysis-complete',
 	USAGE_RECORDED = 'peak:usage-recorded',
+	COPILOT_ACTION_COMPLETED = 'peak:copilot-action-completed',
 }
 
 /**
@@ -139,6 +140,39 @@ export class AIAnalysisCompleteEvent extends ViewEvent {
 		super(ViewEventType.AI_ANALYSIS_COMPLETE);
 		this.query = data.query;
 		this.summary = `AI analysis complete: ${data.title ?? data.query ?? 'Unknown'} (${data.sourcesCount} sources)`;
+	}
+}
+
+/**
+ * Emitted when a Copilot manual action finishes (terminal status:
+ * completed / cancelled / error). Consumed by SessionContextService so
+ * that finished reviews show up in the Recent Activity slot alongside
+ * chats, searches, and AI analyses. Kept intentionally small: the
+ * downstream row only needs summary + related path + outcome status.
+ */
+export class CopilotActionCompletedEvent extends ViewEvent {
+	actionId: string;
+	actionLabel: string;
+	outcome: 'completed' | 'cancelled' | 'error';
+	summary: string;
+	path?: string;
+
+	constructor(data: {
+		actionId: string;
+		actionLabel: string;
+		outcome: 'completed' | 'cancelled' | 'error';
+		summary?: string;
+		path?: string;
+	}) {
+		super(ViewEventType.COPILOT_ACTION_COMPLETED);
+		this.actionId = data.actionId;
+		this.actionLabel = data.actionLabel;
+		this.outcome = data.outcome;
+		this.path = data.path;
+		this.summary = data.summary
+			?? (data.outcome === 'completed'
+				? `${data.actionLabel}${data.path ? ` on ${data.path}` : ''}`
+				: `${data.actionLabel} (${data.outcome})${data.path ? ` on ${data.path}` : ''}`);
 	}
 }
 

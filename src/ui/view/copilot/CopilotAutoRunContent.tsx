@@ -9,6 +9,7 @@ import { buildReviewArtifacts, reviewSubtitle } from '@/service/copilot/CopilotR
 import { MODE_LABELS, type ReviewMode } from '@/service/copilot/CopilotMetaAgentStream';
 import type { InsightChatHistories } from '@/service/copilot/CopilotReviewHistoryService';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { CopilotActionCompletedEvent } from '@/core/eventBus';
 import type { ChatTurn } from './review/InsightInlineChat';
 import { CopilotReviewShell } from './review/CopilotReviewShell';
 
@@ -21,7 +22,7 @@ export const CopilotAutoRunContent: React.FC<{
 	onClose: () => void;
 }> = ({ tab, ctx, mode, initialSnapshot, initialInsightChats, onClose }) => {
 	const { vault } = useCopilotPanelVault();
-	const { copilotReviewHistory: historyService, copilotReviewDeps } = useServiceContext();
+	const { copilotReviewHistory: historyService, copilotReviewDeps, eventBus } = useServiceContext();
 	const readOnly = Boolean(initialSnapshot);
 	const controllerRef = useRef<AbortController | null>(null);
 	const [snapshot, setSnapshot] = useState<ReviewSessionSnapshot | null>(initialSnapshot ?? null);
@@ -29,6 +30,10 @@ export const CopilotAutoRunContent: React.FC<{
 	const [insightChats, setInsightChats] = useState<InsightChatHistories>(initialInsightChats ?? {});
 	const persistedRecordRef = useRef<{ id: string; storagePath: string } | null>(null);
 	const lastSavedSignatureRef = useRef<string>('');
+	// Track A (2026-07-05): Copilot Review completion feeds Recent Activity via
+	// SessionContextService. Guard against emitting more than once per session
+	// (snapshots keep firing after status flips to a terminal value).
+	const activityDispatchedRef = useRef(false);
 
 	const updateInsightChat = (key: string, turns: ChatTurn[]) => {
 		setInsightChats(prev => ({ ...prev, [key]: turns }));
@@ -128,6 +133,37 @@ export const CopilotAutoRunContent: React.FC<{
 				console.warn('[CopilotAutoRunModal] failed to save review checkpoint', err);
 			});
 	}, [snapshot, readOnly, ctx.file.path, insightChats, tab, historyService]);
+
+	// Track A (2026-07-05): dispatch a CopilotActionCompletedEvent exactly once
+	// when the review reaches a terminal status, so SessionContextService can
+	// record it as a `copilot_action` recent activity. Read-only viewers skip.
+	useEffect(() => {
+		if (readOnly || !snapshot || activityDispatchedRef.current) return;
+		const finished = ['completed', 'cancelled', 'error'].includes(snapshot.status);
+		if (!finished) return;
+		activityDispatchedRef.current = true;
+		const scope = tab === 'vault' ? 'Vault Review' : 'Document Review';
+		const modeLabel = MODE_LABELS[mode] ?? mode;
+		const actionLabel = `${scope} · ${modeLabel}`;
+		const insightCount = snapshot.collectorSnapshot.insights.length;
+		const changeCount = snapshot.collectorSnapshot.changes.length;
+		const outcome = snapshot.status as 'completed' | 'cancelled' | 'error';
+		const summary =
+			outcome === 'completed'
+				? `${actionLabel} on ${ctx.file.basename ?? ctx.file.path} — ${insightCount} insight${insightCount === 1 ? '' : 's'}, ${changeCount} change block${changeCount === 1 ? '' : 's'}`
+				: `${actionLabel} on ${ctx.file.basename ?? ctx.file.path} (${outcome})`;
+		try {
+			eventBus.dispatch(new CopilotActionCompletedEvent({
+				actionId: `copilot-review:${tab}:${mode}`,
+				actionLabel,
+				outcome,
+				summary,
+				path: ctx.file.path,
+			}));
+		} catch (err) {
+			console.warn('[CopilotAutoRunModal] failed to dispatch activity event', err);
+		}
+	}, [snapshot, readOnly, tab, mode, ctx.file.path, ctx.file.basename, eventBus]);
 
 	const artifacts = useMemo(() => {
 		if (!snapshot) {

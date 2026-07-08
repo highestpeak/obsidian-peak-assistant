@@ -30,6 +30,12 @@ const EVENT_TO_OP: Partial<Record<ViewEventType, OperationType>> = {
 	[ViewEventType.MESSAGE_SENT]: 'chat_message',
 	[ViewEventType.SEARCH_QUERY]: 'search_query',
 	[ViewEventType.AI_ANALYSIS_COMPLETE]: 'ai_analysis_complete',
+	// 2026-07-05 chat-unified-mode Track A: Copilot manual actions (Document
+	// Review, Vault Review, prompt-driven actions) show up in Recent Activity
+	// via this bridge. UI dispatches CopilotActionCompletedEvent when the
+	// snapshot reaches a terminal status so the model sees them the same way
+	// as chats / searches / AI analyses.
+	[ViewEventType.COPILOT_ACTION_COMPLETED]: 'copilot_action',
 };
 
 const ROW_TYPE_TO_OP: Record<string, OperationType> = {
@@ -345,6 +351,12 @@ export class SessionContextService {
 		const metadata: Record<string, unknown> = {};
 		if (typeof event?.query === 'string') metadata.query = event.query;
 		if (Array.isArray(event?.tags)) metadata.tags = event.tags;
+		// Copilot action fields (Track A, 2026-07-05). Kept in metadata so
+		// get_activity_detail can expose outcome + action id without bloating
+		// the one-line index render.
+		if (typeof event?.actionId === 'string') metadata.actionId = event.actionId;
+		if (typeof event?.actionLabel === 'string') metadata.actionLabel = event.actionLabel;
+		if (typeof event?.outcome === 'string') metadata.outcome = event.outcome;
 
 		this.recordActivity({
 			type: opType,
@@ -352,8 +364,8 @@ export class SessionContextService {
 			relatedPaths: paths,
 			importanceLevel: typeof event?.importanceLevel === 'number' ? clampImportance(event.importanceLevel) : 0,
 			metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
-			relatedKind: typeof event?.relatedKind === 'string' ? event.relatedKind : null,
-			relatedId: typeof event?.relatedId === 'string' ? event.relatedId : null,
+			relatedKind: typeof event?.relatedKind === 'string' ? event.relatedKind : (typeof event?.actionId === 'string' ? 'copilot_action' : null),
+			relatedId: typeof event?.relatedId === 'string' ? event.relatedId : (typeof event?.actionId === 'string' ? event.actionId : null),
 		}).catch((err) => console.warn('[SessionContextService] recordActivity error', err));
 	}
 

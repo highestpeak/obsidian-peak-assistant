@@ -1,7 +1,11 @@
 import type { CopilotAction } from './CopilotActionRegistry';
 
-export type IntentTabId = 'document' | 'vault' | 'setting';
-export type IntentHubId = 'copilot' | 'vault-intelligence' | 'manage-system';
+// 'atlas' and 'ambient' are new picker tabs shown in the Copilot Modal.
+// 'vault' remains for action categorization + Search Modal's Vault Intelligence
+// panel (Copilot Modal no longer shows it as a tab).
+// 'setting' remains for action categorization (command-only, no picker tab).
+export type IntentTabId = 'document' | 'vault' | 'setting' | 'atlas' | 'ambient';
+export type IntentHubId = 'copilot' | 'vault-intelligence' | 'manage-system' | 'atlas' | 'ambient';
 
 export interface IntentTabDefinition {
 	id: IntentTabId;

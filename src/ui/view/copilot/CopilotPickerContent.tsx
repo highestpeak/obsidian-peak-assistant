@@ -1,5 +1,7 @@
-import { Platform } from 'obsidian';
+import { Platform, App } from 'obsidian';
 import React, { useEffect, useMemo, useState } from 'react';
+import { HeadingModeContainer } from '@/ui/view/quick-search/components/heading-mode/HeadingModeContainer';
+import { RelatedNotesPanel } from '@/ui/view/ambient-panel/RelatedNotesPanel';
 import {
 	ChevronRight,
 	History,
@@ -37,10 +39,13 @@ import {
 	settingReadiness,
 } from './PickerReadinessAdapters';
 
+// Copilot Modal tab bar — three tabs, all focused on the current document.
+// Vault Intelligence moved to Search Modal (rendered via `hideTabBar=true`,
+// initialTab='vault'). Settings moved to command palette only.
 const SCOPE_TABS: Array<{ id: IntentTabId; title: string; subtitle: string; placeholder: string }> = [
-	{ id: 'document', title: 'Document', subtitle: '= Copilot', placeholder: 'Search or ask in current document... (# heading, @ note, ? help)' },
-	{ id: 'vault',    title: 'Vault',    subtitle: '= Vault Intelligence', placeholder: 'Search or ask across vault... (# in-file, @ folder, ? help)' },
-	{ id: 'setting',  title: 'Setting',  subtitle: '= System', placeholder: 'Search settings, index, models, skills, prompts...' },
+	{ id: 'atlas',    title: 'Atlas',            subtitle: '= Structure',  placeholder: 'Filter headings in current document...' },
+	{ id: 'document', title: 'Document Copilot', subtitle: '= Copilot',    placeholder: 'Search or ask in current document... (@ note, ? help)' },
+	{ id: 'ambient',  title: 'Ambient',          subtitle: '= Related',    placeholder: 'Related notes around your cursor...' },
 ];
 
 export const CopilotPickerContent: React.FC<{
@@ -57,7 +62,14 @@ export const CopilotPickerContent: React.FC<{
 	onOpenVaultRecord: (record: VaultReviewHistoryRecord) => void;
 	ctx: DocumentContext | null;
 	initialTab: IntentTabId;
-}> = ({ onSelect, onAuto, onOpenHistoryRecord, onOpenAllHistory, onOpenVaultRecord, ctx, initialTab }) => {
+	/**
+	 * When true, the internal `<Tabs>` bar is hidden. Used by Search Modal to
+	 * mount the picker in a locked-scope mode (e.g. Vault Intelligence panel).
+	 */
+	hideTabBar?: boolean;
+	/** Closes the surrounding modal (used by Atlas heading-jump). */
+	onClose?: () => void;
+}> = ({ onSelect, onAuto, onOpenHistoryRecord, onOpenAllHistory, onOpenVaultRecord, ctx, initialTab, hideTabBar, onClose }) => {
 	// T11B: action catalog comes from the app-owned runtime; mounting
 	// before the runtime is bound renders an empty list rather than
 	// throwing inside React.
@@ -139,16 +151,49 @@ export const CopilotPickerContent: React.FC<{
 		}
 	}, [activeTab, ctx, isMobile, vaultState, onAuto, onOpenVaultRecord]);
 
+	// Atlas + Ambient tabs render alternative bodies (heading tree / related
+	// notes cards). They still show the tab bar so users can switch back.
+	if (activeTab === 'atlas' || activeTab === 'ambient') {
+		return (
+			<div className="pktw-flex pktw-flex-col pktw-h-full pktw-bg-pk-background">
+				{!hideTabBar && (
+					<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as IntentTabId)} variant="segment">
+						<TabsList>
+							{SCOPE_TABS.map(t => (
+								<TabsTrigger key={t.id} value={t.id} title={t.title} subtitle={t.subtitle} />
+							))}
+						</TabsList>
+					</Tabs>
+				)}
+				<div className="pktw-flex-1 pktw-overflow-hidden pktw-flex pktw-flex-col">
+					{activeTab === 'atlas' ? (
+						ctx ? (
+							<HeadingModeContainer filePath={ctx.file.path} queryText="" onClose={onClose} />
+						) : (
+							<div className="pktw-flex-1 pktw-flex pktw-items-center pktw-justify-center pktw-text-sm pktw-text-pk-foreground-muted">
+								Open a note to see its structure.
+							</div>
+						)
+					) : (
+						<RelatedNotesPanel app={AppContext.getApp()} />
+					)}
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-bg-pk-background">
 			{/* ─── Scope tabs ─── */}
-			<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as IntentTabId)} variant="segment">
-				<TabsList>
-					{SCOPE_TABS.map(t => (
-						<TabsTrigger key={t.id} value={t.id} title={t.title} subtitle={t.subtitle} />
-					))}
-				</TabsList>
-			</Tabs>
+			{!hideTabBar && (
+				<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as IntentTabId)} variant="segment">
+					<TabsList>
+						{SCOPE_TABS.map(t => (
+							<TabsTrigger key={t.id} value={t.id} title={t.title} subtitle={t.subtitle} />
+						))}
+					</TabsList>
+				</Tabs>
+			)}
 
 			{/* ─── Body ─── */}
 			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-px-7 pktw-py-5 pktw-flex pktw-flex-col pktw-gap-4">
