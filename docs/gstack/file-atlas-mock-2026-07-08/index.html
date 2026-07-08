@@ -1,0 +1,1132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>File Atlas Mock</title>
+  <style>
+    :root {
+      --bg: #f7f7f9;
+      --panel: #ffffff;
+      --panel-2: #fbfbfd;
+      --line: #e5e7ee;
+      --line-strong: #d8dbe6;
+      --text: #202332;
+      --muted: #667085;
+      --faint: #98a2b3;
+      --accent: #6d5dfc;
+      --accent-soft: #f0eeff;
+      --accent-line: #d8d2ff;
+      --blue: #2d6cdf;
+      --blue-soft: #edf4ff;
+      --green: #26845c;
+      --green-soft: #eaf7f0;
+      --amber: #a76105;
+      --amber-soft: #fff4df;
+      --red: #c2413a;
+      --red-soft: #fff0ee;
+      --teal: #087a80;
+      --teal-soft: #e7f7f8;
+      --shadow: 0 18px 42px rgba(20, 24, 40, 0.12);
+      --radius: 8px;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, #fbfbfc 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: var(--font);
+      letter-spacing: 0;
+    }
+
+    svg {
+      width: 15px;
+      height: 15px;
+      stroke-width: 1.9;
+      flex: 0 0 auto;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .stage {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+
+    .window {
+      width: min(1360px, calc(100vw - 56px));
+      height: min(850px, calc(100vh - 56px));
+      min-height: 720px;
+      background: var(--panel);
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      overflow: hidden;
+    }
+
+    .topbar {
+      min-height: 58px;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: minmax(270px, 1fr) auto auto;
+      align-items: center;
+      gap: 14px;
+      background: #ffffff;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--accent-line);
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 8px;
+    }
+
+    .brand-copy {
+      min-width: 0;
+      display: grid;
+      gap: 1px;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .title {
+      font-size: 15px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .filename {
+      font-size: 12px;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .reliability {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 24px;
+      padding: 0 8px;
+      border: 1px solid #b7ead2;
+      color: var(--green);
+      background: var(--green-soft);
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .segmented {
+      display: flex;
+      align-items: center;
+      padding: 3px;
+      background: #f0f1f5;
+      border: 1px solid #e1e4eb;
+      border-radius: 8px;
+      gap: 2px;
+    }
+
+    .segmented button,
+    .icon-btn,
+    .toggle-btn,
+    .command-btn {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .segmented button {
+      height: 28px;
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .segmented button.is-active {
+      background: #ffffff;
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.08);
+    }
+
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .command-btn {
+      height: 32px;
+      padding: 0 12px;
+      background: var(--accent);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .layerbar {
+      padding: 9px 16px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      background: #fbfbfd;
+    }
+
+    .layer-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--faint);
+      text-transform: uppercase;
+    }
+
+    .layers {
+      display: flex;
+      gap: 7px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .toggle-btn {
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .toggle-btn[aria-pressed="true"] {
+      color: var(--accent);
+      border-color: var(--accent-line);
+      background: var(--accent-soft);
+    }
+
+    .filter-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(450px, 1.1fr) minmax(360px, 0.85fr);
+      background: var(--panel);
+    }
+
+    .tree-pane {
+      min-width: 0;
+      min-height: 0;
+      border-right: 1px solid var(--line);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      background: #ffffff;
+    }
+
+    .pane-head {
+      min-height: 54px;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pane-title {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .pane-title span:first-child {
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .pane-title span:last-child {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .mini-search {
+      width: 220px;
+      height: 32px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tree-scroll {
+      min-height: 0;
+      overflow: auto;
+      padding: 10px 10px 20px;
+    }
+
+    .tree {
+      display: grid;
+      gap: 2px;
+    }
+
+    .node {
+      min-height: 34px;
+      display: grid;
+      grid-template-columns: 16px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 8px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
+      position: relative;
+    }
+
+    .node:hover {
+      background: #f7f8fb;
+    }
+
+    .node.is-selected {
+      background: var(--accent-soft);
+      border-color: var(--accent-line);
+    }
+
+    .node.is-selected::before {
+      content: "";
+      position: absolute;
+      left: -1px;
+      top: 6px;
+      bottom: 6px;
+      width: 3px;
+      background: var(--accent);
+      border-radius: 3px;
+    }
+
+    .indent-0 { margin-left: 0; }
+    .indent-1 { margin-left: 18px; }
+    .indent-2 { margin-left: 40px; }
+    .indent-3 { margin-left: 64px; }
+    .indent-4 { margin-left: 88px; }
+
+    .twisty {
+      width: 16px;
+      height: 16px;
+      color: var(--faint);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+    }
+
+    .node-main {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .node-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1px solid transparent;
+    }
+
+    .node-icon svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    .node-label {
+      min-width: 0;
+      display: grid;
+      gap: 1px;
+    }
+
+    .node-name {
+      font-size: 13px;
+      font-weight: 650;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .node-sub {
+      color: var(--muted);
+      font-size: 11px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .node-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .node-add {
+      width: 24px;
+      height: 24px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: #ffffff;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      opacity: 0;
+    }
+
+    .node:hover .node-add,
+    .node.is-selected .node-add {
+      opacity: 1;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      padding: 0 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 750;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .type-heading .node-icon { color: #4a5568; background: #f0f2f6; border-color: #e2e6ee; }
+    .type-block .node-icon { color: #5f6b7a; background: #f7f8fb; border-color: #eceef4; }
+    .type-resource .node-icon { color: var(--blue); background: var(--blue-soft); border-color: #cfe0ff; }
+    .type-insight .node-icon { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
+    .type-issue .node-icon { color: var(--amber); background: var(--amber-soft); border-color: #f8d48d; }
+    .type-task .node-icon { color: var(--green); background: var(--green-soft); border-color: #b7ead2; }
+
+    .tag.raw { color: #526071; background: #f1f3f7; border-color: #e0e4ed; }
+    .tag.vault { color: var(--teal); background: var(--teal-soft); border-color: #b6e6ea; }
+    .tag.external { color: var(--blue); background: var(--blue-soft); border-color: #cfe0ff; }
+    .tag.insight { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
+    .tag.issue { color: var(--amber); background: var(--amber-soft); border-color: #f8d48d; }
+    .tag.stale { color: var(--red); background: var(--red-soft); border-color: #ffd0cc; }
+    .tag.ok { color: var(--green); background: var(--green-soft); border-color: #b7ead2; }
+
+    body.hide-blocks .type-block:not(.type-task) { display: none; }
+    body.hide-resources .type-resource { display: none; }
+    body.hide-insights .type-insight { display: none; }
+    body.hide-issues .type-issue { display: none; }
+
+    .inspector {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      background: var(--panel-2);
+    }
+
+    .inspector-scroll {
+      min-height: 0;
+      overflow: auto;
+      padding: 16px;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .detail-panel {
+      border: 1px solid var(--line);
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .detail-head {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 8px;
+    }
+
+    .detail-kind {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .detail-title {
+      font-size: 18px;
+      line-height: 1.25;
+      font-weight: 760;
+    }
+
+    .detail-sub {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .detail-body {
+      padding: 14px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfbfd;
+      display: grid;
+      gap: 3px;
+    }
+
+    .field span:first-child {
+      color: var(--faint);
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    .field span:last-child {
+      font-size: 12px;
+      color: var(--text);
+      overflow-wrap: break-word;
+    }
+
+    .source-box {
+      padding: 12px;
+      border: 1px solid #e3e6ef;
+      background: #fbfcff;
+      border-radius: 8px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .source-box .quote {
+      font-size: 13px;
+      line-height: 1.55;
+      color: #343849;
+    }
+
+    .mono {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .provenance {
+      display: grid;
+      gap: 8px;
+    }
+
+    .provenance-row {
+      min-height: 32px;
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid #edf0f5;
+      font-size: 12px;
+    }
+
+    .provenance-row:last-child {
+      border-bottom: 0;
+    }
+
+    .provenance-row span:first-child {
+      color: var(--faint);
+      font-weight: 700;
+    }
+
+    .action-strip {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .secondary-btn {
+      height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      border-radius: 6px;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tray {
+      min-height: 58px;
+      border-top: 1px solid var(--line);
+      background: #ffffff;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 16px;
+    }
+
+    .tray-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--muted);
+    }
+
+    .tray-items {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .chip {
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      background: #f8f9fc;
+      border-radius: 999px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+      max-width: 260px;
+    }
+
+    .chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .empty-chip {
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 20px;
+      padding: 0 5px;
+      border: 1px solid var(--line-strong);
+      background: #ffffff;
+      border-radius: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      box-shadow: inset 0 -1px 0 rgba(20, 24, 40, 0.04);
+    }
+
+    @media (max-width: 980px) {
+      .window {
+        width: calc(100vw - 28px);
+        height: calc(100vh - 28px);
+        min-height: 680px;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .layerbar {
+        grid-template-columns: 1fr;
+      }
+
+      .main {
+        grid-template-columns: 1fr;
+      }
+
+      .inspector {
+        display: none;
+      }
+
+      .mini-search {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body class="hide-blocks">
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="icon-map" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15"/><path d="M15 6v15"/></symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+    <symbol id="icon-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/></symbol>
+    <symbol id="icon-send" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"/></symbol>
+    <symbol id="icon-file" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></symbol>
+    <symbol id="icon-heading" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></symbol>
+    <symbol id="icon-pilcrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 4v16"/><path d="M17 4v16"/><path d="M9 4h8"/><path d="M9 4a4 4 0 0 0 0 8h4"/></symbol>
+    <symbol id="icon-link" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1.14 1.14"/><path d="M14 11a5 5 0 0 0-7.07 0l-2 2A5 5 0 0 0 12 20.07l1.14-1.14"/></symbol>
+    <symbol id="icon-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20"/><path d="M12 2a15 15 0 0 0 0 20"/></symbol>
+    <symbol id="icon-image" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></symbol>
+    <symbol id="icon-table" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M9 4v16"/><path d="M15 4v16"/></symbol>
+    <symbol id="icon-code" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></symbol>
+    <symbol id="icon-sigma" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 4H6l6 8-6 8h12"/></symbol>
+    <symbol id="icon-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l1.7 5.4L19 10l-5.3 1.6L12 17l-1.7-5.4L5 10l5.3-1.6L12 3z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z"/></symbol>
+    <symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="icon-task" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 12l2 2 5-5"/></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="icon-tray" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h5l2 3h4l2-3h5"/><path d="M5 6h14l2 12H3L5 6z"/></symbol>
+  </svg>
+
+  <div class="stage">
+    <main class="window" aria-label="File Atlas mock">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark"><svg><use href="#icon-map"/></svg></div>
+          <div class="brand-copy">
+            <div class="title-row">
+              <span class="title">File Atlas</span>
+              <span class="reliability"><svg><use href="#icon-check"/></svg> Versioned</span>
+            </div>
+            <span class="filename">0-Index.md / 流水线循环 - Showing Up</span>
+          </div>
+        </div>
+
+        <div class="segmented" aria-label="View preset">
+          <button type="button" class="is-active" data-preset="overview">Overview</button>
+          <button type="button" data-preset="reading">Reading</button>
+          <button type="button" data-preset="writing">Writing</button>
+          <button type="button" data-preset="resources">Resources</button>
+          <button type="button" data-preset="debug">Debug</button>
+        </div>
+
+        <div class="toolbar-actions">
+          <button class="icon-btn" type="button" title="Advanced filters"><svg><use href="#icon-filter"/></svg></button>
+          <button class="command-btn" type="button"><svg><use href="#icon-send"/></svg> Send to Copilot</button>
+        </div>
+      </header>
+
+      <section class="layerbar" aria-label="Layer toggles">
+        <span class="layer-label">Layers</span>
+        <div class="layers">
+          <button type="button" class="toggle-btn" data-layer="blocks" aria-pressed="false">Blocks</button>
+          <button type="button" class="toggle-btn" data-layer="resources" aria-pressed="true">Resources</button>
+          <button type="button" class="toggle-btn" data-layer="insights" aria-pressed="true">Insights</button>
+          <button type="button" class="toggle-btn" data-layer="issues" aria-pressed="true">Issues</button>
+        </div>
+        <div class="filter-meta">
+          <span><span class="kbd">B</span> toggles blocks</span>
+          <span>124 blocks · 18 resources · 11 insights</span>
+        </div>
+      </section>
+
+      <section class="main">
+        <div class="tree-pane">
+          <div class="pane-head">
+            <div class="pane-title">
+              <span>Atlas Tree</span>
+              <span>Ordered blocks, persisted insights, and resources in document order</span>
+            </div>
+            <div class="mini-search"><svg><use href="#icon-search"/></svg> Filter current tree</div>
+          </div>
+
+          <div class="tree-scroll">
+            <div class="tree">
+              <div class="node type-heading indent-0" data-title="0-Index.md" data-kind="File root" data-sub="3070 words · 15671 characters · active editor buffer" data-anchor="working-tree root" data-source="Document root for the current active note.">
+                <span class="twisty">▾</span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-file"/></svg></span><span class="node-label"><span class="node-name">0-Index.md</span><span class="node-sub">Root · properties · 4 H1 sections</span></span></div>
+                <span class="node-meta"><span class="tag ok">active</span></span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="Properties" data-kind="Frontmatter" data-sub="type, project, status, tags, updated" data-anchor="lines 1-8 · hash 8f21" data-source="type: index, project: job-search, status: active, tags: [interview, workflow]">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-table"/></svg></span><span class="node-label"><span class="node-name">Properties</span><span class="node-sub">type · project · status · tags · updated</span></span></div>
+                <span class="node-meta"><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-heading indent-1" data-title="方法论" data-kind="H1 heading" data-sub="Lines 4-13 · 1 task · 1 vault link" data-anchor="heading 方法论 · lines 4-13" data-source="# 方法论">
+                <span class="twisty">▾</span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-heading"/></svg></span><span class="node-label"><span class="node-name">方法论</span><span class="node-sub">Lines 4-13</span></span></div>
+                <span class="node-meta"><span class="tag raw">H1</span></span>
+              </div>
+
+              <div class="node type-task indent-2" data-title="Task: open dashboard and rehearse once" data-kind="Task" data-sub="unchecked · line 9 · high-frequency block" data-anchor="line 9 · hash 7c22" data-source="- [ ] Open Dashboard, pick one story, rehearse once">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-task"/></svg></span><span class="node-label"><span class="node-name">Open Dashboard, rehearse once</span><span class="node-sub">Task · unchecked · line 9</span></span></div>
+                <span class="node-meta"><span class="tag ok">task</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-resource indent-2" data-title="Vault link: Story Cards" data-kind="Vault link" data-sub="[[2-Story Cards-0-Fixed combination#追问]] · line 19" data-anchor="line 19 · link target resolved" data-source="follow-up [[2-Story Cards-0-Fixed combination#追问]]">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-link"/></svg></span><span class="node-label"><span class="node-name">2-Story Cards-0-Fixed combination#追问</span><span class="node-sub">Vault link · line 19</span></span></div>
+                <span class="node-meta"><span class="tag vault">vault</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-heading indent-1 is-selected" data-title="流水线循环 - Showing Up" data-kind="H1 heading" data-sub="Lines 14-76 · selected section · 5 visible children" data-anchor="heading 流水线循环 - Showing Up · lines 14-76" data-source="# 流水线循环--Showing Up">
+                <span class="twisty">▾</span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-heading"/></svg></span><span class="node-label"><span class="node-name">流水线循环 - Showing Up</span><span class="node-sub">Lines 14-76 · active editor section</span></span></div>
+                <span class="node-meta"><span class="tag raw">H1</span></span>
+              </div>
+
+              <div class="node type-block indent-2" data-title="Paragraph: weekly speaking loop" data-kind="Paragraph" data-sub="line 18 · hidden in Overview until Blocks is enabled" data-anchor="line 18 · hash 10ae" data-source="第一周能上场，第二周能追问，每个故事准备追问，follow-up...">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-pilcrow"/></svg></span><span class="node-label"><span class="node-name">第一周能上场，第二周能追问...</span><span class="node-sub">Paragraph · line 18</span></span></div>
+                <span class="node-meta"><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-insight indent-3" data-title="Claim: workflow should be spoken-first" data-kind="Claim" data-sub="Document Copilot · active anchor · generated from paragraph line 18" data-anchor="active · block hash 10ae · git blob b7f3" data-source="The note frames this workflow as spoken-first practice, not text polishing.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-spark"/></svg></span><span class="node-label"><span class="node-name">Workflow is spoken-first, not text-polish-first</span><span class="node-sub">Claim · from Copilot run cp-7421</span></span></div>
+                <span class="node-meta"><span class="tag insight">claim</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-insight indent-3" data-title="Evidence: three-pass speaking loop" data-kind="Evidence" data-sub="Document Copilot · active anchor · lines 24-30" data-anchor="active · lines 24-30 · git blob b7f3" data-source="The checklist includes first pass, second pass, third pass, and explicit time boxes for speaking practice.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-spark"/></svg></span><span class="node-label"><span class="node-name">Three-pass loop supports the claim</span><span class="node-sub">Evidence · anchored to checklist</span></span></div>
+                <span class="node-meta"><span class="tag insight">evidence</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-resource indent-2" data-title="External link: toastmasters.org.nz" data-kind="External link" data-sub="domain toastmasters.org.nz · line 1 · internet source" data-anchor="line 1 · external URL" data-source="https://toastmasters.org.nz/">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-globe"/></svg></span><span class="node-label"><span class="node-name">toastmasters.org.nz</span><span class="node-sub">External link · internet resource</span></span></div>
+                <span class="node-meta"><span class="tag external">external</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-resource indent-2" data-title="External link: meetup.com" data-kind="External link" data-sub="domain meetup.com · line 2 · internet source" data-anchor="line 2 · external URL" data-source="https://www.meetup.com/home/">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-globe"/></svg></span><span class="node-label"><span class="node-name">meetup.com/home</span><span class="node-sub">External link · internet resource</span></span></div>
+                <span class="node-meta"><span class="tag external">external</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-heading indent-1" data-title="每个故事对应的用途" data-kind="H1 heading" data-sub="Lines 92-147 · 2 H2 sections · selected by heading search" data-anchor="heading 每个故事对应的用途 · lines 92-147" data-source="# 每个故事对应的用途">
+                <span class="twisty">▾</span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-heading"/></svg></span><span class="node-label"><span class="node-name">每个故事对应的用途</span><span class="node-sub">Lines 92-147 · 2 matches</span></span></div>
+                <span class="node-meta"><span class="tag raw">H1</span></span>
+              </div>
+
+              <div class="node type-heading indent-2" data-title="按项目分组" data-kind="H2 heading" data-sub="Lines 94-144 · table · image · evidence" data-anchor="heading 按项目分组 · lines 94-144" data-source="## 按项目分组">
+                <span class="twisty">▾</span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-heading"/></svg></span><span class="node-label"><span class="node-name">按项目分组</span><span class="node-sub">Lines 94-144</span></span></div>
+                <span class="node-meta"><span class="tag raw">H2</span></span>
+              </div>
+
+              <div class="node type-resource indent-3" data-title="Table: story to project mapping" data-kind="Table" data-sub="6 rows · 4 columns · line 104" data-anchor="line 104 · table hash c12a" data-source="| Story | Project | Evidence | Rehearsal status |">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-table"/></svg></span><span class="node-label"><span class="node-name">Story to project mapping</span><span class="node-sub">Table · 6 rows · 4 columns</span></span></div>
+                <span class="node-meta"><span class="tag raw">table</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-resource indent-3" data-title="Image: story-card-flow.png" data-kind="Image" data-sub="embedded attachment · local vault resource" data-anchor="line 118 · attachment story-card-flow.png" data-source="![[story-card-flow.png]]">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-image"/></svg></span><span class="node-label"><span class="node-name">story-card-flow.png</span><span class="node-sub">Image · embedded attachment</span></span></div>
+                <span class="node-meta"><span class="tag raw">image</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-heading indent-2" data-title="按用途分组" data-kind="H2 heading" data-sub="Lines 145-147 · action insight" data-anchor="heading 按用途分组 · lines 145-147" data-source="## 按用途分组">
+                <span class="twisty">▾</span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-heading"/></svg></span><span class="node-label"><span class="node-name">按用途分组</span><span class="node-sub">Lines 145-147</span></span></div>
+                <span class="node-meta"><span class="tag raw">H2</span></span>
+              </div>
+
+              <div class="node type-insight indent-3" data-title="Action: rehearse behavior stories" data-kind="Action" data-sub="Document Copilot · active anchor · selected for handoff" data-anchor="active · line 147 · run cp-7421" data-source="Prepare one spoken version per story category and send the selected stories to Document Copilot for rehearsal prompts.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-spark"/></svg></span><span class="node-label"><span class="node-name">Prepare one spoken version per category</span><span class="node-sub">Action · persisted Copilot output</span></span></div>
+                <span class="node-meta"><span class="tag insight">action</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-heading indent-1" data-title="我的工具使用经验和最佳实践" data-kind="H1 heading" data-sub="Lines 148-253 · code · math · issue" data-anchor="heading 我的工具使用经验和最佳实践 · lines 148-253" data-source="# 我的工具使用经验和最佳实践">
+                <span class="twisty">▾</span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-heading"/></svg></span><span class="node-label"><span class="node-name">我的工具使用经验和最佳实践</span><span class="node-sub">Lines 148-253</span></span></div>
+                <span class="node-meta"><span class="tag raw">H1</span></span>
+              </div>
+
+              <div class="node type-resource indent-2" data-title="Code block: LinkedIn crawl prompt" data-kind="Code block" data-sub="markdown fenced block · 18 lines · line 251" data-anchor="line 251 · code hash 3e91" data-source="```text\nlinkedin prompt\nall crawl prompt\n```">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-code"/></svg></span><span class="node-label"><span class="node-name">LinkedIn crawl prompt</span><span class="node-sub">Code block · 18 lines</span></span></div>
+                <span class="node-meta"><span class="tag raw">code</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-resource indent-2" data-title="Formula: scoring heuristic" data-kind="Math block" data-sub="block formula · hidden in Resource preset" data-anchor="line 240 · math hash 1d03" data-source="score = confidence * reuse - drift">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-sigma"/></svg></span><span class="node-label"><span class="node-name">scoring heuristic</span><span class="node-sub">Math block · formula</span></span></div>
+                <span class="node-meta"><span class="tag raw">math</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+
+              <div class="node type-issue indent-2" data-title="Missing source: Glassdoor claim" data-kind="Issue" data-sub="Vault Lint · stale external reference · needs source context" data-anchor="stale · line 41 · old blob 5ad2" data-source="A strong claim references Glassdoor but does not explain what evidence came from the page.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="node-icon"><svg><use href="#icon-alert"/></svg></span><span class="node-label"><span class="node-name">Glassdoor link needs source context</span><span class="node-sub">Issue · missing source explanation</span></span></div>
+                <span class="node-meta"><span class="tag stale">stale</span><button class="node-add" type="button"><svg><use href="#icon-plus"/></svg></button></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="inspector">
+          <div class="pane-head">
+            <div class="pane-title">
+              <span>Inspector</span>
+              <span id="inspectorHint">Selected node details, provenance, and handoff context</span>
+            </div>
+            <button class="secondary-btn" type="button"><svg><use href="#icon-map"/></svg> Reveal</button>
+          </div>
+
+          <div class="inspector-scroll">
+            <section class="detail-panel">
+              <div class="detail-head">
+                <div class="detail-kind"><svg id="detailIcon"><use href="#icon-heading"/></svg><span id="detailKind">H1 heading</span></div>
+                <div class="detail-title" id="detailTitle">流水线循环 - Showing Up</div>
+                <div class="detail-sub" id="detailSub">Lines 14-76 · active editor section · 5 visible children</div>
+              </div>
+              <div class="detail-body">
+                <div class="field-grid">
+                  <div class="field"><span>Anchor</span><span id="detailAnchor">heading 流水线循环 - Showing Up · lines 14-76</span></div>
+                  <div class="field"><span>Reliability</span><span>Versioned · git blob b7f3 · working tree clean</span></div>
+                  <div class="field"><span>Layer</span><span id="detailLayer">Raw block</span></div>
+                  <div class="field"><span>Default action</span><span>Reveal in editor</span></div>
+                </div>
+
+                <div class="source-box">
+                  <span class="mono">Source preview</span>
+                  <div class="quote" id="detailSource"># 流水线循环--Showing Up</div>
+                </div>
+
+                <div class="provenance">
+                  <div class="provenance-row"><span>Generated by</span><span id="detailGenerated">Current Markdown parse</span></div>
+                  <div class="provenance-row"><span>Run</span><span id="detailRun">none</span></div>
+                  <div class="provenance-row"><span>Status</span><span id="detailStatus"><span class="tag ok">active</span></span></div>
+                </div>
+
+                <div class="action-strip">
+                  <button class="secondary-btn" type="button"><svg><use href="#icon-plus"/></svg> Add to tray</button>
+                  <button class="secondary-btn" type="button"><svg><use href="#icon-send"/></svg> Send node</button>
+                  <button class="secondary-btn" type="button"><svg><use href="#icon-link"/></svg> Copy anchor</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="detail-panel">
+              <div class="detail-head">
+                <div class="detail-kind"><svg><use href="#icon-filter"/></svg><span>Active filters</span></div>
+                <div class="detail-sub">Overview keeps the map useful by hiding generic paragraph/list noise until needed.</div>
+              </div>
+              <div class="detail-body">
+                <div class="field-grid">
+                  <div class="field"><span>Visible</span><span>Headings, resources, insights, issues, tasks</span></div>
+                  <div class="field"><span>Hidden</span><span>Paragraphs, generic lists, quotes</span></div>
+                  <div class="field"><span>Links</span><span>Vault links and external links are separate node types</span></div>
+                  <div class="field"><span>Copilot</span><span>Atlas hands off selected blocks; it does not rewrite directly</span></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </aside>
+      </section>
+
+      <footer class="tray">
+        <div class="tray-label"><svg><use href="#icon-tray"/></svg> Selection Tray</div>
+        <div class="tray-items" id="trayItems">
+          <span class="chip"><svg><use href="#icon-spark"/></svg><span>Workflow is spoken-first</span></span>
+          <span class="chip"><svg><use href="#icon-globe"/></svg><span>toastmasters.org.nz</span></span>
+          <span class="chip"><svg><use href="#icon-code"/></svg><span>LinkedIn crawl prompt</span></span>
+        </div>
+        <button class="command-btn" type="button"><svg><use href="#icon-send"/></svg> Send 3 blocks</button>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const body = document.body;
+    const layerButtons = document.querySelectorAll('[data-layer]');
+    const presetButtons = document.querySelectorAll('[data-preset]');
+    const nodes = document.querySelectorAll('.node');
+    const trayItems = document.getElementById('trayItems');
+
+    const layerClass = {
+      blocks: 'hide-blocks',
+      resources: 'hide-resources',
+      insights: 'hide-insights',
+      issues: 'hide-issues',
+    };
+
+    const presets = {
+      overview: { blocks: false, resources: true, insights: true, issues: true },
+      reading: { blocks: true, resources: true, insights: false, issues: false },
+      writing: { blocks: false, resources: false, insights: true, issues: true },
+      resources: { blocks: false, resources: true, insights: false, issues: false },
+      debug: { blocks: true, resources: true, insights: true, issues: true },
+    };
+
+    function iconForKind(kind) {
+      const lower = kind.toLowerCase();
+      if (lower.includes('external')) return '#icon-globe';
+      if (lower.includes('vault')) return '#icon-link';
+      if (lower.includes('code')) return '#icon-code';
+      if (lower.includes('table')) return '#icon-table';
+      if (lower.includes('image')) return '#icon-image';
+      if (lower.includes('math')) return '#icon-sigma';
+      if (lower.includes('task')) return '#icon-task';
+      if (lower.includes('claim') || lower.includes('evidence') || lower.includes('action')) return '#icon-spark';
+      if (lower.includes('issue')) return '#icon-alert';
+      if (lower.includes('paragraph')) return '#icon-pilcrow';
+      if (lower.includes('heading')) return '#icon-heading';
+      return '#icon-file';
+    }
+
+    function layerForNode(node) {
+      if (node.classList.contains('type-insight')) return 'Insight';
+      if (node.classList.contains('type-resource')) return 'Resource';
+      if (node.classList.contains('type-issue')) return 'Issue';
+      if (node.classList.contains('type-task')) return 'Task';
+      if (node.classList.contains('type-heading')) return 'Raw block';
+      return 'Raw block';
+    }
+
+    function statusForNode(node) {
+      if (node.dataset.anchor && node.dataset.anchor.includes('stale')) return '<span class="tag stale">stale</span>';
+      if (node.dataset.anchor && node.dataset.anchor.includes('active')) return '<span class="tag ok">active</span>';
+      return '<span class="tag ok">active</span>';
+    }
+
+    function updateInspector(node) {
+      document.querySelectorAll('.node.is-selected').forEach((el) => el.classList.remove('is-selected'));
+      node.classList.add('is-selected');
+      const kind = node.dataset.kind || 'Block';
+      const title = node.dataset.title || node.querySelector('.node-name')?.textContent || 'Selected node';
+      document.getElementById('detailKind').textContent = kind;
+      document.getElementById('detailTitle').textContent = title;
+      document.getElementById('detailSub').textContent = node.dataset.sub || '';
+      document.getElementById('detailAnchor').textContent = node.dataset.anchor || 'No anchor';
+      document.getElementById('detailLayer').textContent = layerForNode(node);
+      document.getElementById('detailSource').textContent = node.dataset.source || '';
+      document.getElementById('detailGenerated').textContent = node.classList.contains('type-insight') ? 'Document Copilot' : node.classList.contains('type-issue') ? 'Vault Lint' : 'Current Markdown parse';
+      document.getElementById('detailRun').textContent = node.classList.contains('type-insight') ? 'cp-7421' : node.classList.contains('type-issue') ? 'lint-1802' : 'none';
+      document.getElementById('detailStatus').innerHTML = statusForNode(node);
+      document.querySelector('#detailIcon use').setAttribute('href', iconForKind(kind));
+    }
+
+    function setLayer(layer, on) {
+      const cls = layerClass[layer];
+      if (!cls) return;
+      body.classList.toggle(cls, !on);
+      const btn = document.querySelector(`[data-layer="${layer}"]`);
+      if (btn) btn.setAttribute('aria-pressed', String(on));
+    }
+
+    function applyPreset(name) {
+      const preset = presets[name];
+      if (!preset) return;
+      Object.entries(preset).forEach(([layer, on]) => setLayer(layer, on));
+      presetButtons.forEach((btn) => btn.classList.toggle('is-active', btn.dataset.preset === name));
+    }
+
+    layerButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const layer = btn.dataset.layer;
+        const isOn = btn.getAttribute('aria-pressed') === 'true';
+        setLayer(layer, !isOn);
+      });
+    });
+
+    presetButtons.forEach((btn) => {
+      btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+    });
+
+    nodes.forEach((node) => {
+      node.addEventListener('click', (event) => {
+        if (event.target.closest('.node-add')) return;
+        updateInspector(node);
+      });
+      const add = node.querySelector('.node-add');
+      if (add) {
+        add.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.innerHTML = `<svg><use href="${iconForKind(node.dataset.kind || '')}"></use></svg><span>${node.dataset.title || 'Selected block'}</span>`;
+          trayItems.prepend(chip);
+          updateInspector(node);
+        });
+      }
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key.toLowerCase() === 'b') {
+        const btn = document.querySelector('[data-layer="blocks"]');
+        btn.click();
+      }
+    });
+  </script>
+</body>
+</html>

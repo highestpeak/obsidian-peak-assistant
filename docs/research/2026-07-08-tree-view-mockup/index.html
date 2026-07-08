@@ -1,0 +1,1198 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>Vault Search — Tree view mock (2026-07-08 · v2)</title>
+<style>
+	:root {
+		--bg: #f7f7f8;
+		--panel: #ffffff;
+		--border: #e5e7eb;
+		--border-strong: #d4d4d8;
+		--text: #1f2937;
+		--muted: #6b7280;
+		--faint: #9ca3af;
+		--accent: #7c3aed;
+		--accent-soft: #a78bfa;
+		--accent-bg: #f5f3ff;
+		--accent-bg-2: #ede9fe;
+		--highlight: rgba(253, 224, 71, 0.55);
+		--sunken: #f4f4f5;
+		--row-hover: #fafafa;
+		--row-active-bg: #f5f3ff;
+		--callout-bg: #fef3c7;
+		--callout-border: #fbbf24;
+	}
+	* { box-sizing: border-box; }
+	html, body {
+		margin: 0; padding: 0;
+		background: var(--bg);
+		color: var(--text);
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+		font-size: 13px;
+		line-height: 1.5;
+	}
+	.page {
+		max-width: 1180px;
+		margin: 40px auto 80px;
+		padding: 0 24px;
+	}
+	.page-header {
+		margin-bottom: 32px;
+	}
+	.page-header h1 {
+		font-size: 20px;
+		margin: 0 0 6px;
+		font-weight: 600;
+	}
+	.page-header .sub {
+		font-size: 12px;
+		color: var(--muted);
+	}
+	.v2-tag {
+		display: inline-block;
+		padding: 2px 8px;
+		border-radius: 4px;
+		background: var(--accent-bg-2);
+		color: var(--accent);
+		font-weight: 600;
+		font-size: 10px;
+		margin-left: 8px;
+		vertical-align: middle;
+	}
+
+	/* Modal shell */
+	.modal-shell {
+		background: var(--panel);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+		overflow: hidden;
+		margin-bottom: 40px;
+	}
+	.modal-title-bar {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 10px 16px;
+		background: var(--sunken);
+		border-bottom: 1px solid var(--border);
+		font-size: 11px;
+		color: var(--muted);
+	}
+	.modal-title-bar .variant-label {
+		font-weight: 600;
+		color: var(--text);
+		font-size: 12px;
+	}
+	.modal-title-bar .variant-tag {
+		display: inline-block;
+		padding: 2px 8px;
+		border-radius: 4px;
+		background: var(--accent-bg-2);
+		color: var(--accent);
+		font-weight: 500;
+		font-size: 10px;
+		margin-left: 8px;
+	}
+	.modal-title-bar .default-tag {
+		background: #dcfce7;
+		color: #15803d;
+	}
+
+	.tab-strip {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 24px;
+		padding: 10px 16px;
+		border-bottom: 1px solid var(--border);
+	}
+	.tab {
+		font-size: 12px;
+		color: var(--muted);
+		padding-bottom: 6px;
+		cursor: default;
+	}
+	.tab.active {
+		color: var(--text);
+		font-weight: 600;
+		border-bottom: 2px solid var(--accent);
+		margin-bottom: -1px;
+		padding-bottom: 6px;
+	}
+
+	.search-row {
+		padding: 10px 12px;
+		border-bottom: 1px solid var(--border);
+		display: flex;
+		gap: 8px;
+		align-items: center;
+	}
+	.search-input {
+		flex: 1;
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		padding: 6px 10px;
+		font-size: 12px;
+		background: var(--panel);
+		color: var(--text);
+	}
+	.search-input .query { color: var(--text); }
+	.search-input .caret {
+		display: inline-block;
+		width: 1px;
+		height: 12px;
+		background: var(--accent);
+		vertical-align: middle;
+		margin-left: 1px;
+		animation: blink 1s step-start infinite;
+	}
+	@keyframes blink { 50% { opacity: 0; } }
+
+	.toolbar-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 8px 12px;
+		border-bottom: 1px solid var(--border);
+		gap: 12px;
+	}
+	.toolbar-right {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+	.pill-group {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+		background: var(--sunken);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 2px;
+	}
+	.pill {
+		font-size: 11px;
+		font-weight: 500;
+		padding: 3px 10px;
+		border-radius: 999px;
+		color: var(--muted);
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		cursor: default;
+	}
+	.pill.active {
+		background: var(--accent);
+		color: #fff;
+	}
+	.pill.disabled { opacity: 0.5; }
+	.icon {
+		width: 12px; height: 12px;
+		stroke: currentColor;
+		stroke-width: 2;
+		fill: none;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	.result-count {
+		font-size: 11px;
+		color: var(--faint);
+	}
+
+	/* Body split */
+	.modal-body {
+		display: grid;
+		grid-template-columns: 480px 1fr;
+		min-height: 440px;
+	}
+	.tree-pane {
+		border-right: 1px solid var(--border);
+		overflow-y: auto;
+	}
+	.preview-pane {
+		padding: 20px;
+		background: var(--sunken);
+		font-size: 12px;
+	}
+	.preview-pane .preview-header {
+		font-size: 11px;
+		color: var(--faint);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		margin-bottom: 12px;
+	}
+	.preview-pane h3 {
+		font-size: 15px;
+		color: var(--text);
+		margin: 0 0 6px;
+	}
+	.preview-pane .path {
+		font-size: 11px;
+		color: var(--faint);
+		margin-bottom: 14px;
+	}
+	.preview-pane .body-snippet {
+		font-size: 12px;
+		line-height: 1.7;
+		color: var(--text);
+	}
+	.preview-pane .match-line {
+		display: block;
+		padding: 4px 8px;
+		margin: 4px -8px;
+		border-radius: 4px;
+		cursor: pointer;
+		position: relative;
+	}
+	.preview-pane .match-line.hover-demo {
+		background: #fff;
+		box-shadow: 0 0 0 1px var(--border), 0 2px 6px rgba(0,0,0,0.06);
+	}
+	.preview-pane .match-line.hover-demo::after {
+		content: "→ jump to line 42";
+		position: absolute;
+		right: 8px;
+		top: 50%;
+		transform: translateY(-50%);
+		font-size: 10px;
+		color: var(--accent);
+		background: var(--accent-bg);
+		padding: 2px 6px;
+		border-radius: 4px;
+		font-weight: 500;
+	}
+	.hl { background: var(--highlight); border-radius: 2px; padding: 0 1px; }
+
+	/* Tree rows */
+	.tree-root { padding: 6px 0; }
+	.row {
+		display: flex;
+		align-items: center;
+		height: 24px;
+		padding-right: 12px;
+		cursor: pointer;
+		user-select: none;
+		position: relative;
+	}
+	.row.folder { color: var(--text); font-weight: 500; }
+	.row.file { color: var(--text); }
+	.row.file.active { background: var(--row-active-bg); }
+	.row.hover-demo {
+		background: var(--row-hover);
+		box-shadow: inset 3px 0 0 var(--accent-soft);
+	}
+	.row.hover-demo::after {
+		position: absolute;
+		right: 10px;
+		font-size: 10px;
+		color: var(--accent);
+		background: var(--accent-bg);
+		padding: 2px 6px;
+		border-radius: 4px;
+		font-weight: 500;
+		white-space: nowrap;
+	}
+	.row.file.hover-demo::after { content: "→ open in Obsidian"; }
+	.row.folder.hover-demo::after { content: "→ reveal in file tree"; }
+	.chev {
+		flex: 0 0 auto;
+		width: 12px; height: 12px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--faint);
+		margin-right: 4px;
+	}
+	.chev.expanded svg { transform: rotate(90deg); }
+	.chev svg { transition: transform 0.15s ease; }
+	.row .ico {
+		flex: 0 0 auto;
+		width: 13px; height: 13px;
+		margin-right: 6px;
+		color: var(--muted);
+	}
+	.row .ico.folder-ico { color: var(--accent-soft); }
+	.row .name {
+		flex: 1 1 auto;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-size: 12.5px;
+	}
+	.row .meta {
+		flex: 0 0 auto;
+		font-size: 10.5px;
+		color: var(--faint);
+		font-variant-numeric: tabular-nums;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.badge {
+		display: inline-block;
+		background: var(--accent-bg-2);
+		color: var(--accent);
+		border-radius: 999px;
+		padding: 0px 6px;
+		font-size: 10px;
+		font-weight: 600;
+		line-height: 15px;
+		min-width: 14px;
+		text-align: center;
+	}
+	.badge.dim {
+		background: var(--sunken);
+		color: var(--muted);
+	}
+
+	.lvl-0 { padding-left: 12px; }
+	.lvl-1 { padding-left: 26px; }
+	.lvl-2 { padding-left: 40px; }
+	.lvl-3 { padding-left: 54px; }
+
+	/* Variant C — 3-line row */
+	.row.file.tall {
+		height: auto;
+		padding-top: 6px;
+		padding-bottom: 6px;
+		align-items: flex-start;
+	}
+	.row.file.tall .stack {
+		display: flex; flex-direction: column;
+		flex: 1 1 auto;
+		gap: 2px;
+		min-width: 0;
+	}
+	.row.file.tall .heading-anchor {
+		font-size: 11px;
+		color: var(--accent);
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+	}
+	.row.file.tall .snippet {
+		font-size: 11px;
+		color: var(--muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.row.file.tall .name-line {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.row.file.tall .date {
+		flex: 0 0 auto;
+		font-size: 10.5px;
+		color: var(--faint);
+	}
+
+	/* Interaction section */
+	.interaction {
+		background: var(--panel);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 24px 28px;
+		margin-bottom: 40px;
+	}
+	.interaction h2 {
+		font-size: 16px;
+		margin: 0 0 4px;
+		font-weight: 600;
+	}
+	.interaction > .sub {
+		font-size: 12px;
+		color: var(--muted);
+		margin-bottom: 20px;
+	}
+	.interaction-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 16px;
+	}
+	.interaction-card {
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 14px 16px;
+		background: var(--panel);
+	}
+	.interaction-card .label {
+		display: inline-block;
+		padding: 2px 8px;
+		border-radius: 4px;
+		background: var(--accent-bg-2);
+		color: var(--accent);
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		margin-bottom: 8px;
+	}
+	.interaction-card h4 {
+		font-size: 13px;
+		margin: 0 0 6px;
+		font-weight: 600;
+	}
+	.interaction-card p {
+		font-size: 12px;
+		color: var(--muted);
+		margin: 0 0 10px;
+		line-height: 1.6;
+	}
+	.interaction-card .flow {
+		font-size: 11px;
+		background: var(--sunken);
+		border-radius: 6px;
+		padding: 8px 10px;
+		color: var(--text);
+		font-family: ui-monospace, "SF Mono", Menlo, monospace;
+		line-height: 1.5;
+	}
+	.interaction-card .flow .arrow {
+		color: var(--accent);
+		font-weight: 700;
+	}
+	.interaction-card .kbd {
+		display: inline-block;
+		padding: 1px 5px;
+		border-radius: 3px;
+		background: var(--panel);
+		border: 1px solid var(--border-strong);
+		border-bottom-width: 2px;
+		font-size: 10px;
+		font-family: ui-monospace, "SF Mono", Menlo, monospace;
+		color: var(--muted);
+	}
+
+	/* Keyboard nav demo */
+	.keyboard {
+		background: var(--panel);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 24px 28px;
+		margin-bottom: 40px;
+	}
+	.keyboard h2 {
+		font-size: 16px;
+		margin: 0 0 4px;
+		font-weight: 600;
+	}
+	.keyboard > .sub {
+		font-size: 12px;
+		color: var(--muted);
+		margin-bottom: 20px;
+		line-height: 1.6;
+	}
+	.kb-body {
+		display: grid;
+		grid-template-columns: 1fr 320px;
+		gap: 24px;
+		align-items: flex-start;
+	}
+	.kb-tree {
+		background: var(--sunken);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 10px 12px;
+		position: relative;
+	}
+	.kb-row {
+		display: flex;
+		align-items: center;
+		height: 24px;
+		padding-right: 8px;
+		font-size: 12px;
+		position: relative;
+		z-index: 2;
+	}
+	.kb-row.folder {
+		color: var(--faint);
+		opacity: 0.45;
+		font-weight: 500;
+	}
+	.kb-row.file {
+		color: var(--text);
+		font-weight: 500;
+	}
+	.kb-row.file.cursor {
+		background: var(--accent-bg);
+		border-radius: 4px;
+		box-shadow: inset 0 0 0 2px var(--accent);
+		height: 28px;
+		margin: 1px 0;
+	}
+	.kb-row.file .kb-num {
+		width: 18px;
+		height: 18px;
+		border-radius: 50%;
+		background: var(--accent-soft);
+		color: white;
+		font-size: 10px;
+		font-weight: 700;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		margin-right: 8px;
+		flex: 0 0 auto;
+	}
+	.kb-row.file.cursor .kb-num {
+		background: var(--accent);
+		box-shadow: 0 0 0 3px white;
+	}
+	.kb-row.folder .kb-num-slot {
+		width: 18px;
+		height: 18px;
+		margin-right: 8px;
+		display: inline-block;
+		flex: 0 0 auto;
+	}
+	.kb-row .kb-ico {
+		width: 12px; height: 12px;
+		margin-right: 6px;
+		color: var(--muted);
+		flex: 0 0 auto;
+	}
+	.kb-row.folder .kb-ico { color: var(--accent-soft); }
+	.kb-row .kb-name {
+		flex: 1 1 auto;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.kb-row .kb-tag {
+		flex: 0 0 auto;
+		font-size: 10px;
+		color: var(--accent);
+		background: white;
+		border: 1px solid var(--accent);
+		padding: 1px 6px;
+		border-radius: 3px;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+	.kb-lvl-0 { padding-left: 6px; }
+	.kb-lvl-1 { padding-left: 20px; }
+	.kb-lvl-2 { padding-left: 34px; }
+	.kb-lvl-3 { padding-left: 48px; }
+
+	.kb-jumps {
+		font-size: 11.5px;
+		color: var(--muted);
+		padding: 10px 12px;
+		margin-top: 12px;
+		background: white;
+		border: 1px dashed var(--accent-soft);
+		border-radius: 6px;
+		line-height: 1.85;
+	}
+	.kb-jumps .k { color: var(--accent); font-weight: 600; }
+	.kb-jumps .kbd { margin: 0 1px; }
+
+	.kb-bindings {
+		background: var(--sunken);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 14px 16px;
+	}
+	.kb-bindings h4 {
+		font-size: 11px;
+		color: var(--muted);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		font-weight: 600;
+		margin: 0 0 12px;
+	}
+	.kb-bindings .binding {
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+		margin-bottom: 10px;
+		font-size: 12px;
+	}
+	.kb-bindings .binding:last-child { margin-bottom: 0; }
+	.kb-bindings .binding .keys {
+		flex: 0 0 auto;
+		display: flex;
+		gap: 3px;
+		min-width: 60px;
+	}
+	.kb-bindings .binding .desc {
+		color: var(--muted);
+		flex: 1 1 auto;
+		padding-top: 1px;
+		line-height: 1.5;
+	}
+	.kb-bindings .kbd {
+		display: inline-block;
+		padding: 1px 6px;
+		border-radius: 3px;
+		background: white;
+		border: 1px solid var(--border-strong);
+		border-bottom-width: 2px;
+		font-size: 10px;
+		font-family: ui-monospace, "SF Mono", Menlo, monospace;
+		color: var(--muted);
+		min-width: 16px;
+		text-align: center;
+	}
+
+	/* Design notes */
+	.notes {
+		background: var(--panel);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 24px 28px;
+	}
+	.notes h2 {
+		font-size: 16px;
+		margin: 0 0 16px;
+		font-weight: 600;
+	}
+	.notes h3 {
+		font-size: 13px;
+		margin: 20px 0 8px;
+		font-weight: 600;
+		color: var(--accent);
+	}
+	.notes ul { padding-left: 20px; margin: 0 0 10px; }
+	.notes li { margin-bottom: 4px; color: var(--text); font-size: 12.5px; }
+	.notes .verdict {
+		margin-top: 20px;
+		padding: 12px 14px;
+		border-radius: 8px;
+		background: var(--accent-bg);
+		border: 1px solid var(--accent-bg-2);
+		color: var(--text);
+		font-size: 12.5px;
+	}
+	.notes .verdict strong { color: var(--accent); }
+	.notes table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 12px;
+		margin-top: 8px;
+	}
+	.notes th, .notes td {
+		text-align: left;
+		padding: 8px 10px;
+		border-bottom: 1px solid var(--border);
+		vertical-align: top;
+	}
+	.notes th {
+		font-weight: 600;
+		font-size: 11px;
+		color: var(--muted);
+		background: var(--sunken);
+	}
+	.notes td.good { color: #059669; }
+	.notes td.bad { color: #dc2626; }
+	.notes .changelog {
+		background: var(--accent-bg);
+		border-left: 3px solid var(--accent);
+		padding: 10px 14px;
+		border-radius: 4px;
+		font-size: 12px;
+		margin-bottom: 20px;
+	}
+	.notes .changelog strong { color: var(--accent); }
+
+	.legend {
+		display: flex; gap: 16px; flex-wrap: wrap;
+		font-size: 11px; color: var(--muted);
+		padding: 8px 12px;
+		background: var(--sunken);
+		border-top: 1px solid var(--border);
+	}
+	.legend .item { display: inline-flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+	<div class="page-header">
+		<h1>Vault Search · Tree view mockup <span class="v2-tag">v2 — 2 variants</span></h1>
+		<div class="sub">
+			根据 review 收敛为 <strong>Compact（默认）+ Detailed</strong> 两档，删除中间态。查询：<code>attention mechanism</code>，6 篇文档 / 3 个 folder 分支。
+			<br />新增：<strong>点击行为</strong> — folder / file / preview snippet 各自跳转到对应目标位置。
+		</div>
+	</div>
+
+	<!-- ================================================================
+		 Variant A — Compact (DEFAULT)
+		 ================================================================ -->
+	<div class="modal-shell">
+		<div class="modal-title-bar">
+			<div>
+				<span class="variant-label">Variant A — Compact</span>
+				<span class="variant-tag default-tag">DEFAULT</span>
+				<span class="variant-tag">Obsidian-native · 24px 单行</span>
+			</div>
+			<span>密度：高 · 认知复用：强</span>
+		</div>
+		<div class="tab-strip">
+			<span class="tab active">Vault Search</span>
+			<span class="tab">AI Analysis</span>
+		</div>
+		<div class="search-row">
+			<div class="search-input"><span class="query">attention mechanism</span><span class="caret"></span></div>
+		</div>
+		<div class="toolbar-row">
+			<div class="pill-group">
+				<span class="pill"><svg class="icon" viewBox="0 0 24 24"><path d="M3 6h13M3 12h13M3 18h13M20 6h.01M20 12h.01M20 18h.01"/></svg>List</span>
+				<span class="pill active"><svg class="icon" viewBox="0 0 24 24"><path d="M3 5h6M3 12h6M3 19h6M13 5h8M13 12h8M13 19h8M9 5v14"/></svg>Tree view</span>
+				<span class="pill"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="4" cy="4" r="2"/><circle cx="20" cy="4" r="2"/><circle cx="4" cy="20" r="2"/><path d="M6 6l4 4M18 6l-4 4M6 18l4-4"/></svg>Graph view</span>
+			</div>
+			<div class="toolbar-right">
+				<div class="pill-group" title="Density toggle">
+					<span class="pill active">Compact</span>
+					<span class="pill">Detailed</span>
+				</div>
+				<div class="result-count">6 results · 3 folders</div>
+			</div>
+		</div>
+		<div class="modal-body">
+			<div class="tree-pane">
+				<div class="tree-root">
+					<!-- 100 System (alpha-sort at root level) -->
+					<div class="row folder lvl-0">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">100 System</span>
+						<span class="meta"><span class="badge dim">2</span></span>
+					</div>
+					<div class="row folder lvl-1">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">100.10 dailies</span>
+						<span class="meta"><span class="badge dim">2</span></span>
+					</div>
+					<div class="row file lvl-2">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<span class="name">2026-07-06</span>
+						<span class="meta"><span class="badge">1</span></span>
+					</div>
+					<div class="row file lvl-2">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<span class="name">2026-07-08</span>
+						<span class="meta"><span class="badge">2</span></span>
+					</div>
+
+					<!-- 200 Areas -->
+					<div class="row folder lvl-0 hover-demo">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">200 Areas</span>
+						<span class="meta"><span class="badge dim">3</span></span>
+					</div>
+					<div class="row folder lvl-1">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">200.10 research</span>
+						<span class="meta"><span class="badge dim">3</span></span>
+					</div>
+					<div class="row folder lvl-2">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">ai-safety</span>
+						<span class="meta"><span class="badge dim">2</span></span>
+					</div>
+					<div class="row file lvl-3">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<span class="name">alignment-2026</span>
+						<span class="meta"><span class="badge">3</span></span>
+					</div>
+					<div class="row file lvl-3">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<span class="name">rlhf-followup</span>
+						<span class="meta"><span class="badge">2</span></span>
+					</div>
+					<div class="row folder lvl-2">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">quantum-computing</span>
+						<span class="meta"><span class="badge dim">1</span></span>
+					</div>
+					<div class="row file lvl-3">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<span class="name">llm-and-physics</span>
+						<span class="meta"><span class="badge">4</span></span>
+					</div>
+
+					<!-- 300 Resources -->
+					<div class="row folder lvl-0">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">300 Resources</span>
+						<span class="meta"><span class="badge dim">1</span></span>
+					</div>
+					<div class="row folder lvl-1">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">papers</span>
+						<span class="meta"><span class="badge dim">1</span></span>
+					</div>
+					<div class="row file active lvl-2 hover-demo">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<span class="name"><span class="hl">attention</span>-is-all-you-need</span>
+						<span class="meta"><span class="badge">8</span></span>
+					</div>
+				</div>
+			</div>
+			<div class="preview-pane">
+				<div class="preview-header">Preview · click any highlighted line to jump</div>
+				<h3><span class="hl">Attention</span> Is All You Need</h3>
+				<div class="path">300 Resources / papers / attention-is-all-you-need.md</div>
+				<div class="body-snippet">
+					<span class="match-line hover-demo">The dominant sequence transduction models are based on complex recurrent or convolutional neural networks. We propose a new simple network architecture, the <span class="hl">Transformer</span>, based solely on <span class="hl">attention mechanisms</span>…</span>
+					<span class="match-line">In this work we present the Transformer, a model architecture eschewing recurrence and instead relying entirely on an <span class="hl">attention mechanism</span> to draw global dependencies…</span>
+				</div>
+			</div>
+		</div>
+		<div class="legend">
+			<span class="item"><span class="badge">8</span> hit count in file</span>
+			<span class="item"><span class="badge dim">3</span> subtree aggregate</span>
+			<span class="item">alpha-sort · 只显示命中过的路径</span>
+			<span class="item" style="color:var(--accent);">高亮行 = 悬浮示意（真实实现不显示 hint 气泡，只显示 hover 底纹 + 光标）</span>
+		</div>
+	</div>
+
+	<!-- ================================================================
+		 Variant C — Detailed
+		 ================================================================ -->
+	<div class="modal-shell">
+		<div class="modal-title-bar">
+			<div>
+				<span class="variant-label">Variant C — Detailed</span>
+				<span class="variant-tag">heading anchor · 修改时间 · 3 line</span>
+			</div>
+			<span>密度：低 · 上下文最丰富 · 少量精确结果</span>
+		</div>
+		<div class="tab-strip">
+			<span class="tab active">Vault Search</span>
+			<span class="tab">AI Analysis</span>
+		</div>
+		<div class="search-row">
+			<div class="search-input"><span class="query">attention mechanism</span><span class="caret"></span></div>
+		</div>
+		<div class="toolbar-row">
+			<div class="pill-group">
+				<span class="pill"><svg class="icon" viewBox="0 0 24 24"><path d="M3 6h13M3 12h13M3 18h13"/></svg>List</span>
+				<span class="pill active"><svg class="icon" viewBox="0 0 24 24"><path d="M3 5h6M3 12h6M3 19h6M13 5h8M13 12h8M13 19h8M9 5v14"/></svg>Tree view</span>
+				<span class="pill"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg>Graph view</span>
+			</div>
+			<div class="toolbar-right">
+				<div class="pill-group" title="Density toggle">
+					<span class="pill">Compact</span>
+					<span class="pill active">Detailed</span>
+				</div>
+				<div class="result-count">6 results · 3 folders</div>
+			</div>
+		</div>
+		<div class="modal-body">
+			<div class="tree-pane">
+				<div class="tree-root">
+					<div class="row folder lvl-0">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">100 System / 100.10 dailies</span>
+					</div>
+					<div class="row file tall lvl-1">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<div class="stack">
+							<div class="name-line">
+								<span class="name">2026-07-06</span>
+								<span class="badge">1</span>
+								<span class="date">2 days ago</span>
+							</div>
+							<div class="heading-anchor" style="color: var(--faint)"><svg class="icon" style="width:10px;height:10px" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>body only</div>
+							<div class="snippet">"todo: revisit <span class="hl">attention</span> chapter tomorrow"</div>
+						</div>
+					</div>
+					<div class="row file tall lvl-1">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<div class="stack">
+							<div class="name-line">
+								<span class="name">2026-07-08</span>
+								<span class="badge">2</span>
+								<span class="date">today</span>
+							</div>
+							<div class="heading-anchor"><svg class="icon" style="width:10px;height:10px" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>Reading log</div>
+							<div class="snippet">"read § <span class="hl">attention mechanism</span> in the Vaswani paper…"</div>
+						</div>
+					</div>
+
+					<div class="row folder lvl-0">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">200 Areas / 200.10 research</span>
+					</div>
+					<div class="row folder lvl-1">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">ai-safety</span>
+					</div>
+					<div class="row file tall lvl-2">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<div class="stack">
+							<div class="name-line">
+								<span class="name">alignment-2026</span>
+								<span class="badge">3</span>
+								<span class="date">Jun 28</span>
+							</div>
+							<div class="heading-anchor"><svg class="icon" style="width:10px;height:10px" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg><span class="hl">Attention</span> hijacking</div>
+							<div class="snippet">"…as an alignment failure mode when reward is decoupled…"</div>
+						</div>
+					</div>
+					<div class="row file tall lvl-2">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<div class="stack">
+							<div class="name-line">
+								<span class="name">rlhf-followup</span>
+								<span class="badge">2</span>
+								<span class="date">Jul 02</span>
+							</div>
+							<div class="heading-anchor"><svg class="icon" style="width:10px;height:10px" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>Reward hacking</div>
+							<div class="snippet">"…often bypasses the intended <span class="hl">attention</span> distribution…"</div>
+						</div>
+					</div>
+					<div class="row folder lvl-1">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">quantum-computing</span>
+					</div>
+					<div class="row file tall lvl-2">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<div class="stack">
+							<div class="name-line">
+								<span class="name">llm-and-physics</span>
+								<span class="badge">4</span>
+								<span class="date">Jun 30</span>
+							</div>
+							<div class="heading-anchor"><svg class="icon" style="width:10px;height:10px" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>Dot-product <span class="hl">attention</span></div>
+							<div class="snippet">"…as a Hamiltonian evolution operator over token embeddings…"</div>
+						</div>
+					</div>
+
+					<div class="row folder lvl-0">
+						<span class="chev expanded"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span>
+						<svg class="icon ico folder-ico" viewBox="0 0 24 24"><path d="M4 4h5l2 2h9v13H4z"/></svg>
+						<span class="name">300 Resources / papers</span>
+					</div>
+					<div class="row file tall active lvl-1">
+						<svg class="icon ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+						<div class="stack">
+							<div class="name-line">
+								<span class="name"><span class="hl">attention</span>-is-all-you-need</span>
+								<span class="badge">8</span>
+								<span class="date">Jun 12</span>
+							</div>
+							<div class="heading-anchor"><svg class="icon" style="width:10px;height:10px" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>Abstract — filename match</div>
+							<div class="snippet">"…solely on <span class="hl">attention mechanisms</span>, dispensing with recurrence…"</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="preview-pane">
+				<div class="preview-header">Preview · click any highlighted line to jump</div>
+				<h3><span class="hl">Attention</span> Is All You Need</h3>
+				<div class="path">300 Resources / papers / attention-is-all-you-need.md</div>
+				<div class="body-snippet">
+					<span class="match-line">The dominant sequence transduction models are based on complex recurrent or convolutional neural networks. We propose a new simple network architecture, the <span class="hl">Transformer</span>, based solely on <span class="hl">attention mechanisms</span>…</span>
+					<span class="match-line">In this work we present the Transformer, a model architecture eschewing recurrence and instead relying entirely on an <span class="hl">attention mechanism</span> to draw global dependencies…</span>
+				</div>
+			</div>
+		</div>
+		<div class="legend">
+			<span class="item">alpha-sort · 每行三层信息 filename → heading anchor → snippet</span>
+			<span class="item">"body only" 表示 match 不在任何 heading 下（Vaswani abstract 那种是 filename match）</span>
+		</div>
+	</div>
+
+	<!-- ================================================================
+		 Interaction Model
+		 ================================================================ -->
+	<div class="interaction">
+		<h2>Interaction Model — 点击行为共享 A 与 C</h2>
+		<div class="sub">
+			Tree view 里三种点击目标各自跳转到 vault 的对应位置。所有跳转默认<strong>关闭 modal</strong>（除非按住 <span class="kbd">Alt</span> 保持 modal 常驻，方便连续检索）。
+		</div>
+		<div class="interaction-grid">
+			<div class="interaction-card">
+				<span class="label">Click folder</span>
+				<h4>Reveal in file tree</h4>
+				<p>点击 tree view 里的 folder 行 → 打开 Obsidian 左侧 File Explorer，展开到该 folder，并 scroll 到可见位置（match 到 Obsidian 的 <code>file-explorer:reveal-active-file</code> 逻辑，用 folder path 代替 file）。</p>
+				<div class="flow">
+					folder row click <span class="arrow">→</span> close modal <span class="arrow">→</span> reveal folder in left File Explorer
+				</div>
+			</div>
+			<div class="interaction-card">
+				<span class="label">Click file</span>
+				<h4>Open file</h4>
+				<p>点击 tree view 里的 file 行 → 用当前 active leaf 打开该文件（等价于 <code>workspace.openLinkText</code>）。<span class="kbd">Cmd</span> + click 在新 tab 打开。</p>
+				<div class="flow">
+					file row click <span class="arrow">→</span> close modal <span class="arrow">→</span> open in active leaf<br />
+					<span class="kbd">Cmd</span> + click <span class="arrow">→</span> open in new tab
+				</div>
+			</div>
+			<div class="interaction-card">
+				<span class="label">Click preview snippet</span>
+				<h4>Jump to line</h4>
+				<p>点击右侧 preview 里任何一条 highlighted match line → 打开文件并 scroll 到该 line、光标停在 match 位置。若 match 在某个 heading 下，附带展开该 heading 上下文。</p>
+				<div class="flow">
+					preview match click <span class="arrow">→</span> close modal <span class="arrow">→</span> open file with cursor at line
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- ================================================================
+		 Keyboard Navigation
+		 ================================================================ -->
+	<div class="keyboard">
+		<h2>Keyboard Navigation — <span class="kbd" style="padding:1px 6px;border-radius:3px;background:white;border:1px solid var(--border-strong);border-bottom-width:2px;font-size:10px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:var(--muted);">↑</span> / <span class="kbd" style="padding:1px 6px;border-radius:3px;background:white;border:1px solid var(--border-strong);border-bottom-width:2px;font-size:10px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:var(--muted);">↓</span> 只在 file 之间跳转</h2>
+		<div class="sub">
+			Folder 行提供可视的空间上下文，但<strong>不进入 focus 循环</strong>。方向键跳过所有 folder，直接在 file 之间移动 —— 6 个结果 5 层 folder 的场景下，用户 5 次 <span class="kbd" style="padding:1px 6px;border-radius:3px;background:white;border:1px solid var(--border-strong);border-bottom-width:2px;font-size:10px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:var(--muted);">↓</span> 就能过完所有 file，不用经历 10+ 次 folder 空跳。<br />
+			下方演示：当前 cursor 停在 file <strong style="color:var(--accent)">③ alignment-2026</strong>。灰化的 folder 行会被按键 skip。
+		</div>
+		<div class="kb-body">
+			<div>
+				<div class="kb-tree">
+					<div class="kb-row folder kb-lvl-0"><span class="kb-num-slot"></span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h5l2 2h9v13H4z"/></svg><span class="kb-name">100 System</span></div>
+					<div class="kb-row folder kb-lvl-1"><span class="kb-num-slot"></span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h5l2 2h9v13H4z"/></svg><span class="kb-name">100.10 dailies</span></div>
+					<div class="kb-row file kb-lvl-2"><span class="kb-num">1</span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="kb-name">2026-07-06</span></div>
+					<div class="kb-row file kb-lvl-2"><span class="kb-num">2</span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="kb-name">2026-07-08</span></div>
+					<div class="kb-row folder kb-lvl-0"><span class="kb-num-slot"></span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h5l2 2h9v13H4z"/></svg><span class="kb-name">200 Areas</span></div>
+					<div class="kb-row folder kb-lvl-1"><span class="kb-num-slot"></span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h5l2 2h9v13H4z"/></svg><span class="kb-name">200.10 research</span></div>
+					<div class="kb-row folder kb-lvl-2"><span class="kb-num-slot"></span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h5l2 2h9v13H4z"/></svg><span class="kb-name">ai-safety</span></div>
+					<div class="kb-row file cursor kb-lvl-3"><span class="kb-num">3</span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="kb-name">alignment-2026</span><span class="kb-tag">▶ CURSOR</span></div>
+					<div class="kb-row file kb-lvl-3"><span class="kb-num">4</span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="kb-name">rlhf-followup</span></div>
+					<div class="kb-row folder kb-lvl-2"><span class="kb-num-slot"></span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h5l2 2h9v13H4z"/></svg><span class="kb-name">quantum-computing</span></div>
+					<div class="kb-row file kb-lvl-3"><span class="kb-num">5</span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="kb-name">llm-and-physics</span></div>
+					<div class="kb-row folder kb-lvl-0"><span class="kb-num-slot"></span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h5l2 2h9v13H4z"/></svg><span class="kb-name">300 Resources</span></div>
+					<div class="kb-row folder kb-lvl-1"><span class="kb-num-slot"></span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h5l2 2h9v13H4z"/></svg><span class="kb-name">papers</span></div>
+					<div class="kb-row file kb-lvl-2"><span class="kb-num">6</span><svg class="kb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="kb-name">attention-is-all-you-need</span></div>
+				</div>
+				<div class="kb-jumps">
+					从 <span class="k">③ alignment-2026</span> 出发：<br />
+					· <span class="kbd">↓</span> 跳到 <span class="k">④ rlhf-followup</span>（同 folder 下一 file）<br />
+					· <span class="kbd">↓</span> <span class="kbd">↓</span> 跳到 <span class="k">⑤ llm-and-physics</span>（跳过 <em>ai-safety</em> 出、进入 <em>quantum-computing</em>）<br />
+					· <span class="kbd">↓</span> <span class="kbd">↓</span> <span class="kbd">↓</span> 跳到 <span class="k">⑥ attention-is-all-you-need</span>（连跳 <em>200 Areas</em> 到 <em>300 Resources / papers</em> 共 4 层 folder）<br />
+					· <span class="kbd">↑</span> 跳到 <span class="k">② 2026-07-08</span>（跳过 <em>ai-safety</em>、<em>200.10 research</em>、<em>200 Areas</em>、<em>100.10 dailies</em>）
+				</div>
+			</div>
+			<div class="kb-bindings">
+				<h4>Key Bindings</h4>
+				<div class="binding">
+					<div class="keys"><span class="kbd">↑</span><span class="kbd">↓</span></div>
+					<div class="desc">上/下 file — folder rows 一律 skip</div>
+				</div>
+				<div class="binding">
+					<div class="keys"><span class="kbd">←</span></div>
+					<div class="desc">collapse cursor 所在 folder（focus 不动）</div>
+				</div>
+				<div class="binding">
+					<div class="keys"><span class="kbd">→</span></div>
+					<div class="desc">expand cursor 所在 folder（默认已展开，一般不用）</div>
+				</div>
+				<div class="binding">
+					<div class="keys"><span class="kbd">Enter</span></div>
+					<div class="desc">打开 current file · close modal</div>
+				</div>
+				<div class="binding">
+					<div class="keys"><span class="kbd">⌘</span><span class="kbd">↵</span></div>
+					<div class="desc">在新 tab 打开 current file</div>
+				</div>
+				<div class="binding">
+					<div class="keys"><span class="kbd">Alt</span><span class="kbd">↵</span></div>
+					<div class="desc">打开 file 但保持 modal 常驻</div>
+				</div>
+				<div class="binding">
+					<div class="keys"><span class="kbd">Tab</span></div>
+					<div class="desc">切到 AI Analysis tab（Vault Intelligence 不在 Tab 循环里）</div>
+				</div>
+				<div class="binding">
+					<div class="keys"><span class="kbd">Esc</span></div>
+					<div class="desc">关闭 modal</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- ================================================================
+		 Design Notes
+		 ================================================================ -->
+	<div class="notes">
+		<h2>Design Judgment — Round 3 (post-feedback)</h2>
+
+		<div class="changelog">
+			<strong>Changes from v1:</strong>
+			<ul style="margin: 6px 0 0;">
+				<li>删除 Variant B（中间态）—— 拥挤就拥挤到底，不要三档梯度</li>
+				<li>默认改为 Variant A（Obsidian-native compact）</li>
+				<li>新增 Interaction Model：folder / file / preview 三种点击都跳转到对应位置</li>
+			</ul>
+		</div>
+
+		<h3>为什么 A 作为默认是对的（重新审视）</h3>
+		<ul>
+			<li>Tree view 的独有价值本来就是"我在 vault 结构里定位这个文件" —— Obsidian 用户对文件树的位置有肌肉记忆，alpha-sort 反而让他们能扫得快。</li>
+			<li>需要相关性排序时用户会切回 List view（默认就是 score-sort）；Tree 定位在"结构导航"，功能上没必要重复排序模型。</li>
+			<li>Compact 24px 单行 = 一屏容纳 18 条结果，避免像 Detailed 那样滚半天。日常搜索命中数一般 &lt; 20，一屏能装完。</li>
+		</ul>
+
+		<h3>为什么 C（Detailed）保留价值</h3>
+		<ul>
+			<li>调研场景：不知道哪篇最相关、需要看 heading anchor + snippet 判断的时候，Detailed 一屏能提供决策所需的所有信息，不用逐条 preview。</li>
+			<li>Heading anchor 是关键差异化：让用户看到 "match 在哪个语义单元下"，是 List view 也没有的信息。</li>
+			<li>"body only" 标记有语义价值：告诉用户"这个 match 不在任何 heading 下"，暗示可能是随笔或未组织好的笔记。</li>
+		</ul>
+
+		<h3>三个点击行为的一致性设计</h3>
+		<ul>
+			<li>三种点击都<em>关闭 modal</em>（不停留），因为用户已经用眼睛完成了"找"这个动作，点击是"跳过去"的意图。</li>
+			<li><span class="kbd">Alt</span> + click 保持 modal 常驻，方便"连续跳转 → 回到搜索 → 继续跳"的调研工作流。</li>
+			<li><span class="kbd">Cmd</span> + click file 在新 tab 打开（沿用 Obsidian 全局约定）。</li>
+			<li>preview snippet 里可点击的 highlighted line 需要有清晰视觉反馈 —— 现在用轻微 hover 底纹 + 轻微阴影，避免"整段文字都能点"的迷惑。</li>
+		</ul>
+
+		<h3>两档密度对比</h3>
+		<table>
+			<thead>
+				<tr>
+					<th>维度</th>
+					<th>Compact（默认）</th>
+					<th>Detailed</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr><td>每行高度</td><td>24px folder / 24px file</td><td>24px folder / 56px file</td></tr>
+				<tr><td>屏内可见结果数（440px）</td><td class="good">≈ 18</td><td>≈ 7</td></tr>
+				<tr><td>无需 preview 就能决策</td><td class="bad">否 —— 只有 filename + count</td><td class="good">是（heading anchor + snippet）</td></tr>
+				<tr><td>能看出 match 命中位置</td><td class="bad">否</td><td class="good">是（heading anchor 或 "body only"）</td></tr>
+				<tr><td>Obsidian 用户上手成本</td><td class="good">零</td><td>低</td></tr>
+				<tr><td>适合场景</td><td>日常快速定位 · 已知文件名 · 结果 &lt; 15</td><td>调研 · 结果 5-10 需要深读</td></tr>
+			</tbody>
+		</table>
+
+		<div class="verdict">
+			<strong>最终方案：</strong>Tree view = <strong>Compact（默认） + Detailed</strong> 两档，工具栏右侧一个 <code>Compact / Detailed</code> 胶囊 pill 切换（沿用现有 view mode toggle 的滑动动画样式）。folder / file 一律 alpha-sort（对齐 Obsidian 文件树习惯），score-sort 靠 List view 提供。<br />
+			点击行为：folder → reveal in file tree · file → open file · preview line → jump to line。默认关闭 modal，<span class="kbd">Alt</span> 保持常驻。
+		</div>
+
+		<h3>还没定的开放问题</h3>
+		<ul>
+			<li>Detailed 模式下 <strong>heading anchor 怎么取？</strong> 方案 1：取 match 所在 heading（可能是 h2/h3/h4）。方案 2：只取最近的 h1/h2。倾向方案 1，因为 h4 也能给用户提供语义位置。</li>
+			<li>Compact 模式下要不要显示<strong>右侧 preview pane</strong>？现在的 mockup 保留，因为 hover file 时能看到 top match snippet；但也可以在 Compact 模式下把 preview pane 隐藏、hover 时用 tooltip 替代。倾向保留 preview pane 保持模式一致性。</li>
+			<li>点击 folder 后 reveal 到左侧 File Explorer 时，<strong>是否 auto-focus</strong> File Explorer？倾向不 focus，让用户视线不被 hijack。</li>
+			<li>密度 toggle 状态<strong>是否持久化</strong>到 settings？倾向持久化，用户对密度偏好稳定。</li>
+			<li>Detailed 模式下如果结果超过 20 条，UX 变差 —— <strong>是否需要"自动降级到 Compact"</strong>？倾向不自动降级（用户已经选了 Detailed 就是要看细节），但可以在 toolbar 显示 "20+ results — consider Compact" 提示。</li>
+			<li>键盘导航已在上方 <em>Keyboard Navigation</em> 段决定：<span class="kbd">↑</span>/<span class="kbd">↓</span> 只在 file 之间跳，folder 跳过。</li>
+		</ul>
+	</div>
+</div>
+</body>
+</html>

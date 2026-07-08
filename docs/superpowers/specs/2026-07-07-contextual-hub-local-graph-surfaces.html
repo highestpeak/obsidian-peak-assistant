@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contextual Hub Local Graph Surfaces · Planned Requirement</title>
+  <style>
+    :root {
+      --ink: #17221d;
+      --muted: #66736d;
+      --line: #dfe9e3;
+      --paper: #ffffff;
+      --wash: #f6f8f6;
+      --green: #2f7b57;
+      --soft-green: #eaf5ef;
+      --violet: #8c58e8;
+      --soft-violet: #f1eaff;
+      --gold: #9a6a1c;
+      --soft-gold: #fff4da;
+      --blue: #2d6f95;
+      --soft-blue: #e8f4fb;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--wash);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.68;
+    }
+    a { color: var(--green); text-decoration: none; font-weight: 740; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #eef3ee;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+    }
+    .page {
+      width: min(1120px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 34px 0 70px;
+    }
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 22px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    header, section {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--paper);
+      box-shadow: 0 14px 38px rgba(23, 34, 29, 0.05);
+    }
+    header { padding: 28px 30px; }
+    section { margin-top: 24px; padding: 26px 30px; }
+    .eyebrow {
+      margin-bottom: 8px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { margin: 0; line-height: 1.22; letter-spacing: 0; }
+    h1 { max-width: 920px; font-size: 35px; }
+    h2 { margin-bottom: 12px; font-size: 25px; }
+    h3 { margin-bottom: 8px; font-size: 18px; }
+    p { margin: 0; }
+    p + p { margin-top: 12px; }
+    .subtitle, .prose { color: var(--muted); }
+    .subtitle { max-width: 930px; margin-top: 12px; font-size: 17px; }
+    .lead { color: var(--ink); font-size: 17px; }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .meta span, .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--wash);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+    .note {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--green);
+      background: #fbfdfb;
+      color: var(--muted);
+    }
+    .note-title {
+      margin-bottom: 3px;
+      color: var(--ink);
+      font-weight: 820;
+    }
+    .wireframe {
+      margin-top: 20px;
+      border: 1px solid #d7dfda;
+      border-radius: 10px;
+      background: #fbfcfb;
+      overflow: hidden;
+    }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-bottom: 1px solid var(--line);
+      background: #f2f4f2;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 760;
+    }
+    .tabs div { padding: 13px 10px; }
+    .tabs .active {
+      background: var(--soft-violet);
+      color: var(--violet);
+    }
+    .wire-body { padding: 20px; }
+    .search-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: #8a958f;
+    }
+    .doc-path {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .context-strip {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 1.15fr;
+      gap: 12px;
+      margin-top: 13px;
+      padding: 12px;
+      border: 1px dashed #d1ddd5;
+      border-radius: 8px;
+      background: #fbfdfb;
+    }
+    .mini-panel {
+      min-height: 140px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .mini-panel b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+      font-size: 14px;
+    }
+    .list {
+      display: grid;
+      gap: 7px;
+      margin-top: 8px;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfb;
+    }
+    .local-graph {
+      position: relative;
+      height: 124px;
+      border: 1px dashed #cbd8d0;
+      border-radius: 8px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(140, 88, 232, 0.09), transparent 35%),
+        linear-gradient(180deg, #fbfdfb, #f5f8f6);
+    }
+    .node {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(47, 123, 87, 0.42);
+      border-radius: 50%;
+      background: var(--soft-green);
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 820;
+      text-align: center;
+    }
+    .node.current {
+      left: 50%;
+      top: 50%;
+      width: 54px;
+      height: 54px;
+      transform: translate(-50%, -50%);
+      background: var(--soft-violet);
+      color: var(--violet);
+      border-color: rgba(140, 88, 232, 0.42);
+    }
+    .node.a { left: 13%; top: 14%; width: 45px; height: 45px; }
+    .node.b { right: 13%; top: 16%; width: 45px; height: 45px; background: var(--soft-blue); color: var(--blue); border-color: rgba(45, 111, 149, 0.34); }
+    .node.c { left: 18%; bottom: 10%; width: 42px; height: 42px; background: var(--soft-gold); color: var(--gold); border-color: rgba(154, 106, 28, 0.34); }
+    .node.d { right: 18%; bottom: 12%; width: 42px; height: 42px; }
+    .edge {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 96px;
+      height: 1px;
+      background: rgba(47, 123, 87, 0.26);
+      transform-origin: left center;
+    }
+    .edge.e1 { transform: rotate(-146deg); }
+    .edge.e2 { transform: rotate(-36deg); }
+    .edge.e3 { transform: rotate(142deg); }
+    .edge.e4 { transform: rotate(36deg); }
+    .doc-review-card {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 16px;
+      margin-top: 14px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--wash);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 780;
+    }
+    .button.primary {
+      border-color: rgba(140, 88, 232, 0.3);
+      background: var(--violet);
+      color: #fff;
+    }
+    .search-shell {
+      display: grid;
+      grid-template-columns: 1fr 310px;
+      min-height: 440px;
+      margin-top: 20px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--paper);
+    }
+    .results {
+      padding: 18px;
+      background: #fbfcfb;
+    }
+    .result-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      color: var(--muted);
+    }
+    .result-row.active {
+      background: var(--soft-violet);
+      color: var(--ink);
+    }
+    .drawer {
+      padding: 18px;
+      border-left: 1px solid var(--line);
+      background: var(--paper);
+    }
+    .drawer-section {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+    table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--paper);
+      font-size: 14px;
+    }
+    th, td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.52;
+      overflow-wrap: break-word;
+    }
+    th {
+      background: var(--soft-green);
+      color: var(--ink);
+      font-weight: 820;
+    }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    ul {
+      margin: 10px 0 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+    li { margin: 5px 0; }
+
+    @media (max-width: 980px) {
+      .page { width: min(100vw - 24px, 760px); }
+      .context-strip, .doc-review-card, .search-shell { grid-template-columns: 1fr; }
+      .drawer { border-left: 0; border-top: 1px solid var(--line); }
+      h1 { font-size: 30px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <nav class="nav" aria-label="cross document navigation">
+      <a href="../../index.html">← 文档总索引</a>
+      <a href="../../planned-requirements.html">Planned Requirements</a>
+      <a href="../../16-feature-document-copilot.html">16 · Document Copilot</a>
+      <a href="../../12-feature-search.html">12 · Search</a>
+    </nav>
+
+    <header>
+      <div class="eyebrow">Planned requirement · Contextual graph surfaces</div>
+      <h1>当前文档和搜索结果都应该能看见它属于哪些 Hub，以及它在局部图谱里的位置。</h1>
+      <p class="subtitle">这份文档记录两个未实现的小需求：Document tab 增加当前文档的 hub / source chain / local graph；General Search 的右侧 drawer 在选中文档时展示 hub 上下文，并链接到 hub 文档或 hub local graph。</p>
+      <div class="meta">
+        <span>Status: planned · no implementation</span>
+        <span>Fidelity: wireframe</span>
+        <span>Primary viewport: desktop editor</span>
+      </div>
+    </header>
+
+    <section id="why">
+      <h2>为什么需要它</h2>
+      <p class="lead">Vault 级 graph 回答“整个库的结构是什么”，但写作时用户经常只想知道“这篇文档在哪里”。这个问题应该出现在 Document tab 和 Search drawer 里，而不是要求用户跳到另一个全局图谱视图。</p>
+      <ul>
+        <li>Document tab 是当前文档的 Copilot 面板，应该显示当前文档属于哪些 hub。</li>
+        <li>Search drawer 已经在展示 selected result 的 connected / discovered 信息，可以顺手展示 hub context。</li>
+        <li>这些入口不新增命令，只是在已有面板里补上下文。</li>
+      </ul>
+    </section>
+
+    <section id="document-tab">
+      <h2>Document tab：当前文档的局部图谱</h2>
+      <p class="lead">在 current note 信息行和 review card 之间增加一个 context strip。它不替代 Review Article，也不自动改文档，只是让用户看见当前文档的 hub、出处链和局部图谱。</p>
+
+      <div class="wireframe">
+        <div class="tabs">
+          <div class="active">Document<br><span class="chip">Copilot</span></div>
+          <div>Vault<br><span class="chip">Vault Intelligence</span></div>
+          <div>Setting<br><span class="chip">System</span></div>
+        </div>
+        <div class="wire-body">
+          <div class="search-line">
+            <span>Search or ask in current document...</span>
+            <strong>document</strong>
+          </div>
+          <div class="doc-path">
+            <span>kb1-life-notes/.../docs-表格编辑协议改造.md</span>
+            <span>current note</span>
+            <span>319 words</span>
+          </div>
+
+          <div class="context-strip">
+            <div class="mini-panel">
+              <b>Current note hubs</b>
+              <div class="list">
+                <div class="row"><span>Collaboration Docs</span><span class="chip">primary</span></div>
+                <div class="row"><span>Spreadsheet Model</span><span class="chip">related</span></div>
+              </div>
+            </div>
+            <div class="mini-panel">
+              <b>Source chain</b>
+              <div class="list">
+                <div class="row"><span>Daily note → draft</span><span class="chip">origin</span></div>
+                <div class="row"><span>Hub → protocol note</span><span class="chip">linked</span></div>
+              </div>
+            </div>
+            <div class="mini-panel">
+              <b>Local graph</b>
+              <div class="local-graph">
+                <div class="edge e1"></div>
+                <div class="edge e2"></div>
+                <div class="edge e3"></div>
+                <div class="edge e4"></div>
+                <div class="node current">This<br>note</div>
+                <div class="node a">Hub</div>
+                <div class="node b">Ref</div>
+                <div class="node c">Draft</div>
+                <div class="node d">Gap</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="doc-review-card">
+            <div>
+              <h3>Ready to review this note</h3>
+              <p class="prose">Agent will inspect the current note and prepare changes + insights.</p>
+            </div>
+            <div>
+              <div class="button primary">Research</div>
+              <div class="button" style="margin-top: 8px;">Fast Lookup</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <table>
+        <colgroup>
+          <col style="width: 24%">
+          <col style="width: 38%">
+          <col>
+        </colgroup>
+        <thead>
+          <tr><th>元素</th><th>显示什么</th><th>用户动作</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Current note hubs</strong></td>
+            <td>当前文档所属 primary hub、相邻 hub、是否 orphan / soft orphan。</td>
+            <td>打开 hub 文档；查看此文档在 hub 里的位置。</td>
+          </tr>
+          <tr>
+            <td><strong>Source chain</strong></td>
+            <td>这篇文档的来源链：daily note、draft、import、hub summary、manual link。</td>
+            <td>回到出处；确认是否需要补 backlink 或移动到 hub。</td>
+          </tr>
+          <tr>
+            <td><strong>Local graph</strong></td>
+            <td>只显示当前文档、直接邻居、所属 hub、桥接缺口，不显示全库节点。</td>
+            <td>展开局部图；从图上触发 suggest links / create bridge。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="search-drawer">
+      <h2>General Search drawer：搜索结果也要带 Hub 上下文</h2>
+      <p class="lead">Quick Search 选中一篇文档时，右侧 drawer 不只显示 connected / discovered，也应该告诉用户这篇文档锁在哪个 hub 或候选 hub 里。用户可以从结果直接进入 hub 文档或 local graph。</p>
+
+      <div class="search-shell">
+        <div class="results">
+          <div class="search-line"><span>Search in vault...</span><strong>vault</strong></div>
+          <div class="result-row active"><span><strong>docs-表格编辑协议改造</strong><br>mess/docs-表格编辑协议改造.md</span><span>just now</span></div>
+          <div class="result-row"><span><strong>2-Story Cards-OT Performance</strong><br>D-26年找工作/...</span><span>4 days ago</span></div>
+          <div class="result-row"><span><strong>A-0-Spreadsheet-OT算法优化</strong><br>子文档/...</span><span>4 days ago</span></div>
+        </div>
+        <aside class="drawer">
+          <h3>docs-表格编辑协议改造</h3>
+          <div class="drawer-section">
+            <b>CONNECTED</b>
+            <div class="list">
+              <div class="row"><span>2-3-Protocol Of Online Spreadsheet</span><span class="chip">linked</span></div>
+            </div>
+          </div>
+          <div class="drawer-section">
+            <b>HUB CONTEXT</b>
+            <div class="list">
+              <div class="row"><span>Collaboration Docs</span><span class="chip">primary</span></div>
+              <div class="row"><span>Spreadsheet Model</span><span class="chip">candidate</span></div>
+            </div>
+            <div class="button">Open hub doc</div>
+            <div class="button" style="margin-top: 8px;">View hub local graph</div>
+          </div>
+          <div class="drawer-section">
+            <b>AI GRAPH</b>
+            <div class="button">Generate AI Graph</div>
+          </div>
+        </aside>
+      </div>
+
+      <table>
+        <colgroup>
+          <col style="width: 24%">
+          <col style="width: 38%">
+          <col>
+        </colgroup>
+        <thead>
+          <tr><th>规则</th><th>说明</th><th>降级</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>有 primary hub</strong></td>
+            <td>drawer 显示 hub 名称、短状态、Open hub doc、View local graph。</td>
+            <td>hub doc 不存在时，显示 Generate hub summary。</td>
+          </tr>
+          <tr>
+            <td><strong>只有 candidate hub</strong></td>
+            <td>展示相似 hub 和置信度，不说“已归属”。</td>
+            <td>提供 Add to hub / Dismiss candidate。</td>
+          </tr>
+          <tr>
+            <td><strong>没有 hub</strong></td>
+            <td>显示 orphan / soft orphan 提示，不把 drawer 留空。</td>
+            <td>提供 Find related / Create bridge note。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="backlog-entry">
+      <h2>登记到小需求规划池</h2>
+      <p class="lead">这两个需求都不是 roadmap 级“大功能”，但它们会改变用户理解 Vault / Document / Search 的心智路径，所以要进入 planned requirements。</p>
+      <ul>
+        <li><code>PR-DOC-LOCAL-GRAPH</code>：Document tab 显示 current note hubs、source chain、local graph。</li>
+        <li><code>PR-SEARCH-HUB-DRAWER</code>：Quick Search drawer 显示 selected result 的 hub context 和 hub local graph 入口。</li>
+        <li><code>PR-VAULT-GRAPH-SEGMENT</code>：Vault tab 聚合 stats、overview graph、hubs、last report 的低保真设计，见 <a href="2026-07-07-vault-maintenance-graph-segment.html">Vault Maintenance Graph Segment</a>。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

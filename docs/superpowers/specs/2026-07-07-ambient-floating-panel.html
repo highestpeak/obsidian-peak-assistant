@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ambient Floating Panel Requirement</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #fff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --violet: #7c3aed;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-violet: #f1eafa;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.65; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #eef3ee;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+    }
+    .page { width: min(1080px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 820; }
+    h1 { max-width: 940px; margin: 14px 0 16px; font-size: 42px; line-height: 1.1; letter-spacing: 0; }
+    h2 { margin: 0 0 12px; font-size: 28px; line-height: 1.2; }
+    h3 { margin: 0 0 8px; font-size: 19px; line-height: 1.28; }
+    p { margin: 0; }
+    .subtitle { max-width: 900px; color: var(--muted); font-size: 18px; }
+    .meta, .nav, .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .meta { margin-top: 22px; color: var(--muted); font-size: 13px; }
+    .meta span, .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 23px;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+    .nav { margin-top: 22px; font-size: 14px; }
+    section { padding: 40px 0; border-bottom: 1px solid var(--line); }
+    .lead { max-width: 940px; color: var(--ink); font-size: 17px; }
+    .prose { color: var(--muted); font-size: 15px; }
+    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
+    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
+    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
+    .violet { color: var(--violet); background: var(--soft-violet); border-color: rgba(124, 58, 237, 0.2); }
+    .note {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--green);
+      background: var(--paper);
+      color: var(--muted);
+      box-shadow: 0 10px 24px rgba(23, 34, 29, 0.04);
+    }
+    .note strong { display: block; margin-bottom: 4px; color: var(--ink); }
+    .wireframe {
+      margin-top: 22px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--paper);
+      overflow: hidden;
+      box-shadow: 0 18px 40px rgba(23, 34, 29, 0.07);
+    }
+    .obsidian-window {
+      position: relative;
+      min-height: 580px;
+      padding: 20px;
+      background: linear-gradient(180deg, #fbfcfa 0%, #f2f4f0 100%);
+    }
+    .workspace-chrome {
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr) 230px;
+      gap: 14px;
+      min-height: 520px;
+    }
+    .pane {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.86);
+      overflow: hidden;
+    }
+    .pane-title {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .file-row, .note-line {
+      height: 30px;
+      margin: 10px 12px;
+      border-radius: 6px;
+      background: #eef2eb;
+    }
+    .file-row:nth-child(3) { width: 78%; }
+    .file-row:nth-child(4) { width: 88%; }
+    .editor {
+      padding: 28px 34px;
+      color: var(--ink);
+      font-size: 15px;
+    }
+    .editor h3 { margin-bottom: 18px; font-size: 22px; }
+    .note-line { width: 100%; margin: 10px 0; }
+    .note-line.short { width: 72%; }
+    .floating {
+      position: absolute;
+      top: 78px;
+      right: 278px;
+      width: 330px;
+      border: 1px solid rgba(124, 58, 237, 0.22);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 22px 52px rgba(23, 34, 29, 0.18);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+    .floating-head {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      background: #fbf8ff;
+    }
+    .floating-title { font-weight: 820; }
+    .floating-spacer { flex: 1; }
+    .icon-btn {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--muted);
+      background: var(--paper);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .floating-body { padding: 12px; }
+    .mini-context {
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft-green);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .suggestion {
+      margin-top: 10px;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+    .suggestion b { display: block; margin-bottom: 3px; color: var(--ink); }
+    .actions { display: flex; gap: 8px; margin-top: 12px; }
+    .button {
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 760;
+    }
+    .button.primary { border-color: rgba(124, 58, 237, 0.25); background: var(--violet); color: #fff; }
+    .caption { padding: 12px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+    table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--paper);
+      font-size: 14px;
+      box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04);
+    }
+    th, td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.52;
+      overflow-wrap: break-word;
+    }
+    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+    @media (max-width: 980px) {
+      .page { width: min(100vw - 24px, 760px); }
+      h1 { font-size: 34px; }
+      .workspace-chrome { grid-template-columns: 1fr; }
+      .floating { position: static; width: auto; margin-top: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">Peak Assistant · Planned Requirement</div>
+      <h1>Ambient Push 应该有一个只悬在 Obsidian 内的置顶面板。</h1>
+      <p class="subtitle">这份低保真需求稿把“右下角几个 related 太干扰、入口找不到、写作时面板会消失”的反馈收束成一个可实现的 surface 需求。它不改代码，只定义下一步产品形态。</p>
+      <div class="meta">
+        <span>Status: planned</span>
+        <span>ID: PR-AMBIENT-FLOATING-PANEL</span>
+        <span>Updated: 2026-07-07</span>
+      </div>
+      <nav class="nav" aria-label="cross document navigation">
+        <a href="../../index.html">← 文档总索引</a>
+        <a href="../../14-feature-ambient-push.html">14 · Ambient Push</a>
+        <a href="../../planned-requirements.html">Planned Requirements</a>
+      </nav>
+    </header>
+
+    <section id="problem">
+      <h2>问题</h2>
+      <p class="lead">Ambient Push 的价值不是“弹一个提示”，而是在用户写当前段落时，持续给出附近可能有用的笔记。右下角/状态栏短提示既解释不了推荐，也不方便点开；右侧 leaf 虽然稳定，但离当前写作焦点偏远，用户还不一定知道怎么打开。</p>
+      <div class="note">
+        <strong>产品判断</strong>
+        主形态应该是一个 Obsidian 窗口内的 floating panel：用户打开后它悬在编辑器上方，写作时保持可见；点 <code>×</code> 后消失；切到其它应用时不会变成系统级悬浮窗。
+      </div>
+    </section>
+
+    <section id="wireframe">
+      <h2>低保真线框</h2>
+      <p class="lead">下面只表达信息架构，不定最终视觉。核心是：面板有标题、刷新、收起、关闭；候选能打开；空状态能告诉用户怎么触发。</p>
+
+      <div class="wireframe">
+        <div class="obsidian-window">
+          <div class="workspace-chrome">
+            <aside class="pane">
+              <div class="pane-title">Files</div>
+              <div class="file-row"></div>
+              <div class="file-row"></div>
+              <div class="file-row"></div>
+            </aside>
+            <main class="pane editor">
+              <h3>docs-表格编辑协议改造</h3>
+              <div class="note-line"></div>
+              <div class="note-line"></div>
+              <div class="note-line short"></div>
+              <div class="note-line"></div>
+              <div class="note-line short"></div>
+            </main>
+            <aside class="pane">
+              <div class="pane-title">Right sidebar</div>
+              <div class="file-row"></div>
+              <div class="file-row"></div>
+            </aside>
+          </div>
+
+          <div class="floating" aria-label="Ambient floating panel mock">
+            <div class="floating-head">
+              <span class="floating-title">Ambient</span>
+              <span class="pill violet">current paragraph</span>
+              <span class="floating-spacer"></span>
+              <span class="icon-btn" title="Refresh">↻</span>
+              <span class="icon-btn" title="Collapse">−</span>
+              <span class="icon-btn" title="Close">×</span>
+            </div>
+            <div class="floating-body">
+              <div class="mini-context">正在看：当前段落附近的相关笔记 · 3 results</div>
+              <div class="suggestion">
+                <b>2-3 Protocol Of Online Spreadsheet</b>
+                <p class="prose">Graph neighbor · 与当前文档共享协作协议主题。</p>
+              </div>
+              <div class="suggestion">
+                <b>A-0 Spreadsheet OT 算法优化</b>
+                <p class="prose">Text overlap · mutation / spreadsheet / protocol。</p>
+              </div>
+              <div class="actions">
+                <span class="button primary">Open</span>
+                <span class="button">Copy link</span>
+                <span class="button">Dismiss</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="caption">线框含义：floating panel 属于 Obsidian 当前窗口，不属于系统级窗口；它可以盖在 editor 上方，但不能盖到别的 app 上。</div>
+      </div>
+    </section>
+
+    <section id="requirements">
+      <h2>需求表</h2>
+      <table>
+        <colgroup>
+          <col style="width: 24%">
+          <col style="width: 40%">
+          <col>
+        </colgroup>
+        <thead>
+          <tr><th>Requirement</th><th>Design response</th><th>Acceptance check</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>只在 Obsidian 内置顶</strong></td>
+            <td>用 Obsidian window DOM / workspace root 内的 overlay 或 companion surface；不使用系统级 always-on-top。</td>
+            <td>切换到其它应用时面板不可见；回到 Obsidian 时仍在原位置。</td>
+          </tr>
+          <tr>
+            <td><strong>写作时不自动消失</strong></td>
+            <td>面板打开后订阅 Ambient store；editor focus / typing 不关闭它。</td>
+            <td>连续输入、切段落、触发 writing_pause 后，面板仍可见并更新内容。</td>
+          </tr>
+          <tr>
+            <td><strong>用户可明确关闭</strong></td>
+            <td>右上角 <code>×</code> 只关闭 surface，不关闭 runtime；关闭状态可以在本次 workspace session 里保留。</td>
+            <td>点 <code>×</code> 后不再出现；从命令或 Copilot 入口可以重新打开。</td>
+          </tr>
+          <tr>
+            <td><strong>入口可发现</strong></td>
+            <td>保留 Command Palette 的 <em>Open Related Notes panel</em>，并在 Copilot / Document lane 或 Ambient panel header 提供入口。</td>
+            <td>用户不需要知道内部名字，也能从当前写作界面找到它。</td>
+          </tr>
+          <tr>
+            <td><strong>手动刷新可见</strong></td>
+            <td>面板 header 放 Refresh，调用 runtime 的 <code>manual</code> trigger。</td>
+            <td>点击 Refresh 后围绕当前 active note / paragraph 重新计算候选。</td>
+          </tr>
+          <tr>
+            <td><strong>替代右下角提示</strong></td>
+            <td>状态栏 <code>N related</code> 不作为默认主路径；只保留为高级设置里的 opt-in 兼容提示。</td>
+            <td>默认安装时没有右下角 related 文案；主结果出现在 panel。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="current-facts">
+      <h2>当前事实</h2>
+      <table>
+        <colgroup>
+          <col style="width: 26%">
+          <col style="width: 36%">
+          <col>
+        </colgroup>
+        <thead>
+          <tr><th>Fact</th><th>Evidence</th><th>Gap</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>当前可打开右侧面板</strong></td>
+            <td><code>main.ts</code> 注册 <em>Open Related Notes panel</em>；<code>ViewManager</code> 打开 right leaf。</td>
+            <td>这是 sidebar，不是 floating panel。</td>
+          </tr>
+          <tr>
+            <td><strong>runtime 支持手动触发</strong></td>
+            <td><code>AmbientRuntime.triggerManual()</code> 和 editor adapter 已有 <code>manual</code> trigger。</td>
+            <td>缺一个用户能看见的 Refresh 按钮。</td>
+          </tr>
+          <tr>
+            <td><strong>干扰面默认关闭</strong></td>
+            <td><code>DEFAULT_AMBIENT_PUSH_SETTINGS</code> 里 status bar、gutter、morning briefing 默认 false。</td>
+            <td>文档和 UI 入口还需要把这个意图讲清楚。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

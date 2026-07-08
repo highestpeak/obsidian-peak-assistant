@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vault Maintenance Graph Segment · Low Fidelity Prototype</title>
+  <style>
+    :root {
+      --ink: #17221d;
+      --muted: #66736d;
+      --line: #dfe9e3;
+      --paper: #ffffff;
+      --wash: #f6f8f6;
+      --soft-green: #eaf5ef;
+      --green: #2f7b57;
+      --violet: #8c58e8;
+      --soft-violet: #f0e8ff;
+      --gold: #9a6a1c;
+      --soft-gold: #fff4da;
+      --blue: #2d6f95;
+      --soft-blue: #e8f4fb;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--wash);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.68;
+    }
+    a { color: var(--green); text-decoration: none; font-weight: 720; }
+    a:hover { text-decoration: underline; }
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #eef3ee;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+    }
+    .page {
+      width: min(1120px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 34px 0 70px;
+    }
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 22px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    header {
+      padding: 28px 30px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--paper);
+      box-shadow: 0 16px 42px rgba(23, 34, 29, 0.06);
+    }
+    .eyebrow {
+      margin-bottom: 8px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { margin: 0; line-height: 1.22; letter-spacing: 0; }
+    h1 { max-width: 920px; font-size: 36px; }
+    h2 { margin-bottom: 14px; font-size: 25px; }
+    h3 { margin: 0 0 8px; font-size: 18px; }
+    p { margin: 0; }
+    p + p { margin-top: 12px; }
+    .subtitle {
+      max-width: 920px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .meta span, .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--wash);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+    section {
+      margin-top: 26px;
+      padding: 26px 30px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--paper);
+      box-shadow: 0 12px 34px rgba(23, 34, 29, 0.045);
+    }
+    .lead {
+      color: var(--ink);
+      font-size: 17px;
+    }
+    .note {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--green);
+      background: #fbfdfb;
+      color: var(--muted);
+    }
+    .note-title {
+      margin-bottom: 3px;
+      color: var(--ink);
+      font-weight: 820;
+    }
+    .wireframe {
+      margin-top: 22px;
+      border: 1px solid #d7dfda;
+      border-radius: 10px;
+      background: #fbfcfb;
+      overflow: hidden;
+    }
+    .wire-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      border-bottom: 1px solid var(--line);
+      background: #f2f4f2;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 760;
+    }
+    .wire-tabs div { padding: 14px 10px; }
+    .wire-tabs .active {
+      background: var(--soft-violet);
+      color: var(--violet);
+    }
+    .wire-body { padding: 20px; }
+    .search-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: #8a958f;
+    }
+    .stats-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 13px;
+      margin-top: 13px;
+      padding: 11px 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.9fr 0.9fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .panel {
+      min-height: 250px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+    .panel h3 span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 620;
+    }
+    .graph-stage {
+      position: relative;
+      height: 260px;
+      margin-top: 12px;
+      border: 1px dashed #cbd8d0;
+      border-radius: 8px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(47, 123, 87, 0.09), transparent 35%),
+        linear-gradient(180deg, #fbfdfb, #f4f8f5);
+    }
+    .ring {
+      position: absolute;
+      border: 1px dashed rgba(47, 123, 87, 0.28);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .ring.one { left: 50%; top: 50%; width: 150px; height: 150px; }
+    .ring.two { left: 50%; top: 50%; width: 220px; height: 220px; }
+    .node {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(47, 123, 87, 0.45);
+      border-radius: 50%;
+      background: var(--soft-green);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 820;
+      text-align: center;
+      box-shadow: 0 8px 18px rgba(23, 34, 29, 0.08);
+    }
+    .node.main { left: 50%; top: 50%; width: 74px; height: 74px; transform: translate(-50%, -50%); }
+    .node.hub-a { left: 18%; top: 20%; width: 62px; height: 62px; }
+    .node.hub-b { right: 16%; top: 22%; width: 68px; height: 68px; background: var(--soft-violet); color: var(--violet); border-color: rgba(140, 88, 232, 0.4); }
+    .node.hub-c { left: 14%; bottom: 16%; width: 66px; height: 66px; background: var(--soft-blue); color: var(--blue); border-color: rgba(45, 111, 149, 0.35); }
+    .node.hub-d { right: 13%; bottom: 17%; width: 58px; height: 58px; background: var(--soft-gold); color: var(--gold); border-color: rgba(154, 106, 28, 0.35); }
+    .edge {
+      position: absolute;
+      height: 1px;
+      background: rgba(47, 123, 87, 0.3);
+      transform-origin: left center;
+    }
+    .edge.e1 { left: 50%; top: 50%; width: 128px; transform: rotate(-142deg); }
+    .edge.e2 { left: 50%; top: 50%; width: 124px; transform: rotate(-34deg); }
+    .edge.e3 { left: 50%; top: 50%; width: 128px; transform: rotate(142deg); }
+    .edge.e4 { left: 50%; top: 50%; width: 130px; transform: rotate(35deg); }
+    .hint {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+    .list {
+      display: grid;
+      gap: 9px;
+      margin-top: 12px;
+    }
+    .list-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .list-item b { color: var(--ink); }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      margin-top: 12px;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--wash);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 780;
+    }
+    .button.primary {
+      border-color: rgba(140, 88, 232, 0.3);
+      background: var(--violet);
+      color: #fff;
+    }
+    .trace {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .trace div {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .trace b { display: block; margin-bottom: 4px; color: var(--ink); }
+    table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--paper);
+      font-size: 14px;
+    }
+    th, td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.52;
+      overflow-wrap: break-word;
+    }
+    th {
+      background: var(--soft-green);
+      color: var(--ink);
+      font-weight: 820;
+    }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    ul {
+      margin: 10px 0 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+    li { margin: 5px 0; }
+
+    @media (max-width: 920px) {
+      .page { width: min(100vw - 24px, 760px); }
+      .content-grid, .trace { grid-template-columns: 1fr; }
+      h1 { font-size: 30px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <nav class="nav" aria-label="cross document navigation">
+      <a href="../../index.html">← 文档总索引</a>
+      <a href="../../13-feature-vault-intelligence.html">13 · Vault Intelligence</a>
+      <a href="../../planned-requirements.html">Planned Requirements</a>
+      <a href="../../roadmap.html">Roadmap</a>
+    </nav>
+
+    <header>
+      <div class="eyebrow">Low fidelity prototype · Vault Maintenance</div>
+      <h1>Vault 面板应该先让用户看见结构，而不是要求用户逐篇展开图谱。</h1>
+      <p class="subtitle">这份草图说明 Vault tab 里的一个 segment：把 overview graph、hub list、当前文档位置、last report 和 review 入口放在同一个 Vault Maintenance 区域。它不是最终 compare panel 设计，只是给后续 UI 重做留一个稳定的心智模型。</p>
+      <div class="meta">
+        <span>Audience: product / implementation handoff</span>
+        <span>Fidelity: wireframe</span>
+        <span>Primary viewport: desktop editor</span>
+      </div>
+    </header>
+
+    <section id="why">
+      <h2>为什么要有这个 segment</h2>
+      <p class="lead">Obsidian 自带 graph 展示的是太细的文档级网络。Vault Intelligence 更需要先给用户一个能扫读的 Vault 结构图：哪些 hub 是主干，当前文档在哪个社区里，最近一次 review 看到什么，以及下一步该看 report 还是重新分析。</p>
+      <ul>
+        <li>用户不应该为了理解 Vault 状态，逐个展开每篇文档的小节点。</li>
+        <li>Vault 相关操作不要散成独立命令；它们应该聚在 Copilot 的 Vault tab。</li>
+        <li>graph 不是装饰，它是进入 hubs、report 和 review intent 的导航面板。</li>
+      </ul>
+      <div class="note">
+        <div class="note-title">当前边界</div>
+        这份文档只定义 segment 的信息架构和低保真线框。三栏 compare panel、最终视觉样式、交互动效和完整组件实现不在这里定稿。
+      </div>
+    </section>
+
+    <section id="wireframe">
+      <h2>低保真线框</h2>
+      <p class="lead">这个 segment 放在 Vault tab 主体中，不是新页面。顶部保留 Vault stats 和 last reviewed 信息；主体给用户三个并列入口：看图谱、看 hubs、看 last report。</p>
+
+      <div class="wireframe" aria-label="low fidelity vault maintenance wireframe">
+        <div class="wire-tabs">
+          <div>Document<br><span class="chip">Copilot</span></div>
+          <div class="active">Vault<br><span class="chip">Vault Intelligence</span></div>
+          <div>Setting<br><span class="chip">System</span></div>
+        </div>
+        <div class="wire-body">
+          <div class="search-line">
+            <span>Search or ask across vault...</span>
+            <strong>vault</strong>
+          </div>
+          <div class="stats-strip">
+            <span>2.2K notes</span>
+            <span>1.7M words</span>
+            <span>last reviewed 20/05/2026</span>
+            <span>cached report available</span>
+          </div>
+
+          <div class="content-grid">
+            <div class="panel">
+              <h3>Vault graph overview <span>先看 hub / community，不看所有文档节点</span></h3>
+              <div class="graph-stage">
+                <div class="ring one"></div>
+                <div class="ring two"></div>
+                <div class="edge e1"></div>
+                <div class="edge e2"></div>
+                <div class="edge e3"></div>
+                <div class="edge e4"></div>
+                <div class="node main">Current<br>note</div>
+                <div class="node hub-a">Hub<br>A</div>
+                <div class="node hub-b">Hub<br>B</div>
+                <div class="node hub-c">Hub<br>C</div>
+                <div class="node hub-d">Hub<br>D</div>
+                <div class="hint">低保真圆形图：只显示主 hub、当前文档位置、桥接关系和异常区域。</div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <h3>Hubs <span>查看所有 hubs 或当前文档所在 hub</span></h3>
+              <div class="list">
+                <div class="list-item"><span><b>Search Ranking</b><br>18 notes · healthy</span><span class="chip">open</span></div>
+                <div class="list-item"><span><b>Collaboration Docs</b><br>31 notes · stale</span><span class="chip">review</span></div>
+                <div class="list-item"><span><b>Mutation Model</b><br>9 notes · needs bridge</span><span class="chip">bridge</span></div>
+              </div>
+              <div class="button">View all hubs</div>
+              <div class="button">Show current note in graph</div>
+            </div>
+
+            <div class="panel">
+              <h3>Last report <span>最近一次 Vault review 的入口</span></h3>
+              <div class="list">
+                <div class="list-item"><span><b>143 notes changed</b><br>Large delta since last review</span><span class="chip">fresh</span></div>
+                <div class="list-item"><span><b>3 suggested intents</b><br>Smart connections, related notes, gaps</span><span class="chip">ready</span></div>
+              </div>
+              <div class="button primary">Research</div>
+              <div class="button">View last report</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="segment-contract">
+      <h2>这个 segment 需要收拢什么</h2>
+      <table>
+        <colgroup>
+          <col style="width: 22%">
+          <col style="width: 38%">
+          <col>
+        </colgroup>
+        <thead>
+          <tr><th>区域</th><th>用户要知道什么</th><th>入口动作</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Vault stats</strong></td>
+            <td>Vault 当前规模、最近 review 时间、是否已有 cached report。</td>
+            <td>决定是直接看 report，还是重新 research。</td>
+          </tr>
+          <tr>
+            <td><strong>Overview graph</strong></td>
+            <td>主 hubs、当前文档位置、社区边界、桥接缺口。</td>
+            <td>查看 all hubs，或定位 current note。</td>
+          </tr>
+          <tr>
+            <td><strong>Hubs</strong></td>
+            <td>哪些 hub 已存在、哪些过期、哪些需要桥接或更新综述。</td>
+            <td>打开 hub、生成 / 更新 hub、复核 stale hub。</td>
+          </tr>
+          <tr>
+            <td><strong>Last report</strong></td>
+            <td>最近一次 Vault review 结论、变化量、建议 intent。</td>
+            <td>View last report，继续 ask AI，或重新跑 Research。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="mental-model">
+      <h2>心智模型</h2>
+      <div class="trace">
+        <div><b>1. 先看 Vault 状态</b>规模、last reviewed、changed notes 和 cached report 告诉用户是否需要重跑。</div>
+        <div><b>2. 再看结构图</b>圆形 graph 先展示 hubs 和当前文档位置，避免文档级 graph 噪声。</div>
+        <div><b>3. 进入具体 hub</b>用户可以看所有 hubs，也可以从当前文档跳到所属 hub。</div>
+        <div><b>4. 回到 report</b>last report 保留 review 结果，Research 是重新生成，不是唯一入口。</div>
+      </div>
+      <div class="note">
+        <div class="note-title">不要做成什么</div>
+        不要把 graph、hub generation、last report、Vault review 拆成四个分散命令。它们都属于 Copilot Vault tab 的 Vault Maintenance segment，区别只是用户此刻要看结构、看报告，还是生成综述。
+      </div>
+    </section>
+
+    <section id="open-questions">
+      <h2>后续需要重新设计的问题</h2>
+      <ul>
+        <li>三栏 compare panel 最终怎么组织，还需要单独设计。</li>
+        <li>graph 的节点密度、缩放、hover detail、current note 定位需要交互原型验证。</li>
+        <li>last report 和 Research 的优先级要根据实际使用频率调整。</li>
+        <li>hub list 是否按健康度、最近变化、PageRank 或用户 pin 排序，需要结合真实数据再定。</li>
+      </ul>
+      <div class="note">
+        <div class="note-title">相邻需求</div>
+        Document tab 的 current-note local graph 和 Search drawer 的 hub context 不在这份 Vault segment 草图里展开；它们登记在 <a href="../../planned-requirements.html">Planned Requirements</a>，具体草图见 <a href="2026-07-07-contextual-hub-local-graph-surfaces.html">Contextual Hub Local Graph Surfaces</a>。
+      </div>
+    </section>
+  </main>
+</body>
+</html>
