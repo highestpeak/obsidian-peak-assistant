@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { cn } from '@/ui/react/lib/utils';
-import { Check, Copy, RefreshCw, Star, GitBranch } from 'lucide-react';
+import { Bug, Check, Copy, RefreshCw, Star, GitBranch } from 'lucide-react';
+import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
 import { ChatMessage, ChatConversation } from '@/service/chat/types';
 import { useChatViewStore } from '../../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -117,6 +118,16 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 			console.error('[MessageItem] Copy JSON failed:', err);
 		}
 	}, [message]);
+
+	const copyDebugTrace = useDebugTraceCopy();
+	const handleCopyDebugTrace = useCallback(() => {
+		// Prefer the debugRunId snapshotted onto this specific message when
+		// it was created; fall back to the most recent recorded run only if
+		// no id was attached (older messages persisted before debug tracing
+		// existed, or turns run with the recorder off).
+		const runId = message.debugRunId ?? manager.conv.getLastDebugRunId();
+		void copyDebugTrace(runId);
+	}, [copyDebugTrace, manager, message.debugRunId]);
 
 	const handleToggleStar = useCallback(async () => {
 		if (!activeConversation) return;
@@ -511,6 +522,16 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 					>
 						<GitBranch />
 						<span>{strings.message.branchLabel}</span>
+					</button>
+
+					<button
+						type="button"
+						className="pkchat-msg__action"
+						onClick={handleCopyDebugTrace}
+						title="Copy debug trace"
+					>
+						<Bug />
+						<span>Trace</span>
 					</button>
 
 					<MessageMorePopover

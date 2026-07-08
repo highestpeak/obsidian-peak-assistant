@@ -73,6 +73,9 @@ function createFinalAssistantMessage(
 	const streamingContent = useChatDataStore.getState().streamingContent;
 	const reasoningContent = useChatDataStore.getState().reasoningContent;
 	const currentToolCalls = useChatDataStore.getState().currentToolCalls;
+	// Snapshot the debug run id for this turn while the recorder still
+	// holds it — once the retention buffer rolls over it may vanish.
+	const debugRunId = manager.conv.getLastDebugRunId() ?? undefined;
 
 	// Merge streaming content with error message if error occurred
 	let finalContent = streamingContent;
@@ -95,6 +98,7 @@ function createFinalAssistantMessage(
 		starred: false,
 		model: modelId,
 		provider,
+		...(debugRunId ? { debugRunId } : {}),
 		// Include reasoning and tool calls
 		...(reasoningContent && {
 			reasoning: { content: reasoningContent }

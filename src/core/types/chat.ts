@@ -105,6 +105,14 @@ export interface ChatMessage {
 	 * Defaults to 'completed' for saved messages loaded from storage.
 	 */
 	status?: MessageStatus;
+	/**
+	 * Assistant-only: id of the Debug Trace run recorded for the turn that
+	 * produced this message. Runtime-only (recorder is in-memory + rolls off
+	 * after retention). Used by the message action row "Copy debug trace"
+	 * button so it copies the CORRECT trace for older assistant messages,
+	 * not just the most recent turn's trace.
+	 */
+	debugRunId?: string;
 }
 
 export interface ChatConversationMeta {
