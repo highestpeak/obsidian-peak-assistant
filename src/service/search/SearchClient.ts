@@ -9,6 +9,7 @@ import { QueryService } from './query/queryService';
 import { maybeCompileWithAiParser } from './query/aiQueryParserRuntime';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { SearchSettings } from '@/core/config/settingsTypes';
+import type { DebugRunHandle } from '@/core/debug-trace';
 
 /**
  * SearchClient (main thread, Desktop-only).
@@ -32,7 +33,11 @@ export class SearchClient {
 		this.queryService = new QueryService(this.aiServiceManager, this.searchSettings);
 	}
 
-	async search(query: SearchQuery, enableLLMRerank: boolean = false): Promise<SearchResponse & { duration: number }> {
+	async search(
+		query: SearchQuery,
+		enableLLMRerank: boolean = false,
+		debugRun?: DebugRunHandle,
+	): Promise<SearchResponse & { duration: number }> {
 		if (!this.queryService) {
 			throw new Error('SearchClient not initialized. Call init() first.');
 		}
@@ -41,12 +46,25 @@ export class SearchClient {
 		// `settings.useAiQueryParser` is off, this returns the raw text; when
 		// on, it invokes the fast-role LLM and falls back to raw on failure so
 		// search flow never breaks.
-		const compiled = await maybeCompileWithAiParser(query.text ?? '', this.searchSettings);
-		const effectiveQuery: SearchQuery = compiled.compiled !== (query.text ?? '')
+		const originalText = query.text ?? '';
+		const compiled = await maybeCompileWithAiParser(originalText, this.searchSettings);
+		const rewritten = compiled.compiled !== originalText;
+		const effectiveQuery: SearchQuery = rewritten
 			? { ...query, text: compiled.compiled }
 			: query;
 
-		return await this.queryService.textSearch(effectiveQuery, enableLLMRerank);
+		if (debugRun) {
+			const span = debugRun.startSpan({ kind: 'custom', name: 'query.rewrite' });
+			span.setParams({
+				aiParserEnabled: this.searchSettings.useAiQueryParser === true,
+				rewritten,
+			});
+			span.setInput({ raw: originalText, contentType: 'query' });
+			span.setOutput({ raw: compiled.compiled, contentType: 'query' });
+			span.finish();
+		}
+
+		return await this.queryService.textSearch(effectiveQuery, enableLLMRerank, debugRun);
 	}
 
 	async vectorSearch(query: SearchQuery): Promise<SearchResponse & { duration: number }> {

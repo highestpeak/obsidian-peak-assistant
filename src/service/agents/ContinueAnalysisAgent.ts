@@ -1,12 +1,13 @@
 /**
  * ContinueAnalysisAgent — handles follow-up analysis rounds by injecting
- * previous round context into a VaultSearchAgentSDK session with a custom
- * system prompt.
+ * previous round context into a VaultSearchAgent (harness-native) session
+ * with a custom system prompt.
  *
- * Design: thin wrapper over VaultSearchAgentSDK. Renders continue-specific
- * prompts and passes them as systemPromptOverride + contextPrefix. The SDK
- * agent then explores the vault for NEW evidence and calls vault_submit_plan,
- * producing the same event stream as the initial analysis.
+ * Design: thin wrapper over VaultSearchAgent. Renders continue-specific
+ * prompts and passes them as `systemPromptOverride` + `contextPrefix`. The
+ * agent then explores the vault for NEW evidence via the harness `runAgentLoop`
+ * and calls `vault_submit_plan`, producing the same event stream as the
+ * initial analysis.
  */
 
 import type { AppHandle } from '@/core/ports/AppHandle';
@@ -14,7 +15,7 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/core/types/prompt';
-import { VaultSearchAgentSDK } from './VaultSearchAgentSDK';
+import { VaultSearchAgent } from './VaultSearchAgent';
 
 /**
  * Context from all previous analysis rounds, passed to the continue agent
@@ -43,21 +44,18 @@ export interface ContinueAnalysisAgentOptions {
     aiServiceManager: AIServiceManager;
 }
 
-/**
- * Harness tier: local-deep (delegates to VaultSearchAgentSDK for vault recon).
- */
 export class ContinueAnalysisAgent {
     constructor(private readonly options: ContinueAnalysisAgentOptions) {}
 
     /**
-     * Run a follow-up analysis round. Yields the same LLMStreamEvent types as
-     * VaultSearchAgentSDK.startSession() so that routeEvent can process the
-     * output identically.
+     * Run a follow-up analysis round. Yields the same LLMStreamEvent types
+     * as VaultSearchAgent.startSession() so that routeEvent can process
+     * the output identically.
      */
     async *startSession(context: ContinueContext): AsyncGenerator<LLMStreamEvent> {
         const { app, pluginId, searchClient, aiServiceManager } = this.options;
 
-        // 1. Render the continue-specific system prompt
+        // 1. Render the continue-specific system prompt.
         let systemPrompt: string;
         try {
             systemPrompt = await aiServiceManager.renderPrompt(
@@ -74,7 +72,7 @@ export class ContinueAnalysisAgent {
             return;
         }
 
-        // 2. Render the continue user prompt (previous round context)
+        // 2. Render the continue user prompt (previous round context).
         let contextPrefix: string;
         try {
             contextPrefix = await aiServiceManager.renderPrompt(
@@ -97,18 +95,12 @@ export class ContinueAnalysisAgent {
             return;
         }
 
-        // 3. Delegate to VaultSearchAgentSDK with overrides
-        const sdkAgent = new VaultSearchAgentSDK({
-            app,
-            pluginId,
-            searchClient,
-            aiServiceManager,
+        // 3. Delegate to the harness-native VaultSearchAgent with overrides.
+        const agent = new VaultSearchAgent(app, pluginId, searchClient, aiServiceManager, {
             systemPromptOverride: systemPrompt,
             contextPrefix,
         });
 
-        // 4. Warmup + stream events through
-        await sdkAgent.warmup();
-        yield* sdkAgent.startSession(context.followUpQuery);
+        yield* agent.startSession(context.followUpQuery);
     }
 }

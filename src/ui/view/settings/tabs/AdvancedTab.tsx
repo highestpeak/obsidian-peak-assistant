@@ -6,12 +6,13 @@
  */
 
 import React, { useState } from 'react';
-import { Cog, FileText, Folder, HardDrive, Inbox, MessageSquare, Microscope, Sparkles, User, Wand2, type LucideIcon } from 'lucide-react';
+import { Bug, Cog, FileText, Folder, HardDrive, Inbox, MessageSquare, Microscope, Sparkles, User, Wand2, type LucideIcon } from 'lucide-react';
 import { Row, FormRow, FormGrid, Button } from '@/ui/components/primitives';
 import { Input } from '@/ui/component/shared-ui/input';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { Switch } from '@/ui/component/shared-ui/switch';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { DEFAULT_DEBUG_TRACE_SETTINGS, type DebugTraceSettings } from '@/core/config/settingsTypes';
 import {
 	AI_PATH_SUBFOLDERS,
 	getAIAnalysisFolder,
@@ -91,9 +92,127 @@ export function AdvancedTab({ settings, settingsUpdates }: AdvancedTabProps) {
                         right={<Switch checked={settings.enableDevTools ?? false} onChange={(v) => settingsUpdates.update('enableDevTools', v)} />}
                     />
                 </div>
+                <DebugTracesSection settings={settings} settingsUpdates={settingsUpdates} />
                 <SdkProcessDisclosure settings={settings} settingsUpdates={settingsUpdates} />
             </SettingsSection>
         </div>
+    );
+}
+
+/* Developer → Debug traces */
+
+function DebugTracesSection({
+    settings,
+    settingsUpdates,
+}: {
+    settings: MyPluginSettings;
+    settingsUpdates: SettingsUpdates;
+}) {
+    const dt: DebugTraceSettings = settings.debugTrace ?? DEFAULT_DEBUG_TRACE_SETTINGS;
+    const { debugTracePort } = useServiceContext();
+
+    const update = <K extends keyof DebugTraceSettings>(key: K, value: DebugTraceSettings[K]) => {
+        const next: DebugTraceSettings = { ...dt, [key]: value };
+        // includeRawContent is only meaningful in raw mode; auto-clear it
+        // when leaving raw so the setting can't quietly re-enable next time.
+        if (key === 'mode' && value !== 'raw' && next.includeRawContent) {
+            next.includeRawContent = false;
+        }
+        settingsUpdates.update('debugTrace', next);
+        // Propagate to the live recorder if the composition layer wired one.
+        if (key === 'mode') debugTracePort?.setMode(value as DebugTraceSettings['mode']);
+    };
+
+    return (
+        <SettingsDisclosure
+            icon={Bug}
+            title="Debug traces"
+            desc="Per-run receipts (chat / search / agent / ambient / analyze). Off by default; enable for troubleshooting."
+            meta={dt.mode === 'off' ? 'Off' : dt.mode === 'redacted' ? 'Redacted' : 'Full local'}
+        >
+            <div className="pkset-row-list">
+                <SettingsRow
+                    icon={Bug}
+                    title="Mode"
+                    desc="Redacted keeps excerpts + hashes; Full local keeps raw payloads (secrets still scrubbed)."
+                    right={
+                        <select
+                            className="pktw-text-sm pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5"
+                            value={dt.mode}
+                            onChange={(e) => update('mode', e.target.value as DebugTraceSettings['mode'])}
+                        >
+                            <option value="off">Off</option>
+                            <option value="redacted">Redacted (recommended)</option>
+                            <option value="raw">Full local (warn)</option>
+                        </select>
+                    }
+                />
+                <SettingsRow
+                    icon={Cog}
+                    title="Retention"
+                    desc="How many finished runs to keep in memory."
+                    right={
+                        <select
+                            className="pktw-text-sm pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5"
+                            value={String(dt.retention)}
+                            onChange={(e) => {
+                                const raw = e.target.value;
+                                const next: DebugTraceSettings['retention'] =
+                                    raw === '20' ? 20 : raw === '100' ? 100 : 'session';
+                                update('retention', next);
+                            }}
+                        >
+                            <option value="20">Last 20</option>
+                            <option value="100">Last 100</option>
+                            <option value="session">Session (clear on restart)</option>
+                        </select>
+                    }
+                />
+                <SettingsRow
+                    icon={FileText}
+                    title="Copy format"
+                    desc="Format used when copying a receipt to the clipboard."
+                    right={
+                        <select
+                            className="pktw-text-sm pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5"
+                            value={dt.copyFormat}
+                            onChange={(e) => update('copyFormat', e.target.value as DebugTraceSettings['copyFormat'])}
+                        >
+                            <option value="markdown">Markdown</option>
+                            <option value="json">JSON</option>
+                            <option value="both">Both (Markdown + JSON appendix)</option>
+                        </select>
+                    }
+                />
+                {dt.mode === 'raw' && (
+                    <>
+                        <SettingsRow
+                            icon={Bug}
+                            title="Include raw content in copies"
+                            desc="Prompt / context / tool payload text is embedded in the receipt. Do NOT share verbatim."
+                            right={<Switch checked={dt.includeRawContent} onChange={(v) => update('includeRawContent', v)} />}
+                        />
+                        <div className="pktw-text-[11px] pktw-text-pk-warning pktw-px-3">
+                            Full local retains raw prompt / context / tool arguments. It may include vault content and account information. Do not share Full-local receipts.
+                        </div>
+                    </>
+                )}
+                <SettingsRow
+                    icon={Cog}
+                    title="Clear all debug traces"
+                    desc="Remove every retained run from memory. This is safe and reversible only by re-running the surface."
+                    right={
+                        <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => debugTracePort?.clearAll()}
+                        >
+                            Clear
+                        </Button>
+                    }
+                />
+            </div>
+        </SettingsDisclosure>
     );
 }
 

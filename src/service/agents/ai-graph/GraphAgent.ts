@@ -1,7 +1,7 @@
 /**
  * GraphAgent — thin shell over Claude Agent SDK query() for knowledge graph
- * generation. Follows the same warmup / env / subprocess pattern as
- * VaultSearchAgentSDK.
+ * generation. Uses the SDK as a library (queryWithProfile); the Vault
+ * Search main route no longer does this — see VaultSearchAgent.
  *
  * Flow:
  *   1. warmupPool() installs renderer compat patches + probes node binary

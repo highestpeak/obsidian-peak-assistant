@@ -8,6 +8,62 @@ import type { Profile } from '@/core/profiles/types';
 import { queryWithProfile, type SDKMessage } from '@/service/agents/core/sdkAgentPool';
 import { collectText } from '@/service/agents/core/sdkMessageAdapter';
 import { streamWithRepetitionGuard, detectRepetition } from './stream-utils';
+import type { DebugRunHandle, DebugTracePort } from '@/core/debug-trace';
+import {
+	recordAnalysisPlan,
+	recordAnalysisSectionGeneration,
+	recordAnalysisSkip,
+	type AnalysisSectionToolUse,
+} from './debugTraceAdapter';
+
+/**
+ * Wrap an SDKMessage AsyncIterable so it forwards every message downstream
+ * unchanged AND collects any `tool_use` / `tool_result` blocks into the
+ * supplied sink. The section debug adapter reads the sink after the stream
+ * completes and attaches tool.call children.
+ */
+async function* tapToolUses(
+    source: AsyncIterable<SDKMessage>,
+    sink: AnalysisSectionToolUse[],
+): AsyncGenerator<SDKMessage> {
+    for await (const raw of source) {
+        const msg = raw as unknown as {
+            type?: string;
+            message?: { content?: Array<{ type: string; name?: string; id?: string; input?: unknown; content?: unknown; tool_use_id?: string; is_error?: boolean }> };
+        };
+        if (msg.type === 'assistant' || msg.type === 'user') {
+            const blocks = msg.message?.content ?? [];
+            for (const block of blocks) {
+                if (block.type === 'tool_use') {
+                    sink.push({
+                        toolName: block.name ?? 'unknown',
+                        ...(block.id ? { toolCallId: block.id } : {}),
+                        inputExcerpt: safeStringify(block.input),
+                    });
+                } else if (block.type === 'tool_result') {
+                    const existing = sink.find(
+                        (t) => t.toolCallId === block.tool_use_id,
+                    );
+                    if (existing) {
+                        existing.outputExcerpt = safeStringify(block.content);
+                        existing.ok = !block.is_error;
+                    }
+                }
+            }
+        }
+        yield raw;
+    }
+}
+
+function safeStringify(v: unknown): string {
+    if (typeof v === 'string') return v;
+    if (v === null || v === undefined) return String(v);
+    try {
+        return JSON.stringify(v);
+    } catch {
+        return String(v);
+    }
+}
 
 /**
  * Multi-agent report orchestrator.
@@ -32,17 +88,42 @@ export class ReportOrchestrator {
     private readonly app: AppHandle;
     private readonly pluginId: string;
 
+    private readonly debugTrace: DebugTracePort | null;
+    private activeDebugRun: DebugRunHandle | null = null;
+
     constructor(
         aiServiceManager: AIServiceManager,
         session: ReportSessionPort,
         /** T11J B1: explicit app + pluginId so orchestrator no longer reaches AppContext. */
         app: AppHandle,
         pluginId: string,
+        debugTrace: DebugTracePort | null = null,
     ) {
         this.mgr = aiServiceManager;
         this.session = session;
         this.app = app;
         this.pluginId = pluginId;
+        this.debugTrace = debugTrace;
+    }
+
+    /**
+     * Returns the debug run handle for the most recent generateReport call
+     * whose flow (generation + vault save) has not been fully sealed. Callers
+     * on the vault-write side use this to append artifact.write spans before
+     * finishing the run.
+     */
+    getActiveDebugRun(): DebugRunHandle | null {
+        return this.activeDebugRun;
+    }
+
+    /** Seal the currently-open analyze debug run, if any. */
+    sealActiveDebugRun(status: 'completed' | 'failed' | 'cancelled' = 'completed'): void {
+        if (!this.activeDebugRun) return;
+        try {
+            this.activeDebugRun.finish(status);
+        } finally {
+            this.activeDebugRun = null;
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -196,12 +277,33 @@ export class ReportOrchestrator {
         overview: string,
         userQuery: string,
     ): Promise<void> {
+        // Debug: one run per generateReport call. Recorded even on early-exit
+        // paths (empty sections, insight assignment failure) so a "why did I
+        // get an empty report?" question always has a receipt. The run stays
+        // open (activeDebugRun) after this method returns so the vault-write
+        // site can attach an artifact.write span before sealing the run.
+        const debugRun = this.debugTrace?.isEnabled()
+            ? this.debugTrace.startRun({
+                  surface: 'analyze',
+                  capabilityId: 'analysis.report.generate',
+              })
+            : null;
+        this.activeDebugRun = debugRun;
+
         // Pass 0: assign user insights to sections (if any)
         const insights = this.session.getUserInsights();
         if (insights.length > 0) {
             await this.assignInsightsToSections(insights, sections, userQuery);
             // Re-read sections (may have new ones added)
             sections = this.session.getPlanSections();
+        }
+
+        if (debugRun) {
+            recordAnalysisPlan(debugRun, {
+                userQuery,
+                sections: sections.map((s) => ({ id: s.id, title: s.title })),
+                evidencePathCount: allEvidencePaths.length,
+            });
         }
 
         // Mark all sections as generating
@@ -241,17 +343,29 @@ export class ReportOrchestrator {
         const contentPromises = sectionParams.map(async ({ sec, systemPrompt, userMessage }) => {
             const controller = new AbortController();
             console.log(`[Section:${sec.id.slice(0, 8)}] queryWithProfile fired`);
-            try {
-                const messages = queryWithProfile(app, pluginId, profile, {
+            const startedAt = Date.now();
+            // Tap tool_use / tool_result blocks off the SDK stream so we can
+            // attach per-tool child spans to the section's model.call span.
+            const toolUses: Array<{
+                toolName: string;
+                toolCallId?: string;
+                inputExcerpt?: string;
+                outputExcerpt?: string;
+                ok?: boolean;
+            }> = [];
+            const tappedMessages = tapToolUses(
+                queryWithProfile(app, pluginId, profile, {
                     prompt: userMessage,
                     systemPrompt,
                     maxTurns: 1,
                     signal: controller.signal,
-                });
-
+                }),
+                toolUses,
+            );
+            try {
                 let fullText = '';
                 let lastCheckLen = 0;
-                for await (const chunk of this.sdkTextStream(messages)) {
+                for await (const chunk of this.sdkTextStream(tappedMessages)) {
                     fullText += chunk;
                     this.session.appendSectionChunk(sec.id, chunk);
                     if (fullText.length - lastCheckLen > 200) {
@@ -265,15 +379,51 @@ export class ReportOrchestrator {
                 }
                 if (fullText) {
                     this.session.completeSectionContent(sec.id, fullText);
+                    if (debugRun) {
+                        recordAnalysisSectionGeneration(debugRun, {
+                            sectionId: sec.id,
+                            sectionTitle: sec.title,
+                            provider: profile?.kind,
+                            model: profile?.primaryModel,
+                            promptExcerpt: userMessage,
+                            responseExcerpt: fullText,
+                            durationMs: Date.now() - startedAt,
+                            toolUses,
+                        });
+                    }
                 } else {
                     this.session.failSection(sec.id, 'No content generated');
+                    if (debugRun) {
+                        recordAnalysisSkip(debugRun, {
+                            sectionId: sec.id,
+                            reason: 'fallback',
+                            detail: 'no content',
+                        });
+                    }
                 }
             } catch (err: any) {
                 this.session.failSection(sec.id, err?.message ?? 'Content generation failed');
+                if (debugRun) {
+                    recordAnalysisSkip(debugRun, {
+                        sectionId: sec.id,
+                        reason: 'error',
+                        detail: err?.message ?? String(err),
+                    });
+                }
             }
         });
 
         await Promise.all(contentPromises);
+        if (debugRun) {
+            debugRun.mergeSummary({
+                totalSections: sections.length,
+                userQueryLength: userQuery.length,
+            });
+            // Do NOT finish the run here; the vault save site records
+            // artifact.write then calls sealActiveDebugRun('completed').
+            // Fallback safety: if the caller never seals, the run leaks
+            // in memory but is bounded by the recorder's retention.
+        }
 
         // Now run summary with actual section content available
         await this.runSummaryAgent(sections, allEvidencePaths, overview, userQuery);

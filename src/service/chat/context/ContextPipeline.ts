@@ -1,6 +1,12 @@
 import type { LLMRequestMessage, LLMStreamEvent, ModelCapabilities } from '@/core/providers/types';
 import type { ContextSlot, ContextProfile, SlotBuildContext } from './slots/types';
 import { BudgetGovernor, type GovernedSlot } from './BudgetGovernor';
+import type { DebugRunHandle } from '@/core/debug-trace';
+import {
+  recordSlotBuild,
+  recordBudgetGovernance,
+  recordAssembledPrompt,
+} from './debugTraceAdapter';
 
 export class ContextPipeline {
   private readonly slotRegistry: Map<string, ContextSlot>;
@@ -18,6 +24,7 @@ export class ContextPipeline {
     profile: ContextProfile,
     buildCtx: SlotBuildContext,
     modelCapabilities?: ModelCapabilities,
+    debugRun?: DebugRunHandle,
   ): AsyncGenerator<LLMStreamEvent, LLMRequestMessage[], void> {
     const startTime = Date.now();
     yield { type: 'tool-call', toolName: 'context-pipeline:assemble', input: { profileId: profile.id } };
@@ -45,10 +52,20 @@ export class ContextPipeline {
     yield { type: 'tool-result', toolName: 'context-pipeline:build-slots',
       output: { builtCount: items.length, totalTokens: items.reduce((s, i) => s + i.content.tokens, 0) }
     };
+    if (debugRun) recordSlotBuild(debugRun, items);
 
     // 3. Budget governance
     yield { type: 'tool-call', toolName: 'context-pipeline:budget-govern', input: { totalBudget } };
+    const itemsBeforeBudget = items.slice();
     const { items: governed, summaries: compactSummaries } = await this.budgetGovernor.fit(items, totalBudget);
+    if (debugRun) {
+      recordBudgetGovernance(debugRun, {
+        before: itemsBeforeBudget,
+        after: governed,
+        compactSummaries,
+        totalBudget,
+      });
+    }
     yield { type: 'tool-result', toolName: 'context-pipeline:budget-govern',
       output: {
         survivingSlots: governed.length,
@@ -68,10 +85,19 @@ export class ContextPipeline {
       messages.push(...item.slot.render(item.content));
     }
 
+    const durationMs = Date.now() - startTime;
     yield { type: 'tool-result', toolName: 'context-pipeline:assemble',
       input: { profileId: profile.id },
-      output: { messageCount: messages.length, durationMs: Date.now() - startTime }
+      output: { messageCount: messages.length, durationMs }
     };
+    if (debugRun) {
+      recordAssembledPrompt(debugRun, {
+        profileId: profile.id,
+        messageCount: messages.length,
+        totalTokens: ordered.reduce((s, g) => s + g.content.tokens, 0),
+        durationMs,
+      });
+    }
 
     return messages;
   }

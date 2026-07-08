@@ -31,6 +31,7 @@ import type { UsageOutcomeService } from '@/service/usage/UsageOutcomeService';
 import type { UsageOptimizationService } from '@/service/usage/optimization/UsageOptimizationService';
 import type { HubGenerationRuntime } from '@/service/hub/HubGenerationRuntime';
 import type { HubCurationScheduler } from '@/service/hub/HubCurationScheduler';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -57,6 +58,7 @@ export class AppRuntimeRegistry {
 	private usageServices: UsageServices | null = null;
 	private hubGenerationRuntime: HubGenerationRuntime | null = null;
 	private hubCurationScheduler: HubCurationScheduler | null = null;
+	private debugTracePort: DebugTracePort | null = null;
 
 	/**
 	 * Bind the Vault Lint runtime. Called exactly once at plugin boot
@@ -518,6 +520,34 @@ export class AppRuntimeRegistry {
 		this.hubGenerationRuntime = null;
 		this.hubCurationScheduler = null;
 		scheduler?.dispose();
+	}
+
+	// ── Debug Trace port ─────────────────────────────────────────────────
+
+	setDebugTracePort(port: DebugTracePort): void {
+		if (this.debugTracePort !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setDebugTracePort: a port is already bound. Call clearDebugTracePort first if this is intentional.',
+			);
+		}
+		this.debugTracePort = port;
+	}
+
+	getDebugTracePort(): DebugTracePort {
+		if (this.debugTracePort === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getDebugTracePort: no port is bound. Plugin boot must call setDebugTracePort() before consumers reach it.',
+			);
+		}
+		return this.debugTracePort;
+	}
+
+	tryGetDebugTracePort(): DebugTracePort | null {
+		return this.debugTracePort;
+	}
+
+	clearDebugTracePort(): void {
+		this.debugTracePort = null;
 	}
 
 }

@@ -92,6 +92,7 @@ export interface CopilotReviewDeps {
 	app: AppHandle;
 	pluginId: string;
 	analysisHistory: AnalysisHistoryPort;
+	searchClient: import('@/service/search/SearchClient').SearchClient;
 	userProfileText?: string;
 }
 
@@ -187,6 +188,7 @@ export async function* runCopilotReview(
 				app: options.deps.app,
 				pluginId: options.deps.pluginId,
 				analysisHistory: options.deps.analysisHistory,
+				searchClient: options.deps.searchClient,
 				onTurnIncrement: () => {
 					round.turnCount += 1;
 				},

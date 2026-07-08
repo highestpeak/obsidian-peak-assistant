@@ -16,9 +16,17 @@
 
 import type { AmbientPushSettings, AmbientPushItem, TriggerType, UserAction } from '@/core/types/ambient';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS } from '@/core/types/ambient';
-import type { AmbientPorts } from './ports/AmbientPorts';
+import type { AmbientPorts } from '@/core/ports/AmbientPorts';
 import type { AmbientRuntime } from './AmbientRuntime';
 import { ambientSearch } from './AmbientSearcher';
+import type { DebugTracePort } from '@/core/debug-trace';
+import {
+	recordAmbientTrigger,
+	recordAmbientCandidates,
+	recordAmbientDedupContext,
+	recordAmbientSerendipity,
+	finalizeAmbientRun,
+} from './debugTraceAdapter';
 
 /** Minimum gap between briefings to avoid showing on quick restarts. */
 const BRIEFING_MIN_SESSION_GAP_MS = 4 * 60 * 60 * 1000; // 4 hours
@@ -28,7 +36,10 @@ export class AmbientPushRuntime implements AmbientRuntime {
 	private pendingSearch: AbortController | null = null;
 	private started = false;
 
-	constructor(private readonly ports: AmbientPorts) {}
+	constructor(
+		private readonly ports: AmbientPorts,
+		private readonly debugTrace: DebugTracePort | null = null,
+	) {}
 
 	start(): void {
 		if (this.started) return;
@@ -108,11 +119,36 @@ export class AmbientPushRuntime implements AmbientRuntime {
 		const context = this.ports.editorContext.extractContext(filePath);
 		if (!context) return;
 
+		// Debug: open one run per trigger. Closed on every return branch below
+		// so we always have a receipt, even for skip / empty / error paths.
+		const debugRun = this.debugTrace?.isEnabled()
+			? this.debugTrace.startRun({ surface: 'ambient', capabilityId: 'ambient.push' })
+			: null;
+		if (debugRun) {
+			recordAmbientTrigger(debugRun, {
+				filePath: context.filePath,
+				triggerType,
+				paragraph: context.currentParagraph,
+			});
+		}
+
 		// Skip if paragraph is too short
-		if (context.currentParagraph.trim().length < 10) return;
+		if (context.currentParagraph.trim().length < 10) {
+			if (debugRun) {
+				finalizeAmbientRun(debugRun, { skipReason: 'paragraph-too-short' });
+				debugRun.finish('completed');
+			}
+			return;
+		}
 
 		const settings = this.getSettings();
 		const pushHistory = this.ports.projection.getPushHistory();
+
+		if (debugRun) {
+			recordAmbientDedupContext(debugRun, {
+				pushHistoryPaths: [...pushHistory.keys()],
+			});
+		}
 
 		let items: AmbientPushItem[];
 		try {
@@ -122,19 +158,54 @@ export class AmbientPushRuntime implements AmbientRuntime {
 				pushHistory,
 				settings,
 			);
-		} catch {
+		} catch (err) {
+			if (debugRun) {
+				finalizeAmbientRun(debugRun, { skipReason: `search-error: ${String(err)}` });
+				debugRun.finish('failed');
+			}
 			return;
 		}
 
 		// If aborted during search, discard results
-		if (abortController.signal.aborted) return;
+		if (abortController.signal.aborted) {
+			if (debugRun) {
+				finalizeAmbientRun(debugRun, { skipReason: 'aborted' });
+				debugRun.finish('cancelled');
+			}
+			return;
+		}
+
+		if (debugRun) {
+			recordAmbientCandidates(
+				debugRun,
+				items.map((i) => ({
+					filePath: i.filePath,
+					title: i.title,
+					score: i.score ?? 0,
+					source: i.signals?.[0]?.type,
+				})),
+			);
+			// Surface serendipity picks as their own span so a reader can see
+			// which items came from the 2-hop bridge path vs. direct-neighbor
+			// or semantic recall.
+			recordAmbientSerendipity(debugRun, items);
+		}
 
 		if (items.length === 0) {
 			this.ports.projection.clearItems();
+			if (debugRun) {
+				finalizeAmbientRun(debugRun, { skipReason: 'no-items' });
+				debugRun.finish('completed');
+			}
 			return;
 		}
 
 		this.ports.projection.setItems(items, context.filePath);
+
+		if (debugRun) {
+			finalizeAmbientRun(debugRun, { chosen: items.map((i) => i.filePath) });
+			debugRun.finish('completed');
+		}
 
 		// --- LLM Tier 2 micro-explanation (async, non-blocking) ---
 		if (settings.enableLlmExplanation && items.length > 0) {

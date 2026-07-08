@@ -5,6 +5,8 @@ import type { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/core/types/prompt';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { ChatRuntimeStatePort } from '@/core/ports/ChatRuntimeStatePort';
+import { TemplateManager } from '@/core/template/TemplateManager';
+import { DEFAULT_RICH_OUTPUT_TYPES, loadRichOutputTypes, type RichOutputType } from '@/service/prompt/richOutputTypes';
 
 /**
  * Build the dynamic capabilities object for the conversation system prompt.
@@ -35,7 +37,8 @@ export class SystemPromptSlot implements ContextSlot {
   async build(ctx: SlotBuildContext): Promise<SlotContent> {
     const promptId = (ctx.systemPromptId as PromptId) ?? PromptId.ConversationSystem;
     const capabilities = buildCapabilities(this.chatState);
-    const vars = { ...(ctx.systemPromptVars ?? {}), capabilities };
+    const richOutputTypes = await this.resolveRichOutputTypes();
+    const vars = { ...(ctx.systemPromptVars ?? {}), capabilities, richOutputTypes };
     let text = await this.promptService.render(promptId, vars);
 
     // Prepend per-conversation custom system prompt if set
@@ -67,5 +70,18 @@ export class SystemPromptSlot implements ContextSlot {
     const text = content.data as string;
     if (!text) return [];
     return [{ role: 'system', content: [{ type: 'text', text }] }];
+  }
+
+  /**
+   * Rich-output types are template-driven so template authors can add
+   * a new output convention without touching typescript. TemplateManager
+   * loads the JSON at runtime; if the singleton isn't bound (test /
+   * bootstrap) fall back to the compiled defaults so the prompt is never
+   * emitted without Mermaid + Bases coverage.
+   */
+  private async resolveRichOutputTypes(): Promise<RichOutputType[]> {
+    const tm = TemplateManager.getInstance();
+    if (!tm) return [...DEFAULT_RICH_OUTPUT_TYPES];
+    return loadRichOutputTypes(tm);
   }
 }

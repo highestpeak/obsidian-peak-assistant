@@ -200,16 +200,16 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
  */
 /**
  * Which backend runs agent loops:
- * - 'auto'    — prefer self-hosted harness; VaultSearchAgentSDK / ContinueAnalysisAgent
- *               still rely on `@anthropic-ai/claude-agent-sdk` internals as a library
- *               (tool() / createSdkMcpServer() / HITL loop), but that is not a
- *               separate backend the user can select.
+ * - 'auto'    — prefer self-hosted harness. All Vault Search / Continue
+ *               Analysis rounds now route through `runAgentLoop`.
  * - 'harness' — always use the self-hosted loop (local models).
  *
  * The `'claude-agent-sdk'` backend was retired in 2026-07 alongside the
  * Chat/Agent/Plan mode picker (spec: docs/superpowers/specs/2026-07-03-cloud-sdk-and-mode-choice-audit.md).
- * The SDK stays imported as a library — only the user-facing "cloud backend"
- * routing is gone.
+ * The SDK stays imported as a library for one-shot LLM callers and the
+ * in-process MCP tool plumbing (`vaultMcpServer`, `webSearchTool`, etc.),
+ * but the Vault Search main path no longer touches `queryWithProfile` —
+ * see docs/superpowers/specs/2026-07-04-vault-search-harness-native-migration.md.
  */
 export type AgentBackend = 'auto' | 'harness';
 
@@ -327,7 +327,36 @@ export interface MyPluginSettings {
 	/** Self-hosted agent harness configuration. */
 	harnessSettings?: HarnessSettings;
 
+	/** Debug Trace Infrastructure (see docs/superpowers/specs/debug-trace-infrastructure.md). */
+	debugTrace?: DebugTraceSettings;
+
 }
+
+/**
+ * Debug Trace Infrastructure settings. Default: recorder off. Users opt in
+ * from Settings → Advanced → Developer → Debug traces.
+ *
+ * Retention is a numeric ring-buffer size; `'session'` maps to
+ * `Number.POSITIVE_INFINITY` in the recorder (no automatic eviction until
+ * `Clear all debug traces` or plugin restart).
+ */
+export interface DebugTraceSettings {
+	mode: 'off' | 'redacted' | 'raw';
+	retention: 20 | 100 | 'session';
+	copyFormat: 'markdown' | 'json' | 'both';
+	/**
+	 * Only meaningful when `mode='raw'`. When true, the Copy affordance
+	 * renders the raw payloads inline; when false, only excerpts.
+	 */
+	includeRawContent: boolean;
+}
+
+export const DEFAULT_DEBUG_TRACE_SETTINGS: DebugTraceSettings = {
+	mode: 'off',
+	retention: 20,
+	copyFormat: 'markdown',
+	includeRawContent: false,
+};
 
 export const DEFAULT_SETTINGS: MyPluginSettings = {
 	dataStorageFolder: getAIDataStoreFolder(DEFAULT_AI_SERVICE_SETTINGS.rootFolder),
@@ -337,6 +366,7 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	enableDevTools: false,
 	ambientPush: undefined,
 	harnessSettings: { ...DEFAULT_HARNESS_SETTINGS },
+	debugTrace: { ...DEFAULT_DEBUG_TRACE_SETTINGS },
 	graphViz: {
 		mstPruneDepth: 2,
 		skeletonBackboneOnly: false,

@@ -53,6 +53,14 @@ export interface AgentLoopConfig {
     /** Per-step callback (post-step, post-score). */
     onStepFinish?: (step: StepResult) => void | Promise<void>;
     /**
+     * Optional product-specific stop hook, evaluated after each completed
+     * step and after `onStepFinish`. Return true to end the loop with
+     * finishReason='stop'. This is intentionally narrower than hooks:
+     * callers can express domain completion (for example submit_plan tool
+     * succeeded) without teaching the model about a final-answer string.
+     */
+    stopWhen?: (step: StepResult) => boolean | Promise<boolean>;
+    /**
      * Hook bus invoked at session_start / stop / pre_tool_use / post_tool_use.
      * Hooks run in harness layer, not via the model — see spec §3.6.
      */

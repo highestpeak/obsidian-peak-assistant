@@ -238,6 +238,19 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
             console.error('[AgentLoop] onStepFinish handler error:', err);
         }
 
+        if (cfg.stopWhen) {
+            try {
+                if (await cfg.stopWhen(step)) {
+                    finishReason = 'stop';
+                    break;
+                }
+            } catch (err) {
+                errorMessage = err instanceof Error ? err.message : String(err);
+                finishReason = 'error';
+                break;
+            }
+        }
+
         if (hasFinalAnswer(step)) {
             finishReason = 'stop';
             break;
@@ -337,6 +350,14 @@ function wrapTool(
                     { name: def.name, kind: def.kind },
                     args,
                 );
+                trace.emit('permission_check', {
+                    loopId: cfg.loopId,
+                    stepIndex,
+                    toolName: def.name,
+                    source: 'permission',
+                    decision: decision.decision === 'deny' ? 'deny' : 'allow',
+                    ...(decision.reason ? { reason: decision.reason } : {}),
+                });
                 if (decision.decision === 'deny') {
                     return finalize({
                         ok: false,
@@ -353,6 +374,14 @@ function wrapTool(
             // skill's own capability boundary. Either can veto.
             if (cfg.compiledSkill) {
                 const verdict = checkSkillQuarantine(cfg.compiledSkill, def.name);
+                trace.emit('permission_check', {
+                    loopId: cfg.loopId,
+                    stepIndex,
+                    toolName: def.name,
+                    source: 'quarantine',
+                    decision: verdict === 'allow' ? 'allow' : 'deny',
+                    ...(verdict !== 'allow' && verdict.reason ? { reason: verdict.reason } : {}),
+                });
                 if (verdict !== 'allow') {
                     return finalize({
                         ok: false,

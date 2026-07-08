@@ -120,5 +120,5 @@ export function composeAmbientRuntime(app: App): AmbientRuntime {
 		clock,
 	};
 
-	return new AmbientPushRuntime(ports);
+	return new AmbientPushRuntime(ports, AppContext.tryGetDebugTracePort());
 }

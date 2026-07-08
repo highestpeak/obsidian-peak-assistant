@@ -1,4 +1,4 @@
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_HARNESS_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, HarnessSettings, MyPluginSettings, SearchSettings } from '@/core/config/settingsTypes';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_DEBUG_TRACE_SETTINGS, DEFAULT_HARNESS_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, DebugTraceSettings, HarnessSettings, MyPluginSettings, SearchSettings } from '@/core/config/settingsTypes';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS, type AmbientPushSettings } from '@/core/types/ambient';
 import { DEFAULT_SDK_SETTINGS, type ProfileSettings } from '@/core/profiles/types';
@@ -411,7 +411,28 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		};
 	}
 
+	settings.debugTrace = sanitizeDebugTrace(raw?.debugTrace);
+
 	return settings;
+}
+
+function sanitizeDebugTrace(raw: unknown): DebugTraceSettings {
+	const def = DEFAULT_DEBUG_TRACE_SETTINGS;
+	if (!raw || typeof raw !== 'object') return { ...def };
+	const r = raw as Partial<DebugTraceSettings>;
+	const mode: DebugTraceSettings['mode'] =
+		r.mode === 'off' || r.mode === 'redacted' || r.mode === 'raw' ? r.mode : def.mode;
+	const retention: DebugTraceSettings['retention'] =
+		r.retention === 20 || r.retention === 100 || r.retention === 'session'
+			? r.retention
+			: def.retention;
+	const copyFormat: DebugTraceSettings['copyFormat'] =
+		r.copyFormat === 'markdown' || r.copyFormat === 'json' || r.copyFormat === 'both'
+			? r.copyFormat
+			: def.copyFormat;
+	const includeRawContent =
+		typeof r.includeRawContent === 'boolean' ? r.includeRawContent : def.includeRawContent;
+	return { mode, retention, copyFormat, includeRawContent };
 }
 
 const ALERT_RULE_KINDS: ReadonlySet<string> = new Set([

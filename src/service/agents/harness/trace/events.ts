@@ -66,6 +66,18 @@ export interface ContextCompactedEvent {
     compactSummaries: CompactSummary[];
 }
 
+export interface PermissionCheckEvent {
+    loopId: string;
+    stepIndex: number;
+    toolName: string;
+    /** 'permission' = user permission guard; 'quarantine' = compiled-skill quarantine. */
+    source: 'permission' | 'quarantine';
+    /** 'allow' | 'deny'. Deny short-circuits tool execution. */
+    decision: 'allow' | 'deny';
+    /** Human-readable reason string surfaced by the guard. */
+    reason?: string;
+}
+
 export type TraceEventMap = {
     step_start: { loopId: string; stepIndex: number; tier: ModelTier; modelId: string };
     step_finish: StepResult;
@@ -75,6 +87,7 @@ export type TraceEventMap = {
     loop_start: { loopId: string; startedAt: number };
     loop_finish: { loopId: string; finishReason: string; durationMs: number };
     context_compacted: ContextCompactedEvent;
+    permission_check: PermissionCheckEvent;
 };
 
 export type TraceEventName = keyof TraceEventMap;

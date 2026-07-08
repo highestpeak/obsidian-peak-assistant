@@ -26,6 +26,7 @@ export function composeCopilotReviewDeps(appContext: AppContext): () => Promise<
 			app: appContext.app,
 			pluginId: appContext.plugin.manifest.id,
 			analysisHistory: appContext.aiAnalysisHistoryService,
+			searchClient: appContext.searchClient,
 			userProfileText,
 		};
 	};

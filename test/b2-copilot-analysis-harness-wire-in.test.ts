@@ -85,8 +85,12 @@ function testHarnessWireIn(): void {
 	const stripped = stripComments(src);
 	assert.match(
 		stripped,
-		/runHarnessAgent<AgentLoopResult>\s*\(\s*\{[\s\S]*?trigger:\s*['"]manual['"][\s\S]*?execute:\s*async\s*\(\)\s*=>\s*runAgentLoop\s*\(\s*cfg\s*\)/,
-		'bridge.run must dispatch through runHarnessAgent({ trigger: "manual", execute: () => runAgentLoop(cfg) })',
+		/runHarnessAgent<AgentLoopResult>\s*\(\s*\{[\s\S]*?trigger:\s*['"]manual['"][\s\S]*?execute:\s*async\s*\(\)\s*=>\s*runAgentLoop\s*\(\s*loopConfig\s*\)/,
+		'bridge.run must dispatch through runHarnessAgent({ trigger: "manual", execute: () => runAgentLoop(loopConfig) })',
+	);
+	assert.ok(
+		stripped.includes('withDefaultContextManager'),
+		'bridge.run must install the production ContextManager seam before runAgentLoop',
 	);
 	// The pre-retirement SDK path pattern must not resurface without being wrapped.
 	assert.ok(

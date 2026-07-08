@@ -28,6 +28,7 @@ import { IndexService } from '@/service/search/index/indexService';
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { BetterSqliteStore } from '@/core/storage/sqlite/better-sqlite3-adapter/BetterSqliteStore';
 import { NativeModuleManager } from '@/core/storage/sqlite/NativeModuleManager';
+import { DebugTraceRecorder } from '@/core/debug-trace';
 import { obsidianHttpClient } from '@/app/platform/HttpClientAdapter';
 import { obsidianNotifier } from '@/app/platform/NoticeNotifier';
 import { VAULT_DB_FILENAME } from '@/core/constant';
@@ -296,6 +297,30 @@ export default class MyPlugin extends Plugin {
 		// setter, no service-side singleton.
 		await this.aiServiceManager.init();
 
+		// Debug Trace Infrastructure — one in-memory recorder per plugin load.
+		// Mode + retention read from `settings.debugTrace`; defaults keep the
+		// recorder in `off` mode (zero-alloc hot paths) until the user opts in
+		// from Settings → Advanced → Developer → Debug traces.
+		//
+		// Constructed HERE (before initSqlite / ViewManager / commands) so
+		// every downstream consumer — `conv.setDebugTracePort` immediately
+		// below, `composeAmbientRuntime` further down — sees a real port
+		// instead of null.
+		const debugSettings = this.settings.debugTrace;
+		const debugRecorder = new DebugTraceRecorder({
+			mode: debugSettings?.mode ?? 'off',
+			retention:
+				debugSettings?.retention === 'session'
+					? Number.POSITIVE_INFINITY
+					: (debugSettings?.retention ?? 20),
+		});
+		AppContext.setDebugTracePort(debugRecorder);
+
+		// Publish the port to ConversationService so chat turns record a
+		// receipt (context.assemble spans + drop / compact decisions).
+		// No-op when the recorder is in 'off' mode.
+		this.aiServiceManager.conv.setDebugTracePort(debugRecorder);
+
 		// T11B-R (2026-06-14): bind the Copilot manual-action runtime
 		// BEFORE initSqlite(). The catalog must be available the moment
 		// the user opens the picker — including mobile mode (no sqlite)
@@ -312,29 +337,24 @@ export default class MyPlugin extends Plugin {
 				.catch(e => console.warn('[Peak Assistant] Failed to load custom prompts:', e));
 		}
 
-		// Initialize SQLite store and search service (desktop only — native modules unavailable on mobile)
+		// ─── UI-shell registration comes BEFORE any long-running boot step ───
+		//
+		// Ribbon icon, workspace event handlers, palette commands, settings
+		// tab, and capability registry are all cheap synchronous work. They
+		// used to sit AFTER `await this.initSqlite()`, which meant any hang
+		// or slow await in the sqlite → search → indexer → session-context
+		// chain silently broke the entire plugin UI (no ribbon, no commands,
+		// no chat view). Every fresh boot-chain change (Ambient, debug-trace,
+		// context pipeline, etc.) was one more way to trip that trap; the
+		// pattern showed up repeatedly in the git log (`fix(boot):`,
+		// `fix(morning-briefing):`, `fix(pattern-discovery):`).
+		//
+		// Registering the UI shell here — before `initSqlite()` — decouples
+		// UI availability from backend readiness. If sqlite / search init
+		// hangs, users still get a working ribbon and can access chat +
+		// settings; the sqlite-dependent features degrade gracefully at
+		// the call site (e.g. "search index still building").
 		this.appContext = appContext;
-		if (isDesktop()) {
-			// Set up NativeModuleManager so it can auto-download the correct
-			// better-sqlite3 binary if the current one is missing or ABI-incompatible.
-			NativeModuleManager.getInstance().setPluginDir(getPluginDirAbsolute(undefined, this.app));
-			NativeModuleManager.getInstance().configure({
-				http: obsidianHttpClient,
-				notifier: obsidianNotifier,
-			});
-
-			// Attempt eager init — if native module is already compatible, this is
-			// transparent to the user. If it fails (e.g. first install, ABI mismatch
-			// after Obsidian update), the plugin still loads and the user can trigger
-			// setup via the onboarding wizard command.
-			try {
-				await this.initSqlite();
-			} catch (e) {
-				console.warn('[Peak Assistant] SQLite deferred — native module not ready yet:', e);
-			}
-		} else {
-			console.log('[Peak Assistant] Mobile mode: SQLite and indexing skipped');
-		}
 
 		// Create ViewManager with AppContext
 		this.viewManager = new ViewManager(this, appContext);
@@ -446,6 +466,37 @@ export default class MyPlugin extends Plugin {
 				void (async () => {
 					const { openRelatedNotes } = await import('@/app/commands/PeakCommandActions');
 					openRelatedNotes();
+				})();
+			},
+		});
+		this.addCommand({
+			id: 'peak-copy-last-debug-trace',
+			name: 'Copy last debug trace',
+			callback: () => {
+				void (async () => {
+					const port = AppContext.tryGetDebugTracePort();
+					if (!port) {
+						new Notice('Debug tracing is not initialised.');
+						return;
+					}
+					if (!port.isEnabled()) {
+						new Notice('Debug tracing is off. Enable it in Settings → Advanced.');
+						return;
+					}
+					const recent = port.listRecent(1);
+					const run = recent[0];
+					if (!run) {
+						new Notice('No debug trace has been recorded yet.');
+						return;
+					}
+					const { copyDebugRun } = await import('@/service/debug-trace/copyDebugRun');
+					const { DEFAULT_DEBUG_TRACE_SETTINGS } = await import('@/core/config/settingsTypes');
+					await copyDebugRun(run.runId, {
+						port,
+						settings: this.settings.debugTrace ?? DEFAULT_DEBUG_TRACE_SETTINGS,
+						writeClipboard: (text) => navigator.clipboard.writeText(text),
+						notify: (m) => new Notice(m),
+					});
 				})();
 			},
 		});
@@ -576,6 +627,35 @@ export default class MyPlugin extends Plugin {
 		skillRegistry.init(this.app, skillsFolder).catch(e => {
 			console.warn('[Peak Assistant] SkillRegistry init failed:', e);
 		});
+
+		// Initialize SQLite store and search service (desktop only — native
+		// modules unavailable on mobile). This is the historically hang-prone
+		// step; the UI shell above is already registered so a hang here can
+		// no longer take the ribbon / commands down with it. Downstream
+		// runtimes that need sqlite (Ambient below) still sit after this
+		// await because their adapters would throw immediately without a
+		// live sqlite store.
+		if (isDesktop()) {
+			// Set up NativeModuleManager so it can auto-download the correct
+			// better-sqlite3 binary if the current one is missing or ABI-incompatible.
+			NativeModuleManager.getInstance().setPluginDir(getPluginDirAbsolute(undefined, this.app));
+			NativeModuleManager.getInstance().configure({
+				http: obsidianHttpClient,
+				notifier: obsidianNotifier,
+			});
+
+			// Attempt eager init — if native module is already compatible, this is
+			// transparent to the user. If it fails (e.g. first install, ABI mismatch
+			// after Obsidian update), the plugin still loads and the user can trigger
+			// setup via the onboarding wizard command.
+			try {
+				await this.initSqlite();
+			} catch (e) {
+				console.warn('[Peak Assistant] SQLite deferred — native module not ready yet:', e);
+			}
+		} else {
+			console.log('[Peak Assistant] Mobile mode: SQLite and indexing skipped');
+		}
 
 		// Ambient Push — proactive related-note suggestions
 		// T8: Ambient runtime is composed at the app layer and bound on
@@ -723,7 +803,7 @@ export default class MyPlugin extends Plugin {
 							getSettings: () => this.settings.search,
 							rootFolder: this.settings.ai?.rootFolder ?? '',
 						});
-						appContext.runtimeRegistry.setHubGenerationRuntime(runtime, scheduler);
+						this.appContext?.runtimeRegistry.setHubGenerationRuntime(runtime, scheduler);
 					} else {
 						console.warn('[Peak] Hub Generation runtime skipped — TemplateManager not available.');
 					}
@@ -904,6 +984,9 @@ export default class MyPlugin extends Plugin {
 		// Kept as a fail-loud break in case the AppContext is already torn
 		// down when this code path runs (e.g. crash-recovery unload).
 		try { AppContext.clearMcpClientManager(); } catch { /* not bound — ignore */ }
+		// Debug Trace recorder: release the in-memory ring buffer so the
+		// hot-reloaded bundle starts with an empty history.
+		try { AppContext.clearDebugTracePort(); } catch { /* not bound — ignore */ }
 
 		clearPendingConversationTimeouts();
 		this.viewManager?.unload();

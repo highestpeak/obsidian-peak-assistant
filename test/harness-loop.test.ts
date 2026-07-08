@@ -243,6 +243,37 @@ async function run(): Promise<void> {
                 assert.match(String(first.toolResults[0].payload), /boom/);
             },
         },
+        {
+            name: 'stopWhen can terminate after a domain tool succeeds',
+            fn: async () => {
+                const exec = { count: 0 };
+                const bindings: TierBindings = {
+                    'local-fast': makeToolThenStopBinding('m', 'noop', { value: 'approved' }, 'should not be reached'),
+                };
+                const controller = new TierController({ bindings, policy: { allowEscalation: false } });
+                const result = await runAgentLoop({
+                    loopId: 'L7',
+                    systemPrompt: '',
+                    initialMessages: [{ role: 'user', content: 'go' }],
+                    tools: [alwaysStopTool(exec)],
+                    tierController: controller,
+                    budget: { maxSteps: 5 },
+                    stopWhen: (step) =>
+                        step.toolResults.some(
+                            (r) =>
+                                r.toolName === 'noop' &&
+                                r.ok === true &&
+                                (r.payload as { echo?: string }).echo === 'approved',
+                        ),
+                });
+
+                assert.strictEqual(exec.count, 1, 'tool should be executed once');
+                assert.strictEqual(result.finishReason, 'stop');
+                assert.strictEqual(result.steps.length, 1, 'stopWhen prevents the second model turn');
+                assert.strictEqual(result.finalText, '');
+                assert.strictEqual(result.totalToolCalls, 1);
+            },
+        },
     ];
 
     let passed = 0;

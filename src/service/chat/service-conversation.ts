@@ -23,6 +23,7 @@ import { UserProfileService } from '@/service/chat/context/UserProfileService';
 import { PromptId } from '@/core/types/prompt';
 import { ResourceSummaryService } from './context/ResourceSummaryService';
 import { ContextPipeline } from './context/ContextPipeline';
+import type { DebugRunHandle, DebugTracePort } from '@/core/debug-trace';
 import { ChatProfile } from './context/profiles/ChatProfile';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
@@ -34,7 +35,7 @@ import { resolveModelCapabilities, type ModelCapabilities } from '@/core/provide
 import { detectTimezone } from '@/core/utils/date-utils';
 import { uploadFilesToVault } from '@/core/storage/vault/vault-ops';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { buildChatTools } from '@/service/chat/tools/chatToolBuilder';
+import { resolveChatExecutionStrategy } from '@/service/chat/execution-strategy';
 import type { ChatRuntimeStatePort } from '@/core/ports/ChatRuntimeStatePort';
 
 interface ChatPreparationResult {
@@ -44,6 +45,12 @@ interface ChatPreparationResult {
 	prompt: LLMRequestMessage[];
 	outputControl?: LLMOutputControlSettings;
 	modelCapabilities: ModelCapabilities;
+	/**
+	 * The chat debug run opened during prepare. `streamChat` finishes it
+	 * once the assistant stream terminates so token usage and finishReason
+	 * land on the same run as context.assemble spans.
+	 */
+	debugRun?: DebugRunHandle;
 }
 
 /**
@@ -53,6 +60,8 @@ interface ChatPreparationResult {
 export class ConversationService {
 	private contextPipeline: ContextPipeline | null = null;
 	private readonly resourceLoaderManager: ResourceLoaderManager;
+	private debugTracePort: DebugTracePort | null = null;
+	private lastDebugRunId: string | null = null;
 
 	constructor(
 		private readonly app: AppHandle,
@@ -73,6 +82,19 @@ export class ConversationService {
 
 	setContextPipeline(pipeline: ContextPipeline): void {
 		this.contextPipeline = pipeline;
+	}
+
+	setDebugTracePort(port: DebugTracePort | null): void {
+		this.debugTracePort = port;
+	}
+
+	/**
+	 * The runId of the most recent chat turn's debug trace (if enabled and a
+	 * turn completed). UI surfaces reach for this when the user clicks
+	 * "Copy debug trace" on the latest assistant message.
+	 */
+	getLastDebugRunId(): string | null {
+		return this.lastDebugRunId;
 	}
 
 	async listConversations(projectId: string | null, limit?: number, offset?: number): Promise<ChatConversation[]> {
@@ -182,36 +204,28 @@ export class ConversationService {
 				throw new Error(`No active profile found for provider "${convProvider}". Please configure it in Settings → Profiles.`);
 			}
 
-			// Resolve conversation mode. Priority:
-			//   1. Per-message `/plan ` prefix (Debt-2): highest, only for this send.
-			//   2. Persisted conversationType.kind (for restored old conversations).
-			//   3. Runtime chatMode (legacy path; F.B removed the UI picker but
-			//      the field survives for restored state).
-			//   4. Default 'chat' — which today means "no tools, no plan suffix".
-			const runtimeMode = self.chatState.getChatMode();
-			const convTypeKind = params.conversation.meta.conversationType?.kind;
-			const effectiveMode = planIntent ? 'plan' : (runtimeMode ?? convTypeKind ?? 'chat');
-
-			// Build tools based on mode + UI toggles + model capabilities
-			// Chat mode: no tools (pure conversation)
-			// Agent mode: full tool access
-			// Plan mode: no tools (planning focus), but prepend planning system prompt
-			let tools: Record<string, any> = {};
-			let maxSteps = 1;
-
-			if (effectiveMode === 'agent') {
-				const enableWebSearch = self.chatState.isWebSearchEnabled();
-				const built = buildChatTools(
-					{ app: self.app, pluginId: self.pluginId, enableWebSearch },
-					prepared.modelCapabilities,
-				);
-				tools = built.tools;
-				maxSteps = built.maxSteps;
-			}
-			// chat and plan modes: no tools
+			// 2026-07-05 chat-unified-mode (Track B): resolve execution shape
+			// through a single helper. The UI no longer presents Chat / Agent /
+			// Plan as peer modes — every fresh conversation runs the default
+			// assistant profile with tool access decided by capabilities +
+			// toggles + permissions. The legacy `chatMode` on the UI store is
+			// only kept for history restore; `service-conversation` never
+			// reads it back. `/plan ` slash-prefix (planIntent) and restored
+			// `conversationType.kind === 'plan'` are the ONLY paths into the
+			// planning system prompt.
+			const strategy = resolveChatExecutionStrategy({
+				planIntent,
+				legacyConversationTypeKind: params.conversation.meta.conversationType?.kind ?? null,
+				toolDeps: {
+					app: self.app,
+					pluginId: self.pluginId,
+					enableWebSearch: self.chatState.isWebSearchEnabled(),
+				},
+				modelCapabilities: prepared.modelCapabilities,
+			});
 
 			// Plan mode: prepend planning-focused system prompt
-			if (effectiveMode === 'plan') {
+			if (strategy.usePlanSystemPrompt) {
 				// T11Y-6: PLAN_MODE_SYSTEM_PROMPT body lives at templates/prompts/plan-mode-system.md.
 				const tm = TemplateManager.getInstance();
 				if (!tm) throw new Error('TemplateManager not bound — cannot render plan-mode system prompt.');
@@ -235,13 +249,72 @@ export class ConversationService {
 				}
 			}
 
+			// Debug: profile / settings snapshot before the model call, so a
+			// reader can exactly reproduce the turn (which profile, which
+			// tools, plan mode, output control). Recorded on the run summary
+			// rather than as a span so it stays out of the span tree.
+			if (prepared.debugRun) {
+				prepared.debugRun.mergeSummary({
+					profileId: profile.id,
+					profileKind: profile.kind,
+					profileBaseUrl: profile.baseUrl,
+					usePlanSystemPrompt: strategy.usePlanSystemPrompt,
+					toolCount: Object.keys(strategy.tools).length,
+					toolNames: Object.keys(strategy.tools),
+					maxSteps: strategy.maxSteps,
+					// outputControl carries user-visible knobs (temperature,
+					// maxTokens...) — dump keys only so we don't leak values
+					// the user may have customised in a sensitive way.
+					outputControlKeys: prepared.outputControl
+						? Object.keys(prepared.outputControl)
+						: [],
+				});
+			}
+
 			const { vercelStreamChat } = await import('@/core/providers/vercel');
-			yield* vercelStreamChat(profile, convModelId || profile.primaryModel, {
+			const streamGen = vercelStreamChat(profile, convModelId || profile.primaryModel, {
 				messages: prepared.prompt,
 				outputControl: prepared.outputControl,
-				tools: Object.keys(tools).length > 0 ? tools : undefined,
-				maxSteps,
+				tools: Object.keys(strategy.tools).length > 0 ? strategy.tools : undefined,
+				maxSteps: strategy.maxSteps,
 			});
+			// Debug: sniff finishReason + usage as they pass through, then
+			// finish the chat run so a copy trace reflects the full turn.
+			let lastFinishReason: string | undefined;
+			let lastUsage: LLMUsage | undefined;
+			let assistantTextLength = 0;
+			try {
+				for await (const evt of streamGen) {
+					if (evt && typeof evt === 'object') {
+						const anyEvt = evt as { type?: string; finishReason?: string; usage?: LLMUsage; text?: string };
+						if (anyEvt.type === 'text-delta' && typeof anyEvt.text === 'string') {
+							assistantTextLength += anyEvt.text.length;
+						}
+						if (anyEvt.finishReason) lastFinishReason = anyEvt.finishReason;
+						if (anyEvt.usage) lastUsage = anyEvt.usage;
+					}
+					yield evt;
+				}
+				if (prepared.debugRun) {
+					prepared.debugRun.mergeSummary({
+						assistantTextLength,
+						...(lastFinishReason ? { finishReason: lastFinishReason } : {}),
+						...(lastUsage?.totalTokens !== undefined
+							? { totalTokens: lastUsage.totalTokens }
+							: {}),
+						...(lastUsage?.promptTokens !== undefined
+							? { promptTokens: lastUsage.promptTokens }
+							: {}),
+						...(lastUsage?.completionTokens !== undefined
+							? { completionTokens: lastUsage.completionTokens }
+							: {}),
+					});
+					prepared.debugRun.finish('completed');
+				}
+			} catch (err) {
+				if (prepared.debugRun) prepared.debugRun.finish('failed');
+				throw err;
+			}
 		})();
 	}
 
@@ -299,29 +372,83 @@ export class ConversationService {
 		if (!this.contextPipeline) {
 			throw new Error('ConversationService.contextPipeline not wired. AIServiceManager must call setContextPipeline() before prepareChat().');
 		}
-		const contextGenerator = this.contextPipeline.assemble(ChatProfile, buildCtx, modelCapabilities);
-		// Consume progress events
-		let result: IteratorResult<LLMStreamEvent, LLMRequestMessage[]>;
-		while (!(result = await contextGenerator.next()).done) {
-			// Yield all intermediate events
-			if (result.value) {
-				yield result.value;
-			}
+		// Debug: open a chat.turn run before context assemble. The run stays
+		// open through streaming and is finished by streamChat once the model
+		// response completes so token usage / finishReason land on the same
+		// run as the context stack.
+		const debugRun = this.debugTracePort?.isEnabled()
+			? this.debugTracePort.startRun({
+					surface: 'chat',
+					capabilityId: 'chat.turn',
+				})
+			: null;
+		if (debugRun) {
+			// First-class user.message span so the receipt reader doesn't have
+			// to dig through slot excerpts to find what the user asked. The
+			// recorder redacts payloads according to mode; excerpt is always
+			// safe.
+			const userSpan = debugRun.startSpan({
+				kind: 'custom',
+				name: 'user.message',
+			});
+			userSpan.setInput({
+				raw: userContent,
+				contentType: 'text/markdown',
+			});
+			userSpan.setParams({
+				attachmentCount: attachments?.length ?? 0,
+				messageHistoryCount: conversation.messages.length,
+			});
+			userSpan.finish();
 		}
-		const prompt = result.value;
+		let contextGenerator: AsyncGenerator<LLMStreamEvent, LLMRequestMessage[], void>;
+		try {
+			contextGenerator = this.contextPipeline.assemble(
+				ChatProfile,
+				buildCtx,
+				modelCapabilities,
+				debugRun ?? undefined,
+			);
+			// Consume progress events
+			let result: IteratorResult<LLMStreamEvent, LLMRequestMessage[]>;
+			while (!(result = await contextGenerator.next()).done) {
+				// Yield all intermediate events
+				if (result.value) {
+					yield result.value;
+				}
+			}
+			const prompt = result.value;
 
-		const outputControl = conversation.meta.outputControlOverride
-			?? this.settings?.defaultOutputControl
-			?? DEFAULT_AI_SERVICE_SETTINGS.defaultOutputControl;
+			const outputControl = conversation.meta.outputControlOverride
+				?? this.settings?.defaultOutputControl
+				?? DEFAULT_AI_SERVICE_SETTINGS.defaultOutputControl;
 
-		return {
-			modelId,
-			provider,
-			timezone,
-			prompt: prompt,
-			outputControl,
-			modelCapabilities,
-		};
+			if (debugRun) {
+				debugRun.mergeSummary({
+					modelId,
+					provider,
+					userContentLength: userContent.length,
+					messageCountBefore: conversation.messages.length,
+				});
+				this.lastDebugRunId = debugRun.runId;
+			}
+
+			return {
+				modelId,
+				provider,
+				timezone,
+				prompt: prompt,
+				outputControl,
+				modelCapabilities,
+				debugRun: debugRun ?? undefined,
+			};
+		} catch (err) {
+			if (debugRun) {
+				debugRun.finish('failed');
+				this.lastDebugRunId = debugRun.runId;
+			}
+			throw err;
+		}
 	}
 
 	async updateConversationContext(params: {

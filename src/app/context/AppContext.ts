@@ -20,6 +20,7 @@ import type { QuickSearchBackgroundRuntime } from '@/service/search/background/Q
 import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
 import type { IndexService } from '@/service/search/index/indexService';
 import type { MCPClientManager } from '@/service/mcp/MCPClientManager';
+import type { DebugTracePort } from '@/core/debug-trace';
 import type { SkillRegistry } from '@/service/skills/SkillRegistry';
 import type { CapabilityRegistry } from '@/service/capabilities/CapabilityRegistry';
 import type { CommandGateway } from '@/service/capabilities/CommandGateway';
@@ -429,6 +430,20 @@ export class AppContext {
 		AppContext.getInstance().runtimeRegistry.clearUsageServices();
 	}
 
+	// ─── Debug Trace port ────────────────────────────────────────────────
+
+	public static setDebugTracePort(port: DebugTracePort): void {
+		AppContext.getInstance().runtimeRegistry.setDebugTracePort(port);
+	}
+
+	public static tryGetDebugTracePort(): DebugTracePort | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetDebugTracePort();
+	}
+
+	public static clearDebugTracePort(): void {
+		AppContext.getInstance().runtimeRegistry.clearDebugTracePort();
+	}
+
 	/**
 	 * Clear singleton and unsubscribe from workspace events.
 	 * Must be called from plugin onunload to break reference chains and allow GC.
@@ -503,15 +518,21 @@ export class AppContext {
 	}
 
 	/**
-	 * Create a VaultSearchAgent. Currently delegates to VaultSearchAgentSDK
-	 * which runs on Claude Agent SDK primitives (library usage, not the
-	 * retired 2026-07 backend option). Migration to harness-native
-	 * `runAgentLoop` is spec'd separately —
-	 * docs/superpowers/specs/2026-07-04-vault-search-harness-native-migration.md.
+	 * Create a VaultSearchAgent. Runs on the self-hosted harness
+	 * (`runAgentLoop`) as of the 2026-07-04 cutover — the Claude Agent SDK
+	 * is now used strictly as a library for MCP plumbing + one-shot LLM
+	 * callers, not as a routing backend.
 	 */
 	public static vaultSearchAgent(): VaultSearchAgent {
 		const ctx = AppContext.getInstance();
-		return new VaultSearchAgent(ctx.app, ctx.plugin.manifest.id, ctx.searchClient, ctx.manager);
+		return new VaultSearchAgent(
+			ctx.app,
+			ctx.plugin.manifest.id,
+			ctx.searchClient,
+			ctx.manager,
+			{},
+			ctx.runtimeRegistry.tryGetDebugTracePort(),
+		);
 	}
 
 	/** Create an AIGraphAgent for building multi-lens knowledge graphs. */
