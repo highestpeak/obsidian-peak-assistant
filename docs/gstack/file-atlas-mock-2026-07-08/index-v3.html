@@ -1,0 +1,2072 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>File Atlas Mock v3</title>
+  <style>
+    :root {
+      --bg: #f7f7f9;
+      --panel: #ffffff;
+      --soft: #f7f8fb;
+      --soft-2: #f1f3f8;
+      --line: #e7e9f1;
+      --line-strong: #dfe2eb;
+      --text: #292d39;
+      --muted: #747d8c;
+      --faint: #9aa3b2;
+      --accent: #7c3aed;
+      --accent-soft: #f1eaff;
+      --accent-line: #dccbff;
+      --blue: #2d6cdf;
+      --blue-soft: #edf4ff;
+      --green: #23845e;
+      --green-soft: #e8f7ef;
+      --amber: #9a6408;
+      --amber-soft: #fff4dc;
+      --red: #bd3c37;
+      --red-soft: #fff0ef;
+      --teal: #087a80;
+      --teal-soft: #e7f7f8;
+      --shadow: 0 18px 46px rgba(20, 24, 40, 0.14);
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #fbfbfc 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: var(--font);
+    }
+
+    svg { width: 16px; height: 16px; stroke-width: 1.9; flex: 0 0 auto; }
+    button { font: inherit; }
+
+    .stage {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 40px 18px 18px;
+      position: relative;
+    }
+
+    .stage-tools {
+      position: fixed;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: #ffffff;
+      box-shadow: 0 4px 14px rgba(20, 24, 40, 0.10);
+    }
+
+    .stage-tool {
+      height: 24px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+      cursor: pointer;
+    }
+
+    .stage-tool.is-active { color: #ffffff; background: var(--accent); }
+
+    .surface {
+      width: min(1560px, calc(100vw - 36px));
+      height: min(980px, calc(100vh - 58px));
+      min-height: 760px;
+      background: var(--panel);
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-rows: 42px 44px auto 46px minmax(0, 1fr) auto;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ---------- doc context ---------- */
+    .doc-context {
+      min-width: 0;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfbfd;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .doc-path {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      color: #596273;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .reliability {
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+
+    .reliability .dot { width: 7px; height: 7px; border-radius: 999px; background: var(--faint); }
+    .reliability[data-state="basic"] .dot { background: var(--amber); }
+
+    .doc-stats {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .doc-stats span {
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 8px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+    }
+
+    /* ---------- mode nav: one stable row ---------- */
+    .mode-nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .mode {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--muted);
+      border: 0;
+      background: #ffffff;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 760;
+    }
+
+    .mode.is-active { background: var(--accent-soft); color: var(--accent); }
+
+    .subview-switch {
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--accent-line);
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .view-tab {
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 9px;
+      border: 0;
+      border-radius: 7px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 11px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .view-tab svg { width: 12px; height: 12px; }
+
+    .view-tab.is-active {
+      color: var(--accent);
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.08);
+    }
+
+    /* ---------- document search band ---------- */
+    .search-band {
+      padding: 14px 24px 10px;
+      background: #ffffff;
+    }
+
+    .search-box {
+      height: 48px;
+      border: 1px solid #eef0f5;
+      background: #ffffff;
+      border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(20, 24, 40, 0.05);
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 12px;
+      padding: 0 18px;
+      color: var(--muted);
+    }
+
+    .search-box > svg { width: 17px; height: 17px; }
+
+    .search-box input {
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .search-box input::placeholder { color: var(--muted); font-weight: 500; }
+
+    .search-box:focus-within {
+      border-color: var(--accent-line);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.10), 0 8px 24px rgba(20, 24, 40, 0.05);
+    }
+
+    .search-hits { color: var(--faint); font-size: 12px; font-weight: 720; white-space: nowrap; }
+
+    .scope-pill {
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 14px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    /* ---------- atlas bar: presets + filters + tree search ---------- */
+    .atlas-bar {
+      min-width: 0;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+    }
+
+    .preset-switch {
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--soft);
+      flex: 0 0 auto;
+    }
+
+    .preset-tab {
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .preset-tab.is-active { color: #ffffff; background: var(--accent); box-shadow: 0 3px 8px rgba(124, 58, 237, 0.20); }
+
+    .preset-tab .mod-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #ffd166;
+      display: none;
+    }
+
+    .preset-tab.is-modified .mod-dot { display: inline-block; }
+
+    .ghost-btn {
+      height: 30px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--text);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 730;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .ghost-btn:hover { border-color: var(--accent-line); color: var(--accent); background: #fbf8ff; }
+
+    .surface.graph-mode .preset-switch,
+    .surface.graph-mode .filter-menu,
+    .surface.graph-mode .fold-actions { display: none; }
+
+    .graph-bar-controls {
+      display: none;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .surface.graph-mode .graph-bar-controls { display: flex; }
+
+    .fold-actions { display: inline-flex; gap: 4px; }
+
+    .fold-btn {
+      height: 30px;
+      width: 30px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .fold-btn:hover { color: var(--accent); border-color: var(--accent-line); }
+    .fold-btn svg { width: 13px; height: 13px; }
+
+    /* ---------- filter popover ---------- */
+    .filter-menu { position: relative; display: inline-flex; }
+
+    .filter-popover {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 8px);
+      z-index: 20;
+      width: 520px;
+      max-height: min(700px, calc(100vh - 200px));
+      padding: 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 16px 36px rgba(20, 24, 40, 0.16);
+      display: none;
+      gap: 10px;
+      overflow: auto;
+    }
+
+    .filter-menu.is-open .filter-popover { display: grid; }
+
+    .filter-popover-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .filter-popover-head .hint { color: var(--faint); font-weight: 650; font-size: 11px; }
+
+    .filter-section { display: grid; gap: 6px; padding-top: 9px; border-top: 1px solid #f0f2f7; }
+    .filter-section:first-of-type { padding-top: 0; border-top: 0; }
+
+    .filter-section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--faint);
+      font-size: 10px;
+      font-weight: 820;
+      text-transform: uppercase;
+    }
+
+    .filter-actions { display: inline-flex; align-items: center; gap: 4px; text-transform: none; }
+
+    .filter-action {
+      height: 21px;
+      padding: 0 7px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--muted);
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 760;
+      cursor: pointer;
+    }
+
+    .filter-action:hover { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+
+    .filter-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+
+    .type-toggle {
+      min-width: 0;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--soft);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .type-toggle svg { width: 13px; height: 13px; }
+    .type-toggle.is-on { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
+
+    /* ---------- main ---------- */
+    .main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 60fr) minmax(0, 40fr);
+      background: #ffffff;
+    }
+
+    .surface.graph-mode .main { grid-template-columns: 1fr; }
+    .surface.graph-mode .inspector { display: none; }
+
+    .tree-pane {
+      min-width: 0;
+      min-height: 0;
+      border-right: 1px solid var(--line);
+      display: grid;
+      grid-template-rows: minmax(0, 1fr);
+      background: #ffffff;
+    }
+
+    .surface.graph-mode .tree-pane { border-right: 0; }
+
+    .tree-scroll { min-height: 0; overflow: auto; padding: 10px 12px 18px; }
+    .tree { display: grid; gap: 1px; }
+
+    .kids { display: grid; gap: 1px; }
+    .kids.is-collapsed { display: none; }
+
+    .node {
+      min-height: 34px;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      align-items: stretch;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .node:hover { background: #fafbfe; }
+    .node.is-selected { background: var(--accent-soft); border-color: var(--accent-line); }
+
+    .node.is-selected::before {
+      content: "";
+      position: absolute;
+      left: -1px;
+      top: 5px;
+      bottom: 5px;
+      width: 3px;
+      background: var(--accent);
+      border-radius: 3px;
+    }
+
+    .node.is-hidden { display: none; }
+
+    .line-ref {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 6px;
+      border-right: 1px solid #f0f2f7;
+      color: #a6afbd;
+      font-family: var(--mono);
+      font-size: 9.5px;
+      font-weight: 650;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .node-body {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+    }
+
+    .twisty {
+      width: 16px;
+      color: var(--faint);
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .twisty svg { width: 11px; height: 11px; transition: transform 120ms ease; }
+    .node.is-collapsed .twisty svg { transform: rotate(-90deg); }
+
+    .icon {
+      width: 21px;
+      height: 21px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      border: 1px solid transparent;
+      flex: 0 0 auto;
+    }
+
+    .icon svg { width: 12px; height: 12px; }
+
+    .label { min-width: 0; display: grid; gap: 1px; flex: 1 1 auto; }
+
+    .name {
+      font-size: 12px;
+      font-weight: 710;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .sub {
+      color: var(--faint);
+      font-size: 10px;
+      font-weight: 650;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .fold-sum {
+      display: none;
+      color: var(--faint);
+      font-size: 10.5px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .node.is-collapsed .fold-sum { display: inline; }
+
+    .badge {
+      height: 19px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 6px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 9.5px;
+      font-weight: 790;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      box-shadow: 0 0 0 2px #ffffff;
+    }
+
+    .status-dot[data-status="active"] { background: #2fae76; }
+    .status-dot[data-status="stale"] { background: #e05b54; }
+    .status-dot[data-status="unresolved"] { background: #e3a008; }
+
+    .add-btn {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--muted);
+      border-radius: 7px;
+      cursor: pointer;
+      opacity: 0;
+      flex: 0 0 auto;
+      padding: 0;
+    }
+
+    .add-btn svg { width: 12px; height: 12px; }
+    .node:hover .add-btn, .node.is-selected .add-btn { opacity: 1; }
+    .add-btn:hover { color: var(--accent); border-color: var(--accent-line); background: #fbf8ff; }
+
+    .type-heading .icon { color: #5c6676; background: #f1f3f7; border-color: #e4e8f0; }
+    .type-block .icon { color: #667085; background: #f8f9fc; border-color: #eceff5; }
+    .type-resource .icon { color: var(--blue); background: var(--blue-soft); border-color: #cfe0ff; }
+    .type-insight .icon { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
+    .type-issue .icon { color: var(--amber); background: var(--amber-soft); border-color: #f7d58f; }
+    .type-task .icon { color: var(--green); background: var(--green-soft); border-color: #b7ead2; }
+
+    .badge.h { color: #596273; background: #f1f3f7; border-color: #e1e5ed; }
+    .badge.block { color: #667085; background: #f8f9fc; border-color: #e4e8f0; }
+    .badge.meta { color: #687385; background: #f5f7fb; border-color: #e1e6ef; }
+    .badge.media { color: var(--blue); background: var(--blue-soft); border-color: #cfe0ff; }
+    .badge.vault { color: var(--teal); background: var(--teal-soft); border-color: #b6e6ea; }
+    .badge.external { color: var(--blue); background: var(--blue-soft); border-color: #cfe0ff; }
+    .badge.insight { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
+    .badge.issue { color: var(--amber); background: var(--amber-soft); border-color: #f7d58f; }
+    .badge.draw { color: var(--teal); background: var(--teal-soft); border-color: #b6e6ea; }
+
+    /* ---------- inspector ---------- */
+    .inspector {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr);
+      background: var(--soft);
+    }
+
+    .inspector-scroll {
+      min-height: 0;
+      overflow: auto;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .card { border: 1px solid var(--line); background: #ffffff; border-radius: 10px; overflow: hidden; }
+    .card-body { padding: 14px; display: grid; gap: 12px; }
+
+    .selected-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+    .selected-kind {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 820;
+      text-transform: uppercase;
+    }
+
+    .selected-title { font-size: 16px; line-height: 1.25; font-weight: 790; }
+    .selected-sub { color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+    .source-snippet {
+      padding: 11px 12px;
+      border: 1px solid #edf0f5;
+      background: #fbfcff;
+      border-radius: 8px;
+      font-family: var(--mono);
+      color: #333747;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow: auto;
+      max-height: 260px;
+    }
+
+    .meta-rows { display: grid; gap: 7px; }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr);
+      gap: 10px;
+      align-items: baseline;
+      font-size: 12px;
+    }
+
+    .meta-row .k { color: var(--faint); font-size: 11px; font-weight: 780; text-transform: uppercase; }
+    .meta-row .v { color: var(--text); font-weight: 660; min-width: 0; overflow-wrap: anywhere; }
+    .meta-row .v.mono { font-family: var(--mono); font-size: 11px; }
+
+    .anchor-pill {
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .anchor-pill[data-status="active"] { color: var(--green); background: var(--green-soft); border-color: #b7ead2; }
+    .anchor-pill[data-status="stale"] { color: var(--red); background: var(--red-soft); border-color: #ffd0cc; }
+    .anchor-pill[data-status="unresolved"] { color: var(--amber); background: var(--amber-soft); border-color: #f7d58f; }
+
+    .confirm-pill {
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .confirm-pill.is-confirmed { color: var(--green); background: var(--green-soft); border-color: #b7ead2; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .preview-table { width: 100%; border-collapse: collapse; font-family: var(--font); font-size: 12px; }
+    .preview-table th, .preview-table td { padding: 8px 9px; border: 1px solid #e8ebf2; text-align: left; vertical-align: top; }
+    .preview-table th { color: #687385; background: #f7f8fb; font-weight: 790; }
+
+    .preview-media, .preview-link {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      min-height: 64px;
+      padding: 12px;
+      border: 1px solid #e8ebf2;
+      border-radius: 8px;
+      background: #ffffff;
+      font-family: var(--font);
+    }
+
+    .preview-media svg, .preview-link svg { width: 22px; height: 22px; color: var(--accent); }
+    .preview-title { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; font-weight: 760; }
+    .preview-sub { margin-top: 3px; color: var(--muted); font-size: 12px; font-family: var(--font); overflow-wrap: anywhere; }
+    .preview-quote { padding-left: 12px; border-left: 3px solid var(--accent-line); font-family: var(--font); color: #414858; font-size: 13px; line-height: 1.5; }
+
+    .drawer-close { display: none; }
+
+    /* ---------- tray ---------- */
+    .tray {
+      min-height: 54px;
+      border-top: 1px solid var(--line);
+      background: #ffffff;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 8px 24px;
+    }
+
+    .tray-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 780;
+      white-space: nowrap;
+    }
+
+    .tray-count {
+      min-width: 20px;
+      height: 20px;
+      display: inline-grid;
+      place-items: center;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .tray-items { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+
+    .chip {
+      max-width: 240px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 999px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 690;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .chip svg { width: 13px; height: 13px; color: var(--muted); }
+    .chip span { overflow: hidden; text-overflow: ellipsis; }
+
+    .chip-remove {
+      width: 18px;
+      height: 18px;
+      border: 0;
+      background: transparent;
+      color: var(--faint);
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      padding: 0;
+      margin-right: -4px;
+    }
+
+    .chip-remove svg { width: 11px; height: 11px; }
+    .chip-remove:hover { background: #e9ecf4; color: var(--text); }
+
+    .chip.overflow {
+      background: #ffffff;
+      color: var(--muted);
+      font-weight: 780;
+      cursor: default;
+    }
+
+    .primary-btn {
+      height: 36px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 790;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* ---------- graph (read-only) ---------- */
+    .graph-view { min-height: 0; overflow: auto; padding: 12px 24px 14px; background: #ffffff; display: none; }
+    .surface.graph-mode .graph-view { display: block; }
+    .surface.graph-mode .tree-scroll { display: none; }
+
+    .graph-shell {
+      min-height: 100%;
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .graph-list { min-width: 0; display: grid; gap: 6px; align-content: start; padding: 4px 0; }
+
+    .graph-list-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 2px 2px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .graph-item {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+      padding: 9px 10px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: #f8fafc;
+      border-color: #eef1f6;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .graph-item.is-selected { border-color: var(--accent-line); background: var(--accent-soft); }
+    .graph-item-name { font-size: 12px; font-weight: 760; }
+    .graph-item-meta { color: var(--muted); font-size: 10.5px; font-weight: 680; }
+
+    .graph-note {
+      margin-top: 6px;
+      padding: 9px 10px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 8px;
+      color: var(--faint);
+      font-size: 11px;
+      line-height: 1.5;
+      font-weight: 650;
+    }
+
+    .graph-note b { color: var(--muted); }
+
+    .graph-workspace { min-width: 0; display: grid; grid-template-rows: auto minmax(420px, 1fr); gap: 10px; }
+
+    .graph-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 30px; flex-wrap: wrap; }
+    .graph-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 790; }
+
+    .graph-preset-switch {
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--soft);
+    }
+
+    .graph-preset {
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .graph-preset.is-active { color: #ffffff; background: var(--accent); box-shadow: 0 3px 8px rgba(124, 58, 237, 0.20); }
+
+    .semantic-toggle {
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+      cursor: pointer;
+    }
+
+    .semantic-switch {
+      width: 34px;
+      height: 20px;
+      position: relative;
+      border-radius: 999px;
+      background: #dde2ec;
+      box-shadow: inset 0 0 0 1px rgba(20, 24, 40, 0.06);
+    }
+
+    .semantic-switch::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      left: 3px;
+      top: 3px;
+      border-radius: 999px;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.18);
+      transition: transform 140ms ease;
+    }
+
+    .semantic-toggle.is-on { color: var(--accent); }
+    .semantic-toggle.is-on .semantic-switch { background: var(--accent); }
+    .semantic-toggle.is-on .semantic-switch::after { transform: translateX(14px); }
+
+    .graph-chip {
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* Graph visual language mirrors Vault Search ResultGraphView
+       (src/ui/view/quick-search/components/result-graph/ResultGraphView.tsx
+       CYTOSCAPE_STYLES) — same node chips, edge colors, highlight/dim states. */
+    .graph-canvas {
+      position: relative;
+      min-height: 420px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    .graph-edges { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+    .graph-edges path { fill: none; stroke: #334155; stroke-width: 1.4; transition: opacity 260ms ease-out; }
+    .graph-edges path.is-two-hop { display: none; stroke: #94a3b8; stroke-width: 1; }
+    .graph-canvas.show-two-hop .graph-edges path.is-two-hop { display: block; }
+    .graph-canvas.is-semantic .graph-edges path:nth-of-type(2n) { stroke: #cbd5e1; stroke-width: 0.8; stroke-dasharray: 6 5; opacity: 0.7; marker-end: none; }
+
+    .graph-node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      min-width: 80px;
+      max-width: 200px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 10px;
+      border: 1px solid #a78bfa;
+      border-radius: 6px;
+      background: #ede9fe;
+      color: #1e1b4b;
+      font-size: 10px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      z-index: 2;
+      transition: left 180ms ease, top 180ms ease, opacity 260ms ease-out,
+        border-color 260ms ease-out, background-color 260ms ease-out;
+    }
+
+    .graph-node span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .graph-node .dot { display: none; }
+
+    .graph-node.current {
+      border: 4px solid #4c1d95;
+      background: #a78bfa;
+      color: #2e1065;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 10px 16px;
+      border-radius: 8px;
+    }
+
+    .graph-node.two-hop {
+      display: none;
+      opacity: 0.55;
+      border-style: dashed;
+      background: #f5f3ff;
+    }
+
+    .graph-canvas.show-two-hop .graph-node.two-hop { display: inline-flex; }
+    .graph-node.is-active { border-color: #f59e0b; border-width: 3px; opacity: 1; z-index: 4; }
+    .graph-canvas.has-focus .graph-node:not(.is-focus):not(.is-active) { opacity: 0.12; }
+    .graph-canvas.has-focus .graph-edges path { opacity: 0.12; }
+    .graph-node.is-search-dim { opacity: 0.12; }
+
+    .node-popover {
+      position: absolute;
+      width: 230px;
+      display: grid;
+      gap: 7px;
+      padding: 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 14px 34px rgba(20, 24, 40, 0.16);
+      z-index: 6;
+    }
+
+    .node-popover[hidden] { display: none; }
+    .node-popover-title { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text); font-size: 12px; font-weight: 780; }
+    .node-popover-sub { color: var(--muted); font-size: 10.5px; font-weight: 680; }
+    .node-popover-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .node-popover-actions .ghost-btn { justify-content: center; height: 28px; padding: 0 6px; font-size: 11px; }
+
+    /* ---------- narrow (side panel) mode ---------- */
+    body.narrow .stage { padding: 40px 0 0; place-items: start center; }
+
+    body.narrow .surface {
+      width: 420px;
+      height: calc(100vh - 48px);
+      min-height: 0;
+      border-radius: 10px;
+      grid-template-rows: 40px 40px auto auto minmax(0, 1fr) auto;
+    }
+
+    body.narrow .search-band { padding: 8px 10px 4px; }
+    body.narrow .search-box { height: 38px; padding: 0 12px; gap: 8px; }
+    body.narrow .search-box input { font-size: 13px; }
+    body.narrow .scope-pill { height: 24px; padding: 0 10px; font-size: 11px; }
+
+    body.narrow .doc-context { padding: 0 12px; grid-template-columns: minmax(0, 1fr) auto; }
+    body.narrow .doc-stats { display: none; }
+    body.narrow .mode-nav .mode { font-size: 13px; gap: 6px; }
+    body.narrow .atlas-bar { padding: 6px 10px; flex-wrap: wrap; height: auto; min-height: 46px; row-gap: 6px; }
+    body.narrow .preset-switch { max-width: 100%; overflow-x: auto; }
+    body.narrow .preset-tab { padding: 0 9px; font-size: 11px; }
+    body.narrow .fold-actions { display: none; }
+    body.narrow .main { grid-template-columns: 1fr; }
+    body.narrow .tree-pane { border-right: 0; }
+    body.narrow .tray { padding: 6px 12px; gap: 8px; }
+    body.narrow .tray-items .chip:nth-child(n+3):not(.overflow) { display: none; }
+    body.narrow .graph-shell { grid-template-columns: 1fr; }
+    body.narrow .graph-list { grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); overflow-x: auto; }
+    body.narrow .graph-note { display: none; }
+
+    body.narrow .inspector {
+      display: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      top: auto;
+      max-height: 52%;
+      z-index: 30;
+      border-top: 1px solid var(--line-strong);
+      border-radius: 12px 12px 0 0;
+      box-shadow: 0 -14px 34px rgba(20, 24, 40, 0.16);
+      background: var(--soft);
+    }
+
+    body.narrow .surface.drawer-open .inspector { display: grid; }
+    body.narrow .surface.graph-mode .inspector { display: none; }
+
+    body.narrow .drawer-close {
+      display: inline-flex;
+      position: sticky;
+      top: 0;
+      justify-self: end;
+      margin: -4px -4px -34px 0;
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="i-atlas" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15"/><path d="M15 6v15"/></symbol>
+    <symbol id="i-network" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="6" cy="7" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="7" cy="17" r="3"/><path d="M9 8l6-.8"/><path d="M16.4 8.6l1.1 6.5"/><path d="M15.3 17.6l-5.4-.4"/><path d="M7 10v4"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></symbol>
+    <symbol id="i-heading" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></symbol>
+    <symbol id="i-p" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 4v16"/><path d="M17 4v16"/><path d="M9 4h8"/><path d="M9 4a4 4 0 0 0 0 8h4"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1.14 1.14"/><path d="M14 11a5 5 0 0 0-7.07 0l-2 2A5 5 0 0 0 12 20.07l1.14-1.14"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20"/><path d="M12 2a15 15 0 0 0 0 20"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M9 4v16"/><path d="M15 4v16"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l1.7 5.4L19 10l-5.3 1.6L12 17l-1.7-5.4L5 10l5.3-1.6L12 3z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-task" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 12l2 2 5-5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-tray" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h5l2 3h4l2-3h5"/><path d="M5 6h14l2 12H3L5 6z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-anchor" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="5" r="3"/><path d="M12 8v13"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></symbol>
+    <symbol id="i-unfold" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 8l5-5 5 5"/><path d="M7 16l5 5 5-5"/></symbol>
+    <symbol id="i-fold" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 3l5 5 5-5"/><path d="M7 21l5-5 5 5"/></symbol>
+  </svg>
+
+  <div class="stage">
+    <div class="stage-tools" aria-label="Mock form factor">
+      <button class="stage-tool is-active" data-width-mode="desktop" type="button">Desktop</button>
+      <button class="stage-tool" data-width-mode="narrow" type="button">Side panel · 420px</button>
+    </div>
+
+    <main class="surface" id="surface" aria-label="File Atlas v3 mock">
+      <div class="doc-context">
+        <span class="doc-path" title="kb2-learn-prd/B-Z-mess/peakassistant-hubdiscover-具体公式和算法和规则配置.md">kb2-learn-prd / B-Z-mess / peakassistant-hubdiscover-具体公式和算法和规则配置.md</span>
+        <span class="reliability" data-state="basic" title="Anchors matched by content hash + heading + ordinal. Install a Git plugin to upgrade to Versioned anchors.">
+          <span class="dot"></span> Basic anchors
+        </span>
+        <span class="doc-stats">
+          <span>3,420 words</span>
+          <span>186 blocks</span>
+          <span>31 resources</span>
+          <span>24 insights</span>
+        </span>
+      </div>
+
+      <nav class="mode-nav" aria-label="Document workspace modes">
+        <div class="mode is-active" role="button" tabindex="0">
+          <span>Atlas</span>
+          <span class="subview-switch" aria-label="Atlas view">
+            <button class="view-tab is-active" data-atlas-view="tree" type="button"><svg><use href="#i-atlas"/></svg> Tree</button>
+            <button class="view-tab" data-atlas-view="graph" type="button"><svg><use href="#i-network"/></svg> Graph</button>
+          </span>
+        </div>
+        <button class="mode" type="button">Copilot</button>
+        <button class="mode" type="button">Ambient</button>
+      </nav>
+
+      <section class="search-band">
+        <label class="search-box">
+          <svg><use href="#i-search"/></svg>
+          <input id="treeSearchInput" type="text" placeholder="Search this document's blocks, links, and saved insights..." autocomplete="off" />
+          <span class="search-hits" id="treeSearchCount"></span>
+          <span class="scope-pill" id="searchScope">document</span>
+        </label>
+      </section>
+
+      <section class="atlas-bar">
+        <div class="preset-switch" id="presetSwitch" role="tablist" aria-label="Layer presets"></div>
+
+        <div class="filter-menu" id="filterMenu">
+          <button class="ghost-btn" id="filterButton" type="button" aria-expanded="false"><svg><use href="#i-filter"/></svg> Filters</button>
+          <div class="filter-popover" aria-label="Type filters">
+            <div class="filter-popover-head">
+              <span>Visible block types</span>
+              <span class="hint">Headings always stay visible</span>
+            </div>
+            <div id="filterGroups"></div>
+          </div>
+        </div>
+
+        <div class="fold-actions">
+          <button class="fold-btn" id="expandAll" type="button" title="Expand all"><svg><use href="#i-unfold"/></svg></button>
+          <button class="fold-btn" id="collapseAll" type="button" title="Collapse all"><svg><use href="#i-fold"/></svg></button>
+        </div>
+
+        <div class="graph-bar-controls" aria-label="Graph controls">
+          <div class="graph-preset-switch" role="tablist" aria-label="Graph layout">
+            <button class="graph-preset is-active" data-graph-layout="constellation" type="button">Constellation</button>
+            <button class="graph-preset" data-graph-layout="flow-tb" type="button">Flow ↓</button>
+            <button class="graph-preset" data-graph-layout="flow-lr" type="button">Flow →</button>
+            <button class="graph-preset" data-graph-layout="orbit" type="button">Orbit</button>
+          </div>
+          <button class="semantic-toggle" id="semanticToggle" type="button" aria-pressed="false"><span class="semantic-switch"></span><span>Semantic</span></button>
+          <span class="graph-chip" id="graphMeta" style="margin-left:auto">7 notes · 9 links</span>
+        </div>
+
+      </section>
+
+      <section class="main">
+        <div class="tree-pane">
+          <div class="tree-scroll">
+            <div class="tree" id="tree"></div>
+          </div>
+          <div class="graph-view">
+            <div class="graph-shell">
+              <div class="graph-list" aria-label="Graph scopes">
+                <div class="graph-list-head"><span>Scope</span></div>
+                <div class="graph-item is-selected" role="button" tabindex="0" data-graph-scope="one-hop">
+                  <span class="graph-item-name">Local neighborhood</span>
+                  <span class="graph-item-meta">1-hop · 7 notes</span>
+                </div>
+                <div class="graph-item" role="button" tabindex="0" data-graph-scope="two-hop">
+                  <span class="graph-item-name">Two-hop expansion</span>
+                  <span class="graph-item-meta">2-hop · 12 notes · bridges highlighted</span>
+                </div>
+                <div class="graph-note">
+                  <b>Read-only projection.</b> Edges come from vault links. To keep a curated set of notes, save a collection note (MOC) — planned as “Collection notes + Canvas reuse”, see roadmap backlog.
+                </div>
+              </div>
+              <div class="graph-workspace">
+                <div class="graph-head">
+                  <div class="graph-title"><svg><use href="#i-network"/></svg><span id="graphTitle">Local neighborhood</span></div>
+                  <button class="ghost-btn" id="graphToTray" type="button"><svg><use href="#i-plus"/></svg> Add graph to tray</button>
+                </div>
+                <div class="graph-canvas" id="graphCanvas" aria-label="Read-only local graph">
+                  <svg class="graph-edges" id="graphEdges"></svg>
+                  <div class="node-popover" id="nodePopover" hidden>
+                    <span class="node-popover-title" id="nodePopoverTitle"></span>
+                    <span class="node-popover-sub" id="nodePopoverSub"></span>
+                    <div class="node-popover-actions">
+                      <button class="ghost-btn" data-node-action="open" type="button"><svg><use href="#i-eye"/></svg> Open</button>
+                      <button class="ghost-btn" data-node-action="focus" type="button"><svg><use href="#i-search"/></svg> Focus</button>
+                      <button class="ghost-btn" data-node-action="tray" type="button"><svg><use href="#i-plus"/></svg> Tray</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="inspector" id="inspector">
+          <div class="inspector-scroll" id="inspectorScroll"></div>
+        </aside>
+      </section>
+
+      <footer class="tray">
+        <div class="tray-title"><svg><use href="#i-tray"/></svg> Tray <span class="tray-count" id="trayCount">0</span></div>
+        <div class="tray-items" id="trayItems"></div>
+        <button class="primary-btn" type="button"><svg><use href="#i-send"/></svg> Send to Copilot</button>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    /* ---------------- kind registry ---------------- */
+    const KINDS = {
+      heading:    { icon: '#i-heading', badge: null,      badgeClass: 'h',       type: 'heading',  cat: 'heading',  label: 'Heading' },
+      property:   { icon: '#i-file',    badge: 'prop',     badgeClass: 'meta',    type: 'block',    cat: 'resource', label: 'Property',   group: 'references' },
+      tag:        { icon: '#i-link',    badge: 'tag',      badgeClass: 'meta',    type: 'block',    cat: 'resource', label: 'Tag',        group: 'references' },
+      paragraph:  { icon: '#i-p',       badge: 'text',     badgeClass: 'block',   type: 'block',    cat: 'block',    label: 'Paragraph',  group: 'structure' },
+      list:       { icon: '#i-filter',  badge: 'list',     badgeClass: 'block',   type: 'block',    cat: 'block',    label: 'List',       group: 'structure' },
+      quote:      { icon: '#i-p',       badge: 'quote',    badgeClass: 'block',   type: 'block',    cat: 'block',    label: 'Quote',      group: 'structure' },
+      callout:    { icon: '#i-alert',   badge: 'callout',  badgeClass: 'block',   type: 'block',    cat: 'block',    label: 'Callout',    group: 'structure' },
+      task:       { icon: '#i-task',    badge: 'task',     badgeClass: 'ok',      type: 'task',     cat: 'block',    label: 'Task',       group: 'structure' },
+      table:      { icon: '#i-table',   badge: 'table',    badgeClass: 'block',   type: 'block',    cat: 'block',    label: 'Table',      group: 'rich' },
+      code:       { icon: '#i-code',    badge: 'code',     badgeClass: 'block',   type: 'block',    cat: 'block',    label: 'Code',       group: 'rich' },
+      math:       { icon: '#i-code',    badge: 'math',     badgeClass: 'block',   type: 'block',    cat: 'block',    label: 'Math',       group: 'rich' },
+      mermaid:    { icon: '#i-atlas',   badge: 'mermaid',  badgeClass: 'block',   type: 'block',    cat: 'block',    label: 'Mermaid',    group: 'rich' },
+      image:      { icon: '#i-image',   badge: 'image',    badgeClass: 'media',   type: 'resource', cat: 'resource', label: 'Image',      group: 'media' },
+      excalidraw: { icon: '#i-image',   badge: 'draw',     badgeClass: 'draw',    type: 'resource', cat: 'resource', label: 'Excalidraw', group: 'media' },
+      canvas:     { icon: '#i-atlas',   badge: 'canvas',   badgeClass: 'draw',    type: 'resource', cat: 'resource', label: 'Canvas',     group: 'media' },
+      embed:      { icon: '#i-file',    badge: 'embed',    badgeClass: 'media',   type: 'resource', cat: 'resource', label: 'Embed',      group: 'media' },
+      attachment: { icon: '#i-file',    badge: 'file',     badgeClass: 'media',   type: 'resource', cat: 'resource', label: 'Attachment', group: 'media' },
+      vault:      { icon: '#i-link',    badge: 'vault',    badgeClass: 'vault',   type: 'resource', cat: 'resource', label: 'Vault link', group: 'references' },
+      external:   { icon: '#i-globe',   badge: 'external', badgeClass: 'external',type: 'resource', cat: 'resource', label: 'External link', group: 'references' },
+      footnote:   { icon: '#i-link',    badge: 'note',     badgeClass: 'meta',    type: 'block',    cat: 'resource', label: 'Footnote',   group: 'references' },
+      claim:      { icon: '#i-spark',   badge: 'claim',    badgeClass: 'insight', type: 'insight',  cat: 'insight',  label: 'Claim',      group: 'insights' },
+      evidence:   { icon: '#i-spark',   badge: 'evidence', badgeClass: 'insight', type: 'insight',  cat: 'insight',  label: 'Evidence',   group: 'insights' },
+      example:    { icon: '#i-spark',   badge: 'example',  badgeClass: 'insight', type: 'insight',  cat: 'insight',  label: 'Example',    group: 'insights' },
+      action:     { icon: '#i-spark',   badge: 'action',   badgeClass: 'insight', type: 'insight',  cat: 'insight',  label: 'Action',     group: 'insights' },
+      decision:   { icon: '#i-spark',   badge: 'decision', badgeClass: 'insight', type: 'insight',  cat: 'insight',  label: 'Decision',   group: 'insights' },
+      question:   { icon: '#i-spark',   badge: 'question', badgeClass: 'insight', type: 'insight',  cat: 'insight',  label: 'Question',   group: 'insights' },
+      issue:      { icon: '#i-alert',   badge: 'issue',    badgeClass: 'issue',   type: 'issue',    cat: 'issue',    label: 'Issue',      group: 'issues' },
+    };
+
+    const FILTER_GROUPS = [
+      { id: 'structure',  title: 'Structure' },
+      { id: 'rich',       title: 'Rich blocks' },
+      { id: 'media',      title: 'Media & embeds' },
+      { id: 'references', title: 'References' },
+      { id: 'insights',   title: 'Copilot insights' },
+      { id: 'issues',     title: 'Issues' },
+    ];
+
+    const ALL_KINDS = Object.keys(KINDS).filter((k) => k !== 'heading');
+    const INSIGHT_KINDS = ['claim', 'evidence', 'example', 'action', 'decision', 'question'];
+    const RESOURCE_KINDS = ['vault', 'external', 'tag', 'footnote', 'property', 'image', 'excalidraw', 'canvas', 'embed', 'attachment'];
+    const RICH_KINDS = ['table', 'code', 'math', 'mermaid'];
+
+    const PRESETS = {
+      overview:  { label: 'Overview',  kinds: ['task', ...RICH_KINDS, ...RESOURCE_KINDS, ...INSIGHT_KINDS, 'issue'] },
+      reading:   { label: 'Reading',   kinds: ['paragraph', 'list', 'quote', 'callout', 'task', 'image', 'table', 'mermaid'] },
+      writing:   { label: 'Writing',   kinds: [...INSIGHT_KINDS, 'issue', 'task'] },
+      resources: { label: 'Resources', kinds: [...RESOURCE_KINDS, ...RICH_KINDS] },
+      all:       { label: 'All',       kinds: [...ALL_KINDS] },
+    };
+
+    /* ---------------- tree data ---------------- */
+    const prov = (kind, runId, date, model, confirmed) => ({ source: kind, runId, date, model, confirmed });
+
+    const TREE = [
+      { kind: 'property', title: 'status: active-review', sub: 'Frontmatter property', lines: '2', source: 'status: active-review' },
+      { kind: 'tag', title: '#file-atlas #copilot-boundary', sub: 'Document tags', lines: '3', source: 'tags: [file-atlas, copilot-boundary]' },
+      { kind: 'heading', title: '方法论', level: 1, lines: '4-13', children: [
+        { kind: 'quote', title: 'Atlas is a navigation surface, not a writer', sub: 'Design boundary', lines: '6', source: '> Atlas is a navigation surface, not a writer.' },
+        { kind: 'task', title: 'Open Dashboard, rehearse once', sub: 'Unchecked', lines: '9', source: '- [ ] Open Dashboard, pick one story, rehearse once' },
+        { kind: 'callout', title: 'Owner decision: Atlas should stay read-only', sub: 'Product decision callout', lines: '11', source: '> [!decision] Atlas should stay read-only and hand off to Copilot.' },
+      ]},
+      { kind: 'heading', title: '流水线循环 - Showing Up', level: 1, lines: '14-76', selected: true, children: [
+        { kind: 'claim', title: 'Workflow is spoken-first', sub: 'Saved Copilot insight', lines: '14-76', status: 'active', source: 'This note frames the workflow as spoken-first practice, not text polishing.',
+          provenance: prov('Document Copilot', 'run-8f31c2', '2026-07-02 21:40', 'claude-sonnet-5', true),
+          anchor: { matched: 'content hash', nearest: '流水线循环 - Showing Up' } },
+        { kind: 'paragraph', title: '第一周能上场，第二周能追问，每个故事准备追问…', sub: 'Body paragraph', lines: '18', source: '第一周能上场，第二周能追问，每个故事准备追问，follow-up...' },
+        { kind: 'heading', title: '每周循环', level: 2, lines: '16-30', children: [
+          { kind: 'vault', title: '2-Story Cards-0-Fixed combination#追问', sub: 'Internal note link', lines: '19', source: 'follow-up [[2-Story Cards-0-Fixed combination#追问]]' },
+          { kind: 'list', title: 'Three rehearsal passes', sub: '3 items', lines: '22', source: '- 第一遍：说出来\n- 第二遍：控制在 60-90s\n- 第三遍：更自然更短' },
+          { kind: 'evidence', title: 'Three-pass loop supports the claim', sub: 'Saved Copilot insight', lines: '24-30', status: 'active', source: 'The checklist includes first pass, second pass, third pass, and explicit speaking time boxes.',
+            provenance: prov('Document Copilot', 'run-8f31c2', '2026-07-02 21:40', 'claude-sonnet-5', false),
+            anchor: { matched: 'content hash', nearest: '每周循环' } },
+        ]},
+        { kind: 'heading', title: '练习资源', level: 2, lines: '31-50', children: [
+          { kind: 'footnote', title: 'voice-practice-footnote', sub: 'Practice source note', lines: '31', source: '[^voice-practice]: Use voice mode first, text cleanup second.' },
+          { kind: 'external', title: 'toastmasters.org.nz', sub: 'Internet link', lines: '39', source: 'https://toastmasters.org.nz/' },
+          { kind: 'external', title: 'meetup.com/home', sub: 'Internet link', lines: '40', source: 'https://www.meetup.com/home/' },
+          { kind: 'issue', title: 'Glassdoor link needs source context', sub: 'Missing source explanation', lines: '41', status: 'stale', source: 'A strong claim references Glassdoor but does not explain what evidence came from the page.',
+            provenance: prov('Vault Lint', 'lint-0630', '2026-06-30 09:12', null, false),
+            anchor: { matched: 'heading + ordinal (content changed)', nearest: '练习资源' } },
+        ]},
+        { kind: 'heading', title: '打分与状态机', level: 2, lines: '51-76', children: [
+          { kind: 'mermaid', title: 'Speaking loop state diagram', sub: '5 nodes', lines: '52', source: '```mermaid\ngraph LR\nDraft --> Speak --> FollowUp --> Tighten\n```' },
+          { kind: 'math', title: 'Confidence score formula', sub: 'Scoring formula', lines: '59', source: '$$score = clarity * 0.4 + evidence * 0.3 + delivery * 0.3$$' },
+          { kind: 'decision', title: 'Keep Atlas read-only', sub: 'Saved Copilot insight', lines: '72', status: 'active', source: 'Decision: Atlas can select and hand off, but Copilot owns generation and rewriting.',
+            provenance: prov('Document Copilot', 'run-a2d905', '2026-07-05 15:03', 'claude-opus-4-8', true),
+            anchor: { matched: 'content hash', nearest: '打分与状态机' } },
+        ]},
+      ]},
+      { kind: 'heading', title: '每个故事对应的用途', level: 1, lines: '92-147', children: [
+        { kind: 'table', title: 'Story to project mapping', sub: '6 rows · 4 columns', lines: '94-144', source: '| Story | Project | Evidence | Rehearsal status |' },
+        { kind: 'example', title: 'Use mutation optimisation as performance story', sub: 'Saved Copilot insight', lines: '111', status: 'active', source: 'Example: use the mutation optimisation doc as a performance story, but keep metrics evidence-bound.',
+          provenance: prov('Document Copilot', 'run-a2d905', '2026-07-05 15:03', 'claude-opus-4-8', false),
+          anchor: { matched: 'content hash', nearest: '每个故事对应的用途' } },
+        { kind: 'image', title: 'story-card-flow.png', sub: 'Embedded attachment', lines: '126', source: '![[story-card-flow.png]]' },
+        { kind: 'excalidraw', title: 'story-map.excalidraw', sub: 'Embedded drawing', lines: '132', source: '![[story-map.excalidraw]]' },
+        { kind: 'canvas', title: 'interview-board.canvas', sub: 'Embedded board', lines: '138', source: '![[interview-board.canvas]]' },
+        { kind: 'embed', title: 'dashboard-review.mov', sub: 'Local media', lines: '141', source: '![[dashboard-review.mov]]' },
+        { kind: 'attachment', title: 'story-bank-export.pdf', sub: 'PDF export', lines: '143', source: '![[story-bank-export.pdf]]' },
+        { kind: 'action', title: 'Prepare one spoken version per category', sub: 'Saved Copilot insight', lines: '145-147', status: 'unresolved', source: 'Prepare one spoken version per story category and send selected stories to Document Copilot for rehearsal prompts.',
+          provenance: prov('Document Copilot', 'run-77b1e0', '2026-06-21 11:26', 'claude-sonnet-5', false),
+          anchor: { matched: 'no match found (section rewritten)', nearest: '每个故事对应的用途' } },
+      ]},
+      { kind: 'heading', title: '我的工具使用经验和最佳实践', level: 1, lines: '148-253', children: [
+        { kind: 'paragraph', title: '我的工具使用经验重点不是工具本身…', sub: 'Body paragraph', lines: '151', source: '我的工具使用经验重点不是工具本身，而是如何把可重复流程变成稳定交付。' },
+        { kind: 'code', title: 'LinkedIn crawl prompt', sub: '18 lines · reusable prompt', lines: '164', source: '```text\nlinkedin prompt\nvisible browser checkpoint\n```' },
+        { kind: 'question', title: 'Should external links become resources by default?', sub: 'Saved Copilot insight', lines: '179', status: 'active', source: 'Question: Should every internet link become a first-class resource node, or only links with useful context?',
+          provenance: prov('Document Copilot', 'run-77b1e0', '2026-06-21 11:26', 'claude-sonnet-5', false),
+          anchor: { matched: 'content hash', nearest: '我的工具使用经验和最佳实践' } },
+        { kind: 'vault', title: 'Peak Assistant command gateway', sub: 'Internal architecture note', lines: '188', source: '[[Peak Assistant command gateway]]' },
+        { kind: 'external', title: 'github.com/obsidianmd/obsidian-api', sub: 'Developer reference', lines: '196', source: 'https://github.com/obsidianmd/obsidian-api' },
+        { kind: 'callout', title: 'Risk: stale anchors after paste-heavy edits', sub: 'Anchor stability risk', lines: '208', source: '> [!warning] Stale anchors are likely after large paste edits unless we revalidate.' },
+        { kind: 'evidence', title: 'Command Gateway can gate Git plugin actions', sub: 'Saved Copilot insight', lines: '219', status: 'stale', source: 'Evidence: Command Gateway owns capability policy and can conditionally route Git-backed commands.',
+          provenance: prov('Document Copilot', 'run-3c88fa', '2026-06-12 19:55', 'claude-sonnet-5', false),
+          anchor: { matched: 'heading + ordinal (content changed)', nearest: '我的工具使用经验和最佳实践' } },
+        { kind: 'decision', title: 'Git improves anchors but is optional', sub: 'Saved Copilot insight', lines: '230', status: 'active', source: 'Decision: File Atlas works without Git, but Git can improve versioned anchors when installed.',
+          provenance: prov('Document Copilot', 'run-a2d905', '2026-07-05 15:03', 'claude-opus-4-8', true),
+          anchor: { matched: 'content hash', nearest: '我的工具使用经验和最佳实践' } },
+        { kind: 'code', title: 'All crawl prompt', sub: 'Full crawl prompt', lines: '251', source: '```text\nall crawl prompt\nsave visible checkpoint\nimport offline pages\n```' },
+      ]},
+      { kind: 'heading', title: '交付和验收', level: 1, lines: '268-301', children: [
+        { kind: 'task', title: 'Review grouped filters with owner', sub: 'Unchecked', lines: '272', source: '- [ ] Review grouped filters with owner' },
+        { kind: 'list', title: 'Acceptance checklist', sub: 'Final acceptance points', lines: '280', source: '- Search stays primary\n- Tree keeps source order\n- Copilot handoff remains explicit' },
+        { kind: 'property', title: 'atlas.version: v3-mock', sub: 'Mock data version', lines: '288', source: 'atlas.version: v3-mock' },
+        { kind: 'action', title: 'Persist claim/evidence/action anchors', sub: 'Saved Copilot insight', lines: '294', status: 'active', source: 'Action: persist Copilot-produced claim/evidence/action anchors so Atlas can surface them later.',
+          provenance: prov('Document Copilot', 'run-8f31c2', '2026-07-02 21:40', 'claude-sonnet-5', false),
+          anchor: { matched: 'content hash', nearest: '交付和验收' } },
+        { kind: 'issue', title: 'Need mobile density pass', sub: 'Mobile density unreviewed', lines: '301', status: 'active', source: 'Mobile density still needs a separate pass after desktop layout stabilizes.',
+          provenance: prov('User note', null, '2026-07-06 10:02', null, true),
+          anchor: { matched: 'content hash', nearest: '交付和验收' } },
+      ]},
+    ];
+
+    /* ---------------- state ---------------- */
+    let nodeSeq = 0;
+    let activePreset = 'overview';
+    let presetModified = false;
+    const visibleKinds = new Set(PRESETS[activePreset].kinds);
+    let selectedNode = null;
+    const tray = [];
+
+    const surface = document.getElementById('surface');
+    const treeEl = document.getElementById('tree');
+    const inspectorScroll = document.getElementById('inspectorScroll');
+    const trayItemsEl = document.getElementById('trayItems');
+    const trayCountEl = document.getElementById('trayCount');
+
+    function esc(text) {
+      return String(text || '')
+        .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+    }
+
+    /* ---------------- tree render ---------------- */
+    function countDescendants(node) {
+      const sum = { block: 0, resource: 0, insight: 0, issue: 0 };
+      (node.children || []).forEach(function walk(child) {
+        if (child.kind === 'heading') { (child.children || []).forEach(walk); return; }
+        sum[KINDS[child.kind].cat] += 1;
+        (child.children || []).forEach(walk);
+      });
+      return sum;
+    }
+
+    function foldSummary(node) {
+      const s = countDescendants(node);
+      const parts = [];
+      if (s.block) parts.push(s.block + ' blocks');
+      if (s.resource) parts.push(s.resource + ' res');
+      if (s.insight) parts.push(s.insight + ' insights');
+      if (s.issue) parts.push(s.issue + ' issues');
+      return parts.join(' · ');
+    }
+
+    function renderNode(node, container) {
+      node.id = 'n' + (++nodeSeq);
+      const meta = KINDS[node.kind];
+      const row = document.createElement('div');
+      row.className = 'node type-' + meta.type;
+      row.dataset.id = node.id;
+      row.dataset.kind = node.kind;
+      node.el = row;
+
+      const isHeading = node.kind === 'heading';
+      const twisty = isHeading
+        ? '<button class="twisty" type="button" aria-label="Toggle section"><svg><use href="#i-chevron"/></svg></button>'
+        : '<span class="twisty"></span>';
+      const badge = isHeading
+        ? '<span class="badge h">H' + node.level + '</span>'
+        : '<span class="badge ' + meta.badgeClass + '">' + meta.badge + '</span>';
+      const statusDot = node.status
+        ? '<span class="status-dot" data-status="' + node.status + '" title="Anchor: ' + node.status + '"></span>'
+        : '';
+      const sum = isHeading ? '<span class="fold-sum">' + esc(foldSummary(node)) + '</span>' : '';
+
+      row.innerHTML =
+        '<span class="line-ref">' + esc((node.lines || '').split('-')[0]) + '</span>' +
+        '<div class="node-body">' + twisty +
+        '<span class="icon"><svg><use href="' + meta.icon + '"/></svg></span>' +
+        '<span class="label"><span class="name">' + esc(node.title) + '</span>' +
+        (node.sub ? '<span class="sub">' + esc(node.sub) + '</span>' : '') + '</span>' +
+        sum +
+        '<button class="add-btn" type="button" aria-label="Add to tray"><svg><use href="#i-plus"/></svg></button>' +
+        statusDot + badge +
+        '</div>';
+
+      container.appendChild(row);
+
+      if (isHeading && node.children && node.children.length) {
+        const kids = document.createElement('div');
+        kids.className = 'kids';
+        kids.style.setProperty('--depth', node.level);
+        node.kidsEl = kids;
+        node.children.forEach((child) => renderNode(child, kids));
+        kids.querySelectorAll(':scope > .node > .node-body').forEach((body) => {
+          body.style.paddingLeft = (6 + node.level * 16) + 'px';
+        });
+        container.appendChild(kids);
+      }
+
+      row.addEventListener('click', (event) => {
+        if (event.target.closest('.add-btn')) { addToTray(node); return; }
+        if (event.target.closest('.twisty') && isHeading) { toggleFold(node); return; }
+        selectNode(node);
+      });
+    }
+
+    function toggleFold(node, force) {
+      if (!node.kidsEl) return;
+      const collapse = force !== undefined ? force : !node.el.classList.contains('is-collapsed');
+      node.el.classList.toggle('is-collapsed', collapse);
+      node.kidsEl.classList.toggle('is-collapsed', collapse);
+    }
+
+    function walkTree(list, fn) {
+      list.forEach((node) => { fn(node); if (node.children) walkTree(node.children, fn); });
+    }
+
+    TREE.forEach((node) => renderNode(node, treeEl));
+
+    document.getElementById('expandAll').addEventListener('click', () => walkTree(TREE, (n) => toggleFold(n, false)));
+    document.getElementById('collapseAll').addEventListener('click', () => walkTree(TREE, (n) => { if (n.kind === 'heading') toggleFold(n, true); }));
+
+    /* ---------------- presets + filters ---------------- */
+    const presetSwitch = document.getElementById('presetSwitch');
+    Object.entries(PRESETS).forEach(([key, preset]) => {
+      const btn = document.createElement('button');
+      btn.className = 'preset-tab';
+      btn.type = 'button';
+      btn.dataset.preset = key;
+      btn.innerHTML = esc(preset.label) + '<span class="mod-dot"></span>';
+      btn.addEventListener('click', () => applyPreset(key));
+      presetSwitch.appendChild(btn);
+    });
+
+    function syncPresetTabs() {
+      presetSwitch.querySelectorAll('.preset-tab').forEach((btn) => {
+        const isActive = btn.dataset.preset === activePreset;
+        btn.classList.toggle('is-active', isActive);
+        btn.classList.toggle('is-modified', isActive && presetModified);
+      });
+    }
+
+    function applyPreset(key) {
+      activePreset = key;
+      presetModified = false;
+      visibleKinds.clear();
+      PRESETS[key].kinds.forEach((k) => visibleKinds.add(k));
+      syncPresetTabs();
+      applyVisibility();
+      syncFilterButtons();
+    }
+
+    const filterGroupsEl = document.getElementById('filterGroups');
+    FILTER_GROUPS.forEach((group) => {
+      const kinds = ALL_KINDS.filter((k) => KINDS[k].group === group.id);
+      const section = document.createElement('section');
+      section.className = 'filter-section';
+      section.innerHTML =
+        '<div class="filter-section-title"><span>' + esc(group.title) + '</span>' +
+        '<span class="filter-actions">' +
+        '<button class="filter-action" data-group="' + group.id + '" data-set="on" type="button">All</button>' +
+        '<button class="filter-action" data-group="' + group.id + '" data-set="off" type="button">None</button>' +
+        '</span></div>' +
+        '<div class="filter-options">' +
+        kinds.map((k) =>
+          '<button class="type-toggle" data-kind-filter="' + k + '" type="button"><svg><use href="' + KINDS[k].icon + '"/></svg> ' + esc(KINDS[k].label) + '</button>'
+        ).join('') +
+        '</div>';
+      filterGroupsEl.appendChild(section);
+    });
+
+    function syncFilterButtons() {
+      filterGroupsEl.querySelectorAll('[data-kind-filter]').forEach((btn) => {
+        btn.classList.toggle('is-on', visibleKinds.has(btn.dataset.kindFilter));
+      });
+    }
+
+    filterGroupsEl.addEventListener('click', (event) => {
+      const toggle = event.target.closest('[data-kind-filter]');
+      const groupAction = event.target.closest('[data-group]');
+      if (toggle) {
+        const kind = toggle.dataset.kindFilter;
+        if (visibleKinds.has(kind)) visibleKinds.delete(kind); else visibleKinds.add(kind);
+      } else if (groupAction) {
+        const kinds = ALL_KINDS.filter((k) => KINDS[k].group === groupAction.dataset.group);
+        kinds.forEach((k) => { if (groupAction.dataset.set === 'on') visibleKinds.add(k); else visibleKinds.delete(k); });
+      } else {
+        return;
+      }
+      presetModified = true;
+      syncPresetTabs();
+      syncFilterButtons();
+      applyVisibility();
+    });
+
+    const filterMenu = document.getElementById('filterMenu');
+    const filterButton = document.getElementById('filterButton');
+    filterButton.addEventListener('click', () => {
+      const open = filterMenu.classList.toggle('is-open');
+      filterButton.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', (event) => {
+      if (!filterMenu.contains(event.target)) filterMenu.classList.remove('is-open');
+    });
+
+    /* ---------------- visibility: preset x search ---------------- */
+    let searchTerm = '';
+
+    function nodeMatchesSearch(node) {
+      if (!searchTerm) return true;
+      return (node.title + ' ' + (node.sub || '')).toLowerCase().includes(searchTerm);
+    }
+
+    function applyVisibility() {
+      let shown = 0;
+      function visit(node) {
+        if (node.kind === 'heading') {
+          let anyChild = false;
+          (node.children || []).forEach((child) => { if (visit(child)) anyChild = true; });
+          const selfMatch = nodeMatchesSearch(node);
+          const visible = !searchTerm ? true : (anyChild || selfMatch);
+          node.el.classList.toggle('is-hidden', !visible);
+          if (node.kidsEl) node.kidsEl.classList.toggle('is-hidden', false);
+          return visible || anyChild;
+        }
+        const kindOn = visibleKinds.has(node.kind);
+        const visible = kindOn && nodeMatchesSearch(node);
+        node.el.classList.toggle('is-hidden', !visible);
+        if (visible) shown += 1;
+        return visible;
+      }
+      TREE.forEach(visit);
+      document.getElementById('treeSearchCount').textContent = searchTerm ? shown + ' hits' : '';
+    }
+
+    function applyGraphSearch() {
+      const twoHop = graphCanvas.classList.contains('show-two-hop');
+      let hits = 0;
+      GRAPH_NODES.forEach((node) => {
+        const inScope = twoHop || node.cls !== 'two-hop';
+        const match = !searchTerm || node.label.toLowerCase().includes(searchTerm);
+        node.el.classList.toggle('is-search-dim', Boolean(searchTerm) && !match);
+        if (inScope && searchTerm && match) hits += 1;
+      });
+      return hits;
+    }
+
+    function updateSearchUI() {
+      const graphMode = surface.classList.contains('graph-mode');
+      const input = document.getElementById('treeSearchInput');
+      document.getElementById('searchScope').textContent = graphMode ? 'graph notes' : 'document';
+      input.placeholder = graphMode
+        ? 'Search notes in this graph...'
+        : "Search this document's blocks, links, and saved insights...";
+      if (graphMode) {
+        const hits = applyGraphSearch();
+        document.getElementById('treeSearchCount').textContent = searchTerm ? hits + ' notes' : '';
+      }
+    }
+
+    document.getElementById('treeSearchInput').addEventListener('input', (event) => {
+      searchTerm = event.target.value.trim().toLowerCase();
+      if (searchTerm) walkTree(TREE, (n) => { if (n.kind === 'heading') toggleFold(n, false); });
+      applyVisibility();
+      updateSearchUI();
+    });
+
+    /* ---------------- inspector ---------------- */
+    function previewFor(node) {
+      const kind = node.kind;
+      if (kind === 'heading') {
+        return '<div class="source-snippet">' + esc('#'.repeat(node.level) + ' ' + node.title) + '</div>';
+      }
+      if (kind === 'table') {
+        return '<table class="preview-table"><thead><tr><th>Story</th><th>Project</th><th>Evidence</th><th>Status</th></tr></thead>' +
+          '<tbody><tr><td>Showing Up</td><td>Peak Assistant</td><td>workflow loop</td><td>ready</td></tr>' +
+          '<tr><td>Mutation optimisation</td><td>Docs engine</td><td>performance note</td><td>draft</td></tr>' +
+          '<tr><td>Command gateway</td><td>Runtime boundary</td><td>owner decision</td><td>review</td></tr></tbody></table>';
+      }
+      if (['image', 'excalidraw', 'canvas', 'embed', 'attachment'].includes(kind)) {
+        return '<div class="preview-media"><svg><use href="' + KINDS[kind].icon + '"/></svg>' +
+          '<div><div class="preview-title">' + esc(node.title) + '</div><div class="preview-sub">' + esc(node.sub || KINDS[kind].label) + '</div></div></div>';
+      }
+      if (kind === 'vault' || kind === 'external') {
+        return '<div class="preview-link"><svg><use href="' + KINDS[kind].icon + '"/></svg>' +
+          '<div><div class="preview-title">' + esc(node.title) + '</div><div class="preview-sub">' + esc(node.source) + '</div></div></div>';
+      }
+      if (KINDS[kind].cat === 'insight') {
+        return '<div class="preview-quote">' + esc(node.source) + '</div>';
+      }
+      return '<div class="source-snippet">' + esc(node.source || '') + '</div>';
+    }
+
+    function nearestHeadingOf(node) {
+      let found = null;
+      function visit(list, currentHeading) {
+        for (const item of list) {
+          if (item === node) { found = currentHeading; return true; }
+          if (item.children && visit(item.children, item.kind === 'heading' ? item : currentHeading)) return true;
+        }
+        return false;
+      }
+      visit(TREE, null);
+      return found ? found.title : '—';
+    }
+
+    function renderInspector(node) {
+      if (!node) {
+        inspectorScroll.innerHTML =
+          '<section class="card"><div class="card-body"><span class="selected-sub">Select a block, resource, or insight to inspect it.</span></div></section>';
+        return;
+      }
+      const meta = KINDS[node.kind];
+      const isInsight = meta.cat === 'insight' || node.kind === 'issue';
+      let html = '';
+
+      html += '<button class="ghost-btn drawer-close" id="drawerClose" type="button"><svg><use href="#i-x"/></svg> Close</button>';
+
+      html += '<section class="card"><div class="card-body">' +
+        '<div class="selected-top"><div class="selected-kind"><svg><use href="' + meta.icon + '"/></svg><span>' + esc(meta.label) + '</span></div>' +
+        '<button class="ghost-btn" type="button"><svg><use href="#i-eye"/></svg> Reveal</button></div>' +
+        '<div class="selected-title">' + esc(node.title) + '</div>' +
+        (node.sub ? '<div class="selected-sub">' + esc(node.sub) + '</div>' : '') +
+        previewFor(node) +
+        '</div></section>';
+
+      if (isInsight && node.provenance) {
+        const p = node.provenance;
+        html += '<section class="card"><div class="card-body">' +
+          '<div class="selected-kind"><svg><use href="#i-spark"/></svg><span>Provenance</span></div>' +
+          '<div class="meta-rows">' +
+          '<div class="meta-row"><span class="k">Generated by</span><span class="v">' + esc(p.source) + '</span></div>' +
+          (p.runId ? '<div class="meta-row"><span class="k">Run</span><span class="v mono">' + esc(p.runId) + '</span></div>' : '') +
+          '<div class="meta-row"><span class="k">When</span><span class="v">' + esc(p.date) + '</span></div>' +
+          (p.model ? '<div class="meta-row"><span class="k">Model</span><span class="v mono">' + esc(p.model) + '</span></div>' : '') +
+          '<div class="meta-row"><span class="k">Review</span><span class="v"><span class="confirm-pill' + (p.confirmed ? ' is-confirmed' : '') + '">' +
+          (p.confirmed ? '<svg><use href="#i-check"/></svg> Confirmed by you' : 'Not confirmed') + '</span></span></div>' +
+          '</div>' +
+          (!p.confirmed ? '<div class="actions"><button class="ghost-btn" type="button"><svg><use href="#i-check"/></svg> Confirm insight</button></div>' : '') +
+          '</div></section>';
+      }
+
+      if (isInsight && node.anchor) {
+        html += '<section class="card"><div class="card-body">' +
+          '<div class="selected-kind"><svg><use href="#i-anchor"/></svg><span>Anchor</span></div>' +
+          '<div class="meta-rows">' +
+          '<div class="meta-row"><span class="k">Status</span><span class="v"><span class="anchor-pill" data-status="' + esc(node.status) + '">' + esc(node.status) + '</span></span></div>' +
+          '<div class="meta-row"><span class="k">Matched via</span><span class="v">' + esc(node.anchor.matched) + '</span></div>' +
+          '<div class="meta-row"><span class="k">Lines</span><span class="v mono">' + esc(node.lines) + '</span></div>' +
+          '<div class="meta-row"><span class="k">Nearest heading</span><span class="v">' + esc(node.anchor.nearest) + '</span></div>' +
+          '</div>' +
+          (node.status !== 'active' ? '<div class="actions"><button class="ghost-btn" type="button"><svg><use href="#i-anchor"/></svg> Re-anchor</button></div>' : '') +
+          '</div></section>';
+      }
+
+      if (!isInsight && node.kind !== 'heading') {
+        html += '<section class="card"><div class="card-body">' +
+          '<div class="selected-kind"><svg><use href="#i-file"/></svg><span>Location</span></div>' +
+          '<div class="meta-rows">' +
+          '<div class="meta-row"><span class="k">Lines</span><span class="v mono">' + esc(node.lines) + '</span></div>' +
+          '<div class="meta-row"><span class="k">Nearest heading</span><span class="v">' + esc(nearestHeadingOf(node)) + '</span></div>' +
+          '</div></div></section>';
+      }
+
+      html += '<section class="card"><div class="card-body">' +
+        '<div class="selected-kind"><svg><use href="#i-send"/></svg><span>Use this ' + (isInsight ? 'insight' : 'block') + '</span></div>' +
+        '<div class="actions">' +
+        '<button class="ghost-btn" id="inspectorAdd" type="button"><svg><use href="#i-plus"/></svg> Add to tray</button>' +
+        '<button class="ghost-btn" type="button"><svg><use href="#i-link"/></svg> Copy link</button>' +
+        (isInsight ? '<button class="ghost-btn" type="button"><svg><use href="#i-send"/></svg> Send with source block</button>' : '') +
+        '</div></div></section>';
+
+      inspectorScroll.innerHTML = html;
+      const addBtn = document.getElementById('inspectorAdd');
+      if (addBtn) addBtn.addEventListener('click', () => addToTray(node));
+      const closeBtn = document.getElementById('drawerClose');
+      if (closeBtn) closeBtn.addEventListener('click', () => surface.classList.remove('drawer-open'));
+    }
+
+    function selectNode(node) {
+      if (selectedNode) selectedNode.el.classList.remove('is-selected');
+      selectedNode = node;
+      node.el.classList.add('is-selected');
+      renderInspector(node);
+      if (document.body.classList.contains('narrow')) surface.classList.add('drawer-open');
+    }
+
+    /* ---------------- tray ---------------- */
+    const TRAY_MAX_CHIPS = 4;
+
+    function renderTray() {
+      trayCountEl.textContent = String(tray.length);
+      trayItemsEl.innerHTML = '';
+      tray.slice(0, TRAY_MAX_CHIPS).forEach((item, index) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.innerHTML = '<svg><use href="' + item.icon + '"/></svg><span>' + esc(item.title) + '</span>' +
+          '<button class="chip-remove" type="button" aria-label="Remove ' + esc(item.title) + '"><svg><use href="#i-x"/></svg></button>';
+        chip.querySelector('.chip-remove').addEventListener('click', () => { tray.splice(index, 1); renderTray(); });
+        trayItemsEl.appendChild(chip);
+      });
+      if (tray.length > TRAY_MAX_CHIPS) {
+        const more = document.createElement('span');
+        more.className = 'chip overflow';
+        more.textContent = '+' + (tray.length - TRAY_MAX_CHIPS) + ' more';
+        trayItemsEl.appendChild(more);
+      }
+    }
+
+    function addToTray(node) {
+      if (tray.some((item) => item.key === node.id)) return;
+      const icon = node.kind === 'heading' ? '#i-heading' : KINDS[node.kind].icon;
+      tray.push({ key: node.id, title: node.title, icon });
+      renderTray();
+    }
+
+    document.getElementById('graphToTray').addEventListener('click', () => {
+      const title = document.getElementById('graphTitle').textContent;
+      if (!tray.some((item) => item.key === 'graph:' + title)) {
+        tray.push({ key: 'graph:' + title, title, icon: '#i-network' });
+        renderTray();
+      }
+    });
+
+    /* ---------------- view switch ---------------- */
+    document.querySelectorAll('[data-atlas-view]').forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        document.querySelectorAll('[data-atlas-view]').forEach((other) => other.classList.toggle('is-active', other === btn));
+        surface.classList.toggle('graph-mode', btn.dataset.atlasView === 'graph');
+        if (btn.dataset.atlasView === 'graph') layoutGraph();
+        updateSearchUI();
+      });
+    });
+
+    /* ---------------- graph (read-only) ---------------- */
+    const GRAPH_NODES = [
+      { id: 'current', label: 'current note', cls: 'current', sub: 'Active document' },
+      { id: 'cards', label: '2-Story Cards', cls: '', sub: 'Vault note · 1-hop' },
+      { id: 'speaking', label: 'Speaking Practice Loop', cls: '', sub: 'Vault note · 1-hop' },
+      { id: 'toast', label: 'Toastmasters Story Notes', cls: '', sub: 'Vault note · 1-hop' },
+      { id: 'rehearsal', label: 'Rehearsal Map Notes', cls: '', sub: 'Vault note · 1-hop' },
+      { id: 'gateway', label: 'Command Gateway', cls: '', sub: 'Vault note · 1-hop' },
+      { id: 'git', label: 'Git Anchor Notes', cls: '', sub: 'Vault note · 1-hop' },
+      { id: 'runtime', label: 'Runtime Ownership', cls: 'two-hop', sub: 'Vault note · 2-hop bridge' },
+      { id: 'harness', label: 'Agent Harness Notes', cls: 'two-hop', sub: 'Vault note · 2-hop' },
+      { id: 'storybank', label: 'Story Bank Index', cls: 'two-hop', sub: 'Vault note · 2-hop bridge' },
+      { id: 'meetup', label: 'Meetup Prep Log', cls: 'two-hop', sub: 'Vault note · 2-hop' },
+      { id: 'lint', label: 'Vault Lint Rules', cls: 'two-hop', sub: 'Vault note · 2-hop' },
+    ];
+
+    const GRAPH_EDGES = [
+      ['current', 'cards'], ['current', 'speaking'], ['current', 'toast'], ['current', 'rehearsal'],
+      ['current', 'gateway'], ['current', 'git'], ['cards', 'speaking'], ['toast', 'rehearsal'], ['gateway', 'git'],
+      ['cards', 'storybank', true], ['storybank', 'meetup', true], ['gateway', 'runtime', true],
+      ['runtime', 'harness', true], ['git', 'lint', true],
+    ];
+
+    const GRAPH_LAYOUTS = {
+      constellation: {
+        current: [50, 50], cards: [21, 18], speaking: [48, 11], toast: [78, 17], rehearsal: [84, 58],
+        gateway: [17, 76], git: [67, 86], runtime: [8, 52], harness: [14, 30], storybank: [34, 34],
+        meetup: [92, 34], lint: [88, 82],
+      },
+      'flow-tb': {
+        current: [50, 12], cards: [22, 38], speaking: [50, 38], toast: [78, 38], gateway: [30, 64],
+        git: [56, 64], rehearsal: [80, 64], runtime: [16, 86], harness: [38, 86], storybank: [60, 86],
+        meetup: [80, 86], lint: [94, 74],
+      },
+      'flow-lr': {
+        current: [12, 50], cards: [36, 20], speaking: [58, 20], toast: [82, 24], gateway: [36, 76],
+        git: [58, 76], rehearsal: [84, 62], runtime: [50, 92], harness: [70, 92], storybank: [80, 40],
+        meetup: [94, 30], lint: [92, 86],
+      },
+      orbit: {
+        current: [50, 50], cards: [50, 14], speaking: [76, 26], toast: [86, 52], rehearsal: [74, 78],
+        gateway: [26, 78], git: [14, 52], runtime: [24, 26], harness: [8, 30], storybank: [38, 6],
+        meetup: [94, 34], lint: [86, 90],
+      },
+    };
+
+    const graphCanvas = document.getElementById('graphCanvas');
+    const graphEdgesEl = document.getElementById('graphEdges');
+    const nodePopover = document.getElementById('nodePopover');
+    let activeGraphLayout = 'constellation';
+    let focusNodeId = null;
+
+    GRAPH_NODES.forEach((node) => {
+      const el = document.createElement('div');
+      el.className = ('graph-node ' + node.cls).trim();
+      el.dataset.nodeId = node.id;
+      el.innerHTML = '<span class="dot"></span><span>' + esc(node.label) + '</span>';
+      graphCanvas.appendChild(el);
+      node.el = el;
+      el.addEventListener('click', (event) => { event.stopPropagation(); openNodePopover(node); });
+    });
+
+    function nodeRadii(id) {
+      const node = GRAPH_NODES.find((item) => item.id === id);
+      if (!node) return [58, 16];
+      if (node.cls === 'current') return [80, 26];
+      if (node.cls === 'two-hop') return [56, 15];
+      return [62, 16];
+    }
+
+    function layoutGraph() {
+      const layout = GRAPH_LAYOUTS[activeGraphLayout];
+      GRAPH_NODES.forEach((node) => {
+        const pos = layout[node.id];
+        node.el.style.left = pos[0] + '%';
+        node.el.style.top = pos[1] + '%';
+      });
+      // Pixel-space edges: uniform coordinates keep strokes and arrowheads crisp
+      // (a stretched viewBox distorts markers — the "blurry arrows" bug).
+      const w = graphCanvas.clientWidth || 1000;
+      const h = graphCanvas.clientHeight || 480;
+      graphEdgesEl.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+      const arrowDefs =
+        '<defs>' +
+        '<marker id="arrowRef" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0.6L10 5L0 9.4L2.4 5z" fill="#334155"/></marker>' +
+        '<marker id="arrowFar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0.6L10 5L0 9.4L2.4 5z" fill="#94a3b8"/></marker>' +
+        '</defs>';
+      graphEdgesEl.innerHTML = arrowDefs + GRAPH_EDGES.map(([from, to, twoHop]) => {
+        const a = layout[from];
+        const b = layout[to];
+        const x1 = a[0] / 100 * w, y1 = a[1] / 100 * h;
+        const x2 = b[0] / 100 * w, y2 = b[1] / 100 * h;
+        const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+        const ux = dx / len, uy = dy / len;
+        // trim both ends at the chip boundary (ellipse approximation per node size)
+        const [srx, sry] = nodeRadii(from);
+        const [trx, try_] = nodeRadii(to);
+        const sOff = 1 / Math.hypot(ux / srx, uy / sry) + 2;
+        const tOff = 1 / Math.hypot(ux / trx, uy / try_) + 3;
+        const sx = x1 + ux * sOff, sy = y1 + uy * sOff;
+        const tx = x2 - ux * tOff, ty = y2 - uy * tOff;
+        return '<path class="' + (twoHop ? 'is-two-hop' : '') + '" marker-end="url(#' + (twoHop ? 'arrowFar' : 'arrowRef') + ')" d="M' + sx.toFixed(1) + ' ' + sy.toFixed(1) + ' L' + tx.toFixed(1) + ' ' + ty.toFixed(1) + '"/>';
+      }).join('');
+    }
+
+    window.addEventListener('resize', layoutGraph);
+
+    layoutGraph();
+
+    document.querySelectorAll('[data-graph-layout]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-graph-layout]').forEach((other) => other.classList.toggle('is-active', other === btn));
+        activeGraphLayout = btn.dataset.graphLayout;
+        layoutGraph();
+      });
+    });
+
+    document.querySelectorAll('[data-graph-scope]').forEach((item) => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('[data-graph-scope]').forEach((other) => other.classList.toggle('is-selected', other === item));
+        const twoHop = item.dataset.graphScope === 'two-hop';
+        graphCanvas.classList.toggle('show-two-hop', twoHop);
+        document.getElementById('graphTitle').textContent = twoHop ? 'Two-hop expansion' : 'Local neighborhood';
+        document.getElementById('graphMeta').textContent = twoHop ? '12 notes · 14 links' : '7 notes · 9 links';
+        updateSearchUI();
+      });
+    });
+
+    const semanticToggle = document.getElementById('semanticToggle');
+    semanticToggle.addEventListener('click', () => {
+      const on = semanticToggle.classList.toggle('is-on');
+      semanticToggle.setAttribute('aria-pressed', String(on));
+      graphCanvas.classList.toggle('is-semantic', on);
+    });
+
+    function openNodePopover(node) {
+      GRAPH_NODES.forEach((other) => other.el.classList.toggle('is-active', other === node));
+      document.getElementById('nodePopoverTitle').textContent = node.label;
+      document.getElementById('nodePopoverSub').textContent = node.sub;
+      nodePopover.hidden = false;
+      const rect = node.el.getBoundingClientRect();
+      const canvasRect = graphCanvas.getBoundingClientRect();
+      const left = Math.min(Math.max(rect.left - canvasRect.left + rect.width / 2 - 115, 8), canvasRect.width - 238);
+      const top = Math.min(rect.top - canvasRect.top + rect.height + 8, canvasRect.height - 120);
+      nodePopover.style.left = left + 'px';
+      nodePopover.style.top = top + 'px';
+      nodePopover.dataset.nodeId = node.id;
+    }
+
+    nodePopover.addEventListener('click', (event) => {
+      const action = event.target.closest('[data-node-action]');
+      if (!action) return;
+      event.stopPropagation();
+      const node = GRAPH_NODES.find((item) => item.id === nodePopover.dataset.nodeId);
+      if (action.dataset.nodeAction === 'tray' && node) {
+        if (!tray.some((item) => item.key === 'note:' + node.id)) {
+          tray.push({ key: 'note:' + node.id, title: node.label, icon: '#i-file' });
+          renderTray();
+        }
+      }
+      if (action.dataset.nodeAction === 'focus' && node) {
+        focusNodeId = focusNodeId === node.id ? null : node.id;
+        graphCanvas.classList.toggle('has-focus', Boolean(focusNodeId));
+        GRAPH_NODES.forEach((item) => item.el.classList.toggle('is-focus', item.id === focusNodeId));
+      }
+      nodePopover.hidden = true;
+    });
+
+    graphCanvas.addEventListener('click', () => {
+      nodePopover.hidden = true;
+      GRAPH_NODES.forEach((item) => item.el.classList.remove('is-active'));
+    });
+
+    /* ---------------- width mode ---------------- */
+    document.querySelectorAll('[data-width-mode]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-width-mode]').forEach((other) => other.classList.toggle('is-active', other === btn));
+        const narrow = btn.dataset.widthMode === 'narrow';
+        document.body.classList.toggle('narrow', narrow);
+        if (!narrow) surface.classList.remove('drawer-open');
+        layoutGraph();
+      });
+    });
+
+    /* ---------------- boot ---------------- */
+    applyPreset('overview');
+    let initialSelected = null;
+    walkTree(TREE, (node) => { if (node.selected && !initialSelected) initialSelected = node; });
+    if (initialSelected) selectNode(initialSelected);
+    surface.classList.remove('drawer-open');
+    ['Workflow is spoken-first', 'toastmasters.org.nz', 'LinkedIn crawl prompt'].forEach((title) => {
+      walkTree(TREE, (node) => {
+        if (node.title === title && !tray.some((item) => item.key === node.id)) addToTray(node);
+      });
+    });
+  </script>
+</body>
+</html>

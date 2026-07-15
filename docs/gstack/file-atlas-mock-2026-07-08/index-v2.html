@@ -1,0 +1,3386 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>File Atlas Mock v2</title>
+  <style>
+    :root {
+      --bg: #f7f7f9;
+      --panel: #ffffff;
+      --soft: #f7f8fb;
+      --soft-2: #f1f3f8;
+      --line: #e7e9f1;
+      --line-strong: #dfe2eb;
+      --text: #292d39;
+      --muted: #747d8c;
+      --faint: #9aa3b2;
+      --accent: #7c3aed;
+      --accent-soft: #f1eaff;
+      --accent-line: #dccbff;
+      --blue: #2d6cdf;
+      --blue-soft: #edf4ff;
+      --green: #23845e;
+      --green-soft: #e8f7ef;
+      --amber: #9a6408;
+      --amber-soft: #fff4dc;
+      --red: #bd3c37;
+      --red-soft: #fff0ef;
+      --teal: #087a80;
+      --teal-soft: #e7f7f8;
+      --shadow: 0 18px 46px rgba(20, 24, 40, 0.14);
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #fbfbfc 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: var(--font);
+      letter-spacing: 0;
+    }
+
+    svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 1.9;
+      flex: 0 0 auto;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .stage {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+
+    .surface {
+      width: min(1560px, calc(100vw - 36px));
+      height: min(980px, calc(100vh - 36px));
+      min-height: 800px;
+      background: var(--panel);
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-rows: 42px 64px auto auto minmax(0, 1fr) auto;
+      overflow: hidden;
+    }
+
+    .doc-context {
+      min-width: 0;
+      height: 42px;
+      padding: 0 28px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfbfd;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .doc-path {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      color: #596273;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .doc-stats {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .doc-stats span {
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 8px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+    }
+
+    .mode-nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .mode {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 7px;
+      color: var(--muted);
+      border: 0;
+      background: #ffffff;
+      cursor: pointer;
+    }
+
+    .mode-primary {
+      display: grid;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .mode strong {
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 760;
+    }
+
+    .mode span {
+      display: none;
+    }
+
+    .mode.is-active {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .mode-atlas {
+      padding: 8px 12px 7px;
+      cursor: default;
+    }
+
+    .atlas-subviews {
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--accent-line);
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .atlas-subviews .view-tab {
+      height: 18px;
+      padding: 0 8px;
+      border-radius: 7px;
+      font-size: 11px;
+    }
+
+    .atlas-subviews .view-tab svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .search-band {
+      padding: 20px 40px 10px;
+      background: #ffffff;
+      display: grid;
+      gap: 10px;
+    }
+
+    .surface.graph-mode .search-band {
+      display: none;
+    }
+
+    .search-box {
+      height: 52px;
+      border: 1px solid #eef0f5;
+      background: #ffffff;
+      border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(20, 24, 40, 0.05);
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 13px;
+      padding: 0 18px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .scope-pill {
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 14px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .atlas-bar {
+      height: 46px;
+      padding: 0 40px;
+      border-top: 1px solid #f3f4f8;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+    }
+
+    .surface.graph-mode .atlas-bar {
+      display: none;
+    }
+
+    .atlas-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid var(--accent-line);
+    }
+
+    .view-switch {
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--soft);
+      gap: 2px;
+    }
+
+    .view-tab {
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 12px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .view-tab svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    .view-tab.is-active {
+      color: var(--accent);
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.08);
+    }
+
+    .layers-inline {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .tree-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .surface.graph-mode .tree-controls {
+      display: none;
+    }
+
+    .graph-layout-controls {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+      flex: 1 1 auto;
+      justify-content: center;
+    }
+
+    .graph-preset-switch {
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--soft);
+    }
+
+    .graph-preset {
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .graph-preset.is-active {
+      color: #ffffff;
+      background: var(--accent);
+      box-shadow: 0 3px 8px rgba(124, 58, 237, 0.20);
+    }
+
+    .semantic-toggle {
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+      cursor: pointer;
+    }
+
+    .semantic-switch {
+      width: 34px;
+      height: 20px;
+      position: relative;
+      border-radius: 999px;
+      background: #dde2ec;
+      box-shadow: inset 0 0 0 1px rgba(20, 24, 40, 0.06);
+    }
+
+    .semantic-switch::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      left: 3px;
+      top: 3px;
+      border-radius: 999px;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.18);
+      transition: transform 140ms ease, background 140ms ease;
+    }
+
+    .semantic-toggle.is-on {
+      color: var(--accent);
+    }
+
+    .semantic-toggle.is-on .semantic-switch {
+      background: var(--accent);
+    }
+
+    .semantic-toggle.is-on .semantic-switch::after {
+      transform: translateX(14px);
+    }
+
+    .surface.graph-mode .main {
+      grid-template-columns: 1fr;
+    }
+
+    .surface.graph-mode .tree-pane {
+      border-right: 0;
+    }
+
+    .surface.graph-mode .inspector,
+    .surface:not(.graph-mode) .graph-inspector {
+      display: none;
+    }
+
+    .layer-chip {
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 690;
+      cursor: pointer;
+    }
+
+    .layer-chip.is-on {
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-color: var(--accent-line);
+    }
+
+    .filter-menu {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .filter-popover {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 8px);
+      z-index: 20;
+      width: 520px;
+      max-height: min(760px, calc(100vh - 160px));
+      padding: 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 16px 36px rgba(20, 24, 40, 0.16);
+      display: none;
+      gap: 10px;
+      overflow: auto;
+    }
+
+    .filter-menu.is-open .filter-popover {
+      display: grid;
+    }
+
+    .filter-popover-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .filter-groups {
+      display: grid;
+      gap: 10px;
+    }
+
+    .filter-section {
+      display: grid;
+      gap: 6px;
+      padding-top: 9px;
+      border-top: 1px solid #f0f2f7;
+    }
+
+    .filter-section:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .filter-section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--faint);
+      font-size: 10px;
+      font-weight: 820;
+      text-transform: uppercase;
+    }
+
+    .filter-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-transform: none;
+    }
+
+    .filter-action {
+      height: 21px;
+      padding: 0 7px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--muted);
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 760;
+      cursor: pointer;
+    }
+
+    .filter-action:hover {
+      color: var(--accent);
+      border-color: var(--accent-line);
+      background: var(--accent-soft);
+    }
+
+    .filter-options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .type-toggle {
+      min-width: 0;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--soft);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .type-toggle svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    .type-toggle.is-on {
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-color: var(--accent-line);
+    }
+
+    .main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 50% 50%;
+      background: #ffffff;
+    }
+
+    .tree-pane {
+      min-width: 0;
+      min-height: 0;
+      border-right: 1px solid var(--line);
+      display: grid;
+      grid-template-rows: minmax(0, 1fr);
+      background: #ffffff;
+    }
+
+    .tree-scroll {
+      min-height: 0;
+      overflow: auto;
+      padding: 10px 12px 18px;
+    }
+
+    .tree {
+      display: grid;
+      gap: 1px;
+    }
+
+    .node {
+      --indent: 0px;
+      min-height: 31px;
+      display: grid;
+      grid-template-columns: 30px calc(14px + var(--indent)) minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .node:hover {
+      background: #fafbfe;
+    }
+
+    .node.is-selected {
+      background: var(--accent-soft);
+      border-color: var(--accent-line);
+    }
+
+    .node.is-selected::before {
+      content: "";
+      position: absolute;
+      left: -1px;
+      top: 5px;
+      bottom: 5px;
+      width: 3px;
+      background: var(--accent);
+      border-radius: 3px;
+    }
+
+    .indent-0 { --indent: 0px; }
+    .indent-1 { --indent: 16px; }
+    .indent-2 { --indent: 36px; }
+    .indent-3 { --indent: 56px; }
+
+    .line-ref {
+      min-width: 0;
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 5px;
+      border-right: 1px solid #f0f2f7;
+      color: #a6afbd;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 650;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .twisty {
+      width: 14px;
+      color: var(--faint);
+      display: grid;
+      place-items: center;
+    }
+
+    .twisty svg {
+      width: 11px;
+      height: 11px;
+    }
+
+    .node-main {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .icon {
+      width: 21px;
+      height: 21px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      border: 1px solid transparent;
+      flex: 0 0 auto;
+    }
+
+    .icon svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .label {
+      min-width: 0;
+      display: grid;
+    }
+
+    .name {
+      font-size: 12px;
+      font-weight: 710;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .sub {
+      display: none;
+    }
+
+    .badge {
+      height: 19px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 6px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 9.5px;
+      font-weight: 790;
+      white-space: nowrap;
+    }
+
+    .add-btn {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--muted);
+      border-radius: 7px;
+      cursor: pointer;
+      opacity: 0;
+    }
+
+    .node:hover .add-btn,
+    .node.is-selected .add-btn {
+      opacity: 1;
+    }
+
+    .type-heading .icon { color: #5c6676; background: #f1f3f7; border-color: #e4e8f0; }
+    .type-block .icon { color: #667085; background: #f8f9fc; border-color: #eceff5; }
+    .type-resource .icon { color: var(--blue); background: var(--blue-soft); border-color: #cfe0ff; }
+    .type-insight .icon { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
+    .type-issue .icon { color: var(--amber); background: var(--amber-soft); border-color: #f7d58f; }
+    .type-task .icon { color: var(--green); background: var(--green-soft); border-color: #b7ead2; }
+
+    .badge.h { color: #596273; background: #f1f3f7; border-color: #e1e5ed; }
+    .badge.block { color: #667085; background: #f8f9fc; border-color: #e4e8f0; }
+    .badge.meta { color: #687385; background: #f5f7fb; border-color: #e1e6ef; }
+    .badge.media { color: var(--blue); background: var(--blue-soft); border-color: #cfe0ff; }
+    .badge.vault { color: var(--teal); background: var(--teal-soft); border-color: #b6e6ea; }
+    .badge.external { color: var(--blue); background: var(--blue-soft); border-color: #cfe0ff; }
+    .badge.insight { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
+    .badge.issue { color: var(--amber); background: var(--amber-soft); border-color: #f7d58f; }
+    .badge.ok { color: var(--green); background: var(--green-soft); border-color: #b7ead2; }
+    .badge.stale { color: var(--red); background: var(--red-soft); border-color: #ffd0cc; }
+    .badge.draw { color: var(--teal); background: var(--teal-soft); border-color: #b6e6ea; }
+
+    body.hide-blocks .type-block:not(.type-task) { display: none; }
+    body.hide-resources .type-resource { display: none; }
+    body.hide-insights .type-insight { display: none; }
+    body.hide-issues .type-issue { display: none; }
+    .node.is-kind-hidden { display: none; }
+
+    .graph-view {
+      min-height: 0;
+      overflow: auto;
+      padding: 12px 28px 14px;
+      background: #ffffff;
+    }
+
+    .graph-shell {
+      min-height: 100%;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .graph-list {
+      min-width: 0;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      padding: 4px 0;
+    }
+
+    .graph-section {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .graph-section-title,
+    .graph-list-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 2px 2px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .graph-create {
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px dashed var(--accent-line);
+      border-radius: 8px;
+      background: #fbf8ff;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 760;
+      cursor: pointer;
+      padding: 0 9px;
+    }
+
+    .graph-create svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    .graph-item {
+      min-width: 0;
+      min-height: 54px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-items: center;
+      padding: 8px 9px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .graph-item:hover {
+      background: #fafbfe;
+    }
+
+    .graph-item[data-graph-origin="auto"] {
+      background: #f8fafc;
+      border-color: #eef1f6;
+      cursor: default;
+    }
+
+    .graph-item.is-selected {
+      border-color: var(--accent-line);
+      background: var(--accent-soft);
+    }
+
+    .graph-item:hover,
+    .graph-item.is-selected {
+      padding-right: 64px;
+    }
+
+    .graph-item[data-graph-origin="auto"],
+    .graph-item[data-graph-origin="auto"]:hover,
+    .graph-item[data-graph-origin="auto"].is-selected {
+      padding-right: 64px;
+    }
+
+    .graph-item-text {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+      padding-top: 1px;
+    }
+
+    .graph-item-name {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .graph-item-meta {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      color: var(--muted);
+      font-size: 10.5px;
+      font-weight: 680;
+    }
+
+    .graph-item-actions {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      opacity: 0;
+    }
+
+    .graph-item:hover .graph-item-actions,
+    .graph-item.is-selected .graph-item-actions {
+      opacity: 1;
+    }
+
+    .graph-row-btn {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #ffffff;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .graph-row-btn svg {
+      width: 13px;
+      height: 13px;
+      display: block;
+    }
+
+    .graph-row-btn:hover {
+      color: var(--accent);
+      border-color: var(--accent-line);
+      background: #fbf8ff;
+    }
+
+    .graph-item[data-graph-origin="auto"] .graph-delete {
+      display: none;
+    }
+
+    .graph-workspace {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto auto minmax(360px, 1fr);
+      gap: 10px;
+    }
+
+    .graph-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 30px;
+    }
+
+    .graph-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 170px;
+      font-size: 13px;
+      font-weight: 790;
+    }
+
+    .graph-actions,
+    .graph-builder {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .graph-builder {
+      min-height: 36px;
+      align-items: center;
+      padding: 7px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #fbfcff;
+    }
+
+    .graph-builder-label {
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 820;
+      text-transform: uppercase;
+    }
+
+    .graph-save-btn {
+      margin-left: 0;
+    }
+
+    .graph-builder-status {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+      padding: 0 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+
+    .graph-builder-status.is-hot {
+      color: var(--accent);
+      border-color: var(--accent-line);
+      background: var(--accent-soft);
+    }
+
+    .graph-builder-panel {
+      flex: 1 0 100%;
+      display: grid;
+      gap: 6px;
+      margin-top: 2px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .graph-node-search {
+      min-width: 260px;
+      flex: 1 1 380px;
+      height: 32px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--muted);
+    }
+
+    .graph-node-search input {
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .graph-node-search:focus-within {
+      border-color: var(--accent-line);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.10);
+    }
+
+    .graph-builder-panel[hidden] {
+      display: none;
+    }
+
+    .graph-search-row {
+      min-height: 34px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 6px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: #fbfcff;
+      cursor: pointer;
+    }
+
+    .graph-search-row[hidden] {
+      display: none;
+    }
+
+    .graph-search-row:hover,
+    .graph-search-row:focus-visible {
+      border-color: var(--accent-line);
+      background: var(--accent-soft);
+      outline: none;
+    }
+
+    .graph-search-row svg {
+      color: var(--accent);
+    }
+
+    .graph-search-title {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-size: 12px;
+      font-weight: 740;
+    }
+
+    .graph-search-meta {
+      color: var(--muted);
+      font-size: 10.5px;
+      font-weight: 680;
+    }
+
+    .graph-search-row.is-added {
+      background: var(--green-soft);
+      border-color: rgba(22, 163, 74, 0.22);
+    }
+
+    .graph-search-row.is-added svg {
+      color: var(--green);
+    }
+
+    .graph-row-state {
+      width: 24px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #ffffff;
+    }
+
+    .graph-search-empty {
+      min-height: 34px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      padding: 5px 6px;
+      border-radius: 7px;
+      color: var(--muted);
+      background: #fbfcff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .graph-search-empty[hidden] {
+      display: none;
+    }
+
+    .graph-canvas {
+      position: relative;
+      min-height: 560px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background:
+        radial-gradient(circle at 50% 48%, rgba(124, 58, 237, 0.10), transparent 26%),
+        linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+      overflow: hidden;
+      transition: background 180ms ease;
+    }
+
+    .graph-canvas[data-layout="flow-tb"] {
+      background:
+        linear-gradient(180deg, rgba(124, 58, 237, 0.08), transparent 28%),
+        linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+    }
+
+    .graph-canvas[data-layout="flow-lr"] {
+      background:
+        linear-gradient(90deg, rgba(124, 58, 237, 0.08), transparent 30%),
+        linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+    }
+
+    .graph-canvas[data-layout="folder"] {
+      background:
+        repeating-linear-gradient(90deg, rgba(124, 58, 237, 0.055) 0 1px, transparent 1px 25%),
+        linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+    }
+
+    .graph-canvas[data-layout="orbit"] {
+      background:
+        radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.16), transparent 18%),
+        radial-gradient(circle at 50% 50%, transparent 0 34%, rgba(124, 58, 237, 0.08) 35%, transparent 36%),
+        linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+    }
+
+    .graph-edges {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      color: #d7dce8;
+      pointer-events: auto;
+      z-index: 1;
+    }
+
+    .graph-edges path {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.4;
+      cursor: pointer;
+      pointer-events: visibleStroke;
+      transition: opacity 160ms ease, stroke-width 160ms ease, color 160ms ease;
+    }
+
+    .graph-edges path.is-new {
+      color: var(--accent);
+      stroke-width: 1.8;
+      stroke-dasharray: 5 4;
+    }
+
+    .graph-edges path.is-active {
+      color: var(--accent);
+      stroke-width: 2.4;
+      filter: drop-shadow(0 0 4px rgba(124, 58, 237, 0.22));
+    }
+
+    .graph-canvas.is-semantic .graph-edges path:nth-of-type(2n) {
+      color: #b79dff;
+      stroke-dasharray: 5 5;
+    }
+
+    .graph-canvas.is-semantic .graph-node.vault {
+      box-shadow: 0 10px 24px rgba(124, 58, 237, 0.10), 0 0 0 2px rgba(124, 58, 237, 0.12);
+    }
+
+    .graph-edges path[hidden] {
+      display: none;
+    }
+
+    .graph-node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      min-width: 118px;
+      max-width: 210px;
+      min-height: 34px;
+      display: inline-grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 6px;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(20, 24, 40, 0.08);
+      font-size: 11px;
+      font-weight: 730;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      z-index: 2;
+      transition: left 180ms ease, top 180ms ease, box-shadow 160ms ease, opacity 160ms ease;
+    }
+
+    .graph-node.is-active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12), 0 10px 22px rgba(20, 24, 40, 0.12);
+      z-index: 4;
+    }
+
+    .graph-node.is-dragging {
+      cursor: grabbing;
+      z-index: 5;
+    }
+
+    .graph-node .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .graph-node span:last-child {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .graph-node.current {
+      max-width: 210px;
+      border-color: var(--accent-line);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .graph-node.current .dot { background: var(--accent); }
+    .graph-node.vault .dot { background: var(--teal); }
+    .graph-node.external .dot { background: var(--blue); }
+    .graph-node.custom .dot { background: var(--amber); }
+    .graph-node.topic .dot { background: var(--green); }
+    .graph-node.two-hop { color: #687385; background: #fbfcff; }
+    .graph-node.two-hop .dot { background: #aab4c3; }
+
+    .graph-node.is-hidden {
+      display: none;
+    }
+
+    .edge-label {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      min-width: 74px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+      border: 1px solid var(--accent-line);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--accent);
+      font-size: 10.5px;
+      font-weight: 750;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .edge-label[hidden] {
+      display: none;
+    }
+
+    .graph-node.is-new {
+      border-color: var(--accent-line);
+      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.10), 0 10px 22px rgba(20, 24, 40, 0.10);
+      animation: graph-pop 900ms ease-out;
+    }
+
+    @keyframes graph-pop {
+      0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.15; }
+      45% { transform: translate(-50%, -50%) scale(1.04); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+
+    .graph-summary {
+      display: grid;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .graph-summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .graph-summary-row strong {
+      color: var(--text);
+      font-weight: 760;
+    }
+
+    .graph-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .graph-chip {
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .node-popover {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 260px;
+      display: grid;
+      gap: 7px;
+      padding: 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 14px 34px rgba(20, 24, 40, 0.16);
+      z-index: 6;
+    }
+
+    .node-popover[hidden] {
+      display: none;
+    }
+
+    .node-popover-head {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .node-popover-title {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .node-popover-sub {
+      color: var(--muted);
+      font-size: 10.5px;
+      font-weight: 680;
+    }
+
+    .node-popover-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .node-popover-actions .ghost-btn {
+      justify-content: center;
+      height: 28px;
+      padding: 0 8px;
+    }
+
+    .edge-popover {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 214px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 14px 34px rgba(20, 24, 40, 0.16);
+      z-index: 6;
+    }
+
+    .edge-popover[hidden] {
+      display: none;
+    }
+
+    .edge-popover-title {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 760;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .edge-popover .ghost-btn {
+      height: 28px;
+      padding: 0 8px;
+    }
+
+    .inspector {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr);
+      background: var(--soft);
+    }
+
+    .ghost-btn {
+      height: 30px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--text);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 730;
+      cursor: pointer;
+    }
+
+    .inspector-scroll {
+      min-height: 0;
+      overflow: auto;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      background: #ffffff;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .card-body {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .selected-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .selected-kind {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 820;
+      text-transform: uppercase;
+    }
+
+    .selected-title {
+      font-size: 17px;
+      line-height: 1.25;
+      font-weight: 790;
+    }
+
+    .selected-sub {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .source-snippet {
+      padding: 11px 12px;
+      border: 1px solid #edf0f5;
+      background: #fbfcff;
+      border-radius: 8px;
+      font-family: var(--mono);
+      color: #333747;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow: auto;
+      max-height: 340px;
+    }
+
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font);
+      font-size: 12px;
+    }
+
+    .preview-table th,
+    .preview-table td {
+      padding: 8px 9px;
+      border: 1px solid #e8ebf2;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .preview-table th {
+      color: #687385;
+      background: #f7f8fb;
+      font-weight: 790;
+    }
+
+    .preview-media,
+    .preview-link {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      min-height: 64px;
+      padding: 12px;
+      border: 1px solid #e8ebf2;
+      border-radius: 8px;
+      background: #ffffff;
+      font-family: var(--font);
+    }
+
+    .preview-media svg,
+    .preview-link svg {
+      width: 22px;
+      height: 22px;
+      color: var(--accent);
+    }
+
+    .preview-title {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .preview-sub {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: var(--font);
+    }
+
+    .preview-quote {
+      padding-left: 12px;
+      border-left: 3px solid var(--accent-line);
+      font-family: var(--font);
+      color: #414858;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tray {
+      height: 62px;
+      border-top: 1px solid var(--line);
+      background: #ffffff;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 0 28px;
+    }
+
+    .tray.is-pulsing {
+      background: linear-gradient(90deg, #ffffff 0%, var(--accent-soft) 50%, #ffffff 100%);
+    }
+
+    .tray-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .tray-items {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .chip {
+      max-width: 260px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 999px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 690;
+      white-space: nowrap;
+    }
+
+    .chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chip-remove {
+      width: 18px;
+      height: 18px;
+      border: 0;
+      background: transparent;
+      color: var(--faint);
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      padding: 0;
+      margin-right: -4px;
+    }
+
+    .chip-remove svg {
+      width: 11px;
+      height: 11px;
+    }
+
+    .chip-remove:hover {
+      background: #e9ecf4;
+      color: var(--text);
+    }
+
+    .primary-btn {
+      height: 36px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 790;
+      cursor: pointer;
+    }
+
+    @media (max-width: 1060px) {
+      .surface {
+        width: calc(100vw - 20px);
+        height: calc(100vh - 20px);
+      }
+
+      .search-band,
+      .atlas-bar {
+        padding-left: 24px;
+        padding-right: 24px;
+      }
+
+      .main {
+        grid-template-columns: 1fr;
+      }
+
+      .inspector {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="i-atlas" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15"/><path d="M15 6v15"/></symbol>
+    <symbol id="i-network" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="6" cy="7" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="7" cy="17" r="3"/><path d="M9 8l6-.8"/><path d="M16.4 8.6l1.1 6.5"/><path d="M15.3 17.6l-5.4-.4"/><path d="M7 10v4"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></symbol>
+    <symbol id="i-heading" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></symbol>
+    <symbol id="i-p" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 4v16"/><path d="M17 4v16"/><path d="M9 4h8"/><path d="M9 4a4 4 0 0 0 0 8h4"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 3a2.8 2.8 0 0 1 4 4L7 21l-5 1 1-5L17 3z"/><path d="M15 5l4 4"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1.14 1.14"/><path d="M14 11a5 5 0 0 0-7.07 0l-2 2A5 5 0 0 0 12 20.07l1.14-1.14"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20"/><path d="M12 2a15 15 0 0 0 0 20"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M9 4v16"/><path d="M15 4v16"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l1.7 5.4L19 10l-5.3 1.6L12 17l-1.7-5.4L5 10l5.3-1.6L12 3z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-task" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 12l2 2 5-5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></symbol>
+    <symbol id="i-tray" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h5l2 3h4l2-3h5"/><path d="M5 6h14l2 12H3L5 6z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+  </svg>
+
+  <div class="stage">
+    <main class="surface" aria-label="File Atlas v2 mock">
+      <div class="doc-context" aria-label="Current document">
+        <span class="doc-path" title="kb2-learn-prd/B-Z-mess/peakassistant-hubdiscover-具体公式和算法和规则配置.md">kb2-learn-prd / B-Z-mess / peakassistant-hubdiscover-具体公式和算法和规则配置.md</span>
+        <span class="doc-stats">
+          <span>current note</span>
+          <span>3,420 words</span>
+          <span>186 blocks</span>
+          <span>31 resources</span>
+          <span>24 insights</span>
+        </span>
+      </div>
+
+      <nav class="mode-nav" aria-label="Document workspace modes">
+        <div class="mode mode-atlas is-active">
+          <button class="mode-primary" type="button"><strong>Atlas</strong></button>
+          <div class="atlas-subviews" aria-label="Atlas view">
+            <button class="view-tab is-active" data-atlas-view="tree" type="button"><svg><use href="#i-atlas"/></svg> Tree</button>
+            <button class="view-tab" data-atlas-view="graph" type="button"><svg><use href="#i-network"/></svg> Graph</button>
+          </div>
+        </div>
+        <button class="mode" type="button"><strong>Copilot</strong></button>
+        <button class="mode" type="button"><strong>Ambient</strong></button>
+      </nav>
+
+      <section class="search-band">
+        <div class="search-box">
+          <svg><use href="#i-search"/></svg>
+          <span>Search this document's blocks, links, and saved insights...</span>
+          <span class="scope-pill">document</span>
+        </div>
+      </section>
+
+      <section class="atlas-bar">
+        <div class="layers-inline" aria-label="Layer toggles">
+          <div class="tree-controls" aria-label="Tree layers">
+            <button class="layer-chip is-on" data-layer="blocks" type="button">Blocks</button>
+            <button class="layer-chip is-on" data-layer="resources" type="button">Resources</button>
+            <button class="layer-chip is-on" data-layer="insights" type="button">Insights</button>
+            <button class="layer-chip is-on" data-layer="issues" type="button">Issues</button>
+            <div class="filter-menu" id="filterMenu">
+              <button class="ghost-btn" id="filterButton" type="button" aria-expanded="false"><svg><use href="#i-filter"/></svg> More filters</button>
+              <div class="filter-popover" aria-label="More filters">
+                <div class="filter-popover-head">
+                  <span>Exact types</span>
+                  <span class="filter-actions">
+                    <button class="filter-action" data-filter-all="on" type="button">All</button>
+                    <button class="filter-action" data-filter-all="off" type="button">None</button>
+                  </span>
+                </div>
+                <div class="filter-groups">
+                  <section class="filter-section" data-filter-group="structure">
+                    <div class="filter-section-title">
+                      <span>Structure</span>
+                      <span class="filter-actions">
+                        <button class="filter-action" data-group-toggle="on" type="button">All</button>
+                        <button class="filter-action" data-group-toggle="off" type="button">None</button>
+                      </span>
+                    </div>
+                    <div class="filter-options">
+                      <button class="type-toggle is-on" data-kind-filter="heading" type="button"><svg><use href="#i-heading"/></svg> Heading</button>
+                      <button class="type-toggle is-on" data-kind-filter="paragraph" type="button"><svg><use href="#i-p"/></svg> Paragraph</button>
+                      <button class="type-toggle is-on" data-kind-filter="list" type="button"><svg><use href="#i-filter"/></svg> List</button>
+                      <button class="type-toggle is-on" data-kind-filter="task" type="button"><svg><use href="#i-task"/></svg> Task</button>
+                      <button class="type-toggle is-on" data-kind-filter="quote" type="button"><svg><use href="#i-p"/></svg> Quote</button>
+                      <button class="type-toggle is-on" data-kind-filter="callout" type="button"><svg><use href="#i-alert"/></svg> Callout</button>
+                    </div>
+                  </section>
+
+                <section class="filter-section" data-filter-group="rich">
+                  <div class="filter-section-title">
+                    <span>Rich blocks</span>
+                    <span class="filter-actions">
+                      <button class="filter-action" data-group-toggle="on" type="button">All</button>
+                      <button class="filter-action" data-group-toggle="off" type="button">None</button>
+                    </span>
+                  </div>
+                  <div class="filter-options">
+                    <button class="type-toggle is-on" data-kind-filter="table" type="button"><svg><use href="#i-table"/></svg> Table</button>
+                    <button class="type-toggle is-on" data-kind-filter="code" type="button"><svg><use href="#i-code"/></svg> Code</button>
+                    <button class="type-toggle is-on" data-kind-filter="math" type="button"><svg><use href="#i-code"/></svg> Math</button>
+                    <button class="type-toggle is-on" data-kind-filter="mermaid" type="button"><svg><use href="#i-code"/></svg> Mermaid</button>
+                  </div>
+                </section>
+
+                <section class="filter-section" data-filter-group="media">
+                  <div class="filter-section-title">
+                    <span>Media & embeds</span>
+                    <span class="filter-actions">
+                      <button class="filter-action" data-group-toggle="on" type="button">All</button>
+                      <button class="filter-action" data-group-toggle="off" type="button">None</button>
+                    </span>
+                  </div>
+                  <div class="filter-options">
+                    <button class="type-toggle is-on" data-kind-filter="image" type="button"><svg><use href="#i-image"/></svg> Image</button>
+                    <button class="type-toggle is-on" data-kind-filter="excalidraw" type="button"><svg><use href="#i-image"/></svg> Excalidraw</button>
+                    <button class="type-toggle is-on" data-kind-filter="canvas" type="button"><svg><use href="#i-atlas"/></svg> Canvas</button>
+                    <button class="type-toggle is-on" data-kind-filter="embed" type="button"><svg><use href="#i-file"/></svg> Embed</button>
+                    <button class="type-toggle is-on" data-kind-filter="attachment" type="button"><svg><use href="#i-file"/></svg> Attachment</button>
+                  </div>
+                </section>
+
+                <section class="filter-section" data-filter-group="references">
+                  <div class="filter-section-title">
+                    <span>References</span>
+                    <span class="filter-actions">
+                      <button class="filter-action" data-group-toggle="on" type="button">All</button>
+                      <button class="filter-action" data-group-toggle="off" type="button">None</button>
+                    </span>
+                  </div>
+                  <div class="filter-options">
+                    <button class="type-toggle is-on" data-kind-filter="vault" type="button"><svg><use href="#i-link"/></svg> Vault link</button>
+                    <button class="type-toggle is-on" data-kind-filter="external" type="button"><svg><use href="#i-globe"/></svg> External link</button>
+                    <button class="type-toggle is-on" data-kind-filter="tag" type="button"><svg><use href="#i-link"/></svg> Tag</button>
+                    <button class="type-toggle is-on" data-kind-filter="footnote" type="button"><svg><use href="#i-link"/></svg> Footnote</button>
+                    <button class="type-toggle is-on" data-kind-filter="property" type="button"><svg><use href="#i-file"/></svg> Property</button>
+                  </div>
+                </section>
+
+                <section class="filter-section" data-filter-group="copilot">
+                  <div class="filter-section-title">
+                    <span>Copilot insights</span>
+                    <span class="filter-actions">
+                      <button class="filter-action" data-group-toggle="on" type="button">All</button>
+                      <button class="filter-action" data-group-toggle="off" type="button">None</button>
+                    </span>
+                  </div>
+                  <div class="filter-options">
+                    <button class="type-toggle is-on" data-kind-filter="claim" type="button"><svg><use href="#i-spark"/></svg> Claim</button>
+                    <button class="type-toggle is-on" data-kind-filter="evidence" type="button"><svg><use href="#i-spark"/></svg> Evidence</button>
+                    <button class="type-toggle is-on" data-kind-filter="example" type="button"><svg><use href="#i-spark"/></svg> Example</button>
+                    <button class="type-toggle is-on" data-kind-filter="action" type="button"><svg><use href="#i-spark"/></svg> Action</button>
+                    <button class="type-toggle is-on" data-kind-filter="decision" type="button"><svg><use href="#i-spark"/></svg> Decision</button>
+                    <button class="type-toggle is-on" data-kind-filter="question" type="button"><svg><use href="#i-spark"/></svg> Question</button>
+                    <button class="type-toggle is-on" data-kind-filter="issue" type="button"><svg><use href="#i-alert"/></svg> Issue</button>
+                  </div>
+                </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="main">
+        <div class="tree-pane">
+          <div class="tree-scroll">
+            <div class="tree">
+              <div class="node type-block indent-0" data-title="status: active-review" data-kind="Property" data-line-ref="2" data-sub="Frontmatter property · active review state" data-source="status: active-review">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-file"/></svg></span><span class="label"><span class="name">status: active-review</span><span class="sub">Property</span></span></div>
+                <span class="badge meta">prop</span>
+              </div>
+
+              <div class="node type-block indent-0" data-title="#file-atlas #copilot-boundary" data-kind="Tag" data-line-ref="3" data-sub="Document tags · product boundary" data-source="tags: [file-atlas, copilot-boundary]">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-link"/></svg></span><span class="label"><span class="name">#file-atlas #copilot-boundary</span><span class="sub">Tags</span></span></div>
+                <span class="badge meta">tag</span>
+              </div>
+
+              <div class="node type-heading indent-0" data-title="方法论" data-kind="Heading" data-line-ref="4-13" data-sub="Lines 4-13 · 1 task · 1 vault link" data-source="# 方法论">
+                <span class="twisty"><svg><use href="#i-chevron"/></svg></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-heading"/></svg></span><span class="label"><span class="name">方法论</span><span class="sub">Lines 4-13</span></span></div>
+                <span class="badge h">H1</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="Atlas is a navigation surface, not a writer" data-kind="Quote" data-line-ref="6" data-sub="Quote · design boundary" data-source="> Atlas is a navigation surface, not a writer.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-p"/></svg></span><span class="label"><span class="name">Atlas is a navigation surface, not a writer</span><span class="sub">Quote</span></span></div>
+                <span class="badge block">quote</span>
+              </div>
+
+              <div class="node type-task indent-1" data-title="Open Dashboard, rehearse once" data-kind="Task" data-line-ref="9" data-sub="Unchecked task · line 9" data-source="- [ ] Open Dashboard, pick one story, rehearse once">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-task"/></svg></span><span class="label"><span class="name">Open Dashboard, rehearse once</span><span class="sub">Task · unchecked · line 9</span></span></div>
+                <button class="add-btn" type="button"><svg><use href="#i-plus"/></svg></button>
+              </div>
+
+              <div class="node type-block indent-1" data-title="Owner decision: Atlas should stay read-only" data-kind="Callout" data-line-ref="11" data-sub="Callout · owner-facing product decision" data-source="> [!decision] Atlas should stay read-only and hand off to Copilot.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-alert"/></svg></span><span class="label"><span class="name">Owner decision: Atlas should stay read-only</span><span class="sub">Callout</span></span></div>
+                <span class="badge block">callout</span>
+              </div>
+
+              <div class="node type-heading indent-0 is-selected" data-title="流水线循环 - Showing Up" data-kind="Heading" data-line-ref="14-76" data-sub="Lines 14-76 · active editor section" data-source="# 流水线循环--Showing Up">
+                <span class="twisty"><svg><use href="#i-chevron"/></svg></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-heading"/></svg></span><span class="label"><span class="name">流水线循环 - Showing Up</span><span class="sub">Lines 14-76 · active section</span></span></div>
+                <span class="badge h">H1</span>
+              </div>
+
+              <div class="node type-insight indent-1" data-title="Workflow is spoken-first" data-kind="Saved claim" data-line-ref="14-76" data-sub="Saved from Document Copilot · active anchor" data-source="This note frames the workflow as spoken-first practice, not text polishing.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-spark"/></svg></span><span class="label"><span class="name">Workflow is spoken-first</span><span class="sub">Claim · saved Copilot insight</span></span></div>
+                <span class="badge insight">claim</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="Weekly speaking loop paragraph" data-kind="Paragraph" data-line-ref="18" data-sub="Hidden in Overview until Blocks is enabled" data-source="第一周能上场，第二周能追问，每个故事准备追问，follow-up...">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-p"/></svg></span><span class="label"><span class="name">第一周能上场，第二周能追问...</span><span class="sub">Paragraph · line 18</span></span></div>
+                <button class="add-btn" type="button"><svg><use href="#i-plus"/></svg></button>
+              </div>
+
+              <div class="node type-resource indent-1" data-title="2-Story Cards-0-Fixed combination#追问" data-kind="Vault link" data-line-ref="19" data-sub="Internal note link · line 19" data-source="follow-up [[2-Story Cards-0-Fixed combination#追问]]">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-link"/></svg></span><span class="label"><span class="name">2-Story Cards-0-Fixed combination#追问</span><span class="sub">Vault link · internal relation</span></span></div>
+                <span class="badge vault">vault</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="Three rehearsal passes" data-kind="List" data-line-ref="22" data-sub="List · 3 items" data-source="- 第一遍：说出来\n- 第二遍：控制在 60-90s\n- 第三遍：更自然更短">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-filter"/></svg></span><span class="label"><span class="name">Three rehearsal passes</span><span class="sub">List · 3 items</span></span></div>
+                <span class="badge block">list</span>
+              </div>
+
+              <div class="node type-insight indent-1" data-title="Three-pass loop supports the claim" data-kind="Saved evidence" data-line-ref="24-30" data-sub="Saved from checklist lines 24-30" data-source="The checklist includes first pass, second pass, third pass, and explicit speaking time boxes.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-spark"/></svg></span><span class="label"><span class="name">Three-pass loop supports the claim</span><span class="sub">Evidence · anchored to checklist</span></span></div>
+                <span class="badge insight">evidence</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="voice-practice-footnote" data-kind="Footnote" data-line-ref="31" data-sub="Footnote · practice source note" data-source="[^voice-practice]: Use voice mode first, text cleanup second.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-link"/></svg></span><span class="label"><span class="name">voice-practice-footnote</span><span class="sub">Footnote</span></span></div>
+                <span class="badge meta">note</span>
+              </div>
+
+              <div class="node type-resource indent-1" data-title="toastmasters.org.nz" data-kind="External link" data-line-ref="39" data-sub="Internet link · domain toastmasters.org.nz" data-source="https://toastmasters.org.nz/">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-globe"/></svg></span><span class="label"><span class="name">toastmasters.org.nz</span><span class="sub">External link · internet resource</span></span></div>
+                <span class="badge external">external</span>
+              </div>
+
+              <div class="node type-resource indent-1" data-title="meetup.com/home" data-kind="External link" data-line-ref="40" data-sub="Internet link · domain meetup.com" data-source="https://www.meetup.com/home/">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-globe"/></svg></span><span class="label"><span class="name">meetup.com/home</span><span class="sub">External link · internet resource</span></span></div>
+                <span class="badge external">external</span>
+              </div>
+
+              <div class="node type-issue indent-1" data-title="Glassdoor link needs source context" data-kind="Issue" data-line-ref="41" data-sub="Missing source explanation · stale anchor" data-source="A strong claim references Glassdoor but does not explain what evidence came from the page.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-alert"/></svg></span><span class="label"><span class="name">Glassdoor link needs source context</span><span class="sub">Issue · missing source explanation</span></span></div>
+                <span class="badge stale">stale</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="Speaking loop state diagram" data-kind="Mermaid" data-line-ref="52" data-sub="Mermaid block · 5 nodes" data-source="```mermaid\ngraph LR\nDraft --> Speak --> FollowUp --> Tighten\n```">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-atlas"/></svg></span><span class="label"><span class="name">Speaking loop state diagram</span><span class="sub">Mermaid · 5 nodes</span></span></div>
+                <span class="badge block">mermaid</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="Confidence score formula" data-kind="Math" data-line-ref="59" data-sub="Math block · scoring formula" data-source="$$score = clarity * 0.4 + evidence * 0.3 + delivery * 0.3$$">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-code"/></svg></span><span class="label"><span class="name">Confidence score formula</span><span class="sub">Math · formula</span></span></div>
+                <span class="badge block">math</span>
+              </div>
+
+              <div class="node type-insight indent-1" data-title="Keep Atlas read-only" data-kind="Saved decision" data-line-ref="72" data-sub="Saved from owner review" data-source="Decision: Atlas can select and hand off, but Copilot owns generation and rewriting.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-spark"/></svg></span><span class="label"><span class="name">Keep Atlas read-only</span><span class="sub">Decision · saved Copilot insight</span></span></div>
+                <span class="badge insight">decision</span>
+              </div>
+
+              <div class="node type-heading indent-0" data-title="每个故事对应的用途" data-kind="Heading" data-line-ref="92-147" data-sub="Lines 92-147 · table · image · action" data-source="# 每个故事对应的用途">
+                <span class="twisty"><svg><use href="#i-chevron"/></svg></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-heading"/></svg></span><span class="label"><span class="name">每个故事对应的用途</span><span class="sub">Lines 92-147</span></span></div>
+                <span class="badge h">H1</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="Story to project mapping" data-kind="Table" data-line-ref="94-144" data-sub="6 rows · 4 columns" data-source="| Story | Project | Evidence | Rehearsal status |">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-table"/></svg></span><span class="label"><span class="name">Story to project mapping</span><span class="sub">Table · 6 rows · 4 columns</span></span></div>
+                <span class="badge block">table</span>
+              </div>
+
+              <div class="node type-insight indent-1" data-title="Use mutation optimisation as performance story" data-kind="Saved example" data-line-ref="111" data-sub="Saved from Document Copilot · example anchor" data-source="Example: use the mutation optimisation doc as a performance story, but keep metrics evidence-bound.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-spark"/></svg></span><span class="label"><span class="name">Use mutation optimisation as performance story</span><span class="sub">Example · saved Copilot insight</span></span></div>
+                <span class="badge insight">example</span>
+              </div>
+
+              <div class="node type-resource indent-1" data-title="story-card-flow.png" data-kind="Image" data-line-ref="126" data-sub="Embedded attachment" data-source="![[story-card-flow.png]]">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-image"/></svg></span><span class="label"><span class="name">story-card-flow.png</span><span class="sub">Image · embedded attachment</span></span></div>
+                <span class="badge media">image</span>
+              </div>
+
+              <div class="node type-resource indent-1" data-title="story-map.excalidraw" data-kind="Excalidraw" data-line-ref="132" data-sub="Canvas drawing · embedded resource" data-source="![[story-map.excalidraw]]">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-image"/></svg></span><span class="label"><span class="name">story-map.excalidraw</span><span class="sub">Excalidraw · embedded drawing</span></span></div>
+                <span class="badge draw">draw</span>
+              </div>
+
+              <div class="node type-resource indent-1" data-title="interview-board.canvas" data-kind="Canvas" data-line-ref="138" data-sub="Obsidian canvas · embedded board" data-source="![[interview-board.canvas]]">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-atlas"/></svg></span><span class="label"><span class="name">interview-board.canvas</span><span class="sub">Canvas · embedded board</span></span></div>
+                <span class="badge draw">canvas</span>
+              </div>
+
+              <div class="node type-resource indent-1" data-title="Dashboard review clip" data-kind="Embed" data-line-ref="141" data-sub="Embedded media · local vault asset" data-source="![[dashboard-review.mov]]">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-file"/></svg></span><span class="label"><span class="name">Dashboard review clip</span><span class="sub">Embed · local media</span></span></div>
+                <span class="badge media">embed</span>
+              </div>
+
+              <div class="node type-resource indent-1" data-title="story-bank-export.pdf" data-kind="Attachment" data-line-ref="143" data-sub="Attachment · PDF export" data-source="![[story-bank-export.pdf]]">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-file"/></svg></span><span class="label"><span class="name">story-bank-export.pdf</span><span class="sub">Attachment · PDF</span></span></div>
+                <span class="badge media">file</span>
+              </div>
+
+              <div class="node type-insight indent-1" data-title="Prepare one spoken version per category" data-kind="Saved action" data-line-ref="145-147" data-sub="Saved from Document Copilot" data-source="Prepare one spoken version per story category and send selected stories to Document Copilot for rehearsal prompts.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-spark"/></svg></span><span class="label"><span class="name">Prepare one spoken version per category</span><span class="sub">Action · saved Copilot insight</span></span></div>
+                <span class="badge insight">action</span>
+              </div>
+
+              <div class="node type-heading indent-0" data-title="我的工具使用经验和最佳实践" data-kind="Heading" data-line-ref="148-253" data-sub="Lines 148-253 · code · issue" data-source="# 我的工具使用经验和最佳实践">
+                <span class="twisty"><svg><use href="#i-chevron"/></svg></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-heading"/></svg></span><span class="label"><span class="name">我的工具使用经验和最佳实践</span><span class="sub">Lines 148-253</span></span></div>
+                <span class="badge h">H1</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="工具链经验概览" data-kind="Paragraph" data-line-ref="151" data-sub="Paragraph · tool workflow summary" data-source="我的工具使用经验重点不是工具本身，而是如何把可重复流程变成稳定交付。">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-p"/></svg></span><span class="label"><span class="name">工具链经验概览</span><span class="sub">Paragraph</span></span></div>
+                <span class="badge block">text</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="LinkedIn crawl prompt" data-kind="Code block" data-line-ref="164" data-sub="18 lines · prompt resource" data-source="```text\nlinkedin prompt\nvisible browser checkpoint\n```">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-code"/></svg></span><span class="label"><span class="name">LinkedIn crawl prompt</span><span class="sub">Code block · reusable prompt</span></span></div>
+                <span class="badge block">code</span>
+              </div>
+
+              <div class="node type-insight indent-1" data-title="Should external links become resources by default?" data-kind="Saved question" data-line-ref="179" data-sub="Saved from owner discussion" data-source="Question: Should every internet link become a first-class resource node, or only links with useful context?">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-spark"/></svg></span><span class="label"><span class="name">Should external links become resources by default?</span><span class="sub">Question · saved Copilot insight</span></span></div>
+                <span class="badge insight">question</span>
+              </div>
+
+              <div class="node type-resource indent-1" data-title="Peak Assistant command gateway" data-kind="Vault link" data-line-ref="188" data-sub="Internal note link · command architecture" data-source="[[Peak Assistant command gateway]]">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-link"/></svg></span><span class="label"><span class="name">Peak Assistant command gateway</span><span class="sub">Vault link · internal architecture note</span></span></div>
+                <span class="badge vault">vault</span>
+              </div>
+
+              <div class="node type-resource indent-1" data-title="github.com/obsidianmd/obsidian-api" data-kind="External link" data-line-ref="196" data-sub="Internet link · API reference" data-source="https://github.com/obsidianmd/obsidian-api">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-globe"/></svg></span><span class="label"><span class="name">github.com/obsidianmd/obsidian-api</span><span class="sub">External link · developer reference</span></span></div>
+                <span class="badge external">external</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="Risk: stale anchors after paste-heavy edits" data-kind="Callout" data-line-ref="208" data-sub="Callout · anchor stability risk" data-source="> [!warning] Stale anchors are likely after large paste edits unless we revalidate.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-alert"/></svg></span><span class="label"><span class="name">Risk: stale anchors after paste-heavy edits</span><span class="sub">Callout · anchor risk</span></span></div>
+                <span class="badge block">callout</span>
+              </div>
+
+              <div class="node type-insight indent-1" data-title="Command Gateway can gate Git plugin actions" data-kind="Saved evidence" data-line-ref="219" data-sub="Saved from implementation note" data-source="Evidence: Command Gateway owns capability policy and can conditionally route Git-backed commands.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-spark"/></svg></span><span class="label"><span class="name">Command Gateway can gate Git plugin actions</span><span class="sub">Evidence · saved Copilot insight</span></span></div>
+                <span class="badge insight">evidence</span>
+              </div>
+
+              <div class="node type-insight indent-1" data-title="Git improves anchors but is optional" data-kind="Saved decision" data-line-ref="230" data-sub="Saved from owner discussion" data-source="Decision: File Atlas works without Git, but Git can improve versioned anchors when installed.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-spark"/></svg></span><span class="label"><span class="name">Git improves anchors but is optional</span><span class="sub">Decision · saved Copilot insight</span></span></div>
+                <span class="badge insight">decision</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="All crawl prompt" data-kind="Code block" data-line-ref="251" data-sub="Code block · full crawl prompt" data-source="```text\nall crawl prompt\nsave visible checkpoint\nimport offline pages\n```">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-code"/></svg></span><span class="label"><span class="name">All crawl prompt</span><span class="sub">Code block · full crawl prompt</span></span></div>
+                <span class="badge block">code</span>
+              </div>
+
+              <div class="node type-heading indent-0" data-title="交付和验收" data-kind="Heading" data-line-ref="268-301" data-sub="Lines 268-301 · checklist · action · issue" data-source="# 交付和验收">
+                <span class="twisty"><svg><use href="#i-chevron"/></svg></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-heading"/></svg></span><span class="label"><span class="name">交付和验收</span><span class="sub">Lines 268-301</span></span></div>
+                <span class="badge h">H1</span>
+              </div>
+
+              <div class="node type-task indent-1" data-title="Review grouped filters with owner" data-kind="Task" data-line-ref="272" data-sub="Unchecked task · owner review" data-source="- [ ] Review grouped filters with owner">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-task"/></svg></span><span class="label"><span class="name">Review grouped filters with owner</span><span class="sub">Task · unchecked</span></span></div>
+                <button class="add-btn" type="button"><svg><use href="#i-plus"/></svg></button>
+              </div>
+
+              <div class="node type-block indent-1" data-title="Acceptance checklist" data-kind="List" data-line-ref="280" data-sub="List · final acceptance points" data-source="- Search stays primary\n- Tree keeps source order\n- Copilot handoff remains explicit">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-filter"/></svg></span><span class="label"><span class="name">Acceptance checklist</span><span class="sub">List · final acceptance points</span></span></div>
+                <span class="badge block">list</span>
+              </div>
+
+              <div class="node type-block indent-1" data-title="atlas.version: v2-mock-complex" data-kind="Property" data-line-ref="288" data-sub="Property · mock data version" data-source="atlas.version: v2-mock-complex">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-file"/></svg></span><span class="label"><span class="name">atlas.version: v2-mock-complex</span><span class="sub">Property</span></span></div>
+                <span class="badge meta">prop</span>
+              </div>
+
+              <div class="node type-insight indent-1" data-title="Persist claim/evidence/action anchors" data-kind="Saved action" data-line-ref="294" data-sub="Saved from design discussion" data-source="Action: persist Copilot-produced claim/evidence/action anchors so Atlas can surface them later.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-spark"/></svg></span><span class="label"><span class="name">Persist claim/evidence/action anchors</span><span class="sub">Action · saved Copilot insight</span></span></div>
+                <span class="badge insight">action</span>
+              </div>
+
+              <div class="node type-issue indent-1" data-title="Need mobile density pass" data-kind="Issue" data-line-ref="301" data-sub="Issue · mobile density still unreviewed" data-source="Mobile density still needs a separate pass after desktop layout stabilizes.">
+                <span class="twisty"></span>
+                <div class="node-main"><span class="icon"><svg><use href="#i-alert"/></svg></span><span class="label"><span class="name">Need mobile density pass</span><span class="sub">Issue · mobile density</span></span></div>
+                <span class="badge issue">issue</span>
+              </div>
+
+            </div>
+          </div>
+          <div class="graph-view" hidden>
+            <div class="graph-shell">
+              <div class="graph-list" aria-label="Saved graph views">
+                <div class="graph-section">
+                  <div class="graph-section-title"><span>System views</span></div>
+                  <div class="graph-item is-selected" role="button" tabindex="0" data-graph-origin="auto" data-graph-name="Local neighborhood" data-graph-kind="Auto graph" data-graph-sub="Current note · 1-hop note neighbors" data-graph-nodes="7 nodes" data-graph-source="Shows immediate vault-note neighbors around the current note.">
+                    <span class="graph-item-text">
+                      <span class="graph-item-name">Local neighborhood</span>
+                      <span class="graph-item-meta">auto · 1-hop · 7 nodes</span>
+                    </span>
+                    <span class="graph-item-actions">
+                      <button class="graph-row-btn" data-graph-action="duplicate" type="button" aria-label="Duplicate Local neighborhood"><svg><use href="#i-copy"/></svg></button>
+                    </span>
+                  </div>
+                  <div class="graph-item" role="button" tabindex="0" data-graph-origin="auto" data-graph-name="Two-hop expansion" data-graph-kind="Auto graph" data-graph-sub="Current note · 2-hop bridge candidates" data-graph-nodes="24 nodes" data-graph-source="Expands through neighboring notes and highlights bridge nodes that may be useful as context.">
+                    <span class="graph-item-text">
+                      <span class="graph-item-name">Two-hop expansion</span>
+                      <span class="graph-item-meta">auto · 2-hop · 24 nodes</span>
+                    </span>
+                    <span class="graph-item-actions">
+                      <button class="graph-row-btn" data-graph-action="duplicate" type="button" aria-label="Duplicate Two-hop expansion"><svg><use href="#i-copy"/></svg></button>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="graph-section">
+                  <div class="graph-section-title"><span>Custom views</span><button class="graph-create" id="newGraphButton" type="button"><svg><use href="#i-plus"/></svg> New graph</button></div>
+                  <div id="customGraphList" class="graph-section">
+                    <div class="graph-item" role="button" tabindex="0" data-graph-origin="custom" data-graph-name="Rehearsal map" data-graph-kind="Custom graph" data-graph-sub="Saved · interview story practice" data-graph-nodes="9 nodes" data-graph-source="A saved custom graph grouping story cards and spoken practice notes.">
+                      <span class="graph-item-text">
+                        <span class="graph-item-name">Rehearsal map</span>
+                        <span class="graph-item-meta">custom · saved · 9 nodes</span>
+                      </span>
+                      <span class="graph-item-actions">
+                        <button class="graph-row-btn" data-graph-action="duplicate" type="button" aria-label="Duplicate Rehearsal map"><svg><use href="#i-copy"/></svg></button>
+                        <button class="graph-row-btn graph-delete" data-graph-action="delete" type="button" aria-label="Delete Rehearsal map"><svg><use href="#i-trash"/></svg></button>
+                      </span>
+                    </div>
+                    <div class="graph-item" role="button" tabindex="0" data-graph-origin="custom" data-graph-name="Command Gateway map" data-graph-kind="Custom graph" data-graph-sub="Saved · architecture boundary" data-graph-nodes="11 nodes" data-graph-source="A saved custom graph for command routing, Git plugin gating, and runtime ownership notes.">
+                      <span class="graph-item-text">
+                        <span class="graph-item-name">Command Gateway map</span>
+                        <span class="graph-item-meta">custom · saved · 11 nodes</span>
+                      </span>
+                      <span class="graph-item-actions">
+                        <button class="graph-row-btn" data-graph-action="duplicate" type="button" aria-label="Duplicate Command Gateway map"><svg><use href="#i-copy"/></svg></button>
+                        <button class="graph-row-btn graph-delete" data-graph-action="delete" type="button" aria-label="Delete Command Gateway map"><svg><use href="#i-trash"/></svg></button>
+                      </span>
+                    </div>
+                    <div class="graph-item" role="button" tabindex="0" data-graph-origin="custom" data-graph-name="Source notes map" data-graph-kind="Custom graph" data-graph-sub="Saved · source trust review" data-graph-nodes="6 nodes" data-graph-source="A saved custom graph for vault notes that need evidence, citation checks, or source context.">
+                      <span class="graph-item-text">
+                        <span class="graph-item-name">Source notes map</span>
+                        <span class="graph-item-meta">custom · saved · 6 nodes</span>
+                      </span>
+                      <span class="graph-item-actions">
+                        <button class="graph-row-btn" data-graph-action="duplicate" type="button" aria-label="Duplicate Source notes map"><svg><use href="#i-copy"/></svg></button>
+                        <button class="graph-row-btn graph-delete" data-graph-action="delete" type="button" aria-label="Delete Source notes map"><svg><use href="#i-trash"/></svg></button>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="graph-workspace">
+                <div class="graph-head">
+                  <div class="graph-title"><svg><use href="#i-network"/></svg><span id="graphCanvasTitle">Local neighborhood</span></div>
+                  <div class="graph-layout-controls" aria-label="Graph layout presets">
+                    <div class="graph-preset-switch" role="tablist" aria-label="Graph layout">
+                      <button class="graph-preset is-active" data-graph-layout="constellation" title="Force-directed layout: how notes cluster" type="button">Constellation</button>
+                      <button class="graph-preset" data-graph-layout="flow-tb" title="Top-down flow: what references what" type="button">Flow ↓</button>
+                      <button class="graph-preset" data-graph-layout="flow-lr" title="Left-right flow: same relationship, sideways" type="button">Flow →</button>
+                      <button class="graph-preset" data-graph-layout="folder" title="Folder tree: where these notes live" type="button">Folder tree</button>
+                      <button class="graph-preset" data-graph-layout="orbit" title="Orbit: current note in the center" type="button">Orbit</button>
+                    </div>
+                    <button class="semantic-toggle" id="semanticToggle" type="button" aria-pressed="false"><span class="semantic-switch"></span><span>Semantic</span></button>
+                  </div>
+                  <div class="graph-actions">
+                    <span class="graph-chip" id="graphCanvasMeta">7 nodes</span>
+                    <button class="ghost-btn" id="graphUse" type="button"><svg><use href="#i-send"/></svg> Use graph</button>
+                  </div>
+                </div>
+                <div class="graph-builder" id="graphBuilder">
+                  <label class="graph-node-search">
+                    <svg><use href="#i-search"/></svg>
+                    <input id="graphSearchInput" type="text" value="" placeholder="Search vault notes..." autocomplete="off" />
+                  </label>
+                  <span class="graph-builder-status" id="graphStatus"><svg><use href="#i-pencil"/></svg> Auto graph · editing creates draft</span>
+                  <button class="ghost-btn graph-save-btn" id="graphSave" type="button"><svg><use href="#i-file"/></svg> Save changes</button>
+                  <div class="graph-builder-panel" id="graphFindPanel" hidden>
+                    <div class="graph-search-row" role="button" tabindex="0" data-graph-candidate="Peak Assistant command gateway" data-graph-type="vault" aria-label="Add Peak Assistant command gateway">
+                      <svg><use href="#i-file"/></svg>
+                      <span><span class="graph-search-title">Peak Assistant command gateway</span><span class="graph-search-meta">Vault note · architecture boundary</span></span>
+                      <span class="graph-row-state"><svg><use href="#i-plus"/></svg></span>
+                    </div>
+                    <div class="graph-search-row" role="button" tabindex="0" data-graph-candidate="Git plugin installation notes" data-graph-type="vault" aria-label="Add Git plugin installation notes">
+                      <svg><use href="#i-file"/></svg>
+                      <span><span class="graph-search-title">Git plugin installation notes</span><span class="graph-search-meta">Vault note · command gateway dependency</span></span>
+                      <span class="graph-row-state"><svg><use href="#i-plus"/></svg></span>
+                    </div>
+                    <div class="graph-search-row" role="button" tabindex="0" data-graph-candidate="Story rehearsal notes" data-graph-type="vault" aria-label="Add Story rehearsal notes">
+                      <svg><use href="#i-file"/></svg>
+                      <span><span class="graph-search-title">Story rehearsal notes</span><span class="graph-search-meta">Vault note · practice loop</span></span>
+                      <span class="graph-row-state"><svg><use href="#i-plus"/></svg></span>
+                    </div>
+                    <div class="graph-search-empty" id="graphSearchEmpty" hidden>
+                      <svg><use href="#i-search"/></svg>
+                      <span>No matching notes</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="graph-canvas" id="graphCanvas" data-layout="constellation" aria-label="Document local graph preview">
+                  <svg class="graph-edges" id="graphEdges" viewBox="0 0 600 480" preserveAspectRatio="none">
+                    <path data-edge-id="edge-current-cards" data-from="current-note" data-to="story-cards" d="M300 240 C210 180 170 120 116 82"/>
+                    <path data-edge-id="edge-current-toastmasters" data-from="current-note" data-to="toastmasters-story" d="M300 240 C390 170 440 120 502 80"/>
+                    <path data-edge-id="edge-current-rehearsal" data-from="current-note" data-to="rehearsal-map-notes" d="M300 240 C424 238 490 250 548 286"/>
+                    <path data-edge-id="edge-current-command" data-from="current-note" data-to="command-gateway" d="M300 240 C225 290 162 330 102 374"/>
+                    <path data-edge-id="edge-current-speaking" data-from="current-note" data-to="speaking-practice" d="M300 240 C310 150 296 96 286 52"/>
+                    <path data-edge-id="edge-current-git" data-from="current-note" data-to="git-anchor-notes" d="M300 240 C338 320 365 376 414 424"/>
+                    <path data-edge-id="edge-cards-speaking" data-from="story-cards" data-to="speaking-practice" d="M116 82 C174 64 224 56 286 52"/>
+                    <path data-edge-id="edge-toastmasters-rehearsal" data-from="toastmasters-story" data-to="rehearsal-map-notes" d="M502 80 C528 142 542 218 548 286"/>
+                    <path data-edge-id="edge-command-git" data-from="command-gateway" data-to="git-anchor-notes" d="M102 374 C185 424 292 444 414 424"/>
+                  </svg>
+                  <div class="graph-node current" data-node-id="current-note" style="left:50%;top:50%"><span class="dot"></span><span>current note</span></div>
+                  <div class="graph-node vault" data-node-id="story-cards" style="left:19%;top:17%"><span class="dot"></span><span>2-Story Cards</span></div>
+                  <div class="graph-node vault" data-node-id="speaking-practice" style="left:48%;top:11%"><span class="dot"></span><span>Speaking Practice Loop</span></div>
+                  <div class="graph-node vault" data-node-id="toastmasters-story" style="left:78%;top:17%"><span class="dot"></span><span>Toastmasters Story Notes</span></div>
+                  <div class="graph-node vault" data-node-id="rehearsal-map-notes" style="left:84%;top:60%"><span class="dot"></span><span>Rehearsal Map Notes</span></div>
+                  <div class="graph-node vault" data-node-id="command-gateway" style="left:17%;top:78%"><span class="dot"></span><span>Command Gateway</span></div>
+                  <div class="graph-node vault" data-node-id="git-anchor-notes" style="left:69%;top:88%"><span class="dot"></span><span>Git Anchor Notes</span></div>
+                  <div class="node-popover" id="graphNodePopover" hidden>
+                    <div class="node-popover-head">
+                      <span class="node-popover-title" id="nodePopoverTitle">current note</span>
+                      <span class="node-popover-sub" id="nodePopoverSub">Graph node</span>
+                    </div>
+                    <div class="node-popover-actions">
+                      <button class="ghost-btn" data-node-action="open" type="button"><svg><use href="#i-eye"/></svg> Open</button>
+                      <button class="ghost-btn" data-node-action="focus" type="button"><svg><use href="#i-search"/></svg> Focus</button>
+                      <button class="ghost-btn" data-node-action="expand" type="button"><svg><use href="#i-plus"/></svg> 1-hop</button>
+                      <button class="ghost-btn" data-node-action="custom" type="button"><svg><use href="#i-copy"/></svg> Add</button>
+                      <button class="ghost-btn" data-node-action="connect" type="button"><svg><use href="#i-link"/></svg> Connect</button>
+                      <button class="ghost-btn" data-node-action="hide" type="button"><svg><use href="#i-x"/></svg> Hide</button>
+                    </div>
+                  </div>
+                  <div class="edge-popover" id="graphEdgePopover" hidden>
+                    <span class="edge-popover-title"><svg><use href="#i-link"/></svg><span id="edgePopoverTitle">Related notes</span></span>
+                    <button class="ghost-btn" data-edge-action="delete" type="button"><svg><use href="#i-trash"/></svg> Delete</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="inspector">
+          <div class="inspector-scroll block-inspector">
+            <section class="card">
+              <div class="card-body">
+                <div class="selected-top">
+                  <div class="selected-kind"><svg id="detailIcon"><use href="#i-heading"/></svg><span id="detailKind">Heading</span></div>
+                  <button class="ghost-btn" type="button"><svg><use href="#i-eye"/></svg> Reveal</button>
+                </div>
+                <div class="selected-title" id="detailTitle">流水线循环 - Showing Up</div>
+                <div class="selected-sub" id="detailSub">active editor section</div>
+                <div class="source-snippet" id="detailPreview"># 流水线循环--Showing Up</div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-body">
+                <div class="selected-kind"><svg><use href="#i-send"/></svg><span>Use this block</span></div>
+                <div class="actions">
+                  <button class="ghost-btn" id="inspectorAdd" type="button"><svg><use href="#i-plus"/></svg> Add to tray</button>
+                  <button class="ghost-btn" type="button"><svg><use href="#i-link"/></svg> Copy link</button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </aside>
+      </section>
+
+      <footer class="tray">
+        <div class="tray-title"><svg><use href="#i-tray"/></svg> Selection Tray</div>
+        <div class="tray-items" id="trayItems">
+          <span class="chip"><svg><use href="#i-spark"/></svg><span>Workflow is spoken-first</span><button class="chip-remove" type="button" aria-label="Remove Workflow is spoken-first"><svg><use href="#i-x"/></svg></button></span>
+          <span class="chip"><svg><use href="#i-globe"/></svg><span>toastmasters.org.nz</span><button class="chip-remove" type="button" aria-label="Remove toastmasters.org.nz"><svg><use href="#i-x"/></svg></button></span>
+          <span class="chip"><svg><use href="#i-code"/></svg><span>LinkedIn crawl prompt</span><button class="chip-remove" type="button" aria-label="Remove LinkedIn crawl prompt"><svg><use href="#i-x"/></svg></button></span>
+        </div>
+        <button class="primary-btn" type="button"><svg><use href="#i-send"/></svg> Send selected to Copilot</button>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const body = document.body;
+    const surface = document.querySelector('.surface');
+    const viewButtons = document.querySelectorAll('[data-atlas-view]');
+    const treeScroll = document.querySelector('.tree-scroll');
+    const graphView = document.querySelector('.graph-view');
+    const graphList = document.querySelector('.graph-list');
+    const newGraphButton = document.getElementById('newGraphButton');
+    const customGraphList = document.getElementById('customGraphList');
+    const graphWorkspace = document.querySelector('.graph-workspace');
+    const graphBuilder = document.getElementById('graphBuilder');
+    const graphCanvas = document.getElementById('graphCanvas');
+    const graphEdges = document.getElementById('graphEdges');
+    const graphStatus = document.getElementById('graphStatus');
+    const graphFindPanel = document.getElementById('graphFindPanel');
+    const graphUse = document.getElementById('graphUse');
+    const graphSearchInput = document.getElementById('graphSearchInput');
+    const graphSave = document.getElementById('graphSave');
+    const graphNodePopover = document.getElementById('graphNodePopover');
+    const graphEdgePopover = document.getElementById('graphEdgePopover');
+    const nodePopoverTitle = document.getElementById('nodePopoverTitle');
+    const nodePopoverSub = document.getElementById('nodePopoverSub');
+    const edgePopoverTitle = document.getElementById('edgePopoverTitle');
+    const graphLayoutButtons = document.querySelectorAll('[data-graph-layout]');
+    const semanticToggle = document.getElementById('semanticToggle');
+    let graphItems = [...document.querySelectorAll('.graph-item')];
+    let graphDynamicIndex = 0;
+    let graphDynamicNodeIndex = 0;
+    let graphDynamicEdgeIndex = 0;
+    let activeGraphNode = null;
+    let activeGraphEdge = null;
+    let pendingConnectNode = null;
+    let graphDragState = null;
+    let suppressNextGraphClick = false;
+    const layerButtons = document.querySelectorAll('[data-layer]');
+    const nodes = document.querySelectorAll('.node');
+    const trayItems = document.getElementById('trayItems');
+    const filterMenu = document.getElementById('filterMenu');
+    const filterButton = document.getElementById('filterButton');
+    const kindButtons = document.querySelectorAll('[data-kind-filter]');
+    const hiddenKinds = new Set();
+
+    const layerClass = {
+      blocks: 'hide-blocks',
+      resources: 'hide-resources',
+      insights: 'hide-insights',
+      issues: 'hide-issues',
+    };
+
+    function inferLineRef(node) {
+      if (node.dataset.lineRef) return node.dataset.lineRef.split('-')[0];
+      const text = node.dataset.sub || '';
+      const match = text.match(/lines?\\s+([0-9]+(?:-[0-9]+)?)/i) || text.match(/line\\s+([0-9]+)/i);
+      return match ? match[1].split('-')[0] : '';
+    }
+
+    nodes.forEach((node) => {
+      const lineRef = document.createElement('span');
+      lineRef.className = 'line-ref';
+      lineRef.textContent = inferLineRef(node);
+      node.prepend(lineRef);
+    });
+
+    function iconForKind(kind) {
+      const lower = kind.toLowerCase();
+      if (lower.includes('external')) return '#i-globe';
+      if (lower.includes('vault')) return '#i-link';
+      if (lower.includes('tag') || lower.includes('footnote')) return '#i-link';
+      if (lower.includes('excalidraw') || lower.includes('image')) return '#i-image';
+      if (lower.includes('canvas') || lower.includes('mermaid')) return '#i-atlas';
+      if (lower.includes('embed') || lower.includes('attachment') || lower.includes('property')) return '#i-file';
+      if (lower.includes('math')) return '#i-code';
+      if (lower.includes('code')) return '#i-code';
+      if (lower.includes('table')) return '#i-table';
+      if (lower.includes('list')) return '#i-filter';
+      if (lower.includes('quote')) return '#i-p';
+      if (lower.includes('callout')) return '#i-alert';
+      if (lower.includes('task')) return '#i-task';
+      if (lower.includes('claim') || lower.includes('evidence') || lower.includes('example') || lower.includes('action') || lower.includes('decision') || lower.includes('question')) return '#i-spark';
+      if (lower.includes('issue')) return '#i-alert';
+      if (lower.includes('paragraph')) return '#i-p';
+      if (lower.includes('heading')) return '#i-heading';
+      return '#i-file';
+    }
+
+    function filterKeyForKind(kind) {
+      const lower = kind.toLowerCase();
+      if (lower.includes('external')) return 'external';
+      if (lower.includes('vault')) return 'vault';
+      if (lower.includes('tag')) return 'tag';
+      if (lower.includes('footnote')) return 'footnote';
+      if (lower.includes('excalidraw')) return 'excalidraw';
+      if (lower.includes('canvas')) return 'canvas';
+      if (lower.includes('mermaid')) return 'mermaid';
+      if (lower.includes('embed')) return 'embed';
+      if (lower.includes('attachment')) return 'attachment';
+      if (lower.includes('property')) return 'property';
+      if (lower.includes('math')) return 'math';
+      if (lower.includes('code')) return 'code';
+      if (lower.includes('table')) return 'table';
+      if (lower.includes('image')) return 'image';
+      if (lower.includes('list')) return 'list';
+      if (lower.includes('quote')) return 'quote';
+      if (lower.includes('callout')) return 'callout';
+      if (lower.includes('task')) return 'task';
+      if (lower.includes('claim')) return 'claim';
+      if (lower.includes('evidence')) return 'evidence';
+      if (lower.includes('example')) return 'example';
+      if (lower.includes('action')) return 'action';
+      if (lower.includes('decision')) return 'decision';
+      if (lower.includes('question')) return 'question';
+      if (lower.includes('issue')) return 'issue';
+      if (lower.includes('paragraph')) return 'paragraph';
+      if (lower.includes('heading')) return 'heading';
+      return null;
+    }
+
+    function applyKindFilters() {
+      nodes.forEach((node) => {
+        const key = filterKeyForKind(node.dataset.kind || '');
+        node.classList.toggle('is-kind-hidden', key ? hiddenKinds.has(key) : false);
+      });
+    }
+
+    function setKindButton(btn, shouldShow) {
+      const key = btn.dataset.kindFilter;
+      btn.classList.toggle('is-on', shouldShow);
+      if (shouldShow) {
+        hiddenKinds.delete(key);
+      } else {
+        hiddenKinds.add(key);
+      }
+    }
+
+    function setKindButtons(buttons, shouldShow) {
+      buttons.forEach((btn) => setKindButton(btn, shouldShow));
+      applyKindFilters();
+    }
+
+    function escapeHtml(text) {
+      return String(text || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
+    }
+
+    function inspectorSub(node) {
+      const sub = node.dataset.sub || '';
+      if (!sub) return '';
+      return sub
+        .replace(/^Lines? [0-9-]+ · /i, '')
+        .replace(/^line [0-9]+ · /i, '')
+        .replace(/^Lines? [0-9-]+$/i, '')
+        .trim();
+    }
+
+    function renderPreview(node) {
+      const kind = (node.dataset.kind || '').toLowerCase();
+      const title = escapeHtml(node.dataset.title || '');
+      const sub = escapeHtml(inspectorSub(node));
+      const source = escapeHtml(node.dataset.source || '');
+      if (kind.includes('table')) {
+        return `
+          <table class="preview-table">
+            <thead><tr><th>Story</th><th>Project</th><th>Evidence</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>Showing Up</td><td>Peak Assistant</td><td>workflow loop</td><td>ready</td></tr>
+              <tr><td>Mutation optimisation</td><td>Docs engine</td><td>performance note</td><td>draft</td></tr>
+              <tr><td>Command gateway</td><td>Runtime boundary</td><td>owner decision</td><td>review</td></tr>
+            </tbody>
+          </table>
+        `;
+      }
+      if (kind.includes('image') || kind.includes('excalidraw') || kind.includes('canvas') || kind.includes('embed') || kind.includes('attachment')) {
+        return `
+          <div class="preview-media">
+            <svg><use href="${iconForKind(node.dataset.kind || '')}"/></svg>
+            <div><div class="preview-title">${title}</div><div class="preview-sub">${sub || escapeHtml(node.dataset.kind || 'Media')}</div></div>
+          </div>
+        `;
+      }
+      if (kind.includes('external') || kind.includes('vault')) {
+        return `
+          <div class="preview-link">
+            <svg><use href="${iconForKind(node.dataset.kind || '')}"/></svg>
+            <div><div class="preview-title">${title}</div><div class="preview-sub">${source}</div></div>
+          </div>
+        `;
+      }
+      if (kind.includes('claim') || kind.includes('evidence') || kind.includes('example') || kind.includes('action') || kind.includes('decision') || kind.includes('question')) {
+        return `<div class="preview-quote">${source}</div>`;
+      }
+      return source;
+    }
+
+    let selectedNode = document.querySelector('.node.is-selected');
+    let selectedGraph = document.querySelector('.graph-item.is-selected');
+
+    function addNodeToTray(node) {
+      if (!node) return;
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      const title = node.dataset.title || 'Selected block';
+      chip.innerHTML = `<svg><use href="${iconForKind(node.dataset.kind || '')}"></use></svg><span>${escapeHtml(title)}</span><button class="chip-remove" type="button" aria-label="Remove ${escapeHtml(title)}"><svg><use href="#i-x"></use></svg></button>`;
+      trayItems.prepend(chip);
+    }
+
+    function addGraphToTray(graph) {
+      if (!graph) return;
+      const title = graph.dataset.graphName || 'Selected graph';
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.innerHTML = `<svg><use href="#i-network"></use></svg><span>${escapeHtml(title)}</span><button class="chip-remove" type="button" aria-label="Remove ${escapeHtml(title)}"><svg><use href="#i-x"></use></svg></button>`;
+      trayItems.prepend(chip);
+      trayItems.closest('.tray')?.classList.add('is-pulsing');
+      window.setTimeout(() => trayItems.closest('.tray')?.classList.remove('is-pulsing'), 900);
+    }
+
+    const graphDynamicPositions = [
+      { left: 32, top: 65 },
+      { left: 58, top: 70 },
+      { left: 38, top: 31 },
+      { left: 71, top: 37 },
+      { left: 23, top: 47 },
+      { left: 63, top: 19 },
+    ];
+
+    const graphLayouts = {
+      constellation: {
+        label: 'Constellation',
+        semantic: false,
+        positions: {
+          'current-note': { left: 50, top: 50 },
+          'story-cards': { left: 19, top: 17 },
+          'speaking-practice': { left: 48, top: 11 },
+          'toastmasters-story': { left: 78, top: 17 },
+          'rehearsal-map-notes': { left: 84, top: 60 },
+          'command-gateway': { left: 17, top: 78 },
+          'git-anchor-notes': { left: 69, top: 88 },
+        },
+      },
+      'flow-tb': {
+        label: 'Flow ↓',
+        semantic: false,
+        positions: {
+          'current-note': { left: 50, top: 17 },
+          'story-cards': { left: 25, top: 42 },
+          'speaking-practice': { left: 50, top: 42 },
+          'toastmasters-story': { left: 75, top: 42 },
+          'command-gateway': { left: 28, top: 72 },
+          'git-anchor-notes': { left: 50, top: 72 },
+          'rehearsal-map-notes': { left: 72, top: 72 },
+        },
+      },
+      'flow-lr': {
+        label: 'Flow →',
+        semantic: false,
+        positions: {
+          'current-note': { left: 16, top: 50 },
+          'story-cards': { left: 39, top: 23 },
+          'speaking-practice': { left: 62, top: 23 },
+          'toastmasters-story': { left: 85, top: 28 },
+          'command-gateway': { left: 39, top: 73 },
+          'git-anchor-notes': { left: 62, top: 73 },
+          'rehearsal-map-notes': { left: 85, top: 66 },
+        },
+      },
+      folder: {
+        label: 'Folder tree',
+        semantic: false,
+        positions: {
+          'current-note': { left: 18, top: 18 },
+          'story-cards': { left: 38, top: 30 },
+          'speaking-practice': { left: 58, top: 30 },
+          'toastmasters-story': { left: 78, top: 30 },
+          'command-gateway': { left: 38, top: 64 },
+          'git-anchor-notes': { left: 58, top: 64 },
+          'rehearsal-map-notes': { left: 78, top: 64 },
+        },
+      },
+      orbit: {
+        label: 'Orbit',
+        semantic: true,
+        positions: {
+          'current-note': { left: 50, top: 50 },
+          'story-cards': { left: 50, top: 15 },
+          'speaking-practice': { left: 78, top: 31 },
+          'toastmasters-story': { left: 78, top: 68 },
+          'rehearsal-map-notes': { left: 50, top: 85 },
+          'git-anchor-notes': { left: 22, top: 68 },
+          'command-gateway': { left: 22, top: 31 },
+        },
+      },
+    };
+
+    function setGraphStatus(message, icon = '#i-pencil', isHot = false) {
+      graphStatus.classList.toggle('is-hot', isHot);
+      graphStatus.innerHTML = `<svg><use href="${icon}"></use></svg> ${escapeHtml(message)}`;
+    }
+
+    function setSemanticState(isOn) {
+      semanticToggle.classList.toggle('is-on', isOn);
+      semanticToggle.setAttribute('aria-pressed', String(isOn));
+      graphCanvas.classList.toggle('is-semantic', isOn);
+    }
+
+    function graphNodeTitle(node) {
+      return node?.querySelector('span:last-child')?.textContent?.trim() || 'Graph node';
+    }
+
+    function graphNodeType(node) {
+      if (!node) return 'vault note';
+      if (node.classList.contains('current')) return 'current note';
+      if (node.classList.contains('vault')) return 'vault note';
+      if (node.classList.contains('two-hop')) return 'related note';
+      return 'vault note';
+    }
+
+    function graphNodePosition(node) {
+      return {
+        left: Number.parseFloat(node?.style.left || '50') || 50,
+        top: Number.parseFloat(node?.style.top || '50') || 50,
+      };
+    }
+
+    function graphNodeId(node) {
+      if (!node.dataset.nodeId) {
+        graphDynamicNodeIndex += 1;
+        node.dataset.nodeId = `graph-node-${graphDynamicNodeIndex}`;
+      }
+      return node.dataset.nodeId;
+    }
+
+    function graphEdgeId(edge) {
+      if (!edge.dataset.edgeId) {
+        graphDynamicEdgeIndex += 1;
+        edge.dataset.edgeId = `graph-edge-${graphDynamicEdgeIndex}`;
+      }
+      return edge.dataset.edgeId;
+    }
+
+    function graphNodeById(id) {
+      if (!id) return null;
+      return graphCanvas.querySelector(`.graph-node[data-node-id="${CSS.escape(id)}"]`);
+    }
+
+    function graphPathData(fromNode, toNode) {
+      const from = graphNodePosition(fromNode);
+      const to = graphNodePosition(toNode);
+      const fromX = Math.round(from.left * 6);
+      const fromY = Math.round(from.top * 4.8);
+      const toX = Math.round(to.left * 6);
+      const toY = Math.round(to.top * 4.8);
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      const lift = Math.max(20, Math.min(56, Math.abs(dx) * 0.10 + Math.abs(dy) * 0.08));
+      const bendX = Math.round((fromX + toX) / 2);
+      const bendY = Math.round((fromY + toY) / 2 - lift);
+      return `M${fromX} ${fromY} C${bendX} ${bendY} ${bendX} ${bendY} ${toX} ${toY}`;
+    }
+
+    function positionEdgeLabel(edge) {
+      const label = graphCanvas.querySelector(`.edge-label[data-for-edge="${CSS.escape(graphEdgeId(edge))}"]`);
+      if (!label) return;
+      const fromNode = graphNodeById(edge.dataset.from);
+      const toNode = graphNodeById(edge.dataset.to);
+      if (!fromNode || !toNode) return;
+      const from = graphNodePosition(fromNode);
+      const to = graphNodePosition(toNode);
+      label.style.left = `${(from.left + to.left) / 2}%`;
+      label.style.top = `${(from.top + to.top) / 2}%`;
+      label.toggleAttribute('hidden', edge.hasAttribute('hidden'));
+    }
+
+    function setGraphEdgeHidden(edge, shouldHide) {
+      edge.toggleAttribute('hidden', shouldHide);
+      const label = graphCanvas.querySelector(`.edge-label[data-for-edge="${CSS.escape(graphEdgeId(edge))}"]`);
+      label?.toggleAttribute('hidden', shouldHide);
+    }
+
+    function updateEdgePath(edge) {
+      const fromNode = graphNodeById(edge.dataset.from);
+      const toNode = graphNodeById(edge.dataset.to);
+      if (!fromNode || !toNode) return;
+      edge.setAttribute('d', graphPathData(fromNode, toNode));
+      setGraphEdgeHidden(edge, fromNode.classList.contains('is-hidden') || toNode.classList.contains('is-hidden'));
+      positionEdgeLabel(edge);
+    }
+
+    function updateAllEdges() {
+      graphEdges.querySelectorAll('path').forEach((edge) => updateEdgePath(edge));
+    }
+
+    function applyGraphLayout(layoutKey) {
+      const layout = graphLayouts[layoutKey] || graphLayouts.constellation;
+      const resolvedLayoutKey = graphLayouts[layoutKey] ? layoutKey : 'constellation';
+      graphLayoutButtons.forEach((btn) => {
+        btn.classList.toggle('is-active', btn.dataset.graphLayout === resolvedLayoutKey);
+      });
+      graphCanvas.dataset.layout = resolvedLayoutKey;
+      setSemanticState(Boolean(layout.semantic));
+      Object.entries(layout.positions).forEach(([id, position]) => {
+        const node = graphNodeById(id);
+        if (!node || node.classList.contains('is-hidden')) return;
+        node.style.left = `${position.left}%`;
+        node.style.top = `${position.top}%`;
+      });
+      hideNodePopover();
+      hideEdgePopover();
+      updateAllEdges();
+      setGraphStatus(`Layout: ${layout.label}${layout.semantic ? ' · semantic note links shown' : ''}`, '#i-network', true);
+    }
+
+    function updateConnectedEdges(node) {
+      const id = graphNodeId(node);
+      graphEdges.querySelectorAll(`path[data-from="${CSS.escape(id)}"], path[data-to="${CSS.escape(id)}"]`).forEach((edge) => updateEdgePath(edge));
+    }
+
+    function hideEdgesForNode(node) {
+      const id = graphNodeId(node);
+      graphEdges.querySelectorAll(`path[data-from="${CSS.escape(id)}"], path[data-to="${CSS.escape(id)}"]`).forEach((edge) => {
+        setGraphEdgeHidden(edge, true);
+      });
+    }
+
+    function deleteGraphEdge(edge) {
+      if (!edge) return;
+      const title = graphEdgeTitle(edge);
+      graphCanvas.querySelector(`.edge-label[data-for-edge="${CSS.escape(graphEdgeId(edge))}"]`)?.remove();
+      edge.remove();
+      hideEdgePopover();
+      setGraphStatus(`Deleted edge: ${title}`, '#i-trash', true);
+    }
+
+    function graphEdgeTitle(edge) {
+      const from = graphNodeTitle(graphNodeById(edge.dataset.from));
+      const to = graphNodeTitle(graphNodeById(edge.dataset.to));
+      return `${from} - ${to}`;
+    }
+
+    function nearestGraphEdge(clientX, clientY) {
+      const canvasRect = graphCanvas.getBoundingClientRect();
+      let best = { edge: null, distance: Number.POSITIVE_INFINITY };
+      graphEdges.querySelectorAll('path:not([hidden])').forEach((edge) => {
+        const total = edge.getTotalLength();
+        for (let step = 0; step <= 20; step += 1) {
+          const point = edge.getPointAtLength((total * step) / 20);
+          const x = canvasRect.left + (point.x / 600) * canvasRect.width;
+          const y = canvasRect.top + (point.y / 480) * canvasRect.height;
+          const distance = Math.hypot(clientX - x, clientY - y);
+          if (distance < best.distance) best = { edge, distance };
+        }
+      });
+      return best.distance <= 14 ? best.edge : null;
+    }
+
+    function showEdgePopover(edge) {
+      activeGraphEdge = edge;
+      hideNodePopover();
+      graphEdges.querySelectorAll('path.is-active').forEach((item) => item.classList.remove('is-active'));
+      edge.classList.add('is-active');
+      edgePopoverTitle.textContent = graphEdgeTitle(edge);
+      const fromNode = graphNodeById(edge.dataset.from);
+      const toNode = graphNodeById(edge.dataset.to);
+      if (!fromNode || !toNode) return;
+      const fromRect = fromNode.getBoundingClientRect();
+      const toRect = toNode.getBoundingClientRect();
+      const anchorRect = {
+        left: (fromRect.left + toRect.left) / 2,
+        right: (fromRect.right + toRect.right) / 2,
+        top: (fromRect.top + toRect.top) / 2,
+        bottom: (fromRect.bottom + toRect.bottom) / 2,
+      };
+      placeFloatingPanel(graphEdgePopover, anchorRect);
+    }
+
+    function placeFloatingPanel(panel, anchorRect) {
+      const canvasRect = graphCanvas.getBoundingClientRect();
+      panel.hidden = false;
+      panel.style.visibility = 'hidden';
+      const panelWidth = panel.offsetWidth;
+      const panelHeight = panel.offsetHeight;
+      let left = anchorRect.right - canvasRect.left + 8;
+      let top = anchorRect.bottom - canvasRect.top + 8;
+      if (left + panelWidth > canvasRect.width - 8) {
+        left = anchorRect.left - canvasRect.left - panelWidth - 8;
+      }
+      if (top + panelHeight > canvasRect.height - 8) {
+        top = anchorRect.top - canvasRect.top - panelHeight - 8;
+      }
+      left = Math.max(8, Math.min(canvasRect.width - panelWidth - 8, left));
+      top = Math.max(8, Math.min(canvasRect.height - panelHeight - 8, top));
+      panel.style.left = `${left}px`;
+      panel.style.top = `${top}px`;
+      panel.style.visibility = '';
+    }
+
+    function hideEdgePopover() {
+      graphEdgePopover.hidden = true;
+      graphEdges.querySelectorAll('path.is-active').forEach((edge) => edge.classList.remove('is-active'));
+      activeGraphEdge = null;
+    }
+
+    function hideNodePopover() {
+      graphNodePopover.hidden = true;
+      document.querySelectorAll('.graph-node.is-active').forEach((node) => node.classList.remove('is-active'));
+      activeGraphNode = null;
+    }
+
+    function showNodePopover(node) {
+      activeGraphNode = node;
+      document.querySelectorAll('.graph-node.is-active').forEach((item) => item.classList.remove('is-active'));
+      node.classList.add('is-active');
+      nodePopoverTitle.textContent = graphNodeTitle(node);
+      nodePopoverSub.textContent = `${graphNodeType(node)} · node actions`;
+      placeFloatingPanel(graphNodePopover, node.getBoundingClientRect());
+      hideEdgePopover();
+    }
+
+    function graphCount(graph) {
+      return Number.parseInt(graph?.dataset.graphNodes || '1', 10) || 1;
+    }
+
+    function graphState(graph) {
+      const meta = graph?.querySelector('.graph-item-meta')?.textContent || '';
+      return meta.includes('draft') ? 'draft' : 'saved';
+    }
+
+    function setGraphCount(graph, count, state = 'draft') {
+      if (!graph) return;
+      const safeCount = Math.max(1, count);
+      const label = `${safeCount} node${safeCount === 1 ? '' : 's'}`;
+      graph.dataset.graphNodes = label;
+      const meta = graph.querySelector('.graph-item-meta');
+      if (meta) {
+        meta.textContent = graph.dataset.graphOrigin === 'custom'
+          ? `custom · ${state} · ${label}`
+          : `auto · ${label}`;
+      }
+      document.getElementById('graphCanvasMeta').textContent = label;
+    }
+
+    function ensureEditableGraph(reason = 'Auto graph copied into editable draft') {
+      if (!selectedGraph) return null;
+      if (selectedGraph.dataset.graphOrigin === 'custom') return selectedGraph;
+      const title = `${selectedGraph.dataset.graphName || 'Graph'} draft`;
+      const copy = makeGraphItem({
+        name: title,
+        meta: `custom · draft · ${selectedGraph.dataset.graphNodes || '1 node'}`,
+        nodes: selectedGraph.dataset.graphNodes || '1 node',
+        sub: 'Draft · forked from auto graph',
+        source: selectedGraph.dataset.graphSource || '',
+      });
+      customGraphList.prepend(copy);
+      refreshGraphItems();
+      updateGraphInspector(copy);
+      setGraphStatus(reason, '#i-copy', true);
+      return copy;
+    }
+
+    function addGraphEdge(fromNode, toNode, label = '') {
+      if (!fromNode || !toNode) return null;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.classList.add('is-new');
+      path.dataset.edgeId = `graph-edge-${Date.now()}-${Math.round(Math.random() * 1000)}`;
+      path.dataset.from = graphNodeId(fromNode);
+      path.dataset.to = graphNodeId(toNode);
+      graphEdges.append(path);
+      if (label) {
+        const edgeLabel = document.createElement('div');
+        edgeLabel.className = 'edge-label';
+        edgeLabel.dataset.forEdge = graphEdgeId(path);
+        edgeLabel.textContent = label;
+        graphCanvas.append(edgeLabel);
+      }
+      updateEdgePath(path);
+      return path;
+    }
+
+    function addVisualGraphNode(title, type = 'vault', status = 'Added note to graph', fromNode = null) {
+      const graph = ensureEditableGraph();
+      if (!graph) return;
+      const position = graphDynamicPositions[graphDynamicIndex % graphDynamicPositions.length];
+      graphDynamicIndex += 1;
+      const node = document.createElement('div');
+      node.className = `graph-node ${type} is-new`;
+      graphDynamicNodeIndex += 1;
+      node.dataset.nodeId = `added-note-${graphDynamicNodeIndex}`;
+      node.style.left = `${position.left}%`;
+      node.style.top = `${position.top}%`;
+      node.innerHTML = `<span class="dot"></span><span>${escapeHtml(title)}</span>`;
+      graphCanvas.append(node);
+      addGraphEdge(fromNode || graphCanvas.querySelector('.graph-node.current'), node);
+      setGraphCount(graph, graphCount(graph) + 1, 'draft');
+      setGraphStatus(status, '#i-plus', true);
+    }
+
+    function updateGraphInspector(graph) {
+      if (!graph) return;
+      selectedGraph = graph;
+      graphItems.forEach((item) => item.classList.toggle('is-selected', item === graph));
+      document.getElementById('graphCanvasTitle').textContent = graph.dataset.graphName || 'Selected graph';
+      document.getElementById('graphCanvasMeta').textContent = graph.dataset.graphNodes || '';
+      graphFindPanel.hidden = true;
+      if (graph.dataset.graphOrigin === 'custom') {
+        setGraphStatus(graphState(graph) === 'draft' ? 'Custom draft · ready to edit' : 'Custom graph · saved', graphState(graph) === 'draft' ? '#i-pencil' : '#i-check', graphState(graph) === 'draft');
+        return;
+      }
+      setGraphStatus('Auto graph · editing creates draft', '#i-copy');
+    }
+
+    function refreshGraphItems() {
+      graphItems = [...document.querySelectorAll('.graph-item')];
+    }
+
+    function makeGraphItem({ name, meta, origin = 'custom', kind = 'Custom graph', sub = '', nodes = '1 node', source = '' }) {
+      const item = document.createElement('div');
+      item.className = 'graph-item';
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', '0');
+      item.dataset.graphOrigin = origin;
+      item.dataset.graphName = name;
+      item.dataset.graphKind = kind;
+      item.dataset.graphSub = sub;
+      item.dataset.graphNodes = nodes;
+      item.dataset.graphSource = source;
+      item.innerHTML = `
+        <span class="graph-item-text">
+          <span class="graph-item-name">${escapeHtml(name)}</span>
+          <span class="graph-item-meta">${escapeHtml(meta)}</span>
+        </span>
+        <span class="graph-item-actions">
+          <button class="graph-row-btn" data-graph-action="duplicate" type="button" aria-label="Duplicate ${escapeHtml(name)}"><svg><use href="#i-copy"></use></svg></button>
+          <button class="graph-row-btn graph-delete" data-graph-action="delete" type="button" aria-label="Delete ${escapeHtml(name)}"><svg><use href="#i-trash"></use></svg></button>
+        </span>
+      `;
+      return item;
+    }
+
+    function initializeGraphCanvas() {
+      document.querySelectorAll('.graph-node').forEach((node) => graphNodeId(node));
+      graphEdges.querySelectorAll('path').forEach((edge) => {
+        graphEdgeId(edge);
+        updateEdgePath(edge);
+      });
+    }
+
+    function graphPercentFromPointer(event) {
+      const rect = graphCanvas.getBoundingClientRect();
+      return {
+        left: Math.max(4, Math.min(96, ((event.clientX - rect.left) / rect.width) * 100)),
+        top: Math.max(4, Math.min(96, ((event.clientY - rect.top) / rect.height) * 100)),
+      };
+    }
+
+    function startGraphDrag(event) {
+      const node = event.target.closest('.graph-node');
+      if (!node || event.button !== 0) return;
+      graphDragState = {
+        node,
+        startX: event.clientX,
+        startY: event.clientY,
+        origin: graphNodePosition(node),
+        moved: false,
+        copied: false,
+      };
+      node.setPointerCapture(event.pointerId);
+    }
+
+    function moveGraphNode(event) {
+      if (!graphDragState) return;
+      const dx = event.clientX - graphDragState.startX;
+      const dy = event.clientY - graphDragState.startY;
+      if (!graphDragState.moved && Math.hypot(dx, dy) < 4) return;
+      if (!graphDragState.copied) {
+        ensureEditableGraph('Auto graph copied before moving node');
+        graphDragState.copied = true;
+      }
+      graphDragState.moved = true;
+      hideNodePopover();
+      hideEdgePopover();
+      graphDragState.node.classList.add('is-dragging');
+      const position = graphPercentFromPointer(event);
+      graphDragState.node.style.left = `${position.left}%`;
+      graphDragState.node.style.top = `${position.top}%`;
+      updateConnectedEdges(graphDragState.node);
+    }
+
+    function finishGraphDrag(event) {
+      if (!graphDragState) return;
+      graphDragState.node.releasePointerCapture?.(event.pointerId);
+      graphDragState.node.classList.remove('is-dragging');
+      if (graphDragState.moved) {
+        suppressNextGraphClick = true;
+        setGraphStatus(`Moved ${graphNodeTitle(graphDragState.node)}`, '#i-pencil', true);
+      }
+      graphDragState = null;
+      window.setTimeout(() => {
+        suppressNextGraphClick = false;
+      }, 0);
+    }
+
+    function handleGraphAction(graph, action) {
+      if (action === 'duplicate') {
+        const title = `${graph.dataset.graphName || 'Graph'} copy`;
+        const copy = makeGraphItem({
+          name: title,
+          meta: `custom · draft · ${graph.dataset.graphNodes || '1 node'}`,
+          nodes: graph.dataset.graphNodes || '1 node',
+          sub: 'Draft · duplicated from selected graph',
+          source: graph.dataset.graphSource || '',
+        });
+        customGraphList.prepend(copy);
+        refreshGraphItems();
+        updateGraphInspector(copy);
+        setGraphStatus('Duplicated as editable draft', '#i-copy', true);
+        return;
+      }
+
+      if (action !== 'delete' || graph.dataset.graphOrigin === 'auto') return;
+      const fallback = graph.previousElementSibling?.classList.contains('graph-item')
+        ? graph.previousElementSibling
+        : graph.nextElementSibling?.classList.contains('graph-item')
+          ? graph.nextElementSibling
+          : null;
+      graph.remove();
+      refreshGraphItems();
+      updateGraphInspector(fallback || graphItems[0]);
+      setGraphStatus('Custom graph deleted', '#i-trash', true);
+    }
+
+    function updateInspector(node) {
+      document.querySelectorAll('.node.is-selected').forEach((el) => el.classList.remove('is-selected'));
+      node.classList.add('is-selected');
+      selectedNode = node;
+      const kind = node.dataset.kind || 'Block';
+      const title = node.dataset.title || node.querySelector('.name')?.textContent || 'Selected block';
+      document.getElementById('detailKind').textContent = kind;
+      document.getElementById('detailTitle').textContent = title;
+      document.getElementById('detailSub').textContent = inspectorSub(node);
+      document.getElementById('detailPreview').innerHTML = renderPreview(node);
+      document.querySelector('#detailIcon use').setAttribute('href', iconForKind(kind));
+    }
+
+    initializeGraphCanvas();
+
+    layerButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const layer = btn.dataset.layer;
+        const cls = layerClass[layer];
+        const isOn = btn.classList.contains('is-on');
+        btn.classList.toggle('is-on', !isOn);
+        body.classList.toggle(cls, isOn);
+      });
+    });
+
+    viewButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.atlasView;
+        viewButtons.forEach((item) => item.classList.toggle('is-active', item === btn));
+        surface.classList.toggle('graph-mode', view === 'graph');
+        treeScroll.hidden = view !== 'tree';
+        graphView.hidden = view !== 'graph';
+        if (view === 'graph') {
+          filterMenu.classList.remove('is-open');
+          filterButton.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+
+    graphList.addEventListener('click', (event) => {
+      const graph = event.target.closest('.graph-item');
+      const action = event.target.closest('[data-graph-action]');
+      if (action && graph) {
+        event.stopPropagation();
+        handleGraphAction(graph, action.dataset.graphAction);
+        return;
+      }
+      if (graph) updateGraphInspector(graph);
+    });
+
+    graphList.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const graph = event.target.closest('.graph-item');
+      if (!graph) return;
+      event.preventDefault();
+      updateGraphInspector(graph);
+    });
+
+    graphLayoutButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        applyGraphLayout(btn.dataset.graphLayout);
+      });
+    });
+
+    semanticToggle.addEventListener('click', () => {
+      const isOn = !semanticToggle.classList.contains('is-on');
+      setSemanticState(isOn);
+      setGraphStatus(isOn ? 'Semantic note links shown' : 'Semantic note links hidden', isOn ? '#i-check' : '#i-network', isOn);
+    });
+
+    newGraphButton.addEventListener('click', () => {
+      const draft = makeGraphItem({
+        name: 'Untitled graph',
+        meta: 'custom · draft · 1 node',
+        nodes: '1 node',
+        sub: 'Draft · add notes from search',
+        source: 'Draft custom graph',
+      });
+      customGraphList.prepend(draft);
+      refreshGraphItems();
+      updateGraphInspector(draft);
+      graphSearchInput.focus();
+      setGraphStatus('New draft created · search notes to add', '#i-plus', true);
+    });
+
+    filterButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const isOpen = filterMenu.classList.toggle('is-open');
+      filterButton.setAttribute('aria-expanded', String(isOpen));
+    });
+
+    kindButtons.forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const isOn = btn.classList.contains('is-on');
+        setKindButtons([btn], !isOn);
+      });
+    });
+
+    document.querySelectorAll('[data-filter-all]').forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        setKindButtons([...kindButtons], btn.dataset.filterAll === 'on');
+      });
+    });
+
+    document.querySelectorAll('[data-group-toggle]').forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const section = btn.closest('.filter-section');
+        const buttons = [...section.querySelectorAll('[data-kind-filter]')];
+        setKindButtons(buttons, btn.dataset.groupToggle === 'on');
+      });
+    });
+
+    document.addEventListener('click', (event) => {
+      if (filterMenu.contains(event.target)) return;
+      filterMenu.classList.remove('is-open');
+      filterButton.setAttribute('aria-expanded', 'false');
+    });
+
+    trayItems.addEventListener('click', (event) => {
+      const remove = event.target.closest('.chip-remove');
+      if (!remove) return;
+      remove.closest('.chip')?.remove();
+    });
+
+    document.getElementById('inspectorAdd').addEventListener('click', () => {
+      addNodeToTray(selectedNode);
+    });
+
+    graphUse.addEventListener('click', () => {
+      addGraphToTray(selectedGraph);
+      setGraphStatus('Graph added to Selection Tray', '#i-send', true);
+    });
+
+    function updateGraphSearchResults() {
+      const query = graphSearchInput.value.trim().toLowerCase();
+      graphFindPanel.hidden = false;
+      let visibleCount = 0;
+      graphFindPanel.querySelectorAll('.graph-search-row').forEach((row) => {
+        const text = row.textContent.toLowerCase();
+        const isVisible = !query || text.includes(query);
+        row.hidden = !isVisible;
+        if (isVisible) visibleCount += 1;
+      });
+      const empty = document.getElementById('graphSearchEmpty');
+      if (empty) empty.hidden = visibleCount !== 0;
+      const label = visibleCount === 0
+        ? 'No matching notes'
+        : `${visibleCount} matching note${visibleCount === 1 ? '' : 's'}`;
+      setGraphStatus(label, visibleCount === 0 ? '#i-search' : '#i-check', visibleCount > 0);
+    }
+
+    graphSearchInput.addEventListener('focus', updateGraphSearchResults);
+    graphSearchInput.addEventListener('input', updateGraphSearchResults);
+
+    function addSearchResultToGraph(row) {
+      if (!row || row.classList.contains('is-added')) return;
+      const title = row.dataset.graphCandidate || 'Found node';
+      row.classList.add('is-added');
+      row.querySelector('.graph-row-state').innerHTML = '<svg><use href="#i-check"></use></svg>';
+      addVisualGraphNode(title, row.dataset.graphType || 'vault', 'Note added to graph');
+      graphFindPanel.hidden = false;
+    }
+
+    graphFindPanel.addEventListener('click', (event) => {
+      addSearchResultToGraph(event.target.closest('.graph-search-row'));
+    });
+
+    graphFindPanel.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const row = event.target.closest('.graph-search-row');
+      if (!row) return;
+      event.preventDefault();
+      addSearchResultToGraph(row);
+    });
+
+    graphSave.addEventListener('click', () => {
+      if (!selectedGraph) return;
+      ensureEditableGraph('Auto graph copied before saving');
+      const meta = selectedGraph.querySelector('.graph-item-meta');
+      selectedGraph.dataset.graphSub = 'Saved · custom graph';
+      if (meta) meta.textContent = `custom · saved · ${selectedGraph.dataset.graphNodes || '1 node'}`;
+      updateGraphInspector(selectedGraph);
+      setGraphStatus('Saved · custom graph is ready to use', '#i-check', true);
+    });
+
+    graphCanvas.addEventListener('pointerdown', startGraphDrag);
+    graphCanvas.addEventListener('pointermove', moveGraphNode);
+    graphCanvas.addEventListener('pointerup', finishGraphDrag);
+    graphCanvas.addEventListener('pointercancel', finishGraphDrag);
+
+    graphEdges.addEventListener('click', (event) => {
+      const edge = event.target.closest('path');
+      if (!edge) return;
+      event.stopPropagation();
+      showEdgePopover(edge);
+    });
+
+    graphEdgePopover.addEventListener('click', (event) => {
+      const action = event.target.closest('[data-edge-action]')?.dataset.edgeAction;
+      if (action !== 'delete' || !activeGraphEdge) return;
+      event.stopPropagation();
+      ensureEditableGraph('Auto graph copied before deleting edge');
+      deleteGraphEdge(activeGraphEdge);
+    });
+
+    graphCanvas.addEventListener('click', (event) => {
+      if (suppressNextGraphClick) {
+        suppressNextGraphClick = false;
+        return;
+      }
+      const node = event.target.closest('.graph-node');
+      if (!node) {
+        const edge = nearestGraphEdge(event.clientX, event.clientY);
+        if (edge) {
+          event.stopPropagation();
+          showEdgePopover(edge);
+        }
+        return;
+      }
+      event.stopPropagation();
+      if (pendingConnectNode && pendingConnectNode !== node) {
+        ensureEditableGraph('Auto graph copied before connecting nodes');
+        addGraphEdge(pendingConnectNode, node, 'related');
+        setGraphStatus(`Connected ${graphNodeTitle(pendingConnectNode)} to ${graphNodeTitle(node)}`, '#i-link', true);
+        pendingConnectNode = null;
+        hideNodePopover();
+        return;
+      }
+      showNodePopover(node);
+    });
+
+    graphNodePopover.addEventListener('click', (event) => {
+      const action = event.target.closest('[data-node-action]')?.dataset.nodeAction;
+      if (!action || !activeGraphNode) return;
+      event.stopPropagation();
+      const title = graphNodeTitle(activeGraphNode);
+
+      if (action === 'open') {
+        setGraphStatus(`Open ${title}`, '#i-eye', true);
+        return;
+      }
+
+      if (action === 'focus') {
+        setGraphStatus(`Focused on ${title}`, '#i-search', true);
+        return;
+      }
+
+      if (action === 'expand') {
+        addVisualGraphNode(`${title} neighbor note`, 'vault', `Expanded note neighbors from ${title}`, activeGraphNode);
+        addVisualGraphNode(`${title} source note`, 'vault', `Expanded note neighbors from ${title}`, activeGraphNode);
+        hideNodePopover();
+        return;
+      }
+
+      if (action === 'custom') {
+        ensureEditableGraph('Node copied into custom graph');
+        setGraphStatus(`${title} is now part of the custom graph`, '#i-copy', true);
+        hideNodePopover();
+        return;
+      }
+
+      if (action === 'connect') {
+        ensureEditableGraph('Auto graph copied before connecting nodes');
+        pendingConnectNode = activeGraphNode;
+        setGraphStatus(`Choose another node to connect with ${title}`, '#i-link', true);
+        graphNodePopover.hidden = true;
+        return;
+      }
+
+      if (action === 'hide') {
+        ensureEditableGraph('Auto graph copied before hiding node');
+        activeGraphNode.classList.add('is-hidden');
+        hideEdgesForNode(activeGraphNode);
+        setGraphStatus(selectedGraph?.dataset.graphOrigin === 'custom' ? `${title} removed from this custom view` : `${title} hidden from this view`, '#i-x', true);
+        hideNodePopover();
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      if (event.target.closest('#graphNodePopover') || event.target.closest('#graphEdgePopover') || event.target.closest('.graph-node') || event.target.closest('.graph-edges path')) return;
+      if (!graphNodePopover.hidden) hideNodePopover();
+      if (!graphEdgePopover.hidden) hideEdgePopover();
+    });
+
+    nodes.forEach((node) => {
+      node.addEventListener('click', (event) => {
+        if (event.target.closest('.add-btn')) return;
+        updateInspector(node);
+      });
+      const add = node.querySelector('.add-btn');
+      if (add) {
+        add.addEventListener('click', (event) => {
+          event.stopPropagation();
+          addNodeToTray(node);
+          updateInspector(node);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

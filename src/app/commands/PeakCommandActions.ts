@@ -114,6 +114,17 @@ export function openRelatedNotes(): void {
 	void getContext().viewManager.activateRelatedNotesView();
 }
 
+/**
+ * Open File Atlas — an ordered, block-level map of the current document.
+ * File Atlas lives inside the existing CopilotPicker modal as its Atlas tab
+ * (it replaced the old heading-filter view there), so this command opens the
+ * picker with the Atlas tab active.
+ * Design: docs/superpowers/specs/2026-07-08-file-atlas-design.md
+ */
+export function openFileAtlas(): void {
+	new CopilotPickerModal(getContext(), { initialTab: 'atlas' }).open();
+}
+
 export async function refreshHubSummaries(): Promise<void> {
 	new Notice('Hub summary refresh started...');
 	const { HubRegenService } = await import('@/service/search/index/helper/hub/hubRegenService');

@@ -14,6 +14,10 @@ const buttonVariants = cva(
 				secondary: 'pktw-bg-secondary pktw-text-secondary-foreground hover:pktw-bg-secondary/80',
 				ghost: 'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
 				link: 'pktw-text-primary pktw-underline-offset-4 hover:pktw-underline',
+				// Base reset (clickable-icon + flex-center) only — no color, no
+				// hover. For surfaces that own their full skin via scoped CSS and
+				// just need the primitive's Obsidian button reset (e.g. File Atlas).
+				unstyled: '',
 			},
 			size: {
 				default: 'pktw-h-10 pktw-px-4 pktw-py-2',

@@ -1,0 +1,738 @@
+/*
+ * File Atlas modal styles (Phase 1).
+ *
+ * Faithful port of docs/gstack/file-atlas-mock-2026-07-08/index-v3.html mapped
+ * onto --pk-* tokens (no raw hex — see docs/conventions/ui-design.md §1).
+ * Scoped to `.peak-file-atlas-modal` (contentEl) which also carries
+ * `peak-design-root`, so button-based rows must beat the Obsidian reset with
+ * !important on geometry (§4.3).
+ *
+ * Gutter shows only the block start line (single number, 34px) per the
+ * 2026-07-09 mock correction; full line range lives in the Inspector.
+ */
+
+.peak-file-atlas-modal.pkfa-root {
+	display: grid;
+	grid-template-rows: 42px 44px auto 46px minmax(0, 1fr) auto;
+	height: min(900px, calc(100vh - 160px));
+	min-height: 620px;
+	background: var(--pk-surface);
+	color: var(--pk-text-primary);
+	font-family: var(--pk-font-sans);
+	/* Neutralize Obsidian theme inheritance: its line-height inflates every row
+	   vs the mock (implicit ~1.2, 0 tracking). Obsidian's rule beats a plain
+	   declaration, so !important is required (see docs/conventions/ui-design.md
+	   §4.3 — the same reason button geometry needs it). Verified against a
+	   harness that reproduces Obsidian's line-height override. */
+	line-height: 1.25 !important;
+	letter-spacing: 0 !important;
+	overflow: hidden;
+}
+
+/* Reset line-height/box-sizing on every descendant — Obsidian sets these on
+   generic elements and they cascade into labels, badges, buttons. !important +
+   two-class specificity beats Obsidian's app.css. */
+.peak-file-atlas-modal.pkfa-root * {
+	box-sizing: border-box;
+	line-height: 1.25 !important;
+}
+
+/*
+ * Mounted inside the CopilotPicker modal body: File Atlas renders its full mock
+ * chrome (path → mode-nav → search → atlas-bar → main → tray, all 6 rows) and
+ * fills the picker body height instead of its own fixed modal height.
+ */
+.peak-file-atlas-modal.pkfa-root.pkfa-fill {
+	height: 100%;
+	min-height: 0;
+}
+
+/*
+ * Slot mode (Copilot / Ambient tabs): the shared top (path + mode-nav) stays,
+ * and the body area is replaced by the host-provided content. Only 3 rows.
+ */
+.peak-file-atlas-modal.pkfa-root.pkfa-slot-mode {
+	grid-template-rows: 42px 44px minmax(0, 1fr);
+}
+
+.pkfa-body-slot {
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+/* Global svg default (mirrors the mock's `svg { 16px; stroke-width: 1.9 }`).
+   Without this, Lucide icons with no explicit size prop render at their 24px
+   default and overflow buttons (Filters / Reveal / +), and the heavier default
+   stroke-width 2 makes every icon look chunkier than the mock. Specific rules
+   below (12/13/14px) override by source order at equal specificity. */
+.pkfa-root svg { width: 16px; height: 16px; stroke-width: 1.9; flex: 0 0 auto; }
+
+/* Blanket button reset — every atlas button is the shared <Button> primitive
+   (clickable-icon base), so the Obsidian raised-button chrome is already gone.
+   This keeps a belt-and-braces reset for box-shadow / appearance / min-height /
+   font in case a theme re-adds them. The primitive's `disabled:opacity-50`
+   would double-faint our already-styled disabled states (Send, disabled modes),
+   so opacity is pinned to 1 here — pkfa disabled rules own the greyed look. */
+.peak-file-atlas-modal.pkfa-root button {
+	box-shadow: none !important;
+	-webkit-appearance: none !important;
+	appearance: none !important;
+	min-height: 0 !important;
+	font-family: var(--pk-font-sans) !important;
+}
+
+.peak-file-atlas-modal.pkfa-root button:disabled { opacity: 1 !important; }
+
+/* ---------- doc context ---------- */
+.pkfa-doc-context {
+	min-width: 0;
+	padding: 0 var(--pk-space-6);
+	border-bottom: 1px solid var(--pk-border-soft);
+	background: var(--pk-surface-raised);
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	align-items: center;
+	gap: var(--pk-space-4);
+}
+
+.pkfa-doc-path {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	color: var(--pk-text-secondary);
+	font-family: var(--pk-font-mono);
+	font-size: var(--pk-text-base);
+	font-weight: 700;
+}
+
+.pkfa-reliability {
+	height: 24px;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 0 9px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-pill);
+	background: var(--pk-surface);
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+	font-weight: 720;
+	white-space: nowrap;
+}
+
+.pkfa-reliability .pkfa-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: var(--pk-radius-full);
+	background: var(--pk-warning);
+}
+
+.pkfa-doc-stats {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-base);
+	white-space: nowrap;
+}
+
+.pkfa-doc-stats span {
+	height: 24px;
+	display: inline-flex;
+	align-items: center;
+	padding: 0 8px;
+	background: var(--pk-surface);
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-pill);
+}
+
+/* ---------- mode nav ---------- */
+.pkfa-mode-nav {
+	display: grid;
+	grid-template-columns: 1fr 1fr 1fr;
+	border-bottom: 1px solid var(--pk-border-soft);
+	background: var(--pk-surface);
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-mode {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--pk-space-3);
+	color: var(--pk-text-secondary);
+	border: 0 !important;
+	background: var(--pk-surface) !important;
+	padding: 0 !important;
+	border-radius: 0 !important;
+	cursor: pointer;
+	font-size: var(--pk-text-lg);
+	font-weight: 760;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-mode.is-active {
+	background: var(--pk-accent-tint) !important;
+	color: var(--pk-accent-text);
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-mode:disabled {
+	color: var(--pk-text-faint);
+	cursor: not-allowed;
+}
+
+.pkfa-subview-switch {
+	height: 26px;
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 2px;
+	border: 1px solid var(--pk-border-accent);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface);
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-view-tab {
+	height: 20px !important;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 0 9px !important;
+	border: 0 !important;
+	border-radius: var(--pk-radius-sm) !important;
+	color: var(--pk-text-secondary);
+	background: transparent !important;
+	font-size: var(--pk-text-xs);
+	font-weight: 750;
+	cursor: pointer;
+}
+
+.pkfa-view-tab svg { width: 12px; height: 12px; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-view-tab.is-active {
+	color: var(--pk-accent-text);
+	background: var(--pk-surface) !important;
+	box-shadow: var(--pk-shadow-sm) !important;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-view-tab:disabled {
+	color: var(--pk-text-faint);
+	cursor: not-allowed;
+}
+
+/* ---------- search band ---------- */
+.pkfa-search-band { padding: 14px var(--pk-space-6) 10px; background: var(--pk-surface); }
+
+.pkfa-search-box {
+	height: 48px;
+	border: 1px solid var(--pk-border-soft);
+	background: var(--pk-surface);
+	border-radius: var(--pk-radius-pill);
+	box-shadow: var(--pk-shadow-sm);
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto auto;
+	align-items: center;
+	gap: var(--pk-space-3);
+	padding: 0 18px;
+	color: var(--pk-text-secondary);
+}
+
+.pkfa-search-box > svg { width: 17px; height: 17px; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-search-box input {
+	min-width: 0;
+	border: 0 !important;
+	outline: 0 !important;
+	background: transparent !important;
+	color: var(--pk-text-primary);
+	font-family: var(--pk-font-sans);
+	font-size: var(--pk-text-lg);
+	font-weight: 600;
+	padding: 0 !important;
+	height: auto !important;
+}
+
+.pkfa-search-box input::placeholder { color: var(--pk-text-secondary); font-weight: 500; }
+.pkfa-search-box:focus-within { border-color: var(--pk-border-accent); box-shadow: 0 0 0 3px var(--pk-accent-tint); }
+
+.pkfa-search-hits { color: var(--pk-text-faint); font-size: var(--pk-text-base); font-weight: 720; white-space: nowrap; }
+
+.pkfa-scope-pill {
+	height: 30px;
+	display: inline-flex;
+	align-items: center;
+	padding: 0 14px;
+	background: var(--pk-accent-tint);
+	color: var(--pk-accent-text);
+	border-radius: var(--pk-radius-pill);
+	font-size: var(--pk-text-md);
+	font-weight: 760;
+	white-space: nowrap;
+}
+
+/* ---------- atlas bar: presets + filters + fold ---------- */
+.pkfa-atlas-bar {
+	min-width: 0;
+	padding: 0 var(--pk-space-6);
+	border-bottom: 1px solid var(--pk-border-soft);
+	background: var(--pk-surface);
+	display: flex;
+	align-items: center;
+	gap: var(--pk-space-3);
+	position: relative;
+}
+
+.pkfa-preset-switch {
+	height: 30px;
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 3px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-pill);
+	background: var(--pk-surface-sunken);
+	flex: 0 0 auto;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-preset-tab {
+	height: 24px !important;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 0 11px !important;
+	border: 0 !important;
+	border-radius: var(--pk-radius-pill) !important;
+	background: transparent !important;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-base);
+	font-weight: 760;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-preset-tab.is-active {
+	color: var(--pk-accent-fg) !important;
+	background: var(--pk-accent) !important;
+	box-shadow: var(--pk-shadow-sm) !important;
+}
+
+.pkfa-mod-dot { width: 6px; height: 6px; border-radius: var(--pk-radius-full); background: var(--pk-warning); }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-ghost-btn {
+	height: 30px !important;
+	padding: 0 10px !important;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	border: 1px solid var(--pk-border) !important;
+	background: var(--pk-surface) !important;
+	color: var(--pk-text-primary);
+	border-radius: var(--pk-radius-md) !important;
+	font-size: var(--pk-text-base);
+	font-weight: 730;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-ghost-btn:hover:not(:disabled) {
+	border-color: var(--pk-border-accent) !important;
+	color: var(--pk-accent-text);
+	background: var(--pk-accent-tint) !important;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-ghost-btn:disabled { color: var(--pk-text-faint); cursor: not-allowed; }
+
+.pkfa-fold-actions { display: inline-flex; gap: 4px; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-fold-btn {
+	height: 30px !important;
+	width: 30px !important;
+	min-width: 30px !important;
+	display: grid;
+	place-items: center;
+	border: 1px solid var(--pk-border) !important;
+	border-radius: var(--pk-radius-md) !important;
+	background: var(--pk-surface) !important;
+	color: var(--pk-text-secondary);
+	cursor: pointer;
+	padding: 0 !important;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-fold-btn:hover { color: var(--pk-accent-text); border-color: var(--pk-border-accent) !important; }
+.pkfa-fold-btn svg { width: 13px; height: 13px; }
+
+/* ---------- filter popover ---------- */
+.pkfa-filter-menu { position: relative; display: inline-flex; }
+
+.pkfa-filter-popover {
+	position: absolute;
+	left: 0;
+	top: calc(100% + 8px);
+	z-index: var(--pk-z-popover);
+	width: 520px;
+	max-height: min(560px, calc(100vh - 260px));
+	padding: 12px;
+	border: 1px solid var(--pk-border-strong);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pk-popover, var(--pk-surface-overlay));
+	box-shadow: var(--pk-shadow-popover);
+	display: grid;
+	gap: var(--pk-space-3);
+	overflow: auto;
+}
+
+.pkfa-filter-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--pk-space-3);
+	color: var(--pk-text-primary);
+	font-size: var(--pk-text-base);
+	font-weight: 780;
+}
+
+.pkfa-filter-head .pkfa-hint { color: var(--pk-text-faint); font-weight: 650; font-size: var(--pk-text-xs); }
+
+.pkfa-filter-section { display: grid; gap: 6px; padding-top: 9px; border-top: 1px solid var(--pk-border-soft); }
+.pkfa-filter-section:first-child { padding-top: 0; border-top: 0; }
+
+.pkfa-filter-section-title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--pk-space-2);
+	color: var(--pk-text-faint);
+	font-size: var(--pk-text-xs);
+	font-weight: 820;
+	text-transform: uppercase;
+}
+
+.pkfa-filter-actions { display: inline-flex; align-items: center; gap: 4px; text-transform: none; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-filter-action {
+	height: 21px;
+	padding: 0 7px !important;
+	border: 1px solid var(--pk-border) !important;
+	background: var(--pk-surface) !important;
+	color: var(--pk-text-secondary);
+	border-radius: var(--pk-radius-sm) !important;
+	font-size: var(--pk-text-xs);
+	font-weight: 760;
+	cursor: pointer;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-filter-action:hover { color: var(--pk-accent-text); border-color: var(--pk-border-accent) !important; background: var(--pk-accent-tint) !important; }
+
+.pkfa-filter-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-type-toggle {
+	min-width: 0;
+	height: 30px;
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	padding: 0 8px !important;
+	/* Mock-exact colors (replication mode — the mock is the design spec and its
+	   pale-purple / cool-gray palette does not map cleanly to --pk-* tokens). */
+	border: 1px solid #e7e9f1 !important;
+	border-radius: 7px !important;
+	background: #f7f8fb !important;
+	color: #747d8c;
+	font-size: var(--pk-text-xs);
+	font-weight: 700;
+	cursor: pointer;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.pkfa-type-toggle svg { width: 13px; height: 13px; }
+.peak-file-atlas-modal.pkfa-root .pkfa-type-toggle.is-on { color: #7c3aed !important; background: #f1eaff !important; border-color: #dccbff !important; }
+
+/* ---------- main split ---------- */
+.pkfa-main { min-height: 0; display: grid; grid-template-columns: minmax(0, 60fr) minmax(0, 40fr); background: var(--pk-surface); }
+
+.pkfa-tree-pane { min-width: 0; min-height: 0; border-right: 1px solid var(--pk-border-soft); display: grid; grid-template-rows: minmax(0, 1fr); background: var(--pk-surface); }
+.pkfa-tree-scroll { min-height: 0; overflow: auto; padding: 10px 12px 18px; }
+.pkfa-tree { display: grid; gap: 1px; }
+.pkfa-kids { display: grid; gap: 1px; }
+.pkfa-kids.is-collapsed { display: none; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-node {
+	min-height: 34px;
+	display: grid;
+	grid-template-columns: 34px minmax(0, 1fr);
+	align-items: stretch;
+	border: 1px solid transparent !important;
+	/* mock uses literal 7px here (between --pk-radius-sm 4 and -md 8) */
+	border-radius: 7px !important;
+	background: transparent !important;
+	cursor: pointer;
+	position: relative;
+	padding: 0 !important;
+	width: 100% !important;
+	text-align: left;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-node:hover { background: var(--pk-surface-raised) !important; }
+.peak-file-atlas-modal.pkfa-root .pkfa-node.is-selected { background: var(--pk-accent-tint) !important; border-color: var(--pk-border-accent) !important; }
+
+.pkfa-node.is-selected::before {
+	content: "";
+	position: absolute;
+	left: -1px;
+	top: 5px;
+	bottom: 5px;
+	width: 3px;
+	background: var(--pk-accent);
+	border-radius: 3px;
+}
+
+.pkfa-line-ref {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	padding-right: 6px;
+	border-right: 1px solid var(--pk-border-soft);
+	color: var(--pk-text-faint);
+	font-family: var(--pk-font-mono);
+	font-size: 9.5px;
+	font-weight: 650;
+	white-space: nowrap;
+	user-select: none;
+}
+
+.pkfa-node-body { min-width: 0; display: flex; align-items: center; gap: 6px; padding: 4px 6px; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-twisty {
+	width: 16px !important;
+	min-width: 16px !important;
+	height: 16px !important;
+	color: var(--pk-text-faint);
+	display: grid;
+	place-items: center;
+	flex: 0 0 auto;
+	border: 0 !important;
+	background: transparent !important;
+	cursor: pointer;
+	padding: 0 !important;
+}
+
+.pkfa-twisty svg { width: 11px; height: 11px; transition: transform 120ms ease; }
+.pkfa-node.is-collapsed .pkfa-twisty svg { transform: rotate(-90deg); }
+.pkfa-twisty.is-empty { visibility: hidden; }
+
+.pkfa-icon { width: 21px; height: 21px; border-radius: 6px; display: grid; place-items: center; border: 1px solid transparent; flex: 0 0 auto; }
+.pkfa-icon svg { width: 12px; height: 12px; }
+
+.pkfa-label { min-width: 0; display: grid; gap: 1px; flex: 1 1 auto; }
+.pkfa-name { font-size: var(--pk-text-base); font-weight: 710; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pkfa-sub { color: var(--pk-text-faint); font-size: var(--pk-text-xs); font-weight: 650; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+.pkfa-fold-sum { color: var(--pk-text-faint); font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+
+.pkfa-badge {
+	height: 19px;
+	display: inline-flex;
+	align-items: center;
+	padding: 0 6px;
+	border-radius: var(--pk-radius-pill);
+	border: 1px solid transparent;
+	font-size: 9.5px;
+	font-weight: 790;
+	white-space: nowrap;
+	flex: 0 0 auto;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-add-btn {
+	width: 24px !important;
+	height: 24px !important;
+	min-width: 24px !important;
+	display: grid;
+	place-items: center;
+	border: 1px solid var(--pk-border) !important;
+	background: var(--pk-surface) !important;
+	color: var(--pk-text-secondary);
+	/* mock uses literal 7px (--pk-radius-sm is 4px, too square) */
+	border-radius: 7px !important;
+	cursor: pointer;
+	opacity: 0;
+	flex: 0 0 auto;
+	padding: 0 !important;
+}
+
+.pkfa-add-btn svg { width: 12px; height: 12px; }
+.pkfa-node:hover .pkfa-add-btn, .pkfa-node.is-selected .pkfa-add-btn { opacity: 1; }
+.pkfa-add-btn.is-in-tray { opacity: 1; color: var(--pk-accent-text); border-color: var(--pk-border-accent) !important; background: var(--pk-accent-tint) !important; }
+.peak-file-atlas-modal.pkfa-root .pkfa-add-btn:hover { color: var(--pk-accent-text); border-color: var(--pk-border-accent) !important; background: var(--pk-accent-tint) !important; }
+
+/* icon color per type */
+/* Icon chip palette — mock-exact (replication mode), same reason as badges. */
+.pkfa-type-heading .pkfa-icon { color: #5c6676; background: #f1f3f7; border-color: #e4e8f0; }
+.pkfa-type-block .pkfa-icon { color: #667085; background: #f8f9fc; border-color: #eceff5; }
+.pkfa-type-resource .pkfa-icon { color: #2d6cdf; background: #edf4ff; border-color: #cfe0ff; }
+.pkfa-type-task .pkfa-icon { color: #23845e; background: #e8f7ef; border-color: #b7ead2; }
+.pkfa-type-insight .pkfa-icon { color: #7c3aed; background: #f1eaff; border-color: #dccbff; }
+.pkfa-type-issue .pkfa-icon { color: #9a6408; background: #fff4dc; border-color: #f7d58f; }
+
+/* badge palettes */
+/* Badge palette copied verbatim from the mock (replication mode). The mock's
+   cool blue-gray + colored tints are the design spec; the generic --pk-* grays
+   read as washed-out next to them, so the exact hex is pinned here. */
+.pkfa-badge--h { color: #596273; background: #f1f3f7; border-color: #e1e5ed; }
+.pkfa-badge--block { color: #667085; background: #f8f9fc; border-color: #e4e8f0; }
+.pkfa-badge--meta { color: #687385; background: #f5f7fb; border-color: #e1e6ef; }
+.pkfa-badge--ok { color: #23845e; background: #e8f7ef; border-color: #b7ead2; }
+.pkfa-badge--media { color: #2d6cdf; background: #edf4ff; border-color: #cfe0ff; }
+.pkfa-badge--vault { color: #087a80; background: #e7f7f8; border-color: #b6e6ea; }
+.pkfa-badge--external { color: #2d6cdf; background: #edf4ff; border-color: #cfe0ff; }
+.pkfa-badge--insight { color: #7c3aed; background: #f1eaff; border-color: #dccbff; }
+.pkfa-badge--issue { color: #9a6408; background: #fff4dc; border-color: #f7d58f; }
+.pkfa-badge--draw { color: #087a80; background: #e7f7f8; border-color: #b6e6ea; }
+
+/* ---------- inspector ---------- */
+.pkfa-inspector { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); background: var(--pk-surface-sunken); }
+.pkfa-inspector-scroll { min-height: 0; overflow: auto; padding: 14px; display: grid; gap: var(--pk-space-3); align-content: start; }
+
+.pkfa-card { border: 1px solid var(--pk-border); background: var(--pk-surface); border-radius: var(--pk-radius-lg); overflow: hidden; }
+.pkfa-card-body { padding: 14px; display: grid; gap: var(--pk-space-3); }
+
+.pkfa-selected-top { display: flex; align-items: center; justify-content: space-between; gap: var(--pk-space-3); }
+.pkfa-selected-kind { display: flex; align-items: center; gap: 8px; color: var(--pk-text-secondary); font-size: var(--pk-text-xs); font-weight: 820; text-transform: uppercase; }
+.pkfa-selected-kind svg { width: 14px; height: 14px; }
+.pkfa-selected-title { font-size: var(--pk-text-xl); line-height: 1.3 !important; font-weight: 790; overflow-wrap: anywhere; }
+.pkfa-selected-sub { color: var(--pk-text-secondary); font-size: var(--pk-text-base); line-height: 1.45 !important; }
+
+.pkfa-source-snippet {
+	padding: 11px 12px;
+	border: 1px solid var(--pk-border-soft);
+	background: var(--pk-surface-raised);
+	border-radius: var(--pk-radius-md);
+	font-family: var(--pk-font-mono);
+	color: var(--pk-text-primary);
+	font-size: var(--pk-text-base);
+	line-height: 1.5 !important;
+	white-space: pre-wrap;
+	overflow: auto;
+	max-height: 260px;
+}
+
+.pkfa-meta-rows { display: grid; gap: 7px; }
+.pkfa-meta-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: var(--pk-space-3); align-items: baseline; font-size: var(--pk-text-base); }
+.pkfa-meta-row .pkfa-k { color: var(--pk-text-faint); font-size: var(--pk-text-xs); font-weight: 780; text-transform: uppercase; }
+.pkfa-meta-row .pkfa-v { color: var(--pk-text-primary); font-weight: 660; min-width: 0; overflow-wrap: anywhere; }
+.pkfa-meta-row .pkfa-v.pkfa-mono { font-family: var(--pk-font-mono); font-size: var(--pk-text-xs); }
+
+.pkfa-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.pkfa-preview-table { width: 100%; border-collapse: collapse; font-family: var(--pk-font-sans); font-size: var(--pk-text-base); }
+.pkfa-preview-table th, .pkfa-preview-table td { padding: 8px 9px; border: 1px solid var(--pk-border-soft); text-align: left; vertical-align: top; }
+.pkfa-preview-table th { color: var(--pk-text-secondary); background: var(--pk-surface-raised); font-weight: 790; }
+
+.pkfa-preview-media, .pkfa-preview-link {
+	display: grid;
+	grid-template-columns: 34px minmax(0, 1fr);
+	gap: var(--pk-space-3);
+	align-items: center;
+	min-height: 64px;
+	padding: 12px;
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface);
+}
+
+.pkfa-preview-media svg, .pkfa-preview-link svg { width: 22px; height: 22px; color: var(--pk-accent); }
+.pkfa-preview-title { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--pk-text-md); font-weight: 760; }
+.pkfa-preview-sub { margin-top: 3px; color: var(--pk-text-secondary); font-size: var(--pk-text-base); overflow-wrap: anywhere; }
+.pkfa-preview-quote { padding-left: 12px; border-left: 3px solid var(--pk-border-accent); color: var(--pk-text-primary); font-size: var(--pk-text-md); line-height: 1.5 !important; white-space: pre-wrap; }
+
+/* ---------- tray ---------- */
+.pkfa-tray {
+	min-height: 54px;
+	border-top: 1px solid var(--pk-border-soft);
+	background: var(--pk-surface);
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: var(--pk-space-4);
+	padding: 8px var(--pk-space-6);
+}
+
+.pkfa-tray-title { display: flex; align-items: center; gap: 8px; color: var(--pk-text-secondary); font-size: var(--pk-text-base); font-weight: 780; white-space: nowrap; }
+.pkfa-tray-title svg { width: 16px; height: 16px; }
+
+.pkfa-tray-count {
+	min-width: 20px;
+	height: 20px;
+	display: inline-grid;
+	place-items: center;
+	padding: 0 6px;
+	border-radius: var(--pk-radius-pill);
+	background: var(--pk-accent-tint);
+	color: var(--pk-accent-text);
+	font-size: var(--pk-text-xs);
+	font-weight: 800;
+}
+
+.pkfa-tray-items { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+
+.pkfa-chip {
+	max-width: 240px;
+	height: 30px;
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	padding: 0 10px;
+	border: 1px solid var(--pk-border);
+	background: var(--pk-surface-sunken);
+	border-radius: var(--pk-radius-pill);
+	color: var(--pk-text-primary);
+	font-size: var(--pk-text-base);
+	font-weight: 690;
+	white-space: nowrap;
+	flex: 0 0 auto;
+}
+
+.pkfa-chip svg { width: 13px; height: 13px; color: var(--pk-text-secondary); }
+.pkfa-chip span { overflow: hidden; text-overflow: ellipsis; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-chip-remove {
+	width: 18px !important;
+	height: 18px !important;
+	min-width: 18px !important;
+	border: 0 !important;
+	background: transparent !important;
+	color: var(--pk-text-faint);
+	border-radius: var(--pk-radius-full) !important;
+	display: grid;
+	place-items: center;
+	cursor: pointer;
+	padding: 0 !important;
+	margin-right: -4px;
+}
+
+.pkfa-chip-remove svg { width: 11px; height: 11px; }
+.peak-file-atlas-modal.pkfa-root .pkfa-chip-remove:hover { background: var(--pk-state-hover) !important; color: var(--pk-text-primary); }
+
+.pkfa-chip.pkfa-overflow { background: var(--pk-surface); color: var(--pk-text-secondary); font-weight: 780; cursor: default; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-primary-btn {
+	height: 36px !important;
+	padding: 0 14px !important;
+	border: 0 !important;
+	border-radius: var(--pk-radius-md) !important;
+	background: var(--pk-accent) !important;
+	color: var(--pk-accent-fg);
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	font-size: var(--pk-text-md);
+	font-weight: 790;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-primary-btn:disabled { background: var(--pk-surface-sunken) !important; color: var(--pk-text-faint); cursor: not-allowed; }
+.pkfa-primary-btn svg { width: 16px; height: 16px; }

@@ -142,6 +142,7 @@ export const ConfigTemplateId = {
 	Chat: 'config-chat' as const,
 	Dashboard: 'config-dashboard' as const,
 	RichOutputTypes: 'config-rich-output-types' as const,
+	FileAtlas: 'config-file-atlas' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -405,6 +406,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ConfigTemplateId.Chat]: meta('config', 'chat', { expectsJson: true }),
 	[ConfigTemplateId.Dashboard]: meta('config', 'dashboard', { expectsJson: true }),
 	[ConfigTemplateId.RichOutputTypes]: meta('config', 'rich-output-types', { expectsJson: true }),
+	[ConfigTemplateId.FileAtlas]: meta('config', 'file-atlas', { expectsJson: true }),
 
 	// --- Structural analysis prompts ---
 	'gap-explanation': meta('prompts', 'gap-explanation', { label: 'Gap Explanation', description: 'LLM prompt for lazy gap explanations.', group: 'indexing' }),

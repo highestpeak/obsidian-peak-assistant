@@ -62,6 +62,7 @@ export class CopilotPickerModal extends Modal {
 				{
 					ctx,
 					initialTab: this.options.initialTab ?? 'document',
+					onClose: () => this.close(),
 					onSelect: (action: CopilotAction) => {
 						if (!ctx) return;
 						this.close();

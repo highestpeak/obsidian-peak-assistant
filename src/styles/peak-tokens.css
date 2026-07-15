@@ -78,6 +78,10 @@
 	--pk-indigo:             #6366f1;     /* vault review "dying" status */
 	--pk-indigo-bg:          rgba(99, 102, 241, 0.12);
 
+	--pk-teal:               #0d9488;     /* File Atlas vault-link semantic */
+	--pk-teal-bg:            rgba(13, 148, 136, 0.12);
+	--pk-teal-border:        rgba(13, 148, 136, 0.25);
+
 	/* ── interaction states ─────────────────────────────────────────────── */
 	--pk-state-hover:        rgba(0, 0, 0, 0.04);
 	--pk-state-active:       rgba(0, 0, 0, 0.06);
@@ -212,6 +216,10 @@
 
 	--pk-indigo:             #93b1ff;
 	--pk-indigo-bg:          rgba(147, 177, 255, 0.16);
+
+	--pk-teal:               #2dd4bf;     /* File Atlas vault-link semantic */
+	--pk-teal-bg:            rgba(45, 212, 191, 0.16);
+	--pk-teal-border:        rgba(45, 212, 191, 0.30);
 
 	/* ── interaction states ─────────────────────────────────────────────── */
 	--pk-state-hover:        rgba(255, 255, 255, 0.06);

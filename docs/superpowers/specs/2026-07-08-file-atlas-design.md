@@ -1,6 +1,6 @@
 # File Atlas Design Spec
 
-**Status:** product design draft
+**Status:** phase 0-1 implemented (first slice)
 **Date:** 2026-07-08
 **Owner surface:** active document navigation / Quick Search adjacent surface / Document Copilot context handoff
 **Source:** synthesized from the 2026-07-08 product discussion about single-file search, block navigation, persisted Copilot insights, resource layers, anchors, Git enhancement, and Command Gateway control.
@@ -456,6 +456,7 @@ Some ideas are valuable but should not be owned directly by File Atlas.
 | Reading Paths | Document Copilot generates. | Atlas can provide selected blocks as input. |
 | Entity Board | Future Atlas projection. | Entity nodes can appear in tree or Inspector. |
 | Maintenance Actions | Copilot / Command Gateway capability. | Atlas can trigger handoff, not apply edits directly. |
+| Custom graph editing / saving | Future "Collection notes + Canvas reuse" — discussion archive and pre-research questions in `docs/research/2026-07-09-collection-notes-canvas-reuse/README.md` (registered in roadmap backlog). Saved note sets become vault-native MOC collection notes (links are the data); spatial arrangement and manual edges reuse Obsidian Canvas instead of a bespoke graph editor. | Graph subview stays read-only: system views (1-hop / 2-hop), layout presets, node popover (open / focus / add to tray). No create / connect / save / delete. |
 
 ## Block Anchoring
 
@@ -822,6 +823,7 @@ File Atlas should not:
 - fix metadata directly;
 - split notes directly;
 - become a vault-wide graph;
+- ship a custom graph editor (manual edges, private graph persistence) — saved note sets and spatial editing are deferred to Collection notes + Obsidian Canvas reuse (roadmap backlog);
 - become a generic word cloud;
 - require Git to open;
 - require network checks for links in v1;
@@ -832,7 +834,7 @@ File Atlas should not:
 1. Where should persisted insights live: SQLite, sidecar markdown/JSON, or an existing artifact store?
 2. Should raw block parsing use Obsidian's metadata cache, a Markdown parser, or a hybrid?
 3. How much of the existing Heading mode can be reused versus replaced by the ordered block model?
-4. Should File Atlas open as a Quick Search mode, a right sidebar view, or a command modal?
+4. ~~Should File Atlas open as a Quick Search mode, a right sidebar view, or a command modal?~~ **Answered (2026-07-09):** File Atlas lives inside the existing `CopilotPickerModal` as its **Atlas tab**, replacing the old heading-filter view. The picker already carries the Atlas / Document Copilot / Ambient tab bar and the full-path header, so `FileAtlasPanel` mounts in `embedded` mode (its own mode-nav suppressed). The "Open File Atlas" command opens the picker with `initialTab: 'atlas'`. No standalone modal.
 5. What is the first Document Copilot payload contract for selected blocks?
 6. Which Git plugin should be recommended for `Managed` reliability mode?
 7. Should backlinks and unlinked mentions appear in the first Resource layer, or wait until the basic ordered tree is proven?
@@ -871,6 +873,16 @@ Alternatives: add rewrite/refactor/fix buttons inside Atlas.
 
 Trade-off: Adds one handoff step, but keeps product responsibilities clean.
 
+### Decision: Graph Subview Is Read-Only; Custom Graph Editing Is Cut (2026-07-09)
+
+Reason: The v2 mock's graph builder bundled three different jobs. (1) Curating a set of related notes is a real recurring need, but its correct container is a vault-native MOC collection note where links are the data — not a private graph store. (2) Manually drawn edges are shadow data: a relationship that is real belongs in markdown as `[[link]]` so backlinks, native graph, and our own index can consume it; an edge living only in plugin storage drifts from the vault and needs a draft/save state machine just to stay coherent. (3) Spatial arrangement and freeform connection is Obsidian Canvas's core product; a bespoke reduced graph editor competes with a first-class host feature and loses.
+
+Alternatives: keep the full graph builder inside File Atlas; ship it as a separate saved-graph-views feature with private persistence.
+
+Trade-off: users lose in-place graph editing in v1, but the recurring-context job is preserved through the future "Collection notes + Canvas reuse" backlog item (save selection as a `type: collection` MOC note; Atlas renders any note's neighborhood read-only; optional export to `.canvas`). Full discussion archive and promotion questions: `docs/research/2026-07-09-collection-notes-canvas-reuse/README.md`; registered in `docs/roadmap.html` backlog, 2026-07-09.
+
+Implementation constraint (2026-07-09): when the read-only graph subview ships, it must reuse the Vault Search Result Graph View rendering stack — `src/ui/view/quick-search/components/result-graph/ResultGraphView.tsx` (cytoscape.js + fcose/cise/cola/dagre, presets constellation / flow-tb / flow-lr / folder / orbit). Extract it into a shared graph component and feed it a document-neighborhood subgraph; do NOT build a second graph renderer. The two surfaces must stay visually and behaviorally consistent (same presets, same node/edge styling, same interaction grammar).
+
 ### Decision: Git Enhances But Does Not Gate The Feature
 
 Reason: Git-aware anchors are more reliable, but requiring Git would block ordinary users and first-run usage.
@@ -878,6 +890,23 @@ Reason: Git-aware anchors are more reliable, but requiring Git would block ordin
 Alternatives: require Git for persisted insights; ignore Git entirely.
 
 Trade-off: More adapter complexity, but clear reliability states make the behavior explainable.
+
+## Mock Review 2026-07-09 (index-v2)
+
+Reviewed mock: `docs/gstack/file-atlas-mock-2026-07-08/index-v2.html`. Verdict: visual language is fine; three structural deviations from this spec must be fixed in v3, and the graph subview grew into an out-of-scope product.
+
+P0 findings (spec deviations):
+
+| Finding | Spec requirement violated | v3 fix |
+| --- | --- | --- |
+| Tree is a flat list: two indent levels, decorative twisties, no collapse, no H2/H3 nesting. | "Ordered document object tree", "expand/collapse by heading and by block groups". | Real collapsible tree; collapsed heading rows show count summary (the only allowed count usage). |
+| No presets; 4 layer chips + 26 independent checkboxes; Heading is filterable. | Presets section; "Heading rows should always remain visible"; risk "settings soup". | Preset segmented control (Overview / Reading / Writing / Resources) as primary entry, filter popover secondary with modified-dot; Heading removed from filters. |
+| Insight rows and Inspector show no provenance, no anchor status; no top-bar reliability indicator. | Insight Layer provenance fields; anchor status display; reliability state Basic / Versioned / Managed. | Inspector gains Provenance and Anchor cards; anchor status dot on rows; reliability chip in doc context bar. |
+| Graph subview is a full graph builder: create / search-add / manual edges / edge delete / draft-save state machine / custom saved views. | Non-goals: "not become a vault-wide graph"; no such feature anywhere in spec. | Graph reduced to read-only system views (1-hop / 2-hop) + layout presets + node popover. Editing reclassified — see Decision Log. |
+
+P1 findings (interaction design): Inspector占50%但内容稀疏（改 60/40，内容补齐）；badge 列混装类型/链接类别/insight kind/状态四种语义（改为固定"类型 badge + 状态点"双槽）；multi-select 只有部分行有入口、tray 溢出无 +N 计数；大搜索框角色不明且 tree/graph 切换时 chrome 跳变（搜索降级为树内过滤输入）；未回答 open question #4 的窄容器形态（v3 增加 side-panel 宽度切换）。
+
+P2 findings (mock-level bugs): 图编辑态选中 draft 图但画布仍渲染 7 节点旧图、meta chip 与画布节点数矛盾；graph 搜索结果行 title 与 meta 文字粘连（外层 span 无布局）；paragraph 行 data-sub 声称 "Hidden in Overview" 但默认显示；行号 gutter 固定 30px 三位数行号贴边。
 
 ## Review Checklist
 

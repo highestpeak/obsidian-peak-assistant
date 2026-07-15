@@ -478,6 +478,16 @@ export default class MyPlugin extends Plugin {
 			},
 		});
 		this.addCommand({
+			id: 'peak-file-atlas-open',
+			name: 'Open File Atlas',
+			callback: () => {
+				void (async () => {
+					const { openFileAtlas } = await import('@/app/commands/PeakCommandActions');
+					openFileAtlas();
+				})();
+			},
+		});
+		this.addCommand({
 			id: 'peak-copy-last-debug-trace',
 			name: 'Copy last debug trace',
 			callback: () => {
