@@ -19,7 +19,11 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     kind: 'anthropic',
     enabled: true,
     createdAt: Date.now(),
-    baseUrl: 'https://api.anthropic.com',
+    // MUST include `/v1` — the AI SDK's Anthropic provider appends `/messages`
+    // to this baseUrl verbatim, so bare `https://api.anthropic.com` yields
+    // `POST /messages` → 404. `provider-factory.ts` normalises the legacy
+    // (no-/v1) value defensively for profiles saved before this fix.
+    baseUrl: 'https://api.anthropic.com/v1',
     apiKey: null,
     primaryModel: 'claude-sonnet-4-6',
     fastModel: 'claude-haiku-4-5',

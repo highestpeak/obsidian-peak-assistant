@@ -13,7 +13,7 @@ async function run(): Promise<void> {
       fn: () => {
         const p = createPresetProfile('anthropic');
         assert.strictEqual(p.kind, 'anthropic');
-        assert.strictEqual(p.baseUrl, 'https://api.anthropic.com');
+        assert.strictEqual(p.baseUrl, 'https://api.anthropic.com/v1');
         assert.strictEqual(p.primaryModel, 'claude-sonnet-4-6');
         assert.strictEqual(p.fastModel, 'claude-haiku-4-5');
         assert.strictEqual(p.enabled, true);
@@ -68,7 +68,7 @@ async function run(): Promise<void> {
       fn: () => {
         const p = createPresetProfile('anthropic', { apiKey: 'sk-ant-test' });
         const env = toAgentSdkEnv(p, 'claude-opus-4-6', 'claude-haiku-4-5');
-        assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://api.anthropic.com');
+        assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://api.anthropic.com/v1');
         assert.strictEqual(env.ANTHROPIC_API_KEY, 'sk-ant-test');
         assert.strictEqual(env.ANTHROPIC_DEFAULT_OPUS_MODEL, 'claude-opus-4-6');
         assert.strictEqual(env.ANTHROPIC_DEFAULT_HAIKU_MODEL, 'claude-haiku-4-5');

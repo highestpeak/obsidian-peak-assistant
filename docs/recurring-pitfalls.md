@@ -331,6 +331,51 @@ For any streaming text accumulation:
 
 ---
 
+## 8. Anthropic direct fetch blocked by CORS from Obsidian's browser origin
+
+**Class of bug**: A provider's public API rejects browser-origin requests without an explicit opt-in header. Since Obsidian plugins run under an `app://obsidian.md` origin (not `https://`), every `fetch()` from the plugin looks like a rogue browser to the API server. The browser preflight fails → `net::ERR_FAILED` + `blocked by CORS policy: No Access-Control-Allow-Origin header`.
+
+**Prior incidents**:
+- **2026-07-08 · AI Query Suggest → Anthropic direct call fails**: `AIQueryRewriteService` resolved Fast Lookup binding to an Anthropic profile. Vercel AI SDK's `createAnthropic()` used plain `fetch()` with no browser-access header → `POST https://api.anthropic.com/messages net::ERR_FAILED`. `suggestQueries()` retry-with-feedback ate both attempts then fell to `buildRuleBasedCandidates()` — user got fallback candidates but the LLM path was completely dead. Discovered when user asked "why is it hitting api.anthropic.com directly?" Silent because OpenRouter and OpenAI both accept browser origins by default, so most users never noticed Anthropic was dead.
+
+**Provider CORS matrix** (as of 2026-07-08):
+- **Anthropic** — requires `anthropic-dangerous-direct-browser-access: true` header. Without it, all browser-origin calls fail preflight.
+- **OpenAI** — accepts browser origins by default.
+- **Google Gemini** — accepts browser origins by default.
+- **OpenRouter** — explicit browser-friendly (advertises this in docs).
+- **Perplexity** — accepts browser origins.
+- **Ollama** — local, no CORS.
+
+**How to prevent it**:
+
+1. **When wiring a new provider through Vercel AI SDK**, check whether the vendor's API supports browser origins. If they require an opt-in header (like Anthropic's `anthropic-dangerous-direct-browser-access`), pass it in `createXxx({ headers: { … } })` in `src/core/providers/vercel/provider-factory.ts` — do NOT rely on `dangerouslyAllowBrowser: true` because that's a client-flag pattern, not a request header.
+2. **When adding a new feature that calls the LLM** (Query Suggest, Curator, meta-agents, etc.), **test it against all supported providers** — a fallback binding chain (Fast Lookup → agent-fast → Chat) can silently pick a provider the feature was never tested against.
+3. **When user reports "LLM call fails silently but rule-based fallback works"**, first check the console for `net::ERR_FAILED` on the provider's API host. That means CORS, not a real 500 from the provider.
+4. **The opt-in header alone is NOT enough** — the CORS preflight (`OPTIONS`) fails before any custom request header is ever sent, so `anthropic-dangerous-direct-browser-access` never reaches the server. The working fix routes Anthropic calls through Obsidian's Node-side `requestUrl` (no browser CORS at all), with the header kept for defense-in-depth.
+5. **Anthropic `baseUrl` must include `/v1`** — the AI SDK appends `/messages` verbatim, so a bare `https://api.anthropic.com` yields `POST /messages` → 404. `provider-factory.ts` normalises legacy no-`/v1` profiles defensively.
+
+**Fix pattern** (applied to Anthropic): app layer injects a `requestUrl`-backed fetch at boot; the provider factory uses it plus the opt-in header.
+
+```ts
+// main.ts (boot, before any LLM call)
+setProviderCorsBypassFetch(obsidianFetch); // requestUrl-backed, see app/platform/ObsidianFetchAdapter.ts
+
+// provider-factory.ts
+case 'anthropic': {
+  const provider = createAnthropic({
+    baseURL: anthropicBase, // normalised to include /v1
+    apiKey: apiKey ?? undefined,
+    headers: { 'anthropic-dangerous-direct-browser-access': 'true' },
+    fetch: corsBypassFetch ?? undefined,
+  });
+  return provider(resolvedModelId);
+}
+```
+
+`core/` must not import `obsidian`, hence the setter-injection from the app layer. Any new provider without native browser CORS should be treated the same way — always check the vendor's API doc for a "browser origin" section before shipping.
+
+---
+
 ## How to consult this doc
 
 - Bug feels familiar? `grep` this file for the symptom phrase before re-deriving the root cause.

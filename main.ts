@@ -119,6 +119,14 @@ export default class MyPlugin extends Plugin {
 	async onload() {
 		registerTemplateEngineHelpers();
 
+		// Route provider fetches that would otherwise be blocked by browser
+		// CORS (chiefly Anthropic — see docs/recurring-pitfalls.md §8)
+		// through Obsidian's Node-side `requestUrl`. Must run before any
+		// LLM call — provider-factory reads this at model construction.
+		const { setProviderCorsBypassFetch } = await import('@/core/providers/vercel/provider-factory');
+		const { obsidianFetch } = await import('@/app/platform/ObsidianFetchAdapter');
+		setProviderCorsBypassFetch(obsidianFetch);
+
 		this.uninstallHoverMenuGlobals = installHoverMenuGlobals();
 
 		const data = await this.loadData();
