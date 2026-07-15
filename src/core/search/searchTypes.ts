@@ -112,6 +112,13 @@ export interface SearchResultItem {
 	 */
 	finalScore?: number;
 	/**
+	 * Relative-normalized display score in [0, 100]. Written by
+	 * `assignDisplayScorePercent` after ranking finishes. Top item = 100%.
+	 * Consumers should prefer this over `Math.round(finalScore * 100)` — the
+	 * additive boost sum in `finalScore` can exceed 1.0 and isn't a probability.
+	 */
+	displayScorePercent?: number | null;
+	/**
 	 * Source of the search result (local vault, web, etc.)
 	 */
 	source?: SearchResultSource;

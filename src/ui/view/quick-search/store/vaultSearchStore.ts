@@ -20,12 +20,16 @@ export type QuickSearchMode = 'all' | 'heading' | 'help';
 export type ResultView = 'list' | 'graph' | 'tree';
 
 /**
- * Tree view density. Compact mimics Obsidian's own file explorer (24px
- * single-line rows, filename + hit-count badge). Detailed adds heading
- * anchor + modified date + snippet under each file. See mockup at
- * `docs/research/2026-07-08-tree-view-mockup/index.html`.
+ * Result-panel density. Shared across List and Tree views so the user has
+ * one "how much detail per row" dial instead of two per-view knobs.
+ * - Compact: single-line rows (Tree = filename + hit-count; List = title
+ *   + score pill).
+ * - Detailed: Tree adds heading anchor + modified date + snippet; List
+ *   adds snippet + path breadcrumb.
+ * Graph view ignores density (labels come from the graph layer).
+ * See mockup at `docs/research/2026-07-08-tree-view-mockup/index.html`.
  */
-export type TreeDensity = 'compact' | 'detailed';
+export type ResultDensity = 'compact' | 'detailed';
 
 /**
  * Graph view mode presets (distilled from user's preferred layouts in the
@@ -64,14 +68,14 @@ interface VaultSearchStore {
 	toggleGraphShowSemantic: () => void;
 
 	// Tree view state.
-	// - density: whether file rows are single-line or 3-line (see TreeDensity).
+	// - density: whether file rows are single-line or 3-line (see ResultDensity).
 	// - collapsedFolders: folder paths the user manually collapsed. Default is
 	//   empty (all folders auto-expanded since we only show hit-containing
 	//   subtrees). New search resets this — otherwise a stale collapse from a
 	//   prior query would hide new matches.
 	// - cursor: focused file path for keyboard nav. `null` = none yet.
-	treeDensity: TreeDensity;
-	setTreeDensity: (density: TreeDensity) => void;
+	resultDensity: ResultDensity;
+	setResultDensity: (density: ResultDensity) => void;
 	treeCollapsedFolders: string[];
 	toggleTreeFolderCollapsed: (folderPath: string) => void;
 	treeCursor: string | null;
@@ -130,9 +134,11 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 	setGraphShowSemantic: (on) => set({ graphShowSemantic: on }),
 	toggleGraphShowSemantic: () => set((s) => ({ graphShowSemantic: !s.graphShowSemantic })),
 
-	// Tree view initial state
-	treeDensity: 'compact',
-	setTreeDensity: (density) => set({ treeDensity: density }),
+	// Result-panel density (shared between List and Tree). Default 'detailed'
+	// so List keeps its snippet + path breadcrumb by default and Tree gets its
+	// heading anchor + snippet; users flip to 'compact' explicitly.
+	resultDensity: 'detailed',
+	setResultDensity: (density) => set({ resultDensity: density }),
 	treeCollapsedFolders: [],
 	toggleTreeFolderCollapsed: (folderPath) => set((s) => ({
 		treeCollapsedFolders: s.treeCollapsedFolders.includes(folderPath)

@@ -27,6 +27,7 @@ import { MetaRetriever } from '@/service/search/retriever/meta-retriever';
 import { FuzzyRetriever } from '@/service/search/retriever/fuzzy-retriever';
 import { rrfMerge } from '@/service/search/merger/rrf-merger';
 import { HighlightEngine } from './highlight-engine';
+import { assignDisplayScorePercent } from './scoreNormalize';
 import {
 	HighlightSourceResolver,
 	MemoryVaultTextCache,
@@ -144,6 +145,15 @@ export class QueryService {
 			matchType: m.best.matchType,
 			fuzzyCorrection: m.best.fuzzyCorrection,
 		}));
+
+		// Apply folder: filter uniformly across all retriever hits before PPR
+		// so graph reranking / boosts / highlighting only run on in-scope docs.
+		const folderScopes = plan.filters
+			.filter(f => f.field === 'folder')
+			.map(f => f.value);
+		if (folderScopes.length > 0) {
+			resultItems = this.reranker.applyFolderFilter(resultItems, folderScopes);
+		}
 
 		// PPR graph-based reranking
 		const tenant = query?.indexTenant ?? 'vault';
@@ -308,6 +318,10 @@ export class QueryService {
 				});
 			}
 		}
+
+		// Relative-normalize score for UI display. Kept as the last step so
+		// LLM rerank (which can reorder but not rewrite scores) is respected.
+		assignDisplayScorePercent(resultItems);
 
 		// Find fuzzy correction for UI
 		const fuzzyCorrection = resultItems.find(i => i.fuzzyCorrection)?.fuzzyCorrection;

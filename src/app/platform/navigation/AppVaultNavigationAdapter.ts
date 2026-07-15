@@ -151,4 +151,21 @@ export class AppVaultNavigationAdapter implements VaultNavigationPort {
 		app.workspace.revealLeaf(centerLeaf);
 		return true;
 	}
+
+	revealFolderInFileExplorer(folderPath: string): void {
+		if (!folderPath) return;
+		const app = this.app;
+		const leaves = app.workspace.getLeavesOfType('file-explorer');
+		if (leaves.length === 0) return;
+		const leaf = leaves[0];
+		const folder = app.vault.getAbstractFileByPath(folderPath);
+		if (!folder) return;
+		// `revealInFolder` isn't part of the public typings but has been
+		// stable in Obsidian 1.x — used by countless community plugins.
+		const view = leaf.view as unknown as { revealInFolder?: (f: unknown) => void };
+		if (typeof view.revealInFolder === 'function') {
+			view.revealInFolder(folder);
+		}
+		app.workspace.revealLeaf(leaf);
+	}
 }

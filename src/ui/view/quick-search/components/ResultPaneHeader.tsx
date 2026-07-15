@@ -83,6 +83,12 @@ const GraphPresetSegmented: React.FC = () => {
  * True toggle switch (30 × 16 track with sliding thumb) for the Semantic
  * overlay. Reads like a setting toggle rather than a preset chip so the
  * user immediately understands it's "layer on / off", not "another mode".
+ *
+ * Semantic edges come from the pre-indexed `mobius_edge` table
+ * (`GraphEdgeType.SemanticRelated`) and are filtered client-side when the
+ * toggle flips — so this toggle is instant, does not spend AI credits, and
+ * does not depend on network. Any future change that routes the toggle
+ * through a live LLM call MUST update the tooltip copy below.
  */
 const SemanticToggle: React.FC = () => {
 	const on = useVaultSearchStore((s) => s.graphShowSemantic);
@@ -90,7 +96,7 @@ const SemanticToggle: React.FC = () => {
 	return (
 		<label
 			className="pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-cursor-pointer pktw-select-none pktw-text-[11px] pktw-text-pk-foreground-muted"
-			title="Layer semantic-similarity edges on top of the current preset"
+			title="Layer semantic-similarity edges on top of the current preset. Uses pre-indexed embeddings — instant, no AI credits, no network."
 		>
 			<input
 				type="checkbox"
@@ -162,8 +168,6 @@ const PinnedHubChip: React.FC = () => {
 export const ViewModeToggle: React.FC = () => {
 	const resultView = useVaultSearchStore((s) => s.resultView);
 	const setResultView = useVaultSearchStore((s) => s.setResultView);
-	const isGraph = resultView === 'graph';
-	const isList = !isGraph;
 	// Wrapped in <button> children as absolutely-positioned motion.div —
 	// framer-motion animates a shared layoutId across mount points, so the
 	// purple thumb slides from previous-active to new-active on click.
@@ -177,7 +181,6 @@ export const ViewModeToggle: React.FC = () => {
 	const optBase = 'pktw-relative pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-[11px] pktw-font-medium';
 	const activeLabel = 'pktw-relative pktw-z-10 pktw-text-white';
 	const idleLabel = 'pktw-relative pktw-z-10 pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors';
-	const disabledLabel = 'pktw-relative pktw-z-10 pktw-text-pk-foreground-faint pktw-opacity-60';
 	return (
 		<div
 			role="tablist"
@@ -185,28 +188,74 @@ export const ViewModeToggle: React.FC = () => {
 			className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
 		>
 			<button type="button" title="List view"
-				onClick={() => { if (isGraph) setResultView('list'); }}
-				className={cn(optBase, isList ? activeLabel : idleLabel)}>
-				{isList && <Thumb />}
+				onClick={() => { if (resultView !== 'list') setResultView('list'); }}
+				className={cn(optBase, resultView === 'list' ? activeLabel : idleLabel)}>
+				{resultView === 'list' && <Thumb />}
 				<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
 					<List className="pktw-w-3 pktw-h-3" /> List
 				</span>
 			</button>
-			<button type="button" disabled title="Tree view — coming soon"
-				className={cn(optBase, disabledLabel)}
-				style={{ cursor: 'not-allowed' }}>
+			<button type="button" title="Tree — vault folder hierarchy"
+				onClick={() => { if (resultView !== 'tree') setResultView('tree'); }}
+				className={cn(optBase, resultView === 'tree' ? activeLabel : idleLabel)}>
+				{resultView === 'tree' && <Thumb />}
 				<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
-					<ListTree className="pktw-w-3 pktw-h-3" /> Tree view
+					<ListTree className="pktw-w-3 pktw-h-3" /> Tree
 				</span>
 			</button>
-			<button type="button" title="Graph view"
-				onClick={() => { if (!isGraph) setResultView('graph'); }}
-				className={cn(optBase, isGraph ? activeLabel : idleLabel)}>
-				{isGraph && <Thumb />}
+			<button type="button" title="Graph — relations between results"
+				onClick={() => { if (resultView !== 'graph') setResultView('graph'); }}
+				className={cn(optBase, resultView === 'graph' ? activeLabel : idleLabel)}>
+				{resultView === 'graph' && <Thumb />}
 				<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
-					<Network className="pktw-w-3 pktw-h-3" /> Graph view
+					<Network className="pktw-w-3 pktw-h-3" /> Graph
 				</span>
 			</button>
+		</div>
+	);
+};
+
+/**
+ * Compact / Detailed density toggle. Shared by List and Tree views (both
+ * consume `resultDensity` from the store) so the user has one dial for
+ * "how much detail per row" instead of two per-view knobs. Graph view
+ * ignores density.
+ */
+export const ResultDensityToggle: React.FC = () => {
+	const density = useVaultSearchStore((s) => s.resultDensity);
+	const setDensity = useVaultSearchStore((s) => s.setResultDensity);
+	const optBase = 'pktw-relative pktw-inline-flex pktw-items-center pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-[11px] pktw-font-medium';
+	const activeLabel = 'pktw-text-white';
+	const idleLabel = 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors';
+	return (
+		<div
+			role="tablist"
+			aria-label="Result panel density"
+			className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
+		>
+			{(['compact', 'detailed'] as const).map((d) => {
+				const active = density === d;
+				return (
+					<button
+						key={d}
+						type="button"
+						role="tab"
+						aria-selected={active}
+						title={d === 'compact' ? 'Compact — one line per result' : 'Detailed — result title + snippet + path / anchor'}
+						onClick={() => setDensity(d)}
+						className={cn(optBase, active ? activeLabel : idleLabel)}
+					>
+						{active && (
+							<motion.div
+								layoutId="result-density-thumb"
+								className="pktw-absolute pktw-inset-0 pktw-rounded-full pktw-bg-pk-accent"
+								transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+							/>
+						)}
+						<span className="pktw-relative pktw-z-10">{d === 'compact' ? 'Compact' : 'Detailed'}</span>
+					</button>
+				);
+			})}
 		</div>
 	);
 };

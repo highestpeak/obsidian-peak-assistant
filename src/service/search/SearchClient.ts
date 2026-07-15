@@ -94,6 +94,7 @@ export class SearchClient {
 			const meta = metaById.get(r.docId);
 			return {
 				id: r.docId,
+				docId: r.docId,
 				type: (meta?.type ?? 'markdown') as any,
 				title: meta?.title ?? r.docId,
 				path: meta?.path ?? r.docId,

@@ -89,4 +89,12 @@ export interface VaultNavigationPort {
 	 * (typed `unknown`) so the port stays free of `TFile`.
 	 */
 	openSourceFile(file: unknown): Promise<boolean>;
+
+	/**
+	 * Reveal a folder (by vault path) in Obsidian's left-side File Explorer.
+	 * Used by Vault Search's Tree view when the user clicks a folder row to
+	 * jump to that folder in the vault tree. Best-effort — no-op if the
+	 * File Explorer leaf isn't loaded or the folder can't be resolved.
+	 */
+	revealFolderInFileExplorer(folderPath: string): void;
 }

@@ -6,7 +6,8 @@ import type { CopilotAction, DocumentContext } from '@/service/copilot/CopilotAc
 import type { CopilotReviewHistoryRecord } from '@/service/copilot/CopilotReviewHistoryService';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
 import type { IntentTabId } from '@/service/copilot/intent-hub';
-import { Search, Sparkles, Globe, X, RotateCcw, Library, Network, ChevronDown } from 'lucide-react';
+import { Search, Sparkles, Globe, X, RotateCcw, Library, Network, ChevronDown, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { suggestHistoryStore, type SuggestHistoryEntry } from '@/ui/view/quick-search/rewrite/SuggestHistoryStore';
 import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { cn } from '@/ui/react/lib/utils';
@@ -33,8 +34,7 @@ import { parse as parseAiSearchAnalysisDoc, toCompletedAnalysisSnapshot } from '
 import { RecentAnalysisList } from './components/RecentAnalysisList';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
-import { useOpenHubGraphSubview } from './hooks/useOpenHubGraphSubview';
-import { ResultPaneGraphControls, ViewModeToggle } from './components/ResultPaneHeader';
+import { ResultPaneGraphControls, ResultDensityToggle, ViewModeToggle } from './components/ResultPaneHeader';
 
 type TabType = 'vault' | 'ai';
 
@@ -453,10 +453,157 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	);
 };
 
+/**
+ * Compound Suggest control — main click opens a fresh Suggest round, hover
+ * reveals a dropdown of recent stored rounds so the user can replay any
+ * candidate list from a past click without spending tokens again.
+ *
+ * 300ms open delay + 150ms close delay so cursor transit between button and
+ * popover doesn't dismiss the menu mid-motion. Popover suppresses itself
+ * when the history is empty rather than showing an empty state — no need to
+ * teach users about a feature that has nothing to show yet.
+ */
+const SuggestButton: React.FC<{
+	onOpen: () => void;
+	onReplay?: (entryId: string) => void;
+}> = ({ onOpen, onReplay }) => {
+	const [popoverOpen, setPopoverOpen] = React.useState(false);
+	const [entries, setEntries] = React.useState<SuggestHistoryEntry[]>(() => suggestHistoryStore.list());
+	const openTimerRef = React.useRef<number | null>(null);
+	const closeTimerRef = React.useRef<number | null>(null);
+
+	React.useEffect(() => {
+		const unsub = suggestHistoryStore.subscribe(() => setEntries([...suggestHistoryStore.list()]));
+		return () => {
+			unsub();
+			if (openTimerRef.current) window.clearTimeout(openTimerRef.current);
+			if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+		};
+	}, []);
+
+	const scheduleOpen = () => {
+		if (closeTimerRef.current) { window.clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
+		if (openTimerRef.current) return;
+		openTimerRef.current = window.setTimeout(() => {
+			openTimerRef.current = null;
+			setPopoverOpen(true);
+		}, 300);
+	};
+	const scheduleClose = () => {
+		if (openTimerRef.current) { window.clearTimeout(openTimerRef.current); openTimerRef.current = null; }
+		if (closeTimerRef.current) return;
+		closeTimerRef.current = window.setTimeout(() => {
+			closeTimerRef.current = null;
+			setPopoverOpen(false);
+		}, 150);
+	};
+
+	const showPopover = popoverOpen && entries.length > 0 && !!onReplay;
+
+	return (
+		<div className="pktw-relative pktw-flex-shrink-0" onMouseEnter={scheduleOpen} onMouseLeave={scheduleClose}>
+			<button
+				type="button"
+				onClick={onOpen}
+				aria-label="AI suggests queries based on your browsing"
+				title="AI suggests queries based on your actions — hover for recent"
+				className={cn(
+					'pktw-inline-flex pktw-items-center pktw-gap-1.5',
+					'pktw-text-[11px] pktw-font-medium pktw-whitespace-nowrap',
+					'pktw-rounded-full pktw-border pktw-px-2.5 pktw-py-1',
+					'pktw-bg-pk-background pktw-text-pk-accent pktw-border-pk-accent-tint hover:pktw-bg-pk-accent-tint',
+					'pktw-transition-colors pktw-cursor-pointer',
+				)}
+			>
+				<Sparkles className="pktw-w-3 pktw-h-3" />
+				Refine
+			</button>
+			{showPopover && (
+				<div
+					className={cn(
+						'pktw-absolute pktw-top-full pktw-right-0 pktw-mt-1 pktw-z-50',
+						'pktw-w-[320px] pktw-max-h-[320px] pktw-overflow-y-auto',
+						'pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-shadow-lg',
+						'pktw-py-1',
+					)}
+					role="menu"
+				>
+					<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-text-[10.5px] pktw-font-semibold pktw-text-pk-foreground-muted pktw-uppercase pktw-tracking-wide">
+						<Clock className="pktw-w-3 pktw-h-3" />
+						Recent Refine ({entries.length})
+					</div>
+					{entries.slice(0, 20).map((e) => (
+						<button
+							key={e.id}
+							type="button"
+							role="menuitem"
+							onClick={() => {
+								setPopoverOpen(false);
+								onReplay?.(e.id);
+							}}
+							className={cn(
+								'pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5',
+								'hover:pktw-bg-pk-surface-sunken pktw-transition-colors',
+								'pktw-flex pktw-flex-col pktw-gap-0.5',
+							)}
+						>
+							<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-text-[12px] pktw-text-pk-foreground pktw-truncate">
+								<span className="pktw-truncate">
+									{e.currentQuery.trim() || <span className="pktw-italic pktw-text-pk-foreground-muted">(empty query)</span>}
+								</span>
+							</div>
+							<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-[10.5px] pktw-text-pk-foreground-muted">
+								<span>{formatRelativeTime(e.savedAt)}</span>
+								<span>·</span>
+								<span>{e.candidates.length} suggest{e.candidates.length === 1 ? '' : 's'}</span>
+								{e.fromFallback && (
+									<>
+										<span>·</span>
+										<span className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-text-pk-warning">
+											<AlertTriangle className="pktw-w-2.5 pktw-h-2.5" />
+											fallback
+										</span>
+									</>
+								)}
+								{e.pickedIndex != null && (
+									<>
+										<span>·</span>
+										<span className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-text-pk-success">
+											<CheckCircle2 className="pktw-w-2.5 pktw-h-2.5" />
+											picked
+										</span>
+									</>
+								)}
+							</div>
+						</button>
+					))}
+				</div>
+			)}
+		</div>
+	);
+};
+
+function formatRelativeTime(t: number): string {
+	const diff = Date.now() - t;
+	const s = Math.floor(diff / 1000);
+	if (s < 60) return `${s}s ago`;
+	const m = Math.floor(s / 60);
+	if (m < 60) return `${m}m ago`;
+	const h = Math.floor(m / 60);
+	if (h < 24) return `${h}h ago`;
+	const d = Math.floor(h / 24);
+	if (d < 7) return `${d}d ago`;
+	return new Date(t).toLocaleDateString();
+}
+
 interface VaultTabContentProps {
 	onClose?: () => void;
 	activeTab: TabType;
 	setActiveTab: (tab: TabType) => void;
+	/** Open the AI Query Rewrite (Suggest) overlay — wired through by the modal wrapper. */
+	onOpenSuggest?: () => void;
+	/** Open the Suggest modal in replay mode for a stored history entry. */
+	onReplaySuggest?: (entryId: string) => void;
 }
 
 /** Returns search query string for the given mode (prefix # / ? or none). */
@@ -473,18 +620,14 @@ function transformQueryForMode(raw: string, toMode: QuickSearchMode): string {
  * Vault Search tab: input row (mode icon + input) + VaultSearchTab content.
  * Mode can be switched by clicking the icon or by typing # / : / @.
  */
-const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, setActiveTab }) => {
+const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, setActiveTab, onOpenSuggest, onReplaySuggest }) => {
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
 	const { vaultStats, vaultNavigation } = useServiceContext();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
-	const { updateParsedQuery, isSearching, quickSearchMode, inspectorOpen, lastSearchDuration, lastSearchResults } = useVaultSearchStore();
+	const { updateParsedQuery, isSearching, quickSearchMode, inspectorOpen, lastSearchDuration, lastSearchResults, resultView } = useVaultSearchStore();
 	const hasSearchQuery = !!vaultSearchQuery.trim();
 	const [inspectorPath, setInspectorPath] = useState<string | null>(null);
 	const [navigateToPath, setNavigateToPath] = useState<string | null>(null);
-	// T7: Cmd+click on a hub reference row pins the result set to that hub's
-	// constituents and forces the graph view — shared hook, same as
-	// `tab-VaultSearch` wires for Result Graph View hub anchors.
-	const openHubGraphSubview = useOpenHubGraphSubview();
 
 	// Heading mode moved to Copilot Modal's Atlas tab — no `#` cycling here.
 
@@ -533,41 +676,25 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border">
 				<div className="pktw-flex pktw-gap-3 pktw-items-center">
 					<div className="pktw-relative pktw-flex-1 pktw-min-w-0">
-						<div className="pktw-relative pktw-flex pktw-items-center pktw-min-w-0">
-							<CodeMirrorInput
-								ref={inputRef}
-								value={vaultSearchQuery}
-								onChange={setVaultSearchQuery}
-								onKeyDown={handleInputKeyDown}
-								placeholder="Search in vault... (# heading, ? help)"
-								enableSearchTags={false}
-								singleLine={true}
-								containerClassName="pktw-flex-1 pktw-min-w-0 pktw-pl-4 pktw-pr-16 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border focus-within:pktw-border-pk-accent focus-within:pktw-shadow-sm pktw-rounded-full pktw-transition-all pktw-z-0"
-								className="pktw-pr-4"
-							/>
-							{/* Mode badge — right edge inside input */}
-							<span className={cn(
-								'pktw-absolute pktw-right-3 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10',
-								'pktw-text-[10px] pktw-font-medium pktw-px-2 pktw-py-0.5 pktw-rounded-full',
-								'pktw-bg-pk-highlight pktw-text-pk-accent pktw-border pktw-border-pk-accent/20',
-							)}>
-								{quickSearchMode === 'all' ? 'all' :
-								 quickSearchMode === 'heading' ? 'heading' :
-								 quickSearchMode === 'help' ? 'help' : 'all'}
-							</span>
-						</div>
+						<CodeMirrorInput
+							ref={inputRef}
+							value={vaultSearchQuery}
+							onChange={setVaultSearchQuery}
+							onKeyDown={handleInputKeyDown}
+							placeholder="Search your vault…"
+							enableSearchTags={false}
+							singleLine={true}
+							containerClassName="pktw-flex-1 pktw-min-w-0 pktw-px-4 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border focus-within:pktw-border-pk-accent focus-within:pktw-shadow-sm pktw-rounded-full pktw-transition-all pktw-z-0"
+							className="pktw-pr-2"
+						/>
 					</div>
-					<Button
-						variant="ghost"
-						size="sm"
-						style={{ cursor: 'pointer' }}
-						className="pktw-shadow-none pktw-flex-shrink-0 pktw-text-xs pktw-text-pk-accent pktw-h-8 pktw-px-2"
-						onClick={() => setActiveTab('ai')}
-						title="Switch to AI Analysis"
-					>
-						<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1" />
-						AI
-					</Button>
+					<SuggestButton
+						onOpen={() => {
+							if (onOpenSuggest) onOpenSuggest();
+							else setActiveTab('ai');
+						}}
+						onReplay={onReplaySuggest}
+					/>
 				</div>
 			</div>
 
@@ -577,7 +704,13 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 			    when Graph view is active. */}
 			<div className="pktw-flex-shrink-0 pktw-px-3 pktw-py-1.5 pktw-bg-pk-background pktw-border-b pktw-border-pk-border pktw-flex pktw-items-center pktw-gap-2.5">
 				<ViewModeToggle />
-				<ResultPaneGraphControls mode={quickSearchMode} className="pktw-ml-auto" />
+				{resultView === 'graph' ? (
+					<ResultPaneGraphControls mode={quickSearchMode} className="pktw-ml-auto" />
+				) : (
+					<div className="pktw-ml-auto pktw-flex pktw-items-center pktw-gap-2.5">
+						<ResultDensityToggle />
+					</div>
+				)}
 			</div>
 
 			{/* Content area — side-by-side results + inspector */}
@@ -609,13 +742,6 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 								setInspectorPath(path);
 								setNavigateToPath(path);
 							}}
-							onOpenDocumentInNewTab={(path) => {
-								// Middle click / Cmd+Enter on a Hub Reference row.
-								// Same helper as onOpenDocument today — Obsidian workspace
-								// treats `newLeaf: true` as "new tab".
-								void createOpenSourceCallback(undefined, true, vaultNavigation)(path);
-							}}
-							onOpenHubGraphSubview={(hubNodeId) => void openHubGraphSubview(hubNodeId)}
 						/>
 					</div>
 				)}
@@ -655,6 +781,18 @@ interface QuickSearchModalContentProps {
 	onVaultAuto?: (mode: 'fast' | 'complete') => void;
 	/** Fired when the user opens a past vault review record. */
 	onOpenVaultRecord?: (record: VaultReviewHistoryRecord) => void;
+	/**
+	 * Fired when the user clicks the ✦ Suggest button — the QuickSearchModal
+	 * wrapper opens `AIQueryRewriteModal` (spec:
+	 * `docs/research/2026-07-08-ai-query-rewrite/README.md`).
+	 */
+	onOpenSuggest?: () => void;
+	/**
+	 * Fired when the user clicks a row in the Suggest button's hover history
+	 * dropdown — modal wrapper opens `AIQueryRewriteModal` in replay mode so
+	 * the stored candidate list re-appears without another LLM call.
+	 */
+	onReplaySuggest?: (entryId: string) => void;
 }
 
 /**
@@ -669,6 +807,8 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 	intelCtx = null,
 	onVaultAuto,
 	onOpenVaultRecord,
+	onOpenSuggest,
+	onReplaySuggest,
 }) => {
 	const { activeTab, setActiveTab } = useSharedStore();
 	// Graph view claims all available modal height (list view stays
@@ -728,7 +868,7 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 				/>
 				<TabButton
 					tab="ai"
-					label="AI Analysis"
+					label="AI Search"
 					activeTab={activeTab}
 					onClick={() => setActiveTab('ai')}
 					className="pktw-rounded-tr-lg"
@@ -768,7 +908,7 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 					onClose={onClose}
 				/>
 			) : (
-				<VaultTabContent onClose={onClose} activeTab={activeTab} setActiveTab={setActiveTab} />
+				<VaultTabContent onClose={onClose} activeTab={activeTab} setActiveTab={setActiveTab} onOpenSuggest={onOpenSuggest} onReplaySuggest={onReplaySuggest} />
 			)}
 		</div>
 	);

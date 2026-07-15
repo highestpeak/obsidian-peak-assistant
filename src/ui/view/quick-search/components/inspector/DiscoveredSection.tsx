@@ -6,10 +6,29 @@ import { getDiscoveredConnections, type DiscoveredConnection } from '@/service/s
 
 const INITIAL_VISIBLE = 5;
 
-const TYPE_BADGE: Record<DiscoveredConnection['type'], { label: string; className: string }> = {
-	SEM: { label: 'SEM', className: 'pktw-bg-purple-100 pktw-text-purple-700' },
-	'CO-CITE': { label: 'CO-CITE', className: 'pktw-bg-blue-100 pktw-text-blue-700' },
-	UNLINKED: { label: 'UNLINKED', className: 'pktw-bg-amber-100 pktw-text-amber-700' },
+const TYPE_BADGE: Record<
+	DiscoveredConnection['type'],
+	{ label: string; className: string; description: string }
+> = {
+	SEM: {
+		label: 'SEM',
+		className: 'pktw-bg-purple-100 pktw-text-purple-700',
+		description: 'Semantic — content covers related concepts (from indexed embeddings, not a link).',
+	},
+	'CO-CITE': {
+		label: 'CO-CITE',
+		className: 'pktw-bg-blue-100 pktw-text-blue-700',
+		description: 'Co-cited — both notes are referenced by the same other notes.',
+	},
+	// UNLINKED is a passive hint ("your text mentions this note by name but you
+	// didn't wiki-link it"). Kept as a low-noise text label — no background
+	// fill, no action button — so it recedes visually next to SEM / CO-CITE
+	// while still surfacing the signal.
+	UNLINKED: {
+		label: 'unlinked',
+		className: 'pktw-text-pk-foreground-muted',
+		description: 'This note mentions the target by name without a wiki-link.',
+	},
 };
 
 export interface DiscoveredSectionProps {
@@ -67,7 +86,10 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 		<div className="pktw-flex pktw-flex-col pktw-gap-1.5">
 			{visible.map((item, i) => {
 				const scorePercent = Math.round(item.score * 100);
-				const { label: badgeLabel, className: badgeClass } = badge(item.type);
+				const { label: badgeLabel, className: badgeClass, description: badgeDesc } = badge(item.type);
+				// UNLINKED is styled as a plain muted label (no background); everything
+				// else keeps the tinted pill shape.
+				const isPlainBadge = item.type === 'UNLINKED';
 
 				return (
 					<div key={`${item.path}-${i}`} className="pktw-flex pktw-flex-col pktw-gap-0.5">
@@ -84,10 +106,14 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 								{scorePercent}%
 							</span>
 
-							<span className={cn(
-								'pktw-text-[9px] pktw-font-medium pktw-px-1 pktw-rounded pktw-shrink-0',
-								badgeClass,
-							)}>
+							<span
+								className={cn(
+									'pktw-text-[9px] pktw-font-medium pktw-shrink-0',
+									isPlainBadge ? '' : 'pktw-px-1 pktw-rounded',
+									badgeClass,
+								)}
+								title={badgeDesc}
+							>
 								{badgeLabel}
 							</span>
 

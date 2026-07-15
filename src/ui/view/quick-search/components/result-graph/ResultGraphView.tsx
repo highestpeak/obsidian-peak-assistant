@@ -28,6 +28,7 @@ import cise from 'cytoscape-cise';
 import cola from 'cytoscape-cola';
 import dagre from 'cytoscape-dagre';
 import { Check, Image as ImageIcon, Workflow } from 'lucide-react';
+import { behaviorRecorder } from '@/ui/view/quick-search/rewrite/BehaviorContextRecorder';
 import { useVaultSearchStore } from '../../store';
 import type { GraphPreset } from '../../store/vaultSearchStore';
 import { buildResultSubgraph, type ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
@@ -78,6 +79,13 @@ function makeFolderColorPicker(): (folder: string) => string {
 }
 
 /** Numeric match score of a raw search result. */
+/** Resolve a Cytoscape node id back to its vault path (best-effort). Used to
+ *  feed the AI-Suggest behavior recorder with real file paths, not opaque ids. */
+function pathForNodeId(nodeId: string, results: SearchResultItem[]): string | null {
+	const found = results.find((r) => (r.docId ?? r.path ?? r.id) === nodeId);
+	return found?.path ?? null;
+}
+
 function scoreOf(r: SearchResultItem): number {
 	const s = r.finalScore ?? r.score ?? 0;
 	return Number.isFinite(s) ? s : 0;
@@ -177,6 +185,7 @@ function buildElements(
 			data: {
 				id: h.id,
 				label: `${h.title || h.path || h.id}\n(${h.constituentCount} constituents)`,
+				path: h.path ?? '',
 				kind: 'hub',
 				score: 1,
 				degreeNorm: normDegree(h.id),
@@ -197,6 +206,7 @@ function buildElements(
 			data: {
 				id: n.id,
 				label: n.title || n.path || n.id,
+				path: n.path ?? '',
 				kind: 'doc',
 				score: n.score / maxScore,
 				degree,
@@ -460,7 +470,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 
 	const [subgraph, setSubgraph] = useState<ResultSubgraphOutput | null>(null);
 	const [copiedMode, setCopiedMode] = useState<'mermaid' | 'image' | null>(null);
-	const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
+	const [hoveredLabel, setHoveredLabel] = useState<{ label: string; path: string } | null>(null);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const cyRef = useRef<Core | null>(null);
 	const animRef = useRef<number | null>(null);
@@ -604,13 +614,26 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 			animRef.current = null;
 		};
 
+		// Behavior recorder timer for Graph hover — same 800ms threshold as
+		// the list / tree rows so signals are comparable across views.
+		let recorderHoverTimer: ReturnType<typeof setTimeout> | null = null;
 		cy.on('mouseover', 'node', (evt) => {
 			const n = evt.target as NodeSingular;
 			if (n.hasClass('regionLabel')) return;
 			// Update the bottom preview immediately so users can read tiny labels
 			// without waiting for the 80ms spotlight debounce.
 			const raw = (n.data('label') as string | undefined) ?? '';
-			if (raw) setHoveredLabel(raw);
+			const rawPath = (n.data('path') as string | undefined) ?? '';
+			if (raw) setHoveredLabel({ label: raw, path: rawPath });
+			// Report to AI-Suggest recorder after 800ms of hover on any node
+			// that maps to a real file (skip compound folder groups).
+			if (recorderHoverTimer) clearTimeout(recorderHoverTimer);
+			if (!n.hasClass('folderGroup') && !n.hasClass('regionLabel')) {
+				recorderHoverTimer = setTimeout(() => {
+					const path = pathForNodeId(n.id(), results);
+					if (path) behaviorRecorder.push('focusedFile', { path, durationMs: 800 });
+				}, 800);
+			}
 			if (hoverTimer) clearTimeout(hoverTimer);
 			hoverTimer = setTimeout(() => {
 				const isCompound = n.hasClass('folderGroup');
@@ -632,6 +655,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 		});
 		cy.on('mouseout', 'node', () => {
 			setHoveredLabel(null);
+			if (recorderHoverTimer) { clearTimeout(recorderHoverTimer); recorderHoverTimer = null; }
 			if (hoverTimer) clearTimeout(hoverTimer);
 			hoverTimer = setTimeout(() => {
 				stopEdgeAnimation();
@@ -660,13 +684,17 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 			}
 			// resultDoc: propagate to inspector
 			const found = results.find((r) => (r.docId ?? r.path ?? r.id) === n.id());
-			if (found?.path) onSelectForInspector?.(found.path);
+			if (found?.path) {
+				behaviorRecorder.push('focusedFile', { path: found.path });
+				onSelectForInspector?.(found.path);
+			}
 		});
 		cy.on('dbltap', 'node', async (evt) => {
 			const n = evt.target as NodeSingular;
 			if (n.hasClass('regionLabel') || n.hasClass('folderGroup') || n.hasClass('hub')) return;
 			const found = results.find((r) => (r.docId ?? r.path ?? r.id) === n.id());
 			if (!found) return;
+			behaviorRecorder.push('openedFile', { path: found.path });
 			await createOpenSourceCallback(onClose, true, vaultNavigation)(found);
 		});
 	}, [subgraph, preset, showSemantic, results, resultSubgraphDeps, vaultNavigation, onOpenHubGraphSubview, onSelectForInspector, onClose]);
@@ -751,8 +779,9 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				</IconButton>
 			</div>
 			{hoveredLabel && (() => {
-				const [title, ...rest] = hoveredLabel.split('\n');
-				const sub = rest.join(' ').trim();
+				const [title, ...rest] = hoveredLabel.label.split('\n');
+				const meta = rest.join(' ').trim();
+				const path = hoveredLabel.path;
 				return (
 					<div
 						className="pktw-absolute pktw-bottom-10 pktw-left-1/2 pktw--translate-x-1/2 pktw-z-30 pktw-pointer-events-none pktw-max-w-[80%]"
@@ -761,9 +790,14 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 							<span className="pktw-block pktw-text-lg pktw-font-semibold pktw-text-pk-text-primary pktw-break-all">
 								{title}
 							</span>
-							{sub && (
+							{path && (
+								<span className="pktw-block pktw-mt-1 pktw-text-xs pktw-text-pk-text-tertiary pktw-break-all">
+									{path}
+								</span>
+							)}
+							{meta && (
 								<span className="pktw-block pktw-mt-1 pktw-text-xs pktw-text-pk-text-tertiary">
-									{sub}
+									{meta}
 								</span>
 							)}
 						</div>

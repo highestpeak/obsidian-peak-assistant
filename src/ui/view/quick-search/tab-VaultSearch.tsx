@@ -17,6 +17,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SearchUpgradePrompt } from './components/SearchUpgradePrompt';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { ResultGraphView } from './components/result-graph/ResultGraphView';
+import { ResultTreeView } from './components/result-tree/ResultTreeView';
 import { useOpenHubGraphSubview } from './hooks/useOpenHubGraphSubview';
 
 const NoResultsState: React.FC = () => (
@@ -69,8 +70,6 @@ export const VaultSearchFooterHints: React.FC = () => (
 		<KeyboardShortcut keys="Enter" description="open" />
 		<KeyboardShortcut keys="Ctrl+Enter" description="new tab" />
 		<KeyboardShortcut keys="→" description="inspector" />
-		<KeyboardShortcut keys="#" description="in-file" />
-		<KeyboardShortcut keys="?" description="modes" />
 	</div>
 );
 
@@ -164,6 +163,17 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 				useVaultSearchStore.getState().setResultView('list');
 				return;
 			}
+			// 2026-07-08: same Esc-flip for tree view. Tree owns its own
+			// arrow / enter handling (file-only nav) — bail out here for any
+			// non-Esc key so the tree's handler is authoritative.
+			if (useVaultSearchStore.getState().resultView === 'tree') {
+				if (e.key === 'Escape') {
+					e.preventDefault();
+					e.stopPropagation();
+					useVaultSearchStore.getState().setResultView('list');
+				}
+				return;
+			}
 
 			switch (e.key) {
 				case 'ArrowRight':
@@ -253,6 +263,9 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 	// has no result payload to graph.
 	const showGraph = resultView === 'graph'
 		&& (quickSearchMode === 'all' || quickSearchMode === 'heading');
+	// Same for tree view (2026-07-08).
+	const showTree = resultView === 'tree'
+		&& (quickSearchMode === 'all' || quickSearchMode === 'heading');
 
 	// Heading mode moved to Copilot Modal's Atlas tab — Vault Search no
 	// longer renders `HeadingModeContainer` even if the query happens to
@@ -266,6 +279,11 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 					<ResultGraphView
 						onClose={onClose}
 						onOpenHubGraphSubview={(hubNodeId) => void openHubGraphSubview(hubNodeId)}
+						onSelectForInspector={onSelectForInspector}
+					/>
+				) : showTree ? (
+					<ResultTreeView
+						onClose={onClose}
 						onSelectForInspector={onSelectForInspector}
 					/>
 				) : quickSearchMode === 'help' ? (

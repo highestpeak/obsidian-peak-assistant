@@ -6,7 +6,30 @@ import { ConnectedSection } from './ConnectedSection';
 import { DiscoveredSection } from './DiscoveredSection';
 import { AIGraphSection } from './AIGraphSection';
 import { HubSection } from './HubSection';
-import { HubReferenceBlock } from './HubReferenceBlock';
+import { useVaultSearchStore } from '../../store';
+import { renderSnippetContent } from '../snippet/renderSnippetHighlights';
+
+/**
+ * Renders the current file's search-hit snippet at the top of the inspector.
+ * Only shown in Tree view — List rows already render the snippet inline, so
+ * showing it again in the inspector would be duplication; Graph view users
+ * see labels/tooltips instead. Reads the corresponding `SearchResultItem`
+ * from the vault-search store (matched by path). Returns `null` when there's
+ * no matching result (e.g. inspecting a hub target the query didn't hit).
+ */
+const InspectorSnippetBlock: React.FC<{ currentPath: string }> = ({ currentPath }) => {
+	const resultView = useVaultSearchStore((s) => s.resultView);
+	const result = useVaultSearchStore((s) => s.lastSearchResults.find((r) => r.path === currentPath) ?? null);
+	if (resultView !== 'tree') return null;
+	if (!result?.highlight?.text) return null;
+	return (
+		<div className="pktw-px-4 pktw-py-2.5 pktw-border-b pktw-border-pk-border pktw-bg-pk-surface-sunken/40">
+			<div className="pktw-text-[13px] pktw-leading-relaxed pktw-text-pk-foreground pktw-line-clamp-4">
+				{renderSnippetContent(result.highlight)}
+			</div>
+		</div>
+	);
+};
 
 /** Collapsible section wrapper used by InspectorSidePanel. */
 const CollapsibleSection: React.FC<{
@@ -41,13 +64,6 @@ export interface InspectorSidePanelProps {
 	onOpenDocument: (notePath: string) => void;
 	/** Re-target the inspector panel to another doc without opening it. */
 	onInspectInPanel: (notePath: string) => void;
-	/** Open the target doc in a new tab (middle click / Cmd+Enter from Hub Reference). */
-	onOpenDocumentInNewTab?: (notePath: string) => void;
-	/**
-	 * Cross-wire for the hub graph subview (T7). When absent (T6 landed alone),
-	 * the hub row's graph icon becomes a no-op; T7 wires this via a hook.
-	 */
-	onOpenHubGraphSubview?: (hubNodeId: string) => void;
 }
 
 /**
@@ -56,7 +72,6 @@ export interface InspectorSidePanelProps {
  */
 export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 	currentPath, searchQuery, onClose, onOpenDocument, onInspectInPanel,
-	onOpenDocumentInNewTab, onOpenHubGraphSubview,
 }) => {
 	if (!currentPath) {
 		return (
@@ -91,13 +106,11 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 
 			{/* Scrollable content with collapsible sections */}
 			<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto">
-				<CollapsibleSection title="Hubs">
-					<HubSection
-						currentPath={currentPath}
-						onOpenDocument={onOpenDocument}
-						onInspectInPanel={onInspectInPanel}
-					/>
-				</CollapsibleSection>
+				{/* Snippet block — mirrors the inline snippet the List view shows
+				    per row, so Tree/Graph users don't lose that context. Hidden
+				    when the current path isn't in the result set (e.g. inspecting
+				    a hub target the query didn't hit). */}
+				<InspectorSnippetBlock currentPath={currentPath} />
 				<CollapsibleSection title="Connected">
 					<ConnectedSection
 						currentPath={currentPath}
@@ -114,15 +127,16 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 						onInspectInPanel={onInspectInPanel}
 					/>
 				</CollapsibleSection>
+				<CollapsibleSection title="Hubs">
+					<HubSection
+						currentPath={currentPath}
+						onOpenDocument={onOpenDocument}
+						onInspectInPanel={onInspectInPanel}
+					/>
+				</CollapsibleSection>
 				<CollapsibleSection title="AI Graph">
 					<AIGraphSection currentPath={currentPath} searchQuery={searchQuery} />
 				</CollapsibleSection>
-				<HubReferenceBlock
-					selectedDocId={currentPath}
-					onOpenHub={onOpenDocument}
-					onOpenHubInNewTab={onOpenDocumentInNewTab ?? onOpenDocument}
-					onOpenHubGraphSubview={onOpenHubGraphSubview}
-				/>
 			</div>
 		</div>
 	);

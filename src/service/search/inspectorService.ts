@@ -153,51 +153,6 @@ export async function getHubsForDoc(currentPath: string): Promise<HubForDoc[]> {
 	});
 }
 
-// ─── Hub References (T6: bottom-of-inspector block) ─────────────────────────
-
-export interface HubReference {
-	hubNodeId: string;
-	hubPath: string;
-	label: string;
-	constituentCount: number;
-}
-
-/**
- * Returns hub docs that contain the given doc path as a constituent, enriched
- * with a constituent count for each hub. Sorted by constituent count DESC as a
- * curator-score fallback — `hub_constituent` does not persist a per-member
- * affinity column today, so count acts as the "hub size" proxy for ordering.
- */
-export async function getHubReferencesForDoc(currentPath: string): Promise<HubReference[]> {
-	const tenant: IndexTenant = getIndexTenantForPath(currentPath);
-	const hubConstituentRepo = sqliteStoreManager.getHubConstituentRepo();
-	const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
-
-	const hubs = await hubConstituentRepo.findHubsForMembers([currentPath]);
-	if (!hubs.length) return [];
-
-	const nodeIds = hubs.map((h) => h.hub_node_id);
-	const [nodesMap, counts] = await Promise.all([
-		mobiusNodeRepo.getByIds(nodeIds),
-		Promise.all(nodeIds.map((id) => hubConstituentRepo.countMembersForHub(id))),
-	]);
-
-	const refs: HubReference[] = hubs.map((hub, idx) => {
-		const node = nodesMap.get(hub.hub_node_id);
-		const label = node?.label
-			|| hub.hub_path.split('/').pop()?.replace(/\.md$/, '')
-			|| hub.hub_path;
-		return {
-			hubNodeId: hub.hub_node_id,
-			hubPath: hub.hub_path,
-			label,
-			constituentCount: counts[idx] ?? 0,
-		};
-	});
-
-	return refs.sort((a, b) => b.constituentCount - a.constituentCount);
-}
-
 /**
  * T7 (2026-07-07 hub graph subview): return the member vault paths for a hub.
  * Used by `useOpenHubGraphSubview` to pin the Vault Search result set to a

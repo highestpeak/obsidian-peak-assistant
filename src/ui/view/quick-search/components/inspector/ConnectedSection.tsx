@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { ArrowRight, ArrowLeft, Check, Eye } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowRight, ArrowLeft, ArrowLeftRight, Eye } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import { getConnectedLinks, filterLinksByQuery, type ConnectedLink } from '@/service/search/inspectorService';
+import { mergeConnectedLinks, type MergedConnectedLink } from './mergeConnectedLinks';
 
 const INITIAL_VISIBLE = 5;
 
@@ -46,16 +47,18 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 		return () => { cancelled = true; };
 	}, [currentPath, searchQuery]);
 
+	const mergedLinks = useMemo(() => mergeConnectedLinks(links), [links]);
+
 	if (loading) {
 		return <span className="pktw-text-xs pktw-text-pk-foreground-muted">Loading...</span>;
 	}
 
-	if (links.length === 0) {
+	if (mergedLinks.length === 0) {
 		return <span className="pktw-text-xs pktw-text-pk-foreground-muted">No connections found.</span>;
 	}
 
-	const visible = expanded ? links : links.slice(0, INITIAL_VISIBLE);
-	const remaining = links.length - INITIAL_VISIBLE;
+	const visible = expanded ? mergedLinks : mergedLinks.slice(0, INITIAL_VISIBLE);
+	const remaining = mergedLinks.length - INITIAL_VISIBLE;
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-1.5">
@@ -75,9 +78,7 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 						)}
 					>
 						<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-min-w-0">
-							{link.direction === 'out'
-								? <ArrowRight className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted pktw-shrink-0" />
-								: <ArrowLeft className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted pktw-shrink-0" />}
+							<DirectionIcon direction={link.direction} />
 
 							<span
 								className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground pktw-truncate pktw-cursor-pointer hover:pktw-text-pk-accent"
@@ -88,8 +89,7 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 							</span>
 
 							{showBadge && (
-								<span className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-text-[10px] pktw-text-pk-success-text pktw-shrink-0">
-									<Check className="pktw-w-2.5 pktw-h-2.5" />
+								<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-shrink-0">
 									{scorePercent}%
 								</span>
 							)}
@@ -134,5 +134,30 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 				</Button>
 			)}
 		</div>
+	);
+};
+
+const DirectionIcon: React.FC<{ direction: MergedConnectedLink['direction'] }> = ({ direction }) => {
+	if (direction === 'both') {
+		return (
+			<ArrowLeftRight
+				className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted pktw-shrink-0"
+				aria-label="Linked in both directions"
+			/>
+		);
+	}
+	if (direction === 'out') {
+		return (
+			<ArrowRight
+				className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted pktw-shrink-0"
+				aria-label="Outgoing link"
+			/>
+		);
+	}
+	return (
+		<ArrowLeft
+			className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted pktw-shrink-0"
+			aria-label="Incoming link (backlink)"
+		/>
 	);
 };

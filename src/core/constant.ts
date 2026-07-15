@@ -257,6 +257,24 @@ export const SEARCH_HIGHLIGHT_HINT_DECAY = 400; // characters — half-influence
 /** Vault file read timeout for highlight source resolver (ms). */
 export const SEARCH_HIGHLIGHT_VAULT_READ_TIMEOUT_MS = 200;
 
+/**
+ * Max number of `<mark>` wraps rendered per search result snippet. Excess
+ * matches are still present in the text but no longer highlighted, so a
+ * paragraph with the query word in every sentence doesn't turn into a
+ * solid orange block. See `renderSnippetHighlights` for the truncation
+ * pass and `spec 2026-07-09-quick-search-ui-polish · W4`.
+ */
+export const SEARCH_SNIPPET_HIGHLIGHT_CAP = 4;
+
+/**
+ * Tree-view file-row relevance indicator thresholds — the relative
+ * normalized `displayScorePercent / 100` value is compared to these to
+ * decide the three-tier dot intensity (high / mid / low). Spec-aligned
+ * with `assignDisplayScorePercent` (see `scoreNormalize.ts`).
+ */
+export const SEARCH_RESULT_INTENSITY_HIGH_THRESHOLD = 0.66;
+export const SEARCH_RESULT_INTENSITY_MID_THRESHOLD = 0.33;
+
 /** Cross-query LRU capacity for the highlight vault text cache (# of files). */
 export const SEARCH_HIGHLIGHT_VAULT_CACHE_CAPACITY = 32;
 

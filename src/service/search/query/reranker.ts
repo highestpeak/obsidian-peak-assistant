@@ -393,4 +393,26 @@ export class Reranker {
 			return !excludes.some(ex => text.includes(ex));
 		});
 	}
+
+	/**
+	 * Post-ranking folder filter. Applied uniformly across all retrievers
+	 * so `folder:PATH` narrows FTS + vector + fuzzy + meta hits alike.
+	 * Matches path prefix at a folder boundary, case-insensitive; strips
+	 * leading/trailing slashes on both sides so `folder:foo`, `folder:/foo/`
+	 * and `folder:foo/` all behave the same.
+	 */
+	applyFolderFilter(
+		items: SearchResultItem[],
+		folders: string[],
+	): SearchResultItem[] {
+		if (folders.length === 0) return items;
+		const norms = folders
+			.map(f => f.replace(/^\/+|\/+$/g, '').toLowerCase())
+			.filter(f => f.length > 0);
+		if (norms.length === 0) return items;
+		return items.filter(item => {
+			const p = item.path.replace(/^\/+/, '').toLowerCase();
+			return norms.some(f => p === f || p.startsWith(f + '/'));
+		});
+	}
 }

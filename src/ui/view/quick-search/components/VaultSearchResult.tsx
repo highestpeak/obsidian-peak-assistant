@@ -8,10 +8,13 @@ import type { HighlightResult, HighlightSpan } from '@/service/search/query/high
 import { segmentToWhitespace } from '@/core/utils/segmenter';
 
 const CJK_RE = /[　-鿿가-힯豈-﫿]/;
+import { renderHighlightSpans, renderLegacyHighlights } from './snippet/renderSnippetHighlights';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
+import { behaviorRecorder } from '@/ui/view/quick-search/rewrite/BehaviorContextRecorder';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickRepo';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { useVaultSearchStore } from '../store';
 
 function recordSearchClick(currentQuery: string, path: string, rank: number): void {
 	try {
@@ -90,70 +93,8 @@ function highlightRawTitle(text: string, query: string): HighlightResult {
 	return { text, spans: merged };
 }
 
-/**
- * Render text with typed highlight spans from HighlightResult.
- * Supports 'exact', 'stem', and 'fuzzy' span types with distinct visual styling.
- */
-function renderHighlightSpans(result: HighlightResult): React.ReactNode {
-	if (!result.spans.length) return <span>{result.text}</span>;
-
-	const parts: React.ReactNode[] = [];
-	let lastEnd = 0;
-
-	for (const span of result.spans) {
-		if (span.start > lastEnd) {
-			parts.push(<span key={`t-${lastEnd}`}>{result.text.slice(lastEnd, span.start)}</span>);
-		}
-		const className = span.type === 'fuzzy'
-			? 'pktw-bg-blue-50 pktw-text-blue-800 pktw-underline pktw-decoration-dashed'
-			: span.type === 'stem'
-				? 'pktw-bg-amber-50 pktw-text-amber-800'
-				: 'pktw-bg-pk-warning-bg pktw-text-pk-warning-text';
-		parts.push(
-			<mark key={`h-${span.start}`} className={className}>
-				{result.text.slice(span.start, span.end)}
-			</mark>
-		);
-		lastEnd = span.end;
-	}
-
-	if (lastEnd < result.text.length) {
-		parts.push(<span key={`t-${lastEnd}`}>{result.text.slice(lastEnd)}</span>);
-	}
-
-	return <>{parts}</>;
-}
-
-/**
- * Render text with legacy SearchSnippet highlights (start/end spans without type).
- * Fallback for in-file search results that use the older highlight format.
- */
-function renderLegacyHighlights(snippet: SearchSnippet): React.ReactNode {
-	const { text, highlights } = snippet;
-	if (!highlights?.length) return <span>{text}</span>;
-
-	const parts: React.ReactNode[] = [];
-	let lastEnd = 0;
-
-	const sorted = [...highlights].sort((a, b) => a.start - b.start);
-	for (const span of sorted) {
-		if (span.start > lastEnd) {
-			parts.push(<span key={`t-${lastEnd}`}>{text.slice(lastEnd, span.start)}</span>);
-		}
-		parts.push(
-			<mark key={`h-${span.start}`} className="pktw-bg-pk-warning-bg pktw-text-pk-warning-text">
-				{text.slice(span.start, span.end)}
-			</mark>
-		);
-		lastEnd = span.end;
-	}
-
-	if (lastEnd < text.length) {
-		parts.push(<span key={`t-${lastEnd}`}>{text.slice(lastEnd)}</span>);
-	}
-
-	return <>{parts}</>;
-}
+// Highlight-span renderers moved to `snippet/renderSnippetHighlights.tsx`
+// so the inspector snippet block can reuse the same rendering.
 
 /**
  * Individual search result item component
@@ -169,20 +110,51 @@ export const SearchResultRow: React.FC<{
 	newTab?: boolean;
 }> = ({ currentQuery, result, index, isSelected, onSelect, itemRef, onClose, newTab }) => {
 	const { vaultNavigation } = useServiceContext();
+	// Compact mode: single-line row with just title + score pill. No snippet,
+	// no path breadcrumb, no metadata row. Shared with Tree via
+	// `resultDensity` in the store.
+	const density = useVaultSearchStore((s) => s.resultDensity);
+	const isCompact = density === 'compact';
 	const handleClick = (e: React.MouseEvent) => {
 		onSelect(index);
 		recordSearchClick(currentQuery, result.path, index);
+		behaviorRecorder.push('openedFile', { path: result.path });
 		const openInNewTab = newTab ?? (e.metaKey || e.ctrlKey);
 		createOpenSourceCallback(onClose, openInNewTab, vaultNavigation)(result);
 	};
+
+	// Track hover so the AI-Suggest recorder learns which rows attracted the
+	// user's attention. 800ms threshold to filter out incidental hovers.
+	const hoverTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+	const handleMouseEnter = React.useCallback(() => {
+		if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+		hoverTimerRef.current = setTimeout(() => {
+			behaviorRecorder.push('focusedFile', { path: result.path, durationMs: 800 });
+		}, 800);
+	}, [result.path]);
+	const handleMouseLeave = React.useCallback(() => {
+		if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
+	}, []);
+	React.useEffect(() => () => {
+		if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+	}, []);
 
 	// Derive icon from path so all docs use the same FileText icon regardless of
 	// whether the retriever populated `result.type` — meta-retriever hits and
 	// vector-retriever hits shouldn't visually differ from FTS hits.
 	const iconType = pathToFileIconType(result.path);
-	const rawScore = result.finalScore ?? result.score;
-	const hasScore = rawScore != null && rawScore > 0;
-	const scorePercent = hasScore ? Math.round(rawScore * 100) : null;
+	// Prefer the pipeline-computed relative-normalized display score. Fall
+	// back to raw only for legacy code paths (in-file / preview results) that
+	// don't run through queryService — they'll still show 0–100 without
+	// exceeding 100% because the raw scores in those paths are already
+	// bounded to [0,1].
+	const scorePercent = result.displayScorePercent != null
+		? result.displayScorePercent
+		: result.finalScore != null && result.finalScore > 0
+			? Math.min(100, Math.round(result.finalScore * 100))
+			: result.score != null && result.score > 0
+				? Math.min(100, Math.round(result.score * 100))
+				: null;
 	const modifiedText = humanReadableTime(result.lastModified);
 	const shortPath = result.path.split('/').slice(-2).join('/');
 	const displayTitle = deriveDisplayTitle(result.path, result.title);
@@ -194,6 +166,8 @@ export const SearchResultRow: React.FC<{
 			className={`pktw-group pktw-relative pktw-px-4 pktw-py-2 pktw-cursor-pointer pktw-transition-colors pktw-mb-2 ${isSelected ? 'pktw-bg-pk-indigo-bg' : 'hover:pktw-bg-pk-surface-raised'
 				}`}
 			onClick={handleClick}
+			onMouseEnter={handleMouseEnter}
+			onMouseLeave={handleMouseLeave}
 		>
 			{/* Leading accent bar */}
 			<div
@@ -235,7 +209,10 @@ export const SearchResultRow: React.FC<{
 							{renderHighlightSpans(titleHighlight)}
 						</span>
 						{scorePercent != null ? (
-							<span className="pktw-flex-shrink-0 pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-whitespace-nowrap">
+							<span
+								className="pktw-flex-shrink-0 pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-whitespace-nowrap"
+								title="Relative to the top match in this result set"
+							>
 								{scorePercent}%
 							</span>
 						) : modifiedText ? (
@@ -245,27 +222,30 @@ export const SearchResultRow: React.FC<{
 						) : null}
 					</div>
 
-					{/* Line 2: snippet — clamped to 2 lines */}
-					{result.highlight?.text && (
+					{/* Lines 2 + 3 are hidden in compact mode — the row collapses to
+					    a single line (title + trailing badge) matching Tree's compact
+					    treatment. */}
+					{!isCompact && result.highlight?.text && (
 						<div className="pktw-text-sm pktw-text-pk-text-secondary pktw-line-clamp-2 pktw-mt-1">
 							{(result.highlight as unknown as HighlightResult).spans
-								? renderHighlightSpans(result.highlight as unknown as HighlightResult)
+								? renderHighlightSpans(result.highlight as unknown as HighlightResult, { cap: true })
 								: result.highlight.highlights?.length
 									? renderLegacyHighlights(result.highlight)
 									: result.highlight.text}
 						</div>
 					)}
 
-					{/* Line 3: metadata — path (+ time when score took the title-row slot) */}
-					<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mt-1 pktw-text-[10px] pktw-text-pk-text-tertiary pktw-min-w-0">
-						<span className="pktw-truncate" title={result.path}>{shortPath}</span>
-						{scorePercent != null && modifiedText && (
-							<>
-								<span className="pktw-flex-shrink-0 pktw-opacity-50">·</span>
-								<span className="pktw-flex-shrink-0 pktw-whitespace-nowrap">{modifiedText}</span>
-							</>
-						)}
-					</div>
+					{!isCompact && (
+						<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mt-1 pktw-text-[10px] pktw-text-pk-text-tertiary pktw-min-w-0 pktw-opacity-60 group-hover:pktw-opacity-100 pktw-transition-opacity">
+							<span className="pktw-truncate" title={result.path}>{shortPath}</span>
+							{scorePercent != null && modifiedText && (
+								<>
+									<span className="pktw-flex-shrink-0 pktw-opacity-50">·</span>
+									<span className="pktw-flex-shrink-0 pktw-whitespace-nowrap">{modifiedText}</span>
+								</>
+							)}
+						</div>
+					)}
 				</div>
 			</div>
 		</div>

@@ -69,12 +69,12 @@
       },
       "fastLookup": {
         "title": "Fast Lookup",
-        "desc": "Short answers and simple note actions.",
+        "desc": "Short answers and simple note actions — also powers the ✦ Refine button in Vault Search.",
         "fallback": "Falls back to Conversation"
       },
       "research": {
         "title": "Research",
-        "desc": "Vault synthesis, AI Analysis, and multi-step agent work."
+        "desc": "Vault synthesis, AI Search, and multi-step agent work."
       },
       "strongerModel": {
         "title": "Use stronger model when needed",
@@ -112,7 +112,7 @@
       },
       "fastLookup": {
         "title": "Fast Lookup",
-        "desc": "Single-step replies, ~1s (works well with small local models)."
+        "desc": "Single-step replies, ~1s (works well with small local models). Also drives the ✦ Refine button in Vault Search."
       },
       "research": {
         "title": "Research",
@@ -211,7 +211,7 @@
       }
     },
     "aiAnalysis": {
-      "sectionTitle": "AI Analysis",
+      "sectionTitle": "AI Search",
       "autoSave": {
         "title": "Auto-save results",
         "desc": "Save completed analysis to your vault."
@@ -222,7 +222,7 @@
       },
       "recentLimit": {
         "title": "Recent history limit",
-        "desc": "Items shown in the Recent AI Analysis list."
+        "desc": "Items shown in the Recent AI Search list."
       }
     }
   },
