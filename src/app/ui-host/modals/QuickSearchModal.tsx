@@ -11,6 +11,8 @@ import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPan
 import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';
 import { getSelectedTextFromActiveEditor } from '@/app/platform/vault/obsidian-utils';
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
+import { AIQueryRewriteModal } from '@/app/ui-host/modals/AIQueryRewriteModal';
+import { behaviorRecorder } from '@/ui/view/quick-search/rewrite/BehaviorContextRecorder';
 
 /**
  * Obsidian modal wrapper for quick search React UI.
@@ -28,6 +30,9 @@ export class QuickSearchModal extends Modal {
 	async onOpen(): Promise<void> {
 		const token = ++this.openToken;
 		this.closed = false;
+		// Kick off the AI-Suggest behavior recorder for this session. Stops in
+		// onClose. Cheap — subscribes to two Zustand stores + a debounce timer.
+		behaviorRecorder.start();
 		const app = this.appContext.app;
 		// Build DocumentContext (same as CopilotPickerModal) so Vault
 		// Intelligence panel can render vault stats + history correctly.
@@ -84,6 +89,19 @@ export class QuickSearchModal extends Modal {
 						this.close();
 						openVaultReviewHistoryRecord(app, record);
 					},
+					onOpenSuggest: () => {
+						new AIQueryRewriteModal(this.appContext, this.appContext.settings).open();
+					},
+					onReplaySuggest: (entryId: string) => {
+						// Import the store dynamically so tests that stub
+						// localStorage don't hit an eager singleton import
+						// chain at module init.
+						import('@/ui/view/quick-search/rewrite/SuggestHistoryStore').then(({ suggestHistoryStore }) => {
+							const entry = suggestHistoryStore.get(entryId);
+							if (!entry) return;
+							new AIQueryRewriteModal(this.appContext, this.appContext.settings, entry).open();
+						});
+					},
 				},
 				this.appContext
 			)
@@ -93,6 +111,9 @@ export class QuickSearchModal extends Modal {
 	onClose(): void {
 		this.closed = true;
 		this.openToken++;
+		// Detach the behavior recorder — dumps its buffer and unhooks the
+		// Zustand subscriptions so nothing lingers between sessions.
+		try { behaviorRecorder.stop(); } catch { /* ignore */ }
 		// T10: detach an active foreground session to the background through
 		// the app-owned runtime. The foreground-session port inside the
 		// runtime reads the Zustand store + sessionRefs directly, so this

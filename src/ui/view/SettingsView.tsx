@@ -31,9 +31,9 @@ import { ToolsTab } from './settings/tabs/ToolsTab';
 import { AdvancedTab } from './settings/tabs/AdvancedTab';
 import type { TabId } from './settings/types';
 
-export function SettingsRoot() {
+export function SettingsRoot({ initialTab }: { initialTab?: TabId } = {}) {
     const { eventBus, plugin } = useServiceContext();
-    const [activeTab, setActiveTab] = useState<TabId>('overview');
+    const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? 'overview');
     const [settings, setSettings] = useState<MyPluginSettings>(plugin.settings);
     const [strings, setStrings] = useState<SettingsStrings>(DEFAULT_SETTINGS_STRINGS);
 

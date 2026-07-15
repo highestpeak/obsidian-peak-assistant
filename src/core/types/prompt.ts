@@ -24,6 +24,11 @@ export enum PromptId {
 
 	SearchRerankRankGpt = 'search-rerank-rank-gpt',
 
+	/** Query Rewrite: system prompt for behavior-driven structured query suggestions. */
+	QueryRewriteSystem = 'query-rewrite-system',
+	/** Query Rewrite: user prompt carrying behavior context + task. */
+	QueryRewrite = 'query-rewrite',
+
 	// Application prompts (title generation)
 	ApplicationGenerateTitle = 'application-generate-title',
 

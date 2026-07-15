@@ -38,12 +38,24 @@ export async function vercelGenerateText(
     modelId: string,
     messages: LLMRequestMessage[],
     outputControl?: LLMOutputControlSettings,
+    abortSignal?: AbortSignal,
 ): Promise<{ text: string; usage?: LLMUsage }> {
     let text = '';
     let usage: LLMUsage | undefined;
-    for await (const event of vercelStreamChat(profile, modelId, { messages, outputControl })) {
+    let streamError: Error | null = null;
+    for await (const event of vercelStreamChat(profile, modelId, { messages, outputControl, abortSignal })) {
         if (event.type === 'text-delta') text += event.text;
         else if (event.type === 'complete') usage = event.usage;
+        else if (event.type === 'error') {
+            // Provider errors (Anthropic 404, OpenAI 401, etc.) arrive as
+            // `error` events, not thrown — swallowing them makes every
+            // caller see `{ text: '', usage: undefined }` and report a
+            // useless "empty response" downstream. Rethrow after the loop
+            // so the caller's `try/catch` gets the real error, complete
+            // with statusCode / responseBody / cause metadata.
+            streamError = event.error;
+        }
     }
+    if (streamError) throw streamError;
     return { text, usage };
 }
