@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault Intelligence Tab · UI/UX Review</title>
+<style>
+:root {
+  --pk-bg: #ffffff; --pk-bg-secondary: #f7f7fa;
+  --pk-surface: #ffffff; --pk-surface-sunken: #f3f4f6;
+  --pk-border: #e5e7eb; --pk-border-soft: #ececef;
+  --pk-text-primary: #2e3338; --pk-text-secondary: #6c757d; --pk-text-tertiary: #999999;
+  --pk-accent: #7c3aed; --pk-accent-hover: #6d28d9;
+  --pk-accent-tint: rgba(124,58,237,.10); --pk-accent-soft: rgba(124,58,237,.25); --pk-accent-text: #6d28d9;
+  --pk-success: #22c55e; --pk-success-bg: rgba(34,197,94,.12); --pk-success-text: #15803d;
+  --pk-warning: #f59e0b; --pk-warning-bg: rgba(245,158,11,.14); --pk-warning-text: #b45309;
+  --pk-error: #ef4444; --pk-error-bg: rgba(239,68,68,.12); --pk-error-text: #b91c1c;
+  --pk-info: #3b82f6; --pk-info-bg: rgba(59,130,246,.12); --pk-info-text: #1d4ed8;
+  --pk-shadow-card: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+  --pk-shadow-modal: 0 16px 40px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.06);
+  --pk-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+  --pk-font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--pk-bg-secondary); color: var(--pk-text-primary); font-family: var(--pk-font-sans); font-size: 14px; line-height: 1.7; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px 80px; }
+a { color: var(--pk-accent-text); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: var(--pk-font-mono); font-size: 12px; background: var(--pk-surface-sunken); border: 1px solid var(--pk-border-soft); border-radius: 4px; padding: 1px 5px; word-break: normal; overflow-wrap: break-word; }
+.topnav { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--pk-border); }
+.topnav-inner { max-width: 1080px; margin: 0 auto; padding: 10px 28px; display: flex; align-items: center; gap: 18px; font-size: 13px; }
+.topnav .set { display: flex; gap: 12px; padding-right: 16px; border-right: 1px solid var(--pk-border); }
+.topnav .set a { color: var(--pk-text-secondary); }
+.topnav .set a.cur { color: var(--pk-accent-text); font-weight: 600; }
+.topnav .anchors { display: flex; gap: 14px; flex-wrap: wrap; }
+.topnav .anchors a { color: var(--pk-text-secondary); }
+header.doc { padding: 44px 0 8px; }
+h1 { font-size: 30px; line-height: 1.3; margin: 0 0 6px; letter-spacing: -0.01em; }
+.doc-sub { color: var(--pk-text-secondary); font-size: 14px; max-width: 72ch; }
+.doc-meta { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.meta-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--pk-text-secondary); background: var(--pk-surface); border: 1px solid var(--pk-border); border-radius: 9999px; padding: 3px 10px; white-space: nowrap; }
+h2 { font-size: 21px; margin: 44px 0 12px; padding-top: 10px; letter-spacing: -0.01em; }
+h3 { font-size: 16px; margin: 26px 0 8px; }
+p { margin: 8px 0; max-width: 78ch; }
+ul, ol { margin: 8px 0; padding-left: 22px; max-width: 76ch; }
+li { margin: 4px 0; }
+.verdict { background: var(--pk-surface); border: 1px solid var(--pk-border); border-left: 3px solid var(--pk-accent); border-radius: 10px; padding: 16px 20px; margin: 18px 0; }
+.verdict-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.verdict p { margin: 6px 0; }
+table.issues { width: 100%; border-collapse: collapse; table-layout: fixed; background: var(--pk-surface); border: 1px solid var(--pk-border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+table.issues th { text-align: left; font-size: 12px; color: var(--pk-text-secondary); font-weight: 600; background: var(--pk-surface-sunken); padding: 8px 13px; border-bottom: 1px solid var(--pk-border); }
+table.issues td { padding: 10px 13px; border-bottom: 1px solid var(--pk-border-soft); vertical-align: top; line-height: 1.55; word-break: normal; overflow-wrap: break-word; hyphens: none; }
+table.issues tr:last-child td { border-bottom: 0; }
+.sev { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 9999px; padding: 1px 9px; white-space: nowrap; }
+.sev-p0 { background: var(--pk-error-bg); color: var(--pk-error-text); }
+.sev-p1 { background: var(--pk-warning-bg); color: var(--pk-warning-text); }
+.sev-p2 { background: var(--pk-surface-sunken); color: var(--pk-text-secondary); }
+figure.mock { margin: 22px 0; }
+figcaption { font-size: 12.5px; color: var(--pk-text-secondary); margin: 8px 4px 0; }
+.frame { background: var(--pk-surface); border-radius: 16px; box-shadow: var(--pk-shadow-modal); overflow: hidden; font-size: 13px; }
+.mk-tabs { display: flex; align-items: center; background: var(--pk-bg-secondary); border-bottom: 1px solid var(--pk-border); padding-right: 14px; }
+.mk-tab { flex: 1; text-align: center; padding: 13px 0 11px; color: var(--pk-text-secondary); font-size: 14px; }
+.mk-vi-btn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; background: var(--pk-accent); color: #fff; border-radius: 9999px; padding: 6px 14px; font-size: 13px; font-weight: 600; }
+.mk-body { padding: 18px 22px 18px; }
+.mk-inputrow { display: flex; align-items: center; gap: 10px; background: var(--pk-surface); border: 1px solid var(--pk-border); border-radius: 9999px; padding: 10px 16px; box-shadow: var(--pk-shadow-card); }
+.mk-ph { flex: 1; color: var(--pk-text-tertiary); }
+.mk-scope { background: var(--pk-accent-tint); color: var(--pk-accent-text); border-radius: 9999px; padding: 3px 11px; font-size: 12px; }
+.mk-stats { color: var(--pk-text-secondary); font-size: 12.5px; margin: 12px 4px 14px; }
+.hero { border: 1px solid var(--pk-border); border-radius: 14px; padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start; box-shadow: var(--pk-shadow-card); }
+.hero-ico { width: 52px; height: 52px; border-radius: 14px; background: var(--pk-accent-tint); color: var(--pk-accent-text); display: flex; align-items: center; justify-content: center; font-size: 22px; flex: 0 0 auto; }
+.hero-ico.warn { background: var(--pk-warning-bg); color: var(--pk-warning-text); }
+.hero-main { flex: 1; min-width: 0; }
+.hero-title { font-size: 17px; font-weight: 700; line-height: 1.35; }
+.hero-desc { color: var(--pk-text-secondary); font-size: 13px; margin-top: 3px; }
+.hero-chips { display: flex; flex-wrap: wrap; gap: 7px 14px; margin-top: 12px; color: var(--pk-text-secondary); font-size: 12.5px; align-items: center; }
+.hero-chips .dot::before { content: "· "; color: var(--pk-text-tertiary); }
+.badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 9999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+.badge.warn { background: var(--pk-warning-bg); color: var(--pk-warning-text); }
+.hero-side { flex: 0 0 220px; display: flex; flex-direction: column; align-items: stretch; gap: 9px; }
+.hero-side .lbl { color: var(--pk-text-secondary); font-size: 12px; text-align: right; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 10px; padding: 9px 14px; font-size: 13.5px; font-weight: 600; }
+.btn.primary { background: var(--pk-accent); color: #fff; }
+.btn.ghost { color: var(--pk-text-secondary); font-weight: 500; }
+.cols { display: grid; grid-template-columns: 1fr 1.1fr; gap: 26px; margin-top: 20px; }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.sec-title { font-size: 15px; font-weight: 700; }
+.rev-row { display: flex; gap: 11px; padding: 8px 6px; border-radius: 10px; align-items: flex-start; }
+.rev-row:hover { background: var(--pk-surface-sunken); }
+.rev-ico { color: var(--pk-text-tertiary); flex: 0 0 auto; margin-top: 2px; }
+.rev-body { flex: 1; min-width: 0; }
+.rev-title { font-size: 13.5px; font-weight: 600; line-height: 1.4; }
+.rev-meta { color: var(--pk-text-tertiary); font-size: 12px; margin-top: 1px; }
+.rev-date { flex: 0 0 auto; color: var(--pk-text-tertiary); font-size: 12px; white-space: nowrap; }
+.intent { display: flex; align-items: center; gap: 12px; background: var(--pk-bg-secondary); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.intent-ico { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex: 0 0 auto; background: var(--pk-accent-tint); color: var(--pk-accent-text); }
+.intent-ico.blue { background: var(--pk-info-bg); color: var(--pk-info-text); }
+.intent-ico.teal { background: rgba(13,148,136,.12); color: #0d9488; }
+.intent-body { flex: 1; min-width: 0; }
+.intent-title { font-size: 13.5px; font-weight: 600; }
+.intent-desc { color: var(--pk-text-secondary); font-size: 12px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.intent-tag { flex: 0 0 auto; background: var(--pk-accent-tint); color: var(--pk-accent-text); border-radius: 9999px; padding: 2px 10px; font-size: 11.5px; font-weight: 600; }
+.intent-arrow { color: var(--pk-text-tertiary); flex: 0 0 auto; }
+.mk-caps { display: flex; align-items: center; gap: 13px; background: var(--pk-bg-secondary); border-radius: 12px; padding: 13px 16px; margin-top: 18px; color: var(--pk-text-secondary); }
+.mk-caps .t { color: var(--pk-text-primary); font-weight: 600; font-size: 13.5px; }
+.mk-caps .s { font-size: 12px; }
+.pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 9999px; background: var(--pk-error); color: #fff; font-size: 11px; font-weight: 700; margin: 0 3px; vertical-align: text-bottom; flex: 0 0 auto; }
+.pin.warn { background: var(--pk-warning); }
+.fixnotes { margin: 10px 4px 0; display: grid; gap: 5px; font-size: 12.5px; }
+.fixnotes div { color: var(--pk-text-secondary); }
+.fixnotes b { color: var(--pk-success-text); font-weight: 700; }
+.legend { font-size: 12px; color: var(--pk-text-secondary); margin: 6px 4px; }
+table.act { width: 100%; border-collapse: collapse; table-layout: fixed; background: var(--pk-surface); border: 1px solid var(--pk-border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+table.act th { text-align: left; font-size: 12px; color: var(--pk-text-secondary); background: var(--pk-surface-sunken); padding: 8px 13px; border-bottom: 1px solid var(--pk-border); }
+table.act td { padding: 10px 13px; border-bottom: 1px solid var(--pk-border-soft); vertical-align: top; line-height: 1.55; }
+table.act tr:last-child td { border-bottom: 0; }
+</style>
+</head>
+<body>
+
+<nav class="topnav"><div class="topnav-inner">
+  <span class="set">
+    <a href="README.md">← 索引</a>
+    <a href="01-ai-search.html">01 AI Search</a>
+    <a href="02-vault-intelligence.html" class="cur">02 Vault Intelligence</a>
+    <a href="03-document-copilot.html">03 Document Copilot</a>
+  </span>
+  <span class="anchors">
+    <a href="#verdict">综合判断</a>
+    <a href="#issues">问题清单</a>
+    <a href="#before">现状标注</a>
+    <a href="#after">重设计 Mockup</a>
+    <a href="#diff">前后对比</a>
+    <a href="#actions">修复清单</a>
+  </span>
+</div></nav>
+
+<div class="wrap">
+
+<header class="doc">
+  <h1>Vault Intelligence Tab · UI/UX Review</h1>
+  <div class="doc-sub">Quick Search modal 内嵌的 Vault Intelligence 面板（vault 级 review 状态卡 + 历史 + suggested intents）全链路审阅。</div>
+  <div class="doc-meta">
+    <span class="meta-chip">读者：本插件维护者</span>
+    <span class="meta-chip">证据：src/ui/view/copilot/ + src/service/copilot/vault/</span>
+    <span class="meta-chip">约 5,500 字 · 11 分钟</span>
+    <span class="meta-chip">2026-07-09</span>
+  </div>
+</header>
+
+<h2 id="verdict">综合判断</h2>
+<div class="verdict">
+  <div class="verdict-title">最大的问题不是视觉，是"半接线"：看起来完成度 90%，交互完成度约 50%</div>
+  <p>从 Quick Search modal 进入这个面板时，右栏三个 Suggested intents 和 "All reviews" 链接的 onClick <b>全部是空函数</b>（<code>SearchModal.tsx:903-906</code> 的显式 stub）——用户点了没有任何反应。这比丑陋严重得多：它教育用户"这个插件的按钮不可信"。同一批组件从独立的 Copilot Modal 进入时是接好线的，坏的只是这个嵌入点。</p>
+  <p>第二类问题是<b>把工程内部量原样倒给用户</b>："143.7% word drift" 是个未封顶、无方向的百分比；"148 notes changed" 实际是文件数净差而非真实变更数；"cached report" 和 "can refresh" 是两个由同一个布尔量驱动的冗余调试标志。第三类是收尾粗糙：placeholder 是 Atlas tab 的字符串（正确的字符串已经算好了但没人用）、scope chip 显示原始小写 id "vault"、"Run strategy" 的问号没接 tooltip、"Research" 改名后周边文案还在说 "review"。</p>
+</div>
+
+<h2 id="issues">问题清单</h2>
+<table class="issues">
+  <colgroup><col style="width:34px"><col style="width:52px"><col style="width:27%"><col><col style="width:24%"></colgroup>
+  <thead><tr><th>#</th><th>级别</th><th>问题</th><th>根因与证据</th><th>修复方向</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><span class="sev sev-p0">P0</span></td><td>Suggested intents 与 "All reviews" 点击均无反应</td><td><code>SearchModal.tsx:903-906</code>：<code>onSelect</code>/<code>onOpenAllHistory</code> 传入空箭头函数（注释写明 "wired via Copilot Modal path"），本嵌入是功能死端</td><td>复用 Copilot Modal 的 dispatch 接线；接不了就先隐藏该栏，禁止展示死按钮</td></tr>
+    <tr><td>2</td><td><span class="sev sev-p0">P0</span></td><td>搜索框 placeholder 是 Atlas 的 "Filter headings in current document..."</td><td><code>CopilotPickerContent.tsx:45-49,118</code>：本地 <code>SCOPE_TABS</code> 没有 vault 条目，<code>find()</code> 落空 fallback 到 <code>[0]</code>=Atlas；正确字符串在 <code>model.activeTab.searchPlaceholder</code>（intent-hub.ts:29-35）已算好但未被读取</td><td>改读 <code>model.activeTab.searchPlaceholder</code></td></tr>
+    <tr><td>3</td><td><span class="sev sev-p1">P1</span></td><td>"143.7% word drift" 不可解读</td><td><code>VaultFingerprintService.ts:52-55</code>：<code>|Δwords|/prev×100</code>，未封顶、无增减方向，vault 翻倍即 &gt;100%</td><td>改为带方向的自然语言："words +1.0M (≈2.4×) since 20 May"</td></tr>
+    <tr><td>4</td><td><span class="sev sev-p1">P1</span></td><td>"148 notes changed" 语义错误</td><td><code>VaultFingerprintService.ts:51</code>：<code>|fileCount 差|</code>——原地编辑 148 个文件显示 0，增删各 74 个显示 0；fingerprint 明明存有 per-file hash 却没用</td><td>用 per-file hash diff 计真实 changed 数</td></tr>
+    <tr><td>5</td><td><span class="sev sev-p1">P1</span></td><td>"cached report" / "can refresh" 冗余工程 chip</td><td><code>PickerReadinessAdapters.tsx:203,207</code>：两个 chip 由同一个 <code>lastRecord</code> 真值驱动，对用户是调试黑话</td><td>合并为一条用户语言 "Last report · 20 May"，动作交给按钮</td></tr>
+    <tr><td>6</td><td><span class="sev sev-p1">P1</span></td><td>"Research" vs "review" 词汇漂移</td><td><code>CopilotMetaAgentStream.ts:42-45</code>（2026-05-30 改名）：CTA 叫 Research，但标题说 "A new review is recommended"、列表叫 "Past vault reviews"、footer 说 "during a refresh"——三个词族混用</td><td>一次性定词族（建议统一 review 系），全 surface 扫一遍</td></tr>
+    <tr><td>7</td><td><span class="sev sev-p1">P1</span></td><td>空报告行 "0 clusters · 0 gaps · 0 actions · 0 insights" 毫无信息</td><td><code>VaultPickerSections.tsx:134-136</code> 四元组无条件渲染；headline 缺失时 fallback 通用 "Vault review"</td><td>只显示非零项；全零显示 "No findings"；考虑存报告时生成 ≤60 字符标题</td></tr>
+    <tr><td>8</td><td><span class="sev sev-p2">P2</span></td><td>"Run strategy ?" 问号无 tooltip</td><td><code>PickerReadinessCard.tsx:104-107</code>：HelpCircle 纯装饰，hover/点击无内容</td><td>接 tooltip 讲清两种模式差异，或删掉问号</td></tr>
+    <tr><td>9</td><td><span class="sev sev-p2">P2</span></td><td>scope chip 显示原始 id "vault"（小写）</td><td><code>CopilotPickerContent.tsx:210</code>：<code>&lt;Pill&gt;{activeTab}&lt;/Pill&gt;</code> 直接渲染 tab id</td><td>渲染 Title Case label（"Vault"）</td></tr>
+    <tr><td>10</td><td><span class="sev sev-p2">P2</span></td><td>vault 级 intent 用当前文档的上下文打 recommended 分</td><td><code>copilot-command-model.ts:58</code> + <code>QuickSearchModal.tsx:39-46</code>：relevance 收到的 ctx 是碰巧打开的那篇笔记</td><td>vault tab 用 vault 级信号（fingerprint/digest）评分</td></tr>
+    <tr><td>11</td><td><span class="sev sev-p2">P2</span></td><td>日期格式混用（"20/05/2026" vs 相对时间）</td><td><code>VaultPickerSections.tsx:31-42</code>：&gt;30 天 fallback 到 <code>toLocaleDateString()</code>，与统计行 "last reviewed 20/05/2026" 并存两种口径</td><td>统一 "20 May 2026" 人类格式（&gt;30 天）+ 相对时间（≤30 天）</td></tr>
+  </tbody>
+</table>
+
+<h2 id="before">现状标注（Before）</h2>
+<p class="legend">按截图 1:1 重建，红色 = P0/P1，橙色 = P2，编号对应上表。</p>
+
+<figure class="mock">
+<div class="frame">
+  <div class="mk-tabs">
+    <div class="mk-tab">Vault Search</div>
+    <div class="mk-tab">AI Search</div>
+    <span class="mk-vi-btn">✦ Vault Intelligence</span>
+  </div>
+  <div class="mk-body">
+    <div class="mk-inputrow">
+      <span style="color:var(--pk-text-tertiary)">⌕</span>
+      <span class="mk-ph">Filter headings in current document...<span class="pin">2</span></span>
+      <span class="mk-scope">vault<span class="pin warn">9</span></span>
+    </div>
+    <div class="mk-stats">2.2K notes · 1.7M words · last reviewed 20/05/2026<span class="pin warn">11</span></div>
+
+    <div class="hero">
+      <div class="hero-ico warn">⚠</div>
+      <div class="hero-main">
+        <div class="hero-title">148 notes changed since last review<span class="pin">4</span></div>
+        <div class="hero-desc">Significant changes detected. A new review is recommended.<span class="pin">6</span></div>
+        <div class="hero-chips">
+          <span>▤ 2,188 notes</span>
+          <span class="dot">● 148 notes changed</span>
+          <span class="dot">∿ 143.7% word drift<span class="pin">3</span></span>
+          <span class="dot">⛁ cached report<span class="pin">5</span></span>
+          <span class="dot">⟳ can refresh</span>
+        </div>
+        <div style="margin-top:10px"><span class="badge warn">⚠ large delta</span></div>
+      </div>
+      <div class="hero-side">
+        <span class="lbl">Run strategy ?<span class="pin warn">8</span></span>
+        <span class="btn primary">✦ Research<span class="pin">6</span></span>
+        <span class="btn ghost">↺ View last report</span>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div>
+        <div class="sec-head"><span class="sec-title">Past vault reviews</span><a href="#">All reviews ›<span class="pin">1</span></a></div>
+        <div class="rev-row">
+          <span class="rev-ico">↺</span>
+          <div class="rev-body">
+            <div class="rev-title">This vault review reveals a sophisticated AI develop…</div>
+            <div class="rev-meta">0 clusters · 1 gap · 3 actions · 3 insights</div>
+          </div>
+          <span class="rev-date">20/05/2026</span>
+        </div>
+        <div class="rev-row">
+          <span class="rev-ico">↺</span>
+          <div class="rev-body">
+            <div class="rev-title">Vault review</div>
+            <div class="rev-meta">0 clusters · 0 gaps · 0 actions · 0 insights<span class="pin">7</span></div>
+          </div>
+          <span class="rev-date">20/05/2026</span>
+        </div>
+      </div>
+      <div>
+        <div class="sec-head"><span class="sec-title">Suggested intents</span></div>
+        <div class="intent">
+          <span class="intent-ico">⚡</span>
+          <div class="intent-body">
+            <div class="intent-title">Smart Connections<span class="pin">1</span></div>
+            <div class="intent-desc">Find semantically similar unlinked notes via graph inspector</div>
+          </div>
+          <span class="intent-tag">recommended<span class="pin warn">10</span></span>
+          <span class="intent-arrow">›</span>
+        </div>
+        <div class="intent">
+          <span class="intent-ico blue">⌕</span>
+          <div class="intent-body">
+            <div class="intent-title">Find Related</div>
+            <div class="intent-desc">Find semantically related notes in your vault</div>
+          </div>
+          <span class="intent-tag">recommended</span>
+          <span class="intent-arrow">›</span>
+        </div>
+        <div class="intent">
+          <span class="intent-ico teal">?</span>
+          <div class="intent-body">
+            <div class="intent-title">Knowledge Gaps</div>
+            <div class="intent-desc">Identify missing topics and knowledge gaps</div>
+          </div>
+          <span class="intent-tag">recommended</span>
+          <span class="intent-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mk-caps">
+      <span style="font-size:16px">☰</span>
+      <div><div class="t">Show all capabilities ›</div><div class="s">Vault tools are available to the agent during a refresh.<span class="pin">6</span></div></div>
+    </div>
+  </div>
+</div>
+<figcaption>现状重建。<span class="pin">1</span> 点击无反应的死链接/死卡片；<span class="pin">2</span> 错误 placeholder；<span class="pin">3</span> 不可解读的漂移百分比；<span class="pin">4</span> 语义错误的变更数；<span class="pin">5</span> 冗余工程 chip；<span class="pin">6</span> Research/review/refresh 三词族混用；<span class="pin">7</span> 全零报告行；<span class="pin warn">8</span> 无 tooltip 的问号；<span class="pin warn">9</span> 原始 id；<span class="pin warn">10</span> 文档级上下文打 vault 级分；<span class="pin warn">11</span> 日期口径混用。</figcaption>
+</figure>
+
+<h2 id="after">重设计 Mockup（After）</h2>
+<p>重画原则：指标翻译成用户语言，动作只留真实可点的，词族统一为 review 系。</p>
+
+<figure class="mock">
+<div class="frame">
+  <div class="mk-tabs">
+    <div class="mk-tab">Vault Search</div>
+    <div class="mk-tab">AI Search</div>
+    <span class="mk-vi-btn">✦ Vault Intelligence</span>
+  </div>
+  <div class="mk-body">
+    <div class="mk-inputrow">
+      <span style="color:var(--pk-text-tertiary)">⌕</span>
+      <span class="mk-ph">Search or ask across vault… (# in-file, @ folder, ? help)</span>
+      <span class="mk-scope">Vault</span>
+    </div>
+    <div class="mk-stats">2,188 notes · 1.7M words · last reviewed 20 May 2026</div>
+
+    <div class="hero">
+      <div class="hero-ico warn">⚠</div>
+      <div class="hero-main">
+        <div class="hero-title">Your vault has changed a lot since the last review</div>
+        <div class="hero-desc">Notes went from 2,040 → 2,188 and word count roughly doubled since 20 May. The last report is likely out of date.</div>
+        <div class="hero-chips">
+          <span>▤ +148 notes</span>
+          <span class="dot">∿ words ≈2.4× (+1.0M)</span>
+          <span class="dot">↺ last report · 20 May 2026</span>
+        </div>
+      </div>
+      <div class="hero-side">
+        <span class="lbl">Multi-round agent review · saves a report note</span>
+        <span class="btn primary">✦ Run vault review</span>
+        <span class="btn ghost">↺ View last report</span>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div>
+        <div class="sec-head"><span class="sec-title">Past vault reviews</span><a href="#">All reviews ›</a></div>
+        <div class="rev-row">
+          <span class="rev-ico">↺</span>
+          <div class="rev-body">
+            <div class="rev-title">AI 开发知识体系已成型，执行侧记录是缺口</div>
+            <div class="rev-meta">1 gap · 3 actions · 3 insights</div>
+          </div>
+          <span class="rev-date">20 May 2026</span>
+        </div>
+        <div class="rev-row">
+          <span class="rev-ico">↺</span>
+          <div class="rev-body">
+            <div class="rev-title">Vault review</div>
+            <div class="rev-meta">No findings</div>
+          </div>
+          <span class="rev-date">20 May 2026</span>
+        </div>
+      </div>
+      <div>
+        <div class="sec-head"><span class="sec-title">Suggested intents</span></div>
+        <div class="intent">
+          <span class="intent-ico">⚡</span>
+          <div class="intent-body">
+            <div class="intent-title">Smart Connections</div>
+            <div class="intent-desc">Find semantically similar unlinked notes</div>
+          </div>
+          <span class="intent-tag">recommended</span>
+          <span class="intent-arrow">›</span>
+        </div>
+        <div class="intent">
+          <span class="intent-ico blue">⌕</span>
+          <div class="intent-body">
+            <div class="intent-title">Find Related</div>
+            <div class="intent-desc">Find semantically related notes in your vault</div>
+          </div>
+          <span class="intent-arrow">›</span>
+        </div>
+        <div class="intent">
+          <span class="intent-ico teal">?</span>
+          <div class="intent-body">
+            <div class="intent-title">Knowledge Gaps</div>
+            <div class="intent-desc">Identify missing topics and knowledge gaps</div>
+          </div>
+          <span class="intent-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mk-caps">
+      <span style="font-size:16px">☰</span>
+      <div><div class="t">Show all capabilities ›</div><div class="s">These tools are available to the agent during a vault review.</div></div>
+    </div>
+  </div>
+</div>
+<figcaption>重设计。指标行只剩三条用户可读事实；CTA 改名 "Run vault review" 与全文词族一致；"Run strategy ?" 换成一行说明文字；recommended 徽标只出现在真正过阈值的 intent 上。</figcaption>
+</figure>
+
+<div class="fixnotes">
+  <div><b>✓ #1</b>（接线，mockup 不可见）intents 与 All reviews 必须接到与 Copilot Modal 相同的 dispatch；接线前整栏隐藏。</div>
+  <div><b>✓ #2</b> placeholder 换成 intent-hub 里已经写好的 vault 串。</div>
+  <div><b>✓ #3</b> "143.7% word drift" → "words ≈2.4× (+1.0M)"：有方向、有量级、不装成一个封顶百分比。</div>
+  <div><b>✓ #4</b> "+148 notes" 诚实表达"净增 148 篇"；真实 changed 数待 per-file hash diff 落地后再展示。</div>
+  <div><b>✓ #5</b> "cached report"/"can refresh" 删除，信息合并进 "last report · 20 May 2026"。</div>
+  <div><b>✓ #6</b> 词族统一 review 系：CTA "Run vault review"，footer "during a vault review"。</div>
+  <div><b>✓ #7</b> 计数只显示非零项；全零显示 "No findings"。标题示例展示了"报告命名"应有的样子（≤60 字符判断句）。</div>
+  <div><b>✓ #8</b> 问号删除，说明直接放为按钮上方一行小字（比藏在 tooltip 里更诚实）。</div>
+  <div><b>✓ #9</b> chip "vault" → "Vault"。</div>
+  <div><b>✓ #10</b> recommended 徽标只保留 Smart Connections 一枚（示例），语义是"真的过了 vault 级阈值"，而不是"每行都贴"。</div>
+  <div><b>✓ #11</b> 日期统一 "20 May 2026"。</div>
+</div>
+
+<h2 id="diff">前后对比要点</h2>
+<ul>
+  <li><b>状态卡从"仪表盘碎片"变为"一句人话 + 三条事实 + 一个动作"。</b>原版 6 个 meta chip 里有 3 个是工程状态（cached / can refresh / large delta），用户需要翻译；新版每个字都不需要翻译。</li>
+  <li><b>"recommended" 从装饰变回信号。</b>三行全贴 recommended 时它的信息量是零；只有过阈值才贴，徽标才值得被看。</li>
+  <li><b>词族统一是一次性决策，不是文案微调。</b>Research/review/refresh 混用来自 2026-05-30 的单点改名没有跟着扫全 surface——建议这次把 <code>MODE_LABELS</code> 与周边 copy 一起定稿（本文与 03 篇 mockup 统一按 review 词族画）。</li>
+  <li><b>死按钮是负资产。</b>在接线完成之前，隐藏 Suggested intents 栏比展示三张点了没反应的卡片体验更好。</li>
+</ul>
+
+<h2 id="actions">修复清单</h2>
+<table class="act">
+  <colgroup><col style="width:52px"><col><col style="width:42%"></colgroup>
+  <thead><tr><th>级别</th><th>动作</th><th>触点文件</th></tr></thead>
+  <tbody>
+    <tr><td><span class="sev sev-p0">P0</span></td><td>接线 <code>onSelect</code>/<code>onOpenAllHistory</code>/<code>onOpenHistoryRecord</code>（复用 <code>CopilotPickerModal</code> 的 dispatch）；接线前隐藏 intents 栏与 All reviews 链接</td><td><code>src/ui/view/quick-search/SearchModal.tsx:898-909</code> · <code>src/app/ui-host/modals/QuickSearchModal.tsx</code></td></tr>
+    <tr><td><span class="sev sev-p0">P0</span></td><td>placeholder 改读 <code>model.activeTab.searchPlaceholder</code>；scope chip 用 Title Case label</td><td><code>src/ui/view/copilot/CopilotPickerContent.tsx:118,206,210</code></td></tr>
+    <tr><td><span class="sev sev-p1">P1</span></td><td>指标翻译层：word drift 改带方向表达；notes changed 改 per-file hash diff（fingerprint 已有 hash）；cached/can-refresh chips 删除合并</td><td><code>src/service/copilot/vault/VaultFingerprintService.ts:37-77</code> · <code>src/ui/view/copilot/PickerReadinessAdapters.tsx:148-249</code></td></tr>
+    <tr><td><span class="sev sev-p1">P1</span></td><td>词族统一（review 系）：<code>MODE_LABELS</code>、hero 描述、footer 副标题、tooltip 全量扫描替换</td><td><code>src/service/copilot/CopilotMetaAgentStream.ts:42-45</code> · <code>CopilotPickerContent.tsx:308-312</code></td></tr>
+    <tr><td><span class="sev sev-p1">P1</span></td><td>历史行：非零计数才渲染，全零显示 "No findings"；存报告时生成短标题（LLM 一句话命名，≤60 字符）</td><td><code>src/ui/view/copilot/vault/VaultPickerSections.tsx:97-143</code> · <code>src/service/copilot/vault/VaultReviewReportService.ts:63-78</code></td></tr>
+    <tr><td><span class="sev sev-p2">P2</span></td><td>问号改说明文字；日期统一格式；vault 级 recommended 改用 fingerprint/digest 信号评分</td><td><code>PickerReadinessCard.tsx:104-107</code> · <code>VaultPickerSections.tsx:31-42</code> · <code>copilot-command-model.ts</code></td></tr>
+  </tbody>
+</table>
+
+<h3>不做什么</h3>
+<ul>
+  <li>不动 review 运行链路（<code>VaultAutoRunModal</code> / <code>VaultReviewSession</code> 的运行与报告渲染不在本篇范围）。</li>
+  <li>不合并 Vault Intelligence 与 AI Search 两个入口——分工清晰（问答 vs 体检），问题只在交付质量。</li>
+  <li>不新增第四种 freshness 表达；A/B/C/D/E 五态状态机本身设计合理，坏的只是 D 态的文案层。</li>
+</ul>
+
+</div>
+</body>
+</html>

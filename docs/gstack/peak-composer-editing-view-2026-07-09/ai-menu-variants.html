@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI 动作菜单 · 4 个 Variant</title>
+<link rel="stylesheet" href="mock.css" />
+<style>
+  html, body { overflow: auto; background: var(--bg); }
+  .variants-page { max-width: 1240px; margin: 0 auto; padding: 34px 24px 80px; display: grid; gap: 26px; }
+  .variants-page > header h1 { font-size: 22px; }
+  .variants-page > header p { margin-top: 6px; color: var(--muted); font-size: 13px; }
+  .variant-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .variant { display: grid; gap: 10px; align-content: start; }
+  .variant-title { display: flex; align-items: baseline; gap: 8px; }
+  .variant-title strong { font-size: 14px; }
+  .variant-title small { color: var(--soft); font-size: 12px; }
+  .demo { position: relative; padding: 18px 18px 20px; border: 1px solid var(--line); border-radius: 10px; background: #fff; box-shadow: var(--shadow-soft); }
+  .demo-block { color: #2f3b50; font-size: 14px; line-height: 1.75; }
+  .demo-block .embed-tag { margin-right: 8px; padding: 1px 7px; border: 1px solid #d5e0ff; border-radius: 6px; background: #f8faff; color: var(--blue); font-size: 11px; font-weight: var(--weight-strong); }
+  .verdict { color: var(--muted); font-size: 12px; line-height: 1.7; }
+  .verdict b { color: var(--text); }
+
+  /* ---------- V1 当前版：垂直命令菜单 ---------- */
+  .v1-menu { width: min(400px, 100%); margin-top: 10px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: #fff; box-shadow: 0 16px 36px rgba(31,42,61,.12); }
+  .v1-head { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px 7px; }
+  .v1-head span { color: var(--soft); font-size: 11px; font-weight: var(--weight-strong); letter-spacing: .04em; }
+  .v1-head i { color: var(--soft); font-style: normal; font-size: 13px; }
+  .v1-list { display: grid; padding: 0 4px 4px; }
+  .v1-list button { display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 8px 9px; border: 0; border-radius: 7px; background: transparent; text-align: left; cursor: pointer; }
+  .v1-list button span { font-size: 13px; font-weight: var(--weight-medium); color: var(--text); }
+  .v1-list button small { margin-left: auto; color: var(--soft); font-size: 11px; }
+  .v1-list button:hover { background: var(--violet-weak); }
+  .v1-input { display: flex; gap: 8px; padding: 8px; border-top: 1px solid var(--line); background: #fbfcfe; }
+  .v1-input input { flex: 1; min-height: 30px; padding: 0 10px; border: 1px solid transparent; border-radius: 7px; background: #f1f4f9; font-size: 12.5px; }
+  .v1-input b { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; background: var(--violet); color: #fff; font-weight: 400; }
+
+  /* ---------- V2 Prompt-first ---------- */
+  .v2-menu { width: min(420px, 100%); margin-top: 10px; overflow: hidden; border: 1px solid #d8d2ff; border-radius: 12px; background: #fff; box-shadow: 0 18px 40px rgba(77,66,189,.14); }
+  .v2-ask { display: flex; align-items: center; gap: 9px; padding: 12px 14px; }
+  .v2-ask .spark { color: var(--violet); font-size: 15px; }
+  .v2-ask input { flex: 1; border: 0; outline: none; background: transparent; color: #243149; font-size: 14px; }
+  .v2-ask input::placeholder { color: #9aa5c0; }
+  .v2-ask kbd { padding: 2px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: #f7f9fc; color: var(--soft); font-family: var(--font-mono); font-size: 10px; }
+  .v2-section { padding: 4px 6px 6px; border-top: 1px solid #eef1f8; }
+  .v2-section-label { display: block; padding: 6px 8px 2px; color: var(--soft); font-size: 10.5px; font-weight: var(--weight-strong); letter-spacing: .06em; }
+  .v2-row { display: grid; grid-template-columns: 18px 1fr; column-gap: 9px; padding: 7px 8px; border-radius: 7px; cursor: pointer; }
+  .v2-row:hover { background: var(--violet-weak); }
+  .v2-row .icon { grid-row: span 2; padding-top: 2px; color: var(--violet); font-size: 12px; }
+  .v2-row .label { font-size: 13px; font-weight: var(--weight-medium); color: var(--text); }
+  .v2-row .why { font-size: 11px; color: var(--soft); margin-top: 1px; }
+
+  /* ---------- V3 极简动作条 ---------- */
+  .v3-bar { display: flex; align-items: center; gap: 4px; width: fit-content; max-width: 100%; margin-top: 10px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.96); box-shadow: 0 8px 22px rgba(31,42,61,.08); }
+  .v3-bar .spark { padding: 0 4px 0 6px; color: var(--violet); font-size: 13px; }
+  .v3-bar button { padding: 5px 9px; border: 0; border-radius: 999px; background: transparent; color: #354159; font-size: 12.5px; font-weight: var(--weight-medium); cursor: pointer; white-space: nowrap; }
+  .v3-bar button:hover { background: var(--violet-weak); color: var(--violet); }
+  .v3-bar .dot { color: #d3dae6; font-size: 10px; }
+  .v3-bar input { width: 148px; min-height: 26px; padding: 0 10px; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: transparent; color: #243149; font-size: 12px; outline: none; }
+  .v3-note { margin-top: 6px; color: var(--soft); font-size: 11px; }
+
+  /* ---------- V4 主次分明 ---------- */
+  .v4-menu { width: min(420px, 100%); margin-top: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: 0 16px 36px rgba(31,42,61,.12); display: grid; gap: 8px; }
+  .v4-primary { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #d8d2ff; border-radius: 9px; background: var(--violet-weak); cursor: pointer; }
+  .v4-primary .label { color: var(--violet); font-size: 13.5px; font-weight: var(--weight-strong); }
+  .v4-primary .why { color: #7a6ee0; font-size: 11px; }
+  .v4-primary .go { margin-left: auto; padding: 4px 12px; border-radius: 7px; background: var(--violet); color: #fff; font-size: 12px; font-weight: var(--weight-medium); }
+  .v4-secondary { display: flex; flex-wrap: wrap; gap: 6px; }
+  .v4-secondary button { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: #354159; font-size: 12px; cursor: pointer; }
+  .v4-secondary button:hover { border-color: #d8d2ff; background: var(--violet-weak); color: var(--violet); }
+  .v4-input { display: flex; gap: 8px; }
+  .v4-input input { flex: 1; min-height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: #fbfcfe; font-size: 12.5px; }
+  .v4-input b { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; background: var(--violet); color: #fff; font-weight: 400; }
+</style>
+</head>
+<body>
+<div class="variants-page">
+  <header>
+    <h1>块级 AI 动作菜单 · 4 个 Variant</h1>
+    <p>同一内容（embed 块的 3 个建议 + 自定义指令），四种形态。选一个方向，我再把它落进 mock 并统一到公式卡 / 链接 popover。</p>
+  </header>
+
+  <div class="variant-grid">
+
+    <section class="variant">
+      <div class="variant-title"><strong>V1 · 命令菜单（当前版）</strong><small>竖排列表 + 底部输入</small></div>
+      <div class="demo">
+        <div class="demo-block"><span class="embed-tag">Embed</span>区分资料库、笔记和大脑——资料库负责量，笔记负责结构，大脑负责判断。</div>
+        <div class="v1-menu">
+          <div class="v1-head"><span>AI 动作</span><i>✕</i></div>
+          <div class="v1-list">
+            <button><span>展开要点</span><small>嵌入片段可总结</small></button>
+            <button><span>修复锚点</span><small>锚点可能失效</small></button>
+            <button><span>改为链接</span><small>嵌入可降级</small></button>
+          </div>
+          <div class="v1-input"><input placeholder="自定义指令，例如：改写成面向新手的解释" /><b>↑</b></div>
+        </div>
+      </div>
+      <p class="verdict"><b>特点：</b>信息最全（理由右对齐可扫读）。<b>短板：</b>标题行 + 三行 + 输入行共五层，纵向占位大；理由和 label 左右分离，眼动来回。</p>
+    </section>
+
+    <section class="variant">
+      <div class="variant-title"><strong>V2 · Prompt-first</strong><small>输入框在顶部，建议是"推荐"区</small></div>
+      <div class="demo">
+        <div class="demo-block"><span class="embed-tag">Embed</span>区分资料库、笔记和大脑——资料库负责量，笔记负责结构，大脑负责判断。</div>
+        <div class="v2-menu">
+          <div class="v2-ask"><span class="spark">✦</span><input placeholder="让 AI 对这个块做什么？" /><kbd>⏎</kbd></div>
+          <div class="v2-section">
+            <span class="v2-section-label">推荐</span>
+            <div class="v2-row"><span class="icon">✦</span><span class="label">展开要点</span><span class="why">嵌入片段可总结</span></div>
+            <div class="v2-row"><span class="icon">✦</span><span class="label">修复锚点</span><span class="why">锚点可能失效</span></div>
+            <div class="v2-row"><span class="icon">✦</span><span class="label">改为链接</span><span class="why">嵌入可降级</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="verdict"><b>特点：</b>Notion AI 同构——自由指令是第一公民，推荐建议退居其次；理由挂在 label 下方，单列扫读。<b>短板：</b>高度最高；输入框永远在顶部会诱导"什么都打字"，弱化了信号驱动建议的存在感。</p>
+    </section>
+
+    <section class="variant">
+      <div class="variant-title"><strong>V3 · 极简动作条</strong><small>一行胶囊，理由进 tooltip</small></div>
+      <div class="demo">
+        <div class="demo-block"><span class="embed-tag">Embed</span>区分资料库、笔记和大脑——资料库负责量，笔记负责结构，大脑负责判断。</div>
+        <div class="v3-bar">
+          <span class="spark">✦</span>
+          <button>展开要点</button><span class="dot">·</span>
+          <button>修复锚点</button><span class="dot">·</span>
+          <button>改为链接</button>
+          <input placeholder="自定义指令…" />
+        </div>
+        <div class="v3-note">触发理由收进 hover tooltip 和建议卡头部，不占版面。</div>
+      </div>
+      <p class="verdict"><b>特点：</b>最轻、最不打断阅读，像一条工具条而不是一张卡。<b>短板：</b>理由不可见（可解释性让位给密度）；动作多于 3 个时会挤。</p>
+    </section>
+
+    <section class="variant">
+      <div class="variant-title"><strong>V4 · 主次分明</strong><small>首选动作放大，其余降为 chip</small></div>
+      <div class="demo">
+        <div class="demo-block"><span class="embed-tag">Embed</span>区分资料库、笔记和大脑——资料库负责量，笔记负责结构，大脑负责判断。</div>
+        <div class="v4-menu">
+          <div class="v4-primary"><span class="label">展开要点</span><span class="why">嵌入片段可总结</span><span class="go">执行</span></div>
+          <div class="v4-secondary"><button>修复锚点</button><button>改为链接</button></div>
+          <div class="v4-input"><input placeholder="或输入自定义指令…" /><b>↑</b></div>
+        </div>
+      </div>
+      <p class="verdict"><b>特点：</b>把"最可能要做的一件事"抬成主 CTA（理由只给主动作），次要动作和输入都安静。决策成本最低。<b>短板：</b>依赖排序质量——首选建议排错时最误导。</p>
+    </section>
+
+  </div>
+</div>
+</body>
+</html>

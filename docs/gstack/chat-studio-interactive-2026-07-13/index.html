@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat Studio · Interactive calibration mock</title>
+  <link rel="stylesheet" href="../../../src/styles/peak-tokens.css">
+  <link rel="stylesheet" href="./mock.css">
+</head>
+<body class="theme-light">
+  <div id="app" class="peak-design-root" aria-label="Chat Studio interactive mock">
+    <div id="studio" class="studio-shell">
+      <aside id="left-panel" class="studio-panel studio-left" aria-label="对话导航">
+        <div class="left-tools">
+          <button id="new-thread" class="sidebar-command is-primary" type="button"><span data-icon="square-pen"></span><span>新对话</span><kbd>⌘N</kbd></button>
+          <button id="open-workspace-search" class="sidebar-command" type="button"><span data-icon="search"></span><span>搜索知识库</span></button>
+        </div>
+        <nav id="left-content" class="left-content" aria-label="项目与对话"></nav>
+      </aside>
+
+      <div id="left-splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="调整左栏宽度" tabindex="0"></div>
+
+      <main id="centre-panel" class="studio-centre" aria-label="对话工作区">
+        <header class="conversation-header">
+          <div class="conversation-title-wrap">
+            <span id="conversation-title" class="conversation-title"></span>
+            <span id="conversation-scope" class="conversation-scope"></span>
+          </div>
+          <div class="header-actions">
+            <button id="header-open-source" class="icon-button" type="button" aria-label="打开来源" title="打开来源" data-icon-button="external-link"></button>
+            <button id="regenerate-title" class="icon-button" type="button" aria-label="重新生成标题" title="重新生成标题" data-icon-button="refresh"></button>
+            <button id="restore-right" class="icon-button restore-right" type="button" aria-label="显示右栏" title="显示右栏" data-icon-button="panel-right"></button>
+          </div>
+        </header>
+        <section id="conversation-body" class="conversation-body" aria-live="polite"></section>
+        <section class="composer-wrap" aria-label="消息编辑器">
+          <div id="composer" class="composer">
+            <div id="composer-context" class="composer-context" aria-label="当前上下文">
+              <button class="context-chip" type="button" data-resource-preview="interview-story-bank.md"><span data-icon="file-text"></span><span>interview-story-bank.md</span><span data-icon="x"></span></button>
+            </div>
+            <textarea id="composer-input" rows="1" placeholder="问你的项目、资料或当前工作…"></textarea>
+            <div class="composer-foot">
+              <div class="composer-tools">
+                <button id="composer-plus" class="icon-button" type="button" aria-label="添加资源" title="添加资源" aria-expanded="false" data-icon-button="plus"></button>
+                <button id="source-settings" class="source-chip" type="button" aria-label="选择信息来源" aria-haspopup="menu" aria-expanded="false"><span data-icon="database"></span><span id="source-chip-label">项目上下文</span><span data-icon="chevron-down"></span></button>
+              </div>
+              <div class="composer-status">
+                <button id="run-settings" class="run-chip" type="button" aria-label="模型与助手" aria-haspopup="dialog" aria-expanded="false">
+                  <span id="run-model-label" class="run-model">自动模型</span><span data-icon="chevron-down"></span>
+                </button>
+                <button id="send-button" class="send-button" type="button" aria-label="发送消息" disabled data-icon-button="arrow-up"></button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div id="right-splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="调整右栏宽度" tabindex="0"></div>
+
+      <aside id="right-panel" class="studio-panel studio-right" aria-label="对话索引">
+        <div class="right-topline">
+          <label class="compact-search right-search" aria-label="搜索当前对话">
+            <span data-icon="search"></span>
+            <input id="index-search" type="search" placeholder="搜索当前对话" autocomplete="off">
+          </label>
+          <button id="collapse-right" class="icon-button" type="button" aria-label="收起右栏" title="收起右栏" data-icon-button="panel-right-close"></button>
+        </div>
+        <div class="right-tabs" role="tablist" aria-label="对话索引视图">
+          <button class="right-tab is-active" type="button" role="tab" aria-selected="true" data-tab="outline"><span>大纲</span></button>
+          <button class="right-tab" type="button" role="tab" aria-selected="false" data-tab="resources"><span>资源</span></button>
+        </div>
+        <div class="right-filterbar">
+          <div id="direction-filter" class="direction-filter" role="group" aria-label="资源方向">
+            <button class="is-active" type="button" data-direction="all">全部</button>
+            <button type="button" data-direction="input">引用</button>
+            <button type="button" data-direction="output">生成</button>
+          </div>
+          <button id="type-filter-trigger" class="type-filter-trigger" type="button" aria-haspopup="menu" aria-expanded="false"><span data-icon="sliders"></span><span id="type-filter-label">全部类型</span><span data-icon="chevron-down"></span></button>
+        </div>
+        <div id="right-content" class="right-content"></div>
+        <div class="right-footer"><span id="index-count"></span><span>点击条目定位</span></div>
+      </aside>
+    </div>
+
+    <aside id="review-drawer" class="review-drawer" aria-label="评审控制" aria-hidden="true">
+      <div class="review-head">
+        <div><strong>Gate 2 · 产品与交互收敛</strong><span>验证工作契约、导航和关键输入状态</span></div>
+        <button id="close-review" class="icon-button" type="button" aria-label="关闭评审面板" data-icon-button="x"></button>
+      </div>
+      <div class="review-grid">
+        <span>左栏</span><strong id="review-left-width">248 px</strong>
+        <span>中栏</span><strong id="review-centre-width">—</strong>
+        <span>右栏</span><strong id="review-right-width">304 px</strong>
+        <span>状态</span><strong id="review-state">active</strong>
+        <span>变量</span><strong id="review-variant">canonical</strong>
+      </div>
+      <div class="review-contract">
+        <span>密度基线</span>
+        <code>row 30 · header 44 · reading 720 · composer 84</code>
+        <a href="../../superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md">权威实施规格 ↗</a>
+      </div>
+      <div class="review-shortcuts">
+        <kbd>1–9</kbd><span>切换状态</span><kbd>A/B/C</kbd><span>单变量</span>
+        <kbd>T</kbd><span>明暗</span><kbd>R</kbd><span>复位</span>
+      </div>
+    </aside>
+
+    <div id="native-search-handoff-layer" class="surface-layer" aria-hidden="true">
+      <section id="native-search-handoff" class="native-search-handoff" role="dialog" aria-modal="true" aria-labelledby="native-search-title">
+        <span class="native-search-handoff__icon" data-icon="search"></span>
+        <div class="native-search-handoff__copy">
+          <span class="surface-eyebrow">现有产品能力</span>
+          <strong id="native-search-title">搜索由原生 Quick Search 接管</strong>
+          <p>正式插件中，这个入口直接调用现有 <code>QuickSearchModal</code>。本 HTML 只设计 Chat Studio，不重画搜索内部界面。</p>
+          <dl class="native-search-boundaries" aria-label="现有搜索责任边界">
+            <div><dt>Raw retrieval</dt><dd>Vault Search</dd></div>
+            <div><dt>Generative synthesis</dt><dd>AI Search</dd></div>
+            <div><dt>Vault-wide review</dt><dd>Vault Intelligence</dd></div>
+          </dl>
+          <small>这段说明只属于 Mock，不会出现在正式产品中。</small>
+        </div>
+        <button class="surface-close-button" type="button" data-close-native-search>返回 Chat Studio</button>
+      </section>
+    </div>
+
+    <div id="conversation-search-layer" class="surface-layer" aria-hidden="true">
+      <section id="conversation-search" class="focused-picker conversation-search" role="dialog" aria-modal="true" aria-labelledby="conversation-search-title">
+        <header class="focused-picker__head">
+          <div><strong id="conversation-search-title">全部对话</strong><small>只筛选已加载的对话标题，不搜索消息正文或知识库</small></div>
+          <kbd>Esc</kbd>
+        </header>
+        <div class="focused-picker__input conversation-search-controls">
+          <span data-icon="search"></span>
+          <input id="conversation-search-input" type="search" placeholder="搜索对话标题…" autocomplete="off" aria-label="搜索对话标题">
+          <button id="conversation-type-trigger" class="conversation-type-trigger" type="button" aria-haspopup="menu" aria-expanded="false"><span data-icon="sliders"></span><span id="conversation-type-label">类型 · 全部</span><span data-icon="chevron-down"></span></button>
+        </div>
+        <div id="conversation-type-menu" class="conversation-type-menu" role="menu" aria-label="按对话类型筛选" aria-hidden="true"></div>
+        <div id="conversation-search-results" class="focused-picker__results"></div>
+      </section>
+    </div>
+
+    <div id="vault-document-picker-layer" class="surface-layer" aria-hidden="true">
+      <section id="vault-document-picker" class="focused-picker vault-document-picker" role="dialog" aria-modal="true" aria-labelledby="vault-document-picker-title">
+        <header class="focused-picker__head">
+          <div><strong id="vault-document-picker-title">引用知识库文档</strong><small><code>[[</code> 文档选择器示意 · 不代表 Quick Search 界面</small></div>
+          <kbd>Esc</kbd>
+        </header>
+        <label class="focused-picker__input"><span data-icon="search"></span><input id="vault-document-picker-input" type="search" placeholder="输入文件名或路径…" autocomplete="off"></label>
+        <div id="vault-document-picker-results" class="focused-picker__results"></div>
+        <footer class="focused-picker__foot">仅按当前示例中的文件名与路径筛选；选择后回填为 wikilink。</footer>
+      </section>
+    </div>
+
+    <div id="composer-plus-menu" class="floating-menu composer-plus-menu" aria-hidden="true">
+      <button type="button" data-composer-action="files"><span data-icon="paperclip"></span><span><strong>添加文件或图片</strong><small>PDF、图片、Office、Canvas、Excalidraw</small></span></button>
+      <button type="button" data-composer-action="vault"><span data-icon="book-open"></span><span><strong>引用知识库文档</strong><small>与输入 [[ 的结果一致</small></span></button>
+      <button type="button" data-composer-action="link"><span data-icon="link"></span><span><strong>添加链接</strong><small>粘贴后生成富预览</small></span></button>
+    </div>
+
+    <div id="workflow-popover" class="floating-menu composer-plus-menu workflow-popover" aria-hidden="true">
+      <div class="menu-label">工作流 · 输入 / 调用</div>
+      <button type="button" data-workflow="research"><span data-icon="search"></span><span><strong>研究</strong><small>先规划来源，再生成带引用的报告</small></span></button>
+      <button type="button" data-workflow="plan"><span data-icon="list-tree"></span><span><strong>规划</strong><small>拆分步骤、依赖与检查点</small></span></button>
+      <button type="button" data-workflow="image"><span data-icon="image"></span><span><strong>生成或编辑图片</strong><small>创建可保存的图片产物</small></span></button>
+      <button type="button" data-workflow="document"><span data-icon="file-text"></span><span><strong>生成文档</strong><small>创建可写回 Vault 的文档产物</small></span></button>
+    </div>
+
+    <div id="run-popover" class="run-popover" aria-hidden="true">
+      <div class="run-popover__head">
+        <button id="run-back" class="run-back" type="button" aria-label="返回" data-icon-button="chevron-left"></button>
+        <div><strong id="run-panel-title">模型与助手</strong><small id="run-panel-subtitle">对话默认值；必要时可以明确覆盖</small></div>
+        <a href="./composer-lab.html#model-auto">独立稿</a>
+      </div>
+      <div id="run-panel-body" class="run-panel-body"></div>
+    </div>
+
+    <div id="source-popover" class="source-popover floating-menu" aria-hidden="true">
+      <div class="source-menu-copy"><strong>本轮可用信息</strong><small>检索能力可组合；显式附件始终包含</small></div>
+      <button class="source-option is-selected is-locked" type="button" data-source-toggle="project" aria-pressed="true" disabled><span class="source-option__icon" data-icon="briefcase"></span><span class="source-option__copy"><strong>项目上下文</strong><small>当前项目与显式引用</small></span><span class="source-always">始终</span></button>
+      <button class="source-option" type="button" data-source-toggle="vault" aria-pressed="false"><span class="source-option__icon" data-icon="database"></span><span class="source-option__copy"><strong>Vault Search</strong><small>检索知识库中的其他文档</small></span><span class="source-switch"></span></button>
+      <button class="source-option" type="button" data-source-toggle="web" aria-pressed="false"><span class="source-option__icon" data-icon="globe"></span><span class="source-option__copy"><strong>Web Search</strong><small>需要最新或外部资料时开启</small></span><span class="source-switch"></span></button>
+    </div>
+
+    <div id="type-filter-menu" class="type-filter-menu floating-menu" role="menu" aria-hidden="true"></div>
+
+    <aside id="resource-hover" class="resource-hover" role="tooltip" aria-hidden="true">
+      <div class="resource-hover__head"><span data-icon="file-text"></span><div><strong>interview-story-bank.md</strong><span>AI / Interview · 3,865 words</span></div></div>
+      <div class="resource-hover__body"><strong>Evidence boundary</strong><span>只使用已有项目材料，不虚构指标；Story Card 是 recall index，不是 polished essay…</span></div>
+      <div class="resource-hover__foot">点击在 Obsidian 中打开</div>
+    </aside>
+
+    <div id="raw-message-layer" class="surface-layer" aria-hidden="true">
+      <section id="raw-message-preview" class="raw-message-preview" role="dialog" aria-modal="true" aria-labelledby="raw-message-title">
+        <header class="raw-message-preview__head">
+          <div><span class="surface-eyebrow">Message payload</span><strong id="raw-message-title">查看原始消息</strong><small>用于检查角色、模型、时间和未渲染内容</small></div>
+          <button class="icon-button" type="button" aria-label="关闭原始消息" data-close-raw-message data-icon-button="x"></button>
+        </header>
+        <pre id="raw-message-content"></pre>
+        <footer class="raw-message-preview__foot"><span>只读预览</span><button class="text-button" type="button" data-copy-raw-message><span data-icon="copy"></span><span>复制 JSON</span></button></footer>
+      </section>
+    </div>
+
+    <div id="overlay-root" class="overlay-root" aria-live="polite"></div>
+  </div>
+
+  <script src="./fixtures.js"></script>
+  <script src="./mock.js"></script>
+</body>
+</html>

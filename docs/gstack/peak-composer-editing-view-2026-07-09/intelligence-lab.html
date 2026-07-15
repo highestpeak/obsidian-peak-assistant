@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Peak Composer · Intelligence Sidecar Lab</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="mock.css" />
+<link rel="stylesheet" href="intelligence-lab.css" />
+</head>
+<body class="intelligence-lab-page">
+<svg aria-hidden="true" class="icon-sprite">
+  <symbol id="lab-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v5h5"></path></symbol>
+  <symbol id="lab-check" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"></path></symbol>
+  <symbol id="lab-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"></path></symbol>
+  <symbol id="lab-message" viewBox="0 0 24 24"><path d="M5 5h14v11H8l-3 3z"></path><path d="M9 9h6"></path><path d="M9 12h4"></path></symbol>
+  <symbol id="lab-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"></circle><path d="M12 2a10 10 0 0 1 10 10"></path><path d="M12 6a6 6 0 0 1 6 6"></path><path d="M12 22A10 10 0 0 1 2 12"></path></symbol>
+  <symbol id="lab-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path><path d="M12 7v5l3 2"></path></symbol>
+  <symbol id="lab-x" viewBox="0 0 24 24"><path d="m6 6 12 12"></path><path d="m18 6-12 12"></path></symbol>
+  <symbol id="lab-plus" viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></symbol>
+  <symbol id="lab-command" viewBox="0 0 24 24"><path d="M9 6V5a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v14a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"></path></symbol>
+  <symbol id="lab-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></symbol>
+  <symbol id="lab-arrow-up" viewBox="0 0 24 24"><path d="m12 19V5"></path><path d="m5 12 7-7 7 7"></path></symbol>
+  <symbol id="lab-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2A5 5 0 0 0 12 4l-1.1 1.1"></path><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"></path></symbol>
+  <symbol id="lab-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+  <symbol id="lab-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="8"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></symbol>
+  <symbol id="lab-undo" viewBox="0 0 24 24"><path d="m9 14-4-4 4-4"></path><path d="M5 10h11a4 4 0 0 1 0 8h-1"></path></symbol>
+  <symbol id="lab-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></symbol>
+  <symbol id="lab-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5"></path><path d="M4 17v-5h5"></path><path d="M6.1 8.2A7 7 0 0 1 18.6 7M17.9 15.8A7 7 0 0 1 5.4 17"></path></symbol>
+  <symbol id="lab-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12"></path><circle cx="12" cy="12" r="2.5"></circle></symbol>
+  <symbol id="lab-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></symbol>
+</svg>
+
+<main class="composer-app intelligence-lab is-panel-open" id="composer-app" aria-label="Peak Composer Intelligence Lab">
+  <header class="top-strip">
+    <div class="view-title">
+      <span class="view-icon"><svg><use href="#lab-file"></use></svg></span>
+      <span class="view-copy"><strong>Composer View</strong><small>PKM 产品类别分析.md</small></span>
+    </div>
+    <div class="top-actions">
+      <span class="source-state"><svg><use href="#lab-check"></use></svg>Markdown 已保存</span>
+      <button class="intelligence-toggle" type="button" data-panel-toggle aria-controls="intelligence-panel" aria-expanded="true">
+        <svg><use href="#lab-spark"></use></svg><span>Intelligence</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <section class="document-stage" aria-label="Intelligence 测试文档">
+      <article class="paper editor-canvas" id="paper" contenteditable="true" spellcheck="true" aria-label="可编辑 Markdown 文档">
+        <section class="doc-block frontmatter-block" data-block-id="metadata" data-block-kind="metadata" data-block-title="Frontmatter metadata" data-source="---&#10;created: 2023-10-15 21:45&#10;updated: 2026-07-15 15:20&#10;tags: [pkm, composer, ai-assisted]&#10;---">
+          <div class="metadata-grid">
+            <span>created</span><strong>2023-10-15 21:45</strong>
+            <span>updated</span><strong>2026-07-15 15:20</strong>
+            <span>tags</span><strong class="tag-row"><span class="tag-chip">pkm</span><span class="tag-chip">composer</span><span class="tag-chip">ai-assisted</span></strong>
+          </div>
+        </section>
+
+        <section class="doc-block title-block" data-block-id="title" data-block-kind="heading-1" data-block-title="文档标题" data-source="# PKM 产品类别分析：从信息获取到输出">
+          <h1>PKM 产品类别分析：从信息获取到输出</h1>
+        </section>
+
+        <section class="doc-block paragraph-block" data-block-id="positioning" data-block-kind="paragraph" data-block-title="Composer 定位段落" data-source="这个 Composer 视图把 Markdown 变成更顺手的工作台，同时保留源文件、链接与原生对象。">
+          <p>这个 Composer 视图把 Markdown 变成更顺手的工作台，同时保留源文件、链接与原生对象。图片、表格、公式、Base、Canvas 与 Excalidraw 都能在正文中继续编辑。</p>
+        </section>
+
+        <section class="doc-block heading-block" data-block-id="structure-heading" data-block-kind="heading-2" data-block-title="章节标题" data-source="## 1. 知识库不是单一目录，而是多种结构叠加">
+          <h2>1. 知识库不是单一目录，而是多种结构叠加</h2>
+        </section>
+
+        <section class="doc-block paragraph-block" data-block-id="structure" data-block-kind="paragraph" data-block-title="知识库结构段落" data-source="知识库的结构应由要存储、重组和输出的知识决定。">
+          <p>知识库的结构应由要存储、重组和输出的知识决定。碎片化思想适合网络结构，系统课程适合树形结构；真正重要的是内容之后还能被找到、组合并重新输出。</p>
+        </section>
+
+        <section class="doc-block list-block" data-block-id="structure-list" data-block-kind="list" data-block-title="知识结构列表" data-source="- 网络结构：承接滑箱笔记、论文旁批与临时判断。&#10;- 树形结构：承接系统学习、书籍章节与项目文档。&#10;- 跨库链接：保留来源、引用和迁移差异。">
+          <ul>
+            <li><strong>网络结构：</strong>承接滑箱笔记、论文旁批与临时判断。</li>
+            <li><strong>树形结构：</strong>承接系统学习、书籍章节与项目文档。</li>
+            <li><strong>跨库链接：</strong>保留来源、引用和迁移差异。</li>
+          </ul>
+        </section>
+
+        <section class="doc-block paragraph-block is-active" data-block-id="ai-sidecar" data-block-kind="paragraph" data-block-title="AI 旁路段落" data-source="AI 应该贴在当前块旁边，并把候选修改放回正文原位。">
+          <p>AI 应该贴在当前块旁边：知道当前块的源范围与 Markdown 语法，自动参考 <span class="vault-ref" contenteditable="false">[[知识库]]</span>，把候选修改放回正文原位，并在接受前保持可回滚。</p>
+        </section>
+      </article>
+    </section>
+
+    <button class="drawer-scrim" type="button" data-panel-close aria-label="关闭 Intelligence drawer"></button>
+
+    <aside class="intelligence-sidecar" id="intelligence-panel" aria-label="Intelligence" aria-live="off">
+      <header class="sidecar-header">
+        <div class="sidecar-presence">
+          <span class="presence-orbit"><svg><use href="#lab-spark"></use></svg></span>
+          <span><strong>Intelligence</strong><small><i></i>正在跟随正文</small></span>
+        </div>
+        <button class="icon-button sidecar-close" type="button" data-panel-close aria-label="关闭 Intelligence"><svg><use href="#lab-x"></use></svg></button>
+      </header>
+
+      <nav class="sidecar-tabs" role="tablist" aria-label="Intelligence 工作面">
+        <button type="button" role="tab" aria-selected="true" data-mode="copilot"><svg><use href="#lab-message"></use></svg><span>Copilot</span></button>
+        <button type="button" role="tab" aria-selected="false" data-mode="ambient"><svg><use href="#lab-radar"></use></svg><span>Ambient</span></button>
+        <button type="button" role="tab" aria-selected="false" data-mode="history"><svg><use href="#lab-history"></use></svg><span>History</span><b id="history-count">3</b></button>
+      </nav>
+
+      <div class="focus-line" id="focus-line">
+        <span class="focus-dot"></span><small>当前对象</small><strong id="focus-title">AI 旁路段落</strong><code id="focus-kind">paragraph</code>
+      </div>
+
+      <div class="sidecar-live" id="sidecar-live" role="status" aria-live="polite"></div>
+      <section class="sidecar-body" id="sidecar-body" tabindex="-1"></section>
+      <section class="copilot-dock" id="copilot-dock" aria-label="Copilot 输入区"></section>
+      <section class="capability-picker" id="capability-picker" hidden aria-label="全部能力"></section>
+    </aside>
+  </div>
+
+  <footer class="lab-sourcebar">
+    <span><svg><use href="#lab-check"></use></svg>Markdown 已保存</span>
+    <span id="sourcebar-context">当前块 · AI 旁路段落</span>
+    <code id="bottom-source">AI 应该贴在当前块旁边，并把候选修改放回正文原位。</code>
+  </footer>
+</main>
+
+<div class="lab-toast" id="toast" hidden role="status" aria-live="polite"></div>
+<script src="intelligence-lab.js"></script>
+</body>
+</html>

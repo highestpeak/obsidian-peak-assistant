@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Search Tab · UI/UX Review</title>
+<style>
+:root {
+  /* peak-tokens.css light 值（与产品同源） */
+  --pk-bg: #ffffff; --pk-bg-secondary: #f7f7fa;
+  --pk-surface: #ffffff; --pk-surface-sunken: #f3f4f6;
+  --pk-border: #e5e7eb; --pk-border-soft: #ececef;
+  --pk-text-primary: #2e3338; --pk-text-secondary: #6c757d; --pk-text-tertiary: #999999;
+  --pk-accent: #7c3aed; --pk-accent-hover: #6d28d9;
+  --pk-accent-tint: rgba(124,58,237,.10); --pk-accent-soft: rgba(124,58,237,.25); --pk-accent-text: #6d28d9;
+  --pk-success: #22c55e; --pk-success-bg: rgba(34,197,94,.12); --pk-success-text: #15803d;
+  --pk-warning: #f59e0b; --pk-warning-bg: rgba(245,158,11,.14); --pk-warning-text: #b45309;
+  --pk-error: #ef4444; --pk-error-bg: rgba(239,68,68,.12); --pk-error-text: #b91c1c;
+  --pk-shadow-card: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+  --pk-shadow-modal: 0 16px 40px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.06);
+  --pk-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+  --pk-font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--pk-bg-secondary); color: var(--pk-text-primary); font-family: var(--pk-font-sans); font-size: 14px; line-height: 1.7; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px 80px; }
+a { color: var(--pk-accent-text); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: var(--pk-font-mono); font-size: 12px; background: var(--pk-surface-sunken); border: 1px solid var(--pk-border-soft); border-radius: 4px; padding: 1px 5px; word-break: normal; overflow-wrap: break-word; }
+
+/* top nav */
+.topnav { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--pk-border); }
+.topnav-inner { max-width: 1080px; margin: 0 auto; padding: 10px 28px; display: flex; align-items: center; gap: 18px; font-size: 13px; }
+.topnav .set { display: flex; gap: 12px; padding-right: 16px; border-right: 1px solid var(--pk-border); }
+.topnav .set a { color: var(--pk-text-secondary); }
+.topnav .set a.cur { color: var(--pk-accent-text); font-weight: 600; }
+.topnav .anchors { display: flex; gap: 14px; flex-wrap: wrap; }
+.topnav .anchors a { color: var(--pk-text-secondary); }
+
+header.doc { padding: 44px 0 8px; }
+h1 { font-size: 30px; line-height: 1.3; margin: 0 0 6px; letter-spacing: -0.01em; }
+.doc-sub { color: var(--pk-text-secondary); font-size: 14px; max-width: 72ch; }
+.doc-meta { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.meta-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--pk-text-secondary); background: var(--pk-surface); border: 1px solid var(--pk-border); border-radius: 9999px; padding: 3px 10px; white-space: nowrap; }
+
+h2 { font-size: 21px; margin: 44px 0 12px; padding-top: 10px; letter-spacing: -0.01em; }
+h3 { font-size: 16px; margin: 26px 0 8px; }
+p { margin: 8px 0; max-width: 78ch; }
+ul, ol { margin: 8px 0; padding-left: 22px; max-width: 76ch; }
+li { margin: 4px 0; }
+
+.verdict { background: var(--pk-surface); border: 1px solid var(--pk-border); border-left: 3px solid var(--pk-accent); border-radius: 10px; padding: 16px 20px; margin: 18px 0; }
+.verdict-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.verdict p { margin: 6px 0; }
+
+/* issue table */
+table.issues { width: 100%; border-collapse: collapse; table-layout: fixed; background: var(--pk-surface); border: 1px solid var(--pk-border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+table.issues th { text-align: left; font-size: 12px; color: var(--pk-text-secondary); font-weight: 600; background: var(--pk-surface-sunken); padding: 8px 13px; border-bottom: 1px solid var(--pk-border); }
+table.issues td { padding: 10px 13px; border-bottom: 1px solid var(--pk-border-soft); vertical-align: top; line-height: 1.55; word-break: normal; overflow-wrap: break-word; hyphens: none; }
+table.issues tr:last-child td { border-bottom: 0; }
+.sev { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 9999px; padding: 1px 9px; white-space: nowrap; }
+.sev-p0 { background: var(--pk-error-bg); color: var(--pk-error-text); }
+.sev-p1 { background: var(--pk-warning-bg); color: var(--pk-warning-text); }
+.sev-p2 { background: var(--pk-surface-sunken); color: var(--pk-text-secondary); }
+
+/* mock frame */
+figure.mock { margin: 22px 0; }
+figcaption { font-size: 12.5px; color: var(--pk-text-secondary); margin: 8px 4px 0; }
+.frame { background: var(--pk-surface); border-radius: 16px; box-shadow: var(--pk-shadow-modal); overflow: hidden; font-size: 13px; }
+.mk-tabs { display: flex; align-items: stretch; background: var(--pk-bg-secondary); border-bottom: 1px solid var(--pk-border); }
+.mk-tab { flex: 1; text-align: center; padding: 13px 0 11px; color: var(--pk-text-secondary); font-size: 14px; border-bottom: 2px solid transparent; }
+.mk-tab.on { color: var(--pk-accent-text); font-weight: 600; background: var(--pk-surface); border-bottom-color: var(--pk-accent); }
+.mk-tab.side { flex: 0 0 auto; padding: 13px 20px 11px; display: flex; align-items: center; gap: 6px; }
+.mk-body { padding: 18px 22px 14px; }
+.mk-inputrow { display: flex; align-items: center; gap: 10px; background: var(--pk-bg-secondary); border: 1px solid var(--pk-border-soft); border-radius: 9999px; padding: 9px 16px 9px 9px; }
+.mk-mode { display: inline-flex; align-items: center; gap: 5px; background: var(--pk-accent-tint); color: var(--pk-accent-text); border-radius: 9999px; padding: 5px 12px; font-size: 12.5px; white-space: nowrap; }
+.mk-ph { flex: 1; color: var(--pk-text-tertiary); }
+.mk-ph.mono { font-family: var(--pk-font-mono); }
+.mk-globe { color: var(--pk-text-tertiary); font-size: 15px; }
+.mk-label { font-size: 11px; letter-spacing: .08em; color: var(--pk-text-tertiary); font-weight: 600; margin: 18px 2px 8px; text-transform: uppercase; }
+.mk-label-row { display: flex; align-items: baseline; justify-content: space-between; margin: 18px 2px 8px; }
+.mk-label-row .mk-label { margin: 0; }
+.mk-label-row a { font-size: 12px; }
+.sug-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 26px; }
+.sug-card { padding: 10px 12px; border-radius: 10px; }
+.sug-card:hover { background: var(--pk-surface-sunken); }
+.sug-title { font-weight: 600; font-size: 14px; line-height: 1.45; }
+.sug-sub { color: var(--pk-text-secondary); font-size: 12.5px; line-height: 1.5; margin-top: 2px; }
+.sug-chip { display: inline-block; font-family: var(--pk-font-mono); font-size: 11px; background: var(--pk-accent-tint); color: var(--pk-accent-text); border-radius: 6px; padding: 2px 8px; margin-top: 7px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.sug-var { background: var(--pk-accent-tint); color: var(--pk-accent-text); border-radius: 5px; padding: 0 5px; font-weight: 600; }
+.rec-row { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 10px; }
+.rec-row:hover { background: var(--pk-surface-sunken); }
+.rec-ico { width: 34px; height: 34px; border-radius: 9px; background: var(--pk-accent-tint); color: var(--pk-accent-text); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; font-size: 15px; }
+.rec-body { flex: 1; min-width: 0; }
+.rec-title { font-weight: 600; font-size: 13.5px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-meta { color: var(--pk-text-tertiary); font-size: 12px; margin-top: 1px; }
+.rec-right { flex: 0 0 auto; color: var(--pk-text-tertiary); font-size: 12px; white-space: nowrap; }
+.rec-count { display: inline-block; font-size: 11px; font-weight: 700; background: var(--pk-surface-sunken); color: var(--pk-text-secondary); border-radius: 9999px; padding: 0 7px; margin-left: 6px; }
+.mk-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--pk-border-soft); padding: 10px 22px; color: var(--pk-text-tertiary); font-size: 12px; }
+.mk-footer .keys { display: flex; gap: 16px; }
+.mk-footer .fake-link { color: var(--pk-accent-text); }
+kbd { font-family: var(--pk-font-sans); font-size: 11px; background: var(--pk-surface-sunken); border: 1px solid var(--pk-border); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; }
+
+/* pins + fixnotes */
+.pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 9999px; background: var(--pk-error); color: #fff; font-size: 11px; font-weight: 700; margin: 0 3px; vertical-align: text-bottom; flex: 0 0 auto; }
+.pin.warn { background: var(--pk-warning); }
+.fixnotes { margin: 10px 4px 0; display: grid; gap: 5px; font-size: 12.5px; }
+.fixnotes div { color: var(--pk-text-secondary); }
+.fixnotes b { color: var(--pk-success-text); font-weight: 700; }
+.legend { font-size: 12px; color: var(--pk-text-secondary); margin: 6px 4px; }
+
+/* action map table */
+table.act { width: 100%; border-collapse: collapse; table-layout: fixed; background: var(--pk-surface); border: 1px solid var(--pk-border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+table.act th { text-align: left; font-size: 12px; color: var(--pk-text-secondary); background: var(--pk-surface-sunken); padding: 8px 13px; border-bottom: 1px solid var(--pk-border); }
+table.act td { padding: 10px 13px; border-bottom: 1px solid var(--pk-border-soft); vertical-align: top; line-height: 1.55; }
+table.act tr:last-child td { border-bottom: 0; }
+</style>
+</head>
+<body>
+
+<nav class="topnav"><div class="topnav-inner">
+  <span class="set">
+    <a href="README.md">← 索引</a>
+    <a href="01-ai-search.html" class="cur">01 AI Search</a>
+    <a href="02-vault-intelligence.html">02 Vault Intelligence</a>
+    <a href="03-document-copilot.html">03 Document Copilot</a>
+  </span>
+  <span class="anchors">
+    <a href="#verdict">综合判断</a>
+    <a href="#issues">问题清单</a>
+    <a href="#before">现状标注</a>
+    <a href="#after">重设计 Mockup</a>
+    <a href="#diff">前后对比</a>
+    <a href="#actions">修复清单</a>
+  </span>
+</div></nav>
+
+<div class="wrap">
+
+<header class="doc">
+  <h1>AI Search Tab · UI/UX Review</h1>
+  <div class="doc-sub">Quick Search modal 的 AI Search 空闲态（建议卡 + 历史列表 + 模式切换）全链路审阅：截图证据 + 代码根因 + 重设计 mockup。</div>
+  <div class="doc-meta">
+    <span class="meta-chip">读者：本插件维护者</span>
+    <span class="meta-chip">证据：src/ui/view/quick-search/ + src/service/context/</span>
+    <span class="meta-chip">约 5,000 字 · 10 分钟</span>
+    <span class="meta-chip">2026-07-09</span>
+  </div>
+</header>
+
+<h2 id="verdict">综合判断</h2>
+<div class="verdict">
+  <div class="verdict-title">骨架正确，交付粗糙：三层各缺一道工序</div>
+  <p>这个 tab 的信息架构没问题——建议、历史、模式切换是对的三件套。问题集中在"最后 10%"：模板变量能以 <code>{activeDocumentTitle}</code> 原文漏到用户面前、同一个时间戳渲染两遍、历史列表无去重、footer 数字染成链接色却不可点、placeholder 是等宽字体。十个问题没有一个带 TODO 标记，全部是无人认领的静默缺陷。</p>
+  <p>按层归因：<b>数据管线</b>（pattern → suggestion）缺输出校验，LLM 发现的 pattern 未经 template/variables 一致性检查直接入库；<b>列表层</b>缺展示聚合，每次 run 一条新纪录原样倒出；<b>视觉层</b>未迁移到 <code>pk-*</code> 原语体系，也没有登记迁移债。修复不需要重构，但需要在这三层各补一道工序。</p>
+</div>
+
+<h2 id="issues">问题清单</h2>
+<p>严重度定义：P0 = 用户可见的错误内容/功能欺骗；P1 = 明显不精细、损害信任；P2 = 抛光项。</p>
+<table class="issues">
+  <colgroup><col style="width:34px"><col style="width:52px"><col style="width:27%"><col><col style="width:24%"></colgroup>
+  <thead><tr><th>#</th><th>级别</th><th>问题</th><th>根因与证据</th><th>修复方向</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><span class="sev sev-p0">P0</span></td><td>建议卡出现未替换的 <code>{activeDocumentTitle}</code> 原文</td><td><code>PatternMatcher.ts:194-208</code> 的 <code>fillTemplate()</code> 只替换 <code>variables</code> 数组声明的变量，从不扫描 template 本身；LLM 发现的 pattern（<code>PatternDiscoveryAgent</code>）入库时无 template/variables 交叉校验</td><td>填充后扫描残留 <code>{token}</code>，有残留即丢弃该 pattern；入库时加 Zod <code>.refine()</code> 校验</td></tr>
+    <tr><td>2</td><td><span class="sev sev-p1">P1</span></td><td>卡片标题在悬垂介词处截断（"Summarize core insights about"）</td><td><code>PatternMatcher.ts:226-229</code>：标题 = template 在第一个 <code>{var}</code> 处的纯语法切断，变量和后半句全部挤进灰色副标题</td><td>放弃 title/subtitle 两段式，整句渲染 + 变量 inline 高亮</td></tr>
+    <tr><td>3</td><td><span class="sev sev-p1">P1</span></td><td>RECENT 近重复条目刷屏（同名条目连续出现）</td><td>每次 run 都写新行（<code>analysisDocPersistence.ts:118</code> 时间戳路径），<code>RecentAnalysisList.tsx:90</code> 无任何聚合/去重</td><td>按标题聚合，重复显示 ×N 徽标，点开可展开各次</td></tr>
+    <tr><td>4</td><td><span class="sev sev-p1">P1</span></td><td>同一时间戳渲染两遍（meta 行 + 右侧）</td><td><code>RecentAnalysisList.tsx:36-43</code> 对 <code>created_at_ts</code> 调 <code>humanReadableTime()</code> 两次，值恒相同</td><td>只保留右侧一处</td></tr>
+    <tr><td>5</td><td><span class="sev sev-p1">P1</span></td><td>"869 analyses" 染 accent 色像链接但无 onClick；计数含全部重复行与已删文件行</td><td><code>SearchModal.tsx:447-449</code> 纯 <code>&lt;span&gt;</code>；<code>AIAnalysisRepo.count()</code> 是裸 <code>COUNT(*)</code></td><td>做成真入口 "View all →"（挂在 RECENT 区头），或降级为灰字</td></tr>
+    <tr><td>6</td><td><span class="sev sev-p2">P2</span></td><td>输入框 placeholder 等宽字体，与全 modal 字体不一致</td><td>CodeMirror 强制基础主题给 <code>.cm-scroller</code> 设 <code>monospace</code>；<code>codemirror.css</code> 只覆盖了 <code>.cm-editor</code>/<code>.cm-content</code>（值为 inherit，又继承回 scroller）</td><td><code>.cm-scroller</code> 加 <code>font-family: inherit !important</code></td></tr>
+    <tr><td>7</td><td><span class="sev sev-p2">P2</span></td><td>footer 提示 "↑↓ Navigate" 是空承诺</td><td><code>SearchModal.tsx:144-147</code> 方向键被 <code>preventDefault</code> 吞掉，空闲态列表无键盘导航</td><td>实现列表键盘导航，或先从 hints 移除</td></tr>
+    <tr><td>8</td><td><span class="sev sev-p2">P2</span></td><td>建议卡中英文混排、句式互不统一</td><td><code>seed-patterns.ts:13-49</code> 七条 seed 模板语言混排，LLM 发现的 pattern 语言不受控</td><td>语言策略跟随 vault 主语言或设置项，模板集统一句式</td></tr>
+    <tr><td>9</td><td><span class="sev sev-p2">P2</span></td><td>空态文案永远不可达</td><td><code>SearchModal.tsx:427-431</code> 要求建议数与历史数同时为 0，但 seed pattern 带 <code>always:true</code> 条件恒产出 ≥1 张卡</td><td>空态只绑定 <code>totalAnalysisCount === 0</code>，与建议区解耦</td></tr>
+    <tr><td>10</td><td><span class="sev sev-p2">P2</span></td><td>整面未用 <code>Row/Chip/Pill</code> 原语，无 MIGRATION-DEFERRED 标记</td><td>全部为裸 <code>pktw-*</code> 工具类拼装，违反 <code>ui-design.md</code> §6.2/§6.3</td><td>随本次重画一并迁移，或登记迁移债</td></tr>
+  </tbody>
+</table>
+
+<h2 id="before">现状标注（Before）</h2>
+<p class="legend">下面按截图 1:1 重建现状，红色圆点 = P0/P1，橙色 = P2，编号对应上表。</p>
+
+<figure class="mock">
+<div class="frame">
+  <div class="mk-tabs">
+    <div class="mk-tab">Vault Search</div>
+    <div class="mk-tab on">AI Search</div>
+    <div class="mk-tab side">✦ Vault Intelligence</div>
+  </div>
+  <div class="mk-body">
+    <div class="mk-inputrow">
+      <span class="mk-mode">Vault Analysis ⌄</span>
+      <span class="mk-ph mono">Ask AI anything about your vault...<span class="pin warn">6</span></span>
+      <span class="mk-globe">⊘</span>
+    </div>
+
+    <div class="mk-label">Suggested for you</div>
+    <div class="sug-grid">
+      <div class="sug-card">
+        <div class="sug-title">Summarize core insights about<span class="pin">2</span></div>
+        <div class="sug-sub">2-Story Cards-0-Fixed combination, 原则, Fixed combination, 开始回答, 请求澄清 in my vault</div>
+      </div>
+      <div class="sug-card">
+        <div class="sug-title">Overview and knowledge structure of the</div>
+        <div class="sug-sub">kb1-life-notes/D-26年找工作 folder</div>
+        <span class="sug-chip">folder:kb1-life-notes/D-26年找工作</span>
+      </div>
+      <div class="sug-card">
+        <div class="sug-title">查找与<span class="pin warn">8</span></div>
+        <div class="sug-sub">2-Story Cards-0-Fixed combination相关的所有笔记，汇总关键信息和知识点</div>
+        <span class="sug-chip">doc:2-Story Cards-0-Fixed combination</span>
+      </div>
+      <div class="sug-card">
+        <div class="sug-title">Deep analysis of</div>
+        <div class="sug-sub">2-Story Cards-0-Fixed combination with improvement suggestions</div>
+        <span class="sug-chip">doc:2-Story Cards-0-Fixed combination</span>
+      </div>
+      <div class="sug-card">
+        <div class="sug-title">我记得有一份笔记记录了</div>
+        <div class="sug-sub">2-Story Cards-0-Fixed combination, 原则, Fixed combination, 开始回答, 请求澄清相关问题的解决办法，帮我找到它并总结关键步骤</div>
+      </div>
+      <div class="sug-card">
+        <div class="sug-title">{activeDocumentTitle} 相关的所有笔记和资料<span class="pin">1</span></div>
+        <div class="sug-sub">2-Story Cards-0-Fixed combination 相关的所有笔记和资料</div>
+        <span class="sug-chip">doc:2-Story Cards-0-Fixed combination</span>
+      </div>
+    </div>
+
+    <div class="mk-label">Recent</div>
+    <div class="rec-row">
+      <div class="rec-ico">◉</div>
+      <div class="rec-body">
+        <div class="rec-title">我的独立开发产品idea综合评价：商业潜力分析、快速变现策略、可行性评估和符合现状的实施方案</div>
+        <div class="rec-meta">15 sources · 1 month ago<span class="pin">4</span></div>
+      </div>
+      <div class="rec-right">1 month ago</div>
+    </div>
+    <div class="rec-row">
+      <div class="rec-ico">◉</div>
+      <div class="rec-body">
+        <div class="rec-title">独立开发想法评价<span class="pin">3</span></div>
+        <div class="rec-meta">11 sources · 1 month ago</div>
+      </div>
+      <div class="rec-right">1 month ago</div>
+    </div>
+    <div class="rec-row">
+      <div class="rec-ico">◉</div>
+      <div class="rec-body">
+        <div class="rec-title">独立开发想法评价</div>
+        <div class="rec-meta">8 sources · 1 month ago</div>
+      </div>
+      <div class="rec-right">1 month ago</div>
+    </div>
+    <div class="rec-row">
+      <div class="rec-ico">◉</div>
+      <div class="rec-body">
+        <div class="rec-title">独立开发想法的综合评价</div>
+        <div class="rec-meta">11 sources · 1 month ago</div>
+      </div>
+      <div class="rec-right">1 month ago</div>
+    </div>
+    <div class="rec-row">
+      <div class="rec-ico">◉</div>
+      <div class="rec-body">
+        <div class="rec-title">Deep analysis of 01-gate-self-conviction with improvement suggestions</div>
+        <div class="rec-meta">2 sources · 2 months ago</div>
+      </div>
+      <div class="rec-right">2 months ago</div>
+    </div>
+    <div class="rec-row">
+      <div class="rec-ico">◉</div>
+      <div class="rec-body">
+        <div class="rec-title">Deep analysis of 01-gate-self-conviction with improvement suggestions</div>
+        <div class="rec-meta">2 sources · 2 months ago</div>
+      </div>
+      <div class="rec-right">2 months ago</div>
+    </div>
+  </div>
+  <div class="mk-footer">
+    <span class="keys">
+      <span><kbd>↑</kbd><kbd>↓</kbd> Navigate<span class="pin warn">7</span></span>
+      <span><kbd>↵</kbd> Run</span>
+      <span><kbd>⌥↑</kbd><kbd>⌥↓</kbd> Switch mode</span>
+    </span>
+    <span class="fake-link">869 analyses<span class="pin">5</span></span>
+  </div>
+</div>
+<figcaption>现状重建。<span class="pin">1</span> 模板变量原文泄漏；<span class="pin">2</span> 标题语法切断；<span class="pin">3</span> 近重复条目；<span class="pin">4</span> 时间双份；<span class="pin">5</span> 假链接 + 计数虚高；<span class="pin warn">6</span> 等宽 placeholder；<span class="pin warn">7</span> 键盘提示空承诺；<span class="pin warn">8</span> 中英混排。#9（空态不可达）与 #10（原语缺位）不可见于截图。</figcaption>
+</figure>
+
+<h2 id="after">重设计 Mockup（After）</h2>
+<p>重画原则：数据先诚实（能显示的都真实、显示不了的不显示），再谈精细。所有值沿用 <code>--pk-*</code> token，卡片/行对齐 <code>Row/Chip</code> 原语规格。</p>
+
+<figure class="mock">
+<div class="frame">
+  <div class="mk-tabs">
+    <div class="mk-tab">Vault Search</div>
+    <div class="mk-tab on">AI Search</div>
+    <div class="mk-tab side">✦ Vault Intelligence</div>
+  </div>
+  <div class="mk-body">
+    <div class="mk-inputrow">
+      <span class="mk-mode">Vault Analysis ⌄</span>
+      <span class="mk-ph">Ask AI anything about your vault…</span>
+      <span class="mk-globe" title="Web search: off">⊘</span>
+    </div>
+
+    <div class="mk-label">Suggested for you</div>
+    <div class="sug-grid">
+      <div class="sug-card">
+        <div class="sug-title" style="font-weight:500">Summarize core insights about <span class="sug-var">2-Story Cards-0-Fixed combination</span> in my vault</div>
+        <span class="sug-chip">doc:2-Story Cards-0-Fixed combination</span>
+      </div>
+      <div class="sug-card">
+        <div class="sug-title" style="font-weight:500">Overview and knowledge structure of the <span class="sug-var">D-26年找工作</span> folder</div>
+        <span class="sug-chip">folder:kb1-life-notes/D-26年找工作</span>
+      </div>
+      <div class="sug-card">
+        <div class="sug-title" style="font-weight:500">Deep analysis of <span class="sug-var">2-Story Cards-0-Fixed combination</span> with improvement suggestions</div>
+        <span class="sug-chip">doc:2-Story Cards-0-Fixed combination</span>
+      </div>
+      <div class="sug-card">
+        <div class="sug-title" style="font-weight:500">Find all notes related to <span class="sug-var">2-Story Cards-0-Fixed combination</span> and summarize the key points</div>
+        <span class="sug-chip">doc:2-Story Cards-0-Fixed combination</span>
+      </div>
+    </div>
+
+    <div class="mk-label-row">
+      <div class="mk-label">Recent analyses</div>
+      <a href="#">View all 312 →</a>
+    </div>
+    <div class="rec-row">
+      <div class="rec-ico">◉</div>
+      <div class="rec-body">
+        <div class="rec-title">我的独立开发产品idea综合评价：商业潜力分析、快速变现策略、可行性评估…</div>
+        <div class="rec-meta">15 sources</div>
+      </div>
+      <div class="rec-right">1 month ago</div>
+    </div>
+    <div class="rec-row">
+      <div class="rec-ico">◉</div>
+      <div class="rec-body">
+        <div class="rec-title">独立开发想法评价<span class="rec-count">×3 runs</span></div>
+        <div class="rec-meta">8–11 sources · latest run</div>
+      </div>
+      <div class="rec-right">1 month ago</div>
+    </div>
+    <div class="rec-row">
+      <div class="rec-ico">◉</div>
+      <div class="rec-body">
+        <div class="rec-title">Deep analysis of 01-gate-self-conviction with improvement suggestions<span class="rec-count">×2 runs</span></div>
+        <div class="rec-meta">2 sources · latest run</div>
+      </div>
+      <div class="rec-right">2 months ago</div>
+    </div>
+  </div>
+  <div class="mk-footer">
+    <span class="keys">
+      <span><kbd>↵</kbd> Run</span>
+      <span><kbd>⌥↑</kbd><kbd>⌥↓</kbd> Switch mode</span>
+      <span><kbd>esc</kbd> Close</span>
+    </span>
+    <span></span>
+  </div>
+</div>
+<figcaption>重设计。建议卡整句渲染 + 变量高亮；历史按标题聚合；入口和计数合并成真实链接；footer 只承诺做得到的键。</figcaption>
+</figure>
+
+<div class="fixnotes">
+  <div><b>✓ #1</b> 填充失败的 pattern 不再产出卡片——第 6 张 <code>{activeDocumentTitle}</code> 卡直接消失，宁缺毋滥（4 张够用，凑 6 张不是目标）。</div>
+  <div><b>✓ #2</b> 标题不再两段式切断：整句渲染，变量用 accent 底色 inline 高亮，一眼可读、也保留了"这是模板"的暗示。</div>
+  <div><b>✓ #3</b> "独立开发想法评价" 三条聚为一行 ×3 runs，"Deep analysis of 01-gate…" 两条聚为 ×2；点击进最近一次，展开可见历次。</div>
+  <div><b>✓ #4</b> 时间只保留右侧一处；meta 行只放 sources。</div>
+  <div><b>✓ #5</b> "869 analyses" 假链接移除；真实入口 "View all 312 →" 移到 Recent 区头（312 = 聚合后的会话数，非行数）。</div>
+  <div><b>✓ #6</b> placeholder 用 sans（修 <code>.cm-scroller</code> 字体继承）。</div>
+  <div><b>✓ #7</b> footer 移除 "↑↓ Navigate"，补上真实存在的 <kbd>esc</kbd>；列表键盘导航做好后再加回。</div>
+  <div><b>✓ #8</b> 建议卡语言统一（示例用英文句式承载中文变量；实际语言跟随设置）。</div>
+</div>
+
+<h2 id="diff">前后对比要点</h2>
+<ul>
+  <li><b>建议区从"6 张凑数"变为"N 张可信"。</b>数量由通过校验的 pattern 决定，上限 6、无下限。一张漏变量的卡对信任的破坏，大于两张空位的损失。</li>
+  <li><b>卡片信息密度下降、可扫读性上升。</b>原版三层（切断的标题 / 变量倾倒的副标题 / chip）读一张卡要来回两次；新版一层整句 + 一枚 scope chip，视线单向。</li>
+  <li><b>历史列表从"日志"变为"会话"。</b>用户关心"我分析过什么"，不关心"系统写过几行记录"。聚合徽标保留了频次信息（×3 本身是信号：这个主题你反复在问）。</li>
+  <li><b>所有可点的都真的可点。</b>假链接是这一面最伤信任的模式（另见 02 篇 Vault Intelligence 的 no-op 问题，同一病根）。</li>
+</ul>
+
+<h2 id="actions">修复清单</h2>
+<table class="act">
+  <colgroup><col style="width:52px"><col><col style="width:42%"></colgroup>
+  <thead><tr><th>级别</th><th>动作</th><th>触点文件</th></tr></thead>
+  <tbody>
+    <tr><td><span class="sev sev-p0">P0</span></td><td><code>fillTemplate()</code> 填充后扫描残留 <code>{token}</code>，有残留返回 null；<code>DiscoveredPatternSchema</code> 加 template/variables 交叉 <code>.refine()</code>；对存量 <code>query_pattern</code> 表跑一次清理</td><td><code>src/service/context/PatternMatcher.ts</code> · <code>src/core/schemas/agents/pattern-discovery-schemas.ts</code></td></tr>
+    <tr><td><span class="sev sev-p1">P1</span></td><td>建议卡整句渲染：删除 <code>actionLabel</code> 切断逻辑，<code>SuggestionCard</code> 单层文本 + 变量 span 高亮</td><td><code>src/service/context/PatternMatcher.ts:226-229</code> · <code>components/SuggestionGrid.tsx</code></td></tr>
+    <tr><td><span class="sev sev-p1">P1</span></td><td>RECENT 聚合：按 <code>title ?? query</code> 分组，行内 ×N 徽标；时间只渲染一次</td><td><code>components/RecentAnalysisList.tsx</code></td></tr>
+    <tr><td><span class="sev sev-p1">P1</span></td><td>"N analyses" 改为 Recent 区头真实链接（打开历史视图），计数改为聚合后会话数</td><td><code>SearchModal.tsx:440-451</code> · <code>AIAnalysisRepo.ts</code></td></tr>
+    <tr><td><span class="sev sev-p2">P2</span></td><td><code>.cm-scroller</code> 字体修复；footer hints 收敛；空态条件解耦；seed 模板语言统一并迁往 <code>templates/config/</code>（顺应 configurability 约定）</td><td><code>src/styles/codemirror.css</code> · <code>SearchModal.tsx</code> · <code>src/service/context/seed-patterns.ts</code></td></tr>
+    <tr><td><span class="sev sev-p2">P2</span></td><td>建议卡/历史行迁移到 <code>Row/Chip</code> 原语或登记 <code>MIGRATION-DEFERRED</code></td><td><code>components/SuggestionGrid.tsx</code> · <code>components/RecentAnalysisList.tsx</code></td></tr>
+  </tbody>
+</table>
+
+<h3>不做什么</h3>
+<ul>
+  <li>不动分析执行链路（<code>tab-AISearch.tsx</code> 的运行/结果态不在本篇范围，本篇只覆盖空闲态）。</li>
+  <li>不改两种模式（Vault Analysis / AI Graph）的定位——模式本身语义清晰。</li>
+  <li>不为凑满建议位而放宽 pattern 校验；卡片数量允许少于 6。</li>
+</ul>
+
+</div>
+</body>
+</html>

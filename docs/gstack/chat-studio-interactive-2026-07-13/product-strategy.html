@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Chat Studio · 产品定位与 Composer V2</title>
+  <link rel="stylesheet" href="../../../src/styles/peak-tokens.css">
+  <link rel="stylesheet" href="./product-strategy.css">
+</head>
+<body>
+  <div class="strategy-root peak-design-root">
+    <aside class="strategy-nav">
+      <div class="nav-head"><strong>Chat Studio</strong><span>产品决策 · 2026-07-14</span></div>
+      <nav>
+        <a href="#verdict">定位</a><a href="#loop">核心闭环</a><a href="#jobs">用户工作</a><a href="#composer">Composer</a><a href="#landscape">竞品取舍</a><a href="#priorities">优先级</a><a href="#validation">验证</a>
+      </nav>
+      <div class="nav-links"><a href="./index.html#active">打开工作台 mock ↗</a><a href="./composer-lab.html#empty">打开 Composer Lab ↗</a><a href="../../superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md">阅读权威实施规格 ↗</a></div>
+    </aside>
+
+    <main class="strategy-main">
+      <section id="verdict" class="hero-section">
+        <div class="eyebrow">PRODUCT RATIONALE · TARGET REFERENCE</div>
+        <h1>不是另一个聊天框，<br>而是知识工作的临时工作台。</h1>
+        <p class="hero-copy">Peak Chat Studio 以 Vault 为长期记忆、以对话为临时工作台、以可追溯产物为结果。它的差异不在于暴露更多模型和 Agent，而在于把“找证据 → 形成结果 → 写回知识库”连成闭环。</p>
+        <div class="verdict-grid">
+          <article><span>长期记忆</span><strong>Vault / Project</strong><p>事实、文档、链接和历史工作的 source of truth。</p></article>
+          <article><span>临时工作台</span><strong>Conversation</strong><p>表达意图、组合证据、追问、纠正和分支。</p></article>
+          <article><span>可继续结果</span><strong>Artifact / Note</strong><p>可定位、可审阅、可保存、可再次编辑。</p></article>
+        </div>
+        <div class="research-boundary"><b>研究边界</b><span>本轮是 owner 反馈 + 本地能力盘点 + 官方竞品桌面研究 + HCI 文献分析，不是已完成的外部用户访谈。</span></div>
+      </section>
+
+      <section id="loop" class="report-section">
+        <div class="section-head"><span>01</span><div><h2>Chat 模式存在的理由</h2><p>补上 Vault 从“保存知识”到“完成知识工作”之间的临时推理层。</p></div></div>
+        <div class="flow-lane">
+          <article class="flow-node"><span class="node-kicker">恢复</span><div class="mini-sidebar"><i></i><i></i><i class="active"></i><i></i></div><strong>定位项目</strong><small>继承工作背景</small></article>
+          <span class="flow-arrow">→</span>
+          <article class="flow-node"><span class="node-kicker">约束</span><div class="mini-source"><i>[[ 文档 ]]</i><i>当前项目</i></div><strong>定义证据边界</strong><small>知道答案从哪里来</small></article>
+          <span class="flow-arrow">→</span>
+          <article class="flow-node is-emphasis"><span class="node-kicker">表达</span><div class="mini-composer"><i></i><span>＋　项目上下文　　自动模型　↑</span></div><strong>描述想要的结果</strong><small>不先选择内部技术</small></article>
+          <span class="flow-arrow">→</span>
+          <article class="flow-node"><span class="node-kicker">检查</span><div class="mini-answer"><i></i><i></i><i></i><b>来源 4 · 产物 2</b></div><strong>审阅与纠正</strong><small>追问、分支、定位来源</small></article>
+          <span class="flow-arrow">→</span>
+          <article class="flow-node"><span class="node-kicker">沉淀</span><div class="mini-artifact"><i>MD</i><span>Story Cards.md<small>已保存到 Vault</small></span></div><strong>写回知识库</strong><small>下次可以继续</small></article>
+        </div>
+        <div class="failure-pair"><div><b>没有前半段</b><span>Chat 只是脱离知识库的通用问答。</span></div><div><b>没有后半段</b><span>回答无法沉淀，工作每次从零开始。</span></div></div>
+      </section>
+
+      <section id="jobs" class="report-section">
+        <div class="section-head"><span>02</span><div><h2>五个真正的用户工作</h2><p>能力优先级从用户要完成的工作出发，而不是从模型能力列表出发。</p></div></div>
+        <div class="job-grid">
+          <article><em>01</em><strong>Recall</strong><span>从已有材料找回事实</span><p>项目范围 · Vault 检索 · 引用定位</p></article>
+          <article><em>02</em><strong>Synthesize</strong><span>跨材料建立结构</span><p>多资源 · 表格/图表 · 追问</p></article>
+          <article><em>03</em><strong>Create</strong><span>生成可继续使用的产物</span><p>预览 · 保存 · 打开 · 版本</p></article>
+          <article><em>04</em><strong>Maintain</strong><span>更新知识而非复制答案</span><p>目标文件 · Diff · 回执 · 回滚</p></article>
+          <article><em>05</em><strong>Research</strong><span>本地不足时补充外部资料</span><p>来源计划 · Web 授权 · 引用</p></article>
+        </div>
+      </section>
+
+      <section id="composer" class="report-section">
+        <div class="section-head"><span>03</span><div><h2>Composer 是轻量工作契约</h2><p>用户发送前只需要回答三个问题；模型与 Assistant 是可选覆盖。</p></div></div>
+        <div class="composer-contract">
+          <div class="contract-questions">
+            <article><span>1</span><div><strong>我要得到什么？</strong><p>自然语言消息正文</p></div></article>
+            <article><span>2</span><div><strong>这轮明确带了什么？</strong><p>附件、Vault 文档、链接、reply anchor</p></div></article>
+            <article><span>3</span><div><strong>允许去哪里找证据？</strong><p>项目为基础；Vault Search / Web Search 独立组合</p></div></article>
+          </div>
+          <div class="contract-mock">
+            <div class="contract-shelf"><span>↩ 追问：为什么选择这三类？　×</span><span>[[ evidence-matrix.md ]]　×</span></div>
+            <div class="contract-input">第二类的证据具体来自哪些文档？</div>
+            <div class="contract-foot"><span>＋　 项目上下文 + Vault</span><span>自动模型　　↑</span></div>
+          </div>
+        </div>
+        <div class="separation-grid">
+          <article><span class="syntax">[[</span><div><strong>知识库文档</strong><p>唯一的 Vault 引用语法</p></div></article>
+          <article><span class="syntax">/</span><div><strong>工作流</strong><p>研究、规划、图片、文档、代码</p></div></article>
+          <article><span class="syntax">M</span><div><strong>模型</strong><p>默认自动，可明确固定</p></div></article>
+          <article><span class="syntax">AI</span><div><strong>助手</strong><p>长期配置；选中后成为当前对话默认并回显</p></div></article>
+        </div>
+        <div class="at-rule"><code>@</code><span>暂不占用。只有出现真实的助手/应用提及 source 时再启用，不能继续与 <code>[[</code> 重复搜索 Vault。</span></div>
+      </section>
+
+      <section id="landscape" class="report-section">
+        <div class="section-head"><span>04</span><div><h2>竞品不是模板，是决策证据</h2><p>学习成熟心智，保留 Peak 的 Vault-native 差异。</p></div></div>
+        <div class="landscape-table" role="table">
+          <div class="table-row table-head"><span>产品</span><span>学习</span><span>不照搬</span></div>
+          <div class="table-row"><strong>ChatGPT</strong><span>自动路由、Projects、渐进展开、分支与历史搜索</span><span>所有能力都塞进 + 或模型菜单</span></div>
+          <div class="table-row"><strong>Codex</strong><span>项目线程、运行中 steer、产物 review、按需授权</span><span>普通知识 Chat 常驻代码环境控制</span></div>
+          <div class="table-row"><strong>Claude</strong><span>模型与 effort 相邻、Project knowledge、持续 Artifact</span><span>所有富文本都 Artifact 化</span></div>
+          <div class="table-row"><strong>Gemini</strong><span>具体模型、AI 创建 Gems、研究来源选择</span><span>角色、模型、工作流合并成一种 mode</span></div>
+          <div class="table-row"><strong>Perplexity</strong><span>Auto 与具体模型并存、研究关注来源</span><span>把 Chat 收缩成纯搜索答案页</span></div>
+          <div class="table-row"><strong>NotebookLM</strong><span>source selection、引用 hover、原文定位、保存 Note</span><span>封闭在上传 source，失去 Vault 全局连接</span></div>
+        </div>
+      </section>
+
+      <section id="priorities" class="report-section">
+        <div class="section-head"><span>05</span><div><h2>能力取舍</h2><p>先验证核心心智，再形成写回 Vault 的闭环。</p></div></div>
+        <div class="priority-grid">
+          <article class="priority p0"><span>P0</span><strong>核心心智</strong><ul><li>Composer 三问工作契约</li><li>Auto + specific model</li><li>来源边界与 reply anchor</li><li>大纲/资源筛选与真实定位</li><li>菜单、标题、运行反馈完成度</li></ul></article>
+          <article class="priority p1"><span>P1</span><strong>Peak 闭环</strong><ul><li>引用与 source bundle</li><li>Artifact receipt、版本、写回 Vault</li><li>AI 创建助手</li><li>运行中 steer 与按需授权</li><li>项目/Vault 检索解释</li></ul></article>
+          <article class="priority no"><span>暂不做</span><strong>避免控制台化</strong><ul><li>公共助手商店</li><li>常驻 Provider/temperature 面板</li><li>第二套 Vault 全文搜索</li><li>每条回答重复 Assistant 身份</li><li>内嵌 follow-up Composer</li></ul></article>
+        </div>
+      </section>
+
+      <section id="validation" class="report-section">
+        <div class="section-head"><span>06</span><div><h2>下一轮验证，不问“喜欢吗”</h2><p>让真实知识库用户完成任务，观察他们是否建立正确心智。</p></div></div>
+        <div class="test-flow">
+          <ol><li>只根据一个项目的三份文档回答</li><li>加入 Vault 文档并确认被使用</li><li>Auto → 具体模型 → Auto</li><li>对旧回答定向追问</li><li>找到生成文档并保存回 Vault</li><li>用 AI 创建证据助手并检查规则</li></ol>
+          <div><strong>观察指标</strong><span>首次成功发送时间</span><span>错误进入菜单次数</span><span>概念区分正确率</span><span>写回 Vault 完成率</span><span>中断、纠正、恢复成功率</span></div>
+        </div>
+      </section>
+
+      <footer class="strategy-footer"><span>本页只解释产品取舍；完整功能、状态、数据与验收合同见权威实施规格。</span><a href="../../superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md">打开权威规格 ↗</a></footer>
+    </main>
+  </div>
+</body>
+</html>

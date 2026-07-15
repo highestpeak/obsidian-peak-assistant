@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document Copilot · UI/UX Review</title>
+<style>
+:root {
+  --pk-bg: #ffffff; --pk-bg-secondary: #f7f7fa;
+  --pk-surface: #ffffff; --pk-surface-sunken: #f3f4f6;
+  --pk-border: #e5e7eb; --pk-border-soft: #ececef;
+  --pk-text-primary: #2e3338; --pk-text-secondary: #6c757d; --pk-text-tertiary: #999999;
+  --pk-accent: #7c3aed; --pk-accent-hover: #6d28d9;
+  --pk-accent-tint: rgba(124,58,237,.10); --pk-accent-soft: rgba(124,58,237,.25); --pk-accent-text: #6d28d9;
+  --pk-success: #22c55e; --pk-success-bg: rgba(34,197,94,.12); --pk-success-text: #15803d;
+  --pk-warning: #f59e0b; --pk-warning-bg: rgba(245,158,11,.14); --pk-warning-text: #b45309;
+  --pk-error: #ef4444; --pk-error-bg: rgba(239,68,68,.12); --pk-error-text: #b91c1c;
+  --pk-info: #3b82f6; --pk-info-bg: rgba(59,130,246,.12); --pk-info-text: #1d4ed8;
+  --pk-shadow-card: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+  --pk-shadow-modal: 0 16px 40px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.06);
+  --pk-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+  --pk-font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--pk-bg-secondary); color: var(--pk-text-primary); font-family: var(--pk-font-sans); font-size: 14px; line-height: 1.7; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px 80px; }
+a { color: var(--pk-accent-text); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: var(--pk-font-mono); font-size: 12px; background: var(--pk-surface-sunken); border: 1px solid var(--pk-border-soft); border-radius: 4px; padding: 1px 5px; word-break: normal; overflow-wrap: break-word; }
+.topnav { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--pk-border); }
+.topnav-inner { max-width: 1080px; margin: 0 auto; padding: 10px 28px; display: flex; align-items: center; gap: 18px; font-size: 13px; }
+.topnav .set { display: flex; gap: 12px; padding-right: 16px; border-right: 1px solid var(--pk-border); }
+.topnav .set a { color: var(--pk-text-secondary); }
+.topnav .set a.cur { color: var(--pk-accent-text); font-weight: 600; }
+.topnav .anchors { display: flex; gap: 14px; flex-wrap: wrap; }
+.topnav .anchors a { color: var(--pk-text-secondary); }
+header.doc { padding: 44px 0 8px; }
+h1 { font-size: 30px; line-height: 1.3; margin: 0 0 6px; letter-spacing: -0.01em; }
+.doc-sub { color: var(--pk-text-secondary); font-size: 14px; max-width: 72ch; }
+.doc-meta { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.meta-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--pk-text-secondary); background: var(--pk-surface); border: 1px solid var(--pk-border); border-radius: 9999px; padding: 3px 10px; white-space: nowrap; }
+h2 { font-size: 21px; margin: 44px 0 12px; padding-top: 10px; letter-spacing: -0.01em; }
+h3 { font-size: 16px; margin: 26px 0 8px; }
+p { margin: 8px 0; max-width: 78ch; }
+ul, ol { margin: 8px 0; padding-left: 22px; max-width: 76ch; }
+li { margin: 4px 0; }
+.verdict { background: var(--pk-surface); border: 1px solid var(--pk-border); border-left: 3px solid var(--pk-accent); border-radius: 10px; padding: 16px 20px; margin: 18px 0; }
+.verdict-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.verdict p { margin: 6px 0; }
+table.issues { width: 100%; border-collapse: collapse; table-layout: fixed; background: var(--pk-surface); border: 1px solid var(--pk-border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+table.issues th { text-align: left; font-size: 12px; color: var(--pk-text-secondary); font-weight: 600; background: var(--pk-surface-sunken); padding: 8px 13px; border-bottom: 1px solid var(--pk-border); }
+table.issues td { padding: 10px 13px; border-bottom: 1px solid var(--pk-border-soft); vertical-align: top; line-height: 1.55; word-break: normal; overflow-wrap: break-word; hyphens: none; }
+table.issues tr:last-child td { border-bottom: 0; }
+.sev { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 9999px; padding: 1px 9px; white-space: nowrap; }
+.sev-p0 { background: var(--pk-error-bg); color: var(--pk-error-text); }
+.sev-p1 { background: var(--pk-warning-bg); color: var(--pk-warning-text); }
+.sev-p2 { background: var(--pk-surface-sunken); color: var(--pk-text-secondary); }
+figure.mock { margin: 22px 0; }
+figcaption { font-size: 12.5px; color: var(--pk-text-secondary); margin: 8px 4px 0; }
+.frame { background: var(--pk-surface); border-radius: 16px; box-shadow: var(--pk-shadow-modal); overflow: hidden; font-size: 13px; }
+.mk-tabs { display: flex; align-items: stretch; background: var(--pk-bg-secondary); border-bottom: 1px solid var(--pk-border); }
+.mk-tab { flex: 1; text-align: center; padding: 11px 0 9px; color: var(--pk-text-secondary); font-size: 14px; }
+.mk-tab .sub { display: block; font-size: 11px; color: var(--pk-text-tertiary); margin-top: 1px; }
+.mk-tab.on { color: var(--pk-accent-text); font-weight: 600; background: var(--pk-accent-tint); }
+.mk-body { padding: 18px 22px 18px; }
+.mk-inputrow { display: flex; align-items: center; gap: 10px; background: var(--pk-surface); border: 1px solid var(--pk-border); border-radius: 9999px; padding: 10px 16px; box-shadow: var(--pk-shadow-card); }
+.mk-ph { flex: 1; color: var(--pk-text-tertiary); }
+.mk-scope { background: var(--pk-accent-tint); color: var(--pk-accent-text); border-radius: 9999px; padding: 3px 11px; font-size: 12px; }
+.mk-path { font-family: var(--pk-font-mono); color: var(--pk-text-secondary); font-size: 12px; margin: 12px 4px 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-path .sans { font-family: var(--pk-font-sans); color: var(--pk-text-tertiary); }
+.hero { border: 1px solid var(--pk-border); border-radius: 14px; padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start; box-shadow: var(--pk-shadow-card); }
+.hero-ico { width: 52px; height: 52px; border-radius: 14px; background: var(--pk-accent-tint); color: var(--pk-accent-text); display: flex; align-items: center; justify-content: center; font-size: 22px; flex: 0 0 auto; }
+.hero-main { flex: 1; min-width: 0; }
+.hero-title { font-size: 17px; font-weight: 700; line-height: 1.35; }
+.hero-desc { color: var(--pk-text-secondary); font-size: 13px; margin-top: 3px; max-width: 60ch; }
+.hero-chips { display: flex; flex-wrap: wrap; gap: 7px 14px; margin-top: 12px; color: var(--pk-text-secondary); font-size: 12.5px; align-items: center; }
+.hero-chips .dot::before { content: "· "; color: var(--pk-text-tertiary); }
+.badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 9999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+.badge.ok { background: var(--pk-success-bg); color: var(--pk-success-text); }
+.hero-side { flex: 0 0 220px; display: flex; flex-direction: column; align-items: stretch; gap: 9px; }
+.hero-side .lbl { color: var(--pk-text-secondary); font-size: 12px; text-align: right; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 10px; padding: 9px 14px; font-size: 13.5px; font-weight: 600; }
+.btn.primary { background: var(--pk-accent); color: #fff; }
+.btn.ghost { color: var(--pk-text-secondary); font-weight: 500; }
+.cols { display: grid; grid-template-columns: 1fr 1.1fr; gap: 26px; margin-top: 20px; }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.sec-title { font-size: 15px; font-weight: 700; }
+.rev-row { display: flex; gap: 11px; padding: 8px 6px; border-radius: 10px; align-items: flex-start; }
+.rev-row:hover { background: var(--pk-surface-sunken); }
+.rev-ico { color: var(--pk-text-tertiary); flex: 0 0 auto; margin-top: 2px; }
+.rev-body { flex: 1; min-width: 0; }
+.rev-title { font-size: 13.5px; font-weight: 600; line-height: 1.4; }
+.rev-meta { color: var(--pk-text-tertiary); font-size: 12px; margin-top: 1px; }
+.rev-date { flex: 0 0 auto; color: var(--pk-text-tertiary); font-size: 12px; white-space: nowrap; }
+.intent { display: flex; align-items: center; gap: 12px; background: var(--pk-bg-secondary); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.intent-ico { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex: 0 0 auto; background: var(--pk-accent-tint); color: var(--pk-accent-text); }
+.intent-ico.blue { background: var(--pk-info-bg); color: var(--pk-info-text); }
+.intent-ico.teal { background: rgba(13,148,136,.12); color: #0d9488; }
+.intent-body { flex: 1; min-width: 0; }
+.intent-title { font-size: 13.5px; font-weight: 600; }
+.intent-desc { color: var(--pk-text-secondary); font-size: 12px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.intent-tag { flex: 0 0 auto; background: var(--pk-accent-tint); color: var(--pk-accent-text); border-radius: 9999px; padding: 2px 10px; font-size: 11.5px; font-weight: 600; }
+.intent-arrow { color: var(--pk-text-tertiary); flex: 0 0 auto; }
+.mk-caps { display: flex; align-items: center; gap: 13px; background: var(--pk-bg-secondary); border-radius: 12px; padding: 13px 16px; margin-top: 18px; color: var(--pk-text-secondary); }
+.mk-caps .t { color: var(--pk-text-primary); font-weight: 600; font-size: 13.5px; }
+.mk-caps .s { font-size: 12px; }
+.mk-void { height: 120px; display: flex; align-items: center; justify-content: center; color: var(--pk-text-faint, #b9bcc1); font-size: 12px; border: 1px dashed var(--pk-border); border-radius: 12px; margin-top: 16px; }
+.pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 9999px; background: var(--pk-error); color: #fff; font-size: 11px; font-weight: 700; margin: 0 3px; vertical-align: text-bottom; flex: 0 0 auto; }
+.pin.warn { background: var(--pk-warning); }
+.fixnotes { margin: 10px 4px 0; display: grid; gap: 5px; font-size: 12.5px; }
+.fixnotes div { color: var(--pk-text-secondary); }
+.fixnotes b { color: var(--pk-success-text); font-weight: 700; }
+.legend { font-size: 12px; color: var(--pk-text-secondary); margin: 6px 4px; }
+table.act { width: 100%; border-collapse: collapse; table-layout: fixed; background: var(--pk-surface); border: 1px solid var(--pk-border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+table.act th { text-align: left; font-size: 12px; color: var(--pk-text-secondary); background: var(--pk-surface-sunken); padding: 8px 13px; border-bottom: 1px solid var(--pk-border); }
+table.act td { padding: 10px 13px; border-bottom: 1px solid var(--pk-border-soft); vertical-align: top; line-height: 1.55; }
+table.act tr:last-child td { border-bottom: 0; }
+</style>
+</head>
+<body>
+
+<nav class="topnav"><div class="topnav-inner">
+  <span class="set">
+    <a href="README.md">← 索引</a>
+    <a href="01-ai-search.html">01 AI Search</a>
+    <a href="02-vault-intelligence.html">02 Vault Intelligence</a>
+    <a href="03-document-copilot.html" class="cur">03 Document Copilot</a>
+  </span>
+  <span class="anchors">
+    <a href="#verdict">综合判断</a>
+    <a href="#issues">问题清单</a>
+    <a href="#before">现状标注</a>
+    <a href="#after">重设计 Mockup</a>
+    <a href="#diff">前后对比</a>
+    <a href="#actions">修复清单</a>
+  </span>
+</div></nav>
+
+<div class="wrap">
+
+<header class="doc">
+  <h1>Document Copilot · UI/UX Review</h1>
+  <div class="doc-sub">Copilot Picker modal 的 Document Copilot tab（含 Atlas / Ambient 相邻 tab 的信息架构）全链路审阅。</div>
+  <div class="doc-meta">
+    <span class="meta-chip">读者：本插件维护者</span>
+    <span class="meta-chip">证据：src/ui/view/copilot/ + src/service/copilot/</span>
+    <span class="meta-chip">约 5,500 字 · 11 分钟</span>
+    <span class="meta-chip">2026-07-09</span>
+  </div>
+</header>
+
+<h2 id="verdict">综合判断</h2>
+<div class="verdict">
+  <div class="verdict-title">问题模式：mock 的占位文案没被真数据替换就上线了</div>
+  <p>这一面最伤信任的三个问题全是"状态诚实性"：meta chips 里的 <b>"no past review" 是写死的字符串</b>（<code>PickerReadinessAdapters.tsx:84</code>），与两行之下真实拉取历史的 "Recent reviews · 1 条" 当场自相矛盾；<b>"safe to run" 同样写死</b>（<code>:86</code>），背后没有任何检查——它们是设计稿的占位符，不是产品状态。tab 副标题 "= Structure / = Copilot / = Related" 则是开发期改名速记原样排进了 UI。</p>
+  <p>第二梯队是一致性缺口：字数在路径行和 chip 里各自独立算了一遍；links chip 用正则数 <code>[[]]</code> 而其他链路用 metadataCache；"Up to 3 rounds" 的 tooltip 与实现里 20 轮的安全上限不符；空态文案还在说改名前的 "Run Auto or Fast"。单看每条都小，合在一张卡片上就是"处处对不齐"的不精细感——正是截图给人的直觉。</p>
+</div>
+
+<h2 id="issues">问题清单</h2>
+<table class="issues">
+  <colgroup><col style="width:34px"><col style="width:52px"><col style="width:27%"><col><col style="width:24%"></colgroup>
+  <thead><tr><th>#</th><th>级别</th><th>问题</th><th>根因与证据</th><th>修复方向</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><span class="sev sev-p0">P0</span></td><td>"no past review" chip 与下方 Recent reviews 列表直接矛盾</td><td><code>PickerReadinessAdapters.tsx:84</code> 硬编码字面量，从不读数据；真实历史在 <code>CopilotReviewHistoryService.listForSubject()</code>，两条链路从未接通</td><td>chip 读 history count：无 → "no past review"，有 → "1 past review · 2 Jun"</td></tr>
+    <tr><td>2</td><td><span class="sev sev-p0">P0</span></td><td>tab 副标题 "= Structure / = Copilot / = Related" 是改名速记泄漏</td><td><code>CopilotPickerContent.tsx:45-49</code> <code>SCOPE_TABS.subtitle</code>；渲染于 <code>tabs.tsx:119-123</code>；<code>intent-hub.ts:19-44</code> 还有一套平行定义同样带 "= X"</td><td>删除副标题；tab 名直接用语义词（见 mockup 与 IA 备选）</td></tr>
+    <tr><td>3</td><td><span class="sev sev-p1">P1</span></td><td>"safe to run" 绿 chip 无任何检查支撑</td><td><code>PickerReadinessAdapters.tsx:86</code> 硬编码 success tone；不存在会渲染 "unsafe" 的分支</td><td>删除；"No auto-apply" 已表达了安全承诺，一处即可</td></tr>
+    <tr><td>4</td><td><span class="sev sev-p1">P1</span></td><td>两个近同名 "Suggest Links" 同时被贴 recommended</td><td><code>actions/index.ts:171-194</code>：孤立笔记令 LLM 版（0.8）与图谱版（0.9）同过 0.65 阈值；"(Graph)" 后缀对用户无区分度</td><td>合并为一个 intent（图谱先行、LLM 兜底），或按语义改名 + 同族去重只推一个</td></tr>
+    <tr><td>5</td><td><span class="sev sev-p1">P1</span></td><td>字数两处独立计算、重复展示</td><td>路径行读 <code>ctx.wordCount</code>（<code>CopilotPickerContent.tsx:387</code>），chip 自己再 split 一遍（<code>PickerReadinessAdapters.tsx:71</code>）</td><td>chip 移除 words；保留路径行一处</td></tr>
+    <tr><td>6</td><td><span class="sev sev-p1">P1</span></td><td>links chip 与系统其他部分口径不一致</td><td><code>PickerReadinessAdapters.tsx:73-79</code> 正则数 <code>[[]]</code>；其他链路用 metadataCache 的 <code>ctx.links</code>（<code>DocumentContextBuilder.ts:26</code>）</td><td>统一读 <code>ctx.links.length</code></td></tr>
+    <tr><td>7</td><td><span class="sev sev-p1">P1</span></td><td>tooltip "Up to 3 rounds" 与实现不符</td><td><code>PickerReadinessAdapters.tsx:102</code> vs <code>CopilotReviewSession.ts:64</code>（<code>ABSOLUTE_ROUND_SAFETY_CAP = 20</code>，实际轮数由 agent 的 continue 决定）</td><td>copy 改为 "Multi-round review, agent decides when to stop"</td></tr>
+    <tr><td>8</td><td><span class="sev sev-p2">P2</span></td><td>空态文案用改名前的 "Run Auto or Fast"</td><td><code>CopilotPickerContent.tsx:450-451</code>；2026-05-30 改名 Research / Fast Lookup 未同步此处</td><td>同步词族（与 02 篇一起统一 review 系）</td></tr>
+    <tr><td>9</td><td><span class="sev sev-p2">P2</span></td><td>"Run strategy ?" 问号无 tooltip</td><td><code>PickerReadinessCard.tsx:104-107</code>，与 02 篇同一处组件</td><td>同 02：改一行说明文字</td></tr>
+    <tr><td>10</td><td><span class="sev sev-p2">P2</span></td><td>"prepare Changes + Insights" 内部词汇进 UI</td><td><code>PickerReadinessAdapters.tsx:118-122</code>：Changes/Insights 是 collector 的内部产物命名</td><td>用户语言描述产出："drafts suggested edits and findings"</td></tr>
+    <tr><td>11</td><td><span class="sev sev-p2">P2</span></td><td>卡片下方大面积空白</td><td>modal 高度固定而 document tab 内容天然少（1 条历史 + 3 个 intent）</td><td>高度随内容自适应，或用 Atlas 摘要/待办信息补密度</td></tr>
+  </tbody>
+</table>
+
+<h2 id="before">现状标注（Before）</h2>
+<p class="legend">按截图 1:1 重建，红色 = P0/P1，橙色 = P2，编号对应上表。</p>
+
+<figure class="mock">
+<div class="frame">
+  <div class="mk-tabs">
+    <div class="mk-tab">Atlas<span class="sub">= Structure<span class="pin">2</span></span></div>
+    <div class="mk-tab on">Document Copilot<span class="sub">= Copilot</span></div>
+    <div class="mk-tab">Ambient<span class="sub">= Related</span></div>
+  </div>
+  <div class="mk-body">
+    <div class="mk-inputrow">
+      <span style="color:var(--pk-text-tertiary)">⌕</span>
+      <span class="mk-ph">Search or ask in current document... (@ note, ? help)</span>
+      <span class="mk-scope">document</span>
+    </div>
+    <div class="mk-path">kb1-life-notes/D-26年找工作/2-Story Cards-0-Fixed combination.md <span class="sans">· current note · 644 words<span class="pin">5</span></span></div>
+
+    <div class="hero">
+      <div class="hero-ico">✦</div>
+      <div class="hero-main">
+        <div class="hero-title">Ready to review this note</div>
+        <div class="hero-desc">Agent will inspect the current note, choose useful tools, and prepare Changes + Insights.<span class="pin warn">10</span> No auto-apply.</div>
+        <div class="hero-chips">
+          <span>▤ 644 words<span class="pin">5</span></span>
+          <span class="dot">⛓ no links<span class="pin">6</span></span>
+          <span class="dot">◷ no past review<span class="pin">1</span></span>
+          <span class="dot">☑ current note</span>
+          <span class="badge ok">✓ safe to run<span class="pin">3</span></span>
+        </div>
+      </div>
+      <div class="hero-side">
+        <span class="lbl">Run strategy ?<span class="pin warn">9</span></span>
+        <span class="btn primary">✦ Research<span class="pin">7</span></span>
+        <span class="btn ghost">⚡ Fast Lookup</span>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div>
+        <div class="sec-head"><span class="sec-title">Recent reviews</span><a href="#">All reviews ›</a></div>
+        <div class="rev-row">
+          <span class="rev-ico">↺</span>
+          <div class="rev-body">
+            <div class="rev-title">Interview Framework is a Core Resource bu…<span class="pin">1</span></div>
+            <div class="rev-meta">1 insight · 1 change · 0 sources · 1 round</div>
+          </div>
+          <span class="rev-date">02/06/2026</span>
+        </div>
+      </div>
+      <div>
+        <div class="sec-head"><span class="sec-title">Suggested intents</span></div>
+        <div class="intent">
+          <span class="intent-ico">⊙</span>
+          <div class="intent-body">
+            <div class="intent-title">Suggest Tags</div>
+            <div class="intent-desc">Analyze content and suggest relevant tags</div>
+          </div>
+          <span class="intent-tag">recommended</span>
+          <span class="intent-arrow">›</span>
+        </div>
+        <div class="intent">
+          <span class="intent-ico blue">⌘</span>
+          <div class="intent-body">
+            <div class="intent-title">Suggest Links (Graph)<span class="pin">4</span></div>
+            <div class="intent-desc">Find unlinked semantic neighbors from the knowledge g…</div>
+          </div>
+          <span class="intent-tag">recommended</span>
+          <span class="intent-arrow">›</span>
+        </div>
+        <div class="intent">
+          <span class="intent-ico teal">⛓</span>
+          <div class="intent-body">
+            <div class="intent-title">Suggest Links<span class="pin">4</span></div>
+            <div class="intent-desc">Find potential wiki-link connections</div>
+          </div>
+          <span class="intent-tag">recommended</span>
+          <span class="intent-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mk-caps">
+      <span style="font-size:16px">☰</span>
+      <div><div class="t">Show all capabilities ›</div><div class="s">Tools are available to the agent during the run.</div></div>
+    </div>
+    <div class="mk-void">（截图中此处为大面积空白）<span class="pin warn">11</span></div>
+  </div>
+</div>
+<figcaption>现状重建。<span class="pin">1</span> "no past review" 与下方 1 条历史矛盾；<span class="pin">2</span> 改名速记进 UI；<span class="pin">3</span> 无检查的 "safe to run"；<span class="pin">4</span> 双 Suggest Links 同时 recommended；<span class="pin">5</span> 字数双份；<span class="pin">6</span> links 口径不一致（正则 vs metadataCache）；<span class="pin">7</span> tooltip 与实现不符；<span class="pin warn">9</span> 问号无内容；<span class="pin warn">10</span> 内部词汇；<span class="pin warn">11</span> 空白。#8（空态旧命名）在有历史时不可见。</figcaption>
+</figure>
+
+<h2 id="after">重设计 Mockup（After）</h2>
+<p>重画原则：chip 全部由真数据驱动、一处一事实；tab 名直接用语义词，不再需要 "= X" 注释自己；两个链接建议合并成一个 intent。</p>
+
+<figure class="mock">
+<div class="frame">
+  <div class="mk-tabs">
+    <div class="mk-tab">Structure</div>
+    <div class="mk-tab on">Review</div>
+    <div class="mk-tab">Related</div>
+  </div>
+  <div class="mk-body">
+    <div class="mk-inputrow">
+      <span style="color:var(--pk-text-tertiary)">⌕</span>
+      <span class="mk-ph">Search or ask in current document… (@ note, ? help)</span>
+      <span class="mk-scope">Document</span>
+    </div>
+    <div class="mk-path">kb1-life-notes/D-26年找工作/2-Story Cards-0-Fixed combination.md <span class="sans">· 644 words</span></div>
+
+    <div class="hero">
+      <div class="hero-ico">✦</div>
+      <div class="hero-main">
+        <div class="hero-title">Review this note</div>
+        <div class="hero-desc">Reads the note, picks the right tools, and drafts suggested edits and findings. Nothing is applied without your confirmation.</div>
+        <div class="hero-chips">
+          <span>⛓ 3 links</span>
+          <span class="dot">◷ 1 past review · 2 Jun</span>
+        </div>
+      </div>
+      <div class="hero-side">
+        <span class="lbl">Multi-round agent review · agent decides when to stop</span>
+        <span class="btn primary">✦ Deep review</span>
+        <span class="btn ghost">⚡ Quick pass</span>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div>
+        <div class="sec-head"><span class="sec-title">Recent reviews</span><a href="#">All reviews ›</a></div>
+        <div class="rev-row">
+          <span class="rev-ico">↺</span>
+          <div class="rev-body">
+            <div class="rev-title">Interview Framework is a Core Resource but underused</div>
+            <div class="rev-meta">1 insight · 1 change</div>
+          </div>
+          <span class="rev-date">2 Jun 2026</span>
+        </div>
+      </div>
+      <div>
+        <div class="sec-head"><span class="sec-title">Suggested intents</span></div>
+        <div class="intent">
+          <span class="intent-ico">⊙</span>
+          <div class="intent-body">
+            <div class="intent-title">Suggest tags</div>
+            <div class="intent-desc">This note has no tags yet — analyze and propose</div>
+          </div>
+          <span class="intent-tag">recommended</span>
+          <span class="intent-arrow">›</span>
+        </div>
+        <div class="intent">
+          <span class="intent-ico blue">⛓</span>
+          <div class="intent-body">
+            <div class="intent-title">Link related notes</div>
+            <div class="intent-desc">Graph neighbors first, AI suggestions as fallback</div>
+          </div>
+          <span class="intent-tag">recommended</span>
+          <span class="intent-arrow">›</span>
+        </div>
+        <div class="intent">
+          <span class="intent-ico teal">§</span>
+          <div class="intent-body">
+            <div class="intent-title">Improve structure</div>
+            <div class="intent-desc">Reorganize headings and sections of this note</div>
+          </div>
+          <span class="intent-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mk-caps">
+      <span style="font-size:16px">☰</span>
+      <div><div class="t">Show all capabilities ›</div><div class="s">These tools are available to the agent during a review.</div></div>
+    </div>
+  </div>
+</div>
+<figcaption>重设计。tab 直接叫 Structure / Review / Related（副标题消失）；chips 只剩两条真数据；CTA 改 "Deep review / Quick pass"（词族统一 review 系，与 02 篇一致）；链接建议合并为一个 intent；modal 高度收拢到内容为止。</figcaption>
+</figure>
+
+<div class="fixnotes">
+  <div><b>✓ #1</b> "no past review" → "1 past review · 2 Jun"，与 Recent reviews 同一数据源（<code>listForSubject</code> 的 count）。</div>
+  <div><b>✓ #2</b> tab 名直接用 "= X" 右边那个词。既然每个 fancy 名字都需要一个别名注释来解释自己，说明别名才是正名。若要保留品牌感，可只在 Review tab 用 "Copilot"，但副标题必须删。</div>
+  <div><b>✓ #3</b> "safe to run" 删除；"Nothing is applied without your confirmation" 一句承担全部安全承诺。</div>
+  <div><b>✓ #4</b> "Suggest Links (Graph)" + "Suggest Links" → "Link related notes"：图谱邻居优先、AI 兜底，一个入口。空出的推荐位给了差异化的 "Improve structure"（无 recommended 徽标，示例真实评分行为）。</div>
+  <div><b>✓ #5</b> 字数只在路径行出现一次；chip 区不再重复。</div>
+  <div><b>✓ #6</b> links chip 读 metadataCache（示例 "3 links"），与建议引擎同口径。</div>
+  <div><b>✓ #7 + #9</b> tooltip 与问号合并成按钮上方一行真话："agent decides when to stop"。</div>
+  <div><b>✓ #10</b> "prepare Changes + Insights" → "drafts suggested edits and findings"。</div>
+  <div><b>✓ #11</b> 去掉固定高度，卡片区结束即结束。</div>
+</div>
+
+<h2 id="diff">前后对比要点</h2>
+<ul>
+  <li><b>chips 从 5 枚降到 2 枚，但信息量上升。</b>原版 5 枚里 2 枚是假的（写死）、1 枚是重复的（字数）、1 枚口径错（正则 links）；新版 2 枚全部由真数据驱动。chip 的原则：宁可少，不可假。</li>
+  <li><b>tab 命名回归第一性。</b>"= Structure" 这种注释的存在本身就是证据：设计者自己也知道 Atlas 不自解释。用户不需要学会三个代号才能用三个 tab。</li>
+  <li><b>intent 列表从"能力枚举"变为"当下诊断"。</b>"This note has no tags yet" 把 relevance 评分的理由说了出来——recommended 徽标从此有了可感知的依据（这也顺带修了 #4 的双推荐）。</li>
+  <li><b>与 02 篇共享的三个修复</b>：问号 tooltip、词族统一、"recommended 通胀"。这三项应作为同一批 copy 决策一次落地，两个 surface 同步。</li>
+</ul>
+
+<h2 id="actions">修复清单</h2>
+<table class="act">
+  <colgroup><col style="width:52px"><col><col style="width:42%"></colgroup>
+  <thead><tr><th>级别</th><th>动作</th><th>触点文件</th></tr></thead>
+  <tbody>
+    <tr><td><span class="sev sev-p0">P0</span></td><td>"no past review" chip 接真数据：<code>documentReadiness()</code> 增加 history count 入参（来源与 Recent reviews 同一 service）</td><td><code>src/ui/view/copilot/PickerReadinessAdapters.tsx:68-130</code> · <code>src/service/copilot/CopilotReviewHistoryService.ts</code></td></tr>
+    <tr><td><span class="sev sev-p0">P0</span></td><td>删除 <code>SCOPE_TABS.subtitle</code> 与 <code>tabs.tsx</code> 的 subtitle 渲染；tab 名定稿（建议 Structure / Review / Related）；清理 <code>intent-hub.ts</code> 平行定义里的 "= X"</td><td><code>src/ui/view/copilot/CopilotPickerContent.tsx:45-49</code> · <code>src/ui/component/shared-ui/tabs.tsx:119-123</code> · <code>src/service/copilot/intent-hub.ts:19-44</code></td></tr>
+    <tr><td><span class="sev sev-p1">P1</span></td><td>删除 "safe to run" chip；字数 chip 去重；links chip 改读 <code>ctx.links.length</code></td><td><code>PickerReadinessAdapters.tsx:71-87</code></td></tr>
+    <tr><td><span class="sev sev-p1">P1</span></td><td>合并两个 Suggest Links 为一个 intent（graph 优先、LLM 兜底），或最低限度：同族 intent 只允许一个进 recommended</td><td><code>src/service/copilot/actions/index.ts:171-194</code> · <code>src/ui/view/copilot/copilot-command-model.ts</code></td></tr>
+    <tr><td><span class="sev sev-p1">P1</span></td><td>copy 对齐实现："Up to 3 rounds" 删除；空态 "Run Auto or Fast" 同步新词族；"Changes + Insights" 改用户语言（词族决策与 02 篇一批落地）</td><td><code>PickerReadinessAdapters.tsx:96-122</code> · <code>CopilotPickerContent.tsx:450-451</code></td></tr>
+    <tr><td><span class="sev sev-p2">P2</span></td><td>问号改说明行；modal 高度自适应内容</td><td><code>PickerReadinessCard.tsx:104-107</code> · <code>src/app/copilot/modals/CopilotPickerModal.tsx</code></td></tr>
+  </tbody>
+</table>
+
+<h3>不做什么</h3>
+<ul>
+  <li>不动 review 执行链路（<code>CopilotReviewSession</code> / <code>CopilotAutoRunModal</code> 的运行态不在本篇范围）。</li>
+  <li>不在本次合并 Atlas 与 file-atlas 新版（<code>src/ui/view/file-atlas/</code> 是进行中的平行重设计，有独立 spec <code>docs/superpowers/specs/2026-07-08-file-atlas-design.md</code>）；本篇只要求 tab 命名不再需要注释。</li>
+  <li>不给 document tab 增加 vault 级信息；它的职责边界（当前笔记）是清晰的。</li>
+</ul>
+
+</div>
+</body>
+</html>

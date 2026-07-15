@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat Studio · Composer interaction lab</title>
+  <link rel="stylesheet" href="../../../src/styles/peak-tokens.css">
+  <link rel="stylesheet" href="./composer-lab.css">
+</head>
+<body class="theme-light">
+  <div class="peak-design-root lab-root">
+    <header class="lab-header">
+      <a href="./index.html#catalog" class="back-link" aria-label="返回 Chat Studio">←</a>
+      <div class="lab-title"><strong>Composer 交互实验室</strong><span>一个外壳，逐状态验证输入工作契约</span></div>
+      <nav class="lab-links" aria-label="相关文档">
+        <a href="../../superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md">实施规格</a>
+        <a href="./product-strategy.html">产品定位</a>
+        <a href="./index.html#catalog">完整工作台</a>
+      </nav>
+      <button id="theme-toggle" class="lab-icon-button" type="button" aria-label="切换主题">◐</button>
+    </header>
+
+    <div class="lab-layout">
+      <aside class="state-rail" aria-label="Composer 状态">
+        <span class="rail-label">基础输入</span>
+        <button class="state-button is-active" type="button" data-state="empty"><span>默认空态</span><kbd>1</kbd></button>
+        <button class="state-button" type="button" data-state="typing"><span>正在输入</span><kbd>2</kbd></button>
+        <button class="state-button" type="button" data-state="multiline"><span>多行增长</span><kbd>3</kbd></button>
+        <span class="rail-label">上下文</span>
+        <button class="state-button" type="button" data-state="vault-picker"><span>[[ 选择文档</span><kbd>4</kbd></button>
+        <button class="state-button" type="button" data-state="command-menu"><span>/ 调用工作流</span><kbd>5</kbd></button>
+        <button class="state-button" type="button" data-state="attachments"><span>多种附件</span><kbd>6</kbd></button>
+        <button class="state-button" type="button" data-state="reply-target"><span>定向追问</span><kbd>7</kbd></button>
+        <button class="state-button" type="button" data-state="source-scope"><span>检索范围</span><kbd>8</kbd></button>
+        <span class="rail-label">运行控制</span>
+        <button class="state-button" type="button" data-state="run-main"><span>模型与助手</span><kbd>9</kbd></button>
+        <button class="state-button" type="button" data-state="model-list"><span>明确选择模型</span><kbd>0</kbd></button>
+        <button class="state-button" type="button" data-state="fixed-model"><span>已固定模型</span></button>
+        <button class="state-button" type="button" data-state="assistant-list"><span>选择助手</span></button>
+        <button class="state-button" type="button" data-state="assistant-builder"><span>AI 创建助手</span></button>
+        <span class="rail-label">生命周期</span>
+        <button class="state-button" type="button" data-state="running"><span>运行中 / 停止</span></button>
+        <button class="state-button" type="button" data-state="permission"><span>按需授权</span></button>
+        <button class="state-button" type="button" data-state="narrow"><span>窄栏压缩</span></button>
+      </aside>
+
+      <main id="lab-stage" class="lab-stage" data-state="empty">
+        <div class="stage-context" aria-hidden="true">
+          <div class="ghost-message">先根据当前项目资料，找出证据最完整的三段经历。</div>
+          <div class="ghost-answer"><span></span><span></span><span></span><span></span></div>
+        </div>
+
+        <section class="composer-stage" aria-label="Composer 交互样稿">
+          <form id="lab-composer" class="lab-composer">
+            <div id="context-shelf" class="context-shelf" aria-label="当前显式上下文"></div>
+            <textarea id="lab-input" rows="1" placeholder="问你的项目、资料或当前工作…"></textarea>
+            <div id="validation-row" class="validation-row"></div>
+            <div class="lab-composer-foot">
+              <div class="foot-left">
+                <button id="plus-trigger" class="composer-icon-button" type="button" aria-label="添加资源" aria-expanded="false">＋</button>
+                <button id="source-trigger" class="text-control source-control" type="button" aria-expanded="false"><span>◎</span><span id="source-label">项目上下文</span><span>⌄</span></button>
+              </div>
+              <div class="foot-right">
+                <button id="run-trigger" class="text-control run-control" type="button" aria-expanded="false"><span id="model-label">自动模型</span><span>⌄</span></button>
+                <button id="send-trigger" class="send-control" type="submit" aria-label="发送" disabled>↑</button>
+              </div>
+            </div>
+          </form>
+
+          <div id="plus-menu" class="lab-popover plus-popover" aria-hidden="true"></div>
+          <div id="source-menu" class="lab-popover source-popover" aria-hidden="true"></div>
+          <div id="run-menu" class="lab-popover run-popover" aria-hidden="true"></div>
+          <div id="vault-picker" class="picker-surface" aria-hidden="true"></div>
+          <div id="command-menu" class="picker-surface command-surface" aria-hidden="true"></div>
+        </section>
+
+        <div id="assistant-layer" class="assistant-layer" aria-hidden="true">
+          <section class="assistant-builder" role="dialog" aria-modal="true" aria-labelledby="assistant-builder-title">
+            <header><div><strong id="assistant-builder-title">用 AI 创建助手</strong><span>先写清楚它怎么帮你；其余设置按需展开</span></div><button id="close-builder" type="button" aria-label="关闭">×</button></header>
+            <div class="builder-body">
+              <label class="builder-prompt"><span>描述这个助手如何工作</span><textarea id="builder-prompt" rows="5">帮我整理面试证据。只根据我明确提供或允许检索的材料回答；证据不足时直接提醒，不要编造指标。输出要适合我口头复述。</textarea></label>
+              <div class="builder-prompt-foot"><span>这一段 Prompt 是助手的主要定义，可以直接编辑。</span><button id="generate-assistant" class="generate-button" type="button">生成预览</button></div>
+              <div id="assistant-draft" class="assistant-draft">
+                <div class="draft-status"><span>AI 草稿</span><em>等待生成</em></div>
+                <div class="assistant-preview-card full">
+                  <span class="assistant-preview-icon">AI</span>
+                  <span><input id="assistant-name" aria-label="助手名称" value=""><textarea id="assistant-summary" aria-label="助手摘要" rows="2"></textarea></span>
+                </div>
+                <details class="assistant-advanced full">
+                  <summary>可选高级设置 <span>知识范围、工具与默认模型</span></summary>
+                  <div class="assistant-options">
+                    <div><strong>默认知识</strong><label><input type="checkbox" checked> 当前项目</label><label><input type="checkbox"> Vault Search</label></div>
+                    <div><strong>工具权限</strong><label><input type="checkbox" checked> 读取与预览</label><label><input type="checkbox"> Web Search</label><label><input type="checkbox"> 写入 Vault（每次询问）</label></div>
+                    <label class="assistant-model-default"><strong>默认模型</strong><select><option>遵循 AI behavior</option><option>固定到当前模型</option></select></label>
+                  </div>
+                </details>
+              </div>
+            </div>
+            <footer><button id="preview-assistant" type="button" disabled>预览对话</button><button id="save-assistant" class="is-primary" type="button" disabled>保存助手</button></footer>
+          </section>
+        </div>
+      </main>
+
+      <aside class="decision-panel">
+        <div class="decision-head"><strong id="decision-title">默认空态</strong><span id="decision-status">推荐基线</span></div>
+        <div id="decision-copy" class="decision-copy"></div>
+        <div class="decision-rules">
+          <span>固定信息架构</span>
+          <ol>
+            <li><b>正文：</b>用户要得到什么结果。</li>
+            <li><b>上下文 shelf：</b>只显示用户显式加入的资源或追问锚点。</li>
+            <li><b>来源：</b>本轮允许检索的证据边界。</li>
+            <li><b>运行：</b>模型与 Assistant 是对话默认值；reasoning 只在真实接线后按模型显示。</li>
+          </ol>
+        </div>
+        <div class="syntax-map"><span><kbd>[[</kbd> 知识库文档</span><span><kbd>/</kbd> 工作流命令</span><span><kbd>@</kbd> 暂不占用，直到存在真实的助手/应用提及需求</span></div>
+      </aside>
+    </div>
+  </div>
+  <script src="./composer-lab.js"></script>
+</body>
+</html>

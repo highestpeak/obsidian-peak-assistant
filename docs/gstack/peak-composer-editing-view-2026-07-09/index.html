@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Peak Composer · Real-data Obsidian editor mock</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="../../../node_modules/katex/dist/katex.min.css" />
+<link rel="stylesheet" href="vendor/lightgallery/css/lightgallery-bundle.min.css" />
+<link rel="stylesheet" href="mock.css" />
+<link rel="stylesheet" href="intelligence.css" />
+</head>
+<body>
+
+<svg aria-hidden="true" class="icon-sprite">
+  <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.4"></circle><circle cx="15" cy="6" r="1.4"></circle><circle cx="9" cy="12" r="1.4"></circle><circle cx="15" cy="12" r="1.4"></circle><circle cx="9" cy="18" r="1.4"></circle><circle cx="15" cy="18" r="1.4"></circle></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"></path></symbol>
+  <symbol id="i-comment" viewBox="0 0 24 24"><path d="M5 5h14v11H8l-3 3z"></path><path d="M8.5 9h7"></path><path d="M8.5 12.5h4.5"></path></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"></path></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="m7 17 4-4 3 3 2-2 3 3"></path></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 11h16"></path><path d="M10 5v14"></path><path d="M15 5v14"></path></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v5h5"></path></symbol>
+  <symbol id="i-canvas" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"></path><path d="M8 9h4v4H8z"></path><path d="M14 11h3v5h-3z"></path><path d="M12 11h2"></path></symbol>
+  <symbol id="i-draw" viewBox="0 0 24 24"><path d="M4 20c4-1 7-4 8-8"></path><path d="M12 12l7-7 2 2-7 7z"></path><path d="M13 5l6 6"></path></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m9 18-6-6 6-6"></path><path d="m15 6 6 6-6 6"></path><path d="m14 5-4 14"></path></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"></path></symbol>
+  <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"></path><path d="M18 22V8a2 2 0 0 0-2-2H2"></path></symbol>
+  <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 5 5"></path><path d="M10.5 7.5v6"></path><path d="M7.5 10.5h6"></path></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m12 19V5"></path><path d="m5 12 7-7 7 7"></path></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12"></path><path d="m18 6-12 12"></path></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="m12 5v14"></path><path d="m19 12-7 7-7-7"></path></symbol>
+  <symbol id="i-wand" viewBox="0 0 24 24"><path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8l1.4 1.4M17.8 6.2l1.4-1.4M12.2 6.2l-1.4-1.4"></path><path d="M3 21l9-9"></path><path d="M12.2 11.8l1.4 1.4"></path></symbol>
+  <symbol id="i-enter" viewBox="0 0 24 24"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14l-4-4 4-4"></path><path d="M5 10h11a4 4 0 0 1 0 8h-1"></path></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path><path d="M12 7v5l3 2"></path></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5"></path><path d="M4 17v-5h5"></path><path d="M6.1 8.2A7 7 0 0 1 18.6 7"></path><path d="M17.9 15.8A7 7 0 0 1 5.4 17"></path></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"></path><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"></path></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="M2 12h3"></path><path d="M19 12h3"></path><circle cx="12" cy="12" r="8"></circle></symbol>
+  <symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"></path></symbol>
+</svg>
+
+<main class="composer-app" aria-label="Peak Composer real-data editor mock">
+  <header class="top-strip">
+    <div class="view-title">
+      <span class="view-icon"><svg><use href="#i-file"></use></svg></span>
+      <strong>Composer View</strong>
+    </div>
+    <div class="top-actions">
+      <div class="source-state"><svg><use href="#i-check"></use></svg> Markdown 已保存</div>
+      <button class="ambient-toggle" id="ambient-toggle" type="button" aria-controls="ambient-panel" aria-expanded="false" title="打开 Intelligence 面板"><svg><use href="#i-spark"></use></svg><span>Intelligence</span></button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <section class="document-stage" aria-label="Scrollable document">
+      <article class="paper editor-canvas" id="paper" contenteditable="true" spellcheck="true" aria-label="可编辑 Markdown 文档">
+        <section class="doc-block frontmatter-block" data-block-kind="metadata" data-block-title="Frontmatter metadata" data-source="---&#10;created: 2023-10-15 21:45:29&#10;updated: 2023-10-18 21:17:05&#10;tags: [pkm, information-management, canvas]&#10;---">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <button class="issue-pill" data-ai-label="规范属性" data-reason="Issue：metadata warning，updated 早于正文最后一次编辑">属性告警</button>
+          <div class="metadata-grid">
+            <span>created</span><strong>2023-10-15 21:45</strong>
+            <span>updated</span><strong>2023-10-18 21:17</strong>
+            <span>tags</span>
+            <strong class="tag-row">
+              <span class="tag-chip">pkm</span>
+              <span class="tag-chip">information-management</span>
+              <span class="tag-chip">canvas</span>
+            </strong>
+          </div>
+        </section>
+
+        <section class="doc-block title-block" data-block-kind="heading-1" data-block-title="文档标题" data-source="# PKM 产品类别分析：从信息获取到输出">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <h1>PKM 产品类别分析：从信息获取到输出</h1>
+        </section>
+
+        <section class="doc-block paragraph-block lead-block" data-block-kind="paragraph" data-block-title="导语段落" data-source="创造一个知识库，其实是大脑的延伸。大脑可以把更多精力用于思考，知识库负责存储、记忆、检索和组织；真正有效的工具要让资料、笔记、图谱、表格和输出在同一个工作流里形成闭环。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p class="lead">
+            创造一个知识库，其实是大脑的延伸。大脑可以把更多精力用于思考，知识库负责存储、记忆、检索和组织；真正有效的工具要让资料、笔记、图谱、表格和输出在同一个工作流里形成闭环。
+          </p>
+        </section>
+
+        <section class="doc-block paragraph-block lead-block detail-lead-block" data-block-kind="paragraph" data-block-title="Composer 定位段落" data-source="这个 Composer 视图不是要把 Obsidian 改造成另一个协作文档产品，而是把当前正在编辑的 Markdown 变成更顺手的工作台：文字保持可写，图片可以直接检查，表格可以像小型 spreadsheet 一样调整，公式可以阅读，Base、Canvas、Excalidraw 也能作为文档里的真实块继续被 AI 理解。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p class="lead detail-lead">
+            这个 Composer 视图不是要把 Obsidian 改造成另一个协作文档产品，而是把当前正在编辑的 Markdown 变成更顺手的工作台：文字保持可写，图片可以直接检查，表格可以像小型 spreadsheet 一样调整，公式可以阅读，Base、Canvas、Excalidraw 也能作为文档里的真实块继续被 AI 理解。
+          </p>
+        </section>
+
+        <section class="doc-block heading-block" data-block-kind="heading-2" data-block-title="章节标题" data-source="## 1. 知识库不是单一目录，而是多种结构叠加">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <h2>1. 知识库不是单一目录，而是多种结构叠加</h2>
+        </section>
+
+        <section class="doc-block paragraph-block" data-block-kind="paragraph" data-block-title="知识库结构段落" data-source="知识库的结构，是根据想要存储的知识来设计的。碎片化思想、阅读摘录和灵感更适合网络结构；一门技术、一组课程或一本书的读书笔记更适合树状结构。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p>
+            知识库的结构，是根据想要存储的知识来设计的。碎片化思想、阅读摘录和灵感更适合网络结构；一门技术、一组课程或一本书的读书笔记更适合树状结构。
+          </p>
+        </section>
+
+        <section class="doc-block paragraph-block" data-block-kind="paragraph" data-block-title="编辑器职责段落" data-source="真正难的不是把内容收进来，而是让它在之后还能被重新找到、重新组合、重新输出。一个“舒服”的编辑器要允许用户边写边整理：有时候补一段解释，有时候把一组项目拆成表格，有时候让 AI 把当前段落改写成行动计划，但所有变化都应该可以回到原始 Markdown。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p>
+            真正难的不是把内容收进来，而是让它在之后还能被重新找到、重新组合、重新输出。一个“舒服”的编辑器要允许用户边写边整理：有时候补一段解释，有时候把一组项目拆成表格，有时候让 AI 把当前段落改写成行动计划，但所有变化都应该可以回到原始 Markdown。
+          </p>
+        </section>
+
+        <section class="doc-block list-block" data-block-kind="list" data-block-title="知识结构列表" data-source="- **网络结构**：承接滑箱笔记、论文旁批、公众号想法和临时判断。&#10;- **树形结构**：承接系统学习、技术专题、书籍章节和项目文档。&#10;- **跨库链接**：当一个知识库裂解成多个知识库时，保留来源、引用和迁移差异。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <ul class="markdown-list">
+            <li><strong>网络结构</strong>：承接滑箱笔记、论文旁批、公众号想法和临时判断。</li>
+            <li><strong>树形结构</strong>：承接系统学习、技术专题、书籍章节和项目文档。</li>
+            <li><strong>跨库链接</strong>：当一个知识库裂解成多个知识库时，保留来源、引用和迁移差异。</li>
+          </ul>
+        </section>
+
+        <section class="doc-block paragraph-block" data-block-kind="paragraph" data-block-title="AI 旁路段落" data-source="这里的 AI 不应该像一个远处的聊天窗口，而应该像贴在当前块旁边的编辑伙伴：它知道当前块的源范围、知道它会写成什么语法，也知道这次建议只是一个 patch，用户接受之前不会真的写回文件。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p>
+            这里的 AI 不应该像一个远处的聊天窗口，而应该像贴在当前块旁边的编辑伙伴：它知道当前块的源范围、知道它会写成什么语法，也知道这次建议只是一个 patch，用户接受之前不会真的写回文件。
+          </p>
+        </section>
+        <section class="doc-block quote-block" data-block-kind="quote" data-block-title="普通 Markdown 引用" data-source="> “区分资料库、笔记和大脑”可以看成区分高速缓存、内存和硬盘。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <blockquote>“区分资料库、笔记和大脑”可以看成区分高速缓存、内存和硬盘。<sup class="footnote-ref" data-footnote="1">[1]</sup></blockquote>
+        </section>
+        <section class="doc-block footnote-block" data-block-kind="footnote" data-block-title="脚注定义 [^1]" data-source="[^1]: 高速缓存/内存/硬盘的类比最早出自 2023-10 的读书笔记，原始出处待核对。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="footnote-line" id="footnote-def-1">
+            <span class="footnote-label">脚注定义</span>
+            <sup>[^1]</sup>
+            <span>高速缓存/内存/硬盘的类比最早出自 2023-10 的读书笔记，原始出处待核对。（对应上方引用块结尾的 [1] 标记；Markdown 源为 <code>[^1]: …</code>）</span>
+          </div>
+        </section>
+        <section class="doc-block callout-block" data-block-kind="callout" data-block-title="Obsidian callout" data-source="> [!note] 工作原则&#10;> 先决定输出，再反推资料组织方式。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="callout-shell">
+            <div class="callout-title"><svg><use href="#i-comment"></use></svg><span>工作原则</span></div>
+            <div class="callout-body">先决定输出，再反推资料组织方式。否则收藏越多，越容易变成没有下一步行动的稍后读列表。</div>
+          </div>
+        </section>
+        <section class="doc-block heading-block" data-block-kind="heading-2" data-block-title="章节标题" data-source="## 2. 找回信息的四条路径">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <h2>2. 找回信息的四条路径</h2>
+        </section>
+
+        <section class="doc-block checklist-block" data-block-kind="checklist" data-block-title="找回信息 checklist" data-source="- [x] 回想一个或多个标题 / 正文里的关键词，直接搜索。&#10;- [ ] 回想笔记所在的位置，顺着目录结构逐级往下找。&#10;- [ ] 回想可能链接到这篇笔记的另一篇笔记，顺藤摸瓜。&#10;- [ ] 回想笔记可能归入的专题索引，通过索引内分类跳转。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="task-list">
+            <label><input type="checkbox" checked /><span tabindex="0">回想一个或多个标题 / 正文里的关键词，直接搜索。</span></label>
+            <label><input type="checkbox" /><span tabindex="0">回想笔记所在的位置，顺着目录结构逐级往下找。</span></label>
+            <label><input type="checkbox" /><span tabindex="0">回想可能链接到这篇笔记的另一篇笔记，顺藤摸瓜。</span></label>
+            <label><input type="checkbox" /><span tabindex="0">回想笔记可能归入的专题索引，通过索引内分类跳转。</span></label>
+          </div>
+        </section>
+
+        <section class="doc-block paragraph-block" data-block-kind="paragraph" data-block-title="找回路径解释段落" data-source="这四条路径其实对应四种用户心智：搜索、浏览、联想和索引。Composer 要能在同一个页面里承接这些心智，例如把搜索结果转成 checklist，把反向链接摘要转成卡片，把专题索引转成 Canvas 或 Base 预览。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p>
+            这四条路径其实对应四种用户心智：搜索、浏览、联想和索引。Composer 要能在同一个页面里承接这些心智，例如把搜索结果转成 checklist，把反向链接摘要转成卡片，把专题索引转成 Canvas 或 Base 预览。
+          </p>
+        </section>
+        <section class="doc-block links-block" data-block-kind="vault-links" data-block-title="相关笔记双链段" data-source="这一节的判断主要来自 [[知识库]]、[[信息管理]] 和 [[表格工具]]；更早的结论在 [[Z-旧版-PKM分类草稿]]，该笔记已被合并删除。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <button class="issue-pill" data-ai-label="修复失效链接" data-reason="Issue：stale link，[[Z-旧版-PKM分类草稿]] 已不存在">失效链接 · 1</button>
+          <p>
+            这一节的判断主要来自 <span class="vault-chip">[[知识库]]</span>、<span class="vault-chip">[[信息管理]]</span> 和 <span class="vault-chip">[[表格工具]]</span>；更早的结论在 <span class="vault-chip is-stale">[[Z-旧版-PKM分类草稿]]</span>，该笔记已被合并删除。
+          </p>
+        </section>
+        <section class="doc-block links-block" data-block-kind="external-links" data-block-title="外部参考链接段" data-source="外部参考：InfraNodus https://infranodus.com、Heptabase https://heptabase.com，以及一篇还没整理的 https://arxiv.org/abs/2104.05006。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p>
+            外部参考：<span class="ext-chip">infranodus.com</span>、<span class="ext-chip">heptabase.com</span>，以及一篇还没整理的 <span class="ext-chip is-naked">arxiv.org/abs/2104.05006</span>。
+          </p>
+        </section>
+        <section class="doc-block heading-block" data-block-kind="heading-2" data-block-title="章节标题" data-source="## 3. 图算法里的公式也应该像正文一样自然">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <h2>3. 图算法里的公式也应该像正文一样自然</h2>
+        </section>
+
+        <section class="doc-block paragraph-block" data-block-kind="paragraph" data-block-title="公式解释段落" data-source="这些公式来自知识库里的 PageRank、TextRank 和社区发现笔记。Composer 不应该把它们变成一坨代码，而应该像普通段落一样可以阅读、选中、评论和交给 AI 解释。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p>
+            这些公式来自知识库里的 PageRank、TextRank 和社区发现笔记。Composer 不应该把它们变成一坨代码，而应该像普通段落一样可以阅读、选中、评论和交给 AI 解释。
+          </p>
+        </section>
+
+        <section class="doc-block math-block" data-block-kind="math" data-block-title="图算法公式组" data-source="$$PR(A) = \\frac{1-d}{N} + d \\sum_{i \\in In(A)} \\frac{PR(i)}{L(i)}$$&#10;&#10;$$WS(V_i)=...$$&#10;&#10;$$\\Delta Q=...$$">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="AI 建议"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="math-stack">
+            <div class="math-card micro-block" data-micro-title="PageRank">
+              <div class="micro-controls">
+                <button data-action="move" title="移动公式"><svg><use href="#i-grip"></use></svg></button>
+                <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+                <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+                <button data-action="ai" title="解释公式"><svg><use href="#i-spark"></use></svg></button>
+              </div>
+              <span>PageRank</span>
+              <div class="math-render" data-tex="PR(A)=\frac{1-d}{N}+d\sum_{i\in In(A)}\frac{PR(i)}{L(i)}"></div>
+            </div>
+            <div class="math-card micro-block" data-micro-title="TextRank">
+              <div class="micro-controls">
+                <button data-action="move" title="移动公式"><svg><use href="#i-grip"></use></svg></button>
+                <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+                <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+                <button data-action="ai" title="解释公式"><svg><use href="#i-spark"></use></svg></button>
+              </div>
+              <span>TextRank</span>
+              <div class="math-render" data-tex="WS(V_i)=(1-d)+d\sum_{V_j\in In(V_i)}\frac{w_{ji}}{\sum_{V_k\in Out(V_j)}w_{jk}}WS(V_j)"></div>
+            </div>
+            <div class="math-card micro-block" data-micro-title="Louvain ΔQ">
+              <div class="micro-controls">
+                <button data-action="move" title="移动公式"><svg><use href="#i-grip"></use></svg></button>
+                <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+                <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+                <button data-action="ai" title="解释公式"><svg><use href="#i-spark"></use></svg></button>
+              </div>
+              <span>Louvain ΔQ</span>
+              <div class="math-render" data-tex="\Delta Q=\frac{k_{i,in_C}-k_{i,in_D}}{2m}-\frac{k_i(\Sigma_{tot_C}-\Sigma_{tot_D})}{(2m)^2}"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="doc-block paragraph-block inline-math-block" data-block-kind="paragraph" data-block-title="行内公式段落" data-source="行内公式也要稳：阻尼系数 $d=0.85$、复杂度 $O(V+E)$、阈值 $\\tau \\ge 4.0$ 都应该能在同一段里自然排版。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p class="inline-math-line">
+            行内公式也要稳：阻尼系数 <span class="math-inline" data-tex="d=0.85"></span>、复杂度 <span class="math-inline" data-tex="O(V+E)"></span>、阈值 <span class="math-inline" data-tex="\tau \ge 4.0"></span> 都应该能在同一段里自然排版。
+          </p>
+        </section>
+        <section class="doc-block image-block" data-block-kind="image" data-block-title="路线图" data-source="![[public-image/20250703182542769.png|路线图|720]]">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="AI 建议"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <figure class="real-image-frame">
+            <a
+              class="lightgallery composer-lightgallery"
+              href="assets/real-map-auckland-route.png"
+              title="Auckland、Beijing、Chengdu、Qinghe County 路线图"
+              data-thumbnail="assets/real-map-auckland-route.png"
+              data-sub-html="<h2>路线图</h2><p>Auckland、Beijing、Chengdu、Qinghe County 路线图。全屏查看使用 lightGallery，编辑操作仍回到 Composer block。</p>"
+            >
+              <img
+                class="lazyload"
+                src="assets/real-map-auckland-route.png"
+                data-src="assets/real-map-auckland-route.png"
+                data-srcset="assets/real-map-auckland-route.png 1x"
+                data-sizes="auto"
+                width="2472"
+                height="1440"
+                alt="Route map from the user's vault"
+              />
+            </a>
+            <div class="object-toolbar image-toolbar">
+              <button data-action="zoom-image"><svg><use href="#i-zoom"></use></svg> 全屏</button>
+              <button data-action="crop-image"><svg><use href="#i-crop"></use></svg> 裁剪</button>
+              <button data-action="annotate-image">标注</button>
+              <button data-action="ai-caption"><svg><use href="#i-spark"></use></svg> 图注</button>
+              <button data-action="ai-image"><svg><use href="#i-spark"></use></svg> 生成配图</button>
+            </div>
+            <figcaption>Auckland、Beijing、Chengdu、Qinghe County 路线图。图片操作在悬浮时出现，正文阅读状态保持干净。</figcaption>
+          </figure>
+        </section>
+        <section class="doc-block table-block" data-block-kind="table" data-block-title="PKM pipeline table" data-source="| 阶段 | 真实来源 | 当前动作 | 输出 |&#10;| --- | --- | --- | --- |&#10;| 信息获取 | RSS / 网页 / PDF / 视频 | 进入 inbox | 原始资料 |">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="AI 建议"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="table-surface">
+            <div class="object-toolbar table-toolbar">
+              <button data-action="format-table">格式化</button>
+              <button data-action="add-row">+ 行</button>
+              <button data-action="add-column">+ 列</button>
+              <button data-action="remove-row">- 行</button>
+              <button data-action="align-table">对齐</button>
+              <button data-action="sort-table">排序</button>
+              <button data-action="formula-table">公式</button>
+              <button data-action="transpose-table">转置</button>
+              <button data-action="paste-csv">CSV</button>
+              <button data-action="ai-table"><svg><use href="#i-spark"></use></svg> 总结</button>
+            </div>
+            <table class="composer-table" id="composer-table">
+              <colgroup>
+                <col style="width: 18%" />
+                <col style="width: 24%" />
+                <col style="width: 30%" />
+                <col style="width: 28%" />
+              </colgroup>
+              <thead>
+                <tr><th>阶段</th><th>真实来源</th><th>当前动作</th><th>输出</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>信息获取</td><td>RSS、网页、PDF、视频</td><td>筛选后进入 inbox</td><td>原始资料与链接</td></tr>
+                <tr><td>信息管理</td><td>知识库、图谱、表格工具</td><td>建立主题、标签、反向链接</td><td>可检索的资料库</td></tr>
+                <tr><td>信息输出</td><td>草稿笔记、正文输出、系列文章</td><td>从资料组合为可发布内容</td><td>文章、项目文档、知识卡片</td></tr>
+                <tr><td>知识回顾</td><td>复盘、ANKI、专题索引</td><td>发现断点并更新结构</td><td>下一轮行动项</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="doc-block code-block" data-block-kind="code" data-block-title="Base source code" data-source="views:&#10;  - type: table&#10;    name: PKM Pipeline&#10;    filters:&#10;      and:&#10;        - file.inFolder(&quot;kb2-learn-prd/.../PKM&quot;)">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="code-head">
+            <span><svg><use href="#i-code"></use></svg> YAML</span>
+            <strong>Base query source</strong>
+            <button data-ai-quick="解释源格式" data-reason="代码块需要语义">解释源格式</button>
+          </div>
+          <pre><code>views:
+  - type: table
+    name: PKM Pipeline
+    filters:
+      and:
+        - file.inFolder("kb2-learn-prd/B-2-创意和想法管理/C-大类-信息聚合-PKM")
+    formulas:
+      stage: |
+        if(contains(file.name, "信息获取"), "Capture",
+        if(contains(file.name, "信息管理"), "Manage",
+        if(contains(file.name, "信息输出"), "Output", "Reference")))</code></pre>
+        </section>
+        <section class="doc-block mermaid-block" data-block-kind="mermaid" data-block-title="PKM 流程 Mermaid" data-source="```mermaid&#10;flowchart LR&#10;  A[信息获取] --> B[inbox]&#10;  B --> C[信息管理]&#10;  C --> D[信息输出]&#10;  D --> E[知识回顾]&#10;  E --> C&#10;```">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="mermaid-shell">
+            <div class="mermaid-head"><span><svg><use href="#i-canvas"></use></svg> Mermaid</span><strong>PKM pipeline flowchart</strong><div class="native-inline-tools"><button data-action="native-view" data-native-mode="preview">预览</button><button data-action="native-view" data-native-mode="source">源码</button><button data-action="copy-native-source">复制源码</button><button data-action="copy-native-image">复制图像</button><button data-action="ai-native" data-ai-label="补缺失分支">AI 增量编辑</button></div></div>
+            <div class="mermaid-render native-preview" id="mermaid-render" data-definition="flowchart LR&#10;  A[信息获取] --> B[inbox]&#10;  B --> C[信息管理]&#10;  C --> D[信息输出]&#10;  D --> E[知识回顾]&#10;  E --> C"><code>flowchart LR: 信息获取 → inbox → 信息管理 → 信息输出 → 知识回顾 → 信息管理</code></div>
+            <pre class="native-source-pane" hidden><code id="mermaid-source-code">flowchart LR
+  A[信息获取] --> B[inbox]
+  B --> C[信息管理]
+  C --> D[信息输出]
+  D --> E[知识回顾]
+  E --> C</code></pre>
+          </div>
+        </section>
+        <section class="doc-block native-file-block" data-block-kind="base" data-block-title="PKM Base preview" data-source="![[assets/pkm-composer.base]]">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="native-head">
+            <div><span>Base preview</span><strong>pkm-composer.base</strong><small>有效 `.base` YAML 样例；另附 vault 中真实 `Untitled.base` 副本</small></div>
+            <div class="native-actions"><button data-action="open-native">Open original</button><button data-action="ai-native" data-ai-label="生成周报">生成周报</button><button data-action="comment">评论</button></div>
+          </div>
+          <div class="base-render">
+            <div class="base-row head"><span>file</span><span>stage</span><span>input</span><span>output</span><span>next</span></div>
+            <div class="base-row"><span>知识库.md</span><span class="pill blue">Manage</span><span>Note</span><span>Knowledge base</span><span>建立链接和主题</span></div>
+            <div class="base-row"><span>信息管理.md</span><span class="pill green">Manage</span><span>Note</span><span>Markdown</span><span>建立链接和主题</span></div>
+            <div class="base-row"><span>图谱工具.md</span><span class="pill violet">Reference</span><span>Note</span><span>Graph / canvas</span><span>保留为参考</span></div>
+            <div class="base-row"><span>表格工具.md</span><span class="pill amber">Reference</span><span>Note</span><span>Table</span><span>保留为参考</span></div>
+          </div>
+          <div class="source-line"><code>![[assets/pkm-composer.base]]</code><span>Peak 只渲染视图壳，写入仍走 Base adapter。</span></div>
+        </section>
+        <section class="doc-block native-file-block canvas-block" data-block-kind="canvas" data-block-title="JSON Canvas preview" data-source="![[assets/pkm-composer.canvas]]">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="native-head">
+            <div><span>JSON Canvas preview</span><strong>pkm-composer.canvas</strong><small>真实 `.canvas` JSON：nodes / edges / file references</small></div>
+            <div class="native-actions"><button data-action="open-native">Open canvas</button><button data-action="native-view" data-native-mode="preview">预览</button><button data-action="native-view" data-native-mode="source">源码</button><button data-action="copy-native-source">复制源码</button><button data-action="copy-native-image">复制图像</button><button data-action="ai-native" data-ai-label="补一个节点">AI 增量编辑</button></div>
+          </div>
+          <div class="json-canvas-render native-preview" id="json-canvas-render" aria-label="Rendered JSON Canvas"></div>
+          <pre class="native-source-pane" hidden><code id="canvas-source-code"></code></pre>
+          <div class="source-line"><code>![[assets/pkm-composer.canvas]]</code><span>JSON Canvas 原文件保持可读、可导入。</span></div>
+        </section>
+        <section class="doc-block native-file-block excalidraw-block" data-block-kind="excalidraw" data-block-title="Excalidraw preview" data-source="![[assets/101-A-产品类别分析.excalidraw.md]]">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="native-head">
+            <div><span>Excalidraw preview</span><strong>101-A-产品类别分析.excalidraw.md</strong><small>从 vault 真实 Excalidraw 文件提取节点，用 RoughJS 做手绘风预览</small></div>
+            <div class="native-actions"><button data-action="open-native">Open original</button><button data-action="native-view" data-native-mode="preview">预览</button><button data-action="native-view" data-native-mode="source">源码</button><button data-action="copy-native-source">复制源码</button><button data-action="copy-native-image">复制图像</button><button data-action="ai-native" data-ai-label="补一个流程节点">AI 增量编辑</button></div>
+          </div>
+          <svg id="excalidraw-render" class="excalidraw-render native-preview" viewBox="0 0 940 420" role="img" aria-label="Rendered Excalidraw preview"></svg>
+          <pre class="native-source-pane" hidden><code id="excalidraw-source-code"></code></pre>
+          <div class="source-line"><code>![[assets/101-A-产品类别分析.excalidraw.md]]</code><span>原始 Excalidraw Markdown 文件保留在 vault 兼容格式。</span></div>
+        </section>
+        <section class="doc-block embed-block" data-block-kind="embed" data-block-title="嵌入笔记片段" data-source="![[信息管理#^pkm-cache]]">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <button class="issue-pill" data-ai-label="重定位锚点" data-reason="Issue：unresolved anchor，^pkm-cache 在目标笔记中已被改写">锚点未解析</button>
+          <div class="embed-shell">
+            <div class="embed-head"><span>Embed</span><code>![[信息管理#^pkm-cache]]</code></div>
+            <blockquote class="embed-excerpt">区分资料库、笔记和大脑——资料库负责量，笔记负责结构，大脑负责判断。嵌入保持目标笔记原文，不复制进本文件。</blockquote>
+          </div>
+        </section>
+        <section class="doc-block attachment-block" data-block-kind="attachment" data-block-title="PDF 附件" data-source="![[PKM-工具对比调研-2023.pdf]]">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="attachment-shell">
+            <span class="attachment-icon"><svg><use href="#i-file"></use></svg></span>
+            <div class="attachment-meta">
+              <strong>PKM-工具对比调研-2023.pdf</strong>
+              <small>PDF · 18 页 · vault 附件，原文件不复制、不转格式</small>
+            </div>
+            <div class="native-actions"><button data-action="open-native">Open PDF</button><button data-action="ai-native" data-ai-label="提取要点">提取要点</button><button data-action="comment">评论</button></div>
+          </div>
+        </section>
+
+        <section class="doc-block heading-block" data-block-kind="heading-2" data-block-title="章节标题" data-source="## 4. 原地编辑必须能回到 Markdown 事务">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <h2>4. 原地编辑必须能回到 Markdown 事务</h2>
+        </section>
+
+        <section class="doc-block paragraph-block" data-block-kind="paragraph" data-block-title="事务边界段落" data-source="真正危险的地方不是渲染，而是写回。Composer 可以让段落、图片、表格、公式和 native embed 都变得好编辑，但每一次修改都应该知道自己对应哪一段 Markdown、哪一个附件引用、哪一个 Canvas 节点或哪一段 Excalidraw JSON。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p>
+            真正危险的地方不是渲染，而是写回。Composer 可以让段落、图片、表格、公式和 native embed 都变得好编辑，但每一次修改都应该知道自己对应哪一段 Markdown、哪一个附件引用、哪一个 Canvas 节点或哪一段 Excalidraw JSON。
+          </p>
+        </section>
+
+        <section class="doc-block list-block" data-block-kind="list" data-block-title="写回事务列表" data-source="- 文本块写回普通 Markdown range。&#10;- 表格块写回 pipe table，并保留对齐与转置历史。&#10;- 图片块写回附件引用、尺寸、图注和非破坏性标注。&#10;- Native 块写回原文件，不把 Base / Canvas / Excalidraw 转成 Peak 私有格式。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <ul class="markdown-list">
+            <li><strong>文本块</strong>写回普通 Markdown range，保持标题、段落、列表、引用、callout 的源语法。</li>
+            <li><strong>表格块</strong>写回 pipe table，并保留对齐、排序、转置和公式预览的审阅历史。</li>
+            <li><strong>图片块</strong>写回附件引用、尺寸、图注和非破坏性标注，不直接覆盖原图。</li>
+            <li><strong>Native 块</strong>写回原文件，不把 Base / Canvas / Excalidraw 转成 Peak 私有格式。</li>
+          </ul>
+        </section>
+
+        <section class="doc-block callout-block" data-block-kind="callout" data-block-title="事务原则 callout" data-source="> [!tip] 写回原则&#10;> AI 永远先给候选 patch，用户接受后才进入 Obsidian undo stack。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="callout-shell">
+            <div class="callout-title"><svg><use href="#i-spark"></use></svg><span>写回原则</span></div>
+            <div class="callout-body">AI 永远先给候选 patch，用户接受后才进入 Obsidian undo stack。拒绝、关闭、重试都不应该污染原始文件。</div>
+          </div>
+        </section>
+
+        <section class="doc-block heading-block" data-block-kind="heading-2" data-block-title="章节标题" data-source="## 5. AI 建议应该贴在块旁边，而不是把用户拉到远处聊天">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <h2>5. AI 建议应该贴在块旁边，而不是把用户拉到远处聊天</h2>
+        </section>
+
+        <section class="doc-block paragraph-block" data-block-kind="paragraph" data-block-title="块旁智能建议说明" data-source="对写作者来说，最自然的 AI 不是一个万能聊天框，而是当前块的候选动作。标题需要改名、段落需要扩写、列表需要补项、表格需要总结、公式需要解释、图片需要重新生成或标注。用户把鼠标悬到哪里，AI 就应该把最可能有用的动作带到哪里。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p>
+            对写作者来说，最自然的 AI 不是一个万能聊天框，而是当前块的候选动作。标题需要改名、段落需要扩写、列表需要补项、表格需要总结、公式需要解释、图片需要重新生成或标注。用户把鼠标悬到哪里，AI 就应该把最可能有用的动作带到哪里。
+          </p>
+        </section>
+
+        <section class="doc-block checklist-block" data-block-kind="checklist" data-block-title="AI 块旁动作 checklist" data-source="- [x] 当前块 hover 后显示快捷 AI 动作。&#10;- [x] 点击动作后在块内展示流式候选建议。&#10;- [ ] 接受建议前展示 diff。&#10;- [ ] 将评论、AI 建议和 source range 交给 Ambient / Copilot。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="task-list">
+            <label><input type="checkbox" checked /><span tabindex="0">当前块 hover 后显示快捷 AI 动作，阅读态保持干净。</span></label>
+            <label><input type="checkbox" checked /><span tabindex="0">点击动作后在块内展示流式候选建议，而不是跳到远处聊天。</span></label>
+            <label><input type="checkbox" /><span tabindex="0">接受建议前展示 diff，并允许关闭、重试、撤销。</span></label>
+            <label><input type="checkbox" /><span tabindex="0">将评论、AI 建议和 source range 交给 Ambient / Copilot，形成后续上下文。</span></label>
+          </div>
+        </section>
+
+        <section class="doc-block quote-block" data-block-kind="quote" data-block-title="结尾引用" data-source="> Composer 的目标不是隐藏 Markdown，而是让 Markdown 在复杂对象面前也能保持可编辑、可理解、可回滚。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <blockquote>Composer 的目标不是隐藏 Markdown，而是让 Markdown 在复杂对象面前也能保持可编辑、可理解、可回滚。</blockquote>
+        </section>
+      </article>
+
+      <div class="selection-toolbar" id="selection-toolbar" hidden contenteditable="false" aria-label="选中文本操作">
+        <span class="selection-scope" id="selection-scope">已选中</span>
+        <button type="button" data-selection-action="comment">评论</button>
+        <button type="button" data-selection-action="polish">润色</button>
+        <button type="button" data-selection-action="shorten">精简</button>
+        <button type="button" data-selection-action="expand">扩写</button>
+        <button type="button" data-selection-action="ask"><svg><use href="#i-spark"></use></svg> 问 AI</button>
+      </div>
+
+      <section class="selection-review" id="selection-review" hidden contenteditable="false" aria-live="polite"></section>
+    </section>
+
+    <aside id="ambient-panel" data-intelligence-root></aside>
+  </div>
+
+  <footer class="sourcebar" id="sourcebar">
+    <button class="sourcebar-summary" type="button" data-sourcebar-toggle aria-expanded="false">
+      <span class="sourcebar-state"><svg><use href="#i-check"></use></svg> Markdown 已保存</span>
+      <span class="sourcebar-context" id="sourcebar-context">当前块 · 知识库结构笔记</span>
+      <svg class="sourcebar-chevron"><use href="#i-chevron-up"></use></svg>
+    </button>
+    <div class="sourcebar-detail" id="sourcebar-detail" hidden>
+      <code id="bottom-source">## 知识库结构</code>
+      <button data-panel-action="source">在块内查看</button>
+    </div>
+  </footer>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="../../../node_modules/roughjs/bundled/rough.js"></script>
+<script src="../../../node_modules/katex/dist/katex.min.js"></script>
+<script src="../../../node_modules/mermaid/dist/mermaid.min.js"></script>
+<script src="vendor/lazysizes/lazysizes.min.js"></script>
+<script src="vendor/lightgallery/lightgallery.min.js"></script>
+<script src="vendor/lightgallery/plugins/thumbnail/lg-thumbnail.min.js"></script>
+<script src="vendor/lightgallery/plugins/zoom/lg-zoom.min.js"></script>
+<script src="intelligence-panel.js"></script>
+<script src="mock.js"></script>
+</body>
+</html>
