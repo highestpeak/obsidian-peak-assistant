@@ -150,6 +150,9 @@
               <tr><td><strong>Ambient Canonical Surface（Track C）</strong></td><td><code>DEFAULT_AMBIENT_PUSH_SETTINGS</code> 三个 attention-grabbing 开关翻默认关（<code>enableMorningBriefing</code> / <code>showStatusBar</code> / <code>enableSerendipityGutter</code>）；新增 <code>peak-related-notes-view</code> 右侧 dockable 面板 + <code>Open Related Notes panel</code> 命令；<code>RelatedNotesPanel</code> 读 <code>useAmbientPushStore.items</code> + 15s 轮询 <code>SessionContextService.workingTheme</code>；~110 行 token-driven CSS。data layer（<code>AmbientPushRuntime</code>/<code>WorkingThemeInferrer</code>）不动。</td><td>2026-07-04 · commit <code>9dbca284</code> + <code>81cb46f9</code></td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Recoverable Context Compact（Track D）</strong></td><td><code>src/core/context/compactSummary.ts</code> 定义 <code>CompactAnchor</code>（6 kind: message/file/resource/chunk/slot/block）+ <code>CompactSummary</code>；<code>BudgetGovernor.fit</code> Phase-2 drop 从静默 <code>data:null</code> 改为发 <code>CompactSummary</code>；<code>ContextManager.compactIfNeeded</code> 也发；<code>ContextCompactedEvent</code> 加载荷；<code>refetchCompactAnchor</code> 按 kind 分派的 refetch dispatcher 就位；stage (c) LLM 摘要可选注入（`summarizer?: CompactSummarizer`，失败自动 fallback stage(b) 占位符）。</td><td>2026-07-04 · commit <code>e63d8a51</code> + <code>b291c497</code> + <code>9dc2aa54</code></td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>AI Query Parser（Hyper Search NL → syntax）</strong></td><td>opt-in <code>search.useAiQueryParser</code>（默认 false）；启用后 <code>SearchClient.search</code> 走 fast-role LLM 编译成 Hyper Search 语法（<code>parseQuery</code> 直接吃），Zod schema + 最多 2 次重试 + AbortSignal + fenced JSON 容错。任何失败 fallback 到原文，search flow 永不阻断。KnowledgeIndexTab 加 Switch。</td><td>2026-07-04 · commit <code>91ddaf32</code> + <code>cec06ff3</code> + <code>1d6225bf</code></td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Vault Search Tree view</strong></td><td>List / Graph 之外补 Tree view — 结果按 vault 目录树呈现，Compact（Obsidian-native 24 px 单行，默认）+ Detailed（3 行含 heading anchor + 相对日期 + snippet）两档密度切换。folder click → reveal in File Explorer；file-only 键盘 nav（↑↓ 跳过 folder）；alpha-sort within folder；Detailed heading anchor 走 best-effort 反向找最近 <code>#/##/###</code>，找不到显示 <code>body only</code>。Inspector 面板 title 下方复用 List view 的 snippet 渲染。</td><td>2026-07-08 · Phase B</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>AI Query Rewrite / Suggest</strong></td><td>Vault Search 里紫色 <code>✦ Suggest</code> 按钮 → 收集本次 modal 的行为轨迹（modal.opened / typed / switchedView / focusedFile / expandedFolder / hoveredFile / pinnedHub / openedFile 等 16 个 kind，store 订阅 + 显式 push 混合 · ring buffer 30 条）+ 静态 snapshot（当前 query / active file / recent queries / known top folders）→ Fast Lookup tier 绑定的 LLM（无 hardcoded 模型）→ 输出 3-5 个结构化 candidate（含 <code>folder:</code> / <code>tag:</code> / <code>after:</code> 语法 + grounding reason）→ 弹窗选一张 auto-fill 到输入框。含：AbortController 全链路取消、rule-based fallback（LLM 挂时 3 条兜底：active-folder / browsed-folder / recent-query）、cold-open 空 context 引导页、candidate 选择独立 emit 用于反馈闭环、<code>UsageFeature.query_rewrite</code> 独立打点。spec + mockup 在 <a href="research/2026-07-08-ai-query-rewrite/README.md">docs/research/2026-07-08-ai-query-rewrite/</a>。</td><td>2026-07-08 · Phase B</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Quick Search UI Polish（W1–W8 评估批次）</strong></td><td>2026-07-09 全流程 UI/UX 评估收敛 8 项表达层修正：<strong>W1</strong> 分数从"raw × 100"改相对归一（消除 148%）；<strong>W2</strong> Graph isolated 节点走 grid（避免文字堆叠，前置代码 already 在树里）；<strong>W3.1</strong> Inspector Connected 去 Check 图标；<strong>W3.2</strong> UNLINKED 徽章降噪（<em>owner 决策</em>：拒绝原方案 `+ Link` 动作按钮 — 从搜索 UI 直接改用户 vault 内容风险不值，只降视觉）；<strong>W3.3</strong> `↔` 双向合并 + SEM/CO-CITE/unlinked tooltip；<strong>W4</strong> snippet 高亮 cap=4（`SEARCH_SNIPPET_HIGHLIGHT_CAP`），标题不 cap；<strong>W5</strong> Tree 文件夹计数移到名后、文件行加三档相对强度点（`intensityTier` 拆出可测）；<strong>W6.1</strong> Graph 5 个 preset 名保留不动；<strong>W6.2</strong> Semantic 开关 tooltip 明说"pre-indexed embeddings, no AI credits, no network"（代码核对 `mobius_edge` 本地读）；<strong>W7</strong> List 密度切换（store 字段 <code>treeDensity → resultDensity</code>；toolbar Toggle 同时挂 List/Tree；默认从 compact 翻成 detailed 避免 List 用户被"没了 snippet"惊到）；<strong>W8</strong> `Suggest → Refine`、`AI Analysis → AI Search`（含 `templates/config/settings.json` 4 处 prose 同步）。新纯函数 3 个（<code>scoreNormalize</code> / <code>mergeConnectedLinks</code> / <code>intensityTier</code>），新单测 4 份共 31 case，197/197 test 全绿。</td><td>2026-07-09 · <a href="superpowers/specs/2026-07-09-quick-search-ui-polish.md">UI Polish spec</a></td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Debug Trace Infrastructure</strong></td><td>跨 Chat / Search / Agent Harness / Ambient Push / Analyze 的统一 debug span 基础设施：<code>DebugTraceRecorder</code>（in-memory + 环形缓冲 + off-mode 零分配）+ <code>DebugTraceFormatter</code>（Markdown + JSON appendix + FULL LOCAL banner + secret redaction）+ 5 个 surface adapter + Advanced tab UI（Off/Redacted/Full-local × retention × copy format）+ 4 处 UI Copy 按钮 + palette 命令 <code>Peak: Copy last debug trace</code>。Search receipt 覆盖 query.rewrite / per-retriever recall / RRF per-source contribution / rerank provider+model / boost delta / topK cutoff / exclude；Chat receipt 覆盖 context.assemble per-slot / budget drop / compact summaries / token usage / finishReason；Ambient receipt 覆盖 trigger / candidates with source signal / dedup context / chosen or skip reason；Analyze receipt 覆盖 plan / per-section model.call / skip fallback / artifact.write。默认 redacted，raw 模式仍过 7-pattern secret scrubber。spec 在 <a href="superpowers/specs/debug-trace-infrastructure.md">docs/superpowers/specs/debug-trace-infrastructure.md</a>。</td><td>2026-07-06 · session-in-progress</td><td><span class="pill green">shipped</span></td></tr>
             </tbody>
           </table>
@@ -232,6 +235,12 @@
             </thead>
             <tbody>
               <tr>
+                <td><strong>Chat Studio 完整生产实现</strong></td>
+                <td>把已确认的三栏、单一 Composer、消息/产物、Project home、Outline/Resources、模型/Assistant 与持久状态从交互 mock 接到生产 runtime；不复制 Quick Search，不保留假控件。</td>
+                <td><a href="superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md">Canonical implementation spec</a></td>
+                <td><span class="pill gold">decided · implementation-ready</span></td>
+              </tr>
+              <tr>
                 <td><strong>T12 Command Gateway 落地接线</strong></td>
                 <td>Gateway 类 + 测试已 shipped（见 Done 段）；剩余：<code>main.ts</code> 里注册的 Obsidian command 换成 <code>() =&gt; gateway.dispatch(id)</code>，涉及行为变更需真机验证。</td>
                 <td><a href="superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">Capstone spec</a></td>
@@ -242,6 +251,12 @@
                 <td>从 Related Notes 升级为 Current Work State / Session Thought Trace（产品评审已过）。</td>
                 <td><a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">Product/Technical Review</a></td>
                 <td><span class="pill gold">decided</span></td>
+              </tr>
+              <tr>
+                <td><strong>Composer Intelligence Surface + Block AI Contract</strong></td>
+                <td>把 2026-07-15 静态 mock 的交互契约落到生产：按 Markdown / Base / Canvas / Excalidraw 类型注册固定操作；Copilot Review 只按证据产生建议；列表、表格、公式采用上下对比；图片暴露真实生成等待；Mermaid/native object 逐 patch 重渲染；Copilot / Ambient / History 三个同级 dock 视图；补齐跨 block 选区、候选历史、source-range transaction、keyboard/a11y 与长文性能验证。Markdown/native file 继续是唯一 source of truth。</td>
+                <td><a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Block AI contract</a><br><a href="superpowers/specs/2026-07-09-peak-composer-editing-view.md">Composer design</a><br><a href="gstack/peak-composer-editing-view-2026-07-09/index.html">Interactive mock</a></td>
+                <td><span class="pill gold">decided · mock/spec ready</span></td>
               </tr>
               <tr>
                 <td><strong>Copilot Command Center Redesign</strong></td>
@@ -260,6 +275,12 @@
                 <td>F.A 只把 Cloud SDK <em>backend</em> 选项拿掉了；<code>VaultSearchAgentSDK</code> 类还在用 SDK 的 <code>query()</code> 编排（SDK-as-library）。这份 spec 拆成 4 phase：tool 适配 → loop shell → runAgentLoop stopWhen hook → 重命名清理。风险在 HITL 语义（<code>vault_submit_plan</code> 靠 SDK result 消息终止 loop）+ 无 end-to-end 回归测试；验收 gate 是新增 <code>test/vault-search-harness.test.ts</code> + 三种 query shape 人工 QA。</td>
                 <td><a href="superpowers/specs/2026-07-04-vault-search-harness-native-migration.md">Migration spec</a></td>
                 <td><span class="pill gold">planned (spec only)</span></td>
+              </tr>
+              <tr>
+                <td><strong>Quick Search UI Polish 批次</strong></td>
+                <td>2026-07-09 UI/UX 评估收敛的 8 项表达层修正（W1–W8）：分数相对归一、isolated grid 验证、Inspector 徽章重构 + <code>+ Link</code> 动作、摘要高亮上限、Tree 密度、Graph 命名 + Semantic 说明、List 密度切换、AI 入口改名（Suggest→Refine、AI Analysis→AI Search）。</td>
+                <td><a href="superpowers/specs/2026-07-09-quick-search-ui-polish.md">UI Polish spec</a></td>
+                <td><span class="pill gold">decided</span></td>
               </tr>
               <!-- Search Highlight Vault-first 源改造 2026-07-07 shipped — see #done -->
 
@@ -351,6 +372,12 @@
                 <td>决定<strong>放弃通用 orchestration / SaaS marketplace / always-on agent</strong>；只做 MCP server 让别的 workflow tool 反向调 Peak。</td>
                 <td><a href="research/2026-07-03-n8n-multi-agent-marketplace/README.md">研究报告</a></td>
               </tr>
+              <tr>
+                <td>2026-07-09</td>
+                <td><strong>AI Surfaces UI/UX Review</strong>（AI Search / Vault Intelligence / Document Copilot）</td>
+                <td>三份带 mockup 的审阅报告，问题全部落到 file:line。共性病根：假状态/死按钮（写死 chip、no-op 点击、假链接）、词族漂移（Research/review/refresh）、recommended 通胀。P0：模板变量泄漏、Vault Intelligence 嵌入点半接线、"no past review" 与真实历史矛盾、"= Structure" 改名速记进 UI。</td>
+                <td><a href="research/2026-07-09-ai-surfaces-ui-review/README.md">研究报告</a>（01/02/03 三篇 HTML）</td>
+              </tr>
             </tbody>
           </table>
         </section>
@@ -376,7 +403,9 @@
               <tr><td><strong>Sync 外部笔记源</strong></td><td>flomo / Apple Notes / Calendar / ChatGPT 历史 / Gemini / Claude 历史</td><td>#53 / #23</td></tr>
               <tr><td><strong>IFTTT / Workflow agent</strong></td><td>规则触发的工作流 agent 模式</td><td>#48</td></tr>
               <tr><td><strong>Message branching</strong></td><td>从任意消息点 fork 会话</td><td>#14</td></tr>
+              <tr><td><strong>Hub 可读标签</strong></td><td>Hub 目前以机器 ID（<code>Hub-000031ae70fe</code>）出现在 Graph 节点 / Inspector，需生成可读主题名（constituents 高频标题词或一次廉价 LLM 命名），ID 降级为 tooltip</td><td>2026-07-09 UI 评估</td></tr>
               <tr><td><strong>Work focus mode + project templates</strong></td><td>项目模板 + focus 模式</td><td>#57</td></tr>
+              <tr><td><strong>Collection notes + Canvas 复用</strong></td><td>"保存一组相关笔记"走 vault-native MOC collection note，空间排布复用 Obsidian Canvas，不自建 graph editor；取代 File Atlas 里砍掉的 graph builder。讨论存档 + 升级前调研问题见文档。</td><td><a href="research/2026-07-09-collection-notes-canvas-reuse/README.md">2026-07-09 · collection-notes-canvas-reuse</a></td></tr>
             </tbody>
           </table>
           <p class="read-note"><b>提升规则：</b>Backlog → 调研候选需要一份 <code>docs/research/YYYY-MM-DD-slug/</code> 报告；调研候选 → 已决策需要一份 <code>docs/superpowers/specs/</code> spec；已决策 → shipped 需要 progress.md 里对应 Phase 完成条目。</p>

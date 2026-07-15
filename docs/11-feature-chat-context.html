@@ -95,6 +95,35 @@
     .budget-item, .bad-case, .rich-item { padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
     .budget-item strong, .bad-case strong, .rich-item strong { display: block; margin-bottom: 5px; color: var(--ink); }
     .budget-item span, .bad-case span, .rich-item span { display: block; color: var(--muted); font-size: 14px; line-height: 1.58; }
+    .studio-map { display: grid; grid-template-columns: minmax(0, 0.92fr) 28px minmax(0, 1.45fr) 28px minmax(0, 0.92fr); align-items: stretch; min-width: 790px; }
+    .studio-pane { padding: 16px; border: 1px solid var(--line); background: var(--paper); }
+    .studio-pane:first-child { border-radius: 8px 0 0 8px; }
+    .studio-pane:last-child { border-radius: 0 8px 8px 0; }
+    .studio-pane--center { background: #fbfcfa; }
+    .studio-pane__eyebrow { display: block; margin-bottom: 7px; color: var(--green); font-size: 11px; font-weight: 820; letter-spacing: .06em; text-transform: uppercase; }
+    .studio-pane strong { display: block; color: var(--ink); font-size: 16px; }
+    .studio-pane p { margin-top: 7px; color: var(--muted); font-size: 13px; line-height: 1.52; }
+    .studio-pane ul { margin-top: 10px; padding-left: 17px; font-size: 13px; line-height: 1.5; }
+    .studio-arrow { display: grid; place-items: center; color: var(--green); font-size: 19px; background: var(--soft-green); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .studio-state-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+    .studio-state { min-height: 112px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .studio-state strong { display: block; color: var(--ink); font-size: 13px; }
+    .studio-state span { display: block; margin-top: 5px; color: var(--muted); font-size: 13px; line-height: 1.48; }
+    .studio-flow { margin-top: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow: hidden; }
+    .studio-flow__row { display: grid; grid-template-columns: 140px 1fr; gap: 16px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+    .studio-flow__row:last-child { border-bottom: 0; }
+    .studio-flow__label { color: var(--green); font-size: 12px; font-weight: 820; letter-spacing: .04em; text-transform: uppercase; }
+    .studio-flow__steps { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .studio-flow__step { padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fbfcfa; color: var(--ink); font-size: 13px; line-height: 1.38; }
+    .studio-flow__arrow { color: var(--muted); font-size: 14px; }
+    .truth-list { margin-top: 18px; display: grid; gap: 10px; }
+    .truth-item { display: grid; grid-template-columns: 174px 1fr; gap: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .truth-item strong { color: var(--ink); font-size: 14px; }
+    .truth-item span { color: var(--muted); font-size: 14px; line-height: 1.56; }
+    /* The detailed Studio map lives in its own final-state document. Keep this
+       Context page as the small hand-off point instead of maintaining two long
+       UI manuals side by side. */
+    section#studio-map, section#studio-flow, section#studio-friction { display: none; }
     .link-list { margin-top: 16px; }
     table { width: 100%; margin-top: 22px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04); }
     th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
@@ -111,7 +140,8 @@
     @media (max-width: 980px) {
       .grid { grid-template-columns: 1fr; }
       .feature-summary { grid-template-columns: 1fr; }
-      .behavior-row, .slot-row { grid-template-columns: 1fr; gap: 6px; }
+      .behavior-row, .slot-row, .truth-item, .studio-flow__row { grid-template-columns: 1fr; gap: 6px; }
+      .studio-state-grid { grid-template-columns: 1fr; }
     }
   </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
   <link rel="stylesheet" href="assets/tables-density.css">
@@ -125,7 +155,7 @@
       <p class="subtitle">面向用户，这份文档解释 Peak Assistant 的 Chat 为什么能带着当前会话、附件、focus folder 和能力开关一起回答。面向维护者，它把一次请求如何进入 context pipeline、哪些 slot 真正启用、预算如何压缩讲清楚。</p>
       <div class="meta">
         <span>Reference doc</span>
-        <span>Approx. length: 约 9.9k 混合字符</span>
+        <span>Approx. length: 约 10k 混合字符</span>
         <span>Reading time: 22-26 分钟</span>
         <span>Primary viewport: desktop/editor 1440px</span>
       </div>
@@ -146,6 +176,7 @@
         <div class="nav-group">
           <span class="nav-group-title">用户视角</span>
           <a href="#entry">Chat 由哪些能力组成</a>
+          <a href="#studio-ui">Chat Studio UI/UX 详图</a>
           <a href="#user-behavior">用户能感知的行为</a>
         </div>
         <div class="nav-group">
@@ -163,7 +194,7 @@
           <a href="#freshness">更新触发</a>
           <a href="#evidence">代码证据</a>
         </div>
-        <div class="nav-note">这份文档解释 Chat 功能；共享 Context Pipeline 后续会抽成 22。</div>
+        <div class="nav-note">三栏 UI/UX 的详细元素图、交互和体验边界在独立文档；本页只保留 Context 主线。共享 Context Pipeline 后续会抽成 22。</div>
       </nav>
 
       <div class="content">
@@ -248,6 +279,169 @@
           <div class="claim">
             <strong>使用时的判断</strong>
             继续追问就留在同一个 conversation；需要材料就附文件或明确引用；需要查库或查网页就打开对应能力；需要计划就直接说“先给计划”。不要把这些都理解成同级入口。
+          </div>
+        </section>
+
+        <section id="studio-ui">
+          <h2>Chat Studio UI/UX：独立阅读</h2>
+          <p class="lead">Chat Context 解释“回答前模型拿到了什么”；Chat Studio UI/UX 解释“用户怎样在左、中、右三栏里开始、继续和回看一段工作”。两者有关，但不应混成一份又长又难读的说明。</p>
+          <div class="feature-summary">
+            <div class="feature-item"><strong>左栏</strong><span>项目、项目内会话、独立会话、搜索、刷新、收起与右键管理；以及它如何改变当前选择。</span></div>
+            <div class="feature-item"><strong>中栏</strong><span>Home / 项目页 / 列表 / 当前会话的状态切换，消息、流式运行、附件、Composer 和消息级操作。</span></div>
+            <div class="feature-item"><strong>右栏</strong><span>Overview、Artifacts、topic 分组、局部搜索、回跳，以及“索引”与“产物库”的真实边界。</span></div>
+          </div>
+          <div class="claim">
+            <strong>继续阅读</strong>
+            <a href="11-feature-chat-studio-ui-ux.html">当前 Chat Studio UI/UX 详细功能图</a>解释生产行为；<a href="superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md">Chat Studio 权威实施规格</a>定义完整目标、数据契约、DAG 与验收；<a href="gstack/chat-studio-interactive-2026-07-13/discussion-synthesis.md">UI/UX 讨论总图</a>只保留 owner 反馈和理由。实现目标只以权威规格为准。
+          </div>
+        </section>
+
+        <section id="studio-map">
+          <h2>Chat Studio：当前三栏不是三个子产品</h2>
+          <p class="lead">Chat Studio 是一个单独的三栏 React 工作面，不是 Obsidian 左、中、右三个独立 leaf 的并排版。它把同一份 <code>chatDataStore</code> 和 <code>chatViewStore</code> 同时交给三栏：左栏改变选中对象，中栏读取并编辑这段会话，右栏从中栏的消息重新推导索引。</p>
+          <div class="claim">
+            <strong>正确的心智模型</strong>
+            左栏管理“我在什么项目 / 哪段会话里”；中栏管理“现在该看哪一种 Chat 页面，以及怎么继续工作”；右栏管理“当前这段会话里有哪些可回看的线索”。它们不是三个独立页面，也没有三份会话数据。
+          </div>
+
+          <div class="figure">
+            <div class="figure-title">
+              <strong>图 1 · Studio 的三栏责任和共享状态</strong>
+              <span>单 leaf · 两个共享 store</span>
+            </div>
+            <div class="studio-map" role="img" aria-label="Chat Studio 左中右三栏功能地图">
+              <div class="studio-pane">
+                <span class="studio-pane__eyebrow">左 · navigation</span>
+                <strong>项目和会话</strong>
+                <p>选择工作范围，发出 selection change。</p>
+                <ul>
+                  <li>项目树与项目内会话</li>
+                  <li>独立会话列表</li>
+                  <li>搜索、刷新、收起、右键管理</li>
+                </ul>
+              </div>
+              <div class="studio-arrow" aria-hidden>→</div>
+              <div class="studio-pane studio-pane--center">
+                <span class="studio-pane__eyebrow">中 · working surface</span>
+                <strong>完整 ChatView 路由</strong>
+                <p>不是只显示聊天记录；它根据 <code>viewMode</code> 选择 Home、项目页、列表或当前会话。</p>
+                <ul>
+                  <li>消息、流式输出、工具 / reasoning</li>
+                  <li>附件、消息操作、建议下一步</li>
+                  <li>Composer 与这一次运行的上下文开关</li>
+                </ul>
+              </div>
+              <div class="studio-arrow" aria-hidden>↔</div>
+              <div class="studio-pane">
+                <span class="studio-pane__eyebrow">右 · recall</span>
+                <strong>当前会话索引</strong>
+                <p>只读取当前消息数组，点击后滚回中栏对应消息。</p>
+                <ul>
+                  <li>按 topic 归组的消息时间线</li>
+                  <li>资源与代码块推导的 artifacts</li>
+                  <li>当前会话内的局部搜索</li>
+                </ul>
+              </div>
+            </div>
+            <p class="read-note"><b>尺寸与生命周期：</b>初始左栏 280px（可拖到 200–500px），右栏 320px（可拖到 240–480px），中栏占余下空间。拖拽宽度只存在这次挂载的本地 state，没有保存为用户偏好。打开 Studio 时，应用会复用或创建中心 leaf、卸下旧的项目栏和会话索引 leaf，并尝试把 Studio 移到独立窗口；不支持 popout 时才留在当前 tab。</p>
+          </div>
+
+          <h3>左栏：项目树和会话历史放在同一个入口</h3>
+          <div class="feature-summary">
+            <div class="feature-item">
+              <strong>挂载时的准备</strong>
+              <span>加载项目与全局会话，按创建时间倒序放进共享 store；没有 active conversation 时，会把最新一段设为当前选择。这个选择会决定中栏和右栏第一次看到什么。</span>
+            </div>
+            <div class="feature-item">
+              <strong>顶端操作</strong>
+              <span>Studio 传入的是非 compact 版本，因此当前会显示产品标识、Home、刷新、收起全部项目，以及单独一行“Find chat or project”搜索。搜索只在这个栏内过滤项目名与会话名，不是全局 Vault 搜索。</span>
+            </div>
+            <div class="feature-item">
+              <strong>项目路径</strong>
+              <span>展开项目会加载该项目的会话；项目行可打开项目概览，项目内有“New conversation”和“See more”。项目与项目内会话都有重命名 / 删除等右键管理入口。</span>
+            </div>
+            <div class="feature-item">
+              <strong>独立会话路径</strong>
+              <span>不属于项目的会话和项目内会话都能成为 active conversation。点选会话后，导航层会切到对应会话模式；改名、打开源 Markdown、删除等动作在会话菜单里完成。</span>
+            </div>
+          </div>
+
+          <h3>中栏：ChatView 的六种阅读状态</h3>
+          <p class="prose">Studio 的中心不是“永远显示聊天”。它复用完整的 <code>ChatViewComponent</code> 路由，所以同一块中心区域会替换成以下状态；这决定了为什么用户在 Studio 里有时会感觉自己从聊天跳进了一个首页或列表。</p>
+          <div class="studio-state-grid">
+            <div class="studio-state"><strong>Home</strong><span>继续最近会话、总结笔记、研究主题、最近会话和项目入口。</span></div>
+            <div class="studio-state"><strong>All projects / conversations</strong><span>完整项目或会话列表，作为浏览与挑选页面。</span></div>
+            <div class="studio-state"><strong>Project overview</strong><span>查看一个项目的范围，并从项目上下文继续工作。</span></div>
+            <div class="studio-state"><strong>Project conversations</strong><span>当项目内会话超出侧栏的有限展示时，展开为中心列表。</span></div>
+            <div class="studio-state"><strong>Pending conversation</strong><span>“Start a new conversation”提示和居中的 Composer；不再先让用户挑 Chat / Agent / Plan。</span></div>
+            <div class="studio-state"><strong>Active conversation</strong><span>标题、可滚动消息、转项目建议和底部 Composer；这是通常被理解为“聊天页”的状态。</span></div>
+          </div>
+
+          <h3>中栏当前会话：一条消息链上已经有的能力</h3>
+          <div class="behavior-list">
+            <div class="behavior-row"><strong>Header</strong><span>展示会话标题；有源 Markdown 时可打开源文件；可请求重生成会话标题。删除没有放在 header，而是通过左栏会话的右键菜单处理。</span></div>
+            <div class="behavior-row"><strong>消息与滚动</strong><span>切换会话时把 active conversation 的 messages 同步到消息 store，进入时滚到底；流式文本、reasoning 和工具调用会驱动自动滚动。消息按日期插入分隔线。</span></div>
+            <div class="behavior-row"><strong>用户消息</strong><span>支持 Markdown 渲染、时间信息、资源附件簇和发送状态。附件不是独立右栏文件库，而是挂在产生它的消息上。</span></div>
+            <div class="behavior-row"><strong>助手消息</strong><span>支持富 Markdown / 代码、流式输出、reasoning 折叠内容、工具调用摘要，以及模型、工具数、token 数和耗时等元信息。最后一条正常回答可带 capability suggestion 和建议追问。</span></div>
+            <div class="behavior-row"><strong>消息级操作</strong><span>复制、重新生成、收藏、从此消息分支；还能复制 trace。More 菜单可查看 raw JSON、复制 Markdown / JSON、保存到 Vault、在消息下方直接追问。保存默认写入 <code>Peak Chat Saves</code>（可由文案配置覆盖）。</span></div>
+            <div class="behavior-row"><strong>转项目建议</strong><span>当一段独立对话具有持续工作的形态时，中栏会给出把它归入项目的建议；这是把临时聊天转成有组织工作空间的桥。</span></div>
+          </div>
+
+          <h3>Composer：输入、附件和运行配置</h3>
+          <div class="feature-summary">
+            <div class="feature-item"><strong>输入与提交</strong><span>文字输入和附件由 PromptInput 统一管理。发送开始时清空本轮文字和附件；有文字才出现发送按钮，流式时发送位变为停止按钮，并显示 “Planning and writing…” 状态。</span></div>
+            <div class="feature-item"><strong>附件入口</strong><span>底部左侧的 <code>+</code> 打开文件选择器。没有第二个纸夹、第二个上下文按钮或重复的搜索开关；它们被有意收进一个入口或 Run chip。</span></div>
+            <div class="feature-item"><strong>Run chip</strong><span>显示当前模型（或 Auto）与当前 context tag 数。弹层包含 role、模型路由摘要，以及 Vault Search / Web Search 两个实际可切换的上下文开关。</span></div>
+            <div class="feature-item"><strong>可见但不应误读的元素</strong><span>role 目前只在 Composer 本地显示，尚未传入消息 dispatch；弹层里的模型项也是当前路由摘要，不是模型选择器；麦克风按钮始终禁用。这三者不能被写成“已经影响本轮回答”的能力。</span></div>
+          </div>
+
+          <h3>右栏：会话检索与产物回跳</h3>
+          <div class="feature-summary">
+            <div class="feature-item"><strong>Overview</strong><span>按相邻且同名的 <code>message.topic</code> 把消息折成可开合 topic；没有 topic 的消息保留在时间线。topic 内把消息和同一位置的 artifact 交错展示，点任一行都会平滑滚到中栏原消息。</span></div>
+            <div class="feature-item"><strong>Artifacts</strong><span>按 Images、Diagrams、Files、Code 分组。它从消息的 <code>resources</code> 和 Markdown fence 中即时推导；这是一份会话索引，不是另建的持久产物仓库。</span></div>
+            <div class="feature-item"><strong>局部搜索</strong><span>搜索范围只是当前内存里的时间线或 artifact 名：Overview 匹配 topic / 消息正文，Artifacts 匹配名称。它不搜索其它会话，也不搜索整个 Vault。</span></div>
+            <div class="feature-item"><strong>信息边界</strong><span>artifact 行的点击行为是“定位产生它的消息”，而不是直接打开、预览或管理该文件。代码块也会被列为 artifact，因此右栏的“产物”含义比用户直觉更宽。</span></div>
+          </div>
+        </section>
+
+        <section id="studio-flow">
+          <h2>三栏怎样完成一轮工作</h2>
+          <p class="lead">下面的流程写的是当前实现的真实联动，不是理想化的产品流程。每一步都能解释一个可见变化来自哪里。</p>
+          <div class="studio-flow" aria-label="Chat Studio 当前交互流程">
+            <div class="studio-flow__row">
+              <span class="studio-flow__label">打开 Studio</span>
+              <div class="studio-flow__steps"><span class="studio-flow__step">Command: Open Chat Studio</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">复用现有 Chat leaf 或创建 tab</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">卸下旧项目栏 / 旧会话索引 leaf</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">尝试移入独立窗口；失败则留在 tab</span></div>
+            </div>
+            <div class="studio-flow__row">
+              <span class="studio-flow__label">切换工作对象</span>
+              <div class="studio-flow__steps"><span class="studio-flow__step">左栏点击项目或会话</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">更新 active project / conversation 并发出 selection event</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">中栏读取会话、选择 viewMode、同步 messages</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">右栏从新的 messages 重建 timeline 与 artifacts</span></div>
+            </div>
+            <div class="studio-flow__row">
+              <span class="studio-flow__label">继续一段对话</span>
+              <div class="studio-flow__steps"><span class="studio-flow__step">输入文字 / 加附件</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">Run chip 选择实际启用的 Vault / Web context</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">submit 把本轮交给聊天流</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">中栏显示 reasoning、工具和文本流</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">保存消息后右栏可回跳</span></div>
+            </div>
+            <div class="studio-flow__row">
+              <span class="studio-flow__label">把结果带走</span>
+              <div class="studio-flow__steps"><span class="studio-flow__step">消息级 Copy / Regenerate / Star / Branch</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">More 中可保存为 Markdown 到 Vault</span><span class="studio-flow__arrow">→</span><span class="studio-flow__step">建议追问直接复用同一会话 submit</span></div>
+            </div>
+          </div>
+          <p class="read-note"><b>关键边界：</b>右栏不向中栏写入新的 Chat 内容；它只有“定位”能力。左栏不渲染会话正文；它只决定当前工作对象。中栏才是请求、流式、持久化和最终用户操作的主面。</p>
+        </section>
+
+        <section id="studio-friction">
+          <h2>当前 UX 负担：为什么三栏仍会显得复杂</h2>
+          <p class="lead">这不是下一版的设计方案，而是当前 UI 里已经存在、会影响用户判断的事实清单。后续改中栏时，应先以这些边界为准，不要只替换颜色、圆角或图标。</p>
+          <div class="truth-list">
+            <div class="truth-item"><strong>品牌层重复</strong><span>Studio 本身已经是独立 Chat 工作面，但左栏使用非 compact 的 ProjectList，因此仍显示 “Peak Assistant” 标识、图标和工具栏。用户在进入一段会话之前先看到产品身份与导航控制，而不是当前工作对象。</span></div>
+            <div class="truth-item"><strong>两种导航语义混在一栏</strong><span>Projects 是长期工作容器，Conversations 是一次次对话；它们共用搜索、排序与选中态，却没有显式说明“当前在按项目浏览”还是“在找一段独立历史”。项目展开又会引入第二层会话列表。</span></div>
+            <div class="truth-item"><strong>中栏不是单一 chat thread</strong><span>同一块中心区域在 Home、项目概览、列表、新会话、当前对话间切换。功能上完整，但阅读任务会突然变化：用户以为自己在“聊天”，实际有时进入的是浏览器、项目页或空状态。</span></div>
+            <div class="truth-item"><strong>运行控件有真有假</strong><span>Vault / Web Search 是真实开关；role 只改变本地视觉选择，模型项只显示当前路由，麦克风禁用。把它们同时放在 Run chip 会让用户难以判断哪些动作会改变这次请求。</span></div>
+            <div class="truth-item"><strong>右栏“Artifacts”并不等于文件成果</strong><span>它会把附件、图片、图、文件和代码 fence 全部列出，点击只回跳到消息。用户可能以为这里是可管理的输出库，实际它是“从消息中抽出的导航索引”。</span></div>
+            <div class="truth-item"><strong>空间偏好不持久</strong><span>左右栏宽度可拖，但关闭 / 重新挂载后回到默认值；Studio popout 也会因平台能力不同而回退。这意味着布局本身目前不是用户可长期定制的工作环境。</span></div>
+          </div>
+          <div class="claim">
+            <strong>后续 UI 设计应先回答的一个问题</strong>
+            Studio 的主对象到底是“会话线程”、还是“项目中的 AI 工作台”？现在两种模型同时存在：左栏偏项目容器，右栏偏线程回忆，中栏则在两者之间切换。只有先确定中栏服务哪一种主对象，三栏才能真正收敛。
           </div>
         </section>
 
@@ -552,6 +746,26 @@ flowchart LR
                 <td><code data-copy="templates/prompts/conversation-system.md">conversation-system.md</code></td>
                 <td>富生成输出约定。</td>
                 <td>确认 Mermaid、Bases 等结构化输出来自系统约定。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/ui/view/chat-studio-view/ChatStudioView.tsx">ChatStudioView.tsx</code></td>
+                <td>三栏容器、默认 / 最小 / 最大宽度、拖拽行为、三栏各自挂载的 React 组件。</td>
+                <td>确认 Studio 是单 leaf 三栏工作面，宽度当前不持久化。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/ui/view/project-list-view/ProjectListView.tsx">ProjectListView.tsx</code>、<code data-copy="src/ui/view/project-list-view/ProjectsSection.tsx">ProjectsSection.tsx</code></td>
+                <td>左栏数据 hydration、搜索、项目展开、项目内新会话、右键管理。</td>
+                <td>确认左栏同时容纳项目和会话，并驱动 active selection。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/ui/view/chat-view/view-Messages.tsx">view-Messages.tsx</code>、<code data-copy="src/ui/view/chat-view/components/Composer.tsx">Composer.tsx</code></td>
+                <td>会话 shell、Home / pending / active 状态、自动滚动、输入、附件和 Run chip。</td>
+                <td>确认中栏会在多个阅读状态之间切换，并区分真实开关与本地显示控件。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/ui/view/chat-view/components/ConversationIndex.tsx">ConversationIndex.tsx</code></td>
+                <td>Overview / Artifacts 两个 tab、topic timeline、artifact 推导、会话内搜索与回跳。</td>
+                <td>确认右栏是当前 messages 的导航投影，不是独立产物库。</td>
               </tr>
             </tbody>
           </table>

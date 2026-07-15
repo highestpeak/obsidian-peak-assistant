@@ -2141,3 +2141,194 @@ V1 landing（07-07）后一天真机试用出的三条根子问题：
 - Edge hover tooltip 需要 custom cytoscape edge component（数据在 `edge.data.kind`）
 - Hub anchor 显示 curator LLM 名字而非 raw `Hub-000031ae70fe`——是 hub curator 侧问题不是 viewer 侧
 - Multi-select / lasso 导出子集到 Mermaid
+
+## 2026-07-08 · Vault Search Tree view + AI Query Rewrite (Suggest)
+
+**上下文**：Vault Search 之前只有 List / Graph。补齐 Tree view（vault 目录层级）和 AI Suggest（行为驱动的结构化 query 生成）。
+
+### Phase A · Vault Search Tree view
+
+- 调研 mock 三轮迭代：`docs/research/2026-07-08-tree-view-mockup/`（A compact / B score+snippet / C detailed 三个 variant → 用户砍掉 B，收敛为 **Compact（默认）+ Detailed** 两档）
+- 交互模型：click folder → reveal in File Explorer · click file → 打开 · click preview snippet → jump to line · 键盘 ↑↓ 只在 file 之间跳（folder skip）
+- 实现：
+  - `store/vaultSearchStore.ts` — `resultView: 'tree'` + `treeDensity` + `treeCollapsedFolders` + `treeCursor`；新 search 自动清空 collapsed + cursor
+  - `components/result-tree/buildTree.ts` — 平铺 `SearchResultItem[]` → 嵌套 folder/file tree · folders-first + alpha-sort 每层
+  - `components/result-tree/ResultTreeView.tsx` — Compact/Detailed 双 mode 行渲染 · file-only 键盘导航 · click handler
+  - `components/ResultPaneHeader.tsx` — Tree view button 从 disabled 改可点 · 新增 `TreeDensityToggle` 胶囊 pill
+  - `SearchModal.tsx` — toolbar 右侧在 tree 模式下换成 `TreeDensityToggle`
+  - `core/ports/VaultNavigationPort.ts` + `AppVaultNavigationAdapter.ts` — 新增 `revealFolderInFileExplorer(folderPath)` 走 Obsidian 内部 `revealInFolder` API
+- Iterations 修：
+  - 缩进 step 14 → 18 px + file 行加 chevron 占位符（否则子文件文本在父文件夹左侧，视觉错乱）
+  - Detailed 行 heading anchor：best-effort 从 `contentRaw`/`content` 反向找最近 `#/##/###`；找不到显示 `body only`
+  - HitBadge：count = 1 不显示
+  - Inspector 面板 title 下方插 snippet 段（从 `VaultSearchResult` 抽出 `snippet/renderSnippetHighlights.tsx` 共享渲染）
+  - Tree cursor 无条件同步到 inspector path（inspector 关的时候也同步 → 按 → 立刻显示 snippet 而非 "Select a note"）
+
+### Phase B · AI Query Rewrite (Suggest)
+
+- 调研 spec：`docs/research/2026-07-08-ai-query-rewrite/README.md`（含 payload schema / prompt 设计 / 37 事件全清单 / open questions / 反面清单）
+- Mock：`docs/research/2026-07-08-ai-query-rewrite/index.html`（主 overlay + Behavior Context 展开 + 三态兜底 + 完整 Event Catalog 表 · 全交互 mock：X 关 / Show context 展 / Try again / 点候选自动回填 + 输入框紫色 flash）
+- 关键决策：模型不 hardcode · 复用 Curator **Fast Lookup tier**（`HarnessSettings.localFastConfig` / `quick` capability） · 不新增 AI behavior role
+- UI 前置修：
+  - Footer 去掉 `# in-file` / `? modes` shortcut
+  - Placeholder `Search in vault... (# heading, ? help)` → `Search your vault…`
+  - 去掉输入框右侧 `all` mode 徽章
+  - AI button 从 ghost 变紫色胶囊 `✦ Suggest` + hover tooltip "AI suggests queries based on your actions" · icon 换成官方 Lucide `Sparkles`（之前 mock 里画的五角星是错的）
+  - ViewModeToggle: `Tree view` / `Graph view` → `Tree` / `Graph`
+- 实现（10 个文件）：
+  - `core/schemas/queryRewrite.ts` — Zod schema + 16 event kinds + payload 类型
+  - `ui/view/quick-search/rewrite/BehaviorContextRecorder.ts` — 单例 sidecar · `start()` 于 modal 开、`stop()` 于关 · 订阅 sharedStore + vaultSearchStore 自动推导 12 种事件 · typed 500ms debounce · ring buffer 30 · 显式 `push()` 给 hover / openedFile
+  - `ui/view/quick-search/rewrite/AIQueryRewriteService.ts` — `suggestQueries()` 主入口 · 拿 Fast Lookup 绑定 · `vercelGenerateText` 调 LLM（带 abortSignal）· 2 次重试 · Zod 验证 · fallback 走 `buildRuleBasedCandidates()` · emit `USAGE_RECORDED` 埋 `feature: 'query_rewrite'`
+  - **架构教训**：一开始把两者放 `service/search/rewrite/` — 因为 import 了 Zustand store（`useVaultSearchStore` / `useSharedStore`），触发 `service→ui 4 > 0` 层级违规。10 个 boundary regression test 挂掉。修法：整个 rewrite 子模块搬到 `ui/view/quick-search/rewrite/`（rewrite 本质是 UI-facing 特性，绑定 UI state，属于 UI 层）。教训：新加 service 前 grep 一下有没有反向 import UI。
+  - `templates/prompts/query-rewrite-system.md` + `query-rewrite.md` — system + user prompt · 强制 JSON only · reason 必须 grounding 在具体 behavior signal 上
+  - `core/types/prompt.ts` + `core/template/TemplateRegistry.ts` — 注册 `QueryRewriteSystem` + `QueryRewrite`
+  - `ui/view/quick-search/modals/AIQueryRewritePanel.tsx` — React panel: idle-empty / loading / success / fallback banner / error 五态 · 候选卡片（编号 · 紫 focus · click 回填）· Show context 展开 · Try again · 键盘 ↑↓ Enter 1-5 Esc
+  - `app/ui-host/modals/AIQueryRewriteModal.ts` — `ReactModalHost` 子类 540px
+  - `app/ui-host/modals/QuickSearchModal.tsx` — `onOpen` 起 recorder / `onClose` 停 · `onOpenSuggest` 回调实例化 `AIQueryRewriteModal(appContext, settings)`
+  - `ui/view/quick-search/SearchModal.tsx` — Suggest button `onClick` 走 `onOpenSuggest` 回调
+  - `core/providers/vercel/index.ts` — `vercelGenerateText` 加 `abortSignal` 参数（向后兼容）
+- Instrumentation：
+  - Tree view `FileRow` + List view `SearchResultRow` + Graph view Cytoscape node — 全部加 800 ms hover 阈值 push `focusedFile` · 点击 push `openedFile`
+- 完善：
+  - Rule-based fallback（LLM 挂时的 3 条兜底：active-folder / browsed-folder / recent-query AND 组合）
+  - Feedback loop `recordCandidateSelection()` — 用户选哪张回填了会 emit 独立 `USAGE_RECORDED` 事件 (action = `'suggest-selected'`) 让 dashboard join
+  - `UsageFeature` 加 `'query_rewrite'`
+  - Cold-open 空 context 检测（无 query + 无 active file + 只有 modal.opened）→ 展示引导页而非直接烧 tokens · 用户可 "Try anyway" 强跑
+  - LLM 中断：panel 卸载 / Esc 关时 abort signal 传到 provider · 识别 `AbortError` / DOMException 不重试
+
+**验证**：`npm run build` 通过 · 端到端流程手工验证（Fast Lookup 绑 / 未绑 · 空 context · LLM 失败 → fallback · 候选点击回填）
+
+**Deferred**：
+- Zoom event 打点（需要新增 `zoomedGraph` kind）
+- Historic patterns (Layer 3) — 跨 session query 历史 / click-through 高频文件
+- Cost 计算：目前 emit costUsd = 0，dashboard 侧按 model catalog 解析
+- AI Setup Fast Lookup 描述里加一句 "also powers ✦ Suggest"（copy）
+
+## 2026-07-09 · File Atlas mock v2 review + graph 编辑重分类 + mock v3
+
+**上下文**：对 `docs/gstack/file-atlas-mock-2026-07-08/index-v2.html` 做设计 review（对照 spec `docs/superpowers/specs/2026-07-08-file-atlas-design.md`），发现结构性偏差；graph 编辑功能经产品讨论后整块砍掉并重分类。
+
+### Review 结论（详见 spec 内 "Mock Review 2026-07-09" 章节）
+
+- **P0**：树是平列表（无折叠/嵌套）；Presets 缺失（26 个 checkbox 的 settings soup + Heading 可被过滤）；insight 无 provenance / anchor status / reliability 指示；graph 子视图长成 spec Non-goals 里的独立 graph builder
+- **P1**：Inspector 50% 空置、badge 列四种语义混装、多选无统一入口、tray 无溢出计数、大搜索框角色不明、无窄容器形态
+- **P2**（mock 自身 bug）：draft 图选中但画布渲染旧图、graph 搜索行文字粘连、paragraph 声称 hidden 实际显示
+
+### Graph 编辑重分类（关键决策）
+
+- 拆解为三个 job：圈笔记集合（真需求）/ 手动连边（影子数据反模式，关系应以 `[[link]]` 落 markdown）/ 空间排布（Obsidian Canvas 已是一等公民，不自建竞品）
+- 结论：**File Atlas graph 子视图 v1 只读**（system views 1-hop/2-hop + 布局预设 + 节点 popover）；"保存笔记集合"未来走 vault-native **MOC collection note**（links 即数据，Atlas 只做只读渲染，可选导出 `.canvas`）
+- 落档：spec Decision Log 新增 "Graph Subview Is Read-Only" 决策 + Ideas Reclassified 表加行 + Non-Goals 加"不自建 graph editor"；`docs/roadmap.html` backlog 登记 "Collection notes + Canvas 复用"
+- 讨论存档独立成文：`docs/research/2026-07-09-collection-notes-canvas-reuse/README.md`（三 job 拆解 + MOC collection note 设计 + 升调研候选前的 5 个问题）；roadmap backlog 行改为引用该文档
+
+### Mock v3
+
+- `docs/gstack/file-atlas-mock-2026-07-08/index-v3.html`：真折叠树（折叠 heading 显示 count 摘要）、Preset segmented + modified dot、badge 双槽（类型 + anchor 状态点）、Inspector 补 Provenance/Anchor/Location 卡、全行 hover [+]、tray +N 溢出、graph 只读、doc bar 加 reliability chip、side-panel 窄形态切换
+
+## 2026-07-09 · Quick Search UI Polish（评估批次 W1–W8 全交付）
+
+**上下文**：对 quick-search 全流程 4 张截图（Tree / Graph / List+Inspector / List）做 UI/UX 综合评估。问题集中在语义表达层——分数、徽章、开关、命名把内部概念未经翻译就暴露给用户；本批次全部是 UI 表达层修正，不动 ranking / 索引 / 图布局算法本身。8 项收敛于同一份 spec `docs/superpowers/specs/2026-07-09-quick-search-ui-polish.md`。
+
+### 交付逐项
+
+- **W1 分数归一**：新 `src/service/search/query/scoreNormalize.ts` 纯函数，在 `queryService.textSearch` 末尾按结果集内最大 `finalScore` 归一，写入 `SearchResultItem.displayScorePercent`（0–100 int）。`VaultSearchResult` 消费此字段。原因：`finalScore = base + freqBoost + recencyBoost + graphBoost + anchorBoost + clickBoost + hubDocBoost + keywordBoost` 是加法合成，天然可 > 1，之前 `Math.round(raw * 100)` 出现 148%。pill 加 `title="Relative to the top match in this result set"` 让 hover 里能读到语义。
+- **W2 Isolated grid**：`layoutIsolatedGrid()` 在工作区已实现（未提交前置代码）。Phase 0 build 通过，剩下真机 reload 目视确认无堆叠。
+- **W3.1**：`ConnectedSection` 去掉 `<Check>` 图标。绿色勾"已确认"语义与百分比"置信度"数值冲突且信息重复。
+- **W3.2**：**owner 明确拒绝 `+ Link` 动作按钮**——理由：从搜索 UI 直接改用户 vault 内容是首例，写错回归风险高，且 UNLINKED 本意"就地包 wiki-link"和 spec 默认方案"文末 See also 段"是两件事。终选降噪：UNLINKED 徽章去掉琥珀底、改小写 `unlinked` + muted 前景。**不写 vault**。spec 内 Delivery Log 与 Session 决策记录同步。
+- **W3.3**：新 `mergeConnectedLinks.ts` 纯函数（同 target 的 out+in 合成 `both`，first-occurrence 顺序保留，contextSnippet / convergenceCount / relevanceScore 各按策略融合）。`DirectionIcon` 三态（`ArrowRight` / `ArrowLeft` / `ArrowLeftRight`）。SEM / CO-CITE / unlinked 徽章 `title` 挂描述文案。
+- **W4 高亮 cap**：`SEARCH_SNIPPET_HIGHLIGHT_CAP = 4` 常量进 `constant.ts`，`capSpans(spans)` 在 `renderSnippetHighlights.tsx` 导出。`renderHighlightSpans(result, opts?)` 加 `{ cap?: boolean }` 参数——snippet 侧（List + Inspector snippet block）都传 `cap: true`，标题侧不传（Session 决策：标题命中不高亮会破坏"橙色 = 匹配证据"扫视契约）。engine 不动，只截渲染前的 spans。
+- **W5 Tree 密度**：（a）文件夹计数从 row 右缘挪到紧跟文件夹名（`flex-1 min-w-0` wrap 一层，name `truncate min-w-0` + badge 直接 sibling），消除全宽 modal 下的长眼动。（b）文件行加 `IntensityDot`（拆到独立 `intensityTier.ts` 保证可单测）三档相对强度，阈值 `SEARCH_RESULT_INTENSITY_HIGH_THRESHOLD = 0.66` / `MID = 0.33` 进 `constant.ts`。
+- **W6.1**：**owner 拍板保持 5 个 Graph 模式命名不变**（Constellation / Flow ↓ / Flow → / Folder tree / Orbit），零代码改动。Open Question #2 收敛。
+- **W6.2 Semantic**：代码核对 `GraphEdgeType.SemanticRelated` 走 `mobius_edge` 本地读，无 LLM——tooltip 落"Uses pre-indexed embeddings — instant, no AI credits, no network."`Semantic` 文字标签本就存在（V2 迁移带入）。
+- **W7 List 密度**：store 大规模改名——`treeDensity` → `resultDensity`、`TreeDensity` → `ResultDensity` type、`switchedTreeDensity` → `switchedResultDensity` event kind、`setTreeDensity` → `setResultDensity`、`TreeDensityToggle` → `ResultDensityToggle`。toolbar 上 List/Tree 都渲染此 toggle（Graph 不渲染）。`VaultSearchResult` 单行 compact 变体（title + score pill；隐藏 snippet + path breadcrumb）。**默认值从 `compact` 改为 `detailed`**——不然 List 用户一进来会莫名少 snippet + path，比 Tree 用户被迫从 detailed 退化到 compact 更 jarring。
+- **W8 改名**：`SearchModal.tsx` 里 `Suggest` → `Refine`（含 `Recent Suggest` popover header）、`AI Analysis` → `AI Search`（Tab label）。`templates/config/settings.json` 4 处 prose 同步——`fastLookup.desc` (72) / `fastLookup.desc` 第二处 (115) 是 spec 显式点；顺手把 `aiAnalysis.sectionTitle` (214) / `recentLimit.desc` (225) 也改成 AI Search 保持全局命名一致。`Vault Intelligence` 与 `Generate AI Graph` 按 spec 不动。
+
+### 测试
+
+- `test/quick-search-score-normalize.test.ts` — 7 case（含 spec 示例 [1.48, 1.44, 0.5] → [100, 97, 34]、单元素、空集、全零、保序、finalScore→score fallback、混合 scoreless）
+- `test/inspector-link-merge.test.ts` — 7 case（out+in→both、纯 out/in、跨 target 不合并、多路径混合、merge policy for context/convergence/relevance、同向 dup 不误 flip）
+- `test/snippet-highlight-cap.test.ts` — 5 case（低于/等于/高于 cap、类型不加权、空输入）
+- `test/result-tree-intensity.test.ts` — 12 case（三档阈值边界 66/33、null/undefined、全同分）
+- 全套 `npm run test`：197/197 file 全绿；`npm run build` clean
+
+### 验证
+
+- `npm run build` + `npm run test` 全通过。
+- Phase 0（isolated grid / 单 Hub section）待真机 reload 目视确认；其余项均已 build-safe。
+
+### Deferred
+
+- Open Question #1（auto-review 目录 JSON snippet 泄漏）— owner 未表态，本批次不做，待表态后视情况并入或另立 spec。
+- Open Question #4（Quick Search 全量字符串外置到 `ConfigTemplateId`）— 涉及一次整体盘点，本批次接受硬编码字面量的例外。
+
+## 2026-07-09 · File Atlas Phase 0-1（解析器 + Atlas Tree MVP 首切片）
+
+**上下文**：按 spec `docs/superpowers/specs/2026-07-08-file-atlas-design.md` + mock v3 `docs/gstack/file-atlas-mock-2026-07-08/index-v3.html` 实现 File Atlas 第一切片。File Atlas = 当前文档的有序 block 级地图（inspect / navigate / select / handoff，不 execute）。本切片只做 Phase 0（确定性 Markdown 解析器）+ Phase 1（Atlas Tree UI），不碰 AI 生成 / insight 持久化 / provenance / anchor 重锚 / Graph 子视图 / Copilot 真实 handoff。
+
+### Phase 0 — 解析器（core 层，框架无关）
+
+- `src/core/document/atlas/types.ts` — `DocumentBlock` 数据模型 + `FileAtlasAnchor`（照 spec 字段：blockId / contentHash / lineStart-lineEnd / nearestHeading / ordinalInHeading / blockType / status）+ `RawBlockKind` 常量（Phase 1 只含 raw 层，无 insight/issue kind）
+- `src/core/document/atlas/documentBlockParser.ts` — 确定性 Markdown → 有序 block 树。基于 remark mdast（项目既有 canonical parser，节点带 `position` 行号）+ 行级补充（callout `> [!x]` / 显示 math `$$…$$` / mermaid fence / vault-vs-external 链接分类 / embed-vs-attachment / footnote）。为什么用 remark 而非 Obsidian metadataCache：解析器要框架无关（测试 / 未来非 Obsidian host）且要有序 block 流 + 精确行范围，metadataCache 给不出有序 block 流。**链接三分**（vault / external / embed-attachment 三类不同 kind）是 spec 硬规则，测试显式守。
+- `src/core/document/atlas/linkClassifier.ts` — 链接/嵌入分类（image/attachment 扩展名表、external URL 判定、domain 提取），无网络。扩展名表是结构分类数据非 i18n，按 configurability.md 留模块常量。
+- 每 block 携带完整 anchor（blockId、contentHash 用 `hashString(src,32)`、lineStart/lineEnd、nearestHeading、ordinalInHeading、blockType）；本切片 status 恒 `active`，不做持久化/重锚。
+
+### Phase 1 — Atlas Tree UI
+
+- `src/app/commands/PeakCommandActions.ts` `openFileAtlas()` + main.ts 注册命令 **"Open File Atlas"**（id `peak-file-atlas-open`）。**挂载方式（用户拍板修正）**：File Atlas 不新开独立 modal，而是并入既有 `CopilotPickerModal` 的 **Atlas tab**（该 modal 已有 Atlas / Document Copilot / Ambient 三 tab + 顶部全路径）。命令改为 `new CopilotPickerModal(ctx, { initialTab: 'atlas' }).open()`。删除了原先短暂存在的独立 `FileAtlasModal.ts`。
+- `src/ui/view/copilot/CopilotPickerContent.tsx` — Atlas tab 从旧的 `HeadingModeContainer`（仅 heading 过滤）**替换**为 `<FileAtlasPanel embedded>`。host port（reveal 行 / clipboard / notice）在此用 `useServiceContext().vaultNavigation` 构建（`revealLine` → `openVaultPathAtLine(path,{line,newLeaf:false})` 后关闭 picker；`notify` → `new Notice`）——runtime 归属仍在 app 组合的 port 上，UI 层不碰 Obsidian runtime。`ctx.content` / `ctx.file.path` 直接来自 picker 已构建的 `DocumentContext`。`CopilotPickerModal` 补传 `onClose: () => this.close()`（reveal 跳行后关 modal，沿用 heading 跳转的既有行为）。`HeadingModeContainer` 组件本身保留（`tab-VaultSearch.tsx` 仍在用）。
+- `src/ui/view/file-atlas/FileAtlasPanel.tsx` — 主面板，`useReducer` 管本地 state（preset / filter kinds / collapsed set / selection / tray）。布局照 mock v3：doc-context（路径 + reliability chip + words/blocks/resources stats）/ mode-nav / 大搜索框（scope pill "document"，树内过滤 + hit 计数）/ atlas bar / 60-40 tree+inspector / tray。新增 `embedded` prop：嵌入 picker 时**隐藏自带 mode-nav**（picker 的 tab bar 已是 Atlas/Copilot/Ambient 切换器，避免双 tab bar），并从固定 modal 高度改为填满 picker body（CSS `.pkfa-embedded` 去掉 mode-nav 行 + `height:100%`）。Graph 子视图本切片 disabled，其 Tree/Graph 子切换随 mode-nav 一起隐藏，待 Graph phase 落地时再择位重挂。
+- `src/ui/view/file-atlas/components/`：`AtlasTree`（真折叠、行号 gutter **只显 lineStart 单数字/34px**、type icon、name+sub、hover [+]、类型 badge、折叠 heading 显 "N blocks · N res" 摘要）、`AtlasInspector`（kind/title/sub + table/media/link/quote 特化预览 + Location 卡显**完整 lineStart–lineEnd** + Reveal/Add/Copy link）、`AtlasBar`（Preset segmented + modified dot + Filters 分组 popover，Heading 不可过滤 + expand/collapse all）、`AtlasTray`（chips 可删、>4 显 +N、Send to Copilot disabled+tooltip）。
+- `src/ui/view/file-atlas/atlasTreeModel.ts` — 纯函数：可见性计算（preset kinds × search，heading 恒可见）、折叠计数摘要、heading id 收集。
+- 配置（configurability.md）：`templates/config/file-atlas.json` + 类型化 fallback `src/ui/view/file-atlas/config/fileAtlasConfig.ts`（kind→label/badge/category、filter groups、5 个 preset 定义、UI strings），`ConfigTemplateId.FileAtlas` 注册。icon 组件映射（React 不能进 JSON）单列 `kindIcons.tsx`（Lucide only，无 emoji）。
+- 样式（ui-design.md）：`src/styles/file-atlas.css`，mock hardcode 色值全映射到 `--pk-*` token（vault-link teal 新增 `--pk-teal*` light+dark token）；scope `.peak-file-atlas-modal.pkfa-root`，button 几何全 `!important` 防 Obsidian reset 泄漏（§4.3）；panel root 带 `peak-design-root`。
+
+### 测试
+
+- `test/file-atlas-parser.test.ts` — 19 case（有序提取 / 嵌套 heading / nearestHeading+ordinal / frontmatter→property+tag / task 单列 / callout-vs-quote / table 行列 / code-vs-mermaid / 显示 math / footnote / **链接三分硬规则** / 中文内容 / contentHash 稳定+编辑变化 / blockId 唯一 / 行范围 1-based / 空文件 / 纯 frontmatter / 连续同类 / stats）
+- `test/file-atlas-config.test.ts` — 9 case（JSON↔fallback drift 守：kinds/presets/groups/strings 全等 + preset 引用真 kind + kind 属真 group + **Phase 1 preset 不含 insight/issue kind** + 每 kind 有 icon）
+
+### 验证
+
+- `npm run build` clean；`npm run test` **199/199 file 全绿**（含既有 boundary regression 全套 t11j/k/l/m/r + service-ui-boundary；core/document/atlas 零 ui/service/app import，层次干净）。tsc：新增文件全 type-clean（仓库存量 362 个 node_modules/vendored-SDK typing error 与本切片无关，esbuild build 是项目 bar）。
+- 真机目视 QA：Obsidian 为 click-tier（无法在命令面板打字驱动），本切片依赖静态保证（build/test/type/boundary 绿 + §4 button 几何 `!important` 防御）；Obsidian CSS 泄漏目视确认留待用户手动 reload 后核对。
+
+### 容器归属：并入 CopilotPicker 的 Atlas tab（spec open question #4 定案）
+
+- 既有 `CopilotPickerModal` / `CopilotPickerContent.tsx` 已有 **Atlas / Document Copilot / Ambient** 三 tab（`SCOPE_TABS`）。Document Copilot（`composeCopilotPanelVault` / `CopilotActionRuntime`）与 Ambient（`AmbientRuntime` + `RelatedNotesPanel`）都是已落地 surface。**File Atlas 就是 Atlas tab 的新内容**，替换掉原先的 heading-filter 视图——不新开独立 modal（一开始误做成独立 modal，已改）。
+- Send-to-Copilot 契约（Phase 3）：旧 heading tab 的选择结果本就走 picker 的 scope；File Atlas 的 Selection Tray 是本地 state，本切片 "Send to Copilot" 仍 disabled。Phase 3 让 tray 的选中 blocks 作为 document-scope context 路由到 picker 的 `document` tab（payload 契约待定），不在本切片硬接 picker 下游。
+
+### Deferred
+
+- Phase 2（insight 持久化 + provenance/anchor status UI + filter popover 的 Copilot insights/Issues 分组）、Phase 3（Send to Copilot 真实 payload）、Phase 4（Git-aware anchor 重锚 + reliability Versioned/Managed）、Graph 子视图（mode-nav 里 disabled）、窄形态适配（modal 固定桌面尺寸）。
+
+
+## 2026-07-11 · Peak Composer 编辑视图 mock — 块级 AI 交互定稿
+
+**上下文**：把在 `docs/gstack/peak-composer-editing-view-2026-07-09/ai-menu-mock.html` 里独立打磨定稿的块级 AI 交互，折进主 mock（`index.html` / `mock.js` / `mock.css`）。纯设计 mock（file:// 打开，非插件 bundle，未走 npm run build）。
+
+### 交互定稿（两处产品决策）
+
+- **菜单 = 单胶囊形变**：静止是轻白胶囊（✦ + 短动作 pills + 「指令」触发）；点「指令」pills 收起、同一胶囊原地展开成单行输入框（大圆角全程不变、无二级下拉、placeholder 全显、Enter 提交无发送箭头、回车用 return-icon）。拒掉了此前拥挤 chip 条 / 五层竖排命令菜单 / 胶囊再弹推荐面板几版。
+- **组合建议 = 按需升级**：仅带 Copilot 主动长建议的块升级成组合卡（顶部渐变建议行 + 生成，底部胶囊/输入行）；其余块只有轻胶囊。由 `mock.js` 的 `COPILOT_SUGGESTIONS` 驱动（现挂 `导语段落` 改写建议、`AI 旁路段落` 新增建议，两条结果路径都可从主动入口演示）。
+- **结果按动作性质分两路（核心决策）**：*改写类*（润色改写/改短标题/扩写原则/改 Callout 类型 + 文本块自定义指令）→ 段落**原地流式** + **渲染后按词 diff**（红删绿增就在原文上、`−N +N`、接受/还原/重试）；*新增类*（追问/表格/公式解释/链接卡/Copilot 补一段 + 一切对象块）→ 绿色「新增·生成到块下方」预览卡（接受写入/重试/丢弃），不碰原文。diff 只用于改同一段文字，新增内容不套 diff。
+- 触发条件：改写需 rewrite-label + 单一可编辑正文（段落/标题/引用/callout body）；含行内公式 / `[[链接]]` / 外链 chip / 脚注 ref 的段落降级为新增卡，避免 `textContent` 抹掉渲染 span。公式微块/对象块/行内资源 popover 一律新增卡。
+
+### 实现
+
+- `mock.js`：重写整个 AI 子系统——`tokenize`/`diffTokens`/`renderDiff` 字级 LCS diff、`runRewrite`（原地流式+按词 diff+review bar）、`runInsert`（绿色新增预览卡）、胶囊⇄输入 `getOrCreateAiMenuFor`、`COPILOT_SUGGESTIONS`、`openAiInput`/`closeAiInput`。`showAiSuggestionCard` 保留为 dispatcher，所有旧入口（块菜单/公式微块/链接 popover/issue-pill/native 工具条/insight/ambient）自动路由到两路径。删除旧 `getOrCreateAiCard`/`toggleAiDiff`/`accept|retry|closeAiSuggestion`/`expandAiMenu`/`buildDiff`。
+- `mock.css`：删旧 `.ai-menu*`/`.ai-suggestion-card`/`.diff-line` 死样式，换 `.aim`/`.aimc`/`.ai-sugg`/`.rw-review`/`.ins-card`/`.is-diffing`/`.ai-caret`；bare 胶囊 `.aimc.is-bare .aim` 恢复 pill 外壳。
+- `index.html`：sprite 补 `#i-wand`/`#i-enter`/`#i-undo`。
+
+### 验证
+
+- Playwright headless（deviceScaleFactor:2）截 7 场景全绿、无 console error、`node --check mock.js` 通过：组合建议卡 / 胶囊→输入形变 / 原地按词 diff（`−18 +5`）/ 接受写回干净 / 新增预览卡（原文未动）/ bare 胶囊 / 公式微块独立胶囊。入库 `preview-blockai-*.png` 7 张。
+
+### 文档
+
+- `docs/gstack/peak-composer-editing-view-2026-07-09/README.md`：新增 `## Block AI Interaction (2026-07-11 final)` 专节记录讨论/拒掉方案/两个 open decision（组合按需 vs 永远、diff 字级 vs 整词）；刷新被取代的旧描述（V3+V2 hybrid、collapsible − / ＋ diff、real-diff not-mocked、Esc 顺序、Verification）。
+- `docs/superpowers/specs/2026-07-09-peak-composer-editing-view.md`：`## AI Integration` 末补 normative 决策记录（两路结果模型、diff 只用于改写、in-place rendered word-level 为规格要求）。
+
+### Open decisions（默认已选，可改）
+
+- 组合面板 = 按需升级（改 `COPILOT_SUGGESTIONS` 可切永远组合 / 换挂载块）。
+- diff 粒度 = 字级零依赖 LCS（整词级需引入中文分词；字级下复合词共享字会轻微碎裂）。

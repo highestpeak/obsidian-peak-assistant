@@ -148,6 +148,7 @@
         <div class="nav-group">
           <span class="nav-group-title">Action 详解</span>
           <a href="#action-catalog">Document lane 动作清单</a>
+          <a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Composer Block AI 能力契约</a>
           <a href="#user-workflows">4 条常用 recipe</a>
           <a href="#writes-and-safety">会不会直接改我的文档</a>
         </div>
@@ -180,6 +181,10 @@
           <div class="claim">
             <strong>规划中的局部图谱</strong>
             Document tab 未来需要显示当前文档属于哪些 hub、出处链和 local graph。这个需求还没有实现，登记在 <a href="planned-requirements.html#active-planned">Planned Requirements</a>，具体草图见 <a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#document-tab">Document local graph surface</a>。
+          </div>
+          <div class="claim">
+            <strong>Composer 中的 Block AI 不等于这 17 条 Document action</strong>
+            Composer 还需要按块类型区分固定编辑操作、由证据触发的 Copilot Review 建议，以及 Mermaid / Base / Canvas / Excalidraw 等对象的增量生成。完整类型矩阵、预览方式和写回边界见 <a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Composer Block AI Capability Contract</a>；未落生产的部分统一进入 <a href="roadmap.html#decided">Roadmap</a>，不在组件里临时硬编码一组“AI 段落 / 表格 / 图片 / 公式”。
           </div>
         </section>
 
@@ -246,6 +251,7 @@ flowchart LR
         <section id="action-catalog">
           <h2>Document lane 动作清单</h2>
           <p class="lead">Document lane 里一共 <strong>17 条 action</strong>：12 条 <code>document</code> category + 5 条 <code>writing</code> category。下面这张表按“怎么用”排序——最上面 6 条是核心的润色 / 审阅 / 链接 / 标签 / 拆分，往下是辅助性的写作与阅读工具。三个核心列：<strong>读什么</strong>、<strong>结果面板长什么样</strong>、<strong>Apply 会做什么</strong>。所有 action 都从当前文档拿 <code>DocumentContext</code>；<code>scope</code> 为 <code>selection</code> 时优先用选区，否则用整篇。</p>
+          <p class="read-note"><b>与 Composer 的关系：</b>这里记录现有 Document lane action；编辑视图里每类 block 应该稳定出现什么、什么只能由 Review 证据触发、什么必须流式重渲染，以 <a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Block AI 能力契约</a> 为准。</p>
 
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>

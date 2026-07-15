@@ -237,12 +237,21 @@
                 <td><a href="superpowers/refactor-ops/t8-ambient-foundation-runtime-boundary-wave-handoff.md">T8 Ambient runtime boundary handoff</a><br><a href="roadmap.html">Roadmap</a> · <a href="progress.md">Progress</a></td>
                 <td>runtime boundary、已完成状态和后续 backlog 的证据入口。</td>
               </tr>
+              <tr>
+                <td><strong>8 · Composer 对接边界</strong></td>
+                <td><a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Composer Block AI Capability Contract</a></td>
+                <td>Ambient 提供 Current Work State、Session Thought Trace 和关联信号；固定块操作、Copilot Review 建议、增量对象编辑分别由谁拥有，以及结果如何写回 Markdown/native file。</td>
+              </tr>
             </tbody>
           </table>
 
           <div class="claim">
             <strong>维护规则</strong>
             新增 Ambient 规划时，先判断它是当前解释、低保真需求、历史计划还是实现进度。小型未实现需求登记到 <a href="planned-requirements.html">Planned Requirements</a>；完整设计放到 <code>docs/superpowers/specs/</code>；本节只保留能帮助读者找到正确文档的入口。
+          </div>
+          <div class="claim">
+            <strong>与 Composer Intelligence 的边界</strong>
+            Ambient 可以把“用户可能正在整理 PKM 流程”“当前段落与 Base 使用判断强关联”这样的信号交给 Copilot，但它不拥有块级固定工具，也不保存编辑历史。Composer 右侧将 Copilot、Ambient、History 分成三个同级视图；具体能力分工见 <a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Block AI 能力契约</a>。
           </div>
         </section>
 
