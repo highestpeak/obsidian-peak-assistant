@@ -53,3 +53,7 @@ tmp_code_ref_for_cursor.claude/worktrees/
 tmp_code_ref_for_cursor/
 .claude/
 output/playwright/*
+.gstack/
+.codebase-memory/
+.playwright-cli/
+output/
